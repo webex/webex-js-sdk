@@ -412,6 +412,7 @@ describe('Call Tests', () => {
 
     expect(webex.request.mock.calls[0][0].body.metrics).toStrictEqual(disconnectStats);
   });
+
   it('dial fails if localAudioTrack is empty', async () => {
     const mockStream = {
       outputStream: {
@@ -439,13 +440,85 @@ describe('Call Tests', () => {
     await waitForMsecs(50);
     expect(warnSpy).toBeCalledTimes(1);
     expect(warnSpy).toBeCalledWith(
-      `Did not find a local track while dialling the call ${call.getCorrelationId()}`,
+      `Did not find a local track while dialing the call ${call.getCorrelationId()}`,
       {file: 'call', method: 'dial'}
     );
     expect(call['callStateMachine'].state.value).toBe('S_IDLE');
     expect(call['mediaStateMachine'].state.value).toBe('S_ROAP_IDLE');
 
     expect(webex.request).not.toBeCalledOnceWith();
+  });
+
+  it('update media after call creation with valid stream', () => {
+    const callManager = getCallManager(webex, defaultServiceIndicator);
+
+    const mockStream = {
+      outputStream: {
+        getAudioTracks: jest.fn().mockReturnValue([mockTrack]),
+      },
+      on: jest.fn(),
+    };
+
+    const localAudioStream = mockStream as unknown as MediaSDK.LocalMicrophoneStream;
+
+    const call = callManager.createCall(dest, CallDirection.OUTBOUND, deviceId, mockLineId);
+
+    call.dial(localAudioStream);
+
+    expect(mockTrack.enabled).toEqual(true);
+
+    const mockTrack2 = {
+      enabled: true,
+    };
+
+    const mockStream2 = {
+      outputStream: {
+        getAudioTracks: jest.fn().mockReturnValue([mockTrack2]),
+      },
+      on: jest.fn(),
+    };
+
+    const localAudioStream2 = mockStream2 as unknown as MediaSDK.LocalMicrophoneStream;
+
+    call.updateMedia(localAudioStream2);
+
+    expect(call['mediaConnection'].updateLocalTracks).toBeCalledOnceWith({audio: mockTrack2});
+  });
+
+  it('update media with invalid stream', () => {
+    const callManager = getCallManager(webex, defaultServiceIndicator);
+    const warnSpy = jest.spyOn(log, 'warn');
+
+    const mockStream = {
+      outputStream: {
+        getAudioTracks: jest.fn().mockReturnValue([mockTrack]),
+      },
+      on: jest.fn(),
+    };
+
+    const localAudioStream = mockStream as unknown as MediaSDK.LocalMicrophoneStream;
+
+    const call = callManager.createCall(dest, CallDirection.OUTBOUND, deviceId, mockLineId);
+
+    call.dial(localAudioStream);
+
+    expect(mockTrack.enabled).toEqual(true);
+
+    const errorStream = {
+      outputStream: {
+        getAudioTracks: jest.fn().mockReturnValue([]),
+      },
+    };
+
+    const localAudioStream2 = errorStream as unknown as MediaSDK.LocalMicrophoneStream;
+
+    call.updateMedia(localAudioStream2);
+
+    expect(call['mediaConnection'].updateLocalTracks).not.toBeCalled();
+    expect(warnSpy).toBeCalledOnceWith(
+      `Did not find a local track while updating media for call ${call.getCorrelationId()}. Will not update media`,
+      {file: 'call', method: 'updateMedia'}
+    );
   });
 });
 

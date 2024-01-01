@@ -374,7 +374,7 @@ export interface ICall extends Eventing<CallEventTypes> {
    *
    * @param newAudioStream - The new audio stream to be used in the call.
    */
-  updateMedia(newStream: LocalMicrophoneStream): void;
+  updateMedia(newAudioStream: LocalMicrophoneStream): void;
 
   /**
    * Fetches the information related to the call's Broadworks correlationId.
