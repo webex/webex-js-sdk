@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.292](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.291...v3.0.0-beta.292) (2024-01-02)
+
+
+### Features
+
+* **plugin-meetings:** retry media connection on turn tls ([#3261](https://github.com/webex/webex-js-sdk/issues/3261)) ([0130d35](https://github.com/webex/webex-js-sdk/commit/0130d35105fb64f89e06ab9af8077543cc319f24))
+
 ## [3.0.0-beta.291](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.290...v3.0.0-beta.291) (2023-12-21)
 
 
