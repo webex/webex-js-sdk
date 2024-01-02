@@ -17,13 +17,7 @@ describe('member', () => {
     assert.exists(member.supportsInterpretation);
     assert.exists(member.supportsBreakouts);
     assert.exists(member.supportLiveAnnotation);
-  });
-
-  it('checks that processParticipant calls isHandRaised', () => {
-    sinon.spy(MemberUtil, 'isHandRaised');
-    member.processParticipant(participant);
-
-    assert.calledOnceWithExactly(MemberUtil.isHandRaised, participant);
+    assert.exists(member.canReclaimHost);
   });
 
   describe('roles', () => {
@@ -48,6 +42,13 @@ describe('member', () => {
       member.processParticipant(participant);
 
       assert.calledOnceWithExactly(MemberUtil.isHandRaised, participant);
+    });
+
+    it('checks that processParticipant calls canReclaimHost', () => {
+      sinon.spy(MemberUtil, 'canReclaimHost');
+      member.processParticipant(participant);
+  
+      assert.calledOnceWithExactly(MemberUtil.canReclaimHost, participant);
     });
   })
 
