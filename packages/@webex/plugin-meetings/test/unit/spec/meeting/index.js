@@ -85,6 +85,7 @@ import {
   UserNotJoinedError,
   MeetingNotActiveError,
   UserInLobbyError,
+  AddMediaFailed,
 } from '../../../../src/common/errors/webex-errors';
 import WebExMeetingsErrors from '../../../../src/common/errors/webex-meetings-error';
 import ParameterError from '../../../../src/common/errors/parameter';
@@ -1190,7 +1191,7 @@ describe('plugin-meetings', () => {
           }
         });
 
-        it('should send metrics and reset the statsAnalyzer to null if addMedia throws an error', async () => {
+        it('should send metrics and reset the statsAnalyzer to null if addMedia throws an error without a turn server retry', async () => {
           meeting.meetingState = 'ACTIVE';
           
           meeting.webex.meetings.reachability = {
@@ -1229,6 +1230,7 @@ describe('plugin-meetings', () => {
             {
               correlation_id: meeting.correlationId,
               turnServerUsed: true,
+              retriedWithTurnServer: false,
               latency: undefined,
             }
           );
@@ -1243,6 +1245,7 @@ describe('plugin-meetings', () => {
               code: error.code,
               turnDiscoverySkippedReason: undefined,
               turnServerUsed: true,
+              retriedWithTurnServer: false,
               isMultistream: false,
               signalingState: 'unknown',
               connectionState: 'unknown',
@@ -1251,37 +1254,6 @@ describe('plugin-meetings', () => {
               someReachabilityMetric2: 'some value2',
             }
           );
-        });
-
-        it('checks metrics called with skipped reason config', async () => {
-          meeting.roap.doTurnDiscovery = sinon
-            .stub()
-            .resolves({turnServerInfo: undefined, turnDiscoverySkippedReason: 'config'});
-          meeting.meetingState = 'ACTIVE';
-          await meeting.addMedia().catch((err) => {
-            assert.exists(err);
-            assert(webex.internal.newMetrics.submitInternalEvent.calledTwice);
-            assert.calledWith(webex.internal.newMetrics.submitInternalEvent.firstCall, {
-              name: 'internal.client.add-media.turn-discovery.start',
-            });
-            assert.calledWith(webex.internal.newMetrics.submitInternalEvent.secondCall, {
-              name: 'internal.client.add-media.turn-discovery.end',
-            });
-            assert(Metrics.sendBehavioralMetric.calledOnce);
-            assert.calledWith(Metrics.sendBehavioralMetric, BEHAVIORAL_METRICS.ADD_MEDIA_FAILURE, {
-              correlation_id: meeting.correlationId,
-              locus_id: meeting.locusUrl.split('/').pop(),
-              reason: err.message,
-              stack: err.stack,
-              code: err.code,
-              turnDiscoverySkippedReason: 'config',
-              turnServerUsed: false,
-              isMultistream: false,
-              signalingState: 'unknown',
-              connectionState: 'unknown',
-              iceConnectionState: 'unknown',
-            });
-          });
         });
 
         it('should reset the webrtcMediaConnection to null if addMedia throws an error', async () => {
@@ -1307,6 +1279,7 @@ describe('plugin-meetings', () => {
             {
               correlation_id: meeting.correlationId,
               turnServerUsed: true,
+              retriedWithTurnServer: false,
               latency: undefined,
             }
           );
@@ -1361,6 +1334,7 @@ describe('plugin-meetings', () => {
             {
               correlation_id: meeting.correlationId,
               turnServerUsed: true,
+              retriedWithTurnServer: false,
               latency: undefined,
             }
           );
@@ -1375,6 +1349,7 @@ describe('plugin-meetings', () => {
               code: error.code,
               turnDiscoverySkippedReason: undefined,
               turnServerUsed: true,
+              retriedWithTurnServer: false,
               isMultistream: false,
               signalingState: 'unknown',
               connectionState: 'unknown',
@@ -1419,6 +1394,7 @@ describe('plugin-meetings', () => {
             {
               correlation_id: meeting.correlationId,
               turnServerUsed: true,
+              retriedWithTurnServer: false,
               latency: undefined,
             }
           );
@@ -1475,6 +1451,7 @@ describe('plugin-meetings', () => {
             {
               correlation_id: meeting.correlationId,
               turnServerUsed: true,
+              retriedWithTurnServer: false,
               latency: undefined,
             }
           );
@@ -1630,7 +1607,7 @@ describe('plugin-meetings', () => {
               username: FAKE_TURN_USER,
               password: FAKE_TURN_PASSWORD,
             },
-            turnServerSkippedReason: undefined,
+            turnDiscoverySkippedReason: undefined,
           });
           const media = meeting.addMedia({
             mediaSettings: {},
@@ -1678,39 +1655,106 @@ describe('plugin-meetings', () => {
           clock.restore();
         });
 
-        it('should reject if waitForMediaConnectionConnected() rejects', async () => {
+        it('should reject if waitForMediaConnectionConnected() rejects after turn server retry', async () => {
           const FAKE_ERROR = {fatal: true};
           const getErrorPayloadForClientErrorCodeStub = webex.internal.newMetrics.callDiagnosticMetrics.getErrorPayloadForClientErrorCode = sinon
             .stub()
             .returns(FAKE_ERROR);
-
           const MOCK_CLIENT_ERROR_CODE = 2004;
           const generateClientErrorCodeForIceFailureStub = sinon
             .stub(CallDiagnosticUtils, 'generateClientErrorCodeForIceFailure')
             .returns(MOCK_CLIENT_ERROR_CODE);
+          const FAKE_TURN_URL = 'turns:webex.com:3478';
+          const FAKE_TURN_USER = 'some-turn-username';
+          const FAKE_TURN_PASSWORD = 'some-password';
+          let errorThrown = undefined;
 
-
+          // Stub doTurnDiscovery so that on the first call we skip turn discovery
+          meeting.roap.doTurnDiscovery = sinon.stub().onFirstCall().returns({
+            turnServerInfo: undefined,
+            turnDiscoverySkippedReason: 'reachability',
+          }).onSecondCall().returns({
+            turnServerInfo: {
+              url: FAKE_TURN_URL,
+              username: FAKE_TURN_USER,
+              password: FAKE_TURN_PASSWORD,
+            },
+            turnDiscoverySkippedReason: undefined,
+          });
           meeting.meetingState = 'ACTIVE';
           meeting.mediaProperties.waitForMediaConnectionConnected.rejects(new Error('fake error'));
 
-          let errorThrown = false;
+          const forceRtcMetricsSend = sinon.stub().resolves();
+          const closeMediaConnectionStub = sinon.stub();
+          Media.createMediaConnection = sinon.stub().returns({
+            close: closeMediaConnectionStub,
+            forceRtcMetricsSend,
+            getConnectionState: sinon.stub().returns(ConnectionState.Connected),
+            initiateOffer: sinon.stub().resolves({}),
+            on: sinon.stub(),
+          });
 
           await meeting
             .addMedia({
               mediaSettings: {},
             })
-            .catch(() => {
-              errorThrown = true;
+            .catch((err) => {
+              errorThrown = err;
+              assert.instanceOf(err, AddMediaFailed);
             });
 
-          assert.calledOnceWithExactly(generateClientErrorCodeForIceFailureStub, {
+          assert.calledTwice(generateClientErrorCodeForIceFailureStub);
+          assert.calledWith(generateClientErrorCodeForIceFailureStub, {
+            signalingState: 'unknown',
+            iceConnectionState: 'unknown',
+            turnServerUsed: false,
+          })
+          assert.calledWith(generateClientErrorCodeForIceFailureStub, {
             signalingState: 'unknown',
             iceConnectionState: 'unknown',
             turnServerUsed: true,
           })
-          assert.calledOnceWithExactly(getErrorPayloadForClientErrorCodeStub, {clientErrorCode: MOCK_CLIENT_ERROR_CODE});
-          assert.calledTwice(webex.internal.newMetrics.submitClientEvent);
-          assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
+
+          assert.calledTwice(getErrorPayloadForClientErrorCodeStub);
+          assert.alwaysCalledWithExactly(getErrorPayloadForClientErrorCodeStub, {clientErrorCode: MOCK_CLIENT_ERROR_CODE});
+
+          assert.calledThrice(webex.internal.newMetrics.submitClientEvent);
+          assert.calledWith(webex.internal.newMetrics.submitClientEvent.firstCall,           {
+            name: 'client.media.capabilities',
+            payload: {
+              mediaCapabilities: {
+                rx: {
+                  audio: false,
+                  share: false,
+                  share_audio: false,
+                  video: false,
+                  whiteboard: false,
+                },
+                tx: {
+                  audio: false,
+                  share: false,
+                  share_audio: false,
+                  video: false,
+                  whiteboard: false,
+                },
+              },
+            },
+            options: {
+              meetingId: meeting.id,
+            },
+          });
+          assert.calledWith(webex.internal.newMetrics.submitClientEvent.secondCall, {
+            name: 'client.ice.end',
+            payload: {
+              canProceed: true,
+              icePhase: 'JOIN_MEETING_RETRY',
+              errors: [FAKE_ERROR],
+            },
+            options: {
+              meetingId: meeting.id,
+            },
+          });
+          assert.calledWith(webex.internal.newMetrics.submitClientEvent.thirdCall, {
             name: 'client.ice.end',
             payload: {
               canProceed: false,
@@ -1722,7 +1766,228 @@ describe('plugin-meetings', () => {
             },
           });
 
-          assert.isTrue(errorThrown);
+          // Turn discovery internal events are sent twice this time as we go through establishMediaConnection a second time on the retry
+          const submitInternalEventCalls = webex.internal.newMetrics.submitInternalEvent.getCalls();
+          assert.equal(submitInternalEventCalls.length, 4);
+          assert.deepEqual(submitInternalEventCalls[0].args, [{
+            name: 'internal.client.add-media.turn-discovery.start',
+          }]);
+          assert.deepEqual(submitInternalEventCalls[1].args, [{
+            name: 'internal.client.add-media.turn-discovery.end',
+          }]);
+          assert.deepEqual(submitInternalEventCalls[2].args, [{
+            name: 'internal.client.add-media.turn-discovery.start',
+          }]);
+          assert.deepEqual(submitInternalEventCalls[3].args, [{
+            name: 'internal.client.add-media.turn-discovery.end',
+          }]);
+
+          const sendBehavioralMetricCalls = Metrics.sendBehavioralMetric.getCalls();
+          assert.equal(sendBehavioralMetricCalls.length, 2);
+          assert.deepEqual(sendBehavioralMetricCalls[0].args, [            
+            BEHAVIORAL_METRICS.TURN_DISCOVERY_LATENCY,
+            {
+              correlation_id: meeting.correlationId,
+              turnServerUsed: true,
+              retriedWithTurnServer: true,
+              latency: undefined,
+            }
+          ]);
+          assert.deepEqual(sendBehavioralMetricCalls[1].args, [            
+            BEHAVIORAL_METRICS.ADD_MEDIA_FAILURE,
+            {
+              correlation_id: meeting.correlationId,
+              locus_id: meeting.locusUrl.split('/').pop(),
+              reason: errorThrown.message,
+              stack: errorThrown.stack,
+              code: errorThrown.code,
+              turnDiscoverySkippedReason: undefined,
+              turnServerUsed: true,
+              retriedWithTurnServer: true,
+              isMultistream: false,
+              signalingState: 'unknown',
+              connectionState: 'unknown',
+              iceConnectionState: 'unknown',
+            }
+          ]);
+
+          // Check that doTurnDiscovery is called with th4 correct value of isForced
+          const doTurnDiscoveryCalls = meeting.roap.doTurnDiscovery.getCalls();
+          assert.equal(doTurnDiscoveryCalls.length, 2);
+          assert.deepEqual(doTurnDiscoveryCalls[0].args, [            
+            meeting,
+            false,
+            false
+          ]);
+          assert.deepEqual(doTurnDiscoveryCalls[1].args, [            
+            meeting,
+            true,
+            true
+          ]);
+
+          // Some clean up steps happens twice
+          assert.calledTwice(forceRtcMetricsSend);
+          assert.calledTwice(closeMediaConnectionStub);
+          assert.isNull(meeting.mediaProperties.webrtcMediaConnection);
+
+          assert.isOk(errorThrown);
+        });
+
+        it('should resolve if waitForMediaConnectionConnected() rejects the first time but resolves the second time', async () => {
+          const FAKE_ERROR = {fatal: true};
+          const getErrorPayloadForClientErrorCodeStub = webex.internal.newMetrics.callDiagnosticMetrics.getErrorPayloadForClientErrorCode = sinon
+            .stub()
+            .returns(FAKE_ERROR);
+          const MOCK_CLIENT_ERROR_CODE = 2004;
+          const generateClientErrorCodeForIceFailureStub = sinon
+            .stub(CallDiagnosticUtils, 'generateClientErrorCodeForIceFailure')
+            .returns(MOCK_CLIENT_ERROR_CODE);
+          const FAKE_TURN_URL = 'turns:webex.com:3478';
+          const FAKE_TURN_USER = 'some-turn-username';
+          const FAKE_TURN_PASSWORD = 'some-password';
+          let errorThrown = undefined;
+
+          meeting.meetingState = 'ACTIVE';
+          meeting.roap.doTurnDiscovery = sinon.stub().onFirstCall().returns({
+            turnServerInfo: undefined,
+            turnDiscoverySkippedReason: 'reachability',
+          }).onSecondCall().returns({
+            turnServerInfo: {
+              url: FAKE_TURN_URL,
+              username: FAKE_TURN_USER,
+              password: FAKE_TURN_PASSWORD,
+            },
+            turnDiscoverySkippedReason: undefined,
+          });
+          meeting.mediaProperties.waitForMediaConnectionConnected = sinon.stub().onFirstCall().rejects().onSecondCall().resolves();
+
+          const forceRtcMetricsSend = sinon.stub().resolves();
+          const closeMediaConnectionStub = sinon.stub();
+          Media.createMediaConnection = sinon.stub().returns({
+            close: closeMediaConnectionStub,
+            forceRtcMetricsSend,
+            getConnectionState: sinon.stub().returns(ConnectionState.Connected),
+            initiateOffer: sinon.stub().resolves({}),
+            on: sinon.stub(),
+          });
+
+          await meeting
+            .addMedia({
+              mediaSettings: {},
+            })
+            .catch((err) => {
+              errorThrown = err;
+            });
+
+          assert.calledOnce(generateClientErrorCodeForIceFailureStub);
+          assert.calledWith(generateClientErrorCodeForIceFailureStub, {
+            signalingState: 'unknown',
+            iceConnectionState: 'unknown',
+            turnServerUsed: false,
+          })
+
+          assert.calledOnce(getErrorPayloadForClientErrorCodeStub);
+          assert.calledWith(getErrorPayloadForClientErrorCodeStub, {clientErrorCode: MOCK_CLIENT_ERROR_CODE});
+
+          assert.calledThrice(webex.internal.newMetrics.submitClientEvent);
+          assert.calledWith(webex.internal.newMetrics.submitClientEvent.firstCall, {
+            name: 'client.media.capabilities',
+            payload: {
+              mediaCapabilities: {
+                rx: {
+                  audio: false,
+                  share: false,
+                  share_audio: false,
+                  video: false,
+                  whiteboard: false,
+                },
+                tx: {
+                  audio: false,
+                  share: false,
+                  share_audio: false,
+                  video: false,
+                  whiteboard: false,
+                },
+              },
+            },
+            options: {
+              meetingId: meeting.id,
+            },
+          });
+          assert.calledWith(webex.internal.newMetrics.submitClientEvent.secondCall, {
+            name: 'client.ice.end',
+            payload: {
+              canProceed: true,
+              icePhase: 'JOIN_MEETING_RETRY',
+              errors: [FAKE_ERROR],
+            },
+            options: {
+              meetingId: meeting.id,
+            },
+          });
+          assert.calledWith(webex.internal.newMetrics.submitClientEvent.thirdCall, {
+            name: 'client.media-engine.ready',
+            options: {
+              meetingId: meeting.id,
+            },
+          });
+
+          // Turn discovery internal events are sent twice this time as we go through establishMediaConnection a second time on the retry
+          const submitInternalEventCalls = webex.internal.newMetrics.submitInternalEvent.getCalls();
+          assert.equal(submitInternalEventCalls.length, 4);
+          assert.deepEqual(submitInternalEventCalls[0].args, [{
+            name: 'internal.client.add-media.turn-discovery.start',
+          }]);
+          assert.deepEqual(submitInternalEventCalls[1].args, [{
+            name: 'internal.client.add-media.turn-discovery.end',
+          }]);
+          assert.deepEqual(submitInternalEventCalls[2].args, [{
+            name: 'internal.client.add-media.turn-discovery.start',
+          }]);
+          assert.deepEqual(submitInternalEventCalls[3].args, [{
+            name: 'internal.client.add-media.turn-discovery.end',
+          }]);
+
+          const sendBehavioralMetricCalls = Metrics.sendBehavioralMetric.getCalls();
+          assert.equal(sendBehavioralMetricCalls.length, 2);
+          assert.deepEqual(sendBehavioralMetricCalls[0].args, [            
+            BEHAVIORAL_METRICS.TURN_DISCOVERY_LATENCY,
+            {
+              correlation_id: meeting.correlationId,
+              turnServerUsed: true,
+              retriedWithTurnServer: true,
+              latency: undefined,
+            }
+          ]);
+          assert.deepEqual(sendBehavioralMetricCalls[1].args, [            
+            BEHAVIORAL_METRICS.ADD_MEDIA_SUCCESS,
+            {
+              correlation_id: meeting.correlationId,
+              locus_id: meeting.locusUrl.split('/').pop(),
+              connectionType: 'udp',
+              isMultistream: false,
+            }
+          ]);
+          meeting.roap.doTurnDiscovery
+
+          // Check that doTurnDiscovery is called with th4 correct value of isForced
+          const doTurnDiscoveryCalls = meeting.roap.doTurnDiscovery.getCalls();
+          assert.equal(doTurnDiscoveryCalls.length, 2);
+          assert.deepEqual(doTurnDiscoveryCalls[0].args, [            
+            meeting,
+            false,
+            false
+          ]);
+          assert.deepEqual(doTurnDiscoveryCalls[1].args, [            
+            meeting,
+            true,
+            true
+          ]);
+
+          assert.calledOnce(forceRtcMetricsSend);
+          assert.calledOnce(closeMediaConnectionStub);
+
+          assert.isNotOk(errorThrown);
         });
 
         it('should send ADD_MEDIA_SUCCESS metrics', async () => {
@@ -1907,7 +2172,7 @@ describe('plugin-meetings', () => {
               username: FAKE_TURN_USER,
               password: FAKE_TURN_PASSWORD,
             },
-            turnServerSkippedReason: undefined,
+            turnDiscoverySkippedReason: undefined,
           });
           const media = meeting.addMedia({
             mediaSettings: {},

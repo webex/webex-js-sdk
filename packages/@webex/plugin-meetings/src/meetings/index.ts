@@ -682,21 +682,6 @@ export default class Meetings extends WebexPlugin {
   }
 
   /**
-   * API to enable or disable TURN discovery
-   * @param {Boolean} enable
-   * @private
-   * @memberof Meetings
-   * @returns {undefined}
-   */
-  private _toggleTurnDiscovery(enable: boolean) {
-    if (typeof enable !== 'boolean') {
-      return;
-    }
-    // @ts-ignore
-    this.config.experimental.enableTurnDiscovery = enable;
-  }
-
-  /**
    * API to toggle starting adhoc meeting
    * @param {Boolean} changeState
    * @private

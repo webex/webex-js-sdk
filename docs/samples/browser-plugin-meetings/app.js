@@ -31,7 +31,6 @@ const registerElm = document.querySelector('#registration-register');
 const unregisterElm = document.querySelector('#registration-unregister');
 const registrationStatusElm = document.querySelector('#registration-status');
 const integrationEnv = document.getElementById('integration-env');
-const turnDiscoveryCheckbox = document.getElementById('enable-turn-discovery');
 const eventsList = document.getElementById('events-list');
 const multistreamLayoutElm = document.querySelector('#multistream-layout');
 const preferLiveVideoElm = document.querySelector('#prefer-live-video');
@@ -110,7 +109,6 @@ function generateWebexConfig({credentials}) {
         enableMediaNegotiatedEvent: false,
         enableUnifiedMeetings: true,
         enableAdhocMeetings: true,
-        enableTurnDiscovery: turnDiscoveryCheckbox.checked,
       },
       enableAutomaticLLM: true,
     },
