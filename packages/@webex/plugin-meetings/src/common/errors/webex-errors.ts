@@ -145,3 +145,20 @@ class IceGatheringFailed extends WebexMeetingsError {
 
 export {IceGatheringFailed};
 WebExMeetingsErrors[IceGatheringFailed.CODE] = IceGatheringFailed;
+
+/**
+ * @class AddMediaFailed
+ * @classdesc Raised whenever we fail to successfully add media to a meeting
+ * @extends WebexMeetingsError
+ * @property {number} code - 30203
+ * @property {string} message - 'Failed to add media'
+ */
+class AddMediaFailed extends WebexMeetingsError {
+  static CODE = 30203;
+
+  constructor() {
+    super(AddMediaFailed.CODE, 'Failed to add media');
+  }
+}
+export {AddMediaFailed};
+WebExMeetingsErrors[AddMediaFailed.CODE] = AddMediaFailed;

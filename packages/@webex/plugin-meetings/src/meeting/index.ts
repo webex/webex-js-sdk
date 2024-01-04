@@ -39,6 +39,7 @@ import {
   UserInLobbyError,
   NoMediaEstablishedYetError,
   UserNotJoinedError,
+  AddMediaFailed,
 } from '../common/errors/webex-errors';
 import {StatsAnalyzer, EVENTS as StatsAnalyzerEvents} from '../statsAnalyzer';
 import NetworkQualityMonitor from '../networkQualityMonitor';
@@ -571,6 +572,7 @@ export default class Meeting extends StatelessWebexPlugin {
   allowMediaInLobby: boolean;
   turnDiscoverySkippedReason: string;
   turnServerUsed: boolean;
+  private retriedWithTurnServer: boolean;
   private sendSlotManager: SendSlotManager = new SendSlotManager(LoggerProxy);
   private deferSDPAnswer?: Defer; // used for waiting for a response
   private sdpResponseTimer?: ReturnType<typeof setTimeout>;
@@ -1306,6 +1308,15 @@ export default class Meeting extends StatelessWebexPlugin {
      * @memberof Meeting
      */
     this.turnServerUsed = false;
+
+    /**
+     * Whether retry was done using TURN Discovery.
+     * @instance
+     * @type {boolean}
+     * @private
+     * @memberof Meeting
+     */
+    this.retriedWithTurnServer = false;
   }
 
   /**
@@ -5750,8 +5761,8 @@ export default class Meeting extends StatelessWebexPlugin {
       this.webex.internal.newMetrics.submitClientEvent({
         name: 'client.ice.end',
         payload: {
-          canProceed: false,
-          icePhase: 'JOIN_MEETING_FINAL',
+          canProceed: !this.turnServerUsed, // If we haven't done turn tls retry yet we will proceed with join attempt
+          icePhase: this.turnServerUsed ? 'JOIN_MEETING_FINAL' : 'JOIN_MEETING_RETRY',
           errors: [
             // @ts-ignore
             this.webex.internal.newMetrics.callDiagnosticMetrics.getErrorPayloadForClientErrorCode({
@@ -5859,20 +5870,109 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
-   * Does TURN discovery, SDP offer/answer exhange, establishes ICE connection and DTLS handshake
+   * Calls establishMediaConnection with isForced = true to force turn discovery to happen
    *
    * @private
    * @param {RemoteMediaManagerConfiguration} [remoteMediaManagerConfig]
    * @param {BundlePolicy} [bundlePolicy]
    * @returns {Promise<void>}
    */
-  private async establishMediaConnection(
+  private async retryEstablishMediaConnectionWithForcedTurnDiscovery(
     remoteMediaManagerConfig?: RemoteMediaManagerConfiguration,
     bundlePolicy?: BundlePolicy
+  ): Promise<void> {
+    const LOG_HEADER =
+      'Meeting:index#addMedia():retryEstablishMediaConnectionWithForcedTurnDiscovery -->';
+
+    try {
+      await this.establishMediaConnection(remoteMediaManagerConfig, bundlePolicy, true);
+    } catch (err) {
+      LoggerProxy.logger.error(
+        `${LOG_HEADER} retry with TURN-TLS failed, media connection unable to connect, `,
+        err
+      );
+
+      throw err;
+    }
+  }
+
+  /**
+   * Does relevant clean up before retrying to establish media connection
+   * and performs the retry with forced turn discovery
+   *
+   * @private
+   * @param {RemoteMediaManagerConfiguration} [remoteMediaManagerConfig]
+   * @param {BundlePolicy} [bundlePolicy]
+   * @returns {Promise<void>}
+   */
+  private async retryWithForcedTurnDiscovery(
+    remoteMediaManagerConfig?: RemoteMediaManagerConfiguration,
+    bundlePolicy?: BundlePolicy
+  ): Promise<void> {
+    this.retriedWithTurnServer = true;
+
+    await this.cleanUpBeforeRetryWithTurnServer();
+
+    await this.retryEstablishMediaConnectionWithForcedTurnDiscovery(
+      remoteMediaManagerConfig,
+      bundlePolicy
+    );
+  }
+
+  /**
+   * If waitForMediaConnectionConnected() fails when we haven't done turn discovery then we
+   * attempt to establish a media connection again, but this time using turn discovery. If we
+   * used turn discovery on the first pass we do not attempt connection again.
+   *
+   * @private
+   * @param {Error} error
+   * @param {RemoteMediaManagerConfiguration} [remoteMediaManagerConfig]
+   * @param {BundlePolicy} [bundlePolicy]
+   * @returns {Promise<void>}
+   */
+  private async handleWaitForMediaConnectionConnectedError(
+    error: Error,
+    remoteMediaManagerConfig?: RemoteMediaManagerConfiguration,
+    bundlePolicy?: BundlePolicy
+  ): Promise<void> {
+    const LOG_HEADER = 'Meeting:index#addMedia():handleWaitForMediaConnectionConnectedError -->';
+
+    // @ts-ignore - config coming from registerPlugin
+    if (!this.turnServerUsed) {
+      LoggerProxy.logger.info(
+        `${LOG_HEADER} error waiting for media to connect on UDP, TCP, retrying using TURN-TLS, `,
+        error
+      );
+
+      await this.retryWithForcedTurnDiscovery(remoteMediaManagerConfig, bundlePolicy);
+    } else {
+      LoggerProxy.logger.error(
+        `${LOG_HEADER} error waiting for media to connect using UDP, TCP and TURN-TLS`,
+        error
+      );
+
+      throw new AddMediaFailed();
+    }
+  }
+
+  /**
+   * Does TURN discovery, SDP offer/answer exhange, establishes ICE connection and DTLS handshake.
+   *
+   * @private
+   * @param {RemoteMediaManagerConfiguration} [remoteMediaManagerConfig]
+   * @param {BundlePolicy} [bundlePolicy]
+   * @param {boolean} [isForced] - let isForced be true to do turn discovery regardless of reachability results
+   * @returns {Promise<void>}
+   */
+  private async establishMediaConnection(
+    remoteMediaManagerConfig?: RemoteMediaManagerConfiguration,
+    bundlePolicy?: BundlePolicy,
+    isForced?: boolean
   ): Promise<void> {
     const LOG_HEADER = 'Meeting:index#addMedia():establishMediaConnection -->';
     // @ts-ignore
     const cdl = this.webex.internal.newMetrics.callDiagnosticLatencies;
+    const isRetry = this.retriedWithTurnServer;
 
     try {
       // @ts-ignore
@@ -5880,7 +5980,7 @@ export default class Meeting extends StatelessWebexPlugin {
         name: 'internal.client.add-media.turn-discovery.start',
       });
 
-      const turnDiscoveryObject = await this.roap.doTurnDiscovery(this, false);
+      const turnDiscoveryObject = await this.roap.doTurnDiscovery(this, isRetry, isForced);
 
       this.turnDiscoverySkippedReason = turnDiscoveryObject?.turnDiscoverySkippedReason;
       this.turnServerUsed = !this.turnDiscoverySkippedReason;
@@ -5895,6 +5995,7 @@ export default class Meeting extends StatelessWebexPlugin {
           correlation_id: this.correlationId,
           latency: cdl.getTurnDiscoveryTime(),
           turnServerUsed: this.turnServerUsed,
+          retriedWithTurnServer: this.retriedWithTurnServer,
         });
       }
 
@@ -5940,7 +6041,15 @@ export default class Meeting extends StatelessWebexPlugin {
       throw error;
     }
 
-    await this.waitForMediaConnectionConnected();
+    try {
+      await this.waitForMediaConnectionConnected();
+    } catch (error) {
+      await this.handleWaitForMediaConnectionConnectedError(
+        error,
+        remoteMediaManagerConfig,
+        bundlePolicy
+      );
+    }
   }
 
   /**
@@ -5949,7 +6058,7 @@ export default class Meeting extends StatelessWebexPlugin {
    * @private
    * @returns {Promise<void>}
    */
-  private async cleanUpOnAddMediaFailure() {
+  private async cleanUpOnAddMediaFailure(): Promise<void> {
     if (this.statsAnalyzer) {
       await this.statsAnalyzer.stopAnalyzer();
     }
@@ -5967,6 +6076,36 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
+   * Sends stats report, closes peer connection and cleans up any media connection
+   * related things before trying to establish media connection again with turn server
+   *
+   * @private
+   * @returns {Promise<void>}
+   */
+  private async cleanUpBeforeRetryWithTurnServer(): Promise<void> {
+    // when media fails, we want to upload a webrtc dump to see whats going on
+    // this function is async, but returns once the stats have been gathered
+    await this.forceSendStatsReport({callFrom: 'cleanUpBeforeRetryWithTurnServer'});
+
+    if (this.mediaProperties.webrtcMediaConnection) {
+      if (this.remoteMediaManager) {
+        this.remoteMediaManager.stop();
+        this.remoteMediaManager = null;
+      }
+
+      Object.values(this.mediaRequestManagers).forEach((mediaRequestManager) =>
+        mediaRequestManager.reset()
+      );
+
+      this.receiveSlotManager.reset();
+      this.mediaProperties.webrtcMediaConnection.close();
+      this.sendSlotManager.reset();
+
+      this.mediaProperties.unsetPeerConnection();
+    }
+  }
+
+  /**
    * Creates a media connection to the server. Media connection is required for sending or receiving any audio/video.
    *
    * @param {AddMediaOptions} options
@@ -5974,7 +6113,8 @@ export default class Meeting extends StatelessWebexPlugin {
    * @public
    * @memberof Meeting
    */
-  async addMedia(options: AddMediaOptions = {}) {
+  async addMedia(options: AddMediaOptions = {}): Promise<void> {
+    this.retriedWithTurnServer = false;
     const LOG_HEADER = 'Meeting:index#addMedia -->';
     LoggerProxy.logger.info(`${LOG_HEADER} called with: ${JSON.stringify(options)}`);
 
@@ -6070,7 +6210,7 @@ export default class Meeting extends StatelessWebexPlugin {
 
       this.createStatsAnalyzer();
 
-      await this.establishMediaConnection(remoteMediaManagerConfig, bundlePolicy);
+      await this.establishMediaConnection(remoteMediaManagerConfig, bundlePolicy, false);
 
       await Meeting.handleDeviceLogging();
 
@@ -6116,6 +6256,7 @@ export default class Meeting extends StatelessWebexPlugin {
         code: error.code,
         turnDiscoverySkippedReason: this.turnDiscoverySkippedReason,
         turnServerUsed: this.turnServerUsed,
+        retriedWithTurnServer: this.retriedWithTurnServer,
         isMultistream: this.isMultistream,
         signalingState:
           this.mediaProperties.webrtcMediaConnection?.multistreamConnection?.pc?.pc

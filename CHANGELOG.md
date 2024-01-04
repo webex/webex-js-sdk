@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.294](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.293...v3.0.0-beta.294) (2024-01-02)
+
+## [3.0.0-beta.293](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.292...v3.0.0-beta.293) (2024-01-02)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** force turn discovery on reconnection ([#3285](https://github.com/webex/webex-js-sdk/issues/3285)) ([77d7753](https://github.com/webex/webex-js-sdk/commit/77d775391b23bf1bcba3bd6711db5edbbc8834e7))
+
+## [3.0.0-beta.292](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.291...v3.0.0-beta.292) (2024-01-02)
+
+
+### Features
+
+* **plugin-meetings:** retry media connection on turn tls ([#3261](https://github.com/webex/webex-js-sdk/issues/3261)) ([0130d35](https://github.com/webex/webex-js-sdk/commit/0130d35105fb64f89e06ab9af8077543cc319f24))
+
 ## [3.0.0-beta.291](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.290...v3.0.0-beta.291) (2023-12-21)
 
 

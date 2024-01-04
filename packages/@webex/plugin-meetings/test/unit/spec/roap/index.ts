@@ -14,33 +14,28 @@ import { IP_VERSION } from '../../../../src/constants';
 
 describe('Roap', () => {
   describe('doTurnDiscovery', () => {
-    it('calls this.turnDiscovery.doTurnDiscovery() and forwards all the arguments', async () => {
-      const webex = new MockWebex({});
+    [false, true].forEach(function (isReconnecting) {
+      [false, true, undefined].forEach(function (isForced) {
+        it(`calls this.turnDiscovery.doTurnDiscovery() and forwards all the arguments when isReconnecting = ${isReconnecting} and isForced = ${isForced}`, async () => {
+          const webex = new MockWebex({});
 
-      const RESULT = {something: 'some value'};
-      const meeting = {id: 'some meeting id'} as Meeting;
+          const RESULT = {something: 'some value'};
+          const meeting = {id: 'some meeting id'} as Meeting;
 
-      const doTurnDiscoveryStub = sinon
-        .stub(TurnDiscovery.prototype, 'doTurnDiscovery')
-        .resolves(RESULT);
+          const doTurnDiscoveryStub = sinon
+            .stub(TurnDiscovery.prototype, 'doTurnDiscovery')
+            .resolves(RESULT);
 
-      const roap = new Roap({}, {parent: webex});
+          const roap = new Roap({}, {parent: webex});
 
-      // call with isReconnecting: true
-      const result = await roap.doTurnDiscovery(meeting, true);
+          const result = await roap.doTurnDiscovery(meeting, isReconnecting, isForced);
 
-      assert.calledOnceWithExactly(doTurnDiscoveryStub, meeting, true);
-      assert.deepEqual(result, RESULT);
+          assert.calledOnceWithExactly(doTurnDiscoveryStub, meeting, isReconnecting, isForced);
+          assert.deepEqual(result, RESULT);
 
-      doTurnDiscoveryStub.resetHistory();
-
-      // and with isReconnecting: false
-      const result2 = await roap.doTurnDiscovery(meeting, false);
-
-      assert.calledOnceWithExactly(doTurnDiscoveryStub, meeting, false);
-      assert.deepEqual(result2, RESULT);
-
-      sinon.restore();
+          sinon.restore();
+        });
+      });
     });
   });
 
@@ -68,7 +63,6 @@ describe('Roap', () => {
         },
         isMultistream: true,
         setRoapSeq: sinon.stub(),
-        config: {experimental: {enableTurnDiscovery: false}},
         locusMediaRequest: {fake: true},
         webex: {meetings: {reachability: {isAnyPublicClusterReachable: () => true}}},
         updateMediaConnections: sinon.stub(),
