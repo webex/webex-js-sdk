@@ -645,7 +645,7 @@ describe('plugin-logger', () => {
     });
   });
 
-  describe.only('#walkAndFilter', () => {
+  describe('#walkAndFilter', () => {
     it('redact Authorization', () => {
       webex.config.logger.level = 'trace';
       webex.logger.log({
