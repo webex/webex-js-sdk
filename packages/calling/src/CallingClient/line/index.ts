@@ -43,6 +43,8 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
 
   public mobiusDeviceId?: string;
 
+  private mobiusUri?: string;
+
   public phoneNumber?: string;
 
   public extension?: string;
@@ -159,7 +161,7 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
     this.mobiusDeviceId = device?.deviceId;
     this.mobiusUri = device?.uri;
     this.lastSeen = device?.lastSeen;
-    this.sipAddresses = device?.addresses;
+    this.sipAddresses = device?.addresses ?? [];
     this.keepaliveInterval = keepaliveInterval;
     this.callKeepaliveInterval = callKeepaliveInterval;
     this.rehomingIntervalMin = rehomingIntervalMin;
