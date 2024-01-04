@@ -1,7 +1,9 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */ // TODO: remove once we define the payloads
+import {ILine} from '../api';
+import {LINE_EVENTS} from '../CallingClient/line/types';
 import type {ICall} from '../CallingClient/calling/types';
 import {CallId, DisplayInformation} from '../common/types';
-import {CallError, CallingClientError} from '../Errors';
+import {CallError, CallingClientError, LineError} from '../Errors';
 
 /** External Eventing Start */
 export enum COMMON_EVENT_KEYS {
@@ -178,6 +180,16 @@ export enum MEDIA_CONNECTION_EVENT_KEYS {
 export type CallerIdDisplay = {
   correlationId: string;
   callerId: DisplayInformation;
+};
+
+export type LineEventTypes = {
+  [LINE_EVENTS.CONNECTING]: () => void;
+  [LINE_EVENTS.ERROR]: (error: LineError) => void;
+  [LINE_EVENTS.RECONNECTED]: () => void;
+  [LINE_EVENTS.RECONNECTING]: () => void;
+  [LINE_EVENTS.REGISTERED]: (lineInfo: ILine) => void;
+  [LINE_EVENTS.UNREGISTERED]: () => void;
+  [LINE_EVENTS.INCOMING_CALL]: (callObj: ICall) => void;
 };
 
 export type CallEventTypes = {
