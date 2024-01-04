@@ -58,6 +58,7 @@ import * as MeetingRequestImport from '@webex/plugin-meetings/src/meeting/reques
 import LocusInfo from '@webex/plugin-meetings/src/locus-info';
 import MediaProperties from '@webex/plugin-meetings/src/media/properties';
 import MeetingUtil from '@webex/plugin-meetings/src/meeting/util';
+import MeetingsUtil from '@webex/plugin-meetings/src/meetings/util';
 import Media from '@webex/plugin-meetings/src/media/index';
 import ReconnectionManager from '@webex/plugin-meetings/src/reconnection-manager';
 import MediaUtil from '@webex/plugin-meetings/src/media/util';
@@ -1193,7 +1194,7 @@ describe('plugin-meetings', () => {
 
         it('should send metrics and reset the statsAnalyzer to null if addMedia throws an error without a turn server retry', async () => {
           meeting.meetingState = 'ACTIVE';
-          
+
           meeting.webex.meetings.reachability = {
             getReachabilityMetrics: sinon.stub().resolves({
               someReachabilityMetric1: 'some value1',
@@ -2361,7 +2362,7 @@ describe('plugin-meetings', () => {
         let clock;
 
         beforeEach(() => {
-          clock = sinon.useFakeTimers(); 
+          clock = sinon.useFakeTimers();
 
           sinon.stub(MeetingUtil, 'getIpVersion').returns(IP_VERSION.unknown);
 
@@ -2501,7 +2502,7 @@ describe('plugin-meetings', () => {
 
         // simulates a Roap OK being sent
         const simulateRoapOk = async () => {
-          const roapListener = getRoapListener(); 
+          const roapListener = getRoapListener();
 
           await roapListener({roapMessage: roapOKMessage});
           await stableState();
@@ -2523,7 +2524,7 @@ describe('plugin-meetings', () => {
               correlationId: meeting.correlationId,
               localMedias: [
                 {
-                  localSdp: `{"audioMuted":${audioMuted},"videoMuted":${videoMuted},"roapMessage":{"messageType":"OFFER","sdps":["${sdp}"],"version":"2","seq":"${seq}","tieBreaker":"${tieBreaker}"}}`,
+                  localSdp: `{"audioMuted":${audioMuted},"videoMuted":${videoMuted},"roapMessage":{"messageType":"OFFER","sdps":["${sdp}"],"version":"2","seq":"${seq}","tieBreaker":"${tieBreaker}","headers":["includeAnswerInHttpResponse","noOkInTransaction"]}}`,
                   mediaId: 'fake media id',
                 },
               ],
@@ -5746,6 +5747,69 @@ describe('plugin-meetings', () => {
           });
         });
 
+        describe('handles SDP events correctly', () => {
+          beforeEach(() => {
+            meeting.setupMediaConnectionListeners();
+          });
+
+          it('handles REMOTE_SDP_ANSWER_PROCESSED correctly', () => {
+            const clock = sinon.useFakeTimers();
+            sinon.spy(clock, 'clearTimeout');
+            meeting.deferSDPAnswer = {
+              resolve: sinon.stub(),
+            };
+            meeting.sdpResponseTimer = '1234';
+
+            eventListeners[Event.REMOTE_SDP_ANSWER_PROCESSED]();
+
+            assert.calledOnce(webex.internal.newMetrics.submitClientEvent);
+            assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
+              name: 'client.media-engine.remote-sdp-received',
+              options: {meetingId: meeting.id},
+            });
+
+            assert.calledOnce(Metrics.sendBehavioralMetric);
+            assert.calledWith(
+              Metrics.sendBehavioralMetric,
+              BEHAVIORAL_METRICS.ROAP_OFFER_TO_ANSWER_LATENCY,
+              {
+                correlation_id: meeting.correlationId,
+                meetingId: meeting.id,
+                latency: undefined,
+              }
+            );
+
+            assert.calledOnce(meeting.deferSDPAnswer.resolve);
+            assert.calledOnce(clock.clearTimeout);
+            assert.calledWith(clock.clearTimeout, '1234');
+            assert.equal(meeting.sdpResponseTimer, undefined);
+          });
+
+          it('handles LOCAL_SDP_OFFER_GENERATED correctly', () => {
+            assert.equal(meeting.deferSDPAnswer, undefined);
+
+            eventListeners[Event.LOCAL_SDP_OFFER_GENERATED]();
+
+            assert.calledOnce(webex.internal.newMetrics.submitClientEvent);
+            assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
+              name: 'client.media-engine.local-sdp-generated',
+              options: {meetingId: meeting.id},
+            });
+
+            assert.notEqual(meeting.deferSDPAnswer, undefined);
+          });
+
+          it('handles LOCAL_SDP_ANSWER_GENERATED correctly', () => {
+            eventListeners[Event.LOCAL_SDP_ANSWER_GENERATED]();
+
+            assert.calledOnce(webex.internal.newMetrics.submitClientEvent);
+            assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
+              name: 'client.media-engine.remote-sdp-received',
+              options: {meetingId: meeting.id},
+            });
+          });
+        });
+
         describe('handles Event.ROAP_MESSAGE_TO_SEND correctly', () => {
           let sendRoapOKStub;
           let sendRoapMediaRequestStub;
@@ -5764,21 +5828,8 @@ describe('plugin-meetings', () => {
           });
 
           it('handles OK message correctly', () => {
-            const clock = sinon.useFakeTimers();
-            sinon.spy(clock, "clearTimeout");
-            meeting.deferSDPAnswer = {
-              resolve: sinon.stub(),
-            };
-            meeting.sdpResponseTimer = '1234';
-
             eventListeners[Event.ROAP_MESSAGE_TO_SEND]({
               roapMessage: {messageType: 'OK', seq: 1},
-            });
-
-            assert.calledOnce(webex.internal.newMetrics.submitClientEvent);
-            assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
-              name: 'client.media-engine.remote-sdp-received',
-              options: {meetingId: meeting.id},
             });
 
             assert.calledOnce(sendRoapOKStub);
@@ -5787,26 +5838,10 @@ describe('plugin-meetings', () => {
               mediaId: meeting.mediaId,
               correlationId: meeting.correlationId,
             });
-
-            assert.calledOnce(Metrics.sendBehavioralMetric);
-            assert.calledWith(
-              Metrics.sendBehavioralMetric,
-              BEHAVIORAL_METRICS.ROAP_OFFER_TO_ANSWER_LATENCY,
-              {
-                correlation_id: meeting.correlationId,
-                meetingId: meeting.id,
-                latency: undefined,
-              }
-            );
-
-            assert.calledOnce(meeting.deferSDPAnswer.resolve)
-            assert.calledOnce(clock.clearTimeout)
-            assert.calledWith(clock.clearTimeout, '1234')
-            assert.equal(meeting.sdpResponseTimer, undefined)
           });
 
-          it('handles OFFER message correctly', () => {
-            assert.equal(meeting.deferSDPAnswer, undefined);
+          it('handles OFFER message correctly (no answer in the http response)', async () => {
+            sinon.stub(meeting, 'roapMessageReceived');
 
             eventListeners[Event.ROAP_MESSAGE_TO_SEND]({
               roapMessage: {
@@ -5817,11 +5852,7 @@ describe('plugin-meetings', () => {
               },
             });
 
-            assert.calledOnce(webex.internal.newMetrics.submitClientEvent);
-            assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
-              name: 'client.media-engine.local-sdp-generated',
-              options: {meetingId: meeting.id},
-            });
+            await testUtils.flushPromises();
 
             assert.calledOnce(sendRoapMediaRequestStub);
             assert.calledWith(sendRoapMediaRequestStub, {
@@ -5831,8 +5862,34 @@ describe('plugin-meetings', () => {
               meeting,
               reconnect: false,
             });
+            assert.notCalled(meeting.roapMessageReceived);
+          });
 
-            assert.notEqual(meeting.deferSDPAnswer, undefined);
+          it('handles OFFER message correctly (with an answer in the http response)', async () => {
+            const fakeAnswer = {messageType: 'answer', sdp: 'sdp'};
+            sendRoapMediaRequestStub.resolves({roapAnswer: fakeAnswer});
+            sinon.stub(meeting, 'roapMessageReceived');
+
+            eventListeners[Event.ROAP_MESSAGE_TO_SEND]({
+              roapMessage: {
+                messageType: 'OFFER',
+                seq: 1,
+                sdp: 'fake sdp',
+                tieBreaker: 12345,
+              },
+            });
+
+            await testUtils.flushPromises();
+
+            assert.calledOnce(sendRoapMediaRequestStub);
+            assert.calledWith(sendRoapMediaRequestStub, {
+              seq: 1,
+              sdp: 'fake sdp',
+              tieBreaker: 12345,
+              meeting,
+              reconnect: false,
+            });
+            assert.calledWith(meeting.roapMessageReceived, fakeAnswer);
           });
 
           it('handles ANSWER message correctly', () => {
@@ -5843,12 +5900,6 @@ describe('plugin-meetings', () => {
                 sdp: 'fake sdp answer',
                 tieBreaker: 12345,
               },
-            });
-
-            assert.calledOnce(webex.internal.newMetrics.submitClientEvent);
-            assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
-              name: 'client.media-engine.remote-sdp-received',
-              options: {meetingId: meeting.id},
             });
 
             assert.calledOnce(sendRoapAnswerStub);
@@ -9300,4 +9351,22 @@ describe('plugin-meetings', () => {
       assert.equal(returnValue, undefined);
     });
   });
+
+  describe('#roapMessageReceived', () => {
+    it('calls roapMessageReceived on the webrtc media connection', () => {
+      const fakeMessage = { messageType: 'fake', sdp: 'fake sdp'};
+
+      const getMediaServer = sinon.stub(MeetingsUtil, 'getMediaServer').returns('homer');
+
+      meeting.mediaProperties.webrtcMediaConnection = {
+        roapMessageReceived: sinon.stub()
+      };
+
+      meeting.roapMessageReceived(fakeMessage);
+
+      assert.calledOnceWithExactly(meeting.mediaProperties.webrtcMediaConnection.roapMessageReceived, fakeMessage);
+      assert.calledOnceWithExactly(getMediaServer, 'fake sdp');
+      assert.equal(meeting.mediaProperties.webrtcMediaConnection.mediaServer, 'homer');
+    })
+  })
 });
