@@ -11,7 +11,7 @@ import MeetingUtil from '../meeting/util';
 
 import {ICE_GATHERING_STATE, CONNECTION_STATE, REACHABILITY} from '../constants';
 
-import ReachabilityRequest from './request';
+import ReachabilityRequest, {ClusterList, ClusterNode} from './request';
 
 const DEFAULT_TIMEOUT = 3000;
 const VIDEO_MESH_TIMEOUT = 1000;
@@ -67,7 +67,7 @@ export type ICECandidateResult = {
 export default class Reachability {
   namespace = REACHABILITY.namespace;
   webex: object;
-  reachabilityRequest: any;
+  reachabilityRequest: ReachabilityRequest;
   clusterLatencyResults: any;
 
   /**
@@ -272,15 +272,30 @@ export default class Reachability {
    * @private
    * @memberof Reachability
    */
-  private buildPeerConnectionConfig(cluster: any) {
-    const iceServers = uniq(cluster.udp).map((url) => ({
+  private buildPeerConnectionConfig(cluster: ClusterNode) {
+    const udpIceServers = uniq(cluster.udp).map((url) => ({
       username: '',
       credential: '',
       urls: [url],
     }));
 
+    const tcpIceServers = uniq(cluster.tcp).map((urlString: string) => {
+      // urlString looks like this: "stun:external-media91.public.wjfkm-a-10.prod.infra.webex.com:5004"
+      // and we need it to be like this: "turn:external-media91.public.wjfkm-a-10.prod.infra.webex.com:5004?transport=tcp"
+      const url = new URL(urlString);
+
+      url.protocol = 'turn:';
+      url.searchParams.append('transport', 'tcp');
+
+      return {
+        username: 'webexturnreachuser',
+        credential: 'webexturnreachpwd',
+        urls: [url.toString()],
+      };
+    });
+
     return {
-      iceServers: [...iceServers],
+      iceServers: [...udpIceServers, ...tcpIceServers],
       iceCandidatePoolSize: '0',
       iceTransportPolicy: 'all',
     };
@@ -329,15 +344,15 @@ export default class Reachability {
 
   /**
    * creates offer and generates localSDP
-   * @param {object} clusterList cluster List
+   * @param {ClusterList} clusterList cluster List
    * @returns {Promise} Reachability latency results
    * @private
    * @memberof Reachability
    */
-  private getLocalSDPForClusters(clusterList: object): Promise<InternalReachabilityResults> {
-    let clusters: any[] = [...Object.keys(clusterList)];
+  private getLocalSDPForClusters(clusterList: ClusterList): Promise<InternalReachabilityResults> {
+    const clusterKeys: string[] = [...Object.keys(clusterList)];
 
-    clusters = clusters.map(async (key) => {
+    const clusters = clusterKeys.map(async (key) => {
       const cluster = clusterList[key];
       const config = this.buildPeerConnectionConfig(cluster);
       const peerConnection = this.createPeerConnection({key, config});
@@ -423,19 +438,37 @@ export default class Reachability {
    */
   private handleOnIceCandidate(peerConnection: RTCPeerConnection) {
     peerConnection.onicecandidate = (e) => {
-      const SERVER_REFLEXIVE = 'srflx';
+      const CANDIDATE_TYPES = {
+        SERVER_REFLEXIVE: 'srflx',
+        RELAY: 'relay',
+      };
 
-      if (e.candidate && String(e.candidate.type).toLowerCase() === SERVER_REFLEXIVE) {
-        const elapsed = this.getElapsedTime(peerConnection);
+      if (e.candidate) {
+        // if (String(e.candidate.type).toLowerCase() === CANDIDATE_TYPES.SERVER_REFLEXIVE) {
+        //   const elapsed = this.getElapsedTime(peerConnection);
 
-        LoggerProxy.logger.log(
-          // @ts-ignore
-          `Reachability:index#onIceCandidate --> Successfully pinged ${peerConnection.key}:`,
-          elapsed
-        );
-        // order is important
-        this.addPublicIP(peerConnection, e.candidate.address);
-        this.setLatencyAndClose(peerConnection, elapsed);
+        //   LoggerProxy.logger.log(
+        //     // @ts-ignore
+        //     `Reachability:index#onIceCandidate --> Successfully pinged ${peerConnection.key} over UDP:`,
+        //     elapsed
+        //   );
+        //   // order is important
+        //   this.addPublicIP(peerConnection, e.candidate.address); // todo: only keep unique ones as we'll have now 2: from udp and tcp
+        //   this.setLatencyAndClose(peerConnection, elapsed);
+        // }
+
+        if (String(e.candidate.type).toLowerCase() === CANDIDATE_TYPES.RELAY) {
+          const elapsed = this.getElapsedTime(peerConnection);
+
+          LoggerProxy.logger.log(
+            // @ts-ignore
+            `Reachability:index#onIceCandidate --> Successfully pinged ${peerConnection.key} over TCP:`,
+            elapsed
+          );
+          // order is important
+          this.addPublicIP(peerConnection, e.candidate.address);
+          this.setLatencyAndClose(peerConnection, elapsed);
+        }
       }
     };
   }
@@ -564,12 +597,12 @@ export default class Reachability {
 
   /**
    * fetches reachability data
-   * @param {object} clusterList
+   * @param {ClusterList} clusterList
    * @returns {Promise<InternalReachabilityResults>} reachability check results
    * @private
    * @memberof Reachability
    */
-  private performReachabilityCheck(clusterList: object): Promise<InternalReachabilityResults> {
+  private performReachabilityCheck(clusterList: ClusterList): Promise<InternalReachabilityResults> {
     if (!clusterList || !Object.keys(clusterList).length) {
       return Promise.resolve({});
     }
@@ -613,7 +646,10 @@ export default class Reachability {
     }
 
     if (publicIP) {
-      if (modifiedPeerConnection.publicIPs) {
+      if (
+        modifiedPeerConnection.publicIPs &&
+        !modifiedPeerConnection.publicIPs.includes(publicIP)
+      ) {
         modifiedPeerConnection.publicIPs.push(publicIP);
       } else {
         modifiedPeerConnection.publicIPs = [publicIP];
