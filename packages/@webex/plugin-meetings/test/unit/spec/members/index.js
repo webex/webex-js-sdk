@@ -22,7 +22,7 @@ import {
   ReclaimHostIsHostAlreadyError,
   ReclaimHostNotAllowedError,
   ReclaimHostNotSupportedError,
-} from '../common/errors/reclaim-host-role-errors';
+} from '../../../../src/common/errors/reclaim-host-role-errors';
 
 const {assert} = chai;
 
