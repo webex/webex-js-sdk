@@ -563,8 +563,8 @@ export default class ReconnectionManager {
       'ReconnectionManager:index#reconnectMedia --> Begin reestablishment of media'
     );
 
-    // do the TURN server discovery again since the TURN server might change
-    const turnServerResult = await this.meeting.roap.doTurnDiscovery(this.meeting, true);
+    // do the TURN server discovery again and ignore reachability results since the TURN server might change
+    const turnServerResult = await this.meeting.roap.doTurnDiscovery(this.meeting, true, true);
 
     const iceServers = [];
 

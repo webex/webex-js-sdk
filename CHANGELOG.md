@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.295](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.294...v3.0.0-beta.295) (2024-01-04)
+
+
+### Bug Fixes
+
+* added support for Roap optimized flow for offer/answer/ok ([#3271](https://github.com/webex/webex-js-sdk/issues/3271)) ([8cf8f57](https://github.com/webex/webex-js-sdk/commit/8cf8f57272143c07e0d8a0d8f4e2acad40c3c031))
+
+## [3.0.0-beta.294](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.293...v3.0.0-beta.294) (2024-01-02)
+
+## [3.0.0-beta.293](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.292...v3.0.0-beta.293) (2024-01-02)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** force turn discovery on reconnection ([#3285](https://github.com/webex/webex-js-sdk/issues/3285)) ([77d7753](https://github.com/webex/webex-js-sdk/commit/77d775391b23bf1bcba3bd6711db5edbbc8834e7))
+
 ## [3.0.0-beta.292](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.291...v3.0.0-beta.292) (2024-01-02)
 
 

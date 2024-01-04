@@ -560,7 +560,7 @@ describe('plugin-mercury', () => {
           return promiseTick(webex.internal.mercury.config.backoffTimeReset).then(() => {
             assert.equal(
               reason.message,
-              'mercury: prevent socket open when backoffCall no longer defined'
+              'Mercury: prevent socket open when backoffCall no longer defined'
             );
           });
         });
@@ -577,7 +577,7 @@ describe('plugin-mercury', () => {
         sinon.stub(mercury.logger, 'error');
 
         return Promise.resolve(mercury._emit('break', event)).then((res) => {
-          assert.calledWith(mercury.logger.error, 'mercury: error occurred in event handler', {
+          assert.calledWith(mercury.logger.error, 'Mercury: error occurred in event handler', {
             error,
             arguments: ['break', event],
           });
