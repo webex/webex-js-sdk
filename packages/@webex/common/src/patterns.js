@@ -41,7 +41,7 @@ export default {
    * Regular expression that validates an ambiguous string contains MTID
    * @type {RegExp}
    */
-  containsMTID: /MTID=(.*)/,
+  containsMTID: /(MTID=)[^&$#]*/g,
 
   /**
    * Same as this.email, but allows for surrounding characters

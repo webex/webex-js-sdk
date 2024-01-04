@@ -61,9 +61,7 @@ function walkAndFilter(object, visited = []) {
         return object.replace(patterns.containsEmails, '[REDACTED]');
       }
       if (patterns.containsMTID.test(object)) {
-        const regex = /(MTID=)[^&$#]*/g;
-
-        return object.replace(regex, '$1[REDACTED]');
+        return object.replace(patterns.containsMTID, '$1[REDACTED]');
       }
     }
 

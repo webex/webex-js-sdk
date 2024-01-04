@@ -677,21 +677,21 @@ describe('plugin-logger', () => {
     it('redact MTID', () => {
       webex.config.logger.level = 'trace';
 
-      const destination = 'https://convergedats.webex.com/convergedats/j.php?MTID=m678957bc1eff989c2176b43ead9d46b5';
+      const destination = 'https://example.com/example/j.php?MTID=m678957bc1eff989c2176b43ead9d46b5';
 
       webex.logger.log(
         `Info Unable to fetch meeting info for ${destination}.`
       );
-      assert.calledWith(console.log, 'wx-js-sdk', 'Info Unable to fetch meeting info for https://convergedats.webex.com/convergedats/j.php?MTID=[REDACTED]');
+      assert.calledWith(console.log, 'wx-js-sdk', 'Info Unable to fetch meeting info for https://example.com/example/j.php?MTID=[REDACTED]');
 
-      webex.logger.log('https://convergedats.webex.com/convergedats/j.php?MTID=m678957bc1eff989c2176b43ead9d46b5&abcdefg');
-      assert.calledWith(console.log, 'wx-js-sdk', 'https://convergedats.webex.com/convergedats/j.php?MTID=[REDACTED]&abcdefg');
+      webex.logger.log('https://example.com/example/j.php?MTID=m678957bc1eff989c2176b43ead9d46b5&abcdefg');
+      assert.calledWith(console.log, 'wx-js-sdk', 'https://example.com/example/j.php?MTID=[REDACTED]&abcdefg');
 
-      webex.logger.log('https://convergedats.webex.com/convergedats/j.php?MTID=m678957bc1eff989c2176b43ead9d46b5$abcdefg');
-      assert.calledWith(console.log, 'wx-js-sdk', 'https://convergedats.webex.com/convergedats/j.php?MTID=[REDACTED]$abcdefg');
+      webex.logger.log('https://example.com/example/j.php?MTID=m678957bc1eff989c2176b43ead9d46b5$abcdefg');
+      assert.calledWith(console.log, 'wx-js-sdk', 'https://example.com/example/j.php?MTID=[REDACTED]$abcdefg');
 
-      webex.logger.log('https://convergedats.webex.com/convergedats/j.php?MTID=m678957bc1eff989c2176b43ead9d46b5#abcdefg');
-      assert.calledWith(console.log, 'wx-js-sdk', 'https://convergedats.webex.com/convergedats/j.php?MTID=[REDACTED]#abcdefg');
+      webex.logger.log('https://example.com/example/j.php?MTID=m678957bc1eff989c2176b43ead9d46b5#abcdefg');
+      assert.calledWith(console.log, 'wx-js-sdk', 'https://example.com/example/j.php?MTID=[REDACTED]#abcdefg');
     });
 
     it('handle circular references', () => {
