@@ -17,10 +17,12 @@ import MembersUtil from '@webex/plugin-meetings/src/members/util';
 import * as MembersRequestImport from '@webex/plugin-meetings/src/members/request';
 import Trigger from '@webex/plugin-meetings/src/common/events/trigger-proxy';
 import {EVENT_TRIGGERS} from '@webex/plugin-meetings/src/constants';
-import ReclaimHostEmptyWrongKeyError from '../../../../src/common/errors/reclaim-host-empty-wrong-key';
-import ReclaimHostIsHostAlreadyError from '../../../../src/common/errors/reclaim-host-is-host-already';
-import ReclaimHostNotAllowedError from '../../../../src/common/errors/reclaim-host-not-allowed';
-import ReclaimHostNotSupportedError from '../../../../src/common/errors/reclaim-host-not-supported';
+import {
+  ReclaimHostEmptyWrongKeyError,
+  ReclaimHostIsHostAlreadyError,
+  ReclaimHostNotAllowedError,
+  ReclaimHostNotSupportedError,
+} from '../common/errors/reclaim-host-role-errors';
 
 const {assert} = chai;
 

@@ -17,10 +17,12 @@ import Trigger from '../common/events/trigger-proxy';
 import Member from '../member';
 import LoggerProxy from '../common/logs/logger-proxy';
 import ParameterError from '../common/errors/parameter';
-import ReclaimHostEmptyWrongKeyError from '../common/errors/reclaim-host-empty-wrong-key';
-import ReclaimHostIsHostAlreadyError from '../common/errors/reclaim-host-is-host-already';
-import ReclaimHostNotAllowedError from '../common/errors/reclaim-host-not-allowed';
-import ReclaimHostNotSupportedError from '../common/errors/reclaim-host-not-supported';
+import {
+  ReclaimHostEmptyWrongKeyError,
+  ReclaimHostIsHostAlreadyError,
+  ReclaimHostNotAllowedError,
+  ReclaimHostNotSupportedError,
+} from '../common/errors/reclaim-host-role-errors';
 
 import MembersCollection from './collection';
 import MembersRequest from './request';
