@@ -1795,6 +1795,19 @@ function transferHostToMember(transferButton) {
   }
 }
 
+function reclaimHost(reclaimHostBtn) {
+  const hostKey = reclaimHostBtn.previousElementSibling.value;
+  const meeting = getCurrentMeeting();
+  const selfId = meeting.members.selfId;
+  const role = {
+    type: 'MODERATOR',
+    hasRole: true,
+    hostKey,
+  };
+
+  meeting.members.assignRoles(selfId, [role]);
+}
+
 function viewParticipants() {
   function createLabel(id, value = '') {
     const label = document.createElement('label');
@@ -1923,6 +1936,19 @@ function viewParticipants() {
     inviteDiv.appendChild(inviteBtn);
 
     participantButtons.appendChild(inviteDiv);
+
+    const reclaimHostDiv = document.createElement('div');
+    const reclaimHostInput = document.createElement('input');
+    const reclaimHostBtn = createButton('Reclaim Host', reclaimHost);
+
+    reclaimHostDiv.style.display = 'flex';
+    reclaimHostInput.type = 'text';
+    reclaimHostInput.placeholder = 'Host Key';
+
+    reclaimHostDiv.appendChild(reclaimHostInput);
+    reclaimHostDiv.appendChild(reclaimHostBtn);
+
+    participantButtons.appendChild(reclaimHostDiv);
   }
 }
 

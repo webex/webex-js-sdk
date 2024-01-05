@@ -14,6 +14,7 @@ import ParameterError from '../common/errors/parameter';
 import MembersCollection from './collection';
 import MembersRequest from './request';
 import MembersUtil from './util';
+import {ServerRoleShape} from './types';
 
 /**
  * Members Update Event
@@ -684,6 +685,32 @@ export default class Members extends StatelessWebexPlugin {
     const options = MembersUtil.generateAddMemberOptions(invitee, this.locusUrl, alertIfActive);
 
     return this.membersRequest.addMembers(options);
+  }
+
+  /**
+   * Assign role(s) to a member in the meeting
+   * @param {String} memberId
+   * @param {[ServerRoleShape]} roles - to assign an array of roles
+   * @returns {Promise}
+   * @public
+   * @memberof Members
+   */
+  public assignRoles(memberId: string, roles: Array<ServerRoleShape>) {
+    if (!this.locusUrl) {
+      return Promise.reject(
+        new ParameterError(
+          'The associated locus url for this meetings members object must be defined.'
+        )
+      );
+    }
+    if (!memberId) {
+      return Promise.reject(
+        new ParameterError('The member id must be defined to assign the roles to a member.')
+      );
+    }
+    const options = MembersUtil.generateRoleAssignmentMemberOptions(memberId, roles, this.locusUrl);
+
+    return this.membersRequest.assignRolesMember(options);
   }
 
   /**
