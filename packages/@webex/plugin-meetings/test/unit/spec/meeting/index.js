@@ -5551,34 +5551,24 @@ describe('plugin-meetings', () => {
           });
         });
 
-        describe('submitClientEvent on connectionFailed', () => {
-          it('sends client.ice.end when connectionFailed on CONNECTION_STATE_CHANGED event', () => {
-            const FAKE_ERROR = {fatal: true};
-            const getErrorPayloadForClientErrorCodeStub = webex.internal.newMetrics.callDiagnosticMetrics.getErrorPayloadForClientErrorCode = sinon
-              .stub()
-              .returns(FAKE_ERROR);
+        describe('CONNECTION_STATE_CHANGED event when state = "Connecting"', () => {
+          it('sends client.ice.start correctly', () => {
             meeting.setupMediaConnectionListeners();
             eventListeners[Event.CONNECTION_STATE_CHANGED]({
-              state: 'Failed',
+              state: 'Connecting',
             });
-            assert.calledOnceWithExactly(getErrorPayloadForClientErrorCodeStub, {clientErrorCode: 2004});
             assert.calledOnce(webex.internal.newMetrics.submitClientEvent);
             assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
-              name: 'client.ice.end',
-              payload: {
-                canProceed: false,
-                icePhase: 'IN_MEETING',
-                errors: [FAKE_ERROR],
-              },
+              name: 'client.ice.start',
               options: {
                 meetingId: meeting.id,
               },
             });
-          });
+          })
         });
 
-        describe('submitClientEvent on connectionSuccess', () => {
-          it('sends client.ice.end when connectionSuccess on CONNECTION_STATE_CHANGED event', () => {
+        describe('CONNECTION_STATE_CHANGED event when state = "Connected"', () => {
+          beforeEach(() => {
             meeting.reconnectionManager = new ReconnectionManager(meeting);
             meeting.reconnectionManager.iceReconnected = sinon.stub().returns(undefined);
             meeting.setNetworkStatus = sinon.stub().returns(undefined);
@@ -5589,11 +5579,16 @@ describe('plugin-meetings', () => {
                 eventListeners[event] = listener;
               }),
             };
+          });
+
+          it('handles "Connected" state correctly', () => {
+            assert.equal(meeting.hasMediaConnectionConnectedAtLeastOnce, false);
 
             meeting.setupMediaConnectionListeners();
             eventListeners[Event.CONNECTION_STATE_CHANGED]({
               state: 'Connected',
             });
+
             assert.calledOnce(webex.internal.newMetrics.submitClientEvent);
             assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
               name: 'client.ice.end',
@@ -5615,6 +5610,133 @@ describe('plugin-meetings', () => {
               meeting.statsAnalyzer.startAnalyzer,
               meeting.mediaProperties.webrtcMediaConnection
             );
+            assert.equal(meeting.hasMediaConnectionConnectedAtLeastOnce, true);
+          });
+        });
+
+        describe('CONNECTION_STATE_CHANGED event when state = "Disconnected"', () => {
+          beforeEach(() => {
+            meeting.reconnectionManager = new ReconnectionManager(meeting);
+            meeting.reconnectionManager.iceReconnected = sinon.stub().returns(undefined);
+            meeting.setNetworkStatus = sinon.stub().returns(undefined);
+            meeting.statsAnalyzer = {startAnalyzer: sinon.stub()};
+            meeting.mediaProperties.webrtcMediaConnection = {
+              // mock the on() method and store all the listeners
+              on: sinon.stub().callsFake((event, listener) => {
+                eventListeners[event] = listener;
+              }),
+            };
+            meeting.mediaProperties.waitForMediaConnectionConnected = sinon.stub().resolves();
+            meeting.reconnect = sinon.stub().resolves();
+          });
+
+          const mockDisconnectedEvent = () => {
+            meeting.setupMediaConnectionListeners();
+            eventListeners[Event.CONNECTION_STATE_CHANGED]({
+              state: 'Disconnected',
+            });
+          };
+
+          it('handles "Disconnected" state correctly when waitForIceReconnect resolves', async () => {
+            meeting.reconnectionManager.waitForIceReconnect = sinon.stub().resolves();
+
+
+            mockDisconnectedEvent();
+
+            await testUtils.flushPromises();
+
+            assert.calledOnce(meeting.setNetworkStatus);
+            assert.calledWith(meeting.setNetworkStatus, NETWORK_STATUS.DISCONNECTED);
+            assert.calledOnce(meeting.reconnectionManager.waitForIceReconnect);
+            assert.notCalled(meeting.mediaProperties.waitForMediaConnectionConnected);
+          });
+
+          it('handles "Disconnected" state correctly when waitForIceReconnect rejects and hasMediaConnectionConnectedAtLeastOnce = true', async () => {
+            const FAKE_ERROR = {fatal: true};
+            const getErrorPayloadForClientErrorCodeStub = webex.internal.newMetrics.callDiagnosticMetrics.getErrorPayloadForClientErrorCode = sinon
+              .stub()
+              .returns(FAKE_ERROR);
+            meeting.waitForMediaConnectionConnected = sinon.stub().resolves();
+            meeting.reconnectionManager.waitForIceReconnect = sinon.stub().rejects();
+            meeting.hasMediaConnectionConnectedAtLeastOnce = true;
+
+
+            mockDisconnectedEvent();
+
+            await testUtils.flushPromises();
+
+            assert.calledOnce(meeting.setNetworkStatus);
+            assert.calledWith(meeting.setNetworkStatus, NETWORK_STATUS.DISCONNECTED);
+            assert.calledOnce(meeting.reconnectionManager.waitForIceReconnect);
+            assert.calledOnce(getErrorPayloadForClientErrorCodeStub);
+            assert.calledOnce(webex.internal.newMetrics.submitClientEvent);
+            assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
+              name: 'client.ice.end',
+              payload: {
+                canProceed: false,
+                icePhase: 'IN_MEETING',
+                errors: [FAKE_ERROR],
+              },
+              options: {
+                meetingId: meeting.id,
+              },
+            });
+          });
+
+          it('handles "Disconnected" state correctly when waitForIceReconnect rejects and hasMediaConnectionConnectedAtLeastOnce = false', async () => {
+            meeting.reconnectionManager.waitForIceReconnect = sinon.stub().rejects();
+
+
+            mockDisconnectedEvent();
+
+            await testUtils.flushPromises();
+
+            assert.calledOnce(meeting.setNetworkStatus);
+            assert.calledWith(meeting.setNetworkStatus, NETWORK_STATUS.DISCONNECTED);
+            assert.calledOnce(meeting.reconnectionManager.waitForIceReconnect);
+            assert.calledOnce(meeting.mediaProperties.waitForMediaConnectionConnected);
+          });
+        });
+
+        describe('CONNECTION_STATE_CHANGED event when state = "Failed"', () => {
+
+          const mockFailedEvent = () => {
+            meeting.setupMediaConnectionListeners();
+            eventListeners[Event.CONNECTION_STATE_CHANGED]({
+              state: 'Failed',
+            });
+          };
+          
+          it('handles "Failed" state correctly when hasMediaConnectionConnectedAtLeastOnce = false', async () => {
+            meeting.waitForMediaConnectionConnected = sinon.stub().resolves();
+
+            mockFailedEvent();
+
+            assert.calledOnce(meeting.waitForMediaConnectionConnected);
+          });
+
+          it('handles "Failed" state correctly when hasMediaConnectionConnectedAtLeastOnce = true', async () => {
+            const FAKE_ERROR = {fatal: true};
+            const getErrorPayloadForClientErrorCodeStub = webex.internal.newMetrics.callDiagnosticMetrics.getErrorPayloadForClientErrorCode = sinon
+              .stub()
+              .returns(FAKE_ERROR);
+            meeting.hasMediaConnectionConnectedAtLeastOnce = true;
+
+            mockFailedEvent();
+
+            assert.calledOnceWithExactly(getErrorPayloadForClientErrorCodeStub, {clientErrorCode: 2004});
+            assert.calledOnce(webex.internal.newMetrics.submitClientEvent);
+            assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
+              name: 'client.ice.end',
+              payload: {
+                canProceed: false,
+                icePhase: 'IN_MEETING',
+                errors: [FAKE_ERROR],
+              },
+              options: {
+                meetingId: meeting.id,
+              },
+            });
           });
         });
 
