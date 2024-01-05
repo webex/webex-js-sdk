@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.297](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.296...v3.0.0-beta.297) (2024-01-05)
+
+
+### Features
+
+* **plugin-metrics:** add error handling to assign role function ([#3289](https://github.com/webex/webex-js-sdk/issues/3289)) ([0bac746](https://github.com/webex/webex-js-sdk/commit/0bac746715037ac632758c4ef89cb5736c436793))
+
 ## [3.0.0-beta.296](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.295...v3.0.0-beta.296) (2024-01-05)
 
 
