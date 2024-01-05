@@ -32,7 +32,7 @@ describe('plugin-device', () => {
     afterEach('unregister the device and remove test users', (done) => {
       device
         .unregister()
-        .then(() => testUsers.remove([user]))
+        // .then(() => testUsers.remove([user]))
         .then(() => done())
         .catch(done);
     });
