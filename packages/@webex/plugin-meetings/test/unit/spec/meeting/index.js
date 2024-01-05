@@ -5668,7 +5668,7 @@ describe('plugin-meetings', () => {
             assert.calledOnce(meeting.setNetworkStatus);
             assert.calledWith(meeting.setNetworkStatus, NETWORK_STATUS.DISCONNECTED);
             assert.calledOnce(meeting.reconnectionManager.waitForIceReconnect);
-            assert.calledOnce(getErrorPayloadForClientErrorCodeStub);
+            assert.calledOnceWithExactly(getErrorPayloadForClientErrorCodeStub, {clientErrorCode: 2004});
             assert.calledOnce(webex.internal.newMetrics.submitClientEvent);
             assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
               name: 'client.ice.end',
