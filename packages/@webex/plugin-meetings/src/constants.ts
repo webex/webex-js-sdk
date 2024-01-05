@@ -499,7 +499,7 @@ export const ERROR_DICTIONARY = {
     MESSAGE: 'No meeting info found for the meeting',
     CODE: 10,
   },
-  RECLAIM_HOST_NOT_SUPPORTED: {
+  RECLAIM_HOST_ROLE_NOT_SUPPORTED: {
     NAME: 'ReclaimHostRoleNotSupported',
     MESSAGE:
       'Non converged meetings, PSTN or SIP users in converged meetings are not supported currently.',
