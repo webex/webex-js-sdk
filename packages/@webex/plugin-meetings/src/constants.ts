@@ -237,7 +237,6 @@ export const CALENDAR_EVENTS = {
   DELETE: 'event:calendar.meeting.delete',
 };
 
-// Specificied here: https://confluence-eng-gpk2.cisco.com/conf/display/LOCUS/Reclaim+Host+Role#:~:text=Note-,2400127,-Reclaim%20Host%20Role
 export const ASSIGN_ROLES_ERROR_CODES = {
   ReclaimHostNotSupportedErrorCode: 2400127,
   ReclaimHostNotAllowedErrorCode: 2403135,
