@@ -49,7 +49,7 @@ export class ReclaimHostNotSupportedError extends Error {
    * @param {Object} [error]
    */
   constructor(
-    message: string = MEETINGCONSTANTS.ERROR_DICTIONARY.RECLAIM_HOST_NOT_SUPPORTED.MESSAGE,
+    message: string = MEETINGCONSTANTS.ERROR_DICTIONARY.RECLAIM_HOST_ROLE_NOT_SUPPORTED.MESSAGE,
     error: any = null
   ) {
     super(message);
@@ -58,12 +58,12 @@ export class ReclaimHostNotSupportedError extends Error {
       Error.captureStackTrace(this, ReclaimHostNotSupportedError);
     }
 
-    this.name = MEETINGCONSTANTS.ERROR_DICTIONARY.RECLAIM_HOST_NOT_SUPPORTED.NAME;
+    this.name = MEETINGCONSTANTS.ERROR_DICTIONARY.RECLAIM_HOST_ROLE_NOT_SUPPORTED.NAME;
     this.sdkMessage =
-      message || MEETINGCONSTANTS.ERROR_DICTIONARY.RECLAIM_HOST_NOT_SUPPORTED.MESSAGE;
+      message || MEETINGCONSTANTS.ERROR_DICTIONARY.RECLAIM_HOST_ROLE_NOT_SUPPORTED.MESSAGE;
     this.error = error;
 
-    this.code = MEETINGCONSTANTS.ERROR_DICTIONARY.RECLAIM_HOST_NOT_SUPPORTED.CODE;
+    this.code = MEETINGCONSTANTS.ERROR_DICTIONARY.RECLAIM_HOST_ROLE_NOT_SUPPORTED.CODE;
   }
 }
 
