@@ -51,3 +51,4 @@ export {
 export {CallError, LineError} from './Errors';
 export {ICall, TransferType} from './CallingClient/calling/types';
 export {LOGGER} from './Logger/types';
+export {LocalMicrophoneStream} from '@webex/media-helpers';
