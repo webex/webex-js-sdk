@@ -5268,7 +5268,11 @@ export default class Meeting extends StatelessWebexPlugin {
             {
               logText: `${LOG_HEADER} Roap Offer`,
             }
-          );
+          ).catch(() => {
+            this.deferSDPAnswer.reject();
+            clearTimeout(this.sdpResponseTimer);
+            this.sdpResponseTimer = undefined;
+          });
           break;
 
         case 'ANSWER':
