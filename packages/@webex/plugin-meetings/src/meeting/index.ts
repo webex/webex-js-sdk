@@ -6227,6 +6227,7 @@ export default class Meeting extends StatelessWebexPlugin {
         locus_id: this.locusUrl.split('/').pop(),
         connectionType,
         isMultistream: this.isMultistream,
+        retriedWithTurnServer: this.retriedWithTurnServer,
         ...reachabilityStats,
       });
       // @ts-ignore

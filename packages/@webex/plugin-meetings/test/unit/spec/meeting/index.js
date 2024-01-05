@@ -1967,6 +1967,7 @@ describe('plugin-meetings', () => {
               locus_id: meeting.locusUrl.split('/').pop(),
               connectionType: 'udp',
               isMultistream: false,
+              retriedWithTurnServer: true,
             }
           ]);
           meeting.roap.doTurnDiscovery
@@ -2012,6 +2013,7 @@ describe('plugin-meetings', () => {
               locus_id: meeting.locusUrl.split('/').pop(),
               connectionType: 'udp',
               isMultistream: false,
+              retriedWithTurnServer: false,
               someReachabilityMetric1: 'some value1',
               someReachabilityMetric2: 'some value2',
             }
