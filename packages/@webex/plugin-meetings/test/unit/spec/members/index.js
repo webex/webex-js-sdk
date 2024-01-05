@@ -342,7 +342,7 @@ describe('plugin-meetings', () => {
       });
     });
 
-    describe.only('#assignRoles', () => {
+    describe('#assignRoles', () => {
       const fakeRoles = [
         {type: 'PRESENTER', hasRole: true},
         {type: 'MODERATOR', hasRole: false},
