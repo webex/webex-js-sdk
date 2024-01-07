@@ -37,6 +37,7 @@ import {
   ClientEventPayload,
   ClientInfo,
   ClientEventPayloadError,
+  ClientSubServiceType,
 } from '../metrics.types';
 import CallDiagnosticEventsBatcher from './call-diagnostic-metrics-batcher';
 import {
@@ -50,6 +51,7 @@ import {
   CALL_DIAGNOSTIC_LOG_IDENTIFIER,
   NETWORK_ERROR,
   AUTHENTICATION_FAILED_CODE,
+  WEBEX_SUB_SERVICE_TYPES,
 } from './config';
 import {generateCommonErrorMetadata} from '../utils';
 
@@ -126,6 +128,32 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       const meeting = this.webex.meetings.meetingCollection.get(meetingId);
 
       return meeting?.meetingInfo?.enableConvergedArchitecture;
+    }
+
+    return undefined;
+  }
+
+  /**
+   * Returns meeting's subServiceType
+   * @param meeting
+   * @returns
+   */
+  getSubServiceType(meeting?: any): ClientSubServiceType {
+    if (meeting) {
+      // @ts-ignore
+      const meetingInfo = meeting?.meetingInfo;
+      // if not Scheduled, not Webinar, pmr - then pmr
+      if (!meetingInfo?.webexScheduled && !meetingInfo?.enableEvent && meetingInfo?.pmr) {
+        return WEBEX_SUB_SERVICE_TYPES.PMR;
+      }
+      // if Scheduled, not Webinar, not pmr - then ScheduledMeeting
+      if (meetingInfo?.webexScheduled && !meetingInfo?.enableEvent && !meetingInfo?.pmr) {
+        return WEBEX_SUB_SERVICE_TYPES.SCHEDULED_MEETING;
+      }
+      // if Scheduled, Webinar, not pmr - then Webinar
+      if (meetingInfo?.webexScheduled && meetingInfo?.enableEvent && !meetingInfo?.pmr) {
+        return WEBEX_SUB_SERVICE_TYPES.WEBINAR;
+      }
     }
 
     return undefined;
@@ -584,6 +612,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       isConvergedArchitectureEnabled: this.getIsConvergedArchitectureEnabled({
         meetingId,
       }),
+      webexSubServiceType: this.getSubServiceType(meeting),
     };
 
     if (options?.rawError?.message) {
