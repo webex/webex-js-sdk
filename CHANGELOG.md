@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.299](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.298...v3.0.0-beta.299) (2024-01-08)
+
+
+### Bug Fixes
+
+* **samples:** reorder and group the ui with similar features ([#3262](https://github.com/webex/webex-js-sdk/issues/3262)) ([4c3aa8d](https://github.com/webex/webex-js-sdk/commit/4c3aa8d56ec81531e8af85572f70605908eab2bd))
+
 ## [3.0.0-beta.298](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.297...v3.0.0-beta.298) (2024-01-05)
 
 
