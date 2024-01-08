@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.300](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.299...v3.0.0-beta.300) (2024-01-08)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** add retriedWithTurnServer to add media success metric ([#3295](https://github.com/webex/webex-js-sdk/issues/3295)) ([0d76420](https://github.com/webex/webex-js-sdk/commit/0d76420e4819580425ed86cbcbab9b9f8f8c83fa))
+* **plugin-meetings:** don't send turn latency if it fails ([#3296](https://github.com/webex/webex-js-sdk/issues/3296)) ([49a9acd](https://github.com/webex/webex-js-sdk/commit/49a9acd595f3d0e88aaa1665e9c47b2a12330204))
+* **plugin-meetings:** don't wait for timeout when sending roap offer fails ([#3293](https://github.com/webex/webex-js-sdk/issues/3293)) ([ad66fa3](https://github.com/webex/webex-js-sdk/commit/ad66fa3ec23cc776c2270f85f2cb21c290ab6852))
+
 ## [3.0.0-beta.299](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.298...v3.0.0-beta.299) (2024-01-08)
 
 
