@@ -4,7 +4,7 @@ import {debounce} from 'lodash';
 import {StatelessWebexPlugin} from '@webex/webex-core';
 // @ts-ignore
 import {deviceType} from '@webex/common';
-import {anonymizeIPAddress} from '@webex/internal-plugin-metrics/src/call-diagnostic/call-diagnostic-metrics.util';
+import {CallDiagnosticUtils} from '@webex/internal-plugin-metrics';
 
 import LoggerProxy from '../common/logs/logger-proxy';
 import {
@@ -203,7 +203,8 @@ export default class MeetingRequest extends StatelessWebexPlugin {
       body.device.regionCode = this.webex.meetings.geoHintInfo.regionCode;
       body.device.localIp =
         // @ts-ignore
-        anonymizeIPAddress(this.webex.meetings.geoHintInfo?.clientAddress) || undefined;
+        CallDiagnosticUtils.anonymizeIPAddress(this.webex.meetings.geoHintInfo.clientAddress) ||
+        undefined;
     }
 
     if (moderator !== undefined) {

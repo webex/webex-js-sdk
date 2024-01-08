@@ -6,12 +6,14 @@ import MeetingRequest from '@webex/plugin-meetings/src/meeting/request';
 import uuid from 'uuid';
 import { merge } from 'lodash';
 import {IP_VERSION} from '@webex/plugin-meetings/src/constants';
+import * as Utils from '@webex/internal-plugin-metrics/src/call-diagnostic/call-diagnostic-metrics.util';
 
 
 describe('plugin-meetings', () => {
   let meetingsRequest;
   let locusDeltaRequestSpy;
   let webex;
+  const geoHintInfoDefaults = {countryCode: 'US', regionCode: 'WEST-COAST', clientAddress: '127.0.0.1'};
 
   beforeEach(() => {
     webex = new MockWebex({
@@ -20,11 +22,7 @@ describe('plugin-meetings', () => {
       },
     });
 
-    webex.meetings.geoHintInfo = {
-      countryCode: 'US',
-      regionCode: 'WEST-COAST',
-      clientAddress: '127.0.0.1',
-    };
+    webex.meetings.geoHintInfo = {...geoHintInfoDefaults};
 
     webex.internal = {
       services: {
@@ -55,6 +53,11 @@ describe('plugin-meetings', () => {
 
     meetingsRequest.request = request;
     locusDeltaRequestSpy = sinon.spy(meetingsRequest, 'locusDeltaRequest');
+    sinon.stub(Utils, 'anonymizeIPAddress').returns('0.0.0.0');
+  });
+
+  afterEach(() => {
+    Utils.anonymizeIPAddress.restore();
   });
 
   const checkRequest = (expectedParams) => {
@@ -197,7 +200,7 @@ describe('plugin-meetings', () => {
         assert.equal(requestParams.body.device.countryCode, 'US');
         assert.equal(requestParams.body.permissionToken, 'permission-token');
         assert.equal(requestParams.body.device.regionCode, 'WEST-COAST');
-        assert.include(requestParams.body.device.localIp, '127.0.0');
+        assert.equal(requestParams.body.device.localIp, '127.0.0.0');
       });
 
       describe('clientAddress geoHintInfo undefined', () => {
@@ -207,11 +210,7 @@ describe('plugin-meetings', () => {
     
         // reset
         afterEach(() => {
-          webex.meetings.geoHintInfo = {
-            countryCode: 'US',
-            regionCode: 'WEST-COAST',
-            clientAddress: '127.0.0.1',
-          };
+          webex.meetings.geoHintInfo = {...geoHintInfoDefaults};
         });
 
         it('doesnt send the clientAddress if not available as localIp', async () => {
