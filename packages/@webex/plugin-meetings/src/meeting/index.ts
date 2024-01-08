@@ -5990,7 +5990,9 @@ export default class Meeting extends StatelessWebexPlugin {
         name: 'internal.client.add-media.turn-discovery.end',
       });
 
-      if (this.turnServerUsed) {
+      const {turnServerInfo} = turnDiscoveryObject;
+
+      if (this.turnServerUsed && turnServerInfo) {
         Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.TURN_DISCOVERY_LATENCY, {
           correlation_id: this.correlationId,
           latency: cdl.getTurnDiscoveryTime(),
@@ -5999,7 +6001,6 @@ export default class Meeting extends StatelessWebexPlugin {
         });
       }
 
-      const {turnServerInfo} = turnDiscoveryObject;
       const mc = await this.createMediaConnection(turnServerInfo, bundlePolicy);
 
       LoggerProxy.logger.info(`${LOG_HEADER} media connection created`);
