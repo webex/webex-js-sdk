@@ -7,7 +7,7 @@ import {ConnectionState} from '@webex/internal-media-core';
 import {StatsAnalyzer, EVENTS} from '../../../../src/statsAnalyzer';
 import NetworkQualityMonitor from '../../../../src/networkQualityMonitor';
 import testUtils from '../../../utils/testUtils';
-import {MEDIA_DEVICES} from '@webex/plugin-meetings/src/constants';
+import {MEDIA_DEVICES, _UNKNOWN_} from '@webex/plugin-meetings/src/constants';
 
 const {assert} = chai;
 
@@ -424,6 +424,18 @@ describe('plugin-meetings', () => {
 
         assert.strictEqual(mqeData.intervalMetadata.peripherals.find((val) => val.name === MEDIA_DEVICES.MICROPHONE).information, 'fake-microphone');
         assert.strictEqual(mqeData.intervalMetadata.peripherals.find((val) => val.name === MEDIA_DEVICES.CAMERA).information, 'fake-camera');
+      });
+
+      it('emits the correct peripherals in MEDIA_QUALITY events when localTrackLabel is undefined', async () => {
+        fakeStats.audio.senders[0].localTrackLabel = undefined;
+        fakeStats.video.senders[0].localTrackLabel = undefined;
+
+        await startStatsAnalyzer({expected: {receiveVideo: true}});
+
+        await progressTime();
+
+        assert.strictEqual(mqeData.intervalMetadata.peripherals.find((val) => val.name === MEDIA_DEVICES.MICROPHONE).information, _UNKNOWN_);
+        assert.strictEqual(mqeData.intervalMetadata.peripherals.find((val) => val.name === MEDIA_DEVICES.CAMERA).information, _UNKNOWN_);
       });
     });
   });
