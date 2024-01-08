@@ -63,6 +63,7 @@ const BEHAVIORAL_METRICS = {
   PERMISSION_TOKEN_REFRESH_ERROR: 'js_sdk_permission_token_refresh_error',
   TURN_DISCOVERY_LATENCY: 'js_sdk_turn_discovery_latency',
   ROAP_OFFER_TO_ANSWER_LATENCY: 'js_sdk_roap_offer_to_answer_latency',
+  ROAP_HTTP_RESPONSE_MISSING: 'js_sdk_roap_http_response_missing',
 };
 
 export {BEHAVIORAL_METRICS as default};

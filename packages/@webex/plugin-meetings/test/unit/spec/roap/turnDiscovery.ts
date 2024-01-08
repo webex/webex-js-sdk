@@ -33,11 +33,6 @@ describe('TurnDiscovery', () => {
 
     testMeeting = {
       id: 'fake meeting id',
-      config: {
-        experimental: {
-          enableTurnDiscovery: true,
-        },
-      },
       correlationId: 'fake correlation id',
       selfUrl: 'fake self url',
       mediaId: 'fake media id',
@@ -153,6 +148,44 @@ describe('TurnDiscovery', () => {
       });
     });
 
+    it('sends TURN_DISCOVERY_REQUEST, waits for response and sends OK when isForced = true when cluster is reachable', async () => {
+      const prev = testMeeting.webex.meetings.reachability.isAnyPublicClusterReachable;
+      testMeeting.webex.meetings.reachability.isAnyPublicClusterReachable = sinon.stub().resolves(true);
+
+      const td = new TurnDiscovery(mockRoapRequest);
+      const result = td.doTurnDiscovery(testMeeting, false, true);
+
+      // We ignore reachability results so we don't get skip reason
+      assert.notCalled(testMeeting.webex.meetings.reachability.isAnyPublicClusterReachable);
+
+      // check that TURN_DISCOVERY_REQUEST was sent
+      await checkRoapMessageSent('TURN_DISCOVERY_REQUEST', 0);
+      // @ts-ignore
+      mockRoapRequest.sendRoap.resetHistory();
+      // simulate the response
+      td.handleTurnDiscoveryResponse({
+        headers: [
+          `x-cisco-turn-url=${FAKE_TURN_URL}`,
+          `x-cisco-turn-username=${FAKE_TURN_USERNAME}`,
+          `x-cisco-turn-password=${FAKE_TURN_PASSWORD}`,
+        ]
+      });
+      await testUtils.flushPromises();
+      // check that we've sent OK
+      await checkRoapMessageSent('OK', 0);
+
+      const {turnServerInfo, turnDiscoverySkippedReason} = await result;
+      assert.deepEqual(turnServerInfo, {
+        url: FAKE_TURN_URL,
+        username: FAKE_TURN_USERNAME,
+        password: FAKE_TURN_PASSWORD
+      });
+      assert.isUndefined(turnDiscoverySkippedReason);
+
+      // restore previous callback
+      testMeeting.webex.meetings.reachability.isAnyPublicClusterReachable = prev;
+    });
+
     it('sends TURN_DISCOVERY_REQUEST with empty mediaId when isReconnecting is true', async () => {
       const td = new TurnDiscovery(mockRoapRequest);
 
@@ -222,24 +255,6 @@ describe('TurnDiscovery', () => {
         password: FAKE_TURN_PASSWORD,
       });
       assert.isUndefined(turnDiscoverySkippedReason);
-    });
-
-    it('resolves with undefined if turn discovery feature is disabled in config', async () => {
-      const prevConfigValue = testMeeting.config.experimental.enableTurnDiscovery;
-
-      testMeeting.config.experimental.enableTurnDiscovery = false;
-      // @ts-ignore
-      const result = await new TurnDiscovery(mockRoapRequest).doTurnDiscovery(testMeeting);
-
-      const {turnServerInfo, turnDiscoverySkippedReason} = result;
-
-      assert.isUndefined(turnServerInfo);
-      assert.equal(turnDiscoverySkippedReason, 'config');
-      assert.notCalled(mockRoapRequest.sendRoap);
-      assert.notCalled(Metrics.sendBehavioralMetric);
-
-      // restore previous config
-      testMeeting.config.experimental.enableTurnDiscovery = prevConfigValue;
     });
 
     it('resolves with undefined if sending the request fails', async () => {
@@ -379,14 +394,10 @@ describe('TurnDiscovery', () => {
 
   describe('isSkipped', () => {
     [
-      {enabledInConfig: true, isAnyPublicClusterReachable: true, expectedIsSkipped: true},
-      {enabledInConfig: true, isAnyPublicClusterReachable: false, expectedIsSkipped: false},
-      {enabledInConfig: false, isAnyPublicClusterReachable: true, expectedIsSkipped: true},
-      {enabledInConfig: false, isAnyPublicClusterReachable: false, expectedIsSkipped: true},
-    ].forEach(({enabledInConfig, isAnyPublicClusterReachable, expectedIsSkipped}) => {
-      it(`returns ${expectedIsSkipped} when TURN discovery is ${enabledInConfig ? '' : 'not '} enabled in config and isAnyPublicClusterReachable() returns ${isAnyPublicClusterReachable ? 'true' : 'false'}`, async () => {
-        testMeeting.config.experimental.enableTurnDiscovery = enabledInConfig;
-
+      {isAnyPublicClusterReachable: true, expectedIsSkipped: true},
+      {isAnyPublicClusterReachable: false, expectedIsSkipped: false},
+    ].forEach(({isAnyPublicClusterReachable, expectedIsSkipped}) => {
+      it(`returns ${expectedIsSkipped} when isAnyPublicClusterReachable() returns ${isAnyPublicClusterReachable ? 'true' : 'false'}`, async () => {
         sinon.stub(testMeeting.webex.meetings.reachability, 'isAnyPublicClusterReachable').resolves(isAnyPublicClusterReachable);
 
         const td = new TurnDiscovery(mockRoapRequest);
