@@ -5946,6 +5946,40 @@ describe('plugin-meetings', () => {
             assert.calledWith(meeting.roapMessageReceived, fakeAnswer);
           });
 
+          it('handles OFFER message correctly when request fails', async () => {
+            const clock = sinon.useFakeTimers();
+            sinon.spy(clock, "clearTimeout");
+            meeting.deferSDPAnswer = {reject: sinon.stub()};
+            meeting.sdpResponseTimer = '1234';
+            sendRoapMediaRequestStub.rejects();
+            sinon.stub(meeting, 'roapMessageReceived');
+
+            eventListeners[Event.ROAP_MESSAGE_TO_SEND]({
+              roapMessage: {
+                messageType: 'OFFER',
+                seq: 1,
+                sdp: 'fake sdp',
+                tieBreaker: 12345,
+              },
+            });
+
+            await testUtils.flushPromises();
+
+            assert.calledOnce(sendRoapMediaRequestStub);
+            assert.calledWith(sendRoapMediaRequestStub, {
+              seq: 1,
+              sdp: 'fake sdp',
+              tieBreaker: 12345,
+              meeting,
+              reconnect: false,
+            });
+            assert.notCalled(meeting.roapMessageReceived);
+            assert.calledOnce(meeting.deferSDPAnswer.reject);
+            assert.calledOnce(clock.clearTimeout);
+            assert.calledWith(clock.clearTimeout, '1234');
+            assert.equal(meeting.sdpResponseTimer, undefined);
+          });
+
           it('handles ANSWER message correctly', () => {
             eventListeners[Event.ROAP_MESSAGE_TO_SEND]({
               roapMessage: {
