@@ -263,8 +263,8 @@ const displayMeetingStatusElm = document.querySelector('#display-meeting-status'
 const spaceIDError = `Using the space ID as a destination is no longer supported. Please refer to the <a href="https://github.com/webex/webex-js-sdk/wiki/Migration-to-Unified-Space-Meetings" target="_blank">migration guide</a> to migrate to use the meeting ID or SIP address.`;
 const BNR = 'BNR';
 const VBG = 'VBG';
-const blurVBGImageUrl = 'https://webex.github.io/webex-js-sdk/api/assets/vbg_image.jpg';
-const blurVBGVideoUrl = 'https://webex.github.io/webex-js-sdk/api/assets/clouds.5b57454a.mp4';
+const blurVBGImageUrl = '/api/assets/vbg_image.jpg';
+const blurVBGVideoUrl = '/api/assets/clouds.5b57454a.mp4';
 
 let selectedMeetingId = null;
 let currentMediaSettings = {};
@@ -1102,7 +1102,7 @@ async function loadCamera(constraints) {
 async function handleVbg() {
   let effect;
   try {
-    effect = await localMedia.cameraStream.getEffect("virtual-background");
+    effect = await localMedia.cameraStream.getEffectsByKind('virtual-background-effect')[0];
 
     if (!effect?.isEnabled) {
       console.log('MeetingControls#handleVbg() :: applying virtual background to local camera stream');
@@ -1114,7 +1114,7 @@ async function handleVbg() {
           "bgVideoUrl": blurVBGVideoUrl
         });
         handleEffectsButton(toggleVbgBtn, VBG, effect);
-        await localMedia.cameraStream.addEffect("virtual-background", effect);
+        await localMedia.cameraStream.addEffect(effect);
       }
 
       await effect.enable();
@@ -1171,27 +1171,27 @@ async function loadMicrophone(constraints) {
 async function handleBNR() {
   let effect;
   try {
-    effect = await localMedia.microphoneStream.getEffect("noise-reduction");;
+    effect = await localMedia.microphoneStream.getEffectsByKind('noise-reduction-effect')[0];
     if (!effect?.isEnabled) {
-      console.log('MeetingControls#handleBNR() :: applying BNR to local microhone stream');
+      console.log('MeetingControls#handleBNR() :: applying BNR to local microphone stream');
 
       if (!effect) {
         effect = await webex.meetings.createNoiseReductionEffect();
         handleEffectsButton(toggleBNRBtn, BNR, effect);
-        await localMedia.microphoneStream.addEffect("noise-reduction", effect);
+        await localMedia.microphoneStream.addEffect(effect);
       }
 
       await effect.enable();
       handleEffectsButton(toggleBNRBtn, BNR, effect);
-      console.log('MeetingControls#handleBNR() :: successfully applied BNR to local microhone stream');
+      console.log('MeetingControls#handleBNR() :: successfully applied BNR to local microphone stream');
 
     }
     else {
-      console.log('MeetingControls#handleBNR() :: disabling BNR from local microhone stream');
+      console.log('MeetingControls#handleBNR() :: disabling BNR from local microphone stream');
 
       await effect.disable();
       handleEffectsButton(toggleBNRBtn, BNR, effect);
-      console.log('MeetingControls#handleBNR() :: successfully disabled BNR from local microhone stream');
+      console.log('MeetingControls#handleBNR() :: successfully disabled BNR from local microphone stream');
     }
   }
   catch (e) {
