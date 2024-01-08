@@ -17,6 +17,12 @@ import MembersUtil from '@webex/plugin-meetings/src/members/util';
 import * as MembersRequestImport from '@webex/plugin-meetings/src/members/request';
 import Trigger from '@webex/plugin-meetings/src/common/events/trigger-proxy';
 import {EVENT_TRIGGERS} from '@webex/plugin-meetings/src/constants';
+import {
+  ReclaimHostEmptyWrongKeyError,
+  ReclaimHostIsHostAlreadyError,
+  ReclaimHostNotAllowedError,
+  ReclaimHostNotSupportedError,
+} from '../../../../src/common/errors/reclaim-host-role-errors';
 
 const {assert} = chai;
 
@@ -337,7 +343,17 @@ describe('plugin-meetings', () => {
     });
 
     describe('#assignRoles', () => {
-      const setup = (locusUrl) => {
+      const fakeRoles = [
+        {type: 'PRESENTER', hasRole: true},
+        {type: 'MODERATOR', hasRole: false},
+        {type: 'COHOST', hasRole: true},
+      ];
+
+      const resolvedValue = "it worked";
+
+      const genericMessage = 'Generic error from the API';
+
+      const setup = (locusUrl, errorCode) => {
         const members = createMembers({url: locusUrl});
 
         const spies = {
@@ -345,8 +361,13 @@ describe('plugin-meetings', () => {
             MembersUtil,
             'generateRoleAssignmentMemberOptions'
           ),
-          assignRolesMember: sandbox.spy(members.membersRequest, 'assignRolesMember'),
         };
+
+        if (errorCode) {
+          spies.assignRolesMember = sandbox.stub(members.membersRequest, 'assignRolesMember').rejects({body: {errorCode}, message: genericMessage});
+        } else {
+          spies.assignRolesMember = sandbox.stub(members.membersRequest, 'assignRolesMember').resolves(resolvedValue);
+        }
 
         return {members, spies};
       };
@@ -357,14 +378,8 @@ describe('plugin-meetings', () => {
         assert.notCalled(spies.assignRolesMember);
       };
 
-      const checkValid = async (
-        resultPromise,
-        spies,
-        expectedMemberId,
-        expectedRoles,
-        expectedLocusUrl
-      ) => {
-        await assert.isFulfilled(resultPromise);
+      const checkError = async (error, expectedMemberId, expectedRoles, expectedLocusUrl, resultPromise, expectedMessage, spies) => {
+        await assert.isRejected(resultPromise, error, expectedMessage);
         assert.calledOnceWithExactly(
           spies.generateRoleAssignmentMemberOptions,
           expectedMemberId,
@@ -376,7 +391,28 @@ describe('plugin-meetings', () => {
           roles: expectedRoles,
           locusUrl: expectedLocusUrl,
         });
-        assert.strictEqual(resultPromise, spies.assignRolesMember.getCall(0).returnValue);
+      };
+
+      const checkValid = async (
+        resultPromise,
+        spies,
+        expectedMemberId,
+        expectedRoles,
+        expectedLocusUrl
+      ) => {
+        const resolvedValue = await assert.isFulfilled(resultPromise);
+        assert.calledOnceWithExactly(
+          spies.generateRoleAssignmentMemberOptions,
+          expectedMemberId,
+          expectedRoles,
+          expectedLocusUrl
+        );
+        assert.calledOnceWithExactly(spies.assignRolesMember, {
+          memberId: expectedMemberId,
+          roles: expectedRoles,
+          locusUrl: expectedLocusUrl,
+        });
+        assert.strictEqual(resolvedValue, resolvedValue);
       };
 
       it('should not make a request if there is no member id', async () => {
@@ -387,7 +423,7 @@ describe('plugin-meetings', () => {
         await checkInvalid(
           resultPromise,
           'The member id must be defined to assign the roles to a member.',
-          spies
+          spies,
         );
       });
 
@@ -399,7 +435,92 @@ describe('plugin-meetings', () => {
         await checkInvalid(
           resultPromise,
           'The associated locus url for this meetings members object must be defined.',
-          spies
+          spies,
+        );
+      });
+
+      it('should not make a request if locus throws ReclaimHostNotSupportedError', async () => {
+        const memberId = uuid.v4();
+        const {members, spies} = setup(url1, 2400127);
+
+        const resultPromise = members.assignRoles(memberId, fakeRoles);
+
+        await checkError(
+          ReclaimHostNotSupportedError,
+          memberId,
+          fakeRoles,
+          url1,
+          resultPromise,
+          'Non converged meetings, PSTN or SIP users in converged meetings are not supported currently.',
+          spies,
+        );
+      });
+
+      it('should not make a request if locus throws ReclaimHostNotAllowedError', async () => {
+        const memberId = uuid.v4();
+        const {members, spies} = setup(url1, 2403135);
+
+        const resultPromise = members.assignRoles(memberId, fakeRoles);
+
+        await checkError(
+          ReclaimHostNotAllowedError,
+          memberId,
+          fakeRoles,
+          url1,
+          resultPromise,
+          'Reclaim Host Role Not Allowed For Other Participants. Participants cannot claim host role in PMR meeting, space instant meeting or escalated instant meeting. However, the original host still can reclaim host role when it manually makes another participant to be the host.',
+          spies,
+        );
+      });
+
+      it('should not make a request if locus throws ReclaimHostEmptyWrongKeyError', async () => {
+        const memberId = uuid.v4();
+        const {members, spies} = setup(url1, 2403136);
+
+        const resultPromise = members.assignRoles(memberId, fakeRoles);
+
+        await checkError(
+          ReclaimHostEmptyWrongKeyError,
+          memberId,
+          fakeRoles,
+          url1,
+          resultPromise,
+          'Host Key Not Specified Or Matched. The original host can reclaim the host role without entering the host key. However, any other person who claims the host role must enter the host key to get it.',
+          spies,
+        );
+      });
+
+      it('should not make a request if locus throws ReclaimHostIsHostAlreadyError', async () => {
+        const memberId = uuid.v4();
+        const {members, spies} = setup(url1, 2409150);
+
+        const resultPromise = members.assignRoles(memberId, fakeRoles);
+
+        await checkError(
+          ReclaimHostIsHostAlreadyError,
+          memberId,
+          fakeRoles,
+          url1,
+          resultPromise,
+          'Participant Having Host Role Already. Participant who sends request to reclaim host role has already a host role.',
+          spies,
+        );
+      });
+
+      it('should not make a request if locus throws a different error', async () => {
+        const memberId = uuid.v4();
+        const {members, spies} = setup(url1, 1234);
+
+        const resultPromise = members.assignRoles(memberId, fakeRoles);
+
+        await checkError(
+          {body: {errorCode: 1234}, message: genericMessage},
+          memberId,
+          fakeRoles,
+          url1,
+          resultPromise,
+          genericMessage,
+          spies,
         );
       });
 
@@ -407,22 +528,14 @@ describe('plugin-meetings', () => {
         const memberId = uuid.v4();
         const {members, spies} = setup(url1);
 
-        const resultPromise = members.assignRoles(memberId, [
-          {type: 'PRESENTER', hasRole: true},
-          {type: 'MODERATOR', hasRole: false},
-          {type: 'COHOST', hasRole: true},
-        ]);
+        const resultPromise = members.assignRoles(memberId, fakeRoles);
 
         await checkValid(
           resultPromise,
           spies,
           memberId,
-          [
-            {type: 'PRESENTER', hasRole: true},
-            {type: 'MODERATOR', hasRole: false},
-            {type: 'COHOST', hasRole: true},
-          ],
-          url1
+          fakeRoles,
+          url1,
         );
       });
     });

@@ -60,6 +60,9 @@ function walkAndFilter(object, visited = []) {
       if (patterns.containsEmails.test(object)) {
         return object.replace(patterns.containsEmails, '[REDACTED]');
       }
+      if (patterns.containsMTID.test(object)) {
+        return object.replace(patterns.containsMTID, '$1[REDACTED]');
+      }
     }
 
     return object;
