@@ -73,13 +73,7 @@ MeetingsUtil.handleRoapMercury = (envelope, meetingCollection) => {
           errorCause,
         };
 
-        const mediaServer = MeetingsUtil.getMediaServer(roapMessage.sdp);
-
-        meeting.mediaProperties.webrtcMediaConnection.roapMessageReceived(roapMessage);
-
-        if (mediaServer) {
-          meeting.mediaProperties.webrtcMediaConnection.mediaServer = mediaServer;
-        }
+        meeting.roapMessageReceived(roapMessage);
       }
     }
   }

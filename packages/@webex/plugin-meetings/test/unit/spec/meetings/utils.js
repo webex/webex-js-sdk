@@ -181,11 +181,7 @@ describe('plugin-meetings', () => {
         const meetingCollection = {
           getByKey: () => ({
             id: 'meeting-id',
-            mediaProperties: {
-              webrtcMediaConnection: {
-                roapMessageReceived
-              }
-            }
+            roapMessageReceived
           })
         };
 

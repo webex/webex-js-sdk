@@ -98,6 +98,7 @@ describe('plugin-meetings', () => {
       await rm.reconnect();
 
       assert.calledOnce(fakeMeeting.roap.doTurnDiscovery);
+      assert.calledWith(fakeMeeting.roap.doTurnDiscovery, fakeMeeting, true, true);
       assert.calledOnce(fakeMediaConnection.reconnect);
       assert.calledWith(fakeMediaConnection.reconnect, [
         {
