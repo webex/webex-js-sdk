@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.303](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.302...v3.0.0-beta.303) (2024-01-09)
+
+
+### Features
+
+* **fraud:** add localIP to join request ([#3282](https://github.com/webex/webex-js-sdk/issues/3282)) ([cf61403](https://github.com/webex/webex-js-sdk/commit/cf614038c305b1e1fdbaa1202e6f4719c56ea64d))
+
 ## [3.0.0-beta.302](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.301...v3.0.0-beta.302) (2024-01-09)
 
 
