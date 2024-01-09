@@ -6,7 +6,7 @@ import MeetingRequest from '@webex/plugin-meetings/src/meeting/request';
 import uuid from 'uuid';
 import { merge } from 'lodash';
 import {IP_VERSION} from '@webex/plugin-meetings/src/constants';
-import * as Utils from '@webex/internal-plugin-metrics/src/call-diagnostic/call-diagnostic-metrics.util';
+import {CallDiagnosticUtils} from '@webex/internal-plugin-metrics';
 
 
 describe('plugin-meetings', () => {
@@ -14,6 +14,7 @@ describe('plugin-meetings', () => {
   let locusDeltaRequestSpy;
   let webex;
   const geoHintInfoDefaults = {countryCode: 'US', regionCode: 'WEST-COAST', clientAddress: '127.0.0.1'};
+  let anonymizeIpSpy;
 
   beforeEach(() => {
     webex = new MockWebex({
@@ -53,11 +54,11 @@ describe('plugin-meetings', () => {
 
     meetingsRequest.request = request;
     locusDeltaRequestSpy = sinon.spy(meetingsRequest, 'locusDeltaRequest');
-    sinon.stub(Utils, 'anonymizeIPAddress').returns('0.0.0.0');
+    anonymizeIpSpy = sinon.spy(CallDiagnosticUtils, 'anonymizeIPAddress');
   });
 
   afterEach(() => {
-    Utils.anonymizeIPAddress.restore();
+    anonymizeIpSpy.restore();
   });
 
   const checkRequest = (expectedParams) => {
@@ -200,7 +201,9 @@ describe('plugin-meetings', () => {
         assert.equal(requestParams.body.device.countryCode, 'US');
         assert.equal(requestParams.body.permissionToken, 'permission-token');
         assert.equal(requestParams.body.device.regionCode, 'WEST-COAST');
-        assert.equal(requestParams.body.device.localIp, '127.0.0.0');
+        assert.include(requestParams.body.device.localIp, '127.0.0');
+
+        assert.calledOnceWithExactly(anonymizeIpSpy, '127.0.0.1');
       });
 
       describe('clientAddress geoHintInfo undefined', () => {
