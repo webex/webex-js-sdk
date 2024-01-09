@@ -7,6 +7,7 @@ import {ConnectionState} from '@webex/internal-media-core';
 import {StatsAnalyzer, EVENTS} from '../../../../src/statsAnalyzer';
 import NetworkQualityMonitor from '../../../../src/networkQualityMonitor';
 import testUtils from '../../../utils/testUtils';
+import {MEDIA_DEVICES, _UNKNOWN_} from '@webex/plugin-meetings/src/constants';
 
 const {assert} = chai;
 
@@ -119,6 +120,7 @@ describe('plugin-meetings', () => {
           audio: {
             senders: [
               {
+                localTrackLabel: 'fake-microphone',
                 report: [
                   {
                     type: 'outbound-rtp',
@@ -173,6 +175,7 @@ describe('plugin-meetings', () => {
           video: {
             senders: [
               {
+                localTrackLabel: 'fake-camera',
                 report: [
                   {
                     type: 'outbound-rtp',
@@ -412,6 +415,27 @@ describe('plugin-meetings', () => {
 
         assert.strictEqual(mqeData.audioTransmit[0].common.transportType, 'TLS');
         assert.strictEqual(mqeData.videoReceive[0].common.transportType, 'TLS');
+      });
+
+      it('emits the correct peripherals in MEDIA_QUALITY events', async () => {
+        await startStatsAnalyzer({expected: {receiveVideo: true}});
+
+        await progressTime();
+
+        assert.strictEqual(mqeData.intervalMetadata.peripherals.find((val) => val.name === MEDIA_DEVICES.MICROPHONE).information, 'fake-microphone');
+        assert.strictEqual(mqeData.intervalMetadata.peripherals.find((val) => val.name === MEDIA_DEVICES.CAMERA).information, 'fake-camera');
+      });
+
+      it('emits the correct peripherals in MEDIA_QUALITY events when localTrackLabel is undefined', async () => {
+        fakeStats.audio.senders[0].localTrackLabel = undefined;
+        fakeStats.video.senders[0].localTrackLabel = undefined;
+
+        await startStatsAnalyzer({expected: {receiveVideo: true}});
+
+        await progressTime();
+
+        assert.strictEqual(mqeData.intervalMetadata.peripherals.find((val) => val.name === MEDIA_DEVICES.MICROPHONE).information, _UNKNOWN_);
+        assert.strictEqual(mqeData.intervalMetadata.peripherals.find((val) => val.name === MEDIA_DEVICES.CAMERA).information, _UNKNOWN_);
       });
     });
   });
