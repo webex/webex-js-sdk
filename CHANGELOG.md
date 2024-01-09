@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.302](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.301...v3.0.0-beta.302) (2024-01-09)
+
+
+### Features
+
+* **http-core:** capitalize Authorization header ([#3300](https://github.com/webex/webex-js-sdk/issues/3300)) ([16737c1](https://github.com/webex/webex-js-sdk/commit/16737c1e693b8f0f42311f55c403adef6b13efde))
+
 ## [3.0.0-beta.301](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.300...v3.0.0-beta.301) (2024-01-08)
 
 
