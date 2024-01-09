@@ -145,7 +145,7 @@ export default function _request(options) {
 
         const token = btoa(`${user}:${pass}`);
 
-        params.headers.authorization = `Basic ${token}`;
+        params.headers.Authorization = `Basic ${token}`;
       }
     }
   }
