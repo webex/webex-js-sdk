@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.304](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.303...v3.0.0-beta.304) (2024-01-09)
+
+
+### Bug Fixes
+
+* **meetings:** ensure non-undefined value for peripheral information property ([#3281](https://github.com/webex/webex-js-sdk/issues/3281)) ([09ace65](https://github.com/webex/webex-js-sdk/commit/09ace65ec83f86c3c079de7ed94de9f646b8e900))
+
 ## [3.0.0-beta.303](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.302...v3.0.0-beta.303) (2024-01-09)
 
 
