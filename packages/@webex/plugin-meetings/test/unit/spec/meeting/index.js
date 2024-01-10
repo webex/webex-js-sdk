@@ -1967,6 +1967,7 @@ describe('plugin-meetings', () => {
               locus_id: meeting.locusUrl.split('/').pop(),
               connectionType: 'udp',
               isMultistream: false,
+              retriedWithTurnServer: true,
             }
           ]);
           meeting.roap.doTurnDiscovery
@@ -2012,6 +2013,7 @@ describe('plugin-meetings', () => {
               locus_id: meeting.locusUrl.split('/').pop(),
               connectionType: 'udp',
               isMultistream: false,
+              retriedWithTurnServer: false,
               someReachabilityMetric1: 'some value1',
               someReachabilityMetric2: 'some value2',
             }
@@ -2024,6 +2026,58 @@ describe('plugin-meetings', () => {
               meetingId: meeting.id,
             },
           });
+        });
+
+        it('should not send TURN_DISCOVERY_LATENCY metric if doTurnDiscovery fails', async () => {
+          let errorThrown = undefined;
+
+          // doTurnDiscovery returns undefined if something fails
+          meeting.roap.doTurnDiscovery = sinon.stub().returns({
+            turnServerInfo: undefined,
+            turnDiscoverySkippedReason: undefined,
+          });
+          meeting.meetingState = 'ACTIVE';
+          meeting.mediaProperties.waitForMediaConnectionConnected.rejects(new Error('fake error'));
+
+          const forceRtcMetricsSend = sinon.stub().resolves();
+          const closeMediaConnectionStub = sinon.stub();
+          Media.createMediaConnection = sinon.stub().returns({
+            close: closeMediaConnectionStub,
+            forceRtcMetricsSend,
+            getConnectionState: sinon.stub().returns(ConnectionState.Connected),
+            initiateOffer: sinon.stub().resolves({}),
+            on: sinon.stub(),
+          });
+
+          await meeting
+            .addMedia({
+              mediaSettings: {},
+            })
+            .catch((err) => {
+              errorThrown = err;
+              assert.instanceOf(err, AddMediaFailed);
+            });
+
+          // Check that the only metric sent is ADD_MEDIA_FAILURE
+          assert.calledOnceWithExactly(Metrics.sendBehavioralMetric,        
+            BEHAVIORAL_METRICS.ADD_MEDIA_FAILURE,
+            {
+              correlation_id: meeting.correlationId,
+              locus_id: meeting.locusUrl.split('/').pop(),
+              reason: errorThrown.message,
+              stack: errorThrown.stack,
+              code: errorThrown.code,
+              turnDiscoverySkippedReason: undefined,
+              turnServerUsed: true,
+              retriedWithTurnServer: false,
+              isMultistream: false,
+              signalingState: 'unknown',
+              connectionState: 'unknown',
+              iceConnectionState: 'unknown',
+            }
+          );
+
+          assert.isOk(errorThrown);
         });
 
         describe('handles StatsAnalyzer events', () => {
@@ -5890,6 +5944,40 @@ describe('plugin-meetings', () => {
               reconnect: false,
             });
             assert.calledWith(meeting.roapMessageReceived, fakeAnswer);
+          });
+
+          it('handles OFFER message correctly when request fails', async () => {
+            const clock = sinon.useFakeTimers();
+            sinon.spy(clock, "clearTimeout");
+            meeting.deferSDPAnswer = {reject: sinon.stub()};
+            meeting.sdpResponseTimer = '1234';
+            sendRoapMediaRequestStub.rejects();
+            sinon.stub(meeting, 'roapMessageReceived');
+
+            eventListeners[Event.ROAP_MESSAGE_TO_SEND]({
+              roapMessage: {
+                messageType: 'OFFER',
+                seq: 1,
+                sdp: 'fake sdp',
+                tieBreaker: 12345,
+              },
+            });
+
+            await testUtils.flushPromises();
+
+            assert.calledOnce(sendRoapMediaRequestStub);
+            assert.calledWith(sendRoapMediaRequestStub, {
+              seq: 1,
+              sdp: 'fake sdp',
+              tieBreaker: 12345,
+              meeting,
+              reconnect: false,
+            });
+            assert.notCalled(meeting.roapMessageReceived);
+            assert.calledOnce(meeting.deferSDPAnswer.reject);
+            assert.calledOnce(clock.clearTimeout);
+            assert.calledWith(clock.clearTimeout, '1234');
+            assert.equal(meeting.sdpResponseTimer, undefined);
           });
 
           it('handles ANSWER message correctly', () => {
