@@ -82,6 +82,13 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
   // @ts-ignore
   private callDiagnosticEventsBatcher: CallDiagnosticEventsBatcher;
   private logger: any; // to avoid adding @ts-ignore everywhere
+  // the default validator before piping an event to the batcher
+  // this function can be overridden by the user
+  public validator: (options: {
+    type: 'mqe' | 'ce';
+    event: Event;
+  }) => Promise<{event: Event; valid: boolean}> = (options: {type: 'mqe' | 'ce'; event: Event}) =>
+    Promise.resolve({event: options?.event, valid: true});
 
   /**
    * Constructor
@@ -246,8 +253,10 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
         meeting.locusInfo.fullState && meeting.locusInfo.fullState.lastActive;
     }
 
-    if (meeting?.meetingInfo?.confID) {
-      identifiers.webexConferenceIdStr = meeting.meetingInfo?.confID;
+    if (meeting?.meetingInfo?.confIdStr || meeting?.meetingInfo?.confID) {
+      identifiers.webexConferenceIdStr = `${
+        meeting.meetingInfo?.confIdStr || meeting.meetingInfo?.confID
+      }`;
     }
 
     if (meeting?.meetingInfo?.meetingId) {
@@ -260,7 +269,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     }
 
     if (!identifiers?.webexConferenceIdStr && webexConferenceIdStr) {
-      identifiers.webexConferenceIdStr = webexConferenceIdStr;
+      identifiers.webexConferenceIdStr = `${webexConferenceIdStr}`;
     }
 
     if (!identifiers?.globalMeetingId && globalMeetingId) {
@@ -389,6 +398,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
 
       // append media quality event data to the call diagnostic event
       const diagnosticEvent = this.prepareDiagnosticEvent(clientEventObject, options);
+      this.validator({type: 'mqe', event: diagnosticEvent});
       this.submitToCallDiagnostics(diagnosticEvent);
     } else {
       throw new Error(
@@ -402,16 +412,19 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
    * @param arg - get error arg
    * @param arg.clientErrorCode
    * @param arg.serviceErrorCode
+   * @param arg.payloadOverrides
    * @returns
    */
   public getErrorPayloadForClientErrorCode({
     clientErrorCode,
     serviceErrorCode,
     serviceErrorName,
+    payloadOverrides,
   }: {
     clientErrorCode: number;
     serviceErrorCode: any;
     serviceErrorName?: any;
+    payloadOverrides?: any;
   }): ClientEventError {
     let error: ClientEventError;
 
@@ -424,7 +437,8 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
           {errorCode: clientErrorCode},
           serviceErrorName ? {errorData: {errorName: serviceErrorName}} : {},
           {serviceErrorCode},
-          partialParsedError
+          partialParsedError,
+          payloadOverrides || {}
         );
 
         return error;
@@ -481,6 +495,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       const payload = this.getErrorPayloadForClientErrorCode({
         clientErrorCode: NETWORK_ERROR,
         serviceErrorCode,
+        payloadOverrides: rawError.payloadOverrides,
       });
       payload.errorDescription = rawError.message;
 
@@ -491,6 +506,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       const payload = this.getErrorPayloadForClientErrorCode({
         clientErrorCode: AUTHENTICATION_FAILED_CODE,
         serviceErrorCode,
+        payloadOverrides: rawError.payloadOverrides,
       });
       payload.errorDescription = rawError.message;
 
@@ -721,6 +737,8 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       return this.submitToCallDiagnosticsPreLogin(diagnosticEvent, options?.preLoginId);
     }
 
+    this.validator({type: 'ce', event: diagnosticEvent});
+
     return this.submitToCallDiagnostics(diagnosticEvent);
   }
 
@@ -815,6 +833,8 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
         metrics: [diagnosticEvent],
       },
       headers: {},
+      // @ts-ignore
+      waitForServiceTimeout: this.webex.internal.metrics.config.waitForServiceTimeout,
     };
 
     if (options.preLoginId) {

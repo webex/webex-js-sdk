@@ -77,6 +77,7 @@ export class StatsAnalyzer extends EventsScope {
   statsInterval: NodeJS.Timeout;
   statsResults: any;
   statsStarted: any;
+  successfulCandidatePair: any;
   receiveSlotCallback: ReceiveSlotCallback;
 
   /**
@@ -105,6 +106,7 @@ export class StatsAnalyzer extends EventsScope {
     this.lastMqaDataSent = {};
     this.lastEmittedStartStopEvent = {};
     this.receiveSlotCallback = receiveSlotCallback;
+    this.successfulCandidatePair = {};
   }
 
   /**
@@ -196,18 +198,16 @@ export class StatsAnalyzer extends EventsScope {
     newMqa.intervalMetadata.peerReflexiveIP = this.statsResults.connectionType.local.ipAddress;
 
     // Adding peripheral information
-    newMqa.intervalMetadata.peripherals = [];
-
     newMqa.intervalMetadata.peripherals.push({information: _UNKNOWN_, name: MEDIA_DEVICES.SPEAKER});
     if (this.statsResults['audio-send']) {
       newMqa.intervalMetadata.peripherals.push({
-        information: this.statsResults['audio-send']?.trackLabel,
+        information: this.statsResults['audio-send'].trackLabel || _UNKNOWN_,
         name: MEDIA_DEVICES.MICROPHONE,
       });
     }
     if (this.statsResults['video-send']) {
       newMqa.intervalMetadata.peripherals.push({
-        information: this.statsResults['video-send']?.trackLabel,
+        information: this.statsResults['video-send'].trackLabel || _UNKNOWN_,
         name: MEDIA_DEVICES.CAMERA,
       });
     }
@@ -392,6 +392,13 @@ export class StatsAnalyzer extends EventsScope {
   filterAndParseGetStatsResults(statsItem: any, type: string, isSender: boolean) {
     const {types} = DEFAULT_GET_STATS_FILTER;
 
+    // get the successful candidate pair before parsing stats.
+    statsItem.report.forEach((report) => {
+      if (report.type === 'candidate-pair' && report.state === 'succeeded') {
+        this.successfulCandidatePair = report;
+      }
+    });
+
     statsItem.report.forEach((result) => {
       if (types.includes(result.type)) {
         this.parseGetStatsResult(result, type, isSender);
@@ -402,6 +409,8 @@ export class StatsAnalyzer extends EventsScope {
       this.statsResults[type].direction = statsItem.currentDirection;
       this.statsResults[type].trackLabel = statsItem.localTrackLabel;
       this.statsResults[type].csi = statsItem.csi;
+      // reset the successful candidate pair.
+      this.successfulCandidatePair = {};
     }
   }
 
@@ -1092,6 +1101,11 @@ export class StatsAnalyzer extends EventsScope {
    */
   parseCandidate = (result: any, type: any, isSender: boolean, isRemote: boolean) => {
     if (!result || !result.id) {
+      return;
+    }
+
+    // We only care about the successful local candidate
+    if (this.successfulCandidatePair?.localCandidateId !== result.id) {
       return;
     }
 
