@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.306](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.305...v3.0.0-beta.306) (2024-01-10)
+
+
+### Bug Fixes
+
+* **internal-plugin-metrics:** add site name identifier to events ([#3302](https://github.com/webex/webex-js-sdk/issues/3302)) ([212c9c6](https://github.com/webex/webex-js-sdk/commit/212c9c6f6b67e6214f8dbead008ac8c494254fde))
+
 ## [3.0.0-beta.305](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.304...v3.0.0-beta.305) (2024-01-10)
 
 
