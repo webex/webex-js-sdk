@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.305](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.304...v3.0.0-beta.305) (2024-01-10)
+
+
+### Bug Fixes
+
+* increased timeout for SDP answer ([#3301](https://github.com/webex/webex-js-sdk/issues/3301)) ([d50e201](https://github.com/webex/webex-js-sdk/commit/d50e2013b92dee99cbebd413a8e74bf3f4e6ed6e))
+
 ## [3.0.0-beta.304](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.303...v3.0.0-beta.304) (2024-01-09)
 
 
