@@ -1102,7 +1102,7 @@ async function loadCamera(constraints) {
 async function handleVbg() {
   let effect;
   try {
-    effect = await localMedia.cameraStream.getEffectsByKind('virtual-background-effect')[0];
+    effect = await localMedia.cameraStream.getEffectByKind('virtual-background-effect');
 
     if (!effect?.isEnabled) {
       console.log('MeetingControls#handleVbg() :: applying virtual background to local camera stream');
@@ -1171,7 +1171,7 @@ async function loadMicrophone(constraints) {
 async function handleBNR() {
   let effect;
   try {
-    effect = await localMedia.microphoneStream.getEffectsByKind('noise-reduction-effect')[0];
+    effect = await localMedia.microphoneStream.getEffectByKind('noise-reduction-effect');
     if (!effect?.isEnabled) {
       console.log('MeetingControls#handleBNR() :: applying BNR to local microphone stream');
 
