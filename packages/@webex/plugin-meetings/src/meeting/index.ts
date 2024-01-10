@@ -4505,7 +4505,11 @@ export default class Meeting extends StatelessWebexPlugin {
     // @ts-ignore
     this.webex.internal.newMetrics.submitClientEvent({
       name: 'client.call.initiated',
-      payload: {trigger: 'user-interaction', isRoapCallEnabled: true},
+      payload: {
+        trigger: 'user-interaction',
+        isRoapCallEnabled: true,
+        pstnAudioType: options?.pstnAudioType,
+      },
       options: {meetingId: this.id},
     });
 
