@@ -466,6 +466,7 @@ describe('internal-plugin-metrics', () => {
         const submitToCallDiagnosticsSpy = sinon.spy(cd, 'submitToCallDiagnostics');
         const generateClientEventErrorPayloadSpy = sinon.spy(cd, 'generateClientEventErrorPayload');
         const getIdentifiersSpy = sinon.spy(cd, 'getIdentifiers');
+        const getSubServiceTypeSpy = sinon.spy(cd, 'getSubServiceType');
         sinon.stub(cd, 'getOrigin').returns({origin: 'fake-origin'});
         const validatorSpy = sinon.spy(cd, 'validator');
         const options = {
@@ -507,6 +508,7 @@ describe('internal-plugin-metrics', () => {
             name: 'client.alert.displayed',
             userType: 'host',
             isConvergedArchitectureEnabled: undefined,
+            webexSubServiceType: undefined,
           },
           options
         );
@@ -531,6 +533,7 @@ describe('internal-plugin-metrics', () => {
             name: 'client.alert.displayed',
             userType: 'host',
             isConvergedArchitectureEnabled: undefined,
+            webexSubServiceType: undefined,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -564,6 +567,7 @@ describe('internal-plugin-metrics', () => {
             name: 'client.alert.displayed',
             userType: 'host',
             isConvergedArchitectureEnabled: undefined,
+            webexSubServiceType: undefined,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -838,6 +842,7 @@ describe('internal-plugin-metrics', () => {
             name: 'client.alert.displayed',
             userType: 'host',
             isConvergedArchitectureEnabled: undefined,
+            webexSubServiceType: undefined,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -937,6 +942,7 @@ describe('internal-plugin-metrics', () => {
             name: 'client.alert.displayed',
             userType: 'host',
             isConvergedArchitectureEnabled: undefined,
+            webexSubServiceType: undefined,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -1230,6 +1236,7 @@ describe('internal-plugin-metrics', () => {
             name: 'client.alert.displayed',
             userType: 'host',
             isConvergedArchitectureEnabled: undefined,
+            webexSubServiceType: undefined,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -1775,6 +1782,41 @@ describe('internal-plugin-metrics', () => {
       });
     });
 
+    describe('#getSubServiceType', () => {
+      it('returns subServicetype as PMR when PMR meeting', () => {
+       fakeMeeting.meetingInfo ={
+          webexScheduled: false,
+          pmr: true,
+          enableEvent: false,
+        }
+        assert.deepEqual(cd.getSubServiceType(fakeMeeting), 'PMR');
+      });
+
+      it('returns subServicetype as ScheduledMeeting when regular meeting', () => {
+        fakeMeeting.meetingInfo ={
+           webexScheduled: true,
+           pmr: false,
+           enableEvent: false,
+         }
+         assert.deepEqual(cd.getSubServiceType(fakeMeeting), 'ScheduledMeeting');
+       });
+
+       it('returns subServicetype as Webinar when meeting is Webinar', () => {
+        fakeMeeting.meetingInfo ={
+           webexScheduled: true,
+           pmr: false,
+           enableEvent: true,
+         }
+         assert.deepEqual(cd.getSubServiceType(fakeMeeting), 'Webinar');
+       });
+
+       it('returns subServicetype as undefined when correct parameters are not found', () => {
+        fakeMeeting.meetingInfo ={}
+         assert.deepEqual(cd.getSubServiceType(fakeMeeting), undefined);
+       });
+      
+    });
+
     describe('#getIsConvergedArchitectureEnabled', () => {
       it('returns true if converged architecture is enabled', () => {
         fakeMeeting.meetingInfo = {enableConvergedArchitecture: true};
@@ -1831,6 +1873,7 @@ describe('internal-plugin-metrics', () => {
                       trigger: 'user-interaction',
                       userType: 'host',
                       isConvergedArchitectureEnabled: undefined,
+                      webexSubServiceType: undefined,
                     },
                     eventId: 'my-fake-id',
                     origin: {
