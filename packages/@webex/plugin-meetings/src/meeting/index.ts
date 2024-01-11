@@ -528,7 +528,7 @@ export default class Meeting extends StatelessWebexPlugin {
   meetingInfoFailureCode?: number;
   meetingInfoExtraParams?: Record<string, any>;
   networkQualityMonitor: NetworkQualityMonitor;
-  networkStatus: string;
+  networkStatus?: NETWORK_STATUS;
   passwordStatus: string;
   queuedMediaUpdates: any[];
   recording: any;
@@ -1101,7 +1101,7 @@ export default class Meeting extends StatelessWebexPlugin {
      * @public
      * @memberof Meeting
      */
-    this.networkStatus = null;
+    this.networkStatus = undefined;
     /**
      * Passing only info as we send basic info for meeting added event
      * @instance
@@ -1927,12 +1927,12 @@ export default class Meeting extends StatelessWebexPlugin {
 
   /**
    * sets the network status on meeting object
-   * @param {String} networkStatus
+   * @param {NETWORK_STATUS} networkStatus
    * @private
    * @returns {undefined}
    * @memberof Meeting
    */
-  private setNetworkStatus(networkStatus: string) {
+  private setNetworkStatus(networkStatus?: NETWORK_STATUS) {
     if (networkStatus === NETWORK_STATUS.DISCONNECTED) {
       Trigger.trigger(
         this,
@@ -3907,6 +3907,7 @@ export default class Meeting extends StatelessWebexPlugin {
       this.receiveSlotManager.reset();
       this.mediaProperties.webrtcMediaConnection.close();
       this.sendSlotManager.reset();
+      this.setNetworkStatus(undefined);
     }
 
     this.audio = null;
@@ -5445,6 +5446,10 @@ export default class Meeting extends StatelessWebexPlugin {
           // @ts-ignore
           this.webex.internal.newMetrics.submitClientEvent({
             name: 'client.ice.end',
+            payload: {
+              canProceed: true,
+              icePhase: !this.networkStatus ? 'JOIN_MEETING_FINAL' : 'IN_MEETING',
+            },
             options: {
               meetingId: this.id,
             },
