@@ -5,7 +5,14 @@ import {isEmpty} from 'lodash';
 // @ts-ignore
 import {StatelessWebexPlugin} from '@webex/webex-core';
 
-import {MEETINGS, EVENT_TRIGGERS, FLOOR_ACTION, CONTENT, WHITEBOARD} from '../constants';
+import {
+  MEETINGS,
+  EVENT_TRIGGERS,
+  FLOOR_ACTION,
+  CONTENT,
+  WHITEBOARD,
+  ASSIGN_ROLES_ERROR_CODES,
+} from '../constants';
 import Trigger from '../common/events/trigger-proxy';
 import Member from '../member';
 import LoggerProxy from '../common/logs/logger-proxy';
@@ -15,6 +22,12 @@ import MembersCollection from './collection';
 import MembersRequest from './request';
 import MembersUtil from './util';
 import {ServerRoleShape} from './types';
+import {
+  ReclaimHostEmptyWrongKeyError,
+  ReclaimHostIsHostAlreadyError,
+  ReclaimHostNotAllowedError,
+  ReclaimHostNotSupportedError,
+} from '../common/errors/reclaim-host-role-error';
 
 /**
  * Members Update Event
@@ -710,7 +723,21 @@ export default class Members extends StatelessWebexPlugin {
     }
     const options = MembersUtil.generateRoleAssignmentMemberOptions(memberId, roles, this.locusUrl);
 
-    return this.membersRequest.assignRolesMember(options);
+    return this.membersRequest.assignRolesMember(options).catch((error: any) => {
+      const errorCode = error.body?.errorCode;
+      switch (errorCode) {
+        case ASSIGN_ROLES_ERROR_CODES.ReclaimHostNotSupportedErrorCode:
+          return Promise.reject(new ReclaimHostNotSupportedError());
+        case ASSIGN_ROLES_ERROR_CODES.ReclaimHostNotAllowedErrorCode:
+          return Promise.reject(new ReclaimHostNotAllowedError());
+        case ASSIGN_ROLES_ERROR_CODES.ReclaimHostEmptyWrongKeyErrorCode:
+          return Promise.reject(new ReclaimHostEmptyWrongKeyError());
+        case ASSIGN_ROLES_ERROR_CODES.ReclaimHostIsHostAlreadyErrorCode:
+          return Promise.reject(new ReclaimHostIsHostAlreadyError());
+        default:
+          return Promise.reject(error);
+      }
+    });
   }
 
   /**
