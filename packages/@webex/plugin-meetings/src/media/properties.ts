@@ -8,7 +8,7 @@ import {
   RemoteStream,
 } from '@webex/media-helpers';
 
-import {MEETINGS, PC_BAIL_TIMEOUT, QUALITY_LEVELS} from '../constants';
+import {MEETINGS, ICE_AND_DTLS_CONNECTION_TIMEOUT, QUALITY_LEVELS} from '../constants';
 import LoggerProxy from '../common/logs/logger-proxy';
 
 export type MediaDirection = {
@@ -200,7 +200,7 @@ export default class MediaProperties {
       timer = setTimeout(() => {
         this.webrtcMediaConnection.off(Event.CONNECTION_STATE_CHANGED, connectionStateListener);
         reject();
-      }, PC_BAIL_TIMEOUT);
+      }, ICE_AND_DTLS_CONNECTION_TIMEOUT);
 
       this.webrtcMediaConnection.on(Event.CONNECTION_STATE_CHANGED, connectionStateListener);
     });

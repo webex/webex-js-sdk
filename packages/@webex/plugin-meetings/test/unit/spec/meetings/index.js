@@ -236,34 +236,6 @@ describe('plugin-meetings', () => {
       });
     });
 
-    describe('#_toggleTurnDiscovery', () => {
-      it('should have toggleAdhocMeetings', () => {
-        assert.equal(typeof webex.meetings._toggleTurnDiscovery, 'function');
-      });
-
-      describe('success', () => {
-        it('should update meetings to do TURN discovery', () => {
-          webex.meetings._toggleTurnDiscovery(true);
-          assert.equal(webex.meetings.config.experimental.enableTurnDiscovery, true);
-
-          webex.meetings._toggleTurnDiscovery(false);
-          assert.equal(webex.meetings.config.experimental.enableTurnDiscovery, false);
-        });
-      });
-
-      describe('failure', () => {
-        it('should not accept non boolean input', () => {
-          const currentEnableTurnDiscovery = webex.meetings.config.experimental.enableTurnDiscovery;
-
-          webex.meetings._toggleTurnDiscovery('test');
-          assert.equal(
-            webex.meetings.config.experimental.enableAdhocMeetings,
-            currentEnableTurnDiscovery
-          );
-        });
-      });
-    });
-
     describe('Public API Contracts', () => {
       describe('#register', () => {
         it('emits an event and resolves when register succeeds', async () => {
@@ -2157,7 +2129,7 @@ describe('plugin-meetings', () => {
         meeting.locusId = 'locus id';
         meeting.correlationId = 'correlation id';
         meeting.locusInfo = {
-          fullState: { lastActive: 'last active'},
+          fullState: { lastActive: 'last active', sessionId: 'locus session id'},
           info: { webExMeetingId: 'meeting id'}
         }
       });
@@ -2178,6 +2150,8 @@ describe('plugin-meetings', () => {
           feedbackId: 'correlation id',
           locusId: 'locus id',
           meetingId: 'meeting id',
+          autoupload: true,
+          locussessionid: 'locus session id',
         });
       });
 
@@ -2195,6 +2169,8 @@ describe('plugin-meetings', () => {
           locusId: 'locus id',
           meetingId: 'meeting id',
           reason: 'fake error',
+          autoupload: true,
+          locussessionid: 'locus session id',
         }));
       });
     });

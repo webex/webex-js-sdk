@@ -682,21 +682,6 @@ export default class Meetings extends WebexPlugin {
   }
 
   /**
-   * API to enable or disable TURN discovery
-   * @param {Boolean} enable
-   * @private
-   * @memberof Meetings
-   * @returns {undefined}
-   */
-  private _toggleTurnDiscovery(enable: boolean) {
-    if (typeof enable !== 'boolean') {
-      return;
-    }
-    // @ts-ignore
-    this.config.experimental.enableTurnDiscovery = enable;
-  }
-
-  /**
    * API to toggle starting adhoc meeting
    * @param {Boolean} changeState
    * @private
@@ -870,8 +855,10 @@ export default class Meetings extends WebexPlugin {
    */
   uploadLogs(
     options: {
+      autoupload?: boolean;
       callStart?: string;
       feedbackId?: string;
+      locussessionid?: string;
       locusId?: string;
       correlationId?: string;
       meetingId?: string;
@@ -1120,10 +1107,12 @@ export default class Meetings extends WebexPlugin {
                   if (this.config.autoUploadLogs) {
                     this.uploadLogs({
                       callStart: createdMeeting.locusInfo?.fullState?.lastActive,
+                      locussessionid: createdMeeting.locusInfo?.fullState?.sessionId,
                       correlationId: createdMeeting.correlationId,
                       feedbackId: createdMeeting.correlationId,
                       locusId: createdMeeting.locusId,
                       meetingId: createdMeeting.locusInfo?.info?.webExMeetingId,
+                      autoupload: true,
                     }).then(() => this.destroy(createdMeeting, payload.reason));
                   } else {
                     this.destroy(createdMeeting, payload.reason);
@@ -1135,10 +1124,12 @@ export default class Meetings extends WebexPlugin {
                   if (this.config.autoUploadLogs) {
                     this.uploadLogs({
                       callStart: meetingInstance?.locusInfo?.fullState?.lastActive,
+                      locussessionid: meetingInstance?.locusInfo?.fullState?.sessionId,
                       correlationId: meetingInstance.correlationId,
                       feedbackId: meetingInstance.correlationId,
                       locusId: meetingInstance.locusId,
                       meetingId: meetingInstance.locusInfo?.info?.webExMeetingId,
+                      autoupload: true,
                     });
                   }
                 });

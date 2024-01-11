@@ -11,6 +11,7 @@ import MemberUtil from './util';
  */
 export default class Member {
   associatedUser: any;
+  canReclaimHost: boolean;
   id: any;
   isAudioMuted: any;
   isContentSharing: any;
@@ -61,6 +62,13 @@ export default class Member {
         }
       | any = {}
   ) {
+    /**
+     * @instance
+     * @type {Boolean}
+     * @public
+     * @memberof Member
+     */
+    this.canReclaimHost = false;
     /**
      * The server participant object
      * @instance
@@ -278,6 +286,7 @@ export default class Member {
   private processParticipant(participant: object) {
     this.participant = participant;
     if (participant) {
+      this.canReclaimHost = MemberUtil.canReclaimHost(participant);
       this.id = MemberUtil.extractId(participant);
       this.name = MemberUtil.extractName(participant);
       this.isAudioMuted = MemberUtil.isAudioMuted(participant);

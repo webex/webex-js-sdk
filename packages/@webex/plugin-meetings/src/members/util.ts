@@ -202,13 +202,27 @@ const MembersUtil = {
   },
 
   /**
+   * @param {ServerRoleShape} role
+   * @returns {ServerRoleShape} the role shape to be added to the body
+   */
+  getAddedRoleShape: (role: ServerRoleShape): ServerRoleShape => {
+    const roleShape: ServerRoleShape = {type: role.type, hasRole: role.hasRole};
+
+    if (role.hostKey) {
+      roleShape.hostKey = role.hostKey;
+    }
+
+    return roleShape;
+  },
+
+  /**
    * @param {RoleAssignmentOptions} options
    * @returns {RoleAssignmentRequest} the request parameters (method, uri, body) needed to make a addMember request
    */
   getRoleAssignmentMemberRequestParams: (options: RoleAssignmentOptions): RoleAssignmentRequest => {
     const body = {role: {roles: []}};
     options.roles.forEach((role) => {
-      body.role.roles.push({type: role.type, hasRole: role.hasRole});
+      body.role.roles.push(MembersUtil.getAddedRoleShape(role));
     });
 
     const uri = `${options.locusUrl}/${PARTICIPANT}/${options.memberId}/${CONTROLS}`;
