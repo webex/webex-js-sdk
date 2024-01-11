@@ -123,6 +123,7 @@ const Support = WebexPlugin.extend({
   _constructFileMetadata(metadata) {
     const metadataArray = [
       'locusId',
+      'appVersion',
       'callStart',
       'feedbackId',
       'correlationId',
@@ -130,6 +131,8 @@ const Support = WebexPlugin.extend({
       'surveySessionId',
       'productAreaTag',
       'issueTypeTag',
+      'locussessionid',
+      'autoupload',
     ]
       .map((key) => {
         if (metadata[key]) {
@@ -147,6 +150,13 @@ const Support = WebexPlugin.extend({
       metadataArray.push({
         key: 'trackingId',
         value: this.webex.sessionId,
+      });
+    }
+
+    if (this.webex.internal.support.config.appVersion) {
+      metadataArray.push({
+        key: 'appVersion',
+        value: this.webex.internal.support.config.appVersion,
       });
     }
 

@@ -285,16 +285,9 @@ async function initCalling(e) {
 
       if (window.voicemail === undefined) {
         voicemail = window.voicemail = calling.voicemailClient;
-        const initResponse = await voicemail.init();
-
-        console.log(`Init response `, initResponse);
       }
 
       fetchLines();
-      fetchDNDSetting();
-      fetchCallForwardSetting();
-      fetchVoicemailSetting();
-      fetchCallWaitingSetting();
     });
   });
 
@@ -302,6 +295,13 @@ async function initCalling(e) {
 }
 
 credentialsFormElm.addEventListener('submit', initCalling);
+
+function getSettings() {
+  fetchCallForwardSetting();
+  fetchVoicemailSetting();
+  fetchCallWaitingSetting();
+  fetchDNDSetting();
+}
 
 function toggleDisplay(elementId, status) {
   const element = document.getElementById(elementId);
@@ -486,6 +486,28 @@ function populateSourceDevices(mediaDevice) {
   option.value = mediaDevice.ID;
   option.text = mediaDevice.label;
   select && select.appendChild(option);
+}
+
+async function changeInputStream() {
+  const selectedDevice = audioInputDevicesElem.options[audioInputDevicesElem.selectedIndex].value;
+
+  const constraints = {
+    audio: true,
+    deviceId: selectedDevice ? { exact: selectedDevice } : undefined
+  };
+  const newStream  = await Calling.createMicrophoneStream(constraints);
+
+  call.updateMedia(newStream);
+}
+
+async function changeOutputStream() {
+  const selectedDevice = audioOutputDevicesElem.options[audioOutputDevicesElem.selectedIndex].value;
+  mediaStreamsRemoteAudio.setSinkId(selectedDevice);
+}
+
+async function changeStream() {
+  changeInputStream();
+  changeOutputStream();
 }
 
 /**
@@ -860,6 +882,7 @@ async function createCallHistory() {
  * Function to use Voice Mail API's.
  */
 async function createVoiceMail() {
+  await voicemail.init();
   const backendConnector = calling.webex.internal.device.callingBehavior;
 
   if (backendConnector === 'NATIVE_SIP_CALL_TO_UCM') {

@@ -86,7 +86,6 @@ export default {
       enableMediaNegotiatedEvent: false,
       enableUnifiedMeetings: true,
       enableAdhocMeetings: true,
-      enableTurnDiscovery: true,
     },
     degradationPreferences: {
       maxMacroblocksLimit: 8192,

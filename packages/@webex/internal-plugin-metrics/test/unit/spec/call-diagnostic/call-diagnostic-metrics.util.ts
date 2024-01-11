@@ -1,10 +1,18 @@
 import {assert} from '@webex/test-helper-chai';
 import sinon from 'sinon';
+import {WebexHttpError} from '@webex/webex-core';
 
 import * as CallDiagnosticUtils from '../../../../src/call-diagnostic/call-diagnostic-metrics.util';
 import CallDiagnosticLatencies from '../../../../src/call-diagnostic/call-diagnostic-metrics-latencies';
+import {
+  DTLS_HANDSHAKE_FAILED_CLIENT_CODE,
+  ICE_FAILED_WITHOUT_TURN_TLS_CLIENT_CODE,
+  ICE_FAILED_WITH_TURN_TLS_CLIENT_CODE,
+  ICE_FAILURE_CLIENT_CODE,
+  MISSING_ROAP_ANSWER_CLIENT_CODE,
+} from '../../../../src/call-diagnostic/config';
 
-const  {
+const {
   clearEmptyKeysRecursively,
   extractVersionMetadata,
   getBuildType,
@@ -13,6 +21,9 @@ const  {
   isMeetingInfoServiceError,
   prepareDiagnosticMetricItem,
   setMetricTimings,
+  isNetworkError,
+  isUnauthorizedError,
+  generateClientErrorCodeForIceFailure
 } = CallDiagnosticUtils;
 
 describe('internal-plugin-metrics', () => {
@@ -98,6 +109,65 @@ describe('internal-plugin-metrics', () => {
       it(`for rawError ${rawError} returns the correct result`, () => {
         //@ts-ignore
         assert.deepEqual(isMeetingInfoServiceError(rawError), expected);
+      });
+    });
+  });
+
+  describe('isNetworkError', () => {
+    [
+      [{body: {data: {meetingInfo: 'something'}}}, false],
+      [
+        new WebexHttpError.NetworkOrCORSError({
+          url: 'https://example.com',
+          statusCode: 0,
+          body: {},
+          options: {headers: {}, url: 'https://example.com'},
+        }),
+        true,
+      ],
+      [
+        new WebexHttpError.Unauthorized({
+          url: 'https://example.com',
+          statusCode: 0,
+          body: {},
+          options: {headers: {}, url: 'https://example.com'},
+        }),
+        false,
+      ],
+    ].forEach(([rawError, expected]) => {
+      it(`for rawError ${rawError} returns the correct result`, () => {
+        //@ts-ignore
+        assert.deepEqual(isNetworkError(rawError), expected);
+      });
+    });
+  });
+
+  describe('isUnauthorizedError', () => {
+    [
+      [
+        'unauthorized',
+        new WebexHttpError.Unauthorized({
+          url: 'https://example.com',
+          statusCode: 0,
+          body: {},
+          options: {headers: {}, url: 'https://example.com'},
+        }),
+        true,
+      ],
+      [
+        'network or cors',
+        new WebexHttpError.NetworkOrCORSError({
+          url: 'https://example.com',
+          statusCode: 0,
+          body: {},
+          options: {headers: {}, url: 'https://example.com'},
+        }),
+        false,
+      ],
+      ['other', {body: {data: {meetingInfo: 'something'}}}, false],
+    ].forEach(([errorType, rawError, expected]) => {
+      it(`for ${errorType} rawError returns the correct result`, () => {
+        assert.strictEqual(isUnauthorizedError(rawError), expected);
       });
     });
   });
@@ -473,6 +543,22 @@ describe('internal-plugin-metrics', () => {
     ].forEach(([version, expected]) => {
       it(`returns expected result for ${version}`, () => {
         assert.deepEqual(extractVersionMetadata(version as string), expected);
+      });
+    });
+  });
+
+  describe('generateClientErrorCodeForIceFailure', () => {
+    [
+     { signalingState: 'have-local-offer', iceConnectionState: 'connected', turnServerUsed: true, errorCode: MISSING_ROAP_ANSWER_CLIENT_CODE},
+     { signalingState: 'stable', iceConnectionState: 'connected', turnServerUsed: true, errorCode: DTLS_HANDSHAKE_FAILED_CLIENT_CODE},
+     { signalingState: 'stable', iceConnectionState: 'failed', turnServerUsed: true, errorCode: ICE_FAILED_WITH_TURN_TLS_CLIENT_CODE},
+     { signalingState: 'stable', iceConnectionState: 'failed', turnServerUsed: false, errorCode: ICE_FAILED_WITHOUT_TURN_TLS_CLIENT_CODE},
+    ].forEach(({signalingState, iceConnectionState, turnServerUsed, errorCode}: any) => {
+      it('returns expected result', () => {
+        assert.deepEqual(
+          generateClientErrorCodeForIceFailure({signalingState, iceConnectionState, turnServerUsed}),
+          errorCode
+        );
       });
     });
   });

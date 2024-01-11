@@ -7,6 +7,7 @@ import {ConnectionState} from '@webex/internal-media-core';
 import {StatsAnalyzer, EVENTS} from '../../../../src/statsAnalyzer';
 import NetworkQualityMonitor from '../../../../src/networkQualityMonitor';
 import testUtils from '../../../utils/testUtils';
+import {MEDIA_DEVICES, _UNKNOWN_} from '@webex/plugin-meetings/src/constants';
 
 const {assert} = chai;
 
@@ -119,11 +120,27 @@ describe('plugin-meetings', () => {
           audio: {
             senders: [
               {
+                localTrackLabel: 'fake-microphone',
                 report: [
                   {
                     type: 'outbound-rtp',
                     packetsSent: 0,
                     bytesSent: 1,
+                  },
+                  {
+                    type: 'candidate-pair',
+                    state: 'succeeded',
+                    localCandidateId: 'fake-candidate-id'
+                  },
+                  {
+                    type: 'candidate-pair',
+                    state: 'failed',
+                    localCandidateId: 'bad-candidate-id'
+                  },
+                  {
+                    type: 'local-candidate',
+                    id: 'fake-candidate-id',
+                    protocol: 'tcp'
                   },
                 ],
               },
@@ -136,6 +153,21 @@ describe('plugin-meetings', () => {
                     packetsReceived: 0,
                     bytesReceived: 1,
                   },
+                  {
+                    type: 'candidate-pair',
+                    state: 'succeeded',
+                    localCandidateId: 'fake-candidate-id'
+                  },
+                  {
+                    type: 'candidate-pair',
+                    state: 'failed',
+                    localCandidateId: 'bad-candidate-id'
+                  },
+                  {
+                    type: 'local-candidate',
+                    id: 'fake-candidate-id',
+                    protocol: 'tcp'
+                  },
                 ],
               },
             ],
@@ -143,11 +175,27 @@ describe('plugin-meetings', () => {
           video: {
             senders: [
               {
+                localTrackLabel: 'fake-camera',
                 report: [
                   {
                     type: 'outbound-rtp',
                     framesSent: 0,
                     bytesSent: 1,
+                  },
+                  {
+                    type: 'candidate-pair',
+                    state: 'succeeded',
+                    localCandidateId: 'fake-candidate-id'
+                  },
+                  {
+                    type: 'candidate-pair',
+                    state: 'failed',
+                    localCandidateId: 'bad-candidate-id'
+                  },
+                  {
+                    type: 'local-candidate',
+                    id: 'fake-candidate-id',
+                    protocol: 'tcp'
                   },
                 ],
               },
@@ -162,6 +210,21 @@ describe('plugin-meetings', () => {
                     frameHeight: 720,
                     frameWidth: 1280,
                     framesReceived: 1,
+                  },
+                  {
+                    type: 'candidate-pair',
+                    state: 'succeeded',
+                    localCandidateId: 'fake-candidate-id'
+                  },
+                  {
+                    type: 'candidate-pair',
+                    state: 'failed',
+                    localCandidateId: 'bad-candidate-id'
+                  },
+                  {
+                    type: 'local-candidate',
+                    id: 'fake-candidate-id',
+                    protocol: 'tcp'
                   },
                 ],
               },
@@ -329,6 +392,50 @@ describe('plugin-meetings', () => {
 
         // Check that the mqe data has been emitted and is correctly computed.
         checkMqeData();
+      });
+
+      it('emits the correct transportType in MEDIA_QUALITY events', async () => {
+        await startStatsAnalyzer({expected: {receiveVideo: true}});
+
+        await progressTime();
+
+        assert.strictEqual(mqeData.audioTransmit[0].common.transportType, 'TCP');
+        assert.strictEqual(mqeData.videoReceive[0].common.transportType, 'TCP');
+      });
+
+      it('emits the correct transportType in MEDIA_QUALITY events when using a TURN server', async () => {
+        fakeStats.audio.senders[0].report[3].relayProtocol = 'tls';
+        fakeStats.video.senders[0].report[3].relayProtocol = 'tls';
+        fakeStats.audio.receivers[0].report[3].relayProtocol = 'tls';
+        fakeStats.video.receivers[0].report[3].relayProtocol = 'tls';
+
+        await startStatsAnalyzer({expected: {receiveVideo: true}});
+
+        await progressTime();
+
+        assert.strictEqual(mqeData.audioTransmit[0].common.transportType, 'TLS');
+        assert.strictEqual(mqeData.videoReceive[0].common.transportType, 'TLS');
+      });
+
+      it('emits the correct peripherals in MEDIA_QUALITY events', async () => {
+        await startStatsAnalyzer({expected: {receiveVideo: true}});
+
+        await progressTime();
+
+        assert.strictEqual(mqeData.intervalMetadata.peripherals.find((val) => val.name === MEDIA_DEVICES.MICROPHONE).information, 'fake-microphone');
+        assert.strictEqual(mqeData.intervalMetadata.peripherals.find((val) => val.name === MEDIA_DEVICES.CAMERA).information, 'fake-camera');
+      });
+
+      it('emits the correct peripherals in MEDIA_QUALITY events when localTrackLabel is undefined', async () => {
+        fakeStats.audio.senders[0].localTrackLabel = undefined;
+        fakeStats.video.senders[0].localTrackLabel = undefined;
+
+        await startStatsAnalyzer({expected: {receiveVideo: true}});
+
+        await progressTime();
+
+        assert.strictEqual(mqeData.intervalMetadata.peripherals.find((val) => val.name === MEDIA_DEVICES.MICROPHONE).information, _UNKNOWN_);
+        assert.strictEqual(mqeData.intervalMetadata.peripherals.find((val) => val.name === MEDIA_DEVICES.CAMERA).information, _UNKNOWN_);
       });
     });
   });

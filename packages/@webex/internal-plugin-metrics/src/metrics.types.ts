@@ -25,12 +25,16 @@ export type SubmitClientEventOptions = {
   environment?: EnvironmentType;
   newEnvironmentType?: NewEnvironmentType;
   clientLaunchMethod?: ClientLaunchMethodType;
+  webexConferenceIdStr?: string;
+  globalMeetingId?: string;
 };
 
 export type SubmitMQEOptions = {
   meetingId: string;
   mediaConnections?: any[];
   networkType?: Event['origin']['networkType'];
+  webexConferenceIdStr?: string;
+  globalMeetingId?: string;
 };
 
 export type InternalEvent = {
@@ -41,7 +45,10 @@ export type InternalEvent = {
     | 'internal.client.meeting.click.joinbutton'
     | 'internal.host.meeting.participant.admitted'
     | 'internal.client.meeting.interstitial-window.showed'
-    | 'internal.client.interstitial-window.click.joinbutton';
+    | 'internal.client.interstitial-window.click.joinbutton'
+    | 'internal.client.add-media.turn-discovery.start'
+    | 'internal.client.add-media.turn-discovery.end';
+
   payload?: never;
   options?: never;
 };

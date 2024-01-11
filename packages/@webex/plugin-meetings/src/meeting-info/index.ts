@@ -100,6 +100,8 @@ export default class MeetingInfo {
             },
             options: {
               meetingId,
+              webexConferenceIdStr: info?.body?.confIdStr || info?.body?.confID,
+              globalMeetingId: info?.body?.meetingId,
             },
           });
         }

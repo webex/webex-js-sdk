@@ -50,6 +50,38 @@ describe('plugin-meetings', () => {
     });
   });
 
+  describe('MemberUtil.canReclaimHost', () => {
+    it('throws error when there is no participant', () => {
+      assert.throws(() => {
+        MemberUtil.canReclaimHost();
+      }, 'canReclaimHostRole could not be processed, participant is undefined.');
+    });
+
+    it('returns true when canReclaimHostRole is true', () => {
+      const participant = {
+        canReclaimHostRole: true,
+      };
+
+      assert.isTrue(MemberUtil.canReclaimHost(participant));
+    });
+
+    it('returns false when canReclaimHostRole is false', () => {
+      const participant = {
+        canReclaimHostRole: false,
+      };
+
+      assert.isFalse(MemberUtil.canReclaimHost(participant));
+    });
+
+    it('returns false when canReclaimHostRole is falsy', () => {
+      const participant = {
+        canReclaimHostRole: undefined,
+      };
+
+      assert.isFalse(MemberUtil.canReclaimHost(participant));
+    });
+  });
+
   describe('MemberUtil.extractControlRoles', () => {
     it('happy path extract control roles', () => {
       const participant = {

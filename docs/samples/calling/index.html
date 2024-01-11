@@ -205,9 +205,8 @@
               <div>
                 <p class="note">NOTE: Choose your sending and receiving options for the meeting.</p>
 
-                <button id="sd-get-media-devices" type="button" onclick="clearMediaDeviceList(); getMediaDevices()">Get
-                  Devices</button>
-
+                <button id="sd-get-media-devices" type="button" onclick="clearMediaDeviceList(); getMediaDevices()">Get Devices</button>
+                <button id="sd-change-media" type="button" onclick="changeStream()">Change Device</button>
                 <div class="u-mv">
                   <label>
                     <input type="checkbox" name="ts-media-direction" value="receiveAudio" checked="">receiveAudio
@@ -334,7 +333,8 @@
             <fieldset id="callSettingsSelection">
               <legend>Call Settings</legend>
               <div class="u-mv">
-                <button onclick="toggleDNDSetting()" id="DND-button" class="btn-code">DND</button>
+                <button onclick="getSettings()" id="fetch-setting">Get Settings</button>
+                <button onclick="toggleDNDSetting()" id="DND-button" class="btn-code">Toggle DND</button>
                 <button id="CallWaiting-button" class="btn-code">Call Waiting</button>
                 <div class="u-pt"><br></div>
                 <fieldset id="callForwardSelection">

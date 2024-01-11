@@ -20,3 +20,13 @@ describe('getContentUrl', () => {
   });
 });
 
+describe('getContentBeneficiaryDeviceUrl', () => {
+  it('getContentBeneficiaryDeviceUrl return correct deviceUrl value', () => {
+    const mockContentBeneficiaryDeviceUrl = "https://wdm-a.wbx2.com/wdm/api/v1/devices/e9ffd8a1-1fae-42d1-afbe-013e951f93ab"
+    const stub = Sinon.stub(MediaSharesUtils, 'extractContentFloor').returns({ beneficiary: {deviceUrl : mockContentBeneficiaryDeviceUrl}});
+    const contentBeneficiaryDeviceUrl = MediaSharesUtils.getContentBeneficiaryDeviceUrl();
+    assert.equal(contentBeneficiaryDeviceUrl, mockContentBeneficiaryDeviceUrl);
+    stub.restore();
+  });
+});
+

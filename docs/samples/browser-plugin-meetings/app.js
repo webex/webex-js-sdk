@@ -548,6 +548,8 @@ function joinMeeting({withMedia, withDevice} = {withMedia: false, withDevice: fa
             video: mediaSettings.videoEnabled
           }).then(() => addMedia());
         }
+
+        enableMeetingDependentButtons(true);
       })
       .catch(() => {
         // join failed, so allow  user decide on multistream again
@@ -595,6 +597,7 @@ function leaveMeeting(meetingId) {
       // disabling screen share publish/unpublish buttons
       publishShareBtn.disabled = true;
       unpublishShareBtn.disabled = true;
+      enableMeetingDependentButtons(false);
     });
 }
 
@@ -3587,13 +3590,22 @@ window.onload = () => {
   updateMultistreamUI();
 };
 
-document.querySelectorAll('.collapsible').forEach((el) => {
+const allCollapsibleElements = document.querySelectorAll('.collapsible');
+allCollapsibleElements.forEach((el) => {
   el.addEventListener('click', (event) => {
     const {parentElement} = event.currentTarget;
 
     const sectionContentElement = parentElement.querySelector('.section-content');
-
+    const arrowIcon = parentElement.querySelector('.arrow');
+    
     sectionContentElement.classList.toggle('collapsed');
+    arrowIcon.classList.contains('fa-angle-down') ? arrowIcon.classList.replace('fa-angle-down', 'fa-angle-up') : arrowIcon.classList.replace('fa-angle-up', 'fa-angle-down');
+
+    if(el.innerText !== 'Auth & Registration' && !sectionContentElement.classList.contains('collapsed')) {
+      // Note: Index of the Auth & Registration section may change if further re-ordering is done
+      allCollapsibleElements[1].parentElement.querySelector('.section-content').classList.add('collapsed');
+      allCollapsibleElements[1].parentElement.querySelector('.arrow').classList.replace('fa-angle-down', 'fa-angle-up');
+    }
   });
 });
 
@@ -3610,4 +3622,37 @@ if (window.location.hash) {
     localStorage.setItem('date', new Date().getTime() + parseInt(expiresIn, 10));
     tokenElm.value = accessToken;
   }
+}
+
+function enableMeetingDependentButtons(enable) {
+  const meetingDependentButtons = document.querySelectorAll('.meeting-dependent');
+
+  meetingDependentButtons.forEach((button) => {
+    button.disabled = !enable;
+  });
+}
+
+enableMeetingDependentButtons(false);
+
+const allSectionContentElements = document.querySelectorAll('.section-content');
+const allArrowElements = document.querySelectorAll('.arrow');
+
+function collapseAll() {
+  allSectionContentElements.forEach((el) => {
+    el.classList.add('collapsed');
+  });
+
+  allArrowElements.forEach((el) => {
+    el.classList.replace('fa-angle-down', 'fa-angle-up');
+  });
+}
+
+function expandAll() {
+  allSectionContentElements.forEach((el) => {
+    el.classList.remove('collapsed');
+  });
+
+  allArrowElements.forEach((el) => {
+    el.classList.replace('fa-angle-up', 'fa-angle-down');
+  });
 }

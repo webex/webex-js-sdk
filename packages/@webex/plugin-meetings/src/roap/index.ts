@@ -8,6 +8,8 @@ import RoapRequest from './request';
 import TurnDiscovery from './turnDiscovery';
 import Meeting from '../meeting';
 import MeetingUtil from '../meeting/util';
+import Metrics from '../metrics';
+import BEHAVIORAL_METRICS from '../metrics/constants';
 
 /**
  * Roap options
@@ -192,6 +194,7 @@ export default class Roap extends StatelessWebexPlugin {
       version: ROAP.ROAP_VERSION,
       seq,
       tieBreaker,
+      headers: ['includeAnswerInHttpResponse', 'noOkInTransaction'],
     };
 
     // When reconnecting, it's important that the first roap message being sent out has empty media id.
@@ -215,7 +218,41 @@ export default class Roap extends StatelessWebexPlugin {
             meeting.updateMediaConnections(mediaConnections);
           }
 
-          return locus;
+          let roapAnswer;
+
+          if (mediaConnections?.[0]?.remoteSdp) {
+            const remoteSdp = JSON.parse(mediaConnections[0].remoteSdp);
+
+            if (remoteSdp.roapMessage) {
+              const {
+                seq: answerSeq,
+                messageType,
+                sdps,
+                errorType,
+                errorCause,
+                headers,
+              } = remoteSdp.roapMessage;
+
+              roapAnswer = {
+                seq: answerSeq,
+                messageType,
+                sdp: sdps[0],
+                errorType,
+                errorCause,
+                headers,
+              };
+            }
+          }
+
+          if (!roapAnswer) {
+            Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.ROAP_HTTP_RESPONSE_MISSING, {
+              correlationId: meeting.correlationId,
+              messageType: 'ANSWER',
+              isMultistream: meeting.isMultistream,
+            });
+          }
+
+          return {locus, roapAnswer};
         });
     });
   }
@@ -228,9 +265,10 @@ export default class Roap extends StatelessWebexPlugin {
    * @param {Meeting} meeting
    * @param {Boolean} isReconnecting should be set to true if this is a new
    *                                 media connection just after a reconnection
+   * @param {Boolean} [isForced]
    * @returns {Promise}
    */
-  doTurnDiscovery(meeting: Meeting, isReconnecting: boolean) {
-    return this.turnDiscovery.doTurnDiscovery(meeting, isReconnecting);
+  doTurnDiscovery(meeting: Meeting, isReconnecting: boolean, isForced?: boolean) {
+    return this.turnDiscovery.doTurnDiscovery(meeting, isReconnecting, isForced);
   }
 }

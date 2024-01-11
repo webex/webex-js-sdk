@@ -7,6 +7,7 @@ export enum ServerRoles {
 export type ServerRoleShape = {
   type: ServerRoles;
   hasRole: boolean;
+  hostKey?: string;
 };
 
 export type RoleAssignmentOptions = {

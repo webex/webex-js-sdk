@@ -38,6 +38,12 @@ export default {
   uuid: /^[a-f\d]{8}(?:-[a-f\d]{4}){3}-[a-f\d]{12}$/,
 
   /**
+   * Regular expression that validates an ambiguous string contains MTID
+   * @type {RegExp}
+   */
+  containsMTID: /(MTID=)[^&$#]*/g,
+
+  /**
    * Same as this.email, but allows for surrounding characters
    * @type {RegExp}
    */

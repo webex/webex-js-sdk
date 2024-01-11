@@ -25,13 +25,14 @@ describe('plugin-meetings', () => {
     });
 
     describe('#fetchMeetingInfo', () => {
-      const checkResolvedFetchMeetingInfo = async ({meetingId, sendCAevents, shouldSendCAMetrics}) => {
-        const body = {meetingKey: '1234323', url: 'url-123'};
+      const checkResolvedFetchMeetingInfo = async ({meetingId, sendCAevents, shouldSendCAMetrics, confIdStrProp}) => {
+        const body = {meetingKey: '1234323', url: 'url-123', confID: '123', meetingId: '321'};
+        const bodyConfIdStr = {meetingKey: '1234323', url: 'url-123', confIdStr: '123', meetingId: '321'};
 
         sinon
           .stub(MeetingInfoUtil, 'generateOptions')
           .resolves({type: 'MEETING_ID', destination: '123456'});
-        sinon.stub(MeetingInfoRequest.prototype, 'fetchMeetingInfo').returns(Promise.resolve(body));
+        sinon.stub(MeetingInfoRequest.prototype, 'fetchMeetingInfo').returns(Promise.resolve(confIdStrProp ? bodyConfIdStr : body));
 
         await meetingInfo.fetchMeetingInfo('1234323', _MEETING_ID_, null, null, null, null, null, {
           meetingId,
@@ -66,6 +67,8 @@ describe('plugin-meetings', () => {
             },
             options: {
               meetingId,
+              webexConferenceIdStr: '123',
+              globalMeetingId: '321'
             },
           });
         } else {
@@ -75,6 +78,10 @@ describe('plugin-meetings', () => {
       }
       it('should send ca events if meetingId present and send CA events is authorized', async () => {
         checkResolvedFetchMeetingInfo({meetingId: 'meetingId', sendCAevents: true, shouldSendCAMetrics: true});
+      });
+
+      it('should send ca events if meetingId present and send CA events is authorized and confIdStrProp is true', async () => {
+        checkResolvedFetchMeetingInfo({meetingId: 'meetingId', sendCAevents: true, shouldSendCAMetrics: true, confIdStrProp: true});
       });
 
       it('should not send ca events if meetingId not present even if CA events are authorized', async () => {

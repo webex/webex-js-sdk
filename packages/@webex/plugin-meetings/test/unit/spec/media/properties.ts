@@ -4,7 +4,7 @@ import {ConnectionState, Event} from '@webex/internal-media-core';
 import MediaProperties from '@webex/plugin-meetings/src/media/properties';
 import MediaUtil from '@webex/plugin-meetings/src/media/util';
 import testUtils from '../../../utils/testUtils';
-import {PC_BAIL_TIMEOUT} from '@webex/plugin-meetings/src/constants';
+import {ICE_AND_DTLS_CONNECTION_TIMEOUT} from '@webex/plugin-meetings/src/constants';
 import {Defer} from '@webex/common';
 
 describe('MediaProperties', () => {
@@ -52,7 +52,7 @@ describe('MediaProperties', () => {
       assert.equal(promiseResolved, false);
       assert.equal(promiseRejected, false);
 
-      await clock.tickAsync(PC_BAIL_TIMEOUT);
+      await clock.tickAsync(ICE_AND_DTLS_CONNECTION_TIMEOUT);
       await testUtils.flushPromises();
 
       assert.equal(promiseResolved, false);

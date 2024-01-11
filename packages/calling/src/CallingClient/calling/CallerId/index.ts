@@ -138,10 +138,6 @@ export class CallerId implements ICallerId {
 
     if (nameMatch) {
       result.name = nameMatch[0].trimEnd();
-      log.info(`Parsed Name: ${result.name}`, {
-        file: CALLER_ID_FILE,
-        method: 'parseSipUri',
-      });
     } else {
       log.warn(`Name field not found!`, {
         file: CALLER_ID_FILE,
@@ -153,10 +149,6 @@ export class CallerId implements ICallerId {
 
     if (phoneMatch && phoneMatch[0].length === num.length) {
       result.num = num;
-      log.info(`Parsed Number: ${result.num}`, {
-        file: CALLER_ID_FILE,
-        method: 'parseSipUri',
-      });
     } else {
       log.warn(`Number field not found!`, {
         file: CALLER_ID_FILE,
@@ -183,7 +175,7 @@ export class CallerId implements ICallerId {
     this.callerInfo.num = undefined;
 
     if ('p-asserted-identity' in callerId) {
-      log.info(`Parsing p-asserted-identity:- ${callerId['p-asserted-identity']}`, {
+      log.info('Parsing p-asserted-identity within remote party information', {
         file: CALLER_ID_FILE,
         method: 'fetchCallerDetails',
       });
@@ -192,28 +184,15 @@ export class CallerId implements ICallerId {
       /* For P-Asserted-Identity, we update the callerInfo blindly, as it is of highest preference */
       this.callerInfo.name = result.name;
       this.callerInfo.num = result.num;
-
-      log.info(
-        `CallerId retrieved from p-asserted-identity: name: ${this.callerInfo.name} , num: ${this.callerInfo.num}`,
-        {
-          file: CALLER_ID_FILE,
-          method: 'fetchCallerDetails',
-        }
-      );
     }
 
     if (callerId.from) {
-      log.info(`Parsing from header:- ${callerId.from}`, {
+      log.info('Parsing from header within the remote party information', {
         file: CALLER_ID_FILE,
         method: 'fetchCallerDetails',
       });
 
       const result = this.parseSipUri(callerId.from);
-
-      log.info(`CallerId retrieved from FROM: name: ${result.name} , num: ${result.num}`, {
-        file: CALLER_ID_FILE,
-        method: 'fetchCallerDetails',
-      });
 
       /* For From header , we should only update if not filled already by P-Asserted-Identity */
       if (!this.callerInfo.name && result.name) {
@@ -241,24 +220,13 @@ export class CallerId implements ICallerId {
 
     /* We need to parse x-broadworks-remote-party-info if present asynchronously */
     if ('x-broadworks-remote-party-info' in callerId) {
-      log.info(
-        `Parsing x-broadworks-remote-party-info:- ${callerId['x-broadworks-remote-party-info']}`,
-        {
-          file: CALLER_ID_FILE,
-          method: 'fetchCallerDetails',
-        }
-      );
+      log.info('Parsing x-broadworks-remote-party-info within remote party information', {
+        file: CALLER_ID_FILE,
+        method: 'fetchCallerDetails',
+      });
 
       this.parseRemotePartyInfo(callerId['x-broadworks-remote-party-info'] as string);
     }
-
-    log.log(
-      `Intermediate callerId :- name: ${this.callerInfo.name} , num: ${this.callerInfo.num}`,
-      {
-        file: CALLER_ID_FILE,
-        method: 'fetchCallerDetails',
-      }
-    );
 
     return this.callerInfo;
   }

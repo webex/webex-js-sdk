@@ -12,6 +12,7 @@ import Logger from '@webex/plugin-logger';
 import MockWebex from '@webex/test-helper-mock-webex';
 import {AuthInterceptor, config, Credentials, WebexHttpError, Token} from '@webex/webex-core';
 import {cloneDeep, merge} from 'lodash';
+import Metrics from '@webex/internal-plugin-metrics';
 
 const {assert} = chai;
 
@@ -28,6 +29,7 @@ describe('webex-core', () => {
           children: {
             credentials: Credentials,
             logger: Logger,
+            metrics: Metrics,
           },
           config: merge(cloneDeep(config), {credentials: {client_secret: 'fake'}}),
         });
@@ -41,6 +43,7 @@ describe('webex-core', () => {
         );
 
         interceptor = Reflect.apply(AuthInterceptor.create, webex, []);
+        sinon.stub(webex.internal.metrics, 'submitClientMetrics').callsFake(() => {});
       });
 
       describe('#onRequest()', () => {

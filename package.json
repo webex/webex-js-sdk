@@ -26,7 +26,7 @@
     "url": "https://github.com/webex/webex-js-sdk"
   },
   "scripts": {
-    "clean": "rimraf \"packages/**/.coverage\" \"packages/**/dist\" \"packages/**/types\"",
+    "clean": "rimraf \"packages/@webex/*/.coverage\" \"packages/@webex/*/dist\" \"packages/@webex/*/types\" \"packages/webex/.coverage\" \"packages/webex/dist\"",
     "prebuild": "yarn run clean",
     "build:publish": "yarn build:package && yarn workspaces foreach --parallel --verbose run build:src",
     "build:tools": "yarn workspaces foreach --from '@webex/*-tools' --topological-dev --parallel --verbose run build:src",
