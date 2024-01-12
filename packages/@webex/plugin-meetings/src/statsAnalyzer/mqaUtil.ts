@@ -134,9 +134,12 @@ export const getVideoReceiverMqa = ({videoReceiver, statsResults, lastMqaDataSen
   const lastPacketsReceived = lastMqaDataSent[mediaType]?.[sendrecvType].totalPacketsReceived || 0;
   const lastPacketsLost = lastMqaDataSent[mediaType]?.[sendrecvType].totalPacketsLost || 0;
   const lastBytesReceived = lastMqaDataSent[mediaType]?.[sendrecvType].totalBytesReceived || 0;
-  const lastFramesReceived = lastMqaDataSent[mediaType]?.[sendrecvType].framesReceived || 0;
-  const lastFramesDecoded = lastMqaDataSent[mediaType]?.[sendrecvType].framesDecoded || 0;
-  const lastFramesDropped = lastMqaDataSent[mediaType]?.[sendrecvType].framesDropped || 0;
+  const lastFramesReceived =
+    lastMqaDataSent.resolutions[mediaType]?.[sendrecvType].framesReceived || 0;
+  const lastFramesDecoded =
+    lastMqaDataSent.resolutions[mediaType]?.[sendrecvType].framesDecoded || 0;
+  const lastFramesDropped =
+    lastMqaDataSent.resolutions[mediaType]?.[sendrecvType].framesDropped || 0;
   const lastKeyFramesDecoded = lastMqaDataSent[mediaType]?.[sendrecvType].keyFramesDecoded || 0;
   const lastPliCount = lastMqaDataSent[mediaType]?.[sendrecvType].totalPliCount || 0;
 
@@ -190,12 +193,12 @@ export const getVideoReceiverMqa = ({videoReceiver, statsResults, lastMqaDataSen
   const totalFrameDecodedInaMin =
     statsResults.resolutions[mediaType][sendrecvType].framesDecoded - lastFramesDecoded;
 
-  videoReceiver.streams[0].common.receivedFrameRate = totalFrameReceivedInaMin
-    ? (totalFrameReceivedInaMin * 100) / 60
-    : 0;
-  videoReceiver.streams[0].common.renderedFrameRate = totalFrameDecodedInaMin
-    ? (totalFrameDecodedInaMin * 100) / 60
-    : 0;
+  videoReceiver.streams[0].common.receivedFrameRate = Math.round(
+    totalFrameReceivedInaMin ? totalFrameReceivedInaMin / 60 : 0
+  );
+  videoReceiver.streams[0].common.renderedFrameRate = Math.round(
+    totalFrameDecodedInaMin ? totalFrameDecodedInaMin / 60 : 0
+  );
 
   videoReceiver.streams[0].common.framesDropped =
     statsResults.resolutions[mediaType][sendrecvType].framesDropped - lastFramesDropped;
@@ -220,9 +223,9 @@ export const getVideoSenderMqa = ({videoSender, statsResults, lastMqaDataSent, m
     lastMqaDataSent[mediaType]?.[sendrecvType].totalPacketsLostOnReceiver || 0;
   const lastBytesSent = lastMqaDataSent[mediaType]?.[sendrecvType].totalBytesSent || 0;
   const lastKeyFramesEncoded =
-    lastMqaDataSent[mediaType]?.[sendrecvType].totalKeyFramesEncoded || 0;
+    lastMqaDataSent.resolutions[mediaType]?.[sendrecvType].totalKeyFramesEncoded || 0;
   const lastFirCount = lastMqaDataSent[mediaType]?.[sendrecvType].totalFirCount || 0;
-  const lastFramesSent = lastMqaDataSent[mediaType]?.[sendrecvType].framesSent || 0;
+  const lastFramesSent = lastMqaDataSent.resolutions[mediaType]?.[sendrecvType].framesSent || 0;
   const {csi} = statsResults[mediaType];
   if (csi && !videoSender.streams[0].common.csi.includes(csi)) {
     videoSender.streams[0].common.csi.push(csi);
@@ -280,9 +283,9 @@ export const getVideoSenderMqa = ({videoSender, statsResults, lastMqaDataSent, m
   const totalFrameSentInaMin =
     statsResults.resolutions[mediaType][sendrecvType].framesSent - (lastFramesSent || 0);
 
-  videoSender.streams[0].common.transmittedFrameRate = totalFrameSentInaMin
-    ? (totalFrameSentInaMin * 100) / 60
-    : 0;
+  videoSender.streams[0].common.transmittedFrameRate = Math.round(
+    totalFrameSentInaMin ? totalFrameSentInaMin / 60 : 0
+  );
   videoSender.streams[0].transmittedHeight =
     statsResults.resolutions[mediaType][sendrecvType].height || 0;
   videoSender.streams[0].transmittedWidth =
