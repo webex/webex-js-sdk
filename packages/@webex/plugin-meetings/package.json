@@ -32,6 +32,7 @@
     "build": "yarn run -T tsc --declaration true --declarationDir ./dist/types"
   },
   "devDependencies": {
+    "@peculiar/webcrypto": "^1.4.3",
     "@webex/plugin-meetings": "workspace:^",
     "@webex/test-helper-chai": "workspace:^",
     "@webex/test-helper-mocha": "workspace:^",

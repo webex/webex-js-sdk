@@ -2420,6 +2420,17 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@peculiar/asn1-schema@npm:^2.3.6":
+  version: 2.3.8
+  resolution: "@peculiar/asn1-schema@npm:2.3.8"
+  dependencies:
+    asn1js: "npm:^3.0.5"
+    pvtsutils: "npm:^1.3.5"
+    tslib: "npm:^2.6.2"
+  checksum: ed6bed66cf54efa847ea8feef53ac17fd7061f7a4c59288bd7948873e8e109189da26e03b0f8f3aafe6f1b08c0953543eb2a6d66a2ce7abdf56d56f281f60005
+  languageName: node
+  linkType: hard
+
 "@peculiar/json-schema@npm:^1.1.12":
   version: 1.1.12
   resolution: "@peculiar/json-schema@npm:1.1.12"
@@ -2439,6 +2450,19 @@ __metadata:
     tslib: "npm:^2.4.1"
     webcrypto-core: "npm:^1.7.4"
   checksum: c256d4dd4292ca8b4282f4871d6751dbda5616eb0e9ad0aa04352f8044af03a4df6fadfc4d4565947f1fdcb248705427ebbcc1fa5119a3355f2e99a566752a49
+  languageName: node
+  linkType: hard
+
+"@peculiar/webcrypto@npm:^1.4.3":
+  version: 1.4.3
+  resolution: "@peculiar/webcrypto@npm:1.4.3"
+  dependencies:
+    "@peculiar/asn1-schema": "npm:^2.3.6"
+    "@peculiar/json-schema": "npm:^1.1.12"
+    pvtsutils: "npm:^1.3.2"
+    tslib: "npm:^2.5.0"
+    webcrypto-core: "npm:^1.7.7"
+  checksum: 357fb9c9408aa776c01c9eec5ac2bb3b10de328cc56cc23a9420adf976d126eccd38a8886b02372913cff883195d59527732f5eee7c9a7a6c23e687139e54ca8
   languageName: node
   linkType: hard
 
@@ -3144,9 +3168,11 @@ __metadata:
   linkType: hard
 
 "@types/node@npm:>=13.7.0":
-  version: 20.2.5
-  resolution: "@types/node@npm:20.2.5"
-  checksum: 55e4f8d08e3c225e48e012e04458d6c1db5af6e4991e3abb003b82d3f10018a14742c0512b27991cb02e54768be560ea1fe4c17208e04273247132c9eb07499a
+  version: 20.11.0
+  resolution: "@types/node@npm:20.11.0"
+  dependencies:
+    undici-types: "npm:~5.26.4"
+  checksum: fec109dc61dff79f9763d0c5f33741de8a41efde958f58a8cd7323709c185ca34311649d5fbaebfe784e4de1e941d116e55bf7ecf0c3ece587ad73fc9d4f0dd5
   languageName: node
   linkType: hard
 
@@ -4816,6 +4842,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@webex/plugin-meetings@workspace:packages/@webex/plugin-meetings"
   dependencies:
+    "@peculiar/webcrypto": "npm:^1.4.3"
     "@webex/common": "workspace:^"
     "@webex/internal-media-core": "link:../../../../webrtc-media-core"
     "@webex/internal-plugin-conversation": "workspace:^"
@@ -17711,24 +17738,24 @@ __metadata:
   languageName: node
   linkType: hard
 
-"onnxruntime-common@npm:~1.16.1":
-  version: 1.16.1
-  resolution: "onnxruntime-common@npm:1.16.1"
-  checksum: 2fa45d863c8db78b6acc00dfdb547c61589a49515a94745d2e6043dcff088f03aee3f4fb239f9aac55f9dc7c269c0eab2203d4ddcfa5048963fbc26c3595b434
+"onnxruntime-common@npm:~1.16.3":
+  version: 1.16.3
+  resolution: "onnxruntime-common@npm:1.16.3"
+  checksum: cf0a3a5e33ad18c3851b857bd1556648c5064b407aaa0106e06ea3f736bfb7f34de220806dad632d350d2055dd1c21b7cc2999a74e2600fe11b539025d26fe94
   languageName: node
   linkType: hard
 
 "onnxruntime-web@npm:^1.15.1":
-  version: 1.16.1
-  resolution: "onnxruntime-web@npm:1.16.1"
+  version: 1.16.3
+  resolution: "onnxruntime-web@npm:1.16.3"
   dependencies:
     flatbuffers: "npm:^1.12.0"
     guid-typescript: "npm:^1.0.9"
     long: "npm:^5.2.3"
-    onnxruntime-common: "npm:~1.16.1"
+    onnxruntime-common: "npm:~1.16.3"
     platform: "npm:^1.3.6"
     protobufjs: "npm:^7.2.4"
-  checksum: b350d58345a3140b4b383fbd3d5748711b15ce2dd19ee80ebb4d620b44d63c3d260ea10e1de1065e61c4a8d6e78d28274b23c52d0b70351c1f75ce96e4013531
+  checksum: fa9632f624b00f1b2bcb746877da162da7a6ae3b660b4d7d4f3adb3a5d25556a787e4943844abb24cbb7bd57fb7f632aad5c2a440f89b7fd2ec944e5c493aa5b
   languageName: node
   linkType: hard
 
@@ -18955,6 +18982,15 @@ __metadata:
   dependencies:
     tslib: "npm:^2.4.0"
   checksum: eb22d3df60a341da289c59b2a34e4e55cadc70bd43caeb5fdd14d28e40f54112142e0e8bd5906f3d756e2c38b651599243def3ced6f1169335feb7933e210fa7
+  languageName: node
+  linkType: hard
+
+"pvtsutils@npm:^1.3.5":
+  version: 1.3.5
+  resolution: "pvtsutils@npm:1.3.5"
+  dependencies:
+    tslib: "npm:^2.6.1"
+  checksum: 4d092bb03ee046e0d059e15c69b6abbc8ee8f69217490658ef631b3ae622d94553ccd1ae7befda0bc213653bd48b8a4cbc83e6b519f9f9f7794cac35b20741cb
   languageName: node
   linkType: hard
 
@@ -22096,6 +22132,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"tslib@npm:^2.5.0, tslib@npm:^2.6.1, tslib@npm:^2.6.2":
+  version: 2.6.2
+  resolution: "tslib@npm:2.6.2"
+  checksum: e5654691294dfbc49d7f37c8476b11a90ab8a0af4ad8cc968af1d013600e84ecfcd9a68e1cb89f5dcfe5c88872e3fbacea830d237cfa063498115a88f4bd2de6
+  languageName: node
+  linkType: hard
+
 "tslib@npm:~2.3.0":
   version: 2.3.1
   resolution: "tslib@npm:2.3.1"
@@ -22393,6 +22436,13 @@ __metadata:
   bin:
     undeclared-identifiers: bin.js
   checksum: e49f63fd2b533bc6a690d58453ab050034d1eaf696a38560ed0cf1ca6e4289551b049e183dd22e11789a4407a429a774c513f0c4f2e4e474b13b3b0044ab71b3
+  languageName: node
+  linkType: hard
+
+"undici-types@npm:~5.26.4":
+  version: 5.26.5
+  resolution: "undici-types@npm:5.26.5"
+  checksum: 7f556493e22e9023f1f9be0d516f5c3cf74d1d6a090c2701ada5117e99900e8cdf8b5540ad3ceed1a672d3532bdfcd0149c444b980731aacc840eb0660ba8587
   languageName: node
   linkType: hard
 
@@ -23212,6 +23262,19 @@ __metadata:
     pvtsutils: "npm:^1.3.2"
     tslib: "npm:^2.4.0"
   checksum: 4554f3082c240894079933dc1e4b656a03875c339205234535666578778ee98aaff393f2ed1ebfe43863670d02e51f32a8782553bbf448cbeb57727cc9bf8a4f
+  languageName: node
+  linkType: hard
+
+"webcrypto-core@npm:^1.7.7":
+  version: 1.7.7
+  resolution: "webcrypto-core@npm:1.7.7"
+  dependencies:
+    "@peculiar/asn1-schema": "npm:^2.3.6"
+    "@peculiar/json-schema": "npm:^1.1.12"
+    asn1js: "npm:^3.0.1"
+    pvtsutils: "npm:^1.3.2"
+    tslib: "npm:^2.4.0"
+  checksum: 5765cb899f9bc2fd50ed89e6130b4f2dca875644b6a248a83cd955a11e4f1986765508ceb4ba55f8b295da26395cccf4e461bffaeeef365e2342a7ab06caa419
   languageName: node
   linkType: hard
 
