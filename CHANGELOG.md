@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.309](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.308...v3.0.0-beta.309) (2024-01-12)
+
+
+### Features
+
+* **ca:** add pstn property ([#3303](https://github.com/webex/webex-js-sdk/issues/3303)) ([3a4220b](https://github.com/webex/webex-js-sdk/commit/3a4220b907a0bf28083c71af6e550de9865c0574))
+
 ## [3.0.0-beta.308](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.307...v3.0.0-beta.308) (2024-01-12)
 
 
