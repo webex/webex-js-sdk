@@ -1095,6 +1095,7 @@ export default class Meeting extends StatelessWebexPlugin {
      */
     this.networkQualityMonitor = null;
     /**
+     * Indicates network status of the webrtc media connection
      * @instance
      * @type {String}
      * @readonly

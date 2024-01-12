@@ -5633,10 +5633,13 @@ describe('plugin-meetings', () => {
         });
 
         describe('submitClientEvent on connectionSuccess', () => {
-          it('sends client.ice.end when connectionSuccess on CONNECTION_STATE_CHANGED event', () => {
+          let setNetworkStatusSpy;
+
+          const setupSpies = () => {
+            setNetworkStatusSpy = sinon.spy(meeting, 'setNetworkStatus');
+
             meeting.reconnectionManager = new ReconnectionManager(meeting);
             meeting.reconnectionManager.iceReconnected = sinon.stub().returns(undefined);
-            meeting.setNetworkStatus = sinon.stub().returns(undefined);
             meeting.statsAnalyzer = {startAnalyzer: sinon.stub()};
             meeting.mediaProperties.webrtcMediaConnection = {
               // mock the on() method and store all the listeners
@@ -5644,16 +5647,18 @@ describe('plugin-meetings', () => {
                 eventListeners[event] = listener;
               }),
             };
+          };
 
-            meeting.setupMediaConnectionListeners();
-            eventListeners[Event.CONNECTION_STATE_CHANGED]({
-              state: 'Connected',
-            });
+          const checkExpectedSpies = (expected) => {
             assert.calledOnce(webex.internal.newMetrics.submitClientEvent);
             assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
               name: 'client.ice.end',
               options: {
                 meetingId: meeting.id,
+              },
+              payload: {
+                canProceed: true,
+                icePhase: expected.icePhase,
               },
             });
             assert.calledOnce(Metrics.sendBehavioralMetric);
@@ -5662,14 +5667,54 @@ describe('plugin-meetings', () => {
               locus_id: meeting.locusId,
               latency: undefined,
             });
-            assert.calledOnce(meeting.setNetworkStatus);
-            assert.calledWith(meeting.setNetworkStatus, NETWORK_STATUS.CONNECTED);
+            assert.deepEqual(
+              setNetworkStatusSpy.getCalls().map((call) => call.args[0]),
+              expected.setNetworkStatusCallParams
+            );
             assert.calledOnce(meeting.reconnectionManager.iceReconnected);
             assert.calledOnce(meeting.statsAnalyzer.startAnalyzer);
             assert.calledWith(
               meeting.statsAnalyzer.startAnalyzer,
               meeting.mediaProperties.webrtcMediaConnection
             );
+          };
+
+          const resetSpies = () => {
+            setNetworkStatusSpy.resetHistory();
+            webex.internal.newMetrics.submitClientEvent.resetHistory();
+            Metrics.sendBehavioralMetric.resetHistory();
+            meeting.reconnectionManager.iceReconnected.resetHistory();
+            meeting.statsAnalyzer.startAnalyzer.resetHistory();
+          };
+
+          it('sends client.ice.end with the correct icePhase when we get ConnectionState.Connected on CONNECTION_STATE_CHANGED event', () => {
+            setupSpies();
+
+            meeting.setupMediaConnectionListeners();
+
+            // simulate first connection success
+            eventListeners[Event.CONNECTION_STATE_CHANGED]({
+              state: 'Connected',
+            });
+            checkExpectedSpies({
+              icePhase: 'JOIN_MEETING_FINAL',
+              setNetworkStatusCallParams: [NETWORK_STATUS.CONNECTED],
+            });
+
+            // now simulate short connection loss, the 2nd client.ice.end should have a different icePhase
+            resetSpies();
+
+            eventListeners[Event.CONNECTION_STATE_CHANGED]({
+              state: 'Disconnected',
+            });
+            eventListeners[Event.CONNECTION_STATE_CHANGED]({
+              state: 'Connected',
+            });
+
+            checkExpectedSpies({
+              icePhase: 'IN_MEETING',
+              setNetworkStatusCallParams: [NETWORK_STATUS.DISCONNECTED, NETWORK_STATUS.CONNECTED],
+            });
           });
         });
 
@@ -6931,12 +6976,14 @@ describe('plugin-meetings', () => {
       });
       describe('#closePeerConnections', () => {
         it('should close the webrtc media connection, and return a promise', async () => {
+          const setNetworkStatusSpy = sinon.spy(meeting, 'setNetworkStatus');
           meeting.mediaProperties.webrtcMediaConnection = {close: sinon.stub()};
           const pcs = meeting.closePeerConnections();
 
           assert.exists(pcs.then);
           await pcs;
           assert.calledOnce(meeting.mediaProperties.webrtcMediaConnection.close);
+          assert.calledOnceWithExactly(setNetworkStatusSpy, undefined);
         });
       });
       describe('#unsetPeerConnections', () => {
