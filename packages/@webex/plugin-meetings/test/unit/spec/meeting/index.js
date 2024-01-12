@@ -827,11 +827,11 @@ describe('plugin-meetings', () => {
           });
 
           it('should join the meeting and return promise', async () => {
-            const join = meeting.join();
+            const join = meeting.join({pstnAudioType: 'dial-in'});
 
-            assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
+            assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
               name: 'client.call.initiated',
-              payload: {trigger: 'user-interaction', isRoapCallEnabled: true},
+              payload: {trigger: 'user-interaction', isRoapCallEnabled: true, pstnAudioType: 'dial-in'},
               options: {meetingId: meeting.id},
             });
 

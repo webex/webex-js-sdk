@@ -4580,7 +4580,11 @@ export default class Meeting extends StatelessWebexPlugin {
     // @ts-ignore
     this.webex.internal.newMetrics.submitClientEvent({
       name: 'client.call.initiated',
-      payload: {trigger: 'user-interaction', isRoapCallEnabled: true},
+      payload: {
+        trigger: 'user-interaction',
+        isRoapCallEnabled: true,
+        pstnAudioType: options?.pstnAudioType,
+      },
       options: {meetingId: this.id},
     });
 
@@ -6803,17 +6807,13 @@ export default class Meeting extends StatelessWebexPlugin {
         .catch((error) => {
           LoggerProxy.logger.error('Meeting:index#stopWhiteboardShare --> Error ', error);
 
-          Metrics.sendBehavioralMetric(
-            // @ts-ignore - check if STOP_WHITEBOARD_SHARE_FAILURE exists
-            BEHAVIORAL_METRICS.STOP_WHITEBOARD_SHARE_FAILURE,
-            {
-              correlation_id: this.correlationId,
-              locus_id: this.locusUrl.split('/').pop(),
-              reason: error.message,
-              stack: error.stack,
-              board: {channelUrl},
-            }
-          );
+          Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.MEETING_STOP_WHITEBOARD_SHARE_FAILURE, {
+            correlation_id: this.correlationId,
+            locus_id: this.locusUrl.split('/').pop(),
+            reason: error.message,
+            stack: error.stack,
+            board: {channelUrl},
+          });
 
           return Promise.reject(error);
         })
