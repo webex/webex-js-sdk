@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.307](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.306...v3.0.0-beta.307) (2024-01-11)
+
+
+### Bug Fixes
+
+* **metrics:** adding subServiceType to call diagnostic metrics ([#3297](https://github.com/webex/webex-js-sdk/issues/3297)) ([03f988a](https://github.com/webex/webex-js-sdk/commit/03f988aa2ab390f131e9a34dc92630337eeb3d9b))
+
 ## [3.0.0-beta.306](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.305...v3.0.0-beta.306) (2024-01-10)
 
 

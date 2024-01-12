@@ -107,6 +107,7 @@ export type ClientType = NonNullable<RawEvent['origin']['clientInfo']>['clientTy
 export type SubClientType = NonNullable<RawEvent['origin']['clientInfo']>['subClientType'];
 export type NetworkType = NonNullable<RawEvent['origin']>['networkType'];
 
+export type ClientSubServiceType = ClientEvent['payload']['webexSubServiceType'];
 export type ClientEventPayload = RecursivePartial<ClientEvent['payload']>;
 export type ClientEventLeaveReason = ClientEvent['payload']['leaveReason'];
 export type ClientEventPayloadError = ClientEvent['payload']['errors'];
