@@ -39,6 +39,26 @@ describe('plugin-meetings', () => {
       });
     });
 
+    describe('#getAddedRoleShape', () => {
+      it('returns the correct shape with hostkey', () => {
+        const format = {type: 'PRESENTER', hasRole: true, hostKey: '123456'};
+        assert.deepEqual(MembersUtil.getAddedRoleShape(format), {
+          type: 'PRESENTER',
+          hasRole: true,
+          hostKey: '123456',
+        });
+      });
+
+      it('returns the correct shape without hostkey', () => {
+        const format = {type: 'PRESENTER', hasRole: true};
+        assert.deepEqual(MembersUtil.getAddedRoleShape(format), {
+          type: 'PRESENTER',
+          hasRole: true,
+        });
+      });
+    });
+
+
     describe('#getRoleAssignmentMemberRequestParams', () => {
       it('returns the correct request params', () => {
         const format = {

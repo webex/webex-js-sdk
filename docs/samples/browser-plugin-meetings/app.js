@@ -1805,7 +1805,13 @@ function reclaimHost(reclaimHostBtn) {
     hostKey,
   };
 
-  meeting.members.assignRoles(selfId, [role]);
+  meeting.members.assignRoles(selfId, [role])
+  .then(() => {
+    console.log('Host role reclaimed');
+  })
+  .catch((error) => {
+    console.log('Error reclaiming host role', error);
+  });
 }
 
 function viewParticipants() {
