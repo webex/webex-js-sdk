@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.310](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.309...v3.0.0-beta.310) (2024-01-15)
+
+
+### Bug Fixes
+
+* added method for getting the meeting with active webrtc connection ([#3307](https://github.com/webex/webex-js-sdk/issues/3307)) ([9414240](https://github.com/webex/webex-js-sdk/commit/9414240011471d7b0087d0177b4770ab28b0e6d5))
+
 ## [3.0.0-beta.309](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.308...v3.0.0-beta.309) (2024-01-12)
 
 
