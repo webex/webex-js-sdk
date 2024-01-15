@@ -528,7 +528,7 @@ export default class Meeting extends StatelessWebexPlugin {
   meetingInfoFailureCode?: number;
   meetingInfoExtraParams?: Record<string, any>;
   networkQualityMonitor: NetworkQualityMonitor;
-  networkStatus: string;
+  networkStatus?: NETWORK_STATUS;
   passwordStatus: string;
   queuedMediaUpdates: any[];
   recording: any;
@@ -1095,13 +1095,14 @@ export default class Meeting extends StatelessWebexPlugin {
      */
     this.networkQualityMonitor = null;
     /**
+     * Indicates network status of the webrtc media connection
      * @instance
      * @type {String}
      * @readonly
      * @public
      * @memberof Meeting
      */
-    this.networkStatus = null;
+    this.networkStatus = undefined;
     /**
      * Passing only info as we send basic info for meeting added event
      * @instance
@@ -1927,12 +1928,12 @@ export default class Meeting extends StatelessWebexPlugin {
 
   /**
    * sets the network status on meeting object
-   * @param {String} networkStatus
+   * @param {NETWORK_STATUS} networkStatus
    * @private
    * @returns {undefined}
    * @memberof Meeting
    */
-  private setNetworkStatus(networkStatus: string) {
+  private setNetworkStatus(networkStatus?: NETWORK_STATUS) {
     if (networkStatus === NETWORK_STATUS.DISCONNECTED) {
       Trigger.trigger(
         this,
@@ -3907,6 +3908,7 @@ export default class Meeting extends StatelessWebexPlugin {
       this.receiveSlotManager.reset();
       this.mediaProperties.webrtcMediaConnection.close();
       this.sendSlotManager.reset();
+      this.setNetworkStatus(undefined);
     }
 
     this.audio = null;
@@ -4578,7 +4580,11 @@ export default class Meeting extends StatelessWebexPlugin {
     // @ts-ignore
     this.webex.internal.newMetrics.submitClientEvent({
       name: 'client.call.initiated',
-      payload: {trigger: 'user-interaction', isRoapCallEnabled: true},
+      payload: {
+        trigger: 'user-interaction',
+        isRoapCallEnabled: true,
+        pstnAudioType: options?.pstnAudioType,
+      },
       options: {meetingId: this.id},
     });
 
@@ -5445,6 +5451,10 @@ export default class Meeting extends StatelessWebexPlugin {
           // @ts-ignore
           this.webex.internal.newMetrics.submitClientEvent({
             name: 'client.ice.end',
+            payload: {
+              canProceed: true,
+              icePhase: !this.networkStatus ? 'JOIN_MEETING_FINAL' : 'IN_MEETING',
+            },
             options: {
               meetingId: this.id,
             },
@@ -6797,17 +6807,13 @@ export default class Meeting extends StatelessWebexPlugin {
         .catch((error) => {
           LoggerProxy.logger.error('Meeting:index#stopWhiteboardShare --> Error ', error);
 
-          Metrics.sendBehavioralMetric(
-            // @ts-ignore - check if STOP_WHITEBOARD_SHARE_FAILURE exists
-            BEHAVIORAL_METRICS.STOP_WHITEBOARD_SHARE_FAILURE,
-            {
-              correlation_id: this.correlationId,
-              locus_id: this.locusUrl.split('/').pop(),
-              reason: error.message,
-              stack: error.stack,
-              board: {channelUrl},
-            }
-          );
+          Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.MEETING_STOP_WHITEBOARD_SHARE_FAILURE, {
+            correlation_id: this.correlationId,
+            locus_id: this.locusUrl.split('/').pop(),
+            reason: error.message,
+            stack: error.stack,
+            board: {channelUrl},
+          });
 
           return Promise.reject(error);
         })

@@ -320,6 +320,32 @@ describe('internal-plugin-metrics', () => {
         });
       });
 
+      it('should build identifiers correctly with a meeting that has meetingInfo with siteName', () => {
+        const res = cd.getIdentifiers({
+          mediaConnections: [
+            {mediaAgentAlias: 'mediaAgentAlias', mediaAgentGroupId: 'mediaAgentGroupId'},
+          ],
+          webexConferenceIdStr: 'webexConferenceIdStr',
+          globalMeetingId: 'globalMeetingId',
+          meeting: {...fakeMeeting, meetingInfo: {...fakeMeeting.meetingInfo, confIdStr: 'webexConferenceIdStr1', meetingId: 'globalMeetingId1', siteName: 'siteName1'}},
+        });
+
+        assert.deepEqual(res, {
+          correlationId: 'correlationId',
+          webexConferenceIdStr: 'webexConferenceIdStr1',
+          globalMeetingId: 'globalMeetingId1',
+          deviceId: 'deviceUrl',
+          locusId: 'url',
+          locusStartTime: 'lastActive',
+          locusUrl: 'locus/url',
+          mediaAgentAlias: 'mediaAgentAlias',
+          mediaAgentGroupId: 'mediaAgentGroupId',
+          orgId: 'orgId',
+          userId: 'userId',
+          webexSiteName: 'siteName1',
+        });
+      });
+
       it('should build identifiers correctly given webexConferenceIdStr', () => {
         const res = cd.getIdentifiers({
           correlationId: 'correlationId',
@@ -440,6 +466,7 @@ describe('internal-plugin-metrics', () => {
         const submitToCallDiagnosticsSpy = sinon.spy(cd, 'submitToCallDiagnostics');
         const generateClientEventErrorPayloadSpy = sinon.spy(cd, 'generateClientEventErrorPayload');
         const getIdentifiersSpy = sinon.spy(cd, 'getIdentifiers');
+        const getSubServiceTypeSpy = sinon.spy(cd, 'getSubServiceType');
         sinon.stub(cd, 'getOrigin').returns({origin: 'fake-origin'});
         const validatorSpy = sinon.spy(cd, 'validator');
         const options = {
@@ -481,6 +508,7 @@ describe('internal-plugin-metrics', () => {
             name: 'client.alert.displayed',
             userType: 'host',
             isConvergedArchitectureEnabled: undefined,
+            webexSubServiceType: undefined,
           },
           options
         );
@@ -505,6 +533,7 @@ describe('internal-plugin-metrics', () => {
             name: 'client.alert.displayed',
             userType: 'host',
             isConvergedArchitectureEnabled: undefined,
+            webexSubServiceType: undefined,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -538,6 +567,7 @@ describe('internal-plugin-metrics', () => {
             name: 'client.alert.displayed',
             userType: 'host',
             isConvergedArchitectureEnabled: undefined,
+            webexSubServiceType: undefined,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -812,6 +842,7 @@ describe('internal-plugin-metrics', () => {
             name: 'client.alert.displayed',
             userType: 'host',
             isConvergedArchitectureEnabled: undefined,
+            webexSubServiceType: undefined,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -911,6 +942,7 @@ describe('internal-plugin-metrics', () => {
             name: 'client.alert.displayed',
             userType: 'host',
             isConvergedArchitectureEnabled: undefined,
+            webexSubServiceType: undefined,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -1204,6 +1236,7 @@ describe('internal-plugin-metrics', () => {
             name: 'client.alert.displayed',
             userType: 'host',
             isConvergedArchitectureEnabled: undefined,
+            webexSubServiceType: undefined,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -1749,6 +1782,41 @@ describe('internal-plugin-metrics', () => {
       });
     });
 
+    describe('#getSubServiceType', () => {
+      it('returns subServicetype as PMR when PMR meeting', () => {
+       fakeMeeting.meetingInfo ={
+          webexScheduled: false,
+          pmr: true,
+          enableEvent: false,
+        }
+        assert.deepEqual(cd.getSubServiceType(fakeMeeting), 'PMR');
+      });
+
+      it('returns subServicetype as ScheduledMeeting when regular meeting', () => {
+        fakeMeeting.meetingInfo ={
+           webexScheduled: true,
+           pmr: false,
+           enableEvent: false,
+         }
+         assert.deepEqual(cd.getSubServiceType(fakeMeeting), 'ScheduledMeeting');
+       });
+
+       it('returns subServicetype as Webinar when meeting is Webinar', () => {
+        fakeMeeting.meetingInfo ={
+           webexScheduled: true,
+           pmr: false,
+           enableEvent: true,
+         }
+         assert.deepEqual(cd.getSubServiceType(fakeMeeting), 'Webinar');
+       });
+
+       it('returns subServicetype as undefined when correct parameters are not found', () => {
+        fakeMeeting.meetingInfo ={}
+         assert.deepEqual(cd.getSubServiceType(fakeMeeting), undefined);
+       });
+      
+    });
+
     describe('#getIsConvergedArchitectureEnabled', () => {
       it('returns true if converged architecture is enabled', () => {
         fakeMeeting.meetingInfo = {enableConvergedArchitecture: true};
@@ -1805,6 +1873,7 @@ describe('internal-plugin-metrics', () => {
                       trigger: 'user-interaction',
                       userType: 'host',
                       isConvergedArchitectureEnabled: undefined,
+                      webexSubServiceType: undefined,
                     },
                     eventId: 'my-fake-id',
                     origin: {

@@ -2,6 +2,41 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.309](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.308...v3.0.0-beta.309) (2024-01-12)
+
+
+### Features
+
+* **ca:** add pstn property ([#3303](https://github.com/webex/webex-js-sdk/issues/3303)) ([3a4220b](https://github.com/webex/webex-js-sdk/commit/3a4220b907a0bf28083c71af6e550de9865c0574))
+
+## [3.0.0-beta.308](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.307...v3.0.0-beta.308) (2024-01-12)
+
+
+### Bug Fixes
+
+* add icePhase for client.ice.end for successful case ([#3305](https://github.com/webex/webex-js-sdk/issues/3305)) ([5cd6097](https://github.com/webex/webex-js-sdk/commit/5cd60976d17d27d5a9c778a81e32f8d770f1cf76))
+
+## [3.0.0-beta.307](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.306...v3.0.0-beta.307) (2024-01-11)
+
+
+### Bug Fixes
+
+* **metrics:** adding subServiceType to call diagnostic metrics ([#3297](https://github.com/webex/webex-js-sdk/issues/3297)) ([03f988a](https://github.com/webex/webex-js-sdk/commit/03f988aa2ab390f131e9a34dc92630337eeb3d9b))
+
+## [3.0.0-beta.306](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.305...v3.0.0-beta.306) (2024-01-10)
+
+
+### Bug Fixes
+
+* **internal-plugin-metrics:** add site name identifier to events ([#3302](https://github.com/webex/webex-js-sdk/issues/3302)) ([212c9c6](https://github.com/webex/webex-js-sdk/commit/212c9c6f6b67e6214f8dbead008ac8c494254fde))
+
+## [3.0.0-beta.305](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.304...v3.0.0-beta.305) (2024-01-10)
+
+
+### Bug Fixes
+
+* increased timeout for SDP answer ([#3301](https://github.com/webex/webex-js-sdk/issues/3301)) ([d50e201](https://github.com/webex/webex-js-sdk/commit/d50e2013b92dee99cbebd413a8e74bf3f4e6ed6e))
+
 ## [3.0.0-beta.304](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.303...v3.0.0-beta.304) (2024-01-09)
 
 
