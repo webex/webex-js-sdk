@@ -62,6 +62,7 @@ import MembersUtil from './util';
  */
 export default class Members extends StatelessWebexPlugin {
   hostId: any;
+  testId: string;
   locusUrl: any;
   mediaShareContentId: any;
   mediaShareWhiteboardId: any;
@@ -114,6 +115,7 @@ export default class Members extends StatelessWebexPlugin {
      * @memberof Members
      */
     this.hostId = null;
+    this.testId = null;
     /**
      * The current type for the meeting, could be MEETING or CALL
      * @instance
