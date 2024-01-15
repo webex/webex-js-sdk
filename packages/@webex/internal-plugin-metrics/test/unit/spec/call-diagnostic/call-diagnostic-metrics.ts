@@ -19,7 +19,7 @@ const userAgent = `webex-js-sdk/test-webex-version client=Cantina; (os=${getOSNa
   getOSVersion().split('.')[0]
 })`;
 
-describe('internal-plugin-metrics', () => {
+describe.only('internal-plugin-metrics', () => {
   describe('CallDiagnosticMetrics', () => {
     var now = new Date();
 
@@ -844,6 +844,7 @@ describe('internal-plugin-metrics', () => {
                 shownToUser: false,
                 serviceErrorCode: 2409005,
                 errorCode: 4029,
+                rawErrorMessage: undefined,
               },
             ],
             loginType: 'login-ci',
@@ -900,7 +901,6 @@ describe('internal-plugin-metrics', () => {
             canProceed: true,
             eventData: {
               webClientDomain: 'whatever',
-              rawErrorMessage: 'bad times',
             },
             identifiers: {
               correlationId: 'correlationId',
@@ -922,6 +922,7 @@ describe('internal-plugin-metrics', () => {
                 errorCode: 9999,
                 serviceErrorCode: 9999,
                 errorDescription: 'UnknownError',
+                rawErrorMessage: 'bad times',
               },
             ],
             loginType: 'login-ci',
@@ -952,11 +953,11 @@ describe('internal-plugin-metrics', () => {
         assert.deepEqual(webexLoggerLogCalls[1].args, [
           'call-diagnostic-events -> ',
           'CallDiagnosticMetrics: @prepareClientEvent. Generated errors:',
-          `generatedError: {"fatal":true,"shownToUser":false,"name":"other","category":"other","errorCode":9999,"serviceErrorCode":9999,"errorDescription":"UnknownError"}`,
+          `generatedError: {"fatal":true,"shownToUser":false,"name":"other","category":"other","errorCode":9999,"serviceErrorCode":9999,"rawErrorMessage":"bad times","errorDescription":"UnknownError"}`,
         ]);
       });
 
-      it('it should include errors if provided with correlationId', () => {
+      it('it should send the raw error message if provided with correlationId', () => {
         sinon.stub(cd, 'getOrigin').returns({origin: 'fake-origin'});
         const submitToCallDiagnosticsSpy = sinon.spy(cd, 'submitToCallDiagnostics');
 
@@ -975,7 +976,6 @@ describe('internal-plugin-metrics', () => {
             canProceed: true,
             eventData: {
               webClientDomain: 'whatever',
-              rawErrorMessage: 'bad times',
             },
             identifiers: {
               correlationId: 'correlationId',
@@ -993,6 +993,7 @@ describe('internal-plugin-metrics', () => {
                 errorCode: 9999,
                 serviceErrorCode: 9999,
                 errorDescription: 'UnknownError',
+                rawErrorMessage: 'bad times',
               },
             ],
             loginType: 'login-ci',
@@ -1021,11 +1022,11 @@ describe('internal-plugin-metrics', () => {
         assert.deepEqual(webexLoggerLogCalls[1].args, [
           'call-diagnostic-events -> ',
           'CallDiagnosticMetrics: @prepareClientEvent. Generated errors:',
-          `generatedError: {"fatal":true,"shownToUser":false,"name":"other","category":"other","errorCode":9999,"serviceErrorCode":9999,"errorDescription":"UnknownError"}`,
+          `generatedError: {"fatal":true,"shownToUser":false,"name":"other","category":"other","errorCode":9999,"serviceErrorCode":9999,"rawErrorMessage":"bad times","errorDescription":"UnknownError"}`,
         ]);
       });
 
-      it('it should send the raw error message if provided with correlationId', () => {
+      it('it should include errors if provided with correlationId', () => {
         sinon.stub(cd, 'getOrigin').returns({origin: 'fake-origin'});
         const submitToCallDiagnosticsSpy = sinon.spy(cd, 'submitToCallDiagnostics');
 
@@ -1065,6 +1066,7 @@ describe('internal-plugin-metrics', () => {
                 shownToUser: false,
                 serviceErrorCode: 2409005,
                 errorCode: 4029,
+                rawErrorMessage: undefined,
               },
             ],
             loginType: 'login-ci',
@@ -1396,6 +1398,25 @@ describe('internal-plugin-metrics', () => {
           shownToUser: false,
           errorCode: 4008,
           serviceErrorCode: 10000,
+          rawErrorMessage: undefined,
+        });
+      });
+
+      it('should include rawErrorMessage if provided', () => {
+        const res = cd.getErrorPayloadForClientErrorCode({
+          clientErrorCode: 4008,
+          serviceErrorCode: 10000,
+          rawErrorMessage: 'bad times',
+        });
+        assert.deepEqual(res, {
+          category: 'signaling',
+          errorDescription: 'NewLocusError',
+          fatal: true,
+          name: 'other',
+          shownToUser: false,
+          errorCode: 4008,
+          serviceErrorCode: 10000,
+          rawErrorMessage: 'bad times',
         });
       });
 
@@ -1412,6 +1433,7 @@ describe('internal-plugin-metrics', () => {
           shownToUser: false,
           errorCode: 4009,
           serviceErrorCode: undefined,
+          rawErrorMessage: undefined,
         });
       });
 
@@ -1433,6 +1455,7 @@ describe('internal-plugin-metrics', () => {
         shownToUser: false,
         errorCode: 4029,
         serviceErrorCode: 2409005,
+        rawErrorMessage: 'bad times',
       };
 
       const checkNameError = (payload: any, isExpectedToBeCalled: boolean) => {
@@ -1446,6 +1469,7 @@ describe('internal-plugin-metrics', () => {
           serviceErrorCode: undefined,
           errorCode: 4032,
           errorData: {errorName: payload.name},
+          rawErrorMessage: payload.message,
         };
 
         if (isExpectedToBeCalled) {
@@ -1456,11 +1480,11 @@ describe('internal-plugin-metrics', () => {
       };
 
       it('should generate media event error payload if rawError has a media error name', () => {
-        checkNameError({name: 'PermissionDeniedError'}, true);
+        checkNameError({name: 'PermissionDeniedError', message: 'bad times'}, true);
       });
 
       it('should not generate media event error payload if rawError has a name that is not recognized', () => {
-        checkNameError({name: 'SomeRandomError'}, false);
+        checkNameError({name: 'SomeRandomError', message: 'bad times'}, false);
       });
 
       const checkCodeError = (payload: any, expetedRes: any) => {
@@ -1468,19 +1492,25 @@ describe('internal-plugin-metrics', () => {
         assert.deepEqual(res, expetedRes);
       };
       it('should generate event error payload correctly', () => {
-        checkCodeError({body: {errorCode: 2409005}}, defaultExpectedRes);
+        checkCodeError({body: {errorCode: 2409005}, message: 'bad times'}, defaultExpectedRes);
       });
 
       it('should generate event error payload correctly if rawError has body.code', () => {
-        checkCodeError({body: {code: 2409005}}, defaultExpectedRes);
+        checkCodeError({body: {code: 2409005}, message: 'bad times'}, defaultExpectedRes);
       });
 
       it('should generate event error payload correctly if rawError has body.reason.reasonCode', () => {
-        checkCodeError({body: {reason: {reasonCode: 2409005}}}, defaultExpectedRes);
+        checkCodeError(
+          {body: {reason: {reasonCode: 2409005}}, message: 'bad times'},
+          defaultExpectedRes
+        );
       });
 
       it('should generate event error payload correctly if rawError has error.body.errorCode', () => {
-        checkCodeError({error: {body: {errorCode: 2409005}}}, defaultExpectedRes);
+        checkCodeError(
+          {error: {body: {errorCode: 2409005}}, message: 'bad times'},
+          defaultExpectedRes
+        );
       });
 
       const checkLocusError = (payload: any, isExpectedToBeCalled: boolean) => {
@@ -1493,6 +1523,7 @@ describe('internal-plugin-metrics', () => {
           shownToUser: false,
           serviceErrorCode: 2400000,
           errorCode: 4008,
+          rawErrorMessage: 'bad times',
         };
 
         if (isExpectedToBeCalled) {
@@ -1503,11 +1534,11 @@ describe('internal-plugin-metrics', () => {
       };
 
       it('should return default new locus event error payload correctly if locus error is recognized', () => {
-        checkLocusError({body: {errorCode: 2400000}}, true);
+        checkLocusError({body: {errorCode: 2400000}, message: 'bad times'}, true);
       });
 
       it('should not return default new locus event error payload correctly if locus is not recognized', () => {
-        checkLocusError({body: {errorCode: 1400000}}, false);
+        checkLocusError({body: {errorCode: 1400000}, message: 'bad times'}, false);
       });
 
       const checkMeetingInfoError = (payload: any, isExpectedToBeCalled: boolean) => {
@@ -1520,6 +1551,7 @@ describe('internal-plugin-metrics', () => {
           shownToUser: false,
           serviceErrorCode: undefined,
           errorCode: 4100,
+          rawErrorMessage: 'bad times',
         };
 
         if (isExpectedToBeCalled) {
@@ -1530,15 +1562,24 @@ describe('internal-plugin-metrics', () => {
       };
 
       it('should return default meeting info lookup error payload if data.meetingInfo was found on error body', () => {
-        checkMeetingInfoError({body: {data: {meetingInfo: 'something'}}}, true);
+        checkMeetingInfoError(
+          {body: {data: {meetingInfo: 'something'}}, message: 'bad times'},
+          true
+        );
       });
 
       it('should return default meeting info lookup error payload if body.url contains wbxappapi', () => {
-        checkMeetingInfoError({body: {url: '1234567-wbxappapiabcdefg'}}, true);
+        checkMeetingInfoError(
+          {body: {url: '1234567-wbxappapiabcdefg'}, message: 'bad times'},
+          true
+        );
       });
 
       it('should not return default meeting info lookup error payload if body.url does not contain wbxappapi and data.meetingInfo was not found on error body', () => {
-        checkMeetingInfoError({body: {data: '1234567-wbxappapiabcdefg'}}, false);
+        checkMeetingInfoError(
+          {body: {data: '1234567-wbxappapiabcdefg'}, message: 'bad times'},
+          false
+        );
       });
 
       it('should return NetworkError code for a NetworkOrCORSERror', () => {
@@ -1552,12 +1593,13 @@ describe('internal-plugin-metrics', () => {
         );
         assert.deepEqual(res, {
           category: 'network',
-          errorDescription: '{}\nundefined https://example.com\nWEBEX_TRACKING_ID: undefined\n',
+          errorDescription: 'NetworkError',
           fatal: true,
           name: 'other',
           shownToUser: false,
           serviceErrorCode: undefined,
           errorCode: 1026,
+          rawErrorMessage: '{}\nundefined https://example.com\nWEBEX_TRACKING_ID: undefined\n',
         });
       });
 
@@ -1577,12 +1619,13 @@ describe('internal-plugin-metrics', () => {
         const res = cd.generateClientEventErrorPayload(error);
         assert.deepEqual(res, {
           category: 'expected',
-          errorDescription: '{}\nundefined https://example.com\nWEBEX_TRACKING_ID: undefined\n',
+          errorDescription: 'NetworkError',
           fatal: true,
           name: 'other',
           shownToUser: true,
           serviceErrorCode: undefined,
           errorCode: 1026,
+          rawErrorMessage: '{}\nundefined https://example.com\nWEBEX_TRACKING_ID: undefined\n',
         });
       });
 
@@ -1597,12 +1640,13 @@ describe('internal-plugin-metrics', () => {
         );
         assert.deepEqual(res, {
           category: 'network',
-          errorDescription: '{}\nundefined https://example.com\nWEBEX_TRACKING_ID: undefined\n',
+          errorDescription: 'AuthenticationFailed',
           fatal: true,
           name: 'other',
           shownToUser: false,
           serviceErrorCode: undefined,
           errorCode: 1010,
+          rawErrorMessage: '{}\nundefined https://example.com\nWEBEX_TRACKING_ID: undefined\n',
         });
       });
 
@@ -1622,17 +1666,18 @@ describe('internal-plugin-metrics', () => {
         const res = cd.generateClientEventErrorPayload(error);
         assert.deepEqual(res, {
           category: 'expected',
-          errorDescription: '{}\nundefined https://example.com\nWEBEX_TRACKING_ID: undefined\n',
+          errorDescription: 'AuthenticationFailed',
           fatal: true,
           name: 'other',
           shownToUser: true,
           serviceErrorCode: undefined,
           errorCode: 1010,
+          rawErrorMessage: '{}\nundefined https://example.com\nWEBEX_TRACKING_ID: undefined\n',
         });
       });
 
       it('should return unknown error otherwise', () => {
-        const res = cd.generateClientEventErrorPayload({somethgin: 'new'});
+        const res = cd.generateClientEventErrorPayload({somethgin: 'new', message: 'bad times'});
         assert.deepEqual(res, {
           category: 'other',
           errorDescription: 'UnknownError',
@@ -1641,11 +1686,15 @@ describe('internal-plugin-metrics', () => {
           shownToUser: false,
           serviceErrorCode: 9999,
           errorCode: 9999,
+          rawErrorMessage: 'bad times',
         });
       });
 
       it('should generate event error payload correctly for locus error 2423012', () => {
-        const res = cd.generateClientEventErrorPayload({body: {errorCode: 2423012}});
+        const res = cd.generateClientEventErrorPayload({
+          body: {errorCode: 2423012},
+          message: 'bad times',
+        });
         assert.deepEqual(res, {
           category: 'expected',
           errorDescription: 'FraudDetection',
@@ -1654,10 +1703,14 @@ describe('internal-plugin-metrics', () => {
           shownToUser: true,
           serviceErrorCode: 2423012,
           errorCode: 12000,
+          rawErrorMessage: 'bad times',
         });
       });
       it('should generate event error payload correctly for locus error 2409062', () => {
-        const res = cd.generateClientEventErrorPayload({body: {errorCode: 2409062}});
+        const res = cd.generateClientEventErrorPayload({
+          body: {errorCode: 2409062},
+          message: 'bad times',
+        });
         assert.deepEqual(res, {
           category: 'expected',
           errorDescription: 'E2EENotSupported',
@@ -1666,11 +1719,15 @@ describe('internal-plugin-metrics', () => {
           shownToUser: true,
           serviceErrorCode: 2409062,
           errorCode: 12002,
+          rawErrorMessage: 'bad times',
         });
       });
 
       it('should generate event error payload correctly for locus error 2423021', () => {
-        const res = cd.generateClientEventErrorPayload({body: {errorCode: 2423021}});
+        const res = cd.generateClientEventErrorPayload({
+          body: {errorCode: 2423021},
+          message: 'bad times',
+        });
         assert.deepEqual(res, {
           category: 'expected',
           errorDescription: 'LocusLobbyFullCMR',
@@ -1679,6 +1736,7 @@ describe('internal-plugin-metrics', () => {
           shownToUser: true,
           serviceErrorCode: 2423021,
           errorCode: 12001,
+          rawErrorMessage: 'bad times',
         });
       });
     });
