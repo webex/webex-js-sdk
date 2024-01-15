@@ -62,5 +62,17 @@ describe('plugin-meetings', () => {
           breakouts: {url: 'url', isActiveBreakout: true}, id: uuid1});
       });
     });
+
+    describe('#getActiveWebrtcMeeting', () => {
+      it('returns the meeting with a webrtc media connection', () => {
+        const activeMeeting = {value: 'test3', id: uuid.v4(), mediaProperties: { webrtcMediaConnection: 'something'}};
+
+        meetingCollection.meetings.test = {value: 'test', id: uuid1, mediaProperties: {}};
+        meetingCollection.meetings.test2 = {value: 'test2', id: uuid2, mediaProperties: {}};
+        meetingCollection.meetings.test3 = activeMeeting;
+
+        assert.equal(meetingCollection.getActiveWebrtcMeeting(), activeMeeting);
+      })
+    })
   });
 });
