@@ -388,7 +388,7 @@ describe('plugin-metrics', () => {
           assert.calledOnceWithExactly(
             webex.logger.error,
             'call-diagnostic-events -> ',
-            `CallDiagnosticEventsBatcher: @submitHttpRequest#call-diagnostic-metrics-batch-${expectedBatchId}. Request failed:`,
+            `CallDiagnosticEventsBatcher: @submitHttpRequest#ca-batch-${expectedBatchId}. Request failed:`,
             `error: formattedError`
           );
           assert.lengthOf(
