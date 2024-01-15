@@ -16,6 +16,13 @@ import ParameterError from '@webex/plugin-meetings/src/common/errors/parameter';
 import Members from '@webex/plugin-meetings/src/members';
 import MembersUtil from '@webex/plugin-meetings/src/members/util';
 
+import {
+  ReclaimHostEmptyWrongKeyError,
+  ReclaimHostIsHostAlreadyError,
+  ReclaimHostNotAllowedError,
+  ReclaimHostNotSupportedError,
+} from '../../../../src/common/errors/reclaim-host-role-error';
+
 const {assert} = chai;
 
 chai.use(chaiAsPromised);

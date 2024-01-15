@@ -4,6 +4,8 @@ import chaiAsPromised from 'chai-as-promised';
 
 import MembersUtil from '@webex/plugin-meetings/src/members/util';
 
+import {CONTROLS, PARTICIPANT} from '@webex/plugin-meetings/src/constants';
+
 const {assert} = chai;
 
 chai.use(chaiAsPromised);
