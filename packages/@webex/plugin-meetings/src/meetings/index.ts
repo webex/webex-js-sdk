@@ -1467,4 +1467,15 @@ export default class Meetings extends WebexPlugin {
   getLogger() {
     return LoggerProxy.get();
   }
+
+  /**
+   * Returns the first meeting it finds that has the webrtc media connection created.
+   * Useful for debugging in the console.
+   *
+   * @private
+   * @returns {Meeting} Meeting object that has a webrtc media connection, else undefined
+   */
+  getActiveWebrtcMeeting() {
+    return this.meetingCollection.getActiveWebrtcMeeting();
+  }
 }
