@@ -5,6 +5,8 @@ import {
   MultistreamRoapMediaConnection,
 } from '@webex/internal-media-core';
 
+import {NamedMediaGroup} from '@webex/json-multistream';
+
 export default class SendSlotManager {
   private readonly slots: Map<MediaType, SendSlot> = new Map();
   private readonly LoggerProxy: any;
@@ -53,6 +55,26 @@ export default class SendSlotManager {
     }
 
     return slot;
+  }
+
+  /**
+   * Allow users to specify 'namedMediaGroups' to indicate which named media group its audio should be sent to.
+   * @param {MediaType} mediaType MediaType of the sendSlot to which the audio stream needs to be send to the media group
+   * @param {[]}namedMediaGroups - Allow users to specify 'namedMediaGroups'.
+   * @returns {void}
+   */
+  public setNamedMediaGroups(mediaType: MediaType, namedMediaGroups: NamedMediaGroup[]) {
+    const slot = this.slots.get(mediaType);
+
+    if (!slot) {
+      throw new Error(`Slot for ${mediaType} does not exist`);
+    }
+
+    slot.setNamedMediaGroups(namedMediaGroups);
+
+    this.LoggerProxy.logger.info(
+      `SendSlotsManager->setNamedMediaGroups#set named media group ${namedMediaGroups}`
+    );
   }
 
   /**

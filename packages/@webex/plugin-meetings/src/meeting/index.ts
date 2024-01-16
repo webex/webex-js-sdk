@@ -5687,6 +5687,7 @@ export default class Meeting extends StatelessWebexPlugin {
 
     // publish the streams
     if (this.mediaProperties.audioStream) {
+      this.setNamedMediaGroup(MediaType.AudioMain);
       await this.publishStream(MediaType.AudioMain, this.mediaProperties.audioStream);
     }
     if (this.mediaProperties.videoStream) {
@@ -7694,6 +7695,31 @@ export default class Meeting extends StatelessWebexPlugin {
 
         throw error;
       });
+  }
+
+  /**
+   * Set named media group which the audio should send to
+   * @param {MediaType} mediaType of the stream
+   * @returns {void}
+   */
+  private setNamedMediaGroup(mediaType: MediaType): void {
+    const groups = [
+      {
+        type: 1, // always 1 for audio
+        value: 112, // to-do, hard code for test
+      },
+    ];
+
+    if (this.isMultistream && this.mediaProperties.webrtcMediaConnection) {
+      this.sendSlotManager.setNamedMediaGroups(mediaType, groups);
+    }
+
+    // this.emitPublishStateChangeEvent({
+    //   isPublished: false,
+    //   mediaType,
+    //   stream,
+    //   functionName: 'setNamedMediaGroup',
+    // });
   }
 
   /**
