@@ -2,7 +2,7 @@
 // Most client error codes are mapped based on
 // https://sqbu-github.cisco.com/WebExSquared/event-dictionary/wiki/Error-codes-for-metric-events
 
-import {ClientEventError} from '../metrics.types';
+import {ClientEventError, ClientSubServiceType} from '../metrics.types';
 
 export const CALL_DIAGNOSTIC_LOG_IDENTIFIER = 'call-diagnostic-events -> ';
 
@@ -17,6 +17,12 @@ export const DTLS_HANDSHAKE_FAILED_CLIENT_CODE = 2008;
 export const ICE_FAILED_WITH_TURN_TLS_CLIENT_CODE = 2010;
 export const ICE_FAILED_WITHOUT_TURN_TLS_CLIENT_CODE = 2009;
 export const WBX_APP_API_URL = 'wbxappapi'; // MeetingInfo WebexAppApi response object normally contains a body.url that includes the string 'wbxappapi'
+
+export const WEBEX_SUB_SERVICE_TYPES: Record<string, ClientSubServiceType> = {
+  PMR: 'PMR',
+  SCHEDULED_MEETING: 'ScheduledMeeting',
+  WEBINAR: 'Webinar',
+};
 
 // Found in https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getUserMedia
 const BROWSER_MEDIA_ERROR_NAMES = {

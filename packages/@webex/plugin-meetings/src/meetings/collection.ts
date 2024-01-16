@@ -60,4 +60,17 @@ export default class MeetingCollection extends Collection {
 
     return null;
   }
+
+  /**
+   * Gets the meeting that has a webrtc media connection
+   * NOTE: this function assumes there is no more than 1 such meeting
+   *
+   * @returns {Meeting} first meeting found, else undefined
+   * @public
+   * @memberof MeetingCollection
+   */
+  public getActiveWebrtcMeeting() {
+    // @ts-ignore
+    return find(this.meetings, (meeting) => meeting.mediaProperties.webrtcMediaConnection);
+  }
 }

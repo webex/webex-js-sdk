@@ -6,23 +6,24 @@ import MeetingRequest from '@webex/plugin-meetings/src/meeting/request';
 import uuid from 'uuid';
 import { merge } from 'lodash';
 import {IP_VERSION} from '@webex/plugin-meetings/src/constants';
+import {CallDiagnosticUtils} from '@webex/internal-plugin-metrics';
 
 
 describe('plugin-meetings', () => {
   let meetingsRequest;
   let locusDeltaRequestSpy;
+  let webex;
+  const geoHintInfoDefaults = {countryCode: 'US', regionCode: 'WEST-COAST', clientAddress: '127.0.0.1'};
+  let anonymizeIpSpy;
 
   beforeEach(() => {
-    const webex = new MockWebex({
+    webex = new MockWebex({
       children: {
         meetings: Meetings,
       },
     });
 
-    webex.meetings.geoHintInfo = {
-      countryCode: 'US',
-      regionCode: 'WEST-COAST',
-    };
+    webex.meetings.geoHintInfo = {...geoHintInfoDefaults};
 
     webex.internal = {
       services: {
@@ -53,6 +54,11 @@ describe('plugin-meetings', () => {
 
     meetingsRequest.request = request;
     locusDeltaRequestSpy = sinon.spy(meetingsRequest, 'locusDeltaRequest');
+    anonymizeIpSpy = sinon.spy(CallDiagnosticUtils, 'anonymizeIPAddress');
+  });
+
+  afterEach(() => {
+    anonymizeIpSpy.restore();
   });
 
   const checkRequest = (expectedParams) => {
@@ -195,7 +201,40 @@ describe('plugin-meetings', () => {
         assert.equal(requestParams.body.device.countryCode, 'US');
         assert.equal(requestParams.body.permissionToken, 'permission-token');
         assert.equal(requestParams.body.device.regionCode, 'WEST-COAST');
+        assert.include(requestParams.body.device.localIp, '127.0.0');
+
+        assert.calledOnceWithExactly(anonymizeIpSpy, '127.0.0.1');
       });
+
+      describe('clientAddress geoHintInfo undefined', () => {
+        beforeEach(() => {
+          webex.meetings.geoHintInfo = {};
+        });
+    
+        // reset
+        afterEach(() => {
+          webex.meetings.geoHintInfo = {...geoHintInfoDefaults};
+        });
+
+        it('doesnt send the clientAddress if not available as localIp', async () => {
+          const locusUrl = 'locusURL';
+          const deviceUrl = 'deviceUrl';
+          const correlationId = 'random-uuid';
+          const roapMessage = 'roap-message';
+          const permissionToken = 'permission-token';
+  
+          await meetingsRequest.joinMeeting({
+            locusUrl,
+            deviceUrl,
+            correlationId,
+            roapMessage,
+            permissionToken,
+          });
+          const requestParams = meetingsRequest.request.getCall(0).args[0];
+  
+          assert.equal(requestParams.body.device.localIp, undefined);
+        });
+      })
 
       it('sends /call with meetingNumber if inviteeAddress does not exist', async () => {
         const deviceUrl = 'deviceUrl';

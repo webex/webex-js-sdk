@@ -49,6 +49,8 @@ const Services = WebexPlugin.extend({
 
   _serviceUrls: null,
 
+  _hostCatalog: null,
+
   /**
    * Get the registry associated with this webex instance.
    *
@@ -155,6 +157,15 @@ const Services = WebexPlugin.extend({
    */
   _updateServiceUrls(serviceUrls) {
     this._serviceUrls = {...this._serviceUrls, ...serviceUrls};
+  },
+
+  /**
+   * saves the hostCatalog object
+   * @param {Object} hostCatalog
+   * @returns {void}
+   */
+  _updateHostCatalog(hostCatalog) {
+    this._hostCatalog = {...this._hostCatalog, ...hostCatalog};
   },
 
   /**
@@ -720,6 +731,7 @@ const Services = WebexPlugin.extend({
     // update all the service urls in the host catalog
 
     this._updateServiceUrls(serviceHostmap.serviceLinks);
+    this._updateHostCatalog(serviceHostmap.hostCatalog);
 
     return formattedHostmap;
   },
