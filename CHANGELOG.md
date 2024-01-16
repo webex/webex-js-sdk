@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.312](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.311...v3.0.0-beta.312) (2024-01-16)
+
+
+### Bug Fixes
+
+* **services:** added hostCatalog inside webex ([#3198](https://github.com/webex/webex-js-sdk/issues/3198)) ([#3306](https://github.com/webex/webex-js-sdk/issues/3306)) ([6334b2e](https://github.com/webex/webex-js-sdk/commit/6334b2e967750f09cf0fccebb7c06f060a5ee106))
+
 ## [3.0.0-beta.311](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.310...v3.0.0-beta.311) (2024-01-16)
 
 
