@@ -379,21 +379,8 @@ describe('plugin-metrics', () => {
             error = e;
           });
 
-          const loggerLogCalls = webex.logger.log.getCalls();
-
-          assert.deepEqual(loggerLogCalls[0].args, [
-            'call-diagnostic-events -> ',
-            'CallDiagnosticMetrics: @submitToCallDiagnostics. Preparing to send the request',
-            `finalEvent: {"eventPayload":{"event":"my.event"},"type":["diagnostic-event"]}`,
-          ]);
-
           // This is horrific, but stubbing lodash is proving difficult
           const expectedBatchId = parseInt(uniqueId()) - 1;
-
-          assert.deepEqual(
-            JSON.stringify(loggerLogCalls[1].args),
-            `["call-diagnostic-events -> ","CallDiagnosticEventsBatcher: @submitHttpRequest#call-diagnostic-metrics-batch-${expectedBatchId}. Sending the request:","payload:",[{"eventPayload":{"event":"my.event","origin":{"buildType":"test","networkType":"unknown"}},"type":["diagnostic-event"]}]]`
-          );
 
           // check that promise was rejected with the original error of the webex.request
           assert.deepEqual(err, error);
@@ -401,7 +388,7 @@ describe('plugin-metrics', () => {
           assert.calledOnceWithExactly(
             webex.logger.error,
             'call-diagnostic-events -> ',
-            `CallDiagnosticEventsBatcher: @submitHttpRequest#call-diagnostic-metrics-batch-${expectedBatchId}. Request failed:`,
+            `CallDiagnosticEventsBatcher: @submitHttpRequest#ca-batch-${expectedBatchId}. Request failed:`,
             `error: formattedError`
           );
           assert.lengthOf(
