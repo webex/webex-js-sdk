@@ -3,18 +3,19 @@
  */
 
 /* eslint-disable class-methods-use-this */
-/* globals window */
-import {uniq, mapValues, pick} from 'lodash';
+import {mapValues} from 'lodash';
 
 import LoggerProxy from '../common/logs/logger-proxy';
 import MeetingUtil from '../meeting/util';
 
-import {ICE_GATHERING_STATE, CONNECTION_STATE, REACHABILITY} from '../constants';
+import {REACHABILITY} from '../constants';
 
-import ReachabilityRequest from './request';
-
-const DEFAULT_TIMEOUT = 3000;
-const VIDEO_MESH_TIMEOUT = 1000;
+import ReachabilityRequest, {ClusterList} from './request';
+import {
+  ClusterReachability,
+  ClusterReachabilityResult,
+  TransportResult,
+} from './clusterReachability';
 
 export type ReachabilityMetrics = {
   reachability_public_udp_success: number;
@@ -27,39 +28,34 @@ export type ReachabilityMetrics = {
   reachability_vmn_tcp_failed: number;
 };
 
-// result for a specific transport protocol (like udp or tcp)
-export type TransportResult = {
+/**
+ * This is the type that matches what backend expects us to send to them. It is a bit weird, because
+ * it uses strings instead of booleans and numbers, but that's what they require.
+ */
+export type TransportResultForBackend = {
   reachable?: 'true' | 'false';
   latencyInMilliseconds?: string;
   clientMediaIPs?: string[];
   untested?: 'true';
 };
 
-// reachability result for a specifc media cluster
-type ReachabilityResult = {
-  udp: TransportResult;
-  tcp: TransportResult;
-  xtls: {
-    untested: 'true';
-  };
+export type ReachabilityResultForBackend = {
+  udp: TransportResultForBackend;
+  tcp: TransportResultForBackend;
+  xtls: TransportResultForBackend;
 };
+
 // this is the type that is required by the backend when we send them reachability results
-export type ReachabilityResults = Record<string, ReachabilityResult>;
+export type ReachabilityResultsForBackend = Record<string, ReachabilityResultForBackend>;
 
 // this is the type used by Reachability class internally and stored in local storage
-type InternalReachabilityResults = Record<
+export type ReachabilityResults = Record<
   string,
-  ReachabilityResult & {
+  ClusterReachabilityResult & {
     isVideoMesh?: boolean;
   }
 >;
 
-export type ICECandidateResult = {
-  clusterId: string;
-  isVideoMesh: boolean;
-  elapsed?: string | null;
-  publicIPs?: string[];
-};
 /**
  * @class Reachability
  * @export
@@ -67,8 +63,10 @@ export type ICECandidateResult = {
 export default class Reachability {
   namespace = REACHABILITY.namespace;
   webex: object;
-  reachabilityRequest: any;
-  clusterLatencyResults: any;
+  reachabilityRequest: ReachabilityRequest;
+  clusterReachability: {
+    [key: string]: ClusterReachability;
+  };
 
   /**
    * Creates an instance of Reachability.
@@ -87,32 +85,16 @@ export default class Reachability {
      */
     this.reachabilityRequest = new ReachabilityRequest(this.webex);
 
-    /**
-     * internal object of clusters latency results
-     * @instance
-     * @type {object}
-     * @private
-     * @memberof Reachability
-     */
-    this.clusterLatencyResults = {};
+    this.clusterReachability = {};
   }
 
   /**
-   * fetches reachability data
-   * @returns {Object} reachability data
+   * Gets a list of media clusters from the backend and performs reachability checks on all the clusters
+   * @returns {Promise<ReachabilityResults>} reachability results
    * @public
-   * @async
    * @memberof Reachability
    */
-  public async gatherReachability(): Promise<InternalReachabilityResults> {
-    this.setup();
-
-    // Remove stored reachability results to ensure no stale data
-    // @ts-ignore
-    await this.webex.boundedStorage.del(this.namespace, REACHABILITY.localStorageResult);
-    // @ts-ignore
-    await this.webex.boundedStorage.del(this.namespace, REACHABILITY.localStorageJoinCookie);
-
+  public async gatherReachability(): Promise<ReachabilityResults> {
     // Fetch clusters and measure latency
     try {
       const {clusters, joinCookie} = await this.reachabilityRequest.getClusters(
@@ -120,7 +102,7 @@ export default class Reachability {
       );
 
       // Perform Reachability Check
-      const results = await this.performReachabilityCheck(clusters);
+      const results = await this.performReachabilityChecks(clusters);
 
       // @ts-ignore
       await this.webex.boundedStorage.put(
@@ -140,10 +122,8 @@ export default class Reachability {
       );
 
       return results;
-    } catch (getClusterError) {
-      LoggerProxy.logger.error(
-        `Reachability:index#gatherReachability --> Error in calling getClusters(): ${getClusterError}`
-      );
+    } catch (error) {
+      LoggerProxy.logger.error(`Reachability:index#gatherReachability --> Error:`, error);
 
       return {};
     }
@@ -167,13 +147,13 @@ export default class Reachability {
       reachability_vmn_tcp_failed: 0,
     };
 
-    const updateStats = (clusterType: 'public' | 'vmn', result: ReachabilityResult) => {
-      if (result.udp?.reachable) {
-        const outcome = result.udp.reachable === 'true' ? 'success' : 'failed';
+    const updateStats = (clusterType: 'public' | 'vmn', result: ClusterReachabilityResult) => {
+      if (result.udp && result.udp.result !== 'untested') {
+        const outcome = result.udp.result === 'reachable' ? 'success' : 'failed';
         stats[`reachability_${clusterType}_udp_${outcome}`] += 1;
       }
-      if (result.tcp?.reachable) {
-        const outcome = result.tcp.reachable === 'true' ? 'success' : 'failed';
+      if (result.tcp && result.tcp.result !== 'untested') {
+        const outcome = result.tcp.result === 'reachable' ? 'success' : 'failed';
         stats[`reachability_${clusterType}_tcp_${outcome}`] += 1;
       }
     };
@@ -185,9 +165,9 @@ export default class Reachability {
         REACHABILITY.localStorageResult
       );
 
-      const internalResults: InternalReachabilityResults = JSON.parse(resultsJson);
+      const results: ReachabilityResults = JSON.parse(resultsJson);
 
-      Object.values(internalResults).forEach((result) => {
+      Object.values(results).forEach((result) => {
         updateStats(result.isVideoMesh ? 'vmn' : 'public', result);
       });
     } catch (e) {
@@ -202,15 +182,48 @@ export default class Reachability {
   }
 
   /**
+   * Maps our internal transport result to the format that backend expects
+   * @param {TransportResult} transportResult
+   * @returns {TransportResultForBackend}
+   */
+  private mapTransportResultToBackendDataFormat(
+    transportResult: TransportResult
+  ): TransportResultForBackend {
+    const output: TransportResultForBackend = {};
+
+    for (const [key, value] of Object.entries(transportResult)) {
+      switch (key) {
+        case 'result':
+          switch (value) {
+            case 'reachable':
+              output.reachable = 'true';
+              break;
+            case 'unreachable':
+              output.reachable = 'false';
+              break;
+            case 'untested':
+              output.untested = 'true';
+              break;
+          }
+          break;
+        case 'latencyInMilliseconds':
+          output.latencyInMilliseconds = value.toString();
+          break;
+        default:
+          output[key] = value;
+      }
+    }
+
+    return output;
+  }
+
+  /**
    * Reachability results as an object in the format that backend expects
    *
    * @returns {any} reachability results that need to be sent to the backend
    */
-  async getReachabilityResults(): Promise<ReachabilityResults | undefined> {
-    let results: ReachabilityResults;
-
-    // these are the only props that backend needs in the reachability results:
-    const reachabilityResultsProps: Array<keyof ReachabilityResult> = ['udp', 'tcp', 'xtls'];
+  async getReachabilityResults(): Promise<ReachabilityResultsForBackend | undefined> {
+    let results: ReachabilityResultsForBackend;
 
     try {
       // @ts-ignore
@@ -219,9 +232,15 @@ export default class Reachability {
         REACHABILITY.localStorageResult
       );
 
-      const internalResults: InternalReachabilityResults = JSON.parse(resultsJson);
+      const allClusterResults: ReachabilityResults = JSON.parse(resultsJson);
 
-      results = mapValues(internalResults, (result) => pick(result, reachabilityResultsProps));
+      results = mapValues(allClusterResults, (clusterResult) => ({
+        udp: this.mapTransportResultToBackendDataFormat(clusterResult.udp || {result: 'untested'}),
+        tcp: this.mapTransportResultToBackendDataFormat(clusterResult.tcp || {result: 'untested'}),
+        xtls: this.mapTransportResultToBackendDataFormat(
+          clusterResult.xtls || {result: 'untested'}
+        ),
+      }));
     } catch (e) {
       // empty storage, that's ok
       LoggerProxy.logger.warn(
@@ -248,12 +267,12 @@ export default class Reachability {
 
     if (reachabilityData) {
       try {
-        const reachabilityResults: InternalReachabilityResults = JSON.parse(reachabilityData);
+        const reachabilityResults: ReachabilityResults = JSON.parse(reachabilityData);
 
         reachable = Object.values(reachabilityResults).some(
           (result) =>
             !result.isVideoMesh &&
-            (result.udp?.reachable === 'true' || result.tcp?.reachable === 'true')
+            (result.udp?.result === 'reachable' || result.tcp?.result === 'reachable')
         );
       } catch (e) {
         LoggerProxy.logger.error(
@@ -266,243 +285,26 @@ export default class Reachability {
   }
 
   /**
-   * Generate peerConnection config settings
-   * @param {object} cluster
-   * @returns {object} peerConnectionConfig
-   * @private
-   * @memberof Reachability
-   */
-  private buildPeerConnectionConfig(cluster: any) {
-    const iceServers = uniq(cluster.udp).map((url) => ({
-      username: '',
-      credential: '',
-      urls: [url],
-    }));
-
-    return {
-      iceServers: [...iceServers],
-      iceCandidatePoolSize: '0',
-      iceTransportPolicy: 'all',
-    };
-  }
-
-  /**
-   * Creates an RTCPeerConnection
-   * @param {object} cluster
-   * @returns {RTCPeerConnection} peerConnection
-   * @private
-   * @memberof Reachability
-   */
-  private createPeerConnection(cluster: any) {
-    const {key, config} = cluster;
-
-    try {
-      const peerConnection = new window.RTCPeerConnection(config);
-
-      // @ts-ignore
-      peerConnection.key = key;
-
-      return peerConnection;
-    } catch (peerConnectionError) {
-      LoggerProxy.logger.log(
-        `Reachability:index#createPeerConnection --> Error creating peerConnection: ${peerConnectionError}`
-      );
-
-      return null;
-    }
-  }
-
-  /**
-   * Gets total elapsed time
-   * @param {RTCPeerConnection} peerConnection
-   * @returns {Number} Milliseconds
-   * @private
-   * @memberof Reachability
-   */
-  private getElapsedTime(peerConnection: any) {
-    const startTime = peerConnection.begin;
-
-    delete peerConnection.begin;
-
-    return Date.now() - startTime;
-  }
-
-  /**
-   * creates offer and generates localSDP
-   * @param {object} clusterList cluster List
-   * @returns {Promise} Reachability latency results
-   * @private
-   * @memberof Reachability
-   */
-  private getLocalSDPForClusters(clusterList: object): Promise<InternalReachabilityResults> {
-    let clusters: any[] = [...Object.keys(clusterList)];
-
-    clusters = clusters.map(async (key) => {
-      const cluster = clusterList[key];
-      const config = this.buildPeerConnectionConfig(cluster);
-      const peerConnection = this.createPeerConnection({key, config});
-      const description = await peerConnection.createOffer({offerToReceiveAudio: true});
-
-      // @ts-ignore
-      peerConnection.begin = Date.now();
-      peerConnection.setLocalDescription(description);
-
-      return this.iceGatheringState(peerConnection, cluster.isVideoMesh).catch(
-        (iceGatheringStateError) => {
-          LoggerProxy.logger.log(
-            `Reachability:index#getLocalSDPForClusters --> Error in getLocalSDP : ${iceGatheringStateError}`
-          );
-        }
-      );
-    });
-
-    return Promise.all(clusters)
-      .then(this.parseIceResultsToInternalReachabilityResults)
-      .then((reachabilityLatencyResults) => {
-        this.logUnreachableClusters();
-
-        // return results
-        return reachabilityLatencyResults;
-      });
-  }
-
-  /**
    * Get list of all unreachable clusters
    * @returns {array} Unreachable clusters
    * @private
    * @memberof Reachability
    */
-  private getUnreachablClusters() {
+  private getUnreachableClusters(): Array<{name: string; protocol: string}> {
     const unreachableList = [];
-    const clusters = this.clusterLatencyResults;
 
-    Object.keys(clusters).forEach((key) => {
-      const cluster = clusters[key];
+    Object.entries(this.clusterReachability).forEach(([key, clusterReachability]) => {
+      const result = clusterReachability.getResult();
 
-      if (cluster.unreachable && !cluster.reachable) {
-        unreachableList.push(key);
+      if (result.udp.result === 'unreachable') {
+        unreachableList.push({name: key, protocol: 'udp'});
+      }
+      if (result.tcp.result === 'unreachable') {
+        unreachableList.push({name: key, protocol: 'tcp'});
       }
     });
 
     return unreachableList;
-  }
-
-  /**
-   * Attach an event handler for the icegatheringstatechange
-   * event and measure latency.
-   * @param {RTCPeerConnection} peerConnection
-   * @returns {undefined}
-   * @private
-   * @memberof Reachability
-   */
-  private handleIceGatheringStateChange(peerConnection: RTCPeerConnection) {
-    peerConnection.onicegatheringstatechange = () => {
-      const {COMPLETE} = ICE_GATHERING_STATE;
-
-      if (peerConnection.iceConnectionState === COMPLETE) {
-        const elapsed = this.getElapsedTime(peerConnection);
-
-        // @ts-ignore
-        LoggerProxy.logger.log(
-          // @ts-ignore
-          `Reachability:index#onIceGatheringStateChange --> Successfully pinged ${peerConnection.key}:`,
-          elapsed
-        );
-        this.setLatencyAndClose(peerConnection, elapsed);
-      }
-    };
-  }
-
-  /**
-   * Attach an event handler for the icecandidate
-   * event and measure latency.
-   * @param {RTCPeerConnection} peerConnection
-   * @returns {undefined}
-   * @private
-   * @memberof Reachability
-   */
-  private handleOnIceCandidate(peerConnection: RTCPeerConnection) {
-    peerConnection.onicecandidate = (e) => {
-      const SERVER_REFLEXIVE = 'srflx';
-
-      if (e.candidate && String(e.candidate.type).toLowerCase() === SERVER_REFLEXIVE) {
-        const elapsed = this.getElapsedTime(peerConnection);
-
-        LoggerProxy.logger.log(
-          // @ts-ignore
-          `Reachability:index#onIceCandidate --> Successfully pinged ${peerConnection.key}:`,
-          elapsed
-        );
-        // order is important
-        this.addPublicIP(peerConnection, e.candidate.address);
-        this.setLatencyAndClose(peerConnection, elapsed);
-      }
-    };
-  }
-
-  /**
-   * An event handler on an RTCPeerConnection when the state of the ICE
-   * candidate gathering process changes. Used to measure connection
-   * speed.
-   * @private
-   * @param {RTCPeerConnection} peerConnection
-   * @param {boolean} isVideoMesh
-   * @returns {Promise}
-   */
-  private iceGatheringState(peerConnection: RTCPeerConnection, isVideoMesh: boolean) {
-    const ELAPSED = 'elapsed';
-
-    const timeout = isVideoMesh ? VIDEO_MESH_TIMEOUT : DEFAULT_TIMEOUT;
-
-    return new Promise<ICECandidateResult>((resolve) => {
-      const peerConnectionProxy = new window.Proxy(peerConnection, {
-        // eslint-disable-next-line require-jsdoc
-        get(target, property) {
-          const targetMember = target[property];
-
-          if (typeof targetMember === 'function') {
-            return targetMember.bind(target);
-          }
-
-          return targetMember;
-        },
-        set: (target, property, value) => {
-          // only intercept elapsed property
-          if (property === ELAPSED) {
-            resolve({
-              // @ts-ignore
-              clusterId: peerConnection.key,
-              isVideoMesh,
-              // @ts-ignore
-              publicIPs: target.publicIPs,
-              elapsed: value,
-            });
-
-            return true;
-          }
-
-          // pass thru
-          return window.Reflect.set(target, property, value);
-        },
-      });
-
-      // Using peerConnection proxy so handle functions below
-      // won't be coupled to our promise implementation
-      this.handleIceGatheringStateChange(peerConnectionProxy);
-      this.handleOnIceCandidate(peerConnectionProxy);
-
-      // Set maximum timeout
-      window.setTimeout(() => {
-        const {CLOSED} = CONNECTION_STATE;
-
-        // Close any open peerConnections
-        if (peerConnectionProxy.connectionState !== CLOSED) {
-          // order is important
-          this.addPublicIP(peerConnectionProxy, null);
-          this.setLatencyAndClose(peerConnectionProxy, null);
-        }
-      }, timeout);
-    });
   }
 
   /**
@@ -512,160 +314,58 @@ export default class Reachability {
    * @memberof Reachability
    */
   private logUnreachableClusters() {
-    const list = this.getUnreachablClusters();
+    const list = this.getUnreachableClusters();
 
-    list.forEach((cluster) => {
+    list.forEach(({name, protocol}) => {
       LoggerProxy.logger.log(
-        `Reachability:index#logUnreachableClusters --> No ice candidate for ${cluster}.`
+        `Reachability:index#logUnreachableClusters --> failed to reach ${name} over ${protocol}`
       );
     });
   }
 
   /**
-   * Calculates time to establish connection
-   * @param {Array<ICECandidateResult>} iceResults iceResults
-   * @returns {object} reachabilityMap
-   * @protected
-   * @memberof Reachability
+   * Performs reachability checks for all clusters
+   * @param {ClusterList} clusterList
+   * @returns {Promise<ReachabilityResults>} reachability check results
    */
-  protected parseIceResultsToInternalReachabilityResults(
-    iceResults: Array<ICECandidateResult>
-  ): InternalReachabilityResults {
-    const reachabilityMap = {};
+  private async performReachabilityChecks(clusterList: ClusterList): Promise<ReachabilityResults> {
+    const results: ReachabilityResults = {};
 
-    iceResults.forEach(({clusterId, isVideoMesh, elapsed, publicIPs}) => {
-      const latencyResult = {};
-
-      if (!elapsed) {
-        Object.assign(latencyResult, {reachable: 'false'});
-      } else {
-        Object.assign(latencyResult, {
-          reachable: 'true',
-          latencyInMilliseconds: elapsed.toString(),
-        });
-      }
-
-      if (publicIPs) {
-        Object.assign(latencyResult, {
-          clientMediaIPs: publicIPs,
-        });
-      }
-
-      reachabilityMap[clusterId] = {
-        udp: latencyResult,
-        tcp: {untested: 'true'},
-        xtls: {untested: 'true'},
-        isVideoMesh,
-      };
-    });
-
-    return reachabilityMap;
-  }
-
-  /**
-   * fetches reachability data
-   * @param {object} clusterList
-   * @returns {Promise<InternalReachabilityResults>} reachability check results
-   * @private
-   * @memberof Reachability
-   */
-  private performReachabilityCheck(clusterList: object): Promise<InternalReachabilityResults> {
     if (!clusterList || !Object.keys(clusterList).length) {
-      return Promise.resolve({});
+      return Promise.resolve(results);
     }
 
-    return new Promise((resolve) => {
-      this.getLocalSDPForClusters(clusterList)
-        .then((localSDPData) => {
-          if (!localSDPData || !Object.keys(localSDPData).length) {
-            // TODO: handle the error condition properly and try retry
-            LoggerProxy.logger.log(
-              'Reachability:index#performReachabilityCheck --> Local SDP is empty or has missing elements..returning'
-            );
-            resolve({});
-          } else {
-            resolve(localSDPData);
-          }
-        })
-        .catch((error) => {
-          LoggerProxy.logger.error(
-            `Reachability:index#performReachabilityCheck --> Error in getLocalSDPForClusters: ${error}`
-          );
-          resolve({});
-        });
-    });
-  }
+    LoggerProxy.logger.log(
+      `Reachability:index#performReachabilityChecks --> doing UDP${
+        // @ts-ignore
+        this.webex.config.meetings.experimental.enableTcpReachability ? ' and TCP' : ''
+      } reachability checks`
+    );
 
-  /**
-   * Adds public IP (client media IPs)
-   * @param {RTCPeerConnection} peerConnection
-   * @param {string} publicIP
-   * @returns {void}
-   */
-  protected addPublicIP(peerConnection: RTCPeerConnection, publicIP?: string | null) {
-    const modifiedPeerConnection: RTCPeerConnection & {publicIPs?: string[]} = peerConnection;
-    const {CLOSED} = CONNECTION_STATE;
+    const clusterReachabilityChecks = Object.keys(clusterList).map((key) => {
+      const cluster = clusterList[key];
 
-    if (modifiedPeerConnection.connectionState === CLOSED) {
-      LoggerProxy.logger.log(
-        `Reachability:index#addPublicIP --> Attempting to set publicIP of ${publicIP} on closed peerConnection.`
-      );
-    }
+      // Linus doesn't support TCP reachability checks on video mesh nodes
+      const includeTcpReachability =
+        // @ts-ignore
+        this.webex.config.meetings.experimental.enableTcpReachability && !cluster.isVideoMesh;
 
-    if (publicIP) {
-      if (modifiedPeerConnection.publicIPs) {
-        modifiedPeerConnection.publicIPs.push(publicIP);
-      } else {
-        modifiedPeerConnection.publicIPs = [publicIP];
+      if (!includeTcpReachability) {
+        cluster.tcp = [];
       }
-    } else {
-      modifiedPeerConnection.publicIPs = null;
-    }
-  }
 
-  /**
-   * Records latency and closes the peerConnection
-   * @param {RTCPeerConnection} peerConnection
-   * @param {number} elapsed Latency in milliseconds
-   * @returns {undefined}
-   * @private
-   * @memberof Reachability
-   */
-  private setLatencyAndClose(peerConnection: RTCPeerConnection, elapsed: number) {
-    const REACHABLE = 'reachable';
-    const UNREACHABLE = 'unreachable';
-    const {CLOSED} = CONNECTION_STATE;
-    // @ts-ignore
-    const {key} = peerConnection;
-    const resultKey = elapsed === null ? UNREACHABLE : REACHABLE;
-    const intialState = {[REACHABLE]: 0, [UNREACHABLE]: 0};
+      this.clusterReachability[key] = new ClusterReachability(key, cluster);
 
-    if (peerConnection.connectionState === CLOSED) {
-      LoggerProxy.logger.log(
-        `Reachability:index#setLatencyAndClose --> Attempting to set latency of ${elapsed} on closed peerConnection.`
-      );
+      return this.clusterReachability[key].start().then((result) => {
+        results[key] = result;
+        results[key].isVideoMesh = cluster.isVideoMesh;
+      });
+    });
 
-      return;
-    }
+    await Promise.all(clusterReachabilityChecks);
 
-    this.clusterLatencyResults[key] = this.clusterLatencyResults[key] || intialState;
-    this.clusterLatencyResults[key][resultKey] += 1;
+    this.logUnreachableClusters();
 
-    // Set to null in case this fired from
-    // an event other than onIceCandidate
-    peerConnection.onicecandidate = null;
-    peerConnection.close();
-    // @ts-ignore
-    peerConnection.elapsed = elapsed;
-  }
-
-  /**
-   * utility function
-   * @returns {undefined}
-   * @private
-   * @memberof Reachability
-   */
-  private setup() {
-    this.clusterLatencyResults = {};
+    return results;
   }
 }

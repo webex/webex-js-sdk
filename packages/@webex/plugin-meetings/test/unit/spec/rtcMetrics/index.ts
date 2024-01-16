@@ -4,17 +4,33 @@ import {assert} from '@webex/test-helper-chai';
 import sinon from 'sinon';
 import RTC_METRICS from '../../../../src/rtcMetrics/constants';
 
-const FAKE_METRICS_ITEM = {payload: ['fake-metrics']};
+const FAKE_METRICS_ITEM = {payload: ['{"type":"string","value":"fake-metrics","id":""}']};
+const FAILURE_METRICS_ITEM = {
+  name: "onconnectionstatechange",
+  payload: ['{"type":"string","value":"failed","id":""}'],
+  timestamp: 1707929986667
+};
+
+const STATS_WITH_IP = '{"id":"RTCIceCandidate_/kQs0ZNU","type":"remote-candidate","transportId":"RTCTransport_0_1","isRemote":true,"ip":"11.22.111.255","address":"11.22.111.255","port":5004,"protocol":"udp","candidateType":"host","priority":2130706431}';
+const STATS_WITH_IP_RESULT = '{"id":"RTCIceCandidate_/kQs0ZNU","type":"remote-candidate","transportId":"RTCTransport_0_1","isRemote":true,"ip":"11.22.111.240","address":"11.22.111.240","port":5004,"protocol":"udp","candidateType":"host","priority":2130706431}';
 
 describe('RtcMetrics', () => {
   let metrics: RtcMetrics;
   let webex: MockWebex;
   let clock;
+  let anonymizeIpSpy;
+
+  const sandbox = sinon.createSandbox();
 
   beforeEach(() => {
     clock = sinon.useFakeTimers();
     webex = new MockWebex();
     metrics = new RtcMetrics(webex, 'mock-meeting-id', 'mock-correlation-id');
+    anonymizeIpSpy = sandbox.spy(metrics, 'anonymizeIp');
+  });
+
+  afterEach(() => {
+    sandbox.restore();
   });
 
   it('sendMetrics should send a webex request', () => {
@@ -70,4 +86,37 @@ describe('RtcMetrics', () => {
 
     assert.callCount(webex.request, 1);
   });
+
+  it('should clear out metrics on failure', () => {
+    assert.notCalled(webex.request);
+
+    metrics.addMetrics(FAILURE_METRICS_ITEM);
+
+    assert.callCount(webex.request, 1);
+  });
+
+  it('should have the same connectionId on success', () => {
+    const originalId = metrics.connectionId;
+
+    metrics.addMetrics(FAKE_METRICS_ITEM);
+
+    assert.strictEqual(originalId, metrics.connectionId);
+  });
+
+  it('should have a new connectionId on failure', () => {
+    const originalId = metrics.connectionId;
+
+    metrics.addMetrics(FAILURE_METRICS_ITEM);
+
+    assert.notEqual(originalId, metrics.connectionId);
+  });
+
+  it('should anonymize IP addresses', () => {
+    assert.strictEqual(metrics.anonymizeIp(STATS_WITH_IP), STATS_WITH_IP_RESULT);
+  });
+
+  it('should call anonymizeIp', () => {
+    metrics.addMetrics({ name: 'stats-report', payload: [STATS_WITH_IP] });
+    assert.calledOnce(anonymizeIpSpy);
+  })
 });

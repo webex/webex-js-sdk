@@ -9,6 +9,7 @@ const BEHAVIORAL_METRICS = {
   JOIN_FAILURE: 'js_sdk_join_failures',
   ADD_MEDIA_SUCCESS: 'js_sdk_add_media_success',
   ADD_MEDIA_FAILURE: 'js_sdk_add_media_failures',
+  ADD_MEDIA_RETRY: 'js_sdk_add_media_retry',
   ROAP_MERCURY_EVENT_RECEIVED: 'js_sdk_roap_mercury_received',
   CONNECTION_SUCCESS: 'js_sdk_connection_success',
   CONNECTION_FAILURE: 'js_sdk_connection_failures',
@@ -25,9 +26,11 @@ const BEHAVIORAL_METRICS = {
   MEETING_MEDIA_INACTIVE: 'js_sdk_meeting_media_inactive',
   MEETING_RECONNECT_FAILURE: 'js_sdk_meeting_reconnect_failures',
   MEETING_MAX_REJOIN_FAILURE: 'js_sdk_meeting_max_rejoin_failure',
+  MEETING_SHARE_SUCCESS: 'js_sdk_meeting_share_success',
   MEETING_SHARE_FAILURE: 'js_sdk_meeting_share_failures',
   MEETING_START_WHITEBOARD_SHARE_FAILURE: 'js_sdk_meeting_start_whiteboard_share_failures',
   MEETING_STOP_WHITEBOARD_SHARE_FAILURE: 'js_sdk_meeting_stop_whiteboard_share_failures',
+  MEETING_SHARE_VIDEO_MUTE_STATE_CHANGE: 'js_sdk_meeting_share_video_mute_state_change',
   MUTE_AUDIO_FAILURE: 'js_sdk_mute_audio_failures',
   MUTE_VIDEO_FAILURE: 'js_sdk_mute_video_failures',
   SET_MEETING_QUALITY_FAILURE: 'js_sdk_set_meeting_quality_failures',
@@ -64,6 +67,7 @@ const BEHAVIORAL_METRICS = {
   TURN_DISCOVERY_LATENCY: 'js_sdk_turn_discovery_latency',
   ROAP_OFFER_TO_ANSWER_LATENCY: 'js_sdk_roap_offer_to_answer_latency',
   ROAP_HTTP_RESPONSE_MISSING: 'js_sdk_roap_http_response_missing',
+  TURN_DISCOVERY_REQUIRES_OK: 'js_sdk_turn_discovery_requires_ok',
 };
 
 export {BEHAVIORAL_METRICS as default};

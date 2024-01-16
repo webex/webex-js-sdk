@@ -580,6 +580,8 @@ export const LOCUS = {
     INACTIVE: 'INACTIVE',
     ENDED: 'ENDED',
     INITIALIZING: 'INITIALIZING',
+    ACTIVE: 'ACTIVE',
+    TERMINATING: 'TERMINATING',
   },
   SEQUENCE: {
     UN_DEF: 'undef',
@@ -663,7 +665,6 @@ export const LOCUSINFO = {
     CONTROLS_MEETING_CONTAINER_UPDATED: 'CONTROLS_MEETING_CONTAINER_UPDATED',
     CONTROLS_MEETING_INTERPRETATION_UPDATED: 'CONTROLS_MEETING_INTERPRETATION_UPDATED',
     CONTROLS_ENTRY_EXIT_TONE_UPDATED: 'CONTROLS_ENTRY_EXIT_TONE_UPDATED',
-    CONTROLS_JOIN_BREAKOUT_FROM_MAIN: 'CONTROLS_JOIN_BREAKOUT_FROM_MAIN',
     CONTROLS_MUTE_ON_ENTRY_CHANGED: 'CONTROLS_MUTE_ON_ENTRY_CHANGED',
     CONTROLS_SHARE_CONTROL_CHANGED: 'CONTROLS_SHARE_CONTROL_CHANGED',
     CONTROLS_DISALLOW_UNMUTE_CHANGED: 'CONTROLS_DISALLOW_UNMUTE_CHANGED',
@@ -1036,7 +1037,9 @@ export const RECONNECTION = {
     DEFAULT_TRY_COUNT: 0,
     DEFAULT_STATUS: '',
   },
-};
+} as const;
+
+export type RECONNECTION_STATE = Enum<typeof RECONNECTION.STATE>;
 
 export const RESOURCE = {
   CLUSTERS: 'clusters',
@@ -1233,7 +1236,7 @@ export const AVAILABLE_RESOLUTIONS = {
  *  mqa Interval for sending stats metrics
  */
 
-export const MQA_INTEVAL = 60000; // mqa analyzer interval its fixed to 60000
+export const MQA_INTERVAL = 60000; // mqa analyzer interval its fixed to 60000
 
 export const MEDIA_DEVICES = {
   MICROPHONE: 'microphone',
@@ -1290,6 +1293,16 @@ export const IP_VERSION = {
   ipv4_and_ipv6: 1,
 } as const;
 
+export const LOCAL_SHARE_ERRORS = {
+  DEVICE_NOT_JOINED: 'Floor requested but device not yet joined',
+  UNDEFINED: 'undefined PUT',
+  NO_MEDIA_FOR_DEVICE: 'No media session found for device',
+  NO_CONFLUENCE_ID: 'Failed to request floor: 404 (null) could not find confluence id',
+  CONTENT_SHARING_DISABLED: 'Content share policies are disabled',
+  LOCUS_PARTICIPANT_DNE: 'does not exist in Locus',
+  CONTENT_REQUEST_WHILE_PENDING_WHITEBOARD:
+    'Content share request is not allowed while whiteboard floor request is pending',
+};
 export type IP_VERSION = Enum<typeof IP_VERSION>;
 
 // constant for if the permissionToken is about to expire in the next 30 seconds, refresh it

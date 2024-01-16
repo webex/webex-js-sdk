@@ -23,10 +23,11 @@ describe('RemoteMedia', () => {
     fakeReceiveSlot.sourceState = 'avatar';
     fakeReceiveSlot.stream = fakeStream;
     fakeReceiveSlot.setMaxFs = sinon.stub();
+    fakeReceiveSlot.namedMediaGroup = {type: 1, value: 20};
 
     fakeMediaRequestManager = {
       addRequest: sinon.stub(),
-      cancelRequest: sinon.stub(),
+      cancelRequests: sinon.stub(),
     };
     remoteMedia = new RemoteMedia(fakeReceiveSlot, fakeMediaRequestManager, {resolution: 'medium'});
   });
@@ -63,6 +64,7 @@ describe('RemoteMedia', () => {
     assert.strictEqual(remoteMedia.csi, fakeReceiveSlot.csi);
     assert.strictEqual(remoteMedia.sourceState, fakeReceiveSlot.sourceState);
     assert.strictEqual(remoteMedia.stream, fakeReceiveSlot.stream);
+    assert.strictEqual(remoteMedia.namedMediaGroup, fakeReceiveSlot.namedMediaGroup);
   });
 
   describe('sendMediaRequest', () => {
@@ -125,8 +127,8 @@ describe('RemoteMedia', () => {
       // send a 2nd one (the 1st one should get cancelled)
       remoteMedia.sendMediaRequest(5678, false);
 
-      assert.calledOnce(fakeMediaRequestManager.cancelRequest);
-      assert.calledWith(fakeMediaRequestManager.cancelRequest, fakeRequestId);
+      assert.calledOnce(fakeMediaRequestManager.cancelRequests);
+      assert.calledWith(fakeMediaRequestManager.cancelRequests, [fakeRequestId]);
 
       assert.calledOnce(fakeMediaRequestManager.addRequest);
       assert.calledWith(
@@ -169,15 +171,15 @@ describe('RemoteMedia', () => {
       // cancel it
       remoteMedia.cancelMediaRequest();
 
-      assert.calledOnce(fakeMediaRequestManager.cancelRequest);
-      assert.calledWith(fakeMediaRequestManager.cancelRequest, fakeRequestId);
+      assert.calledOnce(fakeMediaRequestManager.cancelRequests);
+      assert.calledWith(fakeMediaRequestManager.cancelRequests, [fakeRequestId]);
 
       assert.notCalled(fakeMediaRequestManager.addRequest);
     });
     it('does not do anything if there was no request sent', () => {
       remoteMedia.cancelMediaRequest();
 
-      assert.notCalled(fakeMediaRequestManager.cancelRequest);
+      assert.notCalled(fakeMediaRequestManager.cancelRequests);
       assert.notCalled(fakeMediaRequestManager.addRequest);
     });
   });
@@ -204,6 +206,7 @@ describe('RemoteMedia', () => {
       assert.strictEqual(remoteMedia.csi, undefined);
       assert.strictEqual(remoteMedia.sourceState, undefined);
       assert.strictEqual(remoteMedia.stream, undefined);
+      assert.strictEqual(remoteMedia.namedMediaGroup, undefined);
 
       // check that events emitted from receive slot don't get forwarded anymore
       [

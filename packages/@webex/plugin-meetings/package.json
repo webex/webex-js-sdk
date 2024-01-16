@@ -1,6 +1,6 @@
 {
   "name": "@webex/plugin-meetings",
-  "version": "3.0.0-beta.309",
+  "version": "3.0.0-beta.372",
   "description": "",
   "license": "Cisco EULA (https://www.cisco.com/c/en/us/products/end-user-license-agreement.html)",
   "contributors": [
@@ -32,6 +32,7 @@
     "build": "yarn run -T tsc --declaration true --declarationDir ./dist/types"
   },
   "devDependencies": {
+    "@peculiar/webcrypto": "^1.4.3",
     "@webex/plugin-meetings": "workspace:^",
     "@webex/test-helper-chai": "workspace:^",
     "@webex/test-helper-mocha": "workspace:^",
@@ -47,7 +48,7 @@
   },
   "dependencies": {
     "@webex/common": "workspace:^",
-    "@webex/internal-media-core": "2.2.1",
+    "@webex/internal-media-core": "2.2.7",
     "@webex/internal-plugin-conversation": "workspace:^",
     "@webex/internal-plugin-device": "workspace:^",
     "@webex/internal-plugin-llm": "workspace:^",

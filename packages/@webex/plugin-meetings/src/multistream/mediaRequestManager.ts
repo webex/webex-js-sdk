@@ -11,6 +11,7 @@ import {
 } from '@webex/internal-media-core';
 import {cloneDeepWith, debounce, isEmpty} from 'lodash';
 
+import {NamedMediaGroup} from '@webex/json-multistream';
 import LoggerProxy from '../common/logs/logger-proxy';
 
 import {ReceiveSlot, ReceiveSlotEvents} from './receiveSlot';
@@ -22,6 +23,7 @@ export interface ActiveSpeakerPolicyInfo {
   crossPriorityDuplication: boolean;
   crossPolicyDuplication: boolean;
   preferLiveVideo: boolean;
+  namedMediaGroups?: NamedMediaGroup[];
 }
 
 export interface ReceiverSelectedPolicyInfo {
@@ -347,7 +349,8 @@ export class MediaRequestManager {
                   mr.policyInfo.priority,
                   mr.policyInfo.crossPriorityDuplication,
                   mr.policyInfo.crossPolicyDuplication,
-                  mr.policyInfo.preferLiveVideo
+                  mr.policyInfo.preferLiveVideo,
+                  mr.policyInfo.namedMediaGroups
                 )
               : new ReceiverSelectedInfo(mr.policyInfo.csi),
             mr.receiveSlots.map((receiveSlot) => receiveSlot.wcmeReceiveSlot),
@@ -406,15 +409,17 @@ export class MediaRequestManager {
     return newId;
   }
 
-  public cancelRequest(requestId: MediaRequestId, commit = true) {
-    const mediaRequest = this.clientRequests[requestId];
+  public cancelRequests(requestIds: MediaRequestId[], commit = true) {
+    requestIds.forEach((requestId: string) => {
+      const mediaRequest = this.clientRequests[requestId];
 
-    mediaRequest?.receiveSlots.forEach((rs) => {
-      rs.off(ReceiveSlotEvents.SourceUpdate, this.sourceUpdateListener);
-      rs.off(ReceiveSlotEvents.MaxFsUpdate, mediaRequest.handleMaxFs);
+      mediaRequest?.receiveSlots.forEach((rs) => {
+        rs.off(ReceiveSlotEvents.SourceUpdate, this.sourceUpdateListener);
+        rs.off(ReceiveSlotEvents.MaxFsUpdate, mediaRequest.handleMaxFs);
+      });
+
+      delete this.clientRequests[requestId];
     });
-
-    delete this.clientRequests[requestId];
 
     if (commit) {
       this.commit();

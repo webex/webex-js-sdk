@@ -22,7 +22,7 @@ export class RemoteMediaGroup {
 
   private unpinnedRemoteMedia: RemoteMedia[];
 
-  private mediaRequestId?: MediaRequestId; // id of the "active-speaker" media request id
+  private mediaRequestIds: MediaRequestId[]; // id of the "active-speaker" media request id
 
   private pinnedRemoteMedia: RemoteMedia[];
 
@@ -36,6 +36,7 @@ export class RemoteMediaGroup {
     this.mediaRequestManager = mediaRequestManager;
     this.priority = priority;
     this.options = options;
+    this.mediaRequestIds = [];
 
     this.unpinnedRemoteMedia = receiveSlots.map(
       (slot) =>
@@ -118,9 +119,15 @@ export class RemoteMediaGroup {
    * Pins a specific remote media instance to a specfic CSI, so the media will
    * no longer come from active speaker, but from that CSI.
    * If no CSI is given, the current CSI value is used.
-   *
+   * And only RemoteMedia without a namedMediaGroup can be pinned.
    */
   public pin(remoteMedia: RemoteMedia, csi?: CSI): void {
+    if (remoteMedia.namedMediaGroup?.value) {
+      throw new Error(
+        `failed to pin a remote media object ${remoteMedia.id}, because it has a valid named media group`
+      );
+    }
+
     // if csi is not specified, use the current one
     const targetCsi = csi || remoteMedia.csi;
 
@@ -213,7 +220,30 @@ export class RemoteMediaGroup {
   private sendActiveSpeakerMediaRequest(commit: boolean) {
     this.cancelActiveSpeakerMediaRequest(false);
 
-    this.mediaRequestId = this.mediaRequestManager.addRequest(
+    const namedMedia = this.unpinnedRemoteMedia.filter((item) => item?.namedMediaGroup?.value);
+    const mainMedia = this.unpinnedRemoteMedia.filter(
+      (item) => !item.namedMediaGroup || !item.namedMediaGroup.value
+    );
+
+    namedMedia.forEach((remoteMedia) => {
+      const mrId = this.mediaRequestManager.addRequest(
+        {
+          policyInfo: {
+            policy: 'active-speaker',
+            priority: this.priority,
+            crossPriorityDuplication: false,
+            crossPolicyDuplication: false,
+            preferLiveVideo: !!this.options?.preferLiveVideo,
+            namedMediaGroups: [remoteMedia.namedMediaGroup],
+          },
+          receiveSlots: [remoteMedia.getUnderlyingReceiveSlot()] as ReceiveSlot[],
+        },
+        false
+      );
+      this.mediaRequestIds.push(mrId);
+    });
+
+    const mrId = this.mediaRequestManager.addRequest(
       {
         policyInfo: {
           policy: 'active-speaker',
@@ -222,7 +252,7 @@ export class RemoteMediaGroup {
           crossPolicyDuplication: false,
           preferLiveVideo: !!this.options?.preferLiveVideo,
         },
-        receiveSlots: this.unpinnedRemoteMedia.map((remoteMedia) =>
+        receiveSlots: mainMedia.map((remoteMedia) =>
           remoteMedia.getUnderlyingReceiveSlot()
         ) as ReceiveSlot[],
         codecInfo: this.options.resolution && {
@@ -232,12 +262,13 @@ export class RemoteMediaGroup {
       },
       commit
     );
+    this.mediaRequestIds.push(mrId);
   }
 
   private cancelActiveSpeakerMediaRequest(commit: boolean) {
-    if (this.mediaRequestId) {
-      this.mediaRequestManager.cancelRequest(this.mediaRequestId, commit);
-      this.mediaRequestId = undefined;
+    if (this.mediaRequestIds.length) {
+      this.mediaRequestManager.cancelRequests(this.mediaRequestIds, commit);
+      this.mediaRequestIds = [];
     }
   }
 

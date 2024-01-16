@@ -1,4 +1,19 @@
+/* eslint-disable class-methods-use-this */
+import {CallDiagnosticUtils} from '@webex/internal-plugin-metrics';
+import uuid from 'uuid';
 import RTC_METRICS from './constants';
+
+const parseJsonPayload = (payload: any[]): any | null => {
+  try {
+    if (payload && payload[0]) {
+      return JSON.parse(payload[0]);
+    }
+
+    return null;
+  } catch (_) {
+    return null;
+  }
+};
 
 /**
  * Rtc Metrics
@@ -17,6 +32,8 @@ export default class RtcMetrics {
 
   correlationId: string;
 
+  connectionId: string;
+
   /**
    * Initialize the interval.
    *
@@ -30,6 +47,7 @@ export default class RtcMetrics {
     this.meetingId = meetingId;
     this.webex = webex;
     this.correlationId = correlationId;
+    this.setNewConnectionId();
     // Send the first set of metrics at 5 seconds in the case of a user leaving the call shortly after joining.
     setTimeout(this.sendMetricsInQueue.bind(this), 5 * 1000);
   }
@@ -55,7 +73,26 @@ export default class RtcMetrics {
    */
   addMetrics(data) {
     if (data.payload.length) {
+      if (data.name === 'stats-report') {
+        data.payload = data.payload.map(this.anonymizeIp);
+      }
+
       this.metricsQueue.push(data);
+
+      try {
+        // If a connection fails, send the rest of the metrics in queue and get a new connection id.
+        const parsedPayload = parseJsonPayload(data.payload);
+        if (
+          data.name === 'onconnectionstatechange' &&
+          parsedPayload &&
+          parsedPayload.value === 'failed'
+        ) {
+          this.sendMetricsInQueue();
+          this.setNewConnectionId();
+        }
+      } catch (e) {
+        console.error(e);
+      }
     }
   }
 
@@ -67,6 +104,34 @@ export default class RtcMetrics {
   closeMetrics() {
     this.sendMetricsInQueue();
     clearInterval(this.intervalId);
+  }
+
+  /**
+   * Anonymize IP addresses.
+   *
+   * @param {array} stats - An RTCStatsReport organized into an array of strings.
+   * @returns {string}
+   */
+  anonymizeIp(stats: string): string {
+    const data = JSON.parse(stats);
+    // on local and remote candidates, anonymize the last 4 bits.
+    if (data.type === 'local-candidate' || data.type === 'remote-candidate') {
+      data.ip = CallDiagnosticUtils.anonymizeIPAddress(data.ip) || undefined;
+      data.address = CallDiagnosticUtils.anonymizeIPAddress(data.address) || undefined;
+      data.relatedAddress =
+        CallDiagnosticUtils.anonymizeIPAddress(data.relatedAddress) || undefined;
+    }
+
+    return JSON.stringify(data);
+  }
+
+  /**
+   * Set a new connection id.
+   *
+   * @returns {void}
+   */
+  private setNewConnectionId() {
+    this.connectionId = uuid.v4();
   }
 
   /**
@@ -87,10 +152,11 @@ export default class RtcMetrics {
         metrics: [
           {
             type: 'webrtc',
-            version: '1.0.1',
+            version: '1.1.0',
             userId: this.webex.internal.device.userId,
             meetingId: this.meetingId,
             correlationId: this.correlationId,
+            connectionId: this.connectionId,
             data: this.metricsQueue,
           },
         ],

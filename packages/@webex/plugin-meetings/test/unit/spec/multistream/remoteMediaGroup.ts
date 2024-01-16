@@ -11,6 +11,7 @@ class FakeSlot extends EventEmitter {
   public mediaType: MediaType;
 
   public id: string;
+  public namedMediaGroup: {};
 
   constructor(mediaType: MediaType, id: string) {
     super();
@@ -43,7 +44,7 @@ describe('RemoteMediaGroup', () => {
 
         return `fake receiver selected request ${receiverSelectedRequestCounter}`;
       }),
-      cancelRequest: sinon.stub(),
+      cancelRequests: sinon.stub(),
       commit: sinon.stub(),
     };
 
@@ -57,7 +58,7 @@ describe('RemoteMediaGroup', () => {
 
   const resetHistory = () => {
     fakeMediaRequestManager.addRequest.resetHistory();
-    fakeMediaRequestManager.cancelRequest.resetHistory();
+    fakeMediaRequestManager.cancelRequests.resetHistory();
     fakeMediaRequestManager.commit.resetHistory();
   };
 
@@ -95,6 +96,57 @@ describe('RemoteMediaGroup', () => {
         true
       );
     });
+
+    it('creates named media group RemoteMedia object and sends the active speaker media request', () => {
+      let fakeAudioReceiveSlots = Array(4)
+        .fill(null)
+        .map((_, index) => new FakeSlot(MediaType.AudioMain, `fake receive slot ${index}`));
+      fakeAudioReceiveSlots[3].namedMediaGroup = {type: 1, value: 20};
+      // @ts-ignore
+      const group = new RemoteMediaGroup(fakeMediaRequestManager, fakeAudioReceiveSlots, 211, true, {
+        resolution: 'medium',
+        preferLiveVideo: true,
+      });
+
+      assert.strictEqual(group.getRemoteMedia().length, 4);
+      assert.strictEqual(group.getRemoteMedia('all').length, 4);
+      assert.strictEqual(group.getRemoteMedia('unpinned').length, 4);
+      assert.strictEqual(group.getRemoteMedia('pinned').length, 0);
+
+      assert.strictEqual(
+        group.getRemoteMedia('all').every((item) => item instanceof RemoteMedia),
+        true
+      );
+
+      assert.calledTwice(fakeMediaRequestManager.addRequest);
+      assert.calledWith(
+        fakeMediaRequestManager.addRequest.firstCall,
+        sinon.match({
+          policyInfo: sinon.match({
+            policy: 'active-speaker',
+            priority: 211,
+            namedMediaGroups: [{type: 1, value: 20}],
+          }),
+          receiveSlots: [fakeAudioReceiveSlots[3]],
+        }),
+        false
+      );
+      assert.calledWith(
+        fakeMediaRequestManager.addRequest.secondCall,
+        sinon.match({
+          policyInfo: sinon.match({
+            policy: 'active-speaker',
+            priority: 211,
+          }),
+          // receiveSlots: fakeReceiveSlots,
+          codecInfo: sinon.match({
+            codec: 'h264',
+            maxFs: 3600,
+          }),
+        }),
+        true
+      );
+    });
   });
 
   describe('setPreferLiveVideo', () => {
@@ -107,7 +159,7 @@ describe('RemoteMediaGroup', () => {
       fakeMediaRequestManager.addRequest.resetHistory();
       group.setPreferLiveVideo(true, false);
 
-      assert.calledOnce(fakeMediaRequestManager.cancelRequest);
+      assert.calledOnce(fakeMediaRequestManager.cancelRequests);
 
       assert.calledOnce(fakeMediaRequestManager.addRequest);
 
@@ -137,7 +189,7 @@ describe('RemoteMediaGroup', () => {
       fakeMediaRequestManager.addRequest.resetHistory();
       group.setPreferLiveVideo(true, false);
 
-      assert.notCalled(fakeMediaRequestManager.cancelRequest);
+      assert.notCalled(fakeMediaRequestManager.cancelRequests);
 
       assert.notCalled(fakeMediaRequestManager.addRequest);
     });
@@ -180,8 +232,8 @@ describe('RemoteMediaGroup', () => {
       );
 
       // the previous active speaker media request for the group should have been cancelled
-      assert.calledOnce(fakeMediaRequestManager.cancelRequest);
-      assert.calledWith(fakeMediaRequestManager.cancelRequest, 'fake active speaker request 1');
+      assert.calledOnce(fakeMediaRequestManager.cancelRequests);
+      assert.calledWith(fakeMediaRequestManager.cancelRequests, ['fake active speaker request 1']);
       // a new one should be sent for active speaker and for receiver selected
       assert.calledTwice(fakeMediaRequestManager.addRequest);
       assert.calledWith(
@@ -251,9 +303,9 @@ describe('RemoteMediaGroup', () => {
       assert.strictEqual(group.getRemoteMedia('pinned').length, 1);
 
       assert.strictEqual(group.isPinned(remoteMedia), true);
-      
-      assert.calledTwice(fakeMediaRequestManager.cancelRequest);
-      assert.calledWith(fakeMediaRequestManager.cancelRequest, 'fake receiver selected request 1');
+
+      assert.calledTwice(fakeMediaRequestManager.cancelRequests);
+      assert.calledWith(fakeMediaRequestManager.cancelRequests, ['fake receiver selected request 1']);
 
       assert.calledWith(
         fakeMediaRequestManager.addRequest,
@@ -317,8 +369,8 @@ describe('RemoteMediaGroup', () => {
      assert.strictEqual(group.isPinned(remoteMedia), false);
      assert.strictEqual(group.isPinned(remoteMedia2), true);
 
-     assert.calledTwice(fakeMediaRequestManager.cancelRequest);
-     assert.calledWith(fakeMediaRequestManager.cancelRequest, 'fake receiver selected request 1');
+     assert.calledTwice(fakeMediaRequestManager.cancelRequests);
+     assert.calledWith(fakeMediaRequestManager.cancelRequests, ['fake receiver selected request 1']);
      assert.notCalled(fakeMediaRequestManager.commit);
     });
 
@@ -404,8 +456,8 @@ describe('RemoteMediaGroup', () => {
       );
 
       // the previous active speaker media request for the group should have been cancelled
-      assert.calledOnce(fakeMediaRequestManager.cancelRequest);
-      assert.calledWith(fakeMediaRequestManager.cancelRequest, 'fake active speaker request 1');
+      assert.calledOnce(fakeMediaRequestManager.cancelRequests);
+      assert.calledWith(fakeMediaRequestManager.cancelRequests, ['fake active speaker request 1']);
       // a new one should be sent for active speaker and for receiver selected
       assert.calledTwice(fakeMediaRequestManager.addRequest);
       assert.calledWith(
@@ -458,8 +510,8 @@ describe('RemoteMediaGroup', () => {
       );
 
       // the previous active speaker media request for the group should have been cancelled
-      assert.calledOnce(fakeMediaRequestManager.cancelRequest);
-      assert.calledWith(fakeMediaRequestManager.cancelRequest, 'fake active speaker request 2');
+      assert.calledOnce(fakeMediaRequestManager.cancelRequests);
+      assert.calledWith(fakeMediaRequestManager.cancelRequests, ['fake active speaker request 2']);
       // a new one should be sent for active speaker and for receiver selected
       assert.calledTwice(fakeMediaRequestManager.addRequest);
       assert.calledWith(
@@ -505,9 +557,9 @@ describe('RemoteMediaGroup', () => {
       assert.strictEqual(group.isPinned(remoteMedia), false);
 
       // the previous requests for the group and the individual remote media should have been cancelled
-      assert.calledTwice(fakeMediaRequestManager.cancelRequest);
-      assert.calledWith(fakeMediaRequestManager.cancelRequest, 'fake active speaker request 3');
-      assert.calledWith(fakeMediaRequestManager.cancelRequest, 'fake receiver selected request 1');
+      assert.calledTwice(fakeMediaRequestManager.cancelRequests);
+      assert.calledWith(fakeMediaRequestManager.cancelRequests, ['fake active speaker request 3']);
+      assert.calledWith(fakeMediaRequestManager.cancelRequests, ['fake receiver selected request 1']);
 
       // a new one should be sent for active speaker
       assert.calledOnce(fakeMediaRequestManager.addRequest);
@@ -556,14 +608,14 @@ describe('RemoteMediaGroup', () => {
       group.pin(remoteMedia, 1234);
 
       assert.notCalled(fakeMediaRequestManager.addRequest);
-      assert.notCalled(fakeMediaRequestManager.cancelRequest);
+      assert.notCalled(fakeMediaRequestManager.cancelRequests);
       assert.notCalled(fakeMediaRequestManager.commit);
 
       // again, this time without even specifying the csi
       group.pin(remoteMedia);
 
       assert.notCalled(fakeMediaRequestManager.addRequest);
-      assert.notCalled(fakeMediaRequestManager.cancelRequest);
+      assert.notCalled(fakeMediaRequestManager.cancelRequests);
       assert.notCalled(fakeMediaRequestManager.commit);
 
       // pin it again but to a different CSI
@@ -619,8 +671,8 @@ describe('RemoteMediaGroup', () => {
       });
 
       // and that we've cancelled the media request for this group
-      assert.calledOnce(fakeMediaRequestManager.cancelRequest);
-      assert.calledWith(fakeMediaRequestManager.cancelRequest, getLastActiveSpeakerRequestId());
+      assert.calledOnce(fakeMediaRequestManager.cancelRequests);
+      assert.calledWith(fakeMediaRequestManager.cancelRequests, [getLastActiveSpeakerRequestId()]);
       assert.calledOnce(fakeMediaRequestManager.commit);
     });
   });

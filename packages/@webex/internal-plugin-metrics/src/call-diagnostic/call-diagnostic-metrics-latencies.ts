@@ -77,7 +77,12 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
     }
     // for some events we're only interested in the first timestamp not last
     // as these events can happen multiple times
-    if (key === 'client.media.rx.start' || key === 'client.media.tx.start') {
+    if (
+      key === 'client.media.rx.start' ||
+      key === 'client.media.tx.start' ||
+      key === 'internal.client.meetinginfo.request' ||
+      key === 'internal.client.meetinginfo.response'
+    ) {
       this.saveFirstTimestampOnly(key, value);
     } else {
       this.latencyTimestamps.set(key, value);
@@ -150,6 +155,17 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
     return this.getDiffBetweenTimestamps(
       'client.interstitial-window.start-launch',
       'internal.client.interstitial-window.click.joinbutton'
+    );
+  }
+
+  /**
+   * Device Register Time
+   * @returns - latency
+   */
+  public getRegisterWDMDeviceJMT() {
+    return this.getDiffBetweenTimestamps(
+      'internal.register.device.request',
+      'internal.register.device.response'
     );
   }
 
@@ -303,15 +319,12 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
     );
 
     // get the first timestamp
-    const mediaFlowStartedTimestamp = Math.min(
-      this.latencyTimestamps.get('client.media.rx.start'),
-      this.latencyTimestamps.get('client.media.tx.start')
-    );
+    const connectedMedia = this.latencyTimestamps.get('client.ice.end');
 
     const lobbyTime = this.getStayLobbyTime() || 0;
 
-    if (interstitialJoinClickTimestamp && mediaFlowStartedTimestamp) {
-      return mediaFlowStartedTimestamp - interstitialJoinClickTimestamp - lobbyTime;
+    if (interstitialJoinClickTimestamp && connectedMedia) {
+      return connectedMedia - interstitialJoinClickTimestamp - lobbyTime;
     }
 
     return undefined;

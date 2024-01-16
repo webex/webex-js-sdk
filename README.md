@@ -175,11 +175,11 @@ webex.rooms
 
 ## Samples
 
-Sample code can be found in [docs/samples](./docs/samples). You can demo them by going to [webex.github.io/webex-js-sdk/samples/](https://webex.github.io/webex-js-sdk/samples/) or you can run them yourself by following this guide in the [Contribution Guide](CONTRIBUTING.md#running-samples-locally)
+Sample code can be found in [docs/samples](./docs/samples). You can demo them by going to [beta.d3m3l2kee0btzx.amplifyapp.com/samples/](https://beta.d3m3l2kee0btzx.amplifyapp.com/samples/browser-plugin-meetings/) or you can run them yourself by following this guide in the [Contribution Guide](CONTRIBUTING.md#running-samples-locally)
 
-| Samples                         | Hosted                                                                                 |
-| ------------------------------- | -------------------------------------------------------------------------------------- |
-| [Samples code](./docs/samples/) | [webex.github.io/webex-js-sdk/samples/](https://webex.github.io/webex-js-sdk/samples/) |
+| Samples                         | Hosted                                                                                                                     |
+| ------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| [Samples code](./docs/samples/) | [beta.d3m3l2kee0btzx.amplifyapp.com/samples/](https://beta.d3m3l2kee0btzx.amplifyapp.com/samples/browser-plugin-meetings/) |
 
 ## FedRAMP Environment
 

@@ -18,6 +18,7 @@ import testUtils from '../../../utils/testUtils';
 import LoggerProxy from '@webex/plugin-meetings/src/common/logs/logger-proxy';
 import LoggerConfig from '@webex/plugin-meetings/src/common/logs/logger-config';
 import { expect } from 'chai';
+import { NamedMediaGroup } from "@webex/json-multistream";
 
 class FakeSlot extends EventEmitter {
   public mediaType: MediaType;
@@ -39,6 +40,7 @@ class FakeSlot extends EventEmitter {
   public get logString() {
     return this.id;
   }
+
 }
 
 const DefaultTestConfiguration: Configuration = {
@@ -175,22 +177,22 @@ describe('RemoteMediaManager', () => {
     fakeMediaRequestManagers = {
       audio: {
         addRequest: sinon.stub(),
-        cancelRequest: sinon.stub(),
+        cancelRequests: sinon.stub(),
         commit: sinon.stub(),
       },
       video: {
         addRequest: sinon.stub(),
-        cancelRequest: sinon.stub(),
+        cancelRequests: sinon.stub(),
         commit: sinon.stub(),
       },
       screenShareAudio: {
         addRequest: sinon.stub(),
-        cancelRequest: sinon.stub(),
+        cancelRequests: sinon.stub(),
         commit: sinon.stub(),
       },
       screenShareVideo: {
         addRequest: sinon.stub(),
-        cancelRequest: sinon.stub(),
+        cancelRequests: sinon.stub(),
         commit: sinon.stub(),
       },
     };
@@ -207,10 +209,10 @@ describe('RemoteMediaManager', () => {
     fakeReceiveSlotManager.allocateSlot.resetHistory();
     fakeReceiveSlotManager.releaseSlot.resetHistory();
     fakeMediaRequestManagers.audio.addRequest.resetHistory();
-    fakeMediaRequestManagers.audio.cancelRequest.resetHistory();
+    fakeMediaRequestManagers.audio.cancelRequests.resetHistory();
     fakeMediaRequestManagers.audio.commit.resetHistory();
     fakeMediaRequestManagers.video.addRequest.resetHistory();
-    fakeMediaRequestManagers.video.cancelRequest.resetHistory();
+    fakeMediaRequestManagers.video.cancelRequests.resetHistory();
     fakeMediaRequestManagers.video.commit.resetHistory();
     fakeMediaRequestManagers.screenShareVideo.commit.resetHistory();
     fakeMediaRequestManagers.screenShareAudio.commit.resetHistory();
@@ -297,6 +299,246 @@ describe('RemoteMediaManager', () => {
           codecInfo: undefined,
         })
       );
+    });
+
+    it('creates a RemoteMediaGroup for named media group audio correctly', async () => {
+      let createdAudioGroup: RemoteMediaGroup | null = null;
+      fakeAudioSlot.setNamedMediaGroup = sinon.stub();
+      // create a config with just audio, no video at all and no screen share
+      const config: Configuration = {
+        audio: {
+          numOfActiveSpeakerStreams: 3,
+          numOfScreenShareStreams: 0,
+        },
+        video: {
+          preferLiveVideo: false,
+          initialLayoutId: 'empty',
+          layouts: {
+            empty: {},
+          },
+        },
+        namedMediaGroup: {type: 1, value: 20},
+      };
+
+      remoteMediaManager = new RemoteMediaManager(
+        fakeReceiveSlotManager,
+        fakeMediaRequestManagers,
+        config
+      );
+
+      remoteMediaManager.on(Event.AudioCreated, (audio: RemoteMediaGroup) => {
+        createdAudioGroup = audio;
+      });
+
+      remoteMediaManager.start();
+
+      await testUtils.flushPromises();
+
+      assert.callCount(fakeReceiveSlotManager.allocateSlot, 4);
+      assert.alwaysCalledWith(fakeReceiveSlotManager.allocateSlot, MediaType.AudioMain);
+      assert.strictEqual(remoteMediaManager.slots.audio.length, 4);
+
+      assert.isNotNull(createdAudioGroup);
+      if (createdAudioGroup) {
+        assert.strictEqual(createdAudioGroup.getRemoteMedia().length, 4);
+        assert.isTrue(
+          createdAudioGroup
+            .getRemoteMedia()
+            .every((remoteMedia) => remoteMedia.mediaType === MediaType.AudioMain)
+        );
+        assert.strictEqual(createdAudioGroup.getRemoteMedia('pinned').length, 0);
+      }
+    });
+
+    it('creates new media request when call setReceiveNamedMediaGroup', async () => {
+      let createdAudioGroup: RemoteMediaGroup | null = null;
+      let audioStopStub;
+      fakeAudioSlot.setNamedMediaGroup = sinon.stub();
+      // create a config with just audio, no video at all and no screen share
+      const config: Configuration = {
+        audio: {
+          numOfActiveSpeakerStreams: 3,
+          numOfScreenShareStreams: 0,
+        },
+        video: {
+          preferLiveVideo: false,
+          initialLayoutId: 'empty',
+          layouts: {
+            empty: {},
+          },
+        },
+        namedMediaGroup: {type: 1, value: 24},
+      };
+
+      remoteMediaManager = new RemoteMediaManager(
+        fakeReceiveSlotManager,
+        fakeMediaRequestManagers,
+        config
+      );
+
+      remoteMediaManager.on(Event.AudioCreated, (audio: RemoteMediaGroup) => {
+        audioStopStub = sinon.stub(audio, 'stop');
+      });
+
+      await remoteMediaManager.start();
+
+      // we're using the default config that requires 3 main audio slots
+      assert.callCount(fakeReceiveSlotManager.allocateSlot, 4);
+
+
+      resetHistory();
+
+
+      remoteMediaManager.setReceiveNamedMediaGroup(MediaType.AudioMain, 28);
+
+      // audio RemoteMediaGroups have been stopped
+      assert.calledOnce(audioStopStub);
+      // check that all slots have been released
+      assert.callCount(fakeReceiveSlotManager.releaseSlot, 4);
+
+      // re-create audio media request
+      await testUtils.flushPromises();
+      assert.callCount(fakeReceiveSlotManager.allocateSlot, 4);
+      assert.alwaysCalledWith(fakeReceiveSlotManager.allocateSlot, MediaType.AudioMain);
+      assert.strictEqual(remoteMediaManager.slots.audio.length, 4);
+
+    });
+
+    it('ignore duplicated group when call setReceiveNamedMediaGroup', async () => {
+      let createdAudioGroup: RemoteMediaGroup | null = null;
+      let audioStopStub;
+      fakeAudioSlot.setNamedMediaGroup = sinon.stub();
+      // create a config with just audio, no video at all and no screen share
+      const config: Configuration = {
+        audio: {
+          numOfActiveSpeakerStreams: 3,
+          numOfScreenShareStreams: 0,
+        },
+        video: {
+          preferLiveVideo: false,
+          initialLayoutId: 'empty',
+          layouts: {
+            empty: {},
+          },
+        },
+        namedMediaGroup: {type: 1, value: 24},
+      };
+
+      remoteMediaManager = new RemoteMediaManager(
+        fakeReceiveSlotManager,
+        fakeMediaRequestManagers,
+        config
+      );
+
+      remoteMediaManager.on(Event.AudioCreated, (audio: RemoteMediaGroup) => {
+        audioStopStub = sinon.stub(audio, 'stop');
+      });
+
+      await remoteMediaManager.start();
+
+      // we're using the default config that requires 3 main audio slots
+      assert.callCount(fakeReceiveSlotManager.allocateSlot, 4);
+
+
+      resetHistory();
+
+      remoteMediaManager.setReceiveNamedMediaGroup(MediaType.AudioMain, 24);
+
+      assert.notCalled(audioStopStub);
+      assert.callCount(fakeReceiveSlotManager.releaseSlot, 0);
+
+      await testUtils.flushPromises();
+      assert.callCount(fakeReceiveSlotManager.allocateSlot, 0);
+      assert.notCalled(fakeReceiveSlotManager.allocateSlot);
+
+    });
+
+    it('remove named media group request', async () => {
+      let createdAudioGroup: RemoteMediaGroup | null = null;
+      let audioStopStub;
+      fakeAudioSlot.setNamedMediaGroup = sinon.stub();
+      // create a config with just audio, no video at all and no screen share
+      const config: Configuration = {
+        audio: {
+          numOfActiveSpeakerStreams: 3,
+          numOfScreenShareStreams: 0,
+        },
+        video: {
+          preferLiveVideo: false,
+          initialLayoutId: 'empty',
+          layouts: {
+            empty: {},
+          },
+        },
+        namedMediaGroup: {type: 1, value: 24},
+      };
+
+      remoteMediaManager = new RemoteMediaManager(
+        fakeReceiveSlotManager,
+        fakeMediaRequestManagers,
+        config
+      );
+
+      remoteMediaManager.on(Event.AudioCreated, (audio: RemoteMediaGroup) => {
+        audioStopStub = sinon.stub(audio, 'stop');
+      });
+
+      await remoteMediaManager.start();
+
+      // we're using the default config that requires 3 main audio slots
+      assert.callCount(fakeReceiveSlotManager.allocateSlot, 4);
+
+
+      resetHistory();
+
+      remoteMediaManager.setReceiveNamedMediaGroup(MediaType.AudioMain, 0);
+
+      assert.calledOnce(audioStopStub);
+      assert.callCount(fakeReceiveSlotManager.releaseSlot, 4);
+
+      await testUtils.flushPromises();
+      assert.callCount(fakeReceiveSlotManager.allocateSlot, 3);
+      assert.alwaysCalledWith(fakeReceiveSlotManager.allocateSlot, MediaType.AudioMain);
+      assert.strictEqual(remoteMediaManager.slots.audio.length, 3);
+
+    });
+
+    it('should throw error if set receive named media group which type is not audio', async () => {
+      let createdAudioGroup: RemoteMediaGroup | null = null;
+      let audioStopStub;
+      fakeAudioSlot.setNamedMediaGroup = sinon.stub();
+      // create a config with just audio, no video at all and no screen share
+      const config: Configuration = {
+        audio: {
+          numOfActiveSpeakerStreams: 3,
+          numOfScreenShareStreams: 0,
+        },
+        video: {
+          preferLiveVideo: false,
+          initialLayoutId: 'empty',
+          layouts: {
+            empty: {},
+          },
+        },
+        namedMediaGroup: {type: 1, value: 24},
+      };
+
+      remoteMediaManager = new RemoteMediaManager(
+        fakeReceiveSlotManager,
+        fakeMediaRequestManagers,
+        config
+      );
+
+      await remoteMediaManager.start();
+
+      resetHistory();
+
+      try {
+        remoteMediaManager.setReceiveNamedMediaGroup(MediaType.VideoMain, 0);
+      } catch (err) {
+        assert(err, {});
+      }
+
     });
 
     it('pre-allocates receive slots based on the biggest layout', async () => {
@@ -693,7 +935,7 @@ describe('RemoteMediaManager', () => {
       });
 
       expect(config.video.preferLiveVideo).to.equal(true);
-      
+
       assert.calledOnce(fakeMediaRequestManagers.video.commit);
     });
   });
@@ -1354,8 +1596,8 @@ describe('RemoteMediaManager', () => {
         await remoteMediaManager.setLayout('OnePlusFive');
 
         // check that the previous active speaker request for "AllEqual" group was cancelled
-        assert.calledOnce(fakeMediaRequestManagers.video.cancelRequest);
-        assert.calledWith(fakeMediaRequestManagers.video.cancelRequest, allEqualMediaRequestId);
+        assert.calledOnce(fakeMediaRequestManagers.video.cancelRequests);
+        assert.calledWith(fakeMediaRequestManagers.video.cancelRequests, [allEqualMediaRequestId]);
 
         // check that 2 correct active speaker media requests were sent out
         assert.callCount(fakeMediaRequestManagers.video.addRequest, 2);
@@ -1461,21 +1703,21 @@ describe('RemoteMediaManager', () => {
         await remoteMediaManager.setLayout('other');
 
         // check that all the previous media requests for "initial" layout have been cancelled
-        assert.callCount(fakeMediaRequestManagers.video.cancelRequest, 4);
-        assert.calledWith(fakeMediaRequestManagers.video.cancelRequest, 'active speaker request 1');
-        assert.calledWith(fakeMediaRequestManagers.video.cancelRequest, 'active speaker request 2');
+        assert.callCount(fakeMediaRequestManagers.video.cancelRequests, 4);
+        assert.calledWith(fakeMediaRequestManagers.video.cancelRequests, ['active speaker request 1']);
+        assert.calledWith(fakeMediaRequestManagers.video.cancelRequests, ['active speaker request 2']);
         assert.calledWith(
-          fakeMediaRequestManagers.video.cancelRequest,
-          'receiver selected request 1'
+          fakeMediaRequestManagers.video.cancelRequests,
+          ['receiver selected request 1']
         );
         assert.calledWith(
-          fakeMediaRequestManagers.video.cancelRequest,
-          'receiver selected request 2'
+          fakeMediaRequestManagers.video.cancelRequests,
+          ['receiver selected request 2']
         );
-        assert.calledOnce(fakeMediaRequestManagers.screenShareVideo.cancelRequest);
+        assert.calledOnce(fakeMediaRequestManagers.screenShareVideo.cancelRequests);
         assert.calledWith(
-          fakeMediaRequestManagers.screenShareVideo.cancelRequest,
-          'video screen share request id'
+          fakeMediaRequestManagers.screenShareVideo.cancelRequests,
+          ['video screen share request id']
         );
 
         // new layout has no videos, so no new requests should be sent out
@@ -1553,7 +1795,7 @@ describe('RemoteMediaManager', () => {
             }),
           })
         );
-        assert.notCalled(fakeMediaRequestManagers.video.cancelRequest);
+        assert.notCalled(fakeMediaRequestManagers.video.cancelRequests);
 
         resetHistory();
 
@@ -1577,8 +1819,8 @@ describe('RemoteMediaManager', () => {
           })
         );
         // and previous one should have been cancelled
-        assert.calledOnce(fakeMediaRequestManagers.video.cancelRequest);
-        assert.calledWith(fakeMediaRequestManagers.video.cancelRequest, fakeRequestId1);
+        assert.calledOnce(fakeMediaRequestManagers.video.cancelRequests);
+        assert.calledWith(fakeMediaRequestManagers.video.cancelRequests, [fakeRequestId1]);
 
         resetHistory();
 
@@ -1604,7 +1846,7 @@ describe('RemoteMediaManager', () => {
           })
         );
         // nothing should have been cancelled
-        assert.notCalled(fakeMediaRequestManagers.video.cancelRequest);
+        assert.notCalled(fakeMediaRequestManagers.video.cancelRequests);
 
         resetHistory();
 
@@ -1617,8 +1859,8 @@ describe('RemoteMediaManager', () => {
         // no new media request should have been sent out
         assert.notCalled(fakeMediaRequestManagers.video.addRequest);
         // and previous one should have been cancelled
-        assert.calledOnce(fakeMediaRequestManagers.video.cancelRequest);
-        assert.calledWith(fakeMediaRequestManagers.video.cancelRequest, fakeRequestId2);
+        assert.calledOnce(fakeMediaRequestManagers.video.cancelRequests);
+        assert.calledWith(fakeMediaRequestManagers.video.cancelRequests, [fakeRequestId2]);
       }
     });
   });
@@ -1701,7 +1943,7 @@ describe('RemoteMediaManager', () => {
       await remoteMediaManager.removeMemberVideoPane('some pane');
 
       assert.notCalled(fakeReceiveSlotManager.releaseSlot);
-      assert.notCalled(fakeMediaRequestManagers.video.cancelRequest);
+      assert.notCalled(fakeMediaRequestManagers.video.cancelRequests);
     });
 
     it('works as expected', async () => {
@@ -1727,8 +1969,8 @@ describe('RemoteMediaManager', () => {
       assert.calledWith(fakeReceiveSlotManager.releaseSlot, fakeNewSlot);
 
       // and a media request cancelled
-      assert.calledOnce(fakeMediaRequestManagers.video.cancelRequest);
-      assert.calledWith(fakeMediaRequestManagers.video.cancelRequest, fakeRequestId);
+      assert.calledOnce(fakeMediaRequestManagers.video.cancelRequests);
+      assert.calledWith(fakeMediaRequestManagers.video.cancelRequests, [fakeRequestId]);
     });
   });
 

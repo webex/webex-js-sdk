@@ -93,6 +93,7 @@ export class ReceiveSlotManager {
         `ReceiveSlotManager#releaseSlot --> trying to release a ${slot.mediaType}} slot that is not managed by this ReceiveSlotManager`
       );
     }
+    slot.reset();
   }
 
   /**

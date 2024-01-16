@@ -71,12 +71,14 @@ interface IInMeetingActions {
   canShareDesktop?: boolean;
   canShareContent?: boolean;
   canTransferFile?: boolean;
+  canChat?: boolean;
   canDoVideo?: boolean;
   canAnnotate?: boolean;
   canUseVoip?: boolean;
   supportHQV?: boolean;
   supportHDV?: boolean;
   canShareWhiteBoard?: boolean;
+  enforceVirtualBackground?: boolean;
 }
 
 /**
@@ -209,6 +211,8 @@ export default class InMeetingActions implements IInMeetingActions {
 
   canTransferFile = null;
 
+  canChat = null;
+
   canDoVideo = null;
 
   canAnnotate = null;
@@ -216,6 +220,8 @@ export default class InMeetingActions implements IInMeetingActions {
   canUseVoip = null;
 
   supportHQV = null;
+
+  enforceVirtualBackground = null;
 
   supportHDV = null;
 
@@ -288,9 +294,11 @@ export default class InMeetingActions implements IInMeetingActions {
     canShareDesktop: this.canShareDesktop,
     canShareContent: this.canShareContent,
     canTransferFile: this.canTransferFile,
+    canChat: this.canChat,
     canDoVideo: this.canDoVideo,
     canAnnotate: this.canAnnotate,
     canUseVoip: this.canUseVoip,
+    enforceVirtualBackground: this.enforceVirtualBackground,
     supportHQV: this.supportHQV,
     supportHDV: this.supportHDV,
     canShareWhiteBoard: this.canShareWhiteBoard,

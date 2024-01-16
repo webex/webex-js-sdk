@@ -14,6 +14,7 @@ type ExpectedActiveSpeaker = {
   receiveSlots: Array<ReceiveSlot>;
   maxFs?: number;
   maxMbps?: number;
+  namedMediaGroups?:[{type: number, value: number}];
 };
 type ExpectedReceiverSelected = {
   policy: 'receiver-selected';
@@ -80,7 +81,7 @@ describe('MediaRequestManager', () => {
   });
 
   // helper function for adding an active speaker request
-  const addActiveSpeakerRequest = (priority, receiveSlots, maxFs, commit = false, preferLiveVideo = true) =>
+  const addActiveSpeakerRequest = (priority, receiveSlots, maxFs, commit = false, preferLiveVideo = true, namedMediaGroups = undefined) =>
     mediaRequestManager.addRequest(
       {
         policyInfo: {
@@ -89,6 +90,7 @@ describe('MediaRequestManager', () => {
           crossPriorityDuplication: CROSS_PRIORITY_DUPLICATION,
           crossPolicyDuplication: CROSS_POLICY_DUPLICATION,
           preferLiveVideo,
+          namedMediaGroups,
         },
         receiveSlots,
         codecInfo: {
@@ -384,11 +386,11 @@ describe('MediaRequestManager', () => {
     ]);
   });
 
-  it('removes the events maxFsUpdate and sourceUpdate when cancelRequest() is called', async () => {
+  it('removes the events maxFsUpdate and sourceUpdate when cancelRequests() is called', async () => {
 
     const requestId = addActiveSpeakerRequest(255, [fakeReceiveSlots[2], fakeReceiveSlots[3]], MAX_FS_720p);
 
-    mediaRequestManager.cancelRequest(requestId, true);
+    mediaRequestManager.cancelRequests([requestId], true);
 
     const sourceUpdateHandler = fakeReceiveSlots[2].off.getCall(0);
 
@@ -404,7 +406,7 @@ describe('MediaRequestManager', () => {
     assert.equal(sourceUpdateEventName, 'sourceUpdate')
   });
 
-  it('cancels the requests correctly when cancelRequest() is called with commit=true', () => {
+  it('cancels the requests correctly when cancelRequests() is called with commit=true', () => {
     const requestIds = [
       addActiveSpeakerRequest(255, [fakeReceiveSlots[0], fakeReceiveSlots[1]], MAX_FS_720p),
       addActiveSpeakerRequest(255, [fakeReceiveSlots[2], fakeReceiveSlots[3]], MAX_FS_720p),
@@ -413,7 +415,7 @@ describe('MediaRequestManager', () => {
     ];
 
     // cancel one of the active speaker requests
-    mediaRequestManager.cancelRequest(requestIds[1], true);
+    mediaRequestManager.cancelRequests([requestIds[1]], true);
 
     // expect only the 3 remaining requests to be sent out
     checkMediaRequestsSent([
@@ -444,7 +446,39 @@ describe('MediaRequestManager', () => {
     ]);
 
     // cancel one of the receiver selected requests
-    mediaRequestManager.cancelRequest(requestIds[3], true);
+    mediaRequestManager.cancelRequests([requestIds[3]], true);
+
+    // expect only the 2 remaining requests to be sent out
+    checkMediaRequestsSent([
+      {
+        policy: 'active-speaker',
+        priority: 255,
+        receiveSlots: [fakeWcmeSlots[0], fakeWcmeSlots[1]],
+        maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_720p,
+        maxFs: MAX_FS_720p,
+        maxMbps: MAX_MBPS_720p,
+      },
+      {
+        policy: 'receiver-selected',
+        csi: 100,
+        receiveSlot: fakeWcmeSlots[4],
+        maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_1080p,
+        maxFs: MAX_FS_1080p,
+        maxMbps: MAX_MBPS_1080p,
+      },
+    ]);
+  });
+
+  it('cancels multi requests correctly when cancelRequests() is called with commit=true', () => {
+    const requestIds = [
+      addActiveSpeakerRequest(255, [fakeReceiveSlots[0], fakeReceiveSlots[1]], MAX_FS_720p),
+      addActiveSpeakerRequest(255, [fakeReceiveSlots[2], fakeReceiveSlots[3]], MAX_FS_720p),
+      addReceiverSelectedRequest(100, fakeReceiveSlots[4], MAX_FS_1080p),
+      addReceiverSelectedRequest(200, fakeReceiveSlots[5], MAX_FS_1080p),
+    ];
+
+    // cancel one of the active speaker requests
+    mediaRequestManager.cancelRequests([requestIds[1], requestIds[3]], true);
 
     // expect only the 2 remaining requests to be sent out
     checkMediaRequestsSent([
@@ -503,7 +537,7 @@ describe('MediaRequestManager', () => {
     ]);
   });
 
-  it('does not send out anything if cancelRequest() is called with commit=false', () => {
+  it('does not send out anything if cancelRequests() is called with commit=false', () => {
     // send 4 requests
     const requestIds = [
       addActiveSpeakerRequest(
@@ -553,9 +587,8 @@ describe('MediaRequestManager', () => {
     ]);
 
     // now cancel 3 of them, but with commit=false => nothing should happen
-    mediaRequestManager.cancelRequest(requestIds[0], false);
-    mediaRequestManager.cancelRequest(requestIds[2], false);
-    mediaRequestManager.cancelRequest(requestIds[3], false);
+    requestIds.splice(1, 1);
+    mediaRequestManager.cancelRequests(requestIds, false);
 
     assert.notCalled(sendMediaRequestsCallback);
 
@@ -590,7 +623,14 @@ describe('MediaRequestManager', () => {
       MAX_FS_720p,
       false
     );
-
+    addActiveSpeakerRequest(
+      254,
+      [fakeReceiveSlots[8], fakeReceiveSlots[9], fakeReceiveSlots[10]],
+      MAX_FS_720p,
+      false,
+      true,
+      [{type: 1, value: 20}],
+    );
     // nothing should be sent out as we didn't commit the requests
     assert.notCalled(sendMediaRequestsCallback);
 
@@ -598,6 +638,8 @@ describe('MediaRequestManager', () => {
     mediaRequestManager.commit();
 
     // check that all requests have been sent out
+    // @ts-ignore
+    // @ts-ignore
     checkMediaRequestsSent([
       {
         policy: 'receiver-selected',
@@ -630,6 +672,15 @@ describe('MediaRequestManager', () => {
         maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_720p,
         maxFs: MAX_FS_720p,
         maxMbps: MAX_MBPS_720p,
+      },
+      {
+        policy: 'active-speaker',
+        priority: 254,
+        receiveSlots: [fakeWcmeSlots[8], fakeWcmeSlots[9], fakeWcmeSlots[10]],
+        maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_720p,
+        maxFs: MAX_FS_720p,
+        maxMbps: MAX_MBPS_720p,
+        namedMediaGroups: [{type: 1, value: 20}],
       },
     ]);
   });
@@ -850,7 +901,7 @@ describe('MediaRequestManager', () => {
     ]);
 
     // cancel additional request
-    mediaRequestManager.cancelRequest(additionalRequestId);
+    mediaRequestManager.cancelRequests([additionalRequestId]);
 
     // check that resulting requests are 3 "large" 1080p streams
     checkMediaRequestsSent([

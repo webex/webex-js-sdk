@@ -160,4 +160,23 @@ describe('ReceiveSlot', () => {
       );
     })
   });
+  describe('setNamedMediaGroup() and reset()', () => {
+    it('set if has value', () => {
+      receiveSlot.setNamedMediaGroup({ type: 1, value: 20 });
+
+      assert.deepEqual(receiveSlot.namedMediaGroup, { type: 1, value: 20 });
+
+    });
+    it('reset namedMediaGroup to default value ', () => {
+      receiveSlot.reset();
+
+      assert.deepEqual(receiveSlot.namedMediaGroup, { type: 0, value: 0 });
+    });
+
+    it('set fail if has no value', () => {
+      receiveSlot.setNamedMediaGroup(null);
+
+      assert.deepEqual(receiveSlot.namedMediaGroup, { type: 0, value: 0 });
+    });
+  });
 });

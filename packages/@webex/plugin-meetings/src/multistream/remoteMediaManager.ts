@@ -49,6 +49,10 @@ export interface Configuration {
 
     layouts: {[key: LayoutId]: VideoLayout}; // a map of all available layouts, a layout can be set via setLayout() method
   };
+  namedMediaGroup?: {
+    type: number;
+    value: number;
+  };
 }
 
 /* Predefined layouts: */
@@ -526,6 +530,41 @@ export class RemoteMediaManager extends EventsScope {
   }
 
   /**
+   * Sets which named media group need receiving
+   * @param {MediaType} mediaType of the stream
+   * @param {number} languageCode of the stream
+   * @returns {void}
+   */
+  public async setReceiveNamedMediaGroup(mediaType: MediaType, languageId: number) {
+    if (mediaType !== MediaType.AudioMain) {
+      throw new Error(`cannot set receive named media group which media type is ${mediaType}`);
+    }
+
+    const value = languageId;
+    if (value === this.config.namedMediaGroup?.value) {
+      return;
+    }
+
+    this.config.namedMediaGroup = {
+      type: 1,
+      value,
+    };
+
+    this.invalidateCurrentRemoteMedia({
+      audio: true,
+      video: false,
+      screenShareAudio: false,
+      screenShareVideo: false,
+      commit: false,
+    });
+    this.slots.audio.reverse(); // release the slots in reverse order and maintain the same slots in same order for the next mediaRequest
+    this.slots.audio.forEach((slot) => this.receiveSlotManager.releaseSlot(slot));
+    this.slots.audio.length = 0;
+
+    await this.createAudioMedia();
+  }
+
+  /**
    * Creates the audio slots
    */
   private async createAudioMedia() {
@@ -533,8 +572,15 @@ export class RemoteMediaManager extends EventsScope {
     for (let i = 0; i < this.config.audio.numOfActiveSpeakerStreams; i += 1) {
       // eslint-disable-next-line no-await-in-loop
       const slot = await this.receiveSlotManager.allocateSlot(MediaType.AudioMain);
-
       this.slots.audio.push(slot);
+    }
+    // create slot for interpretation language audio
+    if (this.config.namedMediaGroup?.value) {
+      const siSlot = await this.receiveSlotManager.allocateSlot(MediaType.AudioMain);
+      if (siSlot) {
+        siSlot.setNamedMediaGroup(this.config.namedMediaGroup);
+        this.slots.audio.push(siSlot);
+      }
     }
 
     // create a remote media group

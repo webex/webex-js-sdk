@@ -49,7 +49,7 @@ import {
 import BEHAVIORAL_METRICS from '../metrics/constants';
 import MeetingInfo from '../meeting-info';
 import MeetingInfoV2 from '../meeting-info/meeting-info-v2';
-import Meeting from '../meeting';
+import Meeting, {CallStateForMetrics} from '../meeting';
 import PersonalMeetingRoom from '../personal-meeting-room';
 import Reachability from '../reachability';
 import Request from './request';
@@ -584,7 +584,7 @@ export default class Meetings extends WebexPlugin {
 
     // @ts-ignore
     this.webex.internal.mercury.on(ONLINE, () => {
-      this.syncMeetings();
+      this.syncMeetings({keepOnlyLocusMeetings: false});
     });
 
     // @ts-ignore
@@ -696,6 +696,24 @@ export default class Meetings extends WebexPlugin {
     if (this.config?.experimental?.enableAdhocMeetings !== changeState) {
       // @ts-ignore
       this.config.experimental.enableAdhocMeetings = changeState;
+    }
+  }
+
+  /**
+   * API to toggle TCP reachability, needs to be called before webex.meetings.register()
+   * @param {Boolean} newValue
+   * @private
+   * @memberof Meetings
+   * @returns {undefined}
+   */
+  private _toggleTcpReachability(newValue: boolean) {
+    if (typeof newValue !== 'boolean') {
+      return;
+    }
+    // @ts-ignore
+    if (this.config.experimental.enableTcpReachability !== newValue) {
+      // @ts-ignore
+      this.config.experimental.enableTcpReachability = newValue;
     }
   }
 
@@ -1025,13 +1043,19 @@ export default class Meetings extends WebexPlugin {
   }
 
   /**
-   * Create a meeting.
+   * Create a meeting or return an existing meeting.
+   *
+   * When meeting info passed it should be complete, e.g.: fetched after password or captcha provided
+   *
    * @param {string} destination - sipURL, phonenumber, or locus object}
    * @param {string} [type] - the optional specified type, such as locusId
    * @param {Boolean} useRandomDelayForInfo - whether a random delay should be added to fetching meeting info
    * @param {Object} infoExtraParams extra parameters to be provided when fetching meeting info
-   * @param {string} correlationId - the optional specified correlationId
+   * @param {string} correlationId - the optional specified correlationId (callStateForMetrics.correlationId can be provided instead)
    * @param {Boolean} failOnMissingMeetingInfo - whether to throw an error if meeting info fails to fetch (for calls that are not 1:1 or content share)
+   * @param {CallStateForMetrics} callStateForMetrics - information about call state for metrics
+   * @param {Object} [meetingInfo] - Pre-fetched complete meeting info
+   * @param {String} [meetingLookupUrl] - meeting info prefetch url
    * @returns {Promise<Meeting>} A new Meeting.
    * @public
    * @memberof Meetings
@@ -1042,7 +1066,10 @@ export default class Meetings extends WebexPlugin {
     useRandomDelayForInfo = false,
     infoExtraParams = {},
     correlationId: string = undefined,
-    failOnMissingMeetingInfo = false
+    failOnMissingMeetingInfo = false,
+    callStateForMetrics: CallStateForMetrics = undefined,
+    meetingInfo = undefined,
+    meetingLookupUrl = undefined
   ) {
     // TODO: type should be from a dictionary
 
@@ -1050,6 +1077,10 @@ export default class Meetings extends WebexPlugin {
     // type. This must be performed prior to determining if the meeting is
     // found in the collection, as we mutate the destination for hydra person
     // id values.
+    if (correlationId) {
+      callStateForMetrics = {...(callStateForMetrics || {}), correlationId};
+    }
+
     return (
       this.meetingInfo
         .fetchInfoOptions(destination, type)
@@ -1096,8 +1127,10 @@ export default class Meetings extends WebexPlugin {
               type,
               useRandomDelayForInfo,
               infoExtraParams,
-              correlationId,
-              failOnMissingMeetingInfo
+              callStateForMetrics,
+              failOnMissingMeetingInfo,
+              meetingInfo,
+              meetingLookupUrl
             ).then((createdMeeting: any) => {
               // If the meeting was successfully created.
               if (createdMeeting && createdMeeting.on) {
@@ -1143,6 +1176,7 @@ export default class Meetings extends WebexPlugin {
               return Promise.resolve(createdMeeting);
             });
           }
+          meeting.setCallStateForMetrics(callStateForMetrics);
 
           // Return the existing meeting.
           return Promise.resolve(meeting);
@@ -1151,12 +1185,18 @@ export default class Meetings extends WebexPlugin {
   }
 
   /**
+   * Create meeting
+   *
+   * When meeting info passed it should be complete, e.g.: fetched after password or captcha provided
+   *
    * @param {String} destination see create()
    * @param {String} type see create()
    * @param {Boolean} useRandomDelayForInfo whether a random delay should be added to fetching meeting info
    * @param {Object} infoExtraParams extra parameters to be provided when fetching meeting info
-   * @param {String} correlationId the optional specified correlationId
+   * @param {CallStateForMetrics} callStateForMetrics - information about call state for metrics
    * @param {Boolean} failOnMissingMeetingInfo - whether to throw an error if meeting info fails to fetch (for calls that are not 1:1 or content share)
+   * @param {Object} [meetingInfo] - Pre-fetched complete meeting info
+   * @param {String} [meetingLookupUrl] - meeting info prefetch url
    * @returns {Promise} a new meeting instance complete with meeting info and destination
    * @private
    * @memberof Meetings
@@ -1166,8 +1206,10 @@ export default class Meetings extends WebexPlugin {
     type: string = null,
     useRandomDelayForInfo = false,
     infoExtraParams = {},
-    correlationId: string = undefined,
-    failOnMissingMeetingInfo = false
+    callStateForMetrics: CallStateForMetrics = undefined,
+    failOnMissingMeetingInfo = false,
+    meetingInfo = undefined,
+    meetingLookupUrl = undefined
   ) {
     const meeting = new Meeting(
       {
@@ -1181,7 +1223,7 @@ export default class Meetings extends WebexPlugin {
         meetingInfoProvider: this.meetingInfo,
         destination,
         destinationType: type,
-        correlationId,
+        callStateForMetrics,
       },
       {
         // @ts-ignore
@@ -1213,22 +1255,26 @@ export default class Meetings extends WebexPlugin {
       const isMeetingActive = !!destination.fullState?.active;
       // @ts-ignore
       const {enableUnifiedMeetings} = this.config.experimental;
+      const meetingInfoOptions = {
+        extraParams: infoExtraParams,
+        sendCAevents: !!callStateForMetrics?.correlationId, // if client sends correlation id as argument of public create(), then it means that this meeting creation is part of a pre-join intent from user
+      };
 
-      if (enableUnifiedMeetings && !isMeetingActive && useRandomDelayForInfo && waitingTime > 0) {
+      if (meetingInfo) {
+        meeting.injectMeetingInfo(meetingInfo, meetingInfoOptions, meetingLookupUrl);
+      } else if (
+        enableUnifiedMeetings &&
+        !isMeetingActive &&
+        useRandomDelayForInfo &&
+        waitingTime > 0
+      ) {
         meeting.fetchMeetingInfoTimeoutId = setTimeout(
-          () =>
-            meeting.fetchMeetingInfo({
-              extraParams: infoExtraParams,
-              sendCAevents: !!correlationId, // if client sends correlation id as argument of public create(), then it means that this meeting creation is part of a pre-join intent from user
-            }),
+          () => meeting.fetchMeetingInfo(meetingInfoOptions),
           waitingTime
         );
         meeting.parseMeetingInfo(undefined, destination);
       } else {
-        await meeting.fetchMeetingInfo({
-          extraParams: infoExtraParams,
-          sendCAevents: !!correlationId, // if client sends correlation id as argument of public create(), then it means that this meeting creation is part of a pre-join intent from user
-        });
+        await meeting.fetchMeetingInfo(meetingInfoOptions);
       }
     } catch (err) {
       if (
@@ -1339,11 +1385,12 @@ export default class Meetings extends WebexPlugin {
 
   /**
    * syncs all the meeting from server
-   * @returns {undefined}
+   * @param {boolean} keepOnlyLocusMeetings - whether the sync should keep only locus meetings or any other meeting in meetingCollection
+   * @returns {Promise<void>}
    * @public
    * @memberof Meetings
    */
-  public syncMeetings() {
+  public syncMeetings({keepOnlyLocusMeetings = true} = {}): Promise<void> {
     return this.request
       .getActiveMeetings()
       .then((locusArray) => {
@@ -1362,11 +1409,13 @@ export default class Meetings extends WebexPlugin {
         const meetingsCollection = this.meetingCollection.getAll();
 
         if (Object.keys(meetingsCollection).length > 0) {
-          // Some time the mercury event is missed after mercury reconnect
-          // if sync returns no locus then clear all the meetings
+          // Sometimes the mercury events are lost after mercury reconnect
+          // Remove any Locus meetings that are not returned by Locus
+          // (they had a locusUrl previously but are no longer active) in the sync
           for (const meeting of Object.values(meetingsCollection)) {
             // @ts-ignore
-            if (!activeLocusUrl.includes(meeting.locusUrl)) {
+            const {locusUrl} = meeting;
+            if ((keepOnlyLocusMeetings || locusUrl) && !activeLocusUrl.includes(locusUrl)) {
               // destroy function also uploads logs
               // @ts-ignore
               this.destroy(meeting, MEETING_REMOVED_REASON.NO_MEETINGS_TO_SYNC);
@@ -1466,5 +1515,16 @@ export default class Meetings extends WebexPlugin {
    */
   getLogger() {
     return LoggerProxy.get();
+  }
+
+  /**
+   * Returns the first meeting it finds that has the webrtc media connection created.
+   * Useful for debugging in the console.
+   *
+   * @private
+   * @returns {Meeting} Meeting object that has a webrtc media connection, else undefined
+   */
+  getActiveWebrtcMeeting() {
+    return this.meetingCollection.getActiveWebrtcMeeting();
   }
 }

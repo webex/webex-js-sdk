@@ -31,7 +31,6 @@ const registerElm = document.querySelector('#registration-register');
 const unregisterElm = document.querySelector('#registration-unregister');
 const registrationStatusElm = document.querySelector('#registration-status');
 const integrationEnv = document.getElementById('integration-env');
-const turnDiscoveryCheckbox = document.getElementById('enable-turn-discovery');
 const eventsList = document.getElementById('events-list');
 const multistreamLayoutElm = document.querySelector('#multistream-layout');
 const preferLiveVideoElm = document.querySelector('#prefer-live-video');
@@ -39,10 +38,7 @@ const breakoutsList = document.getElementById('breakouts-list');
 const breakoutTable = document.getElementById('breakout-table');
 const breakoutHostOperation = document.getElementById('breakout-host-operation');
 const getStatsButton = document.getElementById('get-stats');
-
-// Disable screenshare on join in Safari patch
-const isSafari = /Version\/[\d.]+.*Safari/.test(navigator.userAgent);
-const isiOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+const tcpReachabilityConfigElm = document.getElementById('enable-tcp-reachability');
 
 const toggleUnifiedMeetings = document.getElementById('toggle-unified-meeting');
 const currentMeetingInfoStatus = document.getElementById('current-meeting-info-status');
@@ -59,10 +55,6 @@ tokenElm.addEventListener('change', (event) => {
   localStorage.setItem('access-token', event.target.value);
   localStorage.setItem('date', new Date().getTime() + (12 * 60 * 60 * 1000));
 });
-
-if (isSafari || isiOS) {
-  document.getElementById('sendShareToggle').disabled = true;
-}
 
 
 const fedRampInput = document.querySelector('#enable-fedramp');
@@ -110,7 +102,7 @@ function generateWebexConfig({credentials}) {
         enableMediaNegotiatedEvent: false,
         enableUnifiedMeetings: true,
         enableAdhocMeetings: true,
-        enableTurnDiscovery: turnDiscoveryCheckbox.checked,
+        enableTcpReachability: tcpReachabilityConfigElm.checked,
       },
       enableAutomaticLLM: true,
     },
@@ -263,8 +255,8 @@ const displayMeetingStatusElm = document.querySelector('#display-meeting-status'
 const spaceIDError = `Using the space ID as a destination is no longer supported. Please refer to the <a href="https://github.com/webex/webex-js-sdk/wiki/Migration-to-Unified-Space-Meetings" target="_blank">migration guide</a> to migrate to use the meeting ID or SIP address.`;
 const BNR = 'BNR';
 const VBG = 'VBG';
-const blurVBGImageUrl = 'https://webex.github.io/webex-js-sdk/api/assets/vbg_image.jpg';
-const blurVBGVideoUrl = 'https://webex.github.io/webex-js-sdk/api/assets/clouds.5b57454a.mp4';
+const blurVBGImageUrl = '/api/assets/vbg_image.jpg';
+const blurVBGVideoUrl = '/api/assets/clouds.5b57454a.mp4';
 
 let selectedMeetingId = null;
 let currentMediaSettings = {};
@@ -454,7 +446,89 @@ function verifyPassword() {
   }
 }
 
-function joinMeeting({withMedia, withDevice} = {withMedia: false, withDevice: false}) {
+/**
+ * This function should be called before media connection is added to the meeting.
+ * It sets up the sample app's UI and listeners for media related events
+ * @param {Meeting} meeting
+ */
+function doPreMediaSetup(meeting) {
+  if (isMultistream) {
+    updateRemoteSourcesInfo();
+    setupMultistreamEventListeners(meeting);
+
+    // we can't import anything so can't read the initialLayoutId from the DefaultConfiguration that we're using
+    // so we need to hardcode it like this:
+    multistreamLayoutElm.value = 'AllEqual';
+    preferLiveVideoElm.value = 'Enable';
+  }
+  else {
+    console.log('MeetingStreams#doPreMediaSetup() :: registering for media:ready and media:stopped events');
+
+    // Wait for media in order to show video/share
+    meeting.on('media:ready', (media) => {
+      // eslint-disable-next-line default-case
+      switch (media.type) {
+        case 'remoteVideo':
+          meetingStreamsRemoteVideo.srcObject = media.stream;
+          updateLayoutHeightWidth();
+          break;
+        case 'remoteAudio':
+          meetingStreamsRemoteAudio.srcObject = media.stream;
+          break;
+        case 'remoteShare':
+          meetingStreamsRemoteShare.srcObject = media.stream;
+          break;
+      }
+    });
+
+    // remove stream if media stopped
+    meeting.on('media:stopped', (media) => {
+      // eslint-disable-next-line default-case
+      switch (media.type) {
+        case 'remoteVideo':
+          meetingStreamsRemoteVideo.srcObject = null;
+          break;
+        case 'remoteAudio':
+          meetingStreamsRemoteAudio.srcObject = null;
+          break;
+        case 'remoteShare':
+          meetingStreamsRemoteShare.srcObject = null;
+          break;
+      }
+    });
+  }
+}
+
+/**
+ * This function should be called after media connection is added to the meeting.
+ * It sets up the sample app's UI, etc.
+ *
+ * @param {Meeting} meeting
+ */
+function doPostMediaSetup(meeting) {
+  if (isMultistream) {
+    enableMultistreamControls(true);
+
+    // we need to check shareStatus, because may have missed the 'meeting:startedSharingRemote' event
+    // if someone started sharing before our page was loaded,
+    // or we didn't act on that event if the user clicked "add media" while being in the lobby
+    if (meeting.shareStatus === 'remote_share_active') {
+      forceScreenShareViewLayout(meeting);
+    }
+  } else {
+    remoteVideoResolutionCheckInterval();
+  }
+
+  localVideoResolutionCheckInterval();
+
+  // enabling screen share publish/unpublish buttons
+  publishShareBtn.disabled = false;
+  unpublishShareBtn.disabled = false;
+
+  currentMediaSettings = getMediaSettings();
+}
+
+async function joinMeeting({withMedia, withDevice} = {withMedia: false, withDevice: false}) {
   const meeting = webex.meetings.getAllMeetings()[selectedMeetingId];
   let resourceId = null;
 
@@ -492,53 +566,93 @@ function joinMeeting({withMedia, withDevice} = {withMedia: false, withDevice: fa
     joinOptions.deviceCapabilities.push('CONFLUENCE_IN_LOBBY_SUPPORTED');
   }
 
-  const joinMeetingNow = () => {
-    meeting.join(joinOptions)
-    .then(() => { // eslint-disable-line
-      // For meeting controls button onclick handlers
-        window.meeting = meeting;
-
-        updateMeetingInfoSection(meeting);
-
-        meeting.members.on('members:update', (res) => {
-          console.log('member update', res);
-          viewParticipants();
-          populateStageSelector();
-        });
-
-        meeting.on('meeting:breakouts:update', (res) => {
-          viewBreakouts();
-        });
-
-        eventsList.innerText = '';
-        meeting.on('all', (payload) => {
-          updatePublishedEvents(payload);
-        });
-
-        createBreakoutOperations();
-        if (withMedia) {
-          clearMediaDeviceList();
-
-          const mediaSettings = getMediaSettings()
-
-          return getUserMedia({
-            audio: mediaSettings.audioEnabled,
-            video: mediaSettings.videoEnabled
-          }).then(() => addMedia());
-        }
-
-        enableMeetingDependentButtons(true);
-      })
-      .catch(() => {
-        // join failed, so allow  user decide on multistream again
-        meetingsJoinMultistreamElm.disabled = false;
-      });
-  };
-
   if (!meeting.requiredCaptcha) {
     joinOptions.captcha = '';
   }
-  joinMeetingNow();
+
+  try {
+
+    if (!withMedia) {
+      await meeting.join(joinOptions);
+    }
+    else {
+      clearMediaDeviceList();
+
+      const mediaSettings = getMediaSettings()
+
+      await getUserMedia({
+        audio: mediaSettings.audioEnabled,
+        video: mediaSettings.videoEnabled
+      });
+
+      doPreMediaSetup(meeting);
+
+      // we're using the default RemoteMediaManagerConfig
+      const mediaOptions = {
+        localStreams: {
+          microphone: localMedia.microphoneStream,
+          camera: localMedia.cameraStream,
+          screenShare: {
+            audio: localMedia.screenShare?.audio,
+            video: localMedia.screenShare?.video
+          }
+        },
+        ...getMediaSettings()
+      };
+
+      await meeting.joinWithMedia({joinOptions, mediaOptions});
+
+      doPostMediaSetup(meeting);
+    }
+
+    enableMeetingDependentButtons(true);
+
+    // For meeting controls button onclick handlers
+    window.meeting = meeting;
+
+    updateMeetingInfoSection(meeting);
+
+    meeting.members.on('members:update', (res) => {
+      console.log('member update', res);
+      viewParticipants();
+      populateStageSelector();
+    });
+
+    meeting.on('meeting:breakouts:update', (res) => {
+      viewBreakouts();
+    });
+
+    meeting.on('meeting:stoppedSharingRemote', () => {
+      /**
+       * Here we first remove the media to stop showing the remote stream being received and again
+       * attach the remote media stream (which gets added during addMedia() call) but since the remote
+       * is not sending the frames anymore it does not show the screenshare but keeps the event attached.
+       * Hence, when we again start sharing the screen, the media flows correctly to the video element.
+       */
+      const remoteShareTemp = meetingStreamsRemoteShare.srcObject;
+      meetingStreamsRemoteShare.srcObject = null;
+      meetingStreamsRemoteShare.srcObject = remoteShareTemp;
+    });
+
+    meeting.on('meeting:self:mutedByOthers', () => {
+      handleAudioButton();
+    });
+
+    meeting.on('meeting:self:unmutedByOthers', () => {
+      handleAudioButton();
+    });
+
+    eventsList.innerText = '';
+    meeting.on('all', (payload) => {
+      updatePublishedEvents(payload);
+    });
+
+    createBreakoutOperations();
+  } catch(err) {
+    console.error(`failed to join a meeting (withMedia=${withMedia} withDevice=${withDevice}): `, err);
+    // join failed, so allow  user decide on multistream again
+    meetingsJoinMultistreamElm.disabled = false;
+  };
 }
 
 function leaveMeeting(meetingId) {
@@ -1013,22 +1127,22 @@ function handleStreamPublishedState(meeting) {
         debugString = 'local camera';
         streamElm = meetingStreamsLocalVideo;
         break;
-    
+
       case 'VIDEO-SLIDES':
         debugString = 'local share video';
         streamElm = meetingStreamsLocalShareVideo;
         break;
-    
+
       case 'AUDIO-MAIN':
         debugString = 'local microphone';
         streamElm = meetingStreamsLocalAudio;
         break;
-    
+
       case 'AUDIO-SLIDES':
         debugString = 'local share audio';
         streamElm = meetingStreamsLocalShareAudio;
         break;
-    
+
       default:
         break;
     }
@@ -1102,7 +1216,7 @@ async function loadCamera(constraints) {
 async function handleVbg() {
   let effect;
   try {
-    effect = await localMedia.cameraStream.getEffect("virtual-background");
+    effect = await localMedia.cameraStream.getEffectByKind('virtual-background-effect');
 
     if (!effect?.isEnabled) {
       console.log('MeetingControls#handleVbg() :: applying virtual background to local camera stream');
@@ -1114,12 +1228,12 @@ async function handleVbg() {
           "bgVideoUrl": blurVBGVideoUrl
         });
         handleEffectsButton(toggleVbgBtn, VBG, effect);
-        await localMedia.cameraStream.addEffect("virtual-background", effect);
+        await localMedia.cameraStream.addEffect(effect);
       }
 
       await effect.enable();
       modeBtn.disabled = true;
-      
+
       handleEffectsButton(toggleVbgBtn, VBG, effect);
       console.log('MeetingControls#handleVbg() :: successfully applied virtual background to local camera stream');
     }
@@ -1171,27 +1285,27 @@ async function loadMicrophone(constraints) {
 async function handleBNR() {
   let effect;
   try {
-    effect = await localMedia.microphoneStream.getEffect("noise-reduction");;
+    effect = await localMedia.microphoneStream.getEffectByKind('noise-reduction-effect');
     if (!effect?.isEnabled) {
-      console.log('MeetingControls#handleBNR() :: applying BNR to local microhone stream');
+      console.log('MeetingControls#handleBNR() :: applying BNR to local microphone stream');
 
       if (!effect) {
         effect = await webex.meetings.createNoiseReductionEffect();
         handleEffectsButton(toggleBNRBtn, BNR, effect);
-        await localMedia.microphoneStream.addEffect("noise-reduction", effect);
+        await localMedia.microphoneStream.addEffect(effect);
       }
 
       await effect.enable();
       handleEffectsButton(toggleBNRBtn, BNR, effect);
-      console.log('MeetingControls#handleBNR() :: successfully applied BNR to local microhone stream');
+      console.log('MeetingControls#handleBNR() :: successfully applied BNR to local microphone stream');
 
     }
     else {
-      console.log('MeetingControls#handleBNR() :: disabling BNR from local microhone stream');
+      console.log('MeetingControls#handleBNR() :: disabling BNR from local microphone stream');
 
       await effect.disable();
       handleEffectsButton(toggleBNRBtn, BNR, effect);
-      console.log('MeetingControls#handleBNR() :: successfully disabled BNR from local microhone stream');
+      console.log('MeetingControls#handleBNR() :: successfully disabled BNR from local microphone stream');
     }
   }
   catch (e) {
@@ -1329,8 +1443,8 @@ function getAudioVideoInput() {
   const deviceId = (id) => {
     if (id === 'default')
       return {deviceId: id};
-    else  
-      return {deviceId: {exact: id}}; 
+    else
+      return {deviceId: {exact: id}};
   };
   const audioInput = getOptionValue(sourceDevicesAudioInput) || 'default';
   const videoInput = getOptionValue(sourceDevicesVideoInput) || 'default';
@@ -1390,8 +1504,8 @@ function setAudioOutputDevice() {
     });
 }
 
-function handleAudioButton(muteState) {
-  const audioButtonTitle = muteState ? 'Unmute' : 'Mute';
+function handleAudioButton() {
+  const audioButtonTitle = localMedia.microphoneStream.muted ? 'Unmute' : 'Mute';
   toggleAudioButton.innerHTML = `${audioButtonTitle} Audio`;
 }
 
@@ -1402,7 +1516,7 @@ function toggleSendAudio() {
     const newMuteValue = !localMedia.microphoneStream.muted;
 
     localMedia.microphoneStream.setMuted(newMuteValue);
-    handleAudioButton(newMuteValue);
+    handleAudioButton();
 
     console.log(`MeetingControls#toggleSendAudio() :: Successfully ${newMuteValue ? 'muted': 'unmuted'} audio!`);
     return;
@@ -2385,14 +2499,7 @@ function addMedia() {
     console.log('MeetingStreams#addMedia() :: no valid meeting object!');
   }
 
-  if (isMultistream) {
-    setupMultistreamEventListeners(meeting);
-
-    // we can't import anything so can't read the initialLayoutId from the DefaultConfiguration that we're using
-    // so we need to hardcode it like this:
-    multistreamLayoutElm.value = 'AllEqual';
-    preferLiveVideoElm.value = 'Enable';
-  }
+  doPreMediaSetup(meeting);
 
   // addMedia using the default RemoteMediaManagerConfig
   meeting.addMedia({
@@ -2407,21 +2514,7 @@ function addMedia() {
     ...getMediaSettings()
   }
   ).then(() => {
-    // we need to check shareStatus, because may have missed the 'meeting:startedSharingRemote' event
-    // if someone started sharing before our page was loaded,
-    // or we didn't act on that event if the user clicked "add media" while being in the lobby
-    if (isMultistream && meeting.shareStatus === 'remote_share_active') {
-      forceScreenShareViewLayout(meeting);
-    }
-
-    localVideoResolutionCheckInterval();
-
-    // enabling screen share publish/unpublish buttons
-    publishShareBtn.disabled = false;
-    unpublishShareBtn.disabled = false;
-    
-    currentMediaSettings = getMediaSettings();
-
+    doPostMediaSetup(meeting);
     console.log('MeetingStreams#addMedia() :: successfully added media!');
   }).catch((error) => {
     console.log('MeetingStreams#addMedia() :: Error adding media!');
@@ -2431,49 +2524,6 @@ function addMedia() {
 
     console.error(error);
   });
-
-  if (isMultistream) {
-    updateRemoteSourcesInfo();
-    enableMultistreamControls(true);
-  }
-  else {
-    console.log('MeetingStreams#addMedia() :: registering for media:ready and media:stopped events');
-
-    remoteVideoResolutionCheckInterval();
-
-    // Wait for media in order to show video/share
-    meeting.on('media:ready', (media) => {
-      // eslint-disable-next-line default-case
-      switch (media.type) {
-        case 'remoteVideo':
-          meetingStreamsRemoteVideo.srcObject = media.stream;
-          updateLayoutHeightWidth();
-          break;
-        case 'remoteAudio':
-          meetingStreamsRemoteAudio.srcObject = media.stream;
-          break;
-        case 'remoteShare':
-          meetingStreamsRemoteShare.srcObject = media.stream;
-          break;
-      }
-    });
-
-    // remove stream if media stopped
-    meeting.on('media:stopped', (media) => {
-      // eslint-disable-next-line default-case
-      switch (media.type) {
-        case 'remoteVideo':
-          meetingStreamsRemoteVideo.srcObject = null;
-          break;
-        case 'remoteAudio':
-          meetingStreamsRemoteAudio.srcObject = null;
-          break;
-        case 'remoteShare':
-          meetingStreamsRemoteShare.srcObject = null;
-          break;
-      }
-    });
-  }
 }
 
 function updateLayoutHeightWidth() {
@@ -2781,6 +2831,21 @@ const participantsList = document.querySelector('#participant-list');
 const participantTable = document.querySelector('#participant-table');
 const participantButtons = document.querySelector('#participant-btn');
 
+participantTable.addEventListener('click', (event) => {
+  if (event.target.type === 'radio') {
+    const selectedParticipant = meeting.members.membersCollection.get(event.target.id);
+    if (!selectedParticipant) {
+      return;
+    }
+    const muteButton = document.getElementById('mute-participant-btn')
+    if (selectedParticipant.isAudioMuted) {
+      muteButton.innerText = meeting.selfId === selectedParticipant.id ? 'Unmute' : 'Request to unmute';
+    } else {
+      muteButton.innerText = 'Mute';
+    }
+  }
+});
+
 function inviteMember(addButton) {
   const meeting = getCurrentMeeting();
   const emailVal = addButton.previousElementSibling.value.trim();
@@ -2825,20 +2890,14 @@ function removeMember(removeButton) {
 
 function muteMember(muteButton) {
   const meeting = getCurrentMeeting();
-  const unmute = muteButton.getAttribute('data-unmute');
-  const mute = unmute !== 'true';
-
   const participantID = getRadioValue('participant-select');
+  const selectedMember = meeting.members.membersCollection.get(participantID);
+  const newMuteStatus = selectedMember.isAudioMuted ? false : true;
 
   if (meeting) {
-    meeting.mute(participantID, mute).then((res) => {
-      console.log(res, `participant is ${mute ? 'mute' : 'unmute'}`);
-      if (mute) {
-        muteButton.setAttribute('data-unmute', 'true');
-      }
-      else {
-        muteButton.removeAttribute('data-unmute');
-      }
+    meeting.mute(participantID, newMuteStatus).then((res) => {
+      console.log(res, `participant is ${newMuteStatus ? 'muted' : 'unmuted'}`);
+      handleAudioButton();
     }).catch((err) => {
       console.log('error', err);
     });
@@ -2858,12 +2917,16 @@ function transferHostToMember(transferButton) {
   }
 }
 
-const createButton = (text, func) => {
+const createButton = (text, func, props = {}) => {
   const button = document.createElement('button');
 
   button.onclick = (e) => func(e.target);
   button.innerText = text;
   button.setAttribute('type', 'button');
+
+  Object.entries(props).forEach(([key, value]) => {
+    button.setAttribute(key, value);
+  });
 
   return button;
 }
@@ -3487,7 +3550,7 @@ function viewParticipants() {
 
     btnDiv.classList.add('btn-group');
 
-    btnDiv.appendChild(createButton('Mute', muteMember));
+    btnDiv.appendChild(createButton('Mute', muteMember, {id: 'mute-participant-btn'}));
     btnDiv.appendChild(createButton('Remove', removeMember));
     btnDiv.appendChild(createButton('Make Host', transferHostToMember));
 
@@ -3561,7 +3624,7 @@ allCollapsibleElements.forEach((el) => {
 
     const sectionContentElement = parentElement.querySelector('.section-content');
     const arrowIcon = parentElement.querySelector('.arrow');
-    
+
     sectionContentElement.classList.toggle('collapsed');
     arrowIcon.classList.contains('fa-angle-down') ? arrowIcon.classList.replace('fa-angle-down', 'fa-angle-up') : arrowIcon.classList.replace('fa-angle-up', 'fa-angle-down');
 

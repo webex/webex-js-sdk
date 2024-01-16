@@ -98,10 +98,22 @@ return webex.meetings.create(locusObj, 'LOCUS_ID').then((meeting) ==> {...});
 
 We want to sync our meetings collection with the server.
 
+To keep only Locus meetings with an locus url that is still active:
+
 ```js
 let existingMeetings;
 // Sync Meetings From Server
 webex.meetings.syncMeetings().then(() => {
+  // Existing meetings live in the meeting collection
+  existingMeetings = webex.meetings.getAllMeetings();
+});
+```
+
+Or, to keep meetings with an locus url that is still active and any meeting without a locus url:
+```js
+let existingMeetings;
+// Sync Meetings From Server
+webex.meetings.syncMeetings({keepOnlyLocusMeetings: false}).then(() => {
   // Existing meetings live in the meeting collection
   existingMeetings = webex.meetings.getAllMeetings();
 });

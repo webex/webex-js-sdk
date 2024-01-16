@@ -3,6 +3,9 @@ import chai from 'chai';
 import chaiAsPromised from 'chai-as-promised';
 import sinon from 'sinon';
 import ReconnectionManager from '@webex/plugin-meetings/src/reconnection-manager';
+import { RECONNECTION } from '../../../../src/constants';
+import LoggerProxy from '../../../../src/common/logs/logger-proxy';
+import LoggerConfig from '../../../../src/common/logs/logger-config';
 
 const {assert} = chai;
 
@@ -11,8 +14,16 @@ sinon.assert.expose(chai.assert, {prefix: ''});
 
 describe('plugin-meetings', () => {
   describe('ReconnectionManager.reconnect', () => {
+    const sandbox = sinon.createSandbox();
     let fakeMediaConnection;
     let fakeMeeting;
+    let loggerSpy;
+
+    before(() => {
+      LoggerConfig.set({ enable: false });
+      LoggerProxy.set();
+      loggerSpy = sandbox.spy(LoggerProxy.logger, 'info');
+    });
 
     beforeEach(() => {
       fakeMediaConnection = {
@@ -64,6 +75,7 @@ describe('plugin-meetings', () => {
           meetings: {
             getMeetingByType: sinon.stub().returns(true),
             syncMeetings: sinon.stub().resolves({}),
+            startReachability: sinon.stub().resolves({}),
           },
           internal: {
             newMetrics: {
@@ -74,12 +86,17 @@ describe('plugin-meetings', () => {
       };
     });
 
+    afterEach(() => {
+      sandbox.reset();
+    });
+
     it('syncs meetings if it is not an unverified guest', async () => {
       const rm = new ReconnectionManager(fakeMeeting);
 
       await rm.reconnect();
 
       assert.calledOnce(rm.webex.meetings.syncMeetings);
+      assert.calledWith(rm.webex.meetings.syncMeetings, {keepOnlyLocusMeetings: false});
     });
 
     it('does not sync meetings if it is an unverified guest', async () => {
@@ -90,6 +107,27 @@ describe('plugin-meetings', () => {
       await rm.reconnect();
 
       assert.notCalled(rm.webex.meetings.syncMeetings);
+    });
+
+    it('calls startReachability on reconnect', async () => {
+      const rm = new ReconnectionManager(fakeMeeting);
+
+      await rm.reconnect();
+
+      assert.calledOnce(rm.webex.meetings.startReachability);
+    });
+
+    it('continues with reconnection attempt if startReachability throws an error', async () => {
+      const reachabilityError = new Error();
+      fakeMeeting.webex.meetings.startReachability = sinon.stub().throws(reachabilityError);
+
+      const rm = new ReconnectionManager(fakeMeeting);
+
+      await rm.reconnect();
+
+      assert.calledOnce(rm.webex.meetings.startReachability);
+      assert.calledWith(loggerSpy, 'ReconnectionManager:index#reconnect --> Reachability failed, continuing with reconnection attempt, err: ', reachabilityError);
+      assert.calledWith(loggerSpy, 'ReconnectionManager:index#executeReconnection --> Attempting to reconnect to meeting.');
     });
 
     it('uses correct TURN TLS information on the reconnection', async () => {
@@ -110,16 +148,6 @@ describe('plugin-meetings', () => {
 
       assert.calledWith(fakeMeeting.webex.internal.newMetrics.submitClientEvent, {
         name: 'client.media.reconnecting',
-        options: {
-          meetingId: rm.meeting.id,
-        },
-      });
-
-      assert.calledWith(fakeMeeting.webex.internal.newMetrics.submitClientEvent, {
-        name: 'client.media.recovered',
-        payload: {
-          recoveredBy: 'new',
-        },
         options: {
           meetingId: rm.meeting.id,
         },
@@ -149,7 +177,6 @@ describe('plugin-meetings', () => {
       assert.calledOnce(fakeMeeting.mediaRequestManagers.audio.commit);
       assert.calledOnce(fakeMeeting.mediaRequestManagers.video.commit);
     });
-
 
     it('sends the correct client event when reconnection fails', async () => {
       sinon.stub(ReconnectionManager.prototype, 'executeReconnection').rejects();
@@ -187,9 +214,10 @@ describe('plugin-meetings', () => {
    */
   describe('ReconnectionManager', () => {
     let reconnectionManager;
+    let fakeMeeting;
 
     beforeEach(() => {
-      reconnectionManager = new ReconnectionManager({
+      fakeMeeting = {
         config: {
           reconnection: {
             enabled: true,
@@ -204,7 +232,9 @@ describe('plugin-meetings', () => {
             },
           },
         },
-      });
+      };
+
+      reconnectionManager = new ReconnectionManager(fakeMeeting);
     });
 
     describe('iceReconnected()', () => {
@@ -308,6 +338,42 @@ describe('plugin-meetings', () => {
 
           assert.isTrue(reconnectionManager.iceState.disconnected);
         });
+      });
+    });
+
+    describe('setStatus()', () => {
+      beforeEach(() => {
+        reconnectionManager.status = RECONNECTION.STATE.DEFAULT_STATUS;
+      });
+
+      it('should correctly change status to in progress', () => {
+        reconnectionManager.setStatus(RECONNECTION.STATE.IN_PROGRESS);
+
+        assert.equal(reconnectionManager.status, RECONNECTION.STATE.IN_PROGRESS);
+      });
+
+      it('should correctly change status to complete', () => {
+        reconnectionManager.setStatus(RECONNECTION.STATE.COMPLETE);
+
+        assert.equal(reconnectionManager.status, RECONNECTION.STATE.COMPLETE);
+      });
+
+      it('should correctly change status to failure', () => {
+        reconnectionManager.setStatus(RECONNECTION.STATE.FAILURE);
+
+        assert.equal(reconnectionManager.status, RECONNECTION.STATE.FAILURE);
+      });
+    });
+
+    describe('cleanUp()', () => {
+      it('should call reset and keep reference to meeting object', () => {
+        const resetSpy = sinon.spy(reconnectionManager, 'reset');
+        assert.equal(reconnectionManager.meeting, fakeMeeting);
+
+        reconnectionManager.cleanUp();
+
+        assert.equal(reconnectionManager.meeting, fakeMeeting);
+        assert.calledOnce(reconnectionManager.reset);
       });
     });
   });

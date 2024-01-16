@@ -1,5 +1,6 @@
 /* eslint-disable valid-jsdoc */
 import {MediaType, StreamState} from '@webex/internal-media-core';
+import {NamedMediaGroup} from '@webex/json-multistream';
 import LoggerProxy from '../common/logs/logger-proxy';
 import EventsScope from '../common/events/events-scope';
 
@@ -188,7 +189,7 @@ export class RemoteMedia extends EventsScope {
    */
   public cancelMediaRequest(commit: boolean) {
     if (this.mediaRequestId) {
-      this.mediaRequestManager.cancelRequest(this.mediaRequestId, commit);
+      this.mediaRequestManager.cancelRequests([this.mediaRequestId], commit);
       this.mediaRequestId = undefined;
     }
   }
@@ -207,6 +208,13 @@ export class RemoteMedia extends EventsScope {
         this.emit(scope, RemoteMediaEvents.SourceUpdate, data);
       });
     }
+  }
+
+  /**
+   * Getter for isNamedMedia
+   */
+  public get namedMediaGroup(): NamedMediaGroup | undefined {
+    return this.receiveSlot?.namedMediaGroup;
   }
 
   /**
