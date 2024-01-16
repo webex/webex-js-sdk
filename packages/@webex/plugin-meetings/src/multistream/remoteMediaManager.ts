@@ -245,6 +245,10 @@ export class RemoteMediaManager extends EventsScope {
       audio?: RemoteMediaGroup;
       video?: RemoteMediaGroup;
     };
+    receiveNamedMediaGroup: {
+      type: number;
+      value: number;
+    };
   };
 
   private receiveSlotAllocations: {
@@ -285,6 +289,10 @@ export class RemoteMediaManager extends EventsScope {
       screenShare: {
         audio: undefined,
         video: undefined,
+      },
+      receiveNamedMediaGroup: {
+        type: undefined,
+        value: undefined,
       },
     };
 
@@ -526,6 +534,19 @@ export class RemoteMediaManager extends EventsScope {
   }
 
   /**
+   * Sets which named media group need receiving
+   *
+   *
+   *
+   */
+  public setReceiveNamedMediaGroup(type: number, value: number) {
+    this.media.receiveNamedMediaGroup = {
+      type,
+      value,
+    };
+  }
+
+  /**
    * Creates the audio slots
    */
   private async createAudioMedia() {
@@ -536,6 +557,9 @@ export class RemoteMediaManager extends EventsScope {
 
       this.slots.audio.push(slot);
     }
+    // create slot for interpretation language audio
+    const siSlot = await this.receiveSlotManager.allocateSlot(MediaType.AudioMain);
+    this.slots.audio.push(siSlot);
 
     // create a remote media group
     this.media.audio = new RemoteMediaGroup(
