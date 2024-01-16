@@ -5474,7 +5474,7 @@ export default class Meeting extends StatelessWebexPlugin {
           break;
         case ConnectionState.Disconnected:
           this.setNetworkStatus(NETWORK_STATUS.DISCONNECTED);
-          this.reconnectionManager.waitForIceReconnect().catch(async () => {
+          this.reconnectionManager.waitForIceReconnect().catch(() => {
             LoggerProxy.logger.info(
               'Meeting:index#setupMediaConnectionListeners --> state DISCONNECTED, automatic reconnection timed out.'
             );
