@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.313](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.312...v3.0.0-beta.313) (2024-01-16)
+
+
+### Bug Fixes
+
+* **meetings:** fix frameRate on MQEs ([#3308](https://github.com/webex/webex-js-sdk/issues/3308)) ([34e080b](https://github.com/webex/webex-js-sdk/commit/34e080b8cc150a2450b37eb480af73040191a7bc))
+
 ## [3.0.0-beta.312](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.311...v3.0.0-beta.312) (2024-01-16)
 
 

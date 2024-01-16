@@ -103,7 +103,7 @@ export class StatsAnalyzer extends EventsScope {
     this.networkQualityMonitor = networkQualityMonitor;
     this.correlationId = config.correlationId;
     this.mqaSentCount = -1;
-    this.lastMqaDataSent = {};
+    this.lastMqaDataSent = {resolutions: {}};
     this.lastEmittedStartStopEvent = {};
     this.receiveSlotCallback = receiveSlotCallback;
     this.successfulCandidatePair = {};
@@ -152,6 +152,21 @@ export class StatsAnalyzer extends EventsScope {
     const newMqa = cloneDeep(emptyMqaInterval);
 
     Object.keys(this.statsResults).forEach((mediaType) => {
+      if (!this.lastMqaDataSent[mediaType]) {
+        this.lastMqaDataSent[mediaType] = {};
+        this.lastMqaDataSent.resolutions[mediaType] = {};
+      }
+
+      if (!this.lastMqaDataSent[mediaType].send && mediaType.includes('-send')) {
+        this.lastMqaDataSent[mediaType].send = {};
+        this.lastMqaDataSent.resolutions[mediaType].send = {};
+      }
+
+      if (!this.lastMqaDataSent[mediaType].recv && mediaType.includes('-recv')) {
+        this.lastMqaDataSent[mediaType].recv = {};
+        this.lastMqaDataSent.resolutions[mediaType].recv = {};
+      }
+
       if (mediaType.includes('audio-send') || mediaType.includes('audio-share-send')) {
         const audioSender = cloneDeep(emptyAudioTransmit);
 
@@ -162,6 +177,8 @@ export class StatsAnalyzer extends EventsScope {
           mediaType,
         });
         newMqa.audioTransmit.push(audioSender);
+
+        this.lastMqaDataSent[mediaType].send = cloneDeep(this.statsResults[mediaType].send);
       } else if (mediaType.includes('audio-recv') || mediaType.includes('audio-share-recv')) {
         const audioReceiver = cloneDeep(emptyAudioReceive);
 
@@ -172,6 +189,8 @@ export class StatsAnalyzer extends EventsScope {
           mediaType,
         });
         newMqa.audioReceive.push(audioReceiver);
+
+        this.lastMqaDataSent[mediaType].recv = cloneDeep(this.statsResults[mediaType].recv);
       } else if (mediaType.includes('video-send') || mediaType.includes('video-share-send')) {
         const videoSender = cloneDeep(emptyVideoTransmit);
 
@@ -182,6 +201,11 @@ export class StatsAnalyzer extends EventsScope {
           mediaType,
         });
         newMqa.videoTransmit.push(videoSender);
+
+        this.lastMqaDataSent[mediaType].send = cloneDeep(this.statsResults[mediaType].send);
+        this.lastMqaDataSent.resolutions[mediaType].send = cloneDeep(
+          this.statsResults.resolutions[mediaType].send
+        );
       } else if (mediaType.includes('video-recv') || mediaType.includes('video-share-recv')) {
         const videoReceiver = cloneDeep(emptyVideoReceive);
 
@@ -192,6 +216,11 @@ export class StatsAnalyzer extends EventsScope {
           mediaType,
         });
         newMqa.videoReceive.push(videoReceiver);
+
+        this.lastMqaDataSent[mediaType].recv = cloneDeep(this.statsResults[mediaType].recv);
+        this.lastMqaDataSent.resolutions[mediaType].recv = cloneDeep(
+          this.statsResults.resolutions[mediaType].recv
+        );
       }
     });
 
