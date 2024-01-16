@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.311](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.310...v3.0.0-beta.311) (2024-01-16)
+
+
+### Features
+
+* **ca-metrics:** reduce logging ([#3310](https://github.com/webex/webex-js-sdk/issues/3310)) ([8da18d8](https://github.com/webex/webex-js-sdk/commit/8da18d88d3f5f9994b9fa546eea72ee0b95b2045))
+
 ## [3.0.0-beta.310](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.309...v3.0.0-beta.310) (2024-01-15)
 
 
