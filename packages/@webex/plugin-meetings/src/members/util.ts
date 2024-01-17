@@ -11,7 +11,7 @@ import {
   SEND_DTMF_ENDPOINT,
   _REMOVE_,
 } from '../constants';
-import {RoleAssignmentOptions, ServerRoleShape} from './types';
+import {RoleAssignmentOptions, RoleAssignmentRequest, ServerRoleShape} from './types';
 
 const MembersUtil: any = {};
 
@@ -151,7 +151,9 @@ MembersUtil.generateRoleAssignmentMemberOptions = (
  * @param {RoleAssignmentOptions} options
  * @returns {RoleAssignmentRequest} the request parameters (method, uri, body) needed to make a addMember request
  */
-MembersUtil.getRoleAssignmentMemberRequestParams = (options: RoleAssignmentOptions) => {
+MembersUtil.getRoleAssignmentMemberRequestParams = (
+  options: RoleAssignmentOptions
+): RoleAssignmentRequest => {
   const body = {role: {roles: []}};
   options.roles.forEach((role) => {
     body.role.roles.push(MembersUtil.getAddedRoleShape(role));
