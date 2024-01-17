@@ -77,7 +77,12 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
     }
     // for some events we're only interested in the first timestamp not last
     // as these events can happen multiple times
-    if (key === 'client.media.rx.start' || key === 'client.media.tx.start') {
+    if (
+      key === 'client.media.rx.start' ||
+      key === 'client.media.tx.start' ||
+      key === 'internal.client.meetinginfo.request' ||
+      key === 'internal.client.meetinginfo.response'
+    ) {
       this.saveFirstTimestampOnly(key, value);
     } else {
       this.latencyTimestamps.set(key, value);
