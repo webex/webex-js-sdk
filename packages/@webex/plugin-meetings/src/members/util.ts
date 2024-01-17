@@ -11,6 +11,7 @@ import {
   SEND_DTMF_ENDPOINT,
   _REMOVE_,
 } from '../constants';
+import {RoleAssignmentOptions, RoleAssignmentRequest, ServerRoleShape} from './types';
 
 const MembersUtil: any = {};
 
@@ -91,6 +92,20 @@ MembersUtil.getAddMemberRequestParams = (format: any) => {
   return requestParams;
 };
 
+/**
+ * @param {ServerRoleShape} role
+ * @returns {ServerRoleShape} the role shape to be added to the body
+ */
+MembersUtil.getAddedRoleShape = (role: ServerRoleShape) => {
+  const roleShape: ServerRoleShape = {type: role.type, hasRole: role.hasRole};
+
+  if (role.hostKey) {
+    roleShape.hostKey = role.hostKey;
+  }
+
+  return roleShape;
+};
+
 MembersUtil.isInvalidInvitee = (invitee) => {
   if (!(invitee && (invitee.email || invitee.emailAddress || invitee.phoneNumber))) {
     return true;
@@ -111,6 +126,43 @@ MembersUtil.getRemoveMemberRequestParams = (options) => {
 
   return {
     method: HTTP_VERBS.PUT,
+    uri,
+    body,
+  };
+};
+
+/**
+ * @param {String} memberId
+ * @param {[ServerRoleShape]} roles
+ * @param {String} locusUrl
+ * @returns {RoleAssignmentOptions}
+ */
+MembersUtil.generateRoleAssignmentMemberOptions = (
+  memberId: string,
+  roles: Array<ServerRoleShape>,
+  locusUrl: string
+): RoleAssignmentOptions => ({
+  memberId,
+  roles,
+  locusUrl,
+});
+
+/**
+ * @param {RoleAssignmentOptions} options
+ * @returns {RoleAssignmentRequest} the request parameters (method, uri, body) needed to make a addMember request
+ */
+MembersUtil.getRoleAssignmentMemberRequestParams = (
+  options: RoleAssignmentOptions
+): RoleAssignmentRequest => {
+  const body = {role: {roles: []}};
+  options.roles.forEach((role) => {
+    body.role.roles.push(MembersUtil.getAddedRoleShape(role));
+  });
+
+  const uri = `${options.locusUrl}/${PARTICIPANT}/${options.memberId}/${CONTROLS}`;
+
+  return {
+    method: HTTP_VERBS.PATCH,
     uri,
     body,
   };

@@ -24,6 +24,20 @@ const MemberUtil: any = {};
  * @param {Object} participant the locus participant
  * @returns {Boolean}
  */
+MemberUtil.canReclaimHost = (participant) => {
+  if (!participant) {
+    throw new ParameterError(
+      'canReclaimHostRole could not be processed, participant is undefined.'
+    );
+  }
+
+  return participant.canReclaimHostRole || false;
+};
+
+/**
+ * @param {Object} participant the locus participant
+ * @returns {Boolean}
+ */
 MemberUtil.isUser = (participant: any) => participant && participant.type === _USER_;
 
 MemberUtil.isModerator = (participant) => participant && participant.moderator;

@@ -20,6 +20,13 @@ describe('member', () => {
   
       assert.calledOnceWithExactly(MemberUtil.isHandRaised, participant);
     });
+
+    it('checks that processParticipant calls canReclaimHost', () => {
+      sinon.spy(MemberUtil, 'canReclaimHost');
+      member.processParticipant(participant);
+
+      assert.calledOnceWithExactly(MemberUtil.canReclaimHost, participant);
+    });
   })
 
   describe('#processMember', ()=>{
