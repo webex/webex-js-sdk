@@ -1,4 +1,25 @@
+import anonymizeIP from 'ip-anonymize';
 import RTC_METRICS from './constants';
+
+/**
+ * Anonymize identifiable information. For now, only IP addresses.
+ *
+ * @param {array} stats - An RTCStatsReport organized into an array of strings.
+ * @returns {void}
+ */
+const removePii = (stats: string[]): string[] => {
+  return stats.map((statLine) => {
+    const data = JSON.parse(statLine);
+    // on local and remote candidates, anonymize the last 4 bits.
+    if (data.type === 'local-candidate' || data.type === 'remote-candidate') {
+      data.ip = anonymizeIP(data.ip, 28, 96) || undefined;
+      data.address = anonymizeIP(data.address, 28, 96) || undefined;
+      data.relatedAddress = anonymizeIP(data.relatedAddress, 28, 96) || undefined;
+    }
+
+    return JSON.stringify(data);
+  });
+};
 
 /**
  * Rtc Metrics
@@ -55,6 +76,9 @@ export default class RtcMetrics {
    */
   addMetrics(data) {
     if (data.payload.length) {
+      if (data.name === 'stats-report') {
+        data.payload = removePii(data.payload);
+      }
       this.metricsQueue.push(data);
     }
   }
