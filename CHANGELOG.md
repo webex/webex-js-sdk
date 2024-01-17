@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.60.0](https://github.com/webex/webex-js-sdk/compare/v2.59.8...v2.60.0) (2024-01-17)
+
+
+### Features
+
+* **meetings:** add ability to reclaim host role with hostKey ([#3291](https://github.com/webex/webex-js-sdk/issues/3291)) ([137b528](https://github.com/webex/webex-js-sdk/commit/137b52827e5286b0396e825364876a40a586c8eb))
+
 ### [2.59.8](https://github.com/webex/webex-js-sdk/compare/v2.59.7...v2.59.8) (2023-11-16)
 
 
