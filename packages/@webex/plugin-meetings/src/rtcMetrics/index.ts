@@ -1,24 +1,22 @@
-import anonymizeIP from 'ip-anonymize';
+import {CallDiagnosticUtils} from '@webex/internal-plugin-metrics';
 import RTC_METRICS from './constants';
 
 /**
- * Anonymize identifiable information. For now, only IP addresses.
+ * Anonymize IP addresses.
  *
  * @param {array} stats - An RTCStatsReport organized into an array of strings.
- * @returns {void}
+ * @returns {string}
  */
-const removePii = (stats: string[]): string[] => {
-  return stats.map((statLine) => {
-    const data = JSON.parse(statLine);
-    // on local and remote candidates, anonymize the last 4 bits.
-    if (data.type === 'local-candidate' || data.type === 'remote-candidate') {
-      data.ip = anonymizeIP(data.ip, 28, 96) || undefined;
-      data.address = anonymizeIP(data.address, 28, 96) || undefined;
-      data.relatedAddress = anonymizeIP(data.relatedAddress, 28, 96) || undefined;
-    }
+export const anonymizeIp = (stats: string): string => {
+  const data = JSON.parse(stats);
+  // on local and remote candidates, anonymize the last 4 bits.
+  if (data.type === 'local-candidate' || data.type === 'remote-candidate') {
+    data.ip = CallDiagnosticUtils.anonymizeIPAddress(data.ip) || undefined;
+    data.address = CallDiagnosticUtils.anonymizeIPAddress(data.address) || undefined;
+    data.relatedAddress = CallDiagnosticUtils.anonymizeIPAddress(data.relatedAddress) || undefined;
+  }
 
-    return JSON.stringify(data);
-  });
+  return JSON.stringify(data);
 };
 
 /**
@@ -77,7 +75,7 @@ export default class RtcMetrics {
   addMetrics(data) {
     if (data.payload.length) {
       if (data.name === 'stats-report') {
-        data.payload = removePii(data.payload);
+        data.payload = data.payload.map(anonymizeIp);
       }
       this.metricsQueue.push(data);
     }
