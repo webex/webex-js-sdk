@@ -122,7 +122,6 @@ describe('internal-plugin-metrics', () => {
         cdl.saveTimestamp({key: 'internal.client.meetinginfo.request', value: 10});
         cdl.saveTimestamp({key: 'client.alert.displayed', value: 15});
         assert.deepEqual(saveFirstTimestamp.callCount, 1);
-        sinon.restore();
       });
 
       it('calls saveFirstTimestamp for meeting info response', () => {
@@ -130,7 +129,6 @@ describe('internal-plugin-metrics', () => {
         cdl.saveTimestamp({key: 'client.alert.displayed', value: 15});
         cdl.saveTimestamp({key: 'internal.client.meetinginfo.response', value: 20});
         assert.deepEqual(saveFirstTimestamp.callCount, 1);
-        sinon.restore();
       });
     });
 
