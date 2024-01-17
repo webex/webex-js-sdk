@@ -141,7 +141,7 @@ MembersUtil.generateRoleAssignmentMemberOptions = (
   memberId: string,
   roles: Array<ServerRoleShape>,
   locusUrl: string
-) => ({
+): RoleAssignmentOptions => ({
   memberId,
   roles,
   locusUrl,
