@@ -50,9 +50,10 @@ export class ReceiveSlotManager {
    * Creates a new receive slot or returns one from the existing pool of free slots
    *
    * @param {MediaType} mediaType
+   * @param isNamedMediaGroup {boolean}
    * @returns {Promise<ReceiveSlot>}
    */
-  async allocateSlot(mediaType: MediaType): Promise<ReceiveSlot> {
+  async allocateSlot(mediaType: MediaType, isNamedMediaGroup = false): Promise<ReceiveSlot> {
     // try to use one of the free ones
     const availableSlot = this.freeSlots[mediaType].pop();
 
@@ -67,7 +68,12 @@ export class ReceiveSlotManager {
     // we have to create a new one
     const wcmeReceiveSlot = await this.createSlotCallback(mediaType);
 
-    const receiveSlot = new ReceiveSlot(mediaType, wcmeReceiveSlot, this.findMemberIdByCsiCallback);
+    const receiveSlot = new ReceiveSlot(
+      mediaType,
+      wcmeReceiveSlot,
+      this.findMemberIdByCsiCallback,
+      isNamedMediaGroup
+    );
 
     this.allocatedSlots[mediaType].push(receiveSlot);
     LoggerProxy.logger.log(`${mediaType}: new receive slot allocated: ${receiveSlot.id}`);

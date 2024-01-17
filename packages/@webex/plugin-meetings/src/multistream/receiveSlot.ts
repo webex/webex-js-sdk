@@ -41,6 +41,7 @@ export class ReceiveSlot extends EventsScope {
   #csi?: CSI;
 
   #sourceState: StreamState;
+  public isNamedMediaGroup: boolean;
 
   /**
    * constructor - don't use it directly, you should always use meeting.receiveSlotManager.allocateSlot()
@@ -53,7 +54,8 @@ export class ReceiveSlot extends EventsScope {
   constructor(
     mediaType: MediaType,
     mcReceiveSlot: WcmeReceiveSlot,
-    findMemberIdCallback: FindMemberIdCallback
+    findMemberIdCallback: FindMemberIdCallback,
+    isNamedMediaGroup?: boolean
   ) {
     super();
 
@@ -64,6 +66,7 @@ export class ReceiveSlot extends EventsScope {
     this.mcReceiveSlot = mcReceiveSlot;
     this.#sourceState = 'no source';
     this.id = `r${receiveSlotCounter}`;
+    this.isNamedMediaGroup = isNamedMediaGroup;
 
     this.setupEventListeners();
   }

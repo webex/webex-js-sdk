@@ -11,6 +11,7 @@ import {CSI, ReceiveSlot} from './receiveSlot';
 type Options = {
   resolution?: RemoteVideoResolution; // applies only to groups of type MediaType.VideoMain and MediaType.VideoSlides
   preferLiveVideo?: boolean; // applies only to groups of type MediaType.VideoMain and MediaType.VideoSlides
+  isNamedMediaGroup?: boolean; // for named media groups
 };
 
 export class RemoteMediaGroup {
@@ -25,6 +26,7 @@ export class RemoteMediaGroup {
   private mediaRequestId?: MediaRequestId; // id of the "active-speaker" media request id
 
   private pinnedRemoteMedia: RemoteMedia[];
+  private namedMedia: RemoteMedia[];
 
   constructor(
     mediaRequestManager: MediaRequestManager,
@@ -37,12 +39,26 @@ export class RemoteMediaGroup {
     this.priority = priority;
     this.options = options;
 
-    this.unpinnedRemoteMedia = receiveSlots.map(
-      (slot) =>
-        new RemoteMedia(slot, this.mediaRequestManager, {
+    this.unpinnedRemoteMedia = receiveSlots.map((slot) => {
+      if (!slot.isNamedMediaGroup) {
+        return new RemoteMedia(slot, this.mediaRequestManager, {
           resolution: this.options.resolution,
-        })
-    );
+        });
+      }
+
+      return null;
+    });
+    this.unpinnedRemoteMedia = this.unpinnedRemoteMedia.filter((item) => item !== null);
+    this.namedMedia = receiveSlots.map((slot) => {
+      if (slot.isNamedMediaGroup) {
+        return new RemoteMedia(slot, this.mediaRequestManager, {
+          resolution: this.options.resolution,
+        });
+      }
+
+      return null;
+    });
+    this.namedMedia = this.namedMedia.filter((item) => item !== null);
     this.pinnedRemoteMedia = [];
 
     this.sendActiveSpeakerMediaRequest(commitMediaRequest);
@@ -212,6 +228,27 @@ export class RemoteMediaGroup {
 
   private sendActiveSpeakerMediaRequest(commit: boolean) {
     this.cancelActiveSpeakerMediaRequest(false);
+
+    this.mediaRequestManager.addRequest(
+      {
+        policyInfo: {
+          policy: 'active-speaker',
+          priority: this.priority,
+          crossPriorityDuplication: false,
+          crossPolicyDuplication: false,
+          preferLiveVideo: !!this.options?.preferLiveVideo,
+          namedMediaGroups: [{type: 1, value: 112}],
+        },
+        receiveSlots: this.namedMedia.map((remoteMedia) =>
+          remoteMedia.getUnderlyingReceiveSlot()
+        ) as ReceiveSlot[],
+        codecInfo: this.options.resolution && {
+          codec: 'h264',
+          maxFs: getMaxFs(this.options.resolution),
+        },
+      },
+      false
+    );
 
     this.mediaRequestId = this.mediaRequestManager.addRequest(
       {
