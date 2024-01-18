@@ -4261,6 +4261,8 @@ export default class Meeting extends StatelessWebexPlugin {
 
     return this.reconnectionManager
       .reconnect(options)
+      .then(() => this.waitForRemoteSDPAnswer())
+      .then(() => this.waitForMediaConnectionConnected())
       .then(() => {
         Trigger.trigger(
           this,
@@ -4271,6 +4273,17 @@ export default class Meeting extends StatelessWebexPlugin {
           EVENT_TRIGGERS.MEETING_RECONNECTION_SUCCESS
         );
         LoggerProxy.logger.log('Meeting:index#reconnect --> Meeting reconnect success');
+
+        // @ts-ignore
+        this.webex.internal.newMetrics.submitClientEvent({
+          name: 'client.media.recovered',
+          payload: {
+            recoveredBy: 'new',
+          },
+          options: {
+            meetingId: this.id,
+          },
+        });
       })
       .catch((error) => {
         Trigger.trigger(

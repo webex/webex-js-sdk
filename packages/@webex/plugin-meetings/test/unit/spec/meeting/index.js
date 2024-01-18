@@ -5429,8 +5429,26 @@ describe('plugin-meetings', () => {
         it('should have #reconnect', () => {
           assert.exists(meeting.reconnect);
         });
+
         describe('successful reconnect', () => {
+          let eventListeners;
+
           beforeEach(() => {
+            eventListeners = {};
+            meeting.mediaProperties.webrtcMediaConnection = {
+              // mock the on() method and store all the listeners
+              on: sinon.stub().callsFake((event, listener) => {
+                eventListeners[event] = listener;
+              }),
+            };
+            meeting.setupMediaConnectionListeners();
+            meeting.deferSDPAnswer = {
+              resolve: sinon.stub(),
+            };
+            meeting.sdpResponseTimer = '1234';
+            meeting.mediaProperties.waitForMediaConnectionConnected = sinon.stub().resolves();
+
+            eventListeners[Event.REMOTE_SDP_ANSWER_PROCESSED]();
             meeting.config.reconnection.enabled = true;
             meeting.currentMediaStatus = {audio: true};
             meeting.reconnectionManager = new ReconnectionManager(meeting);
@@ -5439,21 +5457,31 @@ describe('plugin-meetings', () => {
             meeting.reconnectionManager.cleanup = sinon.stub().returns(true);
           });
 
-          it('should throw error if media not established before trying reconenct', async () => {
+          it('should throw error if media not established before trying reconnect', async () => {
             meeting.currentMediaStatus = null;
             await meeting.reconnect().catch((err) => {
               assert.instanceOf(err, ParameterError);
             });
           });
 
-          it('should trigger reconnection success', async () => {
+          it('should trigger reconnection success and send CA metric', async () => {
             await meeting.reconnect();
+
             assert.calledWith(
               TriggerProxy.trigger,
               sinon.match.instanceOf(Meeting),
               {file: 'meeting/index', function: 'reconnect'},
               'meeting:reconnectionSuccess'
             );
+            assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
+              name: 'client.media.recovered',
+              payload: {
+                recoveredBy: 'new',
+              },
+              options: {
+                meetingId: meeting.id,
+              },
+            });
           });
 
           it('should reset after reconnection success', async () => {

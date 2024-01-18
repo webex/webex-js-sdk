@@ -114,16 +114,6 @@ describe('plugin-meetings', () => {
           meetingId: rm.meeting.id,
         },
       });
-
-      assert.calledWith(fakeMeeting.webex.internal.newMetrics.submitClientEvent, {
-        name: 'client.media.recovered',
-        payload: {
-          recoveredBy: 'new',
-        },
-        options: {
-          meetingId: rm.meeting.id,
-        },
-      });
     });
 
     it('does not clear previous requests and re-request media for non-multistream meetings', async () => {
