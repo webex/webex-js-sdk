@@ -5,6 +5,7 @@
   ],
   "contributors": [
     "Bhargav Chinta (bchinta@cisco.com)",
+    "Karthik Raji (karaji@cisco.com)",
     "Priya Kesari (pkesari@cisco.com)",
     "Rajesh Kumar (rarajes2@cisco.com)",
     "Shreyas Sharma (shreysh2@cisco.com)",
@@ -37,7 +38,7 @@
   },
   "dependencies": {
     "@types/platform": "1.3.4",
-    "@webex/internal-media-core": "2.0.0",
+    "@webex/internal-media-core": "2.2.2",
     "@webex/media-helpers": "workspace:^",
     "async-mutex": "0.4.0",
     "buffer": "6.0.3",

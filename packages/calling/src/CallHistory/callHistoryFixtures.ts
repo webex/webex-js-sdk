@@ -311,7 +311,15 @@ const WEBEX_CALL_SESSION = {
       'https://conv-a.wbx2.com/conversation/api/v1/conversations/c9252ff0-9de2-11ec-a582-59d00c02cca9',
     callbackAddress: '123-456-7890',
   },
-
+  callingSpecifics: {
+    redirectionDetails: {
+      phoneNumber: '+18308508011',
+      name: 'Test QA Call Center',
+      reason: 'CALLQUEUE',
+      userId: '604a966d-7518-4b74-8d78-6c05caf98239',
+      isPrivate: false,
+    },
+  },
   isDeleted: false,
   isPMR: false,
   correlationIds: ['58ea6cd9-852b-4a77-957f-e704c8b0e63e'],

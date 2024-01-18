@@ -354,7 +354,7 @@ describe('plugin-meetings', () => {
 
         assert.calledWith(
           webex.request,
-          conversationUrl,
+          {uri:conversationUrl, qs: {includeParticipants: true}, disableTransform: true}
         )
 
         assert.calledWith(webex.request, {

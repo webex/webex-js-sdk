@@ -1,7 +1,9 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */ // TODO: remove once we define the payloads
+import {ILine} from '../api';
+import {LINE_EVENTS} from '../CallingClient/line/types';
 import type {ICall} from '../CallingClient/calling/types';
 import {CallId, DisplayInformation} from '../common/types';
-import {CallError, CallingClientError} from '../Errors';
+import {CallError, CallingClientError, LineError} from '../Errors';
 
 /** External Eventing Start */
 export enum COMMON_EVENT_KEYS {
@@ -92,6 +94,15 @@ export type CallRecordListOther = {
   email?: string;
 };
 
+export type RedirectionDetails = {
+  phoneNumber?: string;
+  sipUrl?: string;
+  name?: string;
+  reason: string;
+  userId?: string;
+  isPrivate: boolean;
+};
+
 export enum SessionType {
   SPARK = 'SPARK',
   WEBEX_CALLING = 'WEBEXCALLING',
@@ -116,6 +127,9 @@ export type UserSession = {
   other: CallRecordListOther;
   sessionType: SessionType;
   direction: string;
+  callingSpecifics?: {
+    redirectionDetails: RedirectionDetails;
+  };
 };
 
 export type CallingParty = {
@@ -168,6 +182,16 @@ export type CallerIdDisplay = {
   callerId: DisplayInformation;
 };
 
+export type LineEventTypes = {
+  [LINE_EVENTS.CONNECTING]: () => void;
+  [LINE_EVENTS.ERROR]: (error: LineError) => void;
+  [LINE_EVENTS.RECONNECTED]: () => void;
+  [LINE_EVENTS.RECONNECTING]: () => void;
+  [LINE_EVENTS.REGISTERED]: (lineInfo: ILine) => void;
+  [LINE_EVENTS.UNREGISTERED]: () => void;
+  [LINE_EVENTS.INCOMING_CALL]: (callObj: ICall) => void;
+};
+
 export type CallEventTypes = {
   [CALL_EVENT_KEYS.ALERTING]: (callId: CallId) => void;
   [CALL_EVENT_KEYS.CALL_ERROR]: (error: CallError) => void;
@@ -207,8 +231,6 @@ export type CallHistoryEventTypes = {
 /* External Eventing End */
 
 /** Internal Eventing Start */
-// https://sqbu-github.cisco.com/pages/webrtc-calling/mobius/mobius-api-spec/docs/async.html#operation-publish-calls
-
 enum CALL_STATE {
   HELD = 'held',
   REMOTE_HELD = 'remoteheld',

@@ -6,7 +6,7 @@ import {
   getMockDeviceInfo,
   getMobiusDiscoveryResponse,
 } from '../common/testUtil';
-import {CallType, MobiusStatus, ServiceIndicator, WebexRequestPayload} from '../common/types';
+import {CallType, RegistrationStatus, ServiceIndicator, WebexRequestPayload} from '../common/types';
 /* eslint-disable dot-notation */
 import {CALLING_CLIENT_EVENT_KEYS, CallSessionEvent, MOBIUS_EVENT_KEYS} from '../Events/types';
 import log from '../Logger';
@@ -17,13 +17,15 @@ import {getCallManager} from './calling/callManager';
 import {
   CALLING_CLIENT_FILE,
   DISCOVERY_URL,
+  IP_ENDPOINT,
   NETWORK_CHANGE_DETECTION_UTIL,
   NETWORK_FLAP_TIMEOUT,
   REGISTRATION_FILE,
   SPARK_USER_AGENT,
+  URL_ENDPOINT,
 } from './constants';
 import {MOCK_MULTIPLE_SESSIONS_EVENT, MOCK_SESSION_EVENT} from './callRecordFixtures';
-import {ILine, LineStatus} from './line/types';
+import {ILine} from './line/types';
 import {
   ipPayload,
   regionBody,
@@ -31,19 +33,27 @@ import {
   primaryUrl,
   discoveryPayload,
   registrationPayload,
-  uri,
   myIP,
+  mockEUServiceHosts,
+  mockIntServiceHosts,
+  mockEUIntServiceHosts,
+  mockCatalogEU,
+  mockCatalogUSInt,
+  mockCatalogUS,
+  mockCatalogEUInt,
 } from './callingClientFixtures';
 import Line from './line';
 import {filterMobiusUris} from '../common/Utils';
 import {URL} from './registration/registerFixtures';
 import {ICall} from './calling/types';
+import {ServiceHost} from '../SDKConnector/types';
 
 describe('CallingClient Tests', () => {
   // Common initializers
 
   const handleErrorSpy = jest.spyOn(utils, 'handleCallingClientErrors');
   const webex = getTestUtilsWebex();
+  webex.internal.services['_hostCatalog'] = mockCatalogUS;
   const defaultServiceIndicator = ServiceIndicator.CALLING;
   const callManager = getCallManager(webex, defaultServiceIndicator);
 
@@ -226,7 +236,7 @@ describe('CallingClient Tests', () => {
       expect(webex.request).nthCalledWith(1, {
         method: 'GET',
         ...getMockRequestTemplate(),
-        uri: `${uri}myip`,
+        uri: `${callingClient['mobiusHost']}${URL_ENDPOINT}${IP_ENDPOINT}`,
       });
 
       expect(webex.request).nthCalledWith(2, {
@@ -241,7 +251,7 @@ describe('CallingClient Tests', () => {
       expect(webex.request).nthCalledWith(3, {
         method: 'GET',
         ...getMockRequestTemplate(),
-        uri: `${uri}?regionCode=${regionBody.clientRegion}&countryCode=${regionBody.countryCode}`,
+        uri: `${callingClient['mobiusHost']}${URL_ENDPOINT}?regionCode=${regionBody.clientRegion}&countryCode=${regionBody.countryCode}`,
       });
     });
 
@@ -254,27 +264,41 @@ describe('CallingClient Tests', () => {
 
       callingClient = await createClient(webex, {logger: {level: LOGGER.INFO}});
 
-      expect(handleErrorSpy).toBeCalledOnceWith(failurePayload, expect.anything(), {
+      expect(webex.request).nthCalledWith(1, {
+        ...getMockRequestTemplate(),
+        uri: 'https://mobius-us-east-1.prod.infra.webex.com/api/v1/calling/web/myip',
+        method: 'GET',
+      });
+
+      expect(webex.request).nthCalledWith(2, {
+        ...getMockRequestTemplate(),
+        uri: 'https://mobius-ca-central-1.prod.infra.webex.com/api/v1/calling/web/myip',
+        method: 'GET',
+      });
+
+      expect(webex.request).nthCalledWith(3, {
+        ...getMockRequestTemplate(),
+        uri: 'https://mobius-eu-central-1.prod.infra.webex.com/api/v1/calling/web/myip',
+        method: 'GET',
+      });
+
+      expect(webex.request).nthCalledWith(4, {
+        ...getMockRequestTemplate(),
+        uri: 'https://mobius-ap-southeast-2.prod.infra.webex.com/api/v1/calling/web/myip',
+        method: 'GET',
+      });
+
+      expect(handleErrorSpy).toBeCalledWith(failurePayload, expect.anything(), {
         file: CALLING_CLIENT_FILE,
         method: 'getMobiusServers',
       });
 
-      expect(webex.request).toBeCalledOnceWith({
-        ...getMockRequestTemplate(),
-        uri: `${uri}myip`,
-        method: 'GET',
-      });
-
-      expect(callingClient.primaryMobiusUris).toEqual([uri]);
-
-      expect(webex.request).nthCalledWith(1, {
-        method: 'GET',
-        ...getMockRequestTemplate(),
-        uri: `${uri}myip`,
-      });
+      expect(callingClient.primaryMobiusUris).toEqual([
+        `${callingClient['mobiusHost']}${URL_ENDPOINT}`,
+      ]);
 
       expect(warnSpy).toBeCalledWith(
-        'Error in finding Mobius Servers. Will use the default URL.',
+        `Couldn't resolve the region and country code. Defaulting to the catalog entries to discover mobius servers`,
         ''
       );
     });
@@ -297,12 +321,14 @@ describe('CallingClient Tests', () => {
       });
       expect(webex.request).toBeCalledTimes(3);
 
-      expect(callingClient.primaryMobiusUris).toEqual([uri]);
+      expect(callingClient.primaryMobiusUris).toEqual([
+        `${callingClient['mobiusHost']}${URL_ENDPOINT}`,
+      ]);
 
       expect(webex.request).nthCalledWith(1, {
         method: 'GET',
         ...getMockRequestTemplate(),
-        uri: `${uri}myip`,
+        uri: `${callingClient['mobiusHost']}${URL_ENDPOINT}${IP_ENDPOINT}`,
       });
 
       expect(webex.request).nthCalledWith(2, {
@@ -315,7 +341,7 @@ describe('CallingClient Tests', () => {
       });
 
       expect(warnSpy).toBeCalledWith(
-        'Error in finding Mobius Servers. Will use the default URL.',
+        `Couldn't resolve the region and country code. Defaulting to the catalog entries to discover mobius servers`,
         ''
       );
     });
@@ -342,10 +368,44 @@ describe('CallingClient Tests', () => {
       });
       expect(webex.request).toBeCalledOnceWith({
         ...getMockRequestTemplate(),
-        uri: `${uri}?regionCode=${regionBody.clientRegion}&countryCode=${regionBody.countryCode}`,
+        uri: `${callingClient['mobiusHost']}${URL_ENDPOINT}?regionCode=${regionBody.clientRegion}&countryCode=${regionBody.countryCode}`,
         method: 'GET',
       });
       expect(handleErrorSpy).not.toBeCalled();
+    });
+  });
+
+  describe('Testing each cluster present withing host catalog', () => {
+    const mobiusCluster = [
+      'mobius-eu-central-1.prod.infra.webex.com',
+      'mobius-us-east-1.int.infra.webex.com',
+      'mobius-eu-central-1.int.infra.webex.com',
+    ];
+
+    const checkCluster = async (
+      mockServiceHosts: ServiceHost[],
+      mockCatalog: Record<string, ServiceHost[]>
+    ) => {
+      webex.internal.services._hostCatalog = mockCatalog;
+      const callingClient = await createClient(webex, {logger: {level: LOGGER.INFO}});
+
+      expect(callingClient['mobiusClusters']).toStrictEqual(mockServiceHosts);
+    };
+
+    it.each(mobiusCluster)('%s', async (clusterName) => {
+      switch (clusterName) {
+        case 'mobius-eu-central-1.prod.infra.webex.com':
+          checkCluster(mockEUServiceHosts, mockCatalogEU);
+          break;
+        case 'mobius-us-east-1.int.infra.webex.com':
+          checkCluster(mockIntServiceHosts, mockCatalogUSInt);
+          break;
+        case 'mobius-eu-central-1.int.infra.webex.com':
+          checkCluster(mockEUIntServiceHosts, mockCatalogEUInt);
+          break;
+        default:
+          break;
+      }
     });
   });
 
@@ -370,8 +430,6 @@ describe('CallingClient Tests', () => {
       callingClient = await createClient(webex, {logger: {level: LOGGER.INFO}});
       line = Object.values(callingClient.lineDict)[0] as ILine;
       reg = line.registration;
-
-      expect(line.getRegistrationStatus()).toEqual(MobiusStatus.DEFAULT);
       await line.register();
 
       deRegSpy = jest.spyOn(line.registration, 'deregister');
@@ -390,7 +448,7 @@ describe('CallingClient Tests', () => {
     });
 
     it('detect a network flap in mercury connection', async () => {
-      expect(line.getRegistrationStatus()).toEqual(MobiusStatus.ACTIVE);
+      expect(line.getStatus()).toEqual(RegistrationStatus.ACTIVE);
 
       /* Set mercury connection to be down and execute a delay of 2.5 seconds */
       webex.internal.mercury.connected = false;
@@ -398,7 +456,7 @@ describe('CallingClient Tests', () => {
       jest.advanceTimersByTime(NETWORK_FLAP_TIMEOUT + 500);
 
       /* We should be detecting the network flap */
-      expect(warnSpy).toBeCalledWith(
+      expect(warnSpy).toBeCalledOnceWith(
         'Network has flapped, waiting for mercury connection to be up',
         {file: CALLING_CLIENT_FILE, method: NETWORK_CHANGE_DETECTION_UTIL}
       );
@@ -411,13 +469,14 @@ describe('CallingClient Tests', () => {
       await flushPromises();
 
       /* We should be detecting the network recovery */
-      expect(logSpy).nthCalledWith(
-        7,
-        'Mercury connection is up again, Re-registering with Mobius',
-        {file: REGISTRATION_FILE, method: 'handleConnectionRestoration'}
+      expect(logSpy).toBeCalledWith(
+        'Mercury connection is up again, re-registering with Webex Calling if needed',
+        {
+          file: REGISTRATION_FILE,
+          method: 'handleConnectionRestoration',
+        }
       );
 
-      expect(deRegSpy).toBeCalledWith();
       expect(restoreSpy).toBeCalledWith('handleConnectionRestoration');
       expect(restartRegisterSpy).toBeCalledWith('handleConnectionRestoration');
       expect(webex.request).toBeCalledTimes(6);
@@ -426,7 +485,7 @@ describe('CallingClient Tests', () => {
     });
 
     it('Simulate a network flap with no active calls and re-verify registration: Restore Failure', async () => {
-      expect(line.getRegistrationStatus()).toEqual(MobiusStatus.ACTIVE);
+      expect(line.getStatus()).toEqual(RegistrationStatus.ACTIVE);
 
       const failurePayload = <WebexRequestPayload>(<unknown>{
         statusCode: 500,
@@ -453,37 +512,37 @@ describe('CallingClient Tests', () => {
 
       /* Set mercury connection to be up and execute a delay of 2.5 seconds */
       webex.internal.mercury.connected = true;
+
       jest.advanceTimersByTime(NETWORK_FLAP_TIMEOUT + 500);
 
       await flushPromises();
-      /* We should be detecting the network recovery */
-      expect(logSpy).toBeCalledWith('Mercury connection is up again, Re-registering with Mobius', {
-        file: REGISTRATION_FILE,
-        method: 'handleConnectionRestoration',
-      });
 
-      expect(deRegSpy).toBeCalledWith();
-      expect(restoreSpy).toBeCalledWith('handleConnectionRestoration');
-      expect(restartRegisterSpy).toBeCalledWith('handleConnectionRestoration');
+      /* We should be detecting the network recovery */
+      expect(logSpy).toBeCalledWith(
+        'Mercury connection is up again, re-registering with Webex Calling if needed',
+        {
+          file: REGISTRATION_FILE,
+          method: 'handleConnectionRestoration',
+        }
+      );
+
+      expect(restoreSpy).toBeCalledOnceWith('handleConnectionRestoration');
+      expect(restartRegisterSpy).toBeCalledOnceWith('handleConnectionRestoration');
       expect(webex.request).toBeCalledTimes(6);
       expect(registerSpy).toBeCalledWith('handleConnectionRestoration', [reg.getActiveMobiusUrl()]);
       expect(registerSpy).lastCalledWith('handleConnectionRestoration', [primaryUrl]);
     });
 
     it('Simulate a network flap before initial registration is done', async () => {
-      expect(line.getRegistrationStatus()).toEqual(MobiusStatus.ACTIVE);
-
-      reg.deregister();
-      reg.setActiveMobiusUrl(undefined);
-
-      jest.clearAllMocks();
+      const handleConnectionRestoreSpy = jest.spyOn(reg, 'handleConnectionRestoration');
+      reg.setStatus(RegistrationStatus.IDLE);
 
       /* Set mercury connection to be down and execute a delay of 2.5 seconds */
       webex.internal.mercury.connected = false;
       jest.advanceTimersByTime(NETWORK_FLAP_TIMEOUT + 500);
 
       /* We should be detecting the network flap */
-      expect(warnSpy).toBeCalledWith(
+      expect(warnSpy).toBeCalledOnceWith(
         'Network has flapped, waiting for mercury connection to be up',
         {file: CALLING_CLIENT_FILE, method: NETWORK_CHANGE_DETECTION_UTIL}
       );
@@ -495,22 +554,23 @@ describe('CallingClient Tests', () => {
       await flushPromises();
 
       /* We should be detecting the network recovery */
-      expect(logSpy).toBeCalledWith('Mercury connection is up again, Re-registering with Mobius', {
-        file: REGISTRATION_FILE,
-        method: 'handleConnectionRestoration',
-      });
+      expect(logSpy).not.toBeCalledWith(
+        'Mercury connection is up again, re-registering with Webex Calling if needed',
+        {
+          file: REGISTRATION_FILE,
+          method: 'handleConnectionRestoration',
+        }
+      );
 
       /*
        * When initial registration is not done, network flap
        * will not trigger de-registration/registration
        */
-      expect(webex.request).not.toBeCalled();
-      expect(restoreSpy).not.toBeCalled();
-      expect(registerSpy).not.toBeCalled();
+      expect(handleConnectionRestoreSpy).not.toBeCalledOnceWith();
     });
 
     it('Simulate a network flap with 1 active call', async () => {
-      expect(line.getRegistrationStatus()).toEqual(MobiusStatus.ACTIVE);
+      expect(line.getStatus()).toEqual(RegistrationStatus.ACTIVE);
 
       /** create a new call */
       reg.callManager.createCall();
@@ -522,7 +582,7 @@ describe('CallingClient Tests', () => {
       await flushPromises();
 
       /* We should be detecting the network flap */
-      expect(warnSpy).not.toBeCalledWith(
+      expect(warnSpy).not.toBeCalledOnceWith(
         'Network has flapped, waiting for mercury connection to be up',
         {file: CALLING_CLIENT_FILE, method: 'handleConnectionRestoration'}
       );
@@ -534,8 +594,8 @@ describe('CallingClient Tests', () => {
       await flushPromises();
 
       /* We should be detecting the network recovery */
-      expect(logSpy).not.toBeCalledWith(
-        'Mercury connection is up again, Re-registering with Mobius',
+      expect(logSpy).not.toBeCalledOnceWith(
+        'Mercury connection is up again, re-registering with Webex Calling if needed',
         {file: REGISTRATION_FILE, method: 'handleConnectionRestoration'}
       );
 
@@ -590,7 +650,6 @@ describe('CallingClient Tests', () => {
       line = new Line(
         userId,
         clientDeviceUri,
-        LineStatus.ACTIVE,
         mutex,
         primaryMobiusUris(),
         backupMobiusUris(),

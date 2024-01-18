@@ -1,5 +1,5 @@
 /* eslint-disable valid-jsdoc */
-import {MobiusStatus} from '../../common/types';
+import {RegistrationStatus} from '../../common/types';
 
 import {ErrorContext, ErrorMessage, ErrorObject, ERROR_TYPE} from '../types';
 import ExtendedError from './ExtendedError';
@@ -8,7 +8,7 @@ import ExtendedError from './ExtendedError';
  * Any error reported from Calling client should be stored here.
  */
 export class CallingClientError extends ExtendedError {
-  public status: MobiusStatus = MobiusStatus.DEFAULT;
+  public status: RegistrationStatus = RegistrationStatus.INACTIVE;
 
   /**
    * Instantiate the Error class with these parameters.
@@ -18,7 +18,12 @@ export class CallingClientError extends ExtendedError {
    * @param type - Error Type.
    * @param status - Mobius Status, should be default.
    */
-  constructor(msg: ErrorMessage, context: ErrorContext, type: ERROR_TYPE, status: MobiusStatus) {
+  constructor(
+    msg: ErrorMessage,
+    context: ErrorContext,
+    type: ERROR_TYPE,
+    status: RegistrationStatus
+  ) {
     super(msg, context, type);
     this.status = status;
   }
@@ -57,5 +62,5 @@ export const createClientError = (
   msg: ErrorMessage,
   context: ErrorContext,
   type: ERROR_TYPE,
-  status: MobiusStatus
+  status: RegistrationStatus
 ) => new CallingClientError(msg, context, type, status);

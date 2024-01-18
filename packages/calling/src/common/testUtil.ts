@@ -66,6 +66,7 @@ export function getTestUtilsWebex() {
       presence: jest.fn(),
       support: jest.fn(),
       services: {
+        _hostCatalog: {},
         _serviceUrls: {
           mobius: 'https://mobius.aintgen-a-1.int.infra.webex.com/api/v1',
           identity: 'https://identity-b-us.webex.com',

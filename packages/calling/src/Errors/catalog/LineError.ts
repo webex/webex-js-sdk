@@ -1,5 +1,5 @@
 /* eslint-disable valid-jsdoc */
-import {LineStatus} from '../../CallingClient/line/types';
+import {RegistrationStatus} from '../../common/types';
 import {ErrorMessage, ERROR_TYPE, LineErrorObject, ErrorContext} from '../types';
 import ExtendedError from './ExtendedError';
 
@@ -7,7 +7,7 @@ import ExtendedError from './ExtendedError';
  * Any error reported from Line class should be stored here.
  */
 export class LineError extends ExtendedError {
-  public status: LineStatus = LineStatus.INACTIVE;
+  public status: RegistrationStatus = RegistrationStatus.INACTIVE;
 
   /**
    * Instantiate the Error class with these parameters.
@@ -17,7 +17,12 @@ export class LineError extends ExtendedError {
    * @param type - Error Type.
    * @param status - Line Status, should be inactive.
    */
-  constructor(msg: ErrorMessage, context: ErrorContext, type: ERROR_TYPE, status: LineStatus) {
+  constructor(
+    msg: ErrorMessage,
+    context: ErrorContext,
+    type: ERROR_TYPE,
+    status: RegistrationStatus
+  ) {
     super(msg, context, type);
     this.status = status;
   }
@@ -62,5 +67,5 @@ export const createLineError = (
   msg: ErrorMessage,
   context: ErrorContext,
   type: ERROR_TYPE,
-  status: LineStatus
+  status: RegistrationStatus
 ) => new LineError(msg, context, type, status);

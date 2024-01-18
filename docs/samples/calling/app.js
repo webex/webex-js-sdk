@@ -90,7 +90,7 @@ const bnrButton = document.getElementById('bnr_button');
 let base64;
 let audio64;
 let call;
-let callTranferObj;
+let callTransferObj;
 let broadworksCorrelationInfo;
 let localAudioStream;
 let effect;
@@ -123,6 +123,11 @@ function getMediaSettings() {
   });
 
   return settings;
+}
+
+function updateCallControlButtons(callObject){
+    holdResumeElm.value = callObject.held ? 'Resume':'Hold'
+    muteElm.value = callObject.muted ? 'Unmute':'Mute'
 }
 
 function getAudioVideoInput() {
@@ -248,11 +253,9 @@ async function initCalling(e) {
 
   calling.on('ready', () => {
     console.log('Authentication :: Calling Ready');
-    registerElm.disabled = false;
     callHistoryElm.disabled = false;
     voicemailElm.disabled = false;
     authStatusElm.innerText = 'Saved access token!';
-    registerElm.classList.add('btn--green');
     callHistoryElm.classList.add('btn--green');
     voicemailElm.classList.add('btn--green');
     dndButton.classList.add('btn--red');
@@ -264,6 +267,7 @@ async function initCalling(e) {
 
     calling.register().then(async () => {
       unregisterElm.classList.add('btn--red');
+      registerElm.classList.add('btn--green');
       registerElm.disabled = false;
 
       callingClient = window.callingClient = calling.callingClient;
@@ -282,16 +286,9 @@ async function initCalling(e) {
 
       if (window.voicemail === undefined) {
         voicemail = window.voicemail = calling.voicemailClient;
-        const initResponse = await voicemail.init();
-
-        console.log(`Init response `, initResponse);
       }
 
       fetchLines();
-      fetchDNDSetting();
-      fetchCallForwardSetting();
-      fetchVoicemailSetting();
-      fetchCallWaitingSetting();
     });
   });
 
@@ -299,6 +296,13 @@ async function initCalling(e) {
 }
 
 credentialsFormElm.addEventListener('submit', initCalling);
+
+function getSettings() {
+  fetchCallForwardSetting();
+  fetchVoicemailSetting();
+  fetchCallWaitingSetting();
+  fetchDNDSetting();
+}
 
 function toggleDisplay(elementId, status) {
   const element = document.getElementById(elementId);
@@ -343,7 +347,7 @@ function createDevice() {
       calling.webex.internal.device.url !== ''
         ? `Registered, deviceId: ${deviceInfo.mobiusDeviceId}`
         : 'Not Registered';
-    // unregisterElm.disabled = false;
+    unregisterElm.disabled = false;
   });
 
   // Start listening for incoming calls
@@ -365,6 +369,7 @@ function createDevice() {
       makeCallBtn.disabled = false;
       endElm.disabled = true;
       muteElm.value = 'Mute';
+      holdResumeElm.value = 'Hold';
       answerElm.disabled = true;
     });
 
@@ -389,42 +394,68 @@ function endCall() {
   makeCallBtn.disabled = false;
   endElm.disabled = true;
   muteElm.value = 'Mute';
+  holdResumeElm.value = 'Hold'
   imageElm.removeChild(img);
 }
 
 function endSecondCall() {
-  callTranferObj.end();
-  transferDetailsElm.innerText = `${callTranferObj.getCorrelationId()}: Call Disconnected`;
+  callTransferObj.end();
+  transferDetailsElm.innerText = `${callTransferObj.getCorrelationId()}: Call Disconnected`;
+  callTransferObj = null
   endSecondElm.disabled = true;
-  muteElm.value = 'Mute';
+  transferElm.innerHTML = 'Transfer';
+  updateCallControlButtons(call)
+  if (call.muted){
+    localAudioStream.outputStream.getAudioTracks()[0].enabled = false
+  }
   imageElm.removeChild(img);
 }
 
 function muteUnmute() {
   muteElm.value = muteElm.value === 'Mute' ? 'Unmute' : 'Mute';
-
-  call.mute(localAudioStream);
+  if (callTransferObj){
+    callTransferObj.mute(localAudioStream)
+  }
+  else {  
+    call.mute(localAudioStream);
+  }
 }
 
 function holdResume() {
-  const elem = document.getElementById('hold_button');
-
-  call.on('held', (correlationId) => {
-    if (elem.value === 'Hold') {
-      callDetailsElm.innerText = 'Call is held';
-      elem.value = 'Resume';
-    }
-  });
-
-  call.on('resumed', (correlationId) => {
-    if (elem.value === 'Resume') {
-      callDetailsElm.innerText = 'Call is Resumed';
-      elem.value = 'Hold';
-    }
-  });
-
-  call.doHoldResume();
+  if (callTransferObj){
+    callTransferObj.on('held', (correlationId) => {
+      if (holdResumeElm.value === 'Hold') {
+        callDetailsElm.innerText = 'Call is held';
+        holdResumeElm.value = 'Resume';
+      }
+    });
+  
+    callTransferObj.on('resumed', (correlationId) => {
+      if (holdResumeElm.value === 'Resume') {
+        callDetailsElm.innerText = 'Call is Resumed';
+        holdResumeElm.value = 'Hold';
+      }
+    });
+    callTransferObj.doHoldResume()
+  }
+  else{
+    call.on('held', (correlationId) => {
+      if (holdResumeElm.value === 'Hold') {
+        callDetailsElm.innerText = 'Call is held';
+        holdResumeElm.value = 'Resume';
+      }
+    });
+  
+    call.on('resumed', (correlationId) => {
+      if (holdResumeElm.value === 'Resume') {
+        callDetailsElm.innerText = 'Call is Resumed';
+        holdResumeElm.value = 'Hold';
+      }
+    });
+    call.doHoldResume();
+  }
 }
+
 function deleteDevice() {
   line.deregister();
   line.on('unregistered', () => {
@@ -432,7 +463,7 @@ function deleteDevice() {
     registrationStatusElm.innerText = 'Unregistered';
   })
   registerElm.disabled = false;
-  // unregisterElm.disabled = true;
+  unregisterElm.disabled = true;
 }
 
 function populateSourceDevices(mediaDevice) {
@@ -456,6 +487,28 @@ function populateSourceDevices(mediaDevice) {
   option.value = mediaDevice.ID;
   option.text = mediaDevice.label;
   select && select.appendChild(option);
+}
+
+async function changeInputStream() {
+  const selectedDevice = audioInputDevicesElem.options[audioInputDevicesElem.selectedIndex].value;
+
+  const constraints = {
+    audio: true,
+    deviceId: selectedDevice ? { exact: selectedDevice } : undefined
+  };
+  const newStream  = await Calling.createMicrophoneStream(constraints);
+
+  call.updateMedia(newStream);
+}
+
+async function changeOutputStream() {
+  const selectedDevice = audioOutputDevicesElem.options[audioOutputDevicesElem.selectedIndex].value;
+  mediaStreamsRemoteAudio.setSinkId(selectedDevice);
+}
+
+async function changeStream() {
+  changeInputStream();
+  changeOutputStream();
 }
 
 /**
@@ -552,37 +605,40 @@ async function getCallQuality() {
 }
 
 function commitTransfer() {
+
   const digit = transferTarget.value;
 
   transferElm.disabled = true;
 
   if (transferOptionsElm.options[transferOptionsElm.selectedIndex].text === 'Consult Transfer') {
-    callTranferObj = line.makeCall({
+    call.doHoldResume();
+    transferDetailsElm.innerText = `Placed call: ${call.getCorrelationId()} on hold and dialing Transfer target`;
+
+    callTransferObj = line.makeCall({
       type: 'uri',
       address: digit,
     });
-
-    callTranferObj.on('remote_media', (track) => {
+    updateCallControlButtons(callTransferObj)
+    callTransferObj.on('remote_media', (track) => {
       document.getElementById('remote-audio').srcObject = new MediaStream([track]);
 
       transferDetailsElm.innerText = `Got remote audio`;
     });
 
-    callTranferObj.on('established', (correlationId) => {
+    callTransferObj.on('established', (correlationId) => {
       transferDetailsElm.innerText = `${correlationId}: Transfer target connected`;
       endSecondElm.disabled = false;
       transferElm.innerHTML = 'Commit';
       transferElm.disabled = false;
     });
 
-    callTranferObj.on('disconnect', (correlationId) => {
+    callTransferObj.on('disconnect', (correlationId) => {
       endSecondElm.disabled = true;
-      callTranferObj = null;
+      callTransferObj = null;
     });
 
-    callTranferObj.dial(localAudioStream);
+    callTransferObj.dial(localAudioStream);
 
-    transferDetailsElm.innerText = `Dialing Transfer target`;
   } else {
     console.log(`Initiating blind transfer with ${digit}`);
     call.completeTransfer('BLIND', undefined, digit);
@@ -594,17 +650,12 @@ function initiateTransfer() {
 
   transferInitiated = true;
   if (!call.isHeld()) {
-    call.doHoldResume();
-
-    call.on('held', (correlationId) => {
-      transferDetailsElm.innerText = `Placed call: ${call.getCorrelationId()} on hold`;
       commitTransfer();
-    });
   } else {
     transferDetailsElm.innerText = `Transferring call..`;
-    if (callTranferObj) {
+    if (callTransferObj) {
       console.log(`Completing consult transfer with ${digit}`);
-      call.completeTransfer('CONSULT', callTranferObj.getCallId(), undefined);
+      call.completeTransfer('CONSULT', callTransferObj.getCallId(), undefined);
     }
   }
 }
@@ -776,6 +827,8 @@ function definedTable(callHistoryResponse) {
   <th>EndTime</th>
   <th>SessionType</th>
   <th>CallbackAddress</th>
+  <th>RedirectionReason</th>
+  <th>Forwarded by</th>
   </tr>`;
 
   callHistoryHeader.innerHTML += callHistHeaderHtml;
@@ -790,6 +843,8 @@ function definedTable(callHistoryResponse) {
     <td>${callHistoryResponse.data.userSessions[i].endTime}</td>
     <td>${callHistoryResponse.data.userSessions[i].sessionType}</td>
     <td>${callHistoryResponse.data.userSessions[i].other.callbackAddress}</td>
+    <td>${callHistoryResponse.data.userSessions[i].callingSpecifics?.redirectionDetails?.reason === undefined ? 'NA' : callHistoryResponse.data.userSessions[i].callingSpecifics.redirectionDetails.reason}</td>
+    <td>${callHistoryResponse.data.userSessions[i].callingSpecifics?.redirectionDetails?.name === undefined ? 'NA' : callHistoryResponse.data.userSessions[i].callingSpecifics.redirectionDetails.name}</td>
   </tr>`;
 
     callHistoryTable.innerHTML += callHistoryRow;
@@ -833,6 +888,7 @@ async function createCallHistory() {
  * Function to use Voice Mail API's.
  */
 async function createVoiceMail() {
+  await voicemail.init();
   const backendConnector = calling.webex.internal.device.callingBehavior;
 
   if (backendConnector === 'NATIVE_SIP_CALL_TO_UCM') {

@@ -6989,7 +6989,7 @@ __metadata:
     "@typescript-eslint/eslint-plugin": 5.38.1
     "@typescript-eslint/parser": 5.38.1
     "@web/dev-server": 0.1.30
-    "@webex/internal-media-core": 2.0.0
+    "@webex/internal-media-core": 2.2.2
     "@webex/media-helpers": "workspace:^"
     async-mutex: 0.4.0
     buffer: 6.0.3
@@ -7285,20 +7285,20 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@webex/internal-media-core@npm:2.0.0, @webex/internal-media-core@npm:^2.0.0":
-  version: 2.0.0
-  resolution: "@webex/internal-media-core@npm:2.0.0"
+"@webex/internal-media-core@npm:2.2.2, @webex/internal-media-core@npm:^2.2.2":
+  version: 2.2.2
+  resolution: "@webex/internal-media-core@npm:2.2.2"
   dependencies:
     "@babel/runtime": ^7.18.9
-    "@webex/ts-sdp": 1.4.1
-    "@webex/web-client-media-engine": ^3.3.1
+    "@webex/ts-sdp": 1.6.0
+    "@webex/web-client-media-engine": 3.11.1
     detectrtc: ^1.4.1
     events: ^3.3.0
     typed-emitter: ^2.1.0
     uuid: ^8.3.2
     webrtc-adapter: ^8.1.2
     xstate: ^4.30.6
-  checksum: 5f4b66f50a57f710dc12d74d29f0f97a7a948bcda8479cc540baf356d8369442d474164bec419ab81b51f0f0a632bdea6a79e31bdb77c071768d50c9aab06740
+  checksum: c5ca3ff1e186feac627564f27469e019a87de4466a2f98212a7e475fff8dd12a6857023ecf99b2463ee88b7521613d6a2702f5bd1b3d33652c0d3dfba2fa8e35
   languageName: node
   linkType: hard
 
@@ -7957,19 +7957,10 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/json-multistream@npm:^2.0.1":
-  version: 2.1.0
-  resolution: "@webex/json-multistream@npm:2.1.0"
-  checksum: 7d2ab123ed121d7f6cb1a0b3b9a8b2e97115eb1364ff0f5f2074a2fb976faf7844e6a3d4e1cdec8f3cc517caf8e26ba812bf0068bcaa005f5c1bb6792bc840ac
-  languageName: node
-  linkType: hard
-
-"@webex/ladon-ts@npm:^4.2.3":
-  version: 4.2.3
-  resolution: "@webex/ladon-ts@npm:4.2.3"
-  dependencies:
-    onnxruntime-web: ^1.15.1
-  checksum: 2c4f7754a2957cb03ecc8bc9f0a27052b4eb4b4babda59840b31fc44dd01022e581b0d83bd104d61fcd89d423420fbc23e44f89169beb608f78c4f2984145c9d
+"@webex/json-multistream@npm:^2.1.1":
+  version: 2.1.1
+  resolution: "@webex/json-multistream@npm:2.1.1"
+  checksum: 6808b8fb1b6a8c2a01dc397c4490d73fbb2ce73ad5f15c3030c904ee2ddc1947f40a0b6aa1c51e2a5a9b5dd68c92945acbb8916918e80c99e24cc6359c7498b5
   languageName: node
   linkType: hard
 
@@ -8056,13 +8047,13 @@ __metadata:
     "@babel/preset-typescript": 7.22.11
     "@webex/babel-config-legacy": "workspace:^"
     "@webex/eslint-config-legacy": "workspace:^"
-    "@webex/internal-media-core": ^2.0.0
+    "@webex/internal-media-core": ^2.2.2
     "@webex/jest-config-legacy": "workspace:^"
     "@webex/legacy-tools": "workspace:^"
     "@webex/test-helper-chai": "workspace:^"
     "@webex/test-helper-mock-webex": "workspace:^"
     "@webex/ts-events": ^1.1.0
-    "@webex/web-media-effects": ^2.13.3
+    "@webex/web-media-effects": ^2.15.6
     eslint: ^8.24.0
     sinon: ^9.2.4
   languageName: unknown
@@ -8555,13 +8546,13 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/rtcstats@npm:^1.0.2":
-  version: 1.0.2
-  resolution: "@webex/rtcstats@npm:1.0.2"
+"@webex/rtcstats@npm:^1.1.1":
+  version: 1.1.1
+  resolution: "@webex/rtcstats@npm:1.1.1"
   dependencies:
     "@types/node": ^18.7.6
     uuid: ^8.3.2
-  checksum: 1015597ba3c8b05c84b356f4cf7507cb1a3f668c4acc61924e0524b4119fff9d5ad808fe41a40965b6aa9dd36e8fdd4652e3af63dcd40b8668b5e26a7ede6f31
+  checksum: e357651ffbcece7c8eef9aaa784192ca762fa4b77e1609061b26c51df0d10306bfb4c0ea2fb3490bdf080a552b5fa105fbe0cd40e5bf01f05e2bc0cf573ed080
   languageName: node
   linkType: hard
 
@@ -8951,17 +8942,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@webex/ts-sdp@npm:1.4.1":
-  version: 1.4.1
-  resolution: "@webex/ts-sdp@npm:1.4.1"
-  checksum: 457b92ac4b5fd3d66a9fc8487a657bd1c4edf3fd4ac4868661f2ccf12b158f66ddee6cc06e1aaf39f7c453cd1518d0289ea31ca6bfe4537f6b2577743caa47a5
-  languageName: node
-  linkType: hard
-
-"@webex/ts-sdp@npm:1.5.0":
-  version: 1.5.0
-  resolution: "@webex/ts-sdp@npm:1.5.0"
-  checksum: 6e8df92efc8660fec0376a65a214bfa75437d3473829f73b461f9e96d2c2eb0725ea35589b6947737b13b2736c38c5b1f66379651d203cd1ccde6f33aa4632c2
+"@webex/ts-sdp@npm:1.6.0":
+  version: 1.6.0
+  resolution: "@webex/ts-sdp@npm:1.6.0"
+  checksum: 37d826c7226e3ba3f7231d8d06e23645a6d9910d714c36a7c5e86c7690f857bfea20f4d9f2064edb0c367db0f899a23db5af304ba10b4cd963130a21c155c852
   languageName: node
   linkType: hard
 
@@ -8978,45 +8962,43 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/web-client-media-engine@npm:^3.3.1":
-  version: 3.5.0
-  resolution: "@webex/web-client-media-engine@npm:3.5.0"
+"@webex/web-capabilities@npm:^1.1.0, @webex/web-capabilities@npm:^1.1.1":
+  version: 1.2.0
+  resolution: "@webex/web-capabilities@npm:1.2.0"
   dependencies:
-    "@webex/json-multistream": ^2.0.1
-    "@webex/rtcstats": ^1.0.2
-    "@webex/ts-events": ^1.0.1
-    "@webex/ts-sdp": 1.5.0
-    "@webex/webrtc-core": 2.1.0
-    async: ^3.2.4
     bowser: ^2.11.0
-    js-logger: ^1.6.1
-    typed-emitter: ^2.1.0
-    uuid: ^8.3.2
-  checksum: 44b452a03106a200fca7a73ff9e4acd22895cda5e087646d8aae19254793b188952c9aca20c387ce2f6f234cff081e2bc8246e3ae88c81e0b4a86a582d7f38ad
+  checksum: 69bf1521485c0a29f10edc85c06fee33a983f1363639e6662bd65389602f4e2ded8e37be6d3cf845bd6efef6712680fce7592e175d5e1e33291dc2769ac66c4c
   languageName: node
   linkType: hard
 
-"@webex/web-media-effects@npm:^2.13.3":
-  version: 2.13.4
-  resolution: "@webex/web-media-effects@npm:2.13.4"
+"@webex/web-client-media-engine@npm:3.11.1":
+  version: 3.11.1
+  resolution: "@webex/web-client-media-engine@npm:3.11.1"
+  dependencies:
+    "@webex/json-multistream": ^2.1.1
+    "@webex/rtcstats": ^1.1.1
+    "@webex/ts-events": ^1.0.1
+    "@webex/ts-sdp": 1.6.0
+    "@webex/web-capabilities": ^1.1.1
+    "@webex/webrtc-core": 2.3.0
+    async: ^3.2.4
+    js-logger: ^1.6.1
+    typed-emitter: ^2.1.0
+    uuid: ^8.3.2
+  checksum: 7103c9793030b039664e29cbbaef3d9a74814e3724b518db40fd6124e41f58b59d9af91f7ff83572318df0f13a1f07600f0d6424f2f273910b4b2ed9cc953da2
+  languageName: node
+  linkType: hard
+
+"@webex/web-media-effects@npm:^2.15.6":
+  version: 2.15.6
+  resolution: "@webex/web-media-effects@npm:2.15.6"
   dependencies:
     "@webex/ladon-ts": ^4.2.4
     events: ^3.3.0
     js-logger: ^1.6.1
     typed-emitter: ^1.4.0
-  checksum: 494c96404a82eeebc07fb634cffed8180ce44cd9b93b066a5b16490a83e01f19ae6622a3314cc9d8b44967d6a0dfdf8761354432a26f8316a28ef7f13a19f82b
-  languageName: node
-  linkType: hard
-
-"@webex/web-media-effects@npm:^2.7.0":
-  version: 2.11.3
-  resolution: "@webex/web-media-effects@npm:2.11.3"
-  dependencies:
-    "@webex/ladon-ts": ^4.2.3
-    events: ^3.3.0
-    js-logger: ^1.6.1
-    typed-emitter: ^1.4.0
-  checksum: 8fbbd94dbedaf5f24c89e67268f0ee0ba85f68673166d79e6e50f69cf3bfa216c1f27ba7e7ea4480514647771904d535eb34ec6ec039cfe0afbc8e2c02d7ea76
+    uuid: ^9.0.1
+  checksum: cd37e0c7b37a7a6611ae14ca1926453cd536c3259bfffc6b1ca2d3a804caab97c44101c31cccdb8b91a7d03cc4e0fc60d0b3785e4c6fcde0f937ceb055fcf977
   languageName: node
   linkType: hard
 
@@ -9110,17 +9092,18 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/webrtc-core@npm:2.1.0":
-  version: 2.1.0
-  resolution: "@webex/webrtc-core@npm:2.1.0"
+"@webex/webrtc-core@npm:2.3.0":
+  version: 2.3.0
+  resolution: "@webex/webrtc-core@npm:2.3.0"
   dependencies:
     "@webex/ts-events": ^1.1.0
-    "@webex/web-media-effects": ^2.7.0
+    "@webex/web-capabilities": ^1.1.0
+    "@webex/web-media-effects": ^2.15.6
     events: ^3.3.0
     js-logger: ^1.6.1
     typed-emitter: ^2.1.0
     webrtc-adapter: ^8.1.2
-  checksum: e715155031ff85c8c0799910a4f78a3c1683f069e0c1419e09683b1065783f4a40735bd2f60c3725da7e1609995ba76183d62f62da75234cbca11ae52c471d71
+  checksum: ecbdce95478f3db34ddeb1a7308fba039aeb4b7e9a0111e8efa804e8f8b1aca5d7a7720020ea0557aa107bbc7c55fe11443e308b5b926fca55364abc3c5ede7d
   languageName: node
   linkType: hard
 
@@ -30042,6 +30025,15 @@ __metadata:
   bin:
     uuid: dist/bin/uuid
   checksum: 8dd2c83c43ddc7e1c71e36b60aea40030a6505139af6bee0f382ebcd1a56f6cd3028f7f06ffb07f8cf6ced320b76aea275284b224b002b289f89fe89c389b028
+  languageName: node
+  linkType: hard
+
+"uuid@npm:^9.0.1":
+  version: 9.0.1
+  resolution: "uuid@npm:9.0.1"
+  bin:
+    uuid: dist/bin/uuid
+  checksum: 39931f6da74e307f51c0fb463dc2462807531dc80760a9bff1e35af4316131b4fc3203d16da60ae33f07fdca5b56f3f1dd662da0c99fea9aaeab2004780cc5f4
   languageName: node
   linkType: hard
 

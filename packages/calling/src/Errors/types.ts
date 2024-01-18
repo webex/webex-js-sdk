@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-empty-interface */
-import {LineStatus} from '../CallingClient/line/types';
-import {CorrelationId, IMetaContext} from '../common/types';
+import {CorrelationId, IMetaContext, RegistrationStatus} from '../common/types';
 
 export type ErrorMessage = string;
 
@@ -61,7 +60,7 @@ export type ErrorObject = {
 };
 
 export interface LineErrorObject extends ErrorObject {
-  status: LineStatus;
+  status: RegistrationStatus;
 }
 
 export interface CallErrorObject extends ErrorObject {

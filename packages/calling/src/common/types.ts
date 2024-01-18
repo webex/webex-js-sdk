@@ -14,9 +14,10 @@ export enum HTTP_METHODS {
   DELETE = 'DELETE',
 }
 
-export enum MobiusStatus {
+export enum RegistrationStatus {
+  IDLE = 'IDLE',
   ACTIVE = 'active',
-  DEFAULT = 'default',
+  INACTIVE = 'inactive',
 }
 
 export enum CALLING_BACKEND {
