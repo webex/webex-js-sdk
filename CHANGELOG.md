@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.315](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.314...v3.0.0-beta.315) (2024-01-18)
+
+
+### Features
+
+* **ca-metrics:** fix negative timestamps ([#3313](https://github.com/webex/webex-js-sdk/issues/3313)) ([09a0f13](https://github.com/webex/webex-js-sdk/commit/09a0f13e3865beedacfa1b89dd191403ce36a6d7))
+
 ## [3.0.0-beta.314](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.313...v3.0.0-beta.314) (2024-01-18)
 
 
