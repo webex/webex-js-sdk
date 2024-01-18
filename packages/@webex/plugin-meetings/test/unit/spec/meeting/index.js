@@ -5528,6 +5528,7 @@ describe('plugin-meetings', () => {
             meeting.setupMediaConnectionListeners();
             meeting.deferSDPAnswer = {
               resolve: sinon.stub(),
+              reject: sinon.stub(),
             };
             meeting.sdpResponseTimer = '1234';
             meeting.mediaProperties.waitForMediaConnectionConnected = sinon.stub().resolves();
