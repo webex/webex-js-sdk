@@ -1,23 +1,6 @@
+/* eslint-disable class-methods-use-this */
 import {CallDiagnosticUtils} from '@webex/internal-plugin-metrics';
 import RTC_METRICS from './constants';
-
-/**
- * Anonymize IP addresses.
- *
- * @param {array} stats - An RTCStatsReport organized into an array of strings.
- * @returns {string}
- */
-export const anonymizeIp = (stats: string): string => {
-  const data = JSON.parse(stats);
-  // on local and remote candidates, anonymize the last 4 bits.
-  if (data.type === 'local-candidate' || data.type === 'remote-candidate') {
-    data.ip = CallDiagnosticUtils.anonymizeIPAddress(data.ip) || undefined;
-    data.address = CallDiagnosticUtils.anonymizeIPAddress(data.address) || undefined;
-    data.relatedAddress = CallDiagnosticUtils.anonymizeIPAddress(data.relatedAddress) || undefined;
-  }
-
-  return JSON.stringify(data);
-};
 
 /**
  * Rtc Metrics
@@ -75,7 +58,7 @@ export default class RtcMetrics {
   addMetrics(data) {
     if (data.payload.length) {
       if (data.name === 'stats-report') {
-        data.payload = data.payload.map(anonymizeIp);
+        data.payload = data.payload.map(this.anonymizeIp);
       }
       this.metricsQueue.push(data);
     }
@@ -89,6 +72,25 @@ export default class RtcMetrics {
   closeMetrics() {
     this.sendMetricsInQueue();
     clearInterval(this.intervalId);
+  }
+
+  /**
+   * Anonymize IP addresses.
+   *
+   * @param {array} stats - An RTCStatsReport organized into an array of strings.
+   * @returns {string}
+   */
+  anonymizeIp(stats: string): string {
+    const data = JSON.parse(stats);
+    // on local and remote candidates, anonymize the last 4 bits.
+    if (data.type === 'local-candidate' || data.type === 'remote-candidate') {
+      data.ip = CallDiagnosticUtils.anonymizeIPAddress(data.ip) || undefined;
+      data.address = CallDiagnosticUtils.anonymizeIPAddress(data.address) || undefined;
+      data.relatedAddress =
+        CallDiagnosticUtils.anonymizeIPAddress(data.relatedAddress) || undefined;
+    }
+
+    return JSON.stringify(data);
   }
 
   /**
