@@ -532,6 +532,10 @@ function joinMeeting({withMedia, withDevice} = {withMedia: false, withDevice: fa
           viewBreakouts();
         });
 
+        meeting.on('meeting:stoppedSharingRemote', () => {
+          meetingStreamsRemoteShare.srcObject = null;
+        });
+
         eventsList.innerText = '';
         meeting.on('all', (payload) => {
           updatePublishedEvents(payload);
