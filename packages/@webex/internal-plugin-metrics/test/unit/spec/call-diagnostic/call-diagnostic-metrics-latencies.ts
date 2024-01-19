@@ -103,6 +103,35 @@ describe('internal-plugin-metrics', () => {
       assert.deepEqual(cdl.getMeetingInfoReqResp(), 10);
     });
 
+    it('calculates getMeetingInfoReqResp correctly when duplicate requests/responses are sent', () => {
+      cdl.saveTimestamp({key: 'internal.client.meetinginfo.request', value: 8});
+      cdl.saveTimestamp({key: 'internal.client.meetinginfo.response', value: 18});
+      cdl.saveTimestamp({key: 'internal.client.meetinginfo.request', value: 47});
+      cdl.saveTimestamp({key: 'internal.client.meetinginfo.response', value: 48});
+      assert.deepEqual(cdl.getMeetingInfoReqResp(), 10);
+    });
+
+    describe('saveTimestamp', () => {
+
+      afterEach(() => {
+        sinon.restore();
+      });
+
+      it('calls saveFirstTimestamp for meeting info request', () => {
+        const saveFirstTimestamp = sinon.stub(cdl, 'saveFirstTimestampOnly');
+        cdl.saveTimestamp({key: 'internal.client.meetinginfo.request', value: 10});
+        cdl.saveTimestamp({key: 'client.alert.displayed', value: 15});
+        assert.deepEqual(saveFirstTimestamp.callCount, 1);
+      });
+
+      it('calls saveFirstTimestamp for meeting info response', () => {
+        const saveFirstTimestamp = sinon.stub(cdl, 'saveFirstTimestampOnly');
+        cdl.saveTimestamp({key: 'client.alert.displayed', value: 15});
+        cdl.saveTimestamp({key: 'internal.client.meetinginfo.response', value: 20});
+        assert.deepEqual(saveFirstTimestamp.callCount, 1);
+      });
+    });
+
     it('calculates getShowInterstitialTime correctly', () => {
       cdl.saveTimestamp({key: 'client.interstitial-window.start-launch', value: 10});
       cdl.saveTimestamp({key: 'internal.client.interstitial-window.click.joinbutton', value: 20});
