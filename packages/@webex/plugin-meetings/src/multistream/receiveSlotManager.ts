@@ -1,6 +1,7 @@
 /* eslint-disable valid-jsdoc */
 /* eslint-disable import/prefer-default-export */
 import {MediaType, ReceiveSlot as WcmeReceiveSlot} from '@webex/internal-media-core';
+import {NamedMediaGroup} from '@webex/json-multistream';
 import LoggerProxy from '../common/logs/logger-proxy';
 
 import {FindMemberIdCallback, ReceiveSlot} from './receiveSlot';
@@ -50,15 +51,21 @@ export class ReceiveSlotManager {
    * Creates a new receive slot or returns one from the existing pool of free slots
    *
    * @param {MediaType} mediaType
-   * @param isNamedMediaGroup {boolean}
+   * @param isNamedMeida {boolean}
    * @returns {Promise<ReceiveSlot>}
    */
-  async allocateSlot(mediaType: MediaType, isNamedMediaGroup = false): Promise<ReceiveSlot> {
+  async allocateSlot(
+    mediaType: MediaType,
+    namedMediaGroup: NamedMediaGroup = undefined
+  ): Promise<ReceiveSlot> {
     // try to use one of the free ones
     const availableSlot = this.freeSlots[mediaType].pop();
 
     if (availableSlot) {
       this.allocatedSlots[mediaType].push(availableSlot);
+      if (namedMediaGroup) {
+        availableSlot?.setNamedMediaGroup(namedMediaGroup);
+      }
 
       LoggerProxy.logger.log(`${mediaType}: receive slot re-used: ${availableSlot.id}`);
 
@@ -68,12 +75,10 @@ export class ReceiveSlotManager {
     // we have to create a new one
     const wcmeReceiveSlot = await this.createSlotCallback(mediaType);
 
-    const receiveSlot = new ReceiveSlot(
-      mediaType,
-      wcmeReceiveSlot,
-      this.findMemberIdByCsiCallback,
-      isNamedMediaGroup
-    );
+    const receiveSlot = new ReceiveSlot(mediaType, wcmeReceiveSlot, this.findMemberIdByCsiCallback);
+    if (namedMediaGroup) {
+      receiveSlot?.setNamedMediaGroup(namedMediaGroup);
+    }
 
     this.allocatedSlots[mediaType].push(receiveSlot);
     LoggerProxy.logger.log(`${mediaType}: new receive slot allocated: ${receiveSlot.id}`);
@@ -92,6 +97,7 @@ export class ReceiveSlotManager {
 
     if (idx >= 0) {
       this.allocatedSlots[slot.mediaType].splice(idx, 1);
+      slot.setNamedMediaGroup(undefined);
       this.freeSlots[slot.mediaType].push(slot);
       LoggerProxy.logger.log(`${slot.mediaType}: receive slot released: ${slot.id}`);
     } else {

@@ -6,6 +6,7 @@ import {
   StreamState,
 } from '@webex/internal-media-core';
 
+import {NamedMediaGroup} from '@webex/json-multistream';
 import LoggerProxy from '../common/logs/logger-proxy';
 import EventsScope from '../common/events/events-scope';
 
@@ -41,7 +42,7 @@ export class ReceiveSlot extends EventsScope {
   #csi?: CSI;
 
   #sourceState: StreamState;
-  public isNamedMediaGroup: boolean;
+  public namedMediaGroup: NamedMediaGroup;
 
   /**
    * constructor - don't use it directly, you should always use meeting.receiveSlotManager.allocateSlot()
@@ -54,8 +55,7 @@ export class ReceiveSlot extends EventsScope {
   constructor(
     mediaType: MediaType,
     mcReceiveSlot: WcmeReceiveSlot,
-    findMemberIdCallback: FindMemberIdCallback,
-    isNamedMediaGroup?: boolean
+    findMemberIdCallback: FindMemberIdCallback
   ) {
     super();
 
@@ -66,9 +66,18 @@ export class ReceiveSlot extends EventsScope {
     this.mcReceiveSlot = mcReceiveSlot;
     this.#sourceState = 'no source';
     this.id = `r${receiveSlotCounter}`;
-    this.isNamedMediaGroup = isNamedMediaGroup;
-
+    this.namedMediaGroup = {type: 1, value: 0};
     this.setupEventListeners();
+  }
+
+  /**
+   * Set whether the slot for named media
+   * @param isNamedMedia {boolean}
+   */
+  public setNamedMediaGroup(namedMediaGroup: NamedMediaGroup) {
+    if (namedMediaGroup) {
+      Object.assign(this.namedMediaGroup, namedMediaGroup);
+    }
   }
 
   /**

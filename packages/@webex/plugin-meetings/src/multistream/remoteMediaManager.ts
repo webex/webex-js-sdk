@@ -291,8 +291,8 @@ export class RemoteMediaManager extends EventsScope {
         video: undefined,
       },
       receiveNamedMediaGroup: {
-        type: undefined,
-        value: undefined,
+        type: 1,
+        value: 112,
       },
     };
 
@@ -554,12 +554,17 @@ export class RemoteMediaManager extends EventsScope {
     for (let i = 0; i < this.config.audio.numOfActiveSpeakerStreams; i += 1) {
       // eslint-disable-next-line no-await-in-loop
       const slot = await this.receiveSlotManager.allocateSlot(MediaType.AudioMain);
-
       this.slots.audio.push(slot);
     }
     // create slot for interpretation language audio
-    const siSlot = await this.receiveSlotManager.allocateSlot(MediaType.AudioMain, true);
-    this.slots.audio.push(siSlot);
+    if (this.media.receiveNamedMediaGroup.value) {
+      const siSlot = await this.receiveSlotManager.allocateSlot(
+        MediaType.AudioMain,
+        this.media.receiveNamedMediaGroup
+      );
+
+      this.slots.audio.push(siSlot);
+    }
 
     // create a remote media group
     this.media.audio = new RemoteMediaGroup(
