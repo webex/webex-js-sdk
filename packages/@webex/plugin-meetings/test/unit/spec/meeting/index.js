@@ -1992,6 +1992,90 @@ describe('plugin-meetings', () => {
           assert.isNotOk(errorThrown);
         });
 
+        it('should call join if state is LEFT after first media connection attempt', async () => {
+          const FAKE_TURN_URL = 'turns:webex.com:3478';
+          const FAKE_TURN_USER = 'some-turn-username';
+          const FAKE_TURN_PASSWORD = 'some-password';
+          let errorThrown = undefined;
+
+          meeting.meetingState = 'ACTIVE';
+          meeting.state = 'LEFT';
+          meeting.roap.doTurnDiscovery = sinon.stub().onFirstCall().returns({
+            turnServerInfo: undefined,
+            turnDiscoverySkippedReason: 'reachability',
+          }).onSecondCall().returns({
+            turnServerInfo: {
+              url: FAKE_TURN_URL,
+              username: FAKE_TURN_USER,
+              password: FAKE_TURN_PASSWORD,
+            },
+            turnDiscoverySkippedReason: undefined,
+          });
+          meeting.mediaProperties.waitForMediaConnectionConnected = sinon.stub().onFirstCall().rejects().onSecondCall().resolves();
+          meeting.join = sinon.stub().resolves();
+
+          const closeMediaConnectionStub = sinon.stub();
+          Media.createMediaConnection = sinon.stub().returns({
+            close: closeMediaConnectionStub,
+            getConnectionState: sinon.stub().returns(ConnectionState.Connected),
+            initiateOffer: sinon.stub().resolves({}),
+            on: sinon.stub(),
+          });
+
+          await meeting
+            .addMedia({
+              mediaSettings: {},
+            })
+            .catch((err) => {
+              errorThrown = err;
+            });
+
+          assert.isNotOk(errorThrown);
+          assert.calledOnceWithExactly(meeting.join, {rejoin: true});
+        });
+
+        it('should reject if join attempt fails if state is LEFT after first media connection attempt', async () => {
+          const FAKE_TURN_URL = 'turns:webex.com:3478';
+          const FAKE_TURN_USER = 'some-turn-username';
+          const FAKE_TURN_PASSWORD = 'some-password';
+          let errorThrown = undefined;
+
+          meeting.meetingState = 'ACTIVE';
+          meeting.state = 'LEFT';
+          meeting.roap.doTurnDiscovery = sinon.stub().onFirstCall().returns({
+            turnServerInfo: undefined,
+            turnDiscoverySkippedReason: 'reachability',
+          }).onSecondCall().returns({
+            turnServerInfo: {
+              url: FAKE_TURN_URL,
+              username: FAKE_TURN_USER,
+              password: FAKE_TURN_PASSWORD,
+            },
+            turnDiscoverySkippedReason: undefined,
+          });
+          meeting.mediaProperties.waitForMediaConnectionConnected = sinon.stub().onFirstCall().rejects().onSecondCall().resolves();
+          meeting.join = sinon.stub().rejects();
+
+          const closeMediaConnectionStub = sinon.stub();
+          Media.createMediaConnection = sinon.stub().returns({
+            close: closeMediaConnectionStub,
+            getConnectionState: sinon.stub().returns(ConnectionState.Connected),
+            initiateOffer: sinon.stub().resolves({}),
+            on: sinon.stub(),
+          });
+
+          await meeting
+            .addMedia({
+              mediaSettings: {},
+            })
+            .catch((err) => {
+              errorThrown = err;
+            });
+
+          assert.isOk(errorThrown);
+          assert.calledOnceWithExactly(meeting.join, {rejoin: true});
+        });
+
         it('should send ADD_MEDIA_SUCCESS metrics', async () => {
           meeting.meetingState = 'ACTIVE';
           meeting.webex.meetings.reachability = {
@@ -7443,6 +7527,11 @@ describe('plugin-meetings', () => {
               actionName: 'canTransferFile',
               requiredDisplayHints: [],
               requiredPolicies: [SELF_POLICY.SUPPORT_FILE_TRANSFER],
+            },
+            {
+              actionName: 'canChat',
+              requiredDisplayHints: [],
+              requiredPolicies: [SELF_POLICY.SUPPORT_CHAT],
             },
             {
               actionName: 'canShareDesktop',
