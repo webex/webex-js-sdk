@@ -291,8 +291,8 @@ export class RemoteMediaManager extends EventsScope {
         video: undefined,
       },
       receiveNamedMediaGroup: {
-        type: 1,
-        value: 112,
+        type: undefined,
+        value: undefined,
       },
     };
 
@@ -539,11 +539,23 @@ export class RemoteMediaManager extends EventsScope {
    *
    *
    */
-  public setReceiveNamedMediaGroup(type: number, value: number) {
+  public async setReceiveNamedMediaGroup(type: number, value: number) {
+    if (
+      type === this.media.receiveNamedMediaGroup.type &&
+      value === this.media.receiveNamedMediaGroup.value
+    ) {
+      return;
+    }
+    if (!value) {
+      return;
+    }
+
     this.media.receiveNamedMediaGroup = {
       type,
       value,
     };
+
+    await this.createAudioMedia();
   }
 
   /**
