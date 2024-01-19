@@ -179,7 +179,7 @@ describe('plugin-meetings', () => {
                 report: [
                   {
                     type: 'outbound-rtp',
-                    framesSent: 0,
+                    framesSent: 1500,
                     bytesSent: 1,
                   },
                   {
@@ -209,7 +209,7 @@ describe('plugin-meetings', () => {
                     bytesReceived: 1,
                     frameHeight: 720,
                     frameWidth: 1280,
-                    framesReceived: 1,
+                    framesReceived: 1500,
                   },
                   {
                     type: 'candidate-pair',
@@ -436,6 +436,16 @@ describe('plugin-meetings', () => {
 
         assert.strictEqual(mqeData.intervalMetadata.peripherals.find((val) => val.name === MEDIA_DEVICES.MICROPHONE).information, _UNKNOWN_);
         assert.strictEqual(mqeData.intervalMetadata.peripherals.find((val) => val.name === MEDIA_DEVICES.CAMERA).information, _UNKNOWN_);
+      });
+
+      it('emits the correct frameRate', async () => {
+        await startStatsAnalyzer({expected: {receiveVideo: true}});
+
+        await progressTime();
+        assert.strictEqual(mqeData.videoReceive[0].streams[0].common.receivedFrameRate, 25);
+        fakeStats.video.receivers[0].framesReceived = 3000;
+        await progressTime();
+        assert.strictEqual(mqeData.videoReceive[0].streams[0].common.receivedFrameRate, 25);
       });
     });
   });

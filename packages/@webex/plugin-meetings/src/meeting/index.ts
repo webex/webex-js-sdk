@@ -5925,8 +5925,16 @@ export default class Meeting extends StatelessWebexPlugin {
     bundlePolicy?: BundlePolicy
   ): Promise<void> {
     this.retriedWithTurnServer = true;
+    const LOG_HEADER = 'Meeting:index#addMedia():retryWithForcedTurnDiscovery -->';
 
     await this.cleanUpBeforeRetryWithTurnServer();
+
+    if (this.state === MEETING_STATE.STATES.LEFT) {
+      LoggerProxy.logger.info(
+        `${LOG_HEADER} meeting state was LEFT after first attempt to establish media connection. Attempting to rejoin. `
+      );
+      await this.join({rejoin: true});
+    }
 
     await this.retryEstablishMediaConnectionWithForcedTurnDiscovery(
       remoteMediaManagerConfig,
