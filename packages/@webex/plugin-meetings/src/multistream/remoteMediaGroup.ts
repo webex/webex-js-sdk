@@ -58,10 +58,10 @@ export class RemoteMediaGroup {
   /**
    * Gets the array of remote media elements from the group
    *
-   * @param {string} filter - 'all' (default) returns both pinned and unpinned
+   * @param {string} filter - 'all' (default) returns both pinned and unpinned and named
    * @returns {Array<RemoteMedia>}
    */
-  public getRemoteMedia(filter: 'all' | 'pinned' | 'unpinned' = 'all') {
+  public getRemoteMedia(filter: 'all' | 'pinned' | 'unpinned' | 'named' = 'all') {
     if (filter === 'unpinned') {
       // return a shallow copy so that the client cannot modify this.unpinnedRemoteMedia array
       return [...this.unpinnedRemoteMedia];
@@ -70,8 +70,12 @@ export class RemoteMediaGroup {
       // return a shallow copy so that the client cannot modify this.pinnedRemoteMedia array
       return [...this.pinnedRemoteMedia];
     }
+    if (filter === 'named') {
+      // return a shallow copy so that the client cannot modify this.namedMedia array
+      return [...this.namedMedia];
+    }
 
-    return [...this.unpinnedRemoteMedia, ...this.pinnedRemoteMedia];
+    return [...this.unpinnedRemoteMedia, ...this.pinnedRemoteMedia, ...this.namedMedia];
   }
 
   /**
