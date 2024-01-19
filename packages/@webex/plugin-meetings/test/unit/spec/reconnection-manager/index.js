@@ -3,6 +3,7 @@ import chai from 'chai';
 import chaiAsPromised from 'chai-as-promised';
 import sinon from 'sinon';
 import ReconnectionManager from '@webex/plugin-meetings/src/reconnection-manager';
+import { RECONNECTION } from '../../../../src/constants';
 
 const {assert} = chai;
 
@@ -297,6 +298,30 @@ describe('plugin-meetings', () => {
           reconnectionManager.waitForIceReconnect();
 
           assert.isTrue(reconnectionManager.iceState.disconnected);
+        });
+      });
+
+      describe('setStatus()', () => {
+        beforeEach(() => {
+          reconnectionManager.status = RECONNECTION.STATE.DEFAULT_STATUS;
+        });
+
+        it('should correctly change status to in progress', () => {
+          reconnectionManager.setStatus(RECONNECTION.STATE.IN_PROGRESS);
+
+          assert.equal(reconnectionManager.status, RECONNECTION.STATE.IN_PROGRESS);
+        });
+
+        it('should correctly change status to complete', () => {
+          reconnectionManager.setStatus(RECONNECTION.STATE.COMPLETE);
+
+          assert.equal(reconnectionManager.status, RECONNECTION.STATE.COMPLETE);
+        });
+
+        it('should correctly change status to failure', () => {
+          reconnectionManager.setStatus(RECONNECTION.STATE.FAILURE);
+
+          assert.equal(reconnectionManager.status, RECONNECTION.STATE.FAILURE);
         });
       });
     });

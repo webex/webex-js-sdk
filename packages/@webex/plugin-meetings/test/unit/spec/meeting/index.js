@@ -33,6 +33,7 @@ import {
   NETWORK_STATUS,
   ONLINE,
   OFFLINE,
+  RECONNECTION,
 } from '@webex/plugin-meetings/src/constants';
 import * as InternalMediaCoreModule from '@webex/internal-media-core';
 import {
@@ -5540,6 +5541,7 @@ describe('plugin-meetings', () => {
             meeting.reconnectionManager.reconnect = sinon.stub().returns(Promise.resolve());
             meeting.reconnectionManager.reset = sinon.stub().returns(true);
             meeting.reconnectionManager.cleanup = sinon.stub().returns(true);
+            meeting.reconnectionManager.setStatus = sinon.stub();
           });
 
           it('should throw error if media not established before trying reconnect', async () => {
@@ -5567,6 +5569,7 @@ describe('plugin-meetings', () => {
                 meetingId: meeting.id,
               },
             });
+            assert.calledOnceWithExactly(meeting.reconnectionManager.setStatus, RECONNECTION.STATE.COMPLETE);
           });
 
           it('should reset after reconnection success', async () => {

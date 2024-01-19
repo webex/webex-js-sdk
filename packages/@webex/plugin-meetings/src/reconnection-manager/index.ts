@@ -14,6 +14,7 @@ import {
   _CALL_,
   _LEFT_,
   _ID_,
+  RECONNECTION_STATUS,
 } from '../constants';
 import BEHAVIORAL_METRICS from '../metrics/constants';
 import ReconnectionError from '../common/errors/reconnection';
@@ -96,7 +97,7 @@ export default class ReconnectionManager {
 
     /**
      * @instance
-     * @type {String}
+     * @type {RECONNECTION_STATUS}
      * @private
      * @memberof ReconnectionManager
      */
@@ -263,6 +264,18 @@ export default class ReconnectionManager {
    */
   isReconnectInProgress() {
     return this.status === RECONNECTION.STATE.IN_PROGRESS;
+  }
+
+  /**
+   * Sets the reconnection status
+   *
+   * @public
+   * @param {RECONNECTION_STATUS} status
+   * @memberof ReconnectionManager
+   * @returns {undefined}
+   */
+  public setStatus(status: RECONNECTION_STATUS): undefined {
+    this.status = status;
   }
 
   /**
@@ -469,7 +482,6 @@ export default class ReconnectionManager {
       LoggerProxy.logger.log(
         'ReconnectionManager:index#executeReconnection --> webRTC media connection renewed and local sdp offer sent'
       );
-      this.status = RECONNECTION.STATE.COMPLETE;
 
       return media;
     } catch (error) {
