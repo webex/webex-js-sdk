@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.317](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.316...v3.0.0-beta.317) (2024-01-19)
+
+
+### Bug Fixes
+
+* **meetings:** mask ip address in webrtc metrics ([#3312](https://github.com/webex/webex-js-sdk/issues/3312)) ([528b167](https://github.com/webex/webex-js-sdk/commit/528b16767a5fff35774dad03683bed815db51685))
+
 ## [3.0.0-beta.316](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.315...v3.0.0-beta.316) (2024-01-19)
 
 
