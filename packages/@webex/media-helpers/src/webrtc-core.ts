@@ -100,7 +100,7 @@ class _LocalMicrophoneStream extends WcmeLocalMicrophoneStream {
       enabled: this.inputTrack?.enabled,
       label: this.label,
       readyState: this.readyState,
-      numEnabledEffects: this.getAllEffects().filter((item) => item.effect.isEnabled).length,
+      numEnabledEffects: this.getEffects().filter((item) => item.isEnabled).length,
     };
   }
 }
@@ -152,7 +152,7 @@ class _LocalCameraStream extends WcmeLocalCameraStream {
       enabled: this.inputTrack?.enabled,
       label: this.label,
       readyState: this.readyState,
-      numEnabledEffects: this.getAllEffects().filter((item) => item.effect.isEnabled).length,
+      numEnabledEffects: this.getEffects().filter((item) => item.isEnabled).length,
     };
   }
 }

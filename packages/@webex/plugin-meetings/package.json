@@ -32,6 +32,7 @@
     "build": "yarn run -T tsc --declaration true --declarationDir ./dist/types"
   },
   "devDependencies": {
+    "@peculiar/webcrypto": "^1.4.3",
     "@webex/plugin-meetings": "workspace:^",
     "@webex/test-helper-chai": "workspace:^",
     "@webex/test-helper-mocha": "workspace:^",
@@ -47,7 +48,7 @@
   },
   "dependencies": {
     "@webex/common": "workspace:^",
-    "@webex/internal-media-core": "2.2.1",
+    "@webex/internal-media-core": "2.2.2",
     "@webex/internal-plugin-conversation": "workspace:^",
     "@webex/internal-plugin-device": "workspace:^",
     "@webex/internal-plugin-llm": "workspace:^",

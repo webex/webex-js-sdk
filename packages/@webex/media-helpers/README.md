@@ -51,7 +51,7 @@ const effect = new VirtualBackgroundEffect({
 });
 
 // add the effect on the input camera stream.
-await cameraStream.addEffect("background-blur", effect);
+await cameraStream.addEffect(effect);
 
 //enable the effect once it is added to the stream
 await effect.enable()
@@ -79,7 +79,7 @@ const effect = new NoiseReductionEffect({
 });
 
 // add the effect on microphone stream.
-await microphoneStream.addEffect("background-noise-removal", effect);
+await microphoneStream.addEffect(effect);
 
 //enable the effect once it is added to the track
 await effect.enable()
