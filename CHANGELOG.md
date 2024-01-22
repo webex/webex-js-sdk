@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.318](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.317...v3.0.0-beta.318) (2024-01-19)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** use new webrtc-core effects APIs ([#3299](https://github.com/webex/webex-js-sdk/issues/3299)) ([7566aa3](https://github.com/webex/webex-js-sdk/commit/7566aa33a7ad3e3d465ae77cb56fd2649bdde629))
+
+## [3.0.0-beta.317](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.316...v3.0.0-beta.317) (2024-01-19)
+
+
+### Bug Fixes
+
+* **meetings:** mask ip address in webrtc metrics ([#3312](https://github.com/webex/webex-js-sdk/issues/3312)) ([528b167](https://github.com/webex/webex-js-sdk/commit/528b16767a5fff35774dad03683bed815db51685))
+
+## [3.0.0-beta.316](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.315...v3.0.0-beta.316) (2024-01-19)
+
+
+### Features
+
+* **plugin-meetings:** added changes to supportChat for cross-org Policy ([#3315](https://github.com/webex/webex-js-sdk/issues/3315)) ([ba02685](https://github.com/webex/webex-js-sdk/commit/ba02685ff3a46cc02caca5e24328569bb85745a2))
+
 ## [3.0.0-beta.315](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.314...v3.0.0-beta.315) (2024-01-18)
 
 
