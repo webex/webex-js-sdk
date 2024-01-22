@@ -274,7 +274,7 @@ export default class ReconnectionManager {
    * @memberof ReconnectionManager
    * @returns {undefined}
    */
-  public setStatus(status: RECONNECTION_STATUS): undefined {
+  public setStatus(status: RECONNECTION_STATUS) {
     this.status = status;
   }
 
