@@ -576,6 +576,7 @@ export default class Meeting extends StatelessWebexPlugin {
   private sendSlotManager: SendSlotManager = new SendSlotManager(LoggerProxy);
   private deferSDPAnswer?: Defer; // used for waiting for a response
   private sdpResponseTimer?: ReturnType<typeof setTimeout>;
+  private hasMediaConnectionConnectedAtLeastOnce: boolean;
 
   /**
    * @param {Object} attrs
@@ -1318,6 +1319,15 @@ export default class Meeting extends StatelessWebexPlugin {
      * @memberof Meeting
      */
     this.retriedWithTurnServer = false;
+
+    /**
+     * Whether or not the media connection has ever successfully connected.
+     * @instance
+     * @type {boolean}
+     * @private
+     * @memberof Meeting
+     */
+    this.hasMediaConnectionConnectedAtLeastOnce = false;
   }
 
   /**
@@ -5392,9 +5402,9 @@ export default class Meeting extends StatelessWebexPlugin {
       }
     });
 
-    this.mediaProperties.webrtcMediaConnection.on(Event.CONNECTION_STATE_CHANGED, (event) => {
+    this.mediaProperties.webrtcMediaConnection.on(Event.CONNECTION_STATE_CHANGED, async (event) => {
       const connectionFailed = async () => {
-        if (this.networkStatus) {
+        if (this.hasMediaConnectionConnectedAtLeastOnce) {
           // we know the media connection failed and browser will not attempt to recover it any more
           // so reset the timer as it's not needed anymore, we want to reconnect immediately
           this.reconnectionManager.resetReconnectionTimer();
@@ -5430,7 +5440,7 @@ export default class Meeting extends StatelessWebexPlugin {
             locus_id: this.locusId,
           });
         } else {
-          this.waitForMediaConnectionConnected();
+          await this.waitForMediaConnectionConnected();
         }
       };
 
@@ -5471,6 +5481,7 @@ export default class Meeting extends StatelessWebexPlugin {
           this.setNetworkStatus(NETWORK_STATUS.CONNECTED);
           this.reconnectionManager.iceReconnected();
           this.statsAnalyzer.startAnalyzer(this.mediaProperties.webrtcMediaConnection);
+          this.hasMediaConnectionConnectedAtLeastOnce = true;
           break;
         case ConnectionState.Disconnected:
           this.setNetworkStatus(NETWORK_STATUS.DISCONNECTED);
@@ -5479,11 +5490,11 @@ export default class Meeting extends StatelessWebexPlugin {
               'Meeting:index#setupMediaConnectionListeners --> state DISCONNECTED, automatic reconnection timed out.'
             );
 
-            connectionFailed();
+            await connectionFailed();
           });
           break;
         case ConnectionState.Failed:
-          connectionFailed();
+          await connectionFailed();
           break;
         default:
           break;
@@ -6134,6 +6145,7 @@ export default class Meeting extends StatelessWebexPlugin {
    */
   async addMedia(options: AddMediaOptions = {}): Promise<void> {
     this.retriedWithTurnServer = false;
+    this.hasMediaConnectionConnectedAtLeastOnce = false;
     const LOG_HEADER = 'Meeting:index#addMedia -->';
     LoggerProxy.logger.info(`${LOG_HEADER} called with: ${JSON.stringify(options)}`);
 
