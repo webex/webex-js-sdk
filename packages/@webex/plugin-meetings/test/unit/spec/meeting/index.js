@@ -5763,7 +5763,7 @@ describe('plugin-meetings', () => {
               setNetworkStatusCallParams: [NETWORK_STATUS.CONNECTED],
             });
 
-            // now simulate short connection loss, client.ice.end is not send a second time
+            // now simulate short connection loss, client.ice.end is not sent a second time
             resetSpies();
 
             eventListeners[Event.CONNECTION_STATE_CHANGED]({
