@@ -3,6 +3,7 @@
 import '@webex/internal-plugin-mercury';
 import '@webex/internal-plugin-conversation';
 import '@webex/internal-plugin-metrics';
+import '@webex/internal-plugin-voicea';
 // @ts-ignore
 import {WebexPlugin} from '@webex/webex-core';
 import {setLogger} from '@webex/internal-media-core';

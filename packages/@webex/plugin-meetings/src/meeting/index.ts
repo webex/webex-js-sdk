@@ -34,12 +34,19 @@ import {
 } from '@webex/media-helpers';
 
 import {
+  EVENT_TRIGGERS as VOICEAEVENTS,
+  TURN_ON_CAPTION_STATUS,
+} from '@webex/internal-plugin-voicea';
+import {processNewCaptions, processHighlightCreated} from './voicea-meeting';
+
+import {
   MeetingNotActiveError,
   UserInLobbyError,
   NoMediaEstablishedYetError,
   UserNotJoinedError,
   AddMediaFailed,
 } from '../common/errors/webex-errors';
+
 import {StatsAnalyzer, EVENTS as StatsAnalyzerEvents} from '../statsAnalyzer';
 import NetworkQualityMonitor from '../networkQualityMonitor';
 import LoggerProxy from '../common/logs/logger-proxy';
@@ -59,7 +66,7 @@ import MeetingsUtil from '../meetings/util';
 import RecordingUtil from '../recording-controller/util';
 import ControlsOptionsUtil from '../controls-options-manager/util';
 import MediaUtil from '../media/util';
-import Transcription from '../transcription';
+// import Transcription from '../transcription';
 import {Reactions, SkinTones} from '../reactions/reactions';
 import PasswordError from '../common/errors/password-error';
 import CaptchaError from '../common/errors/captcha-error';
@@ -156,6 +163,20 @@ const logRequest = (request: any, {logText = ''}) => {
       LoggerProxy.logger.error(`${logText} - has failed: `, error);
       throw error;
     });
+};
+
+export type Transcription = {
+  languageOptions: {
+    captionLanguages: string;
+    maxLanguages: number;
+    spokenLanguages: Array<string>;
+    currentCaptionLanguage: string;
+    requestedCaptionLanguage: string;
+    currentSpokenLanguage: string;
+  };
+  status: string;
+  isListening: boolean;
+  commandText: string;
 };
 
 export type LocalStreams = {
@@ -1840,6 +1861,7 @@ export default class Meeting extends StatelessWebexPlugin {
    * @memberof Meeting
    */
   private setUpInterpretationListener() {
+    // TODO: check if its getting used or not
     this.simultaneousInterpretation.on(INTERPRETATION.EVENTS.SUPPORT_LANGUAGES_UPDATE, () => {
       Trigger.trigger(
         this,
@@ -1850,7 +1872,7 @@ export default class Meeting extends StatelessWebexPlugin {
         EVENT_TRIGGERS.MEETING_INTERPRETATION_SUPPORT_LANGUAGES_UPDATE
       );
     });
-
+    // TODO: check if its getting used or not
     this.simultaneousInterpretation.on(
       INTERPRETATION.EVENTS.HANDOFF_REQUESTS_ARRIVED,
       (payload) => {
@@ -1865,6 +1887,56 @@ export default class Meeting extends StatelessWebexPlugin {
         );
       }
     );
+
+    this.webex.internal.voicea.on(
+      VOICEAEVENTS.VOICEA_ANNOUNCEMENT,
+      (payload: Transcription['languageOptions']) => {
+        this.transcription.languageOptions = payload;
+      }
+    );
+
+    this.webex.internal.voicea.on(VOICEAEVENTS.CAPTION_LANGUAGE_UPDATE, (payload) => {
+      const {data} = payload;
+      const {statusCode} = data;
+
+      if (statusCode === 200) {
+        this.transcription.languageOptions = {
+          ...this.transcription.languageOptions,
+          currentCaptionLanguage:
+            this.transcription.languageOptions.requestedCaptionLanguage ?? ENGLISH_LANGUAGE,
+        };
+      } else {
+        // TODO Handle Status Code and alert - SPARK-370923
+      }
+    });
+
+    this.webex.internal.voicea.on(VOICEAEVENTS.SPOKEN_LANGUAGE_UPDATE, (payload) => {
+      const {data} = payload;
+
+      if (data?.languageCode) {
+        this.transcription.languageOptions = {
+          ...this.transcription.languageOptions,
+          currentSpokenLanguage: data?.languageCode,
+        };
+      }
+    });
+
+    this.webex.internal.voicea.on(VOICEAEVENTS.CAPTIONS_TURNED_ON, (payload) => {
+      this.transcription.status = TURN_ON_CAPTION_STATUS.ENABLED;
+    });
+
+    this.webex.internal.voicea.on(VOICEAEVENTS.EVA_COMMAND, (payload) => {
+      const {data} = payload;
+
+      this.transcription.isListening = !!data.isListening;
+      this.transcription.commandText = data.text ?? '';
+    });
+    this.webex.internal.voicea.on(VOICEAEVENTS.NEW_CAPTION, async (payload) => {
+      await processNewCaptions();
+    });
+    this.webex.internal.voicea.on(VOICEAEVENTS.HIGHLIGHT_CREATED, async (payload) => {
+      await processHighlightCreated();
+    });
   }
 
   /**
@@ -2188,7 +2260,8 @@ export default class Meeting extends StatelessWebexPlugin {
       ({caption, transcribing}) => {
         // @ts-ignore - config coming from registerPlugin
         if (transcribing && !this.transcription && this.config.receiveTranscription) {
-          this.startTranscription();
+          // this.startTranscription();
+          this.webex.internal.voicea.toggleTranscribing(true);
         } else if (!transcribing && this.transcription) {
           Trigger.trigger(
             this,

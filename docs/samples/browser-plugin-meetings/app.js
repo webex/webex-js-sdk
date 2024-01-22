@@ -115,6 +115,7 @@ function generateWebexConfig({credentials}) {
         enableTurnDiscovery: turnDiscoveryCheckbox.checked,
       },
       enableAutomaticLLM: true,
+      receiveTranscription:true
     },
     credentials,
     // Any other sdk config we need
