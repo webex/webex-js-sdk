@@ -72,13 +72,17 @@ WebExMeetingsErrors[UserNotJoinedError.CODE] = UserNotJoinedError;
  * @classdesc Raised whenever the user has not established media yet.
  * @extends WebexMeetingsError
  * @property {number} code - 30103
- * @property {string} message - 'User has not established media yet'
+ * @property {string} message - error message
  */
 class NoMediaEstablishedYetError extends WebexMeetingsError {
   static CODE = 30103;
 
+  // eslint-disable-next-line require-jsdoc
   constructor() {
-    super(NoMediaEstablishedYetError.CODE, 'User has not established media yet');
+    super(
+      NoMediaEstablishedYetError.CODE,
+      'Webrtc media connection is missing, call addMedia() first'
+    );
   }
 }
 
@@ -104,22 +108,25 @@ export {UserInLobbyError};
 WebExMeetingsErrors[UserInLobbyError.CODE] = UserInLobbyError;
 
 /**
- * @class InvalidSdpError
- * @classdesc Raised whenever SDP generated via browser is invalid.
+ * @class SpaceIDDeprecatedError
+ * @classdesc Raised whenever the user passes Space ID as destination for create meeting.
  * @extends WebexMeetingsError
- * @property {number} code - 30201
- * @property {string} message - 'user is still in the lobby or not joined'
+ * @property {number} code - 30105
+ * @property {string} message - Using the space ID as a destination is no longer supported. Please refer to the [migration guide](https://github.com/webex/webex-js-sdk/wiki/Migration-to-Unified-Space-Meetings) to migrate to use the meeting ID or SIP address.'
  */
-class InvalidSdpError extends WebexMeetingsError {
-  static CODE = 30201;
+class SpaceIDDeprecatedError extends WebexMeetingsError {
+  static CODE = 30105;
 
-  constructor(message) {
-    super(InvalidSdpError.CODE, message || 'iceConnection: sdp generated is invalid');
+  constructor() {
+    super(
+      SpaceIDDeprecatedError.CODE,
+      'Using the space ID as a destination is no longer supported. Please refer to the [migration guide](https://github.com/webex/webex-js-sdk/wiki/Migration-to-Unified-Space-Meetings) to migrate to use the meeting ID or SIP address.'
+    );
   }
 }
 
-export {InvalidSdpError};
-WebExMeetingsErrors[InvalidSdpError.CODE] = InvalidSdpError;
+export {SpaceIDDeprecatedError};
+WebExMeetingsErrors[SpaceIDDeprecatedError.CODE] = SpaceIDDeprecatedError;
 
 /**
  * @class IceGatheringFailed
@@ -138,3 +145,20 @@ class IceGatheringFailed extends WebexMeetingsError {
 
 export {IceGatheringFailed};
 WebExMeetingsErrors[IceGatheringFailed.CODE] = IceGatheringFailed;
+
+/**
+ * @class AddMediaFailed
+ * @classdesc Raised whenever we fail to successfully add media to a meeting
+ * @extends WebexMeetingsError
+ * @property {number} code - 30203
+ * @property {string} message - 'Failed to add media'
+ */
+class AddMediaFailed extends WebexMeetingsError {
+  static CODE = 30203;
+
+  constructor() {
+    super(AddMediaFailed.CODE, 'Failed to add media');
+  }
+}
+export {AddMediaFailed};
+WebExMeetingsErrors[AddMediaFailed.CODE] = AddMediaFailed;

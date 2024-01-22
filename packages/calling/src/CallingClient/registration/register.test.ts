@@ -720,7 +720,9 @@ describe('Registration Tests', () => {
       const timer = reg.keepaliveTimer;
 
       /* add a call to the callManager */
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const call = reg.callManager.createCall();
+
       expect(Object.keys(reg.callManager.getActiveCalls()).length).toBe(1);
 
       /* send one keepalive */

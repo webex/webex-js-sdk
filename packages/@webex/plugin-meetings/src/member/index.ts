@@ -2,7 +2,7 @@
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
 import {MEETINGS, _IN_LOBBY_, _NOT_IN_MEETING_, _IN_MEETING_} from '../constants';
-import {IMediaStatus} from './member.types';
+import {IExternalRoles, IMediaStatus, ParticipantWithRoles} from './types';
 
 import MemberUtil from './util';
 
@@ -11,6 +11,7 @@ import MemberUtil from './util';
  */
 export default class Member {
   associatedUser: any;
+  canReclaimHost: boolean;
   id: any;
   isAudioMuted: any;
   isContentSharing: any;
@@ -29,10 +30,14 @@ export default class Member {
   isSelf: any;
   isUser: any;
   isVideoMuted: any;
+  roles: IExternalRoles;
   mediaStatus: IMediaStatus;
   name: any;
   participant: any;
   status: any;
+  supportsBreakouts: boolean;
+  supportsInterpretation: boolean;
+  supportLiveAnnotation: boolean;
   type: any;
   namespace = MEETINGS;
 
@@ -57,6 +62,13 @@ export default class Member {
         }
       | any = {}
   ) {
+    /**
+     * @instance
+     * @type {Boolean}
+     * @public
+     * @memberof Member
+     */
+    this.canReclaimHost = false;
     /**
      * The server participant object
      * @instance
@@ -102,6 +114,20 @@ export default class Member {
      * @memberof Member
      */
     this.isHandRaised = null;
+    /**
+     * @instance
+     * @type {Boolean}
+     * @public
+     * @memberof Member
+     */
+    this.supportsBreakouts = null;
+    /**
+     * @instance
+     * @type {Boolean}
+     * @public
+     * @memberof Member
+     */
+    this.supportLiveAnnotation = null;
     /**
      * @instance
      * @type {Boolean}
@@ -222,6 +248,15 @@ export default class Member {
      * @memberof Member
      */
     this.isModeratorAssignmentProhibited = null;
+
+    /**
+     * @instance
+     * @type {IExternalRoles}
+     * @public
+     * @memberof Member
+     */
+    this.roles = null;
+
     /**
      * @instance
      * @type {IMediaStatus}
@@ -250,11 +285,15 @@ export default class Member {
   private processParticipant(participant: object) {
     this.participant = participant;
     if (participant) {
+      this.canReclaimHost = MemberUtil.canReclaimHost(participant);
       this.id = MemberUtil.extractId(participant);
       this.name = MemberUtil.extractName(participant);
       this.isAudioMuted = MemberUtil.isAudioMuted(participant);
       this.isVideoMuted = MemberUtil.isVideoMuted(participant);
       this.isHandRaised = MemberUtil.isHandRaised(participant);
+      this.supportsBreakouts = MemberUtil.isBreakoutsSupported(participant);
+      this.supportsInterpretation = MemberUtil.isInterpretationSupported(participant);
+      this.supportLiveAnnotation = MemberUtil.isLiveAnnotationSupported(participant);
       this.isGuest = MemberUtil.isGuest(participant);
       this.isUser = MemberUtil.isUser(participant);
       this.isDevice = MemberUtil.isDevice(participant);
@@ -262,6 +301,7 @@ export default class Member {
       this.isModeratorAssignmentProhibited =
         MemberUtil.isModeratorAssignmentProhibited(participant);
       this.processStatus(participant);
+      this.processRoles(participant as ParticipantWithRoles);
       // must be done last
       this.isNotAdmitted = MemberUtil.isNotAdmitted(participant, this.isGuest, this.status);
     }
@@ -431,6 +471,17 @@ export default class Member {
     } else if (MemberUtil.isDevice(participant)) {
       this.isHost = MemberUtil.isAssociatedSame(participant, hostId);
     }
+  }
+
+  /**
+   * process the roles that have been applied to this member
+   * @param {Object} participant
+   * @returns {undefined}
+   * @private
+   * @memberof Member
+   */
+  private processRoles(participant: ParticipantWithRoles) {
+    this.roles = MemberUtil.extractControlRoles(participant);
   }
 
   /**

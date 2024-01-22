@@ -17,7 +17,7 @@
   "license": "Cisco EULA (https://www.cisco.com/c/en/us/products/end-user-license-agreement.html)",
   "author": "devsupport@webex.com",
   "engines": {
-    "node": ">=14.x <=16.x",
+    "node": "16.x",
     "npm": ">=6.x"
   },
   "main": "src/index.js",
@@ -26,14 +26,15 @@
     "url": "https://github.com/webex/webex-js-sdk"
   },
   "scripts": {
-    "clean": "rimraf packages/**/dist packages/**/types",
+    "clean": "rimraf \"packages/@webex/*/.coverage\" \"packages/@webex/*/dist\" \"packages/@webex/*/types\" \"packages/webex/.coverage\" \"packages/webex/dist\"",
     "prebuild": "yarn run clean",
     "build:publish": "yarn build:package && yarn workspaces foreach --parallel --verbose run build:src",
-    "build:local": "yarn workspaces foreach --parallel --verbose run build:src && yarn run samples:build",
-    "build": "yarn workspace @webex/calling run build:src && node ./tooling/index.js build && yarn && yarn ws:tools build && yarn run build:tsc",
-    "build:tsc": "yarn workspace @webex/plugin-meetings run build && yarn run tsc -p ./config/tsconfig.typecheck.json --noEmit",
+    "build:tools": "yarn workspaces foreach --from '@webex/*-tools' --topological-dev --parallel --verbose run build:src",
+    "build:local": "yarn ws:tools && yarn package-tools sync --tag next && yarn workspaces foreach --parallel --verbose run build:src && yarn run samples:build",
+    "build": "yarn workspace @webex/media-helpers run build:src && yarn workspace @webex/calling run build:src && node ./tooling/index.js build && yarn && yarn ws:tools build && yarn run build:tsc",
+    "build:tsc": "yarn run tsc -p ./config/tsconfig.typecheck.json --noEmit && yarn workspace @webex/internal-plugin-metrics run build && yarn workspace @webex/plugin-meetings run build",
     "build:script": "node ./tooling/index.js build --umd",
-    "build:skip-samples": "node ./tooling/index.js build --skip-samples && yarn workspace @webex/plugin-meetings run build",
+    "build:skip-samples": "node ./tooling/index.js build --skip-samples && yarn workspace @webex/internal-plugin-metrics run build && yarn workspace @webex/plugin-meetings run build",
     "build:dev": "NODE_ENV=development node ./tooling/index.js build",
     "prebuild:docs": "rimraf ./docs/api",
     "build:docs": "yarn workspace @webex/calling run build:docs && documentation build --config documentation/config.yml --format html --output ./docs/api --github ./packages/webex/src/index.js ./packages/@webex/plugin-*/src/index.[tj]s --babel=./babel.config.json",
@@ -243,5 +244,9 @@
       "release": "git add packages/*/package.json packages/@webex/*/package.json CHANGELOG.md && standard-version -a"
     }
   },
-  "packageManager": "yarn@3.4.1"
+  "packageManager": "yarn@3.4.1",
+  "dependencies": {
+    "querystring-es3": "^0.2.1"
+  },
+  "//": "Todo: https://jira-eng-gpk2.cisco.com/jira/browse/SPARK-490729"
 }

@@ -1,5 +1,5 @@
 const shell = require('shelljs');
-
+// eslint-disable-next-line import/no-unresolved
 const { Executor } = require('@webex/cli-tools');
 
 describe('Executor', () => {

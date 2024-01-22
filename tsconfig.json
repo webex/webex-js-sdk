@@ -18,6 +18,7 @@
     "removeComments": false,
     "skipLibCheck": true,
     "sourceMap": true,
+    "stripInternal": true,
     "target": "ES6",
     "lib": [
       "ESNext",

@@ -1,6 +1,6 @@
-import {Reaction, ReactionType, SkinTone, SkinToneType} from './reactions.type';
+import {Reaction, ReactionServerType, SkinTone, SkinToneType} from './reactions.type';
 
-const Reactions: Record<ReactionType, Reaction> = {
+const Reactions: Record<ReactionServerType, Reaction> = {
   smile: {
     type: 'smile',
     codepoints: '1F642',
@@ -31,12 +31,12 @@ const Reactions: Record<ReactionType, Reaction> = {
     codepoints: '1F44F',
     shortcodes: ':clap:',
   },
-  thumbs_up: {
+  thumb_up: {
     type: 'thumb_up',
     codepoints: '1F44D',
     shortcodes: ':thumbsup:',
   },
-  thumbs_down: {
+  thumb_down: {
     type: 'thumb_down',
     codepoints: '1F44E',
     shortcodes: ':thumbsdown:',

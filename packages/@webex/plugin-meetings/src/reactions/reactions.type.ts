@@ -1,3 +1,5 @@
+import {REACTION_RELAY_TYPES} from './constants';
+
 export type EmoticonData = {
   type: string;
   codepoints?: string;
@@ -5,20 +7,21 @@ export type EmoticonData = {
 };
 
 export type SkinTone = EmoticonData;
-// @ts-ignore
+
 export type Reaction = EmoticonData & {
   tone?: SkinTone;
 };
 
-export enum ReactionType {
+// eslint-disable-next-line no-shadow
+export enum ReactionServerType {
   smile = 'smile',
   sad = 'sad',
   wow = 'wow',
   haha = 'haha',
   celebrate = 'celebrate',
   clap = 'clap',
-  thumbs_up = 'thumbs_up',
-  thumbs_down = 'thumbs_down',
+  thumb_up = 'thumb_up',
+  thumb_down = 'thumb_down',
   heart = 'heart',
   fire = 'fire',
   prayer = 'prayer',
@@ -26,6 +29,7 @@ export enum ReactionType {
   slow_down = 'slow_down',
 }
 
+// eslint-disable-next-line no-shadow
 export enum SkinToneType {
   normal = 'normal',
   light = 'light',
@@ -34,3 +38,25 @@ export enum SkinToneType {
   medium_dark = 'medium_dark',
   dark = 'dark',
 }
+
+export type Sender = {
+  participantId: string;
+};
+
+export type ProcessedReaction = {
+  reaction: Reaction;
+  sender: {
+    id: Sender['participantId'];
+    name: string;
+  };
+};
+
+type RelayEventData = {
+  relayType: (typeof REACTION_RELAY_TYPES)['REACTION'];
+  reaction: Reaction;
+  sender: Sender;
+};
+
+export type RelayEvent = {
+  data: RelayEventData;
+};

@@ -1,6 +1,6 @@
 const fs = require('fs/promises');
 const path = require('path');
-
+// eslint-disable-next-line import/no-unresolved
 const { Package, Yarn } = require('@webex/package-tools');
 
 const fixtures = require('./package.fixture');

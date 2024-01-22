@@ -48,5 +48,19 @@ describe('plugin-meetings', () => {
         assert.deepEqual(meetingCollection.getByKey('value', 'test'), {value: 'test', id: uuid1});
       });
     });
+
+    describe('#getActiveBreakoutLocus', () => {
+      beforeEach(() => {
+        meetingCollection.meetings.test = {breakouts: {url: 'url', isActiveBreakout: true}, id: uuid1};
+      });
+      it('return null if empty breakoutUrl', () => {
+        assert.deepEqual(meetingCollection.getActiveBreakoutLocus(), null);
+      });
+
+      it('should get the meeting which joined breakout by breakoutUrl', () => {
+        assert.deepEqual(meetingCollection.getActiveBreakoutLocus('url'), {
+          breakouts: {url: 'url', isActiveBreakout: true}, id: uuid1});
+      });
+    });
   });
 });

@@ -47,7 +47,7 @@ import {
   MOBIUS_EU_INT,
 } from './constants';
 import Line from './line';
-import {ILine, LINE_EVENTS} from './line/types';
+import {ILine} from './line/types';
 import {METRIC_EVENT, REG_ACTION, METRIC_TYPE, IMetricManager} from '../Metrics/types';
 import {getMetricManager} from '../Metrics';
 

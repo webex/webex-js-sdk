@@ -6,6 +6,7 @@
     "Adam Weeks <adweeks@cisco.com> (https://adamweeks.com/)",
     "Arun Ganeshan <arungane@cisco.com>",
     "Christopher DuBois <chdubois@cisco.com> (https://chrisadubois.github.io/)",
+    "Dipanshu Sharma <dipashar@cisco.com>",
     "Kesava Krishnan Madavan <kmadavan@cisco.com>",
     "Priya Kesari <pkesari@cisco.com>",
     "Rajesh Kumar <rarajes2@cisco.com>",
@@ -26,7 +27,7 @@
     "directory": "packages/webex"
   },
   "engines": {
-    "node": ">=14"
+    "node": ">=16"
   },
   "browser": {
     "./dist/config-storage.js": "./dist/config-storage.shim.js",
@@ -70,6 +71,7 @@
     "@webex/common": "workspace:^",
     "@webex/internal-plugin-calendar": "workspace:^",
     "@webex/internal-plugin-device": "workspace:^",
+    "@webex/internal-plugin-llm": "workspace:^",
     "@webex/internal-plugin-presence": "workspace:^",
     "@webex/internal-plugin-support": "workspace:^",
     "@webex/plugin-attachment-actions": "workspace:^",

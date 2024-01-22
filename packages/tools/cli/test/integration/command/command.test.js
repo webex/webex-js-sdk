@@ -1,5 +1,5 @@
 const { Command: Commander } = require('commander');
-
+// eslint-disable-next-line import/no-unresolved
 const { Commands } = require('@webex/cli-tools');
 
 const { generateCommandFixture } = require('./command.fixture');

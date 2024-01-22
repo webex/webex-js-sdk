@@ -1,5 +1,6 @@
+// eslint-disable-next-line import/no-unresolved
 const { Executor } = require('@webex/cli-tools');
-
+// eslint-disable-next-line import/no-unresolved
 const { Yarn } = require('@webex/package-tools');
 
 describe('Yarn', () => {

@@ -12,7 +12,7 @@ import {
   createDisplayStream,
   createDisplayStreamWithAudio,
 } from '../../../src/webrtc-core';
-import * as wcmeStreams from '@webex/internal-media-core';
+import * as wcmestreams from '@webex/internal-media-core';
 
 describe('media-helpers', () => {
   describe('webrtc-core', () => {
@@ -36,11 +36,12 @@ describe('media-helpers', () => {
     classesToTest.forEach(({className, title, event, createFn, spyFn}) =>
       describe(title, () => {
         const fakeStream = {
-          getStreams: sinon.stub().returns([
+          getTracks: sinon.stub().returns([
             {
-              label: 'fake Stream',
-              id: 'fake Stream id',
+              label: 'fake track',
+              id: 'fake track id',
               enabled: true,
+              addEventListener: sinon.stub(),
             },
           ]),
         };
@@ -70,6 +71,10 @@ describe('media-helpers', () => {
           await stream.setMuted(false);
         });
 
+        it('returns a reasonable length string from JSON.stringify()', () => {
+          assert.isBelow(JSON.stringify(stream).length, 200);
+        })
+
         describe('#setServerMuted', () => {
           afterEach(() => {
             sinon.restore();
@@ -87,7 +92,7 @@ describe('media-helpers', () => {
 
             assert.equal(stream.muted, setMute);
             if (expectedCalled) {
-              assert.calledOnceWithExactly(handler, {muted: setMute, reason: 'remotelyMuted'});
+              assert.calledOnceWithExactly(handler, setMute, 'remotelyMuted');
             } else {
               assert.notCalled(handler);
             }
@@ -111,10 +116,10 @@ describe('media-helpers', () => {
         });
 
         describe('#wcmeCreateMicrophoneStream, #wcmeCreateCameraStream', () => {
-          it('checks creating Streams', async () => {
-            const constraints = {devideId: 'abc'};
+          it('checks creating tracks', async () => {
+            const constraints = {deviceId: 'abc'};
 
-            const spy = sinon.stub(wcmeStreams, spyFn).returns('something');
+            const spy = sinon.stub(wcmestreams, spyFn).returns('something');
             const result = createFn(constraints);
 
             assert.equal(result, 'something');
@@ -126,16 +131,16 @@ describe('media-helpers', () => {
 
     describe('createDisplayStream', () => {
       it('checks createDisplayStream', async () => {
-        const spy = sinon.stub(wcmeStreams, 'createDisplayStream').returns('something');
+        const spy = sinon.stub(wcmestreams, 'createDisplayStream').returns('something');
         const result = createDisplayStream();
         assert.equal(result, 'something');
         assert.calledOnceWithExactly(spy, LocalDisplayStream);
       });
     });
-
+    
     describe('createDisplayStreamWithAudio', () => {
       it('checks createDisplayStreamWithAudio', async () => {
-        const spy = sinon.stub(wcmeStreams, 'createDisplayStreamWithAudio').returns('something');
+        const spy = sinon.stub(wcmestreams, 'createDisplayStreamWithAudio').returns('something');
         const result = createDisplayStreamWithAudio();
         assert.equal(result, 'something');
         assert.calledOnceWithExactly(spy, LocalDisplayStream, LocalSystemAudioStream);

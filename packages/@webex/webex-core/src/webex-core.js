@@ -6,7 +6,12 @@ import {EventEmitter} from 'events';
 import util from 'util';
 
 import {proxyEvents, retry, transferEvents} from '@webex/common';
-import {HttpStatusInterceptor, defaults as requestDefaults} from '@webex/http-core';
+import {
+  HttpStatusInterceptor,
+  defaults as requestDefaults,
+  protoprepareFetchOptions as prepareFetchOptions,
+  setTimingsAndFetch as _setTimingsAndFetch,
+} from '@webex/http-core';
 import {defaultsDeep, get, isFunction, isString, last, merge, omit, set, unset} from 'lodash';
 import AmpState from 'ampersand-state';
 import uuid from 'uuid';
@@ -401,6 +406,13 @@ const WebexCore = AmpState.extend({
       json: true,
       interceptors: ints,
     });
+
+    this.prepareFetchOptions = prepareFetchOptions({
+      json: true,
+      interceptors: ints,
+    });
+
+    this.setTimingsAndFetch = _setTimingsAndFetch;
 
     let sessionId = `${get(this, 'config.trackingIdPrefix', 'webex-js-sdk')}_${get(
       this,

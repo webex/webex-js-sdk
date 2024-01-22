@@ -1,5 +1,5 @@
 const path = require('path');
-
+// eslint-disable-next-line import/no-unresolved
 const { increment, Package, Yarn } = require('@webex/package-tools');
 
 describe('increment', () => {

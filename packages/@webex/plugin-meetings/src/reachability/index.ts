@@ -4,9 +4,11 @@
 
 /* eslint-disable class-methods-use-this */
 /* globals window */
-import _ from 'lodash';
+import {uniq, mapValues, pick} from 'lodash';
 
 import LoggerProxy from '../common/logs/logger-proxy';
+import MeetingUtil from '../meeting/util';
+
 import {ICE_GATHERING_STATE, CONNECTION_STATE, REACHABILITY} from '../constants';
 
 import ReachabilityRequest from './request';
@@ -14,11 +16,56 @@ import ReachabilityRequest from './request';
 const DEFAULT_TIMEOUT = 3000;
 const VIDEO_MESH_TIMEOUT = 1000;
 
+export type ReachabilityMetrics = {
+  reachability_public_udp_success: number;
+  reachability_public_udp_failed: number;
+  reachability_public_tcp_success: number;
+  reachability_public_tcp_failed: number;
+  reachability_vmn_udp_success: number;
+  reachability_vmn_udp_failed: number;
+  reachability_vmn_tcp_success: number;
+  reachability_vmn_tcp_failed: number;
+};
+
+// result for a specific transport protocol (like udp or tcp)
+export type TransportResult = {
+  reachable?: 'true' | 'false';
+  latencyInMilliseconds?: string;
+  clientMediaIPs?: string[];
+  untested?: 'true';
+};
+
+// reachability result for a specifc media cluster
+type ReachabilityResult = {
+  udp: TransportResult;
+  tcp: TransportResult;
+  xtls: {
+    untested: 'true';
+  };
+};
+// this is the type that is required by the backend when we send them reachability results
+export type ReachabilityResults = Record<string, ReachabilityResult>;
+
+// this is the type used by Reachability class internally and stored in local storage
+type InternalReachabilityResults = Record<
+  string,
+  ReachabilityResult & {
+    isVideoMesh?: boolean;
+  }
+>;
+
+export type ICECandidateResult = {
+  clusterId: string;
+  isVideoMesh: boolean;
+  elapsed?: string | null;
+  publicIPs?: string[];
+};
 /**
  * @class Reachability
  * @export
  */
 export default class Reachability {
+  namespace = REACHABILITY.namespace;
   webex: object;
   reachabilityRequest: any;
   clusterLatencyResults: any;
@@ -57,28 +104,36 @@ export default class Reachability {
    * @async
    * @memberof Reachability
    */
-  public async gatherReachability() {
+  public async gatherReachability(): Promise<InternalReachabilityResults> {
     this.setup();
 
     // Remove stored reachability results to ensure no stale data
-    if (window?.localStorage?.removeItem) {
-      window.localStorage.removeItem(REACHABILITY.localStorage);
-    } else {
-      LoggerProxy.logger.error(
-        'Reachability:index#gatherReachability --> Error in accessing LocalStorage.'
-      );
-
-      return {};
-    }
+    // @ts-ignore
+    await this.webex.boundedStorage.del(this.namespace, REACHABILITY.localStorageResult);
+    // @ts-ignore
+    await this.webex.boundedStorage.del(this.namespace, REACHABILITY.localStorageJoinCookie);
 
     // Fetch clusters and measure latency
     try {
-      const clusters = await this.reachabilityRequest.getClusters();
+      const {clusters, joinCookie} = await this.reachabilityRequest.getClusters(
+        MeetingUtil.getIpVersion(this.webex)
+      );
 
       // Perform Reachability Check
       const results = await this.performReachabilityCheck(clusters);
 
-      window.localStorage.setItem(REACHABILITY.localStorage, JSON.stringify(results));
+      // @ts-ignore
+      await this.webex.boundedStorage.put(
+        this.namespace,
+        REACHABILITY.localStorageResult,
+        JSON.stringify(results)
+      );
+      // @ts-ignore
+      await this.webex.boundedStorage.put(
+        this.namespace,
+        REACHABILITY.localStorageJoinCookie,
+        JSON.stringify(joinCookie)
+      );
 
       LoggerProxy.logger.log(
         'Reachability:index#gatherReachability --> Reachability checks completed'
@@ -95,21 +150,110 @@ export default class Reachability {
   }
 
   /**
+   * Returns statistics about last reachability results. The returned value is an object
+   * with a flat list of properties so that it can be easily sent with metrics
+   *
+   * @returns {Promise} Promise with metrics values, it never rejects/throws.
+   */
+  async getReachabilityMetrics(): Promise<ReachabilityMetrics> {
+    const stats: ReachabilityMetrics = {
+      reachability_public_udp_success: 0,
+      reachability_public_udp_failed: 0,
+      reachability_public_tcp_success: 0,
+      reachability_public_tcp_failed: 0,
+      reachability_vmn_udp_success: 0,
+      reachability_vmn_udp_failed: 0,
+      reachability_vmn_tcp_success: 0,
+      reachability_vmn_tcp_failed: 0,
+    };
+
+    const updateStats = (clusterType: 'public' | 'vmn', result: ReachabilityResult) => {
+      if (result.udp?.reachable) {
+        const outcome = result.udp.reachable === 'true' ? 'success' : 'failed';
+        stats[`reachability_${clusterType}_udp_${outcome}`] += 1;
+      }
+      if (result.tcp?.reachable) {
+        const outcome = result.tcp.reachable === 'true' ? 'success' : 'failed';
+        stats[`reachability_${clusterType}_tcp_${outcome}`] += 1;
+      }
+    };
+
+    try {
+      // @ts-ignore
+      const resultsJson = await this.webex.boundedStorage.get(
+        REACHABILITY.namespace,
+        REACHABILITY.localStorageResult
+      );
+
+      const internalResults: InternalReachabilityResults = JSON.parse(resultsJson);
+
+      Object.values(internalResults).forEach((result) => {
+        updateStats(result.isVideoMesh ? 'vmn' : 'public', result);
+      });
+    } catch (e) {
+      // empty storage, that's ok
+      LoggerProxy.logger.warn(
+        'Roap:request#getReachabilityMetrics --> Error parsing reachability data: ',
+        e
+      );
+    }
+
+    return stats;
+  }
+
+  /**
+   * Reachability results as an object in the format that backend expects
+   *
+   * @returns {any} reachability results that need to be sent to the backend
+   */
+  async getReachabilityResults(): Promise<ReachabilityResults | undefined> {
+    let results: ReachabilityResults;
+
+    // these are the only props that backend needs in the reachability results:
+    const reachabilityResultsProps: Array<keyof ReachabilityResult> = ['udp', 'tcp', 'xtls'];
+
+    try {
+      // @ts-ignore
+      const resultsJson = await this.webex.boundedStorage.get(
+        REACHABILITY.namespace,
+        REACHABILITY.localStorageResult
+      );
+
+      const internalResults: InternalReachabilityResults = JSON.parse(resultsJson);
+
+      results = mapValues(internalResults, (result) => pick(result, reachabilityResultsProps));
+    } catch (e) {
+      // empty storage, that's ok
+      LoggerProxy.logger.warn(
+        'Roap:request#attachReachabilityData --> Error parsing reachability data: ',
+        e
+      );
+    }
+
+    return results;
+  }
+
+  /**
    * fetches reachability data and checks for cluster reachability
    * @returns {boolean}
    * @public
    * @memberof Reachability
    */
-  isAnyClusterReachable() {
+  async isAnyPublicClusterReachable() {
     let reachable = false;
-    const reachabilityData = window.localStorage.getItem(REACHABILITY.localStorage);
+    // @ts-ignore
+    const reachabilityData = await this.webex.boundedStorage
+      .get(this.namespace, REACHABILITY.localStorageResult)
+      .catch(() => {});
 
     if (reachabilityData) {
       try {
-        const reachabilityResults = JSON.parse(reachabilityData);
+        const reachabilityResults: InternalReachabilityResults = JSON.parse(reachabilityData);
 
         reachable = Object.values(reachabilityResults).some(
-          (result: any) => result.udp?.reachable === 'true' || result.tcp?.reachable === 'true'
+          (result) =>
+            !result.isVideoMesh &&
+            (result.udp?.reachable === 'true' || result.tcp?.reachable === 'true')
         );
       } catch (e) {
         LoggerProxy.logger.error(
@@ -129,7 +273,7 @@ export default class Reachability {
    * @memberof Reachability
    */
   private buildPeerConnectionConfig(cluster: any) {
-    const iceServers = _.uniq([...cluster.udp, ...cluster.tcp]).map((url) => ({
+    const iceServers = uniq(cluster.udp).map((url) => ({
       username: '',
       credential: '',
       urls: [url],
@@ -190,7 +334,7 @@ export default class Reachability {
    * @private
    * @memberof Reachability
    */
-  private getLocalSDPForClusters(clusterList: object) {
+  private getLocalSDPForClusters(clusterList: object): Promise<InternalReachabilityResults> {
     let clusters: any[] = [...Object.keys(clusterList)];
 
     clusters = clusters.map(async (key) => {
@@ -203,18 +347,17 @@ export default class Reachability {
       peerConnection.begin = Date.now();
       peerConnection.setLocalDescription(description);
 
-      return this.iceGatheringState(
-        peerConnection,
-        cluster.isVideoMesh ? VIDEO_MESH_TIMEOUT : DEFAULT_TIMEOUT
-      ).catch((iceGatheringStateError) => {
-        LoggerProxy.logger.log(
-          `Reachability:index#getLocalSDPForClusters --> Error in getLocalSDP : ${iceGatheringStateError}`
-        );
-      });
+      return this.iceGatheringState(peerConnection, cluster.isVideoMesh).catch(
+        (iceGatheringStateError) => {
+          LoggerProxy.logger.log(
+            `Reachability:index#getLocalSDPForClusters --> Error in getLocalSDP : ${iceGatheringStateError}`
+          );
+        }
+      );
     });
 
     return Promise.all(clusters)
-      .then(this.parseIceResultsToReachabilityResults)
+      .then(this.parseIceResultsToInternalReachabilityResults)
       .then((reachabilityLatencyResults) => {
         this.logUnreachableClusters();
 
@@ -290,6 +433,8 @@ export default class Reachability {
           `Reachability:index#onIceCandidate --> Successfully pinged ${peerConnection.key}:`,
           elapsed
         );
+        // order is important
+        this.addPublicIP(peerConnection, e.candidate.address);
         this.setLatencyAndClose(peerConnection, elapsed);
       }
     };
@@ -301,14 +446,17 @@ export default class Reachability {
    * speed.
    * @private
    * @param {RTCPeerConnection} peerConnection
-   * @param {number} timeout
+   * @param {boolean} isVideoMesh
    * @returns {Promise}
    */
-  private iceGatheringState(peerConnection: RTCPeerConnection, timeout: number) {
+  private iceGatheringState(peerConnection: RTCPeerConnection, isVideoMesh: boolean) {
     const ELAPSED = 'elapsed';
 
-    return new Promise((resolve) => {
+    const timeout = isVideoMesh ? VIDEO_MESH_TIMEOUT : DEFAULT_TIMEOUT;
+
+    return new Promise<ICECandidateResult>((resolve) => {
       const peerConnectionProxy = new window.Proxy(peerConnection, {
+        // eslint-disable-next-line require-jsdoc
         get(target, property) {
           const targetMember = target[property];
 
@@ -321,8 +469,14 @@ export default class Reachability {
         set: (target, property, value) => {
           // only intercept elapsed property
           if (property === ELAPSED) {
-            // @ts-ignore
-            resolve({clusterId: peerConnection.key, elapsed: value});
+            resolve({
+              // @ts-ignore
+              clusterId: peerConnection.key,
+              isVideoMesh,
+              // @ts-ignore
+              publicIPs: target.publicIPs,
+              elapsed: value,
+            });
 
             return true;
           }
@@ -343,6 +497,8 @@ export default class Reachability {
 
         // Close any open peerConnections
         if (peerConnectionProxy.connectionState !== CLOSED) {
+          // order is important
+          this.addPublicIP(peerConnectionProxy, null);
           this.setLatencyAndClose(peerConnectionProxy, null);
         }
       }, timeout);
@@ -367,29 +523,39 @@ export default class Reachability {
 
   /**
    * Calculates time to establish connection
-   * @param {array} iceResults iceResults
+   * @param {Array<ICECandidateResult>} iceResults iceResults
    * @returns {object} reachabilityMap
-   * @private
+   * @protected
    * @memberof Reachability
    */
-  private parseIceResultsToReachabilityResults(iceResults: Array<any>) {
+  protected parseIceResultsToInternalReachabilityResults(
+    iceResults: Array<ICECandidateResult>
+  ): InternalReachabilityResults {
     const reachabilityMap = {};
 
-    iceResults.forEach(({clusterId, elapsed}) => {
-      let latencyResult;
+    iceResults.forEach(({clusterId, isVideoMesh, elapsed, publicIPs}) => {
+      const latencyResult = {};
 
-      if (elapsed === null) {
-        latencyResult = {reachable: 'false'};
+      if (!elapsed) {
+        Object.assign(latencyResult, {reachable: 'false'});
       } else {
-        latencyResult = {
+        Object.assign(latencyResult, {
           reachable: 'true',
           latencyInMilliseconds: elapsed.toString(),
-        };
+        });
+      }
+
+      if (publicIPs) {
+        Object.assign(latencyResult, {
+          clientMediaIPs: publicIPs,
+        });
       }
 
       reachabilityMap[clusterId] = {
         udp: latencyResult,
-        tcp: latencyResult,
+        tcp: {untested: 'true'},
+        xtls: {untested: 'true'},
+        isVideoMesh,
       };
     });
 
@@ -399,11 +565,11 @@ export default class Reachability {
   /**
    * fetches reachability data
    * @param {object} clusterList
-   * @returns {Promise<localSDPData>} reachability check results
+   * @returns {Promise<InternalReachabilityResults>} reachability check results
    * @private
    * @memberof Reachability
    */
-  private performReachabilityCheck(clusterList: object) {
+  private performReachabilityCheck(clusterList: object): Promise<InternalReachabilityResults> {
     if (!clusterList || !Object.keys(clusterList).length) {
       return Promise.resolve({});
     }
@@ -428,6 +594,33 @@ export default class Reachability {
           resolve({});
         });
     });
+  }
+
+  /**
+   * Adds public IP (client media IPs)
+   * @param {RTCPeerConnection} peerConnection
+   * @param {string} publicIP
+   * @returns {void}
+   */
+  protected addPublicIP(peerConnection: RTCPeerConnection, publicIP?: string | null) {
+    const modifiedPeerConnection: RTCPeerConnection & {publicIPs?: string[]} = peerConnection;
+    const {CLOSED} = CONNECTION_STATE;
+
+    if (modifiedPeerConnection.connectionState === CLOSED) {
+      LoggerProxy.logger.log(
+        `Reachability:index#addPublicIP --> Attempting to set publicIP of ${publicIP} on closed peerConnection.`
+      );
+    }
+
+    if (publicIP) {
+      if (modifiedPeerConnection.publicIPs) {
+        modifiedPeerConnection.publicIPs.push(publicIP);
+      } else {
+        modifiedPeerConnection.publicIPs = [publicIP];
+      }
+    } else {
+      modifiedPeerConnection.publicIPs = null;
+    }
   }
 
   /**

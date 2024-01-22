@@ -413,8 +413,9 @@ describe('CallingClient Tests', () => {
     let callingClient;
     let line;
     let reg;
-    let deRegSpy;
     let restoreSpy;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    let deRegSpy;
     let restartRegisterSpy;
     let registerSpy;
 

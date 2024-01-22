@@ -14,8 +14,6 @@ const shouldToAssert = require('./should-to-assert');
 module.exports = function schemas(chai) {
   const {Assertion, assert} = chai;
 
-  /* eslint no-unused-expressions: [0] */
-
   Assertion.addProperty('AccessToken', function () {
     assert.properties(this._obj, [
       'access_token',

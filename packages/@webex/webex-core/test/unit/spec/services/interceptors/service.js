@@ -5,6 +5,7 @@ import chai from 'chai';
 import chaiAsPromised from 'chai-as-promised';
 import sinon from 'sinon';
 import {ServiceInterceptor} from '@webex/webex-core';
+import CONFIG from '../../../../../src/config';
 
 const {assert} = chai;
 
@@ -26,6 +27,7 @@ describe('webex-core', () => {
         service: 'example',
         serviceUrl: 'https://www.example-service.com/',
         uri: 'https://www.example-uri.com/',
+        waitForServiceTimeout: 11,
       };
 
       options = {};
@@ -110,6 +112,7 @@ describe('webex-core', () => {
 
           options.service = fixture.service;
           options.resource = fixture.resource;
+          options.timeout = fixture.waitForServiceTimeout;
         });
 
         it('should normalize the options', () =>
@@ -119,9 +122,12 @@ describe('webex-core', () => {
           interceptor.onRequest(options).then(() => assert.called(interceptor.validateOptions)));
 
         it('should attempt to collect the service url', () =>
-          interceptor
-            .onRequest(options)
-            .then(() => assert.calledWith(waitForService, {name: options.service})));
+          interceptor.onRequest(options).then(
+            assert.calledWith(waitForService, {
+              name: options.service,
+              timeout: options.waitForServiceTimeout,
+            })
+          ));
 
         describe('when the service url was collected successfully', () => {
           it('should attempt to generate the full uri', () =>

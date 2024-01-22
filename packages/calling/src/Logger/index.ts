@@ -1,5 +1,5 @@
 /* eslint-disable valid-jsdoc */
-import {REPO_NAME, VERSION} from '../CallingClient/constants';
+import {REPO_NAME} from '../CallingClient/constants';
 import {IMetaContext} from '../common/types';
 import ExtendedError from '../Errors/catalog/ExtendedError';
 import {LOGGING_LEVEL, LogContext, LOGGER, LOG_PREFIX} from './types';

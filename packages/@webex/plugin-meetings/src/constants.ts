@@ -4,13 +4,14 @@ import {hydraTypes} from '@webex/common';
 // *********** LOWERCASE / CAMELCASE STRINGS ************
 
 export const AUDIO = 'audio';
-export const AUDIO_INPUT = 'audioinput';
 export const AUDIO_STATUS = 'audioStatus';
 export const ALERT = 'alert';
+export const ALIAS = 'alias';
 export const ANSWER = 'answer';
 
 export const CALL = 'call';
 export const CORRELATION_ID = 'correlationId';
+export const MEETINGNUMBER = 'meetingNumber';
 export const CONVERSATION_URL = 'conversationUrl';
 export const CALENDAR = 'calendar';
 export const CALENDAR_EVENTS_API = 'calendarEvents';
@@ -26,8 +27,6 @@ export const DECLINE = 'decline';
 
 export const ERROR = 'error';
 export const ENDED = 'ended';
-
-export const OFFER = 'offer';
 
 export const HECATE = 'hecate';
 
@@ -47,6 +46,8 @@ export const MEETINGINFO = 'meetingInfo';
 export const MEET = 'meet';
 export const MEET_M = 'm';
 export const MEDIA = 'media';
+export const MEET_CO = 'co';
+export const MEET_CISCO = 'cisco';
 
 export const OFFLINE = 'offline';
 export const ONLINE = 'online';
@@ -67,7 +68,6 @@ export const SHARE = 'share';
 export const TYPE = 'type';
 
 export const VIDEO = 'video';
-export const VIDEO_INPUT = 'videoinput';
 export const VIDEO_STATUS = 'videoStatus';
 
 // *********** UPPERCASE ONLY STRINGS ************
@@ -95,6 +95,7 @@ export const _JOINED_ = 'JOINED';
 
 export const _LOCUS_ID_ = 'LOCUS_ID';
 export const _LEFT_ = 'LEFT';
+export const _MOVED_ = 'MOVED';
 
 export const _MEETING_LINK_ = 'MEETING_LINK';
 export const _MEETING_UUID_ = 'MEETING_UUID';
@@ -105,7 +106,6 @@ export const _MEETING_ID_ = 'MEETING_ID';
 export const _NOT_IN_MEETING_ = 'NOT_IN_MEETING';
 export const _NONE_ = 'NONE';
 
-export const _OFFER_ = 'OFFER';
 export const _OBSERVE_ = 'OBSERVE';
 
 export const _PERSONAL_ROOM_ = 'PERSONAL_ROOM';
@@ -191,9 +191,9 @@ export const ICE_TIMEOUT = 2000;
 export const ICE_FAIL_TIMEOUT = 3000;
 
 export const RETRY_TIMEOUT = 3000;
-export const ROAP_SEQ_PRE = -1;
 
-export const PC_BAIL_TIMEOUT = 8000;
+export const ICE_AND_DTLS_CONNECTION_TIMEOUT = 10000;
+export const ROAP_OFFER_ANSWER_EXCHANGE_TIMEOUT = 10000;
 
 // ******************** REGEX **********************
 // Please alphabetize
@@ -237,6 +237,13 @@ export const CALENDAR_EVENTS = {
   CREATE_MINIMAL: 'event:calendar.meeting.create.minimal',
   UPDATE_MINIMAL: 'event:calendar.meeting.update.minimal',
   DELETE: 'event:calendar.meeting.delete',
+};
+
+export const ASSIGN_ROLES_ERROR_CODES = {
+  ReclaimHostNotSupportedErrorCode: 2400127,
+  ReclaimHostNotAllowedErrorCode: 2403135,
+  ReclaimHostEmptyWrongKeyErrorCode: 2403136,
+  ReclaimHostIsHostAlreadyErrorCode: 2409150,
 };
 
 export const DEFAULT_GET_STATS_FILTER = {
@@ -284,6 +291,7 @@ export const EVENT_TRIGGERS = {
   MEETING_STOPPED_SHARING_LOCAL: 'meeting:stoppedSharingLocal',
   MEETING_STARTED_SHARING_REMOTE: 'meeting:startedSharingRemote',
   MEETING_STOPPED_SHARING_REMOTE: 'meeting:stoppedSharingRemote',
+  MEETING_UPDATE_ANNOTATION_INFO: 'meeting:updateAnnotationInfo',
   MEETING_STARTED_SHARING_WHITEBOARD: 'meeting:startedSharingWhiteboard',
   MEETING_STOPPED_SHARING_WHITEBOARD: 'meeting:stoppedSharingWhiteboard',
   MEETING_MEDIA_LOCAL_STARTED: 'meeting:media:local:start',
@@ -292,6 +300,7 @@ export const EVENT_TRIGGERS = {
   MEETING_STOPPED_RECORDING: 'meeting:recording:stopped',
   MEETING_STARTED_RECEIVING_TRANSCRIPTION: 'meeting:receiveTranscription:started',
   MEETING_STOPPED_RECEIVING_TRANSCRIPTION: 'meeting:receiveTranscription:stopped',
+  MEETING_RECEIVE_REACTIONS: 'meeting:receiveReactions',
   MEETING_PAUSED_RECORDING: 'meeting:recording:paused',
   MEETING_RESUMED_RECORDING: 'meeting:recording:resumed',
   MEETING_ADDED: 'meeting:added',
@@ -300,15 +309,29 @@ export const EVENT_TRIGGERS = {
   MEETING_RINGING_STOP: 'meeting:ringingStop',
   MEETING_SELF_LOBBY_WAITING: 'meeting:self:lobbyWaiting',
   MEETING_SELF_GUEST_ADMITTED: 'meeting:self:guestAdmitted',
+  MEETING_SELF_VIDEO_MUTED_BY_OTHERS: 'meeting:self:videoMutedByOthers',
+  MEETING_SELF_VIDEO_UNMUTED_BY_OTHERS: 'meeting:self:videoUnmutedByOthers',
   MEETING_SELF_MUTED_BY_OTHERS: 'meeting:self:mutedByOthers',
   MEETING_SELF_UNMUTED_BY_OTHERS: 'meeting:self:unmutedByOthers',
   MEETING_SELF_REQUESTED_TO_UNMUTE: 'meeting:self:requestedToUnmute',
   MEETING_SELF_PHONE_AUDIO_UPDATE: 'meeting:self:phoneAudioUpdate',
   MEETING_SELF_CANNOT_VIEW_PARTICIPANT_LIST: 'meeting:self:cannotViewParticipantList',
   MEETING_SELF_IS_SHARING_BLOCKED: 'meeting:self:isSharingBlocked',
+  MEETING_SELF_ROLES_CHANGED: 'meeting:self:rolesChanged',
   MEETING_CONTROLS_LAYOUT_UPDATE: 'meeting:layout:update',
   MEETING_ENTRY_EXIT_TONE_UPDATE: 'meeting:entryExitTone:update',
+  MEETING_BREAKOUTS_UPDATE: 'meeting:breakouts:update',
+  MEETING_BREAKOUTS_CLOSING: 'meeting:breakouts:closing',
+  MEETING_BREAKOUTS_MESSAGE: 'meeting:breakouts:message',
+  MEETING_BREAKOUTS_ASK_RETURN_TO_MAIN: 'meeting:breakouts:askReturnToMain',
+  MEETING_BREAKOUTS_LEAVE: 'meeting:breakouts:leave',
+  MEETING_BREAKOUTS_ASK_FOR_HELP: 'meeting:breakouts:askForHelp',
+  MEETING_BREAKOUTS_PRE_ASSIGNMENTS_UPDATE: 'meeting:breakouts:preAssignmentsUpdate',
+  MEETING_INTERPRETATION_UPDATE: 'meeting:interpretation:update',
+  MEETING_INTERPRETATION_SUPPORT_LANGUAGES_UPDATE: 'meeting:interpretation:supportLanguagesUpdate',
+  MEETING_INTERPRETATION_HANDOFF_REQUESTS_ARRIVED: 'meeting:interpretation:handoffRequestsArrived',
   MEMBERS_UPDATE: 'members:update',
+  MEMBERS_CLEAR: 'members:clear',
   MEMBERS_CONTENT_UPDATE: 'members:content:update',
   MEMBERS_HOST_UPDATE: 'members:host:update',
   MEMBERS_SELF_UPDATE: 'members:self:update',
@@ -330,17 +353,35 @@ export const EVENT_TRIGGERS = {
   MEETING_SELF_LEFT: 'meeting:self:left',
   NETWORK_QUALITY: 'network:quality',
   MEDIA_NEGOTIATED: 'media:negotiated',
+  // the following events apply only to multistream media connections
+  ACTIVE_SPEAKER_CHANGED: 'media:activeSpeakerChanged',
+  REMOTE_VIDEO_SOURCE_COUNT_CHANGED: 'media:remoteVideoSourceCountChanged',
+  REMOTE_AUDIO_SOURCE_COUNT_CHANGED: 'media:remoteAudioSourceCountChanged',
+  REMOTE_MEDIA_AUDIO_CREATED: 'media:remoteAudio:created',
+  REMOTE_MEDIA_SCREEN_SHARE_AUDIO_CREATED: 'media:remoteScreenShareAudio:created',
+  REMOTE_MEDIA_VIDEO_LAYOUT_CHANGED: 'media:remoteVideo:layoutChanged',
+  // Controls
+  MEETING_CONTROLS_MUTE_ON_ENTRY_UPDATED: 'meeting:controls:mute-on-entry:updated',
+  MEETING_CONTROLS_SHARE_CONTROL_UPDATED: 'meeting:controls:share-control:updated',
+  MEETING_CONTROLS_DISALLOW_UNMUTE_UPDATED: 'meeting:controls:disallow-unmute:updated',
+  MEETING_CONTROLS_REACTIONS_UPDATED: 'meeting:controls:reactions:updated',
+  MEETING_CONTROLS_VIEW_THE_PARTICIPANTS_LIST_UPDATED:
+    'meeting:controls:view-the-participants-list:updated',
+  MEETING_CONTROLS_RAISE_HAND_UPDATED: 'meeting:controls:raise-hand:updated',
+  MEETING_CONTROLS_VIDEO_UPDATED: 'meeting:controls:video:updated',
+  // Locus URL changed
+  MEETING_LOCUS_URL_UPDATE: 'meeting:locus:locusUrl:update',
+  MEETING_STREAM_PUBLISH_STATE_CHANGED: 'meeting:streamPublishStateChanged',
 };
 
 export const EVENT_TYPES = {
   SELF: 'self',
   OTHER: 'other',
-  LOCAL: 'local',
   REMOTE: 'remote',
   REMOTE_AUDIO: 'remoteAudio',
   REMOTE_VIDEO: 'remoteVideo',
   REMOTE_SHARE: 'remoteShare',
-  LOCAL_SHARE: 'localShare',
+  REMOTE_SHARE_AUDIO: 'remoteShareAudio',
   ERROR: 'error',
 };
 
@@ -353,9 +394,12 @@ export const MEETING_REMOVED_REASON = {
   FULLSTATE_REMOVED: 'FULLSTATE_REMOVED', // meeting got dropped ? not sure
   MEETING_INACTIVE_TERMINATING: 'MEETING_INACTIVE_TERMINATING', // Meeting got ended or everyone left the meeting
   CLIENT_LEAVE_REQUEST: 'CLIENT_LEAVE_REQUEST', // You triggered leave meeting
+  CLIENT_LEAVE_REQUEST_TAB_CLOSED: 'CLIENT_LEAVE_REQUEST_TAB_CLOSED', // You triggered leave meeting, such as closing the browser tab directly
   USER_ENDED_SHARE_STREAMS: 'USER_ENDED_SHARE_STREAMS', // user triggered stop share
   NO_MEETINGS_TO_SYNC: 'NO_MEETINGS_TO_SYNC', // After the syncMeeting no meeting exists
   MEETING_CONNECTION_FAILED: 'MEETING_CONNECTION_FAILED', // meeting failed to connect due to ice failures or firewall issue
+  LOCUS_DTO_SYNC_FAILED: 'LOCUS_DTO_SYNC_FAILED', // failed to get any Locus DTO for that meeting
+  MISSING_MEETING_INFO: 'MISSING_MEETING_INFO', // meeting info failed to be fetched
 };
 
 // One one one calls ends for the following reasons
@@ -370,11 +414,11 @@ export const CALL_REMOVED_REASON = {
 export const SHARE_STOPPED_REASON = {
   SELF_STOPPED: 'SELF_STOPPED',
   MEETING_REJOIN: 'MEETING_REJOIN',
+  MEDIA_RECONNECTION: 'MEDIA_RECONNECTION',
+  TRACK_ENDED: 'TRACK_ENDED',
 };
 
 export const EVENTS = {
-  ROAP_OK: 'ROAP_OK',
-  ROAP_ANSWER: 'ROAP_ANSWER',
   SELF_UNADMITTED_GUEST: 'SELF_UNADMITTED_GUEST',
   SELF_ADMITTED_GUEST: 'SELF_ADMITTED_GUEST',
   MEDIA_INACTIVITY: 'MEDIA_INACTIVITY',
@@ -447,6 +491,40 @@ export const ERROR_DICTIONARY = {
     MESSAGE: 'Captcha is required.',
     CODE: 8,
   },
+  BREAKOUT_EDIT: {
+    NAME: 'BreakoutEditLockedError',
+    MESSAGE: 'Edit lock token mismatch',
+    CODE: 9,
+  },
+  NO_MEETING_INFO: {
+    NAME: 'NoMeetingInfo',
+    MESSAGE: 'No meeting info found for the meeting',
+    CODE: 10,
+  },
+  RECLAIM_HOST_ROLE_NOT_SUPPORTED: {
+    NAME: 'ReclaimHostRoleNotSupported',
+    MESSAGE:
+      'Non converged meetings, PSTN or SIP users in converged meetings are not supported currently.',
+    CODE: 11,
+  },
+  RECLAIM_HOST_ROLE_NOT_ALLOWED: {
+    NAME: 'ReclaimHostRoleNotAllowed',
+    MESSAGE:
+      'Reclaim Host Role Not Allowed For Other Participants. Participants cannot claim host role in PMR meeting, space instant meeting or escalated instant meeting. However, the original host still can reclaim host role when it manually makes another participant to be the host.',
+    CODE: 12,
+  },
+  RECLAIM_HOST_ROLE_EMPTY_OR_WRONG_KEY: {
+    NAME: 'ReclaimHostRoleEmptyOrWrongKey',
+    MESSAGE:
+      'Host Key Not Specified Or Matched. The original host can reclaim the host role without entering the host key. However, any other person who claims the host role must enter the host key to get it.',
+    CODE: 13,
+  },
+  RECLAIM_HOST_ROLE_IS_ALREADY_HOST: {
+    NAME: 'ReclaimHostRoleIsAlreadyHost',
+    MESSAGE:
+      'Participant Having Host Role Already. Participant who sends request to reclaim host role has already a host role.',
+    CODE: 14,
+  },
 };
 
 export const FLOOR_ACTION = {
@@ -468,6 +546,7 @@ export const HTTP_VERBS = {
   POST: 'POST',
   GET: 'GET',
   PATCH: 'PATCH',
+  DELETE: 'DELETE',
 };
 
 // https://developer.mozilla.org/en-US/docs/Web/API/RTCPeerConnection/iceGatheringState
@@ -513,19 +592,93 @@ export const LOCUS = {
   SYNCDEBUG: 'sync_debug',
 };
 
+export const ANNOTATION = {
+  ANNOTATION_ON_SHARE_SUPPORTED: 'ANNOTATION_ON_SHARE_SUPPORTED',
+};
+export const BREAKOUTS = {
+  STATUS: {
+    CLOSING: 'CLOSING',
+    CLOSED: 'CLOSED',
+    PENDING: 'PENDING',
+    OPEN: 'OPEN',
+  },
+  EVENTS: {
+    BREAKOUTS_CLOSING: 'BREAKOUTS_CLOSING',
+    MESSAGE: 'MESSAGE',
+    MEMBERS_UPDATE: 'MEMBERS_UPDATE',
+    ASK_RETURN_TO_MAIN: 'ASK_RETURN_TO_MAIN',
+    LEAVE_BREAKOUT: 'LEAVE_BREAKOUT',
+    ASK_FOR_HELP: 'ASK_FOR_HELP',
+    PRE_ASSIGNMENTS_UPDATE: 'PRE_ASSIGNMENTS_UPDATE',
+  },
+  SESSION_TYPES: {
+    MAIN: 'MAIN',
+    BREAKOUT: 'BREAKOUT',
+  },
+  SESSION_STATES: {
+    ACTIVE: 'active',
+    ASSIGNED: 'assigned',
+    ALLOWED: 'allowed',
+    ASSIGNED_CURRENT: 'assignedCurrent',
+    REQUESTED: 'requested',
+  },
+  BREAKOUTS_SUPPORTED: 'BREAKOUTS_SUPPORTED',
+  ACTION: {
+    START: 'START',
+    CLOSE: 'CLOSE',
+    DELETE: 'DELETE',
+  },
+  ERROR_CODE: {
+    EDIT_LOCK_TOKEN_MISMATCH: 201409024,
+    EDIT_NOT_AUTHORIZED: 201403007,
+  },
+  EDIT_LOCK_STATUS: {
+    LOCKED: 'LOCKED',
+    NOT_LOCKED: 'NOT_LOCKED',
+    UNKNOWN: 'UNKNOWN',
+  },
+  DEFAULT_TTL: 30,
+};
+
+export const INTERPRETATION = {
+  EVENTS: {
+    SUPPORT_LANGUAGES_UPDATE: 'SUPPORT_LANGUAGES_UPDATE',
+    HANDOFF_REQUESTS_ARRIVED: 'HANDOFF_REQUESTS_ARRIVED',
+  },
+  ACTION_TYPE: {
+    OFFERED: 'OFFERED',
+    ACCEPTED: 'ACCEPTED',
+    REQUESTED: 'REQUESTED',
+    DECLINED: 'DECLINED',
+  },
+  RESOURCE_TYPE: 'SiHandover',
+};
+
 export const LOCUSINFO = {
   EVENTS: {
     CONTROLS_MEETING_LAYOUT_UPDATED: 'CONTROLS_MEETING_LAYOUT_UPDATED',
     CONTROLS_RECORDING_UPDATED: 'CONTROLS_RECORDING_UPDATED',
     CONTROLS_MEETING_TRANSCRIBE_UPDATED: 'CONTROLS_MEETING_TRANSCRIBE_UPDATED',
+    CONTROLS_MEETING_BREAKOUT_UPDATED: 'CONTROLS_MEETING_BREAKOUT_UPDATED',
     CONTROLS_MEETING_CONTAINER_UPDATED: 'CONTROLS_MEETING_CONTAINER_UPDATED',
+    CONTROLS_MEETING_INTERPRETATION_UPDATED: 'CONTROLS_MEETING_INTERPRETATION_UPDATED',
     CONTROLS_ENTRY_EXIT_TONE_UPDATED: 'CONTROLS_ENTRY_EXIT_TONE_UPDATED',
+    CONTROLS_JOIN_BREAKOUT_FROM_MAIN: 'CONTROLS_JOIN_BREAKOUT_FROM_MAIN',
+    CONTROLS_MUTE_ON_ENTRY_CHANGED: 'CONTROLS_MUTE_ON_ENTRY_CHANGED',
+    CONTROLS_SHARE_CONTROL_CHANGED: 'CONTROLS_SHARE_CONTROL_CHANGED',
+    CONTROLS_DISALLOW_UNMUTE_CHANGED: 'CONTROLS_DISALLOW_UNMUTE_CHANGED',
+    CONTROLS_REACTIONS_CHANGED: 'CONTROLS_REACTIONS_CHANGED',
+    CONTROLS_VIEW_THE_PARTICIPANTS_LIST_CHANGED: 'CONTROLS_VIEW_THE_PARTICIPANTS_LIST_CHANGED',
+    CONTROLS_RAISE_HAND_CHANGED: 'CONTROLS_RAISE_HAND_CHANGED',
+    CONTROLS_VIDEO_CHANGED: 'CONTROLS_VIDEO_CHANGED',
     SELF_UNADMITTED_GUEST: 'SELF_UNADMITTED_GUEST',
     SELF_ADMITTED_GUEST: 'SELF_ADMITTED_GUEST',
+    SELF_REMOTE_VIDEO_MUTE_STATUS_UPDATED: 'SELF_REMOTE_VIDEO_MUTE_STATUS_UPDATED',
     SELF_REMOTE_MUTE_STATUS_UPDATED: 'SELF_REMOTE_MUTE_STATUS_UPDATED',
     LOCAL_UNMUTE_REQUESTED: 'LOCAL_UNMUTE_REQUESTED',
     LOCAL_UNMUTE_REQUIRED: 'LOCAL_UNMUTE_REQUIRED',
     SELF_MODERATOR_CHANGED: 'SELF_MODERATOR_CHANGED',
+    SELF_ROLES_CHANGED: 'SELF_ROLES_CHANGED',
     MEETING_UPDATE: 'MEETING_UPDATE',
     MEDIA_STATUS_CHANGE: 'MEDIA_STATUS_CHANGE',
     FULL_STATE_TYPE_UPDATE: 'FULL_STATE_TYPE_UPDATE',
@@ -539,6 +692,9 @@ export const LOCUSINFO = {
     EMBEDDED_APPS_UPDATED: 'EMBEDDED_APPS_UPDATED',
     SELF_CANNOT_VIEW_PARTICIPANT_LIST_CHANGE: 'SELF_CANNOT_VIEW_PARTICIPANT_LIST_CHANGE',
     SELF_IS_SHARING_BLOCKED_CHANGE: 'SELF_IS_SHARING_BLOCKED_CHANGE',
+    SELF_MEETING_BREAKOUTS_CHANGED: 'SELF_MEETING_BREAKOUTS_CHANGED',
+    SELF_MEETING_INTERPRETATION_CHANGED: 'SELF_MEETING_INTERPRETATION_CHANGED',
+    MEDIA_INACTIVITY: 'MEDIA_INACTIVITY',
     LINKS_SERVICES: 'LINKS_SERVICES',
   },
 };
@@ -551,6 +707,9 @@ export const LOCUSEVENT = {
 
   // delta events
   DIFFERENCE: 'locus.difference',
+
+  // Breakout sessions
+  BREAKOUT_ROSTER: 'breakout.roster',
 
   // screen sharing
   FLOOR_GRANTED: 'locus.floor_granted',
@@ -699,6 +858,28 @@ export const MEETING_END_REASON = {
   MEDIA_RELEASED: 'MEDIA_RELEASED',
 };
 
+export enum SELF_POLICY {
+  ENFORCE_VIRTUAL_BACKGROUND = 'enforceVirtualBackground',
+  SUPPORT_LOCAL_RECORD = 'supportLocalRecord',
+  SUPPORT_NETWORK_BASED_RECORD = 'supportNetworkBasedRecord',
+  SUPPORT_REALTIME_CLOSE_CAPTION = 'supportRealtimeCloseCaption',
+  SUPPORT_CHAT = 'supportChat',
+  SUPPORT_DESKTOP_SHARE_REMOTE = 'supportDesktopShareRemote',
+  SUPPORT_DESKTOP_SHARE = 'supportDesktopShare',
+  SUPPORT_WHITEBOARD = 'supportWhiteboard',
+  SUPPORT_FILE_TRANSFER = 'supportFileTransfer',
+  SUPPORT_APP_SHARE = 'supportAppShare',
+  SUPPORT_CAMERA_SHARE = 'supportCameraShare',
+  SUPPORT_FILE_SHARE = 'supportFileShare',
+  SUPPORT_ANNOTATION = 'supportAnnotation',
+  SUPPORT_BROADCAST_MESSAGE = 'supportBroadcastMessage',
+  SUPPORT_VIDEO = 'supportVideo',
+  SUPPORT_HQV = 'supportHQV',
+  SUPPORT_HDV = 'supportHDV',
+  SUPPORT_PARTICIPANT_LIST = 'supportParticipantList',
+  SUPPORT_VOIP = 'supportVoIP',
+}
+
 export const DISPLAY_HINTS = {
   ADD_GUEST: 'ADD_GUEST',
   ROSTER_WAITING_TO_JOIN: 'ROSTER_WAITING_TO_JOIN',
@@ -722,17 +903,64 @@ export const DISPLAY_HINTS = {
   DISPLAY_NON_ENGLISH_ASR: 'DISPLAY_NON_ENGLISH_ASR',
   TRANSCRIPTION_CONTROL_START: 'TRANSCRIPTION_CONTROL_START',
   TRANSCRIPTION_CONTROL_STOP: 'TRANSCRIPTION_CONTROL_STOP',
+  SAVE_TRANSCRIPTS_ENABLED: 'SAVE_TRANSCRIPTS_ENABLED',
   WEBEX_ASSISTANT_STATUS_ACTIVE: 'WEBEX_ASSISTANT_STATUS_ACTIVE',
   WAITING_FOR_OTHERS: 'WAITING_FOR_OTHERS',
+  ENABLE_REACTIONS: 'ENABLE_REACTIONS',
+  DISABLE_REACTIONS: 'DISABLE_REACTIONS',
+  REACTIONS_ACTIVE: 'REACTIONS_ACTIVE',
+  REACTIONS_INACTIVE: 'REACTIONS_INACTIVE',
+  SHARE_CONTROL: 'SHARE_CONTROL',
   ENABLE_MUTE_ON_ENTRY: 'ENABLE_MUTE_ON_ENTRY',
+  ENABLE_SHOW_DISPLAY_NAME: 'ENABLE_SHOW_DISPLAY_NAME',
+  DISABLE_SHOW_DISPLAY_NAME: 'DISABLE_SHOW_DISPLAY_NAME',
   DISABLE_MUTE_ON_ENTRY: 'DISABLE_MUTE_ON_ENTRY',
   ENABLE_HARD_MUTE: 'ENABLE_HARD_MUTE',
   DISABLE_HARD_MUTE: 'DISABLE_HARD_MUTE',
+  MUTE_ALL: 'MUTE_ALL',
+  UNMUTE_ALL: 'UNMUTE_ALL',
+  PRESENTER_CONTROL: 'PRESENTER_CONTROL',
+  CAN_RENAME_SELF_AND_OBSERVED: 'CAN_RENAME_SELF_AND_OBSERVED',
+  CAN_RENAME_OTHERS: 'CAN_RENAME_OTHERS',
+
+  // breakout session
+  BREAKOUT_MANAGEMENT: 'BREAKOUT_MANAGEMENT',
+  BROADCAST_MESSAGE_TO_BREAKOUT: 'BROADCAST_MESSAGE_TO_BREAKOUT',
+  UCF_SUPPRESS_BREAKOUTS_SUPPORT: 'UCF_SUPPRESS_BREAKOUTS_SUPPORT',
+  DISABLE_ASK_FOR_HELP: 'DISABLE_ASK_FOR_HELP',
+  DISABLE_BREAKOUT_PREASSIGNMENTS: 'DISABLE_BREAKOUT_PREASSIGNMENTS',
+  DISABLE_LOBBY_TO_BREAKOUT: 'DISABLE_LOBBY_TO_BREAKOUT',
+
+  // participants list
+  DISABLE_VIEW_THE_PARTICIPANT_LIST: 'DISABLE_VIEW_THE_PARTICIPANT_LIST',
+  ENABLE_VIEW_THE_PARTICIPANT_LIST: 'ENABLE_VIEW_THE_PARTICIPANT_LIST',
+
+  // raise hand
+  DISABLE_RAISE_HAND: 'DISABLE_RAISE_HAND',
+  ENABLE_RAISE_HAND: 'ENABLE_RAISE_HAND',
+
+  // video
+  DISABLE_VIDEO: 'DISABLE_VIDEO',
+  ENABLE_VIDEO: 'ENABLE_VIDEO',
+
+  // Sharing
+  SHARE_FILE: 'SHARE_FILE',
+  SHARE_APPLICATION: 'SHARE_APPLICATION',
+  SHARE_CAMERA: 'SHARE_CAMERA',
+  SHARE_DESKTOP: 'SHARE_DESKTOP',
+  SHARE_CONTENT: 'SHARE_CONTENT',
+  SHARE_WHITEBOARD: 'SHARE_WHITEBOARD',
+
+  // Voip (audio/video)
+  VOIP_IS_ENABLED: 'VOIP_IS_ENABLED',
 };
+
+export const INTERSTITIAL_DISPLAY_HINTS = [DISPLAY_HINTS.VOIP_IS_ENABLED];
 
 export const SELF_ROLES = {
   COHOST: 'COHOST',
   MODERATOR: 'MODERATOR',
+  ATTENDEE: 'ATTENDEE',
 };
 
 export const MEETING_STATE = {
@@ -817,75 +1045,27 @@ export const RESOURCE = {
 };
 
 export const REACHABILITY = {
-  localStorage: 'reachability.result',
+  localStorageResult: 'reachability.result',
+  localStorageJoinCookie: 'reachability.joinCookie',
+  namespace: 'Reachability',
 };
 
 export const ROAP = {
-  ROAP_TRANSITIONS: {
-    STEP: 'step',
-  },
   ROAP_TYPES: {
     OFFER: 'OFFER',
     ANSWER: 'ANSWER',
     OK: 'OK',
     ERROR: 'ERROR',
-    SHUTDOWN: 'SHUTDOWN',
-    OFFER_REQUEST: 'OFFER_REQUEST',
     TURN_DISCOVERY_REQUEST: 'TURN_DISCOVERY_REQUEST',
     TURN_DISCOVERY_RESPONSE: 'TURN_DISCOVERY_RESPONSE',
   },
-  ROAP_STATE: {
-    INIT: 'INIT',
-    WAIT_RX_OFFER: 'WAIT_RX_OFFER',
-    WAIT_RX_ANSWER: 'WAIT_RX_ANSWER',
-    WAIT_RX_OK: 'WAIT_RX_OK',
-    WAIT_TX_OFFER: 'WAIT_TX_OFFER',
-    WAIT_TX_ANSWER: 'WAIT_TX_ANSWER',
-    WAIT_TX_OK: 'WAIT_TX_OK',
-    IDLE_LOCAL_OFFER: 'IDLE_LOCAL_OFFER',
-    IDLE_REMOTE_OFFER: 'IDLE_REMOTE_OFFER',
-    GLARE: 'GLARE',
-    ERROR: 'ERROR',
-  },
-  ROAP_SIGNAL: {
-    RX_OFFER: 'RX_OFFER',
-    TX_OFFER: 'TX_OFFER',
-    RX_ANSWER: 'RX_ANSWER',
-    TX_ANSWER: 'TX_ANSWER',
-    RX_OK: 'RX_OK',
-    TX_OK: 'TX_OK',
-    GLARE_RESOLVED: 'GLARE_RESOLVED',
-  },
-  RECEIVE_ROAP_MSG: 'RECEIVE_ROAP_MSG',
-  SEND_ROAP_MSG: 'SEND_ROAP_MSG',
-  SEND_ROAP_MSG_SUCCESS: 'SEND_ROAP_MSG_SUCCESS',
-  RESET_ROAP_STATE: 'RESET_ROAP_STATE',
-  RECEIVE_CALL_LEAVE: 'RECEIVE_CALL_LEAVE',
   ROAP_MERCURY: 'event:locus.message.roap',
   ROAP_VERSION: '2',
-  RX_: 'RX_',
-  TX_: 'TX_',
 };
 
 export const MediaContent = {
   main: 'main',
   slides: 'slides',
-};
-
-export const SDP = {
-  A_CONTENT_SLIDES: 'a=content:slides',
-  ROLLBACK: 'rollback',
-  HAVE_LOCAL_OFFER: 'have-local-offer',
-  HAVE_REMOTE_OFFER: 'have-remote-offer',
-  STABLE: 'stable',
-  OFFER: 'offer',
-  M_LINE: 'm=',
-  MAX_FS: 'max-fs=',
-  B_LINE: 'b=TIAS',
-  // Edonus repeated key frames request
-  PERIODIC_KEYFRAME: 'a=periodic-keyframes:20',
-  CARRIAGE_RETURN: '\r\n',
-  BAD_MEDIA_PORTS: [0],
 };
 
 export const NETWORK_STATUS = {
@@ -902,9 +1082,6 @@ export const NETWORK_TYPE = {
 };
 
 export const STATS = {
-  AUDIO_CORRELATE: 'audio',
-  VIDEO_CORRELATE: 'video',
-  SHARE_CORRELATE: 'share',
   SEND_DIRECTION: 'send',
   RECEIVE_DIRECTION: 'recv',
   REMOTE: 'remote',
@@ -988,6 +1165,7 @@ export const MQA_STATS = {
 
 // ****** MEDIA QUALITY CONSTANTS ****** //
 
+// these values must match allowed values of RemoteQualityLevel from the @webex/internal-media-core lib
 export const QUALITY_LEVELS = {
   LOW: 'LOW',
   MEDIUM: 'MEDIUM',
@@ -1049,28 +1227,6 @@ export const AVAILABLE_RESOLUTIONS = {
   },
 };
 
-export const VIDEO_RESOLUTIONS = {
-  [QUALITY_LEVELS.LOW]: AVAILABLE_RESOLUTIONS['480p'],
-  [QUALITY_LEVELS.MEDIUM]: AVAILABLE_RESOLUTIONS['720p'],
-  [QUALITY_LEVELS.HIGH]: AVAILABLE_RESOLUTIONS['1080p'],
-  [QUALITY_LEVELS['360p']]: AVAILABLE_RESOLUTIONS['360p'],
-  [QUALITY_LEVELS['480p']]: AVAILABLE_RESOLUTIONS['480p'],
-  [QUALITY_LEVELS['720p']]: AVAILABLE_RESOLUTIONS['720p'],
-  [QUALITY_LEVELS['1080p']]: AVAILABLE_RESOLUTIONS['1080p'],
-};
-
-/**
- * Max frame sizes based on h264 configs
- * https://en.wikipedia.org/wiki/Advanced_Video_Coding
- */
-export const REMOTE_VIDEO_CONSTRAINTS = {
-  MAX_FS: {
-    [QUALITY_LEVELS.LOW]: 1620,
-    [QUALITY_LEVELS.MEDIUM]: 3600,
-    [QUALITY_LEVELS.HIGH]: 8192,
-  },
-};
-
 /*
  *  mqa Interval for sending stats metrics
  */
@@ -1082,8 +1238,6 @@ export const MEDIA_DEVICES = {
   SPEAKER: 'speaker',
   CAMERA: 'camera',
 };
-
-export const METRICS_JOIN_TIMES_MAX_DURATION = 1200000;
 
 export const PSTN_STATUS = {
   JOINED: 'JOINED', // we have provisioned a pstn device, which can be used to connect
@@ -1105,6 +1259,7 @@ export const MEETING_INFO_FAILURE_REASON = {
   NONE: 'NONE', // meeting info was retrieved succesfully
   WRONG_PASSWORD: 'WRONG_PASSWORD', // meeting requires password and no password or wrong one was provided
   WRONG_CAPTCHA: 'WRONG_CAPTCHA', // wbxappapi requires a captcha code or a wrong captcha code was provided
+  POLICY: 'POLICY', // meeting info request violates some meeting policy
   OTHER: 'OTHER', // any other error (network, etc)
 };
 
@@ -1119,3 +1274,22 @@ export const EMBEDDED_APP_TYPES = {
   SLIDO: 'SLIDO',
   OTHER: 'OTHER',
 };
+
+export const DEFAULT_MEETING_INFO_REQUEST_BODY = {
+  supportHostKey: true,
+  supportCountryList: true,
+};
+
+/** the values for IP_VERSION are fixed and defined in Orpheus API */
+export const IP_VERSION = {
+  unknown: 0,
+  only_ipv4: 4, // we know we have ipv4, we don't know or we don't have ipv6
+  only_ipv6: 6, // we know we have ipv6, we don't know or we don't have ipv4
+  ipv4_and_ipv6: 1,
+} as const;
+
+export type IP_VERSION = (typeof IP_VERSION)[keyof typeof IP_VERSION];
+
+// constant for if the permissionToken is about to expire in the next 30 seconds, refresh it
+export const MEETING_PERMISSION_TOKEN_REFRESH_THRESHOLD_IN_SEC = 30;
+export const MEETING_PERMISSION_TOKEN_REFRESH_REASON = 'ttl-join';

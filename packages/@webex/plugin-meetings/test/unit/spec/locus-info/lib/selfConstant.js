@@ -66,6 +66,15 @@ export const self = {
         },
       ],
       mediaSessionsExternal: false,
+      replaces: [
+        {
+          breakoutMoveId: 'e5caeb2c-ffcc-4e06-a08a-1122e7710398',
+          lastActive: '2023-05-04T07:14:32.068Z',
+          locusUrl: 'https://locus-alpha-apdx.prod.meetapi.webex.com/locus/api/v1/loci/495061ca-7b3c-3b77-85ff-4e1bd58600d1',
+          replacedAt: '2023-05-04T07:16:04.905Z',
+          sessionId: 'be3147d4-c318-86d8-7611-8d24beaaca8d',
+        }
+      ],
       state: 'JOINED',
       intent: {type: ''},
       intents: [null],
@@ -108,6 +117,45 @@ export const self = {
       muted: false,
       requestedToUnmute: false,
       meta: {},
+    },
+    video: {
+      muted: false,
+      meta: {},
+    },
+    breakout: {
+      sessions: {
+        active: [
+          {
+            name: 'Breakout session 2',
+            groupId: '0e73abb8-5584-49d8-be8d-806d2a8247ca',
+            sessionId: '1cf41ab1-2e57-4d95-b7e9-5613acddfb0f',
+            sessionType: 'BREAKOUT',
+          },
+        ],
+        allowed: [
+          {
+            name: 'Breakout session 2',
+            groupId: '0e73abb8-5584-49d8-be8d-806d2a8247ca',
+            sessionId: '1cf41ab1-2e57-4d95-b7e9-5613acddfb0f',
+            sessionType: 'BREAKOUT',
+          },
+        ],
+      },
+      meta: {
+        modifiedBy: '347ef89e-e1be-40a3-849c-731bdd935e62',
+        lastModified: '2023-01-10T10:10:06.813Z',
+        readOnly: true,
+      },
+    },
+    interpretation: {
+      originalLanguage: 'en',
+      sourceLanguage: 'en',
+      targetLanguage: 'cn',
+      order: 0,
+      isActive: true,
+      meta: {
+        lastModified: '2023-07-11T01:57:31.040Z',
+      }
     },
     localRecord: {
       recording: false,

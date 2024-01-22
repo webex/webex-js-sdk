@@ -2,10 +2,12 @@ import 'jsdom-global/register';
 import chai from 'chai';
 import chaiAsPromised from 'chai-as-promised';
 import sinon from 'sinon';
+import {ConnectionState} from '@webex/internal-media-core';
 
 import {StatsAnalyzer, EVENTS} from '../../../../src/statsAnalyzer';
 import NetworkQualityMonitor from '../../../../src/networkQualityMonitor';
 import testUtils from '../../../utils/testUtils';
+import {MEDIA_DEVICES, _UNKNOWN_} from '@webex/plugin-meetings/src/constants';
 
 const {assert} = chai;
 
@@ -23,14 +25,15 @@ describe('plugin-meetings', () => {
       };
 
       const defaultStats = {
+        resolutions: {},
         internal: {
-          video: {
+          'video-send-1': {
             send: {
               totalPacketsLostOnReceiver: 10,
             },
           },
         },
-        video: {
+        'video-send-1': {
           send: {
             packetsSent: 2,
             meanRemoteJitter: [],
@@ -51,7 +54,12 @@ describe('plugin-meetings', () => {
       beforeEach(() => {
         const networkQualityMonitor = new NetworkQualityMonitor(initialConfig);
 
-        statsAnalyzer = new StatsAnalyzer(initialConfig, networkQualityMonitor, defaultStats);
+        statsAnalyzer = new StatsAnalyzer(
+          initialConfig,
+          () => ({}),
+          networkQualityMonitor,
+          defaultStats
+        );
 
         sandBoxSpy = sandbox.spy(
           statsAnalyzer.networkQualityMonitor,
@@ -64,12 +72,12 @@ describe('plugin-meetings', () => {
       });
 
       it('should trigger determineUplinkNetworkQuality with specific arguments', async () => {
-        await statsAnalyzer.parseGetStatsResult(statusResult, 'video');
+        await statsAnalyzer.parseGetStatsResult(statusResult, 'video-send-1', true);
 
         assert.calledOnce(statsAnalyzer.networkQualityMonitor.determineUplinkNetworkQuality);
         assert(
           sandBoxSpy.calledWith({
-            mediaType: 'video',
+            mediaType: 'video-send-1',
             remoteRtpResults: statusResult,
             statsAnalyzerCurrentStats: statsAnalyzer.statsResults,
           })
@@ -82,6 +90,7 @@ describe('plugin-meetings', () => {
       let pc;
       let networkQualityMonitor;
       let statsAnalyzer;
+      let mqeData;
 
       let receivedEventsData = {
         local: {},
@@ -109,61 +118,145 @@ describe('plugin-meetings', () => {
         // bytesReceived and bytesSent need to be non-zero in order for StatsAnalyzer to parse any other values
         fakeStats = {
           audio: {
-            receiver: {
-              type: 'inbound-rtp',
-              packetsReceived: 0,
-              bytesReceived: 1,
-            },
-            sender: {
-              type: 'outbound-rtp',
-              packetsSent: 0,
-              bytesSent: 1,
-            },
+            senders: [
+              {
+                localTrackLabel: 'fake-microphone',
+                report: [
+                  {
+                    type: 'outbound-rtp',
+                    packetsSent: 0,
+                    bytesSent: 1,
+                  },
+                  {
+                    type: 'candidate-pair',
+                    state: 'succeeded',
+                    localCandidateId: 'fake-candidate-id'
+                  },
+                  {
+                    type: 'candidate-pair',
+                    state: 'failed',
+                    localCandidateId: 'bad-candidate-id'
+                  },
+                  {
+                    type: 'local-candidate',
+                    id: 'fake-candidate-id',
+                    protocol: 'tcp'
+                  },
+                ],
+              },
+            ],
+            receivers: [
+              {
+                report: [
+                  {
+                    type: 'inbound-rtp',
+                    packetsReceived: 0,
+                    bytesReceived: 1,
+                  },
+                  {
+                    type: 'candidate-pair',
+                    state: 'succeeded',
+                    localCandidateId: 'fake-candidate-id'
+                  },
+                  {
+                    type: 'candidate-pair',
+                    state: 'failed',
+                    localCandidateId: 'bad-candidate-id'
+                  },
+                  {
+                    type: 'local-candidate',
+                    id: 'fake-candidate-id',
+                    protocol: 'tcp'
+                  },
+                ],
+              },
+            ],
           },
           video: {
-            receiver: {
-              type: 'inbound-rtp',
-              framesDecoded: 0,
-              bytesReceived: 1,
-            },
-            sender: {
-              type: 'outbound-rtp',
-              framesSent: 0,
-              bytesSent: 1,
-            },
+            senders: [
+              {
+                localTrackLabel: 'fake-camera',
+                report: [
+                  {
+                    type: 'outbound-rtp',
+                    framesSent: 0,
+                    bytesSent: 1,
+                  },
+                  {
+                    type: 'candidate-pair',
+                    state: 'succeeded',
+                    localCandidateId: 'fake-candidate-id'
+                  },
+                  {
+                    type: 'candidate-pair',
+                    state: 'failed',
+                    localCandidateId: 'bad-candidate-id'
+                  },
+                  {
+                    type: 'local-candidate',
+                    id: 'fake-candidate-id',
+                    protocol: 'tcp'
+                  },
+                ],
+              },
+            ],
+            receivers: [
+              {
+                report: [
+                  {
+                    type: 'inbound-rtp',
+                    framesDecoded: 0,
+                    bytesReceived: 1,
+                    frameHeight: 720,
+                    frameWidth: 1280,
+                    framesReceived: 1,
+                  },
+                  {
+                    type: 'candidate-pair',
+                    state: 'succeeded',
+                    localCandidateId: 'fake-candidate-id'
+                  },
+                  {
+                    type: 'candidate-pair',
+                    state: 'failed',
+                    localCandidateId: 'bad-candidate-id'
+                  },
+                  {
+                    type: 'local-candidate',
+                    id: 'fake-candidate-id',
+                    protocol: 'tcp'
+                  },
+                ],
+              },
+            ],
           },
         };
 
         pc = {
-          audioTransceiver: {
-            sender: {
-              getStats: sinon.stub().resolves([fakeStats.audio.sender]),
+          getConnectionState: sinon.stub().returns(ConnectionState.Connected),
+          getTransceiverStats: sinon.stub().resolves({
+            audio: {
+              senders: [fakeStats.audio.senders[0]],
+              receivers: [fakeStats.audio.receivers[0]],
             },
-            receiver: {
-              getStats: sinon.stub().resolves([fakeStats.audio.receiver]),
+            video: {
+              senders: [fakeStats.video.senders[0]],
+              receivers: [fakeStats.video.receivers[0]],
             },
-          },
-          videoTransceiver: {
-            sender: {
-              getStats: sinon.stub().resolves([fakeStats.video.sender]),
+            screenShareAudio: {
+              senders: [],
+              receivers: [],
             },
-            receiver: {
-              getStats: sinon.stub().resolves([fakeStats.video.receiver]),
+            screenShareVideo: {
+              senders: [],
+              receivers: [],
             },
-          },
-          shareTransceiver: {
-            sender: {
-              getStats: sinon.stub().resolves([]),
-            },
-            receiver: {
-              getStats: sinon.stub().resolves([]),
-            },
-          },
+          }),
         };
 
         networkQualityMonitor = new NetworkQualityMonitor(initialConfig);
 
-        statsAnalyzer = new StatsAnalyzer(initialConfig, networkQualityMonitor);
+        statsAnalyzer = new StatsAnalyzer(initialConfig, () => ({}), networkQualityMonitor);
 
         statsAnalyzer.on(EVENTS.LOCAL_MEDIA_STARTED, (data) => {
           receivedEventsData.local.started = data;
@@ -176,6 +269,9 @@ describe('plugin-meetings', () => {
         });
         statsAnalyzer.on(EVENTS.REMOTE_MEDIA_STOPPED, (data) => {
           receivedEventsData.remote.stopped = data;
+        });
+        statsAnalyzer.on(EVENTS.MEDIA_QUALITY, ({data}) => {
+          mqeData = data;
         });
       });
 
@@ -203,6 +299,12 @@ describe('plugin-meetings', () => {
         assert.deepEqual(receivedEventsData.remote.stopped, expected.remote?.stopped);
       };
 
+      const checkMqeData = () => {
+        assert.strictEqual(mqeData.videoReceive[0].streams[0].receivedFrameSize, 3600);
+        assert.strictEqual(mqeData.videoReceive[0].streams[0].receivedHeight, 720);
+        assert.strictEqual(mqeData.videoReceive[0].streams[0].receivedWidth, 1280);
+      };
+
       it('emits LOCAL_MEDIA_STARTED and LOCAL_MEDIA_STOPPED events for audio', async () => {
         await startStatsAnalyzer({expected: {sendAudio: true}});
 
@@ -210,7 +312,7 @@ describe('plugin-meetings', () => {
         checkReceivedEvent({expected: {}});
 
         // setup a mock to return some values higher the previous ones
-        fakeStats.audio.sender.packetsSent += 10;
+        fakeStats.audio.senders[0].report[0].packetsSent += 10;
 
         await progressTime();
 
@@ -230,7 +332,7 @@ describe('plugin-meetings', () => {
         checkReceivedEvent({expected: {}});
 
         // setup a mock to return some values higher the previous ones
-        fakeStats.video.sender.framesSent += 1;
+        fakeStats.video.senders[0].report[0].framesSent += 1;
 
         await progressTime();
 
@@ -250,7 +352,7 @@ describe('plugin-meetings', () => {
         checkReceivedEvent({expected: {}});
 
         // setup a mock to return some values higher the previous ones
-        fakeStats.audio.receiver.packetsReceived += 5;
+        fakeStats.audio.receivers[0].report[0].packetsReceived += 5;
 
         await progressTime();
         // check that we got the REMOTE_MEDIA_STARTED event for audio
@@ -270,7 +372,7 @@ describe('plugin-meetings', () => {
         checkReceivedEvent({expected: {}});
 
         // setup a mock to return some values higher the previous ones
-        fakeStats.video.receiver.framesDecoded += 1;
+        fakeStats.video.receivers[0].report[0].framesDecoded += 1;
 
         await progressTime();
         // check that we got the REMOTE_MEDIA_STARTED event for video
@@ -281,6 +383,59 @@ describe('plugin-meetings', () => {
         await progressTime();
 
         checkReceivedEvent({expected: {remote: {stopped: {type: 'video'}}}});
+      });
+
+      it('emits the correct MEDIA_QUALITY events', async () => {
+        await startStatsAnalyzer({expected: {receiveVideo: true}});
+
+        await progressTime();
+
+        // Check that the mqe data has been emitted and is correctly computed.
+        checkMqeData();
+      });
+
+      it('emits the correct transportType in MEDIA_QUALITY events', async () => {
+        await startStatsAnalyzer({expected: {receiveVideo: true}});
+
+        await progressTime();
+
+        assert.strictEqual(mqeData.audioTransmit[0].common.transportType, 'TCP');
+        assert.strictEqual(mqeData.videoReceive[0].common.transportType, 'TCP');
+      });
+
+      it('emits the correct transportType in MEDIA_QUALITY events when using a TURN server', async () => {
+        fakeStats.audio.senders[0].report[3].relayProtocol = 'tls';
+        fakeStats.video.senders[0].report[3].relayProtocol = 'tls';
+        fakeStats.audio.receivers[0].report[3].relayProtocol = 'tls';
+        fakeStats.video.receivers[0].report[3].relayProtocol = 'tls';
+
+        await startStatsAnalyzer({expected: {receiveVideo: true}});
+
+        await progressTime();
+
+        assert.strictEqual(mqeData.audioTransmit[0].common.transportType, 'TLS');
+        assert.strictEqual(mqeData.videoReceive[0].common.transportType, 'TLS');
+      });
+
+      it('emits the correct peripherals in MEDIA_QUALITY events', async () => {
+        await startStatsAnalyzer({expected: {receiveVideo: true}});
+
+        await progressTime();
+
+        assert.strictEqual(mqeData.intervalMetadata.peripherals.find((val) => val.name === MEDIA_DEVICES.MICROPHONE).information, 'fake-microphone');
+        assert.strictEqual(mqeData.intervalMetadata.peripherals.find((val) => val.name === MEDIA_DEVICES.CAMERA).information, 'fake-camera');
+      });
+
+      it('emits the correct peripherals in MEDIA_QUALITY events when localTrackLabel is undefined', async () => {
+        fakeStats.audio.senders[0].localTrackLabel = undefined;
+        fakeStats.video.senders[0].localTrackLabel = undefined;
+
+        await startStatsAnalyzer({expected: {receiveVideo: true}});
+
+        await progressTime();
+
+        assert.strictEqual(mqeData.intervalMetadata.peripherals.find((val) => val.name === MEDIA_DEVICES.MICROPHONE).information, _UNKNOWN_);
+        assert.strictEqual(mqeData.intervalMetadata.peripherals.find((val) => val.name === MEDIA_DEVICES.CAMERA).information, _UNKNOWN_);
       });
     });
   });

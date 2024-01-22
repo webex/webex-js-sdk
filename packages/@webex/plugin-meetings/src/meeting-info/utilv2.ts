@@ -19,14 +19,20 @@ import {
   JOIN,
   MEET,
   MEET_M,
+  MEET_CISCO,
+  MEET_CO,
   HTTPS_PROTOCOL,
   UUID_REG,
   VALID_EMAIL_ADDRESS,
+  DEFAULT_MEETING_INFO_REQUEST_BODY,
 } from '../constants';
 import ParameterError from '../common/errors/parameter';
 import LoggerProxy from '../common/logs/logger-proxy';
+import {SpaceIDDeprecatedError} from '../common/errors/webex-errors';
 
 const MeetingInfoUtil: any = {};
+const meetingInfoError =
+  'MeetingInfo is fetched with the meeting link, SIP URI, phone number, Hydra people ID, or a conversation URL.';
 
 MeetingInfoUtil.getParsedUrl = (link) => {
   try {
@@ -62,6 +68,8 @@ MeetingInfoUtil.isMeetingLink = (value: string) => {
     parsedUrl.pathname &&
     (parsedUrl.pathname.includes(`/${MEET}`) ||
       parsedUrl.pathname.includes(`/${MEET_M}`) ||
+      parsedUrl.pathname.includes(`/${MEET_CISCO}`) ||
+      parsedUrl.pathname.includes(`/${MEET_CO}`) ||
       parsedUrl.pathname.includes(`/${JOIN}`));
 
   return hostNameBool && pathNameBool;
@@ -215,12 +223,8 @@ MeetingInfoUtil.getDestinationType = async (from) => {
       throw e;
     }
   } else {
-    LoggerProxy.logger.warn(
-      "Meeting-info:util#getDestinationType --> ('MeetingInfo is fetched with meeting link, sip uri, phone number, hydra room id, hydra people id, or a conversation url."
-    );
-    throw new ParameterError(
-      'MeetingInfo is fetched with meeting link, sip uri, phone number, hydra room id, hydra people id, or a conversation url.'
-    );
+    LoggerProxy.logger.warn(`Meeting-info:util#getDestinationType --> ${meetingInfoError}`);
+    throw new ParameterError(`${meetingInfoError}`);
   }
 
   return Promise.resolve(options);
@@ -230,14 +234,15 @@ MeetingInfoUtil.getDestinationType = async (from) => {
  * Helper function to build up a correct locus url depending on the value passed
  * @param {Object} options type and value to fetch meeting info
  * @param {String} options.type One of [SIP_URI, PERSONAL_ROOM, MEETING_ID, CONVERSATION_URL, LOCUS_ID, MEETING_LINK]
+ * @param {String} options.installedOrgID org ID of user's machine
  * @param {Object} options.destination ?? value.value
  * @returns {Object} returns an object with {resource, method}
  */
 MeetingInfoUtil.getRequestBody = (options: {type: string; destination: object} | any) => {
-  const {type, destination, password, captchaInfo} = options;
+  const {type, destination, password, captchaInfo, installedOrgID, locusId, extraParams} = options;
   const body: any = {
-    supportHostKey: true,
-    supportCountryList: true,
+    ...DEFAULT_MEETING_INFO_REQUEST_BODY,
+    ...extraParams,
   };
 
   switch (type) {
@@ -279,6 +284,14 @@ MeetingInfoUtil.getRequestBody = (options: {type: string; destination: object} |
   if (captchaInfo) {
     body.captchaID = captchaInfo.id;
     body.captchaVerifyCode = captchaInfo.code;
+  }
+
+  if (installedOrgID) {
+    body.installedOrgID = installedOrgID;
+  }
+
+  if (locusId) {
+    body.locusId = locusId;
   }
 
   return body;

@@ -1,5 +1,5 @@
 const path = require('path');
-
+// eslint-disable-next-line import/no-unresolved
 const { scripts, Package, Yarn } = require('@webex/package-tools');
 
 describe('scripts', () => {

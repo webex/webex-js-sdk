@@ -299,7 +299,7 @@ describe('internal-plugin-calendar', () => {
       });
 
       describe('#getParticipants()', () => {
-        const id = 'meetingId123';
+        const uri = 'participantsUrl';
 
         it('should fetch the meeting participants', async () => {
           webex.request = sinon.stub().returns(
@@ -310,13 +310,34 @@ describe('internal-plugin-calendar', () => {
             })
           );
 
-          const res = await webex.internal.calendar.getParticipants(id);
+          const res = await webex.internal.calendar.getParticipants(uri);
 
           assert.equal(res.body.encryptedParticipants.length, 1);
           assert.calledWith(webex.request, {
             method: 'GET',
-            service: 'calendar',
-            resource: `calendarEvents/${base64.encode(id)}/participants`,
+            uri,
+          });
+        });
+      });
+
+      describe('#getNotesByUrl()', () => {
+        const uri = 'notesUrl';
+
+        it('should fetch the meeting notes', async () => {
+          webex.request = sinon.stub().returns(
+            Promise.resolve({
+              body: {
+                encryptedParticipants: ['participant1'],
+              },
+            })
+          );
+
+          const res = await webex.internal.calendar.getNotesByUrl(uri);
+
+          assert.equal(res.body.encryptedParticipants.length, 1);
+          assert.calledWith(webex.request, {
+            method: 'GET',
+            uri,
           });
         });
       });

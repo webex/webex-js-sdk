@@ -1,3 +1,4 @@
+// eslint-disable-next-line import/no-unresolved
 const { list, Yarn } = require('@webex/package-tools');
 
 describe('list', () => {

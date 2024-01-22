@@ -67,6 +67,7 @@ module.exports = (env = {NODE_ENV: process.env.NODE_ENV || 'production'}) => ({
       fs: false,
       os: require.resolve('os-browserify'),
       stream: require.resolve('stream-browserify'),
+      querystring: require.resolve('querystring-es3'),
       crypto: false,
     },
     extensions: ['.ts', '.js', '.json'],
@@ -79,7 +80,7 @@ module.exports = (env = {NODE_ENV: process.env.NODE_ENV || 'production'}) => ({
         // we don't need to manually rebuild after changing code.
         alias[`./packages/${packageName}`] = path.resolve(
           __dirname,
-          `./packages/${packageName}/src/index.js`
+          `./packages/${packageName}/src/index`
         );
         alias[`${packageName}`] = path.resolve(__dirname, `./packages/${packageName}/src/index`);
 

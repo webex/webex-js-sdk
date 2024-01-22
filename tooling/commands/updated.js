@@ -36,7 +36,7 @@ module.exports = {
     },
     upstream: {
       default: true,
-      description: 'Compare to upstream/master',
+      description: 'Compare to upstream/beta',
       type: 'boolean',
     },
   },
