@@ -532,6 +532,10 @@ function joinMeeting({withMedia, withDevice} = {withMedia: false, withDevice: fa
           viewBreakouts();
         });
 
+        meeting.on('meeting:stoppedSharingRemote', () => {
+          meetingStreamsRemoteShare.srcObject = null;
+        });
+
         eventsList.innerText = '';
         meeting.on('all', (payload) => {
           updatePublishedEvents(payload);
@@ -1109,6 +1113,7 @@ async function loadCamera(constraints) {
       localMedia.cameraStream = undefined;
       meetingStreamsLocalVideo.srcObject = null;
       stopVideoButton.disabled = true;
+      stopVideoButton.innerText = 'Start Video';
       loadCameraBtn.disabled = false;
       modeBtn.disabled = false;
       clearVideoResolutionCheckInterval(localVideoResElm, localVideoResolutionInterval);
@@ -1180,6 +1185,7 @@ async function loadMicrophone(constraints) {
       localMedia.microphoneStream = undefined;
       meetingStreamsLocalAudio.srcObject = null;
       stopAudioButton.disabled = true;
+      stopAudioButton.innerText = 'Start Audio';
       loadMicrophoneBtn.disabled = false;
     });
 
@@ -1246,34 +1252,88 @@ function handleEffectsButton(btn, type, effect) {
   btn.innerText = title;
 }
 
-async function stopVideo() {
-  console.log('MeetingControls#stopVideo()');
-  try {
-    if (localMedia.cameraStream) {
-      localMedia.cameraStream.stop();
+async function stopStartVideo() {
+  if(stopVideoButton.innerText === 'Stop Video') {
+    console.log('MeetingControls#stopVideo()');
+    try {
+      if (localMedia.cameraStream) {
+        localMedia.cameraStream.stop();
+      }
+
+      console.log('MeetingControls#stopStartVideo() :: Successfully stopped video!');
+    }
+    catch (error) {
+      console.log('MeetingControls#stopStartVideo() :: Error stopping video!');
+      console.error(error);
+    }
+  }
+  else{
+    const meeting = getCurrentMeeting();
+    const {cameraStream} = localMedia;
+
+    if (!cameraStream) {
+      console.log('MeetingControls#stopStartVideo() :: video stream not available!');
+
+      throw new Error('Video stream not available');
     }
 
-    console.log('MeetingControls#stopVideo() :: Successfully stopped video!');
+    try {
+      console.log('MeetingControls#stopStartVideo() :: publishing video stream');
+      await meeting.publishStreams({
+        camera: cameraStream
+      });
+
+      console.log('MeetingControls#stopStartVideo() :: Successfully started video!');
+      stopVideoButton.innerText = 'Stop Video';
+    }
+    catch (error) {
+      console.log('MeetingControls#stopStartVideo() :: Error starting video in meeting!');
+      console.error(error);
+    }
   }
-  catch (error) {
-    console.log('MeetingControls#stopVideo() :: Error stopping video!');
-    console.error(error);
-  }
+  
 }
 
-async function stopAudio() {
-  console.log('MeetingControls#stopAudio()');
-  try {
-    if (localMedia.microphoneStream) {
-      localMedia.microphoneStream.stop();
+async function stopStartAudio() {
+  if(stopAudioButton.innerText === 'Stop Audio') {
+    console.log('MeetingControls#stopStartAudio()');
+    try {
+      if (localMedia.microphoneStream) {
+        localMedia.microphoneStream.stop();
+      }
+
+      console.log('MeetingControls#stopStartAudio() :: Successfully stopped audio!');
+    }
+    catch (error) {
+      console.log('MeetingControls#stopStartAudio() :: Error stopping audio!');
+      console.error(error);
+    }
+  }
+  else{
+    const meeting = getCurrentMeeting();
+    const {microphoneStream} = localMedia;
+
+    if (!microphoneStream) {
+      console.log('MeetingControls#stopStartAudio() :: audio stream not available!');
+
+      throw new Error('Audio stream not available');
     }
 
-    console.log('MeetingControls#stopAudio() :: Successfully stopped audio!');
+    try {
+      console.log('MeetingControls#stopStartAudio() :: publishing audio stream');
+      await meeting.publishStreams({
+        microphone: microphoneStream
+      });
+
+      console.log('MeetingControls#stopStartAudio() :: Successfully started audio!');
+      stopAudioButton.innerText = 'Stop Audio';
+    }
+    catch (error) {
+      console.log('MeetingControls#stopStartAudio() :: Error starting audio in meeting!');
+      console.error(error);
+    }
   }
-  catch (error) {
-    console.log('MeetingControls#stopAudio() :: Error stopping audio!');
-    console.error(error);
-  }
+  
 }
 
 function populateSourceDevices(mediaDevice) {

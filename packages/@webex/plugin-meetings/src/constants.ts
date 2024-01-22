@@ -46,6 +46,8 @@ export const MEETINGINFO = 'meetingInfo';
 export const MEET = 'meet';
 export const MEET_M = 'm';
 export const MEDIA = 'media';
+export const MEET_CO = 'co';
+export const MEET_CISCO = 'cisco';
 
 export const OFFLINE = 'offline';
 export const ONLINE = 'online';

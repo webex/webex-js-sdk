@@ -19,6 +19,8 @@ import {
   JOIN,
   MEET,
   MEET_M,
+  MEET_CISCO,
+  MEET_CO,
   HTTPS_PROTOCOL,
   UUID_REG,
   VALID_EMAIL_ADDRESS,
@@ -66,6 +68,8 @@ MeetingInfoUtil.isMeetingLink = (value: string) => {
     parsedUrl.pathname &&
     (parsedUrl.pathname.includes(`/${MEET}`) ||
       parsedUrl.pathname.includes(`/${MEET_M}`) ||
+      parsedUrl.pathname.includes(`/${MEET_CISCO}`) ||
+      parsedUrl.pathname.includes(`/${MEET_CO}`) ||
       parsedUrl.pathname.includes(`/${JOIN}`));
 
   return hostNameBool && pathNameBool;
