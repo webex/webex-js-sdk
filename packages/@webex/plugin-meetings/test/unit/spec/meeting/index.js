@@ -7508,6 +7508,11 @@ describe('plugin-meetings', () => {
               requiredPolicies: [SELF_POLICY.SUPPORT_FILE_TRANSFER],
             },
             {
+              actionName: 'canChat',
+              requiredDisplayHints: [],
+              requiredPolicies: [SELF_POLICY.SUPPORT_CHAT],
+            },
+            {
               actionName: 'canShareDesktop',
               requiredDisplayHints: [DISPLAY_HINTS.SHARE_DESKTOP],
               requiredPolicies: [],
