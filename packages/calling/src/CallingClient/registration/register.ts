@@ -606,8 +606,8 @@ export class Registration implements IRegistration {
         // eslint-disable-next-line no-await-in-loop
         const resp = await this.postRegistration(url);
         this.deviceInfo = resp.body as IDeviceInfo;
-        this.lineEmitter(LINE_EVENTS.REGISTERED, resp.body as IDeviceInfo);
         this.registrationStatus = RegistrationStatus.ACTIVE;
+        this.lineEmitter(LINE_EVENTS.REGISTERED, resp.body as IDeviceInfo);
         this.setActiveMobiusUrl(url);
         this.setIntervalValues(this.deviceInfo);
         this.metricManager.setDeviceInfo(this.deviceInfo);
