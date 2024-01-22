@@ -5843,6 +5843,8 @@ describe('plugin-meetings', () => {
             assert.calledOnce(meeting.setNetworkStatus);
             assert.calledWith(meeting.setNetworkStatus, NETWORK_STATUS.DISCONNECTED);
             assert.calledOnce(meeting.reconnectionManager.waitForIceReconnect);
+            assert.notCalled(webex.internal.newMetrics.submitClientEvent);
+            assert.notCalled(Metrics.sendBehavioralMetric);
           });
 
           it('handles "Disconnected" state correctly when waitForIceReconnect rejects and hasMediaConnectionConnectedAtLeastOnce = true', async () => {
@@ -5922,6 +5924,7 @@ describe('plugin-meetings', () => {
             mockFailedEvent();
 
             checkBehavioralMetricSent();
+            assert.notCalled(webex.internal.newMetrics.submitClientEvent);
           });
 
           it('handles "Failed" state correctly when hasMediaConnectionConnectedAtLeastOnce = true', async () => {
