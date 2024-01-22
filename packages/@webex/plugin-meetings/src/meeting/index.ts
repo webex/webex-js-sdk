@@ -5402,8 +5402,15 @@ export default class Meeting extends StatelessWebexPlugin {
       }
     });
 
-    this.mediaProperties.webrtcMediaConnection.on(Event.CONNECTION_STATE_CHANGED, async (event) => {
-      const connectionFailed = async () => {
+    this.mediaProperties.webrtcMediaConnection.on(Event.CONNECTION_STATE_CHANGED, (event) => {
+      const connectionFailed = () => {
+        Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.CONNECTION_FAILURE, {
+          correlation_id: this.correlationId,
+          locus_id: this.locusId,
+          networkStatus: this.networkStatus,
+          hasMediaConnectionConnectedAtLeastOnce: this.hasMediaConnectionConnectedAtLeastOnce,
+        });
+
         if (this.hasMediaConnectionConnectedAtLeastOnce) {
           // we know the media connection failed and browser will not attempt to recover it any more
           // so reset the timer as it's not needed anymore, we want to reconnect immediately
@@ -5434,13 +5441,6 @@ export default class Meeting extends StatelessWebexPlugin {
             file: 'peer-connection-manager/index',
             function: 'connectionFailed',
           });
-
-          Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.CONNECTION_FAILURE, {
-            correlation_id: this.correlationId,
-            locus_id: this.locusId,
-          });
-        } else {
-          await this.waitForMediaConnectionConnected();
         }
       };
 
@@ -5490,11 +5490,11 @@ export default class Meeting extends StatelessWebexPlugin {
               'Meeting:index#setupMediaConnectionListeners --> state DISCONNECTED, automatic reconnection timed out.'
             );
 
-            await connectionFailed();
+            connectionFailed();
           });
           break;
         case ConnectionState.Failed:
-          await connectionFailed();
+          connectionFailed();
           break;
         default:
           break;
