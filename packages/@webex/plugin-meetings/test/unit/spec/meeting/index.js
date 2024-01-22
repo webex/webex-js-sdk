@@ -5690,32 +5690,6 @@ describe('plugin-meetings', () => {
           });
         });
 
-        describe('submitClientEvent on connectionFailed', () => {
-          it('sends client.ice.end when connectionFailed on CONNECTION_STATE_CHANGED event', () => {
-            const FAKE_ERROR = {fatal: true};
-            const getErrorPayloadForClientErrorCodeStub = webex.internal.newMetrics.callDiagnosticMetrics.getErrorPayloadForClientErrorCode = sinon
-              .stub()
-              .returns(FAKE_ERROR);
-            meeting.setupMediaConnectionListeners();
-            eventListeners[Event.CONNECTION_STATE_CHANGED]({
-              state: 'Failed',
-            });
-            assert.calledOnceWithExactly(getErrorPayloadForClientErrorCodeStub, {clientErrorCode: 2004});
-            assert.calledOnce(webex.internal.newMetrics.submitClientEvent);
-            assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
-              name: 'client.ice.end',
-              payload: {
-                canProceed: false,
-                icePhase: 'IN_MEETING',
-                errors: [FAKE_ERROR],
-              },
-              options: {
-                meetingId: meeting.id,
-              },
-            });
-          });
-        });
-
         describe('submitClientEvent on connectionSuccess', () => {
           let setNetworkStatusSpy;
 
@@ -5734,17 +5708,21 @@ describe('plugin-meetings', () => {
           };
 
           const checkExpectedSpies = (expected) => {
-            assert.calledOnce(webex.internal.newMetrics.submitClientEvent);
-            assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
-              name: 'client.ice.end',
-              options: {
-                meetingId: meeting.id,
-              },
-              payload: {
-                canProceed: true,
-                icePhase: expected.icePhase,
-              },
-            });
+            if (expected.icePhase) {
+              assert.calledOnce(webex.internal.newMetrics.submitClientEvent);
+              assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
+                name: 'client.ice.end',
+                options: {
+                  meetingId: meeting.id,
+                },
+                payload: {
+                  canProceed: true,
+                  icePhase: expected.icePhase,
+                },
+              });
+            } else {
+              assert.notCalled(webex.internal.newMetrics.submitClientEvent);
+            }
             assert.calledOnce(Metrics.sendBehavioralMetric);
             assert.calledWith(Metrics.sendBehavioralMetric, BEHAVIORAL_METRICS.CONNECTION_SUCCESS, {
               correlation_id: meeting.correlationId,
@@ -5785,7 +5763,7 @@ describe('plugin-meetings', () => {
               setNetworkStatusCallParams: [NETWORK_STATUS.CONNECTED],
             });
 
-            // now simulate short connection loss, the 2nd client.ice.end should have a different icePhase
+            // now simulate short connection loss, client.ice.end is not send a second time
             resetSpies();
 
             eventListeners[Event.CONNECTION_STATE_CHANGED]({
@@ -5796,7 +5774,6 @@ describe('plugin-meetings', () => {
             });
 
             checkExpectedSpies({
-              icePhase: 'IN_MEETING',
               setNetworkStatusCallParams: [NETWORK_STATUS.DISCONNECTED, NETWORK_STATUS.CONNECTED],
             });
           });
@@ -5809,6 +5786,8 @@ describe('plugin-meetings', () => {
 
           beforeEach(() => {
             meeting.setupMediaConnectionListeners();
+            webex.internal.newMetrics.submitClientEvent.resetHistory();
+            Metrics.sendBehavioralMetric.resetHistory();
           });
 
           const checkMetricSent = (event, error) => {

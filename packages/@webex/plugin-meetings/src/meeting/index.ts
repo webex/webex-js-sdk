@@ -9,7 +9,6 @@ import {
   ClientEvent,
   ClientEventLeaveReason,
   CallDiagnosticUtils,
-  CALL_DIAGNOSTIC_CONFIG,
 } from '@webex/internal-plugin-metrics';
 import {
   ConnectionState,
@@ -5399,25 +5398,6 @@ export default class Meeting extends StatelessWebexPlugin {
         this.reconnectionManager.resetReconnectionTimer();
 
         this.reconnect({networkDisconnect: true});
-        // @ts-ignore
-        this.webex.internal.newMetrics.submitClientEvent({
-          name: 'client.ice.end',
-          payload: {
-            canProceed: false,
-            icePhase: 'IN_MEETING',
-            errors: [
-              // @ts-ignore
-              this.webex.internal.newMetrics.callDiagnosticMetrics.getErrorPayloadForClientErrorCode(
-                {
-                  clientErrorCode: CALL_DIAGNOSTIC_CONFIG.ICE_FAILURE_CLIENT_CODE,
-                }
-              ),
-            ],
-          },
-          options: {
-            meetingId: this.id,
-          },
-        });
 
         this.uploadLogs({
           file: 'peer-connection-manager/index',
@@ -5439,26 +5419,34 @@ export default class Meeting extends StatelessWebexPlugin {
 
       switch (event.state) {
         case ConnectionState.Connecting:
-          // @ts-ignore
-          this.webex.internal.newMetrics.submitClientEvent({
-            name: 'client.ice.start',
-            options: {
-              meetingId: this.id,
-            },
-          });
+          if (this.networkStatus !== NETWORK_STATUS.DISCONNECTED) {
+            // If the networkStatus is disconnected then this Connected state is being recieved after a successful
+            // reconnection attempt. In this case we don't send client.ice.start as it is not part of the join flow.
+            // @ts-ignore
+            this.webex.internal.newMetrics.submitClientEvent({
+              name: 'client.ice.start',
+              options: {
+                meetingId: this.id,
+              },
+            });
+          }
           break;
         case ConnectionState.Connected:
-          // @ts-ignore
-          this.webex.internal.newMetrics.submitClientEvent({
-            name: 'client.ice.end',
-            payload: {
-              canProceed: true,
-              icePhase: !this.networkStatus ? 'JOIN_MEETING_FINAL' : 'IN_MEETING',
-            },
-            options: {
-              meetingId: this.id,
-            },
-          });
+          if (this.networkStatus !== NETWORK_STATUS.DISCONNECTED) {
+            // If the networkStatus is disconnected then this Connected state is being recieved after a successful
+            // reconnection attempt. In this case we don't send client.ice.end as it is not part of the join flow.
+            // @ts-ignore
+            this.webex.internal.newMetrics.submitClientEvent({
+              name: 'client.ice.end',
+              payload: {
+                canProceed: true,
+                icePhase: 'JOIN_MEETING_FINAL',
+              },
+              options: {
+                meetingId: this.id,
+              },
+            });
+          }
           Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.CONNECTION_SUCCESS, {
             correlation_id: this.correlationId,
             locus_id: this.locusId,
@@ -5771,36 +5759,43 @@ export default class Meeting extends StatelessWebexPlugin {
     try {
       await this.mediaProperties.waitForMediaConnectionConnected();
     } catch (error) {
-      // @ts-ignore
-      this.webex.internal.newMetrics.submitClientEvent({
-        name: 'client.ice.end',
-        payload: {
-          canProceed: !this.turnServerUsed, // If we haven't done turn tls retry yet we will proceed with join attempt
-          icePhase: this.turnServerUsed ? 'JOIN_MEETING_FINAL' : 'JOIN_MEETING_RETRY',
-          errors: [
-            // @ts-ignore
-            this.webex.internal.newMetrics.callDiagnosticMetrics.getErrorPayloadForClientErrorCode({
-              clientErrorCode: CallDiagnosticUtils.generateClientErrorCodeForIceFailure({
-                signalingState:
-                  this.mediaProperties.webrtcMediaConnection?.multistreamConnection?.pc?.pc
-                    ?.signalingState ||
-                  this.mediaProperties.webrtcMediaConnection?.mediaConnection?.pc?.signalingState ||
-                  'unknown',
-                iceConnectionState:
-                  this.mediaProperties.webrtcMediaConnection?.multistreamConnection?.pc?.pc
-                    ?.iceConnectionState ||
-                  this.mediaProperties.webrtcMediaConnection?.mediaConnection?.pc
-                    ?.iceConnectionState ||
-                  'unknown',
-                turnServerUsed: this.turnServerUsed,
-              }),
-            }),
-          ],
-        },
-        options: {
-          meetingId: this.id,
-        },
-      });
+      if (this.networkStatus !== NETWORK_STATUS.DISCONNECTED) {
+        // If the networkStatus is disconnected then this Connected state is being recieved after a successful
+        // reconnection attempt. In this case we don't send client.ice.end as it is not part of the join flow.
+        // @ts-ignore
+        this.webex.internal.newMetrics.submitClientEvent({
+          name: 'client.ice.end',
+          payload: {
+            canProceed: !this.turnServerUsed, // If we haven't done turn tls retry yet we will proceed with join attempt
+            icePhase: this.turnServerUsed ? 'JOIN_MEETING_FINAL' : 'JOIN_MEETING_RETRY',
+            errors: [
+              // @ts-ignore
+              this.webex.internal.newMetrics.callDiagnosticMetrics.getErrorPayloadForClientErrorCode(
+                {
+                  clientErrorCode: CallDiagnosticUtils.generateClientErrorCodeForIceFailure({
+                    signalingState:
+                      this.mediaProperties.webrtcMediaConnection?.multistreamConnection?.pc?.pc
+                        ?.signalingState ||
+                      this.mediaProperties.webrtcMediaConnection?.mediaConnection?.pc
+                        ?.signalingState ||
+                      'unknown',
+                    iceConnectionState:
+                      this.mediaProperties.webrtcMediaConnection?.multistreamConnection?.pc?.pc
+                        ?.iceConnectionState ||
+                      this.mediaProperties.webrtcMediaConnection?.mediaConnection?.pc
+                        ?.iceConnectionState ||
+                      'unknown',
+                    turnServerUsed: this.turnServerUsed,
+                  }),
+                }
+              ),
+            ],
+          },
+          options: {
+            meetingId: this.id,
+          },
+        });
+      }
       throw new Error(
         `Timed out waiting for media connection to be connected, correlationId=${this.correlationId}`
       );
