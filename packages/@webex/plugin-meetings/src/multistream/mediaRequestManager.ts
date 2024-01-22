@@ -409,15 +409,17 @@ export class MediaRequestManager {
     return newId;
   }
 
-  public cancelRequest(requestId: MediaRequestId, commit = true) {
-    const mediaRequest = this.clientRequests[requestId];
+  public cancelRequest(requestIds: MediaRequestId[], commit = true) {
+    requestIds.forEach((requestId: string) => {
+      const mediaRequest = this.clientRequests[requestId];
 
-    mediaRequest?.receiveSlots.forEach((rs) => {
-      rs.off(ReceiveSlotEvents.SourceUpdate, this.sourceUpdateListener);
-      rs.off(ReceiveSlotEvents.MaxFsUpdate, mediaRequest.handleMaxFs);
+      mediaRequest?.receiveSlots.forEach((rs) => {
+        rs.off(ReceiveSlotEvents.SourceUpdate, this.sourceUpdateListener);
+        rs.off(ReceiveSlotEvents.MaxFsUpdate, mediaRequest.handleMaxFs);
+      });
+
+      delete this.clientRequests[requestId];
     });
-
-    delete this.clientRequests[requestId];
 
     if (commit) {
       this.commit();

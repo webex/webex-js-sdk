@@ -22,7 +22,7 @@ export class RemoteMediaGroup {
 
   private unpinnedRemoteMedia: RemoteMedia[];
 
-  private mediaRequestId?: MediaRequestId; // id of the "active-speaker" media request id
+  private mediaRequestIds?: MediaRequestId[]; // id of the "active-speaker" media request id
 
   private pinnedRemoteMedia: RemoteMedia[];
   private namedMedia: RemoteMedia[];
@@ -225,7 +225,7 @@ export class RemoteMediaGroup {
     this.cancelActiveSpeakerMediaRequest(false);
 
     this.namedMedia.forEach((remoteMedia) => {
-      this.mediaRequestManager.addRequest(
+      const mrId = this.mediaRequestManager.addRequest(
         {
           policyInfo: {
             policy: 'active-speaker',
@@ -243,9 +243,10 @@ export class RemoteMediaGroup {
         },
         false
       );
+      this.mediaRequestIds?.push(mrId);
     });
 
-    this.mediaRequestId = this.mediaRequestManager.addRequest(
+    const mrId = this.mediaRequestManager.addRequest(
       {
         policyInfo: {
           policy: 'active-speaker',
@@ -264,12 +265,13 @@ export class RemoteMediaGroup {
       },
       commit
     );
+    this.mediaRequestIds?.push(mrId);
   }
 
   private cancelActiveSpeakerMediaRequest(commit: boolean) {
-    if (this.mediaRequestId) {
-      this.mediaRequestManager.cancelRequest(this.mediaRequestId, commit);
-      this.mediaRequestId = undefined;
+    if (this.mediaRequestIds?.length) {
+      this.mediaRequestManager.cancelRequest(this.mediaRequestIds, commit);
+      this.mediaRequestIds = [];
     }
   }
 
