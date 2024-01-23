@@ -451,11 +451,13 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     clientErrorCode,
     serviceErrorCode,
     serviceErrorName,
+    rawErrorMessage,
     payloadOverrides,
   }: {
     clientErrorCode: number;
     serviceErrorCode: any;
     serviceErrorName?: any;
+    rawErrorMessage?: string;
     payloadOverrides?: any;
   }): ClientEventError {
     let error: ClientEventError;
@@ -469,6 +471,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
           {errorCode: clientErrorCode},
           serviceErrorName ? {errorData: {errorName: serviceErrorName}} : {},
           {serviceErrorCode},
+          {rawErrorMessage},
           partialParsedError,
           payloadOverrides || {}
         );
@@ -485,12 +488,14 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
    * @param rawError
    */
   generateClientEventErrorPayload(rawError: any) {
+    const rawErrorMessage = rawError.message;
     if (rawError.name) {
       if (isBrowserMediaErrorName(rawError.name)) {
         return this.getErrorPayloadForClientErrorCode({
           serviceErrorCode: undefined,
           clientErrorCode: BROWSER_MEDIA_ERROR_NAME_TO_CLIENT_ERROR_CODES_MAP[rawError.name],
           serviceErrorName: rawError.name,
+          rawErrorMessage,
         });
       }
     }
@@ -504,7 +509,11 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     if (serviceErrorCode) {
       const clientErrorCode = SERVICE_ERROR_CODES_TO_CLIENT_ERROR_CODES_MAP[serviceErrorCode];
       if (clientErrorCode) {
-        return this.getErrorPayloadForClientErrorCode({clientErrorCode, serviceErrorCode});
+        return this.getErrorPayloadForClientErrorCode({
+          clientErrorCode,
+          serviceErrorCode,
+          rawErrorMessage,
+        });
       }
 
       // by default, if it is locus error, return new locus err
@@ -512,6 +521,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
         return this.getErrorPayloadForClientErrorCode({
           clientErrorCode: NEW_LOCUS_ERROR_CLIENT_CODE,
           serviceErrorCode,
+          rawErrorMessage,
         });
       }
     }
@@ -520,35 +530,33 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       return this.getErrorPayloadForClientErrorCode({
         clientErrorCode: MEETING_INFO_LOOKUP_ERROR_CLIENT_CODE,
         serviceErrorCode,
+        rawErrorMessage,
       });
     }
 
     if (isNetworkError(rawError)) {
-      const payload = this.getErrorPayloadForClientErrorCode({
+      return this.getErrorPayloadForClientErrorCode({
         clientErrorCode: NETWORK_ERROR,
         serviceErrorCode,
         payloadOverrides: rawError.payloadOverrides,
+        rawErrorMessage,
       });
-      payload.errorDescription = rawError.message;
-
-      return payload;
     }
 
     if (isUnauthorizedError(rawError)) {
-      const payload = this.getErrorPayloadForClientErrorCode({
+      return this.getErrorPayloadForClientErrorCode({
         clientErrorCode: AUTHENTICATION_FAILED_CODE,
         serviceErrorCode,
         payloadOverrides: rawError.payloadOverrides,
+        rawErrorMessage,
       });
-      payload.errorDescription = rawError.message;
-
-      return payload;
     }
 
     // otherwise return unkown error
     return this.getErrorPayloadForClientErrorCode({
       clientErrorCode: UNKNOWN_ERROR,
       serviceErrorCode: UNKNOWN_ERROR,
+      rawErrorMessage,
     });
   }
 
@@ -614,11 +622,6 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       webexSubServiceType: this.getSubServiceType(meeting),
     };
 
-    if (options?.rawError?.message) {
-      // @ts-ignore
-      clientEventObject.eventData.rawErrorMessage = options?.rawError?.message;
-    }
-
     return clientEventObject;
   }
 
@@ -659,11 +662,6 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       },
       loginType: this.getCurLoginType(),
     };
-
-    if (options?.rawError?.message) {
-      // @ts-ignore
-      clientEventObject.eventData.rawErrorMessage = options?.rawError?.message;
-    }
 
     return clientEventObject;
   }
