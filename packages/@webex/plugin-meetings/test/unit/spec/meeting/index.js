@@ -5690,6 +5690,34 @@ describe('plugin-meetings', () => {
           });
         });
 
+        describe('CONNECTION_STATE_CHANGED event when state = "Connecting"', () => {
+          it('sends client.ice.start correctly when hasMediaConnectionConnectedAtLeastOnce = true', () => {
+            meeting.hasMediaConnectionConnectedAtLeastOnce = true;
+            meeting.setupMediaConnectionListeners();
+            eventListeners[Event.CONNECTION_STATE_CHANGED]({
+              state: 'Connecting',
+            });
+
+            assert.notCalled(webex.internal.newMetrics.submitClientEvent);
+          })
+
+          it('sends client.ice.start correctly when hasMediaConnectionConnectedAtLeastOnce = false', () => {
+            meeting.hasMediaConnectionConnectedAtLeastOnce = false;
+            meeting.setupMediaConnectionListeners();
+            eventListeners[Event.CONNECTION_STATE_CHANGED]({
+              state: 'Connecting',
+            });
+
+            assert.calledOnce(webex.internal.newMetrics.submitClientEvent);
+            assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
+              name: 'client.ice.start',
+              options: {
+                meetingId: meeting.id,
+              },
+            });
+          })
+        });
+
         describe('submitClientEvent on connectionSuccess', () => {
           let setNetworkStatusSpy;
 
@@ -5764,8 +5792,9 @@ describe('plugin-meetings', () => {
               icePhase: 'JOIN_MEETING_FINAL',
               setNetworkStatusCallParams: [NETWORK_STATUS.CONNECTED],
             });
+            assert.equal(meeting.hasMediaConnectionConnectedAtLeastOnce, true);
 
-            // now simulate short connection loss, client.ice.end is not sent a second time
+            // now simulate short connection loss, client.ice.end is not sent a second time as hasMediaConnectionConnectedAtLeastOnce = true
             resetSpies();
 
             eventListeners[Event.CONNECTION_STATE_CHANGED]({
@@ -5779,7 +5808,14 @@ describe('plugin-meetings', () => {
               setNetworkStatusCallParams: [NETWORK_STATUS.DISCONNECTED, NETWORK_STATUS.CONNECTED],
             });
 
-            assert.equal(meeting.hasMediaConnectionConnectedAtLeastOnce, true);
+            resetSpies();
+
+            eventListeners[Event.CONNECTION_STATE_CHANGED]({
+              state: 'Disconnected',
+            });
+            eventListeners[Event.CONNECTION_STATE_CHANGED]({
+              state: 'Connected',
+            });
           });
         });
 
@@ -5866,6 +5902,7 @@ describe('plugin-meetings', () => {
             assert.calledOnce(meeting.setNetworkStatus);
             assert.calledWith(meeting.setNetworkStatus, NETWORK_STATUS.DISCONNECTED);
             assert.calledOnce(meeting.reconnectionManager.waitForIceReconnect);
+            assert.notCalled(webex.internal.newMetrics.submitClientEvent);
             checkBehavioralMetricSent();
           });
         });
@@ -5898,8 +5935,8 @@ describe('plugin-meetings', () => {
 
             mockFailedEvent();
 
-            checkBehavioralMetricSent();
             assert.notCalled(webex.internal.newMetrics.submitClientEvent);
+            checkBehavioralMetricSent();
           });
 
           it('handles "Failed" state correctly when hasMediaConnectionConnectedAtLeastOnce = true', async () => {
