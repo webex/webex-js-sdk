@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.321](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.320...v3.0.0-beta.321) (2024-01-23)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** don't sent client.ice events when reconnecting ([#3319](https://github.com/webex/webex-js-sdk/issues/3319)) ([e2c870b](https://github.com/webex/webex-js-sdk/commit/e2c870b02db236681dae09b7b8727735804c8d1c))
+
 ## [3.0.0-beta.320](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.319...v3.0.0-beta.320) (2024-01-23)
 
 
