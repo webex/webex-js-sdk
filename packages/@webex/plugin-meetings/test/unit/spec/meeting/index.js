@@ -5851,19 +5851,7 @@ describe('plugin-meetings', () => {
             assert.calledOnce(meeting.setNetworkStatus);
             assert.calledWith(meeting.setNetworkStatus, NETWORK_STATUS.DISCONNECTED);
             assert.calledOnce(meeting.reconnectionManager.waitForIceReconnect);
-            assert.calledOnce(getErrorPayloadForClientErrorCodeStub);
-            assert.calledOnce(webex.internal.newMetrics.submitClientEvent);
-            assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
-              name: 'client.ice.end',
-              payload: {
-                canProceed: false,
-                icePhase: 'IN_MEETING',
-                errors: [FAKE_ERROR],
-              },
-              options: {
-                meetingId: meeting.id,
-              },
-            });
+            assert.notCalled(webex.internal.newMetrics.submitClientEvent);
             checkBehavioralMetricSent(true);
           });
 
@@ -5915,27 +5903,11 @@ describe('plugin-meetings', () => {
           });
 
           it('handles "Failed" state correctly when hasMediaConnectionConnectedAtLeastOnce = true', async () => {
-            const FAKE_ERROR = {fatal: true};
-            const getErrorPayloadForClientErrorCodeStub = webex.internal.newMetrics.callDiagnosticMetrics.getErrorPayloadForClientErrorCode = sinon
-              .stub()
-              .returns(FAKE_ERROR);
             meeting.hasMediaConnectionConnectedAtLeastOnce = true;
 
             mockFailedEvent();
 
-            assert.calledOnceWithExactly(getErrorPayloadForClientErrorCodeStub, {clientErrorCode: 2004});
-            assert.calledOnce(webex.internal.newMetrics.submitClientEvent);
-            assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
-              name: 'client.ice.end',
-              payload: {
-                canProceed: false,
-                icePhase: 'IN_MEETING',
-                errors: [FAKE_ERROR],
-              },
-              options: {
-                meetingId: meeting.id,
-              },
-            });
+            assert.notCalled(webex.internal.newMetrics.submitClientEvent);
             checkBehavioralMetricSent(true);
           });
         });

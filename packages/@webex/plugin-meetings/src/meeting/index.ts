@@ -5437,9 +5437,8 @@ export default class Meeting extends StatelessWebexPlugin {
 
       switch (event.state) {
         case ConnectionState.Connecting:
-          if (this.networkStatus !== NETWORK_STATUS.DISCONNECTED) {
-            // If the networkStatus is disconnected then this Connected state is being recieved after a successful
-            // reconnection attempt. In this case we don't send client.ice.start as it is not part of the join flow.
+          if (!this.hasMediaConnectionConnectedAtLeastOnce) {
+            // Only send CA event for join flow if we haven't successfully connected media yet
             // @ts-ignore
             this.webex.internal.newMetrics.submitClientEvent({
               name: 'client.ice.start',
@@ -5450,9 +5449,8 @@ export default class Meeting extends StatelessWebexPlugin {
           }
           break;
         case ConnectionState.Connected:
-          if (this.networkStatus !== NETWORK_STATUS.DISCONNECTED) {
-            // If the networkStatus is disconnected then this Connected state is being recieved after a successful
-            // reconnection attempt. In this case we don't send client.ice.end as it is not part of the join flow.
+          if (!this.hasMediaConnectionConnectedAtLeastOnce) {
+            // Only send CA event for join flow if we haven't successfully connected media yet
             // @ts-ignore
             this.webex.internal.newMetrics.submitClientEvent({
               name: 'client.ice.end',
@@ -5778,9 +5776,8 @@ export default class Meeting extends StatelessWebexPlugin {
     try {
       await this.mediaProperties.waitForMediaConnectionConnected();
     } catch (error) {
-      if (this.networkStatus !== NETWORK_STATUS.DISCONNECTED) {
-        // If the networkStatus is disconnected then this Connected state is being recieved after a successful
-        // reconnection attempt. In this case we don't send client.ice.end as it is not part of the join flow.
+      if (!this.hasMediaConnectionConnectedAtLeastOnce) {
+        // Only send CA event for join flow if we haven't successfully connected media yet
         // @ts-ignore
         this.webex.internal.newMetrics.submitClientEvent({
           name: 'client.ice.end',
