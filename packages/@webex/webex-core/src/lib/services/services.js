@@ -169,7 +169,7 @@ const Services = WebexPlugin.extend({
   },
 
   /**
-   * saves the host catalog
+   * saves the hostCatalog object
    * @param {Object} hostCatalog
    * @returns {void}
    */
@@ -741,6 +741,7 @@ const Services = WebexPlugin.extend({
     // update all the service urls in the host catalog
 
     this._updateServiceUrls(serviceHostmap.serviceLinks);
+    this._updateHostCatalog(serviceHostmap.hostCatalog);
 
     return formattedHostmap;
   },

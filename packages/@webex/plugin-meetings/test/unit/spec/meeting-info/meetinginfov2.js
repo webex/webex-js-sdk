@@ -827,6 +827,34 @@ describe('plugin-meetings', () => {
         });
       });
 
+      it('Make a request to /spaceInstant when conversationUrl with installed org ID', async () => {
+        const {invitee} = setup();
+
+        await meetingInfo.createAdhocSpaceMeeting(conversationUrl, installedOrgID);
+
+        assert.calledWith(
+          webex.internal.conversation.get,
+          {url: conversationUrl},
+          {includeParticipants: true, disableTransform: true}
+        );
+
+        assert.calledWith(webex.request, {
+          method: 'POST',
+          uri: 'https://go.webex.com/wbxappapi/v2/meetings/spaceInstant',
+          body: {
+            title: conversation.displayName,
+            spaceUrl: conversation.url,
+            keyUrl: conversation.encryptionKeyUrl,
+            kroUrl: conversation.kmsResourceObjectUrl,
+            invitees: invitee,
+            installedOrgID,
+          },
+        });
+        assert(Metrics.sendBehavioralMetric.calledOnce);
+        assert.calledWith(Metrics.sendBehavioralMetric, BEHAVIORAL_METRICS.ADHOC_MEETING_SUCCESS);
+      });
+
+
       forEach(
         [
           {errorCode: 403049},

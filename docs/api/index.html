@@ -18727,7 +18727,8 @@ If false, then media is transcoded by the server into a single stream.</p>
   </div>
   
 
-  
+  <p>Indicates network status of the webrtc media connection</p>
+
     <div class='pre p1 fill-light mt0'>networkStatus</div>
   
     <p>
@@ -37746,6 +37747,287 @@ noop as of now, does nothing</p>
   
   
 
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+      </div>
+    </div>
+  
+    <div class='border-bottom' id='rtcmetricssendmetricsinqueue'>
+      <div class="clearfix small pointer toggle-sibling">
+        <div class="py1 contain">
+            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
+            <span class='code strong strong truncate'>sendMetricsInQueue()</span>
+        </div>
+      </div>
+      <div class="clearfix display-none toggle-target">
+        <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+  <div class='clearfix'>
+    
+    
+      <a class='fr fill-darken0 round round pad1x quiet h5' href='https://github.com/webex/webex-js-sdk/blob/7566aa33a7ad3e3d465ae77cb56fd2649bdde629/packages/@webex/plugin-meetings/src/rtcMetrics/index.ts#L44-L49'>
+      <span>packages/@webex/plugin-meetings/src/rtcMetrics/index.ts</span>
+      </a>
+    
+  </div>
+  
+
+  <p>Check to see if the metrics queue has any items.</p>
+
+    <div class='pre p1 fill-light mt0'>sendMetricsInQueue(): void</div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+    
+      <div class='py1 quiet mt1 prose-big'>Returns</div>
+      <code>void</code>:
+        
+      
+    
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+      </div>
+    </div>
+  
+    <div class='border-bottom' id='rtcmetricsaddmetrics'>
+      <div class="clearfix small pointer toggle-sibling">
+        <div class="py1 contain">
+            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
+            <span class='code strong strong truncate'>addMetrics(data)</span>
+        </div>
+      </div>
+      <div class="clearfix display-none toggle-target">
+        <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+  <div class='clearfix'>
+    
+    
+      <a class='fr fill-darken0 round round pad1x quiet h5' href='https://github.com/webex/webex-js-sdk/blob/7566aa33a7ad3e3d465ae77cb56fd2649bdde629/packages/@webex/plugin-meetings/src/rtcMetrics/index.ts#L58-L65'>
+      <span>packages/@webex/plugin-meetings/src/rtcMetrics/index.ts</span>
+      </a>
+    
+  </div>
+  
+
+  <p>Add metrics items to the metrics queue.</p>
+
+    <div class='pre p1 fill-light mt0'>addMetrics(data: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">object</a>): void</div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Parameters</div>
+    <div class='prose'>
+      
+        <div class='space-bottom0'>
+          <div>
+            <span class='code bold'>data</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">object</a>)</code>
+	    An object with a payload array of metrics items.
+
+          </div>
+          
+        </div>
+      
+    </div>
+  
+
+  
+
+  
+    
+      <div class='py1 quiet mt1 prose-big'>Returns</div>
+      <code>void</code>:
+        
+      
+    
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+      </div>
+    </div>
+  
+    <div class='border-bottom' id='rtcmetricsclosemetrics'>
+      <div class="clearfix small pointer toggle-sibling">
+        <div class="py1 contain">
+            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
+            <span class='code strong strong truncate'>closeMetrics()</span>
+        </div>
+      </div>
+      <div class="clearfix display-none toggle-target">
+        <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+  <div class='clearfix'>
+    
+    
+      <a class='fr fill-darken0 round round pad1x quiet h5' href='https://github.com/webex/webex-js-sdk/blob/7566aa33a7ad3e3d465ae77cb56fd2649bdde629/packages/@webex/plugin-meetings/src/rtcMetrics/index.ts#L72-L75'>
+      <span>packages/@webex/plugin-meetings/src/rtcMetrics/index.ts</span>
+      </a>
+    
+  </div>
+  
+
+  <p>Clear the metrics interval.</p>
+
+    <div class='pre p1 fill-light mt0'>closeMetrics(): void</div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+    
+      <div class='py1 quiet mt1 prose-big'>Returns</div>
+      <code>void</code>:
+        
+      
+    
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+      </div>
+    </div>
+  
+    <div class='border-bottom' id='rtcmetricsanonymizeip'>
+      <div class="clearfix small pointer toggle-sibling">
+        <div class="py1 contain">
+            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
+            <span class='code strong strong truncate'>anonymizeIp(stats)</span>
+        </div>
+      </div>
+      <div class="clearfix display-none toggle-target">
+        <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+  <div class='clearfix'>
+    
+    
+      <a class='fr fill-darken0 round round pad1x quiet h5' href='https://github.com/webex/webex-js-sdk/blob/7566aa33a7ad3e3d465ae77cb56fd2649bdde629/packages/@webex/plugin-meetings/src/rtcMetrics/index.ts#L83-L94'>
+      <span>packages/@webex/plugin-meetings/src/rtcMetrics/index.ts</span>
+      </a>
+    
+  </div>
+  
+
+  <p>Anonymize IP addresses.</p>
+
+    <div class='pre p1 fill-light mt0'>anonymizeIp(stats: <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array">array</a>): <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">string</a></div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Parameters</div>
+    <div class='prose'>
+      
+        <div class='space-bottom0'>
+          <div>
+            <span class='code bold'>stats</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array">array</a>)</code>
+	    An RTCStatsReport organized into an array of strings.
+
+          </div>
+          
+        </div>
+      
+    </div>
   
 
   

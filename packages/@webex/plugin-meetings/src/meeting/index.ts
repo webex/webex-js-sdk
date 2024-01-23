@@ -528,7 +528,7 @@ export default class Meeting extends StatelessWebexPlugin {
   meetingInfoFailureCode?: number;
   meetingInfoExtraParams?: Record<string, any>;
   networkQualityMonitor: NetworkQualityMonitor;
-  networkStatus: string;
+  networkStatus?: NETWORK_STATUS;
   passwordStatus: string;
   queuedMediaUpdates: any[];
   recording: any;
@@ -1096,13 +1096,14 @@ export default class Meeting extends StatelessWebexPlugin {
      */
     this.networkQualityMonitor = null;
     /**
+     * Indicates network status of the webrtc media connection
      * @instance
      * @type {String}
      * @readonly
      * @public
      * @memberof Meeting
      */
-    this.networkStatus = null;
+    this.networkStatus = undefined;
     /**
      * Passing only info as we send basic info for meeting added event
      * @instance
@@ -1928,12 +1929,12 @@ export default class Meeting extends StatelessWebexPlugin {
 
   /**
    * sets the network status on meeting object
-   * @param {String} networkStatus
+   * @param {NETWORK_STATUS} networkStatus
    * @private
    * @returns {undefined}
    * @memberof Meeting
    */
-  private setNetworkStatus(networkStatus: string) {
+  private setNetworkStatus(networkStatus?: NETWORK_STATUS) {
     if (networkStatus === NETWORK_STATUS.DISCONNECTED) {
       Trigger.trigger(
         this,
@@ -3428,6 +3429,10 @@ export default class Meeting extends StatelessWebexPlugin {
             requiredPolicies: [SELF_POLICY.SUPPORT_FILE_TRANSFER],
             policies: this.selfUserPolicies,
           }),
+          canChat: ControlsOptionsUtil.hasPolicies({
+            requiredPolicies: [SELF_POLICY.SUPPORT_CHAT],
+            policies: this.selfUserPolicies,
+          }),
           canShareApplication:
             (ControlsOptionsUtil.hasHints({
               requiredHints: [DISPLAY_HINTS.SHARE_APPLICATION],
@@ -3916,6 +3921,7 @@ export default class Meeting extends StatelessWebexPlugin {
       this.receiveSlotManager.reset();
       this.mediaProperties.webrtcMediaConnection.close();
       this.sendSlotManager.reset();
+      this.setNetworkStatus(undefined);
     }
 
     this.audio = null;
@@ -4587,7 +4593,11 @@ export default class Meeting extends StatelessWebexPlugin {
     // @ts-ignore
     this.webex.internal.newMetrics.submitClientEvent({
       name: 'client.call.initiated',
-      payload: {trigger: 'user-interaction', isRoapCallEnabled: true},
+      payload: {
+        trigger: 'user-interaction',
+        isRoapCallEnabled: true,
+        pstnAudioType: options?.pstnAudioType,
+      },
       options: {meetingId: this.id},
     });
 
@@ -4753,7 +4763,7 @@ export default class Meeting extends StatelessWebexPlugin {
       .then((join) => {
         if (isBrowser) {
           // @ts-ignore - config coming from registerPlugin
-          if (this.config.receiveTranscription || this.receiveTranscription) {
+          if (this.config.receiveTranscription || options.receiveTranscription) {
             if (this.isTranscriptionSupported()) {
               LoggerProxy.logger.info(
                 'Meeting:index#join --> Attempting to enabled to receive transcription!'
@@ -5455,6 +5465,10 @@ export default class Meeting extends StatelessWebexPlugin {
           // @ts-ignore
           this.webex.internal.newMetrics.submitClientEvent({
             name: 'client.ice.end',
+            payload: {
+              canProceed: true,
+              icePhase: !this.networkStatus ? 'JOIN_MEETING_FINAL' : 'IN_MEETING',
+            },
             options: {
               meetingId: this.id,
             },
@@ -5924,8 +5938,16 @@ export default class Meeting extends StatelessWebexPlugin {
     bundlePolicy?: BundlePolicy
   ): Promise<void> {
     this.retriedWithTurnServer = true;
+    const LOG_HEADER = 'Meeting:index#addMedia():retryWithForcedTurnDiscovery -->';
 
     await this.cleanUpBeforeRetryWithTurnServer();
+
+    if (this.state === MEETING_STATE.STATES.LEFT) {
+      LoggerProxy.logger.info(
+        `${LOG_HEADER} meeting state was LEFT after first attempt to establish media connection. Attempting to rejoin. `
+      );
+      await this.join({rejoin: true});
+    }
 
     await this.retryEstablishMediaConnectionWithForcedTurnDiscovery(
       remoteMediaManagerConfig,
@@ -6807,17 +6829,13 @@ export default class Meeting extends StatelessWebexPlugin {
         .catch((error) => {
           LoggerProxy.logger.error('Meeting:index#stopWhiteboardShare --> Error ', error);
 
-          Metrics.sendBehavioralMetric(
-            // @ts-ignore - check if STOP_WHITEBOARD_SHARE_FAILURE exists
-            BEHAVIORAL_METRICS.STOP_WHITEBOARD_SHARE_FAILURE,
-            {
-              correlation_id: this.correlationId,
-              locus_id: this.locusUrl.split('/').pop(),
-              reason: error.message,
-              stack: error.stack,
-              board: {channelUrl},
-            }
-          );
+          Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.MEETING_STOP_WHITEBOARD_SHARE_FAILURE, {
+            correlation_id: this.correlationId,
+            locus_id: this.locusUrl.split('/').pop(),
+            reason: error.message,
+            stack: error.stack,
+            board: {channelUrl},
+          });
 
           return Promise.reject(error);
         })

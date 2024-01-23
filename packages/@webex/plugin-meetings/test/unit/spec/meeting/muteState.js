@@ -169,7 +169,8 @@ describe('plugin-meetings', () => {
         // simulate being already remote muted and locally unmuted
         meeting.remoteMuted = true;
         meeting.mediaProperties.audioStream.muted = false;
-        // create a new MuteState intance
+
+        // create a new MuteState instance
         audio = createMuteState(AUDIO, meeting, true);
         audio.handleLocalStreamChange(meeting);
 
