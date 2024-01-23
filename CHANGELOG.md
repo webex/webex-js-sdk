@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.319](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.318...v3.0.0-beta.319) (2024-01-23)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** don't attempt reconnect if media connection was never established ([#3292](https://github.com/webex/webex-js-sdk/issues/3292)) ([34e030b](https://github.com/webex/webex-js-sdk/commit/34e030bf265da20ae4406a24b3256a18359beb75))
+
 ## [3.0.0-beta.318](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.317...v3.0.0-beta.318) (2024-01-19)
 
 
