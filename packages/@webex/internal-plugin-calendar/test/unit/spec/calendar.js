@@ -58,6 +58,55 @@ describe('internal-plugin-calendar', () => {
       };
     });
 
+    describe('Private API', () => {
+      describe('#prefetchEncryptionKey', () => {
+        it('waits for the ability to authorize before doing anything', () => {
+          webex.canAuthorize = false;
+
+          webex.internal.calendar.prefetchEncryptionKey();
+
+          assert.notCalled(webex.internal.encryption.kms.createUnboundKeys);
+
+          // Behaviour when the user can authorize is tested elsewhere, so just ensure it gets called again
+          const prefetchEncryptionKeyStub = sinon.stub(webex.internal.calendar, 'prefetchEncryptionKey');
+
+          webex.trigger('change:canAuthorize');
+
+          assert.calledOnce(prefetchEncryptionKeyStub);
+          assert.calledWith(prefetchEncryptionKeyStub);
+        });
+
+        it('does nothing when the current user is an unverified guest', () => {
+          webex.credentials.isUnverifiedGuest = true;
+
+          webex.internal.calendar.prefetchEncryptionKey();
+
+          assert.notCalled(webex.internal.encryption.kms.createUnboundKeys);
+        });
+
+        it('creates an encryption key when the current user can authorize', () => {
+          webex.internal.calendar.prefetchEncryptionKey();
+
+          assert.calledOnce(webex.internal.encryption.kms.createUnboundKeys);
+          assert.calledWith(webex.internal.encryption.kms.createUnboundKeys, {count: 1});
+        });
+      });
+
+      describe('#initialize', () => {
+        it('adds relevant handlers when webex is ready', () => {
+          const prefetchEncryptionKeyStub = sinon.stub(webex.internal.calendar, 'prefetchEncryptionKey');
+
+          assert.notCalled(prefetchEncryptionKeyStub);
+
+          // Initialize should have already run, so there should be an event handler already
+          webex.trigger('ready');
+
+          assert.calledOnce(prefetchEncryptionKeyStub);
+          assert.calledWith(prefetchEncryptionKeyStub);
+        });
+      });
+    });
+
     describe('Public Api Contract', () => {
       describe('#register()', () => {
         it('on calendar register call mercury registration', async () => {
