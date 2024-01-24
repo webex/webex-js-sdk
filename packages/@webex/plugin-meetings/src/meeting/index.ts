@@ -1504,7 +1504,7 @@ export default class Meeting extends StatelessWebexPlugin {
       this.getPermissionTokenTimeLeftInSec();
 
     LoggerProxy.logger.info(
-      `Meeting:index#refreshPermissionToken --> refreshing permission token, destinationType=${destinationType}, timeLeft=${permissionTokenTimeLeft}, reason=${reason}`
+      `Meeting:index#refreshPermissionToken --> refreshing permission token, destinationType=${destinationType}, timeLeft=${permissionTokenTimeLeft}, permissionTokenExpiry=${permissionExpiryTimestamp}, currentTimestamp=${currentTime},reason=${reason}`
     );
 
     Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.PERMISSION_TOKEN_REFRESH, {
