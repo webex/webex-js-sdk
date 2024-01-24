@@ -36,7 +36,6 @@ button.btn--red {
 
 button.btn-code {
   font-family: Consolas, Liberation Mono, Courier, monospace;
-  margin: 0.2rem 0;
 }
 
 .container {
@@ -54,6 +53,12 @@ button.btn-code {
   width: 100%;
 }
 
+.box {
+  max-width: 70rem; 
+  margin-inline: auto;
+  margin-bottom: 1rem;
+}
+
 .section-box {
   background: #ffffff;
   border-radius: 1rem;
@@ -63,7 +68,9 @@ button.btn-code {
 }
 
 .section-box h2 {
-  margin: 1rem 0rem;
+  margin: 0.5rem 0rem;
+  font-size: 1.25rem;
+  font-weight: 400;
 }
 
 .section-wide {
@@ -89,6 +96,12 @@ button.btn-code {
 } 
 
 .video-section {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+}
+
+.screenshare-section {
   display: flex;
   flex-direction: column;
   flex-grow: 1;
@@ -129,7 +142,9 @@ button.btn-code {
   align-content: center;
 }
 
-.video-container {
+.video-container,
+.audio-container,
+.screenshare-container {
   position: relative;
   display: flex;
   justify-content: center;
@@ -352,7 +367,7 @@ h2 {
 }
 
 legend {
-  font-size: 1.15rem;
+  font-size: 1.05rem;
   color: #1a73e8;
 }
 
@@ -373,4 +388,42 @@ legend {
 
 .webex-error {
   color: #de3434;
+}
+
+.arrow {
+  font-weight: 500;
+  font-size: 1.75rem;
+  float: right;
+  margin-top: -2px;
+}
+
+
+.global-toggle-btn-wrapper {
+  display: flex;
+  justify-content: end;
+  margin: -0.5rem auto;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.global-toggle-btn {
+  width: 10rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.25rem;
+  background-color: white;
+  color: #0052bf;
+  border: #0052bf 1px solid;
+  box-shadow: 3px 3px 4px 1px rgb(0 0 0 / 40%);
+}
+
+.global-toggle-btn:hover {
+  border: #1a73e8 1px solid;
+  background-color: whitesmoke
+}
+
+.global-toggle-btn:focus {
+  box-shadow: 3px 3px 4px 1px rgb(0 0 0 / 40%);
 }

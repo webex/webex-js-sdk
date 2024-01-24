@@ -2,15 +2,27 @@
 // Most client error codes are mapped based on
 // https://sqbu-github.cisco.com/WebExSquared/event-dictionary/wiki/Error-codes-for-metric-events
 
-import {ClientEventError} from '../metrics.types';
+import {ClientEventError, ClientSubServiceType} from '../metrics.types';
 
 export const CALL_DIAGNOSTIC_LOG_IDENTIFIER = 'call-diagnostic-events -> ';
 
+export const AUTHENTICATION_FAILED_CODE = 1010;
+export const NETWORK_ERROR = 1026;
 export const NEW_LOCUS_ERROR_CLIENT_CODE = 4008;
 export const MEETING_INFO_LOOKUP_ERROR_CLIENT_CODE = 4100;
 export const UNKNOWN_ERROR = 9999; // Unexpected error that is not a meetingInfo error, locus error or browser media error.
 export const ICE_FAILURE_CLIENT_CODE = 2004;
+export const MISSING_ROAP_ANSWER_CLIENT_CODE = 2007;
+export const DTLS_HANDSHAKE_FAILED_CLIENT_CODE = 2008;
+export const ICE_FAILED_WITH_TURN_TLS_CLIENT_CODE = 2010;
+export const ICE_FAILED_WITHOUT_TURN_TLS_CLIENT_CODE = 2009;
 export const WBX_APP_API_URL = 'wbxappapi'; // MeetingInfo WebexAppApi response object normally contains a body.url that includes the string 'wbxappapi'
+
+export const WEBEX_SUB_SERVICE_TYPES: Record<string, ClientSubServiceType> = {
+  PMR: 'PMR',
+  SCHEDULED_MEETING: 'ScheduledMeeting',
+  WEBINAR: 'Webinar',
+};
 
 // Found in https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getUserMedia
 const BROWSER_MEDIA_ERROR_NAMES = {
@@ -35,7 +47,7 @@ export const BROWSER_MEDIA_ERROR_NAME_TO_CLIENT_ERROR_CODES_MAP = {
   [BROWSER_MEDIA_ERROR_NAMES.TYPE_ERROR]: 2729, // Thrown if the list of constraints specified is empty, or has all constraints set to false. This can also happen if you try to call getUserMedia() in an insecure context, since navigator.mediaDevices is undefined in an insecure context.
 };
 
-const ERROR_DESCRIPTIONS = {
+export const ERROR_DESCRIPTIONS = {
   UNKNOWN_CALL_FAILURE: 'UnknownCallFailure',
   LOCUS_RATE_LIMITED_INCOMING: 'LocusRateLimitedIncoming',
   LOCUS_RATE_LIMITED_OUTGOING: 'LocusRateLimitedOutgoing',
@@ -43,6 +55,8 @@ const ERROR_DESCRIPTIONS = {
   LOCUS_CONFLICT: 'LocusConflict',
   TIMEOUT: 'Timeout',
   LOCUS_INVALID_SEQUENCE_HASH: 'LocusInvalidSequenceHash',
+  AUTHENTICATION_FAILED: 'AuthenticationFailed',
+  NETWORK_ERROR: 'NetworkError',
   UPDATE_MEDIA_FAILED: 'UpdateMediaFailed',
   FAILED_TO_CONNECT_MEDIA: 'FailedToConnectMedia',
   MEDIA_ENGINE_LOST: 'MediaEngineLost',
@@ -98,6 +112,14 @@ const ERROR_DESCRIPTIONS = {
   NO_MEDIA_FOUND: 'NoMediaFound',
   STREAM_ERROR_NO_MEDIA: 'StreamErrorNoMedia',
   CAMERA_PERMISSION_DENIED: 'CameraPermissionDenied',
+  FRAUD_DETECTION: 'FraudDetection',
+  E2EE_NOT_SUPPORTED: 'E2EENotSupported',
+  LOCUS_LOBBY_FULL_CMR: 'LocusLobbyFullCMR',
+  USER_NOT_INVITED_TO_JOIN: 'UserNotInvitedToJoin',
+  MISSING_ROAP_ANSWER: 'MissingRoapAnswer',
+  DTLS_HANDSHAKE_FAILED: 'DTLSHandshakeFailed',
+  ICE_FAILED_WITHOUT_TURN_TLS: 'ICEFailedWithoutTURN_TLS',
+  ICE_FAILED_WITH_TURN_TLS: 'ICEFailedWithTURN_TLS',
 };
 
 export const SERVICE_ERROR_CODES_TO_CLIENT_ERROR_CODES_MAP = {
@@ -191,6 +213,10 @@ export const SERVICE_ERROR_CODES_TO_CLIENT_ERROR_CODES_MAP = {
   2423016: 4005,
   2423017: 4005,
   2423018: 4005,
+  // LOCUS_OWNER_CONCURRENT_ACTIVE_MEETING_LIMIT_EXCEEDED
+  2423012: 12000,
+  // LOCUS_LOBBY_FULL_CMR
+  2423021: 12001,
   // LOCUS_REQUIRES_MODERATOR_ROLE
   2423007: 4006,
   // LOCUS_JOIN_RESTRICTED_USER_NOT_IN_ROOM
@@ -235,6 +261,10 @@ export const SERVICE_ERROR_CODES_TO_CLIENT_ERROR_CODES_MAP = {
   2405001: 4029,
   // LOCUS_RECORDING_NOT_ENABLED
   2409005: 4029,
+  // E2EE_NOT_SUPPORTED
+  2409062: 12002,
+  // LOCUS: ONLY_INVITED_USERS_CAN_ATTEND_THIS_MEETING
+  2423025: 12003,
 
   // ---- U2C Sign in catalog ------
   // The user exists, but hasn't completed activation. Needs to visit Atlas for more processing.
@@ -298,6 +328,16 @@ export const CLIENT_ERROR_CODE_TO_ERROR_PAYLOAD: Record<number, Partial<ClientEv
     category: 'signaling',
     fatal: true,
   },
+  [AUTHENTICATION_FAILED_CODE]: {
+    errorDescription: ERROR_DESCRIPTIONS.AUTHENTICATION_FAILED,
+    category: 'network',
+    fatal: true,
+  },
+  1026: {
+    errorDescription: ERROR_DESCRIPTIONS.NETWORK_ERROR,
+    category: 'network',
+    fatal: true,
+  },
   2001: {
     errorDescription: ERROR_DESCRIPTIONS.FAILED_TO_CONNECT_MEDIA,
     category: 'signaling',
@@ -313,9 +353,9 @@ export const CLIENT_ERROR_CODE_TO_ERROR_PAYLOAD: Record<number, Partial<ClientEv
     category: 'signaling',
     fatal: true,
   },
-  2004: {
+  [ICE_FAILURE_CLIENT_CODE]: {
     errorDescription: ERROR_DESCRIPTIONS.ICE_FAILURE,
-    category: 'signaling',
+    category: 'media',
     fatal: true,
   },
   2005: {
@@ -326,6 +366,26 @@ export const CLIENT_ERROR_CODE_TO_ERROR_PAYLOAD: Record<number, Partial<ClientEv
   2006: {
     errorDescription: ERROR_DESCRIPTIONS.ICE_SERVER_REJECTED,
     category: 'signaling',
+    fatal: true,
+  },
+  [MISSING_ROAP_ANSWER_CLIENT_CODE]: {
+    errorDescription: ERROR_DESCRIPTIONS.MISSING_ROAP_ANSWER,
+    category: 'signaling',
+    fatal: true,
+  },
+  [DTLS_HANDSHAKE_FAILED_CLIENT_CODE]: {
+    errorDescription: ERROR_DESCRIPTIONS.DTLS_HANDSHAKE_FAILED,
+    category: 'media',
+    fatal: true,
+  },
+  [ICE_FAILED_WITHOUT_TURN_TLS_CLIENT_CODE]: {
+    errorDescription: ERROR_DESCRIPTIONS.ICE_FAILED_WITHOUT_TURN_TLS,
+    category: 'media',
+    fatal: true,
+  },
+  [ICE_FAILED_WITH_TURN_TLS_CLIENT_CODE]: {
+    errorDescription: ERROR_DESCRIPTIONS.ICE_FAILED_WITH_TURN_TLS,
+    category: 'media',
     fatal: true,
   },
   3001: {
@@ -407,7 +467,7 @@ export const CLIENT_ERROR_CODE_TO_ERROR_PAYLOAD: Record<number, Partial<ClientEv
   },
   4009: {
     errorDescription: ERROR_DESCRIPTIONS.NETWORK_UNAVAILABLE,
-    category: 'expected',
+    category: 'network',
     fatal: true,
   },
   4010: {
@@ -573,6 +633,32 @@ export const CLIENT_ERROR_CODE_TO_ERROR_PAYLOAD: Record<number, Partial<ClientEv
   9999: {
     errorDescription: ERROR_DESCRIPTIONS.UNKNOWN_ERROR,
     category: 'other',
+    fatal: true,
+  },
+  12000: {
+    errorDescription: ERROR_DESCRIPTIONS.FRAUD_DETECTION,
+    category: 'expected',
+    fatal: true,
+    name: 'locus.response',
+    shownToUser: true,
+  },
+  12001: {
+    errorDescription: ERROR_DESCRIPTIONS.LOCUS_LOBBY_FULL_CMR,
+    category: 'expected',
+    fatal: true,
+    name: 'locus.response',
+    shownToUser: true,
+  },
+  12002: {
+    errorDescription: ERROR_DESCRIPTIONS.E2EE_NOT_SUPPORTED,
+    category: 'expected',
+    fatal: true,
+    name: 'locus.response',
+    shownToUser: true,
+  },
+  12003: {
+    errorDescription: ERROR_DESCRIPTIONS.USER_NOT_INVITED_TO_JOIN,
+    category: 'expected',
     fatal: true,
   },
 };

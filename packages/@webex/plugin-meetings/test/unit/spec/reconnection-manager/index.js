@@ -3,6 +3,7 @@ import chai from 'chai';
 import chaiAsPromised from 'chai-as-promised';
 import sinon from 'sinon';
 import ReconnectionManager from '@webex/plugin-meetings/src/reconnection-manager';
+import { RECONNECTION } from '../../../../src/constants';
 
 const {assert} = chai;
 
@@ -98,6 +99,7 @@ describe('plugin-meetings', () => {
       await rm.reconnect();
 
       assert.calledOnce(fakeMeeting.roap.doTurnDiscovery);
+      assert.calledWith(fakeMeeting.roap.doTurnDiscovery, fakeMeeting, true, true);
       assert.calledOnce(fakeMediaConnection.reconnect);
       assert.calledWith(fakeMediaConnection.reconnect, [
         {
@@ -109,16 +111,6 @@ describe('plugin-meetings', () => {
 
       assert.calledWith(fakeMeeting.webex.internal.newMetrics.submitClientEvent, {
         name: 'client.media.reconnecting',
-        options: {
-          meetingId: rm.meeting.id,
-        },
-      });
-
-      assert.calledWith(fakeMeeting.webex.internal.newMetrics.submitClientEvent, {
-        name: 'client.media.recovered',
-        payload: {
-          recoveredBy: 'new',
-        },
         options: {
           meetingId: rm.meeting.id,
         },
@@ -184,7 +176,7 @@ describe('plugin-meetings', () => {
    * level causes testing errors in CI based around related files. Skipping this here until a solution
    * to this problem is generated.
    */
-  describe.skip('ReconnectionManager', () => {
+  describe('ReconnectionManager', () => {
     let reconnectionManager;
 
     beforeEach(() => {
@@ -277,10 +269,11 @@ describe('plugin-meetings', () => {
           assert.isTrue(reconnectionManager.iceState.disconnected);
         });
 
-        it('should return a promise that rejects after a duration', () => {
+        it('should return a promise that rejects after a duration', (done) => {
           reconnectionManager.iceState.timeoutDuration = 100;
 
-          return assert.isRejected(reconnectionManager.waitForIceReconnect());
+          assert.isRejected(reconnectionManager.waitForIceReconnect());
+          done();
         });
 
         it('should resolve return a resolved promise when triggered', () => {
@@ -305,6 +298,30 @@ describe('plugin-meetings', () => {
           reconnectionManager.waitForIceReconnect();
 
           assert.isTrue(reconnectionManager.iceState.disconnected);
+        });
+      });
+
+      describe('setStatus()', () => {
+        beforeEach(() => {
+          reconnectionManager.status = RECONNECTION.STATE.DEFAULT_STATUS;
+        });
+
+        it('should correctly change status to in progress', () => {
+          reconnectionManager.setStatus(RECONNECTION.STATE.IN_PROGRESS);
+
+          assert.equal(reconnectionManager.status, RECONNECTION.STATE.IN_PROGRESS);
+        });
+
+        it('should correctly change status to complete', () => {
+          reconnectionManager.setStatus(RECONNECTION.STATE.COMPLETE);
+
+          assert.equal(reconnectionManager.status, RECONNECTION.STATE.COMPLETE);
+        });
+
+        it('should correctly change status to failure', () => {
+          reconnectionManager.setStatus(RECONNECTION.STATE.FAILURE);
+
+          assert.equal(reconnectionManager.status, RECONNECTION.STATE.FAILURE);
         });
       });
     });

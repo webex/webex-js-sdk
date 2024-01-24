@@ -30,6 +30,20 @@ const MemberUtil: any = {};
 
 /**
  * @param {Object} participant the locus participant
+ * @returns {Boolean}
+ */
+MemberUtil.canReclaimHost = (participant) => {
+  if (!participant) {
+    throw new ParameterError(
+      'canReclaimHostRole could not be processed, participant is undefined.'
+    );
+  }
+
+  return participant.canReclaimHostRole || false;
+};
+
+/**
+ * @param {Object} participant the locus participant
  * @returns {[ServerRoleShape]}
  */
 MemberUtil.getControlsRoles = (participant: ParticipantWithRoles): Array<ServerRoleShape> =>

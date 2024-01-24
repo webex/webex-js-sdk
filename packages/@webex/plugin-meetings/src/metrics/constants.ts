@@ -9,6 +9,7 @@ const BEHAVIORAL_METRICS = {
   JOIN_FAILURE: 'js_sdk_join_failures',
   ADD_MEDIA_SUCCESS: 'js_sdk_add_media_success',
   ADD_MEDIA_FAILURE: 'js_sdk_add_media_failures',
+  ADD_MEDIA_RETRY: 'js_sdk_add_media_retry',
   ROAP_MERCURY_EVENT_RECEIVED: 'js_sdk_roap_mercury_received',
   CONNECTION_SUCCESS: 'js_sdk_connection_success',
   CONNECTION_FAILURE: 'js_sdk_connection_failures',
@@ -18,6 +19,8 @@ const BEHAVIORAL_METRICS = {
   GET_USER_MEDIA_FAILURE: 'js_sdk_get_user_media_failures',
   GET_DISPLAY_MEDIA_FAILURE: 'js_sdk_get_display_media_failures',
   JOIN_WITH_MEDIA_FAILURE: 'js_sdk_join_with_media_failures',
+  LLM_CONNECTION_AFTER_JOIN_FAILURE: 'js_sdk_llm_connection_after_join_failure',
+  RECEIVE_TRANSCRIPTION_AFTER_JOIN_FAILURE: 'js_sdk_receive_transcription_after_join_failure',
 
   DISCONNECT_DUE_TO_INACTIVITY: 'js_sdk_disconnect_due_to_inactivity',
   MEETING_MEDIA_INACTIVE: 'js_sdk_meeting_media_inactive',
@@ -55,6 +58,13 @@ const BEHAVIORAL_METRICS = {
   MOVE_FROM_FAILURE: 'js_sdk_move_from_failure',
   TURN_DISCOVERY_FAILURE: 'js_sdk_turn_discovery_failure',
   MEETING_INFO_POLICY_ERROR: 'js_sdk_meeting_info_policy_error',
+  LOCUS_DELTA_SYNC_FAILED: 'js_sdk_locus_delta_sync_failed',
+  LOCUS_DELTA_OUT_OF_ORDER: 'js_sdk_locus_delta_ooo',
+  PERMISSION_TOKEN_REFRESH: 'js_sdk_permission_token_refresh',
+  PERMISSION_TOKEN_REFRESH_ERROR: 'js_sdk_permission_token_refresh_error',
+  TURN_DISCOVERY_LATENCY: 'js_sdk_turn_discovery_latency',
+  ROAP_OFFER_TO_ANSWER_LATENCY: 'js_sdk_roap_offer_to_answer_latency',
+  ROAP_HTTP_RESPONSE_MISSING: 'js_sdk_roap_http_response_missing',
 };
 
 export {BEHAVIORAL_METRICS as default};

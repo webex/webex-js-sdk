@@ -66,6 +66,7 @@ describe('plugin-meetings/roap', () => {
       JSON.stringify({
         clusterId: {
           udp: 'test',
+          isVideoMesh: false,
         },
       })
     );

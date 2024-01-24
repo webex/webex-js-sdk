@@ -3,24 +3,27 @@
 /* eslint-disable require-jsdoc */
 import {
   AudioDeviceConstraints,
-  createCameraTrack as wcmeCreateCameraTrack,
-  createDisplayTrack as wcmeCreateDisplayTrack,
-  createDisplayTrackWithAudio as wcmeCreateDisplayTrackWithAudio,
-  createMicrophoneTrack as wcmeCreateMicrophoneTrack,
-  LocalDisplayTrack,
-  LocalSystemAudioTrack,
-  LocalMicrophoneTrack as WcmeLocalMicrophoneTrack,
-  LocalCameraTrack as WcmeLocalCameraTrack,
+  createCameraStream as wcmeCreateCameraStream,
+  createDisplayStream as wcmeCreateDisplayStream,
+  createDisplayStreamWithAudio as wcmeCreateDisplayStreamWithAudio,
+  createMicrophoneStream as wcmeCreateMicrophoneStream,
+  LocalDisplayStream,
+  LocalSystemAudioStream,
+  LocalMicrophoneStream as WcmeLocalMicrophoneStream,
+  LocalCameraStream as WcmeLocalCameraStream,
   VideoDeviceConstraints,
 } from '@webex/internal-media-core';
+import {AddEvents, TypedEvent, WithEventsDummyType} from '@webex/ts-events';
 
 export {
   getDevices,
-  LocalTrack,
-  LocalDisplayTrack,
-  LocalSystemAudioTrack,
-  LocalTrackEvents,
-  type TrackMuteEvent,
+  LocalStream,
+  LocalDisplayStream,
+  LocalSystemAudioStream,
+  LocalStreamEventNames,
+  StreamEventNames,
+  RemoteStream,
+  type VideoContentHint,
 } from '@webex/internal-media-core';
 
 export type ServerMuteReason =
@@ -29,17 +32,33 @@ export type ServerMuteReason =
   | 'localUnmuteRequired'; // server forced the client to be unmuted
 
 // these events are in addition to WCME events. This will be properly typed once webrtc-core event types inheritance is fixed
-export enum LocalMicrophoneTrackEvents {
+export enum LocalMicrophoneStreamEventNames {
   ServerMuted = 'muted:byServer',
 }
 
 // these events are in addition to WCME events. This will be properly typed once webrtc-core event types inheritance is fixed
-export enum LocalCameraTrackEvents {
+export enum LocalCameraStreamEventNames {
   ServerMuted = 'muted:byServer',
 }
 
-export class LocalMicrophoneTrack extends WcmeLocalMicrophoneTrack {
+interface LocalMicrophoneStreamEvents {
+  [LocalMicrophoneStreamEventNames.ServerMuted]: TypedEvent<
+    (muted: boolean, reason: ServerMuteReason) => void
+  >;
+}
+
+interface LocalCameraStreamEvents {
+  [LocalMicrophoneStreamEventNames.ServerMuted]: TypedEvent<
+    (muted: boolean, reason: ServerMuteReason) => void
+  >;
+}
+
+class _LocalMicrophoneStream extends WcmeLocalMicrophoneStream {
   private unmuteAllowed = true;
+
+  [LocalMicrophoneStreamEventNames.ServerMuted] = new TypedEvent<
+    (muted: boolean, reason: ServerMuteReason) => void
+  >();
 
   /**
    * @internal
@@ -71,13 +90,27 @@ export class LocalMicrophoneTrack extends WcmeLocalMicrophoneTrack {
   setServerMuted(muted: boolean, reason: ServerMuteReason) {
     if (muted !== this.muted) {
       this.setMuted(muted);
-      this.emit(LocalMicrophoneTrackEvents.ServerMuted, {muted, reason});
+      this[LocalMicrophoneStreamEventNames.ServerMuted].emit(muted, reason);
     }
+  }
+
+  toJSON() {
+    return {
+      id: this.id,
+      enabled: this.inputTrack?.enabled,
+      label: this.label,
+      readyState: this.readyState,
+      numEnabledEffects: this.getEffects().filter((item) => item.isEnabled).length,
+    };
   }
 }
 
-export class LocalCameraTrack extends WcmeLocalCameraTrack {
+class _LocalCameraStream extends WcmeLocalCameraStream {
   private unmuteAllowed = true;
+
+  [LocalCameraStreamEventNames.ServerMuted] = new TypedEvent<
+    (muted: boolean, reason: ServerMuteReason) => void
+  >();
 
   /**
    * @internal
@@ -109,18 +142,42 @@ export class LocalCameraTrack extends WcmeLocalCameraTrack {
   setServerMuted(muted: boolean, reason: ServerMuteReason) {
     if (muted !== this.muted) {
       this.setMuted(muted);
-      this.emit(LocalCameraTrackEvents.ServerMuted, {muted, reason});
+      this[LocalCameraStreamEventNames.ServerMuted].emit(muted, reason);
     }
+  }
+
+  toJSON() {
+    return {
+      id: this.id,
+      enabled: this.inputTrack?.enabled,
+      label: this.label,
+      readyState: this.readyState,
+      numEnabledEffects: this.getEffects().filter((item) => item.isEnabled).length,
+    };
   }
 }
 
-export const createMicrophoneTrack = (constraints?: AudioDeviceConstraints) =>
-  wcmeCreateMicrophoneTrack(LocalMicrophoneTrack, constraints);
+export const createMicrophoneStream = (constraints?: AudioDeviceConstraints) =>
+  wcmeCreateMicrophoneStream(LocalMicrophoneStream, constraints);
 
-export const createCameraTrack = (constraints?: VideoDeviceConstraints) =>
-  wcmeCreateCameraTrack(LocalCameraTrack, constraints);
+export const createCameraStream = (constraints?: VideoDeviceConstraints) =>
+  wcmeCreateCameraStream(LocalCameraStream, constraints);
 
-export const createDisplayTrack = () => wcmeCreateDisplayTrack(LocalDisplayTrack);
+export const createDisplayStream = () => wcmeCreateDisplayStream(LocalDisplayStream);
 
-export const createDisplayTrackWithAudio = () =>
-  wcmeCreateDisplayTrackWithAudio(LocalDisplayTrack, LocalSystemAudioTrack);
+export const createDisplayStreamWithAudio = () =>
+  wcmeCreateDisplayStreamWithAudio(LocalDisplayStream, LocalSystemAudioStream);
+
+export const LocalMicrophoneStream = AddEvents<
+  typeof _LocalMicrophoneStream,
+  LocalMicrophoneStreamEvents
+>(_LocalMicrophoneStream);
+
+export type LocalMicrophoneStream = _LocalMicrophoneStream &
+  WithEventsDummyType<LocalMicrophoneStreamEvents>;
+
+export const LocalCameraStream = AddEvents<typeof _LocalCameraStream, LocalCameraStreamEvents>(
+  _LocalCameraStream
+);
+
+export type LocalCameraStream = _LocalCameraStream & WithEventsDummyType<LocalCameraStreamEvents>;

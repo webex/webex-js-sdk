@@ -6,7 +6,7 @@ const addMedia = async (user, options = {}) => {
   const {microphone, camera} = options;
 
   if (options.multistream) {
-    await user.meeting.addMedia({localTracks: {microphone, camera}});
+    await user.meeting.addMedia({localStreams: {microphone, camera}});
   } else {
     const mediaReadyPromises = Array.isArray(options.expectedMediaReadyTypes)
       ? options.expectedMediaReadyTypes.reduce((output, expectedMediaReadyType) => {
@@ -31,13 +31,13 @@ const addMedia = async (user, options = {}) => {
 
     user.meeting.on('media:ready', mediaReady);
 
-    await user.meeting.addMedia({localTracks: {microphone, camera}});
+    await user.meeting.addMedia({localStreams: {microphone, camera}});
     await Promise.all(Object.values(mediaReadyPromises).map((defer) => defer.promise));
  };
 
 
-  assert.exists(user.meeting.mediaProperties.audioTrack, 'audioTrack not present');
-  assert.exists(user.meeting.mediaProperties.videoTrack, 'videoTrack not present');
+  assert.exists(user.meeting.mediaProperties.audioStream, 'audioStream not present');
+  assert.exists(user.meeting.mediaProperties.videoStream, 'videoStream not present');
 
 };
 

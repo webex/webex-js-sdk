@@ -3,11 +3,15 @@ import {difference} from 'lodash';
 import SortedQueue from '../common/queue';
 import LoggerProxy from '../common/logs/logger-proxy';
 
+import Metrics from '../metrics';
+import BEHAVIORAL_METRICS from '../metrics/constants';
+
 const MAX_OOO_DELTA_COUNT = 5; // when we receive an out-of-order delta and the queue builds up to MAX_OOO_DELTA_COUNT, we do a sync with Locus
 const OOO_DELTA_WAIT_TIME = 10000; // [ms] minimum wait time before we do a sync if we get out-of-order deltas
 const OOO_DELTA_WAIT_TIME_RANDOM_DELAY = 5000; // [ms] max random delay added to OOO_DELTA_WAIT_TIME
 
 type LocusDeltaDto = {
+  url: string;
   baseSequence: {
     rangeStart: number;
     rangeEnd: number;
@@ -44,6 +48,7 @@ export default class Parser {
     USE_CURRENT: 'USE_CURRENT',
     WAIT: 'WAIT',
     ERROR: 'ERROR',
+    LOCUS_URL_CHANGED: 'LOCUS_URL_CHANGED',
   };
 
   queue: SortedQueue<LocusDeltaDto>;
@@ -264,7 +269,7 @@ export default class Parser {
    * @returns {string} loci comparison state
    */
   private static compareDelta(current, incoming) {
-    const {LT, GT, EQ, DESYNC, USE_INCOMING, WAIT} = Parser.loci;
+    const {LT, GT, EQ, DESYNC, USE_INCOMING, WAIT, LOCUS_URL_CHANGED} = Parser.loci;
 
     const {extractComparisonState: extract} = Parser;
     const {packComparisonResult: pack} = Parser;
@@ -274,6 +279,13 @@ export default class Parser {
 
     if (comparison !== LT) {
       return pack(Parser.compareToAction(comparison), result);
+    }
+
+    if (incoming.url !== current.url) {
+      // when moving to/from a breakout session, the locus URL will change and also
+      // the baseSequence, making incoming and current incomparable, so use a
+      // unique comparison state
+      return pack(LOCUS_URL_CHANGED, result);
     }
 
     comparison = Parser.compareSequence(current.sequence, incoming.baseSequence);
@@ -293,6 +305,10 @@ export default class Parser {
           // the incoming locus has baseSequence from the future, so it is out-of-order,
           // we are missing 1 or more locus that should be in front of it, we need to wait for it
           comparison = WAIT;
+
+          Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.LOCUS_DELTA_OUT_OF_ORDER, {
+            stack: new Error().stack,
+          });
         }
         break;
       default:
@@ -686,7 +702,7 @@ export default class Parser {
    * @returns {undefined}
    */
   processDeltaEvent() {
-    const {DESYNC, USE_INCOMING, WAIT} = Parser.loci;
+    const {DESYNC, USE_INCOMING, WAIT, LOCUS_URL_CHANGED} = Parser.loci;
     const {extractComparisonState: extract} = Parser;
     const newLoci = this.queue.dequeue();
 
@@ -705,19 +721,29 @@ export default class Parser {
 
     let needToWait = false;
 
-    if (lociComparison === DESYNC) {
-      // wait for desync response
-      this.pause();
-    } else if (lociComparison === USE_INCOMING) {
-      // update working copy for future comparisons.
-      // Note: The working copy of parser gets updated in .onFullLocus()
-      // and here when USE_INCOMING locus.
-      this.workingCopy = newLoci;
-    } else if (lociComparison === WAIT) {
-      // we've taken newLoci from the front of the queue, so put it back there as we have to wait
-      // for the one that should be in front of it, before we can process it
-      this.queue.enqueue(newLoci);
-      needToWait = true;
+    switch (lociComparison) {
+      case DESYNC:
+        // wait for desync response
+        this.pause();
+        break;
+
+      case USE_INCOMING:
+      case LOCUS_URL_CHANGED:
+        // update working copy for future comparisons.
+        // Note: The working copy of parser gets updated in .onFullLocus()
+        // and here when USE_INCOMING or LOCUS_URL_CHANGED locus.
+        this.workingCopy = newLoci;
+        break;
+
+      case WAIT:
+        // we've taken newLoci from the front of the queue, so put it back there as we have to wait
+        // for the one that should be in front of it, before we can process it
+        this.queue.enqueue(newLoci);
+        needToWait = true;
+        break;
+
+      default:
+        break;
     }
 
     if (needToWait) {

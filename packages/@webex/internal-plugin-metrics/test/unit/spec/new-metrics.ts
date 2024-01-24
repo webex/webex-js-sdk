@@ -38,7 +38,7 @@ describe('internal-plugin-metrics', () => {
       );
     });
   });
-  
+
   describe('new-metrics', () => {
     let webex;
 
@@ -152,12 +152,11 @@ describe('internal-plugin-metrics', () => {
           resource: 'clientmetrics',
           headers: { 'x-prelogin-userid': 'my-id' },
           body: {},
-          qs: { alias: true }
+          qs: { alias: true },
         });
         assert.calledWith(
           webex.logger.log,
-          'NewMetrics: @clientMetricsAliasUser. Request successful:',
-          'res: {"response":"abc"}'
+          'NewMetrics: @clientMetricsAliasUser. Request successful.'
         );
       });
 
@@ -189,8 +188,7 @@ describe('internal-plugin-metrics', () => {
         });
         assert.calledWith(
           webex.logger.log,
-          'NewMetrics: @postPreLoginMetric. Request successful:',
-          'res: {"response":"abc"}'
+          'NewMetrics: @postPreLoginMetric. Request successful.'
         );
       });
 

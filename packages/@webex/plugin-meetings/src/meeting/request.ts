@@ -4,6 +4,7 @@ import {debounce} from 'lodash';
 import {StatelessWebexPlugin} from '@webex/webex-core';
 // @ts-ignore
 import {deviceType} from '@webex/common';
+import {CallDiagnosticUtils} from '@webex/internal-plugin-metrics';
 
 import LoggerProxy from '../common/logs/logger-proxy';
 import {
@@ -198,6 +199,10 @@ export default class MeetingRequest extends StatelessWebexPlugin {
       body.device.countryCode = this.webex.meetings.geoHintInfo.countryCode;
       // @ts-ignore
       body.device.regionCode = this.webex.meetings.geoHintInfo.regionCode;
+      body.device.localIp =
+        // @ts-ignore
+        CallDiagnosticUtils.anonymizeIPAddress(this.webex.meetings.geoHintInfo.clientAddress) ||
+        undefined;
     }
 
     if (moderator !== undefined) {
@@ -416,7 +421,7 @@ export default class MeetingRequest extends StatelessWebexPlugin {
           `Meeting:request#getLocusDTO --> Error getting latest locus, error ${err}`
         );
 
-        return err;
+        throw err;
       });
     }
 

@@ -36,11 +36,11 @@ export default class ServiceInterceptor extends Interceptor {
 
     // Destructure commonly referenced namespaces.
     const {services} = this.webex.internal;
-    const {service, resource} = options;
+    const {service, resource, waitForServiceTimeout} = options;
 
     // Attempt to collect the service url.
     return services
-      .waitForService({name: service})
+      .waitForService({name: service, timeout: waitForServiceTimeout})
       .then((serviceUrl) => {
         // Generate the combined service url and resource.
         options.uri = this.generateUri(serviceUrl, resource);

@@ -1,3 +1,5 @@
+/* eslint-disable class-methods-use-this */
+import {CallDiagnosticUtils} from '@webex/internal-plugin-metrics';
 import RTC_METRICS from './constants';
 
 /**
@@ -26,12 +28,12 @@ export default class RtcMetrics {
    */
   constructor(webex, meetingId, correlationId) {
     // `window` is used to prevent typescript from returning a NodeJS.Timer.
-    this.intervalId = window.setInterval(this.checkMetrics.bind(this), 30 * 1000);
+    this.intervalId = window.setInterval(this.sendMetricsInQueue.bind(this), 30 * 1000);
     this.meetingId = meetingId;
     this.webex = webex;
     this.correlationId = correlationId;
     // Send the first set of metrics at 5 seconds in the case of a user leaving the call shortly after joining.
-    setTimeout(this.checkMetrics.bind(this), 5 * 1000);
+    setTimeout(this.sendMetricsInQueue.bind(this), 5 * 1000);
   }
 
   /**
@@ -39,7 +41,7 @@ export default class RtcMetrics {
    *
    * @returns {void}
    */
-  private checkMetrics() {
+  public sendMetricsInQueue() {
     if (this.metricsQueue.length) {
       this.sendMetrics();
       this.metricsQueue = [];
@@ -55,6 +57,9 @@ export default class RtcMetrics {
    */
   addMetrics(data) {
     if (data.payload.length) {
+      if (data.name === 'stats-report') {
+        data.payload = data.payload.map(this.anonymizeIp);
+      }
       this.metricsQueue.push(data);
     }
   }
@@ -65,8 +70,27 @@ export default class RtcMetrics {
    * @returns {void}
    */
   closeMetrics() {
-    this.checkMetrics();
+    this.sendMetricsInQueue();
     clearInterval(this.intervalId);
+  }
+
+  /**
+   * Anonymize IP addresses.
+   *
+   * @param {array} stats - An RTCStatsReport organized into an array of strings.
+   * @returns {string}
+   */
+  anonymizeIp(stats: string): string {
+    const data = JSON.parse(stats);
+    // on local and remote candidates, anonymize the last 4 bits.
+    if (data.type === 'local-candidate' || data.type === 'remote-candidate') {
+      data.ip = CallDiagnosticUtils.anonymizeIPAddress(data.ip) || undefined;
+      data.address = CallDiagnosticUtils.anonymizeIPAddress(data.address) || undefined;
+      data.relatedAddress =
+        CallDiagnosticUtils.anonymizeIPAddress(data.relatedAddress) || undefined;
+    }
+
+    return JSON.stringify(data);
   }
 
   /**

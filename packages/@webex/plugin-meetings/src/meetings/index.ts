@@ -61,6 +61,7 @@ import MeetingsUtil from './util';
 import PermissionError from '../common/errors/permission';
 import {INoiseReductionEffect, IVirtualBackgroundEffect} from './meetings.types';
 import {SpaceIDDeprecatedError} from '../common/errors/webex-errors';
+import NoMeetingInfoError from '../common/errors/no-meeting-info';
 
 let mediaLogger;
 
@@ -681,21 +682,6 @@ export default class Meetings extends WebexPlugin {
   }
 
   /**
-   * API to enable or disable TURN discovery
-   * @param {Boolean} enable
-   * @private
-   * @memberof Meetings
-   * @returns {undefined}
-   */
-  private _toggleTurnDiscovery(enable: boolean) {
-    if (typeof enable !== 'boolean') {
-      return;
-    }
-    // @ts-ignore
-    this.config.experimental.enableTurnDiscovery = enable;
-  }
-
-  /**
    * API to toggle starting adhoc meeting
    * @param {Boolean} changeState
    * @private
@@ -869,8 +855,10 @@ export default class Meetings extends WebexPlugin {
    */
   uploadLogs(
     options: {
+      autoupload?: boolean;
       callStart?: string;
       feedbackId?: string;
+      locussessionid?: string;
       locusId?: string;
       correlationId?: string;
       meetingId?: string;
@@ -1043,6 +1031,7 @@ export default class Meetings extends WebexPlugin {
    * @param {Boolean} useRandomDelayForInfo - whether a random delay should be added to fetching meeting info
    * @param {Object} infoExtraParams extra parameters to be provided when fetching meeting info
    * @param {string} correlationId - the optional specified correlationId
+   * @param {Boolean} failOnMissingMeetingInfo - whether to throw an error if meeting info fails to fetch (for calls that are not 1:1 or content share)
    * @returns {Promise<Meeting>} A new Meeting.
    * @public
    * @memberof Meetings
@@ -1052,7 +1041,8 @@ export default class Meetings extends WebexPlugin {
     type: string = null,
     useRandomDelayForInfo = false,
     infoExtraParams = {},
-    correlationId: string = undefined
+    correlationId: string = undefined,
+    failOnMissingMeetingInfo = false
   ) {
     // TODO: type should be from a dictionary
 
@@ -1106,7 +1096,8 @@ export default class Meetings extends WebexPlugin {
               type,
               useRandomDelayForInfo,
               infoExtraParams,
-              correlationId
+              correlationId,
+              failOnMissingMeetingInfo
             ).then((createdMeeting: any) => {
               // If the meeting was successfully created.
               if (createdMeeting && createdMeeting.on) {
@@ -1116,10 +1107,12 @@ export default class Meetings extends WebexPlugin {
                   if (this.config.autoUploadLogs) {
                     this.uploadLogs({
                       callStart: createdMeeting.locusInfo?.fullState?.lastActive,
+                      locussessionid: createdMeeting.locusInfo?.fullState?.sessionId,
                       correlationId: createdMeeting.correlationId,
                       feedbackId: createdMeeting.correlationId,
                       locusId: createdMeeting.locusId,
                       meetingId: createdMeeting.locusInfo?.info?.webExMeetingId,
+                      autoupload: true,
                     }).then(() => this.destroy(createdMeeting, payload.reason));
                   } else {
                     this.destroy(createdMeeting, payload.reason);
@@ -1131,10 +1124,12 @@ export default class Meetings extends WebexPlugin {
                   if (this.config.autoUploadLogs) {
                     this.uploadLogs({
                       callStart: meetingInstance?.locusInfo?.fullState?.lastActive,
+                      locussessionid: meetingInstance?.locusInfo?.fullState?.sessionId,
                       correlationId: meetingInstance.correlationId,
                       feedbackId: meetingInstance.correlationId,
                       locusId: meetingInstance.locusId,
                       meetingId: meetingInstance.locusInfo?.info?.webExMeetingId,
+                      autoupload: true,
                     });
                   }
                 });
@@ -1161,6 +1156,7 @@ export default class Meetings extends WebexPlugin {
    * @param {Boolean} useRandomDelayForInfo whether a random delay should be added to fetching meeting info
    * @param {Object} infoExtraParams extra parameters to be provided when fetching meeting info
    * @param {String} correlationId the optional specified correlationId
+   * @param {Boolean} failOnMissingMeetingInfo - whether to throw an error if meeting info fails to fetch (for calls that are not 1:1 or content share)
    * @returns {Promise} a new meeting instance complete with meeting info and destination
    * @private
    * @memberof Meetings
@@ -1170,7 +1166,8 @@ export default class Meetings extends WebexPlugin {
     type: string = null,
     useRandomDelayForInfo = false,
     infoExtraParams = {},
-    correlationId: string = undefined
+    correlationId: string = undefined,
+    failOnMissingMeetingInfo = false
   ) {
     const meeting = new Meeting(
       {
@@ -1219,12 +1216,19 @@ export default class Meetings extends WebexPlugin {
 
       if (enableUnifiedMeetings && !isMeetingActive && useRandomDelayForInfo && waitingTime > 0) {
         meeting.fetchMeetingInfoTimeoutId = setTimeout(
-          () => meeting.fetchMeetingInfo({extraParams: infoExtraParams}),
+          () =>
+            meeting.fetchMeetingInfo({
+              extraParams: infoExtraParams,
+              sendCAevents: !!correlationId, // if client sends correlation id as argument of public create(), then it means that this meeting creation is part of a pre-join intent from user
+            }),
           waitingTime
         );
         meeting.parseMeetingInfo(undefined, destination);
       } else {
-        await meeting.fetchMeetingInfo({extraParams: infoExtraParams});
+        await meeting.fetchMeetingInfo({
+          extraParams: infoExtraParams,
+          sendCAevents: !!correlationId, // if client sends correlation id as argument of public create(), then it means that this meeting creation is part of a pre-join intent from user
+        });
       }
     } catch (err) {
       if (
@@ -1232,10 +1236,18 @@ export default class Meetings extends WebexPlugin {
         !(err instanceof PasswordError) &&
         !(err instanceof PermissionError)
       ) {
-        // if there is no meeting info we assume its a 1:1 call or wireless share
         LoggerProxy.logger.info(
           `Meetings:index#createMeeting --> Info Unable to fetch meeting info for ${destination}.`
         );
+        if (failOnMissingMeetingInfo) {
+          LoggerProxy.logger.info(
+            `Meetings:index#createMeeting --> Destroying meeting due to missing meeting info.`
+          );
+          // @ts-ignore
+          this.destroy(meeting, MEETING_REMOVED_REASON.MISSING_MEETING_INFO);
+          throw new NoMeetingInfoError();
+        }
+        // if there is no meeting info and no error should be thrown then we assume its a 1:1 call or wireless share
         LoggerProxy.logger.info(
           'Meetings:index#createMeeting --> Info assuming this destination is a 1:1 or wireless share'
         );
@@ -1454,5 +1466,16 @@ export default class Meetings extends WebexPlugin {
    */
   getLogger() {
     return LoggerProxy.get();
+  }
+
+  /**
+   * Returns the first meeting it finds that has the webrtc media connection created.
+   * Useful for debugging in the console.
+   *
+   * @private
+   * @returns {Meeting} Meeting object that has a webrtc media connection, else undefined
+   */
+  getActiveWebrtcMeeting() {
+    return this.meetingCollection.getActiveWebrtcMeeting();
   }
 }

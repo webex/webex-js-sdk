@@ -37,6 +37,7 @@ describe('plugin-metrics', () => {
         return Promise.resolve({
           statusCode: 204,
           body: undefined,
+          waitForServiceTimeout: 30,
           options,
         });
       };
@@ -97,6 +98,7 @@ describe('plugin-metrics', () => {
             return Promise.resolve({
               statusCode: 204,
               body: undefined,
+              waitForServiceTimeout: 30,
               options,
             });
           });

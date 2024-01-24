@@ -77,6 +77,7 @@ export class StatsAnalyzer extends EventsScope {
   statsInterval: NodeJS.Timeout;
   statsResults: any;
   statsStarted: any;
+  successfulCandidatePair: any;
   receiveSlotCallback: ReceiveSlotCallback;
 
   /**
@@ -102,9 +103,10 @@ export class StatsAnalyzer extends EventsScope {
     this.networkQualityMonitor = networkQualityMonitor;
     this.correlationId = config.correlationId;
     this.mqaSentCount = -1;
-    this.lastMqaDataSent = {};
+    this.lastMqaDataSent = {resolutions: {}};
     this.lastEmittedStartStopEvent = {};
     this.receiveSlotCallback = receiveSlotCallback;
+    this.successfulCandidatePair = {};
   }
 
   /**
@@ -150,6 +152,21 @@ export class StatsAnalyzer extends EventsScope {
     const newMqa = cloneDeep(emptyMqaInterval);
 
     Object.keys(this.statsResults).forEach((mediaType) => {
+      if (!this.lastMqaDataSent[mediaType]) {
+        this.lastMqaDataSent[mediaType] = {};
+        this.lastMqaDataSent.resolutions[mediaType] = {};
+      }
+
+      if (!this.lastMqaDataSent[mediaType].send && mediaType.includes('-send')) {
+        this.lastMqaDataSent[mediaType].send = {};
+        this.lastMqaDataSent.resolutions[mediaType].send = {};
+      }
+
+      if (!this.lastMqaDataSent[mediaType].recv && mediaType.includes('-recv')) {
+        this.lastMqaDataSent[mediaType].recv = {};
+        this.lastMqaDataSent.resolutions[mediaType].recv = {};
+      }
+
       if (mediaType.includes('audio-send') || mediaType.includes('audio-share-send')) {
         const audioSender = cloneDeep(emptyAudioTransmit);
 
@@ -160,6 +177,8 @@ export class StatsAnalyzer extends EventsScope {
           mediaType,
         });
         newMqa.audioTransmit.push(audioSender);
+
+        this.lastMqaDataSent[mediaType].send = cloneDeep(this.statsResults[mediaType].send);
       } else if (mediaType.includes('audio-recv') || mediaType.includes('audio-share-recv')) {
         const audioReceiver = cloneDeep(emptyAudioReceive);
 
@@ -170,6 +189,8 @@ export class StatsAnalyzer extends EventsScope {
           mediaType,
         });
         newMqa.audioReceive.push(audioReceiver);
+
+        this.lastMqaDataSent[mediaType].recv = cloneDeep(this.statsResults[mediaType].recv);
       } else if (mediaType.includes('video-send') || mediaType.includes('video-share-send')) {
         const videoSender = cloneDeep(emptyVideoTransmit);
 
@@ -180,6 +201,11 @@ export class StatsAnalyzer extends EventsScope {
           mediaType,
         });
         newMqa.videoTransmit.push(videoSender);
+
+        this.lastMqaDataSent[mediaType].send = cloneDeep(this.statsResults[mediaType].send);
+        this.lastMqaDataSent.resolutions[mediaType].send = cloneDeep(
+          this.statsResults.resolutions[mediaType].send
+        );
       } else if (mediaType.includes('video-recv') || mediaType.includes('video-share-recv')) {
         const videoReceiver = cloneDeep(emptyVideoReceive);
 
@@ -190,24 +216,27 @@ export class StatsAnalyzer extends EventsScope {
           mediaType,
         });
         newMqa.videoReceive.push(videoReceiver);
+
+        this.lastMqaDataSent[mediaType].recv = cloneDeep(this.statsResults[mediaType].recv);
+        this.lastMqaDataSent.resolutions[mediaType].recv = cloneDeep(
+          this.statsResults.resolutions[mediaType].recv
+        );
       }
     });
 
-    newMqa.intervalMetadata.peerReflexiveIP = this.statsResults.connectionType.local.ipAddress[0];
+    newMqa.intervalMetadata.peerReflexiveIP = this.statsResults.connectionType.local.ipAddress;
 
     // Adding peripheral information
-    newMqa.intervalMetadata.peripherals = [];
-
     newMqa.intervalMetadata.peripherals.push({information: _UNKNOWN_, name: MEDIA_DEVICES.SPEAKER});
     if (this.statsResults['audio-send']) {
       newMqa.intervalMetadata.peripherals.push({
-        information: this.statsResults['audio-send']?.trackLabel,
+        information: this.statsResults['audio-send'].trackLabel || _UNKNOWN_,
         name: MEDIA_DEVICES.MICROPHONE,
       });
     }
     if (this.statsResults['video-send']) {
       newMqa.intervalMetadata.peripherals.push({
-        information: this.statsResults['video-send']?.trackLabel,
+        information: this.statsResults['video-send'].trackLabel || _UNKNOWN_,
         name: MEDIA_DEVICES.CAMERA,
       });
     }
@@ -392,6 +421,13 @@ export class StatsAnalyzer extends EventsScope {
   filterAndParseGetStatsResults(statsItem: any, type: string, isSender: boolean) {
     const {types} = DEFAULT_GET_STATS_FILTER;
 
+    // get the successful candidate pair before parsing stats.
+    statsItem.report.forEach((report) => {
+      if (report.type === 'candidate-pair' && report.state === 'succeeded') {
+        this.successfulCandidatePair = report;
+      }
+    });
+
     statsItem.report.forEach((result) => {
       if (types.includes(result.type)) {
         this.parseGetStatsResult(result, type, isSender);
@@ -402,6 +438,8 @@ export class StatsAnalyzer extends EventsScope {
       this.statsResults[type].direction = statsItem.currentDirection;
       this.statsResults[type].trackLabel = statsItem.localTrackLabel;
       this.statsResults[type].csi = statsItem.csi;
+      // reset the successful candidate pair.
+      this.successfulCandidatePair = {};
     }
   }
 
@@ -1094,73 +1132,40 @@ export class StatsAnalyzer extends EventsScope {
     if (!result || !result.id) {
       return;
     }
-    const RemoteCandidateType = {};
-    const RemoteTransport = {};
-    const RemoteIpAddress = {};
-    const RemoteNetworkType = {};
 
-    if (!result.id) return;
+    // We only care about the successful local candidate
+    if (this.successfulCandidatePair?.localCandidateId !== result.id) {
+      return;
+    }
+
+    let transport;
+    if (result.relayProtocol) {
+      transport = result.relayProtocol.toUpperCase();
+    } else if (result.protocol) {
+      transport = result.protocol.toUpperCase();
+    }
 
     const sendRecvType = isSender ? STATS.SEND_DIRECTION : STATS.RECEIVE_DIRECTION;
     const ipType = isRemote ? STATS.REMOTE : STATS.LOCAL;
 
-    if (!RemoteCandidateType[result.id]) {
-      RemoteCandidateType[result.id] = [];
-    }
-
-    if (!RemoteTransport[result.id]) {
-      RemoteTransport[result.id] = [];
-    }
-
-    if (!RemoteIpAddress[result.id]) {
-      RemoteIpAddress[result.id] = [];
-    }
-    if (!RemoteNetworkType[result.id]) {
-      RemoteNetworkType[result.id] = [];
-    }
-
-    if (
-      result.candidateType &&
-      RemoteCandidateType[result.id].indexOf(result.candidateType) === -1
-    ) {
-      RemoteCandidateType[result.id].push(result.candidateType);
-    }
-
-    if (result.protocol && RemoteTransport[result.id].indexOf(result.protocol) === -1) {
-      RemoteTransport[result.id].push(result.protocol.toUpperCase());
-    }
-
-    if (
-      result.ip &&
-      RemoteIpAddress[result.id].indexOf(`${result.ip}:${result.portNumber}`) === -1
-    ) {
-      RemoteIpAddress[result.id].push(`${result.ip}`); // TODO: Add ports
-    }
-
-    if (result.networkType && RemoteNetworkType[result.id].indexOf(result.networkType) === -1) {
-      RemoteNetworkType[result.id].push(result.networkType);
-    }
-
     this.statsResults.internal.candidates[result.id] = {
-      candidateType: RemoteCandidateType[result.id],
-      ipAddress: RemoteIpAddress[result.id],
+      candidateType: result.candidateType,
+      ipAddress: result.ip, // TODO: add ports
       portNumber: result.port,
-      networkType: RemoteNetworkType[result.id],
+      networkType: result.networkType,
       priority: result.priority,
-      transport: RemoteTransport[result.id],
+      transport,
       timestamp: result.time,
       id: result.id,
       type: result.type,
     };
 
-    this.statsResults.connectionType[ipType].candidateType = RemoteCandidateType[result.id];
-    this.statsResults.connectionType[ipType].ipAddress = RemoteIpAddress[result.id];
+    this.statsResults.connectionType[ipType].candidateType = result.candidateType;
+    this.statsResults.connectionType[ipType].ipAddress = result.ipAddress;
 
     this.statsResults.connectionType[ipType].networkType =
-      RemoteNetworkType[result.id][0] === NETWORK_TYPE.VPN
-        ? NETWORK_TYPE.UNKNOWN
-        : RemoteNetworkType[result.id][0];
-    this.statsResults.connectionType[ipType].transport = RemoteTransport[result.id];
+      result.networkType === NETWORK_TYPE.VPN ? NETWORK_TYPE.UNKNOWN : result.networkType;
+    this.statsResults.connectionType[ipType].transport = transport;
 
     this.statsResults[type][sendRecvType].totalRoundTripTime = result.totalRoundTripTime;
   };
