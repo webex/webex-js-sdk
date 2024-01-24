@@ -555,12 +555,17 @@ export class RemoteMediaManager extends EventsScope {
       value,
     };
     if (type === 1) {
-      if (this.media.audio) {
-        this.media.audio.stop(false);
-        // release all audio receive slots
-        this.slots.audio.forEach((slot) => this.receiveSlotManager.releaseSlot(slot));
-        this.slots.audio.length = 0;
-      }
+      // 1 means Audio Language
+      this.invalidateCurrentRemoteMedia({
+        audio: true,
+        video: false,
+        screenShareAudio: false,
+        screenShareVideo: false,
+        commit: false,
+      });
+      this.slots.audio.forEach((slot) => this.receiveSlotManager.releaseSlot(slot));
+      this.slots.audio.length = 0;
+
       await this.createAudioMedia();
     }
   }
