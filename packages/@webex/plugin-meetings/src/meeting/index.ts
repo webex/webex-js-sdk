@@ -7890,12 +7890,13 @@ export default class Meeting extends StatelessWebexPlugin {
     // https://github.com/sinonjs/fake-timers/issues/321
     const now = new Date().getTime();
 
-    const permissionTokenTimeLeft = (permissionTokenExpValue - now) / 1000;
     const permissionExpiryTimestamp = permissionTokenExpValue;
     const currentTime = now;
 
     // substract current time from the permissionTokenExp
     // (permissionTokenExp is a epoch timestamp, not a time to live duration)
+    const permissionTokenTimeLeft = (permissionTokenExpValue - now) / 1000;
+
     return {permissionTokenTimeLeft, permissionExpiryTimestamp, currentTime};
   }
 
