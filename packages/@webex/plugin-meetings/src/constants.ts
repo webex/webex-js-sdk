@@ -300,8 +300,6 @@ export const EVENT_TRIGGERS = {
   MEETING_MEDIA_REMOTE_STARTED: 'meeting:media:remote:start',
   MEETING_STARTED_RECORDING: 'meeting:recording:started',
   MEETING_STOPPED_RECORDING: 'meeting:recording:stopped',
-  MEETING_STARTED_RECEIVING_TRANSCRIPTION: 'meeting:receiveTranscription:started',
-  MEETING_STOPPED_RECEIVING_TRANSCRIPTION: 'meeting:receiveTranscription:stopped',
   MEETING_RECEIVE_REACTIONS: 'meeting:receiveReactions',
   MEETING_PAUSED_RECORDING: 'meeting:recording:paused',
   MEETING_RESUMED_RECORDING: 'meeting:recording:resumed',
@@ -374,6 +372,15 @@ export const EVENT_TRIGGERS = {
   // Locus URL changed
   MEETING_LOCUS_URL_UPDATE: 'meeting:locus:locusUrl:update',
   MEETING_STREAM_PUBLISH_STATE_CHANGED: 'meeting:streamPublishStateChanged',
+
+  MEETING_STARTED_RECEIVING_TRANSCRIPTION: 'meeting:receiveTranscription:started',
+  MEETING_STOPPED_RECEIVING_TRANSCRIPTION: 'meeting:receiveTranscription:stopped',
+
+  MEETING_CAPTION_TURNED_ON: 'meeting:caption-turned-on',
+  MEETING_CAPTION_LANGUAGE_CHANGED: 'meeting:caption-language-changed',
+  MEETING_SPOKEN_LANGUAGE_CHANGED: 'meeting:spoken-language-changed',
+
+  MEETING_CAPTION_RECEIVED: 'meeting:caption-received',
 };
 
 export const EVENT_TYPES = {

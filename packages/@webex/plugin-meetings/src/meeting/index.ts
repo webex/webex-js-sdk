@@ -165,7 +165,18 @@ const logRequest = (request: any, {logText = ''}) => {
     });
 };
 
+export type CaptionData = {
+  id: string;
+  isFinal: boolean;
+  translations: Array<string>;
+  text: string;
+  currentCaptionLanguage: string;
+  timestamp: string;
+  speaker: string;
+};
+
 export type Transcription = {
+  closeSocket(): unknown;
   languageOptions: {
     captionLanguages: string;
     maxLanguages: number;
@@ -177,6 +188,8 @@ export type Transcription = {
   status: string;
   isListening: boolean;
   commandText: string;
+  captions: Map<string, CaptionData>;
+  interimCaptions: Map<string, CaptionData>;
 };
 
 export type LocalStreams = {
@@ -1200,7 +1213,18 @@ export default class Meeting extends StatelessWebexPlugin {
      * @private
      * @memberof Meeting
      */
-    this.transcription = undefined;
+    this.transcription = {
+      captions: [],
+      highlights: [],
+      isListening: false,
+      commandText: '',
+      languageOptions: {},
+      showCaptionBox: false,
+      transcribingRequestStatus: 'INACTIVE',
+      isCaptioning: false,
+      interimCaptions: {},
+      speakerProxy: {},
+    };
 
     /**
      * Password status. If it's PASSWORD_STATUS.REQUIRED then verifyPassword() needs to be called
@@ -1763,6 +1787,7 @@ export default class Meeting extends StatelessWebexPlugin {
     this.setUpLocusInfoMediaInactiveListener();
     this.setUpBreakoutsListener();
     this.setUpInterpretationListener();
+    this.setUpVoiceaListener();
   }
 
   /**
@@ -1887,7 +1912,15 @@ export default class Meeting extends StatelessWebexPlugin {
         );
       }
     );
+  }
 
+  /**
+   * Set up the listeners for captions
+   * @returns {undefined}
+   * @private
+   * @memberof Meeting
+   */
+  private setUpVoiceaListener() {
     this.webex.internal.voicea.on(
       VOICEAEVENTS.VOICEA_ANNOUNCEMENT,
       (payload: Transcription['languageOptions']) => {
@@ -1905,6 +1938,15 @@ export default class Meeting extends StatelessWebexPlugin {
           currentCaptionLanguage:
             this.transcription.languageOptions.requestedCaptionLanguage ?? ENGLISH_LANGUAGE,
         };
+        Trigger.trigger(
+          this,
+          {
+            file: 'meeting/index',
+            function: 'processNewCaptions',
+          },
+          EVENT_TRIGGERS.MEETING_SPOKEN_LANGUAGE_CHANGED,
+          {languageCode: data?.languageCode}
+        );
       } else {
         // TODO Handle Status Code and alert - SPARK-370923
       }
@@ -1919,10 +1961,20 @@ export default class Meeting extends StatelessWebexPlugin {
           currentSpokenLanguage: data?.languageCode,
         };
       }
+
+      Trigger.trigger(
+        this,
+        {
+          file: 'meeting/index',
+          function: 'processNewCaptions',
+        },
+        EVENT_TRIGGERS.MEETING_SPOKEN_LANGUAGE_CHANGED,
+        {languageCode: data?.languageCode}
+      );
     });
 
     this.webex.internal.voicea.on(VOICEAEVENTS.CAPTIONS_TURNED_ON, (payload) => {
-      this.transcription.status = TURN_ON_CAPTION_STATUS.ENABLED;
+      this.transcription = {status: TURN_ON_CAPTION_STATUS.ENABLED};
     });
 
     this.webex.internal.voicea.on(VOICEAEVENTS.EVA_COMMAND, (payload) => {
@@ -1931,11 +1983,25 @@ export default class Meeting extends StatelessWebexPlugin {
       this.transcription.isListening = !!data.isListening;
       this.transcription.commandText = data.text ?? '';
     });
-    this.webex.internal.voicea.on(VOICEAEVENTS.NEW_CAPTION, async (payload) => {
-      await processNewCaptions();
+
+    this.webex.internal.voicea.on(VOICEAEVENTS.NEW_CAPTION, async (data) => {
+      await processNewCaptions({data, meeting: this});
+      Trigger.trigger(
+        this,
+        {
+          file: 'meeting/index',
+          function: 'processNewCaptions',
+        },
+        EVENT_TRIGGERS.MEETING_CAPTION_RECEIVED,
+        {
+          captions: this.transcription.captions,
+          interimCaptions: this.transcription.interimCaptions,
+        }
+      );
     });
-    this.webex.internal.voicea.on(VOICEAEVENTS.HIGHLIGHT_CREATED, async (payload) => {
-      await processHighlightCreated();
+
+    this.webex.internal.voicea.on(VOICEAEVENTS.HIGHLIGHT_CREATED, async (data) => {
+      await processHighlightCreated({data, meeting: this});
     });
   }
 
@@ -2259,19 +2325,21 @@ export default class Meeting extends StatelessWebexPlugin {
       LOCUSINFO.EVENTS.CONTROLS_MEETING_TRANSCRIBE_UPDATED,
       ({caption, transcribing}) => {
         // @ts-ignore - config coming from registerPlugin
-        if (transcribing && !this.transcription && this.config.receiveTranscription) {
-          // this.startTranscription();
-          this.webex.internal.voicea.toggleTranscribing(true);
-        } else if (!transcribing && this.transcription) {
-          Trigger.trigger(
-            this,
-            {
-              file: 'meeting/index',
-              function: 'setupLocusControlsListener',
-            },
-            EVENT_TRIGGERS.MEETING_STOPPED_RECEIVING_TRANSCRIPTION,
-            {caption, transcribing}
-          );
+        // user need to be joined to start the llm and receive transcription
+        if (this.isJoined()) {
+          if (transcribing && !this.transcription && this.config.receiveTranscription) {
+            // this.startTranscription();
+          } else if (!transcribing && this.transcription) {
+            Trigger.trigger(
+              this,
+              {
+                file: 'meeting/index',
+                function: 'setupLocusControlsListener',
+              },
+              EVENT_TRIGGERS.MEETING_STOPPED_RECEIVING_TRANSCRIPTION,
+              {caption, transcribing}
+            );
+          }
         }
       }
     );
@@ -2926,7 +2994,7 @@ export default class Meeting extends StatelessWebexPlugin {
     this.locusInfo.on(LOCUSINFO.EVENTS.SELF_ADMITTED_GUEST, async (payload) => {
       this.stopKeepAlive();
       // @ts-ignore
-      if (!this.transcription && (this.config.receiveTranscription || this.receiveTranscription)) {
+      if (!this.transcription && this.config.receiveTranscription) {
         if (this.isTranscriptionSupported()) {
           await this.startTranscription();
           LoggerProxy.logger.info(
@@ -4505,109 +4573,91 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
-   * Monitor the Low-Latency Mercury (LLM) web socket connection on `onError` and `onClose` states
-   * @private
-   * @returns {void}
+   * sets Caption language for the meeting
+   * @param {string} language
+   * @returns {Promise}
    */
-  private monitorTranscriptionSocketConnection() {
-    this.transcription.onCloseSocket((event) => {
-      LoggerProxy.logger.info(
-        `Meeting:index#onCloseSocket -->
-        unable to continue receiving transcription;
-        low-latency mercury web socket connection is closed now.
-        ${event}`
-      );
-
-      this.triggerStopReceivingTranscriptionEvent();
-    });
-
-    this.transcription.onErrorSocket((event) => {
+  public async setCaptionLanguage(language: string) {
+    // wait for the caption language update event as the response is async
+    // check if we can convert this to promise by waiting for event
+    if (!this.isTranscriptionSupported()) {
       LoggerProxy.logger.error(
-        `Meeting:index#onErrorSocket -->
-         unable to continue receiving transcription;
-         low-latency mercury web socket connection error had occured.
-        ${event}`
+        'Meeting:index#setCaptionLanguage --> Webex Assistant is not supported'
       );
 
-      this.triggerStopReceivingTranscriptionEvent();
+      return Promise.reject(new Error('Transcription not supported'));
+    }
 
-      Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.RECEIVE_TRANSCRIPTION_FAILURE, {
-        correlation_id: this.correlationId,
-        reason: 'unexpected error: transcription LLM web socket connection error had occured.',
-        event,
-      });
-    });
+    try {
+      await this.webex.internal.voicea.setCaptionLanguage(language);
+    } catch (error) {
+      LoggerProxy.logger.error(`Meeting:index#setCaptionLanguage --> ${error}`);
+
+      return Promise.reject(error);
+    }
+
+    return Promise.resolve();
+  }
+
+  /**
+   * sets Spoken language for the meeting
+   * @param {string} language
+   * @returns {Promise}
+   */
+  public async setSpokenLanguage(language: string) {
+    if (!this.isTranscriptionSupported()) {
+      LoggerProxy.logger.error(
+        'Meeting:index#setCaptionLanguage --> Webex Assistant is not supported'
+      );
+
+      return Promise.reject(new Error('Transcription not supported'));
+    }
+
+    try {
+      await this.webex.internal.voicea.setSpokenLanguage(language);
+    } catch (error) {
+      LoggerProxy.logger.error(`Meeting:index#setSpokenLanguage --> ${error}`);
+
+      return Promise.reject(error);
+    }
+
+    return Promise.resolve();
   }
 
   /**
    * Request for a WebSocket Url, open and monitor the WebSocket connection
-   * @private
+   * @param {Object} options object with spokenlanguage setting
+   * @public
    * @returns {Promise<void>} a promise to open the WebSocket connection
    */
-  private async startTranscription() {
-    LoggerProxy.logger.info(
-      `Meeting:index#startTranscription -->
-      Attempting to generate a web socket url.`
-    );
-
-    try {
-      const {datachannelUrl} = this.locusInfo.info;
-      // @ts-ignore - fix type
-      const {
-        body: {webSocketUrl},
-        // @ts-ignore
-      } = await this.request({
-        method: HTTP_VERBS.POST,
-        uri: datachannelUrl,
-        body: {deviceUrl: this.deviceUrl},
-      });
-
+  public async startTranscription(options?: {spokenLanguage?: string}) {
+    if (this.isTranscriptionSupported() && this.isJoined()) {
       LoggerProxy.logger.info(
-        `Meeting:index#startTranscription -->
-        Generated web socket url succesfully.`
+        'Meeting:index#startTranscription --> Attempting to enabled transcription!'
       );
 
-      this.transcription = new Transcription(
-        webSocketUrl,
-        // @ts-ignore - fix type
-        this.webex.sessionId,
-        this.members
-      );
-
-      LoggerProxy.logger.info(
-        `Meeting:index#startTranscription -->
-        opened LLM web socket connection successfully.`
-      );
-
-      if (!this.inMeetingActions.isClosedCaptionActive) {
-        LoggerProxy.logger.error(
-          `Meeting:index#receiveTranscription --> Transcription cannot be started until a licensed user enables it`
-        );
-      }
-
-      // retrieve and pass the payload
-      this.transcription.subscribe((payload) => {
+      try {
+        await this.webex.internal.voicea.toggleTranscribing(true, options.spokenLanguage);
         Trigger.trigger(
           this,
           {
             file: 'meeting/index',
             function: 'join',
           },
-          EVENT_TRIGGERS.MEETING_STARTED_RECEIVING_TRANSCRIPTION,
-          payload
+          EVENT_TRIGGERS.MEETING_STARTED_RECEIVING_TRANSCRIPTION
         );
-      });
-
-      this.monitorTranscriptionSocketConnection();
-      // @ts-ignore - fix type
-      this.transcription.connect(this.webex.credentials.supertoken.access_token);
-    } catch (error) {
-      LoggerProxy.logger.error(`Meeting:index#startTranscription --> ${error}`);
-      Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.RECEIVE_TRANSCRIPTION_FAILURE, {
-        correlation_id: this.correlationId,
-        reason: error.message,
-        stack: error.stack,
-      });
+      } catch (error) {
+        LoggerProxy.logger.error(`Meeting:index#startTranscription --> ${error}`);
+        Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.RECEIVE_TRANSCRIPTION_FAILURE, {
+          correlation_id: this.correlationId,
+          reason: error.message,
+          stack: error.stack,
+        });
+      }
+    } else {
+      LoggerProxy.logger.error(
+        `Meeting:index#startTranscription --> transcript support : ${this.isTranscriptionSupported()} , meeting joined : ${this.isJoined()}`
+      );
     }
   }
 
@@ -4898,19 +4948,17 @@ export default class Meeting extends StatelessWebexPlugin {
 
         return Promise.reject(error);
       })
-      .then((join) => {
+      .then(async (join) => {
         // @ts-ignore - config coming from registerPlugin
-        if (this.config.enableAutomaticLLM) {
-          this.updateLLMConnection().catch((error) => {
-            LoggerProxy.logger.error('Meeting:index#join --> Update LLM Connection Failed', error);
+        await this.updateLLMConnection().catch((error) => {
+          LoggerProxy.logger.error('Meeting:index#join --> Update LLM Connection Failed', error);
 
-            Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.LLM_CONNECTION_AFTER_JOIN_FAILURE, {
-              correlation_id: this.correlationId,
-              reason: error?.message,
-              stack: error.stack,
-            });
+          Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.LLM_CONNECTION_AFTER_JOIN_FAILURE, {
+            correlation_id: this.correlationId,
+            reason: error?.message,
+            stack: error.stack,
           });
-        }
+        });
 
         return join;
       })
@@ -4922,21 +4970,7 @@ export default class Meeting extends StatelessWebexPlugin {
               LoggerProxy.logger.info(
                 'Meeting:index#join --> Attempting to enabled to receive transcription!'
               );
-              this.startTranscription().catch((error) => {
-                LoggerProxy.logger.error(
-                  'Meeting:index#join --> Receive Transcription Failed',
-                  error
-                );
-
-                Metrics.sendBehavioralMetric(
-                  BEHAVIORAL_METRICS.RECEIVE_TRANSCRIPTION_AFTER_JOIN_FAILURE,
-                  {
-                    correlation_id: this.correlationId,
-                    reason: error?.message,
-                    stack: error.stack,
-                  }
-                );
-              });
+              this.getWebexObject().internal.voicea.announce();
             }
           }
         } else {

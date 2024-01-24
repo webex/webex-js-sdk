@@ -340,19 +340,29 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
 
   /**
    * request turn on Captions
+   * @param {string} languageCode
    * @returns {Promise}
    */
-  private requestTurnOnCaptions = (): undefined | Promise<void> => {
+  private requestTurnOnCaptions = (languageCode?): undefined | Promise<void> => {
     this.captionStatus = TURN_ON_CAPTION_STATUS.SENDING;
+
+    // only set the spoken language if it is provided
+    const body = languageCode
+      ? {
+          transcribe: {caption: true},
+          languageCode,
+        }
+      : {
+          transcribe: {caption: true},
+        };
+
     // @ts-ignore
     // eslint-disable-next-line newline-before-return
     return this.request({
       method: 'PUT',
       // @ts-ignore
       url: `${this.webex.internal.llm.getLocusUrl()}/controls/`,
-      body: {
-        transcribe: {caption: true},
-      },
+      body,
     })
       .then(() => {
         Trigger.trigger(
@@ -403,24 +413,29 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
 
   /**
    * Turn on Captions
+   * @param {string} spokenLanguage - spoken language code
    * @returns {Promise}
    */
-  public turnOnCaptions = async (): undefined | Promise<void> => {
+  public turnOnCaptions = async (spokenLanguage?): undefined | Promise<void> => {
     if (this.isCaptionProcessing()) return undefined;
     // @ts-ignore
     if (!this.webex.internal.llm.isConnected()) {
       throw new Error('can not turn on captions before llm connected');
     }
 
-    return this.requestTurnOnCaptions();
+    return this.requestTurnOnCaptions(spokenLanguage);
   };
 
   /**
    * Toggle transcribing for highlights
    * @param {bool} activate if true transcribing is turned on
+   * @param {string} spokenLanguage language code for spoken language
    * @returns {Promise}
    */
-  public toggleTranscribing = async (activate: boolean): undefined | Promise<void> => {
+  public toggleTranscribing = async (
+    activate: boolean,
+    spokenLanguage: string
+  ): undefined | Promise<void> => {
     // @ts-ignore
     return this.request({
       method: 'PUT',
@@ -428,9 +443,10 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
       url: `${this.webex.internal.llm.getLocusUrl()}/controls/`,
       body: {
         transcribe: {transcribing: activate},
+        spokenLanguage,
       },
     }).then(() => {
-      if (activate && !this.areCaptionsEnabled) this.turnOnCaptions();
+      if (activate && !this.areCaptionsEnabled) return this.turnOnCaptions(spokenLanguage);
     });
   };
 

@@ -808,6 +808,9 @@ export default class LocusInfo extends EventsScope {
         current,
       } = ControlsUtils.getControls(this.controls, controls);
 
+      // moving here as events are triggred but locusinfo.controls are not updated
+      this.controls = controls;
+
       if (hasMuteOnEntryChanged) {
         this.emitScoped(
           {file: 'locus-info', function: 'updateControls'},
@@ -991,8 +994,6 @@ export default class LocusInfo extends EventsScope {
           }
         );
       }
-
-      this.controls = controls;
     }
   }
 
