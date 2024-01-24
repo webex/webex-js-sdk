@@ -1038,7 +1038,7 @@ export const RECONNECTION = {
   },
 } as const;
 
-export type RECONNECTION_STATUS = Enum<typeof RECONNECTION.STATE>;
+export type RECONNECTION_STATE = Enum<typeof RECONNECTION.STATE>;
 
 export const RESOURCE = {
   CLUSTERS: 'clusters',

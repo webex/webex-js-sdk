@@ -14,7 +14,7 @@ import {
   _CALL_,
   _LEFT_,
   _ID_,
-  RECONNECTION_STATUS,
+  RECONNECTION_STATE,
 } from '../constants';
 import BEHAVIORAL_METRICS from '../metrics/constants';
 import ReconnectionError from '../common/errors/reconnection';
@@ -97,7 +97,7 @@ export default class ReconnectionManager {
 
     /**
      * @instance
-     * @type {RECONNECTION_STATUS}
+     * @type {RECONNECTION_STATE}
      * @private
      * @memberof ReconnectionManager
      */
@@ -270,11 +270,11 @@ export default class ReconnectionManager {
    * Sets the reconnection status
    *
    * @public
-   * @param {RECONNECTION_STATUS} status
+   * @param {RECONNECTION_STATE} status
    * @memberof ReconnectionManager
    * @returns {undefined}
    */
-  public setStatus(status: RECONNECTION_STATUS) {
+  public setStatus(status: RECONNECTION_STATE) {
     this.status = status;
   }
 
