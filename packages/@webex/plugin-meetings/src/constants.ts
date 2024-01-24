@@ -1038,7 +1038,9 @@ export const RECONNECTION = {
     DEFAULT_TRY_COUNT: 0,
     DEFAULT_STATUS: '',
   },
-};
+} as const;
+
+export type RECONNECTION_STATE = Enum<typeof RECONNECTION.STATE>;
 
 export const RESOURCE = {
   CLUSTERS: 'clusters',
