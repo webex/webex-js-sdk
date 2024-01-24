@@ -4547,6 +4547,7 @@ describe('plugin-meetings', () => {
         const FAKE_MEETING_INFO_LOOKUP_URL = 'meetingLookupUrl';
         const FAKE_PERMISSION_TOKEN = {someField: 'some value'};
         const FAKE_TTL = 13;
+        const FAKE_TIMESTAMPS = {permissionTokenTimeLeft: 13, permissionExpiryTimestamp: 123456, currentTime: 123478};
 
         beforeEach(() => {
           meeting.locusId = 'locus-id';
@@ -4556,7 +4557,7 @@ describe('plugin-meetings', () => {
           meeting.destination = 'meeting-destination';
           meeting.destinationType = 'meeting-destination-type';
           meeting.updateMeetingActions = sinon.stub().returns(undefined);
-          meeting.getPermissionTokenTimeLeftInSec = sinon.stub().returns(FAKE_TTL);
+          meeting.getPermissionTokenTimeLeftInSec = sinon.stub().returns(FAKE_TIMESTAMPS);
           meeting.meetingInfoExtraParams = {
             extraParam1: 'value1'
           };
@@ -4609,7 +4610,9 @@ describe('plugin-meetings', () => {
           assert.calledWith(
             Metrics.sendBehavioralMetric, BEHAVIORAL_METRICS.PERMISSION_TOKEN_REFRESH, {
               correlationId: meeting.correlationId,
-              timeLeft: FAKE_TTL,
+              permissionTokenTimeLeft: FAKE_TIMESTAMPS.permissionTokenTimeLeft,
+              permissionExpiryTimestamp: FAKE_TIMESTAMPS.permissionExpiryTimestamp,
+              currentTime: FAKE_TIMESTAMPS.currentTime,
               reason: 'fake reason',
               destinationType: 'meeting-destination-type',
             }
@@ -4658,7 +4661,9 @@ describe('plugin-meetings', () => {
           assert.calledWith(
             Metrics.sendBehavioralMetric, BEHAVIORAL_METRICS.PERMISSION_TOKEN_REFRESH, {
               correlationId: meeting.correlationId,
-              timeLeft: FAKE_TTL,
+              permissionTokenTimeLeft: FAKE_TIMESTAMPS.permissionTokenTimeLeft,
+              permissionExpiryTimestamp: FAKE_TIMESTAMPS.permissionExpiryTimestamp,
+              currentTime: FAKE_TIMESTAMPS.currentTime,
               reason: 'some reason',
               destinationType: 'MEETING_LINK',
             }
@@ -9668,20 +9673,22 @@ describe('plugin-meetings', () => {
 
     it('should return the expected positive exp', () => {
       // set permission token as now + 1 sec
-      meeting.permissionTokenPayload = {exp: (now + 1000).toString()};
-      assert.equal(meeting.getPermissionTokenTimeLeftInSec(), 1);
+      const expiryTime = now + 1000;
+      meeting.permissionTokenPayload = {exp: (expiryTime).toString()};
+      assert.deepEqual(meeting.getPermissionTokenTimeLeftInSec(), {permissionTokenTimeLeft: 1, permissionExpiryTimestamp: Number(expiryTime), currentTime: now});
     });
 
     it('should return the expected negative exp', () => {
       // set permission token as now - 1 sec
-      meeting.permissionTokenPayload = {exp: (now - 1000).toString()};
-      assert.equal(meeting.getPermissionTokenTimeLeftInSec(), -1);
+      const expiryTime = now - 1000;
+      meeting.permissionTokenPayload = {exp: (expiryTime).toString()};
+      assert.deepEqual(meeting.getPermissionTokenTimeLeftInSec(), {permissionTokenTimeLeft: -1, permissionExpiryTimestamp: Number(expiryTime), currentTime: now});
     });
   });
 
   describe('#checkAndRefreshPermissionToken', () => {
     it('should not fire refreshPermissionToken if permissionToken is not defined', async() => {
-      meeting.getPermissionTokenTimeLeftInSec = sinon.stub().returns(undefined)
+      meeting.getPermissionTokenTimeLeftInSec = sinon.stub().returns({permissionTokenTimeLeft: undefined, permissionExpiryTimestamp: undefined, currentTime: Date.now()})
       meeting.refreshPermissionToken = sinon.stub().returns(Promise.resolve('test return value'));
 
       const returnValue = await meeting.checkAndRefreshPermissionToken(10, 'ttl-join');
@@ -9692,7 +9699,7 @@ describe('plugin-meetings', () => {
     });
 
     it('should fire refreshPermissionToken if time left is below 10sec', async() => {
-      meeting.getPermissionTokenTimeLeftInSec = sinon.stub().returns(9)
+      meeting.getPermissionTokenTimeLeftInSec = sinon.stub().returns({permissionTokenTimeLeft: 9, permissionExpiryTimestamp: 122132, currentTime: Date.now()})
       meeting.refreshPermissionToken = sinon.stub().returns(Promise.resolve('test return value'));
 
       const returnValue = await meeting.checkAndRefreshPermissionToken(10, 'ttl-join');
@@ -9703,7 +9710,7 @@ describe('plugin-meetings', () => {
     });
 
     it('should fire refreshPermissionToken if time left is equal 10sec', async () => {
-      meeting.getPermissionTokenTimeLeftInSec = sinon.stub().returns(10)
+      meeting.getPermissionTokenTimeLeftInSec = sinon.stub().returns({permissionTokenTimeLeft: 10, permissionExpiryTimestamp: 122132, currentTime: Date.now()})
       meeting.refreshPermissionToken = sinon.stub().returns(Promise.resolve('test return value'));
 
       const returnValue = await meeting.checkAndRefreshPermissionToken(10, 'ttl-join');
@@ -9714,7 +9721,7 @@ describe('plugin-meetings', () => {
     });
 
     it('should not fire refreshPermissionToken if time left is higher than 10sec', async () => {
-      meeting.getPermissionTokenTimeLeftInSec = sinon.stub().returns(11)
+      meeting.getPermissionTokenTimeLeftInSec = sinon.stub().returns({permissionTokenTimeLeft: 11, permissionExpiryTimestamp: 122132, currentTime: Date.now()})
       meeting.refreshPermissionToken = sinon.stub().returns(Promise.resolve('test return value'));
 
       const returnValue = await meeting.checkAndRefreshPermissionToken(10, 'ttl-join');
