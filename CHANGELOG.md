@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.323](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.322...v3.0.0-beta.323) (2024-01-24)
+
+
+### Features
+
+* defer calendar encryption key prefetch until authorized ([#3321](https://github.com/webex/webex-js-sdk/issues/3321)) ([2209108](https://github.com/webex/webex-js-sdk/commit/22091088bc746e567e00b0c11d0171eba24744f0))
+
 ## [3.0.0-beta.322](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.321...v3.0.0-beta.322) (2024-01-23)
 
 
