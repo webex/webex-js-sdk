@@ -5954,6 +5954,13 @@ export default class Meeting extends StatelessWebexPlugin {
 
     await this.cleanUpBeforeRetryWithTurnServer();
 
+    Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.ADD_MEDIA_RETRY, {
+      correlation_id: this.correlationId,
+      state: this.state,
+      meetingState: this.meetingState,
+      reason: 'forcingTurnTls',
+    });
+
     if (this.state === MEETING_STATE.STATES.LEFT) {
       LoggerProxy.logger.info(
         `${LOG_HEADER} meeting state was LEFT after first attempt to establish media connection. Attempting to rejoin. `
