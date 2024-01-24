@@ -1792,17 +1792,26 @@ describe('plugin-meetings', () => {
           }]);
 
           const sendBehavioralMetricCalls = Metrics.sendBehavioralMetric.getCalls();
-          assert.equal(sendBehavioralMetricCalls.length, 2);
-          assert.deepEqual(sendBehavioralMetricCalls[0].args, [            
+          assert.equal(sendBehavioralMetricCalls.length, 3);
+          assert.deepEqual(sendBehavioralMetricCalls[0].args, [
+            BEHAVIORAL_METRICS.ADD_MEDIA_RETRY,
+            {
+              correlation_id: meeting.correlationId,
+              state: meeting.state,
+              meetingState: meeting.meetingState,
+              reason: 'forcingTurnTls',
+            },
+          ]);
+          assert.deepEqual(sendBehavioralMetricCalls[1].args, [
             BEHAVIORAL_METRICS.TURN_DISCOVERY_LATENCY,
             {
               correlation_id: meeting.correlationId,
               turnServerUsed: true,
               retriedWithTurnServer: true,
               latency: undefined,
-            }
+            },
           ]);
-          assert.deepEqual(sendBehavioralMetricCalls[1].args, [            
+          assert.deepEqual(sendBehavioralMetricCalls[2].args, [
             BEHAVIORAL_METRICS.ADD_MEDIA_FAILURE,
             {
               correlation_id: meeting.correlationId,
@@ -1817,7 +1826,7 @@ describe('plugin-meetings', () => {
               signalingState: 'unknown',
               connectionState: 'unknown',
               iceConnectionState: 'unknown',
-            }
+            },
           ]);
 
           // Check that doTurnDiscovery is called with th4 correct value of isForced
@@ -1958,17 +1967,26 @@ describe('plugin-meetings', () => {
           }]);
 
           const sendBehavioralMetricCalls = Metrics.sendBehavioralMetric.getCalls();
-          assert.equal(sendBehavioralMetricCalls.length, 2);
-          assert.deepEqual(sendBehavioralMetricCalls[0].args, [            
+          assert.equal(sendBehavioralMetricCalls.length, 3);
+          assert.deepEqual(sendBehavioralMetricCalls[0].args, [
+            BEHAVIORAL_METRICS.ADD_MEDIA_RETRY,
+            {
+              correlation_id: meeting.correlationId,
+              state: meeting.state,
+              meetingState: meeting.meetingState,
+              reason: 'forcingTurnTls',
+            },
+          ]);
+          assert.deepEqual(sendBehavioralMetricCalls[1].args, [
             BEHAVIORAL_METRICS.TURN_DISCOVERY_LATENCY,
             {
               correlation_id: meeting.correlationId,
               turnServerUsed: true,
               retriedWithTurnServer: true,
               latency: undefined,
-            }
+            },
           ]);
-          assert.deepEqual(sendBehavioralMetricCalls[1].args, [            
+          assert.deepEqual(sendBehavioralMetricCalls[2].args, [
             BEHAVIORAL_METRICS.ADD_MEDIA_SUCCESS,
             {
               correlation_id: meeting.correlationId,
@@ -1976,7 +1994,7 @@ describe('plugin-meetings', () => {
               connectionType: 'udp',
               isMultistream: false,
               retriedWithTurnServer: true,
-            }
+            },
           ]);
           meeting.roap.doTurnDiscovery
 
