@@ -104,6 +104,7 @@ import {
   MEETING_PERMISSION_TOKEN_REFRESH_THRESHOLD_IN_SEC,
   MEETING_PERMISSION_TOKEN_REFRESH_REASON,
   ROAP_OFFER_ANSWER_EXCHANGE_TIMEOUT,
+  RECONNECTION,
 } from '../constants';
 import BEHAVIORAL_METRICS from '../metrics/constants';
 import ParameterError from '../common/errors/parameter';
@@ -4277,6 +4278,8 @@ export default class Meeting extends StatelessWebexPlugin {
 
     return this.reconnectionManager
       .reconnect(options)
+      .then(() => this.waitForRemoteSDPAnswer())
+      .then(() => this.waitForMediaConnectionConnected())
       .then(() => {
         Trigger.trigger(
           this,
@@ -4287,6 +4290,18 @@ export default class Meeting extends StatelessWebexPlugin {
           EVENT_TRIGGERS.MEETING_RECONNECTION_SUCCESS
         );
         LoggerProxy.logger.log('Meeting:index#reconnect --> Meeting reconnect success');
+
+        // @ts-ignore
+        this.webex.internal.newMetrics.submitClientEvent({
+          name: 'client.media.recovered',
+          payload: {
+            recoveredBy: 'new',
+          },
+          options: {
+            meetingId: this.id,
+          },
+        });
+        this.reconnectionManager.setStatus(RECONNECTION.STATE.COMPLETE);
       })
       .catch((error) => {
         Trigger.trigger(
