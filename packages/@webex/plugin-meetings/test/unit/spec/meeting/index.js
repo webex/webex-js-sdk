@@ -2461,6 +2461,7 @@ describe('plugin-meetings', () => {
                         category: 'media',
                         errorCode: clientErrorCode,
                         serviceErrorCode: undefined,
+                        rawErrorMessage: undefined,
                         ...expectedErrorPayload,
                       },
                     ],
