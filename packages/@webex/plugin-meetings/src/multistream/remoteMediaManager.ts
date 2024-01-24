@@ -554,8 +554,15 @@ export class RemoteMediaManager extends EventsScope {
       type,
       value,
     };
-
-    await this.createAudioMedia();
+    if (type === 1) {
+      if (this.media.audio) {
+        this.media.audio.stop(false);
+        // release all audio receive slots
+        this.slots.audio.forEach((slot) => this.receiveSlotManager.releaseSlot(slot));
+        this.slots.audio.length = 0;
+      }
+      await this.createAudioMedia();
+    }
   }
 
   /**

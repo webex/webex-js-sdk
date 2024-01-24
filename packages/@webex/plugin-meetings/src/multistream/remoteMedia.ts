@@ -78,7 +78,7 @@ export class RemoteMedia extends EventsScope {
 
   private readonly options: Options;
 
-  private mediaRequestIds?: MediaRequestId[];
+  private mediaRequestId?: MediaRequestId;
 
   public readonly id: RemoteMediaId;
 
@@ -160,7 +160,7 @@ export class RemoteMedia extends EventsScope {
    * @internal
    */
   public sendMediaRequest(csi: CSI, commit: boolean) {
-    if (this.mediaRequestIds.length) {
+    if (this.mediaRequestId) {
       this.cancelMediaRequest(false);
     }
 
@@ -168,7 +168,7 @@ export class RemoteMedia extends EventsScope {
       throw new Error('sendMediaRequest() called on an invalidated RemoteMedia instance');
     }
 
-    const mrId = this.mediaRequestManager.addRequest(
+    this.mediaRequestId = this.mediaRequestManager.addRequest(
       {
         policyInfo: {
           policy: 'receiver-selected',
@@ -182,16 +182,15 @@ export class RemoteMedia extends EventsScope {
       },
       commit
     );
-    this.mediaRequestIds?.push(mrId);
   }
 
   /**
    * @internal
    */
   public cancelMediaRequest(commit: boolean) {
-    if (this.mediaRequestIds?.length) {
-      this.mediaRequestManager.cancelRequest(this.mediaRequestIds, commit);
-      this.mediaRequestIds = [];
+    if (this.mediaRequestId) {
+      this.mediaRequestManager.cancelRequest([this.mediaRequestId], commit);
+      this.mediaRequestId = undefined;
     }
   }
 

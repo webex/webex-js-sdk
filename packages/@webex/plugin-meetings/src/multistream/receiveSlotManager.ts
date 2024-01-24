@@ -97,7 +97,7 @@ export class ReceiveSlotManager {
 
     if (idx >= 0) {
       this.allocatedSlots[slot.mediaType].splice(idx, 1);
-      slot.setNamedMediaGroup(undefined);
+      slot.resetNamedMediaGroup();
       this.freeSlots[slot.mediaType].push(slot);
       LoggerProxy.logger.log(`${slot.mediaType}: receive slot released: ${slot.id}`);
     } else {

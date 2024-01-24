@@ -22,7 +22,7 @@ export class RemoteMediaGroup {
 
   private unpinnedRemoteMedia: RemoteMedia[];
 
-  private mediaRequestIds?: MediaRequestId[]; // id of the "active-speaker" media request id
+  private mediaRequestIds: MediaRequestId[]; // id of the "active-speaker" media request id
 
   private pinnedRemoteMedia: RemoteMedia[];
   private namedMedia: RemoteMedia[];
@@ -37,6 +37,7 @@ export class RemoteMediaGroup {
     this.mediaRequestManager = mediaRequestManager;
     this.priority = priority;
     this.options = options;
+    this.mediaRequestIds = [];
 
     this.unpinnedRemoteMedia = receiveSlots.map(
       (slot) =>
@@ -243,7 +244,7 @@ export class RemoteMediaGroup {
         },
         false
       );
-      this.mediaRequestIds?.push(mrId);
+      this.mediaRequestIds.push(mrId);
     });
 
     const mrId = this.mediaRequestManager.addRequest(
@@ -265,11 +266,11 @@ export class RemoteMediaGroup {
       },
       commit
     );
-    this.mediaRequestIds?.push(mrId);
+    this.mediaRequestIds.push(mrId);
   }
 
   private cancelActiveSpeakerMediaRequest(commit: boolean) {
-    if (this.mediaRequestIds?.length) {
+    if (this.mediaRequestIds.length) {
       this.mediaRequestManager.cancelRequest(this.mediaRequestIds, commit);
       this.mediaRequestIds = [];
     }
@@ -286,6 +287,7 @@ export class RemoteMediaGroup {
   public stop(commit = true) {
     this.unpinnedRemoteMedia.forEach((remoteMedia) => remoteMedia.stop(false));
     this.pinnedRemoteMedia.forEach((remoteMedia) => remoteMedia.stop(false));
+    this.namedMedia.forEach((remoteMedia) => remoteMedia.stop(false));
     this.cancelActiveSpeakerMediaRequest(false);
 
     if (commit) {

@@ -81,6 +81,17 @@ export class ReceiveSlot extends EventsScope {
   }
 
   /**
+   * clear named media group
+   *
+   */
+  public resetNamedMediaGroup() {
+    if (this.namedMediaGroup) {
+      this.namedMediaGroup.type = 0;
+      this.namedMediaGroup.value = 0;
+    }
+  }
+
+  /**
    * Getter for memberId
    */
   public get memberId() {
