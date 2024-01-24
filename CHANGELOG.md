@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.326](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.325...v3.0.0-beta.326) (2024-01-24)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** add metric for addMedia() retries  ([#3324](https://github.com/webex/webex-js-sdk/issues/3324)) ([eb379c2](https://github.com/webex/webex-js-sdk/commit/eb379c25e5e57e87eeafaa5588f35cc6ed7c5191))
+
 ## [3.0.0-beta.325](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.324...v3.0.0-beta.325) (2024-01-24)
 
 
