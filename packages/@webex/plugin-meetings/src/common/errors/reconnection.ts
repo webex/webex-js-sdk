@@ -3,7 +3,7 @@ import {ERROR_DICTIONARY} from '../../constants';
 /**
  * Extended Error object to signify the intent to join for unclaimed PMR scenarios
  */
-export default class ReconnectionError extends Error {
+export class ReconnectionError extends Error {
   code: any;
   error: any;
   sdkMessage: any;
@@ -23,3 +23,8 @@ export default class ReconnectionError extends Error {
     this.code = ERROR_DICTIONARY.RECONNECTION.CODE;
   }
 }
+
+/**
+ * Error intended to be thrown when a new instance of ReconnectionManager is required due to previous clean up
+ */
+export class ReconnectionManagerNotDefined extends ReconnectionError {}

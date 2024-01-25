@@ -63,7 +63,7 @@ import Transcription from '../transcription';
 import {Reactions, SkinTones} from '../reactions/reactions';
 import PasswordError from '../common/errors/password-error';
 import CaptchaError from '../common/errors/captcha-error';
-import ReconnectionError from '../common/errors/reconnection';
+import {ReconnectionError, ReconnectionManagerNotDefined} from '../common/errors/reconnection';
 import ReconnectInProgress from '../common/errors/reconnection-in-progress';
 import {
   _CONVERSATION_URL_,
@@ -4251,16 +4251,26 @@ export default class Meeting extends StatelessWebexPlugin {
       // @ts-ignore
       this.reconnectionManager.validate();
     } catch (error) {
-      // Unable to reconnect this call
-      if (error instanceof ReconnectInProgress) {
-        LoggerProxy.logger.info(
-          'Meeting:index#reconnect --> Unable to reconnect, reconnection in progress.'
-        );
-      } else {
-        LoggerProxy.logger.log('Meeting:index#reconnect --> Unable to reconnect.', error);
-      }
+      if (error instanceof ReconnectionManagerNotDefined) {
+        this.reconnectionManager = new ReconnectionManager(this);
 
-      return Promise.resolve();
+        LoggerProxy.logger.info(
+          'Meeting:index#reconnect --> new instance of ReconnectionManager created, validating reconnect ability again'
+        );
+
+        // @ts-ignore
+        this.reconnectionManager.validate();
+      } else {
+        if (error instanceof ReconnectInProgress) {
+          LoggerProxy.logger.info(
+            'Meeting:index#reconnect --> Unable to reconnect, reconnection in progress.'
+          );
+        } else {
+          LoggerProxy.logger.log('Meeting:index#reconnect --> Unable to reconnect.', error);
+        }
+
+        return Promise.resolve();
+      }
     }
 
     Trigger.trigger(

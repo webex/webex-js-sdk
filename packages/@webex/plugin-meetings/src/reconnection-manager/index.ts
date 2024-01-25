@@ -16,11 +16,11 @@ import {
   _ID_,
 } from '../constants';
 import BEHAVIORAL_METRICS from '../metrics/constants';
-import ReconnectionError from '../common/errors/reconnection';
 import ReconnectInProgress from '../common/errors/reconnection-in-progress';
 import Metrics from '../metrics';
 import Meeting from '../meeting';
 import {MediaRequestManager} from '../multistream/mediaRequestManager';
+import {ReconnectionError, ReconnectionManagerNotDefined} from '../common/errors/reconnection';
 
 /**
  * Used to indicate that the reconnect logic needs to be retried.
@@ -272,7 +272,13 @@ export default class ReconnectionManager {
    * @memberof ReconnectionManager
    */
   private validate() {
-    if (this.meeting.config.reconnection.enabled) {
+    if (!this.meeting) {
+      LoggerProxy.logger.info(
+        'ReconnectionManager:index#validate --> meeting undefined in ReconnectonManager, new instance required to reconnect.'
+      );
+
+      throw new ReconnectionManagerNotDefined();
+    } else if (this.meeting.config.reconnection.enabled) {
       if (
         this.status === RECONNECTION.STATE.DEFAULT_STATUS ||
         this.status === RECONNECTION.STATE.COMPLETE
