@@ -3711,11 +3711,16 @@ export default class Meeting extends StatelessWebexPlugin {
   private async setLocalShareVideoStream(localDisplayStream?: LocalDisplayStream) {
     const oldStream = this.mediaProperties.shareVideoStream;
 
+    oldStream?.off(StreamEventNames.MuteStateChange, this.handleShareVideoStreamMuteStateChange);
     oldStream?.off(StreamEventNames.Ended, this.handleShareVideoStreamEnded);
     oldStream?.off(LocalStreamEventNames.OutputTrackChange, this.localOutputTrackChangeHandler);
 
     this.mediaProperties.setLocalShareVideoStream(localDisplayStream);
 
+    localDisplayStream?.on(
+      StreamEventNames.MuteStateChange,
+      this.handleShareVideoStreamMuteStateChange
+    );
     localDisplayStream?.on(StreamEventNames.Ended, this.handleShareVideoStreamEnded);
     localDisplayStream?.on(
       LocalStreamEventNames.OutputTrackChange,
@@ -3805,12 +3810,16 @@ export default class Meeting extends StatelessWebexPlugin {
     videoStream?.off(StreamEventNames.MuteStateChange, this.localVideoStreamMuteStateHandler);
     videoStream?.off(LocalStreamEventNames.OutputTrackChange, this.localOutputTrackChangeHandler);
 
-    shareAudioStream?.off(StreamEventNames.MuteStateChange, this.handleShareAudioStreamEnded);
+    shareAudioStream?.off(StreamEventNames.Ended, this.handleShareAudioStreamEnded);
     shareAudioStream?.off(
       LocalStreamEventNames.OutputTrackChange,
       this.localOutputTrackChangeHandler
     );
-    shareVideoStream?.off(StreamEventNames.MuteStateChange, this.handleShareVideoStreamEnded);
+    shareVideoStream?.off(
+      StreamEventNames.MuteStateChange,
+      this.handleShareVideoStreamMuteStateChange
+    );
+    shareVideoStream?.off(StreamEventNames.Ended, this.handleShareVideoStreamEnded);
     shareVideoStream?.off(
       LocalStreamEventNames.OutputTrackChange,
       this.localOutputTrackChangeHandler
@@ -6912,6 +6921,11 @@ export default class Meeting extends StatelessWebexPlugin {
           .then(() => {
             this.screenShareFloorState = ScreenShareFloorStatus.GRANTED;
 
+            Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.MEETING_SHARE_SUCCESS, {
+              correlation_id: this.correlationId,
+              locus_id: this.locusUrl.split('/').pop(),
+            });
+
             return Promise.resolve();
           })
           .catch((error) => {
@@ -7331,6 +7345,23 @@ export default class Meeting extends StatelessWebexPlugin {
         );
       }
     }
+  };
+
+  /**
+   * Functionality for when a share video is muted or unmuted.
+   * @private
+   * @memberof Meeting
+   * @param {boolean} muted
+   * @returns {undefined}
+   */
+  private handleShareVideoStreamMuteStateChange = (muted: boolean) => {
+    LoggerProxy.logger.log(
+      `Meeting:index#handleShareVideoStreamMuteStateChange --> Share video stream mute state changed to muted ${muted}`
+    );
+    Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.MEETING_SHARE_VIDEO_MUTE_STATE_CHANGE, {
+      correlationId: this.correlationId,
+      muted,
+    });
   };
 
   /**
