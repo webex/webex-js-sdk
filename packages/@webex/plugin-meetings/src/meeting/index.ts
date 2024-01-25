@@ -7901,7 +7901,7 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
-   * Gets permission token expiry information
+   * Gets permission token expiry information including timeLeft, expiryTime, currentTime
    * (from the time the function has been fired)
    *
    * @returns {object} containing timeLeft, expiryTime, currentTime
