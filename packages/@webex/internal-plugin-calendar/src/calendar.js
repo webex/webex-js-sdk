@@ -79,29 +79,51 @@ const Calendar = WebexPlugin.extend({
   encryptionKeyUrl: null,
 
   /**
+   * Pre-fetch a KMS encryption key url to improve performance.
+   * Waits for the user to be authorized and skips if an unverified guest.
+   * @private
+   * @returns {void}
+   */
+  prefetchEncryptionKey() {
+    if (!this.webex.canAuthorize) {
+      this.listenToOnce(this.webex, 'change:canAuthorize', () => {
+        this.prefetchEncryptionKey();
+      });
+
+      return;
+    }
+
+    if (this.webex.credentials.isUnverifiedGuest) {
+      return;
+    }
+
+    this.webex.internal.encryption.kms.createUnboundKeys({count: 1}).then((keys) => {
+      const key = isArray(keys) ? keys[0] : keys;
+      this.encryptionKeyUrl = key ? key.uri : null;
+      this.logger.info('calendar->bind a KMS encryption key url');
+      this.webex.internal.encryption
+        .getKey(this.encryptionKeyUrl, {onBehalfOf: null})
+        .then((retrievedKey) => {
+          this.encryptionKeyUrl = retrievedKey ? retrievedKey.uri : null;
+          this.logger.info('calendar->retrieve the KMS encryption key url and cache it');
+        });
+    });
+  },
+
+  /**
    * WebexPlugin initialize method. This triggers once Webex has completed its
    * initialization workflow.
    *
    * If the plugin is meant to perform startup actions, place them in this
    * `initialize()` method instead of the `constructor()` method.
+   * @private
    * @returns {void}
    */
   initialize() {
     // Used to perform actions after webex is fully qualified and ready for
     // operation.
     this.listenToOnce(this.webex, 'ready', () => {
-      // Pre-fetch a KMS encryption key url to improve performance
-      this.webex.internal.encryption.kms.createUnboundKeys({count: 1}).then((keys) => {
-        const key = isArray(keys) ? keys[0] : keys;
-        this.encryptionKeyUrl = key ? key.uri : null;
-        this.logger.info('calendar->bind a KMS encryption key url');
-        this.webex.internal.encryption
-          .getKey(this.encryptionKeyUrl, {onBehalfOf: null})
-          .then((retrievedKey) => {
-            this.encryptionKeyUrl = retrievedKey ? retrievedKey.uri : null;
-            this.logger.info('calendar->retrieve the KMS encryption key url and cache it');
-          });
-      });
+      this.prefetchEncryptionKey();
     });
   },
 
