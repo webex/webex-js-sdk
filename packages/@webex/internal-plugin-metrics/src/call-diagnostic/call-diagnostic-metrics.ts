@@ -2,7 +2,7 @@
 /* eslint-disable class-methods-use-this */
 /* eslint-disable valid-jsdoc */
 import {getOSNameInternal} from '@webex/internal-plugin-metrics';
-import {BrowserDetection} from '@webex/common';
+import {BrowserDetection, getBrowserSerial} from '@webex/common';
 import uuid from 'uuid';
 import {merge} from 'lodash';
 import {StatelessWebexPlugin} from '@webex/webex-core';
@@ -84,6 +84,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
   // @ts-ignore
   private callDiagnosticEventsBatcher: CallDiagnosticEventsBatcher;
   private logger: any; // to avoid adding @ts-ignore everywhere
+  private hasLoggedBrowserSerial: boolean;
   // the default validator before piping an event to the batcher
   // this function can be overridden by the user
   public validator: (options: {
@@ -182,6 +183,17 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     // sdk version split doesn't really make sense for now...
     if (providedClientVersion) {
       versionMetadata = extractVersionMetadata(providedClientVersion);
+    }
+
+    if (!this.hasLoggedBrowserSerial) {
+      const browserSerial = getBrowserSerial();
+      this.logger.log(
+        CALL_DIAGNOSTIC_LOG_IDENTIFIER,
+        `CallDiagnosticMetrics: @createClientEventObjectInMeeting => collected browser data`,
+        JSON.stringify(browserSerial)
+      );
+
+      this.hasLoggedBrowserSerial = true;
     }
 
     if (

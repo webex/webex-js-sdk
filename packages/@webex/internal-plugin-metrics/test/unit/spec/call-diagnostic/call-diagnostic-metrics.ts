@@ -6,6 +6,7 @@ import CallDiagnosticMetrics from '../../../../src/call-diagnostic/call-diagnost
 import CallDiagnosticLatencies from '../../../../src/call-diagnostic/call-diagnostic-metrics-latencies';
 import * as Utils from '../../../../src/call-diagnostic/call-diagnostic-metrics.util';
 import {BrowserDetection} from '@webex/common';
+import {getBrowserSerial} from '@webex/common';
 import {getOSNameInternal} from '@webex/internal-plugin-metrics';
 import uuid from 'uuid';
 import {omit} from 'lodash';
@@ -622,6 +623,51 @@ describe('internal-plugin-metrics', () => {
 
         const webexLoggerLogCalls = webex.logger.log.getCalls();
         assert.deepEqual(webexLoggerLogCalls[0].args, [
+          'call-diagnostic-events -> ',
+          'CallDiagnosticMetrics: @submitClientEvent. Submit Client Event CA event.',
+          `name: client.alert.displayed`,
+        ]);
+      });
+
+      it.only('should log browser data, but only for the first call diagnostic event', () => {
+        const prepareDiagnosticEventSpy = sinon.spy(cd, 'prepareDiagnosticEvent');
+        const submitToCallDiagnosticsSpy = sinon.spy(cd, 'submitToCallDiagnostics');
+        const generateClientEventErrorPayloadSpy = sinon.spy(cd, 'generateClientEventErrorPayload');
+        const getIdentifiersSpy = sinon.spy(cd, 'getIdentifiers');
+        const getSubServiceTypeSpy = sinon.spy(cd, 'getSubServiceType');
+        const validatorSpy = sinon.spy(cd, 'validator');
+        const options = {
+          meetingId: fakeMeeting.id,
+          mediaConnections: [{mediaAgentAlias: 'alias', mediaAgentGroupId: '1'}],
+        };
+
+        cd.submitClientEvent({
+          name: 'client.alert.displayed',
+          options,
+        });
+
+        cd.submitClientEvent({
+          name: 'client.alert.displayed',
+          options,
+        });
+
+        const webexLoggerLogCalls = webex.logger.log.getCalls();
+
+        assert.deepEqual(webexLoggerLogCalls.length, 3);
+
+        assert.deepEqual(webexLoggerLogCalls[0].args, [
+          'call-diagnostic-events -> ',
+          'CallDiagnosticMetrics: @submitClientEvent. Submit Client Event CA event.',
+          `name: client.alert.displayed`,
+        ]);
+
+        assert.deepEqual(webexLoggerLogCalls[1].args, [
+          'call-diagnostic-events -> ',
+          'CallDiagnosticMetrics: @createClientEventObjectInMeeting => collected browser data',
+          '{"error":"unable to access window.navigator.userAgent"}',
+        ]);
+
+        assert.deepEqual(webexLoggerLogCalls[2].args, [
           'call-diagnostic-events -> ',
           'CallDiagnosticMetrics: @submitClientEvent. Submit Client Event CA event.',
           `name: client.alert.displayed`,

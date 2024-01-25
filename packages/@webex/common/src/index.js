@@ -30,6 +30,7 @@ export {
 } from './constants';
 
 export {default as BrowserDetection} from './browser-detection';
+export {getBrowserSerial} from './browser-detection';
 export {
   buildHydraMembershipId,
   buildHydraMessageId,
