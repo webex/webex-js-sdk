@@ -3851,7 +3851,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@peculiar/asn1-schema@npm:^2.3.6, @peculiar/asn1-schema@npm:^2.3.8":
+"@peculiar/asn1-schema@npm:^2.3.6":
   version: 2.3.8
   resolution: "@peculiar/asn1-schema@npm:2.3.8"
   dependencies:
@@ -3881,19 +3881,6 @@ __metadata:
     tslib: "npm:^2.5.0"
     webcrypto-core: "npm:^1.7.7"
   checksum: 5604c02b7e9a8cef61bb4430e733e939c7737533ba65ba5fac4beb3a6d613add478ab45455cb57506789b6d00704d83e4965a0f712de3e8f40706e0961670e5c
-  languageName: node
-  linkType: hard
-
-"@peculiar/webcrypto@npm:^1.4.3":
-  version: 1.4.5
-  resolution: "@peculiar/webcrypto@npm:1.4.5"
-  dependencies:
-    "@peculiar/asn1-schema": ^2.3.8
-    "@peculiar/json-schema": ^1.1.12
-    pvtsutils: ^1.3.5
-    tslib: ^2.6.2
-    webcrypto-core: ^1.7.8
-  checksum: a07b49b44d9bfa75647e5633ad1c0232dab43d3a592e5579f5288dabd319138f2714cf5451d7b8f728d7ed16c9cb159aab6313bcd79f8ce9ed4b2933f9f3a72b
   languageName: node
   linkType: hard
 
@@ -6686,7 +6673,7 @@ __metadata:
     ramldt2jsonschema: "npm:^1.2.3"
     shelljs: "npm:^0.8.5"
     webapi-parser: "npm:^0.5.0"
-  checksum: b5a29aab5e6e74c0d26973e6666b3834cb8aa70860bbc5fd4946b694831784b4098571e09f59331f9948aff897e2e81ae6f6c4cd96b5bf03f26cdf8268c148e4
+  checksum: a3925693382294ee23b749e7591aea9e44de7dd655df90202ea4eae3468199d7b45d24d7264f0b65b60b2f6e6e101eb7537e4cca36cde9f6e2b0e5f721a0590c
   languageName: node
   linkType: hard
 
@@ -7786,7 +7773,6 @@ __metadata:
   resolution: "@webex/plugin-meetings@workspace:packages/@webex/plugin-meetings"
   dependencies:
     "@babel/core": ^7.17.10
-    "@peculiar/webcrypto": ^1.4.3
     "@types/jsdom": ^21
     "@webex/babel-config-legacy": "workspace:^"
     "@webex/common": "workspace:^"
@@ -30547,19 +30533,6 @@ __metadata:
     pvtsutils: "npm:^1.3.2"
     tslib: "npm:^2.4.0"
   checksum: 1dc5aedb250372dd95e175a671b990ae50e36974f99c4efc85d88e6528c1bc52dd964d44a41b68043c21fb26aabfe8aad4f05a1c39ca28d61de5ca7388413d52
-  languageName: node
-  linkType: hard
-
-"webcrypto-core@npm:^1.7.8":
-  version: 1.7.8
-  resolution: "webcrypto-core@npm:1.7.8"
-  dependencies:
-    "@peculiar/asn1-schema": ^2.3.8
-    "@peculiar/json-schema": ^1.1.12
-    asn1js: ^3.0.1
-    pvtsutils: ^1.3.5
-    tslib: ^2.6.2
-  checksum: 58567b41db3acc3af45b344ba967c2de9a725a988fe8c8b4006eaf1f76050c577bd2fdfacc9294a7991f768cd1bae23ec3eb17fda630e5d7d395100910575ba3
   languageName: node
   linkType: hard
 
