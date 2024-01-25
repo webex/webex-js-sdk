@@ -201,7 +201,7 @@ class Metrics extends WebexPlugin {
       })
       .then((res) => {
         // @ts-ignore
-        this.webex.logger.log(`NewMetrics: @postPreLoginMetric. Request successful:`, res);
+        this.webex.logger.log(`NewMetrics: @postPreLoginMetric. Request successful.`);
 
         return res;
       })
@@ -238,7 +238,7 @@ class Metrics extends WebexPlugin {
       })
       .then((res) => {
         // @ts-ignore
-        this.webex.logger.log(`NewMetrics: @clientMetricsAliasUser. Request successful:`, res);
+        this.webex.logger.log(`NewMetrics: @clientMetricsAliasUser. Request successful.`);
 
         return res;
       })

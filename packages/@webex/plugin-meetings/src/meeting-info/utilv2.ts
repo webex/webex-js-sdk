@@ -203,25 +203,12 @@ MeetingInfoUtil.getDestinationType = async (from) => {
         return Promise.resolve(options);
       }
     );
-  } else if (hydraId && hydraId.room) {
-    options.type = _CONVERSATION_URL_;
-    try {
-      await webex.internal.services.waitForCatalog('postauth');
-
-      const serviceUrl = webex.internal.services.getServiceUrlFromClusterId(
-        {
-          cluster: hydraId.cluster,
-        },
-        webex
-      );
-
-      options.destination = hydraId.destination
-        ? `${serviceUrl}/conversations/${hydraId.destination}`
-        : serviceUrl;
-    } catch (e) {
-      LoggerProxy.logger.error(`Meeting-info:util#getDestinationType --> ${e}`);
-      throw e;
-    }
+  } else if (hydraId.room) {
+    LoggerProxy.logger.error(
+      `Meeting-info:util#getDestinationType --> Using the space ID as a destination is no longer supported. Please refer to the [migration guide](https://github.com/webex/webex-js-sdk/wiki/Migration-to-Unified-Space-Meetings) to migrate to use the meeting ID or SIP address.`
+    );
+    // Error code 30105 added as Space ID deprecated as of beta, Please refer migration guide.
+    throw new SpaceIDDeprecatedError();
   } else {
     LoggerProxy.logger.warn(`Meeting-info:util#getDestinationType --> ${meetingInfoError}`);
     throw new ParameterError(`${meetingInfoError}`);

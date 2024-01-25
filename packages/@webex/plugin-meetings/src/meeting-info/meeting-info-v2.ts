@@ -216,6 +216,10 @@ export default class MeetingInfoV2 {
           installedOrgID,
         };
 
+        if (installedOrgID) {
+          body.installedOrgID = installedOrgID;
+        }
+
         const uri = this.webex.meetings.preferredWebexSite
           ? `https://${this.webex.meetings.preferredWebexSite}/wbxappapi/v2/meetings/spaceInstant`
           : '';

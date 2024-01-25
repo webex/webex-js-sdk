@@ -85,7 +85,7 @@ describe('plugin-metrics', () => {
         return Promise.resolve({
           statusCode: 204,
           body: undefined,
-          waitForServiceTimeout: 15,
+          waitForServiceTimeout: 30,
           options,
         });
       };
@@ -179,7 +179,7 @@ describe('plugin-metrics', () => {
           metricName: 'test',
           tags: {
             browser: '',
-            domain: 'non-browser',
+            domain: 'whatever',
             os: 'other',
             success: true,
           },

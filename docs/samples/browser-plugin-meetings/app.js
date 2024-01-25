@@ -1133,7 +1133,7 @@ async function loadCamera(constraints) {
 async function handleVbg() {
   let effect;
   try {
-    effect = await localMedia.cameraStream.getEffect("virtual-background");
+    effect = await localMedia.cameraStream.getEffectByKind('virtual-background-effect');
 
     if (!effect?.isEnabled) {
       console.log('MeetingControls#handleVbg() :: applying virtual background to local camera stream');
@@ -1145,7 +1145,7 @@ async function handleVbg() {
           "bgVideoUrl": blurVBGVideoUrl
         });
         handleEffectsButton(toggleVbgBtn, VBG, effect);
-        await localMedia.cameraStream.addEffect("virtual-background", effect);
+        await localMedia.cameraStream.addEffect(effect);
       }
 
       await effect.enable();
@@ -1203,27 +1203,27 @@ async function loadMicrophone(constraints) {
 async function handleBNR() {
   let effect;
   try {
-    effect = await localMedia.microphoneStream.getEffect("noise-reduction");;
+    effect = await localMedia.microphoneStream.getEffectByKind('noise-reduction-effect');
     if (!effect?.isEnabled) {
-      console.log('MeetingControls#handleBNR() :: applying BNR to local microhone stream');
+      console.log('MeetingControls#handleBNR() :: applying BNR to local microphone stream');
 
       if (!effect) {
         effect = await webex.meetings.createNoiseReductionEffect();
         handleEffectsButton(toggleBNRBtn, BNR, effect);
-        await localMedia.microphoneStream.addEffect("noise-reduction", effect);
+        await localMedia.microphoneStream.addEffect(effect);
       }
 
       await effect.enable();
       handleEffectsButton(toggleBNRBtn, BNR, effect);
-      console.log('MeetingControls#handleBNR() :: successfully applied BNR to local microhone stream');
+      console.log('MeetingControls#handleBNR() :: successfully applied BNR to local microphone stream');
 
     }
     else {
-      console.log('MeetingControls#handleBNR() :: disabling BNR from local microhone stream');
+      console.log('MeetingControls#handleBNR() :: disabling BNR from local microphone stream');
 
       await effect.disable();
       handleEffectsButton(toggleBNRBtn, BNR, effect);
-      console.log('MeetingControls#handleBNR() :: successfully disabled BNR from local microhone stream');
+      console.log('MeetingControls#handleBNR() :: successfully disabled BNR from local microphone stream');
     }
   }
   catch (e) {

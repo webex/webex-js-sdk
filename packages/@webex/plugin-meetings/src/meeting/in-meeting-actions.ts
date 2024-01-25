@@ -71,6 +71,7 @@ interface IInMeetingActions {
   canShareDesktop?: boolean;
   canShareContent?: boolean;
   canTransferFile?: boolean;
+  canChat?: boolean;
   canDoVideo?: boolean;
   canAnnotate?: boolean;
   canUseVoip?: boolean;
@@ -209,6 +210,8 @@ export default class InMeetingActions implements IInMeetingActions {
 
   canTransferFile = null;
 
+  canChat = null;
+
   canDoVideo = null;
 
   canAnnotate = null;
@@ -288,6 +291,7 @@ export default class InMeetingActions implements IInMeetingActions {
     canShareDesktop: this.canShareDesktop,
     canShareContent: this.canShareContent,
     canTransferFile: this.canTransferFile,
+    canChat: this.canChat,
     canDoVideo: this.canDoVideo,
     canAnnotate: this.canAnnotate,
     canUseVoip: this.canUseVoip,
