@@ -33,6 +33,7 @@ import {
   NETWORK_STATUS,
   ONLINE,
   OFFLINE,
+  RECONNECTION,
 } from '@webex/plugin-meetings/src/constants';
 import * as InternalMediaCoreModule from '@webex/internal-media-core';
 import {
@@ -1784,17 +1785,26 @@ describe('plugin-meetings', () => {
           }]);
 
           const sendBehavioralMetricCalls = Metrics.sendBehavioralMetric.getCalls();
-          assert.equal(sendBehavioralMetricCalls.length, 2);
-          assert.deepEqual(sendBehavioralMetricCalls[0].args, [            
+          assert.equal(sendBehavioralMetricCalls.length, 3);
+          assert.deepEqual(sendBehavioralMetricCalls[0].args, [
+            BEHAVIORAL_METRICS.ADD_MEDIA_RETRY,
+            {
+              correlation_id: meeting.correlationId,
+              state: meeting.state,
+              meetingState: meeting.meetingState,
+              reason: 'forcingTurnTls',
+            },
+          ]);
+          assert.deepEqual(sendBehavioralMetricCalls[1].args, [
             BEHAVIORAL_METRICS.TURN_DISCOVERY_LATENCY,
             {
               correlation_id: meeting.correlationId,
               turnServerUsed: true,
               retriedWithTurnServer: true,
               latency: undefined,
-            }
+            },
           ]);
-          assert.deepEqual(sendBehavioralMetricCalls[1].args, [            
+          assert.deepEqual(sendBehavioralMetricCalls[2].args, [
             BEHAVIORAL_METRICS.ADD_MEDIA_FAILURE,
             {
               correlation_id: meeting.correlationId,
@@ -1809,7 +1819,7 @@ describe('plugin-meetings', () => {
               signalingState: 'unknown',
               connectionState: 'unknown',
               iceConnectionState: 'unknown',
-            }
+            },
           ]);
 
           // Check that doTurnDiscovery is called with th4 correct value of isForced
@@ -1950,17 +1960,26 @@ describe('plugin-meetings', () => {
           }]);
 
           const sendBehavioralMetricCalls = Metrics.sendBehavioralMetric.getCalls();
-          assert.equal(sendBehavioralMetricCalls.length, 2);
-          assert.deepEqual(sendBehavioralMetricCalls[0].args, [            
+          assert.equal(sendBehavioralMetricCalls.length, 3);
+          assert.deepEqual(sendBehavioralMetricCalls[0].args, [
+            BEHAVIORAL_METRICS.ADD_MEDIA_RETRY,
+            {
+              correlation_id: meeting.correlationId,
+              state: meeting.state,
+              meetingState: meeting.meetingState,
+              reason: 'forcingTurnTls',
+            },
+          ]);
+          assert.deepEqual(sendBehavioralMetricCalls[1].args, [
             BEHAVIORAL_METRICS.TURN_DISCOVERY_LATENCY,
             {
               correlation_id: meeting.correlationId,
               turnServerUsed: true,
               retriedWithTurnServer: true,
               latency: undefined,
-            }
+            },
           ]);
-          assert.deepEqual(sendBehavioralMetricCalls[1].args, [            
+          assert.deepEqual(sendBehavioralMetricCalls[2].args, [
             BEHAVIORAL_METRICS.ADD_MEDIA_SUCCESS,
             {
               correlation_id: meeting.correlationId,
@@ -1968,7 +1987,7 @@ describe('plugin-meetings', () => {
               connectionType: 'udp',
               isMultistream: false,
               retriedWithTurnServer: true,
-            }
+            },
           ]);
           meeting.roap.doTurnDiscovery
 
@@ -5514,31 +5533,62 @@ describe('plugin-meetings', () => {
         it('should have #reconnect', () => {
           assert.exists(meeting.reconnect);
         });
+
         describe('successful reconnect', () => {
+          let eventListeners;
+
           beforeEach(() => {
+            eventListeners = {};
+            meeting.mediaProperties.webrtcMediaConnection = {
+              // mock the on() method and store all the listeners
+              on: sinon.stub().callsFake((event, listener) => {
+                eventListeners[event] = listener;
+              }),
+            };
+            meeting.setupMediaConnectionListeners();
+            meeting.deferSDPAnswer = {
+              resolve: sinon.stub(),
+              reject: sinon.stub(),
+            };
+            meeting.sdpResponseTimer = '1234';
+            meeting.mediaProperties.waitForMediaConnectionConnected = sinon.stub().resolves();
+
+            eventListeners[Event.REMOTE_SDP_ANSWER_PROCESSED]();
             meeting.config.reconnection.enabled = true;
             meeting.currentMediaStatus = {audio: true};
             meeting.reconnectionManager = new ReconnectionManager(meeting);
             meeting.reconnectionManager.reconnect = sinon.stub().returns(Promise.resolve());
             meeting.reconnectionManager.reset = sinon.stub().returns(true);
             meeting.reconnectionManager.cleanup = sinon.stub().returns(true);
+            meeting.reconnectionManager.setStatus = sinon.stub();
           });
 
-          it('should throw error if media not established before trying reconenct', async () => {
+          it('should throw error if media not established before trying reconnect', async () => {
             meeting.currentMediaStatus = null;
             await meeting.reconnect().catch((err) => {
               assert.instanceOf(err, ParameterError);
             });
           });
 
-          it('should trigger reconnection success', async () => {
+          it('should trigger reconnection success and send CA metric', async () => {
             await meeting.reconnect();
+
             assert.calledWith(
               TriggerProxy.trigger,
               sinon.match.instanceOf(Meeting),
               {file: 'meeting/index', function: 'reconnect'},
               'meeting:reconnectionSuccess'
             );
+            assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
+              name: 'client.media.recovered',
+              payload: {
+                recoveredBy: 'new',
+              },
+              options: {
+                meetingId: meeting.id,
+              },
+            });
+            assert.calledOnceWithExactly(meeting.reconnectionManager.setStatus, RECONNECTION.STATE.COMPLETE);
           });
 
           it('should reset after reconnection success', async () => {
