@@ -9,7 +9,6 @@ import {
   ClientEvent,
   ClientEventLeaveReason,
   CallDiagnosticUtils,
-  CALL_DIAGNOSTIC_CONFIG,
 } from '@webex/internal-plugin-metrics';
 import {
   ConnectionState,
@@ -105,6 +104,7 @@ import {
   MEETING_PERMISSION_TOKEN_REFRESH_THRESHOLD_IN_SEC,
   MEETING_PERMISSION_TOKEN_REFRESH_REASON,
   ROAP_OFFER_ANSWER_EXCHANGE_TIMEOUT,
+  RECONNECTION,
 } from '../constants';
 import BEHAVIORAL_METRICS from '../metrics/constants';
 import ParameterError from '../common/errors/parameter';
@@ -582,6 +582,7 @@ export default class Meeting extends StatelessWebexPlugin {
   private sendSlotManager: SendSlotManager = new SendSlotManager(LoggerProxy);
   private deferSDPAnswer?: Defer; // used for waiting for a response
   private sdpResponseTimer?: ReturnType<typeof setTimeout>;
+  private hasMediaConnectionConnectedAtLeastOnce: boolean;
 
   /**
    * @param {Object} attrs
@@ -1326,6 +1327,15 @@ export default class Meeting extends StatelessWebexPlugin {
      * @memberof Meeting
      */
     this.retriedWithTurnServer = false;
+
+    /**
+     * Whether or not the media connection has ever successfully connected.
+     * @instance
+     * @type {boolean}
+     * @private
+     * @memberof Meeting
+     */
+    this.hasMediaConnectionConnectedAtLeastOnce = false;
   }
 
   /**
@@ -4300,6 +4310,8 @@ export default class Meeting extends StatelessWebexPlugin {
 
     return this.reconnectionManager
       .reconnect(options)
+      .then(() => this.waitForRemoteSDPAnswer())
+      .then(() => this.waitForMediaConnectionConnected())
       .then(() => {
         Trigger.trigger(
           this,
@@ -4310,6 +4322,18 @@ export default class Meeting extends StatelessWebexPlugin {
           EVENT_TRIGGERS.MEETING_RECONNECTION_SUCCESS
         );
         LoggerProxy.logger.log('Meeting:index#reconnect --> Meeting reconnect success');
+
+        // @ts-ignore
+        this.webex.internal.newMetrics.submitClientEvent({
+          name: 'client.media.recovered',
+          payload: {
+            recoveredBy: 'new',
+          },
+          options: {
+            meetingId: this.id,
+          },
+        });
+        this.reconnectionManager.setStatus(RECONNECTION.STATE.COMPLETE);
       })
       .catch((error) => {
         Trigger.trigger(
@@ -5433,40 +5457,25 @@ export default class Meeting extends StatelessWebexPlugin {
 
     this.mediaProperties.webrtcMediaConnection.on(Event.CONNECTION_STATE_CHANGED, (event) => {
       const connectionFailed = () => {
-        // we know the media connection failed and browser will not attempt to recover it any more
-        // so reset the timer as it's not needed anymore, we want to reconnect immediately
-        this.reconnectionManager.resetReconnectionTimer();
-
-        this.reconnect({networkDisconnect: true});
-        // @ts-ignore
-        this.webex.internal.newMetrics.submitClientEvent({
-          name: 'client.ice.end',
-          payload: {
-            canProceed: false,
-            icePhase: 'IN_MEETING',
-            errors: [
-              // @ts-ignore
-              this.webex.internal.newMetrics.callDiagnosticMetrics.getErrorPayloadForClientErrorCode(
-                {
-                  clientErrorCode: CALL_DIAGNOSTIC_CONFIG.ICE_FAILURE_CLIENT_CODE,
-                }
-              ),
-            ],
-          },
-          options: {
-            meetingId: this.id,
-          },
-        });
-
-        this.uploadLogs({
-          file: 'peer-connection-manager/index',
-          function: 'connectionFailed',
-        });
-
         Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.CONNECTION_FAILURE, {
           correlation_id: this.correlationId,
           locus_id: this.locusId,
+          networkStatus: this.networkStatus,
+          hasMediaConnectionConnectedAtLeastOnce: this.hasMediaConnectionConnectedAtLeastOnce,
         });
+
+        if (this.hasMediaConnectionConnectedAtLeastOnce) {
+          // we know the media connection failed and browser will not attempt to recover it any more
+          // so reset the timer as it's not needed anymore, we want to reconnect immediately
+          this.reconnectionManager.resetReconnectionTimer();
+
+          this.reconnect({networkDisconnect: true});
+
+          this.uploadLogs({
+            file: 'peer-connection-manager/index',
+            function: 'connectionFailed',
+          });
+        }
       };
 
       LoggerProxy.logger.info(
@@ -5478,26 +5487,32 @@ export default class Meeting extends StatelessWebexPlugin {
 
       switch (event.state) {
         case ConnectionState.Connecting:
-          // @ts-ignore
-          this.webex.internal.newMetrics.submitClientEvent({
-            name: 'client.ice.start',
-            options: {
-              meetingId: this.id,
-            },
-          });
+          if (!this.hasMediaConnectionConnectedAtLeastOnce) {
+            // Only send CA event for join flow if we haven't successfully connected media yet
+            // @ts-ignore
+            this.webex.internal.newMetrics.submitClientEvent({
+              name: 'client.ice.start',
+              options: {
+                meetingId: this.id,
+              },
+            });
+          }
           break;
         case ConnectionState.Connected:
-          // @ts-ignore
-          this.webex.internal.newMetrics.submitClientEvent({
-            name: 'client.ice.end',
-            payload: {
-              canProceed: true,
-              icePhase: !this.networkStatus ? 'JOIN_MEETING_FINAL' : 'IN_MEETING',
-            },
-            options: {
-              meetingId: this.id,
-            },
-          });
+          if (!this.hasMediaConnectionConnectedAtLeastOnce) {
+            // Only send CA event for join flow if we haven't successfully connected media yet
+            // @ts-ignore
+            this.webex.internal.newMetrics.submitClientEvent({
+              name: 'client.ice.end',
+              payload: {
+                canProceed: true,
+                icePhase: 'JOIN_MEETING_FINAL',
+              },
+              options: {
+                meetingId: this.id,
+              },
+            });
+          }
           Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.CONNECTION_SUCCESS, {
             correlation_id: this.correlationId,
             locus_id: this.locusId,
@@ -5506,6 +5521,7 @@ export default class Meeting extends StatelessWebexPlugin {
           this.setNetworkStatus(NETWORK_STATUS.CONNECTED);
           this.reconnectionManager.iceReconnected();
           this.statsAnalyzer.startAnalyzer(this.mediaProperties.webrtcMediaConnection);
+          this.hasMediaConnectionConnectedAtLeastOnce = true;
           break;
         case ConnectionState.Disconnected:
           this.setNetworkStatus(NETWORK_STATUS.DISCONNECTED);
@@ -5810,36 +5826,42 @@ export default class Meeting extends StatelessWebexPlugin {
     try {
       await this.mediaProperties.waitForMediaConnectionConnected();
     } catch (error) {
-      // @ts-ignore
-      this.webex.internal.newMetrics.submitClientEvent({
-        name: 'client.ice.end',
-        payload: {
-          canProceed: !this.turnServerUsed, // If we haven't done turn tls retry yet we will proceed with join attempt
-          icePhase: this.turnServerUsed ? 'JOIN_MEETING_FINAL' : 'JOIN_MEETING_RETRY',
-          errors: [
-            // @ts-ignore
-            this.webex.internal.newMetrics.callDiagnosticMetrics.getErrorPayloadForClientErrorCode({
-              clientErrorCode: CallDiagnosticUtils.generateClientErrorCodeForIceFailure({
-                signalingState:
-                  this.mediaProperties.webrtcMediaConnection?.multistreamConnection?.pc?.pc
-                    ?.signalingState ||
-                  this.mediaProperties.webrtcMediaConnection?.mediaConnection?.pc?.signalingState ||
-                  'unknown',
-                iceConnectionState:
-                  this.mediaProperties.webrtcMediaConnection?.multistreamConnection?.pc?.pc
-                    ?.iceConnectionState ||
-                  this.mediaProperties.webrtcMediaConnection?.mediaConnection?.pc
-                    ?.iceConnectionState ||
-                  'unknown',
-                turnServerUsed: this.turnServerUsed,
-              }),
-            }),
-          ],
-        },
-        options: {
-          meetingId: this.id,
-        },
-      });
+      if (!this.hasMediaConnectionConnectedAtLeastOnce) {
+        // Only send CA event for join flow if we haven't successfully connected media yet
+        // @ts-ignore
+        this.webex.internal.newMetrics.submitClientEvent({
+          name: 'client.ice.end',
+          payload: {
+            canProceed: !this.turnServerUsed, // If we haven't done turn tls retry yet we will proceed with join attempt
+            icePhase: this.turnServerUsed ? 'JOIN_MEETING_FINAL' : 'JOIN_MEETING_RETRY',
+            errors: [
+              // @ts-ignore
+              this.webex.internal.newMetrics.callDiagnosticMetrics.getErrorPayloadForClientErrorCode(
+                {
+                  clientErrorCode: CallDiagnosticUtils.generateClientErrorCodeForIceFailure({
+                    signalingState:
+                      this.mediaProperties.webrtcMediaConnection?.multistreamConnection?.pc?.pc
+                        ?.signalingState ||
+                      this.mediaProperties.webrtcMediaConnection?.mediaConnection?.pc
+                        ?.signalingState ||
+                      'unknown',
+                    iceConnectionState:
+                      this.mediaProperties.webrtcMediaConnection?.multistreamConnection?.pc?.pc
+                        ?.iceConnectionState ||
+                      this.mediaProperties.webrtcMediaConnection?.mediaConnection?.pc
+                        ?.iceConnectionState ||
+                      'unknown',
+                    turnServerUsed: this.turnServerUsed,
+                  }),
+                }
+              ),
+            ],
+          },
+          options: {
+            meetingId: this.id,
+          },
+        });
+      }
       throw new Error(
         `Timed out waiting for media connection to be connected, correlationId=${this.correlationId}`
       );
@@ -5966,6 +5988,13 @@ export default class Meeting extends StatelessWebexPlugin {
     const LOG_HEADER = 'Meeting:index#addMedia():retryWithForcedTurnDiscovery -->';
 
     await this.cleanUpBeforeRetryWithTurnServer();
+
+    Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.ADD_MEDIA_RETRY, {
+      correlation_id: this.correlationId,
+      state: this.state,
+      meetingState: this.meetingState,
+      reason: 'forcingTurnTls',
+    });
 
     if (this.state === MEETING_STATE.STATES.LEFT) {
       LoggerProxy.logger.info(
@@ -6177,6 +6206,7 @@ export default class Meeting extends StatelessWebexPlugin {
    */
   async addMedia(options: AddMediaOptions = {}): Promise<void> {
     this.retriedWithTurnServer = false;
+    this.hasMediaConnectionConnectedAtLeastOnce = false;
     const LOG_HEADER = 'Meeting:index#addMedia -->';
     LoggerProxy.logger.info(`${LOG_HEADER} called with: ${JSON.stringify(options)}`);
 
