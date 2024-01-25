@@ -5691,7 +5691,7 @@ export default class Meeting extends StatelessWebexPlugin {
 
     // publish the streams
     if (this.mediaProperties.audioStream) {
-      this.setNamedMediaGroup(MediaType.AudioMain);
+      this.setSendNamedMediaGroup(MediaType.AudioMain);
       await this.publishStream(MediaType.AudioMain, this.mediaProperties.audioStream);
     }
     if (this.mediaProperties.videoStream) {
@@ -7710,11 +7710,11 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
-   * Set named media group which the audio should send to
+   * set sending named media group which the audio should send to
    * @param {MediaType} mediaType of the stream
    * @returns {void}
    */
-  private setNamedMediaGroup(mediaType: MediaType): void {
+  private setSendNamedMediaGroup(mediaType: MediaType): void {
     const groups = [
       {
         type: 1, // always 1 for audio
@@ -7730,7 +7730,7 @@ export default class Meeting extends StatelessWebexPlugin {
     //   isPublished: false,
     //   mediaType,
     //   stream,
-    //   functionName: 'setNamedMediaGroup',
+    //   functionName: 'setSendNamedMediaGroup',
     // });
   }
 
