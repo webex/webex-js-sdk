@@ -1501,15 +1501,17 @@ export default class Meeting extends StatelessWebexPlugin {
       : this.destination;
     const destinationType = isStartingSpaceInstantV2Meeting ? _MEETING_LINK_ : this.destinationType;
 
-    const timeLeft = this.getPermissionTokenTimeLeftInSec();
+    const {timeLeft, expiryTime, currentTime} = this.getPermissionTokenExpiryInfo();
 
     LoggerProxy.logger.info(
-      `Meeting:index#refreshPermissionToken --> refreshing permission token, destinationType=${destinationType}, timeLeft=${timeLeft}, reason=${reason}`
+      `Meeting:index#refreshPermissionToken --> refreshing permission token, destinationType=${destinationType}, timeLeft=${timeLeft}, permissionTokenExpiry=${expiryTime}, currentTimestamp=${currentTime},reason=${reason}`
     );
 
     Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.PERMISSION_TOKEN_REFRESH, {
       correlationId: this.correlationId,
       timeLeft,
+      expiryTime,
+      currentTime,
       reason,
       destinationType,
     });
@@ -7889,12 +7891,16 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
-   * Gets the time left in seconds till the permission token expires
+   * Gets permission token expiry information
    * (from the time the function has been fired)
    *
-   * @returns {number} time left in seconds
+   * @returns {object} containing timeLeft, expiryTime, currentTime
    */
-  public getPermissionTokenTimeLeftInSec(): number | undefined {
+  public getPermissionTokenExpiryInfo(): {
+    timeLeft?: number;
+    expiryTime?: number;
+    currentTime: number;
+  } {
     if (!this.permissionTokenPayload) {
       return undefined;
     }
@@ -7907,7 +7913,9 @@ export default class Meeting extends StatelessWebexPlugin {
 
     // substract current time from the permissionTokenExp
     // (permissionTokenExp is a epoch timestamp, not a time to live duration)
-    return (permissionTokenExpValue - now) / 1000;
+    const timeLeft = (permissionTokenExpValue - now) / 1000;
+
+    return {timeLeft, expiryTime: permissionTokenExpValue, currentTime: now};
   }
 
   /**
@@ -7919,9 +7927,9 @@ export default class Meeting extends StatelessWebexPlugin {
    * @returns {Promise<void>}
    */
   public checkAndRefreshPermissionToken(threshold: number, reason: string): Promise<void> {
-    const permissionTokenTimeLeft = this.getPermissionTokenTimeLeftInSec();
+    const {timeLeft} = this.getPermissionTokenExpiryInfo();
 
-    if (permissionTokenTimeLeft !== undefined && permissionTokenTimeLeft <= threshold) {
+    if (timeLeft !== undefined && timeLeft <= threshold) {
       return this.refreshPermissionToken(reason);
     }
 
