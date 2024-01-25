@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.328](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.327...v3.0.0-beta.328) (2024-01-25)
+
+
+### Bug Fixes
+
+* **triggers:** use provided joinTrigger for client.call.initiated and loginType everywhere ([#3232](https://github.com/webex/webex-js-sdk/issues/3232)) ([5397026](https://github.com/webex/webex-js-sdk/commit/53970263d4cb58ceb75e7e7bbfd5a0e8452d465f))
+
 ## [3.0.0-beta.327](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.326...v3.0.0-beta.327) (2024-01-25)
 
 

@@ -19,7 +19,7 @@
       "envify"
     ]
   },
-  "version": "3.0.0-beta.327",
+  "version": "3.0.0-beta.328",
   "devDependencies": {
     "@webex/test-helper-chai": "workspace:^",
     "@webex/test-helper-mock-webex": "workspace:^",
