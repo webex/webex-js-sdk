@@ -1525,7 +1525,7 @@ export default class Meeting extends StatelessWebexPlugin {
       : this.destination;
     const destinationType = isStartingSpaceInstantV2Meeting ? _MEETING_LINK_ : this.destinationType;
 
-    const {timeLeft, expiryTime, currentTime} = this.getPermissionTokenExpiryInfo();
+    const {timeLeft, expiryTime, currentTime} = this.getPermissionTokenExpiryInfo() || {};
 
     LoggerProxy.logger.info(
       `Meeting:index#refreshPermissionToken --> refreshing permission token, destinationType=${destinationType}, timeLeft=${timeLeft}, permissionTokenExpiry=${expiryTime}, currentTimestamp=${currentTime},reason=${reason}`
@@ -7962,11 +7962,7 @@ export default class Meeting extends StatelessWebexPlugin {
    *
    * @returns {object} containing timeLeft, expiryTime, currentTime
    */
-  public getPermissionTokenExpiryInfo(): {
-    timeLeft?: number;
-    expiryTime?: number;
-    currentTime: number;
-  } {
+  public getPermissionTokenExpiryInfo() {
     if (!this.permissionTokenPayload) {
       return undefined;
     }
@@ -7993,7 +7989,7 @@ export default class Meeting extends StatelessWebexPlugin {
    * @returns {Promise<void>}
    */
   public checkAndRefreshPermissionToken(threshold: number, reason: string): Promise<void> {
-    const {timeLeft} = this.getPermissionTokenExpiryInfo();
+    const timeLeft = this.getPermissionTokenExpiryInfo()?.timeLeft;
 
     if (timeLeft !== undefined && timeLeft <= threshold) {
       return this.refreshPermissionToken(reason);
