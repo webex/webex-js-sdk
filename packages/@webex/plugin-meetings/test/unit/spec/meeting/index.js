@@ -112,6 +112,7 @@ import {
 import CallDiagnosticMetrics from '@webex/internal-plugin-metrics/src/call-diagnostic/call-diagnostic-metrics';
 import { ERROR_DESCRIPTIONS } from '@webex/internal-plugin-metrics/src/call-diagnostic/config';
 import MeetingCollection from '@webex/plugin-meetings/src/meetings/collection';
+import { ReconnectionManagerUnDefined } from '../../../../src/common/errors/reconnection';
 
 
 describe('plugin-meetings', () => {
@@ -5544,6 +5545,7 @@ describe('plugin-meetings', () => {
               on: sinon.stub().callsFake((event, listener) => {
                 eventListeners[event] = listener;
               }),
+              reconnect: sinon.stub().resolves(),
             };
             meeting.setupMediaConnectionListeners();
             meeting.deferSDPAnswer = {
@@ -5561,6 +5563,7 @@ describe('plugin-meetings', () => {
             meeting.reconnectionManager.reset = sinon.stub().returns(true);
             meeting.reconnectionManager.cleanup = sinon.stub().returns(true);
             meeting.reconnectionManager.setStatus = sinon.stub();
+            meeting.webex.meetings.getMeetingByType = sinon.stub().returns(meeting);
           });
 
           it('should throw error if media not established before trying reconnect', async () => {
@@ -5569,6 +5572,16 @@ describe('plugin-meetings', () => {
               assert.instanceOf(err, ParameterError);
             });
           });
+
+          it('should reconnect successfully if reconnectionManager.cleanUp is called before reconnection attempt', async () => {
+            meeting.reconnectionManager.cleanUp();
+
+            try {
+              await meeting.reconnect();
+            } catch (err) {
+              assert.fail('reconnect should not error after clean up');
+            }
+          })
 
           it('should trigger reconnection success and send CA metric', async () => {
             await meeting.reconnect();

@@ -27,4 +27,4 @@ export class ReconnectionError extends Error {
 /**
  * Error intended to be thrown when a new instance of ReconnectionManager is required due to previous clean up
  */
-export class ReconnectionManagerNotDefined extends ReconnectionError {}
+export class ReconnectionManagerUnDefined extends ReconnectionError {}

@@ -4,6 +4,7 @@ import chaiAsPromised from 'chai-as-promised';
 import sinon from 'sinon';
 import ReconnectionManager from '@webex/plugin-meetings/src/reconnection-manager';
 import { RECONNECTION } from '../../../../src/constants';
+import { ReconnectionManagerUnDefined } from '../../../../src/common/errors/reconnection';
 
 const {assert} = chai;
 
@@ -167,6 +168,18 @@ describe('plugin-meetings', () => {
             meetingId: rm.meeting.id,
           },
         });
+      }
+    });
+
+    it('throws ReconnectionManagerUnDefined error when meeting is null', async () => {
+      const rm = new ReconnectionManager(fakeMeeting);
+
+      rm.cleanUp();
+
+      try {
+        await rm.reconnect();
+      } catch (err) {
+        assert.instanceOf(err, ReconnectionManagerUnDefined);
       }
     });
   });

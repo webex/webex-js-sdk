@@ -63,7 +63,7 @@ import Transcription from '../transcription';
 import {Reactions, SkinTones} from '../reactions/reactions';
 import PasswordError from '../common/errors/password-error';
 import CaptchaError from '../common/errors/captcha-error';
-import {ReconnectionError, ReconnectionManagerNotDefined} from '../common/errors/reconnection';
+import {ReconnectionError, ReconnectionManagerUnDefined} from '../common/errors/reconnection';
 import ReconnectInProgress from '../common/errors/reconnection-in-progress';
 import {
   _CONVERSATION_URL_,
@@ -4252,7 +4252,7 @@ export default class Meeting extends StatelessWebexPlugin {
       // @ts-ignore
       this.reconnectionManager.validate();
     } catch (error) {
-      if (error instanceof ReconnectionManagerNotDefined) {
+      if (error instanceof ReconnectionManagerUnDefined) {
         this.reconnectionManager = new ReconnectionManager(this);
 
         LoggerProxy.logger.info(
