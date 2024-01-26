@@ -4262,6 +4262,7 @@ export default class Meeting extends StatelessWebexPlugin {
         // @ts-ignore
         this.reconnectionManager.validate();
       } else {
+        // Unable to reconnect this call
         if (error instanceof ReconnectInProgress) {
           LoggerProxy.logger.info(
             'Meeting:index#reconnect --> Unable to reconnect, reconnection in progress.'
