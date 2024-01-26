@@ -178,6 +178,12 @@ export type AddMediaOptions = {
   allowMediaInLobby?: boolean; // allows adding media when in the lobby
 };
 
+export type CallStateForMetrics = {
+  correlationId?: string;
+  joinTrigger?: string;
+  loginType?: string;
+};
+
 export const MEDIA_UPDATE_TYPE = {
   TRANSCODED_MEDIA_CONNECTION: 'TRANSCODED_MEDIA_CONNECTION',
   SHARE_FLOOR_REQUEST: 'SHARE_FLOOR_REQUEST',
@@ -470,7 +476,7 @@ export default class Meeting extends StatelessWebexPlugin {
   annotation: any;
   webinar: any;
   conversationUrl: string;
-  correlationId: string;
+  callStateForMetrics: CallStateForMetrics;
   destination: string;
   destinationType: string;
   deviceUrl: string;
@@ -612,20 +618,22 @@ export default class Meeting extends StatelessWebexPlugin {
      */
     this.id = uuid.v4();
     /**
-     * Correlation ID used for network tracking of meeting
+     * Call state used for metrics
      * @instance
-     * @type {String}
+     * @type {CallStateForMetrics}
      * @readonly
      * @public
      * @memberof Meeting
      */
-    if (attrs.correlationId) {
+    this.callStateForMetrics = attrs.callStateForMetrics || {};
+    const correlationId = attrs.correlationId || attrs.callStateForMetrics?.correlationId;
+    if (correlationId) {
       LoggerProxy.logger.log(
-        `Meetings:index#constructor --> Initializing the meeting object with correlation id from app ${this.correlationId}`
+        `Meetings:index#constructor --> Initializing the meeting object with correlation id from app ${correlationId}`
       );
-      this.correlationId = attrs.correlationId;
+      this.callStateForMetrics.correlationId = correlationId;
     } else {
-      this.correlationId = this.id;
+      this.callStateForMetrics.correlationId = this.id;
     }
     /**
      * @instance
@@ -1362,6 +1370,22 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
+   * Getter - Returns callStateForMetrics.correlationId
+   * @returns {string}
+   */
+  get correlationId() {
+    return this.callStateForMetrics.correlationId;
+  }
+
+  /**
+   * Setter - sets callStateForMetrics.correlationId
+   * @param {string} correlationId
+   */
+  set correlationId(correlationId: string) {
+    this.callStateForMetrics.correlationId = correlationId;
+  }
+
+  /**
    * Internal method for fetching meeting info
    *
    * @returns {Promise}
@@ -1502,15 +1526,17 @@ export default class Meeting extends StatelessWebexPlugin {
       : this.destination;
     const destinationType = isStartingSpaceInstantV2Meeting ? _MEETING_LINK_ : this.destinationType;
 
-    const timeLeft = this.getPermissionTokenTimeLeftInSec();
+    const {timeLeft, expiryTime, currentTime} = this.getPermissionTokenExpiryInfo();
 
     LoggerProxy.logger.info(
-      `Meeting:index#refreshPermissionToken --> refreshing permission token, destinationType=${destinationType}, timeLeft=${timeLeft}, reason=${reason}`
+      `Meeting:index#refreshPermissionToken --> refreshing permission token, destinationType=${destinationType}, timeLeft=${timeLeft}, permissionTokenExpiry=${expiryTime}, currentTimestamp=${currentTime},reason=${reason}`
     );
 
     Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.PERMISSION_TOKEN_REFRESH, {
       correlationId: this.correlationId,
       timeLeft,
+      expiryTime,
+      currentTime,
       reason,
       destinationType,
     });
@@ -3716,11 +3742,16 @@ export default class Meeting extends StatelessWebexPlugin {
   private async setLocalShareVideoStream(localDisplayStream?: LocalDisplayStream) {
     const oldStream = this.mediaProperties.shareVideoStream;
 
+    oldStream?.off(StreamEventNames.MuteStateChange, this.handleShareVideoStreamMuteStateChange);
     oldStream?.off(StreamEventNames.Ended, this.handleShareVideoStreamEnded);
     oldStream?.off(LocalStreamEventNames.OutputTrackChange, this.localOutputTrackChangeHandler);
 
     this.mediaProperties.setLocalShareVideoStream(localDisplayStream);
 
+    localDisplayStream?.on(
+      StreamEventNames.MuteStateChange,
+      this.handleShareVideoStreamMuteStateChange
+    );
     localDisplayStream?.on(StreamEventNames.Ended, this.handleShareVideoStreamEnded);
     localDisplayStream?.on(
       LocalStreamEventNames.OutputTrackChange,
@@ -3810,12 +3841,16 @@ export default class Meeting extends StatelessWebexPlugin {
     videoStream?.off(StreamEventNames.MuteStateChange, this.localVideoStreamMuteStateHandler);
     videoStream?.off(LocalStreamEventNames.OutputTrackChange, this.localOutputTrackChangeHandler);
 
-    shareAudioStream?.off(StreamEventNames.MuteStateChange, this.handleShareAudioStreamEnded);
+    shareAudioStream?.off(StreamEventNames.Ended, this.handleShareAudioStreamEnded);
     shareAudioStream?.off(
       LocalStreamEventNames.OutputTrackChange,
       this.localOutputTrackChangeHandler
     );
-    shareVideoStream?.off(StreamEventNames.MuteStateChange, this.handleShareVideoStreamEnded);
+    shareVideoStream?.off(
+      StreamEventNames.MuteStateChange,
+      this.handleShareVideoStreamMuteStateChange
+    );
+    shareVideoStream?.off(StreamEventNames.Ended, this.handleShareVideoStreamEnded);
     shareVideoStream?.off(
       LocalStreamEventNames.OutputTrackChange,
       this.localOutputTrackChangeHandler
@@ -3957,14 +3992,25 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
-   * Convenience method to set the correlation id for the Meeting
-   * @param {String} id correlation id to set on the class
+   * Convenience method to set the correlation id for the callStateForMetrics
+   * @param {String} id correlation id to set on the callStateForMetrics
    * @returns {undefined}
    * @public
    * @memberof Meeting
    */
   public setCorrelationId(id: string) {
-    this.correlationId = id;
+    this.callStateForMetrics.correlationId = id;
+  }
+
+  /**
+   * Update the callStateForMetrics
+   * @param {CallStateForMetrics} callStateForMetrics updated values for callStateForMetrics
+   * @returns {undefined}
+   * @public
+   * @memberof Meeting
+   */
+  public updateCallStateForMetrics(callStateForMetrics: CallStateForMetrics) {
+    this.callStateForMetrics = {...this.callStateForMetrics, ...callStateForMetrics};
   }
 
   /**
@@ -4616,7 +4662,7 @@ export default class Meeting extends StatelessWebexPlugin {
     this.webex.internal.newMetrics.submitClientEvent({
       name: 'client.call.initiated',
       payload: {
-        trigger: 'user-interaction',
+        trigger: this.callStateForMetrics.joinTrigger || 'user-interaction',
         isRoapCallEnabled: true,
         pstnAudioType: options?.pstnAudioType,
       },
@@ -6917,6 +6963,11 @@ export default class Meeting extends StatelessWebexPlugin {
           .then(() => {
             this.screenShareFloorState = ScreenShareFloorStatus.GRANTED;
 
+            Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.MEETING_SHARE_SUCCESS, {
+              correlation_id: this.correlationId,
+              locus_id: this.locusUrl.split('/').pop(),
+            });
+
             return Promise.resolve();
           })
           .catch((error) => {
@@ -7336,6 +7387,23 @@ export default class Meeting extends StatelessWebexPlugin {
         );
       }
     }
+  };
+
+  /**
+   * Functionality for when a share video is muted or unmuted.
+   * @private
+   * @memberof Meeting
+   * @param {boolean} muted
+   * @returns {undefined}
+   */
+  private handleShareVideoStreamMuteStateChange = (muted: boolean) => {
+    LoggerProxy.logger.log(
+      `Meeting:index#handleShareVideoStreamMuteStateChange --> Share video stream mute state changed to muted ${muted}`
+    );
+    Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.MEETING_SHARE_VIDEO_MUTE_STATE_CHANGE, {
+      correlationId: this.correlationId,
+      muted,
+    });
   };
 
   /**
@@ -7896,12 +7964,16 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
-   * Gets the time left in seconds till the permission token expires
+   * Gets permission token expiry information including timeLeft, expiryTime, currentTime
    * (from the time the function has been fired)
    *
-   * @returns {number} time left in seconds
+   * @returns {object} containing timeLeft, expiryTime, currentTime
    */
-  public getPermissionTokenTimeLeftInSec(): number | undefined {
+  public getPermissionTokenExpiryInfo(): {
+    timeLeft?: number;
+    expiryTime?: number;
+    currentTime: number;
+  } {
     if (!this.permissionTokenPayload) {
       return undefined;
     }
@@ -7914,7 +7986,9 @@ export default class Meeting extends StatelessWebexPlugin {
 
     // substract current time from the permissionTokenExp
     // (permissionTokenExp is a epoch timestamp, not a time to live duration)
-    return (permissionTokenExpValue - now) / 1000;
+    const timeLeft = (permissionTokenExpValue - now) / 1000;
+
+    return {timeLeft, expiryTime: permissionTokenExpValue, currentTime: now};
   }
 
   /**
@@ -7926,9 +8000,9 @@ export default class Meeting extends StatelessWebexPlugin {
    * @returns {Promise<void>}
    */
   public checkAndRefreshPermissionToken(threshold: number, reason: string): Promise<void> {
-    const permissionTokenTimeLeft = this.getPermissionTokenTimeLeftInSec();
+    const {timeLeft} = this.getPermissionTokenExpiryInfo();
 
-    if (permissionTokenTimeLeft !== undefined && permissionTokenTimeLeft <= threshold) {
+    if (timeLeft !== undefined && timeLeft <= threshold) {
       return this.refreshPermissionToken(reason);
     }
 
