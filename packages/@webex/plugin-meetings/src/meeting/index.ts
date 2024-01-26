@@ -3308,7 +3308,7 @@ export default class Meeting extends StatelessWebexPlugin {
         ControlsOptionsUtil.hasPolicies({
           requiredPolicies: [SELF_POLICY.ENFORCE_VIRTUAL_BACKGROUND],
           policies: this.selfUserPolicies,
-        }) || !this.arePolicyRestrictionsSupported(),
+        }) && this.arePolicyRestrictionsSupported(),
       supportHQV:
         (ControlsOptionsUtil.hasPolicies({
           requiredPolicies: [SELF_POLICY.SUPPORT_HQV],
