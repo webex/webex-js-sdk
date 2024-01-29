@@ -113,6 +113,7 @@ describe('Call Tests', () => {
 
   const mockEffect = {
     isEnabled: true,
+    on: jest.fn(),
   };
 
   const roapMediaConnectionConfig = {
@@ -291,7 +292,7 @@ describe('Call Tests', () => {
         getAudioTracks: jest.fn().mockReturnValue([mockTrack]),
       },
       on: jest.fn(),
-      getEffect: jest.fn().mockImplementation(() => {
+      getEffectByKind: jest.fn().mockImplementation(() => {
         return mockEffect;
       }),
     };
@@ -346,7 +347,7 @@ describe('Call Tests', () => {
         getAudioTracks: jest.fn().mockReturnValue([mockTrack]),
       },
       on: jest.fn(),
-      getEffect: jest.fn().mockImplementation(() => {
+      getEffectByKind: jest.fn().mockImplementation(() => {
         return mockEffect;
       }),
     };
@@ -401,7 +402,7 @@ describe('Call Tests', () => {
         getAudioTracks: jest.fn().mockReturnValue([mockTrack]),
       },
       on: jest.fn(),
-      getEffect: jest.fn(),
+      getEffectByKind: jest.fn(),
     };
 
     const localAudioStream = mockStream as unknown as MediaSDK.LocalMicrophoneStream;
@@ -435,12 +436,12 @@ describe('Call Tests', () => {
     jest.spyOn(localAudioStream, 'getEffectByKind').mockReturnValue(mockEffect as any);
 
     expect(onSpy).toBeCalledOnceWith(
-      MediaSDK.LocalStreamEventNames.OutputTrackChange,
+      MediaSDK.LocalStreamEventNames.EffectAdded,
       expect.any(Function)
     );
 
     mediaMetricSpy.mockClear();
-    onSpy.mock.calls[0][1](mockTrack as MediaStreamTrack);
+    onSpy.mock.calls[0][1](mockEffect as any);
 
     expect(updateLocalTracksSpy).toBeCalledOnceWith({audio: mockTrack});
 
@@ -460,7 +461,7 @@ describe('Call Tests', () => {
     mockEffect.isEnabled = false;
     jest.spyOn(localAudioStream, 'getEffectByKind').mockReturnValue(mockEffect as any);
 
-    onSpy.mock.calls[0][1](mockTrack as MediaStreamTrack);
+    onSpy.mock.calls[0][1](mockEffect as any);
 
     expect(updateLocalTracksSpy).toBeCalledOnceWith({audio: mockTrack});
 
@@ -566,6 +567,7 @@ describe('Call Tests', () => {
         getAudioTracks: jest.fn().mockReturnValue([mockTrack]),
       },
       on: jest.fn(),
+      getEffectByKind: jest.fn(),
     };
 
     const localAudioStream = mockStream as unknown as MediaSDK.LocalMicrophoneStream;
@@ -603,6 +605,7 @@ describe('Call Tests', () => {
         getAudioTracks: jest.fn().mockReturnValue([mockTrack]),
       },
       on: jest.fn(),
+      getEffectByKind: jest.fn(),
     };
 
     const localAudioStream = mockStream as unknown as MediaSDK.LocalMicrophoneStream;
