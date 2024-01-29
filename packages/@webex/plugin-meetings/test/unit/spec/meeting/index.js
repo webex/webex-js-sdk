@@ -4616,7 +4616,7 @@ describe('plugin-meetings', () => {
           meeting.destination = 'meeting-destination';
           meeting.destinationType = 'meeting-destination-type';
           meeting.updateMeetingActions = sinon.stub().returns(undefined);
-          meeting.getPermissionTokenExpiryInfo = sinon.stub().returns(FAKE_TIMESTAMPS);
+          
           meeting.meetingInfoExtraParams = {
             extraParam1: 'value1'
           };
@@ -4637,6 +4637,7 @@ describe('plugin-meetings', () => {
         });
 
         it('calls meetingInfoProvider.fetchMeetingInfo() with the right params', async () => {
+          meeting.getPermissionTokenExpiryInfo = sinon.stub().returns(FAKE_TIMESTAMPS);
           await meeting.refreshPermissionToken('fake reason');
 
           assert.calledOnceWithExactly(
@@ -4678,7 +4679,51 @@ describe('plugin-meetings', () => {
           );
         });
 
+        it('calls meetingInfoProvider.fetchMeetingInfo() with the right params when getPermissionTokenExpiryInfo returns undefined', async () => {
+          meeting.getPermissionTokenExpiryInfo = sinon.stub().returns(undefined);
+          await meeting.refreshPermissionToken('fake reason');
+
+          assert.calledOnceWithExactly(
+            meeting.attrs.meetingInfoProvider.fetchMeetingInfo,
+            'meeting-destination',
+            'meeting-destination-type',
+            null,
+            null,
+            'fake-installed-org-id',
+            'locus-id',
+            {extraParam1: 'value1', permissionToken: FAKE_PERMISSION_TOKEN},
+            {meetingId: meeting.id, sendCAevents: true}
+          );
+          assert.deepEqual(meeting.meetingInfo, {
+            ...FAKE_MEETING_INFO,
+            meetingLookupUrl: FAKE_MEETING_INFO_LOOKUP_URL
+          });
+          assert.equal(meeting.meetingInfoFailureReason, MEETING_INFO_FAILURE_REASON.NONE);
+          assert.equal(meeting.requiredCaptcha, null);
+          assert.equal(meeting.passwordStatus, PASSWORD_STATUS.NOT_REQUIRED);
+
+          assert.calledWith(
+            TriggerProxy.trigger,
+            meeting,
+            {file: 'meetings', function: 'fetchMeetingInfo'},
+            'meeting:meetingInfoAvailable'
+          );
+          assert.calledWith(meeting.updateMeetingActions);
+
+          assert.calledWith(
+            Metrics.sendBehavioralMetric, BEHAVIORAL_METRICS.PERMISSION_TOKEN_REFRESH, {
+              correlationId: meeting.correlationId,
+              timeLeft: undefined,
+              expiryTime: undefined,
+              currentTime: undefined,
+              reason: 'fake reason',
+              destinationType: 'meeting-destination-type',
+            }
+          );
+        });
+
         it('calls meetingInfoProvider.fetchMeetingInfo() with the right params when we are starting an instant space meeting', async () => {
+          meeting.getPermissionTokenExpiryInfo = sinon.stub().returns(FAKE_TIMESTAMPS);
           meeting.destination = 'some-convo-url';
           meeting.destinationType = 'CONVERSATION_URL';
           meeting.config.experimental = {enableAdhocMeetings: true};
@@ -7281,12 +7326,18 @@ describe('plugin-meetings', () => {
         it('sets correctly when policy data is present in token', () => {
           assert.notOk(meeting.selfUserPolicies);
 
-          const policyData = {permission: {userPolicies: {a: true}}};
+          const testUrl = 'https://example.com';
+
+          const policyData = {permission: {
+            userPolicies: {a: true},
+            enforceVBGImagesURL: testUrl
+          }};
           meeting.permissionTokenPayload = policyData;
 
           meeting.setSelfUserPolicies();
 
           assert.deepEqual(meeting.selfUserPolicies, policyData.permission.userPolicies);
+          assert.equal(meeting.enforceVBGImagesURL, testUrl);
         });
 
         it('handles missing permission data', () => {
@@ -7975,6 +8026,60 @@ describe('plugin-meetings', () => {
                 {
                   supportHDV: meeting.inMeetingActions.supportHDV,
                   supportHQV: meeting.inMeetingActions.supportHQV,
+                },
+                expectedActions
+              );
+            });
+          }
+        );
+
+        forEach(
+          [
+            // policies supported and enforce is true
+            {
+              meetingInfo: {video: {}},
+              selfUserPolicies: {
+                [SELF_POLICY.ENFORCE_VIRTUAL_BACKGROUND]: true,
+              },
+              expectedActions: {
+                enforceVirtualBackground: true,
+              },
+            },
+            // policies supported and enforce is false
+            {
+              meetingInfo: {video: {}},
+              selfUserPolicies: {
+                [SELF_POLICY.ENFORCE_VIRTUAL_BACKGROUND]: false,
+              },
+              expectedActions: {
+                enforceVirtualBackground: false,
+              },
+            },
+            // policies not supported but enforce is true
+            {
+              meetingInfo: undefined,
+              selfUserPolicies: {
+                [SELF_POLICY.ENFORCE_VIRTUAL_BACKGROUND]: true,
+              },
+              expectedActions: {
+                enforceVirtualBackground: false,
+              },
+            },
+          ],
+          ({meetingInfo, selfUserPolicies, expectedActions}) => {
+            it(`expectedActions are ${JSON.stringify(
+              expectedActions
+            )} when policies are ${JSON.stringify(
+              selfUserPolicies
+            )} and meetingInfo is ${JSON.stringify(meetingInfo)}`, () => {
+              meeting.meetingInfo = meetingInfo;
+              meeting.selfUserPolicies = selfUserPolicies;
+
+              meeting.updateMeetingActions();
+
+              assert.deepEqual(
+                {
+                  enforceVirtualBackground: meeting.inMeetingActions.enforceVirtualBackground,
                 },
                 expectedActions
               );
@@ -9805,7 +9910,7 @@ describe('plugin-meetings', () => {
 
   describe('#checkAndRefreshPermissionToken', () => {
     it('should not fire refreshPermissionToken if permissionToken is not defined', async() => {
-      meeting.getPermissionTokenExpiryInfo = sinon.stub().returns({timeLeft: undefined, expiryTime: undefined, currentTime: Date.now()})
+      meeting.getPermissionTokenExpiryInfo = sinon.stub().returns(undefined)
       meeting.refreshPermissionToken = sinon.stub().returns(Promise.resolve('test return value'));
 
       const returnValue = await meeting.checkAndRefreshPermissionToken(10, 'ttl-join');

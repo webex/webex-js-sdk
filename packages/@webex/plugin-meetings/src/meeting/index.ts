@@ -544,6 +544,7 @@ export default class Meeting extends StatelessWebexPlugin {
   requiredCaptcha: any;
   receiveSlotManager: ReceiveSlotManager;
   selfUserPolicies: any;
+  enforceVBGImagesURL: string;
   shareStatus: string;
   screenShareFloorState: ScreenShareFloorStatus;
   statsAnalyzer: StatsAnalyzer;
@@ -1525,7 +1526,11 @@ export default class Meeting extends StatelessWebexPlugin {
       : this.destination;
     const destinationType = isStartingSpaceInstantV2Meeting ? _MEETING_LINK_ : this.destinationType;
 
-    const {timeLeft, expiryTime, currentTime} = this.getPermissionTokenExpiryInfo();
+    const permissionTokenExpiryInfo = this.getPermissionTokenExpiryInfo();
+
+    const timeLeft = permissionTokenExpiryInfo?.timeLeft;
+    const expiryTime = permissionTokenExpiryInfo?.expiryTime;
+    const currentTime = permissionTokenExpiryInfo?.currentTime;
 
     LoggerProxy.logger.info(
       `Meeting:index#refreshPermissionToken --> refreshing permission token, destinationType=${destinationType}, timeLeft=${timeLeft}, permissionTokenExpiry=${expiryTime}, currentTimestamp=${currentTime},reason=${reason}`
@@ -3303,6 +3308,11 @@ export default class Meeting extends StatelessWebexPlugin {
         }) &&
           this.meetingInfo?.video?.supportHDV) ||
         !this.arePolicyRestrictionsSupported(),
+      enforceVirtualBackground:
+        ControlsOptionsUtil.hasPolicies({
+          requiredPolicies: [SELF_POLICY.ENFORCE_VIRTUAL_BACKGROUND],
+          policies: this.selfUserPolicies,
+        }) && this.arePolicyRestrictionsSupported(),
       supportHQV:
         (ControlsOptionsUtil.hasPolicies({
           requiredPolicies: [SELF_POLICY.SUPPORT_HQV],
@@ -3519,6 +3529,7 @@ export default class Meeting extends StatelessWebexPlugin {
    */
   setSelfUserPolicies() {
     this.selfUserPolicies = this.permissionTokenPayload?.permission?.userPolicies;
+    this.enforceVBGImagesURL = this.permissionTokenPayload?.permission?.enforceVBGImagesURL;
   }
 
   /**
@@ -7962,11 +7973,7 @@ export default class Meeting extends StatelessWebexPlugin {
    *
    * @returns {object} containing timeLeft, expiryTime, currentTime
    */
-  public getPermissionTokenExpiryInfo(): {
-    timeLeft?: number;
-    expiryTime?: number;
-    currentTime: number;
-  } {
+  public getPermissionTokenExpiryInfo() {
     if (!this.permissionTokenPayload) {
       return undefined;
     }
@@ -7993,7 +8000,7 @@ export default class Meeting extends StatelessWebexPlugin {
    * @returns {Promise<void>}
    */
   public checkAndRefreshPermissionToken(threshold: number, reason: string): Promise<void> {
-    const {timeLeft} = this.getPermissionTokenExpiryInfo();
+    const timeLeft = this.getPermissionTokenExpiryInfo()?.timeLeft;
 
     if (timeLeft !== undefined && timeLeft <= threshold) {
       return this.refreshPermissionToken(reason);
