@@ -218,8 +218,7 @@ export class ClusterReachability {
 
           LoggerProxy.logger.log(
             // @ts-ignore
-            `Reachability:index#onIceCandidate --> Successfully pinged ${peerConnection.key} over UDP:`,
-            elapsed
+            `Reachability:index#onIceCandidate --> Successfully reached ${this.name} over UDP: ${elapsed}ms`
           );
           this.result.udp.latencyInMilliseconds = elapsed.toString();
           this.result.udp.reachable = 'true';
@@ -234,8 +233,7 @@ export class ClusterReachability {
 
           LoggerProxy.logger.log(
             // @ts-ignore
-            `Reachability:index#onIceCandidate --> Successfully pinged ${peerConnection.key} over TCP:`,
-            elapsed
+            `Reachability:index#onIceCandidate --> Successfully reached ${this.name} over TCP: ${elapsed}ms`
           );
           this.result.tcp.latencyInMilliseconds = elapsed.toString();
           this.result.tcp.reachable = 'true';
@@ -257,13 +255,15 @@ export class ClusterReachability {
    */
   async start(): Promise<ReachabilityResult> {
     if (!this.pc) {
-      LoggerProxy.logger.error(
+      LoggerProxy.logger.warn(
         `Reachability:ClusterReachability#start --> Error: peerConnection is undefined`
       );
 
       return this.result;
     }
 
+    // Initialize this.result as saying that nothing is reachable.
+    // It will get updated as we go along and successfully gather ICE candidates.
     this.result = {
       udp: {
         reachable: this.numUdpUrls > 0 ? 'false' : undefined,
@@ -278,19 +278,19 @@ export class ClusterReachability {
       },
     };
 
-    const offer = await this.pc.createOffer({offerToReceiveAudio: true});
+    try {
+      const offer = await this.pc.createOffer({offerToReceiveAudio: true});
 
-    this.startTimestamp = performance.now();
+      this.startTimestamp = performance.now();
 
-    this.pc.setLocalDescription(offer); // not awaiting on purpose
+      this.pc.setLocalDescription(offer); // not awaiting on purpose
 
-    return this.gatherIceCandidates()
-      .catch((iceGatheringStateError) => {
-        LoggerProxy.logger.log(
-          `Reachability:ClusterReachability#start --> Error: ${iceGatheringStateError}`
-        );
-      })
-      .then(() => this.result);
+      await this.gatherIceCandidates();
+    } catch (error) {
+      LoggerProxy.logger.warn(`Reachability:ClusterReachability#start --> Error: `, error);
+    }
+
+    return this.result;
   }
 
   /**
@@ -313,6 +313,6 @@ export class ClusterReachability {
       }
     }, timeout);
 
-    return this.defer;
+    return this.defer.promise;
   }
 }

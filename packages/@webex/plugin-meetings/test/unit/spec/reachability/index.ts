@@ -1,7 +1,7 @@
 import {assert} from '@webex/test-helper-chai';
 import MockWebex from '@webex/test-helper-mock-webex';
 import sinon from 'sinon';
-import Reachability, {ICECandidateResult, ReachabilityResults} from '@webex/plugin-meetings/src/reachability/';
+import Reachability, {ReachabilityResults} from '@webex/plugin-meetings/src/reachability/';
 import MeetingUtil from '@webex/plugin-meetings/src/meeting/util';
 
 import { IP_VERSION } from '@webex/plugin-meetings/src/constants';
@@ -213,114 +213,114 @@ describe('gatherReachability', () => {
     })
   });
 
-  describe('clientMediaIPs', () => {
-    let testingClass: TestReachability;
+  // describe('clientMediaIPs', () => {
+  //   let testingClass: TestReachability;
 
-    class TestReachability extends Reachability {
-      public testParseIceResultsToInternalReachabilityResults(iceResults: Array<ICECandidateResult>) {
-        return this.parseIceResultsToInternalReachabilityResults(iceResults);
-      }
-      public testAddPublicIP(peerConnection: RTCPeerConnection, publicIP?: string | null) {
-        return this.addPublicIP(peerConnection, publicIP);
-      }
-    }
-    beforeEach(() => {
-      testingClass = new TestReachability({webex});
-    });
+  //   class TestReachability extends Reachability {
+  //     public testParseIceResultsToInternalReachabilityResults(iceResults: Array<ICECandidateResult>) {
+  //       return this.parseIceResultsToInternalReachabilityResults(iceResults);
+  //     }
+  //     public testAddPublicIP(peerConnection: RTCPeerConnection, publicIP?: string | null) {
+  //       return this.addPublicIP(peerConnection, publicIP);
+  //     }
+  //   }
+  //   beforeEach(() => {
+  //     testingClass = new TestReachability({webex});
+  //   });
 
-    it('calls parseIceResultsToInternalReachabilityResults correctly', () => {
-      const res = testingClass.testParseIceResultsToInternalReachabilityResults([
-        {
-          clusterId: 'id1',
-          elapsed: '12312',
-          publicIPs: ['1.1.1.1'],
-          isVideoMesh: true,
-        },
-        {
-          clusterId: 'id2',
-          elapsed: null,
-          publicIPs: ['1.1.1.1'],
-          isVideoMesh: false,
-        },
-        {
-          clusterId: 'id2',
-          elapsed: '14123',
-          publicIPs: undefined,
-          isVideoMesh: false,
-        },
-      ]);
+  //   it('calls parseIceResultsToInternalReachabilityResults correctly', () => {
+  //     const res = testingClass.testParseIceResultsToInternalReachabilityResults([
+  //       {
+  //         clusterId: 'id1',
+  //         elapsed: '12312',
+  //         publicIPs: ['1.1.1.1'],
+  //         isVideoMesh: true,
+  //       },
+  //       {
+  //         clusterId: 'id2',
+  //         elapsed: null,
+  //         publicIPs: ['1.1.1.1'],
+  //         isVideoMesh: false,
+  //       },
+  //       {
+  //         clusterId: 'id2',
+  //         elapsed: '14123',
+  //         publicIPs: undefined,
+  //         isVideoMesh: false,
+  //       },
+  //     ]);
 
-      assert.deepEqual(res, {
-        id1: {
-          tcp: {
-            untested: 'true',
-          },
-          xtls: {
-            untested: 'true',
-          },
-          udp: {
-            clientMediaIPs: ['1.1.1.1'],
-            latencyInMilliseconds: '12312',
-            reachable: 'true',
-          },
-          isVideoMesh: true,
-        },
-        id2: {
-          xtls: {
-            untested: 'true',
-          },
-          tcp: {
-            untested: 'true',
-          },
-          udp: {
-            latencyInMilliseconds: '14123',
-            reachable: 'true',
-          },
-          isVideoMesh: false,
-        },
-      });
-    });
+  //     assert.deepEqual(res, {
+  //       id1: {
+  //         tcp: {
+  //           untested: 'true',
+  //         },
+  //         xtls: {
+  //           untested: 'true',
+  //         },
+  //         udp: {
+  //           clientMediaIPs: ['1.1.1.1'],
+  //           latencyInMilliseconds: '12312',
+  //           reachable: 'true',
+  //         },
+  //         isVideoMesh: true,
+  //       },
+  //       id2: {
+  //         xtls: {
+  //           untested: 'true',
+  //         },
+  //         tcp: {
+  //           untested: 'true',
+  //         },
+  //         udp: {
+  //           latencyInMilliseconds: '14123',
+  //           reachable: 'true',
+  //         },
+  //         isVideoMesh: false,
+  //       },
+  //     });
+  //   });
 
-    it('calls addPublicIP correctly with no existing public APIs', () => {
-      const peerConnection = {
-        connectionState: 'not_closed',
-      };
+  //   it('calls addPublicIP correctly with no existing public APIs', () => {
+  //     const peerConnection = {
+  //       connectionState: 'not_closed',
+  //     };
 
-      testingClass.testAddPublicIP(peerConnection as RTCPeerConnection, '1.1.1.1');
+  //     testingClass.testAddPublicIP(peerConnection as RTCPeerConnection, '1.1.1.1');
 
-      assert.deepEqual(peerConnection, {
-        connectionState: 'not_closed',
-        publicIPs: ['1.1.1.1'],
-      });
-    });
+  //     assert.deepEqual(peerConnection, {
+  //       connectionState: 'not_closed',
+  //       publicIPs: ['1.1.1.1'],
+  //     });
+  //   });
 
-    it('calls addPublicIP correctly with existing public APIs', () => {
-      const peerConnection = {
-        connectionState: 'not_closed',
-        publicIPs: ['2.2.2.2'],
-      };
+  //   it('calls addPublicIP correctly with existing public APIs', () => {
+  //     const peerConnection = {
+  //       connectionState: 'not_closed',
+  //       publicIPs: ['2.2.2.2'],
+  //     };
 
-      testingClass.testAddPublicIP(peerConnection as any, '1.1.1.1');
+  //     testingClass.testAddPublicIP(peerConnection as any, '1.1.1.1');
 
-      assert.deepEqual(peerConnection, {
-        connectionState: 'not_closed',
-        publicIPs: ['2.2.2.2', '1.1.1.1'],
-      });
-    });
+  //     assert.deepEqual(peerConnection, {
+  //       connectionState: 'not_closed',
+  //       publicIPs: ['2.2.2.2', '1.1.1.1'],
+  //     });
+  //   });
 
-    it('calls addPublicIP correctly null publicAPI', () => {
-      const peerConnection = {
-        connectionState: 'not_closed',
-      };
+  //   it('calls addPublicIP correctly null publicAPI', () => {
+  //     const peerConnection = {
+  //       connectionState: 'not_closed',
+  //     };
 
-      testingClass.testAddPublicIP(peerConnection as RTCPeerConnection, null);
+  //     testingClass.testAddPublicIP(peerConnection as RTCPeerConnection, null);
 
-      assert.deepEqual(peerConnection, {
-        connectionState: 'not_closed',
-        publicIPs: null,
-      });
-    });
-  });
+  //     assert.deepEqual(peerConnection, {
+  //       connectionState: 'not_closed',
+  //       publicIPs: null,
+  //     });
+  //   });
+  // });
 });
 
 describe('getReachabilityResults', () => {

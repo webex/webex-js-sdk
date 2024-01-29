@@ -63,6 +63,8 @@ export default class Reachability {
      * @memberof Reachability
      */
     this.reachabilityRequest = new ReachabilityRequest(this.webex);
+
+    this.clusterReachability = {};
   }
 
   /**
@@ -106,10 +108,8 @@ export default class Reachability {
       );
 
       return results;
-    } catch (getClusterError) {
-      LoggerProxy.logger.error(
-        `Reachability:index#gatherReachability --> Error in calling getClusters(): ${getClusterError}`
-      );
+    } catch (error) {
+      LoggerProxy.logger.error(`Reachability:index#gatherReachability --> Error:`, error);
 
       return {};
     }
@@ -263,7 +263,7 @@ export default class Reachability {
 
     list.forEach(({name, protocol}) => {
       LoggerProxy.logger.log(
-        `Reachability:index#logUnreachableClusters --> No ice candidate for ${name} over ${protocol}.`
+        `Reachability:index#logUnreachableClusters --> failed to reach ${name} over ${protocol}`
       );
     });
   }
