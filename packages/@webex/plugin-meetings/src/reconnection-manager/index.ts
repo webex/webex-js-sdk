@@ -21,7 +21,7 @@ import ReconnectInProgress from '../common/errors/reconnection-in-progress';
 import Metrics from '../metrics';
 import Meeting from '../meeting';
 import {MediaRequestManager} from '../multistream/mediaRequestManager';
-import {ReconnectionError, ReconnectionManagerUnDefined} from '../common/errors/reconnection';
+import ReconnectionError from '../common/errors/reconnection';
 
 /**
  * Used to indicate that the reconnect logic needs to be retried.
@@ -228,7 +228,6 @@ export default class ReconnectionManager {
    */
   public cleanUp() {
     this.reset();
-    this.meeting = null;
   }
 
   /**
@@ -285,13 +284,7 @@ export default class ReconnectionManager {
    * @memberof ReconnectionManager
    */
   private validate() {
-    if (!this.meeting) {
-      LoggerProxy.logger.info(
-        'ReconnectionManager:index#validate --> meeting undefined in ReconnectonManager, new instance required to reconnect.'
-      );
-
-      throw new ReconnectionManagerUnDefined();
-    } else if (this.meeting.config.reconnection.enabled) {
+    if (this.meeting.config.reconnection.enabled) {
       if (
         this.status === RECONNECTION.STATE.DEFAULT_STATUS ||
         this.status === RECONNECTION.STATE.COMPLETE
@@ -328,7 +321,7 @@ export default class ReconnectionManager {
     networkRetry?: boolean;
   } = {}) {
     LoggerProxy.logger.info(
-      `ReconnectionManager:index#reconnect --> Reconnection start for meeting ${this.meeting?.id}.`
+      `ReconnectionManager:index#reconnect --> Reconnection start for meeting ${this.meeting.id}.`
     );
     // First, validate that we can reconnect, if not, it will throw an error
     try {
