@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.330](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.329...v3.0.0-beta.330) (2024-01-29)
+
+
+### Features
+
+* **plugin-meetings:** enforce vbg policy ([#3332](https://github.com/webex/webex-js-sdk/issues/3332)) ([add8b41](https://github.com/webex/webex-js-sdk/commit/add8b411caa3065633533f1629adfe856cf3cf67))
+
 ## [3.0.0-beta.329](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.328...v3.0.0-beta.329) (2024-01-29)
 
 
