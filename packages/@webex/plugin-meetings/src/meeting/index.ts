@@ -544,6 +544,7 @@ export default class Meeting extends StatelessWebexPlugin {
   requiredCaptcha: any;
   receiveSlotManager: ReceiveSlotManager;
   selfUserPolicies: any;
+  enforceVBGImagesURL: string;
   shareStatus: string;
   screenShareFloorState: ScreenShareFloorStatus;
   statsAnalyzer: StatsAnalyzer;
@@ -3307,6 +3308,11 @@ export default class Meeting extends StatelessWebexPlugin {
         }) &&
           this.meetingInfo?.video?.supportHDV) ||
         !this.arePolicyRestrictionsSupported(),
+      enforceVirtualBackground:
+        ControlsOptionsUtil.hasPolicies({
+          requiredPolicies: [SELF_POLICY.ENFORCE_VIRTUAL_BACKGROUND],
+          policies: this.selfUserPolicies,
+        }) && this.arePolicyRestrictionsSupported(),
       supportHQV:
         (ControlsOptionsUtil.hasPolicies({
           requiredPolicies: [SELF_POLICY.SUPPORT_HQV],
@@ -3523,6 +3529,7 @@ export default class Meeting extends StatelessWebexPlugin {
    */
   setSelfUserPolicies() {
     this.selfUserPolicies = this.permissionTokenPayload?.permission?.userPolicies;
+    this.enforceVBGImagesURL = this.permissionTokenPayload?.permission?.enforceVBGImagesURL;
   }
 
   /**
