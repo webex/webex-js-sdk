@@ -2,7 +2,7 @@
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
 
-import {fromBuffer} from 'file-type';
+import {fileTypeFromBuffer} from 'file-type';
 
 /**
  * Determine mimeType for the specified buffer;
@@ -22,8 +22,8 @@ export default async function detect(buffer) {
     return buffer.type;
   }
 
-  // `fromBuffer()` can take a buffer that is either a ArrayBuffer or Uinit8Array
-  const fileType = await fromBuffer(buffer);
+  // `fileTypeFromBuffer()` can take a buffer that is either a ArrayBuffer or Uinit8Array
+  const fileType = await fileTypeFromBuffer(buffer);
 
   if (!fileType) {
     return 'application/octet-stream';

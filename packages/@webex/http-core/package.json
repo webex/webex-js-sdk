@@ -5,6 +5,7 @@
   "license": "MIT",
   "main": "dist/index.js",
   "devMain": "src/index.js",
+  "type": "module",
   "repository": {
     "type": "git",
     "url": "https://github.com/webex/webex-js-sdk.git",
@@ -36,7 +37,7 @@
     "@webex/internal-plugin-device": "workspace:^",
     "@webex/test-helper-test-users": "workspace:^",
     "@webex/webex-core": "workspace:^",
-    "file-type": "^16.0.1",
+    "file-type": "17.0.0",
     "global": "^4.4.0",
     "is-function": "^1.0.1",
     "lodash": "^4.17.21",

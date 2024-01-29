@@ -5,7 +5,7 @@
 import {readFile} from 'fs';
 import {join} from 'path';
 
-import {fromFile} from 'file-type';
+import {fileTypeFromFile} from 'file-type';
 import {isBuffer} from '@webex/common';
 
 export const fetchWithoutMagic = (filename) =>
@@ -24,7 +24,7 @@ export const fetchWithoutMagic = (filename) =>
 
 export const fetch = (filename) =>
   fetchWithoutMagic(filename)
-    .then((data) => Promise.all([fromFile(data), data]))
+    .then((data) => Promise.all([fileTypeFromFile(data), data]))
     // .then(([{mime: type}, data]) => {
     //   console.error(data, type);
 

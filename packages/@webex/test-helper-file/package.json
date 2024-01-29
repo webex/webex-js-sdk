@@ -4,6 +4,7 @@
   "description": "File helpers for writing isomorphicish mocha tests",
   "license": "MIT",
   "main": "dist/index.js",
+  "type": "module",
   "repository": {
     "type": "git",
     "url": "https://github.com/webex/webex-js-sdk.git",
@@ -20,7 +21,7 @@
     "@webex/common": "workspace:^",
     "@webex/test-helper-make-local-url": "workspace:^",
     "es6-promise": "^4.2.8",
-    "file-type": "^16.0.1",
+    "file-type": "17.0.0",
     "xhr": "^2.5.0"
   }
 }
