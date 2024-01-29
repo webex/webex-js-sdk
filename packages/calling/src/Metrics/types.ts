@@ -39,6 +39,11 @@ export enum VOICEMAIL_ACTION {
   TRANSCRIPT = 'transcript',
 }
 
+export enum MEDIA_EFFECT_ACTION {
+  BNR_ENABLED = 'bnr_enabled',
+  BNR_DISABLED = 'bnr_disabled',
+}
+
 export interface IMetricManager {
   setDeviceInfo: (deviceInfo: IDeviceInfo) => void;
   submitRegistrationMetric: (
@@ -46,6 +51,13 @@ export interface IMetricManager {
     metricAction: REG_ACTION,
     type: METRIC_TYPE,
     error: LineError | CallingClientError | undefined
+  ) => void;
+  submitBNRMetric: (
+    name: METRIC_EVENT,
+    metricAction: string,
+    type: METRIC_TYPE,
+    callId: CallId,
+    correlationId: CorrelationId
   ) => void;
   submitCallMetric: (
     name: METRIC_EVENT,

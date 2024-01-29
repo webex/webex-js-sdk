@@ -85,6 +85,7 @@ const directoryNumberCFA = document.querySelector('#directoryNumber');
 const cfaDataElem = document.querySelector('#callforwardalways-data');
 const makeCallBtn = document.querySelector('#create-call-action');
 const muteElm = document.getElementById('mute_button');
+const bnrButton = document.getElementById('bnr_button');
 
 let base64;
 let audio64;
@@ -415,7 +416,7 @@ function muteUnmute() {
   if (callTransferObj){
     callTransferObj.mute(localAudioStream)
   }
-  else {  
+  else {
     call.mute(localAudioStream);
   }
 }
@@ -428,7 +429,7 @@ function holdResume() {
         holdResumeElm.value = 'Resume';
       }
     });
-  
+
     callTransferObj.on('resumed', (correlationId) => {
       if (holdResumeElm.value === 'Resume') {
         callDetailsElm.innerText = 'Call is Resumed';
@@ -444,7 +445,7 @@ function holdResume() {
         holdResumeElm.value = 'Resume';
       }
     });
-  
+
     call.on('resumed', (correlationId) => {
       if (holdResumeElm.value === 'Resume') {
         callDetailsElm.innerText = 'Call is Resumed';
@@ -666,22 +667,23 @@ async function getMediaStreams() {
   makeCallBtn.disabled = false;
 }
 
-async function addNoiseReductionEffect() {
-  effect = await localAudioStream.getEffect('background-noise-removal');
+async function toggleNoiseReductionEffect() {
+  effect = await localAudioStream.getEffectByKind('noise-reduction-effect');
 
   if (!effect) {
     effect = await Calling.createNoiseReductionEffect(tokenElm.value);
 
-    await localAudioStream.addEffect('background-noise-removal', effect);
-  }
-
-  await effect.enable();
-}
-
-async function removeNoiseReductionEffect() {
-  effect = await localAudioStream.getEffect('background-noise-removal');
-  if (effect) {
-    await effect.disable();
+    await localAudioStream.addEffect(effect);
+    await effect.enable();
+    bnrButton.innerHTML = 'Disable BNR()';
+  } else {
+    if (effect.isEnabled) {
+      await effect.disable();
+      bnrButton.innerHTML = 'Enable BNR()';
+    } else {
+      await effect.enable();
+      bnrButton.innerHTML = 'Disable BNR()';
+    }
   }
 }
 
