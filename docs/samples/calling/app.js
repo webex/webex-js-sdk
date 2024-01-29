@@ -416,7 +416,7 @@ function muteUnmute() {
   if (callTransferObj){
     callTransferObj.mute(localAudioStream)
   }
-  else {  
+  else {
     call.mute(localAudioStream);
   }
 }
@@ -429,7 +429,7 @@ function holdResume() {
         holdResumeElm.value = 'Resume';
       }
     });
-  
+
     callTransferObj.on('resumed', (correlationId) => {
       if (holdResumeElm.value === 'Resume') {
         callDetailsElm.innerText = 'Call is Resumed';
@@ -445,7 +445,7 @@ function holdResume() {
         holdResumeElm.value = 'Resume';
       }
     });
-  
+
     call.on('resumed', (correlationId) => {
       if (holdResumeElm.value === 'Resume') {
         callDetailsElm.innerText = 'Call is Resumed';
@@ -668,24 +668,20 @@ async function getMediaStreams() {
 }
 
 async function toggleNoiseReductionEffect() {
-  effect = await localAudioStream.getEffect('background-noise-removal');
+  effect = await localAudioStream.getEffectByKind('noise-reduction-effect');
 
   if (!effect) {
     effect = await Calling.createNoiseReductionEffect(tokenElm.value);
-
-    await localAudioStream.addEffect('background-noise-removal', effect);
+    await localAudioStream.addEffect(effect);
     await effect.enable();
-    console.log('pkesari_Created new effect and enabling it: ', effect.isEnabled);
     bnrButton.innerHTML = 'Disable BNR()';
   } else {
-    console.log('pkesari_Effect is present and is enabled: ', effect.isEnabled);
+
     if (effect.isEnabled) {
       await effect.disable();
-      console.log('pkesari_Disabling effect: ', effect.isEnabled);
       bnrButton.innerHTML = 'Enable BNR()';
     } else {
       await effect.enable();
-      console.log('pkesari_Enabling effect: ', effect.isEnabled);
       bnrButton.innerHTML = 'Disable BNR()';
     }
   }

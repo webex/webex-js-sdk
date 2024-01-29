@@ -2460,12 +2460,13 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
   }
 
   private outputTrackUpdateListener(localAudioStream: LocalMicrophoneStream) {
-    let effect: TrackEffect | undefined;
+    let effect: any;
     localAudioStream.on(LocalStreamEventNames.EffectAdded, (addedEffect: TrackEffect) => {
-      // this.mediaConnection.updateLocalTracks({audio: track});
       effect = localAudioStream.getEffectByKind(NOISE_REDUCTION_EFFECT);
+
       if (effect === addedEffect) {
         effect.on(EffectEvent.Enabled, () => {
+          this.mediaConnection.updateLocalTracks({audio: effect.effectTrack});
           this.metricManager.submitBNRMetric(
             METRIC_EVENT.MEDIA,
             MEDIA_EFFECT_ACTION.BNR_ENABLED,
@@ -2474,8 +2475,8 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
             this.correlationId
           );
         });
-
         effect.on(EffectEvent.Disabled, () => {
+          this.mediaConnection.updateLocalTracks({audio: effect.effectTrack});
           this.metricManager.submitBNRMetric(
             METRIC_EVENT.MEDIA,
             MEDIA_EFFECT_ACTION.BNR_DISABLED,
