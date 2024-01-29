@@ -5,8 +5,7 @@ import {WebexHttpError} from '@webex/webex-core';
 import CallDiagnosticMetrics from '../../../../src/call-diagnostic/call-diagnostic-metrics';
 import CallDiagnosticLatencies from '../../../../src/call-diagnostic/call-diagnostic-metrics-latencies';
 import * as Utils from '../../../../src/call-diagnostic/call-diagnostic-metrics.util';
-import {BrowserDetection} from '@webex/common';
-import {getBrowserSerial} from '@webex/common';
+import {BrowserDetection, getBrowserSerial} from '@webex/common';
 import {getOSNameInternal} from '@webex/internal-plugin-metrics';
 import uuid from 'uuid';
 import {omit} from 'lodash';
@@ -127,7 +126,6 @@ describe('internal-plugin-metrics', () => {
     describe('#getOrigin', () => {
       it('should build origin correctly', () => {
         sinon.stub(Utils, 'anonymizeIPAddress').returns('1.1.1.1');
-
         //@ts-ignore
         const res = cd.getOrigin(
           {subClientType: 'WEB_APP', clientType: 'TEAMS_CLIENT'},
@@ -642,7 +640,7 @@ describe('internal-plugin-metrics', () => {
         ]);
       });
 
-      it.only('should log browser data, but only for the first call diagnostic event', () => {
+      it('should log browser data, but only for the first call diagnostic event', () => {
         const prepareDiagnosticEventSpy = sinon.spy(cd, 'prepareDiagnosticEvent');
         const submitToCallDiagnosticsSpy = sinon.spy(cd, 'submitToCallDiagnostics');
         const generateClientEventErrorPayloadSpy = sinon.spy(cd, 'generateClientEventErrorPayload');

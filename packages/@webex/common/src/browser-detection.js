@@ -1,13 +1,14 @@
 import bowser from 'bowser';
 import {memoize} from 'lodash';
 import window from 'global/window';
+import {browserDetection} from './constants';
 
 export const getBrowserSerial = () => {
   let browserData;
   try {
     browserData = window?.navigator?.userAgent
       ? bowser.getParser(window.navigator.userAgent)
-      : {error: 'unable to access window.navigator.userAgent'};
+      : {error: browserDetection.unableToAccessUserAgent};
   } catch (err) {
     browserData = {error: err.message};
   }
