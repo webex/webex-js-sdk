@@ -7363,12 +7363,18 @@ describe('plugin-meetings', () => {
         it('sets correctly when policy data is present in token', () => {
           assert.notOk(meeting.selfUserPolicies);
 
-          const policyData = {permission: {userPolicies: {a: true}}};
+          const testUrl = 'https://example.com';
+
+          const policyData = {permission: {
+            userPolicies: {a: true},
+            enforceVBGImagesURL: testUrl
+          }};
           meeting.permissionTokenPayload = policyData;
 
           meeting.setSelfUserPolicies();
 
           assert.deepEqual(meeting.selfUserPolicies, policyData.permission.userPolicies);
+          assert.equal(meeting.enforceVBGImagesURL, testUrl);
         });
 
         it('handles missing permission data', () => {
@@ -8057,6 +8063,60 @@ describe('plugin-meetings', () => {
                 {
                   supportHDV: meeting.inMeetingActions.supportHDV,
                   supportHQV: meeting.inMeetingActions.supportHQV,
+                },
+                expectedActions
+              );
+            });
+          }
+        );
+
+        forEach(
+          [
+            // policies supported and enforce is true
+            {
+              meetingInfo: {video: {}},
+              selfUserPolicies: {
+                [SELF_POLICY.ENFORCE_VIRTUAL_BACKGROUND]: true,
+              },
+              expectedActions: {
+                enforceVirtualBackground: true,
+              },
+            },
+            // policies supported and enforce is false
+            {
+              meetingInfo: {video: {}},
+              selfUserPolicies: {
+                [SELF_POLICY.ENFORCE_VIRTUAL_BACKGROUND]: false,
+              },
+              expectedActions: {
+                enforceVirtualBackground: false,
+              },
+            },
+            // policies not supported but enforce is true
+            {
+              meetingInfo: undefined,
+              selfUserPolicies: {
+                [SELF_POLICY.ENFORCE_VIRTUAL_BACKGROUND]: true,
+              },
+              expectedActions: {
+                enforceVirtualBackground: false,
+              },
+            },
+          ],
+          ({meetingInfo, selfUserPolicies, expectedActions}) => {
+            it(`expectedActions are ${JSON.stringify(
+              expectedActions
+            )} when policies are ${JSON.stringify(
+              selfUserPolicies
+            )} and meetingInfo is ${JSON.stringify(meetingInfo)}`, () => {
+              meeting.meetingInfo = meetingInfo;
+              meeting.selfUserPolicies = selfUserPolicies;
+
+              meeting.updateMeetingActions();
+
+              assert.deepEqual(
+                {
+                  enforceVirtualBackground: meeting.inMeetingActions.enforceVirtualBackground,
                 },
                 expectedActions
               );
