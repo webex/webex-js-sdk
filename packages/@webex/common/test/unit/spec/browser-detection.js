@@ -10,6 +10,12 @@ import bowser from 'bowser';
 import {browserDetection} from '@webex/common/src/constants.js';
 
 describe('getBowserSerial()', () => {
+  const originalWindowNavigator = {...window.navigator};
+
+  after('restore window.navigator', () => {
+    window.navigator = originalWindowNavigator;
+  });
+
   it('should provide the parsed bowser user agent when available', () => {
     //@ts-ignore
     window.navigator = {userAgent: 'user agent data'};
