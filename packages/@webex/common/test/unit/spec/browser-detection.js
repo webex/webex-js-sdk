@@ -41,3 +41,4 @@ describe('getBowserSerial()', () => {
     assert.deepEqual(res, {error: 'test error'});
   });
 });
+
