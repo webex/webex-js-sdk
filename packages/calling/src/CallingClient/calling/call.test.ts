@@ -2,6 +2,7 @@
 /* eslint-disable dot-notation */
 /* eslint-disable @typescript-eslint/no-shadow */
 import * as MediaSDK from '@webex/internal-media-core';
+import {EffectEvent} from '@webex/web-media-effects';
 import {ERROR_TYPE, ERROR_LAYER} from '../../Errors/types';
 import * as Utils from '../../common/Utils';
 import {CALL_EVENT_KEYS, CallEvent, RoapEvent, RoapMessage} from '../../Events/types';
@@ -113,6 +114,7 @@ describe('Call Tests', () => {
 
   const mockEffect = {
     isEnabled: true,
+    effectTrack: mockTrack,
     on: jest.fn(),
   };
 
@@ -406,7 +408,8 @@ describe('Call Tests', () => {
     };
 
     const localAudioStream = mockStream as unknown as MediaSDK.LocalMicrophoneStream;
-    const onSpy = jest.spyOn(localAudioStream, 'on');
+    const onStreamSpy = jest.spyOn(localAudioStream, 'on');
+    const onEffectSpy = jest.spyOn(mockEffect, 'on');
 
     const call = createCall(
       activeUrl,
@@ -432,17 +435,24 @@ describe('Call Tests', () => {
     const updateLocalTracksSpy = jest.spyOn(call['mediaConnection'], 'updateLocalTracks');
     const bnrMetricSpy = jest.spyOn(call['metricManager'], 'submitBNRMetric');
 
-    /* Send metrics for BNR enabled */
+    /* Update the stream with the effect */
     jest.spyOn(localAudioStream, 'getEffectByKind').mockReturnValue(mockEffect as any);
 
-    expect(onSpy).toBeCalledOnceWith(
+    expect(onStreamSpy).toBeCalledOnceWith(
       MediaSDK.LocalStreamEventNames.EffectAdded,
       expect.any(Function)
     );
 
     bnrMetricSpy.mockClear();
-    onSpy.mock.calls[0][1](mockEffect as any);
+    onStreamSpy.mock.calls[0][1](mockEffect as any);
 
+    expect(onEffectSpy).toBeCalledWith(EffectEvent.Enabled, expect.any(Function));
+    expect(onEffectSpy).toBeCalledWith(EffectEvent.Disabled, expect.any(Function));
+
+    /* Send Enabled event on the effect, update track and send metrics for BNR disabled */
+    onEffectSpy.mock.calls[0][1]();
+
+    expect(mockEffect.isEnabled).toEqual(true);
     expect(updateLocalTracksSpy).toBeCalledOnceWith({audio: mockTrack});
 
     expect(bnrMetricSpy).toBeCalledOnceWith(
@@ -457,12 +467,11 @@ describe('Call Tests', () => {
     updateLocalTracksSpy.mockClear();
     bnrMetricSpy.mockClear();
 
-    /* Send metrics for BNR disabled */
+    /* Send Disabled event on the effect, update track and send metrics for BNR disabled */
     mockEffect.isEnabled = false;
-    jest.spyOn(localAudioStream, 'getEffectByKind').mockReturnValue(mockEffect as any);
+    onEffectSpy.mock.calls[1][1]();
 
-    onSpy.mock.calls[0][1](mockEffect as any);
-
+    expect(mockEffect.isEnabled).toEqual(false);
     expect(updateLocalTracksSpy).toBeCalledOnceWith({audio: mockTrack});
 
     expect(bnrMetricSpy).toBeCalledOnceWith(
