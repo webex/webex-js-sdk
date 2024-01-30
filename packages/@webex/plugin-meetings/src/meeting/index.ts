@@ -34,6 +34,7 @@ import {
 } from '@webex/media-helpers';
 
 import {
+  MeetingNotActiveError,
   UserInLobbyError,
   NoMediaEstablishedYetError,
   UserNotJoinedError,
@@ -77,6 +78,7 @@ import {
   EVENTS,
   BREAKOUTS,
   FLOOR_ACTION,
+  FULL_STATE,
   LAYOUT_TYPES,
   LOCUSINFO,
   MEETING_INFO_FAILURE_REASON,
@@ -6229,6 +6231,10 @@ export default class Meeting extends StatelessWebexPlugin {
     this.hasMediaConnectionConnectedAtLeastOnce = false;
     const LOG_HEADER = 'Meeting:index#addMedia -->';
     LoggerProxy.logger.info(`${LOG_HEADER} called with: ${JSON.stringify(options)}`);
+
+    if (options.allowMediaInLobby !== true && this.meetingState !== FULL_STATE.ACTIVE) {
+      throw new MeetingNotActiveError();
+    }
 
     if (MeetingUtil.isUserInLeftState(this.locusInfo)) {
       throw new UserNotJoinedError();
