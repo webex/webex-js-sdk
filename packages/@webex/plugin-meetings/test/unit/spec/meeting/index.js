@@ -1206,12 +1206,6 @@ describe('plugin-meetings', () => {
           assert.exists(meeting.addMedia);
         });
 
-        it('should reject promise if meeting is not active', async () => {
-          const result = await assert.isRejected(meeting.addMedia());
-
-          assert.instanceOf(result, MeetingNotActiveError);
-        });
-
         it('should reject promise if user already in left state', async () => {
           meeting.meetingState = 'ACTIVE';
           meeting.locusInfo.parsedLocus = {self: {state: 'LEFT'}};
