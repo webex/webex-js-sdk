@@ -79,7 +79,7 @@ export interface IMetricManager {
   ) => void;
   submitVoicemailMetric: (
     name: METRIC_EVENT,
-    metricAction: string,
+    metricAction: MEDIA_EFFECT_ACTION,
     type: METRIC_TYPE,
     messageId?: string,
     voicemailError?: string,

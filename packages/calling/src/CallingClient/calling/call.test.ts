@@ -311,7 +311,7 @@ describe('Call Tests', () => {
       defaultServiceIndicator
     );
 
-    const mediaMetricSpy = jest.spyOn(call['metricManager'], 'submitBNRMetric');
+    const bnrMetricSpy = jest.spyOn(call['metricManager'], 'submitBNRMetric');
 
     call.dial(localAudioStream);
 
@@ -323,7 +323,7 @@ describe('Call Tests', () => {
     );
     expect(call['mediaStateMachine'].state.value).toBe('S_SEND_ROAP_OFFER');
 
-    expect(mediaMetricSpy).toBeCalledOnceWith(
+    expect(bnrMetricSpy).toBeCalledOnceWith(
       METRIC_EVENT.MEDIA,
       MEDIA_EFFECT_ACTION.BNR_ENABLED,
       METRIC_TYPE.BEHAVIORAL,
@@ -367,7 +367,7 @@ describe('Call Tests', () => {
     );
     /** Cannot answer in idle state */
 
-    const mediaMetricSpy = jest.spyOn(call['metricManager'], 'submitBNRMetric');
+    const bnrMetricSpy = jest.spyOn(call['metricManager'], 'submitBNRMetric');
 
     call.answer(localAudioStream);
     expect(mockTrack.enabled).toEqual(true);
@@ -387,7 +387,7 @@ describe('Call Tests', () => {
     call.answer(localAudioStream);
     expect(call['callStateMachine'].state.value).toBe('S_SEND_CALL_CONNECT');
 
-    expect(mediaMetricSpy).toBeCalledOnceWith(
+    expect(bnrMetricSpy).toBeCalledOnceWith(
       METRIC_EVENT.MEDIA,
       MEDIA_EFFECT_ACTION.BNR_ENABLED,
       METRIC_TYPE.BEHAVIORAL,
@@ -430,7 +430,7 @@ describe('Call Tests', () => {
     expect(call['mediaStateMachine'].state.value).toBe('S_SEND_ROAP_OFFER');
 
     const updateLocalTracksSpy = jest.spyOn(call['mediaConnection'], 'updateLocalTracks');
-    const mediaMetricSpy = jest.spyOn(call['metricManager'], 'submitBNRMetric');
+    const bnrMetricSpy = jest.spyOn(call['metricManager'], 'submitBNRMetric');
 
     /* Send metrics for BNR enabled */
     jest.spyOn(localAudioStream, 'getEffectByKind').mockReturnValue(mockEffect as any);
@@ -440,12 +440,12 @@ describe('Call Tests', () => {
       expect.any(Function)
     );
 
-    mediaMetricSpy.mockClear();
+    bnrMetricSpy.mockClear();
     onSpy.mock.calls[0][1](mockEffect as any);
 
     expect(updateLocalTracksSpy).toBeCalledOnceWith({audio: mockTrack});
 
-    expect(mediaMetricSpy).toBeCalledOnceWith(
+    expect(bnrMetricSpy).toBeCalledOnceWith(
       METRIC_EVENT.MEDIA,
       MEDIA_EFFECT_ACTION.BNR_ENABLED,
       METRIC_TYPE.BEHAVIORAL,
@@ -455,7 +455,7 @@ describe('Call Tests', () => {
 
     /* Clear the mocks */
     updateLocalTracksSpy.mockClear();
-    mediaMetricSpy.mockClear();
+    bnrMetricSpy.mockClear();
 
     /* Send metrics for BNR disabled */
     mockEffect.isEnabled = false;
@@ -465,7 +465,7 @@ describe('Call Tests', () => {
 
     expect(updateLocalTracksSpy).toBeCalledOnceWith({audio: mockTrack});
 
-    expect(mediaMetricSpy).toBeCalledOnceWith(
+    expect(bnrMetricSpy).toBeCalledOnceWith(
       METRIC_EVENT.MEDIA,
       MEDIA_EFFECT_ACTION.BNR_DISABLED,
       METRIC_TYPE.BEHAVIORAL,

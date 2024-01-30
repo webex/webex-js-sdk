@@ -2,7 +2,7 @@ import {CallError, CallingClientError} from '../Errors';
 import {METRIC_FILE, VERSION} from '../CallingClient/constants';
 import {CallId, CorrelationId, IDeviceInfo, ServiceIndicator} from '../common/types';
 import {WebexSDK} from '../SDKConnector/types';
-import {REG_ACTION, IMetricManager, METRIC_TYPE, METRIC_EVENT} from './types';
+import {REG_ACTION, IMetricManager, METRIC_TYPE, METRIC_EVENT, MEDIA_EFFECT_ACTION} from './types';
 import {LineError} from '../Errors/catalog/LineError';
 import log from '../Logger';
 
@@ -324,7 +324,7 @@ class MetricManager implements IMetricManager {
 
   public submitBNRMetric(
     name: METRIC_EVENT,
-    metricAction: string,
+    metricAction: MEDIA_EFFECT_ACTION,
     type: METRIC_TYPE,
     callId: CallId,
     correlationId: CorrelationId

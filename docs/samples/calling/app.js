@@ -675,14 +675,14 @@ async function toggleNoiseReductionEffect() {
 
     await localAudioStream.addEffect(effect);
     await effect.enable();
-    bnrButton.innerHTML = 'Disable BNR()';
+    bnrButton.innerHTML = 'Disable BNR';
   } else {
     if (effect.isEnabled) {
       await effect.disable();
-      bnrButton.innerHTML = 'Enable BNR()';
+      bnrButton.innerHTML = 'Enable BNR';
     } else {
       await effect.enable();
-      bnrButton.innerHTML = 'Disable BNR()';
+      bnrButton.innerHTML = 'Disable BNR';
     }
   }
 }
