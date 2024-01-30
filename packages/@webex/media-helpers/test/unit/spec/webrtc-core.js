@@ -41,6 +41,7 @@ describe('media-helpers', () => {
               label: 'fake track',
               id: 'fake track id',
               enabled: true,
+              muted: false,
               addEventListener: sinon.stub(),
             },
           ]),
@@ -73,22 +74,22 @@ describe('media-helpers', () => {
 
         it('returns a reasonable length string from JSON.stringify()', () => {
           assert.isBelow(JSON.stringify(stream).length, 200);
-        })
+        });
 
         describe('#setServerMuted', () => {
           afterEach(() => {
             sinon.restore();
           });
 
-          const checkSetServerMuted = async (startMute, setMute, expectedCalled) => {
-            await stream.setMuted(startMute);
+          const checkSetServerMuted = (startMute, setMute, expectedCalled) => {
+            stream.setMuted(startMute);
 
             assert.equal(stream.muted, startMute);
 
             const handler = sinon.fake();
             stream.on(event.ServerMuted, handler);
 
-            await stream.setServerMuted(setMute, 'remotelyMuted');
+            stream.setServerMuted(setMute, 'remotelyMuted');
 
             assert.equal(stream.muted, setMute);
             if (expectedCalled) {
@@ -99,19 +100,19 @@ describe('media-helpers', () => {
           };
 
           it('tests true to false', async () => {
-            await checkSetServerMuted(true, false, true);
+            checkSetServerMuted(true, false, true);
           });
 
           it('tests false to true', async () => {
-            await checkSetServerMuted(false, true, true);
+            checkSetServerMuted(false, true, true);
           });
 
           it('tests true to true', async () => {
-            await checkSetServerMuted(true, true, false);
+            checkSetServerMuted(true, true, false);
           });
 
           it('tests false to false', async () => {
-            await checkSetServerMuted(false, false, false);
+            checkSetServerMuted(false, false, false);
           });
         });
 
@@ -137,7 +138,7 @@ describe('media-helpers', () => {
         assert.calledOnceWithExactly(spy, LocalDisplayStream);
       });
     });
-    
+
     describe('createDisplayStreamWithAudio', () => {
       it('checks createDisplayStreamWithAudio', async () => {
         const spy = sinon.stub(wcmestreams, 'createDisplayStreamWithAudio').returns('something');
