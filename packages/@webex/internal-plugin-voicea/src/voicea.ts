@@ -136,6 +136,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
           {
             isFinal: true,
             transcriptId: voiceaPayload.transcript_id,
+            translations: voiceaPayload.translations,
             transcript: {
               csis: voiceaPayload.csis,
               text: voiceaPayload.transcript.text,
@@ -292,7 +293,9 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
       // @ts-ignore
       url: `${this.webex.internal.llm.getLocusUrl()}/controls/`,
       body: {
-        languageCode,
+        transcribe: {
+          spokenLanguage: languageCode,
+        },
       },
     }).then(() => {
       Trigger.trigger(
