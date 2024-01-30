@@ -1,4 +1,3 @@
-/* globals window */
 import {Defer} from '@webex/common';
 
 import LoggerProxy from '../common/logs/logger-proxy';
@@ -34,10 +33,10 @@ export class ClusterReachability {
   numUdpUrls: number;
   numTcpUrls: number;
   result: ReachabilityResult;
-  pc?: RTCPeerConnection;
+  private pc?: RTCPeerConnection;
   publicIPs?: string[];
-  defer: Defer; // this defer is resolved once reachability checks for this cluster are completed
-  startTimestamp: number;
+  private defer: Defer; // this defer is resolved once reachability checks for this cluster are completed
+  private startTimestamp: number;
   public readonly isVideoMesh: boolean;
   public readonly name;
 
@@ -113,7 +112,8 @@ export class ClusterReachability {
    */
   private createPeerConnection(config: RTCConfiguration) {
     try {
-      const peerConnection = new window.RTCPeerConnection(config);
+      console.log(`marcin: config=${JSON.stringify(config)}`);
+      const peerConnection = new RTCPeerConnection(config);
 
       return peerConnection;
     } catch (peerConnectionError) {
@@ -182,6 +182,9 @@ export class ClusterReachability {
       const {COMPLETE} = ICE_GATHERING_STATE;
 
       if (this.pc.iceConnectionState === COMPLETE) {
+        console.log(
+          `marcin: ${this.name}: this.pc.iceConnectionState=${this.pc.iceConnectionState}`
+        );
         this.closePeerConnection();
         this.finishReachabilityCheck();
       }
@@ -210,33 +213,35 @@ export class ClusterReachability {
       };
 
       if (e.candidate) {
-        if (
-          String(e.candidate.type).toLowerCase() === CANDIDATE_TYPES.SERVER_REFLEXIVE &&
-          e.candidate.protocol === 'udp'
-        ) {
-          const elapsed = this.getElapsedTime();
+        if (e.candidate.type !== 'host') {
+          console.log('marcin: e.candidate', e.candidate);
+        }
+        if (e.candidate.type === CANDIDATE_TYPES.SERVER_REFLEXIVE) {
+          if (this.result.udp.latencyInMilliseconds === undefined) {
+            const elapsed = this.getElapsedTime();
 
-          LoggerProxy.logger.log(
-            // @ts-ignore
-            `Reachability:index#onIceCandidate --> Successfully reached ${this.name} over UDP: ${elapsed}ms`
-          );
-          this.result.udp.latencyInMilliseconds = elapsed.toString();
-          this.result.udp.reachable = 'true';
+            LoggerProxy.logger.log(
+              // @ts-ignore
+              `Reachability:index#onIceCandidate --> Successfully reached ${this.name} over UDP: ${elapsed}ms`
+            );
+            this.result.udp.latencyInMilliseconds = elapsed.toString();
+            this.result.udp.reachable = 'true';
+          }
           this.addPublicIP('udp', e.candidate.address);
         }
 
-        if (
-          String(e.candidate.type).toLowerCase() === CANDIDATE_TYPES.RELAY &&
-          e.candidate.protocol === 'tcp'
-        ) {
-          const elapsed = this.getElapsedTime();
+        if (e.candidate.type === CANDIDATE_TYPES.RELAY) {
+          if (this.result.tcp.latencyInMilliseconds === undefined) {
+            const elapsed = this.getElapsedTime();
 
-          LoggerProxy.logger.log(
-            // @ts-ignore
-            `Reachability:index#onIceCandidate --> Successfully reached ${this.name} over TCP: ${elapsed}ms`
-          );
-          this.result.tcp.latencyInMilliseconds = elapsed.toString();
-          this.result.tcp.reachable = 'true';
+            LoggerProxy.logger.log(
+              // @ts-ignore
+              `Reachability:index#onIceCandidate --> Successfully reached ${this.name} over TCP: ${elapsed}ms`
+            );
+            console.log(`marcin: ${this.name}: TCP: e.candidate`, e.candidate);
+            this.result.tcp.latencyInMilliseconds = elapsed.toString();
+            this.result.tcp.reachable = 'true';
+          }
           this.addPublicIP('tcp', e.candidate.address);
         }
 
