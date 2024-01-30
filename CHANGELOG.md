@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.331](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.330...v3.0.0-beta.331) (2024-01-30)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** don't destroy meeting reference on cleanup of reconnection manager ([#3334](https://github.com/webex/webex-js-sdk/issues/3334)) ([e08c959](https://github.com/webex/webex-js-sdk/commit/e08c9596cb5aeedd9f9a0e53536488178e8a2b50))
+
 ## [3.0.0-beta.330](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.329...v3.0.0-beta.330) (2024-01-29)
 
 
