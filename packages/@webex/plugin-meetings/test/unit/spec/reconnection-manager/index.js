@@ -178,9 +178,10 @@ describe('plugin-meetings', () => {
    */
   describe('ReconnectionManager', () => {
     let reconnectionManager;
+    let fakeMeeting;
 
     beforeEach(() => {
-      reconnectionManager = new ReconnectionManager({
+      fakeMeeting = {
         config: {
           reconnection: {
             enabled: true,
@@ -195,7 +196,9 @@ describe('plugin-meetings', () => {
             },
           },
         },
-      });
+      };
+
+      reconnectionManager = new ReconnectionManager(fakeMeeting);
     });
 
     describe('iceReconnected()', () => {
@@ -300,29 +303,41 @@ describe('plugin-meetings', () => {
           assert.isTrue(reconnectionManager.iceState.disconnected);
         });
       });
+    });
 
-      describe('setStatus()', () => {
-        beforeEach(() => {
-          reconnectionManager.status = RECONNECTION.STATE.DEFAULT_STATUS;
-        });
+    describe('setStatus()', () => {
+      beforeEach(() => {
+        reconnectionManager.status = RECONNECTION.STATE.DEFAULT_STATUS;
+      });
 
-        it('should correctly change status to in progress', () => {
-          reconnectionManager.setStatus(RECONNECTION.STATE.IN_PROGRESS);
+      it('should correctly change status to in progress', () => {
+        reconnectionManager.setStatus(RECONNECTION.STATE.IN_PROGRESS);
 
-          assert.equal(reconnectionManager.status, RECONNECTION.STATE.IN_PROGRESS);
-        });
+        assert.equal(reconnectionManager.status, RECONNECTION.STATE.IN_PROGRESS);
+      });
 
-        it('should correctly change status to complete', () => {
-          reconnectionManager.setStatus(RECONNECTION.STATE.COMPLETE);
+      it('should correctly change status to complete', () => {
+        reconnectionManager.setStatus(RECONNECTION.STATE.COMPLETE);
 
-          assert.equal(reconnectionManager.status, RECONNECTION.STATE.COMPLETE);
-        });
+        assert.equal(reconnectionManager.status, RECONNECTION.STATE.COMPLETE);
+      });
 
-        it('should correctly change status to failure', () => {
-          reconnectionManager.setStatus(RECONNECTION.STATE.FAILURE);
+      it('should correctly change status to failure', () => {
+        reconnectionManager.setStatus(RECONNECTION.STATE.FAILURE);
 
-          assert.equal(reconnectionManager.status, RECONNECTION.STATE.FAILURE);
-        });
+        assert.equal(reconnectionManager.status, RECONNECTION.STATE.FAILURE);
+      });
+    });
+
+    describe('cleanUp()', () => {
+      it('should call reset and keep reference to meeting object', () => {
+        const resetSpy = sinon.spy(reconnectionManager, 'reset');
+        assert.equal(reconnectionManager.meeting, fakeMeeting);
+
+        reconnectionManager.cleanUp();
+
+        assert.equal(reconnectionManager.meeting, fakeMeeting);
+        assert.calledOnce(reconnectionManager.reset);
       });
     });
   });
