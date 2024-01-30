@@ -1206,8 +1206,8 @@ describe('plugin-meetings', () => {
           assert.exists(meeting.addMedia);
         });
 
-        it('should reject promise if meeting is not active', async () => {
-          const result = await assert.isRejected(meeting.addMedia());
+        it('should reject promise if meeting is not active and the meeting in lobby is not enabled', async () => {
+          const result = await assert.isRejected(meeting.addMedia({allowMediaInLobby: false}));
 
           assert.instanceOf(result, MeetingNotActiveError);
         });
