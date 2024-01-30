@@ -3642,6 +3642,7 @@ export default class Meeting extends StatelessWebexPlugin {
    * @memberof Meeting
    */
   closeRemoteStreams() {
+    // TODO: Discuss with Marcin and see how to add remoteShareAudioStream back
     const {remoteAudioStream, remoteVideoStream, remoteShareStream} = this.mediaProperties;
 
     /**
