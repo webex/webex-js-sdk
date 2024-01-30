@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.332](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.331...v3.0.0-beta.332) (2024-01-30)
+
+
+### Bug Fixes
+
+* **plugin-meeting:** join failure when media in lobby enabled ([#3343](https://github.com/webex/webex-js-sdk/issues/3343)) ([8f4c064](https://github.com/webex/webex-js-sdk/commit/8f4c064218782737a9658db78bb29d2e5b96f62b))
+
 ## [3.0.0-beta.331](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.330...v3.0.0-beta.331) (2024-01-30)
 
 
