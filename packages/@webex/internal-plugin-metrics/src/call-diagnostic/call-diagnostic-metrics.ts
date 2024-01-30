@@ -186,11 +186,10 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     }
 
     if (!this.hasLoggedBrowserSerial) {
-      const browserSerial = getBrowserSerial();
       this.logger.log(
         CALL_DIAGNOSTIC_LOG_IDENTIFIER,
         `CallDiagnosticMetrics: @createClientEventObjectInMeeting => collected browser data`,
-        JSON.stringify(browserSerial)
+        JSON.stringify(getBrowserSerial())
       );
 
       this.hasLoggedBrowserSerial = true;
