@@ -39,10 +39,6 @@ const breakoutTable = document.getElementById('breakout-table');
 const breakoutHostOperation = document.getElementById('breakout-host-operation');
 const getStatsButton = document.getElementById('get-stats');
 
-// Disable screenshare on join in Safari patch
-const isSafari = /Version\/[\d.]+.*Safari/.test(navigator.userAgent);
-const isiOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-
 const toggleUnifiedMeetings = document.getElementById('toggle-unified-meeting');
 const currentMeetingInfoStatus = document.getElementById('current-meeting-info-status');
 
@@ -58,10 +54,6 @@ tokenElm.addEventListener('change', (event) => {
   localStorage.setItem('access-token', event.target.value);
   localStorage.setItem('date', new Date().getTime() + (12 * 60 * 60 * 1000));
 });
-
-if (isSafari || isiOS) {
-  document.getElementById('sendShareToggle').disabled = true;
-}
 
 
 const fedRampInput = document.querySelector('#enable-fedramp');
