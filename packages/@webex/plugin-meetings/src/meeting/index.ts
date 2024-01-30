@@ -6232,7 +6232,7 @@ export default class Meeting extends StatelessWebexPlugin {
     const LOG_HEADER = 'Meeting:index#addMedia -->';
     LoggerProxy.logger.info(`${LOG_HEADER} called with: ${JSON.stringify(options)}`);
 
-    if (this.meetingState !== FULL_STATE.ACTIVE) {
+    if (options.allowMediaInLobby !== true && this.meetingState !== FULL_STATE.ACTIVE) {
       throw new MeetingNotActiveError();
     }
 

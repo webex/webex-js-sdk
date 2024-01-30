@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.333](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.332...v3.0.0-beta.333) (2024-01-30)
+
+
+### Bug Fixes
+
+* **media-helper:** update internal-media-core with webrtc-core mute changes ([#3342](https://github.com/webex/webex-js-sdk/issues/3342)) ([6bb2e66](https://github.com/webex/webex-js-sdk/commit/6bb2e66557c4444f8440780e1846a7e0f86768a8))
+
+## [3.0.0-beta.332](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.331...v3.0.0-beta.332) (2024-01-30)
+
+
+### Bug Fixes
+
+* **plugin-meeting:** join failure when media in lobby enabled ([#3343](https://github.com/webex/webex-js-sdk/issues/3343)) ([8f4c064](https://github.com/webex/webex-js-sdk/commit/8f4c064218782737a9658db78bb29d2e5b96f62b))
+
+## [3.0.0-beta.331](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.330...v3.0.0-beta.331) (2024-01-30)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** don't destroy meeting reference on cleanup of reconnection manager ([#3334](https://github.com/webex/webex-js-sdk/issues/3334)) ([e08c959](https://github.com/webex/webex-js-sdk/commit/e08c9596cb5aeedd9f9a0e53536488178e8a2b50))
+
 ## [3.0.0-beta.330](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.329...v3.0.0-beta.330) (2024-01-29)
 
 

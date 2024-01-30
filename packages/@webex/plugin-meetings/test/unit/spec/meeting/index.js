@@ -1206,8 +1206,8 @@ describe('plugin-meetings', () => {
           assert.exists(meeting.addMedia);
         });
 
-        it('should reject promise if meeting is not active', async () => {
-          const result = await assert.isRejected(meeting.addMedia());
+        it('should reject promise if meeting is not active and the meeting in lobby is not enabled', async () => {
+          const result = await assert.isRejected(meeting.addMedia({allowMediaInLobby: false}));
 
           assert.instanceOf(result, MeetingNotActiveError);
         });
@@ -5683,6 +5683,16 @@ describe('plugin-meetings', () => {
               assert.instanceOf(err, ParameterError);
             });
           });
+
+          it('should reconnect successfully if reconnectionManager.cleanUp is called before reconnection attempt', async () => {
+            meeting.reconnectionManager.cleanUp();
+
+            try {
+              await meeting.reconnect();
+            } catch (err) {
+              assert.fail('reconnect should not error after clean up');
+            }
+          })
 
           it('should trigger reconnection success and send CA metric', async () => {
             await meeting.reconnect();
