@@ -13,8 +13,8 @@
     "node": ">=16"
   },
   "scripts": {
-    "build": "yarn run -T tsc --declaration true --declarationDir ./dist/types",
-    "build:src": "webex-legacy-tools build -dest \"./dist\" -src \"./src\" -js -ts -maps && yarn run -T tsc --declaration true --declarationDir ./dist/types",
+    "build": "yarn run -T tsc --declaration true --declarationDir ./dist",
+    "build:src": "webex-legacy-tools build -dest \"./dist\" -src \"./src\" -js -ts -maps && yarn run -T tsc --declaration true --declarationDir ./dist",
     "test:broken": "yarn test:style && yarn test:unit && yarn test:integration && yarn test:browser",
     "test:browser:broken": "webex-legacy-tools test --integration --unit --runner karma",
     "test:integration:broken": "webex-legacy-tools test --integration --runner mocha",
