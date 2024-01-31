@@ -1,5 +1,4 @@
 const { Command: Commander } = require('commander');
-// eslint-disable-next-line import/no-unresolved
 const { Commands } = require('@webex/cli-tools');
 
 const { generateCommandFixture } = require('./command.fixture');
@@ -24,23 +23,24 @@ describe('Commands', () => {
         commands = new Commands();
         const { program } = commands;
 
-        spies.command = spyOn(program, 'command').and.returnValue(program);
-        spies.description = spyOn(program, 'description').and.returnValue(program);
-        spies.option = spyOn(program, 'option').and.returnValue(program);
-        spies.requiredOption = spyOn(program, 'requiredOption').and.returnValue(program);
-        spies.action = spyOn(program, 'action').and.returnValue();
+        spies.command = jest.spyOn(program, 'command').mockReturnValue(program);
+        spies.description = jest.spyOn(program, 'description').mockReturnValue(program);
+        spies.option = jest.spyOn(program, 'option').mockReturnValue(program);
+        spies.requiredOption = jest.spyOn(program, 'requiredOption').mockReturnValue(program);
+        spies.action = jest.spyOn(program, 'action');
+        spies.handler = jest.spyOn(fixture, 'handler');
       });
 
       it('should call "program.command" with the provided name', () => {
         commands.mount(fixture);
 
-        expect(spies.command).toHaveBeenCalledOnceWith(fixture.config.name);
+        expect(spies.command).toHaveBeenCalledWith(fixture.config.name);
       });
 
       it('should call "program.description" with the provided description', () => {
         commands.mount(fixture);
 
-        expect(spies.description).toHaveBeenCalledOnceWith(fixture.config.description);
+        expect(spies.description).toHaveBeenCalledWith(fixture.config.description);
       });
 
       it('should call "program.option" for each provided option', () => {
@@ -65,11 +65,10 @@ describe('Commands', () => {
         commands.mount(fixture);
 
         const expected = `--${option.name}`;
-
-        expect(spies.option).toHaveBeenCalledOnceWith(
+        expect(spies.option).toHaveBeenCalledWith(
           expected,
-          jasmine.any(String),
-          jasmine.any(String),
+          expect.any(String),
+          expect.any(String),
         );
       });
 
@@ -83,10 +82,10 @@ describe('Commands', () => {
 
         const expected = `-${option.alias}, --${option.name}`;
 
-        expect(spies.option).toHaveBeenCalledOnceWith(
+        expect(spies.option).toHaveBeenCalledWith(
           expected,
-          jasmine.any(String),
-          jasmine.any(String),
+          expect.any(String),
+          expect.any(String),
         );
       });
 
@@ -98,10 +97,10 @@ describe('Commands', () => {
 
         const expected = `-${option.alias}, --${option.name} <${option.type}>`;
 
-        expect(spies.option).toHaveBeenCalledOnceWith(
+        expect(spies.option).toHaveBeenCalledWith(
           expected,
-          jasmine.any(String),
-          jasmine.any(String),
+          expect.any(String),
+          expect.any(String),
         );
       });
 
@@ -111,10 +110,10 @@ describe('Commands', () => {
 
         commands.mount(fixture);
 
-        expect(spies.option).toHaveBeenCalledOnceWith(
-          jasmine.any(String),
+        expect(spies.option).toHaveBeenCalledWith(
+          expect.any(String),
           option.description,
-          jasmine.any(String),
+          expect.any(String),
         );
       });
 
@@ -124,9 +123,9 @@ describe('Commands', () => {
 
         commands.mount(fixture);
 
-        expect(spies.option).toHaveBeenCalledOnceWith(
-          jasmine.any(String),
-          jasmine.any(String),
+        expect(spies.option).toHaveBeenCalledWith(
+          expect.any(String),
+          expect.any(String),
           option.default,
         );
       });
@@ -139,11 +138,21 @@ describe('Commands', () => {
 
         commands.mount(fixture);
 
-        expect(spies.option).toHaveBeenCalledOnceWith(
-          jasmine.any(String),
-          jasmine.any(String),
+        expect(spies.option).toHaveBeenCalledWith(
+          expect.any(String),
+          expect.any(String),
           undefined,
         );
+      });
+
+      it('should call the provided handler', () => {
+        const opts = 'example-opts';
+
+        spies.action.mockImplementation((func) => func(opts));
+        commands.mount(fixture);
+
+        expect(spies.handler).toHaveBeenCalledTimes(1);
+        expect(spies.handler).toHaveBeenCalledWith(opts);
       });
     });
 
@@ -154,8 +163,7 @@ describe('Commands', () => {
       beforeEach(() => {
         commands = new Commands();
         const { program } = commands;
-
-        spies.parse = spyOn(program, 'parse').and.returnValue(undefined);
+        spies.parse = jest.spyOn(program, 'parse').mockReturnValue(undefined);
       });
 
       it('should return itself', () => {
@@ -164,7 +172,6 @@ describe('Commands', () => {
 
       it('should call the local "program" method: "parse"', () => {
         commands.process();
-
         expect(spies.parse).toHaveBeenCalledTimes(1);
       });
     });

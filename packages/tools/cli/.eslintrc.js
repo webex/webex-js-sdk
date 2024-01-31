@@ -1,12 +1,14 @@
+const { javascript, jest, typescript } = require('../../../config/eslint');
+
 const config = {
   root: true,
   env: {
     node: true,
   },
-  extends: [
-    '@webex/eslint-config/core',
-    '@webex/eslint-config/jasmine',
-    '@webex/eslint-config/typescript',
+  overrides: [
+    ...javascript.modern.overrides,
+    ...jest.modern.overrides,
+    ...typescript.modern.overrides,
   ],
 };
 
