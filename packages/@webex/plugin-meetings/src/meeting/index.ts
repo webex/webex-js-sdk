@@ -3818,7 +3818,7 @@ export default class Meeting extends StatelessWebexPlugin {
     functionName: string;
     isPublished: boolean;
     mediaType: MediaType;
-    stream: MediaStream;
+    stream: LocalStream;
   }) {
     const {functionName, isPublished, mediaType, stream} = options;
     Trigger.trigger(
