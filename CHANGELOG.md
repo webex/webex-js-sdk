@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.335](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.334...v3.0.0-beta.335) (2024-01-31)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** fix type for stream in emitPublishedStateChange ([#3346](https://github.com/webex/webex-js-sdk/issues/3346)) ([b6ec9a6](https://github.com/webex/webex-js-sdk/commit/b6ec9a6df604b8bc6b9683950a159914d7dd7e26))
+
 ## [3.0.0-beta.334](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.333...v3.0.0-beta.334) (2024-01-31)
 
 
