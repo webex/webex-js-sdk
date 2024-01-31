@@ -78,6 +78,7 @@ interface IInMeetingActions {
   supportHQV?: boolean;
   supportHDV?: boolean;
   canShareWhiteBoard?: boolean;
+  enforceVirtualBackground?: boolean;
 }
 
 /**
@@ -220,6 +221,8 @@ export default class InMeetingActions implements IInMeetingActions {
 
   supportHQV = null;
 
+  enforceVirtualBackground = null;
+
   supportHDV = null;
 
   canShareWhiteBoard = null;
@@ -295,6 +298,7 @@ export default class InMeetingActions implements IInMeetingActions {
     canDoVideo: this.canDoVideo,
     canAnnotate: this.canAnnotate,
     canUseVoip: this.canUseVoip,
+    enforceVirtualBackground: this.enforceVirtualBackground,
     supportHQV: this.supportHQV,
     supportHDV: this.supportHDV,
     canShareWhiteBoard: this.canShareWhiteBoard,
