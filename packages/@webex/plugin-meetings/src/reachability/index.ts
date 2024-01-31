@@ -237,7 +237,7 @@ export default class Reachability {
    * @private
    * @memberof Reachability
    */
-  private getUnreachablClusters(): Array<{name: string; protocol: string}> {
+  private getUnreachableClusters(): Array<{name: string; protocol: string}> {
     const unreachableList = [];
 
     Object.entries(this.clusterReachability).forEach(([key, clusterReachability]) => {
@@ -259,7 +259,7 @@ export default class Reachability {
    * @memberof Reachability
    */
   private logUnreachableClusters() {
-    const list = this.getUnreachablClusters();
+    const list = this.getUnreachableClusters();
 
     list.forEach(({name, protocol}) => {
       LoggerProxy.logger.log(

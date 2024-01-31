@@ -46,8 +46,7 @@ export class ClusterReachability {
     this.numUdpUrls = clusterInfo.udp.length;
     this.numTcpUrls = clusterInfo.tcp.length;
 
-    const config = this.buildPeerConnectionConfig(clusterInfo);
-    this.pc = this.createPeerConnection(config);
+    this.pc = this.createPeerConnection(clusterInfo);
 
     this.defer = new Defer();
     this.result = {
@@ -76,6 +75,7 @@ export class ClusterReachability {
    * @param {ClusterNode} cluster
    * @returns {RTCConfiguration} peerConnectionConfig
    */
+  // eslint-disable-next-line class-methods-use-this
   private buildPeerConnectionConfig(cluster: ClusterNode): RTCConfiguration {
     const udpIceServers = cluster.udp.map((url) => ({
       username: '',
@@ -107,11 +107,13 @@ export class ClusterReachability {
 
   /**
    * Creates an RTCPeerConnection
-   * @param {RTCConfiguration} config
+   * @param {ClusterNode} clusterInfo information about the media cluster
    * @returns {RTCPeerConnection} peerConnection
    */
-  private createPeerConnection(config: RTCConfiguration) {
+  private createPeerConnection(clusterInfo: ClusterNode) {
     try {
+      const config = this.buildPeerConnectionConfig(clusterInfo);
+
       console.log(`marcin: config=${JSON.stringify(config)}`);
       const peerConnection = new RTCPeerConnection(config);
 
