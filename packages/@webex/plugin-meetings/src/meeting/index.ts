@@ -3633,8 +3633,7 @@ export default class Meeting extends StatelessWebexPlugin {
    * @memberof Meeting
    */
   closeRemoteStreams() {
-    const {remoteAudioStream, remoteVideoStream, remoteShareStream} =
-      this.mediaProperties;
+    const {remoteAudioStream, remoteVideoStream, remoteShareStream} = this.mediaProperties;
 
     /**
      * Triggers an event to the developer
@@ -3674,7 +3673,7 @@ export default class Meeting extends StatelessWebexPlugin {
     return Promise.all([
       stopStream(remoteAudioStream, EVENT_TYPES.REMOTE_AUDIO),
       stopStream(remoteVideoStream, EVENT_TYPES.REMOTE_VIDEO),
-      stopStream(remoteShareStream, EVENT_TYPES.REMOTE_SHARE)
+      stopStream(remoteShareStream, EVENT_TYPES.REMOTE_SHARE),
     ]);
   }
 
@@ -7777,8 +7776,10 @@ export default class Meeting extends StatelessWebexPlugin {
         localTracks: {
           audio: this.mediaProperties.audioStream?.outputStream.getTracks()[0] || null,
           video: this.mediaProperties.videoStream?.outputStream.getTracks()[0] || null,
-          screenShareVideo: this.mediaProperties.shareVideoStream?.outputStream.getTracks()[0] || null,
-          screenShareAudio: this.mediaProperties.shareAudioStream?.outputStream.getTracks()[0] || null,
+          screenShareVideo:
+            this.mediaProperties.shareVideoStream?.outputStream.getTracks()[0] || null,
+          screenShareAudio:
+            this.mediaProperties.shareAudioStream?.outputStream.getTracks()[0] || null,
         },
         direction: {
           audio: Media.getDirection(
