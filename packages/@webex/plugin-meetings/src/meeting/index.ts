@@ -7774,12 +7774,12 @@ export default class Meeting extends StatelessWebexPlugin {
       .update({
         // TODO: RoapMediaConnection is not ready to use stream classes yet, so we pass the raw MediaStreamTrack for now
         localTracks: {
-          audio: this.mediaProperties.audioStream?.outputStream.getTracks()[0] || null,
-          video: this.mediaProperties.videoStream?.outputStream.getTracks()[0] || null,
+          audio: this.mediaProperties.audioStream?.outputStream?.getTracks()[0] || null,
+          video: this.mediaProperties.videoStream?.outputStream?.getTracks()[0] || null,
           screenShareVideo:
-            this.mediaProperties.shareVideoStream?.outputStream.getTracks()[0] || null,
+            this.mediaProperties.shareVideoStream?.outputStream?.getTracks()[0] || null,
           screenShareAudio:
-            this.mediaProperties.shareAudioStream?.outputStream.getTracks()[0] || null,
+            this.mediaProperties.shareAudioStream?.outputStream?.getTracks()[0] || null,
         },
         direction: {
           audio: Media.getDirection(

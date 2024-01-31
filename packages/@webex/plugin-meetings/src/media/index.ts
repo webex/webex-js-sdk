@@ -217,10 +217,10 @@ Media.createMediaConnection = (
     {
       // TODO: RoapMediaConnection is not ready to use stream classes yet, so we pass the raw MediaStreamTrack for now SPARK-460530
       localTracks: {
-        audio: audioStream?.outputStream.getTracks()[0],
-        video: videoStream?.outputStream.getTracks()[0],
-        screenShareVideo: shareVideoStream?.outputStream.getTracks()[0],
-        screenShareAudio: shareAudioStream?.outputStream.getTracks()[0], // TODO: add type for screenShareAudio in internal-media-core SPARK-446923
+        audio: audioStream?.outputStream?.getTracks()[0],
+        video: videoStream?.outputStream?.getTracks()[0],
+        screenShareVideo: shareVideoStream?.outputStream?.getTracks()[0],
+        screenShareAudio: shareAudioStream?.outputStream?.getTracks()[0], // TODO: add type for screenShareAudio in internal-media-core SPARK-446923
       } as unknown,
       direction: {
         audio: Media.getDirection(true, mediaDirection.receiveAudio, mediaDirection.sendAudio),
