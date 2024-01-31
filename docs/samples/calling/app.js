@@ -85,7 +85,7 @@ const directoryNumberCFA = document.querySelector('#directoryNumber');
 const cfaDataElem = document.querySelector('#callforwardalways-data');
 const makeCallBtn = document.querySelector('#create-call-action');
 const muteElm = document.getElementById('mute_button');
-const bnrButton = document.getElementById('bnr_button');
+const bnrButton = document.getElementById('bnr-button');
 
 let base64;
 let audio64;
