@@ -7989,7 +7989,7 @@ export default class Meeting extends StatelessWebexPlugin {
     // https://github.com/sinonjs/fake-timers/issues/321
     const currentTime = new Date().getTime();
 
-    // This is done incase your machine time is wrong
+    // adjusted time is calculated in case your machine time is wrong
     const adjustedCurrentTime = currentTime - shiftInTime;
 
     const timeLeft = (permissionTokenExpValue - adjustedCurrentTime) / 1000;
