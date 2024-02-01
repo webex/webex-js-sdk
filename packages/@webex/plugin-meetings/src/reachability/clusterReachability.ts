@@ -30,11 +30,10 @@ export type ReachabilityResult = {
  * A class that handles reachability checks for a single cluster.
  */
 export class ClusterReachability {
-  numUdpUrls: number;
-  numTcpUrls: number;
-  result: ReachabilityResult;
+  private numUdpUrls: number;
+  private numTcpUrls: number;
+  private result: ReachabilityResult;
   private pc?: RTCPeerConnection;
-  publicIPs?: string[];
   private defer: Defer; // this defer is resolved once reachability checks for this cluster are completed
   private startTimestamp: number;
   public readonly isVideoMesh: boolean;
@@ -83,6 +82,9 @@ export class ClusterReachability {
       urls: [url],
     }));
 
+    // STUN servers are contacted only using UDP, so in order to test TCP reachability
+    // we pretend that Linus is a TURN server, because we can explicitly say "transport=tcp" in TURN urls.
+    // We then check for relay candidates to know if TURN-TCP worked (see registerIceCandidateListener()).
     const tcpIceServers = cluster.tcp.map((urlString: string) => {
       // urlString looks like this: "stun:external-media91.public.wjfkm-a-10.prod.infra.webex.com:5004"
       // and we need it to be like this: "turn:external-media91.public.wjfkm-a-10.prod.infra.webex.com:5004?transport=tcp"
@@ -114,7 +116,6 @@ export class ClusterReachability {
     try {
       const config = this.buildPeerConnectionConfig(clusterInfo);
 
-      console.log(`marcin: config=${JSON.stringify(config)}`);
       const peerConnection = new RTCPeerConnection(config);
 
       return peerConnection;
@@ -157,7 +158,7 @@ export class ClusterReachability {
    * @param {string} publicIP
    * @returns {void}
    */
-  protected addPublicIP(protocol: 'udp' | 'tcp', publicIP?: string | null) {
+  private addPublicIP(protocol: 'udp' | 'tcp', publicIP?: string | null) {
     const {CLOSED} = CONNECTION_STATE;
 
     if (this.pc?.connectionState === CLOSED) {
@@ -184,9 +185,6 @@ export class ClusterReachability {
       const {COMPLETE} = ICE_GATHERING_STATE;
 
       if (this.pc.iceConnectionState === COMPLETE) {
-        console.log(
-          `marcin: ${this.name}: this.pc.iceConnectionState=${this.pc.iceConnectionState}`
-        );
         this.closePeerConnection();
         this.finishReachabilityCheck();
       }
@@ -207,6 +205,19 @@ export class ClusterReachability {
     return ['udp', 'tcp'].every((protocol) => expecting[protocol] === gotResult[protocol]);
   }
 
+  private storeLatencyResult(protocol: 'udp' | 'tcp', latency: number) {
+    const result = this.result[protocol];
+
+    if (result.latencyInMilliseconds === undefined) {
+      LoggerProxy.logger.log(
+        // @ts-ignore
+        `Reachability:index#storeLatencyResult --> Successfully reached ${this.name} over ${protocol}: ${latency}ms`
+      );
+      result.latencyInMilliseconds = latency.toString();
+      result.reachable = 'true';
+    }
+  }
+
   private registerIceCandidateListener() {
     this.pc.onicecandidate = (e) => {
       const CANDIDATE_TYPES = {
@@ -215,36 +226,15 @@ export class ClusterReachability {
       };
 
       if (e.candidate) {
-        if (e.candidate.type !== 'host') {
-          console.log('marcin: e.candidate', e.candidate);
-        }
         if (e.candidate.type === CANDIDATE_TYPES.SERVER_REFLEXIVE) {
-          if (this.result.udp.latencyInMilliseconds === undefined) {
-            const elapsed = this.getElapsedTime();
-
-            LoggerProxy.logger.log(
-              // @ts-ignore
-              `Reachability:index#onIceCandidate --> Successfully reached ${this.name} over UDP: ${elapsed}ms`
-            );
-            this.result.udp.latencyInMilliseconds = elapsed.toString();
-            this.result.udp.reachable = 'true';
-          }
+          this.storeLatencyResult('udp', this.getElapsedTime());
           this.addPublicIP('udp', e.candidate.address);
         }
 
         if (e.candidate.type === CANDIDATE_TYPES.RELAY) {
-          if (this.result.tcp.latencyInMilliseconds === undefined) {
-            const elapsed = this.getElapsedTime();
-
-            LoggerProxy.logger.log(
-              // @ts-ignore
-              `Reachability:index#onIceCandidate --> Successfully reached ${this.name} over TCP: ${elapsed}ms`
-            );
-            console.log(`marcin: ${this.name}: TCP: e.candidate`, e.candidate);
-            this.result.tcp.latencyInMilliseconds = elapsed.toString();
-            this.result.tcp.reachable = 'true';
-          }
-          this.addPublicIP('tcp', e.candidate.address);
+          this.storeLatencyResult('tcp', this.getElapsedTime());
+          // we don't add public IP for TCP, because in the case of relay candidates
+          // e.candidate.address is the TURN server address, not the client's public IP
         }
 
         if (this.haveWeGotAllResults()) {
