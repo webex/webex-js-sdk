@@ -1604,7 +1604,7 @@ export default class LocusInfo extends EventsScope {
 
   /**
    * if return from breakout to main session, need to use cached main session DTO since locus won't send the full locus (participants)
-   * if join breakout from main session, main session is not active for the attendee and remove main session locus cache
+   * if join breakout from main session, need to query main locus url (if response with 403 means no privilege, need to clear the cache)
    * @param {Object} newLocus
    * @returns {Object}
    * @memberof LocusInfo
@@ -1614,18 +1614,17 @@ export default class LocusInfo extends EventsScope {
     if (switchStatus.isReturnToMain && this.mainSessionLocusCache) {
       return cloneDeep(this.mainSessionLocusCache);
     }
-
-    const isMainSessionDTO =
-      this.mainSessionLocusCache && ControlsUtils.isMainSessionDTO(this.mainSessionLocusCache);
-    if (isMainSessionDTO) {
-      const isActive =
-        [LOCUS.STATE.ACTIVE, LOCUS.STATE.INITIALIZING, LOCUS.STATE.TERMINATING].includes(
-          this.fullState?.state
-        ) && !this.mainSessionLocusCache?.self?.removed;
-
-      if (!isActive) {
-        this.clearMainSessionLocusCache();
-      }
+    if (switchStatus.isJoinToBreakout) {
+      this.emitScoped(
+        {
+          file: 'locus-info',
+          function: 'updateControls',
+        },
+        LOCUSINFO.EVENTS.CONTROLS_JOIN_BREAKOUT_FROM_MAIN,
+        {
+          mainLocusUrl: this.url,
+        }
+      );
     }
 
     return newLocus;

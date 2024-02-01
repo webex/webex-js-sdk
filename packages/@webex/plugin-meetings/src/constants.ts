@@ -580,8 +580,6 @@ export const LOCUS = {
     INACTIVE: 'INACTIVE',
     ENDED: 'ENDED',
     INITIALIZING: 'INITIALIZING',
-    ACTIVE: 'ACTIVE',
-    TERMINATING: 'TERMINATING',
   },
   SEQUENCE: {
     UN_DEF: 'undef',
