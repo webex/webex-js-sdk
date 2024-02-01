@@ -566,6 +566,7 @@ export default class Meeting extends StatelessWebexPlugin {
   meetingState: any;
   permissionToken: string;
   permissionTokenPayload: any;
+  tokenReceivedTime: number;
   resourceId: any;
   resourceUrl: string;
   selfId: string;
@@ -3540,6 +3541,7 @@ export default class Meeting extends StatelessWebexPlugin {
    */
   public setPermissionTokenPayload(permissionToken: string) {
     this.permissionTokenPayload = jwt.decode(permissionToken);
+    this.tokenReceivedTime = new Date().getTime();
   }
 
   /**
@@ -7979,16 +7981,20 @@ export default class Meeting extends StatelessWebexPlugin {
     }
 
     const permissionTokenExpValue = Number(this.permissionTokenPayload.exp);
+    const permissionTokenIssuedTime = Number(this.permissionTokenPayload.iat);
+
+    const shiftInTime = this.tokenReceivedTime - permissionTokenIssuedTime;
 
     // using new Date instead of Date.now() to allow for accurate unit testing
     // https://github.com/sinonjs/fake-timers/issues/321
-    const now = new Date().getTime();
+    const currentTime = new Date().getTime();
 
-    // substract current time from the permissionTokenExp
-    // (permissionTokenExp is a epoch timestamp, not a time to live duration)
-    const timeLeft = (permissionTokenExpValue - now) / 1000;
+    // This is done incase your machine time is wrong
+    const adjustedCurrentTime = currentTime - shiftInTime;
 
-    return {timeLeft, expiryTime: permissionTokenExpValue, currentTime: now};
+    const timeLeft = (permissionTokenExpValue - adjustedCurrentTime) / 1000;
+
+    return {timeLeft, expiryTime: permissionTokenExpValue, currentTime};
   }
 
   /**
