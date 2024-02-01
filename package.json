@@ -30,7 +30,7 @@
     "prebuild": "yarn run clean",
     "build:publish": "yarn build:package && yarn workspaces foreach --parallel --verbose run build:src",
     "build:tools": "yarn workspaces foreach --from '@webex/*-tools' --topological-dev --parallel --verbose run build:src",
-    "build:local": "yarn ws:tools && yarn package-tools sync --tag next && yarn workspaces foreach --parallel --verbose run build:src && yarn run samples:build",
+    "build:local": "yarn ws:tools && yarn package-tools sync --tag next && yarn workspace @webex/webex-core run build:src && yarn workspaces foreach --parallel --verbose run build:src && yarn run samples:build",
     "build": "yarn workspace @webex/media-helpers run build:src && yarn workspace @webex/calling run build:src && node ./tooling/index.js build && yarn && yarn ws:tools build && yarn run build:tsc",
     "build:tsc": "yarn run tsc -p ./config/tsconfig.typecheck.json --noEmit && yarn workspace @webex/internal-plugin-metrics run build && yarn workspace @webex/plugin-meetings run build",
     "build:script": "node ./tooling/index.js build --umd",

@@ -5,7 +5,7 @@ import {WebexHttpError} from '@webex/webex-core';
 import CallDiagnosticMetrics from '../../../../src/call-diagnostic/call-diagnostic-metrics';
 import CallDiagnosticLatencies from '../../../../src/call-diagnostic/call-diagnostic-metrics-latencies';
 import * as Utils from '../../../../src/call-diagnostic/call-diagnostic-metrics.util';
-import {BrowserDetection} from '@webex/common';
+import {BrowserDetection, getBrowserSerial} from '@webex/common';
 import {getOSNameInternal} from '@webex/internal-plugin-metrics';
 import uuid from 'uuid';
 import {omit} from 'lodash';
@@ -28,6 +28,7 @@ describe('internal-plugin-metrics', () => {
     const fakeMeeting = {
       id: '1',
       correlationId: 'correlationId',
+      callStateForMetrics: {},
       environment: 'meeting_evn',
       locusUrl: 'locus/url',
       locusInfo: {
@@ -37,6 +38,18 @@ describe('internal-plugin-metrics', () => {
       },
       meetingInfo: {},
       getCurUserType: () => 'host',
+    };
+
+    const fakeMeeting2 = {
+      ...fakeMeeting,
+      id: '2',
+      correlationId: 'correlationId2',
+      callStateForMetrics: {loginType: 'fakeLoginType'},
+    };
+
+    const fakeMeetings = {
+      1: fakeMeeting,
+      2: fakeMeeting2,
     };
 
     let webex;
@@ -71,7 +84,7 @@ describe('internal-plugin-metrics', () => {
             },
           },
           meetingCollection: {
-            get: () => fakeMeeting,
+            get: (id) => fakeMeetings[id],
           },
           geoHintInfo: {
             clientAddress: '1.3.4.5',
@@ -113,7 +126,6 @@ describe('internal-plugin-metrics', () => {
     describe('#getOrigin', () => {
       it('should build origin correctly', () => {
         sinon.stub(Utils, 'anonymizeIPAddress').returns('1.1.1.1');
-
         //@ts-ignore
         const res = cd.getOrigin(
           {subClientType: 'WEB_APP', clientType: 'TEAMS_CLIENT'},
@@ -628,6 +640,51 @@ describe('internal-plugin-metrics', () => {
         ]);
       });
 
+      it('should log browser data, but only for the first call diagnostic event', () => {
+        const prepareDiagnosticEventSpy = sinon.spy(cd, 'prepareDiagnosticEvent');
+        const submitToCallDiagnosticsSpy = sinon.spy(cd, 'submitToCallDiagnostics');
+        const generateClientEventErrorPayloadSpy = sinon.spy(cd, 'generateClientEventErrorPayload');
+        const getIdentifiersSpy = sinon.spy(cd, 'getIdentifiers');
+        const getSubServiceTypeSpy = sinon.spy(cd, 'getSubServiceType');
+        const validatorSpy = sinon.spy(cd, 'validator');
+        const options = {
+          meetingId: fakeMeeting.id,
+          mediaConnections: [{mediaAgentAlias: 'alias', mediaAgentGroupId: '1'}],
+        };
+
+        cd.submitClientEvent({
+          name: 'client.alert.displayed',
+          options,
+        });
+
+        cd.submitClientEvent({
+          name: 'client.alert.displayed',
+          options,
+        });
+
+        const webexLoggerLogCalls = webex.logger.log.getCalls();
+
+        assert.deepEqual(webexLoggerLogCalls.length, 3);
+
+        assert.deepEqual(webexLoggerLogCalls[0].args, [
+          'call-diagnostic-events -> ',
+          'CallDiagnosticMetrics: @submitClientEvent. Submit Client Event CA event.',
+          `name: client.alert.displayed`,
+        ]);
+
+        assert.deepEqual(webexLoggerLogCalls[1].args, [
+          'call-diagnostic-events -> ',
+          'CallDiagnosticMetrics: @createClientEventObjectInMeeting => collected browser data',
+          '{"error":"unable to access window.navigator.userAgent"}',
+        ]);
+
+        assert.deepEqual(webexLoggerLogCalls[2].args, [
+          'call-diagnostic-events -> ',
+          'CallDiagnosticMetrics: @submitClientEvent. Submit Client Event CA event.',
+          `name: client.alert.displayed`,
+        ]);
+      });
+
       it('should submit client event successfully with correlationId, webexConferenceIdStr and globalMeetingId', () => {
         const prepareDiagnosticEventSpy = sinon.spy(cd, 'prepareDiagnosticEvent');
         const submitToCallDiagnosticsSpy = sinon.spy(cd, 'submitToCallDiagnostics');
@@ -789,6 +846,55 @@ describe('internal-plugin-metrics', () => {
           originTime: {
             triggered: now.toISOString(),
             sent: now.toISOString(),
+          },
+          senderCountryCode: 'UK',
+          version: 1,
+        });
+      });
+
+      it('should use meeting loginType if present and meetingId provided', () => {
+        const submitToCallDiagnosticsSpy = sinon.spy(cd, 'submitToCallDiagnostics');
+        sinon.stub(cd, 'getOrigin').returns({origin: 'fake-origin'});
+        const options = {
+          meetingId: fakeMeeting2.id,
+          mediaConnections: [{mediaAgentAlias: 'alias', mediaAgentGroupId: '1'}],
+        };
+
+        cd.submitClientEvent({
+          name: 'client.alert.displayed',
+          options,
+        });
+
+        assert.calledWith(submitToCallDiagnosticsSpy, {
+          event: {
+            canProceed: true,
+            eventData: {
+              webClientDomain: 'whatever',
+            },
+            identifiers: {
+              correlationId: 'correlationId2',
+              deviceId: 'deviceUrl',
+              locusId: 'url',
+              locusStartTime: 'lastActive',
+              locusUrl: 'locus/url',
+              mediaAgentAlias: 'alias',
+              mediaAgentGroupId: '1',
+              orgId: 'orgId',
+              userId: 'userId',
+            },
+            loginType: 'fakeLoginType',
+            name: 'client.alert.displayed',
+            userType: 'host',
+            isConvergedArchitectureEnabled: undefined,
+            webexSubServiceType: undefined,
+          },
+          eventId: 'my-fake-id',
+          origin: {
+            origin: 'fake-origin',
+          },
+          originTime: {
+            sent: 'not_defined_yet',
+            triggered: now.toISOString(),
           },
           senderCountryCode: 'UK',
           version: 1,

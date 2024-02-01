@@ -53,7 +53,7 @@ export default class Parser {
 
   queue: SortedQueue<LocusDeltaDto>;
   workingCopy: any;
-  syncTimer: null | number | NodeJS.Timeout;
+  syncTimer?: ReturnType<typeof setTimeout>;
 
   /**
    * @constructs Parser
@@ -85,7 +85,7 @@ export default class Parser {
     this.status = 'IDLE';
     this.onDeltaAction = null;
     this.workingCopy = null;
-    this.syncTimer = null;
+    this.syncTimer = undefined;
   }
 
   /**
@@ -673,11 +673,11 @@ export default class Parser {
    * @returns {undefined}
    */
   private startSyncTimer() {
-    if (this.syncTimer === null) {
+    if (this.syncTimer === undefined) {
       const timeout = OOO_DELTA_WAIT_TIME + Math.random() * OOO_DELTA_WAIT_TIME_RANDOM_DELAY;
 
       this.syncTimer = setTimeout(() => {
-        this.syncTimer = null;
+        this.syncTimer = undefined;
         this.triggerSync('timer expired, blocked on out-of-order delta');
       }, timeout);
     }
@@ -689,9 +689,9 @@ export default class Parser {
    * @returns {undefined}
    */
   private stopSyncTimer() {
-    if (this.syncTimer !== null) {
+    if (this.syncTimer !== undefined) {
       clearTimeout(this.syncTimer);
-      this.syncTimer = null;
+      this.syncTimer = undefined;
     }
   }
 

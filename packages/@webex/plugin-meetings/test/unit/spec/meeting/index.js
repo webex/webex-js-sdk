@@ -308,6 +308,7 @@ describe('plugin-meetings', () => {
           assert.equal(meeting.resource, uuid2);
           assert.equal(meeting.deviceUrl, uuid3);
           assert.equal(meeting.correlationId, correlationId);
+          assert.deepEqual(meeting.callStateForMetrics, {correlationId});
           assert.deepEqual(meeting.meetingInfo, {});
           assert.instanceOf(meeting.members, Members);
           assert.calledOnceWithExactly(
@@ -375,6 +376,34 @@ describe('plugin-meetings', () => {
             }
           );
           assert.equal(newMeeting.correlationId, newMeeting.id);
+          assert.deepEqual(newMeeting.callStateForMetrics, {correlationId: newMeeting.id});
+        });
+
+        it('correlationId can be provided in callStateForMetrics', () => {
+          const newMeeting = new Meeting(
+            {
+              userId: uuid1,
+              resource: uuid2,
+              deviceUrl: uuid3,
+              locus: {url: url1},
+              destination: testDestination,
+              destinationType: _MEETING_ID_,
+              callStateForMetrics: {
+                correlationId: uuid4,
+                joinTrigger: 'fake-join-trigger',
+                loginType: 'fake-login-type',
+              }
+            },
+            {
+              parent: webex,
+            }
+          );
+          assert.equal(newMeeting.correlationId, uuid4);
+          assert.deepEqual(newMeeting.callStateForMetrics, {
+            correlationId: uuid4,
+            joinTrigger: 'fake-join-trigger',
+            loginType: 'fake-login-type',
+          });
         });
 
         describe('creates ReceiveSlot manager instance', () => {
@@ -851,6 +880,17 @@ describe('plugin-meetings', () => {
             assert.calledOnce(meeting.startTranscription);
           });
 
+          it('should take trigger from meeting joinTrigger if available', () => {
+            meeting.updateCallStateForMetrics({joinTrigger: 'fake-join-trigger'});
+            const join = meeting.join();
+
+            assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
+              name: 'client.call.initiated',
+              payload: {trigger: 'fake-join-trigger', isRoapCallEnabled: true},
+              options: {meetingId: meeting.id},
+            });
+          });
+
           it('should not create new correlation ID on join immediately after create', async () => {
             await meeting.join();
             sinon.assert.notCalled(setCorrelationIdSpy);
@@ -1173,8 +1213,8 @@ describe('plugin-meetings', () => {
           assert.exists(meeting.addMedia);
         });
 
-        it('should reject promise if meeting is not active', async () => {
-          const result = await assert.isRejected(meeting.addMedia());
+        it('should reject promise if meeting is not active and the meeting in lobby is not enabled', async () => {
+          const result = await assert.isRejected(meeting.addMedia({allowMediaInLobby: false}));
 
           assert.instanceOf(result, MeetingNotActiveError);
         });
@@ -2583,8 +2623,12 @@ describe('plugin-meetings', () => {
             setUnmuteAllowed: sinon.stub(),
             setMuted: sinon.stub(),
             setServerMuted: sinon.stub(),
-            outputTrack: {
-              id: 'fake mic'
+            outputStream: {
+              getTracks: () => {
+                return [{
+                  id: 'fake mic'
+                }];
+              }
             }
           }
 
@@ -2795,10 +2839,10 @@ describe('plugin-meetings', () => {
             assert.calledOnceWithExactly(roapMediaConnectionConstructorStub, mediaConnectionConfig,
               {
                 localTracks: {
-                  audio: localStreams.audio?.outputTrack,
-                  video: localStreams.video?.outputTrack,
-                  screenShareVideo: localStreams.screenShareVideo?.outputTrack,
-                  screenShareAudio: localStreams.screenShareAudio?.outputTrack,
+                  audio: localStreams.audio?.outputStream?.getTracks()[0],
+                  video: localStreams.video?.outputStream?.getTracks()[0],
+                  screenShareVideo: localStreams.screenShareVideo?.outputStream?.getTracks()[0],
+                  screenShareAudio: localStreams.screenShareAudio?.outputStream?.getTracks()[0],
                 },
                 direction: {audio: direction.audio, video: direction.video, screenShareVideo: direction.screenShare},
                 remoteQualityLevel,
@@ -3073,7 +3117,7 @@ describe('plugin-meetings', () => {
                   assert.calledOnceWithExactly(meeting.sendSlotManager.getSlot(MediaType.AudioMain).publishStream, fakeMicrophoneStream);
                 } else {
                   assert.calledOnceWithExactly(fakeRoapMediaConnection.update, {
-                    localTracks: { audio: fakeMicrophoneStream.outputTrack, video: null, screenShareVideo: null, screenShareAudio: null },
+                    localTracks: { audio: fakeMicrophoneStream.outputStream.getTracks()[0], video: null, screenShareVideo: null, screenShareAudio: null },
                     direction: {
                       audio: expected.direction,
                       video: 'sendrecv',
@@ -3099,8 +3143,12 @@ describe('plugin-meetings', () => {
                   muted: false,
                   setUnmuteAllowed: sinon.stub(),
                   setMuted: sinon.stub(),
-                  outputTrack:{
-                    id: 'fake mic 2',
+                  outputStream: {
+                    getTracks: () => {
+                      return [{
+                        id: 'fake mic 2',
+                      }];
+                    }
                   }
                 }
 
@@ -3112,7 +3160,7 @@ describe('plugin-meetings', () => {
                   assert.calledOnceWithExactly(meeting.sendSlotManager.getSlot(MediaType.AudioMain).publishStream, fakeMicrophoneStream2);
                 } else {
                   assert.calledOnceWithExactly(fakeRoapMediaConnection.update, {
-                    localTracks: { audio: fakeMicrophoneStream2.outputTrack, video: null, screenShareVideo: null, screenShareAudio: null },
+                    localTracks: { audio: fakeMicrophoneStream2.outputStream.getTracks()[0], video: null, screenShareVideo: null, screenShareAudio: null },
                     direction: {
                       audio: expected.direction,
                       video: 'sendrecv',
@@ -3183,7 +3231,7 @@ describe('plugin-meetings', () => {
               assert.equal(meeting.sendSlotManager.getSlot(MediaType.AudioMain).active, expectedDirection !== 'inactive');
             } else {
               assert.calledOnceWithExactly(fakeRoapMediaConnection.update, {
-                localTracks: { audio: expectedStream?.outputTrack ?? null, video: null, screenShareVideo: null, screenShareAudio: null },
+                localTracks: { audio: expectedStream?.outputStream.getTracks()[0] ?? null, video: null, screenShareVideo: null, screenShareAudio: null },
                 direction: {
                   audio: expectedDirection,
                   video: 'sendrecv',
@@ -3633,7 +3681,11 @@ describe('plugin-meetings', () => {
         let sandbox;
 
         const createFakeLocalStream = () => ({
-          outputTrack: {id: 'fake underlying track'},
+          outputStream: {
+            getTracks: () => {
+              return [{id: 'fake underlying track'}];
+            }
+          }
         });
         beforeEach(() => {
           sandbox = sinon.createSandbox();
@@ -3716,10 +3768,10 @@ describe('plugin-meetings', () => {
             meeting.mediaProperties.webrtcMediaConnection.update,
             {
               localTracks: {
-                audio: meeting.mediaProperties.audioStream.outputTrack,
-                video: meeting.mediaProperties.videoStream.outputTrack,
-                screenShareVideo: meeting.mediaProperties.shareVideoStream.outputTrack,
-                screenShareAudio: meeting.mediaProperties.shareVideoStream.outputTrack,
+                audio: meeting.mediaProperties.audioStream.outputStream.getTracks()[0],
+                video: meeting.mediaProperties.videoStream.outputStream.getTracks()[0],
+                screenShareVideo: meeting.mediaProperties.shareVideoStream.outputStream.getTracks()[0],
+                screenShareAudio: meeting.mediaProperties.shareVideoStream.outputStream.getTracks()[0],
               },
               direction: {
                 audio: 'inactive',
@@ -3748,7 +3800,13 @@ describe('plugin-meetings', () => {
             meeting.mediaProperties.mediaDirection = mediaDirection;
             meeting.mediaProperties.remoteVideoStream = sinon
               .stub()
-              .returns({outputTrack: {id: 'some mock id'}});
+              .returns({
+                outputStream: {
+                  getTracks: () => {
+                    id: 'some mock id'
+                  }
+                }
+              });
 
             meeting.meetingRequest.changeVideoLayoutDebounced = sinon
               .stub()
@@ -4573,7 +4631,7 @@ describe('plugin-meetings', () => {
         };
         const FAKE_MEETING_INFO_LOOKUP_URL = 'meetingLookupUrl';
         const FAKE_PERMISSION_TOKEN = {someField: 'some value'};
-        const FAKE_TTL = 13;
+        const FAKE_TIMESTAMPS = {timeLeft: 13, expiryTime: 123456, currentTime: 123478};
 
         beforeEach(() => {
           meeting.locusId = 'locus-id';
@@ -4583,7 +4641,7 @@ describe('plugin-meetings', () => {
           meeting.destination = 'meeting-destination';
           meeting.destinationType = 'meeting-destination-type';
           meeting.updateMeetingActions = sinon.stub().returns(undefined);
-          meeting.getPermissionTokenTimeLeftInSec = sinon.stub().returns(FAKE_TTL);
+          
           meeting.meetingInfoExtraParams = {
             extraParam1: 'value1'
           };
@@ -4604,6 +4662,7 @@ describe('plugin-meetings', () => {
         });
 
         it('calls meetingInfoProvider.fetchMeetingInfo() with the right params', async () => {
+          meeting.getPermissionTokenExpiryInfo = sinon.stub().returns(FAKE_TIMESTAMPS);
           await meeting.refreshPermissionToken('fake reason');
 
           assert.calledOnceWithExactly(
@@ -4636,7 +4695,52 @@ describe('plugin-meetings', () => {
           assert.calledWith(
             Metrics.sendBehavioralMetric, BEHAVIORAL_METRICS.PERMISSION_TOKEN_REFRESH, {
               correlationId: meeting.correlationId,
-              timeLeft: FAKE_TTL,
+              timeLeft: FAKE_TIMESTAMPS.timeLeft,
+              expiryTime: FAKE_TIMESTAMPS.expiryTime,
+              currentTime: FAKE_TIMESTAMPS.currentTime,
+              reason: 'fake reason',
+              destinationType: 'meeting-destination-type',
+            }
+          );
+        });
+
+        it('calls meetingInfoProvider.fetchMeetingInfo() with the right params when getPermissionTokenExpiryInfo returns undefined', async () => {
+          meeting.getPermissionTokenExpiryInfo = sinon.stub().returns(undefined);
+          await meeting.refreshPermissionToken('fake reason');
+
+          assert.calledOnceWithExactly(
+            meeting.attrs.meetingInfoProvider.fetchMeetingInfo,
+            'meeting-destination',
+            'meeting-destination-type',
+            null,
+            null,
+            'fake-installed-org-id',
+            'locus-id',
+            {extraParam1: 'value1', permissionToken: FAKE_PERMISSION_TOKEN},
+            {meetingId: meeting.id, sendCAevents: true}
+          );
+          assert.deepEqual(meeting.meetingInfo, {
+            ...FAKE_MEETING_INFO,
+            meetingLookupUrl: FAKE_MEETING_INFO_LOOKUP_URL
+          });
+          assert.equal(meeting.meetingInfoFailureReason, MEETING_INFO_FAILURE_REASON.NONE);
+          assert.equal(meeting.requiredCaptcha, null);
+          assert.equal(meeting.passwordStatus, PASSWORD_STATUS.NOT_REQUIRED);
+
+          assert.calledWith(
+            TriggerProxy.trigger,
+            meeting,
+            {file: 'meetings', function: 'fetchMeetingInfo'},
+            'meeting:meetingInfoAvailable'
+          );
+          assert.calledWith(meeting.updateMeetingActions);
+
+          assert.calledWith(
+            Metrics.sendBehavioralMetric, BEHAVIORAL_METRICS.PERMISSION_TOKEN_REFRESH, {
+              correlationId: meeting.correlationId,
+              timeLeft: undefined,
+              expiryTime: undefined,
+              currentTime: undefined,
               reason: 'fake reason',
               destinationType: 'meeting-destination-type',
             }
@@ -4644,6 +4748,7 @@ describe('plugin-meetings', () => {
         });
 
         it('calls meetingInfoProvider.fetchMeetingInfo() with the right params when we are starting an instant space meeting', async () => {
+          meeting.getPermissionTokenExpiryInfo = sinon.stub().returns(FAKE_TIMESTAMPS);
           meeting.destination = 'some-convo-url';
           meeting.destinationType = 'CONVERSATION_URL';
           meeting.config.experimental = {enableAdhocMeetings: true};
@@ -4685,7 +4790,9 @@ describe('plugin-meetings', () => {
           assert.calledWith(
             Metrics.sendBehavioralMetric, BEHAVIORAL_METRICS.PERMISSION_TOKEN_REFRESH, {
               correlationId: meeting.correlationId,
-              timeLeft: FAKE_TTL,
+              timeLeft: FAKE_TIMESTAMPS.timeLeft,
+              expiryTime: FAKE_TIMESTAMPS.expiryTime,
+              currentTime: FAKE_TIMESTAMPS.currentTime,
               reason: 'some reason',
               destinationType: 'MEETING_LINK',
             }
@@ -5178,6 +5285,31 @@ describe('plugin-meetings', () => {
           }
         });
       });
+
+      describe('#setCorrelationId', () => {
+        it('should set the correlationId and return undefined', () => {
+          assert.equal(meeting.correlationId, correlationId);
+          assert.deepEqual(meeting.callStateForMetrics, {correlationId});
+          meeting.setCorrelationId(uuid1);
+          assert.equal(meeting.correlationId, uuid1);
+          assert.deepEqual(meeting.callStateForMetrics, {correlationId: uuid1});
+        });
+      });
+
+      describe('#updateCallStateForMetrics', () => {
+        it('should update the callState, overriding existing values', () => {
+          assert.deepEqual(meeting.callStateForMetrics, {correlationId});
+          meeting.updateCallStateForMetrics({correlationId: uuid1, joinTrigger: 'jt', loginType: 'lt'});
+          assert.deepEqual(meeting.callStateForMetrics, {correlationId: uuid1, joinTrigger: 'jt', loginType: 'lt'});
+        });
+
+        it('should update the callState, keeping non-supplied values', () => {
+          assert.deepEqual(meeting.callStateForMetrics, {correlationId});
+          meeting.updateCallStateForMetrics({joinTrigger: 'jt', loginType: 'lt'});
+          assert.deepEqual(meeting.callStateForMetrics, {correlationId, joinTrigger: 'jt', loginType: 'lt'});
+        });
+      });
+
       describe('Local tracks publishing', () => {
         let audioStream;
         let videoStream;
@@ -5577,6 +5709,16 @@ describe('plugin-meetings', () => {
             });
           });
 
+          it('should reconnect successfully if reconnectionManager.cleanUp is called before reconnection attempt', async () => {
+            meeting.reconnectionManager.cleanUp();
+
+            try {
+              await meeting.reconnect();
+            } catch (err) {
+              assert.fail('reconnect should not error after clean up');
+            }
+          })
+
           it('should trigger reconnection success and send CA metric', async () => {
             await meeting.reconnect();
 
@@ -5662,7 +5804,7 @@ describe('plugin-meetings', () => {
         it('should stop remote tracks, and trigger a media:stopped event when the remote tracks are stopped', async () => {
           await meeting.closeRemoteStreams();
 
-          assert.equal(TriggerProxy.trigger.callCount, 6);
+          assert.equal(TriggerProxy.trigger.callCount, 5);
           assert.calledWith(
             TriggerProxy.trigger,
             sinon.match.instanceOf(Meeting),
@@ -7249,12 +7391,18 @@ describe('plugin-meetings', () => {
         it('sets correctly when policy data is present in token', () => {
           assert.notOk(meeting.selfUserPolicies);
 
-          const policyData = {permission: {userPolicies: {a: true}}};
+          const testUrl = 'https://example.com';
+
+          const policyData = {permission: {
+            userPolicies: {a: true},
+            enforceVBGImagesURL: testUrl
+          }};
           meeting.permissionTokenPayload = policyData;
 
           meeting.setSelfUserPolicies();
 
           assert.deepEqual(meeting.selfUserPolicies, policyData.permission.userPolicies);
+          assert.equal(meeting.enforceVBGImagesURL, testUrl);
         });
 
         it('handles missing permission data', () => {
@@ -7519,14 +7667,6 @@ describe('plugin-meetings', () => {
           };
           meeting.parseMeetingInfo(mockToggleOnData);
           assert.calledOnceWithExactly(parseInterpretationInfo, meeting, mockToggleOnData.body);
-        });
-      });
-
-      describe('#setCorrelationId', () => {
-        it('should set the correlationId and return undefined', () => {
-          assert.ok(meeting.correlationId);
-          meeting.setCorrelationId(uuid1);
-          assert.equal(meeting.correlationId, uuid1);
         });
       });
 
@@ -7951,6 +8091,60 @@ describe('plugin-meetings', () => {
                 {
                   supportHDV: meeting.inMeetingActions.supportHDV,
                   supportHQV: meeting.inMeetingActions.supportHQV,
+                },
+                expectedActions
+              );
+            });
+          }
+        );
+
+        forEach(
+          [
+            // policies supported and enforce is true
+            {
+              meetingInfo: {video: {}},
+              selfUserPolicies: {
+                [SELF_POLICY.ENFORCE_VIRTUAL_BACKGROUND]: true,
+              },
+              expectedActions: {
+                enforceVirtualBackground: true,
+              },
+            },
+            // policies supported and enforce is false
+            {
+              meetingInfo: {video: {}},
+              selfUserPolicies: {
+                [SELF_POLICY.ENFORCE_VIRTUAL_BACKGROUND]: false,
+              },
+              expectedActions: {
+                enforceVirtualBackground: false,
+              },
+            },
+            // policies not supported but enforce is true
+            {
+              meetingInfo: undefined,
+              selfUserPolicies: {
+                [SELF_POLICY.ENFORCE_VIRTUAL_BACKGROUND]: true,
+              },
+              expectedActions: {
+                enforceVirtualBackground: false,
+              },
+            },
+          ],
+          ({meetingInfo, selfUserPolicies, expectedActions}) => {
+            it(`expectedActions are ${JSON.stringify(
+              expectedActions
+            )} when policies are ${JSON.stringify(
+              selfUserPolicies
+            )} and meetingInfo is ${JSON.stringify(meetingInfo)}`, () => {
+              meeting.meetingInfo = meetingInfo;
+              meeting.selfUserPolicies = selfUserPolicies;
+
+              meeting.updateMeetingActions();
+
+              assert.deepEqual(
+                {
+                  enforceVirtualBackground: meeting.inMeetingActions.enforceVirtualBackground,
                 },
                 expectedActions
               );
@@ -10365,7 +10559,7 @@ describe('plugin-meetings', () => {
     });
   });
 
-  describe('#getPermissionTokenTimeLeftInSec', () => {
+  describe('#getPermissionTokenExpiryInfo', () => {
     let now;
     let clock;
 
@@ -10381,63 +10575,65 @@ describe('plugin-meetings', () => {
     })
 
     it('should return undefined if exp is undefined', () => {
-      assert.equal(meeting.getPermissionTokenTimeLeftInSec(), undefined)
+      assert.equal(meeting.getPermissionTokenExpiryInfo(), undefined)
     });
 
     it('should return the expected positive exp', () => {
       // set permission token as now + 1 sec
-      meeting.permissionTokenPayload = {exp: (now + 1000).toString()};
-      assert.equal(meeting.getPermissionTokenTimeLeftInSec(), 1);
+      const expiryTime = now + 1000;
+      meeting.permissionTokenPayload = {exp: (expiryTime).toString()};
+      assert.deepEqual(meeting.getPermissionTokenExpiryInfo(), {timeLeft: 1, expiryTime: Number(expiryTime), currentTime: now});
     });
 
     it('should return the expected negative exp', () => {
       // set permission token as now - 1 sec
-      meeting.permissionTokenPayload = {exp: (now - 1000).toString()};
-      assert.equal(meeting.getPermissionTokenTimeLeftInSec(), -1);
+      const expiryTime = now - 1000;
+      meeting.permissionTokenPayload = {exp: (expiryTime).toString()};
+      assert.deepEqual(meeting.getPermissionTokenExpiryInfo(), {timeLeft: -1, expiryTime: Number(expiryTime), currentTime: now});
     });
   });
 
   describe('#checkAndRefreshPermissionToken', () => {
     it('should not fire refreshPermissionToken if permissionToken is not defined', async() => {
-      meeting.getPermissionTokenTimeLeftInSec = sinon.stub().returns(undefined)
+      meeting.getPermissionTokenExpiryInfo = sinon.stub().returns(undefined)
       meeting.refreshPermissionToken = sinon.stub().returns(Promise.resolve('test return value'));
 
       const returnValue = await meeting.checkAndRefreshPermissionToken(10, 'ttl-join');
 
-      assert.calledOnce(meeting.getPermissionTokenTimeLeftInSec);
+      assert.calledOnce(meeting.getPermissionTokenExpiryInfo);
       assert.notCalled(meeting.refreshPermissionToken);
       assert.equal(returnValue, undefined);
     });
 
     it('should fire refreshPermissionToken if time left is below 10sec', async() => {
-      meeting.getPermissionTokenTimeLeftInSec = sinon.stub().returns(9)
+      meeting.getPermissionTokenExpiryInfo = sinon.stub().returns({timeLeft: 9, expiryTime: 122132, currentTime: Date.now()})
       meeting.refreshPermissionToken = sinon.stub().returns(Promise.resolve('test return value'));
 
       const returnValue = await meeting.checkAndRefreshPermissionToken(10, 'ttl-join');
 
-      assert.calledOnce(meeting.getPermissionTokenTimeLeftInSec);
+      assert.calledOnce(meeting.getPermissionTokenExpiryInfo);
       assert.calledOnceWithExactly(meeting.refreshPermissionToken, 'ttl-join');
       assert.equal(returnValue, 'test return value');
     });
 
     it('should fire refreshPermissionToken if time left is equal 10sec', async () => {
-      meeting.getPermissionTokenTimeLeftInSec = sinon.stub().returns(10)
+      meeting.getPermissionTokenExpiryInfo = sinon.stub().returns({timeLeft: 10, expiryTime: 122132, currentTime: Date.now()})
       meeting.refreshPermissionToken = sinon.stub().returns(Promise.resolve('test return value'));
 
       const returnValue = await meeting.checkAndRefreshPermissionToken(10, 'ttl-join');
 
-      assert.calledOnce(meeting.getPermissionTokenTimeLeftInSec);
+      assert.calledOnce(meeting.getPermissionTokenExpiryInfo);
       assert.calledOnceWithExactly(meeting.refreshPermissionToken, 'ttl-join');
       assert.equal(returnValue, 'test return value');
     });
 
     it('should not fire refreshPermissionToken if time left is higher than 10sec', async () => {
-      meeting.getPermissionTokenTimeLeftInSec = sinon.stub().returns(11)
+      meeting.getPermissionTokenExpiryInfo = sinon.stub().returns({timeLeft: 11, expiryTime: 122132, currentTime: Date.now()})
       meeting.refreshPermissionToken = sinon.stub().returns(Promise.resolve('test return value'));
 
       const returnValue = await meeting.checkAndRefreshPermissionToken(10, 'ttl-join');
 
-      assert.calledOnce(meeting.getPermissionTokenTimeLeftInSec);
+      assert.calledOnce(meeting.getPermissionTokenExpiryInfo);
       assert.notCalled(meeting.refreshPermissionToken);
       assert.equal(returnValue, undefined);
     });

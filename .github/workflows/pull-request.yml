@@ -156,7 +156,10 @@ jobs:
       - name: Build Tools
         run: yarn workspaces foreach --from '@webex/*-tools' --topological-dev --parallel --verbose run build:src
 
-      - name: Build
+      - name: Build Webex Core
+        run: yarn workspace @webex/webex-core run build:src
+
+      - name: Build Other Packages
         run: yarn workspaces foreach --parallel --verbose run build:src
 
       - name: Cache Distributables
