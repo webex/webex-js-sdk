@@ -1,10 +1,5 @@
-import {
-  Commands,
-} from './models';
-
-import {
-  Executor,
-} from './utils';
+export { Commands } from './models';
+export { Executor } from './utils';
 
 export type {
   CommandsCommand,
@@ -15,8 +10,3 @@ export type {
 export type {
   ExecutorConfig,
 } from './utils';
-
-export {
-  Commands,
-  Executor,
-};
