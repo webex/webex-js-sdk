@@ -23,7 +23,7 @@ export const getAudioReceiverMqa = ({audioReceiver, statsResults, lastMqaDataSen
   }
 
   audioReceiver.common.common.direction = statsResults[mediaType].direction;
-  audioReceiver.common.common.isMain = !mediaType.includes('share');
+  audioReceiver.common.common.isMain = !mediaType.includes('-share');
   audioReceiver.common.transportType = statsResults.connectionType.local.transport;
 
   // add rtpPacket info inside common as also for call analyzer
@@ -84,7 +84,7 @@ export const getAudioSenderMqa = ({audioSender, statsResults, lastMqaDataSent, m
   }
 
   audioSender.common.common.direction = statsResults[mediaType].direction;
-  audioSender.common.common.isMain = !mediaType.includes('share');
+  audioSender.common.common.isMain = !mediaType.includes('-share');
   audioSender.common.transportType = statsResults.connectionType.local.transport;
 
   audioSender.common.maxRemoteJitter =
@@ -151,7 +151,7 @@ export const getVideoReceiverMqa = ({videoReceiver, statsResults, lastMqaDataSen
   }
 
   videoReceiver.common.common.direction = statsResults[mediaType].direction;
-  videoReceiver.common.common.isMain = !mediaType.includes('share');
+  videoReceiver.common.common.isMain = !mediaType.includes('-share');
   videoReceiver.common.transportType = statsResults.connectionType.local.transport;
 
   // collect the packets received for the last min
@@ -235,7 +235,7 @@ export const getVideoSenderMqa = ({videoSender, statsResults, lastMqaDataSent, m
   }
 
   videoSender.common.common.direction = statsResults[mediaType].direction;
-  videoSender.common.common.isMain = !mediaType.includes('share');
+  videoSender.common.common.isMain = !mediaType.includes('-share');
   videoSender.common.transportType = statsResults.connectionType.local.transport;
 
   // @ts-ignore
