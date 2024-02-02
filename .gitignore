@@ -1,3 +1,6 @@
+# Documentation
+packages/**/docs/
+
 ~*
 *.tmp
 .tmp_uploads
