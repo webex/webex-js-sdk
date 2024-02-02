@@ -212,9 +212,14 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
           clientType: options?.clientType || defaultClientType,
           clientVersion: providedClientVersion || defaultSDKClientVersion,
           ...versionMetadata,
-          localNetworkPrefix:
+          publicNetworkPrefix:
             // @ts-ignore
             anonymizeIPAddress(this.webex.meetings.geoHintInfo?.clientAddress) || undefined,
+          localNetworkPrefix:
+            anonymizeIPAddress(
+              // @ts-ignore
+              this.webex.meetings.getActiveWebrtcMeeting()?.getDiagnosticsLocalIp()
+            ) || undefined,
           osVersion: getOSVersion() || 'unknown',
           subClientType: options?.subClientType || defaultSubClientType,
           os: getOSNameInternal(),

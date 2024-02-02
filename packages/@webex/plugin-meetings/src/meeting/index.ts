@@ -579,6 +579,7 @@ export default class Meeting extends StatelessWebexPlugin {
   allowMediaInLobby: boolean;
   turnDiscoverySkippedReason: string;
   turnServerUsed: boolean;
+  diagnosticsInfo: {localIp?: string};
   private retriedWithTurnServer: boolean;
   private sendSlotManager: SendSlotManager = new SendSlotManager(LoggerProxy);
   private deferSDPAnswer?: Defer; // used for waiting for a response
@@ -980,6 +981,15 @@ export default class Meeting extends StatelessWebexPlugin {
      * @memberof Meeting
      */
     this.mediaConnections = null;
+
+    /**
+     * @instance
+     * @type {Object}
+     * @readonly
+     * @public
+     * @memberof Meeting
+     */
+    this.diagnosticsInfo = {};
 
     /**
      * If true, then media is sent over multiple separate streams.
@@ -5649,6 +5659,9 @@ export default class Meeting extends StatelessWebexPlugin {
         },
       });
     });
+    this.statsAnalyzer.on(StatsAnalyzerEvents.LOCAL_IP_UPDATED, (data: {localIp?: string}) => {
+      this.diagnosticsInfo.localIp = data?.localIp;
+    });
     this.statsAnalyzer.on(StatsAnalyzerEvents.LOCAL_MEDIA_STARTED, (data) => {
       Trigger.trigger(
         this,
@@ -5711,6 +5724,24 @@ export default class Meeting extends StatelessWebexPlugin {
 
   getMediaConnectionDebugId() {
     return `MC-${this.id.substring(0, 4)}`;
+  }
+
+  /**
+   * Returns the diagnostics information.
+   *
+   * @returns {Object} The diagnostics information.
+   */
+  getDiagnosticsInfo(): {localIp?: string} {
+    return this.diagnosticsInfo;
+  }
+
+  /**
+   * Returns the local IP address for diagnostics.
+   *
+   * @returns {string | undefined} The local IP address.
+   */
+  getDiagnosticsLocalIp(): string | undefined {
+    return this.getDiagnosticsInfo().localIp;
   }
 
   /**

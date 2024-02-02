@@ -1,6 +1,6 @@
 /* eslint-disable prefer-destructuring */
 
-import {cloneDeep} from 'lodash';
+import {cloneDeep, isEmpty} from 'lodash';
 import {ConnectionState} from '@webex/internal-media-core';
 
 import EventsScope from '../common/events/events-scope';
@@ -36,6 +36,7 @@ export const EVENTS = {
   LOCAL_MEDIA_STOPPED: 'LOCAL_MEDIA_STOPPED',
   REMOTE_MEDIA_STARTED: 'REMOTE_MEDIA_STARTED',
   REMOTE_MEDIA_STOPPED: 'REMOTE_MEDIA_STOPPED',
+  LOCAL_IP_UPDATED: 'LOCAL_IP_UPDATED',
 };
 
 const emptySender = {
@@ -78,6 +79,7 @@ export class StatsAnalyzer extends EventsScope {
   statsResults: any;
   statsStarted: any;
   successfulCandidatePair: any;
+  localIpAddress: string;
   receiveSlotCallback: ReceiveSlotCallback;
 
   /**
@@ -107,6 +109,7 @@ export class StatsAnalyzer extends EventsScope {
     this.lastEmittedStartStopEvent = {};
     this.receiveSlotCallback = receiveSlotCallback;
     this.successfulCandidatePair = {};
+    this.localIpAddress = '';
   }
 
   /**
@@ -438,6 +441,10 @@ export class StatsAnalyzer extends EventsScope {
       this.statsResults[type].direction = statsItem.currentDirection;
       this.statsResults[type].trackLabel = statsItem.localTrackLabel;
       this.statsResults[type].csi = statsItem.csi;
+      this.extractAndSetLocalIpAddressInfoForDiagnostics(
+        this.successfulCandidatePair?.localCandidateId,
+        this.statsResults?.internal
+      );
       // reset the successful candidate pair.
       this.successfulCandidatePair = {};
     }
@@ -1121,6 +1128,58 @@ export class StatsAnalyzer extends EventsScope {
   /**
    * Processes remote and local candidate result and stores
    * @private
+   * @param {string} successfulCandidatePairId - The ID of the successful candidate pair.
+   * @param {Object} statsResultsInternal - The internal statistics results object.
+   * @returns {void}
+   */
+  extractAndSetLocalIpAddressInfoForDiagnostics = (
+    successfulCandidatePairId: string,
+    statsResultsInternal: {
+      candidates: {[key: string]: Record<string, unknown>};
+    }
+  ) => {
+    let newIpAddress = '';
+    if (successfulCandidatePairId && !isEmpty(statsResultsInternal?.candidates)) {
+      const localCandidate = statsResultsInternal.candidates[successfulCandidatePairId];
+      if (localCandidate) {
+        if (localCandidate.candidateType === 'host') {
+          // if it's a host candidate, use the address property - it will be the local IP
+          newIpAddress = `${localCandidate.address}`;
+        } else if (localCandidate.candidateType === 'prflx') {
+          // if it's a peer reflexive candidate and we're not using a relay (there is no relayProtocol set)
+          // then look at the relatedAddress - it will be the local
+          //
+          // Firefox doesn't populate the relayProtocol property
+          if (!localCandidate.relayProtocol) {
+            newIpAddress = `${localCandidate.relatedAddress}`;
+          } else {
+            // if it's a peer reflexive candidate and we are using a relay -
+            // in that case the relatedAddress will be the IP of the TURN server (Linus),
+            // so we can only look at the address, but it might be local IP or public IP,
+            // depending on if the user is behind a NAT or not
+            newIpAddress = `${localCandidate.address}`;
+          }
+        }
+      }
+    }
+    if (newIpAddress && newIpAddress !== this.localIpAddress) {
+      this.localIpAddress = newIpAddress;
+      this.emit(
+        {
+          file: 'statsAnalyzer',
+          function: 'extractAndSetLocalIpAddressInfoForDiagnostics',
+        },
+        EVENTS.LOCAL_IP_UPDATED,
+        {
+          localIp: this.localIpAddress,
+        }
+      );
+    }
+  };
+
+  /**
+   * Processes remote and local candidate result and stores
+   * @private
    * @param {*} result
    * @param {*} type
    * @param {boolean} isSender
@@ -1151,6 +1210,11 @@ export class StatsAnalyzer extends EventsScope {
     this.statsResults.internal.candidates[result.id] = {
       candidateType: result.candidateType,
       ipAddress: result.ip, // TODO: add ports
+      relatedAddress: result.relatedAddress,
+      relatedPort: result.relatedPort,
+      relayProtocol: result.relayProtocol,
+      protocol: result.protocol,
+      address: result.address,
       portNumber: result.port,
       networkType: result.networkType,
       priority: result.priority,
