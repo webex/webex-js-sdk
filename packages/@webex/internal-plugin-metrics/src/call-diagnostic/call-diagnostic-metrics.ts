@@ -6,6 +6,7 @@ import {BrowserDetection, getBrowserSerial} from '@webex/common';
 import uuid from 'uuid';
 import {merge} from 'lodash';
 import {StatelessWebexPlugin} from '@webex/webex-core';
+import {WcmeError} from '@webex/internal-media-core';
 
 import {
   anonymizeIPAddress,
@@ -18,6 +19,7 @@ import {
   isBrowserMediaErrorName,
   isNetworkError,
   isUnauthorizedError,
+  isSdpOfferCreationError,
 } from './call-diagnostic-metrics.util';
 import {CLIENT_NAME} from '../config';
 import {
@@ -52,7 +54,9 @@ import {
   NETWORK_ERROR,
   AUTHENTICATION_FAILED_CODE,
   WEBEX_SUB_SERVICE_TYPES,
+  SDP_OFFER_CREATION_ERROR_MAP,
 } from './config';
+
 import {generateCommonErrorMetadata} from '../utils';
 
 const {getOSVersion, getBrowserName, getBrowserVersion} = BrowserDetection();
@@ -516,6 +520,19 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
           rawErrorMessage,
         });
       }
+    }
+
+    if (isSdpOfferCreationError(rawError)) {
+      // error code is 30005, but that's not specific enough. we also need to check error.cause.type
+      const causeType = rawError.cause?.type;
+
+      return this.getErrorPayloadForClientErrorCode({
+        serviceErrorCode: undefined,
+        clientErrorCode:
+          SDP_OFFER_CREATION_ERROR_MAP[causeType] || SDP_OFFER_CREATION_ERROR_MAP.GENERAL,
+        serviceErrorName: rawError.name,
+        rawErrorMessage,
+      });
     }
 
     const serviceErrorCode =

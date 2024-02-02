@@ -1,6 +1,7 @@
 /* eslint-disable valid-jsdoc */
 import anonymize from 'ip-anonymize';
 import util from 'util';
+import {Errors} from '@webex/internal-media-core';
 
 import {BrowserDetection} from '@webex/common';
 import {WebexHttpError} from '@webex/webex-core';
@@ -155,6 +156,14 @@ export const isNetworkError = (rawError: any) => {
  */
 export const isUnauthorizedError = (rawError: any) => {
   if (rawError instanceof WebexHttpError.Unauthorized) {
+    return true;
+  }
+
+  return false;
+};
+
+export const isSdpOfferCreationError = (rawError: any) => {
+  if (rawError instanceof Errors.SdpOfferCreationError) {
     return true;
   }
 
