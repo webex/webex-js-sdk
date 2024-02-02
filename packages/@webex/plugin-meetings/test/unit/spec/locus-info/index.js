@@ -2111,6 +2111,26 @@ describe('plugin-meetings', () => {
 
         assert.deepEqual(locusInfo.getTheLocusToUpdate(newLocus), newLocus);
       });
+
+      it('clear main session cache if participants moved into breakouts', () => {
+        locusInfo.mainSessionLocusCache = {self: {removed: true}};
+        locusInfo.fullState = {state: 'ACTIVE'}
+        locusInfo.controls = {
+          breakout: {
+            sessionType: 'MAIN',
+          },
+        };
+        const newLocus = {
+          controls: {
+            breakout: {
+              sessionType: 'BREAKOUT',
+            },
+          },
+        };
+        locusInfo.clearMainSessionLocusCache = sinon.stub();
+        locusInfo.getTheLocusToUpdate(newLocus);
+        assert.calledOnce(locusInfo.clearMainSessionLocusCache)
+      });
     });
 
     describe('#mergeParticipants', () => {
