@@ -7351,7 +7351,7 @@ describe('plugin-meetings', () => {
 
           assert.calledOnce(jwtDecodeStub);
           assert.deepEqual(meeting.permissionTokenPayload, permissionTokenPayloadData);
-          assert.deepEqual(meeting.tokenReceivedTime, now);
+          assert.deepEqual(meeting.permissionTokenReceivedLocalTime, now);
         });
       });
 
@@ -9930,7 +9930,7 @@ describe('plugin-meetings', () => {
       // set permission token as now + 1 sec
       const expiryTime = now + 1000;
       meeting.permissionTokenPayload = {exp: (expiryTime).toString(), iat: now};
-      meeting.tokenReceivedTime = now;
+      meeting.permissionTokenReceivedLocalTime = now;
       assert.deepEqual(meeting.getPermissionTokenExpiryInfo(), {timeLeft: 1, expiryTime: Number(expiryTime), currentTime: now});
     });
 
@@ -9938,7 +9938,7 @@ describe('plugin-meetings', () => {
       // set permission token as now - 1 sec
       const expiryTime = now - 1000;
       meeting.permissionTokenPayload = {exp: (expiryTime).toString(), iat: now};
-      meeting.tokenReceivedTime = now;
+      meeting.permissionTokenReceivedLocalTime = now;
       assert.deepEqual(meeting.getPermissionTokenExpiryInfo(), {timeLeft: -1, expiryTime: Number(expiryTime), currentTime: now});
     });
 
@@ -9963,7 +9963,7 @@ describe('plugin-meetings', () => {
        // set permission token as now + 1 sec
         const expiryTime = serverTime + 1000;
         meeting.permissionTokenPayload = {exp: (expiryTime).toString(), iat: serverTime};
-        meeting.tokenReceivedTime = now;
+        meeting.permissionTokenReceivedLocalTime = now;
         assert.deepEqual(meeting.getPermissionTokenExpiryInfo(), {timeLeft: 1, expiryTime: Number(expiryTime), currentTime: now});
       });
   
@@ -9972,7 +9972,7 @@ describe('plugin-meetings', () => {
         // set permission token as now - 1 sec
         const expiryTime = serverTime - 1000;
         meeting.permissionTokenPayload = {exp: (expiryTime).toString(), iat: serverTime};
-        meeting.tokenReceivedTime = now;
+        meeting.permissionTokenReceivedLocalTime = now;
         assert.deepEqual(meeting.getPermissionTokenExpiryInfo(), {timeLeft: -1, expiryTime: Number(expiryTime), currentTime: now});
       });
   
