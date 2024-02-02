@@ -3,6 +3,7 @@ import MockWebex from '@webex/test-helper-mock-webex';
 import sinon from 'sinon';
 import Reachability, {ReachabilityResults, ReachabilityResultsForBackend} from '@webex/plugin-meetings/src/reachability/';
 import MeetingUtil from '@webex/plugin-meetings/src/meeting/util';
+import * as ClusterReachabilityModule from '@webex/plugin-meetings/src/reachability/clusterReachability';
 
 import { IP_VERSION } from '@webex/plugin-meetings/src/constants';
 
@@ -129,6 +130,10 @@ describe('gatherReachability', () => {
     );
   });
 
+  afterEach(() => {
+    sinon.restore();
+  });
+
   it('stores the reachability', async () => {
     const reachability = new Reachability(webex);
 
@@ -162,6 +167,92 @@ describe('gatherReachability', () => {
 
     assert.equal(JSON.stringify(result), storedResultForReachabilityResult);
     assert.equal(JSON.stringify(getClustersResult.joinCookie), storedResultForJoinCookie);
+  });
+
+  it('starts ClusterReachability on each media cluster', async () => {
+    webex.config.meetings.experimental = {enableTcpReachability: true};
+
+    const getClustersResult = {
+      clusters: {
+        'cluster 1': {
+          udp: ['udp1.1', 'udp1.2'],
+          tcp: ['tcp1.1', 'tcp1.2'],
+          xtls: ['xtls1.1', 'xtls1.2'],
+          isVideoMesh: false,
+        },
+        'cluster 2': {
+          udp: ['udp2.1', 'udp2.2'],
+          tcp: ['tcp2.1', 'tcp2.2'],
+          xtls: ['xtls2.1', 'xtls2.2'],
+          isVideoMesh: true,
+        },
+      },
+      joinCookie: {id: 'id'},
+    };
+
+    const reachability = new Reachability(webex);
+
+    reachability.reachabilityRequest.getClusters = sinon.stub().returns(getClustersResult);
+
+    const startStub = sinon.stub().resolves({});
+    const clusterReachabilityCtorStub = sinon
+      .stub(ClusterReachabilityModule, 'ClusterReachability')
+      .callsFake(() => ({
+        start: startStub,
+      }));
+
+    await reachability.gatherReachability();
+
+    assert.calledTwice(clusterReachabilityCtorStub);
+    assert.calledWith(clusterReachabilityCtorStub, 'cluster 1', {
+      udp: ['udp1.1', 'udp1.2'],
+      tcp: ['tcp1.1', 'tcp1.2'],
+      xtls: ['xtls1.1', 'xtls1.2'],
+      isVideoMesh: false,
+    });
+    assert.calledWith(clusterReachabilityCtorStub, 'cluster 2', {
+      udp: ['udp2.1', 'udp2.2'],
+      tcp: ['tcp2.1', 'tcp2.2'],
+      xtls: ['xtls2.1', 'xtls2.2'],
+      isVideoMesh: true,
+    });
+
+    assert.calledTwice(startStub);
+  });
+
+  it('does not do TCP reachability if it is disabled in config', async () => {
+    webex.config.meetings.experimental = {enableTcpReachability: false};
+
+    const getClustersResult = {
+      clusters: {
+        'cluster name': {
+          udp: ['testUDP1', 'testUDP2'],
+          tcp: ['testTCP1', 'testTCP2'],
+          xtls: ['testXTLS1', 'testXTLS2'],
+          isVideoMesh: false,
+        },
+      },
+      joinCookie: {id: 'id'},
+    };
+
+    const reachability = new Reachability(webex);
+
+    reachability.reachabilityRequest.getClusters = sinon.stub().returns(getClustersResult);
+
+    const clusterReachabilityCtorStub = sinon
+      .stub(ClusterReachabilityModule, 'ClusterReachability')
+      .callsFake(() => ({
+        start: sinon.stub().resolves({}),
+      }));
+
+    await reachability.gatherReachability();
+
+    assert.calledOnceWithExactly(clusterReachabilityCtorStub, 'cluster name', {
+      isVideoMesh: false,
+      udp: ['testUDP1', 'testUDP2'],
+      tcp: [], // empty list because TCP is disabled in config
+      xtls: ['testXTLS1', 'testXTLS2'],
+    });
   });
 });
 

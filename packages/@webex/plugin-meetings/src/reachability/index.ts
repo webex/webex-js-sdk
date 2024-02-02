@@ -345,8 +345,21 @@ export default class Reachability {
       return Promise.resolve(results);
     }
 
+    // @ts-ignore
+    const includeTcpReachability = this.webex.config.meetings.experimental.enableTcpReachability;
+
+    LoggerProxy.logger.log(
+      `Reachability:index#performReachabilityChecks --> doing UDP${
+        includeTcpReachability ? ' and TCP' : ''
+      } reachability checks`
+    );
+
     const clusterReachabilityChecks = Object.keys(clusterList).map((key) => {
       const cluster = clusterList[key];
+
+      if (!includeTcpReachability) {
+        cluster.tcp = [];
+      }
 
       this.clusterReachability[key] = new ClusterReachability(key, cluster);
 

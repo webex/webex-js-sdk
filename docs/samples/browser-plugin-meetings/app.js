@@ -38,6 +38,7 @@ const breakoutsList = document.getElementById('breakouts-list');
 const breakoutTable = document.getElementById('breakout-table');
 const breakoutHostOperation = document.getElementById('breakout-host-operation');
 const getStatsButton = document.getElementById('get-stats');
+const tcpReachabilityConfigElm = document.getElementById('enable-tcp-reachability');
 
 const toggleUnifiedMeetings = document.getElementById('toggle-unified-meeting');
 const currentMeetingInfoStatus = document.getElementById('current-meeting-info-status');
@@ -101,6 +102,7 @@ function generateWebexConfig({credentials}) {
         enableMediaNegotiatedEvent: false,
         enableUnifiedMeetings: true,
         enableAdhocMeetings: true,
+        enableTcpReachability: tcpReachabilityConfigElm.checked,
       },
       enableAutomaticLLM: true,
     },
