@@ -10,19 +10,16 @@ const VIDEO_MESH_TIMEOUT = 1000;
 
 // result for a specific transport protocol (like udp or tcp)
 export type TransportResult = {
-  reachable?: 'true' | 'false'; // string not boolean, because it's sent to the backend like that
-  latencyInMilliseconds?: string;
+  result: 'reachable' | 'unreachable' | 'not tested';
+  latencyInMilliseconds?: number;
   clientMediaIPs?: string[];
-  untested?: 'true'; // string not boolean, because it's sent to the backend like that
 };
 
-// reachability result for a specifc media cluster
-export type ReachabilityResult = {
+// reachability result for a specific media cluster
+export type ClusterReachabilityResult = {
   udp: TransportResult;
   tcp: TransportResult;
-  xtls: {
-    untested: 'true';
-  };
+  xtls: TransportResult;
 };
 
 /**
@@ -31,7 +28,7 @@ export type ReachabilityResult = {
 export class ClusterReachability {
   private numUdpUrls: number;
   private numTcpUrls: number;
-  private result: ReachabilityResult;
+  private result: ClusterReachabilityResult;
   private pc?: RTCPeerConnection;
   private defer: Defer; // this defer is resolved once reachability checks for this cluster are completed
   private startTimestamp: number;
@@ -54,13 +51,13 @@ export class ClusterReachability {
     this.defer = new Defer();
     this.result = {
       udp: {
-        untested: 'true',
+        result: 'not tested',
       },
       tcp: {
-        untested: 'true',
+        result: 'not tested',
       },
       xtls: {
-        untested: 'true',
+        result: 'not tested',
       },
     };
   }
@@ -132,7 +129,7 @@ export class ClusterReachability {
   }
 
   /**
-   * @returns {ReachabilityResult} received result in the format expected by the backend
+   * @returns {ClusterReachabilityResult} reachability result for this cluster
    */
   getResult() {
     return this.result;
@@ -202,17 +199,11 @@ export class ClusterReachability {
    * @returns {boolean} true if we have all results, false otherwise
    */
   private haveWeGotAllResults(): boolean {
-    const expecting = {
-      udp: this.numUdpUrls > 0,
-      tcp: this.numTcpUrls > 0,
-    };
-
-    const gotResult = {
-      udp: this.result.udp.reachable === 'true',
-      tcp: this.result.tcp.reachable === 'true',
-    };
-
-    return ['udp', 'tcp'].every((protocol) => expecting[protocol] === gotResult[protocol]);
+    return ['udp', 'tcp'].every(
+      (protocol) =>
+        this.result[protocol].result === 'reachable' ||
+        this.result[protocol].result === 'not tested'
+    );
   }
 
   /**
@@ -230,8 +221,8 @@ export class ClusterReachability {
         // @ts-ignore
         `Reachability:index#storeLatencyResult --> Successfully reached ${this.name} over ${protocol}: ${latency}ms`
       );
-      result.latencyInMilliseconds = latency.toString();
-      result.reachable = 'true';
+      result.latencyInMilliseconds = latency;
+      result.result = 'reachable';
     }
   }
 
@@ -268,11 +259,12 @@ export class ClusterReachability {
   }
 
   /**
-   * Starts the process of doing reachability checks on the media cluster.
+   * Starts the process of doing UDP and TCP reachability checks on the media cluster.
+   * XTLS reachability checking is not supported.
    *
    * @returns {Promise}
    */
-  async start(): Promise<ReachabilityResult> {
+  async start(): Promise<ClusterReachabilityResult> {
     if (!this.pc) {
       LoggerProxy.logger.warn(
         `Reachability:ClusterReachability#start --> Error: peerConnection is undefined`
@@ -283,18 +275,11 @@ export class ClusterReachability {
 
     // Initialize this.result as saying that nothing is reachable.
     // It will get updated as we go along and successfully gather ICE candidates.
-    this.result = {
-      udp: {
-        reachable: this.numUdpUrls > 0 ? 'false' : undefined,
-        untested: this.numUdpUrls === 0 ? 'true' : undefined,
-      },
-      tcp: {
-        reachable: this.numTcpUrls > 0 ? 'false' : undefined,
-        untested: this.numTcpUrls === 0 ? 'true' : undefined,
-      },
-      xtls: {
-        untested: 'true',
-      },
+    this.result.udp = {
+      result: this.numUdpUrls > 0 ? 'unreachable' : 'not tested',
+    };
+    this.result.tcp = {
+      result: this.numTcpUrls > 0 ? 'unreachable' : 'not tested',
     };
 
     try {

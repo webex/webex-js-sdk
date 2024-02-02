@@ -3,7 +3,7 @@
  */
 
 /* eslint-disable class-methods-use-this */
-import {mapValues, pick} from 'lodash';
+import {mapValues} from 'lodash';
 
 import LoggerProxy from '../common/logs/logger-proxy';
 import MeetingUtil from '../meeting/util';
@@ -11,7 +11,11 @@ import MeetingUtil from '../meeting/util';
 import {REACHABILITY} from '../constants';
 
 import ReachabilityRequest, {ClusterList} from './request';
-import {ClusterReachability, ReachabilityResult} from './clusterReachability';
+import {
+  ClusterReachability,
+  ClusterReachabilityResult,
+  TransportResult,
+} from './clusterReachability';
 
 export type ReachabilityMetrics = {
   reachability_public_udp_success: number;
@@ -24,13 +28,30 @@ export type ReachabilityMetrics = {
   reachability_vmn_tcp_failed: number;
 };
 
+/**
+ * This is the type that matches what backend expects us to send to them. It is a bit weird, because
+ * it uses strings instead of booleans and numbers, but that's what they require.
+ */
+export type TransportResultForBackend = {
+  reachable?: 'true' | 'false';
+  latencyInMilliseconds?: string;
+  clientMediaIPs?: string[];
+  untested?: 'true';
+};
+
+export type ReachabilityResultForBackend = {
+  udp: TransportResultForBackend;
+  tcp: TransportResultForBackend;
+  xtls: TransportResultForBackend;
+};
+
 // this is the type that is required by the backend when we send them reachability results
-export type ReachabilityResults = Record<string, ReachabilityResult>;
+export type ReachabilityResultsForBackend = Record<string, ReachabilityResultForBackend>;
 
 // this is the type used by Reachability class internally and stored in local storage
-type InternalReachabilityResults = Record<
+export type ReachabilityResults = Record<
   string,
-  ReachabilityResult & {
+  ClusterReachabilityResult & {
     isVideoMesh?: boolean;
   }
 >;
@@ -68,13 +89,12 @@ export default class Reachability {
   }
 
   /**
-   * fetches reachability data
-   * @returns {Object} reachability data
+   * Gets a list of media clusters from the backend and performs reachability checks on all the clusters
+   * @returns {Promise<ReachabilityResults>} reachability results
    * @public
-   * @async
    * @memberof Reachability
    */
-  public async gatherReachability(): Promise<InternalReachabilityResults> {
+  public async gatherReachability(): Promise<ReachabilityResults> {
     // Remove stored reachability results to ensure no stale data
     // @ts-ignore
     await this.webex.boundedStorage.del(this.namespace, REACHABILITY.localStorageResult);
@@ -133,13 +153,13 @@ export default class Reachability {
       reachability_vmn_tcp_failed: 0,
     };
 
-    const updateStats = (clusterType: 'public' | 'vmn', result: ReachabilityResult) => {
-      if (result.udp?.reachable) {
-        const outcome = result.udp.reachable === 'true' ? 'success' : 'failed';
+    const updateStats = (clusterType: 'public' | 'vmn', result: ClusterReachabilityResult) => {
+      if (result.udp && result.udp.result !== 'not tested') {
+        const outcome = result.udp.result === 'reachable' ? 'success' : 'failed';
         stats[`reachability_${clusterType}_udp_${outcome}`] += 1;
       }
-      if (result.tcp?.reachable) {
-        const outcome = result.tcp.reachable === 'true' ? 'success' : 'failed';
+      if (result.tcp && result.tcp.result !== 'not tested') {
+        const outcome = result.tcp.result === 'reachable' ? 'success' : 'failed';
         stats[`reachability_${clusterType}_tcp_${outcome}`] += 1;
       }
     };
@@ -151,9 +171,9 @@ export default class Reachability {
         REACHABILITY.localStorageResult
       );
 
-      const internalResults: InternalReachabilityResults = JSON.parse(resultsJson);
+      const results: ReachabilityResults = JSON.parse(resultsJson);
 
-      Object.values(internalResults).forEach((result) => {
+      Object.values(results).forEach((result) => {
         updateStats(result.isVideoMesh ? 'vmn' : 'public', result);
       });
     } catch (e) {
@@ -168,15 +188,48 @@ export default class Reachability {
   }
 
   /**
+   * Maps our internal transport result to the format that backend expects
+   * @param {TransportResult} transportResult
+   * @returns {TransportResultForBackend}
+   */
+  private mapTransportResultToBackendDataFormat(
+    transportResult: TransportResult
+  ): TransportResultForBackend {
+    const output: TransportResultForBackend = {};
+
+    for (const [key, value] of Object.entries(transportResult)) {
+      switch (key) {
+        case 'result':
+          switch (value) {
+            case 'reachable':
+              output.reachable = 'true';
+              break;
+            case 'unreachable':
+              output.reachable = 'false';
+              break;
+            case 'not tested':
+              output.untested = 'true';
+              break;
+          }
+          break;
+        case 'latencyInMilliseconds':
+          output.latencyInMilliseconds = value.toString();
+          break;
+        default:
+          output[key] = value;
+      }
+    }
+
+    return output;
+  }
+
+  /**
    * Reachability results as an object in the format that backend expects
    *
    * @returns {any} reachability results that need to be sent to the backend
    */
-  async getReachabilityResults(): Promise<ReachabilityResults | undefined> {
-    let results: ReachabilityResults;
-
-    // these are the only props that backend needs in the reachability results:
-    const reachabilityResultsProps: Array<keyof ReachabilityResult> = ['udp', 'tcp', 'xtls'];
+  async getReachabilityResults(): Promise<ReachabilityResultsForBackend | undefined> {
+    let results: ReachabilityResultsForBackend;
 
     try {
       // @ts-ignore
@@ -185,9 +238,19 @@ export default class Reachability {
         REACHABILITY.localStorageResult
       );
 
-      const internalResults: InternalReachabilityResults = JSON.parse(resultsJson);
+      const allClusterResults: ReachabilityResults = JSON.parse(resultsJson);
 
-      results = mapValues(internalResults, (result) => pick(result, reachabilityResultsProps));
+      results = mapValues(allClusterResults, (clusterResult) => ({
+        udp: this.mapTransportResultToBackendDataFormat(
+          clusterResult.udp || {result: 'not tested'}
+        ),
+        tcp: this.mapTransportResultToBackendDataFormat(
+          clusterResult.tcp || {result: 'not tested'}
+        ),
+        xtls: this.mapTransportResultToBackendDataFormat(
+          clusterResult.xtls || {result: 'not tested'}
+        ),
+      }));
     } catch (e) {
       // empty storage, that's ok
       LoggerProxy.logger.warn(
@@ -214,12 +277,12 @@ export default class Reachability {
 
     if (reachabilityData) {
       try {
-        const reachabilityResults: InternalReachabilityResults = JSON.parse(reachabilityData);
+        const reachabilityResults: ReachabilityResults = JSON.parse(reachabilityData);
 
         reachable = Object.values(reachabilityResults).some(
           (result) =>
             !result.isVideoMesh &&
-            (result.udp?.reachable === 'true' || result.tcp?.reachable === 'true')
+            (result.udp?.result === 'reachable' || result.tcp?.result === 'reachable')
         );
       } catch (e) {
         LoggerProxy.logger.error(
@@ -243,10 +306,10 @@ export default class Reachability {
     Object.entries(this.clusterReachability).forEach(([key, clusterReachability]) => {
       const result = clusterReachability.getResult();
 
-      if (result.udp.reachable === 'false' && result.udp.untested !== 'true') {
+      if (result.udp.result === 'unreachable') {
         unreachableList.push({name: key, protocol: 'udp'});
       }
-      if (result.tcp.reachable === 'false' && result.tcp.untested !== 'true') {
+      if (result.tcp.result === 'unreachable') {
         unreachableList.push({name: key, protocol: 'tcp'});
       }
     });
@@ -273,12 +336,10 @@ export default class Reachability {
   /**
    * Performs reachability checks for all clusters
    * @param {ClusterList} clusterList
-   * @returns {Promise<InternalReachabilityResults>} reachability check results
+   * @returns {Promise<ReachabilityResults>} reachability check results
    */
-  private async performReachabilityChecks(
-    clusterList: ClusterList
-  ): Promise<InternalReachabilityResults> {
-    const results: InternalReachabilityResults = {};
+  private async performReachabilityChecks(clusterList: ClusterList): Promise<ReachabilityResults> {
+    const results: ReachabilityResults = {};
 
     if (!clusterList || !Object.keys(clusterList).length) {
       return Promise.resolve(results);

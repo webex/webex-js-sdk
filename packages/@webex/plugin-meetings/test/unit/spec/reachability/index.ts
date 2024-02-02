@@ -1,7 +1,7 @@
 import {assert} from '@webex/test-helper-chai';
 import MockWebex from '@webex/test-helper-mock-webex';
 import sinon from 'sinon';
-import Reachability, {ReachabilityResults} from '@webex/plugin-meetings/src/reachability/';
+import Reachability, {ReachabilityResults, ReachabilityResultsForBackend} from '@webex/plugin-meetings/src/reachability/';
 import MeetingUtil from '@webex/plugin-meetings/src/meeting/util';
 
 import { IP_VERSION } from '@webex/plugin-meetings/src/constants';
@@ -35,19 +35,19 @@ describe('isAnyPublicClusterReachable', () => {
   };
 
   it('returns true when udp is reachable', async () => {
-    await checkIsClusterReachable({x: {udp: {reachable: 'true'}, tcp: {reachable: 'false'}}}, true);
+    await checkIsClusterReachable({x: {udp: {result: 'reachable'}, tcp: {result: 'unreachable'}}}, true);
   });
 
   it('returns true when tcp is reachable', async () => {
-    await checkIsClusterReachable({x: {udp: {reachable: 'false'}, tcp: {reachable: 'true'}}}, true);
+    await checkIsClusterReachable({x: {udp: {result: 'unreachable'}, tcp: {result: 'reachable'}}}, true);
   });
 
   it('returns true when both tcp and udp are reachable', async () => {
-    await checkIsClusterReachable({x: {udp: {reachable: 'true'}, tcp: {reachable: 'true'}}}, true);
+    await checkIsClusterReachable({x: {udp: {result: 'reachable'}, tcp: {result: 'reachable'}}}, true);
   });
 
   it('returns false when both tcp and udp are unreachable', async () => {
-    await checkIsClusterReachable({x: {udp: {reachable: 'false'}, tcp: {reachable: 'false'}}}, false);
+    await checkIsClusterReachable({x: {udp: {result: 'unreachable'}, tcp: {result: 'unreachable'}}}, false);
   });
 
   it('returns false when reachability result is empty', async () => {
@@ -62,13 +62,13 @@ describe('isAnyPublicClusterReachable', () => {
     it('returns false if there are no public cluster results, only video mesh', async () => {
       await checkIsClusterReachable({
         x: {
-          udp: {reachable: 'true'},
-          tcp: {reachable: 'true'},
+          udp: {result: 'reachable'},
+          tcp: {result: 'reachable'},
           isVideoMesh: true,
         },
         y: {
-          udp: {reachable: 'false'},
-          tcp: {reachable: 'true'},
+          udp: {result: 'unreachable'},
+          tcp: {result: 'reachable'},
           isVideoMesh: true,
         }
       }, false);
@@ -77,18 +77,18 @@ describe('isAnyPublicClusterReachable', () => {
     it('returns false if there public cluster reachability failed, only video mesh succeeded', async () => {
       await checkIsClusterReachable({
         x: {
-          udp: {reachable: 'false'},
-          tcp: {reachable: 'true'},
+          udp: {result: 'unreachable'},
+          tcp: {result: 'reachable'},
           isVideoMesh: true,
         },
         y: {
-          udp: {reachable: 'true'},
-          tcp: {reachable: 'false'},
+          udp: {result: 'reachable'},
+          tcp: {result: 'unreachable'},
           isVideoMesh: true,
         },
         publicOne: {
-          udp: {reachable: 'false'},
-          tcp: {reachable: 'false'},
+          udp: {result: 'unreachable'},
+          tcp: {result: 'unreachable'},
           isVideoMesh: false,
         }
       }, false);
@@ -97,18 +97,18 @@ describe('isAnyPublicClusterReachable', () => {
     it('returns true if there is at least 1 public cluster result, while video mesh is not reachable', async () => {
       await checkIsClusterReachable({
         x: {
-          udp: {reachable: 'true'},
-          tcp: {reachable: 'true'},
+          udp: {result: 'reachable'},
+          tcp: {result: 'reachable'},
           isVideoMesh: true,
         },
         y: {
-          udp: {reachable: 'false'},
-          tcp: {reachable: 'true'},
+          udp: {result: 'unreachable'},
+          tcp: {result: 'reachable'},
           isVideoMesh: true,
         },
         publicOne: {
-          udp: {reachable: 'false'},
-          tcp: {reachable: 'true'},
+          udp: {result: 'unreachable'},
+          tcp: {result: 'reachable'},
           isVideoMesh: false,
         }
       }, true);
@@ -176,7 +176,7 @@ describe('getReachabilityResults', () => {
     sinon.restore();
   });
 
-  const runCheck = async (mockStorage: any, expectedResult: ReachabilityResults) => {
+  const runCheck = async (mockStorage: any, expectedResult: ReachabilityResultsForBackend) => {
     if (mockStorage) {
       await webex.boundedStorage.put(
         'Reachability',
@@ -201,36 +201,36 @@ describe('getReachabilityResults', () => {
     assert.isUndefined(result);
   });
 
-  it('returns results from local storage, stripping any internal data', async () => {
+  it('returns results from local storage, converted to the backend data format', async () => {
     await runCheck(
       // mock storage:
       {
         cluster1: {
-          udp: {reachable: 'true', latencyInMilliseconds: '100'},
-          tcp: {reachable: 'false'},
-          xtls: {untested: 'true'},
+          udp: {result: 'reachable', latencyInMilliseconds: 100},
+          tcp: {result: 'unreachable'},
+          xtls: {result: 'not tested'},
         },
         cluster2: {
-          udp: {reachable: 'true', latencyInMilliseconds: '200'},
-          tcp: {reachable: 'false'},
-          xtls: {untested: 'true'},
+          udp: {result: 'reachable', latencyInMilliseconds: 200},
+          tcp: {result: 'unreachable'},
+          xtls: {result: 'not tested'},
           isVideoMesh: true,
         },
         cluster3: {
-          udp: {reachable: 'false'},
-          tcp: {reachable: 'true', latencyInMilliseconds: '100', clientMediaIPs: ['10.10.10.10']},
-          xtls: {untested: 'true'},
+          udp: {result: 'unreachable'},
+          tcp: {result: 'reachable', latencyInMilliseconds: 100, clientMediaIPs: ['10.10.10.10']},
+          xtls: {result: 'not tested'},
           isVideoMesh: true,
           someOtherField: 'any value',
         },
         cluster4: {
-          udp: {reachable: 'false', latencyInMilliseconds: '300'},
-          tcp: {reachable: 'false', untested: 'true'},
-          xtls: {untested: 'true'},
+          udp: {result: 'reachable', latencyInMilliseconds: 300},
+          tcp: {result: 'not tested'},
+          xtls: {result: 'not tested'},
           someOtherField: 'any value',
         },
       },
-      // expected result (same as above, but with isVideoMesh and someOtherField stripped out):
+      // expected result (same as above, but with values converted and isVideoMesh and someOtherField stripped out):
       {
         cluster1: {
           udp: {reachable: 'true', latencyInMilliseconds: '100'},
@@ -248,8 +248,8 @@ describe('getReachabilityResults', () => {
           xtls: {untested: 'true'},
         },
         cluster4: {
-          udp: {reachable: 'false', latencyInMilliseconds: '300'},
-          tcp: {reachable: 'false', untested: 'true'},
+          udp: {reachable: 'true', latencyInMilliseconds: '300'},
+          tcp: {untested: 'true'},
           xtls: {untested: 'true'},
         },
       }
@@ -306,47 +306,47 @@ describe('getReachabilityMetrics', () => {
       // mock storage:
       {
         public1: {
-          udp: {reachable: 'true', latencyInMilliseconds: '100'},
-          tcp: {untested: 'true'},
-          xtls: {untested: 'true'},
+          udp: {result: 'reachable', latencyInMilliseconds: 100},
+          tcp: {result: 'not tested'},
+          xtls: {result: 'not tested'},
         },
         vmn1: {
-          udp: {reachable: 'true', latencyInMilliseconds: '200'},
-          tcp: {reachable: 'false'},
-          xtls: {untested: 'true'},
+          udp: {result: 'reachable', latencyInMilliseconds: 200},
+          tcp: {result: 'unreachable'},
+          xtls: {result: 'not tested'},
           isVideoMesh: true,
         },
         vmn2: {
-          udp: {untested: 'true'},
-          tcp: {reachable: 'true', latencyInMilliseconds: '100', clientMediaIPs: ['10.10.10.10']},
-          xtls: {untested: 'true'},
+          udp: {result: 'not tested'},
+          tcp: {result: 'reachable', latencyInMilliseconds: 100, clientMediaIPs: ['10.10.10.10']},
+          xtls: {result: 'not tested'},
           isVideoMesh: true,
           someOtherField: 'any value',
         },
         public2: {
-          udp: {reachable: 'false', latencyInMilliseconds: '300'},
-          tcp: {reachable: 'false', untested: 'true'},
-          xtls: {untested: 'true'},
+          udp: {result: 'unreachable'},
+          tcp: {result: 'unreachable'},
+          xtls: {result: 'not tested'},
           someOtherField: 'any value',
         },
         public3: {
-          udp: {reachable: 'true', latencyInMilliseconds: '400', clientMediaIPs: ['10.10.10.10']},
-          tcp: {reachable: 'true', latencyInMilliseconds: '100', clientMediaIPs: ['10.10.10.10']},
-          xtls: {untested: 'true'},
+          udp: {result: 'reachable', latencyInMilliseconds: 400, clientMediaIPs: ['10.10.10.10']},
+          tcp: {result: 'reachable', latencyInMilliseconds: 100, clientMediaIPs: ['10.10.10.10']},
+          xtls: {result: 'not tested'},
           isVideoMesh: false,
           someOtherField: 'any value',
         },
         public4: {
-          udp: {reachable: 'true', latencyInMilliseconds: '40', clientMediaIPs: ['10.10.10.11']},
-          tcp: {reachable: 'true', latencyInMilliseconds: '100', clientMediaIPs: ['10.10.10.11']},
-          xtls: {untested: 'true'},
+          udp: {result: 'reachable', latencyInMilliseconds: 40, clientMediaIPs: ['10.10.10.11']},
+          tcp: {result: 'reachable', latencyInMilliseconds: 100, clientMediaIPs: ['10.10.10.11']},
+          xtls: {result: 'not tested'},
           isVideoMesh: false,
           someOtherField: 'any value',
         },
         public5: {
-          udp: {reachable: 'false'},
-          tcp: {untested: 'true'},
-          xtls: {untested: 'true'},
+          udp: {result: 'unreachable'},
+          tcp: {result: 'not tested'},
+          xtls: {result: 'not tested'},
           isVideoMesh: false,
           someOtherField: 'any value',
         },
@@ -370,33 +370,33 @@ describe('getReachabilityMetrics', () => {
       // mock storage:
       {
         public1: {
-          udp: {reachable: 'true', latencyInMilliseconds: '400', clientMediaIPs: ['10.10.10.10']},
-          tcp: {reachable: 'true', latencyInMilliseconds: '100', clientMediaIPs: ['10.10.10.10']},
-          xtls: {untested: 'true'},
+          udp: {result: 'reachable', latencyInMilliseconds: 400, clientMediaIPs: ['10.10.10.10']},
+          tcp: {result: 'reachable', latencyInMilliseconds: 100, clientMediaIPs: ['10.10.10.10']},
+          xtls: {result: 'not tested'},
           isVideoMesh: false,
         },
         public2: {
-          udp: {reachable: 'true', latencyInMilliseconds: '100'},
-          tcp: {untested: 'true'},
-          xtls: {untested: 'true'},
+          udp: {result: 'reachable', latencyInMilliseconds: 100},
+          tcp: {result: 'not tested'},
+          xtls: {result: 'not tested'},
         },
         public3: {
-          udp: {reachable: 'false', latencyInMilliseconds: '300'},
-          tcp: {reachable: 'false', untested: 'true'},
-          xtls: {untested: 'true'},
+          udp: {result: 'unreachable'},
+          tcp: {result: 'unreachable'},
+          xtls: {result: 'not tested'},
           someOtherField: 'any value',
         },
         public4: {
-          udp: {untested: 'true'},
-          tcp: {reachable: 'false'},
-          xtls: {untested: 'true'},
+          udp: {result: 'not tested'},
+          tcp: {result: 'unreachable'},
+          xtls: {result: 'not tested'},
           isVideoMesh: false,
           someOtherField: 'any value',
         },
         public5: {
-          udp: {reachable: 'true', latencyInMilliseconds: '400', clientMediaIPs: ['10.10.10.10']},
-          tcp: {untested: 'true'},
-          xtls: {untested: 'true'},
+          udp: {result: 'reachable', latencyInMilliseconds: '400', clientMediaIPs: ['10.10.10.10']},
+          tcp: {result: 'not tested'},
+          xtls: {result: 'not tested'},
         },
       },
       // expected result:
@@ -418,34 +418,34 @@ describe('getReachabilityMetrics', () => {
       // mock storage:
       {
         vmn1: {
-          udp: {reachable: 'false'},
-          tcp: {reachable: 'true', latencyInMilliseconds: '100', clientMediaIPs: ['10.10.10.10']},
-          xtls: {untested: 'true'},
+          udp: {result: 'unreachable'},
+          tcp: {result: 'reachable', latencyInMilliseconds: 100, clientMediaIPs: ['10.10.10.10']},
+          xtls: {result: 'not tested'},
           isVideoMesh: true,
         },
         vmn2: {
-          udp: {reachable: 'true', latencyInMilliseconds: '200', clientMediaIPs: ['10.10.10.10']},
-          tcp: {untested: 'true'},
-          xtls: {untested: 'true'},
+          udp: {result: 'reachable', latencyInMilliseconds: 200, clientMediaIPs: ['10.10.10.10']},
+          tcp: {result: 'not tested'},
+          xtls: {result: 'not tested'},
           isVideoMesh: true,
         },
         vmn3: {
-          udp: {reachable: 'true', latencyInMilliseconds: '300', clientMediaIPs: ['10.10.10.10']},
-          tcp: {reachable: 'false', untested: 'true'},
-          xtls: {untested: 'true'},
+          udp: {result: 'reachable', latencyInMilliseconds: 300, clientMediaIPs: ['10.10.10.10']},
+          tcp: {result: 'unreachable'},
+          xtls: {result: 'not tested'},
           isVideoMesh: true,
         },
         vmn4: {
-          udp: {untested: 'true'},
-          tcp: {reachable: 'false'},
-          xtls: {untested: 'true'},
+          udp: {result: 'not tested'},
+          tcp: {result: 'unreachable'},
+          xtls: {result: 'not tested'},
           isVideoMesh: true,
           someOtherField: 'any value',
         },
         vmn5: {
-          udp: {reachable: 'true', latencyInMilliseconds: '200', clientMediaIPs: ['10.10.10.10']},
-          tcp: {reachable: 'false'},
-          xtls: {untested: 'true'},
+          udp: {result: 'reachable', latencyInMilliseconds: 200, clientMediaIPs: ['10.10.10.10']},
+          tcp: {result: 'unreachable'},
+          xtls: {result: 'not tested'},
           isVideoMesh: true,
           someOtherField: 'any value',
         },
