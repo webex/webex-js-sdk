@@ -1,7 +1,7 @@
-import increment from './increment';
-import list from './list';
-import scripts from './scripts';
-import sync from './sync';
+export { default as increment } from './increment';
+export { default as list } from './list';
+export { default as scripts } from './scripts';
+export { default as sync } from './sync';
 
 export type {
   IncrementOptions,
@@ -19,10 +19,3 @@ export type {
 export type {
   SyncOptions,
 } from './sync';
-
-export {
-  increment,
-  list,
-  scripts,
-  sync,
-};
