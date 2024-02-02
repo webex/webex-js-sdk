@@ -546,9 +546,9 @@ export class RemoteMediaManager extends EventsScope {
     ) {
       return;
     }
-    if (!value) {
-      return;
-    }
+    // if (!value) {
+    //   return;
+    // }
 
     this.media.receiveNamedMediaGroup = {
       type,
