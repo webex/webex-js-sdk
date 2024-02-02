@@ -25,7 +25,6 @@ export type ReachabilityResult = {
   };
 };
 
-/* eslint-disable require-jsdoc */ // todo bazyl
 /**
  * A class that handles reachability checks for a single cluster.
  */
@@ -39,6 +38,11 @@ export class ClusterReachability {
   public readonly isVideoMesh: boolean;
   public readonly name;
 
+  /**
+   * Constructor for ClusterReachability
+   * @param {string} name cluster name
+   * @param {ClusterNode} clusterInfo information about the media cluster
+   */
   constructor(name: string, clusterInfo: ClusterNode) {
     this.name = name;
     this.isVideoMesh = clusterInfo.isVideoMesh;
@@ -74,7 +78,6 @@ export class ClusterReachability {
    * @param {ClusterNode} cluster
    * @returns {RTCConfiguration} peerConnectionConfig
    */
-  // eslint-disable-next-line class-methods-use-this
   private buildPeerConnectionConfig(cluster: ClusterNode): RTCConfiguration {
     const udpIceServers = cluster.udp.map((url) => ({
       username: '',
@@ -128,18 +131,18 @@ export class ClusterReachability {
     }
   }
 
+  /**
+   * @returns {ReachabilityResult} received result in the format expected by the backend
+   */
   getResult() {
     return this.result;
   }
 
-  isUnreachable(protocol: 'udp' | 'tcp') {
-    if (protocol === 'udp') {
-      return this.numUdpUrls > 0 && this.result.udp.reachable !== 'true';
-    }
-
-    return this.numTcpUrls > 0 && this.result.tcp.reachable !== 'true';
-  }
-
+  /**
+   * Closes the peerConnection
+   *
+   * @returns {void}
+   */
   private closePeerConnection() {
     if (this.pc) {
       this.pc.onicecandidate = null;
@@ -148,6 +151,11 @@ export class ClusterReachability {
     }
   }
 
+  /**
+   * Resolves the defer, indicating that reachability checks for this cluster are completed
+   *
+   * @returns {void}
+   */
   private finishReachabilityCheck() {
     this.defer.resolve();
   }
@@ -159,14 +167,6 @@ export class ClusterReachability {
    * @returns {void}
    */
   private addPublicIP(protocol: 'udp' | 'tcp', publicIP?: string | null) {
-    const {CLOSED} = CONNECTION_STATE;
-
-    if (this.pc?.connectionState === CLOSED) {
-      LoggerProxy.logger.log(
-        `Reachability:index#addPublicIP --> Attempting to set publicIP of ${publicIP} on closed peerConnection.`
-      );
-    }
-
     const result = this.result[protocol];
 
     if (publicIP) {
@@ -180,6 +180,11 @@ export class ClusterReachability {
     }
   }
 
+  /**
+   * Registers a listener for the iceGatheringStateChange event
+   *
+   * @returns {void}
+   */
   private registerIceGatheringStateChangeListener() {
     this.pc.onicegatheringstatechange = () => {
       const {COMPLETE} = ICE_GATHERING_STATE;
@@ -191,6 +196,11 @@ export class ClusterReachability {
     };
   }
 
+  /**
+   * Checks if we have the results for all the protocols (UDP and TCP)
+   *
+   * @returns {boolean} true if we have all results, false otherwise
+   */
   private haveWeGotAllResults(): boolean {
     const expecting = {
       udp: this.numUdpUrls > 0,
@@ -205,6 +215,13 @@ export class ClusterReachability {
     return ['udp', 'tcp'].every((protocol) => expecting[protocol] === gotResult[protocol]);
   }
 
+  /**
+   * Stores the latency in the result
+   *
+   * @param {string} protocol
+   * @param {number} latency
+   * @returns {void}
+   */
   private storeLatencyResult(protocol: 'udp' | 'tcp', latency: number) {
     const result = this.result[protocol];
 
@@ -218,6 +235,11 @@ export class ClusterReachability {
     }
   }
 
+  /**
+   * Registers a listener for the icecandidate event
+   *
+   * @returns {void}
+   */
   private registerIceCandidateListener() {
     this.pc.onicecandidate = (e) => {
       const CANDIDATE_TYPES = {
@@ -291,7 +313,9 @@ export class ClusterReachability {
   }
 
   /**
-   * @returns {Promise}
+   * Starts the process of gathering ICE candidates
+   *
+   * @returns {Promise} promise that's resolved once reachability checks for this cluster are completed or timeout is reached
    */
   private gatherIceCandidates() {
     const timeout = this.isVideoMesh ? VIDEO_MESH_TIMEOUT : DEFAULT_TIMEOUT;

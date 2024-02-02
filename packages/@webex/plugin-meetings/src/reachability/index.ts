@@ -241,10 +241,12 @@ export default class Reachability {
     const unreachableList = [];
 
     Object.entries(this.clusterReachability).forEach(([key, clusterReachability]) => {
-      if (clusterReachability.isUnreachable('udp')) {
+      const result = clusterReachability.getResult();
+
+      if (result.udp.reachable === 'false' && result.udp.untested !== 'true') {
         unreachableList.push({name: key, protocol: 'udp'});
       }
-      if (clusterReachability.isUnreachable('tcp')) {
+      if (result.tcp.reachable === 'false' && result.tcp.untested !== 'true') {
         unreachableList.push({name: key, protocol: 'tcp'});
       }
     });
