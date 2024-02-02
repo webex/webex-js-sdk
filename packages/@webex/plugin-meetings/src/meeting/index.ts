@@ -7973,7 +7973,10 @@ export default class Meeting extends StatelessWebexPlugin {
    * Gets permission token expiry information including timeLeft, expiryTime, currentTime
    * (from the time the function has been fired)
    *
-   * @returns {object} containing timeLeft, expiryTime, currentTime
+   * @returns {object} permissionTokenExpiryInfo
+   * @returns {number} permissionTokenExpiryInfo.timeLeft The time left for token to expire
+   * @returns {number} permissionTokenExpiryInfo.expiryTime The expiry time of permission token from the server
+   * @returns {number} permissionTokenExpiryInfo.currentTime The current time of the local machine
    */
   public getPermissionTokenExpiryInfo() {
     if (!this.permissionTokenPayload) {
