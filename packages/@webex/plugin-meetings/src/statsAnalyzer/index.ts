@@ -1013,6 +1013,22 @@ export class StatsAnalyzer extends EventsScope {
     const sendRecvType = isSender ? STATS.SEND_DIRECTION : STATS.RECEIVE_DIRECTION;
     const ipType = isRemote ? STATS.REMOTE : STATS.LOCAL;
 
+    if (!this.statsResults.candidates) {
+      this.statsResults.candidates = {};
+    }
+
+    this.statsResults.candidates[result.id] = {
+      candidateType: result.candidateType,
+      ipAddress: result.ip, // TODO: add ports
+      portNumber: result.port,
+      networkType: result.networkType,
+      priority: result.priority,
+      transport,
+      timestamp: result.time,
+      id: result.id,
+      type: result.type,
+    };
+
     this.statsResults.connectionType[ipType].candidateType = result.candidateType;
     this.statsResults.connectionType[ipType].ipAddress = result.ipAddress;
 
