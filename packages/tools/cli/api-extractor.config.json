@@ -1,4 +1,4 @@
 {
-  "extends": "@webex/api-extractor-config/static/index.json",
+  "extends": "./../../../config/api-extractor/index.json",
   "projectFolder": "."
 }

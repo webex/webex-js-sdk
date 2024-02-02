@@ -1,5 +1,4 @@
 const shell = require('shelljs');
-// eslint-disable-next-line import/no-unresolved
 const { Executor } = require('@webex/cli-tools');
 
 describe('Executor', () => {
@@ -15,11 +14,11 @@ describe('Executor', () => {
       let execSpy;
 
       afterEach(() => {
-        execSpy.calls.reset();
+        execSpy.mockClear();
       });
 
       it('should return a promise', () => {
-        execSpy = spyOn(shell, 'exec').and.callFake((command, func) => {
+        execSpy = jest.spyOn(shell, 'exec').mockImplementation((command, func) => {
           func(0, { command }, undefined);
         });
 
@@ -30,21 +29,21 @@ describe('Executor', () => {
       });
 
       it('should call "shell.exec" with the provided configuration', () => {
-        execSpy = spyOn(shell, 'exec').and.callFake((command, func) => {
+        execSpy = jest.spyOn(shell, 'exec').mockImplementation((command, func) => {
           func(0, { command }, undefined);
         });
 
         return Executor.execute(exampleCommand)
           .then(() => {
             expect(execSpy).toHaveBeenCalledTimes(1);
-            expect(execSpy).toHaveBeenCalledOnceWith(exampleCommand, jasmine.any(Function));
+            expect(execSpy).toHaveBeenCalledWith(exampleCommand, expect.any(Function));
           });
       });
 
       it('should set the shell config to silent if provided, then set to false after execution', () => {
         let { silent } = shell.config;
 
-        execSpy = spyOn(shell, 'exec').and.callFake((command, func) => {
+        execSpy = jest.spyOn(shell, 'exec').mockImplementation((command, func) => {
           func(0, { command }, undefined);
         });
 
@@ -54,18 +53,18 @@ describe('Executor', () => {
           set silent(val) { silent = val; },
         };
 
-        const silentSpy = spyOnProperty(shell.config, 'silent', 'set').and.callThrough();
+        const silentSpy = jest.spyOn(shell.config, 'silent', 'set');
 
         return Executor.execute(exampleCommand, { silent: true })
           .then(() => {
-            expect(silentSpy.calls.allArgs()).toEqual([[true], [false]]);
+            expect(silentSpy.mock.calls).toEqual([[true], [false]]);
           });
       });
 
       it('should not modify the shell config silent option if silent is set to false', () => {
         let { silent } = shell.config;
 
-        execSpy = spyOn(shell, 'exec').and.callFake((command, func) => {
+        execSpy = jest.spyOn(shell, 'exec').mockImplementation((command, func) => {
           func(0, { command }, undefined);
         });
 
@@ -75,20 +74,22 @@ describe('Executor', () => {
           set silent(val) { silent = val; },
         };
 
-        const silentSpy = spyOnProperty(shell.config, 'silent', 'set').and.callThrough();
+        const silentSpy = jest.spyOn(shell.config, 'silent', 'set');
 
         return Executor.execute(exampleCommand, { silent: false })
           .then(() => {
-            expect(silentSpy).toHaveBeenCalledOnceWith(false);
+            expect(silentSpy).toHaveBeenCalledWith(false);
           });
       });
 
       it('should throw an error if the resulting code is not 0', () => {
-        execSpy = spyOn(shell, 'exec').and.callFake((command, func) => {
-          func(1, { command }, 'example-error');
+        const exampleError = 'example-error';
+
+        execSpy = jest.spyOn(shell, 'exec').mockImplementation((command, func) => {
+          func(1, { command }, exampleError);
         });
 
-        return expectAsync(Executor.execute(exampleCommand)).toBeRejected();
+        return expect(Executor.execute(exampleCommand)).rejects.toThrow(exampleError);
       });
     });
   });
