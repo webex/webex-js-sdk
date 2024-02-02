@@ -2125,11 +2125,11 @@ describe('plugin-meetings', () => {
           },
         };
 
-        assert.deepEqual(locusInfo.getTheLocusToUpdate(newLocus), newLocus);
-
         locusInfo.clearMainSessionLocusCache = sinon.stub();
-        locusInfo.getTheLocusToUpdate(newLocus);
+        const result = locusInfo.getTheLocusToUpdate(newLocus);
         assert.calledOnce(locusInfo.clearMainSessionLocusCache)
+
+        assert.deepEqual(result, newLocus);
       });
 
       it('do not clear main session cache when "mainSessionLocusCache?.self?.removed" is not true', () => {
