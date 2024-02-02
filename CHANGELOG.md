@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.337](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.336...v3.0.0-beta.337) (2024-02-02)
+
+
+### Bug Fixes
+
+* **meetings:** refactor stats analyzer ([#3350](https://github.com/webex/webex-js-sdk/issues/3350)) ([90228b2](https://github.com/webex/webex-js-sdk/commit/90228b27f9afb1b2154aa4842fe2eeaa44f0020e))
+
 ## [3.0.0-beta.336](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.335...v3.0.0-beta.336) (2024-02-02)
 
 
