@@ -7326,6 +7326,20 @@ describe('plugin-meetings', () => {
       });
 
       describe('#setPermissionTokenPayload', () => {
+
+        let now;
+        let clock;
+    
+        beforeEach(() => {
+          now = Date.now();
+    
+          // mock `new Date()` with constant `now`
+          clock = sinon.useFakeTimers(now);
+        });
+    
+        afterEach(() => {
+          clock.restore();
+        })
         it('sets correctly', () => {
           assert.notOk(meeting.permissionTokenPayload);
 
@@ -7337,6 +7351,7 @@ describe('plugin-meetings', () => {
 
           assert.calledOnce(jwtDecodeStub);
           assert.deepEqual(meeting.permissionTokenPayload, permissionTokenPayloadData);
+          assert.deepEqual(meeting.permissionTokenReceivedLocalTime, now);
         });
       });
 
@@ -9914,17 +9929,93 @@ describe('plugin-meetings', () => {
     it('should return the expected positive exp', () => {
       // set permission token as now + 1 sec
       const expiryTime = now + 1000;
-      meeting.permissionTokenPayload = {exp: (expiryTime).toString()};
+      meeting.permissionTokenPayload = {exp: (expiryTime).toString(), iat: now};
+      meeting.permissionTokenReceivedLocalTime = now;
       assert.deepEqual(meeting.getPermissionTokenExpiryInfo(), {timeLeft: 1, expiryTime: Number(expiryTime), currentTime: now});
     });
 
     it('should return the expected negative exp', () => {
       // set permission token as now - 1 sec
       const expiryTime = now - 1000;
-      meeting.permissionTokenPayload = {exp: (expiryTime).toString()};
+      meeting.permissionTokenPayload = {exp: (expiryTime).toString(), iat: now};
+      meeting.permissionTokenReceivedLocalTime = now;
       assert.deepEqual(meeting.getPermissionTokenExpiryInfo(), {timeLeft: -1, expiryTime: Number(expiryTime), currentTime: now});
     });
+
+    describe('#getPermissionTokenExpiryInfo with wrong current time which is in future', () => {
+      let now;
+      let clock;
+      beforeEach(() => {
+        // current time is 3 hours off
+        now = Date.now() + 10800000;
+  
+        // mock `new Date()` with constant `now`
+        clock = sinon.useFakeTimers(now);
+      });
+  
+      afterEach(() => {
+        clock.restore();
+      })
+  
+      it('should return the expected positive exp when client time is wrong', () => {
+        const serverTime = Date.now();
+  
+       // set permission token as now + 1 sec
+        const expiryTime = serverTime + 1000;
+        meeting.permissionTokenPayload = {exp: (expiryTime).toString(), iat: serverTime};
+        meeting.permissionTokenReceivedLocalTime = now;
+        assert.deepEqual(meeting.getPermissionTokenExpiryInfo(), {timeLeft: 1, expiryTime: Number(expiryTime), currentTime: now});
+      });
+  
+      it('should return the expected negative exp when client time is wrong', () => {
+        const serverTime = Date.now();
+        // set permission token as now - 1 sec
+        const expiryTime = serverTime - 1000;
+        meeting.permissionTokenPayload = {exp: (expiryTime).toString(), iat: serverTime};
+        meeting.permissionTokenReceivedLocalTime = now;
+        assert.deepEqual(meeting.getPermissionTokenExpiryInfo(), {timeLeft: -1, expiryTime: Number(expiryTime), currentTime: now});
+      });
+  
+    });
+
+    describe('#getPermissionTokenExpiryInfo with wrong current Time which is in the past', () => {
+      let now;
+      let clock;
+      beforeEach(() => {
+        // current time is 3 hours off
+        now = Date.now() - 10800000;
+  
+        // mock `new Date()` with constant `now`
+        clock = sinon.useFakeTimers(now);
+      });
+  
+      afterEach(() => {
+        clock.restore();
+      })
+  
+      it('should return the expected positive exp when client time is wrong', () => {
+        const serverTime = Date.now();
+  
+       // set permission token as now + 1 sec
+        const expiryTime = serverTime + 1000;
+        meeting.permissionTokenPayload = {exp: (expiryTime).toString(), iat: serverTime};
+        meeting.permissionTokenReceivedLocalTime = now;
+        assert.deepEqual(meeting.getPermissionTokenExpiryInfo(), {timeLeft: 1, expiryTime: Number(expiryTime), currentTime: now});
+      });
+  
+      it('should return the expected negative exp when client time is wrong', () => {
+        const serverTime = Date.now();
+        // set permission token as now - 1 sec
+        const expiryTime = serverTime - 1000;
+        meeting.permissionTokenPayload = {exp: (expiryTime).toString(), iat: serverTime};
+        meeting.permissionTokenReceivedLocalTime = now;
+        assert.deepEqual(meeting.getPermissionTokenExpiryInfo(), {timeLeft: -1, expiryTime: Number(expiryTime), currentTime: now});
+      });
+  
+    });
   });
+
+
 
   describe('#checkAndRefreshPermissionToken', () => {
     it('should not fire refreshPermissionToken if permissionToken is not defined', async() => {
