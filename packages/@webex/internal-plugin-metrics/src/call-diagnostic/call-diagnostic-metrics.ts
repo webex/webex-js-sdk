@@ -218,7 +218,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
           localNetworkPrefix:
             anonymizeIPAddress(
               // @ts-ignore
-              this.webex.meetings.getActiveWebrtcMeeting()?.getDiagnosticsLocalIp()
+              this.webex.meetings.meetingCollection.get(meetingId).statsAnalyzer.getLocalIpAddress()
             ) || undefined,
           osVersion: getOSVersion() || 'unknown',
           subClientType: options?.subClientType || defaultSubClientType,

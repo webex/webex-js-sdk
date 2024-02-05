@@ -36,7 +36,6 @@ export const EVENTS = {
   LOCAL_MEDIA_STOPPED: 'LOCAL_MEDIA_STOPPED',
   REMOTE_MEDIA_STARTED: 'REMOTE_MEDIA_STARTED',
   REMOTE_MEDIA_STOPPED: 'REMOTE_MEDIA_STOPPED',
-  LOCAL_IP_UPDATED: 'LOCAL_IP_UPDATED',
 };
 
 const emptySender = {
@@ -267,6 +266,16 @@ export class StatsAnalyzer extends EventsScope {
    */
   updateMediaConnection(mediaConnection: any) {
     this.mediaConnection = mediaConnection;
+  }
+
+  /**
+   * Returns the local IP address for diagnostics.
+   * this is the local IP of the interface used for the current media connection
+   * a host can have many local Ip Addresses
+   * @returns {string | undefined} The local IP address.
+   */
+  getLocalIpAddress(): string | undefined {
+    return this.localIpAddress;
   }
 
   /**
@@ -991,7 +1000,11 @@ export class StatsAnalyzer extends EventsScope {
   }
 
   /**
-   * Processes remote and local candidate result and stores
+   * extracts the local Ip address from the statsResult object by looking at internal.candidates
+   * and matches that ID with the successful candidate pair. It looks at the type of local candidate it is
+   * and then extracts the IP address from the relatedAddress or address property based on conditions known in webrtc
+   * note, there are known incompatibilities and it is possible for this to set undefined, or for the IP address to be the public IP address
+   * for example, firefox does not set the relayProtocol, and if the user is behind a NAT it might be the public IP
    * @private
    * @param {string} successfulCandidatePairId - The ID of the successful candidate pair.
    * @param {Object} statsResultsInternal - The internal statistics results object.
@@ -1029,16 +1042,6 @@ export class StatsAnalyzer extends EventsScope {
     }
     if (newIpAddress && newIpAddress !== this.localIpAddress) {
       this.localIpAddress = newIpAddress;
-      this.emit(
-        {
-          file: 'statsAnalyzer',
-          function: 'extractAndSetLocalIpAddressInfoForDiagnostics',
-        },
-        EVENTS.LOCAL_IP_UPDATED,
-        {
-          localIp: this.localIpAddress,
-        }
-      );
     }
   };
 

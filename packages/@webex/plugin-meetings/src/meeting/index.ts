@@ -5661,9 +5661,6 @@ export default class Meeting extends StatelessWebexPlugin {
         },
       });
     });
-    this.statsAnalyzer.on(StatsAnalyzerEvents.LOCAL_IP_UPDATED, (data: {localIp?: string}) => {
-      this.diagnosticsInfo.localIp = data?.localIp;
-    });
     this.statsAnalyzer.on(StatsAnalyzerEvents.LOCAL_MEDIA_STARTED, (data) => {
       Trigger.trigger(
         this,
@@ -5726,24 +5723,6 @@ export default class Meeting extends StatelessWebexPlugin {
 
   getMediaConnectionDebugId() {
     return `MC-${this.id.substring(0, 4)}`;
-  }
-
-  /**
-   * Returns the diagnostics information.
-   *
-   * @returns {Object} The diagnostics information.
-   */
-  getDiagnosticsInfo(): {localIp?: string} {
-    return this.diagnosticsInfo;
-  }
-
-  /**
-   * Returns the local IP address for diagnostics.
-   *
-   * @returns {string | undefined} The local IP address.
-   */
-  getDiagnosticsLocalIp(): string | undefined {
-    return this.getDiagnosticsInfo().localIp;
   }
 
   /**
