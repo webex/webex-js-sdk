@@ -78,7 +78,7 @@ export class StatsAnalyzer extends EventsScope {
   statsResults: any;
   statsStarted: any;
   successfulCandidatePair: any;
-  localIpAddress?: string; // Returns the local IP address for diagnostics. this is the local IP of the interface used for the current media connection a host can have many local Ip Addresses
+  localIpAddress: string; // Returns the local IP address for diagnostics. this is the local IP of the interface used for the current media connection a host can have many local Ip Addresses
   receiveSlotCallback: ReceiveSlotCallback;
 
   /**
@@ -108,7 +108,7 @@ export class StatsAnalyzer extends EventsScope {
     this.lastEmittedStartStopEvent = {};
     this.receiveSlotCallback = receiveSlotCallback;
     this.successfulCandidatePair = {};
-    this.localIpAddress = undefined;
+    this.localIpAddress = '';
   }
 
   /**
@@ -419,7 +419,7 @@ export class StatsAnalyzer extends EventsScope {
       this.statsResults[type].csi = statsItem.csi;
       this.extractAndSetLocalIpAddressInfoForDiagnostics(
         this.successfulCandidatePair?.localCandidateId,
-        this.statsResults?.internal
+        this.statsResults?.candidates || this.statsResults?.internal?.candidates
       );
       // reset the successful candidate pair.
       this.successfulCandidatePair = {};
@@ -1000,25 +1000,23 @@ export class StatsAnalyzer extends EventsScope {
   }
 
   /**
-   * extracts the local Ip address from the statsResult object by looking at internal.candidates
+   * extracts the local Ip address from the statsResult object by looking at stats results candidates
    * and matches that ID with the successful candidate pair. It looks at the type of local candidate it is
    * and then extracts the IP address from the relatedAddress or address property based on conditions known in webrtc
    * note, there are known incompatibilities and it is possible for this to set undefined, or for the IP address to be the public IP address
    * for example, firefox does not set the relayProtocol, and if the user is behind a NAT it might be the public IP
    * @private
    * @param {string} successfulCandidatePairId - The ID of the successful candidate pair.
-   * @param {Object} statsResultsInternal - The internal statistics results object.
+   * @param {Object} candidates - the stats result candidates
    * @returns {void}
    */
   extractAndSetLocalIpAddressInfoForDiagnostics = (
     successfulCandidatePairId: string,
-    statsResultsInternal: {
-      candidates: {[key: string]: Record<string, unknown>};
-    }
+    candidates: {[key: string]: Record<string, unknown>}
   ) => {
     let newIpAddress = '';
-    if (successfulCandidatePairId && !isEmpty(statsResultsInternal?.candidates)) {
-      const localCandidate = statsResultsInternal.candidates[successfulCandidatePairId];
+    if (successfulCandidatePairId && !isEmpty(candidates)) {
+      const localCandidate = candidates[successfulCandidatePairId];
       if (localCandidate) {
         if (localCandidate.candidateType === 'host') {
           // if it's a host candidate, use the address property - it will be the local IP
