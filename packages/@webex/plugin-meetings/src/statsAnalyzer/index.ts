@@ -78,7 +78,7 @@ export class StatsAnalyzer extends EventsScope {
   statsResults: any;
   statsStarted: any;
   successfulCandidatePair: any;
-  localIpAddress: string;
+  localIpAddress?: string; // Returns the local IP address for diagnostics. this is the local IP of the interface used for the current media connection a host can have many local Ip Addresses
   receiveSlotCallback: ReceiveSlotCallback;
 
   /**
@@ -108,7 +108,7 @@ export class StatsAnalyzer extends EventsScope {
     this.lastEmittedStartStopEvent = {};
     this.receiveSlotCallback = receiveSlotCallback;
     this.successfulCandidatePair = {};
-    this.localIpAddress = '';
+    this.localIpAddress = undefined;
   }
 
   /**
@@ -1040,9 +1040,7 @@ export class StatsAnalyzer extends EventsScope {
         }
       }
     }
-    if (newIpAddress && newIpAddress !== this.localIpAddress) {
-      this.localIpAddress = newIpAddress;
-    }
+    this.localIpAddress = newIpAddress;
   };
 
   /**

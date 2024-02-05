@@ -580,7 +580,6 @@ export default class Meeting extends StatelessWebexPlugin {
   allowMediaInLobby: boolean;
   turnDiscoverySkippedReason: string;
   turnServerUsed: boolean;
-  diagnosticsInfo: {localIp?: string};
   private retriedWithTurnServer: boolean;
   private sendSlotManager: SendSlotManager = new SendSlotManager(LoggerProxy);
   private deferSDPAnswer?: Defer; // used for waiting for a response
@@ -982,15 +981,6 @@ export default class Meeting extends StatelessWebexPlugin {
      * @memberof Meeting
      */
     this.mediaConnections = null;
-
-    /**
-     * @instance
-     * @type {Object}
-     * @readonly
-     * @public
-     * @memberof Meeting
-     */
-    this.diagnosticsInfo = {};
 
     /**
      * If true, then media is sent over multiple separate streams.
