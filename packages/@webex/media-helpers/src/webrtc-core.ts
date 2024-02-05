@@ -63,7 +63,7 @@ class _LocalMicrophoneStream extends WcmeLocalMicrophoneStream {
   /**
    * @internal
    */
-  setUnmuteAllowed(allowed) {
+  setUnmuteAllowed(allowed: boolean) {
     this.unmuteAllowed = allowed;
   }
 
@@ -93,16 +93,6 @@ class _LocalMicrophoneStream extends WcmeLocalMicrophoneStream {
       this[LocalMicrophoneStreamEventNames.ServerMuted].emit(muted, reason);
     }
   }
-
-  toJSON() {
-    return {
-      id: this.id,
-      enabled: this.inputTrack?.enabled,
-      label: this.label,
-      readyState: this.readyState,
-      numEnabledEffects: this.getEffects().filter((item) => item.isEnabled).length,
-    };
-  }
 }
 
 class _LocalCameraStream extends WcmeLocalCameraStream {
@@ -115,7 +105,7 @@ class _LocalCameraStream extends WcmeLocalCameraStream {
   /**
    * @internal
    */
-  setUnmuteAllowed(allowed) {
+  setUnmuteAllowed(allowed: boolean) {
     this.unmuteAllowed = allowed;
   }
 
@@ -144,16 +134,6 @@ class _LocalCameraStream extends WcmeLocalCameraStream {
       this.setMuted(muted);
       this[LocalCameraStreamEventNames.ServerMuted].emit(muted, reason);
     }
-  }
-
-  toJSON() {
-    return {
-      id: this.id,
-      enabled: this.inputTrack?.enabled,
-      label: this.label,
-      readyState: this.readyState,
-      numEnabledEffects: this.getEffects().filter((item) => item.isEnabled).length,
-    };
   }
 }
 
