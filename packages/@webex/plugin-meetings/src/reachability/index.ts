@@ -154,11 +154,11 @@ export default class Reachability {
     };
 
     const updateStats = (clusterType: 'public' | 'vmn', result: ClusterReachabilityResult) => {
-      if (result.udp && result.udp.result !== 'not tested') {
+      if (result.udp && result.udp.result !== 'untested') {
         const outcome = result.udp.result === 'reachable' ? 'success' : 'failed';
         stats[`reachability_${clusterType}_udp_${outcome}`] += 1;
       }
-      if (result.tcp && result.tcp.result !== 'not tested') {
+      if (result.tcp && result.tcp.result !== 'untested') {
         const outcome = result.tcp.result === 'reachable' ? 'success' : 'failed';
         stats[`reachability_${clusterType}_tcp_${outcome}`] += 1;
       }
@@ -207,7 +207,7 @@ export default class Reachability {
             case 'unreachable':
               output.reachable = 'false';
               break;
-            case 'not tested':
+            case 'untested':
               output.untested = 'true';
               break;
           }
@@ -241,14 +241,10 @@ export default class Reachability {
       const allClusterResults: ReachabilityResults = JSON.parse(resultsJson);
 
       results = mapValues(allClusterResults, (clusterResult) => ({
-        udp: this.mapTransportResultToBackendDataFormat(
-          clusterResult.udp || {result: 'not tested'}
-        ),
-        tcp: this.mapTransportResultToBackendDataFormat(
-          clusterResult.tcp || {result: 'not tested'}
-        ),
+        udp: this.mapTransportResultToBackendDataFormat(clusterResult.udp || {result: 'untested'}),
+        tcp: this.mapTransportResultToBackendDataFormat(clusterResult.tcp || {result: 'untested'}),
         xtls: this.mapTransportResultToBackendDataFormat(
-          clusterResult.xtls || {result: 'not tested'}
+          clusterResult.xtls || {result: 'untested'}
         ),
       }));
     } catch (e) {

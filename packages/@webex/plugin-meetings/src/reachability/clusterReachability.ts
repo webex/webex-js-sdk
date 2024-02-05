@@ -10,7 +10,7 @@ const VIDEO_MESH_TIMEOUT = 1000;
 
 // result for a specific transport protocol (like udp or tcp)
 export type TransportResult = {
-  result: 'reachable' | 'unreachable' | 'not tested';
+  result: 'reachable' | 'unreachable' | 'untested';
   latencyInMilliseconds?: number; // amount of time it took to get the first ICE candidate
   clientMediaIPs?: string[];
 };
@@ -51,13 +51,13 @@ export class ClusterReachability {
     this.defer = new Defer();
     this.result = {
       udp: {
-        result: 'not tested',
+        result: 'untested',
       },
       tcp: {
-        result: 'not tested',
+        result: 'untested',
       },
       xtls: {
-        result: 'not tested',
+        result: 'untested',
       },
     };
   }
@@ -202,8 +202,7 @@ export class ClusterReachability {
   private haveWeGotAllResults(): boolean {
     return ['udp', 'tcp'].every(
       (protocol) =>
-        this.result[protocol].result === 'reachable' ||
-        this.result[protocol].result === 'not tested'
+        this.result[protocol].result === 'reachable' || this.result[protocol].result === 'untested'
     );
   }
 
@@ -277,10 +276,10 @@ export class ClusterReachability {
     // Initialize this.result as saying that nothing is reachable.
     // It will get updated as we go along and successfully gather ICE candidates.
     this.result.udp = {
-      result: this.numUdpUrls > 0 ? 'unreachable' : 'not tested',
+      result: this.numUdpUrls > 0 ? 'unreachable' : 'untested',
     };
     this.result.tcp = {
-      result: this.numTcpUrls > 0 ? 'unreachable' : 'not tested',
+      result: this.numTcpUrls > 0 ? 'unreachable' : 'untested',
     };
 
     try {

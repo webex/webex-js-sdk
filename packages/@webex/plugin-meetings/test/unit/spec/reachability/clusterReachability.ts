@@ -77,9 +77,9 @@ describe('ClusterReachability', () => {
 
   it('returns correct results before start() is called', () => {
     assert.deepEqual(clusterReachability.getResult(), {
-      udp: {result: 'not tested'},
-      tcp: {result: 'not tested'},
-      xtls: {result: 'not tested'}
+      udp: {result: 'untested'},
+      tcp: {result: 'untested'},
+      xtls: {result: 'untested'}
     });
   });
 
@@ -125,7 +125,7 @@ describe('ClusterReachability', () => {
       assert.deepEqual(clusterReachability.getResult(), {
         udp: {result: 'reachable', latencyInMilliseconds: 100, clientMediaIPs: ['somePublicIp']},
         tcp: {result: 'reachable', latencyInMilliseconds: 200},
-        xtls: {result: 'not tested'}
+        xtls: {result: 'untested'}
       });
     });
 
@@ -139,7 +139,7 @@ describe('ClusterReachability', () => {
       assert.deepEqual(clusterReachability.getResult(), {
         udp: {result: 'unreachable'},
         tcp: {result: 'unreachable'},
-        xtls: {result: 'not tested'}
+        xtls: {result: 'untested'}
       });
     });
 
@@ -160,7 +160,7 @@ describe('ClusterReachability', () => {
       assert.deepEqual(clusterReachability.getResult(), {
         udp: {result: 'unreachable'},
         tcp: {result: 'unreachable'},
-        xtls: {result: 'not tested'}
+        xtls: {result: 'untested'}
       });
     });
 
@@ -176,7 +176,7 @@ describe('ClusterReachability', () => {
       assert.deepEqual(clusterReachability.getResult(), {
         udp: {result: 'unreachable'},
         tcp: {result: 'unreachable'},
-        xtls: {result: 'not tested'}
+        xtls: {result: 'untested'}
       });
     });
 
@@ -194,7 +194,7 @@ describe('ClusterReachability', () => {
       assert.deepEqual(clusterReachability.getResult(), {
         udp: {result: 'reachable', latencyInMilliseconds: 30, clientMediaIPs: ['somePublicIp1']},
         tcp: {result: 'unreachable'},
-        xtls: {result: 'not tested'}
+        xtls: {result: 'untested'}
       });
     });
 
@@ -219,7 +219,7 @@ describe('ClusterReachability', () => {
       assert.deepEqual(clusterReachability.getResult(), {
         udp: {result: 'reachable', latencyInMilliseconds: 10, clientMediaIPs: ['somePublicIp1', 'somePublicIp2', 'somePublicIp3']},
         tcp: {result: 'unreachable'},
-        xtls: {result: 'not tested'}
+        xtls: {result: 'untested'}
       });
     });
 
@@ -244,7 +244,7 @@ describe('ClusterReachability', () => {
       assert.deepEqual(clusterReachability.getResult(), {
         udp: {result: 'unreachable'},
         tcp: {result: 'reachable', latencyInMilliseconds: 10},
-        xtls: {result: 'not tested'}
+        xtls: {result: 'untested'}
       });
     });
 
@@ -272,7 +272,7 @@ describe('ClusterReachability', () => {
       assert.deepEqual(clusterReachability.getResult(), {
         udp: {result: 'reachable', latencyInMilliseconds: 10, clientMediaIPs: ['somePublicIp1', 'somePublicIp2']},
         tcp: {result: 'reachable', latencyInMilliseconds: 40},
-        xtls: {result: 'not tested'}
+        xtls: {result: 'untested'}
       });
     });
   });
