@@ -2,6 +2,7 @@ import {Defer} from '@webex/common';
 
 import LoggerProxy from '../common/logs/logger-proxy';
 import {ClusterNode} from './request';
+import {convertStunUrlToTurn} from './util';
 
 import {ICE_GATHERING_STATE, CONNECTION_STATE} from '../constants';
 
@@ -86,17 +87,10 @@ export class ClusterReachability {
     // we pretend that Linus is a TURN server, because we can explicitly say "transport=tcp" in TURN urls.
     // We then check for relay candidates to know if TURN-TCP worked (see registerIceCandidateListener()).
     const tcpIceServers = cluster.tcp.map((urlString: string) => {
-      // urlString looks like this: "stun:external-media91.public.wjfkm-a-10.prod.infra.webex.com:5004"
-      // and we need it to be like this: "turn:external-media91.public.wjfkm-a-10.prod.infra.webex.com:5004?transport=tcp"
-      const url = new URL(urlString);
-
-      url.protocol = 'turn:';
-      url.searchParams.append('transport', 'tcp');
-
       return {
         username: 'webexturnreachuser',
         credential: 'webexturnreachpwd',
-        urls: [url.toString()],
+        urls: [convertStunUrlToTurn(urlString, 'tcp')],
       };
     });
 
@@ -287,7 +281,9 @@ export class ClusterReachability {
 
       this.startTimestamp = performance.now();
 
-      this.pc.setLocalDescription(offer); // not awaiting on purpose
+      // not awaiting the next call on purpose, because we're not sending the offer anywhere and there won't be any answer
+      // we just need to make this call to trigger the ICE gathering process
+      this.pc.setLocalDescription(offer);
 
       await this.gatherIceCandidates();
     } catch (error) {
