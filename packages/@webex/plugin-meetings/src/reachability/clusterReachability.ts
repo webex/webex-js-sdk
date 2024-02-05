@@ -11,7 +11,7 @@ const VIDEO_MESH_TIMEOUT = 1000;
 // result for a specific transport protocol (like udp or tcp)
 export type TransportResult = {
   result: 'reachable' | 'unreachable' | 'not tested';
-  latencyInMilliseconds?: number;
+  latencyInMilliseconds?: number; // amount of time it took to get the first ICE candidate
   clientMediaIPs?: string[];
 };
 
@@ -120,8 +120,9 @@ export class ClusterReachability {
 
       return peerConnection;
     } catch (peerConnectionError) {
-      LoggerProxy.logger.log(
-        `Reachability:index#createPeerConnection --> Error creating peerConnection: ${peerConnectionError}`
+      LoggerProxy.logger.warn(
+        `Reachability:index#createPeerConnection --> Error creating peerConnection:`,
+        peerConnectionError
       );
 
       return undefined;
@@ -207,7 +208,7 @@ export class ClusterReachability {
   }
 
   /**
-   * Stores the latency in the result
+   * Stores the latency in the result for the given protocol and marks it as reachable
    *
    * @param {string} protocol
    * @param {number} latency

@@ -215,7 +215,7 @@ describe('ClusterReachability', () => {
 
       await promise;
 
-      // latency should be from only the first candidates, but the clientMediaIps should be from all candidates
+      // latency should be from only the first candidates, but the clientMediaIps should be from all UDP candidates (not TCP)
       assert.deepEqual(clusterReachability.getResult(), {
         udp: {result: 'reachable', latencyInMilliseconds: 10, clientMediaIPs: ['somePublicIp1', 'somePublicIp2', 'somePublicIp3']},
         tcp: {result: 'unreachable'},
@@ -240,7 +240,7 @@ describe('ClusterReachability', () => {
 
       await promise;
 
-      // latency should be from only the first candidates, but the clientMediaIps should be from all candidates
+      // latency should be from only the first candidates, but the clientMediaIps should be from only from UDP candidates
       assert.deepEqual(clusterReachability.getResult(), {
         udp: {result: 'unreachable'},
         tcp: {result: 'reachable', latencyInMilliseconds: 10},
