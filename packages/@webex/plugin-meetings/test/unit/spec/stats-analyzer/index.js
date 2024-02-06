@@ -497,7 +497,6 @@ describe('plugin-meetings', () => {
         await progressTime();
         assert.strictEqual(statsAnalyzer.getLocalIpAddress(), '');
         mergeProperties(fakeStats, {candidateType: 'invalid'});
-        console.log(statsAnalyzer.statsResults);
         await progressTime();
         assert.strictEqual(statsAnalyzer.getLocalIpAddress(), '');
       });

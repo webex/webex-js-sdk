@@ -274,7 +274,7 @@ export class StatsAnalyzer extends EventsScope {
    * a host can have many local Ip Addresses
    * @returns {string | undefined} The local IP address.
    */
-  getLocalIpAddress(): string | undefined {
+  getLocalIpAddress(): string {
     return this.localIpAddress;
   }
 
@@ -419,7 +419,7 @@ export class StatsAnalyzer extends EventsScope {
       this.statsResults[type].csi = statsItem.csi;
       this.extractAndSetLocalIpAddressInfoForDiagnostics(
         this.successfulCandidatePair?.localCandidateId,
-        this.statsResults?.candidates || this.statsResults?.internal?.candidates
+        this.statsResults?.candidates
       );
       // reset the successful candidate pair.
       this.successfulCandidatePair = {};
