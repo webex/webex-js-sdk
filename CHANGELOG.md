@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.341](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.340...v3.0.0-beta.341) (2024-02-06)
+
+
+### Bug Fixes
+
+* adding retry timer for locus service unavailable ([#3335](https://github.com/webex/webex-js-sdk/issues/3335)) ([706d59f](https://github.com/webex/webex-js-sdk/commit/706d59f34c51a667f305cb9887172196e2c70e3d))
+
 ## [3.0.0-beta.340](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.339...v3.0.0-beta.340) (2024-02-06)
 
 
