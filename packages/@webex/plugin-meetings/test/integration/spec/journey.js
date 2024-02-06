@@ -5,7 +5,7 @@ import {assert} from '@webex/test-helper-chai';
 import {skipInNode} from '@webex/test-helper-mocha';
 import sinon from 'sinon';
 
-import BrowserDetection from '@webex/plugin-meetings/dist/common/browser-detection';
+import checkBrowserDetection from '@webex/plugin-meetings/dist/common/browser-detection';
 import {createCameraStream, createDisplayStream, createMicrophoneStream, LocalTrackEvents, LocalStreamEventNames} from '@webex/plugin-meetings';
 
 import testUtils from '../../utils/testUtils';
@@ -16,7 +16,7 @@ require('dotenv').config();
 
 const webexTestUsers = require('../../utils/webex-test-users');
 
-const {isBrowser} = BrowserDetection();
+const {isBrowser} = checkBrowserDetection();
 
 let userSet, alice, bob, chris, enumerateSpy, channelUrlA, channelUrlB;
 

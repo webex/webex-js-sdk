@@ -5,7 +5,7 @@ import {WebexHttpError} from '@webex/webex-core';
 import CallDiagnosticMetrics from '../../../../src/call-diagnostic/call-diagnostic-metrics';
 import CallDiagnosticLatencies from '../../../../src/call-diagnostic/call-diagnostic-metrics-latencies';
 import * as Utils from '../../../../src/call-diagnostic/call-diagnostic-metrics.util';
-import {BrowserDetection, getBrowserSerial} from '@webex/common';
+import {checkBrowserDetection, getBrowserSerial} from '@webex/common';
 import {getOSNameInternal} from '@webex/internal-plugin-metrics';
 import uuid from 'uuid';
 import {omit} from 'lodash';
@@ -14,7 +14,7 @@ import CONFIG from '../../../../src/config';
 //@ts-ignore
 global.window = {location: {hostname: 'whatever'}};
 
-const {getOSName, getOSVersion, getBrowserName, getBrowserVersion} = BrowserDetection();
+const {getOSName, getOSVersion, getBrowserName, getBrowserVersion} = checkBrowserDetection();
 const userAgent = `webex-js-sdk/test-webex-version client=Cantina; (os=${getOSName()}/${
   getOSVersion().split('.')[0]
 })`;

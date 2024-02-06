@@ -8,9 +8,9 @@ import {Token, Credentials} from '@webex/webex-core';
 import FakeTimers from '@sinonjs/fake-timers';
 import sinon from 'sinon';
 import Metrics, {config} from '@webex/internal-plugin-metrics';
-import {BrowserDetection} from '@webex/common';
+import {checkBrowserDetection} from '@webex/common';
 
-const {getOSVersion} = BrowserDetection();
+const {getOSVersion} = checkBrowserDetection();
 
 function promiseTick(count) {
   let promise = Promise.resolve();

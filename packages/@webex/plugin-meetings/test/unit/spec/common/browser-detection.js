@@ -1,6 +1,6 @@
 import 'jsdom-global/register';
 import {assert} from '@webex/test-helper-chai';
-import BrowserDetection from '@webex/plugin-meetings/src/common/browser-detection';
+import checkcheckBrowserDetection from '@webex/plugin-meetings/src/common/browser-detection';
 
 const USER_AGENT_CHROME_MAC =
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) ' +
@@ -31,7 +31,7 @@ const mockDetectionObject = {
 describe('common/browser-detection', () => {
   it('returns the correct browser name.', () => {
     assert.equal(
-      BrowserDetection(USER_AGENT_CHROME_MAC).getBrowserName(),
+      checkBrowserDetection(USER_AGENT_CHROME_MAC).getBrowserName(),
       'Chrome',
       'Browser detection should return the correct browser name'
     );
@@ -39,7 +39,7 @@ describe('common/browser-detection', () => {
 
   it('returns the correct browser version.', () => {
     assert.equal(
-      BrowserDetection(USER_AGENT_CHROME_MAC).getBrowserVersion(),
+      checkBrowserDetection(USER_AGENT_CHROME_MAC).getBrowserVersion(),
       '90.0.4430.85',
       'Browser detection should return the correct browser version'
     );
@@ -47,7 +47,7 @@ describe('common/browser-detection', () => {
 
   it('returns the correct OS name.', () => {
     assert.equal(
-      BrowserDetection(USER_AGENT_CHROME_MAC).getOSName(),
+      checkBrowserDetection(USER_AGENT_CHROME_MAC).getOSName(),
       'macOS',
       'Browser detection should return the correct OS name'
     );
@@ -55,7 +55,7 @@ describe('common/browser-detection', () => {
 
   it('returns the correct OS version.', () => {
     assert.equal(
-      BrowserDetection(USER_AGENT_CHROME_MAC).getOSVersion(),
+      checkBrowserDetection(USER_AGENT_CHROME_MAC).getOSVersion(),
       '10.15.7',
       'Browser detection should return the correct OS version'
     );
@@ -63,42 +63,42 @@ describe('common/browser-detection', () => {
 
   it('returns the fact it is not Firefox', () => {
     assert.isFalse(
-      BrowserDetection(USER_AGENT_CHROME_MAC).isBrowser('firefox'),
+      checkBrowserDetection(USER_AGENT_CHROME_MAC).isBrowser('firefox'),
       'This browser is Firefox'
     );
   });
 
   it('returns the fact it is not Safari', () => {
     assert.isFalse(
-      BrowserDetection(USER_AGENT_CHROME_MAC).isBrowser('safari'),
+      checkBrowserDetection(USER_AGENT_CHROME_MAC).isBrowser('safari'),
       'This browser is Safari'
     );
   });
 
   it('returns the fact it is not MS Edge', () => {
     assert.isFalse(
-      BrowserDetection(USER_AGENT_CHROME_MAC).isBrowser('edge'),
+      checkBrowserDetection(USER_AGENT_CHROME_MAC).isBrowser('edge'),
       'This browser is Microsoft Edge'
     );
   });
 
   it('returns the fact it is MS Edge', () => {
     assert.isTrue(
-      BrowserDetection(USER_AGENT_EDGE_MAC).isBrowser('edge'),
+      checkBrowserDetection(USER_AGENT_EDGE_MAC).isBrowser('edge'),
       'This browser is NOT Microsoft Edge'
     );
   });
 
   it('returns the fact it is Safari', () => {
     assert.isTrue(
-      BrowserDetection(USER_AGENT_SAFARI_MAC).isBrowser('safari'),
+      checkBrowserDetection(USER_AGENT_SAFARI_MAC).isBrowser('safari'),
       'This browser is NOT Safari'
     );
   });
 
   it('returns the fact it is Firefox', () => {
     assert.isTrue(
-      BrowserDetection(USER_AGENT_FIREFOX_MAC).isBrowser('firefox'),
+      checkBrowserDetection(USER_AGENT_FIREFOX_MAC).isBrowser('firefox'),
       'This browser is NOT Firefox'
     );
   });
@@ -109,7 +109,7 @@ describe('common/browser-detection', () => {
       configurable: true,
     });
 
-    const {getBrowserName, getBrowserVersion, getOSName, getOSVersion} = BrowserDetection(null);
+    const {getBrowserName, getBrowserVersion, getOSName, getOSVersion} = checkBrowserDetection(null);
 
     assert.equal(getBrowserName(), mockDetectionObject.getBrowserName());
     assert.equal(getBrowserVersion(), mockDetectionObject.getBrowserVersion());

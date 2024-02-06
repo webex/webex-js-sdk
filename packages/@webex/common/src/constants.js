@@ -61,6 +61,10 @@ export const SDK_EVENT = {
 
 export const browserDetection = {
   unableToAccessUserAgent: 'unable to access window.navigator.userAgent',
+  unableToGetOSName: 'unable to get OS name',
+  unableToGetOSVersion: 'unable to get OS version',
+  unableToGetBrowserName: 'unable to get browser name',
+  unableToGetBrowserVersion: 'unable to get browser version',
 };
 
 export const hydraTypes = {

@@ -1,5 +1,4 @@
 import bowser from 'bowser';
-import {memoize} from 'lodash';
 import window from 'global/window';
 import {browserDetection} from './constants';
 
@@ -27,11 +26,12 @@ const mockDetectionObject = {
 };
 
 const createDetectionObject = (results) => {
-  const getOSName = () => results?.getOSName() ?? '';
-  const getOSVersion = () => results?.getOSVersion() ?? '';
+  const getOSName = () => results?.getOSName() ?? browserDetection.unableToGetOSName;
+  const getOSVersion = () => results?.getOSVersion() ?? browserDetection.unableToGetOSVersion;
 
-  const getBrowserName = () => results?.getBrowserName() ?? '';
-  const getBrowserVersion = () => results?.getBrowserVersion() ?? '';
+  const getBrowserName = () => results?.getBrowserName() ?? browserDetection.unableToGetBrowserName;
+  const getBrowserVersion = () =>
+    results?.getBrowserVersion() ?? browserDetection.unableToGetOSVersion;
 
   const isBrowser = (name) => !!results?.isBrowser(name, true);
 
@@ -44,8 +44,22 @@ const createDetectionObject = (results) => {
   };
 };
 
-export default memoize((agent) =>
-  agent || window.navigator?.userAgent
-    ? createDetectionObject(bowser.getParser(agent || window.navigator.userAgent))
-    : mockDetectionObject
-);
+let browserDetectionData;
+
+const checkBrowserDetection = (agent) => {
+  if (browserDetectionData) {
+    return browserDetectionData;
+  }
+
+  if (!agent || !window.navigator?.userAgent) {
+    return mockDetectionObject;
+  }
+
+  const browserData = createDetectionObject(bowser.getParser(agent || window.navigator.userAgent));
+
+  browserDetectionData = browserData;
+
+  return browserDetectionData;
+};
+
+export default checkBrowserDetection;

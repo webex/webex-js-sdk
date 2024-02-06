@@ -5,13 +5,13 @@
  */
 
 import {WebexPlugin} from '@webex/webex-core';
-import {BrowserDetection} from '@webex/common';
+import {checkBrowserDetection} from '@webex/common';
 import {OS_NAME, OSMap, CLIENT_NAME} from './config';
 
 import Batcher from './batcher';
 import ClientMetricsBatcher from './client-metrics-batcher';
 
-const {getOSName, getOSVersion, getBrowserName, getBrowserVersion} = BrowserDetection();
+const {getOSName, getOSVersion, getBrowserName, getBrowserVersion} = checkBrowserDetection();
 
 export function getOSNameInternal() {
   return OSMap[getOSName()] ?? OS_NAME.OTHERS;

@@ -2,7 +2,7 @@
 /* eslint-disable class-methods-use-this */
 /* eslint-disable valid-jsdoc */
 import {getOSNameInternal} from '@webex/internal-plugin-metrics';
-import {BrowserDetection, getBrowserSerial} from '@webex/common';
+import {checkBrowserDetection, getBrowserSerial} from '@webex/common';
 import uuid from 'uuid';
 import {merge} from 'lodash';
 import {StatelessWebexPlugin} from '@webex/webex-core';
@@ -55,7 +55,7 @@ import {
 } from './config';
 import {generateCommonErrorMetadata} from '../utils';
 
-const {getOSVersion, getBrowserName, getBrowserVersion} = BrowserDetection();
+const {getOSVersion, getBrowserName, getBrowserVersion} = checkBrowserDetection();
 
 type GetOriginOptions = {
   clientType: ClientType;
