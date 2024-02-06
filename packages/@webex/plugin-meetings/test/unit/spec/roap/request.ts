@@ -65,7 +65,8 @@ describe('plugin-meetings/roap', () => {
       REACHABILITY.localStorageResult,
       JSON.stringify({
         clusterId: {
-          udp: 'test',
+          udp: { result: 'reachable', latencyInMilliseconds: 10 },
+          tcp: { result: 'unreachable' },
           isVideoMesh: false,
         },
       })
@@ -79,7 +80,16 @@ describe('plugin-meetings/roap', () => {
       assert.deepEqual(res.localSdp, {
         reachability: {
           clusterId: {
-            udp: 'test',
+            udp: {
+              reachable: 'true',
+              latencyInMilliseconds: '10',
+            },
+            tcp: {
+              reachable: 'false',
+            },
+            xtls: {
+              untested: 'true',
+            }
           },
         },
       });
@@ -149,7 +159,20 @@ describe('plugin-meetings/roap', () => {
         roapMessage: {
           seq: 'seq',
         },
-        reachability: {clusterId: {udp: 'test'}},
+        reachability: {
+          clusterId: {
+            tcp: {
+              reachable: 'false',
+            },
+            udp: {
+              latencyInMilliseconds: '10',
+              reachable: 'true',
+            },
+            xtls: {
+              untested: 'true',
+            },
+          },
+        },
       });
     });
 
