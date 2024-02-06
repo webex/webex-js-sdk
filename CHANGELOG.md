@@ -2,6 +2,34 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.337](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.336...v3.0.0-beta.337) (2024-02-02)
+
+
+### Bug Fixes
+
+* **meetings:** refactor stats analyzer ([#3350](https://github.com/webex/webex-js-sdk/issues/3350)) ([90228b2](https://github.com/webex/webex-js-sdk/commit/90228b27f9afb1b2154aa4842fe2eeaa44f0020e))
+
+## [3.0.0-beta.336](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.335...v3.0.0-beta.336) (2024-02-02)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** Fix timestamp ([#3353](https://github.com/webex/webex-js-sdk/issues/3353)) ([01fc48b](https://github.com/webex/webex-js-sdk/commit/01fc48b10543d54eab5301e4d3a01b72561aac95))
+
+## [3.0.0-beta.335](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.334...v3.0.0-beta.335) (2024-01-31)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** fix type for stream in emitPublishedStateChange ([#3346](https://github.com/webex/webex-js-sdk/issues/3346)) ([b6ec9a6](https://github.com/webex/webex-js-sdk/commit/b6ec9a6df604b8bc6b9683950a159914d7dd7e26))
+
+## [3.0.0-beta.334](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.333...v3.0.0-beta.334) (2024-01-31)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** typescript incorrect type issues ([#3344](https://github.com/webex/webex-js-sdk/issues/3344)) ([dfb6cb7](https://github.com/webex/webex-js-sdk/commit/dfb6cb78ba76e44b91e3053b90e67a51c2347511))
+
 ## [3.0.0-beta.333](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.332...v3.0.0-beta.333) (2024-01-30)
 
 

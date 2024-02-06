@@ -2616,8 +2616,12 @@ describe('plugin-meetings', () => {
             setUnmuteAllowed: sinon.stub(),
             setMuted: sinon.stub(),
             setServerMuted: sinon.stub(),
-            outputTrack: {
-              id: 'fake mic'
+            outputStream: {
+              getTracks: () => {
+                return [{
+                  id: 'fake mic'
+                }];
+              }
             }
           }
 
@@ -2828,10 +2832,10 @@ describe('plugin-meetings', () => {
             assert.calledOnceWithExactly(roapMediaConnectionConstructorStub, mediaConnectionConfig,
               {
                 localTracks: {
-                  audio: localStreams.audio?.outputTrack,
-                  video: localStreams.video?.outputTrack,
-                  screenShareVideo: localStreams.screenShareVideo?.outputTrack,
-                  screenShareAudio: localStreams.screenShareAudio?.outputTrack,
+                  audio: localStreams.audio?.outputStream?.getTracks()[0],
+                  video: localStreams.video?.outputStream?.getTracks()[0],
+                  screenShareVideo: localStreams.screenShareVideo?.outputStream?.getTracks()[0],
+                  screenShareAudio: localStreams.screenShareAudio?.outputStream?.getTracks()[0],
                 },
                 direction: {audio: direction.audio, video: direction.video, screenShareVideo: direction.screenShare},
                 remoteQualityLevel,
@@ -3106,7 +3110,7 @@ describe('plugin-meetings', () => {
                   assert.calledOnceWithExactly(meeting.sendSlotManager.getSlot(MediaType.AudioMain).publishStream, fakeMicrophoneStream);
                 } else {
                   assert.calledOnceWithExactly(fakeRoapMediaConnection.update, {
-                    localTracks: { audio: fakeMicrophoneStream.outputTrack, video: null, screenShareVideo: null, screenShareAudio: null },
+                    localTracks: { audio: fakeMicrophoneStream.outputStream.getTracks()[0], video: null, screenShareVideo: null, screenShareAudio: null },
                     direction: {
                       audio: expected.direction,
                       video: 'sendrecv',
@@ -3132,8 +3136,12 @@ describe('plugin-meetings', () => {
                   muted: false,
                   setUnmuteAllowed: sinon.stub(),
                   setMuted: sinon.stub(),
-                  outputTrack:{
-                    id: 'fake mic 2',
+                  outputStream: {
+                    getTracks: () => {
+                      return [{
+                        id: 'fake mic 2',
+                      }];
+                    }
                   }
                 }
 
@@ -3145,7 +3153,7 @@ describe('plugin-meetings', () => {
                   assert.calledOnceWithExactly(meeting.sendSlotManager.getSlot(MediaType.AudioMain).publishStream, fakeMicrophoneStream2);
                 } else {
                   assert.calledOnceWithExactly(fakeRoapMediaConnection.update, {
-                    localTracks: { audio: fakeMicrophoneStream2.outputTrack, video: null, screenShareVideo: null, screenShareAudio: null },
+                    localTracks: { audio: fakeMicrophoneStream2.outputStream.getTracks()[0], video: null, screenShareVideo: null, screenShareAudio: null },
                     direction: {
                       audio: expected.direction,
                       video: 'sendrecv',
@@ -3216,7 +3224,7 @@ describe('plugin-meetings', () => {
               assert.equal(meeting.sendSlotManager.getSlot(MediaType.AudioMain).active, expectedDirection !== 'inactive');
             } else {
               assert.calledOnceWithExactly(fakeRoapMediaConnection.update, {
-                localTracks: { audio: expectedStream?.outputTrack ?? null, video: null, screenShareVideo: null, screenShareAudio: null },
+                localTracks: { audio: expectedStream?.outputStream.getTracks()[0] ?? null, video: null, screenShareVideo: null, screenShareAudio: null },
                 direction: {
                   audio: expectedDirection,
                   video: 'sendrecv',
@@ -3666,7 +3674,11 @@ describe('plugin-meetings', () => {
         let sandbox;
 
         const createFakeLocalStream = () => ({
-          outputTrack: {id: 'fake underlying track'},
+          outputStream: {
+            getTracks: () => {
+              return [{id: 'fake underlying track'}];
+            }
+          }
         });
         beforeEach(() => {
           sandbox = sinon.createSandbox();
@@ -3749,10 +3761,10 @@ describe('plugin-meetings', () => {
             meeting.mediaProperties.webrtcMediaConnection.update,
             {
               localTracks: {
-                audio: meeting.mediaProperties.audioStream.outputTrack,
-                video: meeting.mediaProperties.videoStream.outputTrack,
-                screenShareVideo: meeting.mediaProperties.shareVideoStream.outputTrack,
-                screenShareAudio: meeting.mediaProperties.shareVideoStream.outputTrack,
+                audio: meeting.mediaProperties.audioStream.outputStream.getTracks()[0],
+                video: meeting.mediaProperties.videoStream.outputStream.getTracks()[0],
+                screenShareVideo: meeting.mediaProperties.shareVideoStream.outputStream.getTracks()[0],
+                screenShareAudio: meeting.mediaProperties.shareVideoStream.outputStream.getTracks()[0],
               },
               direction: {
                 audio: 'inactive',
@@ -3781,7 +3793,13 @@ describe('plugin-meetings', () => {
             meeting.mediaProperties.mediaDirection = mediaDirection;
             meeting.mediaProperties.remoteVideoStream = sinon
               .stub()
-              .returns({outputTrack: {id: 'some mock id'}});
+              .returns({
+                outputStream: {
+                  getTracks: () => {
+                    id: 'some mock id'
+                  }
+                }
+              });
 
             meeting.meetingRequest.changeVideoLayoutDebounced = sinon
               .stub()
@@ -5779,7 +5797,7 @@ describe('plugin-meetings', () => {
         it('should stop remote tracks, and trigger a media:stopped event when the remote tracks are stopped', async () => {
           await meeting.closeRemoteStreams();
 
-          assert.equal(TriggerProxy.trigger.callCount, 6);
+          assert.equal(TriggerProxy.trigger.callCount, 5);
           assert.calledWith(
             TriggerProxy.trigger,
             sinon.match.instanceOf(Meeting),
@@ -7308,6 +7326,20 @@ describe('plugin-meetings', () => {
       });
 
       describe('#setPermissionTokenPayload', () => {
+
+        let now;
+        let clock;
+    
+        beforeEach(() => {
+          now = Date.now();
+    
+          // mock `new Date()` with constant `now`
+          clock = sinon.useFakeTimers(now);
+        });
+    
+        afterEach(() => {
+          clock.restore();
+        })
         it('sets correctly', () => {
           assert.notOk(meeting.permissionTokenPayload);
 
@@ -7319,6 +7351,7 @@ describe('plugin-meetings', () => {
 
           assert.calledOnce(jwtDecodeStub);
           assert.deepEqual(meeting.permissionTokenPayload, permissionTokenPayloadData);
+          assert.deepEqual(meeting.permissionTokenReceivedLocalTime, now);
         });
       });
 
@@ -9896,17 +9929,93 @@ describe('plugin-meetings', () => {
     it('should return the expected positive exp', () => {
       // set permission token as now + 1 sec
       const expiryTime = now + 1000;
-      meeting.permissionTokenPayload = {exp: (expiryTime).toString()};
+      meeting.permissionTokenPayload = {exp: (expiryTime).toString(), iat: now};
+      meeting.permissionTokenReceivedLocalTime = now;
       assert.deepEqual(meeting.getPermissionTokenExpiryInfo(), {timeLeft: 1, expiryTime: Number(expiryTime), currentTime: now});
     });
 
     it('should return the expected negative exp', () => {
       // set permission token as now - 1 sec
       const expiryTime = now - 1000;
-      meeting.permissionTokenPayload = {exp: (expiryTime).toString()};
+      meeting.permissionTokenPayload = {exp: (expiryTime).toString(), iat: now};
+      meeting.permissionTokenReceivedLocalTime = now;
       assert.deepEqual(meeting.getPermissionTokenExpiryInfo(), {timeLeft: -1, expiryTime: Number(expiryTime), currentTime: now});
     });
+
+    describe('#getPermissionTokenExpiryInfo with wrong current time which is in future', () => {
+      let now;
+      let clock;
+      beforeEach(() => {
+        // current time is 3 hours off
+        now = Date.now() + 10800000;
+  
+        // mock `new Date()` with constant `now`
+        clock = sinon.useFakeTimers(now);
+      });
+  
+      afterEach(() => {
+        clock.restore();
+      })
+  
+      it('should return the expected positive exp when client time is wrong', () => {
+        const serverTime = Date.now();
+  
+       // set permission token as now + 1 sec
+        const expiryTime = serverTime + 1000;
+        meeting.permissionTokenPayload = {exp: (expiryTime).toString(), iat: serverTime};
+        meeting.permissionTokenReceivedLocalTime = now;
+        assert.deepEqual(meeting.getPermissionTokenExpiryInfo(), {timeLeft: 1, expiryTime: Number(expiryTime), currentTime: now});
+      });
+  
+      it('should return the expected negative exp when client time is wrong', () => {
+        const serverTime = Date.now();
+        // set permission token as now - 1 sec
+        const expiryTime = serverTime - 1000;
+        meeting.permissionTokenPayload = {exp: (expiryTime).toString(), iat: serverTime};
+        meeting.permissionTokenReceivedLocalTime = now;
+        assert.deepEqual(meeting.getPermissionTokenExpiryInfo(), {timeLeft: -1, expiryTime: Number(expiryTime), currentTime: now});
+      });
+  
+    });
+
+    describe('#getPermissionTokenExpiryInfo with wrong current Time which is in the past', () => {
+      let now;
+      let clock;
+      beforeEach(() => {
+        // current time is 3 hours off
+        now = Date.now() - 10800000;
+  
+        // mock `new Date()` with constant `now`
+        clock = sinon.useFakeTimers(now);
+      });
+  
+      afterEach(() => {
+        clock.restore();
+      })
+  
+      it('should return the expected positive exp when client time is wrong', () => {
+        const serverTime = Date.now();
+  
+       // set permission token as now + 1 sec
+        const expiryTime = serverTime + 1000;
+        meeting.permissionTokenPayload = {exp: (expiryTime).toString(), iat: serverTime};
+        meeting.permissionTokenReceivedLocalTime = now;
+        assert.deepEqual(meeting.getPermissionTokenExpiryInfo(), {timeLeft: 1, expiryTime: Number(expiryTime), currentTime: now});
+      });
+  
+      it('should return the expected negative exp when client time is wrong', () => {
+        const serverTime = Date.now();
+        // set permission token as now - 1 sec
+        const expiryTime = serverTime - 1000;
+        meeting.permissionTokenPayload = {exp: (expiryTime).toString(), iat: serverTime};
+        meeting.permissionTokenReceivedLocalTime = now;
+        assert.deepEqual(meeting.getPermissionTokenExpiryInfo(), {timeLeft: -1, expiryTime: Number(expiryTime), currentTime: now});
+      });
+  
+    });
   });
+
+
 
   describe('#checkAndRefreshPermissionToken', () => {
     it('should not fire refreshPermissionToken if permissionToken is not defined', async() => {
