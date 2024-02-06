@@ -31,7 +31,6 @@ const registerElm = document.querySelector('#registration-register');
 const unregisterElm = document.querySelector('#registration-unregister');
 const registrationStatusElm = document.querySelector('#registration-status');
 const integrationEnv = document.getElementById('integration-env');
-const turnDiscoveryCheckbox = document.getElementById('enable-turn-discovery');
 const eventsList = document.getElementById('events-list');
 const multistreamLayoutElm = document.querySelector('#multistream-layout');
 const preferLiveVideoElm = document.querySelector('#prefer-live-video');
@@ -39,12 +38,11 @@ const breakoutsList = document.getElementById('breakouts-list');
 const breakoutTable = document.getElementById('breakout-table');
 const breakoutHostOperation = document.getElementById('breakout-host-operation');
 const getStatsButton = document.getElementById('get-stats');
+const tcpReachabilityConfigElm = document.getElementById('enable-tcp-reachability'); 
+
 const guestName = document.querySelector('#guest-name');
 const getGuestToken = document.querySelector('#get-guest-token');
 
-// Disable screenshare on join in Safari patch
-const isSafari = /Version\/[\d.]+.*Safari/.test(navigator.userAgent);
-const isiOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
 
 const toggleUnifiedMeetings = document.getElementById('toggle-unified-meeting');
 const currentMeetingInfoStatus = document.getElementById('current-meeting-info-status');
@@ -61,10 +59,6 @@ tokenElm.addEventListener('change', (event) => {
   localStorage.setItem('access-token', event.target.value);
   localStorage.setItem('date', new Date().getTime() + (12 * 60 * 60 * 1000));
 });
-
-if (isSafari || isiOS) {
-  document.getElementById('sendShareToggle').disabled = true;
-}
 
 
 const fedRampInput = document.querySelector('#enable-fedramp');
@@ -112,7 +106,7 @@ function generateWebexConfig({credentials}) {
         enableMediaNegotiatedEvent: false,
         enableUnifiedMeetings: true,
         enableAdhocMeetings: true,
-        enableTurnDiscovery: turnDiscoveryCheckbox.checked,
+        enableTcpReachability: tcpReachabilityConfigElm.checked,
       },
       enableAutomaticLLM: true,
     },
@@ -1043,22 +1037,22 @@ function handleStreamPublishedState(meeting) {
         debugString = 'local camera';
         streamElm = meetingStreamsLocalVideo;
         break;
-    
+
       case 'VIDEO-SLIDES':
         debugString = 'local share video';
         streamElm = meetingStreamsLocalShareVideo;
         break;
-    
+
       case 'AUDIO-MAIN':
         debugString = 'local microphone';
         streamElm = meetingStreamsLocalAudio;
         break;
-    
+
       case 'AUDIO-SLIDES':
         debugString = 'local share audio';
         streamElm = meetingStreamsLocalShareAudio;
         break;
-    
+
       default:
         break;
     }
@@ -1150,7 +1144,7 @@ async function handleVbg() {
 
       await effect.enable();
       modeBtn.disabled = true;
-      
+
       handleEffectsButton(toggleVbgBtn, VBG, effect);
       console.log('MeetingControls#handleVbg() :: successfully applied virtual background to local camera stream');
     }
@@ -1415,8 +1409,8 @@ function getAudioVideoInput() {
   const deviceId = (id) => {
     if (id === 'default')
       return {deviceId: id};
-    else  
-      return {deviceId: {exact: id}}; 
+    else
+      return {deviceId: {exact: id}};
   };
   const audioInput = getOptionValue(sourceDevicesAudioInput) || 'default';
   const videoInput = getOptionValue(sourceDevicesVideoInput) || 'default';
@@ -2505,7 +2499,7 @@ function addMedia() {
     // enabling screen share publish/unpublish buttons
     publishShareBtn.disabled = false;
     unpublishShareBtn.disabled = false;
-    
+
     currentMediaSettings = getMediaSettings();
 
     console.log('MeetingStreams#addMedia() :: successfully added media!');
@@ -3657,7 +3651,7 @@ allCollapsibleElements.forEach((el) => {
 
     const sectionContentElement = parentElement.querySelector('.section-content');
     const arrowIcon = parentElement.querySelector('.arrow');
-    
+
     sectionContentElement.classList.toggle('collapsed');
     arrowIcon.classList.contains('fa-angle-down') ? arrowIcon.classList.replace('fa-angle-down', 'fa-angle-up') : arrowIcon.classList.replace('fa-angle-up', 'fa-angle-down');
 
