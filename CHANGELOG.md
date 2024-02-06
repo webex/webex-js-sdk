@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.340](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.339...v3.0.0-beta.340) (2024-02-06)
+
+
+### Bug Fixes
+
+* **mqeca:** localIp for MQE data and publicNetworkPrefix addition ([#3357](https://github.com/webex/webex-js-sdk/issues/3357)) ([af9c0d7](https://github.com/webex/webex-js-sdk/commit/af9c0d7d053413a493d9892dd9624058a129e4a9))
+
 ## [3.0.0-beta.339](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.338...v3.0.0-beta.339) (2024-02-06)
 
 
