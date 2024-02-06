@@ -6907,20 +6907,20 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@webex/internal-media-core@npm:2.2.3":
-  version: 2.2.3
-  resolution: "@webex/internal-media-core@npm:2.2.3"
+"@webex/internal-media-core@npm:2.2.4":
+  version: 2.2.4
+  resolution: "@webex/internal-media-core@npm:2.2.4"
   dependencies:
-    "@babel/runtime": "npm:^7.18.9"
-    "@webex/ts-sdp": "npm:1.6.0"
-    "@webex/web-client-media-engine": "npm:3.11.4"
-    detectrtc: "npm:^1.4.1"
-    events: "npm:^3.3.0"
-    typed-emitter: "npm:^2.1.0"
-    uuid: "npm:^8.3.2"
-    webrtc-adapter: "npm:^8.1.2"
-    xstate: "npm:^4.30.6"
-  checksum: 058641f326c3e4995f0335efe8156c017137be885072132c16ccb717fdc47f6c67310180020e66781f55bf688bb71a117bcaa2ccafca91f5ddfcc821e693ef92
+    "@babel/runtime": ^7.18.9
+    "@webex/ts-sdp": 1.6.0
+    "@webex/web-client-media-engine": 3.11.6
+    detectrtc: ^1.4.1
+    events: ^3.3.0
+    typed-emitter: ^2.1.0
+    uuid: ^8.3.2
+    webrtc-adapter: ^8.1.2
+    xstate: ^4.30.6
+  checksum: faaabb7c18ae6a7378ebbcab14226dd87327e6aaa5b3f85cd114c4aa06598c1bd18cbb58a033efa3cb07ec0034ac592481bbd437d62bd409d52c89234ee80b24
   languageName: node
   linkType: hard
 
@@ -7681,7 +7681,7 @@ __metadata:
     "@babel/preset-typescript": 7.22.11
     "@webex/babel-config-legacy": "workspace:*"
     "@webex/eslint-config-legacy": "workspace:*"
-    "@webex/internal-media-core": 2.2.3
+    "@webex/internal-media-core": 2.2.4
     "@webex/jest-config-legacy": "workspace:*"
     "@webex/legacy-tools": "workspace:*"
     "@webex/test-helper-chai": "workspace:*"
@@ -7916,7 +7916,7 @@ __metadata:
     "@webex/babel-config-legacy": "workspace:*"
     "@webex/common": "workspace:*"
     "@webex/eslint-config-legacy": "workspace:*"
-    "@webex/internal-media-core": 2.2.3
+    "@webex/internal-media-core": 2.2.4
     "@webex/internal-plugin-conversation": "workspace:*"
     "@webex/internal-plugin-device": "workspace:*"
     "@webex/internal-plugin-llm": "workspace:*"
@@ -8601,21 +8601,21 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@webex/web-client-media-engine@npm:3.11.4":
-  version: 3.11.4
-  resolution: "@webex/web-client-media-engine@npm:3.11.4"
+"@webex/web-client-media-engine@npm:3.11.6":
+  version: 3.11.6
+  resolution: "@webex/web-client-media-engine@npm:3.11.6"
   dependencies:
-    "@webex/json-multistream": "npm:2.1.2"
-    "@webex/rtcstats": "npm:^1.1.2"
-    "@webex/ts-events": "npm:^1.0.1"
-    "@webex/ts-sdp": "npm:1.6.0"
-    "@webex/web-capabilities": "npm:^1.1.1"
-    "@webex/webrtc-core": "npm:2.3.1"
-    async: "npm:^3.2.4"
-    js-logger: "npm:^1.6.1"
-    typed-emitter: "npm:^2.1.0"
-    uuid: "npm:^8.3.2"
-  checksum: 522e76f9d0e2b8ff33ff5d6bb7eb67f60977d19897a70462037cd966750a9bf644de5a60a09ce801aabf4e4efa9cc18a1014c22cb3ab1139e4b91c54fa751a7b
+    "@webex/json-multistream": 2.1.2
+    "@webex/rtcstats": ^1.1.2
+    "@webex/ts-events": ^1.0.1
+    "@webex/ts-sdp": 1.6.0
+    "@webex/web-capabilities": ^1.1.1
+    "@webex/webrtc-core": 2.4.0
+    async: ^3.2.4
+    js-logger: ^1.6.1
+    typed-emitter: ^2.1.0
+    uuid: ^8.3.2
+  checksum: 4df32a2b098f68b70c96fedca9f0478600492f9208aa768242e5f4a0304c9ba1b1b697cba794405241085e2db5b3da7848949116ad4511c2c2641565aa495e88
   languageName: node
   linkType: hard
 
@@ -8767,18 +8767,18 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@webex/webrtc-core@npm:2.3.1":
-  version: 2.3.1
-  resolution: "@webex/webrtc-core@npm:2.3.1"
+"@webex/webrtc-core@npm:2.4.0":
+  version: 2.4.0
+  resolution: "@webex/webrtc-core@npm:2.4.0"
   dependencies:
-    "@webex/ts-events": "npm:^1.1.0"
-    "@webex/web-capabilities": "npm:^1.1.0"
-    "@webex/web-media-effects": "npm:^2.15.6"
-    events: "npm:^3.3.0"
-    js-logger: "npm:^1.6.1"
-    typed-emitter: "npm:^2.1.0"
-    webrtc-adapter: "npm:^8.1.2"
-  checksum: e8630816224691ecc59869ee501ab1f5e42a8ebd150e6070537dd1b8753a7116c5f58842c9c7d7adb03a6f3be6aaaa2e1ad35c912cf81f58377aa1b26a1eb570
+    "@webex/ts-events": ^1.1.0
+    "@webex/web-capabilities": ^1.1.0
+    "@webex/web-media-effects": ^2.15.6
+    events: ^3.3.0
+    js-logger: ^1.6.1
+    typed-emitter: ^2.1.0
+    webrtc-adapter: ^8.1.2
+  checksum: e182dae6e4ea30876bde17969ebc2806c64c8942d2d506a59cc9ffb38d3dd8e539e62cfd0eae7b7d72c55274b73b116df2d1b8a011d220a52e2f54af5a9b73df
   languageName: node
   linkType: hard
 
