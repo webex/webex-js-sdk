@@ -82,15 +82,11 @@ export const processNewCaptions = ({data, meeting}) => {
       isFinal: data.isFinal,
       translations: data.translations,
       text: data.transcript?.text,
-      currentCaptionLanguage: data.transcript?.transcriptLanguageCode,
+      currentSpokenLanguage: data.transcript?.transcriptLanguageCode,
       timestamp: data.timestamp,
       speaker,
     };
-
-    console.log('FINAL transcript data', captionData);
     transcriptData.captions.push(captionData);
-
-    return captionData;
   }
   const {transcripts = []} = data;
   const transcriptsPerCsis = new Map();
@@ -141,10 +137,7 @@ export const processNewCaptions = ({data, meeting}) => {
 
     fakeTranscriptionIds.push(fakeId);
     transcriptData.captions.push(captionData);
-    console.log('INTER transcript data', captionData);
   }
-
-  console.log('INTER-FINAL transcript data', fakeTranscriptionIds);
   transcriptData.interimCaptions[transcriptId] = fakeTranscriptionIds;
 };
 

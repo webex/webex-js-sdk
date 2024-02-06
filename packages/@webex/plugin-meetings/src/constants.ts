@@ -72,6 +72,8 @@ export const TYPE = 'type';
 export const VIDEO = 'video';
 export const VIDEO_STATUS = 'videoStatus';
 
+export const LANGUAGE_ENGLISH = 'en';
+
 // *********** UPPERCASE ONLY STRINGS ************
 // Please alphabetize
 export const _ANSWER_ = 'ANSWER';

@@ -104,7 +104,6 @@ import {
   SHARE_STATUS,
   SHARE_STOPPED_REASON,
   VIDEO,
-  HTTP_VERBS,
   SELF_ROLES,
   INTERPRETATION,
   SELF_POLICY,
@@ -112,6 +111,7 @@ import {
   MEETING_PERMISSION_TOKEN_REFRESH_REASON,
   ROAP_OFFER_ANSWER_EXCHANGE_TIMEOUT,
   RECONNECTION,
+  LANGUAGE_ENGLISH,
 } from '../constants';
 import BEHAVIORAL_METRICS from '../metrics/constants';
 import ParameterError from '../common/errors/parameter';
@@ -1925,18 +1925,26 @@ export default class Meeting extends StatelessWebexPlugin {
       VOICEAEVENTS.VOICEA_ANNOUNCEMENT,
       (payload: Transcription['languageOptions']) => {
         this.transcription.languageOptions = payload;
+        Trigger.trigger(
+          this,
+          {
+            file: 'meeting/index',
+            function: 'join',
+          },
+          EVENT_TRIGGERS.MEETING_STARTED_RECEIVING_TRANSCRIPTION,
+          payload
+        );
       }
     );
 
     this.webex.internal.voicea.on(VOICEAEVENTS.CAPTION_LANGUAGE_UPDATE, (payload) => {
-      const {data} = payload;
-      const {statusCode} = data;
+      const {statusCode} = payload;
 
       if (statusCode === 200) {
         this.transcription.languageOptions = {
           ...this.transcription.languageOptions,
           currentCaptionLanguage:
-            this.transcription.languageOptions.requestedCaptionLanguage ?? ENGLISH_LANGUAGE,
+            this.transcription.languageOptions.requestedCaptionLanguage ?? LANGUAGE_ENGLISH,
         };
         Trigger.trigger(
           this,
@@ -1944,8 +1952,8 @@ export default class Meeting extends StatelessWebexPlugin {
             file: 'meeting/index',
             function: 'processNewCaptions',
           },
-          EVENT_TRIGGERS.MEETING_SPOKEN_LANGUAGE_CHANGED,
-          {languageCode: data?.languageCode}
+          EVENT_TRIGGERS.MEETING_CAPTION_LANGUAGE_CHANGED,
+          {languageCode: this.transcription.languageOptions.currentCaptionLanguage}
         );
       } else {
         // TODO Handle Status Code and alert - SPARK-370923
@@ -1953,12 +1961,12 @@ export default class Meeting extends StatelessWebexPlugin {
     });
 
     this.webex.internal.voicea.on(VOICEAEVENTS.SPOKEN_LANGUAGE_UPDATE, (payload) => {
-      const {data} = payload;
+      const {languageCode} = payload;
 
-      if (data?.languageCode) {
+      if (languageCode) {
         this.transcription.languageOptions = {
           ...this.transcription.languageOptions,
-          currentSpokenLanguage: data?.languageCode,
+          currentSpokenLanguage: languageCode,
         };
       }
 
@@ -1969,7 +1977,7 @@ export default class Meeting extends StatelessWebexPlugin {
           function: 'processNewCaptions',
         },
         EVENT_TRIGGERS.MEETING_SPOKEN_LANGUAGE_CHANGED,
-        {languageCode: data?.languageCode}
+        {languageCode}
       );
     });
 
@@ -1984,8 +1992,8 @@ export default class Meeting extends StatelessWebexPlugin {
       this.transcription.commandText = data.text ?? '';
     });
 
-    this.webex.internal.voicea.on(VOICEAEVENTS.NEW_CAPTION, async (data) => {
-      await processNewCaptions({data, meeting: this});
+    this.webex.internal.voicea.on(VOICEAEVENTS.NEW_CAPTION, (data) => {
+      processNewCaptions({data, meeting: this});
       Trigger.trigger(
         this,
         {
@@ -2324,11 +2332,11 @@ export default class Meeting extends StatelessWebexPlugin {
     this.locusInfo.on(
       LOCUSINFO.EVENTS.CONTROLS_MEETING_TRANSCRIBE_UPDATED,
       ({caption, transcribing}) => {
-        // @ts-ignore - config coming from registerPlugin
         // user need to be joined to start the llm and receive transcription
         if (this.isJoined()) {
+          // @ts-ignore - config coming from registerPlugin
           if (transcribing && !this.transcription && this.config.receiveTranscription) {
-            // this.startTranscription();
+            this.startTranscription();
           } else if (!transcribing && this.transcription) {
             Trigger.trigger(
               this,
@@ -4638,14 +4646,6 @@ export default class Meeting extends StatelessWebexPlugin {
 
       try {
         await this.webex.internal.voicea.toggleTranscribing(true, options.spokenLanguage);
-        Trigger.trigger(
-          this,
-          {
-            file: 'meeting/index',
-            function: 'join',
-          },
-          EVENT_TRIGGERS.MEETING_STARTED_RECEIVING_TRANSCRIPTION
-        );
       } catch (error) {
         LoggerProxy.logger.error(`Meeting:index#startTranscription --> ${error}`);
         Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.RECEIVE_TRANSCRIPTION_FAILURE, {

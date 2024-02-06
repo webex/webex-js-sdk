@@ -41,6 +41,12 @@ const breakoutHostOperation = document.getElementById('breakout-host-operation')
 const getStatsButton = document.getElementById('get-stats');
 const guestName = document.querySelector('#guest-name');
 const getGuestToken = document.querySelector('#get-guest-token');
+const voiceaSpokenLanguage = document.querySelector('#voicea-spoken-language');
+const voiceaCaptionLanguage = document.querySelector('#voicea-caption-language');
+const voiceaSpokenLanguageBtn = document.querySelector('#voicea-spoken-language-btn');
+const voiceaCaptionLanguageBtn = document.querySelector('#voicea-caption-language-btn');
+const voiceaTranscriptionTemplate = document.querySelector('#voicea-transcription-template');
+const voiceaTranscriptionFormattedDisplay = document.querySelector('#voicea-transcription-formatted-display');
 
 // Disable screenshare on join in Safari patch
 const isSafari = /Version\/[\d.]+.*Safari/.test(navigator.userAgent);
@@ -270,6 +276,7 @@ const meetingsJoinPinElm = document.querySelector('#meetings-join-pin');
 const meetingsJoinModeratorElm = document.querySelector('#meetings-join-moderator');
 const meetingsBreakoutSupportElm = document.querySelector('#meetings-join-breakout-enabled');
 const meetingsMediaInLobbySupportElm = document.querySelector('#meetings-media-in-lobby-enabled');
+const meetingsEnableTranscription = document.querySelector('#meetings-enable-transcription');
 const meetingsJoinMultistreamElm = document.querySelector('#meetings-join-multistream');
 const meetingsListCollectElm = document.querySelector('#meetings-list-collect');
 const meetingsListMsgElm = document.querySelector('#meetings-list-msg');
@@ -347,7 +354,6 @@ function collectMeetings() {
 
   webex.meetings.syncMeetings()
     .then(() => new Promise((resolve) => {
-      generalStartReceivingTranscription.disabled = false; // eslint-disable-line no-use-before-define
       setTimeout(() => resolve(), 200);
     }))
     .then(() => {
@@ -380,7 +386,6 @@ function createMeeting(e) {
     .then((meeting) => {
       createMeetingDestinationElm.value = '';
       displayMeetingStatusElm.innerHTML = '';
-      generalStartReceivingTranscription.disabled = false; // eslint-disable-line no-use-before-define
       refreshMeetings();
     }).catch((error) => {
       if(error.code === 30105){
@@ -506,13 +511,17 @@ function joinMeeting({withMedia, withDevice} = {withMedia: false, withDevice: fa
     breakoutsSupported: meetingsBreakoutSupportElm.checked,
     moveToResource: false,
     resourceId,
-    receiveTranscription: receiveTranscriptionOption,
+    receiveTranscription: meetingsEnableTranscription.checked,
     locale: 'en_UK', // audio disclaimer language
     deviceCapabilities: ['SERVER_AUDIO_ANNOUNCEMENT_SUPPORTED'], // audio disclaimer toggle
   };
 
   if (meetingsMediaInLobbySupportElm.checked) {
     joinOptions.deviceCapabilities.push('CONFLUENCE_IN_LOBBY_SUPPORTED');
+  }
+
+  if(joinOptions.receiveTranscription) {
+    startReceivingTranscription();
   }
 
   const joinMeetingNow = () => {
@@ -663,7 +672,6 @@ const generalControlsMeetingsList = document.querySelector('#gc-meetings-list');
 const generalControlsRecStatus = document.querySelector('#gc-recording-status');
 const generalControlsDtmfTones = document.querySelector('#gc-dtmf-tones');
 const generalControlsDtmfStatus = document.querySelector('#gc-dtmf-status');
-const generalStartReceivingTranscription = document.querySelector('#gc-start-receiving-transcription');
 const generalStopReceivingTranscription = document.querySelector('#gc-stop-receiving-transcription');
 const generalTranscriptionContent = document.querySelector('#gc-transcription-content');
 
@@ -888,6 +896,40 @@ function startRecording() {
   }
 }
 
+function fillLanguageDropDowns(dropdown, list){
+  for(var i = 0; i < list.length; i++) {
+      // Create a new option element
+      var option = document.createElement("option");
+
+      // Set the value and text of the option
+      option.value = list[i];
+      option.text = list[i];
+
+      // Add the option to the dropdown
+      dropdown.appendChild(option);
+  }
+}
+
+async function setSpokenLanguage() {
+  const meeting = getCurrentMeeting();
+  voiceaSpokenLanguageBtn.disabled = true;
+  const selectedLanguage = voiceaSpokenLanguage.value;
+  meeting.on('meeting:spoken-language-changed', () => {
+    voiceaSpokenLanguageBtn.disabled = false;
+  });
+  await meeting.setSpokenLanguage(selectedLanguage);
+}
+
+async function setCaptionLanguage() {
+  const meeting = getCurrentMeeting();
+  voiceaCaptionLanguageBtn.disabled = true;
+  const selectedLanguage = voiceaCaptionLanguage.value;
+  meeting.on('meeting:caption-language-changed', () => {
+    voiceaCaptionLanguageBtn.disabled = false;
+  });
+  await meeting.setCaptionLanguage(selectedLanguage);
+}
+
 function stopReceivingTranscription() {
   const meeting = getCurrentMeeting();
 
@@ -899,14 +941,35 @@ function startReceivingTranscription() {
   const meeting = getCurrentMeeting();
 
   if (meeting) {
-    receiveTranscriptionOption = true;
-    generalStartReceivingTranscription.innerHTML = 'Subscribed!';
-    generalStartReceivingTranscription.disabled = true;
-    generalStopReceivingTranscription.disabled = false;
+    Handlebars.registerHelper("forIn", function(object) {
+      let returnArray = [];
+      for(let prop in object){
+        returnArray.push({key: prop, value: object[prop]});
+      }
+      return returnArray;
+    });
+    var transcriptTemplate = Handlebars.compile(voiceaTranscriptionTemplate.innerHTML);
+
     generalTranscriptionContent.innerHTML = '';
 
     meeting.on('meeting:receiveTranscription:started', (payload) => {
-      generalTranscriptionContent.innerHTML += `\n${JSON.stringify(payload)}`;
+      fillLanguageDropDowns(voiceaCaptionLanguage,payload.captionLanguages);
+      fillLanguageDropDowns(voiceaSpokenLanguage,payload.spokenLanguages);
+      generalStopReceivingTranscription.disabled = false;
+      voiceaSpokenLanguage.disabled = false;
+      voiceaSpokenLanguageBtn.disabled = false;
+      voiceaCaptionLanguage.disabled = false;
+      voiceaCaptionLanguageBtn.disabled = false;
+    });
+
+    meeting.on('meeting:caption-received', (payload) => {
+      generalTranscriptionContent.innerHTML = `\n${JSON.stringify(payload,null,4)}`;
+      voiceaTranscriptionFormattedDisplay.innerHTML = transcriptTemplate({
+        data: payload.captions,
+        currentCaptionLanguage: meeting.transcription.languageOptions.currentCaptionLanguage || "en",
+        currentSpokenLanguage: meeting.transcription.languageOptions.currentSpokenLanguage || "en",
+      });
+      voiceaTranscriptionFormattedDisplay.scrollTop = voiceaTranscriptionFormattedDisplay.scrollHeight;
     });
 
     meeting.on('meeting:receiveTranscription:stopped', () => {
