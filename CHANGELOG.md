@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.338](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.337...v3.0.0-beta.338) (2024-02-06)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** update isMain in MQA ([#3354](https://github.com/webex/webex-js-sdk/issues/3354)) ([13645e2](https://github.com/webex/webex-js-sdk/commit/13645e2e2400083c1084f87a1f90aebbf4a6bc6e))
+
 ## [3.0.0-beta.337](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.336...v3.0.0-beta.337) (2024-02-02)
 
 
