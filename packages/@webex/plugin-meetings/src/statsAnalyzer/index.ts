@@ -152,6 +152,18 @@ export class StatsAnalyzer extends EventsScope {
     const newMqa = cloneDeep(emptyMqaInterval);
 
     Object.keys(this.statsResults).forEach((mediaType) => {
+      if (!this.lastMqaDataSent[mediaType]) {
+        this.lastMqaDataSent[mediaType] = {};
+      }
+
+      if (!this.lastMqaDataSent[mediaType].send && mediaType.includes('-send')) {
+        this.lastMqaDataSent[mediaType].send = {};
+      }
+
+      if (!this.lastMqaDataSent[mediaType].recv && mediaType.includes('-recv')) {
+        this.lastMqaDataSent[mediaType].recv = {};
+      }
+
       if (mediaType.includes('audio-send') || mediaType.includes('audio-share-send')) {
         const audioSender = cloneDeep(emptyAudioTransmit);
 
@@ -162,6 +174,8 @@ export class StatsAnalyzer extends EventsScope {
           mediaType,
         });
         newMqa.audioTransmit.push(audioSender);
+
+        this.lastMqaDataSent[mediaType].send = cloneDeep(this.statsResults[mediaType].send);
       } else if (mediaType.includes('audio-recv') || mediaType.includes('audio-share-recv')) {
         const audioReceiver = cloneDeep(emptyAudioReceive);
 
@@ -172,6 +186,8 @@ export class StatsAnalyzer extends EventsScope {
           mediaType,
         });
         newMqa.audioReceive.push(audioReceiver);
+
+        this.lastMqaDataSent[mediaType].recv = cloneDeep(this.statsResults[mediaType].recv);
       } else if (mediaType.includes('video-send') || mediaType.includes('video-share-send')) {
         const videoSender = cloneDeep(emptyVideoTransmit);
 
@@ -182,6 +198,8 @@ export class StatsAnalyzer extends EventsScope {
           mediaType,
         });
         newMqa.videoTransmit.push(videoSender);
+
+        this.lastMqaDataSent[mediaType].send = cloneDeep(this.statsResults[mediaType].send);
       } else if (mediaType.includes('video-recv') || mediaType.includes('video-share-recv')) {
         const videoReceiver = cloneDeep(emptyVideoReceive);
 
@@ -192,24 +210,24 @@ export class StatsAnalyzer extends EventsScope {
           mediaType,
         });
         newMqa.videoReceive.push(videoReceiver);
+
+        this.lastMqaDataSent[mediaType].recv = cloneDeep(this.statsResults[mediaType].recv);
       }
     });
 
     newMqa.intervalMetadata.peerReflexiveIP = this.statsResults.connectionType.local.ipAddress;
 
     // Adding peripheral information
-    newMqa.intervalMetadata.peripherals = [];
-
     newMqa.intervalMetadata.peripherals.push({information: _UNKNOWN_, name: MEDIA_DEVICES.SPEAKER});
     if (this.statsResults['audio-send']) {
       newMqa.intervalMetadata.peripherals.push({
-        information: this.statsResults['audio-send']?.trackLabel,
+        information: this.statsResults['audio-send'].trackLabel || _UNKNOWN_,
         name: MEDIA_DEVICES.MICROPHONE,
       });
     }
     if (this.statsResults['video-send']) {
       newMqa.intervalMetadata.peripherals.push({
-        information: this.statsResults['video-send']?.trackLabel,
+        information: this.statsResults['video-send'].trackLabel || _UNKNOWN_,
         name: MEDIA_DEVICES.CAMERA,
       });
     }
@@ -332,26 +350,6 @@ export class StatsAnalyzer extends EventsScope {
       this.statsResults[type].recv = cloneDeep(emptyReceiver);
     }
 
-    if (!this.statsResults.resolutions[type]) {
-      this.statsResults.resolutions[type] = {};
-    }
-
-    if (isSender && !this.statsResults.resolutions[type].send) {
-      this.statsResults.resolutions[type].send = cloneDeep(emptySender);
-    } else if (!isSender && !this.statsResults.resolutions[type].recv) {
-      this.statsResults.resolutions[type].recv = cloneDeep(emptyReceiver);
-    }
-
-    if (!this.statsResults.internal[type]) {
-      this.statsResults.internal[type] = {};
-    }
-
-    if (isSender && !this.statsResults.internal[type].send) {
-      this.statsResults.internal[type].send = cloneDeep(emptySender);
-    } else if (!isSender && !this.statsResults.internal[type].recv) {
-      this.statsResults.internal[type].recv = cloneDeep(emptyReceiver);
-    }
-
     switch (getStatsResult.type) {
       case 'outbound-rtp':
         this.processOutboundRTPResult(getStatsResult, type);
@@ -359,13 +357,9 @@ export class StatsAnalyzer extends EventsScope {
       case 'inbound-rtp':
         this.processInboundRTPResult(getStatsResult, type);
         break;
-      case 'track':
-        this.processTrackResult(getStatsResult, type);
-        break;
       case 'remote-inbound-rtp':
       case 'remote-outbound-rtp':
-        // @ts-ignore
-        this.compareSentAndReceived(getStatsResult, type, isSender);
+        this.compareSentAndReceived(getStatsResult, type);
         break;
       case 'remotecandidate':
       case 'remote-candidate':
@@ -516,19 +510,6 @@ export class StatsAnalyzer extends EventsScope {
           .filter((key) => key.startsWith(keyPrefix))
           .reduce((prev, cur) => prev + (this.lastStatsResults[cur]?.recv[value] || 0), 0);
 
-      const getCurrentResolutionsStatsTotals = (keyPrefix: string, value: string): number =>
-        Object.keys(this.statsResults)
-          .filter((key) => key.startsWith(keyPrefix))
-          .reduce((prev, cur) => prev + (this.statsResults.resolutions[cur]?.recv[value] || 0), 0);
-
-      const getPreviousResolutionsStatsTotals = (keyPrefix: string, value: string): number =>
-        Object.keys(this.statsResults)
-          .filter((key) => key.startsWith(keyPrefix))
-          .reduce(
-            (prev, cur) => prev + (this.lastStatsResults.resolutions[cur]?.recv[value] || 0),
-            0
-          );
-
       if (this.meetingMediaStatus.expected.sendAudio && this.lastStatsResults['audio-send']) {
         // compare audio stats sent
         // NOTE: relies on there being only one sender.
@@ -625,13 +606,13 @@ export class StatsAnalyzer extends EventsScope {
           }
 
           if (
-            this.statsResults.resolutions['video-send'].send.framesSent ===
-              this.lastStatsResults.resolutions['video-send'].send.framesSent ||
-            this.statsResults.resolutions['video-send'].send.framesSent === 0
+            this.statsResults['video-send'].send.framesSent ===
+              this.lastStatsResults['video-send'].send.framesSent ||
+            this.statsResults['video-send'].send.framesSent === 0
           ) {
             LoggerProxy.logger.info(
               `StatsAnalyzer:index#compareLastStatsResult --> No video Frames sent`,
-              this.statsResults.resolutions['video-send'].send.framesSent
+              this.statsResults['video-send'].send.framesSent
             );
           }
         }
@@ -646,24 +627,12 @@ export class StatsAnalyzer extends EventsScope {
           'video-recv',
           'totalPacketsReceived'
         );
-        const currentFramesReceived = getCurrentResolutionsStatsTotals(
-          'video-recv',
-          'framesReceived'
-        );
-        const previousFramesReceived = getPreviousResolutionsStatsTotals(
-          'video-recv',
-          'framesReceived'
-        );
+        const currentFramesReceived = getCurrentStatsTotals('video-recv', 'framesReceived');
+        const previousFramesReceived = getPreviousStatsTotals('video-recv', 'framesReceived');
         const currentFramesDecoded = getCurrentStatsTotals('video-recv', 'framesDecoded');
         const previousFramesDecoded = getPreviousStatsTotals('video-recv', 'framesDecoded');
-        const currentFramesDropped = getCurrentResolutionsStatsTotals(
-          'video-recv',
-          'framesDropped'
-        );
-        const previousFramesDropped = getPreviousResolutionsStatsTotals(
-          'video-recv',
-          'framesDropped'
-        );
+        const currentFramesDropped = getCurrentStatsTotals('video-recv', 'framesDropped');
+        const previousFramesDropped = getPreviousStatsTotals('video-recv', 'framesDropped');
 
         if (currentPacketsReceived === previousPacketsReceived || currentPacketsReceived === 0) {
           LoggerProxy.logger.info(
@@ -722,13 +691,13 @@ export class StatsAnalyzer extends EventsScope {
           }
 
           if (
-            this.statsResults.resolutions['video-share-send'].send.framesSent ===
-              this.lastStatsResults.resolutions['video-share-send'].send.framesSent ||
-            this.statsResults.resolutions['video-share-send'].send.framesSent === 0
+            this.statsResults['video-share-send'].send.framesSent ===
+              this.lastStatsResults['video-share-send'].send.framesSent ||
+            this.statsResults['video-share-send'].send.framesSent === 0
           ) {
             LoggerProxy.logger.info(
               `StatsAnalyzer:index#compareLastStatsResult --> No share frames sent`,
-              this.statsResults.resolutions['video-share-send'].send.framesSent
+              this.statsResults['video-share-send'].send.framesSent
             );
           }
         }
@@ -745,24 +714,12 @@ export class StatsAnalyzer extends EventsScope {
           'video-share-recv',
           'totalPacketsReceived'
         );
-        const currentFramesReceived = getCurrentResolutionsStatsTotals(
-          'video-share-recv',
-          'framesReceived'
-        );
-        const previousFramesReceived = getPreviousResolutionsStatsTotals(
-          'video-share-recv',
-          'framesReceived'
-        );
+        const currentFramesReceived = getCurrentStatsTotals('video-share-recv', 'framesReceived');
+        const previousFramesReceived = getPreviousStatsTotals('video-share-recv', 'framesReceived');
         const currentFramesDecoded = getCurrentStatsTotals('video-share-recv', 'framesDecoded');
         const previousFramesDecoded = getPreviousStatsTotals('video-share-recv', 'framesDecoded');
-        const currentFramesDropped = getCurrentResolutionsStatsTotals(
-          'video-share-recv',
-          'framesDropped'
-        );
-        const previousFramesDropped = getPreviousResolutionsStatsTotals(
-          'video-share-recv',
-          'framesDropped'
-        );
+        const currentFramesDropped = getCurrentStatsTotals('video-share-recv', 'framesDropped');
+        const previousFramesDropped = getPreviousStatsTotals('video-share-recv', 'framesDropped');
 
         if (currentPacketsReceived === previousPacketsReceived || currentPacketsReceived === 0) {
           LoggerProxy.logger.info(
@@ -886,51 +843,20 @@ export class StatsAnalyzer extends EventsScope {
     const sendrecvType = STATS.SEND_DIRECTION;
 
     if (result.bytesSent) {
-      let kilobytes = 0;
+      const kilobytes = 0;
 
       if (result.frameWidth && result.frameHeight) {
-        this.statsResults.resolutions[mediaType][sendrecvType].width = result.frameWidth;
-        this.statsResults.resolutions[mediaType][sendrecvType].height = result.frameHeight;
-        this.statsResults.resolutions[mediaType][sendrecvType].framesSent = result.framesSent;
-        this.statsResults.resolutions[mediaType][sendrecvType].hugeFramesSent =
-          result.hugeFramesSent;
+        this.statsResults[mediaType][sendrecvType].width = result.frameWidth;
+        this.statsResults[mediaType][sendrecvType].height = result.frameHeight;
+        this.statsResults[mediaType][sendrecvType].framesSent = result.framesSent;
+        this.statsResults[mediaType][sendrecvType].hugeFramesSent = result.hugeFramesSent;
       }
-
-      if (!this.statsResults.internal[mediaType][sendrecvType].prevBytesSent) {
-        this.statsResults.internal[mediaType][sendrecvType].prevBytesSent = result.bytesSent;
-      }
-      if (!this.statsResults.internal[mediaType][sendrecvType].framesEncoded) {
-        this.statsResults.internal[mediaType][sendrecvType].framesEncoded = result.framesEncoded;
-      }
-      if (!this.statsResults.internal[mediaType][sendrecvType].keyFramesEncoded) {
-        this.statsResults.internal[mediaType][sendrecvType].keyFramesEncoded =
-          result.keyFramesEncoded;
-      }
-
-      const bytes =
-        result.bytesSent - this.statsResults.internal[mediaType][sendrecvType].prevBytesSent;
-
-      this.statsResults.internal[mediaType][sendrecvType].prevBytesSent = result.bytesSent;
-
-      kilobytes = bytes / 1024;
 
       this.statsResults[mediaType][sendrecvType].availableBandwidth = kilobytes.toFixed(1);
-      this.statsResults[mediaType].bytesSent = kilobytes;
 
-      this.statsResults[mediaType][sendrecvType].framesEncoded =
-        result.framesEncoded - this.statsResults.internal[mediaType][sendrecvType].framesEncoded;
-      this.statsResults[mediaType][sendrecvType].keyFramesEncoded =
-        result.keyFramesEncoded -
-        this.statsResults.internal[mediaType][sendrecvType].keyFramesEncoded;
-      this.statsResults.internal[mediaType].outboundRtpId = result.id;
-
-      if (!this.statsResults.internal[mediaType][sendrecvType].packetsSent) {
-        this.statsResults.internal[mediaType][sendrecvType].packetsSent = result.packetsSent;
-      }
-
-      this.statsResults[mediaType][sendrecvType].packetsSent =
-        result.packetsSent - this.statsResults.internal[mediaType][sendrecvType].packetsSent;
-      this.statsResults.internal[mediaType][sendrecvType].packetsSent = result.packetsSent;
+      this.statsResults[mediaType][sendrecvType].framesEncoded = result.framesEncoded;
+      this.statsResults[mediaType][sendrecvType].keyFramesEncoded = result.keyFramesEncoded;
+      this.statsResults[mediaType][sendrecvType].packetsSent = result.packetsSent;
 
       // Data saved to send MQA metrics
 
@@ -974,74 +900,40 @@ export class StatsAnalyzer extends EventsScope {
         : '';
 
       if (result.frameWidth && result.frameHeight) {
-        this.statsResults.resolutions[mediaType][sendrecvType].width = result.frameWidth;
-        this.statsResults.resolutions[mediaType][sendrecvType].height = result.frameHeight;
-        this.statsResults.resolutions[mediaType][sendrecvType].framesReceived =
-          result.framesReceived;
-      }
-
-      if (!this.statsResults.internal[mediaType][sendrecvType].prevBytesReceived) {
-        this.statsResults.internal[mediaType][sendrecvType].prevBytesReceived =
-          result.bytesReceived;
-      }
-
-      if (!this.statsResults.internal[mediaType][sendrecvType].pliCount) {
-        this.statsResults.internal[mediaType][sendrecvType].pliCount = result.pliCount;
-      }
-
-      if (!this.statsResults.internal[mediaType][sendrecvType].packetsLost) {
-        this.statsResults.internal[mediaType][sendrecvType].packetsLost = result.packetsLost;
-      }
-
-      if (!this.statsResults.internal[mediaType][sendrecvType].totalPacketsReceived) {
-        this.statsResults.internal[mediaType][sendrecvType].totalPacketsReceived =
-          result.packetsReceived;
-      }
-
-      if (!this.statsResults.internal[mediaType][sendrecvType].lastPacketReceivedTimestamp) {
-        this.statsResults.internal[mediaType][sendrecvType].lastPacketReceivedTimestamp =
-          result.lastPacketReceivedTimestamp;
+        this.statsResults[mediaType][sendrecvType].width = result.frameWidth;
+        this.statsResults[mediaType][sendrecvType].height = result.frameHeight;
+        this.statsResults[mediaType][sendrecvType].framesReceived = result.framesReceived;
       }
 
       const bytes =
-        result.bytesReceived -
-        this.statsResults.internal[mediaType][sendrecvType].prevBytesReceived;
-
-      this.statsResults.internal[mediaType][sendrecvType].prevBytesReceived = result.bytesReceived;
+        result.bytesReceived - this.statsResults[mediaType][sendrecvType].totalBytesReceived;
 
       kilobytes = bytes / 1024;
       this.statsResults[mediaType][sendrecvType].availableBandwidth = kilobytes.toFixed(1);
-      this.statsResults[mediaType].bytesReceived = kilobytes.toFixed(1);
 
-      this.statsResults[mediaType][sendrecvType].pliCount =
-        result.pliCount - this.statsResults.internal[mediaType][sendrecvType].pliCount;
-      this.statsResults[mediaType][sendrecvType].currentPacketsLost =
-        result.packetsLost - this.statsResults.internal[mediaType][sendrecvType].packetsLost;
-      if (this.statsResults[mediaType][sendrecvType].currentPacketsLost < 0) {
-        this.statsResults[mediaType][sendrecvType].currentPacketsLost = 0;
+      let currentPacketsLost =
+        result.packetsLost - this.statsResults[mediaType][sendrecvType].totalPacketsLost;
+      if (currentPacketsLost < 0) {
+        currentPacketsLost = 0;
       }
 
-      this.statsResults[mediaType][sendrecvType].packetsReceived =
-        result.packetsReceived -
-        this.statsResults.internal[mediaType][sendrecvType].totalPacketsReceived;
-      this.statsResults.internal[mediaType][sendrecvType].totalPacketsReceived =
-        result.packetsReceived;
+      const currentPacketsReceived =
+        result.packetsReceived - this.statsResults[mediaType][sendrecvType].totalPacketsReceived;
+      this.statsResults[mediaType][sendrecvType].totalPacketsReceived = result.packetsReceived;
 
-      if (this.statsResults[mediaType][sendrecvType].packetsReceived === 0) {
+      if (currentPacketsReceived === 0) {
         if (receiveSlot) {
           LoggerProxy.logger.info(
             `StatsAnalyzer:index#processInboundRTPResult --> No packets received for receive slot ${idAndCsi}`,
-            this.statsResults[mediaType][sendrecvType].packetsReceived
+            currentPacketsReceived
           );
         }
       }
 
       //  Check the over all packet Lost ratio
       this.statsResults[mediaType][sendrecvType].currentPacketLossRatio =
-        this.statsResults[mediaType][sendrecvType].currentPacketsLost > 0
-          ? this.statsResults[mediaType][sendrecvType].currentPacketsLost /
-            (this.statsResults[mediaType][sendrecvType].packetsReceived +
-              this.statsResults[mediaType][sendrecvType].currentPacketsLost)
+        currentPacketsLost > 0
+          ? currentPacketsLost / (currentPacketsReceived + currentPacketsLost)
           : 0;
       if (this.statsResults[mediaType][sendrecvType].currentPacketLossRatio > 3) {
         LoggerProxy.logger.info(
@@ -1121,7 +1013,11 @@ export class StatsAnalyzer extends EventsScope {
     const sendRecvType = isSender ? STATS.SEND_DIRECTION : STATS.RECEIVE_DIRECTION;
     const ipType = isRemote ? STATS.REMOTE : STATS.LOCAL;
 
-    this.statsResults.internal.candidates[result.id] = {
+    if (!this.statsResults.candidates) {
+      this.statsResults.candidates = {};
+    }
+
+    this.statsResults.candidates[result.id] = {
       candidateType: result.candidateType,
       ipAddress: result.ip, // TODO: add ports
       portNumber: result.port,
@@ -1144,47 +1040,6 @@ export class StatsAnalyzer extends EventsScope {
   };
 
   /**
-   * Process Track results
-   *
-   * @private
-   * @param {*} result
-   * @param {*} mediaType
-   * @returns {void}
-   * @memberof StatsAnalyzer
-   */
-  private processTrackResult(result: any, mediaType: any) {
-    if (!result || result.type !== 'track') {
-      return;
-    }
-
-    const sendrecvType =
-      result.remoteSource === true ? STATS.RECEIVE_DIRECTION : STATS.SEND_DIRECTION;
-
-    if (sendrecvType === STATS.RECEIVE_DIRECTION) {
-      this.statsResults.resolutions[mediaType][sendrecvType].framesReceived = result.framesReceived;
-      this.statsResults.resolutions[mediaType][sendrecvType].framesDecoded = result.framesDecoded;
-      this.statsResults.resolutions[mediaType][sendrecvType].framesDropped = result.framesDropped;
-    }
-
-    if (result.trackIdentifier && !mediaType.includes('audio')) {
-      this.statsResults.resolutions[mediaType][sendrecvType].trackIdentifier =
-        result.trackIdentifier;
-
-      const jitterBufferDelay = result && result.jitterBufferDelay;
-      const jitterBufferEmittedCount = result && result.jitterBufferEmittedCount;
-
-      this.statsResults.resolutions[mediaType][sendrecvType].avgJitterDelay =
-        jitterBufferEmittedCount && +jitterBufferDelay / +jitterBufferEmittedCount;
-
-      // Used to calculate the jitter
-      this.statsResults.resolutions[mediaType][sendrecvType].jitterBufferDelay =
-        result.jitterBufferDelay;
-      this.statsResults.resolutions[mediaType][sendrecvType].jitterBufferEmittedCount =
-        result.jitterBufferEmittedCount;
-    }
-  }
-
-  /**
    *
    * @private
    * @param {*} result
@@ -1194,20 +1049,15 @@ export class StatsAnalyzer extends EventsScope {
    */
   compareSentAndReceived(result, type) {
     // Don't compare on transceivers without a sender.
-    if (!type || !this.statsResults.internal[type].send) {
+    if (!type || !this.statsResults[type].send) {
       return;
     }
 
     const mediaType = type;
 
-    if (!this.statsResults.internal[mediaType].send.totalPacketsLostOnReceiver) {
-      this.statsResults.internal[mediaType].send.totalPacketsLostOnReceiver = result.packetsLost;
-    }
-
     const currentPacketLoss =
-      result.packetsLost - this.statsResults.internal[mediaType].send.totalPacketsLostOnReceiver;
+      result.packetsLost - this.statsResults[mediaType].send.totalPacketsLostOnReceiver;
 
-    this.statsResults.internal[mediaType].send.totalPacketsLostOnReceiver = result.packetsLost;
     this.statsResults[mediaType].send.packetsLostOnReceiver = currentPacketLoss;
     this.statsResults[mediaType].send.totalPacketsLostOnReceiver = result.packetsLost;
 

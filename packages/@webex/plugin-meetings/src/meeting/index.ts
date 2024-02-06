@@ -9,7 +9,6 @@ import {
   ClientEvent,
   ClientEventLeaveReason,
   CallDiagnosticUtils,
-  CALL_DIAGNOSTIC_CONFIG,
 } from '@webex/internal-plugin-metrics';
 import {
   ConnectionState,
@@ -105,6 +104,7 @@ import {
   MEETING_PERMISSION_TOKEN_REFRESH_THRESHOLD_IN_SEC,
   MEETING_PERMISSION_TOKEN_REFRESH_REASON,
   ROAP_OFFER_ANSWER_EXCHANGE_TIMEOUT,
+  RECONNECTION,
 } from '../constants';
 import BEHAVIORAL_METRICS from '../metrics/constants';
 import ParameterError from '../common/errors/parameter';
@@ -176,6 +176,12 @@ export type AddMediaOptions = {
   remoteMediaManagerConfig?: RemoteMediaManagerConfiguration; // applies only to multistream meetings
   bundlePolicy?: BundlePolicy; // applies only to multistream meetings
   allowMediaInLobby?: boolean; // allows adding media when in the lobby
+};
+
+export type CallStateForMetrics = {
+  correlationId?: string;
+  joinTrigger?: string;
+  loginType?: string;
 };
 
 export const MEDIA_UPDATE_TYPE = {
@@ -470,7 +476,7 @@ export default class Meeting extends StatelessWebexPlugin {
   annotation: any;
   webinar: any;
   conversationUrl: string;
-  correlationId: string;
+  callStateForMetrics: CallStateForMetrics;
   destination: string;
   destinationType: string;
   deviceUrl: string;
@@ -528,7 +534,7 @@ export default class Meeting extends StatelessWebexPlugin {
   meetingInfoFailureCode?: number;
   meetingInfoExtraParams?: Record<string, any>;
   networkQualityMonitor: NetworkQualityMonitor;
-  networkStatus: string;
+  networkStatus?: NETWORK_STATUS;
   passwordStatus: string;
   queuedMediaUpdates: any[];
   recording: any;
@@ -538,6 +544,7 @@ export default class Meeting extends StatelessWebexPlugin {
   requiredCaptcha: any;
   receiveSlotManager: ReceiveSlotManager;
   selfUserPolicies: any;
+  enforceVBGImagesURL: string;
   shareStatus: string;
   screenShareFloorState: ScreenShareFloorStatus;
   statsAnalyzer: StatsAnalyzer;
@@ -559,6 +566,7 @@ export default class Meeting extends StatelessWebexPlugin {
   meetingState: any;
   permissionToken: string;
   permissionTokenPayload: any;
+  permissionTokenReceivedLocalTime: number;
   resourceId: any;
   resourceUrl: string;
   selfId: string;
@@ -576,6 +584,7 @@ export default class Meeting extends StatelessWebexPlugin {
   private sendSlotManager: SendSlotManager = new SendSlotManager(LoggerProxy);
   private deferSDPAnswer?: Defer; // used for waiting for a response
   private sdpResponseTimer?: ReturnType<typeof setTimeout>;
+  private hasMediaConnectionConnectedAtLeastOnce: boolean;
 
   /**
    * @param {Object} attrs
@@ -610,20 +619,22 @@ export default class Meeting extends StatelessWebexPlugin {
      */
     this.id = uuid.v4();
     /**
-     * Correlation ID used for network tracking of meeting
+     * Call state used for metrics
      * @instance
-     * @type {String}
+     * @type {CallStateForMetrics}
      * @readonly
      * @public
      * @memberof Meeting
      */
-    if (attrs.correlationId) {
+    this.callStateForMetrics = attrs.callStateForMetrics || {};
+    const correlationId = attrs.correlationId || attrs.callStateForMetrics?.correlationId;
+    if (correlationId) {
       LoggerProxy.logger.log(
-        `Meetings:index#constructor --> Initializing the meeting object with correlation id from app ${this.correlationId}`
+        `Meetings:index#constructor --> Initializing the meeting object with correlation id from app ${correlationId}`
       );
-      this.correlationId = attrs.correlationId;
+      this.callStateForMetrics.correlationId = correlationId;
     } else {
-      this.correlationId = this.id;
+      this.callStateForMetrics.correlationId = this.id;
     }
     /**
      * @instance
@@ -1095,13 +1106,14 @@ export default class Meeting extends StatelessWebexPlugin {
      */
     this.networkQualityMonitor = null;
     /**
+     * Indicates network status of the webrtc media connection
      * @instance
      * @type {String}
      * @readonly
      * @public
      * @memberof Meeting
      */
-    this.networkStatus = null;
+    this.networkStatus = undefined;
     /**
      * Passing only info as we send basic info for meeting added event
      * @instance
@@ -1317,6 +1329,15 @@ export default class Meeting extends StatelessWebexPlugin {
      * @memberof Meeting
      */
     this.retriedWithTurnServer = false;
+
+    /**
+     * Whether or not the media connection has ever successfully connected.
+     * @instance
+     * @type {boolean}
+     * @private
+     * @memberof Meeting
+     */
+    this.hasMediaConnectionConnectedAtLeastOnce = false;
   }
 
   /**
@@ -1347,6 +1368,22 @@ export default class Meeting extends StatelessWebexPlugin {
    */
   isLocusCall() {
     return this.type === 'CALL';
+  }
+
+  /**
+   * Getter - Returns callStateForMetrics.correlationId
+   * @returns {string}
+   */
+  get correlationId() {
+    return this.callStateForMetrics.correlationId;
+  }
+
+  /**
+   * Setter - sets callStateForMetrics.correlationId
+   * @param {string} correlationId
+   */
+  set correlationId(correlationId: string) {
+    this.callStateForMetrics.correlationId = correlationId;
   }
 
   /**
@@ -1490,15 +1527,21 @@ export default class Meeting extends StatelessWebexPlugin {
       : this.destination;
     const destinationType = isStartingSpaceInstantV2Meeting ? _MEETING_LINK_ : this.destinationType;
 
-    const timeLeft = this.getPermissionTokenTimeLeftInSec();
+    const permissionTokenExpiryInfo = this.getPermissionTokenExpiryInfo();
+
+    const timeLeft = permissionTokenExpiryInfo?.timeLeft;
+    const expiryTime = permissionTokenExpiryInfo?.expiryTime;
+    const currentTime = permissionTokenExpiryInfo?.currentTime;
 
     LoggerProxy.logger.info(
-      `Meeting:index#refreshPermissionToken --> refreshing permission token, destinationType=${destinationType}, timeLeft=${timeLeft}, reason=${reason}`
+      `Meeting:index#refreshPermissionToken --> refreshing permission token, destinationType=${destinationType}, timeLeft=${timeLeft}, permissionTokenExpiry=${expiryTime}, currentTimestamp=${currentTime},reason=${reason}`
     );
 
     Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.PERMISSION_TOKEN_REFRESH, {
       correlationId: this.correlationId,
       timeLeft,
+      expiryTime,
+      currentTime,
       reason,
       destinationType,
     });
@@ -1927,12 +1970,12 @@ export default class Meeting extends StatelessWebexPlugin {
 
   /**
    * sets the network status on meeting object
-   * @param {String} networkStatus
+   * @param {NETWORK_STATUS} networkStatus
    * @private
    * @returns {undefined}
    * @memberof Meeting
    */
-  private setNetworkStatus(networkStatus: string) {
+  private setNetworkStatus(networkStatus?: NETWORK_STATUS) {
     if (networkStatus === NETWORK_STATUS.DISCONNECTED) {
       Trigger.trigger(
         this,
@@ -3266,6 +3309,11 @@ export default class Meeting extends StatelessWebexPlugin {
         }) &&
           this.meetingInfo?.video?.supportHDV) ||
         !this.arePolicyRestrictionsSupported(),
+      enforceVirtualBackground:
+        ControlsOptionsUtil.hasPolicies({
+          requiredPolicies: [SELF_POLICY.ENFORCE_VIRTUAL_BACKGROUND],
+          policies: this.selfUserPolicies,
+        }) && this.arePolicyRestrictionsSupported(),
       supportHQV:
         (ControlsOptionsUtil.hasPolicies({
           requiredPolicies: [SELF_POLICY.SUPPORT_HQV],
@@ -3419,6 +3467,10 @@ export default class Meeting extends StatelessWebexPlugin {
             requiredPolicies: [SELF_POLICY.SUPPORT_FILE_TRANSFER],
             policies: this.selfUserPolicies,
           }),
+          canChat: ControlsOptionsUtil.hasPolicies({
+            requiredPolicies: [SELF_POLICY.SUPPORT_CHAT],
+            policies: this.selfUserPolicies,
+          }),
           canShareApplication:
             (ControlsOptionsUtil.hasHints({
               requiredHints: [DISPLAY_HINTS.SHARE_APPLICATION],
@@ -3478,6 +3530,7 @@ export default class Meeting extends StatelessWebexPlugin {
    */
   setSelfUserPolicies() {
     this.selfUserPolicies = this.permissionTokenPayload?.permission?.userPolicies;
+    this.enforceVBGImagesURL = this.permissionTokenPayload?.permission?.enforceVBGImagesURL;
   }
 
   /**
@@ -3488,6 +3541,7 @@ export default class Meeting extends StatelessWebexPlugin {
    */
   public setPermissionTokenPayload(permissionToken: string) {
     this.permissionTokenPayload = jwt.decode(permissionToken);
+    this.permissionTokenReceivedLocalTime = new Date().getTime();
   }
 
   /**
@@ -3581,8 +3635,7 @@ export default class Meeting extends StatelessWebexPlugin {
    * @memberof Meeting
    */
   closeRemoteStreams() {
-    const {remoteAudioStream, remoteVideoStream, remoteShareStream, shareAudioStream} =
-      this.mediaProperties;
+    const {remoteAudioStream, remoteVideoStream, remoteShareStream} = this.mediaProperties;
 
     /**
      * Triggers an event to the developer
@@ -3623,7 +3676,6 @@ export default class Meeting extends StatelessWebexPlugin {
       stopStream(remoteAudioStream, EVENT_TYPES.REMOTE_AUDIO),
       stopStream(remoteVideoStream, EVENT_TYPES.REMOTE_VIDEO),
       stopStream(remoteShareStream, EVENT_TYPES.REMOTE_SHARE),
-      stopStream(shareAudioStream, EVENT_TYPES.REMOTE_SHARE_AUDIO),
     ]);
   }
 
@@ -3694,11 +3746,16 @@ export default class Meeting extends StatelessWebexPlugin {
   private async setLocalShareVideoStream(localDisplayStream?: LocalDisplayStream) {
     const oldStream = this.mediaProperties.shareVideoStream;
 
+    oldStream?.off(StreamEventNames.MuteStateChange, this.handleShareVideoStreamMuteStateChange);
     oldStream?.off(StreamEventNames.Ended, this.handleShareVideoStreamEnded);
     oldStream?.off(LocalStreamEventNames.OutputTrackChange, this.localOutputTrackChangeHandler);
 
     this.mediaProperties.setLocalShareVideoStream(localDisplayStream);
 
+    localDisplayStream?.on(
+      StreamEventNames.MuteStateChange,
+      this.handleShareVideoStreamMuteStateChange
+    );
     localDisplayStream?.on(StreamEventNames.Ended, this.handleShareVideoStreamEnded);
     localDisplayStream?.on(
       LocalStreamEventNames.OutputTrackChange,
@@ -3754,7 +3811,7 @@ export default class Meeting extends StatelessWebexPlugin {
     functionName: string;
     isPublished: boolean;
     mediaType: MediaType;
-    stream: MediaStream;
+    stream: LocalStream;
   }) {
     const {functionName, isPublished, mediaType, stream} = options;
     Trigger.trigger(
@@ -3788,12 +3845,16 @@ export default class Meeting extends StatelessWebexPlugin {
     videoStream?.off(StreamEventNames.MuteStateChange, this.localVideoStreamMuteStateHandler);
     videoStream?.off(LocalStreamEventNames.OutputTrackChange, this.localOutputTrackChangeHandler);
 
-    shareAudioStream?.off(StreamEventNames.MuteStateChange, this.handleShareAudioStreamEnded);
+    shareAudioStream?.off(StreamEventNames.Ended, this.handleShareAudioStreamEnded);
     shareAudioStream?.off(
       LocalStreamEventNames.OutputTrackChange,
       this.localOutputTrackChangeHandler
     );
-    shareVideoStream?.off(StreamEventNames.MuteStateChange, this.handleShareVideoStreamEnded);
+    shareVideoStream?.off(
+      StreamEventNames.MuteStateChange,
+      this.handleShareVideoStreamMuteStateChange
+    );
+    shareVideoStream?.off(StreamEventNames.Ended, this.handleShareVideoStreamEnded);
     shareVideoStream?.off(
       LocalStreamEventNames.OutputTrackChange,
       this.localOutputTrackChangeHandler
@@ -3907,6 +3968,7 @@ export default class Meeting extends StatelessWebexPlugin {
       this.receiveSlotManager.reset();
       this.mediaProperties.webrtcMediaConnection.close();
       this.sendSlotManager.reset();
+      this.setNetworkStatus(undefined);
     }
 
     this.audio = null;
@@ -3934,14 +3996,25 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
-   * Convenience method to set the correlation id for the Meeting
-   * @param {String} id correlation id to set on the class
+   * Convenience method to set the correlation id for the callStateForMetrics
+   * @param {String} id correlation id to set on the callStateForMetrics
    * @returns {undefined}
    * @public
    * @memberof Meeting
    */
   public setCorrelationId(id: string) {
-    this.correlationId = id;
+    this.callStateForMetrics.correlationId = id;
+  }
+
+  /**
+   * Update the callStateForMetrics
+   * @param {CallStateForMetrics} callStateForMetrics updated values for callStateForMetrics
+   * @returns {undefined}
+   * @public
+   * @memberof Meeting
+   */
+  public updateCallStateForMetrics(callStateForMetrics: CallStateForMetrics) {
+    this.callStateForMetrics = {...this.callStateForMetrics, ...callStateForMetrics};
   }
 
   /**
@@ -4259,6 +4332,8 @@ export default class Meeting extends StatelessWebexPlugin {
 
     return this.reconnectionManager
       .reconnect(options)
+      .then(() => this.waitForRemoteSDPAnswer())
+      .then(() => this.waitForMediaConnectionConnected())
       .then(() => {
         Trigger.trigger(
           this,
@@ -4269,6 +4344,18 @@ export default class Meeting extends StatelessWebexPlugin {
           EVENT_TRIGGERS.MEETING_RECONNECTION_SUCCESS
         );
         LoggerProxy.logger.log('Meeting:index#reconnect --> Meeting reconnect success');
+
+        // @ts-ignore
+        this.webex.internal.newMetrics.submitClientEvent({
+          name: 'client.media.recovered',
+          payload: {
+            recoveredBy: 'new',
+          },
+          options: {
+            meetingId: this.id,
+          },
+        });
+        this.reconnectionManager.setStatus(RECONNECTION.STATE.COMPLETE);
       })
       .catch((error) => {
         Trigger.trigger(
@@ -4578,7 +4665,11 @@ export default class Meeting extends StatelessWebexPlugin {
     // @ts-ignore
     this.webex.internal.newMetrics.submitClientEvent({
       name: 'client.call.initiated',
-      payload: {trigger: 'user-interaction', isRoapCallEnabled: true},
+      payload: {
+        trigger: this.callStateForMetrics.joinTrigger || 'user-interaction',
+        isRoapCallEnabled: true,
+        pstnAudioType: options?.pstnAudioType,
+      },
       options: {meetingId: this.id},
     });
 
@@ -5268,7 +5359,11 @@ export default class Meeting extends StatelessWebexPlugin {
             {
               logText: `${LOG_HEADER} Roap Offer`,
             }
-          );
+          ).catch(() => {
+            this.deferSDPAnswer.reject();
+            clearTimeout(this.sdpResponseTimer);
+            this.sdpResponseTimer = undefined;
+          });
           break;
 
         case 'ANSWER':
@@ -5384,40 +5479,25 @@ export default class Meeting extends StatelessWebexPlugin {
 
     this.mediaProperties.webrtcMediaConnection.on(Event.CONNECTION_STATE_CHANGED, (event) => {
       const connectionFailed = () => {
-        // we know the media connection failed and browser will not attempt to recover it any more
-        // so reset the timer as it's not needed anymore, we want to reconnect immediately
-        this.reconnectionManager.resetReconnectionTimer();
-
-        this.reconnect({networkDisconnect: true});
-        // @ts-ignore
-        this.webex.internal.newMetrics.submitClientEvent({
-          name: 'client.ice.end',
-          payload: {
-            canProceed: false,
-            icePhase: 'IN_MEETING',
-            errors: [
-              // @ts-ignore
-              this.webex.internal.newMetrics.callDiagnosticMetrics.getErrorPayloadForClientErrorCode(
-                {
-                  clientErrorCode: CALL_DIAGNOSTIC_CONFIG.ICE_FAILURE_CLIENT_CODE,
-                }
-              ),
-            ],
-          },
-          options: {
-            meetingId: this.id,
-          },
-        });
-
-        this.uploadLogs({
-          file: 'peer-connection-manager/index',
-          function: 'connectionFailed',
-        });
-
         Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.CONNECTION_FAILURE, {
           correlation_id: this.correlationId,
           locus_id: this.locusId,
+          networkStatus: this.networkStatus,
+          hasMediaConnectionConnectedAtLeastOnce: this.hasMediaConnectionConnectedAtLeastOnce,
         });
+
+        if (this.hasMediaConnectionConnectedAtLeastOnce) {
+          // we know the media connection failed and browser will not attempt to recover it any more
+          // so reset the timer as it's not needed anymore, we want to reconnect immediately
+          this.reconnectionManager.resetReconnectionTimer();
+
+          this.reconnect({networkDisconnect: true});
+
+          this.uploadLogs({
+            file: 'peer-connection-manager/index',
+            function: 'connectionFailed',
+          });
+        }
       };
 
       LoggerProxy.logger.info(
@@ -5429,22 +5509,32 @@ export default class Meeting extends StatelessWebexPlugin {
 
       switch (event.state) {
         case ConnectionState.Connecting:
-          // @ts-ignore
-          this.webex.internal.newMetrics.submitClientEvent({
-            name: 'client.ice.start',
-            options: {
-              meetingId: this.id,
-            },
-          });
+          if (!this.hasMediaConnectionConnectedAtLeastOnce) {
+            // Only send CA event for join flow if we haven't successfully connected media yet
+            // @ts-ignore
+            this.webex.internal.newMetrics.submitClientEvent({
+              name: 'client.ice.start',
+              options: {
+                meetingId: this.id,
+              },
+            });
+          }
           break;
         case ConnectionState.Connected:
-          // @ts-ignore
-          this.webex.internal.newMetrics.submitClientEvent({
-            name: 'client.ice.end',
-            options: {
-              meetingId: this.id,
-            },
-          });
+          if (!this.hasMediaConnectionConnectedAtLeastOnce) {
+            // Only send CA event for join flow if we haven't successfully connected media yet
+            // @ts-ignore
+            this.webex.internal.newMetrics.submitClientEvent({
+              name: 'client.ice.end',
+              payload: {
+                canProceed: true,
+                icePhase: 'JOIN_MEETING_FINAL',
+              },
+              options: {
+                meetingId: this.id,
+              },
+            });
+          }
           Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.CONNECTION_SUCCESS, {
             correlation_id: this.correlationId,
             locus_id: this.locusId,
@@ -5453,6 +5543,7 @@ export default class Meeting extends StatelessWebexPlugin {
           this.setNetworkStatus(NETWORK_STATUS.CONNECTED);
           this.reconnectionManager.iceReconnected();
           this.statsAnalyzer.startAnalyzer(this.mediaProperties.webrtcMediaConnection);
+          this.hasMediaConnectionConnectedAtLeastOnce = true;
           break;
         case ConnectionState.Disconnected:
           this.setNetworkStatus(NETWORK_STATUS.DISCONNECTED);
@@ -5757,36 +5848,42 @@ export default class Meeting extends StatelessWebexPlugin {
     try {
       await this.mediaProperties.waitForMediaConnectionConnected();
     } catch (error) {
-      // @ts-ignore
-      this.webex.internal.newMetrics.submitClientEvent({
-        name: 'client.ice.end',
-        payload: {
-          canProceed: !this.turnServerUsed, // If we haven't done turn tls retry yet we will proceed with join attempt
-          icePhase: this.turnServerUsed ? 'JOIN_MEETING_FINAL' : 'JOIN_MEETING_RETRY',
-          errors: [
-            // @ts-ignore
-            this.webex.internal.newMetrics.callDiagnosticMetrics.getErrorPayloadForClientErrorCode({
-              clientErrorCode: CallDiagnosticUtils.generateClientErrorCodeForIceFailure({
-                signalingState:
-                  this.mediaProperties.webrtcMediaConnection?.multistreamConnection?.pc?.pc
-                    ?.signalingState ||
-                  this.mediaProperties.webrtcMediaConnection?.mediaConnection?.pc?.signalingState ||
-                  'unknown',
-                iceConnectionState:
-                  this.mediaProperties.webrtcMediaConnection?.multistreamConnection?.pc?.pc
-                    ?.iceConnectionState ||
-                  this.mediaProperties.webrtcMediaConnection?.mediaConnection?.pc
-                    ?.iceConnectionState ||
-                  'unknown',
-                turnServerUsed: this.turnServerUsed,
-              }),
-            }),
-          ],
-        },
-        options: {
-          meetingId: this.id,
-        },
-      });
+      if (!this.hasMediaConnectionConnectedAtLeastOnce) {
+        // Only send CA event for join flow if we haven't successfully connected media yet
+        // @ts-ignore
+        this.webex.internal.newMetrics.submitClientEvent({
+          name: 'client.ice.end',
+          payload: {
+            canProceed: !this.turnServerUsed, // If we haven't done turn tls retry yet we will proceed with join attempt
+            icePhase: this.turnServerUsed ? 'JOIN_MEETING_FINAL' : 'JOIN_MEETING_RETRY',
+            errors: [
+              // @ts-ignore
+              this.webex.internal.newMetrics.callDiagnosticMetrics.getErrorPayloadForClientErrorCode(
+                {
+                  clientErrorCode: CallDiagnosticUtils.generateClientErrorCodeForIceFailure({
+                    signalingState:
+                      this.mediaProperties.webrtcMediaConnection?.multistreamConnection?.pc?.pc
+                        ?.signalingState ||
+                      this.mediaProperties.webrtcMediaConnection?.mediaConnection?.pc
+                        ?.signalingState ||
+                      'unknown',
+                    iceConnectionState:
+                      this.mediaProperties.webrtcMediaConnection?.multistreamConnection?.pc?.pc
+                        ?.iceConnectionState ||
+                      this.mediaProperties.webrtcMediaConnection?.mediaConnection?.pc
+                        ?.iceConnectionState ||
+                      'unknown',
+                    turnServerUsed: this.turnServerUsed,
+                  }),
+                }
+              ),
+            ],
+          },
+          options: {
+            meetingId: this.id,
+          },
+        });
+      }
       throw new Error(
         `Timed out waiting for media connection to be connected, correlationId=${this.correlationId}`
       );
@@ -5910,8 +6007,23 @@ export default class Meeting extends StatelessWebexPlugin {
     bundlePolicy?: BundlePolicy
   ): Promise<void> {
     this.retriedWithTurnServer = true;
+    const LOG_HEADER = 'Meeting:index#addMedia():retryWithForcedTurnDiscovery -->';
 
     await this.cleanUpBeforeRetryWithTurnServer();
+
+    Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.ADD_MEDIA_RETRY, {
+      correlation_id: this.correlationId,
+      state: this.state,
+      meetingState: this.meetingState,
+      reason: 'forcingTurnTls',
+    });
+
+    if (this.state === MEETING_STATE.STATES.LEFT) {
+      LoggerProxy.logger.info(
+        `${LOG_HEADER} meeting state was LEFT after first attempt to establish media connection. Attempting to rejoin. `
+      );
+      await this.join({rejoin: true});
+    }
 
     await this.retryEstablishMediaConnectionWithForcedTurnDiscovery(
       remoteMediaManagerConfig,
@@ -5990,7 +6102,9 @@ export default class Meeting extends StatelessWebexPlugin {
         name: 'internal.client.add-media.turn-discovery.end',
       });
 
-      if (this.turnServerUsed) {
+      const {turnServerInfo} = turnDiscoveryObject;
+
+      if (this.turnServerUsed && turnServerInfo) {
         Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.TURN_DISCOVERY_LATENCY, {
           correlation_id: this.correlationId,
           latency: cdl.getTurnDiscoveryTime(),
@@ -5999,7 +6113,6 @@ export default class Meeting extends StatelessWebexPlugin {
         });
       }
 
-      const {turnServerInfo} = turnDiscoveryObject;
       const mc = await this.createMediaConnection(turnServerInfo, bundlePolicy);
 
       LoggerProxy.logger.info(`${LOG_HEADER} media connection created`);
@@ -6115,10 +6228,11 @@ export default class Meeting extends StatelessWebexPlugin {
    */
   async addMedia(options: AddMediaOptions = {}): Promise<void> {
     this.retriedWithTurnServer = false;
+    this.hasMediaConnectionConnectedAtLeastOnce = false;
     const LOG_HEADER = 'Meeting:index#addMedia -->';
     LoggerProxy.logger.info(`${LOG_HEADER} called with: ${JSON.stringify(options)}`);
 
-    if (this.meetingState !== FULL_STATE.ACTIVE) {
+    if (options.allowMediaInLobby !== true && this.meetingState !== FULL_STATE.ACTIVE) {
       throw new MeetingNotActiveError();
     }
 
@@ -6227,6 +6341,7 @@ export default class Meeting extends StatelessWebexPlugin {
         locus_id: this.locusUrl.split('/').pop(),
         connectionType,
         isMultistream: this.isMultistream,
+        retriedWithTurnServer: this.retriedWithTurnServer,
         ...reachabilityStats,
       });
       // @ts-ignore
@@ -6791,17 +6906,13 @@ export default class Meeting extends StatelessWebexPlugin {
         .catch((error) => {
           LoggerProxy.logger.error('Meeting:index#stopWhiteboardShare --> Error ', error);
 
-          Metrics.sendBehavioralMetric(
-            // @ts-ignore - check if STOP_WHITEBOARD_SHARE_FAILURE exists
-            BEHAVIORAL_METRICS.STOP_WHITEBOARD_SHARE_FAILURE,
-            {
-              correlation_id: this.correlationId,
-              locus_id: this.locusUrl.split('/').pop(),
-              reason: error.message,
-              stack: error.stack,
-              board: {channelUrl},
-            }
-          );
+          Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.MEETING_STOP_WHITEBOARD_SHARE_FAILURE, {
+            correlation_id: this.correlationId,
+            locus_id: this.locusUrl.split('/').pop(),
+            reason: error.message,
+            stack: error.stack,
+            board: {channelUrl},
+          });
 
           return Promise.reject(error);
         })
@@ -6855,6 +6966,11 @@ export default class Meeting extends StatelessWebexPlugin {
           })
           .then(() => {
             this.screenShareFloorState = ScreenShareFloorStatus.GRANTED;
+
+            Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.MEETING_SHARE_SUCCESS, {
+              correlation_id: this.correlationId,
+              locus_id: this.locusUrl.split('/').pop(),
+            });
 
             return Promise.resolve();
           })
@@ -7278,6 +7394,23 @@ export default class Meeting extends StatelessWebexPlugin {
   };
 
   /**
+   * Functionality for when a share video is muted or unmuted.
+   * @private
+   * @memberof Meeting
+   * @param {boolean} muted
+   * @returns {undefined}
+   */
+  private handleShareVideoStreamMuteStateChange = (muted: boolean) => {
+    LoggerProxy.logger.log(
+      `Meeting:index#handleShareVideoStreamMuteStateChange --> Share video stream mute state changed to muted ${muted}`
+    );
+    Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.MEETING_SHARE_VIDEO_MUTE_STATE_CHANGE, {
+      correlationId: this.correlationId,
+      muted,
+    });
+  };
+
+  /**
    * Functionality for when a share video is ended.
    * @private
    * @memberof Meeting
@@ -7643,10 +7776,12 @@ export default class Meeting extends StatelessWebexPlugin {
       .update({
         // TODO: RoapMediaConnection is not ready to use stream classes yet, so we pass the raw MediaStreamTrack for now
         localTracks: {
-          audio: this.mediaProperties.audioStream?.outputTrack || null,
-          video: this.mediaProperties.videoStream?.outputTrack || null,
-          screenShareVideo: this.mediaProperties.shareVideoStream?.outputTrack || null,
-          screenShareAudio: this.mediaProperties.shareAudioStream?.outputTrack || null,
+          audio: this.mediaProperties.audioStream?.outputStream?.getTracks()[0] || null,
+          video: this.mediaProperties.videoStream?.outputStream?.getTracks()[0] || null,
+          screenShareVideo:
+            this.mediaProperties.shareVideoStream?.outputStream?.getTracks()[0] || null,
+          screenShareAudio:
+            this.mediaProperties.shareAudioStream?.outputStream?.getTracks()[0] || null,
         },
         direction: {
           audio: Media.getDirection(
@@ -7835,25 +7970,34 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
-   * Gets the time left in seconds till the permission token expires
+   * Gets permission token expiry information including timeLeft, expiryTime, currentTime
    * (from the time the function has been fired)
    *
-   * @returns {number} time left in seconds
+   * @returns {object} permissionTokenExpiryInfo
+   * @returns {number} permissionTokenExpiryInfo.timeLeft The time left for token to expire
+   * @returns {number} permissionTokenExpiryInfo.expiryTime The expiry time of permission token from the server
+   * @returns {number} permissionTokenExpiryInfo.currentTime The current time of the local machine
    */
-  public getPermissionTokenTimeLeftInSec(): number | undefined {
+  public getPermissionTokenExpiryInfo() {
     if (!this.permissionTokenPayload) {
       return undefined;
     }
 
-    const permissionTokenExpValue = Number(this.permissionTokenPayload.exp);
+    const permissionTokenExpiryFromServer = Number(this.permissionTokenPayload.exp);
+    const permissionTokenIssuedTimeFromServer = Number(this.permissionTokenPayload.iat);
+
+    const shiftInTime = this.permissionTokenReceivedLocalTime - permissionTokenIssuedTimeFromServer;
 
     // using new Date instead of Date.now() to allow for accurate unit testing
     // https://github.com/sinonjs/fake-timers/issues/321
-    const now = new Date().getTime();
+    const currentTime = new Date().getTime();
 
-    // substract current time from the permissionTokenExp
-    // (permissionTokenExp is a epoch timestamp, not a time to live duration)
-    return (permissionTokenExpValue - now) / 1000;
+    // adjusted time is calculated in case your machine time is wrong
+    const adjustedCurrentTime = currentTime - shiftInTime;
+
+    const timeLeft = (permissionTokenExpiryFromServer - adjustedCurrentTime) / 1000;
+
+    return {timeLeft, expiryTime: permissionTokenExpiryFromServer, currentTime};
   }
 
   /**
@@ -7865,9 +8009,9 @@ export default class Meeting extends StatelessWebexPlugin {
    * @returns {Promise<void>}
    */
   public checkAndRefreshPermissionToken(threshold: number, reason: string): Promise<void> {
-    const permissionTokenTimeLeft = this.getPermissionTokenTimeLeftInSec();
+    const timeLeft = this.getPermissionTokenExpiryInfo()?.timeLeft;
 
-    if (permissionTokenTimeLeft !== undefined && permissionTokenTimeLeft <= threshold) {
+    if (timeLeft !== undefined && timeLeft <= threshold) {
       return this.refreshPermissionToken(reason);
     }
 

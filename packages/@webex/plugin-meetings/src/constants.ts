@@ -1,6 +1,8 @@
 // @ts-ignore
 import {hydraTypes} from '@webex/common';
 
+type Enum<T extends Record<string, unknown>> = T[keyof T];
+
 // *********** LOWERCASE / CAMELCASE STRINGS ************
 
 export const AUDIO = 'audio';
@@ -191,7 +193,7 @@ export const ICE_FAIL_TIMEOUT = 3000;
 export const RETRY_TIMEOUT = 3000;
 
 export const ICE_AND_DTLS_CONNECTION_TIMEOUT = 10000;
-export const ROAP_OFFER_ANSWER_EXCHANGE_TIMEOUT = 10000;
+export const ROAP_OFFER_ANSWER_EXCHANGE_TIMEOUT = 35000;
 
 // ******************** REGEX **********************
 // Please alphabetize
@@ -235,6 +237,13 @@ export const CALENDAR_EVENTS = {
   CREATE_MINIMAL: 'event:calendar.meeting.create.minimal',
   UPDATE_MINIMAL: 'event:calendar.meeting.update.minimal',
   DELETE: 'event:calendar.meeting.delete',
+};
+
+export const ASSIGN_ROLES_ERROR_CODES = {
+  ReclaimHostNotSupportedErrorCode: 2400127,
+  ReclaimHostNotAllowedErrorCode: 2403135,
+  ReclaimHostEmptyWrongKeyErrorCode: 2403136,
+  ReclaimHostIsHostAlreadyErrorCode: 2409150,
 };
 
 export const DEFAULT_GET_STATS_FILTER = {
@@ -491,6 +500,30 @@ export const ERROR_DICTIONARY = {
     NAME: 'NoMeetingInfo',
     MESSAGE: 'No meeting info found for the meeting',
     CODE: 10,
+  },
+  RECLAIM_HOST_ROLE_NOT_SUPPORTED: {
+    NAME: 'ReclaimHostRoleNotSupported',
+    MESSAGE:
+      'Non converged meetings, PSTN or SIP users in converged meetings are not supported currently.',
+    CODE: 11,
+  },
+  RECLAIM_HOST_ROLE_NOT_ALLOWED: {
+    NAME: 'ReclaimHostRoleNotAllowed',
+    MESSAGE:
+      'Reclaim Host Role Not Allowed For Other Participants. Participants cannot claim host role in PMR meeting, space instant meeting or escalated instant meeting. However, the original host still can reclaim host role when it manually makes another participant to be the host.',
+    CODE: 12,
+  },
+  RECLAIM_HOST_ROLE_EMPTY_OR_WRONG_KEY: {
+    NAME: 'ReclaimHostRoleEmptyOrWrongKey',
+    MESSAGE:
+      'Host Key Not Specified Or Matched. The original host can reclaim the host role without entering the host key. However, any other person who claims the host role must enter the host key to get it.',
+    CODE: 13,
+  },
+  RECLAIM_HOST_ROLE_IS_ALREADY_HOST: {
+    NAME: 'ReclaimHostRoleIsAlreadyHost',
+    MESSAGE:
+      'Participant Having Host Role Already. Participant who sends request to reclaim host role has already a host role.',
+    CODE: 14,
   },
 };
 
@@ -1003,7 +1036,9 @@ export const RECONNECTION = {
     DEFAULT_TRY_COUNT: 0,
     DEFAULT_STATUS: '',
   },
-};
+} as const;
+
+export type RECONNECTION_STATE = Enum<typeof RECONNECTION.STATE>;
 
 export const RESOURCE = {
   CLUSTERS: 'clusters',
@@ -1039,7 +1074,9 @@ export const NETWORK_STATUS = {
   DISCONNECTED: 'DISCONNECTED',
   RECONNECTING: 'RECONNECTING',
   CONNECTED: 'CONNECTED',
-};
+} as const;
+
+export type NETWORK_STATUS = Enum<typeof NETWORK_STATUS>;
 
 export const NETWORK_TYPE = {
   VPN: 'vpn',
@@ -1255,7 +1292,7 @@ export const IP_VERSION = {
   ipv4_and_ipv6: 1,
 } as const;
 
-export type IP_VERSION = (typeof IP_VERSION)[keyof typeof IP_VERSION];
+export type IP_VERSION = Enum<typeof IP_VERSION>;
 
 // constant for if the permissionToken is about to expire in the next 30 seconds, refresh it
 export const MEETING_PERMISSION_TOKEN_REFRESH_THRESHOLD_IN_SEC = 30;

@@ -33,6 +33,7 @@ import {
   NETWORK_STATUS,
   ONLINE,
   OFFLINE,
+  RECONNECTION,
 } from '@webex/plugin-meetings/src/constants';
 import * as InternalMediaCoreModule from '@webex/internal-media-core';
 import {
@@ -307,6 +308,7 @@ describe('plugin-meetings', () => {
           assert.equal(meeting.resource, uuid2);
           assert.equal(meeting.deviceUrl, uuid3);
           assert.equal(meeting.correlationId, correlationId);
+          assert.deepEqual(meeting.callStateForMetrics, {correlationId});
           assert.deepEqual(meeting.meetingInfo, {});
           assert.instanceOf(meeting.members, Members);
           assert.calledOnceWithExactly(
@@ -374,6 +376,34 @@ describe('plugin-meetings', () => {
             }
           );
           assert.equal(newMeeting.correlationId, newMeeting.id);
+          assert.deepEqual(newMeeting.callStateForMetrics, {correlationId: newMeeting.id});
+        });
+
+        it('correlationId can be provided in callStateForMetrics', () => {
+          const newMeeting = new Meeting(
+            {
+              userId: uuid1,
+              resource: uuid2,
+              deviceUrl: uuid3,
+              locus: {url: url1},
+              destination: testDestination,
+              destinationType: _MEETING_ID_,
+              callStateForMetrics: {
+                correlationId: uuid4,
+                joinTrigger: 'fake-join-trigger',
+                loginType: 'fake-login-type',
+              }
+            },
+            {
+              parent: webex,
+            }
+          );
+          assert.equal(newMeeting.correlationId, uuid4);
+          assert.deepEqual(newMeeting.callStateForMetrics, {
+            correlationId: uuid4,
+            joinTrigger: 'fake-join-trigger',
+            loginType: 'fake-login-type',
+          });
         });
 
         describe('creates ReceiveSlot manager instance', () => {
@@ -827,11 +857,11 @@ describe('plugin-meetings', () => {
           });
 
           it('should join the meeting and return promise', async () => {
-            const join = meeting.join();
+            const join = meeting.join({pstnAudioType: 'dial-in'});
 
-            assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
+            assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
               name: 'client.call.initiated',
-              payload: {trigger: 'user-interaction', isRoapCallEnabled: true},
+              payload: {trigger: 'user-interaction', isRoapCallEnabled: true, pstnAudioType: 'dial-in'},
               options: {meetingId: meeting.id},
             });
 
@@ -841,6 +871,17 @@ describe('plugin-meetings', () => {
             assert.calledOnce(MeetingUtil.joinMeeting);
             assert.calledOnce(meeting.setLocus);
             assert.equal(result, joinMeetingResult);
+          });
+
+          it('should take trigger from meeting joinTrigger if available', () => {
+            meeting.updateCallStateForMetrics({joinTrigger: 'fake-join-trigger'});
+            const join = meeting.join();
+
+            assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
+              name: 'client.call.initiated',
+              payload: {trigger: 'fake-join-trigger', isRoapCallEnabled: true},
+              options: {meetingId: meeting.id},
+            });
           });
 
           it('should not create new correlation ID on join immediately after create', async () => {
@@ -1165,8 +1206,8 @@ describe('plugin-meetings', () => {
           assert.exists(meeting.addMedia);
         });
 
-        it('should reject promise if meeting is not active', async () => {
-          const result = await assert.isRejected(meeting.addMedia());
+        it('should reject promise if meeting is not active and the meeting in lobby is not enabled', async () => {
+          const result = await assert.isRejected(meeting.addMedia({allowMediaInLobby: false}));
 
           assert.instanceOf(result, MeetingNotActiveError);
         });
@@ -1784,17 +1825,26 @@ describe('plugin-meetings', () => {
           }]);
 
           const sendBehavioralMetricCalls = Metrics.sendBehavioralMetric.getCalls();
-          assert.equal(sendBehavioralMetricCalls.length, 2);
-          assert.deepEqual(sendBehavioralMetricCalls[0].args, [            
+          assert.equal(sendBehavioralMetricCalls.length, 3);
+          assert.deepEqual(sendBehavioralMetricCalls[0].args, [
+            BEHAVIORAL_METRICS.ADD_MEDIA_RETRY,
+            {
+              correlation_id: meeting.correlationId,
+              state: meeting.state,
+              meetingState: meeting.meetingState,
+              reason: 'forcingTurnTls',
+            },
+          ]);
+          assert.deepEqual(sendBehavioralMetricCalls[1].args, [
             BEHAVIORAL_METRICS.TURN_DISCOVERY_LATENCY,
             {
               correlation_id: meeting.correlationId,
               turnServerUsed: true,
               retriedWithTurnServer: true,
               latency: undefined,
-            }
+            },
           ]);
-          assert.deepEqual(sendBehavioralMetricCalls[1].args, [            
+          assert.deepEqual(sendBehavioralMetricCalls[2].args, [
             BEHAVIORAL_METRICS.ADD_MEDIA_FAILURE,
             {
               correlation_id: meeting.correlationId,
@@ -1809,7 +1859,7 @@ describe('plugin-meetings', () => {
               signalingState: 'unknown',
               connectionState: 'unknown',
               iceConnectionState: 'unknown',
-            }
+            },
           ]);
 
           // Check that doTurnDiscovery is called with th4 correct value of isForced
@@ -1950,24 +2000,34 @@ describe('plugin-meetings', () => {
           }]);
 
           const sendBehavioralMetricCalls = Metrics.sendBehavioralMetric.getCalls();
-          assert.equal(sendBehavioralMetricCalls.length, 2);
-          assert.deepEqual(sendBehavioralMetricCalls[0].args, [            
+          assert.equal(sendBehavioralMetricCalls.length, 3);
+          assert.deepEqual(sendBehavioralMetricCalls[0].args, [
+            BEHAVIORAL_METRICS.ADD_MEDIA_RETRY,
+            {
+              correlation_id: meeting.correlationId,
+              state: meeting.state,
+              meetingState: meeting.meetingState,
+              reason: 'forcingTurnTls',
+            },
+          ]);
+          assert.deepEqual(sendBehavioralMetricCalls[1].args, [
             BEHAVIORAL_METRICS.TURN_DISCOVERY_LATENCY,
             {
               correlation_id: meeting.correlationId,
               turnServerUsed: true,
               retriedWithTurnServer: true,
               latency: undefined,
-            }
+            },
           ]);
-          assert.deepEqual(sendBehavioralMetricCalls[1].args, [            
+          assert.deepEqual(sendBehavioralMetricCalls[2].args, [
             BEHAVIORAL_METRICS.ADD_MEDIA_SUCCESS,
             {
               correlation_id: meeting.correlationId,
               locus_id: meeting.locusUrl.split('/').pop(),
               connectionType: 'udp',
               isMultistream: false,
-            }
+              retriedWithTurnServer: true,
+            },
           ]);
           meeting.roap.doTurnDiscovery
 
@@ -1991,6 +2051,90 @@ describe('plugin-meetings', () => {
           assert.isNotOk(errorThrown);
         });
 
+        it('should call join if state is LEFT after first media connection attempt', async () => {
+          const FAKE_TURN_URL = 'turns:webex.com:3478';
+          const FAKE_TURN_USER = 'some-turn-username';
+          const FAKE_TURN_PASSWORD = 'some-password';
+          let errorThrown = undefined;
+
+          meeting.meetingState = 'ACTIVE';
+          meeting.state = 'LEFT';
+          meeting.roap.doTurnDiscovery = sinon.stub().onFirstCall().returns({
+            turnServerInfo: undefined,
+            turnDiscoverySkippedReason: 'reachability',
+          }).onSecondCall().returns({
+            turnServerInfo: {
+              url: FAKE_TURN_URL,
+              username: FAKE_TURN_USER,
+              password: FAKE_TURN_PASSWORD,
+            },
+            turnDiscoverySkippedReason: undefined,
+          });
+          meeting.mediaProperties.waitForMediaConnectionConnected = sinon.stub().onFirstCall().rejects().onSecondCall().resolves();
+          meeting.join = sinon.stub().resolves();
+
+          const closeMediaConnectionStub = sinon.stub();
+          Media.createMediaConnection = sinon.stub().returns({
+            close: closeMediaConnectionStub,
+            getConnectionState: sinon.stub().returns(ConnectionState.Connected),
+            initiateOffer: sinon.stub().resolves({}),
+            on: sinon.stub(),
+          });
+
+          await meeting
+            .addMedia({
+              mediaSettings: {},
+            })
+            .catch((err) => {
+              errorThrown = err;
+            });
+
+          assert.isNotOk(errorThrown);
+          assert.calledOnceWithExactly(meeting.join, {rejoin: true});
+        });
+
+        it('should reject if join attempt fails if state is LEFT after first media connection attempt', async () => {
+          const FAKE_TURN_URL = 'turns:webex.com:3478';
+          const FAKE_TURN_USER = 'some-turn-username';
+          const FAKE_TURN_PASSWORD = 'some-password';
+          let errorThrown = undefined;
+
+          meeting.meetingState = 'ACTIVE';
+          meeting.state = 'LEFT';
+          meeting.roap.doTurnDiscovery = sinon.stub().onFirstCall().returns({
+            turnServerInfo: undefined,
+            turnDiscoverySkippedReason: 'reachability',
+          }).onSecondCall().returns({
+            turnServerInfo: {
+              url: FAKE_TURN_URL,
+              username: FAKE_TURN_USER,
+              password: FAKE_TURN_PASSWORD,
+            },
+            turnDiscoverySkippedReason: undefined,
+          });
+          meeting.mediaProperties.waitForMediaConnectionConnected = sinon.stub().onFirstCall().rejects().onSecondCall().resolves();
+          meeting.join = sinon.stub().rejects();
+
+          const closeMediaConnectionStub = sinon.stub();
+          Media.createMediaConnection = sinon.stub().returns({
+            close: closeMediaConnectionStub,
+            getConnectionState: sinon.stub().returns(ConnectionState.Connected),
+            initiateOffer: sinon.stub().resolves({}),
+            on: sinon.stub(),
+          });
+
+          await meeting
+            .addMedia({
+              mediaSettings: {},
+            })
+            .catch((err) => {
+              errorThrown = err;
+            });
+
+          assert.isOk(errorThrown);
+          assert.calledOnceWithExactly(meeting.join, {rejoin: true});
+        });
+
         it('should send ADD_MEDIA_SUCCESS metrics', async () => {
           meeting.meetingState = 'ACTIVE';
           meeting.webex.meetings.reachability = {
@@ -2012,6 +2156,7 @@ describe('plugin-meetings', () => {
               locus_id: meeting.locusUrl.split('/').pop(),
               connectionType: 'udp',
               isMultistream: false,
+              retriedWithTurnServer: false,
               someReachabilityMetric1: 'some value1',
               someReachabilityMetric2: 'some value2',
             }
@@ -2024,6 +2169,58 @@ describe('plugin-meetings', () => {
               meetingId: meeting.id,
             },
           });
+        });
+
+        it('should not send TURN_DISCOVERY_LATENCY metric if doTurnDiscovery fails', async () => {
+          let errorThrown = undefined;
+
+          // doTurnDiscovery returns undefined if something fails
+          meeting.roap.doTurnDiscovery = sinon.stub().returns({
+            turnServerInfo: undefined,
+            turnDiscoverySkippedReason: undefined,
+          });
+          meeting.meetingState = 'ACTIVE';
+          meeting.mediaProperties.waitForMediaConnectionConnected.rejects(new Error('fake error'));
+
+          const forceRtcMetricsSend = sinon.stub().resolves();
+          const closeMediaConnectionStub = sinon.stub();
+          Media.createMediaConnection = sinon.stub().returns({
+            close: closeMediaConnectionStub,
+            forceRtcMetricsSend,
+            getConnectionState: sinon.stub().returns(ConnectionState.Connected),
+            initiateOffer: sinon.stub().resolves({}),
+            on: sinon.stub(),
+          });
+
+          await meeting
+            .addMedia({
+              mediaSettings: {},
+            })
+            .catch((err) => {
+              errorThrown = err;
+              assert.instanceOf(err, AddMediaFailed);
+            });
+
+          // Check that the only metric sent is ADD_MEDIA_FAILURE
+          assert.calledOnceWithExactly(Metrics.sendBehavioralMetric,        
+            BEHAVIORAL_METRICS.ADD_MEDIA_FAILURE,
+            {
+              correlation_id: meeting.correlationId,
+              locus_id: meeting.locusUrl.split('/').pop(),
+              reason: errorThrown.message,
+              stack: errorThrown.stack,
+              code: errorThrown.code,
+              turnDiscoverySkippedReason: undefined,
+              turnServerUsed: true,
+              retriedWithTurnServer: false,
+              isMultistream: false,
+              signalingState: 'unknown',
+              connectionState: 'unknown',
+              iceConnectionState: 'unknown',
+            }
+          );
+
+          assert.isOk(errorThrown);
         });
 
         describe('handles StatsAnalyzer events', () => {
@@ -2322,6 +2519,7 @@ describe('plugin-meetings', () => {
                         category: 'media',
                         errorCode: clientErrorCode,
                         serviceErrorCode: undefined,
+                        rawErrorMessage: undefined,
                         ...expectedErrorPayload,
                       },
                     ],
@@ -2418,8 +2616,12 @@ describe('plugin-meetings', () => {
             setUnmuteAllowed: sinon.stub(),
             setMuted: sinon.stub(),
             setServerMuted: sinon.stub(),
-            outputTrack: {
-              id: 'fake mic'
+            outputStream: {
+              getTracks: () => {
+                return [{
+                  id: 'fake mic'
+                }];
+              }
             }
           }
 
@@ -2630,10 +2832,10 @@ describe('plugin-meetings', () => {
             assert.calledOnceWithExactly(roapMediaConnectionConstructorStub, mediaConnectionConfig,
               {
                 localTracks: {
-                  audio: localStreams.audio?.outputTrack,
-                  video: localStreams.video?.outputTrack,
-                  screenShareVideo: localStreams.screenShareVideo?.outputTrack,
-                  screenShareAudio: localStreams.screenShareAudio?.outputTrack,
+                  audio: localStreams.audio?.outputStream?.getTracks()[0],
+                  video: localStreams.video?.outputStream?.getTracks()[0],
+                  screenShareVideo: localStreams.screenShareVideo?.outputStream?.getTracks()[0],
+                  screenShareAudio: localStreams.screenShareAudio?.outputStream?.getTracks()[0],
                 },
                 direction: {audio: direction.audio, video: direction.video, screenShareVideo: direction.screenShare},
                 remoteQualityLevel,
@@ -2908,7 +3110,7 @@ describe('plugin-meetings', () => {
                   assert.calledOnceWithExactly(meeting.sendSlotManager.getSlot(MediaType.AudioMain).publishStream, fakeMicrophoneStream);
                 } else {
                   assert.calledOnceWithExactly(fakeRoapMediaConnection.update, {
-                    localTracks: { audio: fakeMicrophoneStream.outputTrack, video: null, screenShareVideo: null, screenShareAudio: null },
+                    localTracks: { audio: fakeMicrophoneStream.outputStream.getTracks()[0], video: null, screenShareVideo: null, screenShareAudio: null },
                     direction: {
                       audio: expected.direction,
                       video: 'sendrecv',
@@ -2934,8 +3136,12 @@ describe('plugin-meetings', () => {
                   muted: false,
                   setUnmuteAllowed: sinon.stub(),
                   setMuted: sinon.stub(),
-                  outputTrack:{
-                    id: 'fake mic 2',
+                  outputStream: {
+                    getTracks: () => {
+                      return [{
+                        id: 'fake mic 2',
+                      }];
+                    }
                   }
                 }
 
@@ -2947,7 +3153,7 @@ describe('plugin-meetings', () => {
                   assert.calledOnceWithExactly(meeting.sendSlotManager.getSlot(MediaType.AudioMain).publishStream, fakeMicrophoneStream2);
                 } else {
                   assert.calledOnceWithExactly(fakeRoapMediaConnection.update, {
-                    localTracks: { audio: fakeMicrophoneStream2.outputTrack, video: null, screenShareVideo: null, screenShareAudio: null },
+                    localTracks: { audio: fakeMicrophoneStream2.outputStream.getTracks()[0], video: null, screenShareVideo: null, screenShareAudio: null },
                     direction: {
                       audio: expected.direction,
                       video: 'sendrecv',
@@ -3018,7 +3224,7 @@ describe('plugin-meetings', () => {
               assert.equal(meeting.sendSlotManager.getSlot(MediaType.AudioMain).active, expectedDirection !== 'inactive');
             } else {
               assert.calledOnceWithExactly(fakeRoapMediaConnection.update, {
-                localTracks: { audio: expectedStream?.outputTrack ?? null, video: null, screenShareVideo: null, screenShareAudio: null },
+                localTracks: { audio: expectedStream?.outputStream.getTracks()[0] ?? null, video: null, screenShareVideo: null, screenShareAudio: null },
                 direction: {
                   audio: expectedDirection,
                   video: 'sendrecv',
@@ -3468,7 +3674,11 @@ describe('plugin-meetings', () => {
         let sandbox;
 
         const createFakeLocalStream = () => ({
-          outputTrack: {id: 'fake underlying track'},
+          outputStream: {
+            getTracks: () => {
+              return [{id: 'fake underlying track'}];
+            }
+          }
         });
         beforeEach(() => {
           sandbox = sinon.createSandbox();
@@ -3551,10 +3761,10 @@ describe('plugin-meetings', () => {
             meeting.mediaProperties.webrtcMediaConnection.update,
             {
               localTracks: {
-                audio: meeting.mediaProperties.audioStream.outputTrack,
-                video: meeting.mediaProperties.videoStream.outputTrack,
-                screenShareVideo: meeting.mediaProperties.shareVideoStream.outputTrack,
-                screenShareAudio: meeting.mediaProperties.shareVideoStream.outputTrack,
+                audio: meeting.mediaProperties.audioStream.outputStream.getTracks()[0],
+                video: meeting.mediaProperties.videoStream.outputStream.getTracks()[0],
+                screenShareVideo: meeting.mediaProperties.shareVideoStream.outputStream.getTracks()[0],
+                screenShareAudio: meeting.mediaProperties.shareVideoStream.outputStream.getTracks()[0],
               },
               direction: {
                 audio: 'inactive',
@@ -3583,7 +3793,13 @@ describe('plugin-meetings', () => {
             meeting.mediaProperties.mediaDirection = mediaDirection;
             meeting.mediaProperties.remoteVideoStream = sinon
               .stub()
-              .returns({outputTrack: {id: 'some mock id'}});
+              .returns({
+                outputStream: {
+                  getTracks: () => {
+                    id: 'some mock id'
+                  }
+                }
+              });
 
             meeting.meetingRequest.changeVideoLayoutDebounced = sinon
               .stub()
@@ -4408,7 +4624,7 @@ describe('plugin-meetings', () => {
         };
         const FAKE_MEETING_INFO_LOOKUP_URL = 'meetingLookupUrl';
         const FAKE_PERMISSION_TOKEN = {someField: 'some value'};
-        const FAKE_TTL = 13;
+        const FAKE_TIMESTAMPS = {timeLeft: 13, expiryTime: 123456, currentTime: 123478};
 
         beforeEach(() => {
           meeting.locusId = 'locus-id';
@@ -4418,7 +4634,7 @@ describe('plugin-meetings', () => {
           meeting.destination = 'meeting-destination';
           meeting.destinationType = 'meeting-destination-type';
           meeting.updateMeetingActions = sinon.stub().returns(undefined);
-          meeting.getPermissionTokenTimeLeftInSec = sinon.stub().returns(FAKE_TTL);
+          
           meeting.meetingInfoExtraParams = {
             extraParam1: 'value1'
           };
@@ -4439,6 +4655,7 @@ describe('plugin-meetings', () => {
         });
 
         it('calls meetingInfoProvider.fetchMeetingInfo() with the right params', async () => {
+          meeting.getPermissionTokenExpiryInfo = sinon.stub().returns(FAKE_TIMESTAMPS);
           await meeting.refreshPermissionToken('fake reason');
 
           assert.calledOnceWithExactly(
@@ -4471,7 +4688,52 @@ describe('plugin-meetings', () => {
           assert.calledWith(
             Metrics.sendBehavioralMetric, BEHAVIORAL_METRICS.PERMISSION_TOKEN_REFRESH, {
               correlationId: meeting.correlationId,
-              timeLeft: FAKE_TTL,
+              timeLeft: FAKE_TIMESTAMPS.timeLeft,
+              expiryTime: FAKE_TIMESTAMPS.expiryTime,
+              currentTime: FAKE_TIMESTAMPS.currentTime,
+              reason: 'fake reason',
+              destinationType: 'meeting-destination-type',
+            }
+          );
+        });
+
+        it('calls meetingInfoProvider.fetchMeetingInfo() with the right params when getPermissionTokenExpiryInfo returns undefined', async () => {
+          meeting.getPermissionTokenExpiryInfo = sinon.stub().returns(undefined);
+          await meeting.refreshPermissionToken('fake reason');
+
+          assert.calledOnceWithExactly(
+            meeting.attrs.meetingInfoProvider.fetchMeetingInfo,
+            'meeting-destination',
+            'meeting-destination-type',
+            null,
+            null,
+            'fake-installed-org-id',
+            'locus-id',
+            {extraParam1: 'value1', permissionToken: FAKE_PERMISSION_TOKEN},
+            {meetingId: meeting.id, sendCAevents: true}
+          );
+          assert.deepEqual(meeting.meetingInfo, {
+            ...FAKE_MEETING_INFO,
+            meetingLookupUrl: FAKE_MEETING_INFO_LOOKUP_URL
+          });
+          assert.equal(meeting.meetingInfoFailureReason, MEETING_INFO_FAILURE_REASON.NONE);
+          assert.equal(meeting.requiredCaptcha, null);
+          assert.equal(meeting.passwordStatus, PASSWORD_STATUS.NOT_REQUIRED);
+
+          assert.calledWith(
+            TriggerProxy.trigger,
+            meeting,
+            {file: 'meetings', function: 'fetchMeetingInfo'},
+            'meeting:meetingInfoAvailable'
+          );
+          assert.calledWith(meeting.updateMeetingActions);
+
+          assert.calledWith(
+            Metrics.sendBehavioralMetric, BEHAVIORAL_METRICS.PERMISSION_TOKEN_REFRESH, {
+              correlationId: meeting.correlationId,
+              timeLeft: undefined,
+              expiryTime: undefined,
+              currentTime: undefined,
               reason: 'fake reason',
               destinationType: 'meeting-destination-type',
             }
@@ -4479,6 +4741,7 @@ describe('plugin-meetings', () => {
         });
 
         it('calls meetingInfoProvider.fetchMeetingInfo() with the right params when we are starting an instant space meeting', async () => {
+          meeting.getPermissionTokenExpiryInfo = sinon.stub().returns(FAKE_TIMESTAMPS);
           meeting.destination = 'some-convo-url';
           meeting.destinationType = 'CONVERSATION_URL';
           meeting.config.experimental = {enableAdhocMeetings: true};
@@ -4520,7 +4783,9 @@ describe('plugin-meetings', () => {
           assert.calledWith(
             Metrics.sendBehavioralMetric, BEHAVIORAL_METRICS.PERMISSION_TOKEN_REFRESH, {
               correlationId: meeting.correlationId,
-              timeLeft: FAKE_TTL,
+              timeLeft: FAKE_TIMESTAMPS.timeLeft,
+              expiryTime: FAKE_TIMESTAMPS.expiryTime,
+              currentTime: FAKE_TIMESTAMPS.currentTime,
               reason: 'some reason',
               destinationType: 'MEETING_LINK',
             }
@@ -5013,6 +5278,31 @@ describe('plugin-meetings', () => {
           }
         });
       });
+
+      describe('#setCorrelationId', () => {
+        it('should set the correlationId and return undefined', () => {
+          assert.equal(meeting.correlationId, correlationId);
+          assert.deepEqual(meeting.callStateForMetrics, {correlationId});
+          meeting.setCorrelationId(uuid1);
+          assert.equal(meeting.correlationId, uuid1);
+          assert.deepEqual(meeting.callStateForMetrics, {correlationId: uuid1});
+        });
+      });
+
+      describe('#updateCallStateForMetrics', () => {
+        it('should update the callState, overriding existing values', () => {
+          assert.deepEqual(meeting.callStateForMetrics, {correlationId});
+          meeting.updateCallStateForMetrics({correlationId: uuid1, joinTrigger: 'jt', loginType: 'lt'});
+          assert.deepEqual(meeting.callStateForMetrics, {correlationId: uuid1, joinTrigger: 'jt', loginType: 'lt'});
+        });
+
+        it('should update the callState, keeping non-supplied values', () => {
+          assert.deepEqual(meeting.callStateForMetrics, {correlationId});
+          meeting.updateCallStateForMetrics({joinTrigger: 'jt', loginType: 'lt'});
+          assert.deepEqual(meeting.callStateForMetrics, {correlationId, joinTrigger: 'jt', loginType: 'lt'});
+        });
+      });
+
       describe('Local tracks publishing', () => {
         let audioStream;
         let videoStream;
@@ -5375,31 +5665,72 @@ describe('plugin-meetings', () => {
         it('should have #reconnect', () => {
           assert.exists(meeting.reconnect);
         });
+
         describe('successful reconnect', () => {
+          let eventListeners;
+
           beforeEach(() => {
+            eventListeners = {};
+            meeting.mediaProperties.webrtcMediaConnection = {
+              // mock the on() method and store all the listeners
+              on: sinon.stub().callsFake((event, listener) => {
+                eventListeners[event] = listener;
+              }),
+            };
+            meeting.setupMediaConnectionListeners();
+            meeting.deferSDPAnswer = {
+              resolve: sinon.stub(),
+              reject: sinon.stub(),
+            };
+            meeting.sdpResponseTimer = '1234';
+            meeting.mediaProperties.waitForMediaConnectionConnected = sinon.stub().resolves();
+
+            eventListeners[Event.REMOTE_SDP_ANSWER_PROCESSED]();
             meeting.config.reconnection.enabled = true;
             meeting.currentMediaStatus = {audio: true};
             meeting.reconnectionManager = new ReconnectionManager(meeting);
             meeting.reconnectionManager.reconnect = sinon.stub().returns(Promise.resolve());
             meeting.reconnectionManager.reset = sinon.stub().returns(true);
             meeting.reconnectionManager.cleanup = sinon.stub().returns(true);
+            meeting.reconnectionManager.setStatus = sinon.stub();
           });
 
-          it('should throw error if media not established before trying reconenct', async () => {
+          it('should throw error if media not established before trying reconnect', async () => {
             meeting.currentMediaStatus = null;
             await meeting.reconnect().catch((err) => {
               assert.instanceOf(err, ParameterError);
             });
           });
 
-          it('should trigger reconnection success', async () => {
+          it('should reconnect successfully if reconnectionManager.cleanUp is called before reconnection attempt', async () => {
+            meeting.reconnectionManager.cleanUp();
+
+            try {
+              await meeting.reconnect();
+            } catch (err) {
+              assert.fail('reconnect should not error after clean up');
+            }
+          })
+
+          it('should trigger reconnection success and send CA metric', async () => {
             await meeting.reconnect();
+
             assert.calledWith(
               TriggerProxy.trigger,
               sinon.match.instanceOf(Meeting),
               {file: 'meeting/index', function: 'reconnect'},
               'meeting:reconnectionSuccess'
             );
+            assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
+              name: 'client.media.recovered',
+              payload: {
+                recoveredBy: 'new',
+              },
+              options: {
+                meetingId: meeting.id,
+              },
+            });
+            assert.calledOnceWithExactly(meeting.reconnectionManager.setStatus, RECONNECTION.STATE.COMPLETE);
           });
 
           it('should reset after reconnection success', async () => {
@@ -5466,7 +5797,7 @@ describe('plugin-meetings', () => {
         it('should stop remote tracks, and trigger a media:stopped event when the remote tracks are stopped', async () => {
           await meeting.closeRemoteStreams();
 
-          assert.equal(TriggerProxy.trigger.callCount, 6);
+          assert.equal(TriggerProxy.trigger.callCount, 5);
           assert.calledWith(
             TriggerProxy.trigger,
             sinon.match.instanceOf(Meeting),
@@ -5552,34 +5883,137 @@ describe('plugin-meetings', () => {
           });
         });
 
-        describe('submitClientEvent on connectionFailed', () => {
-          it('sends client.ice.end when connectionFailed on CONNECTION_STATE_CHANGED event', () => {
-            const FAKE_ERROR = {fatal: true};
-            const getErrorPayloadForClientErrorCodeStub = webex.internal.newMetrics.callDiagnosticMetrics.getErrorPayloadForClientErrorCode = sinon
-              .stub()
-              .returns(FAKE_ERROR);
+        describe('CONNECTION_STATE_CHANGED event when state = "Connecting"', () => {
+          it('sends client.ice.start correctly when hasMediaConnectionConnectedAtLeastOnce = true', () => {
+            meeting.hasMediaConnectionConnectedAtLeastOnce = true;
             meeting.setupMediaConnectionListeners();
             eventListeners[Event.CONNECTION_STATE_CHANGED]({
-              state: 'Failed',
+              state: 'Connecting',
             });
-            assert.calledOnceWithExactly(getErrorPayloadForClientErrorCodeStub, {clientErrorCode: 2004});
+
+            assert.notCalled(webex.internal.newMetrics.submitClientEvent);
+          })
+
+          it('sends client.ice.start correctly when hasMediaConnectionConnectedAtLeastOnce = false', () => {
+            meeting.hasMediaConnectionConnectedAtLeastOnce = false;
+            meeting.setupMediaConnectionListeners();
+            eventListeners[Event.CONNECTION_STATE_CHANGED]({
+              state: 'Connecting',
+            });
+
             assert.calledOnce(webex.internal.newMetrics.submitClientEvent);
             assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
-              name: 'client.ice.end',
-              payload: {
-                canProceed: false,
-                icePhase: 'IN_MEETING',
-                errors: [FAKE_ERROR],
-              },
+              name: 'client.ice.start',
               options: {
                 meetingId: meeting.id,
               },
             });
-          });
+          })
         });
 
         describe('submitClientEvent on connectionSuccess', () => {
-          it('sends client.ice.end when connectionSuccess on CONNECTION_STATE_CHANGED event', () => {
+          let setNetworkStatusSpy;
+
+          const setupSpies = () => {
+            setNetworkStatusSpy = sinon.spy(meeting, 'setNetworkStatus');
+
+            meeting.reconnectionManager = new ReconnectionManager(meeting);
+            meeting.reconnectionManager.iceReconnected = sinon.stub().returns(undefined);
+            meeting.statsAnalyzer = {startAnalyzer: sinon.stub()};
+            meeting.mediaProperties.webrtcMediaConnection = {
+              // mock the on() method and store all the listeners
+              on: sinon.stub().callsFake((event, listener) => {
+                eventListeners[event] = listener;
+              }),
+            };
+          };
+
+          const checkExpectedSpies = (expected) => {
+            if (expected.icePhase) {
+              assert.calledOnce(webex.internal.newMetrics.submitClientEvent);
+              assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
+                name: 'client.ice.end',
+                options: {
+                  meetingId: meeting.id,
+                },
+                payload: {
+                  canProceed: true,
+                  icePhase: expected.icePhase,
+                },
+              });
+            } else {
+              assert.notCalled(webex.internal.newMetrics.submitClientEvent);
+            }
+            assert.calledOnce(Metrics.sendBehavioralMetric);
+            assert.calledWith(Metrics.sendBehavioralMetric, BEHAVIORAL_METRICS.CONNECTION_SUCCESS, {
+              correlation_id: meeting.correlationId,
+              locus_id: meeting.locusId,
+              latency: undefined,
+            });
+            assert.deepEqual(
+              setNetworkStatusSpy.getCalls().map((call) => call.args[0]),
+              expected.setNetworkStatusCallParams
+            );
+            assert.calledOnce(meeting.reconnectionManager.iceReconnected);
+            assert.calledOnce(meeting.statsAnalyzer.startAnalyzer);
+            assert.calledWith(
+              meeting.statsAnalyzer.startAnalyzer,
+              meeting.mediaProperties.webrtcMediaConnection
+            );
+          };
+
+          const resetSpies = () => {
+            setNetworkStatusSpy.resetHistory();
+            webex.internal.newMetrics.submitClientEvent.resetHistory();
+            Metrics.sendBehavioralMetric.resetHistory();
+            meeting.reconnectionManager.iceReconnected.resetHistory();
+            meeting.statsAnalyzer.startAnalyzer.resetHistory();
+          };
+
+          it('sends client.ice.end with the correct icePhase when we get ConnectionState.Connected on CONNECTION_STATE_CHANGED event', () => {
+            setupSpies();
+
+            meeting.setupMediaConnectionListeners();
+
+            assert.equal(meeting.hasMediaConnectionConnectedAtLeastOnce, false);
+
+            // simulate first connection success
+            eventListeners[Event.CONNECTION_STATE_CHANGED]({
+              state: 'Connected',
+            });
+            checkExpectedSpies({
+              icePhase: 'JOIN_MEETING_FINAL',
+              setNetworkStatusCallParams: [NETWORK_STATUS.CONNECTED],
+            });
+            assert.equal(meeting.hasMediaConnectionConnectedAtLeastOnce, true);
+
+            // now simulate short connection loss, client.ice.end is not sent a second time as hasMediaConnectionConnectedAtLeastOnce = true
+            resetSpies();
+
+            eventListeners[Event.CONNECTION_STATE_CHANGED]({
+              state: 'Disconnected',
+            });
+            eventListeners[Event.CONNECTION_STATE_CHANGED]({
+              state: 'Connected',
+            });
+
+            checkExpectedSpies({
+              setNetworkStatusCallParams: [NETWORK_STATUS.DISCONNECTED, NETWORK_STATUS.CONNECTED],
+            });
+
+            resetSpies();
+
+            eventListeners[Event.CONNECTION_STATE_CHANGED]({
+              state: 'Disconnected',
+            });
+            eventListeners[Event.CONNECTION_STATE_CHANGED]({
+              state: 'Connected',
+            });
+          });
+        });
+
+        describe('CONNECTION_STATE_CHANGED event when state = "Disconnected"', () => {
+          beforeEach(() => {
             meeting.reconnectionManager = new ReconnectionManager(meeting);
             meeting.reconnectionManager.iceReconnected = sinon.stub().returns(undefined);
             meeting.setNetworkStatus = sinon.stub().returns(undefined);
@@ -5590,32 +6024,121 @@ describe('plugin-meetings', () => {
                 eventListeners[event] = listener;
               }),
             };
+            meeting.reconnect = sinon.stub().resolves();
+          });
 
+          const mockDisconnectedEvent = () => {
             meeting.setupMediaConnectionListeners();
             eventListeners[Event.CONNECTION_STATE_CHANGED]({
-              state: 'Connected',
+              state: 'Disconnected',
             });
-            assert.calledOnce(webex.internal.newMetrics.submitClientEvent);
-            assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
-              name: 'client.ice.end',
-              options: {
-                meetingId: meeting.id,
-              },
-            });
+          };
+
+          const checkBehavioralMetricSent = (hasMediaConnectionConnectedAtLeastOnce = false) => {
             assert.calledOnce(Metrics.sendBehavioralMetric);
-            assert.calledWith(Metrics.sendBehavioralMetric, BEHAVIORAL_METRICS.CONNECTION_SUCCESS, {
-              correlation_id: meeting.correlationId,
-              locus_id: meeting.locusId,
-              latency: undefined,
-            });
-            assert.calledOnce(meeting.setNetworkStatus);
-            assert.calledWith(meeting.setNetworkStatus, NETWORK_STATUS.CONNECTED);
-            assert.calledOnce(meeting.reconnectionManager.iceReconnected);
-            assert.calledOnce(meeting.statsAnalyzer.startAnalyzer);
             assert.calledWith(
-              meeting.statsAnalyzer.startAnalyzer,
-              meeting.mediaProperties.webrtcMediaConnection
+              Metrics.sendBehavioralMetric,
+              BEHAVIORAL_METRICS.CONNECTION_FAILURE,
+              {
+                correlation_id: meeting.correlationId,
+                locus_id: meeting.locusUrl.split('/').pop(),
+                networkStatus: meeting.networkStatus,
+                hasMediaConnectionConnectedAtLeastOnce,
+              },
             );
+          };
+
+          it('handles "Disconnected" state correctly when waitForIceReconnect resolves', async () => {
+            meeting.reconnectionManager.waitForIceReconnect = sinon.stub().resolves();
+
+
+            mockDisconnectedEvent();
+
+            await testUtils.flushPromises();
+
+            assert.calledOnce(meeting.setNetworkStatus);
+            assert.calledWith(meeting.setNetworkStatus, NETWORK_STATUS.DISCONNECTED);
+            assert.calledOnce(meeting.reconnectionManager.waitForIceReconnect);
+            assert.notCalled(webex.internal.newMetrics.submitClientEvent);
+            assert.notCalled(Metrics.sendBehavioralMetric);
+          });
+
+          it('handles "Disconnected" state correctly when waitForIceReconnect rejects and hasMediaConnectionConnectedAtLeastOnce = true', async () => {
+            const FAKE_ERROR = {fatal: true};
+            const getErrorPayloadForClientErrorCodeStub = webex.internal.newMetrics.callDiagnosticMetrics.getErrorPayloadForClientErrorCode = sinon
+              .stub()
+              .returns(FAKE_ERROR);
+            meeting.waitForMediaConnectionConnected = sinon.stub().resolves();
+            meeting.reconnectionManager.waitForIceReconnect = sinon.stub().rejects();
+            meeting.hasMediaConnectionConnectedAtLeastOnce = true;
+
+
+            mockDisconnectedEvent();
+
+            await testUtils.flushPromises();
+
+            assert.calledOnce(meeting.setNetworkStatus);
+            assert.calledWith(meeting.setNetworkStatus, NETWORK_STATUS.DISCONNECTED);
+            assert.calledOnce(meeting.reconnectionManager.waitForIceReconnect);
+            assert.notCalled(webex.internal.newMetrics.submitClientEvent);
+            checkBehavioralMetricSent(true);
+          });
+
+          it('handles "Disconnected" state correctly when waitForIceReconnect rejects and hasMediaConnectionConnectedAtLeastOnce = false', async () => {
+            meeting.reconnectionManager.waitForIceReconnect = sinon.stub().rejects();
+
+
+            mockDisconnectedEvent();
+
+            await testUtils.flushPromises();
+
+            assert.calledOnce(meeting.setNetworkStatus);
+            assert.calledWith(meeting.setNetworkStatus, NETWORK_STATUS.DISCONNECTED);
+            assert.calledOnce(meeting.reconnectionManager.waitForIceReconnect);
+            assert.notCalled(webex.internal.newMetrics.submitClientEvent);
+            checkBehavioralMetricSent();
+          });
+        });
+
+        describe('CONNECTION_STATE_CHANGED event when state = "Failed"', () => {
+
+          const mockFailedEvent = () => {
+            meeting.setupMediaConnectionListeners();
+            eventListeners[Event.CONNECTION_STATE_CHANGED]({
+              state: 'Failed',
+            });
+          };
+
+          const checkBehavioralMetricSent = (hasMediaConnectionConnectedAtLeastOnce = false) => {
+            assert.calledOnce(Metrics.sendBehavioralMetric);
+            assert.calledWith(
+              Metrics.sendBehavioralMetric,
+              BEHAVIORAL_METRICS.CONNECTION_FAILURE,
+              {
+                correlation_id: meeting.correlationId,
+                locus_id: meeting.locusUrl.split('/').pop(),
+                networkStatus: meeting.networkStatus,
+                hasMediaConnectionConnectedAtLeastOnce,
+              },
+            );
+          };
+
+          it('handles "Failed" state correctly when hasMediaConnectionConnectedAtLeastOnce = false', async () => {
+            meeting.waitForMediaConnectionConnected = sinon.stub().resolves();
+
+            mockFailedEvent();
+
+            assert.notCalled(webex.internal.newMetrics.submitClientEvent);
+            checkBehavioralMetricSent();
+          });
+
+          it('handles "Failed" state correctly when hasMediaConnectionConnectedAtLeastOnce = true', async () => {
+            meeting.hasMediaConnectionConnectedAtLeastOnce = true;
+
+            mockFailedEvent();
+
+            assert.notCalled(webex.internal.newMetrics.submitClientEvent);
+            checkBehavioralMetricSent(true);
           });
         });
 
@@ -5626,6 +6149,8 @@ describe('plugin-meetings', () => {
 
           beforeEach(() => {
             meeting.setupMediaConnectionListeners();
+            webex.internal.newMetrics.submitClientEvent.resetHistory();
+            Metrics.sendBehavioralMetric.resetHistory();
           });
 
           const checkMetricSent = (event, error) => {
@@ -5890,6 +6415,40 @@ describe('plugin-meetings', () => {
               reconnect: false,
             });
             assert.calledWith(meeting.roapMessageReceived, fakeAnswer);
+          });
+
+          it('handles OFFER message correctly when request fails', async () => {
+            const clock = sinon.useFakeTimers();
+            sinon.spy(clock, "clearTimeout");
+            meeting.deferSDPAnswer = {reject: sinon.stub()};
+            meeting.sdpResponseTimer = '1234';
+            sendRoapMediaRequestStub.rejects();
+            sinon.stub(meeting, 'roapMessageReceived');
+
+            eventListeners[Event.ROAP_MESSAGE_TO_SEND]({
+              roapMessage: {
+                messageType: 'OFFER',
+                seq: 1,
+                sdp: 'fake sdp',
+                tieBreaker: 12345,
+              },
+            });
+
+            await testUtils.flushPromises();
+
+            assert.calledOnce(sendRoapMediaRequestStub);
+            assert.calledWith(sendRoapMediaRequestStub, {
+              seq: 1,
+              sdp: 'fake sdp',
+              tieBreaker: 12345,
+              meeting,
+              reconnect: false,
+            });
+            assert.notCalled(meeting.roapMessageReceived);
+            assert.calledOnce(meeting.deferSDPAnswer.reject);
+            assert.calledOnce(clock.clearTimeout);
+            assert.calledWith(clock.clearTimeout, '1234');
+            assert.equal(meeting.sdpResponseTimer, undefined);
           });
 
           it('handles ANSWER message correctly', () => {
@@ -6767,6 +7326,20 @@ describe('plugin-meetings', () => {
       });
 
       describe('#setPermissionTokenPayload', () => {
+
+        let now;
+        let clock;
+    
+        beforeEach(() => {
+          now = Date.now();
+    
+          // mock `new Date()` with constant `now`
+          clock = sinon.useFakeTimers(now);
+        });
+    
+        afterEach(() => {
+          clock.restore();
+        })
         it('sets correctly', () => {
           assert.notOk(meeting.permissionTokenPayload);
 
@@ -6778,6 +7351,7 @@ describe('plugin-meetings', () => {
 
           assert.calledOnce(jwtDecodeStub);
           assert.deepEqual(meeting.permissionTokenPayload, permissionTokenPayloadData);
+          assert.deepEqual(meeting.permissionTokenReceivedLocalTime, now);
         });
       });
 
@@ -6785,12 +7359,18 @@ describe('plugin-meetings', () => {
         it('sets correctly when policy data is present in token', () => {
           assert.notOk(meeting.selfUserPolicies);
 
-          const policyData = {permission: {userPolicies: {a: true}}};
+          const testUrl = 'https://example.com';
+
+          const policyData = {permission: {
+            userPolicies: {a: true},
+            enforceVBGImagesURL: testUrl
+          }};
           meeting.permissionTokenPayload = policyData;
 
           meeting.setSelfUserPolicies();
 
           assert.deepEqual(meeting.selfUserPolicies, policyData.permission.userPolicies);
+          assert.equal(meeting.enforceVBGImagesURL, testUrl);
         });
 
         it('handles missing permission data', () => {
@@ -6843,12 +7423,14 @@ describe('plugin-meetings', () => {
       });
       describe('#closePeerConnections', () => {
         it('should close the webrtc media connection, and return a promise', async () => {
+          const setNetworkStatusSpy = sinon.spy(meeting, 'setNetworkStatus');
           meeting.mediaProperties.webrtcMediaConnection = {close: sinon.stub()};
           const pcs = meeting.closePeerConnections();
 
           assert.exists(pcs.then);
           await pcs;
           assert.calledOnce(meeting.mediaProperties.webrtcMediaConnection.close);
+          assert.calledOnceWithExactly(setNetworkStatusSpy, undefined);
         });
       });
       describe('#unsetPeerConnections', () => {
@@ -7053,14 +7635,6 @@ describe('plugin-meetings', () => {
           };
           meeting.parseMeetingInfo(mockToggleOnData);
           assert.calledOnceWithExactly(parseInterpretationInfo, meeting, mockToggleOnData.body);
-        });
-      });
-
-      describe('#setCorrelationId', () => {
-        it('should set the correlationId and return undefined', () => {
-          assert.ok(meeting.correlationId);
-          meeting.setCorrelationId(uuid1);
-          assert.equal(meeting.correlationId, uuid1);
         });
       });
 
@@ -7310,6 +7884,11 @@ describe('plugin-meetings', () => {
               requiredPolicies: [SELF_POLICY.SUPPORT_FILE_TRANSFER],
             },
             {
+              actionName: 'canChat',
+              requiredDisplayHints: [],
+              requiredPolicies: [SELF_POLICY.SUPPORT_CHAT],
+            },
+            {
               actionName: 'canShareDesktop',
               requiredDisplayHints: [DISPLAY_HINTS.SHARE_DESKTOP],
               requiredPolicies: [],
@@ -7480,6 +8059,60 @@ describe('plugin-meetings', () => {
                 {
                   supportHDV: meeting.inMeetingActions.supportHDV,
                   supportHQV: meeting.inMeetingActions.supportHQV,
+                },
+                expectedActions
+              );
+            });
+          }
+        );
+
+        forEach(
+          [
+            // policies supported and enforce is true
+            {
+              meetingInfo: {video: {}},
+              selfUserPolicies: {
+                [SELF_POLICY.ENFORCE_VIRTUAL_BACKGROUND]: true,
+              },
+              expectedActions: {
+                enforceVirtualBackground: true,
+              },
+            },
+            // policies supported and enforce is false
+            {
+              meetingInfo: {video: {}},
+              selfUserPolicies: {
+                [SELF_POLICY.ENFORCE_VIRTUAL_BACKGROUND]: false,
+              },
+              expectedActions: {
+                enforceVirtualBackground: false,
+              },
+            },
+            // policies not supported but enforce is true
+            {
+              meetingInfo: undefined,
+              selfUserPolicies: {
+                [SELF_POLICY.ENFORCE_VIRTUAL_BACKGROUND]: true,
+              },
+              expectedActions: {
+                enforceVirtualBackground: false,
+              },
+            },
+          ],
+          ({meetingInfo, selfUserPolicies, expectedActions}) => {
+            it(`expectedActions are ${JSON.stringify(
+              expectedActions
+            )} when policies are ${JSON.stringify(
+              selfUserPolicies
+            )} and meetingInfo is ${JSON.stringify(meetingInfo)}`, () => {
+              meeting.meetingInfo = meetingInfo;
+              meeting.selfUserPolicies = selfUserPolicies;
+
+              meeting.updateMeetingActions();
+
+              assert.deepEqual(
+                {
+                  enforceVirtualBackground: meeting.inMeetingActions.enforceVirtualBackground,
                 },
                 expectedActions
               );
@@ -9274,7 +9907,7 @@ describe('plugin-meetings', () => {
     });
   });
 
-  describe('#getPermissionTokenTimeLeftInSec', () => {
+  describe('#getPermissionTokenExpiryInfo', () => {
     let now;
     let clock;
 
@@ -9290,63 +9923,141 @@ describe('plugin-meetings', () => {
     })
 
     it('should return undefined if exp is undefined', () => {
-      assert.equal(meeting.getPermissionTokenTimeLeftInSec(), undefined)
+      assert.equal(meeting.getPermissionTokenExpiryInfo(), undefined)
     });
 
     it('should return the expected positive exp', () => {
       // set permission token as now + 1 sec
-      meeting.permissionTokenPayload = {exp: (now + 1000).toString()};
-      assert.equal(meeting.getPermissionTokenTimeLeftInSec(), 1);
+      const expiryTime = now + 1000;
+      meeting.permissionTokenPayload = {exp: (expiryTime).toString(), iat: now};
+      meeting.permissionTokenReceivedLocalTime = now;
+      assert.deepEqual(meeting.getPermissionTokenExpiryInfo(), {timeLeft: 1, expiryTime: Number(expiryTime), currentTime: now});
     });
 
     it('should return the expected negative exp', () => {
       // set permission token as now - 1 sec
-      meeting.permissionTokenPayload = {exp: (now - 1000).toString()};
-      assert.equal(meeting.getPermissionTokenTimeLeftInSec(), -1);
+      const expiryTime = now - 1000;
+      meeting.permissionTokenPayload = {exp: (expiryTime).toString(), iat: now};
+      meeting.permissionTokenReceivedLocalTime = now;
+      assert.deepEqual(meeting.getPermissionTokenExpiryInfo(), {timeLeft: -1, expiryTime: Number(expiryTime), currentTime: now});
+    });
+
+    describe('#getPermissionTokenExpiryInfo with wrong current time which is in future', () => {
+      let now;
+      let clock;
+      beforeEach(() => {
+        // current time is 3 hours off
+        now = Date.now() + 10800000;
+  
+        // mock `new Date()` with constant `now`
+        clock = sinon.useFakeTimers(now);
+      });
+  
+      afterEach(() => {
+        clock.restore();
+      })
+  
+      it('should return the expected positive exp when client time is wrong', () => {
+        const serverTime = Date.now();
+  
+       // set permission token as now + 1 sec
+        const expiryTime = serverTime + 1000;
+        meeting.permissionTokenPayload = {exp: (expiryTime).toString(), iat: serverTime};
+        meeting.permissionTokenReceivedLocalTime = now;
+        assert.deepEqual(meeting.getPermissionTokenExpiryInfo(), {timeLeft: 1, expiryTime: Number(expiryTime), currentTime: now});
+      });
+  
+      it('should return the expected negative exp when client time is wrong', () => {
+        const serverTime = Date.now();
+        // set permission token as now - 1 sec
+        const expiryTime = serverTime - 1000;
+        meeting.permissionTokenPayload = {exp: (expiryTime).toString(), iat: serverTime};
+        meeting.permissionTokenReceivedLocalTime = now;
+        assert.deepEqual(meeting.getPermissionTokenExpiryInfo(), {timeLeft: -1, expiryTime: Number(expiryTime), currentTime: now});
+      });
+  
+    });
+
+    describe('#getPermissionTokenExpiryInfo with wrong current Time which is in the past', () => {
+      let now;
+      let clock;
+      beforeEach(() => {
+        // current time is 3 hours off
+        now = Date.now() - 10800000;
+  
+        // mock `new Date()` with constant `now`
+        clock = sinon.useFakeTimers(now);
+      });
+  
+      afterEach(() => {
+        clock.restore();
+      })
+  
+      it('should return the expected positive exp when client time is wrong', () => {
+        const serverTime = Date.now();
+  
+       // set permission token as now + 1 sec
+        const expiryTime = serverTime + 1000;
+        meeting.permissionTokenPayload = {exp: (expiryTime).toString(), iat: serverTime};
+        meeting.permissionTokenReceivedLocalTime = now;
+        assert.deepEqual(meeting.getPermissionTokenExpiryInfo(), {timeLeft: 1, expiryTime: Number(expiryTime), currentTime: now});
+      });
+  
+      it('should return the expected negative exp when client time is wrong', () => {
+        const serverTime = Date.now();
+        // set permission token as now - 1 sec
+        const expiryTime = serverTime - 1000;
+        meeting.permissionTokenPayload = {exp: (expiryTime).toString(), iat: serverTime};
+        meeting.permissionTokenReceivedLocalTime = now;
+        assert.deepEqual(meeting.getPermissionTokenExpiryInfo(), {timeLeft: -1, expiryTime: Number(expiryTime), currentTime: now});
+      });
+  
     });
   });
 
+
+
   describe('#checkAndRefreshPermissionToken', () => {
     it('should not fire refreshPermissionToken if permissionToken is not defined', async() => {
-      meeting.getPermissionTokenTimeLeftInSec = sinon.stub().returns(undefined)
+      meeting.getPermissionTokenExpiryInfo = sinon.stub().returns(undefined)
       meeting.refreshPermissionToken = sinon.stub().returns(Promise.resolve('test return value'));
 
       const returnValue = await meeting.checkAndRefreshPermissionToken(10, 'ttl-join');
 
-      assert.calledOnce(meeting.getPermissionTokenTimeLeftInSec);
+      assert.calledOnce(meeting.getPermissionTokenExpiryInfo);
       assert.notCalled(meeting.refreshPermissionToken);
       assert.equal(returnValue, undefined);
     });
 
     it('should fire refreshPermissionToken if time left is below 10sec', async() => {
-      meeting.getPermissionTokenTimeLeftInSec = sinon.stub().returns(9)
+      meeting.getPermissionTokenExpiryInfo = sinon.stub().returns({timeLeft: 9, expiryTime: 122132, currentTime: Date.now()})
       meeting.refreshPermissionToken = sinon.stub().returns(Promise.resolve('test return value'));
 
       const returnValue = await meeting.checkAndRefreshPermissionToken(10, 'ttl-join');
 
-      assert.calledOnce(meeting.getPermissionTokenTimeLeftInSec);
+      assert.calledOnce(meeting.getPermissionTokenExpiryInfo);
       assert.calledOnceWithExactly(meeting.refreshPermissionToken, 'ttl-join');
       assert.equal(returnValue, 'test return value');
     });
 
     it('should fire refreshPermissionToken if time left is equal 10sec', async () => {
-      meeting.getPermissionTokenTimeLeftInSec = sinon.stub().returns(10)
+      meeting.getPermissionTokenExpiryInfo = sinon.stub().returns({timeLeft: 10, expiryTime: 122132, currentTime: Date.now()})
       meeting.refreshPermissionToken = sinon.stub().returns(Promise.resolve('test return value'));
 
       const returnValue = await meeting.checkAndRefreshPermissionToken(10, 'ttl-join');
 
-      assert.calledOnce(meeting.getPermissionTokenTimeLeftInSec);
+      assert.calledOnce(meeting.getPermissionTokenExpiryInfo);
       assert.calledOnceWithExactly(meeting.refreshPermissionToken, 'ttl-join');
       assert.equal(returnValue, 'test return value');
     });
 
     it('should not fire refreshPermissionToken if time left is higher than 10sec', async () => {
-      meeting.getPermissionTokenTimeLeftInSec = sinon.stub().returns(11)
+      meeting.getPermissionTokenExpiryInfo = sinon.stub().returns({timeLeft: 11, expiryTime: 122132, currentTime: Date.now()})
       meeting.refreshPermissionToken = sinon.stub().returns(Promise.resolve('test return value'));
 
       const returnValue = await meeting.checkAndRefreshPermissionToken(10, 'ttl-join');
 
-      assert.calledOnce(meeting.getPermissionTokenTimeLeftInSec);
+      assert.calledOnce(meeting.getPermissionTokenExpiryInfo);
       assert.notCalled(meeting.refreshPermissionToken);
       assert.equal(returnValue, undefined);
     });

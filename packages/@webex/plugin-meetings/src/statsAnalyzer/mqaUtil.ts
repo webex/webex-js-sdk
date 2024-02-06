@@ -23,6 +23,7 @@ export const getAudioReceiverMqa = ({audioReceiver, statsResults, lastMqaDataSen
   }
 
   audioReceiver.common.common.direction = statsResults[mediaType].direction;
+  audioReceiver.common.common.isMain = !mediaType.includes('-share');
   audioReceiver.common.transportType = statsResults.connectionType.local.transport;
 
   // add rtpPacket info inside common as also for call analyzer
@@ -83,6 +84,7 @@ export const getAudioSenderMqa = ({audioSender, statsResults, lastMqaDataSent, m
   }
 
   audioSender.common.common.direction = statsResults[mediaType].direction;
+  audioSender.common.common.isMain = !mediaType.includes('-share');
   audioSender.common.transportType = statsResults.connectionType.local.transport;
 
   audioSender.common.maxRemoteJitter =
@@ -146,6 +148,7 @@ export const getVideoReceiverMqa = ({videoReceiver, statsResults, lastMqaDataSen
   }
 
   videoReceiver.common.common.direction = statsResults[mediaType].direction;
+  videoReceiver.common.common.isMain = !mediaType.includes('-share');
   videoReceiver.common.transportType = statsResults.connectionType.local.transport;
 
   // collect the packets received for the last min
@@ -173,7 +176,6 @@ export const getVideoReceiverMqa = ({videoReceiver, statsResults, lastMqaDataSen
     mean(statsResults[mediaType][sendrecvType].meanRemoteJitter) * 1000 || 0;
 
   videoReceiver.streams[0].common.rtpJitter = videoReceiver.common.maxRemoteJitter;
-  // videoReceiver.streams[0].common.rtpJitter = (statsResults.resolutions[mediaType][sendrecvType].jitterBufferDelay - lastMqaDataSent.resolutions[mediaType]?.[sendrecvType].jitterBufferDelay) / (statsResults.resolutions[mediaType][sendrecvType].jitterBufferEmittedCount - lastMqaDataSent.resolutions[mediaType]?.[sendrecvType].jitterBufferEmittedCount) * 1000 || 0;
 
   // Calculate the outgoing bitrate
   const totalBytesReceivedInaMin =
@@ -186,23 +188,21 @@ export const getVideoReceiverMqa = ({videoReceiver, statsResults, lastMqaDataSen
 
   // From tracks //TODO: calculate a proper one
   const totalFrameReceivedInaMin =
-    statsResults.resolutions[mediaType][sendrecvType].framesReceived - lastFramesReceived;
+    statsResults[mediaType][sendrecvType].framesReceived - lastFramesReceived;
   const totalFrameDecodedInaMin =
-    statsResults.resolutions[mediaType][sendrecvType].framesDecoded - lastFramesDecoded;
+    statsResults[mediaType][sendrecvType].framesDecoded - lastFramesDecoded;
 
-  videoReceiver.streams[0].common.receivedFrameRate = totalFrameReceivedInaMin
-    ? (totalFrameReceivedInaMin * 100) / 60
-    : 0;
-  videoReceiver.streams[0].common.renderedFrameRate = totalFrameDecodedInaMin
-    ? (totalFrameDecodedInaMin * 100) / 60
-    : 0;
+  videoReceiver.streams[0].common.receivedFrameRate = Math.round(
+    totalFrameReceivedInaMin ? totalFrameReceivedInaMin / 60 : 0
+  );
+  videoReceiver.streams[0].common.renderedFrameRate = Math.round(
+    totalFrameDecodedInaMin ? totalFrameDecodedInaMin / 60 : 0
+  );
 
   videoReceiver.streams[0].common.framesDropped =
-    statsResults.resolutions[mediaType][sendrecvType].framesDropped - lastFramesDropped;
-  videoReceiver.streams[0].receivedHeight =
-    statsResults.resolutions[mediaType][sendrecvType].height || 0;
-  videoReceiver.streams[0].receivedWidth =
-    statsResults.resolutions[mediaType][sendrecvType].width || 0;
+    statsResults[mediaType][sendrecvType].framesDropped - lastFramesDropped;
+  videoReceiver.streams[0].receivedHeight = statsResults[mediaType][sendrecvType].height || 0;
+  videoReceiver.streams[0].receivedWidth = statsResults[mediaType][sendrecvType].width || 0;
   videoReceiver.streams[0].receivedFrameSize =
     (videoReceiver.streams[0].receivedHeight * videoReceiver.streams[0].receivedWidth) / 256;
 
@@ -229,6 +229,7 @@ export const getVideoSenderMqa = ({videoSender, statsResults, lastMqaDataSent, m
   }
 
   videoSender.common.common.direction = statsResults[mediaType].direction;
+  videoSender.common.common.isMain = !mediaType.includes('-share');
   videoSender.common.transportType = statsResults.connectionType.local.transport;
 
   // @ts-ignore
@@ -278,15 +279,13 @@ export const getVideoSenderMqa = ({videoSender, statsResults, lastMqaDataSent, m
 
   // From tracks //TODO: calculate a proper one
   const totalFrameSentInaMin =
-    statsResults.resolutions[mediaType][sendrecvType].framesSent - (lastFramesSent || 0);
+    statsResults[mediaType][sendrecvType].framesSent - (lastFramesSent || 0);
 
-  videoSender.streams[0].common.transmittedFrameRate = totalFrameSentInaMin
-    ? (totalFrameSentInaMin * 100) / 60
-    : 0;
-  videoSender.streams[0].transmittedHeight =
-    statsResults.resolutions[mediaType][sendrecvType].height || 0;
-  videoSender.streams[0].transmittedWidth =
-    statsResults.resolutions[mediaType][sendrecvType].width || 0;
+  videoSender.streams[0].common.transmittedFrameRate = Math.round(
+    totalFrameSentInaMin ? totalFrameSentInaMin / 60 : 0
+  );
+  videoSender.streams[0].transmittedHeight = statsResults[mediaType][sendrecvType].height || 0;
+  videoSender.streams[0].transmittedWidth = statsResults[mediaType][sendrecvType].width || 0;
   videoSender.streams[0].transmittedFrameSize =
     (videoSender.streams[0].transmittedHeight * videoSender.streams[0].transmittedWidth) / 256;
 };

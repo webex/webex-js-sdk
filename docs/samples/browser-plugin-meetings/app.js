@@ -255,8 +255,8 @@ const displayMeetingStatusElm = document.querySelector('#display-meeting-status'
 const spaceIDError = `Using the space ID as a destination is no longer supported. Please refer to the <a href="https://github.com/webex/webex-js-sdk/wiki/Migration-to-Unified-Space-Meetings" target="_blank">migration guide</a> to migrate to use the meeting ID or SIP address.`;
 const BNR = 'BNR';
 const VBG = 'VBG';
-const blurVBGImageUrl = 'https://webex.github.io/webex-js-sdk/api/assets/vbg_image.jpg';
-const blurVBGVideoUrl = 'https://webex.github.io/webex-js-sdk/api/assets/clouds.5b57454a.mp4';
+const blurVBGImageUrl = '/api/assets/vbg_image.jpg';
+const blurVBGVideoUrl = '/api/assets/clouds.5b57454a.mp4';
 
 let selectedMeetingId = null;
 let currentMediaSettings = {};
@@ -518,6 +518,8 @@ function joinMeeting({withMedia, withDevice} = {withMedia: false, withDevice: fa
             video: mediaSettings.videoEnabled
           }).then(() => addMedia());
         }
+
+        enableMeetingDependentButtons(true);
       })
       .catch(() => {
         // join failed, so allow  user decide on multistream again
@@ -565,6 +567,7 @@ function leaveMeeting(meetingId) {
       // disabling screen share publish/unpublish buttons
       publishShareBtn.disabled = true;
       unpublishShareBtn.disabled = true;
+      enableMeetingDependentButtons(false);
     });
 }
 
@@ -1002,22 +1005,22 @@ function handleStreamPublishedState(meeting) {
         debugString = 'local camera';
         streamElm = meetingStreamsLocalVideo;
         break;
-    
+
       case 'VIDEO-SLIDES':
         debugString = 'local share video';
         streamElm = meetingStreamsLocalShareVideo;
         break;
-    
+
       case 'AUDIO-MAIN':
         debugString = 'local microphone';
         streamElm = meetingStreamsLocalAudio;
         break;
-    
+
       case 'AUDIO-SLIDES':
         debugString = 'local share audio';
         streamElm = meetingStreamsLocalShareAudio;
         break;
-    
+
       default:
         break;
     }
@@ -1091,7 +1094,7 @@ async function loadCamera(constraints) {
 async function handleVbg() {
   let effect;
   try {
-    effect = await localMedia.cameraStream.getEffect("virtual-background");
+    effect = await localMedia.cameraStream.getEffectByKind('virtual-background-effect');
 
     if (!effect?.isEnabled) {
       console.log('MeetingControls#handleVbg() :: applying virtual background to local camera stream');
@@ -1103,12 +1106,12 @@ async function handleVbg() {
           "bgVideoUrl": blurVBGVideoUrl
         });
         handleEffectsButton(toggleVbgBtn, VBG, effect);
-        await localMedia.cameraStream.addEffect("virtual-background", effect);
+        await localMedia.cameraStream.addEffect(effect);
       }
 
       await effect.enable();
       modeBtn.disabled = true;
-      
+
       handleEffectsButton(toggleVbgBtn, VBG, effect);
       console.log('MeetingControls#handleVbg() :: successfully applied virtual background to local camera stream');
     }
@@ -1160,27 +1163,27 @@ async function loadMicrophone(constraints) {
 async function handleBNR() {
   let effect;
   try {
-    effect = await localMedia.microphoneStream.getEffect("noise-reduction");;
+    effect = await localMedia.microphoneStream.getEffectByKind('noise-reduction-effect');
     if (!effect?.isEnabled) {
-      console.log('MeetingControls#handleBNR() :: applying BNR to local microhone stream');
+      console.log('MeetingControls#handleBNR() :: applying BNR to local microphone stream');
 
       if (!effect) {
         effect = await webex.meetings.createNoiseReductionEffect();
         handleEffectsButton(toggleBNRBtn, BNR, effect);
-        await localMedia.microphoneStream.addEffect("noise-reduction", effect);
+        await localMedia.microphoneStream.addEffect(effect);
       }
 
       await effect.enable();
       handleEffectsButton(toggleBNRBtn, BNR, effect);
-      console.log('MeetingControls#handleBNR() :: successfully applied BNR to local microhone stream');
+      console.log('MeetingControls#handleBNR() :: successfully applied BNR to local microphone stream');
 
     }
     else {
-      console.log('MeetingControls#handleBNR() :: disabling BNR from local microhone stream');
+      console.log('MeetingControls#handleBNR() :: disabling BNR from local microphone stream');
 
       await effect.disable();
       handleEffectsButton(toggleBNRBtn, BNR, effect);
-      console.log('MeetingControls#handleBNR() :: successfully disabled BNR from local microhone stream');
+      console.log('MeetingControls#handleBNR() :: successfully disabled BNR from local microphone stream');
     }
   }
   catch (e) {
@@ -1318,8 +1321,8 @@ function getAudioVideoInput() {
   const deviceId = (id) => {
     if (id === 'default')
       return {deviceId: id};
-    else  
-      return {deviceId: {exact: id}}; 
+    else
+      return {deviceId: {exact: id}};
   };
   const audioInput = getOptionValue(sourceDevicesAudioInput) || 'default';
   const videoInput = getOptionValue(sourceDevicesVideoInput) || 'default';
@@ -2408,7 +2411,7 @@ function addMedia() {
     // enabling screen share publish/unpublish buttons
     publishShareBtn.disabled = false;
     unpublishShareBtn.disabled = false;
-    
+
     currentMediaSettings = getMediaSettings();
 
     console.log('MeetingStreams#addMedia() :: successfully added media!');
@@ -3543,13 +3546,22 @@ window.onload = () => {
   updateMultistreamUI();
 };
 
-document.querySelectorAll('.collapsible').forEach((el) => {
+const allCollapsibleElements = document.querySelectorAll('.collapsible');
+allCollapsibleElements.forEach((el) => {
   el.addEventListener('click', (event) => {
     const {parentElement} = event.currentTarget;
 
     const sectionContentElement = parentElement.querySelector('.section-content');
+    const arrowIcon = parentElement.querySelector('.arrow');
 
     sectionContentElement.classList.toggle('collapsed');
+    arrowIcon.classList.contains('fa-angle-down') ? arrowIcon.classList.replace('fa-angle-down', 'fa-angle-up') : arrowIcon.classList.replace('fa-angle-up', 'fa-angle-down');
+
+    if(el.innerText !== 'Auth & Registration' && !sectionContentElement.classList.contains('collapsed')) {
+      // Note: Index of the Auth & Registration section may change if further re-ordering is done
+      allCollapsibleElements[1].parentElement.querySelector('.section-content').classList.add('collapsed');
+      allCollapsibleElements[1].parentElement.querySelector('.arrow').classList.replace('fa-angle-down', 'fa-angle-up');
+    }
   });
 });
 
@@ -3566,4 +3578,37 @@ if (window.location.hash) {
     localStorage.setItem('date', new Date().getTime() + parseInt(expiresIn, 10));
     tokenElm.value = accessToken;
   }
+}
+
+function enableMeetingDependentButtons(enable) {
+  const meetingDependentButtons = document.querySelectorAll('.meeting-dependent');
+
+  meetingDependentButtons.forEach((button) => {
+    button.disabled = !enable;
+  });
+}
+
+enableMeetingDependentButtons(false);
+
+const allSectionContentElements = document.querySelectorAll('.section-content');
+const allArrowElements = document.querySelectorAll('.arrow');
+
+function collapseAll() {
+  allSectionContentElements.forEach((el) => {
+    el.classList.add('collapsed');
+  });
+
+  allArrowElements.forEach((el) => {
+    el.classList.replace('fa-angle-down', 'fa-angle-up');
+  });
+}
+
+function expandAll() {
+  allSectionContentElements.forEach((el) => {
+    el.classList.remove('collapsed');
+  });
+
+  allArrowElements.forEach((el) => {
+    el.classList.replace('fa-angle-up', 'fa-angle-down');
+  });
 }

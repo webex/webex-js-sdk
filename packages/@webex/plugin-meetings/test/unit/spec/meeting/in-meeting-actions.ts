@@ -67,12 +67,14 @@ describe('plugin-meetings', () => {
         canShareDesktop: null,
         canShareContent: null,
         canTransferFile: null,
+        canChat: null,
         canDoVideo: null,
         canAnnotate: null,
         canUseVoip: null,
         supportHQV: null,
         supportHDV: null,
         canShareWhiteBoard: null,
+        enforceVirtualBackground: null,
         ...expected,
       };
 
@@ -145,12 +147,14 @@ describe('plugin-meetings', () => {
       'canShareDesktop',
       'canShareContent',
       'canTransferFile',
+      'canChat',
       'canDoVideo',
       'canAnnotate',
       'canUseVoip',
       'supportHQV',
       'supportHDV',
       'canShareWhiteBoard',
+      'enforceVirtualBackground',
     ].forEach((key) => {
       it(`get and set for ${key} work as expected`, () => {
         const inMeetingActions = new InMeetingActions();
