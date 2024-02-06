@@ -286,6 +286,19 @@ describe('plugin-meetings', () => {
         await testUtils.flushPromises();
       };
 
+      const mergeProperties = (target, properties, keyValue = 'fake-candidate-id', matchKey= 'type', matchValue = 'local-candidate') => {
+        for (let key in target) {
+            if (target.hasOwnProperty(key)) {
+                if (typeof target[key] === 'object') {
+                    mergeProperties(target[key], properties, keyValue, matchKey, matchValue);
+                }
+                if (key === 'id' && target[key] === keyValue && target[matchKey] === matchValue) {
+                    Object.assign(target, properties);
+                }
+            }
+        }
+    }
+
       const progressTime = async () => {
         await clock.tickAsync(initialConfig.analyzerInterval);
         await testUtils.flushPromises();
@@ -473,6 +486,46 @@ describe('plugin-meetings', () => {
         fakeStats.video.receivers[0].framesReceived = 3000;
         await progressTime();
         assert.strictEqual(mqeData.videoReceive[0].streams[0].common.receivedFrameRate, 25);
+      });
+
+      it('has the correct localIpAddress set when the candidateType is host', async () => {
+        await startStatsAnalyzer();
+
+        await progressTime();
+        assert.strictEqual(statsAnalyzer.getLocalIpAddress(), '');
+        mergeProperties(fakeStats, {address: 'test', candidateType: 'host'});
+        await progressTime();
+        assert.strictEqual(statsAnalyzer.getLocalIpAddress(), 'test');
+      });
+
+      it('has the correct localIpAddress set when the candidateType is prflx and relayProtocol is set', async () => {
+        await startStatsAnalyzer();
+
+        await progressTime();
+        assert.strictEqual(statsAnalyzer.getLocalIpAddress(), '');
+        mergeProperties(fakeStats, {relayProtocol: 'test', address: 'test2', candidateType: 'prflx'});
+        await progressTime();
+        assert.strictEqual(statsAnalyzer.getLocalIpAddress(), 'test2');
+      });
+
+      it('has the correct localIpAddress set when the candidateType is prflx and relayProtocol is not set', async () => {
+        await startStatsAnalyzer();
+
+        await progressTime();
+        assert.strictEqual(statsAnalyzer.getLocalIpAddress(), '');
+        mergeProperties(fakeStats, {relatedAddress: 'relatedAddress', address: 'test2', candidateType: 'prflx'});
+        await progressTime();
+        assert.strictEqual(statsAnalyzer.getLocalIpAddress(), 'relatedAddress');
+      });
+
+      it('has no localIpAddress set when the candidateType is invalid', async () => {
+        await startStatsAnalyzer();
+
+        await progressTime();
+        assert.strictEqual(statsAnalyzer.getLocalIpAddress(), '');
+        mergeProperties(fakeStats, {candidateType: 'invalid'});
+        await progressTime();
+        assert.strictEqual(statsAnalyzer.getLocalIpAddress(), '');
       });
     });
   });
