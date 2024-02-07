@@ -1,5 +1,5 @@
 export const getSpeaker = (members, csis = []) =>
-  Object.values(members).find((member) => {
+  Object.values(members).find((member: any) => {
     const memberCSIs = member.participant.status.csis ?? [];
 
     return csis.some((csi) => memberCSIs.includes(csi));
@@ -16,7 +16,7 @@ export const getSpeakerFromProxyOrStore = ({csisKey, meetingMembers, transcriptD
   if (csisKey && transcriptData.speakerProxy[csisKey]) {
     speaker = transcriptData.speakerProxy[csisKey];
   }
-  const meetingMember = getSpeaker(meetingMembers, [csisKey]);
+  const meetingMember: any = getSpeaker(meetingMembers, [csisKey]);
 
   const speakerInStore = {
     speakerId: meetingMember?.participant.person.id ?? '',
@@ -170,7 +170,7 @@ export const processHighlightCreated = ({data, meeting}) => {
     speaker,
   };
 
-  voicea.highlights.push(highlightCreated);
+  meeting.transcription.highlights.push(highlightCreated);
 };
 
 export const EVENT_TRIGGERS = {

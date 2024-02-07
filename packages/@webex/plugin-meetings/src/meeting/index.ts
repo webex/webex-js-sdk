@@ -66,7 +66,6 @@ import MeetingsUtil from '../meetings/util';
 import RecordingUtil from '../recording-controller/util';
 import ControlsOptionsUtil from '../controls-options-manager/util';
 import MediaUtil from '../media/util';
-// import Transcription from '../transcription';
 import {Reactions, SkinTones} from '../reactions/reactions';
 import PasswordError from '../common/errors/password-error';
 import CaptchaError from '../common/errors/captcha-error';
@@ -178,17 +177,22 @@ export type CaptionData = {
 export type Transcription = {
   closeSocket(): unknown;
   languageOptions: {
-    captionLanguages: string;
-    maxLanguages: number;
-    spokenLanguages: Array<string>;
-    currentCaptionLanguage: string;
-    requestedCaptionLanguage: string;
-    currentSpokenLanguage: string;
+    captionLanguages?: string;
+    maxLanguages?: number;
+    spokenLanguages?: Array<string>;
+    currentCaptionLanguage?: string;
+    requestedCaptionLanguage?: string;
+    currentSpokenLanguage?: string;
   };
   status: string;
   isListening: boolean;
   commandText: string;
-  captions: Map<string, CaptionData>;
+  captions: Array<CaptionData>;
+  highlights: Array<any>;
+  showCaptionBox: boolean;
+  transcribingRequestStatus: string;
+  isCaptioning: boolean;
+  speakerProxy: Map<string, any>;
   interimCaptions: Map<string, CaptionData>;
 };
 
@@ -1222,9 +1226,9 @@ export default class Meeting extends StatelessWebexPlugin {
       showCaptionBox: false,
       transcribingRequestStatus: 'INACTIVE',
       isCaptioning: false,
-      interimCaptions: {},
-      speakerProxy: {},
-    };
+      interimCaptions: {} as Map<string, CaptionData>,
+      speakerProxy: {} as Map<string, any>,
+    } as Transcription;
 
     /**
      * Password status. If it's PASSWORD_STATUS.REQUIRED then verifyPassword() needs to be called
@@ -1921,6 +1925,7 @@ export default class Meeting extends StatelessWebexPlugin {
    * @memberof Meeting
    */
   private setUpVoiceaListener() {
+    // @ts-ignore
     this.webex.internal.voicea.on(
       VOICEAEVENTS.VOICEA_ANNOUNCEMENT,
       (payload: Transcription['languageOptions']) => {
@@ -1937,6 +1942,7 @@ export default class Meeting extends StatelessWebexPlugin {
       }
     );
 
+    // @ts-ignore
     this.webex.internal.voicea.on(VOICEAEVENTS.CAPTION_LANGUAGE_UPDATE, (payload) => {
       const {statusCode} = payload;
 
@@ -1960,6 +1966,7 @@ export default class Meeting extends StatelessWebexPlugin {
       }
     });
 
+    // @ts-ignore
     this.webex.internal.voicea.on(VOICEAEVENTS.SPOKEN_LANGUAGE_UPDATE, (payload) => {
       const {languageCode} = payload;
 
@@ -1981,10 +1988,12 @@ export default class Meeting extends StatelessWebexPlugin {
       );
     });
 
-    this.webex.internal.voicea.on(VOICEAEVENTS.CAPTIONS_TURNED_ON, (payload) => {
-      this.transcription = {status: TURN_ON_CAPTION_STATUS.ENABLED};
+    // @ts-ignore
+    this.webex.internal.voicea.on(VOICEAEVENTS.CAPTIONS_TURNED_ON, () => {
+      this.transcription.status = TURN_ON_CAPTION_STATUS.ENABLED;
     });
 
+    // @ts-ignore
     this.webex.internal.voicea.on(VOICEAEVENTS.EVA_COMMAND, (payload) => {
       const {data} = payload;
 
@@ -1992,6 +2001,7 @@ export default class Meeting extends StatelessWebexPlugin {
       this.transcription.commandText = data.text ?? '';
     });
 
+    // @ts-ignore
     this.webex.internal.voicea.on(VOICEAEVENTS.NEW_CAPTION, (data) => {
       processNewCaptions({data, meeting: this});
       Trigger.trigger(
@@ -2008,6 +2018,7 @@ export default class Meeting extends StatelessWebexPlugin {
       );
     });
 
+    // @ts-ignore
     this.webex.internal.voicea.on(VOICEAEVENTS.HIGHLIGHT_CREATED, async (data) => {
       await processHighlightCreated({data, meeting: this});
     });
@@ -4597,6 +4608,7 @@ export default class Meeting extends StatelessWebexPlugin {
     }
 
     try {
+      // @ts-ignore
       await this.webex.internal.voicea.requestLanguage(language);
     } catch (error) {
       LoggerProxy.logger.error(`Meeting:index#setCaptionLanguage --> ${error}`);
@@ -4622,6 +4634,7 @@ export default class Meeting extends StatelessWebexPlugin {
     }
 
     try {
+      // @ts-ignore
       await this.webex.internal.voicea.setSpokenLanguage(language);
     } catch (error) {
       LoggerProxy.logger.error(`Meeting:index#setSpokenLanguage --> ${error}`);
@@ -4645,6 +4658,7 @@ export default class Meeting extends StatelessWebexPlugin {
       );
 
       try {
+        // @ts-ignore
         await this.webex.internal.voicea.toggleTranscribing(true, options.spokenLanguage);
       } catch (error) {
         LoggerProxy.logger.error(`Meeting:index#startTranscription --> ${error}`);
