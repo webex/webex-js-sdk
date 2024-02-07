@@ -1616,6 +1616,7 @@ export default class LocusInfo extends EventsScope {
     }
     const isMainSessionDTO =
       this.mainSessionLocusCache && ControlsUtils.isMainSessionDTO(this.mainSessionLocusCache);
+
     if (isMainSessionDTO) {
       const isActive =
         [LOCUS.STATE.ACTIVE, LOCUS.STATE.INITIALIZING, LOCUS.STATE.TERMINATING].includes(
