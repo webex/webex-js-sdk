@@ -2,6 +2,39 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.341](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.340...v3.0.0-beta.341) (2024-02-06)
+
+
+### Bug Fixes
+
+* adding retry timer for locus service unavailable ([#3335](https://github.com/webex/webex-js-sdk/issues/3335)) ([706d59f](https://github.com/webex/webex-js-sdk/commit/706d59f34c51a667f305cb9887172196e2c70e3d))
+
+## [3.0.0-beta.340](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.339...v3.0.0-beta.340) (2024-02-06)
+
+
+### Bug Fixes
+
+* **mqeca:** localIp for MQE data and publicNetworkPrefix addition ([#3357](https://github.com/webex/webex-js-sdk/issues/3357)) ([af9c0d7](https://github.com/webex/webex-js-sdk/commit/af9c0d7d053413a493d9892dd9624058a129e4a9))
+
+## [3.0.0-beta.339](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.338...v3.0.0-beta.339) (2024-02-06)
+
+
+### Features
+
+* **plugin-meetings:** TCP reachability checks ([#3337](https://github.com/webex/webex-js-sdk/issues/3337)) ([e130c54](https://github.com/webex/webex-js-sdk/commit/e130c54aae2d1501fcf7cfde4ce81e8429168e6e))
+
+
+### Bug Fixes
+
+* **media-helpers:** update stream classes fix ([#3360](https://github.com/webex/webex-js-sdk/issues/3360)) ([04923f2](https://github.com/webex/webex-js-sdk/commit/04923f246bc12c0c9c9e2c83b35d7cbdf7c08e6f))
+
+## [3.0.0-beta.338](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.337...v3.0.0-beta.338) (2024-02-06)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** update isMain in MQA ([#3354](https://github.com/webex/webex-js-sdk/issues/3354)) ([13645e2](https://github.com/webex/webex-js-sdk/commit/13645e2e2400083c1084f87a1f90aebbf4a6bc6e))
+
 ## [3.0.0-beta.337](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.336...v3.0.0-beta.337) (2024-02-02)
 
 

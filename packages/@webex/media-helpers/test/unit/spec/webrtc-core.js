@@ -11,7 +11,7 @@ import {
   createMicrophoneStream,
   createDisplayStream,
   createDisplayStreamWithAudio,
-} from '../../../src/webrtc-core';
+} from '@webex/media-helpers';
 import * as wcmestreams from '@webex/internal-media-core';
 
 describe('media-helpers', () => {
