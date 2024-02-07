@@ -1,6 +1,7 @@
 import sinon from 'sinon';
 import {assert} from '@webex/test-helper-chai';
 import {WebexHttpError} from '@webex/webex-core';
+import {Errors, WcmeError, WcmeErrorType} from '@webex/internal-media-core';
 
 import CallDiagnosticMetrics from '../../../../src/call-diagnostic/call-diagnostic-metrics';
 import CallDiagnosticLatencies from '../../../../src/call-diagnostic/call-diagnostic-metrics-latencies';
@@ -1740,7 +1741,60 @@ describe('internal-plugin-metrics', () => {
         });
       });
 
-      it('should override custom properties for a NetworkOrCORSERror', () => {
+      it('should return SDP error code correctly for a SdpOfferCreationError with cause of missing codecs', () => {
+        const error = new Errors.SdpOfferCreationError(
+          'No codecs present in m-line with MID 0 after filtering.',
+          {
+            code: 30005,
+            name: 'SdpOfferCreationError',
+            cause: new WcmeError(
+              WcmeErrorType.SDP_MUNGE_MISSING_CODECS,
+              'No codecs present in m-line with MID 0 after filtering.'
+            ) as unknown as Error,
+          }
+        );
+        const res = cd.generateClientEventErrorPayload(error);
+        assert.deepEqual(res, {
+          category: 'expected',
+          errorCode: 2051,
+          errorData: {
+            errorName: 'SdpOfferCreationError',
+          },
+          errorDescription: 'SdpOfferCreationErrorMissingCodec',
+          fatal: true,
+          name: 'other',
+          rawErrorMessage: 'No codecs present in m-line with MID 0 after filtering.',
+          serviceErrorCode: undefined,
+          shownToUser: true,
+        });
+      });
+
+      it('should return SDP error code correctly for a SdpOfferCreationError with any cause other than missing codecs', () => {
+        const error = new Errors.SdpOfferCreationError('error message', {
+          code: 30005,
+          name: 'SdpOfferCreationError',
+          cause: new WcmeError(
+            WcmeErrorType.CREATE_OFFER_FAILED,
+            'empty local SDP'
+          ) as unknown as Error,
+        });
+        const res = cd.generateClientEventErrorPayload(error);
+        assert.deepEqual(res, {
+          category: 'media',
+          errorCode: 2050,
+          errorData: {
+            errorName: 'SdpOfferCreationError',
+          },
+          errorDescription: 'SdpOfferCreationError',
+          fatal: true,
+          name: 'other',
+          rawErrorMessage: 'error message',
+          serviceErrorCode: undefined,
+          shownToUser: true,
+        });
+      });
+
+      it('should override custom properties for a NetworkOrCORSError', () => {
         const error = new WebexHttpError.NetworkOrCORSError({
           url: 'https://example.com',
           statusCode: 0,

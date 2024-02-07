@@ -6,7 +6,6 @@ import {BrowserDetection, getBrowserSerial} from '@webex/common';
 import uuid from 'uuid';
 import {merge} from 'lodash';
 import {StatelessWebexPlugin} from '@webex/webex-core';
-import {WcmeError} from '@webex/internal-media-core';
 
 import {
   anonymizeIPAddress,

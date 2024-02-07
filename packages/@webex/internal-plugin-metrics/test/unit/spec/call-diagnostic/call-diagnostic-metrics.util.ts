@@ -1,6 +1,7 @@
 import {assert} from '@webex/test-helper-chai';
 import sinon from 'sinon';
 import {WebexHttpError} from '@webex/webex-core';
+import {Errors, WcmeError, WcmeErrorType} from '@webex/internal-media-core';
 
 import * as CallDiagnosticUtils from '../../../../src/call-diagnostic/call-diagnostic-metrics.util';
 import CallDiagnosticLatencies from '../../../../src/call-diagnostic/call-diagnostic-metrics-latencies';
@@ -24,6 +25,7 @@ const {
   isNetworkError,
   isUnauthorizedError,
   generateClientErrorCodeForIceFailure,
+  isSdpOfferCreationError,
 } = CallDiagnosticUtils;
 
 describe('internal-plugin-metrics', () => {
@@ -168,6 +170,31 @@ describe('internal-plugin-metrics', () => {
     ].forEach(([errorType, rawError, expected]) => {
       it(`for ${errorType} rawError returns the correct result`, () => {
         assert.strictEqual(isUnauthorizedError(rawError), expected);
+      });
+    });
+  });
+
+  describe('isSdpOfferCreationError', () => {
+    [
+      [
+        'isSdpOfferCreationError',
+        new Errors.SdpOfferCreationError(
+          'No codecs present in m-line with MID 0 after filtering.',
+          {
+            code: 30005,
+            name: 'SdpOfferCreationError',
+            cause: new WcmeError(
+              WcmeErrorType.SDP_MUNGE_MISSING_CODECS,
+              'No codecs present in m-line with MID 0 after filtering.'
+            ) as unknown as Error,
+          }
+        ),
+        true,
+      ],
+      ['generic error', new Error('this is an error'), false],
+    ].forEach(([errorType, rawError, expected]) => {
+      it(`for ${errorType} rawError returns the correct result`, () => {
+        assert.strictEqual(isSdpOfferCreationError(rawError), expected);
       });
     });
   });
