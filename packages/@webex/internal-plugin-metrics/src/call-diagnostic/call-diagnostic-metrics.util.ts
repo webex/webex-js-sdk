@@ -1,7 +1,7 @@
 /* eslint-disable valid-jsdoc */
 import anonymize from 'ip-anonymize';
 import util from 'util';
-import {Errors} from '@webex/internal-media-core';
+import {Errors} from '@webex/media-helpers';
 
 import {BrowserDetection} from '@webex/common';
 import {WebexHttpError} from '@webex/webex-core';

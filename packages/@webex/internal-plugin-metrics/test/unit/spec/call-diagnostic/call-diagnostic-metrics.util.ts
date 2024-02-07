@@ -1,7 +1,7 @@
 import {assert} from '@webex/test-helper-chai';
 import sinon from 'sinon';
 import {WebexHttpError} from '@webex/webex-core';
-import {Errors, WcmeError, WcmeErrorType} from '@webex/internal-media-core';
+import {Errors, WcmeError, WcmeErrorType} from '@webex/media-helpers';
 
 import * as CallDiagnosticUtils from '../../../../src/call-diagnostic/call-diagnostic-metrics.util';
 import CallDiagnosticLatencies from '../../../../src/call-diagnostic/call-diagnostic-metrics-latencies';

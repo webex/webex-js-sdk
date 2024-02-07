@@ -17,7 +17,11 @@
     "node": ">=16"
   },
   "dependencies": {
+<<<<<<< HEAD
     "@webex/internal-media-core": "2.2.6",
+=======
+    "@webex/internal-media-core": "2.2.7",
+>>>>>>> 2725fccb45 (fix(ca): update dependencies)
     "@webex/ts-events": "^1.1.0",
     "@webex/web-media-effects": "^2.15.6"
   },

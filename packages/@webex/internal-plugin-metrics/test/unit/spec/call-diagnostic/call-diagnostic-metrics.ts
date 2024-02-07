@@ -1,7 +1,7 @@
 import sinon from 'sinon';
 import {assert} from '@webex/test-helper-chai';
 import {WebexHttpError} from '@webex/webex-core';
-import {Errors, WcmeError, WcmeErrorType} from '@webex/internal-media-core';
+import {Errors, WcmeError, WcmeErrorType} from '@webex/media-helpers';
 
 import CallDiagnosticMetrics from '../../../../src/call-diagnostic/call-diagnostic-metrics';
 import CallDiagnosticLatencies from '../../../../src/call-diagnostic/call-diagnostic-metrics-latencies';
@@ -40,8 +40,8 @@ describe('internal-plugin-metrics', () => {
       meetingInfo: {},
       getCurUserType: () => 'host',
       statsAnalyzer: {
-        getLocalIpAddress: () => '192.168.1.90'
-      }
+        getLocalIpAddress: () => '192.168.1.90',
+      },
     };
 
     const fakeMeeting2 = {
@@ -279,7 +279,6 @@ describe('internal-plugin-metrics', () => {
       });
 
       it('should build origin correctly with no meeting or stats analyzer', () => {
-        
         //@ts-ignore
         const res = cd.getOrigin();
 
