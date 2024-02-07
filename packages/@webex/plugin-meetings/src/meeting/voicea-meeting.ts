@@ -34,20 +34,6 @@ export const getSpeakerFromProxyOrStore = ({csisKey, meetingMembers, transcriptD
   return {speaker, needsCaching};
 };
 export const processNewCaptions = ({data, meeting}) => {
-  // TODO: processing the members
-  //   {
-  //     "isFinal": false,
-  //     "transcriptId": "7408f2eb-e329-dc92-bae6-6d04a2f7b073",
-  //     "transcripts": [
-  //         {
-  //             "text": "Hello",
-  //             "csis": [
-  //                 2001586688
-  //             ],
-  //             "transcript_language_code": "en"
-  //         }
-  //     ]
-  // }
   const {transcriptId} = data;
   const transcriptData = meeting.transcription;
 
@@ -171,17 +157,4 @@ export const processHighlightCreated = ({data, meeting}) => {
   };
 
   meeting.transcription.highlights.push(highlightCreated);
-};
-
-export const EVENT_TRIGGERS = {
-  VOICEA_ANNOUNCEMENT: 'voicea:announcement',
-  CAPTION_LANGUAGE_UPDATE: 'voicea:captionLanguageUpdate',
-  SPOKEN_LANGUAGE_UPDATE: 'voicea:spokenLanguageUpdate',
-  CAPTIONS_TURNED_ON: 'voicea:captionOn',
-  TRANSCRIBING_ON: 'voicea:transcribingOn',
-  TRANSCRIBING_OFF: 'voicea:transcribingOff',
-
-  NEW_CAPTION: 'voicea:newCaption',
-  EVA_COMMAND: 'voicea:wxa',
-  HIGHLIGHT_CREATED: 'voicea:highlightCreated',
 };

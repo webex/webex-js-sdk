@@ -1934,7 +1934,7 @@ export default class Meeting extends StatelessWebexPlugin {
           this,
           {
             file: 'meeting/index',
-            function: 'join',
+            function: 'setUpVoiceaListener',
           },
           EVENT_TRIGGERS.MEETING_STARTED_RECEIVING_TRANSCRIPTION,
           payload
@@ -1956,7 +1956,7 @@ export default class Meeting extends StatelessWebexPlugin {
           this,
           {
             file: 'meeting/index',
-            function: 'processNewCaptions',
+            function: 'setUpVoiceaListener',
           },
           EVENT_TRIGGERS.MEETING_CAPTION_LANGUAGE_CHANGED,
           {languageCode: this.transcription.languageOptions.currentCaptionLanguage}
@@ -1981,7 +1981,7 @@ export default class Meeting extends StatelessWebexPlugin {
         this,
         {
           file: 'meeting/index',
-          function: 'processNewCaptions',
+          function: 'setUpVoiceaListener',
         },
         EVENT_TRIGGERS.MEETING_SPOKEN_LANGUAGE_CHANGED,
         {languageCode}
@@ -2008,7 +2008,7 @@ export default class Meeting extends StatelessWebexPlugin {
         this,
         {
           file: 'meeting/index',
-          function: 'processNewCaptions',
+          function: 'setUpVoiceaListener',
         },
         EVENT_TRIGGERS.MEETING_CAPTION_RECEIVED,
         {

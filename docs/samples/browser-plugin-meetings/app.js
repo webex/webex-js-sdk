@@ -121,7 +121,6 @@ function generateWebexConfig({credentials}) {
         enableTurnDiscovery: turnDiscoveryCheckbox.checked,
       },
       enableAutomaticLLM: true,
-      receiveTranscription:true
     },
     credentials,
     // Any other sdk config we need
@@ -966,8 +965,6 @@ function startReceivingTranscription() {
       generalTranscriptionContent.innerHTML = `\n${JSON.stringify(payload,null,4)}`;
       voiceaTranscriptionFormattedDisplay.innerHTML = transcriptTemplate({
         data: payload.captions,
-        currentCaptionLanguage: meeting.transcription.languageOptions.currentCaptionLanguage || "en",
-        currentSpokenLanguage: meeting.transcription.languageOptions.currentSpokenLanguage || "en",
       });
       voiceaTranscriptionFormattedDisplay.scrollTop = voiceaTranscriptionFormattedDisplay.scrollHeight;
     });

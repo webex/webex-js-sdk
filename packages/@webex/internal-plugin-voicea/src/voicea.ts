@@ -350,14 +350,10 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
     this.captionStatus = TURN_ON_CAPTION_STATUS.SENDING;
 
     // only set the spoken language if it is provided
-    const body = languageCode
-      ? {
-          transcribe: {caption: true},
-          languageCode,
-        }
-      : {
-          transcribe: {caption: true},
-        };
+    const body = {
+      transcribe: {caption: true},
+      languageCode,
+    };
 
     // @ts-ignore
     // eslint-disable-next-line newline-before-return
@@ -382,7 +378,6 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
       })
       .catch((e) => {
         this.captionStatus = TURN_ON_CAPTION_STATUS.IDLE;
-        console.error(e);
         throw new Error('turn on captions fail ');
       });
   };
@@ -448,8 +443,10 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
         transcribe: {transcribing: activate},
         spokenLanguage,
       },
-    }).then(() => {
+    }).then((): undefined | Promise<void> => {
       if (activate && !this.areCaptionsEnabled) return this.turnOnCaptions(spokenLanguage);
+
+      return undefined;
     });
   };
 
