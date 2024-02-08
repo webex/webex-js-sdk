@@ -26,11 +26,11 @@ const mockDetectionObject = {
 };
 
 const createDetectionObject = (results) => {
-  const getOSName = () => results?.getOSName() ?? '';
-  const getOSVersion = () => results?.getOSVersion() ?? '';
+  const getOSName = () => results?.getOSName() ?? 'unknown';
+  const getOSVersion = () => results?.getOSVersion() ?? 'unknown';
 
-  const getBrowserName = () => results?.getBrowserName() ?? '';
-  const getBrowserVersion = () => results?.getBrowserVersion() ?? '';
+  const getBrowserName = () => results?.getBrowserName() ?? 'unknown';
+  const getBrowserVersion = () => results?.getBrowserVersion() ?? 'unknown';
 
   const isBrowser = (name) => !!results?.isBrowser(name, true);
 
