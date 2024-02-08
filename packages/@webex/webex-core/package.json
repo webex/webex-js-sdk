@@ -72,5 +72,6 @@
     "test:integration:broken": "webex-legacy-tools test --integration --runner mocha",
     "test:style": "eslint ./src/**/*.*",
     "test:unit": "webex-legacy-tools test --unit --runner jest"
-  }
+  },
+  "version": "2.60.0-next.6"
 }
