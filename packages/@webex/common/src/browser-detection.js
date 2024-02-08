@@ -26,12 +26,11 @@ const mockDetectionObject = {
 };
 
 const createDetectionObject = (results) => {
-  const getOSName = () => results?.getOSName() ?? browserDetection.unableToGetOSName;
-  const getOSVersion = () => results?.getOSVersion() ?? browserDetection.unableToGetOSVersion;
+  const getOSName = () => results?.getOSName() ?? '';
+  const getOSVersion = () => results?.getOSVersion() ?? '';
 
-  const getBrowserName = () => results?.getBrowserName() ?? browserDetection.unableToGetBrowserName;
-  const getBrowserVersion = () =>
-    results?.getBrowserVersion() ?? browserDetection.unableToGetOSVersion;
+  const getBrowserName = () => results?.getBrowserName() ?? '';
+  const getBrowserVersion = () => results?.getBrowserVersion() ?? '';
 
   const isBrowser = (name) => !!results?.isBrowser(name, true);
 
@@ -56,6 +55,10 @@ const checkBrowserDetection = (agent) => {
   }
 
   const browserData = createDetectionObject(bowser.getParser(agent || window.navigator.userAgent));
+
+  if (!browserData?.getBrowserName()) {
+    return mockDetectionObject;
+  }
 
   browserDetectionData = browserData;
 
