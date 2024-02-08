@@ -73,6 +73,7 @@ An ESLint configuration file must be consumed within the target package using th
 // ./.eslintrc.js
 
 const { javascript, jest, typescript } = require('../../../config/eslint');
+const definition = require('./package.json');
 
 const config = {
   root: true,
@@ -80,9 +81,9 @@ const config = {
     node: true,
   },
   overrides: [
-    ...javascript.modern.overrides,
-    ...jest.modern.overrides,
-    ...typescript.modern.overrides,
+    ...javascript.modern({ packageName: definition.name }).overrides,
+    ...jest.modern({ packageName: definition.name }).overrides,
+    ...typescript.modern({ packageName: definition.name }).overrides,
   ],
 };
 
@@ -95,7 +96,7 @@ Once the `./.eslintrc.js` file has been configured based on the information prov
 {
   "scripts": {
     "test": "{...other test commands...} && yarn test:style",
-    "test:style": "eslint ./src/**/*.*",
+    "test:style": "eslint ./test/**/*.* ./src/**/*.*",
   }
 }
 ```

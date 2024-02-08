@@ -45,7 +45,7 @@ Once the `./jest.config.js` file has been configured based on the information pr
   "scripts": {
     "test": "{...other test commands...} && yarn test:integration && yarn test:coverage",
     "test:coverage": "yarn test:integration --coverage --reporters=\"jest-silent-reporter\"",
-    "test:integration": "jest ./test/module/**/*.test.js",
+    "test:integration": "jest",
   }
 }
 ```

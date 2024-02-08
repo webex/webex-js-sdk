@@ -1,3 +1,8 @@
+/**
+ * Sync Command Options interface.
+ *
+ * @public
+ */
 export interface Options {
   /**
    * Packages to synchronize
@@ -11,5 +16,4 @@ export interface Options {
    * Tag to synchronize the version on.
    */
   tag: string;
-
 }
