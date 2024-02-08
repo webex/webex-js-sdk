@@ -1,11 +1,11 @@
-import {getTestUtilsWebex} from '../common/testUtil';
 import {LOGGER} from '../Logger/types';
-import {IUcmBackendConnector, CallForwardAlwaysSetting, CallForwardingSettingsUCM} from './types';
-import {HTTP_METHODS, WebexRequestPayload} from '../common/types';
-import {FAILURE_MESSAGE, SUCCESS_MESSAGE, UCM_CONNECTOR_FILE} from '../common/constants';
-import {CF_ENDPOINT, ORG_ENDPOINT, PEOPLE_ENDPOINT, WEBEX_APIS_INT_URL} from './constants';
 import * as utils from '../common/Utils';
+import {FAILURE_MESSAGE, SUCCESS_MESSAGE, UCM_CONNECTOR_FILE} from '../common/constants';
+import {getTestUtilsWebex} from '../common/testUtil';
+import {HTTP_METHODS, WebexRequestPayload} from '../common/types';
 import {UcmBackendConnector} from './UcmBackendConnector';
+import {CF_ENDPOINT, ORG_ENDPOINT, PEOPLE_ENDPOINT, WEBEX_APIS_INT_URL} from './constants';
+import {CallForwardAlwaysSetting, CallForwardingSettingsUCM, IUcmBackendConnector} from './types';
 
 describe('Call Settings Client Tests for UcmBackendConnector', () => {
   const webex = getTestUtilsWebex();
@@ -22,14 +22,17 @@ describe('Call Settings Client Tests for UcmBackendConnector', () => {
             dn: '8001',
             destination: '8004',
             destinationVoicemailEnabled: false,
+            e164Number: '+14922999903',
           },
           {
             dn: '8002',
             destinationVoicemailEnabled: true,
+            e164Number: '',
           },
           {
             dn: '8003',
             destinationVoicemailEnabled: false,
+            e164Number: '',
           },
         ],
       },
