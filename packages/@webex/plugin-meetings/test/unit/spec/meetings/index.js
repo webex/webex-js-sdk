@@ -559,7 +559,7 @@ describe('plugin-meetings', () => {
               });
             });
           });
-          describe.only('destroy non active locus meetings', () => {
+          describe('destroy non active locus meetings', () => {
             let destroySpy;
 
             const meetingCollectionMeetings =  {
