@@ -559,43 +559,46 @@ describe('plugin-meetings', () => {
               });
             });
           });
-          describe('destory non active meeting', () => {
-            let initialSetup;
-            let parse;
+          describe('destroy non active locus meetings', () => {
             let destroySpy;
+
+            const meetingCollectionMeetings =  {
+              stillValidLocusMeeting: {
+                locusUrl: 'still-valid-locus-url',
+                sendCallAnalyzerMetrics: sinon.stub(),
+              },
+              noLongerValidLocusMeeting: {
+                locusUrl: 'no-longer-valid-locus-url',
+                sendCallAnalyzerMetrics: sinon.stub(),
+              },
+              otherNonLocusMeeting1: {
+                locusUrl: null,
+                sendCallAnalyzerMetrics: sinon.stub(),
+              },
+              otherNonLocusMeeting2: {
+                locusUrl: undefined,
+                sendCallAnalyzerMetrics: sinon.stub(),
+              },
+            };
 
             beforeEach(() => {
               destroySpy = sinon.spy(webex.meetings, 'destroy');
-              initialSetup = sinon.stub().returns(true);
-              webex.meetings.meetingCollection.getByKey = sinon.stub().returns({
-                locusInfo,
-                sendCallAnalyzerMetrics: sinon.stub(),
-              });
-              webex.meetings.meetingCollection.getAll = sinon.stub().returns({
-                meetingutk: {
-                  locusUrl: 'fdfdjfdhj',
-                  sendCallAnalyzerMetrics: sinon.stub(),
-                },
-              });
-              webex.meetings.create = sinon.stub().returns(
-                Promise.resolve({
-                  locusInfo: {
-                    initialSetup,
-                  },
-                  sendCallAnalyzerMetrics: sinon.stub(),
-                })
-              );
+              webex.meetings.meetingCollection.getAll = sinon.stub().returns(meetingCollectionMeetings);
               webex.meetings.request.getActiveMeetings = sinon.stub().returns(
                 Promise.resolve({
-                  loci: [],
+                  loci: [
+                    {url: 'still-valid-locus-url'}
+                  ],
                 })
               );
               MeetingUtil.cleanUp = sinon.stub().returns(Promise.resolve());
             });
-            it('destroy non active meetings', async () => {
+            it('destroy only non active locus meetings and keep active locus meetings and any other non-locus meeting', async () => {
               await webex.meetings.syncMeetings();
               assert.calledOnce(webex.meetings.request.getActiveMeetings);
-              assert.calledOnce(destroySpy);
+              assert.calledOnce(webex.meetings.meetingCollection.getAll);
+              assert.calledWith(destroySpy, meetingCollectionMeetings.noLongerValidLocusMeeting);
+              assert.callCount(destroySpy, 1);
 
               assert.calledOnce(MeetingUtil.cleanUp);
             });
