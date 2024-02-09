@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.344](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.343...v3.0.0-beta.344) (2024-02-09)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** syncMeetings should not filter non-locus meetings ([#3371](https://github.com/webex/webex-js-sdk/issues/3371)) ([6689783](https://github.com/webex/webex-js-sdk/commit/6689783a0512d74ee45396efd7b941f9945347c6))
+
 ## [3.0.0-beta.343](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.342...v3.0.0-beta.343) (2024-02-08)
 
 
