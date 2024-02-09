@@ -4260,6 +4260,14 @@ export default class Meeting extends StatelessWebexPlugin {
   ) {
     const {mediaOptions, joinOptions} = options;
 
+    if (!mediaOptions?.allowMediaInLobby) {
+      return Promise.reject(
+        new ParameterError('joinWithMedia() can only be used with allowMediaInLobby set to true')
+      );
+    }
+
+    LoggerProxy.logger.info('Meeting:index#joinWithMedia called');
+
     return this.join(joinOptions)
       .then((joinResponse) =>
         this.addMedia(mediaOptions).then((mediaResponse) => ({
