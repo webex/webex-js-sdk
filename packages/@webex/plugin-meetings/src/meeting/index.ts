@@ -4252,8 +4252,8 @@ export default class Meeting extends StatelessWebexPlugin {
     const {mediaOptions, joinOptions} = options;
 
     if (!mediaOptions?.allowMediaInLobby) {
-      throw new ParameterError(
-        'joinWithMedia() can only be used with allowMediaInLobby set to true'
+      return Promise.reject(
+        new ParameterError('joinWithMedia() can only be used with allowMediaInLobby set to true')
       );
     }
 
