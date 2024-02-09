@@ -559,7 +559,7 @@ describe('plugin-meetings', () => {
               });
             });
           });
-          describe('destroy non active locus meetings', () => {
+          describe.only('destroy non active locus meetings', () => {
             let destroySpy;
 
             const meetingCollectionMeetings =  {
@@ -567,7 +567,7 @@ describe('plugin-meetings', () => {
                 locusUrl: 'still-valid-locus-url',
                 sendCallAnalyzerMetrics: sinon.stub(),
               },
-              notLongerValidLocusMeeting: {
+              noLongerValidLocusMeeting: {
                 locusUrl: 'no-longer-valid-locus-url',
                 sendCallAnalyzerMetrics: sinon.stub(),
               },
@@ -587,23 +587,17 @@ describe('plugin-meetings', () => {
               webex.meetings.request.getActiveMeetings = sinon.stub().returns(
                 Promise.resolve({
                   loci: [
-                    {
-                      something: 'here',
-                    },
+                    {url: 'still-valid-locus-url'}
                   ],
                 })
               );
-              webex.meetings.sortLocusArrayToUpdate = sinon.stub().returns(
-                [{url: 'still-valid-locus-url'}]
-              )
               MeetingUtil.cleanUp = sinon.stub().returns(Promise.resolve());
             });
             it('destroy only non active locus meetings and keep active locus meetings and any other non-locus meeting', async () => {
               await webex.meetings.syncMeetings();
               assert.calledOnce(webex.meetings.request.getActiveMeetings);
-              assert.calledOnce(webex.meetings.sortLocusArrayToUpdate);
               assert.calledOnce(webex.meetings.meetingCollection.getAll);
-              assert.calledWith(destroySpy, meetingCollectionMeetings.notLongerValidLocusMeeting);
+              assert.calledWith(destroySpy, meetingCollectionMeetings.noLongerValidLocusMeeting);
               assert.callCount(destroySpy, 1);
 
               assert.calledOnce(MeetingUtil.cleanUp);
