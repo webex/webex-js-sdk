@@ -1369,11 +1369,12 @@ export default class Meetings extends WebexPlugin {
         const meetingsCollection = this.meetingCollection.getAll();
 
         if (Object.keys(meetingsCollection).length > 0) {
-          // Some time the mercury event is missed after mercury reconnect
-          // if sync returns no locus then clear all the meetings
+          // Sometimes the mercury events are lost after mercury reconnect
+          // Remove any Locus meetings that are not returned by Locus
+          // (they had a locusUrl previously but are no longer active) in the sync
           for (const meeting of Object.values(meetingsCollection)) {
             // @ts-ignore
-            if (!activeLocusUrl.includes(meeting.locusUrl)) {
+            if (meeting.locusUrl && !activeLocusUrl.includes(meeting.locusUrl)) {
               // destroy function also uploads logs
               // @ts-ignore
               this.destroy(meeting, MEETING_REMOVED_REASON.NO_MEETINGS_TO_SYNC);
