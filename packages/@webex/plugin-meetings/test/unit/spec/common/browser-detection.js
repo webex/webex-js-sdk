@@ -1,6 +1,6 @@
 import 'jsdom-global/register';
 import {assert} from '@webex/test-helper-chai';
-import checkcheckBrowserDetection from '@webex/plugin-meetings/src/common/browser-detection';
+import {checkBrowserDetection} from '@webex/common';
 
 const USER_AGENT_CHROME_MAC =
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) ' +
@@ -23,8 +23,8 @@ const mockDetectionObject = {
   getOSName: () => require('os').platform(),
   getOSVersion: () => require('os').release(),
   /* eslint-enable global-require */
-  getBrowserName: () => '',
-  getBrowserVersion: () => '',
+  getBrowserName: () => 'unknown',
+  getBrowserVersion: () => 'unknown',
   isBrowser: () => false,
 };
 
