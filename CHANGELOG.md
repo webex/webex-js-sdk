@@ -2,6 +2,34 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.343](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.342...v3.0.0-beta.343) (2024-02-08)
+
+
+### Bug Fixes
+
+* **meetings:** update internal-media-core ([#3369](https://github.com/webex/webex-js-sdk/issues/3369)) ([5326beb](https://github.com/webex/webex-js-sdk/commit/5326bebf4465831afc0ba181f7f1cc5e51d36a2a))
+
+## [3.0.0-beta.342](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.341...v3.0.0-beta.342) (2024-02-07)
+
+
+### Bug Fixes
+
+* **mercury:** remove needless metric ([#3363](https://github.com/webex/webex-js-sdk/issues/3363)) ([2e53cb7](https://github.com/webex/webex-js-sdk/commit/2e53cb71b299e889bbcd9e09a91f2fd55c9762f6))
+
+## [3.0.0-beta.341](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.340...v3.0.0-beta.341) (2024-02-06)
+
+
+### Bug Fixes
+
+* adding retry timer for locus service unavailable ([#3335](https://github.com/webex/webex-js-sdk/issues/3335)) ([706d59f](https://github.com/webex/webex-js-sdk/commit/706d59f34c51a667f305cb9887172196e2c70e3d))
+
+## [3.0.0-beta.340](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.339...v3.0.0-beta.340) (2024-02-06)
+
+
+### Bug Fixes
+
+* **mqeca:** localIp for MQE data and publicNetworkPrefix addition ([#3357](https://github.com/webex/webex-js-sdk/issues/3357)) ([af9c0d7](https://github.com/webex/webex-js-sdk/commit/af9c0d7d053413a493d9892dd9624058a129e4a9))
+
 ## [3.0.0-beta.339](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.338...v3.0.0-beta.339) (2024-02-06)
 
 
