@@ -5,7 +5,7 @@ import sinon from 'sinon';
 
 import Device from '@webex/internal-plugin-device';
 
-import dto from './wdm-dto';
+import dto from './wdm-dto.json';
 
 describe('plugin-device', () => {
   describe('Device', () => {
@@ -99,6 +99,27 @@ describe('plugin-device', () => {
     });
 
     describe('derived properties', () => {
+      describe('#machineId', () => {
+        describe('when the device does not have a machineId', () => {
+          beforeEach("remove the device's url", () => {
+            device.url = undefined;
+          });
+
+          it('should return undefined', () => {
+            assert.isUndefined(device.machineId);
+          });
+        });
+
+        describe('when the device does have a machineId', () => {
+          beforeEach("set the device's url", () => {
+            device.url = dto.url;
+          });
+
+          it('should return a machineId string', () => {
+            assert.equal(device.machineId, dto.machineId);
+          });
+        });
+      });
       describe('#registered', () => {
         describe('when the device does not have a url', () => {
           beforeEach("remove the device's url", () => {

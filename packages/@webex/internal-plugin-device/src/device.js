@@ -256,6 +256,29 @@ const Device = WebexPlugin.extend({
    */
   derived: {
     /**
+     * This property assigns a unique machineId per session to assist with
+     * fraud prevention.
+     *
+     * @type {string}
+     */
+    machineId: {
+      deps: ['url'],
+
+      /**
+       * Returns the unique machineId if the url is defined using the id from
+       * end of the url string.
+       *
+       * @returns {string}
+       */
+      fn() {
+        if (!this.url) {
+          return undefined;
+        }
+
+        return this.url.split('/').pop();
+      },
+    },
+    /**
      * This property determines if the current device is registered.
      *
      * @type {boolean}
