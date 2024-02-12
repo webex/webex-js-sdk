@@ -6539,7 +6539,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@webex/api-extractor-config@workspace:^, @webex/api-extractor-config@workspace:packages/config/api-extractor":
+"@webex/api-extractor-config@workspace:*, @webex/api-extractor-config@workspace:packages/config/api-extractor":
   version: 0.0.0-use.local
   resolution: "@webex/api-extractor-config@workspace:packages/config/api-extractor"
   peerDependencies:
@@ -6547,7 +6547,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/babel-config-legacy@workspace:*, @webex/babel-config-legacy@workspace:^, @webex/babel-config-legacy@workspace:packages/legacy/babel":
+"@webex/babel-config-legacy@workspace:*, @webex/babel-config-legacy@workspace:packages/legacy/babel":
   version: 0.0.0-use.local
   resolution: "@webex/babel-config-legacy@workspace:packages/legacy/babel"
   dependencies:
@@ -6648,7 +6648,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/cli-tools@workspace:^, @webex/cli-tools@workspace:packages/tools/cli":
+"@webex/cli-tools@workspace:*, @webex/cli-tools@workspace:packages/tools/cli":
   version: 0.0.0-use.local
   resolution: "@webex/cli-tools@workspace:packages/tools/cli"
   dependencies:
@@ -6737,7 +6737,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/env-config-legacy@workspace:^, @webex/env-config-legacy@workspace:packages/legacy/env":
+"@webex/env-config-legacy@workspace:*, @webex/env-config-legacy@workspace:packages/legacy/env":
   version: 0.0.0-use.local
   resolution: "@webex/env-config-legacy@workspace:packages/legacy/env"
   dependencies:
@@ -6746,11 +6746,11 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/esbuild-config@workspace:^, @webex/esbuild-config@workspace:packages/config/esbuild":
+"@webex/esbuild-config@workspace:*, @webex/esbuild-config@workspace:packages/config/esbuild":
   version: 0.0.0-use.local
   resolution: "@webex/esbuild-config@workspace:packages/config/esbuild"
   dependencies:
-    "@webex/eslint-config": "workspace:^"
+    "@webex/eslint-config": "workspace:*"
     eslint: ^8.35.0
   peerDependencies:
     esbuild: ^0.17.11
@@ -6781,7 +6781,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/eslint-config@workspace:^, @webex/eslint-config@workspace:packages/config/eslint":
+"@webex/eslint-config@workspace:*, @webex/eslint-config@workspace:packages/config/eslint":
   version: 0.0.0-use.local
   resolution: "@webex/eslint-config@workspace:packages/config/eslint"
   dependencies:
@@ -7536,11 +7536,11 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/jasmine-config@workspace:^, @webex/jasmine-config@workspace:packages/config/jasmine":
+"@webex/jasmine-config@workspace:*, @webex/jasmine-config@workspace:packages/config/jasmine":
   version: 0.0.0-use.local
   resolution: "@webex/jasmine-config@workspace:packages/config/jasmine"
   dependencies:
-    "@webex/eslint-config": "workspace:^"
+    "@webex/eslint-config": "workspace:*"
     eslint: ^8.35.0
     jasmine-spec-reporter: ^7.0.0
   peerDependencies:
@@ -7628,15 +7628,15 @@ __metadata:
     "@types/karma-ie-launcher": ^1
     "@types/karma-mocha-reporter": ^2
     "@types/mocha": ^10
-    "@webex/api-extractor-config": "workspace:^"
-    "@webex/babel-config-legacy": "workspace:^"
-    "@webex/cli-tools": "workspace:^"
-    "@webex/env-config-legacy": "workspace:^"
-    "@webex/esbuild-config": "workspace:^"
-    "@webex/eslint-config": "workspace:^"
-    "@webex/jasmine-config": "workspace:^"
-    "@webex/nyc-config": "workspace:^"
-    "@webex/typescript-config": "workspace:^"
+    "@webex/api-extractor-config": "workspace:*"
+    "@webex/babel-config-legacy": "workspace:*"
+    "@webex/cli-tools": "workspace:*"
+    "@webex/env-config-legacy": "workspace:*"
+    "@webex/esbuild-config": "workspace:*"
+    "@webex/eslint-config": "workspace:*"
+    "@webex/jasmine-config": "workspace:*"
+    "@webex/nyc-config": "workspace:*"
+    "@webex/typescript-config": "workspace:*"
     babelify: ^10.0.0
     browserify: ^17.0.0
     browserify-middleware: ^8.1.1
@@ -7693,27 +7693,27 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/nyc-config@workspace:^, @webex/nyc-config@workspace:packages/config/nyc":
+"@webex/nyc-config@workspace:*, @webex/nyc-config@workspace:packages/config/nyc":
   version: 0.0.0-use.local
   resolution: "@webex/nyc-config@workspace:packages/config/nyc"
   dependencies:
-    "@webex/eslint-config": "workspace:^"
+    "@webex/eslint-config": "workspace:*"
     eslint: ^8.35.0
   peerDependencies:
-    "@webex/jasmine-config": "workspace:^"
+    "@webex/jasmine-config": "workspace:*"
     jasmine: ^4.5.0
     nyc: ^15.1.0
   languageName: unknown
   linkType: soft
 
-"@webex/package-tools@workspace:^, @webex/package-tools@workspace:packages/tools/package":
+"@webex/package-tools@workspace:*, @webex/package-tools@workspace:packages/tools/package":
   version: 0.0.0-use.local
   resolution: "@webex/package-tools@workspace:packages/tools/package"
   dependencies:
     "@microsoft/api-documenter": 7.23.20
     "@microsoft/api-extractor": 7.39.4
     "@types/eslint": 8.56.0
-    "@webex/cli-tools": "workspace:^"
+    "@webex/cli-tools": "workspace:*"
     eslint: 8.56.0
     eslint-config-airbnb-base: 15.0.0
     eslint-config-airbnb-typescript: 17.1.0
@@ -8586,7 +8586,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@webex/typescript-config@workspace:^, @webex/typescript-config@workspace:packages/config/typescript":
+"@webex/typescript-config@workspace:*, @webex/typescript-config@workspace:packages/config/typescript":
   version: 0.0.0-use.local
   resolution: "@webex/typescript-config@workspace:packages/config/typescript"
   languageName: unknown
@@ -31012,8 +31012,8 @@ __metadata:
     "@wdio/sauce-service": ^7.19.5
     "@wdio/spec-reporter": ^7.19.5
     "@wdio/static-server-service": ^7.19.5
-    "@webex/cli-tools": "workspace:^"
-    "@webex/package-tools": "workspace:^"
+    "@webex/cli-tools": "workspace:*"
+    "@webex/package-tools": "workspace:*"
     appium-adb: ^8.17.0
     babel-loader: ^8.2.2
     babel-plugin-lodash: ^3.3.4

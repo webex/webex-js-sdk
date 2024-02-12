@@ -16,7 +16,7 @@
     "jasmine-spec-reporter": "^7.0.0"
   },
   "devDependencies": {
-    "@webex/eslint-config": "workspace:^",
+    "@webex/eslint-config": "workspace:*",
     "eslint": "^8.35.0"
   },
   "peerDependencies": {
