@@ -4,11 +4,11 @@
  * @packageDocumentation
  */
 
-import {
+export {
   increment, list, scripts, sync,
 } from './commands';
-import { Package } from './models';
-import { Yarn } from './utils';
+export { Package } from './models';
+export { Yarn } from './utils';
 
 export type {
   PackageConfig,
@@ -29,12 +29,3 @@ export type {
   ScriptsOptions,
   SyncOptions,
 } from './commands';
-
-export {
-  increment,
-  list,
-  Package,
-  scripts,
-  sync,
-  Yarn,
-};

@@ -19,7 +19,8 @@
 			"DOM",
 			"webWorker"
 		],
-		"moduleResolution": "node",
+		"module": "node16",
+		"moduleResolution": "node16",
 		"noFallthroughCasesInSwitch": true,
 		"noImplicitAny": true,
 		"noImplicitOverride": true,

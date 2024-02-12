@@ -1,6 +1,5 @@
 const fs = require('fs/promises');
 const path = require('path');
-// eslint-disable-next-line import/no-unresolved
 const { Package, Yarn } = require('@webex/package-tools');
 
 const fixtures = require('./package.fixture');
@@ -82,15 +81,15 @@ describe('Package', () => {
         pack.setVersion(Package.parseVersionStringToObject(version));
 
         spies.Package = {
-          readDefinition: spyOn(Package, 'readDefinition').and.resolveTo(definition),
+          readDefinition: jest.spyOn(Package, 'readDefinition').mockResolvedValue(definition),
         };
 
         spies.fs = {
-          writeFile: spyOn(fs, 'writeFile').and.resolveTo(undefined),
+          writeFile: jest.spyOn(fs, 'writeFile').mockResolvedValue(undefined),
         };
 
         spies.path = {
-          join: spyOn(path, 'join').and.returnValue(examplePath),
+          join: jest.spyOn(path, 'join').mockReturnValue(examplePath),
         };
       });
 
@@ -101,7 +100,8 @@ describe('Package', () => {
 
       it('should attempt to ammend the package definition file to the package path', () => pack.apply()
         .then(() => {
-          expect(spies.path.join).toHaveBeenCalledOnceWith(
+          expect(spies.path.join).toHaveBeenCalledTimes(1);
+          expect(spies.path.join).toHaveBeenCalledWith(
             pack.data.location,
             Package.CONSTANTS.PACKAGE_DEFINITION_FILE,
           );
@@ -109,7 +109,8 @@ describe('Package', () => {
 
       it('should attempt to read the file at the package definition location', () => pack.apply()
         .then(() => {
-          expect(spies.Package.readDefinition).toHaveBeenCalledOnceWith({
+          expect(spies.Package.readDefinition).toHaveBeenCalledTimes(1);
+          expect(spies.Package.readDefinition).toHaveBeenCalledWith({
             definitionPath: examplePath,
           });
         }));
@@ -119,7 +120,8 @@ describe('Package', () => {
 
         return pack.apply()
           .then(() => {
-            expect(spies.fs.writeFile).toHaveBeenCalledOnceWith(examplePath, data);
+            expect(spies.fs.writeFile).toHaveBeenCalledTimes(1);
+            expect(spies.fs.writeFile).toHaveBeenCalledWith(examplePath, data);
           });
       });
     });
@@ -136,11 +138,11 @@ describe('Package', () => {
 
       beforeEach(() => {
         spies.Package = {
-          readDefinition: spyOn(Package, 'readDefinition').and.resolveTo(definition),
+          readDefinition: jest.spyOn(Package, 'readDefinition').mockResolvedValue(definition),
         };
 
         spies.path = {
-          join: spyOn(path, 'join').and.returnValue(examplePath),
+          join: jest.spyOn(path, 'join').mockReturnValue(examplePath),
         };
       });
 
@@ -151,7 +153,8 @@ describe('Package', () => {
 
       it('should attempt to ammend the package definition file to the package path', () => pack.hasScript(exampleScript)
         .then(() => {
-          expect(spies.path.join).toHaveBeenCalledOnceWith(
+          expect(spies.path.join).toHaveBeenCalledTimes(1);
+          expect(spies.path.join).toHaveBeenCalledWith(
             pack.data.location,
             Package.CONSTANTS.PACKAGE_DEFINITION_FILE,
           );
@@ -159,13 +162,14 @@ describe('Package', () => {
 
       it('should attempt to read the file at the package definition location', () => pack.hasScript(examplePath)
         .then(() => {
-          expect(spies.Package.readDefinition).toHaveBeenCalledOnceWith({
+          expect(spies.Package.readDefinition).toHaveBeenCalledTimes(1);
+          expect(spies.Package.readDefinition).toHaveBeenCalledWith({
             definitionPath: examplePath,
           });
         }));
 
       it('should return false if the definition has no scripts', () => {
-        spies.Package.readDefinition.and.resolveTo({});
+        spies.Package.readDefinition.mockResolvedValue({});
 
         return pack.hasScript(exampleScript)
           .then((results) => {
@@ -173,10 +177,13 @@ describe('Package', () => {
           });
       });
 
-      it('should return false if the definition does not have the provided script', () => pack.hasScript('another-example-script')
-        .then((results) => {
-          expect(results).toBe(false);
-        }));
+      it(
+        'should return false if the definition does not have the provided script',
+        () => pack.hasScript('another-example-script')
+          .then((results) => {
+            expect(results).toBe(false);
+          }),
+      );
 
       it('should return true if the definition has the provided script', () => pack.hasScript(exampleScript)
         .then((results) => {
@@ -195,76 +202,93 @@ describe('Package', () => {
         };
 
         spies.pack = {
-          setVersion: spyOn(pack, 'setVersion').and.returnValue(pack),
+          setVersion: jest.spyOn(pack, 'setVersion').mockReturnValue(pack),
         };
       });
 
-      it('should increment only the major version if the major version is provided', () => {
-        pack.incrementVersion({ major: exampleVersion });
+      it(
+        'should increment and flatten from the major verison when only a major version is provided',
+        () => {
+          pack.incrementVersion({ major: exampleVersion });
 
-        expect(spies.pack.setVersion)
-          .toHaveBeenCalledOnceWith(
-            jasmine.objectContaining({
-              major: exampleVersion + versionObject.major,
-              minor: 0,
-              patch: 0,
-              release: 0,
-              tag: versionObject.tag,
-            }),
-          );
-      });
+          expect(spies.pack.setVersion).toHaveBeenCalledTimes(1);
+          expect(spies.pack.setVersion)
+            .toHaveBeenCalledWith(
+              expect.objectContaining({
+                major: exampleVersion + versionObject.major,
+                minor: 0,
+                patch: 0,
+                release: 0,
+                tag: versionObject.tag,
+              }),
+            );
+        },
+      );
 
-      it('should increment only the minor version and preserve the major version if the minor version is provided', () => {
-        pack.incrementVersion({ minor: exampleVersion });
+      it(
+        'should increment and flatten from the minor verison when only a major version is provided',
+        () => {
+          pack.incrementVersion({ minor: exampleVersion });
 
-        expect(spies.pack.setVersion)
-          .toHaveBeenCalledOnceWith(
-            jasmine.objectContaining({
-              major: versionObject.major,
-              minor: exampleVersion + versionObject.minor,
-              patch: 0,
-              release: 0,
-              tag: versionObject.tag,
-            }),
-          );
-      });
+          expect(spies.pack.setVersion).toHaveBeenCalledTimes(1);
+          expect(spies.pack.setVersion)
+            .toHaveBeenCalledWith(
+              expect.objectContaining({
+                major: versionObject.major,
+                minor: exampleVersion + versionObject.minor,
+                patch: 0,
+                release: 0,
+                tag: versionObject.tag,
+              }),
+            );
+        },
+      );
 
-      it('should increment only the patch version and preserve the major and minor versions if the minor version is provided', () => {
-        pack.incrementVersion({ patch: exampleVersion });
+      it(
+        'should increment and flatten from the patch verison when only a major version is provided',
+        () => {
+          pack.incrementVersion({ patch: exampleVersion });
 
-        expect(spies.pack.setVersion)
-          .toHaveBeenCalledOnceWith(
-            jasmine.objectContaining({
-              major: versionObject.major,
-              minor: versionObject.minor,
-              patch: exampleVersion + versionObject.patch,
-              release: 0,
-              tag: versionObject.tag,
-            }),
-          );
-      });
+          expect(spies.pack.setVersion).toHaveBeenCalledTimes(1);
+          expect(spies.pack.setVersion)
+            .toHaveBeenCalledWith(
+              expect.objectContaining({
+                major: versionObject.major,
+                minor: versionObject.minor,
+                patch: exampleVersion + versionObject.patch,
+                release: 0,
+                tag: versionObject.tag,
+              }),
+            );
+        },
+      );
 
-      it('should increment only the release version and preserve the major, minor, and patch versions if the minor version is provided', () => {
-        pack.incrementVersion({ release: exampleVersion });
+      it(
+        'should increment and flatten from the release verison when only a major version is provided',
+        () => {
+          pack.incrementVersion({ release: exampleVersion });
 
-        expect(spies.pack.setVersion)
-          .toHaveBeenCalledOnceWith(
-            jasmine.objectContaining({
-              major: versionObject.major,
-              minor: versionObject.minor,
-              patch: versionObject.patch,
-              release: exampleVersion + versionObject.release,
-              tag: versionObject.tag,
-            }),
-          );
-      });
+          expect(spies.pack.setVersion).toHaveBeenCalledTimes(1);
+          expect(spies.pack.setVersion)
+            .toHaveBeenCalledWith(
+              expect.objectContaining({
+                major: versionObject.major,
+                minor: versionObject.minor,
+                patch: versionObject.patch,
+                release: exampleVersion + versionObject.release,
+                tag: versionObject.tag,
+              }),
+            );
+        },
+      );
 
       it('should increment the release version if the tag does not match the stable tag', () => {
         pack.incrementVersion({ tag: versionObject.tag });
 
+        expect(spies.pack.setVersion).toHaveBeenCalledTimes(1);
         expect(spies.pack.setVersion)
-          .toHaveBeenCalledOnceWith(
-            jasmine.objectContaining({
+          .toHaveBeenCalledWith(
+            expect.objectContaining({
               major: versionObject.major,
               minor: versionObject.minor,
               patch: versionObject.patch,
@@ -278,9 +302,10 @@ describe('Package', () => {
         pack.data.version.tag = Package.CONSTANTS.STABLE_TAG;
         pack.incrementVersion();
 
+        expect(spies.pack.setVersion).toHaveBeenCalledTimes(1);
         expect(spies.pack.setVersion)
-          .toHaveBeenCalledOnceWith(
-            jasmine.objectContaining({
+          .toHaveBeenCalledWith(
+            expect.objectContaining({
               major: versionObject.major,
               minor: versionObject.minor,
               patch: versionObject.patch + 1,
@@ -306,8 +331,8 @@ describe('Package', () => {
 
       beforeEach(() => {
         spies.Package = {
-          inspect: spyOn(Package, 'inspect').and.resolveTo(inspectResults),
-          parseVersionStringToObject: spyOn(Package, 'parseVersionStringToObject').and.returnValue(exampleVersion),
+          inspect: jest.spyOn(Package, 'inspect').mockResolvedValue(inspectResults),
+          parseVersionStringToObject: jest.spyOn(Package, 'parseVersionStringToObject').mockReturnValue(exampleVersion),
         };
       });
 
@@ -318,31 +343,44 @@ describe('Package', () => {
 
       it('should call "Package.inspect()" with the local package name', () => pack.inspect()
         .then(() => {
-          expect(spies.Package.inspect).toHaveBeenCalledOnceWith(jasmine.objectContaining({
+          expect(spies.Package.inspect).toHaveBeenCalledTimes(1);
+          expect(spies.Package.inspect).toHaveBeenCalledWith(expect.objectContaining({
             package: pack.name,
           }));
         }));
 
-      it('should assign the results of "Package.parseVersionStringToObject()" to its version if found', () => pack.inspect()
-        .then(() => {
-          expect(pack.data.version).toBe(exampleVersion);
-        }));
-
-      it('should call "Package.parseVersionStringToObject()" with the found tag version if found', () => pack.inspect()
-        .then(() => {
-          expect(spies.Package.parseVersionStringToObject).toHaveBeenCalledOnceWith(inspectResults['dist-tags'][exampleTag]);
-        }));
-
-      it('should call "Package.parseVersionStringToObject()" with the new tag version if the provided tag version was not found', () => {
-        const expectedTag = 'unknown-tag';
-        pack.data.version.tag = expectedTag;
-
-        return pack.inspect()
+      it(
+        'should assign the results of "Package.parseVersionStringToObject()" to its version if found',
+        () => pack.inspect()
           .then(() => {
+            expect(pack.data.version).toBe(exampleVersion);
+          }),
+      );
+
+      it(
+        'should call "Package.parseVersionStringToObject()" with the found tag version if found',
+        () => pack.inspect()
+          .then(() => {
+            expect(spies.Package.parseVersionStringToObject).toHaveBeenCalledTimes(1);
             expect(spies.Package.parseVersionStringToObject)
-              .toHaveBeenCalledOnceWith(`${inspectResults.version}-${expectedTag}.0`);
-          });
-      });
+              .toHaveBeenCalledWith(inspectResults['dist-tags'][exampleTag]);
+          }),
+      );
+
+      it(
+        'should call "Package.parseVersionStringToObject()" with the new tag version if the tag version was not found',
+        () => {
+          const expectedTag = 'unknown-tag';
+          pack.data.version.tag = expectedTag;
+
+          return pack.inspect()
+            .then(() => {
+              expect(spies.Package.parseVersionStringToObject).toHaveBeenCalledTimes(1);
+              expect(spies.Package.parseVersionStringToObject)
+                .toHaveBeenCalledWith(`${inspectResults.version}-${expectedTag}.0`);
+            });
+        },
+      );
     });
 
     describe('setVersion', () => {
@@ -475,7 +513,7 @@ describe('Package', () => {
         };
 
         spies.Package = {
-          parseVersionStringToObject: spyOn(Package, 'parseVersionStringToObject').and.returnValue(stableVersion),
+          parseVersionStringToObject: jest.spyOn(Package, 'parseVersionStringToObject').mockReturnValue(stableVersion),
         };
       });
 
@@ -493,7 +531,9 @@ describe('Package', () => {
       it('should call "Package.parseVersionStringToObject()" with the latest version tag info', () => {
         pack.syncVersion();
 
-        expect(spies.Package.parseVersionStringToObject).toHaveBeenCalledOnceWith(pack.data.packageInfo['dist-tags'].latest);
+        expect(spies.Package.parseVersionStringToObject).toHaveBeenCalledTimes(1);
+        expect(spies.Package.parseVersionStringToObject)
+          .toHaveBeenCalledWith(pack.data.packageInfo['dist-tags'].latest);
       });
 
       it('should update the major version if it is different', () => {
@@ -574,13 +614,14 @@ describe('Package', () => {
 
       beforeEach(() => {
         spies.yarn = {
-          view: spyOn(Yarn, 'view').and.resolveTo(viewResults),
+          view: jest.spyOn(Yarn, 'view').mockResolvedValue(viewResults),
         };
       });
 
       it('should call "Yarn.view()" with the appropriate options', () => Package.inspect({ package: packageName })
         .then(() => {
-          expect(spies.yarn.view).toHaveBeenCalledOnceWith({
+          expect(spies.yarn.view).toHaveBeenCalledTimes(1);
+          expect(spies.yarn.view).toHaveBeenCalledWith({
             distTags: true,
             package: packageName,
             version: true,
@@ -593,7 +634,7 @@ describe('Package', () => {
         }));
 
       it('should return a "PackageInfo" Object when "Yarn.view()" rejects', () => {
-        spies.yarn.view.and.rejectWith(new Error());
+        spies.yarn.view.mockRejectedValue(new Error());
 
         return Package.inspect({ package: packageName })
           .then((results) => {
@@ -729,7 +770,7 @@ describe('Package', () => {
 
       beforeEach(() => {
         spies.fs = {
-          readFile: spyOn(fs, 'readFile').and.resolveTo(
+          readFile: jest.spyOn(fs, 'readFile').mockResolvedValue(
             Buffer.from(JSON.stringify(definition), 'utf8'),
           ),
         };
@@ -740,10 +781,14 @@ describe('Package', () => {
           expect(results).toEqual(definition);
         }));
 
-      it('should attempt to read the file at the provided definition path', () => Package.readDefinition({ definitionPath })
-        .then(() => {
-          expect(spies.fs.readFile).toHaveBeenCalledOnceWith(definitionPath);
-        }));
+      it(
+        'should attempt to read the file at the provided definition path',
+        () => Package.readDefinition({ definitionPath })
+          .then(() => {
+            expect(spies.fs.readFile).toHaveBeenCalledTimes(1);
+            expect(spies.fs.readFile).toHaveBeenCalledWith(definitionPath);
+          }),
+      );
     });
   });
 });
