@@ -1,11 +1,11 @@
-import {LOGGER} from '../Logger/types';
+import { LOGGER } from '../Logger/types';
 import * as utils from '../common/Utils';
-import {FAILURE_MESSAGE, SUCCESS_MESSAGE, UCM_CONNECTOR_FILE} from '../common/constants';
-import {getTestUtilsWebex} from '../common/testUtil';
-import {HTTP_METHODS, WebexRequestPayload} from '../common/types';
-import {UcmBackendConnector} from './UcmBackendConnector';
-import {CF_ENDPOINT, ORG_ENDPOINT, PEOPLE_ENDPOINT, WEBEX_APIS_INT_URL} from './constants';
-import {CallForwardAlwaysSetting, CallForwardingSettingsUCM, IUcmBackendConnector} from './types';
+import { FAILURE_MESSAGE, SUCCESS_MESSAGE, UCM_CONNECTOR_FILE } from '../common/constants';
+import { getTestUtilsWebex } from '../common/testUtil';
+import { HTTP_METHODS, WebexRequestPayload } from '../common/types';
+import { UcmBackendConnector } from './UcmBackendConnector';
+import { CF_ENDPOINT, ORG_ENDPOINT, PEOPLE_ENDPOINT, WEBEX_APIS_INT_URL } from './constants';
+import { CallForwardAlwaysSetting, CallForwardingSettingsUCM, IUcmBackendConnector } from './types';
 
 describe('Call Settings Client Tests for UcmBackendConnector', () => {
   const webex = getTestUtilsWebex();
@@ -33,6 +33,12 @@ describe('Call Settings Client Tests for UcmBackendConnector', () => {
             dn: '8003',
             destinationVoicemailEnabled: false,
             e164Number: '',
+          },
+          {
+            dn: '8000',
+            destination: '8006',
+            destinationVoicemailEnabled: false,
+            e164Number: '8005',
           },
         ],
       },
@@ -98,6 +104,21 @@ describe('Call Settings Client Tests for UcmBackendConnector', () => {
       });
     });
 
+    it('Success: Get Call Forward Always setting when directory num matchcing with e16number and set to destination', async () => {
+      const response = await callSettingsClient.getCallForwardAlwaysSetting('8005');
+
+      const callForwardSetting = response.data.callSetting as CallForwardAlwaysSetting;
+
+      expect(response.statusCode).toEqual(200);
+      expect(response.message).toEqual(SUCCESS_MESSAGE);
+      expect(callForwardSetting.enabled).toEqual(true);
+      expect(callForwardSetting.destination).toEqual('8006');
+      expect(webex.request).toBeCalledOnceWith({
+        method: HTTP_METHODS.GET,
+        uri: callForwardingUri,
+      });
+    });
+    
     it('Failure: Get Call Forward Always setting fails', async () => {
       const responsePayload = <WebexRequestPayload>(<unknown>{
         statusCode: 503,
