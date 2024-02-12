@@ -1,6 +1,4 @@
-// eslint-disable-next-line import/no-unresolved
 const { Executor } = require('@webex/cli-tools');
-// eslint-disable-next-line import/no-unresolved
 const { Yarn } = require('@webex/package-tools');
 
 describe('Yarn', () => {
@@ -9,11 +7,11 @@ describe('Yarn', () => {
 
   beforeEach(() => {
     spies.Executor = {
-      execute: spyOn(Executor, 'execute').and.resolveTo(executorExecuteResolve),
+      execute: jest.spyOn(Executor, 'execute').mockResolvedValue(executorExecuteResolve),
     };
 
     spies.JSON = {
-      parse: spyOn(JSON, 'parse').and.returnValue({ key: 'value' }),
+      parse: jest.spyOn(JSON, 'parse').mockReturnValue({ key: 'value' }),
     };
   });
 
@@ -31,11 +29,12 @@ describe('Yarn', () => {
     describe('list()', () => {
       it('should execute the default commands when no config is provided', () => Yarn.list()
         .then(() => {
-          const calledWith = spies.Executor.execute.calls.first().args[0];
+          const calledWith = spies.Executor.execute.mock.calls[0][0];
+          // const calledWith = spies.Executor.execute.mock.calls[0][0];;
 
-          expect(calledWith.includes('--json')).toBeTrue();
-          expect(calledWith.includes('--no-private')).toBeTrue();
-          expect(calledWith.includes('--recursive')).toBeTrue();
+          expect(calledWith.includes('--json')).toBeTruthy();
+          expect(calledWith.includes('--no-private')).toBeTruthy();
+          expect(calledWith.includes('--recursive')).toBeTruthy();
         }));
 
       it('should inject "--json" into the command when "json" boolean is "true"', () => {
@@ -43,9 +42,9 @@ describe('Yarn', () => {
 
         return Yarn.list({ json })
           .then(() => {
-            const calledWith = spies.Executor.execute.calls.first().args[0];
+            const calledWith = spies.Executor.execute.mock.calls[0][0];
 
-            expect(calledWith.includes('--json')).toBeTrue();
+            expect(calledWith.includes('--json')).toBeTruthy();
           });
       });
 
@@ -54,17 +53,17 @@ describe('Yarn', () => {
 
         return Yarn.list({ json })
           .then(() => {
-            const calledWith = spies.Executor.execute.calls.first().args[0];
+            const calledWith = spies.Executor.execute.mock.calls[0][0];
 
-            expect(calledWith.includes('--json')).toBeFalse();
+            expect(calledWith.includes('--json')).toBeFalsy();
           });
       });
 
       it('should inject "--json" into the command when "json" boolean is not provided', () => Yarn.list({})
         .then(() => {
-          const calledWith = spies.Executor.execute.calls.first().args[0];
+          const calledWith = spies.Executor.execute.mock.calls[0][0];
 
-          expect(calledWith.includes('--json')).toBeTrue();
+          expect(calledWith.includes('--json')).toBeTruthy();
         }));
 
       it('should inject "--no-private" into the command when "noPrivate" boolean is "true"', () => {
@@ -72,9 +71,9 @@ describe('Yarn', () => {
 
         return Yarn.list({ noPrivate })
           .then(() => {
-            const calledWith = spies.Executor.execute.calls.first().args[0];
+            const calledWith = spies.Executor.execute.mock.calls[0][0];
 
-            expect(calledWith.includes('--no-private')).toBeTrue();
+            expect(calledWith.includes('--no-private')).toBeTruthy();
           });
       });
 
@@ -83,17 +82,17 @@ describe('Yarn', () => {
 
         return Yarn.list({ noPrivate })
           .then(() => {
-            const calledWith = spies.Executor.execute.calls.first().args[0];
+            const calledWith = spies.Executor.execute.mock.calls[0][0];
 
-            expect(calledWith.includes('--no-private')).toBeFalse();
+            expect(calledWith.includes('--no-private')).toBeFalsy();
           });
       });
 
       it('should inject "--no-private" into the command when "noPrivate" boolean is not provided', () => Yarn.list({})
         .then(() => {
-          const calledWith = spies.Executor.execute.calls.first().args[0];
+          const calledWith = spies.Executor.execute.mock.calls[0][0];
 
-          expect(calledWith.includes('--no-private')).toBeTrue();
+          expect(calledWith.includes('--no-private')).toBeTruthy();
         }));
 
       it('should inject "--recursive" into the command when "recursive" boolean is "true"', () => {
@@ -101,9 +100,9 @@ describe('Yarn', () => {
 
         return Yarn.list({ recursive })
           .then(() => {
-            const calledWith = spies.Executor.execute.calls.first().args[0];
+            const calledWith = spies.Executor.execute.mock.calls[0][0];
 
-            expect(calledWith.includes('--recursive')).toBeTrue();
+            expect(calledWith.includes('--recursive')).toBeTruthy();
           });
       });
 
@@ -112,17 +111,17 @@ describe('Yarn', () => {
 
         return Yarn.list({ recursive })
           .then(() => {
-            const calledWith = spies.Executor.execute.calls.first().args[0];
+            const calledWith = spies.Executor.execute.mock.calls[0][0];
 
-            expect(calledWith.includes('--recursive')).toBeFalse();
+            expect(calledWith.includes('--recursive')).toBeFalsy();
           });
       });
 
       it('should inject "--recursive" into the command when "recursive" boolean is not provided', () => Yarn.list({})
         .then(() => {
-          const calledWith = spies.Executor.execute.calls.first().args[0];
+          const calledWith = spies.Executor.execute.mock.calls[0][0];
 
-          expect(calledWith.includes('--recursive')).toBeTrue();
+          expect(calledWith.includes('--recursive')).toBeTruthy();
         }));
 
       it('should inject "--since" with the provided value into the command when "since" is provided', () => {
@@ -130,17 +129,17 @@ describe('Yarn', () => {
 
         return Yarn.list({ since })
           .then(() => {
-            const calledWith = spies.Executor.execute.calls.first().args[0];
+            const calledWith = spies.Executor.execute.mock.calls[0][0];
 
-            expect(calledWith.includes(`--since="${since}"`)).toBeTrue();
+            expect(calledWith.includes(`--since="${since}"`)).toBeTruthy();
           });
       });
 
       it('should not inject "--since" into the command when "since" is not provided', () => Yarn.list({})
         .then(() => {
-          const calledWith = spies.Executor.execute.calls.first().args[0];
+          const calledWith = spies.Executor.execute.mock.calls[0][0];
 
-          expect(calledWith.includes('--since')).toBeFalse();
+          expect(calledWith.includes('--since')).toBeFalsy();
         }));
 
       it('should inject "--verbose" into the command when "verbose" boolean is "true"', () => {
@@ -148,9 +147,9 @@ describe('Yarn', () => {
 
         return Yarn.list({ verbose })
           .then(() => {
-            const calledWith = spies.Executor.execute.calls.first().args[0];
+            const calledWith = spies.Executor.execute.mock.calls[0][0];
 
-            expect(calledWith.includes('--verbose')).toBeTrue();
+            expect(calledWith.includes('--verbose')).toBeTruthy();
           });
       });
 
@@ -159,22 +158,23 @@ describe('Yarn', () => {
 
         return Yarn.list({ verbose })
           .then(() => {
-            const calledWith = spies.Executor.execute.calls.first().args[0];
+            const calledWith = spies.Executor.execute.mock.calls[0][0];
 
-            expect(calledWith.includes('--verbose')).toBeFalse();
+            expect(calledWith.includes('--verbose')).toBeFalsy();
           });
       });
 
       it('should inject "--verbose" into the command when "verbose" boolean is not provided', () => Yarn.list({})
         .then(() => {
-          const calledWith = spies.Executor.execute.calls.first().args[0];
+          const calledWith = spies.Executor.execute.mock.calls[0][0];
 
-          expect(calledWith.includes('--verbose')).toBeFalse();
+          expect(calledWith.includes('--verbose')).toBeFalsy();
         }));
 
       it('should attempt to parse the results of the "Executor.execute()" method', () => Yarn.view({})
         .then(() => {
-          expect(spies.JSON.parse).toHaveBeenCalledOnceWith(executorExecuteResolve);
+          expect(spies.JSON.parse).toHaveBeenCalledTimes(1);
+          expect(spies.JSON.parse).toHaveBeenCalledWith(executorExecuteResolve);
         }));
     });
 
@@ -184,9 +184,9 @@ describe('Yarn', () => {
 
         return Yarn.view({ package: pack })
           .then(() => {
-            const calledWith = spies.Executor.execute.calls.first().args[0];
+            const calledWith = spies.Executor.execute.mock.calls[0][0];
 
-            expect(calledWith.includes(pack)).toBeTrue();
+            expect(calledWith.includes(pack)).toBeTruthy();
           });
       });
 
@@ -195,9 +195,9 @@ describe('Yarn', () => {
 
         return Yarn.view({ version })
           .then(() => {
-            const calledWith = spies.Executor.execute.calls.first().args[0];
+            const calledWith = spies.Executor.execute.mock.calls[0][0];
 
-            expect(calledWith.includes('version')).toBeTrue();
+            expect(calledWith.includes('version')).toBeTruthy();
           });
       });
 
@@ -206,9 +206,9 @@ describe('Yarn', () => {
 
         return Yarn.view({ version })
           .then(() => {
-            const calledWith = spies.Executor.execute.calls.first().args[0];
+            const calledWith = spies.Executor.execute.mock.calls[0][0];
 
-            expect(calledWith.includes('version')).toBeFalse();
+            expect(calledWith.includes('version')).toBeFalsy();
           });
       });
 
@@ -217,9 +217,9 @@ describe('Yarn', () => {
 
         return Yarn.view({ distTags })
           .then(() => {
-            const calledWith = spies.Executor.execute.calls.first().args[0];
+            const calledWith = spies.Executor.execute.mock.calls[0][0];
 
-            expect(calledWith.includes('dist-tags')).toBeTrue();
+            expect(calledWith.includes('dist-tags')).toBeTruthy();
           });
       });
 
@@ -228,9 +228,9 @@ describe('Yarn', () => {
 
         return Yarn.view({ distTags })
           .then(() => {
-            const calledWith = spies.Executor.execute.calls.first().args[0];
+            const calledWith = spies.Executor.execute.mock.calls[0][0];
 
-            expect(calledWith.includes('dist-tags')).toBeFalse();
+            expect(calledWith.includes('dist-tags')).toBeFalsy();
           });
       });
 
@@ -239,9 +239,9 @@ describe('Yarn', () => {
 
         return Yarn.view({ json })
           .then(() => {
-            const calledWith = spies.Executor.execute.calls.first().args[0];
+            const calledWith = spies.Executor.execute.mock.calls[0][0];
 
-            expect(calledWith.includes('--json')).toBeTrue();
+            expect(calledWith.includes('--json')).toBeTruthy();
           });
       });
 
@@ -250,22 +250,23 @@ describe('Yarn', () => {
 
         return Yarn.view({ json })
           .then(() => {
-            const calledWith = spies.Executor.execute.calls.first().args[0];
+            const calledWith = spies.Executor.execute.mock.calls[0][0];
 
-            expect(calledWith.includes('--json')).toBeFalse();
+            expect(calledWith.includes('--json')).toBeFalsy();
           });
       });
 
       it('should not inject "--json" into the command by default', () => Yarn.view({})
         .then(() => {
-          const calledWith = spies.Executor.execute.calls.first().args[0];
+          const calledWith = spies.Executor.execute.mock.calls[0][0];
 
-          expect(calledWith.includes('--json')).toBeTrue();
+          expect(calledWith.includes('--json')).toBeTruthy();
         }));
 
       it('should attempt to parse the results of the "Executor.execute()" method', () => Yarn.view({})
         .then(() => {
-          expect(spies.JSON.parse).toHaveBeenCalledOnceWith(executorExecuteResolve);
+          expect(spies.JSON.parse).toHaveBeenCalledTimes(1);
+          expect(spies.JSON.parse).toHaveBeenCalledWith(executorExecuteResolve);
         }));
     });
   });

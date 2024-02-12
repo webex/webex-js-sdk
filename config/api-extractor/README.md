@@ -50,7 +50,7 @@ This package is recommended to be used along side the `@microsoft/api-documenter
     "build:docs": "{...other documentation build commands...} && yarn build:docs:api",
     "build:docs:api": "yarn build:docs:api:metadata && yarn build:docs:api:markdown",
     "build:docs:api:metadata": "api-extractor run -c ./api-extractor.config.json",
-    "build:docs:api:markdown": "api-documenter markdown --input-folder ./dist/docs/api/metadata --output-folder ./dist/docs/markdown",
+    "build:docs:api:markdown": "api-documenter markdown --input-folder ./docs/api/metadata --output-folder ./docs/api/markdown",
   }
 }
 ```

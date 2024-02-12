@@ -1,5 +1,4 @@
 const path = require('path');
-// eslint-disable-next-line import/no-unresolved
 const { scripts, Package, Yarn } = require('@webex/package-tools');
 
 describe('scripts', () => {
@@ -15,7 +14,7 @@ describe('scripts', () => {
     it('should include the fully qualified "package" option', () => {
       const found = scripts.config.options.find((option) => option.name === 'package');
 
-      expect(!!found).toBeTrue();
+      expect(!!found).toBeTruthy();
       expect(found.type).toBe('string');
       expect(found.required).toBe(true);
       expect(typeof found.description).toBe('string');
@@ -24,7 +23,7 @@ describe('scripts', () => {
     it('should include the fully qualified "script" option', () => {
       const found = scripts.config.options.find((option) => option.name === 'script');
 
-      expect(!!found).toBeTrue();
+      expect(!!found).toBeTruthy();
       expect(found.type).toBe('string');
       expect(found.required).toBe(true);
       expect(typeof found.description).toBe('string');
@@ -46,21 +45,21 @@ describe('scripts', () => {
 
     beforeEach(() => {
       spies.Yarn = {
-        list: spyOn(Yarn, 'list').and.resolveTo(listResolve),
+        list: jest.spyOn(Yarn, 'list').mockResolvedValue(listResolve),
       };
 
       spies.package = {
-        hasScript: spyOn(Package.prototype, 'hasScript').and.resolveTo(true),
+        hasScript: jest.spyOn(Package.prototype, 'hasScript').mockResolvedValue(true),
       };
 
       spies.path = {
-        join: spyOn(path, 'join').and.callFake((...params) => params.join('/')),
+        join: jest.spyOn(path, 'join').mockImplementation((...params) => params.join('/')),
       };
 
       spies.process = {
-        cwd: spyOn(process, 'cwd').and.returnValue(rootDir),
+        cwd: jest.spyOn(process, 'cwd').mockReturnValue(rootDir),
         stdout: {
-          write: spyOn(process.stdout, 'write').and.returnValue(),
+          write: jest.spyOn(process.stdout, 'write').mockReturnValue(),
         },
       };
     });
@@ -68,7 +67,7 @@ describe('scripts', () => {
     it('should call "Yarn.list()" with the since option', () => scripts.handler(options)
       .then(() => {
         expect(spies.Yarn.list).toHaveBeenCalledTimes(1);
-        expect(spies.Yarn.list).toHaveBeenCalledOnceWith({ noPrivate: false });
+        expect(spies.Yarn.list).toHaveBeenCalledWith({ noPrivate: false });
       }));
 
     it('should return a Promise that resolves to true if the script exists', () => scripts.handler(options)
@@ -77,7 +76,7 @@ describe('scripts', () => {
       }));
 
     it('should return a Promise that resolves to false if the script does not exist', () => {
-      spies.package.hasScript.and.resolveTo(false);
+      spies.package.hasScript.mockResolvedValue(false);
 
       return scripts.handler(options)
         .then((results) => {
@@ -85,13 +84,17 @@ describe('scripts', () => {
         });
     });
 
-    it('should return false if the provided package is not found', () => scripts.handler({ ...options, package: 'invalid-package' })
-      .then((results) => {
-        expect(results).toBe(false);
-      }));
+    it(
+      'should return false if the provided package is not found',
+      () => scripts.handler({ ...options, package: 'invalid-package' })
+        .then((results) => {
+          expect(results).toBe(false);
+        }),
+    );
 
     it('should call "process.stdout.write()" with the resulting value', () => scripts.handler(options)
       .then((results) => {
+        expect(spies.process.stdout.write).toHaveBeenCalledTimes(1);
         expect(spies.process.stdout.write).toHaveBeenCalledWith(`${results}`);
       }));
   });

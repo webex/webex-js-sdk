@@ -1,5 +1,4 @@
 const path = require('path');
-// eslint-disable-next-line import/no-unresolved
 const { increment, Package, Yarn } = require('@webex/package-tools');
 
 describe('increment', () => {
@@ -15,7 +14,7 @@ describe('increment', () => {
     it('should include the fully qualified "major" option', () => {
       const found = increment.config.options.find((option) => option.name === 'major');
 
-      expect(!!found).toBeTrue();
+      expect(!!found).toBeTruthy();
       expect(found.type).toBe('number');
       expect(typeof found.description).toBe('string');
     });
@@ -23,7 +22,7 @@ describe('increment', () => {
     it('should include the fully qualified "minor" option', () => {
       const found = increment.config.options.find((option) => option.name === 'minor');
 
-      expect(!!found).toBeTrue();
+      expect(!!found).toBeTruthy();
       expect(found.type).toBe('number');
       expect(typeof found.description).toBe('string');
     });
@@ -31,7 +30,7 @@ describe('increment', () => {
     it('should include the fully qualified "packages" option', () => {
       const found = increment.config.options.find((option) => option.name === 'packages');
 
-      expect(!!found).toBeTrue();
+      expect(!!found).toBeTruthy();
       expect(found.type).toBe('string...');
       expect(typeof found.description).toBe('string');
     });
@@ -39,7 +38,7 @@ describe('increment', () => {
     it('should include the fully qualified "patch" option', () => {
       const found = increment.config.options.find((option) => option.name === 'patch');
 
-      expect(!!found).toBeTrue();
+      expect(!!found).toBeTruthy();
       expect(found.type).toBe('number');
       expect(typeof found.description).toBe('string');
     });
@@ -47,7 +46,7 @@ describe('increment', () => {
     it('should include the fully qualified "release" option', () => {
       const found = increment.config.options.find((option) => option.name === 'release');
 
-      expect(!!found).toBeTrue();
+      expect(!!found).toBeTruthy();
       expect(found.type).toBe('number');
       expect(typeof found.description).toBe('string');
     });
@@ -55,7 +54,7 @@ describe('increment', () => {
     it('should include the fully qualified "since" option', () => {
       const found = increment.config.options.find((option) => option.name === 'since');
 
-      expect(!!found).toBeTrue();
+      expect(!!found).toBeTruthy();
       expect(found.type).toBe('string');
       expect(typeof found.description).toBe('string');
     });
@@ -63,7 +62,7 @@ describe('increment', () => {
     it('should include the fully qualified "tag" option', () => {
       const found = increment.config.options.find((option) => option.name === 'tag');
 
-      expect(!!found).toBeTrue();
+      expect(!!found).toBeTruthy();
       expect(found.type).toBe('string');
       expect(typeof found.description).toBe('string');
     });
@@ -89,43 +88,44 @@ describe('increment', () => {
 
     beforeEach(() => {
       spies.Yarn = {
-        list: spyOn(Yarn, 'list').and.resolveTo(listResolve),
+        list: jest.spyOn(Yarn, 'list').mockResolvedValue(listResolve),
       };
 
       spies.package = {
-        inspect: spyOn(Package.prototype, 'inspect').and.callFake(function func() { return Promise.resolve(this); }),
-        syncVersion: spyOn(Package.prototype, 'syncVersion').and.callFake(function func() { return Promise.resolve(this); }),
-        incrementVersion: spyOn(Package.prototype, 'incrementVersion').and.callFake(function func() { return this; }),
-        apply: spyOn(Package.prototype, 'apply').and.callFake(function func() { return Promise.resolve(this); }),
+        inspect: jest.spyOn(Package.prototype, 'inspect')
+          .mockImplementation(function func() { return Promise.resolve(this); }),
+        syncVersion: jest.spyOn(Package.prototype, 'syncVersion')
+          .mockImplementation(function func() { return Promise.resolve(this); }),
+        incrementVersion: jest.spyOn(Package.prototype, 'incrementVersion').mockReturnThis(),
+        apply: jest.spyOn(Package.prototype, 'apply').mockReturnThis(),
       };
 
       spies.path = {
-        join: spyOn(path, 'join').and.callFake((...params) => params.join('/')),
+        join: jest.spyOn(path, 'join').mockImplementation((...params) => params.join('/')),
       };
 
       spies.process = {
-        cwd: spyOn(process, 'cwd').and.returnValue(rootDir),
+        cwd: jest.spyOn(process, 'cwd').mockReturnValue(rootDir),
         stdout: {
-          write: spyOn(process.stdout, 'write').and.callFake(() => undefined),
+          write: jest.spyOn(process.stdout, 'write').mockReturnValue(undefined),
         },
       };
     });
 
     it('should call "Yarn.list()" with the since option', () => increment.handler(options)
       .then(() => {
-        expect(spies.Yarn.list).toHaveBeenCalledOnceWith(jasmine.objectContaining({
+        expect(spies.Yarn.list).toHaveBeenCalledTimes(1);
+        expect(spies.Yarn.list).toHaveBeenCalledWith(expect.objectContaining({
           since: options.since,
         }));
       }));
 
-    it('should return a Promise that resolves to the Package class Objects', () => {
-      increment.handler(options)
-        .then((results) => {
-          results.forEach((result) => {
-            expect(result instanceof Package).toBeTrue();
-          });
+    it('should return a Promise that resolves to the Package class Objects', () => increment.handler(options)
+      .then((results) => {
+        results.forEach((result) => {
+          expect(result instanceof Package).toBeTruthy();
         });
-    });
+      }));
 
     it('should call "package.inspect()" for each located package', () => increment.handler(options)
       .then(() => {
@@ -149,7 +149,7 @@ describe('increment', () => {
         expect(spies.package.incrementVersion).toHaveBeenCalledTimes(options.packages.length);
 
         results.forEach((item, index) => {
-          expect(spies.package.incrementVersion.calls.all()[index].args[0]).toEqual(expected);
+          expect(spies.package.incrementVersion).toHaveBeenNthCalledWith(index + 1, expected);
         });
       }));
 
@@ -158,22 +158,31 @@ describe('increment', () => {
 
       return increment.handler({ ...options, packages: targetPackages })
         .then((results) => {
-          expect(results.length).toBe(2);
+          expect(results).toHaveLength(2);
           expect(results[0].name).toBe(targetPackages[0]);
           expect(results[1].name).toBe(targetPackages[1]);
         });
     });
 
-    it('should write the list of packages updated and their corresponding new versions', () => increment.handler({ ...options })
-      .then(() => {
-        const generatedString = options.packages.map((pack) => `${pack} => 0.0.0-${options.tag.split('/').pop()}.0`).join('\n');
+    it(
+      'should write the list of packages updated and their corresponding new versions',
+      () => increment.handler({ ...options })
+        .then(() => {
+          const generatedString = options.packages.map(
+            (pack) => `${pack} => 0.0.0-${options.tag.split('/').pop()}.0`,
+          ).join('\n');
 
-        expect(spies.process.stdout.write).toHaveBeenCalledOnceWith(generatedString);
-      }));
+          expect(spies.process.stdout.write).toHaveBeenCalledTimes(1);
+          expect(spies.process.stdout.write).toHaveBeenCalledWith(generatedString);
+        }),
+    );
 
-    it('should return all packages when packages is not provided', () => increment.handler({ ...options, packages: undefined })
-      .then((results) => {
-        expect(results.length).toBe(3);
-      }));
+    it(
+      'should return all packages when packages is not provided',
+      () => increment.handler({ ...options, packages: undefined })
+        .then((results) => {
+          expect(results).toHaveLength(3);
+        }),
+    );
   });
 });

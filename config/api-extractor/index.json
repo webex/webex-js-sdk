@@ -6,16 +6,16 @@
   "apiReport": {
     "enabled": true,
     "reportFileName": "index.api.md",
-    "reportFolder": "<projectFolder>/dist/docs/api/api/metadata/",
-    "reportTempFolder": "<projectFolder>/dist/docs/api/api/metadata/"
+    "reportFolder": "<projectFolder>/docs/api/metadata/",
+    "reportTempFolder": "<projectFolder>/docs/api/metadata/"
   },
   "docModel": {
     "enabled": true,
-    "apiJsonFilePath": "<projectFolder>/dist/docs/api/metadata/index.api.json"
+    "apiJsonFilePath": "<projectFolder>/docs/api/metadata/index.api.json"
   },
   "dtsRollup": {
     "enabled": true,
-    "untrimmedFilePath": "<projectFolder>/dist/docs/api/metadata/index.d.ts"
+    "untrimmedFilePath": "<projectFolder>/docs/api/metadata/index.d.ts"
   },
   "tsdocMetadata": {},
   "mainEntryPointFilePath": "<projectFolder>/dist/types/index.d.ts",

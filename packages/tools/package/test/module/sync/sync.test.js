@@ -1,5 +1,4 @@
 const path = require('path');
-// eslint-disable-next-line import/no-unresolved
 const { sync, Package, Yarn } = require('@webex/package-tools');
 
 describe('sync', () => {
@@ -15,7 +14,7 @@ describe('sync', () => {
     it('should include the fully qualified "tag" option', () => {
       const found = sync.config.options.find((option) => option.name === 'tag');
 
-      expect(!!found).toBeTrue();
+      expect(!!found).toBeTruthy();
       expect(found.type).toBe('string');
       expect(typeof found.description).toBe('string');
     });
@@ -23,7 +22,7 @@ describe('sync', () => {
     it('should include the fully qualified "packages" option', () => {
       const found = sync.config.options.find((option) => option.name === 'packages');
 
-      expect(!!found).toBeTrue();
+      expect(!!found).toBeTruthy();
       expect(found.type).toBe('string...');
       expect(typeof found.description).toBe('string');
     });
@@ -55,57 +54,67 @@ describe('sync', () => {
 
     beforeEach(() => {
       spies.Yarn = {
-        list: spyOn(Yarn, 'list').and.resolveTo(listResolve),
-        view: spyOn(Yarn, 'view').and.resolveTo(viewResolve),
+        list: jest.spyOn(Yarn, 'list').mockResolvedValue(listResolve),
+        view: jest.spyOn(Yarn, 'view').mockResolvedValue(viewResolve),
       };
 
       spies.package = {
-        inspect: spyOn(Package.prototype, 'inspect').and.callFake(function func() { return Promise.resolve(this); }),
-        syncVersion: spyOn(Package.prototype, 'syncVersion').and.callFake(function func() { return Promise.resolve(this); }),
-        apply: spyOn(Package.prototype, 'apply').and.callFake(function func() { return Promise.resolve(this); }),
+        inspect: jest.spyOn(Package.prototype, 'inspect')
+          .mockImplementation(function func() { return Promise.resolve(this); }),
+        syncVersion: jest.spyOn(Package.prototype, 'syncVersion')
+          .mockImplementation(function func() { return Promise.resolve(this); }),
+        apply: jest.spyOn(Package.prototype, 'apply')
+          .mockImplementation(function func() { return Promise.resolve(this); }),
       };
 
       spies.path = {
-        join: spyOn(path, 'join').and.callFake((...params) => params.join('/')),
+        join: jest.spyOn(path, 'join').mockImplementation((...params) => params.join('/')),
       };
 
       spies.process = {
-        cwd: spyOn(process, 'cwd').and.returnValue(rootDir),
+        cwd: jest.spyOn(process, 'cwd').mockReturnValue(rootDir),
         stdout: {
-          write: spyOn(process.stdout, 'write').and.callFake(() => undefined),
+          write: jest.spyOn(process.stdout, 'write').mockImplementation(() => undefined),
         },
       };
     });
 
     it('should call "Yarn.list()"', () => sync.handler(options)
       .then(() => {
-        expect(spies.Yarn.list).toHaveBeenCalledOnceWith();
+        expect(spies.Yarn.list).toHaveBeenCalledTimes(1);
+        expect(spies.Yarn.list).toHaveBeenCalledWith();
       }));
 
-    it('should return a Promise that resolves to the Package class Objects', () => {
-      sync.handler(options)
-        .then((results) => {
-          results.forEach((result) => {
-            expect(result instanceof Package).toBeTrue();
-          });
+    it('should return a Promise that resolves to the Package class Objects', () => sync.handler(options)
+      .then((results) => {
+        results.forEach((result) => {
+          expect(result instanceof Package).toBeTruthy();
         });
-    });
+      }));
 
     it('should call "package.inspect()" for each located package', () => sync.handler(options)
       .then(() => {
         expect(spies.package.inspect).toHaveBeenCalledTimes(3);
       }));
 
-    it('should write the list of packages updated and their corresponding new versions', () => sync.handler({ ...options })
-      .then(() => {
-        const generatedString = options.packages.map((pack) => `${pack} => 0.0.0-${options.tag.split('/').pop()}.0`).join('\n');
+    it(
+      'should write the list of packages updated and their corresponding new versions',
+      () => sync.handler({ ...options })
+        .then(() => {
+          const generatedString = options.packages.map(
+            (pack) => `${pack} => 0.0.0-${options.tag.split('/').pop()}.0`,
+          ).join('\n');
 
-        expect(spies.process.stdout.write).toHaveBeenCalledWith(generatedString);
-      }));
+          expect(spies.process.stdout.write).toHaveBeenCalledWith(generatedString);
+        }),
+    );
 
-    it('should return all packages when packages is not provided', () => sync.handler({ ...options, packages: undefined })
-      .then((results) => {
-        expect(results.length).toBe(3);
-      }));
+    it(
+      'should return all packages when packages is not provided',
+      () => sync.handler({ ...options, packages: undefined })
+        .then((results) => {
+          expect(results).toHaveLength(3);
+        }),
+    );
   });
 });
