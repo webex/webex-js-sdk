@@ -1033,6 +1033,7 @@ export default class Meetings extends WebexPlugin {
    * @param {string} correlationId - the optional specified correlationId (callStateForMetrics.correlationId can be provided instead)
    * @param {Boolean} failOnMissingMeetingInfo - whether to throw an error if meeting info fails to fetch (for calls that are not 1:1 or content share)
    * @param {CallStateForMetrics} callStateForMetrics - information about call state for metrics
+   * @param {any} meetingInfo - pre-fetched meeting info
    * @returns {Promise<Meeting>} A new Meeting.
    * @public
    * @memberof Meetings
@@ -1044,7 +1045,8 @@ export default class Meetings extends WebexPlugin {
     infoExtraParams = {},
     correlationId: string = undefined,
     failOnMissingMeetingInfo = false,
-    callStateForMetrics: CallStateForMetrics = undefined
+    callStateForMetrics: CallStateForMetrics = undefined,
+    meetingInfo = undefined
   ) {
     // TODO: type should be from a dictionary
 
@@ -1103,7 +1105,8 @@ export default class Meetings extends WebexPlugin {
               useRandomDelayForInfo,
               infoExtraParams,
               callStateForMetrics,
-              failOnMissingMeetingInfo
+              failOnMissingMeetingInfo,
+              meetingInfo
             ).then((createdMeeting: any) => {
               // If the meeting was successfully created.
               if (createdMeeting && createdMeeting.on) {
@@ -1164,6 +1167,7 @@ export default class Meetings extends WebexPlugin {
    * @param {Object} infoExtraParams extra parameters to be provided when fetching meeting info
    * @param {CallStateForMetrics} callStateForMetrics - information about call state for metrics
    * @param {Boolean} failOnMissingMeetingInfo - whether to throw an error if meeting info fails to fetch (for calls that are not 1:1 or content share)
+   * @param {any} meetingInfo - pre-fetched meeting info
    * @returns {Promise} a new meeting instance complete with meeting info and destination
    * @private
    * @memberof Meetings
@@ -1174,7 +1178,8 @@ export default class Meetings extends WebexPlugin {
     useRandomDelayForInfo = false,
     infoExtraParams = {},
     callStateForMetrics: CallStateForMetrics = undefined,
-    failOnMissingMeetingInfo = false
+    failOnMissingMeetingInfo = false,
+    meetingInfo = undefined
   ) {
     const meeting = new Meeting(
       {
@@ -1221,7 +1226,17 @@ export default class Meetings extends WebexPlugin {
       // @ts-ignore
       const {enableUnifiedMeetings} = this.config.experimental;
 
-      if (enableUnifiedMeetings && !isMeetingActive && useRandomDelayForInfo && waitingTime > 0) {
+      if (meetingInfo) {
+        meeting.injectMeetingInfo(meetingInfo, {
+          extraParams: infoExtraParams,
+          sendCAevents: !!callStateForMetrics?.correlationId, // if client sends correlation id as argument of public create(), then it means that this meeting creation is part of a pre-join intent from user
+        });
+      } else if (
+        enableUnifiedMeetings &&
+        !isMeetingActive &&
+        useRandomDelayForInfo &&
+        waitingTime > 0
+      ) {
         meeting.fetchMeetingInfoTimeoutId = setTimeout(
           () =>
             meeting.fetchMeetingInfo({
