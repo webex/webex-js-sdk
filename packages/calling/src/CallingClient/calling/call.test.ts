@@ -180,9 +180,9 @@ describe('Call Tests', () => {
 
     const call = callManager.createCall(dest, CallDirection.OUTBOUND, deviceId, mockLineId);
 
-    const realMediaConnection = call['mediaConnection'];
+    const realMediaConnection = call.mediaConnection;
     // Set the mock mediaConnection object
-    call['mediaConnection'] = mockMediaConnection;
+    call.mediaConnection = mockMediaConnection;
 
     // Spy on the log.warn method
     const logWarnSpy = jest.spyOn(log, 'warn');
@@ -936,7 +936,6 @@ describe('State Machine handler tests', () => {
     call.sendCallStateMachineEvt(dummySetupEvent as CallEvent);
     expect(call['callStateMachine'].state.value).toBe('S_SEND_CALL_SETUP');
 
-    // dummyOfferEvent.type = 'E_SEND_ROAP_OFFER';
     call.sendMediaStateMachineEvt(dummyOfferEvent as RoapEvent);
 
     /**
@@ -952,7 +951,6 @@ describe('State Machine handler tests', () => {
     expect(mediaConnection.initiateOffer).toHaveBeenCalledTimes(1);
     expect(postMediaSpy).toHaveBeenLastCalledWith(dummyOfferEvent.data as RoapMessage);
 
-    // dummyAEvent.type = 'E_RECV_ROAP_ANSWER';
     call.sendMediaStateMachineEvt(dummyAnswerEvent as RoapEvent);
     expect(mediaConnection.roapMessageReceived).toHaveBeenLastCalledWith(
       dummyAnswerEvent.data as RoapMessage
@@ -963,7 +961,6 @@ describe('State Machine handler tests', () => {
 
     expect(call['mediaStateMachine'].state.value).toBe('S_ROAP_OK');
 
-    // dummyEvent.type = 'E_RECV_CALL_CONNECT';
     call.sendCallStateMachineEvt(dummyConnectEvent as CallEvent);
     expect(call['callStateMachine'].state.value).toBe('S_CALL_ESTABLISHED');
     expect(call.isConnected()).toBe(true);
