@@ -191,13 +191,13 @@ describe('Call Tests', () => {
     call.sendDigit(tone);
 
     // Expect the log.warn method to be called with the error message
-    expect(logWarnSpy).toHaveBeenLastCalledWith(
-      'Unable to send digit on call: Failed to send digit',
-      {file: 'call', method: 'sendDigit'}
-    );
+    expect(logWarnSpy).toHaveBeenLastCalledWith(`Unable to send digit on call: ${errorMessage}`, {
+      file: 'call',
+      method: 'sendDigit',
+    });
 
     // Restore the real mediaConnection object
-    call['mediaConnection'] = realMediaConnection;
+    call.mediaConnection = realMediaConnection;
 
     call.end();
     await waitForMsecs(50); // Need to add a small delay for Promise and callback to finish.
@@ -888,46 +888,63 @@ describe('State Machine handler tests', () => {
     expect(call['callStateMachine'].state.value).toBe('S_SEND_CALL_DISCONNECT');
   });
 
-  it('outgoing call with connect after setup, media established before connect ', async () => {
+  it('outgoing call where we receive connect directly after setup. Media established before connect. test call and media state changes', async () => {
     const statusPayload = <WebexRequestPayload>(<unknown>{
       statusCode: 200,
       body: mockStatusBody,
     });
-    const dummyEvent = {
+
+    const dummySetupEvent = {
       type: 'E_SEND_CALL_SETUP',
       data: undefined as any,
+    };
+
+    const dummyConnectEvent = {
+      type: 'E_RECV_CALL_CONNECT',
+      data: undefined as any,
+    };
+
+    const dummyOfferEvent = {
+      type: 'E_SEND_ROAP_OFFER',
+      data: undefined as any,
+    };
+
+    const dummyAnswerEvent = {
+      type: 'E_RECV_ROAP_ANSWER',
+      data: {
+        seq: 1,
+        messageType: 'ANSWER',
+        sdp: 'sdp',
+      },
     };
 
     const postMediaSpy = jest.spyOn(call as any, 'postMedia');
 
     webex.request.mockReturnValue(statusPayload);
 
-    call.sendCallStateMachineEvt(dummyEvent as CallEvent);
+    call.sendCallStateMachineEvt(dummySetupEvent as CallEvent);
     expect(call['callStateMachine'].state.value).toBe('S_SEND_CALL_SETUP');
-    // dummyEvent.type = 'E_RECV_CALL_PROGRESS';
-    // call.sendCallStateMachineEvt(dummyEvent as CallEvent);
-    // expect(call['callStateMachine'].state.value).toBe('S_RECV_CALL_PROGRESS');
 
-    dummyEvent.type = 'E_SEND_ROAP_OFFER';
-    call.sendMediaStateMachineEvt(dummyEvent as RoapEvent);
+    // dummyOfferEvent.type = 'E_SEND_ROAP_OFFER';
+    call.sendMediaStateMachineEvt(dummyOfferEvent as RoapEvent);
 
     /**
      * Since the event doesn't have any data above, we should request media sdk for an offer here.
      * The below event is expected to be called again my mediaSdk.
      */
-    dummyEvent.data = {
+    dummyOfferEvent.data = {
       seq: 1,
       messageType: 'OFFER',
       sdp: 'sdp',
     };
-    call.sendMediaStateMachineEvt(dummyEvent as RoapEvent);
+    call.sendMediaStateMachineEvt(dummyOfferEvent as RoapEvent);
     expect(mediaConnection.initiateOffer).toHaveBeenCalledTimes(1);
-    expect(postMediaSpy).toHaveBeenLastCalledWith(dummyEvent.data as RoapMessage);
+    expect(postMediaSpy).toHaveBeenLastCalledWith(dummyOfferEvent.data as RoapMessage);
 
-    dummyEvent.type = 'E_RECV_ROAP_ANSWER';
-    call.sendMediaStateMachineEvt(dummyEvent as RoapEvent);
+    // dummyAEvent.type = 'E_RECV_ROAP_ANSWER';
+    call.sendMediaStateMachineEvt(dummyAnswerEvent as RoapEvent);
     expect(mediaConnection.roapMessageReceived).toHaveBeenLastCalledWith(
-      dummyEvent.data as RoapMessage
+      dummyAnswerEvent.data as RoapMessage
     );
 
     const dummyOkEvent = {
@@ -946,8 +963,8 @@ describe('State Machine handler tests', () => {
 
     expect(call['mediaStateMachine'].state.value).toBe('S_ROAP_OK');
 
-    dummyEvent.type = 'E_RECV_CALL_CONNECT';
-    call.sendCallStateMachineEvt(dummyEvent as CallEvent);
+    // dummyEvent.type = 'E_RECV_CALL_CONNECT';
+    call.sendCallStateMachineEvt(dummyConnectEvent as CallEvent);
     expect(call['callStateMachine'].state.value).toBe('S_CALL_ESTABLISHED');
     expect(call.isConnected()).toBe(true);
 
