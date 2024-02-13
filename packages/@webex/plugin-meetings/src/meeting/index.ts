@@ -1396,9 +1396,10 @@ export default class Meeting extends StatelessWebexPlugin {
   /**
    * Set meeting info and trigger `MEETING_INFO_AVAILABLE` event
    * @param {any} info
+   * @param {string} meetingLookupUrl lookup url
    * @returns {void}
    */
-  private setMeetingInfo(info) {
+  private setMeetingInfo(info, meetingLookupUrl) {
     this.requiredCaptcha = null;
     if (
       this.passwordStatus === PASSWORD_STATUS.REQUIRED ||
@@ -1410,7 +1411,7 @@ export default class Meeting extends StatelessWebexPlugin {
     }
 
     this.parseMeetingInfo(info, this.destination);
-    this.meetingInfo = info ? {...info, meetingLookupUrl: info?.url} : null;
+    this.meetingInfo = info ? {...info, meetingLookupUrl} : null;
     this.meetingInfoFailureReason = MEETING_INFO_FAILURE_REASON.NONE;
 
     Trigger.trigger(
@@ -1426,16 +1427,15 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   public async injectMeetingInfo(info: any, fetchParams: FetchMeetingInfoParams): Promise<void> {
-    await this.prepForFetchMeetingInfo(fetchParams);
+    await this.prepForFetchMeetingInfo(fetchParams, 'injectMeetingInfo');
 
-    this.setMeetingInfo(info);
+    this.setMeetingInfo(info, undefined);
   }
 
-  private prepForFetchMeetingInfo({
-    password = null,
-    captchaCode = null,
-    extraParams = {},
-  }: FetchMeetingInfoParams): Promise<void> {
+  private prepForFetchMeetingInfo(
+    {password = null, captchaCode = null, extraParams = {}}: FetchMeetingInfoParams,
+    caller: string
+  ): Promise<void> {
     // when fetch meeting info is called directly by the client, we want to clear out the random timer for sdk to do it
     if (this.fetchMeetingInfoTimeoutId) {
       clearTimeout(this.fetchMeetingInfoTimeoutId);
@@ -1443,7 +1443,7 @@ export default class Meeting extends StatelessWebexPlugin {
     }
     if (captchaCode && !this.requiredCaptcha) {
       return Promise.reject(
-        new Error('fetchMeetingInfo() called with captchaCode when captcha was not required')
+        new Error(`${caller}() called with captchaCode when captcha was not required`)
       );
     }
     if (
@@ -1452,7 +1452,7 @@ export default class Meeting extends StatelessWebexPlugin {
       this.passwordStatus !== PASSWORD_STATUS.UNKNOWN
     ) {
       return Promise.reject(
-        new Error('fetchMeetingInfo() called with password when password was not required')
+        new Error(`${caller}() called with password when password was not required`)
       );
     }
 
@@ -1491,7 +1491,7 @@ export default class Meeting extends StatelessWebexPlugin {
         {meetingId: this.id, sendCAevents}
       );
 
-      this.setMeetingInfo(info.body);
+      this.setMeetingInfo(info?.body, info?.url);
 
       return Promise.resolve();
     } catch (err) {
@@ -1636,7 +1636,7 @@ export default class Meeting extends StatelessWebexPlugin {
    * @returns {Promise}
    */
   public async fetchMeetingInfo(options: FetchMeetingInfoParams) {
-    await this.prepForFetchMeetingInfo(options);
+    await this.prepForFetchMeetingInfo(options, 'fetchMeetingInfo');
 
     return this.fetchMeetingInfoInternal({
       destination: this.destination,
