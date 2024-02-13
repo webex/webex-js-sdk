@@ -213,6 +213,7 @@ function register() {
 
   webex.meetings.on('meeting:added', (m) => {
     const {type} = m;
+    console.log("meeting:added============================>test");
 
     if (type === 'INCOMING') {
       const newMeeting = m.meeting;
@@ -300,6 +301,7 @@ let currentMediaSettings = {};
 
 function setSelectedMeetingId(e) {
   selectedMeetingId = e.target.value;
+  // meeting = webex.meetings.getAllMeetings()[selectedMeetingId];
 }
 
 function generateMeetingsListItem(meeting) {
@@ -520,7 +522,7 @@ function joinMeeting({withMedia, withDevice} = {withMedia: false, withDevice: fa
   }
 
   if(joinOptions.receiveTranscription) {
-    startReceivingTranscription();
+    setTranscriptEvents();
   }
 
   const joinMeetingNow = () => {
@@ -671,7 +673,7 @@ const generalControlsMeetingsList = document.querySelector('#gc-meetings-list');
 const generalControlsRecStatus = document.querySelector('#gc-recording-status');
 const generalControlsDtmfTones = document.querySelector('#gc-dtmf-tones');
 const generalControlsDtmfStatus = document.querySelector('#gc-dtmf-status');
-const generalStopReceivingTranscription = document.querySelector('#gc-stop-receiving-transcription');
+const generalToggleTranscription = document.querySelector('#gc-toggle-transcription');
 const generalTranscriptionContent = document.querySelector('#gc-transcription-content');
 
 const sourceDevicesGetMedia = document.querySelector('#sd-get-media-devices');
@@ -936,7 +938,26 @@ function stopReceivingTranscription() {
   meeting.stopReceivingTranscription();
 }
 
-function startReceivingTranscription() {
+async function toggleTranscription(enable = false){
+  const isEnabled = generalToggleTranscription.dataset.enabled === "true";
+  if(isEnabled && !enable){
+    await meeting.stopTranscription();
+    generalToggleTranscription.dataset.enabled = "false";
+    generalToggleTranscription.innerText = "Start Transcription";
+  }
+  else{
+    let firsttime = generalToggleTranscription.dataset.firsttime;
+    if(firsttime === undefined){
+      setTranscriptEvents();
+      generalToggleTranscription.dataset.firsttime = "yes";
+    }
+    await meeting.startTranscription();
+    generalToggleTranscription.dataset.enabled = "true";
+    generalToggleTranscription.innerText = "Stop Transcription";
+  }
+}
+
+function setTranscriptEvents() {
   const meeting = getCurrentMeeting();
 
   if (meeting) {
@@ -954,7 +975,6 @@ function startReceivingTranscription() {
     meeting.on('meeting:receiveTranscription:started', (payload) => {
       fillLanguageDropDowns(voiceaCaptionLanguage,payload.captionLanguages);
       fillLanguageDropDowns(voiceaSpokenLanguage,payload.spokenLanguages);
-      generalStopReceivingTranscription.disabled = false;
       voiceaSpokenLanguage.disabled = false;
       voiceaSpokenLanguageBtn.disabled = false;
       voiceaCaptionLanguage.disabled = false;

@@ -434,13 +434,18 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
     activate: boolean,
     spokenLanguage: string
   ): undefined | Promise<void> => {
+    const transcribe = {transcribing: activate, caption: undefined};
+    if (activate === false) {
+      transcribe.caption = false;
+    }
+
     // @ts-ignore
     return this.request({
       method: 'PUT',
       // @ts-ignore
       url: `${this.webex.internal.llm.getLocusUrl()}/controls/`,
       body: {
-        transcribe: {transcribing: activate},
+        transcribe,
         spokenLanguage,
       },
     }).then((): undefined | Promise<void> => {

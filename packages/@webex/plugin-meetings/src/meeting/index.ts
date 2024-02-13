@@ -4652,14 +4652,14 @@ export default class Meeting extends StatelessWebexPlugin {
    * @returns {Promise<void>} a promise to open the WebSocket connection
    */
   public async startTranscription(options?: {spokenLanguage?: string}) {
-    if (this.isTranscriptionSupported() && this.isJoined()) {
+    if (this.isJoined()) {
       LoggerProxy.logger.info(
         'Meeting:index#startTranscription --> Attempting to enabled transcription!'
       );
 
       try {
         // @ts-ignore
-        await this.webex.internal.voicea.toggleTranscribing(true, options.spokenLanguage);
+        await this.webex.internal.voicea.toggleTranscribing(true, options?.spokenLanguage);
       } catch (error) {
         LoggerProxy.logger.error(`Meeting:index#startTranscription --> ${error}`);
         Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.RECEIVE_TRANSCRIPTION_FAILURE, {
@@ -4670,7 +4670,7 @@ export default class Meeting extends StatelessWebexPlugin {
       }
     } else {
       LoggerProxy.logger.error(
-        `Meeting:index#startTranscription --> transcript support : ${this.isTranscriptionSupported()} , meeting joined : ${this.isJoined()}`
+        `Meeting:index#startTranscription --> meeting joined : ${this.isJoined()}`
       );
     }
   }
@@ -4718,9 +4718,10 @@ export default class Meeting extends StatelessWebexPlugin {
    * the web socket connection properly
    * @returns {void}
    */
-  stopReceivingTranscription() {
+  async stopTranscription() {
     if (this.transcription) {
-      this.transcription.closeSocket();
+      // @ts-ignore
+      await this.webex.internal.voicea.toggleTranscribing(false);
     }
   }
 
@@ -4961,20 +4962,6 @@ export default class Meeting extends StatelessWebexPlugin {
         this.deferJoin = undefined;
 
         return Promise.reject(error);
-      })
-      .then(async (join) => {
-        // @ts-ignore - config coming from registerPlugin
-        await this.updateLLMConnection().catch((error) => {
-          LoggerProxy.logger.error('Meeting:index#join --> Update LLM Connection Failed', error);
-
-          Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.LLM_CONNECTION_AFTER_JOIN_FAILURE, {
-            correlation_id: this.correlationId,
-            reason: error?.message,
-            stack: error.stack,
-          });
-        });
-
-        return join;
       })
       .then((join) => {
         if (isBrowser) {

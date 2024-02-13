@@ -293,15 +293,16 @@
           <fieldset>
             <legend>Voicea Transcription</legend>
             <div class="u-mv">
-              You will see the formatted transcription below if you have,
+              You will see the formatted transcription below if you have <b>did one of the below</b>,
               <ul>
-                <li>Set the <span class="inline-code">receiveTranscription</span> config to <span class="inline-code">true</span> while joining the meeting</li>
-                <li>The meeting host has Webex Assistant Enabled</li>
-                <li>For more advanced Transcription Controls, scroll to <b>Advanced Meeting Controls</b> section</li>
+                <li>Set the <span class="inline-code">receiveTranscription</span> config to <span class="inline-code">true</span> before joining the meeting</li>
+                <li>Invoked <span class="inline-code">meeting.startTranscription()</span> after joining the meeting</li>
               </ul>
               <div id="voicea-transcription-formatted-display">
 
               </div>
+              <br>
+              <span style='color:red;font-weight: bold;'>Note</span> - Scroll to <b>Advanced Meeting Controls</b> section for transcription controls
             </div>
           </fieldset>
       </div>
@@ -838,10 +839,12 @@
             <legend>Transcription</legend>
             <div class="transcription">
               <div class="btn-group u-mb">
+                <button id="gc-toggle-transcription" type="button"
+                  onclick="toggleTranscription()" class="btn-code" data-enabled="false">Start Transcription</button>
+                <br>
                 Caption Language: <select id="voicea-caption-language" style="display: inline;" disabled></select><button id="voicea-caption-language-btn" onclick="setCaptionLanguage()" disabled>meeting.setCaptionLanguage()</button><br/>
                 Spoken Language: <select id="voicea-spoken-language" style="display: inline;" disabled></select><button id="voicea-spoken-language-btn"  onclick="setSpokenLanguage()" disabled>meeting.setSpokenLanguage()</button>
-                <button id="gc-stop-receiving-transcription" disabled="" type="button"
-                  onclick="stopReceivingTranscription()" class="btn-code">stopReceivingTranscription()</button>
+                <br>
               </div>
               <textarea id="gc-transcription-content"
                 disabled="">Transcription Content: Webex Assistant must be enabled, check the console!</textarea>
