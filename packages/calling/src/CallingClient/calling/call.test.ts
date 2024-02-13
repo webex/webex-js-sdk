@@ -918,6 +918,17 @@ describe('State Machine handler tests', () => {
       },
     };
 
+    const dummyOkEvent = {
+      type: 'E_ROAP_OK',
+      data: {
+        received: false,
+        message: {
+          seq: 1,
+          messageType: 'OK',
+        },
+      },
+    };
+
     const postMediaSpy = jest.spyOn(call as any, 'postMedia');
 
     webex.request.mockReturnValue(statusPayload);
@@ -946,17 +957,6 @@ describe('State Machine handler tests', () => {
     expect(mediaConnection.roapMessageReceived).toHaveBeenLastCalledWith(
       dummyAnswerEvent.data as RoapMessage
     );
-
-    const dummyOkEvent = {
-      type: 'E_ROAP_OK',
-      data: {
-        received: false,
-        message: {
-          seq: 1,
-          messageType: 'OK',
-        },
-      },
-    };
 
     call.sendMediaStateMachineEvt(dummyOkEvent as RoapEvent);
     expect(postMediaSpy).toHaveBeenLastCalledWith(dummyOkEvent.data.message as RoapMessage);
