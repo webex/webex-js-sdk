@@ -72,26 +72,26 @@ export class MuteState {
    * @returns {void}
    */
   public init(meeting: any) {
-    this.applyUnmuteAllowedToTrack(meeting);
+    this.applyUnmuteAllowedToStream(meeting);
 
-    // if we are remotely muted, we need to apply that to the local track now (mute on-entry)
+    // if we are remotely muted, we need to apply that to the local stream now (mute on-entry)
     if (this.state.server.remoteMute) {
-      this.muteLocalTrack(meeting, this.state.server.remoteMute, 'remotelyMuted');
+      this.muteLocalStream(meeting, this.state.server.remoteMute, 'remotelyMuted');
     }
 
     const initialMute =
       this.type === AUDIO
-        ? meeting.mediaProperties.audioTrack?.muted
-        : meeting.mediaProperties.videoTrack?.muted;
+        ? meeting.mediaProperties.audioStream?.muted
+        : meeting.mediaProperties.videoStream?.muted;
 
     LoggerProxy.logger.info(
-      `Meeting:muteState#init --> ${this.type}: local track initial mute state: ${initialMute}`
+      `Meeting:muteState#init --> ${this.type}: local stream initial mute state: ${initialMute}`
     );
 
     if (initialMute !== undefined) {
       this.state.client.localMute = initialMute;
     } else {
-      // there is no track, so it's like we are locally muted
+      // there is no stream, so it's like we are locally muted
       // (this is important especially for transcoded meetings, in which the SDP m-line direction always stays "sendrecv")
       this.state.client.localMute = true;
     }
@@ -99,15 +99,15 @@ export class MuteState {
   }
 
   /**
-   * This method needs to be called whenever the local audio/video track has changed.
-   * It reapplies the remote mute state onto the new track and also reads the current
-   * local mute state from the track and updates the internal state machine and sends
+   * This method needs to be called whenever the local audio/video stream has changed.
+   * It reapplies the remote mute state onto the new stream and also reads the current
+   * local mute state from the stream and updates the internal state machine and sends
    * any required requests to the server.
    *
    * @param {Object} meeting - the meeting object
    * @returns {void}
    */
-  public handleLocalTrackChange(meeting: any) {
+  public handleLocalStreamChange(meeting: any) {
     return this.init(meeting);
   }
 
@@ -125,37 +125,37 @@ export class MuteState {
   }
 
   /**
-   * Mutes/unmutes local track
+   * Mutes/unmutes local stream
    *
    * @param {Object} meeting - the meeting object
-   * @param {Boolean} mute - true to mute the track, false to unmute it
+   * @param {Boolean} mute - true to mute the stream, false to unmute it
    * @param {ServerMuteReason} reason - reason for muting/unmuting
    * @returns {void}
    */
-  private muteLocalTrack(meeting: any, mute: boolean, reason: ServerMuteReason) {
+  private muteLocalStream(meeting: any, mute: boolean, reason: ServerMuteReason) {
     this.ignoreMuteStateChange = true;
     if (this.type === AUDIO) {
-      meeting.mediaProperties.audioTrack?.setServerMuted(mute, reason);
+      meeting.mediaProperties.audioStream?.setServerMuted(mute, reason);
     } else {
-      meeting.mediaProperties.videoTrack?.setServerMuted(mute, reason);
+      meeting.mediaProperties.videoStream?.setServerMuted(mute, reason);
     }
     this.ignoreMuteStateChange = false;
   }
 
   /**
-   * This method should be called when the local track mute state is changed
+   * This method should be called when the local stream mute state is changed
    * @public
    * @memberof MuteState
    * @param {Object} [meeting] the meeting object
    * @param {Boolean} [mute] true for muting, false for unmuting request
    * @returns {void}
    */
-  public handleLocalTrackMuteStateChange(meeting?: object, mute?: boolean) {
+  public handleLocalStreamMuteStateChange(meeting?: object, mute?: boolean) {
     if (this.ignoreMuteStateChange) {
       return;
     }
     LoggerProxy.logger.info(
-      `Meeting:muteState#handleLocalTrackMuteStateChange --> ${this.type}: local track new mute state: ${mute}`
+      `Meeting:muteState#handleLocalStreamMuteStateChange --> ${this.type}: local stream new mute state: ${mute}`
     );
 
     this.state.client.localMute = mute;
@@ -164,16 +164,16 @@ export class MuteState {
   }
 
   /**
-   * Applies the current mute state to the local track (by enabling or disabling it accordingly)
+   * Applies the current mute state to the local stream (by enabling or disabling it accordingly)
    *
    * @public
    * @param {Object} [meeting] the meeting object
-   * @param {ServerMuteReason} reason - reason why we're applying our client state to the local track
+   * @param {ServerMuteReason} reason - reason why we're applying our client state to the local stream
    * @memberof MuteState
    * @returns {void}
    */
   public applyClientStateLocally(meeting?: any, reason?: ServerMuteReason) {
-    this.muteLocalTrack(meeting, this.state.client.localMute, reason);
+    this.muteLocalStream(meeting, this.state.client.localMute, reason);
   }
 
   /** Returns true if client is locally muted - it takes into account not just the client local mute state,
@@ -249,7 +249,7 @@ export class MuteState {
           `Meeting:muteState#applyClientStateToServer --> ${this.type}: error: ${e}`
         );
 
-        this.applyServerMuteToLocalTrack(meeting, 'clientRequestFailed');
+        this.applyServerMuteToLocalStream(meeting, 'clientRequestFailed');
       });
   }
 
@@ -325,28 +325,29 @@ export class MuteState {
       });
   }
 
-  /** Sets the mute state of the local track according to what server thinks is our state
+  /** Sets the mute state of the local stream according to what server thinks is our state
    * @param {Object} meeting - the meeting object
-   * @param {ServerMuteReason} serverMuteReason - reason why we're applying server mute to the local track
+   * @param {ServerMuteReason} serverMuteReason - reason why we're applying server mute to the local stream
    * @returns {void}
    */
-  private applyServerMuteToLocalTrack(meeting: any, serverMuteReason: ServerMuteReason) {
+  private applyServerMuteToLocalStream(meeting: any, serverMuteReason: ServerMuteReason) {
     const muted = this.state.server.localMute || this.state.server.remoteMute;
 
-    // update the local track mute state, but not this.state.client.localMute
-    this.muteLocalTrack(meeting, muted, serverMuteReason);
+    // update the local stream mute state, but not this.state.client.localMute
+    this.muteLocalStream(meeting, muted, serverMuteReason);
   }
 
-  /** Applies the current value for unmute allowed to the underlying track
+  /** Applies the current value for unmute allowed to the underlying stream
    *
    * @param {Meeting} meeting
    * @returns {void}
    */
-  private applyUnmuteAllowedToTrack(meeting: any) {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  private applyUnmuteAllowedToStream(meeting: any) {
     if (this.type === AUDIO) {
-      meeting.mediaProperties.audioTrack?.setUnmuteAllowed(this.state.server.unmuteAllowed);
+      meeting.mediaProperties.audioStream?.setUnmuteAllowed(this.state.server.unmuteAllowed);
     } else {
-      meeting.mediaProperties.videoTrack?.setUnmuteAllowed(this.state.server.unmuteAllowed);
+      meeting.mediaProperties.videoStream?.setUnmuteAllowed(this.state.server.unmuteAllowed);
     }
   }
 
@@ -366,11 +367,11 @@ export class MuteState {
     );
     if (unmuteAllowed !== undefined) {
       this.state.server.unmuteAllowed = unmuteAllowed;
-      this.applyUnmuteAllowedToTrack(meeting);
+      this.applyUnmuteAllowedToStream(meeting);
     }
     if (muted !== undefined) {
       this.state.server.remoteMute = muted;
-      this.applyServerMuteToLocalTrack(meeting, 'remotelyMuted');
+      this.applyServerMuteToLocalStream(meeting, 'remotelyMuted');
     }
   }
 

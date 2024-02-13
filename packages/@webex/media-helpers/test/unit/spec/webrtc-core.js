@@ -1,35 +1,35 @@
 import {assert, expect} from '@webex/test-helper-chai';
 import sinon from 'sinon';
 import {
-  LocalCameraTrack,
-  LocalMicrophoneTrack,
-  LocalMicrophoneTrackEvents,
-  LocalCameraTrackEvents,
-  LocalDisplayTrack,
-  LocalSystemAudioTrack,
-  createCameraTrack,
-  createMicrophoneTrack,
-  createDisplayTrack,
-  createDisplayTrackWithAudio,
-} from '../../../src/webrtc-core';
-import * as wcmetracks from '@webex/internal-media-core';
+  LocalCameraStream,
+  LocalMicrophoneStream,
+  LocalMicrophoneStreamEventNames,
+  LocalCameraStreamEventNames,
+  LocalDisplayStream,
+  LocalSystemAudioStream,
+  createCameraStream,
+  createMicrophoneStream,
+  createDisplayStream,
+  createDisplayStreamWithAudio,
+} from '@webex/media-helpers';
+import * as wcmestreams from '@webex/internal-media-core';
 
 describe('media-helpers', () => {
   describe('webrtc-core', () => {
     const classesToTest = [
       {
-        className: LocalCameraTrack,
-        title: 'LocalCameraTrack',
-        event: LocalCameraTrackEvents,
-        createFn: createCameraTrack,
-        spyFn: 'createCameraTrack',
+        className: LocalCameraStream,
+        title: 'LocalCameraStream',
+        event: LocalCameraStreamEventNames,
+        createFn: createCameraStream,
+        spyFn: 'createCameraStream',
       },
       {
-        className: LocalMicrophoneTrack,
-        title: 'LocalMicrophoneTrack',
-        event: LocalMicrophoneTrackEvents,
-        createFn: createMicrophoneTrack,
-        spyFn: 'createMicrophoneTrack',
+        className: LocalMicrophoneStream,
+        title: 'LocalMicrophoneStream',
+        event: LocalMicrophoneStreamEventNames,
+        createFn: createMicrophoneStream,
+        spyFn: 'createMicrophoneStream',
       },
     ];
 
@@ -41,33 +41,39 @@ describe('media-helpers', () => {
               label: 'fake track',
               id: 'fake track id',
               enabled: true,
+              muted: false,
+              addEventListener: sinon.stub(),
             },
           ]),
         };
-        const track = new className(fakeStream);
+        const stream = new className(fakeStream);
 
         afterEach(() => {
           sinon.restore();
         });
 
         it('by default allows unmuting', async () => {
-          assert.equal(track.isUnmuteAllowed(), true);
-          await track.setMuted(false);
+          assert.equal(stream.isUnmuteAllowed(), true);
+          await stream.setMuted(false);
         });
 
         it('rejects setMute(false) if unmute is not allowed', async () => {
-          track.setUnmuteAllowed(false);
+          stream.setUnmuteAllowed(false);
 
-          assert.equal(track.isUnmuteAllowed(), false);
-          const fn = () => track.setMuted(false);
+          assert.equal(stream.isUnmuteAllowed(), false);
+          const fn = () => stream.setMuted(false);
           expect(fn).to.throw(/Unmute is not allowed/);
         });
 
         it('resolves setMute(false) if unmute is allowed', async () => {
-          track.setUnmuteAllowed(true);
+          stream.setUnmuteAllowed(true);
 
-          assert.equal(track.isUnmuteAllowed(), true);
-          await track.setMuted(false);
+          assert.equal(stream.isUnmuteAllowed(), true);
+          await stream.setMuted(false);
+        });
+
+        it('returns a reasonable length string from JSON.stringify()', () => {
+          assert.isBelow(JSON.stringify(stream).length, 200);
         });
 
         describe('#setServerMuted', () => {
@@ -75,46 +81,46 @@ describe('media-helpers', () => {
             sinon.restore();
           });
 
-          const checkSetServerMuted = async (startMute, setMute, expectedCalled) => {
-            await track.setMuted(startMute);
+          const checkSetServerMuted = (startMute, setMute, expectedCalled) => {
+            stream.setMuted(startMute);
 
-            assert.equal(track.muted, startMute);
+            assert.equal(stream.muted, startMute);
 
             const handler = sinon.fake();
-            track.on(event.ServerMuted, handler);
+            stream.on(event.ServerMuted, handler);
 
-            await track.setServerMuted(setMute, 'remotelyMuted');
+            stream.setServerMuted(setMute, 'remotelyMuted');
 
-            assert.equal(track.muted, setMute);
+            assert.equal(stream.muted, setMute);
             if (expectedCalled) {
-              assert.calledOnceWithExactly(handler, {muted: setMute, reason: 'remotelyMuted'});
+              assert.calledOnceWithExactly(handler, setMute, 'remotelyMuted');
             } else {
               assert.notCalled(handler);
             }
           };
 
           it('tests true to false', async () => {
-            await checkSetServerMuted(true, false, true);
+            checkSetServerMuted(true, false, true);
           });
 
           it('tests false to true', async () => {
-            await checkSetServerMuted(false, true, true);
+            checkSetServerMuted(false, true, true);
           });
 
           it('tests true to true', async () => {
-            await checkSetServerMuted(true, true, false);
+            checkSetServerMuted(true, true, false);
           });
 
           it('tests false to false', async () => {
-            await checkSetServerMuted(false, false, false);
+            checkSetServerMuted(false, false, false);
           });
         });
 
-        describe('#wcmeCreateMicrophoneTrack, #wcmeCreateCameraTrack', () => {
+        describe('#wcmeCreateMicrophoneStream, #wcmeCreateCameraStream', () => {
           it('checks creating tracks', async () => {
-            const constraints = {devideId: 'abc'};
+            const constraints = {deviceId: 'abc'};
 
-            const spy = sinon.stub(wcmetracks, spyFn).returns('something');
+            const spy = sinon.stub(wcmestreams, spyFn).returns('something');
             const result = createFn(constraints);
 
             assert.equal(result, 'something');
@@ -124,21 +130,21 @@ describe('media-helpers', () => {
       })
     );
 
-    describe('createDisplayTrack', () => {
-      it('checks createDisplayTrack', async () => {
-        const spy = sinon.stub(wcmetracks, 'createDisplayTrack').returns('something');
-        const result = createDisplayTrack();
+    describe('createDisplayStream', () => {
+      it('checks createDisplayStream', async () => {
+        const spy = sinon.stub(wcmestreams, 'createDisplayStream').returns('something');
+        const result = createDisplayStream();
         assert.equal(result, 'something');
-        assert.calledOnceWithExactly(spy, LocalDisplayTrack);
+        assert.calledOnceWithExactly(spy, LocalDisplayStream);
       });
     });
-    
-    describe('createDisplayTrackWithAudio', () => {
-      it('checks createDisplayTrackWithAudio', async () => {
-        const spy = sinon.stub(wcmetracks, 'createDisplayTrackWithAudio').returns('something');
-        const result = createDisplayTrackWithAudio();
+
+    describe('createDisplayStreamWithAudio', () => {
+      it('checks createDisplayStreamWithAudio', async () => {
+        const spy = sinon.stub(wcmestreams, 'createDisplayStreamWithAudio').returns('something');
+        const result = createDisplayStreamWithAudio();
         assert.equal(result, 'something');
-        assert.calledOnceWithExactly(spy, LocalDisplayTrack, LocalSystemAudioTrack);
+        assert.calledOnceWithExactly(spy, LocalDisplayStream, LocalSystemAudioStream);
       });
     });
   });

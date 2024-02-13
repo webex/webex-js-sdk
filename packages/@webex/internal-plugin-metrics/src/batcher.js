@@ -40,6 +40,7 @@ const MetricsBatcher = Batcher.extend({
       body: {
         metrics: payload,
       },
+      waitForServiceTimeout: this.webex.config.metrics.waitForServiceTimeout,
     });
   },
 

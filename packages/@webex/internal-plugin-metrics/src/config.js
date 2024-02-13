@@ -19,6 +19,7 @@ export default {
     batcherMaxCalls: 50,
     batcherMaxWait: 1500,
     batcherRetryPlateau: 32000,
+    waitForServiceTimeout: 30,
   },
 };
 

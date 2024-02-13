@@ -3,30 +3,35 @@ import {registerPlugin} from '@webex/webex-core';
 
 import Meetings from './meetings';
 import config from './config';
+import {LocusRetryStatusInterceptor} from './interceptors';
 
 registerPlugin('meetings', Meetings, {
   config,
+  interceptors: {
+    LocusRetryStatusInterceptor: LocusRetryStatusInterceptor.create,
+  },
 });
 
 export {
   getDevices,
-  LocalTrack,
-  LocalDisplayTrack,
-  LocalSystemAudioTrack,
-  LocalTrackEvents,
-  type TrackMuteEvent,
+  LocalStream,
+  LocalDisplayStream,
+  LocalSystemAudioStream,
+  LocalStreamEventNames,
+  StreamEventNames,
   type ServerMuteReason,
-  LocalMicrophoneTrackEvents,
-  LocalCameraTrackEvents,
-  LocalMicrophoneTrack,
-  LocalCameraTrack,
-  createMicrophoneTrack,
-  createCameraTrack,
-  createDisplayTrack,
-  createDisplayTrackWithAudio,
+  LocalMicrophoneStreamEventNames,
+  LocalCameraStreamEventNames,
+  LocalMicrophoneStream,
+  LocalCameraStream,
+  createMicrophoneStream,
+  createCameraStream,
+  createDisplayStream,
+  createDisplayStreamWithAudio,
   FacingMode,
   DisplaySurface,
   PresetCameraConstraints,
+  type VideoContentHint,
 } from '@webex/media-helpers';
 
 export default Meetings;

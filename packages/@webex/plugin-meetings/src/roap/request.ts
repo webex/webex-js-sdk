@@ -18,23 +18,10 @@ export default class RoapRequest extends StatelessWebexPlugin {
     let joinCookie;
 
     // @ts-ignore
-    const reachabilityData = await this.webex.boundedStorage
-      .get(REACHABILITY.namespace, REACHABILITY.localStorageResult)
-      .catch(() => {});
+    const reachabilityResult = await this.webex.meetings.reachability.getReachabilityResults();
 
-    if (reachabilityData) {
-      try {
-        const reachabilityResult = JSON.parse(reachabilityData);
-
-        /* istanbul ignore else */
-        if (reachabilityResult && Object.keys(reachabilityResult).length) {
-          localSdp.reachability = reachabilityResult;
-        }
-      } catch (e) {
-        LoggerProxy.logger.error(
-          `Roap:request#attachReachabilityData --> Error in parsing reachability data: ${e}`
-        );
-      }
+    if (reachabilityResult && Object.keys(reachabilityResult).length) {
+      localSdp.reachability = reachabilityResult;
     }
 
     // @ts-ignore

@@ -185,6 +185,52 @@ describe('plugin-logger', () => {
       assert.lengthOf(webex.logger.buffer, 1);
       assert.match(webex.logger.buffer[0][3], /WebexHttpError/g);
     });
+
+    it('formats objects as strings passed to the logger for readability not [Object object]', async () => {
+      webex.config.logger.level = 'trace';
+      const obj = {
+        headers: {
+          authorization: 'Bearer',
+          trackingid: '123',
+        },
+        test: 'object',
+        nested: {
+          test2: 'object2',
+        }
+      }
+
+      webex.logger.log('foo', 'bar', obj);
+      assert.lengthOf(webex.logger.buffer, 1);
+      assert.lengthOf(webex.logger.buffer[0], 6);
+      assert.deepEqual(webex.logger.buffer[0][2], 'wx-js-sdk');
+      assert.deepEqual(webex.logger.buffer[0][3], 'foo');
+      assert.deepEqual(webex.logger.buffer[0][4], 'bar');
+      assert.deepEqual(webex.logger.buffer[0][5], '{"headers":{"trackingid":"123"},"test":"object","nested":{"test2":"object2"}}');
+    });
+
+    it('formats objects as strings passed to the logger for readability not [Object object] w/ circular reference', async () => {
+      webex.config.logger.level = 'trace';
+      const obj = {
+        headers: {
+          authorization: 'Bearer',
+          trackingid: '123',
+        },
+        test: 'object',
+        nested: {
+          test2: 'object2',
+        }
+      }
+
+      obj.selfReference = obj;
+
+      webex.logger.log('foo', 'bar', obj);
+      assert.lengthOf(webex.logger.buffer, 1);
+      assert.lengthOf(webex.logger.buffer[0], 6);
+      assert.deepEqual(webex.logger.buffer[0][2], 'wx-js-sdk');
+      assert.deepEqual(webex.logger.buffer[0][3], 'foo');
+      assert.deepEqual(webex.logger.buffer[0][4], 'bar');
+      assert.deepEqual(webex.logger.buffer[0][5], '{"headers":{"trackingid":"123"},"test":"object","nested":{"test2":"object2"}}');
+    });
   });
 
   // We can't manipulate NODE_ENV in karma, tests, so run this chunk only in
@@ -626,6 +672,26 @@ describe('plugin-logger', () => {
 
       webex.logger.log('test@cisco.com');
       assert.calledWith(console.log, 'wx-js-sdk', '[REDACTED]');
+    });
+
+    it('redact MTID', () => {
+      webex.config.logger.level = 'trace';
+
+      const destination = 'https://example.com/example/j.php?MTID=m678957bc1eff989c2176b43ead9d46b5';
+
+      webex.logger.log(
+        `Info Unable to fetch meeting info for ${destination}.`
+      );
+      assert.calledWith(console.log, 'wx-js-sdk', 'Info Unable to fetch meeting info for https://example.com/example/j.php?MTID=[REDACTED]');
+
+      webex.logger.log('https://example.com/example/j.php?MTID=m678957bc1eff989c2176b43ead9d46b5&abcdefg');
+      assert.calledWith(console.log, 'wx-js-sdk', 'https://example.com/example/j.php?MTID=[REDACTED]&abcdefg');
+
+      webex.logger.log('https://example.com/example/j.php?MTID=m678957bc1eff989c2176b43ead9d46b5$abcdefg');
+      assert.calledWith(console.log, 'wx-js-sdk', 'https://example.com/example/j.php?MTID=[REDACTED]$abcdefg');
+
+      webex.logger.log('https://example.com/example/j.php?MTID=m678957bc1eff989c2176b43ead9d46b5#abcdefg');
+      assert.calledWith(console.log, 'wx-js-sdk', 'https://example.com/example/j.php?MTID=[REDACTED]#abcdefg');
     });
 
     it('handle circular references', () => {
