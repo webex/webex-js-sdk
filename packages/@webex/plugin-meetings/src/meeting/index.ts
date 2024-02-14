@@ -587,7 +587,6 @@ export default class Meeting extends StatelessWebexPlugin {
   screenShareFloorState: ScreenShareFloorStatus;
   statsAnalyzer: StatsAnalyzer;
   transcription: Transcription;
-  receiveTranscription: boolean;
   updateMediaConnections: (mediaConnections: any[]) => void;
   userDisplayHints: any;
   endCallInitJoinReq: any;
@@ -2346,7 +2345,7 @@ export default class Meeting extends StatelessWebexPlugin {
         // user need to be joined to start the llm and receive transcription
         if (this.isJoined()) {
           // @ts-ignore - config coming from registerPlugin
-          if (transcribing && !this.transcription && this.config.receiveTranscription) {
+          if (transcribing && !this.transcription) {
             this.startTranscription();
           } else if (!transcribing && this.transcription) {
             Trigger.trigger(
@@ -3013,13 +3012,11 @@ export default class Meeting extends StatelessWebexPlugin {
     this.locusInfo.on(LOCUSINFO.EVENTS.SELF_ADMITTED_GUEST, async (payload) => {
       this.stopKeepAlive();
       // @ts-ignore
-      if (!this.transcription && this.config.receiveTranscription) {
-        if (this.isTranscriptionSupported()) {
-          await this.startTranscription();
-          LoggerProxy.logger.info(
-            'Meeting:index#setUpLocusInfoSelfListener --> enabled to receive transcription for guest user!'
-          );
-        }
+      if (!this.transcription && this.isTranscriptionSupported()) {
+        await this.startTranscription();
+        LoggerProxy.logger.info(
+          'Meeting:index#setUpLocusInfoSelfListener --> enabled to receive transcription for guest user!'
+        );
       }
 
       if (payload) {
@@ -4922,7 +4919,6 @@ export default class Meeting extends StatelessWebexPlugin {
         joinSuccess(join);
 
         this.deferJoin = undefined;
-        this.receiveTranscription = !!options.receiveTranscription;
 
         return join;
       })
@@ -4962,25 +4958,6 @@ export default class Meeting extends StatelessWebexPlugin {
         this.deferJoin = undefined;
 
         return Promise.reject(error);
-      })
-      .then((join) => {
-        if (isBrowser) {
-          // @ts-ignore - config coming from registerPlugin
-          if (this.config.receiveTranscription || options.receiveTranscription) {
-            if (this.isTranscriptionSupported()) {
-              LoggerProxy.logger.info(
-                'Meeting:index#join --> Attempting to enabled to receive transcription!'
-              );
-              this.getWebexObject().internal.voicea.announce();
-            }
-          }
-        } else {
-          LoggerProxy.logger.error(
-            'Meeting:index#join --> Receving transcription is not supported on this platform'
-          );
-        }
-
-        return join;
       });
   }
 

@@ -376,7 +376,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
         this.captionStatus = TURN_ON_CAPTION_STATUS.ENABLED;
         this.announce();
       })
-      .catch((e) => {
+      .catch(() => {
         this.captionStatus = TURN_ON_CAPTION_STATUS.IDLE;
         throw new Error('turn on captions fail ');
       });
@@ -430,22 +430,19 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
    * @param {string} spokenLanguage language code for spoken language
    * @returns {Promise}
    */
-  public toggleTranscribing = async (
+  public toggleTranscribing = (
     activate: boolean,
     spokenLanguage: string
   ): undefined | Promise<void> => {
-    const transcribe = {transcribing: activate, caption: undefined};
-    if (activate === false) {
-      transcribe.caption = false;
-    }
-
     // @ts-ignore
     return this.request({
       method: 'PUT',
       // @ts-ignore
       url: `${this.webex.internal.llm.getLocusUrl()}/controls/`,
       body: {
-        transcribe,
+        transcribe: {
+          transcribing: activate,
+        },
         spokenLanguage,
       },
     }).then((): undefined | Promise<void> => {

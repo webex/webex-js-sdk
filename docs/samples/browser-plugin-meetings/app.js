@@ -276,7 +276,6 @@ const meetingsJoinPinElm = document.querySelector('#meetings-join-pin');
 const meetingsJoinModeratorElm = document.querySelector('#meetings-join-moderator');
 const meetingsBreakoutSupportElm = document.querySelector('#meetings-join-breakout-enabled');
 const meetingsMediaInLobbySupportElm = document.querySelector('#meetings-media-in-lobby-enabled');
-const meetingsEnableTranscription = document.querySelector('#meetings-enable-transcription');
 const meetingsJoinMultistreamElm = document.querySelector('#meetings-join-multistream');
 const meetingsListCollectElm = document.querySelector('#meetings-list-collect');
 const meetingsListMsgElm = document.querySelector('#meetings-list-msg');
@@ -301,7 +300,7 @@ let currentMediaSettings = {};
 
 function setSelectedMeetingId(e) {
   selectedMeetingId = e.target.value;
-  // meeting = webex.meetings.getAllMeetings()[selectedMeetingId];
+  meeting = webex.meetings.getAllMeetings()[selectedMeetingId];
 }
 
 function generateMeetingsListItem(meeting) {
@@ -512,17 +511,12 @@ function joinMeeting({withMedia, withDevice} = {withMedia: false, withDevice: fa
     breakoutsSupported: meetingsBreakoutSupportElm.checked,
     moveToResource: false,
     resourceId,
-    receiveTranscription: meetingsEnableTranscription.checked,
     locale: 'en_UK', // audio disclaimer language
     deviceCapabilities: ['SERVER_AUDIO_ANNOUNCEMENT_SUPPORTED'], // audio disclaimer toggle
   };
 
   if (meetingsMediaInLobbySupportElm.checked) {
     joinOptions.deviceCapabilities.push('CONFLUENCE_IN_LOBBY_SUPPORTED');
-  }
-
-  if(joinOptions.receiveTranscription) {
-    setTranscriptEvents();
   }
 
   const joinMeetingNow = () => {
