@@ -128,6 +128,10 @@ function requestWithAuth(options) {
  * @property {string} [roles] defaults to []
  * @property {string} [scope] defaults to WEBEX_SCOPE
  * @property {string} [type] used to create a machine
+ * @property {boolean} [forceCreate] force creates the user, to be used in conjunction with ensureExistsInWebexSites
+ * @property {boolean} [ensureExistsInWebexSites] syncs the user in provided webexSites (syncInWebexSites)
+ * @property {Array.<string>} [syncInWebexSites] used to define in which sites account should be synced
+ * @property {string} [orgAdminAuthorization] bearer token of org admin to use syncInWebexSites
  */
 
 /**
@@ -200,6 +204,10 @@ export function createTestUser(options = {}) {
     roles: options.roles || [],
     scopes: options.scope || process.env.WEBEX_SCOPE,
     type: options.type,
+    forceCreate: options.forceCreate || false,
+    ensureExistsInWebexSites: options.ensureExistsInWebexSites || false,
+    syncInWebexSites: options.syncInWebexSites,
+    orgAdminAuthorization: options.orgAdminAuthorization,
   };
 
   return requestWithAuth({
