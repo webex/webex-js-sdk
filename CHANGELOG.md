@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.346](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.345...v3.0.0-beta.346) (2024-02-14)
+
+
+### Features
+
+* added more options to test user creation ([#3380](https://github.com/webex/webex-js-sdk/issues/3380)) ([db0a2b3](https://github.com/webex/webex-js-sdk/commit/db0a2b3e66926b8ad857a14ea9b693d6e5736def))
+
 ## [3.0.0-beta.345](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.343...v3.0.0-beta.345) (2024-02-14)
 
 
