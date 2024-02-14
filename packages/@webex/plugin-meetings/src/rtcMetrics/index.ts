@@ -1,5 +1,6 @@
 /* eslint-disable class-methods-use-this */
 import {CallDiagnosticUtils} from '@webex/internal-plugin-metrics';
+import uuid from 'uuid';
 import RTC_METRICS from './constants';
 
 /**
@@ -19,6 +20,8 @@ export default class RtcMetrics {
 
   correlationId: string;
 
+  connectionId: string;
+
   /**
    * Initialize the interval.
    *
@@ -32,6 +35,7 @@ export default class RtcMetrics {
     this.meetingId = meetingId;
     this.webex = webex;
     this.correlationId = correlationId;
+    this.connectionId = uuid.v4();
     // Send the first set of metrics at 5 seconds in the case of a user leaving the call shortly after joining.
     setTimeout(this.sendMetricsInQueue.bind(this), 5 * 1000);
   }
@@ -60,7 +64,18 @@ export default class RtcMetrics {
       if (data.name === 'stats-report') {
         data.payload = data.payload.map(this.anonymizeIp);
       }
+
       this.metricsQueue.push(data);
+
+      // If a connection fails, send the rest of the metrics in queue and get a new connection id.
+      if (
+        data.name === 'onconnectionstatechange' &&
+        data.payload[0] &&
+        JSON.parse(data.payload[0]).value === 'failed'
+      ) {
+        this.sendMetricsInQueue();
+        this.connectionId = uuid.v4();
+      }
     }
   }
 
@@ -111,10 +126,11 @@ export default class RtcMetrics {
         metrics: [
           {
             type: 'webrtc',
-            version: '1.0.1',
+            version: '1.1.0',
             userId: this.webex.internal.device.userId,
             meetingId: this.meetingId,
             correlationId: this.correlationId,
+            connectionId: this.connectionId,
             data: this.metricsQueue,
           },
         ],
