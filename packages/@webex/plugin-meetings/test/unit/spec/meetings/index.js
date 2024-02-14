@@ -559,7 +559,7 @@ describe('plugin-meetings', () => {
               });
             });
           });
-          describe('destroy non active locus meetings', () => {
+          describe('when destroying meeting is needed', () => {
             let destroySpy;
 
             const meetingCollectionMeetings =  {
@@ -593,8 +593,21 @@ describe('plugin-meetings', () => {
               );
               MeetingUtil.cleanUp = sinon.stub().returns(Promise.resolve());
             });
-            it('destroy only non active locus meetings and keep active locus meetings and any other non-locus meeting', async () => {
+
+            it('destroy any meeting that has no active locus url if keepOnlyLocusMeetings', async () => {
               await webex.meetings.syncMeetings();
+              assert.calledOnce(webex.meetings.request.getActiveMeetings);
+              assert.calledOnce(webex.meetings.meetingCollection.getAll);
+              assert.calledWith(destroySpy, meetingCollectionMeetings.noLongerValidLocusMeeting);
+              assert.calledWith(destroySpy, meetingCollectionMeetings.otherNonLocusMeeting1);
+              assert.calledWith(destroySpy, meetingCollectionMeetings.otherNonLocusMeeting2);
+              assert.callCount(destroySpy, 3);
+
+              assert.callCount(MeetingUtil.cleanUp, 3);
+            })
+
+            it('destroy any LOCUS meetings that have no active locus url if !keepOnlyLocusMeetings', async () => {
+              await webex.meetings.syncMeetings(false);
               assert.calledOnce(webex.meetings.request.getActiveMeetings);
               assert.calledOnce(webex.meetings.meetingCollection.getAll);
               assert.calledWith(destroySpy, meetingCollectionMeetings.noLongerValidLocusMeeting);
@@ -779,7 +792,7 @@ describe('plugin-meetings', () => {
       });
     });
     describe('Private Detailed API and Helpers', () => {
-      describe('#listenForEvents', () => {
+      describe.only('#listenForEvents', () => {
         beforeEach(() => {
           webex.meetings.handleLocusMercury = sinon.stub().returns(true);
           webex.internal.mercury.on = sinon.stub().returns((type, callback) => {
