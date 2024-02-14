@@ -792,7 +792,7 @@ describe('plugin-meetings', () => {
       });
     });
     describe('Private Detailed API and Helpers', () => {
-      describe.only('#listenForEvents', () => {
+      describe('#listenForEvents', () => {
         beforeEach(() => {
           webex.meetings.handleLocusMercury = sinon.stub().returns(true);
           webex.internal.mercury.on = sinon.stub().returns((type, callback) => {
