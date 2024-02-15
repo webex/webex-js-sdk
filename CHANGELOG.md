@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.347](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.346...v3.0.0-beta.347) (2024-02-15)
+
+
+### Bug Fixes
+
+* **meetings:** add keepOnlyLocusMeetings prop to syncMeetings ([#3384](https://github.com/webex/webex-js-sdk/issues/3384)) ([366138a](https://github.com/webex/webex-js-sdk/commit/366138acf17735dbdbf2a664ee02702568d3588b))
+
 ## [3.0.0-beta.346](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.345...v3.0.0-beta.346) (2024-02-14)
 
 
