@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.60.1](https://github.com/webex/webex-js-sdk/compare/v2.60.0...v2.60.1) (2024-02-15)
+
+
+### Bug Fixes
+
+* **meeting:** allow unmute request from user when unmuteAllowed becomes null ([#3382](https://github.com/webex/webex-js-sdk/issues/3382)) ([71f4205](https://github.com/webex/webex-js-sdk/commit/71f42052716634e901cf130b27584ba20f17c831))
+
 ## [2.60.0](https://github.com/webex/webex-js-sdk/compare/v2.59.8...v2.60.0) (2024-01-17)
 
 
