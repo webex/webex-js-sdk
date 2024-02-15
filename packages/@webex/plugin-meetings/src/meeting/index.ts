@@ -175,14 +175,13 @@ export type CaptionData = {
 };
 
 export type Transcription = {
-  closeSocket(): unknown;
   languageOptions: {
-    captionLanguages?: string;
+    captionLanguages?: string; // list of supported caption languages from backend
     maxLanguages?: number;
-    spokenLanguages?: Array<string>;
-    currentCaptionLanguage?: string;
-    requestedCaptionLanguage?: string;
-    currentSpokenLanguage?: string;
+    spokenLanguages?: Array<string>; // list of supported spoken languages from backend
+    currentCaptionLanguage?: string; // current caption language - default is english
+    requestedCaptionLanguage?: string; // requested caption language
+    currentSpokenLanguage?: string; // current spoken language - default is english
   };
   status: string;
   isListening: boolean;
@@ -618,6 +617,91 @@ export default class Meeting extends StatelessWebexPlugin {
   allowMediaInLobby: boolean;
   turnDiscoverySkippedReason: string;
   turnServerUsed: boolean;
+  areVoiceaEventsSetup = false;
+  voiceaListenerCallbacks: object = {
+    [VOICEAEVENTS.VOICEA_ANNOUNCEMENT]: (payload: Transcription['languageOptions']) => {
+      this.transcription.languageOptions = payload;
+      Trigger.trigger(
+        this,
+        {
+          file: 'meeting/index',
+          function: 'setUpVoiceaListeners',
+        },
+        EVENT_TRIGGERS.MEETING_STARTED_RECEIVING_TRANSCRIPTION,
+        payload
+      );
+    },
+    [VOICEAEVENTS.CAPTION_LANGUAGE_UPDATE]: (payload) => {
+      const {statusCode} = payload;
+
+      if (statusCode === 200) {
+        this.transcription.languageOptions = {
+          ...this.transcription.languageOptions,
+          currentCaptionLanguage:
+            this.transcription.languageOptions.requestedCaptionLanguage ?? LANGUAGE_ENGLISH,
+        };
+        Trigger.trigger(
+          this,
+          {
+            file: 'meeting/index',
+            function: 'setUpVoiceaListeners',
+          },
+          EVENT_TRIGGERS.MEETING_CAPTION_LANGUAGE_CHANGED,
+          {languageCode: this.transcription.languageOptions.currentCaptionLanguage}
+        );
+      } else {
+        // TODO Handle Status Code and alert - SPARK-370923
+      }
+    },
+    [VOICEAEVENTS.SPOKEN_LANGUAGE_UPDATE]: (payload) => {
+      const {languageCode} = payload;
+
+      if (languageCode) {
+        this.transcription.languageOptions = {
+          ...this.transcription.languageOptions,
+          currentSpokenLanguage: languageCode,
+        };
+      }
+
+      Trigger.trigger(
+        this,
+        {
+          file: 'meeting/index',
+          function: 'setUpVoiceaListeners',
+        },
+        EVENT_TRIGGERS.MEETING_SPOKEN_LANGUAGE_CHANGED,
+        {languageCode}
+      );
+    },
+    [VOICEAEVENTS.CAPTIONS_TURNED_ON]: () => {
+      this.transcription.status = TURN_ON_CAPTION_STATUS.ENABLED;
+    },
+    [VOICEAEVENTS.EVA_COMMAND]: (payload) => {
+      const {data} = payload;
+
+      this.transcription.isListening = !!data.isListening;
+      this.transcription.commandText = data.text ?? '';
+    },
+    [VOICEAEVENTS.NEW_CAPTION]: (data) => {
+      processNewCaptions({data, meeting: this});
+      Trigger.trigger(
+        this,
+        {
+          file: 'meeting/index',
+          function: 'setUpVoiceaListeners',
+        },
+        EVENT_TRIGGERS.MEETING_CAPTION_RECEIVED,
+        {
+          captions: this.transcription.captions,
+          interimCaptions: this.transcription.interimCaptions,
+        }
+      );
+    },
+    [VOICEAEVENTS.HIGHLIGHT_CREATED]: async (data) => {
+      await processHighlightCreated({data, meeting: this});
+    },
+  };
+
   private retriedWithTurnServer: boolean;
   private sendSlotManager: SendSlotManager = new SendSlotManager(LoggerProxy);
   private deferSDPAnswer?: Defer; // used for waiting for a response
@@ -1790,7 +1874,6 @@ export default class Meeting extends StatelessWebexPlugin {
     this.setUpLocusInfoMediaInactiveListener();
     this.setUpBreakoutsListener();
     this.setUpInterpretationListener();
-    this.setUpVoiceaListener();
   }
 
   /**
@@ -1923,104 +2006,48 @@ export default class Meeting extends StatelessWebexPlugin {
    * @private
    * @memberof Meeting
    */
-  private setUpVoiceaListener() {
+  private setUpVoiceaListeners() {
     // @ts-ignore
     this.webex.internal.voicea.on(
       VOICEAEVENTS.VOICEA_ANNOUNCEMENT,
-      (payload: Transcription['languageOptions']) => {
-        this.transcription.languageOptions = payload;
-        Trigger.trigger(
-          this,
-          {
-            file: 'meeting/index',
-            function: 'setUpVoiceaListener',
-          },
-          EVENT_TRIGGERS.MEETING_STARTED_RECEIVING_TRANSCRIPTION,
-          payload
-        );
-      }
+      this.voiceaListenerCallbacks[VOICEAEVENTS.VOICEA_ANNOUNCEMENT]
     );
 
     // @ts-ignore
-    this.webex.internal.voicea.on(VOICEAEVENTS.CAPTION_LANGUAGE_UPDATE, (payload) => {
-      const {statusCode} = payload;
-
-      if (statusCode === 200) {
-        this.transcription.languageOptions = {
-          ...this.transcription.languageOptions,
-          currentCaptionLanguage:
-            this.transcription.languageOptions.requestedCaptionLanguage ?? LANGUAGE_ENGLISH,
-        };
-        Trigger.trigger(
-          this,
-          {
-            file: 'meeting/index',
-            function: 'setUpVoiceaListener',
-          },
-          EVENT_TRIGGERS.MEETING_CAPTION_LANGUAGE_CHANGED,
-          {languageCode: this.transcription.languageOptions.currentCaptionLanguage}
-        );
-      } else {
-        // TODO Handle Status Code and alert - SPARK-370923
-      }
-    });
+    this.webex.internal.voicea.on(
+      VOICEAEVENTS.CAPTION_LANGUAGE_UPDATE,
+      this.voiceaListenerCallbacks[VOICEAEVENTS.CAPTION_LANGUAGE_UPDATE]
+    );
 
     // @ts-ignore
-    this.webex.internal.voicea.on(VOICEAEVENTS.SPOKEN_LANGUAGE_UPDATE, (payload) => {
-      const {languageCode} = payload;
-
-      if (languageCode) {
-        this.transcription.languageOptions = {
-          ...this.transcription.languageOptions,
-          currentSpokenLanguage: languageCode,
-        };
-      }
-
-      Trigger.trigger(
-        this,
-        {
-          file: 'meeting/index',
-          function: 'setUpVoiceaListener',
-        },
-        EVENT_TRIGGERS.MEETING_SPOKEN_LANGUAGE_CHANGED,
-        {languageCode}
-      );
-    });
+    this.webex.internal.voicea.on(
+      VOICEAEVENTS.SPOKEN_LANGUAGE_UPDATE,
+      this.voiceaListenerCallbacks[VOICEAEVENTS.SPOKEN_LANGUAGE_UPDATE]
+    );
 
     // @ts-ignore
-    this.webex.internal.voicea.on(VOICEAEVENTS.CAPTIONS_TURNED_ON, () => {
-      this.transcription.status = TURN_ON_CAPTION_STATUS.ENABLED;
-    });
+    this.webex.internal.voicea.on(
+      VOICEAEVENTS.CAPTIONS_TURNED_ON,
+      this.voiceaListenerCallbacks[VOICEAEVENTS.CAPTIONS_TURNED_ON]
+    );
 
     // @ts-ignore
-    this.webex.internal.voicea.on(VOICEAEVENTS.EVA_COMMAND, (payload) => {
-      const {data} = payload;
-
-      this.transcription.isListening = !!data.isListening;
-      this.transcription.commandText = data.text ?? '';
-    });
+    this.webex.internal.voicea.on(
+      VOICEAEVENTS.EVA_COMMAND,
+      this.voiceaListenerCallbacks[VOICEAEVENTS.EVA_COMMAND]
+    );
 
     // @ts-ignore
-    this.webex.internal.voicea.on(VOICEAEVENTS.NEW_CAPTION, (data) => {
-      processNewCaptions({data, meeting: this});
-      Trigger.trigger(
-        this,
-        {
-          file: 'meeting/index',
-          function: 'setUpVoiceaListener',
-        },
-        EVENT_TRIGGERS.MEETING_CAPTION_RECEIVED,
-        {
-          captions: this.transcription.captions,
-          interimCaptions: this.transcription.interimCaptions,
-        }
-      );
-    });
+    this.webex.internal.voicea.on(
+      VOICEAEVENTS.NEW_CAPTION,
+      this.voiceaListenerCallbacks[VOICEAEVENTS.NEW_CAPTION]
+    );
 
     // @ts-ignore
-    this.webex.internal.voicea.on(VOICEAEVENTS.HIGHLIGHT_CREATED, async (data) => {
-      await processHighlightCreated({data, meeting: this});
-    });
+    this.webex.internal.voicea.on(
+      VOICEAEVENTS.HIGHLIGHT_CREATED,
+      this.voiceaListenerCallbacks[VOICEAEVENTS.HIGHLIGHT_CREATED]
+    );
   }
 
   /**
@@ -4655,6 +4682,10 @@ export default class Meeting extends StatelessWebexPlugin {
       );
 
       try {
+        if (!this.areVoiceaEventsSetup) {
+          this.setUpVoiceaListeners();
+          this.areVoiceaEventsSetup = true;
+        }
         // @ts-ignore
         await this.webex.internal.voicea.toggleTranscribing(true, options?.spokenLanguage);
       } catch (error) {
@@ -4715,10 +4746,51 @@ export default class Meeting extends StatelessWebexPlugin {
    * the web socket connection properly
    * @returns {void}
    */
-  async stopTranscription() {
+  stopTranscription() {
     if (this.transcription) {
       // @ts-ignore
-      await this.webex.internal.voicea.toggleTranscribing(false);
+      this.webex.internal.voicea.off(
+        VOICEAEVENTS.VOICEA_ANNOUNCEMENT,
+        this.voiceaListenerCallbacks[VOICEAEVENTS.VOICEA_ANNOUNCEMENT]
+      );
+
+      // @ts-ignore
+      this.webex.internal.voicea.off(
+        VOICEAEVENTS.CAPTION_LANGUAGE_UPDATE,
+        this.voiceaListenerCallbacks[VOICEAEVENTS.CAPTION_LANGUAGE_UPDATE]
+      );
+
+      // @ts-ignore
+      this.webex.internal.voicea.off(
+        VOICEAEVENTS.SPOKEN_LANGUAGE_UPDATE,
+        this.voiceaListenerCallbacks[VOICEAEVENTS.SPOKEN_LANGUAGE_UPDATE]
+      );
+
+      // @ts-ignore
+      this.webex.internal.voicea.off(
+        VOICEAEVENTS.CAPTIONS_TURNED_ON,
+        this.voiceaListenerCallbacks[VOICEAEVENTS.CAPTIONS_TURNED_ON]
+      );
+
+      // @ts-ignore
+      this.webex.internal.voicea.off(
+        VOICEAEVENTS.EVA_COMMAND,
+        this.voiceaListenerCallbacks[VOICEAEVENTS.EVA_COMMAND]
+      );
+
+      // @ts-ignore
+      this.webex.internal.voicea.off(
+        VOICEAEVENTS.NEW_CAPTION,
+        this.voiceaListenerCallbacks[VOICEAEVENTS.NEW_CAPTION]
+      );
+
+      // @ts-ignore
+      this.webex.internal.voicea.off(
+        VOICEAEVENTS.HIGHLIGHT_CREATED,
+        this.voiceaListenerCallbacks[VOICEAEVENTS.HIGHLIGHT_CREATED]
+      );
+      this.areVoiceaEventsSetup = false;
+      this.triggerStopReceivingTranscriptionEvent();
     }
   }
 
@@ -4731,7 +4803,7 @@ export default class Meeting extends StatelessWebexPlugin {
   private triggerStopReceivingTranscriptionEvent() {
     LoggerProxy.logger.info(`
       Meeting:index#stopReceivingTranscription -->
-      closed transcription LLM web socket connection successfully.`);
+      closed voicea event listeners successfully.`);
 
     Trigger.trigger(
       this,
@@ -7695,8 +7767,7 @@ export default class Meeting extends StatelessWebexPlugin {
     this.queuedMediaUpdates = [];
 
     if (this.transcription) {
-      this.transcription.closeSocket();
-      this.triggerStopReceivingTranscriptionEvent();
+      this.stopTranscription();
       this.transcription = undefined;
     }
   };
