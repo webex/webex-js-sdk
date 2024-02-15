@@ -716,5 +716,17 @@ describe('plugin-mercury', () => {
             .then((wsUrl) => assert.match(wsUrl, /multipleConnections/)));
       });
     });
+
+    describe('ping pong latency event is forwarded', () => {
+      it('should forward ping pong latency event', () => {
+        const spy = sinon.spy();
+
+        mercury.on('ping-pong-latency', spy);
+
+        return mercury.connect().then(() => {
+          assert.calledWith(spy, 0);
+        });
+      });
+    });
   });
 });
