@@ -39,7 +39,6 @@ describe('internal-plugin-metrics', () => {
         },
       };
       clearEmptyKeysRecursively(obj);
-      console.log(obj);
       assert.deepEqual(obj, {nested: {arr: ['test']}});
     });
 
@@ -369,7 +368,7 @@ describe('internal-plugin-metrics', () => {
     })
   });
 
-  describe('setMetricTimings', async () => {
+  describe('setMetricTimings', () => {
     let webex: any;
 
     const check = (options: any, expectedOptions: any) => {

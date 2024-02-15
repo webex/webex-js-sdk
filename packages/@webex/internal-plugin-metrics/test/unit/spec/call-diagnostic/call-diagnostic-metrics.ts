@@ -13,6 +13,7 @@ import CONFIG from '../../../../src/config';
 
 //@ts-ignore
 global.window = {location: {hostname: 'whatever'}};
+process.env.NODE_ENV = 'test';
 
 const {getOSName, getOSVersion, getBrowserName, getBrowserVersion} = BrowserDetection();
 const userAgent = `webex-js-sdk/test-webex-version client=Cantina; (os=${getOSName()}/${
@@ -73,6 +74,11 @@ describe('internal-plugin-metrics', () => {
             userId: 'userId',
             url: 'deviceUrl',
             orgId: 'orgId',
+          },
+        },
+        config: {
+          metrics: {
+            ...CONFIG.metrics,
           },
         },
         meetings: {
@@ -508,7 +514,7 @@ describe('internal-plugin-metrics', () => {
       });
     });
 
-    describe.skip('#submitClientEvent', () => {
+    describe('#submitClientEvent', () => {
       it('should submit client event successfully with meetingId', () => {
         const prepareDiagnosticEventSpy = sinon.spy(cd, 'prepareDiagnosticEvent');
         const submitToCallDiagnosticsSpy = sinon.spy(cd, 'submitToCallDiagnostics');
@@ -685,7 +691,7 @@ describe('internal-plugin-metrics', () => {
         ]);
       });
 
-      it('should submit client event successfully with correlationId, webexConferenceIdStr and globalMeetingId', () => {
+      it('should submit client event successfully with correlationId, webexConferenceIdStr and globalMeetingId', async () => {
         const prepareDiagnosticEventSpy = sinon.spy(cd, 'prepareDiagnosticEvent');
         const submitToCallDiagnosticsSpy = sinon.spy(cd, 'submitToCallDiagnostics');
         const generateClientEventErrorPayloadSpy = sinon.spy(cd, 'generateClientEventErrorPayload');
@@ -999,8 +1005,6 @@ describe('internal-plugin-metrics', () => {
           name: 'client.alert.displayed',
           options,
         });
-
-        console.log(submitToCallDiagnosticsSpy.getCalls()[0].args[0].event.errors);
 
         assert.calledWith(submitToCallDiagnosticsSpy, {
           event: {
@@ -1326,7 +1330,7 @@ describe('internal-plugin-metrics', () => {
     });
 
     describe('#submitMQE', () => {
-      it.skip('submits the event correctly', () => {
+      it('submits the event correctly', () => {
         const prepareDiagnosticEventSpy = sinon.spy(cd, 'prepareDiagnosticEvent');
         const submitToCallDiagnosticsSpy = sinon.spy(cd, 'submitToCallDiagnostics');
         const getErrorPayloadForClientErrorCodeSpy = sinon.spy(
@@ -1909,7 +1913,7 @@ describe('internal-plugin-metrics', () => {
       });
     });
 
-    describe.skip('#buildClientEventFetchRequestOptions', () => {
+    describe('#buildClientEventFetchRequestOptions', () => {
       [undefined, 'myPreLoginId'].forEach((preLoginId) => {
         it('returns expected options without preLoginId', async () => {
           const options = {
