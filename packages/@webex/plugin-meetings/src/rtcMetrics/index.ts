@@ -3,6 +3,18 @@ import {CallDiagnosticUtils} from '@webex/internal-plugin-metrics';
 import uuid from 'uuid';
 import RTC_METRICS from './constants';
 
+const parseJsonPayload = (payload: any[]): any | null => {
+  try {
+    if (payload && payload[0]) {
+      return JSON.parse(payload[0]);
+    }
+
+    return null;
+  } catch (_) {
+    return null;
+  }
+};
+
 /**
  * Rtc Metrics
  */
@@ -35,7 +47,7 @@ export default class RtcMetrics {
     this.meetingId = meetingId;
     this.webex = webex;
     this.correlationId = correlationId;
-    this.connectionId = uuid.v4();
+    this.setNewConnectionId();
     // Send the first set of metrics at 5 seconds in the case of a user leaving the call shortly after joining.
     setTimeout(this.sendMetricsInQueue.bind(this), 5 * 1000);
   }
@@ -67,14 +79,19 @@ export default class RtcMetrics {
 
       this.metricsQueue.push(data);
 
-      // If a connection fails, send the rest of the metrics in queue and get a new connection id.
-      if (
-        data.name === 'onconnectionstatechange' &&
-        data.payload[0] &&
-        JSON.parse(data.payload[0]).value === 'failed'
-      ) {
-        this.sendMetricsInQueue();
-        this.connectionId = uuid.v4();
+      try {
+        // If a connection fails, send the rest of the metrics in queue and get a new connection id.
+        const parsedPayload = parseJsonPayload(data.payload);
+        if (
+          data.name === 'onconnectionstatechange' &&
+          parsedPayload &&
+          parsedPayload.value === 'failed'
+        ) {
+          this.sendMetricsInQueue();
+          this.setNewConnectionId();
+        }
+      } catch (e) {
+        console.error(e);
       }
     }
   }
@@ -106,6 +123,15 @@ export default class RtcMetrics {
     }
 
     return JSON.stringify(data);
+  }
+
+  /**
+   * Set a new connection id.
+   *
+   * @returns {void}
+   */
+  private setNewConnectionId() {
+    this.connectionId = uuid.v4();
   }
 
   /**

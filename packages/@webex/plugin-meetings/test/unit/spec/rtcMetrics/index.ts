@@ -95,6 +95,14 @@ describe('RtcMetrics', () => {
     assert.callCount(webex.request, 1);
   });
 
+  it('should have the same connectionId on success', () => {
+    const originalId = metrics.connectionId;
+
+    metrics.addMetrics(FAKE_METRICS_ITEM);
+
+    assert.strictEqual(originalId, metrics.connectionId);
+  });
+
   it('should have a new connectionId on failure', () => {
     const originalId = metrics.connectionId;
 
