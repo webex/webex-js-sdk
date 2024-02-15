@@ -82,7 +82,7 @@ class MuteState {
       `Meeting:muteState#handleClientRequest --> ${this.type}: user requesting new mute state: ${mute}`
     );
 
-    if (!mute && !this.state.server.unmuteAllowed) {
+    if (!mute && this.state.server.unmuteAllowed !== null && !this.state.server.unmuteAllowed) {
       return Promise.reject(
         new PermissionError('User is not allowed to unmute self (hard mute feature is being used)')
       );
