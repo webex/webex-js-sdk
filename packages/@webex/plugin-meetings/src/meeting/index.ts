@@ -566,6 +566,7 @@ export default class Meeting extends StatelessWebexPlugin {
   meetingState: any;
   permissionToken: string;
   permissionTokenPayload: any;
+  permissionTokenReceivedLocalTime: number;
   resourceId: any;
   resourceUrl: string;
   selfId: string;
@@ -3540,6 +3541,7 @@ export default class Meeting extends StatelessWebexPlugin {
    */
   public setPermissionTokenPayload(permissionToken: string) {
     this.permissionTokenPayload = jwt.decode(permissionToken);
+    this.permissionTokenReceivedLocalTime = new Date().getTime();
   }
 
   /**
@@ -4248,6 +4250,14 @@ export default class Meeting extends StatelessWebexPlugin {
     } = {}
   ) {
     const {mediaOptions, joinOptions} = options;
+
+    if (!mediaOptions?.allowMediaInLobby) {
+      return Promise.reject(
+        new ParameterError('joinWithMedia() can only be used with allowMediaInLobby set to true')
+      );
+    }
+
+    LoggerProxy.logger.info('Meeting:index#joinWithMedia called');
 
     return this.join(joinOptions)
       .then((joinResponse) =>
@@ -7971,24 +7981,31 @@ export default class Meeting extends StatelessWebexPlugin {
    * Gets permission token expiry information including timeLeft, expiryTime, currentTime
    * (from the time the function has been fired)
    *
-   * @returns {object} containing timeLeft, expiryTime, currentTime
+   * @returns {object} permissionTokenExpiryInfo
+   * @returns {number} permissionTokenExpiryInfo.timeLeft The time left for token to expire
+   * @returns {number} permissionTokenExpiryInfo.expiryTime The expiry time of permission token from the server
+   * @returns {number} permissionTokenExpiryInfo.currentTime The current time of the local machine
    */
   public getPermissionTokenExpiryInfo() {
     if (!this.permissionTokenPayload) {
       return undefined;
     }
 
-    const permissionTokenExpValue = Number(this.permissionTokenPayload.exp);
+    const permissionTokenExpiryFromServer = Number(this.permissionTokenPayload.exp);
+    const permissionTokenIssuedTimeFromServer = Number(this.permissionTokenPayload.iat);
+
+    const shiftInTime = this.permissionTokenReceivedLocalTime - permissionTokenIssuedTimeFromServer;
 
     // using new Date instead of Date.now() to allow for accurate unit testing
     // https://github.com/sinonjs/fake-timers/issues/321
-    const now = new Date().getTime();
+    const currentTime = new Date().getTime();
 
-    // substract current time from the permissionTokenExp
-    // (permissionTokenExp is a epoch timestamp, not a time to live duration)
-    const timeLeft = (permissionTokenExpValue - now) / 1000;
+    // adjusted time is calculated in case your machine time is wrong
+    const adjustedCurrentTime = currentTime - shiftInTime;
 
-    return {timeLeft, expiryTime: permissionTokenExpValue, currentTime: now};
+    const timeLeft = (permissionTokenExpiryFromServer - adjustedCurrentTime) / 1000;
+
+    return {timeLeft, expiryTime: permissionTokenExpiryFromServer, currentTime};
   }
 
   /**

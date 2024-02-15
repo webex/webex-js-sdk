@@ -197,16 +197,9 @@ const Mercury = WebexPlugin.extend({
         return socket.open(webSocketUrl, options);
       })
       .then(() => {
-        this.webex.internal.metrics.submitClientMetrics('web-ha-mercury', {
-          fields: {
-            success: true,
-          },
-          tags: {
-            namespace: this.namespace,
-            action: 'connected',
-            url: attemptWSUrl,
-          },
-        });
+        this.logger.info(
+          `${this.namespace}: connected to mercury, success, action: connected, url: ${attemptWSUrl}`
+        );
         callback();
 
         return this.webex.internal.feature
@@ -263,19 +256,8 @@ const Mercury = WebexPlugin.extend({
             .then((haMessagingEnabled) => {
               if (haMessagingEnabled) {
                 this.logger.info(
-                  `${this.namespace}: received a generic connection error, will try to connect to another datacenter`
+                  `${this.namespace}: received a generic connection error, will try to connect to another datacenter. failed, action: 'failed', url: ${attemptWSUrl} error: ${reason.message}`
                 );
-                this.webex.internal.metrics.submitClientMetrics('web-ha-mercury', {
-                  fields: {
-                    success: false,
-                  },
-                  tags: {
-                    namespace: this.namespace,
-                    action: 'failed',
-                    error: reason.message,
-                    url: attemptWSUrl,
-                  },
-                });
 
                 return this.webex.internal.services.markFailedUrl(attemptWSUrl);
               }

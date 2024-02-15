@@ -31,7 +31,6 @@ const registerElm = document.querySelector('#registration-register');
 const unregisterElm = document.querySelector('#registration-unregister');
 const registrationStatusElm = document.querySelector('#registration-status');
 const integrationEnv = document.getElementById('integration-env');
-const turnDiscoveryCheckbox = document.getElementById('enable-turn-discovery');
 const eventsList = document.getElementById('events-list');
 const multistreamLayoutElm = document.querySelector('#multistream-layout');
 const preferLiveVideoElm = document.querySelector('#prefer-live-video');
@@ -39,10 +38,7 @@ const breakoutsList = document.getElementById('breakouts-list');
 const breakoutTable = document.getElementById('breakout-table');
 const breakoutHostOperation = document.getElementById('breakout-host-operation');
 const getStatsButton = document.getElementById('get-stats');
-
-// Disable screenshare on join in Safari patch
-const isSafari = /Version\/[\d.]+.*Safari/.test(navigator.userAgent);
-const isiOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+const tcpReachabilityConfigElm = document.getElementById('enable-tcp-reachability');
 
 const toggleUnifiedMeetings = document.getElementById('toggle-unified-meeting');
 const currentMeetingInfoStatus = document.getElementById('current-meeting-info-status');
@@ -59,10 +55,6 @@ tokenElm.addEventListener('change', (event) => {
   localStorage.setItem('access-token', event.target.value);
   localStorage.setItem('date', new Date().getTime() + (12 * 60 * 60 * 1000));
 });
-
-if (isSafari || isiOS) {
-  document.getElementById('sendShareToggle').disabled = true;
-}
 
 
 const fedRampInput = document.querySelector('#enable-fedramp');
@@ -110,7 +102,7 @@ function generateWebexConfig({credentials}) {
         enableMediaNegotiatedEvent: false,
         enableUnifiedMeetings: true,
         enableAdhocMeetings: true,
-        enableTurnDiscovery: turnDiscoveryCheckbox.checked,
+        enableTcpReachability: tcpReachabilityConfigElm.checked,
       },
       enableAutomaticLLM: true,
     },
@@ -454,7 +446,89 @@ function verifyPassword() {
   }
 }
 
-function joinMeeting({withMedia, withDevice} = {withMedia: false, withDevice: false}) {
+/**
+ * This function should be called before media connection is added to the meeting.
+ * It sets up the sample app's UI and listeners for media related events
+ * @param {Meeting} meeting
+ */
+function doPreMediaSetup(meeting) {
+  if (isMultistream) {
+    updateRemoteSourcesInfo();
+    setupMultistreamEventListeners(meeting);
+
+    // we can't import anything so can't read the initialLayoutId from the DefaultConfiguration that we're using
+    // so we need to hardcode it like this:
+    multistreamLayoutElm.value = 'AllEqual';
+    preferLiveVideoElm.value = 'Enable';
+  }
+  else {
+    console.log('MeetingStreams#doPreMediaSetup() :: registering for media:ready and media:stopped events');
+
+    // Wait for media in order to show video/share
+    meeting.on('media:ready', (media) => {
+      // eslint-disable-next-line default-case
+      switch (media.type) {
+        case 'remoteVideo':
+          meetingStreamsRemoteVideo.srcObject = media.stream;
+          updateLayoutHeightWidth();
+          break;
+        case 'remoteAudio':
+          meetingStreamsRemoteAudio.srcObject = media.stream;
+          break;
+        case 'remoteShare':
+          meetingStreamsRemoteShare.srcObject = media.stream;
+          break;
+      }
+    });
+
+    // remove stream if media stopped
+    meeting.on('media:stopped', (media) => {
+      // eslint-disable-next-line default-case
+      switch (media.type) {
+        case 'remoteVideo':
+          meetingStreamsRemoteVideo.srcObject = null;
+          break;
+        case 'remoteAudio':
+          meetingStreamsRemoteAudio.srcObject = null;
+          break;
+        case 'remoteShare':
+          meetingStreamsRemoteShare.srcObject = null;
+          break;
+      }
+    });
+  }
+}
+
+/**
+ * This function should be called after media connection is added to the meeting.
+ * It sets up the sample app's UI, etc.
+ *
+ * @param {Meeting} meeting
+ */
+function doPostMediaSetup(meeting) {
+  if (isMultistream) {
+    enableMultistreamControls(true);
+
+    // we need to check shareStatus, because may have missed the 'meeting:startedSharingRemote' event
+    // if someone started sharing before our page was loaded,
+    // or we didn't act on that event if the user clicked "add media" while being in the lobby
+    if (meeting.shareStatus === 'remote_share_active') {
+      forceScreenShareViewLayout(meeting);
+    }
+  } else {
+    remoteVideoResolutionCheckInterval();
+  }
+
+  localVideoResolutionCheckInterval();
+
+  // enabling screen share publish/unpublish buttons
+  publishShareBtn.disabled = false;
+  unpublishShareBtn.disabled = false;
+
+  currentMediaSettings = getMediaSettings();
+}
+
+async function joinMeeting({withMedia, withDevice} = {withMedia: false, withDevice: false}) {
   const meeting = webex.meetings.getAllMeetings()[selectedMeetingId];
   let resourceId = null;
 
@@ -492,53 +566,73 @@ function joinMeeting({withMedia, withDevice} = {withMedia: false, withDevice: fa
     joinOptions.deviceCapabilities.push('CONFLUENCE_IN_LOBBY_SUPPORTED');
   }
 
-  const joinMeetingNow = () => {
-    meeting.join(joinOptions)
-    .then(() => { // eslint-disable-line
-      // For meeting controls button onclick handlers
-        window.meeting = meeting;
-
-        updateMeetingInfoSection(meeting);
-
-        meeting.members.on('members:update', (res) => {
-          console.log('member update', res);
-          viewParticipants();
-          populateStageSelector();
-        });
-
-        meeting.on('meeting:breakouts:update', (res) => {
-          viewBreakouts();
-        });
-
-        eventsList.innerText = '';
-        meeting.on('all', (payload) => {
-          updatePublishedEvents(payload);
-        });
-
-        createBreakoutOperations();
-        if (withMedia) {
-          clearMediaDeviceList();
-
-          const mediaSettings = getMediaSettings()
-
-          return getUserMedia({
-            audio: mediaSettings.audioEnabled,
-            video: mediaSettings.videoEnabled
-          }).then(() => addMedia());
-        }
-
-        enableMeetingDependentButtons(true);
-      })
-      .catch(() => {
-        // join failed, so allow  user decide on multistream again
-        meetingsJoinMultistreamElm.disabled = false;
-      });
-  };
-
   if (!meeting.requiredCaptcha) {
     joinOptions.captcha = '';
   }
-  joinMeetingNow();
+
+  try {
+
+    if (!withMedia) {
+      await meeting.join(joinOptions);
+    }
+    else {
+      clearMediaDeviceList();
+
+      const mediaSettings = getMediaSettings()
+
+      await getUserMedia({
+        audio: mediaSettings.audioEnabled,
+        video: mediaSettings.videoEnabled
+      });
+
+      doPreMediaSetup(meeting);
+
+      // we're using the default RemoteMediaManagerConfig
+      const mediaOptions = {
+        localStreams: {
+          microphone: localMedia.microphoneStream,
+          camera: localMedia.cameraStream,
+          screenShare: {
+            audio: localMedia.screenShare?.audio,
+            video: localMedia.screenShare?.video
+          }
+        },
+        ...getMediaSettings()
+      };
+
+      await meeting.joinWithMedia({joinOptions, mediaOptions});
+
+      doPostMediaSetup(meeting);
+    }
+
+    enableMeetingDependentButtons(true);
+
+    // For meeting controls button onclick handlers
+    window.meeting = meeting;
+
+    updateMeetingInfoSection(meeting);
+
+    meeting.members.on('members:update', (res) => {
+      console.log('member update', res);
+      viewParticipants();
+      populateStageSelector();
+    });
+
+    meeting.on('meeting:breakouts:update', (res) => {
+      viewBreakouts();
+    });
+
+    eventsList.innerText = '';
+    meeting.on('all', (payload) => {
+      updatePublishedEvents(payload);
+    });
+
+    createBreakoutOperations();
+  } catch(err) {
+    console.error(`failed to join a meeting (withMedia=${withMedia} withDevice=${withDevice}): `, err);
+    // join failed, so allow  user decide on multistream again
+    meetingsJoinMultistreamElm.disabled = false;
+  };
 }
 
 function leaveMeeting(meetingId) {
@@ -1013,22 +1107,22 @@ function handleStreamPublishedState(meeting) {
         debugString = 'local camera';
         streamElm = meetingStreamsLocalVideo;
         break;
-    
+
       case 'VIDEO-SLIDES':
         debugString = 'local share video';
         streamElm = meetingStreamsLocalShareVideo;
         break;
-    
+
       case 'AUDIO-MAIN':
         debugString = 'local microphone';
         streamElm = meetingStreamsLocalAudio;
         break;
-    
+
       case 'AUDIO-SLIDES':
         debugString = 'local share audio';
         streamElm = meetingStreamsLocalShareAudio;
         break;
-    
+
       default:
         break;
     }
@@ -1119,7 +1213,7 @@ async function handleVbg() {
 
       await effect.enable();
       modeBtn.disabled = true;
-      
+
       handleEffectsButton(toggleVbgBtn, VBG, effect);
       console.log('MeetingControls#handleVbg() :: successfully applied virtual background to local camera stream');
     }
@@ -1329,8 +1423,8 @@ function getAudioVideoInput() {
   const deviceId = (id) => {
     if (id === 'default')
       return {deviceId: id};
-    else  
-      return {deviceId: {exact: id}}; 
+    else
+      return {deviceId: {exact: id}};
   };
   const audioInput = getOptionValue(sourceDevicesAudioInput) || 'default';
   const videoInput = getOptionValue(sourceDevicesVideoInput) || 'default';
@@ -2385,14 +2479,7 @@ function addMedia() {
     console.log('MeetingStreams#addMedia() :: no valid meeting object!');
   }
 
-  if (isMultistream) {
-    setupMultistreamEventListeners(meeting);
-
-    // we can't import anything so can't read the initialLayoutId from the DefaultConfiguration that we're using
-    // so we need to hardcode it like this:
-    multistreamLayoutElm.value = 'AllEqual';
-    preferLiveVideoElm.value = 'Enable';
-  }
+  doPreMediaSetup(meeting);
 
   // addMedia using the default RemoteMediaManagerConfig
   meeting.addMedia({
@@ -2407,21 +2494,7 @@ function addMedia() {
     ...getMediaSettings()
   }
   ).then(() => {
-    // we need to check shareStatus, because may have missed the 'meeting:startedSharingRemote' event
-    // if someone started sharing before our page was loaded,
-    // or we didn't act on that event if the user clicked "add media" while being in the lobby
-    if (isMultistream && meeting.shareStatus === 'remote_share_active') {
-      forceScreenShareViewLayout(meeting);
-    }
-
-    localVideoResolutionCheckInterval();
-
-    // enabling screen share publish/unpublish buttons
-    publishShareBtn.disabled = false;
-    unpublishShareBtn.disabled = false;
-    
-    currentMediaSettings = getMediaSettings();
-
+    doPostMediaSetup(meeting);
     console.log('MeetingStreams#addMedia() :: successfully added media!');
   }).catch((error) => {
     console.log('MeetingStreams#addMedia() :: Error adding media!');
@@ -2431,49 +2504,6 @@ function addMedia() {
 
     console.error(error);
   });
-
-  if (isMultistream) {
-    updateRemoteSourcesInfo();
-    enableMultistreamControls(true);
-  }
-  else {
-    console.log('MeetingStreams#addMedia() :: registering for media:ready and media:stopped events');
-
-    remoteVideoResolutionCheckInterval();
-
-    // Wait for media in order to show video/share
-    meeting.on('media:ready', (media) => {
-      // eslint-disable-next-line default-case
-      switch (media.type) {
-        case 'remoteVideo':
-          meetingStreamsRemoteVideo.srcObject = media.stream;
-          updateLayoutHeightWidth();
-          break;
-        case 'remoteAudio':
-          meetingStreamsRemoteAudio.srcObject = media.stream;
-          break;
-        case 'remoteShare':
-          meetingStreamsRemoteShare.srcObject = media.stream;
-          break;
-      }
-    });
-
-    // remove stream if media stopped
-    meeting.on('media:stopped', (media) => {
-      // eslint-disable-next-line default-case
-      switch (media.type) {
-        case 'remoteVideo':
-          meetingStreamsRemoteVideo.srcObject = null;
-          break;
-        case 'remoteAudio':
-          meetingStreamsRemoteAudio.srcObject = null;
-          break;
-        case 'remoteShare':
-          meetingStreamsRemoteShare.srcObject = null;
-          break;
-      }
-    });
-  }
 }
 
 function updateLayoutHeightWidth() {
@@ -3561,7 +3591,7 @@ allCollapsibleElements.forEach((el) => {
 
     const sectionContentElement = parentElement.querySelector('.section-content');
     const arrowIcon = parentElement.querySelector('.arrow');
-    
+
     sectionContentElement.classList.toggle('collapsed');
     arrowIcon.classList.contains('fa-angle-down') ? arrowIcon.classList.replace('fa-angle-down', 'fa-angle-up') : arrowIcon.classList.replace('fa-angle-up', 'fa-angle-down');
 
