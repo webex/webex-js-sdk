@@ -82,8 +82,6 @@ class MuteState {
       `Meeting:muteState#handleClientRequest --> ${this.type}: user requesting new mute state: ${mute}`
     );
 
-    // customer reported that sometimes the unmuteAllowed value is not available, so we need to check for it
-    // we would skip to true if the value is not available, because it's the safest option
     if (!mute && this.state.server.unmuteAllowed !== null && !this.state.server.unmuteAllowed) {
       return Promise.reject(
         new PermissionError('User is not allowed to unmute self (hard mute feature is being used)')
