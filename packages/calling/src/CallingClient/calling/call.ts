@@ -302,6 +302,10 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
                 target: 'S_RECV_CALL_PROGRESS',
                 actions: ['incomingCallProgress'],
               },
+              E_RECV_CALL_CONNECT: {
+                target: 'S_RECV_CALL_CONNECT',
+                actions: ['incomingCallConnect'],
+              },
               E_RECV_CALL_DISCONNECT: {
                 target: 'S_RECV_CALL_DISCONNECT',
                 actions: ['incomingCallDisconnect'],
@@ -1561,7 +1565,10 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       });
 
       try {
-        if (this.callStateMachine.state.value === 'S_RECV_CALL_PROGRESS') {
+        if (
+          this.callStateMachine.state.value === 'S_RECV_CALL_PROGRESS' ||
+          this.callStateMachine.state.value === 'S_SEND_CALL_SETUP'
+        ) {
           log.info(
             'Media negotiation completed before call connect. Setting media negotiation completed flag.',
             {
@@ -2622,21 +2629,19 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    */
   public sendDigit(tone: string) {
     /* istanbul ignore else */
-    if (!this.connected) {
-      log.warn(`Can't send DTMF as call is not yet connected`, {
+    try {
+      log.info(`Sending digit : ${tone}`, {
         file: CALL_FILE,
         method: 'sendDigit',
       });
 
-      return;
+      this.mediaConnection.insertDTMF(tone);
+    } catch (e: any) {
+      log.warn(`Unable to send digit on call: ${e.message}`, {
+        file: CALL_FILE,
+        method: 'sendDigit',
+      });
     }
-
-    log.info(`Sending digit : ${tone}`, {
-      file: CALL_FILE,
-      method: 'sendDigit',
-    });
-
-    this.mediaConnection.insertDTMF(tone);
   }
 
   /**
