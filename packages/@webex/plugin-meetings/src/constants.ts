@@ -1235,7 +1235,7 @@ export const AVAILABLE_RESOLUTIONS = {
  *  mqa Interval for sending stats metrics
  */
 
-export const MQA_INTEVAL = 60000; // mqa analyzer interval its fixed to 60000
+export const MQA_INTERVAL = 60000; // mqa analyzer interval its fixed to 60000
 
 export const MEDIA_DEVICES = {
   MICROPHONE: 'microphone',
