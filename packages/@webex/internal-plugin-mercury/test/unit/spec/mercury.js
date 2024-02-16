@@ -725,6 +725,7 @@ describe('plugin-mercury', () => {
 
         return mercury.connect().then(() => {
           assert.calledWith(spy, 0);
+          assert.calledOnce(spy);
         });
       });
     });

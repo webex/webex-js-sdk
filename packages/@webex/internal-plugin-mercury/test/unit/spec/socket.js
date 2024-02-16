@@ -824,6 +824,7 @@ describe('plugin-mercury', () => {
         });
 
         assert.calledWith(spy, 0);
+        assert.calledOnce(spy);
       });
     });
   });
