@@ -33,6 +33,7 @@ export const getSpeakerFromProxyOrStore = ({csisKey, meetingMembers, transcriptD
 
   return {speaker, needsCaching};
 };
+
 export const processNewCaptions = ({data, meeting}) => {
   const {transcriptId} = data;
   const transcriptData = meeting.transcription;

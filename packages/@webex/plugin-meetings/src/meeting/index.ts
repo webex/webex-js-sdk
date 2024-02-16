@@ -697,8 +697,8 @@ export default class Meeting extends StatelessWebexPlugin {
         }
       );
     },
-    [VOICEAEVENTS.HIGHLIGHT_CREATED]: async (data) => {
-      await processHighlightCreated({data, meeting: this});
+    [VOICEAEVENTS.HIGHLIGHT_CREATED]: (data) => {
+      processHighlightCreated({data, meeting: this});
     },
   };
 
@@ -3038,13 +3038,6 @@ export default class Meeting extends StatelessWebexPlugin {
     });
     this.locusInfo.on(LOCUSINFO.EVENTS.SELF_ADMITTED_GUEST, async (payload) => {
       this.stopKeepAlive();
-      // @ts-ignore
-      if (!this.transcription && this.isTranscriptionSupported()) {
-        await this.startTranscription();
-        LoggerProxy.logger.info(
-          'Meeting:index#setUpLocusInfoSelfListener --> enabled to receive transcription for guest user!'
-        );
-      }
 
       if (payload) {
         Trigger.trigger(
@@ -4595,7 +4588,7 @@ export default class Meeting extends StatelessWebexPlugin {
     }
 
     LoggerProxy.logger.error(
-      'Meeting:index#isTranscriptionSupported --> Webex Assistant is not supported'
+      'Meeting:index#isTranscriptionSupported --> Webex Assistant is not enabled/supported'
     );
 
     return false;
@@ -4625,10 +4618,10 @@ export default class Meeting extends StatelessWebexPlugin {
     // check if we can convert this to promise by waiting for event
     if (!this.isTranscriptionSupported()) {
       LoggerProxy.logger.error(
-        'Meeting:index#setCaptionLanguage --> Webex Assistant is not supported'
+        'Meeting:index#setCaptionLanguage --> Webex Assistant is not enabled/supported'
       );
 
-      return Promise.reject(new Error('Transcription not supported'));
+      return Promise.reject(new Error('Webex Assistant is not enabled/supported'));
     }
 
     try {
@@ -4651,10 +4644,10 @@ export default class Meeting extends StatelessWebexPlugin {
   public async setSpokenLanguage(language: string) {
     if (!this.isTranscriptionSupported()) {
       LoggerProxy.logger.error(
-        'Meeting:index#setCaptionLanguage --> Webex Assistant is not supported'
+        'Meeting:index#setCaptionLanguage --> Webex Assistant is not enabled/supported'
       );
 
-      return Promise.reject(new Error('Transcription not supported'));
+      return Promise.reject(new Error('Webex Assistant is not enabled/supported'));
     }
 
     try {
@@ -4670,7 +4663,7 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
-   * Request for a WebSocket Url, open and monitor the WebSocket connection
+   * This method will enable the transcription for the current meeting if the meeting has enabled/supports Webex Assistant
    * @param {Object} options object with spokenlanguage setting
    * @public
    * @returns {Promise<void>} a promise to open the WebSocket connection
@@ -4678,7 +4671,7 @@ export default class Meeting extends StatelessWebexPlugin {
   public async startTranscription(options?: {spokenLanguage?: string}) {
     if (this.isJoined()) {
       LoggerProxy.logger.info(
-        'Meeting:index#startTranscription --> Attempting to enabled transcription!'
+        'Meeting:index#startTranscription --> Attempting to enable transcription!'
       );
 
       try {
@@ -4742,8 +4735,7 @@ export default class Meeting extends StatelessWebexPlugin {
   };
 
   /**
-   * stop recieving Transcription by closing
-   * the web socket connection properly
+   * This method stops receiving transcription for the current meeting
    * @returns {void}
    */
   stopTranscription() {
@@ -5030,6 +5022,22 @@ export default class Meeting extends StatelessWebexPlugin {
         this.deferJoin = undefined;
 
         return Promise.reject(error);
+      })
+      .then((join) => {
+        // @ts-ignore - config coming from registerPlugin
+        if (this.config.enableAutomaticLLM) {
+          this.updateLLMConnection().catch((error) => {
+            LoggerProxy.logger.error('Meeting:index#join --> Update LLM Connection Failed', error);
+
+            Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.LLM_CONNECTION_AFTER_JOIN_FAILURE, {
+              correlation_id: this.correlationId,
+              reason: error?.message,
+              stack: error.stack,
+            });
+          });
+        }
+
+        return join;
       });
   }
 

@@ -935,9 +935,14 @@ function stopReceivingTranscription() {
 async function toggleTranscription(enable = false){
   const isEnabled = generalToggleTranscription.dataset.enabled === "true";
   if(isEnabled && !enable){
-    await meeting.stopTranscription();
-    generalToggleTranscription.dataset.enabled = "false";
-    generalToggleTranscription.innerText = "Start Transcription";
+    try{
+      await meeting.stopTranscription();
+      generalToggleTranscription.dataset.enabled = "false";
+      generalToggleTranscription.innerText = "Start Transcription";
+    }
+    catch(e){
+      console.error("Error stopping transcription", e);
+    }
   }
   else{
     let firsttime = generalToggleTranscription.dataset.firsttime;
@@ -945,9 +950,14 @@ async function toggleTranscription(enable = false){
       setTranscriptEvents();
       generalToggleTranscription.dataset.firsttime = "yes";
     }
-    await meeting.startTranscription();
-    generalToggleTranscription.dataset.enabled = "true";
-    generalToggleTranscription.innerText = "Stop Transcription";
+    try{
+      await meeting.startTranscription();
+      generalToggleTranscription.dataset.enabled = "true";
+      generalToggleTranscription.innerText = "Stop Transcription";
+    }
+    catch(e){
+      console.error("Error starting transcription", e);
+    }
   }
 }
 

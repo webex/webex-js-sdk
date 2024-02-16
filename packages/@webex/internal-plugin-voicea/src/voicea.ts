@@ -343,7 +343,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
 
   /**
    * request turn on Captions
-   * @param {string} languageCode
+   * @param {string} [languageCode] - Optional Parameter for spoken language code. Defaults to English
    * @returns {Promise}
    */
   private requestTurnOnCaptions = (languageCode?): undefined | Promise<void> => {
@@ -378,7 +378,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
       })
       .catch(() => {
         this.captionStatus = TURN_ON_CAPTION_STATUS.IDLE;
-        throw new Error('turn on captions fail ');
+        throw new Error('turn on captions fail');
       });
   };
 
@@ -411,7 +411,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
 
   /**
    * Turn on Captions
-   * @param {string} spokenLanguage - spoken language code
+   * @param {string} [spokenLanguage] - Optional Spoken language code
    * @returns {Promise}
    */
   public turnOnCaptions = async (spokenLanguage?): undefined | Promise<void> => {
@@ -432,7 +432,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
    */
   public toggleTranscribing = (
     activate: boolean,
-    spokenLanguage: string
+    spokenLanguage?: string
   ): undefined | Promise<void> => {
     // @ts-ignore
     return this.request({
@@ -446,7 +446,9 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
         spokenLanguage,
       },
     }).then((): undefined | Promise<void> => {
-      if (activate && !this.areCaptionsEnabled) return this.turnOnCaptions(spokenLanguage);
+      if (activate && !this.areCaptionsEnabled) {
+        return this.turnOnCaptions(spokenLanguage);
+      }
 
       return undefined;
     });
