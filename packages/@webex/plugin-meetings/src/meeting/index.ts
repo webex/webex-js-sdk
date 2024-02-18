@@ -1396,10 +1396,13 @@ export default class Meeting extends StatelessWebexPlugin {
   /**
    * Set meeting info and trigger `MEETING_INFO_AVAILABLE` event
    * @param {any} info
-   * @param {string} meetingLookupUrl lookup url
+   * @param {string} [meetingLookupUrl] Lookup url, defined when the meeting info fetched
    * @returns {void}
    */
-  private setMeetingInfo(info, meetingLookupUrl) {
+  private setMeetingInfo(info, meetingLookupUrl = undefined) {
+    this.meetingInfo = info ? {...info, meetingLookupUrl} : null;
+    this.meetingInfoFailureReason = MEETING_INFO_FAILURE_REASON.NONE;
+
     this.requiredCaptcha = null;
     if (
       this.passwordStatus === PASSWORD_STATUS.REQUIRED ||
@@ -1409,10 +1412,6 @@ export default class Meeting extends StatelessWebexPlugin {
     } else {
       this.passwordStatus = PASSWORD_STATUS.NOT_REQUIRED;
     }
-
-    this.parseMeetingInfo(info, this.destination);
-    this.meetingInfo = info ? {...info, meetingLookupUrl} : null;
-    this.meetingInfoFailureReason = MEETING_INFO_FAILURE_REASON.NONE;
 
     Trigger.trigger(
       this,
@@ -1426,12 +1425,34 @@ export default class Meeting extends StatelessWebexPlugin {
     this.updateMeetingActions();
   }
 
-  public async injectMeetingInfo(info: any, fetchParams: FetchMeetingInfoParams): Promise<void> {
+  /**
+   * Add pre-fetched meeting info
+   *
+   * The passed meeting info should be be complete, e.g.: fetched after password or captcha provided
+   *
+   * @param {Object} meetingInfo - Complete meeting info
+   * @param {FetchMeetingInfoParams} fetchParams - Fetch parameters for validation
+   * @returns {Promise<void>}
+   */
+  public async injectMeetingInfo(
+    meetingInfo: any,
+    fetchParams: FetchMeetingInfoParams
+  ): Promise<void> {
     await this.prepForFetchMeetingInfo(fetchParams, 'injectMeetingInfo');
 
-    this.setMeetingInfo(info, undefined);
+    this.parseMeetingInfo(meetingInfo, this.destination);
+    this.setMeetingInfo(meetingInfo);
   }
 
+  /**
+   * Validate fetch parameters and clear the fetchMeetingInfoTimeout timeout
+   *
+   * @param {FetchMeetingInfoParams} fetchParams - fetch parameters for validation
+   * @param {String} caller - Name of the caller for logging
+   *
+   * @returns {Promise<void>}
+   * @private
+   */
   private prepForFetchMeetingInfo(
     {password = null, captchaCode = null, extraParams = {}}: FetchMeetingInfoParams,
     caller: string
@@ -1491,6 +1512,7 @@ export default class Meeting extends StatelessWebexPlugin {
         {meetingId: this.id, sendCAevents}
       );
 
+      this.parseMeetingInfo(info?.body, this.destination, info?.errors);
       this.setMeetingInfo(info?.body, info?.url);
 
       return Promise.resolve();
@@ -3201,30 +3223,40 @@ export default class Meeting extends StatelessWebexPlugin {
   /**
    * Sets the meeting info on the class instance
    * @param {Object} meetingInfo
-   * @param {Object} meetingInfo.body
-   * @param {String} meetingInfo.body.conversationUrl
-   * @param {String} meetingInfo.body.locusUrl
-   * @param {String} meetingInfo.body.sipUri
-   * @param {Object} meetingInfo.body.owner
+   * @param {String} meetingInfo.conversationUrl
+   * @param {String} meetingInfo.locusUrl
+   * @param {String} meetingInfo.sipUri
+   * @param {String} [meetingInfo.sipUrl]
+   * @param {String} [meetingInfo.sipMeetingUri]
+   * @param {String} [meetingInfo.meetingNumber]
+   * @param {String} [meetingInfo.meetingJoinUrl]
+   * @param {String} [meetingInfo.hostId]
+   * @param {String} [meetingInfo.permissionToken]
+   * @param {String} [meetingInfo.channel]
+   * @param {Object} meetingInfo.owner
    * @param {Object | String} destination locus object with meeting data or destination string (sip url, meeting link, etc)
+   * @param {Object | String} errors Meeting info request error
    * @returns {undefined}
    * @private
    * @memberof Meeting
    */
   parseMeetingInfo(
-    meetingInfo:
-      | {
-          body: {
-            conversationUrl: string;
-            locusUrl: string;
-            sipUri: string;
-            owner: object;
-          };
-        }
-      | any,
-    destination: object | string | null = null
+    meetingInfo: {
+      conversationUrl: string;
+      locusUrl: string;
+      sipUri: string;
+      owner: object;
+      sipUrl?: string;
+      sipMeetingUri?: string;
+      meetingNumber?: string;
+      meetingJoinUrl?: string;
+      hostId?: string;
+      permissionToken?: string;
+      channel?: string;
+    },
+    destination: object | string | null = null,
+    errors: any = undefined
   ) {
-    const webexMeetingInfo = meetingInfo?.body || meetingInfo;
     // We try to use as much info from Locus meeting object, stored in destination
 
     let locusMeetingObject;
@@ -3234,40 +3266,31 @@ export default class Meeting extends StatelessWebexPlugin {
     }
 
     // MeetingInfo will be undefined for 1:1 calls
-    if (
-      locusMeetingObject ||
-      (webexMeetingInfo && !(meetingInfo?.errors && meetingInfo?.errors.length > 0))
-    ) {
+    if (locusMeetingObject || (meetingInfo && !(errors?.length > 0))) {
       this.conversationUrl =
-        locusMeetingObject?.conversationUrl ||
-        webexMeetingInfo?.conversationUrl ||
-        this.conversationUrl;
-      this.locusUrl = locusMeetingObject?.url || webexMeetingInfo?.locusUrl || this.locusUrl;
+        locusMeetingObject?.conversationUrl || meetingInfo?.conversationUrl || this.conversationUrl;
+      this.locusUrl = locusMeetingObject?.url || meetingInfo?.locusUrl || this.locusUrl;
       // @ts-ignore - config coming from registerPlugin
       this.setSipUri(
         // @ts-ignore
         this.config.experimental.enableUnifiedMeetings
-          ? locusMeetingObject?.info.sipUri || webexMeetingInfo?.sipUrl
-          : locusMeetingObject?.info.sipUri || webexMeetingInfo?.sipMeetingUri || this.sipUri
+          ? locusMeetingObject?.info.sipUri || meetingInfo?.sipUrl
+          : locusMeetingObject?.info.sipUri || meetingInfo?.sipMeetingUri || this.sipUri
       );
       // @ts-ignore - config coming from registerPlugin
       if (this.config.experimental.enableUnifiedMeetings) {
-        this.meetingNumber =
-          locusMeetingObject?.info.webExMeetingId || webexMeetingInfo?.meetingNumber;
-        this.meetingJoinUrl = webexMeetingInfo?.meetingJoinUrl;
+        this.meetingNumber = locusMeetingObject?.info.webExMeetingId || meetingInfo?.meetingNumber;
+        this.meetingJoinUrl = meetingInfo?.meetingJoinUrl;
       }
       this.owner =
-        locusMeetingObject?.info.owner ||
-        webexMeetingInfo?.owner ||
-        webexMeetingInfo?.hostId ||
-        this.owner;
-      this.permissionToken = webexMeetingInfo?.permissionToken;
-      this.setPermissionTokenPayload(webexMeetingInfo?.permissionToken);
+        locusMeetingObject?.info.owner || meetingInfo?.owner || meetingInfo?.hostId || this.owner;
+      this.permissionToken = meetingInfo?.permissionToken;
+      this.setPermissionTokenPayload(meetingInfo?.permissionToken);
       this.setSelfUserPolicies();
       // Need to populate environment when sending CA event
-      this.environment = locusMeetingObject?.info.channel || webexMeetingInfo?.channel;
+      this.environment = locusMeetingObject?.info.channel || meetingInfo?.channel;
     }
-    MeetingUtil.parseInterpretationInfo(this, webexMeetingInfo);
+    MeetingUtil.parseInterpretationInfo(this, meetingInfo);
   }
 
   /**
