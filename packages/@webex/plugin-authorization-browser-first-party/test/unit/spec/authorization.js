@@ -100,6 +100,10 @@ describe('plugin-authorization-browser-first-party', () => {
       return webex;
     }
 
+    afterEach(() => {
+      sinon.restore();
+    });
+
     describe('#initialize()', () => {
       describe('when there is a code in the url', () => {
         it('exchanges it for an access token and sets ready', () => {
@@ -174,6 +178,27 @@ describe('plugin-authorization-browser-first-party', () => {
             assert.equal(
               webex.getWindow().location.href,
               `http://example.com/?state=${base64.encode(JSON.stringify({something: true}))}`
+            );
+          });
+        });
+
+        it('handles an error when exchanging an authorization code and becomes ready', () => {
+          const code = 'errors-when-exchanging';
+          const error = new Error('something bad happened');
+          const requestAuthorizationCodeGrantStub = sinon
+            .stub(Authorization.prototype, 'requestAuthorizationCodeGrant')
+            .throws(error);
+
+          const webex = makeWebex(`http://example.com?code=${code}`);
+
+          return webex.authorization.when('change:ready').then(() => {
+            assert.calledOnce(requestAuthorizationCodeGrantStub);
+            assert.calledWith(requestAuthorizationCodeGrantStub, {code, codeVerifier: undefined});
+            assert.calledOnce(webex.logger.warn);
+            assert.calledWith(
+              webex.logger.warn,
+              'authorization: failed initial authorization code grant request',
+              error
             );
           });
         });
