@@ -1074,7 +1074,7 @@ describe('plugin-meetings', () => {
         {
           reason: LOCAL_SHARE_ERRORS.LOCUS_PARTICIPANT_DNE,
           expected: {
-            category: 'expected',
+            category: 'signaling',
             errorCode: 4066,
           },
         },
