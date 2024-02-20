@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.348](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.347...v3.0.0-beta.348) (2024-02-20)
+
+
+### Bug Fixes
+
+* **authorization:** handle failed initial request and allow plugin to become ready ([#3372](https://github.com/webex/webex-js-sdk/issues/3372)) ([6727815](https://github.com/webex/webex-js-sdk/commit/672781566d8714a7882f97e8b9f9eebf99436bd0))
+
 ## [3.0.0-beta.347](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.346...v3.0.0-beta.347) (2024-02-15)
 
 
