@@ -1399,7 +1399,7 @@ export default class Meeting extends StatelessWebexPlugin {
    * @param {string} [meetingLookupUrl] Lookup url, defined when the meeting info fetched
    * @returns {void}
    */
-  private setMeetingInfo(info, meetingLookupUrl = undefined) {
+  private setMeetingInfo(info, meetingLookupUrl) {
     this.meetingInfo = info ? {...info, meetingLookupUrl} : null;
     this.meetingInfoFailureReason = MEETING_INFO_FAILURE_REASON.NONE;
 
@@ -1432,16 +1432,18 @@ export default class Meeting extends StatelessWebexPlugin {
    *
    * @param {Object} meetingInfo - Complete meeting info
    * @param {FetchMeetingInfoParams} fetchParams - Fetch parameters for validation
+   * @param {String} meetingLookupUrl - Lookup url, defined when the meeting info fetched
    * @returns {Promise<void>}
    */
   public async injectMeetingInfo(
     meetingInfo: any,
-    fetchParams: FetchMeetingInfoParams
+    fetchParams: FetchMeetingInfoParams,
+    meetingLookupUrl: string
   ): Promise<void> {
     await this.prepForFetchMeetingInfo(fetchParams, 'injectMeetingInfo');
 
     this.parseMeetingInfo(meetingInfo, this.destination);
-    this.setMeetingInfo(meetingInfo);
+    this.setMeetingInfo(meetingInfo, meetingLookupUrl);
   }
 
   /**

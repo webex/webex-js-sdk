@@ -1037,6 +1037,7 @@ export default class Meetings extends WebexPlugin {
    * @param {Boolean} failOnMissingMeetingInfo - whether to throw an error if meeting info fails to fetch (for calls that are not 1:1 or content share)
    * @param {CallStateForMetrics} callStateForMetrics - information about call state for metrics
    * @param {Object} [meetingInfo] - Pre-fetched complete meeting info
+   * @param {String} [meetingLookupUrl] - meeting info prefetch url
    * @returns {Promise<Meeting>} A new Meeting.
    * @public
    * @memberof Meetings
@@ -1049,7 +1050,8 @@ export default class Meetings extends WebexPlugin {
     correlationId: string = undefined,
     failOnMissingMeetingInfo = false,
     callStateForMetrics: CallStateForMetrics = undefined,
-    meetingInfo = undefined
+    meetingInfo = undefined,
+    meetingLookupUrl = undefined
   ) {
     // TODO: type should be from a dictionary
 
@@ -1109,7 +1111,8 @@ export default class Meetings extends WebexPlugin {
               infoExtraParams,
               callStateForMetrics,
               failOnMissingMeetingInfo,
-              meetingInfo
+              meetingInfo,
+              meetingLookupUrl
             ).then((createdMeeting: any) => {
               // If the meeting was successfully created.
               if (createdMeeting && createdMeeting.on) {
@@ -1175,6 +1178,7 @@ export default class Meetings extends WebexPlugin {
    * @param {CallStateForMetrics} callStateForMetrics - information about call state for metrics
    * @param {Boolean} failOnMissingMeetingInfo - whether to throw an error if meeting info fails to fetch (for calls that are not 1:1 or content share)
    * @param {Object} [meetingInfo] - Pre-fetched complete meeting info
+   * @param {String} [meetingLookupUrl] - meeting info prefetch url
    * @returns {Promise} a new meeting instance complete with meeting info and destination
    * @private
    * @memberof Meetings
@@ -1186,7 +1190,8 @@ export default class Meetings extends WebexPlugin {
     infoExtraParams = {},
     callStateForMetrics: CallStateForMetrics = undefined,
     failOnMissingMeetingInfo = false,
-    meetingInfo = undefined
+    meetingInfo = undefined,
+    meetingLookupUrl = undefined
   ) {
     const meeting = new Meeting(
       {
@@ -1238,7 +1243,7 @@ export default class Meetings extends WebexPlugin {
       };
 
       if (meetingInfo) {
-        meeting.injectMeetingInfo(meetingInfo, meetingInfoOptions);
+        meeting.injectMeetingInfo(meetingInfo, meetingInfoOptions, meetingLookupUrl);
       } else if (
         enableUnifiedMeetings &&
         !isMeetingActive &&

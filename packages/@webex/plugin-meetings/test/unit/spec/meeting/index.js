@@ -4852,7 +4852,13 @@ describe('plugin-meetings', () => {
           );
 
           assert.notCalled(meeting.attrs.meetingInfoProvider.fetchMeetingInfo);
-          // assert.notCalled(TriggerProxy.trigger); //meetingInfoAvailable event not triggered
+          assert.calledTwice(TriggerProxy.trigger); //meetingInfoAvailable event not triggered
+          assert.neverCalledWith(
+            TriggerProxy.trigger,
+            meeting,
+            {file: 'meetings', function: 'fetchMeetingInfo'},
+            'meeting:meetingInfoAvailable'
+          );
         });
 
         it('fails if password is provided when not required', async () => {
@@ -4875,7 +4881,13 @@ describe('plugin-meetings', () => {
           );
 
           assert.notCalled(meeting.attrs.meetingInfoProvider.fetchMeetingInfo);
-          // assert.notCalled(TriggerProxy.trigger); //meetingInfoAvailable event not triggered
+          assert.calledTwice(TriggerProxy.trigger); //meetingInfoAvailable event not triggered
+          assert.neverCalledWith(
+            TriggerProxy.trigger,
+            meeting,
+            {file: 'meetings', function: 'fetchMeetingInfo'},
+            'meeting:meetingInfoAvailable'
+          );
         });
 
         it('should clean the fetch meeting info timeout', async () => {

@@ -616,7 +616,7 @@ describe('plugin-meetings', () => {
               assert.callCount(destroySpy, 3);
 
               assert.callCount(MeetingUtil.cleanUp, 3);
-            })
+            });
 
             it('destroy any LOCUS meetings that have no active locus url if keepOnlyLocusMeetings === false', async () => {
               await webex.meetings.syncMeetings({keepOnlyLocusMeetings: false});
@@ -710,6 +710,33 @@ describe('plugin-meetings', () => {
           await checkCallCreateMeeting(
             [test1, test2, FAKE_USE_RANDOM_DELAY, {}, correlationId, true, undefined, meetingInfo],
             [test1, test2, FAKE_USE_RANDOM_DELAY, {}, {correlationId}, true, meetingInfo]
+          );
+        });
+
+        it('calls createMeeting, pass the meeting info and meetingLookupURL param and returns its promise', async () => {
+          const meetingInfo = {};
+          await checkCallCreateMeeting(
+            [
+              test1,
+              test2,
+              FAKE_USE_RANDOM_DELAY,
+              {},
+              correlationId,
+              true,
+              undefined,
+              meetingInfo,
+              'meetingLookupURL',
+            ],
+            [
+              test1,
+              test2,
+              FAKE_USE_RANDOM_DELAY,
+              {},
+              {correlationId},
+              true,
+              meetingInfo,
+              'meetingLookupURL',
+            ]
           );
         });
 
@@ -1214,6 +1241,12 @@ describe('plugin-meetings', () => {
                 expectedMeetingData.callStateForMetrics
               );
             }
+            if (expectedMeetingData.meetingLookupUrl) {
+              assert.equal(
+                meeting.meetingInfo.meetingLookupUrl,
+                expectedMeetingData.meetingLookupUrl
+              );
+            }
             assert.equal(meeting.destination, destination);
             assert.equal(meeting.destinationType, type);
             assert.calledWith(
@@ -1273,6 +1306,40 @@ describe('plugin-meetings', () => {
 
             const expectedMeetingData = {
               ...meetingInfo,
+              correlationId: meeting.id,
+            };
+
+            checkCreateWithoutDelay(
+              meeting,
+              'test destination',
+              'test type',
+              {},
+              expectedMeetingData,
+              false,
+              true
+            );
+          });
+
+          it('accepts injected meeting info with meeting lookup url', async () => {
+            const meetingInfo = {
+              permissionToken: 'PT',
+              meetingJoinUrl: 'meetingJoinUrl',
+            };
+
+            const meeting = await webex.meetings.createMeeting(
+              'test destination',
+              'test type',
+              false,
+              {},
+              undefined,
+              false,
+              meetingInfo,
+              'meetingLookupUrl'
+            );
+
+            const expectedMeetingData = {
+              ...meetingInfo,
+              meetingLookupUrl: 'meetingLookupUrl',
               correlationId: meeting.id,
             };
 
