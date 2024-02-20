@@ -584,7 +584,7 @@ export default class Meetings extends WebexPlugin {
 
     // @ts-ignore
     this.webex.internal.mercury.on(ONLINE, () => {
-      this.syncMeetings();
+      this.syncMeetings({keepOnlyLocusMeetings: true});
     });
 
     // @ts-ignore
@@ -1346,11 +1346,12 @@ export default class Meetings extends WebexPlugin {
 
   /**
    * syncs all the meeting from server
-   * @returns {undefined}
+   * @param {boolean} keepOnlyLocusMeetings - whether the sync should keep only locus meetings or any other meeting in meetingCollection
+   * @returns {Promise<void>}
    * @public
    * @memberof Meetings
    */
-  public syncMeetings() {
+  public syncMeetings({keepOnlyLocusMeetings = true} = {}): Promise<void> {
     return this.request
       .getActiveMeetings()
       .then((locusArray) => {
@@ -1374,7 +1375,8 @@ export default class Meetings extends WebexPlugin {
           // (they had a locusUrl previously but are no longer active) in the sync
           for (const meeting of Object.values(meetingsCollection)) {
             // @ts-ignore
-            if (meeting.locusUrl && !activeLocusUrl.includes(meeting.locusUrl)) {
+            const {locusUrl} = meeting;
+            if ((keepOnlyLocusMeetings || locusUrl) && !activeLocusUrl.includes(locusUrl)) {
               // destroy function also uploads logs
               // @ts-ignore
               this.destroy(meeting, MEETING_REMOVED_REASON.NO_MEETINGS_TO_SYNC);

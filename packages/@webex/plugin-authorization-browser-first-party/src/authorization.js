@@ -109,6 +109,9 @@ const Authorization = WebexPlugin.extend({
         .collectPreauthCatalog({emailhash})
         .catch(() => Promise.resolve())
         .then(() => this.requestAuthorizationCodeGrant({code, codeVerifier}))
+        .catch((error) => {
+          this.logger.warn('authorization: failed initial authorization code grant request', error)
+        })
         .then(() => {
           this.ready = true;
         });
