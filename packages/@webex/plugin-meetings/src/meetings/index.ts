@@ -584,7 +584,7 @@ export default class Meetings extends WebexPlugin {
 
     // @ts-ignore
     this.webex.internal.mercury.on(ONLINE, () => {
-      this.syncMeetings({keepOnlyLocusMeetings: true});
+      this.syncMeetings({keepOnlyLocusMeetings: false});
     });
 
     // @ts-ignore
