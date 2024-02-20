@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.350](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.349...v3.0.0-beta.350) (2024-02-20)
+
+
+### Features
+
+* **internal-plugin-mercury:** websocket ping pong latency spark 497745 ([#3386](https://github.com/webex/webex-js-sdk/issues/3386)) ([70d4823](https://github.com/webex/webex-js-sdk/commit/70d4823a8a37a3b85c44c9aee32e25eaac54632d))
+
 ## [3.0.0-beta.349](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.348...v3.0.0-beta.349) (2024-02-20)
 
 
