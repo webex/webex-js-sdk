@@ -490,15 +490,15 @@ export default class Socket extends EventEmitter {
     };
 
     const calculateLatency = (pingTimestamp) => {
-      const now = new Date().getTime();
+      const now = performance.now();
       const latency = now - pingTimestamp;
 
-      this.logger.info(`socket,${this._domain}: latency: `, latency);
+      this.logger.debug(`socket,${this._domain}: latency: `, latency);
       this.emit('ping-pong-latency', latency);
     };
 
     id = id || uuid.v4();
-    const pingTimestamp = new Date().getTime();
+    const pingTimestamp = performance.now();
 
     this.pongTimer = safeSetTimeout(onPongNotReceived, this.pongTimeout);
     this.once('pong', scheduleNextPingAndCancelPongTimer);
