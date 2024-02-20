@@ -4263,20 +4263,20 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/internal-media-core@npm:2.2.3":
-  version: 2.2.3
-  resolution: "@webex/internal-media-core@npm:2.2.3"
+"@webex/internal-media-core@npm:2.2.6":
+  version: 2.2.6
+  resolution: "@webex/internal-media-core@npm:2.2.6"
   dependencies:
     "@babel/runtime": "npm:^7.18.9"
     "@webex/ts-sdp": "npm:1.6.0"
-    "@webex/web-client-media-engine": "npm:3.11.4"
+    "@webex/web-client-media-engine": "npm:3.11.7"
     detectrtc: "npm:^1.4.1"
     events: "npm:^3.3.0"
     typed-emitter: "npm:^2.1.0"
     uuid: "npm:^8.3.2"
     webrtc-adapter: "npm:^8.1.2"
     xstate: "npm:^4.30.6"
-  checksum: b8871155dc7c0b645895a6be06d619107a184f3e495964ebe495260916696c7af3fea063eadb6073231298d814fff4fa109a6548f766447e3424fae1e8620bcf
+  checksum: 2c11dc23f6fc87da899b2a786e18b70097b4ea047155b57ce60cf36b684b9a76b2f7c9408dee4bb87b34746fc76179f08ff6fdd510c0c145af7dd4365c5755f4
   languageName: node
   linkType: hard
 
@@ -4716,10 +4716,10 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/json-multistream@npm:2.1.2":
-  version: 2.1.2
-  resolution: "@webex/json-multistream@npm:2.1.2"
-  checksum: b957653bfddc110d3fc52b60ccf72203c00c6c160ff8a659f191ed9ee5a66955776f25026dcff4b3a5fe34ed407645aa82cbcd115371c0d165b31b7d50457682
+"@webex/json-multistream@npm:2.1.3":
+  version: 2.1.3
+  resolution: "@webex/json-multistream@npm:2.1.3"
+  checksum: 65307529b5a289cd10a2649440f67e3bf75154ff94a92e758e8865f99f92015edf9de8e21085f62cbbd3dbcd900137a66eed5def8cc9eff9e7245538311415d5
   languageName: node
   linkType: hard
 
@@ -4736,7 +4736,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@webex/media-helpers@workspace:packages/@webex/media-helpers"
   dependencies:
-    "@webex/internal-media-core": "npm:2.2.3"
+    "@webex/internal-media-core": "npm:2.2.6"
     "@webex/test-helper-chai": "workspace:^"
     "@webex/test-helper-mock-webex": "workspace:^"
     "@webex/ts-events": "npm:^1.1.0"
@@ -4874,7 +4874,7 @@ __metadata:
   dependencies:
     "@peculiar/webcrypto": "npm:^1.4.3"
     "@webex/common": "workspace:^"
-    "@webex/internal-media-core": "npm:2.2.3"
+    "@webex/internal-media-core": "npm:2.2.6"
     "@webex/internal-plugin-conversation": "workspace:^"
     "@webex/internal-plugin-device": "workspace:^"
     "@webex/internal-plugin-llm": "workspace:^"
@@ -5300,21 +5300,21 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@webex/web-client-media-engine@npm:3.11.4":
-  version: 3.11.4
-  resolution: "@webex/web-client-media-engine@npm:3.11.4"
+"@webex/web-client-media-engine@npm:3.11.7":
+  version: 3.11.7
+  resolution: "@webex/web-client-media-engine@npm:3.11.7"
   dependencies:
-    "@webex/json-multistream": "npm:2.1.2"
+    "@webex/json-multistream": "npm:2.1.3"
     "@webex/rtcstats": "npm:^1.1.2"
     "@webex/ts-events": "npm:^1.0.1"
     "@webex/ts-sdp": "npm:1.6.0"
     "@webex/web-capabilities": "npm:^1.1.1"
-    "@webex/webrtc-core": "npm:2.3.1"
+    "@webex/webrtc-core": "npm:2.4.0"
     async: "npm:^3.2.4"
     js-logger: "npm:^1.6.1"
     typed-emitter: "npm:^2.1.0"
     uuid: "npm:^8.3.2"
-  checksum: 1e9653a282e7c6a34582128f345cc6c6d2496b7142ef626635989223619f67df04c7f0d3fbd7dd780f215aadfda69c982006e0a6a42a14c8d651702bbbc66262
+  checksum: fced2570c79751f2e1616e775bdeff2d917b23037dfba00f173fc2669253bcaa7cbaf4d622eef8a43dc31e8789e9e989a19952cc76b91a02b214df81db31c4df
   languageName: node
   linkType: hard
 
@@ -5408,9 +5408,9 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/webrtc-core@npm:2.3.1":
-  version: 2.3.1
-  resolution: "@webex/webrtc-core@npm:2.3.1"
+"@webex/webrtc-core@npm:2.4.0":
+  version: 2.4.0
+  resolution: "@webex/webrtc-core@npm:2.4.0"
   dependencies:
     "@webex/ts-events": "npm:^1.1.0"
     "@webex/web-capabilities": "npm:^1.1.0"
@@ -5419,7 +5419,7 @@ __metadata:
     js-logger: "npm:^1.6.1"
     typed-emitter: "npm:^2.1.0"
     webrtc-adapter: "npm:^8.1.2"
-  checksum: 88371ed95b6781e4d9bd226b58d53ecf6724e31d7cdc7678127d7acadaef0db92abe211133160d1ecec9031564a0edbc35e0705b9d94ff5fccb67fa3fffd83ef
+  checksum: 087a91b6c37dac6a8bbc402417e13da167d413d9b1cb45508fb4bc3fb8f9115f68edbf0330e545f9de67ff3519aa4f0a8ebb6a109eb11ef5d754e0ea10541d7c
   languageName: node
   linkType: hard
 
