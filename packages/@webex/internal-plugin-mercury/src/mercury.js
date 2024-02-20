@@ -159,6 +159,7 @@ const Mercury = WebexPlugin.extend({
     socket.on('close', (...args) => this._onclose(...args));
     socket.on('message', (...args) => this._onmessage(...args));
     socket.on('sequence-mismatch', (...args) => this._emit('sequence-mismatch', ...args));
+    socket.on('ping-pong-latency', (...args) => this._emit('ping-pong-latency', ...args));
 
     Promise.all([this._prepareUrl(socketUrl), this.webex.credentials.getUserToken()])
       .then(([webSocketUrl, token]) => {
