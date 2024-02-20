@@ -2,6 +2,43 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.347](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.346...v3.0.0-beta.347) (2024-02-15)
+
+
+### Bug Fixes
+
+* **meetings:** add keepOnlyLocusMeetings prop to syncMeetings ([#3384](https://github.com/webex/webex-js-sdk/issues/3384)) ([366138a](https://github.com/webex/webex-js-sdk/commit/366138acf17735dbdbf2a664ee02702568d3588b))
+
+## [3.0.0-beta.346](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.345...v3.0.0-beta.346) (2024-02-14)
+
+
+### Features
+
+* added more options to test user creation ([#3380](https://github.com/webex/webex-js-sdk/issues/3380)) ([db0a2b3](https://github.com/webex/webex-js-sdk/commit/db0a2b3e66926b8ad857a14ea9b693d6e5736def))
+
+## [3.0.0-beta.345](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.343...v3.0.0-beta.345) (2024-02-14)
+
+
+### Bug Fixes
+
+* manual version change to 3.0.0-beta.344 due to failed publish step ([#3379](https://github.com/webex/webex-js-sdk/issues/3379)) ([dc7837b](https://github.com/webex/webex-js-sdk/commit/dc7837be185cffecd4e654792e7470abfb4db780))
+* **plugin-meetings:** syncMeetings should not filter non-locus meetings ([#3371](https://github.com/webex/webex-js-sdk/issues/3371)) ([6689783](https://github.com/webex/webex-js-sdk/commit/6689783a0512d74ee45396efd7b941f9945347c6))
+* update sample app to call Meeting.joinWithMedia() ([#3370](https://github.com/webex/webex-js-sdk/issues/3370)) ([bcb92b9](https://github.com/webex/webex-js-sdk/commit/bcb92b9ad278dfd291afd57eb6431b0c3fe7bf9e))
+
+## [3.0.0-beta.343](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.342...v3.0.0-beta.343) (2024-02-08)
+
+
+### Bug Fixes
+
+* **meetings:** update internal-media-core ([#3369](https://github.com/webex/webex-js-sdk/issues/3369)) ([5326beb](https://github.com/webex/webex-js-sdk/commit/5326bebf4465831afc0ba181f7f1cc5e51d36a2a))
+
+## [3.0.0-beta.342](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.341...v3.0.0-beta.342) (2024-02-07)
+
+
+### Bug Fixes
+
+* **mercury:** remove needless metric ([#3363](https://github.com/webex/webex-js-sdk/issues/3363)) ([2e53cb7](https://github.com/webex/webex-js-sdk/commit/2e53cb71b299e889bbcd9e09a91f2fd55c9762f6))
+
 ## [3.0.0-beta.341](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.340...v3.0.0-beta.341) (2024-02-06)
 
 
