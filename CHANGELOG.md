@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.349](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.348...v3.0.0-beta.349) (2024-02-20)
+
+
+### Features
+
+* **pluging-meetings:** sync all meetings from Meeting Collection when reconnecting ([#3389](https://github.com/webex/webex-js-sdk/issues/3389)) ([ac9cee7](https://github.com/webex/webex-js-sdk/commit/ac9cee7d60c8118469079473b003a73663fd100b))
+
 ## [3.0.0-beta.348](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.347...v3.0.0-beta.348) (2024-02-20)
 
 
