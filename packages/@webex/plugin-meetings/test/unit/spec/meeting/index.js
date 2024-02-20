@@ -635,7 +635,14 @@ describe('plugin-meetings', () => {
         describe('rejection', () => {
           it('should error out and return a promise', async () => {
             meeting.join = sinon.stub().returns(Promise.reject());
-            assert.isRejected(meeting.joinWithMedia({}));
+            assert.isRejected(meeting.joinWithMedia({mediaOptions: {allowMediaInLobby: true}}));
+          });
+
+          it('should fail if called with allowMediaInLobby:false', async () => {
+            meeting.join = sinon.stub().returns(Promise.resolve(test1));
+            meeting.addMedia = sinon.stub().returns(Promise.resolve(test4));
+
+            assert.isRejected(meeting.joinWithMedia({mediaOptions: {allowMediaInLobby: false}}));
           });
         });
       });

@@ -3,9 +3,13 @@ import {registerPlugin} from '@webex/webex-core';
 
 import Meetings from './meetings';
 import config from './config';
+import {LocusRetryStatusInterceptor} from './interceptors';
 
 registerPlugin('meetings', Meetings, {
   config,
+  interceptors: {
+    LocusRetryStatusInterceptor: LocusRetryStatusInterceptor.create,
+  },
 });
 
 export {

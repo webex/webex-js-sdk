@@ -1,6 +1,6 @@
 /* eslint-disable prefer-destructuring */
 
-import {cloneDeep} from 'lodash';
+import {cloneDeep, isEmpty} from 'lodash';
 import {ConnectionState} from '@webex/internal-media-core';
 
 import EventsScope from '../common/events/events-scope';
@@ -78,6 +78,7 @@ export class StatsAnalyzer extends EventsScope {
   statsResults: any;
   statsStarted: any;
   successfulCandidatePair: any;
+  localIpAddress: string; // Returns the local IP address for diagnostics. this is the local IP of the interface used for the current media connection a host can have many local Ip Addresses
   receiveSlotCallback: ReceiveSlotCallback;
 
   /**
@@ -107,6 +108,7 @@ export class StatsAnalyzer extends EventsScope {
     this.lastEmittedStartStopEvent = {};
     this.receiveSlotCallback = receiveSlotCallback;
     this.successfulCandidatePair = {};
+    this.localIpAddress = '';
   }
 
   /**
@@ -267,6 +269,16 @@ export class StatsAnalyzer extends EventsScope {
   }
 
   /**
+   * Returns the local IP address for diagnostics.
+   * this is the local IP of the interface used for the current media connection
+   * a host can have many local Ip Addresses
+   * @returns {string | undefined} The local IP address.
+   */
+  getLocalIpAddress(): string {
+    return this.localIpAddress;
+  }
+
+  /**
    * Starts the stats analyzer on interval
    *
    * @public
@@ -405,6 +417,10 @@ export class StatsAnalyzer extends EventsScope {
       this.statsResults[type].direction = statsItem.currentDirection;
       this.statsResults[type].trackLabel = statsItem.localTrackLabel;
       this.statsResults[type].csi = statsItem.csi;
+      this.extractAndSetLocalIpAddressInfoForDiagnostics(
+        this.successfulCandidatePair?.localCandidateId,
+        this.statsResults?.candidates
+      );
       // reset the successful candidate pair.
       this.successfulCandidatePair = {};
     }
@@ -984,6 +1000,48 @@ export class StatsAnalyzer extends EventsScope {
   }
 
   /**
+   * extracts the local Ip address from the statsResult object by looking at stats results candidates
+   * and matches that ID with the successful candidate pair. It looks at the type of local candidate it is
+   * and then extracts the IP address from the relatedAddress or address property based on conditions known in webrtc
+   * note, there are known incompatibilities and it is possible for this to set undefined, or for the IP address to be the public IP address
+   * for example, firefox does not set the relayProtocol, and if the user is behind a NAT it might be the public IP
+   * @private
+   * @param {string} successfulCandidatePairId - The ID of the successful candidate pair.
+   * @param {Object} candidates - the stats result candidates
+   * @returns {void}
+   */
+  extractAndSetLocalIpAddressInfoForDiagnostics = (
+    successfulCandidatePairId: string,
+    candidates: {[key: string]: Record<string, unknown>}
+  ) => {
+    let newIpAddress = '';
+    if (successfulCandidatePairId && !isEmpty(candidates)) {
+      const localCandidate = candidates[successfulCandidatePairId];
+      if (localCandidate) {
+        if (localCandidate.candidateType === 'host') {
+          // if it's a host candidate, use the address property - it will be the local IP
+          newIpAddress = `${localCandidate.address}`;
+        } else if (localCandidate.candidateType === 'prflx') {
+          // if it's a peer reflexive candidate and we're not using a relay (there is no relayProtocol set)
+          // then look at the relatedAddress - it will be the local
+          //
+          // Firefox doesn't populate the relayProtocol property
+          if (!localCandidate.relayProtocol) {
+            newIpAddress = `${localCandidate.relatedAddress}`;
+          } else {
+            // if it's a peer reflexive candidate and we are using a relay -
+            // in that case the relatedAddress will be the IP of the TURN server (Linus),
+            // so we can only look at the address, but it might be local IP or public IP,
+            // depending on if the user is behind a NAT or not
+            newIpAddress = `${localCandidate.address}`;
+          }
+        }
+      }
+    }
+    this.localIpAddress = newIpAddress;
+  };
+
+  /**
    * Processes remote and local candidate result and stores
    * @private
    * @param {*} result
@@ -1020,6 +1078,11 @@ export class StatsAnalyzer extends EventsScope {
     this.statsResults.candidates[result.id] = {
       candidateType: result.candidateType,
       ipAddress: result.ip, // TODO: add ports
+      relatedAddress: result.relatedAddress,
+      relatedPort: result.relatedPort,
+      relayProtocol: result.relayProtocol,
+      protocol: result.protocol,
+      address: result.address,
       portNumber: result.port,
       networkType: result.networkType,
       priority: result.priority,
