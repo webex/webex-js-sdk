@@ -1,7 +1,6 @@
 import {assert} from '@webex/test-helper-chai';
 import sinon from 'sinon';
 import {WebexHttpError} from '@webex/webex-core';
-import {Errors, WcmeError, WcmeErrorType} from '@webex/media-helpers';
 
 import * as CallDiagnosticUtils from '../../../../src/call-diagnostic/call-diagnostic-metrics.util';
 import CallDiagnosticLatencies from '../../../../src/call-diagnostic/call-diagnostic-metrics-latencies';
@@ -175,22 +174,29 @@ describe('internal-plugin-metrics', () => {
   });
 
   describe('isSdpOfferCreationError', () => {
+    type TestWcmeError = {
+      type: string;
+      message: string;
+    };
+
+    type TestSdpOfferCreationError = {
+      code: number;
+      message: string;
+      name: string;
+      cause: TestWcmeError;
+    };
+
+    const error: TestSdpOfferCreationError = {
+      code: 30005,
+      name: 'SdpOfferCreationError',
+      message: 'No codecs present in m-line with MID 0 after filtering.',
+      cause: {
+        type: 'SDP_MUNGE_MISSING_CODECS',
+        message: 'No codecs present in m-line with MID 0 after filtering.',
+      },
+    };
     [
-      [
-        'isSdpOfferCreationError',
-        new Errors.SdpOfferCreationError(
-          'No codecs present in m-line with MID 0 after filtering.',
-          {
-            code: 30005,
-            name: 'SdpOfferCreationError',
-            cause: new WcmeError(
-              WcmeErrorType.SDP_MUNGE_MISSING_CODECS,
-              'No codecs present in m-line with MID 0 after filtering.'
-            ) as unknown as Error,
-          }
-        ),
-        true,
-      ],
+      ['isSdpOfferCreationError', error, true],
       ['generic error', new Error('this is an error'), false],
     ].forEach(([errorType, rawError, expected]) => {
       it(`for ${errorType} rawError returns the correct result`, () => {

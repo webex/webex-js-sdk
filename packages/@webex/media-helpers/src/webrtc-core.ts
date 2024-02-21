@@ -24,9 +24,6 @@ export {
   StreamEventNames,
   RemoteStream,
   type VideoContentHint,
-  Errors,
-  WcmeError,
-  WcmeErrorType,
 } from '@webex/internal-media-core';
 
 export type ServerMuteReason =

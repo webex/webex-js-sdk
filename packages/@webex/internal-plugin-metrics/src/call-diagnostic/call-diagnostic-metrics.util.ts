@@ -1,7 +1,6 @@
 /* eslint-disable valid-jsdoc */
 import anonymize from 'ip-anonymize';
 import util from 'util';
-import {Errors} from '@webex/media-helpers';
 
 import {BrowserDetection} from '@webex/common';
 import {WebexHttpError} from '@webex/webex-core';
@@ -21,6 +20,7 @@ import {
   ICE_FAILURE_CLIENT_CODE,
   MISSING_ROAP_ANSWER_CLIENT_CODE,
   WBX_APP_API_URL,
+  ERROR_DESCRIPTIONS,
 } from './config';
 
 const {getOSName, getOSVersion, getBrowserName, getBrowserVersion} = BrowserDetection();
@@ -162,8 +162,16 @@ export const isUnauthorizedError = (rawError: any) => {
   return false;
 };
 
+/**
+ * Returns true if the error is an SdpOfferCreation error
+ *
+ * @param {Object} rawError
+ * @returns {boolean}
+ */
 export const isSdpOfferCreationError = (rawError: any) => {
-  if (rawError instanceof Errors.SdpOfferCreationError) {
+  // would LIKE to do rawError instanceof Errors.SdpOfferCreationError
+  // but including internal-media-core in plugin-metrics breaks meetings and metrics unit tests
+  if (rawError.name === ERROR_DESCRIPTIONS.SDP_OFFER_CREATION_ERROR) {
     return true;
   }
 

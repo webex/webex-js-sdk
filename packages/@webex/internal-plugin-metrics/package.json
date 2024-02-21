@@ -33,7 +33,6 @@
     "@webex/event-dictionary-ts": "^1.0.1329",
     "@webex/internal-plugin-device": "workspace:^",
     "@webex/internal-plugin-metrics": "workspace:^",
-    "@webex/media-helpers": "workspace:^",
     "@webex/test-helper-chai": "workspace:^",
     "@webex/test-helper-mock-webex": "workspace:^",
     "@webex/webex-core": "workspace:^",
