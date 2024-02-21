@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.351](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.350...v3.0.0-beta.351) (2024-02-21)
+
+
+### Bug Fixes
+
+* **BO:** get the main locus when participants moved into breakouts ([#3352](https://github.com/webex/webex-js-sdk/issues/3352)) ([24c4dd5](https://github.com/webex/webex-js-sdk/commit/24c4dd5ac5035f03b90501840363798deff709d1))
+
 ## [3.0.0-beta.350](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.349...v3.0.0-beta.350) (2024-02-20)
 
 
