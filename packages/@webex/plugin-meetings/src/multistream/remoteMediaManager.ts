@@ -539,23 +539,21 @@ export class RemoteMediaManager extends EventsScope {
    *
    *
    */
-  public async setReceiveNamedMediaGroup(type: number, value: number) {
+  public async setReceiveNamedMediaGroup(mediaType: MediaType, languageId: number) {
+    const type = mediaType === MediaType.AudioMain ? 1 : 0;
+    const value = languageId;
     if (
       type === this.media.receiveNamedMediaGroup.type &&
       value === this.media.receiveNamedMediaGroup.value
     ) {
       return;
     }
-    // if (!value) {
-    //   return;
-    // }
 
     this.media.receiveNamedMediaGroup = {
       type,
       value,
     };
-    if (type === 1) {
-      // 1 means Audio Language
+    if (mediaType === MediaType.AudioMain) {
       this.invalidateCurrentRemoteMedia({
         audio: true,
         video: false,

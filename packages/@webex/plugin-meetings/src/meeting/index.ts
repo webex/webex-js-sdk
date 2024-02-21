@@ -7835,14 +7835,18 @@ export default class Meeting extends StatelessWebexPlugin {
    * @returns {void}
    */
   private setSendNamedMediaGroup(mediaType: MediaType, languageId = 0): void {
-    const languageCode = languageId || this.simultaneousInterpretation.getTargetLanguageCode();
-    const groups = [
-      {
-        type: mediaType === MediaType.AudioMain ? 1 : 0,
-        value: languageCode,
-      },
-    ];
+    const value = languageId || this.simultaneousInterpretation.getTargetLanguageCode();
+    const type = mediaType === MediaType.AudioMain ? 1 : 0;
+    let groups = [];
 
+    if (value && type) {
+      groups = [
+        {
+          type,
+          value,
+        },
+      ];
+    }
     if (this.isMultistream && this.mediaProperties.webrtcMediaConnection) {
       this.sendSlotManager.setNamedMediaGroups(mediaType, groups);
     }
