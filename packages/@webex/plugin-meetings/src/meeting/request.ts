@@ -164,7 +164,7 @@ export default class MeetingRequest extends StatelessWebexPlugin {
         // @ts-ignore - config comes from registerPlugin
         deviceType: this.config.meetings.deviceType,
         // @ts-ignore
-        machineId: this.webex.internal.device.machineId,
+        installationId: this.webex.internal.device.config.installationId || undefined,
       },
       usingResource: resourceId || null,
       moveMediaToResource: (resourceId && moveToResource) || false,
