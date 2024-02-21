@@ -631,46 +631,6 @@ export default class Meeting extends StatelessWebexPlugin {
         payload
       );
     },
-    [VOICEAEVENTS.CAPTION_LANGUAGE_UPDATE]: (payload) => {
-      const {statusCode} = payload;
-
-      if (statusCode === 200) {
-        this.transcription.languageOptions = {
-          ...this.transcription.languageOptions,
-          currentCaptionLanguage:
-            this.transcription.languageOptions.requestedCaptionLanguage ?? LANGUAGE_ENGLISH,
-        };
-        Trigger.trigger(
-          this,
-          {
-            file: 'meeting/index',
-            function: 'setUpVoiceaListeners',
-          },
-          EVENT_TRIGGERS.MEETING_CAPTION_LANGUAGE_CHANGED,
-          {languageCode: this.transcription.languageOptions.currentCaptionLanguage}
-        );
-      }
-    },
-    [VOICEAEVENTS.SPOKEN_LANGUAGE_UPDATE]: (payload) => {
-      const {languageCode} = payload;
-
-      if (languageCode) {
-        this.transcription.languageOptions = {
-          ...this.transcription.languageOptions,
-          currentSpokenLanguage: languageCode,
-        };
-      }
-
-      Trigger.trigger(
-        this,
-        {
-          file: 'meeting/index',
-          function: 'setUpVoiceaListeners',
-        },
-        EVENT_TRIGGERS.MEETING_SPOKEN_LANGUAGE_CHANGED,
-        {languageCode}
-      );
-    },
     [VOICEAEVENTS.CAPTIONS_TURNED_ON]: () => {
       this.transcription.status = TURN_ON_CAPTION_STATUS.ENABLED;
     },
@@ -2009,18 +1969,6 @@ export default class Meeting extends StatelessWebexPlugin {
     this.webex.internal.voicea.on(
       VOICEAEVENTS.VOICEA_ANNOUNCEMENT,
       this.voiceaListenerCallbacks[VOICEAEVENTS.VOICEA_ANNOUNCEMENT]
-    );
-
-    // @ts-ignore
-    this.webex.internal.voicea.on(
-      VOICEAEVENTS.CAPTION_LANGUAGE_UPDATE,
-      this.voiceaListenerCallbacks[VOICEAEVENTS.CAPTION_LANGUAGE_UPDATE]
-    );
-
-    // @ts-ignore
-    this.webex.internal.voicea.on(
-      VOICEAEVENTS.SPOKEN_LANGUAGE_UPDATE,
-      this.voiceaListenerCallbacks[VOICEAEVENTS.SPOKEN_LANGUAGE_UPDATE]
     );
 
     // @ts-ignore
@@ -4641,6 +4589,10 @@ export default class Meeting extends StatelessWebexPlugin {
           if (statusCode === 200) {
             const currentCaptionLanguage =
               this.transcription.languageOptions.requestedCaptionLanguage ?? LANGUAGE_ENGLISH;
+            this.transcription.languageOptions = {
+              ...this.transcription.languageOptions,
+              currentCaptionLanguage,
+            };
             resolve(currentCaptionLanguage);
           } else {
             reject(payload);
@@ -4685,7 +4637,15 @@ export default class Meeting extends StatelessWebexPlugin {
           );
           const {languageCode} = payload;
 
-          resolve(languageCode);
+          if (languageCode) {
+            this.transcription.languageOptions = {
+              ...this.transcription.languageOptions,
+              currentSpokenLanguage: languageCode,
+            };
+            resolve(languageCode);
+          } else {
+            reject(payload);
+          }
         };
         // @ts-ignore
         this.webex.internal.voicea.on(
@@ -4784,18 +4744,6 @@ export default class Meeting extends StatelessWebexPlugin {
       this.webex.internal.voicea.off(
         VOICEAEVENTS.VOICEA_ANNOUNCEMENT,
         this.voiceaListenerCallbacks[VOICEAEVENTS.VOICEA_ANNOUNCEMENT]
-      );
-
-      // @ts-ignore
-      this.webex.internal.voicea.off(
-        VOICEAEVENTS.CAPTION_LANGUAGE_UPDATE,
-        this.voiceaListenerCallbacks[VOICEAEVENTS.CAPTION_LANGUAGE_UPDATE]
-      );
-
-      // @ts-ignore
-      this.webex.internal.voicea.off(
-        VOICEAEVENTS.SPOKEN_LANGUAGE_UPDATE,
-        this.voiceaListenerCallbacks[VOICEAEVENTS.SPOKEN_LANGUAGE_UPDATE]
       );
 
       // @ts-ignore

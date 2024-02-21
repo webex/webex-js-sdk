@@ -378,9 +378,6 @@ export const EVENT_TRIGGERS = {
   MEETING_STARTED_RECEIVING_TRANSCRIPTION: 'meeting:receiveTranscription:started',
   MEETING_STOPPED_RECEIVING_TRANSCRIPTION: 'meeting:receiveTranscription:stopped',
 
-  MEETING_CAPTION_LANGUAGE_CHANGED: 'meeting:caption-language-changed',
-  MEETING_SPOKEN_LANGUAGE_CHANGED: 'meeting:spoken-language-changed',
-
   MEETING_CAPTION_RECEIVED: 'meeting:caption-received',
 };
 
