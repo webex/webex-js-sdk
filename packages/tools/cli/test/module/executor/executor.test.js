@@ -13,10 +13,6 @@ describe('Executor', () => {
       const exampleCommand = 'hello world';
       let execSpy;
 
-      afterEach(() => {
-        execSpy.mockClear();
-      });
-
       it('should return a promise', () => {
         execSpy = jest.spyOn(shell, 'exec').mockImplementation((command, func) => {
           func(0, { command }, undefined);

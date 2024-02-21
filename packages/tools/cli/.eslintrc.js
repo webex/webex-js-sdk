@@ -1,4 +1,5 @@
 const { javascript, jest, typescript } = require('../../../config/eslint');
+const definition = require('./package.json');
 
 const config = {
   root: true,
@@ -6,9 +7,9 @@ const config = {
     node: true,
   },
   overrides: [
-    ...javascript.modern.overrides,
-    ...jest.modern.overrides,
-    ...typescript.modern.overrides,
+    ...javascript.modern({ packageName: definition.name }).overrides,
+    ...jest.modern({ packageName: definition.name }).overrides,
+    ...typescript.modern({ packageName: definition.name }).overrides,
   ],
 };
 

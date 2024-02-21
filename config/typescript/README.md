@@ -47,8 +47,8 @@ Once the `./tsconfig.json` file has been configured based on the information pro
   "scripts": {
     "build": "{...other build commands...} && yarn build:src",
     "build:src": "{...other source building commands...} && yarn build:module && yarn build:types",
-    "build:module": "tsc --declaration false --outDir ./dist/module --module CommonJS",
-    "build:types": "tsc --declaration --declarationMap --declarationDir ./dist/types --emitDeclarationOnly --module CommonJS",
+    "build:module": "tsc --declaration false --outDir ./dist/module",
+    "build:types": "tsc --declaration --declarationMap --declarationDir ./dist/types --emitDeclarationOnly",
     "test:syntax": "tsc --noEmit"
   }
 }

@@ -1,6 +1,6 @@
 const config = {
   collectCoverageFrom: ['./dist/module/**/*.*'],
-  coverageDirectory: './dist/docs/coverage',
+  coverageDirectory: './docs/coverage',
   coverageThreshold: {
     global: {
       branches: 100,
@@ -9,6 +9,7 @@ const config = {
       statements: 100,
     },
   },
+  restoreMocks: true,
 };
 
 module.exports = config;

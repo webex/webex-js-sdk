@@ -410,6 +410,7 @@ export type CallForwardingAlwaysSettingsUCM = {
   dn: string;
   destination?: string;
   destinationVoicemailEnabled: boolean;
+  e164Number: string;
 };
 
 export type CallForwardingSettingsUCM = {
