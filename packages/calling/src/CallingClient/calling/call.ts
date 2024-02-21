@@ -1572,7 +1572,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
       if (effect === addedEffect) {
         effect.on(EffectEvent.Enabled, () =>
-          this.updateLocalTrack(track, MEDIA_EFFECT_ACTION.BNR_ENABLED)
+          this.updateLocalTrack(effect.effectTrack, MEDIA_EFFECT_ACTION.BNR_ENABLED)
         );
         effect.on(EffectEvent.Disabled, () =>
           this.updateLocalTrack(track, MEDIA_EFFECT_ACTION.BNR_DISABLED)
@@ -1594,6 +1594,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
           this.updateLocalTrack(track, MEDIA_EFFECT_ACTION.BNR_DISABLED)
         );
       }
+
       this.localStream.off(LocalStreamEventNames.EffectAdded, this.registerEffectListener);
     }
   }

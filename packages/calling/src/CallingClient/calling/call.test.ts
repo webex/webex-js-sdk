@@ -116,6 +116,7 @@ describe('Call Tests', () => {
     isEnabled: true,
     effectTrack: mockTrack,
     on: jest.fn(),
+    off: jest.fn(),
   };
 
   const roapMediaConnectionConfig = {
@@ -445,6 +446,7 @@ describe('Call Tests', () => {
         getAudioTracks: jest.fn().mockReturnValue([mockTrack]),
       },
       on: jest.fn(),
+      off: jest.fn(),
       getEffectByKind: jest.fn(),
     };
 
