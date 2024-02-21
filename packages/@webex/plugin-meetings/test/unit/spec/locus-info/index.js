@@ -2058,7 +2058,7 @@ describe('plugin-meetings', () => {
     });
 
     describe('#getTheLocusToUpdate', () => {
-      it('return the cache locus if return to main session', () => {
+      it('return the cache locus if return to main session and do not clear main session cache', () => {
         locusInfo.mainSessionLocusCache = {url: 'url'};
         locusInfo.controls = {
           breakout: {
@@ -2074,9 +2074,13 @@ describe('plugin-meetings', () => {
         };
 
         assert.deepEqual(locusInfo.getTheLocusToUpdate(newLocus), {url: 'url'});
+
+        locusInfo.clearMainSessionLocusCache = sinon.stub();
+        locusInfo.getTheLocusToUpdate(newLocus);
+        assert.notCalled(locusInfo.clearMainSessionLocusCache)
       });
 
-      it('return the new locus if return to main session but no cache', () => {
+      it('return the new locus if return to main session but no cache and do not clear main session cache', () => {
         locusInfo.mainSessionLocusCache = null;
         locusInfo.controls = {
           breakout: {
@@ -2092,10 +2096,22 @@ describe('plugin-meetings', () => {
         };
 
         assert.deepEqual(locusInfo.getTheLocusToUpdate(newLocus), newLocus);
+
+        locusInfo.clearMainSessionLocusCache = sinon.stub();
+        locusInfo.getTheLocusToUpdate(newLocus);
+        assert.notCalled(locusInfo.clearMainSessionLocusCache)
       });
 
-      it('return the new locus if not return to main session', () => {
-        locusInfo.mainSessionLocusCache = {url: 'url'};
+      it('return the new locus if not return to main session and clear main session cache', () => {
+        locusInfo.mainSessionLocusCache = {
+          controls: {
+            breakout: {
+              sessionType: 'MAIN',
+            },
+          },
+          self: {removed: true}
+        };
+        locusInfo.fullState = {state: 'ACTIVE'}
         locusInfo.controls = {
           breakout: {
             sessionType: 'MAIN',
@@ -2109,7 +2125,39 @@ describe('plugin-meetings', () => {
           },
         };
 
-        assert.deepEqual(locusInfo.getTheLocusToUpdate(newLocus), newLocus);
+        locusInfo.clearMainSessionLocusCache = sinon.stub();
+        const result = locusInfo.getTheLocusToUpdate(newLocus);
+        assert.calledOnce(locusInfo.clearMainSessionLocusCache)
+
+        assert.deepEqual(result, newLocus);
+      });
+
+      it('do not clear main session cache when "mainSessionLocusCache?.self?.removed" is not true', () => {
+        locusInfo.mainSessionLocusCache = {
+          controls: {
+            breakout: {
+              sessionType: 'MAIN',
+            },
+          },
+          self: {removed: undefined}
+        };
+        locusInfo.fullState = {state: 'ACTIVE'}
+        locusInfo.controls = {
+          breakout: {
+            sessionType: 'MAIN',
+          },
+        };
+        const newLocus = {
+          controls: {
+            breakout: {
+              sessionType: 'BREAKOUT',
+            },
+          },
+        };
+
+        locusInfo.clearMainSessionLocusCache = sinon.stub();
+        locusInfo.getTheLocusToUpdate(newLocus);
+        assert.notCalled(locusInfo.clearMainSessionLocusCache)
       });
     });
 
