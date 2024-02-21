@@ -3,7 +3,7 @@
  */
 import 'jsdom-global/register';
 import jwt from 'jsonwebtoken';
-import {cloneDeep, forEach, isEqual, isUndefined, omit} from 'lodash';
+import {cloneDeep, forEach, isEqual, isUndefined} from 'lodash';
 import sinon from 'sinon';
 import * as internalMediaModule from '@webex/internal-media-core';
 import StateMachine from 'javascript-state-machine';
@@ -4792,6 +4792,7 @@ describe('plugin-meetings', () => {
         const FAKE_DESTINATION = 'something@somecompany.com';
         const FAKE_TYPE = _SIP_URI_;
         const FAKE_INSTALLED_ORG_ID = '123456';
+        const FAKE_MEETING_INFO_LOOKUP_URL = 'meetingLookupUrl';
 
         const FAKE_SDK_CAPTCHA_INFO = {};
         const FAKE_MEETING_INFO = {
@@ -4802,34 +4803,78 @@ describe('plugin-meetings', () => {
           hostId: 'some_host_id', // this.owner;
         };
 
-        it('calls meetingInfoProvider with all the right parameters and parses the result', async () => {
-          meeting.requiredCaptcha = FAKE_SDK_CAPTCHA_INFO;
-          meeting.destination = FAKE_DESTINATION;
-          meeting.destinationType = FAKE_TYPE;
-          meeting.config.installedOrgID = FAKE_INSTALLED_ORG_ID;
-          meeting.parseMeetingInfo = sinon.stub().returns(undefined);
-          meeting.updateMeetingActions = sinon.stub().returns(undefined);
+        [
+          {
+            input: {
+              meetingInfo: FAKE_MEETING_INFO,
+              meetingLookupUrl: FAKE_MEETING_INFO_LOOKUP_URL,
+            },
+            expected: {
+              meetingInfo: {
+                ...FAKE_MEETING_INFO,
+                meetingLookupUrl: FAKE_MEETING_INFO_LOOKUP_URL,
+              },
+            },
+          },
+          {
+            input: {
+              meetingInfo: undefined,
+              meetingLookupUrl: FAKE_MEETING_INFO_LOOKUP_URL,
+            },
+            expected: {meetingInfo: null},
+          },
+          ,
+          {
+            input: {
+              meetingInfo: FAKE_MEETING_INFO,
+              meetingLookupUrl: undefined,
+            },
+            expected: {
+              meetingInfo: {
+                ...FAKE_MEETING_INFO,
+                meetingLookupUrl: undefined,
+              },
+            },
+          },
+          ,
+          {
+            input: {
+              meetingInfo: undefined,
+              meetingLookupUrl: undefined,
+            },
+            expected: {meetingInfo: null},
+          },
+        ].forEach(({input, expected}) => {
+          it(`calls meetingInfoProvider with all the right parameters and parses the result when ${JSON.stringify(
+            input
+          )}`, async () => {
+            meeting.requiredCaptcha = FAKE_SDK_CAPTCHA_INFO;
+            meeting.destination = FAKE_DESTINATION;
+            meeting.destinationType = FAKE_TYPE;
+            meeting.config.installedOrgID = FAKE_INSTALLED_ORG_ID;
+            meeting.parseMeetingInfo = sinon.stub().returns(undefined);
+            meeting.updateMeetingActions = sinon.stub().returns(undefined);
 
-          await meeting.injectMeetingInfo(FAKE_MEETING_INFO, {
-            sendCAevents: true,
-          });
+            await meeting.injectMeetingInfo(
+              input.meetingInfo,
+              {sendCAevents: true},
+              input.meetingLookupUrl
+            );
 
-          assert.calledWith(meeting.parseMeetingInfo, FAKE_MEETING_INFO, FAKE_DESTINATION);
-          assert.deepEqual(meeting.meetingInfo, {
-            ...FAKE_MEETING_INFO,
-            meetingLookupUrl: undefined,
+            assert.calledWith(meeting.parseMeetingInfo, input.meetingInfo, FAKE_DESTINATION);
+            assert.deepEqual(meeting.meetingInfo, expected.meetingInfo);
+            assert.equal(meeting.passwordStatus, PASSWORD_STATUS.NOT_REQUIRED);
+            assert.equal(meeting.meetingInfoFailureReason, MEETING_INFO_FAILURE_REASON.NONE);
+            assert.equal(meeting.requiredCaptcha, null);
+            assert.calledThrice(TriggerProxy.trigger);
+            assert.calledWith(
+              TriggerProxy.trigger,
+              meeting,
+              {file: 'meetings', function: 'fetchMeetingInfo'},
+              'meeting:meetingInfoAvailable'
+            );
+            assert.calledWith(meeting.updateMeetingActions);
           });
-          assert.equal(meeting.passwordStatus, PASSWORD_STATUS.NOT_REQUIRED);
-          assert.equal(meeting.meetingInfoFailureReason, MEETING_INFO_FAILURE_REASON.NONE);
-          assert.equal(meeting.requiredCaptcha, null);
-          assert.calledThrice(TriggerProxy.trigger);
-          assert.calledWith(
-            TriggerProxy.trigger,
-            meeting,
-            {file: 'meetings', function: 'fetchMeetingInfo'},
-            'meeting:meetingInfoAvailable'
-          );
-          assert.calledWith(meeting.updateMeetingActions);
         });
 
         it('fails if captchaCode is provided when captcha not needed', async () => {

@@ -1432,13 +1432,13 @@ export default class Meeting extends StatelessWebexPlugin {
    *
    * @param {Object} meetingInfo - Complete meeting info
    * @param {FetchMeetingInfoParams} fetchParams - Fetch parameters for validation
-   * @param {String} meetingLookupUrl - Lookup url, defined when the meeting info fetched
+   * @param {String|undefined} meetingLookupUrl - Lookup url, defined when the meeting info fetched
    * @returns {Promise<void>}
    */
   public async injectMeetingInfo(
     meetingInfo: any,
     fetchParams: FetchMeetingInfoParams,
-    meetingLookupUrl: string
+    meetingLookupUrl: string | undefined
   ): Promise<void> {
     await this.prepForFetchMeetingInfo(fetchParams, 'injectMeetingInfo');
 
