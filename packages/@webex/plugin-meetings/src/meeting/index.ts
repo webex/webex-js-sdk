@@ -7850,13 +7850,6 @@ export default class Meeting extends StatelessWebexPlugin {
     if (this.isMultistream && this.mediaProperties.webrtcMediaConnection) {
       this.sendSlotManager.setNamedMediaGroups(mediaType, groups);
     }
-
-    // this.emitPublishStateChangeEvent({
-    //   isPublished: false,
-    //   mediaType,
-    //   stream,
-    //   functionName: 'setSendNamedMediaGroup',
-    // });
   }
 
   /**
