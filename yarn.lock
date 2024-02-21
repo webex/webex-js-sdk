@@ -6600,7 +6600,7 @@ __metadata:
     "@typescript-eslint/parser": 5.38.1
     "@web/dev-server": 0.1.30
     "@webex/internal-media-core": 2.2.2
-    "@webex/media-helpers": "workspace:^"
+    "@webex/media-helpers": "workspace:*"
     async-mutex: 0.4.0
     buffer: 6.0.3
     chai: 4.3.4
@@ -7667,7 +7667,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/media-helpers@workspace:*, @webex/media-helpers@workspace:^, @webex/media-helpers@workspace:packages/@webex/media-helpers":
+"@webex/media-helpers@workspace:*, @webex/media-helpers@workspace:packages/@webex/media-helpers":
   version: 0.0.0-use.local
   resolution: "@webex/media-helpers@workspace:packages/@webex/media-helpers"
   dependencies:
