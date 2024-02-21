@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.352](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.351...v3.0.0-beta.352) (2024-02-21)
+
+
+### Bug Fixes
+
+* avoid duplicate request of meeting info by passing it from cantina ([#3376](https://github.com/webex/webex-js-sdk/issues/3376)) ([2e48de0](https://github.com/webex/webex-js-sdk/commit/2e48de019487c637075c120e13df8a3f3f021450))
+
 ## [3.0.0-beta.351](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.350...v3.0.0-beta.351) (2024-02-21)
 
 
