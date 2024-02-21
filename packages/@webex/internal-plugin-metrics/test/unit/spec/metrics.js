@@ -12,6 +12,8 @@ import {BrowserDetection} from '@webex/common';
 
 const {getOSVersion} = BrowserDetection();
 
+//@ts-ignore
+global.window = {location: {hostname: 'whatever'}};
 function promiseTick(count) {
   let promise = Promise.resolve();
 
