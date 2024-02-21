@@ -2,7 +2,7 @@
 /* eslint-disable class-methods-use-this */
 /* eslint-disable valid-jsdoc */
 import {getOSNameInternal} from '@webex/internal-plugin-metrics';
-import {BrowserDetection} from '@webex/common';
+import {BrowserDetection, getBrowserSerial} from '@webex/common';
 import uuid from 'uuid';
 import {merge} from 'lodash';
 import {StatelessWebexPlugin} from '@webex/webex-core';
@@ -84,6 +84,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
   // @ts-ignore
   private callDiagnosticEventsBatcher: CallDiagnosticEventsBatcher;
   private logger: any; // to avoid adding @ts-ignore everywhere
+  private hasLoggedBrowserSerial: boolean;
   // the default validator before piping an event to the batcher
   // this function can be overridden by the user
   public validator: (options: {
@@ -184,6 +185,16 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       versionMetadata = extractVersionMetadata(providedClientVersion);
     }
 
+    if (!this.hasLoggedBrowserSerial) {
+      this.logger.log(
+        CALL_DIAGNOSTIC_LOG_IDENTIFIER,
+        `CallDiagnosticMetrics: @createClientEventObjectInMeeting => collected browser data`,
+        JSON.stringify(getBrowserSerial())
+      );
+
+      this.hasLoggedBrowserSerial = true;
+    }
+
     if (
       (defaultClientType && defaultSubClientType) ||
       (options.clientType && options.subClientType)
@@ -201,9 +212,16 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
           clientType: options?.clientType || defaultClientType,
           clientVersion: providedClientVersion || defaultSDKClientVersion,
           ...versionMetadata,
-          localNetworkPrefix:
+          publicNetworkPrefix:
             // @ts-ignore
             anonymizeIPAddress(this.webex.meetings.geoHintInfo?.clientAddress) || undefined,
+          localNetworkPrefix:
+            anonymizeIPAddress(
+              // @ts-ignore
+              this.webex.meetings.meetingCollection
+                .get(meetingId)
+                ?.statsAnalyzer?.getLocalIpAddress()
+            ) || undefined,
           osVersion: getOSVersion() || 'unknown',
           subClientType: options?.subClientType || defaultSubClientType,
           os: getOSNameInternal(),
@@ -615,7 +633,10 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
         webClientDomain: window.location.hostname,
       },
       userType: meeting.getCurUserType(),
-      loginType: this.getCurLoginType(),
+      loginType:
+        'loginType' in meeting.callStateForMetrics
+          ? meeting.callStateForMetrics.loginType
+          : this.getCurLoginType(),
       isConvergedArchitectureEnabled: this.getIsConvergedArchitectureEnabled({
         meetingId,
       }),

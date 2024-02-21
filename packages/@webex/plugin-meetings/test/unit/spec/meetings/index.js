@@ -559,43 +559,46 @@ describe('plugin-meetings', () => {
               });
             });
           });
-          describe('destory non active meeting', () => {
-            let initialSetup;
-            let parse;
+          describe('destroy non active locus meetings', () => {
             let destroySpy;
+
+            const meetingCollectionMeetings =  {
+              stillValidLocusMeeting: {
+                locusUrl: 'still-valid-locus-url',
+                sendCallAnalyzerMetrics: sinon.stub(),
+              },
+              noLongerValidLocusMeeting: {
+                locusUrl: 'no-longer-valid-locus-url',
+                sendCallAnalyzerMetrics: sinon.stub(),
+              },
+              otherNonLocusMeeting1: {
+                locusUrl: null,
+                sendCallAnalyzerMetrics: sinon.stub(),
+              },
+              otherNonLocusMeeting2: {
+                locusUrl: undefined,
+                sendCallAnalyzerMetrics: sinon.stub(),
+              },
+            };
 
             beforeEach(() => {
               destroySpy = sinon.spy(webex.meetings, 'destroy');
-              initialSetup = sinon.stub().returns(true);
-              webex.meetings.meetingCollection.getByKey = sinon.stub().returns({
-                locusInfo,
-                sendCallAnalyzerMetrics: sinon.stub(),
-              });
-              webex.meetings.meetingCollection.getAll = sinon.stub().returns({
-                meetingutk: {
-                  locusUrl: 'fdfdjfdhj',
-                  sendCallAnalyzerMetrics: sinon.stub(),
-                },
-              });
-              webex.meetings.create = sinon.stub().returns(
-                Promise.resolve({
-                  locusInfo: {
-                    initialSetup,
-                  },
-                  sendCallAnalyzerMetrics: sinon.stub(),
-                })
-              );
+              webex.meetings.meetingCollection.getAll = sinon.stub().returns(meetingCollectionMeetings);
               webex.meetings.request.getActiveMeetings = sinon.stub().returns(
                 Promise.resolve({
-                  loci: [],
+                  loci: [
+                    {url: 'still-valid-locus-url'}
+                  ],
                 })
               );
               MeetingUtil.cleanUp = sinon.stub().returns(Promise.resolve());
             });
-            it('destroy non active meetings', async () => {
+            it('destroy only non active locus meetings and keep active locus meetings and any other non-locus meeting', async () => {
               await webex.meetings.syncMeetings();
               assert.calledOnce(webex.meetings.request.getActiveMeetings);
-              assert.calledOnce(destroySpy);
+              assert.calledOnce(webex.meetings.meetingCollection.getAll);
+              assert.calledWith(destroySpy, meetingCollectionMeetings.noLongerValidLocusMeeting);
+              assert.callCount(destroySpy, 1);
 
               assert.calledOnce(MeetingUtil.cleanUp);
             });
@@ -637,6 +640,29 @@ describe('plugin-meetings', () => {
 
         const FAKE_USE_RANDOM_DELAY = true;
         const correlationId = 'my-correlationId';
+        const callStateForMetrics = {
+          correlationId: 'my-correlationId2',
+          joinTrigger: 'my-join-trigger',
+          loginType: 'my-login-type',
+        };
+
+        it('should call setCallStateForMetrics on any pre-existing meeting', async () => {
+          const fakeMeeting = {setCallStateForMetrics: sinon.mock()};
+          webex.meetings.meetingCollection.getByKey = sinon.stub().returns(fakeMeeting);
+          await webex.meetings.create(
+            test1,
+            test2,
+            FAKE_USE_RANDOM_DELAY,
+            {},
+            correlationId,
+            true,
+            callStateForMetrics
+          );
+          assert.calledOnceWithExactly(fakeMeeting.setCallStateForMetrics, {
+            ...callStateForMetrics,
+            correlationId,
+          });
+        });
 
         const checkCallCreateMeeting = async (createParameters, createMeetingParameters) => {
           const create = webex.meetings.create(...createParameters);
@@ -648,23 +674,37 @@ describe('plugin-meetings', () => {
         };
 
         it('calls createMeeting and returns its promise', async () => {
-          checkCallCreateMeeting(
+          await checkCallCreateMeeting(
             [test1, test2, FAKE_USE_RANDOM_DELAY, {}, correlationId, true],
-            [test1, test2, FAKE_USE_RANDOM_DELAY, {}, correlationId, true]
+            [test1, test2, FAKE_USE_RANDOM_DELAY, {}, {correlationId}, true]
           );
         });
 
         it('calls createMeeting when failOnMissingMeetinginfo is undefined and returns its promise', async () => {
-          checkCallCreateMeeting(
+          await checkCallCreateMeeting(
             [test1, test2, FAKE_USE_RANDOM_DELAY, {}, correlationId, undefined],
-            [test1, test2, FAKE_USE_RANDOM_DELAY, {}, correlationId, false]
+            [test1, test2, FAKE_USE_RANDOM_DELAY, {}, {correlationId}, false]
           );
         });
 
         it('calls createMeeting when failOnMissingMeetinginfo is false and returns its promise', async () => {
-          checkCallCreateMeeting(
+          await checkCallCreateMeeting(
             [test1, test2, FAKE_USE_RANDOM_DELAY, {}, correlationId, false],
-            [test1, test2, FAKE_USE_RANDOM_DELAY, {}, correlationId, false]
+            [test1, test2, FAKE_USE_RANDOM_DELAY, {}, {correlationId}, false]
+          );
+        });
+
+        it('calls createMeeting with callStateForMetrics and returns its promise', async () => {
+          await checkCallCreateMeeting(
+            [test1, test2, FAKE_USE_RANDOM_DELAY, {}, undefined, true, callStateForMetrics],
+            [test1, test2, FAKE_USE_RANDOM_DELAY, {}, callStateForMetrics, true]
+          );
+        });
+
+        it('calls createMeeting with callStateForMetrics overwritten with correlationId and returns its promise', async () => {
+          await checkCallCreateMeeting(
+            [test1, test2, FAKE_USE_RANDOM_DELAY, {}, correlationId, true, callStateForMetrics],
+            [test1, test2, FAKE_USE_RANDOM_DELAY, {}, {...callStateForMetrics, correlationId}, true]
           );
         });
 
@@ -693,7 +733,8 @@ describe('plugin-meetings', () => {
             test2,
             FAKE_USE_RANDOM_DELAY,
             FAKE_INFO_EXTRA_PARAMS,
-            correlationId
+            {correlationId},
+            false
           );
         });
 
@@ -1122,6 +1163,12 @@ describe('plugin-meetings', () => {
             if (expectedMeetingData.correlationId) {
               assert.equal(meeting.correlationId, expectedMeetingData.correlationId);
             }
+            if (expectedMeetingData.callStateForMetrics) {
+              assert.deepEqual(
+                meeting.callStateForMetrics,
+                expectedMeetingData.callStateForMetrics
+              );
+            }
             assert.equal(meeting.destination, destination);
             assert.equal(meeting.destinationType, type);
             assert.calledWith(
@@ -1390,11 +1437,43 @@ describe('plugin-meetings', () => {
               'test type',
               false,
               {},
-              'my-correlationId'
+              {correlationId: 'my-correlationId'}
             );
 
             const expectedMeetingData = {
               correlationId: 'my-correlationId',
+            };
+
+            checkCreateWithoutDelay(
+              meeting,
+              'test destination',
+              'test type',
+              {},
+              expectedMeetingData,
+              true
+            );
+          });
+
+          it('creates meeting with the callStateForMetrics provided', async () => {
+            const meeting = await webex.meetings.createMeeting(
+              'test destination',
+              'test type',
+              false,
+              {},
+              {
+                correlationId: 'my-correlationId',
+                joinTrigger: 'my-join-trigger',
+                loginType: 'my-login-type',
+              }
+            );
+
+            const expectedMeetingData = {
+              correlationId: 'my-correlationId',
+              callStateForMetrics: {
+                correlationId: 'my-correlationId',
+                joinTrigger: 'my-join-trigger',
+                loginType: 'my-login-type',
+              },
             };
 
             checkCreateWithoutDelay(
