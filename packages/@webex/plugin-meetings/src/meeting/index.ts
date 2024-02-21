@@ -2367,16 +2367,6 @@ export default class Meeting extends StatelessWebexPlugin {
       }
     );
 
-    this.locusInfo.on(LOCUSINFO.EVENTS.CONTROLS_JOIN_BREAKOUT_FROM_MAIN, ({mainLocusUrl}) => {
-      this.meetingRequest.getLocusStatusByUrl(mainLocusUrl).catch((error) => {
-        // clear main session cache when attendee join into breakout and forbidden to get locus from main locus url,
-        // which means main session is not active for the attendee
-        if (error?.statusCode === 403) {
-          this.locusInfo.clearMainSessionLocusCache();
-        }
-      });
-    });
-
     this.locusInfo.on(LOCUSINFO.EVENTS.CONTROLS_ENTRY_EXIT_TONE_UPDATED, ({entryExitTone}) => {
       Trigger.trigger(
         this,
