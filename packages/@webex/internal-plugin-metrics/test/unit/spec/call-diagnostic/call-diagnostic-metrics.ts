@@ -5,7 +5,7 @@ import {WebexHttpError} from '@webex/webex-core';
 import CallDiagnosticMetrics from '../../../../src/call-diagnostic/call-diagnostic-metrics';
 import CallDiagnosticLatencies from '../../../../src/call-diagnostic/call-diagnostic-metrics-latencies';
 import * as Utils from '../../../../src/call-diagnostic/call-diagnostic-metrics.util';
-import {BrowserDetection} from '@webex/common';
+import {BrowserDetection, getBrowserSerial} from '@webex/common';
 import {getOSNameInternal} from '@webex/internal-plugin-metrics';
 import uuid from 'uuid';
 import {omit} from 'lodash';
@@ -38,6 +38,9 @@ describe('internal-plugin-metrics', () => {
       },
       meetingInfo: {},
       getCurUserType: () => 'host',
+      statsAnalyzer: {
+        getLocalIpAddress: () => '192.168.1.90'
+      }
     };
 
     const fakeMeeting2 = {
@@ -126,7 +129,6 @@ describe('internal-plugin-metrics', () => {
     describe('#getOrigin', () => {
       it('should build origin correctly', () => {
         sinon.stub(Utils, 'anonymizeIPAddress').returns('1.1.1.1');
-
         //@ts-ignore
         const res = cd.getOrigin(
           {subClientType: 'WEB_APP', clientType: 'TEAMS_CLIENT'},
@@ -139,6 +141,7 @@ describe('internal-plugin-metrics', () => {
             browserVersion: getBrowserVersion(),
             clientType: 'TEAMS_CLIENT',
             clientVersion: 'webex-js-sdk/webex-version',
+            publicNetworkPrefix: '1.1.1.1',
             localNetworkPrefix: '1.1.1.1',
             os: getOSNameInternal(),
             osVersion: getOSVersion(),
@@ -171,6 +174,7 @@ describe('internal-plugin-metrics', () => {
             browserVersion: getBrowserVersion(),
             clientType: 'TEAMS_CLIENT',
             clientVersion: 'webex-js-sdk/webex-version',
+            publicNetworkPrefix: '1.1.1.1',
             localNetworkPrefix: '1.1.1.1',
             os: getOSNameInternal(),
             osVersion: getOSVersion(),
@@ -205,6 +209,7 @@ describe('internal-plugin-metrics', () => {
             browserVersion: getBrowserVersion(),
             clientType: 'TEAMS_CLIENT',
             clientVersion: 'webex-js-sdk/webex-version',
+            publicNetworkPrefix: '1.1.1.1',
             localNetworkPrefix: '1.1.1.1',
             os: getOSNameInternal(),
             osVersion: getOSVersion(),
@@ -230,6 +235,7 @@ describe('internal-plugin-metrics', () => {
             browserVersion: getBrowserVersion(),
             clientType: 'TEAMS_CLIENT',
             clientVersion: 'webex-js-sdk/webex-version',
+            publicNetworkPrefix: '1.1.1.1',
             localNetworkPrefix: '1.1.1.1',
             os: getOSNameInternal(),
             osVersion: getOSVersion(),
@@ -256,7 +262,8 @@ describe('internal-plugin-metrics', () => {
             browserVersion: getBrowserVersion(),
             clientType: 'TEAMS_CLIENT',
             clientVersion: '43.9.0.1234',
-            localNetworkPrefix: '1.3.4.0',
+            publicNetworkPrefix: '1.3.4.0',
+            localNetworkPrefix: '192.168.1.80',
             majorVersion: 43,
             minorVersion: 9,
             os: getOSNameInternal(),
@@ -264,6 +271,29 @@ describe('internal-plugin-metrics', () => {
             subClientType: 'WEB_APP',
           },
           environment: 'meeting_evn',
+          name: 'endpoint',
+          networkType: 'unknown',
+          userAgent,
+        });
+      });
+
+      it('should build origin correctly with no meeting or stats analyzer', () => {
+        
+        //@ts-ignore
+        const res = cd.getOrigin();
+
+        assert.deepEqual(res, {
+          clientInfo: {
+            browser: getBrowserName(),
+            browserVersion: getBrowserVersion(),
+            clientType: 'TEAMS_CLIENT',
+            clientVersion: 'webex-js-sdk/webex-version',
+            publicNetworkPrefix: '1.3.4.0',
+            localNetworkPrefix: undefined,
+            os: getOSNameInternal(),
+            osVersion: getOSVersion(),
+            subClientType: 'WEB_APP',
+          },
           name: 'endpoint',
           networkType: 'unknown',
           userAgent,
@@ -635,6 +665,51 @@ describe('internal-plugin-metrics', () => {
 
         const webexLoggerLogCalls = webex.logger.log.getCalls();
         assert.deepEqual(webexLoggerLogCalls[0].args, [
+          'call-diagnostic-events -> ',
+          'CallDiagnosticMetrics: @submitClientEvent. Submit Client Event CA event.',
+          `name: client.alert.displayed`,
+        ]);
+      });
+
+      it('should log browser data, but only for the first call diagnostic event', () => {
+        const prepareDiagnosticEventSpy = sinon.spy(cd, 'prepareDiagnosticEvent');
+        const submitToCallDiagnosticsSpy = sinon.spy(cd, 'submitToCallDiagnostics');
+        const generateClientEventErrorPayloadSpy = sinon.spy(cd, 'generateClientEventErrorPayload');
+        const getIdentifiersSpy = sinon.spy(cd, 'getIdentifiers');
+        const getSubServiceTypeSpy = sinon.spy(cd, 'getSubServiceType');
+        const validatorSpy = sinon.spy(cd, 'validator');
+        const options = {
+          meetingId: fakeMeeting.id,
+          mediaConnections: [{mediaAgentAlias: 'alias', mediaAgentGroupId: '1'}],
+        };
+
+        cd.submitClientEvent({
+          name: 'client.alert.displayed',
+          options,
+        });
+
+        cd.submitClientEvent({
+          name: 'client.alert.displayed',
+          options,
+        });
+
+        const webexLoggerLogCalls = webex.logger.log.getCalls();
+
+        assert.deepEqual(webexLoggerLogCalls.length, 3);
+
+        assert.deepEqual(webexLoggerLogCalls[0].args, [
+          'call-diagnostic-events -> ',
+          'CallDiagnosticMetrics: @submitClientEvent. Submit Client Event CA event.',
+          `name: client.alert.displayed`,
+        ]);
+
+        assert.deepEqual(webexLoggerLogCalls[1].args, [
+          'call-diagnostic-events -> ',
+          'CallDiagnosticMetrics: @createClientEventObjectInMeeting => collected browser data',
+          '{"error":"unable to access window.navigator.userAgent"}',
+        ]);
+
+        assert.deepEqual(webexLoggerLogCalls[2].args, [
           'call-diagnostic-events -> ',
           'CallDiagnosticMetrics: @submitClientEvent. Submit Client Event CA event.',
           `name: client.alert.displayed`,
@@ -1912,9 +1987,8 @@ describe('internal-plugin-metrics', () => {
                     clientInfo: {
                       clientType: 'TEAMS_CLIENT',
                       clientVersion: 'webex-js-sdk/webex-version',
-                      localNetworkPrefix:
-                        Utils.anonymizeIPAddress(webex.meetings.geoHintInfo?.clientAddress) ||
-                        undefined,
+                      localNetworkPrefix: '192.168.1.80',
+                      publicNetworkPrefix: '1.3.4.0',
                       os: getOSNameInternal() || 'unknown',
                       osVersion: getOSVersion(),
                       subClientType: 'WEB_APP',

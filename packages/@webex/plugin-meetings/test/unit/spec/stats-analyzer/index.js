@@ -130,17 +130,17 @@ describe('plugin-meetings', () => {
                   {
                     type: 'candidate-pair',
                     state: 'succeeded',
-                    localCandidateId: 'fake-candidate-id'
+                    localCandidateId: 'fake-candidate-id',
                   },
                   {
                     type: 'candidate-pair',
                     state: 'failed',
-                    localCandidateId: 'bad-candidate-id'
+                    localCandidateId: 'bad-candidate-id',
                   },
                   {
                     type: 'local-candidate',
                     id: 'fake-candidate-id',
-                    protocol: 'tcp'
+                    protocol: 'tcp',
                   },
                 ],
               },
@@ -156,17 +156,17 @@ describe('plugin-meetings', () => {
                   {
                     type: 'candidate-pair',
                     state: 'succeeded',
-                    localCandidateId: 'fake-candidate-id'
+                    localCandidateId: 'fake-candidate-id',
                   },
                   {
                     type: 'candidate-pair',
                     state: 'failed',
-                    localCandidateId: 'bad-candidate-id'
+                    localCandidateId: 'bad-candidate-id',
                   },
                   {
                     type: 'local-candidate',
                     id: 'fake-candidate-id',
-                    protocol: 'tcp'
+                    protocol: 'tcp',
                   },
                 ],
               },
@@ -185,17 +185,17 @@ describe('plugin-meetings', () => {
                   {
                     type: 'candidate-pair',
                     state: 'succeeded',
-                    localCandidateId: 'fake-candidate-id'
+                    localCandidateId: 'fake-candidate-id',
                   },
                   {
                     type: 'candidate-pair',
                     state: 'failed',
-                    localCandidateId: 'bad-candidate-id'
+                    localCandidateId: 'bad-candidate-id',
                   },
                   {
                     type: 'local-candidate',
                     id: 'fake-candidate-id',
-                    protocol: 'tcp'
+                    protocol: 'tcp',
                   },
                 ],
               },
@@ -214,17 +214,17 @@ describe('plugin-meetings', () => {
                   {
                     type: 'candidate-pair',
                     state: 'succeeded',
-                    localCandidateId: 'fake-candidate-id'
+                    localCandidateId: 'fake-candidate-id',
                   },
                   {
                     type: 'candidate-pair',
                     state: 'failed',
-                    localCandidateId: 'bad-candidate-id'
+                    localCandidateId: 'bad-candidate-id',
                   },
                   {
                     type: 'local-candidate',
                     id: 'fake-candidate-id',
-                    protocol: 'tcp'
+                    protocol: 'tcp',
                   },
                 ],
               },
@@ -244,12 +244,12 @@ describe('plugin-meetings', () => {
               receivers: [fakeStats.video.receivers[0]],
             },
             screenShareAudio: {
-              senders: [],
-              receivers: [],
+              senders: [fakeStats.audio.senders[0]],
+              receivers: [fakeStats.audio.receivers[0]],
             },
             screenShareVideo: {
-              senders: [],
-              receivers: [],
+              senders: [fakeStats.video.senders[0]],
+              receivers: [fakeStats.video.receivers[0]],
             },
           }),
         };
@@ -286,6 +286,19 @@ describe('plugin-meetings', () => {
         await testUtils.flushPromises();
       };
 
+      const mergeProperties = (target, properties, keyValue = 'fake-candidate-id', matchKey= 'type', matchValue = 'local-candidate') => {
+        for (let key in target) {
+            if (target.hasOwnProperty(key)) {
+                if (typeof target[key] === 'object') {
+                    mergeProperties(target[key], properties, keyValue, matchKey, matchValue);
+                }
+                if (key === 'id' && target[key] === keyValue && target[matchKey] === matchValue) {
+                    Object.assign(target, properties);
+                }
+            }
+        }
+    }
+
       const progressTime = async () => {
         await clock.tickAsync(initialConfig.analyzerInterval);
         await testUtils.flushPromises();
@@ -300,6 +313,17 @@ describe('plugin-meetings', () => {
       };
 
       const checkMqeData = () => {
+        for (const data of [
+          mqeData.audioTransmit,
+          mqeData.audioReceive,
+          mqeData.videoTransmit,
+          mqeData.videoReceive,
+        ]) {
+          assert.strictEqual(data.length, 2);
+          assert.strictEqual(data[0].common.common.isMain, true);
+          assert.strictEqual(data[1].common.common.isMain, false);
+        }
+
         assert.strictEqual(mqeData.videoReceive[0].streams[0].receivedFrameSize, 3600);
         assert.strictEqual(mqeData.videoReceive[0].streams[0].receivedHeight, 720);
         assert.strictEqual(mqeData.videoReceive[0].streams[0].receivedWidth, 1280);
@@ -422,8 +446,16 @@ describe('plugin-meetings', () => {
 
         await progressTime();
 
-        assert.strictEqual(mqeData.intervalMetadata.peripherals.find((val) => val.name === MEDIA_DEVICES.MICROPHONE).information, 'fake-microphone');
-        assert.strictEqual(mqeData.intervalMetadata.peripherals.find((val) => val.name === MEDIA_DEVICES.CAMERA).information, 'fake-camera');
+        assert.strictEqual(
+          mqeData.intervalMetadata.peripherals.find((val) => val.name === MEDIA_DEVICES.MICROPHONE)
+            .information,
+          'fake-microphone'
+        );
+        assert.strictEqual(
+          mqeData.intervalMetadata.peripherals.find((val) => val.name === MEDIA_DEVICES.CAMERA)
+            .information,
+          'fake-camera'
+        );
       });
 
       it('emits the correct peripherals in MEDIA_QUALITY events when localTrackLabel is undefined', async () => {
@@ -434,8 +466,16 @@ describe('plugin-meetings', () => {
 
         await progressTime();
 
-        assert.strictEqual(mqeData.intervalMetadata.peripherals.find((val) => val.name === MEDIA_DEVICES.MICROPHONE).information, _UNKNOWN_);
-        assert.strictEqual(mqeData.intervalMetadata.peripherals.find((val) => val.name === MEDIA_DEVICES.CAMERA).information, _UNKNOWN_);
+        assert.strictEqual(
+          mqeData.intervalMetadata.peripherals.find((val) => val.name === MEDIA_DEVICES.MICROPHONE)
+            .information,
+          _UNKNOWN_
+        );
+        assert.strictEqual(
+          mqeData.intervalMetadata.peripherals.find((val) => val.name === MEDIA_DEVICES.CAMERA)
+            .information,
+          _UNKNOWN_
+        );
       });
 
       it('emits the correct frameRate', async () => {
@@ -446,6 +486,46 @@ describe('plugin-meetings', () => {
         fakeStats.video.receivers[0].framesReceived = 3000;
         await progressTime();
         assert.strictEqual(mqeData.videoReceive[0].streams[0].common.receivedFrameRate, 25);
+      });
+
+      it('has the correct localIpAddress set when the candidateType is host', async () => {
+        await startStatsAnalyzer();
+
+        await progressTime();
+        assert.strictEqual(statsAnalyzer.getLocalIpAddress(), '');
+        mergeProperties(fakeStats, {address: 'test', candidateType: 'host'});
+        await progressTime();
+        assert.strictEqual(statsAnalyzer.getLocalIpAddress(), 'test');
+      });
+
+      it('has the correct localIpAddress set when the candidateType is prflx and relayProtocol is set', async () => {
+        await startStatsAnalyzer();
+
+        await progressTime();
+        assert.strictEqual(statsAnalyzer.getLocalIpAddress(), '');
+        mergeProperties(fakeStats, {relayProtocol: 'test', address: 'test2', candidateType: 'prflx'});
+        await progressTime();
+        assert.strictEqual(statsAnalyzer.getLocalIpAddress(), 'test2');
+      });
+
+      it('has the correct localIpAddress set when the candidateType is prflx and relayProtocol is not set', async () => {
+        await startStatsAnalyzer();
+
+        await progressTime();
+        assert.strictEqual(statsAnalyzer.getLocalIpAddress(), '');
+        mergeProperties(fakeStats, {relatedAddress: 'relatedAddress', address: 'test2', candidateType: 'prflx'});
+        await progressTime();
+        assert.strictEqual(statsAnalyzer.getLocalIpAddress(), 'relatedAddress');
+      });
+
+      it('has no localIpAddress set when the candidateType is invalid', async () => {
+        await startStatsAnalyzer();
+
+        await progressTime();
+        assert.strictEqual(statsAnalyzer.getLocalIpAddress(), '');
+        mergeProperties(fakeStats, {candidateType: 'invalid'});
+        await progressTime();
+        assert.strictEqual(statsAnalyzer.getLocalIpAddress(), '');
       });
     });
   });

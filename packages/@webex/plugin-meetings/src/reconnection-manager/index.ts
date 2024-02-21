@@ -17,11 +17,11 @@ import {
   RECONNECTION_STATE,
 } from '../constants';
 import BEHAVIORAL_METRICS from '../metrics/constants';
-import ReconnectionError from '../common/errors/reconnection';
 import ReconnectInProgress from '../common/errors/reconnection-in-progress';
 import Metrics from '../metrics';
 import Meeting from '../meeting';
 import {MediaRequestManager} from '../multistream/mediaRequestManager';
+import ReconnectionError from '../common/errors/reconnection';
 
 /**
  * Used to indicate that the reconnect logic needs to be retried.
@@ -228,7 +228,6 @@ export default class ReconnectionManager {
    */
   public cleanUp() {
     this.reset();
-    this.meeting = null;
   }
 
   /**
@@ -443,7 +442,7 @@ export default class ReconnectionManager {
         LoggerProxy.logger.info(
           'ReconnectionManager:index#executeReconnection --> Updating meeting data from server.'
         );
-        await this.webex.meetings.syncMeetings();
+        await this.webex.meetings.syncMeetings({keepOnlyLocusMeetings: false});
       } catch (syncError) {
         LoggerProxy.logger.info(
           'ReconnectionManager:index#executeReconnection --> Unable to sync meetings, reconnecting.',
