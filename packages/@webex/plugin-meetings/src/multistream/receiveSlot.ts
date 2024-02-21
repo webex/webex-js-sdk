@@ -66,7 +66,7 @@ export class ReceiveSlot extends EventsScope {
     this.mcReceiveSlot = mcReceiveSlot;
     this.#sourceState = 'no source';
     this.id = `r${receiveSlotCounter}`;
-    this.namedMediaGroup = {type: 1, value: 0};
+    this.namedMediaGroup = {type: 0, value: 0};
     this.setupEventListeners();
   }
 
