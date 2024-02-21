@@ -530,6 +530,8 @@ describe('Call Tests', () => {
         getAudioTracks: jest.fn().mockReturnValue([]),
       },
       on: jest.fn(),
+      off: jest.fn(),
+      getEffectByKind: jest.fn(),
     };
 
     const localAudioStream = mockStream as unknown as MediaSDK.LocalMicrophoneStream;
