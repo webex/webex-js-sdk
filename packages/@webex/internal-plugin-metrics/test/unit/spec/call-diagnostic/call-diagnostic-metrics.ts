@@ -13,6 +13,7 @@ import CONFIG from '../../../../src/config';
 
 //@ts-ignore
 global.window = {location: {hostname: 'whatever'}};
+process.env.NODE_ENV = 'test';
 
 const {getOSName, getOSVersion, getBrowserName, getBrowserVersion} = BrowserDetection();
 const userAgent = `webex-js-sdk/test-webex-version client=Cantina; (os=${getOSName()}/${
@@ -38,6 +39,9 @@ describe('internal-plugin-metrics', () => {
       },
       meetingInfo: {},
       getCurUserType: () => 'host',
+      statsAnalyzer: {
+        getLocalIpAddress: () => '192.168.1.90'
+      }
     };
 
     const fakeMeeting2 = {
@@ -73,6 +77,11 @@ describe('internal-plugin-metrics', () => {
             userId: 'userId',
             url: 'deviceUrl',
             orgId: 'orgId',
+          },
+        },
+        config: {
+          metrics: {
+            ...CONFIG.metrics,
           },
         },
         meetings: {
@@ -138,6 +147,7 @@ describe('internal-plugin-metrics', () => {
             browserVersion: getBrowserVersion(),
             clientType: 'TEAMS_CLIENT',
             clientVersion: 'webex-js-sdk/webex-version',
+            publicNetworkPrefix: '1.1.1.1',
             localNetworkPrefix: '1.1.1.1',
             os: getOSNameInternal(),
             osVersion: getOSVersion(),
@@ -170,6 +180,7 @@ describe('internal-plugin-metrics', () => {
             browserVersion: getBrowserVersion(),
             clientType: 'TEAMS_CLIENT',
             clientVersion: 'webex-js-sdk/webex-version',
+            publicNetworkPrefix: '1.1.1.1',
             localNetworkPrefix: '1.1.1.1',
             os: getOSNameInternal(),
             osVersion: getOSVersion(),
@@ -204,6 +215,7 @@ describe('internal-plugin-metrics', () => {
             browserVersion: getBrowserVersion(),
             clientType: 'TEAMS_CLIENT',
             clientVersion: 'webex-js-sdk/webex-version',
+            publicNetworkPrefix: '1.1.1.1',
             localNetworkPrefix: '1.1.1.1',
             os: getOSNameInternal(),
             osVersion: getOSVersion(),
@@ -229,6 +241,7 @@ describe('internal-plugin-metrics', () => {
             browserVersion: getBrowserVersion(),
             clientType: 'TEAMS_CLIENT',
             clientVersion: 'webex-js-sdk/webex-version',
+            publicNetworkPrefix: '1.1.1.1',
             localNetworkPrefix: '1.1.1.1',
             os: getOSNameInternal(),
             osVersion: getOSVersion(),
@@ -255,7 +268,8 @@ describe('internal-plugin-metrics', () => {
             browserVersion: getBrowserVersion(),
             clientType: 'TEAMS_CLIENT',
             clientVersion: '43.9.0.1234',
-            localNetworkPrefix: '1.3.4.0',
+            publicNetworkPrefix: '1.3.4.0',
+            localNetworkPrefix: '192.168.1.80',
             majorVersion: 43,
             minorVersion: 9,
             os: getOSNameInternal(),
@@ -263,6 +277,29 @@ describe('internal-plugin-metrics', () => {
             subClientType: 'WEB_APP',
           },
           environment: 'meeting_evn',
+          name: 'endpoint',
+          networkType: 'unknown',
+          userAgent,
+        });
+      });
+
+      it('should build origin correctly with no meeting or stats analyzer', () => {
+        
+        //@ts-ignore
+        const res = cd.getOrigin();
+
+        assert.deepEqual(res, {
+          clientInfo: {
+            browser: getBrowserName(),
+            browserVersion: getBrowserVersion(),
+            clientType: 'TEAMS_CLIENT',
+            clientVersion: 'webex-js-sdk/webex-version',
+            publicNetworkPrefix: '1.3.4.0',
+            localNetworkPrefix: undefined,
+            os: getOSNameInternal(),
+            osVersion: getOSVersion(),
+            subClientType: 'WEB_APP',
+          },
           name: 'endpoint',
           networkType: 'unknown',
           userAgent,
@@ -508,7 +545,7 @@ describe('internal-plugin-metrics', () => {
       });
     });
 
-    describe.skip('#submitClientEvent', () => {
+    describe('#submitClientEvent', () => {
       it('should submit client event successfully with meetingId', () => {
         const prepareDiagnosticEventSpy = sinon.spy(cd, 'prepareDiagnosticEvent');
         const submitToCallDiagnosticsSpy = sinon.spy(cd, 'submitToCallDiagnostics');
@@ -685,7 +722,7 @@ describe('internal-plugin-metrics', () => {
         ]);
       });
 
-      it('should submit client event successfully with correlationId, webexConferenceIdStr and globalMeetingId', () => {
+      it('should submit client event successfully with correlationId, webexConferenceIdStr and globalMeetingId', async () => {
         const prepareDiagnosticEventSpy = sinon.spy(cd, 'prepareDiagnosticEvent');
         const submitToCallDiagnosticsSpy = sinon.spy(cd, 'submitToCallDiagnostics');
         const generateClientEventErrorPayloadSpy = sinon.spy(cd, 'generateClientEventErrorPayload');
@@ -999,8 +1036,6 @@ describe('internal-plugin-metrics', () => {
           name: 'client.alert.displayed',
           options,
         });
-
-        console.log(submitToCallDiagnosticsSpy.getCalls()[0].args[0].event.errors);
 
         assert.calledWith(submitToCallDiagnosticsSpy, {
           event: {
@@ -1326,7 +1361,7 @@ describe('internal-plugin-metrics', () => {
     });
 
     describe('#submitMQE', () => {
-      it.skip('submits the event correctly', () => {
+      it('submits the event correctly', () => {
         const prepareDiagnosticEventSpy = sinon.spy(cd, 'prepareDiagnosticEvent');
         const submitToCallDiagnosticsSpy = sinon.spy(cd, 'submitToCallDiagnostics');
         const getErrorPayloadForClientErrorCodeSpy = sinon.spy(
@@ -1909,7 +1944,7 @@ describe('internal-plugin-metrics', () => {
       });
     });
 
-    describe.skip('#buildClientEventFetchRequestOptions', () => {
+    describe('#buildClientEventFetchRequestOptions', () => {
       [undefined, 'myPreLoginId'].forEach((preLoginId) => {
         it('returns expected options without preLoginId', async () => {
           const options = {
@@ -1955,9 +1990,8 @@ describe('internal-plugin-metrics', () => {
                     clientInfo: {
                       clientType: 'TEAMS_CLIENT',
                       clientVersion: 'webex-js-sdk/webex-version',
-                      localNetworkPrefix:
-                        Utils.anonymizeIPAddress(webex.meetings.geoHintInfo?.clientAddress) ||
-                        undefined,
+                      localNetworkPrefix: '192.168.1.80',
+                      publicNetworkPrefix: '1.3.4.0',
                       os: getOSNameInternal() || 'unknown',
                       osVersion: getOSVersion(),
                       subClientType: 'WEB_APP',

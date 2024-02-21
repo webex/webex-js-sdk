@@ -13,7 +13,7 @@ describe('Request shim', () => {
 
       window.XMLHttpRequest = DummyXMLHttpRequest;
 
-      const options = {upload: new EventEmitter(), headers: [], method: 'post', ...options, auth: {user: 'test', pass: 'pw'}};
+      const options = {upload: new EventEmitter(), headers: [], method: 'post', ...options, auth: {user: 'test', pass: 'pw'}, logger: {warn: () => {}}};
 
       request(options);
 
