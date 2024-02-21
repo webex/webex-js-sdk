@@ -649,8 +649,6 @@ export default class Meeting extends StatelessWebexPlugin {
           EVENT_TRIGGERS.MEETING_CAPTION_LANGUAGE_CHANGED,
           {languageCode: this.transcription.languageOptions.currentCaptionLanguage}
         );
-      } else {
-        // TODO Handle Status Code and alert - SPARK-370923
       }
     },
     [VOICEAEVENTS.SPOKEN_LANGUAGE_UPDATE]: (payload) => {
@@ -4613,27 +4611,46 @@ export default class Meeting extends StatelessWebexPlugin {
    * @param {string} language
    * @returns {Promise}
    */
-  public async setCaptionLanguage(language: string) {
-    // wait for the caption language update event as the response is async
-    // check if we can convert this to promise by waiting for event
-    if (!this.isTranscriptionSupported()) {
-      LoggerProxy.logger.error(
-        'Meeting:index#setCaptionLanguage --> Webex Assistant is not enabled/supported'
-      );
+  public setCaptionLanguage(language: string) {
+    return new Promise((resolve, reject) => {
+      if (!this.isTranscriptionSupported()) {
+        LoggerProxy.logger.error(
+          'Meeting:index#setCaptionLanguage --> Webex Assistant is not enabled/supported'
+        );
 
-      return Promise.reject(new Error('Webex Assistant is not enabled/supported'));
-    }
+        reject(new Error('Webex Assistant is not enabled/supported'));
+      }
 
-    try {
-      // @ts-ignore
-      await this.webex.internal.voicea.requestLanguage(language);
-    } catch (error) {
-      LoggerProxy.logger.error(`Meeting:index#setCaptionLanguage --> ${error}`);
+      try {
+        const voiceaListenerCaptionUpdate = (payload) => {
+          // @ts-ignore
+          this.webex.internal.voicea.off(
+            VOICEAEVENTS.CAPTION_LANGUAGE_UPDATE,
+            voiceaListenerCaptionUpdate
+          );
+          const {statusCode} = payload;
 
-      return Promise.reject(error);
-    }
+          if (statusCode === 200) {
+            const currentCaptionLanguage =
+              this.transcription.languageOptions.requestedCaptionLanguage ?? LANGUAGE_ENGLISH;
+            resolve(currentCaptionLanguage);
+          } else {
+            reject(payload);
+          }
+        };
+        // @ts-ignore
+        this.webex.internal.voicea.on(
+          VOICEAEVENTS.CAPTION_LANGUAGE_UPDATE,
+          voiceaListenerCaptionUpdate
+        );
+        // @ts-ignore
+        this.webex.internal.voicea.requestLanguage(language);
+      } catch (error) {
+        LoggerProxy.logger.error(`Meeting:index#setCaptionLanguage --> ${error}`);
 
-    return Promise.resolve();
+        reject(error);
+      }
+    });
   }
 
   /**
@@ -4641,25 +4658,40 @@ export default class Meeting extends StatelessWebexPlugin {
    * @param {string} language
    * @returns {Promise}
    */
-  public async setSpokenLanguage(language: string) {
-    if (!this.isTranscriptionSupported()) {
-      LoggerProxy.logger.error(
-        'Meeting:index#setCaptionLanguage --> Webex Assistant is not enabled/supported'
-      );
+  public setSpokenLanguage(language: string) {
+    return new Promise((resolve, reject) => {
+      if (!this.isTranscriptionSupported()) {
+        LoggerProxy.logger.error(
+          'Meeting:index#setCaptionLanguage --> Webex Assistant is not enabled/supported'
+        );
 
-      return Promise.reject(new Error('Webex Assistant is not enabled/supported'));
-    }
+        reject(new Error('Webex Assistant is not enabled/supported'));
+      }
 
-    try {
-      // @ts-ignore
-      await this.webex.internal.voicea.setSpokenLanguage(language);
-    } catch (error) {
-      LoggerProxy.logger.error(`Meeting:index#setSpokenLanguage --> ${error}`);
+      try {
+        const voiceaListenerLanguageUpdate = (payload) => {
+          // @ts-ignore
+          this.webex.internal.voicea.off(
+            VOICEAEVENTS.SPOKEN_LANGUAGE_UPDATE,
+            voiceaListenerLanguageUpdate
+          );
+          const {languageCode} = payload;
 
-      return Promise.reject(error);
-    }
+          resolve(languageCode);
+        };
+        // @ts-ignore
+        this.webex.internal.voicea.on(
+          VOICEAEVENTS.SPOKEN_LANGUAGE_UPDATE,
+          voiceaListenerLanguageUpdate
+        );
+        // @ts-ignore
+        this.webex.internal.voicea.setSpokenLanguage(language);
+      } catch (error) {
+        LoggerProxy.logger.error(`Meeting:index#setSpokenLanguage --> ${error}`);
 
-    return Promise.resolve();
+        reject(error);
+      }
+    });
   }
 
   /**

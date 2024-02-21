@@ -909,20 +909,26 @@ async function setSpokenLanguage() {
   const meeting = getCurrentMeeting();
   voiceaSpokenLanguageBtn.disabled = true;
   const selectedLanguage = voiceaSpokenLanguage.value;
-  meeting.on('meeting:spoken-language-changed', () => {
+  try{
+    await meeting.setSpokenLanguage(selectedLanguage);
     voiceaSpokenLanguageBtn.disabled = false;
-  });
-  await meeting.setSpokenLanguage(selectedLanguage);
+  }
+  catch(e){
+    console.error("Error setting spoken language", e);
+  }
 }
 
 async function setCaptionLanguage() {
   const meeting = getCurrentMeeting();
   voiceaCaptionLanguageBtn.disabled = true;
   const selectedLanguage = voiceaCaptionLanguage.value;
-  meeting.on('meeting:caption-language-changed', () => {
+  try{
+    await meeting.setCaptionLanguage(selectedLanguage);
     voiceaCaptionLanguageBtn.disabled = false;
-  });
-  await meeting.setCaptionLanguage(selectedLanguage);
+  }
+  catch(e){
+    console.error("Error setting caption language", e);
+  }
 }
 
 function stopReceivingTranscription() {
@@ -994,7 +1000,7 @@ function setTranscriptEvents() {
     });
 
     meeting.on('meeting:receiveTranscription:stopped', () => {
-      generalStartReceivingTranscription.innerHTML = 'start receiving transcription (click me before joining)';
+      generalToggleTranscription.innerText = "Stop Transcription";
       generalTranscriptionContent.innerHTML = 'Transcription Content: Webex Assistant must be enabled, check the console!';
     });
   }
