@@ -129,6 +129,19 @@ const SimultaneousInterpretation = WebexPlugin.extend({
     this.set({originalLanguage, sourceLanguage, order, isActive, targetLanguage, receiveLanguage});
     this.set('selfParticipantId', selfParticipantId);
   },
+
+  /**
+   * Get the language code of the interpreter target language
+   * @returns {number}
+   */
+  getTargetLanguageCode() {
+    if (this.selfIsInterpreter) {
+      return this.siLanguages.get(this.targetLanguage)?.languageCode;
+    }
+
+    return 0;
+  },
+
   /**
    * query interpretation languages
    * @returns {Promise}

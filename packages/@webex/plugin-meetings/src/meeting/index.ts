@@ -7831,13 +7831,15 @@ export default class Meeting extends StatelessWebexPlugin {
   /**
    * set sending named media group which the audio should send to
    * @param {MediaType} mediaType of the stream
+   * @param {number} languageId of the stream
    * @returns {void}
    */
-  private setSendNamedMediaGroup(mediaType: MediaType): void {
+  private setSendNamedMediaGroup(mediaType: MediaType, languageId = 0): void {
+    const languageCode = languageId || this.simultaneousInterpretation.getTargetLanguageCode();
     const groups = [
       {
-        type: 1, // always 1 for audio
-        value: 112, // to-do, hard code for test
+        type: mediaType === MediaType.AudioMain ? 1 : 0,
+        value: languageCode,
       },
     ];
 
