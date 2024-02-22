@@ -54,7 +54,8 @@ describe('internal-plugin-calendar', () => {
             uri: "kms://kms-us-int.wbx2.com/keys/xxxx-xxxx-xxxx-xxxx"
           }])
         },
-        encryptText: sinon.stub().resolves("encryptedText")
+        encryptText: sinon.stub().resolves("encryptedText"),
+        getKey: sinon.stub().resolves(undefined),
       };
     });
 
