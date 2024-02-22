@@ -991,8 +991,9 @@ export default class LocusInfo extends EventsScope {
           }
         );
       }
+
+      this.controls = controls;
     }
-    this.controls = controls;
   }
 
   /**
