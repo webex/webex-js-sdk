@@ -911,6 +911,7 @@ export class StatsAnalyzer extends EventsScope {
     if (result.bytesReceived) {
       let kilobytes = 0;
       const receiveSlot = this.receiveSlotCallback(result.ssrc);
+      const sourceState = receiveSlot?.sourceState;
       const idAndCsi = receiveSlot
         ? `id: "${receiveSlot.id || ''}"${receiveSlot.csi ? ` and csi: ${receiveSlot.csi}` : ''}`
         : '';
@@ -938,7 +939,7 @@ export class StatsAnalyzer extends EventsScope {
       this.statsResults[mediaType][sendrecvType].totalPacketsReceived = result.packetsReceived;
 
       if (currentPacketsReceived === 0) {
-        if (receiveSlot) {
+        if (receiveSlot && sourceState === 'live') {
           LoggerProxy.logger.info(
             `StatsAnalyzer:index#processInboundRTPResult --> No packets received for receive slot ${idAndCsi}`,
             currentPacketsReceived

@@ -8,6 +8,8 @@ import {StatsAnalyzer, EVENTS} from '../../../../src/statsAnalyzer';
 import NetworkQualityMonitor from '../../../../src/networkQualityMonitor';
 import testUtils from '../../../utils/testUtils';
 import {MEDIA_DEVICES, _UNKNOWN_} from '@webex/plugin-meetings/src/constants';
+import LoggerProxy from '../../../../src/common/logs/logger-proxy';
+import LoggerConfig from '../../../../src/common/logs/logger-config';
 
 const {assert} = chai;
 
@@ -91,6 +93,8 @@ describe('plugin-meetings', () => {
       let networkQualityMonitor;
       let statsAnalyzer;
       let mqeData;
+      let loggerSpy;
+      let receiveSlot;
 
       let receivedEventsData = {
         local: {},
@@ -103,6 +107,8 @@ describe('plugin-meetings', () => {
 
       let fakeStats;
 
+      const sandbox = sinon.createSandbox();
+
       const resetReceivedEvents = () => {
         receivedEventsData = {
           local: {},
@@ -110,8 +116,15 @@ describe('plugin-meetings', () => {
         };
       };
 
+      before(() => {
+        LoggerConfig.set({ enable: false });
+        LoggerProxy.set();
+        loggerSpy = sandbox.spy(LoggerProxy.logger, 'info');
+      });
+
       beforeEach(() => {
         clock = sinon.useFakeTimers();
+        receiveSlot = undefined;
 
         resetReceivedEvents();
 
@@ -256,7 +269,7 @@ describe('plugin-meetings', () => {
 
         networkQualityMonitor = new NetworkQualityMonitor(initialConfig);
 
-        statsAnalyzer = new StatsAnalyzer(initialConfig, () => ({}), networkQualityMonitor);
+        statsAnalyzer = new StatsAnalyzer(initialConfig, () => (receiveSlot), networkQualityMonitor);
 
         statsAnalyzer.on(EVENTS.LOCAL_MEDIA_STARTED, (data) => {
           receivedEventsData.local.started = data;
@@ -277,6 +290,7 @@ describe('plugin-meetings', () => {
 
       afterEach(() => {
         clock.restore();
+        sandbox.reset();
       });
 
       const startStatsAnalyzer = async (mediaStatus) => {
@@ -526,6 +540,47 @@ describe('plugin-meetings', () => {
         mergeProperties(fakeStats, {candidateType: 'invalid'});
         await progressTime();
         assert.strictEqual(statsAnalyzer.getLocalIpAddress(), '');
+      });
+
+      it('logs a message when no packets are recieved for a receive slot with sourceState "live"', async () => {
+        receiveSlot = {
+          sourceState:  'live',
+          csi: 2,
+          id: "4",
+        };
+
+        await startStatsAnalyzer();
+
+        // don't increase the packets when time progresses.
+        await progressTime();
+
+        assert.calledWith(loggerSpy, 'StatsAnalyzer:index#processInboundRTPResult --> No packets received for receive slot id: "4" and csi: 2');
+      });
+
+      ["avatar", "invalid", "no source", "bandwidth limited", "policy violation"].forEach((sourceState) => {
+        it(`does not log a message when no packets are recieved for a receive slot with sourceState "${sourceState}"`, async () => {
+          receiveSlot = {
+            sourceState,
+            csi: 2,
+            id: "4",
+          };
+  
+          await startStatsAnalyzer();
+  
+          // don't increase the packets when time progresses.
+          await progressTime();
+  
+          assert.neverCalledWith(loggerSpy, 'StatsAnalyzer:index#processInboundRTPResult --> No packets received for receive slot id: "4" and csi: 2');
+        });
+      });
+
+      it(`does not log a message if receiveSlot is undefined`, async () => {
+        await startStatsAnalyzer();
+
+        // don't increase the packets when time progresses.
+        await progressTime();
+
+        assert.neverCalledWith(loggerSpy, 'StatsAnalyzer:index#processInboundRTPResult --> No packets received for receive slot ""');
       });
     });
   });
