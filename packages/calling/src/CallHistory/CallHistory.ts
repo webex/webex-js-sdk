@@ -139,6 +139,14 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
         }
       }
     );
+    this.sdkConnector.registerListener<CallSessionEvent>(
+      MOBIUS_EVENT_KEYS.LOCUS_CALL_SESSION_EVENT,
+      async (event?: CallSessionEvent) => {
+        if (event && event.data.userSessions.userSessions) {
+          this.emit(COMMON_EVENT_KEYS.CALL_HISTORY_USER_SESSION_INFO, event as CallSessionEvent);
+        }
+      }
+    );
   }
 }
 /**

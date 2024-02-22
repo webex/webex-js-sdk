@@ -155,6 +155,7 @@ export type Item = {
 export enum MOBIUS_EVENT_KEYS {
   SERVER_EVENT_INCLUSIVE = 'event:mobius',
   CALL_SESSION_EVENT_INCLUSIVE = 'event:janus.user_recent_sessions',
+  LOCUS_CALL_SESSION_EVENT = 'event:janus.user_sessions',
 }
 
 export type CallSessionData = {
