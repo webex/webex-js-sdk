@@ -82,49 +82,35 @@ describe('Roap', () => {
       sinon.restore();
     });
 
-    [
-      {reconnect: true, turnDiscoverySkipped: false, expectEmptyMediaId: false},
-      {reconnect: true, turnDiscoverySkipped: true, expectEmptyMediaId: true},
-      {reconnect: false, turnDiscoverySkipped: false, expectEmptyMediaId: false},
-      {reconnect: false, turnDiscoverySkipped: true, expectEmptyMediaId: false},
-    ].forEach(({reconnect, turnDiscoverySkipped, expectEmptyMediaId}) =>
-      it(`sends roap OFFER with ${expectEmptyMediaId ? 'empty ' : ''}mediaId when ${
-        reconnect ? '' : 'not '
-      }reconnecting and TURN discovery is ${
-        turnDiscoverySkipped ? 'skipped' : 'not skipped'
-      }`, async () => {
-        roap.turnDiscovery.isSkipped.resolves(turnDiscoverySkipped);
+    it(`sends roap OFFER`, async () => {
+      await roap.sendRoapMediaRequest({
+        meeting,
+        sdp: 'sdp',
+        seq: 2,
+        tieBreaker: 4294967294,
+      });
 
-        await roap.sendRoapMediaRequest({
-          meeting,
-          sdp: 'sdp',
-          reconnect,
-          seq: 2,
-          tieBreaker: 4294967294,
-        });
+      const expectedRoapMessage = {
+        messageType: 'OFFER',
+        sdps: ['sdp'],
+        version: '2',
+        seq: 2,
+        tieBreaker: 4294967294,
+        headers: ['includeAnswerInHttpResponse', 'noOkInTransaction'],
+      };
 
-        const expectedRoapMessage = {
-          messageType: 'OFFER',
-          sdps: ['sdp'],
-          version: '2',
-          seq: 2,
-          tieBreaker: 4294967294,
-          headers: ['includeAnswerInHttpResponse', 'noOkInTransaction'],
-        };
-
-        assert.calledOnce(sendRoapStub);
-        assert.calledWith(
-          sendRoapStub,
-          sinon.match({
-            roapMessage: expectedRoapMessage,
-            locusSelfUrl: meeting.selfUrl,
-            mediaId: expectEmptyMediaId ? '' : meeting.mediaId,
-            meetingId: meeting.id,
-            locusMediaRequest: meeting.locusMediaRequest,
-          })
-        );
-      })
-    );
+      assert.calledOnce(sendRoapStub);
+      assert.calledWith(
+        sendRoapStub,
+        sinon.match({
+          roapMessage: expectedRoapMessage,
+          locusSelfUrl: meeting.selfUrl,
+          mediaId: meeting.mediaId,
+          meetingId: meeting.id,
+          locusMediaRequest: meeting.locusMediaRequest,
+        })
+      );
+    });
 
     it('reads SDP answer from the http response', async () => {
       const roapAnswer = {
