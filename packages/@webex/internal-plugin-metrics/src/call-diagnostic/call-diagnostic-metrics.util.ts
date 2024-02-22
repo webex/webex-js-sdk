@@ -285,6 +285,14 @@ export const prepareDiagnosticMetricItem = (webex: any, item: any) => {
 
   item.eventPayload.origin = Object.assign(origin, item.eventPayload.origin);
 
+  // @ts-ignore
+  webex.logger.log(
+    `CallDiagnosticLatencies,prepareDiagnosticMetricItem: ${JSON.stringify({
+      latencies: Object.fromEntries(cdl.latencyTimestamps),
+      event: item,
+    })}`
+  );
+
   return item;
 };
 
