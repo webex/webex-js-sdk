@@ -32,9 +32,6 @@ export {
   DisplaySurface,
   PresetCameraConstraints,
   type VideoContentHint,
-  Errors,
-  WcmeError,
-  WcmeErrorType,
 } from '@webex/media-helpers';
 
 export default Meetings;
