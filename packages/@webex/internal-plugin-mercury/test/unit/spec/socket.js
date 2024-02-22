@@ -809,6 +809,23 @@ describe('plugin-mercury', () => {
           reason: 'Pong mismatch',
         });
       });
+
+      it('emits ping pong latency correctly', () => {
+        const spy = sinon.spy();
+
+        socket.on('ping-pong-latency', spy);
+
+        socket._ping(123);
+        mockWebSocket.emit('message', {
+          data: JSON.stringify({
+            type: 'pong',
+            id: 123,
+          }),
+        });
+
+        assert.calledWith(spy, 0);
+        assert.calledOnce(spy);
+      });
     });
   });
 });

@@ -442,7 +442,7 @@ export default class ReconnectionManager {
         LoggerProxy.logger.info(
           'ReconnectionManager:index#executeReconnection --> Updating meeting data from server.'
         );
-        await this.webex.meetings.syncMeetings();
+        await this.webex.meetings.syncMeetings({keepOnlyLocusMeetings: false});
       } catch (syncError) {
         LoggerProxy.logger.info(
           'ReconnectionManager:index#executeReconnection --> Unable to sync meetings, reconnecting.',
