@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.358](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.357...v3.0.0-beta.358) (2024-02-23)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** update MQE data related to hop-by-hop loss ([#3388](https://github.com/webex/webex-js-sdk/issues/3388)) ([9b8457c](https://github.com/webex/webex-js-sdk/commit/9b8457c947fa4a2021cb9b15cba859c2fa0fc67e))
+
 ## [3.0.0-beta.357](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.356...v3.0.0-beta.357) (2024-02-23)
 
 
