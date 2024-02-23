@@ -1060,7 +1060,7 @@ describe('plugin-meetings', () => {
         {
           reason: LOCAL_SHARE_ERRORS.NO_CONFLUENCE_ID,
           expected: {
-            category: 'expected',
+            category: 'signaling',
             errorCode: 4064,
           },
         },
