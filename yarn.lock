@@ -6907,20 +6907,19 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@webex/internal-media-core@npm:2.2.6":
-  version: 2.2.6
-  resolution: "@webex/internal-media-core@npm:2.2.6"
+"@webex/internal-media-core@npm:2.2.7":
+  version: 2.2.7
+  resolution: "@webex/internal-media-core@npm:2.2.7"
   dependencies:
     "@babel/runtime": ^7.18.9
     "@webex/ts-sdp": 1.6.0
     "@webex/web-client-media-engine": 3.11.7
-    detectrtc: ^1.4.1
     events: ^3.3.0
     typed-emitter: ^2.1.0
     uuid: ^8.3.2
     webrtc-adapter: ^8.1.2
     xstate: ^4.30.6
-  checksum: ee7aef90860d0ae47852bea0907bcdec56093497c6e5f498ee60d0d7620af5a6fc2d9bebf4265ecf0b519522a4bc90a14d20ff49ba617a2b6f9683f893c8d66a
+  checksum: c23eb737452de759c9530349918060580476abf3ae885677656067fdbc2a6503da1a424d8ddc14357a1aa3499e46090bf2fa73761cedeb49fd9d28134966e939
   languageName: node
   linkType: hard
 
@@ -7040,7 +7039,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/internal-plugin-device@workspace:*, @webex/internal-plugin-device@workspace:packages/@webex/internal-plugin-device":
+"@webex/internal-plugin-device@workspace:*, @webex/internal-plugin-device@workspace:^, @webex/internal-plugin-device@workspace:packages/@webex/internal-plugin-device":
   version: 0.0.0-use.local
   resolution: "@webex/internal-plugin-device@workspace:packages/@webex/internal-plugin-device"
   dependencies:
@@ -7310,7 +7309,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/internal-plugin-metrics@workspace:*, @webex/internal-plugin-metrics@workspace:packages/@webex/internal-plugin-metrics":
+"@webex/internal-plugin-metrics@workspace:*, @webex/internal-plugin-metrics@workspace:^, @webex/internal-plugin-metrics@workspace:packages/@webex/internal-plugin-metrics":
   version: 0.0.0-use.local
   resolution: "@webex/internal-plugin-metrics@workspace:packages/@webex/internal-plugin-metrics"
   dependencies:
@@ -7321,18 +7320,21 @@ __metadata:
     "@webex/common-timers": "workspace:*"
     "@webex/eslint-config-legacy": "workspace:*"
     "@webex/event-dictionary-ts": ^1.0.1329
-    "@webex/internal-plugin-device": "workspace:*"
-    "@webex/internal-plugin-metrics": "workspace:*"
+    "@webex/internal-plugin-device": "workspace:^"
+    "@webex/internal-plugin-metrics": "workspace:^"
     "@webex/jest-config-legacy": "workspace:*"
     "@webex/legacy-tools": "workspace:*"
     "@webex/test-helper-chai": "workspace:*"
     "@webex/test-helper-mocha": "workspace:*"
     "@webex/test-helper-mock-webex": "workspace:*"
     "@webex/test-helper-test-users": "workspace:*"
-    "@webex/webex-core": "workspace:*"
+    "@webex/webex-core": "workspace:^"
     eslint: ^8.24.0
+    ip-anonymize: ^0.1.0
+    lodash: ^4.17.21
     prettier: ^2.7.1
     sinon: ^9.2.4
+    uuid: ^3.3.2
   languageName: unknown
   linkType: soft
 
@@ -7681,7 +7683,7 @@ __metadata:
     "@babel/preset-typescript": 7.22.11
     "@webex/babel-config-legacy": "workspace:*"
     "@webex/eslint-config-legacy": "workspace:*"
-    "@webex/internal-media-core": 2.2.6
+    "@webex/internal-media-core": 2.2.7
     "@webex/jest-config-legacy": "workspace:*"
     "@webex/legacy-tools": "workspace:*"
     "@webex/test-helper-chai": "workspace:*"
@@ -7916,7 +7918,7 @@ __metadata:
     "@webex/babel-config-legacy": "workspace:*"
     "@webex/common": "workspace:*"
     "@webex/eslint-config-legacy": "workspace:*"
-    "@webex/internal-media-core": 2.2.6
+    "@webex/internal-media-core": 2.2.7
     "@webex/internal-plugin-conversation": "workspace:*"
     "@webex/internal-plugin-device": "workspace:*"
     "@webex/internal-plugin-llm": "workspace:*"
@@ -8686,7 +8688,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@webex/webex-core@workspace:*, @webex/webex-core@workspace:packages/@webex/webex-core":
+"@webex/webex-core@workspace:*, @webex/webex-core@workspace:^, @webex/webex-core@workspace:packages/@webex/webex-core":
   version: 0.0.0-use.local
   resolution: "@webex/webex-core@workspace:packages/@webex/webex-core"
   dependencies:
