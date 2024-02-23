@@ -7962,6 +7962,12 @@ export default class Meeting extends StatelessWebexPlugin {
       // only after the SDP update, because that's how it's always been done for transcoded meetings
       // and also if sharing from the start, we need confluence to have been created
       await this.enqueueScreenShareFloorRequest();
+
+      this.statsAnalyzer.updateMediaStatus({
+        expected: {
+          sendShare: true,
+        },
+      });
     }
   }
 

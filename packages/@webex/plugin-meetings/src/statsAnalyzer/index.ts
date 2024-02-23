@@ -55,7 +55,10 @@ const emptyReceiver = {
 };
 
 type ReceiveSlotCallback = (csi: number) => ReceiveSlot | undefined;
-
+type MediaStatus = {
+  actual?: any;
+  expected?: any;
+};
 /**
  * Stats Analyzer class that will emit events based on detected quality
  *
@@ -139,8 +142,17 @@ export class StatsAnalyzer extends EventsScope {
    * @memberof StatsAnalyzer
    * @returns {void}
    */
-  public updateMediaStatus(status: object) {
-    this.meetingMediaStatus = status;
+  public updateMediaStatus(status: MediaStatus) {
+    this.meetingMediaStatus = {
+      actual: {
+        ...this.meetingMediaStatus?.actual,
+        ...status.actual,
+      },
+      expected: {
+        ...this.meetingMediaStatus?.expected,
+        ...status.expected,
+      },
+    };
   }
 
   /**
@@ -717,6 +729,8 @@ export class StatsAnalyzer extends EventsScope {
             );
           }
         }
+
+        this.emitStartStopEvents('share', previousStats.framesSent, currentStats.framesSent, true);
       }
 
       if (this.meetingMediaStatus.expected.sendShare) {
