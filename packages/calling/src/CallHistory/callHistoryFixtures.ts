@@ -330,10 +330,10 @@ const SPARK_CALL_SESSION = {
   durationSecs: 0,
   self: {
     id: '0fea4a63-4e27-46ee-99c3-2472cb12bf68',
-    name: 'Priya Kesari',
+    name: 'Alice',
     incomingCallProtocols: [],
     callbackInfo: {
-      callbackAddress: 'sreenara@cisco.com',
+      callbackAddress: 'alice@cisco.com',
       callbackType: 'EMAIL',
     },
   },
@@ -346,7 +346,7 @@ const SPARK_CALL_SESSION = {
   disposition: Disposition.INITIATED,
   other: {
     id: '8391c34e-9cb1-4fd0-b868-31902c02290c',
-    name: 'Sreekanth Narayanan',
+    name: 'Umar Patel',
     isPrivate: false,
     callbackAddress: '8391c34e-9cb1-4fd0-b868-31902c02290c',
   },
