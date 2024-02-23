@@ -441,7 +441,6 @@ describe('plugin-meetings', () => {
       afterEach(() => {
         sandbox.reset();
         clock.restore();
-        sandbox.reset();
       });
 
       const startStatsAnalyzer = async (mediaStatus) => {
