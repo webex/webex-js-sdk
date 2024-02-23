@@ -505,117 +505,130 @@ describe('plugin-meetings', () => {
       });
 
       it('emits the correct transmittedFrameRate/receivedFrameRate', async () => {
-        await startStatsAnalyzer();
+        it('at the start of the stats analyzer', async () => {
+          await startStatsAnalyzer();
+          assert.strictEqual(mqeData.videoTransmit[0].streams[0].common.transmittedFrameRate, 0);
+          assert.strictEqual(mqeData.videoReceive[0].streams[0].common.receivedFrameRate, 0);
+        });
 
-        assert.strictEqual(mqeData.videoTransmit[0].streams[0].common.transmittedFrameRate, 0);
-        assert.strictEqual(mqeData.videoReceive[0].streams[0].common.receivedFrameRate, 0);
+        it('after frames are sent and received', async () => {
+          fakeStats.video.senders[0].report[0].framesSent += 300;
+          fakeStats.video.receivers[0].report[0].framesReceived += 300;
+          await progressTime(MQA_INTERVAL);
 
-        fakeStats.video.senders[0].report[0].framesSent += 300;
-        fakeStats.video.receivers[0].report[0].framesReceived += 300;
-        await progressTime(MQA_INTERVAL);
-
-        assert.strictEqual(mqeData.videoTransmit[0].streams[0].common.transmittedFrameRate, 5);
-        assert.strictEqual(mqeData.videoReceive[0].streams[0].common.receivedFrameRate, 5);
-
-        fakeStats.video.senders[0].report[0].framesSent += 1800;
-        fakeStats.video.receivers[0].report[0].framesReceived += 1800;
-        await progressTime(MQA_INTERVAL);
-
-        assert.strictEqual(mqeData.videoTransmit[0].streams[0].common.transmittedFrameRate, 30);
-        assert.strictEqual(mqeData.videoReceive[0].streams[0].common.receivedFrameRate, 30);
+          // 300 frames in 60 seconds = 5 frames per second
+          assert.strictEqual(mqeData.videoTransmit[0].streams[0].common.transmittedFrameRate, 5);
+          assert.strictEqual(mqeData.videoReceive[0].streams[0].common.receivedFrameRate, 5);
+        });
       });
 
       it('emits the correct rtpPackets', async () => {
-        await startStatsAnalyzer();
+        it('at the start of the stats analyzer', async () => {
+          await startStatsAnalyzer();
+          assert.strictEqual(mqeData.audioTransmit[0].common.rtpPackets, 0);
+          assert.strictEqual(mqeData.audioTransmit[0].streams[0].common.rtpPackets, 0);
+          assert.strictEqual(mqeData.audioReceive[0].common.rtpPackets, 0);
+          assert.strictEqual(mqeData.audioReceive[0].streams[0].common.rtpPackets, 0);
+          assert.strictEqual(mqeData.videoTransmit[0].common.rtpPackets, 0);
+          assert.strictEqual(mqeData.videoTransmit[0].streams[0].common.rtpPackets, 0);
+          assert.strictEqual(mqeData.videoReceive[0].common.rtpPackets, 0);
+          assert.strictEqual(mqeData.videoReceive[0].streams[0].common.rtpPackets, 0);
+        });
 
-        assert.strictEqual(mqeData.audioTransmit[0].common.rtpPackets, 0);
-        assert.strictEqual(mqeData.audioTransmit[0].streams[0].common.rtpPackets, 0);
-        assert.strictEqual(mqeData.audioReceive[0].common.rtpPackets, 0);
-        assert.strictEqual(mqeData.audioReceive[0].streams[0].common.rtpPackets, 0);
-        assert.strictEqual(mqeData.videoTransmit[0].common.rtpPackets, 0);
-        assert.strictEqual(mqeData.videoTransmit[0].streams[0].common.rtpPackets, 0);
-        assert.strictEqual(mqeData.videoReceive[0].common.rtpPackets, 0);
-        assert.strictEqual(mqeData.videoReceive[0].streams[0].common.rtpPackets, 0);
+        it('after packets are sent', async () => {
+          fakeStats.audio.senders[0].report[0].packetsSent += 5;
+          fakeStats.video.senders[0].report[0].packetsSent += 5;
+          await progressTime(MQA_INTERVAL);
 
-        fakeStats.audio.senders[0].report[0].packetsSent += 5;
-        fakeStats.video.senders[0].report[0].packetsSent += 5;
-        fakeStats.audio.receivers[0].report[0].packetsReceived += 5;
-        fakeStats.video.receivers[0].report[0].packetsReceived += 5;
-        await progressTime(MQA_INTERVAL);
+          assert.strictEqual(mqeData.audioTransmit[0].common.rtpPackets, 5);
+          assert.strictEqual(mqeData.audioTransmit[0].streams[0].common.rtpPackets, 5);
+          assert.strictEqual(mqeData.videoTransmit[0].common.rtpPackets, 5);
+          assert.strictEqual(mqeData.videoTransmit[0].streams[0].common.rtpPackets, 5);
+        });
 
-        assert.strictEqual(mqeData.audioTransmit[0].common.rtpPackets, 5);
-        assert.strictEqual(mqeData.audioTransmit[0].streams[0].common.rtpPackets, 5);
-        assert.strictEqual(mqeData.audioReceive[0].common.rtpPackets, 5);
-        assert.strictEqual(mqeData.audioReceive[0].streams[0].common.rtpPackets, 5);
-        assert.strictEqual(mqeData.videoTransmit[0].common.rtpPackets, 5);
-        assert.strictEqual(mqeData.videoTransmit[0].streams[0].common.rtpPackets, 5);
-        assert.strictEqual(mqeData.videoReceive[0].common.rtpPackets, 5);
-        assert.strictEqual(mqeData.videoReceive[0].streams[0].common.rtpPackets, 5);
+        it('after packets are received', async () => {
+          fakeStats.audio.senders[0].report[0].packetsSent += 10;
+          fakeStats.video.senders[0].report[0].packetsSent += 10;
+          fakeStats.audio.receivers[0].report[0].packetsReceived += 10;
+          fakeStats.video.receivers[0].report[0].packetsReceived += 10;
+          await progressTime(MQA_INTERVAL);
+
+          assert.strictEqual(mqeData.audioReceive[0].common.rtpPackets, 10);
+          assert.strictEqual(mqeData.audioReceive[0].streams[0].common.rtpPackets, 10);
+          assert.strictEqual(mqeData.videoReceive[0].common.rtpPackets, 10);
+          assert.strictEqual(mqeData.videoReceive[0].streams[0].common.rtpPackets, 10);
+        });
       });
 
       it('emits the correct fecPackets', async () => {
-        await startStatsAnalyzer();
+        it('at the start of the stats analyzer', async () => {
+          await startStatsAnalyzer();
+          assert.strictEqual(mqeData.audioReceive[0].common.fecPackets, 0);
+        });
 
-        assert.strictEqual(mqeData.audioReceive[0].common.fecPackets, 0);
+        it('after FEC packets are received', async () => {
+          fakeStats.audio.receivers[0].report[0].fecPacketsReceived += 5;
+          await progressTime(MQA_INTERVAL);
 
-        fakeStats.audio.receivers[0].report[0].fecPacketsReceived += 5;
-        await progressTime(MQA_INTERVAL);
+          assert.strictEqual(mqeData.audioReceive[0].common.fecPackets, 5);
+        });
 
-        assert.strictEqual(mqeData.audioReceive[0].common.fecPackets, 5);
+        it('after FEC packets are received and some FEC packets are discarded', async () => {
+          fakeStats.audio.receivers[0].report[0].fecPacketsReceived += 15;
+          fakeStats.audio.receivers[0].report[0].fecPacketsDiscarded += 5;
+          await progressTime(MQA_INTERVAL);
 
-        fakeStats.audio.receivers[0].report[0].fecPacketsReceived += 10;
-        await progressTime(MQA_INTERVAL);
-
-        assert.strictEqual(mqeData.audioReceive[0].common.fecPackets, 10);
-
-        fakeStats.audio.receivers[0].report[0].fecPacketsReceived += 10;
-        fakeStats.audio.receivers[0].report[0].fecPacketsDiscarded += 5;
-        await progressTime(MQA_INTERVAL);
-
-        assert.strictEqual(mqeData.audioReceive[0].common.fecPackets, 5);
+          assert.strictEqual(mqeData.audioReceive[0].common.fecPackets, 10);
+        });
       });
 
       it('emits the correct mediaHopByHopLost/rtpHopByHopLost', async () => {
-        await startStatsAnalyzer();
+        it('at the start of the stats analyzer', async () => {
+          await startStatsAnalyzer();
+          assert.strictEqual(mqeData.audioReceive[0].common.mediaHopByHopLost, 0);
+          assert.strictEqual(mqeData.audioReceive[0].common.rtpHopByHopLost, 0);
+          assert.strictEqual(mqeData.videoReceive[0].common.mediaHopByHopLost, 0);
+          assert.strictEqual(mqeData.videoReceive[0].common.rtpHopByHopLost, 0);
+        });
 
-        assert.strictEqual(mqeData.audioReceive[0].common.mediaHopByHopLost, 0);
-        assert.strictEqual(mqeData.audioReceive[0].common.rtpHopByHopLost, 0);
-        assert.strictEqual(mqeData.videoReceive[0].common.mediaHopByHopLost, 0);
-        assert.strictEqual(mqeData.videoReceive[0].common.rtpHopByHopLost, 0);
+        it('after packets are lost', async () => {
+          fakeStats.audio.receivers[0].report[0].packetsLost += 5;
+          fakeStats.video.receivers[0].report[0].packetsLost += 5;
+          await progressTime(MQA_INTERVAL);
 
-        fakeStats.audio.receivers[0].report[0].packetsLost += 5;
-        fakeStats.video.receivers[0].report[0].packetsLost += 5;
-        await progressTime(MQA_INTERVAL);
-
-        assert.strictEqual(mqeData.audioReceive[0].common.mediaHopByHopLost, 5);
-        assert.strictEqual(mqeData.audioReceive[0].common.rtpHopByHopLost, 5);
-        assert.strictEqual(mqeData.videoReceive[0].common.mediaHopByHopLost, 5);
-        assert.strictEqual(mqeData.videoReceive[0].common.rtpHopByHopLost, 5);
+          assert.strictEqual(mqeData.audioReceive[0].common.mediaHopByHopLost, 5);
+          assert.strictEqual(mqeData.audioReceive[0].common.rtpHopByHopLost, 5);
+          assert.strictEqual(mqeData.videoReceive[0].common.mediaHopByHopLost, 5);
+          assert.strictEqual(mqeData.videoReceive[0].common.rtpHopByHopLost, 5);
+        });
       });
 
       it('emits the correct remoteLossRate', async () => {
-        await startStatsAnalyzer();
+        it('at the start of the stats analyzer', async () => {
+          await startStatsAnalyzer();
+          assert.strictEqual(mqeData.audioTransmit[0].common.remoteLossRate, 0);
+          assert.strictEqual(mqeData.videoTransmit[0].common.remoteLossRate, 0);
+        });
 
-        assert.strictEqual(mqeData.audioTransmit[0].common.remoteLossRate, 0);
-        assert.strictEqual(mqeData.videoTransmit[0].common.remoteLossRate, 0);
+        it('after packets are sent', async () => {
+          fakeStats.audio.senders[0].report[0].packetsSent += 100;
+          fakeStats.video.senders[0].report[0].packetsSent += 100;
+          await progressTime(MQA_INTERVAL);
 
-        fakeStats.audio.senders[0].report[0].packetsSent += 100;
-        fakeStats.audio.senders[0].report[1].packetsLost += 5;
-        fakeStats.video.senders[0].report[0].packetsSent += 100;
-        fakeStats.video.senders[0].report[1].packetsLost += 5;
-        await progressTime(MQA_INTERVAL);
+          assert.strictEqual(mqeData.audioTransmit[0].common.remoteLossRate, 0);
+          assert.strictEqual(mqeData.videoTransmit[0].common.remoteLossRate, 0);
+        });
 
-        assert.strictEqual(mqeData.audioTransmit[0].common.remoteLossRate, 5);
-        assert.strictEqual(mqeData.videoTransmit[0].common.remoteLossRate, 5);
+        it('after packets are sent and some packets are lost', async () => {
+          fakeStats.audio.senders[0].report[0].packetsSent += 200;
+          fakeStats.audio.senders[0].report[1].packetsLost += 10;
+          fakeStats.video.senders[0].report[0].packetsSent += 200;
+          fakeStats.video.senders[0].report[1].packetsLost += 10;
+          await progressTime(MQA_INTERVAL);
 
-        fakeStats.audio.senders[0].report[0].packetsSent += 100;
-        fakeStats.audio.senders[0].report[1].packetsLost += 10;
-        fakeStats.video.senders[0].report[0].packetsSent += 100;
-        fakeStats.video.senders[0].report[1].packetsLost += 10;
-        await progressTime(MQA_INTERVAL);
-
-        assert.strictEqual(mqeData.audioTransmit[0].common.remoteLossRate, 10);
-        assert.strictEqual(mqeData.videoTransmit[0].common.remoteLossRate, 10);
+          assert.strictEqual(mqeData.audioTransmit[0].common.remoteLossRate, 5);
+          assert.strictEqual(mqeData.videoTransmit[0].common.remoteLossRate, 5);
+        });
       });
 
       it('has the correct localIpAddress set when the candidateType is host', async () => {
