@@ -71,6 +71,7 @@
     "@webex/internal-plugin-metrics": "workspace:*",
     "@webex/internal-plugin-support": "workspace:*",
     "@webex/internal-plugin-user": "workspace:*",
+    "@webex/internal-plugin-voicea": "workspace:*",
     "@webex/media-helpers": "workspace:*",
     "@webex/plugin-people": "workspace:*",
     "@webex/plugin-rooms": "workspace:*",
