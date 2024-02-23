@@ -49,6 +49,10 @@ export interface Configuration {
 
     layouts: {[key: LayoutId]: VideoLayout}; // a map of all available layouts, a layout can be set via setLayout() method
   };
+  receiveNamedMediaGroup: {
+    type: number;
+    value: number;
+  };
 }
 
 /* Predefined layouts: */
@@ -168,6 +172,10 @@ export const DefaultConfiguration: Configuration = {
       ScreenShareView: RemoteScreenShareWithSmallThumbnailsLayout,
     },
   },
+  receiveNamedMediaGroup: {
+    type: 0,
+    value: 0,
+  },
 };
 
 export enum Event {
@@ -245,10 +253,6 @@ export class RemoteMediaManager extends EventsScope {
       audio?: RemoteMediaGroup;
       video?: RemoteMediaGroup;
     };
-    receiveNamedMediaGroup: {
-      type: number;
-      value: number;
-    };
   };
 
   private receiveSlotAllocations: {
@@ -289,10 +293,6 @@ export class RemoteMediaManager extends EventsScope {
       screenShare: {
         audio: undefined,
         video: undefined,
-      },
-      receiveNamedMediaGroup: {
-        type: undefined,
-        value: undefined,
       },
     };
 
@@ -543,13 +543,13 @@ export class RemoteMediaManager extends EventsScope {
     const type = mediaType === MediaType.AudioMain ? 1 : 0;
     const value = languageId;
     if (
-      type === this.media.receiveNamedMediaGroup.type &&
-      value === this.media.receiveNamedMediaGroup.value
+      type === this.config.receiveNamedMediaGroup.type &&
+      value === this.config.receiveNamedMediaGroup.value
     ) {
       return;
     }
 
-    this.media.receiveNamedMediaGroup = {
+    this.config.receiveNamedMediaGroup = {
       type,
       value,
     };
@@ -580,10 +580,10 @@ export class RemoteMediaManager extends EventsScope {
       this.slots.audio.push(slot);
     }
     // create slot for interpretation language audio
-    if (this.media.receiveNamedMediaGroup.value) {
+    if (this.config.receiveNamedMediaGroup.value) {
       const siSlot = await this.receiveSlotManager.allocateSlot(
         MediaType.AudioMain,
-        this.media.receiveNamedMediaGroup
+        this.config.receiveNamedMediaGroup
       );
 
       this.slots.audio.push(siSlot);
