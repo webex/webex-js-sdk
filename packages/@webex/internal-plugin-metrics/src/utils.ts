@@ -15,3 +15,7 @@ export const generateCommonErrorMetadata = (error) => {
 
   return error;
 };
+
+export const getDomain = () => {
+  return typeof window !== 'undefined' ? window.location.hostname || 'non-browser' : 'non-browser'; // Check what else we could measure
+};

@@ -369,9 +369,7 @@ describe('internal-plugin-metrics', () => {
     })
   });
 
-  describe('setMetricTimings', async () => {
-    let webex: any;
-
+  describe('setMetricTimings', () => {
     const check = (options: any, expectedOptions: any) => {
       const newOptions = setMetricTimings(options);
 

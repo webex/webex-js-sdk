@@ -7,7 +7,7 @@ import MockWebex from '@webex/test-helper-mock-webex';
 import {Token, Credentials} from '@webex/webex-core';
 import FakeTimers from '@sinonjs/fake-timers';
 import sinon from 'sinon';
-import Metrics, {config} from '@webex/internal-plugin-metrics';
+import Metrics, {config, Utils} from '@webex/internal-plugin-metrics';
 import {BrowserDetection} from '@webex/common';
 
 const {getOSVersion} = BrowserDetection();
@@ -57,11 +57,6 @@ describe('plugin-metrics', () => {
     const preLoginProps = {
       metrics: [transformedProps],
     };
-    const mockCallDiagnosticEvent = {
-      originTime: {
-        triggered: 'mock triggered timestamp',
-      },
-    };
 
     beforeEach(() => {
       clock = FakeTimers.install({now: 0});
@@ -69,6 +64,7 @@ describe('plugin-metrics', () => {
 
     afterEach(() => {
       clock.uninstall();
+      Utils.getDomain.restore();
     });
 
     beforeEach(() => {
@@ -92,6 +88,7 @@ describe('plugin-metrics', () => {
 
       webex.credentials = new Credentials(undefined, {parent: webex});
       sinon.stub(webex.credentials, 'getClientToken').returns(Promise.resolve('token'));
+      sinon.stub(Utils, 'getDomain').returns('whatever');
 
       webex.internal = {...webex.internal};
       webex.config = {
@@ -149,7 +146,6 @@ describe('plugin-metrics', () => {
           context: {},
           eventPayload: {value: 'splunk business metric payload'},
         };
-        const date = clock.now;
 
         const result = metrics.getClientMetricsPayload('test', testPayload);
 

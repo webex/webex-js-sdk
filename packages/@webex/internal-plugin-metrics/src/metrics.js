@@ -10,6 +10,7 @@ import {OS_NAME, OSMap, CLIENT_NAME} from './config';
 
 import Batcher from './batcher';
 import ClientMetricsBatcher from './client-metrics-batcher';
+import {getDomain} from './utils';
 
 const {getOSName, getOSVersion, getBrowserName, getBrowserVersion} = BrowserDetection();
 
@@ -64,8 +65,7 @@ const Metrics = WebexPlugin.extend({
 
       // Node does not like this so we need to check if it exists or not
       // eslint-disable-next-line no-undef
-      domain:
-        typeof window !== 'undefined' ? window.location.hostname || 'non-browser' : 'non-browser', // Check what else we could measure
+      domain: getDomain(),
     };
 
     payload.fields = {
