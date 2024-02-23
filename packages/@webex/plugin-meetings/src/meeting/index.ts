@@ -5569,7 +5569,6 @@ export default class Meeting extends StatelessWebexPlugin {
                 seq: event.roapMessage.seq,
                 tieBreaker: event.roapMessage.tieBreaker,
                 meeting: this, // or can pass meeting ID
-                reconnect: this.reconnectionManager.isReconnectInProgress(),
               })
               .then(({roapAnswer}) => {
                 if (roapAnswer) {

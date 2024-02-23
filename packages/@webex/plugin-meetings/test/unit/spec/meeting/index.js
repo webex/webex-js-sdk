@@ -6772,7 +6772,6 @@ describe('plugin-meetings', () => {
               sdp: 'fake sdp',
               tieBreaker: 12345,
               meeting,
-              reconnect: false,
             });
             assert.notCalled(meeting.roapMessageReceived);
           });
@@ -6799,7 +6798,6 @@ describe('plugin-meetings', () => {
               sdp: 'fake sdp',
               tieBreaker: 12345,
               meeting,
-              reconnect: false,
             });
             assert.calledWith(meeting.roapMessageReceived, fakeAnswer);
           });
@@ -6829,7 +6827,6 @@ describe('plugin-meetings', () => {
               sdp: 'fake sdp',
               tieBreaker: 12345,
               meeting,
-              reconnect: false,
             });
             assert.notCalled(meeting.roapMessageReceived);
             assert.calledOnce(meeting.deferSDPAnswer.reject);
