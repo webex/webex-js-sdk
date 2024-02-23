@@ -146,7 +146,7 @@ describe('plugin-meetings', () => {
         assert.strictEqual(statsAnalyzer.statsResults['audio-recv-1'].recv.concealedSamples, 200000);
       });
 
-      it.only('parseAudioSource should create the correct stats results', () => {
+      it('parseAudioSource should create the correct stats results', () => {
         // establish the `statsResults` object.
         statsAnalyzer.parseGetStatsResult({ type: 'none' }, 'audio-send', true);
 
