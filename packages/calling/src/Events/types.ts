@@ -77,7 +77,7 @@ export type LookUpInfo = {
 export type CallRecordSelf = {
   id: string;
   name?: string;
-  phoneNumber: string;
+  phoneNumber?: string;
 };
 
 export type CallRecordListOther = {
@@ -89,7 +89,7 @@ export type CallRecordListOther = {
   secondaryDisplayString?: string;
   isPrivate: boolean;
   callbackAddress: string;
-  phoneNumber: string;
+  phoneNumber?: string;
   contact?: string;
   email?: string;
 };
@@ -155,6 +155,7 @@ export type Item = {
 export enum MOBIUS_EVENT_KEYS {
   SERVER_EVENT_INCLUSIVE = 'event:mobius',
   CALL_SESSION_EVENT_INCLUSIVE = 'event:janus.user_recent_sessions',
+  CALL_SESSION_EVENT_LEGACY = 'event:janus.user_sessions',
 }
 
 export type CallSessionData = {
@@ -162,7 +163,9 @@ export type CallSessionData = {
     userSessions: UserSession[];
     statusCode: number;
   };
-  eventType: MOBIUS_EVENT_KEYS.CALL_SESSION_EVENT_INCLUSIVE;
+  eventType:
+    | MOBIUS_EVENT_KEYS.CALL_SESSION_EVENT_INCLUSIVE
+    | MOBIUS_EVENT_KEYS.CALL_SESSION_EVENT_LEGACY;
 };
 
 export type CallSessionEvent = {

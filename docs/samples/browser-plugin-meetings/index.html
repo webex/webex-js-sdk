@@ -290,6 +290,22 @@
           </fieldset>
         </div>
 
+        <div id="voicea-transcription-formatted-display-wrapper">
+          <fieldset>
+            <legend>Voicea Transcription</legend>
+            <div class="u-mv">
+              You will see the formatted transcription below if you have <b>did one of the below</b>,
+              <ul>
+                <li>Set the <span class="inline-code">receiveTranscription</span> config to <span class="inline-code">true</span> before joining the meeting</li>
+                <li>Invoked <span class="inline-code">meeting.startTranscription()</span> after joining the meeting</li>
+              </ul>
+              <div id="voicea-transcription-formatted-display">
+
+              </div>
+              <br>
+              <span style='color:red;font-weight: bold;'>Note</span> - Scroll to <b>Advanced Meeting Controls</b> section for transcription controls
+            </div>
+          </fieldset>
       </div>
     </section>
   </div>
@@ -822,10 +838,12 @@
             <legend>Transcription</legend>
             <div class="transcription">
               <div class="btn-group u-mb">
-                <button id="gc-start-receiving-transcription" disabled="" type="button"
-                  onclick="startReceivingTranscription()" class="btn-code">startReceivingTranscription() (click me before joining)</button>
-                <button id="gc-stop-receiving-transcription" disabled="" type="button"
-                  onclick="stopReceivingTranscription()" class="btn-code">stopReceivingTranscription()</button>
+                <button id="gc-toggle-transcription" type="button"
+                  onclick="toggleTranscription()" class="btn-code" data-enabled="false">Start Transcription</button>
+                <br>
+                Caption Language: <select id="voicea-caption-language" style="display: inline;" disabled></select><button id="voicea-caption-language-btn" onclick="setCaptionLanguage()" disabled>meeting.setCaptionLanguage()</button><br/>
+                Spoken Language: <select id="voicea-spoken-language" style="display: inline;" disabled></select><button id="voicea-spoken-language-btn"  onclick="setSpokenLanguage()" disabled>meeting.setSpokenLanguage()</button>
+                <br>
               </div>
               <textarea id="gc-transcription-content"
                 disabled="">Transcription Content: Webex Assistant must be enabled, check the console!</textarea>
@@ -852,7 +870,23 @@
     </section>
   </div>
   <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/handlebars@latest/dist/handlebars.js"></script>
   <script src="../webex.min.js"></script>
+  <script id="voicea-transcription-template" type="text/x-handlebars-template">
+    {{#each data}}
+      <div>
+        <b>{{this.speaker.name}}:</b>
+        {{#if this.translations}}
+          {{#each (forIn this.translations)}}
+            {{{this.value}}}
+          {{/each}}
+        {{else}}
+          {{{this.text}}}
+        {{/if}}
+        <sub><b>{{this.timestamp}}</b></sub>
+      </div>
+    {{/each}}
+  </script>
   <script src="app.js"></script>
 </body>
 
