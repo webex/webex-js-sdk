@@ -7491,7 +7491,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/internal-plugin-voicea@workspace:packages/@webex/internal-plugin-voicea":
+"@webex/internal-plugin-voicea@workspace:*, @webex/internal-plugin-voicea@workspace:packages/@webex/internal-plugin-voicea":
   version: 0.0.0-use.local
   resolution: "@webex/internal-plugin-voicea@workspace:packages/@webex/internal-plugin-voicea"
   dependencies:
@@ -7924,6 +7924,7 @@ __metadata:
     "@webex/internal-plugin-metrics": "workspace:*"
     "@webex/internal-plugin-support": "workspace:*"
     "@webex/internal-plugin-user": "workspace:*"
+    "@webex/internal-plugin-voicea": "workspace:*"
     "@webex/jest-config-legacy": "workspace:*"
     "@webex/legacy-tools": "workspace:*"
     "@webex/media-helpers": "workspace:*"
@@ -31131,6 +31132,7 @@ __metadata:
     "@webex/internal-plugin-llm": "workspace:*"
     "@webex/internal-plugin-presence": "workspace:*"
     "@webex/internal-plugin-support": "workspace:*"
+    "@webex/internal-plugin-voicea": "workspace:*"
     "@webex/jest-config-legacy": "workspace:*"
     "@webex/legacy-tools": "workspace:*"
     "@webex/plugin-attachment-actions": "workspace:*"

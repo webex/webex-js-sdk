@@ -74,6 +74,7 @@
     "@webex/internal-plugin-llm": "workspace:*",
     "@webex/internal-plugin-presence": "workspace:*",
     "@webex/internal-plugin-support": "workspace:*",
+    "@webex/internal-plugin-voicea": "workspace:*",
     "@webex/plugin-attachment-actions": "workspace:*",
     "@webex/plugin-authorization": "workspace:*",
     "@webex/plugin-device-manager": "workspace:*",
