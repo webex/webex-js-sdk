@@ -81,6 +81,7 @@ describe('plugin-meetings', () => {
       await rm.reconnect();
 
       assert.calledOnce(rm.webex.meetings.syncMeetings);
+      assert.calledWith(rm.webex.meetings.syncMeetings, {keepOnlyLocusMeetings: false});
     });
 
     it('does not sync meetings if it is an unverified guest', async () => {

@@ -112,7 +112,6 @@ describe('internal-plugin-metrics', () => {
     });
 
     describe('saveTimestamp', () => {
-
       afterEach(() => {
         sinon.restore();
       });
