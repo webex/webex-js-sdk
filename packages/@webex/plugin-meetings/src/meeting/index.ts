@@ -578,7 +578,8 @@ export default class Meeting extends StatelessWebexPlugin {
   environment: string;
   namespace = MEETINGS;
   allowMediaInLobby: boolean;
-  shareInstanceId: string;
+  localShareInstanceId: string;
+  remoteShareInstanceId: string;
   turnDiscoverySkippedReason: string;
   turnServerUsed: boolean;
   private retriedWithTurnServer: boolean;
@@ -1234,13 +1235,23 @@ export default class Meeting extends StatelessWebexPlugin {
     this.keepAliveTimerId = null;
 
     /**
-     * id for tracking Share instances in Call Analyzer
+     * id for tracking Local Share instances in Call Analyzer
      * @instance
      * @type {String}
      * @private
      * @memberof Meeting
      */
-    this.shareInstanceId = null;
+    this.localShareInstanceId = null;
+
+    /**
+     * id for tracking Remote Share instances in Call Analyzer
+     * @instance
+     * @type {String}
+     * @private
+     * @memberof Meeting
+     */
+    this.remoteShareInstanceId = null;
+
     /**
      * The class that helps to control recording functions: start, stop, pause, resume, etc
      * @instance
@@ -2483,6 +2494,8 @@ export default class Meeting extends StatelessWebexPlugin {
         switch (newShareStatus) {
           case SHARE_STATUS.REMOTE_SHARE_ACTIVE: {
             const sendStartedSharingRemote = () => {
+              this.remoteShareInstanceId = contentShare.shareInstanceId;
+
               Trigger.trigger(
                 this,
                 {
@@ -2493,7 +2506,7 @@ export default class Meeting extends StatelessWebexPlugin {
                 {
                   memberId: contentShare.beneficiaryId,
                   url: contentShare.url,
-                  shareInstanceId: contentShare.shareInstanceId,
+                  shareInstanceId: this.remoteShareInstanceId,
                   annotationInfo: contentShare.annotation,
                 }
               );
@@ -2530,7 +2543,7 @@ export default class Meeting extends StatelessWebexPlugin {
               name: 'client.share.floor-granted.local',
               payload: {
                 mediaType: 'share',
-                shareInstanceId: this.shareInstanceId,
+                shareInstanceId: this.localShareInstanceId,
               },
               options: {meetingId: this.id},
             });
@@ -2573,6 +2586,7 @@ export default class Meeting extends StatelessWebexPlugin {
       } else if (newShareStatus === SHARE_STATUS.REMOTE_SHARE_ACTIVE) {
         // if we got here, then some remote participant has stolen
         // the presentation from another remote participant
+        this.remoteShareInstanceId = contentShare.shareInstanceId;
 
         Trigger.trigger(
           this,
@@ -2584,7 +2598,7 @@ export default class Meeting extends StatelessWebexPlugin {
           {
             memberId: contentShare.beneficiaryId,
             url: contentShare.url,
-            shareInstanceId: contentShare.shareInstanceId,
+            shareInstanceId: this.remoteShareInstanceId,
             annotationInfo: contentShare.annotation,
           }
         );
@@ -5685,7 +5699,7 @@ export default class Meeting extends StatelessWebexPlugin {
         name: 'client.media.tx.start',
         payload: {
           mediaType: data.type,
-          shareInstanceId: data.type === 'share' ? this.shareInstanceId : undefined,
+          shareInstanceId: data.type === 'share' ? this.localShareInstanceId : undefined,
         },
         options: {
           meetingId: this.id,
@@ -5698,7 +5712,7 @@ export default class Meeting extends StatelessWebexPlugin {
         name: 'client.media.tx.stop',
         payload: {
           mediaType: data.type,
-          shareInstanceId: data.type === 'share' ? this.shareInstanceId : undefined,
+          shareInstanceId: data.type === 'share' ? this.localShareInstanceId : undefined,
         },
         options: {
           meetingId: this.id,
@@ -5720,6 +5734,7 @@ export default class Meeting extends StatelessWebexPlugin {
         name: 'client.media.rx.start',
         payload: {
           mediaType: data.type,
+          shareInstanceId: data.type === 'share' ? this.remoteShareInstanceId : undefined,
         },
         options: {
           meetingId: this.id,
@@ -5732,6 +5747,7 @@ export default class Meeting extends StatelessWebexPlugin {
         name: 'client.media.rx.stop',
         payload: {
           mediaType: data.type,
+          shareInstanceId: data.type === 'share' ? this.remoteShareInstanceId : undefined,
         },
         options: {
           meetingId: this.id,
@@ -6981,7 +6997,7 @@ export default class Meeting extends StatelessWebexPlugin {
           name: 'client.share.floor-grant.request',
           payload: {
             mediaType: 'share',
-            shareInstanceId: this.shareInstanceId,
+            shareInstanceId: this.localShareInstanceId,
           },
           options: {
             meetingId: this.id,
@@ -7022,7 +7038,7 @@ export default class Meeting extends StatelessWebexPlugin {
               payload: {
                 mediaType: 'share',
                 errors: MeetingUtil.getChangeMeetingFloorErrorPayload(error.message),
-                shareInstanceId: this.shareInstanceId,
+                shareInstanceId: this.localShareInstanceId,
               },
               options: {
                 meetingId: this.id,
@@ -7080,7 +7096,7 @@ export default class Meeting extends StatelessWebexPlugin {
         name: 'client.share.stopped',
         payload: {
           mediaType: 'share',
-          shareInstanceId: this.shareInstanceId,
+          shareInstanceId: this.localShareInstanceId,
         },
         options: {meetingId: this.id},
       });
@@ -7961,14 +7977,14 @@ export default class Meeting extends StatelessWebexPlugin {
     }
 
     if (floorRequestNeeded) {
-      this.shareInstanceId = uuid.v4();
+      this.localShareInstanceId = uuid.v4();
 
       // @ts-ignore
       this.webex.internal.newMetrics.submitClientEvent({
         name: 'client.share.initiated',
         payload: {
           mediaType: 'share',
-          shareInstanceId: this.shareInstanceId,
+          shareInstanceId: this.localShareInstanceId,
         },
         options: {meetingId: this.id},
       });
