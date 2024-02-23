@@ -163,7 +163,9 @@ export type CallSessionData = {
     userSessions: UserSession[];
     statusCode: number;
   };
-  eventType: MOBIUS_EVENT_KEYS.CALL_SESSION_EVENT_INCLUSIVE;
+  eventType:
+    | MOBIUS_EVENT_KEYS.CALL_SESSION_EVENT_INCLUSIVE
+    | MOBIUS_EVENT_KEYS.LOCUS_CALL_SESSION_EVENT;
 };
 
 export type CallSessionEvent = {

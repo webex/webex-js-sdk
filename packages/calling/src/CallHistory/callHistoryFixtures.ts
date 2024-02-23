@@ -337,3 +337,16 @@ export const MOCK_SESSION_EVENT: CallSessionEvent = {
   timestamp: 12345,
   trackingId: 'tracking-id',
 };
+
+export const MOCK_LOCUS_SESSION_EVENT: CallSessionEvent = {
+  id: 'id',
+  data: {
+    userSessions: {
+      userSessions: [WEBEX_CALL_SESSION],
+      statusCode: 0,
+    },
+    eventType: MOBIUS_EVENT_KEYS.LOCUS_CALL_SESSION_EVENT,
+  },
+  timestamp: 12345,
+  trackingId: 'tracking-id',
+};
