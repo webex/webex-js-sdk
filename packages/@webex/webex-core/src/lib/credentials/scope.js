@@ -4,6 +4,9 @@
 
 import {difference} from 'lodash';
 
+export const GUEST_JOIN_MEETING_SCOPE = 'webex-guest:meet_join';
+const SCOPE_SEPARATOR = ' ';
+
 /**
  * sorts a list of scopes
  * @param {string} scope
@@ -14,7 +17,7 @@ export function sortScope(scope) {
     return '';
   }
 
-  return scope.split(' ').sort().join(' ');
+  return scope.split(SCOPE_SEPARATOR).sort().join(SCOPE_SEPARATOR);
 }
 
 /**
@@ -30,10 +33,10 @@ export function filterScope(toFilter, scope) {
   const toFilterArr = Array.isArray(toFilter) ? toFilter : [toFilter];
 
   return scope
-    .split(' ')
+    .split(SCOPE_SEPARATOR)
     .filter((item) => !toFilterArr.includes(item))
     .sort()
-    .join(' ');
+    .join(SCOPE_SEPARATOR);
 }
 
 /**
@@ -44,8 +47,18 @@ export function filterScope(toFilter, scope) {
  * @returns {string}
  */
 export function diffScopes(scopeA, scopeB) {
-  const a = scopeA?.split(' ') ?? [];
-  const b = scopeB?.split(' ') ?? [];
+  const a = scopeA?.split(SCOPE_SEPARATOR) ?? [];
+  const b = scopeB?.split(SCOPE_SEPARATOR) ?? [];
 
-  return difference(a, b).sort().join(' ');
+  return difference(a, b).sort().join(SCOPE_SEPARATOR);
+}
+
+/**
+ * Returns true when the scope contains geust scope(s), othewise false
+ *
+ * @param {string} scope
+ * @returns {boolean}
+ */
+export function isGuestScope(scope) {
+  return !!scope?.split(SCOPE_SEPARATOR)?.includes(GUEST_JOIN_MEETING_SCOPE);
 }

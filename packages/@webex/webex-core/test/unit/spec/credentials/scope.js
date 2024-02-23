@@ -1,55 +1,96 @@
 import {assert} from '@webex/test-helper-chai';
-import {sortScope, filterScope, diffScopes} from '@webex/webex-core/src/lib/credentials/scope';
+import {
+  sortScope,
+  filterScope,
+  diffScopes,
+  isGuestScope,
+} from '@webex/webex-core/src/lib/credentials/scope';
 
 describe('webex-core', () => {
   describe('scope utils', () => {
     describe('sortScope', () => {
-      it('should sort scopes alphabetically', () => {
-        assert.equal(sortScope(undefined), '');
-        assert.equal(sortScope(''), '');
-        assert.equal(sortScope('a'), 'a');
-        assert.equal(sortScope('b c a'), 'a b c');
-      });
+      [
+        {scope: undefined, expected: ''},
+        {scope: '', expected: ''},
+        {scope: 'a', expected: 'a'},
+        {scope: 'b c a', expected: 'a b c'},
+      ].forEach(({scope, expected}) =>
+        it(`should sort "${scope}" alphabetically`, () => {
+          assert.equal(sortScope(scope), expected);
+        })
+      );
     });
 
     describe('filterScope', () => {
-      it('should filter out one scope from the original scope and sort the result', () => {
-        assert.equal(filterScope('a', undefined), '');
-        assert.equal(filterScope('a', ''), '');
-        assert.equal(filterScope('a', 'a'), '');
-        assert.equal(filterScope('a', 'a b c'), 'b c');
-        assert.equal(filterScope('c', 'a c b'), 'a b');
-      });
+      [
+        {toFilter: 'a', scope: undefined, expected: ''},
+        {toFilter: 'a', scope: '', expected: ''},
+        {toFilter: 'a', scope: 'a', expected: ''},
+        {toFilter: 'a', scope: 'a b c', expected: 'b c'},
+        {toFilter: 'c', scope: 'a c b', expected: 'a b'},
+      ].forEach(({toFilter, scope, expected}) =>
+        it(`should filter out ${toFilter} scope from ${scope} scope and sort the result`, () => {
+          assert.equal(filterScope(toFilter, scope), expected);
+        })
+      );
 
-      it('should filter out a list of scopes from the original scope and sort the result', () => {
-        assert.equal(filterScope([], 'a'), 'a');
-        assert.equal(filterScope(['a', 'b'], undefined), '');
-        assert.equal(filterScope(['a', 'b'], ''), '');
-        assert.equal(filterScope(['a', 'b'], 'a'), '');
-        assert.equal(filterScope(['a', 'b'], 'a b c'), 'c');
-        assert.equal(filterScope(['a', 'd'], 'a c a b'), 'b c');
-      });
+      [
+        {toFilter: [], scope: 'a', expected: 'a'},
+        {toFilter: ['a', 'b'], scope: undefined, expected: ''},
+        {toFilter: ['a', 'b'], scope: '', expected: ''},
+        {toFilter: ['a', 'b'], scope: 'a', expected: ''},
+        {toFilter: ['a', 'b'], scope: 'a b c', expected: 'c'},
+        {toFilter: ['a', 'd'], scope: 'a c a b', expected: 'b c'},
+      ].forEach(({toFilter, scope, expected}) =>
+        it(`should filter out ${toFilter} from ${scope} and sort the result`, () => {
+          assert.equal(filterScope(toFilter, scope), expected);
+        })
+      );
     });
 
     describe('diffScopes', () => {
-      it('should return an empty string, if all items in the first scope are contained in the second scope', () => {
-        assert.deepEqual(diffScopes(undefined, undefined), '');
-        assert.deepEqual(diffScopes(undefined, ''), '');
-        assert.deepEqual(diffScopes('', undefined), '');
-        assert.deepEqual(diffScopes('', ''), '');
-        assert.deepEqual(diffScopes('a', 'a'), '');
-        assert.deepEqual(diffScopes('a b c', 'a b c'), '');
-        assert.deepEqual(diffScopes(undefined, 'a b c'), '');
-        assert.deepEqual(diffScopes('a b c', 'a b c d'), '');
-      });
+      [
+        {scope1: undefined, scope2: undefined, expected: ''},
+        {scope1: undefined, scope2: '', expected: ''},
+        {scope1: '', scope2: undefined, expected: ''},
+        {scope1: '', scope2: '', expected: ''},
+        {scope1: 'a', scope2: 'a', expected: ''},
+        {scope1: 'a b c', scope2: 'a b c', expected: ''},
+        {scope1: undefined, scope2: 'a b c', expected: ''},
+        {scope1: 'a b c', scope2: 'a b c d', expected: ''},
+      ].forEach(({scope1, scope2, expected}) =>
+        it(`should return an empty string, when all items in ${scope1} scope are contained in the ${scope2} scope`, () => {
+          assert.deepEqual(diffScopes(scope1, scope2), expected);
+        })
+      );
 
-      it('should return a string containing all items in the first scope that are not in the second scope', () => {
-        assert.deepEqual(diffScopes('a', undefined), 'a');
-        assert.deepEqual(diffScopes('a', 'b'), 'a');
-        assert.deepEqual(diffScopes('a b c', 'a b'), 'c');
-        assert.deepEqual(diffScopes('a b c d', 'a b c'), 'd');
-        assert.deepEqual(diffScopes('a b c', undefined), 'a b c');
-      });
+      [
+        {scope1: 'a', scope2: undefined, expected: 'a'},
+        {scope1: 'a', scope2: 'b', expected: 'a'},
+        {scope1: 'a b c', scope2: 'a b', expected: 'c'},
+        {scope1: 'a b c d', scope2: 'a b c', expected: 'd'},
+        {scope1: 'a b c', scope2: undefined, expected: 'a b c'},
+      ].forEach(({scope1, scope2, expected}) =>
+        it(`should return a string containing all items in the ${scope1} scope that are not in the ${scope2} scope`, () => {
+          assert.deepEqual(diffScopes(scope1, scope2), expected);
+        })
+      );
+    });
+
+    describe('isGuestScope', () => {
+      [{scope: undefined}, {scope: ''}, {scope: 'scope1'}, {scope: 'scope1 scope2 scope3'}].forEach(
+        ({scope}) =>
+          it(`should return false when ${scope} does not contains guest scope`, () => {
+            assert.deepEqual(isGuestScope(scope), false);
+          })
+      );
+
+      [{scope: 'webex-guest:meet_join'}, {scope: 'scope1 webex-guest:meet_join scope3'}].forEach(
+        ({scope}) =>
+          it(`should return true when ${scope} contains guest scope`, () => {
+            assert.deepEqual(isGuestScope(scope), true);
+          })
+      );
     });
   });
 });

@@ -9,7 +9,7 @@ import {safeSetTimeout} from '@webex/common-timers';
 import WebexHttpError from '../webex-http-error';
 import WebexPlugin from '../webex-plugin';
 
-import {sortScope} from './scope';
+import {sortScope, isGuestScope} from './scope';
 import grantErrors, {OAuthError} from './grant-errors';
 
 /* eslint-disable camelcase */
@@ -270,6 +270,10 @@ const Token = WebexPlugin.extend({
     // something wrong with *one* of the scopes, not the whole thing.
     if (scope === sortScope(this.config.scope)) {
       return Promise.reject(new Error('token: scope reduction requires a reduced scope'));
+    }
+
+    if (isGuestScope(this.config.scope) && !isGuestScope(scope)) {
+      return Promise.reject(new Error('cannot downscope token with guest scope'));
     }
 
     return this.webex
