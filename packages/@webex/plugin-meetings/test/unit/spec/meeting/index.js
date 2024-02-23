@@ -3793,7 +3793,7 @@ describe('plugin-meetings', () => {
           meeting.mediaProperties.shareVideoStream = {};
           meeting.mediaProperties.mediaDirection.sendShare = true;
           meeting.state = 'JOINED';
-          meeting.shareInstanceId = '1234-5678';
+          meeting.localShareInstanceId = '1234-5678';
         });
 
         afterEach(() => {
@@ -5662,7 +5662,7 @@ describe('plugin-meetings', () => {
             // ensure the CA share metrics are submitted
             assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
               name: 'client.share.initiated',
-              payload: {mediaType: 'share', shareInstanceId: meeting.shareInstanceId},
+              payload: {mediaType: 'share', shareInstanceId: meeting.localShareInstanceId},
               options: {meetingId: meeting.id},
             });
             assert.equal(meeting.mediaProperties.mediaDirection.sendShare, true);
@@ -5672,7 +5672,7 @@ describe('plugin-meetings', () => {
             // ensure the CA share metrics are submitted
             assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
               name: 'client.share.initiated',
-              payload: {mediaType: 'share', shareInstanceId: meeting.shareInstanceId},
+              payload: {mediaType: 'share', shareInstanceId: meeting.localShareInstanceId},
               options: {meetingId: meeting.id},
             });
 
