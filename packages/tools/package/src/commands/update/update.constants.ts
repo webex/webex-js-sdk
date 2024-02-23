@@ -1,22 +1,22 @@
 import type { CommandsConfig } from '@webex/cli-tools';
 
 /**
- * `Commands.mount()` Commands Configuration Object for the sync Command
+ * `Commands.mount()` Commands Configuration Object for the update Command
  * Configuration Object.
  *
  * @public
  */
 const CONFIG: CommandsConfig = {
-  name: 'sync',
-  description: 'Synchronize the dependencies of filtered packages with npm',
+  name: 'update',
+  description: 'Update the dependencies for this local package',
   options: [
     {
-      description: 'Packages to synchronize with npm',
+      description: 'Packages to be updated',
       name: 'packages',
       type: 'string...',
     },
     {
-      description: 'Tag to synchronize the package with on npm',
+      description: 'Tag to update this local package with on npm',
       name: 'tag',
       type: 'string',
     },

@@ -1,9 +1,8 @@
 {
   "name": "@webex/package-tools",
-  "private": true,
   "packageManager": "yarn@3.4.1",
   "engines": {
-    "node": ">=18.0.0",
+    "node": ">=16.0.0",
     "npm": ">=8.0.0",
     "yarn": ">=3.0.0"
   },
