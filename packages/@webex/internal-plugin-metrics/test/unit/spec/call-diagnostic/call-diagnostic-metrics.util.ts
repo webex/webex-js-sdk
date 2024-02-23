@@ -24,6 +24,7 @@ const {
   isNetworkError,
   isUnauthorizedError,
   generateClientErrorCodeForIceFailure,
+  isSdpOfferCreationError,
 } = CallDiagnosticUtils;
 
 describe('internal-plugin-metrics', () => {
@@ -167,6 +168,38 @@ describe('internal-plugin-metrics', () => {
     ].forEach(([errorType, rawError, expected]) => {
       it(`for ${errorType} rawError returns the correct result`, () => {
         assert.strictEqual(isUnauthorizedError(rawError), expected);
+      });
+    });
+  });
+
+  describe('isSdpOfferCreationError', () => {
+    type TestWcmeError = {
+      type: string;
+      message: string;
+    };
+
+    type TestSdpOfferCreationError = {
+      code: number;
+      message: string;
+      name: string;
+      cause: TestWcmeError;
+    };
+
+    const error: TestSdpOfferCreationError = {
+      code: 30005,
+      name: 'SdpOfferCreationError',
+      message: 'No codecs present in m-line with MID 0 after filtering.',
+      cause: {
+        type: 'SDP_MUNGE_MISSING_CODECS',
+        message: 'No codecs present in m-line with MID 0 after filtering.',
+      },
+    };
+    [
+      ['isSdpOfferCreationError', error, true],
+      ['generic error', new Error('this is an error'), false],
+    ].forEach(([errorType, rawError, expected]) => {
+      it(`for ${errorType} rawError returns the correct result`, () => {
+        assert.strictEqual(isSdpOfferCreationError(rawError), expected);
       });
     });
   });
