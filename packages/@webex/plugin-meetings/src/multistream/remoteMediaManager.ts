@@ -49,7 +49,7 @@ export interface Configuration {
 
     layouts: {[key: LayoutId]: VideoLayout}; // a map of all available layouts, a layout can be set via setLayout() method
   };
-  receiveNamedMediaGroup: {
+  receiveNamedMediaGroup?: {
     type: number;
     value: number;
   };
