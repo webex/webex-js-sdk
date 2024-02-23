@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.354](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.353...v3.0.0-beta.354) (2024-02-23)
+
+
+### Bug Fixes
+
+* when reconnecting, JS-SDK calls Locus /media API with empty mediaId twice ([#3396](https://github.com/webex/webex-js-sdk/issues/3396)) ([f77940f](https://github.com/webex/webex-js-sdk/commit/f77940fa4b2c261a70c656695f76699829009321))
+
 ## [3.0.0-beta.353](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.352...v3.0.0-beta.353) (2024-02-23)
 
 
