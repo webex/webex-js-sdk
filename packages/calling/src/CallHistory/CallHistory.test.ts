@@ -10,7 +10,7 @@ import {
   sortedCallHistory,
   mockCallHistoryBody,
   MOCK_SESSION_EVENT,
-  MOCK_LOCUS_SESSION_EVENT,
+  MOCK_SESSION_EVENT_LEGACY,
 } from './callHistoryFixtures';
 import {COMMON_EVENT_KEYS, CallSessionEvent, MOBIUS_EVENT_KEYS} from '../Events/types';
 
@@ -105,15 +105,15 @@ describe('Call history tests', () => {
       callHistory.on(
         COMMON_EVENT_KEYS.CALL_HISTORY_USER_SESSION_INFO,
         (event: CallSessionEvent) => {
-          expect(event.data).toEqual(MOCK_LOCUS_SESSION_EVENT.data);
+          expect(event.data).toEqual(MOCK_SESSION_EVENT_LEGACY.data);
           done();
         }
       );
 
-      expect(mockOn.mock.calls[1][0]).toEqual(MOBIUS_EVENT_KEYS.LOCUS_CALL_SESSION_EVENT);
+      expect(mockOn.mock.calls[1][0]).toEqual(MOBIUS_EVENT_KEYS.CALL_SESSION_EVENT_LEGACY);
       const callSessionCallback = mockOn.mock.calls[1][1];
 
-      callSessionCallback(MOCK_LOCUS_SESSION_EVENT);
+      callSessionCallback(MOCK_SESSION_EVENT_LEGACY);
     });
   });
 });
