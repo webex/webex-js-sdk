@@ -325,6 +325,46 @@ const WEBEX_CALL_SESSION = {
   correlationIds: ['58ea6cd9-852b-4a77-957f-e704c8b0e63e'],
 };
 
+const SPARK_CALL_SESSION = {
+  id: '2ce4b9e0-7ee7-12a1-4a94-df524443b520',
+  durationSecs: 0,
+  self: {
+    id: '0fea4a63-4e27-46ee-99c3-2472cb12bf68',
+    name: 'Alice',
+    incomingCallProtocols: [],
+    callbackInfo: {
+      callbackAddress: 'alice@cisco.com',
+      callbackType: 'EMAIL',
+    },
+  },
+  url: 'https://janus-a.wbx2.com/janus/api/v1/history/userSessions/2ce4b9e0-7ee7-12a1-4a94-df524443b520',
+  sessionId: '2ce4b9e0-7ee7-12a1-4a94-df524443b520',
+  sessionType: SessionType.SPARK,
+  startTime: '2024-02-23T09:12:31.703Z',
+  endTime: '2024-02-23T09:12:39.468Z',
+  direction: 'OUTGOING',
+  disposition: Disposition.INITIATED,
+  other: {
+    id: '8391c34e-9cb1-4fd0-b868-31902c02290c',
+    name: 'Umar Patel',
+    isPrivate: false,
+    callbackAddress: '8391c34e-9cb1-4fd0-b868-31902c02290c',
+  },
+  durationSeconds: 0,
+  joinedDurationSeconds: 7,
+  participantCount: 2,
+  links: {
+    locusUrl: 'https://locus-a.wbx2.com/locus/api/v1/loci/bdb775e5-e7ad-370c-8fa9-b5d7e2795ae2',
+    conversationUrl:
+      'https://conv-a.wbx2.com/conversation/api/v1/conversations/0ed14356-1bf5-3eb9-99d6-9f7a3ad07426',
+    callbackAddress: '8391c34e-9cb1-4fd0-b868-31902c02290c',
+  },
+  isDeleted: false,
+  isPMR: false,
+  isTest: false,
+  correlationIds: ['dfe83701-3e1f-4e1d-8aeb-6fe81f53b653'],
+};
+
 export const MOCK_SESSION_EVENT: CallSessionEvent = {
   id: 'id',
   data: {
@@ -333,6 +373,19 @@ export const MOCK_SESSION_EVENT: CallSessionEvent = {
       statusCode: 0,
     },
     eventType: MOBIUS_EVENT_KEYS.CALL_SESSION_EVENT_INCLUSIVE,
+  },
+  timestamp: 12345,
+  trackingId: 'tracking-id',
+};
+
+export const MOCK_SESSION_EVENT_LEGACY: CallSessionEvent = {
+  id: 'id',
+  data: {
+    userSessions: {
+      userSessions: [SPARK_CALL_SESSION],
+      statusCode: 0,
+    },
+    eventType: MOBIUS_EVENT_KEYS.CALL_SESSION_EVENT_LEGACY,
   },
   timestamp: 12345,
   trackingId: 'tracking-id',
