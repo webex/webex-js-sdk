@@ -5720,7 +5720,6 @@ export default class Meeting extends StatelessWebexPlugin {
         name: 'client.media.rx.start',
         payload: {
           mediaType: data.type,
-          shareInstanceId: data.type === 'share' ? this.shareInstanceId : undefined,
         },
         options: {
           meetingId: this.id,
@@ -5733,7 +5732,6 @@ export default class Meeting extends StatelessWebexPlugin {
         name: 'client.media.rx.stop',
         payload: {
           mediaType: data.type,
-          shareInstanceId: data.type === 'share' ? this.shareInstanceId : undefined,
         },
         options: {
           meetingId: this.id,
