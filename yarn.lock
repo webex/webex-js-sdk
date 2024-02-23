@@ -4263,20 +4263,19 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/internal-media-core@npm:2.2.6":
-  version: 2.2.6
-  resolution: "@webex/internal-media-core@npm:2.2.6"
+"@webex/internal-media-core@npm:2.2.7":
+  version: 2.2.7
+  resolution: "@webex/internal-media-core@npm:2.2.7"
   dependencies:
     "@babel/runtime": "npm:^7.18.9"
     "@webex/ts-sdp": "npm:1.6.0"
     "@webex/web-client-media-engine": "npm:3.11.7"
-    detectrtc: "npm:^1.4.1"
     events: "npm:^3.3.0"
     typed-emitter: "npm:^2.1.0"
     uuid: "npm:^8.3.2"
     webrtc-adapter: "npm:^8.1.2"
     xstate: "npm:^4.30.6"
-  checksum: 2c11dc23f6fc87da899b2a786e18b70097b4ea047155b57ce60cf36b684b9a76b2f7c9408dee4bb87b34746fc76179f08ff6fdd510c0c145af7dd4365c5755f4
+  checksum: ab5a562941602aeeb539edcde290a2e4ff3c53c69498534e26dc6ded1b7c0c53aa6556767f6257de0cf121774a36b22fbf48666139ec73a003682fddc3ad17e9
   languageName: node
   linkType: hard
 
@@ -4579,7 +4578,10 @@ __metadata:
     "@webex/test-helper-chai": "workspace:^"
     "@webex/test-helper-mock-webex": "workspace:^"
     "@webex/webex-core": "workspace:^"
+    ip-anonymize: "npm:^0.1.0"
+    lodash: "npm:^4.17.21"
     sinon: "npm:^9.2.4"
+    uuid: "npm:^3.3.2"
   languageName: unknown
   linkType: soft
 
@@ -4736,7 +4738,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@webex/media-helpers@workspace:packages/@webex/media-helpers"
   dependencies:
-    "@webex/internal-media-core": "npm:2.2.6"
+    "@webex/internal-media-core": "npm:2.2.7"
     "@webex/test-helper-chai": "workspace:^"
     "@webex/test-helper-mock-webex": "workspace:^"
     "@webex/ts-events": "npm:^1.1.0"
@@ -4874,7 +4876,7 @@ __metadata:
   dependencies:
     "@peculiar/webcrypto": "npm:^1.4.3"
     "@webex/common": "workspace:^"
-    "@webex/internal-media-core": "npm:2.2.6"
+    "@webex/internal-media-core": "npm:2.2.7"
     "@webex/internal-plugin-conversation": "workspace:^"
     "@webex/internal-plugin-device": "workspace:^"
     "@webex/internal-plugin-llm": "workspace:^"
@@ -9522,13 +9524,6 @@ __metadata:
   bin:
     detective: bin/detective.js
   checksum: f4b2ee2f850f9f7ffc9dada9e09ea86827f1127e223528d20706ed7ac10876e18f590452db12070717dc5c1c7f4a310051150a6796259aa288be90ebceb5f419
-  languageName: node
-  linkType: hard
-
-"detectrtc@npm:^1.4.1":
-  version: 1.4.1
-  resolution: "detectrtc@npm:1.4.1"
-  checksum: 485fd4dfdf1c747348935d54a8687d8d577ae761c6d6593c161870c9d3691a96fa55e4386c6f34e6bd0caf5fe5253b00ad8e1c0aa4ffef570dc46992cd6e94a7
   languageName: node
   linkType: hard
 

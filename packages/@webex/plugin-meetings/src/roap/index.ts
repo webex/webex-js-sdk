@@ -181,7 +181,7 @@ export default class Roap extends StatelessWebexPlugin {
    * @memberof Roap
    */
   sendRoapMediaRequest(options: any) {
-    const {meeting, seq, sdp, reconnect, tieBreaker} = options;
+    const {meeting, seq, sdp, tieBreaker} = options;
     const roapMessage = {
       messageType: ROAP.ROAP_TYPES.OFFER,
       sdps: [sdp],
@@ -191,64 +191,62 @@ export default class Roap extends StatelessWebexPlugin {
       headers: ['includeAnswerInHttpResponse', 'noOkInTransaction'],
     };
 
-    // When reconnecting, it's important that the first roap message being sent out has empty media id.
-    // Normally this is the roap offer, but when TURN discovery is enabled,
-    // then this is the TURN discovery request message
-    return this.turnDiscovery.isSkipped(meeting).then((isTurnDiscoverySkipped) => {
-      const sendEmptyMediaId = reconnect && isTurnDiscoverySkipped;
+    // The only time we want to send an empty media id is when we are reconnecting, because this way we tell Locus
+    // that it needs to create a new confluence, but when reconnecting we always send TURN_DISCOVERY_REQUEST first,
+    // so we don't need to ever send an empty media id here
+    const sendEmptyMediaId = false;
 
-      return this.roapRequest
-        .sendRoap({
-          roapMessage,
-          locusSelfUrl: meeting.selfUrl,
-          mediaId: sendEmptyMediaId ? '' : meeting.mediaId,
-          meetingId: meeting.id,
-          preferTranscoding: !meeting.isMultistream,
-          locusMediaRequest: meeting.locusMediaRequest,
-          ipVersion: MeetingUtil.getIpVersion(meeting.webex),
-        })
-        .then(({locus, mediaConnections}) => {
-          if (mediaConnections) {
-            meeting.updateMediaConnections(mediaConnections);
+    return this.roapRequest
+      .sendRoap({
+        roapMessage,
+        locusSelfUrl: meeting.selfUrl,
+        mediaId: sendEmptyMediaId ? '' : meeting.mediaId,
+        meetingId: meeting.id,
+        preferTranscoding: !meeting.isMultistream,
+        locusMediaRequest: meeting.locusMediaRequest,
+        ipVersion: MeetingUtil.getIpVersion(meeting.webex),
+      })
+      .then(({locus, mediaConnections}) => {
+        if (mediaConnections) {
+          meeting.updateMediaConnections(mediaConnections);
+        }
+
+        let roapAnswer;
+
+        if (mediaConnections?.[0]?.remoteSdp) {
+          const remoteSdp = JSON.parse(mediaConnections[0].remoteSdp);
+
+          if (remoteSdp.roapMessage) {
+            const {
+              seq: answerSeq,
+              messageType,
+              sdps,
+              errorType,
+              errorCause,
+              headers,
+            } = remoteSdp.roapMessage;
+
+            roapAnswer = {
+              seq: answerSeq,
+              messageType,
+              sdp: sdps[0],
+              errorType,
+              errorCause,
+              headers,
+            };
           }
+        }
 
-          let roapAnswer;
+        if (!roapAnswer) {
+          Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.ROAP_HTTP_RESPONSE_MISSING, {
+            correlationId: meeting.correlationId,
+            messageType: 'ANSWER',
+            isMultistream: meeting.isMultistream,
+          });
+        }
 
-          if (mediaConnections?.[0]?.remoteSdp) {
-            const remoteSdp = JSON.parse(mediaConnections[0].remoteSdp);
-
-            if (remoteSdp.roapMessage) {
-              const {
-                seq: answerSeq,
-                messageType,
-                sdps,
-                errorType,
-                errorCause,
-                headers,
-              } = remoteSdp.roapMessage;
-
-              roapAnswer = {
-                seq: answerSeq,
-                messageType,
-                sdp: sdps[0],
-                errorType,
-                errorCause,
-                headers,
-              };
-            }
-          }
-
-          if (!roapAnswer) {
-            Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.ROAP_HTTP_RESPONSE_MISSING, {
-              correlationId: meeting.correlationId,
-              messageType: 'ANSWER',
-              isMultistream: meeting.isMultistream,
-            });
-          }
-
-          return {locus, roapAnswer};
-        });
-    });
+        return {locus, roapAnswer};
+      });
   }
 
   /**

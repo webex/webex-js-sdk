@@ -39,8 +39,8 @@ describe('internal-plugin-metrics', () => {
       meetingInfo: {},
       getCurUserType: () => 'host',
       statsAnalyzer: {
-        getLocalIpAddress: () => '192.168.1.90'
-      }
+        getLocalIpAddress: () => '192.168.1.90',
+      },
     };
 
     const fakeMeeting2 = {
@@ -278,7 +278,6 @@ describe('internal-plugin-metrics', () => {
       });
 
       it('should build origin correctly with no meeting or stats analyzer', () => {
-        
         //@ts-ignore
         const res = cd.getOrigin();
 
@@ -1740,7 +1739,73 @@ describe('internal-plugin-metrics', () => {
         });
       });
 
-      it('should override custom properties for a NetworkOrCORSERror', () => {
+      describe('SdpOfferCreationError', () => {
+        // cant use actual types from internal-media-core because the dependency causes issues
+        type TestWcmeError = {
+          type: string;
+          message: string;
+        };
+
+        type TestSdpOfferCreationError = {
+          code: number;
+          message: string;
+          name: string;
+          cause: TestWcmeError;
+        };
+        it('should return SDP error code correctly for a SdpOfferCreationError with cause of missing codecs', () => {
+          const error: TestSdpOfferCreationError = {
+            code: 30005,
+            name: 'SdpOfferCreationError',
+            message: 'No codecs present in m-line with MID 0 after filtering.',
+            cause: {
+              type: 'SDP_MUNGE_MISSING_CODECS',
+              message: 'No codecs present in m-line with MID 0 after filtering.',
+            },
+          };
+          const res = cd.generateClientEventErrorPayload(error);
+          assert.deepEqual(res, {
+            category: 'expected',
+            errorCode: 2051,
+            errorData: {
+              errorName: 'SdpOfferCreationError',
+            },
+            errorDescription: 'SdpOfferCreationErrorMissingCodec',
+            fatal: true,
+            name: 'other',
+            rawErrorMessage: 'No codecs present in m-line with MID 0 after filtering.',
+            serviceErrorCode: undefined,
+            shownToUser: true,
+          });
+        });
+
+        it('should return SDP error code correctly for a SdpOfferCreationError with any cause other than missing codecs', () => {
+          const error: TestSdpOfferCreationError = {
+            code: 30005,
+            name: 'SdpOfferCreationError',
+            message: 'error message',
+            cause: {
+              type: 'CREATE_OFFER_FAILED',
+              message: 'empty local SDP',
+            },
+          };
+          const res = cd.generateClientEventErrorPayload(error);
+          assert.deepEqual(res, {
+            category: 'media',
+            errorCode: 2050,
+            errorData: {
+              errorName: 'SdpOfferCreationError',
+            },
+            errorDescription: 'SdpOfferCreationError',
+            fatal: true,
+            name: 'other',
+            rawErrorMessage: 'error message',
+            serviceErrorCode: undefined,
+            shownToUser: true,
+          });
+        });
+      });
+
+      it('should override custom properties for a NetworkOrCORSError', () => {
         const error = new WebexHttpError.NetworkOrCORSError({
           url: 'https://example.com',
           statusCode: 0,
