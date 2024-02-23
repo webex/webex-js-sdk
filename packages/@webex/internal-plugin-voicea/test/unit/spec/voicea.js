@@ -202,7 +202,11 @@ describe('plugin-voicea', () => {
           sinon.match({
             method: 'PUT',
             url: `${locusUrl}/controls/`,
-            body: {languageCode},
+            body: {
+              transcribe: {
+                spokenLanguage: languageCode
+              }
+            },
           })
         );
       });
@@ -547,6 +551,9 @@ describe('plugin-voicea', () => {
           transcript_id: '3ec73890-bffb-f28b-e77f-99dc13caea7e',
           ts: 1611653204.3147924,
           type: 'transcript_final_result',
+          translations: {
+            en: "Hello?",
+          },
           transcript: {
             alignments: [
               {
@@ -596,6 +603,9 @@ describe('plugin-voicea', () => {
         assert.calledOnceWithExactly(triggerSpy, {
           isFinal: true,
           transcriptId: '3ec73890-bffb-f28b-e77f-99dc13caea7e',
+          translations: {
+            en: "Hello?"
+          },
           transcript: {
             csis: [3556942592],
             text: 'Hello?',
