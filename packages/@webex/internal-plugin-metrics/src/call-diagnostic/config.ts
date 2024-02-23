@@ -47,6 +47,11 @@ export const BROWSER_MEDIA_ERROR_NAME_TO_CLIENT_ERROR_CODES_MAP = {
   [BROWSER_MEDIA_ERROR_NAMES.TYPE_ERROR]: 2729, // Thrown if the list of constraints specified is empty, or has all constraints set to false. This can also happen if you try to call getUserMedia() in an insecure context, since navigator.mediaDevices is undefined in an insecure context.
 };
 
+export const SDP_OFFER_CREATION_ERROR_MAP = {
+  GENERAL: 2050,
+  SDP_MUNGE_MISSING_CODECS: 2051,
+};
+
 export const ERROR_DESCRIPTIONS = {
   UNKNOWN_CALL_FAILURE: 'UnknownCallFailure',
   LOCUS_RATE_LIMITED_INCOMING: 'LocusRateLimitedIncoming',
@@ -120,6 +125,8 @@ export const ERROR_DESCRIPTIONS = {
   DTLS_HANDSHAKE_FAILED: 'DTLSHandshakeFailed',
   ICE_FAILED_WITHOUT_TURN_TLS: 'ICEFailedWithoutTURN_TLS',
   ICE_FAILED_WITH_TURN_TLS: 'ICEFailedWithTURN_TLS',
+  SDP_OFFER_CREATION_ERROR: 'SdpOfferCreationError',
+  SDP_OFFER_CREATION_ERROR_MISSING_CODEC: 'SdpOfferCreationErrorMissingCodec',
 };
 
 export const SERVICE_ERROR_CODES_TO_CLIENT_ERROR_CODES_MAP = {
@@ -387,6 +394,18 @@ export const CLIENT_ERROR_CODE_TO_ERROR_PAYLOAD: Record<number, Partial<ClientEv
     errorDescription: ERROR_DESCRIPTIONS.ICE_FAILED_WITH_TURN_TLS,
     category: 'media',
     fatal: true,
+  },
+  2050: {
+    errorDescription: ERROR_DESCRIPTIONS.SDP_OFFER_CREATION_ERROR,
+    category: 'media',
+    fatal: true,
+    shownToUser: true,
+  },
+  2051: {
+    errorDescription: ERROR_DESCRIPTIONS.SDP_OFFER_CREATION_ERROR_MISSING_CODEC,
+    category: 'expected',
+    fatal: true,
+    shownToUser: true,
   },
   3001: {
     errorDescription: ERROR_DESCRIPTIONS.CALL_FULL,
