@@ -4466,11 +4466,7 @@ describe('plugin-meetings', () => {
             FAKE_OPTIONS
           );
 
-          assert.calledWith(
-            meeting.parseMeetingInfo,
-            {body: FAKE_MEETING_INFO, url: FAKE_MEETING_INFO_LOOKUP_URL},
-            FAKE_DESTINATION
-          );
+          assert.calledWith(meeting.parseMeetingInfo, FAKE_MEETING_INFO, FAKE_DESTINATION);
           assert.deepEqual(meeting.meetingInfo, {
             ...FAKE_MEETING_INFO,
             meetingLookupUrl: FAKE_MEETING_INFO_LOOKUP_URL,
@@ -4524,11 +4520,7 @@ describe('plugin-meetings', () => {
           );
 
           // parseMeeting info
-          assert.calledWith(
-            meeting.parseMeetingInfo,
-            {body: FAKE_MEETING_INFO, url: FAKE_MEETING_INFO_LOOKUP_URL},
-            FAKE_DESTINATION
-          );
+          assert.calledWith(meeting.parseMeetingInfo, FAKE_MEETING_INFO, FAKE_DESTINATION);
 
           assert.deepEqual(meeting.meetingInfo, {
             ...FAKE_MEETING_INFO,
@@ -4826,6 +4818,166 @@ describe('plugin-meetings', () => {
             verificationAudioURL: refreshedCaptcha.verificationAudioURL,
             refreshURL: FAKE_SDK_CAPTCHA_INFO.refreshURL, // refresh url doesn't change
           });
+        });
+      });
+
+      describe('#injectMeetingInfo', () => {
+        const FAKE_PASSWORD = '123456';
+        const FAKE_CAPTCHA_CODE = '654321';
+        const FAKE_DESTINATION = 'something@somecompany.com';
+        const FAKE_TYPE = _SIP_URI_;
+        const FAKE_INSTALLED_ORG_ID = '123456';
+        const FAKE_MEETING_INFO_LOOKUP_URL = 'meetingLookupUrl';
+
+        const FAKE_SDK_CAPTCHA_INFO = {};
+        const FAKE_MEETING_INFO = {
+          conversationUrl: 'some_convo_url',
+          locusUrl: 'some_locus_url',
+          sipUrl: 'some_sip_url', // or sipMeetingUri
+          meetingNumber: '123456', // this.config.experimental.enableUnifiedMeetings
+          hostId: 'some_host_id', // this.owner;
+        };
+
+        [
+          {
+            input: {
+              meetingInfo: FAKE_MEETING_INFO,
+              meetingLookupUrl: FAKE_MEETING_INFO_LOOKUP_URL,
+            },
+            expected: {
+              meetingInfo: {
+                ...FAKE_MEETING_INFO,
+                meetingLookupUrl: FAKE_MEETING_INFO_LOOKUP_URL,
+              },
+            },
+          },
+          {
+            input: {
+              meetingInfo: undefined,
+              meetingLookupUrl: FAKE_MEETING_INFO_LOOKUP_URL,
+            },
+            expected: {meetingInfo: null},
+          },
+          ,
+          {
+            input: {
+              meetingInfo: FAKE_MEETING_INFO,
+              meetingLookupUrl: undefined,
+            },
+            expected: {
+              meetingInfo: {
+                ...FAKE_MEETING_INFO,
+                meetingLookupUrl: undefined,
+              },
+            },
+          },
+          ,
+          {
+            input: {
+              meetingInfo: undefined,
+              meetingLookupUrl: undefined,
+            },
+            expected: {meetingInfo: null},
+          },
+        ].forEach(({input, expected}) => {
+          it(`calls meetingInfoProvider with all the right parameters and parses the result when ${JSON.stringify(
+            input
+          )}`, async () => {
+            meeting.requiredCaptcha = FAKE_SDK_CAPTCHA_INFO;
+            meeting.destination = FAKE_DESTINATION;
+            meeting.destinationType = FAKE_TYPE;
+            meeting.config.installedOrgID = FAKE_INSTALLED_ORG_ID;
+            meeting.parseMeetingInfo = sinon.stub().returns(undefined);
+            meeting.updateMeetingActions = sinon.stub().returns(undefined);
+
+            await meeting.injectMeetingInfo(
+              input.meetingInfo,
+              {sendCAevents: true},
+              input.meetingLookupUrl
+            );
+
+            assert.calledWith(meeting.parseMeetingInfo, input.meetingInfo, FAKE_DESTINATION);
+            assert.deepEqual(meeting.meetingInfo, expected.meetingInfo);
+            assert.equal(meeting.passwordStatus, PASSWORD_STATUS.NOT_REQUIRED);
+            assert.equal(meeting.meetingInfoFailureReason, MEETING_INFO_FAILURE_REASON.NONE);
+            assert.equal(meeting.requiredCaptcha, null);
+            assert.calledThrice(TriggerProxy.trigger);
+            assert.calledWith(
+              TriggerProxy.trigger,
+              meeting,
+              {file: 'meetings', function: 'fetchMeetingInfo'},
+              'meeting:meetingInfoAvailable'
+            );
+            assert.calledWith(meeting.updateMeetingActions);
+          });
+        });
+
+        it('fails if captchaCode is provided when captcha not needed', async () => {
+          meeting.attrs.meetingInfoProvider = {
+            fetchMeetingInfo: sinon.stub().resolves(),
+          };
+          meeting.requiredCaptcha = null;
+          meeting.destination = FAKE_DESTINATION;
+          meeting.destinationType = FAKE_TYPE;
+
+          await assert.isRejected(
+            meeting.injectMeetingInfo(
+              {},
+              {
+                captchaCode: FAKE_CAPTCHA_CODE,
+              }
+            ),
+            Error,
+            'injectMeetingInfo() called with captchaCode when captcha was not required'
+          );
+
+          assert.notCalled(meeting.attrs.meetingInfoProvider.fetchMeetingInfo);
+          assert.calledTwice(TriggerProxy.trigger); //meetingInfoAvailable event not triggered
+          assert.neverCalledWith(
+            TriggerProxy.trigger,
+            meeting,
+            {file: 'meetings', function: 'fetchMeetingInfo'},
+            'meeting:meetingInfoAvailable'
+          );
+        });
+
+        it('fails if password is provided when not required', async () => {
+          meeting.attrs.meetingInfoProvider = {
+            fetchMeetingInfo: sinon.stub().resolves(),
+          };
+          meeting.passwordStatus = PASSWORD_STATUS.NOT_REQUIRED;
+          meeting.destination = FAKE_DESTINATION;
+          meeting.destinationType = FAKE_TYPE;
+
+          await assert.isRejected(
+            meeting.injectMeetingInfo(
+              {},
+              {
+                password: FAKE_PASSWORD,
+              }
+            ),
+            Error,
+            'injectMeetingInfo() called with password when password was not required'
+          );
+
+          assert.notCalled(meeting.attrs.meetingInfoProvider.fetchMeetingInfo);
+          assert.calledTwice(TriggerProxy.trigger); //meetingInfoAvailable event not triggered
+          assert.neverCalledWith(
+            TriggerProxy.trigger,
+            meeting,
+            {file: 'meetings', function: 'fetchMeetingInfo'},
+            'meeting:meetingInfoAvailable'
+          );
+        });
+
+        it('should clean the fetch meeting info timeout', async () => {
+          meeting.fetchMeetingInfoTimeoutId = 42; // pending delayed request
+
+          await meeting.injectMeetingInfo(FAKE_MEETING_INFO, {
+            sendCAevents: true,
+          });
+
+          assert.equal(meeting.fetchMeetingInfoTimeoutId, undefined);
         });
       });
 
@@ -6654,7 +6806,6 @@ describe('plugin-meetings', () => {
               sdp: 'fake sdp',
               tieBreaker: 12345,
               meeting,
-              reconnect: false,
             });
             assert.notCalled(meeting.roapMessageReceived);
           });
@@ -6681,7 +6832,6 @@ describe('plugin-meetings', () => {
               sdp: 'fake sdp',
               tieBreaker: 12345,
               meeting,
-              reconnect: false,
             });
             assert.calledWith(meeting.roapMessageReceived, fakeAnswer);
           });
@@ -6711,7 +6861,6 @@ describe('plugin-meetings', () => {
               sdp: 'fake sdp',
               tieBreaker: 12345,
               meeting,
-              reconnect: false,
             });
             assert.notCalled(meeting.roapMessageReceived);
             assert.calledOnce(meeting.deferSDPAnswer.reject);
@@ -7256,41 +7405,6 @@ describe('plugin-meetings', () => {
           );
         });
 
-        it('listens to the timing that user joined into breakout', async () => {
-          const mainLocusUrl = 'mainLocusUrl123';
-
-          meeting.meetingRequest.getLocusStatusByUrl = sinon.stub().returns(Promise.resolve());
-
-          await meeting.locusInfo.emit(
-            {function: 'test', file: 'test'},
-            'CONTROLS_JOIN_BREAKOUT_FROM_MAIN',
-            {mainLocusUrl}
-          );
-
-          assert.calledOnceWithExactly(meeting.meetingRequest.getLocusStatusByUrl, mainLocusUrl);
-          const error = {statusCode: 403};
-          meeting.meetingRequest.getLocusStatusByUrl.rejects(error);
-          meeting.locusInfo.clearMainSessionLocusCache = sinon.stub();
-          await meeting.locusInfo.emit(
-            {function: 'test', file: 'test'},
-            'CONTROLS_JOIN_BREAKOUT_FROM_MAIN',
-            {mainLocusUrl}
-          );
-
-          assert.calledOnce(meeting.locusInfo.clearMainSessionLocusCache);
-
-          const otherError = new Error('something wrong');
-          meeting.meetingRequest.getLocusStatusByUrl.rejects(otherError);
-          meeting.locusInfo.clearMainSessionLocusCache = sinon.stub();
-          await meeting.locusInfo.emit(
-            {function: 'test', file: 'test'},
-            'CONTROLS_JOIN_BREAKOUT_FROM_MAIN',
-            {mainLocusUrl}
-          );
-
-          assert.notCalled(meeting.locusInfo.clearMainSessionLocusCache);
-        });
-
         it('listens to the locus interpretation update event', () => {
           const interpretation = {
             siLanguages: [{languageCode: 20, languageName: 'en'}],
@@ -7762,16 +7876,14 @@ describe('plugin-meetings', () => {
             'eyJhbGciOiJIUzI1NiJ9.eyJleHAiOiIxMjM0NTYiLCJwZXJtaXNzaW9uIjp7InVzZXJQb2xpY2llcyI6eyJhIjp0cnVlfX19.wkTk0Hp8sUlq2wi2nP4-Ym4Xb7aEUHzyXA1kzk6f0V0';
 
           const FAKE_MEETING_INFO = {
-            body: {
-              conversationUrl: uuid1,
-              locusUrl: url1,
-              meetingJoinUrl: url2,
-              meetingNumber: '12345',
-              permissionToken,
-              sipMeetingUri: test1,
-              sipUrl: test1,
-              owner: test2,
-            },
+            conversationUrl: uuid1,
+            locusUrl: url1,
+            meetingJoinUrl: url2,
+            meetingNumber: '12345',
+            permissionToken,
+            sipMeetingUri: test1,
+            sipUrl: test1,
+            owner: test2,
           };
 
           meeting.parseMeetingInfo(FAKE_MEETING_INFO);
@@ -7803,16 +7915,14 @@ describe('plugin-meetings', () => {
             },
           };
           const FAKE_MEETING_INFO = {
-            body: {
-              conversationUrl: uuid1,
-              locusUrl: url1,
-              meetingJoinUrl: url2,
-              meetingNumber: '12345',
-              permissionToken: 'abc',
-              sipMeetingUri: test1,
-              sipUrl: test1,
-              owner: test2,
-            },
+            conversationUrl: uuid1,
+            locusUrl: url1,
+            meetingJoinUrl: url2,
+            meetingNumber: '12345',
+            permissionToken: 'abc',
+            sipMeetingUri: test1,
+            sipUrl: test1,
+            owner: test2,
           };
 
           meeting.parseMeetingInfo(FAKE_MEETING_INFO, FAKE_LOCUS_MEETING);
@@ -7832,16 +7942,14 @@ describe('plugin-meetings', () => {
           meeting.config.experimental = {enableMediaNegotiatedEvent: true};
           meeting.config.experimental.enableUnifiedMeetings = true;
           const FAKE_MEETING_INFO = {
-            body: {
-              conversationUrl: uuid1,
-              locusUrl: url1,
-              meetingJoinUrl: url2,
-              meetingNumber: '12345',
-              permissionToken: 'abc',
-              sipMeetingUri: test1,
-              sipUrl: test1,
-              owner: test2,
-            },
+            conversationUrl: uuid1,
+            locusUrl: url1,
+            meetingJoinUrl: url2,
+            meetingNumber: '12345',
+            permissionToken: 'abc',
+            sipMeetingUri: test1,
+            sipUrl: test1,
+            owner: test2,
           };
 
           meeting.parseMeetingInfo(FAKE_MEETING_INFO);
@@ -7862,16 +7970,14 @@ describe('plugin-meetings', () => {
           meeting.config.experimental.enableUnifiedMeetings = true;
           const FAKE_STRING_DESTINATION = 'sipUrl';
           const FAKE_MEETING_INFO = {
-            body: {
-              conversationUrl: uuid1,
-              locusUrl: url1,
-              meetingJoinUrl: url2,
-              meetingNumber: '12345',
-              permissionToken: 'abc',
-              sipMeetingUri: test1,
-              sipUrl: test1,
-              owner: test2,
-            },
+            conversationUrl: uuid1,
+            locusUrl: url1,
+            meetingJoinUrl: url2,
+            meetingNumber: '12345',
+            permissionToken: 'abc',
+            sipMeetingUri: test1,
+            sipUrl: test1,
+            owner: test2,
           };
 
           meeting.parseMeetingInfo(FAKE_MEETING_INFO, FAKE_STRING_DESTINATION);
@@ -7890,24 +7996,42 @@ describe('plugin-meetings', () => {
         it('should parse interpretation info correctly', () => {
           const parseInterpretationInfo = sinon.spy(MeetingUtil, 'parseInterpretationInfo');
           const mockToggleOnData = {
-            body: {
-              meetingSiteSetting: {
-                enableHostInterpreterControlSI: true,
-              },
-              turnOnSimultaneousInterpretation: true,
-              simultaneousInterpretation: {
-                currentSIInterpreter: false,
-                siLanguages: [
-                  {
-                    languageCode: 'ar',
-                    languageGroupId: 4,
-                  },
-                ],
-              },
+            meetingSiteSetting: {
+              enableHostInterpreterControlSI: true,
+            },
+            turnOnSimultaneousInterpretation: true,
+            simultaneousInterpretation: {
+              currentSIInterpreter: false,
+              siLanguages: [
+                {
+                  languageCode: 'ar',
+                  languageGroupId: 4,
+                },
+              ],
             },
           };
           meeting.parseMeetingInfo(mockToggleOnData);
-          assert.calledOnceWithExactly(parseInterpretationInfo, meeting, mockToggleOnData.body);
+          assert.calledOnceWithExactly(parseInterpretationInfo, meeting, mockToggleOnData);
+        });
+
+        it('should handle error', () => {
+          const parseInterpretationInfo = sinon.spy(MeetingUtil, 'parseInterpretationInfo');
+          const FAKE_MEETING_INFO = {
+            conversationUrl: uuid1,
+            locusUrl: url1,
+            meetingJoinUrl: url2,
+            meetingNumber: '12345',
+            permissionToken: 'abc',
+            sipMeetingUri: test1,
+            sipUrl: test1,
+            owner: test2,
+          };
+          meeting.parseMeetingInfo(FAKE_MEETING_INFO, undefined, 'Error');
+
+          checkParseMeetingInfo({
+            locusUrl: meeting.locusUrl,
+          });
+          assert.calledOnceWithExactly(parseInterpretationInfo, meeting, FAKE_MEETING_INFO);
         });
       });
 

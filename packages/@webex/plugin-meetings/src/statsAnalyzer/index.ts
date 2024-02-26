@@ -7,7 +7,7 @@ import EventsScope from '../common/events/events-scope';
 import {
   DEFAULT_GET_STATS_FILTER,
   STATS,
-  MQA_INTEVAL,
+  MQA_INTERVAL,
   NETWORK_TYPE,
   MEDIA_DEVICES,
   _UNKNOWN_,
@@ -299,7 +299,7 @@ export class StatsAnalyzer extends EventsScope {
         this.sendMqaData();
         this.mqaInterval = setInterval(() => {
           this.sendMqaData();
-        }, MQA_INTEVAL);
+        }, MQA_INTERVAL);
       });
     }
 
