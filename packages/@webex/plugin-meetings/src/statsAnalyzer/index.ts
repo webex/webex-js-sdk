@@ -146,11 +146,11 @@ export class StatsAnalyzer extends EventsScope {
     this.meetingMediaStatus = {
       actual: {
         ...this.meetingMediaStatus?.actual,
-        ...status.actual,
+        ...status?.actual,
       },
       expected: {
         ...this.meetingMediaStatus?.expected,
-        ...status.expected,
+        ...status?.expected,
       },
     };
   }

@@ -5717,6 +5717,7 @@ describe('plugin-meetings', () => {
           meeting.mediaProperties.webrtcMediaConnection = {};
           meeting.audio = {handleLocalStreamChange: sinon.stub()};
           meeting.video = {handleLocalStreamChange: sinon.stub()};
+          meeting.statsAnalyzer = {updateMediaStatus: sinon.stub()};
           fakeMultistreamRoapMediaConnection = {
             createSendSlot: () => {
               return {
@@ -5782,6 +5783,10 @@ describe('plugin-meetings', () => {
             );
             assert.equal(meeting.mediaProperties.shareVideoStream, stream);
             assert.equal(meeting.mediaProperties.mediaDirection.sendShare, true);
+            assert.calledOnce(meeting.statsAnalyzer.updateMediaStatus);
+            assert.calledWith(meeting.statsAnalyzer.updateMediaStatus, {
+              expected: {sendShare: true},
+            });
           };
 
           const checkScreenShareAudioPublished = (stream) => {
