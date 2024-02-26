@@ -1,6 +1,6 @@
 {
   "name": "@webex/plugin-logger",
-  "version": "3.0.0-beta.352",
+  "version": "3.0.0-beta.359",
   "description": "",
   "license": "MIT",
   "main": "dist/index.js",
