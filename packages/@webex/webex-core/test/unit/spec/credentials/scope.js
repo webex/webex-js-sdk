@@ -76,21 +76,5 @@ describe('webex-core', () => {
         })
       );
     });
-
-    describe('isGuestScope', () => {
-      [{scope: undefined}, {scope: ''}, {scope: 'scope1'}, {scope: 'scope1 scope2 scope3'}].forEach(
-        ({scope}) =>
-          it(`should return false when ${scope} does not contains guest scope`, () => {
-            assert.deepEqual(isGuestScope(scope), false);
-          })
-      );
-
-      [{scope: 'webex-guest:meet_join'}, {scope: 'scope1 webex-guest:meet_join scope3'}].forEach(
-        ({scope}) =>
-          it(`should return true when ${scope} contains guest scope`, () => {
-            assert.deepEqual(isGuestScope(scope), true);
-          })
-      );
-    });
   });
 });

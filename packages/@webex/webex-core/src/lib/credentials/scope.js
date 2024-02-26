@@ -4,7 +4,6 @@
 
 import {difference} from 'lodash';
 
-export const GUEST_JOIN_MEETING_SCOPE = 'webex-guest:meet_join';
 const SCOPE_SEPARATOR = ' ';
 
 /**
@@ -51,14 +50,4 @@ export function diffScopes(scopeA, scopeB) {
   const b = scopeB?.split(SCOPE_SEPARATOR) ?? [];
 
   return difference(a, b).sort().join(SCOPE_SEPARATOR);
-}
-
-/**
- * Returns true when the scope contains geust scope(s), othewise false
- *
- * @param {string} scope
- * @returns {boolean}
- */
-export function isGuestScope(scope) {
-  return !!scope?.split(SCOPE_SEPARATOR)?.includes(GUEST_JOIN_MEETING_SCOPE);
 }
