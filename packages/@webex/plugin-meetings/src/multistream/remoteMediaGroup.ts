@@ -45,11 +45,9 @@ export class RemoteMediaGroup {
           resolution: this.options.resolution,
         })
     );
-    this.namedMedia = this.unpinnedRemoteMedia.filter(
-      (item) => item !== null && !!item.namedMediaGroup && !!item.namedMediaGroup.value
-    );
+    this.namedMedia = this.unpinnedRemoteMedia.filter((item) => item?.namedMediaGroup?.value);
     this.unpinnedRemoteMedia = this.unpinnedRemoteMedia.filter(
-      (item) => item !== null && (!item.namedMediaGroup || !item.namedMediaGroup.value)
+      (item) => !item.namedMediaGroup || !item.namedMediaGroup.value
     );
     this.pinnedRemoteMedia = [];
 
@@ -271,7 +269,7 @@ export class RemoteMediaGroup {
 
   private cancelActiveSpeakerMediaRequest(commit: boolean) {
     if (this.mediaRequestIds.length) {
-      this.mediaRequestManager.cancelRequest(this.mediaRequestIds, commit);
+      this.mediaRequestManager.cancelRequests(this.mediaRequestIds, commit);
       this.mediaRequestIds = [];
     }
   }

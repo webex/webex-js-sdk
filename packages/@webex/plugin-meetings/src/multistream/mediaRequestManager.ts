@@ -409,7 +409,7 @@ export class MediaRequestManager {
     return newId;
   }
 
-  public cancelRequest(requestIds: MediaRequestId[], commit = true) {
+  public cancelRequests(requestIds: MediaRequestId[], commit = true) {
     requestIds.forEach((requestId: string) => {
       const mediaRequest = this.clientRequests[requestId];
 

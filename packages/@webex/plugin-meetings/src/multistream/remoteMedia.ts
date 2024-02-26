@@ -189,7 +189,7 @@ export class RemoteMedia extends EventsScope {
    */
   public cancelMediaRequest(commit: boolean) {
     if (this.mediaRequestId) {
-      this.mediaRequestManager.cancelRequest([this.mediaRequestId], commit);
+      this.mediaRequestManager.cancelRequests([this.mediaRequestId], commit);
       this.mediaRequestId = undefined;
     }
   }
