@@ -5852,6 +5852,65 @@ describe('plugin-meetings', () => {
             checkScreenShareVideoPublished(videoShareStream);
             checkScreenShareAudioPublished(audioShareStream);
           });
+
+          [
+            {
+              endedStream: 'microphone', 
+              streams: {
+                microphone: {
+                  readyState: 'ended',
+                },
+                camera: undefined,
+                screenShare: {
+                  audio: undefined,
+                  video: undefined,
+                },
+              },
+            },
+            {
+              endedStream: 'camera', 
+              streams: {
+                microphone: undefined,
+                camera: {
+                  readyState: 'ended',
+                },
+                screenShare: {
+                  audio: undefined,
+                  video: undefined,
+                },
+              },
+            },
+            {
+              endedStream: 'screenShare audio', 
+              streams: {
+                microphone: undefined,
+                camera: undefined,
+                screenShare: {
+                  audio: {
+                    readyState: 'ended',
+                  },
+                  video: undefined,
+                },
+              },
+            },
+            {
+              endedStream: 'screenShare video', 
+              streams: {
+                microphone: undefined,
+                camera: undefined,
+                screenShare: {
+                  audio: undefined,
+                  video: {
+                    readyState: 'ended',
+                  },
+                },
+              },
+            },
+          ].forEach(({endedStream, streams}) => {
+            it(`throws error if readyState of ${endedStream} is ended`, async () => {
+              assert.isRejected(meeting.publishStreams(streams));
+            })
+          });
         });
 
         describe('unpublishStreams', () => {

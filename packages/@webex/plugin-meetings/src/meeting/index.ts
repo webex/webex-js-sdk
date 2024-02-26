@@ -7929,6 +7929,17 @@ export default class Meeting extends StatelessWebexPlugin {
       return;
     }
 
+    if (
+      streams?.microphone?.readyState === 'ended' ||
+      streams?.camera?.readyState === 'ended' ||
+      streams?.screenShare?.audio?.readyState === 'ended' ||
+      streams?.screenShare?.video?.readyState === 'ended'
+    ) {
+      throw new Error(
+        `Attempted to publish stream with ended readyState, correlationId=${this.correlationId}`
+      );
+    }
+
     let floorRequestNeeded = false;
 
     // Screenshare Audio is supported only in multi stream. So we check for screenshare audio presence only if it's a multi stream meeting
