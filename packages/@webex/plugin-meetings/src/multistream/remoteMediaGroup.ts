@@ -25,7 +25,6 @@ export class RemoteMediaGroup {
   private mediaRequestIds: MediaRequestId[]; // id of the "active-speaker" media request id
 
   private pinnedRemoteMedia: RemoteMedia[];
-  private namedMedia: RemoteMedia[];
 
   constructor(
     mediaRequestManager: MediaRequestManager,
@@ -45,10 +44,6 @@ export class RemoteMediaGroup {
           resolution: this.options.resolution,
         })
     );
-    this.namedMedia = this.unpinnedRemoteMedia.filter((item) => item?.namedMediaGroup?.value);
-    this.unpinnedRemoteMedia = this.unpinnedRemoteMedia.filter(
-      (item) => !item.namedMediaGroup || !item.namedMediaGroup.value
-    );
     this.pinnedRemoteMedia = [];
 
     this.sendActiveSpeakerMediaRequest(commitMediaRequest);
@@ -57,10 +52,10 @@ export class RemoteMediaGroup {
   /**
    * Gets the array of remote media elements from the group
    *
-   * @param {string} filter - 'all' (default) returns both pinned and unpinned and named
+   * @param {string} filter - 'all' (default) returns both pinned and unpinned
    * @returns {Array<RemoteMedia>}
    */
-  public getRemoteMedia(filter: 'all' | 'pinned' | 'unpinned' | 'named' = 'all') {
+  public getRemoteMedia(filter: 'all' | 'pinned' | 'unpinned' = 'all') {
     if (filter === 'unpinned') {
       // return a shallow copy so that the client cannot modify this.unpinnedRemoteMedia array
       return [...this.unpinnedRemoteMedia];
@@ -69,12 +64,8 @@ export class RemoteMediaGroup {
       // return a shallow copy so that the client cannot modify this.pinnedRemoteMedia array
       return [...this.pinnedRemoteMedia];
     }
-    if (filter === 'named') {
-      // return a shallow copy so that the client cannot modify this.namedMedia array
-      return [...this.namedMedia];
-    }
 
-    return [...this.unpinnedRemoteMedia, ...this.pinnedRemoteMedia, ...this.namedMedia];
+    return [...this.unpinnedRemoteMedia, ...this.pinnedRemoteMedia];
   }
 
   /**
@@ -223,7 +214,14 @@ export class RemoteMediaGroup {
   private sendActiveSpeakerMediaRequest(commit: boolean) {
     this.cancelActiveSpeakerMediaRequest(false);
 
-    this.namedMedia.forEach((remoteMedia) => {
+    const namedUnpinnedArray = this.unpinnedRemoteMedia.filter(
+      (item) => item?.namedMediaGroup?.value
+    );
+    const otherUnpinnedArray = this.unpinnedRemoteMedia.filter(
+      (item) => !item.namedMediaGroup || !item.namedMediaGroup.value
+    );
+
+    namedUnpinnedArray.forEach((remoteMedia) => {
       const mrId = this.mediaRequestManager.addRequest(
         {
           policyInfo: {
@@ -235,10 +233,6 @@ export class RemoteMediaGroup {
             namedMediaGroups: [remoteMedia.namedMediaGroup],
           },
           receiveSlots: [remoteMedia.getUnderlyingReceiveSlot()] as ReceiveSlot[],
-          // codecInfo: this.options.resolution && {
-          //   codec: 'h264',
-          //   maxFs: getMaxFs(this.options.resolution),
-          // },
         },
         false
       );
@@ -254,7 +248,7 @@ export class RemoteMediaGroup {
           crossPolicyDuplication: false,
           preferLiveVideo: !!this.options?.preferLiveVideo,
         },
-        receiveSlots: this.unpinnedRemoteMedia.map((remoteMedia) =>
+        receiveSlots: otherUnpinnedArray.map((remoteMedia) =>
           remoteMedia.getUnderlyingReceiveSlot()
         ) as ReceiveSlot[],
         codecInfo: this.options.resolution && {
@@ -285,7 +279,6 @@ export class RemoteMediaGroup {
   public stop(commit = true) {
     this.unpinnedRemoteMedia.forEach((remoteMedia) => remoteMedia.stop(false));
     this.pinnedRemoteMedia.forEach((remoteMedia) => remoteMedia.stop(false));
-    this.namedMedia.forEach((remoteMedia) => remoteMedia.stop(false));
     this.cancelActiveSpeakerMediaRequest(false);
 
     if (commit) {

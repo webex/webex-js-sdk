@@ -1,7 +1,6 @@
 /* eslint-disable valid-jsdoc */
 /* eslint-disable import/prefer-default-export */
 import {MediaType, ReceiveSlot as WcmeReceiveSlot} from '@webex/internal-media-core';
-import {NamedMediaGroup} from '@webex/json-multistream';
 import LoggerProxy from '../common/logs/logger-proxy';
 
 import {FindMemberIdCallback, ReceiveSlot} from './receiveSlot';
@@ -51,21 +50,14 @@ export class ReceiveSlotManager {
    * Creates a new receive slot or returns one from the existing pool of free slots
    *
    * @param {MediaType} mediaType
-   * @param isNamedMeida {boolean}
    * @returns {Promise<ReceiveSlot>}
    */
-  async allocateSlot(
-    mediaType: MediaType,
-    namedMediaGroup: NamedMediaGroup = undefined
-  ): Promise<ReceiveSlot> {
+  async allocateSlot(mediaType: MediaType): Promise<ReceiveSlot> {
     // try to use one of the free ones
     const availableSlot = this.freeSlots[mediaType].pop();
 
     if (availableSlot) {
       this.allocatedSlots[mediaType].push(availableSlot);
-      if (namedMediaGroup) {
-        availableSlot?.setNamedMediaGroup(namedMediaGroup);
-      }
 
       LoggerProxy.logger.log(`${mediaType}: receive slot re-used: ${availableSlot.id}`);
 
@@ -76,9 +68,6 @@ export class ReceiveSlotManager {
     const wcmeReceiveSlot = await this.createSlotCallback(mediaType);
 
     const receiveSlot = new ReceiveSlot(mediaType, wcmeReceiveSlot, this.findMemberIdByCsiCallback);
-    if (namedMediaGroup) {
-      receiveSlot?.setNamedMediaGroup(namedMediaGroup);
-    }
 
     this.allocatedSlots[mediaType].push(receiveSlot);
     LoggerProxy.logger.log(`${mediaType}: new receive slot allocated: ${receiveSlot.id}`);
@@ -104,7 +93,7 @@ export class ReceiveSlotManager {
         `ReceiveSlotManager#releaseSlot --> trying to release a ${slot.mediaType}} slot that is not managed by this ReceiveSlotManager`
       );
     }
-    slot.resetNamedMediaGroup();
+    slot.reset();
   }
 
   /**

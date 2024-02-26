@@ -578,12 +578,11 @@ export class RemoteMediaManager extends EventsScope {
     }
     // create slot for interpretation language audio
     if (this.config.receiveNamedMediaGroup.value) {
-      const siSlot = await this.receiveSlotManager.allocateSlot(
-        MediaType.AudioMain,
-        this.config.receiveNamedMediaGroup
-      );
-
-      this.slots.audio.push(siSlot);
+      const siSlot = await this.receiveSlotManager.allocateSlot(MediaType.AudioMain);
+      if (siSlot) {
+        siSlot.setNamedMediaGroup(this.config.receiveNamedMediaGroup);
+        this.slots.audio.push(siSlot);
+      }
     }
 
     // create a remote media group

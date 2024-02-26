@@ -84,7 +84,7 @@ export class ReceiveSlot extends EventsScope {
    * clear named media group
    *
    */
-  public resetNamedMediaGroup() {
+  public reset() {
     this.namedMediaGroup.type = 0;
     this.namedMediaGroup.value = 0;
   }
