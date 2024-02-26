@@ -558,7 +558,7 @@ export class RemoteMediaManager extends EventsScope {
         screenShareVideo: false,
         commit: false,
       });
-      this.slots.audio.reverse();
+      this.slots.audio.reverse(); // release the slots in reverse order and maintain the same slots in same order for the next mediaRequest
       this.slots.audio.forEach((slot) => this.receiveSlotManager.releaseSlot(slot));
       this.slots.audio.length = 0;
 
