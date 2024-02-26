@@ -1,6 +1,6 @@
 {
   "name": "@webex/internal-plugin-metrics",
-  "version": "3.0.0-beta.352",
+  "version": "3.0.0-beta.358",
   "description": "",
   "license": "MIT",
   "main": "dist/index.js",
@@ -35,6 +35,9 @@
     "@webex/internal-plugin-metrics": "workspace:^",
     "@webex/test-helper-chai": "workspace:^",
     "@webex/test-helper-mock-webex": "workspace:^",
-    "@webex/webex-core": "workspace:^"
+    "@webex/webex-core": "workspace:^",
+    "ip-anonymize": "^0.1.0",
+    "lodash": "^4.17.21",
+    "uuid": "^3.3.2"
   }
 }
