@@ -1,27 +1,27 @@
 import {assert} from '@webex/test-helper-chai';
 import sinon from 'sinon';
 import Mercury from '@webex/internal-plugin-mercury';
-import Presence from '@webex/internal-plugin-presence';
+import Presence from '@webex/plugin-presence';
 import MockWebex from '@webex/test-helper-mock-webex';
 
 import PresenceWorker from '../../../src/presence-worker';
+import CONFIG from '../../../src/config';
 
 const round = (time) => Math.floor(time / 1000);
 
-// Skipping as we have registered it as public plugin and MockWebex will create presence under webex object directly instead of webex.internal
-describe.skip('presence-worker', () => {
+describe('presence-worker', () => {
   describe('PresenceWorker', () => {
     let webex;
     let worker;
     const id = '1234';
 
     beforeEach(() => {
-      console.log(process.env.WEBEX_CLIENT_ID);
       webex = new MockWebex({
         children: {
           mercury: Mercury,
           presence: Presence,
         },
+        config: {...CONFIG},
       });
       worker = new PresenceWorker();
       worker.webex = webex;
@@ -34,8 +34,7 @@ describe.skip('presence-worker', () => {
         expect(() => worker.initialize({})).toThrow(/Must initialize Presence Worker with webex!/));
     });
 
-    // This selection of tests fail due to `webex-core`'s batcher config being missing.
-    describe.skip('#enqueue()', () => {
+    describe('#enqueue()', () => {
       it('increments watchers count', () => {
         worker.enqueue(id);
         assert.equal(worker.watchers[id], 1);
@@ -122,7 +121,7 @@ describe.skip('presence-worker', () => {
       };
 
       it('moves fetchers to flights', () => {
-        webex.internal.presence.list = sinon.stub().returns(Promise.resolve({statusList: []}));
+        webex.presence.list = sinon.stub().returns(Promise.resolve({statusList: []}));
 
         worker.fetchers = boarding;
 
@@ -134,19 +133,17 @@ describe.skip('presence-worker', () => {
       it('calls presence.list', async () => {
         const response = [{subject: 'pam'}, {subject: 'jim'}, {subject: 'dwight'}];
 
-        webex.internal.presence.list = sinon
-          .stub()
-          .returns(Promise.resolve({statusList: response}));
-        webex.internal.presence.emitEvent = sinon.stub();
+        webex.presence.list = sinon.stub().returns(Promise.resolve({statusList: response}));
+        webex.presence.emitEvent = sinon.stub();
 
         worker.fetchers = boarding;
 
         await worker.checkFetchers();
 
-        assert.calledWith(webex.internal.presence.list, Object.keys(boarding));
+        assert.calledWith(webex.presence.list, Object.keys(boarding));
         assert.isEmpty(worker.flights);
         assert.deepEqual(Object.keys(worker.presences), Object.keys(boarding));
-        assert.calledWith(webex.internal.presence.emitEvent, 'updated', {
+        assert.calledWith(webex.presence.emitEvent, 'updated', {
           type: 'presence',
           payload: {statusList: response},
         });
@@ -217,12 +214,12 @@ describe.skip('presence-worker', () => {
           dwight: now - 1200000, // 20 minutes ago
         };
 
-        webex.internal.presence.emitEvent = sinon.stub();
+        webex.presence.emitEvent = sinon.stub();
         worker.presences = presences;
 
         worker.cleanPresences();
 
-        assert.calledWith(webex.internal.presence.emitEvent, 'updated', {
+        assert.calledWith(webex.presence.emitEvent, 'updated', {
           type: 'delete',
           payload: ['jim', 'dwight'],
         });
@@ -231,7 +228,7 @@ describe.skip('presence-worker', () => {
 
     describe('#groundskeeper()', () => {
       it('renews subscriptions', async () => {
-        webex.internal.presence.subscribe = sinon.stub().returns(
+        webex.presence.subscribe = sinon.stub().returns(
           Promise.resolve({
             responses: [
               {
@@ -255,7 +252,7 @@ describe.skip('presence-worker', () => {
 
         await worker.groundskeeper();
 
-        assert.calledWith(webex.internal.presence.subscribe, ['pam', 'jim']);
+        assert.calledWith(webex.presence.subscribe, ['pam', 'jim']);
         assert.deepEqual(Object.keys(worker.subscribers), ['pam', 'jim']);
         assert.deepEqual(Object.keys(worker.presences), ['pam']);
         assert.called(worker.cleanPresences);
