@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.359](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.358...v3.0.0-beta.359) (2024-02-26)
+
+
+### Bug Fixes
+
+* reject guest token downscope ([#3398](https://github.com/webex/webex-js-sdk/issues/3398)) ([ae70cf0](https://github.com/webex/webex-js-sdk/commit/ae70cf0bdfc78b4a2b31f541c2e6da1ff5a3ffa5))
+
 ## [3.0.0-beta.358](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.357...v3.0.0-beta.358) (2024-02-23)
 
 
