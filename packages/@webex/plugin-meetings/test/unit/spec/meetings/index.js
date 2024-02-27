@@ -240,6 +240,19 @@ describe('plugin-meetings', () => {
       });
     });
 
+    describe('#_toggleTcpReachability', () => {
+      it('should have _toggleTcpReachability', () => {
+        assert.equal(typeof webex.meetings._toggleTcpReachability, 'function');
+      });
+
+      describe('success', () => {
+        it('should update meetings to do TCP reachability', () => {
+          webex.meetings._toggleTcpReachability(true);
+          assert.equal(webex.meetings.config.experimental.enableTcpReachability, true);
+        });
+      });
+    });
+
     describe('Public API Contracts', () => {
       describe('#register', () => {
         it('emits an event and resolves when register succeeds', async () => {
