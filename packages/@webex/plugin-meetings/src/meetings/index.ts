@@ -700,6 +700,24 @@ export default class Meetings extends WebexPlugin {
   }
 
   /**
+   * API to toggle TCP reachability, needs to be called before webex.meetings.register()
+   * @param {Boolean} newValue
+   * @private
+   * @memberof Meetings
+   * @returns {undefined}
+   */
+  private _toggleTcpReachability(newValue: boolean) {
+    if (typeof newValue !== 'boolean') {
+      return;
+    }
+    // @ts-ignore
+    if (this.config.experimental.enableTcpReachability !== newValue) {
+      // @ts-ignore
+      this.config.experimental.enableTcpReachability = newValue;
+    }
+  }
+
+  /**
    * Explicitly sets up the meetings plugin by registering
    * the device, connecting to mercury, and listening for locus events.
    *

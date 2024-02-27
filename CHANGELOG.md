@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.360](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.359...v3.0.0-beta.360) (2024-02-27)
+
+
+### Bug Fixes
+
+* don't do TCP reachability on VMN, add API to toggle TCP reachability ([#3401](https://github.com/webex/webex-js-sdk/issues/3401)) ([9a6a31e](https://github.com/webex/webex-js-sdk/commit/9a6a31e8e43ecd96b42f5d50564bc3c5664d6b53))
+
 ## [3.0.0-beta.359](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.358...v3.0.0-beta.359) (2024-02-26)
 
 
