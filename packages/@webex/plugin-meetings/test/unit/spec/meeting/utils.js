@@ -1046,7 +1046,7 @@ describe('plugin-meetings', () => {
         {
           reason: LOCAL_SHARE_ERRORS.DEVICE_NOT_JOINED,
           expected: {
-            category: 'expected',
+            category: 'signaling',
             errorCode: 4050,
           },
         },
@@ -1116,7 +1116,7 @@ describe('plugin-meetings', () => {
 
         const error = result[0];
         assert.deepEqual(error, {
-          category: 'expected',
+          category: 'signaling',
           errorCode: 4050,
           errorDescription: reason,
           name: 'locus.response',
