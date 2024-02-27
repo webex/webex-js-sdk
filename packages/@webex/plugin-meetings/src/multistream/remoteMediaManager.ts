@@ -540,8 +540,8 @@ export class RemoteMediaManager extends EventsScope {
     const type = mediaType === MediaType.AudioMain ? 1 : 0;
     const value = languageId;
     if (
-      type === this.config.receiveNamedMediaGroup.type &&
-      value === this.config.receiveNamedMediaGroup.value
+      type === this.config.receiveNamedMediaGroup?.type &&
+      value === this.config.receiveNamedMediaGroup?.value
     ) {
       return;
     }
@@ -577,7 +577,7 @@ export class RemoteMediaManager extends EventsScope {
       this.slots.audio.push(slot);
     }
     // create slot for interpretation language audio
-    if (this.config.receiveNamedMediaGroup.value) {
+    if (this.config.receiveNamedMediaGroup?.value) {
       const siSlot = await this.receiveSlotManager.allocateSlot(MediaType.AudioMain);
       if (siSlot) {
         siSlot.setNamedMediaGroup(this.config.receiveNamedMediaGroup);
