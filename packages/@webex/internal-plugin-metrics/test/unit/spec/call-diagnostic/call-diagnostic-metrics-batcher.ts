@@ -10,7 +10,7 @@ import sinon from 'sinon';
 import FakeTimers from '@sinonjs/fake-timers';
 import { NewMetrics } from '@webex/internal-plugin-metrics';
 
-const flushPromises = () => new Promise((resolve) => setTimeout(resolve, 0));
+const flushPromises = () => new Promise(setImmediate);
 
 function promiseTick(count) {
   let promise = Promise.resolve();
@@ -129,7 +129,7 @@ describe('plugin-metrics', () => {
     });
 
     describe('when the request fails', () => {
-      it('does not clear the queue', () => {
+      it('does not clear the queue', async () => {
         // sinon appears to have gap in its api where stub.onCall(n) doesn't
         // accept a function, so the following is more verbose than one might
         // desire
@@ -137,9 +137,8 @@ describe('plugin-metrics', () => {
           // noop
         };
 
-        sinon.stub(webex, 'request').callsFake((options) => {
-          console.log("SS0", options)
-          return Promise.reject(new Error("Request failed"))
+        sinon.stub(webex, 'request').callsFake(() => {
+          return Promise.reject("error")
         });
 
         // avoid setting .sent timestamp
@@ -155,14 +154,11 @@ describe('plugin-metrics', () => {
           event: 'my.event',
         });
 
-        return promiseTick(50)
+        return promiseTick(100)
           .then(() => assert.lengthOf(webex.internal.newMetrics.callDiagnosticMetrics.callDiagnosticEventsBatcher.queue, 1))
           .then(() => clock.tick(config.metrics.batcherWait))
-          .then(() => console.log("SS3", webex.request.getCalls()))
           .then(() => promise)
-          .catch((err) => {
-            console.log("SSs", webex.request.getCalls())
-            const error = err.body.err
+          .catch(() => {
             const calls = webex.logger.error.getCalls();
 
             assert.deepEqual(calls[0].args[0], 'call-diagnostic-events -> ');
@@ -171,7 +167,7 @@ describe('plugin-metrics', () => {
               calls[0].args[1],
               /CallDiagnosticEventsBatcher: @submitHttpRequest#ca-batch-\d{0,}\. Request failed:/
             );
-            assert.deepEqual(calls[0].args[2], `error: formattekdError`);
+            assert.deepEqual(calls[0].args[2], `error: formattedError`);
 
             assert.lengthOf(
               webex.internal.newMetrics.callDiagnosticMetrics.callDiagnosticEventsBatcher.queue,
