@@ -214,14 +214,12 @@ export class RemoteMediaGroup {
   private sendActiveSpeakerMediaRequest(commit: boolean) {
     this.cancelActiveSpeakerMediaRequest(false);
 
-    const namedUnpinnedArray = this.unpinnedRemoteMedia.filter(
-      (item) => item?.namedMediaGroup?.value
-    );
-    const otherUnpinnedArray = this.unpinnedRemoteMedia.filter(
+    const namedMedia = this.unpinnedRemoteMedia.filter((item) => item?.namedMediaGroup?.value);
+    const mainMedia = this.unpinnedRemoteMedia.filter(
       (item) => !item.namedMediaGroup || !item.namedMediaGroup.value
     );
 
-    namedUnpinnedArray.forEach((remoteMedia) => {
+    namedMedia.forEach((remoteMedia) => {
       const mrId = this.mediaRequestManager.addRequest(
         {
           policyInfo: {
@@ -248,7 +246,7 @@ export class RemoteMediaGroup {
           crossPolicyDuplication: false,
           preferLiveVideo: !!this.options?.preferLiveVideo,
         },
-        receiveSlots: otherUnpinnedArray.map((remoteMedia) =>
+        receiveSlots: mainMedia.map((remoteMedia) =>
           remoteMedia.getUnderlyingReceiveSlot()
         ) as ReceiveSlot[],
         codecInfo: this.options.resolution && {
