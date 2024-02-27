@@ -941,8 +941,8 @@ export class StatsAnalyzer extends EventsScope {
       if (currentPacketsReceived === 0) {
         if (receiveSlot && sourceState === 'live') {
           LoggerProxy.logger.info(
-            `StatsAnalyzer:index#processInboundRTPResult --> No packets received for receive slot ${idAndCsi}`,
-            currentPacketsReceived
+            `StatsAnalyzer:index#processInboundRTPResult --> No packets received for receive slot ${idAndCsi}. Total packets received on slot: `,
+            result.packetsReceived
           );
         }
       }

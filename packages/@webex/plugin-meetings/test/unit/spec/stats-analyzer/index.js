@@ -927,7 +927,7 @@ describe('plugin-meetings', () => {
         // don't increase the packets when time progresses.
         await progressTime();
 
-        assert.calledWith(loggerSpy, 'StatsAnalyzer:index#processInboundRTPResult --> No packets received for receive slot id: "4" and csi: 2');
+        assert.calledWith(loggerSpy, 'StatsAnalyzer:index#processInboundRTPResult --> No packets received for receive slot id: "4" and csi: 2. Total packets received on slot: ', 0);
       });
 
       ["avatar", "invalid", "no source", "bandwidth limited", "policy violation"].forEach((sourceState) => {
@@ -943,7 +943,7 @@ describe('plugin-meetings', () => {
           // don't increase the packets when time progresses.
           await progressTime();
   
-          assert.neverCalledWith(loggerSpy, 'StatsAnalyzer:index#processInboundRTPResult --> No packets received for receive slot id: "4" and csi: 2');
+          assert.neverCalledWith(loggerSpy, 'StatsAnalyzer:index#processInboundRTPResult --> No packets received for receive slot id: "4" and csi: 2. Total packets received on slot: ', 0);
         });
       });
 
@@ -953,7 +953,7 @@ describe('plugin-meetings', () => {
         // don't increase the packets when time progresses.
         await progressTime();
 
-        assert.neverCalledWith(loggerSpy, 'StatsAnalyzer:index#processInboundRTPResult --> No packets received for receive slot ""');
+        assert.neverCalledWith(loggerSpy, 'StatsAnalyzer:index#processInboundRTPResult --> No packets received for receive slot "". Total packets received on slot: ', 0);
       });
     });
   });
