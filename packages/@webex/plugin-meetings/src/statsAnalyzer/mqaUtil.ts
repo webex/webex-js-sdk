@@ -29,13 +29,14 @@ export const getAudioReceiverMqa = ({audioReceiver, statsResults, lastMqaDataSen
   // add rtpPacket info inside common as also for call analyzer
   audioReceiver.common.rtpPackets =
     statsResults[mediaType][sendrecvType].totalPacketsReceived - lastPacketsReceived || 0;
+  audioReceiver.streams[0].common.rtpPackets = audioReceiver.common.rtpPackets;
+
   // Hop by hop are numbers and not percentage so we compare on what we sent the last min
   // collect the packets received for the last min
-  audioReceiver.streams[0].common.rtpPackets = audioReceiver.common.rtpPackets;
-  audioReceiver.common.mediaHopByHopLost =
+  const totalPacketsLost =
     statsResults[mediaType][sendrecvType].totalPacketsLost - lastPacketsLost || 0;
-  audioReceiver.common.rtpHopByHopLost =
-    statsResults[mediaType][sendrecvType].totalPacketsLost - lastPacketsLost || 0;
+  audioReceiver.common.mediaHopByHopLost = totalPacketsLost;
+  audioReceiver.common.rtpHopByHopLost = totalPacketsLost;
 
   audioReceiver.streams[0].common.maxRtpJitter =
     // @ts-ignore
@@ -49,6 +50,7 @@ export const getAudioReceiverMqa = ({audioReceiver, statsResults, lastMqaDataSen
     statsResults[mediaType][sendrecvType].fecPacketsReceived -
     lastFecPacketsReceived -
     (statsResults[mediaType][sendrecvType].fecPacketsDiscarded - lastFecPacketsDiscarded);
+  audioReceiver.common.fecPackets = fecRecovered || 0;
 
   audioReceiver.streams[0].common.rtpEndToEndLost =
     statsResults[mediaType][sendrecvType].totalPacketsLost - lastPacketsLost - fecRecovered || 0;
@@ -105,7 +107,7 @@ export const getAudioSenderMqa = ({audioSender, statsResults, lastMqaDataSent, m
     statsResults[mediaType][sendrecvType].totalPacketsLostOnReceiver - lastPacketsLost;
 
   audioSender.common.remoteLossRate =
-    totalpacketsLostForaMin > 0
+    audioSender.common.rtpPackets > 0
       ? (totalpacketsLostForaMin * 100) / audioSender.common.rtpPackets
       : 0; // This is the packets sent with in last min || 0;
 
@@ -156,16 +158,15 @@ export const getVideoReceiverMqa = ({videoReceiver, statsResults, lastMqaDataSen
     statsResults[mediaType][sendrecvType].totalPacketsReceived - lastPacketsReceived || 0;
   videoReceiver.streams[0].common.rtpPackets = videoReceiver.common.rtpPackets;
 
-  const totalPacketLoss =
-    statsResults[mediaType][sendrecvType].totalPacketsLost - lastPacketsLost || 0;
-
-  // Hope by hop are numbers and not percentage so we compare on what we sent the last min
+  // Hop by hop are numbers and not percentage so we compare on what we sent the last min
   // this is including packet lost
-  videoReceiver.common.mediaHopByHopLost = totalPacketLoss;
-  videoReceiver.common.rtpHopByHopLost = totalPacketLoss;
+  const totalPacketsLost =
+    statsResults[mediaType][sendrecvType].totalPacketsLost - lastPacketsLost || 0;
+  videoReceiver.common.mediaHopByHopLost = totalPacketsLost;
+  videoReceiver.common.rtpHopByHopLost = totalPacketsLost;
 
   // End to end packetloss is after recovery
-  videoReceiver.streams[0].common.rtpEndToEndLost = totalPacketLoss;
+  videoReceiver.streams[0].common.rtpEndToEndLost = totalPacketsLost;
 
   // calculate this values
 
@@ -249,8 +250,8 @@ export const getVideoSenderMqa = ({videoSender, statsResults, lastMqaDataSent, m
     statsResults[mediaType][sendrecvType].totalPacketsLostOnReceiver - lastPacketsLost;
 
   videoSender.common.remoteLossRate =
-    totalpacketsLostForaMin > 0
-      ? (totalpacketsLostForaMin * 100) / (videoSender.common.rtpPackets + totalpacketsLostForaMin)
+    videoSender.common.rtpPackets > 0
+      ? (totalpacketsLostForaMin * 100) / videoSender.common.rtpPackets
       : 0; // This is the packets sent with in last min || 0;
 
   videoSender.common.maxRoundTripTime =
