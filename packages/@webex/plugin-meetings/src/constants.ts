@@ -968,6 +968,7 @@ export const SELF_ROLES = {
   COHOST: 'COHOST',
   MODERATOR: 'MODERATOR',
   ATTENDEE: 'ATTENDEE',
+  PRESENTER: 'PRESENTER',
 };
 
 export const MEETING_STATE = {

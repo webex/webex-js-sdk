@@ -88,6 +88,9 @@
               <legend>Meetings</legend>
               <input type="checkbox" id="enable-tcp-reachability">
               <label for="enable-tcp-reachability">Enable TCP reachability (experimental)</label>
+              <br/>
+              <input id="meetings-enable-llm" checked type="checkbox">
+              <label for="meetings-enable-llm-label">Enable LLM</label>
             </div>
           </div>
 
@@ -294,9 +297,9 @@
           <fieldset>
             <legend>Voicea Transcription</legend>
             <div class="u-mv">
-              You will see the formatted transcription below if you have <b>did one of the below</b>,
+              You will see the formatted transcription below if you have did the following,
               <ul>
-                <li>Set the <span class="inline-code">receiveTranscription</span> config to <span class="inline-code">true</span> before joining the meeting</li>
+                <li>Set the <span class="inline-code">enableAutomaticLLM</span> config to <span class="inline-code">true</span> before doing webex.init</li>
                 <li>Invoked <span class="inline-code">meeting.startTranscription()</span> after joining the meeting</li>
               </ul>
               <div id="voicea-transcription-formatted-display">
@@ -385,6 +388,8 @@
               <label for="meetings-join-breakout-enabled">Support breakout sessions</label>
               <input id="meetings-media-in-lobby-enabled" checked type="checkbox">
               <label for="meetings-media-in-lobby-enabled">Support media in lobby</label>
+              <input id="meetings-enable-transcription" type="checkbox">
+              <label for="meetings-enable-transcription-label">Enable Transcription (Sample app only)</label>
               <p id="password-captcha-status" class="status-par">Click verifyPassword for details</p>
             </div>
 

@@ -53,6 +53,9 @@ const voiceaTranscriptionFormattedDisplay = document.querySelector('#voicea-tran
 const toggleUnifiedMeetings = document.getElementById('toggle-unified-meeting');
 const currentMeetingInfoStatus = document.getElementById('current-meeting-info-status');
 
+const enableLLM = document.getElementById('meetings-enable-llm');
+const enableTranscript = document.getElementById('meetings-enable-transcription');
+
 // Store and Grab `access-token` from localstorage
 if (localStorage.getItem('date') > new Date().getTime()) {
   tokenElm.value = localStorage.getItem('access-token');
@@ -114,7 +117,7 @@ function generateWebexConfig({credentials}) {
         enableAdhocMeetings: true,
         enableTcpReachability: tcpReachabilityConfigElm.checked,
       },
-      enableAutomaticLLM: true,
+      enableAutomaticLLM: enableLLM.checked,
     },
     credentials,
     // Any other sdk config we need
@@ -634,6 +637,10 @@ async function joinMeeting({withMedia, withDevice} = {withMedia: false, withDevi
       doPostMediaSetup(meeting);
     }
 
+    if(webex.meetings.config.enableAutomaticLLM && enableTranscript.checked) {
+      toggleTranscription(true);
+    }
+
     enableMeetingDependentButtons(true);
 
     // For meeting controls button onclick handlers
@@ -1096,7 +1103,7 @@ function setTranscriptEvents() {
     });
 
     meeting.on('meeting:receiveTranscription:stopped', () => {
-      generalToggleTranscription.innerText = "Stop Transcription";
+      generalToggleTranscription.innerText = "Start Transcription";
       generalTranscriptionContent.innerHTML = 'Transcription Content: Webex Assistant must be enabled, check the console!';
     });
   }
