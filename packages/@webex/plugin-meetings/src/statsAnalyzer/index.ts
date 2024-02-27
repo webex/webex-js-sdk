@@ -733,7 +733,7 @@ export class StatsAnalyzer extends EventsScope {
         this.emitStartStopEvents('share', previousStats.framesSent, currentStats.framesSent, true);
       }
 
-      if (this.meetingMediaStatus.expected.sendShare) {
+      if (this.meetingMediaStatus.expected.receiveShare) {
         // TODO:need to check receive share value
         // compare share stats received
         const currentPacketsReceived = getCurrentStatsTotals(
@@ -779,6 +779,7 @@ export class StatsAnalyzer extends EventsScope {
           }
         }
 
+        this.emitStartStopEvents('share', previousFramesDecoded, currentFramesDecoded, false);
         // we are not calling emitStartStopEvents() for sending or receiving share because sharing is often started and stopped
         // in meetings and this.meetingMediaStatus.expected values can be out of sync with the actual packet flow
         // so we would send "sharing stopped" events incorrectly

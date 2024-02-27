@@ -11,6 +11,7 @@ import {ReceiveSlot, CSI} from './receiveSlot';
 import {ReceiveSlotManager} from './receiveSlotManager';
 import {RemoteMediaGroup} from './remoteMediaGroup';
 import {MediaRequestManager} from './mediaRequestManager';
+import {StatsAnalyzer, EVENTS as StatsAnalyzerEvents} from '../statsAnalyzer';
 
 export type PaneSize = RemoteVideoResolution;
 export type LayoutId = string;
@@ -253,6 +254,7 @@ export class RemoteMediaManager extends EventsScope {
   };
 
   private currentLayoutId?: LayoutId;
+  statsAnalyzer: StatsAnalyzer;
 
   /**
    * Constructor
@@ -302,6 +304,13 @@ export class RemoteMediaManager extends EventsScope {
         receiverSelected: [],
       },
     };
+    /**
+     * @instance
+     * @type {StatsAnalyzer}
+     * @private
+     * @memberof Meeting
+     */
+    this.statsAnalyzer = null;
 
     this.receiveSlotAllocations = {activeSpeaker: {}, receiverSelected: {}};
 
