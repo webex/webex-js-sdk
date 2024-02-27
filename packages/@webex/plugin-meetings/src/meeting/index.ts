@@ -5017,18 +5017,34 @@ export default class Meeting extends StatelessWebexPlugin {
 
         return Promise.reject(error);
       })
-      .then(async (join) => {
+      .then((join) => {
         // @ts-ignore - config coming from registerPlugin
         if (this.config.enableAutomaticLLM) {
-          await this.updateLLMConnection().catch((error) => {
-            LoggerProxy.logger.error('Meeting:index#join --> Update LLM Connection Failed', error);
+          this.updateLLMConnection()
+            .catch((error) => {
+              LoggerProxy.logger.error(
+                'Meeting:index#join --> Update LLM Connection Failed',
+                error
+              );
 
-            Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.LLM_CONNECTION_AFTER_JOIN_FAILURE, {
-              correlation_id: this.correlationId,
-              reason: error?.message,
-              stack: error.stack,
+              Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.LLM_CONNECTION_AFTER_JOIN_FAILURE, {
+                correlation_id: this.correlationId,
+                reason: error?.message,
+                stack: error.stack,
+              });
+            })
+            .then(() => {
+              LoggerProxy.logger.info('Meeting:index#join --> Update LLM Connection Success');
+              Trigger.trigger(
+                this,
+                {
+                  file: 'meeting/index',
+                  function: 'join',
+                },
+                EVENT_TRIGGERS.MEETING_LLM_CONNECTED,
+                undefined
+              );
             });
-          });
         }
 
         return join;

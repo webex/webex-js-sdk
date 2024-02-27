@@ -563,6 +563,13 @@ function doPostMediaSetup(meeting) {
 
 async function joinMeeting({withMedia, withDevice} = {withMedia: false, withDevice: false}) {
   const meeting = webex.meetings.getAllMeetings()[selectedMeetingId];
+
+  meeting.on('meeting:llm:connected', () => {
+    if (enableTranscript.checked) {
+      toggleTranscription(true);
+    }
+  });
+
   let resourceId = null;
 
   if (!meeting) {
@@ -635,10 +642,6 @@ async function joinMeeting({withMedia, withDevice} = {withMedia: false, withDevi
       await meeting.joinWithMedia({joinOptions, mediaOptions});
 
       doPostMediaSetup(meeting);
-    }
-
-    if(webex.meetings.config.enableAutomaticLLM && enableTranscript.checked) {
-      toggleTranscription(true);
     }
 
     enableMeetingDependentButtons(true);
