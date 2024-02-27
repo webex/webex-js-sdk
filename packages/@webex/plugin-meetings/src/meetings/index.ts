@@ -711,7 +711,7 @@ export default class Meetings extends WebexPlugin {
       return;
     }
     // @ts-ignore
-    if (this.config?.experimental?.enableTcpReachability !== newValue) {
+    if (this.config.experimental.enableTcpReachability !== newValue) {
       // @ts-ignore
       this.config.experimental.enableTcpReachability = newValue;
     }
