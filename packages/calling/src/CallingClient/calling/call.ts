@@ -1554,28 +1554,28 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
     };
   }
 
-  private updateLocalTrack = (audioTrack: MediaStreamTrack, metricAction: MEDIA_EFFECT_ACTION) => {
-    this.mediaConnection.updateLocalTracks({audio: audioTrack});
-    this.metricManager.submitBNRMetric(
-      METRIC_EVENT.MEDIA,
-      metricAction,
-      METRIC_TYPE.BEHAVIORAL,
-      this.callId,
-      this.correlationId
-    );
-  };
-
   private registerEffectListener = (addedEffect: TrackEffect) => {
     if (this.localStream) {
       const effect = this.localStream.getEffectByKind(NOISE_REDUCTION_EFFECT) as any;
-      const track = this.localStream.outputStream.getAudioTracks()[0];
 
       if (effect === addedEffect) {
         effect.on(EffectEvent.Enabled, () =>
-          this.updateLocalTrack(effect.effectTrack, MEDIA_EFFECT_ACTION.BNR_ENABLED)
+          this.metricManager.submitBNRMetric(
+            METRIC_EVENT.MEDIA,
+            MEDIA_EFFECT_ACTION.BNR_ENABLED,
+            METRIC_TYPE.BEHAVIORAL,
+            this.callId,
+            this.correlationId
+          )
         );
         effect.on(EffectEvent.Disabled, () =>
-          this.updateLocalTrack(track, MEDIA_EFFECT_ACTION.BNR_DISABLED)
+          this.metricManager.submitBNRMetric(
+            METRIC_EVENT.MEDIA,
+            MEDIA_EFFECT_ACTION.BNR_DISABLED,
+            METRIC_TYPE.BEHAVIORAL,
+            this.callId,
+            this.correlationId
+          )
         );
       }
     }
@@ -1584,14 +1584,25 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
   private unregisterListeners() {
     if (this.localStream) {
       const effect = this.localStream.getEffectByKind(NOISE_REDUCTION_EFFECT) as any;
-      const track = this.localStream.outputStream.getAudioTracks()[0];
 
       if (effect) {
         effect.off(EffectEvent.Enabled, () =>
-          this.updateLocalTrack(track, MEDIA_EFFECT_ACTION.BNR_ENABLED)
+          this.metricManager.submitBNRMetric(
+            METRIC_EVENT.MEDIA,
+            MEDIA_EFFECT_ACTION.BNR_DISABLED,
+            METRIC_TYPE.BEHAVIORAL,
+            this.callId,
+            this.correlationId
+          )
         );
         effect.off(EffectEvent.Disabled, () =>
-          this.updateLocalTrack(track, MEDIA_EFFECT_ACTION.BNR_DISABLED)
+          this.metricManager.submitBNRMetric(
+            METRIC_EVENT.MEDIA,
+            MEDIA_EFFECT_ACTION.BNR_DISABLED,
+            METRIC_TYPE.BEHAVIORAL,
+            this.callId,
+            this.correlationId
+          )
         );
       }
 
@@ -2065,21 +2076,10 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       this.initMediaConnection(localAudioTrack);
       this.mediaRoapEventsListener();
       this.mediaTrackListener();
-      this.registerStreamListener(localAudioStream);
+      this.registerListeners(localAudioStream);
     }
 
     if (this.callStateMachine.state.value === 'S_SEND_CALL_PROGRESS') {
-      const effect = localAudioStream.getEffectByKind(NOISE_REDUCTION_EFFECT);
-      if (effect && effect.isEnabled) {
-        this.metricManager.submitBNRMetric(
-          METRIC_EVENT.MEDIA,
-          MEDIA_EFFECT_ACTION.BNR_ENABLED,
-          METRIC_TYPE.BEHAVIORAL,
-          this.callId,
-          this.correlationId
-        );
-      }
-
       this.sendCallStateMachineEvt({type: 'E_SEND_CALL_CONNECT'});
     } else {
       log.warn(
@@ -2113,21 +2113,10 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       this.initMediaConnection(localAudioTrack);
       this.mediaRoapEventsListener();
       this.mediaTrackListener();
-      this.registerStreamListener(localAudioStream);
+      this.registerListeners(localAudioStream);
     }
 
     if (this.mediaStateMachine.state.value === 'S_ROAP_IDLE') {
-      const effect = localAudioStream.getEffectByKind(NOISE_REDUCTION_EFFECT);
-      if (effect && effect.isEnabled) {
-        this.metricManager.submitBNRMetric(
-          METRIC_EVENT.MEDIA,
-          MEDIA_EFFECT_ACTION.BNR_ENABLED,
-          METRIC_TYPE.BEHAVIORAL,
-          this.callId,
-          this.correlationId
-        );
-      }
-
       this.sendMediaStateMachineEvt({type: 'E_SEND_ROAP_OFFER'});
     } else {
       log.warn(
@@ -2521,8 +2510,44 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
     });
   }
 
-  private registerStreamListener(localAudioStream: LocalMicrophoneStream) {
+  private registerListeners(localAudioStream: LocalMicrophoneStream) {
+    localAudioStream.on(LocalStreamEventNames.OutputTrackChange, (audioTrack: MediaStreamTrack) => {
+      this.mediaConnection.updateLocalTrack({audio: audioTrack});
+    });
+
     localAudioStream.on(LocalStreamEventNames.EffectAdded, this.registerEffectListener);
+    const effect = localAudioStream.getEffectByKind(NOISE_REDUCTION_EFFECT) as any;
+
+    if (effect) {
+      effect.on(EffectEvent.Enabled, () =>
+        this.metricManager.submitBNRMetric(
+          METRIC_EVENT.MEDIA,
+          MEDIA_EFFECT_ACTION.BNR_ENABLED,
+          METRIC_TYPE.BEHAVIORAL,
+          this.callId,
+          this.correlationId
+        )
+      );
+      effect.on(EffectEvent.Disabled, () =>
+        this.metricManager.submitBNRMetric(
+          METRIC_EVENT.MEDIA,
+          MEDIA_EFFECT_ACTION.BNR_DISABLED,
+          METRIC_TYPE.BEHAVIORAL,
+          this.callId,
+          this.correlationId
+        )
+      );
+
+      if (effect.isEnabled) {
+        this.metricManager.submitBNRMetric(
+          METRIC_EVENT.MEDIA,
+          MEDIA_EFFECT_ACTION.BNR_ENABLED,
+          METRIC_TYPE.BEHAVIORAL,
+          this.callId,
+          this.correlationId
+        );
+      }
+    }
   }
 
   private async delete(): Promise<MobiusCallResponse> {
@@ -2764,6 +2789,8 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       return;
     }
 
+    this.unregisterListeners();
+    this.registerListeners(newAudioStream);
     this.mediaConnection.updateLocalTracks({
       audio: localAudioTrack,
     });
