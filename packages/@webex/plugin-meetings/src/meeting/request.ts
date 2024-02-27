@@ -163,8 +163,6 @@ export default class MeetingRequest extends StatelessWebexPlugin {
         url: deviceUrl,
         // @ts-ignore - config comes from registerPlugin
         deviceType: this.config.meetings.deviceType,
-        // @ts-ignore
-        installationId: this.webex.internal.device.config.installationId || undefined,
       },
       usingResource: resourceId || null,
       moveMediaToResource: (resourceId && moveToResource) || false,
@@ -185,6 +183,12 @@ export default class MeetingRequest extends StatelessWebexPlugin {
     }
     if (liveAnnotationSupported) {
       deviceCapabilities.push(ANNOTATION.ANNOTATION_ON_SHARE_SUPPORTED);
+    }
+
+    // @ts-ignore
+    if (this.webex.internal.device.config.installationId) {
+      // @ts-ignore
+      body.device.installationId = this.webex.internal.device.config.installationId;
     }
 
     if (locale) {
