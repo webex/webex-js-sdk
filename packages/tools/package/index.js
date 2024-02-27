@@ -8,6 +8,7 @@ const main = () => {
   commands.mount(PackageTools.list);
   commands.mount(PackageTools.scripts);
   commands.mount(PackageTools.sync);
+  commands.mount(PackageTools.update);
 
   commands.process();
 };

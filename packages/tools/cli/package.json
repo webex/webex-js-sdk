@@ -1,6 +1,5 @@
 {
   "name": "@webex/cli-tools",
-  "private": true,
   "packageManager": "yarn@3.4.1",
   "engines": {
     "node": ">=16.0.0",
