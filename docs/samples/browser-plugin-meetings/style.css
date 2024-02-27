@@ -427,3 +427,18 @@ legend {
 .global-toggle-btn:focus {
   box-shadow: 3px 3px 4px 1px rgb(0 0 0 / 40%);
 }
+
+#voicea-transcription-formatted-display{
+  max-height: 200px;
+  overflow: auto;
+  padding: 0.5rem;
+  background-color: #eeeeee;
+  margin: 0.2rem;
+  border-radius: 5px;
+}
+
+.inline-code{
+  background-color:lightgrey;
+  border-radius:5px;
+  padding: 0 2px;
+}

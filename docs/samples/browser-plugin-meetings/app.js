@@ -42,6 +42,12 @@ const tcpReachabilityConfigElm = document.getElementById('enable-tcp-reachabilit
 
 const guestName = document.querySelector('#guest-name');
 const getGuestToken = document.querySelector('#get-guest-token');
+const voiceaSpokenLanguage = document.querySelector('#voicea-spoken-language');
+const voiceaCaptionLanguage = document.querySelector('#voicea-caption-language');
+const voiceaSpokenLanguageBtn = document.querySelector('#voicea-spoken-language-btn');
+const voiceaCaptionLanguageBtn = document.querySelector('#voicea-caption-language-btn');
+const voiceaTranscriptionTemplate = document.querySelector('#voicea-transcription-template');
+const voiceaTranscriptionFormattedDisplay = document.querySelector('#voicea-transcription-formatted-display');
 
 
 const toggleUnifiedMeetings = document.getElementById('toggle-unified-meeting');
@@ -201,6 +207,7 @@ function register() {
 
   webex.meetings.on('meeting:added', (m) => {
     const {type} = m;
+    console.log("meeting:added============================>test");
 
     if (type === 'INCOMING') {
       const newMeeting = m.meeting;
@@ -287,6 +294,7 @@ let currentMediaSettings = {};
 
 function setSelectedMeetingId(e) {
   selectedMeetingId = e.target.value;
+  meeting = webex.meetings.getAllMeetings()[selectedMeetingId];
 }
 
 function generateMeetingsListItem(meeting) {
@@ -340,7 +348,6 @@ function collectMeetings() {
 
   webex.meetings.syncMeetings()
     .then(() => new Promise((resolve) => {
-      generalStartReceivingTranscription.disabled = false; // eslint-disable-line no-use-before-define
       setTimeout(() => resolve(), 200);
     }))
     .then(() => {
@@ -373,7 +380,6 @@ function createMeeting(e) {
     .then((meeting) => {
       createMeetingDestinationElm.value = '';
       displayMeetingStatusElm.innerHTML = '';
-      generalStartReceivingTranscription.disabled = false; // eslint-disable-line no-use-before-define
       refreshMeetings();
     }).catch((error) => {
       if(error.code === 30105){
@@ -581,7 +587,6 @@ async function joinMeeting({withMedia, withDevice} = {withMedia: false, withDevi
     breakoutsSupported: meetingsBreakoutSupportElm.checked,
     moveToResource: false,
     resourceId,
-    receiveTranscription: receiveTranscriptionOption,
     locale: 'en_UK', // audio disclaimer language
     deviceCapabilities: ['SERVER_AUDIO_ANNOUNCEMENT_SUPPORTED'], // audio disclaimer toggle
   };
@@ -758,8 +763,7 @@ const generalControlsMeetingsList = document.querySelector('#gc-meetings-list');
 const generalControlsRecStatus = document.querySelector('#gc-recording-status');
 const generalControlsDtmfTones = document.querySelector('#gc-dtmf-tones');
 const generalControlsDtmfStatus = document.querySelector('#gc-dtmf-status');
-const generalStartReceivingTranscription = document.querySelector('#gc-start-receiving-transcription');
-const generalStopReceivingTranscription = document.querySelector('#gc-stop-receiving-transcription');
+const generalToggleTranscription = document.querySelector('#gc-toggle-transcription');
 const generalTranscriptionContent = document.querySelector('#gc-transcription-content');
 
 const sourceDevicesGetMedia = document.querySelector('#sd-get-media-devices');
@@ -983,6 +987,46 @@ function startRecording() {
   }
 }
 
+function fillLanguageDropDowns(dropdown, list){
+  for(var i = 0; i < list.length; i++) {
+      // Create a new option element
+      var option = document.createElement("option");
+
+      // Set the value and text of the option
+      option.value = list[i];
+      option.text = list[i];
+
+      // Add the option to the dropdown
+      dropdown.appendChild(option);
+  }
+}
+
+async function setSpokenLanguage() {
+  const meeting = getCurrentMeeting();
+  voiceaSpokenLanguageBtn.disabled = true;
+  const selectedLanguage = voiceaSpokenLanguage.value;
+  try{
+    await meeting.setSpokenLanguage(selectedLanguage);
+    voiceaSpokenLanguageBtn.disabled = false;
+  }
+  catch(e){
+    console.error("Error setting spoken language", e);
+  }
+}
+
+async function setCaptionLanguage() {
+  const meeting = getCurrentMeeting();
+  voiceaCaptionLanguageBtn.disabled = true;
+  const selectedLanguage = voiceaCaptionLanguage.value;
+  try{
+    await meeting.setCaptionLanguage(selectedLanguage);
+    voiceaCaptionLanguageBtn.disabled = false;
+  }
+  catch(e){
+    console.error("Error setting caption language", e);
+  }
+}
+
 function stopReceivingTranscription() {
   const meeting = getCurrentMeeting();
 
@@ -990,22 +1034,69 @@ function stopReceivingTranscription() {
   meeting.stopReceivingTranscription();
 }
 
-function startReceivingTranscription() {
+async function toggleTranscription(enable = false){
+  const isEnabled = generalToggleTranscription.dataset.enabled === "true";
+  if(isEnabled && !enable){
+    try{
+      await meeting.stopTranscription();
+      generalToggleTranscription.dataset.enabled = "false";
+      generalToggleTranscription.innerText = "Start Transcription";
+    }
+    catch(e){
+      console.error("Error stopping transcription", e);
+    }
+  }
+  else{
+    let firsttime = generalToggleTranscription.dataset.firsttime;
+    if(firsttime === undefined){
+      setTranscriptEvents();
+      generalToggleTranscription.dataset.firsttime = "yes";
+    }
+    try{
+      await meeting.startTranscription();
+      generalToggleTranscription.dataset.enabled = "true";
+      generalToggleTranscription.innerText = "Stop Transcription";
+    }
+    catch(e){
+      console.error("Error starting transcription", e);
+    }
+  }
+}
+
+function setTranscriptEvents() {
   const meeting = getCurrentMeeting();
 
   if (meeting) {
-    receiveTranscriptionOption = true;
-    generalStartReceivingTranscription.innerHTML = 'Subscribed!';
-    generalStartReceivingTranscription.disabled = true;
-    generalStopReceivingTranscription.disabled = false;
+    Handlebars.registerHelper("forIn", function(object) {
+      let returnArray = [];
+      for(let prop in object){
+        returnArray.push({key: prop, value: object[prop]});
+      }
+      return returnArray;
+    });
+    var transcriptTemplate = Handlebars.compile(voiceaTranscriptionTemplate.innerHTML);
+
     generalTranscriptionContent.innerHTML = '';
 
     meeting.on('meeting:receiveTranscription:started', (payload) => {
-      generalTranscriptionContent.innerHTML += `\n${JSON.stringify(payload)}`;
+      fillLanguageDropDowns(voiceaCaptionLanguage,payload.captionLanguages);
+      fillLanguageDropDowns(voiceaSpokenLanguage,payload.spokenLanguages);
+      voiceaSpokenLanguage.disabled = false;
+      voiceaSpokenLanguageBtn.disabled = false;
+      voiceaCaptionLanguage.disabled = false;
+      voiceaCaptionLanguageBtn.disabled = false;
+    });
+
+    meeting.on('meeting:caption-received', (payload) => {
+      generalTranscriptionContent.innerHTML = `\n${JSON.stringify(payload,null,4)}`;
+      voiceaTranscriptionFormattedDisplay.innerHTML = transcriptTemplate({
+        data: payload.captions,
+      });
+      voiceaTranscriptionFormattedDisplay.scrollTop = voiceaTranscriptionFormattedDisplay.scrollHeight;
     });
 
     meeting.on('meeting:receiveTranscription:stopped', () => {
-      generalStartReceivingTranscription.innerHTML = 'start receiving transcription (click me before joining)';
+      generalToggleTranscription.innerText = "Stop Transcription";
       generalTranscriptionContent.innerHTML = 'Transcription Content: Webex Assistant must be enabled, check the console!';
     });
   }
