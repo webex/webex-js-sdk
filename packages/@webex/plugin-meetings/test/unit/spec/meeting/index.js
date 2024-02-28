@@ -2721,6 +2721,7 @@ describe('plugin-meetings', () => {
               createSendSlot: sinon.stub().returns({
                 publishStream: sinon.stub(),
                 unpublishStream: sinon.stub(),
+                setNamedMediaGroups: sinon.stub(),
               }),
               enableMultistreamAudio: sinon.stub(),
             };
