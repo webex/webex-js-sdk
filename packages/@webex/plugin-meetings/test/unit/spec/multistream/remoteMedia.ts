@@ -26,7 +26,7 @@ describe('RemoteMedia', () => {
 
     fakeMediaRequestManager = {
       addRequest: sinon.stub(),
-      cancelRequest: sinon.stub(),
+      cancelRequests: sinon.stub(),
     };
     remoteMedia = new RemoteMedia(fakeReceiveSlot, fakeMediaRequestManager, {resolution: 'medium'});
   });
@@ -125,8 +125,8 @@ describe('RemoteMedia', () => {
       // send a 2nd one (the 1st one should get cancelled)
       remoteMedia.sendMediaRequest(5678, false);
 
-      assert.calledOnce(fakeMediaRequestManager.cancelRequest);
-      assert.calledWith(fakeMediaRequestManager.cancelRequest, fakeRequestId);
+      assert.calledOnce(fakeMediaRequestManager.cancelRequests);
+      assert.calledWith(fakeMediaRequestManager.cancelRequests, [fakeRequestId]);
 
       assert.calledOnce(fakeMediaRequestManager.addRequest);
       assert.calledWith(
@@ -169,15 +169,15 @@ describe('RemoteMedia', () => {
       // cancel it
       remoteMedia.cancelMediaRequest();
 
-      assert.calledOnce(fakeMediaRequestManager.cancelRequest);
-      assert.calledWith(fakeMediaRequestManager.cancelRequest, fakeRequestId);
+      assert.calledOnce(fakeMediaRequestManager.cancelRequests);
+      assert.calledWith(fakeMediaRequestManager.cancelRequests, [fakeRequestId]);
 
       assert.notCalled(fakeMediaRequestManager.addRequest);
     });
     it('does not do anything if there was no request sent', () => {
       remoteMedia.cancelMediaRequest();
 
-      assert.notCalled(fakeMediaRequestManager.cancelRequest);
+      assert.notCalled(fakeMediaRequestManager.cancelRequests);
       assert.notCalled(fakeMediaRequestManager.addRequest);
     });
   });

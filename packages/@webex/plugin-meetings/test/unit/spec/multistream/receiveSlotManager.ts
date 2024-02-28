@@ -24,6 +24,7 @@ describe('ReceiveSlotManager', () => {
         mediaType,
         findMemberId: sinon.stub(),
         wcmeReceiveSlot: fakeWcmeSlot,
+        reset: sinon.stub(),
       };
 
       fakeReceiveSlots.push(fakeReceiveSlot);

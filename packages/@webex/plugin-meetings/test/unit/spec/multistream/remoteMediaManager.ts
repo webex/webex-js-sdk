@@ -175,22 +175,22 @@ describe('RemoteMediaManager', () => {
     fakeMediaRequestManagers = {
       audio: {
         addRequest: sinon.stub(),
-        cancelRequest: sinon.stub(),
+        cancelRequests: sinon.stub(),
         commit: sinon.stub(),
       },
       video: {
         addRequest: sinon.stub(),
-        cancelRequest: sinon.stub(),
+        cancelRequests: sinon.stub(),
         commit: sinon.stub(),
       },
       screenShareAudio: {
         addRequest: sinon.stub(),
-        cancelRequest: sinon.stub(),
+        cancelRequests: sinon.stub(),
         commit: sinon.stub(),
       },
       screenShareVideo: {
         addRequest: sinon.stub(),
-        cancelRequest: sinon.stub(),
+        cancelRequests: sinon.stub(),
         commit: sinon.stub(),
       },
     };
@@ -207,10 +207,10 @@ describe('RemoteMediaManager', () => {
     fakeReceiveSlotManager.allocateSlot.resetHistory();
     fakeReceiveSlotManager.releaseSlot.resetHistory();
     fakeMediaRequestManagers.audio.addRequest.resetHistory();
-    fakeMediaRequestManagers.audio.cancelRequest.resetHistory();
+    fakeMediaRequestManagers.audio.cancelRequests.resetHistory();
     fakeMediaRequestManagers.audio.commit.resetHistory();
     fakeMediaRequestManagers.video.addRequest.resetHistory();
-    fakeMediaRequestManagers.video.cancelRequest.resetHistory();
+    fakeMediaRequestManagers.video.cancelRequests.resetHistory();
     fakeMediaRequestManagers.video.commit.resetHistory();
     fakeMediaRequestManagers.screenShareVideo.commit.resetHistory();
     fakeMediaRequestManagers.screenShareAudio.commit.resetHistory();
@@ -693,7 +693,7 @@ describe('RemoteMediaManager', () => {
       });
 
       expect(config.video.preferLiveVideo).to.equal(true);
-      
+
       assert.calledOnce(fakeMediaRequestManagers.video.commit);
     });
   });
@@ -1354,8 +1354,8 @@ describe('RemoteMediaManager', () => {
         await remoteMediaManager.setLayout('OnePlusFive');
 
         // check that the previous active speaker request for "AllEqual" group was cancelled
-        assert.calledOnce(fakeMediaRequestManagers.video.cancelRequest);
-        assert.calledWith(fakeMediaRequestManagers.video.cancelRequest, allEqualMediaRequestId);
+        assert.calledOnce(fakeMediaRequestManagers.video.cancelRequests);
+        assert.calledWith(fakeMediaRequestManagers.video.cancelRequests, [allEqualMediaRequestId]);
 
         // check that 2 correct active speaker media requests were sent out
         assert.callCount(fakeMediaRequestManagers.video.addRequest, 2);
@@ -1461,21 +1461,21 @@ describe('RemoteMediaManager', () => {
         await remoteMediaManager.setLayout('other');
 
         // check that all the previous media requests for "initial" layout have been cancelled
-        assert.callCount(fakeMediaRequestManagers.video.cancelRequest, 4);
-        assert.calledWith(fakeMediaRequestManagers.video.cancelRequest, 'active speaker request 1');
-        assert.calledWith(fakeMediaRequestManagers.video.cancelRequest, 'active speaker request 2');
+        assert.callCount(fakeMediaRequestManagers.video.cancelRequests, 4);
+        assert.calledWith(fakeMediaRequestManagers.video.cancelRequests, ['active speaker request 1']);
+        assert.calledWith(fakeMediaRequestManagers.video.cancelRequests, ['active speaker request 2']);
         assert.calledWith(
-          fakeMediaRequestManagers.video.cancelRequest,
-          'receiver selected request 1'
+          fakeMediaRequestManagers.video.cancelRequests,
+          ['receiver selected request 1']
         );
         assert.calledWith(
-          fakeMediaRequestManagers.video.cancelRequest,
-          'receiver selected request 2'
+          fakeMediaRequestManagers.video.cancelRequests,
+          ['receiver selected request 2']
         );
-        assert.calledOnce(fakeMediaRequestManagers.screenShareVideo.cancelRequest);
+        assert.calledOnce(fakeMediaRequestManagers.screenShareVideo.cancelRequests);
         assert.calledWith(
-          fakeMediaRequestManagers.screenShareVideo.cancelRequest,
-          'video screen share request id'
+          fakeMediaRequestManagers.screenShareVideo.cancelRequests,
+          ['video screen share request id']
         );
 
         // new layout has no videos, so no new requests should be sent out
@@ -1553,7 +1553,7 @@ describe('RemoteMediaManager', () => {
             }),
           })
         );
-        assert.notCalled(fakeMediaRequestManagers.video.cancelRequest);
+        assert.notCalled(fakeMediaRequestManagers.video.cancelRequests);
 
         resetHistory();
 
@@ -1577,8 +1577,8 @@ describe('RemoteMediaManager', () => {
           })
         );
         // and previous one should have been cancelled
-        assert.calledOnce(fakeMediaRequestManagers.video.cancelRequest);
-        assert.calledWith(fakeMediaRequestManagers.video.cancelRequest, fakeRequestId1);
+        assert.calledOnce(fakeMediaRequestManagers.video.cancelRequests);
+        assert.calledWith(fakeMediaRequestManagers.video.cancelRequests, [fakeRequestId1]);
 
         resetHistory();
 
@@ -1604,7 +1604,7 @@ describe('RemoteMediaManager', () => {
           })
         );
         // nothing should have been cancelled
-        assert.notCalled(fakeMediaRequestManagers.video.cancelRequest);
+        assert.notCalled(fakeMediaRequestManagers.video.cancelRequests);
 
         resetHistory();
 
@@ -1617,8 +1617,8 @@ describe('RemoteMediaManager', () => {
         // no new media request should have been sent out
         assert.notCalled(fakeMediaRequestManagers.video.addRequest);
         // and previous one should have been cancelled
-        assert.calledOnce(fakeMediaRequestManagers.video.cancelRequest);
-        assert.calledWith(fakeMediaRequestManagers.video.cancelRequest, fakeRequestId2);
+        assert.calledOnce(fakeMediaRequestManagers.video.cancelRequests);
+        assert.calledWith(fakeMediaRequestManagers.video.cancelRequests, [fakeRequestId2]);
       }
     });
   });
@@ -1701,7 +1701,7 @@ describe('RemoteMediaManager', () => {
       await remoteMediaManager.removeMemberVideoPane('some pane');
 
       assert.notCalled(fakeReceiveSlotManager.releaseSlot);
-      assert.notCalled(fakeMediaRequestManagers.video.cancelRequest);
+      assert.notCalled(fakeMediaRequestManagers.video.cancelRequests);
     });
 
     it('works as expected', async () => {
@@ -1727,8 +1727,8 @@ describe('RemoteMediaManager', () => {
       assert.calledWith(fakeReceiveSlotManager.releaseSlot, fakeNewSlot);
 
       // and a media request cancelled
-      assert.calledOnce(fakeMediaRequestManagers.video.cancelRequest);
-      assert.calledWith(fakeMediaRequestManagers.video.cancelRequest, fakeRequestId);
+      assert.calledOnce(fakeMediaRequestManagers.video.cancelRequests);
+      assert.calledWith(fakeMediaRequestManagers.video.cancelRequests, [fakeRequestId]);
     });
   });
 
