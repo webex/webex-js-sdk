@@ -1966,6 +1966,9 @@ export default class Meeting extends StatelessWebexPlugin {
    */
   private setUpVoiceaListeners() {
     // @ts-ignore
+    this.webex.internal.voicea.listenToEvents();
+
+    // @ts-ignore
     this.webex.internal.voicea.on(
       VOICEAEVENTS.VOICEA_ANNOUNCEMENT,
       this.voiceaListenerCallbacks[VOICEAEVENTS.VOICEA_ANNOUNCEMENT]
@@ -1994,6 +1997,8 @@ export default class Meeting extends StatelessWebexPlugin {
       VOICEAEVENTS.HIGHLIGHT_CREATED,
       this.voiceaListenerCallbacks[VOICEAEVENTS.HIGHLIGHT_CREATED]
     );
+
+    this.areVoiceaEventsSetup = true;
   }
 
   /**
@@ -4587,13 +4592,11 @@ export default class Meeting extends StatelessWebexPlugin {
           const {statusCode} = payload;
 
           if (statusCode === 200) {
-            const currentCaptionLanguage =
-              this.transcription.languageOptions.requestedCaptionLanguage ?? LANGUAGE_ENGLISH;
             this.transcription.languageOptions = {
               ...this.transcription.languageOptions,
-              currentCaptionLanguage,
+              currentCaptionLanguage: language,
             };
-            resolve(currentCaptionLanguage);
+            resolve(language);
           } else {
             reject(payload);
           }
@@ -4677,10 +4680,12 @@ export default class Meeting extends StatelessWebexPlugin {
       try {
         if (!this.areVoiceaEventsSetup) {
           this.setUpVoiceaListeners();
-          this.areVoiceaEventsSetup = true;
         }
-        // @ts-ignore
-        await this.webex.internal.voicea.toggleTranscribing(true, options?.spokenLanguage);
+
+        if (this.getCurUserType() === 'host') {
+          // @ts-ignore
+          await this.webex.internal.voicea.toggleTranscribing(true, options?.spokenLanguage);
+        }
       } catch (error) {
         LoggerProxy.logger.error(`Meeting:index#startTranscription --> ${error}`);
         Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.RECEIVE_TRANSCRIPTION_FAILURE, {
@@ -4769,6 +4774,7 @@ export default class Meeting extends StatelessWebexPlugin {
         VOICEAEVENTS.HIGHLIGHT_CREATED,
         this.voiceaListenerCallbacks[VOICEAEVENTS.HIGHLIGHT_CREATED]
       );
+
       this.areVoiceaEventsSetup = false;
       this.triggerStopReceivingTranscriptionEvent();
     }
@@ -5014,15 +5020,33 @@ export default class Meeting extends StatelessWebexPlugin {
       .then((join) => {
         // @ts-ignore - config coming from registerPlugin
         if (this.config.enableAutomaticLLM) {
-          this.updateLLMConnection().catch((error) => {
-            LoggerProxy.logger.error('Meeting:index#join --> Update LLM Connection Failed', error);
+          this.updateLLMConnection()
+            .catch((error) => {
+              LoggerProxy.logger.error(
+                'Meeting:index#join --> Transcription Socket Connection Failed',
+                error
+              );
 
-            Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.LLM_CONNECTION_AFTER_JOIN_FAILURE, {
-              correlation_id: this.correlationId,
-              reason: error?.message,
-              stack: error.stack,
+              Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.LLM_CONNECTION_AFTER_JOIN_FAILURE, {
+                correlation_id: this.correlationId,
+                reason: error?.message,
+                stack: error.stack,
+              });
+            })
+            .then(() => {
+              LoggerProxy.logger.info(
+                'Meeting:index#join --> Transcription Socket Connection Success'
+              );
+              Trigger.trigger(
+                this,
+                {
+                  file: 'meeting/index',
+                  function: 'join',
+                },
+                EVENT_TRIGGERS.MEETING_TRANSCRIPTION_CONNECTED,
+                undefined
+              );
             });
-          });
         }
 
         return join;
@@ -7672,6 +7696,9 @@ export default class Meeting extends StatelessWebexPlugin {
       }
       if (roles.includes(SELF_ROLES.COHOST)) {
         return 'cohost';
+      }
+      if (roles.includes(SELF_ROLES.PRESENTER)) {
+        return 'presenter';
       }
       if (roles.includes(SELF_ROLES.ATTENDEE)) {
         return 'attendee';

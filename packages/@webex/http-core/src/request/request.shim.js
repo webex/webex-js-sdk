@@ -12,7 +12,6 @@
 import {defaults, isArray, pick} from 'lodash';
 import qs from 'qs';
 
-import {Blob} from 'buffer';
 import xhr from '../lib/xhr';
 import detect from '../lib/detect';
 
