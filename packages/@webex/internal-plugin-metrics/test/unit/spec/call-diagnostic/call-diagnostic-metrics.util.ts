@@ -39,7 +39,6 @@ describe('internal-plugin-metrics', () => {
         },
       };
       clearEmptyKeysRecursively(obj);
-      console.log(obj);
       assert.deepEqual(obj, {nested: {arr: ['test']}});
     });
 

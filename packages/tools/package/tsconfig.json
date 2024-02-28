@@ -1,9 +1,5 @@
 {
-  "extends": "@webex/typescript-config/static/index.json",
-  "compilerOptions": {
-    "outDir": "./dist/module",
-    "declarationDir": "./dist/types",
-  },
+  "extends": "./../../../config/typescript/modern.json",
   "include": [
     "./src/**/*.ts"
   ]

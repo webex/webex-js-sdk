@@ -165,6 +165,47 @@ describe('Call Tests', () => {
     expect(call).toBeTruthy();
   });
 
+  it('should log a warning when sending a digit fails', async () => {
+    const tone = '1';
+    const errorMessage = 'Failed to send digit';
+
+    // Mock the mediaConnection object
+    const mockMediaConnection = {
+      insertDTMF: jest.fn(() => {
+        throw new Error(errorMessage);
+      }),
+    };
+
+    const callManager = getCallManager(webex, defaultServiceIndicator);
+
+    const call = callManager.createCall(dest, CallDirection.OUTBOUND, deviceId, mockLineId);
+
+    const realMediaConnection = call.mediaConnection;
+    // Set the mock mediaConnection object
+    call.mediaConnection = mockMediaConnection;
+
+    // Spy on the log.warn method
+    const logWarnSpy = jest.spyOn(log, 'warn');
+
+    // Call the sendDigit method
+    call.sendDigit(tone);
+
+    // Expect the log.warn method to be called with the error message
+    expect(logWarnSpy).toHaveBeenLastCalledWith(`Unable to send digit on call: ${errorMessage}`, {
+      file: 'call',
+      method: 'sendDigit',
+    });
+
+    // Restore the real mediaConnection object
+    call.mediaConnection = realMediaConnection;
+
+    call.end();
+    await waitForMsecs(50); // Need to add a small delay for Promise and callback to finish.
+
+    /* After call ends, call manager should have 0 record */
+    expect(Object.keys(callManager.getActiveCalls()).length).toBe(0);
+  });
+
   it('delete call object when ending the call', async () => {
     webex.request.mockReturnValue({
       statusCode: 200,
@@ -755,13 +796,6 @@ describe('State Machine handler tests', () => {
     expect(call['callStateMachine'].state.value).toBe('S_UNKNOWN');
     expect(stateMachineSpy).toBeCalledTimes(3);
     expect(warnSpy).toBeCalledTimes(4);
-    warnSpy.mockClear();
-    /* Try sending a dtmf which shouldn't work as call is not connected. */
-    call.sendDigit('1');
-    expect(warnSpy).toBeCalledOnceWith(`Can't send DTMF as call is not yet connected`, {
-      file: 'call',
-      method: 'sendDigit',
-    });
   });
 
   it('state changes during successful outgoing call', async () => {
@@ -847,6 +881,87 @@ describe('State Machine handler tests', () => {
 
     dummyEvent.type = 'E_RECV_CALL_CONNECT';
     call.sendCallStateMachineEvt(dummyEvent as CallEvent);
+    expect(call['callStateMachine'].state.value).toBe('S_CALL_ESTABLISHED');
+    expect(call.isConnected()).toBe(true);
+
+    call.sendCallStateMachineEvt({type: 'E_SEND_CALL_DISCONNECT'});
+    expect(call['callStateMachine'].state.value).toBe('S_SEND_CALL_DISCONNECT');
+  });
+
+  it('outgoing call where we receive connect directly after setup. Media established before connect. test call and media state changes', async () => {
+    const statusPayload = <WebexRequestPayload>(<unknown>{
+      statusCode: 200,
+      body: mockStatusBody,
+    });
+
+    const dummySetupEvent = {
+      type: 'E_SEND_CALL_SETUP',
+      data: undefined as any,
+    };
+
+    const dummyConnectEvent = {
+      type: 'E_RECV_CALL_CONNECT',
+      data: undefined as any,
+    };
+
+    const dummyOfferEvent = {
+      type: 'E_SEND_ROAP_OFFER',
+      data: undefined as any,
+    };
+
+    const dummyAnswerEvent = {
+      type: 'E_RECV_ROAP_ANSWER',
+      data: {
+        seq: 1,
+        messageType: 'ANSWER',
+        sdp: 'sdp',
+      },
+    };
+
+    const dummyOkEvent = {
+      type: 'E_ROAP_OK',
+      data: {
+        received: false,
+        message: {
+          seq: 1,
+          messageType: 'OK',
+        },
+      },
+    };
+
+    const postMediaSpy = jest.spyOn(call as any, 'postMedia');
+
+    webex.request.mockReturnValue(statusPayload);
+
+    call.sendCallStateMachineEvt(dummySetupEvent as CallEvent);
+    expect(call['callStateMachine'].state.value).toBe('S_SEND_CALL_SETUP');
+
+    call.sendMediaStateMachineEvt(dummyOfferEvent as RoapEvent);
+
+    /**
+     * Since the event doesn't have any data above, we should request media sdk for an offer here.
+     * The below event is expected to be called again my mediaSdk.
+     */
+    dummyOfferEvent.data = {
+      seq: 1,
+      messageType: 'OFFER',
+      sdp: 'sdp',
+    };
+    call.sendMediaStateMachineEvt(dummyOfferEvent as RoapEvent);
+    expect(mediaConnection.initiateOffer).toHaveBeenCalledTimes(1);
+    expect(postMediaSpy).toHaveBeenLastCalledWith(dummyOfferEvent.data as RoapMessage);
+
+    call.sendMediaStateMachineEvt(dummyAnswerEvent as RoapEvent);
+    expect(mediaConnection.roapMessageReceived).toHaveBeenLastCalledWith(
+      dummyAnswerEvent.data as RoapMessage
+    );
+
+    call.sendMediaStateMachineEvt(dummyOkEvent as RoapEvent);
+    expect(postMediaSpy).toHaveBeenLastCalledWith(dummyOkEvent.data.message as RoapMessage);
+
+    expect(call['mediaStateMachine'].state.value).toBe('S_ROAP_OK');
+
+    call.sendCallStateMachineEvt(dummyConnectEvent as CallEvent);
     expect(call['callStateMachine'].state.value).toBe('S_CALL_ESTABLISHED');
     expect(call.isConnected()).toBe(true);
 

@@ -67,31 +67,34 @@
             <option value="oauth">OAuth</option>
           </select>
         </div>
-    
+
         <fieldset>
           <legend>Authentication</legend>
-    
+
           <div style="display: flex; justify-content: space-between;">
             <div>
               <legend>Environment</legend>
               <input type="checkbox" id="integration-env">
               <label for="integration-env">Enable Integration Environment</label><br>
             </div>
-      
+
             <div>
               <legend>FedRAMP</legend>
               <input type="checkbox" id="enable-fedramp">
               <label for="enable-fedramp">Enable Fedramp</label>
             </div>
-      
+
             <div>
               <legend>Meetings</legend>
-              <input type="checkbox" checked id="enable-turn-discovery">
-              <label for="enable-turn-discovery">Enable TURN discovery (experimental)</label>
+              <input type="checkbox" id="enable-tcp-reachability">
+              <label for="enable-tcp-reachability">Enable TCP reachability (experimental)</label>
+              <br/>
+              <input id="meetings-enable-llm" checked type="checkbox">
+              <label for="meetings-enable-llm-label">Enable LLM</label>
             </div>
           </div>
-    
-    
+
+
           <form id="credentials">
             <p class="note">
               NOTE: Click <a href="https://developer.webex.com/docs/getting-started" target="_blank">here</a> for
@@ -106,6 +109,7 @@
               <p id="access-token-status" class="status-par">Not initialized</p>
             </div>
           </form>
+
           <form id="oauth" class="hidden">
             <div>
               <button id="oauth-login-btn" type="submit" class="btn-code">Login</button>
@@ -289,6 +293,22 @@
           </fieldset>
         </div>
 
+        <div id="voicea-transcription-formatted-display-wrapper">
+          <fieldset>
+            <legend>Voicea Transcription</legend>
+            <div class="u-mv">
+              You will see the formatted transcription below if you have did the following,
+              <ul>
+                <li>Set the <span class="inline-code">enableAutomaticLLM</span> config to <span class="inline-code">true</span> before doing <span class="inline-code">webex.init()</span></li>
+                <li>Invoked <span class="inline-code">meeting.startTranscription()</span> after joining the meeting</li>
+              </ul>
+              <div id="voicea-transcription-formatted-display">
+
+              </div>
+              <br>
+              <span style='color:red;font-weight: bold;'>Note</span> - Scroll to <b>Advanced Meeting Controls</b> section for transcription controls
+            </div>
+          </fieldset>
       </div>
     </section>
   </div>
@@ -366,8 +386,10 @@
               <label for="meetings-join-moderator">Join as Moderator</label>
               <input id="meetings-join-breakout-enabled" type="checkbox">
               <label for="meetings-join-breakout-enabled">Support breakout sessions</label>
-              <input id="meetings-media-in-lobby-enabled" type="checkbox">
+              <input id="meetings-media-in-lobby-enabled" checked type="checkbox">
               <label for="meetings-media-in-lobby-enabled">Support media in lobby</label>
+              <input id="meetings-enable-transcription" type="checkbox">
+              <label for="meetings-enable-transcription-label">Enable Transcription (Sample app only)</label>
               <p id="password-captcha-status" class="status-par">Click verifyPassword for details</p>
             </div>
 
@@ -404,7 +426,7 @@
                     <button style="width: 95%;" id="btn-join" onclick="getUserMedia()" class="btn-code meeting-dependent">Get Media Streams</button>
                     <button style="width: 95%;" id="btn-join" onclick="addMedia()" class="btn-code meeting-dependent">Add Media</button>
                     <button style="width: 95%;" id="update-media" type="button" onclick="updateMedia()" class="btn-code meeting-dependent">Update Media</button>
-                  </div>                  
+                  </div>
                 </div>
               </div>
 
@@ -821,10 +843,12 @@
             <legend>Transcription</legend>
             <div class="transcription">
               <div class="btn-group u-mb">
-                <button id="gc-start-receiving-transcription" disabled="" type="button"
-                  onclick="startReceivingTranscription()" class="btn-code">startReceivingTranscription() (click me before joining)</button>
-                <button id="gc-stop-receiving-transcription" disabled="" type="button"
-                  onclick="stopReceivingTranscription()" class="btn-code">stopReceivingTranscription()</button>
+                <button id="gc-toggle-transcription" type="button"
+                  onclick="toggleTranscription()" class="btn-code" data-enabled="false">Start Transcription</button>
+                <br>
+                Caption Language: <select id="voicea-caption-language" style="display: inline;" disabled></select><button id="voicea-caption-language-btn" onclick="setCaptionLanguage()" disabled>meeting.setCaptionLanguage()</button><br/>
+                Spoken Language: <select id="voicea-spoken-language" style="display: inline;" disabled></select><button id="voicea-spoken-language-btn"  onclick="setSpokenLanguage()" disabled>meeting.setSpokenLanguage()</button>
+                <br>
               </div>
               <textarea id="gc-transcription-content"
                 disabled="">Transcription Content: Webex Assistant must be enabled, check the console!</textarea>
@@ -851,7 +875,23 @@
     </section>
   </div>
   <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/handlebars@latest/dist/handlebars.js"></script>
   <script src="../webex.min.js"></script>
+  <script id="voicea-transcription-template" type="text/x-handlebars-template">
+    {{#each data}}
+      <div>
+        <b>{{this.speaker.name}}:</b>
+        {{#if this.translations}}
+          {{#each (forIn this.translations)}}
+            {{{this.value}}}
+          {{/each}}
+        {{else}}
+          {{{this.text}}}
+        {{/if}}
+        <sub><b>{{this.timestamp}}</b></sub>
+      </div>
+    {{/each}}
+  </script>
   <script src="app.js"></script>
 </body>
 

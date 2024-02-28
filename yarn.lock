@@ -2479,6 +2479,17 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@es-joy/jsdoccomment@npm:~0.41.0":
+  version: 0.41.0
+  resolution: "@es-joy/jsdoccomment@npm:0.41.0"
+  dependencies:
+    comment-parser: 1.4.1
+    esquery: ^1.5.0
+    jsdoc-type-pratt-parser: ~4.0.0
+  checksum: cfe0714027ff8fa82dad8c84f75af3f6df9d6797d60c289b8d3c259c5375c134bd5ca630beba0daed3adceef01a74f19e05052018f6b66ad6a4f483adf599c39
+  languageName: node
+  linkType: hard
+
 "@esbuild/android-arm64@npm:0.17.19":
   version: 0.17.19
   resolution: "@esbuild/android-arm64@npm:0.17.19"
@@ -2668,10 +2679,34 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@eslint/eslintrc@npm:^2.1.4":
+  version: 2.1.4
+  resolution: "@eslint/eslintrc@npm:2.1.4"
+  dependencies:
+    ajv: ^6.12.4
+    debug: ^4.3.2
+    espree: ^9.6.0
+    globals: ^13.19.0
+    ignore: ^5.2.0
+    import-fresh: ^3.2.1
+    js-yaml: ^4.1.0
+    minimatch: ^3.1.2
+    strip-json-comments: ^3.1.1
+  checksum: 10957c7592b20ca0089262d8c2a8accbad14b4f6507e35416c32ee6b4dbf9cad67dfb77096bbd405405e9ada2b107f3797fe94362e1c55e0b09d6e90dd149127
+  languageName: node
+  linkType: hard
+
 "@eslint/js@npm:8.54.0":
   version: 8.54.0
   resolution: "@eslint/js@npm:8.54.0"
   checksum: 6d88a6f711ef0133566b5340e3178a178fbb297585766460f195d0a9db85688f1e5cf8559fd5748aeb3131e2096c66595b323d8edab22df015acda68f1ebde92
+  languageName: node
+  linkType: hard
+
+"@eslint/js@npm:8.56.0":
+  version: 8.56.0
+  resolution: "@eslint/js@npm:8.56.0"
+  checksum: 5804130574ef810207bdf321c265437814e7a26f4e6fac9b496de3206afd52f533e09ec002a3be06cd9adcc9da63e727f1883938e663c4e4751c007d5b58e539
   languageName: node
   linkType: hard
 
@@ -3167,6 +3202,19 @@ __metadata:
     slash: ^3.0.0
     write-file-atomic: ^4.0.2
   checksum: 0f8ac9f413903b3cb6d240102db848f2a354f63971ab885833799a9964999dd51c388162106a807f810071f864302cdd8e3f0c241c29ce02d85a36f18f3f40ab
+  languageName: node
+  linkType: hard
+
+"@jest/types@npm:^26.6.2":
+  version: 26.6.2
+  resolution: "@jest/types@npm:26.6.2"
+  dependencies:
+    "@types/istanbul-lib-coverage": ^2.0.0
+    "@types/istanbul-reports": ^3.0.0
+    "@types/node": "*"
+    "@types/yargs": ^15.0.0
+    chalk: ^4.0.0
+  checksum: a0bd3d2f22f26ddb23f41fddf6e6a30bf4fab2ce79ec1cb6ce6fdfaf90a72e00f4c71da91ec61e13db3b10c41de22cf49d07c57ff2b59171d64b29f909c1d8d6
   languageName: node
   linkType: hard
 
@@ -3678,6 +3726,23 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@microsoft/api-documenter@npm:7.23.20":
+  version: 7.23.20
+  resolution: "@microsoft/api-documenter@npm:7.23.20"
+  dependencies:
+    "@microsoft/api-extractor-model": 7.28.7
+    "@microsoft/tsdoc": 0.14.2
+    "@rushstack/node-core-library": 3.64.2
+    "@rushstack/ts-command-line": 4.17.1
+    colors: ~1.2.1
+    js-yaml: ~3.13.1
+    resolve: ~1.22.1
+  bin:
+    api-documenter: bin/api-documenter
+  checksum: 4589bebe278aac044ccdf671f1635947018dd3f94d20244bb34db37721a4ebd6b07cca97f8cca4cc0b287164fd483e6b8a7e1b8a56e1b1f19695e66bd892bf89
+  languageName: node
+  linkType: hard
+
 "@microsoft/api-documenter@npm:^7.21.5":
   version: 7.23.12
   resolution: "@microsoft/api-documenter@npm:7.23.12"
@@ -3703,6 +3768,39 @@ __metadata:
     "@microsoft/tsdoc-config": ~0.16.1
     "@rushstack/node-core-library": 3.61.0
   checksum: 0eb1cb511414813eeb890778af7dc57e5adcd078ba040a91a736a63964b306a1d31f8b97a76286884432a7884808960a16160d49720c46e23472124f035b9023
+  languageName: node
+  linkType: hard
+
+"@microsoft/api-extractor-model@npm:7.28.7":
+  version: 7.28.7
+  resolution: "@microsoft/api-extractor-model@npm:7.28.7"
+  dependencies:
+    "@microsoft/tsdoc": 0.14.2
+    "@microsoft/tsdoc-config": ~0.16.1
+    "@rushstack/node-core-library": 3.64.2
+  checksum: 8d040cb1b84e6a97637f6cd858cefac292cdebfa9233256efb3db72653841546247e7a5e63b3d886cb59fd489184f2a11df2eafb797c558ec8b62e580412d662
+  languageName: node
+  linkType: hard
+
+"@microsoft/api-extractor@npm:7.39.4":
+  version: 7.39.4
+  resolution: "@microsoft/api-extractor@npm:7.39.4"
+  dependencies:
+    "@microsoft/api-extractor-model": 7.28.7
+    "@microsoft/tsdoc": 0.14.2
+    "@microsoft/tsdoc-config": ~0.16.1
+    "@rushstack/node-core-library": 3.64.2
+    "@rushstack/rig-package": 0.5.1
+    "@rushstack/ts-command-line": 4.17.1
+    colors: ~1.2.1
+    lodash: ~4.17.15
+    resolve: ~1.22.1
+    semver: ~7.5.4
+    source-map: ~0.6.1
+    typescript: 5.3.3
+  bin:
+    api-extractor: bin/api-extractor
+  checksum: 94a2800d4c22b5bbd781474f08848f736877b792981f4009f53e892b1bfe14434a9bde535725d070670cb6977178b8127d2a3d9cdb82b7a2e1095e71315aa67e
   languageName: node
   linkType: hard
 
@@ -4077,6 +4175,26 @@ __metadata:
     "@types/node":
       optional: true
   checksum: a6f790cd521ca5b0b10ee918d8352c7dd7a0b2457aaf6a4f37d8f7bedee680d7d0126476f5ee5147952e08b11dea37926acb45f7432cd16c828690d3b9bfd34b
+  languageName: node
+  linkType: hard
+
+"@rushstack/node-core-library@npm:3.64.2":
+  version: 3.64.2
+  resolution: "@rushstack/node-core-library@npm:3.64.2"
+  dependencies:
+    colors: ~1.2.1
+    fs-extra: ~7.0.1
+    import-lazy: ~4.0.0
+    jju: ~1.4.0
+    resolve: ~1.22.1
+    semver: ~7.5.4
+    z-schema: ~5.0.2
+  peerDependencies:
+    "@types/node": "*"
+  peerDependenciesMeta:
+    "@types/node":
+      optional: true
+  checksum: ea75eeb221ef3a2f05f2a9d375f75d01b30c666502acfee810a987caf90cf77f6cc7cbefd8fb375eb7c97d775f91b24985cd3b4a50e69ab7061713e303ff5148
   languageName: node
   linkType: hard
 
@@ -4602,6 +4720,16 @@ __metadata:
     "@types/estree": "*"
     "@types/json-schema": "*"
   checksum: 72a52f74477fbe7cc95ad290b491f51f0bc547cb7ea3672c68da3ffd3fb21ba86145bc36823a37d0a186caedeaee15b2d2a6b4c02c6c55819ff746053bd28310
+  languageName: node
+  linkType: hard
+
+"@types/eslint@npm:8.56.0":
+  version: 8.56.0
+  resolution: "@types/eslint@npm:8.56.0"
+  dependencies:
+    "@types/estree": "*"
+    "@types/json-schema": "*"
+  checksum: 8eca14c1ca8a4dbbcbf6bed67775db9dd2f9947802d6da39fa0c4c297a1e5465e898332232bb51980586a9a45b1b21bc13fd79fcc81adcd4c86062372e9bab6d
   languageName: node
   linkType: hard
 
@@ -5427,6 +5555,15 @@ __metadata:
   version: 21.0.3
   resolution: "@types/yargs-parser@npm:21.0.3"
   checksum: ef236c27f9432983e91432d974243e6c4cdae227cb673740320eff32d04d853eed59c92ca6f1142a335cfdc0e17cccafa62e95886a8154ca8891cc2dec4ee6fc
+  languageName: node
+  linkType: hard
+
+"@types/yargs@npm:^15.0.0":
+  version: 15.0.19
+  resolution: "@types/yargs@npm:15.0.19"
+  dependencies:
+    "@types/yargs-parser": "*"
+  checksum: 6a509db36304825674f4f00300323dce2b4d850e75819c3db87e9e9f213ac2c4c6ed3247a3e4eed6e8e45b3f191b133a356d3391dd694d9ea27a0507d914ef4c
   languageName: node
   linkType: hard
 
@@ -6402,7 +6539,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@webex/api-extractor-config@workspace:^, @webex/api-extractor-config@workspace:packages/config/api-extractor":
+"@webex/api-extractor-config@workspace:*, @webex/api-extractor-config@workspace:packages/config/api-extractor":
   version: 0.0.0-use.local
   resolution: "@webex/api-extractor-config@workspace:packages/config/api-extractor"
   peerDependencies:
@@ -6410,7 +6547,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/babel-config-legacy@workspace:^, @webex/babel-config-legacy@workspace:packages/legacy/babel":
+"@webex/babel-config-legacy@workspace:*, @webex/babel-config-legacy@workspace:packages/legacy/babel":
   version: 0.0.0-use.local
   resolution: "@webex/babel-config-legacy@workspace:packages/legacy/babel"
   dependencies:
@@ -6443,7 +6580,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/calling@workspace:^, @webex/calling@workspace:packages/calling":
+"@webex/calling@workspace:*, @webex/calling@workspace:packages/calling":
   version: 0.0.0-use.local
   resolution: "@webex/calling@workspace:packages/calling"
   dependencies:
@@ -6463,7 +6600,7 @@ __metadata:
     "@typescript-eslint/parser": 5.38.1
     "@web/dev-server": 0.1.30
     "@webex/internal-media-core": 2.0.0
-    "@webex/media-helpers": "workspace:^"
+    "@webex/media-helpers": "workspace:*"
     async-mutex: 0.4.0
     buffer: 6.0.3
     chai: 4.3.4
@@ -6511,27 +6648,25 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/cli-tools@workspace:^, @webex/cli-tools@workspace:packages/tools/cli":
+"@webex/cli-tools@workspace:*, @webex/cli-tools@workspace:packages/tools/cli":
   version: 0.0.0-use.local
   resolution: "@webex/cli-tools@workspace:packages/tools/cli"
   dependencies:
-    "@microsoft/api-documenter": ^7.21.5
-    "@microsoft/api-extractor": ^7.34.4
-    "@types/eslint": ^8
-    "@types/jasmine": ^4
-    "@types/shelljs": ^0
-    "@webex/api-extractor-config": "workspace:^"
-    "@webex/eslint-config": "workspace:^"
-    "@webex/jasmine-config": "workspace:^"
-    "@webex/nyc-config": "workspace:^"
-    "@webex/typescript-config": "workspace:^"
-    commander: ^10.0.0
-    eslint: ^8.35.0
-    jasmine: ^4.5.0
-    nyc: ^15.1.0
-    rimraf: ^4.1.2
+    "@microsoft/api-documenter": 7.23.20
+    "@microsoft/api-extractor": 7.39.4
+    "@types/eslint": 8.56.0
+    commander: 11.1.0
+    eslint: 8.56.0
+    eslint-config-airbnb-base: 15.0.0
+    eslint-config-airbnb-typescript: 17.1.0
+    eslint-plugin-import: 2.29.1
+    eslint-plugin-jsdoc: 48.0.4
+    eslint-plugin-tsdoc: 0.2.17
+    jest: 29.7.0
+    jest-silent-reporter: 0.5.0
+    rimraf: 5.0.5
     shelljs: ^0.8.5
-    typescript: ^4.9.5
+    typescript: 5.3.3
   languageName: unknown
   linkType: soft
 
@@ -6540,15 +6675,15 @@ __metadata:
   resolution: "@webex/common-evented@workspace:packages/@webex/common-evented"
   dependencies:
     "@babel/core": ^7.17.10
-    "@webex/babel-config-legacy": "workspace:^"
-    "@webex/common": "workspace:^"
-    "@webex/eslint-config-legacy": "workspace:^"
-    "@webex/jest-config-legacy": "workspace:^"
-    "@webex/legacy-tools": "workspace:^"
-    "@webex/test-helper-chai": "workspace:^"
-    "@webex/test-helper-mocha": "workspace:^"
-    "@webex/test-helper-mock-webex": "workspace:^"
-    "@webex/test-helper-test-users": "workspace:^"
+    "@webex/babel-config-legacy": "workspace:*"
+    "@webex/common": "workspace:*"
+    "@webex/eslint-config-legacy": "workspace:*"
+    "@webex/jest-config-legacy": "workspace:*"
+    "@webex/legacy-tools": "workspace:*"
+    "@webex/test-helper-chai": "workspace:*"
+    "@webex/test-helper-mocha": "workspace:*"
+    "@webex/test-helper-mock-webex": "workspace:*"
+    "@webex/test-helper-test-users": "workspace:*"
     ampersand-events: ^2.0.2
     eslint: ^8.24.0
     prettier: ^2.7.1
@@ -6556,38 +6691,38 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/common-timers@workspace:^, @webex/common-timers@workspace:packages/@webex/common-timers":
+"@webex/common-timers@workspace:*, @webex/common-timers@workspace:packages/@webex/common-timers":
   version: 0.0.0-use.local
   resolution: "@webex/common-timers@workspace:packages/@webex/common-timers"
   dependencies:
     "@babel/core": ^7.17.10
-    "@webex/babel-config-legacy": "workspace:^"
-    "@webex/eslint-config-legacy": "workspace:^"
-    "@webex/jest-config-legacy": "workspace:^"
-    "@webex/legacy-tools": "workspace:^"
-    "@webex/test-helper-chai": "workspace:^"
-    "@webex/test-helper-mocha": "workspace:^"
-    "@webex/test-helper-mock-webex": "workspace:^"
-    "@webex/test-helper-test-users": "workspace:^"
+    "@webex/babel-config-legacy": "workspace:*"
+    "@webex/eslint-config-legacy": "workspace:*"
+    "@webex/jest-config-legacy": "workspace:*"
+    "@webex/legacy-tools": "workspace:*"
+    "@webex/test-helper-chai": "workspace:*"
+    "@webex/test-helper-mocha": "workspace:*"
+    "@webex/test-helper-mock-webex": "workspace:*"
+    "@webex/test-helper-test-users": "workspace:*"
     eslint: ^8.24.0
     prettier: ^2.7.1
   languageName: unknown
   linkType: soft
 
-"@webex/common@workspace:^, @webex/common@workspace:packages/@webex/common":
+"@webex/common@workspace:*, @webex/common@workspace:packages/@webex/common":
   version: 0.0.0-use.local
   resolution: "@webex/common@workspace:packages/@webex/common"
   dependencies:
     "@babel/core": ^7.17.10
     "@sinonjs/fake-timers": ^6.0.1
-    "@webex/babel-config-legacy": "workspace:^"
-    "@webex/eslint-config-legacy": "workspace:^"
-    "@webex/jest-config-legacy": "workspace:^"
-    "@webex/legacy-tools": "workspace:^"
-    "@webex/test-helper-chai": "workspace:^"
-    "@webex/test-helper-mocha": "workspace:^"
-    "@webex/test-helper-mock-webex": "workspace:^"
-    "@webex/test-helper-test-users": "workspace:^"
+    "@webex/babel-config-legacy": "workspace:*"
+    "@webex/eslint-config-legacy": "workspace:*"
+    "@webex/jest-config-legacy": "workspace:*"
+    "@webex/legacy-tools": "workspace:*"
+    "@webex/test-helper-chai": "workspace:*"
+    "@webex/test-helper-mocha": "workspace:*"
+    "@webex/test-helper-mock-webex": "workspace:*"
+    "@webex/test-helper-test-users": "workspace:*"
     ampersand-state: ^5.0.3
     backoff: ^2.5.0
     bowser: ^2.11.0
@@ -6602,7 +6737,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/env-config-legacy@workspace:^, @webex/env-config-legacy@workspace:packages/legacy/env":
+"@webex/env-config-legacy@workspace:*, @webex/env-config-legacy@workspace:packages/legacy/env":
   version: 0.0.0-use.local
   resolution: "@webex/env-config-legacy@workspace:packages/legacy/env"
   dependencies:
@@ -6611,18 +6746,18 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/esbuild-config@workspace:^, @webex/esbuild-config@workspace:packages/config/esbuild":
+"@webex/esbuild-config@workspace:*, @webex/esbuild-config@workspace:packages/config/esbuild":
   version: 0.0.0-use.local
   resolution: "@webex/esbuild-config@workspace:packages/config/esbuild"
   dependencies:
-    "@webex/eslint-config": "workspace:^"
+    "@webex/eslint-config": "workspace:*"
     eslint: ^8.35.0
   peerDependencies:
     esbuild: ^0.17.11
   languageName: unknown
   linkType: soft
 
-"@webex/eslint-config-legacy@workspace:^, @webex/eslint-config-legacy@workspace:packages/legacy/eslint":
+"@webex/eslint-config-legacy@workspace:*, @webex/eslint-config-legacy@workspace:packages/legacy/eslint":
   version: 0.0.0-use.local
   resolution: "@webex/eslint-config-legacy@workspace:packages/legacy/eslint"
   dependencies:
@@ -6646,7 +6781,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/eslint-config@workspace:^, @webex/eslint-config@workspace:packages/config/eslint":
+"@webex/eslint-config@workspace:*, @webex/eslint-config@workspace:packages/config/eslint":
   version: 0.0.0-use.local
   resolution: "@webex/eslint-config@workspace:packages/config/eslint"
   dependencies:
@@ -6677,40 +6812,40 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@webex/helper-html@workspace:^, @webex/helper-html@workspace:packages/@webex/helper-html":
+"@webex/helper-html@workspace:*, @webex/helper-html@workspace:packages/@webex/helper-html":
   version: 0.0.0-use.local
   resolution: "@webex/helper-html@workspace:packages/@webex/helper-html"
   dependencies:
     "@babel/core": ^7.17.10
-    "@webex/babel-config-legacy": "workspace:^"
-    "@webex/eslint-config-legacy": "workspace:^"
-    "@webex/jest-config-legacy": "workspace:^"
-    "@webex/legacy-tools": "workspace:^"
-    "@webex/test-helper-chai": "workspace:^"
-    "@webex/test-helper-mocha": "workspace:^"
-    "@webex/test-helper-mock-webex": "workspace:^"
-    "@webex/test-helper-test-users": "workspace:^"
+    "@webex/babel-config-legacy": "workspace:*"
+    "@webex/eslint-config-legacy": "workspace:*"
+    "@webex/jest-config-legacy": "workspace:*"
+    "@webex/legacy-tools": "workspace:*"
+    "@webex/test-helper-chai": "workspace:*"
+    "@webex/test-helper-mocha": "workspace:*"
+    "@webex/test-helper-mock-webex": "workspace:*"
+    "@webex/test-helper-test-users": "workspace:*"
     eslint: ^8.24.0
     lodash: ^4.17.21
     prettier: ^2.7.1
   languageName: unknown
   linkType: soft
 
-"@webex/helper-image@workspace:^, @webex/helper-image@workspace:packages/@webex/helper-image":
+"@webex/helper-image@workspace:*, @webex/helper-image@workspace:packages/@webex/helper-image":
   version: 0.0.0-use.local
   resolution: "@webex/helper-image@workspace:packages/@webex/helper-image"
   dependencies:
     "@babel/core": ^7.17.10
-    "@webex/babel-config-legacy": "workspace:^"
-    "@webex/eslint-config-legacy": "workspace:^"
-    "@webex/http-core": "workspace:^"
-    "@webex/jest-config-legacy": "workspace:^"
-    "@webex/legacy-tools": "workspace:^"
-    "@webex/test-helper-chai": "workspace:^"
-    "@webex/test-helper-file": "workspace:^"
-    "@webex/test-helper-mocha": "workspace:^"
-    "@webex/test-helper-mock-webex": "workspace:^"
-    "@webex/test-helper-test-users": "workspace:^"
+    "@webex/babel-config-legacy": "workspace:*"
+    "@webex/eslint-config-legacy": "workspace:*"
+    "@webex/http-core": "workspace:*"
+    "@webex/jest-config-legacy": "workspace:*"
+    "@webex/legacy-tools": "workspace:*"
+    "@webex/test-helper-chai": "workspace:*"
+    "@webex/test-helper-file": "workspace:*"
+    "@webex/test-helper-mocha": "workspace:*"
+    "@webex/test-helper-mock-webex": "workspace:*"
+    "@webex/test-helper-test-users": "workspace:*"
     eslint: ^8.24.0
     exifr: ^5.0.3
     gm: ^1.23.1
@@ -6722,24 +6857,24 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/http-core@workspace:^, @webex/http-core@workspace:packages/@webex/http-core":
+"@webex/http-core@workspace:*, @webex/http-core@workspace:packages/@webex/http-core":
   version: 0.0.0-use.local
   resolution: "@webex/http-core@workspace:packages/@webex/http-core"
   dependencies:
     "@babel/core": ^7.17.10
-    "@webex/babel-config-legacy": "workspace:^"
-    "@webex/common": "workspace:^"
-    "@webex/eslint-config-legacy": "workspace:^"
-    "@webex/internal-plugin-device": "workspace:^"
-    "@webex/jest-config-legacy": "workspace:^"
-    "@webex/legacy-tools": "workspace:^"
-    "@webex/test-helper-chai": "workspace:^"
-    "@webex/test-helper-file": "workspace:^"
-    "@webex/test-helper-make-local-url": "workspace:^"
-    "@webex/test-helper-mocha": "workspace:^"
-    "@webex/test-helper-mock-webex": "workspace:^"
-    "@webex/test-helper-test-users": "workspace:^"
-    "@webex/webex-core": "workspace:^"
+    "@webex/babel-config-legacy": "workspace:*"
+    "@webex/common": "workspace:*"
+    "@webex/eslint-config-legacy": "workspace:*"
+    "@webex/internal-plugin-device": "workspace:*"
+    "@webex/jest-config-legacy": "workspace:*"
+    "@webex/legacy-tools": "workspace:*"
+    "@webex/test-helper-chai": "workspace:*"
+    "@webex/test-helper-file": "workspace:*"
+    "@webex/test-helper-make-local-url": "workspace:*"
+    "@webex/test-helper-mocha": "workspace:*"
+    "@webex/test-helper-mock-webex": "workspace:*"
+    "@webex/test-helper-test-users": "workspace:*"
+    "@webex/webex-core": "workspace:*"
     eslint: ^8.24.0
     file-type: ^16.0.1
     global: ^4.4.0
@@ -6772,43 +6907,43 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@webex/internal-media-core@npm:2.2.3":
-  version: 2.2.3
-  resolution: "@webex/internal-media-core@npm:2.2.3"
+"@webex/internal-media-core@npm:2.2.6":
+  version: 2.2.6
+  resolution: "@webex/internal-media-core@npm:2.2.6"
   dependencies:
-    "@babel/runtime": "npm:^7.18.9"
-    "@webex/ts-sdp": "npm:1.6.0"
-    "@webex/web-client-media-engine": "npm:3.11.4"
-    detectrtc: "npm:^1.4.1"
-    events: "npm:^3.3.0"
-    typed-emitter: "npm:^2.1.0"
-    uuid: "npm:^8.3.2"
-    webrtc-adapter: "npm:^8.1.2"
-    xstate: "npm:^4.30.6"
-  checksum: 058641f326c3e4995f0335efe8156c017137be885072132c16ccb717fdc47f6c67310180020e66781f55bf688bb71a117bcaa2ccafca91f5ddfcc821e693ef92
+    "@babel/runtime": ^7.18.9
+    "@webex/ts-sdp": 1.6.0
+    "@webex/web-client-media-engine": 3.11.7
+    detectrtc: ^1.4.1
+    events: ^3.3.0
+    typed-emitter: ^2.1.0
+    uuid: ^8.3.2
+    webrtc-adapter: ^8.1.2
+    xstate: ^4.30.6
+  checksum: ee7aef90860d0ae47852bea0907bcdec56093497c6e5f498ee60d0d7620af5a6fc2d9bebf4265ecf0b519522a4bc90a14d20ff49ba617a2b6f9683f893c8d66a
   languageName: node
   linkType: hard
 
-"@webex/internal-plugin-avatar@workspace:^, @webex/internal-plugin-avatar@workspace:packages/@webex/internal-plugin-avatar":
+"@webex/internal-plugin-avatar@workspace:*, @webex/internal-plugin-avatar@workspace:packages/@webex/internal-plugin-avatar":
   version: 0.0.0-use.local
   resolution: "@webex/internal-plugin-avatar@workspace:packages/@webex/internal-plugin-avatar"
   dependencies:
     "@babel/core": ^7.17.10
-    "@webex/babel-config-legacy": "workspace:^"
-    "@webex/common": "workspace:^"
-    "@webex/common-timers": "workspace:^"
-    "@webex/eslint-config-legacy": "workspace:^"
-    "@webex/helper-image": "workspace:^"
-    "@webex/internal-plugin-device": "workspace:^"
-    "@webex/internal-plugin-user": "workspace:^"
-    "@webex/jest-config-legacy": "workspace:^"
-    "@webex/legacy-tools": "workspace:^"
-    "@webex/test-helper-chai": "workspace:^"
-    "@webex/test-helper-file": "workspace:^"
-    "@webex/test-helper-mocha": "workspace:^"
-    "@webex/test-helper-mock-webex": "workspace:^"
-    "@webex/test-helper-test-users": "workspace:^"
-    "@webex/webex-core": "workspace:^"
+    "@webex/babel-config-legacy": "workspace:*"
+    "@webex/common": "workspace:*"
+    "@webex/common-timers": "workspace:*"
+    "@webex/eslint-config-legacy": "workspace:*"
+    "@webex/helper-image": "workspace:*"
+    "@webex/internal-plugin-device": "workspace:*"
+    "@webex/internal-plugin-user": "workspace:*"
+    "@webex/jest-config-legacy": "workspace:*"
+    "@webex/legacy-tools": "workspace:*"
+    "@webex/test-helper-chai": "workspace:*"
+    "@webex/test-helper-file": "workspace:*"
+    "@webex/test-helper-mocha": "workspace:*"
+    "@webex/test-helper-mock-webex": "workspace:*"
+    "@webex/test-helper-test-users": "workspace:*"
+    "@webex/webex-core": "workspace:*"
     eslint: ^8.24.0
     lodash: ^4.17.21
     prettier: ^2.7.1
@@ -6816,27 +6951,27 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/internal-plugin-board@workspace:^, @webex/internal-plugin-board@workspace:packages/@webex/internal-plugin-board":
+"@webex/internal-plugin-board@workspace:*, @webex/internal-plugin-board@workspace:packages/@webex/internal-plugin-board":
   version: 0.0.0-use.local
   resolution: "@webex/internal-plugin-board@workspace:packages/@webex/internal-plugin-board"
   dependencies:
     "@babel/core": ^7.17.10
-    "@webex/babel-config-legacy": "workspace:^"
-    "@webex/common": "workspace:^"
-    "@webex/eslint-config-legacy": "workspace:^"
-    "@webex/internal-plugin-conversation": "workspace:^"
-    "@webex/internal-plugin-encryption": "workspace:^"
-    "@webex/internal-plugin-feature": "workspace:^"
-    "@webex/internal-plugin-mercury": "workspace:^"
-    "@webex/jest-config-legacy": "workspace:^"
-    "@webex/legacy-tools": "workspace:^"
-    "@webex/test-helper-chai": "workspace:^"
-    "@webex/test-helper-file": "workspace:^"
-    "@webex/test-helper-mocha": "workspace:^"
-    "@webex/test-helper-mock-web-socket": "workspace:^"
-    "@webex/test-helper-mock-webex": "workspace:^"
-    "@webex/test-helper-test-users": "workspace:^"
-    "@webex/webex-core": "workspace:^"
+    "@webex/babel-config-legacy": "workspace:*"
+    "@webex/common": "workspace:*"
+    "@webex/eslint-config-legacy": "workspace:*"
+    "@webex/internal-plugin-conversation": "workspace:*"
+    "@webex/internal-plugin-encryption": "workspace:*"
+    "@webex/internal-plugin-feature": "workspace:*"
+    "@webex/internal-plugin-mercury": "workspace:*"
+    "@webex/jest-config-legacy": "workspace:*"
+    "@webex/legacy-tools": "workspace:*"
+    "@webex/test-helper-chai": "workspace:*"
+    "@webex/test-helper-file": "workspace:*"
+    "@webex/test-helper-mocha": "workspace:*"
+    "@webex/test-helper-mock-web-socket": "workspace:*"
+    "@webex/test-helper-mock-webex": "workspace:*"
+    "@webex/test-helper-test-users": "workspace:*"
+    "@webex/webex-core": "workspace:*"
     ampersand-collection: ^2.0.2
     es6-promise-series: ^0.2.2
     eslint: ^8.24.0
@@ -6847,24 +6982,24 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/internal-plugin-calendar@workspace:^, @webex/internal-plugin-calendar@workspace:packages/@webex/internal-plugin-calendar":
+"@webex/internal-plugin-calendar@workspace:*, @webex/internal-plugin-calendar@workspace:packages/@webex/internal-plugin-calendar":
   version: 0.0.0-use.local
   resolution: "@webex/internal-plugin-calendar@workspace:packages/@webex/internal-plugin-calendar"
   dependencies:
     "@babel/core": ^7.17.10
-    "@webex/babel-config-legacy": "workspace:^"
-    "@webex/eslint-config-legacy": "workspace:^"
-    "@webex/internal-plugin-conversation": "workspace:^"
-    "@webex/internal-plugin-device": "workspace:^"
-    "@webex/internal-plugin-encryption": "workspace:^"
-    "@webex/jest-config-legacy": "workspace:^"
-    "@webex/legacy-tools": "workspace:^"
-    "@webex/test-helper-chai": "workspace:^"
-    "@webex/test-helper-mocha": "workspace:^"
-    "@webex/test-helper-mock-webex": "workspace:^"
-    "@webex/test-helper-retry": "workspace:^"
-    "@webex/test-helper-test-users": "workspace:^"
-    "@webex/webex-core": "workspace:^"
+    "@webex/babel-config-legacy": "workspace:*"
+    "@webex/eslint-config-legacy": "workspace:*"
+    "@webex/internal-plugin-conversation": "workspace:*"
+    "@webex/internal-plugin-device": "workspace:*"
+    "@webex/internal-plugin-encryption": "workspace:*"
+    "@webex/jest-config-legacy": "workspace:*"
+    "@webex/legacy-tools": "workspace:*"
+    "@webex/test-helper-chai": "workspace:*"
+    "@webex/test-helper-mocha": "workspace:*"
+    "@webex/test-helper-mock-webex": "workspace:*"
+    "@webex/test-helper-retry": "workspace:*"
+    "@webex/test-helper-test-users": "workspace:*"
+    "@webex/webex-core": "workspace:*"
     eslint: ^8.24.0
     lodash: ^4.17.21
     prettier: ^2.7.1
@@ -6873,28 +7008,28 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/internal-plugin-conversation@workspace:^, @webex/internal-plugin-conversation@workspace:packages/@webex/internal-plugin-conversation":
+"@webex/internal-plugin-conversation@workspace:*, @webex/internal-plugin-conversation@workspace:packages/@webex/internal-plugin-conversation":
   version: 0.0.0-use.local
   resolution: "@webex/internal-plugin-conversation@workspace:packages/@webex/internal-plugin-conversation"
   dependencies:
     "@babel/core": ^7.17.10
-    "@webex/babel-config-legacy": "workspace:^"
-    "@webex/common": "workspace:^"
-    "@webex/eslint-config-legacy": "workspace:^"
-    "@webex/helper-html": "workspace:^"
-    "@webex/helper-image": "workspace:^"
-    "@webex/internal-plugin-encryption": "workspace:^"
-    "@webex/internal-plugin-user": "workspace:^"
-    "@webex/jest-config-legacy": "workspace:^"
-    "@webex/legacy-tools": "workspace:^"
-    "@webex/test-helper-chai": "workspace:^"
-    "@webex/test-helper-file": "workspace:^"
-    "@webex/test-helper-make-local-url": "workspace:^"
-    "@webex/test-helper-mocha": "workspace:^"
-    "@webex/test-helper-mock-webex": "workspace:^"
-    "@webex/test-helper-retry": "workspace:^"
-    "@webex/test-helper-test-users": "workspace:^"
-    "@webex/webex-core": "workspace:^"
+    "@webex/babel-config-legacy": "workspace:*"
+    "@webex/common": "workspace:*"
+    "@webex/eslint-config-legacy": "workspace:*"
+    "@webex/helper-html": "workspace:*"
+    "@webex/helper-image": "workspace:*"
+    "@webex/internal-plugin-encryption": "workspace:*"
+    "@webex/internal-plugin-user": "workspace:*"
+    "@webex/jest-config-legacy": "workspace:*"
+    "@webex/legacy-tools": "workspace:*"
+    "@webex/test-helper-chai": "workspace:*"
+    "@webex/test-helper-file": "workspace:*"
+    "@webex/test-helper-make-local-url": "workspace:*"
+    "@webex/test-helper-mocha": "workspace:*"
+    "@webex/test-helper-mock-webex": "workspace:*"
+    "@webex/test-helper-retry": "workspace:*"
+    "@webex/test-helper-test-users": "workspace:*"
+    "@webex/webex-core": "workspace:*"
     crypto-js: ^4.1.1
     eslint: ^8.24.0
     lodash: ^4.17.21
@@ -6905,24 +7040,24 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/internal-plugin-device@workspace:^, @webex/internal-plugin-device@workspace:packages/@webex/internal-plugin-device":
+"@webex/internal-plugin-device@workspace:*, @webex/internal-plugin-device@workspace:packages/@webex/internal-plugin-device":
   version: 0.0.0-use.local
   resolution: "@webex/internal-plugin-device@workspace:packages/@webex/internal-plugin-device"
   dependencies:
     "@babel/core": ^7.17.10
-    "@webex/babel-config-legacy": "workspace:^"
-    "@webex/common": "workspace:^"
-    "@webex/common-timers": "workspace:^"
-    "@webex/eslint-config-legacy": "workspace:^"
-    "@webex/http-core": "workspace:^"
-    "@webex/internal-plugin-metrics": "workspace:^"
-    "@webex/jest-config-legacy": "workspace:^"
-    "@webex/legacy-tools": "workspace:^"
-    "@webex/test-helper-chai": "workspace:^"
-    "@webex/test-helper-mocha": "workspace:^"
-    "@webex/test-helper-mock-webex": "workspace:^"
-    "@webex/test-helper-test-users": "workspace:^"
-    "@webex/webex-core": "workspace:^"
+    "@webex/babel-config-legacy": "workspace:*"
+    "@webex/common": "workspace:*"
+    "@webex/common-timers": "workspace:*"
+    "@webex/eslint-config-legacy": "workspace:*"
+    "@webex/http-core": "workspace:*"
+    "@webex/internal-plugin-metrics": "workspace:*"
+    "@webex/jest-config-legacy": "workspace:*"
+    "@webex/legacy-tools": "workspace:*"
+    "@webex/test-helper-chai": "workspace:*"
+    "@webex/test-helper-mocha": "workspace:*"
+    "@webex/test-helper-mock-webex": "workspace:*"
+    "@webex/test-helper-test-users": "workspace:*"
+    "@webex/webex-core": "workspace:*"
     ampersand-collection: ^2.0.2
     ampersand-state: ^5.0.3
     chai: ^4.3.4
@@ -6939,17 +7074,17 @@ __metadata:
   resolution: "@webex/internal-plugin-dss@workspace:packages/@webex/internal-plugin-dss"
   dependencies:
     "@babel/core": ^7.17.10
-    "@webex/babel-config-legacy": "workspace:^"
-    "@webex/common": "workspace:^"
-    "@webex/common-timers": "workspace:^"
-    "@webex/eslint-config-legacy": "workspace:^"
-    "@webex/internal-plugin-mercury": "workspace:^"
-    "@webex/jest-config-legacy": "workspace:^"
-    "@webex/legacy-tools": "workspace:^"
-    "@webex/test-helper-chai": "workspace:^"
-    "@webex/test-helper-mock-webex": "workspace:^"
-    "@webex/test-helper-test-users": "workspace:^"
-    "@webex/webex-core": "workspace:^"
+    "@webex/babel-config-legacy": "workspace:*"
+    "@webex/common": "workspace:*"
+    "@webex/common-timers": "workspace:*"
+    "@webex/eslint-config-legacy": "workspace:*"
+    "@webex/internal-plugin-mercury": "workspace:*"
+    "@webex/jest-config-legacy": "workspace:*"
+    "@webex/legacy-tools": "workspace:*"
+    "@webex/test-helper-chai": "workspace:*"
+    "@webex/test-helper-mock-webex": "workspace:*"
+    "@webex/test-helper-test-users": "workspace:*"
+    "@webex/webex-core": "workspace:*"
     eslint: ^8.24.0
     lodash: ^4.17.21
     prettier: ^2.7.1
@@ -6963,19 +7098,19 @@ __metadata:
   resolution: "@webex/internal-plugin-ediscovery@workspace:packages/@webex/internal-plugin-ediscovery"
   dependencies:
     "@babel/core": ^7.17.10
-    "@webex/babel-config-legacy": "workspace:^"
-    "@webex/common": "workspace:^"
-    "@webex/eslint-config-legacy": "workspace:^"
-    "@webex/internal-plugin-conversation": "workspace:^"
-    "@webex/internal-plugin-encryption": "workspace:^"
-    "@webex/internal-plugin-mercury": "workspace:^"
-    "@webex/jest-config-legacy": "workspace:^"
-    "@webex/legacy-tools": "workspace:^"
-    "@webex/test-helper-chai": "workspace:^"
-    "@webex/test-helper-mocha": "workspace:^"
-    "@webex/test-helper-mock-webex": "workspace:^"
-    "@webex/test-helper-test-users": "workspace:^"
-    "@webex/webex-core": "workspace:^"
+    "@webex/babel-config-legacy": "workspace:*"
+    "@webex/common": "workspace:*"
+    "@webex/eslint-config-legacy": "workspace:*"
+    "@webex/internal-plugin-conversation": "workspace:*"
+    "@webex/internal-plugin-encryption": "workspace:*"
+    "@webex/internal-plugin-mercury": "workspace:*"
+    "@webex/jest-config-legacy": "workspace:*"
+    "@webex/legacy-tools": "workspace:*"
+    "@webex/test-helper-chai": "workspace:*"
+    "@webex/test-helper-mocha": "workspace:*"
+    "@webex/test-helper-mock-webex": "workspace:*"
+    "@webex/test-helper-test-users": "workspace:*"
+    "@webex/webex-core": "workspace:*"
     eslint: ^8.24.0
     lodash: ^4.17.21
     prettier: ^2.7.1
@@ -6984,27 +7119,27 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/internal-plugin-encryption@workspace:^, @webex/internal-plugin-encryption@workspace:packages/@webex/internal-plugin-encryption":
+"@webex/internal-plugin-encryption@workspace:*, @webex/internal-plugin-encryption@workspace:packages/@webex/internal-plugin-encryption":
   version: 0.0.0-use.local
   resolution: "@webex/internal-plugin-encryption@workspace:packages/@webex/internal-plugin-encryption"
   dependencies:
     "@babel/core": ^7.17.10
-    "@webex/babel-config-legacy": "workspace:^"
-    "@webex/common": "workspace:^"
-    "@webex/common-timers": "workspace:^"
-    "@webex/eslint-config-legacy": "workspace:^"
-    "@webex/http-core": "workspace:^"
-    "@webex/internal-plugin-device": "workspace:^"
-    "@webex/internal-plugin-mercury": "workspace:^"
-    "@webex/jest-config-legacy": "workspace:^"
-    "@webex/legacy-tools": "workspace:^"
-    "@webex/test-helper-chai": "workspace:^"
-    "@webex/test-helper-file": "workspace:^"
-    "@webex/test-helper-make-local-url": "workspace:^"
-    "@webex/test-helper-mocha": "workspace:^"
-    "@webex/test-helper-mock-webex": "workspace:^"
-    "@webex/test-helper-test-users": "workspace:^"
-    "@webex/webex-core": "workspace:^"
+    "@webex/babel-config-legacy": "workspace:*"
+    "@webex/common": "workspace:*"
+    "@webex/common-timers": "workspace:*"
+    "@webex/eslint-config-legacy": "workspace:*"
+    "@webex/http-core": "workspace:*"
+    "@webex/internal-plugin-device": "workspace:*"
+    "@webex/internal-plugin-mercury": "workspace:*"
+    "@webex/jest-config-legacy": "workspace:*"
+    "@webex/legacy-tools": "workspace:*"
+    "@webex/test-helper-chai": "workspace:*"
+    "@webex/test-helper-file": "workspace:*"
+    "@webex/test-helper-make-local-url": "workspace:*"
+    "@webex/test-helper-mocha": "workspace:*"
+    "@webex/test-helper-mock-webex": "workspace:*"
+    "@webex/test-helper-test-users": "workspace:*"
+    "@webex/webex-core": "workspace:*"
     asn1js: ^2.0.26
     debug: ^4.3.4
     eslint: ^8.24.0
@@ -7022,23 +7157,23 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/internal-plugin-feature@workspace:^, @webex/internal-plugin-feature@workspace:packages/@webex/internal-plugin-feature":
+"@webex/internal-plugin-feature@workspace:*, @webex/internal-plugin-feature@workspace:packages/@webex/internal-plugin-feature":
   version: 0.0.0-use.local
   resolution: "@webex/internal-plugin-feature@workspace:packages/@webex/internal-plugin-feature"
   dependencies:
     "@babel/core": ^7.17.10
     "@types/mocha": ^10
-    "@webex/babel-config-legacy": "workspace:^"
-    "@webex/eslint-config-legacy": "workspace:^"
-    "@webex/internal-plugin-device": "workspace:^"
-    "@webex/internal-plugin-mercury": "workspace:^"
-    "@webex/jest-config-legacy": "workspace:^"
-    "@webex/legacy-tools": "workspace:^"
-    "@webex/test-helper-chai": "workspace:^"
-    "@webex/test-helper-mocha": "workspace:^"
-    "@webex/test-helper-mock-webex": "workspace:^"
-    "@webex/test-helper-test-users": "workspace:^"
-    "@webex/webex-core": "workspace:^"
+    "@webex/babel-config-legacy": "workspace:*"
+    "@webex/eslint-config-legacy": "workspace:*"
+    "@webex/internal-plugin-device": "workspace:*"
+    "@webex/internal-plugin-mercury": "workspace:*"
+    "@webex/jest-config-legacy": "workspace:*"
+    "@webex/legacy-tools": "workspace:*"
+    "@webex/test-helper-chai": "workspace:*"
+    "@webex/test-helper-mocha": "workspace:*"
+    "@webex/test-helper-mock-webex": "workspace:*"
+    "@webex/test-helper-test-users": "workspace:*"
+    "@webex/webex-core": "workspace:*"
     eslint: ^8.24.0
     lodash: ^4.17.21
     mocha: ^10.2.0
@@ -7047,23 +7182,23 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/internal-plugin-flag@workspace:^, @webex/internal-plugin-flag@workspace:packages/@webex/internal-plugin-flag":
+"@webex/internal-plugin-flag@workspace:*, @webex/internal-plugin-flag@workspace:packages/@webex/internal-plugin-flag":
   version: 0.0.0-use.local
   resolution: "@webex/internal-plugin-flag@workspace:packages/@webex/internal-plugin-flag"
   dependencies:
     "@babel/core": ^7.17.10
     "@types/mocha": ^10
-    "@webex/babel-config-legacy": "workspace:^"
-    "@webex/eslint-config-legacy": "workspace:^"
-    "@webex/internal-plugin-conversation": "workspace:^"
-    "@webex/internal-plugin-device": "workspace:^"
-    "@webex/jest-config-legacy": "workspace:^"
-    "@webex/legacy-tools": "workspace:^"
-    "@webex/test-helper-chai": "workspace:^"
-    "@webex/test-helper-mocha": "workspace:^"
-    "@webex/test-helper-mock-webex": "workspace:^"
-    "@webex/test-helper-test-users": "workspace:^"
-    "@webex/webex-core": "workspace:^"
+    "@webex/babel-config-legacy": "workspace:*"
+    "@webex/eslint-config-legacy": "workspace:*"
+    "@webex/internal-plugin-conversation": "workspace:*"
+    "@webex/internal-plugin-device": "workspace:*"
+    "@webex/jest-config-legacy": "workspace:*"
+    "@webex/legacy-tools": "workspace:*"
+    "@webex/test-helper-chai": "workspace:*"
+    "@webex/test-helper-mocha": "workspace:*"
+    "@webex/test-helper-mock-webex": "workspace:*"
+    "@webex/test-helper-test-users": "workspace:*"
+    "@webex/webex-core": "workspace:*"
     eslint: ^8.24.0
     lodash: ^4.17.21
     mocha: ^10.2.0
@@ -7071,41 +7206,41 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/internal-plugin-llm@workspace:^, @webex/internal-plugin-llm@workspace:packages/@webex/internal-plugin-llm":
+"@webex/internal-plugin-llm@workspace:*, @webex/internal-plugin-llm@workspace:packages/@webex/internal-plugin-llm":
   version: 0.0.0-use.local
   resolution: "@webex/internal-plugin-llm@workspace:packages/@webex/internal-plugin-llm"
   dependencies:
     "@babel/core": ^7.17.10
-    "@webex/babel-config-legacy": "workspace:^"
-    "@webex/eslint-config-legacy": "workspace:^"
-    "@webex/internal-plugin-mercury": "workspace:^"
-    "@webex/jest-config-legacy": "workspace:^"
-    "@webex/legacy-tools": "workspace:^"
-    "@webex/test-helper-chai": "workspace:^"
-    "@webex/test-helper-mocha": "workspace:^"
-    "@webex/test-helper-mock-webex": "workspace:^"
-    "@webex/test-helper-test-users": "workspace:^"
+    "@webex/babel-config-legacy": "workspace:*"
+    "@webex/eslint-config-legacy": "workspace:*"
+    "@webex/internal-plugin-mercury": "workspace:*"
+    "@webex/jest-config-legacy": "workspace:*"
+    "@webex/legacy-tools": "workspace:*"
+    "@webex/test-helper-chai": "workspace:*"
+    "@webex/test-helper-mocha": "workspace:*"
+    "@webex/test-helper-mock-webex": "workspace:*"
+    "@webex/test-helper-test-users": "workspace:*"
     eslint: ^8.24.0
     prettier: ^2.7.1
     sinon: ^9.2.4
   languageName: unknown
   linkType: soft
 
-"@webex/internal-plugin-locus@workspace:^, @webex/internal-plugin-locus@workspace:packages/@webex/internal-plugin-locus":
+"@webex/internal-plugin-locus@workspace:*, @webex/internal-plugin-locus@workspace:packages/@webex/internal-plugin-locus":
   version: 0.0.0-use.local
   resolution: "@webex/internal-plugin-locus@workspace:packages/@webex/internal-plugin-locus"
   dependencies:
     "@babel/core": ^7.17.10
-    "@webex/babel-config-legacy": "workspace:^"
-    "@webex/eslint-config-legacy": "workspace:^"
-    "@webex/internal-plugin-mercury": "workspace:^"
-    "@webex/jest-config-legacy": "workspace:^"
-    "@webex/legacy-tools": "workspace:^"
-    "@webex/test-helper-chai": "workspace:^"
-    "@webex/test-helper-mocha": "workspace:^"
-    "@webex/test-helper-mock-webex": "workspace:^"
-    "@webex/test-helper-test-users": "workspace:^"
-    "@webex/webex-core": "workspace:^"
+    "@webex/babel-config-legacy": "workspace:*"
+    "@webex/eslint-config-legacy": "workspace:*"
+    "@webex/internal-plugin-mercury": "workspace:*"
+    "@webex/jest-config-legacy": "workspace:*"
+    "@webex/legacy-tools": "workspace:*"
+    "@webex/test-helper-chai": "workspace:*"
+    "@webex/test-helper-mocha": "workspace:*"
+    "@webex/test-helper-mock-webex": "workspace:*"
+    "@webex/test-helper-test-users": "workspace:*"
+    "@webex/webex-core": "workspace:*"
     eslint: ^8.24.0
     lodash: ^4.17.21
     prettier: ^2.7.1
@@ -7113,28 +7248,28 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/internal-plugin-lyra@workspace:^, @webex/internal-plugin-lyra@workspace:packages/@webex/internal-plugin-lyra":
+"@webex/internal-plugin-lyra@workspace:*, @webex/internal-plugin-lyra@workspace:packages/@webex/internal-plugin-lyra":
   version: 0.0.0-use.local
   resolution: "@webex/internal-plugin-lyra@workspace:packages/@webex/internal-plugin-lyra"
   dependencies:
     "@babel/core": ^7.17.10
     "@ciscospark/test-users-legacy": ^1.2.0
-    "@webex/babel-config-legacy": "workspace:^"
-    "@webex/common": "workspace:^"
-    "@webex/eslint-config-legacy": "workspace:^"
-    "@webex/internal-plugin-conversation": "workspace:^"
-    "@webex/internal-plugin-encryption": "workspace:^"
-    "@webex/internal-plugin-feature": "workspace:^"
-    "@webex/internal-plugin-locus": "workspace:^"
-    "@webex/internal-plugin-mercury": "workspace:^"
-    "@webex/jest-config-legacy": "workspace:^"
-    "@webex/legacy-tools": "workspace:^"
-    "@webex/test-helper-chai": "workspace:^"
-    "@webex/test-helper-mocha": "workspace:^"
-    "@webex/test-helper-mock-webex": "workspace:^"
-    "@webex/test-helper-retry": "workspace:^"
-    "@webex/test-helper-test-users": "workspace:^"
-    "@webex/webex-core": "workspace:^"
+    "@webex/babel-config-legacy": "workspace:*"
+    "@webex/common": "workspace:*"
+    "@webex/eslint-config-legacy": "workspace:*"
+    "@webex/internal-plugin-conversation": "workspace:*"
+    "@webex/internal-plugin-encryption": "workspace:*"
+    "@webex/internal-plugin-feature": "workspace:*"
+    "@webex/internal-plugin-locus": "workspace:*"
+    "@webex/internal-plugin-mercury": "workspace:*"
+    "@webex/jest-config-legacy": "workspace:*"
+    "@webex/legacy-tools": "workspace:*"
+    "@webex/test-helper-chai": "workspace:*"
+    "@webex/test-helper-mocha": "workspace:*"
+    "@webex/test-helper-mock-webex": "workspace:*"
+    "@webex/test-helper-retry": "workspace:*"
+    "@webex/test-helper-test-users": "workspace:*"
+    "@webex/webex-core": "workspace:*"
     bowser: ^2.11.0
     eslint: ^8.24.0
     prettier: ^2.7.1
@@ -7143,28 +7278,28 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/internal-plugin-mercury@workspace:^, @webex/internal-plugin-mercury@workspace:packages/@webex/internal-plugin-mercury":
+"@webex/internal-plugin-mercury@workspace:*, @webex/internal-plugin-mercury@workspace:packages/@webex/internal-plugin-mercury":
   version: 0.0.0-use.local
   resolution: "@webex/internal-plugin-mercury@workspace:packages/@webex/internal-plugin-mercury"
   dependencies:
     "@babel/core": ^7.17.10
     "@sinonjs/fake-timers": ^6.0.1
-    "@webex/babel-config-legacy": "workspace:^"
-    "@webex/common": "workspace:^"
-    "@webex/common-timers": "workspace:^"
-    "@webex/eslint-config-legacy": "workspace:^"
-    "@webex/internal-plugin-device": "workspace:^"
-    "@webex/internal-plugin-feature": "workspace:^"
-    "@webex/internal-plugin-metrics": "workspace:^"
-    "@webex/jest-config-legacy": "workspace:^"
-    "@webex/legacy-tools": "workspace:^"
-    "@webex/test-helper-chai": "workspace:^"
-    "@webex/test-helper-mocha": "workspace:^"
-    "@webex/test-helper-mock-web-socket": "workspace:^"
-    "@webex/test-helper-mock-webex": "workspace:^"
-    "@webex/test-helper-refresh-callback": "workspace:^"
-    "@webex/test-helper-test-users": "workspace:^"
-    "@webex/webex-core": "workspace:^"
+    "@webex/babel-config-legacy": "workspace:*"
+    "@webex/common": "workspace:*"
+    "@webex/common-timers": "workspace:*"
+    "@webex/eslint-config-legacy": "workspace:*"
+    "@webex/internal-plugin-device": "workspace:*"
+    "@webex/internal-plugin-feature": "workspace:*"
+    "@webex/internal-plugin-metrics": "workspace:*"
+    "@webex/jest-config-legacy": "workspace:*"
+    "@webex/legacy-tools": "workspace:*"
+    "@webex/test-helper-chai": "workspace:*"
+    "@webex/test-helper-mocha": "workspace:*"
+    "@webex/test-helper-mock-web-socket": "workspace:*"
+    "@webex/test-helper-mock-webex": "workspace:*"
+    "@webex/test-helper-refresh-callback": "workspace:*"
+    "@webex/test-helper-test-users": "workspace:*"
+    "@webex/webex-core": "workspace:*"
     backoff: ^2.5.0
     eslint: ^8.24.0
     lodash: ^4.17.21
@@ -7175,48 +7310,48 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/internal-plugin-metrics@workspace:^, @webex/internal-plugin-metrics@workspace:packages/@webex/internal-plugin-metrics":
+"@webex/internal-plugin-metrics@workspace:*, @webex/internal-plugin-metrics@workspace:packages/@webex/internal-plugin-metrics":
   version: 0.0.0-use.local
   resolution: "@webex/internal-plugin-metrics@workspace:packages/@webex/internal-plugin-metrics"
   dependencies:
     "@babel/core": ^7.17.10
     "@sinonjs/fake-timers": ^6.0.1
-    "@webex/babel-config-legacy": "workspace:^"
-    "@webex/common": "workspace:^"
-    "@webex/common-timers": "workspace:^"
-    "@webex/eslint-config-legacy": "workspace:^"
+    "@webex/babel-config-legacy": "workspace:*"
+    "@webex/common": "workspace:*"
+    "@webex/common-timers": "workspace:*"
+    "@webex/eslint-config-legacy": "workspace:*"
     "@webex/event-dictionary-ts": ^1.0.1329
-    "@webex/internal-plugin-device": "workspace:^"
-    "@webex/internal-plugin-metrics": "workspace:^"
-    "@webex/jest-config-legacy": "workspace:^"
-    "@webex/legacy-tools": "workspace:^"
-    "@webex/test-helper-chai": "workspace:^"
-    "@webex/test-helper-mocha": "workspace:^"
-    "@webex/test-helper-mock-webex": "workspace:^"
-    "@webex/test-helper-test-users": "workspace:^"
-    "@webex/webex-core": "workspace:^"
+    "@webex/internal-plugin-device": "workspace:*"
+    "@webex/internal-plugin-metrics": "workspace:*"
+    "@webex/jest-config-legacy": "workspace:*"
+    "@webex/legacy-tools": "workspace:*"
+    "@webex/test-helper-chai": "workspace:*"
+    "@webex/test-helper-mocha": "workspace:*"
+    "@webex/test-helper-mock-webex": "workspace:*"
+    "@webex/test-helper-test-users": "workspace:*"
+    "@webex/webex-core": "workspace:*"
     eslint: ^8.24.0
     prettier: ^2.7.1
     sinon: ^9.2.4
   languageName: unknown
   linkType: soft
 
-"@webex/internal-plugin-presence@workspace:^, @webex/internal-plugin-presence@workspace:packages/@webex/internal-plugin-presence":
+"@webex/internal-plugin-presence@workspace:*, @webex/internal-plugin-presence@workspace:packages/@webex/internal-plugin-presence":
   version: 0.0.0-use.local
   resolution: "@webex/internal-plugin-presence@workspace:packages/@webex/internal-plugin-presence"
   dependencies:
     "@babel/core": ^7.17.10
-    "@webex/babel-config-legacy": "workspace:^"
-    "@webex/eslint-config-legacy": "workspace:^"
-    "@webex/internal-plugin-device": "workspace:^"
-    "@webex/internal-plugin-mercury": "workspace:^"
-    "@webex/jest-config-legacy": "workspace:^"
-    "@webex/legacy-tools": "workspace:^"
-    "@webex/test-helper-chai": "workspace:^"
-    "@webex/test-helper-mocha": "workspace:^"
-    "@webex/test-helper-mock-webex": "workspace:^"
-    "@webex/test-helper-test-users": "workspace:^"
-    "@webex/webex-core": "workspace:^"
+    "@webex/babel-config-legacy": "workspace:*"
+    "@webex/eslint-config-legacy": "workspace:*"
+    "@webex/internal-plugin-device": "workspace:*"
+    "@webex/internal-plugin-mercury": "workspace:*"
+    "@webex/jest-config-legacy": "workspace:*"
+    "@webex/legacy-tools": "workspace:*"
+    "@webex/test-helper-chai": "workspace:*"
+    "@webex/test-helper-mocha": "workspace:*"
+    "@webex/test-helper-mock-webex": "workspace:*"
+    "@webex/test-helper-test-users": "workspace:*"
+    "@webex/webex-core": "workspace:*"
     eslint: ^8.24.0
     lodash: ^4.17.21
     prettier: ^2.7.1
@@ -7229,22 +7364,22 @@ __metadata:
   resolution: "@webex/internal-plugin-scheduler@workspace:packages/@webex/internal-plugin-scheduler"
   dependencies:
     "@babel/core": ^7.17.10
-    "@webex/babel-config-legacy": "workspace:^"
-    "@webex/common": "workspace:^"
-    "@webex/common-timers": "workspace:^"
-    "@webex/eslint-config-legacy": "workspace:^"
-    "@webex/http-core": "workspace:^"
-    "@webex/internal-plugin-device": "workspace:^"
-    "@webex/internal-plugin-encryption": "workspace:^"
-    "@webex/internal-plugin-mercury": "workspace:^"
-    "@webex/internal-plugin-metrics": "workspace:^"
-    "@webex/jest-config-legacy": "workspace:^"
-    "@webex/legacy-tools": "workspace:^"
-    "@webex/test-helper-chai": "workspace:^"
-    "@webex/test-helper-mocha": "workspace:^"
-    "@webex/test-helper-mock-webex": "workspace:^"
-    "@webex/test-helper-test-users": "workspace:^"
-    "@webex/webex-core": "workspace:^"
+    "@webex/babel-config-legacy": "workspace:*"
+    "@webex/common": "workspace:*"
+    "@webex/common-timers": "workspace:*"
+    "@webex/eslint-config-legacy": "workspace:*"
+    "@webex/http-core": "workspace:*"
+    "@webex/internal-plugin-device": "workspace:*"
+    "@webex/internal-plugin-encryption": "workspace:*"
+    "@webex/internal-plugin-mercury": "workspace:*"
+    "@webex/internal-plugin-metrics": "workspace:*"
+    "@webex/jest-config-legacy": "workspace:*"
+    "@webex/legacy-tools": "workspace:*"
+    "@webex/test-helper-chai": "workspace:*"
+    "@webex/test-helper-mocha": "workspace:*"
+    "@webex/test-helper-mock-webex": "workspace:*"
+    "@webex/test-helper-test-users": "workspace:*"
+    "@webex/webex-core": "workspace:*"
     ampersand-collection: ^2.0.2
     ampersand-state: ^5.0.3
     chai: ^4.3.4
@@ -7256,25 +7391,25 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/internal-plugin-search@workspace:^, @webex/internal-plugin-search@workspace:packages/@webex/internal-plugin-search":
+"@webex/internal-plugin-search@workspace:*, @webex/internal-plugin-search@workspace:packages/@webex/internal-plugin-search":
   version: 0.0.0-use.local
   resolution: "@webex/internal-plugin-search@workspace:packages/@webex/internal-plugin-search"
   dependencies:
     "@babel/core": ^7.17.10
-    "@webex/babel-config-legacy": "workspace:^"
-    "@webex/common": "workspace:^"
-    "@webex/eslint-config-legacy": "workspace:^"
-    "@webex/internal-plugin-conversation": "workspace:^"
-    "@webex/internal-plugin-device": "workspace:^"
-    "@webex/internal-plugin-encryption": "workspace:^"
-    "@webex/jest-config-legacy": "workspace:^"
-    "@webex/legacy-tools": "workspace:^"
-    "@webex/test-helper-chai": "workspace:^"
-    "@webex/test-helper-mocha": "workspace:^"
-    "@webex/test-helper-mock-webex": "workspace:^"
-    "@webex/test-helper-retry": "workspace:^"
-    "@webex/test-helper-test-users": "workspace:^"
-    "@webex/webex-core": "workspace:^"
+    "@webex/babel-config-legacy": "workspace:*"
+    "@webex/common": "workspace:*"
+    "@webex/eslint-config-legacy": "workspace:*"
+    "@webex/internal-plugin-conversation": "workspace:*"
+    "@webex/internal-plugin-device": "workspace:*"
+    "@webex/internal-plugin-encryption": "workspace:*"
+    "@webex/jest-config-legacy": "workspace:*"
+    "@webex/legacy-tools": "workspace:*"
+    "@webex/test-helper-chai": "workspace:*"
+    "@webex/test-helper-mocha": "workspace:*"
+    "@webex/test-helper-mock-webex": "workspace:*"
+    "@webex/test-helper-retry": "workspace:*"
+    "@webex/test-helper-test-users": "workspace:*"
+    "@webex/webex-core": "workspace:*"
     eslint: ^8.24.0
     lodash: ^4.17.21
     prettier: ^2.7.1
@@ -7282,23 +7417,23 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/internal-plugin-support@workspace:^, @webex/internal-plugin-support@workspace:packages/@webex/internal-plugin-support":
+"@webex/internal-plugin-support@workspace:*, @webex/internal-plugin-support@workspace:packages/@webex/internal-plugin-support":
   version: 0.0.0-use.local
   resolution: "@webex/internal-plugin-support@workspace:packages/@webex/internal-plugin-support"
   dependencies:
     "@babel/core": ^7.17.10
-    "@webex/babel-config-legacy": "workspace:^"
-    "@webex/eslint-config-legacy": "workspace:^"
-    "@webex/internal-plugin-device": "workspace:^"
-    "@webex/internal-plugin-search": "workspace:^"
-    "@webex/jest-config-legacy": "workspace:^"
-    "@webex/legacy-tools": "workspace:^"
-    "@webex/test-helper-chai": "workspace:^"
-    "@webex/test-helper-file": "workspace:^"
-    "@webex/test-helper-mocha": "workspace:^"
-    "@webex/test-helper-mock-webex": "workspace:^"
-    "@webex/test-helper-test-users": "workspace:^"
-    "@webex/webex-core": "workspace:^"
+    "@webex/babel-config-legacy": "workspace:*"
+    "@webex/eslint-config-legacy": "workspace:*"
+    "@webex/internal-plugin-device": "workspace:*"
+    "@webex/internal-plugin-search": "workspace:*"
+    "@webex/jest-config-legacy": "workspace:*"
+    "@webex/legacy-tools": "workspace:*"
+    "@webex/test-helper-chai": "workspace:*"
+    "@webex/test-helper-file": "workspace:*"
+    "@webex/test-helper-mocha": "workspace:*"
+    "@webex/test-helper-mock-webex": "workspace:*"
+    "@webex/test-helper-test-users": "workspace:*"
+    "@webex/webex-core": "workspace:*"
     eslint: ^8.24.0
     lodash: ^4.17.21
     prettier: ^2.7.1
@@ -7306,24 +7441,24 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/internal-plugin-team@workspace:^, @webex/internal-plugin-team@workspace:packages/@webex/internal-plugin-team":
+"@webex/internal-plugin-team@workspace:*, @webex/internal-plugin-team@workspace:packages/@webex/internal-plugin-team":
   version: 0.0.0-use.local
   resolution: "@webex/internal-plugin-team@workspace:packages/@webex/internal-plugin-team"
   dependencies:
     "@babel/core": ^7.17.10
-    "@webex/babel-config-legacy": "workspace:^"
-    "@webex/eslint-config-legacy": "workspace:^"
-    "@webex/internal-plugin-conversation": "workspace:^"
-    "@webex/internal-plugin-device": "workspace:^"
-    "@webex/internal-plugin-encryption": "workspace:^"
-    "@webex/internal-plugin-user": "workspace:^"
-    "@webex/jest-config-legacy": "workspace:^"
-    "@webex/legacy-tools": "workspace:^"
-    "@webex/test-helper-chai": "workspace:^"
-    "@webex/test-helper-mocha": "workspace:^"
-    "@webex/test-helper-mock-webex": "workspace:^"
-    "@webex/test-helper-test-users": "workspace:^"
-    "@webex/webex-core": "workspace:^"
+    "@webex/babel-config-legacy": "workspace:*"
+    "@webex/eslint-config-legacy": "workspace:*"
+    "@webex/internal-plugin-conversation": "workspace:*"
+    "@webex/internal-plugin-device": "workspace:*"
+    "@webex/internal-plugin-encryption": "workspace:*"
+    "@webex/internal-plugin-user": "workspace:*"
+    "@webex/jest-config-legacy": "workspace:*"
+    "@webex/legacy-tools": "workspace:*"
+    "@webex/test-helper-chai": "workspace:*"
+    "@webex/test-helper-mocha": "workspace:*"
+    "@webex/test-helper-mock-webex": "workspace:*"
+    "@webex/test-helper-test-users": "workspace:*"
+    "@webex/webex-core": "workspace:*"
     eslint: ^8.24.0
     lodash: ^4.17.21
     prettier: ^2.7.1
@@ -7332,22 +7467,22 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/internal-plugin-user@workspace:^, @webex/internal-plugin-user@workspace:packages/@webex/internal-plugin-user":
+"@webex/internal-plugin-user@workspace:*, @webex/internal-plugin-user@workspace:packages/@webex/internal-plugin-user":
   version: 0.0.0-use.local
   resolution: "@webex/internal-plugin-user@workspace:packages/@webex/internal-plugin-user"
   dependencies:
     "@babel/core": ^7.17.10
-    "@webex/babel-config-legacy": "workspace:^"
-    "@webex/common": "workspace:^"
-    "@webex/eslint-config-legacy": "workspace:^"
-    "@webex/internal-plugin-device": "workspace:^"
-    "@webex/jest-config-legacy": "workspace:^"
-    "@webex/legacy-tools": "workspace:^"
-    "@webex/test-helper-chai": "workspace:^"
-    "@webex/test-helper-mocha": "workspace:^"
-    "@webex/test-helper-mock-webex": "workspace:^"
-    "@webex/test-helper-test-users": "workspace:^"
-    "@webex/webex-core": "workspace:^"
+    "@webex/babel-config-legacy": "workspace:*"
+    "@webex/common": "workspace:*"
+    "@webex/eslint-config-legacy": "workspace:*"
+    "@webex/internal-plugin-device": "workspace:*"
+    "@webex/jest-config-legacy": "workspace:*"
+    "@webex/legacy-tools": "workspace:*"
+    "@webex/test-helper-chai": "workspace:*"
+    "@webex/test-helper-mocha": "workspace:*"
+    "@webex/test-helper-mock-webex": "workspace:*"
+    "@webex/test-helper-test-users": "workspace:*"
+    "@webex/webex-core": "workspace:*"
     eslint: ^8.24.0
     lodash: ^4.17.21
     prettier: ^2.7.1
@@ -7356,24 +7491,24 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/internal-plugin-voicea@workspace:packages/@webex/internal-plugin-voicea":
+"@webex/internal-plugin-voicea@workspace:*, @webex/internal-plugin-voicea@workspace:packages/@webex/internal-plugin-voicea":
   version: 0.0.0-use.local
   resolution: "@webex/internal-plugin-voicea@workspace:packages/@webex/internal-plugin-voicea"
   dependencies:
     "@babel/core": ^7.17.10
-    "@webex/babel-config-legacy": "workspace:^"
-    "@webex/eslint-config-legacy": "workspace:^"
-    "@webex/internal-plugin-llm": "workspace:^"
-    "@webex/internal-plugin-mercury": "workspace:^"
-    "@webex/jest-config-legacy": "workspace:^"
-    "@webex/legacy-tools": "workspace:^"
-    "@webex/plugin-meetings": "workspace:^"
-    "@webex/test-helper-chai": "workspace:^"
-    "@webex/test-helper-mocha": "workspace:^"
-    "@webex/test-helper-mock-web-socket": "workspace:^"
-    "@webex/test-helper-mock-webex": "workspace:^"
-    "@webex/test-helper-test-users": "workspace:^"
-    "@webex/webex-core": "workspace:^"
+    "@webex/babel-config-legacy": "workspace:*"
+    "@webex/eslint-config-legacy": "workspace:*"
+    "@webex/internal-plugin-llm": "workspace:*"
+    "@webex/internal-plugin-mercury": "workspace:*"
+    "@webex/jest-config-legacy": "workspace:*"
+    "@webex/legacy-tools": "workspace:*"
+    "@webex/plugin-meetings": "workspace:*"
+    "@webex/test-helper-chai": "workspace:*"
+    "@webex/test-helper-mocha": "workspace:*"
+    "@webex/test-helper-mock-web-socket": "workspace:*"
+    "@webex/test-helper-mock-webex": "workspace:*"
+    "@webex/test-helper-test-users": "workspace:*"
+    "@webex/webex-core": "workspace:*"
     eslint: ^8.24.0
     prettier: ^2.7.1
     sinon: ^9.2.4
@@ -7386,26 +7521,26 @@ __metadata:
   resolution: "@webex/internal-plugin-wdm@workspace:packages/@webex/internal-plugin-wdm"
   dependencies:
     "@babel/core": ^7.17.10
-    "@webex/babel-config-legacy": "workspace:^"
-    "@webex/eslint-config-legacy": "workspace:^"
-    "@webex/internal-plugin-device": "workspace:^"
-    "@webex/jest-config-legacy": "workspace:^"
-    "@webex/legacy-tools": "workspace:^"
-    "@webex/test-helper-chai": "workspace:^"
-    "@webex/test-helper-mocha": "workspace:^"
-    "@webex/test-helper-mock-webex": "workspace:^"
-    "@webex/test-helper-test-users": "workspace:^"
-    "@webex/webex-core": "workspace:^"
+    "@webex/babel-config-legacy": "workspace:*"
+    "@webex/eslint-config-legacy": "workspace:*"
+    "@webex/internal-plugin-device": "workspace:*"
+    "@webex/jest-config-legacy": "workspace:*"
+    "@webex/legacy-tools": "workspace:*"
+    "@webex/test-helper-chai": "workspace:*"
+    "@webex/test-helper-mocha": "workspace:*"
+    "@webex/test-helper-mock-webex": "workspace:*"
+    "@webex/test-helper-test-users": "workspace:*"
+    "@webex/webex-core": "workspace:*"
     eslint: ^8.24.0
     prettier: ^2.7.1
   languageName: unknown
   linkType: soft
 
-"@webex/jasmine-config@workspace:^, @webex/jasmine-config@workspace:packages/config/jasmine":
+"@webex/jasmine-config@workspace:*, @webex/jasmine-config@workspace:packages/config/jasmine":
   version: 0.0.0-use.local
   resolution: "@webex/jasmine-config@workspace:packages/config/jasmine"
   dependencies:
-    "@webex/eslint-config": "workspace:^"
+    "@webex/eslint-config": "workspace:*"
     eslint: ^8.35.0
     jasmine-spec-reporter: ^7.0.0
   peerDependencies:
@@ -7413,7 +7548,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/jest-config-legacy@workspace:^, @webex/jest-config-legacy@workspace:packages/legacy/jest":
+"@webex/jest-config-legacy@workspace:*, @webex/jest-config-legacy@workspace:packages/legacy/jest":
   version: 0.0.0-use.local
   resolution: "@webex/jest-config-legacy@workspace:packages/legacy/jest"
   dependencies:
@@ -7433,14 +7568,14 @@ __metadata:
     "@babel/template": ^7.14.5
     "@babel/traverse": ^7.14.9
     "@babel/types": ^7.14.9
-    "@webex/babel-config-legacy": "workspace:^"
-    "@webex/eslint-config-legacy": "workspace:^"
-    "@webex/jest-config-legacy": "workspace:^"
-    "@webex/legacy-tools": "workspace:^"
-    "@webex/test-helper-chai": "workspace:^"
-    "@webex/test-helper-mocha": "workspace:^"
-    "@webex/test-helper-mock-webex": "workspace:^"
-    "@webex/test-helper-test-users": "workspace:^"
+    "@webex/babel-config-legacy": "workspace:*"
+    "@webex/eslint-config-legacy": "workspace:*"
+    "@webex/jest-config-legacy": "workspace:*"
+    "@webex/legacy-tools": "workspace:*"
+    "@webex/test-helper-chai": "workspace:*"
+    "@webex/test-helper-mocha": "workspace:*"
+    "@webex/test-helper-mock-webex": "workspace:*"
+    "@webex/test-helper-test-users": "workspace:*"
     babylon: ^6.18.0
     doctrine: ^2.1.0
     eslint: ^8.24.0
@@ -7449,10 +7584,10 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/json-multistream@npm:2.1.2":
-  version: 2.1.2
-  resolution: "@webex/json-multistream@npm:2.1.2"
-  checksum: be28a560e049a517cf953ffde5201eff6fa6cd0b625205ff7cae8b25bae5ad373b2399e6a91ec6dd2f8b7dbcb273c92407e74029a58348210931fb9f3aa80f49
+"@webex/json-multistream@npm:2.1.3":
+  version: 2.1.3
+  resolution: "@webex/json-multistream@npm:2.1.3"
+  checksum: bf95a540c0509b15798cb9ead0f31518e79766ae1633119a83f40e22d175f6cf98338c24246c204185591932a08f9ede7bd3d8d65f46f7c212e57103295200e4
   languageName: node
   linkType: hard
 
@@ -7472,7 +7607,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@webex/legacy-tools@workspace:^, @webex/legacy-tools@workspace:packages/legacy/tools":
+"@webex/legacy-tools@workspace:*, @webex/legacy-tools@workspace:packages/legacy/tools":
   version: 0.0.0-use.local
   resolution: "@webex/legacy-tools@workspace:packages/legacy/tools"
   dependencies:
@@ -7493,15 +7628,15 @@ __metadata:
     "@types/karma-ie-launcher": ^1
     "@types/karma-mocha-reporter": ^2
     "@types/mocha": ^10
-    "@webex/api-extractor-config": "workspace:^"
-    "@webex/babel-config-legacy": "workspace:^"
-    "@webex/cli-tools": "workspace:^"
-    "@webex/env-config-legacy": "workspace:^"
-    "@webex/esbuild-config": "workspace:^"
-    "@webex/eslint-config": "workspace:^"
-    "@webex/jasmine-config": "workspace:^"
-    "@webex/nyc-config": "workspace:^"
-    "@webex/typescript-config": "workspace:^"
+    "@webex/api-extractor-config": "workspace:*"
+    "@webex/babel-config-legacy": "workspace:*"
+    "@webex/cli-tools": "workspace:*"
+    "@webex/env-config-legacy": "workspace:*"
+    "@webex/esbuild-config": "workspace:*"
+    "@webex/eslint-config": "workspace:*"
+    "@webex/jasmine-config": "workspace:*"
+    "@webex/nyc-config": "workspace:*"
+    "@webex/typescript-config": "workspace:*"
     babelify: ^10.0.0
     browserify: ^17.0.0
     browserify-middleware: ^8.1.1
@@ -7539,18 +7674,18 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/media-helpers@workspace:^, @webex/media-helpers@workspace:packages/@webex/media-helpers":
+"@webex/media-helpers@workspace:*, @webex/media-helpers@workspace:packages/@webex/media-helpers":
   version: 0.0.0-use.local
   resolution: "@webex/media-helpers@workspace:packages/@webex/media-helpers"
   dependencies:
     "@babel/preset-typescript": 7.22.11
-    "@webex/babel-config-legacy": "workspace:^"
-    "@webex/eslint-config-legacy": "workspace:^"
-    "@webex/internal-media-core": 2.2.3
-    "@webex/jest-config-legacy": "workspace:^"
-    "@webex/legacy-tools": "workspace:^"
-    "@webex/test-helper-chai": "workspace:^"
-    "@webex/test-helper-mock-webex": "workspace:^"
+    "@webex/babel-config-legacy": "workspace:*"
+    "@webex/eslint-config-legacy": "workspace:*"
+    "@webex/internal-media-core": 2.2.6
+    "@webex/jest-config-legacy": "workspace:*"
+    "@webex/legacy-tools": "workspace:*"
+    "@webex/test-helper-chai": "workspace:*"
+    "@webex/test-helper-mock-webex": "workspace:*"
     "@webex/ts-events": ^1.1.0
     "@webex/web-media-effects": ^2.15.6
     eslint: ^8.24.0
@@ -7558,65 +7693,62 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/nyc-config@workspace:^, @webex/nyc-config@workspace:packages/config/nyc":
+"@webex/nyc-config@workspace:*, @webex/nyc-config@workspace:packages/config/nyc":
   version: 0.0.0-use.local
   resolution: "@webex/nyc-config@workspace:packages/config/nyc"
   dependencies:
-    "@webex/eslint-config": "workspace:^"
+    "@webex/eslint-config": "workspace:*"
     eslint: ^8.35.0
   peerDependencies:
-    "@webex/jasmine-config": "workspace:^"
+    "@webex/jasmine-config": "workspace:*"
     jasmine: ^4.5.0
     nyc: ^15.1.0
   languageName: unknown
   linkType: soft
 
-"@webex/package-tools@workspace:^, @webex/package-tools@workspace:packages/tools/package":
+"@webex/package-tools@workspace:*, @webex/package-tools@workspace:packages/tools/package":
   version: 0.0.0-use.local
   resolution: "@webex/package-tools@workspace:packages/tools/package"
   dependencies:
-    "@microsoft/api-documenter": ^7.21.5
-    "@microsoft/api-extractor": ^7.34.4
-    "@types/eslint": ^8
-    "@types/jasmine": ^4
-    "@webex/api-extractor-config": "workspace:^"
-    "@webex/cli-tools": "workspace:^"
-    "@webex/esbuild-config": "workspace:^"
-    "@webex/eslint-config": "workspace:^"
-    "@webex/jasmine-config": "workspace:^"
-    "@webex/nyc-config": "workspace:^"
-    "@webex/typescript-config": "workspace:^"
-    esbuild: ^0.17.11
-    eslint: ^8.35.0
-    jasmine: ^4.5.0
-    nyc: ^15.1.0
-    rimraf: ^4.1.2
-    typescript: ^4.9.5
+    "@microsoft/api-documenter": 7.23.20
+    "@microsoft/api-extractor": 7.39.4
+    "@types/eslint": 8.56.0
+    "@webex/cli-tools": "workspace:*"
+    eslint: 8.56.0
+    eslint-config-airbnb-base: 15.0.0
+    eslint-config-airbnb-typescript: 17.1.0
+    eslint-plugin-import: 2.29.1
+    eslint-plugin-jsdoc: 48.0.4
+    eslint-plugin-tsdoc: 0.2.17
+    jest: 29.7.0
+    jest-silent-reporter: 0.5.0
+    rimraf: 5.0.5
+    typescript: 5.3.3
   bin:
-    webex-package-tools: ./dist/cli/index.js
+    webex-package-tools: ./index.js
   languageName: unknown
   linkType: soft
 
-"@webex/plugin-attachment-actions@workspace:^, @webex/plugin-attachment-actions@workspace:packages/@webex/plugin-attachment-actions":
+"@webex/plugin-attachment-actions@workspace:*, @webex/plugin-attachment-actions@workspace:packages/@webex/plugin-attachment-actions":
   version: 0.0.0-use.local
   resolution: "@webex/plugin-attachment-actions@workspace:packages/@webex/plugin-attachment-actions"
   dependencies:
     "@babel/core": ^7.17.10
-    "@webex/babel-config-legacy": "workspace:^"
-    "@webex/common": "workspace:^"
-    "@webex/eslint-config-legacy": "workspace:^"
-    "@webex/internal-plugin-conversation": "workspace:^"
-    "@webex/internal-plugin-mercury": "workspace:^"
-    "@webex/jest-config-legacy": "workspace:^"
-    "@webex/legacy-tools": "workspace:^"
-    "@webex/plugin-logger": "workspace:^"
-    "@webex/plugin-messages": "workspace:^"
-    "@webex/plugin-people": "workspace:^"
-    "@webex/test-helper-chai": "workspace:^"
-    "@webex/test-helper-mocha": "workspace:^"
-    "@webex/test-helper-mock-webex": "workspace:^"
-    "@webex/test-helper-test-users": "workspace:^"
-    "@webex/webex-core": "workspace:^"
+    "@webex/babel-config-legacy": "workspace:*"
+    "@webex/common": "workspace:*"
+    "@webex/eslint-config-legacy": "workspace:*"
+    "@webex/internal-plugin-conversation": "workspace:*"
+    "@webex/internal-plugin-mercury": "workspace:*"
+    "@webex/jest-config-legacy": "workspace:*"
+    "@webex/legacy-tools": "workspace:*"
+    "@webex/plugin-logger": "workspace:*"
+    "@webex/plugin-messages": "workspace:*"
+    "@webex/plugin-people": "workspace:*"
+    "@webex/test-helper-chai": "workspace:*"
+    "@webex/test-helper-mocha": "workspace:*"
+    "@webex/test-helper-mock-webex": "workspace:*"
+    "@webex/test-helper-test-users": "workspace:*"
+    "@webex/webex-core": "workspace:*"
     debug: ^4.3.4
     eslint: ^8.24.0
     lodash: ^4.17.21
@@ -7624,24 +7756,24 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/plugin-authorization-browser-first-party@workspace:^, @webex/plugin-authorization-browser-first-party@workspace:packages/@webex/plugin-authorization-browser-first-party":
+"@webex/plugin-authorization-browser-first-party@workspace:*, @webex/plugin-authorization-browser-first-party@workspace:packages/@webex/plugin-authorization-browser-first-party":
   version: 0.0.0-use.local
   resolution: "@webex/plugin-authorization-browser-first-party@workspace:packages/@webex/plugin-authorization-browser-first-party"
   dependencies:
     "@babel/core": ^7.17.10
     "@babel/polyfill": ^7.12.1
-    "@webex/babel-config-legacy": "workspace:^"
-    "@webex/common": "workspace:^"
-    "@webex/eslint-config-legacy": "workspace:^"
-    "@webex/jest-config-legacy": "workspace:^"
-    "@webex/legacy-tools": "workspace:^"
-    "@webex/storage-adapter-local-storage": "workspace:^"
-    "@webex/test-helper-automation": "workspace:^"
-    "@webex/test-helper-chai": "workspace:^"
-    "@webex/test-helper-mocha": "workspace:^"
-    "@webex/test-helper-mock-webex": "workspace:^"
-    "@webex/test-helper-test-users": "workspace:^"
-    "@webex/webex-core": "workspace:^"
+    "@webex/babel-config-legacy": "workspace:*"
+    "@webex/common": "workspace:*"
+    "@webex/eslint-config-legacy": "workspace:*"
+    "@webex/jest-config-legacy": "workspace:*"
+    "@webex/legacy-tools": "workspace:*"
+    "@webex/storage-adapter-local-storage": "workspace:*"
+    "@webex/test-helper-automation": "workspace:*"
+    "@webex/test-helper-chai": "workspace:*"
+    "@webex/test-helper-mocha": "workspace:*"
+    "@webex/test-helper-mock-webex": "workspace:*"
+    "@webex/test-helper-test-users": "workspace:*"
+    "@webex/webex-core": "workspace:*"
     crypto-js: ^4.1.1
     eslint: ^8.24.0
     lodash: ^4.17.21
@@ -7651,27 +7783,27 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/plugin-authorization-browser@workspace:^, @webex/plugin-authorization-browser@workspace:packages/@webex/plugin-authorization-browser":
+"@webex/plugin-authorization-browser@workspace:*, @webex/plugin-authorization-browser@workspace:packages/@webex/plugin-authorization-browser":
   version: 0.0.0-use.local
   resolution: "@webex/plugin-authorization-browser@workspace:packages/@webex/plugin-authorization-browser"
   dependencies:
     "@babel/core": ^7.17.10
-    "@webex/babel-config-legacy": "workspace:^"
-    "@webex/common": "workspace:^"
-    "@webex/eslint-config-legacy": "workspace:^"
-    "@webex/internal-plugin-device": "workspace:^"
-    "@webex/jest-config-legacy": "workspace:^"
-    "@webex/legacy-tools": "workspace:^"
-    "@webex/plugin-authorization-node": "workspace:^"
-    "@webex/storage-adapter-local-storage": "workspace:^"
-    "@webex/storage-adapter-spec": "workspace:^"
-    "@webex/test-helper-appid": "workspace:^"
-    "@webex/test-helper-automation": "workspace:^"
-    "@webex/test-helper-chai": "workspace:^"
-    "@webex/test-helper-mocha": "workspace:^"
-    "@webex/test-helper-mock-webex": "workspace:^"
-    "@webex/test-helper-test-users": "workspace:^"
-    "@webex/webex-core": "workspace:^"
+    "@webex/babel-config-legacy": "workspace:*"
+    "@webex/common": "workspace:*"
+    "@webex/eslint-config-legacy": "workspace:*"
+    "@webex/internal-plugin-device": "workspace:*"
+    "@webex/jest-config-legacy": "workspace:*"
+    "@webex/legacy-tools": "workspace:*"
+    "@webex/plugin-authorization-node": "workspace:*"
+    "@webex/storage-adapter-local-storage": "workspace:*"
+    "@webex/storage-adapter-spec": "workspace:*"
+    "@webex/test-helper-appid": "workspace:*"
+    "@webex/test-helper-automation": "workspace:*"
+    "@webex/test-helper-chai": "workspace:*"
+    "@webex/test-helper-mocha": "workspace:*"
+    "@webex/test-helper-mock-webex": "workspace:*"
+    "@webex/test-helper-test-users": "workspace:*"
+    "@webex/webex-core": "workspace:*"
     eslint: ^8.24.0
     jose: ^4.13.1
     lodash: ^4.17.21
@@ -7681,23 +7813,23 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/plugin-authorization-node@workspace:^, @webex/plugin-authorization-node@workspace:packages/@webex/plugin-authorization-node":
+"@webex/plugin-authorization-node@workspace:*, @webex/plugin-authorization-node@workspace:packages/@webex/plugin-authorization-node":
   version: 0.0.0-use.local
   resolution: "@webex/plugin-authorization-node@workspace:packages/@webex/plugin-authorization-node"
   dependencies:
     "@babel/core": ^7.17.10
-    "@webex/babel-config-legacy": "workspace:^"
-    "@webex/common": "workspace:^"
-    "@webex/eslint-config-legacy": "workspace:^"
-    "@webex/internal-plugin-device": "workspace:^"
-    "@webex/jest-config-legacy": "workspace:^"
-    "@webex/legacy-tools": "workspace:^"
-    "@webex/test-helper-appid": "workspace:^"
-    "@webex/test-helper-chai": "workspace:^"
-    "@webex/test-helper-mocha": "workspace:^"
-    "@webex/test-helper-mock-webex": "workspace:^"
-    "@webex/test-helper-test-users": "workspace:^"
-    "@webex/webex-core": "workspace:^"
+    "@webex/babel-config-legacy": "workspace:*"
+    "@webex/common": "workspace:*"
+    "@webex/eslint-config-legacy": "workspace:*"
+    "@webex/internal-plugin-device": "workspace:*"
+    "@webex/jest-config-legacy": "workspace:*"
+    "@webex/legacy-tools": "workspace:*"
+    "@webex/test-helper-appid": "workspace:*"
+    "@webex/test-helper-chai": "workspace:*"
+    "@webex/test-helper-mocha": "workspace:*"
+    "@webex/test-helper-mock-webex": "workspace:*"
+    "@webex/test-helper-test-users": "workspace:*"
+    "@webex/webex-core": "workspace:*"
     eslint: ^8.24.0
     jsonwebtoken: ^9.0.0
     prettier: ^2.7.1
@@ -7706,46 +7838,46 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/plugin-authorization@workspace:^, @webex/plugin-authorization@workspace:packages/@webex/plugin-authorization":
+"@webex/plugin-authorization@workspace:*, @webex/plugin-authorization@workspace:packages/@webex/plugin-authorization":
   version: 0.0.0-use.local
   resolution: "@webex/plugin-authorization@workspace:packages/@webex/plugin-authorization"
   dependencies:
     "@babel/core": ^7.17.10
-    "@webex/babel-config-legacy": "workspace:^"
-    "@webex/eslint-config-legacy": "workspace:^"
-    "@webex/jest-config-legacy": "workspace:^"
-    "@webex/legacy-tools": "workspace:^"
-    "@webex/plugin-authorization-browser": "workspace:^"
-    "@webex/plugin-authorization-node": "workspace:^"
-    "@webex/test-helper-chai": "workspace:^"
-    "@webex/test-helper-mocha": "workspace:^"
-    "@webex/test-helper-mock-webex": "workspace:^"
-    "@webex/test-helper-test-users": "workspace:^"
+    "@webex/babel-config-legacy": "workspace:*"
+    "@webex/eslint-config-legacy": "workspace:*"
+    "@webex/jest-config-legacy": "workspace:*"
+    "@webex/legacy-tools": "workspace:*"
+    "@webex/plugin-authorization-browser": "workspace:*"
+    "@webex/plugin-authorization-node": "workspace:*"
+    "@webex/test-helper-chai": "workspace:*"
+    "@webex/test-helper-mocha": "workspace:*"
+    "@webex/test-helper-mock-webex": "workspace:*"
+    "@webex/test-helper-test-users": "workspace:*"
     eslint: ^8.24.0
     prettier: ^2.7.1
   languageName: unknown
   linkType: soft
 
-"@webex/plugin-device-manager@workspace:^, @webex/plugin-device-manager@workspace:packages/@webex/plugin-device-manager":
+"@webex/plugin-device-manager@workspace:*, @webex/plugin-device-manager@workspace:packages/@webex/plugin-device-manager":
   version: 0.0.0-use.local
   resolution: "@webex/plugin-device-manager@workspace:packages/@webex/plugin-device-manager"
   dependencies:
     "@babel/core": ^7.17.10
-    "@webex/babel-config-legacy": "workspace:^"
-    "@webex/eslint-config-legacy": "workspace:^"
-    "@webex/internal-plugin-calendar": "workspace:^"
-    "@webex/internal-plugin-device": "workspace:^"
-    "@webex/internal-plugin-lyra": "workspace:^"
-    "@webex/internal-plugin-search": "workspace:^"
-    "@webex/jest-config-legacy": "workspace:^"
-    "@webex/legacy-tools": "workspace:^"
-    "@webex/plugin-authorization": "workspace:^"
-    "@webex/plugin-logger": "workspace:^"
-    "@webex/test-helper-chai": "workspace:^"
-    "@webex/test-helper-mocha": "workspace:^"
-    "@webex/test-helper-mock-webex": "workspace:^"
-    "@webex/test-helper-test-users": "workspace:^"
-    "@webex/webex-core": "workspace:^"
+    "@webex/babel-config-legacy": "workspace:*"
+    "@webex/eslint-config-legacy": "workspace:*"
+    "@webex/internal-plugin-calendar": "workspace:*"
+    "@webex/internal-plugin-device": "workspace:*"
+    "@webex/internal-plugin-lyra": "workspace:*"
+    "@webex/internal-plugin-search": "workspace:*"
+    "@webex/jest-config-legacy": "workspace:*"
+    "@webex/legacy-tools": "workspace:*"
+    "@webex/plugin-authorization": "workspace:*"
+    "@webex/plugin-logger": "workspace:*"
+    "@webex/test-helper-chai": "workspace:*"
+    "@webex/test-helper-mocha": "workspace:*"
+    "@webex/test-helper-mock-webex": "workspace:*"
+    "@webex/test-helper-test-users": "workspace:*"
+    "@webex/webex-core": "workspace:*"
     eslint: ^8.24.0
     lodash: ^4.17.21
     prettier: ^2.7.1
@@ -7753,21 +7885,21 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/plugin-logger@workspace:^, @webex/plugin-logger@workspace:packages/@webex/plugin-logger":
+"@webex/plugin-logger@workspace:*, @webex/plugin-logger@workspace:packages/@webex/plugin-logger":
   version: 0.0.0-use.local
   resolution: "@webex/plugin-logger@workspace:packages/@webex/plugin-logger"
   dependencies:
     "@babel/core": ^7.17.10
-    "@webex/babel-config-legacy": "workspace:^"
-    "@webex/common": "workspace:^"
-    "@webex/eslint-config-legacy": "workspace:^"
-    "@webex/jest-config-legacy": "workspace:^"
-    "@webex/legacy-tools": "workspace:^"
-    "@webex/test-helper-chai": "workspace:^"
-    "@webex/test-helper-mocha": "workspace:^"
-    "@webex/test-helper-mock-webex": "workspace:^"
-    "@webex/test-helper-test-users": "workspace:^"
-    "@webex/webex-core": "workspace:^"
+    "@webex/babel-config-legacy": "workspace:*"
+    "@webex/common": "workspace:*"
+    "@webex/eslint-config-legacy": "workspace:*"
+    "@webex/jest-config-legacy": "workspace:*"
+    "@webex/legacy-tools": "workspace:*"
+    "@webex/test-helper-chai": "workspace:*"
+    "@webex/test-helper-mocha": "workspace:*"
+    "@webex/test-helper-mock-webex": "workspace:*"
+    "@webex/test-helper-test-users": "workspace:*"
+    "@webex/webex-core": "workspace:*"
     eslint: ^8.24.0
     lodash: ^4.17.21
     prettier: ^2.7.1
@@ -7775,35 +7907,36 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/plugin-meetings@workspace:^, @webex/plugin-meetings@workspace:packages/@webex/plugin-meetings":
+"@webex/plugin-meetings@workspace:*, @webex/plugin-meetings@workspace:packages/@webex/plugin-meetings":
   version: 0.0.0-use.local
   resolution: "@webex/plugin-meetings@workspace:packages/@webex/plugin-meetings"
   dependencies:
     "@babel/core": ^7.17.10
     "@types/jsdom": ^21
-    "@webex/babel-config-legacy": "workspace:^"
-    "@webex/common": "workspace:^"
-    "@webex/eslint-config-legacy": "workspace:^"
-    "@webex/internal-media-core": 2.2.3
-    "@webex/internal-plugin-conversation": "workspace:^"
-    "@webex/internal-plugin-device": "workspace:^"
-    "@webex/internal-plugin-llm": "workspace:^"
-    "@webex/internal-plugin-mercury": "workspace:^"
-    "@webex/internal-plugin-metrics": "workspace:^"
-    "@webex/internal-plugin-support": "workspace:^"
-    "@webex/internal-plugin-user": "workspace:^"
-    "@webex/jest-config-legacy": "workspace:^"
-    "@webex/legacy-tools": "workspace:^"
-    "@webex/media-helpers": "workspace:^"
-    "@webex/plugin-meetings": "workspace:^"
-    "@webex/plugin-people": "workspace:^"
-    "@webex/plugin-rooms": "workspace:^"
-    "@webex/test-helper-chai": "workspace:^"
-    "@webex/test-helper-mocha": "workspace:^"
-    "@webex/test-helper-mock-webex": "workspace:^"
-    "@webex/test-helper-retry": "workspace:^"
-    "@webex/test-helper-test-users": "workspace:^"
-    "@webex/webex-core": "workspace:^"
+    "@webex/babel-config-legacy": "workspace:*"
+    "@webex/common": "workspace:*"
+    "@webex/eslint-config-legacy": "workspace:*"
+    "@webex/internal-media-core": 2.2.6
+    "@webex/internal-plugin-conversation": "workspace:*"
+    "@webex/internal-plugin-device": "workspace:*"
+    "@webex/internal-plugin-llm": "workspace:*"
+    "@webex/internal-plugin-mercury": "workspace:*"
+    "@webex/internal-plugin-metrics": "workspace:*"
+    "@webex/internal-plugin-support": "workspace:*"
+    "@webex/internal-plugin-user": "workspace:*"
+    "@webex/internal-plugin-voicea": "workspace:*"
+    "@webex/jest-config-legacy": "workspace:*"
+    "@webex/legacy-tools": "workspace:*"
+    "@webex/media-helpers": "workspace:*"
+    "@webex/plugin-meetings": "workspace:*"
+    "@webex/plugin-people": "workspace:*"
+    "@webex/plugin-rooms": "workspace:*"
+    "@webex/test-helper-chai": "workspace:*"
+    "@webex/test-helper-mocha": "workspace:*"
+    "@webex/test-helper-mock-webex": "workspace:*"
+    "@webex/test-helper-retry": "workspace:*"
+    "@webex/test-helper-test-users": "workspace:*"
+    "@webex/webex-core": "workspace:*"
     ampersand-collection: ^2.0.2
     bowser: ^2.11.0
     btoa: ^1.2.1
@@ -7816,7 +7949,7 @@ __metadata:
     javascript-state-machine: ^3.1.0
     jsdom: 19.0.0
     jsdom-global: 3.0.2
-    jwt-decode: ^4.0.0
+    jwt-decode: 3.1.2
     lodash: ^4.17.21
     prettier: ^2.7.1
     sdp-transform: ^2.12.0
@@ -7828,27 +7961,27 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/plugin-memberships@workspace:^, @webex/plugin-memberships@workspace:packages/@webex/plugin-memberships":
+"@webex/plugin-memberships@workspace:*, @webex/plugin-memberships@workspace:packages/@webex/plugin-memberships":
   version: 0.0.0-use.local
   resolution: "@webex/plugin-memberships@workspace:packages/@webex/plugin-memberships"
   dependencies:
     "@babel/core": ^7.17.10
-    "@webex/babel-config-legacy": "workspace:^"
-    "@webex/common": "workspace:^"
-    "@webex/eslint-config-legacy": "workspace:^"
-    "@webex/internal-plugin-conversation": "workspace:^"
-    "@webex/internal-plugin-mercury": "workspace:^"
-    "@webex/jest-config-legacy": "workspace:^"
-    "@webex/legacy-tools": "workspace:^"
-    "@webex/plugin-logger": "workspace:^"
-    "@webex/plugin-messages": "workspace:^"
-    "@webex/plugin-people": "workspace:^"
-    "@webex/plugin-rooms": "workspace:^"
-    "@webex/test-helper-chai": "workspace:^"
-    "@webex/test-helper-mocha": "workspace:^"
-    "@webex/test-helper-mock-webex": "workspace:^"
-    "@webex/test-helper-test-users": "workspace:^"
-    "@webex/webex-core": "workspace:^"
+    "@webex/babel-config-legacy": "workspace:*"
+    "@webex/common": "workspace:*"
+    "@webex/eslint-config-legacy": "workspace:*"
+    "@webex/internal-plugin-conversation": "workspace:*"
+    "@webex/internal-plugin-mercury": "workspace:*"
+    "@webex/jest-config-legacy": "workspace:*"
+    "@webex/legacy-tools": "workspace:*"
+    "@webex/plugin-logger": "workspace:*"
+    "@webex/plugin-messages": "workspace:*"
+    "@webex/plugin-people": "workspace:*"
+    "@webex/plugin-rooms": "workspace:*"
+    "@webex/test-helper-chai": "workspace:*"
+    "@webex/test-helper-mocha": "workspace:*"
+    "@webex/test-helper-mock-webex": "workspace:*"
+    "@webex/test-helper-test-users": "workspace:*"
+    "@webex/webex-core": "workspace:*"
     debug: ^4.3.4
     eslint: ^8.24.0
     lodash: ^4.17.21
@@ -7857,28 +7990,28 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/plugin-messages@workspace:^, @webex/plugin-messages@workspace:packages/@webex/plugin-messages":
+"@webex/plugin-messages@workspace:*, @webex/plugin-messages@workspace:packages/@webex/plugin-messages":
   version: 0.0.0-use.local
   resolution: "@webex/plugin-messages@workspace:packages/@webex/plugin-messages"
   dependencies:
     "@babel/core": ^7.17.10
-    "@webex/babel-config-legacy": "workspace:^"
-    "@webex/common": "workspace:^"
-    "@webex/eslint-config-legacy": "workspace:^"
-    "@webex/internal-plugin-conversation": "workspace:^"
-    "@webex/internal-plugin-device": "workspace:^"
-    "@webex/internal-plugin-mercury": "workspace:^"
-    "@webex/jest-config-legacy": "workspace:^"
-    "@webex/legacy-tools": "workspace:^"
-    "@webex/plugin-logger": "workspace:^"
-    "@webex/plugin-people": "workspace:^"
-    "@webex/plugin-rooms": "workspace:^"
-    "@webex/test-helper-chai": "workspace:^"
-    "@webex/test-helper-file": "workspace:^"
-    "@webex/test-helper-mocha": "workspace:^"
-    "@webex/test-helper-mock-webex": "workspace:^"
-    "@webex/test-helper-test-users": "workspace:^"
-    "@webex/webex-core": "workspace:^"
+    "@webex/babel-config-legacy": "workspace:*"
+    "@webex/common": "workspace:*"
+    "@webex/eslint-config-legacy": "workspace:*"
+    "@webex/internal-plugin-conversation": "workspace:*"
+    "@webex/internal-plugin-device": "workspace:*"
+    "@webex/internal-plugin-mercury": "workspace:*"
+    "@webex/jest-config-legacy": "workspace:*"
+    "@webex/legacy-tools": "workspace:*"
+    "@webex/plugin-logger": "workspace:*"
+    "@webex/plugin-people": "workspace:*"
+    "@webex/plugin-rooms": "workspace:*"
+    "@webex/test-helper-chai": "workspace:*"
+    "@webex/test-helper-file": "workspace:*"
+    "@webex/test-helper-mocha": "workspace:*"
+    "@webex/test-helper-mock-webex": "workspace:*"
+    "@webex/test-helper-test-users": "workspace:*"
+    "@webex/webex-core": "workspace:*"
     debug: ^4.3.4
     eslint: ^8.24.0
     lodash: ^4.17.21
@@ -7887,49 +8020,72 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/plugin-people@workspace:^, @webex/plugin-people@workspace:packages/@webex/plugin-people":
+"@webex/plugin-people@workspace:*, @webex/plugin-people@workspace:packages/@webex/plugin-people":
   version: 0.0.0-use.local
   resolution: "@webex/plugin-people@workspace:packages/@webex/plugin-people"
   dependencies:
     "@babel/core": ^7.17.10
-    "@webex/babel-config-legacy": "workspace:^"
-    "@webex/common": "workspace:^"
-    "@webex/eslint-config-legacy": "workspace:^"
-    "@webex/internal-plugin-mercury": "workspace:^"
-    "@webex/jest-config-legacy": "workspace:^"
-    "@webex/legacy-tools": "workspace:^"
-    "@webex/test-helper-chai": "workspace:^"
-    "@webex/test-helper-mocha": "workspace:^"
-    "@webex/test-helper-mock-webex": "workspace:^"
-    "@webex/test-helper-test-users": "workspace:^"
-    "@webex/webex-core": "workspace:^"
+    "@webex/babel-config-legacy": "workspace:*"
+    "@webex/common": "workspace:*"
+    "@webex/eslint-config-legacy": "workspace:*"
+    "@webex/internal-plugin-mercury": "workspace:*"
+    "@webex/jest-config-legacy": "workspace:*"
+    "@webex/legacy-tools": "workspace:*"
+    "@webex/test-helper-chai": "workspace:*"
+    "@webex/test-helper-mocha": "workspace:*"
+    "@webex/test-helper-mock-webex": "workspace:*"
+    "@webex/test-helper-test-users": "workspace:*"
+    "@webex/webex-core": "workspace:*"
     eslint: ^8.24.0
     prettier: ^2.7.1
     sinon: ^9.2.4
   languageName: unknown
   linkType: soft
 
-"@webex/plugin-rooms@workspace:^, @webex/plugin-rooms@workspace:packages/@webex/plugin-rooms":
+"@webex/plugin-presence@workspace:packages/@webex/plugin-presence":
+  version: 0.0.0-use.local
+  resolution: "@webex/plugin-presence@workspace:packages/@webex/plugin-presence"
+  dependencies:
+    "@babel/core": ^7.17.10
+    "@webex/babel-config-legacy": "workspace:*"
+    "@webex/eslint-config-legacy": "workspace:*"
+    "@webex/internal-plugin-device": "workspace:*"
+    "@webex/internal-plugin-mercury": "workspace:*"
+    "@webex/jest-config-legacy": "workspace:*"
+    "@webex/legacy-tools": "workspace:*"
+    "@webex/test-helper-chai": "workspace:*"
+    "@webex/test-helper-mocha": "workspace:*"
+    "@webex/test-helper-mock-webex": "workspace:*"
+    "@webex/test-helper-test-users": "workspace:*"
+    "@webex/webex-core": "workspace:*"
+    eslint: ^8.24.0
+    lodash: ^4.17.21
+    prettier: ^2.7.1
+    sinon: ^9.2.4
+  languageName: unknown
+  linkType: soft
+
+"@webex/plugin-rooms@workspace:*, @webex/plugin-rooms@workspace:packages/@webex/plugin-rooms":
   version: 0.0.0-use.local
   resolution: "@webex/plugin-rooms@workspace:packages/@webex/plugin-rooms"
   dependencies:
     "@babel/core": ^7.17.10
-    "@webex/babel-config-legacy": "workspace:^"
-    "@webex/common": "workspace:^"
-    "@webex/eslint-config-legacy": "workspace:^"
-    "@webex/internal-plugin-conversation": "workspace:^"
-    "@webex/internal-plugin-mercury": "workspace:^"
-    "@webex/jest-config-legacy": "workspace:^"
-    "@webex/legacy-tools": "workspace:^"
-    "@webex/plugin-logger": "workspace:^"
-    "@webex/plugin-memberships": "workspace:^"
-    "@webex/plugin-messages": "workspace:^"
-    "@webex/plugin-people": "workspace:^"
-    "@webex/test-helper-chai": "workspace:^"
-    "@webex/test-helper-mocha": "workspace:^"
-    "@webex/test-helper-mock-webex": "workspace:^"
-    "@webex/test-helper-test-users": "workspace:^"
-    "@webex/webex-core": "workspace:^"
+    "@webex/babel-config-legacy": "workspace:*"
+    "@webex/common": "workspace:*"
+    "@webex/eslint-config-legacy": "workspace:*"
+    "@webex/internal-plugin-conversation": "workspace:*"
+    "@webex/internal-plugin-mercury": "workspace:*"
+    "@webex/jest-config-legacy": "workspace:*"
+    "@webex/legacy-tools": "workspace:*"
+    "@webex/plugin-logger": "workspace:*"
+    "@webex/plugin-memberships": "workspace:*"
+    "@webex/plugin-messages": "workspace:*"
+    "@webex/plugin-people": "workspace:*"
+    "@webex/test-helper-chai": "workspace:*"
+    "@webex/test-helper-mocha": "workspace:*"
+    "@webex/test-helper-mock-webex": "workspace:*"
+    "@webex/test-helper-test-users": "workspace:*"
+    "@webex/webex-core": "workspace:*"
     debug: ^4.3.4
     eslint: ^8.24.0
     lodash: ^4.17.21
@@ -7938,48 +8094,48 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/plugin-team-memberships@workspace:^, @webex/plugin-team-memberships@workspace:packages/@webex/plugin-team-memberships":
+"@webex/plugin-team-memberships@workspace:*, @webex/plugin-team-memberships@workspace:packages/@webex/plugin-team-memberships":
   version: 0.0.0-use.local
   resolution: "@webex/plugin-team-memberships@workspace:packages/@webex/plugin-team-memberships"
   dependencies:
     "@babel/core": ^7.17.10
-    "@webex/babel-config-legacy": "workspace:^"
-    "@webex/eslint-config-legacy": "workspace:^"
-    "@webex/internal-plugin-device": "workspace:^"
-    "@webex/jest-config-legacy": "workspace:^"
-    "@webex/legacy-tools": "workspace:^"
-    "@webex/plugin-logger": "workspace:^"
-    "@webex/plugin-rooms": "workspace:^"
-    "@webex/plugin-teams": "workspace:^"
-    "@webex/test-helper-chai": "workspace:^"
-    "@webex/test-helper-mocha": "workspace:^"
-    "@webex/test-helper-mock-webex": "workspace:^"
-    "@webex/test-helper-test-users": "workspace:^"
-    "@webex/webex-core": "workspace:^"
+    "@webex/babel-config-legacy": "workspace:*"
+    "@webex/eslint-config-legacy": "workspace:*"
+    "@webex/internal-plugin-device": "workspace:*"
+    "@webex/jest-config-legacy": "workspace:*"
+    "@webex/legacy-tools": "workspace:*"
+    "@webex/plugin-logger": "workspace:*"
+    "@webex/plugin-rooms": "workspace:*"
+    "@webex/plugin-teams": "workspace:*"
+    "@webex/test-helper-chai": "workspace:*"
+    "@webex/test-helper-mocha": "workspace:*"
+    "@webex/test-helper-mock-webex": "workspace:*"
+    "@webex/test-helper-test-users": "workspace:*"
+    "@webex/webex-core": "workspace:*"
     eslint: ^8.24.0
     prettier: ^2.7.1
     sinon: ^9.2.4
   languageName: unknown
   linkType: soft
 
-"@webex/plugin-teams@workspace:^, @webex/plugin-teams@workspace:packages/@webex/plugin-teams":
+"@webex/plugin-teams@workspace:*, @webex/plugin-teams@workspace:packages/@webex/plugin-teams":
   version: 0.0.0-use.local
   resolution: "@webex/plugin-teams@workspace:packages/@webex/plugin-teams"
   dependencies:
     "@babel/core": ^7.17.10
-    "@webex/babel-config-legacy": "workspace:^"
-    "@webex/eslint-config-legacy": "workspace:^"
-    "@webex/internal-plugin-device": "workspace:^"
-    "@webex/jest-config-legacy": "workspace:^"
-    "@webex/legacy-tools": "workspace:^"
-    "@webex/plugin-logger": "workspace:^"
-    "@webex/plugin-memberships": "workspace:^"
-    "@webex/plugin-rooms": "workspace:^"
-    "@webex/test-helper-chai": "workspace:^"
-    "@webex/test-helper-mocha": "workspace:^"
-    "@webex/test-helper-mock-webex": "workspace:^"
-    "@webex/test-helper-test-users": "workspace:^"
-    "@webex/webex-core": "workspace:^"
+    "@webex/babel-config-legacy": "workspace:*"
+    "@webex/eslint-config-legacy": "workspace:*"
+    "@webex/internal-plugin-device": "workspace:*"
+    "@webex/jest-config-legacy": "workspace:*"
+    "@webex/legacy-tools": "workspace:*"
+    "@webex/plugin-logger": "workspace:*"
+    "@webex/plugin-memberships": "workspace:*"
+    "@webex/plugin-rooms": "workspace:*"
+    "@webex/test-helper-chai": "workspace:*"
+    "@webex/test-helper-mocha": "workspace:*"
+    "@webex/test-helper-mock-webex": "workspace:*"
+    "@webex/test-helper-test-users": "workspace:*"
+    "@webex/webex-core": "workspace:*"
     eslint: ^8.24.0
     lodash: ^4.17.21
     prettier: ^2.7.1
@@ -7987,23 +8143,23 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/plugin-webhooks@workspace:^, @webex/plugin-webhooks@workspace:packages/@webex/plugin-webhooks":
+"@webex/plugin-webhooks@workspace:*, @webex/plugin-webhooks@workspace:packages/@webex/plugin-webhooks":
   version: 0.0.0-use.local
   resolution: "@webex/plugin-webhooks@workspace:packages/@webex/plugin-webhooks"
   dependencies:
     "@babel/core": ^7.17.10
-    "@webex/babel-config-legacy": "workspace:^"
-    "@webex/eslint-config-legacy": "workspace:^"
-    "@webex/internal-plugin-device": "workspace:^"
-    "@webex/jest-config-legacy": "workspace:^"
-    "@webex/legacy-tools": "workspace:^"
-    "@webex/plugin-logger": "workspace:^"
-    "@webex/plugin-rooms": "workspace:^"
-    "@webex/test-helper-chai": "workspace:^"
-    "@webex/test-helper-mocha": "workspace:^"
-    "@webex/test-helper-mock-webex": "workspace:^"
-    "@webex/test-helper-test-users": "workspace:^"
-    "@webex/webex-core": "workspace:^"
+    "@webex/babel-config-legacy": "workspace:*"
+    "@webex/eslint-config-legacy": "workspace:*"
+    "@webex/internal-plugin-device": "workspace:*"
+    "@webex/jest-config-legacy": "workspace:*"
+    "@webex/legacy-tools": "workspace:*"
+    "@webex/plugin-logger": "workspace:*"
+    "@webex/plugin-rooms": "workspace:*"
+    "@webex/test-helper-chai": "workspace:*"
+    "@webex/test-helper-mocha": "workspace:*"
+    "@webex/test-helper-mock-webex": "workspace:*"
+    "@webex/test-helper-test-users": "workspace:*"
+    "@webex/webex-core": "workspace:*"
     eslint: ^8.24.0
     prettier: ^2.7.1
     sinon: ^9.2.4
@@ -8015,36 +8171,36 @@ __metadata:
   resolution: "@webex/recipe-private-web-client@workspace:packages/@webex/recipe-private-web-client"
   dependencies:
     "@babel/core": ^7.17.10
-    "@webex/babel-config-legacy": "workspace:^"
-    "@webex/eslint-config-legacy": "workspace:^"
-    "@webex/internal-plugin-avatar": "workspace:^"
-    "@webex/internal-plugin-board": "workspace:^"
-    "@webex/internal-plugin-calendar": "workspace:^"
-    "@webex/internal-plugin-conversation": "workspace:^"
-    "@webex/internal-plugin-device": "workspace:^"
-    "@webex/internal-plugin-encryption": "workspace:^"
-    "@webex/internal-plugin-feature": "workspace:^"
-    "@webex/internal-plugin-flag": "workspace:^"
-    "@webex/internal-plugin-lyra": "workspace:^"
-    "@webex/internal-plugin-mercury": "workspace:^"
-    "@webex/internal-plugin-metrics": "workspace:^"
-    "@webex/internal-plugin-presence": "workspace:^"
-    "@webex/internal-plugin-search": "workspace:^"
-    "@webex/internal-plugin-support": "workspace:^"
-    "@webex/internal-plugin-team": "workspace:^"
-    "@webex/internal-plugin-user": "workspace:^"
-    "@webex/jest-config-legacy": "workspace:^"
-    "@webex/legacy-tools": "workspace:^"
-    "@webex/plugin-authorization-browser-first-party": "workspace:^"
-    "@webex/plugin-logger": "workspace:^"
-    "@webex/plugin-people": "workspace:^"
-    "@webex/storage-adapter-local-forage": "workspace:^"
-    "@webex/storage-adapter-local-storage": "workspace:^"
-    "@webex/test-helper-chai": "workspace:^"
-    "@webex/test-helper-mocha": "workspace:^"
-    "@webex/test-helper-mock-webex": "workspace:^"
-    "@webex/test-helper-test-users": "workspace:^"
-    "@webex/webex-core": "workspace:^"
+    "@webex/babel-config-legacy": "workspace:*"
+    "@webex/eslint-config-legacy": "workspace:*"
+    "@webex/internal-plugin-avatar": "workspace:*"
+    "@webex/internal-plugin-board": "workspace:*"
+    "@webex/internal-plugin-calendar": "workspace:*"
+    "@webex/internal-plugin-conversation": "workspace:*"
+    "@webex/internal-plugin-device": "workspace:*"
+    "@webex/internal-plugin-encryption": "workspace:*"
+    "@webex/internal-plugin-feature": "workspace:*"
+    "@webex/internal-plugin-flag": "workspace:*"
+    "@webex/internal-plugin-lyra": "workspace:*"
+    "@webex/internal-plugin-mercury": "workspace:*"
+    "@webex/internal-plugin-metrics": "workspace:*"
+    "@webex/internal-plugin-presence": "workspace:*"
+    "@webex/internal-plugin-search": "workspace:*"
+    "@webex/internal-plugin-support": "workspace:*"
+    "@webex/internal-plugin-team": "workspace:*"
+    "@webex/internal-plugin-user": "workspace:*"
+    "@webex/jest-config-legacy": "workspace:*"
+    "@webex/legacy-tools": "workspace:*"
+    "@webex/plugin-authorization-browser-first-party": "workspace:*"
+    "@webex/plugin-logger": "workspace:*"
+    "@webex/plugin-people": "workspace:*"
+    "@webex/storage-adapter-local-forage": "workspace:*"
+    "@webex/storage-adapter-local-storage": "workspace:*"
+    "@webex/test-helper-chai": "workspace:*"
+    "@webex/test-helper-mocha": "workspace:*"
+    "@webex/test-helper-mock-webex": "workspace:*"
+    "@webex/test-helper-test-users": "workspace:*"
+    "@webex/webex-core": "workspace:*"
     eslint: ^8.24.0
     lodash: ^4.17.21
     prettier: ^2.7.1
@@ -8061,43 +8217,43 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@webex/storage-adapter-local-forage@workspace:^, @webex/storage-adapter-local-forage@workspace:packages/@webex/storage-adapter-local-forage":
+"@webex/storage-adapter-local-forage@workspace:*, @webex/storage-adapter-local-forage@workspace:packages/@webex/storage-adapter-local-forage":
   version: 0.0.0-use.local
   resolution: "@webex/storage-adapter-local-forage@workspace:packages/@webex/storage-adapter-local-forage"
   dependencies:
     "@babel/core": ^7.17.10
-    "@webex/babel-config-legacy": "workspace:^"
-    "@webex/common": "workspace:^"
-    "@webex/eslint-config-legacy": "workspace:^"
-    "@webex/jest-config-legacy": "workspace:^"
-    "@webex/legacy-tools": "workspace:^"
-    "@webex/storage-adapter-spec": "workspace:^"
-    "@webex/test-helper-chai": "workspace:^"
-    "@webex/test-helper-mocha": "workspace:^"
-    "@webex/test-helper-mock-webex": "workspace:^"
-    "@webex/test-helper-test-users": "workspace:^"
-    "@webex/webex-core": "workspace:^"
+    "@webex/babel-config-legacy": "workspace:*"
+    "@webex/common": "workspace:*"
+    "@webex/eslint-config-legacy": "workspace:*"
+    "@webex/jest-config-legacy": "workspace:*"
+    "@webex/legacy-tools": "workspace:*"
+    "@webex/storage-adapter-spec": "workspace:*"
+    "@webex/test-helper-chai": "workspace:*"
+    "@webex/test-helper-mocha": "workspace:*"
+    "@webex/test-helper-mock-webex": "workspace:*"
+    "@webex/test-helper-test-users": "workspace:*"
+    "@webex/webex-core": "workspace:*"
     eslint: ^8.24.0
     localforage: ^1.7.3
     prettier: ^2.7.1
   languageName: unknown
   linkType: soft
 
-"@webex/storage-adapter-local-storage@workspace:^, @webex/storage-adapter-local-storage@workspace:packages/@webex/storage-adapter-local-storage":
+"@webex/storage-adapter-local-storage@workspace:*, @webex/storage-adapter-local-storage@workspace:packages/@webex/storage-adapter-local-storage":
   version: 0.0.0-use.local
   resolution: "@webex/storage-adapter-local-storage@workspace:packages/@webex/storage-adapter-local-storage"
   dependencies:
     "@babel/core": ^7.17.10
-    "@webex/babel-config-legacy": "workspace:^"
-    "@webex/eslint-config-legacy": "workspace:^"
-    "@webex/jest-config-legacy": "workspace:^"
-    "@webex/legacy-tools": "workspace:^"
-    "@webex/storage-adapter-spec": "workspace:^"
-    "@webex/test-helper-chai": "workspace:^"
-    "@webex/test-helper-mocha": "workspace:^"
-    "@webex/test-helper-mock-webex": "workspace:^"
-    "@webex/test-helper-test-users": "workspace:^"
-    "@webex/webex-core": "workspace:^"
+    "@webex/babel-config-legacy": "workspace:*"
+    "@webex/eslint-config-legacy": "workspace:*"
+    "@webex/jest-config-legacy": "workspace:*"
+    "@webex/legacy-tools": "workspace:*"
+    "@webex/storage-adapter-spec": "workspace:*"
+    "@webex/test-helper-chai": "workspace:*"
+    "@webex/test-helper-mocha": "workspace:*"
+    "@webex/test-helper-mock-webex": "workspace:*"
+    "@webex/test-helper-test-users": "workspace:*"
+    "@webex/webex-core": "workspace:*"
     eslint: ^8.24.0
     prettier: ^2.7.1
   languageName: unknown
@@ -8108,53 +8264,53 @@ __metadata:
   resolution: "@webex/storage-adapter-session-storage@workspace:packages/@webex/storage-adapter-session-storage"
   dependencies:
     "@babel/core": ^7.17.10
-    "@webex/babel-config-legacy": "workspace:^"
-    "@webex/eslint-config-legacy": "workspace:^"
-    "@webex/jest-config-legacy": "workspace:^"
-    "@webex/legacy-tools": "workspace:^"
-    "@webex/storage-adapter-spec": "workspace:^"
-    "@webex/test-helper-chai": "workspace:^"
-    "@webex/test-helper-mocha": "workspace:^"
-    "@webex/test-helper-mock-webex": "workspace:^"
-    "@webex/test-helper-test-users": "workspace:^"
-    "@webex/webex-core": "workspace:^"
+    "@webex/babel-config-legacy": "workspace:*"
+    "@webex/eslint-config-legacy": "workspace:*"
+    "@webex/jest-config-legacy": "workspace:*"
+    "@webex/legacy-tools": "workspace:*"
+    "@webex/storage-adapter-spec": "workspace:*"
+    "@webex/test-helper-chai": "workspace:*"
+    "@webex/test-helper-mocha": "workspace:*"
+    "@webex/test-helper-mock-webex": "workspace:*"
+    "@webex/test-helper-test-users": "workspace:*"
+    "@webex/webex-core": "workspace:*"
     eslint: ^8.24.0
     prettier: ^2.7.1
   languageName: unknown
   linkType: soft
 
-"@webex/storage-adapter-spec@workspace:^, @webex/storage-adapter-spec@workspace:packages/@webex/storage-adapter-spec":
+"@webex/storage-adapter-spec@workspace:*, @webex/storage-adapter-spec@workspace:packages/@webex/storage-adapter-spec":
   version: 0.0.0-use.local
   resolution: "@webex/storage-adapter-spec@workspace:packages/@webex/storage-adapter-spec"
   dependencies:
     "@babel/core": ^7.17.10
-    "@webex/babel-config-legacy": "workspace:^"
-    "@webex/eslint-config-legacy": "workspace:^"
-    "@webex/jest-config-legacy": "workspace:^"
-    "@webex/legacy-tools": "workspace:^"
-    "@webex/test-helper-chai": "workspace:^"
-    "@webex/test-helper-mocha": "workspace:^"
-    "@webex/test-helper-mock-webex": "workspace:^"
-    "@webex/test-helper-test-users": "workspace:^"
+    "@webex/babel-config-legacy": "workspace:*"
+    "@webex/eslint-config-legacy": "workspace:*"
+    "@webex/jest-config-legacy": "workspace:*"
+    "@webex/legacy-tools": "workspace:*"
+    "@webex/test-helper-chai": "workspace:*"
+    "@webex/test-helper-mocha": "workspace:*"
+    "@webex/test-helper-mock-webex": "workspace:*"
+    "@webex/test-helper-test-users": "workspace:*"
     eslint: ^8.24.0
     prettier: ^2.7.1
   languageName: unknown
   linkType: soft
 
-"@webex/test-helper-appid@workspace:^, @webex/test-helper-appid@workspace:packages/@webex/test-helper-appid":
+"@webex/test-helper-appid@workspace:*, @webex/test-helper-appid@workspace:packages/@webex/test-helper-appid":
   version: 0.0.0-use.local
   resolution: "@webex/test-helper-appid@workspace:packages/@webex/test-helper-appid"
   dependencies:
     "@babel/core": ^7.17.10
-    "@webex/babel-config-legacy": "workspace:^"
-    "@webex/eslint-config-legacy": "workspace:^"
-    "@webex/jest-config-legacy": "workspace:^"
-    "@webex/legacy-tools": "workspace:^"
-    "@webex/test-helper-chai": "workspace:^"
-    "@webex/test-helper-make-local-url": "workspace:^"
-    "@webex/test-helper-mocha": "workspace:^"
-    "@webex/test-helper-mock-webex": "workspace:^"
-    "@webex/test-helper-test-users": "workspace:^"
+    "@webex/babel-config-legacy": "workspace:*"
+    "@webex/eslint-config-legacy": "workspace:*"
+    "@webex/jest-config-legacy": "workspace:*"
+    "@webex/legacy-tools": "workspace:*"
+    "@webex/test-helper-chai": "workspace:*"
+    "@webex/test-helper-make-local-url": "workspace:*"
+    "@webex/test-helper-mocha": "workspace:*"
+    "@webex/test-helper-mock-webex": "workspace:*"
+    "@webex/test-helper-test-users": "workspace:*"
     body-parser: ^1.19.0
     eslint: ^8.24.0
     express: ^4.17.1
@@ -8166,19 +8322,19 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/test-helper-automation@workspace:^, @webex/test-helper-automation@workspace:packages/@webex/test-helper-automation":
+"@webex/test-helper-automation@workspace:*, @webex/test-helper-automation@workspace:packages/@webex/test-helper-automation":
   version: 0.0.0-use.local
   resolution: "@webex/test-helper-automation@workspace:packages/@webex/test-helper-automation"
   dependencies:
     "@babel/core": ^7.17.10
-    "@webex/babel-config-legacy": "workspace:^"
-    "@webex/eslint-config-legacy": "workspace:^"
-    "@webex/jest-config-legacy": "workspace:^"
-    "@webex/legacy-tools": "workspace:^"
-    "@webex/test-helper-chai": "workspace:^"
-    "@webex/test-helper-mocha": "workspace:^"
-    "@webex/test-helper-mock-webex": "workspace:^"
-    "@webex/test-helper-test-users": "workspace:^"
+    "@webex/babel-config-legacy": "workspace:*"
+    "@webex/eslint-config-legacy": "workspace:*"
+    "@webex/jest-config-legacy": "workspace:*"
+    "@webex/legacy-tools": "workspace:*"
+    "@webex/test-helper-chai": "workspace:*"
+    "@webex/test-helper-mocha": "workspace:*"
+    "@webex/test-helper-mock-webex": "workspace:*"
+    "@webex/test-helper-test-users": "workspace:*"
     chai: ^4.3.4
     chai-as-promised: ^7.1.1
     es6-promise: ^4.2.8
@@ -8190,19 +8346,19 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/test-helper-chai@workspace:^, @webex/test-helper-chai@workspace:packages/@webex/test-helper-chai":
+"@webex/test-helper-chai@workspace:*, @webex/test-helper-chai@workspace:packages/@webex/test-helper-chai":
   version: 0.0.0-use.local
   resolution: "@webex/test-helper-chai@workspace:packages/@webex/test-helper-chai"
   dependencies:
     "@babel/core": ^7.17.10
-    "@webex/babel-config-legacy": "workspace:^"
-    "@webex/eslint-config-legacy": "workspace:^"
-    "@webex/jest-config-legacy": "workspace:^"
-    "@webex/legacy-tools": "workspace:^"
-    "@webex/test-helper-file": "workspace:^"
-    "@webex/test-helper-mocha": "workspace:^"
-    "@webex/test-helper-mock-webex": "workspace:^"
-    "@webex/test-helper-test-users": "workspace:^"
+    "@webex/babel-config-legacy": "workspace:*"
+    "@webex/eslint-config-legacy": "workspace:*"
+    "@webex/jest-config-legacy": "workspace:*"
+    "@webex/legacy-tools": "workspace:*"
+    "@webex/test-helper-file": "workspace:*"
+    "@webex/test-helper-mocha": "workspace:*"
+    "@webex/test-helper-mock-webex": "workspace:*"
+    "@webex/test-helper-test-users": "workspace:*"
     chai: ^4.3.4
     check-error: ^1.0.2
     eslint: ^8.24.0
@@ -8212,21 +8368,21 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/test-helper-file@workspace:^, @webex/test-helper-file@workspace:packages/@webex/test-helper-file":
+"@webex/test-helper-file@workspace:*, @webex/test-helper-file@workspace:packages/@webex/test-helper-file":
   version: 0.0.0-use.local
   resolution: "@webex/test-helper-file@workspace:packages/@webex/test-helper-file"
   dependencies:
     "@babel/core": ^7.17.10
-    "@webex/babel-config-legacy": "workspace:^"
-    "@webex/common": "workspace:^"
-    "@webex/eslint-config-legacy": "workspace:^"
-    "@webex/jest-config-legacy": "workspace:^"
-    "@webex/legacy-tools": "workspace:^"
-    "@webex/test-helper-chai": "workspace:^"
-    "@webex/test-helper-make-local-url": "workspace:^"
-    "@webex/test-helper-mocha": "workspace:^"
-    "@webex/test-helper-mock-webex": "workspace:^"
-    "@webex/test-helper-test-users": "workspace:^"
+    "@webex/babel-config-legacy": "workspace:*"
+    "@webex/common": "workspace:*"
+    "@webex/eslint-config-legacy": "workspace:*"
+    "@webex/jest-config-legacy": "workspace:*"
+    "@webex/legacy-tools": "workspace:*"
+    "@webex/test-helper-chai": "workspace:*"
+    "@webex/test-helper-make-local-url": "workspace:*"
+    "@webex/test-helper-mocha": "workspace:*"
+    "@webex/test-helper-mock-webex": "workspace:*"
+    "@webex/test-helper-test-users": "workspace:*"
     es6-promise: ^4.2.8
     eslint: ^8.24.0
     file-type: ^16.0.1
@@ -8235,73 +8391,73 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/test-helper-make-local-url@workspace:^, @webex/test-helper-make-local-url@workspace:packages/@webex/test-helper-make-local-url":
+"@webex/test-helper-make-local-url@workspace:*, @webex/test-helper-make-local-url@workspace:packages/@webex/test-helper-make-local-url":
   version: 0.0.0-use.local
   resolution: "@webex/test-helper-make-local-url@workspace:packages/@webex/test-helper-make-local-url"
   dependencies:
     "@babel/core": ^7.17.10
-    "@webex/babel-config-legacy": "workspace:^"
-    "@webex/eslint-config-legacy": "workspace:^"
-    "@webex/jest-config-legacy": "workspace:^"
-    "@webex/legacy-tools": "workspace:^"
-    "@webex/test-helper-chai": "workspace:^"
-    "@webex/test-helper-mocha": "workspace:^"
-    "@webex/test-helper-mock-webex": "workspace:^"
-    "@webex/test-helper-test-users": "workspace:^"
+    "@webex/babel-config-legacy": "workspace:*"
+    "@webex/eslint-config-legacy": "workspace:*"
+    "@webex/jest-config-legacy": "workspace:*"
+    "@webex/legacy-tools": "workspace:*"
+    "@webex/test-helper-chai": "workspace:*"
+    "@webex/test-helper-mocha": "workspace:*"
+    "@webex/test-helper-mock-webex": "workspace:*"
+    "@webex/test-helper-test-users": "workspace:*"
     eslint: ^8.24.0
     prettier: ^2.7.1
   languageName: unknown
   linkType: soft
 
-"@webex/test-helper-mocha@workspace:^, @webex/test-helper-mocha@workspace:packages/@webex/test-helper-mocha":
+"@webex/test-helper-mocha@workspace:*, @webex/test-helper-mocha@workspace:packages/@webex/test-helper-mocha":
   version: 0.0.0-use.local
   resolution: "@webex/test-helper-mocha@workspace:packages/@webex/test-helper-mocha"
   dependencies:
     "@babel/core": ^7.17.10
-    "@webex/babel-config-legacy": "workspace:^"
-    "@webex/eslint-config-legacy": "workspace:^"
-    "@webex/jest-config-legacy": "workspace:^"
-    "@webex/legacy-tools": "workspace:^"
-    "@webex/test-helper-chai": "workspace:^"
-    "@webex/test-helper-mock-webex": "workspace:^"
-    "@webex/test-helper-test-users": "workspace:^"
+    "@webex/babel-config-legacy": "workspace:*"
+    "@webex/eslint-config-legacy": "workspace:*"
+    "@webex/jest-config-legacy": "workspace:*"
+    "@webex/legacy-tools": "workspace:*"
+    "@webex/test-helper-chai": "workspace:*"
+    "@webex/test-helper-mock-webex": "workspace:*"
+    "@webex/test-helper-test-users": "workspace:*"
     bowser: ^2.11.0
     eslint: ^8.24.0
     prettier: ^2.7.1
   languageName: unknown
   linkType: soft
 
-"@webex/test-helper-mock-web-socket@workspace:^, @webex/test-helper-mock-web-socket@workspace:packages/@webex/test-helper-mock-web-socket":
+"@webex/test-helper-mock-web-socket@workspace:*, @webex/test-helper-mock-web-socket@workspace:packages/@webex/test-helper-mock-web-socket":
   version: 0.0.0-use.local
   resolution: "@webex/test-helper-mock-web-socket@workspace:packages/@webex/test-helper-mock-web-socket"
   dependencies:
     "@babel/core": ^7.17.10
-    "@webex/babel-config-legacy": "workspace:^"
-    "@webex/eslint-config-legacy": "workspace:^"
-    "@webex/jest-config-legacy": "workspace:^"
-    "@webex/legacy-tools": "workspace:^"
-    "@webex/test-helper-chai": "workspace:^"
-    "@webex/test-helper-mocha": "workspace:^"
-    "@webex/test-helper-mock-webex": "workspace:^"
-    "@webex/test-helper-test-users": "workspace:^"
+    "@webex/babel-config-legacy": "workspace:*"
+    "@webex/eslint-config-legacy": "workspace:*"
+    "@webex/jest-config-legacy": "workspace:*"
+    "@webex/legacy-tools": "workspace:*"
+    "@webex/test-helper-chai": "workspace:*"
+    "@webex/test-helper-mocha": "workspace:*"
+    "@webex/test-helper-mock-webex": "workspace:*"
+    "@webex/test-helper-test-users": "workspace:*"
     eslint: ^8.24.0
     prettier: ^2.7.1
     sinon: ^9.2.4
   languageName: unknown
   linkType: soft
 
-"@webex/test-helper-mock-webex@workspace:^, @webex/test-helper-mock-webex@workspace:packages/@webex/test-helper-mock-webex":
+"@webex/test-helper-mock-webex@workspace:*, @webex/test-helper-mock-webex@workspace:packages/@webex/test-helper-mock-webex":
   version: 0.0.0-use.local
   resolution: "@webex/test-helper-mock-webex@workspace:packages/@webex/test-helper-mock-webex"
   dependencies:
     "@babel/core": ^7.17.10
-    "@webex/babel-config-legacy": "workspace:^"
-    "@webex/eslint-config-legacy": "workspace:^"
-    "@webex/jest-config-legacy": "workspace:^"
-    "@webex/legacy-tools": "workspace:^"
-    "@webex/test-helper-chai": "workspace:^"
-    "@webex/test-helper-mocha": "workspace:^"
-    "@webex/test-helper-test-users": "workspace:^"
+    "@webex/babel-config-legacy": "workspace:*"
+    "@webex/eslint-config-legacy": "workspace:*"
+    "@webex/jest-config-legacy": "workspace:*"
+    "@webex/legacy-tools": "workspace:*"
+    "@webex/test-helper-chai": "workspace:*"
+    "@webex/test-helper-mocha": "workspace:*"
+    "@webex/test-helper-test-users": "workspace:*"
     ampersand-state: ^5.0.3
     es6-promise: ^4.2.8
     eslint: ^8.24.0
@@ -8311,37 +8467,37 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/test-helper-refresh-callback@workspace:^, @webex/test-helper-refresh-callback@workspace:packages/@webex/test-helper-refresh-callback":
+"@webex/test-helper-refresh-callback@workspace:*, @webex/test-helper-refresh-callback@workspace:packages/@webex/test-helper-refresh-callback":
   version: 0.0.0-use.local
   resolution: "@webex/test-helper-refresh-callback@workspace:packages/@webex/test-helper-refresh-callback"
   dependencies:
     "@babel/core": ^7.17.10
-    "@webex/babel-config-legacy": "workspace:^"
-    "@webex/eslint-config-legacy": "workspace:^"
-    "@webex/jest-config-legacy": "workspace:^"
-    "@webex/legacy-tools": "workspace:^"
-    "@webex/test-helper-chai": "workspace:^"
-    "@webex/test-helper-mocha": "workspace:^"
-    "@webex/test-helper-mock-webex": "workspace:^"
-    "@webex/test-helper-test-users": "workspace:^"
+    "@webex/babel-config-legacy": "workspace:*"
+    "@webex/eslint-config-legacy": "workspace:*"
+    "@webex/jest-config-legacy": "workspace:*"
+    "@webex/legacy-tools": "workspace:*"
+    "@webex/test-helper-chai": "workspace:*"
+    "@webex/test-helper-mocha": "workspace:*"
+    "@webex/test-helper-mock-webex": "workspace:*"
+    "@webex/test-helper-test-users": "workspace:*"
     eslint: ^8.24.0
     prettier: ^2.7.1
   languageName: unknown
   linkType: soft
 
-"@webex/test-helper-retry@workspace:^, @webex/test-helper-retry@workspace:packages/@webex/test-helper-retry":
+"@webex/test-helper-retry@workspace:*, @webex/test-helper-retry@workspace:packages/@webex/test-helper-retry":
   version: 0.0.0-use.local
   resolution: "@webex/test-helper-retry@workspace:packages/@webex/test-helper-retry"
   dependencies:
     "@babel/core": ^7.17.10
-    "@webex/babel-config-legacy": "workspace:^"
-    "@webex/eslint-config-legacy": "workspace:^"
-    "@webex/jest-config-legacy": "workspace:^"
-    "@webex/legacy-tools": "workspace:^"
-    "@webex/test-helper-chai": "workspace:^"
-    "@webex/test-helper-mocha": "workspace:^"
-    "@webex/test-helper-mock-webex": "workspace:^"
-    "@webex/test-helper-test-users": "workspace:^"
+    "@webex/babel-config-legacy": "workspace:*"
+    "@webex/eslint-config-legacy": "workspace:*"
+    "@webex/jest-config-legacy": "workspace:*"
+    "@webex/legacy-tools": "workspace:*"
+    "@webex/test-helper-chai": "workspace:*"
+    "@webex/test-helper-mocha": "workspace:*"
+    "@webex/test-helper-mock-webex": "workspace:*"
+    "@webex/test-helper-test-users": "workspace:*"
     es6-promise: ^4.2.8
     eslint: ^8.24.0
     prettier: ^2.7.1
@@ -8353,15 +8509,15 @@ __metadata:
   resolution: "@webex/test-helper-server@workspace:packages/@webex/test-helper-server"
   dependencies:
     "@babel/core": ^7.17.10
-    "@webex/babel-config-legacy": "workspace:^"
-    "@webex/eslint-config-legacy": "workspace:^"
-    "@webex/jest-config-legacy": "workspace:^"
-    "@webex/legacy-tools": "workspace:^"
-    "@webex/test-helper-appid": "workspace:^"
-    "@webex/test-helper-chai": "workspace:^"
-    "@webex/test-helper-mocha": "workspace:^"
-    "@webex/test-helper-mock-webex": "workspace:^"
-    "@webex/test-helper-test-users": "workspace:^"
+    "@webex/babel-config-legacy": "workspace:*"
+    "@webex/eslint-config-legacy": "workspace:*"
+    "@webex/jest-config-legacy": "workspace:*"
+    "@webex/legacy-tools": "workspace:*"
+    "@webex/test-helper-appid": "workspace:*"
+    "@webex/test-helper-chai": "workspace:*"
+    "@webex/test-helper-mocha": "workspace:*"
+    "@webex/test-helper-mock-webex": "workspace:*"
+    "@webex/test-helper-test-users": "workspace:*"
     body-parser: ^1.19.0
     browserify-middleware: ^8.1.1
     btoa: ^1.2.1
@@ -8381,21 +8537,21 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/test-helper-test-users@workspace:^, @webex/test-helper-test-users@workspace:packages/@webex/test-helper-test-users":
+"@webex/test-helper-test-users@workspace:*, @webex/test-helper-test-users@workspace:packages/@webex/test-helper-test-users":
   version: 0.0.0-use.local
   resolution: "@webex/test-helper-test-users@workspace:packages/@webex/test-helper-test-users"
   dependencies:
     "@babel/core": ^7.17.10
     "@ciscospark/test-users-legacy": ^1.0.2
-    "@webex/babel-config-legacy": "workspace:^"
-    "@webex/eslint-config-legacy": "workspace:^"
-    "@webex/jest-config-legacy": "workspace:^"
-    "@webex/legacy-tools": "workspace:^"
-    "@webex/test-helper-chai": "workspace:^"
-    "@webex/test-helper-mocha": "workspace:^"
-    "@webex/test-helper-mock-webex": "workspace:^"
-    "@webex/test-helper-retry": "workspace:^"
-    "@webex/test-users": "workspace:^"
+    "@webex/babel-config-legacy": "workspace:*"
+    "@webex/eslint-config-legacy": "workspace:*"
+    "@webex/jest-config-legacy": "workspace:*"
+    "@webex/legacy-tools": "workspace:*"
+    "@webex/test-helper-chai": "workspace:*"
+    "@webex/test-helper-mocha": "workspace:*"
+    "@webex/test-helper-mock-webex": "workspace:*"
+    "@webex/test-helper-retry": "workspace:*"
+    "@webex/test-users": "workspace:*"
     eslint: ^8.24.0
     lodash: ^4.17.21
     prettier: ^2.7.1
@@ -8405,20 +8561,20 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/test-users@workspace:^, @webex/test-users@workspace:packages/@webex/test-users":
+"@webex/test-users@workspace:*, @webex/test-users@workspace:packages/@webex/test-users":
   version: 0.0.0-use.local
   resolution: "@webex/test-users@workspace:packages/@webex/test-users"
   dependencies:
     "@babel/core": ^7.17.10
-    "@webex/babel-config-legacy": "workspace:^"
-    "@webex/eslint-config-legacy": "workspace:^"
-    "@webex/http-core": "workspace:^"
-    "@webex/jest-config-legacy": "workspace:^"
-    "@webex/legacy-tools": "workspace:^"
-    "@webex/test-helper-chai": "workspace:^"
-    "@webex/test-helper-mocha": "workspace:^"
-    "@webex/test-helper-mock-webex": "workspace:^"
-    "@webex/test-helper-test-users": "workspace:^"
+    "@webex/babel-config-legacy": "workspace:*"
+    "@webex/eslint-config-legacy": "workspace:*"
+    "@webex/http-core": "workspace:*"
+    "@webex/jest-config-legacy": "workspace:*"
+    "@webex/legacy-tools": "workspace:*"
+    "@webex/test-helper-chai": "workspace:*"
+    "@webex/test-helper-mocha": "workspace:*"
+    "@webex/test-helper-mock-webex": "workspace:*"
+    "@webex/test-helper-test-users": "workspace:*"
     btoa: ^1.2.1
     chai: ^4.3.4
     chai-as-promised: ^7.1.1
@@ -8454,7 +8610,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@webex/typescript-config@workspace:^, @webex/typescript-config@workspace:packages/config/typescript":
+"@webex/typescript-config@workspace:*, @webex/typescript-config@workspace:packages/config/typescript":
   version: 0.0.0-use.local
   resolution: "@webex/typescript-config@workspace:packages/config/typescript"
   languageName: unknown
@@ -8469,21 +8625,21 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@webex/web-client-media-engine@npm:3.11.4":
-  version: 3.11.4
-  resolution: "@webex/web-client-media-engine@npm:3.11.4"
+"@webex/web-client-media-engine@npm:3.11.7":
+  version: 3.11.7
+  resolution: "@webex/web-client-media-engine@npm:3.11.7"
   dependencies:
-    "@webex/json-multistream": "npm:2.1.2"
-    "@webex/rtcstats": "npm:^1.1.2"
-    "@webex/ts-events": "npm:^1.0.1"
-    "@webex/ts-sdp": "npm:1.6.0"
-    "@webex/web-capabilities": "npm:^1.1.1"
-    "@webex/webrtc-core": "npm:2.3.1"
-    async: "npm:^3.2.4"
-    js-logger: "npm:^1.6.1"
-    typed-emitter: "npm:^2.1.0"
-    uuid: "npm:^8.3.2"
-  checksum: 522e76f9d0e2b8ff33ff5d6bb7eb67f60977d19897a70462037cd966750a9bf644de5a60a09ce801aabf4e4efa9cc18a1014c22cb3ab1139e4b91c54fa751a7b
+    "@webex/json-multistream": 2.1.3
+    "@webex/rtcstats": ^1.1.2
+    "@webex/ts-events": ^1.0.1
+    "@webex/ts-sdp": 1.6.0
+    "@webex/web-capabilities": ^1.1.1
+    "@webex/webrtc-core": 2.4.0
+    async: ^3.2.4
+    js-logger: ^1.6.1
+    typed-emitter: ^2.1.0
+    uuid: ^8.3.2
+  checksum: ea68cb041fb83e687bdaebe97838f48e4580914fef29cf74299fce53d56e12d85ad7f39c55d4b6d7e8184bb0fde41cbf5c4cad1e7a974f2dddb646f23a008ba0
   languageName: node
   linkType: hard
 
@@ -8530,28 +8686,28 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@webex/webex-core@workspace:^, @webex/webex-core@workspace:packages/@webex/webex-core":
+"@webex/webex-core@workspace:*, @webex/webex-core@workspace:packages/@webex/webex-core":
   version: 0.0.0-use.local
   resolution: "@webex/webex-core@workspace:packages/@webex/webex-core"
   dependencies:
     "@babel/core": ^7.17.10
     "@sinonjs/fake-timers": ^6.0.1
-    "@webex/babel-config-legacy": "workspace:^"
-    "@webex/common": "workspace:^"
-    "@webex/common-timers": "workspace:^"
-    "@webex/eslint-config-legacy": "workspace:^"
-    "@webex/http-core": "workspace:^"
-    "@webex/internal-plugin-device": "workspace:^"
-    "@webex/jest-config-legacy": "workspace:^"
-    "@webex/legacy-tools": "workspace:^"
-    "@webex/plugin-logger": "workspace:^"
-    "@webex/storage-adapter-spec": "workspace:^"
-    "@webex/test-helper-chai": "workspace:^"
-    "@webex/test-helper-make-local-url": "workspace:^"
-    "@webex/test-helper-mocha": "workspace:^"
-    "@webex/test-helper-mock-webex": "workspace:^"
-    "@webex/test-helper-refresh-callback": "workspace:^"
-    "@webex/test-helper-test-users": "workspace:^"
+    "@webex/babel-config-legacy": "workspace:*"
+    "@webex/common": "workspace:*"
+    "@webex/common-timers": "workspace:*"
+    "@webex/eslint-config-legacy": "workspace:*"
+    "@webex/http-core": "workspace:*"
+    "@webex/internal-plugin-device": "workspace:*"
+    "@webex/jest-config-legacy": "workspace:*"
+    "@webex/legacy-tools": "workspace:*"
+    "@webex/plugin-logger": "workspace:*"
+    "@webex/storage-adapter-spec": "workspace:*"
+    "@webex/test-helper-chai": "workspace:*"
+    "@webex/test-helper-make-local-url": "workspace:*"
+    "@webex/test-helper-mocha": "workspace:*"
+    "@webex/test-helper-mock-webex": "workspace:*"
+    "@webex/test-helper-refresh-callback": "workspace:*"
+    "@webex/test-helper-test-users": "workspace:*"
     ampersand-collection: ^2.0.2
     ampersand-events: ^2.0.2
     ampersand-state: ^5.0.3
@@ -8574,31 +8730,31 @@ __metadata:
   dependencies:
     "@babel/core": ^7.17.10
     "@babel/polyfill": ^7.12.1
-    "@webex/babel-config-legacy": "workspace:^"
-    "@webex/eslint-config-legacy": "workspace:^"
-    "@webex/internal-plugin-avatar": "workspace:^"
-    "@webex/internal-plugin-board": "workspace:^"
-    "@webex/internal-plugin-calendar": "workspace:^"
-    "@webex/internal-plugin-conversation": "workspace:^"
-    "@webex/internal-plugin-device": "workspace:^"
-    "@webex/internal-plugin-encryption": "workspace:^"
-    "@webex/internal-plugin-feature": "workspace:^"
-    "@webex/internal-plugin-flag": "workspace:^"
-    "@webex/internal-plugin-mercury": "workspace:^"
-    "@webex/internal-plugin-metrics": "workspace:^"
-    "@webex/internal-plugin-search": "workspace:^"
-    "@webex/internal-plugin-support": "workspace:^"
-    "@webex/internal-plugin-team": "workspace:^"
-    "@webex/internal-plugin-user": "workspace:^"
-    "@webex/jest-config-legacy": "workspace:^"
-    "@webex/legacy-tools": "workspace:^"
-    "@webex/plugin-authorization-node": "workspace:^"
-    "@webex/plugin-logger": "workspace:^"
-    "@webex/test-helper-chai": "workspace:^"
-    "@webex/test-helper-mocha": "workspace:^"
-    "@webex/test-helper-mock-webex": "workspace:^"
-    "@webex/test-helper-test-users": "workspace:^"
-    "@webex/webex-core": "workspace:^"
+    "@webex/babel-config-legacy": "workspace:*"
+    "@webex/eslint-config-legacy": "workspace:*"
+    "@webex/internal-plugin-avatar": "workspace:*"
+    "@webex/internal-plugin-board": "workspace:*"
+    "@webex/internal-plugin-calendar": "workspace:*"
+    "@webex/internal-plugin-conversation": "workspace:*"
+    "@webex/internal-plugin-device": "workspace:*"
+    "@webex/internal-plugin-encryption": "workspace:*"
+    "@webex/internal-plugin-feature": "workspace:*"
+    "@webex/internal-plugin-flag": "workspace:*"
+    "@webex/internal-plugin-mercury": "workspace:*"
+    "@webex/internal-plugin-metrics": "workspace:*"
+    "@webex/internal-plugin-search": "workspace:*"
+    "@webex/internal-plugin-support": "workspace:*"
+    "@webex/internal-plugin-team": "workspace:*"
+    "@webex/internal-plugin-user": "workspace:*"
+    "@webex/jest-config-legacy": "workspace:*"
+    "@webex/legacy-tools": "workspace:*"
+    "@webex/plugin-authorization-node": "workspace:*"
+    "@webex/plugin-logger": "workspace:*"
+    "@webex/test-helper-chai": "workspace:*"
+    "@webex/test-helper-mocha": "workspace:*"
+    "@webex/test-helper-mock-webex": "workspace:*"
+    "@webex/test-helper-test-users": "workspace:*"
+    "@webex/webex-core": "workspace:*"
     body-parser: ^1.19.0
     compression: ^1.7.4
     cors: ^2.8.5
@@ -8635,18 +8791,18 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@webex/webrtc-core@npm:2.3.1":
-  version: 2.3.1
-  resolution: "@webex/webrtc-core@npm:2.3.1"
+"@webex/webrtc-core@npm:2.4.0":
+  version: 2.4.0
+  resolution: "@webex/webrtc-core@npm:2.4.0"
   dependencies:
-    "@webex/ts-events": "npm:^1.1.0"
-    "@webex/web-capabilities": "npm:^1.1.0"
-    "@webex/web-media-effects": "npm:^2.15.6"
-    events: "npm:^3.3.0"
-    js-logger: "npm:^1.6.1"
-    typed-emitter: "npm:^2.1.0"
-    webrtc-adapter: "npm:^8.1.2"
-  checksum: e8630816224691ecc59869ee501ab1f5e42a8ebd150e6070537dd1b8753a7116c5f58842c9c7d7adb03a6f3be6aaaa2e1ad35c912cf81f58377aa1b26a1eb570
+    "@webex/ts-events": ^1.1.0
+    "@webex/web-capabilities": ^1.1.0
+    "@webex/web-media-effects": ^2.15.6
+    events: ^3.3.0
+    js-logger: ^1.6.1
+    typed-emitter: ^2.1.0
+    webrtc-adapter: ^8.1.2
+  checksum: e182dae6e4ea30876bde17969ebc2806c64c8942d2d506a59cc9ffb38d3dd8e539e62cfd0eae7b7d72c55274b73b116df2d1b8a011d220a52e2f54af5a9b73df
   languageName: node
   linkType: hard
 
@@ -8655,14 +8811,14 @@ __metadata:
   resolution: "@webex/webrtc@workspace:packages/@webex/webrtc"
   dependencies:
     "@babel/core": ^7.17.10
-    "@webex/babel-config-legacy": "workspace:^"
-    "@webex/eslint-config-legacy": "workspace:^"
-    "@webex/jest-config-legacy": "workspace:^"
-    "@webex/legacy-tools": "workspace:^"
-    "@webex/test-helper-chai": "workspace:^"
-    "@webex/test-helper-mocha": "workspace:^"
-    "@webex/test-helper-mock-webex": "workspace:^"
-    "@webex/test-helper-test-users": "workspace:^"
+    "@webex/babel-config-legacy": "workspace:*"
+    "@webex/eslint-config-legacy": "workspace:*"
+    "@webex/jest-config-legacy": "workspace:*"
+    "@webex/legacy-tools": "workspace:*"
+    "@webex/test-helper-chai": "workspace:*"
+    "@webex/test-helper-mocha": "workspace:*"
+    "@webex/test-helper-mock-webex": "workspace:*"
+    "@webex/test-helper-test-users": "workspace:*"
     eslint: ^8.24.0
     prettier: ^2.7.1
   languageName: unknown
@@ -8673,14 +8829,14 @@ __metadata:
   resolution: "@webex/xunit-with-logs@workspace:packages/@webex/xunit-with-logs"
   dependencies:
     "@babel/core": ^7.17.10
-    "@webex/babel-config-legacy": "workspace:^"
-    "@webex/eslint-config-legacy": "workspace:^"
-    "@webex/jest-config-legacy": "workspace:^"
-    "@webex/legacy-tools": "workspace:^"
-    "@webex/test-helper-chai": "workspace:^"
-    "@webex/test-helper-mocha": "workspace:^"
-    "@webex/test-helper-mock-webex": "workspace:^"
-    "@webex/test-helper-test-users": "workspace:^"
+    "@webex/babel-config-legacy": "workspace:*"
+    "@webex/eslint-config-legacy": "workspace:*"
+    "@webex/jest-config-legacy": "workspace:*"
+    "@webex/legacy-tools": "workspace:*"
+    "@webex/test-helper-chai": "workspace:*"
+    "@webex/test-helper-mocha": "workspace:*"
+    "@webex/test-helper-mock-webex": "workspace:*"
+    "@webex/test-helper-test-users": "workspace:*"
     eslint: ^8.24.0
     lodash: ^4.17.21
     mkdirp: ^0.5.1
@@ -9456,6 +9612,13 @@ __metadata:
   version: 1.0.0
   resolution: "archy@npm:1.0.0"
   checksum: 504ae7af655130bab9f471343cfdb054feaec7d8e300e13348bc9fe9e660f83d422e473069584f73233c701ae37d1c8452ff2522f2a20c38849e0f406f1732ac
+  languageName: node
+  linkType: hard
+
+"are-docs-informative@npm:^0.0.2":
+  version: 0.0.2
+  resolution: "are-docs-informative@npm:0.0.2"
+  checksum: 7a48ca90d66e29afebc4387d7029d86cfe97bad7e796c8e7de01309e02dcfc027250231c02d4ca208d2984170d09026390b946df5d3d02ac638ab35f74501c74
   languageName: node
   linkType: hard
 
@@ -11915,10 +12078,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"commander@npm:^10.0.0":
-  version: 10.0.1
-  resolution: "commander@npm:10.0.1"
-  checksum: 436901d64a818295803c1996cd856621a74f30b9f9e28a588e726b2b1670665bccd7c1a77007ebf328729f0139838a88a19265858a0fa7a8728c4656796db948
+"commander@npm:11.1.0":
+  version: 11.1.0
+  resolution: "commander@npm:11.1.0"
+  checksum: fd1a8557c6b5b622c89ecdfde703242ab7db3b628ea5d1755784c79b8e7cb0d74d65b4a262289b533359cd58e1bfc0bf50245dfbcd2954682a6f367c828b79ef
   languageName: node
   linkType: hard
 
@@ -11988,6 +12151,13 @@ __metadata:
   version: 1.3.1
   resolution: "comment-parser@npm:1.3.1"
   checksum: 421e6a113a3afd548500e7174ab46a2049dccf92e82bbaa3b209031b1bdf97552aabfa1ae2a120c0b62df17e1ba70e0d8b05d68504fee78e1ef974c59bcfe718
+  languageName: node
+  linkType: hard
+
+"comment-parser@npm:1.4.1":
+  version: 1.4.1
+  resolution: "comment-parser@npm:1.4.1"
+  checksum: e0f6f60c5139689c4b1b208ea63e0730d9195a778e90dd909205f74f00b39eb0ead05374701ec5e5c29d6f28eb778cd7bc41c1366ab1d271907f1def132d6bf1
   languageName: node
   linkType: hard
 
@@ -14587,7 +14757,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"eslint-config-airbnb-typescript@npm:^17.0.0":
+"eslint-config-airbnb-typescript@npm:17.1.0, eslint-config-airbnb-typescript@npm:^17.0.0":
   version: 17.1.0
   resolution: "eslint-config-airbnb-typescript@npm:17.1.0"
   dependencies:
@@ -14710,6 +14880,33 @@ __metadata:
   languageName: node
   linkType: hard
 
+"eslint-plugin-import@npm:2.29.1":
+  version: 2.29.1
+  resolution: "eslint-plugin-import@npm:2.29.1"
+  dependencies:
+    array-includes: ^3.1.7
+    array.prototype.findlastindex: ^1.2.3
+    array.prototype.flat: ^1.3.2
+    array.prototype.flatmap: ^1.3.2
+    debug: ^3.2.7
+    doctrine: ^2.1.0
+    eslint-import-resolver-node: ^0.3.9
+    eslint-module-utils: ^2.8.0
+    hasown: ^2.0.0
+    is-core-module: ^2.13.1
+    is-glob: ^4.0.3
+    minimatch: ^3.1.2
+    object.fromentries: ^2.0.7
+    object.groupby: ^1.0.1
+    object.values: ^1.1.7
+    semver: ^6.3.1
+    tsconfig-paths: ^3.15.0
+  peerDependencies:
+    eslint: ^2 || ^3 || ^4 || ^5 || ^6 || ^7.2.0 || ^8
+  checksum: e65159aef808136d26d029b71c8c6e4cb5c628e65e5de77f1eb4c13a379315ae55c9c3afa847f43f4ff9df7e54515c77ffc6489c6a6f81f7dd7359267577468c
+  languageName: node
+  linkType: hard
+
 "eslint-plugin-import@npm:^2.26.0, eslint-plugin-import@npm:^2.27.5":
   version: 2.29.0
   resolution: "eslint-plugin-import@npm:2.29.0"
@@ -14785,6 +14982,25 @@ __metadata:
   peerDependencies:
     eslint: ^7.0.0 || ^8.0.0
   checksum: 800a34136c83ba47585036c54c9ef8787cd06a67db5cfbbd061f42dead591ca7a7e45e59deea72e97d633157f37af9ee7ab8985dbc5dee488621e4a33fb6589a
+  languageName: node
+  linkType: hard
+
+"eslint-plugin-jsdoc@npm:48.0.4":
+  version: 48.0.4
+  resolution: "eslint-plugin-jsdoc@npm:48.0.4"
+  dependencies:
+    "@es-joy/jsdoccomment": ~0.41.0
+    are-docs-informative: ^0.0.2
+    comment-parser: 1.4.1
+    debug: ^4.3.4
+    escape-string-regexp: ^4.0.0
+    esquery: ^1.5.0
+    is-builtin-module: ^3.2.1
+    semver: ^7.5.4
+    spdx-expression-parse: ^4.0.0
+  peerDependencies:
+    eslint: ^7.0.0 || ^8.0.0 || ^9.0.0
+  checksum: 9a1e8d74278338276c6a5a1b8fe252cfa7339f5fbe674f3c28dcc8270f190caa58fff3b87c4749bd5f3eb5ac6cc4d7cd6d1459f9827cfca93701b67e098c8626
   languageName: node
   linkType: hard
 
@@ -14867,7 +15083,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"eslint-plugin-tsdoc@npm:^0.2.14, eslint-plugin-tsdoc@npm:^0.2.17":
+"eslint-plugin-tsdoc@npm:0.2.17, eslint-plugin-tsdoc@npm:^0.2.14, eslint-plugin-tsdoc@npm:^0.2.17":
   version: 0.2.17
   resolution: "eslint-plugin-tsdoc@npm:0.2.17"
   dependencies:
@@ -14919,6 +15135,54 @@ __metadata:
   version: 3.4.3
   resolution: "eslint-visitor-keys@npm:3.4.3"
   checksum: 36e9ef87fca698b6fd7ca5ca35d7b2b6eeaaf106572e2f7fd31c12d3bfdaccdb587bba6d3621067e5aece31c8c3a348b93922ab8f7b2cbc6aaab5e1d89040c60
+  languageName: node
+  linkType: hard
+
+"eslint@npm:8.56.0":
+  version: 8.56.0
+  resolution: "eslint@npm:8.56.0"
+  dependencies:
+    "@eslint-community/eslint-utils": ^4.2.0
+    "@eslint-community/regexpp": ^4.6.1
+    "@eslint/eslintrc": ^2.1.4
+    "@eslint/js": 8.56.0
+    "@humanwhocodes/config-array": ^0.11.13
+    "@humanwhocodes/module-importer": ^1.0.1
+    "@nodelib/fs.walk": ^1.2.8
+    "@ungap/structured-clone": ^1.2.0
+    ajv: ^6.12.4
+    chalk: ^4.0.0
+    cross-spawn: ^7.0.2
+    debug: ^4.3.2
+    doctrine: ^3.0.0
+    escape-string-regexp: ^4.0.0
+    eslint-scope: ^7.2.2
+    eslint-visitor-keys: ^3.4.3
+    espree: ^9.6.1
+    esquery: ^1.4.2
+    esutils: ^2.0.2
+    fast-deep-equal: ^3.1.3
+    file-entry-cache: ^6.0.1
+    find-up: ^5.0.0
+    glob-parent: ^6.0.2
+    globals: ^13.19.0
+    graphemer: ^1.4.0
+    ignore: ^5.2.0
+    imurmurhash: ^0.1.4
+    is-glob: ^4.0.0
+    is-path-inside: ^3.0.3
+    js-yaml: ^4.1.0
+    json-stable-stringify-without-jsonify: ^1.0.1
+    levn: ^0.4.1
+    lodash.merge: ^4.6.2
+    minimatch: ^3.1.2
+    natural-compare: ^1.4.0
+    optionator: ^0.9.3
+    strip-ansi: ^6.0.1
+    text-table: ^0.2.0
+  bin:
+    eslint: bin/eslint.js
+  checksum: 883436d1e809b4a25d9eb03d42f584b84c408dbac28b0019f6ea07b5177940bf3cca86208f749a6a1e0039b63e085ee47aca1236c30721e91f0deef5cc5a5136
   languageName: node
   linkType: hard
 
@@ -16758,7 +17022,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"glob@npm:^10.2.2, glob@npm:^10.3.10":
+"glob@npm:^10.2.2, glob@npm:^10.3.10, glob@npm:^10.3.7":
   version: 10.3.10
   resolution: "glob@npm:10.3.10"
   dependencies:
@@ -18216,7 +18480,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"is-builtin-module@npm:^3.1.0":
+"is-builtin-module@npm:^3.1.0, is-builtin-module@npm:^3.2.1":
   version: 3.2.1
   resolution: "is-builtin-module@npm:3.2.1"
   dependencies:
@@ -19866,6 +20130,16 @@ __metadata:
   languageName: node
   linkType: hard
 
+"jest-silent-reporter@npm:0.5.0":
+  version: 0.5.0
+  resolution: "jest-silent-reporter@npm:0.5.0"
+  dependencies:
+    chalk: ^4.0.0
+    jest-util: ^26.0.0
+  checksum: 54853eb1fd342eb074ff97bbd2f177c3425e635deb008ce1a5feede398930b6472549797342e3ea536f8e2e538d8718d6f281f3d44dec2ae4d32f61da0eb547e
+  languageName: node
+  linkType: hard
+
 "jest-snapshot@npm:^27.5.1":
   version: 27.5.1
   resolution: "jest-snapshot@npm:27.5.1"
@@ -19921,6 +20195,20 @@ __metadata:
     pretty-format: ^29.7.0
     semver: ^7.5.3
   checksum: 86821c3ad0b6899521ce75ee1ae7b01b17e6dfeff9166f2cf17f012e0c5d8c798f30f9e4f8f7f5bed01ea7b55a6bc159f5eda778311162cbfa48785447c237ad
+  languageName: node
+  linkType: hard
+
+"jest-util@npm:^26.0.0":
+  version: 26.6.2
+  resolution: "jest-util@npm:26.6.2"
+  dependencies:
+    "@jest/types": ^26.6.2
+    "@types/node": "*"
+    chalk: ^4.0.0
+    graceful-fs: ^4.2.4
+    is-ci: ^2.0.0
+    micromatch: ^4.0.2
+  checksum: 3c6a5fba05c4c6892cd3a9f66196ea8867087b77a5aa1a3f6cd349c785c3f1ca24abfd454664983aed1a165cab7846688e44fe8630652d666ba326b08625bc3d
   languageName: node
   linkType: hard
 
@@ -20077,7 +20365,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"jest@npm:^29.3.1":
+"jest@npm:29.7.0, jest@npm:^29.3.1":
   version: 29.7.0
   resolution: "jest@npm:29.7.0"
   dependencies:
@@ -20644,10 +20932,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"jwt-decode@npm:^4.0.0":
-  version: 4.0.0
-  resolution: "jwt-decode@npm:4.0.0"
-  checksum: 390e2edcb31a92e86c8cbdd1edeea4c0d62acd371f8a8f0a8878e499390c0ecf4c658b365c4e941e4ef37d0170e4ca650aaa49f99a45c0b9695a235b210154b0
+"jwt-decode@npm:3.1.2":
+  version: 3.1.2
+  resolution: "jwt-decode@npm:3.1.2"
+  checksum: 20a4b072d44ce3479f42d0d2c8d3dabeb353081ba4982e40b83a779f2459a70be26441be6c160bfc8c3c6eadf9f6380a036fbb06ac5406b5674e35d8c4205eeb
   languageName: node
   linkType: hard
 
@@ -26613,6 +26901,17 @@ __metadata:
   languageName: node
   linkType: hard
 
+"rimraf@npm:5.0.5":
+  version: 5.0.5
+  resolution: "rimraf@npm:5.0.5"
+  dependencies:
+    glob: ^10.3.7
+  bin:
+    rimraf: dist/esm/bin.mjs
+  checksum: d66eef829b2e23b16445f34e73d75c7b7cf4cbc8834b04720def1c8f298eb0753c3d76df77325fad79d0a2c60470525d95f89c2475283ad985fd7441c32732d1
+  languageName: node
+  linkType: hard
+
 "rimraf@npm:^2.6.3":
   version: 2.7.1
   resolution: "rimraf@npm:2.7.1"
@@ -27816,6 +28115,16 @@ __metadata:
     spdx-exceptions: ^2.1.0
     spdx-license-ids: ^3.0.0
   checksum: a1c6e104a2cbada7a593eaa9f430bd5e148ef5290d4c0409899855ce8b1c39652bcc88a725259491a82601159d6dc790bedefc9016c7472f7de8de7361f8ccde
+  languageName: node
+  linkType: hard
+
+"spdx-expression-parse@npm:^4.0.0":
+  version: 4.0.0
+  resolution: "spdx-expression-parse@npm:4.0.0"
+  dependencies:
+    spdx-exceptions: ^2.1.0
+    spdx-license-ids: ^3.0.0
+  checksum: 936be681fbf5edeec3a79c023136479f70d6edb3fd3875089ac86cd324c6c8c81add47399edead296d1d0af17ae5ce88c7f88885eb150b62c2ff6e535841ca6a
   languageName: node
   linkType: hard
 
@@ -29206,6 +29515,18 @@ __metadata:
   languageName: node
   linkType: hard
 
+"tsconfig-paths@npm:^3.15.0":
+  version: 3.15.0
+  resolution: "tsconfig-paths@npm:3.15.0"
+  dependencies:
+    "@types/json5": ^0.0.29
+    json5: ^1.0.2
+    minimist: ^1.2.6
+    strip-bom: ^3.0.0
+  checksum: 59f35407a390d9482b320451f52a411a256a130ff0e7543d18c6f20afab29ac19fbe55c360a93d6476213cc335a4d76ce90f67df54c4e9037f7d240920832201
+  languageName: node
+  linkType: hard
+
 "tslib@npm:^1.8.1":
   version: 1.14.1
   resolution: "tslib@npm:1.14.1"
@@ -29488,6 +29809,16 @@ __metadata:
   languageName: node
   linkType: hard
 
+"typescript@npm:5.3.3":
+  version: 5.3.3
+  resolution: "typescript@npm:5.3.3"
+  bin:
+    tsc: bin/tsc
+    tsserver: bin/tsserver
+  checksum: 2007ccb6e51bbbf6fde0a78099efe04dc1c3dfbdff04ca3b6a8bc717991862b39fd6126c0c3ebf2d2d98ac5e960bcaa873826bb2bb241f14277034148f41f6a2
+  languageName: node
+  linkType: hard
+
 "typescript@npm:^4.6.4 || ^5.2.2, typescript@npm:^5.0.4":
   version: 5.3.2
   resolution: "typescript@npm:5.3.2"
@@ -29515,6 +29846,16 @@ __metadata:
     tsc: bin/tsc
     tsserver: bin/tsserver
   checksum: ab417a2f398380c90a6cf5a5f74badd17866adf57f1165617d6a551f059c3ba0a3e4da0d147b3ac5681db9ac76a303c5876394b13b3de75fdd5b1eaa06181c9d
+  languageName: node
+  linkType: hard
+
+"typescript@patch:typescript@5.3.3#~builtin<compat/typescript>":
+  version: 5.3.3
+  resolution: "typescript@patch:typescript@npm%3A5.3.3#~builtin<compat/typescript>::version=5.3.3&hash=1f5320"
+  bin:
+    tsc: bin/tsc
+    tsserver: bin/tsserver
+  checksum: f61375590b3162599f0f0d5b8737877ac0a7bc52761dbb585d67e7b8753a3a4c42d9a554c4cc929f591ffcf3a2b0602f65ae3ce74714fd5652623a816862b610
   languageName: node
   linkType: hard
 
@@ -30695,8 +31036,8 @@ __metadata:
     "@wdio/sauce-service": ^7.19.5
     "@wdio/spec-reporter": ^7.19.5
     "@wdio/static-server-service": ^7.19.5
-    "@webex/cli-tools": "workspace:^"
-    "@webex/package-tools": "workspace:^"
+    "@webex/cli-tools": "workspace:*"
+    "@webex/package-tools": "workspace:*"
     appium-adb: ^8.17.0
     babel-loader: ^8.2.2
     babel-plugin-lodash: ^3.3.4
@@ -30799,46 +31140,47 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"webex@workspace:^, webex@workspace:packages/webex":
+"webex@workspace:*, webex@workspace:packages/webex":
   version: 0.0.0-use.local
   resolution: "webex@workspace:packages/webex"
   dependencies:
     "@babel/polyfill": ^7.12.1
     "@babel/runtime-corejs2": ^7.14.8
-    "@webex/babel-config-legacy": "workspace:^"
-    "@webex/calling": "workspace:^"
-    "@webex/common": "workspace:^"
-    "@webex/eslint-config-legacy": "workspace:^"
-    "@webex/internal-plugin-calendar": "workspace:^"
-    "@webex/internal-plugin-device": "workspace:^"
-    "@webex/internal-plugin-llm": "workspace:^"
-    "@webex/internal-plugin-presence": "workspace:^"
-    "@webex/internal-plugin-support": "workspace:^"
-    "@webex/jest-config-legacy": "workspace:^"
-    "@webex/legacy-tools": "workspace:^"
-    "@webex/plugin-attachment-actions": "workspace:^"
-    "@webex/plugin-authorization": "workspace:^"
-    "@webex/plugin-device-manager": "workspace:^"
-    "@webex/plugin-logger": "workspace:^"
-    "@webex/plugin-meetings": "workspace:^"
-    "@webex/plugin-memberships": "workspace:^"
-    "@webex/plugin-messages": "workspace:^"
-    "@webex/plugin-people": "workspace:^"
-    "@webex/plugin-rooms": "workspace:^"
-    "@webex/plugin-team-memberships": "workspace:^"
-    "@webex/plugin-teams": "workspace:^"
-    "@webex/plugin-webhooks": "workspace:^"
-    "@webex/storage-adapter-local-storage": "workspace:^"
-    "@webex/test-helper-chai": "workspace:^"
-    "@webex/test-helper-file": "workspace:^"
-    "@webex/test-helper-mocha": "workspace:^"
-    "@webex/test-helper-mock-webex": "workspace:^"
-    "@webex/test-helper-test-users": "workspace:^"
-    "@webex/webex-core": "workspace:^"
+    "@webex/babel-config-legacy": "workspace:*"
+    "@webex/calling": "workspace:*"
+    "@webex/common": "workspace:*"
+    "@webex/eslint-config-legacy": "workspace:*"
+    "@webex/internal-plugin-calendar": "workspace:*"
+    "@webex/internal-plugin-device": "workspace:*"
+    "@webex/internal-plugin-llm": "workspace:*"
+    "@webex/internal-plugin-presence": "workspace:*"
+    "@webex/internal-plugin-support": "workspace:*"
+    "@webex/internal-plugin-voicea": "workspace:*"
+    "@webex/jest-config-legacy": "workspace:*"
+    "@webex/legacy-tools": "workspace:*"
+    "@webex/plugin-attachment-actions": "workspace:*"
+    "@webex/plugin-authorization": "workspace:*"
+    "@webex/plugin-device-manager": "workspace:*"
+    "@webex/plugin-logger": "workspace:*"
+    "@webex/plugin-meetings": "workspace:*"
+    "@webex/plugin-memberships": "workspace:*"
+    "@webex/plugin-messages": "workspace:*"
+    "@webex/plugin-people": "workspace:*"
+    "@webex/plugin-rooms": "workspace:*"
+    "@webex/plugin-team-memberships": "workspace:*"
+    "@webex/plugin-teams": "workspace:*"
+    "@webex/plugin-webhooks": "workspace:*"
+    "@webex/storage-adapter-local-storage": "workspace:*"
+    "@webex/test-helper-chai": "workspace:*"
+    "@webex/test-helper-file": "workspace:*"
+    "@webex/test-helper-mocha": "workspace:*"
+    "@webex/test-helper-mock-webex": "workspace:*"
+    "@webex/test-helper-test-users": "workspace:*"
+    "@webex/webex-core": "workspace:*"
     eslint: ^8.24.0
     lodash: ^4.17.21
     sinon: ^9.2.4
-    webex: "workspace:^"
+    webex: "workspace:*"
   languageName: unknown
   linkType: soft
 
