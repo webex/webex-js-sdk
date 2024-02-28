@@ -5972,6 +5972,25 @@ describe('plugin-meetings', () => {
       });
     });
 
+    describe('#setSendNamedMediaGroup', () => {
+      beforeEach(() => {
+        meeting.sendSlotManager.setNamedMediaGroups = sinon.stub().returns(undefined);
+      });
+      it('fails if there is no media connection', () => {
+
+        meeting.mediaProperties.webrtcMediaConnection = undefined;
+        meeting.setSendNamedMediaGroup('audio', 20);
+        assert.notCalled(meeting.sendSlotManager.setNamedMediaGroups);
+      });
+
+      it('success if there is media connection', () => {
+        meeting.isMultistream = true;
+        meeting.mediaProperties.webrtcMediaConnection = true;
+        meeting.setSendNamedMediaGroup("AUDIO-MAIN", 20);
+        assert.calledOnceWithExactly(meeting.sendSlotManager.setNamedMediaGroups, "AUDIO-MAIN", [{type: 1, value: 20}]);
+      });
+    });
+
     describe('#enableMusicMode', () => {
       beforeEach(() => {
         meeting.isMultistream = true;

@@ -1,6 +1,7 @@
 import {assert, expect} from '@webex/test-helper-chai';
 import LoggerProxy from '@webex/plugin-meetings/src/common/logs/logger-proxy';
 import SimultaneousInterpretation from '@webex/plugin-meetings/src/interpretation';
+import SILanguage from '@webex/plugin-meetings/src/interpretation/siLanguage';
 import MockWebex from '@webex/test-helper-mock-webex';
 import sinon from 'sinon';
 
@@ -139,6 +140,30 @@ describe('plugin-meetings', () => {
         assert.equal(interpretation.sourceLanguage, undefined);
         assert.equal(interpretation.targetLanguage, undefined);
         assert.equal(interpretation.receiveLanguage, undefined);
+      });
+    });
+
+    describe('#getTargetLanguageCode', () => {
+      it('get target language id if self is interpreter', () => {
+        interpretation.siLanguages.set([{
+          languageCode: 24,
+          languageName: "fr"
+        },
+          {
+            languageCode: 20,
+            languageName: "en"
+          }]);
+        interpretation.selfIsInterpreter = true;
+        interpretation.targetLanguage = 'fr';
+
+        assert.equal(interpretation.getTargetLanguageCode(), 24);
+
+        interpretation.targetLanguage = 'en';
+        assert.equal(interpretation.getTargetLanguageCode(), 20);
+
+        interpretation.selfIsInterpreter = false;
+        assert.equal(interpretation.getTargetLanguageCode(), 0);
+
       });
     });
 
