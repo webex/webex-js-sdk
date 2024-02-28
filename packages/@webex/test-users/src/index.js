@@ -323,6 +323,9 @@ export function removeTestUser(options = {}) {
 
 /**
  * Sets the preferredWebexSite for the provided user
+ *
+ * This method should be used to ensure a created test user has the right webex site set.
+ *
  * @param {Object} options
  * @param {string} options.userId user id to set site
  * @param {string} options.preferredSite new preferred webexsite
