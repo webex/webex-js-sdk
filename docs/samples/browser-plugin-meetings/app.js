@@ -564,7 +564,7 @@ function doPostMediaSetup(meeting) {
 async function joinMeeting({withMedia, withDevice} = {withMedia: false, withDevice: false}) {
   const meeting = webex.meetings.getAllMeetings()[selectedMeetingId];
 
-  meeting.on('meeting:llm:connected', () => {
+  meeting.on('meeting:transcription:connected', () => {
     if (enableTranscript.checked) {
       toggleTranscription(true);
     }

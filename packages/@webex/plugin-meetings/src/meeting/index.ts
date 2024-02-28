@@ -5023,7 +5023,7 @@ export default class Meeting extends StatelessWebexPlugin {
           this.updateLLMConnection()
             .catch((error) => {
               LoggerProxy.logger.error(
-                'Meeting:index#join --> Update LLM Connection Failed',
+                'Meeting:index#join --> Transcription Socket Connection Failed',
                 error
               );
 
@@ -5034,14 +5034,16 @@ export default class Meeting extends StatelessWebexPlugin {
               });
             })
             .then(() => {
-              LoggerProxy.logger.info('Meeting:index#join --> Update LLM Connection Success');
+              LoggerProxy.logger.info(
+                'Meeting:index#join --> Transcription Socket Connection Success'
+              );
               Trigger.trigger(
                 this,
                 {
                   file: 'meeting/index',
                   function: 'join',
                 },
-                EVENT_TRIGGERS.MEETING_LLM_CONNECTED,
+                EVENT_TRIGGERS.MEETING_TRANSCRIPTION_CONNECTED,
                 undefined
               );
             });
