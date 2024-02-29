@@ -2,6 +2,7 @@ import sinon from 'sinon';
 import {assert} from '@webex/test-helper-chai';
 import Meetings from '@webex/plugin-meetings';
 import MeetingUtil from '@webex/plugin-meetings/src/meeting/util';
+import {LOCAL_SHARE_ERRORS} from '@webex/plugin-meetings/src/constants';
 import LoggerProxy from '@webex/plugin-meetings/src/common/logs/logger-proxy';
 import LoggerConfig from '@webex/plugin-meetings/src/common/logs/logger-config';
 import {SELF_POLICY, IP_VERSION} from '@webex/plugin-meetings/src/constants';
@@ -1029,6 +1030,98 @@ describe('plugin-meetings', () => {
           isBrowserStub.callsFake((name) => name === 'firefox');
 
           assert.equal(MeetingUtil.getIpVersion(webex), undefined);
+        });
+      });
+    });
+
+    describe('getChangeMeetingFloorErrorPayload', () => {
+      [
+        {
+          reason: LOCAL_SHARE_ERRORS.UNDEFINED,
+          expected: {
+            category: 'signaling',
+            errorCode: 1100,
+          },
+        },
+        {
+          reason: LOCAL_SHARE_ERRORS.DEVICE_NOT_JOINED,
+          expected: {
+            category: 'signaling',
+            errorCode: 4050,
+          },
+        },
+        {
+          reason: LOCAL_SHARE_ERRORS.NO_MEDIA_FOR_DEVICE,
+          expected: {
+            category: 'media',
+            errorCode: 2048,
+          },
+        },
+        {
+          reason: LOCAL_SHARE_ERRORS.NO_CONFLUENCE_ID,
+          expected: {
+            category: 'signaling',
+            errorCode: 4064,
+          },
+        },
+        {
+          reason: LOCAL_SHARE_ERRORS.CONTENT_SHARING_DISABLED,
+          expected: {
+            category: 'expected',
+            errorCode: 4065,
+          },
+        },
+        {
+          reason: LOCAL_SHARE_ERRORS.LOCUS_PARTICIPANT_DNE,
+          expected: {
+            category: 'signaling',
+            errorCode: 4066,
+          },
+        },
+        {
+          reason: LOCAL_SHARE_ERRORS.CONTENT_REQUEST_WHILE_PENDING_WHITEBOARD,
+          expected: {
+            category: 'expected',
+            errorCode: 4067,
+          },
+        },
+        {
+          reason: 'some unknown reason',
+          expected: {
+            category: 'signaling',
+            errorCode: 1100,
+          },
+        },
+      ].forEach(({reason, expected}) => {
+        const expectedFull = {
+          errorDescription: reason,
+          name: 'locus.response',
+          shownToUser: false,
+          fatal: true,
+          ...expected,
+        };
+        it(`returns expected when reason="${reason}"`, () => {
+          const result = MeetingUtil.getChangeMeetingFloorErrorPayload(reason);
+          assert.equal(result.length, 1);
+
+          const error = result[0];
+          assert.deepEqual(error, expectedFull);
+        });
+      });
+
+      it('properly handles "includes"', () => {
+        const reason = '>>> ' + LOCAL_SHARE_ERRORS.DEVICE_NOT_JOINED + ' <<<';
+        const result = MeetingUtil.getChangeMeetingFloorErrorPayload(reason);
+        assert.equal(result.length, 1);
+
+        const error = result[0];
+        assert.deepEqual(error, {
+          category: 'signaling',
+          errorCode: 4050,
+          errorDescription: reason,
+          name: 'locus.response',
+          shownToUser: false,
+          fatal: true,
         });
       });
     });

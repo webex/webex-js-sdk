@@ -622,6 +622,18 @@ async function joinMeeting({withMedia, withDevice} = {withMedia: false, withDevi
       viewBreakouts();
     });
 
+    meeting.on('meeting:stoppedSharingRemote', () => {
+      /**
+       * Here we first remove the media to stop showing the remote stream being received and again
+       * attach the remote media stream (which gets added during addMedia() call) but since the remote 
+       * is not sending the frames anymore it does not show the screenshare but keeps the event attached. 
+       * Hence, when we again start sharing the screen, the media flows correctly to the video element.
+       */
+      const remoteShareTemp = meetingStreamsRemoteShare.srcObject;
+      meetingStreamsRemoteShare.srcObject = null;
+      meetingStreamsRemoteShare.srcObject = remoteShareTemp;
+    });
+
     eventsList.innerText = '';
     meeting.on('all', (payload) => {
       updatePublishedEvents(payload);
