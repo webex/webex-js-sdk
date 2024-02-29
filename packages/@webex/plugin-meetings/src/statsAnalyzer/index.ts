@@ -55,10 +55,6 @@ const emptyReceiver = {
 };
 
 type ReceiveSlotCallback = (csi: number) => ReceiveSlot | undefined;
-type MediaStatus = {
-  actual?: any;
-  expected?: any;
-};
 /**
  * Stats Analyzer class that will emit events based on detected quality
  *
@@ -142,7 +138,7 @@ export class StatsAnalyzer extends EventsScope {
    * @memberof StatsAnalyzer
    * @returns {void}
    */
-  public updateMediaStatus(status: MediaStatus) {
+  public updateMediaStatus(status: object) {
     this.meetingMediaStatus = status;
   }
 
