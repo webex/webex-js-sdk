@@ -23,6 +23,7 @@ describe('RemoteMedia', () => {
     fakeReceiveSlot.sourceState = 'avatar';
     fakeReceiveSlot.stream = fakeStream;
     fakeReceiveSlot.setMaxFs = sinon.stub();
+    fakeReceiveSlot.namedMediaGroup = {type: 1, value: 20};
 
     fakeMediaRequestManager = {
       addRequest: sinon.stub(),
@@ -63,6 +64,7 @@ describe('RemoteMedia', () => {
     assert.strictEqual(remoteMedia.csi, fakeReceiveSlot.csi);
     assert.strictEqual(remoteMedia.sourceState, fakeReceiveSlot.sourceState);
     assert.strictEqual(remoteMedia.stream, fakeReceiveSlot.stream);
+    assert.strictEqual(remoteMedia.namedMediaGroup, fakeReceiveSlot.namedMediaGroup);
   });
 
   describe('sendMediaRequest', () => {
@@ -204,6 +206,7 @@ describe('RemoteMedia', () => {
       assert.strictEqual(remoteMedia.csi, undefined);
       assert.strictEqual(remoteMedia.sourceState, undefined);
       assert.strictEqual(remoteMedia.stream, undefined);
+      assert.strictEqual(remoteMedia.namedMediaGroup, undefined);
 
       // check that events emitted from receive slot don't get forwarded anymore
       [
