@@ -2,7 +2,7 @@ import { config } from 'dotenv';
 import 'jsdom-global/register';
 import {assert} from '@webex/test-helper-chai';
 import {skipInNode} from '@webex/test-helper-mocha';
-import BrowserDetection from '@webex/plugin-meetings/dist/common/browser-detection';
+import checkBrowserDetection from '@webex/plugin-meetings/dist/common/browser-detection';
 import {createCameraStream, createMicrophoneStream} from '@webex/plugin-meetings';
 
 import {MEDIA_SERVERS} from '../../utils/constants';
@@ -28,7 +28,7 @@ const localTracks = {
 };
 
 skipInNode(describe)('plugin-meetings', () => {
-  const {isBrowser} = BrowserDetection();
+  const {isBrowser} = checkBrowserDetection();
 
   // `addMedia()` fails on FF, this needs to be debuged and fixed in a later change
   if (!isBrowser('firefox')) {

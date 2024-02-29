@@ -19,10 +19,10 @@ import LoggerProxy from '../common/logs/logger-proxy';
 import {MEDIA_TRACK_CONSTRAINT} from '../constants';
 import Config from '../config';
 import StaticConfig from '../common/config';
-import BrowserDetection from '../common/browser-detection';
+import checkBrowserDetection from '../common/browser-detection';
 import RtcMetrics from '../rtcMetrics';
 
-const {isBrowser} = BrowserDetection();
+const {isBrowser} = checkBrowserDetection();
 
 export type BundlePolicy = MultistreamConnectionConfig['bundlePolicy'];
 

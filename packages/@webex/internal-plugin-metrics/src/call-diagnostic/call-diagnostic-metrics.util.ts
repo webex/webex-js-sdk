@@ -2,7 +2,7 @@
 import anonymize from 'ip-anonymize';
 import util from 'util';
 
-import {BrowserDetection} from '@webex/common';
+import {checkBrowserDetection} from '@webex/common';
 import {WebexHttpError} from '@webex/webex-core';
 import {isEmpty, merge} from 'lodash';
 import {
@@ -23,7 +23,7 @@ import {
   ERROR_DESCRIPTIONS,
 } from './config';
 
-const {getOSName, getOSVersion, getBrowserName, getBrowserVersion} = BrowserDetection();
+const {getOSName, getOSVersion, getBrowserName, getBrowserVersion} = checkBrowserDetection();
 
 export const anonymizeIPAddress = (localIp) => anonymize(localIp, 28, 96);
 

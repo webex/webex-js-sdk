@@ -16,7 +16,7 @@ import {
   LOCAL_SHARE_ERRORS,
   IP_VERSION,
 } from '../constants';
-import BrowserDetection from '../common/browser-detection';
+import checkBrowserDetection from '../common/browser-detection';
 import IntentToJoinError from '../common/errors/intent-to-join';
 import JoinMeetingError from '../common/errors/join-meeting';
 import ParameterError from '../common/errors/parameter';
@@ -104,7 +104,7 @@ const MeetingUtil = {
   getIpVersion(webex: any): IP_VERSION | undefined {
     const {supportsIpV4, supportsIpV6} = webex.internal.device.ipNetworkDetector;
 
-    if (BrowserDetection().isBrowser('firefox')) {
+    if (checkBrowserDetection().isBrowser('firefox')) {
       // our ipv6 solution relies on FQDN ICE candidates, but Firefox doesn't support them,
       // see https://bugzilla.mozilla.org/show_bug.cgi?id=1713128
       // so for Firefox we don't want the backend to activate the "ipv6 feature"

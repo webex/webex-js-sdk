@@ -8,6 +8,7 @@ import { getBrowserSerial } from '@webex/common';
 import window from 'global/window';
 import bowser from 'bowser';
 import {browserDetection} from '@webex/common/src/constants.js';
+import { checkBrowserDetection } from '@webex/common';
 
 describe('getBowserSerial()', () => {
   const originalWindowNavigator = {...window.navigator};
@@ -39,6 +40,28 @@ describe('getBowserSerial()', () => {
     bowser.getParser = sinon.stub().throws(new Error('test error'));
     const res = getBrowserSerial();
     assert.deepEqual(res, {error: 'test error'});
+  });
+});
+
+describe('checkBrowserDetection', () => {
+  const originalWindowNavigator = {...window.navigator};
+
+  after('restore window.navigator', () => {
+    window.navigator = originalWindowNavigator;
+  });
+
+  it('returns mockDetectionObject when browser name is not returned from bowser.getParser', () => {
+    //@ts-ignore
+    window.navigator = {userAgent: 'user agent data'};
+
+    bowser.getParser = sinon.stub().returns(undefined)
+    const res = checkBrowserDetection();
+
+    assert.typeOf(res.getBrowserName, 'function');
+    assert.typeOf(res.getBrowserVersion, 'function');
+    assert.typeOf(res.getOSName, 'function');
+    assert.typeOf(res.getOSVersion, 'function');
+    assert.typeOf(res.isBrowser, 'function');
   });
 });
 
