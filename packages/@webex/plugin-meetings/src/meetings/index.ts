@@ -140,6 +140,8 @@ class MediaLogger {
 
 /**
  * Maintain a cache of meetings and sync with services.
+ *
+ * THIS IS A TEST COMMENT.
  * @class
  */
 export default class Meetings extends WebexPlugin {
