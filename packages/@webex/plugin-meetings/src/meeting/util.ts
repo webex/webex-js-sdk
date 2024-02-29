@@ -13,6 +13,7 @@ import {
   FULL_STATE,
   SELF_POLICY,
   EVENT_TRIGGERS,
+  LOCAL_SHARE_ERRORS,
   IP_VERSION,
 } from '../constants';
 import BrowserDetection from '../common/browser-detection';
@@ -691,6 +692,102 @@ const MeetingUtil = {
       },
       EVENT_TRIGGERS.MEETING_INTERPRETATION_UPDATE
     );
+  },
+
+  /**
+   * Returns a CA-recognized error payload for the specified raw error message/reason.
+   *
+   * New errors can be added to this function for handling in the future
+   *
+   * @param {String} reason the raw error message
+   * @returns {Array<object>} an array of payload objects
+   */
+  getChangeMeetingFloorErrorPayload: (reason: string) => {
+    const errorPayload = {
+      errorDescription: reason,
+      name: 'locus.response',
+      shownToUser: false,
+    };
+    if (reason.includes(LOCAL_SHARE_ERRORS.UNDEFINED)) {
+      return [
+        {
+          ...errorPayload,
+          fatal: true,
+          category: 'signaling',
+          errorCode: 1100,
+        },
+      ];
+    }
+    if (reason.includes(LOCAL_SHARE_ERRORS.DEVICE_NOT_JOINED)) {
+      return [
+        {
+          ...errorPayload,
+          fatal: true,
+          category: 'signaling',
+          errorCode: 4050,
+        },
+      ];
+    }
+    if (reason.includes(LOCAL_SHARE_ERRORS.NO_MEDIA_FOR_DEVICE)) {
+      return [
+        {
+          ...errorPayload,
+          fatal: true,
+          category: 'media',
+          errorCode: 2048,
+        },
+      ];
+    }
+    if (reason.includes(LOCAL_SHARE_ERRORS.NO_CONFLUENCE_ID)) {
+      return [
+        {
+          ...errorPayload,
+          fatal: true,
+          category: 'signaling',
+          errorCode: 4064,
+        },
+      ];
+    }
+    if (reason.includes(LOCAL_SHARE_ERRORS.CONTENT_SHARING_DISABLED)) {
+      return [
+        {
+          ...errorPayload,
+          fatal: true,
+          category: 'expected',
+          errorCode: 4065,
+        },
+      ];
+    }
+    if (reason.includes(LOCAL_SHARE_ERRORS.LOCUS_PARTICIPANT_DNE)) {
+      return [
+        {
+          ...errorPayload,
+          fatal: true,
+          category: 'signaling',
+          errorCode: 4066,
+        },
+      ];
+    }
+    if (reason.includes(LOCAL_SHARE_ERRORS.CONTENT_REQUEST_WHILE_PENDING_WHITEBOARD)) {
+      return [
+        {
+          ...errorPayload,
+          fatal: true,
+          category: 'expected',
+          errorCode: 4067,
+        },
+      ];
+    }
+
+    // return unknown error
+    return [
+      {
+        ...errorPayload,
+        fatal: true,
+        category: 'signaling',
+        errorCode: 1100,
+      },
+    ];
   },
 };
 
