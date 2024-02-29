@@ -81,6 +81,7 @@ describe('ReceiveSlotManager', () => {
 
     // release the allocated slot
     receiveSlotManager.releaseSlot(slot1);
+    assert.calledOnce(slot1.reset);
 
     assert.deepEqual(receiveSlotManager.getStats(), {
       numAllocatedSlots: {},
@@ -114,6 +115,7 @@ describe('ReceiveSlotManager', () => {
 
     // release the slot so we have 1 free slot, but also call reset() which should clear everything
     receiveSlotManager.releaseSlot(slot1);
+    assert.calledOnce(slot1.reset);
     receiveSlotManager.reset();
 
     // reset the mocks and set the ReceiveSlot constructor to return a different slot
@@ -144,6 +146,7 @@ describe('ReceiveSlotManager', () => {
     assert.calledOnce(mockReceiveSlotCtor);
 
     receiveSlotManager.releaseSlot(slot1);
+    assert.calledOnce(slot1.reset);
 
     createSlotCallbackStub.resetHistory();
     mockReceiveSlotCtor.resetHistory();
