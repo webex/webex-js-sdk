@@ -8011,6 +8011,12 @@ export default class Meeting extends StatelessWebexPlugin {
     if (!this.mediaProperties.hasLocalShareStream()) {
       try {
         this.releaseScreenShareFloor(); // we ignore the returned promise here on purpose
+
+        this.statsAnalyzer.updateMediaStatus({
+          expected: {
+            sendShare: false,
+          },
+        });
       } catch (e) {
         // nothing to do here, error is logged already inside releaseScreenShareFloor()
       }

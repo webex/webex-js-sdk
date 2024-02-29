@@ -143,16 +143,7 @@ export class StatsAnalyzer extends EventsScope {
    * @returns {void}
    */
   public updateMediaStatus(status: MediaStatus) {
-    this.meetingMediaStatus = {
-      actual: {
-        ...this.meetingMediaStatus?.actual,
-        ...status?.actual,
-      },
-      expected: {
-        ...this.meetingMediaStatus?.expected,
-        ...status?.expected,
-      },
-    };
+    this.meetingMediaStatus = status;
   }
 
   /**
@@ -538,7 +529,7 @@ export class StatsAnalyzer extends EventsScope {
           .filter((key) => key.startsWith(keyPrefix))
           .reduce((prev, cur) => prev + (this.lastStatsResults[cur]?.recv[value] || 0), 0);
 
-      if (this.meetingMediaStatus.expected.sendAudio && this.lastStatsResults['audio-send']) {
+      if (this.lastStatsResults['audio-send']) {
         // compare audio stats sent
         // NOTE: relies on there being only one sender.
         const currentStats = this.statsResults['audio-send'].send;
@@ -609,7 +600,7 @@ export class StatsAnalyzer extends EventsScope {
         this.emitStartStopEvents('audio', previousPacketsReceived, currentPacketsReceived, false);
       }
 
-      if (this.meetingMediaStatus.expected.sendVideo && this.lastStatsResults['video-send']) {
+      if (this.lastStatsResults['video-send']) {
         // compare video stats sent
         const currentStats = this.statsResults['video-send'].send;
         const previousStats = this.lastStatsResults['video-send'].send;
@@ -693,7 +684,7 @@ export class StatsAnalyzer extends EventsScope {
         this.emitStartStopEvents('video', previousFramesDecoded, currentFramesDecoded, false);
       }
 
-      if (this.meetingMediaStatus.expected.sendShare && this.lastStatsResults['video-share-send']) {
+      if (this.lastStatsResults['video-share-send']) {
         // compare share stats sent
 
         const currentStats = this.statsResults['video-share-send'].send;
@@ -780,9 +771,6 @@ export class StatsAnalyzer extends EventsScope {
         }
 
         this.emitStartStopEvents('share', previousFramesDecoded, currentFramesDecoded, false);
-        // we are not calling emitStartStopEvents() for sending or receiving share because sharing is often started and stopped
-        // in meetings and this.meetingMediaStatus.expected values can be out of sync with the actual packet flow
-        // so we would send "sharing stopped" events incorrectly
       }
     }
   }
