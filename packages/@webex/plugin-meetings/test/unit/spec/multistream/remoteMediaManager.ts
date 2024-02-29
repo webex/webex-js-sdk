@@ -18,6 +18,7 @@ import testUtils from '../../../utils/testUtils';
 import LoggerProxy from '@webex/plugin-meetings/src/common/logs/logger-proxy';
 import LoggerConfig from '@webex/plugin-meetings/src/common/logs/logger-config';
 import { expect } from 'chai';
+import { NamedMediaGroup } from "@webex/json-multistream";
 
 class FakeSlot extends EventEmitter {
   public mediaType: MediaType;
@@ -39,6 +40,7 @@ class FakeSlot extends EventEmitter {
   public get logString() {
     return this.id;
   }
+
 }
 
 const DefaultTestConfiguration: Configuration = {
@@ -297,6 +299,55 @@ describe('RemoteMediaManager', () => {
           codecInfo: undefined,
         })
       );
+    });
+
+    it('creates a RemoteMediaGroup for named media group audio correctly', async () => {
+      let createdAudioGroup: RemoteMediaGroup | null = null;
+      fakeAudioSlot.setNamedMediaGroup = sinon.stub();
+      // create a config with just audio, no video at all and no screen share
+      const config: Configuration = {
+        audio: {
+          numOfActiveSpeakerStreams: 3,
+          numOfScreenShareStreams: 0,
+        },
+        video: {
+          preferLiveVideo: false,
+          initialLayoutId: 'empty',
+          layouts: {
+            empty: {},
+          },
+        },
+        receiveNamedMediaGroup: {type: 1, value: 20},
+      };
+
+      remoteMediaManager = new RemoteMediaManager(
+        fakeReceiveSlotManager,
+        fakeMediaRequestManagers,
+        config
+      );
+
+      remoteMediaManager.on(Event.AudioCreated, (audio: RemoteMediaGroup) => {
+        createdAudioGroup = audio;
+      });
+
+      remoteMediaManager.start();
+
+      await testUtils.flushPromises();
+
+      assert.callCount(fakeReceiveSlotManager.allocateSlot, 4);
+      assert.alwaysCalledWith(fakeReceiveSlotManager.allocateSlot, MediaType.AudioMain);
+      assert.strictEqual(remoteMediaManager.slots.audio.length, 4);
+
+      assert.isNotNull(createdAudioGroup);
+      if (createdAudioGroup) {
+        assert.strictEqual(createdAudioGroup.getRemoteMedia().length, 4);
+        assert.isTrue(
+          createdAudioGroup
+            .getRemoteMedia()
+            .every((remoteMedia) => remoteMedia.mediaType === MediaType.AudioMain)
+        );
+        assert.strictEqual(createdAudioGroup.getRemoteMedia('pinned').length, 0);
+      }
     });
 
     it('pre-allocates receive slots based on the biggest layout', async () => {

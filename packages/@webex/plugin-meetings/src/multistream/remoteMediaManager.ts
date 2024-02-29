@@ -172,7 +172,6 @@ export const DefaultConfiguration: Configuration = {
       ScreenShareView: RemoteScreenShareWithSmallThumbnailsLayout,
     },
   },
-  receiveNamedMediaGroup: undefined,
 };
 
 export enum Event {
