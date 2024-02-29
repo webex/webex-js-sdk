@@ -623,7 +623,6 @@ async function joinMeeting({withMedia, withDevice} = {withMedia: false, withDevi
     });
 
     meeting.on('meeting:self:mutedByOthers', () => {
-      console.log('pkesari_received event to be muted by others');
       handleAudioButton(localMedia.microphoneStream.muted);
     });
 
@@ -1490,7 +1489,6 @@ function setAudioOutputDevice() {
 }
 
 function handleAudioButton(muteState) {
-  console.log('pkesari_received_mute state: ', muteState);
   const audioButtonTitle = muteState ? 'Unmute' : 'Mute';
   toggleAudioButton.innerHTML = `${audioButtonTitle} Audio`;
 }
@@ -1502,7 +1500,6 @@ function toggleSendAudio() {
     const newMuteValue = !localMedia.microphoneStream.muted;
 
     localMedia.microphoneStream.setMuted(newMuteValue);
-    console.log('pkesari_mute state in stream and new mute value: ', localMedia.microphoneStream.muted, newMuteValue);
     handleAudioButton(localMedia.microphoneStream.muted);
 
     console.log(`MeetingControls#toggleSendAudio() :: Successfully ${newMuteValue ? 'muted': 'unmuted'} audio!`);
@@ -2819,9 +2816,14 @@ const participantTable = document.querySelector('#participant-table');
 const participantButtons = document.querySelector('#participant-btn');
 
 participantTable.addEventListener('click', (event) => {
-  const selectedParticipant = meeting.members.membersCollection.get(event.target.id);
-  const muteButton =  document.querySelector('#participant-btn .btn-group button:first-child');
-  muteButton.innerText = selectedParticipant.isAudioMuted ? 'Unmute': 'Mute';
+  if (event.target.type === 'radio') {
+    const selectedParticipant = meeting.members.membersCollection.get(event.target.id);
+    if (!selectedParticipant) {
+      return;
+    }
+    const muteButton =  document.querySelector('#participant-btn .btn-group button:first-child');
+    muteButton.innerText = selectedParticipant.isAudioMuted ? 'Unmute': 'Mute';
+  }
 });
 
 function inviteMember(addButton) {
@@ -2871,13 +2873,10 @@ function muteMember(muteButton) {
   const participantID = getRadioValue('participant-select');
   const selectedMember = meeting.members.membersCollection.get(participantID);
   const mute = selectedMember.isAudioMuted ? 'false' : 'true';
-  console.log('pkesari_mute status to be set to selected member :', mute);
 
   if (meeting) {
-    console.log('pkesari_participant and its mute status: ', participantID, mute);
     meeting.mute(participantID, mute).then((res) => {
-      console.log('pkesari received success response and mute is: ', mute);
-      console.log(res, `pkesari_participant is ${mute ? 'mute' : 'unmute'}`);
+      console.log(res, `participant is ${mute ? 'mute' : 'unmute'}`);
       handleAudioButton(localMedia.microphoneStream.muted);
     }).catch((err) => {
       console.log('error', err);
