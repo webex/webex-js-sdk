@@ -25,7 +25,6 @@ describe('RemoteMediaGroup', () => {
 
   let fakeMediaRequestManager;
   let fakeReceiveSlots;
-  let fakeAudioReceiveSlots;
 
   let activeSpeakerRequestCounter;
   let receiverSelectedRequestCounter;
@@ -52,10 +51,6 @@ describe('RemoteMediaGroup', () => {
     fakeReceiveSlots = Array(NUM_SLOTS)
       .fill(null)
       .map((_, index) => new FakeSlot(MediaType.VideoMain, `fake receive slot ${index}`));
-
-    fakeAudioReceiveSlots = Array(4)
-      .fill(null)
-      .map((_, index) => new FakeSlot(MediaType.AudioMain, `fake receive slot ${index}`));
   });
 
   const getLastActiveSpeakerRequestId = () =>
@@ -103,6 +98,9 @@ describe('RemoteMediaGroup', () => {
     });
 
     it('creates named media group RemoteMedia object and sends the active speaker media request', () => {
+      let fakeAudioReceiveSlots = Array(4)
+        .fill(null)
+        .map((_, index) => new FakeSlot(MediaType.AudioMain, `fake receive slot ${index}`));
       fakeAudioReceiveSlots[3].namedMediaGroup = {type: 1, value: 20};
       const group = new RemoteMediaGroup(fakeMediaRequestManager, fakeAudioReceiveSlots, 211, true, {
         resolution: 'medium',
