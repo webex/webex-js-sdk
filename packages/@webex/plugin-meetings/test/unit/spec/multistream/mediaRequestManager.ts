@@ -80,7 +80,7 @@ describe('MediaRequestManager', () => {
   });
 
   // helper function for adding an active speaker request
-  const addActiveSpeakerRequest = (priority, receiveSlots, maxFs, commit = false, preferLiveVideo = true) =>
+  const addActiveSpeakerRequest = (priority, receiveSlots, maxFs, commit = false, preferLiveVideo = true, namedMediaGroups = undefined) =>
     mediaRequestManager.addRequest(
       {
         policyInfo: {
@@ -89,6 +89,7 @@ describe('MediaRequestManager', () => {
           crossPriorityDuplication: CROSS_PRIORITY_DUPLICATION,
           crossPolicyDuplication: CROSS_POLICY_DUPLICATION,
           preferLiveVideo,
+          namedMediaGroups,
         },
         receiveSlots,
         codecInfo: {
@@ -621,7 +622,14 @@ describe('MediaRequestManager', () => {
       MAX_FS_720p,
       false
     );
-
+    addActiveSpeakerRequest(
+      254,
+      [fakeReceiveSlots[8], fakeReceiveSlots[9], fakeReceiveSlots[10]],
+      MAX_FS_720p,
+      false,
+      true,
+      [{type: 1, value: 20}],
+    );
     // nothing should be sent out as we didn't commit the requests
     assert.notCalled(sendMediaRequestsCallback);
 
@@ -629,6 +637,8 @@ describe('MediaRequestManager', () => {
     mediaRequestManager.commit();
 
     // check that all requests have been sent out
+    // @ts-ignore
+    // @ts-ignore
     checkMediaRequestsSent([
       {
         policy: 'receiver-selected',
@@ -661,6 +671,15 @@ describe('MediaRequestManager', () => {
         maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_720p,
         maxFs: MAX_FS_720p,
         maxMbps: MAX_MBPS_720p,
+      },
+      {
+        policy: 'active-speaker',
+        priority: 254,
+        receiveSlots: [fakeWcmeSlots[8], fakeWcmeSlots[9], fakeWcmeSlots[10]],
+        maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_720p,
+        maxFs: MAX_FS_720p,
+        maxMbps: MAX_MBPS_720p,
+        namedMediaGroups: [{type: 1, value: 20}],
       },
     ]);
   });

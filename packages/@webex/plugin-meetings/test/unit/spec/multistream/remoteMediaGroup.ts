@@ -102,6 +102,7 @@ describe('RemoteMediaGroup', () => {
         .fill(null)
         .map((_, index) => new FakeSlot(MediaType.AudioMain, `fake receive slot ${index}`));
       fakeAudioReceiveSlots[3].namedMediaGroup = {type: 1, value: 20};
+      // @ts-ignore
       const group = new RemoteMediaGroup(fakeMediaRequestManager, fakeAudioReceiveSlots, 211, true, {
         resolution: 'medium',
         preferLiveVideo: true,
