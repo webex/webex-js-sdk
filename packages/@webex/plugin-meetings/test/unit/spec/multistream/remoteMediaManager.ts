@@ -350,6 +350,109 @@ describe('RemoteMediaManager', () => {
       }
     });
 
+    it('creates new media request when call setReceiveNamedMediaGroup', async () => {
+      let createdAudioGroup: RemoteMediaGroup | null = null;
+      let audioStopStub;
+      fakeAudioSlot.setNamedMediaGroup = sinon.stub();
+      // create a config with just audio, no video at all and no screen share
+      const config: Configuration = {
+        audio: {
+          numOfActiveSpeakerStreams: 3,
+          numOfScreenShareStreams: 0,
+        },
+        video: {
+          preferLiveVideo: false,
+          initialLayoutId: 'empty',
+          layouts: {
+            empty: {},
+          },
+        },
+        receiveNamedMediaGroup: {type: 1, value: 24},
+      };
+
+      remoteMediaManager = new RemoteMediaManager(
+        fakeReceiveSlotManager,
+        fakeMediaRequestManagers,
+        config
+      );
+
+      remoteMediaManager.on(Event.AudioCreated, (audio: RemoteMediaGroup) => {
+        audioStopStub = sinon.stub(audio, 'stop');
+      });
+
+      await remoteMediaManager.start();
+
+      // we're using the default config that requires 3 main audio slots
+      assert.callCount(fakeReceiveSlotManager.allocateSlot, 4);
+
+
+      resetHistory();
+
+      remoteMediaManager.setReceiveNamedMediaGroup(MediaType.AudioMain, 28);
+
+      // audio RemoteMediaGroups have been stopped
+      assert.calledOnce(audioStopStub);
+      // check that all slots have been released
+      assert.callCount(fakeReceiveSlotManager.releaseSlot, 4);
+
+      // re-create audio media request
+      await testUtils.flushPromises();
+      assert.callCount(fakeReceiveSlotManager.allocateSlot, 4);
+      assert.alwaysCalledWith(fakeReceiveSlotManager.allocateSlot, MediaType.AudioMain);
+      assert.strictEqual(remoteMediaManager.slots.audio.length, 4);
+
+    });
+
+    // it('ignore invalide or duplicated named media group for audio', async () => {
+    //   let createdAudioGroup: RemoteMediaGroup | null = null;
+    //   let audioStopStub;
+    //   fakeAudioSlot.setNamedMediaGroup = sinon.stub();
+    //   // create a config with just audio, no video at all and no screen share
+    //   const config: Configuration = {
+    //     audio: {
+    //       numOfActiveSpeakerStreams: 3,
+    //       numOfScreenShareStreams: 0,
+    //     },
+    //     video: {
+    //       preferLiveVideo: false,
+    //       initialLayoutId: 'empty',
+    //       layouts: {
+    //         empty: {},
+    //       },
+    //     },
+    //     receiveNamedMediaGroup: {type: 1, value: 24},
+    //   };
+    //
+    //   remoteMediaManager = new RemoteMediaManager(
+    //     fakeReceiveSlotManager,
+    //     fakeMediaRequestManagers,
+    //     config
+    //   );
+    //
+    //   remoteMediaManager.on(Event.AudioCreated, (audio: RemoteMediaGroup) => {
+    //     audioStopStub = sinon.stub(audio, 'stop');
+    //   });
+    //
+    //   await remoteMediaManager.start();
+    //
+    //   // we're using the default config that requires 3 main audio slots
+    //   assert.callCount(fakeReceiveSlotManager.allocateSlot, 4);
+    //
+    //
+    //   resetHistory();
+    //
+    //   remoteMediaManager.setReceiveNamedMediaGroup(MediaType.AudioMain, 24);
+    //
+    //   assert.notCalled(audioStopStub);
+    //   assert.callCount(fakeReceiveSlotManager.releaseSlot, 0);
+    //
+    //   await testUtils.flushPromises();
+    //   assert.callCount(fakeReceiveSlotManager.allocateSlot, 0);
+    //   assert.notCalled(fakeReceiveSlotManager.allocateSlot);
+    //
+    //
+    // });
+
     it('pre-allocates receive slots based on the biggest layout', async () => {
       const config = cloneDeep(DefaultTestConfiguration);
 
