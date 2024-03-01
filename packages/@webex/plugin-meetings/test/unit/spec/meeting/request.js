@@ -4,16 +4,19 @@ import MockWebex from '@webex/test-helper-mock-webex';
 import Meetings from '@webex/plugin-meetings';
 import MeetingRequest from '@webex/plugin-meetings/src/meeting/request';
 import uuid from 'uuid';
-import { merge } from 'lodash';
+import {merge} from 'lodash';
 import {IP_VERSION} from '@webex/plugin-meetings/src/constants';
 import {CallDiagnosticUtils} from '@webex/internal-plugin-metrics';
-
 
 describe('plugin-meetings', () => {
   let meetingsRequest;
   let locusDeltaRequestSpy;
   let webex;
-  const geoHintInfoDefaults = {countryCode: 'US', regionCode: 'WEST-COAST', clientAddress: '127.0.0.1'};
+  const geoHintInfoDefaults = {
+    countryCode: 'US',
+    regionCode: 'WEST-COAST',
+    clientAddress: '127.0.0.1',
+  };
   let anonymizeIpSpy;
 
   beforeEach(() => {
@@ -29,6 +32,11 @@ describe('plugin-meetings', () => {
       services: {
         get: sinon.mock().returns('locusUrl'),
         waitForCatalog: sinon.mock().returns(Promise.resolve({})),
+      },
+      device: {
+        config: {
+          installationId: 'installationId',
+        },
       },
     };
 
@@ -179,12 +187,13 @@ describe('plugin-meetings', () => {
     });
 
     describe('#joinMeeting', () => {
-      it('sends /call requets for join', async () => {
+      it('sends /call request for join', async () => {
         const locusUrl = 'locusURL';
         const deviceUrl = 'deviceUrl';
         const correlationId = 'random-uuid';
         const roapMessage = 'roap-message';
         const permissionToken = 'permission-token';
+        const installationId = 'installationId';
 
         await meetingsRequest.joinMeeting({
           locusUrl,
@@ -198,6 +207,7 @@ describe('plugin-meetings', () => {
         assert.equal(requestParams.method, 'POST');
         assert.equal(requestParams.uri, `${locusUrl}/participant?alternateRedirect=true`);
         assert.equal(requestParams.body.device.url, deviceUrl);
+        assert.equal(requestParams.body.device.installationId, installationId);
         assert.equal(requestParams.body.device.countryCode, 'US');
         assert.equal(requestParams.body.permissionToken, 'permission-token');
         assert.equal(requestParams.body.device.regionCode, 'WEST-COAST');
@@ -210,7 +220,7 @@ describe('plugin-meetings', () => {
         beforeEach(() => {
           webex.meetings.geoHintInfo = {};
         });
-    
+
         // reset
         afterEach(() => {
           webex.meetings.geoHintInfo = {...geoHintInfoDefaults};
@@ -222,7 +232,7 @@ describe('plugin-meetings', () => {
           const correlationId = 'random-uuid';
           const roapMessage = 'roap-message';
           const permissionToken = 'permission-token';
-  
+
           await meetingsRequest.joinMeeting({
             locusUrl,
             deviceUrl,
@@ -231,10 +241,10 @@ describe('plugin-meetings', () => {
             permissionToken,
           });
           const requestParams = meetingsRequest.request.getCall(0).args[0];
-  
+
           assert.equal(requestParams.body.device.localIp, undefined);
         });
-      })
+      });
 
       it('sends /call with meetingNumber if inviteeAddress does not exist', async () => {
         const deviceUrl = 'deviceUrl';
@@ -368,16 +378,16 @@ describe('plugin-meetings', () => {
           correlationId,
           roapMessage,
           permissionToken,
-          ipVersion: IP_VERSION.ipv4_and_ipv6
+          ipVersion: IP_VERSION.ipv4_and_ipv6,
         });
         const requestParams = meetingsRequest.request.getCall(0).args[0];
 
         assert.equal(requestParams.method, 'POST');
         assert.equal(requestParams.uri, `${locusUrl}/participant?alternateRedirect=true`);
         assert.deepEqual(requestParams.body.clientMediaPreferences, {
-          "joinCookie": {anycastEntryPoint: "aws-eu-west-1"},
-          "preferTranscoding": true,
-          "ipver": 1
+          joinCookie: {anycastEntryPoint: 'aws-eu-west-1'},
+          preferTranscoding: true,
+          ipver: 1,
         });
       });
     });
