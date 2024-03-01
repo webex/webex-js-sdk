@@ -7039,7 +7039,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/internal-plugin-device@workspace:*, @webex/internal-plugin-device@workspace:^, @webex/internal-plugin-device@workspace:packages/@webex/internal-plugin-device":
+"@webex/internal-plugin-device@workspace:*, @webex/internal-plugin-device@workspace:packages/@webex/internal-plugin-device":
   version: 0.0.0-use.local
   resolution: "@webex/internal-plugin-device@workspace:packages/@webex/internal-plugin-device"
   dependencies:
@@ -7309,7 +7309,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/internal-plugin-metrics@workspace:*, @webex/internal-plugin-metrics@workspace:^, @webex/internal-plugin-metrics@workspace:packages/@webex/internal-plugin-metrics":
+"@webex/internal-plugin-metrics@workspace:*, @webex/internal-plugin-metrics@workspace:packages/@webex/internal-plugin-metrics":
   version: 0.0.0-use.local
   resolution: "@webex/internal-plugin-metrics@workspace:packages/@webex/internal-plugin-metrics"
   dependencies:
@@ -7320,15 +7320,15 @@ __metadata:
     "@webex/common-timers": "workspace:*"
     "@webex/eslint-config-legacy": "workspace:*"
     "@webex/event-dictionary-ts": ^1.0.1329
-    "@webex/internal-plugin-device": "workspace:^"
-    "@webex/internal-plugin-metrics": "workspace:^"
+    "@webex/internal-plugin-device": "workspace:*"
+    "@webex/internal-plugin-metrics": "workspace:*"
     "@webex/jest-config-legacy": "workspace:*"
     "@webex/legacy-tools": "workspace:*"
     "@webex/test-helper-chai": "workspace:*"
     "@webex/test-helper-mocha": "workspace:*"
     "@webex/test-helper-mock-webex": "workspace:*"
     "@webex/test-helper-test-users": "workspace:*"
-    "@webex/webex-core": "workspace:^"
+    "@webex/webex-core": "workspace:*"
     eslint: ^8.24.0
     ip-anonymize: ^0.1.0
     lodash: ^4.17.21
@@ -8688,7 +8688,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@webex/webex-core@workspace:*, @webex/webex-core@workspace:^, @webex/webex-core@workspace:packages/@webex/webex-core":
+"@webex/webex-core@workspace:*, @webex/webex-core@workspace:packages/@webex/webex-core":
   version: 0.0.0-use.local
   resolution: "@webex/webex-core@workspace:packages/@webex/webex-core"
   dependencies:
