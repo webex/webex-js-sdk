@@ -1709,6 +1709,7 @@ function toggleSendVideo() {
     localMedia.cameraStream.setMuted(newMuteValue);
 
     console.log(`MeetingControls#toggleSendVideo() :: Successfully ${newMuteValue ? 'muted': 'unmuted'} video!`);
+
     return;
   }
 }
