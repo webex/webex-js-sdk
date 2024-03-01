@@ -11,6 +11,7 @@ class FakeSlot extends EventEmitter {
   public mediaType: MediaType;
 
   public id: string;
+  public namedMediaGroup: {};
 
   constructor(mediaType: MediaType, id: string) {
     super();
@@ -24,6 +25,7 @@ describe('RemoteMediaGroup', () => {
 
   let fakeMediaRequestManager;
   let fakeReceiveSlots;
+  let fakeAudioReceiveSlots;
 
   let activeSpeakerRequestCounter;
   let receiverSelectedRequestCounter;
@@ -50,6 +52,10 @@ describe('RemoteMediaGroup', () => {
     fakeReceiveSlots = Array(NUM_SLOTS)
       .fill(null)
       .map((_, index) => new FakeSlot(MediaType.VideoMain, `fake receive slot ${index}`));
+
+    fakeAudioReceiveSlots = Array(4)
+      .fill(null)
+      .map((_, index) => new FakeSlot(MediaType.AudioMain, `fake receive slot ${index}`));
   });
 
   const getLastActiveSpeakerRequestId = () =>
@@ -87,6 +93,53 @@ describe('RemoteMediaGroup', () => {
             priority: 211,
           }),
           receiveSlots: fakeReceiveSlots,
+          codecInfo: sinon.match({
+            codec: 'h264',
+            maxFs: 3600,
+          }),
+        }),
+        true
+      );
+    });
+
+    it('creates named media group RemoteMedia object and sends the active speaker media request', () => {
+      fakeAudioReceiveSlots[3].namedMediaGroup = {type: 1, value: 20};
+      const group = new RemoteMediaGroup(fakeMediaRequestManager, fakeAudioReceiveSlots, 211, true, {
+        resolution: 'medium',
+        preferLiveVideo: true,
+      });
+
+      assert.strictEqual(group.getRemoteMedia().length, 4);
+      assert.strictEqual(group.getRemoteMedia('all').length, 4);
+      assert.strictEqual(group.getRemoteMedia('unpinned').length, 4);
+      assert.strictEqual(group.getRemoteMedia('pinned').length, 0);
+
+      assert.strictEqual(
+        group.getRemoteMedia('all').every((item) => item instanceof RemoteMedia),
+        true
+      );
+
+      assert.calledTwice(fakeMediaRequestManager.addRequest);
+      assert.calledWith(
+        fakeMediaRequestManager.addRequest.firstCall,
+        sinon.match({
+          policyInfo: sinon.match({
+            policy: 'active-speaker',
+            priority: 211,
+            namedMediaGroups: [{type: 1, value: 20}],
+          }),
+          receiveSlots: [fakeAudioReceiveSlots[3]],
+        }),
+        false
+      );
+      assert.calledWith(
+        fakeMediaRequestManager.addRequest.secondCall,
+        sinon.match({
+          policyInfo: sinon.match({
+            policy: 'active-speaker',
+            priority: 211,
+          }),
+          // receiveSlots: fakeReceiveSlots,
           codecInfo: sinon.match({
             codec: 'h264',
             maxFs: 3600,
