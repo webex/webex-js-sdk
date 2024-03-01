@@ -2833,8 +2833,8 @@ participantTable.addEventListener('click', (event) => {
     if (!selectedParticipant) {
       return;
     }
-    const muteButton =  document.querySelector('#participant-btn .btn-group button:first-child');
-    muteButton.innerText = selectedParticipant.isAudioMuted ? 'Unmute': 'Mute';
+    const muteButton = document.getElementById('mute-participant-btn')
+    muteButton.innerText = selectedParticipant.isAudioMuted ? 'Request to unmute': 'Mute';
   }
 });
 
@@ -2884,11 +2884,11 @@ function muteMember(muteButton) {
   const meeting = getCurrentMeeting();
   const participantID = getRadioValue('participant-select');
   const selectedMember = meeting.members.membersCollection.get(participantID);
-  const mute = selectedMember.isAudioMuted ? 'false' : 'true';
+  const muteStatus = selectedMember.isAudioMuted ? 'false' : 'true';
 
   if (meeting) {
-    meeting.mute(participantID, mute).then((res) => {
-      console.log(res, `participant is ${mute ? 'mute' : 'unmute'}`);
+    meeting.mute(participantID, muteStatus).then((res) => {
+      console.log(res, `participant is ${muteStatus ? 'mute' : 'unmute'}`);
       handleAudioButton(localMedia.microphoneStream.muted);
     }).catch((err) => {
       console.log('error', err);
@@ -3537,8 +3537,9 @@ function viewParticipants() {
     const btnDiv = document.createElement('div');
 
     btnDiv.classList.add('btn-group');
-
-    btnDiv.appendChild(createButton('Mute', muteMember));
+    const muteBtn = createButton('Mute', muteMember)
+    muteBtn.id = 'mute-participant-btn'
+    btnDiv.appendChild(muteBtn);
     btnDiv.appendChild(createButton('Remove', removeMember));
     btnDiv.appendChild(createButton('Make Host', transferHostToMember));
 
