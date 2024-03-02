@@ -830,13 +830,12 @@ describe('plugin-meetings', () => {
       it('Make a request to /spaceInstant when conversationUrl with installed org ID', async () => {
         const {invitee} = setup();
 
-        await meetingInfo.createAdhocSpaceMeeting(conversationUrl, installedOrgID);
+        webex.request.resolves({
+          statusCode: 200,
+          body: conversation
+        });
 
-        assert.calledWith(
-          webex.internal.conversation.get,
-          {url: conversationUrl},
-          {includeParticipants: true, disableTransform: true}
-        );
+        await meetingInfo.createAdhocSpaceMeeting(conversationUrl, installedOrgID);
 
         assert.calledWith(webex.request, {
           method: 'POST',
