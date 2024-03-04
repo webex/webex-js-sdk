@@ -2827,17 +2827,6 @@ const participantsList = document.querySelector('#participant-list');
 const participantTable = document.querySelector('#participant-table');
 const participantButtons = document.querySelector('#participant-btn');
 
-participantTable.addEventListener('click', (event) => {
-  if (event.target.type === 'radio') {
-    const selectedParticipant = meeting.members.membersCollection.get(event.target.id);
-    if (!selectedParticipant) {
-      return;
-    }
-    const muteButton = document.getElementById('mute-participant-btn')
-    muteButton.innerText = selectedParticipant.isAudioMuted ? 'Unmute': 'Mute';
-  }
-});
-
 function inviteMember(addButton) {
   const meeting = getCurrentMeeting();
   const emailVal = addButton.previousElementSibling.value.trim();
@@ -3537,9 +3526,8 @@ function viewParticipants() {
     const btnDiv = document.createElement('div');
 
     btnDiv.classList.add('btn-group');
-    const muteBtn = createButton('Mute', muteMember)
-    muteBtn.id = 'mute-participant-btn'
-    btnDiv.appendChild(muteBtn);
+
+    btnDiv.appendChild(createButton('Toggle Audio', muteMember));
     btnDiv.appendChild(createButton('Remove', removeMember));
     btnDiv.appendChild(createButton('Make Host', transferHostToMember));
 
