@@ -635,7 +635,7 @@ async function joinMeeting({withMedia, withDevice} = {withMedia: false, withDevi
     });
 
     meeting.on('meeting:self:mutedByOthers', () => {
-      handleAudioButton(localMedia.microphoneStream.muted);
+      handleAudioButton();
     });
 
     eventsList.innerText = '';
@@ -1500,8 +1500,8 @@ function setAudioOutputDevice() {
     });
 }
 
-function handleAudioButton(muteState) {
-  const audioButtonTitle = muteState ? 'Unmute' : 'Mute';
+function handleAudioButton() {
+  const audioButtonTitle = localMedia.microphoneStream.muted ? 'Unmute' : 'Mute';
   toggleAudioButton.innerHTML = `${audioButtonTitle} Audio`;
 }
 
@@ -1512,7 +1512,7 @@ function toggleSendAudio() {
     const newMuteValue = !localMedia.microphoneStream.muted;
 
     localMedia.microphoneStream.setMuted(newMuteValue);
-    handleAudioButton(localMedia.microphoneStream.muted);
+    handleAudioButton();
 
     console.log(`MeetingControls#toggleSendAudio() :: Successfully ${newMuteValue ? 'muted': 'unmuted'} audio!`);
     return;
@@ -2834,7 +2834,7 @@ participantTable.addEventListener('click', (event) => {
       return;
     }
     const muteButton = document.getElementById('mute-participant-btn')
-    muteButton.innerText = selectedParticipant.isAudioMuted ? 'Request to unmute': 'Mute';
+    muteButton.innerText = selectedParticipant.isAudioMuted ? 'Unmute': 'Mute';
   }
 });
 
@@ -2884,12 +2884,12 @@ function muteMember(muteButton) {
   const meeting = getCurrentMeeting();
   const participantID = getRadioValue('participant-select');
   const selectedMember = meeting.members.membersCollection.get(participantID);
-  const muteStatus = selectedMember.isAudioMuted ? 'false' : 'true';
+  const newMuteStatus = selectedMember.isAudioMuted ? false : true;
 
   if (meeting) {
-    meeting.mute(participantID, muteStatus).then((res) => {
-      console.log(res, `participant is ${muteStatus ? 'mute' : 'unmute'}`);
-      handleAudioButton(localMedia.microphoneStream.muted);
+    meeting.mute(participantID, newMuteStatus).then((res) => {
+      console.log(res, `participant is ${newMuteStatus ? 'muted' : 'unmuted'}`);
+      handleAudioButton();
     }).catch((err) => {
       console.log('error', err);
     });
