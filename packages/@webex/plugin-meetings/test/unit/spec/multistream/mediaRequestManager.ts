@@ -14,6 +14,7 @@ type ExpectedActiveSpeaker = {
   receiveSlots: Array<ReceiveSlot>;
   maxFs?: number;
   maxMbps?: number;
+  namedMediaGroups?:[{type: number, value: number}];
 };
 type ExpectedReceiverSelected = {
   policy: 'receiver-selected';

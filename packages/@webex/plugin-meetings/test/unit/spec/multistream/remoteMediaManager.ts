@@ -317,7 +317,7 @@ describe('RemoteMediaManager', () => {
             empty: {},
           },
         },
-        receiveNamedMediaGroup: {type: 1, value: 20},
+        namedMediaGroup: {type: 1, value: 20},
       };
 
       remoteMediaManager = new RemoteMediaManager(
@@ -367,7 +367,7 @@ describe('RemoteMediaManager', () => {
             empty: {},
           },
         },
-        receiveNamedMediaGroup: {type: 1, value: 24},
+        namedMediaGroup: {type: 1, value: 24},
       };
 
       remoteMediaManager = new RemoteMediaManager(
@@ -420,7 +420,7 @@ describe('RemoteMediaManager', () => {
             empty: {},
           },
         },
-        receiveNamedMediaGroup: {type: 1, value: 24},
+        namedMediaGroup: {type: 1, value: 24},
       };
 
       remoteMediaManager = new RemoteMediaManager(
@@ -469,7 +469,7 @@ describe('RemoteMediaManager', () => {
             empty: {},
           },
         },
-        receiveNamedMediaGroup: {type: 1, value: 24},
+        namedMediaGroup: {type: 1, value: 24},
       };
 
       remoteMediaManager = new RemoteMediaManager(

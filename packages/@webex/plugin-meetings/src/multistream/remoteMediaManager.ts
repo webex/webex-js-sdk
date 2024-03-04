@@ -49,7 +49,7 @@ export interface Configuration {
 
     layouts: {[key: LayoutId]: VideoLayout}; // a map of all available layouts, a layout can be set via setLayout() method
   };
-  receiveNamedMediaGroup?: {
+  namedMediaGroup?: {
     type: number;
     value: number;
   };
@@ -539,13 +539,13 @@ export class RemoteMediaManager extends EventsScope {
     const type = mediaType === MediaType.AudioMain ? 1 : 0;
     const value = languageId;
     if (
-      type === this.config.receiveNamedMediaGroup?.type &&
-      value === this.config.receiveNamedMediaGroup?.value
+      type === this.config.namedMediaGroup?.type &&
+      value === this.config.namedMediaGroup?.value
     ) {
       return;
     }
 
-    this.config.receiveNamedMediaGroup = {
+    this.config.namedMediaGroup = {
       type,
       value,
     };
@@ -576,10 +576,10 @@ export class RemoteMediaManager extends EventsScope {
       this.slots.audio.push(slot);
     }
     // create slot for interpretation language audio
-    if (this.config.receiveNamedMediaGroup?.value) {
+    if (this.config.namedMediaGroup?.value) {
       const siSlot = await this.receiveSlotManager.allocateSlot(MediaType.AudioMain);
       if (siSlot) {
-        siSlot.setNamedMediaGroup(this.config.receiveNamedMediaGroup);
+        siSlot.setNamedMediaGroup(this.config.namedMediaGroup);
         this.slots.audio.push(siSlot);
       }
     }
