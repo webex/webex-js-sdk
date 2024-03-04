@@ -168,7 +168,10 @@ module.exports = {
 
         /** Each package is run through testPackage util */
         for (const packageName of argv.packages) {
-          const onMocha = packageName === '@webex/plugin-meetings' || packageName === 'webex';
+          const onMocha =
+            packageName === '@webex/plugin-meetings' ||
+            packageName === 'webex' ||
+            packageName == '@webex/media-helpers';
 
           await testPackage(argv, packageName, onMocha);
         }
@@ -200,7 +203,10 @@ module.exports = {
           }, '');
 
           console.log(`Package ${packageName} Args ${argString}`);
-          const [cmd, ...args] = `yarn run test --silent --no-coverage-report --packages ${packageName}${argString}`.split(' ');
+          const [cmd, ...args] =
+            `yarn run test --silent --no-coverage-report --packages ${packageName}${argString}`.split(
+              ' '
+            );
 
           await spawn(cmd, args);
         }

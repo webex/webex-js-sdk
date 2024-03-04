@@ -41,7 +41,7 @@
     "sinon": "^9.2.4"
   },
   "scripts": {
-    "build": "yarn build:src",
+    "build": "yarn run -T tsc --declaration true --declarationDir ./dist",
     "build:src": "webex-legacy-tools build -dest \"./dist\" -src \"./src\" -js -ts -maps",
     "deploy:npm": "yarn npm publish",
     "test": "yarn test:style && yarn test:unit && yarn test:integration && yarn test:browser",

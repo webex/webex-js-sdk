@@ -19,7 +19,9 @@ async function start() {
   }
 
   return new Promise((resolve) => {
-    const serverPath = path.resolve(process.cwd(), 'packages/@webex/test-helper-server');
+    // const serverPath = path.resolve(process.cwd(), '../../@webex/test-helper-server'); //With workspace command
+
+    const serverPath = path.resolve(process.cwd(), 'packages/@webex/test-helper-server'); //With older command
 
     child = spawn(process.argv[0], [serverPath], {
       env: process.env,

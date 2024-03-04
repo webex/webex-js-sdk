@@ -12,12 +12,15 @@ const fs = require('fs-extra');
 
 const _spawn = require('./spawn');
 
-const cwd = 'packages';
+// const cwd = 'packages';
+const cwd = path.resolve(__dirname, '../../') + '/packages';
 
 exports.list = async function list() {
   const packages = await g('**/package.json', {cwd});
 
-  return packages.map((p) => path.dirname(p)).filter((p) => (p.startsWith('webex') || p.startsWith('@webex') || p.startsWith('calling')));
+  return packages
+    .map((p) => path.dirname(p))
+    .filter((p) => p.startsWith('webex') || p.startsWith('@webex') || p.startsWith('calling'));
 };
 
 exports.glob = function glob(pattern, options = {}) {

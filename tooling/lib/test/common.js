@@ -12,7 +12,7 @@ exports.gatherFiles = async function gatherFiles(env, packageName) {
 
   debug(`looking for ${env} tests for ${packageName}`);
   files = files.concat(await glob(`test/${env}/spec/**/*.[tj]s`, {packageName}));
-
+  console.log({files});
   return files.map((f) => `packages/${packageName}/${f}`);
 };
 
