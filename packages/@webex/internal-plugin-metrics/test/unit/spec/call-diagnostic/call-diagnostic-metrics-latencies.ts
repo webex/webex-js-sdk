@@ -488,18 +488,22 @@ describe('internal-plugin-metrics', () => {
         value: 12,
       });
       cdl.saveTimestamp({
-        key: 'client.media.rx.start',
+        key: 'client.ice.end',
         value: 14,
       });
-      cdl.saveTimestamp({
-        key: 'client.media.tx.start',
-        value: 15,
-      });
-      cdl.saveTimestamp({
-        key: 'client.media.rx.start',
-        value: 16,
-      });
       assert.deepEqual(cdl.getInterstitialToMediaOKJMT(), 8);
+    });
+
+    it('calculates getInterstitialToMediaOKJMT correctly without lobby', () => {
+      cdl.saveTimestamp({
+        key: 'internal.client.interstitial-window.click.joinbutton',
+        value: 4,
+      });
+      cdl.saveTimestamp({
+        key: 'client.ice.end',
+        value: 14,
+      });
+      assert.deepEqual(cdl.getInterstitialToMediaOKJMT(), 10);
     });
   });
 });
