@@ -31,15 +31,6 @@ registerInternalPlugin('newMetrics', NewMetrics, {
 });
 
 export {default, getOSNameInternal} from './metrics';
-export {default as CallDiagnosticLatencies} from './call-diagnostic/call-diagnostic-metrics-latencies';
-export {
-  DTLS_HANDSHAKE_FAILED_CLIENT_CODE,
-  ICE_FAILED_WITHOUT_TURN_TLS_CLIENT_CODE,
-  ICE_FAILED_WITH_TURN_TLS_CLIENT_CODE,
-  ICE_FAILURE_CLIENT_CODE,
-  MISSING_ROAP_ANSWER_CLIENT_CODE,
-  ERROR_DESCRIPTIONS,
-} from './call-diagnostic/config';
 export {config, CALL_DIAGNOSTIC_CONFIG, NewMetrics, Utils, CallDiagnosticUtils};
 export type {
   ClientEvent,
