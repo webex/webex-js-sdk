@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.365](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.364...v3.0.0-beta.365) (2024-03-04)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** add connection id to rtcmetrics ([#3385](https://github.com/webex/webex-js-sdk/issues/3385)) ([c5fe145](https://github.com/webex/webex-js-sdk/commit/c5fe145551a3e5a335d694d751aae64728f4667e))
+
 ## [3.0.0-beta.364](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.363...v3.0.0-beta.364) (2024-03-01)
 
 
