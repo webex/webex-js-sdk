@@ -2,6 +2,62 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.366](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.365...v3.0.0-beta.366) (2024-03-05)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** only log no packets if slot has live state ([#3394](https://github.com/webex/webex-js-sdk/issues/3394)) ([b5b95f0](https://github.com/webex/webex-js-sdk/commit/b5b95f0fe81f3a8c8c5af8352bdc185d618e7daa))
+
+## [3.0.0-beta.365](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.364...v3.0.0-beta.365) (2024-03-04)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** add connection id to rtcmetrics ([#3385](https://github.com/webex/webex-js-sdk/issues/3385)) ([c5fe145](https://github.com/webex/webex-js-sdk/commit/c5fe145551a3e5a335d694d751aae64728f4667e))
+
+## [3.0.0-beta.364](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.363...v3.0.0-beta.364) (2024-03-01)
+
+
+### Bug Fixes
+
+* **meetings:** deploy-pr ([#3422](https://github.com/webex/webex-js-sdk/issues/3422)) ([5ff424e](https://github.com/webex/webex-js-sdk/commit/5ff424ee723ea56b5f5101d6d34b4d0aebdbd9e0))
+
+## [3.0.0-beta.363](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.362...v3.0.0-beta.363) (2024-02-29)
+
+
+### Bug Fixes
+
+* **plugin-meetings-samples:** fix remote screen re-share ([#3410](https://github.com/webex/webex-js-sdk/issues/3410)) ([ab4a9a2](https://github.com/webex/webex-js-sdk/commit/ab4a9a2f861ff16fec93938870c71e7401fd4792))
+
+## [3.0.0-beta.362](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.361...v3.0.0-beta.362) (2024-02-28)
+
+
+### Features
+
+* **ca-metrics:** CA Share Error Metric ([#3170](https://github.com/webex/webex-js-sdk/issues/3170)) ([2b1be7e](https://github.com/webex/webex-js-sdk/commit/2b1be7ebfd591486ed7a55b21a7b7caa15f2d7a4))
+
+## [3.0.0-beta.361](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.360...v3.0.0-beta.361) (2024-02-28)
+
+
+### Bug Fixes
+
+* **test-users:** test user set preferred site docs ([#3411](https://github.com/webex/webex-js-sdk/issues/3411)) ([b5cb7ad](https://github.com/webex/webex-js-sdk/commit/b5cb7ad023069ae5637c6f97be0eebf8dc2e8063))
+
+## [3.0.0-beta.360](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.359...v3.0.0-beta.360) (2024-02-27)
+
+
+### Bug Fixes
+
+* don't do TCP reachability on VMN, add API to toggle TCP reachability ([#3401](https://github.com/webex/webex-js-sdk/issues/3401)) ([9a6a31e](https://github.com/webex/webex-js-sdk/commit/9a6a31e8e43ecd96b42f5d50564bc3c5664d6b53))
+
+## [3.0.0-beta.359](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.358...v3.0.0-beta.359) (2024-02-26)
+
+
+### Bug Fixes
+
+* reject guest token downscope ([#3398](https://github.com/webex/webex-js-sdk/issues/3398)) ([ae70cf0](https://github.com/webex/webex-js-sdk/commit/ae70cf0bdfc78b4a2b31f541c2e6da1ff5a3ffa5))
+
 ## [3.0.0-beta.358](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.357...v3.0.0-beta.358) (2024-02-23)
 
 
