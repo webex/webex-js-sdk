@@ -536,6 +536,9 @@ export class RemoteMediaManager extends EventsScope {
    *
    */
   public async setReceiveNamedMediaGroup(mediaType: MediaType, languageId: number) {
+    if (mediaType !== MediaType.AudioMain) {
+      throw new Error(`can not set receive named media group which media type is ${mediaType}`);
+    }
     const type = mediaType === MediaType.AudioMain ? 1 : 0;
     const value = languageId;
     if (
@@ -549,20 +552,19 @@ export class RemoteMediaManager extends EventsScope {
       type,
       value,
     };
-    if (mediaType === MediaType.AudioMain) {
-      this.invalidateCurrentRemoteMedia({
-        audio: true,
-        video: false,
-        screenShareAudio: false,
-        screenShareVideo: false,
-        commit: false,
-      });
-      this.slots.audio.reverse(); // release the slots in reverse order and maintain the same slots in same order for the next mediaRequest
-      this.slots.audio.forEach((slot) => this.receiveSlotManager.releaseSlot(slot));
-      this.slots.audio.length = 0;
 
-      await this.createAudioMedia();
-    }
+    this.invalidateCurrentRemoteMedia({
+      audio: true,
+      video: false,
+      screenShareAudio: false,
+      screenShareVideo: false,
+      commit: false,
+    });
+    this.slots.audio.reverse(); // release the slots in reverse order and maintain the same slots in same order for the next mediaRequest
+    this.slots.audio.forEach((slot) => this.receiveSlotManager.releaseSlot(slot));
+    this.slots.audio.length = 0;
+
+    await this.createAudioMedia();
   }
 
   /**

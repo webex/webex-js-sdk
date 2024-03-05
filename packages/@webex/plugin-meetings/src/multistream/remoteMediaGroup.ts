@@ -122,6 +122,12 @@ export class RemoteMediaGroup {
    *
    */
   public pin(remoteMedia: RemoteMedia, csi?: CSI): void {
+    if (remoteMedia.namedMediaGroup?.value) {
+      throw new Error(
+        `failed to pin a remote media object ${remoteMedia.id}, because it has a valid named media group`
+      );
+    }
+
     // if csi is not specified, use the current one
     const targetCsi = csi || remoteMedia.csi;
 

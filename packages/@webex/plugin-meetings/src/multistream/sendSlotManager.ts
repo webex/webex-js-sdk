@@ -64,6 +64,12 @@ export default class SendSlotManager {
    * @returns {void}
    */
   public setNamedMediaGroups(mediaType: MediaType, namedMediaGroups: NamedMediaGroup[]) {
+    if (mediaType !== MediaType.AudioMain) {
+      throw new Error(
+        `sendSlotManager can not set named media group which media type is ${mediaType}`
+      );
+    }
+
     const slot = this.slots.get(mediaType);
 
     if (!slot) {

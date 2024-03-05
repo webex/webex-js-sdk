@@ -388,6 +388,7 @@ describe('RemoteMediaManager', () => {
 
       resetHistory();
 
+
       remoteMediaManager.setReceiveNamedMediaGroup(MediaType.AudioMain, 28);
 
       // audio RemoteMediaGroups have been stopped
@@ -499,6 +500,44 @@ describe('RemoteMediaManager', () => {
       assert.callCount(fakeReceiveSlotManager.allocateSlot, 3);
       assert.alwaysCalledWith(fakeReceiveSlotManager.allocateSlot, MediaType.AudioMain);
       assert.strictEqual(remoteMediaManager.slots.audio.length, 3);
+
+    });
+
+    it('should throw error if set receive named media group which type is not audio', async () => {
+      let createdAudioGroup: RemoteMediaGroup | null = null;
+      let audioStopStub;
+      fakeAudioSlot.setNamedMediaGroup = sinon.stub();
+      // create a config with just audio, no video at all and no screen share
+      const config: Configuration = {
+        audio: {
+          numOfActiveSpeakerStreams: 3,
+          numOfScreenShareStreams: 0,
+        },
+        video: {
+          preferLiveVideo: false,
+          initialLayoutId: 'empty',
+          layouts: {
+            empty: {},
+          },
+        },
+        namedMediaGroup: {type: 1, value: 24},
+      };
+
+      remoteMediaManager = new RemoteMediaManager(
+        fakeReceiveSlotManager,
+        fakeMediaRequestManagers,
+        config
+      );
+
+      await remoteMediaManager.start();
+
+      resetHistory();
+
+      try {
+        remoteMediaManager.setReceiveNamedMediaGroup(MediaType.VideoMain, 0);
+      } catch (err) {
+        assert(err, {});
+      }
 
     });
 

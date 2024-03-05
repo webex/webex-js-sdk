@@ -8,7 +8,7 @@ import sinon from 'sinon';
 import * as internalMediaModule from '@webex/internal-media-core';
 import StateMachine from 'javascript-state-machine';
 import uuid from 'uuid';
-import {assert} from '@webex/test-helper-chai';
+import {assert, expect} from '@webex/test-helper-chai';
 import {Credentials, Token, WebexPlugin} from '@webex/webex-core';
 import Support from '@webex/internal-plugin-support';
 import MockWebex from '@webex/test-helper-mock-webex';
@@ -6017,10 +6017,19 @@ describe('plugin-meetings', () => {
       beforeEach(() => {
         meeting.sendSlotManager.setNamedMediaGroups = sinon.stub().returns(undefined);
       });
+      it('should throw error if not audio type', () => {
+        // try {
+        //   meeting.setSendNamedMediaGroup('other-type', 20);
+        // } catch (err) {
+        //   assert(err, {});
+        // }
+        expect(() => meeting.setSendNamedMediaGroup(MediaType.VideoMain, 20)).to.throw(`can not set send named media group which media type is ${MediaType.VideoMain}`)
+
+      });
       it('fails if there is no media connection', () => {
 
         meeting.mediaProperties.webrtcMediaConnection = undefined;
-        meeting.setSendNamedMediaGroup('audio', 20);
+        meeting.setSendNamedMediaGroup('AUDIO-MAIN', 20);
         assert.notCalled(meeting.sendSlotManager.setNamedMediaGroups);
       });
 
