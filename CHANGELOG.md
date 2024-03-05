@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.367](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.366...v3.0.0-beta.367) (2024-03-05)
+
+
+### Bug Fixes
+
+* **metrics:** getInterstitialToMediaOKJMT calculation ([#3427](https://github.com/webex/webex-js-sdk/issues/3427)) ([f93cc95](https://github.com/webex/webex-js-sdk/commit/f93cc95715d85d3ac253bb80e496d971830ee5a7))
+
 ## [3.0.0-beta.366](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.365...v3.0.0-beta.366) (2024-03-05)
 
 
