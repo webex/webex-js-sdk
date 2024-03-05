@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.366](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.365...v3.0.0-beta.366) (2024-03-05)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** only log no packets if slot has live state ([#3394](https://github.com/webex/webex-js-sdk/issues/3394)) ([b5b95f0](https://github.com/webex/webex-js-sdk/commit/b5b95f0fe81f3a8c8c5af8352bdc185d618e7daa))
+
 ## [3.0.0-beta.365](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.364...v3.0.0-beta.365) (2024-03-04)
 
 
