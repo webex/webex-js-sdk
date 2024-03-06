@@ -106,7 +106,11 @@ export default class TurnDiscovery {
 
     if (roapMessage.messageType !== ROAP.ROAP_TYPES.TURN_DISCOVERY_RESPONSE) {
       this.defer.reject(
-        new Error(`TURN_DISCOVERY_RESPONSE ${from} has unexpected messageType: `, roapMessage)
+        new Error(
+          `TURN_DISCOVERY_RESPONSE ${from} has unexpected messageType: ${JSON.stringify(
+            roapMessage
+          )}`
+        )
       );
     }
 

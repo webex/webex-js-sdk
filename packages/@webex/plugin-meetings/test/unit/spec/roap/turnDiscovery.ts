@@ -101,9 +101,21 @@ describe('TurnDiscovery', () => {
     );
   };
 
+  const checkHttpResponseMissingMetricsSent = () => {
+    assert.calledWith(
+      Metrics.sendBehavioralMetric,
+      BEHAVIORAL_METRICS.ROAP_HTTP_RESPONSE_MISSING,
+      sinon.match({
+        correlationId: testMeeting.correlationId,
+        messageType: 'TURN_DISCOVERY_RESPONSE',
+        isMultistream: testMeeting.isMultistream,
+      })
+    );
+  };
+
   describe('doTurnDiscovery', () => {
     [false, true].forEach(function (enabledMultistream) {
-      describe('when Multistream ' + (enabledMultistream ? 'enabled' : 'disabled'), () => {
+      describe('when Multistream is ' + (enabledMultistream ? 'enabled' : 'disabled'), () => {
         beforeEach(() => {
           testMeeting.isMultistream = enabledMultistream;
         });
@@ -151,6 +163,9 @@ describe('TurnDiscovery', () => {
           // check also that we've applied the media connections from the response
           assert.calledOnce(testMeeting.updateMediaConnections);
           assert.calledWith(testMeeting.updateMediaConnections, FAKE_MEDIA_CONNECTIONS_FROM_LOCUS);
+
+          // response is not in http response, so we expect a metric for that
+          checkHttpResponseMissingMetricsSent();
 
           // @ts-ignore
           mockRoapRequest.sendRoap.resetHistory();
@@ -288,6 +303,7 @@ describe('TurnDiscovery', () => {
           mockRoapRequest.sendRoap.resetHistory();
 
           await checkResult(result, undefined, undefined);
+          checkFailureMetricsSent();
         });
 
         it('waits for response from Mercury if http response does not contain a roapMessage', async () => {
@@ -305,6 +321,8 @@ describe('TurnDiscovery', () => {
 
           // check that TURN_DISCOVERY_REQUEST was sent
           await checkRoapMessageSent('TURN_DISCOVERY_REQUEST', 0);
+
+          checkHttpResponseMissingMetricsSent();
 
           // @ts-ignore
           mockRoapRequest.sendRoap.resetHistory();
