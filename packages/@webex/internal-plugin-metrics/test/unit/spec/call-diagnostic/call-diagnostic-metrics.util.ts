@@ -402,8 +402,6 @@ describe('internal-plugin-metrics', () => {
   });
 
   describe('setMetricTimings', () => {
-    let webex: any;
-
     const check = (options: any, expectedOptions: any) => {
       const newOptions = setMetricTimings(options);
 
