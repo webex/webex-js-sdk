@@ -181,8 +181,6 @@ export default class TurnDiscovery {
         locusSelfUrl: meeting.selfUrl,
         // @ts-ignore - Fix missing type
         mediaId: isReconnecting ? '' : meeting.mediaId,
-        audioMuted: meeting.audio?.isLocallyMuted(),
-        videoMuted: meeting.video?.isLocallyMuted(),
         meetingId: meeting.id,
         locusMediaRequest: meeting.locusMediaRequest,
         // @ts-ignore - because of meeting.webex
@@ -216,8 +214,6 @@ export default class TurnDiscovery {
       // @ts-ignore - fix type
       mediaId: meeting.mediaId,
       meetingId: meeting.id,
-      audioMuted: meeting.audio?.isLocallyMuted(),
-      videoMuted: meeting.video?.isLocallyMuted(),
       locusMediaRequest: meeting.locusMediaRequest,
     });
   }
