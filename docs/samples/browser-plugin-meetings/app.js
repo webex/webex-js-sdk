@@ -638,6 +638,10 @@ async function joinMeeting({withMedia, withDevice} = {withMedia: false, withDevi
       handleAudioButton();
     });
 
+    meeting.on('meeting:self:unmutedByOthers', () => {
+      handleAudioButton();
+    });
+
     eventsList.innerText = '';
     meeting.on('all', (payload) => {
       updatePublishedEvents(payload);
