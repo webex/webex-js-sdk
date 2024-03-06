@@ -1,6 +1,6 @@
 {
   "name": "@webex/media-helpers",
-  "version": "3.0.0-beta.365",
+  "version": "3.0.0-beta.367",
   "description": "",
   "license": "Cisco EULA (https://www.cisco.com/c/en/us/products/end-user-license-agreement.html)",
   "main": "dist/index.js",

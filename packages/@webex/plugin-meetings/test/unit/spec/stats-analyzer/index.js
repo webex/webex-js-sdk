@@ -244,6 +244,7 @@ describe('plugin-meetings', () => {
       let statsAnalyzer;
       let mqeData;
       let loggerSpy;
+      let receiveSlot;
 
       let receivedEventsData = {
         local: {},
@@ -273,6 +274,7 @@ describe('plugin-meetings', () => {
 
       beforeEach(() => {
         clock = sinon.useFakeTimers();
+        receiveSlot = undefined;
 
         resetReceivedEvents();
 
@@ -437,7 +439,7 @@ describe('plugin-meetings', () => {
 
         networkQualityMonitor = new NetworkQualityMonitor(initialConfig);
 
-        statsAnalyzer = new StatsAnalyzer(initialConfig, () => ({}), networkQualityMonitor);
+        statsAnalyzer = new StatsAnalyzer(initialConfig, () => (receiveSlot), networkQualityMonitor);
 
         statsAnalyzer.on(EVENTS.LOCAL_MEDIA_STARTED, (data) => {
           receivedEventsData.local.started = data;
@@ -911,6 +913,47 @@ describe('plugin-meetings', () => {
         await progressTime();
 
         assert(loggerSpy.neverCalledWith('StatsAnalyzer:index#compareLastStatsResult --> No audio RTP packets received'));
+      });
+
+      it('logs a message when no packets are recieved for a receive slot with sourceState "live"', async () => {
+        receiveSlot = {
+          sourceState:  'live',
+          csi: 2,
+          id: "4",
+        };
+
+        await startStatsAnalyzer();
+
+        // don't increase the packets when time progresses.
+        await progressTime();
+
+        assert.calledWith(loggerSpy, 'StatsAnalyzer:index#processInboundRTPResult --> No packets received for receive slot id: "4" and csi: 2. Total packets received on slot: ', 0);
+      });
+
+      ["avatar", "invalid", "no source", "bandwidth limited", "policy violation"].forEach((sourceState) => {
+        it(`does not log a message when no packets are recieved for a receive slot with sourceState "${sourceState}"`, async () => {
+          receiveSlot = {
+            sourceState,
+            csi: 2,
+            id: "4",
+          };
+  
+          await startStatsAnalyzer();
+  
+          // don't increase the packets when time progresses.
+          await progressTime();
+  
+          assert.neverCalledWith(loggerSpy, 'StatsAnalyzer:index#processInboundRTPResult --> No packets received for receive slot id: "4" and csi: 2. Total packets received on slot: ', 0);
+        });
+      });
+
+      it(`does not log a message if receiveSlot is undefined`, async () => {
+        await startStatsAnalyzer();
+
+        // don't increase the packets when time progresses.
+        await progressTime();
+
+        assert.neverCalledWith(loggerSpy, 'StatsAnalyzer:index#processInboundRTPResult --> No packets received for receive slot "". Total packets received on slot: ', 0);
       });
     });
   });
