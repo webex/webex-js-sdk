@@ -79,7 +79,7 @@ describe('plugin-meetings', () => {
   describe('meetings index', () => {
     beforeEach(() => {
       MeetingsUtil.checkH264Support = sinon.stub();
-         uuid1 = uuid.v4();
+      uuid1 = uuid.v4();
       url1 = `https://example.com/${uuid.v4()}`;
       uri1 = `test-${uuid.v4()}@example.com`;
       test1 = `test-${uuid.v4()}`;
@@ -1184,7 +1184,8 @@ describe('plugin-meetings', () => {
             webex.meetings.meetingInfo.fetchMeetingInfo = sinon.stub().returns(
               Promise.resolve({
                 body: {
-                  permissionToken: 'PT',
+                  permissionToken:
+                    'eyJhbGciOiJIUzI1NiJ9.eyJleHAiOiIxMjM0NTYiLCJwZXJtaXNzaW9uIjp7InVzZXJQb2xpY2llcyI6eyJhIjp0cnVlfX19.wkTk0Hp8sUlq2wi2nP4-Ym4Xb7aEUHzyXA1kzk6f0V0',
                   meetingJoinUrl: 'meetingJoinUrl',
                 },
               })
@@ -1287,7 +1288,8 @@ describe('plugin-meetings', () => {
             const meeting = await webex.meetings.createMeeting('test destination', 'test type');
 
             const expectedMeetingData = {
-              permissionToken: 'PT',
+              permissionToken:
+                'eyJhbGciOiJIUzI1NiJ9.eyJleHAiOiIxMjM0NTYiLCJwZXJtaXNzaW9uIjp7InVzZXJQb2xpY2llcyI6eyJhIjp0cnVlfX19.wkTk0Hp8sUlq2wi2nP4-Ym4Xb7aEUHzyXA1kzk6f0V0',
               meetingJoinUrl: 'meetingJoinUrl',
               correlationId: meeting.id,
             };
@@ -1303,7 +1305,8 @@ describe('plugin-meetings', () => {
 
           it('accepts injected meeting info', async () => {
             const meetingInfo = {
-              permissionToken: 'PT',
+              permissionToken:
+                'eyJhbGciOiJIUzI1NiJ9.eyJleHAiOiIxMjM0NTYiLCJwZXJtaXNzaW9uIjp7InVzZXJQb2xpY2llcyI6eyJhIjp0cnVlfX19.wkTk0Hp8sUlq2wi2nP4-Ym4Xb7aEUHzyXA1kzk6f0V0',
               meetingJoinUrl: 'meetingJoinUrl',
             };
 
@@ -1335,7 +1338,8 @@ describe('plugin-meetings', () => {
 
           it('accepts injected meeting info with meeting lookup url', async () => {
             const meetingInfo = {
-              permissionToken: 'PT',
+              permissionToken:
+                'eyJhbGciOiJIUzI1NiJ9.eyJleHAiOiIxMjM0NTYiLCJwZXJtaXNzaW9uIjp7InVzZXJQb2xpY2llcyI6eyJhIjp0cnVlfX19.wkTk0Hp8sUlq2wi2nP4-Ym4Xb7aEUHzyXA1kzk6f0V0',
               meetingJoinUrl: 'meetingJoinUrl',
             };
 
@@ -1380,7 +1384,8 @@ describe('plugin-meetings', () => {
                 infoExtraParams
               );
               const expectedMeetingData = {
-                permissionToken: 'PT',
+                permissionToken:
+                  'eyJhbGciOiJIUzI1NiJ9.eyJleHAiOiIxMjM0NTYiLCJwZXJtaXNzaW9uIjp7InVzZXJQb2xpY2llcyI6eyJhIjp0cnVlfX19.wkTk0Hp8sUlq2wi2nP4-Ym4Xb7aEUHzyXA1kzk6f0V0',
                 meetingJoinUrl: 'meetingJoinUrl',
               };
 
@@ -1481,8 +1486,10 @@ describe('plugin-meetings', () => {
               assert.equal(meeting.meetingNumber, 'locusMeetingId');
               assert.equal(meeting.meetingJoinUrl, 'meetingJoinUrl');
               assert.equal(meeting.owner, 'locusOwner');
-              assert.equal(meeting.permissionToken, 'PT');
-
+              assert.equal(
+                meeting.permissionToken,
+                'eyJhbGciOiJIUzI1NiJ9.eyJleHAiOiIxMjM0NTYiLCJwZXJtaXNzaW9uIjp7InVzZXJQb2xpY2llcyI6eyJhIjp0cnVlfX19.wkTk0Hp8sUlq2wi2nP4-Ym4Xb7aEUHzyXA1kzk6f0V0'
+              );
               assert.calledWith(
                 TriggerProxy.trigger,
                 meeting,
@@ -2016,7 +2023,8 @@ describe('plugin-meetings', () => {
         webex.meetings.meetingInfo.fetchMeetingInfo = sinon.stub().returns(
           Promise.resolve({
             body: {
-              permissionToken: 'PT',
+              permissionToken:
+                'eyJhbGciOiJIUzI1NiJ9.eyJleHAiOiIxMjM0NTYiLCJwZXJtaXNzaW9uIjp7InVzZXJQb2xpY2llcyI6eyJhIjp0cnVlfX19.wkTk0Hp8sUlq2wi2nP4-Ym4Xb7aEUHzyXA1kzk6f0V0',
               meetingJoinUrl: 'meetingJoinUrl',
             },
           })
