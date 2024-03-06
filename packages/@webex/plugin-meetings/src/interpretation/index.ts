@@ -130,7 +130,7 @@ const SimultaneousInterpretation = WebexPlugin.extend({
     this.set({originalLanguage, sourceLanguage, order, isActive, targetLanguage, receiveLanguage});
     this.set('selfParticipantId', selfParticipantId);
 
-    return preTargetLanguage !== targetLanguage;
+    return !!(targetLanguage && preTargetLanguage !== targetLanguage);
   },
 
   /**
