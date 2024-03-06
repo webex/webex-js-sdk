@@ -75,23 +75,13 @@ describe('plugin-meetings', () => {
       };
     });
 
-    it('syncs meetings if it is not an unverified guest', async () => {
+    it('syncs meetings', async () => {
       const rm = new ReconnectionManager(fakeMeeting);
 
       await rm.reconnect();
 
       assert.calledOnce(rm.webex.meetings.syncMeetings);
       assert.calledWith(rm.webex.meetings.syncMeetings, {keepOnlyLocusMeetings: false});
-    });
-
-    it('does not sync meetings if it is an unverified guest', async () => {
-      const rm = new ReconnectionManager(fakeMeeting);
-
-      rm.webex.credentials.isUnverifiedGuest = true;
-
-      await rm.reconnect();
-
-      assert.notCalled(rm.webex.meetings.syncMeetings);
     });
 
     it('uses correct TURN TLS information on the reconnection', async () => {
