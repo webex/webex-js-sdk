@@ -2827,6 +2827,21 @@ const participantsList = document.querySelector('#participant-list');
 const participantTable = document.querySelector('#participant-table');
 const participantButtons = document.querySelector('#participant-btn');
 
+participantTable.addEventListener('click', (event) => {
+  if (event.target.type === 'radio') {
+    const selectedParticipant = meeting.members.membersCollection.get(event.target.id);
+    if (!selectedParticipant) {
+      return;
+    }
+    const muteButton = document.getElementById('mute-participant-btn')
+    if (selectedParticipant.isAudioMuted) {
+      muteButton.innerText = meeting.selfId === selectedParticipant.id ? 'Unmute' : 'Request to unmute';
+    } else {
+      muteButton.innerText = 'Mute';
+    }
+  }
+});
+
 function inviteMember(addButton) {
   const meeting = getCurrentMeeting();
   const emailVal = addButton.previousElementSibling.value.trim();
@@ -2898,12 +2913,16 @@ function transferHostToMember(transferButton) {
   }
 }
 
-const createButton = (text, func) => {
+const createButton = (text, func, props = {}) => {
   const button = document.createElement('button');
 
   button.onclick = (e) => func(e.target);
   button.innerText = text;
   button.setAttribute('type', 'button');
+
+  Object.entries(props).forEach(([key, value]) => {
+    button.setAttribute(key, value);
+  });
 
   return button;
 }
@@ -3527,7 +3546,7 @@ function viewParticipants() {
 
     btnDiv.classList.add('btn-group');
 
-    btnDiv.appendChild(createButton('Toggle Audio', muteMember));
+    btnDiv.appendChild(createButton('Mute', muteMember, {id: 'mute-participant-btn'}));
     btnDiv.appendChild(createButton('Remove', removeMember));
     btnDiv.appendChild(createButton('Make Host', transferHostToMember));
 
