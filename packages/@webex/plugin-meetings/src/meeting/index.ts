@@ -2989,7 +2989,7 @@ export default class Meeting extends StatelessWebexPlugin {
     });
 
     this.locusInfo.on(LOCUSINFO.EVENTS.SELF_MEETING_INTERPRETATION_CHANGED, (payload) => {
-      this.simultaneousInterpretation.updateSelfInterpretation(payload);
+      const targetChanged = this.simultaneousInterpretation.updateSelfInterpretation(payload);
       Trigger.trigger(
         this,
         {
@@ -2998,6 +2998,9 @@ export default class Meeting extends StatelessWebexPlugin {
         },
         EVENT_TRIGGERS.MEETING_INTERPRETATION_UPDATE
       );
+      if (targetChanged && this.mediaProperties.audioStream) {
+        this.setSendNamedMediaGroup(MediaType.AudioMain);
+      }
     });
 
     this.locusInfo.on(LOCUSINFO.EVENTS.SELF_ROLES_CHANGED, (payload) => {

@@ -121,13 +121,16 @@ const SimultaneousInterpretation = WebexPlugin.extend({
    * Update self's interpretation information (self is interpreter)
    * @param {Object} interpretation
    * @param {String} selfParticipantId
-   * @returns {void}
+   * @returns {bool} is target language changed
    */
   updateSelfInterpretation({interpretation, selfParticipantId}) {
+    const preTargetLanguage = this.targetLanguage;
     const {originalLanguage, sourceLanguage, order, isActive, targetLanguage, receiveLanguage} =
       interpretation || {};
     this.set({originalLanguage, sourceLanguage, order, isActive, targetLanguage, receiveLanguage});
     this.set('selfParticipantId', selfParticipantId);
+
+    return preTargetLanguage !== targetLanguage;
   },
 
   /**
