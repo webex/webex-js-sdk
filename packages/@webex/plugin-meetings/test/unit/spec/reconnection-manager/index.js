@@ -65,6 +65,7 @@ describe('plugin-meetings', () => {
           meetings: {
             getMeetingByType: sinon.stub().returns(true),
             syncMeetings: sinon.stub().resolves({}),
+            startReachability: sinon.stub().resolves({}),
           },
           internal: {
             newMetrics: {
@@ -92,6 +93,14 @@ describe('plugin-meetings', () => {
       await rm.reconnect();
 
       assert.notCalled(rm.webex.meetings.syncMeetings);
+    });
+
+    it('calls startReachability on reconnect', async () => {
+      const rm = new ReconnectionManager(fakeMeeting);
+
+      await rm.reconnect();
+
+      assert.calledOnce(rm.webex.meetings.startReachability);
     });
 
     it('uses correct TURN TLS information on the reconnection', async () => {
@@ -141,7 +150,6 @@ describe('plugin-meetings', () => {
       assert.calledOnce(fakeMeeting.mediaRequestManagers.audio.commit);
       assert.calledOnce(fakeMeeting.mediaRequestManagers.video.commit);
     });
-
 
     it('sends the correct client event when reconnection fails', async () => {
       sinon.stub(ReconnectionManager.prototype, 'executeReconnection').rejects();
