@@ -349,13 +349,7 @@ export default class ReconnectionManager {
       });
     }
 
-    await this.webex.meetings.startReachability();
-
-    try {
-      const media = await this.executeReconnection({networkDisconnect});
-
-      return media;
-    } catch (reconnectError) {
+    return this.executeReconnection({networkDisconnect}).catch((reconnectError) => {
       if (reconnectError instanceof NeedsRetryError) {
         LoggerProxy.logger.info(
           'ReconnectionManager:index#reconnect --> Reconnection not successful, retrying.'
@@ -376,7 +370,6 @@ export default class ReconnectionManager {
         'ReconnectionManager:index#reconnect --> Sending reconnect abort metric.'
       );
 
-      // send call aborded event with catogery as expected as we are trying to rejoin
       // @ts-ignore
       this.webex.internal.newMetrics.submitClientEvent({
         name: 'client.call.aborted',
@@ -395,13 +388,16 @@ export default class ReconnectionManager {
           meetingId: this.meeting.id,
         },
       });
+      if (reconnectError instanceof NeedsRejoinError) {
+        // send call aborded event with catogery as expected as we are trying to rejoin
 
-      if (reconnectError instanceof NeedsRejoinError && this.autoRejoinEnabled) {
-        return this.rejoinMeeting(reconnectError.wasSharing);
+        if (this.autoRejoinEnabled) {
+          return this.rejoinMeeting(reconnectError.wasSharing);
+        }
       }
 
       throw reconnectError;
-    }
+    });
   }
 
   /**
