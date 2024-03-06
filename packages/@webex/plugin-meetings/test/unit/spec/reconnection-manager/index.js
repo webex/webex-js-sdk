@@ -4,6 +4,8 @@ import chaiAsPromised from 'chai-as-promised';
 import sinon from 'sinon';
 import ReconnectionManager from '@webex/plugin-meetings/src/reconnection-manager';
 import { RECONNECTION } from '../../../../src/constants';
+import LoggerProxy from '../../../../src/common/logs/logger-proxy';
+import LoggerConfig from '../../../../src/common/logs/logger-config';
 
 const {assert} = chai;
 
@@ -12,8 +14,16 @@ sinon.assert.expose(chai.assert, {prefix: ''});
 
 describe('plugin-meetings', () => {
   describe('ReconnectionManager.reconnect', () => {
+    const sandbox = sinon.createSandbox();
     let fakeMediaConnection;
     let fakeMeeting;
+    let loggerSpy;
+
+    before(() => {
+      LoggerConfig.set({ enable: false });
+      LoggerProxy.set();
+      loggerSpy = sandbox.spy(LoggerProxy.logger, 'info');
+    });
 
     beforeEach(() => {
       fakeMediaConnection = {
@@ -76,6 +86,10 @@ describe('plugin-meetings', () => {
       };
     });
 
+    afterEach(() => {
+      sandbox.reset();
+    });
+
     it('syncs meetings if it is not an unverified guest', async () => {
       const rm = new ReconnectionManager(fakeMeeting);
 
@@ -101,6 +115,19 @@ describe('plugin-meetings', () => {
       await rm.reconnect();
 
       assert.calledOnce(rm.webex.meetings.startReachability);
+    });
+
+    it('continues with reconnection attempt if startReachability throws an error', async () => {
+      const reachabilityError = new Error();
+      fakeMeeting.webex.meetings.startReachability = sinon.stub().throws(reachabilityError);
+
+      const rm = new ReconnectionManager(fakeMeeting);
+
+      await rm.reconnect();
+
+      assert.calledOnce(rm.webex.meetings.startReachability);
+      assert.calledWith(loggerSpy, 'ReconnectionManager:index#reconnect --> Reachability failed, continuing with reconnection attempt, err: ', reachabilityError);
+      assert.calledWith(loggerSpy, 'ReconnectionManager:index#executeReconnection --> Attempting to reconnect to meeting.');
     });
 
     it('uses correct TURN TLS information on the reconnection', async () => {

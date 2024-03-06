@@ -349,7 +349,14 @@ export default class ReconnectionManager {
       });
     }
 
-    await this.webex.meetings.startReachability();
+    try {
+      await this.webex.meetings.startReachability();
+    } catch (err) {
+      LoggerProxy.logger.info(
+        'ReconnectionManager:index#reconnect --> Reachability failed, continuing with reconnection attempt, err: ',
+        err
+      );
+    }
 
     try {
       const media = await this.executeReconnection({networkDisconnect});
@@ -376,7 +383,7 @@ export default class ReconnectionManager {
         'ReconnectionManager:index#reconnect --> Sending reconnect abort metric.'
       );
 
-      // send call aborded event with catogery as expected as we are trying to rejoin
+      // send call aborted event with catogery as expected as we are trying to rejoin
       // @ts-ignore
       this.webex.internal.newMetrics.submitClientEvent({
         name: 'client.call.aborted',
