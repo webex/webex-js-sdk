@@ -1,5 +1,5 @@
 import {assert} from '@webex/test-helper-chai';
-import {cloneDeep} from 'lodash';
+import {cloneDeep, xorWith} from 'lodash';
 import MockWebex from '@webex/test-helper-mock-webex';
 import sinon from 'sinon';
 
@@ -208,6 +208,63 @@ describe('plugin-device', () => {
 
         assert.deepEqual(requestSpy.args[0][0].headers, {});
       });
+    });
+
+    describe('#register()', () => {
+      let requestSpy;
+
+      const setup = () => {
+        webex.internal.metrics.submitClientMetrics = sinon.stub();
+        sinon.stub(device, 'canRegister').callsFake(() => Promise.resolve());
+        sinon.stub(device, 'processRegistrationSuccess').callsFake(() => {});
+
+        device.config.defaults = {};
+        device.set('registered', false);
+      };
+
+      it('checks that submitInternalEvent gets called with internal.register.device.request', async () => {
+        setup();
+        requestSpy = sinon.spy(device, 'request');
+
+        const result = device.register();;
+
+        await result;
+
+        assert.calledWith(webex.internal.newMetrics.submitInternalEvent, {
+          name: 'internal.register.device.request',
+        });
+
+      });
+
+      it('checks that submitInternalEvent gets called with internal.register.device.response on error', async () => {
+        setup();
+        sinon.stub(device, 'request').rejects(new Error('some error'));
+
+        const result = device.register();
+
+        await assert.isRejected(result);
+
+        assert.calledWith(webex.internal.newMetrics.submitInternalEvent, {
+          name: 'internal.register.device.response',
+        });
+
+      });
+
+      it('checks that submitInternalEvent gets called with internal.register.device.response on success', async () => {
+        setup();
+
+        sinon.stub(device, 'request').callsFake(() => Promise.resolve({
+          exampleKey: 'example response value',
+        }));
+
+        const result = device.register();
+
+        await result
+        assert.calledWith(webex.internal.newMetrics.submitInternalEvent, {
+          name: 'internal.register.device.response',
+        });
+      });
+
     });
 
     describe('#processRegistrationSuccess()', () => {

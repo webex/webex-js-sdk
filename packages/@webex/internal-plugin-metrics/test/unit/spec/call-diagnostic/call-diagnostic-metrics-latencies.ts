@@ -129,6 +129,20 @@ describe('internal-plugin-metrics', () => {
         cdl.saveTimestamp({key: 'internal.client.meetinginfo.response', value: 20});
         assert.deepEqual(saveFirstTimestamp.callCount, 1);
       });
+
+      it('calls saveFirstTimestamp for register device request', () => {
+        const saveFirstTimestamp = sinon.stub(cdl, 'saveFirstTimestampOnly');
+        cdl.saveTimestamp({key: 'internal.register.device.request', value: 10});
+        cdl.saveTimestamp({key: 'client.alert.displayed', value: 15});
+        assert.deepEqual(saveFirstTimestamp.callCount, 1);
+      });
+
+      it('calls saveFirstTimestamp for register device response', () => {
+        const saveFirstTimestamp = sinon.stub(cdl, 'saveFirstTimestampOnly');
+        cdl.saveTimestamp({key: 'internal.register.device.response', value: 10});
+        cdl.saveTimestamp({key: 'client.alert.displayed', value: 15});
+        assert.deepEqual(saveFirstTimestamp.callCount, 1);
+      });
     });
 
     it('calculates getShowInterstitialTime correctly', () => {
@@ -141,6 +155,13 @@ describe('internal-plugin-metrics', () => {
       cdl.saveTimestamp({key: 'internal.client.interstitial-window.click.joinbutton', value: 10});
       cdl.saveTimestamp({key: 'client.locus.join.request', value: 20});
       assert.deepEqual(cdl.getCallInitJoinReq(), 10);
+    });
+
+    
+    it('calculates getRegisterWDMDeviceJMT correctly', () => {
+      cdl.saveTimestamp({key: 'internal.register.device.request', value: 10});
+      cdl.saveTimestamp({key: 'internal.register.device.response', value: 20});
+      assert.deepEqual(cdl.getRegisterWDMDeviceJMT(), 10);
     });
 
     it('calculates getJoinReqResp correctly', () => {

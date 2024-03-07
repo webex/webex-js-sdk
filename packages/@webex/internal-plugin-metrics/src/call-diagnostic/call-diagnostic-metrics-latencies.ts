@@ -81,7 +81,9 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
       key === 'client.media.rx.start' ||
       key === 'client.media.tx.start' ||
       key === 'internal.client.meetinginfo.request' ||
-      key === 'internal.client.meetinginfo.response'
+      key === 'internal.client.meetinginfo.response' ||
+      key === 'internal.register.device.request' ||
+      key === 'internal.register.device.response'
     ) {
       this.saveFirstTimestampOnly(key, value);
     } else {
@@ -155,6 +157,17 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
     return this.getDiffBetweenTimestamps(
       'client.interstitial-window.start-launch',
       'internal.client.interstitial-window.click.joinbutton'
+    );
+  }
+
+  /**
+   * Device Register Time
+   * @returns - latency
+   */
+  public getRegisterWDMDeviceJMT() {
+    return this.getDiffBetweenTimestamps(
+      'internal.register.device.request',
+      'internal.register.device.response'
     );
   }
 

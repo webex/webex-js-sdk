@@ -451,6 +451,9 @@ const Device = WebexPlugin.extend({
       if (this.config.ephemeral) {
         body.ttl = this.config.ephemeralDeviceTTL;
       }
+      this.webex.internal.newMetrics.submitInternalEvent({
+        name: 'internal.register.device.request',
+      });
 
       // This will be replaced by a `create()` method.
       return this.request({
@@ -460,6 +463,20 @@ const Device = WebexPlugin.extend({
         body,
         headers,
       })
+        .catch((error) => {
+          this.webex.internal.newMetrics.submitInternalEvent({
+            name: 'internal.register.device.response',
+          });
+
+          throw error;
+        })
+        .then((response) => {
+          this.webex.internal.newMetrics.submitInternalEvent({
+            name: 'internal.register.device.response',
+          });
+
+          return response;
+        })
         .then((response) => {
           this.webex.internal.metrics.submitClientMetrics(
             METRICS.JS_SDK_WDM_REGISTRATION_SUCCESSFUL

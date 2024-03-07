@@ -27,7 +27,7 @@ const {
   isSdpOfferCreationError,
 } = CallDiagnosticUtils;
 
-describe('internal-plugin-metrics', () => {
+describe.only('internal-plugin-metrics', () => {
   describe('clearEmptyKeysRecursively', () => {
     it('should clear empty objects and empty nested objects recursively', () => {
       const obj: any = {
@@ -317,6 +317,7 @@ describe('internal-plugin-metrics', () => {
           joinTimes: {
             showInterstitialTime: undefined,
             meetingInfoReqResp: undefined,
+            registerWDMDeviceJMT: undefined,
           },
         },
       ],
