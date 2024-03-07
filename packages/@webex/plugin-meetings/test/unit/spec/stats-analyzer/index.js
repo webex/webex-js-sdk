@@ -955,6 +955,66 @@ describe('plugin-meetings', () => {
 
         assert.neverCalledWith(loggerSpy, 'StatsAnalyzer:index#processInboundRTPResult --> No packets received for receive slot "". Total packets received on slot: ', 0);
       });
+
+      it('has the correct number of senders and receivers (2)', async () => {
+        await startStatsAnalyzer({expected: {receiveVideo: true}});
+
+        await progressTime();
+
+        assert.lengthOf(mqeData.audioTransmit, 2);
+        assert.lengthOf(mqeData.audioReceive, 2);
+        assert.lengthOf(mqeData.videoTransmit, 2);
+        assert.lengthOf(mqeData.videoReceive, 2);
+      });
+
+      it('has one stream per sender/reciever', async () => {
+        await startStatsAnalyzer({expected: {receiveVideo: true}});
+
+        await progressTime();
+
+        assert.lengthOf(mqeData.audioTransmit[0].streams, 1);
+        assert.lengthOf(mqeData.audioReceive[0].streams, 1);
+        assert.lengthOf(mqeData.videoTransmit[0].streams, 1);
+        assert.lengthOf(mqeData.videoReceive[0].streams, 1);
+        assert.lengthOf(mqeData.audioTransmit[1].streams, 1);
+        assert.lengthOf(mqeData.audioReceive[1].streams, 1);
+        assert.lengthOf(mqeData.videoTransmit[1].streams, 1);
+        assert.lengthOf(mqeData.videoReceive[1].streams, 1);
+      });
+      
+      it('has three streams for video receivers when three exist', async () => {
+        pc.getTransceiverStats = sinon.stub().resolves({
+          audio: {
+            senders: [fakeStats.audio.senders[0]],
+            receivers: [fakeStats.audio.receivers[0]],
+          },
+          video: {
+            senders: [fakeStats.video.senders[0]],
+            receivers: [fakeStats.video.receivers[0], fakeStats.video.receivers[0], fakeStats.video.receivers[0]],
+          },
+          screenShareAudio: {
+            senders: [fakeStats.audio.senders[0]],
+            receivers: [fakeStats.audio.receivers[0]],
+          },
+          screenShareVideo: {
+            senders: [fakeStats.video.senders[0]],
+            receivers: [fakeStats.video.receivers[0]],
+          },
+        });
+
+        await startStatsAnalyzer({expected: {receiveVideo: true}});
+
+        await progressTime();
+
+        assert.lengthOf(mqeData.audioTransmit[0].streams, 1);
+        assert.lengthOf(mqeData.audioReceive[0].streams, 1);
+        assert.lengthOf(mqeData.videoTransmit[0].streams, 1);
+        assert.lengthOf(mqeData.videoReceive[0].streams, 3);
+        assert.lengthOf(mqeData.audioTransmit[1].streams, 1);
+        assert.lengthOf(mqeData.audioReceive[1].streams, 1);
+        assert.lengthOf(mqeData.videoTransmit[1].streams, 1);
+        assert.lengthOf(mqeData.videoReceive[1].streams, 1);
+      });
     });
   });
 });
