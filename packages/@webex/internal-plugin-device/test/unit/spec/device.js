@@ -1,5 +1,5 @@
 import {assert} from '@webex/test-helper-chai';
-import {cloneDeep, xorWith} from 'lodash';
+import {cloneDeep} from 'lodash';
 import MockWebex from '@webex/test-helper-mock-webex';
 import sinon from 'sinon';
 
