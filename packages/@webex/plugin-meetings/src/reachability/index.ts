@@ -95,12 +95,6 @@ export default class Reachability {
    * @memberof Reachability
    */
   public async gatherReachability(): Promise<ReachabilityResults> {
-    // Remove stored reachability results to ensure no stale data
-    // @ts-ignore
-    await this.webex.boundedStorage.del(this.namespace, REACHABILITY.localStorageResult);
-    // @ts-ignore
-    await this.webex.boundedStorage.del(this.namespace, REACHABILITY.localStorageJoinCookie);
-
     // Fetch clusters and measure latency
     try {
       const {clusters, joinCookie} = await this.reachabilityRequest.getClusters(
