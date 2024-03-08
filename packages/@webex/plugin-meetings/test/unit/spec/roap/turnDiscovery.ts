@@ -78,8 +78,6 @@ describe('TurnDiscovery', () => {
       },
       locusSelfUrl: testMeeting.selfUrl,
       mediaId: expectedMediaId,
-      audioMuted: testMeeting.audio?.isLocallyMuted(),
-      videoMuted: testMeeting.video?.isLocallyMuted(),
       meetingId: testMeeting.id,
       locusMediaRequest: testMeeting.locusMediaRequest,
     };
@@ -87,7 +85,7 @@ describe('TurnDiscovery', () => {
     if (messageType === 'TURN_DISCOVERY_REQUEST') {
       expectedSendRoapArgs.ipVersion = 0;
     }
-    
+
     assert.calledWith(mockRoapRequest.sendRoap, expectedSendRoapArgs);
 
     if (messageType === 'TURN_DISCOVERY_REQUEST') {

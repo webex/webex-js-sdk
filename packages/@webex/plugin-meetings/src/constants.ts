@@ -375,6 +375,7 @@ export const EVENT_TRIGGERS = {
   MEETING_LOCUS_URL_UPDATE: 'meeting:locus:locusUrl:update',
   MEETING_STREAM_PUBLISH_STATE_CHANGED: 'meeting:streamPublishStateChanged',
 
+  MEETING_TRANSCRIPTION_CONNECTED: 'meeting:transcription:connected',
   MEETING_STARTED_RECEIVING_TRANSCRIPTION: 'meeting:receiveTranscription:started',
   MEETING_STOPPED_RECEIVING_TRANSCRIPTION: 'meeting:receiveTranscription:stopped',
 
@@ -969,6 +970,7 @@ export const SELF_ROLES = {
   COHOST: 'COHOST',
   MODERATOR: 'MODERATOR',
   ATTENDEE: 'ATTENDEE',
+  PRESENTER: 'PRESENTER',
 };
 
 export const MEETING_STATE = {
@@ -1243,7 +1245,7 @@ export const AVAILABLE_RESOLUTIONS = {
  *  mqa Interval for sending stats metrics
  */
 
-export const MQA_INTEVAL = 60000; // mqa analyzer interval its fixed to 60000
+export const MQA_INTERVAL = 60000; // mqa analyzer interval its fixed to 60000
 
 export const MEDIA_DEVICES = {
   MICROPHONE: 'microphone',
@@ -1300,6 +1302,16 @@ export const IP_VERSION = {
   ipv4_and_ipv6: 1,
 } as const;
 
+export const LOCAL_SHARE_ERRORS = {
+  DEVICE_NOT_JOINED: 'Floor requested but device not yet joined',
+  UNDEFINED: 'undefined PUT',
+  NO_MEDIA_FOR_DEVICE: 'No media session found for device',
+  NO_CONFLUENCE_ID: 'Failed to request floor: 404 (null) could not find confluence id',
+  CONTENT_SHARING_DISABLED: 'Content share policies are disabled',
+  LOCUS_PARTICIPANT_DNE: 'does not exist in Locus',
+  CONTENT_REQUEST_WHILE_PENDING_WHITEBOARD:
+    'Content share request is not allowed while whiteboard floor request is pending',
+};
 export type IP_VERSION = Enum<typeof IP_VERSION>;
 
 // constant for if the permissionToken is about to expire in the next 30 seconds, refresh it
