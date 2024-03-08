@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.370](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.369...v3.0.0-beta.370) (2024-03-07)
+
+
+### Bug Fixes
+
+* roap optimization for TURN discovery flow ([#3407](https://github.com/webex/webex-js-sdk/issues/3407)) ([de0b2b0](https://github.com/webex/webex-js-sdk/commit/de0b2b0a7a2aab33b7066557f363f739dc9810ff))
+
 ## [3.0.0-beta.369](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.368...v3.0.0-beta.369) (2024-03-06)
 
 
