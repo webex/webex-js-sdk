@@ -653,6 +653,7 @@ export default class MeetingRequest extends StatelessWebexPlugin {
    * @param {String} options.deviceUrl Url of a device
    * @param {String} options.resourceId Populated if you are paired to a device
    * @param {String} options.uri floor grant uri
+   * @param {String} options.shareInstanceId id for current share
    * @returns {Promise}
    */
   changeMeetingFloor(
@@ -664,6 +665,7 @@ export default class MeetingRequest extends StatelessWebexPlugin {
           resourceId: string;
           uri: string;
           annotationInfo: AnnotationInfo;
+          shareInstanceId: string;
         }
       | any
   ) {
@@ -693,6 +695,10 @@ export default class MeetingRequest extends StatelessWebexPlugin {
       floor: floorReq,
       resourceUrl: options.resourceUrl,
     };
+
+    if (options?.shareInstanceId) {
+      body.floor.shareInstanceId = options.shareInstanceId;
+    }
 
     if (options?.resourceToken) {
       body.resourceToken = options?.resourceToken;
