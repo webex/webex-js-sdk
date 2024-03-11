@@ -27,7 +27,7 @@ const {
   isSdpOfferCreationError,
 } = CallDiagnosticUtils;
 
-describe.only('internal-plugin-metrics', () => {
+describe('internal-plugin-metrics', () => {
   describe('clearEmptyKeysRecursively', () => {
     it('should clear empty objects and empty nested objects recursively', () => {
       const obj: any = {
