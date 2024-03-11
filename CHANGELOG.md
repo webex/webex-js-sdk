@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.371](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.370...v3.0.0-beta.371) (2024-03-11)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** shareInstanceId to requestScreenShareFloor request ([#3433](https://github.com/webex/webex-js-sdk/issues/3433)) ([dcadb4a](https://github.com/webex/webex-js-sdk/commit/dcadb4aee54f9d5ecd27cd748a35aa5043b4ece5))
+
 ## [3.0.0-beta.370](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.369...v3.0.0-beta.370) (2024-03-07)
 
 
