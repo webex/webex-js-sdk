@@ -162,9 +162,24 @@ describe('plugin-meetings', () => {
     });
 
     describe("#handleRoapMercury", () => {
-      it('it sends the correct behaviour metric', () => {
-        const roapMessageReceived = sinon.stub();
-        const envelope = {
+      let envelope;
+      let meetingCollection;
+      let roapMessageReceived;
+      let handleTurnDiscoveryResponse;
+      let meeting;
+
+      beforeEach(() => {
+        roapMessageReceived = sinon.stub();
+        handleTurnDiscoveryResponse = sinon.stub();
+
+        meeting = {
+          id: 'meeting-id',
+          roapMessageReceived,
+          roap: {
+            turnDiscovery: {handleTurnDiscoveryResponse}
+          }
+        };
+        envelope = {
           data: {
             message:{
               seq: "seq",
@@ -178,13 +193,12 @@ describe('plugin-meetings', () => {
             eventType: 'locus.message.roap',
           }
         };
-        const meetingCollection = {
-          getByKey: () => ({
-            id: 'meeting-id',
-            roapMessageReceived
-          })
+        meetingCollection = {
+          getByKey: () => meeting
         };
+      });
 
+      it('it sends the correct behaviour metric', () => {
         MeetingsUtil.handleRoapMercury(envelope, meetingCollection);
         assert.calledWith(Metrics.sendBehavioralMetric, BEHAVIORAL_METRICS.ROAP_MERCURY_EVENT_RECEIVED,  {
           correlation_id: 'correlationId',
@@ -202,6 +216,19 @@ describe('plugin-meetings', () => {
           sdp: {id:'sdp-1'}
         })
 
+      });
+
+      it('calls handleTurnDiscoveryResponse for TURN_DISCOVERY_RESPONSE', () => {
+        envelope.data.message.messageType = 'TURN_DISCOVERY_RESPONSE';
+        delete envelope.data.message.sdps;
+        MeetingsUtil.handleRoapMercury(envelope, meetingCollection);
+        assert.calledWith(meeting.roap.turnDiscovery.handleTurnDiscoveryResponse, {
+          seq: "seq",
+          messageType: 'TURN_DISCOVERY_RESPONSE',
+          errorType: 'errorType',
+          tieBreaker: 'tieBreaker',
+          errorCause: 'errorCause',
+        }, 'from mercury')
       });
     })
   });
