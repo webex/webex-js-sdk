@@ -62,7 +62,7 @@ MeetingsUtil.handleRoapMercury = (envelope, meetingCollection) => {
       if (messageType === ROAP.ROAP_TYPES.TURN_DISCOVERY_RESPONSE) {
         // turn discovery is not part of normal roap protocol and so we are not handling it
         // through the usual roap state machine
-        meeting.roap.turnDiscovery.handleTurnDiscoveryResponse(data.message);
+        meeting.roap.turnDiscovery.handleTurnDiscoveryResponse(data.message, 'from mercury');
       } else {
         const roapMessage = {
           seq,

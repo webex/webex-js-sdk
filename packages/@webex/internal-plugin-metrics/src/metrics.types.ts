@@ -41,6 +41,8 @@ export type InternalEvent = {
   name:
     | 'internal.client.meetinginfo.request'
     | 'internal.client.meetinginfo.response'
+    | 'internal.register.device.request'
+    | 'internal.register.device.response'
     | 'internal.reset.join.latencies'
     | 'internal.client.meeting.click.joinbutton'
     | 'internal.host.meeting.participant.admitted'

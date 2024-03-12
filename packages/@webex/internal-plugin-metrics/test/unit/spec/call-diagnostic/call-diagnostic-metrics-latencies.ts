@@ -143,6 +143,13 @@ describe('internal-plugin-metrics', () => {
       assert.deepEqual(cdl.getCallInitJoinReq(), 10);
     });
 
+    
+    it('calculates getRegisterWDMDeviceJMT correctly', () => {
+      cdl.saveTimestamp({key: 'internal.register.device.request', value: 10});
+      cdl.saveTimestamp({key: 'internal.register.device.response', value: 20});
+      assert.deepEqual(cdl.getRegisterWDMDeviceJMT(), 10);
+    });
+
     it('calculates getJoinReqResp correctly', () => {
       cdl.saveTimestamp({
         key: 'client.locus.join.request',
@@ -488,18 +495,22 @@ describe('internal-plugin-metrics', () => {
         value: 12,
       });
       cdl.saveTimestamp({
-        key: 'client.media.rx.start',
+        key: 'client.ice.end',
         value: 14,
       });
-      cdl.saveTimestamp({
-        key: 'client.media.tx.start',
-        value: 15,
-      });
-      cdl.saveTimestamp({
-        key: 'client.media.rx.start',
-        value: 16,
-      });
       assert.deepEqual(cdl.getInterstitialToMediaOKJMT(), 8);
+    });
+
+    it('calculates getInterstitialToMediaOKJMT correctly without lobby', () => {
+      cdl.saveTimestamp({
+        key: 'internal.client.interstitial-window.click.joinbutton',
+        value: 4,
+      });
+      cdl.saveTimestamp({
+        key: 'client.ice.end',
+        value: 14,
+      });
+      assert.deepEqual(cdl.getInterstitialToMediaOKJMT(), 10);
     });
   });
 });

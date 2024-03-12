@@ -2,6 +2,48 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.372](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.371...v3.0.0-beta.372) (2024-03-12)
+
+
+### Features
+
+* **plugin-devices:** added register device latency ([#3432](https://github.com/webex/webex-js-sdk/issues/3432)) ([a664ce4](https://github.com/webex/webex-js-sdk/commit/a664ce4a39e63917d04d661239fb670cca3b78ed))
+
+## [3.0.0-beta.371](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.370...v3.0.0-beta.371) (2024-03-11)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** shareInstanceId to requestScreenShareFloor request ([#3433](https://github.com/webex/webex-js-sdk/issues/3433)) ([dcadb4a](https://github.com/webex/webex-js-sdk/commit/dcadb4aee54f9d5ecd27cd748a35aa5043b4ece5))
+
+## [3.0.0-beta.370](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.369...v3.0.0-beta.370) (2024-03-07)
+
+
+### Bug Fixes
+
+* roap optimization for TURN discovery flow ([#3407](https://github.com/webex/webex-js-sdk/issues/3407)) ([de0b2b0](https://github.com/webex/webex-js-sdk/commit/de0b2b0a7a2aab33b7066557f363f739dc9810ff))
+
+## [3.0.0-beta.369](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.368...v3.0.0-beta.369) (2024-03-06)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** sample app mute button fix in participant list ([#3414](https://github.com/webex/webex-js-sdk/issues/3414)) ([3b688b0](https://github.com/webex/webex-js-sdk/commit/3b688b05d8d590ae8c329797e99f0248a77a77d0))
+
+## [3.0.0-beta.368](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.367...v3.0.0-beta.368) (2024-03-06)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** do reachability before every reconnect attempt ([#3430](https://github.com/webex/webex-js-sdk/issues/3430)) ([8527945](https://github.com/webex/webex-js-sdk/commit/85279455c64cd26e9f79ae297485efbbdff5ac0b))
+
+## [3.0.0-beta.367](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.366...v3.0.0-beta.367) (2024-03-05)
+
+
+### Bug Fixes
+
+* **metrics:** getInterstitialToMediaOKJMT calculation ([#3427](https://github.com/webex/webex-js-sdk/issues/3427)) ([f93cc95](https://github.com/webex/webex-js-sdk/commit/f93cc95715d85d3ac253bb80e496d971830ee5a7))
+
 ## [3.0.0-beta.366](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.365...v3.0.0-beta.366) (2024-03-05)
 
 
