@@ -951,6 +951,7 @@ describe('MediaRequestManager', () => {
         maxMbps: 3000,
       },
     ]);
+    clock.uninstall()
   });
 
   describe('maxPayloadBitsPerSecond', () => {
@@ -963,7 +964,7 @@ describe('MediaRequestManager', () => {
         'getRecommendedMaxBitrateForFrameSize'
       );
     });
-
+    
     afterEach(() => {
       getRecommendedMaxBitrateForFrameSizeSpy.restore();
     });

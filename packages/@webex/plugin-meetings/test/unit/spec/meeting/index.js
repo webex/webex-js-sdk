@@ -961,6 +961,7 @@ describe('plugin-meetings', () => {
           });
 
           it('should post error event if failed', async () => {
+            MeetingUtil.isPinOrGuest = sinon.stub().returns(false);
             await meeting.join().catch(() => {
               assert.deepEqual(
                 webex.internal.newMetrics.submitClientEvent.getCall(1).args[0].name,
@@ -6461,6 +6462,7 @@ describe('plugin-meetings', () => {
 
         describe('CONNECTION_STATE_CHANGED event when state = "Disconnected"', () => {
           beforeEach(() => {
+            Metrics.sendBehavioralMetric = sinon.stub();
             meeting.reconnectionManager = new ReconnectionManager(meeting);
             meeting.reconnectionManager.iceReconnected = sinon.stub().returns(undefined);
             meeting.setNetworkStatus = sinon.stub().returns(undefined);
@@ -6492,7 +6494,6 @@ describe('plugin-meetings', () => {
           };
 
           it('handles "Disconnected" state correctly when waitForIceReconnect resolves', async () => {
-            console.log('================================STARTED================================');
             meeting.reconnectionManager.waitForIceReconnect = sinon.stub().resolves();
 
             await mockDisconnectedEvent();
@@ -6503,7 +6504,6 @@ describe('plugin-meetings', () => {
             assert.calledOnce(meeting.reconnectionManager.waitForIceReconnect);
             assert.notCalled(webex.internal.newMetrics.submitClientEvent);
             assert.notCalled(Metrics.sendBehavioralMetric);
-            console.log('================================ENDED================================');
           });
 
           it('handles "Disconnected" state correctly when waitForIceReconnect rejects and hasMediaConnectionConnectedAtLeastOnce = true', async () => {
@@ -7664,7 +7664,7 @@ describe('plugin-meetings', () => {
         it('listens to destroy meeting event from locus info  ', (done) => {
           TriggerProxy.trigger.reset();
           sinon.stub(meeting.reconnectionManager, 'cleanUp');
-          sinon.spy(MeetingUtil, 'cleanUp');
+          MeetingUtil.cleanUp = sinon.stub();
 
           meeting.locusInfo.emit({function: 'test', file: 'test'}, EVENTS.DESTROY_MEETING, {
             shouldLeave: false,
@@ -8757,7 +8757,7 @@ describe('plugin-meetings', () => {
           // Due to import tree issues, hasHints must be stubed within the scope of the `it`.
           const restorableHasHints = ControlsOptionsUtil.hasHints;
           ControlsOptionsUtil.hasHints = sinon.stub().returns(true);
-          ControlsOptionsUtil.hasPolicies = sinon.stub().returns(true);
+          const hasPoliciesSpy = sinon.stub(ControlsOptionsUtil, 'hasPolicies').returns(true);
 
           const selfUserPolicies = {a: true};
           meeting.selfUserPolicies = {a: true};
@@ -8898,6 +8898,7 @@ describe('plugin-meetings', () => {
           assert.notCalled(TriggerProxy.trigger);
 
           ControlsOptionsUtil.hasHints = restorableHasHints;
+          hasPoliciesSpy.restore();
         });
       });
 
