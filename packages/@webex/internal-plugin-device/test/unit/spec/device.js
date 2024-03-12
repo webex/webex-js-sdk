@@ -209,6 +209,72 @@ describe('plugin-device', () => {
       });
     });
 
+    describe('#register()', () => {
+      const setup = () => {
+        webex.internal.metrics.submitClientMetrics = sinon.stub();
+        
+        sinon.stub(device, 'processRegistrationSuccess').callsFake(() => {});
+
+        device.config.defaults = {};
+        device.set('registered', false);
+      };
+
+      it('checks that submitInternalEvent gets called with internal.register.device.request', async () => {
+        setup();
+        sinon.stub(device, 'canRegister').callsFake(() => Promise.resolve());
+        sinon.spy(device, 'request');
+
+        await device.register();
+
+        assert.calledWith(webex.internal.newMetrics.submitInternalEvent, {
+          name: 'internal.register.device.request',
+        });
+
+      });
+
+      it('checks that submitInternalEvent gets called with internal.register.device.response on error', async () => {
+        setup();
+        sinon.stub(device, 'canRegister').callsFake(() => Promise.resolve());
+        sinon.stub(device, 'request').rejects(new Error('some error'));
+
+        const result = device.register();
+
+        await assert.isRejected(result);
+
+        assert.calledWith(webex.internal.newMetrics.submitInternalEvent, {
+          name: 'internal.register.device.response',
+        });
+
+      });
+
+      it('checks that submitInternalEvent gets called with internal.register.device.response on success', async () => {
+        setup();
+        sinon.stub(device, 'canRegister').callsFake(() => Promise.resolve());
+
+        sinon.stub(device, 'request').callsFake(() => Promise.resolve({
+          exampleKey: 'example response value',
+        }));
+
+        await device.register();
+
+        assert.calledWith(webex.internal.newMetrics.submitInternalEvent, {
+          name: 'internal.register.device.response',
+        });
+      });
+
+      it('checks that submitInternalEvent not called when canRegister fails', async () => {
+        setup();
+        sinon.stub(device, 'canRegister').rejects(new Error('some error'));
+
+        const result =  device.register();
+
+        await assert.isRejected(result);
+
+        assert.notCalled(webex.internal.newMetrics.submitInternalEvent);
+      });
+
+    });
+
     describe('#processRegistrationSuccess()', () => {
       const getClonedDTO = (overrides) => {
         const clonedDTO = cloneDeep(dto);
