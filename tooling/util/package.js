@@ -12,8 +12,7 @@ const fs = require('fs-extra');
 
 const _spawn = require('./spawn');
 
-// const cwd = 'packages';
-const cwd = path.resolve(__dirname, '../../') + '/packages';
+const cwd = 'packages';
 
 exports.list = async function list() {
   const packages = await g('**/package.json', {cwd});

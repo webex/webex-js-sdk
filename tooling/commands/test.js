@@ -168,10 +168,7 @@ module.exports = {
 
         /** Each package is run through testPackage util */
         for (const packageName of argv.packages) {
-          const onMocha =
-            packageName === '@webex/plugin-meetings' ||
-            packageName === 'webex' ||
-            packageName == '@webex/media-helpers';
+          const onMocha = packageName === '@webex/plugin-meetings' || packageName === 'webex';
 
           await testPackage(argv, packageName, onMocha);
         }
