@@ -972,14 +972,256 @@ describe('plugin-meetings', () => {
 
         await progressTime();
 
-        assert.lengthOf(mqeData.audioTransmit[0].streams, 1);
-        assert.lengthOf(mqeData.audioReceive[0].streams, 1);
-        assert.lengthOf(mqeData.videoTransmit[0].streams, 1);
-        assert.lengthOf(mqeData.videoReceive[0].streams, 1);
-        assert.lengthOf(mqeData.audioTransmit[1].streams, 1);
-        assert.lengthOf(mqeData.audioReceive[1].streams, 1);
-        assert.lengthOf(mqeData.videoTransmit[1].streams, 1);
-        assert.lengthOf(mqeData.videoReceive[1].streams, 1);
+        assert.deepEqual(
+          mqeData.audioTransmit[0].streams,
+          [
+            {
+              common: {
+                codec: 'opus',
+                csi: [],
+                requestedBitrate: 0,
+                requestedFrames: 0,
+                rtpPackets: 0,
+                ssci: 0,
+                transmittedBitrate: 0.13333333333333333,
+                transmittedFrameRate: 0
+              },
+              transmittedKeyFrames: 0,
+              requestedKeyFrames: 0
+            }
+          ]
+        );
+        assert.deepEqual(
+          mqeData.audioTransmit[1].streams,
+          [
+            {
+              common: {
+                codec: 'opus',
+                csi: [],
+                requestedBitrate: 0,
+                requestedFrames: 0,
+                rtpPackets: 0,
+                ssci: 0,
+                transmittedBitrate: 0.13333333333333333,
+                transmittedFrameRate: 0
+              },
+              transmittedKeyFrames: 0,
+              requestedKeyFrames: 0
+            }
+          ]
+        );
+        assert.deepEqual(
+          mqeData.audioReceive[0].streams,
+          [
+            {
+              common: {
+                codec: 'opus',
+                concealedFrames: 0,
+                csi: [],
+                maxConcealRunLength: 0,
+                optimalBitrate: 0,
+                optimalFrameRate: 0,
+                receivedBitrate: 0.13333333333333333,
+                receivedFrameRate: 0,
+                renderedFrameRate: 0,
+                requestedBitrate: 0,
+                requestedFrameRate: 0,
+                rtpEndToEndLost: 0,
+                maxRtpJitter: 0,
+                meanRtpJitter: 0,
+                rtpPackets: 0,
+                ssci: 0,
+                rtpJitter: 0,
+                framesDropped: 0,
+                framesReceived: 0
+              }
+            }
+          ]
+        );
+        assert.deepEqual(
+          mqeData.audioReceive[1].streams,
+          [
+            {
+              common: {
+                codec: 'opus',
+                concealedFrames: 0,
+                csi: [],
+                maxConcealRunLength: 0,
+                optimalBitrate: 0,
+                optimalFrameRate: 0,
+                receivedBitrate: 0.13333333333333333,
+                receivedFrameRate: 0,
+                renderedFrameRate: 0,
+                requestedBitrate: 0,
+                requestedFrameRate: 0,
+                rtpEndToEndLost: 0,
+                maxRtpJitter: 0,
+                meanRtpJitter: 0,
+                rtpPackets: 0,
+                ssci: 0,
+                rtpJitter: 0,
+                framesDropped: 0,
+                framesReceived: 0
+              }
+            }
+          ]
+        );
+        assert.deepEqual(
+          mqeData.videoTransmit[0].streams,
+          [
+            {
+              common: {
+                codec: 'H264',
+                csi: [],
+                duplicateSsci: 0,
+                requestedBitrate: 0,
+                requestedFrames: 0,
+                rtpPackets: 0,
+                ssci: 0,
+                transmittedBitrate: 0.13333333333333333,
+                transmittedFrameRate: 0
+              },
+              h264CodecProfile: 'BP',
+              isAvatar: false,
+              isHardwareEncoded: false,
+              localConfigurationChanges: 2,
+              maxFrameQp: 0,
+              maxNoiseLevel: 0,
+              minRegionQp: 0,
+              remoteConfigurationChanges: 0,
+              requestedFrameSize: 0,
+              requestedKeyFrames: 0,
+              transmittedFrameSize: 0,
+              transmittedHeight: 0,
+              transmittedKeyFrames: 0,
+              transmittedKeyFramesClient: 0,
+              transmittedKeyFramesConfigurationChange: 0,
+              transmittedKeyFramesFeedback: 0,
+              transmittedKeyFramesLocalDrop: 0,
+              transmittedKeyFramesOtherLayer: 0,
+              transmittedKeyFramesPeriodic: 0,
+              transmittedKeyFramesSceneChange: 0,
+              transmittedKeyFramesStartup: 0,
+              transmittedKeyFramesUnknown: 0,
+              transmittedWidth: 0
+            }
+          ]
+        );
+        assert.deepEqual(
+          mqeData.videoTransmit[1].streams,
+          [
+            {
+              common: {
+                codec: 'H264',
+                csi: [],
+                duplicateSsci: 0,
+                requestedBitrate: 0,
+                requestedFrames: 0,
+                rtpPackets: 0,
+                ssci: 0,
+                transmittedBitrate: 0.13333333333333333,
+                transmittedFrameRate: 0
+              },
+              h264CodecProfile: 'BP',
+              isAvatar: false,
+              isHardwareEncoded: false,
+              localConfigurationChanges: 2,
+              maxFrameQp: 0,
+              maxNoiseLevel: 0,
+              minRegionQp: 0,
+              remoteConfigurationChanges: 0,
+              requestedFrameSize: 0,
+              requestedKeyFrames: 0,
+              transmittedFrameSize: 0,
+              transmittedHeight: 0,
+              transmittedKeyFrames: 0,
+              transmittedKeyFramesClient: 0,
+              transmittedKeyFramesConfigurationChange: 0,
+              transmittedKeyFramesFeedback: 0,
+              transmittedKeyFramesLocalDrop: 0,
+              transmittedKeyFramesOtherLayer: 0,
+              transmittedKeyFramesPeriodic: 0,
+              transmittedKeyFramesSceneChange: 0,
+              transmittedKeyFramesStartup: 0,
+              transmittedKeyFramesUnknown: 0,
+              transmittedWidth: 0
+            }
+          ]
+        );
+        assert.deepEqual(
+          mqeData.videoReceive[0].streams,
+          [
+            {
+              common: {
+                codec: 'H264',
+                concealedFrames: 0,
+                csi: [],
+                maxConcealRunLength: 0,
+                optimalBitrate: 0,
+                optimalFrameRate: 0,
+                receivedBitrate: 0.13333333333333333,
+                receivedFrameRate: 0,
+                renderedFrameRate: 0,
+                requestedBitrate: 0,
+                requestedFrameRate: 0,
+                rtpEndToEndLost: 0,
+                rtpJitter: 0,
+                rtpPackets: 0,
+                ssci: 0,
+                framesDropped: 0
+              },
+              h264CodecProfile: 'BP',
+              isActiveSpeaker: true,
+              optimalFrameSize: 0,
+              receivedFrameSize: 3600,
+              receivedHeight: 720,
+              receivedKeyFrames: 0,
+              receivedKeyFramesForRequest: 0,
+              receivedKeyFramesSourceChange: 0,
+              receivedKeyFramesUnknown: 0,
+              receivedWidth: 1280,
+              requestedFrameSize: 0,
+              requestedKeyFrames: 0
+            }
+          ]
+        );
+        assert.deepEqual(
+          mqeData.videoReceive[1].streams,
+          [
+            {
+              common: {
+                codec: 'H264',
+                concealedFrames: 0,
+                csi: [],
+                maxConcealRunLength: 0,
+                optimalBitrate: 0,
+                optimalFrameRate: 0,
+                receivedBitrate: 0.13333333333333333,
+                receivedFrameRate: 0,
+                renderedFrameRate: 0,
+                requestedBitrate: 0,
+                requestedFrameRate: 0,
+                rtpEndToEndLost: 0,
+                rtpJitter: 0,
+                rtpPackets: 0,
+                ssci: 0,
+                framesDropped: 0
+              },
+              h264CodecProfile: 'BP',
+              isActiveSpeaker: true,
+              optimalFrameSize: 0,
+              receivedFrameSize: 3600,
+              receivedHeight: 720,
+              receivedKeyFrames: 0,
+              receivedKeyFramesForRequest: 0,
+              receivedKeyFramesSourceChange: 0,
+              receivedKeyFramesUnknown: 0,
+              receivedWidth: 1280,
+              requestedFrameSize: 0,
+              requestedKeyFrames: 0
+            }
+          ]
+        );
       });
       
       it('has three streams for video receivers when three exist', async () => {
@@ -1006,14 +1248,107 @@ describe('plugin-meetings', () => {
 
         await progressTime();
 
-        assert.lengthOf(mqeData.audioTransmit[0].streams, 1);
-        assert.lengthOf(mqeData.audioReceive[0].streams, 1);
-        assert.lengthOf(mqeData.videoTransmit[0].streams, 1);
-        assert.lengthOf(mqeData.videoReceive[0].streams, 3);
-        assert.lengthOf(mqeData.audioTransmit[1].streams, 1);
-        assert.lengthOf(mqeData.audioReceive[1].streams, 1);
-        assert.lengthOf(mqeData.videoTransmit[1].streams, 1);
-        assert.lengthOf(mqeData.videoReceive[1].streams, 1);
+        assert.deepEqual(
+          mqeData.videoReceive[0].streams,
+          [
+            {
+              common: {
+                codec: 'H264',
+                concealedFrames: 0,
+                csi: [],
+                maxConcealRunLength: 0,
+                optimalBitrate: 0,
+                optimalFrameRate: 0,
+                receivedBitrate: 0.13333333333333333,
+                receivedFrameRate: 0,
+                renderedFrameRate: 0,
+                requestedBitrate: 0,
+                requestedFrameRate: 0,
+                rtpEndToEndLost: 0,
+                rtpJitter: 0,
+                rtpPackets: 0,
+                ssci: 0,
+                framesDropped: 0
+              },
+              h264CodecProfile: 'BP',
+              isActiveSpeaker: true,
+              optimalFrameSize: 0,
+              receivedFrameSize: 3600,
+              receivedHeight: 720,
+              receivedKeyFrames: 0,
+              receivedKeyFramesForRequest: 0,
+              receivedKeyFramesSourceChange: 0,
+              receivedKeyFramesUnknown: 0,
+              receivedWidth: 1280,
+              requestedFrameSize: 0,
+              requestedKeyFrames: 0
+            },
+            {
+              common: {
+                codec: 'H264',
+                concealedFrames: 0,
+                csi: [],
+                maxConcealRunLength: 0,
+                optimalBitrate: 0,
+                optimalFrameRate: 0,
+                receivedBitrate: 0.13333333333333333,
+                receivedFrameRate: 0,
+                renderedFrameRate: 0,
+                requestedBitrate: 0,
+                requestedFrameRate: 0,
+                rtpEndToEndLost: 0,
+                rtpJitter: 0,
+                rtpPackets: 0,
+                ssci: 0,
+                framesDropped: 0
+              },
+              h264CodecProfile: 'BP',
+              isActiveSpeaker: true,
+              optimalFrameSize: 0,
+              receivedFrameSize: 3600,
+              receivedHeight: 720,
+              receivedKeyFrames: 0,
+              receivedKeyFramesForRequest: 0,
+              receivedKeyFramesSourceChange: 0,
+              receivedKeyFramesUnknown: 0,
+              receivedWidth: 1280,
+              requestedFrameSize: 0,
+              requestedKeyFrames: 0
+            },
+            {
+              common: {
+                codec: 'H264',
+                concealedFrames: 0,
+                csi: [],
+                maxConcealRunLength: 0,
+                optimalBitrate: 0,
+                optimalFrameRate: 0,
+                receivedBitrate: 0.13333333333333333,
+                receivedFrameRate: 0,
+                renderedFrameRate: 0,
+                requestedBitrate: 0,
+                requestedFrameRate: 0,
+                rtpEndToEndLost: 0,
+                rtpJitter: 0,
+                rtpPackets: 0,
+                ssci: 0,
+                framesDropped: 0
+              },
+              h264CodecProfile: 'BP',
+              isActiveSpeaker: true,
+              optimalFrameSize: 0,
+              receivedFrameSize: 3600,
+              receivedHeight: 720,
+              receivedKeyFrames: 0,
+              receivedKeyFramesForRequest: 0,
+              receivedKeyFramesSourceChange: 0,
+              receivedKeyFramesUnknown: 0,
+              receivedWidth: 1280,
+              requestedFrameSize: 0,
+              requestedKeyFrames: 0
+            }
+          ]
+        );
       });
     });
   });
