@@ -471,13 +471,11 @@ const Device = WebexPlugin.extend({
           throw error;
         })
         .then((response) => {
+          // Do not add any processing of response above this as that will affect timestamp
           this.webex.internal.newMetrics.submitInternalEvent({
             name: 'internal.register.device.response',
           });
 
-          return response;
-        })
-        .then((response) => {
           this.webex.internal.metrics.submitClientMetrics(
             METRICS.JS_SDK_WDM_REGISTRATION_SUCCESSFUL
           );
