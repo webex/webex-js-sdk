@@ -31,67 +31,22 @@ export const getAudioReceiverMqa = ({
 }) => {
   const sendrecvType = STATS.RECEIVE_DIRECTION;
 
-  const lastPacketsReceived = getTotalValueFromBaseType(
-    lastMqaDataSent,
-    sendrecvType,
-    baseMediaType,
-    'totalPacketsReceived'
-  );
-  const lastPacketsLost = getTotalValueFromBaseType(
-    lastMqaDataSent,
-    sendrecvType,
-    baseMediaType,
-    'totalPacketsLost'
-  );
-  const lastBytesReceived = getTotalValueFromBaseType(
-    lastMqaDataSent,
-    sendrecvType,
-    baseMediaType,
-    'totalBytesReceived'
-  );
-  const lastFecPacketsReceived = getTotalValueFromBaseType(
-    lastMqaDataSent,
-    sendrecvType,
-    baseMediaType,
-    'fecPacketsReceived'
-  );
-  const lastFecPacketsDiscarded = getTotalValueFromBaseType(
-    lastMqaDataSent,
-    sendrecvType,
-    baseMediaType,
-    'fecPacketsDiscarded'
-  );
+  const getLastTotalValue = (value: string) =>
+    getTotalValueFromBaseType(lastMqaDataSent, sendrecvType, baseMediaType, value);
+  const getTotalValue = (value: string) =>
+    getTotalValueFromBaseType(statsResults, sendrecvType, baseMediaType, value);
 
-  const totalPacketsReceived = getTotalValueFromBaseType(
-    statsResults,
-    sendrecvType,
-    baseMediaType,
-    'totalPacketsReceived'
-  );
-  const packetsLost = getTotalValueFromBaseType(
-    statsResults,
-    sendrecvType,
-    baseMediaType,
-    'totalPacketsLost'
-  );
-  const totalBytesReceived = getTotalValueFromBaseType(
-    statsResults,
-    sendrecvType,
-    baseMediaType,
-    'totalBytesReceived'
-  );
-  const totalFecPacketsReceived = getTotalValueFromBaseType(
-    statsResults,
-    sendrecvType,
-    baseMediaType,
-    'fecPacketsReceived'
-  );
-  const totalFecPacketsDiscarded = getTotalValueFromBaseType(
-    statsResults,
-    sendrecvType,
-    baseMediaType,
-    'fecPacketsDiscarded'
-  );
+  const lastPacketsReceived = getLastTotalValue('totalPacketsReceived');
+  const lastPacketsLost = getLastTotalValue('totalPacketsLost');
+  const lastBytesReceived = getLastTotalValue('totalBytesReceived');
+  const lastFecPacketsReceived = getLastTotalValue('fecPacketsReceived');
+  const lastFecPacketsDiscarded = getLastTotalValue('fecPacketsDiscarded');
+
+  const totalPacketsReceived = getTotalValue('totalPacketsReceived');
+  const packetsLost = getTotalValue('totalPacketsLost');
+  const totalBytesReceived = getTotalValue('totalBytesReceived');
+  const totalFecPacketsReceived = getTotalValue('fecPacketsReceived');
+  const totalFecPacketsDiscarded = getTotalValue('fecPacketsDiscarded');
 
   audioReceiver.common.common.direction =
     statsResults[Object.keys(statsResults).find((mediaType) => mediaType.includes(baseMediaType))]
@@ -175,6 +130,17 @@ export const getAudioReceiverStreamMqa = ({
 export const getAudioSenderMqa = ({audioSender, statsResults, lastMqaDataSent, baseMediaType}) => {
   const sendrecvType = STATS.SEND_DIRECTION;
 
+  const getLastTotalValue = (value: string) =>
+    getTotalValueFromBaseType(lastMqaDataSent, sendrecvType, baseMediaType, value);
+  const getTotalValue = (value: string) =>
+    getTotalValueFromBaseType(statsResults, sendrecvType, baseMediaType, value);
+
+  const lastPacketsSent = getLastTotalValue('totalPacketsSent');
+  const lastPacketsLostTotal = getLastTotalValue('totalPacketsLostOnReceiver');
+
+  const totalPacketsLostOnReceiver = getTotalValue('totalPacketsLostOnReceiver');
+  const totalPacketsSent = getTotalValue('totalPacketsSent');
+
   const meanRemoteJitter = Object.keys(statsResults)
     .filter((mt) => mt.includes(baseMediaType))
     .reduce((acc, mt) => acc.concat(statsResults[mt][sendrecvType].meanRemoteJitter), []);
@@ -190,32 +156,6 @@ export const getAudioSenderMqa = ({audioSender, statsResults, lastMqaDataSent, b
 
   audioSender.common.maxRemoteJitter = max(meanRemoteJitter) * 1000 || 0;
   audioSender.common.meanRemoteJitter = mean(meanRemoteJitter) * 1000 || 0;
-
-  const lastPacketsSent = getTotalValueFromBaseType(
-    lastMqaDataSent,
-    sendrecvType,
-    baseMediaType,
-    'totalPacketsSent'
-  );
-  const lastPacketsLostTotal = getTotalValueFromBaseType(
-    lastMqaDataSent,
-    sendrecvType,
-    baseMediaType,
-    'totalPacketsLostOnReceiver'
-  );
-
-  const totalPacketsLostOnReceiver = getTotalValueFromBaseType(
-    statsResults,
-    sendrecvType,
-    baseMediaType,
-    'totalPacketsLostOnReceiver'
-  );
-  const totalPacketsSent = getTotalValueFromBaseType(
-    statsResults,
-    sendrecvType,
-    baseMediaType,
-    'totalPacketsSent'
-  );
 
   audioSender.common.rtpPackets = totalPacketsSent - lastPacketsSent || 0;
   // audioSender.streams[0].common.rtpPackets = audioSender.common.rtpPackets;
@@ -286,43 +226,18 @@ export const getVideoReceiverMqa = ({
 }) => {
   const sendrecvType = STATS.RECEIVE_DIRECTION;
 
-  const lastPacketsReceived = getTotalValueFromBaseType(
-    lastMqaDataSent,
-    sendrecvType,
-    baseMediaType,
-    'totalPacketsReceived'
-  );
-  const lastPacketsLost = getTotalValueFromBaseType(
-    lastMqaDataSent,
-    sendrecvType,
-    baseMediaType,
-    'totalPacketsLost'
-  );
-  const lastBytesReceived = getTotalValueFromBaseType(
-    lastMqaDataSent,
-    sendrecvType,
-    baseMediaType,
-    'totalBytesReceived'
-  );
+  const getLastTotalValue = (value: string) =>
+    getTotalValueFromBaseType(lastMqaDataSent, sendrecvType, baseMediaType, value);
+  const getTotalValue = (value: string) =>
+    getTotalValueFromBaseType(statsResults, sendrecvType, baseMediaType, value);
 
-  const packetsLost = getTotalValueFromBaseType(
-    statsResults,
-    sendrecvType,
-    baseMediaType,
-    'totalPacketsLost'
-  );
-  const totalPacketsReceived = getTotalValueFromBaseType(
-    statsResults,
-    sendrecvType,
-    baseMediaType,
-    'totalPacketsReceived'
-  );
-  const totalBytesReceived = getTotalValueFromBaseType(
-    statsResults,
-    sendrecvType,
-    baseMediaType,
-    'totalBytesReceived'
-  );
+  const lastPacketsReceived = getLastTotalValue('totalPacketsReceived');
+  const lastPacketsLost = getLastTotalValue('totalPacketsLost');
+  const lastBytesReceived = getLastTotalValue('totalBytesReceived');
+
+  const packetsLost = getTotalValue('totalPacketsLost');
+  const totalPacketsReceived = getTotalValue('totalPacketsReceived');
+  const totalBytesReceived = getTotalValue('totalBytesReceived');
 
   const meanRemoteJitter = Object.keys(statsResults)
     .filter((mt) => mt.includes(baseMediaType))
@@ -409,7 +324,7 @@ export const getVideoReceiverStreamMqa = ({
   );
 
   videoReceiverStream.common.framesDropped =
-    statsResults[mediaType][sendrecvType].framesDropped - lastFramesDropped;
+    statsResults[mediaType][sendrecvType].framesDropped - lastFramesDropped || 0;
   videoReceiverStream.receivedHeight = statsResults[mediaType][sendrecvType].height || 0;
   videoReceiverStream.receivedWidth = statsResults[mediaType][sendrecvType].width || 0;
   videoReceiverStream.receivedFrameSize =
@@ -424,49 +339,19 @@ export const getVideoReceiverStreamMqa = ({
 export const getVideoSenderMqa = ({videoSender, statsResults, lastMqaDataSent, baseMediaType}) => {
   const sendrecvType = STATS.SEND_DIRECTION;
 
-  const lastPacketsSent = getTotalValueFromBaseType(
-    lastMqaDataSent,
-    sendrecvType,
-    baseMediaType,
-    'totalPacketsSent'
-  );
-  const lastBytesSent = getTotalValueFromBaseType(
-    lastMqaDataSent,
-    sendrecvType,
-    baseMediaType,
-    'totalBylastBytesSent'
-  );
-  const lastPacketsLostTotal = getTotalValueFromBaseType(
-    lastMqaDataSent,
-    sendrecvType,
-    baseMediaType,
-    'totalPacketsLostOnReceiver'
-  );
+  const getLastTotalValue = (value: string) =>
+    getTotalValueFromBaseType(lastMqaDataSent, sendrecvType, baseMediaType, value);
+  const getTotalValue = (value: string) =>
+    getTotalValueFromBaseType(statsResults, sendrecvType, baseMediaType, value);
 
-  const totalPacketsLostOnReceiver = getTotalValueFromBaseType(
-    statsResults,
-    sendrecvType,
-    baseMediaType,
-    'totalPacketsLostOnReceiver'
-  );
-  const totalPacketsSent = getTotalValueFromBaseType(
-    statsResults,
-    sendrecvType,
-    baseMediaType,
-    'totalPacketsSent'
-  );
-  const totalBytesSent = getTotalValueFromBaseType(
-    statsResults,
-    sendrecvType,
-    baseMediaType,
-    'totalBytesSent'
-  );
-  const availableOutgoingBitrate = getTotalValueFromBaseType(
-    statsResults,
-    sendrecvType,
-    baseMediaType,
-    'availableOutgoingBitrate'
-  );
+  const lastPacketsSent = getLastTotalValue('totalPacketsSent');
+  const lastBytesSent = getLastTotalValue('totalBytesSent');
+  const lastPacketsLostTotal = getLastTotalValue('totalPacketsLostOnReceiver');
+
+  const totalPacketsLostOnReceiver = getTotalValue('totalPacketsLostOnReceiver');
+  const totalPacketsSent = getTotalValue('totalPacketsSent');
+  const totalBytesSent = getTotalValue('totalBytesSent');
+  const availableOutgoingBitrate = getTotalValue('availableOutgoingBitrate');
 
   videoSender.common.common.direction =
     statsResults[Object.keys(statsResults).find((mediaType) => mediaType.includes(baseMediaType))]
