@@ -574,6 +574,7 @@ describe('plugin-meetings', () => {
           });
           describe('when destroying meeting is needed', () => {
             let destroySpy;
+            let cleanUpSpy;
 
             const meetingCollectionMeetings = {
               stillValidLocusMeeting: {
@@ -604,7 +605,11 @@ describe('plugin-meetings', () => {
                   loci: [{url: 'still-valid-locus-url'}],
                 })
               );
-              MeetingUtil.cleanUp = sinon.stub().returns(Promise.resolve());
+              cleanUpSpy = sinon.stub(MeetingUtil, 'cleanUp').returns(Promise.resolve());
+            });
+
+            afterEach(() => {
+              cleanUpSpy.restore();
             });
 
             it('destroy any meeting that has no active locus url if keepOnlyLocusMeetings is not defined', async () => {
@@ -1788,9 +1793,13 @@ describe('plugin-meetings', () => {
       });
     });
     describe('Public Event Triggers', () => {
+      let cleanUpSpy;
       describe('#destroy', () => {
         beforeEach(() => {
-          MeetingUtil.cleanUp = sinon.stub();
+          cleanUpSpy = sinon.stub(MeetingUtil, 'cleanUp');
+        });
+        afterEach(() => {
+          cleanUpSpy.restore();
         });
         it('should have #destroy', () => {
           assert.exists(webex.meetings.destroy);

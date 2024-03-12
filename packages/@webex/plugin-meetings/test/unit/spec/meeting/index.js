@@ -7661,10 +7661,11 @@ describe('plugin-meetings', () => {
       });
 
       describe('#setUpLocusInfoMeetingListener', () => {
+        let cleanUpSpy;
         it('listens to destroy meeting event from locus info  ', (done) => {
           TriggerProxy.trigger.reset();
           sinon.stub(meeting.reconnectionManager, 'cleanUp');
-          MeetingUtil.cleanUp = sinon.stub();
+          cleanUpSpy = sinon.stub(MeetingUtil, 'cleanUp');
 
           meeting.locusInfo.emit({function: 'test', file: 'test'}, EVENTS.DESTROY_MEETING, {
             shouldLeave: false,
@@ -7685,6 +7686,7 @@ describe('plugin-meetings', () => {
               meetingId: meeting.id,
             }
           );
+          cleanUpSpy.restore();
           done();
         });
       });
