@@ -81,9 +81,7 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
       key === 'client.media.rx.start' ||
       key === 'client.media.tx.start' ||
       key === 'internal.client.meetinginfo.request' ||
-      key === 'internal.client.meetinginfo.response' ||
-      key === 'internal.register.device.request' ||
-      key === 'internal.register.device.response'
+      key === 'internal.client.meetinginfo.response'
     ) {
       this.saveFirstTimestampOnly(key, value);
     } else {
