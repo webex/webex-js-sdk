@@ -20,7 +20,7 @@ describe('plugin-meetings', () => {
       id,
       setServerMuted: sinon.stub(),
       setUnmuteAllowed: sinon.stub(),
-      setMuted: sinon.stub(),
+      setUserMuted: sinon.stub(),
       muted,
     };
   };
@@ -111,7 +111,7 @@ describe('plugin-meetings', () => {
 
     it('does local unmute if localAudioUnmuteRequired is received', async () => {
       // first we need to mute have the local stream muted
-      meeting.mediaProperties.audioStream.muted = true;
+      meeting.mediaProperties.audioStream.userMuted = true;
       audio.handleLocalStreamChange(meeting);
 
       assert.isTrue(audio.isMuted());
@@ -139,7 +139,7 @@ describe('plugin-meetings', () => {
 
     it('does local video unmute if localVideoUnmuteRequired is received', async () => {
       // first we need to mute
-      meeting.mediaProperties.videoStream.muted = true;
+      meeting.mediaProperties.videoStream.userMuted = true;
       video.handleLocalStreamChange(meeting);
 
       assert.isTrue(video.isMuted());
@@ -168,7 +168,7 @@ describe('plugin-meetings', () => {
       it('does not consider remote mute status for audio', async () => {
         // simulate being already remote muted and locally unmuted
         meeting.remoteMuted = true;
-        meeting.mediaProperties.audioStream.muted = false;
+        meeting.mediaProperties.audioStream.userMuted = false;
 
         // create a new MuteState instance
         audio = createMuteState(AUDIO, meeting, true);
@@ -182,7 +182,7 @@ describe('plugin-meetings', () => {
       it('does not consider remote mute status for video', async () => {
         // simulate being already remote muted
         meeting.remoteVideoMuted = true;
-        meeting.mediaProperties.videoStream.muted = false;
+        meeting.mediaProperties.videoStream.userMuted = false;
 
         // create a new MuteState instance
         video = createMuteState(VIDEO, meeting, true);
@@ -203,14 +203,14 @@ describe('plugin-meetings', () => {
       });
 
       const simulateAudioMuteChange = async (muteValue) => {
-        meeting.mediaProperties.audioStream.muted = muteValue;
+        meeting.mediaProperties.audioStream.userMuted = muteValue;
         audio.handleLocalStreamMuteStateChange(meeting, muteValue);
 
         await testUtils.flushPromises();
       };
 
       const simulateVideoMuteChange = async (muteValue) => {
-        meeting.mediaProperties.videoStream.muted = muteValue;
+        meeting.mediaProperties.videoStream.userMuted = muteValue;
         video.handleLocalStreamMuteStateChange(meeting, muteValue);
 
         await testUtils.flushPromises();
@@ -414,7 +414,7 @@ describe('plugin-meetings', () => {
       let meeting;
       let muteState;
       let setServerMutedSpy;
-      let setMutedSpy, setUnmuteAllowedSpy;
+      let setUserMutedSpy, setUnmuteAllowedSpy;
 
       const setupMeeting = (
         mediaType,
@@ -467,10 +467,10 @@ describe('plugin-meetings', () => {
           mediaType === AUDIO
             ? meeting.mediaProperties.audioStream?.setServerMuted
             : meeting.mediaProperties.videoStream?.setServerMuted;
-        setMutedSpy =
+        setUserMutedSpy =
           mediaType === AUDIO
-            ? meeting.mediaProperties.audioStream?.setMuted
-            : meeting.mediaProperties.videoStream?.setMuted;
+            ? meeting.mediaProperties.audioStream?.setUserMuted
+            : meeting.mediaProperties.videoStream?.setUserMuted;
 
         clearSpies();
       };
@@ -478,7 +478,7 @@ describe('plugin-meetings', () => {
       const clearSpies = () => {
         setUnmuteAllowedSpy?.resetHistory();
         setServerMutedSpy?.resetHistory();
-        setMutedSpy?.resetHistory();
+        setUserMutedSpy?.resetHistory();
       };
       const tests = [
         {mediaType: AUDIO, title: 'audio'},
@@ -609,7 +609,7 @@ describe('plugin-meetings', () => {
                 muteState.state.client.localMute,
                 'somereason'
               );
-              assert.notCalled(setMutedSpy);
+              assert.notCalled(setUserMutedSpy);
             });
 
             it('nothing explodes when streams are undefined', async () => {

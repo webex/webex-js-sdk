@@ -3749,7 +3749,14 @@ export default class Meeting extends StatelessWebexPlugin {
   private async setLocalAudioStream(localStream?: LocalMicrophoneStream) {
     const oldStream = this.mediaProperties.audioStream;
 
-    oldStream?.off(StreamEventNames.MuteStateChange, this.localAudioStreamMuteStateHandler);
+    oldStream?.off(
+      LocalStreamEventNames.UserMuteStateChange,
+      this.localAudioStreamMuteStateHandler
+    );
+    oldStream?.off(
+      LocalStreamEventNames.SystemMuteStateChange,
+      this.localAudioStreamMuteStateHandler
+    );
     oldStream?.off(LocalStreamEventNames.OutputTrackChange, this.localOutputTrackChangeHandler);
 
     // we don't update this.mediaProperties.mediaDirection.sendAudio, because we always keep it as true to avoid extra SDP exchanges
@@ -3757,7 +3764,14 @@ export default class Meeting extends StatelessWebexPlugin {
 
     this.audio.handleLocalStreamChange(this);
 
-    localStream?.on(StreamEventNames.MuteStateChange, this.localAudioStreamMuteStateHandler);
+    localStream?.on(
+      LocalStreamEventNames.UserMuteStateChange,
+      this.localAudioStreamMuteStateHandler
+    );
+    localStream?.on(
+      LocalStreamEventNames.SystemMuteStateChange,
+      this.localAudioStreamMuteStateHandler
+    );
     localStream?.on(LocalStreamEventNames.OutputTrackChange, this.localOutputTrackChangeHandler);
 
     if (!this.isMultistream || !localStream) {
@@ -3777,7 +3791,14 @@ export default class Meeting extends StatelessWebexPlugin {
   private async setLocalVideoStream(localStream?: LocalCameraStream) {
     const oldStream = this.mediaProperties.videoStream;
 
-    oldStream?.off(StreamEventNames.MuteStateChange, this.localVideoStreamMuteStateHandler);
+    oldStream?.off(
+      LocalStreamEventNames.UserMuteStateChange,
+      this.localVideoStreamMuteStateHandler
+    );
+    oldStream?.off(
+      LocalStreamEventNames.SystemMuteStateChange,
+      this.localVideoStreamMuteStateHandler
+    );
     oldStream?.off(LocalStreamEventNames.OutputTrackChange, this.localOutputTrackChangeHandler);
 
     // we don't update this.mediaProperties.mediaDirection.sendVideo, because we always keep it as true to avoid extra SDP exchanges
@@ -3785,7 +3806,14 @@ export default class Meeting extends StatelessWebexPlugin {
 
     this.video.handleLocalStreamChange(this);
 
-    localStream?.on(StreamEventNames.MuteStateChange, this.localVideoStreamMuteStateHandler);
+    localStream?.on(
+      LocalStreamEventNames.UserMuteStateChange,
+      this.localVideoStreamMuteStateHandler
+    );
+    localStream?.on(
+      LocalStreamEventNames.SystemMuteStateChange,
+      this.localVideoStreamMuteStateHandler
+    );
     localStream?.on(LocalStreamEventNames.OutputTrackChange, this.localOutputTrackChangeHandler);
 
     if (!this.isMultistream || !localStream) {
@@ -3806,14 +3834,25 @@ export default class Meeting extends StatelessWebexPlugin {
   private async setLocalShareVideoStream(localDisplayStream?: LocalDisplayStream) {
     const oldStream = this.mediaProperties.shareVideoStream;
 
-    oldStream?.off(StreamEventNames.MuteStateChange, this.handleShareVideoStreamMuteStateChange);
+    oldStream?.off(
+      LocalStreamEventNames.UserMuteStateChange,
+      this.handleShareVideoStreamMuteStateChange
+    );
+    oldStream?.off(
+      LocalStreamEventNames.SystemMuteStateChange,
+      this.handleShareVideoStreamMuteStateChange
+    );
     oldStream?.off(StreamEventNames.Ended, this.handleShareVideoStreamEnded);
     oldStream?.off(LocalStreamEventNames.OutputTrackChange, this.localOutputTrackChangeHandler);
 
     this.mediaProperties.setLocalShareVideoStream(localDisplayStream);
 
     localDisplayStream?.on(
-      StreamEventNames.MuteStateChange,
+      LocalStreamEventNames.UserMuteStateChange,
+      this.handleShareVideoStreamMuteStateChange
+    );
+    localDisplayStream?.on(
+      LocalStreamEventNames.SystemMuteStateChange,
       this.handleShareVideoStreamMuteStateChange
     );
     localDisplayStream?.on(StreamEventNames.Ended, this.handleShareVideoStreamEnded);
@@ -3899,10 +3938,24 @@ export default class Meeting extends StatelessWebexPlugin {
   public cleanupLocalStreams() {
     const {audioStream, videoStream, shareAudioStream, shareVideoStream} = this.mediaProperties;
 
-    audioStream?.off(StreamEventNames.MuteStateChange, this.localAudioStreamMuteStateHandler);
+    audioStream?.off(
+      LocalStreamEventNames.UserMuteStateChange,
+      this.localAudioStreamMuteStateHandler
+    );
+    audioStream?.off(
+      LocalStreamEventNames.SystemMuteStateChange,
+      this.localAudioStreamMuteStateHandler
+    );
     audioStream?.off(LocalStreamEventNames.OutputTrackChange, this.localOutputTrackChangeHandler);
 
-    videoStream?.off(StreamEventNames.MuteStateChange, this.localVideoStreamMuteStateHandler);
+    videoStream?.off(
+      LocalStreamEventNames.UserMuteStateChange,
+      this.localVideoStreamMuteStateHandler
+    );
+    videoStream?.off(
+      LocalStreamEventNames.SystemMuteStateChange,
+      this.localVideoStreamMuteStateHandler
+    );
     videoStream?.off(LocalStreamEventNames.OutputTrackChange, this.localOutputTrackChangeHandler);
 
     shareAudioStream?.off(StreamEventNames.Ended, this.handleShareAudioStreamEnded);
@@ -3911,7 +3964,11 @@ export default class Meeting extends StatelessWebexPlugin {
       this.localOutputTrackChangeHandler
     );
     shareVideoStream?.off(
-      StreamEventNames.MuteStateChange,
+      LocalStreamEventNames.UserMuteStateChange,
+      this.handleShareVideoStreamMuteStateChange
+    );
+    shareVideoStream?.off(
+      LocalStreamEventNames.SystemMuteStateChange,
       this.handleShareVideoStreamMuteStateChange
     );
     shareVideoStream?.off(StreamEventNames.Ended, this.handleShareVideoStreamEnded);

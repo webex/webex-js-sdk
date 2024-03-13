@@ -44,7 +44,7 @@ import {
   RemoteTrackType,
   MediaType,
 } from '@webex/internal-media-core';
-import {StreamEventNames} from '@webex/media-helpers';
+import {LocalStreamEventNames} from '@webex/media-helpers';
 import * as StatsAnalyzerModule from '@webex/plugin-meetings/src/statsAnalyzer';
 import EventsScope from '@webex/plugin-meetings/src/common/events/events-scope';
 import Meetings, {CONSTANTS} from '@webex/plugin-meetings';
@@ -2688,7 +2688,7 @@ describe('plugin-meetings', () => {
               }),
               muted: false,
               setUnmuteAllowed: sinon.stub(),
-              setMuted: sinon.stub(),
+              setUserMuted: sinon.stub(),
               setServerMuted: sinon.stub(),
               outputStream: {
                 getTracks: () => {
@@ -3038,7 +3038,7 @@ describe('plugin-meetings', () => {
           });
 
           it('addMedia() works correctly when media is enabled with tracks to publish and track is muted', async () => {
-            fakeMicrophoneStream.muted = true;
+            fakeMicrophoneStream.userMuted = true;
 
             await meeting.addMedia({localStreams: {microphone: fakeMicrophoneStream}});
             await simulateRoapOffer();
@@ -3276,7 +3276,7 @@ describe('plugin-meetings', () => {
                   off: sinon.stub(),
                   muted: false,
                   setUnmuteAllowed: sinon.stub(),
-                  setMuted: sinon.stub(),
+                  setUserMuted: sinon.stub(),
                   outputStream: {
                     getTracks: () => {
                       return [
@@ -3518,7 +3518,7 @@ describe('plugin-meetings', () => {
           ].forEach(({mute, title}) =>
             it(title, async () => {
               // initialize the microphone mute state to opposite of what we do in the test
-              fakeMicrophoneStream.muted = !mute;
+              fakeMicrophoneStream.userMuted = !mute;
 
               await meeting.addMedia({localStreams: {microphone: fakeMicrophoneStream}});
               await stableState();
@@ -3527,7 +3527,7 @@ describe('plugin-meetings', () => {
 
               assert.equal(
                 fakeMicrophoneStream.on.getCall(0).args[0],
-                StreamEventNames.MuteStateChange
+                LocalStreamEventNames.UserMuteStateChange
               );
               const mutedListener = fakeMicrophoneStream.on.getCall(0).args[1];
               // simulate track being muted

@@ -81,8 +81,8 @@ export class MuteState {
 
     const initialMute =
       this.type === AUDIO
-        ? meeting.mediaProperties.audioStream?.muted
-        : meeting.mediaProperties.videoStream?.muted;
+        ? meeting.mediaProperties.audioStream?.userMuted
+        : meeting.mediaProperties.videoStream?.userMuted;
 
     LoggerProxy.logger.info(
       `Meeting:muteState#init --> ${this.type}: local stream initial mute state: ${initialMute}`

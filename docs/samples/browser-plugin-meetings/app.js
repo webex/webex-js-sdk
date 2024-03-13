@@ -1457,12 +1457,12 @@ function setVideoInputDevice() {
   const {video} = getAudioVideoInput();
 
   if (meeting) {
-    const isMuted = localMedia.cameraStream?.muted;
+    const isMuted = localMedia.cameraStream?.userMuted;
     localMedia.cameraStream?.stop();
 
     return getUserMedia({video})
       .then(() => {
-        localMedia.cameraStream.setMuted(!!isMuted);
+        localMedia.cameraStream.setUserMuted(!!isMuted);
         localVideoResolutionCheckInterval();
         meeting.publishStreams({camera: localMedia.cameraStream});
       });
@@ -1477,12 +1477,12 @@ function setAudioInputDevice() {
   const {audio} = getAudioVideoInput();
 
   if (meeting) {
-    const isMuted = localMedia.microphoneStream?.muted;
+    const isMuted = localMedia.microphoneStream?.userMuted;
     localMedia.microphoneStream?.stop();
 
     return getUserMedia({audio})
       .then(() => {
-        localMedia.microphoneStream.setMuted(!!isMuted);
+        localMedia.microphoneStream.setUserMuted(!!isMuted);
         meeting.publishStreams({microphone: localMedia.microphoneStream});
       });
   }
@@ -1505,7 +1505,7 @@ function setAudioOutputDevice() {
 }
 
 function handleAudioButton() {
-  const audioButtonTitle = localMedia.microphoneStream.muted ? 'Unmute' : 'Mute';
+  const audioButtonTitle = localMedia.microphoneStream.userMuted ? 'Unmute' : 'Mute';
   toggleAudioButton.innerHTML = `${audioButtonTitle} Audio`;
 }
 
@@ -1513,9 +1513,9 @@ function toggleSendAudio() {
   console.log('MeetingControls#toggleSendAudio()');
 
   if (localMedia.microphoneStream) {
-    const newMuteValue = !localMedia.microphoneStream.muted;
+    const newMuteValue = !localMedia.microphoneStream.userMuted;
 
-    localMedia.microphoneStream.setMuted(newMuteValue);
+    localMedia.microphoneStream.setUserMuted(newMuteValue);
     handleAudioButton();
 
     console.log(`MeetingControls#toggleSendAudio() :: Successfully ${newMuteValue ? 'muted': 'unmuted'} audio!`);
@@ -1527,9 +1527,9 @@ function toggleSendVideo() {
   console.log('MeetingControls#toggleSendVideo()');
 
   if (localMedia.cameraStream) {
-    const newMuteValue = !localMedia.cameraStream.muted;
+    const newMuteValue = !localMedia.cameraStream.userMuted;
 
-    localMedia.cameraStream.setMuted(newMuteValue);
+    localMedia.cameraStream.setUserMuted(newMuteValue);
 
     console.log(`MeetingControls#toggleSendVideo() :: Successfully ${newMuteValue ? 'muted': 'unmuted'} video!`);
     return;
