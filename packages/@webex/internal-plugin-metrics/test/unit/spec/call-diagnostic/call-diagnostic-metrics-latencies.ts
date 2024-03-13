@@ -143,6 +143,13 @@ describe('internal-plugin-metrics', () => {
       assert.deepEqual(cdl.getCallInitJoinReq(), 10);
     });
 
+    
+    it('calculates getRegisterWDMDeviceJMT correctly', () => {
+      cdl.saveTimestamp({key: 'internal.register.device.request', value: 10});
+      cdl.saveTimestamp({key: 'internal.register.device.response', value: 20});
+      assert.deepEqual(cdl.getRegisterWDMDeviceJMT(), 10);
+    });
+
     it('calculates getJoinReqResp correctly', () => {
       cdl.saveTimestamp({
         key: 'client.locus.join.request',
