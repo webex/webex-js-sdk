@@ -2,6 +2,34 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.373](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.372...v3.0.0-beta.373) (2024-03-13)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** mqe streams format ([#3434](https://github.com/webex/webex-js-sdk/issues/3434)) ([2457959](https://github.com/webex/webex-js-sdk/commit/2457959806fffa080bdf3d572fbe5d8db620b1ba))
+
+## [3.0.0-beta.372](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.371...v3.0.0-beta.372) (2024-03-12)
+
+
+### Features
+
+* **plugin-devices:** added register device latency ([#3432](https://github.com/webex/webex-js-sdk/issues/3432)) ([a664ce4](https://github.com/webex/webex-js-sdk/commit/a664ce4a39e63917d04d661239fb670cca3b78ed))
+
+## [3.0.0-beta.371](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.370...v3.0.0-beta.371) (2024-03-11)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** shareInstanceId to requestScreenShareFloor request ([#3433](https://github.com/webex/webex-js-sdk/issues/3433)) ([dcadb4a](https://github.com/webex/webex-js-sdk/commit/dcadb4aee54f9d5ecd27cd748a35aa5043b4ece5))
+
+## [3.0.0-beta.370](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.369...v3.0.0-beta.370) (2024-03-07)
+
+
+### Bug Fixes
+
+* roap optimization for TURN discovery flow ([#3407](https://github.com/webex/webex-js-sdk/issues/3407)) ([de0b2b0](https://github.com/webex/webex-js-sdk/commit/de0b2b0a7a2aab33b7066557f363f739dc9810ff))
+
 ## [3.0.0-beta.369](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.368...v3.0.0-beta.369) (2024-03-06)
 
 
