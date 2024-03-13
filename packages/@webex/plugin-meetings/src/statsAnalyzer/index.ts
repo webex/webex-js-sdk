@@ -63,6 +63,10 @@ const emptyReceiver = {
 };
 
 type ReceiveSlotCallback = (csi: number) => ReceiveSlot | undefined;
+type MediaStatus = {
+  actual?: any;
+  expected?: any;
+};
 /**
  * Stats Analyzer class that will emit events based on detected quality
  *
@@ -146,8 +150,17 @@ export class StatsAnalyzer extends EventsScope {
    * @memberof StatsAnalyzer
    * @returns {void}
    */
-  public updateMediaStatus(status: object) {
-    this.meetingMediaStatus = status;
+  public updateMediaStatus(status: MediaStatus) {
+    this.meetingMediaStatus = {
+      actual: {
+        ...this.meetingMediaStatus?.actual,
+        ...status.actual,
+      },
+      expected: {
+        ...this.meetingMediaStatus?.expected,
+        ...status.expected,
+      },
+    };
   }
 
   /**
@@ -658,6 +671,7 @@ export class StatsAnalyzer extends EventsScope {
           .filter((key) => key.startsWith(keyPrefix))
           .reduce((prev, cur) => prev + (this.lastStatsResults[cur]?.recv[value] || 0), 0);
 
+      // Audio Transmit
       if (this.lastStatsResults['audio-send']) {
         // compare audio stats sent
         // NOTE: relies on there being only one sender.
@@ -665,7 +679,7 @@ export class StatsAnalyzer extends EventsScope {
         const previousStats = this.lastStatsResults['audio-send'].send;
 
         if (
-          (this.lastEmittedStartStopEvent?.audio?.local === EVENTS.LOCAL_MEDIA_STARTED &&
+          (this.meetingMediaStatus.expected.sendAudio &&
             currentStats.totalPacketsSent === previousStats.totalPacketsSent) ||
           currentStats.totalPacketsSent === 0
         ) {
@@ -675,7 +689,7 @@ export class StatsAnalyzer extends EventsScope {
           );
         } else {
           if (
-            (this.lastEmittedStartStopEvent?.audio?.local === EVENTS.LOCAL_MEDIA_STARTED &&
+            (this.meetingMediaStatus.expected.sendAudio &&
               currentStats.totalAudioEnergy === previousStats.totalAudioEnergy) ||
             currentStats.totalAudioEnergy === 0
           ) {
@@ -685,10 +699,7 @@ export class StatsAnalyzer extends EventsScope {
             );
           }
 
-          if (
-            this.lastEmittedStartStopEvent?.audio?.local === EVENTS.LOCAL_MEDIA_STARTED &&
-            currentStats.audioLevel === 0
-          ) {
+          if (this.meetingMediaStatus.expected.sendAudio && currentStats.audioLevel === 0) {
             LoggerProxy.logger.info(
               `StatsAnalyzer:index#compareLastStatsResult --> audio level is 0 for the user`
             );
@@ -703,7 +714,7 @@ export class StatsAnalyzer extends EventsScope {
         );
       }
 
-      // compare audio stats received
+      // Audio Receive
       const currentAudioPacketsReceived = getCurrentStatsTotals(
         'audio-recv',
         'totalPacketsReceived'
@@ -713,35 +724,6 @@ export class StatsAnalyzer extends EventsScope {
         'totalPacketsReceived'
       );
 
-      const currentAudioSamplesReceived = getCurrentStatsTotals(
-        'audio-recv',
-        'totalSamplesReceived'
-      );
-      const previousAudioSamplesReceived = getPreviousStatsTotals(
-        'audio-recv',
-        'totalSamplesReceived'
-      );
-
-      if (
-        this.lastEmittedStartStopEvent?.audio?.remote === EVENTS.REMOTE_MEDIA_STARTED &&
-        (currentAudioPacketsReceived === previousAudioPacketsReceived ||
-          currentAudioPacketsReceived === 0)
-      ) {
-        LoggerProxy.logger.info(
-          `StatsAnalyzer:index#compareLastStatsResult --> No audio RTP packets received`,
-          currentAudioPacketsReceived
-        );
-      } else if (
-        this.lastEmittedStartStopEvent?.audio?.remote === EVENTS.REMOTE_MEDIA_STARTED &&
-        (currentAudioSamplesReceived === previousAudioSamplesReceived ||
-          currentAudioSamplesReceived === 0)
-      ) {
-        LoggerProxy.logger.info(
-          `StatsAnalyzer:index#compareLastStatsResult --> No audio samples received`,
-          currentAudioSamplesReceived
-        );
-      }
-
       this.emitStartStopEvents(
         'audio',
         previousAudioPacketsReceived,
@@ -749,13 +731,14 @@ export class StatsAnalyzer extends EventsScope {
         false
       );
 
+      // Video Transmit
       if (this.lastStatsResults['video-send']) {
         // compare video stats sent
         const currentStats = this.statsResults['video-send'].send;
         const previousStats = this.lastStatsResults['video-send'].send;
 
         if (
-          this.lastEmittedStartStopEvent?.video?.local === EVENTS.LOCAL_MEDIA_STARTED &&
+          this.meetingMediaStatus.expected.sendVideo &&
           (currentStats.totalPacketsSent === previousStats.totalPacketsSent ||
             currentStats.totalPacketsSent === 0)
         ) {
@@ -765,7 +748,7 @@ export class StatsAnalyzer extends EventsScope {
           );
         } else {
           if (
-            this.lastEmittedStartStopEvent?.video?.local === EVENTS.LOCAL_MEDIA_STARTED &&
+            this.meetingMediaStatus.expected.sendVideo &&
             (currentStats.framesEncoded === previousStats.framesEncoded ||
               currentStats.framesEncoded === 0)
           ) {
@@ -776,7 +759,7 @@ export class StatsAnalyzer extends EventsScope {
           }
 
           if (
-            this.lastEmittedStartStopEvent?.video?.local === EVENTS.LOCAL_MEDIA_STARTED &&
+            this.meetingMediaStatus.expected.sendVideo &&
             (this.statsResults['video-send'].send.framesSent ===
               this.lastStatsResults['video-send'].send.framesSent ||
               this.statsResults['video-send'].send.framesSent === 0)
@@ -791,65 +774,9 @@ export class StatsAnalyzer extends EventsScope {
         this.emitStartStopEvents('video', previousStats.framesSent, currentStats.framesSent, true);
       }
 
+      // Video Receive
       const currentVideoFramesDecoded = getCurrentStatsTotals('video-recv', 'framesDecoded');
       const previousVideoFramesDecoded = getPreviousStatsTotals('video-recv', 'framesDecoded');
-
-      // compare video stats received
-      const currentVideoPacketsReceived = getCurrentStatsTotals(
-        'video-recv',
-        'totalPacketsReceived'
-      );
-      const previousVideoPacketsReceived = getPreviousStatsTotals(
-        'video-recv',
-        'totalPacketsReceived'
-      );
-      const currentVideoFramesReceived = getCurrentStatsTotals('video-recv', 'framesReceived');
-      const previousVideoFramesReceived = getPreviousStatsTotals('video-recv', 'framesReceived');
-      const currentVideoFramesDropped = getCurrentStatsTotals('video-recv', 'framesDropped');
-      const previousVideoFramesDropped = getPreviousStatsTotals('video-recv', 'framesDropped');
-
-      if (
-        this.lastEmittedStartStopEvent?.video?.remote === EVENTS.REMOTE_MEDIA_STARTED &&
-        (currentVideoPacketsReceived === previousVideoPacketsReceived ||
-          currentVideoPacketsReceived === 0)
-      ) {
-        LoggerProxy.logger.info(
-          `StatsAnalyzer:index#compareLastStatsResult --> No video RTP packets received`,
-          currentVideoPacketsReceived
-        );
-      } else {
-        if (
-          this.lastEmittedStartStopEvent?.video?.remote === EVENTS.REMOTE_MEDIA_STARTED &&
-          (currentVideoFramesReceived === previousVideoFramesReceived ||
-            currentVideoFramesReceived === 0)
-        ) {
-          LoggerProxy.logger.info(
-            `StatsAnalyzer:index#compareLastStatsResult --> No video frames received`,
-            currentVideoFramesReceived
-          );
-        }
-
-        if (
-          this.lastEmittedStartStopEvent?.video?.remote === EVENTS.REMOTE_MEDIA_STARTED &&
-          (currentVideoFramesDecoded === previousVideoFramesDecoded ||
-            currentVideoFramesDecoded === 0)
-        ) {
-          LoggerProxy.logger.info(
-            `StatsAnalyzer:index#compareLastStatsResult --> No video frames decoded`,
-            currentVideoFramesDecoded
-          );
-        }
-
-        if (
-          this.lastEmittedStartStopEvent?.video?.remote === EVENTS.REMOTE_MEDIA_STARTED &&
-          currentVideoFramesDropped - previousVideoFramesDropped > 10
-        ) {
-          LoggerProxy.logger.info(
-            `StatsAnalyzer:index#compareLastStatsResult --> video frames are getting dropped`,
-            currentVideoFramesDropped - previousVideoFramesDropped
-          );
-        }
-      }
 
       this.emitStartStopEvents(
         'video',
@@ -858,6 +785,7 @@ export class StatsAnalyzer extends EventsScope {
         false
       );
 
+      // Share Transmit
       if (this.lastStatsResults['video-share-send']) {
         // compare share stats sent
 
@@ -865,7 +793,7 @@ export class StatsAnalyzer extends EventsScope {
         const previousStats = this.lastStatsResults['video-share-send'].send;
 
         if (
-          this.lastEmittedStartStopEvent?.share?.local === EVENTS.LOCAL_MEDIA_STARTED &&
+          this.meetingMediaStatus.expected.sendShare &&
           (currentStats.totalPacketsSent === previousStats.totalPacketsSent ||
             currentStats.totalPacketsSent === 0)
         ) {
@@ -875,7 +803,7 @@ export class StatsAnalyzer extends EventsScope {
           );
         } else {
           if (
-            this.lastEmittedStartStopEvent?.share?.local === EVENTS.LOCAL_MEDIA_STARTED &&
+            this.meetingMediaStatus.expected.sendShare &&
             (currentStats.framesEncoded === previousStats.framesEncoded ||
               currentStats.framesEncoded === 0)
           ) {
@@ -886,7 +814,7 @@ export class StatsAnalyzer extends EventsScope {
           }
 
           if (
-            this.lastEmittedStartStopEvent?.share?.local === EVENTS.LOCAL_MEDIA_STARTED &&
+            this.meetingMediaStatus.expected.sendShare &&
             (this.statsResults['video-share-send'].send.framesSent ===
               this.lastStatsResults['video-share-send'].send.framesSent ||
               this.statsResults['video-share-send'].send.framesSent === 0)
@@ -901,77 +829,12 @@ export class StatsAnalyzer extends EventsScope {
         this.emitStartStopEvents('share', previousStats.framesSent, currentStats.framesSent, true);
       }
 
+      // Share receive
       const currentShareFramesDecoded = getCurrentStatsTotals('video-share-recv', 'framesDecoded');
       const previousShareFramesDecoded = getPreviousStatsTotals(
         'video-share-recv',
         'framesDecoded'
       );
-      // TODO:need to check receive share value
-      // compare share stats received
-      const currentSharePacketsReceived = getCurrentStatsTotals(
-        'video-share-recv',
-        'totalPacketsReceived'
-      );
-      const previousSharePacketsReceived = getPreviousStatsTotals(
-        'video-share-recv',
-        'totalPacketsReceived'
-      );
-      const currentShareFramesReceived = getCurrentStatsTotals(
-        'video-share-recv',
-        'framesReceived'
-      );
-      const previousShareFramesReceived = getPreviousStatsTotals(
-        'video-share-recv',
-        'framesReceived'
-      );
-      const currentShareFramesDropped = getCurrentStatsTotals('video-share-recv', 'framesDropped');
-      const previousShareFramesDropped = getPreviousStatsTotals(
-        'video-share-recv',
-        'framesDropped'
-      );
-
-      if (
-        this.lastEmittedStartStopEvent?.share?.remote === EVENTS.REMOTE_MEDIA_STARTED &&
-        (currentSharePacketsReceived === previousSharePacketsReceived ||
-          currentSharePacketsReceived === 0)
-      ) {
-        LoggerProxy.logger.info(
-          `StatsAnalyzer:index#compareLastStatsResult --> No share RTP packets received`,
-          currentSharePacketsReceived
-        );
-      } else {
-        if (
-          this.lastEmittedStartStopEvent?.share?.remote === EVENTS.REMOTE_MEDIA_STARTED &&
-          (currentShareFramesReceived === previousShareFramesReceived ||
-            currentShareFramesReceived === 0)
-        ) {
-          LoggerProxy.logger.info(
-            `StatsAnalyzer:index#compareLastStatsResult --> No share frames received`,
-            currentShareFramesReceived
-          );
-        }
-
-        if (
-          this.lastEmittedStartStopEvent?.share?.remote === EVENTS.REMOTE_MEDIA_STARTED &&
-          (currentShareFramesDecoded === previousShareFramesDecoded ||
-            currentShareFramesDecoded === 0)
-        ) {
-          LoggerProxy.logger.info(
-            `StatsAnalyzer:index#compareLastStatsResult --> No share frames decoded`,
-            currentShareFramesDecoded
-          );
-        }
-
-        if (
-          this.lastEmittedStartStopEvent?.share?.remote === EVENTS.REMOTE_MEDIA_STARTED &&
-          currentShareFramesDropped - previousShareFramesDropped > 10
-        ) {
-          LoggerProxy.logger.info(
-            `StatsAnalyzer:index#compareLastStatsResult --> share frames are getting dropped`,
-            currentShareFramesDropped - previousShareFramesDropped
-          );
-        }
-      }
 
       this.emitStartStopEvents(
         'share',
@@ -1126,12 +989,6 @@ export class StatsAnalyzer extends EventsScope {
         ? `id: "${receiveSlot.id || ''}"${receiveSlot.csi ? ` and csi: ${receiveSlot.csi}` : ''}`
         : '';
 
-      if (result.frameWidth && result.frameHeight) {
-        this.statsResults[mediaType][sendrecvType].width = result.frameWidth;
-        this.statsResults[mediaType][sendrecvType].height = result.frameHeight;
-        this.statsResults[mediaType][sendrecvType].framesReceived = result.framesReceived;
-      }
-
       const bytes =
         result.bytesReceived - this.statsResults[mediaType][sendrecvType].totalBytesReceived;
 
@@ -1151,9 +1008,47 @@ export class StatsAnalyzer extends EventsScope {
       if (currentPacketsReceived === 0) {
         if (receiveSlot && sourceState === 'live') {
           LoggerProxy.logger.info(
-            `StatsAnalyzer:index#processInboundRTPResult --> No packets received for receive slot ${idAndCsi}. Total packets received on slot: `,
+            `StatsAnalyzer:index#processInboundRTPResult --> No packets received for mediaType: ${mediaType}, receive slot ${idAndCsi}. Total packets received on slot: `,
             result.packetsReceived
           );
+        }
+      }
+
+      if (mediaType.startsWith('video') || mediaType.startsWith('share')) {
+        const currentVideoFramesReceived =
+          result.framesReceived - this.statsResults[mediaType][sendrecvType].framesReceived;
+
+        if (currentVideoFramesReceived === 0) {
+          if (receiveSlot && sourceState === 'live') {
+            LoggerProxy.logger.info(
+              `StatsAnalyzer:index#processInboundRTPResult --> No frames received for mediaType: ${mediaType},  receive slot ${idAndCsi}. Total frames received on slot: `,
+              result.framesReceived
+            );
+          }
+        }
+
+        const currentVideoFramesDecoded =
+          result.framesDecoded - this.statsResults[mediaType][sendrecvType].framesDecoded;
+
+        if (currentVideoFramesDecoded === 0) {
+          if (receiveSlot && sourceState === 'live') {
+            LoggerProxy.logger.info(
+              `StatsAnalyzer:index#processInboundRTPResult --> No frames decoded for mediaType: ${mediaType},  receive slot ${idAndCsi}. Total frames decoded on slot: `,
+              result.framesDecoded
+            );
+          }
+        }
+
+        const currentVideoFramesDropped =
+          result.framesDropped - this.statsResults[mediaType][sendrecvType].framesDropped;
+
+        if (currentVideoFramesDropped > 10) {
+          if (receiveSlot && sourceState === 'live') {
+            LoggerProxy.logger.info(
+              `StatsAnalyzer:index#processInboundRTPResult --> No frames decoded for mediaType: ${mediaType},  receive slot ${idAndCsi}. Total frames decoded on slot: `,
+              result.framesDropped
+            );
+          }
         }
       }
 
@@ -1167,6 +1062,12 @@ export class StatsAnalyzer extends EventsScope {
           `StatsAnalyzer:index#processInboundRTPResult --> Packets getting lost from the receiver with slot ${idAndCsi}`,
           this.statsResults[mediaType][sendrecvType].currentPacketLossRatio
         );
+      }
+
+      if (result.frameWidth && result.frameHeight) {
+        this.statsResults[mediaType][sendrecvType].width = result.frameWidth;
+        this.statsResults[mediaType][sendrecvType].height = result.frameHeight;
+        this.statsResults[mediaType][sendrecvType].framesReceived = result.framesReceived;
       }
 
       // TODO: check the packet loss value is negative values here
@@ -1186,6 +1087,7 @@ export class StatsAnalyzer extends EventsScope {
       this.statsResults[mediaType][sendrecvType].totalPliCount = result.pliCount;
       this.statsResults[mediaType][sendrecvType].framesDecoded = result.framesDecoded;
       this.statsResults[mediaType][sendrecvType].keyFramesDecoded = result.keyFramesDecoded;
+      this.statsResults[mediaType][sendrecvType].framesDropped = result.framesDropped;
 
       this.statsResults[mediaType][sendrecvType].decoderImplementation =
         result.decoderImplementation;
