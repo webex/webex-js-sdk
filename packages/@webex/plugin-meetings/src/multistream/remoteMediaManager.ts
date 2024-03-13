@@ -531,25 +531,22 @@ export class RemoteMediaManager extends EventsScope {
 
   /**
    * Sets which named media group need receiving
-   *
-   *
-   *
+   * @param {MediaType} mediaType of the stream
+   * @param {number} languageCode of the stream
+   * @returns {void}
    */
   public async setReceiveNamedMediaGroup(mediaType: MediaType, languageId: number) {
     if (mediaType !== MediaType.AudioMain) {
-      throw new Error(`can not set receive named media group which media type is ${mediaType}`);
+      throw new Error(`cannot set receive named media group which media type is ${mediaType}`);
     }
-    const type = mediaType === MediaType.AudioMain ? 1 : 0;
+
     const value = languageId;
-    if (
-      type === this.config.namedMediaGroup?.type &&
-      value === this.config.namedMediaGroup?.value
-    ) {
+    if (value === this.config.namedMediaGroup?.value) {
       return;
     }
 
     this.config.namedMediaGroup = {
-      type,
+      type: 1,
       value,
     };
 

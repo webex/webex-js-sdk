@@ -6037,12 +6037,7 @@ describe('plugin-meetings', () => {
         meeting.sendSlotManager.setNamedMediaGroups = sinon.stub().returns(undefined);
       });
       it('should throw error if not audio type', () => {
-        // try {
-        //   meeting.setSendNamedMediaGroup('other-type', 20);
-        // } catch (err) {
-        //   assert(err, {});
-        // }
-        expect(() => meeting.setSendNamedMediaGroup(MediaType.VideoMain, 20)).to.throw(`can not set send named media group which media type is ${MediaType.VideoMain}`)
+        expect(() => meeting.setSendNamedMediaGroup(MediaType.VideoMain, 20)).to.throw(`cannot set send named media group which media type is ${MediaType.VideoMain}`)
 
       });
       it('fails if there is no media connection', () => {

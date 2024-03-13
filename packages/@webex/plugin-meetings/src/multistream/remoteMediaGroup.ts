@@ -119,7 +119,7 @@ export class RemoteMediaGroup {
    * Pins a specific remote media instance to a specfic CSI, so the media will
    * no longer come from active speaker, but from that CSI.
    * If no CSI is given, the current CSI value is used.
-   *
+   * And only RemoteMedia without a namedMediaGroup can be pinned.
    */
   public pin(remoteMedia: RemoteMedia, csi?: CSI): void {
     if (remoteMedia.namedMediaGroup?.value) {

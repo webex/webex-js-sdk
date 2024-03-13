@@ -66,7 +66,7 @@ export default class SendSlotManager {
   public setNamedMediaGroups(mediaType: MediaType, namedMediaGroups: NamedMediaGroup[]) {
     if (mediaType !== MediaType.AudioMain) {
       throw new Error(
-        `sendSlotManager can not set named media group which media type is ${mediaType}`
+        `sendSlotManager cannot set named media group which media type is ${mediaType}`
       );
     }
 

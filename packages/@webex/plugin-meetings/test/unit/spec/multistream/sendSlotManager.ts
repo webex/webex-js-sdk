@@ -150,7 +150,7 @@ describe('SendSlotsManager', () => {
     });
 
     it('should throw an error if the given mediaType is not audio', () => {
-      expect(() => sendSlotsManager.setNamedMediaGroups(MediaType.VideoMain, groups)).to.throw(`sendSlotManager can not set named media group which media type is ${MediaType.VideoMain}`)
+      expect(() => sendSlotsManager.setNamedMediaGroups(MediaType.VideoMain, groups)).to.throw(`sendSlotManager cannot set named media group which media type is ${MediaType.VideoMain}`)
     });
 
     it('should throw an error if a slot for the given mediaType does not exist', () => {

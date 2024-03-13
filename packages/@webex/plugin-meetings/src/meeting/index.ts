@@ -7929,17 +7929,16 @@ export default class Meeting extends StatelessWebexPlugin {
    */
   public setSendNamedMediaGroup(mediaType: MediaType, languageCode = 0): void {
     if (mediaType !== MediaType.AudioMain) {
-      throw new Error(`can not set send named media group which media type is ${mediaType}`);
+      throw new Error(`cannot set send named media group which media type is ${mediaType}`);
     }
 
     const value = languageCode || this.simultaneousInterpretation.getTargetLanguageCode();
-    const type = mediaType === MediaType.AudioMain ? 1 : 0;
     let groups = [];
 
-    if (value && type) {
+    if (value) {
       groups = [
         {
-          type,
+          type: 1,
           value,
         },
       ];
