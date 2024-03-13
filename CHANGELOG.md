@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.373](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.372...v3.0.0-beta.373) (2024-03-13)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** mqe streams format ([#3434](https://github.com/webex/webex-js-sdk/issues/3434)) ([2457959](https://github.com/webex/webex-js-sdk/commit/2457959806fffa080bdf3d572fbe5d8db620b1ba))
+
 ## [3.0.0-beta.372](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.371...v3.0.0-beta.372) (2024-03-12)
 
 
