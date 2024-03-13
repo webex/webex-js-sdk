@@ -2764,6 +2764,15 @@ export default class Meeting extends StatelessWebexPlugin {
       this.recordingController.setUserPolicy(this.selfUserPolicies);
       this.controlsOptionsManager.setDisplayHints(this.userDisplayHints);
       this.handleDataChannelUrlChange(this.datachannelUrl);
+
+      Trigger.trigger(
+        this,
+        {
+          file: 'meetings',
+          function: 'setUpLocusInfoMeetingInfoListener',
+        },
+        EVENT_TRIGGERS.MEETING_INFO_AVAILABLE
+      );
     });
   }
 
