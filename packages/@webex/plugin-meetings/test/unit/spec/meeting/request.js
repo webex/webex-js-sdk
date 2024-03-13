@@ -755,6 +755,7 @@ describe('plugin-meetings', () => {
         deviceUrl: 'deviceUrl',
         resourceId: 'resourceId',
         resourceUrl: 'resourceUrl',
+        shareInstanceId: '12345',
         uri: 'optionsUrl',
         annotationInfo: {
           version: '1',
@@ -768,6 +769,7 @@ describe('plugin-meetings', () => {
           version: '1',
         },
         floor: {
+          shareInstanceId: '12345',
           beneficiary: {
             devices: [
               {

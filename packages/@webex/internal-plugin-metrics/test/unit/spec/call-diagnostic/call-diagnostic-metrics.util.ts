@@ -317,6 +317,7 @@ describe('internal-plugin-metrics', () => {
           joinTimes: {
             showInterstitialTime: undefined,
             meetingInfoReqResp: undefined,
+            registerWDMDeviceJMT: undefined,
           },
         },
       ],

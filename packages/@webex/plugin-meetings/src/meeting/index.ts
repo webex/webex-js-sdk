@@ -7049,6 +7049,7 @@ export default class Meeting extends StatelessWebexPlugin {
             deviceUrl: this.deviceUrl,
             uri: content.url,
             resourceUrl: this.resourceUrl,
+            shareInstanceId: this.localShareInstanceId,
           })
           .then(() => {
             this.screenShareFloorState = ScreenShareFloorStatus.GRANTED;
@@ -7151,6 +7152,7 @@ export default class Meeting extends StatelessWebexPlugin {
           deviceUrl: this.deviceUrl,
           uri: content.url,
           resourceUrl: this.resourceUrl,
+          shareInstanceId: this.localShareInstanceId,
         })
         .catch((error) => {
           LoggerProxy.logger.error('Meeting:index#releaseScreenShareFloor --> Error ', error);
