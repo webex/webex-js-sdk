@@ -159,6 +159,17 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
   }
 
   /**
+   * Device Register Time
+   * @returns - latency
+   */
+  public getRegisterWDMDeviceJMT() {
+    return this.getDiffBetweenTimestamps(
+      'internal.register.device.request',
+      'internal.register.device.response'
+    );
+  }
+
+  /**
    * Call Init Join Request
    * @returns - latency
    */
