@@ -8,7 +8,7 @@ import sinon from 'sinon';
 import {Services, ServiceRegistry, ServiceState} from '@webex/webex-core';
 
 /* eslint-disable no-underscore-dangle */
-describe.only('webex-core', () => {
+describe('webex-core', () => {
   describe('Services', () => {
     let webex;
     let services;
