@@ -271,6 +271,14 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
   }
 
   /**
+   * Download Time JMT
+   * @returns - latency
+   */
+  public getDownloadTimeJMT() {
+    return this.precomputedLatencies.get('internal.download.time') || undefined;
+  }
+
+  /**
    * Click To Interstitial
    * @returns - latency
    */
