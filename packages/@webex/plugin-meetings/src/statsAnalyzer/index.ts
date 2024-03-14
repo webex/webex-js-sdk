@@ -784,6 +784,8 @@ export class StatsAnalyzer extends EventsScope {
         currentVideoFramesDecoded,
         false
       );
+      console.log(this.statsResults['video-share-send'].send);
+      console.log(this.lastStatsResults['video-share-send'].send);
 
       // Share Transmit
       if (this.lastStatsResults['video-share-send']) {
