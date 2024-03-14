@@ -170,6 +170,14 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
   }
 
   /**
+   * Service U2C time
+   * @returns - latency
+   */
+  public getU2CTime() {
+    return this.getDiffBetweenTimestamps('internal.get.u2c.request', 'internal.get.u2c.response');
+  }
+
+  /**
    * Call Init Join Request
    * @returns - latency
    */

@@ -863,7 +863,25 @@ const Services = WebexPlugin.extend({
       requestObject.headers = {authorization: token};
     }
 
-    return this.request(requestObject).then(({body}) => this._formatReceivedHostmap(body));
+    this.webex.internal.newMetrics.submitInternalEvent({
+      name: 'internal.get.u2c.request',
+    });
+
+    return this.request(requestObject)
+      .then(({body}) => {
+        this.webex.internal.newMetrics.submitInternalEvent({
+          name: 'internal.get.u2c.response',
+        });
+
+        return this._formatReceivedHostmap(body);
+      })
+      .catch((error) => {
+        this.webex.internal.newMetrics.submitInternalEvent({
+          name: 'internal.get.u2c.response',
+        });
+
+        throw error;
+      });
   },
 
   /**
