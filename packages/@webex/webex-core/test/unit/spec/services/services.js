@@ -8,7 +8,7 @@ import sinon from 'sinon';
 import {Services, ServiceRegistry, ServiceState} from '@webex/webex-core';
 
 /* eslint-disable no-underscore-dangle */
-describe('webex-core', () => {
+describe.only('webex-core', () => {
   describe('Services', () => {
     let webex;
     let services;
@@ -303,6 +303,50 @@ describe('webex-core', () => {
         services._formatReceivedHostmap(serviceHostmap);
 
         assert.deepStrictEqual(services._hostCatalog, serviceHostmap.hostCatalog);
+      });
+    });
+
+    describe('#_fetchNewServiceHostmap', () => {
+      const setup = () => {
+        webex.internal.metrics.submitClientMetrics = sinon.stub();
+
+      };
+
+      it('checks that submitInternalEvent gets called with internal.get.u2c.request', async () => {
+        setup();
+        services.request = sinon.stub().resolves({});
+        services._formatReceivedHostmap = sinon.stub();
+        await services._fetchNewServiceHostmap();
+
+        assert.calledWith(webex.internal.newMetrics.submitInternalEvent, {
+          name: 'internal.get.u2c.request',
+        });
+      });
+
+      it('checks that submitInternalEvent gets called with internal.get.u2c.response on error', async () => {
+        setup();
+        services.request = sinon.stub().rejects(new Error('some error'));
+
+        const result =  services._fetchNewServiceHostmap();  
+
+        await assert.isRejected(result);
+
+        assert.calledWith(webex.internal.newMetrics.submitInternalEvent, {
+          name: 'internal.get.u2c.response',
+        });
+      });
+
+      it('checks that submitInternalEvent gets called with internal.get.u2c.response on success', async () => {
+        setup();
+
+        services.request = sinon.stub().resolves({});
+        services._formatReceivedHostmap = sinon.stub();
+
+        await services._fetchNewServiceHostmap();  
+
+        assert.calledWith(webex.internal.newMetrics.submitInternalEvent, {
+          name: 'internal.get.u2c.response',
+        });
       });
     });
 

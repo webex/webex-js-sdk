@@ -150,6 +150,12 @@ describe('internal-plugin-metrics', () => {
       assert.deepEqual(cdl.getRegisterWDMDeviceJMT(), 10);
     });
 
+    it('calculates getU2CTime correctly', () => {
+      cdl.saveTimestamp({key: 'internal.get.u2c.request', value: 10});
+      cdl.saveTimestamp({key: 'internal.get.u2c.response', value: 20});
+      assert.deepEqual(cdl.getU2CTime(), 10);
+    });
+
     it('calculates getJoinReqResp correctly', () => {
       cdl.saveTimestamp({
         key: 'client.locus.join.request',
