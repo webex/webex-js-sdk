@@ -1062,34 +1062,18 @@ describe('plugin-meetings', () => {
         );
       });
 
-      it.only('does not log a message when share send packets increase', async () => {
+      it('does not log a message when share send packets increase', async () => {
         await startStatsAnalyzer(
           {expected: {sendShare: true}},
           {share: {local: EVENTS.LOCAL_MEDIA_STOPPED}}
         );
 
-        fakeStats.video.senders[0].report[0].packetsSent += 5;
+        fakeStats.share.senders[0].report[0].packetsSent += 5;
         await progressTime();
 
         assert(
           loggerSpy.neverCalledWith(
             'StatsAnalyzer:index#compareLastStatsResult --> No share RTP packets sent'
-          )
-        );
-      });
-
-      it('logs a message when share receive packets do not increase', async () => {
-        await startStatsAnalyzer(
-          {expected: {sendShare: true}},
-          {share: {remote: EVENTS.REMOTE_MEDIA_STARTED}}
-        );
-
-        // don't increase the packets when time progresses.
-        await progressTime();
-
-        assert(
-          loggerSpy.calledWith(
-            'StatsAnalyzer:index#compareLastStatsResult --> No share RTP packets received'
           )
         );
       });
@@ -1116,6 +1100,64 @@ describe('plugin-meetings', () => {
           });
         }
       );
+
+      it(`logs a message if no packets are sent`, async () => {
+        receiveSlot = {
+          sourceState: 'live',
+          csi: 2,
+          id: '4',
+        };
+        await startStatsAnalyzer();
+
+        // don't increase the packets when time progresses.
+        await progressTime();
+
+        assert.calledWith(
+          loggerSpy,
+          'StatsAnalyzer:index#processInboundRTPResult --> No packets received for mediaType: video-recv-0, receive slot id: "4" and csi: 2. Total packets received on slot: ',
+          0
+        );
+
+        assert.calledWith(
+          loggerSpy,
+          'StatsAnalyzer:index#processInboundRTPResult --> No packets received for mediaType: video-recv-0, receive slot id: "4" and csi: 2. Total packets received on slot: ',
+          0
+        );
+
+        assert.calledWith(
+          loggerSpy,
+          'StatsAnalyzer:index#processInboundRTPResult --> No frames received for mediaType: video-recv-0,  receive slot id: "4" and csi: 2. Total frames received on slot: ',
+          0
+        );
+
+        assert.calledWith(
+          loggerSpy,
+          'StatsAnalyzer:index#processInboundRTPResult --> No frames decoded for mediaType: video-recv-0,  receive slot id: "4" and csi: 2. Total frames decoded on slot: ',
+          0
+        );
+
+        assert.calledWith(
+          loggerSpy,
+          'StatsAnalyzer:index#processInboundRTPResult --> No packets received for mediaType: audio-recv-0, receive slot id: "4" and csi: 2. Total packets received on slot: ',
+          0
+        );
+
+        assert.calledWith(
+          loggerSpy,
+          'StatsAnalyzer:index#processInboundRTPResult --> No packets received for mediaType: video-share-recv-0, receive slot id: "4" and csi: 2. Total packets received on slot: ',
+          0
+        );
+        assert.calledWith(
+          loggerSpy,
+          'StatsAnalyzer:index#processInboundRTPResult --> No frames received for mediaType: video-share-recv-0,  receive slot id: "4" and csi: 2. Total frames received on slot: ',
+          0
+        );
+        assert.calledWith(
+          loggerSpy,
+          'StatsAnalyzer:index#processInboundRTPResult --> No frames decoded for mediaType: video-share-recv-0,  receive slot id: "4" and csi: 2. Total frames decoded on slot: ',
+          0
+        );
+      });
 
       it(`does not log a message if receiveSlot is undefined`, async () => {
         await startStatsAnalyzer();

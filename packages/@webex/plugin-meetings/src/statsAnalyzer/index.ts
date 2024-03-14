@@ -154,11 +154,11 @@ export class StatsAnalyzer extends EventsScope {
     this.meetingMediaStatus = {
       actual: {
         ...this.meetingMediaStatus?.actual,
-        ...status.actual,
+        ...status?.actual,
       },
       expected: {
         ...this.meetingMediaStatus?.expected,
-        ...status.expected,
+        ...status?.expected,
       },
     };
   }
@@ -784,8 +784,6 @@ export class StatsAnalyzer extends EventsScope {
         currentVideoFramesDecoded,
         false
       );
-      console.log(this.statsResults['video-share-send'].send);
-      console.log(this.lastStatsResults['video-share-send'].send);
 
       // Share Transmit
       if (this.lastStatsResults['video-share-send']) {
@@ -1002,7 +1000,6 @@ export class StatsAnalyzer extends EventsScope {
       if (currentPacketsLost < 0) {
         currentPacketsLost = 0;
       }
-
       const currentPacketsReceived =
         result.packetsReceived - this.statsResults[mediaType][sendrecvType].totalPacketsReceived;
       this.statsResults[mediaType][sendrecvType].totalPacketsReceived = result.packetsReceived;
@@ -1047,7 +1044,7 @@ export class StatsAnalyzer extends EventsScope {
         if (currentVideoFramesDropped > 10) {
           if (receiveSlot && sourceState === 'live') {
             LoggerProxy.logger.info(
-              `StatsAnalyzer:index#processInboundRTPResult --> No frames decoded for mediaType: ${mediaType},  receive slot ${idAndCsi}. Total frames decoded on slot: `,
+              `StatsAnalyzer:index#processInboundRTPResult --> No frames dropped for mediaType: ${mediaType},  receive slot ${idAndCsi}. Total frames dropped on slot: `,
               result.framesDropped
             );
           }
