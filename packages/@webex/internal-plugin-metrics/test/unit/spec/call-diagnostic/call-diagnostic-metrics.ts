@@ -5,7 +5,7 @@ import {WebexHttpError} from '@webex/webex-core';
 import CallDiagnosticMetrics from '../../../../src/call-diagnostic/call-diagnostic-metrics';
 import CallDiagnosticLatencies from '../../../../src/call-diagnostic/call-diagnostic-metrics-latencies';
 import * as Utils from '../../../../src/call-diagnostic/call-diagnostic-metrics.util';
-import {BrowserDetection, getBrowserSerial} from '@webex/common';
+import {BrowserDetection} from '@webex/common';
 import {getOSNameInternal} from '@webex/internal-plugin-metrics';
 import uuid from 'uuid';
 import {omit} from 'lodash';
@@ -69,9 +69,7 @@ describe('internal-plugin-metrics', () => {
             submitClientMetrics: sinon.stub(),
             config: {...CONFIG.metrics},
           },
-          newMetrics: {
-            postPreLoginMetric: sinon.stub(),
-          },
+          newMetrics: {},
           device: {
             userId: 'userId',
             url: 'deviceUrl',
@@ -854,32 +852,27 @@ describe('internal-plugin-metrics', () => {
         );
         assert.notCalled(submitToCallDiagnosticsSpy);
         assert.calledWith(submitToCallDiagnosticsPreLoginSpy, {
-          event: {
-            canProceed: true,
-            eventData: {
-              webClientDomain: 'whatever',
+            eventId: 'my-fake-id',
+            version: 1,
+            origin: { origin: 'fake-origin' },
+            originTime: { triggered: now.toISOString(), sent: 'not_defined_yet' },
+            senderCountryCode: 'UK',
+            event: {
+              name: 'client.alert.displayed',
+              canProceed: true,
+              identifiers: {
+                correlationId: 'correlationId',
+                userId: 'myPreLoginId',
+                deviceId: 'deviceUrl',
+                orgId: 'orgId',
+                locusUrl: 'locus-url',
+                webexConferenceIdStr: 'webexConferenceIdStr1',
+                globalMeetingId: 'globalMeetingId1'
+              },
+              eventData: { webClientDomain: 'whatever' },
+              loginType: 'login-ci'
             },
-            identifiers: {
-              correlationId: 'correlationId',
-              webexConferenceIdStr: 'webexConferenceIdStr1',
-              globalMeetingId: 'globalMeetingId1',
-              deviceId: 'deviceUrl',
-              locusUrl: 'locus-url',
-              orgId: 'orgId',
-              userId: 'myPreLoginId',
-            },
-            loginType: 'login-ci',
-            name: 'client.alert.displayed',
-          },
-          eventId: 'my-fake-id',
-          origin: {buildType: 'test', networkType: 'unknown', origin: 'fake-origin'},
-          originTime: {
-            triggered: now.toISOString(),
-            sent: now.toISOString(),
-          },
-          senderCountryCode: 'UK',
-          version: 1,
-        });
+        }, options.preLoginId);
       });
 
       it('should use meeting loginType if present and meetingId provided', () => {
@@ -1029,8 +1022,6 @@ describe('internal-plugin-metrics', () => {
           name: 'client.alert.displayed',
           options,
         });
-
-        console.log(submitToCallDiagnosticsSpy.getCalls()[0].args[0].event.errors);
 
         assert.calledWith(submitToCallDiagnosticsSpy, {
           event: {
@@ -1346,14 +1337,16 @@ describe('internal-plugin-metrics', () => {
       });
     });
 
-    it('should send request to call diagnostic batcher', () => {
-      const requestStub = sinon.stub();
-      //@ts-ignore
-      cd.callDiagnosticEventsBatcher = {request: requestStub};
-      //@ts-ignore
-      cd.submitToCallDiagnostics({event: 'test'});
-      assert.calledWith(requestStub, {eventPayload: {event: 'test'}, type: ['diagnostic-event']});
-    });
+    describe("#submitToCallDiagnostics", () => {
+      it('should send request to call diagnostic batcher', () => {
+        const requestStub = sinon.stub();
+        //@ts-ignore
+        cd.callDiagnosticEventsBatcher = {request: requestStub};
+        //@ts-ignore
+        cd.submitToCallDiagnostics({event: 'test'});
+        assert.calledWith(requestStub, {eventPayload: {event: 'test'}, type: ['diagnostic-event']});
+      });
+    })
 
     describe('#submitMQE', () => {
       it('submits the event correctly', () => {
@@ -2111,51 +2104,20 @@ describe('internal-plugin-metrics', () => {
       });
     });
 
-    describe('#submitToCallDiagnosticsPreLogin', async () => {
-      it('should call webex.request with expected options', async () => {
-        sinon.spy(Utils, 'prepareDiagnosticMetricItem');
-        await cd.submitToCallDiagnosticsPreLogin(
-          {
-            //@ts-ignore
-            event: {name: 'client.alert.displayed', canProceed: true},
-            //@ts-ignore
-            originTime: {triggered: 'now'},
-          },
-          'my-id'
-        );
-
-        assert.calledWith(Utils.prepareDiagnosticMetricItem, webex, {
-          eventPayload: {
-            event: {name: 'client.alert.displayed', canProceed: true},
-            originTime: {triggered: 'now', sent: now.toISOString()},
-            origin: {buildType: 'test', networkType: 'unknown'},
-          },
-          type: ['diagnostic-event'],
-        });
-
-        assert.calledWith(
-          webex.internal.newMetrics.postPreLoginMetric,
-          {
-            eventPayload: {
-              event: {
-                name: 'client.alert.displayed',
-                canProceed: true,
-              },
-              originTime: {
-                sent: now.toISOString(),
-                triggered: 'now',
-              },
-              origin: {
-                buildType: 'test',
-                networkType: 'unknown',
-              },
-            },
-            type: ['diagnostic-event'],
-          },
-          'my-id'
-        );
+    describe("#submitToCallDiagnosticsPreLogin", () => {
+      it('should send request to call diagnostic batcher and saves preLoginId', () => {
+        const requestStub = sinon.stub();
+        //@ts-ignore
+        const preLoginId = '123';
+        //@ts-ignore
+        cd.preLoginMetricsBatcher = {request: requestStub, savePreLoginId: sinon.stub()};
+        //@ts-ignore
+        cd.submitToCallDiagnosticsPreLogin({event: 'test'}, preLoginId);
+        //@ts-ignore
+        assert.calledWith(cd.preLoginMetricsBatcher.savePreLoginId, preLoginId);
+        assert.calledWith(requestStub, {eventPayload: {event: 'test'}, type: ['diagnostic-event']});
       });
-    });
+    })
 
     describe('#isServiceErrorExpected', () => {
       it('returns true for code mapped to "expected"', () => {
