@@ -26,7 +26,6 @@ describe('webex-core', () => {
               setTimeout(() => {
                 webexUser = user;
                 webex = new WebexCore({credentials: user.token});
-                webex.internal.newMetrics.submitInternalEvent = sinon.stub();
                 services = webex.internal.services;
                 catalog = services._getCatalog();
                 resolve();

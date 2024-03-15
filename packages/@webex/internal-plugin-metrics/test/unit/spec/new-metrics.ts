@@ -39,6 +39,29 @@ describe('internal-plugin-metrics', () => {
     });
   });
 
+  describe('webex.internal.newMetrics.callDiagnosticLatencies defined before ready', () => {
+    it('checks callDiagnosticLatencies is defined before ready emit', () => {
+
+      const webex = new MockWebex({
+        children: {
+          newMetrics: NewMetrics,
+        },
+        meetings: {
+          meetingCollection: {
+            get: sinon.stub(),
+          },
+        },
+        request: sinon.stub().resolves({}),
+        logger: {
+          log: sinon.stub(),
+          error: sinon.stub(),
+        }
+      });
+
+      assert.isDefined(webex.internal.newMetrics.callDiagnosticLatencies);
+    });
+  });
+
   describe('new-metrics', () => {
     let webex;
 
@@ -59,7 +82,6 @@ describe('internal-plugin-metrics', () => {
           error: sinon.stub(),
         }
       });
-
       webex.emit('ready');
 
       webex.internal.newMetrics.callDiagnosticLatencies.saveTimestamp = sinon.stub();

@@ -53,8 +53,6 @@ describe('Webex', () => {
         },
       });
 
-      webex.internal.newMetrics.submitInternalEvent = sinon.stub();
-
       webex.internal.on('all', (ev) =>
         console.info(
           'YYY',

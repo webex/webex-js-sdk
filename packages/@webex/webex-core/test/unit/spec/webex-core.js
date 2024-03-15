@@ -242,7 +242,6 @@ describe('Webex', () => {
     );
 
     const webex = new WebexCore();
-    webex.internal.newMetrics.submitInternalEvent = sinon.stub();
 
     webex.on('all', (ev) => console.info('XXX', ev, webex.ready));
 
