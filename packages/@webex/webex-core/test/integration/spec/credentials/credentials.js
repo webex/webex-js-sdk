@@ -33,6 +33,7 @@ describe('webex-core', () => {
             },
           },
         });
+        webex.internal.newMetrics.submitInternalEvent = sinon.stub();
 
         assert.equal(webex.config.credentials.authorizeUrl, authorizeUrl);
       });
