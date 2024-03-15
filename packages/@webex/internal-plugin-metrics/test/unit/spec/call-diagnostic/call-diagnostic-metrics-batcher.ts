@@ -147,6 +147,7 @@ describe('plugin-metrics', () => {
               meetingInfoReqResp: 10,
               registerWDMDeviceJMT: 10,
               showInterstitialTime: 10,
+              getU2CTime: 10,
             },
           });
           assert.lengthOf(

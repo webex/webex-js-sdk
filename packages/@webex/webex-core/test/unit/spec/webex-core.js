@@ -13,6 +13,7 @@ describe('Webex', () => {
 
   beforeEach(() => {
     webex = new WebexCore();
+
   });
 
   describe('#logger', () => {
@@ -216,6 +217,7 @@ describe('Webex', () => {
 
   it('emits the ready event when the storage layer has loaded and all plugins signal ready', () => {
     const webex = new WebexCore();
+    webex.internal.newMetrics.submitInternalEvent = sinon.stub();
 
     assert.isFalse(webex.ready);
 
@@ -240,6 +242,7 @@ describe('Webex', () => {
     );
 
     const webex = new WebexCore();
+    webex.internal.newMetrics.submitInternalEvent = sinon.stub();
 
     webex.on('all', (ev) => console.info('XXX', ev, webex.ready));
 
