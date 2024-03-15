@@ -17,7 +17,7 @@ require('@webex/plugin-people');
 require('@webex/plugin-rooms');
 require('@webex/plugin-meetings');
 
-const generateTestUsers = (options = {}) => {
+const generateTestUsers = async (options = {}) => {
   options.config = options.config || {};
   options.config.orgId = options.config.orgId || process.env.WEBEX_CONVERGED_ORG_ID;
 
@@ -30,7 +30,8 @@ const generateTestUsers = (options = {}) => {
       // Pause for 5 seconds for CI
       await new Promise((done) => setTimeout(done, 5000));
 
-      const userRegisterPromises = [];
+      const webexRegisterPromises = [];
+      const userWebexMeetings = [];
 
       userSet.forEach((user) => {
         // eslint-disable-next-line no-param-reassign
@@ -44,12 +45,19 @@ const generateTestUsers = (options = {}) => {
           },
         });
 
+        webexRegisterPromises.push(new Promise((resolve) => {
+          user.webex.on('ready', resolve);
+        }));
+
         user.webex.internal.support.submitLogs = sinon.stub().returns(Promise.resolve());
 
-        userRegisterPromises.push(user.webex.meetings.register());
+        userWebexMeetings.push(user.webex.meetings);
       });
 
-      return Promise.all(userRegisterPromises).then(() => userSet);
+      // wait for webex to be ready before registering meetings
+      return Promise.all(webexRegisterPromises).then(() => {
+        return Promise.all(userWebexMeetings.map(m => m.register())).then(() => userSet);
+      })
     })
     .catch((error) => {
       console.error('#generateTestUsers=>ERROR', error);

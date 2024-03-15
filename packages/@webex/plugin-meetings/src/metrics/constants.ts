@@ -3,6 +3,7 @@
 const BEHAVIORAL_METRICS = {
   MEETINGS_REGISTRATION_FAILED: 'js_sdk_meetings_registration_failed',
   MEETINGS_REGISTRATION_SUCCESS: 'js_sdk_meetings_registration_success',
+  MEETINGS_REGISTRATION_STEP: 'meetings_registration_step',
   MERCURY_CONNECTION_FAILURE: 'js_sdk_mercury_connection_failure',
   MERCURY_CONNECTION_RESTORED: 'js_sdk_mercury_connection_restored',
   JOIN_SUCCESS: 'js_sdk_join_success',
