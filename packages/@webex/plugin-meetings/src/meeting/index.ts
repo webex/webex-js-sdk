@@ -44,7 +44,7 @@ import {StatsAnalyzer, EVENTS as StatsAnalyzerEvents} from '../statsAnalyzer';
 import NetworkQualityMonitor from '../networkQualityMonitor';
 import LoggerProxy from '../common/logs/logger-proxy';
 import Trigger from '../common/events/trigger-proxy';
-import Roap from '../roap/index';
+import Roap, {type TurnDiscoveryResult, type TurnServerInfo} from '../roap/index';
 import Media, {type BundlePolicy} from '../media';
 import MediaProperties from '../media/properties';
 import MeetingStateMachine from './state';
@@ -4316,16 +4316,36 @@ export default class Meeting extends StatelessWebexPlugin {
         new ParameterError('joinWithMedia() can only be used with allowMediaInLobby set to true')
       );
     }
+    this.allowMediaInLobby = true;
 
     LoggerProxy.logger.info('Meeting:index#joinWithMedia called');
 
     let joined = false;
+
     try {
+      let turnServerInfo;
+      let turnDiscoverySkippedReason;
+
+      // @ts-ignore
+      joinOptions.reachability = await this.webex.meetings.reachability.getReachabilityResults();
+      const turnDiscoveryRequest = await this.roap.generateTurnDiscoveryRequestMessage(this, true);
+
+      turnDiscoverySkippedReason = turnDiscoveryRequest.skippedReason;
+      joinOptions.roapMessage = turnDiscoveryRequest.roapMessage;
+
       const joinResponse = await this.join(joinOptions);
 
       joined = true;
 
-      const mediaResponse = await this.addMedia(mediaOptions);
+      if (joinOptions.roapMessage) {
+        ({turnServerInfo, turnDiscoverySkippedReason} =
+          await this.roap.handleTurnDiscoveryHttpResponse(this, joinResponse));
+
+        this.turnDiscoverySkippedReason = turnDiscoverySkippedReason;
+        this.turnServerUsed = !!turnServerInfo;
+      }
+
+      const mediaResponse = await this.addMedia(mediaOptions, turnServerInfo);
 
       return {
         join: joinResponse,
@@ -4344,6 +4364,7 @@ export default class Meeting extends StatelessWebexPlugin {
           leaveError = e;
         }
       }
+
       Metrics.sendBehavioralMetric(
         BEHAVIORAL_METRICS.JOIN_WITH_MEDIA_FAILURE,
         {
@@ -6146,6 +6167,7 @@ export default class Meeting extends StatelessWebexPlugin {
 
     // @ts-ignore - config coming from registerPlugin
     if (!this.turnServerUsed) {
+      // todo: at some point we can remove this block as now this.turnServerUsed should always be true
       LoggerProxy.logger.info(
         `${LOG_HEADER} error waiting for media to connect on UDP, TCP, retrying using TURN-TLS, `,
         error
@@ -6163,49 +6185,65 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
+   * Performs TURN discovery as a separate call to the Locus /media API
+   *
+   * @param {boolean} isRetry
+   * @param {boolean} isForced
+   * @returns {Promise}
+   */
+  private async doTurnDiscovery(isRetry: boolean, isForced: boolean): Promise<TurnDiscoveryResult> {
+    // @ts-ignore
+    const cdl = this.webex.internal.newMetrics.callDiagnosticLatencies;
+
+    // @ts-ignore
+    this.webex.internal.newMetrics.submitInternalEvent({
+      name: 'internal.client.add-media.turn-discovery.start',
+    });
+
+    const turnDiscoveryResult = await this.roap.doTurnDiscovery(this, isRetry, isForced);
+
+    this.turnDiscoverySkippedReason = turnDiscoveryResult?.turnDiscoverySkippedReason;
+    this.turnServerUsed = !this.turnDiscoverySkippedReason;
+
+    // @ts-ignore
+    this.webex.internal.newMetrics.submitInternalEvent({
+      name: 'internal.client.add-media.turn-discovery.end',
+    });
+
+    if (this.turnServerUsed && turnDiscoveryResult.turnServerInfo) {
+      Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.TURN_DISCOVERY_LATENCY, {
+        correlation_id: this.correlationId,
+        latency: cdl.getTurnDiscoveryTime(),
+        turnServerUsed: this.turnServerUsed,
+        retriedWithTurnServer: this.retriedWithTurnServer,
+      });
+    }
+
+    return turnDiscoveryResult;
+  }
+
+  /**
    * Does TURN discovery, SDP offer/answer exhange, establishes ICE connection and DTLS handshake.
    *
    * @private
    * @param {RemoteMediaManagerConfiguration} [remoteMediaManagerConfig]
    * @param {BundlePolicy} [bundlePolicy]
    * @param {boolean} [isForced] - let isForced be true to do turn discovery regardless of reachability results
+   * @param {TurnServerInfo} [turnServerInfo]
    * @returns {Promise<void>}
    */
   private async establishMediaConnection(
     remoteMediaManagerConfig?: RemoteMediaManagerConfiguration,
     bundlePolicy?: BundlePolicy,
-    isForced?: boolean
+    isForced?: boolean,
+    turnServerInfo?: TurnServerInfo
   ): Promise<void> {
     const LOG_HEADER = 'Meeting:index#addMedia():establishMediaConnection -->';
-    // @ts-ignore
-    const cdl = this.webex.internal.newMetrics.callDiagnosticLatencies;
     const isRetry = this.retriedWithTurnServer;
 
     try {
-      // @ts-ignore
-      this.webex.internal.newMetrics.submitInternalEvent({
-        name: 'internal.client.add-media.turn-discovery.start',
-      });
-
-      const turnDiscoveryObject = await this.roap.doTurnDiscovery(this, isRetry, isForced);
-
-      this.turnDiscoverySkippedReason = turnDiscoveryObject?.turnDiscoverySkippedReason;
-      this.turnServerUsed = !this.turnDiscoverySkippedReason;
-
-      // @ts-ignore
-      this.webex.internal.newMetrics.submitInternalEvent({
-        name: 'internal.client.add-media.turn-discovery.end',
-      });
-
-      const {turnServerInfo} = turnDiscoveryObject;
-
-      if (this.turnServerUsed && turnServerInfo) {
-        Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.TURN_DISCOVERY_LATENCY, {
-          correlation_id: this.correlationId,
-          latency: cdl.getTurnDiscoveryTime(),
-          turnServerUsed: this.turnServerUsed,
-          retriedWithTurnServer: this.retriedWithTurnServer,
-        });
+      if (!turnServerInfo) {
+        ({turnServerInfo} = await this.doTurnDiscovery(isRetry, isForced));
       }
 
       const mc = await this.createMediaConnection(turnServerInfo, bundlePolicy);
@@ -6317,15 +6355,21 @@ export default class Meeting extends StatelessWebexPlugin {
    * Creates a media connection to the server. Media connection is required for sending or receiving any audio/video.
    *
    * @param {AddMediaOptions} options
+   * @param {TurnServerInfo} turnServerInfo - TURN server information (used only internally by the SDK)
    * @returns {Promise<void>}
    * @public
    * @memberof Meeting
    */
-  async addMedia(options: AddMediaOptions = {}): Promise<void> {
+  async addMedia(
+    options: AddMediaOptions = {},
+    turnServerInfo: TurnServerInfo = undefined
+  ): Promise<void> {
     this.retriedWithTurnServer = false;
     this.hasMediaConnectionConnectedAtLeastOnce = false;
     const LOG_HEADER = 'Meeting:index#addMedia -->';
-    LoggerProxy.logger.info(`${LOG_HEADER} called with: ${JSON.stringify(options)}`);
+    LoggerProxy.logger.info(
+      `${LOG_HEADER} called with: ${JSON.stringify(options)}, ${JSON.stringify(turnServerInfo)}`
+    );
 
     if (options.allowMediaInLobby !== true && this.meetingState !== FULL_STATE.ACTIVE) {
       throw new MeetingNotActiveError();
@@ -6343,14 +6387,13 @@ export default class Meeting extends StatelessWebexPlugin {
       shareVideoEnabled = true,
       remoteMediaManagerConfig,
       bundlePolicy,
-      allowMediaInLobby,
     } = options;
 
     this.allowMediaInLobby = options?.allowMediaInLobby;
 
     // If the user is unjoined or guest waiting in lobby dont allow the user to addMedia
     // @ts-ignore - isUserUnadmitted coming from SelfUtil
-    if (this.isUserUnadmitted && !this.wirelessShare && !allowMediaInLobby) {
+    if (this.isUserUnadmitted && !this.wirelessShare && !this.allowMediaInLobby) {
       throw new UserInLobbyError();
     }
 
@@ -6419,7 +6462,12 @@ export default class Meeting extends StatelessWebexPlugin {
 
       this.createStatsAnalyzer();
 
-      await this.establishMediaConnection(remoteMediaManagerConfig, bundlePolicy, false);
+      await this.establishMediaConnection(
+        remoteMediaManagerConfig,
+        bundlePolicy,
+        false,
+        turnServerInfo
+      );
 
       await Meeting.handleDeviceLogging();
 
