@@ -1,15 +1,16 @@
 import sinon from 'sinon';
 import {assert} from '@webex/test-helper-chai';
 import {WebexHttpError} from '@webex/webex-core';
-
-import CallDiagnosticMetrics from '../../../../src/call-diagnostic/call-diagnostic-metrics';
-import CallDiagnosticLatencies from '../../../../src/call-diagnostic/call-diagnostic-metrics-latencies';
-import * as Utils from '../../../../src/call-diagnostic/call-diagnostic-metrics.util';
 import {BrowserDetection} from '@webex/common';
-import {getOSNameInternal} from '@webex/internal-plugin-metrics';
+import {
+  CallDiagnosticLatencies,
+  CallDiagnosticMetrics,
+  getOSNameInternal,
+  CallDiagnosticUtils,
+  config,
+} from '@webex/internal-plugin-metrics';
 import uuid from 'uuid';
 import {omit} from 'lodash';
-import CONFIG from '../../../../src/config';
 
 //@ts-ignore
 global.window = {location: {hostname: 'whatever'}};
@@ -67,7 +68,7 @@ describe('internal-plugin-metrics', () => {
           },
           metrics: {
             submitClientMetrics: sinon.stub(),
-            config: {...CONFIG.metrics},
+            config: {...config.metrics},
           },
           newMetrics: {},
           device: {
@@ -126,7 +127,7 @@ describe('internal-plugin-metrics', () => {
 
     describe('#getOrigin', () => {
       it('should build origin correctly', () => {
-        sinon.stub(Utils, 'anonymizeIPAddress').returns('1.1.1.1');
+        sinon.stub(CallDiagnosticUtils, 'anonymizeIPAddress').returns('1.1.1.1');
         //@ts-ignore
         const res = cd.getOrigin(
           {subClientType: 'WEB_APP', clientType: 'TEAMS_CLIENT'},
@@ -153,7 +154,7 @@ describe('internal-plugin-metrics', () => {
       });
 
       it('should build origin correctly with newEnvironment and createLaunchMethod', () => {
-        sinon.stub(Utils, 'anonymizeIPAddress').returns('1.1.1.1');
+        sinon.stub(CallDiagnosticUtils, 'anonymizeIPAddress').returns('1.1.1.1');
 
         //@ts-ignore
         const res = cd.getOrigin(
@@ -188,7 +189,7 @@ describe('internal-plugin-metrics', () => {
       });
 
       it('should build origin correctly and environment can be passed in options', () => {
-        sinon.stub(Utils, 'anonymizeIPAddress').returns('1.1.1.1');
+        sinon.stub(CallDiagnosticUtils, 'anonymizeIPAddress').returns('1.1.1.1');
 
         //@ts-ignore
         const res = cd.getOrigin(
@@ -222,7 +223,7 @@ describe('internal-plugin-metrics', () => {
       });
 
       it('should build origin correctly with no meeting', () => {
-        sinon.stub(Utils, 'anonymizeIPAddress').returns('1.1.1.1');
+        sinon.stub(CallDiagnosticUtils, 'anonymizeIPAddress').returns('1.1.1.1');
 
         //@ts-ignore
         const res = cd.getOrigin();
@@ -496,7 +497,7 @@ describe('internal-plugin-metrics', () => {
     it('should prepare diagnostic event successfully', () => {
       const options = {meetingId: fakeMeeting.id};
       const getOriginStub = sinon.stub(cd, 'getOrigin').returns({origin: 'fake-origin'});
-      const clearEmptyKeysRecursivelyStub = sinon.stub(Utils, 'clearEmptyKeysRecursively');
+      const clearEmptyKeysRecursivelyStub = sinon.stub(CallDiagnosticUtils, 'clearEmptyKeysRecursively');
 
       const res = cd.prepareDiagnosticEvent(
         {
@@ -2076,7 +2077,7 @@ describe('internal-plugin-metrics', () => {
               method: 'POST',
               resource: 'clientmetrics-prelogin',
               service: 'metrics',
-              waitForServiceTimeout: CONFIG.metrics.waitForServiceTimeout,
+              waitForServiceTimeout: config.metrics.waitForServiceTimeout,
               headers: {
                 authorization: false,
                 'x-prelogin-userid': preLoginId,
@@ -2089,7 +2090,7 @@ describe('internal-plugin-metrics', () => {
               resource: 'clientmetrics',
               service: 'metrics',
               headers: {},
-              waitForServiceTimeout: CONFIG.metrics.waitForServiceTimeout,
+              waitForServiceTimeout: config.metrics.waitForServiceTimeout,
             });
           }
 
