@@ -2989,7 +2989,7 @@ export default class Meeting extends StatelessWebexPlugin {
     });
 
     this.locusInfo.on(LOCUSINFO.EVENTS.SELF_MEETING_INTERPRETATION_CHANGED, (payload) => {
-      this.simultaneousInterpretation.updateSelfInterpretation(payload);
+      const targetChanged = this.simultaneousInterpretation.updateSelfInterpretation(payload);
       Trigger.trigger(
         this,
         {
@@ -2998,6 +2998,9 @@ export default class Meeting extends StatelessWebexPlugin {
         },
         EVENT_TRIGGERS.MEETING_INTERPRETATION_UPDATE
       );
+      if (targetChanged && this.mediaProperties.audioStream) {
+        this.setSendNamedMediaGroup(MediaType.AudioMain);
+      }
     });
 
     this.locusInfo.on(LOCUSINFO.EVENTS.SELF_ROLES_CHANGED, (payload) => {
@@ -5843,6 +5846,7 @@ export default class Meeting extends StatelessWebexPlugin {
 
     // publish the streams
     if (this.mediaProperties.audioStream) {
+      this.setSendNamedMediaGroup(MediaType.AudioMain);
       await this.publishStream(MediaType.AudioMain, this.mediaProperties.audioStream);
     }
     if (this.mediaProperties.videoStream) {
@@ -6207,6 +6211,11 @@ export default class Meeting extends StatelessWebexPlugin {
           this.remoteMediaManager,
           RemoteMediaManagerEvent.AudioCreated,
           EVENT_TRIGGERS.REMOTE_MEDIA_AUDIO_CREATED
+        );
+        this.forwardEvent(
+          this.remoteMediaManager,
+          RemoteMediaManagerEvent.InterpretationAudioCreated,
+          EVENT_TRIGGERS.REMOTE_MEDIA_INTERPRETATION_AUDIO_CREATED
         );
         this.forwardEvent(
           this.remoteMediaManager,
@@ -7915,6 +7924,33 @@ export default class Meeting extends StatelessWebexPlugin {
 
         throw error;
       });
+  }
+
+  /**
+   * set sending named media group which the audio should send to
+   * @param {MediaType} mediaType of the stream
+   * @param {number} languageCode of the stream
+   * @returns {void}
+   */
+  public setSendNamedMediaGroup(mediaType: MediaType, languageCode = 0): void {
+    if (mediaType !== MediaType.AudioMain) {
+      throw new Error(`cannot set send named media group which media type is ${mediaType}`);
+    }
+
+    const value = languageCode || this.simultaneousInterpretation.getTargetLanguageCode();
+    let groups = [];
+
+    if (value) {
+      groups = [
+        {
+          type: 1,
+          value,
+        },
+      ];
+    }
+    if (this.isMultistream && this.mediaProperties.webrtcMediaConnection) {
+      this.sendSlotManager.setNamedMediaGroups(mediaType, groups);
+    }
   }
 
   /**

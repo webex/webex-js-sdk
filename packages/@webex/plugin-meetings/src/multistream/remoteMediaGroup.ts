@@ -2,6 +2,7 @@
 /* eslint-disable require-jsdoc */
 /* eslint-disable import/prefer-default-export */
 import {forEach} from 'lodash';
+import {NamedMediaGroup} from '@webex/json-multistream';
 import LoggerProxy from '../common/logs/logger-proxy';
 
 import {getMaxFs, RemoteMedia, RemoteVideoResolution} from './remoteMedia';
@@ -11,6 +12,7 @@ import {CSI, ReceiveSlot} from './receiveSlot';
 type Options = {
   resolution?: RemoteVideoResolution; // applies only to groups of type MediaType.VideoMain and MediaType.VideoSlides
   preferLiveVideo?: boolean; // applies only to groups of type MediaType.VideoMain and MediaType.VideoSlides
+  namedMediaGroup?: NamedMediaGroup; // applies only to named media groups for audio
 };
 
 export class RemoteMediaGroup {
@@ -210,28 +212,47 @@ export class RemoteMediaGroup {
     }
   }
 
-  private sendActiveSpeakerMediaRequest(commit: boolean) {
+  public sendActiveSpeakerMediaRequest(commit: boolean) {
     this.cancelActiveSpeakerMediaRequest(false);
 
-    this.mediaRequestId = this.mediaRequestManager.addRequest(
-      {
-        policyInfo: {
-          policy: 'active-speaker',
-          priority: this.priority,
-          crossPriorityDuplication: false,
-          crossPolicyDuplication: false,
-          preferLiveVideo: !!this.options?.preferLiveVideo,
+    if (this.options.namedMediaGroup?.value) {
+      const remoteMedia = this.unpinnedRemoteMedia[0];
+
+      this.mediaRequestId = this.mediaRequestManager.addRequest(
+        {
+          policyInfo: {
+            policy: 'active-speaker',
+            priority: this.priority,
+            crossPriorityDuplication: false,
+            crossPolicyDuplication: false,
+            preferLiveVideo: !!this.options?.preferLiveVideo,
+            namedMediaGroups: [this.options?.namedMediaGroup],
+          },
+          receiveSlots: [remoteMedia.getUnderlyingReceiveSlot()] as ReceiveSlot[],
         },
-        receiveSlots: this.unpinnedRemoteMedia.map((remoteMedia) =>
-          remoteMedia.getUnderlyingReceiveSlot()
-        ) as ReceiveSlot[],
-        codecInfo: this.options.resolution && {
-          codec: 'h264',
-          maxFs: getMaxFs(this.options.resolution),
+        commit
+      );
+    } else {
+      this.mediaRequestId = this.mediaRequestManager.addRequest(
+        {
+          policyInfo: {
+            policy: 'active-speaker',
+            priority: this.priority,
+            crossPriorityDuplication: false,
+            crossPolicyDuplication: false,
+            preferLiveVideo: !!this.options?.preferLiveVideo,
+          },
+          receiveSlots: this.unpinnedRemoteMedia.map((remoteMedia) =>
+            remoteMedia.getUnderlyingReceiveSlot()
+          ) as ReceiveSlot[],
+          codecInfo: this.options.resolution && {
+            codec: 'h264',
+            maxFs: getMaxFs(this.options.resolution),
+          },
         },
-      },
-      commit
-    );
+        commit
+      );
+    }
   }
 
   private cancelActiveSpeakerMediaRequest(commit: boolean) {
