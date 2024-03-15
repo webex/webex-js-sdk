@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.374](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.373...v3.0.0-beta.374) (2024-03-15)
+
+
+### Features
+
+* **metrics:** added debug metrics for meetings registration ([#3419](https://github.com/webex/webex-js-sdk/issues/3419)) ([579024d](https://github.com/webex/webex-js-sdk/commit/579024dff371d340ea5074c5fd406948963229c6))
+
 ## [3.0.0-beta.373](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.372...v3.0.0-beta.373) (2024-03-13)
 
 
