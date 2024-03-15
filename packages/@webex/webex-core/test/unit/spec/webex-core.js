@@ -217,7 +217,6 @@ describe('Webex', () => {
 
   it('emits the ready event when the storage layer has loaded and all plugins signal ready', () => {
     const webex = new WebexCore();
-    webex.internal.newMetrics.submitInternalEvent = sinon.stub();
 
     assert.isFalse(webex.ready);
 
