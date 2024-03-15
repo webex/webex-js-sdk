@@ -46,6 +46,7 @@ describe('webex-core', () => {
         webex = new WebexCore({
           credentials: user.token,
         });
+        webex.internal.newMetrics.submitInternalEvent = sinon.stub();
 
         credentials = webex.credentials;
       });

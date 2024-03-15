@@ -44,6 +44,7 @@ describe('webex-core', () => {
 
     beforeEach('create webex instance', () => {
       webex = new WebexCore({credentials: {supertoken: webexUser.token}});
+      webex.internal.newMetrics.submitInternalEvent = sinon.stub();
       webexEU = new WebexCore({credentials: {supertoken: webexUserEU.token}});
       services = webex.internal.services;
       servicesEU = webexEU.internal.services;
