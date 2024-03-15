@@ -1,6 +1,3 @@
-/* eslint-disable class-methods-use-this */
-/* eslint-disable valid-jsdoc */
-
 import {uniqueId} from 'lodash';
 import Batcher from './batcher';
 import {prepareDiagnosticMetricItem} from './call-diagnostic/call-diagnostic-metrics.util';
@@ -14,16 +11,17 @@ const PreLoginMetricsBatcher = Batcher.extend({
 
   /**
    * Save the pre-login ID.
-   * @param preLoginId The pre-login ID to be saved.
+   * @param {string} preLoginId The pre-login ID to be saved.
+   * @returns {void}
    */
-  savePreLoginId(preLoginId: string) {
+  savePreLoginId(preLoginId) {
     this.preLoginId = preLoginId;
   },
 
   /**
    * Prepare item
-   * @param item
-   * @returns
+   * @param {any} item
+   * @returns {Promise<any>}
    */
   prepareItem(item) {
     return Promise.resolve(prepareDiagnosticMetricItem(this.webex, item));
@@ -31,8 +29,8 @@ const PreLoginMetricsBatcher = Batcher.extend({
 
   /**
    * Prepare request, add time sensitive date etc.
-   * @param queue
-   * @returns
+   * @param {any[]} queue
+   * @returns {Promise<any[]>}
    */
   prepareRequest(queue) {
     // Add sent timestamp
@@ -46,8 +44,8 @@ const PreLoginMetricsBatcher = Batcher.extend({
 
   /**
    *
-   * @param payload
-   * @returns
+   * @param {any} payload
+   * @returns {Promise<any>}
    */
   submitHttpRequest(payload: any) {
     const batchId = uniqueId('prelogin-ca-batch-');
