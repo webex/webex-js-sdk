@@ -4303,7 +4303,7 @@ export default class Meeting extends StatelessWebexPlugin {
    *   }
    * })
    */
-  public joinWithMedia(
+  public async joinWithMedia(
     options: {
       joinOptions?: any;
       mediaOptions?: AddMediaOptions;
@@ -4319,31 +4319,47 @@ export default class Meeting extends StatelessWebexPlugin {
 
     LoggerProxy.logger.info('Meeting:index#joinWithMedia called');
 
-    return this.join(joinOptions)
-      .then((joinResponse) =>
-        this.addMedia(mediaOptions).then((mediaResponse) => ({
-          join: joinResponse,
-          media: mediaResponse,
-        }))
-      )
-      .catch((error) => {
-        LoggerProxy.logger.error('Meeting:index#joinWithMedia --> ', error);
+    let joined = false;
+    try {
+      const joinResponse = await this.join(joinOptions);
 
-        Metrics.sendBehavioralMetric(
-          BEHAVIORAL_METRICS.JOIN_WITH_MEDIA_FAILURE,
-          {
-            correlation_id: this.correlationId,
-            locus_id: this.locusUrl.split('/').pop(),
-            reason: error.message,
-            stack: error.stack,
-          },
-          {
-            type: error.name,
-          }
-        );
+      joined = true;
 
-        return Promise.reject(error);
-      });
+      const mediaResponse = await this.addMedia(mediaOptions);
+
+      return {
+        join: joinResponse,
+        media: mediaResponse,
+      };
+    } catch (error) {
+      LoggerProxy.logger.error('Meeting:index#joinWithMedia --> ', error);
+
+      let leaveError;
+
+      if (joined) {
+        try {
+          await this.leave({resourceId: joinOptions?.resourceId, reason: 'joinWithMedia failure'});
+        } catch (e) {
+          LoggerProxy.logger.error('Meeting:index#joinWithMedia --> leave error', e);
+          leaveError = e;
+        }
+      }
+      Metrics.sendBehavioralMetric(
+        BEHAVIORAL_METRICS.JOIN_WITH_MEDIA_FAILURE,
+        {
+          correlation_id: this.correlationId,
+          locus_id: this.locusUrl.split('/').pop(),
+          reason: error.message,
+          stack: error.stack,
+          leaveErrorReason: leaveError?.message,
+        },
+        {
+          type: error.name,
+        }
+      );
+
+      throw error;
+    }
   }
 
   /**
