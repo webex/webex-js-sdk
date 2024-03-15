@@ -1000,11 +1000,11 @@ export class StatsAnalyzer extends EventsScope {
       if (currentPacketsLost < 0) {
         currentPacketsLost = 0;
       }
-      const currentPacketsReceived =
+      const packedReceivedDiff =
         result.packetsReceived - this.statsResults[mediaType][sendrecvType].totalPacketsReceived;
       this.statsResults[mediaType][sendrecvType].totalPacketsReceived = result.packetsReceived;
 
-      if (currentPacketsReceived === 0) {
+      if (packedReceivedDiff === 0) {
         if (receiveSlot && sourceState === 'live') {
           LoggerProxy.logger.info(
             `StatsAnalyzer:index#processInboundRTPResult --> No packets received for mediaType: ${mediaType}, receive slot ${idAndCsi}. Total packets received on slot: `,
@@ -1014,10 +1014,10 @@ export class StatsAnalyzer extends EventsScope {
       }
 
       if (mediaType.startsWith('video') || mediaType.startsWith('share')) {
-        const currentVideoFramesReceived =
+        const videoFramesReceivedDiff =
           result.framesReceived - this.statsResults[mediaType][sendrecvType].framesReceived;
 
-        if (currentVideoFramesReceived === 0) {
+        if (videoFramesReceivedDiff === 0) {
           if (receiveSlot && sourceState === 'live') {
             LoggerProxy.logger.info(
               `StatsAnalyzer:index#processInboundRTPResult --> No frames received for mediaType: ${mediaType},  receive slot ${idAndCsi}. Total frames received on slot: `,
@@ -1026,10 +1026,10 @@ export class StatsAnalyzer extends EventsScope {
           }
         }
 
-        const currentVideoFramesDecoded =
+        const videoFramesDecodedDiff =
           result.framesDecoded - this.statsResults[mediaType][sendrecvType].framesDecoded;
 
-        if (currentVideoFramesDecoded === 0) {
+        if (videoFramesDecodedDiff === 0) {
           if (receiveSlot && sourceState === 'live') {
             LoggerProxy.logger.info(
               `StatsAnalyzer:index#processInboundRTPResult --> No frames decoded for mediaType: ${mediaType},  receive slot ${idAndCsi}. Total frames decoded on slot: `,
@@ -1038,13 +1038,13 @@ export class StatsAnalyzer extends EventsScope {
           }
         }
 
-        const currentVideoFramesDropped =
+        const videoFramesDroppedDiff =
           result.framesDropped - this.statsResults[mediaType][sendrecvType].framesDropped;
 
-        if (currentVideoFramesDropped > 10) {
+        if (videoFramesDroppedDiff > 10) {
           if (receiveSlot && sourceState === 'live') {
             LoggerProxy.logger.info(
-              `StatsAnalyzer:index#processInboundRTPResult --> No frames dropped for mediaType: ${mediaType},  receive slot ${idAndCsi}. Total frames dropped on slot: `,
+              `StatsAnalyzer:index#processInboundRTPResult --> Frames dropped for mediaType: ${mediaType},  receive slot ${idAndCsi}. Total frames dropped on slot: `,
               result.framesDropped
             );
           }
@@ -1053,9 +1053,7 @@ export class StatsAnalyzer extends EventsScope {
 
       //  Check the over all packet Lost ratio
       this.statsResults[mediaType][sendrecvType].currentPacketLossRatio =
-        currentPacketsLost > 0
-          ? currentPacketsLost / (currentPacketsReceived + currentPacketsLost)
-          : 0;
+        currentPacketsLost > 0 ? currentPacketsLost / (packedReceivedDiff + currentPacketsLost) : 0;
       if (this.statsResults[mediaType][sendrecvType].currentPacketLossRatio > 3) {
         LoggerProxy.logger.info(
           `StatsAnalyzer:index#processInboundRTPResult --> Packets getting lost from the receiver with slot ${idAndCsi}`,

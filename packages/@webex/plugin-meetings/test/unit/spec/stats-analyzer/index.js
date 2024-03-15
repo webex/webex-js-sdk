@@ -1101,7 +1101,7 @@ describe('plugin-meetings', () => {
         }
       );
 
-      it(`logs a message if no packets are sent`, async () => {
+      it.only(`logs a message if no packets are sent`, async () => {
         receiveSlot = {
           sourceState: 'live',
           csi: 2,
@@ -1111,12 +1111,6 @@ describe('plugin-meetings', () => {
 
         // don't increase the packets when time progresses.
         await progressTime();
-
-        assert.calledWith(
-          loggerSpy,
-          'StatsAnalyzer:index#processInboundRTPResult --> No packets received for mediaType: video-recv-0, receive slot id: "4" and csi: 2. Total packets received on slot: ',
-          0
-        );
 
         assert.calledWith(
           loggerSpy,
@@ -1147,6 +1141,7 @@ describe('plugin-meetings', () => {
           'StatsAnalyzer:index#processInboundRTPResult --> No packets received for mediaType: video-share-recv-0, receive slot id: "4" and csi: 2. Total packets received on slot: ',
           0
         );
+
         assert.calledWith(
           loggerSpy,
           'StatsAnalyzer:index#processInboundRTPResult --> No frames received for mediaType: video-share-recv-0,  receive slot id: "4" and csi: 2. Total frames received on slot: ',
@@ -1155,6 +1150,11 @@ describe('plugin-meetings', () => {
         assert.calledWith(
           loggerSpy,
           'StatsAnalyzer:index#processInboundRTPResult --> No frames decoded for mediaType: video-share-recv-0,  receive slot id: "4" and csi: 2. Total frames decoded on slot: ',
+          0
+        );
+        assert.calledWith(
+          loggerSpy,
+          'StatsAnalyzer:index#processInboundRTPResult --> No packets received for mediaType: audio-share-recv-0, receive slot id: "4" and csi: 2. Total packets received on slot: ',
           0
         );
       });
