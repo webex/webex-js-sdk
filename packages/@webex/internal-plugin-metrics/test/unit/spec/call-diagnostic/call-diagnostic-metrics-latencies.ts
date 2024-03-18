@@ -43,9 +43,9 @@ describe('internal-plugin-metrics', () => {
 
     it('should save latency correctly', () => {
       assert.deepEqual(cdl.precomputedLatencies.size, 0);
-      cdl.saveLatency('client.alert.displayed', 10);
+      cdl.saveLatency('internal.client.pageJMT', 10);
       assert.deepEqual(cdl.precomputedLatencies.size, 1);
-      assert.deepEqual(cdl.precomputedLatencies.get('client.alert.displayed'), 10);
+      assert.deepEqual(cdl.precomputedLatencies.get('internal.client.pageJMT'), 10);
     });
 
     it('should save only first timestamp correctly', () => {
