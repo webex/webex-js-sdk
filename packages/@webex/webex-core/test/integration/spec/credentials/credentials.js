@@ -114,7 +114,7 @@ describe('webex-core', () => {
         const webex = new WebexCore({
           credentials: user.token,
         });
-        
+
         return assert.isRejected(webex.credentials.refresh());
       });
 
