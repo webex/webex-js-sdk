@@ -65,6 +65,7 @@ describe('webex-core', () => {
         webex = new WebexCore({
           credentials: user.token,
         });
+
         credentials = webex.credentials;
       });
 
@@ -84,6 +85,7 @@ describe('webex-core', () => {
         webex = new WebexCore({
           credentials: user.token,
         });
+
         credentials = webex.credentials;
       });
 
@@ -100,6 +102,7 @@ describe('webex-core', () => {
         const webex = new WebexCore({
           credentials: user.token,
         });
+
         return webex.credentials.refresh().then(() => {
           assert.isDefined(user.token.access_token);
           assert.isDefined(webex.credentials.supertoken.access_token);
@@ -111,6 +114,7 @@ describe('webex-core', () => {
         const webex = new WebexCore({
           credentials: user.token,
         });
+        
         return assert.isRejected(webex.credentials.refresh());
       });
 

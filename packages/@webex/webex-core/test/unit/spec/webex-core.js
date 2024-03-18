@@ -13,7 +13,6 @@ describe('Webex', () => {
 
   beforeEach(() => {
     webex = new WebexCore();
-
   });
 
   describe('#logger', () => {
