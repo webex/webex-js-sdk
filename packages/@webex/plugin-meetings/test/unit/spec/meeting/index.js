@@ -2,7 +2,6 @@
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
 import 'jsdom-global/register';
-import jwt from 'jsonwebtoken';
 import {cloneDeep, forEach, isEqual, isUndefined} from 'lodash';
 import sinon from 'sinon';
 import * as internalMediaModule from '@webex/internal-media-core';
@@ -667,8 +666,8 @@ describe('plugin-meetings', () => {
           webex.internal.voicea.listenToEvents = sinon.stub();
           webex.internal.voicea.toggleTranscribing = sinon.stub();
         });
-        
-        it('should subscribe to events for the first time', async () => {
+
+        it('should subscribe to events for the first time and avoid subscribing for future transcription starts', async () => {
           meeting.joinedWith = {
             state: 'JOINED'
           };
@@ -677,24 +676,6 @@ describe('plugin-meetings', () => {
 
           await meeting.startTranscription();
 
-          assert.equal(webex.internal.voicea.on.callCount, 5);
-          assert.equal(meeting.areVoiceaEventsSetup, true);
-          assert.equal(webex.internal.voicea.listenToEvents.callCount, 1);
-          assert.calledWith(
-            webex.internal.voicea.toggleTranscribing,
-            true,
-          );
-        });
-
-        it('should not subscribe to events after the first time', async () => {
-          meeting.joinedWith = {
-            state: 'JOINED'
-          };
-          meeting.areVoiceaEventsSetup = false;
-          meeting.roles = ['MODERATOR'];
-
-          await meeting.startTranscription();
-          
           assert.equal(webex.internal.voicea.on.callCount, 5);
           assert.equal(meeting.areVoiceaEventsSetup, true);
           assert.equal(webex.internal.voicea.listenToEvents.callCount, 1);
@@ -724,7 +705,7 @@ describe('plugin-meetings', () => {
           meeting.roles = ['COHOST'];
 
           await meeting.startTranscription();
-          
+
           assert.equal(webex.internal.voicea.on.callCount, 5);
           assert.equal(meeting.areVoiceaEventsSetup, true);
           assert.equal(webex.internal.voicea.listenToEvents.callCount, 1);
@@ -751,7 +732,7 @@ describe('plugin-meetings', () => {
           webex.internal.voicea.listenToEvents = sinon.stub();
           webex.internal.voicea.toggleTranscribing = sinon.stub();
         });
-        
+
         it('should stop listening to voicea events and also trigger a stop event', () => {
           meeting.stopTranscription();
           assert.equal(webex.internal.voicea.off.callCount, 5);
