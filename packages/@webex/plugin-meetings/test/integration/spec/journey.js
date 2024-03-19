@@ -10,7 +10,7 @@ import {createCameraStream, createDisplayStream, createMicrophoneStream, LocalTr
 
 import testUtils from '../../utils/testUtils';
 import integrationTestUtils from '../../utils/integrationTestUtils';
-import {EVENT_TRIGGERS} from '../../../src/constants';
+import {EVENT_TRIGGERS} from '../../../dist/constants';
 
 require('dotenv').config();
 

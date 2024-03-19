@@ -185,6 +185,13 @@ export default class MeetingRequest extends StatelessWebexPlugin {
       deviceCapabilities.push(ANNOTATION.ANNOTATION_ON_SHARE_SUPPORTED);
     }
 
+    // append installationId to device config if it exists
+    // @ts-ignore
+    if (this.webex.internal.device.config.installationId) {
+      // @ts-ignore
+      body.device.installationId = this.webex.internal.device.config.installationId;
+    }
+
     if (locale) {
       body.locale = locale;
     }

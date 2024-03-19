@@ -8,9 +8,9 @@ import {
   DTLS_HANDSHAKE_FAILED_CLIENT_CODE,
   ICE_FAILED_WITHOUT_TURN_TLS_CLIENT_CODE,
   ICE_FAILED_WITH_TURN_TLS_CLIENT_CODE,
-  ICE_FAILURE_CLIENT_CODE,
   MISSING_ROAP_ANSWER_CLIENT_CODE,
 } from '../../../../src/call-diagnostic/config';
+import Logger from '@webex/plugin-logger';
 
 const {
   clearEmptyKeysRecursively,
@@ -23,7 +23,8 @@ const {
   setMetricTimings,
   isNetworkError,
   isUnauthorizedError,
-  generateClientErrorCodeForIceFailure
+  generateClientErrorCodeForIceFailure,
+  isSdpOfferCreationError,
 } = CallDiagnosticUtils;
 
 describe('internal-plugin-metrics', () => {
@@ -171,6 +172,38 @@ describe('internal-plugin-metrics', () => {
     });
   });
 
+  describe('isSdpOfferCreationError', () => {
+    type TestWcmeError = {
+      type: string;
+      message: string;
+    };
+
+    type TestSdpOfferCreationError = {
+      code: number;
+      message: string;
+      name: string;
+      cause: TestWcmeError;
+    };
+
+    const error: TestSdpOfferCreationError = {
+      code: 30005,
+      name: 'SdpOfferCreationError',
+      message: 'No codecs present in m-line with MID 0 after filtering.',
+      cause: {
+        type: 'SDP_MUNGE_MISSING_CODECS',
+        message: 'No codecs present in m-line with MID 0 after filtering.',
+      },
+    };
+    [
+      ['isSdpOfferCreationError', error, true],
+      ['generic error', new Error('this is an error'), false],
+    ].forEach(([errorType, rawError, expected]) => {
+      it(`for ${errorType} rawError returns the correct result`, () => {
+        assert.strictEqual(isSdpOfferCreationError(rawError), expected);
+      });
+    });
+  });
+
   describe('isBrowserMediaErrorName', () => {
     [
       ['PermissionDeniedError', true],
@@ -192,7 +225,6 @@ describe('internal-plugin-metrics', () => {
       ['', false],
       ['SomethingElse', false],
       [{name: 'SomethingElse'}, false],
-
     ].forEach(([errorName, expected]) => {
       it(`for rawError ${errorName} returns the correct result`, () => {
         //@ts-ignore
@@ -256,6 +288,7 @@ describe('internal-plugin-metrics', () => {
         {},
         {parent: webex}
       );
+      webex.logger = new Logger({}, {parent: webex});
     });
 
     beforeEach(() => {
@@ -359,13 +392,13 @@ describe('internal-plugin-metrics', () => {
       // just submit any event
       prepareDiagnosticMetricItem(webex, {
         eventPayload: {
-          event: {name: 'client.exit.app', eventData: {markAsTestEvent, webClientDomain}}
+          event: {name: 'client.exit.app', eventData: {markAsTestEvent, webClientDomain}},
         },
         type: ['diagnostic-event'],
       });
 
       assert.calledOnceWithExactly(getBuildTypeSpy, webClientDomain, markAsTestEvent);
-    })
+    });
   });
 
   describe('setMetricTimings', () => {
@@ -548,14 +581,38 @@ describe('internal-plugin-metrics', () => {
 
   describe('generateClientErrorCodeForIceFailure', () => {
     [
-     { signalingState: 'have-local-offer', iceConnectionState: 'connected', turnServerUsed: true, errorCode: MISSING_ROAP_ANSWER_CLIENT_CODE},
-     { signalingState: 'stable', iceConnectionState: 'connected', turnServerUsed: true, errorCode: DTLS_HANDSHAKE_FAILED_CLIENT_CODE},
-     { signalingState: 'stable', iceConnectionState: 'failed', turnServerUsed: true, errorCode: ICE_FAILED_WITH_TURN_TLS_CLIENT_CODE},
-     { signalingState: 'stable', iceConnectionState: 'failed', turnServerUsed: false, errorCode: ICE_FAILED_WITHOUT_TURN_TLS_CLIENT_CODE},
+      {
+        signalingState: 'have-local-offer',
+        iceConnectionState: 'connected',
+        turnServerUsed: true,
+        errorCode: MISSING_ROAP_ANSWER_CLIENT_CODE,
+      },
+      {
+        signalingState: 'stable',
+        iceConnectionState: 'connected',
+        turnServerUsed: true,
+        errorCode: DTLS_HANDSHAKE_FAILED_CLIENT_CODE,
+      },
+      {
+        signalingState: 'stable',
+        iceConnectionState: 'failed',
+        turnServerUsed: true,
+        errorCode: ICE_FAILED_WITH_TURN_TLS_CLIENT_CODE,
+      },
+      {
+        signalingState: 'stable',
+        iceConnectionState: 'failed',
+        turnServerUsed: false,
+        errorCode: ICE_FAILED_WITHOUT_TURN_TLS_CLIENT_CODE,
+      },
     ].forEach(({signalingState, iceConnectionState, turnServerUsed, errorCode}: any) => {
       it('returns expected result', () => {
         assert.deepEqual(
-          generateClientErrorCodeForIceFailure({signalingState, iceConnectionState, turnServerUsed}),
+          generateClientErrorCodeForIceFailure({
+            signalingState,
+            iceConnectionState,
+            turnServerUsed,
+          }),
           errorCode
         );
       });
