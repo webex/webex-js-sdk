@@ -1101,7 +1101,7 @@ describe('plugin-meetings', () => {
         }
       );
 
-      it.only(`logs a message if no packets are sent`, async () => {
+      it(`logs a message if no packets are sent`, async () => {
         receiveSlot = {
           sourceState: 'live',
           csi: 2,

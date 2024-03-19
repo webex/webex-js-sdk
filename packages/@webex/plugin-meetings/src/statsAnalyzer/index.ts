@@ -1000,11 +1000,11 @@ export class StatsAnalyzer extends EventsScope {
       if (currentPacketsLost < 0) {
         currentPacketsLost = 0;
       }
-      const packedReceivedDiff =
+      const packetsReceivedDiff =
         result.packetsReceived - this.statsResults[mediaType][sendrecvType].totalPacketsReceived;
       this.statsResults[mediaType][sendrecvType].totalPacketsReceived = result.packetsReceived;
 
-      if (packedReceivedDiff === 0) {
+      if (packetsReceivedDiff === 0) {
         if (receiveSlot && sourceState === 'live') {
           LoggerProxy.logger.info(
             `StatsAnalyzer:index#processInboundRTPResult --> No packets received for mediaType: ${mediaType}, receive slot ${idAndCsi}. Total packets received on slot: `,
@@ -1053,7 +1053,9 @@ export class StatsAnalyzer extends EventsScope {
 
       //  Check the over all packet Lost ratio
       this.statsResults[mediaType][sendrecvType].currentPacketLossRatio =
-        currentPacketsLost > 0 ? currentPacketsLost / (packedReceivedDiff + currentPacketsLost) : 0;
+        currentPacketsLost > 0
+          ? currentPacketsLost / (packetsReceivedDiff + currentPacketsLost)
+          : 0;
       if (this.statsResults[mediaType][sendrecvType].currentPacketLossRatio > 3) {
         LoggerProxy.logger.info(
           `StatsAnalyzer:index#processInboundRTPResult --> Packets getting lost from the receiver with slot ${idAndCsi}`,
