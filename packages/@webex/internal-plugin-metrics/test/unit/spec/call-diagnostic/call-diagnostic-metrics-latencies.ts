@@ -166,6 +166,14 @@ describe('internal-plugin-metrics', () => {
       assert.isUndefined(cdl.getU2CTime());
     });
 
+    it('can return getU2CTime as undefined when calculated as negative', () => {
+      cdl.saveTimestamp({key: 'internal.get.u2c.request-preauth', value: 20});
+      cdl.saveTimestamp({key: 'internal.get.u2c.response-preauth', value: 10});
+      cdl.saveTimestamp({key: 'internal.get.u2c.request-postauth', value: 20});
+      cdl.saveTimestamp({key: 'internal.get.u2c.response-postauth', value: 10});
+      assert.isUndefined(cdl.getU2CTime());
+    });
+
     it('calculates getU2CTime correctly', () => {
       cdl.saveTimestamp({key: 'internal.get.u2c.request-preauth', value: 10});
       cdl.saveTimestamp({key: 'internal.get.u2c.response-preauth', value: 20});
