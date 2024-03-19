@@ -659,6 +659,7 @@ describe('plugin-meetings', () => {
           assert.equal(meeting.isTranscriptionSupported(), true);
         });
       });
+
       describe('#startTranscription', () => {
         beforeEach(() => {
           webex.internal.voicea.on = sinon.stub();
@@ -666,6 +667,7 @@ describe('plugin-meetings', () => {
           webex.internal.voicea.listenToEvents = sinon.stub();
           webex.internal.voicea.toggleTranscribing = sinon.stub();
         });
+        
         it('should subscribe to events for the first time', async () => {
           meeting.joinedWith = {
             state: 'JOINED'
@@ -749,6 +751,7 @@ describe('plugin-meetings', () => {
           webex.internal.voicea.listenToEvents = sinon.stub();
           webex.internal.voicea.toggleTranscribing = sinon.stub();
         });
+        
         it('should stop listening to voicea events and also trigger a stop event', () => {
           meeting.stopTranscription();
           assert.equal(webex.internal.voicea.off.callCount, 5);
@@ -6567,7 +6570,7 @@ describe('plugin-meetings', () => {
           it('handles "Disconnected" state correctly when waitForIceReconnect resolves', async () => {
             meeting.reconnectionManager.waitForIceReconnect = sinon.stub().resolves();
 
-            await mockDisconnectedEvent();
+            mockDisconnectedEvent();
             await testUtils.flushPromises();
 
             assert.calledOnce(meeting.setNetworkStatus);

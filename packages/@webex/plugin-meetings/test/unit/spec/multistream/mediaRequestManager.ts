@@ -964,7 +964,7 @@ describe('MediaRequestManager', () => {
         'getRecommendedMaxBitrateForFrameSize'
       );
     });
-    
+
     afterEach(() => {
       getRecommendedMaxBitrateForFrameSizeSpy.restore();
     });

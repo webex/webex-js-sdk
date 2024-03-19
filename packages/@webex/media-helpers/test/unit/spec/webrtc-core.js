@@ -1,8 +1,5 @@
 import {assert, expect} from '@webex/test-helper-chai';
 import sinon from 'sinon';
-
-import * as wcmestreams from '@webex/internal-media-core';
-
 import {
   LocalCameraStream,
   LocalMicrophoneStream,
@@ -15,6 +12,7 @@ import {
   createDisplayStream,
   createDisplayStreamWithAudio,
 } from '@webex/media-helpers';
+import * as wcmestreams from '@webex/internal-media-core';
 
 describe('media-helpers', () => {
   describe('webrtc-core', () => {
@@ -125,7 +123,7 @@ describe('media-helpers', () => {
             const result = await createFn(constraints);
 
             assert.equal(result, 'something');
-            assert.calledOnceWithExactly(wcmestreams[spyFn], className, constraints);
+            assert.calledOnceWithExactly(spy, className, constraints);
           });
         });
       })
@@ -136,7 +134,7 @@ describe('media-helpers', () => {
         const spy = sinon.stub(wcmestreams, 'createDisplayStream').returns('something');
         const result = await createDisplayStream();
         assert.equal(result, 'something');
-        assert.calledOnceWithExactly(wcmestreams.createDisplayStream, LocalDisplayStream);
+        assert.calledOnceWithExactly(spy, LocalDisplayStream);
       });
     });
 
@@ -145,11 +143,7 @@ describe('media-helpers', () => {
         const spy = sinon.stub(wcmestreams, 'createDisplayStreamWithAudio').returns('something');
         const result = await createDisplayStreamWithAudio();
         assert.equal(result, 'something');
-        assert.calledOnceWithExactly(
-          wcmestreams.createDisplayStreamWithAudio,
-          LocalDisplayStream,
-          LocalSystemAudioStream
-        );
+        assert.calledOnceWithExactly(spy, LocalDisplayStream, LocalSystemAudioStream);
       });
     });
   });
