@@ -2758,21 +2758,24 @@ export default class Meeting extends StatelessWebexPlugin {
         );
       }
     });
-    this.locusInfo.on(LOCUSINFO.EVENTS.MEETING_INFO_UPDATED, () => {
+    this.locusInfo.on(LOCUSINFO.EVENTS.MEETING_INFO_UPDATED, ({isInitializing}) => {
       this.updateMeetingActions();
       this.recordingController.setDisplayHints(this.userDisplayHints);
       this.recordingController.setUserPolicy(this.selfUserPolicies);
       this.controlsOptionsManager.setDisplayHints(this.userDisplayHints);
       this.handleDataChannelUrlChange(this.datachannelUrl);
 
-      Trigger.trigger(
-        this,
-        {
-          file: 'meetings',
-          function: 'setUpLocusInfoMeetingInfoListener',
-        },
-        EVENT_TRIGGERS.MEETING_INFO_AVAILABLE
-      );
+      if (!isInitializing) {
+        // send updated trigger only if locus is not initializing the meeting
+        Trigger.trigger(
+          this,
+          {
+            file: 'meetings',
+            function: 'setUpLocusInfoMeetingInfoListener',
+          },
+          EVENT_TRIGGERS.MEETING_INFO_UPDATED
+        );
+      }
     });
   }
 
