@@ -6,6 +6,7 @@ export {
   LocalStreamEventNames,
   StreamEventNames,
   RemoteStream,
+  RemoteStreamEventNames,
   type ServerMuteReason,
   LocalMicrophoneStreamEventNames,
   LocalCameraStreamEventNames,
