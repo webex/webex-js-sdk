@@ -2,6 +2,41 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.377](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.376...v3.0.0-beta.377) (2024-03-19)
+
+
+### Features
+
+* **ca:** add download time jmt ([#3440](https://github.com/webex/webex-js-sdk/issues/3440)) ([ded5546](https://github.com/webex/webex-js-sdk/commit/ded5546366656fd63c120e4522e9255281062e70))
+
+## [3.0.0-beta.376](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.375...v3.0.0-beta.376) (2024-03-19)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** move unverified guest check into syncMeetings ([#3431](https://github.com/webex/webex-js-sdk/issues/3431)) ([99f8adb](https://github.com/webex/webex-js-sdk/commit/99f8adb4c4647a8f005de473dac4eeed5fc59f0e))
+
+## [3.0.0-beta.375](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.374...v3.0.0-beta.375) (2024-03-18)
+
+
+### Features
+
+* **metrics:** add pre login batching ([#3439](https://github.com/webex/webex-js-sdk/issues/3439)) ([d8d5d75](https://github.com/webex/webex-js-sdk/commit/d8d5d75479f524216da951a5ec5251ffbb02ff17))
+
+## [3.0.0-beta.374](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.373...v3.0.0-beta.374) (2024-03-15)
+
+
+### Features
+
+* **metrics:** added debug metrics for meetings registration ([#3419](https://github.com/webex/webex-js-sdk/issues/3419)) ([579024d](https://github.com/webex/webex-js-sdk/commit/579024dff371d340ea5074c5fd406948963229c6))
+
+## [3.0.0-beta.373](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.372...v3.0.0-beta.373) (2024-03-13)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** mqe streams format ([#3434](https://github.com/webex/webex-js-sdk/issues/3434)) ([2457959](https://github.com/webex/webex-js-sdk/commit/2457959806fffa080bdf3d572fbe5d8db620b1ba))
+
 ## [3.0.0-beta.372](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.371...v3.0.0-beta.372) (2024-03-12)
 
 
