@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.377](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.376...v3.0.0-beta.377) (2024-03-19)
+
+
+### Features
+
+* **ca:** add download time jmt ([#3440](https://github.com/webex/webex-js-sdk/issues/3440)) ([ded5546](https://github.com/webex/webex-js-sdk/commit/ded5546366656fd63c120e4522e9255281062e70))
+
 ## [3.0.0-beta.376](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.375...v3.0.0-beta.376) (2024-03-19)
 
 
