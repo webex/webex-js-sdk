@@ -41,6 +41,8 @@ import {
   ClientSubServiceType,
 } from '../metrics.types';
 import CallDiagnosticEventsBatcher from './call-diagnostic-metrics-batcher';
+import PreLoginMetricsBatcher from '../prelogin-metrics-batcher';
+
 import {
   CLIENT_ERROR_CODE_TO_ERROR_PAYLOAD,
   CALL_DIAGNOSTIC_EVENT_FAILED_TO_SEND,
@@ -55,8 +57,6 @@ import {
   WEBEX_SUB_SERVICE_TYPES,
   SDP_OFFER_CREATION_ERROR_MAP,
 } from './config';
-
-import {generateCommonErrorMetadata} from '../utils';
 
 const {getOSVersion, getBrowserName, getBrowserVersion} = BrowserDetection();
 
@@ -86,6 +86,9 @@ type GetIdentifiersOptions = {
 export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
   // @ts-ignore
   private callDiagnosticEventsBatcher: CallDiagnosticEventsBatcher;
+  // @ts-ignore
+  private preLoginMetricsBatcher: PreLoginMetricsBatcher;
+
   private logger: any; // to avoid adding @ts-ignore everywhere
   private hasLoggedBrowserSerial: boolean;
   // the default validator before piping an event to the batcher
@@ -106,6 +109,8 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     this.logger = this.webex.logger;
     // @ts-ignore
     this.callDiagnosticEventsBatcher = new CallDiagnosticEventsBatcher({}, {parent: this.webex});
+    // @ts-ignore
+    this.preLoginMetricsBatcher = new PreLoginMetricsBatcher({}, {parent: this.webex});
   }
 
   /**
@@ -807,24 +812,20 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
   }
 
   /**
-   * Pre login events are not batched. We make the request directly.
+   * Prepare the event and send the request to metrics-a service, pre login.
    * @param event
    * @param preLoginId
    * @returns
    */
-  public submitToCallDiagnosticsPreLogin = (event: Event, preLoginId?: string): Promise<any> => {
+  submitToCallDiagnosticsPreLogin = (event: Event, preLoginId?: string): Promise<any> => {
     // build metrics-a event type
-    // @ts-ignore
-    const diagnosticEvent = prepareDiagnosticMetricItem(this.webex, {
+    const finalEvent = {
       eventPayload: event,
       type: ['diagnostic-event'],
-    });
+    };
+    this.preLoginMetricsBatcher.savePreLoginId(preLoginId);
 
-    // append sent timestamp
-    diagnosticEvent.eventPayload.originTime.sent = new Date().toISOString();
-
-    // @ts-ignore
-    return this.webex.internal.newMetrics.postPreLoginMetric(diagnosticEvent, preLoginId);
+    return this.preLoginMetricsBatcher.request(finalEvent);
   };
 
   /**

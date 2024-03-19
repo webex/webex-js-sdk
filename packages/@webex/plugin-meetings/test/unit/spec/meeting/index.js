@@ -2512,6 +2512,7 @@ describe('plugin-meetings', () => {
               clientErrorCode: ICE_FAILED_WITH_TURN_TLS_CLIENT_CODE,
               expectedErrorPayload: {
                 errorDescription: ERROR_DESCRIPTIONS.ICE_FAILED_WITH_TURN_TLS,
+                category: 'network',
               },
             },
           ].forEach(({clientErrorCode, expectedErrorPayload}) => {
@@ -8170,13 +8171,41 @@ describe('plugin-meetings', () => {
           assert.equal(locusInfoOnSpy.thirdCall.args[0], 'MEETING_INFO_UPDATED');
           const callback = locusInfoOnSpy.thirdCall.args[1];
 
-          callback();
+          callback({isInitializing: true});
 
           assert.calledWith(updateMeetingActionsSpy);
           assert.calledWith(setRecordingDisplayHintsSpy, userDisplayHints);
           assert.calledWith(setUserPolicySpy, userDisplayPolicy);
           assert.calledWith(setControlsDisplayHintsSpy, userDisplayHints);
           assert.calledWith(handleDataChannelUrlChangeSpy, datachannelUrl);
+
+          assert.neverCalledWith(
+            TriggerProxy.trigger,
+            meeting,
+            {
+              file: 'meetings',
+              function: 'setUpLocusInfoMeetingInfoListener',
+            },
+            'meeting:meetingInfoUpdated'
+          )
+
+          callback({isIntialized: false});
+
+          assert.calledWith(updateMeetingActionsSpy);
+          assert.calledWith(setRecordingDisplayHintsSpy, userDisplayHints);
+          assert.calledWith(setUserPolicySpy, userDisplayPolicy);
+          assert.calledWith(setControlsDisplayHintsSpy, userDisplayHints);
+          assert.calledWith(handleDataChannelUrlChangeSpy, datachannelUrl);
+
+          assert.calledWith(
+            TriggerProxy.trigger,
+            meeting,
+            {
+              file: 'meetings',
+              function: 'setUpLocusInfoMeetingInfoListener',
+            },
+            'meeting:meetingInfoUpdated'
+          )
         });
       });
 
