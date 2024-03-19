@@ -170,7 +170,7 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
   }
 
   /**
-   * Getting catalog time from U2C service pre auth
+   * Getting catalog time from U2C service
    * @returns - latency
    */
   public getU2CTime() {
