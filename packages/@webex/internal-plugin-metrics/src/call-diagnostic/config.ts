@@ -392,7 +392,7 @@ export const CLIENT_ERROR_CODE_TO_ERROR_PAYLOAD: Record<number, Partial<ClientEv
   },
   [ICE_FAILED_WITH_TURN_TLS_CLIENT_CODE]: {
     errorDescription: ERROR_DESCRIPTIONS.ICE_FAILED_WITH_TURN_TLS,
-    category: 'media',
+    category: 'network',
     fatal: true,
   },
   2050: {
