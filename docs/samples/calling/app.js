@@ -674,16 +674,16 @@ async function toggleNoiseReductionEffect() {
     effect = await Calling.createNoiseReductionEffect(tokenElm.value);
 
     await localAudioStream.addEffect(effect);
-    await effect.enable();
-    bnrButton.innerHTML = 'Disable BNR';
+  }
+
+  if (effect.isEnabled) {
+    console.log('pkesari_enable the effect');
+    await effect.disable();
+    bnrButton.innerText = 'Enable BNR';
   } else {
-    if (effect.isEnabled) {
-      await effect.disable();
-      bnrButton.innerHTML = 'Enable BNR';
-    } else {
-      await effect.enable();
-      bnrButton.innerHTML = 'Disable BNR';
-    }
+    console.log('pkesari_enable the effect');
+    await effect.enable();
+    bnrButton.innerText = 'Disable BNR';
   }
 }
 

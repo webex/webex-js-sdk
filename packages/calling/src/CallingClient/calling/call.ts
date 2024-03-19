@@ -1554,62 +1554,6 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
     };
   }
 
-  private registerEffectListener = (addedEffect: TrackEffect) => {
-    if (this.localStream) {
-      const effect = this.localStream.getEffectByKind(NOISE_REDUCTION_EFFECT) as any;
-
-      if (effect === addedEffect) {
-        effect.on(EffectEvent.Enabled, () =>
-          this.metricManager.submitBNRMetric(
-            METRIC_EVENT.MEDIA,
-            MEDIA_EFFECT_ACTION.BNR_ENABLED,
-            METRIC_TYPE.BEHAVIORAL,
-            this.callId,
-            this.correlationId
-          )
-        );
-        effect.on(EffectEvent.Disabled, () =>
-          this.metricManager.submitBNRMetric(
-            METRIC_EVENT.MEDIA,
-            MEDIA_EFFECT_ACTION.BNR_DISABLED,
-            METRIC_TYPE.BEHAVIORAL,
-            this.callId,
-            this.correlationId
-          )
-        );
-      }
-    }
-  };
-
-  private unregisterListeners() {
-    if (this.localStream) {
-      const effect = this.localStream.getEffectByKind(NOISE_REDUCTION_EFFECT) as any;
-
-      if (effect) {
-        effect.off(EffectEvent.Enabled, () =>
-          this.metricManager.submitBNRMetric(
-            METRIC_EVENT.MEDIA,
-            MEDIA_EFFECT_ACTION.BNR_DISABLED,
-            METRIC_TYPE.BEHAVIORAL,
-            this.callId,
-            this.correlationId
-          )
-        );
-        effect.off(EffectEvent.Disabled, () =>
-          this.metricManager.submitBNRMetric(
-            METRIC_EVENT.MEDIA,
-            MEDIA_EFFECT_ACTION.BNR_DISABLED,
-            METRIC_TYPE.BEHAVIORAL,
-            this.callId,
-            this.correlationId
-          )
-        );
-      }
-
-      this.localStream.off(LocalStreamEventNames.EffectAdded, this.registerEffectListener);
-    }
-  }
-
   /**
    * Handle Roap Established events.
    *
@@ -2096,6 +2040,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
   public async dial(localAudioStream: LocalMicrophoneStream) {
     this.localStream = localAudioStream;
     const localAudioTrack = localAudioStream.outputStream.getAudioTracks()[0];
+
     if (!localAudioTrack) {
       log.warn(`Did not find a local track while dialing the call ${this.getCorrelationId()}`, {
         file: CALL_FILE,
@@ -2510,42 +2455,72 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
     });
   }
 
+  private onEffectEnabled = () => {
+    console.log('pkesari_send metrics for enabling BNR');
+    this.metricManager.submitBNRMetric(
+      METRIC_EVENT.MEDIA,
+      MEDIA_EFFECT_ACTION.BNR_ENABLED,
+      METRIC_TYPE.BEHAVIORAL,
+      this.callId,
+      this.correlationId
+    );
+  };
+
+  private onEffectDisabled = () => {
+    console.log('pkesari_send metrics for disabling BNR');
+    this.metricManager.submitBNRMetric(
+      METRIC_EVENT.MEDIA,
+      MEDIA_EFFECT_ACTION.BNR_DISABLED,
+      METRIC_TYPE.BEHAVIORAL,
+      this.callId,
+      this.correlationId
+    );
+  };
+
+  private registerEffectListener = (addedEffect: TrackEffect) => {
+    if (this.localStream) {
+      const effect = this.localStream.getEffectByKind(NOISE_REDUCTION_EFFECT);
+
+      if (effect === addedEffect) {
+        console.log('pkesari_switch on effect listeners mid-call after effect addition');
+        effect.on(EffectEvent.Enabled, this.onEffectEnabled);
+        effect.on(EffectEvent.Disabled, this.onEffectDisabled);
+      }
+    }
+  };
+
+  private unregisterListeners() {
+    if (this.localStream) {
+      const effect = this.localStream.getEffectByKind(NOISE_REDUCTION_EFFECT);
+
+      if (effect) {
+        console.log('pkesari_switching off effect listeners');
+        effect.off(EffectEvent.Enabled, this.onEffectEnabled);
+        effect.off(EffectEvent.Disabled, this.onEffectDisabled);
+      }
+
+      this.localStream.off(LocalStreamEventNames.EffectAdded, this.registerEffectListener);
+    }
+  }
+
   private registerListeners(localAudioStream: LocalMicrophoneStream) {
     localAudioStream.on(LocalStreamEventNames.OutputTrackChange, (audioTrack: MediaStreamTrack) => {
-      this.mediaConnection.updateLocalTrack({audio: audioTrack});
+      console.log('pkesari_updating local track');
+      this.mediaConnection.updateLocalTracks({audio: audioTrack});
     });
 
     localAudioStream.on(LocalStreamEventNames.EffectAdded, this.registerEffectListener);
+
     const effect = localAudioStream.getEffectByKind(NOISE_REDUCTION_EFFECT) as any;
 
     if (effect) {
-      effect.on(EffectEvent.Enabled, () =>
-        this.metricManager.submitBNRMetric(
-          METRIC_EVENT.MEDIA,
-          MEDIA_EFFECT_ACTION.BNR_ENABLED,
-          METRIC_TYPE.BEHAVIORAL,
-          this.callId,
-          this.correlationId
-        )
+      console.log(
+        'pkesari_effect is already present in the stream, switch on the effect listeners'
       );
-      effect.on(EffectEvent.Disabled, () =>
-        this.metricManager.submitBNRMetric(
-          METRIC_EVENT.MEDIA,
-          MEDIA_EFFECT_ACTION.BNR_DISABLED,
-          METRIC_TYPE.BEHAVIORAL,
-          this.callId,
-          this.correlationId
-        )
-      );
-
+      effect.on(EffectEvent.Enabled, this.onEffectEnabled);
+      effect.on(EffectEvent.Disabled, this.onEffectDisabled);
       if (effect.isEnabled) {
-        this.metricManager.submitBNRMetric(
-          METRIC_EVENT.MEDIA,
-          MEDIA_EFFECT_ACTION.BNR_ENABLED,
-          METRIC_TYPE.BEHAVIORAL,
-          this.callId,
-          this.correlationId
-        );
+        this.onEffectEnabled();
       }
     }
   }
