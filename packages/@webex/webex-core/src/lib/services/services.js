@@ -859,25 +859,33 @@ const Services = WebexPlugin.extend({
       qs,
     };
 
+    const requestName = from
+      ? 'internal.get.u2c.request-preauth'
+      : 'internal.get.u2c.request-postauth';
+
+    const responseName = from
+      ? 'internal.get.u2c.response-preauth'
+      : 'internal.get.u2c.response-postauth';
+
     if (token) {
       requestObject.headers = {authorization: token};
     }
 
     this.webex.internal.newMetrics.submitInternalEvent({
-      name: 'internal.get.u2c.request',
+      name: requestName,
     });
 
     return this.request(requestObject)
       .then(({body}) => {
         this.webex.internal.newMetrics.submitInternalEvent({
-          name: 'internal.get.u2c.response',
+          name: responseName,
         });
 
         return this._formatReceivedHostmap(body);
       })
       .catch((error) => {
         this.webex.internal.newMetrics.submitInternalEvent({
-          name: 'internal.get.u2c.response',
+          name: responseName,
         });
 
         throw error;

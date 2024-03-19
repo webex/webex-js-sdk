@@ -150,10 +150,28 @@ describe('internal-plugin-metrics', () => {
       assert.deepEqual(cdl.getRegisterWDMDeviceJMT(), 10);
     });
 
+    it('returns getU2CTime as undefined when added to zero', () => {
+      cdl.saveTimestamp({key: 'internal.get.u2c.request-preauth', value: 10});
+      cdl.saveTimestamp({key: 'internal.get.u2c.response-preauth', value: 10});
+      cdl.saveTimestamp({key: 'internal.get.u2c.request-postauth', value: 10});
+      cdl.saveTimestamp({key: 'internal.get.u2c.response-postauth', value: 10});
+      assert.isUndefined(cdl.getU2CTime());
+    });
+
+    it('can return getU2CTime as undefined', () => {
+      cdl.saveTimestamp({key: 'internal.get.u2c.request-preauth', value: undefined});
+      cdl.saveTimestamp({key: 'internal.get.u2c.response-preauth', value: undefined});
+      cdl.saveTimestamp({key: 'internal.get.u2c.request-postauth', value: undefined});
+      cdl.saveTimestamp({key: 'internal.get.u2c.response-postauth', value: undefined});
+      assert.isUndefined(cdl.getU2CTime());
+    });
+
     it('calculates getU2CTime correctly', () => {
-      cdl.saveTimestamp({key: 'internal.get.u2c.request', value: 10});
-      cdl.saveTimestamp({key: 'internal.get.u2c.response', value: 20});
-      assert.deepEqual(cdl.getU2CTime(), 10);
+      cdl.saveTimestamp({key: 'internal.get.u2c.request-preauth', value: 10});
+      cdl.saveTimestamp({key: 'internal.get.u2c.response-preauth', value: 20});
+      cdl.saveTimestamp({key: 'internal.get.u2c.request-postauth', value: 10});
+      cdl.saveTimestamp({key: 'internal.get.u2c.response-postauth', value: 20});
+      assert.deepEqual(cdl.getU2CTime(), 20);
     });
 
     it('calculates getJoinReqResp correctly', () => {
