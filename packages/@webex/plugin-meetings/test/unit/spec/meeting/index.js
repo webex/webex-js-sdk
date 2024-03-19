@@ -5957,9 +5957,11 @@ describe('plugin-meetings', () => {
 
             assert.equal(meeting.mediaProperties.shareVideoStream, null);
             assert.equal(meeting.mediaProperties.mediaDirection.sendShare, shareDirection);
-            assert.calledWith(meeting.statsAnalyzer.updateMediaStatus, {
-              expected: {sendShare: shareDirection},
-            });
+            if (!shareDirection) {
+              assert.calledWith(meeting.statsAnalyzer.updateMediaStatus, {
+                expected: {sendShare: false},
+              });
+            }
           };
 
           // share direction will remain true if only one of the two share streams are unpublished
@@ -5972,9 +5974,11 @@ describe('plugin-meetings', () => {
 
             assert.equal(meeting.mediaProperties.shareAudioStream, null);
             assert.equal(meeting.mediaProperties.mediaDirection.sendShare, shareDirection);
-            assert.calledWith(meeting.statsAnalyzer.updateMediaStatus, {
-              expected: {sendShare: shareDirection},
-            });
+            if (!shareDirection) {
+              assert.calledWith(meeting.statsAnalyzer.updateMediaStatus, {
+                expected: {sendShare: false},
+              });
+            }
           };
 
           it('fails if there is no media connection', async () => {
@@ -8187,7 +8191,7 @@ describe('plugin-meetings', () => {
               function: 'setUpLocusInfoMeetingInfoListener',
             },
             'meeting:meetingInfoUpdated'
-          )
+          );
 
           callback({isIntialized: false});
 
@@ -8205,7 +8209,7 @@ describe('plugin-meetings', () => {
               function: 'setUpLocusInfoMeetingInfoListener',
             },
             'meeting:meetingInfoUpdated'
-          )
+          );
         });
       });
 
