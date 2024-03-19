@@ -1377,7 +1377,7 @@ describe('plugin-meetings', () => {
         );
       });
 
-      const checkMeetingInfoUpdatedCalled = (expected) => {
+      const checkMeetingInfoUpdatedCalled = (expected, payload) => {
         const expectedArgs = [
           locusInfo.emitScoped,
           {
@@ -1385,6 +1385,7 @@ describe('plugin-meetings', () => {
             function: 'updateMeetingInfo',
           },
           LOCUSINFO.EVENTS.MEETING_INFO_UPDATED,
+          payload
         ];
 
         if (expected) {
@@ -1395,7 +1396,7 @@ describe('plugin-meetings', () => {
         locusInfo.emitScoped.resetHistory();
       };
 
-      const checkMeetingInfoUpdatedCalledForRoles = (expected) => {
+      const checkMeetingInfoUpdatedCalledForRoles = (expected, payload) => {
         const expectedArgs = [
           locusInfo.emitScoped,
           {
@@ -1403,6 +1404,7 @@ describe('plugin-meetings', () => {
             function: 'updateMeetingInfo',
           },
           LOCUSINFO.EVENTS.MEETING_INFO_UPDATED,
+          payload
         ];
 
         if (expected) {
@@ -1447,7 +1449,7 @@ describe('plugin-meetings', () => {
 
         // since it was initially undefined, this should trigger the event
 
-        checkMeetingInfoUpdatedCalled(true);
+        checkMeetingInfoUpdatedCalled(true, {isInitializing: false});
 
         const newInfo = cloneDeep(meetingInfo);
 
@@ -1472,7 +1474,7 @@ describe('plugin-meetings', () => {
         };
         locusInfo.updateMeetingInfo(newInfo, self);
 
-        checkMeetingInfoUpdatedCalled(true);
+        checkMeetingInfoUpdatedCalled(true, {isInitializing: false});
 
         // update it with the same info
         expectedMeeting = {
@@ -1494,7 +1496,7 @@ describe('plugin-meetings', () => {
         locusInfo.updateMeetingInfo(newInfo, self);
 
         // since the info is the same it should not call trigger the event
-        checkMeetingInfoUpdatedCalled(false);
+        checkMeetingInfoUpdatedCalled(false, {isInitializing: false});
 
         // update it with the same info, but roles changed
         const updateSelf = cloneDeep(self);
@@ -1525,7 +1527,7 @@ describe('plugin-meetings', () => {
         };
         locusInfo.updateMeetingInfo(newInfo, updateSelf);
         // since the info is the same but roles changed, it should call trigger the event
-        checkMeetingInfoUpdatedCalledForRoles(true);
+        checkMeetingInfoUpdatedCalledForRoles(true, {isInitializing: false});
       });
 
       it('gets roles from self if available', () => {
@@ -1546,12 +1548,17 @@ describe('plugin-meetings', () => {
           roles: ['MODERATOR', 'COHOST'],
         };
 
+        sinon.stub(locusInfo, 'emitScoped');
+
         const parsedLocusInfo = cloneDeep(locusInfo.parsedLocus.info);
 
         locusInfo.updateMeetingInfo(initialInfo);
         assert.calledWith(isJoinedSpy, locusInfo.parsedLocus.self);
         assert.neverCalledWith(getRolesSpy, self);
         assert.calledWith(getInfosSpy, parsedLocusInfo, initialInfo, ['MODERATOR', 'COHOST']);
+
+        // since self is not passed to updateMeetingInfo, MEETING_INFO_UPDATED should be triggered with isIntializing: true
+        checkMeetingInfoUpdatedCalledForRoles(true, {isInitializing: true});
       });
     });
 
