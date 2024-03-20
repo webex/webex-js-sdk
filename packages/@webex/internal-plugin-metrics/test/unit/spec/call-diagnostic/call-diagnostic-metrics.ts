@@ -1730,6 +1730,7 @@ describe('internal-plugin-metrics', () => {
           serviceErrorCode: undefined,
           errorCode: 1026,
           rawErrorMessage: '{}\nundefined https://example.com\nWEBEX_TRACKING_ID: undefined\n',
+          httpStatusCode: 0,
         });
       });
 
@@ -1822,6 +1823,7 @@ describe('internal-plugin-metrics', () => {
           serviceErrorCode: undefined,
           errorCode: 1026,
           rawErrorMessage: '{}\nundefined https://example.com\nWEBEX_TRACKING_ID: undefined\n',
+          httpStatusCode: 0,
         });
       });
 
@@ -1843,6 +1845,7 @@ describe('internal-plugin-metrics', () => {
           serviceErrorCode: undefined,
           errorCode: 1010,
           rawErrorMessage: '{}\nundefined https://example.com\nWEBEX_TRACKING_ID: undefined\n',
+          httpStatusCode: 0,
         });
       });
 
@@ -1869,11 +1872,12 @@ describe('internal-plugin-metrics', () => {
           serviceErrorCode: undefined,
           errorCode: 1010,
           rawErrorMessage: '{}\nundefined https://example.com\nWEBEX_TRACKING_ID: undefined\n',
+          httpStatusCode: 0,
         });
       });
 
       it('should return unknown error otherwise', () => {
-        const res = cd.generateClientEventErrorPayload({somethgin: 'new', message: 'bad times'});
+        const res = cd.generateClientEventErrorPayload({something: 'new', message: 'bad times'});
         assert.deepEqual(res, {
           category: 'other',
           errorDescription: 'UnknownError',
@@ -1933,6 +1937,141 @@ describe('internal-plugin-metrics', () => {
           serviceErrorCode: 2423021,
           errorCode: 12001,
           rawErrorMessage: 'bad times',
+        });
+      });
+
+      describe('httpStatusCode', () => {
+        it('should include httpStatusCode for browser media errors', () => {
+          const res = cd.generateClientEventErrorPayload({name: 'PermissionDeniedError', message: 'bad times', statusCode: 401});
+          assert.deepEqual(res, {
+            category: 'expected',
+            errorCode: 4032,
+            errorData: {
+              errorName: 'PermissionDeniedError'
+            },
+            errorDescription: 'CameraPermissionDenied',
+            fatal: true,
+            name: 'other',
+            rawErrorMessage: 'bad times',
+            serviceErrorCode: undefined,
+            shownToUser: false,
+            httpStatusCode: 401,
+          });
+        });
+
+        it('should include httpStatusCode for SdpOfferCreationErrors', () => {
+          const res = cd.generateClientEventErrorPayload({name: 'SdpOfferCreationError', message: 'bad times', statusCode: 404});
+          assert.deepEqual(res, {
+            category: 'media',
+            errorCode: 2050,
+            errorData: {
+              errorName: 'SdpOfferCreationError'
+            },
+            errorDescription: 'SdpOfferCreationError',
+            fatal: true,
+            name: 'other',
+            rawErrorMessage: 'bad times',
+            serviceErrorCode: undefined,
+            shownToUser: true,
+            httpStatusCode: 404,
+          });
+        });
+
+        it('should include httpStatusCode for service error codes', () => {
+          const res = cd.generateClientEventErrorPayload({body: {errorCode: 58400}, message: 'bad times', statusCode: 400});
+          assert.deepEqual(res, {
+            category: 'signaling',
+            errorCode: 4100,
+            errorDescription: 'MeetingInfoLookupError',
+            fatal: true,
+            name: 'other',
+            rawErrorMessage: 'bad times',
+            serviceErrorCode: 58400,
+            shownToUser: false,
+            httpStatusCode: 400,
+          });
+        });
+
+        it('should include httpStatusCode for locus service error codes', () => {
+          const res = cd.generateClientEventErrorPayload({body: {errorCode: 2403001}, message: 'bad times', statusCode: 400});
+          assert.deepEqual(res, {
+            category: 'expected',
+            errorCode: 3007,
+            errorDescription: 'StreamErrorNoMedia',
+            fatal: true,
+            name: 'other',
+            rawErrorMessage: 'bad times',
+            serviceErrorCode: 2403001,
+            shownToUser: false,
+            httpStatusCode: 400,
+          });
+        });
+
+        it('should include httpStatusCode for meetingInfo service error codes', () => {
+          const res = cd.generateClientEventErrorPayload({body: {data: {meetingInfo: {}}}, message: 'bad times', statusCode: 400});
+          assert.deepEqual(res, {
+            category: 'signaling',
+            errorCode: 4100,
+            errorDescription: 'MeetingInfoLookupError',
+            fatal: true,
+            name: 'other',
+            rawErrorMessage: 'bad times',
+            serviceErrorCode: undefined,
+            shownToUser: false,
+            httpStatusCode: 400,
+          });
+        });
+
+        it('should include httpStatusCode for network errors', () => {
+          const error = new WebexHttpError.NetworkOrCORSError(
+            {statusCode: 400, options: {service: '', headers: {}}});
+          const res = cd.generateClientEventErrorPayload(error);
+          assert.deepEqual(res, {
+            category: 'network',
+            errorCode: 1026,
+            errorDescription: 'NetworkError',
+            fatal: true,
+            name: 'other',
+            rawErrorMessage: 'undefined\nundefined /undefined\nWEBEX_TRACKING_ID: undefined\n',
+            serviceErrorCode: undefined,
+            shownToUser: false,
+            httpStatusCode: 400,
+          });
+        });
+
+        it('should include httpStatusCode for unauthorized errors', () => {
+          const error = new WebexHttpError.Unauthorized(
+            {statusCode: 401, options: {service: '', headers: {}}});
+          const res = cd.generateClientEventErrorPayload(error);
+          assert.deepEqual(res, {
+            category: 'network',
+            errorCode: 1010,
+            errorDescription: 'AuthenticationFailed',
+            fatal: true,
+            name: 'other',
+            rawErrorMessage: 'undefined\nundefined /undefined\nWEBEX_TRACKING_ID: undefined\n',
+            serviceErrorCode: undefined,
+            shownToUser: false,
+            httpStatusCode: 401,
+          });
+        });
+
+        it('should include httpStatusCode for unknown errors', () => {
+          const res = cd.generateClientEventErrorPayload({
+            message: 'bad times',
+            statusCode: 404,
+          });
+          assert.deepEqual(res, {
+            fatal: true,
+            shownToUser: false,
+            name: 'other',
+            category: 'other',
+            errorCode: 9999,
+            serviceErrorCode: 9999,
+            errorDescription: 'UnknownError',
+            rawErrorMessage: 'bad times',
+            httpStatusCode: 404,
+          });
         });
       });
     });
