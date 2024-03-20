@@ -8,6 +8,7 @@ export enum METRIC_TYPE {
 }
 
 export enum METRIC_EVENT {
+  BNR = 'web-calling-sdk-bnr',
   CALL = 'web-calling-sdk-callcontrol',
   CALL_ERROR = 'web-calling-sdk-callcontrol-error',
   MEDIA = 'web-calling-sdk-media',
