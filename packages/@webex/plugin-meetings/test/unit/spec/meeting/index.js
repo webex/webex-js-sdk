@@ -2,7 +2,6 @@
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
 import 'jsdom-global/register';
-import jwt from 'jsonwebtoken';
 import {cloneDeep, forEach, isEqual, isUndefined} from 'lodash';
 import sinon from 'sinon';
 import * as internalMediaModule from '@webex/internal-media-core';
@@ -110,6 +109,10 @@ import {
 import CallDiagnosticMetrics from '@webex/internal-plugin-metrics/src/call-diagnostic/call-diagnostic-metrics';
 import {ERROR_DESCRIPTIONS} from '@webex/internal-plugin-metrics/src/call-diagnostic/config';
 import MeetingCollection from '@webex/plugin-meetings/src/meetings/collection';
+
+import {
+  EVENT_TRIGGERS as VOICEAEVENTS,
+} from '@webex/internal-plugin-voicea';
 
 describe('plugin-meetings', () => {
   const logger = {
@@ -655,16 +658,60 @@ describe('plugin-meetings', () => {
           assert.equal(meeting.isTranscriptionSupported(), true);
         });
       });
-      describe('#startTranscription', () => {
-        it('should invoke subscribe method to invoke the callback', () => {
-          meeting.monitorTranscriptionSocketConnection = sinon.stub();
-          meeting.initializeTranscription = sinon.stub();
 
-          meeting.startTranscription().then(() => {
-            assert.equal(true, false);
-            assert.calledOnce(meeting.initializeTranscription);
-            assert.calledOnce(meeting.monitorTranscriptionSocketConnection);
-          });
+      describe('#startTranscription', () => {
+        beforeEach(() => {
+          webex.internal.voicea.on = sinon.stub();
+          webex.internal.voicea.off = sinon.stub();
+          webex.internal.voicea.listenToEvents = sinon.stub();
+          webex.internal.voicea.toggleTranscribing = sinon.stub();
+        });
+
+        it('should subscribe to events for the first time and avoid subscribing for future transcription starts', async () => {
+          meeting.joinedWith = {
+            state: 'JOINED'
+          };
+          meeting.areVoiceaEventsSetup = false;
+          meeting.roles = ['MODERATOR'];
+
+          await meeting.startTranscription();
+
+          assert.equal(webex.internal.voicea.on.callCount, 5);
+          assert.equal(meeting.areVoiceaEventsSetup, true);
+          assert.equal(webex.internal.voicea.listenToEvents.callCount, 1);
+          assert.calledWith(
+            webex.internal.voicea.toggleTranscribing,
+            true,
+          );
+
+          await meeting.startTranscription();
+          assert.equal(webex.internal.voicea.on.callCount, 5);
+          assert.equal(meeting.areVoiceaEventsSetup, true);
+          assert.equal(webex.internal.voicea.listenToEvents.callCount, 1);
+          assert.calledTwice(
+            webex.internal.voicea.toggleTranscribing,
+          );
+          assert.calledWith(
+            webex.internal.voicea.toggleTranscribing,
+            true,
+          );
+        });
+
+        it('should listen to events and not toggleTranscribing if the user is not a host', async () => {
+          meeting.joinedWith = {
+            state: 'JOINED'
+          };
+          meeting.areVoiceaEventsSetup = false;
+          meeting.roles = ['COHOST'];
+
+          await meeting.startTranscription();
+
+          assert.equal(webex.internal.voicea.on.callCount, 5);
+          assert.equal(meeting.areVoiceaEventsSetup, true);
+          assert.equal(webex.internal.voicea.listenToEvents.callCount, 1);
+          assert.notCalled(
+            webex.internal.voicea.toggleTranscribing
+          );
         });
 
         it("should throw error if request doesn't work", async () => {
@@ -677,14 +724,69 @@ describe('plugin-meetings', () => {
           }
         });
       });
-      describe('#stopReceivingTranscription', () => {
-        it('should get invoked', () => {
-          meeting.transcription = {
-            closeSocket: sinon.stub(),
-          };
 
-          meeting.stopReceivingTranscription();
-          assert.calledOnce(meeting.transcription.closeSocket);
+      describe('#stopTranscription', () => {
+        beforeEach(() => {
+          webex.internal.voicea.on = sinon.stub();
+          webex.internal.voicea.off = sinon.stub();
+          webex.internal.voicea.listenToEvents = sinon.stub();
+          webex.internal.voicea.toggleTranscribing = sinon.stub();
+        });
+
+        it('should stop listening to voicea events and also trigger a stop event', () => {
+          meeting.stopTranscription();
+          assert.equal(webex.internal.voicea.off.callCount, 5);
+          assert.equal(meeting.areVoiceaEventsSetup, false);
+          assert.calledWith(
+            TriggerProxy.trigger,
+            sinon.match.instanceOf(Meeting),
+            {
+              file: 'meeting/index',
+              function: 'triggerStopReceivingTranscriptionEvent',
+            },
+            EVENT_TRIGGERS.MEETING_STOPPED_RECEIVING_TRANSCRIPTION
+          );
+        });
+      });
+
+      describe('transcription events', () => {
+        it('should trigger meeting:caption-received event', () => {
+          meeting.voiceaListenerCallbacks[VOICEAEVENTS.NEW_CAPTION]({});
+          assert.calledWith(
+            TriggerProxy.trigger,
+            sinon.match.instanceOf(Meeting),
+            {
+              file: 'meeting/index',
+              function: 'setUpVoiceaListeners',
+            },
+            EVENT_TRIGGERS.MEETING_CAPTION_RECEIVED
+          );
+        });
+
+        it('should trigger meeting:receiveTranscription:started event', () => {
+          meeting.voiceaListenerCallbacks[VOICEAEVENTS.VOICEA_ANNOUNCEMENT]({});
+          assert.calledWith(
+            TriggerProxy.trigger,
+            sinon.match.instanceOf(Meeting),
+            {
+              file: 'meeting/index',
+              function: 'setUpVoiceaListeners',
+            },
+            EVENT_TRIGGERS.MEETING_STARTED_RECEIVING_TRANSCRIPTION
+          );
+        });
+
+        it('should trigger meeting:caption-received event', () => {
+          meeting.voiceaListenerCallbacks[VOICEAEVENTS.NEW_CAPTION]({});
+          assert.calledWith(
+            TriggerProxy.trigger,
+            sinon.match.instanceOf(Meeting),
+            {
+              file: 'meeting/index',
+              function: 'setUpVoiceaListeners',
+            },
+            EVENT_TRIGGERS.MEETING_CAPTION_RECEIVED
+          );
         });
       });
       describe('#isReactionsSupported', () => {
@@ -851,7 +953,7 @@ describe('plugin-meetings', () => {
           setCorrelationIdSpy = sinon.spy(meeting, 'setCorrelationId');
           meeting.setLocus = sinon.stub().returns(true);
           webex.meetings.registered = true;
-          meeting.updateLLMConnection = sinon.stub();
+          meeting.updateLLMConnection = sinon.stub().returns(Promise.resolve());
         });
 
         describe('successful', () => {
@@ -861,6 +963,7 @@ describe('plugin-meetings', () => {
 
           it('should join the meeting and return promise', async () => {
             const join = meeting.join({pstnAudioType: 'dial-in'});
+            meeting.config.enableAutomaticLLM = true;
 
             assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
               name: 'client.call.initiated',
@@ -878,13 +981,16 @@ describe('plugin-meetings', () => {
             assert.calledOnce(MeetingUtil.joinMeeting);
             assert.calledOnce(meeting.setLocus);
             assert.equal(result, joinMeetingResult);
-          });
-          it('should invoke `startTranscription()` if receiveTranscription is set to true', async () => {
-            meeting.isTranscriptionSupported = sinon.stub().returns(true);
-            meeting.startTranscription = sinon.stub().returns(Promise.resolve());
 
-            await meeting.join({receiveTranscription: true});
-            assert.calledOnce(meeting.startTranscription);
+            assert.calledWith(
+              TriggerProxy.trigger,
+              sinon.match.instanceOf(Meeting),
+              {
+                file: 'meeting/index',
+                function: 'join',
+              },
+              EVENT_TRIGGERS.MEETING_TRANSCRIPTION_CONNECTED,
+            );
           });
 
           it('should take trigger from meeting joinTrigger if available', () => {
@@ -960,6 +1066,7 @@ describe('plugin-meetings', () => {
           });
 
           it('should post error event if failed', async () => {
+            MeetingUtil.isPinOrGuest = sinon.stub().returns(false);
             await meeting.join().catch(() => {
               assert.deepEqual(
                 webex.internal.newMetrics.submitClientEvent.getCall(1).args[0].name,
@@ -1053,60 +1160,6 @@ describe('plugin-meetings', () => {
 
                 assert.deepEqual(Metrics.sendBehavioralMetric.getCalls()[1].args, [
                   BEHAVIORAL_METRICS.LLM_CONNECTION_AFTER_JOIN_FAILURE,
-                  {
-                    correlation_id: meeting.correlationId,
-                    reason: err.message,
-                    stack: err.stack,
-                  },
-                ]);
-              }
-            });
-          });
-
-          describe('receive transcription', () => {
-            it('should invoke `startTranscription()` if receiveTranscription is set to true', async () => {
-              meeting.isTranscriptionSupported = sinon.stub().returns(true);
-              meeting.startTranscription = sinon.stub().returns(Promise.resolve());
-
-              await meeting.join({receiveTranscription: true});
-              assert.calledOnce(meeting.startTranscription);
-            });
-
-            it('make sure that join does not wait for setting up receive transcriptions', async () => {
-              const defer = new Defer();
-
-              meeting.isTranscriptionSupported = sinon.stub().returns(true);
-              meeting.receiveTranscription = sinon.stub().returns(defer.promise);
-
-              const result = await meeting.join({receiveTranscription: true});
-
-              assert.equal(result, joinMeetingResult);
-
-              defer.resolve();
-            });
-
-            it('handles catching error of receiveTranscription(), and join still resolves', async () => {
-              const defer = new Defer();
-
-              meeting.isTranscriptionSupported = sinon.stub().returns(true);
-              meeting.startTranscription = sinon.stub().returns(defer.promise);
-
-              const result = await meeting.join({receiveTranscription: true});
-
-              assert.equal(result, joinMeetingResult);
-
-              defer.reject(new Error('bad day', {cause: 'bad weather'}));
-
-              try {
-                await defer.promise;
-              } catch (err) {
-                assert.deepEqual(Metrics.sendBehavioralMetric.getCalls()[0].args, [
-                  BEHAVIORAL_METRICS.JOIN_SUCCESS,
-                  {correlation_id: meeting.correlationId},
-                ]);
-
-                assert.deepEqual(Metrics.sendBehavioralMetric.getCalls()[1].args, [
-                  BEHAVIORAL_METRICS.RECEIVE_TRANSCRIPTION_AFTER_JOIN_FAILURE,
                   {
                     correlation_id: meeting.correlationId,
                     reason: err.message,
@@ -3636,6 +3689,7 @@ describe('plugin-meetings', () => {
           meeting.unsetPeerConnections = sinon.stub().returns(true);
           meeting.logger.error = sinon.stub().returns(true);
           meeting.updateLLMConnection = sinon.stub().returns(Promise.resolve());
+          webex.internal.voicea.off = sinon.stub().returns(true);
 
           // A meeting needs to be joined to leave
           meeting.meetingState = 'ACTIVE';
@@ -4419,6 +4473,8 @@ describe('plugin-meetings', () => {
           sipUrl: 'some_sip_url', // or sipMeetingUri
           meetingNumber: '123456', // this.config.experimental.enableUnifiedMeetings
           hostId: 'some_host_id', // this.owner;
+          permissionToken:
+            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJtb2NrUGFzc3dvcmQiOiJ0aGlzSXNNb2NrUGFzc3dvcmQifQ.3-WXiR8vhGUH3VXO0DTpsTwnnkVQ3vhGQcktwIarj3I',
         };
         const FAKE_MEETING_INFO_LOOKUP_URL = 'meetingLookupUrl';
 
@@ -4843,6 +4899,8 @@ describe('plugin-meetings', () => {
           sipUrl: 'some_sip_url', // or sipMeetingUri
           meetingNumber: '123456', // this.config.experimental.enableUnifiedMeetings
           hostId: 'some_host_id', // this.owner;
+          permissionToken:
+            'eyJhbGciOiJIUzI1NiJ9.eyJleHAiOiIxMjM0NTYiLCJwZXJtaXNzaW9uIjp7InVzZXJQb2xpY2llcyI6eyJhIjp0cnVlfX19.wkTk0Hp8sUlq2wi2nP4-Ym4Xb7aEUHzyXA1kzk6f0V0',
         };
 
         [
@@ -4995,6 +5053,8 @@ describe('plugin-meetings', () => {
           sipUrl: 'some_sip_url',
           meetingNumber: '123456',
           hostId: 'some_host_id',
+          permissionToken:
+            'eyJhbGciOiJIUzI1NiJ9.eyJleHAiOiIxMjM0NTYiLCJwZXJtaXNzaW9uIjp7InVzZXJQb2xpY2llcyI6eyJhIjp0cnVlfX19.wkTk0Hp8sUlq2wi2nP4-Ym4Xb7aEUHzyXA1kzk6f0V0',
         };
         const FAKE_MEETING_INFO_LOOKUP_URL = 'meetingLookupUrl';
         const FAKE_PERMISSION_TOKEN = {someField: 'some value'};
@@ -5441,6 +5501,8 @@ describe('plugin-meetings', () => {
           meeting.unsetPeerConnections = sinon.stub().returns(true);
           meeting.logger.error = sinon.stub().returns(true);
           meeting.updateLLMConnection = sinon.stub().returns(Promise.resolve());
+          meeting.transcription = {};
+          meeting.stopTranscription = sinon.stub();
 
           // A meeting needs to be joined to end
           meeting.meetingState = 'ACTIVE';
@@ -5461,6 +5523,7 @@ describe('plugin-meetings', () => {
           assert.calledOnce(meeting?.closePeerConnections);
           assert.calledOnce(meeting?.unsetRemoteStreams);
           assert.calledOnce(meeting?.unsetPeerConnections);
+          assert.calledOnce(meeting?.stopTranscription);
         });
       });
 
@@ -6454,6 +6517,7 @@ describe('plugin-meetings', () => {
 
         describe('CONNECTION_STATE_CHANGED event when state = "Disconnected"', () => {
           beforeEach(() => {
+            Metrics.sendBehavioralMetric = sinon.stub();
             meeting.reconnectionManager = new ReconnectionManager(meeting);
             meeting.reconnectionManager.iceReconnected = sinon.stub().returns(undefined);
             meeting.setNetworkStatus = sinon.stub().returns(undefined);
@@ -6488,7 +6552,6 @@ describe('plugin-meetings', () => {
             meeting.reconnectionManager.waitForIceReconnect = sinon.stub().resolves();
 
             mockDisconnectedEvent();
-
             await testUtils.flushPromises();
 
             assert.calledOnce(meeting.setNetworkStatus);
@@ -7165,16 +7228,6 @@ describe('plugin-meetings', () => {
             EVENT_TRIGGERS.MEETING_INTERPRETATION_UPDATE
           );
         });
-
-        it('transcription should start when configured when guest admitted', (done) => {
-          meeting.isTranscriptionSupported = sinon.stub().returns(true);
-          meeting.receiveTranscription = sinon.stub().returns(true);
-          meeting.startTranscription = sinon.stub();
-
-          meeting.locusInfo.emit({function: 'test', file: 'test'}, 'SELF_ADMITTED_GUEST', test1);
-          assert.calledOnce(meeting.startTranscription);
-          done();
-        });
       });
 
       describe('#setUpBreakoutsListener', () => {
@@ -7275,36 +7328,6 @@ describe('plugin-meetings', () => {
       });
 
       describe('#setupLocusControlsListener', () => {
-        it('transcription should start when meeting transcribe state is updated with active transcribing', (done) => {
-          const payload = {caption: true, transcribing: true};
-          meeting.startTranscription = sinon.stub();
-          meeting.config.receiveTranscription = true;
-          meeting.transcription = null;
-
-          meeting.locusInfo.emit({function: 'meeting/index', file: 'setupLocusControlsListener'}, 'CONTROLS_MEETING_TRANSCRIBE_UPDATED', payload);
-          assert.calledOnce(meeting.startTranscription);
-          done();
-        });
-
-        it('transcription should stop when meeting transcribe state is updated with inactive transcribing', (done) => {
-          const payload = {caption: false, transcribing: false};
-          meeting.startTranscription = sinon.stub();
-          meeting.config.receiveTranscription = true;
-          meeting.transcription = {};
-
-          meeting.locusInfo.emit({function: 'meeting/index', file: 'setupLocusControlsListener'}, 'CONTROLS_MEETING_TRANSCRIBE_UPDATED', payload);
-          assert.notCalled(meeting.startTranscription);
-          assert.calledThrice(TriggerProxy.trigger);
-          assert.calledWith(
-            TriggerProxy.trigger,
-            sinon.match.instanceOf(Meeting),
-            {file: 'meeting/index', function: 'setupLocusControlsListener'},
-            'meeting:receiveTranscription:stopped',
-            payload
-          );
-          done();
-        });
-
         it('listens to the locus breakouts update event', () => {
           const locus = {
             breakout: 'breakout',
@@ -7645,10 +7668,11 @@ describe('plugin-meetings', () => {
       });
 
       describe('#setUpLocusInfoMeetingListener', () => {
+        let cleanUpSpy;
         it('listens to destroy meeting event from locus info  ', (done) => {
           TriggerProxy.trigger.reset();
           sinon.stub(meeting.reconnectionManager, 'cleanUp');
-          sinon.spy(MeetingUtil, 'cleanUp');
+          cleanUpSpy = sinon.stub(MeetingUtil, 'cleanUp');
 
           meeting.locusInfo.emit({function: 'test', file: 'test'}, EVENTS.DESTROY_MEETING, {
             shouldLeave: false,
@@ -7669,6 +7693,7 @@ describe('plugin-meetings', () => {
               meetingId: meeting.id,
             }
           );
+          cleanUpSpy.restore();
           done();
         });
       });
@@ -7772,13 +7797,12 @@ describe('plugin-meetings', () => {
         it('sets correctly', () => {
           assert.notOk(meeting.permissionTokenPayload);
 
-          const permissionTokenPayloadData = {permission: {userPolicies: {a: true}}, exp: '1234'};
+          const permissionTokenPayloadData = {permission: {userPolicies: {a: true}}, exp: '123456'};
 
-          const jwtDecodeStub = sinon.stub(jwt, 'decode').returns(permissionTokenPayloadData);
+          meeting.setPermissionTokenPayload(
+            'eyJhbGciOiJIUzI1NiJ9.eyJleHAiOiIxMjM0NTYiLCJwZXJtaXNzaW9uIjp7InVzZXJQb2xpY2llcyI6eyJhIjp0cnVlfX19.wkTk0Hp8sUlq2wi2nP4-Ym4Xb7aEUHzyXA1kzk6f0V0'
+          );
 
-          meeting.setPermissionTokenPayload();
-
-          assert.calledOnce(jwtDecodeStub);
           assert.deepEqual(meeting.permissionTokenPayload, permissionTokenPayloadData);
           assert.deepEqual(meeting.permissionTokenReceivedLocalTime, now);
         });
@@ -7966,7 +7990,8 @@ describe('plugin-meetings', () => {
             locusUrl: url1,
             meetingJoinUrl: url2,
             meetingNumber: '12345',
-            permissionToken: 'abc',
+            permissionToken:
+              'eyJhbGciOiJIUzI1NiJ9.eyJleHAiOiIxMjM0NTYiLCJwZXJtaXNzaW9uIjp7InVzZXJQb2xpY2llcyI6eyJhIjp0cnVlfX19.wkTk0Hp8sUlq2wi2nP4-Ym4Xb7aEUHzyXA1kzk6f0V0',
             sipMeetingUri: test1,
             sipUrl: test1,
             owner: test2,
@@ -7979,8 +8004,10 @@ describe('plugin-meetings', () => {
             sipUri: 'locusSipUri',
             meetingNumber: 'locusMeetingId',
             meetingJoinUrl: url2,
+            permissionToken:
+              'eyJhbGciOiJIUzI1NiJ9.eyJleHAiOiIxMjM0NTYiLCJwZXJtaXNzaW9uIjp7InVzZXJQb2xpY2llcyI6eyJhIjp0cnVlfX19.wkTk0Hp8sUlq2wi2nP4-Ym4Xb7aEUHzyXA1kzk6f0V0',
             owner: 'locusOwner',
-            permissionToken: 'abc',
+            selfUserPolicies: {a: true},
           };
 
           checkParseMeetingInfo(expectedInfoToParse);
@@ -7993,7 +8020,8 @@ describe('plugin-meetings', () => {
             locusUrl: url1,
             meetingJoinUrl: url2,
             meetingNumber: '12345',
-            permissionToken: 'abc',
+            permissionToken:
+              'eyJhbGciOiJIUzI1NiJ9.eyJleHAiOiIxMjM0NTYiLCJwZXJtaXNzaW9uIjp7InVzZXJQb2xpY2llcyI6eyJhIjp0cnVlfX19.wkTk0Hp8sUlq2wi2nP4-Ym4Xb7aEUHzyXA1kzk6f0V0',
             sipMeetingUri: test1,
             sipUrl: test1,
             owner: test2,
@@ -8006,8 +8034,10 @@ describe('plugin-meetings', () => {
             sipUri: test1,
             meetingNumber: '12345',
             meetingJoinUrl: url2,
+            permissionToken:
+              'eyJhbGciOiJIUzI1NiJ9.eyJleHAiOiIxMjM0NTYiLCJwZXJtaXNzaW9uIjp7InVzZXJQb2xpY2llcyI6eyJhIjp0cnVlfX19.wkTk0Hp8sUlq2wi2nP4-Ym4Xb7aEUHzyXA1kzk6f0V0',
             owner: test2,
-            permissionToken: 'abc',
+            selfUserPolicies: {a: true},
           };
 
           checkParseMeetingInfo(expectedInfoToParse);
@@ -8021,7 +8051,8 @@ describe('plugin-meetings', () => {
             locusUrl: url1,
             meetingJoinUrl: url2,
             meetingNumber: '12345',
-            permissionToken: 'abc',
+            permissionToken:
+              'eyJhbGciOiJIUzI1NiJ9.eyJleHAiOiIxMjM0NTYiLCJwZXJtaXNzaW9uIjp7InVzZXJQb2xpY2llcyI6eyJhIjp0cnVlfX19.wkTk0Hp8sUlq2wi2nP4-Ym4Xb7aEUHzyXA1kzk6f0V0',
             sipMeetingUri: test1,
             sipUrl: test1,
             owner: test2,
@@ -8035,7 +8066,9 @@ describe('plugin-meetings', () => {
             meetingNumber: '12345',
             meetingJoinUrl: url2,
             owner: test2,
-            permissionToken: 'abc',
+            permissionToken:
+              'eyJhbGciOiJIUzI1NiJ9.eyJleHAiOiIxMjM0NTYiLCJwZXJtaXNzaW9uIjp7InVzZXJQb2xpY2llcyI6eyJhIjp0cnVlfX19.wkTk0Hp8sUlq2wi2nP4-Ym4Xb7aEUHzyXA1kzk6f0V0',
+            selfUserPolicies: {a: true},
           };
 
           checkParseMeetingInfo(expectedInfoToParse);
@@ -8056,6 +8089,8 @@ describe('plugin-meetings', () => {
                 },
               ],
             },
+            permissionToken:
+              'eyJhbGciOiJIUzI1NiJ9.eyJleHAiOiIxMjM0NTYiLCJwZXJtaXNzaW9uIjp7InVzZXJQb2xpY2llcyI6eyJhIjp0cnVlfX19.wkTk0Hp8sUlq2wi2nP4-Ym4Xb7aEUHzyXA1kzk6f0V0',
           };
           meeting.parseMeetingInfo(mockToggleOnData);
           assert.calledOnceWithExactly(parseInterpretationInfo, meeting, mockToggleOnData);
@@ -8731,627 +8766,7 @@ describe('plugin-meetings', () => {
           // Due to import tree issues, hasHints must be stubed within the scope of the `it`.
           const restorableHasHints = ControlsOptionsUtil.hasHints;
           ControlsOptionsUtil.hasHints = sinon.stub().returns(true);
-          ControlsOptionsUtil.hasPolicies = sinon.stub().returns(true);
-
-          const selfUserPolicies = {a: true};
-          meeting.selfUserPolicies = {a: true};
-          const userDisplayHints = ['LOCK_CONTROL_UNLOCK'];
-          meeting.userDisplayHints = ['LOCK_CONTROL_UNLOCK'];
-          meeting.meetingInfo.supportVoIP = true;
-
-          meeting.updateMeetingActions();
-
-          assert.calledWith(canUserLockSpy, userDisplayHints);
-          assert.calledWith(canUserUnlockSpy, userDisplayHints);
-          assert.calledWith(canUserStartSpy, userDisplayHints);
-          assert.calledWith(canUserStopSpy, userDisplayHints);
-          assert.calledWith(canUserPauseSpy, userDisplayHints);
-          assert.calledWith(canUserResumeSpy, userDisplayHints);
-          assert.calledWith(canSetMuteOnEntrySpy, userDisplayHints);
-          assert.calledWith(canUnsetMuteOnEntrySpy, userDisplayHints);
-          assert.calledWith(canSetDisallowUnmuteSpy, userDisplayHints);
-          assert.calledWith(canUnsetDisallowUnmuteSpy, userDisplayHints);
-          assert.calledWith(canUserRaiseHandSpy, userDisplayHints);
-          assert.calledWith(bothLeaveAndEndMeetingAvailableSpy, userDisplayHints);
-          assert.calledWith(canUserLowerAllHandsSpy, userDisplayHints);
-          assert.calledWith(canUserLowerSomeoneElsesHandSpy, userDisplayHints);
-          assert.calledWith(waitingForOthersToJoinSpy, userDisplayHints);
-          assert.calledWith(canSendReactionsSpy, null, userDisplayHints);
-          assert.calledWith(canUserRenameSelfAndObservedSpy, userDisplayHints);
-          assert.calledWith(canUserRenameOthersSpy, userDisplayHints);
-          assert.calledWith(canShareWhiteBoardSpy, userDisplayHints);
-
-          assert.calledWith(ControlsOptionsUtil.hasHints, {
-            requiredHints: [DISPLAY_HINTS.MUTE_ALL],
-            displayHints: userDisplayHints,
-          });
-          assert.calledWith(ControlsOptionsUtil.hasHints, {
-            requiredHints: [DISPLAY_HINTS.UNMUTE_ALL],
-            displayHints: userDisplayHints,
-          });
-          assert.calledWith(ControlsOptionsUtil.hasHints, {
-            requiredHints: [DISPLAY_HINTS.ENABLE_HARD_MUTE],
-            displayHints: userDisplayHints,
-          });
-          assert.calledWith(ControlsOptionsUtil.hasHints, {
-            requiredHints: [DISPLAY_HINTS.DISABLE_HARD_MUTE],
-            displayHints: userDisplayHints,
-          });
-          assert.calledWith(ControlsOptionsUtil.hasHints, {
-            requiredHints: [DISPLAY_HINTS.ENABLE_MUTE_ON_ENTRY],
-            displayHints: userDisplayHints,
-          });
-          assert.calledWith(ControlsOptionsUtil.hasHints, {
-            requiredHints: [DISPLAY_HINTS.DISABLE_MUTE_ON_ENTRY],
-            displayHints: userDisplayHints,
-          });
-          assert.calledWith(ControlsOptionsUtil.hasHints, {
-            requiredHints: [DISPLAY_HINTS.ENABLE_REACTIONS],
-            displayHints: userDisplayHints,
-          });
-          assert.calledWith(ControlsOptionsUtil.hasHints, {
-            requiredHints: [DISPLAY_HINTS.DISABLE_REACTIONS],
-            displayHints: userDisplayHints,
-          });
-          assert.calledWith(ControlsOptionsUtil.hasHints, {
-            requiredHints: [DISPLAY_HINTS.ENABLE_SHOW_DISPLAY_NAME],
-            displayHints: userDisplayHints,
-          });
-          assert.calledWith(ControlsOptionsUtil.hasHints, {
-            requiredHints: [DISPLAY_HINTS.DISABLE_SHOW_DISPLAY_NAME],
-            displayHints: userDisplayHints,
-          });
-          assert.calledWith(ControlsOptionsUtil.hasHints, {
-            requiredHints: [DISPLAY_HINTS.SHARE_CONTROL],
-            displayHints: userDisplayHints,
-          });
-          assert.calledWith(ControlsOptionsUtil.hasHints, {
-            requiredHints: [DISPLAY_HINTS.ENABLE_VIEW_THE_PARTICIPANT_LIST],
-            displayHints: userDisplayHints,
-          });
-          assert.calledWith(ControlsOptionsUtil.hasHints, {
-            requiredHints: [DISPLAY_HINTS.DISABLE_VIEW_THE_PARTICIPANT_LIST],
-            displayHints: userDisplayHints,
-          });
-          assert.calledWith(ControlsOptionsUtil.hasHints, {
-            requiredHints: [DISPLAY_HINTS.SHARE_FILE],
-            displayHints: userDisplayHints,
-          });
-          assert.calledWith(ControlsOptionsUtil.hasPolicies, {
-            requiredPolicies: [SELF_POLICY.SUPPORT_FILE_SHARE],
-            policies: selfUserPolicies,
-          });
-          assert.calledWith(ControlsOptionsUtil.hasHints, {
-            requiredHints: [DISPLAY_HINTS.SHARE_APPLICATION],
-            displayHints: userDisplayHints,
-          });
-          assert.calledWith(ControlsOptionsUtil.hasPolicies, {
-            requiredPolicies: [SELF_POLICY.SUPPORT_APP_SHARE],
-            policies: selfUserPolicies,
-          });
-          assert.calledWith(ControlsOptionsUtil.hasHints, {
-            requiredHints: [DISPLAY_HINTS.SHARE_CAMERA],
-            displayHints: userDisplayHints,
-          });
-          assert.calledWith(ControlsOptionsUtil.hasPolicies, {
-            requiredPolicies: [SELF_POLICY.SUPPORT_CAMERA_SHARE],
-            policies: selfUserPolicies,
-          });
-          assert.calledWith(ControlsOptionsUtil.hasHints, {
-            requiredHints: [DISPLAY_HINTS.SHARE_DESKTOP],
-            displayHints: userDisplayHints,
-          });
-          assert.calledWith(ControlsOptionsUtil.hasPolicies, {
-            requiredPolicies: [SELF_POLICY.SUPPORT_DESKTOP_SHARE],
-            policies: selfUserPolicies,
-          });
-          assert.calledWith(ControlsOptionsUtil.hasHints, {
-            requiredHints: [DISPLAY_HINTS.SHARE_CONTENT],
-            displayHints: userDisplayHints,
-          });
-          assert.calledWith(ControlsOptionsUtil.hasPolicies, {
-            requiredPolicies: [SELF_POLICY.SUPPORT_VOIP],
-            policies: selfUserPolicies,
-          });
-
-          assert.calledWith(updateMeetingActionsSpy);
-          assert.calledWith(setRecordingDisplayHintsSpy, userDisplayHints);
-          assert.calledWith(setUserPolicySpy, userDisplayPolicy);
-          assert.calledWith(setControlsDisplayHintsSpy, userDisplayHints);
-          assert.calledWith(handleDataChannelUrlChangeSpy, datachannelUrl);
-        });
-      });
-
-      describe('#updateMeetingActions', () => {
-        let inMeetingActionsSetSpy;
-        let canUserLockSpy;
-        let canUserUnlockSpy;
-        let canUserStartSpy;
-        let canUserStopSpy;
-        let canUserPauseSpy;
-        let canUserResumeSpy;
-        let canSetMuteOnEntrySpy;
-        let canUnsetMuteOnEntrySpy;
-        let canSetDisallowUnmuteSpy;
-        let canUnsetDisallowUnmuteSpy;
-        let canUserRaiseHandSpy;
-        let bothLeaveAndEndMeetingAvailableSpy;
-        let canUserLowerAllHandsSpy;
-        let canUserLowerSomeoneElsesHandSpy;
-        let waitingForOthersToJoinSpy;
-        let canSendReactionsSpy;
-        let canUserRenameSelfAndObservedSpy;
-        let canUserRenameOthersSpy;
-        let canShareWhiteBoardSpy;
-        // Due to import tree issues, hasHints must be stubed within the scope of the `it`.
-
-        beforeEach(() => {
-          canUserLockSpy = sinon.spy(MeetingUtil, 'canUserLock');
-          canUserUnlockSpy = sinon.spy(MeetingUtil, 'canUserUnlock');
-          canUserStartSpy = sinon.spy(RecordingUtil, 'canUserStart');
-          canUserStopSpy = sinon.spy(RecordingUtil, 'canUserStop');
-          canUserPauseSpy = sinon.spy(RecordingUtil, 'canUserPause');
-          canUserResumeSpy = sinon.spy(RecordingUtil, 'canUserResume');
-          canSetMuteOnEntrySpy = sinon.spy(ControlsOptionsUtil, 'canSetMuteOnEntry');
-          canUnsetMuteOnEntrySpy = sinon.spy(ControlsOptionsUtil, 'canUnsetMuteOnEntry');
-          canSetDisallowUnmuteSpy = sinon.spy(ControlsOptionsUtil, 'canSetDisallowUnmute');
-          canUnsetDisallowUnmuteSpy = sinon.spy(ControlsOptionsUtil, 'canUnsetDisallowUnmute');
-          inMeetingActionsSetSpy = sinon.spy(meeting.inMeetingActions, 'set');
-          canUserRaiseHandSpy = sinon.spy(MeetingUtil, 'canUserRaiseHand');
-          canUserLowerAllHandsSpy = sinon.spy(MeetingUtil, 'canUserLowerAllHands');
-          bothLeaveAndEndMeetingAvailableSpy = sinon.spy(
-            MeetingUtil,
-            'bothLeaveAndEndMeetingAvailable'
-          );
-          canUserLowerSomeoneElsesHandSpy = sinon.spy(MeetingUtil, 'canUserLowerSomeoneElsesHand');
-          waitingForOthersToJoinSpy = sinon.spy(MeetingUtil, 'waitingForOthersToJoin');
-          canSendReactionsSpy = sinon.spy(MeetingUtil, 'canSendReactions');
-          canUserRenameSelfAndObservedSpy = sinon.spy(MeetingUtil, 'canUserRenameSelfAndObserved');
-          canUserRenameOthersSpy = sinon.spy(MeetingUtil, 'canUserRenameOthers');
-          canShareWhiteBoardSpy = sinon.spy(MeetingUtil, 'canShareWhiteBoard');
-        });
-
-        afterEach(() => {
-          inMeetingActionsSetSpy.restore();
-          waitingForOthersToJoinSpy.restore();
-        });
-
-        forEach(
-          [
-            {
-              actionName: 'canShareApplication',
-              expectedEnabled: true,
-              arePolicyRestrictionsSupported: false,
-            },
-            {
-              actionName: 'canShareApplication',
-              expectedEnabled: false,
-              arePolicyRestrictionsSupported: true,
-            },
-            {
-              actionName: 'canShareDesktop',
-              arePolicyRestrictionsSupported: false,
-              expectedEnabled: true,
-            },
-            {
-              actionName: 'canShareDesktop',
-              arePolicyRestrictionsSupported: true,
-              expectedEnabled: false,
-            },
-            {
-              actionName: 'canShareContent',
-              arePolicyRestrictionsSupported: false,
-              expectedEnabled: true,
-            },
-            {
-              actionName: 'canShareContent',
-              arePolicyRestrictionsSupported: true,
-              expectedEnabled: false,
-            },
-            {
-              actionName: 'canUseVoip',
-              expectedEnabled: true,
-              arePolicyRestrictionsSupported: false,
-            },
-            {
-              actionName: 'canUseVoip',
-              expectedEnabled: false,
-              arePolicyRestrictionsSupported: true,
-            },
-          ],
-          ({actionName, arePolicyRestrictionsSupported, expectedEnabled}) => {
-            it(`${actionName} is ${expectedEnabled} when the call type is ${arePolicyRestrictionsSupported}`, () => {
-              meeting.userDisplayHints = [];
-              meeting.meetingInfo = {some: 'info'};
-              sinon
-                .stub(meeting, 'arePolicyRestrictionsSupported')
-                .returns(arePolicyRestrictionsSupported);
-
-              meeting.updateMeetingActions();
-
-              assert.equal(meeting.inMeetingActions.get()[actionName], expectedEnabled);
-            });
-          }
-        );
-
-        forEach(
-          [
-            {
-              actionName: 'canShareFile',
-              requiredDisplayHints: [DISPLAY_HINTS.SHARE_FILE],
-              requiredPolicies: [SELF_POLICY.SUPPORT_FILE_SHARE],
-            },
-            {
-              actionName: 'canShareApplication',
-              requiredDisplayHints: [DISPLAY_HINTS.SHARE_APPLICATION],
-              requiredPolicies: [SELF_POLICY.SUPPORT_APP_SHARE],
-            },
-            {
-              actionName: 'canShareCamera',
-              requiredDisplayHints: [DISPLAY_HINTS.SHARE_CAMERA],
-              requiredPolicies: [SELF_POLICY.SUPPORT_CAMERA_SHARE],
-            },
-            {
-              actionName: 'canBroadcastMessageToBreakout',
-              requiredDisplayHints: [DISPLAY_HINTS.BROADCAST_MESSAGE_TO_BREAKOUT],
-              requiredPolicies: [SELF_POLICY.SUPPORT_BROADCAST_MESSAGE],
-            },
-            {
-              actionName: 'canShareDesktop',
-              requiredDisplayHints: [DISPLAY_HINTS.SHARE_DESKTOP],
-              requiredPolicies: [SELF_POLICY.SUPPORT_DESKTOP_SHARE],
-            },
-            {
-              actionName: 'canTransferFile',
-              requiredDisplayHints: [],
-              requiredPolicies: [SELF_POLICY.SUPPORT_FILE_TRANSFER],
-            },
-            {
-              actionName: 'canShareDesktop',
-              requiredDisplayHints: [DISPLAY_HINTS.SHARE_DESKTOP],
-              requiredPolicies: [],
-              enableUnifiedMeetings: false,
-              arePolicyRestrictionsSupported: false,
-            },
-            {
-              actionName: 'canShareApplication',
-              requiredDisplayHints: [DISPLAY_HINTS.SHARE_APPLICATION],
-              requiredPolicies: [],
-              enableUnifiedMeetings: false,
-              arePolicyRestrictionsSupported: false,
-            },
-            {
-              actionName: 'canAnnotate',
-              requiredDisplayHints: [],
-              requiredPolicies: [SELF_POLICY.SUPPORT_ANNOTATION],
-            },
-          ],
-          ({
-            actionName,
-            requiredDisplayHints,
-            requiredPolicies,
-            enableUnifiedMeetings,
-            meetingInfo,
-            arePolicyRestrictionsSupported,
-          }) => {
-            it(`${actionName} is enabled when the conditions are met`, () => {
-              meeting.userDisplayHints = requiredDisplayHints;
-              meeting.selfUserPolicies = undefined;
-              sinon
-                .stub(meeting, 'arePolicyRestrictionsSupported')
-                .returns(arePolicyRestrictionsSupported);
-
-              meeting.config.experimental.enableUnifiedMeetings = isUndefined(enableUnifiedMeetings)
-                ? true
-                : enableUnifiedMeetings;
-
-              meeting.meetingInfo = isUndefined(meetingInfo) ? {some: 'info'} : meetingInfo;
-
-              if (requiredPolicies) {
-                meeting.selfUserPolicies = {};
-              }
-              forEach(requiredPolicies, (policy) => {
-                meeting.selfUserPolicies[policy] = true;
-              });
-
-              meeting.updateMeetingActions();
-
-              assert.isTrue(meeting.inMeetingActions.get()[actionName]);
-            });
-
-            if (requiredDisplayHints.length !== 0) {
-              it(`${actionName} is disabled when the required display hints are missing`, () => {
-                meeting.userDisplayHints = [];
-                meeting.selfUserPolicies = undefined;
-
-                meeting.meetingInfo = isUndefined(meetingInfo) ? {some: 'info'} : meetingInfo;
-
-                if (requiredPolicies) {
-                  meeting.selfUserPolicies = {};
-                }
-                forEach(requiredPolicies, (policy) => {
-                  meeting.selfUserPolicies[policy] = true;
-                });
-
-                meeting.updateMeetingActions();
-
-                assert.isFalse(meeting.inMeetingActions.get()[actionName]);
-              });
-            }
-
-            it(`${actionName} is disabled when the required policies are missing`, () => {
-              meeting.userDisplayHints = requiredDisplayHints;
-              meeting.selfUserPolicies = undefined;
-
-              if (requiredPolicies) {
-                meeting.selfUserPolicies = {};
-              }
-              meeting.meetingInfo = isUndefined(meetingInfo) ? {some: 'info'} : meetingInfo;
-
-              meeting.updateMeetingActions();
-
-              assert.isFalse(meeting.inMeetingActions.get()[actionName]);
-            });
-          }
-        );
-
-        forEach(
-          [
-            {
-              meetingInfo: {
-                video: {
-                  supportHDV: true,
-                  supportHQV: true,
-                },
-              },
-              selfUserPolicies: {
-                [SELF_POLICY.SUPPORT_HDV]: true,
-                [SELF_POLICY.SUPPORT_HQV]: true,
-              },
-              expectedActions: {
-                supportHQV: true,
-                supportHDV: true,
-              },
-            },
-            {
-              meetingInfo: {
-                video: {
-                  supportHDV: false,
-                  supportHQV: false,
-                },
-              },
-              selfUserPolicies: {
-                [SELF_POLICY.SUPPORT_HDV]: true,
-                [SELF_POLICY.SUPPORT_HQV]: true,
-              },
-              expectedActions: {
-                supportHQV: false,
-                supportHDV: false,
-              },
-            },
-            {
-              meetingInfo: {
-                video: {
-                  supportHDV: true,
-                  supportHQV: true,
-                },
-              },
-              selfUserPolicies: {
-                [SELF_POLICY.SUPPORT_HDV]: false,
-                [SELF_POLICY.SUPPORT_HQV]: false,
-              },
-              expectedActions: {
-                supportHQV: false,
-                supportHDV: false,
-              },
-            },
-            {
-              meetingInfo: undefined,
-              selfUserPolicies: {},
-              expectedActions: {
-                supportHQV: true,
-                supportHDV: true,
-              },
-            },
-            {
-              meetingInfo: {some: 'data'},
-              selfUserPolicies: undefined,
-              expectedActions: {
-                supportHQV: true,
-                supportHDV: true,
-              },
-            },
-          ],
-          ({meetingInfo, selfUserPolicies, expectedActions}) => {
-            it(`expectedActions are ${JSON.stringify(
-              expectedActions
-            )} when policies are ${JSON.stringify(
-              selfUserPolicies
-            )} and meetingInfo is ${JSON.stringify(meetingInfo)}`, () => {
-              meeting.meetingInfo = meetingInfo;
-              meeting.selfUserPolicies = selfUserPolicies;
-
-              meeting.updateMeetingActions();
-
-              assert.deepEqual(
-                {
-                  supportHDV: meeting.inMeetingActions.supportHDV,
-                  supportHQV: meeting.inMeetingActions.supportHQV,
-                },
-                expectedActions
-              );
-            });
-          }
-        );
-
-        it('canUseVoip is disabled when the required policies are missing', () => {
-          meeting.userDisplayHints = [DISPLAY_HINTS.VOIP_IS_ENABLED];
-          meeting.selfUserPolicies = {};
-          meeting.meetingInfo.supportVoIP = true;
-
-          meeting.updateMeetingActions();
-
-          assert.isFalse(meeting.inMeetingActions.get()['canUseVoip']);
-        });
-
-        it('canUseVoip is enabled based on api info when the conditions are met', () => {
-          meeting.userDisplayHints = undefined;
-          meeting.selfUserPolicies = {[SELF_POLICY.SUPPORT_VOIP]: true};
-          meeting.meetingInfo.supportVoIP = true;
-
-          meeting.updateMeetingActions();
-
-          assert.isTrue(meeting.inMeetingActions.get()['canUseVoip']);
-        });
-
-        it('canUseVoip is enabled based on api info when the conditions are met - no display hints', () => {
-          meeting.userDisplayHints = [];
-          meeting.selfUserPolicies = {[SELF_POLICY.SUPPORT_VOIP]: true};
-          meeting.meetingInfo.supportVoIP = true;
-
-          meeting.updateMeetingActions();
-
-          assert.isTrue(meeting.inMeetingActions.get()['canUseVoip']);
-        });
-
-        it('canUseVoip is enabled when there is no meeting info', () => {
-          meeting.updateMeetingActions();
-
-          assert.isTrue(meeting.inMeetingActions.get()['canUseVoip']);
-        });
-
-        it('canUseVoip is enabled when it is a locus call', () => {
-          meeting.meetingInfo = {some: 'info'};
-          meeting.type = 'CALL';
-
-          meeting.updateMeetingActions();
-
-          assert.isTrue(meeting.inMeetingActions.get()['canUseVoip']);
-        });
-
-        it('canUseVoip is disabled based on api info when supportVoip is false', () => {
-          meeting.userDisplayHints = undefined;
-          meeting.selfUserPolicies = {[SELF_POLICY.SUPPORT_VOIP]: true};
-          meeting.meetingInfo.supportVoIP = false;
-
-          meeting.updateMeetingActions();
-
-          assert.isFalse(meeting.inMeetingActions.get()['canUseVoip']);
-        });
-
-        it('canUseVoip is disabled based on api info when the required policies are missing', () => {
-          meeting.userDisplayHints = undefined;
-          meeting.selfUserPolicies = {};
-          meeting.meetingInfo.supportVoIP = true;
-
-          meeting.updateMeetingActions();
-
-          assert.isFalse(meeting.inMeetingActions.get()['canUseVoip']);
-        });
-
-        it('canUseVoip is enabled when there are no policies', () => {
-          meeting.userDisplayHints = [DISPLAY_HINTS.VOIP_IS_ENABLED];
-          meeting.selfUserPolicies = undefined;
-          meeting.meetingInfo.supportVoIP = false;
-
-          meeting.updateMeetingActions();
-
-          assert.isTrue(meeting.inMeetingActions.get()['canUseVoip']);
-        });
-
-        forEach(
-          [
-            {
-              meetingInfo: {},
-              selfUserPolicies: {
-                [SELF_POLICY.SUPPORT_VIDEO]: true,
-              },
-              expectedActions: {
-                canDoVideo: true,
-              },
-            },
-            {
-              meetingInfo: {},
-              selfUserPolicies: {
-                [SELF_POLICY.SUPPORT_VIDEO]: false,
-              },
-              expectedActions: {
-                canDoVideo: true,
-              },
-            },
-            {
-              meetingInfo: {some: 'data'},
-              selfUserPolicies: {
-                [SELF_POLICY.SUPPORT_VIDEO]: true,
-              },
-              expectedActions: {
-                canDoVideo: false,
-              },
-            },
-            {
-              meetingInfo: {some: 'data'},
-              selfUserPolicies: undefined,
-              expectedActions: {
-                canDoVideo: true,
-              },
-            },
-            {
-              meetingInfo: {
-                video: {},
-              },
-              selfUserPolicies: {
-                [SELF_POLICY.SUPPORT_VIDEO]: true,
-              },
-              expectedActions: {
-                canDoVideo: true,
-              },
-            },
-            {
-              meetingInfo: undefined,
-              selfUserPolicies: {},
-              expectedActions: {
-                canDoVideo: true,
-              },
-            },
-            {
-              meetingInfo: {
-                video: {},
-              },
-              selfUserPolicies: {
-                [SELF_POLICY.SUPPORT_VIDEO]: false,
-              },
-              expectedActions: {
-                canDoVideo: false,
-              },
-            },
-          ],
-          ({meetingInfo, selfUserPolicies, expectedActions}) => {
-            it(`has expectedActions ${JSON.stringify(
-              expectedActions
-            )} when policies are ${JSON.stringify(
-              selfUserPolicies
-            )} and meetingInfo is ${JSON.stringify(meetingInfo)}`, () => {
-              meeting.meetingInfo = meetingInfo;
-              meeting.selfUserPolicies = selfUserPolicies;
-              meeting.config.experimental.enableUnifiedMeetings = true;
-
-              meeting.updateMeetingActions();
-
-              assert.deepEqual(
-                {
-                  canDoVideo: meeting.inMeetingActions.canDoVideo,
-                },
-                expectedActions
-              );
-            });
-          }
-        );
-
-        it('correctly updates the meeting actions', () => {
-          // Due to import tree issues, hasHints must be stubed within the scope of the `it`.
-          const restorableHasHints = ControlsOptionsUtil.hasHints;
-          ControlsOptionsUtil.hasHints = sinon.stub().returns(true);
-          ControlsOptionsUtil.hasPolicies = sinon.stub().returns(true);
+          const hasPoliciesSpy = sinon.stub(ControlsOptionsUtil, 'hasPolicies').returns(true);
 
           const selfUserPolicies = {a: true};
           meeting.selfUserPolicies = {a: true};
@@ -9492,6 +8907,7 @@ describe('plugin-meetings', () => {
           assert.notCalled(TriggerProxy.trigger);
 
           ControlsOptionsUtil.hasHints = restorableHasHints;
+          hasPoliciesSpy.restore();
         });
       });
 

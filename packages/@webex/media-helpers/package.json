@@ -19,7 +19,7 @@
     "test:browser:broken": "webex-legacy-tools test --integration --unit --runner karma",
     "test:integration:broken": "webex-legacy-tools test --integration --runner mocha",
     "test:style": "eslint 'src/**/*.ts' --fix",
-    "test:unit:broken": "webex-legacy-tools test --unit --runner mocha",
+    "test:unit": "webex-legacy-tools test --unit --runner jest",
     "deploy:npm": "yarn npm publish"
   },
   "dependencies": {
