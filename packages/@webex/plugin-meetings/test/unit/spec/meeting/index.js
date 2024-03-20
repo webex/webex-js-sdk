@@ -5772,6 +5772,7 @@ describe('plugin-meetings', () => {
           meeting.mediaProperties.webrtcMediaConnection = {};
           meeting.audio = {handleLocalStreamChange: sinon.stub()};
           meeting.video = {handleLocalStreamChange: sinon.stub()};
+          meeting.statsAnalyzer = {updateMediaStatus: sinon.stub()};
           fakeMultistreamRoapMediaConnection = {
             createSendSlot: () => {
               return {
@@ -5838,6 +5839,10 @@ describe('plugin-meetings', () => {
               options: {meetingId: meeting.id},
             });
             assert.equal(meeting.mediaProperties.mediaDirection.sendShare, true);
+
+            assert.calledWith(meeting.statsAnalyzer.updateMediaStatus, {
+              expected: {sendShare: true},
+            });
           };
 
           const checkScreenShareAudioPublished = (stream) => {
@@ -5854,6 +5859,10 @@ describe('plugin-meetings', () => {
             );
             assert.equal(meeting.mediaProperties.shareAudioStream, stream);
             assert.equal(meeting.mediaProperties.mediaDirection.sendShare, true);
+
+            assert.calledWith(meeting.statsAnalyzer.updateMediaStatus, {
+              expected: {sendShare: true},
+            });
           };
 
           it('requests screen share floor and publishes the screen share video stream', async () => {
@@ -5948,6 +5957,11 @@ describe('plugin-meetings', () => {
 
             assert.equal(meeting.mediaProperties.shareVideoStream, null);
             assert.equal(meeting.mediaProperties.mediaDirection.sendShare, shareDirection);
+            if (!shareDirection) {
+              assert.calledWith(meeting.statsAnalyzer.updateMediaStatus, {
+                expected: {sendShare: false},
+              });
+            }
           };
 
           // share direction will remain true if only one of the two share streams are unpublished
@@ -5960,6 +5974,11 @@ describe('plugin-meetings', () => {
 
             assert.equal(meeting.mediaProperties.shareAudioStream, null);
             assert.equal(meeting.mediaProperties.mediaDirection.sendShare, shareDirection);
+            if (!shareDirection) {
+              assert.calledWith(meeting.statsAnalyzer.updateMediaStatus, {
+                expected: {sendShare: false},
+              });
+            }
           };
 
           it('fails if there is no media connection', async () => {
@@ -8172,7 +8191,7 @@ describe('plugin-meetings', () => {
               function: 'setUpLocusInfoMeetingInfoListener',
             },
             'meeting:meetingInfoUpdated'
-          )
+          );
 
           callback({isIntialized: false});
 
@@ -8190,7 +8209,7 @@ describe('plugin-meetings', () => {
               function: 'setUpLocusInfoMeetingInfoListener',
             },
             'meeting:meetingInfoUpdated'
-          )
+          );
         });
       });
 
