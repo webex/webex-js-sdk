@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.380](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.379...v3.0.0-beta.380) (2024-03-20)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** Share Metric: Start/Stop ([#3402](https://github.com/webex/webex-js-sdk/issues/3402)) ([9714639](https://github.com/webex/webex-js-sdk/commit/971463990daf87eb38f37cc1333c2ca59dd7baf0))
+
 ## [3.0.0-beta.379](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.378...v3.0.0-beta.379) (2024-03-20)
 
 
