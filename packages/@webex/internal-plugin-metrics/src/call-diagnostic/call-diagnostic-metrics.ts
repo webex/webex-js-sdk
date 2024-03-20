@@ -477,6 +477,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
    * @param arg.clientErrorCode
    * @param arg.serviceErrorCode
    * @param arg.payloadOverrides
+   * @param arg.httpStatusCode
    * @returns
    */
   public getErrorPayloadForClientErrorCode({
@@ -485,12 +486,14 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     serviceErrorName,
     rawErrorMessage,
     payloadOverrides,
+    httpStatusCode,
   }: {
     clientErrorCode: number;
     serviceErrorCode: any;
     serviceErrorName?: any;
     rawErrorMessage?: string;
     payloadOverrides?: any;
+    httpStatusCode?: number;
   }): ClientEventError {
     let error: ClientEventError;
 
@@ -504,6 +507,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
           serviceErrorName ? {errorData: {errorName: serviceErrorName}} : {},
           {serviceErrorCode},
           {rawErrorMessage},
+          httpStatusCode === undefined ? {} : {httpStatusCode},
           partialParsedError,
           payloadOverrides || {}
         );
@@ -521,6 +525,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
    */
   generateClientEventErrorPayload(rawError: any) {
     const rawErrorMessage = rawError.message;
+    const httpStatusCode = rawError.statusCode;
     if (rawError.name) {
       if (isBrowserMediaErrorName(rawError.name)) {
         return this.getErrorPayloadForClientErrorCode({
@@ -528,6 +533,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
           clientErrorCode: BROWSER_MEDIA_ERROR_NAME_TO_CLIENT_ERROR_CODES_MAP[rawError.name],
           serviceErrorName: rawError.name,
           rawErrorMessage,
+          httpStatusCode,
         });
       }
     }
@@ -542,6 +548,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
           SDP_OFFER_CREATION_ERROR_MAP[causeType] || SDP_OFFER_CREATION_ERROR_MAP.GENERAL,
         serviceErrorName: rawError.name,
         rawErrorMessage,
+        httpStatusCode,
       });
     }
 
@@ -558,6 +565,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
           clientErrorCode,
           serviceErrorCode,
           rawErrorMessage,
+          httpStatusCode,
         });
       }
 
@@ -567,6 +575,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
           clientErrorCode: NEW_LOCUS_ERROR_CLIENT_CODE,
           serviceErrorCode,
           rawErrorMessage,
+          httpStatusCode,
         });
       }
     }
@@ -576,6 +585,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
         clientErrorCode: MEETING_INFO_LOOKUP_ERROR_CLIENT_CODE,
         serviceErrorCode,
         rawErrorMessage,
+        httpStatusCode,
       });
     }
 
@@ -585,6 +595,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
         serviceErrorCode,
         payloadOverrides: rawError.payloadOverrides,
         rawErrorMessage,
+        httpStatusCode,
       });
     }
 
@@ -594,6 +605,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
         serviceErrorCode,
         payloadOverrides: rawError.payloadOverrides,
         rawErrorMessage,
+        httpStatusCode,
       });
     }
 
@@ -602,6 +614,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       clientErrorCode: UNKNOWN_ERROR,
       serviceErrorCode: UNKNOWN_ERROR,
       rawErrorMessage,
+      httpStatusCode,
     });
   }
 
