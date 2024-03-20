@@ -8203,6 +8203,12 @@ export default class Meeting extends StatelessWebexPlugin {
         },
         options: {meetingId: this.id},
       });
+
+      this.statsAnalyzer.updateMediaStatus({
+        expected: {
+          sendShare: true,
+        },
+      });
       // we're sending the http request to Locus to request the screen share floor
       // only after the SDP update, because that's how it's always been done for transcoded meetings
       // and also if sharing from the start, we need confluence to have been created
@@ -8251,6 +8257,12 @@ export default class Meeting extends StatelessWebexPlugin {
     if (!this.mediaProperties.hasLocalShareStream()) {
       try {
         this.releaseScreenShareFloor(); // we ignore the returned promise here on purpose
+
+        this.statsAnalyzer.updateMediaStatus({
+          expected: {
+            sendShare: false,
+          },
+        });
       } catch (e) {
         // nothing to do here, error is logged already inside releaseScreenShareFloor()
       }
