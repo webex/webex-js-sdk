@@ -667,7 +667,25 @@ async function getMediaStreams() {
   makeCallBtn.disabled = false;
 }
 
-async function toggleNoiseReductionEffect() {
+// async function toggleNoiseReductionEffect() {
+//   effect = await localAudioStream.getEffectByKind('noise-reduction-effect');
+
+//   if (!effect) {
+//     effect = await Calling.createNoiseReductionEffect(tokenElm.value);
+
+//     await localAudioStream.addEffect(effect);
+//   }
+
+//   if (effect.isEnabled) {
+//     await effect.disable();
+//     bnrButton.innerText = 'Enable BNR';
+//   } else {
+//     await effect.enable();
+//     bnrButton.innerText = 'Disable BNR';
+//   }
+// }
+
+async function addNoiseReductionEffect() {
   effect = await localAudioStream.getEffectByKind('noise-reduction-effect');
 
   if (!effect) {
@@ -676,14 +694,13 @@ async function toggleNoiseReductionEffect() {
     await localAudioStream.addEffect(effect);
   }
 
-  if (effect.isEnabled) {
-    console.log('pkesari_enable the effect');
+  await effect.enable();
+}
+
+async function removeNoiseReductionEffect() {
+  effect = await localAudioStream.getEffectByKind('noise-reduction-effect');
+  if (effect) {
     await effect.disable();
-    bnrButton.innerText = 'Enable BNR';
-  } else {
-    console.log('pkesari_enable the effect');
-    await effect.enable();
-    bnrButton.innerText = 'Disable BNR';
   }
 }
 
