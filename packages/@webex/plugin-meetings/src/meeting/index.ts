@@ -4758,6 +4758,7 @@ export default class Meeting extends StatelessWebexPlugin {
       LoggerProxy.logger.error(
         `Meeting:index#startTranscription --> meeting joined : ${this.isJoined()}`
       );
+      throw new Error('Meeting is not joined');
     }
   }
 
@@ -4854,7 +4855,7 @@ export default class Meeting extends StatelessWebexPlugin {
     Trigger.trigger(
       this,
       {
-        file: 'meeting',
+        file: 'meeting/index',
         function: 'triggerStopReceivingTranscriptionEvent',
       },
       EVENT_TRIGGERS.MEETING_STOPPED_RECEIVING_TRANSCRIPTION
