@@ -38,11 +38,7 @@ export default class TurnDiscovery {
 
   private defer?: Defer; // used for waiting for the response
 
-  private turnInfo: {
-    url: string;
-    username: string;
-    password: string;
-  };
+  private turnInfo: TurnServerInfo;
 
   private responseTimer?: ReturnType<typeof setTimeout>;
 

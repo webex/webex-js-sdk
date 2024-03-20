@@ -4330,7 +4330,7 @@ export default class Meeting extends StatelessWebexPlugin {
       joinOptions.reachability = await this.webex.meetings.reachability.getReachabilityResults();
       const turnDiscoveryRequest = await this.roap.generateTurnDiscoveryRequestMessage(this, true);
 
-      turnDiscoverySkippedReason = turnDiscoveryRequest.skippedReason;
+      ({turnDiscoverySkippedReason} = turnDiscoveryRequest);
       joinOptions.roapMessage = turnDiscoveryRequest.roapMessage;
 
       const joinResponse = await this.join(joinOptions);

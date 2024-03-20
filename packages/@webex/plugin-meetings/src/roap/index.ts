@@ -41,7 +41,7 @@ export default class Roap extends StatelessWebexPlugin {
   options: any;
   roapHandler: any;
   roapRequest: any;
-  turnDiscovery: any;
+  turnDiscovery: TurnDiscovery;
 
   /**
    *
