@@ -41,6 +41,8 @@ export type InternalEvent = {
   name:
     | 'internal.client.meetinginfo.request'
     | 'internal.client.meetinginfo.response'
+    | 'internal.register.device.request'
+    | 'internal.register.device.response'
     | 'internal.reset.join.latencies'
     | 'internal.client.meeting.click.joinbutton'
     | 'internal.host.meeting.participant.admitted'
@@ -158,3 +160,9 @@ export type BuildClientEventFetchRequestOptions = (args: {
   payload?: RecursivePartial<ClientEvent['payload']>;
   options?: SubmitClientEventOptions;
 }) => Promise<any>;
+
+export type PreComputedLatencies =
+  | 'internal.client.pageJMT'
+  | 'internal.download.time'
+  | 'internal.click.to.interstitial'
+  | 'internal.call.init.join.req';

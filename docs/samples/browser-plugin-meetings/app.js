@@ -622,6 +622,26 @@ async function joinMeeting({withMedia, withDevice} = {withMedia: false, withDevi
       viewBreakouts();
     });
 
+    meeting.on('meeting:stoppedSharingRemote', () => {
+      /**
+       * Here we first remove the media to stop showing the remote stream being received and again
+       * attach the remote media stream (which gets added during addMedia() call) but since the remote
+       * is not sending the frames anymore it does not show the screenshare but keeps the event attached.
+       * Hence, when we again start sharing the screen, the media flows correctly to the video element.
+       */
+      const remoteShareTemp = meetingStreamsRemoteShare.srcObject;
+      meetingStreamsRemoteShare.srcObject = null;
+      meetingStreamsRemoteShare.srcObject = remoteShareTemp;
+    });
+
+    meeting.on('meeting:self:mutedByOthers', () => {
+      handleAudioButton();
+    });
+
+    meeting.on('meeting:self:unmutedByOthers', () => {
+      handleAudioButton();
+    });
+
     eventsList.innerText = '';
     meeting.on('all', (payload) => {
       updatePublishedEvents(payload);
@@ -1484,8 +1504,8 @@ function setAudioOutputDevice() {
     });
 }
 
-function handleAudioButton(muteState) {
-  const audioButtonTitle = muteState ? 'Unmute' : 'Mute';
+function handleAudioButton() {
+  const audioButtonTitle = localMedia.microphoneStream.muted ? 'Unmute' : 'Mute';
   toggleAudioButton.innerHTML = `${audioButtonTitle} Audio`;
 }
 
@@ -1496,7 +1516,7 @@ function toggleSendAudio() {
     const newMuteValue = !localMedia.microphoneStream.muted;
 
     localMedia.microphoneStream.setMuted(newMuteValue);
-    handleAudioButton(newMuteValue);
+    handleAudioButton();
 
     console.log(`MeetingControls#toggleSendAudio() :: Successfully ${newMuteValue ? 'muted': 'unmuted'} audio!`);
     return;
@@ -2811,6 +2831,21 @@ const participantsList = document.querySelector('#participant-list');
 const participantTable = document.querySelector('#participant-table');
 const participantButtons = document.querySelector('#participant-btn');
 
+participantTable.addEventListener('click', (event) => {
+  if (event.target.type === 'radio') {
+    const selectedParticipant = meeting.members.membersCollection.get(event.target.id);
+    if (!selectedParticipant) {
+      return;
+    }
+    const muteButton = document.getElementById('mute-participant-btn')
+    if (selectedParticipant.isAudioMuted) {
+      muteButton.innerText = meeting.selfId === selectedParticipant.id ? 'Unmute' : 'Request to unmute';
+    } else {
+      muteButton.innerText = 'Mute';
+    }
+  }
+});
+
 function inviteMember(addButton) {
   const meeting = getCurrentMeeting();
   const emailVal = addButton.previousElementSibling.value.trim();
@@ -2855,20 +2890,14 @@ function removeMember(removeButton) {
 
 function muteMember(muteButton) {
   const meeting = getCurrentMeeting();
-  const unmute = muteButton.getAttribute('data-unmute');
-  const mute = unmute !== 'true';
-
   const participantID = getRadioValue('participant-select');
+  const selectedMember = meeting.members.membersCollection.get(participantID);
+  const newMuteStatus = selectedMember.isAudioMuted ? false : true;
 
   if (meeting) {
-    meeting.mute(participantID, mute).then((res) => {
-      console.log(res, `participant is ${mute ? 'mute' : 'unmute'}`);
-      if (mute) {
-        muteButton.setAttribute('data-unmute', 'true');
-      }
-      else {
-        muteButton.removeAttribute('data-unmute');
-      }
+    meeting.mute(participantID, newMuteStatus).then((res) => {
+      console.log(res, `participant is ${newMuteStatus ? 'muted' : 'unmuted'}`);
+      handleAudioButton();
     }).catch((err) => {
       console.log('error', err);
     });
@@ -2888,12 +2917,16 @@ function transferHostToMember(transferButton) {
   }
 }
 
-const createButton = (text, func) => {
+const createButton = (text, func, props = {}) => {
   const button = document.createElement('button');
 
   button.onclick = (e) => func(e.target);
   button.innerText = text;
   button.setAttribute('type', 'button');
+
+  Object.entries(props).forEach(([key, value]) => {
+    button.setAttribute(key, value);
+  });
 
   return button;
 }
@@ -3517,7 +3550,7 @@ function viewParticipants() {
 
     btnDiv.classList.add('btn-group');
 
-    btnDiv.appendChild(createButton('Mute', muteMember));
+    btnDiv.appendChild(createButton('Mute', muteMember, {id: 'mute-participant-btn'}));
     btnDiv.appendChild(createButton('Remove', removeMember));
     btnDiv.appendChild(createButton('Make Host', transferHostToMember));
 

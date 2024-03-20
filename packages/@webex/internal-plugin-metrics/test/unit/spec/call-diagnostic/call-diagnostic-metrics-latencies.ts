@@ -43,9 +43,9 @@ describe('internal-plugin-metrics', () => {
 
     it('should save latency correctly', () => {
       assert.deepEqual(cdl.precomputedLatencies.size, 0);
-      cdl.saveLatency('client.alert.displayed', 10);
+      cdl.saveLatency('internal.client.pageJMT', 10);
       assert.deepEqual(cdl.precomputedLatencies.size, 1);
-      assert.deepEqual(cdl.precomputedLatencies.get('client.alert.displayed'), 10);
+      assert.deepEqual(cdl.precomputedLatencies.get('internal.client.pageJMT'), 10);
     });
 
     it('should save only first timestamp correctly', () => {
@@ -141,6 +141,12 @@ describe('internal-plugin-metrics', () => {
       cdl.saveTimestamp({key: 'internal.client.interstitial-window.click.joinbutton', value: 10});
       cdl.saveTimestamp({key: 'client.locus.join.request', value: 20});
       assert.deepEqual(cdl.getCallInitJoinReq(), 10);
+    });
+
+    it('calculates getRegisterWDMDeviceJMT correctly', () => {
+      cdl.saveTimestamp({key: 'internal.register.device.request', value: 10});
+      cdl.saveTimestamp({key: 'internal.register.device.response', value: 20});
+      assert.deepEqual(cdl.getRegisterWDMDeviceJMT(), 10);
     });
 
     it('calculates getJoinReqResp correctly', () => {
@@ -488,18 +494,27 @@ describe('internal-plugin-metrics', () => {
         value: 12,
       });
       cdl.saveTimestamp({
-        key: 'client.media.rx.start',
+        key: 'client.ice.end',
         value: 14,
       });
-      cdl.saveTimestamp({
-        key: 'client.media.tx.start',
-        value: 15,
-      });
-      cdl.saveTimestamp({
-        key: 'client.media.rx.start',
-        value: 16,
-      });
       assert.deepEqual(cdl.getInterstitialToMediaOKJMT(), 8);
+    });
+
+    it('calculates getInterstitialToMediaOKJMT correctly without lobby', () => {
+      cdl.saveTimestamp({
+        key: 'internal.client.interstitial-window.click.joinbutton',
+        value: 4,
+      });
+      cdl.saveTimestamp({
+        key: 'client.ice.end',
+        value: 14,
+      });
+      assert.deepEqual(cdl.getInterstitialToMediaOKJMT(), 10);
+    });
+
+    it('calculates getDownloadTimeJMT correctly', () => {
+      cdl.saveLatency('internal.download.time', 1000);
+      assert.deepEqual(cdl.getDownloadTimeJMT(), 1000);
     });
   });
 });

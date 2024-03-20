@@ -2,7 +2,7 @@
 /* eslint-disable valid-jsdoc */
 import {WebexPlugin} from '@webex/webex-core';
 
-import {MetricEventNames} from '../metrics.types';
+import {MetricEventNames, PreComputedLatencies} from '../metrics.types';
 
 // we only care about client event and feature event for now
 
@@ -13,7 +13,7 @@ import {MetricEventNames} from '../metrics.types';
  */
 export default class CallDiagnosticLatencies extends WebexPlugin {
   latencyTimestamps: Map<MetricEventNames, number>;
-  precomputedLatencies: Map<string, number>;
+  precomputedLatencies: Map<PreComputedLatencies, number>;
   // meetingId that the current latencies are for
   private meetingId?: string;
 
@@ -96,7 +96,7 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
    * @throws
    * @returns
    */
-  public saveLatency(key: string, value: number) {
+  public saveLatency(key: PreComputedLatencies, value: number) {
     this.precomputedLatencies.set(key, value);
   }
 
@@ -155,6 +155,17 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
     return this.getDiffBetweenTimestamps(
       'client.interstitial-window.start-launch',
       'internal.client.interstitial-window.click.joinbutton'
+    );
+  }
+
+  /**
+   * Device Register Time
+   * @returns - latency
+   */
+  public getRegisterWDMDeviceJMT() {
+    return this.getDiffBetweenTimestamps(
+      'internal.register.device.request',
+      'internal.register.device.response'
     );
   }
 
@@ -260,6 +271,14 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
   }
 
   /**
+   * Download Time JMT
+   * @returns - latency
+   */
+  public getDownloadTimeJMT() {
+    return this.precomputedLatencies.get('internal.download.time') || undefined;
+  }
+
+  /**
    * Click To Interstitial
    * @returns - latency
    */
@@ -308,15 +327,12 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
     );
 
     // get the first timestamp
-    const mediaFlowStartedTimestamp = Math.min(
-      this.latencyTimestamps.get('client.media.rx.start'),
-      this.latencyTimestamps.get('client.media.tx.start')
-    );
+    const connectedMedia = this.latencyTimestamps.get('client.ice.end');
 
     const lobbyTime = this.getStayLobbyTime() || 0;
 
-    if (interstitialJoinClickTimestamp && mediaFlowStartedTimestamp) {
-      return mediaFlowStartedTimestamp - interstitialJoinClickTimestamp - lobbyTime;
+    if (interstitialJoinClickTimestamp && connectedMedia) {
+      return connectedMedia - interstitialJoinClickTimestamp - lobbyTime;
     }
 
     return undefined;

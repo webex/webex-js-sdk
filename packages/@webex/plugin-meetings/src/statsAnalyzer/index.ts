@@ -18,6 +18,10 @@ import {
   emptyMqaInterval,
   emptyVideoReceive,
   emptyVideoTransmit,
+  emptyAudioReceiveStream,
+  emptyAudioTransmitStream,
+  emptyVideoReceiveStream,
+  emptyVideoTransmitStream,
 } from '../mediaQualityMetrics/config';
 import LoggerProxy from '../common/logs/logger-proxy';
 
@@ -27,6 +31,10 @@ import {
   getAudioReceiverMqa,
   getVideoSenderMqa,
   getVideoReceiverMqa,
+  getAudioSenderStreamMqa,
+  getAudioReceiverStreamMqa,
+  getVideoSenderStreamMqa,
+  getVideoReceiverStreamMqa,
 } from './mqaUtil';
 import {ReceiveSlot} from '../multistream/receiveSlot';
 
@@ -153,6 +161,7 @@ export class StatsAnalyzer extends EventsScope {
   sendMqaData() {
     const newMqa = cloneDeep(emptyMqaInterval);
 
+    // Fill in empty stats items for lastMqaDataSent
     Object.keys(this.statsResults).forEach((mediaType) => {
       if (!this.lastMqaDataSent[mediaType]) {
         this.lastMqaDataSent[mediaType] = {};
@@ -165,53 +174,178 @@ export class StatsAnalyzer extends EventsScope {
       if (!this.lastMqaDataSent[mediaType].recv && mediaType.includes('-recv')) {
         this.lastMqaDataSent[mediaType].recv = {};
       }
+    });
 
-      if (mediaType.includes('audio-send') || mediaType.includes('audio-share-send')) {
-        const audioSender = cloneDeep(emptyAudioTransmit);
+    // Create stats the first level, totals for senders and receivers
+    const audioSender = cloneDeep(emptyAudioTransmit);
+    const audioShareSender = cloneDeep(emptyAudioTransmit);
+    const audioReceiver = cloneDeep(emptyAudioReceive);
+    const audioShareReceiver = cloneDeep(emptyAudioReceive);
+    const videoSender = cloneDeep(emptyVideoTransmit);
+    const videoShareSender = cloneDeep(emptyVideoTransmit);
+    const videoReceiver = cloneDeep(emptyVideoReceive);
+    const videoShareReceiver = cloneDeep(emptyVideoReceive);
 
-        getAudioSenderMqa({
-          audioSender,
+    getAudioSenderMqa({
+      audioSender,
+      statsResults: this.statsResults,
+      lastMqaDataSent: this.lastMqaDataSent,
+      baseMediaType: 'audio-send',
+    });
+    newMqa.audioTransmit.push(audioSender);
+
+    getAudioSenderMqa({
+      audioSender: audioShareSender,
+      statsResults: this.statsResults,
+      lastMqaDataSent: this.lastMqaDataSent,
+      baseMediaType: 'audio-share-send',
+    });
+    newMqa.audioTransmit.push(audioShareSender);
+
+    getAudioReceiverMqa({
+      audioReceiver,
+      statsResults: this.statsResults,
+      lastMqaDataSent: this.lastMqaDataSent,
+      baseMediaType: 'audio-recv',
+    });
+    newMqa.audioReceive.push(audioReceiver);
+
+    getAudioReceiverMqa({
+      audioReceiver: audioShareReceiver,
+      statsResults: this.statsResults,
+      lastMqaDataSent: this.lastMqaDataSent,
+      baseMediaType: 'audio-share-recv',
+    });
+    newMqa.audioReceive.push(audioShareReceiver);
+
+    getVideoSenderMqa({
+      videoSender,
+      statsResults: this.statsResults,
+      lastMqaDataSent: this.lastMqaDataSent,
+      baseMediaType: 'video-send',
+    });
+    newMqa.videoTransmit.push(videoSender);
+
+    getVideoSenderMqa({
+      videoSender: videoShareSender,
+      statsResults: this.statsResults,
+      lastMqaDataSent: this.lastMqaDataSent,
+      baseMediaType: 'video-share-send',
+    });
+    newMqa.videoTransmit.push(videoShareSender);
+
+    getVideoReceiverMqa({
+      videoReceiver,
+      statsResults: this.statsResults,
+      lastMqaDataSent: this.lastMqaDataSent,
+      baseMediaType: 'video-recv',
+    });
+    newMqa.videoReceive.push(videoReceiver);
+
+    getVideoReceiverMqa({
+      videoReceiver: videoShareReceiver,
+      statsResults: this.statsResults,
+      lastMqaDataSent: this.lastMqaDataSent,
+      baseMediaType: 'video-share-recv',
+    });
+    newMqa.videoReceive.push(videoShareReceiver);
+
+    // Add stats for individual streams
+    Object.keys(this.statsResults).forEach((mediaType) => {
+      if (mediaType.includes('audio-send')) {
+        const audioSenderStream = cloneDeep(emptyAudioTransmitStream);
+
+        getAudioSenderStreamMqa({
+          audioSenderStream,
           statsResults: this.statsResults,
           lastMqaDataSent: this.lastMqaDataSent,
           mediaType,
         });
-        newMqa.audioTransmit.push(audioSender);
+        newMqa.audioTransmit[0].streams.push(audioSenderStream);
 
         this.lastMqaDataSent[mediaType].send = cloneDeep(this.statsResults[mediaType].send);
-      } else if (mediaType.includes('audio-recv') || mediaType.includes('audio-share-recv')) {
-        const audioReceiver = cloneDeep(emptyAudioReceive);
+      } else if (mediaType.includes('audio-share-send')) {
+        const audioSenderStream = cloneDeep(emptyAudioTransmitStream);
 
-        getAudioReceiverMqa({
-          audioReceiver,
+        getAudioSenderStreamMqa({
+          audioSenderStream,
           statsResults: this.statsResults,
           lastMqaDataSent: this.lastMqaDataSent,
           mediaType,
         });
-        newMqa.audioReceive.push(audioReceiver);
+        newMqa.audioTransmit[1].streams.push(audioSenderStream);
+
+        this.lastMqaDataSent[mediaType].send = cloneDeep(this.statsResults[mediaType].send);
+      } else if (mediaType.includes('audio-recv')) {
+        const audioReceiverStream = cloneDeep(emptyAudioReceiveStream);
+
+        getAudioReceiverStreamMqa({
+          audioReceiverStream,
+          statsResults: this.statsResults,
+          lastMqaDataSent: this.lastMqaDataSent,
+          mediaType,
+        });
+        newMqa.audioReceive[0].streams.push(audioReceiverStream);
 
         this.lastMqaDataSent[mediaType].recv = cloneDeep(this.statsResults[mediaType].recv);
-      } else if (mediaType.includes('video-send') || mediaType.includes('video-share-send')) {
-        const videoSender = cloneDeep(emptyVideoTransmit);
+      } else if (mediaType.includes('audio-share-recv')) {
+        const audioReceiverStream = cloneDeep(emptyAudioReceiveStream);
 
-        getVideoSenderMqa({
-          videoSender,
+        getAudioReceiverStreamMqa({
+          audioReceiverStream,
           statsResults: this.statsResults,
           lastMqaDataSent: this.lastMqaDataSent,
           mediaType,
         });
-        newMqa.videoTransmit.push(videoSender);
+        newMqa.audioReceive[1].streams.push(audioReceiverStream);
+
+        this.lastMqaDataSent[mediaType].recv = cloneDeep(this.statsResults[mediaType].recv);
+      } else if (mediaType.includes('video-send')) {
+        const videoSenderStream = cloneDeep(emptyVideoTransmitStream);
+
+        getVideoSenderStreamMqa({
+          videoSenderStream,
+          statsResults: this.statsResults,
+          lastMqaDataSent: this.lastMqaDataSent,
+          mediaType,
+        });
+        newMqa.videoTransmit[0].streams.push(videoSenderStream);
 
         this.lastMqaDataSent[mediaType].send = cloneDeep(this.statsResults[mediaType].send);
-      } else if (mediaType.includes('video-recv') || mediaType.includes('video-share-recv')) {
-        const videoReceiver = cloneDeep(emptyVideoReceive);
+      } else if (mediaType.includes('video-share-send')) {
+        const videoSenderStream = cloneDeep(emptyVideoTransmitStream);
 
-        getVideoReceiverMqa({
-          videoReceiver,
+        getVideoSenderStreamMqa({
+          videoSenderStream,
           statsResults: this.statsResults,
           lastMqaDataSent: this.lastMqaDataSent,
           mediaType,
         });
-        newMqa.videoReceive.push(videoReceiver);
+        newMqa.videoTransmit[1].streams.push(videoSenderStream);
+
+        this.lastMqaDataSent[mediaType].send = cloneDeep(this.statsResults[mediaType].send);
+      } else if (mediaType.includes('video-recv')) {
+        const videoReceiverStream = cloneDeep(emptyVideoReceiveStream);
+
+        getVideoReceiverStreamMqa({
+          videoReceiverStream,
+          statsResults: this.statsResults,
+          lastMqaDataSent: this.lastMqaDataSent,
+          mediaType,
+        });
+        newMqa.videoReceive[0].streams.push(videoReceiverStream);
+
+        this.lastMqaDataSent[mediaType].recv = cloneDeep(this.statsResults[mediaType].recv);
+      } else if (mediaType.includes('video-share-recv')) {
+        const videoReceiverStream = cloneDeep(emptyVideoReceiveStream);
+
+        getVideoReceiverStreamMqa({
+          videoReceiverStream,
+          statsResults: this.statsResults,
+          lastMqaDataSent: this.lastMqaDataSent,
+          mediaType,
+        });
+        newMqa.videoReceive[1].streams.push(videoReceiverStream);
 
         this.lastMqaDataSent[mediaType].recv = cloneDeep(this.statsResults[mediaType].recv);
       }
@@ -381,7 +515,6 @@ export class StatsAnalyzer extends EventsScope {
         this.parseCandidate(getStatsResult, type, isSender, false);
         break;
       case 'media-source':
-        // @ts-ignore
         this.parseAudioSource(getStatsResult, type);
         break;
       default:
@@ -911,6 +1044,7 @@ export class StatsAnalyzer extends EventsScope {
     if (result.bytesReceived) {
       let kilobytes = 0;
       const receiveSlot = this.receiveSlotCallback(result.ssrc);
+      const sourceState = receiveSlot?.sourceState;
       const idAndCsi = receiveSlot
         ? `id: "${receiveSlot.id || ''}"${receiveSlot.csi ? ` and csi: ${receiveSlot.csi}` : ''}`
         : '';
@@ -938,10 +1072,10 @@ export class StatsAnalyzer extends EventsScope {
       this.statsResults[mediaType][sendrecvType].totalPacketsReceived = result.packetsReceived;
 
       if (currentPacketsReceived === 0) {
-        if (receiveSlot) {
+        if (receiveSlot && sourceState === 'live') {
           LoggerProxy.logger.info(
-            `StatsAnalyzer:index#processInboundRTPResult --> No packets received for receive slot ${idAndCsi}`,
-            currentPacketsReceived
+            `StatsAnalyzer:index#processInboundRTPResult --> No packets received for receive slot ${idAndCsi}. Total packets received on slot: `,
+            result.packetsReceived
           );
         }
       }

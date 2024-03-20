@@ -2512,6 +2512,7 @@ describe('plugin-meetings', () => {
               clientErrorCode: ICE_FAILED_WITH_TURN_TLS_CLIENT_CODE,
               expectedErrorPayload: {
                 errorDescription: ERROR_DESCRIPTIONS.ICE_FAILED_WITH_TURN_TLS,
+                category: 'network',
               },
             },
           ].forEach(({clientErrorCode, expectedErrorPayload}) => {
@@ -3785,20 +3786,74 @@ describe('plugin-meetings', () => {
         it('should have #requestScreenShareFloor', () => {
           assert.exists(meeting.requestScreenShareFloor);
         });
+
         beforeEach(() => {
           meeting.locusInfo.mediaShares = [{name: 'content', url: url1}];
           meeting.locusInfo.self = {url: url1};
           meeting.meetingRequest.changeMeetingFloor = sinon.stub().returns(Promise.resolve());
           meeting.mediaProperties.shareVideoStream = {};
           meeting.mediaProperties.mediaDirection.sendShare = true;
+          meeting.deviceUrl = 'deviceUrl.com';
           meeting.state = 'JOINED';
+          meeting.localShareInstanceId = '1234-5678';
         });
+
+        afterEach(() => {
+          sinon.restore();
+        });
+
         it('should send the share', async () => {
           const share = meeting.requestScreenShareFloor();
 
           assert.exists(share.then);
           await share;
           assert.calledOnce(meeting.meetingRequest.changeMeetingFloor);
+
+          assert.calledWith(meeting.meetingRequest.changeMeetingFloor, {
+            disposition: FLOOR_ACTION.GRANTED,
+            personUrl: url1,
+            deviceUrl: 'deviceUrl.com',
+            uri: url1,
+            resourceUrl: undefined,
+            shareInstanceId: '1234-5678',
+          });
+
+          assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
+            name: 'client.share.floor-grant.request',
+            payload: {mediaType: 'share', shareInstanceId: '1234-5678'},
+            options: {meetingId: meeting.id},
+          });
+        });
+
+        it('should submit expected metric on failure', async () => {
+          const error = new Error('forced');
+
+          meeting.meetingRequest.changeMeetingFloor = sinon.stub().returns(Promise.reject(error));
+          const getChangeMeetingFloorErrorPayloadSpy = sinon
+            .stub(MeetingUtil, 'getChangeMeetingFloorErrorPayload')
+            .returns('foo');
+
+          await meeting.requestScreenShareFloor().catch((err) => {
+            assert.equal(err, error);
+          });
+
+          assert.calledWith(meeting.meetingRequest.changeMeetingFloor, {
+            disposition: 'GRANTED',
+            personUrl: url1,
+            deviceUrl: 'deviceUrl.com',
+            uri: url1,
+            resourceUrl: undefined,
+            shareInstanceId: '1234-5678',
+          });
+
+          assert.calledWith(getChangeMeetingFloorErrorPayloadSpy, 'forced');
+
+          // ensure the expected CA share metric is submitted
+          assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
+            name: 'client.share.floor-granted.local',
+            payload: {mediaType: 'share', errors: 'foo', shareInstanceId: '1234-5678'},
+            options: {meetingId: meeting.id},
+          });
         });
       });
 
@@ -5776,16 +5831,22 @@ describe('plugin-meetings', () => {
           const checkScreenShareVideoPublished = (stream) => {
             assert.calledOnce(meeting.requestScreenShareFloor);
 
-            assert.calledWith(
-              meeting.sendSlotManager.getSlot(MediaType.VideoSlides).publishStream,
-              stream
-            );
-            assert.equal(meeting.mediaProperties.shareVideoStream, stream);
+            // ensure the CA share metrics are submitted
+            assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
+              name: 'client.share.initiated',
+              payload: {mediaType: 'share', shareInstanceId: meeting.localShareInstanceId},
+              options: {meetingId: meeting.id},
+            });
             assert.equal(meeting.mediaProperties.mediaDirection.sendShare, true);
           };
 
           const checkScreenShareAudioPublished = (stream) => {
-            assert.calledOnce(meeting.requestScreenShareFloor);
+            // ensure the CA share metrics are submitted
+            assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
+              name: 'client.share.initiated',
+              payload: {mediaType: 'share', shareInstanceId: meeting.localShareInstanceId},
+              options: {meetingId: meeting.id},
+            });
 
             assert.calledWith(
               meeting.sendSlotManager.getSlot(MediaType.AudioSlides).publishStream,
@@ -7638,10 +7699,20 @@ describe('plugin-meetings', () => {
           meeting.locusInfo.self = {url: url2};
           meeting.mediaProperties = {mediaDirection: {sendShare: true}};
           meeting.meetingRequest.changeMeetingFloor = sinon.stub().returns(Promise.resolve());
+          (meeting.deviceUrl = 'deviceUrl.com'), (meeting.localShareInstanceId = '1234-5678');
         });
         it('should call changeMeetingFloor()', async () => {
           meeting.screenShareFloorState = 'GRANTED';
           const share = meeting.releaseScreenShareFloor();
+
+          assert.calledWith(meeting.meetingRequest.changeMeetingFloor, {
+            disposition: FLOOR_ACTION.RELEASED,
+            personUrl: url2,
+            deviceUrl: 'deviceUrl.com',
+            uri: url1,
+            resourceUrl: undefined,
+            shareInstanceId: '1234-5678',
+          });
 
           assert.exists(share.then);
           await share;
@@ -8085,13 +8156,41 @@ describe('plugin-meetings', () => {
           assert.equal(locusInfoOnSpy.thirdCall.args[0], 'MEETING_INFO_UPDATED');
           const callback = locusInfoOnSpy.thirdCall.args[1];
 
-          callback();
+          callback({isInitializing: true});
 
           assert.calledWith(updateMeetingActionsSpy);
           assert.calledWith(setRecordingDisplayHintsSpy, userDisplayHints);
           assert.calledWith(setUserPolicySpy, userDisplayPolicy);
           assert.calledWith(setControlsDisplayHintsSpy, userDisplayHints);
           assert.calledWith(handleDataChannelUrlChangeSpy, datachannelUrl);
+
+          assert.neverCalledWith(
+            TriggerProxy.trigger,
+            meeting,
+            {
+              file: 'meetings',
+              function: 'setUpLocusInfoMeetingInfoListener',
+            },
+            'meeting:meetingInfoUpdated'
+          )
+
+          callback({isIntialized: false});
+
+          assert.calledWith(updateMeetingActionsSpy);
+          assert.calledWith(setRecordingDisplayHintsSpy, userDisplayHints);
+          assert.calledWith(setUserPolicySpy, userDisplayPolicy);
+          assert.calledWith(setControlsDisplayHintsSpy, userDisplayHints);
+          assert.calledWith(handleDataChannelUrlChangeSpy, datachannelUrl);
+
+          assert.calledWith(
+            TriggerProxy.trigger,
+            meeting,
+            {
+              file: 'meetings',
+              function: 'setUpLocusInfoMeetingInfoListener',
+            },
+            'meeting:meetingInfoUpdated'
+          )
         });
       });
 
@@ -8996,6 +9095,7 @@ describe('plugin-meetings', () => {
             meeting.locusInfo.mediaShares = [{name: 'whiteboard', url: url1}];
             meeting.locusInfo.self = {url: url1};
             meeting.meetingRequest.changeMeetingFloor = sinon.stub().returns(Promise.resolve());
+            meeting.deviceUrl = 'deviceUrl.com';
           });
           it('should have #startWhiteboardShare', () => {
             assert.exists(meeting.startWhiteboardShare);
@@ -9008,6 +9108,21 @@ describe('plugin-meetings', () => {
             assert.exists(whiteboardShare.then);
             await whiteboardShare;
             assert.calledOnce(meeting.meetingRequest.changeMeetingFloor);
+
+            assert.calledWith(meeting.meetingRequest.changeMeetingFloor, {
+              disposition: FLOOR_ACTION.GRANTED,
+              personUrl: url1,
+              deviceUrl: 'deviceUrl.com',
+              uri: url1,
+              resourceUrl: {channelUrl: url2},
+            });
+
+            // ensure the CA share metric is submitted
+            assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
+              name: 'client.share.initiated',
+              payload: {mediaType: 'whiteboard'},
+              options: {meetingId: meeting.id},
+            });
           });
         });
         describe('#stopWhiteboardShare', () => {
@@ -9018,12 +9133,20 @@ describe('plugin-meetings', () => {
             meeting.locusInfo.mediaShares = [{name: 'whiteboard', url: url1}];
             meeting.locusInfo.self = {url: url1};
             meeting.meetingRequest.changeMeetingFloor = sinon.stub().returns(Promise.resolve());
+            meeting.deviceUrl = 'deviceUrl.com';
           });
           it('should stop the whiteboard share', async () => {
             const whiteboardShare = meeting.stopWhiteboardShare();
 
             assert.exists(whiteboardShare.then);
             await whiteboardShare;
+
+            assert.calledWith(meeting.meetingRequest.changeMeetingFloor, {
+              disposition: FLOOR_ACTION.RELEASED,
+              personUrl: url1,
+              deviceUrl: 'deviceUrl.com',
+              uri: url1,
+            });
             assert.calledOnce(meeting.meetingRequest.changeMeetingFloor);
           });
         });

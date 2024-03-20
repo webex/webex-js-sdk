@@ -241,6 +241,9 @@ export const prepareDiagnosticMetricItem = (webex: any, item: any) => {
   const cdl = webex.internal.newMetrics.callDiagnosticLatencies;
 
   switch (eventName) {
+    case 'client.webexapp.launched':
+      joinTimes.downloadTime = cdl.getDownloadTimeJMT();
+      break;
     case 'client.interstitial-window.launched':
       joinTimes.meetingInfoReqResp = cdl.getMeetingInfoReqResp();
       joinTimes.clickToInterstitial = cdl.getClickToInterstitial();
@@ -249,6 +252,7 @@ export const prepareDiagnosticMetricItem = (webex: any, item: any) => {
     case 'client.call.initiated':
       joinTimes.meetingInfoReqResp = cdl.getMeetingInfoReqResp();
       joinTimes.showInterstitialTime = cdl.getShowInterstitialTime();
+      joinTimes.registerWDMDeviceJMT = cdl.getRegisterWDMDeviceJMT();
       break;
 
     case 'client.locus.join.response':
@@ -261,6 +265,7 @@ export const prepareDiagnosticMetricItem = (webex: any, item: any) => {
       joinTimes.interstitialToJoinOK = cdl.getInterstitialToJoinOK();
       joinTimes.totalJmt = cdl.getTotalJMT();
       joinTimes.clientJmt = cdl.getClientJMT();
+      joinTimes.downloadTime = cdl.getDownloadTimeJMT();
       break;
 
     case 'client.ice.end':

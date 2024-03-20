@@ -67,7 +67,6 @@ describe('internal-plugin-metrics', () => {
       webex.internal.newMetrics.callDiagnosticMetrics.submitClientEvent = sinon.stub();
       webex.internal.newMetrics.callDiagnosticMetrics.submitMQE = sinon.stub();
       webex.internal.newMetrics.callDiagnosticMetrics.clientMetricsAliasUser = sinon.stub();
-      webex.internal.newMetrics.callDiagnosticMetrics.postPreLoginMetric = sinon.stub();
       webex.internal.newMetrics.callDiagnosticMetrics.buildClientEventFetchRequestOptions =
         sinon.stub();
       webex.setTimingsAndFetch = sinon.stub();
@@ -174,38 +173,6 @@ describe('internal-plugin-metrics', () => {
         }
       });
     });
-
-    describe('#postPreLoginMetric', () => {
-      it('sends the request correctly', async () => {
-        webex.request.resolves({response: 'abc'});
-        await webex.internal.newMetrics.postPreLoginMetric({event: 'test'}, 'my-id');
-        assert.calledWith(webex.request, {
-          method: 'POST',
-          api: 'metrics',
-          resource: 'clientmetrics-prelogin',
-          headers: { 'x-prelogin-userid': 'my-id', authorization: false },
-          body: {metrics: [{event: 'test'}]},
-        });
-        assert.calledWith(
-          webex.logger.log,
-          'NewMetrics: @postPreLoginMetric. Request successful.'
-        );
-      });
-
-      it('handles failed request correctly', async () => {
-        webex.request.rejects(new Error("test error"));
-        sinon.stub(Utils, 'generateCommonErrorMetadata').returns('formattedError')
-        try {
-          await webex.internal.newMetrics.postPreLoginMetric({event: 'test'}, 'my-id');
-        } catch (err) {
-          assert.calledWith(
-            webex.logger.error,
-            'NewMetrics: @postPreLoginMetric. Request failed:',
-            `err: formattedError`
-          );
-        }
-      });
-    })
 
     describe('#buildClientEventFetchRequestOptions', () => {
       it('builds client event fetch options successfully', () => {
