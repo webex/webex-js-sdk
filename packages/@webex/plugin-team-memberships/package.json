@@ -45,7 +45,6 @@
     "deploy:npm": "yarn npm publish",
     "test": "yarn test:style && yarn test:unit && yarn test:integration && yarn test:browser",
     "test:browser": "webex-legacy-tools test --integration --runner karma",
-"test:style": "eslint ./src/**/*.*",
-    "test:unit": "webex-legacy-tools test --unit --runner jest"
+    "test:style": "eslint ./src/**/*.*"
   }
 }
