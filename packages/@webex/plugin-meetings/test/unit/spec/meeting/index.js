@@ -676,7 +676,7 @@ describe('plugin-meetings', () => {
 
           await meeting.startTranscription();
 
-          assert.equal(webex.internal.voicea.on.callCount, 5);
+          assert.equal(webex.internal.voicea.on.callCount, 4);
           assert.equal(meeting.areVoiceaEventsSetup, true);
           assert.equal(webex.internal.voicea.listenToEvents.callCount, 1);
           assert.calledWith(
@@ -685,7 +685,7 @@ describe('plugin-meetings', () => {
           );
 
           await meeting.startTranscription();
-          assert.equal(webex.internal.voicea.on.callCount, 5);
+          assert.equal(webex.internal.voicea.on.callCount, 4);
           assert.equal(meeting.areVoiceaEventsSetup, true);
           assert.equal(webex.internal.voicea.listenToEvents.callCount, 1);
           assert.calledTwice(
@@ -706,7 +706,7 @@ describe('plugin-meetings', () => {
 
           await meeting.startTranscription();
 
-          assert.equal(webex.internal.voicea.on.callCount, 5);
+          assert.equal(webex.internal.voicea.on.callCount, 4);
           assert.equal(meeting.areVoiceaEventsSetup, true);
           assert.equal(webex.internal.voicea.listenToEvents.callCount, 1);
           assert.notCalled(
@@ -735,7 +735,7 @@ describe('plugin-meetings', () => {
 
         it('should stop listening to voicea events and also trigger a stop event', () => {
           meeting.stopTranscription();
-          assert.equal(webex.internal.voicea.off.callCount, 5);
+          assert.equal(webex.internal.voicea.off.callCount, 4);
           assert.equal(meeting.areVoiceaEventsSetup, false);
           assert.calledWith(
             TriggerProxy.trigger,
@@ -747,6 +747,150 @@ describe('plugin-meetings', () => {
             EVENT_TRIGGERS.MEETING_STOPPED_RECEIVING_TRANSCRIPTION
           );
         });
+      });
+
+      describe('#setCaptionLanguage', () => {
+        beforeEach(() => {
+          meeting.isTranscriptionSupported = sinon.stub();
+          meeting.transcription = { languageOptions: {} };
+          webex.internal.voicea.on = sinon.stub();
+          webex.internal.voicea.off = sinon.stub();
+          webex.internal.voicea.setCaptionLanguage = sinon.stub();
+          webex.internal.voicea.requestLanguage = sinon.stub();
+        });
+
+        afterEach(() => {
+          // Restore the original methods after each test
+          sinon.restore();
+        });
+
+        it('should reject if transcription is not supported', (done) => {
+          meeting.isTranscriptionSupported.returns(false);
+
+          meeting.setCaptionLanguage('fr').catch((error) => {
+            assert.equal(error.message, 'Webex Assistant is not enabled/supported');
+            done();
+          });
+        });
+
+        it('should resolve with the language code on successful language update', (done) => {
+          meeting.isTranscriptionSupported.returns(true);
+          const languageCode = 'fr';
+
+          meeting.setCaptionLanguage(languageCode).then((resolvedLanguageCode) => {
+            assert.calledWith(
+              webex.internal.voicea.requestLanguage,
+              languageCode
+            );
+            assert.equal(resolvedLanguageCode, languageCode);
+            assert.equal(meeting.transcription.languageOptions.currentCaptionLanguage, languageCode);
+            done();
+          });
+
+          assert.calledOnceWithMatch(
+            webex.internal.voicea.on,
+            VOICEAEVENTS.CAPTION_LANGUAGE_UPDATE,
+          );
+
+          // Trigger the event
+          const voiceaListenerLangugeUpdate = webex.internal.voicea.on.getCall(0).args[1];
+          voiceaListenerLangugeUpdate({ statusCode: 200, languageCode });
+        });
+
+        it('should reject if the statusCode in payload is not 200', (done) => {
+          meeting.isTranscriptionSupported.returns(true);
+          const languageCode = 'fr';
+          const rejectPayload = {
+            statusCode: 400,
+            message: 'some error message'
+          }
+
+          meeting.setCaptionLanguage(languageCode).catch((payload) => {
+            assert.equal(payload, rejectPayload);
+            done();
+          });
+
+          assert.calledOnceWithMatch(
+            webex.internal.voicea.on,
+            VOICEAEVENTS.CAPTION_LANGUAGE_UPDATE,
+          );
+
+          // Trigger the event
+          const voiceaListenerLangugeUpdate = webex.internal.voicea.on.getCall(0).args[1];
+          voiceaListenerLangugeUpdate(rejectPayload);
+        });
+
+      });
+
+      describe('#setSpokenLanguage', () => {
+        beforeEach(() => {
+          meeting.isTranscriptionSupported = sinon.stub();
+          meeting.transcription = { languageOptions: {} };
+          webex.internal.voicea.on = sinon.stub();
+          webex.internal.voicea.off = sinon.stub();
+          webex.internal.voicea.setSpokenLanguage = sinon.stub();
+        });
+
+        afterEach(() => {
+          // Restore the original methods after each test
+          sinon.restore();
+        });
+
+        it('should reject if transcription is not supported', (done) => {
+          meeting.isTranscriptionSupported.returns(false);
+
+          meeting.setSpokenLanguage('fr').catch((error) => {
+            assert.equal(error.message, 'Webex Assistant is not enabled/supported');
+            done();
+          });
+        });
+
+        it('should resolve with the language code on successful language update', (done) => {
+          meeting.isTranscriptionSupported.returns(true);
+          const languageCode = 'fr';
+
+          meeting.setSpokenLanguage(languageCode).then((resolvedLanguageCode) => {
+            assert.calledWith(
+              webex.internal.voicea.setSpokenLanguage,
+              languageCode
+            );
+            assert.equal(resolvedLanguageCode, languageCode);
+            assert.equal(meeting.transcription.languageOptions.currentSpokenLanguage, languageCode);
+            done();
+          });
+
+          assert.calledOnceWithMatch(
+            webex.internal.voicea.on,
+            VOICEAEVENTS.SPOKEN_LANGUAGE_UPDATE,
+          );
+
+          // Trigger the event
+          const voiceaListenerLangugeUpdate = webex.internal.voicea.on.getCall(0).args[1];
+          voiceaListenerLangugeUpdate({ languageCode });
+        });
+
+        it('should reject if the language code does not exist in payload', (done) => {
+          meeting.isTranscriptionSupported.returns(true);
+          const languageCode = 'fr';
+          const rejectPayload = {
+            'message': 'some error message'
+          }
+
+          meeting.setSpokenLanguage(languageCode).catch((payload) => {
+            assert.equal(payload, rejectPayload);
+            done();
+          });
+
+          assert.calledOnceWithMatch(
+            webex.internal.voicea.on,
+            VOICEAEVENTS.SPOKEN_LANGUAGE_UPDATE,
+          );
+
+          // Trigger the event
+          const voiceaListenerLangugeUpdate = webex.internal.voicea.on.getCall(0).args[1];
+          voiceaListenerLangugeUpdate(rejectPayload);
+        });
+
       });
 
       describe('transcription events', () => {
@@ -789,6 +933,7 @@ describe('plugin-meetings', () => {
           );
         });
       });
+
       describe('#isReactionsSupported', () => {
         it('should return false if the feature is not supported for the meeting', () => {
           meeting.locusInfo.controls = {reactions: {enabled: false}};
