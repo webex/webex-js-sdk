@@ -676,7 +676,7 @@ describe('plugin-meetings', () => {
 
           await meeting.startTranscription();
 
-          assert.equal(webex.internal.voicea.on.callCount, 5);
+          assert.equal(webex.internal.voicea.on.callCount, 4);
           assert.equal(meeting.areVoiceaEventsSetup, true);
           assert.equal(webex.internal.voicea.listenToEvents.callCount, 1);
           assert.calledWith(
@@ -685,7 +685,7 @@ describe('plugin-meetings', () => {
           );
 
           await meeting.startTranscription();
-          assert.equal(webex.internal.voicea.on.callCount, 5);
+          assert.equal(webex.internal.voicea.on.callCount, 4);
           assert.equal(meeting.areVoiceaEventsSetup, true);
           assert.equal(webex.internal.voicea.listenToEvents.callCount, 1);
           assert.calledTwice(
@@ -706,7 +706,7 @@ describe('plugin-meetings', () => {
 
           await meeting.startTranscription();
 
-          assert.equal(webex.internal.voicea.on.callCount, 5);
+          assert.equal(webex.internal.voicea.on.callCount, 4);
           assert.equal(meeting.areVoiceaEventsSetup, true);
           assert.equal(webex.internal.voicea.listenToEvents.callCount, 1);
           assert.notCalled(
@@ -735,7 +735,7 @@ describe('plugin-meetings', () => {
 
         it('should stop listening to voicea events and also trigger a stop event', () => {
           meeting.stopTranscription();
-          assert.equal(webex.internal.voicea.off.callCount, 5);
+          assert.equal(webex.internal.voicea.off.callCount, 4);
           assert.equal(meeting.areVoiceaEventsSetup, false);
           assert.calledWith(
             TriggerProxy.trigger,
@@ -789,6 +789,7 @@ describe('plugin-meetings', () => {
           );
         });
       });
+      
       describe('#isReactionsSupported', () => {
         it('should return false if the feature is not supported for the meeting', () => {
           meeting.locusInfo.controls = {reactions: {enabled: false}};
