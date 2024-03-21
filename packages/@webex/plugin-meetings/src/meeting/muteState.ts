@@ -178,19 +178,6 @@ export class MuteState {
     this.applyClientStateToServer(meeting);
   }
 
-  /**
-   * Applies the current mute state to the local stream (by enabling or disabling it accordingly)
-   *
-   * @public
-   * @param {Object} [meeting] the meeting object
-   * @param {ServerMuteReason} reason - reason why we're applying our client state to the local stream
-   * @memberof MuteState
-   * @returns {void}
-   */
-  public applyClientStateLocally(meeting?: any, reason?: ServerMuteReason) {
-    this.muteLocalStream(meeting, this.state.client.localMute, reason);
-  }
-
   /** Returns true if client is locally muted - it takes into account not just the client local mute state,
    *  but also whether audio/video is enabled at all
    *
@@ -412,13 +399,14 @@ export class MuteState {
     // todo: I'm seeing "you can now unmute yourself " popup  when this happens - but same thing happens on web.w.c so we can ignore for now
     this.state.server.remoteMute = false;
 
+    // change user mute state to false, but keep localMute true if system is still muted
+    this.muteLocalStream(meeting, false, 'localUnmuteRequired');
     if (this.type === AUDIO) {
-      this.state.client.localMute = meeting.mediaProperties.audioStream?.muted;
+      this.state.client.localMute = meeting.mediaProperties.audioStream?.systemMuted;
     } else {
-      this.state.client.localMute = meeting.mediaProperties.videoStream?.muted;
+      this.state.client.localMute = meeting.mediaProperties.videoStream?.systemMuted;
     }
 
-    this.applyClientStateLocally(meeting, 'localUnmuteRequired');
     this.applyClientStateToServer(meeting);
   }
 
