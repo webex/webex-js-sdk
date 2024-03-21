@@ -5904,16 +5904,22 @@ export default class Meeting extends StatelessWebexPlugin {
   private async setUpLocalStreamReferences(localStreams: LocalStreams) {
     const setUpStreamPromises = [];
 
-    if (localStreams?.microphone) {
+    if (localStreams?.microphone && localStreams?.microphone?.readyState !== 'ended') {
       setUpStreamPromises.push(this.setLocalAudioStream(localStreams.microphone));
     }
-    if (localStreams?.camera) {
+    if (localStreams?.camera && localStreams?.camera?.readyState !== 'ended') {
       setUpStreamPromises.push(this.setLocalVideoStream(localStreams.camera));
     }
-    if (localStreams?.screenShare?.video) {
+    if (
+      localStreams?.screenShare?.video &&
+      localStreams?.screenShare?.video?.readyState !== 'ended'
+    ) {
       setUpStreamPromises.push(this.setLocalShareVideoStream(localStreams.screenShare.video));
     }
-    if (localStreams?.screenShare?.audio) {
+    if (
+      localStreams?.screenShare?.audio &&
+      localStreams?.screenShare?.audio?.readyState !== 'ended'
+    ) {
       setUpStreamPromises.push(this.setLocalShareAudioStream(localStreams.screenShare.audio));
     }
 
