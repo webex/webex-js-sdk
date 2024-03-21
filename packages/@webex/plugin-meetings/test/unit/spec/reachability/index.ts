@@ -128,6 +128,11 @@ describe('gatherReachability', () => {
       'reachability.result',
       JSON.stringify({old: 'results'})
     );
+    await webex.boundedStorage.put(
+      'Reachability',
+      'reachability.joinCookie',
+      JSON.stringify({old: 'joinCookie'})
+    );
   });
 
   afterEach(() => {
@@ -167,6 +172,75 @@ describe('gatherReachability', () => {
 
     assert.equal(JSON.stringify(result), storedResultForReachabilityResult);
     assert.equal(JSON.stringify(getClustersResult.joinCookie), storedResultForJoinCookie);
+  });
+
+  it('keeps the stored reachability from previous call to gatherReachability if getClusters fails', async () => {
+    const reachability = new Reachability(webex);
+
+    const reachabilityResults = {
+      clusters: {
+        clusterId: {
+          udp: 'testUDP',
+        },
+      },
+    };
+    const getClustersResult = {
+      clusters: {clusterId: 'cluster'},
+      joinCookie: {id: 'id'},
+    };
+
+    reachability.reachabilityRequest.getClusters = sinon.stub().throws();
+
+    const result = await reachability.gatherReachability();
+
+    assert.empty(result);
+
+    const storedResultForReachabilityResult = await webex.boundedStorage.get(
+      'Reachability',
+      'reachability.result'
+    );
+    const storedResultForJoinCookie = await webex.boundedStorage.get(
+      'Reachability',
+      'reachability.joinCookie'
+    );
+
+    assert.equal(JSON.stringify({old: 'results'}), storedResultForReachabilityResult);
+    assert.equal(JSON.stringify({old: 'joinCookie'}), storedResultForJoinCookie);
+  });
+
+  it('keeps the stored reachability from previous call to gatherReachability if performReachabilityChecks fails', async () => {
+    const reachability = new Reachability(webex);
+
+    const reachabilityResults = {
+      clusters: {
+        clusterId: {
+          udp: 'testUDP',
+        },
+      },
+    };
+    const getClustersResult = {
+      clusters: {clusterId: 'cluster'},
+      joinCookie: {id: 'id'},
+    };
+
+    reachability.reachabilityRequest.getClusters = sinon.stub().returns(getClustersResult);
+    (reachability as any).performReachabilityChecks = sinon.stub().throws();
+
+    const result = await reachability.gatherReachability();
+
+    assert.empty(result);
+
+    const storedResultForReachabilityResult = await webex.boundedStorage.get(
+      'Reachability',
+      'reachability.result'
+    );
+    const storedResultForJoinCookie = await webex.boundedStorage.get(
+      'Reachability',
+      'reachability.joinCookie'
+    );
+
+    assert.equal(JSON.stringify({old: 'results'}), storedResultForReachabilityResult);
+    assert.equal(JSON.stringify({old: 'joinCookie'}), storedResultForJoinCookie);
   });
 
   it('starts ClusterReachability on each media cluster', async () => {
@@ -210,9 +284,10 @@ describe('gatherReachability', () => {
       xtls: ['xtls1.1', 'xtls1.2'],
       isVideoMesh: false,
     });
+    // cluster 2 is video mesh, so we should not do TCP reachability on it
     assert.calledWith(clusterReachabilityCtorStub, 'cluster 2', {
       udp: ['udp2.1', 'udp2.2'],
-      tcp: ['tcp2.1', 'tcp2.2'],
+      tcp: [],
       xtls: ['xtls2.1', 'xtls2.2'],
       isVideoMesh: true,
     });

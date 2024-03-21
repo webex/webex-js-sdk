@@ -15,21 +15,18 @@ export const getSpeakerFromProxyOrStore = ({csisKey, meetingMembers, transcriptD
 
   if (csisKey && transcriptData.speakerProxy[csisKey]) {
     speaker = transcriptData.speakerProxy[csisKey];
+
+    return {speaker, needsCaching};
   }
+
   const meetingMember: any = getSpeaker(meetingMembers, [csisKey]);
 
-  const speakerInStore = {
+  speaker = {
     speakerId: meetingMember?.participant.person.id ?? '',
     name: meetingMember?.participant.person.name ?? '',
   };
 
-  if (
-    meetingMember &&
-    (speakerInStore.speakerId !== speaker.speakerId || speakerInStore.name !== speaker.name)
-  ) {
-    needsCaching = true;
-    speaker = speakerInStore;
-  }
+  needsCaching = true;
 
   return {speaker, needsCaching};
 };
@@ -39,20 +36,16 @@ export const processNewCaptions = ({data, meeting}) => {
   const transcriptData = meeting.transcription;
 
   if (data.isFinal) {
-    const doesInterimTranscriptionExist = transcriptId in transcriptData.interimCaptions;
+    transcriptData.interimCaptions[transcriptId].forEach((interimId) => {
+      const interimTranscriptIndex = transcriptData.captions.findIndex(
+        (transcript) => transcript.id === interimId
+      );
 
-    if (doesInterimTranscriptionExist) {
-      transcriptData.interimCaptions[transcriptId].forEach((fakeId) => {
-        const fakeTranscriptIndex = transcriptData.captions.findIndex(
-          (transcript) => transcript.id === fakeId
-        );
-
-        if (fakeTranscriptIndex !== -1) {
-          transcriptData.captions.splice(fakeTranscriptIndex, 1);
-        }
-      });
-      delete transcriptData.interimCaptions[transcriptId];
-    }
+      if (interimTranscriptIndex !== -1) {
+        transcriptData.captions.splice(interimTranscriptIndex, 1);
+      }
+    });
+    delete transcriptData.interimCaptions[transcriptId];
     const csisKey = data.transcript?.csis[0];
 
     const {needsCaching, speaker} = getSpeakerFromProxyOrStore({
@@ -69,7 +62,7 @@ export const processNewCaptions = ({data, meeting}) => {
       isFinal: data.isFinal,
       translations: data.translations,
       text: data.transcript?.text,
-      currentSpokenLanguage: data.transcript?.transcriptLanguageCode,
+      currentSpokenLanguage: data.transcript?.transcript_language_code,
       timestamp: data.timestamp,
       speaker,
     };
@@ -85,12 +78,12 @@ export const processNewCaptions = ({data, meeting}) => {
       csis: [csisMember],
     } = transcript;
 
-    const newCaption = `${transcriptsPerCsis.get(csisMember)?.text ?? ''} ${text}`;
+    const newCaption = `${transcriptsPerCsis.get(csisMember)?.text ?? ''} ${text}`.trim();
 
     // eslint-disable-next-line camelcase
     transcriptsPerCsis.set(csisMember, {text: newCaption, currentSpokenLanguage});
   }
-  const fakeTranscriptionIds = [];
+  const interimTranscriptionIds = [];
 
   for (const [key, value] of transcriptsPerCsis) {
     const {needsCaching, speaker} = getSpeakerFromProxyOrStore({
@@ -103,9 +96,9 @@ export const processNewCaptions = ({data, meeting}) => {
       transcriptData.speakerProxy[key] = speaker;
     }
     const {speakerId} = speaker;
-    const fakeId = `${transcriptId}_${speakerId}`;
+    const interimId = `${transcriptId}_${speakerId}`;
     const captionData = {
-      id: fakeId,
+      id: interimId,
       isFinal: data.isFinal,
       translations: value.translations,
       text: value.text,
@@ -114,48 +107,16 @@ export const processNewCaptions = ({data, meeting}) => {
       speaker,
     };
 
-    const fakeTranscriptIndex = transcriptData.captions.findIndex(
-      (transcript) => transcript.id === fakeId
+    const interimTranscriptIndex = transcriptData.captions.findIndex(
+      (transcript) => transcript.id === interimId
     );
 
-    if (fakeTranscriptIndex !== -1) {
-      transcriptData.captions.splice(fakeTranscriptIndex, 1);
+    if (interimTranscriptIndex !== -1) {
+      transcriptData.captions.splice(interimTranscriptIndex, 1);
     }
 
-    fakeTranscriptionIds.push(fakeId);
+    interimTranscriptionIds.push(interimId);
     transcriptData.captions.push(captionData);
   }
-  transcriptData.interimCaptions[transcriptId] = fakeTranscriptionIds;
-};
-
-export const processHighlightCreated = ({data, meeting}) => {
-  const transcriptData = meeting.transcription;
-
-  if (!transcriptData.highlights) {
-    transcriptData.highlights = [];
-  }
-
-  const csisKey = data.csis && data.csis.length > 0 ? data.csis[0] : undefined;
-  const {needsCaching, speaker} = getSpeakerFromProxyOrStore({
-    meetingMembers: meeting.members.membersCollection.members,
-    transcriptData,
-    csisKey,
-  });
-
-  if (needsCaching) {
-    transcriptData.speakerProxy[csisKey] = speaker;
-  }
-
-  const highlightCreated = {
-    id: data.highlightId,
-    meta: {
-      label: data.highlightLabel,
-      source: data.highlightSource,
-    },
-    text: data.text,
-    timestamp: data.timestamp,
-    speaker,
-  };
-
-  meeting.transcription.highlights.push(highlightCreated);
+  transcriptData.interimCaptions[transcriptId] = interimTranscriptionIds;
 };

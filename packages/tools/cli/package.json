@@ -1,6 +1,5 @@
 {
   "name": "@webex/cli-tools",
-  "private": true,
   "packageManager": "yarn@3.4.1",
   "engines": {
     "node": ">=16.0.0",
@@ -23,6 +22,7 @@
     "build:types": "tsc --declaration --declarationMap --declarationDir ./dist/types --emitDeclarationOnly",
     "clean": "yarn clean:dist",
     "clean:dist": "rimraf ./dist",
+    "deploy:npm": "yarn npm publish",
     "test": "yarn test:style && yarn test:syntax && yarn test:integration && yarn test:coverage",
     "test:coverage": "yarn test:integration --coverage --reporters=\"jest-silent-reporter\"",
     "test:integration": "jest",

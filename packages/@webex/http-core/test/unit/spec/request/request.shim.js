@@ -5,6 +5,11 @@ import {EventEmitter} from 'events';
 
 describe('Request shim', () => {
   describe('#setAuth()', () => {
+    beforeAll(() => {
+      global.Blob = function (content, options) {
+        return { content, options };
+      };
+    });
     it('sets auth header', () => {
 
       class DummyXMLHttpRequest {

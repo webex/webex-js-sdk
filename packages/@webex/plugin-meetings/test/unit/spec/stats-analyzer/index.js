@@ -7,7 +7,9 @@ import {ConnectionState} from '@webex/internal-media-core';
 import {StatsAnalyzer, EVENTS} from '../../../../src/statsAnalyzer';
 import NetworkQualityMonitor from '../../../../src/networkQualityMonitor';
 import testUtils from '../../../utils/testUtils';
-import {MEDIA_DEVICES, _UNKNOWN_} from '@webex/plugin-meetings/src/constants';
+import {MEDIA_DEVICES, MQA_INTERVAL, _UNKNOWN_} from '@webex/plugin-meetings/src/constants';
+import LoggerProxy from '../../../../src/common/logs/logger-proxy';
+import LoggerConfig from '../../../../src/common/logs/logger-config';
 
 const {assert} = chai;
 
@@ -16,6 +18,156 @@ sinon.assert.expose(chai.assert, {prefix: ''});
 
 describe('plugin-meetings', () => {
   describe('StatsAnalyzer', () => {
+    describe('parseStatsResult', () => {
+      const sandbox = sinon.createSandbox();
+      let statsAnalyzer;
+
+      const initialConfig = {};
+      const defaultStats = {};
+
+      beforeEach(() => {
+        const networkQualityMonitor = new NetworkQualityMonitor(initialConfig);
+
+        statsAnalyzer = new StatsAnalyzer(
+          initialConfig,
+          () => ({}),
+          networkQualityMonitor,
+          defaultStats
+        );
+      });
+
+      afterEach(() => {
+        sandbox.reset();
+      });
+
+      it('should call processOutboundRTPResult', () => {
+        const calledSpy = sandbox.spy(statsAnalyzer, 'processOutboundRTPResult');
+        statsAnalyzer.parseGetStatsResult({ type: 'outbound-rtp' }, 'video-send');
+        assert(calledSpy.calledOnce);
+      });
+
+      it('should call processInboundRTPResult', () => {
+        const calledSpy = sandbox.spy(statsAnalyzer, 'processInboundRTPResult');
+        statsAnalyzer.parseGetStatsResult({ type: 'inbound-rtp' }, 'video-recv');
+        assert(calledSpy.calledOnce);
+      });
+
+      it('should call compareSentAndReceived', () => {
+        const calledSpy = sandbox.spy(statsAnalyzer, 'compareSentAndReceived');
+        statsAnalyzer.parseGetStatsResult({ type: 'remote-outbound-rtp' }, 'video-send');
+        assert(calledSpy.calledOnce);
+      });
+
+      it('should call parseCandidate', () => {
+        const calledSpy = sandbox.spy(statsAnalyzer, 'parseCandidate');
+        statsAnalyzer.parseGetStatsResult({ type: 'local-candidate' }, 'video-send');
+        assert(calledSpy.calledOnce);
+      });
+
+      it('processOutboundRTPResult should create the correct stats results', () => {
+        // establish the `statsResults` object.
+        statsAnalyzer.parseGetStatsResult({ type: 'none' }, 'audio-send', true);
+
+        statsAnalyzer.processOutboundRTPResult({
+          bytesSent: 50000,
+          codecId: "RTCCodec_1_Outbound_111",
+          headerBytesSent: 25000,
+          id: "RTCOutboundRTPAudioStream_123456789",
+          kind: "audio",
+          mediaSourceId: "RTCAudioSource_2",
+          mediaType: "audio",
+          nackCount: 1,
+          packetsSent: 3600,
+          remoteId: "RTCRemoteInboundRtpAudioStream_123456789",
+          retransmittedBytesSent: 100,
+          retransmittedPacketsSent: 2,
+          ssrc: 123456789,
+          targetBitrate: 256000,
+          timestamp: 1707341489336,
+          trackId: "RTCMediaStreamTrack_sender_2",
+          transportId: "RTCTransport_0_1",
+          type: "outbound-rtp",
+        }, 'audio-send', true);
+
+        assert.strictEqual(statsAnalyzer.statsResults['audio-send'].send.headerBytesSent, 25000);
+        assert.strictEqual(statsAnalyzer.statsResults['audio-send'].send.totalBytesSent, 50000);
+        assert.strictEqual(statsAnalyzer.statsResults['audio-send'].send.totalNackCount, 1);
+        assert.strictEqual(statsAnalyzer.statsResults['audio-send'].send.totalPacketsSent, 3600)
+        assert.strictEqual(statsAnalyzer.statsResults['audio-send'].send.retransmittedPacketsSent, 2);
+        assert.strictEqual(statsAnalyzer.statsResults['audio-send'].send.retransmittedBytesSent, 100);
+      });
+
+      it('processInboundRTPResult should create the correct stats results', () => {
+        // establish the `statsResults` object.
+        statsAnalyzer.parseGetStatsResult({ type: 'none' }, 'audio-recv-1', false);
+
+        statsAnalyzer.processInboundRTPResult({
+          audioLevel: 0,
+          bytesReceived: 509,
+          codecId: "RTCCodec_6_Inbound_111",
+          concealedSamples: 200000,
+          concealmentEvents: 13,
+          fecPacketsDiscarded: 1,
+          fecPacketsReceived: 1,
+          headerBytesReceived: 250,
+          id: "RTCInboundRTPAudioStream_123456789",
+          insertedSamplesForDeceleration: 0,
+          jitter: 0.012,
+          jitterBufferDelay: 1000,
+          jitterBufferEmittedCount: 10000,
+          kind: "audio",
+          lastPacketReceivedTimestamp: 1707341488529,
+          mediaType: "audio",
+          packetsDiscarded: 0,
+          packetsLost: 0,
+          packetsReceived: 12,
+          remoteId: "RTCRemoteOutboundRTPAudioStream_123456789",
+          removedSamplesForAcceleration: 0,
+          silentConcealedSamples: 200000,
+          ssrc: 123456789,
+          timestamp: 1707341489419,
+          totalAudioEnergy: 133,
+          totalSamplesDuration: 7,
+          totalSamplesReceived: 300000,
+          trackId: "RTCMediaStreamTrack_receiver_76",
+          transportId: "RTCTransport_0_1",
+          type: "inbound-rtp",
+        }, 'audio-recv-1', false);
+
+        assert.strictEqual(statsAnalyzer.statsResults['audio-recv-1'].recv.totalPacketsReceived, 12);
+        assert.strictEqual(statsAnalyzer.statsResults['audio-recv-1'].recv.fecPacketsDiscarded, 1);
+        assert.strictEqual(statsAnalyzer.statsResults['audio-recv-1'].recv.fecPacketsReceived, 1);
+        assert.strictEqual(statsAnalyzer.statsResults['audio-recv-1'].recv.totalBytesReceived, 509);
+        assert.strictEqual(statsAnalyzer.statsResults['audio-recv-1'].recv.headerBytesReceived, 250);
+        assert.strictEqual(statsAnalyzer.statsResults['audio-recv-1'].recv.audioLevel, 0);
+        assert.strictEqual(statsAnalyzer.statsResults['audio-recv-1'].recv.totalAudioEnergy, 133);
+        assert.strictEqual(statsAnalyzer.statsResults['audio-recv-1'].recv.totalSamplesReceived, 300000);
+        assert.strictEqual(statsAnalyzer.statsResults['audio-recv-1'].recv.totalSamplesDecoded, 0);
+        assert.strictEqual(statsAnalyzer.statsResults['audio-recv-1'].recv.concealedSamples, 200000);
+      });
+
+      it('parseAudioSource should create the correct stats results', () => {
+        // establish the `statsResults` object.
+        statsAnalyzer.parseGetStatsResult({ type: 'none' }, 'audio-send', true);
+
+        statsAnalyzer.parseAudioSource({
+          audioLevel: 0.03,
+          echoReturnLoss: -30,
+          echoReturnLossEnhancement: 0.17,
+          id: "RTCAudioSource_2",
+          kind: "audio",
+          timestamp: 1707341488160.012,
+          totalAudioEnergy: 0.001,
+          totalSamplesDuration: 4.5,
+          trackIdentifier: "2207e5bf-c595-4301-93f7-283994d8143f",
+          type: "media-source",
+        }, 'audio-send', true);
+
+        assert.strictEqual(statsAnalyzer.statsResults['audio-send'].send.audioLevel, 0.03);
+        assert.strictEqual(statsAnalyzer.statsResults['audio-send'].send.totalAudioEnergy, 0.001);
+      });
+    });
+
     describe('compareSentAndReceived()', () => {
       let statsAnalyzer;
       let sandBoxSpy;
@@ -91,6 +243,8 @@ describe('plugin-meetings', () => {
       let networkQualityMonitor;
       let statsAnalyzer;
       let mqeData;
+      let loggerSpy;
+      let receiveSlot;
 
       let receivedEventsData = {
         local: {},
@@ -103,6 +257,8 @@ describe('plugin-meetings', () => {
 
       let fakeStats;
 
+      const sandbox = sinon.createSandbox();
+
       const resetReceivedEvents = () => {
         receivedEventsData = {
           local: {},
@@ -110,8 +266,15 @@ describe('plugin-meetings', () => {
         };
       };
 
+      before(() => {
+        LoggerConfig.set({ enable: false });
+        LoggerProxy.set();
+        loggerSpy = sandbox.spy(LoggerProxy.logger, 'info');
+      });
+
       beforeEach(() => {
         clock = sinon.useFakeTimers();
+        receiveSlot = undefined;
 
         resetReceivedEvents();
 
@@ -124,8 +287,12 @@ describe('plugin-meetings', () => {
                 report: [
                   {
                     type: 'outbound-rtp',
-                    packetsSent: 0,
                     bytesSent: 1,
+                    packetsSent: 0,
+                  },
+                  {
+                    type: 'remote-inbound-rtp',
+                    packetsLost: 0,
                   },
                   {
                     type: 'candidate-pair',
@@ -150,8 +317,14 @@ describe('plugin-meetings', () => {
                 report: [
                   {
                     type: 'inbound-rtp',
-                    packetsReceived: 0,
                     bytesReceived: 1,
+                    fecPacketsDiscarded: 0,
+                    fecPacketsReceived: 0,
+                    packetsLost: 0,
+                    packetsReceived: 0,
+                  },
+                  {
+                    type: 'remote-outbound-rtp',
                   },
                   {
                     type: 'candidate-pair',
@@ -179,8 +352,13 @@ describe('plugin-meetings', () => {
                 report: [
                   {
                     type: 'outbound-rtp',
-                    framesSent: 1500,
                     bytesSent: 1,
+                    framesSent: 0,
+                    packetsSent: 0,
+                  },
+                  {
+                    type: 'remote-inbound-rtp',
+                    packetsLost: 0,
                   },
                   {
                     type: 'candidate-pair',
@@ -205,11 +383,16 @@ describe('plugin-meetings', () => {
                 report: [
                   {
                     type: 'inbound-rtp',
-                    framesDecoded: 0,
                     bytesReceived: 1,
                     frameHeight: 720,
                     frameWidth: 1280,
-                    framesReceived: 1500,
+                    framesDecoded: 0,
+                    framesReceived: 0,
+                    packetsLost: 0,
+                    packetsReceived: 0,
+                  },
+                  {
+                    type: 'remote-outbound-rtp',
                   },
                   {
                     type: 'candidate-pair',
@@ -256,7 +439,7 @@ describe('plugin-meetings', () => {
 
         networkQualityMonitor = new NetworkQualityMonitor(initialConfig);
 
-        statsAnalyzer = new StatsAnalyzer(initialConfig, () => ({}), networkQualityMonitor);
+        statsAnalyzer = new StatsAnalyzer(initialConfig, () => (receiveSlot), networkQualityMonitor);
 
         statsAnalyzer.on(EVENTS.LOCAL_MEDIA_STARTED, (data) => {
           receivedEventsData.local.started = data;
@@ -276,6 +459,7 @@ describe('plugin-meetings', () => {
       });
 
       afterEach(() => {
+        sandbox.reset();
         clock.restore();
       });
 
@@ -286,21 +470,27 @@ describe('plugin-meetings', () => {
         await testUtils.flushPromises();
       };
 
-      const mergeProperties = (target, properties, keyValue = 'fake-candidate-id', matchKey= 'type', matchValue = 'local-candidate') => {
+      const mergeProperties = (
+        target,
+        properties,
+        keyValue = 'fake-candidate-id',
+        matchKey = 'type',
+        matchValue = 'local-candidate'
+      ) => {
         for (let key in target) {
-            if (target.hasOwnProperty(key)) {
-                if (typeof target[key] === 'object') {
-                    mergeProperties(target[key], properties, keyValue, matchKey, matchValue);
-                }
-                if (key === 'id' && target[key] === keyValue && target[matchKey] === matchValue) {
-                    Object.assign(target, properties);
-                }
+          if (target.hasOwnProperty(key)) {
+            if (typeof target[key] === 'object') {
+              mergeProperties(target[key], properties, keyValue, matchKey, matchValue);
             }
+            if (key === 'id' && target[key] === keyValue && target[matchKey] === matchValue) {
+              Object.assign(target, properties);
+            }
+          }
         }
-    }
+      };
 
-      const progressTime = async () => {
-        await clock.tickAsync(initialConfig.analyzerInterval);
+      const progressTime = async (time = initialConfig.analyzerInterval) => {
+        await clock.tickAsync(time);
         await testUtils.flushPromises();
       };
 
@@ -428,10 +618,10 @@ describe('plugin-meetings', () => {
       });
 
       it('emits the correct transportType in MEDIA_QUALITY events when using a TURN server', async () => {
-        fakeStats.audio.senders[0].report[3].relayProtocol = 'tls';
-        fakeStats.video.senders[0].report[3].relayProtocol = 'tls';
-        fakeStats.audio.receivers[0].report[3].relayProtocol = 'tls';
-        fakeStats.video.receivers[0].report[3].relayProtocol = 'tls';
+        fakeStats.audio.senders[0].report[4].relayProtocol = 'tls';
+        fakeStats.video.senders[0].report[4].relayProtocol = 'tls';
+        fakeStats.audio.receivers[0].report[4].relayProtocol = 'tls';
+        fakeStats.video.receivers[0].report[4].relayProtocol = 'tls';
 
         await startStatsAnalyzer({expected: {receiveVideo: true}});
 
@@ -478,14 +668,131 @@ describe('plugin-meetings', () => {
         );
       });
 
-      it('emits the correct frameRate', async () => {
-        await startStatsAnalyzer({expected: {receiveVideo: true}});
+      it('emits the correct transmittedFrameRate/receivedFrameRate', async () => {
+        it('at the start of the stats analyzer', async () => {
+          await startStatsAnalyzer();
+          assert.strictEqual(mqeData.videoTransmit[0].streams[0].common.transmittedFrameRate, 0);
+          assert.strictEqual(mqeData.videoReceive[0].streams[0].common.receivedFrameRate, 0);
+        });
 
-        await progressTime();
-        assert.strictEqual(mqeData.videoReceive[0].streams[0].common.receivedFrameRate, 25);
-        fakeStats.video.receivers[0].framesReceived = 3000;
-        await progressTime();
-        assert.strictEqual(mqeData.videoReceive[0].streams[0].common.receivedFrameRate, 25);
+        it('after frames are sent and received', async () => {
+          fakeStats.video.senders[0].report[0].framesSent += 300;
+          fakeStats.video.receivers[0].report[0].framesReceived += 300;
+          await progressTime(MQA_INTERVAL);
+
+          // 300 frames in 60 seconds = 5 frames per second
+          assert.strictEqual(mqeData.videoTransmit[0].streams[0].common.transmittedFrameRate, 5);
+          assert.strictEqual(mqeData.videoReceive[0].streams[0].common.receivedFrameRate, 5);
+        });
+      });
+
+      it('emits the correct rtpPackets', async () => {
+        it('at the start of the stats analyzer', async () => {
+          await startStatsAnalyzer();
+          assert.strictEqual(mqeData.audioTransmit[0].common.rtpPackets, 0);
+          assert.strictEqual(mqeData.audioTransmit[0].streams[0].common.rtpPackets, 0);
+          assert.strictEqual(mqeData.audioReceive[0].common.rtpPackets, 0);
+          assert.strictEqual(mqeData.audioReceive[0].streams[0].common.rtpPackets, 0);
+          assert.strictEqual(mqeData.videoTransmit[0].common.rtpPackets, 0);
+          assert.strictEqual(mqeData.videoTransmit[0].streams[0].common.rtpPackets, 0);
+          assert.strictEqual(mqeData.videoReceive[0].common.rtpPackets, 0);
+          assert.strictEqual(mqeData.videoReceive[0].streams[0].common.rtpPackets, 0);
+        });
+
+        it('after packets are sent', async () => {
+          fakeStats.audio.senders[0].report[0].packetsSent += 5;
+          fakeStats.video.senders[0].report[0].packetsSent += 5;
+          await progressTime(MQA_INTERVAL);
+
+          assert.strictEqual(mqeData.audioTransmit[0].common.rtpPackets, 5);
+          assert.strictEqual(mqeData.audioTransmit[0].streams[0].common.rtpPackets, 5);
+          assert.strictEqual(mqeData.videoTransmit[0].common.rtpPackets, 5);
+          assert.strictEqual(mqeData.videoTransmit[0].streams[0].common.rtpPackets, 5);
+        });
+
+        it('after packets are received', async () => {
+          fakeStats.audio.senders[0].report[0].packetsSent += 10;
+          fakeStats.video.senders[0].report[0].packetsSent += 10;
+          fakeStats.audio.receivers[0].report[0].packetsReceived += 10;
+          fakeStats.video.receivers[0].report[0].packetsReceived += 10;
+          await progressTime(MQA_INTERVAL);
+
+          assert.strictEqual(mqeData.audioReceive[0].common.rtpPackets, 10);
+          assert.strictEqual(mqeData.audioReceive[0].streams[0].common.rtpPackets, 10);
+          assert.strictEqual(mqeData.videoReceive[0].common.rtpPackets, 10);
+          assert.strictEqual(mqeData.videoReceive[0].streams[0].common.rtpPackets, 10);
+        });
+      });
+
+      it('emits the correct fecPackets', async () => {
+        it('at the start of the stats analyzer', async () => {
+          await startStatsAnalyzer();
+          assert.strictEqual(mqeData.audioReceive[0].common.fecPackets, 0);
+        });
+
+        it('after FEC packets are received', async () => {
+          fakeStats.audio.receivers[0].report[0].fecPacketsReceived += 5;
+          await progressTime(MQA_INTERVAL);
+
+          assert.strictEqual(mqeData.audioReceive[0].common.fecPackets, 5);
+        });
+
+        it('after FEC packets are received and some FEC packets are discarded', async () => {
+          fakeStats.audio.receivers[0].report[0].fecPacketsReceived += 15;
+          fakeStats.audio.receivers[0].report[0].fecPacketsDiscarded += 5;
+          await progressTime(MQA_INTERVAL);
+
+          assert.strictEqual(mqeData.audioReceive[0].common.fecPackets, 10);
+        });
+      });
+
+      it('emits the correct mediaHopByHopLost/rtpHopByHopLost', async () => {
+        it('at the start of the stats analyzer', async () => {
+          await startStatsAnalyzer();
+          assert.strictEqual(mqeData.audioReceive[0].common.mediaHopByHopLost, 0);
+          assert.strictEqual(mqeData.audioReceive[0].common.rtpHopByHopLost, 0);
+          assert.strictEqual(mqeData.videoReceive[0].common.mediaHopByHopLost, 0);
+          assert.strictEqual(mqeData.videoReceive[0].common.rtpHopByHopLost, 0);
+        });
+
+        it('after packets are lost', async () => {
+          fakeStats.audio.receivers[0].report[0].packetsLost += 5;
+          fakeStats.video.receivers[0].report[0].packetsLost += 5;
+          await progressTime(MQA_INTERVAL);
+
+          assert.strictEqual(mqeData.audioReceive[0].common.mediaHopByHopLost, 5);
+          assert.strictEqual(mqeData.audioReceive[0].common.rtpHopByHopLost, 5);
+          assert.strictEqual(mqeData.videoReceive[0].common.mediaHopByHopLost, 5);
+          assert.strictEqual(mqeData.videoReceive[0].common.rtpHopByHopLost, 5);
+        });
+      });
+
+      it('emits the correct remoteLossRate', async () => {
+        it('at the start of the stats analyzer', async () => {
+          await startStatsAnalyzer();
+          assert.strictEqual(mqeData.audioTransmit[0].common.remoteLossRate, 0);
+          assert.strictEqual(mqeData.videoTransmit[0].common.remoteLossRate, 0);
+        });
+
+        it('after packets are sent', async () => {
+          fakeStats.audio.senders[0].report[0].packetsSent += 100;
+          fakeStats.video.senders[0].report[0].packetsSent += 100;
+          await progressTime(MQA_INTERVAL);
+
+          assert.strictEqual(mqeData.audioTransmit[0].common.remoteLossRate, 0);
+          assert.strictEqual(mqeData.videoTransmit[0].common.remoteLossRate, 0);
+        });
+
+        it('after packets are sent and some packets are lost', async () => {
+          fakeStats.audio.senders[0].report[0].packetsSent += 200;
+          fakeStats.audio.senders[0].report[1].packetsLost += 10;
+          fakeStats.video.senders[0].report[0].packetsSent += 200;
+          fakeStats.video.senders[0].report[1].packetsLost += 10;
+          await progressTime(MQA_INTERVAL);
+
+          assert.strictEqual(mqeData.audioTransmit[0].common.remoteLossRate, 5);
+          assert.strictEqual(mqeData.videoTransmit[0].common.remoteLossRate, 5);
+        });
       });
 
       it('has the correct localIpAddress set when the candidateType is host', async () => {
@@ -503,7 +810,11 @@ describe('plugin-meetings', () => {
 
         await progressTime();
         assert.strictEqual(statsAnalyzer.getLocalIpAddress(), '');
-        mergeProperties(fakeStats, {relayProtocol: 'test', address: 'test2', candidateType: 'prflx'});
+        mergeProperties(fakeStats, {
+          relayProtocol: 'test',
+          address: 'test2',
+          candidateType: 'prflx',
+        });
         await progressTime();
         assert.strictEqual(statsAnalyzer.getLocalIpAddress(), 'test2');
       });
@@ -513,7 +824,11 @@ describe('plugin-meetings', () => {
 
         await progressTime();
         assert.strictEqual(statsAnalyzer.getLocalIpAddress(), '');
-        mergeProperties(fakeStats, {relatedAddress: 'relatedAddress', address: 'test2', candidateType: 'prflx'});
+        mergeProperties(fakeStats, {
+          relatedAddress: 'relatedAddress',
+          address: 'test2',
+          candidateType: 'prflx',
+        });
         await progressTime();
         assert.strictEqual(statsAnalyzer.getLocalIpAddress(), 'relatedAddress');
       });
@@ -526,6 +841,514 @@ describe('plugin-meetings', () => {
         mergeProperties(fakeStats, {candidateType: 'invalid'});
         await progressTime();
         assert.strictEqual(statsAnalyzer.getLocalIpAddress(), '');
+      });
+
+      it('logs a message when audio send packets do not increase', async () => {
+        await startStatsAnalyzer({expected: {sendAudio: true}});
+
+        // don't increase the packets when time progresses.
+        await progressTime();
+
+        assert(loggerSpy.calledWith('StatsAnalyzer:index#compareLastStatsResult --> No audio RTP packets sent'));
+      });
+
+      it('does not log a message when audio send packets increase', async () => {
+        await startStatsAnalyzer({expected: {sendAudio: true}});
+
+        fakeStats.audio.senders[0].report[0].packetsSent += 5;
+        await progressTime();
+
+        assert(loggerSpy.neverCalledWith('StatsAnalyzer:index#compareLastStatsResult --> No audio RTP packets sent'));
+      });
+
+      it('logs a message when audio receive packets do not increase', async () => {
+        await startStatsAnalyzer({expected: {receiveAudio: true}});
+
+        // don't increase the packets when time progresses.
+        await progressTime();
+
+        assert(loggerSpy.calledWith('StatsAnalyzer:index#compareLastStatsResult --> No audio RTP packets received'));
+      });
+
+      it('does not log a message when audio receive packets increase', async () => {
+        await startStatsAnalyzer({expected: {receiveAudio: true}});
+
+        fakeStats.audio.receivers[0].report[0].packetsReceived += 5;
+        await progressTime();
+
+        assert(loggerSpy.neverCalledWith('StatsAnalyzer:index#compareLastStatsResult --> No audio RTP packets received'));
+      });
+
+      it('logs a message when video send packets do not increase', async () => {
+        await startStatsAnalyzer({expected: {sendVideo: true}});
+
+        // don't increase the packets when time progresses.
+        await progressTime();
+
+        assert(loggerSpy.calledWith('StatsAnalyzer:index#compareLastStatsResult --> No video RTP packets sent'));
+      });
+
+      it('does not log a message when video send packets increase', async () => {
+        await startStatsAnalyzer({expected: {sendVideo: true}});
+
+        fakeStats.video.senders[0].report[0].packetsSent += 5;
+        await progressTime();
+
+        assert(loggerSpy.neverCalledWith('StatsAnalyzer:index#compareLastStatsResult --> No video RTP packets sent'));
+      });
+
+      it('logs a message when video receive packets do not increase', async () => {
+        await startStatsAnalyzer({expected: {receiveVideo: true}});
+
+        // don't increase the packets when time progresses.
+        await progressTime();
+
+        assert(loggerSpy.calledWith('StatsAnalyzer:index#compareLastStatsResult --> No video RTP packets received'));
+      });
+
+      it('does not log a message when video receive packets increase', async () => {
+        await startStatsAnalyzer({expected: {receiveVideo: true}});
+
+        fakeStats.video.receivers[0].report[0].packetsReceived += 5;
+        await progressTime();
+
+        assert(loggerSpy.neverCalledWith('StatsAnalyzer:index#compareLastStatsResult --> No audio RTP packets received'));
+      });
+
+      it('logs a message when no packets are recieved for a receive slot with sourceState "live"', async () => {
+        receiveSlot = {
+          sourceState:  'live',
+          csi: 2,
+          id: "4",
+        };
+
+        await startStatsAnalyzer();
+
+        // don't increase the packets when time progresses.
+        await progressTime();
+
+        assert.calledWith(loggerSpy, 'StatsAnalyzer:index#processInboundRTPResult --> No packets received for receive slot id: "4" and csi: 2. Total packets received on slot: ', 0);
+      });
+
+      ["avatar", "invalid", "no source", "bandwidth limited", "policy violation"].forEach((sourceState) => {
+        it(`does not log a message when no packets are recieved for a receive slot with sourceState "${sourceState}"`, async () => {
+          receiveSlot = {
+            sourceState,
+            csi: 2,
+            id: "4",
+          };
+  
+          await startStatsAnalyzer();
+  
+          // don't increase the packets when time progresses.
+          await progressTime();
+  
+          assert.neverCalledWith(loggerSpy, 'StatsAnalyzer:index#processInboundRTPResult --> No packets received for receive slot id: "4" and csi: 2. Total packets received on slot: ', 0);
+        });
+      });
+
+      it(`does not log a message if receiveSlot is undefined`, async () => {
+        await startStatsAnalyzer();
+
+        // don't increase the packets when time progresses.
+        await progressTime();
+
+        assert.neverCalledWith(loggerSpy, 'StatsAnalyzer:index#processInboundRTPResult --> No packets received for receive slot "". Total packets received on slot: ', 0);
+      });
+
+      it('has the correct number of senders and receivers (2)', async () => {
+        await startStatsAnalyzer({expected: {receiveVideo: true}});
+
+        await progressTime();
+
+        assert.lengthOf(mqeData.audioTransmit, 2);
+        assert.lengthOf(mqeData.audioReceive, 2);
+        assert.lengthOf(mqeData.videoTransmit, 2);
+        assert.lengthOf(mqeData.videoReceive, 2);
+      });
+
+      it('has one stream per sender/reciever', async () => {
+        await startStatsAnalyzer({expected: {receiveVideo: true}});
+
+        await progressTime();
+
+        assert.deepEqual(
+          mqeData.audioTransmit[0].streams,
+          [
+            {
+              common: {
+                codec: 'opus',
+                csi: [],
+                requestedBitrate: 0,
+                requestedFrames: 0,
+                rtpPackets: 0,
+                ssci: 0,
+                transmittedBitrate: 0.13333333333333333,
+                transmittedFrameRate: 0
+              },
+              transmittedKeyFrames: 0,
+              requestedKeyFrames: 0
+            }
+          ]
+        );
+        assert.deepEqual(
+          mqeData.audioTransmit[1].streams,
+          [
+            {
+              common: {
+                codec: 'opus',
+                csi: [],
+                requestedBitrate: 0,
+                requestedFrames: 0,
+                rtpPackets: 0,
+                ssci: 0,
+                transmittedBitrate: 0.13333333333333333,
+                transmittedFrameRate: 0
+              },
+              transmittedKeyFrames: 0,
+              requestedKeyFrames: 0
+            }
+          ]
+        );
+        assert.deepEqual(
+          mqeData.audioReceive[0].streams,
+          [
+            {
+              common: {
+                codec: 'opus',
+                concealedFrames: 0,
+                csi: [],
+                maxConcealRunLength: 0,
+                optimalBitrate: 0,
+                optimalFrameRate: 0,
+                receivedBitrate: 0.13333333333333333,
+                receivedFrameRate: 0,
+                renderedFrameRate: 0,
+                requestedBitrate: 0,
+                requestedFrameRate: 0,
+                rtpEndToEndLost: 0,
+                maxRtpJitter: 0,
+                meanRtpJitter: 0,
+                rtpPackets: 0,
+                ssci: 0,
+                rtpJitter: 0,
+                framesDropped: 0,
+                framesReceived: 0
+              }
+            }
+          ]
+        );
+        assert.deepEqual(
+          mqeData.audioReceive[1].streams,
+          [
+            {
+              common: {
+                codec: 'opus',
+                concealedFrames: 0,
+                csi: [],
+                maxConcealRunLength: 0,
+                optimalBitrate: 0,
+                optimalFrameRate: 0,
+                receivedBitrate: 0.13333333333333333,
+                receivedFrameRate: 0,
+                renderedFrameRate: 0,
+                requestedBitrate: 0,
+                requestedFrameRate: 0,
+                rtpEndToEndLost: 0,
+                maxRtpJitter: 0,
+                meanRtpJitter: 0,
+                rtpPackets: 0,
+                ssci: 0,
+                rtpJitter: 0,
+                framesDropped: 0,
+                framesReceived: 0
+              }
+            }
+          ]
+        );
+        assert.deepEqual(
+          mqeData.videoTransmit[0].streams,
+          [
+            {
+              common: {
+                codec: 'H264',
+                csi: [],
+                duplicateSsci: 0,
+                requestedBitrate: 0,
+                requestedFrames: 0,
+                rtpPackets: 0,
+                ssci: 0,
+                transmittedBitrate: 0.13333333333333333,
+                transmittedFrameRate: 0
+              },
+              h264CodecProfile: 'BP',
+              isAvatar: false,
+              isHardwareEncoded: false,
+              localConfigurationChanges: 2,
+              maxFrameQp: 0,
+              maxNoiseLevel: 0,
+              minRegionQp: 0,
+              remoteConfigurationChanges: 0,
+              requestedFrameSize: 0,
+              requestedKeyFrames: 0,
+              transmittedFrameSize: 0,
+              transmittedHeight: 0,
+              transmittedKeyFrames: 0,
+              transmittedKeyFramesClient: 0,
+              transmittedKeyFramesConfigurationChange: 0,
+              transmittedKeyFramesFeedback: 0,
+              transmittedKeyFramesLocalDrop: 0,
+              transmittedKeyFramesOtherLayer: 0,
+              transmittedKeyFramesPeriodic: 0,
+              transmittedKeyFramesSceneChange: 0,
+              transmittedKeyFramesStartup: 0,
+              transmittedKeyFramesUnknown: 0,
+              transmittedWidth: 0
+            }
+          ]
+        );
+        assert.deepEqual(
+          mqeData.videoTransmit[1].streams,
+          [
+            {
+              common: {
+                codec: 'H264',
+                csi: [],
+                duplicateSsci: 0,
+                requestedBitrate: 0,
+                requestedFrames: 0,
+                rtpPackets: 0,
+                ssci: 0,
+                transmittedBitrate: 0.13333333333333333,
+                transmittedFrameRate: 0
+              },
+              h264CodecProfile: 'BP',
+              isAvatar: false,
+              isHardwareEncoded: false,
+              localConfigurationChanges: 2,
+              maxFrameQp: 0,
+              maxNoiseLevel: 0,
+              minRegionQp: 0,
+              remoteConfigurationChanges: 0,
+              requestedFrameSize: 0,
+              requestedKeyFrames: 0,
+              transmittedFrameSize: 0,
+              transmittedHeight: 0,
+              transmittedKeyFrames: 0,
+              transmittedKeyFramesClient: 0,
+              transmittedKeyFramesConfigurationChange: 0,
+              transmittedKeyFramesFeedback: 0,
+              transmittedKeyFramesLocalDrop: 0,
+              transmittedKeyFramesOtherLayer: 0,
+              transmittedKeyFramesPeriodic: 0,
+              transmittedKeyFramesSceneChange: 0,
+              transmittedKeyFramesStartup: 0,
+              transmittedKeyFramesUnknown: 0,
+              transmittedWidth: 0
+            }
+          ]
+        );
+        assert.deepEqual(
+          mqeData.videoReceive[0].streams,
+          [
+            {
+              common: {
+                codec: 'H264',
+                concealedFrames: 0,
+                csi: [],
+                maxConcealRunLength: 0,
+                optimalBitrate: 0,
+                optimalFrameRate: 0,
+                receivedBitrate: 0.13333333333333333,
+                receivedFrameRate: 0,
+                renderedFrameRate: 0,
+                requestedBitrate: 0,
+                requestedFrameRate: 0,
+                rtpEndToEndLost: 0,
+                rtpJitter: 0,
+                rtpPackets: 0,
+                ssci: 0,
+                framesDropped: 0
+              },
+              h264CodecProfile: 'BP',
+              isActiveSpeaker: true,
+              optimalFrameSize: 0,
+              receivedFrameSize: 3600,
+              receivedHeight: 720,
+              receivedKeyFrames: 0,
+              receivedKeyFramesForRequest: 0,
+              receivedKeyFramesSourceChange: 0,
+              receivedKeyFramesUnknown: 0,
+              receivedWidth: 1280,
+              requestedFrameSize: 0,
+              requestedKeyFrames: 0
+            }
+          ]
+        );
+        assert.deepEqual(
+          mqeData.videoReceive[1].streams,
+          [
+            {
+              common: {
+                codec: 'H264',
+                concealedFrames: 0,
+                csi: [],
+                maxConcealRunLength: 0,
+                optimalBitrate: 0,
+                optimalFrameRate: 0,
+                receivedBitrate: 0.13333333333333333,
+                receivedFrameRate: 0,
+                renderedFrameRate: 0,
+                requestedBitrate: 0,
+                requestedFrameRate: 0,
+                rtpEndToEndLost: 0,
+                rtpJitter: 0,
+                rtpPackets: 0,
+                ssci: 0,
+                framesDropped: 0
+              },
+              h264CodecProfile: 'BP',
+              isActiveSpeaker: true,
+              optimalFrameSize: 0,
+              receivedFrameSize: 3600,
+              receivedHeight: 720,
+              receivedKeyFrames: 0,
+              receivedKeyFramesForRequest: 0,
+              receivedKeyFramesSourceChange: 0,
+              receivedKeyFramesUnknown: 0,
+              receivedWidth: 1280,
+              requestedFrameSize: 0,
+              requestedKeyFrames: 0
+            }
+          ]
+        );
+      });
+      
+      it('has three streams for video receivers when three exist', async () => {
+        pc.getTransceiverStats = sinon.stub().resolves({
+          audio: {
+            senders: [fakeStats.audio.senders[0]],
+            receivers: [fakeStats.audio.receivers[0]],
+          },
+          video: {
+            senders: [fakeStats.video.senders[0]],
+            receivers: [fakeStats.video.receivers[0], fakeStats.video.receivers[0], fakeStats.video.receivers[0]],
+          },
+          screenShareAudio: {
+            senders: [fakeStats.audio.senders[0]],
+            receivers: [fakeStats.audio.receivers[0]],
+          },
+          screenShareVideo: {
+            senders: [fakeStats.video.senders[0]],
+            receivers: [fakeStats.video.receivers[0]],
+          },
+        });
+
+        await startStatsAnalyzer({expected: {receiveVideo: true}});
+
+        await progressTime();
+
+        assert.deepEqual(
+          mqeData.videoReceive[0].streams,
+          [
+            {
+              common: {
+                codec: 'H264',
+                concealedFrames: 0,
+                csi: [],
+                maxConcealRunLength: 0,
+                optimalBitrate: 0,
+                optimalFrameRate: 0,
+                receivedBitrate: 0.13333333333333333,
+                receivedFrameRate: 0,
+                renderedFrameRate: 0,
+                requestedBitrate: 0,
+                requestedFrameRate: 0,
+                rtpEndToEndLost: 0,
+                rtpJitter: 0,
+                rtpPackets: 0,
+                ssci: 0,
+                framesDropped: 0
+              },
+              h264CodecProfile: 'BP',
+              isActiveSpeaker: true,
+              optimalFrameSize: 0,
+              receivedFrameSize: 3600,
+              receivedHeight: 720,
+              receivedKeyFrames: 0,
+              receivedKeyFramesForRequest: 0,
+              receivedKeyFramesSourceChange: 0,
+              receivedKeyFramesUnknown: 0,
+              receivedWidth: 1280,
+              requestedFrameSize: 0,
+              requestedKeyFrames: 0
+            },
+            {
+              common: {
+                codec: 'H264',
+                concealedFrames: 0,
+                csi: [],
+                maxConcealRunLength: 0,
+                optimalBitrate: 0,
+                optimalFrameRate: 0,
+                receivedBitrate: 0.13333333333333333,
+                receivedFrameRate: 0,
+                renderedFrameRate: 0,
+                requestedBitrate: 0,
+                requestedFrameRate: 0,
+                rtpEndToEndLost: 0,
+                rtpJitter: 0,
+                rtpPackets: 0,
+                ssci: 0,
+                framesDropped: 0
+              },
+              h264CodecProfile: 'BP',
+              isActiveSpeaker: true,
+              optimalFrameSize: 0,
+              receivedFrameSize: 3600,
+              receivedHeight: 720,
+              receivedKeyFrames: 0,
+              receivedKeyFramesForRequest: 0,
+              receivedKeyFramesSourceChange: 0,
+              receivedKeyFramesUnknown: 0,
+              receivedWidth: 1280,
+              requestedFrameSize: 0,
+              requestedKeyFrames: 0
+            },
+            {
+              common: {
+                codec: 'H264',
+                concealedFrames: 0,
+                csi: [],
+                maxConcealRunLength: 0,
+                optimalBitrate: 0,
+                optimalFrameRate: 0,
+                receivedBitrate: 0.13333333333333333,
+                receivedFrameRate: 0,
+                renderedFrameRate: 0,
+                requestedBitrate: 0,
+                requestedFrameRate: 0,
+                rtpEndToEndLost: 0,
+                rtpJitter: 0,
+                rtpPackets: 0,
+                ssci: 0,
+                framesDropped: 0
+              },
+              h264CodecProfile: 'BP',
+              isActiveSpeaker: true,
+              optimalFrameSize: 0,
+              receivedFrameSize: 3600,
+              receivedHeight: 720,
+              receivedKeyFrames: 0,
+              receivedKeyFramesForRequest: 0,
+              receivedKeyFramesSourceChange: 0,
+              receivedKeyFramesUnknown: 0,
+              receivedWidth: 1280,
+              requestedFrameSize: 0,
+              requestedKeyFrames: 0
+            }
+          ]
+        );
       });
     });
   });

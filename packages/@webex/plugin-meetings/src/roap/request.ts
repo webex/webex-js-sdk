@@ -60,8 +60,6 @@ export default class RoapRequest extends StatelessWebexPlugin {
     meetingId: string;
     ipVersion?: IP_VERSION;
     locusMediaRequest?: LocusMediaRequest;
-    audioMuted?: boolean;
-    videoMuted?: boolean;
   }) {
     const {roapMessage, locusSelfUrl, mediaId, meetingId, locusMediaRequest, ipVersion} = options;
 

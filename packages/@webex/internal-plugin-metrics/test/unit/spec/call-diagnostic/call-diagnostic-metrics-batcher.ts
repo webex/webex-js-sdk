@@ -145,6 +145,7 @@ describe('plugin-metrics', () => {
             name: 'client.call.initiated',
             joinTimes: {
               meetingInfoReqResp: 10,
+              registerWDMDeviceJMT: 10,
               showInterstitialTime: 10,
             },
           });

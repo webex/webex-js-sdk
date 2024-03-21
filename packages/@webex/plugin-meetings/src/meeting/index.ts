@@ -37,7 +37,7 @@ import {
   EVENT_TRIGGERS as VOICEAEVENTS,
   TURN_ON_CAPTION_STATUS,
 } from '@webex/internal-plugin-voicea';
-import {processNewCaptions, processHighlightCreated} from './voicea-meeting';
+import {processNewCaptions} from './voicea-meeting';
 
 import {
   MeetingNotActiveError,
@@ -187,7 +187,6 @@ export type Transcription = {
   isListening: boolean;
   commandText: string;
   captions: Array<CaptionData>;
-  highlights: Array<any>;
   showCaptionBox: boolean;
   transcribingRequestStatus: string;
   isCaptioning: boolean;
@@ -232,6 +231,13 @@ export enum ScreenShareFloorStatus {
   GRANTED = 'floor_request_granted',
   RELEASED = 'floor_released',
 }
+
+type FetchMeetingInfoParams = {
+  password?: string;
+  captchaCode?: string;
+  extraParams?: Record<string, any>;
+  sendCAevents?: boolean;
+};
 
 /**
  * MediaDirection
@@ -615,6 +621,8 @@ export default class Meeting extends StatelessWebexPlugin {
   environment: string;
   namespace = MEETINGS;
   allowMediaInLobby: boolean;
+  localShareInstanceId: string;
+  remoteShareInstanceId: string;
   turnDiscoverySkippedReason: string;
   turnServerUsed: boolean;
   areVoiceaEventsSetup = false;
@@ -654,9 +662,6 @@ export default class Meeting extends StatelessWebexPlugin {
           interimCaptions: this.transcription.interimCaptions,
         }
       );
-    },
-    [VOICEAEVENTS.HIGHLIGHT_CREATED]: (data) => {
-      processHighlightCreated({data, meeting: this});
     },
   };
 
@@ -1260,7 +1265,6 @@ export default class Meeting extends StatelessWebexPlugin {
      */
     this.transcription = {
       captions: [],
-      highlights: [],
       isListening: false,
       commandText: '',
       languageOptions: {},
@@ -1322,6 +1326,24 @@ export default class Meeting extends StatelessWebexPlugin {
      * @memberof Meeting
      */
     this.keepAliveTimerId = null;
+
+    /**
+     * id for tracking Local Share instances in Call Analyzer
+     * @instance
+     * @type {String}
+     * @private
+     * @memberof Meeting
+     */
+    this.localShareInstanceId = null;
+
+    /**
+     * id for tracking Remote Share instances in Call Analyzer
+     * @instance
+     * @type {String}
+     * @private
+     * @memberof Meeting
+     */
+    this.remoteShareInstanceId = null;
 
     /**
      * The class that helps to control recording functions: start, stop, pause, resume, etc
@@ -1478,6 +1500,97 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
+   * Set meeting info and trigger `MEETING_INFO_AVAILABLE` event
+   * @param {any} info
+   * @param {string} [meetingLookupUrl] Lookup url, defined when the meeting info fetched
+   * @returns {void}
+   */
+  private setMeetingInfo(info, meetingLookupUrl) {
+    this.meetingInfo = info ? {...info, meetingLookupUrl} : null;
+    this.meetingInfoFailureReason = MEETING_INFO_FAILURE_REASON.NONE;
+
+    this.requiredCaptcha = null;
+    if (
+      this.passwordStatus === PASSWORD_STATUS.REQUIRED ||
+      this.passwordStatus === PASSWORD_STATUS.VERIFIED
+    ) {
+      this.passwordStatus = PASSWORD_STATUS.VERIFIED;
+    } else {
+      this.passwordStatus = PASSWORD_STATUS.NOT_REQUIRED;
+    }
+
+    Trigger.trigger(
+      this,
+      {
+        file: 'meetings',
+        function: 'fetchMeetingInfo',
+      },
+      EVENT_TRIGGERS.MEETING_INFO_AVAILABLE
+    );
+
+    this.updateMeetingActions();
+  }
+
+  /**
+   * Add pre-fetched meeting info
+   *
+   * The passed meeting info should be be complete, e.g.: fetched after password or captcha provided
+   *
+   * @param {Object} meetingInfo - Complete meeting info
+   * @param {FetchMeetingInfoParams} fetchParams - Fetch parameters for validation
+   * @param {String|undefined} meetingLookupUrl - Lookup url, defined when the meeting info fetched
+   * @returns {Promise<void>}
+   */
+  public async injectMeetingInfo(
+    meetingInfo: any,
+    fetchParams: FetchMeetingInfoParams,
+    meetingLookupUrl: string | undefined
+  ): Promise<void> {
+    await this.prepForFetchMeetingInfo(fetchParams, 'injectMeetingInfo');
+
+    this.parseMeetingInfo(meetingInfo, this.destination);
+    this.setMeetingInfo(meetingInfo, meetingLookupUrl);
+  }
+
+  /**
+   * Validate fetch parameters and clear the fetchMeetingInfoTimeout timeout
+   *
+   * @param {FetchMeetingInfoParams} fetchParams - fetch parameters for validation
+   * @param {String} caller - Name of the caller for logging
+   *
+   * @returns {Promise<void>}
+   * @private
+   */
+  private prepForFetchMeetingInfo(
+    {password = null, captchaCode = null, extraParams = {}}: FetchMeetingInfoParams,
+    caller: string
+  ): Promise<void> {
+    // when fetch meeting info is called directly by the client, we want to clear out the random timer for sdk to do it
+    if (this.fetchMeetingInfoTimeoutId) {
+      clearTimeout(this.fetchMeetingInfoTimeoutId);
+      this.fetchMeetingInfoTimeoutId = undefined;
+    }
+    if (captchaCode && !this.requiredCaptcha) {
+      return Promise.reject(
+        new Error(`${caller}() called with captchaCode when captcha was not required`)
+      );
+    }
+    if (
+      password &&
+      this.passwordStatus !== PASSWORD_STATUS.REQUIRED &&
+      this.passwordStatus !== PASSWORD_STATUS.UNKNOWN
+    ) {
+      return Promise.reject(
+        new Error(`${caller}() called with password when password was not required`)
+      );
+    }
+
+    this.meetingInfoExtraParams = cloneDeep(extraParams);
+
+    return Promise.resolve();
+  }
+
+  /**
    * Internal method for fetching meeting info
    *
    * @returns {Promise}
@@ -1507,29 +1620,8 @@ export default class Meeting extends StatelessWebexPlugin {
         {meetingId: this.id, sendCAevents}
       );
 
-      this.parseMeetingInfo(info, this.destination);
-      this.meetingInfo = info ? {...info.body, meetingLookupUrl: info?.url} : null;
-      this.meetingInfoFailureReason = MEETING_INFO_FAILURE_REASON.NONE;
-      this.requiredCaptcha = null;
-      if (
-        this.passwordStatus === PASSWORD_STATUS.REQUIRED ||
-        this.passwordStatus === PASSWORD_STATUS.VERIFIED
-      ) {
-        this.passwordStatus = PASSWORD_STATUS.VERIFIED;
-      } else {
-        this.passwordStatus = PASSWORD_STATUS.NOT_REQUIRED;
-      }
-
-      Trigger.trigger(
-        this,
-        {
-          file: 'meetings',
-          function: 'fetchMeetingInfo',
-        },
-        EVENT_TRIGGERS.MEETING_INFO_AVAILABLE
-      );
-
-      this.updateMeetingActions();
+      this.parseMeetingInfo(info?.body, this.destination, info?.errors);
+      this.setMeetingInfo(info?.body, info?.url);
 
       return Promise.resolve();
     } catch (err) {
@@ -1673,46 +1765,13 @@ export default class Meeting extends StatelessWebexPlugin {
    * @memberof Meeting
    * @returns {Promise}
    */
-  public async fetchMeetingInfo({
-    password = null,
-    captchaCode = null,
-    extraParams = {},
-    sendCAevents = false,
-  }: {
-    password?: string;
-    captchaCode?: string;
-    extraParams?: Record<string, any>;
-    sendCAevents?: boolean;
-  }) {
-    // when fetch meeting info is called directly by the client, we want to clear out the random timer for sdk to do it
-    if (this.fetchMeetingInfoTimeoutId) {
-      clearTimeout(this.fetchMeetingInfoTimeoutId);
-      this.fetchMeetingInfoTimeoutId = undefined;
-    }
-    if (captchaCode && !this.requiredCaptcha) {
-      return Promise.reject(
-        new Error('fetchMeetingInfo() called with captchaCode when captcha was not required')
-      );
-    }
-    if (
-      password &&
-      this.passwordStatus !== PASSWORD_STATUS.REQUIRED &&
-      this.passwordStatus !== PASSWORD_STATUS.UNKNOWN
-    ) {
-      return Promise.reject(
-        new Error('fetchMeetingInfo() called with password when password was not required')
-      );
-    }
-
-    this.meetingInfoExtraParams = cloneDeep(extraParams);
+  public async fetchMeetingInfo(options: FetchMeetingInfoParams) {
+    await this.prepForFetchMeetingInfo(options, 'fetchMeetingInfo');
 
     return this.fetchMeetingInfoInternal({
       destination: this.destination,
       destinationType: this.destinationType,
-      password,
-      captchaCode,
-      extraParams,
-      sendCAevents,
+      ...options,
     });
   }
 
@@ -1966,6 +2025,9 @@ export default class Meeting extends StatelessWebexPlugin {
    */
   private setUpVoiceaListeners() {
     // @ts-ignore
+    this.webex.internal.voicea.listenToEvents();
+
+    // @ts-ignore
     this.webex.internal.voicea.on(
       VOICEAEVENTS.VOICEA_ANNOUNCEMENT,
       this.voiceaListenerCallbacks[VOICEAEVENTS.VOICEA_ANNOUNCEMENT]
@@ -1989,11 +2051,7 @@ export default class Meeting extends StatelessWebexPlugin {
       this.voiceaListenerCallbacks[VOICEAEVENTS.NEW_CAPTION]
     );
 
-    // @ts-ignore
-    this.webex.internal.voicea.on(
-      VOICEAEVENTS.HIGHLIGHT_CREATED,
-      this.voiceaListenerCallbacks[VOICEAEVENTS.HIGHLIGHT_CREATED]
-    );
+    this.areVoiceaEventsSetup = true;
   }
 
   /**
@@ -2362,16 +2420,6 @@ export default class Meeting extends StatelessWebexPlugin {
       }
     );
 
-    this.locusInfo.on(LOCUSINFO.EVENTS.CONTROLS_JOIN_BREAKOUT_FROM_MAIN, ({mainLocusUrl}) => {
-      this.meetingRequest.getLocusStatusByUrl(mainLocusUrl).catch((error) => {
-        // clear main session cache when attendee join into breakout and forbidden to get locus from main locus url,
-        // which means main session is not active for the attendee
-        if (error?.statusCode === 403) {
-          this.locusInfo.clearMainSessionLocusCache();
-        }
-      });
-    });
-
     this.locusInfo.on(LOCUSINFO.EVENTS.CONTROLS_ENTRY_EXIT_TONE_UPDATED, ({entryExitTone}) => {
       Trigger.trigger(
         this,
@@ -2606,6 +2654,8 @@ export default class Meeting extends StatelessWebexPlugin {
         switch (newShareStatus) {
           case SHARE_STATUS.REMOTE_SHARE_ACTIVE: {
             const sendStartedSharingRemote = () => {
+              this.remoteShareInstanceId = contentShare.shareInstanceId;
+
               Trigger.trigger(
                 this,
                 {
@@ -2616,7 +2666,7 @@ export default class Meeting extends StatelessWebexPlugin {
                 {
                   memberId: contentShare.beneficiaryId,
                   url: contentShare.url,
-                  shareInstanceId: contentShare.shareInstanceId,
+                  shareInstanceId: this.remoteShareInstanceId,
                   annotationInfo: contentShare.annotation,
                 }
               );
@@ -2653,6 +2703,7 @@ export default class Meeting extends StatelessWebexPlugin {
               name: 'client.share.floor-granted.local',
               payload: {
                 mediaType: 'share',
+                shareInstanceId: this.localShareInstanceId,
               },
               options: {meetingId: this.id},
             });
@@ -2695,6 +2746,8 @@ export default class Meeting extends StatelessWebexPlugin {
       } else if (newShareStatus === SHARE_STATUS.REMOTE_SHARE_ACTIVE) {
         // if we got here, then some remote participant has stolen
         // the presentation from another remote participant
+        this.remoteShareInstanceId = contentShare.shareInstanceId;
+
         Trigger.trigger(
           this,
           {
@@ -2705,7 +2758,7 @@ export default class Meeting extends StatelessWebexPlugin {
           {
             memberId: contentShare.beneficiaryId,
             url: contentShare.url,
-            shareInstanceId: contentShare.shareInstanceId,
+            shareInstanceId: this.remoteShareInstanceId,
             annotationInfo: contentShare.annotation,
           }
         );
@@ -3323,30 +3376,40 @@ export default class Meeting extends StatelessWebexPlugin {
   /**
    * Sets the meeting info on the class instance
    * @param {Object} meetingInfo
-   * @param {Object} meetingInfo.body
-   * @param {String} meetingInfo.body.conversationUrl
-   * @param {String} meetingInfo.body.locusUrl
-   * @param {String} meetingInfo.body.sipUri
-   * @param {Object} meetingInfo.body.owner
+   * @param {String} meetingInfo.conversationUrl
+   * @param {String} meetingInfo.locusUrl
+   * @param {String} meetingInfo.sipUri
+   * @param {String} [meetingInfo.sipUrl]
+   * @param {String} [meetingInfo.sipMeetingUri]
+   * @param {String} [meetingInfo.meetingNumber]
+   * @param {String} [meetingInfo.meetingJoinUrl]
+   * @param {String} [meetingInfo.hostId]
+   * @param {String} [meetingInfo.permissionToken]
+   * @param {String} [meetingInfo.channel]
+   * @param {Object} meetingInfo.owner
    * @param {Object | String} destination locus object with meeting data or destination string (sip url, meeting link, etc)
+   * @param {Object | String} errors Meeting info request error
    * @returns {undefined}
    * @private
    * @memberof Meeting
    */
   parseMeetingInfo(
-    meetingInfo:
-      | {
-          body: {
-            conversationUrl: string;
-            locusUrl: string;
-            sipUri: string;
-            owner: object;
-          };
-        }
-      | any,
-    destination: object | string | null = null
+    meetingInfo: {
+      conversationUrl: string;
+      locusUrl: string;
+      sipUri: string;
+      owner: object;
+      sipUrl?: string;
+      sipMeetingUri?: string;
+      meetingNumber?: string;
+      meetingJoinUrl?: string;
+      hostId?: string;
+      permissionToken?: string;
+      channel?: string;
+    },
+    destination: object | string | null = null,
+    errors: any = undefined
   ) {
-    const webexMeetingInfo = meetingInfo?.body;
     // We try to use as much info from Locus meeting object, stored in destination
 
     let locusMeetingObject;
@@ -3356,40 +3419,31 @@ export default class Meeting extends StatelessWebexPlugin {
     }
 
     // MeetingInfo will be undefined for 1:1 calls
-    if (
-      locusMeetingObject ||
-      (webexMeetingInfo && !(meetingInfo?.errors && meetingInfo?.errors.length > 0))
-    ) {
+    if (locusMeetingObject || (meetingInfo && !(errors?.length > 0))) {
       this.conversationUrl =
-        locusMeetingObject?.conversationUrl ||
-        webexMeetingInfo?.conversationUrl ||
-        this.conversationUrl;
-      this.locusUrl = locusMeetingObject?.url || webexMeetingInfo?.locusUrl || this.locusUrl;
+        locusMeetingObject?.conversationUrl || meetingInfo?.conversationUrl || this.conversationUrl;
+      this.locusUrl = locusMeetingObject?.url || meetingInfo?.locusUrl || this.locusUrl;
       // @ts-ignore - config coming from registerPlugin
       this.setSipUri(
         // @ts-ignore
         this.config.experimental.enableUnifiedMeetings
-          ? locusMeetingObject?.info.sipUri || webexMeetingInfo?.sipUrl
-          : locusMeetingObject?.info.sipUri || webexMeetingInfo?.sipMeetingUri || this.sipUri
+          ? locusMeetingObject?.info.sipUri || meetingInfo?.sipUrl
+          : locusMeetingObject?.info.sipUri || meetingInfo?.sipMeetingUri || this.sipUri
       );
       // @ts-ignore - config coming from registerPlugin
       if (this.config.experimental.enableUnifiedMeetings) {
-        this.meetingNumber =
-          locusMeetingObject?.info.webExMeetingId || webexMeetingInfo?.meetingNumber;
-        this.meetingJoinUrl = webexMeetingInfo?.meetingJoinUrl;
+        this.meetingNumber = locusMeetingObject?.info.webExMeetingId || meetingInfo?.meetingNumber;
+        this.meetingJoinUrl = meetingInfo?.meetingJoinUrl;
       }
       this.owner =
-        locusMeetingObject?.info.owner ||
-        webexMeetingInfo?.owner ||
-        webexMeetingInfo?.hostId ||
-        this.owner;
-      this.permissionToken = webexMeetingInfo?.permissionToken;
-      this.setPermissionTokenPayload(webexMeetingInfo?.permissionToken);
+        locusMeetingObject?.info.owner || meetingInfo?.owner || meetingInfo?.hostId || this.owner;
+      this.permissionToken = meetingInfo?.permissionToken;
+      this.setPermissionTokenPayload(meetingInfo?.permissionToken);
       this.setSelfUserPolicies();
       // Need to populate environment when sending CA event
-      this.environment = locusMeetingObject?.info.channel || webexMeetingInfo?.channel;
+      this.environment = locusMeetingObject?.info.channel || meetingInfo?.channel;
     }
-    MeetingUtil.parseInterpretationInfo(this, webexMeetingInfo);
+    MeetingUtil.parseInterpretationInfo(this, meetingInfo);
   }
 
   /**
@@ -4587,13 +4641,11 @@ export default class Meeting extends StatelessWebexPlugin {
           const {statusCode} = payload;
 
           if (statusCode === 200) {
-            const currentCaptionLanguage =
-              this.transcription.languageOptions.requestedCaptionLanguage ?? LANGUAGE_ENGLISH;
             this.transcription.languageOptions = {
               ...this.transcription.languageOptions,
-              currentCaptionLanguage,
+              currentCaptionLanguage: language,
             };
-            resolve(currentCaptionLanguage);
+            resolve(language);
           } else {
             reject(payload);
           }
@@ -4647,11 +4699,13 @@ export default class Meeting extends StatelessWebexPlugin {
             reject(payload);
           }
         };
+
         // @ts-ignore
         this.webex.internal.voicea.on(
           VOICEAEVENTS.SPOKEN_LANGUAGE_UPDATE,
           voiceaListenerLanguageUpdate
         );
+
         // @ts-ignore
         this.webex.internal.voicea.setSpokenLanguage(language);
       } catch (error) {
@@ -4677,10 +4731,12 @@ export default class Meeting extends StatelessWebexPlugin {
       try {
         if (!this.areVoiceaEventsSetup) {
           this.setUpVoiceaListeners();
-          this.areVoiceaEventsSetup = true;
         }
-        // @ts-ignore
-        await this.webex.internal.voicea.toggleTranscribing(true, options?.spokenLanguage);
+
+        if (this.getCurUserType() === 'host') {
+          // @ts-ignore
+          await this.webex.internal.voicea.toggleTranscribing(true, options?.spokenLanguage);
+        }
       } catch (error) {
         LoggerProxy.logger.error(`Meeting:index#startTranscription --> ${error}`);
         Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.RECEIVE_TRANSCRIPTION_FAILURE, {
@@ -4693,6 +4749,7 @@ export default class Meeting extends StatelessWebexPlugin {
       LoggerProxy.logger.error(
         `Meeting:index#startTranscription --> meeting joined : ${this.isJoined()}`
       );
+      throw new Error('Meeting is not joined');
     }
   }
 
@@ -4764,11 +4821,6 @@ export default class Meeting extends StatelessWebexPlugin {
         this.voiceaListenerCallbacks[VOICEAEVENTS.NEW_CAPTION]
       );
 
-      // @ts-ignore
-      this.webex.internal.voicea.off(
-        VOICEAEVENTS.HIGHLIGHT_CREATED,
-        this.voiceaListenerCallbacks[VOICEAEVENTS.HIGHLIGHT_CREATED]
-      );
       this.areVoiceaEventsSetup = false;
       this.triggerStopReceivingTranscriptionEvent();
     }
@@ -4788,7 +4840,7 @@ export default class Meeting extends StatelessWebexPlugin {
     Trigger.trigger(
       this,
       {
-        file: 'meeting',
+        file: 'meeting/index',
         function: 'triggerStopReceivingTranscriptionEvent',
       },
       EVENT_TRIGGERS.MEETING_STOPPED_RECEIVING_TRANSCRIPTION
@@ -5014,15 +5066,33 @@ export default class Meeting extends StatelessWebexPlugin {
       .then((join) => {
         // @ts-ignore - config coming from registerPlugin
         if (this.config.enableAutomaticLLM) {
-          this.updateLLMConnection().catch((error) => {
-            LoggerProxy.logger.error('Meeting:index#join --> Update LLM Connection Failed', error);
+          this.updateLLMConnection()
+            .catch((error) => {
+              LoggerProxy.logger.error(
+                'Meeting:index#join --> Transcription Socket Connection Failed',
+                error
+              );
 
-            Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.LLM_CONNECTION_AFTER_JOIN_FAILURE, {
-              correlation_id: this.correlationId,
-              reason: error?.message,
-              stack: error.stack,
+              Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.LLM_CONNECTION_AFTER_JOIN_FAILURE, {
+                correlation_id: this.correlationId,
+                reason: error?.message,
+                stack: error.stack,
+              });
+            })
+            .then(() => {
+              LoggerProxy.logger.info(
+                'Meeting:index#join --> Transcription Socket Connection Success'
+              );
+              Trigger.trigger(
+                this,
+                {
+                  file: 'meeting/index',
+                  function: 'join',
+                },
+                EVENT_TRIGGERS.MEETING_TRANSCRIPTION_CONNECTED,
+                undefined
+              );
             });
-          });
         }
 
         return join;
@@ -5510,7 +5580,6 @@ export default class Meeting extends StatelessWebexPlugin {
                 seq: event.roapMessage.seq,
                 tieBreaker: event.roapMessage.tieBreaker,
                 meeting: this, // or can pass meeting ID
-                reconnect: this.reconnectionManager.isReconnectInProgress(),
               })
               .then(({roapAnswer}) => {
                 if (roapAnswer) {
@@ -5827,7 +5896,10 @@ export default class Meeting extends StatelessWebexPlugin {
       // @ts-ignore
       this.webex.internal.newMetrics.submitClientEvent({
         name: 'client.media.tx.start',
-        payload: {mediaType: data.type},
+        payload: {
+          mediaType: data.type,
+          shareInstanceId: data.type === 'share' ? this.localShareInstanceId : undefined,
+        },
         options: {
           meetingId: this.id,
         },
@@ -5837,7 +5909,10 @@ export default class Meeting extends StatelessWebexPlugin {
       // @ts-ignore
       this.webex.internal.newMetrics.submitClientEvent({
         name: 'client.media.tx.stop',
-        payload: {mediaType: data.type},
+        payload: {
+          mediaType: data.type,
+          shareInstanceId: data.type === 'share' ? this.localShareInstanceId : undefined,
+        },
         options: {
           meetingId: this.id,
         },
@@ -5856,7 +5931,10 @@ export default class Meeting extends StatelessWebexPlugin {
       // @ts-ignore
       this.webex.internal.newMetrics.submitClientEvent({
         name: 'client.media.rx.start',
-        payload: {mediaType: data.type},
+        payload: {
+          mediaType: data.type,
+          shareInstanceId: data.type === 'share' ? this.remoteShareInstanceId : undefined,
+        },
         options: {
           meetingId: this.id,
         },
@@ -5866,7 +5944,10 @@ export default class Meeting extends StatelessWebexPlugin {
       // @ts-ignore
       this.webex.internal.newMetrics.submitClientEvent({
         name: 'client.media.rx.stop',
-        payload: {mediaType: data.type},
+        payload: {
+          mediaType: data.type,
+          shareInstanceId: data.type === 'share' ? this.remoteShareInstanceId : undefined,
+        },
         options: {
           meetingId: this.id,
         },
@@ -7112,11 +7193,14 @@ export default class Meeting extends StatelessWebexPlugin {
       if (content && this.shareStatus !== SHARE_STATUS.LOCAL_SHARE_ACTIVE) {
         // @ts-ignore
         this.webex.internal.newMetrics.submitClientEvent({
-          name: 'client.share.initiated',
+          name: 'client.share.floor-grant.request',
           payload: {
             mediaType: 'share',
+            shareInstanceId: this.localShareInstanceId,
           },
-          options: {meetingId: this.id},
+          options: {
+            meetingId: this.id,
+          },
         });
 
         return this.meetingRequest
@@ -7126,6 +7210,7 @@ export default class Meeting extends StatelessWebexPlugin {
             deviceUrl: this.deviceUrl,
             uri: content.url,
             resourceUrl: this.resourceUrl,
+            shareInstanceId: this.localShareInstanceId,
           })
           .then(() => {
             this.screenShareFloorState = ScreenShareFloorStatus.GRANTED;
@@ -7145,6 +7230,19 @@ export default class Meeting extends StatelessWebexPlugin {
               locus_id: this.locusUrl.split('/').pop(),
               reason: error.message,
               stack: error.stack,
+            });
+
+            // @ts-ignore
+            this.webex.internal.newMetrics.submitClientEvent({
+              name: 'client.share.floor-granted.local',
+              payload: {
+                mediaType: 'share',
+                errors: MeetingUtil.getChangeMeetingFloorErrorPayload(error.message),
+                shareInstanceId: this.localShareInstanceId,
+              },
+              options: {
+                meetingId: this.id,
+              },
             });
 
             this.screenShareFloorState = ScreenShareFloorStatus.RELEASED;
@@ -7198,6 +7296,7 @@ export default class Meeting extends StatelessWebexPlugin {
         name: 'client.share.stopped',
         payload: {
           mediaType: 'share',
+          shareInstanceId: this.localShareInstanceId,
         },
         options: {meetingId: this.id},
       });
@@ -7214,6 +7313,7 @@ export default class Meeting extends StatelessWebexPlugin {
           deviceUrl: this.deviceUrl,
           uri: content.url,
           resourceUrl: this.resourceUrl,
+          shareInstanceId: this.localShareInstanceId,
         })
         .catch((error) => {
           LoggerProxy.logger.error('Meeting:index#releaseScreenShareFloor --> Error ', error);
@@ -7673,6 +7773,9 @@ export default class Meeting extends StatelessWebexPlugin {
       if (roles.includes(SELF_ROLES.COHOST)) {
         return 'cohost';
       }
+      if (roles.includes(SELF_ROLES.PRESENTER)) {
+        return 'presenter';
+      }
       if (roles.includes(SELF_ROLES.ATTENDEE)) {
         return 'attendee';
       }
@@ -8077,6 +8180,17 @@ export default class Meeting extends StatelessWebexPlugin {
     }
 
     if (floorRequestNeeded) {
+      this.localShareInstanceId = uuid.v4();
+
+      // @ts-ignore
+      this.webex.internal.newMetrics.submitClientEvent({
+        name: 'client.share.initiated',
+        payload: {
+          mediaType: 'share',
+          shareInstanceId: this.localShareInstanceId,
+        },
+        options: {meetingId: this.id},
+      });
       // we're sending the http request to Locus to request the screen share floor
       // only after the SDP update, because that's how it's always been done for transcoded meetings
       // and also if sharing from the start, we need confluence to have been created

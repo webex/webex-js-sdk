@@ -19,6 +19,7 @@ class Mocha {
    */
   public static test({ files }: { files: Array<string> }) {
     Babel({
+      only: ['../../**/*.js', '../../**/*.ts'],
       extensions: ['.js', '.ts'],
       sourceMaps: true,
     });
