@@ -511,6 +511,27 @@ describe('plugin-meetings', () => {
         it('should have #syncMeetings', () => {
           assert.exists(webex.meetings.syncMeetings);
         });
+        it('should do nothing and return a resolved promise if unverified guest', async () => {
+          webex.meetings.request.getActiveMeetings = sinon.stub().returns(
+            Promise.resolve({
+              loci: [
+                {
+                  url: url1,
+                },
+              ],
+            })
+          );
+          webex.credentials.isUnverifiedGuest = true;
+          LoggerProxy.logger.info = sinon.stub();
+
+          await webex.meetings.syncMeetings();
+
+          assert.notCalled(webex.meetings.request.getActiveMeetings);
+          assert.calledWith(
+            LoggerProxy.logger.info,
+            'Meetings:index#syncMeetings --> skipping meeting sync as unverified guest'
+          );
+        });
         describe('succesful requests', () => {
           beforeEach(() => {
             webex.meetings.request.getActiveMeetings = sinon.stub().returns(
