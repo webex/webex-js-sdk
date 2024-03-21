@@ -52,7 +52,7 @@
     "build:src": "webex-legacy-tools build -dest \"./dist\" -src \"./src\" -js -ts -maps && yarn build",
     "deploy:npm": "yarn npm publish",
     "test": "yarn test:style && yarn test:unit && yarn test:integration && yarn test:browser",
-"test:style": "eslint ./src/**/*.*",
+    "test:style": "eslint ./src/**/*.*",
     "test:unit": "webex-legacy-tools test --unit --runner jest"
   }
 }
