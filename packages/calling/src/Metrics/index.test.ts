@@ -368,14 +368,14 @@ describe('CALLING: Metric tests', () => {
       };
 
       metricManager.submitBNRMetric(
-        METRIC_EVENT.MEDIA,
+        METRIC_EVENT.BNR,
         MEDIA_EFFECT_ACTION.BNR_ENABLED,
         METRIC_TYPE.BEHAVIORAL,
         mockCallId,
         mockCorrelationId
       );
 
-      expect(mockSubmitClientMetric).toBeCalledOnceWith(METRIC_EVENT.MEDIA, expectedData);
+      expect(mockSubmitClientMetric).toBeCalledOnceWith(METRIC_EVENT.BNR, expectedData);
     });
 
     it('submit bnr disabled success metric', () => {
@@ -396,14 +396,14 @@ describe('CALLING: Metric tests', () => {
       };
 
       metricManager.submitBNRMetric(
-        METRIC_EVENT.MEDIA,
+        METRIC_EVENT.BNR,
         MEDIA_EFFECT_ACTION.BNR_DISABLED,
         METRIC_TYPE.BEHAVIORAL,
         mockCallId,
         mockCorrelationId
       );
 
-      expect(mockSubmitClientMetric).toBeCalledOnceWith(METRIC_EVENT.MEDIA, expectedData);
+      expect(mockSubmitClientMetric).toBeCalledOnceWith(METRIC_EVENT.BNR, expectedData);
     });
   });
 
