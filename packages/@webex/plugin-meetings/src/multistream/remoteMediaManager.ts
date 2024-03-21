@@ -12,6 +12,7 @@ import {ReceiveSlot, CSI} from './receiveSlot';
 import {ReceiveSlotManager} from './receiveSlotManager';
 import {RemoteMediaGroup} from './remoteMediaGroup';
 import {MediaRequestManager} from './mediaRequestManager';
+import {NAMED_MEDIA_GROUP_TYPE_AUDIO} from '../constants';
 
 export type PaneSize = RemoteVideoResolution;
 export type LayoutId = string;
@@ -560,13 +561,15 @@ export class RemoteMediaManager extends EventsScope {
     }
 
     this.config.namedMediaGroup = {
-      type: 1,
+      type: NAMED_MEDIA_GROUP_TYPE_AUDIO,
       value,
     };
 
-    await this.createInterpretationAudioMedia(false);
-
-    this.media.audio.main?.sendActiveSpeakerMediaRequest(true);
+    if (!this.media.audio.si) {
+      await this.createInterpretationAudioMedia(true);
+    } else {
+      this.media.audio.si.setNamedMediaGroup(this.config.namedMediaGroup, true);
+    }
   }
 
   /**
@@ -603,15 +606,11 @@ export class RemoteMediaManager extends EventsScope {
    * Creates the audio slots for named media
    */
   private async createInterpretationAudioMedia(commitRequest: boolean) {
-    // release existing si slot
-    if (this.slots.audio.si) {
-      this.receiveSlotManager.releaseSlot(this.slots.audio.si);
-    }
-    this.media.audio.si?.stop(false);
-    this.media.audio.si = undefined;
-
     // create slot for interpretation language audio
-    if (this.config.namedMediaGroup?.type === 1 && this.config.namedMediaGroup?.value) {
+    if (
+      this.config.namedMediaGroup?.type === NAMED_MEDIA_GROUP_TYPE_AUDIO &&
+      this.config.namedMediaGroup?.value
+    ) {
       this.slots.audio.si = await this.receiveSlotManager.allocateSlot(MediaType.AudioMain);
 
       // create a remote media group for si audio

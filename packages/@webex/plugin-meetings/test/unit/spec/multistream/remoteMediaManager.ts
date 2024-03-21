@@ -18,6 +18,7 @@ import testUtils from '../../../utils/testUtils';
 import LoggerProxy from '@webex/plugin-meetings/src/common/logs/logger-proxy';
 import LoggerConfig from '@webex/plugin-meetings/src/common/logs/logger-config';
 import { expect } from 'chai';
+import { NamedMediaGroup } from "@webex/json-multistream";
 
 class FakeSlot extends EventEmitter {
   public mediaType: MediaType;
@@ -297,6 +298,184 @@ describe('RemoteMediaManager', () => {
           codecInfo: undefined,
         })
       );
+    });
+
+    it('creates a RemoteMediaGroup for named media group audio correctly', async () => {
+      let createdInterpretationAudioGroup: RemoteMediaGroup | null = null;
+      // create a config with just audio, no video at all and no screen share
+      const config: Configuration = {
+        audio: {
+          numOfActiveSpeakerStreams: 3,
+          numOfScreenShareStreams: 0,
+        },
+        video: {
+          preferLiveVideo: false,
+          initialLayoutId: 'empty',
+          layouts: {
+            empty: {},
+          },
+        },
+        namedMediaGroup: {type: 1, value: 20},
+      };
+
+      remoteMediaManager = new RemoteMediaManager(
+        fakeReceiveSlotManager,
+        fakeMediaRequestManagers,
+        config
+      );
+
+      remoteMediaManager.on(Event.InterpretationAudioCreated, (audio: RemoteMediaGroup) => {
+        createdInterpretationAudioGroup = audio;
+      });
+
+      remoteMediaManager.start();
+
+      await testUtils.flushPromises();
+
+      assert.callCount(fakeReceiveSlotManager.allocateSlot, 4);
+      assert.alwaysCalledWith(fakeReceiveSlotManager.allocateSlot, MediaType.AudioMain);
+
+      assert.isNotNull(createdInterpretationAudioGroup);
+      if (createdInterpretationAudioGroup) {
+        assert.strictEqual(createdInterpretationAudioGroup.getRemoteMedia().length, 1);
+        assert.isTrue(
+          createdInterpretationAudioGroup
+            .getRemoteMedia()
+            .every((remoteMedia) => remoteMedia.mediaType === MediaType.AudioMain)
+        );
+        assert.strictEqual(createdInterpretationAudioGroup.getRemoteMedia('pinned').length, 0);
+      }
+    });
+
+    it('creates new media request when call setReceiveNamedMediaGroup', async () => {
+      let createdInterpretationAudioGroup: RemoteMediaGroup | null = null;
+      // create a config with just audio, no video at all and no screen share
+      const config: Configuration = {
+        audio: {
+          numOfActiveSpeakerStreams: 3,
+          numOfScreenShareStreams: 0,
+        },
+        video: {
+          preferLiveVideo: false,
+          initialLayoutId: 'empty',
+          layouts: {
+            empty: {},
+          },
+        },
+        namedMediaGroup: {type: 1, value: 24},
+      };
+
+      remoteMediaManager = new RemoteMediaManager(
+        fakeReceiveSlotManager,
+        fakeMediaRequestManagers,
+        config
+      );
+
+      remoteMediaManager.on(Event.InterpretationAudioCreated, (audio: RemoteMediaGroup) => {
+        createdInterpretationAudioGroup = audio;
+        createdInterpretationAudioGroup.setNamedMediaGroup = sinon.stub();
+      });
+
+      await remoteMediaManager.start();
+
+      // requires 3 main audio slots and one interpretation audio slot
+      assert.callCount(fakeReceiveSlotManager.allocateSlot, 4);
+
+
+      resetHistory();
+
+
+      remoteMediaManager.setReceiveNamedMediaGroup(MediaType.AudioMain, 28);
+
+      // check that setNamedMediaGroup has been called
+      assert.calledOnce(createdInterpretationAudioGroup.setNamedMediaGroup);
+
+    });
+
+    it('ignore duplicated group when call setReceiveNamedMediaGroup', async () => {
+      let createdAudioGroup: RemoteMediaGroup | null = null;
+      let audioStopStub;
+      // create a config with just audio, no video at all and no screen share
+      const config: Configuration = {
+        audio: {
+          numOfActiveSpeakerStreams: 3,
+          numOfScreenShareStreams: 0,
+        },
+        video: {
+          preferLiveVideo: false,
+          initialLayoutId: 'empty',
+          layouts: {
+            empty: {},
+          },
+        },
+        namedMediaGroup: {type: 1, value: 24},
+      };
+
+      remoteMediaManager = new RemoteMediaManager(
+        fakeReceiveSlotManager,
+        fakeMediaRequestManagers,
+        config
+      );
+
+      remoteMediaManager.on(Event.AudioCreated, (audio: RemoteMediaGroup) => {
+        audioStopStub = sinon.stub(audio, 'stop');
+      });
+
+      await remoteMediaManager.start();
+
+      // we're using the default config that requires 3 main audio slots
+      assert.callCount(fakeReceiveSlotManager.allocateSlot, 4);
+
+
+      resetHistory();
+
+      remoteMediaManager.setReceiveNamedMediaGroup(MediaType.AudioMain, 24);
+
+      assert.notCalled(audioStopStub);
+      assert.callCount(fakeReceiveSlotManager.releaseSlot, 0);
+
+      await testUtils.flushPromises();
+      assert.callCount(fakeReceiveSlotManager.allocateSlot, 0);
+      assert.notCalled(fakeReceiveSlotManager.allocateSlot);
+
+    });
+
+
+    it('should throw error if set receive named media group which type is not audio', async () => {
+      let createdAudioGroup: RemoteMediaGroup | null = null;
+      let audioStopStub;
+      // create a config with just audio, no video at all and no screen share
+      const config: Configuration = {
+        audio: {
+          numOfActiveSpeakerStreams: 3,
+          numOfScreenShareStreams: 0,
+        },
+        video: {
+          preferLiveVideo: false,
+          initialLayoutId: 'empty',
+          layouts: {
+            empty: {},
+          },
+        },
+        namedMediaGroup: {type: 1, value: 24},
+      };
+
+      remoteMediaManager = new RemoteMediaManager(
+        fakeReceiveSlotManager,
+        fakeMediaRequestManagers,
+        config
+      );
+
+      await remoteMediaManager.start();
+
+      resetHistory();
+
+      try {
+        remoteMediaManager.setReceiveNamedMediaGroup(MediaType.VideoMain, 0);
+      } catch (err) {
+        assert(err, {});
+      }
+
     });
 
     it('pre-allocates receive slots based on the biggest layout', async () => {
@@ -693,7 +872,7 @@ describe('RemoteMediaManager', () => {
       });
 
       expect(config.video.preferLiveVideo).to.equal(true);
-      
+
       assert.calledOnce(fakeMediaRequestManagers.video.commit);
     });
   });

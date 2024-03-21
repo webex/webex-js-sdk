@@ -105,6 +105,7 @@ import {
   MEETING_PERMISSION_TOKEN_REFRESH_REASON,
   ROAP_OFFER_ANSWER_EXCHANGE_TIMEOUT,
   RECONNECTION,
+  NAMED_MEDIA_GROUP_TYPE_AUDIO,
 } from '../constants';
 import BEHAVIORAL_METRICS from '../metrics/constants';
 import ParameterError from '../common/errors/parameter';
@@ -7943,7 +7944,7 @@ export default class Meeting extends StatelessWebexPlugin {
     if (value) {
       groups = [
         {
-          type: 1,
+          type: NAMED_MEDIA_GROUP_TYPE_AUDIO,
           value,
         },
       ];

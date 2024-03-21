@@ -212,53 +212,51 @@ export class RemoteMediaGroup {
     }
   }
 
-  public sendActiveSpeakerMediaRequest(commit: boolean) {
+  private sendActiveSpeakerMediaRequest(commit: boolean) {
     this.cancelActiveSpeakerMediaRequest(false);
 
-    if (this.options.namedMediaGroup?.value) {
-      const remoteMedia = this.unpinnedRemoteMedia[0];
-
-      this.mediaRequestId = this.mediaRequestManager.addRequest(
-        {
-          policyInfo: {
-            policy: 'active-speaker',
-            priority: this.priority,
-            crossPriorityDuplication: false,
-            crossPolicyDuplication: false,
-            preferLiveVideo: !!this.options?.preferLiveVideo,
-            namedMediaGroups: [this.options?.namedMediaGroup],
-          },
-          receiveSlots: [remoteMedia.getUnderlyingReceiveSlot()] as ReceiveSlot[],
+    this.mediaRequestId = this.mediaRequestManager.addRequest(
+      {
+        policyInfo: {
+          policy: 'active-speaker',
+          priority: this.priority,
+          crossPriorityDuplication: false,
+          crossPolicyDuplication: false,
+          preferLiveVideo: !!this.options?.preferLiveVideo,
+          namedMediaGroups: this.options.namedMediaGroup?.value
+            ? [this.options?.namedMediaGroup]
+            : undefined,
         },
-        commit
-      );
-    } else {
-      this.mediaRequestId = this.mediaRequestManager.addRequest(
-        {
-          policyInfo: {
-            policy: 'active-speaker',
-            priority: this.priority,
-            crossPriorityDuplication: false,
-            crossPolicyDuplication: false,
-            preferLiveVideo: !!this.options?.preferLiveVideo,
-          },
-          receiveSlots: this.unpinnedRemoteMedia.map((remoteMedia) =>
-            remoteMedia.getUnderlyingReceiveSlot()
-          ) as ReceiveSlot[],
-          codecInfo: this.options.resolution && {
-            codec: 'h264',
-            maxFs: getMaxFs(this.options.resolution),
-          },
+        receiveSlots: this.unpinnedRemoteMedia.map((remoteMedia) =>
+          remoteMedia.getUnderlyingReceiveSlot()
+        ) as ReceiveSlot[],
+        codecInfo: this.options.resolution && {
+          codec: 'h264',
+          maxFs: getMaxFs(this.options.resolution),
         },
-        commit
-      );
-    }
+      },
+      commit
+    );
   }
 
   private cancelActiveSpeakerMediaRequest(commit: boolean) {
     if (this.mediaRequestId) {
       this.mediaRequestManager.cancelRequest(this.mediaRequestId, commit);
       this.mediaRequestId = undefined;
+    }
+  }
+
+  /**
+   * setNamedMediaGroup - sets named media group type and value
+   * @internal
+   */
+  public setNamedMediaGroup(namedMediaGroup: NamedMediaGroup, commit: boolean) {
+    if (
+      this.options.namedMediaGroup.value !== namedMediaGroup.value ||
+      this.options.namedMediaGroup.type !== namedMediaGroup.type
+    ) {
+      this.options.namedMediaGroup = namedMediaGroup;
+      this.sendActiveSpeakerMediaRequest(commit);
     }
   }
 
