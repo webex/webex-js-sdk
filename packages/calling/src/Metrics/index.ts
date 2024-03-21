@@ -2,7 +2,7 @@ import {CallError, CallingClientError} from '../Errors';
 import {METRIC_FILE, VERSION} from '../CallingClient/constants';
 import {CallId, CorrelationId, IDeviceInfo, ServiceIndicator} from '../common/types';
 import {WebexSDK} from '../SDKConnector/types';
-import {REG_ACTION, IMetricManager, METRIC_TYPE, METRIC_EVENT, MEDIA_EFFECT_ACTION} from './types';
+import {REG_ACTION, IMetricManager, METRIC_TYPE, METRIC_EVENT} from './types';
 import {LineError} from '../Errors/catalog/LineError';
 import log from '../Logger';
 
@@ -324,17 +324,15 @@ class MetricManager implements IMetricManager {
 
   public submitBNRMetric(
     name: METRIC_EVENT,
-    metricAction: MEDIA_EFFECT_ACTION,
     type: METRIC_TYPE,
     callId: CallId,
     correlationId: CorrelationId
   ) {
     let data;
 
-    if (METRIC_EVENT.MEDIA) {
+    if (METRIC_EVENT.BNR_ENABLED || METRIC_EVENT.BNR_DISABLED) {
       data = {
         tags: {
-          action: metricAction,
           device_id: this.deviceInfo?.device?.deviceId,
           service_indicator: this.serviceIndicator,
         },

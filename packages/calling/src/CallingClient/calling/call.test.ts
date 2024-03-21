@@ -8,7 +8,7 @@ import * as Utils from '../../common/Utils';
 import {CALL_EVENT_KEYS, CallEvent, RoapEvent, RoapMessage} from '../../Events/types';
 import {DEFAULT_SESSION_TIMER} from '../constants';
 import {CallDirection, CallType, ServiceIndicator, WebexRequestPayload} from '../../common/types';
-import {METRIC_EVENT, TRANSFER_ACTION, METRIC_TYPE, MEDIA_EFFECT_ACTION} from '../../Metrics/types';
+import {METRIC_EVENT, TRANSFER_ACTION, METRIC_TYPE} from '../../Metrics/types';
 import {Call, createCall} from './call';
 import {
   MobiusCallState,
@@ -368,8 +368,7 @@ describe('Call Tests', () => {
     expect(call['mediaStateMachine'].state.value).toBe('S_SEND_ROAP_OFFER');
 
     expect(bnrMetricSpy).toBeCalledOnceWith(
-      METRIC_EVENT.BNR,
-      MEDIA_EFFECT_ACTION.BNR_ENABLED,
+      METRIC_EVENT.BNR_ENABLED,
       METRIC_TYPE.BEHAVIORAL,
       call.getCallId(),
       call.getCorrelationId()
@@ -432,8 +431,7 @@ describe('Call Tests', () => {
     expect(call['callStateMachine'].state.value).toBe('S_SEND_CALL_CONNECT');
 
     expect(bnrMetricSpy).toBeCalledOnceWith(
-      METRIC_EVENT.BNR,
-      MEDIA_EFFECT_ACTION.BNR_ENABLED,
+      METRIC_EVENT.BNR_ENABLED,
       METRIC_TYPE.BEHAVIORAL,
       call.getCallId(),
       call.getCorrelationId()
@@ -483,6 +481,7 @@ describe('Call Tests', () => {
     /* Update the stream with the effect */
     jest.spyOn(localAudioStream, 'getEffectByKind').mockReturnValue(mockEffect as any);
 
+    /* Checking if listeners on the localAudioStream have been registered */
     expect(onStreamSpy).toBeCalledTimes(2);
     expect(onStreamSpy).toBeCalledWith(
       MediaSDK.LocalStreamEventNames.OutputTrackChange,
@@ -494,6 +493,7 @@ describe('Call Tests', () => {
     );
 
     bnrMetricSpy.mockClear();
+    /* Invoking the callback function to trigger EffectAdded event to simulate adding effect to the stream */
     onStreamSpy.mock.calls[1][1](mockEffect as any);
 
     expect(onEffectSpy).toBeCalledWith(EffectEvent.Enabled, expect.any(Function));
@@ -504,10 +504,8 @@ describe('Call Tests', () => {
     onEffectSpy.mock.calls[0][1]();
 
     expect(updateLocalTracksSpy).toBeCalledOnceWith({audio: mockTrack});
-    expect(mockEffect.isEnabled).toEqual(true);
     expect(bnrMetricSpy).toBeCalledOnceWith(
-      METRIC_EVENT.BNR,
-      MEDIA_EFFECT_ACTION.BNR_ENABLED,
+      METRIC_EVENT.BNR_ENABLED,
       METRIC_TYPE.BEHAVIORAL,
       call.getCallId(),
       call.getCorrelationId()
@@ -523,10 +521,8 @@ describe('Call Tests', () => {
     onEffectSpy.mock.calls[1][1]();
 
     expect(updateLocalTracksSpy).toBeCalledOnceWith({audio: mockTrack});
-    expect(mockEffect.isEnabled).toEqual(false);
     expect(bnrMetricSpy).toBeCalledOnceWith(
-      METRIC_EVENT.BNR,
-      MEDIA_EFFECT_ACTION.BNR_DISABLED,
+      METRIC_EVENT.BNR_DISABLED,
       METRIC_TYPE.BEHAVIORAL,
       call.getCallId(),
       call.getCorrelationId()
@@ -535,6 +531,7 @@ describe('Call Tests', () => {
     call.end();
     await waitForMsecs(50);
 
+    /* Checks for switching off the listeners on call disconnect */
     expect(offStreamSpy).toBeCalledWith(
       MediaSDK.LocalStreamEventNames.EffectAdded,
       expect.any(Function)
@@ -644,11 +641,23 @@ describe('Call Tests', () => {
 
     const localAudioStream = mockStream as unknown as MediaSDK.LocalMicrophoneStream;
 
+    const onStream1Spy = jest.spyOn(localAudioStream, 'on');
+    const offStream1Spy = jest.spyOn(localAudioStream, 'off');
+
     const call = callManager.createCall(dest, CallDirection.OUTBOUND, deviceId, mockLineId);
 
     call.dial(localAudioStream);
 
     expect(mockTrack.enabled).toEqual(true);
+    expect(onStream1Spy).toBeCalledTimes(2);
+    expect(onStream1Spy).toBeCalledWith(
+      MediaSDK.LocalStreamEventNames.OutputTrackChange,
+      expect.any(Function)
+    );
+    expect(onStream1Spy).toBeCalledWith(
+      MediaSDK.LocalStreamEventNames.EffectAdded,
+      expect.any(Function)
+    );
 
     const mockTrack2 = {
       enabled: true,
@@ -663,10 +672,24 @@ describe('Call Tests', () => {
     };
 
     const localAudioStream2 = mockStream2 as unknown as MediaSDK.LocalMicrophoneStream;
+    const onStream2Spy = jest.spyOn(localAudioStream2, 'on');
 
     call.updateMedia(localAudioStream2);
 
     expect(call['mediaConnection'].updateLocalTracks).toBeCalledOnceWith({audio: mockTrack2});
+    expect(call['localAudioStream']).toEqual(localAudioStream2);
+    expect(offStream1Spy).toBeCalledWith(
+      MediaSDK.LocalStreamEventNames.EffectAdded,
+      expect.any(Function)
+    );
+    expect(onStream2Spy).toBeCalledWith(
+      MediaSDK.LocalStreamEventNames.OutputTrackChange,
+      expect.any(Function)
+    );
+    expect(onStream2Spy).toBeCalledWith(
+      MediaSDK.LocalStreamEventNames.EffectAdded,
+      expect.any(Function)
+    );
   });
 
   it('update media with invalid stream', () => {

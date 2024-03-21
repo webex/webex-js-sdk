@@ -1,13 +1,7 @@
 /* eslint-disable dot-notation */
 import {getMockDeviceInfo, getTestUtilsWebex} from '../common/testUtil';
 import {getMetricManager} from './index';
-import {
-  METRIC_TYPE,
-  METRIC_EVENT,
-  REG_ACTION,
-  VOICEMAIL_ACTION,
-  MEDIA_EFFECT_ACTION,
-} from './types';
+import {METRIC_TYPE, METRIC_EVENT, REG_ACTION, VOICEMAIL_ACTION} from './types';
 import {VERSION} from '../CallingClient/constants';
 import {createClientError} from '../Errors/catalog/CallingDeviceError';
 import {CallErrorObject, ErrorObject, ERROR_LAYER, ERROR_TYPE} from '../Errors/types';
@@ -353,7 +347,6 @@ describe('CALLING: Metric tests', () => {
     it('submit bnr enabled success metric', () => {
       const expectedData = {
         tags: {
-          action: MEDIA_EFFECT_ACTION.BNR_ENABLED,
           device_id: mockDeviceInfo.device.deviceId,
           service_indicator: ServiceIndicator.CALLING,
         },
@@ -368,20 +361,18 @@ describe('CALLING: Metric tests', () => {
       };
 
       metricManager.submitBNRMetric(
-        METRIC_EVENT.BNR,
-        MEDIA_EFFECT_ACTION.BNR_ENABLED,
+        METRIC_EVENT.BNR_ENABLED,
         METRIC_TYPE.BEHAVIORAL,
         mockCallId,
         mockCorrelationId
       );
 
-      expect(mockSubmitClientMetric).toBeCalledOnceWith(METRIC_EVENT.BNR, expectedData);
+      expect(mockSubmitClientMetric).toBeCalledOnceWith(METRIC_EVENT.BNR_ENABLED, expectedData);
     });
 
     it('submit bnr disabled success metric', () => {
       const expectedData = {
         tags: {
-          action: MEDIA_EFFECT_ACTION.BNR_DISABLED,
           device_id: mockDeviceInfo.device.deviceId,
           service_indicator: ServiceIndicator.CALLING,
         },
@@ -396,14 +387,13 @@ describe('CALLING: Metric tests', () => {
       };
 
       metricManager.submitBNRMetric(
-        METRIC_EVENT.BNR,
-        MEDIA_EFFECT_ACTION.BNR_DISABLED,
+        METRIC_EVENT.BNR_DISABLED,
         METRIC_TYPE.BEHAVIORAL,
         mockCallId,
         mockCorrelationId
       );
 
-      expect(mockSubmitClientMetric).toBeCalledOnceWith(METRIC_EVENT.BNR, expectedData);
+      expect(mockSubmitClientMetric).toBeCalledOnceWith(METRIC_EVENT.BNR_DISABLED, expectedData);
     });
   });
 

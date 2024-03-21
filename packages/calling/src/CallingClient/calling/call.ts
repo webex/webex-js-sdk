@@ -82,13 +82,7 @@ import {
 import log from '../../Logger';
 import {ICallerId} from './CallerId/types';
 import {createCallerId} from './CallerId';
-import {
-  IMetricManager,
-  METRIC_TYPE,
-  METRIC_EVENT,
-  TRANSFER_ACTION,
-  MEDIA_EFFECT_ACTION,
-} from '../../Metrics/types';
+import {IMetricManager, METRIC_TYPE, METRIC_EVENT, TRANSFER_ACTION} from '../../Metrics/types';
 import {getMetricManager} from '../../Metrics';
 import {SERVICES_ENDPOINT} from '../../common/constants';
 
@@ -161,7 +155,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
   private receivedRoapOKSeq: number;
 
-  private localStream?: LocalMicrophoneStream;
+  private localAudioStream?: LocalMicrophoneStream;
 
   /**
    * Getter to check if the call is muted or not.
@@ -2000,7 +1994,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    * @param localAudioStream - The local audio stream for the call.
    */
   public async answer(localAudioStream: LocalMicrophoneStream) {
-    this.localStream = localAudioStream;
+    this.localAudioStream = localAudioStream;
     const localAudioTrack = localAudioStream.outputStream.getAudioTracks()[0];
 
     if (!localAudioTrack) {
@@ -2038,7 +2032,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    * @param settings.localAudioTrack
    */
   public async dial(localAudioStream: LocalMicrophoneStream) {
-    this.localStream = localAudioStream;
+    this.localAudioStream = localAudioStream;
     const localAudioTrack = localAudioStream.outputStream.getAudioTracks()[0];
 
     if (!localAudioTrack) {
@@ -2457,8 +2451,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
   private onEffectEnabled = () => {
     this.metricManager.submitBNRMetric(
-      METRIC_EVENT.BNR,
-      MEDIA_EFFECT_ACTION.BNR_ENABLED,
+      METRIC_EVENT.BNR_ENABLED,
       METRIC_TYPE.BEHAVIORAL,
       this.callId,
       this.correlationId
@@ -2467,8 +2460,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
   private onEffectDisabled = () => {
     this.metricManager.submitBNRMetric(
-      METRIC_EVENT.BNR,
-      MEDIA_EFFECT_ACTION.BNR_DISABLED,
+      METRIC_EVENT.BNR_DISABLED,
       METRIC_TYPE.BEHAVIORAL,
       this.callId,
       this.correlationId
@@ -2476,8 +2468,8 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
   };
 
   private registerEffectListener = (addedEffect: TrackEffect) => {
-    if (this.localStream) {
-      const effect = this.localStream.getEffectByKind(NOISE_REDUCTION_EFFECT);
+    if (this.localAudioStream) {
+      const effect = this.localAudioStream.getEffectByKind(NOISE_REDUCTION_EFFECT);
 
       if (effect === addedEffect) {
         effect.on(EffectEvent.Enabled, this.onEffectEnabled);
@@ -2487,15 +2479,15 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
   };
 
   private unregisterListeners() {
-    if (this.localStream) {
-      const effect = this.localStream.getEffectByKind(NOISE_REDUCTION_EFFECT);
+    if (this.localAudioStream) {
+      const effect = this.localAudioStream.getEffectByKind(NOISE_REDUCTION_EFFECT);
 
       if (effect) {
         effect.off(EffectEvent.Enabled, this.onEffectEnabled);
         effect.off(EffectEvent.Disabled, this.onEffectDisabled);
       }
 
-      this.localStream.off(LocalStreamEventNames.EffectAdded, this.registerEffectListener);
+      this.localAudioStream.off(LocalStreamEventNames.EffectAdded, this.registerEffectListener);
     }
   }
 
@@ -2756,11 +2748,20 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       return;
     }
 
-    this.unregisterListeners();
-    this.registerListeners(newAudioStream);
-    this.mediaConnection.updateLocalTracks({
-      audio: localAudioTrack,
-    });
+    try {
+      this.mediaConnection.updateLocalTracks({
+        audio: localAudioTrack,
+      });
+
+      this.unregisterListeners();
+      this.registerListeners(newAudioStream);
+      this.localAudioStream = newAudioStream;
+    } catch (e: any) {
+      log.warn(`Unable to update media on call ${this.getCorrelationId()}. Error: ${e.message}`, {
+        file: CALL_FILE,
+        method: 'updateMedia',
+      });
+    }
   };
 
   /**

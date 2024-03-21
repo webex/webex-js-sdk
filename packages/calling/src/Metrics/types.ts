@@ -8,7 +8,8 @@ export enum METRIC_TYPE {
 }
 
 export enum METRIC_EVENT {
-  BNR = 'web-calling-sdk-bnr',
+  BNR_ENABLED = 'web-calling-sdk-bnr-enabled',
+  BNR_DISABLED = 'web-calling-sdk-bnr-disabled',
   CALL = 'web-calling-sdk-callcontrol',
   CALL_ERROR = 'web-calling-sdk-callcontrol-error',
   MEDIA = 'web-calling-sdk-media',
@@ -40,11 +41,6 @@ export enum VOICEMAIL_ACTION {
   TRANSCRIPT = 'transcript',
 }
 
-export enum MEDIA_EFFECT_ACTION {
-  BNR_ENABLED = 'bnr_enabled',
-  BNR_DISABLED = 'bnr_disabled',
-}
-
 export interface IMetricManager {
   setDeviceInfo: (deviceInfo: IDeviceInfo) => void;
   submitRegistrationMetric: (
@@ -55,7 +51,6 @@ export interface IMetricManager {
   ) => void;
   submitBNRMetric: (
     name: METRIC_EVENT,
-    metricAction: MEDIA_EFFECT_ACTION,
     type: METRIC_TYPE,
     callId: CallId,
     correlationId: CorrelationId
