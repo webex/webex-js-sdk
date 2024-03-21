@@ -1207,7 +1207,6 @@ describe('plugin-meetings', () => {
       describe('#addMedia', () => {
         const muteStateStub = {
           handleClientRequest: sinon.stub().returns(Promise.resolve(true)),
-          applyClientStateLocally: sinon.stub().returns(Promise.resolve(true)),
         };
 
         let fakeMediaConnection;
@@ -2686,7 +2685,11 @@ describe('plugin-meetings', () => {
               getSettings: sinon.stub().returns({
                 deviceId: 'some device id',
               }),
-              muted: false,
+              userMuted: false,
+              systemMuted: false,
+              get muted() {
+                return this.userMuted || this.systemMuted;
+              },
               setUnmuteAllowed: sinon.stub(),
               setUserMuted: sinon.stub(),
               setServerMuted: sinon.stub(),
@@ -3274,7 +3277,11 @@ describe('plugin-meetings', () => {
                 const fakeMicrophoneStream2 = {
                   on: sinon.stub(),
                   off: sinon.stub(),
-                  muted: false,
+                  userMuted: false,
+                  systemMuted: false,
+                  get muted() {
+                    return this.userMuted || this.systemMuted;
+                  },
                   setUnmuteAllowed: sinon.stub(),
                   setUserMuted: sinon.stub(),
                   outputStream: {
@@ -3531,6 +3538,7 @@ describe('plugin-meetings', () => {
               );
               const mutedListener = fakeMicrophoneStream.on.getCall(0).args[1];
               // simulate track being muted
+              fakeMicrophoneStream.userMuted = mute;
               mutedListener(mute);
 
               await stableState();
