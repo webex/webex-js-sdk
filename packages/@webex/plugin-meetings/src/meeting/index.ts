@@ -4699,11 +4699,13 @@ export default class Meeting extends StatelessWebexPlugin {
             reject(payload);
           }
         };
+
         // @ts-ignore
         this.webex.internal.voicea.on(
           VOICEAEVENTS.SPOKEN_LANGUAGE_UPDATE,
           voiceaListenerLanguageUpdate
         );
+
         // @ts-ignore
         this.webex.internal.voicea.setSpokenLanguage(language);
       } catch (error) {
