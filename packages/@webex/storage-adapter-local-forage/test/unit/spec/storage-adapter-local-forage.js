@@ -1,0 +1,11 @@
+/*!
+ * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
+ */
+
+import runAbstractStorageAdapterSpec from '@webex/storage-adapter-spec';
+import {skipInNode} from '@webex/test-helper-mocha';
+import StorageAdapterLocalForage from '@webex/storage-adapter-local-forage';
+
+skipInNode(describe)('StorageAdapterLocalFtorage', () => {
+  runAbstractStorageAdapterSpec(new StorageAdapterLocalForage('test'));
+});

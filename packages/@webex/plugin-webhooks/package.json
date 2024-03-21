@@ -1,0 +1,34 @@
+{
+  "name": "@webex/plugin-webhooks",
+  "version": "3.0.0-beta.373",
+  "description": "",
+  "license": "MIT",
+  "main": "dist/index.js",
+  "devMain": "src/index.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/webex/webex-js-sdk.git",
+    "directory": "packages/@webex/plugin-webhooks"
+  },
+  "engines": {
+    "node": ">=16"
+  },
+  "browserify": {
+    "transform": [
+      "babelify",
+      "envify"
+    ]
+  },
+  "devDependencies": {
+    "@webex/test-helper-chai": "workspace:^",
+    "@webex/test-helper-test-users": "workspace:^",
+    "sinon": "^9.2.4"
+  },
+  "dependencies": {
+    "@webex/internal-plugin-device": "workspace:^",
+    "@webex/plugin-logger": "workspace:^",
+    "@webex/plugin-rooms": "workspace:^",
+    "@webex/plugin-webhooks": "workspace:^",
+    "@webex/webex-core": "workspace:^"
+  }
+}

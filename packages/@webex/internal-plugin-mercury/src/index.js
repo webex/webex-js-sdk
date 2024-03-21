@@ -1,0 +1,32 @@
+/*!
+ * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
+ */
+
+import '@webex/internal-plugin-device';
+import '@webex/internal-plugin-feature';
+import '@webex/internal-plugin-metrics';
+
+import {registerInternalPlugin} from '@webex/webex-core';
+
+import Mercury from './mercury';
+import config from './config';
+
+registerInternalPlugin('mercury', Mercury, {
+  config,
+  onBeforeLogout() {
+    return this.disconnect();
+  },
+});
+
+export {default} from './mercury';
+export {default as Mercury} from './mercury';
+export {default as Socket} from './socket';
+export {default as config} from './config';
+export {
+  BadRequest,
+  ConnectionError,
+  Forbidden,
+  NotAuthorized,
+  UnknownResponse,
+  // NotFound
+} from './errors';

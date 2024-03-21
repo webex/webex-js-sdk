@@ -1,0 +1,127 @@
+/*!
+ * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
+ */
+
+import {WebexPlugin} from '@webex/webex-core';
+
+/**
+ * @class
+ * @extends {Lyra}
+ * @memberof Lyra
+ */
+const Device = WebexPlugin.extend({
+  namespace: 'Lyra',
+
+  /**
+   * Gets the audio state of the device
+   * @param {Types~LyraSpace} space
+   * @param {string} space.url
+   * @returns {Promise<LyraAudioState>} {volume, microphones, url}
+   */
+  getAudioState(space) {
+    return this.webex
+      .request({
+        method: 'GET',
+        uri: `${space.url}/audio`,
+      })
+      .then((res) => res.body);
+  },
+
+  /**
+   * Updates audio state for lyra device, should be called every 10 minutes or
+   * when mic or volume state is changed
+   * @param {Types~LyraSpace} space
+   * @param {string} space.url
+   * @param {Types~LyraAudioState} audioState
+   * @param {object} audioState.volume optional
+   * @param {boolean} audioState.volume.level
+   * @param {object} audioState.microphones optional
+   * @param {boolean} audioState.microphones.muted
+   * @param {string} audioState.deviceUrl
+   * @returns {Promise}
+   */
+  putAudioState(space, audioState = {}) {
+    if (!audioState.deviceUrl) {
+      return Promise.reject(new Error('audioState.deviceUrl is required'));
+    }
+
+    return this.webex
+      .request({
+        method: 'PUT',
+        uri: `${space.url}/audio`,
+        body: audioState,
+      })
+      .then((res) => res.body);
+  },
+
+  /**
+   * Mutes lyra device
+   * @param {Types~LyraSpace} space
+   * @param {string} space.url
+   * @returns {Promise}
+   */
+  mute(space) {
+    return this.webex.request({
+      method: 'POST',
+      uri: `${space.url}/audio/microphones/actions/mute/invoke`,
+    });
+  },
+
+  /**
+   * Unmutes lyra device
+   * @param {Types~LyraSpace} space
+   * @param {string} space.url
+   * @returns {Promise}
+   */
+  unmute(space) {
+    return this.webex.request({
+      method: 'POST',
+      uri: `${space.url}/audio/microphones/actions/un-mute/invoke`,
+    });
+  },
+
+  /**
+   * Increases lyra device's volume
+   * @param {Types~LyraSpace} space
+   * @param {string} space.url
+   * @returns {Promise}
+   */
+  increaseVolume(space) {
+    return this.webex.request({
+      method: 'POST',
+      uri: `${space.url}/audio/volume/actions/increase/invoke`,
+    });
+  },
+
+  /**
+   * Decreases lyra device's volume
+   * @param {Types~LyraSpace} space
+   * @param {string} space.url
+   * @returns {Promise}
+   */
+  decreaseVolume(space) {
+    return this.webex.request({
+      method: 'POST',
+      uri: `${space.url}/audio/volume/actions/decrease/invoke`,
+    });
+  },
+
+  /**
+   * Sets lyra device's volume but should use increase and decrease api instead
+   * @param {Types~LyraSpace} space
+   * @param {string} space.url
+   * @param {integer} level to be set
+   * @returns {Promise}
+   */
+  setVolume(space, level = 0) {
+    return this.webex.request({
+      method: 'POST',
+      uri: `${space.url}/audio/volume/actions/set/invoke`,
+      body: {
+        level,
+      },
+    });
+  },
+});
+
+export default Device;

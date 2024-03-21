@@ -1,0 +1,18 @@
+/*!
+ * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
+ */
+
+/* eslint-disable */
+
+'use strict';
+
+module.exports = function (browsers) {
+  // For reasons as-yet unexplained, the html filter test suite hangs when run
+  // on Safari/Sauce Labs
+  Object.keys(browsers).forEach(function (key) {
+    if (key.indexOf('safari') !== -1) {
+      delete browsers[key];
+    }
+  });
+  return browsers;
+};

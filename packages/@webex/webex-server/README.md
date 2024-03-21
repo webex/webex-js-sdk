@@ -1,0 +1,98 @@
+# @webex/webex-server
+
+[![standard-readme compliant](https://img.shields.io/badge/readme%20style-standard-brightgreen.svg?style=flat-square)](https://github.com/RichardLitt/standard-readme)
+
+> HTTP frontend to the Cisco Webex JS SDK
+
+Why would we put an http server in front of our SDK? Encryption is hard and this lets all of our client test suites (potentially written in languages for which we do not have sdks) do encrypted things without a major time expenditure
+
+- [Install](#install)
+- [Usage](#usage)
+- [Contribute](#contribute)
+- [Maintainers](#maintainers)
+- [License](#license)
+
+## Install
+
+```bash
+  npm install -g @webex/webex-server
+```
+
+## Usage
+
+Start the daemon
+
+```bash
+webex-server
+```
+
+Create a session (make sure to copy your set cookie header)
+
+```bash
+curl -X POST \
+  -H "Content-Type: application/json" \
+  -d '{"clientId":"<your client id>","clientSecret":"<your client secret>","redirectUri":"<your  redirect_uri>","scope":"<your scopes>"}' \
+  http://localhost:3000/api/v1/session
+```
+
+(optional) Create a conversation
+
+> SDK: webex.internal.conversation.create({comment: 'first comment', displayName: 'title', participants: ['<userId1>', '<userId2>', '<userId3>']})
+
+```
+curl -X POST \
+  -H "Content-Type: application/json" \
+  -H "Cookie: <connect.sid cookie from step one>" \
+  -d '[{"comment":"first message","displayName":"title","participants":["userId1","userId2","userId3"]}]'
+  -v \
+  http://localhost:3000/api/v1/session/invoke/internal/conversation/create
+```
+
+(optional) Post a message
+
+> SDK: `webex.inernal.conversation.post({url: '<conversation url>', {displayName: 'second comment'}})`
+
+```
+curl -X POST \
+  -H "Content-Type: application/json" \
+  -H "Cookie: <connect.sid cookie from step one>" \
+  -d [{"url":"<conversation url>"},{"displayName":"second comment"}]
+  -v \
+  http://localhost:3000/api/v1/session/invoke/internal/conversation/post
+```
+
+(optional) Fetch a conversation
+
+> SDK: `webex.internal.conversation.get({url: '<conversation url>'})`
+> SDK: `webex.internal.conversation.get({url: '<conversation url>'})`
+
+```
+curl -X POST \
+  -H "Content-Type: application/json" \
+  -H "Cookie: <connect.sid cookie from step one>" \
+  -d [{"url":"<conversation url>"}]
+  -v \
+  http://localhost:3000/api/v1/session/invoke/internal/conversation/get
+```
+
+Clean up your session (If you don't do this, you'll have a bunch of long-running web socket connections)
+
+```
+curl -X DELETE \
+  -H "Content-Type: application/json" \
+  -H "Cookie: <connect.sid cookie from step one>" \
+  -v \
+  http://localhost:3000/api/v1/session
+```
+
+## Maintainers
+
+This package is maintained by [Cisco Webex for Developers](https://developer.webex.com/).
+
+## Contribute
+
+Pull requests welcome. Please see [CONTRIBUTING.md](https://github.com/webex/webex-js-sdk/blob/master/CONTRIBUTING.md) for more details.
+
+## License
+
+© 2016-2020 Cisco and/or its affiliates. All Rights Reserved.

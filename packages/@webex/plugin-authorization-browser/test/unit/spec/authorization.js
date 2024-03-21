@@ -1,0 +1,427 @@
+/*!
+ * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
+ */
+
+/* eslint camelcase: [0] */
+
+import url from 'url';
+
+import {assert} from '@webex/test-helper-chai';
+import {browserOnly} from '@webex/test-helper-mocha';
+import sinon from 'sinon';
+import MockWebex from '@webex/test-helper-mock-webex';
+import {Credentials} from '@webex/webex-core';
+import Authorization from '@webex/plugin-authorization-browser';
+import {base64, patterns} from '@webex/common';
+import {merge} from 'lodash';
+
+browserOnly(describe)('plugin-authorization-browser', () => {
+  describe('Authorization', () => {
+    function makeWebexCore(href = 'https://example.com', csrfToken = undefined, config = {}) {
+      const mockWindow = {
+        history: {
+          replaceState(a, b, location) {
+            mockWindow.location.href = location;
+          },
+        },
+        location: {
+          href,
+        },
+        sessionStorage: {
+          getItem: sinon.stub().returns(csrfToken),
+          removeItem: sinon.spy(),
+          setItem: sinon.spy(),
+        },
+      };
+
+      const webex = new MockWebex({
+        children: {
+          authorization: Authorization,
+          credentials: Credentials,
+        },
+        config: merge(
+          {
+            credentials: {
+              authorizeUrl: `${
+                process.env.IDBROKER_BASE_URL || 'https://idbroker.webex.com'
+              }/idb/oauth2/v1/authorize`,
+              logoutUrl: `${
+                process.env.IDBROKER_BASE_URL || 'https://idbroker.webex.com'
+              }/idb/oauth2/v1/logout`,
+              // eslint-disable-next-line camelcase
+              client_id: 'fake',
+              // eslint-disable-next-line camelcase
+              client_secret: 'fake',
+              // eslint-disable-next-line camelcase
+              redirect_uri: 'http://example.com',
+              // eslint-disable-next-line camelcase
+              scope: 'scope:one',
+              refreshCallback: () => Promise.resolve(),
+            },
+          },
+          config
+        ),
+        getWindow() {
+          return mockWindow;
+        },
+      });
+
+      return webex;
+    }
+
+    describe('#initialize()', () => {
+      describe('when there is a token in the url', () => {
+        it('sets the token and sets ready', () => {
+          const webex = makeWebexCore(
+            'http://example.com/#access_token=AT&expires_in=3600&token_type=Bearer'
+          );
+
+          assert.isFalse(webex.authorization.ready);
+          assert.isFalse(webex.credentials.canAuthorize);
+
+          return webex.authorization.when('change:ready').then(() => {
+            assert.isTrue(webex.authorization.ready);
+            assert.isTrue(webex.credentials.canAuthorize);
+          });
+        });
+
+        describe('when url parsing is disabled', () => {
+          it('sets ready', () => {
+            const webex = new MockWebex({
+              children: {
+                credentials: Credentials,
+              },
+              getWindow() {
+                return {
+                  location: {
+                    href: 'http://example.com/#access_token=AT&expires_in=3600&token_type=Bearer',
+                  },
+                };
+              },
+            });
+
+            webex.authorization = new Authorization({parse: false}, {parent: webex});
+
+            assert.isTrue(webex.authorization.ready);
+            assert.isFalse(webex.credentials.canAuthorize);
+          });
+        });
+
+        it('sets the token, refresh token and sets ready', () => {
+          const webex = makeWebexCore(
+            'http://example.com/#access_token=AT&expires_in=3600&token_type=Bearer&refresh_token=RT&refresh_token_expires_in=36000'
+          );
+
+          assert.isFalse(webex.authorization.ready);
+          assert.isFalse(webex.credentials.canAuthorize);
+          assert.isFalse(webex.credentials.canRefresh);
+
+          return webex.authorization.when('change:ready').then(() => {
+            assert.isTrue(webex.authorization.ready);
+            assert.isTrue(webex.credentials.canAuthorize);
+            assert.isTrue(webex.credentials.canRefresh);
+          });
+        });
+
+        it('validates the csrf token', () => {
+          const csrfToken = 'abcd';
+
+          assert.throws(() => {
+            // eslint-disable-next-line no-unused-vars
+            const webex = makeWebexCore(
+              `http://example.com/#access_token=AT&expires_in=3600&token_type=Bearer&refresh_token=RT&refresh_token_expires_in=36000&state=${base64.encode(
+                JSON.stringify({csrf_token: 'someothertoken'})
+              )}`,
+              csrfToken
+            );
+          }, /CSRF token someothertoken does not match stored token abcd/);
+
+          assert.throws(() => {
+            // eslint-disable-next-line no-unused-vars
+            const webex = makeWebexCore(
+              `http://example.com/#access_token=AT&expires_in=3600&token_type=Bearer&refresh_token=RT&refresh_token_expires_in=36000&state=${base64.encode(
+                JSON.stringify({})
+              )}`,
+              csrfToken
+            );
+          }, /Expected CSRF token abcd, but not found in redirect hash/);
+
+          assert.throws(() => {
+            // eslint-disable-next-line no-unused-vars
+            const webex = makeWebexCore(
+              'http://example.com/#access_token=AT&expires_in=3600&token_type=Bearer&refresh_token=RT&refresh_token_expires_in=36000',
+              csrfToken
+            );
+          }, /Expected CSRF token abcd, but not found in redirect hash/);
+
+          const webex = makeWebexCore(
+            `http://example.com/#access_token=AT&expires_in=3600&token_type=Bearer&refresh_token=RT&refresh_token_expires_in=36000&state=${base64.encode(
+              JSON.stringify({csrf_token: csrfToken})
+            )}`,
+            csrfToken
+          );
+
+          return webex.authorization.when('change:ready').then(() => {
+            assert.isTrue(webex.credentials.canAuthorize);
+            assert.called(webex.getWindow().sessionStorage.removeItem);
+          });
+        });
+
+        it('removes the oauth parameters from the url', () => {
+          const csrfToken = 'abcd';
+
+          const webex = makeWebexCore(
+            `http://example.com/#access_token=AT&expires_in=3600&token_type=Bearer&refresh_token=RT&refresh_token_expires_in=36000&state=${base64.encode(
+              JSON.stringify({csrf_token: csrfToken, something: true})
+            )}`,
+            csrfToken
+          );
+
+          return webex.authorization.when('change:ready').then(() => {
+            assert.isTrue(webex.credentials.canAuthorize);
+            assert.called(webex.getWindow().sessionStorage.removeItem);
+            assert.equal(
+              webex.getWindow().location.href,
+              `http://example.com/#state=${base64.encode(JSON.stringify({something: true}))}`
+            );
+          });
+        });
+
+        it('throws a grant error when the url contains one', () => {
+          assert.throws(() => {
+            makeWebexCore(
+              'http://127.0.0.1:8000/?error=invalid_scope&error_description=The%20requested%20scope%20is%20invalid.'
+            );
+          }, /The requested scope is invalid./);
+        });
+      });
+
+      describe('when there is nothing in the url', () => {
+        it('sets ready', () => {
+          const webex = makeWebexCore('http://example.com');
+
+          assert.isTrue(webex.authorization.ready);
+          assert.isFalse(webex.credentials.canAuthorize);
+        });
+      });
+    });
+
+    describe('#initiateLogin()', () => {
+      describe('when clientType is "public"', () => {
+        it('calls #initiateImplicitGrant()', () => {
+          const webex = makeWebexCore(undefined, undefined, {
+            credentials: {
+              clientType: 'public',
+            },
+          });
+
+          sinon.spy(webex.authorization, 'initiateImplicitGrant');
+
+          return webex.authorization.initiateLogin().then(() => {
+            assert.called(webex.authorization.initiateImplicitGrant);
+            assert.include(webex.getWindow().location, 'response_type=token');
+          });
+        });
+
+        it('adds a csrf_token to the login url and sessionStorage', () => {
+          const webex = makeWebexCore(undefined, undefined, {
+            credentials: {
+              clientType: 'public',
+            },
+          });
+
+          sinon.spy(webex.authorization, 'initiateImplicitGrant');
+
+          return webex.authorization.initiateLogin().then(() => {
+            assert.called(webex.authorization.initiateImplicitGrant);
+            assert.include(webex.getWindow().location, 'response_type=token');
+            const {query} = url.parse(webex.getWindow().location, true);
+            let {state} = query;
+
+            state = JSON.parse(base64.decode(state));
+            assert.property(state, 'csrf_token');
+            assert.isDefined(state.csrf_token);
+            assert.match(state.csrf_token, patterns.uuid);
+            assert.called(webex.getWindow().sessionStorage.setItem);
+            assert.calledWith(
+              webex.getWindow().sessionStorage.setItem,
+              'oauth2-csrf-token',
+              state.csrf_token
+            );
+          });
+        });
+      });
+
+      describe('when clientType is "private"', () => {
+        it('calls #initiateAuthorizationCodeGrant()', () => {
+          const webex = makeWebexCore(undefined, undefined, {
+            credentials: {
+              clientType: 'confidential',
+            },
+          });
+
+          sinon.spy(webex.authorization, 'initiateAuthorizationCodeGrant');
+
+          return webex.authorization.initiateLogin().then(() => {
+            assert.called(webex.authorization.initiateAuthorizationCodeGrant);
+            assert.include(webex.getWindow().location, 'response_type=code');
+          });
+        });
+
+        it('adds a csrf_token to the login url and sessionStorage', () => {
+          const webex = makeWebexCore(undefined, undefined, {
+            credentials: {
+              clientType: 'confidential',
+            },
+          });
+
+          sinon.spy(webex.authorization, 'initiateAuthorizationCodeGrant');
+
+          return webex.authorization.initiateLogin().then(() => {
+            assert.called(webex.authorization.initiateAuthorizationCodeGrant);
+            assert.include(webex.getWindow().location, 'response_type=code');
+            const {query} = url.parse(webex.getWindow().location, true);
+            let {state} = query;
+
+            state = JSON.parse(base64.decode(state));
+            assert.property(state, 'csrf_token');
+            assert.isDefined(state.csrf_token);
+            assert.match(state.csrf_token, patterns.uuid);
+            assert.called(webex.getWindow().sessionStorage.setItem);
+            assert.calledWith(
+              webex.getWindow().sessionStorage.setItem,
+              'oauth2-csrf-token',
+              state.csrf_token
+            );
+          });
+        });
+      });
+
+      it('sets #isAuthorizing', () => {
+        const webex = makeWebexCore(undefined, undefined, {
+          credentials: {
+            clientType: 'confidential',
+          },
+        });
+
+        assert.isFalse(webex.authorization.isAuthorizing);
+        const p = webex.authorization.initiateLogin();
+
+        assert.isTrue(webex.authorization.isAuthorizing);
+
+        return p.then(() => assert.isFalse(webex.authorization.isAuthorizing));
+      });
+
+      it('sets #isAuthenticating', () => {
+        const webex = makeWebexCore(undefined, undefined, {
+          credentials: {
+            clientType: 'confidential',
+          },
+        });
+
+        assert.isFalse(webex.authorization.isAuthenticating);
+        const p = webex.authorization.initiateLogin();
+
+        assert.isTrue(webex.authorization.isAuthenticating);
+
+        return p.then(() => assert.isFalse(webex.authorization.isAuthenticating));
+      });
+    });
+
+    describe('#_cleanUrl()', () => {
+      it('removes the state parameter when it is empty', () => {
+        const webex = makeWebexCore(undefined, undefined, {
+          credentials: {
+            clientType: 'confidential',
+          },
+        });
+
+        sinon.spy(webex.authorization, '_cleanUrl');
+        [{}, {state: {}}].forEach((hash) => {
+          const location = {hash};
+
+          webex.authorization._cleanUrl(location);
+          assert.equal(webex.getWindow().location.href, '');
+        });
+      });
+
+      it('removes the state parameter when only token is present', () => {
+        const webex = makeWebexCore(undefined, undefined, {
+          credentials: {
+            clientType: 'confidential',
+          },
+        });
+
+        sinon.spy(webex.authorization, '_cleanUrl');
+        const location = {
+          hash: {
+            state: {
+              csrf_token: 'token',
+            },
+          },
+        };
+
+        webex.authorization._cleanUrl(location);
+        assert.equal(webex.getWindow().location.href, '');
+      });
+
+      it('keeps the state parameter when it has keys', () => {
+        const webex = makeWebexCore(undefined, undefined, {
+          credentials: {
+            clientType: 'confidential',
+          },
+        });
+        const location = {
+          hash: {
+            state: {
+              csrf_token: 'token',
+              key: 'value',
+            },
+          },
+        };
+
+        sinon.spy(webex.authorization, '_cleanUrl');
+        webex.authorization._cleanUrl(location);
+        const {href} = webex.getWindow().location;
+
+        assert.isDefined(href);
+        assert.equal(href, `#state=${base64.encode(JSON.stringify({key: 'value'}))}`);
+        assert.notInclude(href, 'csrf_token');
+      });
+    });
+
+    describe('#initiateImplicitGrant()', () => {
+      it('redirects to the login page with response_type=token', () => {
+        const webex = makeWebexCore(undefined, undefined, {
+          credentials: {
+            clientType: 'public',
+          },
+        });
+
+        sinon.spy(webex.authorization, 'initiateImplicitGrant');
+
+        return webex.authorization.initiateLogin().then(() => {
+          assert.called(webex.authorization.initiateImplicitGrant);
+          assert.include(webex.getWindow().location, 'response_type=token');
+        });
+      });
+    });
+
+    describe('#initiateAuthorizationCodeGrant()', () => {
+      it('redirects to the login page with response_type=code', () => {
+        const webex = makeWebexCore(undefined, undefined, {
+          credentials: {
+            clientType: 'confidential',
+          },
+        });
+
+        sinon.spy(webex.authorization, 'initiateAuthorizationCodeGrant');
+
+        return webex.authorization.initiateLogin().then(() => {
+          assert.called(webex.authorization.initiateAuthorizationCodeGrant);
+          assert.include(webex.getWindow().location, 'response_type=code');
+        });
+      });
+    });
+  });
+});

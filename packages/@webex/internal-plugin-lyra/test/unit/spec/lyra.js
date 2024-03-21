@@ -1,0 +1,45 @@
+/*!
+ * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
+ */
+
+import {assert} from '@webex/test-helper-chai';
+import MockWebex from '@webex/test-helper-mock-webex';
+import sinon from 'sinon';
+import Lyra, {config as lyraConfig} from '@webex/internal-plugin-lyra';
+
+describe('plugin-lyra', () => {
+  let webex;
+
+  before(() => {
+    webex = new MockWebex({
+      children: {
+        lyra: Lyra,
+      },
+    });
+
+    webex.config.lyra = lyraConfig.lyra;
+  });
+
+  beforeEach(() => {
+    webex.request.resetHistory();
+  });
+
+  describe('lyra', () => {
+    describe('#getAdvertisedEndpoint()', () => {
+      it('sends GET request to proximity', () =>
+        webex.internal.lyra.getAdvertisedEndpoint('token').then(() =>
+          assert.calledWith(
+            webex.request,
+            sinon.match({
+              method: 'GET',
+              api: 'proximity',
+              resource: '/ultrasound/advertisements',
+              qs: {
+                token: 'token',
+              },
+            })
+          )
+        ));
+    });
+  });
+});

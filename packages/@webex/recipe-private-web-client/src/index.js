@@ -1,0 +1,40 @@
+/*!
+ * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
+ */
+
+import '@webex/plugin-authorization-browser-first-party';
+import '@webex/internal-plugin-avatar';
+import '@webex/internal-plugin-board';
+import '@webex/internal-plugin-calendar';
+import '@webex/internal-plugin-conversation';
+import '@webex/internal-plugin-encryption';
+import '@webex/internal-plugin-feature';
+import '@webex/internal-plugin-flag';
+import '@webex/plugin-logger';
+import '@webex/internal-plugin-mercury';
+import '@webex/internal-plugin-metrics';
+import '@webex/internal-plugin-presence';
+import '@webex/internal-plugin-search';
+import '@webex/internal-plugin-support';
+import '@webex/internal-plugin-team';
+import '@webex/internal-plugin-user';
+import '@webex/internal-plugin-lyra';
+import '@webex/internal-plugin-device';
+import '@webex/plugin-people';
+
+import WebexCore from '@webex/webex-core';
+import {merge} from 'lodash';
+
+import config from './config';
+
+/**
+ * @param {Object} attrs
+ * @param {Object} attrs.config
+ * @returns {Webex}
+ */
+export default function Webex(attrs) {
+  attrs = attrs || {};
+  attrs.config = merge(config, attrs.config);
+
+  return new WebexCore(attrs);
+}

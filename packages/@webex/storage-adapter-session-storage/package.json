@@ -1,0 +1,29 @@
+{
+  "name": "@webex/storage-adapter-session-storage",
+  "version": "3.0.0-beta.373",
+  "description": "",
+  "license": "MIT",
+  "author": "Andrew Holsted <holsted@cisco.com>",
+  "main": "dist/index.js",
+  "devMain": "src/index.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/webex/webex-js-sdk.git",
+    "directory": "packages/@webex/storage-adapter-session-storage"
+  },
+  "engines": {
+    "node": ">=16"
+  },
+  "browserify": {
+    "transform": [
+      "babelify",
+      "envify"
+    ]
+  },
+  "dependencies": {
+    "@webex/storage-adapter-session-storage": "workspace:^",
+    "@webex/storage-adapter-spec": "workspace:^",
+    "@webex/test-helper-mocha": "workspace:^",
+    "@webex/webex-core": "workspace:^"
+  }
+}

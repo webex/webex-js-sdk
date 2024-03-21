@@ -1,0 +1,25 @@
+/*!
+ * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
+ */
+
+/**
+ * Injects code into a promise chain without modifying the promise chain's result
+ * @param {Function} fn
+ * @returns {Promise}
+ * @example
+ * function f() {
+ *   return Promise.resolve(5);
+ * }
+ *
+ * f()
+ *   .then(tap(() => 12))
+ *   // => 5
+ */
+export default function tap(fn) {
+  return (r) =>
+    new Promise((resolve) => {
+      resolve(fn(r));
+    })
+      .then(() => r)
+      .catch(() => r);
+}

@@ -1,0 +1,27 @@
+# We're using appveyor to prove that tooling works in windows environments, but
+# continuing to rely on various browsers and linux hosts to prove the code
+# behaves as intended.
+
+# Test against the latest version of this Node.js version
+environment:
+  nodejs_version: '6.10.1'
+
+# Install scripts. (runs after repo cloning)
+install:
+  # Get the latest stable version of Node.js
+  - ps: Install-Product node $env:nodejs_version
+  # Output useful info for debugging.
+  - node --version
+  - npm --version
+  # install modules
+  - npm install
+
+# Run basic validation
+test_script:
+  # TODO replace with `npm run lint` when lint:packagenames is rewritten in js
+  - npm run lint:js
+  - npm run lint:jenkinsfile
+
+# Prove babel builds
+build_script:
+  - npm run build -- --skip-samples

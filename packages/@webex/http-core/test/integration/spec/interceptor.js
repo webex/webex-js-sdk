@@ -1,0 +1,71 @@
+/*!
+ * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
+ */
+
+import '@webex/internal-plugin-device';
+
+import {assert} from '@webex/test-helper-chai';
+import sinon from 'sinon';
+import WebexCore from '@webex/webex-core';
+import testUsers from '@webex/test-helper-test-users';
+
+describe('http-core', () => {
+  describe('interceptor', () => {
+    let webex;
+
+    before('create users', () =>
+      testUsers
+        .create({count: 1})
+        .then(
+          ([user]) =>
+            new Promise((resolve) => {
+              setTimeout(() => resolve(user), 3000);
+            })
+        )
+        .then((user) => {
+          webex = new WebexCore({credentials: user.token});
+        })
+        .then(() => webex.internal.device.register())
+        .then(() => webex.internal.services.waitForCatalog('postauth', 10))
+    );
+
+    describe('logOptions', () => {
+      let flagged;
+      let toggleVNL;
+
+      before('check for verbose network logging and enable if needed', () => {
+        // flag used to restore state of verbose network logging env variable
+        flagged = !process.env.ENABLE_VERBOSE_NETWORK_LOGGING;
+
+        // reused toggle that toggles verbose network logging env variable
+        toggleVNL = () => {
+          if (flagged) {
+            process.env.ENABLE_VERBOSE_NETWORK_LOGGING =
+              !process.env.ENABLE_VERBOSE_NETWORK_LOGGING;
+          }
+        };
+
+        // toggle to enabled if disabled
+        toggleVNL();
+      });
+
+      it('calls logger plugin', () => {
+        const spy = sinon.spy(webex.logger, 'info');
+
+        return webex
+          .request({
+            service: 'hydra',
+            resource: 'people/me',
+          })
+          .then(() => {
+            assert.called(spy);
+          });
+      });
+
+      after('disable verbose network logging if needed', () => {
+        // toggle to disabled if originally disabled
+        toggleVNL();
+      });
+    });
+  });
+});

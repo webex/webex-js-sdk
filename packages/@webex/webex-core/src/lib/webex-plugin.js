@@ -1,0 +1,222 @@
+/*!
+ * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
+ */
+
+import util from 'util';
+
+import AmpState from 'ampersand-state';
+import {cloneDeep, isObject, omit} from 'lodash';
+
+import {makeWebexPluginStore} from './storage';
+
+/**
+ * @class
+ */
+const WebexPlugin = AmpState.extend({
+  derived: {
+    boundedStorage: {
+      deps: [],
+      fn() {
+        return makeWebexPluginStore('bounded', this);
+      },
+    },
+    unboundedStorage: {
+      deps: [],
+      fn() {
+        return makeWebexPluginStore('unbounded', this);
+      },
+    },
+    config: {
+      // figure out why caching config breaks the refresh integration test
+      // but not the refresh automation test.
+      cache: false,
+      deps: ['webex', 'webex.config'],
+      fn() {
+        if (this.webex && this.webex.config) {
+          const namespace = this.getNamespace();
+
+          if (namespace) {
+            return this.webex.config[namespace.toLowerCase()];
+          }
+
+          return this.webex.config;
+        }
+
+        return {};
+      },
+    },
+
+    logger: {
+      deps: ['webex', 'webex.logger'],
+      fn() {
+        return this.webex.logger || console;
+      },
+    },
+
+    webex: {
+      deps: ['parent'],
+      fn() {
+        if (!this.parent && !this.collection) {
+          throw new Error(
+            'Cannot determine `this.webex` without `this.parent` or `this.collection`. Please initialize `this` via `children` or `collection` or set `this.parent` manually'
+          );
+        }
+
+        /* eslint consistent-this: [0] */
+        let parent = this;
+
+        while (parent.parent || parent.collection) {
+          parent = parent.parent || parent.collection;
+        }
+
+        return parent;
+      },
+    },
+  },
+
+  session: {
+    parent: {
+      type: 'any',
+    },
+    /**
+     * Indicates this plugin is ready to be used. Defaults to true but can be
+     * overridden by plugins as appropriate. Used by {@link WebexCore#read}
+     * @instance
+     * @memberof WebexPlugin
+     * @type {boolean}
+     */
+    ready: {
+      default: true,
+      type: 'boolean',
+    },
+  },
+
+  /**
+   * Overrides AmpersandState#clear to make sure we never unset `parent` and
+   * recursively visits children/collections.
+   * @instance
+   * @memberof WebexPlugin
+   * @param {Object} options
+   * @returns {WebexPlugin}
+   */
+  clear(options) {
+    Object.keys(this.attributes).forEach((key) => {
+      if (key !== 'parent') {
+        this.unset(key, options);
+      }
+    });
+
+    Object.keys(this._children).forEach((key) => {
+      this[key].clear();
+    });
+
+    Object.keys(this._collections).forEach((key) => {
+      this[key].reset();
+    });
+
+    return this;
+  },
+
+  /**
+   * Initializer
+   * @private
+   * @param {Object} attrs
+   * @param {Object} options
+   * @returns {undefined}
+   */
+  initialize(...args) {
+    Reflect.apply(AmpState.prototype.initialize, this, args);
+
+    // HACK to deal with the fact that AmpersandState#dataTypes#set is a pure
+    // function.
+    this._dataTypes = cloneDeep(this._dataTypes);
+    Object.keys(this._dataTypes).forEach((key) => {
+      if (this._dataTypes[key].set) {
+        this._dataTypes[key].set = this._dataTypes[key].set.bind(this);
+      }
+    });
+    // END HACK
+
+    // Propagate change:[attribute] events from children
+    this.on('change', (model, options) => {
+      if (this.parent) {
+        this.parent.trigger(
+          `change:${this.getNamespace().toLowerCase()}`,
+          this.parent,
+          this,
+          options
+        );
+      }
+    });
+  },
+
+  /**
+   * @instance
+   * @memberof WebexPlugin
+   * @param {number} depth
+   * @private
+   * @returns {Object}
+   */
+  inspect(depth) {
+    return util.inspect(
+      omit(
+        this.serialize({
+          props: true,
+          session: true,
+          derived: true,
+        }),
+        'boundedStorage',
+        'unboundedStorage',
+        'config',
+        'logger',
+        'webex',
+        'parent'
+      ),
+      {depth}
+    );
+  },
+
+  request(...args) {
+    return this.webex.request(...args);
+  },
+
+  upload(...args) {
+    return this.webex.upload(...args);
+  },
+
+  when(eventName, ...rest) {
+    if (rest && rest.length > 0) {
+      throw new Error('#when() does not accept a callback, you must attach to its promise');
+    }
+
+    return new Promise((resolve) => {
+      this.once(eventName, (...args) => resolve(args));
+    });
+  },
+
+  /**
+   * Helper function for dealing with both forms of {@link AmpersandState#set()}
+   * @param {string} key
+   * @param {mixed} value
+   * @param {Object} options
+   * @private
+   * @returns {Array<Object, Object>}
+   */
+  _filterSetParameters(key, value, options) {
+    let attrs;
+
+    if (isObject(key) || key === null) {
+      attrs = key;
+      options = value;
+    } else {
+      attrs = {};
+      attrs[key] = value;
+    }
+
+    options = options || {};
+
+    return [attrs, options];
+  },
+});
+
+export default WebexPlugin;

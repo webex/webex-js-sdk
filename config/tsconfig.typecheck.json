@@ -1,0 +1,34 @@
+{
+    "extends": "../tsconfig.json",
+    "include": [
+        "../packages/**/*.*"
+    ],
+    "compilerOptions": {
+        "emitDeclarationOnly": false,
+    },
+    "exclude": [
+        "../packages/**/dist/**/*.*",
+        // some packages have internal reference to file so cannot exclude them indivdually 
+        "../packages/@webex/webex-core/**/*.*",
+        "../packages/@webex/internal-plugin-avatar/**/*.*",
+        "../packages/@webex/internal-plugin-device/**/*.*",
+        "../packages/@webex/internal-plugin-ediscovery/**/*.*",
+        "../packages/@webex/internal-plugin-encryption/**/*.*",
+        "../packages/@webex/plugin-authorization-browser-first-party/**/*.*",
+        "../packages/@webex/plugin-authorization-browser/**/*.*",
+        "../packages/@webex/plugin-authorization-node/**/*.*",
+        "../packages/@webex/plugin-people/**/*.*",
+        "../packages/@webex/internal-plugin-mercury/**/*.*",
+        "../packages/@webex/internal-plugin-search/**/*.*",
+        "../packages/@webex/internal-plugin-user/**/*.*",
+        "../packages/@webex/internal-plugin-board/**/*.*",
+        "../packages/@webex/webex-server/**/*.*",
+        // file does not have internal reference in same package
+        "../packages/@webex/internal-plugin-user/src/user.js",
+        "../packages/@webex/storage-adapter-local-forage/src/index.js",
+        "../packages/@webex/common/test/unit/spec/while-in-flight.js",
+        "../packages/@webex/internal-plugin-ediscovery/src/ediscovery.js",
+        "../packages/@webex/internal-plugin-encryption/src/kms.js",
+        "../packages/@webex/common/test/unit/spec/one-flight.js",
+    ]
+}

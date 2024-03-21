@@ -1,0 +1,18 @@
+/*!
+ * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
+ */
+
+/* globals */
+
+import '@webex/internal-plugin-device';
+import {registerPlugin} from '@webex/webex-core';
+
+import DeviceManager from './device-manager';
+import config from './config';
+
+registerPlugin('devicemanager', DeviceManager, {
+  config,
+});
+
+export {default} from './device-manager';
+export {default as config} from './config';

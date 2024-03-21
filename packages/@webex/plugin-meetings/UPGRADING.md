@@ -1,0 +1,287 @@
+# Meetings Plugin Usage Guide
+
+The `plugin-phone` plugin is deprecated and replaced with `plugin-meetings`.
+With this change comes significant code changes in upgrading to the meetings plugin.
+The meetings plugin is much more feature rich and maintained than the phone plugin.
+
+For users of the phone plugin, one of the main changes from `plugin-phone` is the idea of having a `meeting` object that we are performing actions on.
+Instead of just "calling" a destination, a meeting object must be "created" and then "joined".
+
+## Setup
+
+### Is Calling Supported
+
+The phone plugin provided a `isCallingSupported()` method to detect if WebRTC was supported in the user's browser.
+
+This method is no longer provided and if the functionality is needed, we suggest you use the [DetectRTC Package on NPM](https://www.npmjs.com/package/detectrtc).
+
+### Device Registration
+
+Meeting data is received via websockets from the Webex Servers.
+In order for the client to receive these websocket events, it must register with the websocket servers.
+
+When using the phone plugin, this was handled automatically for you via `webex.phone.register()`.
+
+With the meetings plugin, we provide the same method:
+
+```js
+webex.meetings.register();
+```
+
+## Dialing
+
+Previously, users of the phone plugin could do a `webex.phone.dial(destination)` command.
+Unfortunately, this "single line of code" method is not possible with the features that the meetings plugin provides.
+Instead, a meeting object must be created, joined and media added.
+This new method is much more deliberate and less "magical", allowing the developer to fully control all steps of the calling process.
+
+## Meeting Creation
+
+As stated above, before any actions can be performed on a meeting, the object must be created. This is done via:
+
+```js
+const myMeeting = await webex.meetings.create(destination);
+```
+
+## Joining a Meeting
+
+Once a meeting object has been created, to start it, simply `join` it:
+
+```js
+await myMeeting.join();
+
+// Now, Add Media
+```
+
+### Joining a one-on-one meeting
+
+```js
+let destination = 'testuser@webex.bot';
+
+const myMeeting = await webex.meetings.create(destination);
+
+await myMeeting.join();
+
+// Now, Add Media
+```
+
+### Joining a group meeting
+
+```js
+let conversationUrl = `https://conv-a.wbx2.com/conversation/api/v1/ObiwanAnnouncementsConversationUUID`;
+
+const myMeeting = await webex.meetings.create(conversationUrl);
+
+await myMeeting.join();
+
+// Now, Add Media
+```
+
+## Meeting Media
+
+After a meeting is created and joined, the media from the meeting needs to be connected.
+
+### Local Media
+
+To get the local device media we use the function on the meeting object `getMediaStreams`. This takes an options object of which media streams to enable:
+
+```js
+const mediaSettings = {
+  receiveVideo: true,
+  receiveAudio: true,
+  receiveShare: true,
+  sendVideo: true,
+  sendAudio: true,
+  sendShare: false,
+};
+
+const mediaStreams = await meeting.getMediaStreams(mediaSettings);
+const [localStream, localShare] = mediaStreams;
+```
+
+This local stream is now ready to be added to the DOM for a self preview via:
+
+```html
+<video id="localvideo" muted="true" autoplay playsinline></video>
+```
+
+```js
+document.getElementById('localvideo').srcObject = localStream;
+```
+
+### Adding Media
+
+Once you have your local streams and shares, you need to add the media to the meeting with the `addMedia` function.
+
+```js
+const mediaResponse = await meeting.addMedia({
+  localShare,
+  localStream,
+  mediaSettings,
+});
+```
+
+## Meeting Events
+
+Just like the phone plugin, the meeting object will emit events that the developer can listen to and act upon.
+
+### `media:ready`
+
+```js
+myMeeting.on('media:ready', (media) => {
+  // Handle media streams
+});
+```
+
+This event is emitted when a media stream is ready to be rendered. It contains an object with two properties:
+
+- `stream` the actual media stream that can be used in an html srcObject
+- `type` the type of stream that is ready (`local`, `remoteVideo`, etc)
+
+### `media:stopped`
+
+```js
+myMeeting.on('media:stopped', (media) => {
+  // Remove media streams
+});
+```
+
+This event is emitted when a stream has stopped sending. It has a `type` property to know which media to remove from the DOM.
+
+## Media Control
+
+### Stop Sending Audio/Video
+
+With the call object from the phone plugin, you could:
+
+```js
+call.stopSendingVideo();
+call.stopSendingAudio();
+```
+
+With a meeting object, you use these functions:
+
+```js
+meeting.muteAudio();
+meeting.muteVideo();
+```
+
+### Start Sending Audio/Video
+
+With the call object from the phone plugin, you could:
+
+```js
+call.startSendingVideo();
+call.startSendingAudio();
+```
+
+With a meeting object, you use these functions:
+
+```js
+meeting.unmuteAudio();
+meeting.unmuteVideo();
+```
+
+### Start Sending Share
+
+With the call object from the phone plugin, you could:
+
+```js
+call.startScreenShare();
+```
+
+With a meeting object, you use these functions:
+
+```js
+// First get the local screen share stream
+const mediaStreams = await meeting.getMediaStreams(mediaSettings);
+const [localStream, localShare] = mediaStreams;
+// Then, update share
+meeting.updateShare({sendShare: true, receiveShare: true, stream: localShare});
+```
+
+### Stop Sending Share
+
+With the call object from the phone plugin, you could:
+
+```js
+call.stopScreenShare();
+```
+
+With a meeting object, you use these functions:
+
+```js
+meeting.stopShare();
+```
+
+## Ending a Meeting
+
+With the call object from the phone plugin, you could:
+
+```js
+call.hangup();
+```
+
+Now, to do the same, you have to leave the meeting:
+
+```js
+myMeeting.leave();
+```
+
+## Listing Active Calls
+
+When looking for a user's currently active calls, with the phone plugin the developer would call `phone.listActiveCalls()` which resolved with an array of call objects.
+
+With the meetings plugin, we want to sync our meetings collection with the server:
+
+```js
+// Sync Meetings From Server
+await webex.meetings.syncMeetings();
+
+// Existing meetings live in the meeting collection
+const existingMeetings = webex.meetings.meetingCollection.meetings;
+```
+
+## Incoming Calls
+
+With the meetings plugin, incoming calls are still emitted as an event.
+Unlike the phone plugin though, there isn't a special event for an "incoming call", instead the event is emitted as a "meeting added" event.
+
+### Listening for incoming calls
+
+With the phone plugin, one would previous listen to incoming calls like this:
+
+```js
+sparkInstance.phone.on('call:incoming', (incomingCall) => {
+  // Handle incoming call
+  incomingCall.acknowledge();
+});
+```
+
+When listening to an added meeting, to determine if it is an "incoming" meeting, check the type property of the meeting:
+
+```js
+webex.meetings.on('meeting:added', (addedMeeting) => {
+  if (addedMeeting.type === 'INCOMING' || addedMeeting.type === 'JOIN') {
+    // Handle incoming meeting
+    addedMeeting.acknowledge();
+  }
+```
+
+(Note: group spaces emit a `JOIN` when someone starts, where 1:1 spaces emit `INCOMING`)
+
+### Answering incoming calls
+
+The phone plugin had the concept of `answer`ing an incoming call.
+This concept doesn't exist in the meetings plugin.
+Instead, you simply `join` the meeting as described above.
+
+Phone plugin:
+
+```js
+incomingCall.answer();
+```
+
+```js
+addedMeeting.join();
+```

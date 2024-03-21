@@ -1,0 +1,22 @@
+{
+  "name": "@webex/xunit-with-logs",
+  "version": "3.0.0-beta.373",
+  "description": "",
+  "license": "MIT",
+  "main": "dist/index.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/webex/webex-js-sdk.git",
+    "directory": "packages/@webex/xunit-with-logs"
+  },
+  "engines": {
+    "node": ">=16"
+  },
+  "devDependencies": {
+    "mocha": "10.0"
+  },
+  "dependencies": {
+    "lodash": "^4.17.21",
+    "mkdirp": "^0.5.1"
+  }
+}

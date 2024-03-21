@@ -1,0 +1,13 @@
+version: 0.1
+frontend:
+  phases:
+    preBuild:
+      commands:
+        - yarn install --immutable
+    build:
+      commands:
+        - yarn run samples:build
+  artifacts:
+    baseDirectory: docs/
+    files:
+      - '**/*'

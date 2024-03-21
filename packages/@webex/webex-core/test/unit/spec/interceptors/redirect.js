@@ -1,0 +1,102 @@
+/*!
+ * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
+ */
+
+/* eslint-disable camelcase */
+
+import sinon from 'sinon';
+import {assert} from '@webex/test-helper-chai';
+import MockWebex from '@webex/test-helper-mock-webex';
+import {RedirectInterceptor, config, Credentials} from '@webex/webex-core';
+import {cloneDeep} from 'lodash';
+
+describe('webex-core', () => {
+  describe('Interceptors', () => {
+    describe('RedirectInterceptor', () => {
+      let interceptor, webex;
+
+      beforeEach(() => {
+        webex = new MockWebex({
+          children: {
+            credentials: Credentials,
+          },
+          config: cloneDeep(config),
+          request: sinon.spy(),
+        });
+
+        interceptor = Reflect.apply(RedirectInterceptor.create, webex, []);
+      });
+
+      describe('#onResponse', () => {
+        it('redirects GET requests to new url on locus redirect error', () => {
+          const response = {
+            statusCode: 404,
+            headers: {},
+            body: {
+              errorCode: 2000002,
+              location: 'http://newlocus.example.com',
+            },
+          };
+
+          interceptor.onResponse({$redirectCount: 0}, response);
+          sinon.assert.calledWith(webex.request, {
+            $redirectCount: 1,
+            uri: 'http://newlocus.example.com',
+          });
+        });
+
+        it('redirects POST requests to new url on locus redirect error', () => {
+          const response = {
+            statusCode: 404,
+            headers: {},
+            body: {
+              errorCode: 2000002,
+              location: 'http://newlocus.example.com?alternate=true',
+            },
+            options: {
+              qs: true,
+            },
+          };
+
+          interceptor.onResponse({$redirectCount: 4}, response);
+          sinon.assert.calledWith(webex.request, {
+            $redirectCount: 5,
+            uri: 'http://newlocus.example.com',
+          });
+        });
+
+        it('does not redirect on reaching max redirects', () => {
+          const response = {
+            statusCode: 404,
+            headers: {},
+            body: {
+              errorCode: 2000002,
+              location: 'http://newlocus.example.com?alternate=true',
+            },
+            options: {
+              qs: true,
+            },
+          };
+
+          assert.isRejected(interceptor.onResponse({$redirectCount: 5}, response));
+        });
+
+        it('returns when locus redirect is not encountered', () => {
+          const response = {
+            statusCode: 404,
+            headers: {},
+            body: {
+              errorCode: 20000,
+              location: 'http://newlocus.example.com?alternate=true',
+            },
+            options: {
+              qs: true,
+            },
+          };
+
+          assert.equal(interceptor.onResponse({$redirectCount: 5}, response), response);
+        });
+      });
+    });
+  });
+});

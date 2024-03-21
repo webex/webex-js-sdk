@@ -1,0 +1,19 @@
+/*!
+ * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
+ */
+
+import {deprecated} from 'core-decorators';
+
+/**
+ * @private
+ * @returns {function}
+ */
+function emptyDecorator() {
+  return function noop() {
+    /* eslint no-empty:[0] */
+  };
+}
+
+const exportedDeprecated = process.env.NODE_ENV === 'production' ? emptyDecorator : deprecated;
+
+export default exportedDeprecated;

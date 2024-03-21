@@ -1,0 +1,696 @@
+/*!
+ * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
+ */
+
+import '@webex/internal-plugin-search';
+
+import util from 'util';
+
+import WebexCore from '@webex/webex-core';
+import {assert} from '@webex/test-helper-chai';
+import testUsers from '@webex/test-helper-test-users';
+import retry from '@webex/test-helper-retry';
+import '@webex/internal-plugin-conversation';
+import '@webex/internal-plugin-device';
+import {map, countBy} from 'lodash';
+import uuid from 'uuid';
+
+xdescribe('plugin-search', () => {
+  describe('#people', () => {
+    let bot, checkov, mccoy, webex;
+
+    before('create test users', () =>
+      testUsers.create({count: 2}).then((users) => {
+        [checkov, mccoy] = users;
+
+        webex = new WebexCore({
+          credentials: {
+            authorization: checkov.token,
+          },
+        });
+      })
+    );
+
+    before('connect to mercury', () =>
+      webex.internal.services
+        .updateServices({
+          from: 'limited',
+          query: {email: checkov.email},
+        })
+        .then(() => webex.internal.services.waitForCatalog('postauth'))
+        .then(() => webex.internal.mercury.connect())
+    );
+
+    before('create bot', function () {
+      this.timeout(retry.timeout(20000));
+
+      return retry(() =>
+        webex
+          .request({
+            api: 'hydra',
+            resource: 'applications',
+            method: 'POST',
+            body: {
+              name: 'Personal Assistant',
+              botEmail: `${uuid.v4()}@webex.bot`,
+              type: 'bot',
+            },
+          })
+          .then((results) => {
+            bot = results.body;
+          })
+      );
+    });
+
+    after(() => webex && webex.internal.mercury.disconnect());
+
+    it('searches for users with a specific string', () =>
+      webex.internal.search.people({query: 'abc'}).then((users) => {
+        assert.isArray(users);
+      }));
+
+    it('retrieves a specific user', () =>
+      webex.internal.search.people({query: mccoy.email}).then((users) => {
+        assert.isAbove(users.length, 0, 'At least one user was found');
+        assert.equal(users[0].id, mccoy.id);
+      }));
+
+    it('retrieves a bot', () =>
+      webex.internal.search.people({query: bot.botEmail, includeRobots: true}).then((bots) => {
+        assert.isAbove(bots.length, 0, 'At least one bot was found');
+        assert.equal(bots[0].email, bot.botEmail);
+      }));
+
+    it("doesn't retrieve a bot because of parameter", () =>
+      webex.internal.search.people({query: bot.botEmail, includeRobots: false}).then((bots) => {
+        assert.equal(bots.length, 0, 'No bots are returned');
+      }));
+  });
+
+  describe('#search', () => {
+    let checkov, mccoy, spock, kirkEU;
+    let party;
+
+    before('create 4 test users and connect them to mercury', () =>
+      Promise.all([
+        testUsers.create({count: 3}),
+        testUsers.create({count: 1, config: {orgId: process.env.EU_PRIMARY_ORG_ID}}),
+      ])
+        .then(([users, usersEU]) => {
+          [checkov, mccoy, spock] = users;
+          [kirkEU] = usersEU;
+          party = {
+            checkov,
+            mccoy,
+            spock,
+            kirkEU,
+          };
+
+          checkov.webex = new WebexCore({
+            credentials: {
+              authorization: checkov.token,
+            },
+          });
+
+          mccoy.webex = new WebexCore({
+            credentials: {
+              authorization: mccoy.token,
+            },
+          });
+
+          spock.webex = new WebexCore({
+            credentials: {
+              authorization: spock.token,
+            },
+          });
+
+          kirkEU.webex = new WebexCore({
+            credentials: {
+              authorization: kirkEU.token,
+            },
+          });
+
+          return Promise.all(
+            [checkov, mccoy, spock, kirkEU].map((user) =>
+              user.webex.internal.services
+                .updateServices({
+                  from: 'limited',
+                  query: {email: user.email},
+                })
+                .then(() => user.webex.internal.services.waitForCatalog('postauth'))
+                .then(() => user.webex.internal.mercury.connect())
+            )
+          );
+        })
+        .then(() => {
+          if (!process.env.PIPELINE) {
+            return spock.webex.internal.feature.setFeature(
+              'developer',
+              'use-v2-search-index',
+              true
+            );
+          }
+
+          return Promise.resolve();
+        })
+    );
+
+    let mccoyConversation, spockConversation, kirkEUConversation;
+
+    before(
+      'create a room for spock',
+      () =>
+        spockConversation ||
+        spock.webex.internal.conversation
+          .create({
+            displayName: 'Spock Room',
+            participants: map([checkov, mccoy, spock], 'id'),
+          })
+          .then((conversation) => {
+            spockConversation = conversation;
+            assert.lengthOf(spockConversation.participants.items, 3);
+          })
+    );
+
+    before(
+      'create a room for kirkEU',
+      () =>
+        kirkEUConversation ||
+        kirkEU.webex.internal.conversation
+          .create(
+            {
+              displayName: 'Kirk EU Room',
+              participants: map([mccoy, spock, kirkEU], 'id'),
+            },
+            {forceGrouped: true}
+          )
+          .then((conversation) => {
+            kirkEUConversation = conversation;
+            assert.lengthOf(kirkEUConversation.participants.items, 3);
+          })
+    );
+
+    before(
+      'create a room for mccoy',
+      () =>
+        mccoyConversation ||
+        mccoy.webex.internal.conversation
+          .create(
+            {
+              displayName: 'McCoy Room',
+              participants: map([mccoy, spock], 'id'),
+            },
+            {forceGrouped: true}
+          )
+          .then((conversation) => {
+            mccoyConversation = conversation;
+            assert.lengthOf(mccoyConversation.participants.items, 2);
+          })
+    );
+
+    after(() =>
+      Promise.all(
+        [checkov, mccoy, spock, kirkEU].map((user) =>
+          user.webex.internal.mercury.disconnect.bind(user)
+        )
+      )
+    );
+
+    function populateConversation(conversation) {
+      const spockConvo = spock.webex.internal.conversation;
+      const mccoyConvo = mccoy.webex.internal.conversation;
+
+      return mccoyConvo
+        .post(conversation, {
+          displayName: 'Hello, Spock.',
+        })
+        .then(() =>
+          spockConvo.post(conversation, {
+            displayName: 'Hello, Doctor.',
+          })
+        )
+        .then(() =>
+          mccoyConvo.post(conversation, {
+            displayName: 'What did Jim say?',
+          })
+        )
+        .then(() =>
+          spockConvo.post(conversation, {
+            displayName: 'The captain wishes to board.',
+          })
+        );
+    }
+
+    before('prepare and verify conversation for spock', () =>
+      populateConversation(spockConversation)
+        .then(() => {
+          assert.isDefined(spockConversation);
+
+          return spock.webex.internal.conversation.get(
+            {url: spockConversation.url},
+            {activitiesLimit: 10}
+          );
+        })
+        .then((conversation) => {
+          spockConversation = conversation;
+          // Removes the 'create' activity
+          spockConversation.activities.items.shift();
+          const comments = map(spockConversation.activities.items, 'object.displayName');
+
+          assert.lengthOf(comments, 4);
+          assert.equal(comments[0], 'Hello, Spock.');
+          assert.equal(comments[1], 'Hello, Doctor.');
+          assert.equal(comments[2], 'What did Jim say?');
+          assert.equal(comments[3], 'The captain wishes to board.');
+        })
+    );
+
+    before('prepare and verify conversation for mccoy', () =>
+      populateConversation(mccoyConversation)
+        .then(() => {
+          assert.isDefined(mccoyConversation);
+
+          return mccoy.webex.internal.conversation.get(
+            {url: mccoyConversation.url},
+            {activitiesLimit: 10}
+          );
+        })
+        .then((conversation) => {
+          mccoyConversation = conversation;
+
+          mccoyConversation.activities.items.shift();
+          const comments = map(mccoyConversation.activities.items, 'object.displayName');
+
+          assert.lengthOf(comments, 4);
+          assert.equal(comments[0], 'Hello, Spock.');
+          assert.equal(comments[1], 'Hello, Doctor.');
+          assert.equal(comments[2], 'What did Jim say?');
+          assert.equal(comments[3], 'The captain wishes to board.');
+        })
+    );
+
+    before('prepare and verify conversation for kirkEU', () =>
+      populateConversation(kirkEUConversation)
+        .then(() => {
+          assert.isDefined(kirkEUConversation);
+
+          return kirkEU.webex.internal.conversation.get(
+            {url: kirkEUConversation.url},
+            {activitiesLimit: 10}
+          );
+        })
+        .then((conversation) => {
+          kirkEUConversation = conversation;
+
+          kirkEUConversation.activities.items.shift();
+          const comments = map(kirkEUConversation.activities.items, 'object.displayName');
+
+          assert.lengthOf(comments, 4);
+          assert.equal(comments[0], 'Hello, Spock.');
+          assert.equal(comments[1], 'Hello, Doctor.');
+          assert.equal(comments[2], 'What did Jim say?');
+          assert.equal(comments[3], 'The captain wishes to board.');
+        })
+    );
+
+    const testData = [
+      // Single word
+      // Asserts comments
+      {
+        given: {
+          user: 'spock',
+          query: 'hElLo',
+        },
+        expected: {
+          path: 'object.displayName',
+          results: [
+            {name: 'Hello, Spock.', count: 2},
+            {name: 'Hello, Doctor.', count: 2},
+          ],
+          resultsCount: 4,
+        },
+      },
+      // Single word
+      // Asserts comments
+      // Includes remote clusters
+      {
+        given: {
+          user: 'spock',
+          query: 'hElLo',
+          includeRemoteClusterReferences: true,
+        },
+        expected: {
+          path: 'object.displayName',
+          results: [
+            {name: 'Hello, Spock.', count: 3},
+            {name: 'Hello, Doctor.', count: 3},
+          ],
+          resultsCount: 6,
+        },
+      },
+      // Single word
+      // Single result
+      // Asserts comments
+      {
+        given: {
+          user: 'checkov',
+          query: 'JiM',
+        },
+        expected: {
+          path: 'object.displayName',
+          results: [{name: 'What did Jim say?', count: 1}],
+          resultsCount: 1,
+        },
+      },
+      // Single word
+      // Single result
+      // Asserts comments
+      // Includes remote clusters but no results
+      {
+        given: {
+          user: 'checkov',
+          query: 'JiM',
+          includeRemoteClusterReferences: true,
+        },
+        expected: {
+          path: 'object.displayName',
+          results: [{name: 'What did Jim say?', count: 1}],
+          resultsCount: 1,
+        },
+      },
+      // Single word
+      // Asserts comments
+      // Different participant searching
+      // belongs to both conversations
+      // {
+      //   given: {
+      //     user: `mccoy`,
+      //     query: `hElLo`
+      //   },
+      //   expected: {
+      //     path: `object.displayName`,
+      //     results: [
+      //       {name: `Hello, Spock.`, count: 2},
+      //       {name: `Hello, Doctor.`, count: 2}
+      //     ],
+      //     resultsCount: 4
+      //   }
+      // },
+      // Single word
+      // Asserts comments
+      // Different participant searching
+      // belongs to only one conversation
+      // {
+      //   given: {
+      //     user: `checkov`,
+      //     query: `hElLo`
+      //   },
+      //   expected: {
+      //     path: `object.displayName`,
+      //     results: [
+      //       {name: `Hello, Spock.`, count: 1},
+      //       {name: `Hello, Doctor.`, count: 1}
+      //     ],
+      //     resultsCount: 2
+      //   }
+      // },
+      // Single word
+      // Asserts result type
+      // {
+      //   given: {
+      //     user: `spock`,
+      //     query: `hElLo`
+      //   },
+      //   expected: {
+      //     path: `object.objectType`,
+      //     results: [
+      //       {name: `comment`, count: 4}
+      //     ],
+      //     resultsCount: 4
+      //   }
+      // },
+      // Multiple words
+      // Asserts comments
+      // Disable for API upgrade
+      // {
+      //   given: {
+      //     user: `spock`,
+      //     query: `hElLo SpOck`
+      //   },
+      //   expected: {
+      //     path: `object.displayName`,
+      //     results: [
+      //       {name: `Hello, Spock.`, count: 2},
+      //       {name: `Hello, Doctor.`, count: 2}
+      //     ],
+      //     resultsCount: 4
+      //   }
+      // },
+      // Multiple words
+      // Asserts result type
+
+      // Disable for API upgrade
+      // {
+      //   given: {
+      //     user: `spock`,
+      //     query: `hElLo SpOck`
+      //   },
+      //   expected: {
+      //     path: `object.objectType`,
+      //     results: [
+      //       {name: `comment`, count: 4}
+      //     ],
+      //     resultsCount: 4
+      //   }
+      // },
+      // Multiple words
+      // with punctuation
+      // Asserts comments
+
+      // Disable for API upgrade
+      // {
+      //   given: {
+      //     user: `spock`,
+      //     query: `hElLo, SpOck.`
+      //   },
+      //   expected: {
+      //     path: `object.displayName`,
+      //     results: [
+      //       {name: `Hello, Spock.`, count: 2},
+      //       {name: `Hello, Doctor.`, count: 2}
+      //     ],
+      //     resultsCount: 4
+      //   }
+      // },
+      // Multiple words
+      // with punctuation
+      // Asserts result type
+
+      // Disable for API upgrade
+      // {
+      //   given: {
+      //     user: `spock`,
+      //     query: `hElLo, SpOck.`
+      //   },
+      //   expected: {
+      //     path: `object.objectType`,
+      //     results: [
+      //       {name: `comment`, count: 4}
+      //     ],
+      //     resultsCount: 4
+      //   }
+      // },
+
+      // Limit results back
+
+      // 0
+      // {
+      //   given: {
+      //     user: `spock`,
+      //     query: `hElLo`,
+      //     size: 0
+      //   },
+      //   expected: {
+      //     path: `object.displayName`,
+      //     results: [],
+      //     resultsCount: 4
+      //   }
+      // }
+    ];
+
+    const testDataWithResultLimit = [
+      // {
+      //   given: {
+      //     user: `spock`,
+      //     query: `hElLo`,
+      //     size: -1
+      //   },
+      //   expected: {
+      //     path: `object.displayName`,
+      //     results: [
+      //       {name: `Hello, Spock.`, count: 2},
+      //       {name: `Hello, Doctor.`, count: 2}
+      //     ],
+      //     // Server treats negative limit as default limit of 20
+      //     resultsCount: 4
+      //   }
+      // },
+      {
+        given: {
+          user: 'spock',
+          query: 'hElLo',
+          size: 0,
+        },
+        expected: {
+          path: 'object.displayName',
+          results: [
+            {name: 'Hello, Spock.', count: 2},
+            {name: 'Hello, Doctor.', count: 2},
+          ],
+          // Server treats 0 limit as default limit of 20
+          resultsCount: 4,
+        },
+      },
+      {
+        given: {
+          user: 'spock',
+          query: 'hElLo',
+          size: 0,
+          includeRemoteClusterReferences: true,
+        },
+        expected: {
+          path: 'object.displayName',
+          results: [
+            {name: 'Hello, Spock.', count: 3},
+            {name: 'Hello, Doctor.', count: 3},
+          ],
+          // Server treats 0 limit as default limit of 20
+          resultsCount: 6,
+        },
+      },
+      {
+        given: {
+          user: 'spock',
+          query: 'hElLo',
+          size: 1,
+        },
+        expected: {
+          path: 'object.displayName',
+          results: [],
+          resultsCount: 1,
+        },
+      },
+      // {
+      //   given: {
+      //     user: `spock`,
+      //     query: `hElLo`,
+      //     size: 2
+      //   },
+      //   expected: {
+      //     path: `object.displayName`,
+      //     results: [],
+      //     resultsCount: 2
+      //   }
+      // },
+      // {
+      //   given: {
+      //     user: `spock`,
+      //     query: `hElLo`,
+      //     // Limit equals the number of results
+      //     size: 4
+      //   },
+      //   expected: {
+      //     path: `object.displayName`,
+      //     results: [],
+      //     resultsCount: 4
+      //   }
+      // },
+      // {
+      //   given: {
+      //     user: `spock`,
+      //     query: `hElLo`,
+      //     // Limit exceeds number of results
+      //     size: 5
+      //   },
+      //   expected: {
+      //     path: `object.displayName`,
+      //     results: [],
+      //     resultsCount: 4
+      //   }
+      // }
+    ];
+
+    const testDataWithAllResults = [
+      // Single word
+      // Asserts comments
+      {
+        given: {
+          user: 'spock',
+          type: ['comment'],
+        },
+        expected: {
+          path: 'object.displayName',
+          results: [],
+          resultsCount: 4,
+        },
+      },
+    ];
+
+    function runTests(testData) {
+      testData.forEach((data) => {
+        const {given, expected} = data;
+        const conversationLimit = given.sharedIn ? given.sharedIn.length : 'all';
+        const resultLimit = given.size ? `a result limit of ${given.size}` : 'no result limit';
+        const queryString = given.query ? `for "${given.query}" ` : '';
+        const remoteClusterString = given.includeRemoteClusterReferences
+          ? ' and remote cluster enabled'
+          : '';
+        const message = util.format(
+          `${given.user} searches ${conversationLimit} conversation(s) ${queryString}with ${resultLimit}${remoteClusterString}. Verifies ${expected.path}.`
+        );
+
+        it(message, () =>
+          retry(() => {
+            let params;
+
+            if (given.query) {
+              params = {
+                query: given.query,
+                limit: given.size,
+                includeRemoteClusterReferences: given.includeRemoteClusterReferences,
+              };
+            } else {
+              params = {
+                sharedIn: spockConversation.id,
+                type: given.type,
+              };
+            }
+
+            return party[given.user].webex.internal.search.search(params).then((results) => {
+              assert.isDefined(results);
+              assert.lengthOf(results, expected.resultsCount);
+              const plucked = map(results, expected.path);
+              const counts = countBy(plucked);
+
+              expected.results.forEach((expectedResults) => {
+                assert.equal(counts[expectedResults.name], expectedResults.count);
+              });
+            });
+          })
+        );
+      });
+    }
+
+    describe('expects results', function () {
+      this.timeout(retry.timeout(20000));
+
+      beforeEach('unset searchKeyUrl', () => {
+        spock.webex.internal.device.set('searchKeyUrl', undefined);
+      });
+
+      runTests(testData);
+      runTests(testDataWithResultLimit);
+      runTests(testDataWithAllResults);
+    });
+  });
+});

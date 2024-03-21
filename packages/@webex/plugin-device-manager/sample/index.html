@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Sample: Device Manager</title>
+</head>
+
+<body>
+  <div style="width:100%;">
+    <div id='notifications' style="float:right; text-align: right; font-size: 20px;">
+    </div>
+    <div style="float:inherit;">
+      <h1>Device Manager</h1>
+      <p>This is the start of the "kitchen sink" demo app for plugin-device-manager.</p>
+
+      <h2>Connect first:</h2>
+
+      <form id="credentials">
+        <fieldset>
+          <legend>Credentials</legend>
+          <input id="access-token" name="accessToken" placeholder="Your access token" value="" type="text" />
+          <input id="connect" title="connect" type="submit" value="connect" />
+          <p id="connection-status">disconnected</p>
+        </fieldset>
+      </form>
+
+      <form id="deviceControls" name="deviceControls">
+        <fieldset>
+          <legend>Device Controls</legend>
+          <div>
+            <div id='refreshDiv' style="display:block; float:left">
+              <button id="refresh" name="refresh" title="Refresh device list" type="button">refresh</button>
+            </div>
+            <div id='removeBtnDiv' style="display:none; float:left">
+              <button id="remove" title="Remove" type="button">Remove</button>
+            </div>
+            <div id='requestPinDiv' style="display:none; float:left">
+              <button id="requestPin" title="Request a PIN" type="button">Request PIN</button>
+            </div>
+            <div id='enterPinDiv' style="display:none; float:left">
+              <input maxlength="4" id="pin" name="pin" placeholder="PIN" value="" type="text" />
+            </div>
+            <div id='requestPairingBtnDiv' style="display:none; float:left">
+              <button id="requestPairing" title="Pair" type="button">Pair</button>
+            </div>
+            <div id='requestUnPairingBtnDiv' style="display:none; float:left">
+              <button id="requestUnPairing" title="UnPair" type="button">UnPair</button>
+            </div>
+          </div>
+          <div id='getAudioStateBtnDiv' style="display:none; float:left">
+            <button id="getAudioState" title="getAudioState" type="button">getAudioState</button>
+          </div>
+          <div id='volumeUpBtnDiv' style="display:none; float:left">
+            <button id="volumeUp" title="Volume Up" type="button">Up</button>
+          </div>
+          <div id='volumeDownBtnDiv' style="display:none; float:left">
+            <button id="volumeDown" title="Volume Down" type="button">Down</button>
+          </div>
+          <div id='muteBtnDiv' style="display:none; float:left">
+            <button id="mute" title="Mute" type="button">Mute</button>
+          </div>
+          <div id='unmuteBtnDiv' style="display:none; float:left">
+            <button id="unmute" title="Unmute" type="button">UnMute</button>
+          </div>
+
+          <div id='enterConvoIdDiv' style="display:none; float:left">
+            <input id="convoId" name="convoId" placeholder="convo Id" value="" type="text" />
+          </div>
+          <div id='bindSpaceBtnDiv' style="display:none; float:left">
+            <button id="bindSpace" title="Bind" type="button">Bind</button>
+          </div>
+          <div id='unbindSpaceBtnDiv' style="display:none; float:left">
+            <button id="unbindSpace" title="Unbind" type="button">Unbind</button>
+          </div>
+
+          <div id='getAudioStateContentsDiv' style="display:none; float:right">
+          </div>
+        </div>
+      </fieldset>
+    </form>
+  </div>
+</div>
+
+<div style="width:100%">
+  <div style="float:inherit;">
+    <form id="deviceListing" name="deviceListing">
+      <fieldset>
+        <legend>Device Listing</legend>
+        <div style="display:block; float:left">
+          <form id="device-list">
+            <select id="device-list-dropdown">
+            </select>
+          </form>
+        </div>
+      </fieldset>
+    </form>
+  </div>
+</div>
+
+<div style="width:100%">
+  <div style="float:inherit;">
+    <form id="deviceSearch"  name="deviceSearch">
+      <fieldset>
+        <legend>Device Search</legend>
+        <div style="display:block; float:left">
+          <input id="searchQuery" name="searchQuery" placeholder="search query" value="" type="text" />
+        </div>
+        <div id='searchBtnDiv' style="display:block; float:left">
+          <button id="search" title="Search" type="button">Search</button>
+        </div>
+        <div id='getDeviceSearchResultsDiv' style="display:none; float:right">
+        </div>
+      </fieldset>
+    </form>
+  </div>
+</div>
+
+<script src="../webex.min.js"></script>
+<!-- app.js is your application code -->
+<script src="app.js"></script>
+</body>
+</html>

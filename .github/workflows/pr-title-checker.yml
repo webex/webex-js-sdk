@@ -1,0 +1,24 @@
+# This workflow/action checks if PR titles conform to the Contribution Guidelines
+# For more information see: https://github.com/webex/pr-title-checker
+
+name: pr-title-checker
+on:
+  pull_request_target:
+    types:
+      - opened
+      - edited
+      - synchronize
+      - labeled
+      - unlabeled
+    branches:
+      - master
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check PR title
+        uses: webex/pr-title-checker@main
+        with:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          pass_on_octokit_error: false
+          configuration_path: .github/pr-title-checker-config.json

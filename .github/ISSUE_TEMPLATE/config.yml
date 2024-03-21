@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 🐞 Bug reports, ⁉️⁉ Questions & 🆘 Support
+    url: https://developer.webex.com/support
+    about: Something going wrong? Do you have a question? Checkout https://developer.webex.com/support
+  - name: ⚡️ Feature Requests and Ideas
+    url: https://ciscocollaboration.aha.io/
+    about: Got a suggestion? Please use https://ciscocollaboration.aha.io/ so others can help prioritize your awesome idea 💡

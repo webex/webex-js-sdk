@@ -1,0 +1,18 @@
+{
+  "name": "@webex/test-helper-mocha",
+  "version": "3.0.0-beta.373",
+  "description": "Helpers for controlling where tests run",
+  "license": "MIT",
+  "main": "dist/index.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/webex/webex-js-sdk.git",
+    "directory": "packages/@webex/test-helper-mocha"
+  },
+  "engines": {
+    "node": ">=16"
+  },
+  "dependencies": {
+    "bowser": "^2.11.0"
+  }
+}

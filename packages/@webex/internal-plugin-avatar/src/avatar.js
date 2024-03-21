@@ -1,0 +1,148 @@
+/*!
+ * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
+ */
+
+import {oneFlight} from '@webex/common';
+import {detectFileType, processImage} from '@webex/helper-image';
+import {WebexPlugin} from '@webex/webex-core';
+import {defaults} from 'lodash';
+
+import AvatarUrlStore from './avatar-url-store';
+import AvatarUrlBatcher from './avatar-url-batcher';
+
+const Avatar = WebexPlugin.extend({
+  namespace: 'Avatar',
+
+  children: {
+    batcher: AvatarUrlBatcher,
+  },
+
+  session: {
+    store: {
+      default() {
+        return new AvatarUrlStore();
+      },
+      type: 'any',
+    },
+    enableThumbnails: {
+      default: true,
+      type: 'boolean',
+    },
+  },
+
+  @oneFlight({keyFactory: (uuid) => uuid})
+  _fetchAllAvatarUrlSizes(uuid, options) {
+    // fetch all possible sizes of avatar and store in cache
+    return Promise.all(
+      this.config.sizes.map((size) =>
+        this.batcher
+          .request({uuid, size})
+          .then((item) => this.store.add(defaults({cacheControl: options.cacheControl}, item)))
+      )
+    );
+  },
+
+  /**
+   * @private
+   * Requests an avatar URL from the api
+   * @param {string} uuid
+   * @param {Object} options
+   * @param {integer} options.size
+   * @param {integer} options.cacheControl
+   * @returns {Promise<string>} the avatar URL
+   */
+  @oneFlight({keyFactory: (uuid, options) => uuid + String(options && options.size)})
+  _fetchAvatarUrl(uuid, options) {
+    return this.store.get({uuid, size: options.size}).catch(() =>
+      Promise.all([
+        this._fetchAllAvatarUrlSizes(uuid, options),
+        // just in case options.size does not fall into the predefined values above
+        this.batcher.request({uuid, size: options.size}),
+      ])
+        // eslint-disable-next-line no-unused-vars
+        .then(([ignore, item]) =>
+          this.store.add(defaults({cacheControl: options.cacheControl}, item))
+        )
+    );
+  },
+
+  /**
+   * Retrieves an Avatar from a cache or the api on misses.
+   *
+   * @param {UserObject|string} user The user, Webex user uuid, or email
+   * @param {Object} [options]
+   * @param {integer} [options.size] In {1600, 640, 192, 135, 110, 80, 50, 40}
+   *                                 Defaults to 80 if falsy
+   * @param {boolean} [options.hideDefaultAvatar] does not return default avatar url if true. Defaults to false
+   * @returns {Promise<string>} A promise that resolves to the avatar
+   */
+  retrieveAvatarUrl(user, options) {
+    if (!user) {
+      return Promise.reject(new Error("'user' is a required parameter"));
+    }
+
+    options = defaults(options, {
+      cacheControl: this.config.cacheControl,
+      size: this.config.defaultAvatarSize,
+    });
+
+    return this.webex.internal.user
+      .asUUID(user)
+      .then((uuid) => this._fetchAvatarUrl(uuid, options))
+      .then((item) => {
+        if (options.hideDefaultAvatar) {
+          return item.hasDefaultAvatar ? null : item.url;
+        }
+
+        return item.url;
+      });
+  },
+
+  /**
+   * Upload a new avatar for the current user
+   *
+   * @param {Blob|File|Buffer} file The new avatar
+   * @returns {Promise} Resolves with the URL of the full-sized avatar
+   */
+  setAvatar(file) {
+    return detectFileType(file, this.logger)
+      .then((type) =>
+        processImage({
+          file,
+          type,
+          thumbnailMaxWidth: this.config.thumbnailMaxWidth,
+          thumbnailMaxHeight: this.config.thumbnailMaxHeight,
+          enableThumbnails: this.enableThumbnails,
+          logger: this.logger,
+          isAvatar: true,
+        })
+      )
+      .then((processedImage) =>
+        this.upload({
+          api: 'avatar',
+          resource: `profile/${this.webex.internal.device.userId}/session`,
+          file: processedImage[0],
+          phases: {
+            upload: {
+              $uri: (session) => session.url,
+            },
+            finalize: {
+              method: 'PUT',
+              api: 'avatar',
+              $resource: (session) =>
+                // eslint-disable-next-line max-len
+                `profile/${this.webex.internal.device.userId}/session/${session.id}`,
+            },
+          },
+        })
+      )
+      .then((res) => {
+        // invalidate user's cached avatar
+        this.store.remove({uuid: this.webex.internal.device.userId});
+
+        return res.url;
+      });
+  },
+});
+
+export default Avatar;

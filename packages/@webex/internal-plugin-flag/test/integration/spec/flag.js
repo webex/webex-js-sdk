@@ -1,0 +1,195 @@
+/*!
+ * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
+ */
+
+import '@webex/internal-plugin-flag';
+
+import {assert} from '@webex/test-helper-chai';
+import WebexCore from '@webex/webex-core';
+import '@webex/internal-plugin-conversation';
+import {map, find} from 'lodash';
+import testUsers from '@webex/test-helper-test-users';
+
+describe('plugin-flag', function () {
+  this.timeout(60000);
+  describe('Flag', () => {
+    let flagConversation, mccoy, participants, spock;
+
+    beforeEach('create users', () =>
+      testUsers.create({count: 2}).then((users) => {
+        participants = [mccoy, spock] = users;
+        spock.webex = new WebexCore({
+          credentials: {
+            authorization: users[0].token,
+          },
+        });
+        mccoy.webex = new WebexCore({
+          credentials: {
+            authorization: users[1].token,
+          },
+        });
+      })
+    );
+
+    beforeEach('connect spock to mercury', () => spock.webex.internal.mercury.connect());
+    beforeEach('connect mccoy to mercury', () => mccoy.webex.internal.mercury.connect());
+
+    afterEach(() =>
+      Promise.all([
+        spock && spock.webex.internal.mercury.disconnect(),
+        mccoy && mccoy.webex.internal.mercury.disconnect(),
+      ])
+    );
+
+    beforeEach('populate data', () =>
+      spock.webex.internal.conversation
+        .create({
+          displayName: 'Test Flagging Room',
+          participants,
+        })
+        .then((c) => {
+          flagConversation = c;
+
+          return mccoy.webex.internal.conversation.post(flagConversation, {
+            displayName: 'Hi Dear, How are you?',
+          });
+        })
+        .then(() =>
+          spock.webex.internal.conversation.post(flagConversation, {
+            displayName: 'Hey! I am doing well. How are you?',
+          })
+        )
+        .then(() =>
+          mccoy.webex.internal.conversation.post(flagConversation, {
+            displayName: 'I am also doing well. Are you in for the party?',
+          })
+        )
+        .then(() =>
+          spock.webex.internal.conversation.post(flagConversation, {
+            displayName: 'Yes, I am in.',
+          })
+        )
+        .then(() => {
+          assert.isDefined(flagConversation);
+          const params = {
+            activitiesLimit: 30,
+          };
+
+          return spock.webex.internal.conversation.get(flagConversation, params);
+        })
+        .then((conversation) => {
+          // Removes the "create" activity.
+          conversation.activities.items.shift();
+          const comments = map(conversation.activities.items, 'object.displayName');
+
+          assert.lengthOf(comments, 4);
+          assert.equal(comments[0], 'Hi Dear, How are you?');
+          assert.equal(comments[1], 'Hey! I am doing well. How are you?');
+          assert.equal(comments[2], 'I am also doing well. Are you in for the party?');
+          assert.equal(comments[3], 'Yes, I am in.');
+          flagConversation = conversation;
+        })
+    );
+
+    afterEach(() =>
+      spock.webex.internal.flag
+        .list()
+        .then((flags) =>
+          Promise.all(
+            flags.map((flag) =>
+              spock.webex.internal.flag.delete(flag).catch((reason) => console.warn(reason))
+            )
+          )
+        )
+    );
+
+    describe('#create()', () => {
+      it('flags the activity', () => {
+        const flaggedActivity1 = flagConversation.activities.items[1];
+
+        return spock.webex.internal.flag.create(flaggedActivity1).then((flagResponse1) => {
+          assert.equal(flagResponse1.state, 'flagged');
+          assert.equal(flagResponse1['flag-item'], flaggedActivity1.url);
+          assert.equal(flagResponse1['conversation-url'], flaggedActivity1.target.url);
+        });
+      });
+    });
+
+    describe('#list()', () => {
+      it('fetches the flag list', () =>
+        spock.webex.internal.flag.list().then((flagList) => {
+          assert.isArray(flagList);
+          assert.lengthOf(flagList, 0);
+        }));
+    });
+
+    describe('#mapToActivities()', () => {
+      it('maps flags to activity', () => {
+        const flaggedActivity1 = flagConversation.activities.items[1];
+
+        return spock.webex.internal.flag.create(flaggedActivity1).then((flagResponse1) => {
+          assert.equal(flagResponse1.state, 'flagged');
+          const flags = [];
+
+          flags.push(flagResponse1);
+
+          return spock.webex.internal.flag.mapToActivities(flags).then((activities) => {
+            const activity = activities[0];
+
+            assert.equal(activity.object.displayName, 'Hey! I am doing well. How are you?');
+            assert.isDefined(find(activities, {url: flagResponse1['flag-item']}));
+          });
+        });
+      });
+    });
+
+    describe('#remove()', () => {
+      it('removes the flag from activity', () => {
+        const flaggedActivity1 = flagConversation.activities.items[1];
+
+        return spock.webex.internal.flag
+          .create(flaggedActivity1)
+          .then((flagResponse1) => {
+            assert.equal(flagResponse1.state, 'flagged');
+
+            return spock.webex.internal.flag.delete(flagResponse1);
+          })
+          .then(() => spock.webex.internal.flag.list())
+          .then((flagList) => {
+            assert.isArray(flagList);
+            assert.lengthOf(flagList, 0);
+          });
+      });
+    });
+
+    describe('#archive()', () => {
+      it('archives the flag for an activity', () => {
+        const flaggedActivity1 = flagConversation.activities.items[1];
+
+        return spock.webex.internal.flag
+          .create(flaggedActivity1)
+          .then((flagResponse1) => {
+            assert.equal(flagResponse1.state, 'flagged');
+
+            return spock.webex.internal.flag.archive(flagResponse1);
+          })
+          .then((response) => assert.equal(response.state, 'archived'));
+      });
+    });
+
+    describe('#unflag()', () => {
+      it('unflag the flag for an activity', () => {
+        const flaggedActivity1 = flagConversation.activities.items[1];
+
+        return spock.webex.internal.flag
+          .create(flaggedActivity1)
+          .then((flagResponse1) => {
+            assert.equal(flagResponse1.state, 'flagged');
+
+            return spock.webex.internal.flag.unflag(flagResponse1);
+          })
+          .then((response) => assert.equal(response.state, 'unflagged'));
+      });
+    });
+  });
+});

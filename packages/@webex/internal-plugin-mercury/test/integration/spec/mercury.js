@@ -1,0 +1,117 @@
+/*!
+ * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
+ */
+
+import '@webex/internal-plugin-mercury';
+
+import {assert} from '@webex/test-helper-chai';
+import {flaky} from '@webex/test-helper-mocha';
+import sinon from 'sinon';
+import WebexCore from '@webex/webex-core';
+import testUsers from '@webex/test-helper-test-users';
+import refreshCallback from '@webex/test-helper-refresh-callback';
+
+describe('plugin-mercury', function () {
+  this.timeout(30000);
+  describe('Mercury', () => {
+    let webex;
+
+    beforeEach(() =>
+      testUsers.create({count: 1}).then((users) => {
+        webex = new WebexCore({
+          credentials: {
+            supertoken: users[0].token,
+          },
+          config: {
+            credentials: {
+              refreshCallback,
+            },
+          },
+        });
+      })
+    );
+
+    afterEach(() => webex && webex.internal.mercury.disconnect());
+
+    describe('#connect()', () => {
+      it('connects to mercury', () => webex.internal.mercury.connect());
+
+      it('refreshes the access token when a 4401 is received', () =>
+        webex.internal.device
+          .register()
+          .then(() => {
+            // eslint-disable-next-line camelcase
+            webex.credentials.supertoken.access_token = 'fake token';
+
+            return webex.internal.mercury.connect();
+          })
+          // eslint-disable-next-line camelcase
+          .then(() => assert.notEqual(webex.credentials.supertoken.access_token, 'fake token')));
+
+      // This doesn't work as designed yet. The only way to get a 4404 is to try
+      // to connect to someone else's valid registration; the intent was to get
+      // a 4404 any time we try to connect to an invalid url. Actually, as it's
+      // implemented, it should really be a 4403.
+      // it(`refreshes the device when a 4404 is received`, () => webex.internal.device.register()
+      //   .then(() => {
+      //     const webSocketUrl = webex.internal.device.webSocketUrl;
+      //     const wsu = webex.internal.device.webSocketUrl.split(`/`);
+      //     wsu.reverse();
+      //     wsu[1] = uuid.v4();
+      //     wsu.reverse();
+      //     webex.internal.device.webSocketUrl = wsu.join(`/`);
+      //     return webex.internal.mercury.connect()
+      //       .then(() => assert.notEqual(webex.internal.device.webSocketUrl, webSocketUrl));
+      //   }));
+
+      describe('when using an ephemeral device', () => {
+        beforeEach(() => {
+          webex.config.device.ephemeral = true;
+        });
+
+        it('connects to mercury', () => webex.internal.mercury.connect());
+      });
+
+      describe('when web-high-availability is enabled', () => {
+        flaky(it, process.env.SKIP_FLAKY_TESTS)(
+          'connects to mercury using service catalog url',
+          () => {
+            let defaultWebSocketUrl;
+
+            // we need to ensure the feature is set for user before "registering"
+            // the device
+            return (
+              webex.internal.device
+                .register()
+                .then(() =>
+                  webex.internal.feature.setFeature('developer', 'web-high-availability', true)
+                )
+                .then(() => webex.internal.device.unregister())
+                // start the test flow the device list
+                .then(() => webex.internal.device.register())
+                .then(() => {
+                  defaultWebSocketUrl = webex.internal.device.webSocketUrl;
+                })
+                .then(() => webex.internal.mercury.connect())
+                .then(() => webex.internal.device.getWebSocketUrl())
+                .then((wsUrl) => {
+                  assert.notEqual(defaultWebSocketUrl, webex.internal.mercury.socket.url);
+                  assert.include(webex.internal.mercury.socket.url, wsUrl);
+                })
+            );
+          }
+        );
+      });
+    });
+
+    it('emits messages that arrive before authorization completes', () => {
+      const spy = sinon.spy();
+
+      webex.internal.mercury.on('event:mercury.buffer_state', spy);
+
+      return webex.internal.mercury.connect().then(() => {
+        assert.calledOnce(spy);
+      });
+    });
+  });
+});

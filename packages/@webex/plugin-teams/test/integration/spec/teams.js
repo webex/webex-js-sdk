@@ -1,0 +1,209 @@
+/*!
+ * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
+ */
+
+import '@webex/internal-plugin-device';
+import '@webex/plugin-logger';
+import '@webex/plugin-memberships';
+import '@webex/plugin-rooms';
+import '@webex/plugin-teams';
+import WebexCore, {WebexHttpError} from '@webex/webex-core';
+import {assert} from '@webex/test-helper-chai';
+import sinon from 'sinon';
+import testUsers from '@webex/test-helper-test-users';
+import {find} from 'lodash';
+
+describe('plugin-teams', function () {
+  this.timeout(60000);
+
+  let webex, user;
+
+  before(() =>
+    testUsers.create({count: 1}).then(([u]) => {
+      user = u;
+      webex = new WebexCore({credentials: user.token});
+    })
+  );
+
+  describe('#teams', () => {
+    describe('#create()', () => {
+      it('creates a team', () =>
+        webex.teams
+          .create({
+            name: 'Webex Test Team (create)',
+          })
+          .then((team) => assert.isTeam(team)));
+    });
+
+    describe('#get()', () => {
+      it('retrieves a specific team', () =>
+        webex.teams
+          .create({
+            name: 'Webex Test Team (get)',
+          })
+          .then((team) => {
+            assert.isTeam(team);
+
+            return webex.teams.get({id: team.id}).then((result) => assert.deepEqual(result, team));
+          }));
+    });
+
+    describe('#list()', () => {
+      // Reminder: we can't run the next two creates in parallel because some of
+      // the tests rely on ordering.
+      let team0, team1;
+
+      before(() =>
+        webex.teams.create({name: 'Webex Test Team 1'}).then((team) => {
+          team1 = team;
+        })
+      );
+
+      before(() =>
+        webex.teams.create({name: 'Webex Test Team 0'}).then((team) => {
+          team0 = team;
+        })
+      );
+
+      it('lists all of the teams to which I have access', () =>
+        webex.teams.list().then((teams) => {
+          assert.isAbove(teams.length, 1);
+          for (const team of teams) {
+            assert.isTeam(team);
+          }
+        }));
+
+      it('lists a bounded, pageable set of teams to which I have access', () =>
+        webex.teams.list({max: 1}).then((teams) => {
+          assert.lengthOf(teams, 1);
+          const spy = sinon.spy();
+
+          return (function f(page) {
+            for (const team of page) {
+              spy(team.id);
+            }
+
+            if (page.hasNext()) {
+              return page.next().then(f);
+            }
+
+            return Promise.resolve();
+          })(teams).then(() => {
+            assert.isAbove(spy.callCount, 1);
+            assert.calledWith(spy, team0.id);
+            assert.calledWith(spy, team1.id);
+          });
+        }));
+    });
+
+    describe('#update()', () => {
+      it("updates a single team's name", () =>
+        webex.teams
+          .create({
+            name: 'Webex Test Team',
+          })
+          .then((team) => {
+            assert.isTeam(team);
+
+            return webex.teams.update(Object.assign({}, team, {name: 'Webex Test Team (Updated)'}));
+          })
+          .then((team) => {
+            assert.isTeam(team);
+            assert.equal(team.name, 'Webex Test Team (Updated)');
+          }));
+    });
+  });
+
+  describe('#rooms', () => {
+    let team;
+
+    before(() =>
+      webex.teams
+        .create({
+          name: 'Webex Test Team',
+        })
+        .then((t) => {
+          team = t;
+        })
+    );
+
+    describe('#create()', () => {
+      // COLLAB-1104 create date don't match; Mike is working on a fix
+      it.skip('creates a room that is part of a team', () =>
+        webex.rooms
+          .create({
+            title: 'Team Room',
+            teamId: team.id,
+          })
+          .then((room) => {
+            assert.isTeamRoom(room);
+            assert.equal(room.teamId, team.id);
+          }));
+    });
+
+    describe('#get()', () => {
+      it('retrieves a specific room that is part of a team', () =>
+        webex.rooms
+          .create({
+            title: 'Team Room',
+            teamId: team.id,
+          })
+          .then((room) => webex.rooms.get(room))
+          .then((room) => {
+            assert.isTeamRoom(room);
+            assert.equal(room.teamId, team.id);
+          }));
+      // SPARK-413317
+      describe.skip("when the user leaves the team's general room", () => {
+        let room, team;
+
+        it("no longer returns the team's rooms", () =>
+          webex.teams
+            .create({
+              name: 'Team Title',
+            })
+            .then((t) => {
+              team = t;
+
+              return webex.rooms.create({
+                title: 'Room Title',
+                teamId: team.id,
+              });
+            })
+            .then((r) => {
+              room = r;
+
+              return webex.rooms.list({teamId: team.id});
+            })
+            .then((teamRooms) => {
+              assert.lengthOf(teamRooms, 2);
+              const generalRoom = find(teamRooms.items, (r) => r.id !== room.id);
+
+              return webex.memberships.list({roomId: generalRoom.id, personId: user.id});
+            })
+            .then((memberships) => webex.memberships.remove(memberships.items[0]))
+            .then(() => assert.isRejected(webex.rooms.get(room)))
+            .then((reason) => {
+              assert.instanceOf(reason, WebexHttpError.NotFound);
+            }));
+      });
+    });
+
+    describe('#list()', () => {
+      it('lists all rooms in a team', () =>
+        webex.rooms
+          .create({
+            title: 'Team Room',
+            teamId: team.id,
+          })
+          .then(() => webex.rooms.list({teamId: team.id}))
+          .then((rooms) => {
+            assert.isAbove(rooms.length, 0);
+            for (const room of rooms) {
+              assert.isTeamRoom(room);
+              assert.equal(room.teamId, team.id);
+            }
+          }));
+    });
+  });
+});

@@ -1,0 +1,17 @@
+/*!
+ * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
+ */
+
+export default {
+  people: {
+    batcherWait: 100,
+    batcherMaxCalls: 10,
+    batcherMaxWait: 1500,
+    /**
+     * optional flag that requires Hydra to send every type field,
+     * even if the type is not "person" (e.g.: SX10, webhook_integration, etc.)
+     * @private
+     */
+    showAllTypes: false,
+  },
+};

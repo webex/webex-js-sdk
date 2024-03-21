@@ -1,0 +1,41 @@
+/*!
+ * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
+ */
+
+import '@webex/internal-plugin-device';
+
+import {registerInternalPlugin} from '@webex/webex-core';
+import {has} from 'lodash';
+
+import Presence from './presence';
+import config from './config';
+
+registerInternalPlugin('presence', Presence, {
+  payloadTransformer: {
+    predicates: [
+      {
+        name: 'normalizeSingleStatusResponse',
+        direction: 'inbound',
+        test(ctx, response) {
+          // POST to /apheleia/api/v1/events
+          return Promise.resolve(has(response, 'body.eventType') && has(response, 'body.subject'));
+        },
+        extract(response) {
+          return Promise.resolve(response);
+        },
+      },
+    ],
+    transforms: [
+      {
+        name: 'normalizeSingleStatusResponse',
+        direction: 'inbound',
+        fn(ctx, response) {
+          response.body.status = response.body.eventType;
+        },
+      },
+    ],
+  },
+  config,
+});
+
+export {default} from './presence';

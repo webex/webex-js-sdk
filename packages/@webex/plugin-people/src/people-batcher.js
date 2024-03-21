@@ -1,0 +1,91 @@
+/*!
+ * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
+ */
+
+import {Batcher} from '@webex/webex-core';
+
+/**
+ * @class
+ * @ignore
+ */
+const PersonUUIDRequestBatcher = Batcher.extend({
+  namespace: 'People',
+
+  /**
+   * @instance
+   * @memberof PersonUUIDRequestBatcher
+   * @param {HttpResponseObject} res
+   * @returns {Promise}
+   */
+  handleHttpSuccess(res) {
+    const promises = res.body.items.map((personResponse) =>
+      this.handleItemSuccess(personResponse.id, personResponse)
+    );
+
+    if (res.body.notFoundIds) {
+      promises.concat(res.body.notFoundIds.map((id) => this.handleItemFailure(id)));
+    }
+
+    return Promise.all(promises);
+  },
+
+  handleItemFailure(id) {
+    return this.getDeferredForResponse(id).then((defer) => {
+      defer.reject(id);
+    });
+  },
+
+  /**
+   * @instance
+   * @memberof PersonUUIDRequestBatcher
+   * @param {string} email
+   * @param {Object} response
+   * @returns {Promise}
+   */
+  handleItemSuccess(email, response) {
+    return this.getDeferredForResponse(email).then((defer) => {
+      defer.resolve(response);
+    });
+  },
+
+  /**
+   * @instance
+   * @memberof PersonUUIDRequestBatcher
+   * @param {string} uuidOrHydraId
+   * @returns {Promise<string>}
+   */
+  fingerprintRequest(uuidOrHydraId) {
+    const hydraId = this.webex.people.inferPersonIdFromUuid(uuidOrHydraId);
+
+    return Promise.resolve(hydraId);
+  },
+
+  /**
+   * @instance
+   * @memberof PersonUUIDRequestBatcher
+   * @param {string} hydraId
+   * @returns {Promise<string>}
+   */
+  fingerprintResponse(hydraId) {
+    return Promise.resolve(hydraId);
+  },
+
+  prepareRequest(ids) {
+    return Promise.resolve(ids.join());
+  },
+
+  /**
+   * @instance
+   * @memberof PersonUUIDRequestBatcher
+   * @param {Object} ids
+   * @returns {Promise<HttpResponseObject>}
+   */
+  submitHttpRequest(ids) {
+    return this.webex.request({
+      service: 'hydra',
+      resource: `people/?id=${ids}&showAllTypes=${this.config.showAllTypes}`,
+    });
+  },
+});
+
+export default PersonUUIDRequestBatcher;

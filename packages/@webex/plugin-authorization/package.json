@@ -1,0 +1,30 @@
+{
+  "name": "@webex/plugin-authorization",
+  "version": "3.0.0-beta.373",
+  "description": "",
+  "license": "MIT",
+  "main": "dist/index.js",
+  "devMain": "src/index.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/webex/webex-js-sdk.git",
+    "directory": "packages/@webex/plugin-authorization"
+  },
+  "engines": {
+    "node": ">=16"
+  },
+  "browser": {
+    "./dist/index.js": "./dist/index.browser.js",
+    "./src/index.js": "./src/index.browser.js"
+  },
+  "browserify": {
+    "transform": [
+      "babelify",
+      "envify"
+    ]
+  },
+  "dependencies": {
+    "@webex/plugin-authorization-browser": "workspace:^",
+    "@webex/plugin-authorization-node": "workspace:^"
+  }
+}

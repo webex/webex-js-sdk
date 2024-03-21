@@ -1,0 +1,33 @@
+{
+  "name": "@webex/storage-adapter-local-forage",
+  "version": "3.0.0-beta.373",
+  "description": "",
+  "license": "MIT",
+  "author": "Matt Norris <matthew.g.norris@gmail.com>",
+  "main": "dist/index.js",
+  "devMain": "src/index.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/webex/webex-js-sdk.git",
+    "directory": "packages/@webex/storage-adapter-local-forage"
+  },
+  "engines": {
+    "node": ">=16"
+  },
+  "browserify": {
+    "transform": [
+      "babelify",
+      "envify"
+    ]
+  },
+  "devDependencies": {
+    "@webex/test-helper-mocha": "workspace:^"
+  },
+  "dependencies": {
+    "@webex/common": "workspace:^",
+    "@webex/storage-adapter-local-forage": "workspace:^",
+    "@webex/storage-adapter-spec": "workspace:^",
+    "@webex/webex-core": "workspace:^",
+    "localforage": "^1.7.3"
+  }
+}

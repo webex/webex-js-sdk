@@ -1,0 +1,21 @@
+/*!
+ * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
+ */
+
+export default {
+  device: {
+    preDiscoveryServices: {
+      atlasServiceUrl: process.env.ATLAS_SERVICE_URL || 'https://atlas-a.wbx2.com/admin/api/v1',
+      atlas: process.env.ATLAS_SERVICE_URL || 'https://atlas-a.wbx2.com/admin/api/v1',
+    },
+  },
+
+  user: {
+    batcherWait: 100,
+    batcherMaxCalls: 100,
+    batcherMaxWait: 1500,
+    verifyDefaults: {
+      reqId: 'WEBCLIENT',
+    },
+  },
+};

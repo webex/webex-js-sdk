@@ -1,0 +1,11 @@
+/*!
+ * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
+ */
+
+/**
+ * Constants that, through the magic of bundling should indicate if we're
+ * running in a nodejs or a browser environment
+ * @name inBrowser
+ * @type {boolean}
+ */
+export {default} from './node';

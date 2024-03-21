@@ -1,0 +1,53 @@
+/*!
+ * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
+ */
+
+import {WebexPlugin} from '@webex/webex-core';
+
+import Space from './space';
+import Device from './device';
+
+const Lyra = WebexPlugin.extend({
+  /**
+   * @typedef {Object} Endpoint
+   * @property {Object} advertiser
+   * @property {string} advertiser.id
+   * @property {string} advertiser.displayName
+   * @property {string} advertiser.orgId
+   * @property {Object} links
+   * @property {Object} links.addMeToSpace
+   * @property {string} links.addMeToSpace.href
+   * @property {string} links.addMeToSpace.method
+   * @property {Object} links.lyra_space
+   * @property {string} links.lyra_space.href
+   * @property {string} links.lyra_space.method
+   * @property {string} proof
+   * @property {Object} token
+   * @property {string} token.value
+   */
+  namespace: 'Lyra',
+  children: {
+    space: Space,
+    device: Device,
+  },
+
+  /**
+   * Get the endpoint information
+   * @param {string} token - ultrasound token decoded
+   * @returns {Promise<Endpoint>}
+   */
+  getAdvertisedEndpoint(token) {
+    return this.webex
+      .request({
+        method: 'GET',
+        api: 'proximity',
+        resource: '/ultrasound/advertisements',
+        qs: {
+          token,
+        },
+      })
+      .then((res) => res.body);
+  },
+});
+
+export default Lyra;

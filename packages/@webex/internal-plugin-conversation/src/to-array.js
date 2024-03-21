@@ -1,0 +1,29 @@
+/*!
+ * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
+ */
+
+import {isFunction} from 'lodash';
+
+/**
+ * Helper to convert objects into arrays of transforms. probably belongs in
+ * webex-core
+ * @param {string} direction "inbound"|"outbound"
+ * @param {Object} obj
+ * @private
+ * @returns {Array}
+ */
+export default function toArray(direction, obj) {
+  return Object.keys(obj).map((name) => {
+    const entry = obj[name];
+
+    if (isFunction(entry)) {
+      return {
+        name,
+        direction,
+        fn: entry,
+      };
+    }
+
+    return {name, ...entry};
+  });
+}

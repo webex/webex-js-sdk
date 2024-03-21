@@ -1,0 +1,18 @@
+{
+  "name": "@webex/test-helper-retry",
+  "version": "3.0.0-beta.373",
+  "description": "",
+  "license": "MIT",
+  "main": "dist/index.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/webex/webex-js-sdk.git",
+    "directory": "packages/@webex/test-helper-retry"
+  },
+  "engines": {
+    "node": ">=16"
+  },
+  "dependencies": {
+    "es6-promise": "^4.2.8"
+  }
+}

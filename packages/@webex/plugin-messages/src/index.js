@@ -1,0 +1,14 @@
+/*!
+ * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
+ */
+
+import '@webex/internal-plugin-conversation'; // decrypt mercury activities
+import '@webex/internal-plugin-mercury';
+
+import {registerPlugin} from '@webex/webex-core';
+
+import Messages from './messages';
+
+registerPlugin('messages', Messages);
+
+export default Messages;

@@ -1,0 +1,147 @@
+/*!
+ * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
+ */
+
+import {pick} from 'lodash';
+import {Exception} from '@webex/common';
+
+import makeSubTypes from './http-error-subtypes';
+
+/**
+ * Base HttpError class. Unlikely to be thrown directly, but handy for general
+ * type comparison.
+ */
+export default class HttpError extends Exception {
+  /**
+   * @example Extend via
+   * MyError extends HttpError {
+   *  static errorKeys = HttpError.errorKeys.concat([
+   *    `key1`,
+   *    `key2`
+   *  ])
+   * }
+   *
+   * @type {Array}
+   */
+  static errorKeys = ['error', 'errorString', 'response', 'errorResponse', 'message', 'msg'];
+
+  /**
+   * Default error string if no error can be extracted from the http response
+   * @type {string}
+   */
+  static defaultMessage = 'An error was received while trying to fulfill the request';
+
+  /**
+   * Parses HttpResponse objects for useful information (status, headers, etc)
+   * as well as attempting to extract a useful error message.
+   * @param {HttpResponse} res
+   * @returns {string}
+   */
+  parse(res) {
+    // complexity is high here because of all the default values below.
+    /* eslint complexity: [0] */
+    let {body} = res;
+    let message;
+
+    switch (typeof body) {
+      case 'string':
+        try {
+          body = JSON.parse(body);
+          message = this.parseObject(body);
+        } catch (err) {
+          message = body;
+        }
+        break;
+      case 'object':
+        message = this.parseObject(body);
+        break;
+      default:
+    }
+
+    if (!message) {
+      message = this.defaultMessage;
+    }
+
+    Object.defineProperties(this, {
+      body: {
+        enumerable: false,
+        value: body,
+      },
+      httpVersion: {
+        enumerable: false,
+        value: res.httpVersion,
+      },
+      headers: {
+        enumerable: false,
+        value: res.headers || {},
+      },
+      rawHeaders: {
+        enumerable: false,
+        value: res.rawHeaders || [],
+      },
+      trailers: {
+        enumerable: false,
+        value: res.trailers || {},
+      },
+      rawTrailers: {
+        enumerable: false,
+        value: res.rawTrailers || [],
+      },
+      method: {
+        enumerable: false,
+        value: res.method,
+      },
+      url: {
+        enumerable: false,
+        value: res.url,
+      },
+      statusCode: {
+        enumerable: false,
+        value: res.statusCode,
+      },
+      statusMessage: {
+        enumerable: false,
+        value: res.statusMessage,
+      },
+      socket: {
+        enumerable: false,
+        value: res.socket,
+      },
+      _res: {
+        enumerable: false,
+        value: res,
+      },
+    });
+
+    return message;
+  }
+
+  /**
+   * Recursively parses an error body looking for a likely error candidate
+   * @param {object} body
+   * @returns {string}
+   */
+  parseObject(body) {
+    // Search body for common names of error strings
+    const messages = Object.values(pick(body, HttpError.errorKeys));
+
+    // If no error candidate was found, stringify the entire body
+    if (messages.length === 0) {
+      return JSON.stringify(body, null, 2);
+    }
+
+    // Assume the first key found was the error explanation
+    const message = messages[0];
+
+    // If the explanation is an object, recurse and try again
+    if (typeof message === 'object') {
+      return this.parseObject(message);
+    }
+
+    // Return the first key
+    return message;
+  }
+}
+
+makeSubTypes(HttpError);
+HttpError.makeSubTypes = makeSubTypes;

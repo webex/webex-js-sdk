@@ -1,0 +1,854 @@
+/*!
+ * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
+ */
+
+import '@webex/plugin-logger';
+import '@webex/plugin-messages';
+import '@webex/plugin-memberships';
+import '@webex/plugin-people';
+import '@webex/plugin-rooms';
+import WebexCore from '@webex/webex-core';
+import {SDK_EVENT, hydraTypes, constructHydraId} from '@webex/common';
+import {assert} from '@webex/test-helper-chai';
+import sinon from 'sinon';
+import testUsers from '@webex/test-helper-test-users';
+
+const debug = require('debug')('memberships');
+
+describe('plugin-memberships', function () {
+  this.timeout(60000);
+
+  let webex, user, actor;
+
+  before(() =>
+    testUsers.create({count: 1}).then(([u]) => {
+      user = u;
+      webex = new WebexCore({credentials: user.token});
+      webex.people.get('me').then((person) => {
+        actor = person;
+        debug('SDK User (Actor) for tests:');
+        debug(`- name: ${actor.displayName}`);
+        debug(`-   id: ${actor.id}`);
+      });
+    })
+  );
+
+  describe('#memberships', () => {
+    let user1;
+
+    before(() =>
+      testUsers.create({count: 1}).then((users) => {
+        user1 = users[0];
+        debug('User that memberships are created for:');
+        debug(`- name: ${user1.displayName}`);
+        debug(`-   id: ${constructHydraId(hydraTypes.PEOPLE, user1.id)}`);
+      })
+    );
+
+    let room;
+
+    beforeEach(() =>
+      webex.rooms.create({title: 'Webex Test Room'}).then((r) => {
+        debug('Created Cisco Test Room');
+        room = r;
+      })
+    );
+
+    afterEach(() => {
+      webex.memberships.stopListening();
+      webex.memberships.off('created');
+      webex.memberships.off('updated');
+      webex.memberships.off('deleted');
+      webex.memberships.off('seen');
+      webex.rooms
+        .remove(room)
+        .catch((e) => webex.logger.error(`Failed to clean up after unit test: ${e}`));
+    });
+
+    describe('#create()', () => {
+      it('creates a membership by user id', () =>
+        webex.memberships
+          .create({
+            roomId: room.id,
+            personId: user1.id,
+          })
+          .then((membership) => {
+            assert.isMembership(membership);
+          }));
+
+      it('creates a membership by user email', () => {
+        const created = new Promise((resolve) => {
+          webex.memberships.on('created', (event) => {
+            debug('membership:created event handler for membership by email test called');
+            resolve(event);
+          });
+        });
+
+        return webex.memberships.listen().then(() =>
+          webex.memberships
+            .create({
+              roomId: room.id,
+              personEmail: user1.email,
+            })
+            .then(async (membership) => {
+              validateMembership(membership);
+              const event = await created;
+
+              validateMembershipEvent(event, membership, actor);
+            })
+        );
+      });
+
+      it('creates a membership and sets moderator status', () => {
+        // "Creating" a member as a moderator actually generates
+        // two events, first a created event (with non-moderator status)
+        // followed by an updated event with isModerator set to true
+        const created = new Promise((resolve) => {
+          webex.memberships.on('created', (event) => {
+            debug('membership:created event handler for moderator test called');
+            resolve(event);
+          });
+        });
+        const updated = new Promise((resolve) => {
+          webex.memberships.on('updated', (event) => {
+            debug('membership:updated event handler for moderator test called');
+
+            if (event.data.personId === actor.id) {
+              debug(
+                'Setting a member to moderator implicitly sets the ' +
+                  'caller of the API to moderator as well. In this test we ' +
+                  'will ignore this event'
+              );
+
+              return;
+            }
+            resolve(event);
+          });
+        });
+
+        return webex.memberships.listen().then(() =>
+          webex.memberships
+            .create({
+              roomId: room.id,
+              personId: user1.id,
+              isModerator: true,
+            })
+            .then(async (m) => {
+              const membership = m;
+
+              validateMembership(membership, true);
+              const event = await created;
+
+              // We expect the isModerator status to be false on create
+              membership.isModerator = false;
+              validateMembershipEvent(event, membership, actor);
+
+              const event2 = await updated;
+
+              // We expect the isModerator status to be false on create
+              membership.isModerator = true;
+              validateMembershipEvent(event2, membership, actor);
+            })
+        );
+      });
+
+      it('creates a space and memberships simultaniously', () => {
+        // "Creating" a space with users generates a unique event
+        // activity object shape via the client that contains
+        // multiple "participants". There isn't a documented
+        // way to perform this action via the API with more than
+        // one user at the time of edit.
+        const created = new Promise((resolve) => {
+          webex.memberships.on('created', (event) => {
+            debug('membership:created event handler for new space test called');
+            resolve(event);
+          });
+        });
+
+        return (
+          webex.memberships
+            .listen()
+            // Cleanup current room, we need to catch the event when it's created.
+            .then(() => webex.rooms.remove(room))
+            // Create a room to trigger created event.
+            .then(() => webex.rooms.create({title: 'Webex Test Room'}))
+            // Store new room object and get the memberships of the room.
+            .then((r) => {
+              room = r;
+
+              return webex.memberships.list({roomId: room.id});
+            })
+            // validate data
+            .then(async ({items: [membership]}) => {
+              const event = await created;
+
+              validateMembership(membership, false);
+              validateMembershipEvent(event, membership, actor);
+            })
+        );
+      });
+    });
+
+    describe('#get()', () => {
+      let membership;
+
+      before(() =>
+        // this could be in parallel once KMS always sends new keys
+        webex.rooms
+          .create({title: 'Membership A'})
+          .then((room) => Promise.all([room, webex.rooms.create({title: 'Membership B'})]))
+          .then((rooms) => {
+            const room = rooms[0];
+
+            return webex.memberships.create({
+              roomId: room.id,
+              personId: user1.id,
+            });
+          })
+          .then((m) => {
+            membership = m;
+          })
+      );
+
+      it('retrieves a single membership', () =>
+        webex.memberships.get(membership).then((m) => {
+          assert.deepEqual(m, membership);
+        }));
+    });
+
+    describe('#list()', () => {
+      let room;
+
+      before(() =>
+        // this could be in parallel once KMS always sends new keys
+        webex.rooms
+          .create({title: 'Membership A'})
+          .then((room) => Promise.all([room, webex.rooms.create({title: 'Membership B'})]))
+          .then((rooms) => {
+            room = rooms[0];
+
+            return webex.memberships.create({
+              roomId: room.id,
+              personId: user1.id,
+            });
+          })
+      );
+
+      it('retrieves all memberships for a room', () =>
+        webex.memberships.list({roomId: room.id}).then((memberships) => {
+          assert.isDefined(memberships);
+          assert.isAbove(memberships.length, 0);
+          for (const membership of memberships) {
+            assert.isMembership(membership);
+            assert.equal(membership.roomId, room.id);
+          }
+        }));
+
+      it('retrieves a bounded set of memberships for a room', () => {
+        const spy = sinon.spy();
+
+        return webex.memberships
+          .list({roomId: room.id, max: 1})
+          .then((memberships) => {
+            assert.lengthOf(memberships, 1);
+
+            return (function f(page) {
+              for (const membership of page) {
+                spy(membership.id);
+              }
+
+              if (page.hasNext()) {
+                return page.next().then(f);
+              }
+
+              return Promise.resolve();
+            })(memberships);
+          })
+          .then(() => {
+            assert.calledTwice(spy);
+          });
+      });
+
+      it('retrieves all room memberships for a user', () =>
+        webex.memberships
+          .list({
+            personId: user.id,
+            roomId: room.id,
+          })
+          .then((memberships) => {
+            const membership = memberships.items[0];
+
+            return webex.memberships
+              .list({
+                personEmail: user.email,
+              })
+              .then((memberships) => {
+                assert.isDefined(memberships);
+                assert.isAbove(memberships.length, 0);
+                for (const membership of memberships) {
+                  assert.isMembership(membership);
+                  assert.equal(membership.personEmail, user.email);
+                }
+                assert.deepInclude(memberships.items, membership);
+              });
+          }));
+
+      it('retrieves a bounded set of memberships for a user', () => {
+        const spy = sinon.spy();
+
+        return webex.memberships
+          .list({personId: user.id, max: 1})
+          .then((memberships) => {
+            assert.lengthOf(memberships, 1);
+
+            return (function f(page) {
+              for (const membership of page) {
+                assert.equal(membership.personEmail, user.email);
+                spy(membership.id);
+              }
+
+              if (page.hasNext()) {
+                return page.next().then(f);
+              }
+
+              return Promise.resolve();
+            })(memberships);
+          })
+          .then(() => {
+            assert.isAbove(spy.callCount, 0);
+          });
+      });
+    });
+
+    describe('#listWithReadStatus()', () => {
+      let room;
+
+      before(() => {
+        // Create a new SDK instance so the 2nd user can post a message
+        user1.webex = new WebexCore({credentials: user1.token});
+
+        // Setup a space with both users
+        return webex.rooms
+          .create({title: 'Membership A'})
+          .then((room) => Promise.all([room, webex.rooms.create({title: 'Membership B'})]))
+          .then((rooms) => {
+            room = rooms[0];
+
+            return webex.memberships.create({
+              roomId: room.id,
+              personId: user1.id,
+            });
+          });
+      });
+
+      it('retrieves memberships with read status for a room that has not been visited', () =>
+        webex.memberships.listWithReadStatus({roomId: room.id}).then((memberships) => {
+          assert.isDefined(memberships);
+          assert.equal(memberships.items.length, 2);
+          for (const membership of memberships.items) {
+            if (membership.personId !== actor.id) {
+              assert.notExists(
+                membership.lastSeenId,
+                'no lastSeenId for a room that has never been visited'
+              );
+              assert.notExists(
+                membership.lastSeenDate,
+                'no lastSeenDate for a room that has never been visited'
+              );
+            }
+            assert.equal(membership.roomId, room.id);
+          }
+        }));
+
+      it('validates read status activity after other user posts a message', () =>
+        user1.webex.messages
+          .create({
+            roomId: room.id,
+            text: 'Message to create activity for other member',
+          })
+          .then(() =>
+            webex.memberships.listWithReadStatus({roomId: room.id}).then((memberships) => {
+              assert.isDefined(memberships);
+              assert.equal(memberships.items.length, 2);
+              for (const membership of memberships.items) {
+                assert.exists(
+                  membership.lastSeenId,
+                  'lastSeenId exists in a room that has been visited'
+                );
+                assert.exists(
+                  membership.lastSeenDate,
+                  'lastSeenDate exists in a room that has been visited'
+                );
+                assert.equal(membership.roomId, room.id);
+                // listWithReadStatus does not include created
+                // fudge it here so we can validate all the other fields
+                membership.created = 'foo';
+                assert.isMembership(membership);
+              }
+            })
+          ));
+    });
+
+    describe('#update()', () => {
+      let membership, sdkMember, room;
+
+      before(() => {
+        // Before setting another user to moderator
+        // We will set the test user to moderator
+        // and wait for the expected events to arive
+        const updated = new Promise((resolve) => {
+          webex.memberships.on('updated', (event) => {
+            debug('membership:updated event handler for update test called');
+            webex.memberships.stopListening(); // disable this callback after test
+            webex.memberships.off('updated');
+            resolve(event);
+          });
+        });
+
+        const roomUpdated = new Promise((resolve) => {
+          webex.rooms.on('updated', (event) => {
+            debug('rooms:updated event handler for update test called');
+            webex.rooms.stopListening(); // disable this callback after test
+            webex.rooms.off('updated');
+            resolve(event);
+          });
+        });
+
+        return webex.memberships
+          .listen()
+          .then(() => webex.rooms.listen())
+          .then(() =>
+            webex.rooms
+              .create({title: 'Membership E'})
+              .then((r) => {
+                room = r;
+                debug(`Room under test ID: ${room.id}`);
+
+                // First get the SDK users membership
+                return webex.memberships.list({
+                  roomId: room.id,
+                  personId: actor.id,
+                });
+              })
+              .then((membershipList) => {
+                assert.isArray(
+                  membershipList.items,
+                  'membership list not returned after room creation'
+                );
+                assert.equal(
+                  membershipList.items.length,
+                  1,
+                  'SDK Test user not a member of room just created'
+                );
+                sdkMember = membershipList.items[0];
+
+                validateMembership(sdkMember);
+                sdkMember.isModerator = true;
+
+                // Then update the SDK user to a moderator
+                return webex.memberships.update(sdkMember);
+              })
+              .then(async (m) => {
+                debug('SDK User is now moderator.  Wait for events');
+                validateMembership(m, true);
+                const event = await updated;
+
+                validateMembershipEvent(event, m, actor);
+                const roomUpdatedEvent = await roomUpdated;
+
+                return Promise.resolve(roomUpdatedEvent);
+              })
+              .then((roomUpdatedEvent) => {
+                // Check that the expected rooms:updated event matches
+                // what we expect when a room is first moderated
+                validateRoomsUpdatedEvent(
+                  roomUpdatedEvent,
+                  room,
+                  /* expected value of isLocked */ true
+                );
+
+                // Finally, create the user for our test
+                return webex.memberships.create({
+                  roomId: room.id,
+                  personId: user1.id,
+                });
+              })
+              .then((m) => {
+                debug('User 1 Membership created in Membership E');
+                membership = m;
+                validateMembership(membership);
+              })
+              .catch((e) => debug(`membership failed: ${e}`))
+          );
+      });
+
+      after(() => {
+        // Before deleting the test space
+        // We will unset the test user to moderator
+        // and wait for the expected events to arive
+        const updated = new Promise((resolve) => {
+          webex.memberships.on('updated', (event) => {
+            debug('membership:updated event handler for update test called');
+            webex.memberships.stopListening(); // disable this callback after test
+            webex.memberships.off('updated');
+            resolve(event);
+          });
+        });
+
+        const roomUpdated = new Promise((resolve) => {
+          webex.rooms.on('updated', (event) => {
+            debug('rooms:updated event handler for update test called');
+            webex.rooms.stopListening(); // disable this callback after test
+            webex.rooms.off('updated');
+            resolve(event);
+          });
+        });
+
+        sdkMember.isModerator = false;
+
+        return webex.rooms
+          .listen()
+          .then(() => webex.memberships.listen())
+          .then(() => webex.memberships.update(sdkMember))
+          .then(async (m) => {
+            debug('SDK User is no longer a moderator.  Wait for events');
+            validateMembership(m, /* expected isModerator status */ false);
+            const event = await updated;
+
+            debug('Validating memberships:updated event...');
+            validateMembershipEvent(event, m, actor);
+
+            const roomUpdatedEvent = await roomUpdated;
+
+            return Promise.resolve(roomUpdatedEvent);
+          })
+          .then((roomUpdatedEvent) => {
+            // Check that the expected rooms:updated event matches
+            // what we expect when a room moves into the unmoderated state
+            debug('Validating rooms:updated event...');
+            debug(`roomId: ${room.id}, event.data.id: ${roomUpdatedEvent.data.id}`);
+
+            return Promise.resolve(
+              validateRoomsUpdatedEvent(roomUpdatedEvent, room, /* expected isLocked value */ false)
+            );
+          })
+          .catch((e) => debug(`after logic for #update()' failed: ${e}`));
+      });
+
+      it('assigns a membership to moderator status', () => {
+        assert.isFalse(membership.isModerator);
+        membership.isModerator = true;
+
+        const updated = new Promise((resolve) => {
+          webex.memberships.on('updated', (event) => {
+            debug('membership:updated event handler for assign moderator test called');
+            resolve(event);
+          });
+        });
+
+        return webex.memberships.listen().then(() =>
+          webex.memberships.update(membership).then(async (m) => {
+            debug('membership updated');
+            assert.deepEqual(m, membership);
+            validateMembership(membership, true);
+            const event = await updated;
+
+            validateMembershipEvent(event, membership, actor);
+          })
+        );
+      });
+
+      it("revokes a member's moderator status", () => {
+        assert.isTrue(membership.isModerator);
+        membership.isModerator = false;
+
+        const updated = new Promise((resolve) => {
+          webex.memberships.on('updated', (event) => {
+            debug('membership:updated event handler for revoke moderator test called');
+            resolve(event);
+          });
+        });
+
+        return webex.memberships.listen().then(() =>
+          webex.memberships.update(membership).then(async (m) => {
+            assert.deepEqual(m, membership);
+            validateMembership(membership, false);
+            const event = await updated;
+
+            validateMembershipEvent(event, membership, actor);
+          })
+        );
+      });
+    });
+
+    describe('#updateLastSeen()', () => {
+      let actor1, message;
+
+      before(() => {
+        // Get another SDK instance for the second user
+        // so that one user can send the message
+        // and another can mark it as read
+        user1.webex = new WebexCore({credentials: user1.token});
+
+        return user1.webex.people
+          .get('me')
+          .then((person) => {
+            actor1 = person;
+
+            return webex.rooms.create({title: 'Read Receipt Test'});
+          })
+          .then((r) => {
+            room = r;
+
+            return webex.memberships.create({
+              roomId: room.id,
+              personId: actor1.id,
+            });
+          })
+          .then(() =>
+            webex.messages
+              .create({
+                roomId: room.id,
+                text: 'This is a test message',
+              })
+              .then((m) => {
+                message = m;
+                assert.isMessage(message);
+              })
+          );
+      });
+
+      it('marks a message as read and verifies membership:updated event', () => {
+        const seenPromise = new Promise((resolve) => {
+          webex.memberships.on('seen', (event) => {
+            debug('membership:seen event handler for updateLastSeen test called');
+            resolve(event);
+          });
+        });
+
+        debug(`${user1.displayName} marked message as read...`);
+
+        return webex.memberships.listen().then(() =>
+          user1.webex.memberships.updateLastSeen(message).then(async (m) => {
+            debug('membership seen');
+            validateMembership(m);
+            const event = await seenPromise;
+
+            debug(`...${user.displayName} got the membership:seen event.`);
+            assert.equal(
+              event.data.lastSeenId,
+              message.id,
+              'message:seen lastSeenID matches id of message that was acknlowledged'
+            );
+            validateMembershipEvent(event, m, actor1, actor);
+          })
+        );
+      });
+    });
+
+    describe('#hide()', () => {
+      let membership, roomId;
+
+      // We need a one-on-on space for this test
+      // We create it by sending a message to the test user
+      before(() =>
+        // Ensure that room is a one-on-one object
+        webex.messages
+          .create({
+            toPersonId: user1.id,
+            text: 'This message will create a 1-1 space',
+          })
+          .then((message) => {
+            roomId = message.roomId;
+
+            // Get the test users membership
+            return webex.memberships.list({
+              roomId,
+              personId: user.id,
+            });
+          })
+          .then((memberships) => {
+            membership = memberships.items[0];
+          })
+      );
+
+      it('hides a space and validates the membership is updated', () => {
+        const updatedEventPromise = new Promise((resolve) => {
+          webex.memberships.on('updated', (event) => {
+            debug('membership:updated event handler called');
+            resolve(event);
+          });
+        });
+
+        return webex.memberships.listen().then(() => {
+          debug(`Hiding my membership in 1-1 space with ID: ${roomId}...`);
+          membership.isRoomHidden = true;
+
+          return webex.memberships
+            .update(membership)
+            .then(async (m) => {
+              debug(
+                'memberships.update() request returned OK.  Waiting for memberships:updated event'
+              );
+              assert(
+                m.isRoomHidden,
+                'membership returned from meberships.update() did not have isRoomHidden set to true'
+              );
+              const event = await updatedEventPromise;
+
+              assert(
+                event.data.isRoomHidden,
+                'memberships:updated event did not have isRoomHidden set to true'
+              );
+              validateMembershipEvent(event, m, actor);
+            })
+            .catch((e) => assert.fail(`Updating room to hidden failed: ${e.message}`));
+        });
+      });
+    });
+
+    describe('#remove()', () => {
+      let membership;
+
+      before(() =>
+        webex.rooms
+          .create({title: 'Membership F'})
+          .then((r) => {
+            room = r;
+
+            return webex.memberships.create({
+              roomId: room.id,
+              personId: user1.id,
+            });
+          })
+          .then((m) => {
+            membership = m;
+          })
+      );
+
+      it('deletes a single membership', () => {
+        const deletedEventPromise = new Promise((resolve) => {
+          webex.memberships.on('deleted', (event) => {
+            debug('membership:deleted event handler for delete single membership test called');
+            resolve(event);
+          });
+        });
+
+        return webex.memberships
+          .listen()
+          .then(() =>
+            webex.memberships.remove(membership).catch((reason) => {
+              webex.logger.error('Failed to delete membership', reason);
+            })
+          )
+          .then(async (body) => {
+            debug('member deleted');
+            assert.notOk(body);
+
+            return webex.memberships.list(room);
+          })
+          .then(async (memberships) => {
+            assert.notInclude(memberships, membership);
+            const event = await deletedEventPromise;
+
+            validateMembershipEvent(event, membership, actor);
+          });
+      });
+    });
+  });
+});
+
+/**
+ * Validate a Membership object.
+ * @param {Object} membership
+ * @param {Boolean} isModerator -- expected moderator status of member
+ * @returns {void}
+ */
+function validateMembership(membership, isModerator = false) {
+  assert.isDefined(membership);
+  if ('isModerator' in membership) {
+    assert.equal(membership.isModerator, isModerator, 'unexpected isModerator status');
+  } else {
+    // moderator status not returned for membership:seen events
+    assert.exists(membership.lastSeenId);
+    // fudge the moderator field so we can do the general check
+    // eslint-disable-next-line no-param-reassign
+    membership.isModerator = 'manually added';
+  }
+  assert.isMembership(membership);
+  debug('membership validated');
+}
+
+/**
+ * Validate a membership event.
+ * @param {Object} event - membership event
+ * @param {Object} membership -- return from the API that generate this event
+ * @param {Object} actor - person object for user who performed action
+ * @param {Object} creator - person object for user who called listen()
+ * @returns {void}
+ */
+function validateMembershipEvent(event, membership, actor, creator = actor) {
+  assert.isTrue(
+    event.resource === SDK_EVENT.EXTERNAL.RESOURCE.MEMBERSHIPS,
+    'not a membership event'
+  );
+  assert.isDefined(event.event, 'membership event type not set');
+  assert.isDefined(event.created, 'event listener created date not set');
+  assert.equal(event.createdBy, creator.id, 'event listener createdBy not set to our actor');
+  assert.equal(event.orgId, actor.orgId, "event listener orgId not === to our actor's");
+  assert.equal(event.ownedBy, 'creator', 'event listener not owned by creator');
+  assert.equal(event.status, 'active', 'event listener status not active');
+  assert.equal(event.actorId, actor.id, "event actorId not equal to our actor's id");
+
+  // Ensure event data matches data returned from function call
+  // Skip this until we figure out how conversations converts the internal test user UUID
+  assert.equal(event.data.id, membership.id, 'event/membership.id not equal');
+  assert.equal(event.data.roomId, membership.roomId, 'event/membership.roomId not equal');
+  assert.equal(event.data.personId, membership.personId, 'event/membership.personId not equal');
+  assert.equal(
+    event.data.personOrgId,
+    membership.personOrgId,
+    'event/membership.personId not equal'
+  );
+  assert.equal(
+    event.data.personEmail,
+    membership.personEmail,
+    'event/membership.personEmail not equal'
+  );
+  assert.equal(
+    event.data.personDisplayName,
+    membership.personDisplayName,
+    'event/membership.personDisplayName not equal'
+  );
+  assert.equal(event.data.roomType, membership.roomType, 'event/membership.roomType not equal');
+  assert.equal(event.data.isHidden, membership.isHidden, 'event/membership.isHidden not equal');
+  if (event.event !== 'seen') {
+    // moderator status not returned on membership:seen events
+    assert.equal(
+      event.data.isModerator,
+      membership.isModerator,
+      'event/membership.isModerator not equal'
+    );
+  }
+  debug(`membership:${event.event} event validated`);
+}
+
+/**
+ * Validate a rooms:updated event for moderated space change
+ *
+ * We check this in membership tests (instead of the rooms tests)
+ * because a change in membership is  the activity that triggers this event.
+ * @param {Object} event - rooms event
+ * @param {Object} room -- return from the API that created the room
+ * @param {Boolean} isLocked - expected value for isLocked
+ * @returns {void}
+ */
+function validateRoomsUpdatedEvent(event, room, isLocked) {
+  const {data} = event;
+
+  assert(room.id === data.id, 'rooms:updated event did not have the expected roomId');
+  assert(room.type === data.type, 'rooms:updated event did not have the expected room type');
+  assert(data.isLocked === isLocked, 'rooms:updated did not have expected isLocked value');
+
+  debug(`rooms:${event.event} event validated`);
+}

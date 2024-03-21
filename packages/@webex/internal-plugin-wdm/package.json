@@ -1,0 +1,29 @@
+{
+  "name": "@webex/internal-plugin-wdm",
+  "version": "3.0.0-beta.373",
+  "description": "",
+  "license": "MIT",
+  "main": "dist/index.js",
+  "devMain": "src/index.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/webex/webex-js-sdk.git",
+    "directory": "packages/@webex/internal-plugin-wdm"
+  },
+  "engines": {
+    "node": ">=16"
+  },
+  "browserify": {
+    "transform": [
+      "babelify",
+      "envify"
+    ]
+  },
+  "dependencies": {
+    "@webex/internal-plugin-device": "workspace:^",
+    "@webex/internal-plugin-wdm": "workspace:^",
+    "@webex/test-helper-chai": "workspace:^",
+    "@webex/test-helper-test-users": "workspace:^",
+    "@webex/webex-core": "workspace:^"
+  }
+}

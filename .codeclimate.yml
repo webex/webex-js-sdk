@@ -1,0 +1,11 @@
+exclude_paths:
+  - docs
+  - example_postman
+  - examples
+  # skip the test directories because it the spec blocks aggressively show up as
+  # duplicates
+  - packages/*/test
+  - packages/@ciscospark/*/test
+  - packages/@webex/*/test
+  - src
+  - test

@@ -1,0 +1,54 @@
+/*!
+ * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
+ */
+
+import {Interceptor} from '@webex/http-core';
+
+/**
+ * @class
+ */
+export default class NetworkTimingInterceptor extends Interceptor {
+  /**
+   * @param {Object} options
+   * @returns {NetworkTimingInterceptor}
+   */
+  static create(options) {
+    return new NetworkTimingInterceptor(this, options);
+  }
+
+  /**
+   * @see Interceptor#onRequest
+   * @param {Object} options
+   * @returns {Object}
+   */
+  onRequest(options) {
+    options.$timings = options.$timings || {};
+    options.$timings.networkStart = Date.now();
+
+    return options;
+  }
+
+  /**
+   * @see Interceptor#onResponse
+   * @param {Object} options
+   * @param {HttpResponse} response
+   * @returns {Object}
+   */
+  onResponse(options, response) {
+    options.$timings.networkEnd = Date.now();
+
+    return response;
+  }
+
+  /**
+   * @see Interceptor#onResponseError
+   * @param {Object} options
+   * @param {Error} reason
+   * @returns {Object}
+   */
+  onResponseError(options, reason) {
+    options.$timings.networkEnd = Date.now();
+
+    return Promise.reject(reason);
+  }
+}

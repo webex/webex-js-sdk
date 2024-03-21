@@ -1,0 +1,23 @@
+# Web SDK Team Ownership
+
+*                                                                      @webex/web-sdk
+
+
+# Web Client Team Ownership
+
+packages/@webex/webex-core                                @webex/web-client
+packages/@webex/common                                    @webex/web-client
+packages/@webex/helper-html                               @webex/web-client
+packages/@webex/helper-image                              @webex/web-client
+packages/@webex/http-core                                 @webex/web-client
+packages/@webex/internal-plugin-*                         @webex/web-client
+packages/@webex/plugin-authorization-browser-first-party  @webex/web-client
+packages/@webex/plugin-device-manager                     @webex/web-client
+packages/@webex/plugin-logger                             @webex/web-client
+packages/@webex/plugin-meetings                           @webex/web-client
+packages/@webex/recipe-private-web-client                 @webex/web-client
+packages/@webex/storage-adapter-local-forage              @webex/web-client
+packages/@webex/storage-adapter-local-storage             @webex/web-client
+packages/@webex/storage-adapter-session-storage           @webex/web-client
+packages/@webex/storage-adapter-spec                      @webex/web-client
+docs/samples/browser-plugin-meetings                      @webex/web-client

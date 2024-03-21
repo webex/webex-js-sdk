@@ -1,0 +1,82 @@
+# @webex/plugin-logger
+
+[![standard-readme compliant](https://img.shields.io/badge/readme%20style-standard-brightgreen.svg?style=flat-square)](https://github.com/RichardLitt/standard-readme)
+
+> Logging plugin for the Cisco Webex JS SDK.
+
+- [@webex/plugin-logger](#webexplugin-logger)
+  - [Install](#install)
+  - [Usage](#usage)
+    - [Log Levels](#log-levels)
+    - [Level Control](#level-control)
+  - [Maintainers](#maintainers)
+  - [Contribute](#contribute)
+  - [License](#license)
+
+## Install
+
+```bash
+npm install --save @webex/plugin-logger
+```
+
+## Usage
+
+This is a plugin for the Cisco Webex JS SDK . Please see our [developer portal](https://developer.webex.com/) and the [API docs](https://webex.github.io/webex-js-sdk/api/) for full details.
+
+```js
+const Webex = require('webex');
+const webex = Webex.init();
+
+webex.logger.info('Hello World'); // => wx-js-sdk Hello World
+```
+
+### Log Levels
+
+This logger plugin supports different logging levels to control what gets output to the user's console:
+
+- **silent**
+  - Nothing prints to the console.
+- **error** [DEFAULT]
+  - Error messages thrown by exceptions. This level is meant for the developer and end user to help with troubleshooting.
+  - Example: `Unable to connect to websocket on port 4343`
+- **warn**
+  - Warning messages meant to help guide developers away from potential errors.
+  - Example: `The usage of person email has been deprecated`
+- **log**
+  - General output of logging messages.
+  - Example: `Websocket connected on port 4343`
+- **info**
+  - More detailed logging of SDK information.
+  - Example: `Network status changed from DISCONNECTED to ONLINE`
+- **debug**
+  - Developer specific information, helpful with debugging issues.
+  - Example: `Network packet received, contents: {data}`
+- **trace**
+  - Prints the stack trace of the current call path.
+
+### Level Control
+
+The developer can control what level gets printed by setting the environment variable: `WEBEX_LOG_LEVEL`.
+
+These variables can be set on the command line or in the `.env` file:
+
+```bash
+WEBEX_LOG_LEVEL="debug" npm start
+```
+
+```env
+# .env file
+WEBEX_LOG_LEVEL=debug
+```
+
+## Maintainers
+
+This package is maintained by [Cisco Webex for Developers](https://developer.webex.com/).
+
+## Contribute
+
+Pull requests welcome. Please see [CONTRIBUTING.md](https://github.com/webex/webex-js-sdk/blob/master/CONTRIBUTING.md) for more details.
+
+## License
+
+© 2016-2020 Cisco and/or its affiliates. All Rights Reserved.

@@ -1,0 +1,327 @@
+/*!
+ * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
+ */
+
+import '@webex/internal-plugin-encryption';
+import '@webex/internal-plugin-user';
+
+import {patterns} from '@webex/common';
+import {filter as htmlFilter, filterEscape as htmlFilterEscape} from '@webex/helper-html';
+import {registerInternalPlugin} from '@webex/webex-core';
+import {capitalize, get, has} from 'lodash';
+
+import Conversation from './conversation';
+import config from './config';
+import {transforms as encryptionTransforms} from './encryption-transforms';
+import {transforms as decryptionTransforms} from './decryption-transforms';
+
+registerInternalPlugin('conversation', Conversation, {
+  payloadTransformer: {
+    predicates: [
+      {
+        name: 'transformObject',
+        test(ctx, optionsOrResponse) {
+          return Promise.resolve(has(optionsOrResponse, 'body.objectType'));
+        },
+        extract(optionsOrResponse) {
+          return Promise.resolve(optionsOrResponse.body);
+        },
+      },
+      {
+        name: 'transformObject',
+        direction: 'inbound',
+        test(ctx, event) {
+          return Promise.resolve(has(event, 'activity'));
+        },
+        extract(event) {
+          return Promise.resolve(event.activity);
+        },
+      },
+      {
+        name: 'transformObjectArray',
+        direction: 'inbound',
+        test(ctx, response) {
+          return Promise.resolve(has(response, 'body.multistatus'));
+        },
+        extract(response) {
+          return Promise.resolve(
+            response.body.multistatus.map((item) => item && item.data && item.data.activity)
+          );
+        },
+      },
+      {
+        name: 'normalizeConversationListAndBindDecrypters',
+        direction: 'inbound',
+        test(ctx, options) {
+          if (!has(options, 'body.items[0].objectType')) {
+            return Promise.resolve(false);
+          }
+
+          if (get(options, 'options.deferDecrypt')) {
+            return Promise.resolve(true);
+          }
+
+          return Promise.resolve(false);
+        },
+        extract(options) {
+          return Promise.resolve(options.body.items);
+        },
+      },
+      {
+        name: 'transformObjectArray',
+        direction: 'inbound',
+        test(ctx, options) {
+          if (!has(options, 'body.items[0].objectType')) {
+            return Promise.resolve(false);
+          }
+
+          if (get(options, 'options.deferDecrypt')) {
+            return Promise.resolve(false);
+          }
+
+          return Promise.resolve(true);
+        },
+        extract(options) {
+          return Promise.resolve(options.body.items);
+        },
+      },
+      {
+        name: 'transformThreadArray',
+        direction: 'inbound',
+        test(ctx, options) {
+          if (!has(options, 'body.items[0].childType') || !has(options, 'body.items[0].actorId')) {
+            return Promise.resolve(false);
+          }
+
+          if (get(options, 'options.deferDecrypt')) {
+            return Promise.resolve(false);
+          }
+
+          return Promise.resolve(true);
+        },
+        extract(options) {
+          return Promise.resolve(options.body.items);
+        },
+      },
+    ],
+    transforms: [
+      {
+        name: 'normalizeConversationListAndBindDecrypters',
+        fn(ctx, array) {
+          return Promise.all(
+            array.map((item) =>
+              ctx.transform('normalizeObject', item).then(() => {
+                item.decrypt = function decrypt() {
+                  Reflect.deleteProperty(item, 'decrypt');
+
+                  return ctx.transform('decryptObject', item);
+                };
+
+                return item;
+              })
+            )
+          );
+        },
+      },
+      {
+        name: 'transformObjectArray',
+        fn(ctx, array) {
+          return Promise.all(array.map((item) => ctx.transform('transformObject', item)));
+        },
+      },
+      {
+        name: 'transformThreadArray',
+        fn(ctx, array) {
+          return Promise.all(array.map((item) => ctx.transform('transformThread', item)));
+        },
+      },
+      {
+        name: 'transformObject',
+        direction: 'outbound',
+        fn(ctx, object) {
+          if (!object) {
+            return Promise.resolve();
+          }
+
+          if (!object.objectType) {
+            return Promise.resolve();
+          }
+
+          return ctx
+            .transform('normalizeObject', object)
+            .then(() => ctx.transform('encryptObject', object))
+            .then(() => ctx.transform('encryptKmsMessage', object));
+        },
+      },
+      {
+        name: 'transformObject',
+        direction: 'inbound',
+        fn(ctx, object) {
+          if (!object) {
+            return Promise.resolve();
+          }
+
+          if (!object.objectType) {
+            return Promise.resolve();
+          }
+
+          return ctx
+            .transform('decryptObject', object)
+            .then(() => ctx.transform('normalizeObject', object));
+        },
+      },
+      {
+        name: 'normalizeObject',
+        fn(ctx, object) {
+          if (!object) {
+            return Promise.resolve();
+          }
+
+          if (!object.objectType) {
+            return Promise.resolve();
+          }
+
+          return Promise.all([
+            ctx.transform(`normalize${capitalize(object.objectType)}`, object),
+            ctx.transform('normalizePropContent', object),
+          ]);
+        },
+      },
+      {
+        name: 'transformThread',
+        direction: 'inbound',
+        fn(ctx, object) {
+          if (!object) {
+            return Promise.resolve();
+          }
+
+          return ctx
+            .transform('decryptThread', object)
+            .then(() => ctx.transform('normalizeThread', object));
+        },
+      },
+      {
+        name: 'normalizePropContent',
+        direction: 'inbound',
+        fn(ctx, object) {
+          if (!object.content) {
+            return Promise.resolve();
+          }
+          const {inboundProcessFunc, allowedInboundTags, allowedInboundStyles} =
+            ctx.webex.config.conversation;
+
+          return htmlFilter(
+            inboundProcessFunc,
+            allowedInboundTags || {},
+            allowedInboundStyles,
+            object.content
+          ).then((c) => {
+            object.content = c;
+          });
+        },
+      },
+      {
+        name: 'normalizePropContent',
+        direction: 'outbound',
+        fn(ctx, object) {
+          if (!object.content) {
+            return Promise.resolve();
+          }
+
+          const {outboundProcessFunc, allowedOutboundTags, allowedOutboundStyles} =
+            ctx.webex.config.conversation;
+
+          return htmlFilterEscape(
+            outboundProcessFunc,
+            allowedOutboundTags || {},
+            allowedOutboundStyles,
+            object.content
+          ).then((c) => {
+            object.content = c;
+          });
+        },
+      },
+      {
+        name: 'normalizeConversation',
+        fn(ctx, conversation) {
+          conversation.activities = conversation.activities || {};
+          conversation.activities.items = conversation.activities.items || [];
+          conversation.participants = conversation.participants || {};
+          conversation.participants.items = conversation.participants.items || [];
+
+          return Promise.all([
+            Promise.all(
+              conversation.activities.items.map((item) => ctx.transform('normalizeObject', item))
+            ),
+            Promise.all(
+              conversation.participants.items.map((item) => ctx.transform('normalizeObject', item))
+            ),
+          ]);
+        },
+      },
+      {
+        name: 'normalizeActivity',
+        fn(ctx, activity) {
+          return Promise.all([
+            ctx.transform('normalizeObject', activity.actor),
+            ctx.transform('normalizeObject', activity.object),
+            ctx.transform('normalizeObject', activity.target),
+          ]);
+        },
+      },
+      {
+        name: 'normalizeThread',
+        fn(ctx, threadActivity) {
+          // childActivities are of type Activity
+          return Promise.all(
+            threadActivity.childActivities.map((item) => ctx.transform('normalizeObject', item))
+          );
+        },
+      },
+      {
+        name: 'normalizePerson',
+        // eslint-disable-next-line complexity
+        fn(ctx, person) {
+          const email = person.entryEmail || person.emailAddress || person.id;
+          const id = person.entryUUID || person.id;
+
+          if (patterns.email.test(email)) {
+            person.entryEmail = person.emailAddress = email.toLowerCase();
+          } else {
+            Reflect.deleteProperty(person, 'entryEmail');
+            Reflect.deleteProperty(person, 'emailAddress');
+          }
+
+          if (person.roomProperties) {
+            person.roomProperties.isModerator = Boolean(person.roomProperties.isModerator);
+          }
+
+          if (patterns.uuid.test(id)) {
+            person.entryUUID = person.id = id.toLowerCase();
+
+            return Promise.resolve(person);
+          }
+
+          if (!email) {
+            return Promise.reject(
+              new Error('cannot determine id without an `emailAddress` or `entryUUID` property')
+            );
+          }
+
+          return ctx.webex.internal.user.asUUID(email).then((uuid) => {
+            person.entryUUID = person.id = uuid;
+
+            return person;
+          });
+        },
+      },
+    ]
+      .concat(decryptionTransforms)
+      .concat(encryptionTransforms),
+  },
+  config,
+});
+
+export {default} from './conversation';
+export {default as ShareActivity} from './share-activity';
+export {ConversationError, InvalidUserCreation} from './convo-error';
