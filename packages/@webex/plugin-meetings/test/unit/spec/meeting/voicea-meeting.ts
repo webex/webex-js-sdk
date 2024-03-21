@@ -63,7 +63,7 @@ describe('plugin-meetings', () => {
                 {
                     id: "311cc182-e657-c077-c078-795f866c4e9b_8093d335-9b96-4f9d-a6b2-7293423be88a",
                     isFinal: false,
-                    text: "Don't bother me talking I'm just going to get the transcript data that is interim and I",
+                    text: " Don't bother me talking I'm just going to get the transcript data that is interim and I",
                     currentCaptionLanguage: "en",
                     speaker: {
                         speakerId: "8093d335-9b96-4f9d-a6b2-7293423be88a",
