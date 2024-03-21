@@ -750,7 +750,7 @@ describe('plugin-meetings', () => {
       });
 
       describe('#setCaptionLanguage', () => {
-        beforeEach(function() {
+        beforeEach(() => {
           meeting.isTranscriptionSupported = sinon.stub();
           meeting.transcription = { languageOptions: {} };
           webex.internal.voicea.on = sinon.stub();
@@ -759,12 +759,12 @@ describe('plugin-meetings', () => {
           webex.internal.voicea.requestLanguage = sinon.stub();
         });
 
-        afterEach(function() {
+        afterEach(() => {
           // Restore the original methods after each test
           sinon.restore();
         });
 
-        it('should reject if transcription is not supported', function(done) {
+        it('should reject if transcription is not supported', (done) => {
           meeting.isTranscriptionSupported.returns(false);
 
           meeting.setCaptionLanguage('fr').catch((error) => {
@@ -773,7 +773,7 @@ describe('plugin-meetings', () => {
           });
         });
 
-        it('should resolve with the language code on successful language update', function(done) {
+        it('should resolve with the language code on successful language update', (done) => {
           meeting.isTranscriptionSupported.returns(true);
           const languageCode = 'fr';
 
@@ -797,7 +797,7 @@ describe('plugin-meetings', () => {
           voiceaListenerLangugeUpdate({ statusCode: 200, languageCode });
         });
 
-        it('should reject if the statusCode in payload is not 200', function(done) {
+        it('should reject if the statusCode in payload is not 200', (done) => {
           meeting.isTranscriptionSupported.returns(true);
           const languageCode = 'fr';
           const rejectPayload = {
@@ -823,7 +823,7 @@ describe('plugin-meetings', () => {
       });
 
       describe('#setSpokenLanguage', () => {
-        beforeEach(function() {
+        beforeEach(() => {
           meeting.isTranscriptionSupported = sinon.stub();
           meeting.transcription = { languageOptions: {} };
           webex.internal.voicea.on = sinon.stub();
@@ -831,12 +831,12 @@ describe('plugin-meetings', () => {
           webex.internal.voicea.setSpokenLanguage = sinon.stub();
         });
 
-        afterEach(function() {
+        afterEach(() => {
           // Restore the original methods after each test
           sinon.restore();
         });
 
-        it('should reject if transcription is not supported', function(done) {
+        it('should reject if transcription is not supported', (done) => {
           meeting.isTranscriptionSupported.returns(false);
 
           meeting.setSpokenLanguage('fr').catch((error) => {
@@ -845,7 +845,7 @@ describe('plugin-meetings', () => {
           });
         });
 
-        it('should resolve with the language code on successful language update', function(done) {
+        it('should resolve with the language code on successful language update', (done) => {
           meeting.isTranscriptionSupported.returns(true);
           const languageCode = 'fr';
 
@@ -869,7 +869,7 @@ describe('plugin-meetings', () => {
           voiceaListenerLangugeUpdate({ languageCode });
         });
 
-        it('should reject if the language code does not exist in payload', function(done) {
+        it('should reject if the language code does not exist in payload', (done) => {
           meeting.isTranscriptionSupported.returns(true);
           const languageCode = 'fr';
           const rejectPayload = {
