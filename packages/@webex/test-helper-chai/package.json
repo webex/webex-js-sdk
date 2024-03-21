@@ -1,5 +1,6 @@
 {
-  "name": "@webex/test-helper-chai",
+  "//":"sdssdsd",
+"name": "@webex/test-helper-chai",
   "version": "3.0.0-beta.380",
   "description": "chai extended with webex specific assertions",
   "license": "MIT",
