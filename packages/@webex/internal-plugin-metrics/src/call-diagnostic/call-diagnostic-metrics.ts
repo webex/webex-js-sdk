@@ -293,11 +293,17 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     if (this.webex.internal) {
       // @ts-ignore
       const {device} = this.webex.internal;
+      const {installationId} = device.config || {};
+
       identifiers.userId = device.userId || preLoginId;
       identifiers.deviceId = device.url;
       identifiers.orgId = device.orgId;
       // @ts-ignore
       identifiers.locusUrl = this.webex.internal.services.get('locus');
+
+      if (installationId) {
+        identifiers.machineId = installationId;
+      }
     }
 
     if (meeting?.locusInfo?.fullState) {
