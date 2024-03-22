@@ -726,25 +726,11 @@ export default class Meetings extends WebexPlugin {
    * @memberof Meetings
    */
   public register() {
-    const submitStepMetric = (step) => {
-      try {
-        Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.MEETINGS_REGISTRATION_STEP, {
-          step,
-        });
-      } catch (error) {
-        // do nothing because these are just debug metrics
-      }
-    };
-
-    submitStepMetric('[sdk] begin registration');
-
     // @ts-ignore
     if (!this.webex.canAuthorize) {
       LoggerProxy.logger.error(
         'Meetings:index#register --> ERROR, Unable to register, SDK cannot authorize'
       );
-
-      submitStepMetric('[sdk] cannot authorize');
 
       return Promise.reject(new Error('SDK cannot authorize'));
     }
@@ -754,12 +740,8 @@ export default class Meetings extends WebexPlugin {
         'Meetings:index#register --> INFO, Meetings plugin already registered'
       );
 
-      submitStepMetric('[sdk] already registered');
-
       return Promise.resolve();
     }
-
-    submitStepMetric('[sdk] begin Promise.all()');
 
     return Promise.all([
       this.fetchUserPreferredWebexSite(),
@@ -782,7 +764,6 @@ export default class Meetings extends WebexPlugin {
       MeetingsUtil.checkH264Support.call(this),
     ])
       .then(() => {
-        submitStepMetric('[sdk] end Promise.all()');
         this.listenForEvents();
         Trigger.trigger(
           this,
@@ -792,7 +773,6 @@ export default class Meetings extends WebexPlugin {
           },
           EVENT_TRIGGERS.MEETINGS_REGISTERED
         );
-        submitStepMetric('[sdk] registration complete, triggered MEETINGS_REGISTERED event');
         this.registered = true;
         Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.MEETINGS_REGISTRATION_SUCCESS);
       })
