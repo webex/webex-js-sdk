@@ -12,8 +12,8 @@ import {MetricEventNames, PreComputedLatencies} from '../metrics.types';
  * @class CallDiagnosticLatencies
  */
 export default class CallDiagnosticLatencies extends WebexPlugin {
-  latencyTimestamps: Map<MetricEventNames, number>;
-  precomputedLatencies: Map<PreComputedLatencies, number>;
+  latencyTimestamps: {[key in MetricEventNames]?: number};
+  precomputedLatencies: {[key in PreComputedLatencies]?: number};
   // meetingId that the current latencies are for
   private meetingId?: string;
 
@@ -22,15 +22,61 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
    */
   constructor(...args) {
     super(...args);
-    this.latencyTimestamps = new Map();
-    this.precomputedLatencies = new Map();
+    const storedLatencyTimestamps = this.getLatencyTimestampsFromLocalStorage();
+    if (storedLatencyTimestamps) {
+      this.latencyTimestamps = storedLatencyTimestamps;
+      localStorage.removeItem('latencyTimestamps');
+    } else {
+      this.latencyTimestamps = {};
+    }
+    const storedPrecomputedLatencies = this.getPrecomputedLatenciesFromLocalStorage();
+    if (storedPrecomputedLatencies) {
+      this.precomputedLatencies = storedPrecomputedLatencies;
+      localStorage.removeItem('precomputedLatencies');
+    } else {
+      this.precomputedLatencies = {};
+    }
   }
 
   /**
    * Clear timestamps
    */
   public clearTimestamps() {
-    this.latencyTimestamps.clear();
+    this.latencyTimestamps = {};
+  }
+
+  /**
+   * save latency timeStamp in local storage
+   */
+  public saveLatencyTimestampsToLocalStorage() {
+    const serializedData = JSON.stringify(this.latencyTimestamps);
+    localStorage.setItem('latencyTimestamps', serializedData);
+  }
+
+  /**
+   * get latency timeStamp from local storage
+   */
+  public getLatencyTimestampsFromLocalStorage() {
+    const serializedData = localStorage.getItem('latencyTimestamps');
+
+    return JSON.parse(serializedData);
+  }
+
+  /**
+   * save precomputedLatencies in local storage
+   */
+  public savePrecomputedLatenciesToLocalStorage() {
+    const serializedData = JSON.stringify(this.precomputedLatencies);
+    localStorage.setItem('precomputedLatencies', serializedData);
+  }
+
+  /**
+   * get latency timeStamp from local storage
+   */
+  public getPrecomputedLatenciesFromLocalStorage() {
+    const serializedData = localStorage.getItem('precomputedLatencies');
+
+    return JSON.parse(serializedData);
   }
 
   /**
@@ -85,7 +131,7 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
     ) {
       this.saveFirstTimestampOnly(key, value);
     } else {
-      this.latencyTimestamps.set(key, value);
+      this.latencyTimestamps[key] = value;
     }
   }
 
@@ -97,7 +143,7 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
    * @returns
    */
   public saveLatency(key: PreComputedLatencies, value: number) {
-    this.precomputedLatencies.set(key, value);
+    this.precomputedLatencies[key] = value;
   }
 
   /**
@@ -108,10 +154,9 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
    * @returns
    */
   saveFirstTimestampOnly(key: MetricEventNames, value: number = new Date().getTime()) {
-    if (this.latencyTimestamps.has(key)) {
-      return;
+    if (!Object.prototype.hasOwnProperty.call(this.latencyTimestamps, key)) {
+      this.latencyTimestamps[key] = value;
     }
-    this.latencyTimestamps.set(key, value);
   }
 
   /**
@@ -121,8 +166,8 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
    * @returns latency
    */
   public getDiffBetweenTimestamps(a: MetricEventNames, b: MetricEventNames) {
-    const start = this.latencyTimestamps.get(a);
-    const end = this.latencyTimestamps.get(b);
+    const start = this.latencyTimestamps[a];
+    const end = this.latencyTimestamps[b];
     if (start && end) {
       return end - start;
     }
@@ -267,7 +312,7 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
    * @returns - latency
    */
   public getPageJMT() {
-    return this.precomputedLatencies.get('internal.client.pageJMT') || undefined;
+    return this.precomputedLatencies['internal.client.pageJMT'] || undefined;
   }
 
   /**
@@ -275,7 +320,7 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
    * @returns - latency
    */
   public getDownloadTimeJMT() {
-    return this.precomputedLatencies.get('internal.download.time') || undefined;
+    return this.precomputedLatencies['internal.download.time'] || undefined;
   }
 
   /**
@@ -284,7 +329,7 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
    */
   public getClickToInterstitial() {
     // for normal join (where green join button exists before interstitial, i.e reminder, space list etc)
-    if (this.latencyTimestamps.get('internal.client.meeting.click.joinbutton')) {
+    if (this.latencyTimestamps['internal.client.meeting.click.joinbutton']) {
       return this.getDiffBetweenTimestamps(
         'internal.client.meeting.click.joinbutton',
         'internal.client.meeting.interstitial-window.showed'
@@ -292,7 +337,7 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
     }
 
     // for cross launch and guest flows
-    return this.precomputedLatencies.get('internal.click.to.interstitial') || undefined;
+    return this.precomputedLatencies['internal.click.to.interstitial'] || undefined;
   }
 
   /**
@@ -322,12 +367,11 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
    * @returns - latency
    */
   public getInterstitialToMediaOKJMT() {
-    const interstitialJoinClickTimestamp = this.latencyTimestamps.get(
-      'internal.client.interstitial-window.click.joinbutton'
-    );
+    const interstitialJoinClickTimestamp =
+      this.latencyTimestamps['internal.client.interstitial-window.click.joinbutton'];
 
     // get the first timestamp
-    const connectedMedia = this.latencyTimestamps.get('client.ice.end');
+    const connectedMedia = this.latencyTimestamps['client.ice.end'];
 
     const lobbyTime = this.getStayLobbyTime() || 0;
 
