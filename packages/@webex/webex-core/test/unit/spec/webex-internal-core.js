@@ -24,6 +24,7 @@ describe('Webex', () => {
           },
         },
       });
+      sinon.stub(webex.boundedStorage, 'put');
 
       assert.isTrue(webex.internal.test.config.reachable);
       webex.config.test.reachable = false;
@@ -52,6 +53,7 @@ describe('Webex', () => {
           },
         },
       });
+      sinon.stub(webex.boundedStorage, 'put');
 
       webex.internal.on('all', (ev) =>
         console.info(

@@ -33,6 +33,7 @@ describe('webex-core', () => {
             },
           },
         });
+        sinon.stub(webex.boundedStorage, 'put');
 
         assert.equal(webex.config.credentials.authorizeUrl, authorizeUrl);
       });
@@ -46,6 +47,7 @@ describe('webex-core', () => {
         webex = new WebexCore({
           credentials: user.token,
         });
+        sinon.stub(webex.boundedStorage, 'put');
 
         credentials = webex.credentials;
       });
@@ -65,6 +67,7 @@ describe('webex-core', () => {
         webex = new WebexCore({
           credentials: user.token,
         });
+        sinon.stub(webex.boundedStorage, 'put');
 
         credentials = webex.credentials;
       });
@@ -85,6 +88,7 @@ describe('webex-core', () => {
         webex = new WebexCore({
           credentials: user.token,
         });
+        sinon.stub(webex.boundedStorage, 'put');
 
         credentials = webex.credentials;
       });
@@ -102,6 +106,7 @@ describe('webex-core', () => {
         const webex = new WebexCore({
           credentials: user.token,
         });
+        sinon.stub(webex.boundedStorage, 'put');
 
         return webex.credentials.refresh().then(() => {
           assert.isDefined(user.token.access_token);
@@ -114,6 +119,7 @@ describe('webex-core', () => {
         const webex = new WebexCore({
           credentials: user.token,
         });
+        sinon.stub(webex.boundedStorage, 'put');
 
         return assert.isRejected(webex.credentials.refresh());
       });
@@ -127,6 +133,7 @@ describe('webex-core', () => {
             },
           },
         });
+        sinon.stub(webex.boundedStorage, 'put');
 
         return webex.credentials.refresh().then(() => {
           assert.isDefined(user.token.access_token);

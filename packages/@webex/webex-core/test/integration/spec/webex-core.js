@@ -15,6 +15,7 @@ describe('webex-core', function () {
 
       before(() => {
         webex = new WebexCore();
+        sinon.stub(webex.boundedStorage, 'put');
       });
 
       it('adds a tracking id to each request', () =>
@@ -108,6 +109,7 @@ describe('webex-core', function () {
 
         sinon.spy(webex.boundedStorage, 'clear');
         sinon.spy(webex.unboundedStorage, 'clear');
+        sinon.stub(webex.boundedStorage, 'put');
 
         return new Promise((resolve) => webex.once('ready', resolve)).then(() => {
           const {supertoken} = webex.credentials;

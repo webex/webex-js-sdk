@@ -24,6 +24,7 @@ describe('webex-core', () => {
       describe('#downscope()', () => {
         it('retrieves an access token with a subset of scopes', () => {
           webex = new WebexCore({credentials: user.token});
+          sinon.stub(webex.boundedStorage, 'put');
           const allScope = webex.credentials.config.scope;
           const apiScope = filterScope('spark:kms', allScope);
 
@@ -46,6 +47,7 @@ describe('webex-core', () => {
       describe('#refresh()', () => {
         nodeOnly(it)('refreshes the token, returning a new Token instance', () => {
           webex = new WebexCore({credentials: user.token});
+          sinon.stub(webex.boundedStorage, 'put');
 
           return webex.credentials.supertoken.refresh().then((token2) => {
             assert.notEqual(token2.access_token, webex.credentials.supertoken.access_token);
@@ -62,6 +64,7 @@ describe('webex-core', () => {
               },
             },
           });
+          sinon.stub(webex.boundedStorage, 'put');
 
           return webex.credentials.supertoken.refresh().then((token2) => {
             assert.notEqual(token2.access_token, webex.credentials.supertoken.access_token);
@@ -73,6 +76,7 @@ describe('webex-core', () => {
       describe('#validate()', () => {
         it("shows the token's scopes", () => {
           webex = new WebexCore({credentials: user.token});
+          sinon.stub(webex.boundedStorage, 'put');
 
           return webex.credentials.supertoken.validate().then((details) => {
             const detailScope = details.scope.sort();
@@ -89,6 +93,7 @@ describe('webex-core', () => {
       describe('#revoke()', () => {
         it('revokes the token', () => {
           webex = new WebexCore({credentials: user.token});
+          sinon.stub(webex.boundedStorage, 'put');
 
           return webex.credentials.supertoken.revoke().then(() => {
             assert.isUndefined(webex.credentials.supertoken.access_token);

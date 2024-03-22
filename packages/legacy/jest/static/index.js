@@ -11,4 +11,5 @@ module.exports = {
   reporters: ['default'],
   testMatch: ['<rootDir>/test/unit/**/!(lib|fixture)/*.[jt]s'],
   testPathIgnorePatterns: ['/node_modules/', '/dist/'],
+  detectOpenHandles: true,
 };

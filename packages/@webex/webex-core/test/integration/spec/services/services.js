@@ -45,6 +45,8 @@ describe('webex-core', () => {
     beforeEach('create webex instance', () => {
       webex = new WebexCore({credentials: {supertoken: webexUser.token}});
       webexEU = new WebexCore({credentials: {supertoken: webexUserEU.token}});
+      sinon.stub(webex.boundedStorage, 'put');
+      sinon.stub(webexEU.boundedStorage, 'put');
       services = webex.internal.services;
       servicesEU = webexEU.internal.services;
       catalog = services._getCatalog();
@@ -397,6 +399,7 @@ describe('webex-core', () => {
 
       it('should not attempt to collect catalogs without authorization', (done) => {
         const otherWebex = new WebexCore();
+        sinon.stub(otherWebex.boundedStorage, 'put');
         let {initServiceCatalogs} = otherWebex.internal.services;
 
         initServiceCatalogs = sinon.stub();
@@ -802,6 +805,7 @@ describe('webex-core', () => {
 
     describe('#validateUser()', () => {
       const unauthWebex = new WebexCore();
+      sinon.stub(unauthWebex.boundedStorage, 'put');
       const unauthServices = unauthWebex.internal.services;
       let sandbox = null;
 
@@ -1104,6 +1108,7 @@ describe('webex-core', () => {
 
     describe('#collectPreauthCatalog()', () => {
       const unauthWebex = new WebexCore({config: {credentials: {federation: true}}});
+      sinon.stub(unauthWebex.boundedStorage, 'put');
       const unauthServices = unauthWebex.internal.services;
       const forceRefresh = true;
 
@@ -1158,6 +1163,7 @@ describe('webex-core', () => {
 
     describe('#collectSigninCatalog()', () => {
       const unauthWebex = new WebexCore({config: {credentials: {federation: true}}});
+      sinon.stub(unauthWebex.boundedStorage, 'put');
       const unauthServices = unauthWebex.internal.services;
 
       it('requires an email as the parameter', () =>
