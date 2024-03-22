@@ -6,6 +6,7 @@
 if (!global._babelPolyfill) {
   /* eslint global-require: [0] */
   require('@babel/polyfill');
+  /* just testing browser tests */
 }
 
 module.exports = require('./webex');
