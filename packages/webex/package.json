@@ -1,4 +1,5 @@
 {
+  "//": "Testing browser tests",
   "name": "webex",
   "version": "2.60.1",
   "description": "SDK for Cisco Webex",
