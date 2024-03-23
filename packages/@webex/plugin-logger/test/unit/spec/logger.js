@@ -636,11 +636,12 @@ describe('plugin-logger', () => {
             trackingid: '123',
           },
         });
-        assert.calledWith(console[impl(level)], 'wx-js-sdk', {
+
+        assert.calledWith(console[impl(level)], 'wx-js-sdk', JSON.stringify({
           headers: {
             trackingid: '123',
           },
-        });
+        }));
       });
     });
   });
@@ -654,14 +655,15 @@ describe('plugin-logger', () => {
       });
 
       // Assert auth was filtered
-      assert.calledWith(console.log, 'wx-js-sdk', {Key: 'myKey'});
+      assert.calledWith(console.log, "wx-js-sdk", JSON.stringify({Key: 'myKey'}));
 
       webex.logger.log({
         authorization: 'XXXXXXX',
         Key: 'myKey',
       });
-
-      assert.calledWith(console.log, 'wx-js-sdk', {Key: 'myKey'});
+9
+      
+      assert.calledWith(console.log, 'wx-js-sdk',  JSON.stringify({Key: 'myKey'}));
     });
 
     it('redact emails', () => {
@@ -694,7 +696,7 @@ describe('plugin-logger', () => {
       assert.calledWith(console.log, 'wx-js-sdk', 'https://example.com/example/j.php?MTID=[REDACTED]#abcdefg');
     });
 
-    it('handle circular references', () => {
+    nodeOnly(it)('handle circular references', () => {
       webex.config.logger.level = 'trace';
 
       const object = {
@@ -713,12 +715,13 @@ describe('plugin-logger', () => {
         Key: 'myKey',
       };
 
+      // Has self reference which is bad 
       expected.selfReference = expected;
 
       assert.calledWith(console.log, 'wx-js-sdk', expected);
     });
 
-    it('handle circular references in complex objects', () => {
+    nodeOnly(it)('handle circular references in complex objects', () => {
       webex.config.logger.level = 'trace';
 
       const func = () => true;
