@@ -360,9 +360,7 @@ jobs:
         run: yarn build:local
 
       - name: Test - Integration
-        # run: yarn workspaces foreach --verbose --exclude webex-js-sdk --include '${{ needs.generate-package-matrix.outputs.changed }}' run test:integration
-        run: yarn test --packages '${{ needs.generate-package-matrix.outputs.changed }}' --integration --browser
-
+        run: yarn workspaces foreach --verbose --exclude webex-js-sdk --include '${{ needs.generate-package-matrix.outputs.changed }}' run test:integration
 
   test-style:
     name: Test - Style
