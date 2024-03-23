@@ -22,6 +22,7 @@
   "devDependencies": {
     "@babel/core": "^7.17.10",
     "@ciscospark/test-users-legacy": "^1.2.0",
+    "@types/randomstring": "^1",
     "@webex/babel-config-legacy": "workspace:*",
     "@webex/eslint-config-legacy": "workspace:*",
     "@webex/jest-config-legacy": "workspace:*",
@@ -33,6 +34,7 @@
     "@webex/test-helper-test-users": "workspace:*",
     "eslint": "^8.24.0",
     "prettier": "^2.7.1",
+    "randomstring": "^1.3.0",
     "sinon": "^9.2.4"
   },
   "dependencies": {

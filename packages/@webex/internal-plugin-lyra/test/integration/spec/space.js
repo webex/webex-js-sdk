@@ -4,12 +4,12 @@
 
 import bowser from 'bowser';
 import '@webex/internal-plugin-lyra';
+import {generate} from 'randomstring';
 import {assert} from '@webex/test-helper-chai';
 import retry from '@webex/test-helper-retry';
 import testUsers from '@webex/test-helper-test-users';
 // FIXME
 // eslint-disable-next-line import/no-unresolved
-import {generateRandomString} from '@ciscospark/test-users-legacy';
 import WebexCore from '@webex/webex-core';
 import '@webex/internal-plugin-locus';
 
@@ -31,7 +31,7 @@ describe('plugin-lyra', function () {
           config: {
             machineType: 'LYRA_SPACE',
             type: 'MACHINE',
-            password: `${generateRandomString(32)}d_wA*`,
+            password: `${generate(32)}d_wA*`,
           },
         })
       )
@@ -65,13 +65,13 @@ describe('plugin-lyra', function () {
         spock = participants[0];
 
         return Promise.all(
-          Array.map(participants, (participant) => {
+          participants.map((participant) => {
             participant.webex = new WebexCore({
               credentials: {
                 authorization: participant.token,
               },
             });
-
+        
             return participant.webex.internal.mercury.connect();
           })
         );
