@@ -264,6 +264,7 @@ jobs:
           fi
 
   publish-tag:
+    name: Publish - Tags
     runs-on: ubuntu-latest
     needs: publish-npm
     steps:
@@ -292,21 +293,21 @@ jobs:
       - name: Synchronize Packages
         run: yarn
 
-      - name: Extract latest version from NPM
+      - name: Extract latest version from NPM and commit message
         id: versionextractor
         run: |
           yarn ws:tools
-          VERSION=$(yarn package-tools sync --tag ${GITHUB_REF##*/} --packages webex | awk '{print $3}' | tr -d '%')
-          echo "::set-output name=version::$VERSION"      
+          echo "MESSAGE=$(git log -1 --pretty=%B)" >> $GITHUB_OUTPUT
+          echo "VERSION=$(yarn package-tools sync --tag ${GITHUB_REF##*/} --packages webex | awk '{print $3}' | tr -d '%')" >> $VERSION    
 
       - name: Get the last commit hash
         id: lastcommit
-        run: echo "::set-output name=hash::$(git rev-parse HEAD)"
+        run: echo "COMMIT=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
 
       - name: Create a tag for the last commit
-        run: echo 'git tag -a "${{ steps.versionextractor.outputs.version }}" ${{ steps.lastcommit.outputs.hash }} -m "Tagging commit ${{ steps.lastcommit.outputs.hash }}"''
+        run: echo 'git tag -a "${{ env.VERSION }}" ${{ env.COMMIT }} -m "${{ env.MESSAGE }}"'
 
       - name: Publish the tag to GitHub
-        run: echo "git push origin ${{ steps.versionextractor.outputs.version }}"
+        run: echo "git push origin ${{ env.VERSION }}"
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
