@@ -200,7 +200,7 @@ jobs:
         run: yarn run build:script
 
       - name: Deploy Packages
-        run: yarn workspaces foreach --from '${{ needs.generate-package-matrix.outputs.yarn-recursive }}' --verbose run deploy:npm --access public --tag ${GITHUB_REF##*/}
+        run: echo 'yarn workspaces foreach --from '${{ needs.generate-package-matrix.outputs.yarn-recursive }}' --verbose run deploy:npm --access public --tag ${GITHUB_REF##*/}''
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
@@ -258,9 +258,9 @@ jobs:
         run: |
           # Check if there's anything to commit before committing
           if [ -n "$(git status --porcelain)" ]; then
-            git add docs/
-            git commit -m "chore(docs): update docs"
-            git push origin HEAD:documentation --force
+            echo 'git add docs/''
+            echo 'git commit -m "chore(docs): update docs"''
+            echo 'git push origin HEAD:documentation --force'
           fi
 
   publish-tag:
