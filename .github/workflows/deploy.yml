@@ -4,7 +4,7 @@ run-name: ${{ github.actor }} is running Deploy CD
 on:
   push:
     branches: # White-list of deployable tags and branches. Note that all white-listed branches cannot include any `/` characters
-      - next
+      - experiment-with-tags
 
 env:
   rid: ${{ github.run_id }}-${{ github.run_number }}
