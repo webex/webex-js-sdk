@@ -265,6 +265,7 @@ jobs:
 
   publish-tag:
     runs-on: ubuntu-latest
+    needs: publish-npm
     steps:
       - name: Checkout Project
         uses: actions/checkout@v3
