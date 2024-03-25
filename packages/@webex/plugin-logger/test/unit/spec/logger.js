@@ -6,7 +6,7 @@
 import {assert} from '@webex/test-helper-chai';
 import MockWebex from '@webex/test-helper-mock-webex';
 import sinon from 'sinon';
-import {browserOnly, nodeOnly} from '@webex/test-helper-mocha';
+import {browserOnly, nodeOnly, inBrowser} from '@webex/test-helper-mocha';
 import Logger, {levels} from '@webex/plugin-logger';
 import {WebexHttpError} from '@webex/webex-core';
 
@@ -637,11 +637,19 @@ describe('plugin-logger', () => {
           },
         });
 
-        assert.calledWith(console[impl(level)], 'wx-js-sdk', JSON.stringify({
-          headers: {
-            trackingid: '123',
-          },
-        }));
+        if(inBrowser()) {
+          assert.calledWith(console[impl(level)], 'wx-js-sdk', JSON.stringify({
+            headers: {
+              trackingid: '123',
+            },
+          }));
+        } else {
+          assert.calledWith(console[impl(level)], 'wx-js-sdk', {
+            headers: {
+              trackingid: '123',
+            },
+          });
+        }
       });
     });
   });
@@ -655,16 +663,25 @@ describe('plugin-logger', () => {
       });
 
       // Assert auth was filtered
-      assert.calledWith(console.log, "wx-js-sdk", JSON.stringify({Key: 'myKey'}));
 
-      webex.logger.log({
+      if(inBrowser()) { 
+        assert.calledWith(console.log, "wx-js-sdk", JSON.stringify({Key: 'myKey'}));
+      } else {
+        assert.calledWith(console.log, "wx-js-sdk", {Key: 'myKey'});
+      }
+        webex.logger.log({
         authorization: 'XXXXXXX',
         Key: 'myKey',
       });
 9
       
-      assert.calledWith(console.log, 'wx-js-sdk',  JSON.stringify({Key: 'myKey'}));
-    });
+      if(inBrowser()) { 
+      assert.calledWith(console.log, "wx-js-sdk", JSON.stringify({Key: 'myKey'}));
+
+      } else {
+      assert.calledWith(console.log, "wx-js-sdk", {Key: 'myKey'});
+
+      } });
 
     it('redact emails', () => {
       webex.config.logger.level = 'trace';
