@@ -304,7 +304,7 @@ jobs:
         run: |
           yarn ws:tools
           echo "message=$(git log -1 --pretty=%B)" >> $GITHUB_OUTPUT
-          echo "version=$(yarn package-tools sync --tag ${GITHUB_REF##*/} --packages webex | awk '{print $3}' | tr -d '%')" >> $GITHUB_OUTPUT    
+          echo "version=v$(yarn package-tools sync --tag ${GITHUB_REF##*/} --packages webex | awk '{print $3}' | tr -d '%')" >> $GITHUB_OUTPUT    
 
       - name: Get the last commit hash
         id: lastcommit
