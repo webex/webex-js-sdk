@@ -43,9 +43,9 @@ describe('internal-plugin-metrics', () => {
 
     it('should save latency correctly', () => {
       assert.deepEqual(cdl.precomputedLatencies.size, 0);
-      cdl.saveLatency('client.alert.displayed', 10);
+      cdl.saveLatency('internal.client.pageJMT', 10);
       assert.deepEqual(cdl.precomputedLatencies.size, 1);
-      assert.deepEqual(cdl.precomputedLatencies.get('client.alert.displayed'), 10);
+      assert.deepEqual(cdl.precomputedLatencies.get('internal.client.pageJMT'), 10);
     });
 
     it('should save only first timestamp correctly', () => {
@@ -143,7 +143,6 @@ describe('internal-plugin-metrics', () => {
       assert.deepEqual(cdl.getCallInitJoinReq(), 10);
     });
 
-    
     it('calculates getRegisterWDMDeviceJMT correctly', () => {
       cdl.saveTimestamp({key: 'internal.register.device.request', value: 10});
       cdl.saveTimestamp({key: 'internal.register.device.response', value: 20});
@@ -543,6 +542,11 @@ describe('internal-plugin-metrics', () => {
         value: 14,
       });
       assert.deepEqual(cdl.getInterstitialToMediaOKJMT(), 10);
+    });
+
+    it('calculates getDownloadTimeJMT correctly', () => {
+      cdl.saveLatency('internal.download.time', 1000);
+      assert.deepEqual(cdl.getDownloadTimeJMT(), 1000);
     });
   });
 });

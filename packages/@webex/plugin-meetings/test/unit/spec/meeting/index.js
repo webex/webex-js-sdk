@@ -2512,6 +2512,7 @@ describe('plugin-meetings', () => {
               clientErrorCode: ICE_FAILED_WITH_TURN_TLS_CLIENT_CODE,
               expectedErrorPayload: {
                 errorDescription: ERROR_DESCRIPTIONS.ICE_FAILED_WITH_TURN_TLS,
+                category: 'network',
               },
             },
           ].forEach(({clientErrorCode, expectedErrorPayload}) => {
@@ -5771,6 +5772,7 @@ describe('plugin-meetings', () => {
           meeting.mediaProperties.webrtcMediaConnection = {};
           meeting.audio = {handleLocalStreamChange: sinon.stub()};
           meeting.video = {handleLocalStreamChange: sinon.stub()};
+          meeting.statsAnalyzer = {updateMediaStatus: sinon.stub()};
           fakeMultistreamRoapMediaConnection = {
             createSendSlot: () => {
               return {
@@ -5837,6 +5839,10 @@ describe('plugin-meetings', () => {
               options: {meetingId: meeting.id},
             });
             assert.equal(meeting.mediaProperties.mediaDirection.sendShare, true);
+
+            assert.calledWith(meeting.statsAnalyzer.updateMediaStatus, {
+              expected: {sendShare: true},
+            });
           };
 
           const checkScreenShareAudioPublished = (stream) => {
@@ -5853,6 +5859,10 @@ describe('plugin-meetings', () => {
             );
             assert.equal(meeting.mediaProperties.shareAudioStream, stream);
             assert.equal(meeting.mediaProperties.mediaDirection.sendShare, true);
+
+            assert.calledWith(meeting.statsAnalyzer.updateMediaStatus, {
+              expected: {sendShare: true},
+            });
           };
 
           it('requests screen share floor and publishes the screen share video stream', async () => {
@@ -5947,6 +5957,11 @@ describe('plugin-meetings', () => {
 
             assert.equal(meeting.mediaProperties.shareVideoStream, null);
             assert.equal(meeting.mediaProperties.mediaDirection.sendShare, shareDirection);
+            if (!shareDirection) {
+              assert.calledWith(meeting.statsAnalyzer.updateMediaStatus, {
+                expected: {sendShare: false},
+              });
+            }
           };
 
           // share direction will remain true if only one of the two share streams are unpublished
@@ -5959,6 +5974,11 @@ describe('plugin-meetings', () => {
 
             assert.equal(meeting.mediaProperties.shareAudioStream, null);
             assert.equal(meeting.mediaProperties.mediaDirection.sendShare, shareDirection);
+            if (!shareDirection) {
+              assert.calledWith(meeting.statsAnalyzer.updateMediaStatus, {
+                expected: {sendShare: false},
+              });
+            }
           };
 
           it('fails if there is no media connection', async () => {
@@ -8155,13 +8175,41 @@ describe('plugin-meetings', () => {
           assert.equal(locusInfoOnSpy.thirdCall.args[0], 'MEETING_INFO_UPDATED');
           const callback = locusInfoOnSpy.thirdCall.args[1];
 
-          callback();
+          callback({isInitializing: true});
 
           assert.calledWith(updateMeetingActionsSpy);
           assert.calledWith(setRecordingDisplayHintsSpy, userDisplayHints);
           assert.calledWith(setUserPolicySpy, userDisplayPolicy);
           assert.calledWith(setControlsDisplayHintsSpy, userDisplayHints);
           assert.calledWith(handleDataChannelUrlChangeSpy, datachannelUrl);
+
+          assert.neverCalledWith(
+            TriggerProxy.trigger,
+            meeting,
+            {
+              file: 'meetings',
+              function: 'setUpLocusInfoMeetingInfoListener',
+            },
+            'meeting:meetingInfoUpdated'
+          );
+
+          callback({isIntialized: false});
+
+          assert.calledWith(updateMeetingActionsSpy);
+          assert.calledWith(setRecordingDisplayHintsSpy, userDisplayHints);
+          assert.calledWith(setUserPolicySpy, userDisplayPolicy);
+          assert.calledWith(setControlsDisplayHintsSpy, userDisplayHints);
+          assert.calledWith(handleDataChannelUrlChangeSpy, datachannelUrl);
+
+          assert.calledWith(
+            TriggerProxy.trigger,
+            meeting,
+            {
+              file: 'meetings',
+              function: 'setUpLocusInfoMeetingInfoListener',
+            },
+            'meeting:meetingInfoUpdated'
+          );
         });
       });
 

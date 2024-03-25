@@ -171,6 +171,9 @@ describe('plugin-metrics', () => {
           webex.internal.newMetrics.callDiagnosticLatencies.getCallInitJoinReq = sinon
             .stub()
             .returns(10);
+            webex.internal.newMetrics.callDiagnosticLatencies.getDownloadTimeJMT = sinon
+            .stub()
+            .returns(100);
           const promise = webex.internal.newMetrics.callDiagnosticMetrics.submitToCallDiagnostics(
             //@ts-ignore
             {event: {name: 'client.locus.join.response'}}
@@ -194,6 +197,7 @@ describe('plugin-metrics', () => {
               pageJmt: 30,
               totalJmt: 20,
               clientJmt: 5,
+              downloadTime: 100,
             },
           });
           assert.lengthOf(

@@ -90,23 +90,13 @@ describe('plugin-meetings', () => {
       sandbox.reset();
     });
 
-    it('syncs meetings if it is not an unverified guest', async () => {
+    it('calls syncMeetings', async () => {
       const rm = new ReconnectionManager(fakeMeeting);
 
       await rm.reconnect();
 
       assert.calledOnce(rm.webex.meetings.syncMeetings);
       assert.calledWith(rm.webex.meetings.syncMeetings, {keepOnlyLocusMeetings: false});
-    });
-
-    it('does not sync meetings if it is an unverified guest', async () => {
-      const rm = new ReconnectionManager(fakeMeeting);
-
-      rm.webex.credentials.isUnverifiedGuest = true;
-
-      await rm.reconnect();
-
-      assert.notCalled(rm.webex.meetings.syncMeetings);
     });
 
     it('calls startReachability on reconnect', async () => {

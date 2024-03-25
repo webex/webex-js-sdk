@@ -302,6 +302,11 @@ describe('internal-plugin-metrics', () => {
 
     [
       ['client.exit.app', {}],
+      ['client.webexapp.launched', {
+        joinTimes: {
+          downloadTime: undefined,
+        }
+      }],
       [
         'client.interstitial-window.launched',
         {
@@ -335,6 +340,7 @@ describe('internal-plugin-metrics', () => {
             interstitialToJoinOK: undefined,
             totalJmt: undefined,
             clientJmt: undefined,
+            downloadTime: undefined
           },
         },
       ],
