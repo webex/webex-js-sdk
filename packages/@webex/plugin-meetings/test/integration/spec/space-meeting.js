@@ -59,7 +59,7 @@ skipInNode(describe)('plugin-meetings', () => {
         })
     );
 
-    it('Alice starts a space meeting', async () =>
+    it('Alice starts a space meeting', () =>
       alice.webex.internal.conversation
         .create({participants: [bob, chris]})
         .then((conversation) => {
