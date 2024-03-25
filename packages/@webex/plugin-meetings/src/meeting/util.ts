@@ -202,7 +202,11 @@ const MeetingUtil = {
         meeting.reconnectionManager.cleanUp();
       })
       .then(() => meeting.stopKeepAlive())
-      .then(() => meeting.updateLLMConnection());
+      .then(() => {
+        if (meeting.config.enableAutomaticLLM) {
+          meeting.updateLLMConnection();
+        }
+      });
   },
 
   disconnectPhoneAudio: (meeting, phoneUrl) => {
