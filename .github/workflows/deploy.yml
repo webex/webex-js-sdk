@@ -311,7 +311,7 @@ jobs:
         run: echo "commit=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
 
       - name: Create a tag for the last commit
-        run: echo 'git tag -a "${{ steps.versionextractor.outputs.version }}" ${{ steps.lastcommit.outputs.commit }} -m "${{ steps.versionextractor.outputs.message }}"'
+        run: git tag -a "${{ steps.versionextractor.outputs.version }}" ${{ steps.lastcommit.outputs.commit }} -m "${{ steps.versionextractor.outputs.message }}"
 
       - name: Publish the tag to GitHub
-        run: echo "git push origin ${{ steps.versionextractor.outputs.version }}"
+        run: git push origin ${{ steps.versionextractor.outputs.version }}
