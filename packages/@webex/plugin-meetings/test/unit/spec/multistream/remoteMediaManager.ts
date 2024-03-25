@@ -344,8 +344,20 @@ describe('RemoteMediaManager', () => {
             .every((remoteMedia) => remoteMedia.mediaType === MediaType.AudioMain)
         );
         assert.strictEqual(createdInterpretationAudioGroup.getRemoteMedia('pinned').length, 0);
-        assert.isTrue(createdInterpretationAudioGroup.options.namedMediaGroup.type === 1);
-        assert.isTrue(createdInterpretationAudioGroup.options.namedMediaGroup.value === 20);
+        assert.calledTwice(fakeMediaRequestManagers.audio.addRequest);
+        assert.calledWith(
+          fakeMediaRequestManagers.audio.addRequest,
+          sinon.match({
+            policyInfo: sinon.match({
+              policy: 'active-speaker',
+              priority: 255,
+              namedMediaGroups: sinon.match([{type: 1, value: 20}]),
+            }),
+            receiveSlots: Array(1).fill(fakeAudioSlot),
+            codecInfo: undefined,
+          }),
+          false,
+        );
       }
     });
 
