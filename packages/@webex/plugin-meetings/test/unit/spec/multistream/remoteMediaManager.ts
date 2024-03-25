@@ -344,6 +344,8 @@ describe('RemoteMediaManager', () => {
             .every((remoteMedia) => remoteMedia.mediaType === MediaType.AudioMain)
         );
         assert.strictEqual(createdInterpretationAudioGroup.getRemoteMedia('pinned').length, 0);
+        assert.isTrue(createdInterpretationAudioGroup.options.namedMediaGroup.type === 1);
+        assert.isTrue(createdInterpretationAudioGroup.options.namedMediaGroup.value === 20);
       }
     });
 
@@ -389,6 +391,11 @@ describe('RemoteMediaManager', () => {
 
       // check that setNamedMediaGroup has been called
       assert.calledOnce(createdInterpretationAudioGroup.setNamedMediaGroup);
+      assert.calledWith(
+        createdInterpretationAudioGroup.setNamedMediaGroup,
+        {type: 1, value: 28},
+        true,
+      );
 
     });
 
@@ -466,16 +473,17 @@ describe('RemoteMediaManager', () => {
         config
       );
 
-      await remoteMediaManager.start();
-
-      resetHistory();
-
-      try {
-        remoteMediaManager.setReceiveNamedMediaGroup(MediaType.VideoMain, 0);
-      } catch (err) {
-        assert(err, {});
-      }
-
+      // Assuming setReceiveNamedMediaGroup returns a promise
+      it('should throw error when media type is not audio-main', async () => {
+        try {
+          await remoteMediaManager.setReceiveNamedMediaGroup(MediaType.VideoMain, 0);
+          // If the promise resolves successfully, we should fail the test
+          throw new Error('Expected an error but none was thrown');
+        } catch (error) {
+          // Check if the error message matches the expected one
+          expect(error.message).to.equal('cannot set receive named media group which media type is not audio-main');
+        }
+      });
     });
 
     it('pre-allocates receive slots based on the biggest layout', async () => {

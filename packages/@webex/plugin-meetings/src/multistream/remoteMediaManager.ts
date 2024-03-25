@@ -547,7 +547,8 @@ export class RemoteMediaManager extends EventsScope {
   /**
    * Sets which named media group need receiving
    * @param {MediaType} mediaType of the stream
-   * @param {number} languageCode of the stream
+   * @param {number} languageCode of the stream. If the languageId is 0, the named media group request will be canceled,
+   * and only receive the main audio stream.
    * @returns {void}
    */
   public async setReceiveNamedMediaGroup(mediaType: MediaType, languageId: number) {

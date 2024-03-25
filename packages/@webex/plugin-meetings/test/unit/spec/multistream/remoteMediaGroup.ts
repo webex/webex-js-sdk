@@ -171,7 +171,7 @@ describe('RemoteMediaGroup', () => {
           policyInfo: sinon.match({
             policy: 'active-speaker',
             priority: 255,
-            nameMediaGroups: sinon.match.any,
+            namedMediaGroups: sinon.match([{type: 1, value: 24}]),
           }),
           receiveSlots: fakeNamedMediaSlots,
           codecInfo: undefined,

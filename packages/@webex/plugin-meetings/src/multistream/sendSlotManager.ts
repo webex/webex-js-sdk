@@ -60,7 +60,8 @@ export default class SendSlotManager {
   /**
    * Allow users to specify 'namedMediaGroups' to indicate which named media group its audio should be sent to.
    * @param {MediaType} mediaType MediaType of the sendSlot to which the audio stream needs to be send to the media group
-   * @param {[]}namedMediaGroups - Allow users to specify 'namedMediaGroups'.
+   * @param {[]}namedMediaGroups - Allow users to specify 'namedMediaGroups'.If the value of 'namedMediaGroups' is zero,
+   * named media group will be canceled and the audio stream will be sent to the floor.
    * @returns {void}
    */
   public setNamedMediaGroups(mediaType: MediaType, namedMediaGroups: NamedMediaGroup[]) {
