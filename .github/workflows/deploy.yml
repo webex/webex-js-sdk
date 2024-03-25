@@ -310,6 +310,11 @@ jobs:
         id: lastcommit
         run: echo "commit=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
 
+      - name: Set Git Identity
+        run: |
+          git config user.email "${GIT_AUTHOR_EMAIL}"
+          git config user.name "${GIT_AUTHOR_NAME}"
+
       - name: Create a tag for the last commit
         run: git tag -a "${{ steps.versionextractor.outputs.version }}" ${{ steps.lastcommit.outputs.commit }} -m "${{ steps.versionextractor.outputs.message }}"
 
