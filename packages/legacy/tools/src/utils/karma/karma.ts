@@ -53,17 +53,21 @@ class Karma {
 
           resolve(undefined);
         });
-        server.on('run_start', async () => {
-          console.log('Karma run started');
-          // await startProxies();
-          await startServer();
-        });
 
-        server.on('run_complete', async () => {
-          console.log('Karma run complete');
-          // await stopProxies();
-          await stopServer();
-        });
+        if (files[0].includes('@webex')) {
+          console.log('FILEes ', files);
+          server.on('run_start', async (testsuite) => {
+            console.log('Tests run started', testsuite);
+            // await startProxies();
+            await startServer();
+          });
+
+          server.on('run_complete', async () => {
+            console.log('Test run complete');
+            // await stopProxies();
+            await stopServer();
+          });
+        }
 
         server.start();
       }));
