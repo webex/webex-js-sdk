@@ -57,7 +57,8 @@ describe('plugin-meetings', () => {
     });
 
     describe('#cleanup', () => {
-      it('do clean up on meeting object', async () => {
+      it('do clean up on meeting object with LLM enabled', async () => {
+        meeting.config = {enableAutomaticLLM : true};
         await MeetingUtil.cleanUp(meeting);
         assert.calledOnce(meeting.cleanupLocalStreams);
         assert.calledOnce(meeting.closeRemoteStreams);
@@ -68,6 +69,22 @@ describe('plugin-meetings', () => {
         assert.calledOnce(meeting.reconnectionManager.cleanUp);
         assert.calledOnce(meeting.stopKeepAlive);
         assert.calledOnce(meeting.updateLLMConnection);
+        assert.calledOnce(meeting.breakouts.cleanUp);
+        assert.calledOnce(meeting.simultaneousInterpretation.cleanUp);
+      });
+
+      it('do clean up on meeting object with LLM disabled', async () => {
+        meeting.config = {enableAutomaticLLM : false};
+        await MeetingUtil.cleanUp(meeting);
+        assert.calledOnce(meeting.cleanupLocalStreams);
+        assert.calledOnce(meeting.closeRemoteStreams);
+        assert.calledOnce(meeting.closePeerConnections);
+
+        assert.calledOnce(meeting.unsetRemoteStreams);
+        assert.calledOnce(meeting.unsetPeerConnections);
+        assert.calledOnce(meeting.reconnectionManager.cleanUp);
+        assert.calledOnce(meeting.stopKeepAlive);
+        assert.notCalled(meeting.updateLLMConnection);
         assert.calledOnce(meeting.breakouts.cleanUp);
         assert.calledOnce(meeting.simultaneousInterpretation.cleanUp);
       });
