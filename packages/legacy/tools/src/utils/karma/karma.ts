@@ -2,6 +2,14 @@ import '@babel/register';
 import '@webex/env-config-legacy';
 
 import KarmaRunner from 'karma';
+// import {
+//   startProxies,
+//   stopProxies,
+// } from './proxies';
+import {
+  start as startServer,
+  stop as stopServer,
+} from './server';
 
 import Browsers from './browsers';
 
@@ -19,7 +27,7 @@ class Karma {
    * @param options - Options object.
    * @returns - Empty Promise.
    */
-  public static test({
+  public static async test({
     browsers, debug, files, port,
   }: { browsers?: Array<string>, debug?: boolean, files: Array<string>, port?: string }): Promise<any> {
     const browserConfigs = Browsers.get({ browsers, debug });
@@ -44,6 +52,17 @@ class Karma {
           }
 
           resolve(undefined);
+        });
+        server.on('run_start', async () => {
+          console.log('Karma run started');
+          // await startProxies();
+          await startServer();
+        });
+
+        server.on('run_complete', async () => {
+          console.log('Karma run complete');
+          // await stopProxies();
+          await stopServer();
         });
 
         server.start();
