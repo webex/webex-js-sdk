@@ -88,6 +88,21 @@ describe('plugin-meetings', () => {
         assert.calledOnce(meeting.breakouts.cleanUp);
         assert.calledOnce(meeting.simultaneousInterpretation.cleanUp);
       });
+
+      it('do clean up on meeting object with no config', async () => {
+        await MeetingUtil.cleanUp(meeting);
+        assert.calledOnce(meeting.cleanupLocalStreams);
+        assert.calledOnce(meeting.closeRemoteStreams);
+        assert.calledOnce(meeting.closePeerConnections);
+
+        assert.calledOnce(meeting.unsetRemoteStreams);
+        assert.calledOnce(meeting.unsetPeerConnections);
+        assert.calledOnce(meeting.reconnectionManager.cleanUp);
+        assert.calledOnce(meeting.stopKeepAlive);
+        assert.notCalled(meeting.updateLLMConnection);
+        assert.calledOnce(meeting.breakouts.cleanUp);
+        assert.calledOnce(meeting.simultaneousInterpretation.cleanUp);
+      });
     });
 
     describe('logging', () => {
