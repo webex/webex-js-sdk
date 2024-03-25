@@ -34,7 +34,7 @@ skipInNode(describe)('plugin-meetings', () => {
   describe('space-meeting', () => {
     let space = null;
 
-    before(() =>
+    before(async () =>
       webexTestUsers
         .generateTestUsers({
           count: 4,
@@ -59,7 +59,7 @@ skipInNode(describe)('plugin-meetings', () => {
         })
     );
 
-    it('Alice starts a space meeting', () =>
+    it('Alice starts a space meeting', async () =>
       alice.webex.internal.conversation
         .create({participants: [bob, chris]})
         .then((conversation) => {
