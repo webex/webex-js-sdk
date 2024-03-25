@@ -203,7 +203,7 @@ const MeetingUtil = {
       })
       .then(() => meeting.stopKeepAlive())
       .then(() => {
-        if (meeting.config.enableAutomaticLLM) {
+        if (meeting.config?.enableAutomaticLLM) {
           meeting.updateLLMConnection();
         }
       });
