@@ -208,14 +208,14 @@ describe('plugin-meetings', () => {
 
       const simulateAudioMuteChange = async (muteValue) => {
         meeting.mediaProperties.audioStream.userMuted = muteValue;
-        audio.handleLocalStreamMuteStateChange(meeting, muteValue);
+        audio.handleLocalStreamMuteStateChange(meeting);
 
         await testUtils.flushPromises();
       };
 
       const simulateVideoMuteChange = async (muteValue) => {
         meeting.mediaProperties.videoStream.userMuted = muteValue;
-        video.handleLocalStreamMuteStateChange(meeting, muteValue);
+        video.handleLocalStreamMuteStateChange(meeting);
 
         await testUtils.flushPromises();
       };
@@ -586,7 +586,7 @@ describe('plugin-meetings', () => {
               await setup(mediaType, false, false);
               muteState.ignoreMuteStateChange = true;
 
-              muteState.handleLocalStreamMuteStateChange(meeting, true);
+              muteState.handleLocalStreamMuteStateChange(meeting);
               assert.notCalled(MeetingUtil.remoteUpdateAudioVideo);
 
               assert.isFalse(muteState.state.client.localMute);
@@ -596,7 +596,7 @@ describe('plugin-meetings', () => {
               await setup(mediaType, false, true);
 
               simulateUserMute(false);
-              muteState.handleLocalStreamMuteStateChange(meeting, false);
+              muteState.handleLocalStreamMuteStateChange(meeting);
               assert.equal(muteState.state.client.localMute, false);
               assert.called(MeetingUtil.remoteUpdateAudioVideo);
             });
@@ -605,7 +605,7 @@ describe('plugin-meetings', () => {
               await setup(mediaType, false, false);
 
               simulateUserMute(true);
-              muteState.handleLocalStreamMuteStateChange(meeting, true);
+              muteState.handleLocalStreamMuteStateChange(meeting);
               assert.equal(muteState.state.client.localMute, true);
               assert.called(MeetingUtil.remoteUpdateAudioVideo);
             });

@@ -150,27 +150,27 @@ export class MuteState {
    * @param {Boolean} [mute] true for muting, false for unmuting request
    * @returns {void}
    */
-  public handleLocalStreamMuteStateChange(meeting?: any, mute?: boolean) {
+  public handleLocalStreamMuteStateChange(meeting?: any) {
     if (this.ignoreMuteStateChange) {
       return;
     }
 
     // either user or system may have triggered a mute state change, but localMute should reflect both
     let newMuteState: boolean;
+    let userMuteState: boolean;
+    let systemMuteState: boolean;
     if (this.type === AUDIO) {
       newMuteState = meeting.mediaProperties.audioStream?.muted;
+      userMuteState = meeting.mediaProperties.audioStream?.userMuted;
+      systemMuteState = meeting.mediaProperties.audioStream?.systemMuted;
     } else {
       newMuteState = meeting.mediaProperties.videoStream?.muted;
-    }
-
-    if (newMuteState !== mute) {
-      LoggerProxy.logger.info(
-        `Meeting:muteState#handleLocalStreamMuteStateChange --> user or system muted ${mute}, but new mute state is still ${newMuteState}`
-      );
+      userMuteState = meeting.mediaProperties.videoStream?.userMuted;
+      systemMuteState = meeting.mediaProperties.videoStream?.systemMuted;
     }
 
     LoggerProxy.logger.info(
-      `Meeting:muteState#handleLocalStreamMuteStateChange --> ${this.type}: local stream new mute state: ${newMuteState}`
+      `Meeting:muteState#handleLocalStreamMuteStateChange --> ${this.type}: local stream new mute state: ${newMuteState} (user mute: ${userMuteState}, system mute: ${systemMuteState})`
     );
 
     this.state.client.localMute = newMuteState;

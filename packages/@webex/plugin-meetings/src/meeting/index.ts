@@ -1294,12 +1294,12 @@ export default class Meeting extends StatelessWebexPlugin {
      */
     this.remoteMediaManager = null;
 
-    this.localAudioStreamMuteStateHandler = (muted: boolean) => {
-      this.audio.handleLocalStreamMuteStateChange(this, muted);
+    this.localAudioStreamMuteStateHandler = () => {
+      this.audio.handleLocalStreamMuteStateChange(this);
     };
 
-    this.localVideoStreamMuteStateHandler = (muted: boolean) => {
-      this.video.handleLocalStreamMuteStateChange(this, muted);
+    this.localVideoStreamMuteStateHandler = () => {
+      this.video.handleLocalStreamMuteStateChange(this);
     };
 
     // The handling of output track changes should be done inside
