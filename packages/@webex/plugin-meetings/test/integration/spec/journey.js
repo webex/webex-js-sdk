@@ -239,7 +239,7 @@ skipInNode(describe)('plugin-meetings', () => {
 
     // Enabled when config.enableUnifiedMeetings = true
     xdescribe('Conversation URL', () => {
-      describe('Successful 1:1 meeting', async () => {
+      describe('Successful 1:1 meeting',  () => {
         it('Fetch meeting information with a conversation URL for a 1:1 space', async () => {
           assert.equal(Object.keys(bob.webex.meetings.getAllMeetings()), 0);
           assert.equal(Object.keys(chris.webex.meetings.getAllMeetings()), 0);
