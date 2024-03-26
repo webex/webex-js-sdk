@@ -78,11 +78,6 @@ describe('internal-plugin-metrics', () => {
             orgId: 'orgId',
           },
         },
-        config: {
-          metrics: {
-            ...CONFIG.metrics,
-          },
-        },
         meetings: {
           config: {
             metrics: {
