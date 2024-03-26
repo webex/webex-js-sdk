@@ -303,6 +303,48 @@ describe('plugin-meetings', () => {
           assert.called(webex.internal.mercury.connect);
           assert.isTrue(webex.meetings.registered);
         });
+
+        it('adds specified fields to the success metric', async () => {
+          const metricsSpy = sinon.stub(Metrics, 'sendBehavioralMetric');
+
+          webex.canAuthorize = true;
+          await webex.meetings.register({foo: 'bar', abc: '123'});
+
+          await testUtils.flushPromises();
+
+          assert.calledWith(metricsSpy, 'js_sdk_meetings_registration_success', {
+            foo: 'bar',
+            abc: '123'
+          });
+        });
+
+        it('adds specified fields to the failure metric', async () => {
+          const metricsSpy = sinon.stub(Metrics, 'sendBehavioralMetric');
+
+          webex.canAuthorize = true;
+          webex.internal.mercury.connect = sinon.stub().returns(Promise.reject(new Error('forced')));
+          assert.isRejected(webex.meetings.register({foo: 'bar', abc: '123'}));
+
+          await testUtils.flushPromises();
+
+          assert.calledWith(metricsSpy, 'js_sdk_meetings_registration_failed', {
+            reason: 'forced',
+            stack: sinon.match.string,
+            foo: 'bar',
+            abc: '123'
+          });
+        });
+
+        it('adds nothing when no fields are specified', async () => {
+          const metricsSpy = sinon.stub(Metrics, 'sendBehavioralMetric');
+
+          webex.canAuthorize = true;
+          await webex.meetings.register();
+
+          await testUtils.flushPromises();
+
+          assert.calledWith(metricsSpy, 'js_sdk_meetings_registration_success', {});
+        });
       });
 
       describe('#unregister', () => {

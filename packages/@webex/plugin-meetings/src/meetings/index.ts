@@ -721,11 +721,12 @@ export default class Meetings extends WebexPlugin {
    * Explicitly sets up the meetings plugin by registering
    * the device, connecting to mercury, and listening for locus events.
    *
+   * @param {object} metricFields - optional fields to use when sending metrics
    * @returns {Promise}
    * @public
    * @memberof Meetings
    */
-  public register() {
+  public register(metricFields: object = {}) {
     // @ts-ignore
     if (!this.webex.canAuthorize) {
       LoggerProxy.logger.error(
@@ -774,7 +775,10 @@ export default class Meetings extends WebexPlugin {
           EVENT_TRIGGERS.MEETINGS_REGISTERED
         );
         this.registered = true;
-        Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.MEETINGS_REGISTRATION_SUCCESS);
+        Metrics.sendBehavioralMetric(
+          BEHAVIORAL_METRICS.MEETINGS_REGISTRATION_SUCCESS,
+          metricFields
+        );
       })
       .catch((error) => {
         LoggerProxy.logger.error(
@@ -784,6 +788,7 @@ export default class Meetings extends WebexPlugin {
         Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.MEETINGS_REGISTRATION_FAILED, {
           reason: error.message,
           stack: error.stack,
+          ...metricFields,
         });
 
         return Promise.reject(error);
