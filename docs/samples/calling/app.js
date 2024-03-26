@@ -499,6 +499,7 @@ async function changeInputStream() {
   const newStream  = await Calling.createMicrophoneStream(constraints);
 
   call.updateMedia(newStream);
+  localAudioStream = newStream;
 }
 
 async function changeOutputStream() {
