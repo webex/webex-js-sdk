@@ -2,10 +2,6 @@ import '@babel/register';
 import '@webex/env-config-legacy';
 
 import KarmaRunner from 'karma';
-// import {
-//   startProxies,
-//   stopProxies,
-// } from './proxies';
 import {
   start as startServer,
   stop as stopServer,

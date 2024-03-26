@@ -11,7 +11,7 @@ import {base64, oneFlight, whileInFlight} from '@webex/common';
 import {grantErrors, WebexPlugin} from '@webex/webex-core';
 import {cloneDeep, isEmpty, omit} from 'lodash';
 import uuid from 'uuid';
-const jwt = require('jsonwebtoken');
+import * as jose from 'jose'
 
 const OAUTH2_CSRF_TOKEN = 'oauth2-csrf-token';
 const EMPTY_OBJECT_STRING = base64.encode(JSON.stringify({}));
@@ -250,8 +250,10 @@ const Authorization = WebexPlugin.extend({
     const alg = 'HS256';
 
     try {
-
-      const jwtToken = jwt.sign(payload, secret, { expiresIn });
+      const jwtToken = await new jose.SignJWT(payload)
+        .setProtectedHeader({alg})
+        .setExpirationTime(expiresIn)
+        .sign(secret);
 
       return Promise.resolve({jwt: jwtToken});
     } catch (e) {

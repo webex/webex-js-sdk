@@ -41,7 +41,7 @@
     "@webex/storage-adapter-local-storage": "workspace:*",
     "@webex/storage-adapter-spec": "workspace:*",
     "@webex/webex-core": "workspace:*",
-    "jsonwebtoken": "^8.5.1",
+    "jose": "^4.13.1",
     "lodash": "^4.17.21",
     "uuid": "^3.3.2"
   },
