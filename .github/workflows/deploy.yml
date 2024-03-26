@@ -272,6 +272,7 @@ jobs:
       message: ${{ steps.versionextractor.outputs.message }}
       version: ${{ steps.versionextractor.outputs.version }}
       commit: ${{ steps.lastcommit.outputs.commit }}
+      proceed: ${{ steps.skipcondition.outputs.proceed }}
 
     steps:
       - name: Checkout Project
@@ -307,28 +308,48 @@ jobs:
           echo "version=v$(yarn package-tools sync --tag ${GITHUB_REF##*/} --packages webex | awk '{print $3}' | tr -d '%')" >> $GITHUB_OUTPUT    
 
       - name: Conditions to skip tag publish
+        id: skipcondition
         run: |
           if git rev-parse "${{ steps.versionextractor.outputs.version }}" >/dev/null 2>&1; then
             echo "Tag ${{ steps.versionextractor.outputs.version }} already exists. Exiting job."
-            exit 0
+            echo "proceed=0" >> $GITHUB_OUTPUT
           elif [ -z ${{ needs.generate-package-matrix.outputs.node-recursive }} ]; then
             echo "No packages published, therefore, publishing a tag is unnecessary. Exiting job."
-            exit 0
+            echo "proceed=0" >> $GITHUB_OUTPUT
           else
-            echo "Tag $TAG_NAME does not exist. Proceeding to create the tag."
+            echo "Creating the tag."
           fi
 
       - name: Get the last commit hash
         id: lastcommit
-        run: echo "commit=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
+        run: |
+          if [ -z ${{ steps.skipcondition.outputs.proceed }} ]; then
+            echo "Skipping this step."
+          else
+            echo "commit=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
+          fi
 
       - name: Set Git Identity
         run: |
-          git config user.email "${GIT_AUTHOR_EMAIL}"
-          git config user.name "${GIT_AUTHOR_NAME}"
+          if [ -z ${{ steps.skipcondition.outputs.proceed }} ]; then
+            echo "Skipping this step."
+          else
+            git config user.email "${GIT_AUTHOR_EMAIL}"
+            git config user.name "${GIT_AUTHOR_NAME}"
+          fi
 
       - name: Create a tag for the last commit
-        run: git tag -a "${{ steps.versionextractor.outputs.version }}" ${{ steps.lastcommit.outputs.commit }} -m "${{ steps.versionextractor.outputs.message }}"
+        run: |
+          if [ -z ${{ steps.skipcondition.outputs.proceed }} ]; then
+            echo "Skipping this step."
+          else
+            git tag -a "${{ steps.versionextractor.outputs.version }}" ${{ steps.lastcommit.outputs.commit }} -m "${{ steps.versionextractor.outputs.message }}"
+          fi
 
       - name: Publish the tag to GitHub
-        run: git push origin ${{ steps.versionextractor.outputs.version }}
+        run: |
+          if [ -z ${{ steps.skipcondition.outputs.proceed }} ]; then
+            echo "Skipping this step."
+          else
+            git push origin ${{ steps.versionextractor.outputs.version }}
+          fi
