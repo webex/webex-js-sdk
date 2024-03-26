@@ -59,7 +59,8 @@ describe('CALLING: Metric tests', () => {
       metricManager.submitRegistrationMetric(
         METRIC_EVENT.REGISTRATION,
         REG_ACTION.REGISTER,
-        METRIC_TYPE.BEHAVIORAL
+        METRIC_TYPE.BEHAVIORAL,
+        undefined
       );
       expect(mockSubmitClientMetric).toBeCalledOnceWith(METRIC_EVENT.REGISTRATION, expectedData);
     });
@@ -115,7 +116,8 @@ describe('CALLING: Metric tests', () => {
       metricManager.submitRegistrationMetric(
         'invalidMetricName' as unknown as METRIC_EVENT,
         REG_ACTION.REGISTER,
-        METRIC_TYPE.OPERATIONAL
+        METRIC_TYPE.OPERATIONAL,
+        undefined
       );
 
       expect(mockSubmitClientMetric).not.toBeCalled();
@@ -340,6 +342,58 @@ describe('CALLING: Metric tests', () => {
           method: 'submitMediaMetric',
         }
       );
+    });
+
+    it('submit bnr enabled success metric', () => {
+      const expectedData = {
+        tags: {
+          device_id: mockDeviceInfo.device.deviceId,
+          service_indicator: ServiceIndicator.CALLING,
+        },
+        fields: {
+          device_url: mockDeviceInfo.device.clientDeviceUri,
+          mobius_url: mockDeviceInfo.device.uri,
+          calling_sdk_version: VERSION,
+          call_id: mockCallId,
+          correlation_id: mockCorrelationId,
+        },
+        type: METRIC_TYPE.BEHAVIORAL,
+      };
+
+      metricManager.submitBNRMetric(
+        METRIC_EVENT.BNR_ENABLED,
+        METRIC_TYPE.BEHAVIORAL,
+        mockCallId,
+        mockCorrelationId
+      );
+
+      expect(mockSubmitClientMetric).toBeCalledOnceWith(METRIC_EVENT.BNR_ENABLED, expectedData);
+    });
+
+    it('submit bnr disabled success metric', () => {
+      const expectedData = {
+        tags: {
+          device_id: mockDeviceInfo.device.deviceId,
+          service_indicator: ServiceIndicator.CALLING,
+        },
+        fields: {
+          device_url: mockDeviceInfo.device.clientDeviceUri,
+          mobius_url: mockDeviceInfo.device.uri,
+          calling_sdk_version: VERSION,
+          call_id: mockCallId,
+          correlation_id: mockCorrelationId,
+        },
+        type: METRIC_TYPE.BEHAVIORAL,
+      };
+
+      metricManager.submitBNRMetric(
+        METRIC_EVENT.BNR_DISABLED,
+        METRIC_TYPE.BEHAVIORAL,
+        mockCallId,
+        mockCorrelationId
+      );
+
+      expect(mockSubmitClientMetric).toBeCalledOnceWith(METRIC_EVENT.BNR_DISABLED, expectedData);
     });
   });
 
