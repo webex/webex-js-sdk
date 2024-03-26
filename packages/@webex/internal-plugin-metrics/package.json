@@ -53,6 +53,6 @@
     "deploy:npm": "yarn npm publish",
     "test": "yarn test:style && yarn test:unit && yarn test:integration && yarn test:browser",
     "test:style": "eslint ./src/**/*.*",
-    "test:unit": "webex-legacy-tools test --unit --runner jest"
+    "test:unit": "webex-legacy-tools test --unit --runner mocha"
   }
 }
