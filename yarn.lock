@@ -7818,7 +7818,7 @@ __metadata:
     "@webex/test-helper-test-users": "workspace:*"
     "@webex/webex-core": "workspace:*"
     eslint: ^8.24.0
-    jose: ^4.13.1
+    jsonwebtoken: ^9.0.2
     lodash: ^4.17.21
     prettier: ^2.7.1
     sinon: ^9.2.4
@@ -20416,13 +20416,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"jose@npm:^4.13.1":
-  version: 4.15.5
-  resolution: "jose@npm:4.15.5"
-  checksum: 7dde76447c7707bd4b448f914b216f3858e701aa83f00447434252461af5b9e159dcbffb88badea3f9616739526763581267c9560622f0a058df8d68c86d7f79
-  languageName: node
-  linkType: hard
-
 "jpeg-js@npm:^0.4.4":
   version: 0.4.4
   resolution: "jpeg-js@npm:0.4.4"
@@ -20863,7 +20856,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"jsonwebtoken@npm:^9.0.0":
+"jsonwebtoken@npm:^9.0.0, jsonwebtoken@npm:^9.0.2":
   version: 9.0.2
   resolution: "jsonwebtoken@npm:9.0.2"
   dependencies:

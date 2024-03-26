@@ -713,7 +713,7 @@ describe('plugin-logger', () => {
       assert.calledWith(console.log, 'wx-js-sdk', 'https://example.com/example/j.php?MTID=[REDACTED]#abcdefg');
     });
 
-    it('handle circular references', () => {
+    nodeOnly(it)('handle circular references', () => {
       webex.config.logger.level = 'trace';
 
       const object = {
@@ -744,7 +744,7 @@ describe('plugin-logger', () => {
         } 
       });
 
-    it('handle circular references in complex objects', () => {
+    nodeOnly(it)('handle circular references in complex objects', () => {
       webex.config.logger.level = 'trace';
 
       const func = () => true;

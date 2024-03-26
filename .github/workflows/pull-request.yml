@@ -356,7 +356,7 @@ jobs:
       - name: Synchronize Packages
         run: yarn
 
-      - name: Buld Packages
+      - name: Build Packages
         run: yarn build:local
 
       - name: Test - Integration

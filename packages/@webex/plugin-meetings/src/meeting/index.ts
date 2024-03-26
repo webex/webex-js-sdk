@@ -37,7 +37,7 @@ import {
   EVENT_TRIGGERS as VOICEAEVENTS,
   TURN_ON_CAPTION_STATUS,
 } from '@webex/internal-plugin-voicea';
-import {processNewCaptions, processHighlightCreated} from './voicea-meeting';
+import {processNewCaptions} from './voicea-meeting';
 
 import {
   MeetingNotActiveError,
@@ -187,7 +187,6 @@ export type Transcription = {
   isListening: boolean;
   commandText: string;
   captions: Array<CaptionData>;
-  highlights: Array<any>;
   showCaptionBox: boolean;
   transcribingRequestStatus: string;
   isCaptioning: boolean;
@@ -663,9 +662,6 @@ export default class Meeting extends StatelessWebexPlugin {
           interimCaptions: this.transcription.interimCaptions,
         }
       );
-    },
-    [VOICEAEVENTS.HIGHLIGHT_CREATED]: (data) => {
-      processHighlightCreated({data, meeting: this});
     },
   };
 
@@ -1269,7 +1265,6 @@ export default class Meeting extends StatelessWebexPlugin {
      */
     this.transcription = {
       captions: [],
-      highlights: [],
       isListening: false,
       commandText: '',
       languageOptions: {},
@@ -2054,12 +2049,6 @@ export default class Meeting extends StatelessWebexPlugin {
     this.webex.internal.voicea.on(
       VOICEAEVENTS.NEW_CAPTION,
       this.voiceaListenerCallbacks[VOICEAEVENTS.NEW_CAPTION]
-    );
-
-    // @ts-ignore
-    this.webex.internal.voicea.on(
-      VOICEAEVENTS.HIGHLIGHT_CREATED,
-      this.voiceaListenerCallbacks[VOICEAEVENTS.HIGHLIGHT_CREATED]
     );
 
     this.areVoiceaEventsSetup = true;
@@ -4710,11 +4699,13 @@ export default class Meeting extends StatelessWebexPlugin {
             reject(payload);
           }
         };
+
         // @ts-ignore
         this.webex.internal.voicea.on(
           VOICEAEVENTS.SPOKEN_LANGUAGE_UPDATE,
           voiceaListenerLanguageUpdate
         );
+
         // @ts-ignore
         this.webex.internal.voicea.setSpokenLanguage(language);
       } catch (error) {
@@ -4828,12 +4819,6 @@ export default class Meeting extends StatelessWebexPlugin {
       this.webex.internal.voicea.off(
         VOICEAEVENTS.NEW_CAPTION,
         this.voiceaListenerCallbacks[VOICEAEVENTS.NEW_CAPTION]
-      );
-
-      // @ts-ignore
-      this.webex.internal.voicea.off(
-        VOICEAEVENTS.HIGHLIGHT_CREATED,
-        this.voiceaListenerCallbacks[VOICEAEVENTS.HIGHLIGHT_CREATED]
       );
 
       this.areVoiceaEventsSetup = false;
