@@ -318,7 +318,7 @@ describe('plugin-meetings', () => {
           });
         });
 
-        it.only('adds specified fields to the failure metric', async () => {
+        it('adds specified fields to the failure metric', async () => {
           const metricsSpy = sinon.stub(Metrics, 'sendBehavioralMetric');
 
           webex.canAuthorize = true;
@@ -335,7 +335,7 @@ describe('plugin-meetings', () => {
           });
         });
 
-        it.only('adds nothing when no fields are specified', async () => {
+        it('adds nothing when no fields are specified', async () => {
           const metricsSpy = sinon.stub(Metrics, 'sendBehavioralMetric');
 
           webex.canAuthorize = true;
