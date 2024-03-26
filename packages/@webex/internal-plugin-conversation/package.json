@@ -1,6 +1,6 @@
 {
   "name": "@webex/internal-plugin-conversation",
-  "description": "",
+  "description": "Conversation plugin for messaging",
   "license": "MIT",
   "main": "dist/index.js",
   "devMain": "src/index.js",
