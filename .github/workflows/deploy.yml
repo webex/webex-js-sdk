@@ -332,7 +332,7 @@ jobs:
 
       - name: Set Git Identity
         run: |
-          if [ -z ${{ steps.skipcondition.outputs.proceed }} = false ]; then
+          if [ ${{ steps.skipcondition.outputs.proceed }} = false ]; then
             echo "Skipping this step."
           else
             git config user.email "${GIT_AUTHOR_EMAIL}"
@@ -341,7 +341,7 @@ jobs:
 
       - name: Create a tag for the last commit
         run: |
-          if [ -z ${{ steps.skipcondition.outputs.proceed }} = false ]; then
+          if [ ${{ steps.skipcondition.outputs.proceed }} = false ]; then
             echo "Skipping this step."
           else
             git tag -a "${{ steps.versionextractor.outputs.version }}" ${{ steps.lastcommit.outputs.commit }} -m "${{ steps.versionextractor.outputs.message }}"
@@ -349,7 +349,7 @@ jobs:
 
       - name: Publish the tag to GitHub
         run: |
-          if [ -z ${{ steps.skipcondition.outputs.proceed }} ]; then
+          if [ ${{ steps.skipcondition.outputs.proceed }} = false ]; then
             echo "Skipping this step."
           else
             git push origin ${{ steps.versionextractor.outputs.version }}
