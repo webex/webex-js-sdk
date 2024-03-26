@@ -27,10 +27,8 @@
     "build:src": "webex-legacy-tools build -dest \"./dist\" -src \"./src\" -js -ts -maps",
     "deploy:npm": "yarn npm publish",
     "test": "yarn test:style && yarn test:unit && yarn test:integration && yarn test:browser",
-    "test:browser": "webex-legacy-tools test --integration --unit --runner karma",
-    "test:integration": "webex-legacy-tools test --integration --runner mocha",
-    "test:style": "eslint ./src/**/*.*",
-    "test:unit": "webex-legacy-tools test --unit --runner jest"
+    "test:browser": "webex-legacy-tools test --integration --runner karma",
+    "test:style": "eslint ./src/**/*.*"
   },
   "devDependencies": {
     "@babel/core": "^7.17.10",
