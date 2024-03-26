@@ -309,7 +309,7 @@ jobs:
       - name: Conditions to skip tag publish
         run: |
           if git rev-parse "${{ steps.versionextractor.outputs.version }}" >/dev/null 2>&1; then
-            echo "Tag $TAG_NAME already exists. Exiting job."
+            echo "Tag ${{ steps.versionextractor.outputs.version }} already exists. Exiting job."
             exit 0
           elif [ -z ${{ needs.generate-package-matrix.outputs.node-recursive }} ]; then
             echo "No packages published, therefore, publishing a tag is unnecessary. Exiting job."
