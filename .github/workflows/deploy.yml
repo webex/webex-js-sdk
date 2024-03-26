@@ -266,7 +266,7 @@ jobs:
   publish-tag:
     name: Publish - Tags
     runs-on: ubuntu-latest
-    needs: publish-npm
+    needs: [generate-package-matrix, publish-npm]
 
     outputs:
       message: ${{ steps.versionextractor.outputs.message }}
@@ -303,8 +303,20 @@ jobs:
         id: versionextractor
         run: |
           yarn ws:tools
-          echo "message=$(git log -1 --pretty=%B)" >> $GITHUB_OUTPUT
+          echo "message=$(git log -1 --oneline --no-decorate)" >> $GITHUB_OUTPUT
           echo "version=v$(yarn package-tools sync --tag ${GITHUB_REF##*/} --packages webex | awk '{print $3}' | tr -d '%')" >> $GITHUB_OUTPUT    
+
+      - name: Conditions to skip tag publish
+        run: |
+          if git rev-parse "${{ steps.versionextractor.outputs.version }}" >/dev/null 2>&1; then
+            echo "Tag $TAG_NAME already exists. Exiting job."
+            exit 0
+          elif [ -z ${{ needs.generate-package-matrix.outputs.node-recursive }} ]; then
+            echo "No packages published, therefore, publishing a tag is unnecessary. Exiting job."
+            exit 0
+          else
+            echo "Tag $TAG_NAME does not exist. Proceeding to create the tag."
+          fi
 
       - name: Get the last commit hash
         id: lastcommit
