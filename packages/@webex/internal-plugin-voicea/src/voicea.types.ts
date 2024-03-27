@@ -78,7 +78,7 @@ interface IVoiceaChannel {
   setSpokenLanguage: (languageCode: string) => Promise<void>;
   requestLanguage: (languageCode: string) => void;
   turnOnCaptions: () => undefined | Promise<void>;
-  toggleTranscribing: (activate: boolean) => undefined | Promise<void>;
+  toggleTranscribing: (activate: boolean, spokenLanguage: string) => undefined | Promise<void>;
   deregisterEvents: () => void;
 }
 
