@@ -306,6 +306,78 @@ describe('webex-core', () => {
       });
     });
 
+    describe('#_fetchNewServiceHostmap', () => {
+      const setup = () => {
+        webex.internal.metrics.submitClientMetrics = sinon.stub();
+
+      };
+
+      beforeEach(() => {
+        webex.internal.newMetrics.submitInternalEvent.resetHistory();
+      });
+
+      it('checks that submitInternalEvent gets called with pre auth request and response', async () => {
+        setup();
+        services.request = sinon.stub().resolves({});
+        services._formatReceivedHostmap = sinon.stub();
+        await services._fetchNewServiceHostmap({from: 'limited'});
+
+        assert.calledTwice(webex.internal.newMetrics.submitInternalEvent);
+
+        assert.calledWith(webex.internal.newMetrics.submitInternalEvent, {
+          name: 'internal.get.u2c.request-preauth',
+        });
+
+        assert.calledWith(webex.internal.newMetrics.submitInternalEvent, {
+          name: 'internal.get.u2c.response-preauth',
+        });
+      });
+
+      it('checks that submitInternalEvent gets called with post auth request and response', async () => {
+
+        setup();
+        services.request = sinon.stub().resolves({});
+        services._formatReceivedHostmap = sinon.stub();
+        await services._fetchNewServiceHostmap();
+
+        assert.calledTwice(webex.internal.newMetrics.submitInternalEvent);
+
+        assert.calledWith(webex.internal.newMetrics.submitInternalEvent, {
+          name: 'internal.get.u2c.request-postauth',
+        });
+
+        assert.calledWith(webex.internal.newMetrics.submitInternalEvent, {
+          name: 'internal.get.u2c.response-postauth',
+        });
+      });
+
+      it('checks that submitInternalEvent gets called with internal.get.u2c.response-preauth on error', async () => {
+        setup();
+        services.request = sinon.stub().rejects(new Error('some error'));
+
+        const result =  services._fetchNewServiceHostmap({from: 'limited'});  
+
+        await assert.isRejected(result);
+
+        assert.calledWith(webex.internal.newMetrics.submitInternalEvent, {
+          name: 'internal.get.u2c.response-preauth',
+        });
+      });
+
+      it('checks that submitInternalEvent gets called with internal.get.u2c.response-postauth on error', async () => {
+        setup();
+        services.request = sinon.stub().rejects(new Error('some error'));
+
+        const result =  services._fetchNewServiceHostmap();  
+
+        await assert.isRejected(result);
+
+        assert.calledWith(webex.internal.newMetrics.submitInternalEvent, {
+          name: 'internal.get.u2c.response-postauth',
+        });
+      });
+    });
+
     describe('#updateCredentialsConfig()', () => {
       // updateCredentialsConfig must remove `/` if exist. so expected serviceList must be.
       const expectedServiceList = {

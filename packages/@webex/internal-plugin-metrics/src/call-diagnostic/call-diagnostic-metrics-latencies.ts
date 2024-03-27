@@ -170,6 +170,30 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
   }
 
   /**
+   * Getting catalog time from U2C service
+   * @returns - latency
+   */
+  public getU2CTime() {
+    const preAuth =
+      this.getDiffBetweenTimestamps(
+        'internal.get.u2c.request-preauth',
+        'internal.get.u2c.response-preauth'
+      ) || 0;
+
+    const postAuth =
+      this.getDiffBetweenTimestamps(
+        'internal.get.u2c.request-postauth',
+        'internal.get.u2c.response-postauth'
+      ) || 0;
+
+    const calculatedLatency = preAuth + postAuth;
+
+    const latency = calculatedLatency > 0 ? calculatedLatency : undefined;
+
+    return latency;
+  }
+
+  /**
    * Call Init Join Request
    * @returns - latency
    */
