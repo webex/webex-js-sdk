@@ -121,7 +121,7 @@ describe('TurnDiscovery', () => {
         });
 
         // checks that OK roap message was sent or not sent and that the result is as expected
-        const checkResult = async (resultPromise, expectedRoapMessageSent, expectedResult) => {
+        const checkResult = async (resultPromise, expectedRoapMessageSent, expectedResult, expectedSkipReason?: string) => {
           let turnServerInfo, turnDiscoverySkippedReason;
 
           if (expectedRoapMessageSent === 'OK') {
@@ -150,7 +150,7 @@ describe('TurnDiscovery', () => {
           }
 
           assert.deepEqual(turnServerInfo, expectedResult);
-          assert.isUndefined(turnDiscoverySkippedReason);
+          assert.equal(turnDiscoverySkippedReason, expectedSkipReason);
         };
 
         it('sends TURN_DISCOVERY_REQUEST, waits for response and sends OK', async () => {
@@ -302,7 +302,7 @@ describe('TurnDiscovery', () => {
           // @ts-ignore
           mockRoapRequest.sendRoap.resetHistory();
 
-          await checkResult(result, undefined, undefined);
+          await checkResult(result, undefined, undefined, 'failure: Unexpected token o in JSON at position 1');
           checkFailureMetricsSent();
         });
 
@@ -366,7 +366,7 @@ describe('TurnDiscovery', () => {
           // @ts-ignore
           mockRoapRequest.sendRoap.resetHistory();
 
-          await checkResult(result, undefined, undefined);
+          await checkResult(result, undefined, undefined, 'failure: TURN_DISCOVERY_RESPONSE in http response has unexpected messageType: {"seq":"0","messageType":"ERROR"}');
         });
       });
     });
@@ -494,7 +494,7 @@ describe('TurnDiscovery', () => {
       assert.isUndefined(turnDiscoverySkippedReason);
     });
 
-    it('resolves with undefined if sending the request fails', async () => {
+    it('resolves with undefined turnServerInfo if sending the request fails', async () => {
       const td = new TurnDiscovery(mockRoapRequest);
 
       mockRoapRequest.sendRoap = sinon.fake.rejects(new Error('fake error'));
@@ -504,11 +504,11 @@ describe('TurnDiscovery', () => {
       const {turnServerInfo, turnDiscoverySkippedReason} = result;
 
       assert.isUndefined(turnServerInfo);
-      assert.isUndefined(turnDiscoverySkippedReason);
+      assert.equal(turnDiscoverySkippedReason, 'failure: fake error');
       checkFailureMetricsSent();
     });
 
-    it('resolves with undefined when cluster is reachable', async () => {
+    it('resolves with undefined turnServerInfo when cluster is reachable', async () => {
       const prev = testMeeting.webex.meetings.reachability.isAnyPublicClusterReachable;
       testMeeting.webex.meetings.reachability.isAnyPublicClusterReachable = () =>
         Promise.resolve(true);
@@ -523,7 +523,7 @@ describe('TurnDiscovery', () => {
       testMeeting.webex.meetings.reachability.isAnyPublicClusterReachable = prev;
     });
 
-    it("resolves with undefined if we don't get a response within 10s", async () => {
+    it("resolves with undefined turnServerInfo if we don't get a response within 10s", async () => {
       const td = new TurnDiscovery(mockRoapRequest);
 
       const promise = td.doTurnDiscovery(testMeeting, false);
@@ -534,11 +534,11 @@ describe('TurnDiscovery', () => {
       const {turnServerInfo, turnDiscoverySkippedReason} = await promise;
 
       assert.isUndefined(turnServerInfo);
-      assert.isUndefined(turnDiscoverySkippedReason);
+      assert.equal(turnDiscoverySkippedReason, 'failure: Timed out waiting for TURN_DISCOVERY_RESPONSE');
       checkFailureMetricsSent();
     });
 
-    it('resolves with undefined if the response does not have all the headers we expect', async () => {
+    it('resolves with undefined turnServerInfo if the response does not have all the headers we expect', async () => {
       const td = new TurnDiscovery(mockRoapRequest);
       const turnDiscoveryPromise = td.doTurnDiscovery(testMeeting, false);
 
@@ -559,11 +559,11 @@ describe('TurnDiscovery', () => {
       const {turnServerInfo, turnDiscoverySkippedReason} = await turnDiscoveryPromise;
 
       assert.isUndefined(turnServerInfo);
-      assert.isUndefined(turnDiscoverySkippedReason);
+      assert.equal(turnDiscoverySkippedReason, `failure: TURN_DISCOVERY_RESPONSE from test missing some headers: ["x-cisco-turn-url=${FAKE_TURN_URL}","x-cisco-turn-username=${FAKE_TURN_USERNAME}"]`);
       checkFailureMetricsSent();
     });
 
-    it('resolves with undefined if the response does not have any headers', async () => {
+    it('resolves with undefined turnServerInfo if the response does not have any headers', async () => {
       const td = new TurnDiscovery(mockRoapRequest);
       const turnDiscoveryPromise = td.doTurnDiscovery(testMeeting, false);
 
@@ -576,11 +576,11 @@ describe('TurnDiscovery', () => {
       const {turnServerInfo, turnDiscoverySkippedReason} = await turnDiscoveryPromise;
 
       assert.isUndefined(turnServerInfo);
-      assert.isUndefined(turnDiscoverySkippedReason);
+      assert.equal(turnDiscoverySkippedReason, 'failure: TURN_DISCOVERY_RESPONSE from test missing some headers: undefined');
       checkFailureMetricsSent();
     });
 
-    it('resolves with undefined if the response has empty headers array', async () => {
+    it('resolves with undefined turnServerInfo if the response has empty headers array', async () => {
       const td = new TurnDiscovery(mockRoapRequest);
       const turnDiscoveryPromise = td.doTurnDiscovery(testMeeting, false);
 
@@ -596,7 +596,7 @@ describe('TurnDiscovery', () => {
       const {turnServerInfo, turnDiscoverySkippedReason} = await turnDiscoveryPromise;
 
       assert.isUndefined(turnServerInfo);
-      assert.isUndefined(turnDiscoverySkippedReason);
+      assert.equal(turnDiscoverySkippedReason, 'failure: TURN_DISCOVERY_RESPONSE from test missing some headers: []');
       checkFailureMetricsSent();
     });
 
@@ -636,7 +636,7 @@ describe('TurnDiscovery', () => {
       const {turnServerInfo, turnDiscoverySkippedReason} = await turnDiscoveryPromise;
 
       assert.isUndefined(turnServerInfo);
-      assert.isUndefined(turnDiscoverySkippedReason);
+      assert.equal(turnDiscoverySkippedReason, 'failure: fake error');
       checkFailureMetricsSent();
     });
   });

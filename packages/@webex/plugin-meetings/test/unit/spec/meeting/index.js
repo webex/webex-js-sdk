@@ -610,35 +610,108 @@ describe('plugin-meetings', () => {
           assert.exists(meeting.joinWithMedia);
         });
 
-        describe('resolution', () => {
-          it('should success and return a promise', async () => {
-            meeting.join = sinon.stub().returns(Promise.resolve(test1));
-            meeting.addMedia = sinon.stub().returns(Promise.resolve(test4));
+        const fakeRoapMessage = {id: 'fake TURN discovery message'};
+        const fakeReachabilityResults = {id: 'fake reachability'};
+        const fakeTurnServerInfo = {id: 'fake turn info'};
+        const fakeJoinResult = {id: 'join result'};
 
-            const joinOptions = {correlationId: '12345'};
-            const mediaOptions = {audioEnabled: test1, allowMediaInLobby: true};
+        const joinOptions = {correlationId: '12345'};
+        const mediaOptions = {audioEnabled: true, allowMediaInLobby: true};
 
-            const result = await meeting.joinWithMedia({
-              joinOptions,
-              mediaOptions,
-            });
-            assert.calledOnceWithExactly(meeting.join, joinOptions);
-            assert.calledOnceWithExactly(meeting.addMedia, mediaOptions);
-            assert.deepEqual(result, {join: test1, media: test4});
-          });
+        let generateTurnDiscoveryRequestMessageStub;
+        let handleTurnDiscoveryHttpResponseStub;
+
+        beforeEach(() => {
+          meeting.join = sinon.stub().returns(Promise.resolve(fakeJoinResult));
+          meeting.addMedia = sinon.stub().returns(Promise.resolve(test4));
+
+          webex.meetings.reachability.getReachabilityResults.resolves(fakeReachabilityResults);
+
+          generateTurnDiscoveryRequestMessageStub = sinon
+            .stub(meeting.roap, 'generateTurnDiscoveryRequestMessage')
+            .resolves({roapMessage: fakeRoapMessage});
+          handleTurnDiscoveryHttpResponseStub = sinon
+            .stub(meeting.roap, 'handleTurnDiscoveryHttpResponse')
+            .resolves({turnServerInfo: fakeTurnServerInfo, turnDiscoverySkippedReason: undefined});
         });
 
-        describe('rejection', () => {
-          it('should error out and return a promise', async () => {
-            meeting.join = sinon.stub().returns(Promise.reject());
-            assert.isRejected(meeting.joinWithMedia({mediaOptions: {allowMediaInLobby: true}}));
+        it('should work as expected', async () => {
+          const result = await meeting.joinWithMedia({
+            joinOptions,
+            mediaOptions,
           });
 
-          it('should fail if called with allowMediaInLobby:false', async () => {
-            meeting.join = sinon.stub().returns(Promise.resolve(test1));
-            meeting.addMedia = sinon.stub().returns(Promise.resolve(test4));
+          // check that TURN discovery is done with join and addMedia called
+          assert.calledOnceWithExactly(meeting.join, {
+            ...joinOptions,
+            roapMessage: fakeRoapMessage,
+            reachability: fakeReachabilityResults,
+          });
+          assert.calledOnceWithExactly(generateTurnDiscoveryRequestMessageStub, meeting, true);
+          assert.calledOnceWithExactly(
+            handleTurnDiscoveryHttpResponseStub,
+            meeting,
+            fakeJoinResult
+          );
+          assert.calledOnceWithExactly(meeting.addMedia, mediaOptions, fakeTurnServerInfo);
 
-            assert.isRejected(meeting.joinWithMedia({mediaOptions: {allowMediaInLobby: false}}));
+          assert.deepEqual(result, {join: fakeJoinResult, media: test4});
+        });
+
+        it("should not call handleTurnDiscoveryHttpResponse if we don't send a TURN discovery request with join", async () => {
+          generateTurnDiscoveryRequestMessageStub.resolves({roapMessage: undefined});
+
+          const result = await meeting.joinWithMedia({
+            joinOptions,
+            mediaOptions,
+          });
+
+          // check that TURN discovery is done with join and addMedia called
+          assert.calledOnceWithExactly(meeting.join, {
+            ...joinOptions,
+            roapMessage: undefined,
+            reachability: fakeReachabilityResults,
+          });
+          assert.calledOnceWithExactly(generateTurnDiscoveryRequestMessageStub, meeting, true);
+          assert.notCalled(handleTurnDiscoveryHttpResponseStub);
+          assert.calledOnceWithExactly(meeting.addMedia, mediaOptions, undefined);
+
+          assert.deepEqual(result, {join: fakeJoinResult, media: test4});
+          assert.equal(meeting.turnServerUsed, false);
+        });
+
+        it('should reject if join() fails', async () => {
+          meeting.join = sinon.stub().returns(Promise.reject());
+          await assert.isRejected(meeting.joinWithMedia({mediaOptions: {allowMediaInLobby: true}}));
+        });
+
+        it('should fail if called with allowMediaInLobby:false', async () => {
+          meeting.join = sinon.stub().returns(Promise.resolve(test1));
+          meeting.addMedia = sinon.stub().returns(Promise.resolve(test4));
+
+          await assert.isRejected(
+            meeting.joinWithMedia({mediaOptions: {allowMediaInLobby: false}})
+          );
+        });
+
+        it('should call leave() if addMedia fails and ignore leave() failure', async () => {
+          const leaveStub = sinon.stub(meeting, 'leave').rejects(new Error('leave error'));
+          const addMediaError = new Error('fake addMedia error');
+
+          meeting.addMedia = sinon.stub().rejects(addMediaError);
+
+          await assert.isRejected(
+            meeting.joinWithMedia({
+              joinOptions: {resourceId: 'some resource'},
+              mediaOptions: {allowMediaInLobby: true},
+            }),
+            addMediaError
+          );
+
+          assert.calledOnce(leaveStub);
+          assert.calledOnceWithExactly(leaveStub, {
+            resourceId: 'some resource',
+            reason: 'joinWithMedia failure',
           });
         });
       });

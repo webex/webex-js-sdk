@@ -149,6 +149,7 @@ const MeetingUtil = {
         locusUrl: meeting.locusUrl,
         locusClusterUrl: meeting.meetingInfo?.locusClusterUrl,
         correlationId: meeting.correlationId,
+        reachability: options.reachability,
         roapMessage: options.roapMessage,
         permissionToken: meeting.permissionToken,
         resourceId: options.resourceId || null,
