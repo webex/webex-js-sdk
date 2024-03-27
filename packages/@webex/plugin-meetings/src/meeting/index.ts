@@ -44,7 +44,11 @@ import {StatsAnalyzer, EVENTS as StatsAnalyzerEvents} from '../statsAnalyzer';
 import NetworkQualityMonitor from '../networkQualityMonitor';
 import LoggerProxy from '../common/logs/logger-proxy';
 import Trigger from '../common/events/trigger-proxy';
-import Roap, {type TurnDiscoveryResult, type TurnServerInfo} from '../roap/index';
+import Roap, {
+  type TurnDiscoveryResult,
+  type TurnServerInfo,
+  type TURN_DISCOVERY_SKIP_REASON,
+} from '../roap/index';
 import Media, {type BundlePolicy} from '../media';
 import MediaProperties from '../media/properties';
 import MeetingStateMachine from './state';
@@ -587,7 +591,7 @@ export default class Meeting extends StatelessWebexPlugin {
   allowMediaInLobby: boolean;
   localShareInstanceId: string;
   remoteShareInstanceId: string;
-  turnDiscoverySkippedReason: string;
+  turnDiscoverySkippedReason: TURN_DISCOVERY_SKIP_REASON;
   turnServerUsed: boolean;
   private retriedWithTurnServer: boolean;
   private sendSlotManager: SendSlotManager = new SendSlotManager(LoggerProxy);

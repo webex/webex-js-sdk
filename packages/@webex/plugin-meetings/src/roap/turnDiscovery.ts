@@ -10,6 +10,8 @@ import RoapRequest from './request';
 import Meeting from '../meeting';
 import MeetingUtil from '../meeting/util';
 
+type Enum<T extends Record<string, unknown>> = T[keyof T];
+
 const TURN_DISCOVERY_TIMEOUT = 10; // in seconds
 
 // Roap spec says that seq should start from 1, but TURN discovery works fine with seq=0
@@ -17,6 +19,17 @@ const TURN_DISCOVERY_TIMEOUT = 10; // in seconds
 // so we can do it with seq=0 or not do it at all and then we create the RoapMediaConnection
 // and do the SDP offer with seq=1
 const TURN_DISCOVERY_SEQ = 0;
+
+const TURN_DISCOVERY_SKIP_REASON = {
+  missing_http_response: 'missing http response', // when we asked for the TURN discover response to be in the http response, but it wasn't there
+  reachability: 'reachability', // when udp reachability to public clusters is ok, so we don't need TURN (this doens't apply when joinWithMedia() is used)
+  alreadyInProgress: 'already in progress', // when we try to start TURN discovery while it's already in progress
+} as const;
+
+export type TURN_DISCOVERY_SKIP_REASON =
+  | Enum<typeof TURN_DISCOVERY_SKIP_REASON> // this is a kind of FYI, because in practice typescript will infer the type of TURN_DISCOVERY_SKIP_REASON as a string
+  | string // used in case of errors, contains the error message
+  | undefined; // used when TURN discovery is not skipped
 
 export type TurnServerInfo = {
   url: string;
@@ -26,7 +39,7 @@ export type TurnServerInfo = {
 
 export type TurnDiscoveryResult = {
   turnServerInfo?: TurnServerInfo;
-  turnDiscoverySkippedReason: string;
+  turnDiscoverySkippedReason: TURN_DISCOVERY_SKIP_REASON;
 };
 
 /**
@@ -174,16 +187,19 @@ export default class TurnDiscovery {
   public async generateTurnDiscoveryRequestMessage(
     meeting: Meeting,
     isForced: boolean
-  ): Promise<{roapMessage?: object; turnDiscoverySkippedReason: string}> {
+  ): Promise<{roapMessage?: object; turnDiscoverySkippedReason: TURN_DISCOVERY_SKIP_REASON}> {
     if (this.defer) {
       LoggerProxy.logger.warn(
         'Roap:turnDiscovery#generateTurnDiscoveryRequestMessage --> TURN discovery already in progress'
       );
 
-      return {roapMessage: undefined, turnDiscoverySkippedReason: 'already in progress'};
+      return {
+        roapMessage: undefined,
+        turnDiscoverySkippedReason: TURN_DISCOVERY_SKIP_REASON.alreadyInProgress,
+      };
     }
 
-    let turnDiscoverySkippedReason: string;
+    let turnDiscoverySkippedReason: TURN_DISCOVERY_SKIP_REASON;
 
     if (!isForced) {
       turnDiscoverySkippedReason = await this.getSkipReason(meeting);
@@ -203,7 +219,7 @@ export default class TurnDiscovery {
     };
 
     LoggerProxy.logger.info(
-      'Roap:turnDiscovery#sendRoapTurnDiscoveryRequest --> generated TURN_DISCOVERY_REQUEST message'
+      'Roap:turnDiscovery#generateTurnDiscoveryRequestMessage --> generated TURN_DISCOVERY_REQUEST message'
     );
 
     return {roapMessage, turnDiscoverySkippedReason: undefined};
@@ -250,7 +266,7 @@ export default class TurnDiscovery {
       if (!roapMessage) {
         return {
           turnServerInfo: undefined,
-          turnDiscoverySkippedReason: 'failed to parse http response',
+          turnDiscoverySkippedReason: TURN_DISCOVERY_SKIP_REASON.missing_http_response,
         };
       }
 
@@ -321,13 +337,19 @@ export default class TurnDiscovery {
    * @private
    * @memberof Roap
    */
-  private sendRoapTurnDiscoveryRequest(meeting: Meeting, isReconnecting: boolean) {
+  private sendRoapTurnDiscoveryRequest(
+    meeting: Meeting,
+    isReconnecting: boolean
+  ): Promise<TurnDiscoveryResult> {
     if (this.defer) {
       LoggerProxy.logger.warn(
         'Roap:turnDiscovery#sendRoapTurnDiscoveryRequest --> already in progress'
       );
 
-      return Promise.resolve();
+      return Promise.resolve({
+        turnServerInfo: undefined,
+        turnDiscoverySkippedReason: TURN_DISCOVERY_SKIP_REASON.alreadyInProgress,
+      });
     }
 
     this.defer = new Defer();
@@ -355,20 +377,14 @@ export default class TurnDiscovery {
         // @ts-ignore - because of meeting.webex
         ipVersion: MeetingUtil.getIpVersion(meeting.webex),
       })
-      .then((response) => {
+      .then(async (response) => {
         const {mediaConnections} = response;
 
         if (mediaConnections) {
           meeting.updateMediaConnections(mediaConnections);
         }
 
-        const turnDiscoveryResponse = this.parseHttpTurnDiscoveryResponse(meeting, response);
-
-        if (turnDiscoveryResponse) {
-          return this.handleTurnDiscoveryHttpResponse(meeting, turnDiscoveryResponse);
-        }
-
-        return undefined;
+        return this.handleTurnDiscoveryHttpResponse(meeting, response);
       });
   }
 
@@ -410,7 +426,7 @@ export default class TurnDiscovery {
    * @param {Meeting} meeting
    * @returns {Promise<string>} Promise with empty string if reachability is not skipped or a reason if it is skipped
    */
-  private async getSkipReason(meeting: Meeting): Promise<string> {
+  private async getSkipReason(meeting: Meeting): Promise<TURN_DISCOVERY_SKIP_REASON> {
     const isAnyPublicClusterReachable =
       // @ts-ignore - fix type
       await meeting.webex.meetings.reachability.isAnyPublicClusterReachable();
@@ -420,10 +436,10 @@ export default class TurnDiscovery {
         'Roap:turnDiscovery#getSkipReason --> reachability has not failed, skipping TURN discovery'
       );
 
-      return 'reachability';
+      return TURN_DISCOVERY_SKIP_REASON.reachability;
     }
 
-    return '';
+    return undefined;
   }
 
   /**
@@ -461,7 +477,7 @@ export default class TurnDiscovery {
     isReconnecting?: boolean,
     isForced?: boolean
   ): Promise<TurnDiscoveryResult> {
-    let turnDiscoverySkippedReason: string;
+    let turnDiscoverySkippedReason: TURN_DISCOVERY_SKIP_REASON;
 
     if (!isForced) {
       turnDiscoverySkippedReason = await this.getSkipReason(meeting);
@@ -477,7 +493,10 @@ export default class TurnDiscovery {
     try {
       const turnDiscoveryResult = await this.sendRoapTurnDiscoveryRequest(meeting, isReconnecting);
 
-      if (turnDiscoveryResult) {
+      if (
+        turnDiscoveryResult.turnDiscoverySkippedReason !==
+        TURN_DISCOVERY_SKIP_REASON.missing_http_response
+      ) {
         return turnDiscoveryResult;
       }
 
