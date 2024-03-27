@@ -432,4 +432,33 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
   public getVideoJoinRespTxStart() {
     return this.getDiffBetweenTimestamps('client.locus.join.response', 'client.media.tx.start');
   }
+
+  /**
+   * Calculates the average latency for other application API requests.
+   * Latency is measured as the difference between the timestamps of the request and response.
+   * Only the defined values are considered for the calculation.
+   *
+   * @returns The average latency for other application API requests and responses.
+   */
+  public getOtherAppApiReqResp() {
+    const passwordJMT = this.getDiffBetweenTimestamps(
+      'internal.app.api.password.request',
+      'internal.app.api.password.response'
+    );
+    const captchaJMT = this.getDiffBetweenTimestamps(
+      'internal.app.api.captcha.request',
+      'internal.app.api.captcha.response'
+    );
+    const guestAuthJMT = this.getDiffBetweenTimestamps(
+      'internal.app.api.guest.auth.request',
+      'internal.app.api.guest.auth.response'
+    );
+
+    const definedValues = [passwordJMT, captchaJMT, guestAuthJMT].filter(
+      (value) => value !== undefined
+    );
+    const average = definedValues.reduce((sum, value) => sum + value, 0) / definedValues.length;
+
+    return Math.floor(average) || undefined;
+  }
 }

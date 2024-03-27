@@ -516,5 +516,74 @@ describe('internal-plugin-metrics', () => {
       cdl.saveLatency('internal.download.time', 1000);
       assert.deepEqual(cdl.getDownloadTimeJMT(), 1000);
     });
+
+    describe('getOtherAppApiReqResp', () => {
+      it('calculates correct latency when none of the sub components are available', () => {
+        assert.deepEqual(cdl.getOtherAppApiReqResp(), undefined);
+      })
+
+      it('calculates correct latency when password is available', () => {
+        cdl.saveTimestamp({
+          key: 'internal.app.api.password.request',
+          value: 10,
+        });
+        cdl.saveTimestamp({
+          key: 'internal.app.api.password.response',
+          value: 20,
+        });
+        assert.deepEqual(cdl.getOtherAppApiReqResp(), 10);
+      });
+
+      it('calculates correct latency when password and captcha is available', () => {
+        cdl.saveTimestamp({
+          key: 'internal.app.api.password.request',
+          value: 10,
+        });
+        cdl.saveTimestamp({
+          key: 'internal.app.api.password.response',
+          value: 20,
+        });
+
+        cdl.saveTimestamp({
+          key: 'internal.app.api.captcha.request',
+          value: 30,
+        });
+        cdl.saveTimestamp({
+          key: 'internal.app.api.captcha.response',
+          value: 50,
+        });
+        assert.deepEqual(cdl.getOtherAppApiReqResp(), 15);
+      });
+
+      it('calculates correct latency when all 3 available', () => {
+        cdl.saveTimestamp({
+          key: 'internal.app.api.password.request',
+          value: 10,
+        });
+        cdl.saveTimestamp({
+          key: 'internal.app.api.password.response',
+          value: 20,
+        });
+
+        cdl.saveTimestamp({
+          key: 'internal.app.api.captcha.request',
+          value: 30,
+        });
+        cdl.saveTimestamp({
+          key: 'internal.app.api.captcha.response',
+          value: 50,
+        });
+
+        cdl.saveTimestamp({
+          key: 'internal.app.api.guest.auth.request',
+          value: 60,
+        });
+        cdl.saveTimestamp({
+          key: 'internal.app.api.guest.auth.response',
+          value: 80,
+        });
+        assert.deepEqual(cdl.getOtherAppApiReqResp(), 16);
+      })
+    })
   });
 });
