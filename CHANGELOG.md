@@ -2,6 +2,29 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.382](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.381...v3.0.0-beta.382) (2024-03-27)
+
+## [3.0.0-beta.381](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.380...v3.0.0-beta.381) (2024-03-22)
+
+
+### Bug Fixes
+
+* **metrics:** remove debug metrics ([#3460](https://github.com/webex/webex-js-sdk/issues/3460)) ([a9985a3](https://github.com/webex/webex-js-sdk/commit/a9985a3f8e5ac6b86b9b50381e549bc392bb6734))
+
+## [3.0.0-beta.380](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.379...v3.0.0-beta.380) (2024-03-20)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** Share Metric: Start/Stop ([#3402](https://github.com/webex/webex-js-sdk/issues/3402)) ([9714639](https://github.com/webex/webex-js-sdk/commit/971463990daf87eb38f37cc1333c2ca59dd7baf0))
+
+## [3.0.0-beta.379](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.378...v3.0.0-beta.379) (2024-03-20)
+
+
+### Bug Fixes
+
+* update internal-media-core to 2.2.9 to bring a fix for Chrome v123 ([#3453](https://github.com/webex/webex-js-sdk/issues/3453)) ([b55603b](https://github.com/webex/webex-js-sdk/commit/b55603b9b42d25c9ea463b8e60e79dcdd969beb1))
+
 ## [3.0.0-beta.378](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.377...v3.0.0-beta.378) (2024-03-19)
 
 
