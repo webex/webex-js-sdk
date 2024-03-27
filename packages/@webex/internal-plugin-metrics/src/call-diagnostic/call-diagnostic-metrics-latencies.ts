@@ -2,7 +2,7 @@
 /* eslint-disable valid-jsdoc */
 import {WebexPlugin} from '@webex/webex-core';
 
-import {MetricEventNames} from '../metrics.types';
+import {MetricEventNames, PreComputedLatencies} from '../metrics.types';
 
 // we only care about client event and feature event for now
 
@@ -13,7 +13,7 @@ import {MetricEventNames} from '../metrics.types';
  */
 export default class CallDiagnosticLatencies extends WebexPlugin {
   latencyTimestamps: Map<MetricEventNames, number>;
-  precomputedLatencies: Map<string, number>;
+  precomputedLatencies: Map<PreComputedLatencies, number>;
   // meetingId that the current latencies are for
   private meetingId?: string;
 
@@ -96,7 +96,7 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
    * @throws
    * @returns
    */
-  public saveLatency(key: string, value: number) {
+  public saveLatency(key: PreComputedLatencies, value: number) {
     this.precomputedLatencies.set(key, value);
   }
 
@@ -268,6 +268,14 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
    */
   public getPageJMT() {
     return this.precomputedLatencies.get('internal.client.pageJMT') || undefined;
+  }
+
+  /**
+   * Download Time JMT
+   * @returns - latency
+   */
+  public getDownloadTimeJMT() {
+    return this.precomputedLatencies.get('internal.download.time') || undefined;
   }
 
   /**

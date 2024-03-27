@@ -8,7 +8,7 @@ import sinon from 'sinon';
 import * as internalMediaModule from '@webex/internal-media-core';
 import StateMachine from 'javascript-state-machine';
 import uuid from 'uuid';
-import {assert} from '@webex/test-helper-chai';
+import {assert, expect} from '@webex/test-helper-chai';
 import {Credentials, Token, WebexPlugin} from '@webex/webex-core';
 import Support from '@webex/internal-plugin-support';
 import MockWebex from '@webex/test-helper-mock-webex';
@@ -2512,6 +2512,7 @@ describe('plugin-meetings', () => {
               clientErrorCode: ICE_FAILED_WITH_TURN_TLS_CLIENT_CODE,
               expectedErrorPayload: {
                 errorDescription: ERROR_DESCRIPTIONS.ICE_FAILED_WITH_TURN_TLS,
+                category: 'network',
               },
             },
           ].forEach(({clientErrorCode, expectedErrorPayload}) => {
@@ -2721,6 +2722,7 @@ describe('plugin-meetings', () => {
               createSendSlot: sinon.stub().returns({
                 publishStream: sinon.stub(),
                 unpublishStream: sinon.stub(),
+                setNamedMediaGroups: sinon.stub(),
               }),
               enableMultistreamAudio: sinon.stub(),
             };
@@ -5771,6 +5773,7 @@ describe('plugin-meetings', () => {
           meeting.mediaProperties.webrtcMediaConnection = {};
           meeting.audio = {handleLocalStreamChange: sinon.stub()};
           meeting.video = {handleLocalStreamChange: sinon.stub()};
+          meeting.statsAnalyzer = {updateMediaStatus: sinon.stub()};
           fakeMultistreamRoapMediaConnection = {
             createSendSlot: () => {
               return {
@@ -5837,6 +5840,10 @@ describe('plugin-meetings', () => {
               options: {meetingId: meeting.id},
             });
             assert.equal(meeting.mediaProperties.mediaDirection.sendShare, true);
+
+            assert.calledWith(meeting.statsAnalyzer.updateMediaStatus, {
+              expected: {sendShare: true},
+            });
           };
 
           const checkScreenShareAudioPublished = (stream) => {
@@ -5853,6 +5860,10 @@ describe('plugin-meetings', () => {
             );
             assert.equal(meeting.mediaProperties.shareAudioStream, stream);
             assert.equal(meeting.mediaProperties.mediaDirection.sendShare, true);
+
+            assert.calledWith(meeting.statsAnalyzer.updateMediaStatus, {
+              expected: {sendShare: true},
+            });
           };
 
           it('requests screen share floor and publishes the screen share video stream', async () => {
@@ -5947,6 +5958,11 @@ describe('plugin-meetings', () => {
 
             assert.equal(meeting.mediaProperties.shareVideoStream, null);
             assert.equal(meeting.mediaProperties.mediaDirection.sendShare, shareDirection);
+            if (!shareDirection) {
+              assert.calledWith(meeting.statsAnalyzer.updateMediaStatus, {
+                expected: {sendShare: false},
+              });
+            }
           };
 
           // share direction will remain true if only one of the two share streams are unpublished
@@ -5959,6 +5975,11 @@ describe('plugin-meetings', () => {
 
             assert.equal(meeting.mediaProperties.shareAudioStream, null);
             assert.equal(meeting.mediaProperties.mediaDirection.sendShare, shareDirection);
+            if (!shareDirection) {
+              assert.calledWith(meeting.statsAnalyzer.updateMediaStatus, {
+                expected: {sendShare: false},
+              });
+            }
           };
 
           it('fails if there is no media connection', async () => {
@@ -6028,6 +6049,29 @@ describe('plugin-meetings', () => {
             assert.notCalled(meeting.releaseScreenShareFloor);
           });
         });
+      });
+    });
+
+    describe('#setSendNamedMediaGroup', () => {
+      beforeEach(() => {
+        meeting.sendSlotManager.setNamedMediaGroups = sinon.stub().returns(undefined);
+      });
+      it('should throw error if not audio type', () => {
+        expect(() => meeting.setSendNamedMediaGroup(MediaType.VideoMain, 20)).to.throw(`cannot set send named media group which media type is ${MediaType.VideoMain}`)
+
+      });
+      it('fails if there is no media connection', () => {
+
+        meeting.mediaProperties.webrtcMediaConnection = undefined;
+        meeting.setSendNamedMediaGroup('AUDIO-MAIN', 20);
+        assert.notCalled(meeting.sendSlotManager.setNamedMediaGroups);
+      });
+
+      it('success if there is media connection', () => {
+        meeting.isMultistream = true;
+        meeting.mediaProperties.webrtcMediaConnection = true;
+        meeting.setSendNamedMediaGroup("AUDIO-MAIN", 20);
+        assert.calledOnceWithExactly(meeting.sendSlotManager.setNamedMediaGroups, "AUDIO-MAIN", [{type: 1, value: 20}]);
       });
     });
 
@@ -8155,13 +8199,41 @@ describe('plugin-meetings', () => {
           assert.equal(locusInfoOnSpy.thirdCall.args[0], 'MEETING_INFO_UPDATED');
           const callback = locusInfoOnSpy.thirdCall.args[1];
 
-          callback();
+          callback({isInitializing: true});
 
           assert.calledWith(updateMeetingActionsSpy);
           assert.calledWith(setRecordingDisplayHintsSpy, userDisplayHints);
           assert.calledWith(setUserPolicySpy, userDisplayPolicy);
           assert.calledWith(setControlsDisplayHintsSpy, userDisplayHints);
           assert.calledWith(handleDataChannelUrlChangeSpy, datachannelUrl);
+
+          assert.neverCalledWith(
+            TriggerProxy.trigger,
+            meeting,
+            {
+              file: 'meetings',
+              function: 'setUpLocusInfoMeetingInfoListener',
+            },
+            'meeting:meetingInfoUpdated'
+          );
+
+          callback({isIntialized: false});
+
+          assert.calledWith(updateMeetingActionsSpy);
+          assert.calledWith(setRecordingDisplayHintsSpy, userDisplayHints);
+          assert.calledWith(setUserPolicySpy, userDisplayPolicy);
+          assert.calledWith(setControlsDisplayHintsSpy, userDisplayHints);
+          assert.calledWith(handleDataChannelUrlChangeSpy, datachannelUrl);
+
+          assert.calledWith(
+            TriggerProxy.trigger,
+            meeting,
+            {
+              file: 'meetings',
+              function: 'setUpLocusInfoMeetingInfoListener',
+            },
+            'meeting:meetingInfoUpdated'
+          );
         });
       });
 
