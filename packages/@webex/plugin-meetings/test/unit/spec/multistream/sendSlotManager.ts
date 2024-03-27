@@ -10,11 +10,11 @@ describe('SendSlotsManager', () => {
             info: sinon.stub(),
         },
     };
-    
+
     beforeEach(() => {
         sendSlotsManager = new SendSlotManager(LoggerProxy);
     });
-    
+
     describe('createSlot', () => {
         let mediaConnection;
         const mediaType = MediaType.AudioMain;
@@ -27,19 +27,19 @@ describe('SendSlotsManager', () => {
 
         it('should create a slot for the given mediaType', () => {
             sendSlotsManager.createSlot(mediaConnection, mediaType);
-        
+
             expect(mediaConnection.createSendSlot.calledWith(mediaType, true));
         });
 
         it('should create a slot for the given mediaType & active state', () => {
             sendSlotsManager.createSlot(mediaConnection, mediaType, false);
-        
+
             expect(mediaConnection.createSendSlot.calledWith(mediaType, false));
         });
-    
+
         it('should throw an error if a slot for the given mediaType already exists', () => {
             sendSlotsManager.createSlot(mediaConnection, mediaType);
-        
+
             expect(() => sendSlotsManager.createSlot(mediaConnection, mediaType)).to.throw(`Slot for ${mediaType} already exists`);
         });
     });
@@ -56,7 +56,7 @@ describe('SendSlotsManager', () => {
 
         it('should return the slot for the given mediaType', () => {
             const slot = sendSlotsManager.createSlot(mediaConnection,mediaType);
-        
+
             expect(sendSlotsManager.getSlot(mediaType)).to.equal(slot);
         });
 
@@ -64,7 +64,7 @@ describe('SendSlotsManager', () => {
             expect(() => sendSlotsManager.getSlot(mediaType)).to.throw(`Slot for ${mediaType} does not exist`);
         });
     });
-    
+
     describe('publishStream', () => {
         let mediaConnection;
         const mediaType = MediaType.AudioMain;
@@ -82,9 +82,9 @@ describe('SendSlotsManager', () => {
             };
             mediaConnection.createSendSlot.returns(slot);
             sendSlotsManager.createSlot(mediaConnection, mediaType);
-        
+
             await sendSlotsManager.publishStream(mediaType, stream);
-        
+
             expect(slot.publishStream.calledWith(stream));
         });
 
@@ -112,9 +112,9 @@ describe('SendSlotsManager', () => {
             };
             mediaConnection.createSendSlot.returns(slot);
             sendSlotsManager.createSlot(mediaConnection, mediaType);
-        
+
             await sendSlotsManager.unpublishStream(mediaType);
-        
+
             expect(slot.unpublishStream.called);
         });
 
@@ -125,6 +125,38 @@ describe('SendSlotsManager', () => {
             });
         });
     });
+
+  describe('setNamedMediaGroups', () => {
+    let mediaConnection;
+    const mediaType = MediaType.AudioMain;
+    const groups = [{type: 1, value: 20}];
+
+    beforeEach(() => {
+      mediaConnection = {
+        createSendSlot: sinon.stub(),
+      } as MultistreamRoapMediaConnection;
+    });
+
+    it('should publish the given stream to the sendSlot for the given mediaType', async () => {
+      const slot = {
+        setNamedMediaGroups: sinon.stub().resolves(),
+      };
+      mediaConnection.createSendSlot.returns(slot);
+      sendSlotsManager.createSlot(mediaConnection, mediaType);
+
+      await sendSlotsManager.setNamedMediaGroups(mediaType, groups);
+
+      expect(slot.setNamedMediaGroups.calledWith(groups));
+    });
+
+    it('should throw an error if the given mediaType is not audio', () => {
+      expect(() => sendSlotsManager.setNamedMediaGroups(MediaType.VideoMain, groups)).to.throw(`sendSlotManager cannot set named media group which media type is ${MediaType.VideoMain}`)
+    });
+
+    it('should throw an error if a slot for the given mediaType does not exist', () => {
+      expect(() => sendSlotsManager.setNamedMediaGroups(mediaType, groups)).to.throw(`Slot for ${mediaType} does not exist`)
+    });
+  });
 
     describe('setActive', () => {
         let mediaConnection;
@@ -142,9 +174,9 @@ describe('SendSlotsManager', () => {
             };
             mediaConnection.createSendSlot.returns(slot);
             sendSlotsManager.createSlot(mediaConnection, mediaType);
-        
+
             await sendSlotsManager.setActive(mediaType,true);
-        
+
             expect(slot.setActive.called);
         });
 
@@ -170,9 +202,9 @@ describe('SendSlotsManager', () => {
             };
             mediaConnection.createSendSlot.returns(slot);
             sendSlotsManager.createSlot(mediaConnection, mediaType);
-        
+
             await sendSlotsManager.setCodecParameters(mediaType, codecParameters);
-        
+
             expect(slot.setCodecParameters.calledWith(codecParameters));
         });
 
@@ -200,9 +232,9 @@ describe('SendSlotsManager', () => {
             };
             mediaConnection.createSendSlot.returns(slot);
             sendSlotsManager.createSlot(mediaConnection, mediaType);
-        
+
             await sendSlotsManager.deleteCodecParameters(mediaType,[]);
-        
+
             expect(slot.deleteCodecParameters.called);
         });
 

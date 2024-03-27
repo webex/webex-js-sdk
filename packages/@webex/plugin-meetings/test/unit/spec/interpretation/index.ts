@@ -1,6 +1,7 @@
 import {assert, expect} from '@webex/test-helper-chai';
 import LoggerProxy from '@webex/plugin-meetings/src/common/logs/logger-proxy';
 import SimultaneousInterpretation from '@webex/plugin-meetings/src/interpretation';
+import SILanguage from '@webex/plugin-meetings/src/interpretation/siLanguage';
 import MockWebex from '@webex/test-helper-mock-webex';
 import sinon from 'sinon';
 
@@ -123,7 +124,7 @@ describe('plugin-meetings', () => {
             receiveLanguage: 'en',
             order: 0,
           }, selfParticipantId: '123'};
-        interpretation.updateSelfInterpretation(sampleData);
+        assert.equal(interpretation.updateSelfInterpretation(sampleData), true);
         assert.equal(interpretation.originalLanguage, 'en');
         assert.equal(interpretation.sourceLanguage, 'en');
         assert.equal(interpretation.targetLanguage, 'zh');
@@ -133,12 +134,44 @@ describe('plugin-meetings', () => {
 
         sampleData.interpretation = {
           originalLanguage: 'en',
+          targetLanguage: 'zh',
           order: 0,
         };
-        interpretation.updateSelfInterpretation(sampleData);
+        assert.equal(interpretation.updateSelfInterpretation(sampleData), false);
         assert.equal(interpretation.sourceLanguage, undefined);
-        assert.equal(interpretation.targetLanguage, undefined);
+        assert.equal(interpretation.targetLanguage, 'zh');
         assert.equal(interpretation.receiveLanguage, undefined);
+
+        sampleData.interpretation = {
+          order: 0,
+        };
+        assert.equal(interpretation.updateSelfInterpretation(sampleData), false);
+        assert.equal(interpretation.originalLanguage, undefined);
+        assert.equal(interpretation.targetLanguage, undefined);
+      });
+    });
+
+    describe('#getTargetLanguageCode', () => {
+      it('get target language id if self is interpreter', () => {
+        interpretation.siLanguages.set([{
+          languageCode: 24,
+          languageName: "fr"
+        },
+          {
+            languageCode: 20,
+            languageName: "en"
+          }]);
+        interpretation.selfIsInterpreter = true;
+        interpretation.targetLanguage = 'fr';
+
+        assert.equal(interpretation.getTargetLanguageCode(), 24);
+
+        interpretation.targetLanguage = 'en';
+        assert.equal(interpretation.getTargetLanguageCode(), 20);
+
+        interpretation.selfIsInterpreter = false;
+        assert.equal(interpretation.getTargetLanguageCode(), 0);
+
       });
     });
 
