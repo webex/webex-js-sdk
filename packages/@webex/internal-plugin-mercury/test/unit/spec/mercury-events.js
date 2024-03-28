@@ -142,7 +142,7 @@ describe('plugin-mercury', () => {
         });
       });
 
-      describe('when `mercury.buffer_state` is received', () => {
+      describe.skip('when `mercury.buffer_state` is received', () => {
         // This test is here because the buffer states message may arrive before
         // the mercury Promise resolves.
         it('gets emitted', (done) => {

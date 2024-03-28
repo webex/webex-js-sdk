@@ -12,6 +12,8 @@ import {BrowserDetection} from '@webex/common';
 
 const {getOSVersion} = BrowserDetection();
 
+//@ts-ignore
+global.window = {location: {hostname: 'whatever'}};
 function promiseTick(count) {
   let promise = Promise.resolve();
 
@@ -93,7 +95,7 @@ describe('plugin-metrics', () => {
       webex.credentials = new Credentials(undefined, {parent: webex});
       sinon.stub(webex.credentials, 'getClientToken').returns(Promise.resolve('token'));
 
-      webex.internal = {...webex.internal, device: {userId: 'userId'}};
+      webex.internal = {...webex.internal};
       webex.config = {
         ...webex.config,
         appName: 'appName',
