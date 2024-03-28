@@ -8,7 +8,7 @@ describe("commonn timers", () => {
   beforeEach(() => {
     clock = sinon.useFakeTimers();
   })
-  after(() => {
+  afterEach(() => {
     clock.restore();
   })
 

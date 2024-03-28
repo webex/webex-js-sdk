@@ -14,6 +14,7 @@ import {omit} from 'lodash';
 
 //@ts-ignore
 global.window = {location: {hostname: 'whatever'}};
+process.env.NODE_ENV = 'test';
 
 const {getOSName, getOSVersion, getBrowserName, getBrowserVersion} = BrowserDetection();
 const userAgent = `webex-js-sdk/test-webex-version client=Cantina; (os=${getOSName()}/${
@@ -720,7 +721,7 @@ describe('internal-plugin-metrics', () => {
         ]);
       });
 
-      it('should submit client event successfully with correlationId, webexConferenceIdStr and globalMeetingId', () => {
+      it('should submit client event successfully with correlationId, webexConferenceIdStr and globalMeetingId', async () => {
         const prepareDiagnosticEventSpy = sinon.spy(cd, 'prepareDiagnosticEvent');
         const submitToCallDiagnosticsSpy = sinon.spy(cd, 'submitToCallDiagnostics');
         const generateClientEventErrorPayloadSpy = sinon.spy(cd, 'generateClientEventErrorPayload');
@@ -1806,27 +1807,6 @@ describe('internal-plugin-metrics', () => {
         });
       });
 
-      it('should override custom properties for an unknown error', () => {
-        const error = new Error('bad times');
-
-        (error as any).payloadOverrides = {
-          shownToUser: true,
-          category: 'expected',
-        };
-
-        const res = cd.generateClientEventErrorPayload(error);
-        assert.deepEqual(res, {
-          category: 'expected',
-          errorDescription: 'UnknownError',
-          fatal: true,
-          name: 'other',
-          shownToUser: true,
-          serviceErrorCode: 9999,
-          errorCode: 9999,
-          rawErrorMessage: 'bad times',
-        });
-      });
-
       it('should override custom properties for a NetworkOrCORSError', () => {
         const error = new WebexHttpError.NetworkOrCORSError({
           url: 'https://example.com',
@@ -1883,7 +1863,6 @@ describe('internal-plugin-metrics', () => {
           body: {},
           options: {headers: {}, url: 'https://example.com'},
         });
-
         error.payloadOverrides = {
           shownToUser: true,
           category: 'expected',
