@@ -5,7 +5,6 @@ import 'jsdom-global/register';
 import sinon from 'sinon';
 import Metrics from '@webex/internal-plugin-metrics';
 import MockWebex from '@webex/test-helper-mock-webex';
-import {browserOnly} from '@webex/test-helper-mocha';
 import {assert} from '@webex/test-helper-chai';
 
 import metrics from '@webex/plugin-meetings/src/metrics';
@@ -14,7 +13,7 @@ import metrics from '@webex/plugin-meetings/src/metrics';
  * Meeting can only run in a browser, so we can only send metrics for
  * browser usage.
  */
-browserOnly(describe)('Meeting metrics', () => {
+describe('Meeting metrics', () => {
   let webex, mockSubmitMetric, sandbox;
 
   beforeEach(() => {

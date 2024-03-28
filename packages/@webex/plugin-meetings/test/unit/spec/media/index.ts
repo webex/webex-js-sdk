@@ -7,6 +7,10 @@ import {forEach} from 'lodash';
 import MockWebex from '@webex/test-helper-mock-webex';
 
 describe('createMediaConnection', () => {
+  let clock;
+  beforeEach(() => {
+    clock = sinon.useFakeTimers();
+  });
   const webex = MockWebex();
 
   const fakeRoapMediaConnection = {
@@ -45,6 +49,7 @@ describe('createMediaConnection', () => {
   };
   afterEach(() => {
     sinon.restore();
+    clock.uninstall()
   });
 
   it('creates a RoapMediaConnection when multistream is disabled', () => {

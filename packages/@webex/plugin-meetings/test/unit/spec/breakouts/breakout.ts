@@ -89,7 +89,7 @@ describe('plugin-meetings', () => {
         })
         };
 
-        sinon.stub(webex.internal.newMetrics.submitClientEvent, 'bind').returns(webex.internal.newMetrics.submitClientEvent);
+        const submitClientEventStub = sinon.stub(webex.internal.newMetrics.submitClientEvent, 'bind').returns(webex.internal.newMetrics.submitClientEvent);
 
         let onBreakoutMoveRequestStub = sinon.stub(breakoutEvent, 'onBreakoutMoveRequest');
         let onBreakoutMoveResponseStub = sinon.stub(breakoutEvent, 'onBreakoutMoveResponse');
@@ -105,6 +105,7 @@ describe('plugin-meetings', () => {
 
         onBreakoutMoveRequestStub.restore();
         onBreakoutMoveResponseStub.restore();
+        submitClientEventStub.restore()
       });
     });
 

@@ -1,13 +1,12 @@
 import url from 'url';
 
 import btoa from 'btoa';
-import {
-  // @ts-ignore
-  deconstructHydraId,
-} from '@webex/common';
+// @ts-ignore
+import {deconstructHydraId} from '@webex/common';
 
 import ParameterError from '../common/errors/parameter';
 import LoggerProxy from '../common/logs/logger-proxy';
+
 import {
   _SIP_URI_,
   _PERSONAL_ROOM_,
@@ -221,12 +220,16 @@ MeetingInfoUtil.generateOptions = async (from) => {
     try {
       await webex.internal.services.waitForCatalog('postauth');
 
-      const conversationUrl = webex.internal.conversation.getUrlFromClusterId({
-        cluster: hydraId.cluster,
-        id: hydraId.destination,
-      });
+      const serviceUrl = webex.internal.services.getServiceUrlFromClusterId(
+        {
+          cluster: hydraId.cluster,
+        },
+        webex
+      );
 
-      options.destination = conversationUrl;
+      options.destination = hydraId.destination
+        ? `${serviceUrl}/conversations/${hydraId.destination}`
+        : serviceUrl;
     } catch (e) {
       LoggerProxy.logger.error(`Meeting-info:util#generateOptions --> ${e}`);
       throw e;

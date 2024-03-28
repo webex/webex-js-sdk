@@ -10,7 +10,7 @@ import {createCameraStream, createDisplayStream, createMicrophoneStream, LocalTr
 
 import testUtils from '../../utils/testUtils';
 import integrationTestUtils from '../../utils/integrationTestUtils';
-import {EVENT_TRIGGERS} from '../../../src/constants';
+import {EVENT_TRIGGERS} from '../../../dist/constants';
 
 require('dotenv').config();
 
@@ -239,7 +239,7 @@ skipInNode(describe)('plugin-meetings', () => {
 
     // Enabled when config.enableUnifiedMeetings = true
     xdescribe('Conversation URL', () => {
-      describe('Successful 1:1 meeting', () => {
+      describe('Successful 1:1 meeting',  () => {
         it('Fetch meeting information with a conversation URL for a 1:1 space', async () => {
           assert.equal(Object.keys(bob.webex.meetings.getAllMeetings()), 0);
           assert.equal(Object.keys(chris.webex.meetings.getAllMeetings()), 0);
@@ -871,7 +871,7 @@ skipInNode(describe)('plugin-meetings', () => {
           assert.equal(bob.meeting.shareStatus, 'whiteboard_share_active');
         }));
 
-      it('alice adds chris as guest to 1:1 meeting', () =>
+      it('alice adds chris as guest to 1:1 meeting', async() =>
         Promise.all([
           testUtils.delayedPromise(alice.meeting.invite({emailAddress: chris.emailAddress})),
           testUtils.waitForEvents([

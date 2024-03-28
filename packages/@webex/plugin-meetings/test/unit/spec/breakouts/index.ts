@@ -381,7 +381,7 @@ describe('plugin-meetings', () => {
             id: 'meeting-id'
           })
         };
-        breakoutEvent.onBreakoutJoinResponse = sinon.stub();
+        const onBreakoutJoinResponseSpy = sinon.stub(breakoutEvent,'onBreakoutJoinResponse')
         breakouts.currentBreakoutSession.sessionId = "sessionId-old";
         breakouts.updateBreakout({
           sessionId: 'sessionId-new',
@@ -398,7 +398,9 @@ describe('plugin-meetings', () => {
           breakoutMoveId: 'breakoutMoveId',
         });
 
-        assert.calledOnce(breakoutEvent.onBreakoutJoinResponse);
+        assert.calledOnce(onBreakoutJoinResponseSpy);
+
+        onBreakoutJoinResponseSpy.restore()
 
       });
 
@@ -408,7 +410,7 @@ describe('plugin-meetings', () => {
             id: 'meeting-id'
           })
         };
-        breakoutEvent.onBreakoutJoinResponse = sinon.stub();
+        const onBreakoutJoinResponseSpy = sinon.stub(breakoutEvent, 'onBreakoutJoinResponse');
         breakouts.currentBreakoutSession.sessionId = "sessionId";
         breakouts.currentBreakoutSession.groupId = "groupId";
         breakouts.updateBreakout({
@@ -426,7 +428,8 @@ describe('plugin-meetings', () => {
           breakoutMoveId: 'breakoutMoveId',
         });
 
-        assert.notCalled(breakoutEvent.onBreakoutJoinResponse);
+        assert.notCalled(onBreakoutJoinResponseSpy);
+        onBreakoutJoinResponseSpy.restore()
 
       });
     });
