@@ -4325,7 +4325,7 @@ export default class Meeting extends StatelessWebexPlugin {
       mediaOptions?: AddMediaOptions;
     } = {}
   ) {
-    const {mediaOptions, joinOptions} = options;
+    const {mediaOptions, joinOptions = {}} = options;
 
     if (!mediaOptions?.allowMediaInLobby) {
       return Promise.reject(
@@ -4359,6 +4359,10 @@ export default class Meeting extends StatelessWebexPlugin {
 
         this.turnDiscoverySkippedReason = turnDiscoverySkippedReason;
         this.turnServerUsed = !!turnServerInfo;
+
+        if (turnServerInfo === undefined) {
+          this.roap.abortTurnDiscovery();
+        }
       }
 
       const mediaResponse = await this.addMedia(mediaOptions, turnServerInfo);
@@ -4371,6 +4375,8 @@ export default class Meeting extends StatelessWebexPlugin {
       LoggerProxy.logger.error('Meeting:index#joinWithMedia --> ', error);
 
       let leaveError;
+
+      this.roap.abortTurnDiscovery();
 
       if (joined) {
         try {
@@ -6183,7 +6189,6 @@ export default class Meeting extends StatelessWebexPlugin {
 
     // @ts-ignore - config coming from registerPlugin
     if (!this.turnServerUsed) {
-      // todo: at some point we can remove this block as now this.turnServerUsed should always be true
       LoggerProxy.logger.info(
         `${LOG_HEADER} error waiting for media to connect on UDP, TCP, retrying using TURN-TLS, `,
         error

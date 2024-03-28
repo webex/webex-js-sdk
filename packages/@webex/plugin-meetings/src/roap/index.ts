@@ -281,4 +281,8 @@ export default class Roap extends StatelessWebexPlugin {
   handleTurnDiscoveryHttpResponse(meeting: Meeting, httpResponse: object) {
     return this.turnDiscovery.handleTurnDiscoveryHttpResponse(meeting, httpResponse);
   }
+
+  abortTurnDiscovery() {
+    return this.turnDiscovery.abort();
+  }
 }

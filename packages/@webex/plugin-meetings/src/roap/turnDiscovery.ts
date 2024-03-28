@@ -105,7 +105,8 @@ export default class TurnDiscovery {
   }
 
   /**
-   * handles TURN_DISCOVERY_RESPONSE roap message
+   * Handles TURN_DISCOVERY_RESPONSE roap message. Use it if the roap message comes over the websocket,
+   * otherwise use handleTurnDiscoveryHttpResponse() if it comes in the http response.
    *
    * @param {Object} roapMessage
    * @param {string} from string to indicate how we got the response (used just for logging)
@@ -178,7 +179,9 @@ export default class TurnDiscovery {
   }
 
   /**
-   * generates TURN_DISCOVERY_REQUEST roap message
+   * Generates TURN_DISCOVERY_REQUEST roap message. When this method returns a roapMessage, it means that a TURN discovery process has started.
+   * It needs be ended by calling handleTurnDiscoveryHttpResponse() once you get a response from the backend. If you don't get any response
+   * or want to abort, you need to call abort().
    *
    * @param {Meeting} meeting
    * @param {boolean} isForced
@@ -249,17 +252,36 @@ export default class TurnDiscovery {
   }
 
   /**
-   * handles TURN_DISCOVERY_RESPONSE roap message that came in http response
+   * Handles TURN_DISCOVERY_RESPONSE roap message that came in http response. If the response is not valid,
+   * it returns an object with turnServerInfo set to undefined. In that case you need to call abort()
+   * to end the TURN discovery process.
    *
    * @param {Meeting} meeting
-   * @param {Object} httpResponse
+   * @param {Object|undefined} httpResponse can be undefined to indicate that we didn't get the response
    * @returns {Promise<TurnDiscoveryResult>}
    * @memberof Roap
    */
   public async handleTurnDiscoveryHttpResponse(
     meeting: Meeting,
-    httpResponse: object
+    httpResponse?: object
   ): Promise<TurnDiscoveryResult> {
+    if (!this.defer) {
+      LoggerProxy.logger.warn(
+        'Roap:turnDiscovery#handleTurnDiscoveryHttpResponse --> unexpected http response, TURN discovery is not in progress'
+      );
+
+      throw new Error(
+        'handleTurnDiscoveryHttpResponse() called before generateTurnDiscoveryRequestMessage()'
+      );
+    }
+
+    if (httpResponse === undefined) {
+      return {
+        turnServerInfo: undefined,
+        turnDiscoverySkippedReason: TURN_DISCOVERY_SKIP_REASON.missing_http_response,
+      };
+    }
+
     try {
       const roapMessage = this.parseHttpTurnDiscoveryResponse(meeting, httpResponse);
 
@@ -284,7 +306,21 @@ export default class TurnDiscovery {
 
       return {turnServerInfo: this.turnInfo, turnDiscoverySkippedReason: undefined};
     } catch (error) {
+      this.abort();
+
       return this.handleTurnDiscoveryFailure(meeting, error);
+    }
+  }
+
+  /**
+   * Aborts current TURN discovery. This method needs to be called if you called generateTurnDiscoveryRequestMessage(),
+   * but then never got any response from the server.
+   * @returns {void}
+   */
+  public abort() {
+    if (this.defer) {
+      this.defer.reject(new Error('TURN discovery aborted'));
+      this.defer = undefined;
     }
   }
 

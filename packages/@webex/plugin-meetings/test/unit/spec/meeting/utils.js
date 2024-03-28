@@ -370,13 +370,18 @@ describe('plugin-meetings', () => {
         };
 
         MeetingUtil.parseLocusJoin = sinon.stub();
-        await MeetingUtil.joinMeeting(meeting, {});
+        await MeetingUtil.joinMeeting(meeting, {
+          reachability: 'reachability',
+          roapMessage: 'roapMessage',
+        });
 
         assert.calledOnce(meeting.meetingRequest.joinMeeting);
         const parameter = meeting.meetingRequest.joinMeeting.getCall(0).args[0];
 
         assert.equal(parameter.inviteeAddress, 'meetingJoinUrl');
         assert.equal(parameter.preferTranscoding, true);
+        assert.equal(parameter.reachability, 'reachability');
+        assert.equal(parameter.roapMessage, 'roapMessage');
 
         assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
           name: 'client.locus.join.request',

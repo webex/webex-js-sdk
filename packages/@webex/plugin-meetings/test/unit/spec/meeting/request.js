@@ -194,12 +194,14 @@ describe('plugin-meetings', () => {
         const roapMessage = 'roap-message';
         const permissionToken = 'permission-token';
         const installationId = 'installationId';
+        const reachability = 'reachability';
 
         await meetingsRequest.joinMeeting({
           locusUrl,
           deviceUrl,
           correlationId,
           roapMessage,
+          reachability,
           permissionToken,
         });
         const requestParams = meetingsRequest.request.getCall(0).args[0];
@@ -212,6 +214,7 @@ describe('plugin-meetings', () => {
         assert.equal(requestParams.body.permissionToken, 'permission-token');
         assert.equal(requestParams.body.device.regionCode, 'WEST-COAST');
         assert.include(requestParams.body.device.localIp, '127.0.0');
+        assert.deepEqual(requestParams.body.localMedias, [{localSdp: '{"roapMessage":"roap-message","reachability":"reachability"}'}]);
 
         assert.calledOnceWithExactly(anonymizeIpSpy, '127.0.0.1');
       });

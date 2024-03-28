@@ -13,15 +13,23 @@ import BEHAVIORAL_METRICS from '@webex/plugin-meetings/src/metrics/constants';
 import { IP_VERSION } from '../../../../src/constants';
 
 describe('Roap', () => {
+  let webex;
+
+  const RESULT = {something: 'some value'};
+  const meeting = {id: 'some meeting id'} as Meeting;
+
+  beforeEach(() => {
+    webex = new MockWebex({});
+  });
+
+  afterEach(() => {
+    sinon.restore();
+  });
+
   describe('doTurnDiscovery', () => {
     [false, true].forEach(function (isReconnecting) {
       [false, true, undefined].forEach(function (isForced) {
         it(`calls this.turnDiscovery.doTurnDiscovery() and forwards all the arguments when isReconnecting = ${isReconnecting} and isForced = ${isForced}`, async () => {
-          const webex = new MockWebex({});
-
-          const RESULT = {something: 'some value'};
-          const meeting = {id: 'some meeting id'} as Meeting;
-
           const doTurnDiscoveryStub = sinon
             .stub(TurnDiscovery.prototype, 'doTurnDiscovery')
             .resolves(RESULT);
@@ -32,9 +40,56 @@ describe('Roap', () => {
 
           assert.calledOnceWithExactly(doTurnDiscoveryStub, meeting, isReconnecting, isForced);
           assert.deepEqual(result, RESULT);
-
-          sinon.restore();
         });
+      });
+    });
+
+    describe('generateTurnDiscoveryRequestMessage', () => {
+      [false, true].forEach(function (isForced) {
+        it(`calls this.turnDiscovery.generateTurnDiscoveryRequestMessage with isForced=${isForced}`, async () => {
+          const generateTurnDiscoveryRequestMessageStub = sinon
+            .stub(TurnDiscovery.prototype, 'generateTurnDiscoveryRequestMessage')
+            .resolves(RESULT);
+
+          const roap = new Roap({}, {parent: webex});
+
+          const result = await roap.generateTurnDiscoveryRequestMessage(meeting, isForced);
+
+          assert.calledOnceWithExactly(generateTurnDiscoveryRequestMessageStub, meeting, isForced);
+          assert.deepEqual(result, RESULT);
+        });
+      });
+    });
+
+    describe('handleTurnDiscoveryHttpResponse', () => {
+      it('calls this.turnDiscovery.handleTurnDiscoveryHttpResponse', async () => {
+        const handleTurnDiscoveryHttpResponseStub = sinon
+          .stub(TurnDiscovery.prototype, 'handleTurnDiscoveryHttpResponse')
+          .resolves(RESULT);
+
+        const httpReponse = {some: 'http response'};
+
+        const roap = new Roap({}, {parent: webex});
+
+        const result = await roap.handleTurnDiscoveryHttpResponse(meeting, httpReponse);
+
+        assert.calledOnceWithExactly(handleTurnDiscoveryHttpResponseStub, meeting, httpReponse);
+        assert.deepEqual(result, RESULT);
+      });
+    });
+
+    describe('abortTurnDiscovery', () => {
+      it('calls this.turnDiscovery.abort', async () => {
+        const abortStub = sinon
+          .stub(TurnDiscovery.prototype, 'abort')
+          .returns(RESULT);
+
+        const roap = new Roap({}, {parent: webex});
+
+        const result = await roap.abortTurnDiscovery();
+
+        assert.calledOnceWithExactly(abortStub);
+        assert.deepEqual(result, RESULT);
       });
     });
   });
