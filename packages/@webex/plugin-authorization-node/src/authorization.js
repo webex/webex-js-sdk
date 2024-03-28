@@ -7,6 +7,9 @@
 import {oneFlight, whileInFlight} from '@webex/common';
 import {grantErrors, WebexPlugin} from '@webex/webex-core';
 
+import jwt from 'jsonwebtoken';
+import uuid from 'uuid';
+
 /**
  * NodeJS support for OAuth2
  * @class
@@ -149,6 +152,33 @@ const Authorization = WebexPlugin.extend({
       })
       .then(() => this.webex.internal.services.initServiceCatalogs());
   },
+
+  /**
+   * Creates a jwt user token
+   * @param {object} options
+   * @param {String} options.issuer Guest Issuer ID
+   * @param {String} options.secretId Guest Secret ID
+   * @param {String} options.displayName Guest Display Name | optional
+   * @param {String} options.expiresIn
+   * @returns {Promise<object>}
+   */
+  createJwt({issuer, secretId, displayName, expiresIn}) {
+    const secret = Buffer.from(secretId, 'base64');
+    const payload = {
+      "sub": `guest-user-${uuid()}`,
+      "iss": issuer,
+      "name": displayName || `Guest User - ${uuid()}`
+    };
+
+    try {
+      const jwtToken = jwt.sign(payload, secret,{ expiresIn });
+
+      return Promise.resolve({jwt: jwtToken});
+    } catch (e) {
+      return Promise.reject(e);
+    }
+  },
+
 });
 
 export default Authorization;
