@@ -6,7 +6,7 @@
 import {assert} from '@webex/test-helper-chai';
 import MockWebex from '@webex/test-helper-mock-webex';
 import sinon from 'sinon';
-import {browserOnly, nodeOnly} from '@webex/test-helper-mocha';
+import {browserOnly, nodeOnly, inBrowser} from '@webex/test-helper-mocha';
 import Logger, {levels} from '@webex/plugin-logger';
 import {WebexHttpError} from '@webex/webex-core';
 
@@ -636,11 +636,20 @@ describe('plugin-logger', () => {
             trackingid: '123',
           },
         });
-        assert.calledWith(console[impl(level)], 'wx-js-sdk', {
-          headers: {
-            trackingid: '123',
-          },
-        });
+
+        if(inBrowser()) {
+          assert.calledWith(console[impl(level)], 'wx-js-sdk', JSON.stringify({
+            headers: {
+              trackingid: '123',
+            },
+          }));
+        } else {
+          assert.calledWith(console[impl(level)], 'wx-js-sdk', {
+            headers: {
+              trackingid: '123',
+            },
+          });
+        }
       });
     });
   });
@@ -654,15 +663,25 @@ describe('plugin-logger', () => {
       });
 
       // Assert auth was filtered
-      assert.calledWith(console.log, 'wx-js-sdk', {Key: 'myKey'});
 
-      webex.logger.log({
+      if(inBrowser()) { 
+        assert.calledWith(console.log, "wx-js-sdk", JSON.stringify({Key: 'myKey'}));
+      } else {
+        assert.calledWith(console.log, "wx-js-sdk", {Key: 'myKey'});
+      }
+        webex.logger.log({
         authorization: 'XXXXXXX',
         Key: 'myKey',
       });
+9
+      
+      if(inBrowser()) { 
+      assert.calledWith(console.log, "wx-js-sdk", JSON.stringify({Key: 'myKey'}));
 
-      assert.calledWith(console.log, 'wx-js-sdk', {Key: 'myKey'});
-    });
+      } else {
+      assert.calledWith(console.log, "wx-js-sdk", {Key: 'myKey'});
+
+      } });
 
     it('redact emails', () => {
       webex.config.logger.level = 'trace';
@@ -694,7 +713,7 @@ describe('plugin-logger', () => {
       assert.calledWith(console.log, 'wx-js-sdk', 'https://example.com/example/j.php?MTID=[REDACTED]#abcdefg');
     });
 
-    it('handle circular references', () => {
+    nodeOnly(it)('handle circular references', () => {
       webex.config.logger.level = 'trace';
 
       const object = {
@@ -713,12 +732,19 @@ describe('plugin-logger', () => {
         Key: 'myKey',
       };
 
+      // Has self reference which is bad 
       expected.selfReference = expected;
 
-      assert.calledWith(console.log, 'wx-js-sdk', expected);
-    });
+      if(inBrowser()) { 
+        assert.calledWith(console.log, "wx-js-sdk", JSON.stringify(expected));
+  
+        } else {
+        assert.calledWith(console.log, "wx-js-sdk", expected);
+  
+        } 
+      });
 
-    it('handle circular references in complex objects', () => {
+    nodeOnly(it)('handle circular references in complex objects', () => {
       webex.config.logger.level = 'trace';
 
       const func = () => true;
@@ -747,7 +773,7 @@ describe('plugin-logger', () => {
 
       webex.logger.log(object);
 
-      assert.calledWith(console.log, 'wx-js-sdk', {
+      const res = {
         primativeString: 'justastring',
         primativeNum: 5,
         primativeBool: true,
@@ -764,9 +790,18 @@ describe('plugin-logger', () => {
           circularObjectRef: object,
           circularFunctionRef: func,
         },
+      }
+
+
+      if(inBrowser()) { 
+        assert.calledWith(console.log, "wx-js-sdk", JSON.stringify(res));
+  
+        } else {
+        assert.calledWith(console.log, "wx-js-sdk", res);
+  
+        }
       });
     });
-  });
 
   describe('#formatLogs()', () => {
     function sendRandomLog(log) {

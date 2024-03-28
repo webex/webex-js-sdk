@@ -12,7 +12,7 @@ describe('webex-core', () => {
   describe('EmbargoInterceptor', () => {
     let interceptor;
 
-    before('create interceptor', () => {
+    beforeAll(() => {
       interceptor = new EmbargoInterceptor();
     });
 
@@ -23,7 +23,7 @@ describe('webex-core', () => {
       let options;
       let reason;
 
-      beforeEach('create options object', () => {
+      beforeEach(() => {
         options = {
           uri: 'http://not-a-url.com/embargoed',
         };
@@ -46,8 +46,8 @@ describe('webex-core', () => {
         ].join('');
       });
 
-      describe("when the reason does have a '451' status code", () => {
-        beforeEach('set appropriate status code and spys', () => {
+      describe('when the reason does have a \'451\' status code', () => {
+        beforeEach(() => {
           reason = new WebexHttpError.InternalServerError({
             message: 'test message',
             statusCode: 451,
@@ -78,7 +78,7 @@ describe('webex-core', () => {
         describe('when the device plugin is mounted', () => {
           let deviceClear;
 
-          beforeEach('set up the device plugin', () => {
+          beforeEach(() => {
             interceptor.webex.internal.device = {
               clear: sinon.spy(),
             };
@@ -93,8 +93,8 @@ describe('webex-core', () => {
         });
       });
 
-      describe("when the reason does not have a '451' status code", () => {
-        beforeEach('set appropriate status code and spys', () => {
+      describe('when the reason does not have a \'451\' status code', () => {
+        beforeEach(() => {
           reason = new WebexHttpError.InternalServerError({
             message: 'test message',
             statusCode: 452,
@@ -125,7 +125,7 @@ describe('webex-core', () => {
         describe('when the device plugin is mounted', () => {
           let deviceClear;
 
-          beforeEach('set up the device plugin', () => {
+          beforeEach(() => {
             interceptor.webex.internal.device = {
               clear: sinon.spy(),
             };

@@ -15,7 +15,7 @@ describe('webex-core', () => {
     let services;
     let catalog;
 
-    before('initialize webex', () => {
+    beforeAll(() => {
       webex = new MockWebex({
         children: {
           services: Services,
@@ -75,7 +75,7 @@ describe('webex-core', () => {
     describe('#list()', () => {
       let serviceList;
 
-      beforeEach('get services list', () => {
+      beforeEach(() => {
         serviceList = services.list();
       });
 
@@ -95,7 +95,7 @@ describe('webex-core', () => {
       it('successfully resolves with undefined if fetch request failed', () => {
         webex.request = sinon.stub().returns(Promise.reject());
 
-        return assert.isFulfilled(services.fetchClientRegionInfo()).then((r) => {
+        return services.fetchClientRegionInfo().then((r) => {
           assert.isUndefined(r);
         });
       });
@@ -369,7 +369,7 @@ describe('webex-core', () => {
         identity: 'https://identity.webex.com',
       };
 
-      beforeEach('get services list', async () => {
+      beforeEach(async () => {
         const servicesList = {
           idbroker: 'https://idbroker.webex.com',
           identity: 'https://identity.webex.com/',
