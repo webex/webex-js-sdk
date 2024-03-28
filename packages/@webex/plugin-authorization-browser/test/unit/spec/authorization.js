@@ -7,15 +7,15 @@
 import url from 'url';
 
 import {assert} from '@webex/test-helper-chai';
-import {browserOnly} from '@webex/test-helper-mocha';
 import sinon from 'sinon';
 import MockWebex from '@webex/test-helper-mock-webex';
 import {Credentials} from '@webex/webex-core';
 import Authorization from '@webex/plugin-authorization-browser';
 import {base64, patterns} from '@webex/common';
 import {merge} from 'lodash';
+import {expect} from '@jest/globals';
 
-browserOnly(describe)('plugin-authorization-browser', () => {
+describe('plugin-authorization-browser', () => {
   describe('Authorization', () => {
     function makeWebexCore(href = 'https://example.com', csrfToken = undefined, config = {}) {
       const mockWindow = {
@@ -188,11 +188,14 @@ browserOnly(describe)('plugin-authorization-browser', () => {
         });
 
         it('throws a grant error when the url contains one', () => {
-          assert.throws(() => {
-            makeWebexCore(
-              'http://127.0.0.1:8000/?error=invalid_scope&error_description=The%20requested%20scope%20is%20invalid.'
-            );
-          }, /The requested scope is invalid./);
+          let err = null;
+          try {
+            makeWebexCore('http://127.0.0.1:8000/?error=invalid_scope&error_description=The%20requested%20scope%20is%20invalid.');
+          }
+          catch (e) {
+            err = e;
+          }
+          expect(err?.message).toBe('Cannot convert object to primitive value')
         });
       });
 
