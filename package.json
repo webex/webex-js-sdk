@@ -44,7 +44,6 @@
     "lint": "yarn && yarn ws:tools build && yarn run --silent eslint .",
     "lint:commitmsg": "commitlint -e $GIT_PARAMS",
     "lint:staged": "lint-staged",
-    "test": "node ./tooling/index.js test",
     "test:unit": "node ./tooling/index.js test --unit --node",
     "test:integration": "node ./tooling/index.js test --integration --browser",
     "test:ci:github": "node ./tooling/index.js ci --github",
