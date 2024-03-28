@@ -607,6 +607,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     return this.getErrorPayloadForClientErrorCode({
       clientErrorCode: UNKNOWN_ERROR,
       serviceErrorCode: UNKNOWN_ERROR,
+      payloadOverrides: rawError.payloadOverrides,
       rawErrorMessage,
       httpStatusCode,
     });
