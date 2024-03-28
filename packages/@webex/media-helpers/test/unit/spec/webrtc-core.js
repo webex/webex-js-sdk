@@ -32,7 +32,6 @@ describe('media-helpers', () => {
         spyFn: 'createMicrophoneStream',
       },
     ];
-
     classesToTest.forEach(({className, title, event, createFn, spyFn}) =>
       describe(title, () => {
         const fakeStream = {
@@ -58,7 +57,7 @@ describe('media-helpers', () => {
         });
 
         it('rejects setMute(false) if unmute is not allowed', async () => {
-          stream.setUnmuteAllowed(false);
+          await stream.setUnmuteAllowed(false);
 
           assert.equal(stream.isUnmuteAllowed(), false);
           const fn = () => stream.setMuted(false);
@@ -66,7 +65,7 @@ describe('media-helpers', () => {
         });
 
         it('resolves setMute(false) if unmute is allowed', async () => {
-          stream.setUnmuteAllowed(true);
+          await stream.setUnmuteAllowed(true);
 
           assert.equal(stream.isUnmuteAllowed(), true);
           await stream.setMuted(false);
@@ -81,15 +80,15 @@ describe('media-helpers', () => {
             sinon.restore();
           });
 
-          const checkSetServerMuted = (startMute, setMute, expectedCalled) => {
-            stream.setMuted(startMute);
+          const checkSetServerMuted = async (startMute, setMute, expectedCalled) => {
+            await stream.setMuted(startMute);
 
             assert.equal(stream.muted, startMute);
 
             const handler = sinon.fake();
             stream.on(event.ServerMuted, handler);
 
-            stream.setServerMuted(setMute, 'remotelyMuted');
+            await stream.setServerMuted(setMute, 'remotelyMuted');
 
             assert.equal(stream.muted, setMute);
             if (expectedCalled) {
@@ -100,19 +99,19 @@ describe('media-helpers', () => {
           };
 
           it('tests true to false', async () => {
-            checkSetServerMuted(true, false, true);
+            await checkSetServerMuted(true, false, true);
           });
 
           it('tests false to true', async () => {
-            checkSetServerMuted(false, true, true);
+            await checkSetServerMuted(false, true, true);
           });
 
           it('tests true to true', async () => {
-            checkSetServerMuted(true, true, false);
+            await checkSetServerMuted(true, true, false);
           });
 
           it('tests false to false', async () => {
-            checkSetServerMuted(false, false, false);
+            await checkSetServerMuted(false, false, false);
           });
         });
 
@@ -121,7 +120,7 @@ describe('media-helpers', () => {
             const constraints = {deviceId: 'abc'};
 
             const spy = sinon.stub(wcmestreams, spyFn).returns('something');
-            const result = createFn(constraints);
+            const result = await createFn(constraints);
 
             assert.equal(result, 'something');
             assert.calledOnceWithExactly(spy, className, constraints);
@@ -133,7 +132,7 @@ describe('media-helpers', () => {
     describe('createDisplayStream', () => {
       it('checks createDisplayStream', async () => {
         const spy = sinon.stub(wcmestreams, 'createDisplayStream').returns('something');
-        const result = createDisplayStream();
+        const result = await createDisplayStream();
         assert.equal(result, 'something');
         assert.calledOnceWithExactly(spy, LocalDisplayStream);
       });
@@ -142,7 +141,7 @@ describe('media-helpers', () => {
     describe('createDisplayStreamWithAudio', () => {
       it('checks createDisplayStreamWithAudio', async () => {
         const spy = sinon.stub(wcmestreams, 'createDisplayStreamWithAudio').returns('something');
-        const result = createDisplayStreamWithAudio();
+        const result = await createDisplayStreamWithAudio();
         assert.equal(result, 'something');
         assert.calledOnceWithExactly(spy, LocalDisplayStream, LocalSystemAudioStream);
       });

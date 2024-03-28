@@ -5,7 +5,6 @@
 import {assert} from '@webex/test-helper-chai';
 import MockWebex from '@webex/test-helper-mock-webex';
 import sinon from 'sinon';
-
 import Conversation from '@webex/internal-plugin-conversation';
 
 import {
@@ -32,7 +31,48 @@ describe('plugin-conversation', () => {
 
       webex.internal.services = {};
       webex.internal.services.get = sinon.stub().returns(Promise.resolve(convoUrl));
-      webex.internal.services.getServiceFromClusterId = sinon.stub().returns({url: convoUrl});
+      webex.internal.services.getServiceUrlFromClusterId = sinon.stub().returns(convoUrl);
+    });
+
+    describe('addReaction()', () => {
+      it('should add recipients to the payload if provided', () => {
+        const {conversation} = webex.internal;
+        const recipientId = 'example-recipient-id';
+        const expected = {items: [{id: recipientId, objectType: 'person'}]}
+        conversation.sendReaction = sinon.stub().returns(Promise.resolve())
+        conversation.createReactionHmac = sinon.stub().returns(Promise.resolve('hmac'))
+        
+        return conversation.addReaction({}, 'example-display-name', {}, recipientId)
+          .then(() => {
+            assert.deepEqual(conversation.sendReaction.args[0][1].recipients, expected);
+          });
+      });
+    });
+
+    describe('deleteReaction()', () => {
+      it('should add recipients to the payload if provided', () => {
+        const {conversation} = webex.internal;
+        const recipientId = 'example-recipient-id';
+        const expected = {items: [{id: recipientId, objectType: 'person'}]}
+        conversation.sendReaction = sinon.stub().returns(Promise.resolve())
+        
+        return conversation.deleteReaction({}, 'example-reaction-id', recipientId)
+          .then(() => {
+            assert.deepEqual(conversation.sendReaction.args[0][1].recipients, expected);
+          });
+      });
+    });
+
+    describe('prepare()', () => {
+      it('should ammend activity recipients to the returned object', () => {
+        const {conversation} = webex.internal;
+        const activity = { recipients: 'example-recipients' };
+
+        return conversation.prepare(activity)
+          .then((results) => {
+            assert.deepEqual(results.recipients, activity.recipients);
+        });
+      });
     });
 
     describe('addReaction()', () => {
@@ -180,27 +220,21 @@ describe('plugin-conversation', () => {
       it('should convert a "us" cluster to WEBEX_CONVERSATION_DEFAULT_CLUSTER cluster', async () => {
         await webex.internal.conversation.getUrlFromClusterId({cluster: 'us'});
 
-        sinon.assert.calledWith(webex.internal.services.getServiceFromClusterId, {
-          clusterId: process.env.WEBEX_CONVERSATION_DEFAULT_CLUSTER,
-        });
+        sinon.assert.calledWith(webex.internal.services.getServiceUrlFromClusterId, {cluster: 'us'});
       });
 
       it('should add the cluster service when missing', async () => {
         await webex.internal.conversation.getUrlFromClusterId({cluster: 'urn:TEAM:us-west-2_r'});
 
-        sinon.assert.calledWith(webex.internal.services.getServiceFromClusterId, {
-          clusterId: 'urn:TEAM:us-west-2_r:identityLookup',
-        });
+        sinon.assert.calledWith(webex.internal.services.getServiceUrlFromClusterId, {cluster: 'urn:TEAM:us-west-2_r'});
       });
     });
 
     describe('paginate', () => {
       it('should throw an error if a page is passed with no links', () => {
-        try {
-          webex.internal.conversation.paginate({page: {}});
-        } catch (error) {
+        webex.internal.conversation.paginate({page: {}}).catch((error) => {
           assert.equal(error.message, 'No link to follow for the provided page');
-        }
+        });
       });
     });
 
@@ -375,14 +409,12 @@ describe('plugin-conversation', () => {
               conversationUrl: convoUrl,
             });
 
-            try {
-              jumpToActivity();
-            } catch (e) {
+            jumpToActivity().catch((e) => {
               assert.equal(
                 e.message,
                 'Search must be an activity object from conversation service'
               );
-            }
+            });
           });
 
           it('should throw an error if activity.target.url is missing', () => {
@@ -390,11 +422,9 @@ describe('plugin-conversation', () => {
               conversationUrl: convoUrl,
             });
 
-            try {
-              assert.throws(jumpToActivity({target: null}));
-            } catch (e) {
-              //
-            }
+            jumpToActivity({target: null}).catch((e) => {
+              assert.equal(e.message, 'Search object must have a target url!');
+            });
           });
 
           it('should implement the iterator protocol', () => {

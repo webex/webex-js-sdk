@@ -27,7 +27,7 @@ describe('webex-core', () => {
           assert.property(options.headers, 'spark-user-agent');
           assert.equal(
             options.headers['spark-user-agent'],
-            `webex-js-sdk/${pkg.version} (${typeof window === 'undefined' ? 'node' : 'web'})`
+            `webex-js-sdk/development (${typeof window === 'undefined' ? 'node' : 'web'})`
           );
         });
 
@@ -47,7 +47,7 @@ describe('webex-core', () => {
           assert.property(options.headers, 'spark-user-agent');
           assert.equal(
             options.headers['spark-user-agent'],
-            `webex-js-sdk/${pkg.version} (${typeof window === 'undefined' ? 'node' : 'web'})`
+            `webex-js-sdk/development (${typeof window === 'undefined' ? 'node' : 'web'})`
           );
         });
 
@@ -74,7 +74,7 @@ describe('webex-core', () => {
           assert.property(options.headers, 'spark-user-agent');
           assert.equal(
             options.headers['spark-user-agent'],
-            `webex-js-sdk/${pkg.version} (${
+            `webex-js-sdk/development (${
               typeof window === 'undefined' ? 'node' : 'web'
             }) sample/1.0.0`
           );
@@ -104,7 +104,7 @@ describe('webex-core', () => {
           assert.property(options.headers, 'spark-user-agent');
           assert.equal(
             options.headers['spark-user-agent'],
-            `webex-js-sdk/${pkg.version} (${
+            `webex-js-sdk/development (${
               typeof window === 'undefined' ? 'node' : 'web'
             }) sample/1.0.0 custom-label/1.0.0`
           );
@@ -128,7 +128,7 @@ describe('webex-core', () => {
             assert.property(options.headers, 'spark-user-agent');
             assert.equal(
               options.headers['spark-user-agent'],
-              `webex/${pkg.version} (${typeof window === 'undefined' ? 'node' : 'web'})`
+              `webex/development (${typeof window === 'undefined' ? 'node' : 'web'})`
             );
           });
 
@@ -149,7 +149,7 @@ describe('webex-core', () => {
             assert.property(options.headers, 'spark-user-agent');
             assert.equal(
               options.headers['spark-user-agent'],
-              `webex/${pkg.version} (${typeof window === 'undefined' ? 'node' : 'web'})`
+              `webex/development (${typeof window === 'undefined' ? 'node' : 'web'})`
             );
           });
         });

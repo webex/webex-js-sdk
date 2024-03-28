@@ -38,7 +38,6 @@ describe('internal-plugin-metrics', () => {
       );
     });
   });
-
   describe('new-metrics', () => {
     let webex;
 
