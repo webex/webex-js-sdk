@@ -56,11 +56,14 @@ const Metrics = WebexPlugin.extend({
       throw Error('Missing behavioral metric name. Please provide one');
     }
     const payload = {metricName: eventName};
+    // @ts-ignore
+    const providedClientVersion = this.webex.meetings?.config?.metrics?.clientVersion;
 
     payload.tags = {
       ...props.tags,
       browser: getBrowserName(),
       os: getOSNameInternal(),
+      appVersion: providedClientVersion,
 
       // Node does not like this so we need to check if it exists or not
       // eslint-disable-next-line no-undef

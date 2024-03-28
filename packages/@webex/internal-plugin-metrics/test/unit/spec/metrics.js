@@ -104,6 +104,13 @@ describe('plugin-metrics', () => {
       };
       webex.config.metrics.type = ['operational'];
       webex.config.metrics.appType = 'sdk';
+      webex.meetings = {
+        config: {
+          metrics: {
+            clientVersion: '43.0.105'
+          }
+        }
+      }
 
       sinon.spy(webex, 'request');
       sinon.spy(metrics, 'postPreLoginMetric');
@@ -180,6 +187,7 @@ describe('plugin-metrics', () => {
           },
           metricName: 'test',
           tags: {
+            appVersion: '43.0.105',
             browser: '',
             domain: 'whatever',
             os: 'other',
