@@ -1384,13 +1384,22 @@ export default class Meetings extends WebexPlugin {
   }
 
   /**
-   * syncs all the meeting from server
+   * Syncs all the meetings from server. Does nothing and returns immediately if unverified guest.
    * @param {boolean} keepOnlyLocusMeetings - whether the sync should keep only locus meetings or any other meeting in meetingCollection
    * @returns {Promise<void>}
    * @public
    * @memberof Meetings
    */
   public syncMeetings({keepOnlyLocusMeetings = true} = {}): Promise<void> {
+    // @ts-ignore
+    if (this.webex.credentials.isUnverifiedGuest) {
+      LoggerProxy.logger.info(
+        'Meetings:index#syncMeetings --> skipping meeting sync as unverified guest'
+      );
+
+      return Promise.resolve();
+    }
+
     return this.request
       .getActiveMeetings()
       .then((locusArray) => {

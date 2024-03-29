@@ -304,7 +304,11 @@ function makeWebex(options) {
         callDiagnosticEventsBatcher: {
           queue: sinon.stub(),
         },
+        preLoginMetricsBatcher: {
+          queue: sinon.stub(),
+        },
         submitToCallDiagnostics: sinon.stub(),
+        submitToCallDiagnosticsPreLogin: sinon.stub(),
       },
     },
   });

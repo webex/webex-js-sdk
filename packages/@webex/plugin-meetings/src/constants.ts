@@ -341,6 +341,7 @@ export const EVENT_TRIGGERS = {
   MEETING_UNLOCKED: 'meeting:unlocked',
   MEETING_LOCKED: 'meeting:locked',
   MEETING_INFO_AVAILABLE: 'meeting:meetingInfoAvailable',
+  MEETING_INFO_UPDATED: 'meeting:meetingInfoUpdated',
   MEETING_LOG_UPLOAD_SUCCESS: 'meeting:logUpload:success',
   MEETING_LOG_UPLOAD_FAILURE: 'meeting:logUpload:failure',
   MEETING_ACTIONS_UPDATE: 'meeting:actionsUpdate',
@@ -358,6 +359,7 @@ export const EVENT_TRIGGERS = {
   REMOTE_VIDEO_SOURCE_COUNT_CHANGED: 'media:remoteVideoSourceCountChanged',
   REMOTE_AUDIO_SOURCE_COUNT_CHANGED: 'media:remoteAudioSourceCountChanged',
   REMOTE_MEDIA_AUDIO_CREATED: 'media:remoteAudio:created',
+  REMOTE_MEDIA_INTERPRETATION_AUDIO_CREATED: 'media:remoteInterpretationAudio:created',
   REMOTE_MEDIA_SCREEN_SHARE_AUDIO_CREATED: 'media:remoteScreenShareAudio:created',
   REMOTE_MEDIA_VIDEO_LAYOUT_CHANGED: 'media:remoteVideo:layoutChanged',
   // Controls
@@ -1308,3 +1310,6 @@ export type IP_VERSION = Enum<typeof IP_VERSION>;
 // constant for if the permissionToken is about to expire in the next 30 seconds, refresh it
 export const MEETING_PERMISSION_TOKEN_REFRESH_THRESHOLD_IN_SEC = 30;
 export const MEETING_PERMISSION_TOKEN_REFRESH_REASON = 'ttl-join';
+
+// constant for named media group type
+export const NAMED_MEDIA_GROUP_TYPE_AUDIO = 1;

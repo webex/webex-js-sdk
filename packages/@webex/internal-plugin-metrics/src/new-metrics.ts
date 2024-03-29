@@ -178,45 +178,6 @@ class Metrics extends WebexPlugin {
   }
 
   /**
-   * Submit a pre-login metric to clientmetrics
-   * @public
-   * @param payload
-   * @param preLoginId - pre-login ID of user
-   * @returns
-   */
-  public postPreLoginMetric(payload: any, preLoginId: string): Promise<any> {
-    // @ts-ignore
-    return this.webex
-      .request({
-        method: 'POST',
-        api: 'metrics',
-        resource: 'clientmetrics-prelogin',
-        headers: {
-          authorization: false,
-          'x-prelogin-userid': preLoginId,
-        },
-        body: {
-          metrics: [payload],
-        },
-      })
-      .then((res) => {
-        // @ts-ignore
-        this.webex.logger.log(`NewMetrics: @postPreLoginMetric. Request successful.`);
-
-        return res;
-      })
-      .catch((err) => {
-        // @ts-ignore
-        this.logger.error(
-          `NewMetrics: @postPreLoginMetric. Request failed:`,
-          `err: ${generateCommonErrorMetadata(err)}`
-        );
-
-        return Promise.reject(err);
-      });
-  }
-
-  /**
    * Issue request to alias a user's pre-login ID with their CI UUID
    * @param {string} preLoginId
    * @returns {Object} HttpResponse object
