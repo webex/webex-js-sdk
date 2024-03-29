@@ -3040,8 +3040,42 @@ describe('plugin-meetings', () => {
             assert.calledTwice(locusMediaRequestStub);
           });
 
-          it('addMedia() works correctly when media is enabled with tracks to publish and track is muted', async () => {
+          it('addMedia() works correctly when media is enabled with tracks to publish and track is user muted', async () => {
             fakeMicrophoneStream.userMuted = true;
+
+            await meeting.addMedia({localStreams: {microphone: fakeMicrophoneStream}});
+            await simulateRoapOffer();
+            await simulateRoapOk();
+
+            // check RoapMediaConnection was created correctly
+            checkMediaConnectionCreated({
+              mediaConnectionConfig: expectedMediaConnectionConfig,
+              localStreams: {
+                audio: fakeMicrophoneStream,
+                video: undefined,
+                screenShareVideo: undefined,
+                screenShareAudio: undefined,
+              },
+              direction: {
+                audio: 'sendrecv',
+                video: 'sendrecv',
+                screenShare: 'recvonly',
+              },
+              remoteQualityLevel: 'HIGH',
+              expectedDebugId,
+              meetingId: meeting.id,
+            });
+            // and SDP offer was sent with the right audioMuted/videoMuted values
+            checkSdpOfferSent({audioMuted: true, videoMuted: true});
+            // check OK was sent with the right audioMuted/videoMuted values
+            checkOkSent({audioMuted: true, videoMuted: true});
+
+            // and that these were the only /media requests that were sent
+            assert.calledTwice(locusMediaRequestStub);
+          });
+
+          it('addMedia() works correctly when media is enabled with tracks to publish and track is system muted', async () => {
+            fakeMicrophoneStream.systemMuted = true;
 
             await meeting.addMedia({localStreams: {microphone: fakeMicrophoneStream}});
             await simulateRoapOffer();
@@ -3520,8 +3554,8 @@ describe('plugin-meetings', () => {
           });
 
           [
-            {mute: true, title: 'muting a track before confluence is created'},
-            {mute: false, title: 'unmuting a track before confluence is created'},
+            {mute: true, title: 'user muting a track before confluence is created'},
+            {mute: false, title: 'user unmuting a track before confluence is created'},
           ].forEach(({mute, title}) =>
             it(title, async () => {
               // initialize the microphone mute state to opposite of what we do in the test
@@ -3539,6 +3573,49 @@ describe('plugin-meetings', () => {
               const mutedListener = fakeMicrophoneStream.on.getCall(0).args[1];
               // simulate track being muted
               fakeMicrophoneStream.userMuted = mute;
+              mutedListener(mute);
+
+              await stableState();
+
+              // nothing should happen
+              assert.notCalled(locusMediaRequestStub);
+              assert.notCalled(fakeRoapMediaConnection.update);
+
+              // now simulate roap offer and ok
+              await simulateRoapOffer();
+              await simulateRoapOk();
+
+              // it should be sent with the right mute status
+              checkSdpOfferSent({audioMuted: mute, videoMuted: true});
+              // check OK was sent with the right audioMuted/videoMuted values
+              checkOkSent({audioMuted: mute, videoMuted: true});
+
+              // nothing else should happen
+              assert.calledTwice(locusMediaRequestStub);
+              assert.notCalled(fakeRoapMediaConnection.update);
+            })
+          );
+
+          [
+            {mute: true, title: 'system muting a track before confluence is created'},
+            {mute: false, title: 'system unmuting a track before confluence is created'},
+          ].forEach(({mute, title}) =>
+            it(title, async () => {
+              // initialize the microphone mute state to opposite of what we do in the test
+              fakeMicrophoneStream.systemMuted = !mute;
+
+              await meeting.addMedia({localStreams: {microphone: fakeMicrophoneStream}});
+              await stableState();
+
+              resetHistory();
+
+              assert.equal(
+                fakeMicrophoneStream.on.getCall(0).args[0],
+                LocalStreamEventNames.UserMuteStateChange
+              );
+              const mutedListener = fakeMicrophoneStream.on.getCall(0).args[1];
+              // simulate track being muted
+              fakeMicrophoneStream.systemMuted = mute;
               mutedListener(mute);
 
               await stableState();

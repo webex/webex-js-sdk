@@ -1270,6 +1270,11 @@ async function loadMicrophone(constraints) {
 
     meetingStreamsLocalAudio.srcObject = localMedia.microphoneStream.outputStream;
 
+    localMedia.microphoneStream.on('user-mute-state-change', (muted) => {
+      console.log('MeetingControls#loadMicrophone() :: local microphone stream user mute state changed to', muted);
+      handleAudioButton();
+    });
+
     localMedia.microphoneStream.on('system-mute-state-change', (muted) => {
       console.log('MeetingControls#loadMicrophone() :: local microphone stream system mute state changed to', muted);
       handleMuteAudioMessage();
@@ -1534,7 +1539,6 @@ function toggleSendAudio() {
     const newMuteValue = !localMedia.microphoneStream.userMuted;
 
     localMedia.microphoneStream.setUserMuted(newMuteValue);
-    handleAudioButton();
 
     console.log(`MeetingControls#toggleSendAudio() :: Successfully ${newMuteValue ? 'muted': 'unmuted'} audio!`);
     return;
@@ -2919,7 +2923,6 @@ function muteMember(muteButton) {
   if (meeting) {
     meeting.mute(participantID, newMuteStatus).then((res) => {
       console.log(res, `participant is ${newMuteStatus ? 'muted' : 'unmuted'}`);
-      handleAudioButton();
     }).catch((err) => {
       console.log('error', err);
     });
