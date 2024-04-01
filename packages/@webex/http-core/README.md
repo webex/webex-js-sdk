@@ -14,7 +14,7 @@
     - [`HttpError`](#httperror)
   - [Maintainers](#maintainers)
   - [Contribute](#contribute)
-  - [license](#license)
+  - [License](#license)
 
 ## Install
 

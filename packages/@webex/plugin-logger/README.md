@@ -11,7 +11,7 @@
     - [Level Control](#level-control)
   - [Maintainers](#maintainers)
   - [Contribute](#contribute)
-  - [license](#license)
+  - [License](#license)
 
 ## Install
 

@@ -10,7 +10,7 @@ This is an internal Cisco Webex plugin. As such, it does not strictly adhere to 
 - [Usage](#usage)
 - [Contribute](#contribute)
 - [Maintainers](#maintainers)
-- [license](#license)
+- [License](#license)
 
 ## Install
 

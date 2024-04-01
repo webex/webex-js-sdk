@@ -10,7 +10,7 @@ Defines the plugin system, storage system, common http behaviors, credentials, s
 - [Usage](#usage)
 - [Contribute](#contribute)
 - [Maintainers](#maintainers)
-- [license](#license)
+- [License](#license)
 
 ## Install
 

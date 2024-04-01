@@ -10,7 +10,7 @@ Note: This package relies on DOM apis and largely returns noops in node environm
 - [Usage](#usage)
 - [Contribute](#contribute)
 - [Maintainers](#maintainers)
-- [license](#license)
+- [License](#license)
 
 ## Install
 

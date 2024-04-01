@@ -10,7 +10,7 @@
 - [Development](#development)
 - [Contribute](#contribute)
 - [Maintainers](#maintainers)
-- [license](#license)
+- [License](#license)
 
 # WARNING: This plugin is currently under active development
 
