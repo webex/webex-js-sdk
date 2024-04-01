@@ -13,7 +13,7 @@ describe('webex-core', () => {
     let services;
     let catalog;
 
-    beforeAll(() => {
+    before('initialize webex', () => {
       webex = new MockWebex();
       services = new Services(undefined, {parent: webex});
       catalog = services._getCatalog();
@@ -71,7 +71,7 @@ describe('webex-core', () => {
     });
 
     describe('#clean()', () => {
-      beforeEach(() => {
+      beforeEach('ammend data to the catalog', () => {
         catalog.serviceGroups.preauth = [1, 2, 3];
         catalog.serviceGroups.signin = [1, 2, 3];
         catalog.serviceGroups.postauth = [1, 2, 3];
@@ -100,17 +100,13 @@ describe('webex-core', () => {
     describe('#findAllowedDomain()', () => {
       const domains = [];
 
-      beforeEach(() => {
-        domains.push(
-          'example-a',
-          'example-b',
-          'example-c'
-        );
+      beforeEach('generate allowed domains', () => {
+        domains.push('example-a', 'example-b', 'example-c');
 
         catalog.setAllowedDomains(domains);
       });
 
-      afterEach(() => {
+      afterEach('remove allowed domains', () => {
         domains.length = 0;
       });
 
@@ -124,17 +120,13 @@ describe('webex-core', () => {
     describe('#getAllowedDomains()', () => {
       const domains = [];
 
-      beforeEach(() => {
-        domains.push(
-          'example-a',
-          'example-b',
-          'example-c'
-        );
+      beforeEach('generate allowed domains', () => {
+        domains.push('example-a', 'example-b', 'example-c');
 
         catalog.setAllowedDomains(domains);
       });
 
-      afterEach(() => {
+      afterEach('remove allowed domains', () => {
         domains.length = 0;
       });
 
@@ -148,7 +140,7 @@ describe('webex-core', () => {
     describe('#list()', () => {
       let serviceList;
 
-      beforeEach(() => {
+      beforeEach('get services list', () => {
         serviceList = catalog.list();
       });
 
@@ -167,17 +159,13 @@ describe('webex-core', () => {
     describe('#setAllowedDomains()', () => {
       const domains = [];
 
-      beforeEach(() => {
-        domains.push(
-          'example-a',
-          'example-b',
-          'example-c'
-        );
+      beforeEach('generate allowed domains', () => {
+        domains.push('example-a', 'example-b', 'example-c');
 
         catalog.setAllowedDomains(domains);
       });
 
-      afterEach(() => {
+      afterEach('remove allowed domains', () => {
         domains.length = 0;
       });
 
