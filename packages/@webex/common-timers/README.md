@@ -9,7 +9,7 @@
   - [Usage](#usage)
   - [Maintainers](#maintainers)
   - [Contribute](#contribute)
-  - [License](#license)
+  - [license](#license)
 
 ## Install
 

@@ -12,7 +12,7 @@ This is an internal Cisco Webex plugin. As such, it does not strictly adhere to 
   - [Tests](#Tests)
   - [Maintainers](#Maintainers)
   - [Contribute](#Contribute)
-  - [License](#License)
+  - [license](#License)
 
 ## Install
 

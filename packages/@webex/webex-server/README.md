@@ -10,7 +10,7 @@ Why would we put an http server in front of our SDK? Encryption is hard and this
 - [Usage](#usage)
 - [Contribute](#contribute)
 - [Maintainers](#maintainers)
-- [License](#license)
+- [license](#license)
 
 ## Install
 

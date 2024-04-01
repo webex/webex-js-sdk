@@ -1,6 +1,6 @@
 # Webex JS SDK
 
-[![License: mit](https://img.shields.io/badge/License-Cisco-blueviolet?style=flat-square)](https://github.com/webex/webex-js-sdk/blob/master/LICENSE)
+[![license: mit](https://img.shields.io/badge/License-Cisco-blueviolet?style=flat-square)](https://github.com/webex/webex-js-sdk/blob/master/LICENSE)
 ![state: Stable](https://img.shields.io/badge/State-Stable-blue?style=flat-square)
 ![scope: Public](https://img.shields.io/badge/Scope-Public-darkgreen?style=flat-square)
 
@@ -17,7 +17,7 @@ This project is designed as a mono-repository for all publicly-provided JavaScri
 * [Contribute](#contribute)
 * [Issues](#issues)
 * [Maintainers](#maintainers)
-* [License](#license)
+* [license](#license)
 
 ## Installation
 
@@ -56,7 +56,7 @@ The available unified modules within this project are listed below:
 
 ### Modular Modules
 
-Modular modules are an alternative to using a unified module, and require a greater understanding of how the modulars are architected in order to consume them appropriately. these modules are typically consumed as **dependencies** of another project and can be installed by performing the following commands:
+Modular modules are an alternative to using a unified module, and require a greater understanding of how the modules are architected in order to consume them appropriately. These modules are typically consumed as **dependencies** of another project and can be installed by performing the following commands:
 
 ```bash
 # using NPM
@@ -95,11 +95,11 @@ This section outlines how to directly consume the Webex JS SDK unified `webex` b
 </html>
 ```
 
-It is recommended to vis our [Getting Started with Browser Usage](https://developer.webex.com/docs/sdks/browser) guide for the most up-to-date documentation on consuming the Webex JS SDK via our CDN within a browser.
+It is recommended to visit our [Getting Started with Browser Usage](https://developer.webex.com/docs/sdks/browser) guide for the most up-to-date documentation on consuming the Webex JS SDK via our CDN within a browser.
 
 ### Updating the Modules
 
-Since this mono-repository includes a collection of packages that rely on eachother to work as intended, it is best to utilize a static version of the Webex JS SDK modules consumed by your application. The best way to do this is by utilzing our helper package: `@webex/package-tools`.
+Since this mono-repository includes a collection of packages that rely on each other to work as intended, it is best to utilize a static version of the Webex JS SDK modules consumed by your application. The best way to do this is by utilizing our helper package: `@webex/package-tools`.
 
 ```bash
 # using NPM
@@ -121,15 +121,15 @@ After installation, the following `script` should be added to your `./package.js
 }
 ```
 
-The above pacakge accepts a **distribution tag**, which will match an available `tag` from the [current tags section](https://www.npmjs.com/package/webex?activeTab=versions) of [NPMJS](https://www.npmjs.com/) as well as a list of packages that should be updated when the command executes (this will collect the latest synced version). It is recommended to provide the `--packages` argument with the complete list of `@webex`-scoped packages your project consumes in order to promote well-syncronized version between all packages.
+The above pacakge accepts a **distribution tag**, which will match an available `tag` from the [current tags section](https://www.npmjs.com/package/webex?activeTab=versions) of [NPMJS](https://www.npmjs.com/) as well as a list of packages that should be updated when the command executes (this will collect the latest synced version). It is recommended to provide the `--packages` argument with the complete list of `@webex`-scoped packages your project consumes in order to promote well-syncronized versions between all packages.
 
-The `@webex/package-tools` package contains a collection fo helpful tools used to manage packages within this project from both within and outside of this project. Please review the [documentation](./packages/tools/package/) associated with the `@webex/package-tools` package for more information.
+The `@webex/package-tools` package contains a collection of helpful tools used to manage packages within this project from both within and outside of this project. Please review the [documentation](./packages/tools/package/) associated with the `@webex/package-tools` package for more information.
 
 ### Running and Viewing Samples
 
 ![Notice: Needs Improvement](https://img.shields.io/badge/Notice-Needs%20Improvement-darkred?style=flat-square)
 
-Sample code can be found within the [samples documentation folder](./docs/samples). You can preview the contents of this folder by navigating to [https://webex.github.io/webex-js-sdk/samples/](https://webex.github.io/webex-js-sdk/samples/) or by building them locally. Please see our [contribute guide](./CONTRIBUTING.md) for more information.
+Sample code can be found within the [samples documentation folder](./docs/samples). You can preview the contents of this folder by navigating to [https://webex.github.io/webex-js-sdk/samples/](https://webex.github.io/webex-js-sdk/samples/) or by building them locally. Please see our [contributing guide](./CONTRIBUTING.md) for more information.
 
 ## Contribute
 

@@ -8,7 +8,7 @@
 - [Usage](#usage)
 - [Contribute](#contribute)
 - [Maintainers](#maintainers)
-- [License](#license)
+- [license](#license)
 
 ## Install
 
