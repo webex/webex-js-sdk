@@ -123,7 +123,7 @@ export default class RoapRequest extends StatelessWebexPlugin {
         );
         const {locus} = res.body;
 
-        locus.roapSeq = roapMessage.seq;
+        locus.roapSeq = options.roapMessage.seq;
 
         return {
           locus,
