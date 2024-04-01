@@ -160,6 +160,13 @@ The JS SDK allows you to customize your experience via configuration and environ
 
 Since we are now using yarn workspaces, use the `yarn workspace "plugin name" run test:unit/browser/integration` to run tests for a specific package. This is practical and saves time.
 
+For example, to run various tests on the `plugin-meetings` package, use the commands that follow:
+`yarn workspace @webex/plugin-meetings run test:unit`
+
+`yarn workspace @webex/plugin-meetings run test:integration`
+
+`yarn workspace @webex/plugin-meetings run test:browser`
+
 A local development flow might look like
 
 1. Edit source code in `MYPACKAGE`.
@@ -176,6 +183,8 @@ To run tests on multiple packages at the same time, use the `workspaces` feature
 
 You can use the `--browsers` _(not to be confused with the `--browser` tag)_ allows you to specify which browsers you want to run locally. This is restricted to what browsers are installed and available to you on your OS.
 The default browsers that launch are _Headless_ versions of Firefox and Chrome, so `--browsers Chrome Edge` will only launch a normal version of Chrome along with Edge. If you add `defaults` to the browser flag, it will also launch `ChromeHeadless` and `FirefoxHeadless` along with other browsers you've specified. All browsers include flags to enable WebRTC features and permissions.
+Before running the browser tests, ensure you've set the environment variables. An example of setting a variable is included below:
+`export FIREFOX_BIN=/Applications/Firefox.app/Contents/MacOS/firefox`
 
 To run tests on [Sauce Labs](https://saucelabs.com/) locally, you'll need to add an inline environment variable, `SAUCE=true`. As mentioned above you can specify which browsers you'd like to test on with the `--browser` flag, but with Sauce Labs service available to you, you can also specify which OS you'd like to test on. With the `--os` flag you have the option of testing on `Mac` and `Windows`. You can filter down the browsers that get launched by using the `--browsers` flag, so if you use `--os Windows --browsers Edge IE` it will launch only `Edge` and `IE`. Specifying just `--browsers` with `SAUCE=true` will launch that browser in all available OSs, so `--browsers Firefox` will launch `Firefox` in `Mac` and `Windows`.
 
