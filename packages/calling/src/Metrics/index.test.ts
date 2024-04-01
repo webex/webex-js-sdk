@@ -343,6 +343,12 @@ describe('CALLING: Metric tests', () => {
         }
       );
     });
+  });
+
+  describe('BNR metric tests', () => {
+    beforeAll(() => {
+      metricManager.setDeviceInfo(mockDeviceInfo);
+    });
 
     it('submit bnr enabled success metric', () => {
       const expectedData = {
@@ -394,6 +400,26 @@ describe('CALLING: Metric tests', () => {
       );
 
       expect(mockSubmitClientMetric).toBeCalledOnceWith(METRIC_EVENT.BNR_DISABLED, expectedData);
+    });
+
+    it('submit unknown bnr metric', () => {
+      const logSpy = jest.spyOn(log, 'warn');
+
+      metricManager.submitBNRMetric(
+        'invalidMetricName' as unknown as METRIC_EVENT,
+        METRIC_TYPE.BEHAVIORAL,
+        mockCallId,
+        mockCorrelationId
+      );
+
+      expect(mockSubmitClientMetric).not.toBeCalled();
+      expect(logSpy).toBeCalledOnceWith(
+        'Invalid metric name received. Rejecting request to submit metric.',
+        {
+          file: 'metric',
+          method: 'submitBNRMetric',
+        }
+      );
     });
   });
 

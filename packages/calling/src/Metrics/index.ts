@@ -330,7 +330,7 @@ class MetricManager implements IMetricManager {
   ) {
     let data;
 
-    if (METRIC_EVENT.BNR_ENABLED || METRIC_EVENT.BNR_DISABLED) {
+    if (name === METRIC_EVENT.BNR_ENABLED || name === METRIC_EVENT.BNR_DISABLED) {
       data = {
         tags: {
           device_id: this.deviceInfo?.device?.deviceId,

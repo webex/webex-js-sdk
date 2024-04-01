@@ -668,6 +668,7 @@ async function getMediaStreams() {
   makeCallBtn.disabled = false;
 }
 
+// TODO: This code will be uncommented and added once the DOM exception bug is resolved 
 // async function toggleNoiseReductionEffect() {
 //   effect = await localAudioStream.getEffectByKind('noise-reduction-effect');
 
