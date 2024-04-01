@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.384](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.383...v3.0.0-beta.384) (2024-03-28)
+
+
+### Bug Fixes
+
+* **metrics:** adding-appVersion-to-behavioral-metric ([#3462](https://github.com/webex/webex-js-sdk/issues/3462)) ([ab2e1de](https://github.com/webex/webex-js-sdk/commit/ab2e1de2f9cd284b0d84bbd4854c017821b773e8))
+
 ## [3.0.0-beta.383](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.382...v3.0.0-beta.383) (2024-03-28)
 
 
