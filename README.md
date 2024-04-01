@@ -1,6 +1,6 @@
 # Webex JS SDK
 
-[![license: mit](https://img.shields.io/badge/License-Cisco-blueviolet?style=flat-square)](https://github.com/webex/webex-js-sdk/blob/master/LICENSE)
+[![license: Cisco](https://img.shields.io/badge/License-Cisco-blueviolet?style=flat-square)](https://github.com/webex/webex-js-sdk/blob/master/LICENSE)
 ![state: Stable](https://img.shields.io/badge/State-Stable-blue?style=flat-square)
 ![scope: Public](https://img.shields.io/badge/Scope-Public-darkgreen?style=flat-square)
 
