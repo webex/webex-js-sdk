@@ -257,7 +257,7 @@ describe('webex-core', () => {
             Promise.resolve(services[pto.name] || pto.url);
         });
 
-        afterEach(() => {
+        afterEach('remove services plugin', () => {
           if (webex.internal.services) {
             delete webex.internal.services;
           }
