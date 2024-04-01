@@ -579,8 +579,8 @@ export default class Meeting extends StatelessWebexPlugin {
   resourceUrl: string;
   selfId: string;
   state: any;
-  localAudioStreamMuteStateHandler: (muted: boolean) => void;
-  localVideoStreamMuteStateHandler: (muted: boolean) => void;
+  localAudioStreamMuteStateHandler: () => void;
+  localVideoStreamMuteStateHandler: () => void;
   localOutputTrackChangeHandler: () => void;
   roles: any[];
   environment: string;

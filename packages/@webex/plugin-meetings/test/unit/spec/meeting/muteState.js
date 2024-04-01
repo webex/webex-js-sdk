@@ -745,6 +745,32 @@ describe('plugin-meetings', () => {
               assert.called(MeetingUtil.remoteUpdateAudioVideo);
             });
           });
+
+          describe('#applyClientStateLocally', () => {
+            afterEach(() => {
+              sinon.restore();
+            });
+
+            it('calls setServerMuted on the stream', async () => {
+              await setup(mediaType);
+              setupSpies(mediaType);
+
+              muteState.applyClientStateLocally(meeting, 'somereason');
+              assert.calledOnceWithExactly(
+                setServerMutedSpy,
+                muteState.state.client.localMute,
+                'somereason'
+              );
+              assert.notCalled(setUserMutedSpy);
+            });
+
+            it('nothing explodes when streams are undefined', async () => {
+              await setup(mediaType, false, false, false);
+              setupSpies(mediaType);
+
+              muteState.applyClientStateLocally(meeting, 'somereason');
+            });
+          });
         })
       );
     });

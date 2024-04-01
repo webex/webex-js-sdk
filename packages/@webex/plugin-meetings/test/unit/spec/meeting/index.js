@@ -2976,7 +2976,7 @@ describe('plugin-meetings', () => {
             }
           };
 
-          it('addMedia() works correctly when media is enabled without tracks to publish', async () => {
+          it('addMedia() works correctly when media is enabled without streams to publish', async () => {
             await meeting.addMedia();
             await simulateRoapOffer();
             await simulateRoapOk();
@@ -3042,7 +3042,7 @@ describe('plugin-meetings', () => {
             assert.calledTwice(locusMediaRequestStub);
           });
 
-          it('addMedia() works correctly when media is enabled with tracks to publish and track is user muted', async () => {
+          it('addMedia() works correctly when media is enabled with streams to publish and stream is user muted', async () => {
             fakeMicrophoneStream.userMuted = true;
 
             await meeting.addMedia({localStreams: {microphone: fakeMicrophoneStream}});
@@ -3076,7 +3076,7 @@ describe('plugin-meetings', () => {
             assert.calledTwice(locusMediaRequestStub);
           });
 
-          it('addMedia() works correctly when media is enabled with tracks to publish and track is system muted', async () => {
+          it('addMedia() works correctly when media is enabled with streams to publish and stream is system muted', async () => {
             fakeMicrophoneStream.systemMuted = true;
 
             await meeting.addMedia({localStreams: {microphone: fakeMicrophoneStream}});
@@ -3110,7 +3110,7 @@ describe('plugin-meetings', () => {
             assert.calledTwice(locusMediaRequestStub);
           });
 
-          it('addMedia() works correctly when media is disabled with tracks to publish', async () => {
+          it('addMedia() works correctly when media is disabled with streams to publish', async () => {
             await meeting.addMedia({
               localStreams: {microphone: fakeMicrophoneStream},
               audioEnabled: false,
@@ -3146,7 +3146,7 @@ describe('plugin-meetings', () => {
             assert.calledTwice(locusMediaRequestStub);
           });
 
-          it('addMedia() works correctly when media is disabled with no tracks to publish', async () => {
+          it('addMedia() works correctly when media is disabled with no streams to publish', async () => {
             await meeting.addMedia({audioEnabled: false});
             await simulateRoapOffer();
             await simulateRoapOk();
@@ -3179,7 +3179,7 @@ describe('plugin-meetings', () => {
             assert.calledTwice(locusMediaRequestStub);
           });
 
-          it('addMedia() works correctly when video is disabled with no tracks to publish', async () => {
+          it('addMedia() works correctly when video is disabled with no streams to publish', async () => {
             await meeting.addMedia({videoEnabled: false});
             await simulateRoapOffer();
             await simulateRoapOk();
@@ -3212,7 +3212,7 @@ describe('plugin-meetings', () => {
             assert.calledTwice(locusMediaRequestStub);
           });
 
-          it('addMedia() works correctly when screen share is disabled with no tracks to publish', async () => {
+          it('addMedia() works correctly when screen share is disabled with no streams to publish', async () => {
             await meeting.addMedia({shareAudioEnabled: false, shareVideoEnabled: false});
             await simulateRoapOffer();
             await simulateRoapOk();
@@ -6142,11 +6142,11 @@ describe('plugin-meetings', () => {
         meeting.sendSlotManager.setNamedMediaGroups = sinon.stub().returns(undefined);
       });
       it('should throw error if not audio type', () => {
-        expect(() => meeting.setSendNamedMediaGroup(MediaType.VideoMain, 20)).to.throw(`cannot set send named media group which media type is ${MediaType.VideoMain}`)
-
+        expect(() => meeting.setSendNamedMediaGroup(MediaType.VideoMain, 20)).to.throw(
+          `cannot set send named media group which media type is ${MediaType.VideoMain}`
+        );
       });
       it('fails if there is no media connection', () => {
-
         meeting.mediaProperties.webrtcMediaConnection = undefined;
         meeting.setSendNamedMediaGroup('AUDIO-MAIN', 20);
         assert.notCalled(meeting.sendSlotManager.setNamedMediaGroups);
@@ -6155,8 +6155,10 @@ describe('plugin-meetings', () => {
       it('success if there is media connection', () => {
         meeting.isMultistream = true;
         meeting.mediaProperties.webrtcMediaConnection = true;
-        meeting.setSendNamedMediaGroup("AUDIO-MAIN", 20);
-        assert.calledOnceWithExactly(meeting.sendSlotManager.setNamedMediaGroups, "AUDIO-MAIN", [{type: 1, value: 20}]);
+        meeting.setSendNamedMediaGroup('AUDIO-MAIN', 20);
+        assert.calledOnceWithExactly(meeting.sendSlotManager.setNamedMediaGroups, 'AUDIO-MAIN', [
+          {type: 1, value: 20},
+        ]);
       });
     });
 

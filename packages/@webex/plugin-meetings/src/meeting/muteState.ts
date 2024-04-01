@@ -178,6 +178,19 @@ export class MuteState {
     this.applyClientStateToServer(meeting);
   }
 
+  /**
+   * Applies the current mute state to the local stream (by enabling or disabling it accordingly)
+   *
+   * @public
+   * @param {Object} [meeting] the meeting object
+   * @param {ServerMuteReason} reason - reason why we're applying our client state to the local stream
+   * @memberof MuteState
+   * @returns {void}
+   */
+  public applyClientStateLocally(meeting?: any, reason?: ServerMuteReason) {
+    this.muteLocalStream(meeting, this.state.client.localMute, reason);
+  }
+
   /** Returns true if client is locally muted - it takes into account not just the client local mute state,
    *  but also whether audio/video is enabled at all
    *
