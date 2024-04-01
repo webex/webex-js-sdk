@@ -24,7 +24,7 @@ import {
   _MEETING_,
 } from '../../../../src/constants';
 
-import {self, selfWithInactivity} from './lib/selfConstant';
+import {self, selfWithInactivity} from './selfConstant';
 
 describe('plugin-meetings', () => {
   describe('LocusInfo index', () => {
@@ -1377,7 +1377,7 @@ describe('plugin-meetings', () => {
         );
       });
 
-      const checkMeetingInfoUpdatedCalled = (expected) => {
+      const checkMeetingInfoUpdatedCalled = (expected, payload) => {
         const expectedArgs = [
           locusInfo.emitScoped,
           {
@@ -1385,6 +1385,7 @@ describe('plugin-meetings', () => {
             function: 'updateMeetingInfo',
           },
           LOCUSINFO.EVENTS.MEETING_INFO_UPDATED,
+          payload,
         ];
 
         if (expected) {
@@ -1395,7 +1396,7 @@ describe('plugin-meetings', () => {
         locusInfo.emitScoped.resetHistory();
       };
 
-      const checkMeetingInfoUpdatedCalledForRoles = (expected) => {
+      const checkMeetingInfoUpdatedCalledForRoles = (expected, payload) => {
         const expectedArgs = [
           locusInfo.emitScoped,
           {
@@ -1403,6 +1404,7 @@ describe('plugin-meetings', () => {
             function: 'updateMeetingInfo',
           },
           LOCUSINFO.EVENTS.MEETING_INFO_UPDATED,
+          payload,
         ];
 
         if (expected) {
@@ -1424,8 +1426,7 @@ describe('plugin-meetings', () => {
         */
         sinon.stub(locusInfo, 'emitScoped').callsFake(() => {
           assert.deepEqual(mockMeeting, expectedMeeting);
-        })
-
+        });
 
         // set the info initially as locusInfo.info starts as undefined
         expectedMeeting = {
@@ -1447,7 +1448,7 @@ describe('plugin-meetings', () => {
 
         // since it was initially undefined, this should trigger the event
 
-        checkMeetingInfoUpdatedCalled(true);
+        checkMeetingInfoUpdatedCalled(true, {isInitializing: false});
 
         const newInfo = cloneDeep(meetingInfo);
 
@@ -1472,7 +1473,7 @@ describe('plugin-meetings', () => {
         };
         locusInfo.updateMeetingInfo(newInfo, self);
 
-        checkMeetingInfoUpdatedCalled(true);
+        checkMeetingInfoUpdatedCalled(true, {isInitializing: false});
 
         // update it with the same info
         expectedMeeting = {
@@ -1494,7 +1495,7 @@ describe('plugin-meetings', () => {
         locusInfo.updateMeetingInfo(newInfo, self);
 
         // since the info is the same it should not call trigger the event
-        checkMeetingInfoUpdatedCalled(false);
+        checkMeetingInfoUpdatedCalled(false, {isInitializing: false});
 
         // update it with the same info, but roles changed
         const updateSelf = cloneDeep(self);
@@ -1525,7 +1526,7 @@ describe('plugin-meetings', () => {
         };
         locusInfo.updateMeetingInfo(newInfo, updateSelf);
         // since the info is the same but roles changed, it should call trigger the event
-        checkMeetingInfoUpdatedCalledForRoles(true);
+        checkMeetingInfoUpdatedCalledForRoles(true, {isInitializing: false});
       });
 
       it('gets roles from self if available', () => {
@@ -1546,12 +1547,17 @@ describe('plugin-meetings', () => {
           roles: ['MODERATOR', 'COHOST'],
         };
 
+        sinon.stub(locusInfo, 'emitScoped');
+
         const parsedLocusInfo = cloneDeep(locusInfo.parsedLocus.info);
 
         locusInfo.updateMeetingInfo(initialInfo);
         assert.calledWith(isJoinedSpy, locusInfo.parsedLocus.self);
         assert.neverCalledWith(getRolesSpy, self);
         assert.calledWith(getInfosSpy, parsedLocusInfo, initialInfo, ['MODERATOR', 'COHOST']);
+
+        // since self is not passed to updateMeetingInfo, MEETING_INFO_UPDATED should be triggered with isIntializing: true
+        checkMeetingInfoUpdatedCalledForRoles(true, {isInitializing: true});
       });
     });
 
@@ -1900,7 +1906,7 @@ describe('plugin-meetings', () => {
         locusInfo.locusParser.workingCopy = {
           syncUrl: 'current sync url',
         };
-  
+
         locusInfo.applyLocusDeltaData(LOCUS_URL_CHANGED, fakeLocus, meeting);
         assert.calledOnceWithExactly(meeting.meetingRequest.getLocusDTO, {url: 'current sync url'});
       });
@@ -1963,8 +1969,12 @@ describe('plugin-meetings', () => {
           }).then(() => {
             assert.calledTwice(meeting.meetingRequest.getLocusDTO);
 
-            assert.deepEqual(meeting.meetingRequest.getLocusDTO.getCalls()[0].args, [{url: 'deltaSyncUrl'}]);
-            assert.deepEqual(meeting.meetingRequest.getLocusDTO.getCalls()[1].args, [{url: 'fullSyncUrl'}]);
+            assert.deepEqual(meeting.meetingRequest.getLocusDTO.getCalls()[0].args, [
+              {url: 'deltaSyncUrl'},
+            ]);
+            assert.deepEqual(meeting.meetingRequest.getLocusDTO.getCalls()[1].args, [
+              {url: 'fullSyncUrl'},
+            ]);
 
             assert.calledWith(sendBehavioralMetricStub, 'js_sdk_locus_delta_sync_failed', {
               correlationId: meeting.correlationId,
@@ -1992,8 +2002,12 @@ describe('plugin-meetings', () => {
           }).then(() => {
             assert.calledTwice(meeting.meetingRequest.getLocusDTO);
 
-            assert.deepEqual(meeting.meetingRequest.getLocusDTO.getCalls()[0].args, [{url: 'deltaSyncUrl'}]);
-            assert.deepEqual(meeting.meetingRequest.getLocusDTO.getCalls()[1].args, [{url: 'fullSyncUrl'}]);
+            assert.deepEqual(meeting.meetingRequest.getLocusDTO.getCalls()[0].args, [
+              {url: 'deltaSyncUrl'},
+            ]);
+            assert.deepEqual(meeting.meetingRequest.getLocusDTO.getCalls()[1].args, [
+              {url: 'fullSyncUrl'},
+            ]);
 
             assert.calledWith(sendBehavioralMetricStub, 'js_sdk_locus_delta_sync_failed', {
               correlationId: meeting.correlationId,
@@ -2077,7 +2091,7 @@ describe('plugin-meetings', () => {
 
         locusInfo.clearMainSessionLocusCache = sinon.stub();
         locusInfo.getTheLocusToUpdate(newLocus);
-        assert.notCalled(locusInfo.clearMainSessionLocusCache)
+        assert.notCalled(locusInfo.clearMainSessionLocusCache);
       });
 
       it('return the new locus if return to main session but no cache and do not clear main session cache', () => {
@@ -2099,7 +2113,7 @@ describe('plugin-meetings', () => {
 
         locusInfo.clearMainSessionLocusCache = sinon.stub();
         locusInfo.getTheLocusToUpdate(newLocus);
-        assert.notCalled(locusInfo.clearMainSessionLocusCache)
+        assert.notCalled(locusInfo.clearMainSessionLocusCache);
       });
 
       it('return the new locus if not return to main session and clear main session cache', () => {
@@ -2109,9 +2123,9 @@ describe('plugin-meetings', () => {
               sessionType: 'MAIN',
             },
           },
-          self: {removed: true}
+          self: {removed: true},
         };
-        locusInfo.fullState = {state: 'ACTIVE'}
+        locusInfo.fullState = {state: 'ACTIVE'};
         locusInfo.controls = {
           breakout: {
             sessionType: 'MAIN',
@@ -2127,7 +2141,7 @@ describe('plugin-meetings', () => {
 
         locusInfo.clearMainSessionLocusCache = sinon.stub();
         const result = locusInfo.getTheLocusToUpdate(newLocus);
-        assert.calledOnce(locusInfo.clearMainSessionLocusCache)
+        assert.calledOnce(locusInfo.clearMainSessionLocusCache);
 
         assert.deepEqual(result, newLocus);
       });
@@ -2139,9 +2153,9 @@ describe('plugin-meetings', () => {
               sessionType: 'MAIN',
             },
           },
-          self: {removed: undefined}
+          self: {removed: undefined},
         };
-        locusInfo.fullState = {state: 'ACTIVE'}
+        locusInfo.fullState = {state: 'ACTIVE'};
         locusInfo.controls = {
           breakout: {
             sessionType: 'MAIN',
@@ -2157,7 +2171,7 @@ describe('plugin-meetings', () => {
 
         locusInfo.clearMainSessionLocusCache = sinon.stub();
         locusInfo.getTheLocusToUpdate(newLocus);
-        assert.notCalled(locusInfo.clearMainSessionLocusCache)
+        assert.notCalled(locusInfo.clearMainSessionLocusCache);
       });
     });
 
@@ -2604,7 +2618,9 @@ describe('plugin-meetings', () => {
         // send an out-of-order delta
         locusInfo.handleLocusDelta(oooDelta, mockMeeting);
 
-        assert.calledOnceWithExactly(sendBehavioralMetricStub, 'js_sdk_locus_delta_ooo', { stack: sinon.match.any})
+        assert.calledOnceWithExactly(sendBehavioralMetricStub, 'js_sdk_locus_delta_ooo', {
+          stack: sinon.match.any,
+        });
 
         await clock.tickAsync(12499);
         await testUtils.flushPromises();

@@ -1169,7 +1169,10 @@ export default class LocusInfo extends EventsScope {
           file: 'locus-info',
           function: 'updateMeetingInfo',
         },
-        LOCUSINFO.EVENTS.MEETING_INFO_UPDATED
+        LOCUSINFO.EVENTS.MEETING_INFO_UPDATED,
+        {
+          isInitializing: !self, // if self is undefined, then the update is caused by locus init
+        }
       );
     }
     this.roles = roles;

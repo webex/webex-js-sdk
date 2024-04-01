@@ -22,6 +22,7 @@
   "devDependencies": {
     "@babel/core": "^7.17.10",
     "@ciscospark/test-users-legacy": "^1.2.0",
+    "@types/randomstring": "^1",
     "@webex/babel-config-legacy": "workspace:*",
     "@webex/eslint-config-legacy": "workspace:*",
     "@webex/jest-config-legacy": "workspace:*",
@@ -33,6 +34,7 @@
     "@webex/test-helper-test-users": "workspace:*",
     "eslint": "^8.24.0",
     "prettier": "^2.7.1",
+    "randomstring": "^1.3.0",
     "sinon": "^9.2.4"
   },
   "dependencies": {
@@ -51,8 +53,7 @@
     "build:src": "webex-legacy-tools build -dest \"./dist\" -src \"./src\" -js -ts -maps",
     "deploy:npm": "yarn npm publish",
     "test": "yarn test:style && yarn test:unit && yarn test:integration && yarn test:browser",
-    "test:browser:broken": "webex-legacy-tools test --integration --unit --runner karma",
-    "test:integration:broken": "webex-legacy-tools test --integration --runner mocha",
+    "test:browser": "webex-legacy-tools test --integration --runner karma",
     "test:style": "eslint ./src/**/*.*",
     "test:unit": "webex-legacy-tools test --unit --runner jest"
   }

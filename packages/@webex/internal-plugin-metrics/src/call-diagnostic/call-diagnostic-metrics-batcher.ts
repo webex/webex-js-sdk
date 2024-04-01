@@ -1,6 +1,3 @@
-/* eslint-disable class-methods-use-this */
-/* eslint-disable valid-jsdoc */
-
 import {uniqueId} from 'lodash';
 import Batcher from '../batcher';
 import {prepareDiagnosticMetricItem} from './call-diagnostic-metrics.util';
@@ -12,8 +9,8 @@ const CallDiagnosticEventsBatcher = Batcher.extend({
 
   /**
    * Prepare item
-   * @param item
-   * @returns
+   * @param {any} item
+   * @returns {Promise<any>}
    */
   prepareItem(item) {
     return Promise.resolve(prepareDiagnosticMetricItem(this.webex, item));
@@ -21,8 +18,8 @@ const CallDiagnosticEventsBatcher = Batcher.extend({
 
   /**
    * Prepare request, add time sensitive date etc.
-   * @param queue
-   * @returns
+   * @param {any[]} queue
+   * @returns {Promise<any[]>}
    */
   prepareRequest(queue) {
     // Add sent timestamp
@@ -36,8 +33,8 @@ const CallDiagnosticEventsBatcher = Batcher.extend({
 
   /**
    *
-   * @param payload
-   * @returns
+   * @param {any} payload
+   * @returns {Promise<any>}
    */
   submitHttpRequest(payload) {
     const batchId = uniqueId('ca-batch-');

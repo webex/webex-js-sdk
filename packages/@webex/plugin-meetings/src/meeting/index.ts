@@ -110,6 +110,7 @@ import {
   MEETING_PERMISSION_TOKEN_REFRESH_REASON,
   ROAP_OFFER_ANSWER_EXCHANGE_TIMEOUT,
   RECONNECTION,
+  NAMED_MEDIA_GROUP_TYPE_AUDIO,
   LANGUAGE_ENGLISH,
 } from '../constants';
 import BEHAVIORAL_METRICS from '../metrics/constants';
@@ -2884,12 +2885,24 @@ export default class Meeting extends StatelessWebexPlugin {
         );
       }
     });
-    this.locusInfo.on(LOCUSINFO.EVENTS.MEETING_INFO_UPDATED, () => {
+    this.locusInfo.on(LOCUSINFO.EVENTS.MEETING_INFO_UPDATED, ({isInitializing}) => {
       this.updateMeetingActions();
       this.recordingController.setDisplayHints(this.userDisplayHints);
       this.recordingController.setUserPolicy(this.selfUserPolicies);
       this.controlsOptionsManager.setDisplayHints(this.userDisplayHints);
       this.handleDataChannelUrlChange(this.datachannelUrl);
+
+      if (!isInitializing) {
+        // send updated trigger only if locus is not initializing the meeting
+        Trigger.trigger(
+          this,
+          {
+            file: 'meetings',
+            function: 'setUpLocusInfoMeetingInfoListener',
+          },
+          EVENT_TRIGGERS.MEETING_INFO_UPDATED
+        );
+      }
     });
   }
 
@@ -3115,7 +3128,7 @@ export default class Meeting extends StatelessWebexPlugin {
     });
 
     this.locusInfo.on(LOCUSINFO.EVENTS.SELF_MEETING_INTERPRETATION_CHANGED, (payload) => {
-      this.simultaneousInterpretation.updateSelfInterpretation(payload);
+      const targetChanged = this.simultaneousInterpretation.updateSelfInterpretation(payload);
       Trigger.trigger(
         this,
         {
@@ -3124,6 +3137,9 @@ export default class Meeting extends StatelessWebexPlugin {
         },
         EVENT_TRIGGERS.MEETING_INTERPRETATION_UPDATE
       );
+      if (targetChanged && this.mediaProperties.audioStream) {
+        this.setSendNamedMediaGroup(MediaType.AudioMain);
+      }
     });
 
     this.locusInfo.on(LOCUSINFO.EVENTS.SELF_ROLES_CHANGED, (payload) => {
@@ -6008,6 +6024,7 @@ export default class Meeting extends StatelessWebexPlugin {
 
     // publish the streams
     if (this.mediaProperties.audioStream) {
+      this.setSendNamedMediaGroup(MediaType.AudioMain);
       await this.publishStream(MediaType.AudioMain, this.mediaProperties.audioStream);
     }
     if (this.mediaProperties.videoStream) {
@@ -6372,6 +6389,11 @@ export default class Meeting extends StatelessWebexPlugin {
           this.remoteMediaManager,
           RemoteMediaManagerEvent.AudioCreated,
           EVENT_TRIGGERS.REMOTE_MEDIA_AUDIO_CREATED
+        );
+        this.forwardEvent(
+          this.remoteMediaManager,
+          RemoteMediaManagerEvent.InterpretationAudioCreated,
+          EVENT_TRIGGERS.REMOTE_MEDIA_INTERPRETATION_AUDIO_CREATED
         );
         this.forwardEvent(
           this.remoteMediaManager,
@@ -8085,6 +8107,33 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
+   * set sending named media group which the audio should send to
+   * @param {MediaType} mediaType of the stream
+   * @param {number} languageCode of the stream
+   * @returns {void}
+   */
+  public setSendNamedMediaGroup(mediaType: MediaType, languageCode = 0): void {
+    if (mediaType !== MediaType.AudioMain) {
+      throw new Error(`cannot set send named media group which media type is ${mediaType}`);
+    }
+
+    const value = languageCode || this.simultaneousInterpretation.getTargetLanguageCode();
+    let groups = [];
+
+    if (value) {
+      groups = [
+        {
+          type: NAMED_MEDIA_GROUP_TYPE_AUDIO,
+          value,
+        },
+      ];
+    }
+    if (this.isMultistream && this.mediaProperties.webrtcMediaConnection) {
+      this.sendSlotManager.setNamedMediaGroups(mediaType, groups);
+    }
+  }
+
+  /**
    * Publishes a stream.
    *
    * @param {MediaType} mediaType of the stream
@@ -8191,6 +8240,12 @@ export default class Meeting extends StatelessWebexPlugin {
         },
         options: {meetingId: this.id},
       });
+
+      this.statsAnalyzer.updateMediaStatus({
+        expected: {
+          sendShare: true,
+        },
+      });
       // we're sending the http request to Locus to request the screen share floor
       // only after the SDP update, because that's how it's always been done for transcoded meetings
       // and also if sharing from the start, we need confluence to have been created
@@ -8239,6 +8294,12 @@ export default class Meeting extends StatelessWebexPlugin {
     if (!this.mediaProperties.hasLocalShareStream()) {
       try {
         this.releaseScreenShareFloor(); // we ignore the returned promise here on purpose
+
+        this.statsAnalyzer.updateMediaStatus({
+          expected: {
+            sendShare: false,
+          },
+        });
       } catch (e) {
         // nothing to do here, error is logged already inside releaseScreenShareFloor()
       }

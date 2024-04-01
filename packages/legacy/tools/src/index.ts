@@ -6,7 +6,9 @@
 
 import { build, runTests } from './commands';
 import { Package, PackageFile } from './models';
-import { Jest, Karma, Mocha } from './utils';
+import {
+  Jest, Karma, Mocha, startProxies, stopProxies,
+} from './utils';
 
 export type {
   PackageBuildConfig,
@@ -25,4 +27,6 @@ export {
   Mocha,
   Package,
   PackageFile,
+  startProxies,
+  stopProxies,
 };
