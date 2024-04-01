@@ -12,15 +12,6 @@ import fedRampServices from './service-fed-ramp';
 
 const trailingSlashes = /(?:^\/)|(?:\/$)/;
 
-// The default cluster when one is not provided (usually as 'US' from hydra)
-export const DEFAULT_CLUSTER = 'urn:TEAM:us-east-2_a';
-// The default service name for convo (currently identityLookup due to some weird CSB issue)
-export const DEFAULT_CLUSTER_SERVICE = 'identityLookup';
-
-const CLUSTER_SERVICE = process.env.WEBEX_CONVERSATION_CLUSTER_SERVICE || DEFAULT_CLUSTER_SERVICE;
-const DEFAULT_CLUSTER_IDENTIFIER =
-  process.env.WEBEX_CONVERSATION_DEFAULT_CLUSTER || `${DEFAULT_CLUSTER}:${CLUSTER_SERVICE}`;
-
 /* eslint-disable no-underscore-dangle */
 /**
  * @class
@@ -682,7 +673,6 @@ const Services = WebexPlugin.extend({
    * @returns {object}
    */
   _formatReceivedHostmap(serviceHostmap) {
-    this._updateHostCatalog(serviceHostmap.hostCatalog);
     // map the host catalog items to a formatted hostmap
     const formattedHostmap = Object.keys(serviceHostmap.hostCatalog).reduce((accumulator, key) => {
       if (serviceHostmap.hostCatalog[key].length === 0) {
@@ -772,30 +762,6 @@ const Services = WebexPlugin.extend({
     const catalog = this._getCatalog();
 
     return catalog.findServiceFromClusterId(params);
-  },
-
-  /**
-   * @param {String} cluster the cluster containing the id
-   * @param {UUID} [id] the id of the conversation.
-   *  If empty, just return the base URL.
-   * @returns {String} url of the service
-   */
-  getServiceUrlFromClusterId({cluster = 'us'} = {}) {
-    let clusterId = cluster === 'us' ? DEFAULT_CLUSTER_IDENTIFIER : cluster;
-
-    // Determine if cluster has service name (non-US clusters from hydra do not)
-    if (clusterId.split(':').length < 4) {
-      // Add Service to cluster identifier
-      clusterId = `${cluster}:${CLUSTER_SERVICE}`;
-    }
-
-    const {url} = this.getServiceFromClusterId({clusterId}) || {};
-
-    if (!url) {
-      throw Error(`Could not find service for cluster [${cluster}]`);
-    }
-
-    return url;
   },
 
   /**

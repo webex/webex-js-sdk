@@ -122,10 +122,10 @@ describe('plugin-board', () => {
     describe('#setSnapshotImage()', () => {
       after(() => participants[0].webex.internal.board.deleteAllContent(board));
 
-      it('uploads image to webex files and adds to channel', (done) => {
+      it('uploads image to webex files and adds to channel', () => {
         let imageRes;
 
-        participants[0].webex.internal.board
+        return participants[0].webex.internal.board
           .setSnapshotImage(board, fixture)
           .then((res) => {
             imageRes = res.image;
@@ -145,13 +145,9 @@ describe('plugin-board', () => {
             );
           })
           .then((decryptedScr) => participants[2].webex.internal.encryption.download(decryptedScr.loc, decryptedScr))
-          .then((file) =>{
-            fh.isMatchingFile(file, fixture).then((result) => assert.deepEqual(result, true));
-            done();
-          }).catch(err => {
-            assert(false, err);
-            done();
-          })
+          .then((file) =>
+            fh.isMatchingFile(file, fixture).then((result) => assert.deepEqual(result, true))
+          );
       });
     });
 

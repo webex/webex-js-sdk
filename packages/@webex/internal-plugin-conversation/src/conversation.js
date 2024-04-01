@@ -58,7 +58,17 @@ import {
   sortActivitiesByPublishedDate,
   sanitizeActivity,
 } from './activities';
-import {ENCRYPTION_KEY_URL_MISMATCH, KEY_ALREADY_ROTATED, KEY_ROTATION_REQUIRED} from './constants';
+import {
+  DEFAULT_CLUSTER,
+  DEFAULT_CLUSTER_SERVICE,
+  ENCRYPTION_KEY_URL_MISMATCH,
+  KEY_ALREADY_ROTATED,
+  KEY_ROTATION_REQUIRED,
+} from './constants';
+
+const CLUSTER_SERVICE = process.env.WEBEX_CONVERSATION_CLUSTER_SERVICE || DEFAULT_CLUSTER_SERVICE;
+const DEFAULT_CLUSTER_IDENTIFIER =
+  process.env.WEBEX_CONVERSATION_DEFAULT_CLUSTER || `${DEFAULT_CLUSTER}:${CLUSTER_SERVICE}`;
 
 const idToUrl = new Map();
 
@@ -85,12 +95,19 @@ const Conversation = WebexPlugin.extend({
    * @returns {String} url of the conversation
    */
   getUrlFromClusterId({cluster = 'us', id} = {}) {
-    const url = this.webex.internal.services.getServiceUrlFromClusterId(
-      {
-        cluster,
-      },
-      this.webex
-    );
+    let clusterId = cluster === 'us' ? DEFAULT_CLUSTER_IDENTIFIER : cluster;
+
+    // Determine if cluster has service name (non-US clusters from hydra do not)
+    if (clusterId.split(':').length < 4) {
+      // Add Service to cluster identifier
+      clusterId = `${cluster}:${CLUSTER_SERVICE}`;
+    }
+
+    const {url} = this.webex.internal.services.getServiceFromClusterId({clusterId}) || {};
+
+    if (!url) {
+      throw Error(`Could not find service for cluster [${cluster}]`);
+    }
 
     return id ? `${url}/conversations/${id}` : url;
   },
