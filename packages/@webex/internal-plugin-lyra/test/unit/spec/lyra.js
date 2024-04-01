@@ -10,7 +10,7 @@ import Lyra, {config as lyraConfig} from '@webex/internal-plugin-lyra';
 describe('plugin-lyra', () => {
   let webex;
 
-  beforeAll(() => {
+  before(() => {
     webex = new MockWebex({
       children: {
         lyra: Lyra,

@@ -103,7 +103,7 @@ describe('plugin-board', () => {
     data: 'data2',
   };
 
-  beforeAll(() => {
+  before(() => {
     webex = new MockWebex({
       children: {
         board: Board,
@@ -232,14 +232,14 @@ describe('plugin-board', () => {
       kmsMessage: channel.kmsMessage,
     };
 
-    beforeAll(() => {
+    before(() => {
       webex.request.resetHistory();
       webex.request.returns(Promise.resolve({statusCode: 200, body: channelRes}));
 
       
     });
 
-    afterAll(() => {
+    after(() => {
       // reset request to its original behavior
       webex.request.returns(
         Promise.resolve({
@@ -388,7 +388,7 @@ describe('plugin-board', () => {
   });
 
   describe('#deleteAllContent()', () => {
-    beforeAll(() => {
+    before(() => {
       webex.request.resetHistory();
 
       return webex.internal.board.deleteAllContent(channel);
@@ -428,18 +428,18 @@ describe('plugin-board', () => {
   });
 
   describe('#_uploadImage()', () => {
-    let uploadImageToWebexFiles = null;
-
-    beforeAll(() => {
-      uploadImageToWebexFiles = sinon.stub(webex.internal.board, '_uploadImageToWebexFiles').returns(Promise.resolve({
-        downloadUrl: fakeURL
-      }));
+    before(() => {
+      sinon.stub(webex.internal.board, '_uploadImageToWebexFiles').returns(
+        Promise.resolve({
+          downloadUrl: fakeURL,
+        })
+      );
 
       return webex.internal.board._uploadImage(conversation, file);
     });
 
-    afterAll(() => {
-      uploadImageToWebexFiles.restore();
+    after(() => {
+      webex.internal.board._uploadImageToWebexFiles.restore();
     });
 
     it('encrypts binary file', () => {
@@ -452,13 +452,13 @@ describe('plugin-board', () => {
   });
 
   describe('#_uploadImageToWebexFiles()', () => {
-    beforeAll(() => {
+    before(() => {
       sinon.stub(webex.internal.board, '_getSpaceUrl').returns(Promise.resolve(fakeURL));
 
       return webex.internal.board._uploadImage(conversation, file);
     });
 
-    afterAll(() => webex.internal.board._getSpaceUrl.restore());
+    after(() => webex.internal.board._getSpaceUrl.restore());
 
     afterEach(() => {
       webex.upload.resetHistory();
@@ -548,7 +548,7 @@ describe('plugin-board', () => {
   });
 
   describe('#getChannel()', () => {
-    beforeAll(() => {
+    before(() => {
       webex.request.resetHistory();
 
       return webex.internal.board.getChannel(channel);
@@ -600,7 +600,7 @@ describe('plugin-board', () => {
   });
 
   describe('#register()', () => {
-    beforeAll(() => {
+    before(() => {
       webex.request.resetHistory();
 
       return webex.internal.board.register({data: 'data'});

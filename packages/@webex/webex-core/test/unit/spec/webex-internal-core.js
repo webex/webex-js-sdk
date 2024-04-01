@@ -63,6 +63,16 @@ describe('Webex', () => {
           webex.ready
         )
       );
+      webex.on('all', (ev) =>
+        console.info(
+          'XXX',
+          ev,
+          webex.credentials.ready,
+          webex.internal.test.ready,
+          webex.internal.ready,
+          webex.ready
+        )
+      );
 
       const changeSpy = sinon.spy();
 

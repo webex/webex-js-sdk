@@ -23,7 +23,7 @@ describe('plugin-lyra', () => {
 
   let webex;
 
-  beforeAll(() => {
+  before(() => {
     webex = new MockWebex({
       children: {
         lyra: Lyra,
