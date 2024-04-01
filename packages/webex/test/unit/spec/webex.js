@@ -4,22 +4,14 @@
 
 import {assert} from '@webex/test-helper-chai';
 import Webex from 'webex';
-// As part of npm its trying to pull all the dependencies, internal-media-core
-// tries to access the winow object which causes the test to fail. Mocking the
-// whole plugin-meetings package.
-jest.mock('../../../../@webex/plugin-meetings', () => {
-  return {
-    someMethod: jest.fn(() => 'mocked value'),
-  };
-});
-jest.mock('@webex/internal-plugin-calendar');
+import {version} from 'webex/package';
 
 describe('webex', () => {
   describe('Webex', () => {
     describe('.version', () => {
       it('exists', () => {
         assert.property(Webex, 'version');
-        assert.equal(Webex.version, '0.0.0');
+        assert.equal(Webex.version, version);
       });
     });
 
@@ -28,7 +20,7 @@ describe('webex', () => {
         const webex = new Webex();
 
         assert.property(webex, 'version');
-        assert.equal(webex.version, '0.0.0');
+        assert.equal(webex.version, version);
       });
     });
 
@@ -51,7 +43,7 @@ describe('webex', () => {
             fedramp: true,
           },
           credentials: {
-            access_token: process.env.token,
+            access_token: 'Bearer 1234',
           },
         });
 

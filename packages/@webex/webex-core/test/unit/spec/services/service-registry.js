@@ -10,7 +10,7 @@ describe('webex-core', () => {
     let fixtureHosts;
     let serviceRegistry;
 
-    beforeAll(() => {
+    before('generate fixture', () => {
       fixture = {
         serviceLinks: {
           'example-service-a-name': 'http://example-service-a.com/',
@@ -63,7 +63,7 @@ describe('webex-core', () => {
       }, []);
     });
 
-    beforeEach(() => {
+    beforeEach('initialize a service catalog', () => {
       serviceRegistry = new ServiceRegistry();
     });
 
@@ -77,7 +77,7 @@ describe('webex-core', () => {
       describe('#map', () => {
         let priorityLocalHosts;
 
-        beforeEach(() => {
+        beforeEach('setup hosts', () => {
           serviceRegistry.load(
             ServiceRegistry.mapRemoteCatalog({
               catalog: SERVICE_CATALOGS[0],
@@ -108,11 +108,13 @@ describe('webex-core', () => {
       let filter;
       let host;
 
-      beforeEach(() => {
-        serviceRegistry.load(ServiceRegistry.mapRemoteCatalog({
-          catalog: SERVICE_CATALOGS[0],
-          ...fixture
-        }));
+      beforeEach('generate the service host class objects', () => {
+        serviceRegistry.load(
+          ServiceRegistry.mapRemoteCatalog({
+            catalog: SERVICE_CATALOGS[0],
+            ...fixture,
+          })
+        );
 
         host = serviceRegistry.hosts[0];
 
@@ -156,11 +158,13 @@ describe('webex-core', () => {
       let filter;
       let filteredHost;
 
-      beforeEach(() => {
-        serviceRegistry.load(ServiceRegistry.mapRemoteCatalog({
-          catalog: SERVICE_CATALOGS[0],
-          ...fixture
-        }));
+      beforeEach('generate the service host class objects', () => {
+        serviceRegistry.load(
+          ServiceRegistry.mapRemoteCatalog({
+            catalog: SERVICE_CATALOGS[0],
+            ...fixture,
+          })
+        );
 
         filteredHost = serviceRegistry.hosts[0];
 
@@ -197,7 +201,7 @@ describe('webex-core', () => {
       let failedHost;
       let filteredHosts;
 
-      beforeEach(() => {
+      beforeEach('generate the service host class objects', () => {
         hostList = ServiceRegistry.mapRemoteCatalog({
           catalog: SERVICE_CATALOGS[0],
           ...fixture,
@@ -234,7 +238,7 @@ describe('webex-core', () => {
       let hostsCustomA;
       let hostsCustomB;
 
-      beforeEach(() => {
+      beforeEach('generate the service host class objects', () => {
         hostsCustomA = ServiceRegistry.mapRemoteCatalog({
           catalog: SERVICE_CATALOGS[0],
           ...fixture,
@@ -287,7 +291,7 @@ describe('webex-core', () => {
       let remoteHosts;
       let localHosts;
 
-      beforeEach(() => {
+      beforeEach('generate the service host class objects', () => {
         serviceRegistry.load(
           ServiceRegistry.mapRemoteCatalog({
             catalog: SERVICE_CATALOGS[0],
@@ -327,7 +331,7 @@ describe('webex-core', () => {
       let filteredHosts;
       let priorityHosts;
 
-      beforeEach(() => {
+      beforeEach('generate the service host class objects', () => {
         serviceRegistry.load(
           ServiceRegistry.mapRemoteCatalog({
             catalog: SERVICE_CATALOGS[0],
@@ -379,7 +383,7 @@ describe('webex-core', () => {
       let serviceHosts;
       let serviceName;
 
-      beforeEach(() => {
+      beforeEach('generate the service host class objects', () => {
         serviceRegistry.load(
           ServiceRegistry.mapRemoteCatalog({
             catalog: SERVICE_CATALOGS[0],
@@ -433,7 +437,7 @@ describe('webex-core', () => {
       let filteredHostA;
       let filteredHostB;
 
-      beforeEach(() => {
+      beforeEach('generate the service host class objects', () => {
         serviceRegistry.load(
           ServiceRegistry.mapRemoteCatalog({
             catalog: SERVICE_CATALOGS[0],
@@ -476,11 +480,13 @@ describe('webex-core', () => {
       let filter;
       let host;
 
-      beforeEach(() => {
-        serviceRegistry.load(ServiceRegistry.mapRemoteCatalog({
-          catalog: SERVICE_CATALOGS[0],
-          ...fixture
-        }));
+      beforeEach('generate the service host class objects', () => {
+        serviceRegistry.load(
+          ServiceRegistry.mapRemoteCatalog({
+            catalog: SERVICE_CATALOGS[0],
+            ...fixture,
+          })
+        );
 
         host = serviceRegistry.hosts[0];
 
@@ -583,11 +589,13 @@ describe('webex-core', () => {
       let filter;
       let filteredHost;
 
-      beforeEach(() => {
-        serviceRegistry.load(ServiceRegistry.mapRemoteCatalog({
-          catalog: SERVICE_CATALOGS[0],
-          ...fixture
-        }));
+      beforeEach('generate the service host class objects', () => {
+        serviceRegistry.load(
+          ServiceRegistry.mapRemoteCatalog({
+            catalog: SERVICE_CATALOGS[0],
+            ...fixture,
+          })
+        );
 
         filteredHost = serviceRegistry.hosts[0];
 
@@ -623,11 +631,13 @@ describe('webex-core', () => {
       let filter;
       let filteredHost;
 
-      beforeEach(() => {
-        serviceRegistry.load(ServiceRegistry.mapRemoteCatalog({
-          catalog: SERVICE_CATALOGS[0],
-          ...fixture
-        }));
+      beforeEach('generate the service host class objects', () => {
+        serviceRegistry.load(
+          ServiceRegistry.mapRemoteCatalog({
+            catalog: SERVICE_CATALOGS[0],
+            ...fixture,
+          })
+        );
 
         filteredHost = serviceRegistry.hosts[0];
 

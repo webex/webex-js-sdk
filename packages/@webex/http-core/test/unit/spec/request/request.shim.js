@@ -5,11 +5,6 @@ import {EventEmitter} from 'events';
 
 describe('Request shim', () => {
   describe('#setAuth()', () => {
-    beforeAll(() => {
-      global.Blob = function (content, options) {
-        return { content, options };
-      };
-    });
     it('sets auth header', () => {
 
       class DummyXMLHttpRequest {
@@ -18,7 +13,7 @@ describe('Request shim', () => {
 
       window.XMLHttpRequest = DummyXMLHttpRequest;
 
-      const options = {upload: new EventEmitter(), headers: [], method: 'post', ...options, auth: {user: 'test', pass: 'pw'}, logger: {warn: () => {}}};
+      const options = {upload: new EventEmitter(), headers: [], method: 'post', ...options, auth: {user: 'test', pass: 'pw'}};
 
       request(options);
 
