@@ -2393,6 +2393,7 @@ export default class Meeting extends StatelessWebexPlugin {
         {
           annotationInfo: contentShare?.annotation,
           meetingId: this.id,
+          resourceType: contentShare?.resourceType,
         }
       );
     }
@@ -2543,6 +2544,7 @@ export default class Meeting extends StatelessWebexPlugin {
                   url: contentShare.url,
                   shareInstanceId: this.remoteShareInstanceId,
                   annotationInfo: contentShare.annotation,
+                  resourceType: contentShare.resourceType,
                 }
               );
             };
@@ -2635,6 +2637,7 @@ export default class Meeting extends StatelessWebexPlugin {
             url: contentShare.url,
             shareInstanceId: this.remoteShareInstanceId,
             annotationInfo: contentShare.annotation,
+            resourceType: contentShare.resourceType,
           }
         );
         this.members.locusMediaSharesUpdate(payload);
