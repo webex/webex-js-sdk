@@ -63,8 +63,7 @@ describe('webex-core', () => {
     describe('#isUnverifiedGuest', () => {
       let credentials;
       let webex;
-      beforeEach(() => {
-        //generate the webex instance
+      beforeEach('generate the webex instance', () => {
         webex = new MockWebex();
         credentials = new Credentials(undefined, {parent: webex});
       });
@@ -290,7 +289,7 @@ describe('webex-core', () => {
       let orgId;
       let webex;
 
-      beforeEach(() => {
+      beforeEach('generate webex and destructure credentials', () => {
         webex = new MockWebex();
         credentials = new Credentials(undefined, {parent: webex});
       });
@@ -317,14 +316,14 @@ describe('webex-core', () => {
       });
 
       it('should throw if the OrgId was not determined', () =>
-        expect(() => credentials.getOrgId()).toThrow('the provided token is not a valid format'));
+        assert.throws(() => credentials.getOrgId(), 'the provided token is not a valid format'));
     });
 
     describe('#extractOrgIdFromJWT()', () => {
       let credentials;
       let webex;
 
-      beforeEach(() => {
+      beforeEach('generate webex and destructure credentials', () => {
         webex = new MockWebex();
         credentials = new Credentials(undefined, {parent: webex});
       });
@@ -338,24 +337,24 @@ describe('webex-core', () => {
       });
 
       it('should throw if the provided JWT is not valid', () =>
-        expect(() => credentials.extractOrgIdFromJWT('not-valid')).toThrow());
+        assert.throws(() => credentials.extractOrgIdFromJWT('not-valid')));
 
       it('should throw if the provided JWT does not contain an OrgId', () => {
         const jwtNoOrg =
           'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c';
 
-        expect(() => credentials.extractOrgIdFromJWT(jwtNoOrg)).toThrow();
+        assert.throws(() => credentials.extractOrgIdFromJWT(jwtNoOrg));
       });
 
       it('should throw if no JWT was provided', () =>
-        expect(() => credentials.extractOrgIdFromJWT()).toThrow());
+        assert.throws(() => credentials.extractOrgIdFromJWT()));
     });
 
     describe('#extractOrgIdFromUserToken()', () => {
       let credentials;
       let webex;
 
-      beforeEach(() => {
+      beforeEach('generate webex and destructure credentials', () => {
         webex = new MockWebex();
         credentials = new Credentials(undefined, {parent: webex});
       });
@@ -368,10 +367,10 @@ describe('webex-core', () => {
       });
 
       it('should throw when provided an invalid token', () =>
-        expect(() => credentials.extractOrgIdFromUserToken()).toThrow('the provided token is not a valid format'));
+        assert.throws(() => credentials.extractOrgIdFromUserToken('invalid')));
 
       it('should throw when no token is provided', () =>
-        expect(() => credentials.extractOrgIdFromUserToken()).toThrow());
+        assert.throws(() => credentials.extractOrgIdFromUserToken()));
     });
 
     describe('#initialize()', () => {
@@ -481,7 +480,7 @@ describe('webex-core', () => {
           .then(() => assert.notEqual(credentials.refreshTimer, firstTimer));
       });
 
-      it.skip('does not schedule a refreshTimer', () => {
+      it('does not schedule a refreshTimer', () => {
         const webex = new MockWebex();
         const supertoken = makeToken(webex, {
           access_token: 'ST',
@@ -799,8 +798,7 @@ describe('webex-core', () => {
           .then(() => assert.isRejected(webex.boundedStorage.get('Credentials', '@'), /NotFound/));
       });
 
-
-      // it('does not induce any token refreshes');
+      it('does not induce any token refreshes');
 
       it('prevents #getUserToken() from being invoked', () => {
         const webex = new MockWebex();

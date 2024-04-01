@@ -241,6 +241,8 @@ describe('Webex', () => {
 
     const webex = new WebexCore();
 
+    webex.on('all', (ev) => console.info('XXX', ev, webex.ready));
+
     const changeSpy = sinon.spy();
 
     webex.on('change:ready', changeSpy);

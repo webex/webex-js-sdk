@@ -15,7 +15,7 @@ describe('plugin-board', () => {
     process.env.ENCRYPTION_SERVICE_URL || 'https://encryption-a.wbx2.com'
   }/encryption/api/v1/keys/8a7d3d78-ce75-48aa-a943-2e8acf63fbc9`;
 
-  beforeAll(() => {
+  before(() => {
     webex = new MockWebex({
       children: {
         board: Board,
@@ -45,12 +45,14 @@ describe('plugin-board', () => {
 
   describe('encryption', () => {
     describe('#decryptContents', () => {
-      beforeAll(() => {
-        sinon.stub(webex.internal.board, 'decryptSingleContent').callsFake(sinon.stub().returns(Promise.resolve({})));
+      before(() => {
+        sinon
+          .stub(webex.internal.board, 'decryptSingleContent')
+          .callsFake(sinon.stub().returns(Promise.resolve({})));
         sinon.spy(webex.internal.board, 'decryptSingleFileContent');
       });
 
-      afterAll(() => {
+      after(() => {
         webex.internal.board.decryptSingleContent.restore();
         webex.internal.board.decryptSingleFileContent.restore();
       });
@@ -193,11 +195,13 @@ describe('plugin-board', () => {
     });
 
     describe('#encryptContents', () => {
-      beforeAll(() => {
-        sinon.stub(webex.internal.board, 'encryptSingleContent').returns(Promise.resolve({
-          encryptedData,
-          encryptionKeyUrl: fakeURL
-        }));
+      before(() => {
+        sinon.stub(webex.internal.board, 'encryptSingleContent').returns(
+          Promise.resolve({
+            encryptedData,
+            encryptionKeyUrl: fakeURL,
+          })
+        );
       });
 
       afterEach(() => {

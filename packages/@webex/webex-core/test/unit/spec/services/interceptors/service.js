@@ -36,11 +36,8 @@ describe('webex-core', () => {
     describe('#generateUri()', () => {
       let uri;
 
-      beforeEach(() => {
-        uri = interceptor.generateUri(
-          fixture.serviceUrl,
-          fixture.resource
-        );
+      beforeEach('generate uri', () => {
+        uri = interceptor.generateUri(fixture.serviceUrl, fixture.resource);
       });
       it('should remove all trailing slashes', () => assert.equal(uri.split('//').length, 2));
 
@@ -52,7 +49,7 @@ describe('webex-core', () => {
 
     describe('#normalizeOptions()', () => {
       describe('when the api parameter is defined', () => {
-        beforeEach(() => {
+        beforeEach('define the api parameter', () => {
           options.api = fixture.api;
         });
 
@@ -63,7 +60,7 @@ describe('webex-core', () => {
         });
 
         describe('when the service parameter is defined', () => {
-          beforeEach(() => {
+          beforeEach('define the service parameter', () => {
             options.service = fixture.service;
           });
 
@@ -78,7 +75,7 @@ describe('webex-core', () => {
 
     describe('#onRequest()', () => {
       describe('when the uri parameter is defined', () => {
-        beforeEach(() => {
+        beforeEach('assign a uri parameter', () => {
           options.uri = fixture.uri;
         });
 
@@ -94,7 +91,7 @@ describe('webex-core', () => {
       describe('when the uri parameter is not defined', () => {
         let waitForService;
 
-        beforeEach(() => {
+        beforeEach('setup mock methods', () => {
           interceptor.normalizeOptions = sinon.stub();
           interceptor.validateOptions = sinon.stub();
           interceptor.generateUri = sinon.stub();
@@ -130,6 +127,8 @@ describe('webex-core', () => {
           ));
 
         describe('when the service url was collected successfully', () => {
+          beforeEach('generate additional mocks', () => {});
+
           it('should attempt to generate the full uri', () =>
             interceptor
               .onRequest(options)
@@ -160,7 +159,7 @@ describe('webex-core', () => {
 
     describe('#validateOptions()', () => {
       describe('when the resource parameter is not defined', () => {
-        beforeEach(() => {
+        beforeEach('setup parameters', () => {
           options.service = fixture.service;
         });
 
@@ -170,7 +169,7 @@ describe('webex-core', () => {
       });
 
       describe('when the service parameter is not defined', () => {
-        beforeEach(() => {
+        beforeEach('setup parameters', () => {
           options.resource = fixture.resource;
         });
 
@@ -180,7 +179,7 @@ describe('webex-core', () => {
       });
 
       describe('when the service and resource parameters are defined', () => {
-        beforeEach(() => {
+        beforeEach('setup parameters', () => {
           options.service = fixture.service;
           options.resource = fixture.resource;
         });
