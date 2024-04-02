@@ -59,7 +59,8 @@ describe('CALLING: Metric tests', () => {
       metricManager.submitRegistrationMetric(
         METRIC_EVENT.REGISTRATION,
         REG_ACTION.REGISTER,
-        METRIC_TYPE.BEHAVIORAL
+        METRIC_TYPE.BEHAVIORAL,
+        undefined
       );
       expect(mockSubmitClientMetric).toBeCalledOnceWith(METRIC_EVENT.REGISTRATION, expectedData);
     });
@@ -115,7 +116,8 @@ describe('CALLING: Metric tests', () => {
       metricManager.submitRegistrationMetric(
         'invalidMetricName' as unknown as METRIC_EVENT,
         REG_ACTION.REGISTER,
-        METRIC_TYPE.OPERATIONAL
+        METRIC_TYPE.OPERATIONAL,
+        undefined
       );
 
       expect(mockSubmitClientMetric).not.toBeCalled();
@@ -338,6 +340,84 @@ describe('CALLING: Metric tests', () => {
         {
           file: 'metric',
           method: 'submitMediaMetric',
+        }
+      );
+    });
+  });
+
+  describe('BNR metric tests', () => {
+    beforeAll(() => {
+      metricManager.setDeviceInfo(mockDeviceInfo);
+    });
+
+    it('submit bnr enabled metric', () => {
+      const expectedData = {
+        tags: {
+          device_id: mockDeviceInfo.device.deviceId,
+          service_indicator: ServiceIndicator.CALLING,
+        },
+        fields: {
+          device_url: mockDeviceInfo.device.clientDeviceUri,
+          mobius_url: mockDeviceInfo.device.uri,
+          calling_sdk_version: VERSION,
+          call_id: mockCallId,
+          correlation_id: mockCorrelationId,
+        },
+        type: METRIC_TYPE.BEHAVIORAL,
+      };
+
+      metricManager.submitBNRMetric(
+        METRIC_EVENT.BNR_ENABLED,
+        METRIC_TYPE.BEHAVIORAL,
+        mockCallId,
+        mockCorrelationId
+      );
+
+      expect(mockSubmitClientMetric).toBeCalledOnceWith(METRIC_EVENT.BNR_ENABLED, expectedData);
+    });
+
+    it('submit bnr disabled metric', () => {
+      const expectedData = {
+        tags: {
+          device_id: mockDeviceInfo.device.deviceId,
+          service_indicator: ServiceIndicator.CALLING,
+        },
+        fields: {
+          device_url: mockDeviceInfo.device.clientDeviceUri,
+          mobius_url: mockDeviceInfo.device.uri,
+          calling_sdk_version: VERSION,
+          call_id: mockCallId,
+          correlation_id: mockCorrelationId,
+        },
+        type: METRIC_TYPE.BEHAVIORAL,
+      };
+
+      metricManager.submitBNRMetric(
+        METRIC_EVENT.BNR_DISABLED,
+        METRIC_TYPE.BEHAVIORAL,
+        mockCallId,
+        mockCorrelationId
+      );
+
+      expect(mockSubmitClientMetric).toBeCalledOnceWith(METRIC_EVENT.BNR_DISABLED, expectedData);
+    });
+
+    it('submit unknown bnr metric', () => {
+      const logSpy = jest.spyOn(log, 'warn');
+
+      metricManager.submitBNRMetric(
+        'invalidMetricName' as unknown as METRIC_EVENT,
+        METRIC_TYPE.BEHAVIORAL,
+        mockCallId,
+        mockCorrelationId
+      );
+
+      expect(mockSubmitClientMetric).not.toBeCalled();
+      expect(logSpy).toBeCalledOnceWith(
+        'Invalid metric name received. Rejecting request to submit metric.',
+        {
+          file: 'metric',
+          method: 'submitBNRMetric',
         }
       );
     });

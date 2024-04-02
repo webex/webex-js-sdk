@@ -85,6 +85,7 @@ const directoryNumberCFA = document.querySelector('#directoryNumber');
 const cfaDataElem = document.querySelector('#callforwardalways-data');
 const makeCallBtn = document.querySelector('#create-call-action');
 const muteElm = document.getElementById('mute_button');
+const bnrButton = document.getElementById('bnr-button');
 
 let base64;
 let audio64;
@@ -415,7 +416,7 @@ function muteUnmute() {
   if (callTransferObj){
     callTransferObj.mute(localAudioStream)
   }
-  else {  
+  else {
     call.mute(localAudioStream);
   }
 }
@@ -428,7 +429,7 @@ function holdResume() {
         holdResumeElm.value = 'Resume';
       }
     });
-  
+
     callTransferObj.on('resumed', (correlationId) => {
       if (holdResumeElm.value === 'Resume') {
         callDetailsElm.innerText = 'Call is Resumed';
@@ -444,7 +445,7 @@ function holdResume() {
         holdResumeElm.value = 'Resume';
       }
     });
-  
+
     call.on('resumed', (correlationId) => {
       if (holdResumeElm.value === 'Resume') {
         callDetailsElm.innerText = 'Call is Resumed';
@@ -498,6 +499,7 @@ async function changeInputStream() {
   const newStream  = await Calling.createMicrophoneStream(constraints);
 
   call.updateMedia(newStream);
+  localAudioStream = newStream;
 }
 
 async function changeOutputStream() {
@@ -666,20 +668,39 @@ async function getMediaStreams() {
   makeCallBtn.disabled = false;
 }
 
+// TODO: This code will be uncommented and added once the DOM exception bug is resolved 
+// async function toggleNoiseReductionEffect() {
+//   effect = await localAudioStream.getEffectByKind('noise-reduction-effect');
+
+//   if (!effect) {
+//     effect = await Calling.createNoiseReductionEffect(tokenElm.value);
+
+//     await localAudioStream.addEffect(effect);
+//   }
+
+//   if (effect.isEnabled) {
+//     await effect.disable();
+//     bnrButton.innerText = 'Enable BNR';
+//   } else {
+//     await effect.enable();
+//     bnrButton.innerText = 'Disable BNR';
+//   }
+// }
+
 async function addNoiseReductionEffect() {
-  effect = await localAudioStream.getEffect('background-noise-removal');
+  effect = await localAudioStream.getEffectByKind('noise-reduction-effect');
 
   if (!effect) {
     effect = await Calling.createNoiseReductionEffect(tokenElm.value);
 
-    await localAudioStream.addEffect('background-noise-removal', effect);
+    await localAudioStream.addEffect(effect);
   }
 
   await effect.enable();
 }
 
 async function removeNoiseReductionEffect() {
-  effect = await localAudioStream.getEffect('background-noise-removal');
+  effect = await localAudioStream.getEffectByKind('noise-reduction-effect');
   if (effect) {
     await effect.disable();
   }
