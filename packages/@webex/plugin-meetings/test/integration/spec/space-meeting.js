@@ -34,7 +34,7 @@ skipInNode(describe)('plugin-meetings', () => {
   describe('space-meeting', () => {
     let space = null;
 
-    before(async () =>
+    before(() =>
       webexTestUsers
         .generateTestUsers({
           count: 4,
