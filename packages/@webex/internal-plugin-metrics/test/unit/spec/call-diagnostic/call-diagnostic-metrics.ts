@@ -301,6 +301,11 @@ describe('internal-plugin-metrics', () => {
 
     describe('#getIdentifiers', () => {
       it('should build identifiers correctly', () => {
+        webex.internal.device = {
+          ...webex.internal.device,
+          config: {installationId: 'installationId'},
+        };
+
         const res = cd.getIdentifiers({
           mediaConnections: [
             {mediaAgentAlias: 'mediaAgentAlias', mediaAgentGroupId: 'mediaAgentGroupId'},
@@ -314,6 +319,7 @@ describe('internal-plugin-metrics', () => {
           locusId: 'url',
           locusStartTime: 'lastActive',
           locusUrl: 'locus/url',
+          machineId: 'installationId',
           mediaAgentAlias: 'mediaAgentAlias',
           mediaAgentGroupId: 'mediaAgentGroupId',
           orgId: 'orgId',
