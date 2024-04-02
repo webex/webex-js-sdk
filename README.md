@@ -4,7 +4,7 @@
 ![state: Stable](https://img.shields.io/badge/State-Stable-blue?style=flat-square)
 ![scope: Public](https://img.shields.io/badge/Scope-Public-darkgreen?style=flat-square)
 
-This project is designed as a mono-repository for all publicly-provided JavaScript packages from Cisco's Webex Developer Experience team. These packages consist of mostly API-related modules that allow for seemless integration with the collection of services that belong to the Webex platform.
+This project is designed as a mono-repository for all publicly-provided JavaScript packages from Cisco's Webex Developer Experience team. These packages consist of mostly API-related modules that allow for seamless integration with the collection of services that belong to the Webex platform.
 
 * [Installation](#installation)
   * [Unified Modules](#unified-modules)
@@ -21,7 +21,7 @@ This project is designed as a mono-repository for all publicly-provided JavaScri
 
 ## Installation
 
-Since this project is a mono-repository, it provides multiple ways to consume its distributables. Please see the respective sections below for information on how to instal and consume this project.
+Since this project is a mono-repository, it provides multiple ways to consume its distributables. Please see the respective sections below for information on how to install and consume this project.
 
 ### Unified Modules
 
@@ -121,19 +121,17 @@ After installation, the following `script` should be added to your `./package.js
 }
 ```
 
-The above pacakge accepts a **distribution tag**, which will match an available `tag` from the [current tags section](https://www.npmjs.com/package/webex?activeTab=versions) of [NPMJS](https://www.npmjs.com/) as well as a list of packages that should be updated when the command executes (this will collect the latest synced version). It is recommended to provide the `--packages` argument with the complete list of `@webex`-scoped packages your project consumes in order to promote well-syncronized versions between all packages.
+The above executable accepts a **distribution tag**, which will match an available `tag` from the [current tags section](https://www.npmjs.com/package/webex?activeTab=versions) of [NPMJS](https://www.npmjs.com/) as well as a list of packages that should be updated when the command executes (this will collect the latest synced version). It is recommended to provide the `--packages` argument with the complete list of `@webex`-scoped packages your project consumes in order to promote well-synchronized versions between all packages.
 
 The `@webex/package-tools` package contains a collection of helpful tools used to manage packages within this project from both within and outside of this project. Please review the [documentation](./packages/tools/package/) associated with the `@webex/package-tools` package for more information.
 
 ### Running and Viewing Samples
 
-![Notice: Needs Improvement](https://img.shields.io/badge/Notice-Needs%20Improvement-darkred?style=flat-square)
-
 Sample code can be found within the [samples documentation folder](./docs/samples). You can preview the contents of this folder by navigating to [https://webex.github.io/webex-js-sdk/samples/](https://webex.github.io/webex-js-sdk/samples/) or by building them locally. Please see our [contributing guide](./CONTRIBUTING.md) for more information.
 
 ## Contribute
 
-Please see the [contributing guide]('./CONTRIBUTING.md) for more details on how to contribute.
+For detailed instructions on how to contribute, please refer to the [contributing guide](./CONTRIBUTING.md).
 
 ## Issues
 
