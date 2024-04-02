@@ -350,7 +350,7 @@ describe('CALLING: Metric tests', () => {
       metricManager.setDeviceInfo(mockDeviceInfo);
     });
 
-    it('submit bnr enabled success metric', () => {
+    it('submit bnr enabled metric', () => {
       const expectedData = {
         tags: {
           device_id: mockDeviceInfo.device.deviceId,
@@ -376,7 +376,7 @@ describe('CALLING: Metric tests', () => {
       expect(mockSubmitClientMetric).toBeCalledOnceWith(METRIC_EVENT.BNR_ENABLED, expectedData);
     });
 
-    it('submit bnr disabled success metric', () => {
+    it('submit bnr disabled metric', () => {
       const expectedData = {
         tags: {
           device_id: mockDeviceInfo.device.deviceId,
