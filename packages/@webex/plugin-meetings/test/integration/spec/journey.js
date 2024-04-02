@@ -871,7 +871,7 @@ skipInNode(describe)('plugin-meetings', () => {
           assert.equal(bob.meeting.shareStatus, 'whiteboard_share_active');
         }));
 
-      it('alice adds chris as guest to 1:1 meeting', async() =>
+      it('alice adds chris as guest to 1:1 meeting', () =>
         Promise.all([
           testUtils.delayedPromise(alice.meeting.invite({emailAddress: chris.emailAddress})),
           testUtils.waitForEvents([
