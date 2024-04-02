@@ -1193,6 +1193,10 @@ async function loadCamera(constraints) {
 
     meetingStreamsLocalVideo.srcObject = localMedia.cameraStream.outputStream;
 
+    localMedia.cameraStream.on('user-mute-state-change', (muted) => {
+      console.log('MeetingControls#loadCamera() :: local camera stream user mute state changed to', muted);
+    });
+
     localMedia.cameraStream.on('system-mute-state-change', (muted) => {
       console.log('MeetingControls#loadCamera() :: local camera stream system mute state changed to', muted);
       handleMuteVideoMessage();
