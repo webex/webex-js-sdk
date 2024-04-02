@@ -321,6 +321,41 @@ class MetricManager implements IMetricManager {
       this.webex.internal.metrics.submitClientMetrics(name, data);
     }
   }
+
+  public submitBNRMetric(
+    name: METRIC_EVENT,
+    type: METRIC_TYPE,
+    callId: CallId,
+    correlationId: CorrelationId
+  ) {
+    let data;
+
+    if (name === METRIC_EVENT.BNR_ENABLED || name === METRIC_EVENT.BNR_DISABLED) {
+      data = {
+        tags: {
+          device_id: this.deviceInfo?.device?.deviceId,
+          service_indicator: this.serviceIndicator,
+        },
+        fields: {
+          device_url: this.deviceInfo?.device?.clientDeviceUri,
+          mobius_url: this.deviceInfo?.device?.uri,
+          calling_sdk_version: VERSION,
+          call_id: callId,
+          correlation_id: correlationId,
+        },
+        type,
+      };
+    } else {
+      log.warn('Invalid metric name received. Rejecting request to submit metric.', {
+        file: METRIC_FILE,
+        method: this.submitBNRMetric.name,
+      });
+    }
+
+    if (data) {
+      this.webex.internal.metrics.submitClientMetrics(name, data);
+    }
+  }
 }
 
 /**
