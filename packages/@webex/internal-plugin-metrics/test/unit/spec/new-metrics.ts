@@ -1,9 +1,8 @@
 import {assert} from '@webex/test-helper-chai';
-import {NewMetrics} from '@webex/internal-plugin-metrics';
+import {NewMetrics, CallDiagnosticLatencies} from '@webex/internal-plugin-metrics';
 import MockWebex from '@webex/test-helper-mock-webex';
 import sinon from 'sinon';
 import {Utils} from '@webex/internal-plugin-metrics';
-import CallDiagnosticLatencies from '../../../src/call-diagnostic/call-diagnostic-metrics-latencies';
 
 describe('internal-plugin-metrics', () => {
 
@@ -47,7 +46,7 @@ describe('internal-plugin-metrics', () => {
 
       const webex = mockWebex();
 
-      assert.isDefined(webex.internal.newMetrics.callDiagnosticLatencies);
+      assert.instanceOf(webex.internal.newMetrics.callDiagnosticLatencies, CallDiagnosticLatencies);
     });
   });
 
