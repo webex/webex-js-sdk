@@ -1,8 +1,8 @@
-import {assert} from '@webex/test-helper-chai';
+import {assert, expect} from '@webex/test-helper-chai';
 import CallDiagnosticLatencies from '../../../../src/call-diagnostic/call-diagnostic-metrics-latencies';
 import sinon from 'sinon';
 
-describe('internal-plugin-metrics', () => {
+describe.only('internal-plugin-metrics', () => {
   describe('CallDiagnosticLatencies', () => {
     let cdl: CallDiagnosticLatencies;
     var now = new Date();
@@ -41,11 +41,28 @@ describe('internal-plugin-metrics', () => {
       assert.deepEqual(cdl.latencyTimestamps.get('client.alert.displayed'), now.getTime());
     });
 
-    it('should save latency correctly', () => {
+    it('should save latency correctly by default', () => {
       assert.deepEqual(cdl.precomputedLatencies.size, 0);
       cdl.saveLatency('internal.client.pageJMT', 10);
       assert.deepEqual(cdl.precomputedLatencies.size, 1);
       assert.deepEqual(cdl.precomputedLatencies.get('internal.client.pageJMT'), 10);
+    });
+
+    it('should save latency correctly when overwrite is false', () => {
+      assert.deepEqual(cdl.precomputedLatencies.size, 0);
+      cdl.saveLatency('internal.client.pageJMT', 10, false);
+      assert.deepEqual(cdl.precomputedLatencies.size, 1);
+      assert.deepEqual(cdl.precomputedLatencies.get('internal.client.pageJMT'), 10);
+    });
+
+    it('should save latency correctly when overwrite is false and there is existing value', () => {
+      assert.deepEqual(cdl.precomputedLatencies.size, 0);
+      cdl.saveLatency('internal.client.pageJMT', 10);
+      assert.deepEqual(cdl.precomputedLatencies.size, 1);
+      assert.deepEqual(cdl.precomputedLatencies.get('internal.client.pageJMT'), 10);
+      cdl.saveLatency('internal.client.pageJMT', 10, false);
+      assert.deepEqual(cdl.precomputedLatencies.size, 1);
+      assert.deepEqual(cdl.precomputedLatencies.get('internal.client.pageJMT'), 20);
     });
 
     it('should save only first timestamp correctly', () => {
@@ -109,6 +126,48 @@ describe('internal-plugin-metrics', () => {
       cdl.saveTimestamp({key: 'internal.client.meetinginfo.request', value: 47});
       cdl.saveTimestamp({key: 'internal.client.meetinginfo.response', value: 48});
       assert.deepEqual(cdl.getMeetingInfoReqResp(), 10);
+    });
+
+    describe('measureLatency', () => {
+      let clock;
+      let callbackStub;
+      let saveLatencySpy;
+      beforeEach(() => {       
+        clock = sinon.useFakeTimers(); 
+        callbackStub = sinon.stub().resolves();
+        saveLatencySpy = sinon.stub(cdl, 'saveLatency');
+      });
+
+      afterEach(() => {
+        clock.restore();
+        sinon.restore();
+      });
+      
+      it('checks measureLatency with overwrite false', async () => {
+        const key = 'internal.client.pageJMT';
+        const overwrite = false;
+
+        clock.tick(100);
+        const promise = cdl.measureLatency(callbackStub, 'internal.client.pageJMT', overwrite);
+        clock.tick(50);
+
+        await promise;
+        assert.calledOnce(callbackStub);
+        sinon.assert.calledWith(saveLatencySpy, key, 50, overwrite)       
+      });
+
+      it('checks measureLatency with overwrite true', async () => {
+        const key = 'internal.client.pageJMT';
+        const overwrite = true;
+
+        clock.tick(100);
+        const promise = cdl.measureLatency(callbackStub, 'internal.client.pageJMT', overwrite);
+        clock.tick(50);
+
+        await promise;
+        assert.calledOnce(callbackStub);
+        sinon.assert.calledWith(saveLatencySpy, key, 50, overwrite)       
+      });
     });
 
     describe('saveTimestamp', () => {
