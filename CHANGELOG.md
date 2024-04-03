@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.386](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.385...v3.0.0-beta.386) (2024-04-03)
+
+
+### Features
+
+* **plugin-meetings:** Return resourceType when get locus annotation info ([#3504](https://github.com/webex/webex-js-sdk/issues/3504)) ([7aafc3b](https://github.com/webex/webex-js-sdk/commit/7aafc3be9f2d8b5c0ac915e5da50062f9cbc4f99))
+
 ## [3.0.0-beta.385](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.384...v3.0.0-beta.385) (2024-04-03)
 
 ## [3.0.0-beta.384](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.383...v3.0.0-beta.384) (2024-03-28)
