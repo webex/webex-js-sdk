@@ -17,6 +17,7 @@ MediaSharesUtils.parse = (mediaShares: object) => {
         url: MediaSharesUtils.getContentUrl(mediaShares),
         shareInstanceId: MediaSharesUtils.getShareInstanceId(mediaShares),
         deviceUrlSharing: MediaSharesUtils.getContentBeneficiaryDeviceUrl(mediaShares),
+        resourceType: MediaSharesUtils.getContentResourceType(mediaShares),
       },
       whiteboard: {
         beneficiaryId: MediaSharesUtils.getWhiteboardBeneficiaryId(mediaShares),
@@ -157,6 +158,21 @@ MediaSharesUtils.getContentAnnotation = (mediaShares: object) => {
   }
 
   return extractContent.annotation;
+};
+
+/**
+ * get live resourceType is sharing from media shares (content)
+ * @param {Object} mediaShares
+ * @returns {Object}
+ */
+MediaSharesUtils.getContentResourceType = (mediaShares: object) => {
+  const extractContent = MediaSharesUtils.extractContent(mediaShares);
+
+  if (!extractContent || !extractContent.resourceType) {
+    return undefined;
+  }
+
+  return extractContent.resourceType;
 };
 
 /**
