@@ -128,7 +128,7 @@ describe('internal-plugin-metrics', () => {
       assert.deepEqual(cdl.getMeetingInfoReqResp(), 10);
     });
 
-    describe.only('measureLatency', () => {
+    describe('measureLatency', () => {
       let clock;
       let callbackStub;
       let saveLatencySpy;
