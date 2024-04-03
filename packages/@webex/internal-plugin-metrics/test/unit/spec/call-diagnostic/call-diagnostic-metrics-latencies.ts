@@ -128,13 +128,14 @@ describe('internal-plugin-metrics', () => {
       assert.deepEqual(cdl.getMeetingInfoReqResp(), 10);
     });
 
-    describe('measureLatency', () => {
+    describe.only('measureLatency', () => {
       let clock;
       let callbackStub;
       let saveLatencySpy;
+
       beforeEach(() => {       
         clock = sinon.useFakeTimers(); 
-        callbackStub = sinon.stub().resolves();
+        
         saveLatencySpy = sinon.stub(cdl, 'saveLatency');
       });
 
@@ -146,8 +147,8 @@ describe('internal-plugin-metrics', () => {
       it('checks measureLatency with overwrite false', async () => {
         const key = 'internal.client.pageJMT';
         const overwrite = false;
+        callbackStub = sinon.stub().resolves();
 
-        clock.tick(100);
         const promise = cdl.measureLatency(callbackStub, 'internal.client.pageJMT', overwrite);
         clock.tick(50);
 
@@ -159,12 +160,25 @@ describe('internal-plugin-metrics', () => {
       it('checks measureLatency with overwrite true', async () => {
         const key = 'internal.client.pageJMT';
         const overwrite = true;
+        callbackStub = sinon.stub().resolves();
 
-        clock.tick(100);
         const promise = cdl.measureLatency(callbackStub, 'internal.client.pageJMT', overwrite);
         clock.tick(50);
 
         await promise;
+        assert.calledOnce(callbackStub);
+        sinon.assert.calledWith(saveLatencySpy, key, 50, overwrite)       
+      });
+
+      it('checks measureLatency when callBack rejects', async () => {
+        const key = 'internal.client.pageJMT';
+        const overwrite = true;
+        callbackStub = sinon.stub().rejects(new Error('some error'));
+
+        const promise = cdl.measureLatency(callbackStub, 'internal.client.pageJMT', overwrite);
+        clock.tick(50);
+
+        await await assert.isRejected(promise);
         assert.calledOnce(callbackStub);
         sinon.assert.calledWith(saveLatencySpy, key, 50, overwrite)       
       });
