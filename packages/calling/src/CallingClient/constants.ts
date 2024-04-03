@@ -120,6 +120,7 @@ export const FAILOVER_UTIL = 'startFailoverTimer';
 export const NETWORK_CHANGE_DETECTION_UTIL = 'detectNetworkChange';
 export const CALLS_CLEARED_HANDLER_UTIL = 'callsClearedHandler';
 export const RECONNECT_UTIL = 'reconnectOnFailure';
+export const NOISE_REDUCTION_EFFECT = 'noise-reduction-effect';
 export const MOBIUS_US_PROD = 'mobius-us-east-1.prod.infra.webex.com';
 export const MOBIUS_EU_PROD = 'mobius-eu-central-1.prod.infra.webex.com';
 export const MOBIUS_US_INT = 'mobius-us-east-1.int.infra.webex.com';
