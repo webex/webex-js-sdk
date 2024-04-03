@@ -131,6 +131,7 @@ describe('plugin-meetings', () => {
         assert.equal(interpretation.receiveLanguage, 'en');
         assert.equal(interpretation.isActive, true);
         assert.equal(interpretation.order, 0);
+        assert.equal(interpretation.selfIsInterpreter, true);
 
         sampleData.interpretation = {
           originalLanguage: 'en',
@@ -141,13 +142,15 @@ describe('plugin-meetings', () => {
         assert.equal(interpretation.sourceLanguage, undefined);
         assert.equal(interpretation.targetLanguage, 'zh');
         assert.equal(interpretation.receiveLanguage, undefined);
+        assert.equal(interpretation.selfIsInterpreter, true);
 
         sampleData.interpretation = {
           order: 0,
         };
-        assert.equal(interpretation.updateSelfInterpretation(sampleData), false);
+        assert.equal(interpretation.updateSelfInterpretation(sampleData), true);
         assert.equal(interpretation.originalLanguage, undefined);
         assert.equal(interpretation.targetLanguage, undefined);
+        assert.equal(interpretation.selfIsInterpreter, false);
       });
     });
 
