@@ -2,6 +2,7 @@
 import {cloneDeep, forEach, remove} from 'lodash';
 import {EventMap} from 'typed-emitter';
 import {MediaType} from '@webex/internal-media-core';
+import {NamedMediaGroup} from '@webex/json-multistream';
 
 import LoggerProxy from '../common/logs/logger-proxy';
 import EventsScope from '../common/events/events-scope';
@@ -11,6 +12,7 @@ import {ReceiveSlot, CSI} from './receiveSlot';
 import {ReceiveSlotManager} from './receiveSlotManager';
 import {RemoteMediaGroup} from './remoteMediaGroup';
 import {MediaRequestManager} from './mediaRequestManager';
+import {NAMED_MEDIA_GROUP_TYPE_AUDIO} from '../constants';
 
 export type PaneSize = RemoteVideoResolution;
 export type LayoutId = string;
@@ -49,6 +51,7 @@ export interface Configuration {
 
     layouts: {[key: LayoutId]: VideoLayout}; // a map of all available layouts, a layout can be set via setLayout() method
   };
+  namedMediaGroup?: NamedMediaGroup;
 }
 
 /* Predefined layouts: */
@@ -173,6 +176,7 @@ export const DefaultConfiguration: Configuration = {
 export enum Event {
   // events for audio streams
   AudioCreated = 'AudioCreated',
+  InterpretationAudioCreated = 'InterpretationAudioCreated',
   ScreenShareAudioCreated = 'ScreenShareAudioCreated',
 
   // events for video streams
@@ -221,7 +225,10 @@ export class RemoteMediaManager extends EventsScope {
   private currentLayout?: VideoLayout;
 
   private slots: {
-    audio: ReceiveSlot[];
+    audio: {
+      main: ReceiveSlot[];
+      si: ReceiveSlot;
+    };
     screenShare: {
       audio: ReceiveSlot[];
       video?: ReceiveSlot;
@@ -234,7 +241,10 @@ export class RemoteMediaManager extends EventsScope {
   };
 
   private media: {
-    audio?: RemoteMediaGroup;
+    audio: {
+      main?: RemoteMediaGroup;
+      si?: RemoteMediaGroup;
+    };
     video: {
       activeSpeakerGroups: {
         [key: PaneGroupId]: RemoteMediaGroup;
@@ -277,7 +287,10 @@ export class RemoteMediaManager extends EventsScope {
     this.receiveSlotManager = receiveSlotManager;
     this.mediaRequestManagers = mediaRequestManagers;
     this.media = {
-      audio: undefined,
+      audio: {
+        main: undefined,
+        si: undefined,
+      },
       video: {
         activeSpeakerGroups: {},
         memberPanes: {},
@@ -291,7 +304,10 @@ export class RemoteMediaManager extends EventsScope {
     this.checkConfigValidity();
 
     this.slots = {
-      audio: [],
+      audio: {
+        main: [],
+        si: undefined,
+      },
       screenShare: {
         audio: [],
         video: undefined,
@@ -389,8 +405,11 @@ export class RemoteMediaManager extends EventsScope {
     });
 
     // release all audio receive slots
-    this.slots.audio.forEach((slot) => this.receiveSlotManager.releaseSlot(slot));
-    this.slots.audio.length = 0;
+    this.slots.audio.main.forEach((slot) => this.receiveSlotManager.releaseSlot(slot));
+    this.slots.audio.main.length = 0;
+    if (this.slots.audio.si) {
+      this.receiveSlotManager.releaseSlot(this.slots.audio.si);
+    }
 
     // release screen share slots
     this.slots.screenShare.audio.forEach((slot) => this.receiveSlotManager.releaseSlot(slot));
@@ -526,21 +545,53 @@ export class RemoteMediaManager extends EventsScope {
   }
 
   /**
+   * Sets which named media group need receiving
+   * @param {MediaType} mediaType of the stream
+   * @param {number} languageCode of the stream. If the languageId is 0, the named media group request will be canceled,
+   * and only receive the main audio stream.
+   * @returns {void}
+   */
+  public async setReceiveNamedMediaGroup(mediaType: MediaType, languageId: number) {
+    if (mediaType !== MediaType.AudioMain) {
+      throw new Error(`cannot set receive named media group which media type is ${mediaType}`);
+    }
+
+    const value = languageId;
+    if (value === this.config.namedMediaGroup?.value) {
+      return;
+    }
+
+    this.config.namedMediaGroup = {
+      type: NAMED_MEDIA_GROUP_TYPE_AUDIO,
+      value,
+    };
+
+    if (!this.media.audio.si) {
+      await this.createInterpretationAudioMedia(true);
+    } else {
+      this.media.audio.si.setNamedMediaGroup(this.config.namedMediaGroup, true);
+    }
+  }
+
+  /**
    * Creates the audio slots
    */
   private async createAudioMedia() {
-    // create the audio receive slots
+    // create si audio request
+    await this.createInterpretationAudioMedia(false);
+
+    // create main audio receive slots
     for (let i = 0; i < this.config.audio.numOfActiveSpeakerStreams; i += 1) {
       // eslint-disable-next-line no-await-in-loop
       const slot = await this.receiveSlotManager.allocateSlot(MediaType.AudioMain);
 
-      this.slots.audio.push(slot);
+      this.slots.audio.main.push(slot);
     }
 
-    // create a remote media group
-    this.media.audio = new RemoteMediaGroup(
+    // create a remote media group for main audio
+    this.media.audio.main = new RemoteMediaGroup(
       this.mediaRequestManagers.audio,
-      this.slots.audio,
+      this.slots.audio.main,
       255,
       true
     );
@@ -548,8 +599,38 @@ export class RemoteMediaManager extends EventsScope {
     this.emit(
       {file: 'multistream/remoteMediaManager', function: 'createAudioMedia'},
       Event.AudioCreated,
-      this.media.audio
+      this.media.audio.main
     );
+  }
+
+  /**
+   * Creates the audio slots for named media
+   */
+  private async createInterpretationAudioMedia(commitRequest: boolean) {
+    // create slot for interpretation language audio
+    if (
+      this.config.namedMediaGroup?.type === NAMED_MEDIA_GROUP_TYPE_AUDIO &&
+      this.config.namedMediaGroup?.value
+    ) {
+      this.slots.audio.si = await this.receiveSlotManager.allocateSlot(MediaType.AudioMain);
+
+      // create a remote media group for si audio
+      this.media.audio.si = new RemoteMediaGroup(
+        this.mediaRequestManagers.audio,
+        [this.slots.audio.si],
+        255,
+        commitRequest,
+        {
+          namedMediaGroup: this.config.namedMediaGroup,
+        }
+      );
+
+      this.emit(
+        {file: 'multistream/remoteMediaManager', function: 'createInterpretationAudioMedia'},
+        Event.InterpretationAudioCreated,
+        this.media.audio.si
+      );
+    }
   }
 
   /**
@@ -748,7 +829,7 @@ export class RemoteMediaManager extends EventsScope {
   /** logs main audio slots */
   private logMainAudioReceiveSlots() {
     LoggerProxy.logger.log(
-      `RemoteMediaManager#logMainAudioReceiveSlots --> MAIN AUDIO receive slots: ${this.slots.audio
+      `RemoteMediaManager#logMainAudioReceiveSlots --> MAIN AUDIO receive slots: ${this.slots.audio.main
         .map((slot) => slot.logString)
         .join(', ')}`
     );
@@ -924,8 +1005,13 @@ export class RemoteMediaManager extends EventsScope {
   }) {
     const {audio, video, screenShareAudio, screenShareVideo, commit} = options;
 
-    if (audio && this.media.audio) {
-      this.media.audio.stop(commit);
+    if (audio) {
+      if (this.media.audio.main) {
+        this.media.audio.main.stop(commit);
+      }
+      if (this.media.audio.si) {
+        this.media.audio.si.stop(commit);
+      }
     }
     if (video) {
       Object.values(this.media.video.activeSpeakerGroups).forEach((remoteMediaGroup) => {
