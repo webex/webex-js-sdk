@@ -2652,7 +2652,7 @@ describe('plugin-meetings', () => {
             meeting.webex.meetings.geoHintInfo = {regionCode: 'EU', countryCode: 'UK'};
             meeting.roap.doTurnDiscovery = sinon
               .stub()
-              .resolves({turnServerInfo: {}, turnDiscoverySkippedReason: 'reachability'});
+              .resolves({turnServerInfo: { url: 'turn-url', username: 'turn user', password: 'turn password'}, turnDiscoverySkippedReason: 'reachability'});
             meeting.deferSDPAnswer = new Defer();
             meeting.deferSDPAnswer.resolve();
             meeting.webex.meetings.meetingCollection = new MeetingCollection();
@@ -2663,7 +2663,7 @@ describe('plugin-meetings', () => {
             // setup things that are expected to be the same across all the tests and are actually irrelevant for these tests
             expectedDebugId = `MC-${meeting.id.substring(0, 4)}`;
             expectedMediaConnectionConfig = {
-              iceServers: [{urls: undefined, username: '', credential: ''}],
+              iceServers: [{urls: 'turn-url', username: 'turn user', credential: 'turn password'}],
               skipInactiveTransceivers: false,
               requireH264: true,
               sdpMunging: {
