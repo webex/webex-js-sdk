@@ -160,7 +160,9 @@ Media.createMediaConnection = (
 
   const iceServers = [];
 
-  if (turnServerInfo) {
+  // we might not have any TURN server if TURN discovery failed or wasn't done or
+  // we might get an empty TURN url if we land on a video mesh node
+  if (turnServerInfo?.url) {
     iceServers.push({
       urls: turnServerInfo.url,
       username: turnServerInfo.username || '',
