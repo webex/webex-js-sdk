@@ -84,6 +84,7 @@ describe('Karma', () => {
       let config;
       const spies = {};
       const mocks = {};
+      const eventCallback = {};
 
       beforeEach(() => {
         config = {
@@ -104,6 +105,8 @@ describe('Karma', () => {
             }
 
             start() { return this; }
+
+            on(event, callback) { eventCallback[event] = callback; return this; }
           },
         };
 

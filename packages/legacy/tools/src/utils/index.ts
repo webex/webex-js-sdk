@@ -4,6 +4,10 @@ import {
   startProxies,
   stopProxies,
 } from './karma/proxies';
+import {
+  start as startServer,
+  stop as stopServer,
+} from './karma/server';
 import Mocha from './mocha';
 
 export {
@@ -12,4 +16,6 @@ export {
   Mocha,
   startProxies,
   stopProxies,
+  startServer,
+  stopServer,
 };

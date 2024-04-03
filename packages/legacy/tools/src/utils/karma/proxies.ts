@@ -140,7 +140,8 @@ async function startProxies(): Promise<http.Server[]> {
   console.error('ERROR: startProxies() is not implemented');
   await Promise.all(services.map((service) => setEnv(service)));
 
-  return Promise.all(services.map((service) => start(service)));
+  proxies = await Promise.all(services.map((service) => start(service)));
+  return proxies;
 }
 
 /**
@@ -148,7 +149,7 @@ async function startProxies(): Promise<http.Server[]> {
  */
 async function stopProxies(): Promise<void> {
   if (proxies && proxies.length) {
-    await Promise.all(proxies.map((proxy) => stop(proxy)));
+    await Promise.all(proxies.map(async (proxy) => stop(proxy)));
   }
 }
 

@@ -7,7 +7,8 @@
 import { build, runTests } from './commands';
 import { Package, PackageFile } from './models';
 import {
-  Jest, Karma, Mocha, startProxies, stopProxies,
+  Jest, Karma, Mocha, startProxies, stopProxies, startServer,
+  stopServer,
 } from './utils';
 
 export type {
@@ -29,4 +30,6 @@ export {
   PackageFile,
   startProxies,
   stopProxies,
+  startServer,
+  stopServer,
 };
