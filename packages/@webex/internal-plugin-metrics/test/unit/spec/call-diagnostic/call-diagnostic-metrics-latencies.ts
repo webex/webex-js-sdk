@@ -1,8 +1,8 @@
-import {assert, expect} from '@webex/test-helper-chai';
+import {assert} from '@webex/test-helper-chai';
 import CallDiagnosticLatencies from '../../../../src/call-diagnostic/call-diagnostic-metrics-latencies';
 import sinon from 'sinon';
 
-describe.only('internal-plugin-metrics', () => {
+describe('internal-plugin-metrics', () => {
   describe('CallDiagnosticLatencies', () => {
     let cdl: CallDiagnosticLatencies;
     var now = new Date();
