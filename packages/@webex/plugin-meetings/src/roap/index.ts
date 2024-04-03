@@ -14,7 +14,7 @@ import BEHAVIORAL_METRICS from '../metrics/constants';
 export {
   type TurnDiscoveryResult,
   type TurnServerInfo,
-  type TURN_DISCOVERY_SKIP_REASON,
+  type TurnDiscoverySkipReason,
 } from './turnDiscovery';
 
 /**

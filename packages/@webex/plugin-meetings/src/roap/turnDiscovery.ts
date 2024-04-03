@@ -20,14 +20,14 @@ const TURN_DISCOVERY_TIMEOUT = 10; // in seconds
 // and do the SDP offer with seq=1
 const TURN_DISCOVERY_SEQ = 0;
 
-const TURN_DISCOVERY_SKIP_REASON = {
-  missing_http_response: 'missing http response', // when we asked for the TURN discover response to be in the http response, but it wasn't there
+const TurnDiscoverySkipReason = {
+  missingHttpResponse: 'missing http response', // when we asked for the TURN discovery response to be in the http response, but it wasn't there
   reachability: 'reachability', // when udp reachability to public clusters is ok, so we don't need TURN (this doens't apply when joinWithMedia() is used)
   alreadyInProgress: 'already in progress', // when we try to start TURN discovery while it's already in progress
 } as const;
 
-export type TURN_DISCOVERY_SKIP_REASON =
-  | Enum<typeof TURN_DISCOVERY_SKIP_REASON> // this is a kind of FYI, because in practice typescript will infer the type of TURN_DISCOVERY_SKIP_REASON as a string
+export type TurnDiscoverySkipReason =
+  | Enum<typeof TurnDiscoverySkipReason> // this is a kind of FYI, because in practice typescript will infer the type of TurnDiscoverySkipReason as a string
   | string // used in case of errors, contains the error message
   | undefined; // used when TURN discovery is not skipped
 
@@ -39,7 +39,7 @@ export type TurnServerInfo = {
 
 export type TurnDiscoveryResult = {
   turnServerInfo?: TurnServerInfo;
-  turnDiscoverySkippedReason: TURN_DISCOVERY_SKIP_REASON;
+  turnDiscoverySkippedReason: TurnDiscoverySkipReason;
 };
 
 /**
@@ -190,7 +190,7 @@ export default class TurnDiscovery {
   public async generateTurnDiscoveryRequestMessage(
     meeting: Meeting,
     isForced: boolean
-  ): Promise<{roapMessage?: object; turnDiscoverySkippedReason: TURN_DISCOVERY_SKIP_REASON}> {
+  ): Promise<{roapMessage?: object; turnDiscoverySkippedReason: TurnDiscoverySkipReason}> {
     if (this.defer) {
       LoggerProxy.logger.warn(
         'Roap:turnDiscovery#generateTurnDiscoveryRequestMessage --> TURN discovery already in progress'
@@ -198,11 +198,11 @@ export default class TurnDiscovery {
 
       return {
         roapMessage: undefined,
-        turnDiscoverySkippedReason: TURN_DISCOVERY_SKIP_REASON.alreadyInProgress,
+        turnDiscoverySkippedReason: TurnDiscoverySkipReason.alreadyInProgress,
       };
     }
 
-    let turnDiscoverySkippedReason: TURN_DISCOVERY_SKIP_REASON;
+    let turnDiscoverySkippedReason: TurnDiscoverySkipReason;
 
     if (!isForced) {
       turnDiscoverySkippedReason = await this.getSkipReason(meeting);
@@ -278,7 +278,7 @@ export default class TurnDiscovery {
     if (httpResponse === undefined) {
       return {
         turnServerInfo: undefined,
-        turnDiscoverySkippedReason: TURN_DISCOVERY_SKIP_REASON.missing_http_response,
+        turnDiscoverySkippedReason: TurnDiscoverySkipReason.missingHttpResponse,
       };
     }
 
@@ -288,7 +288,7 @@ export default class TurnDiscovery {
       if (!roapMessage) {
         return {
           turnServerInfo: undefined,
-          turnDiscoverySkippedReason: TURN_DISCOVERY_SKIP_REASON.missing_http_response,
+          turnDiscoverySkippedReason: TurnDiscoverySkipReason.missingHttpResponse,
         };
       }
 
@@ -384,7 +384,7 @@ export default class TurnDiscovery {
 
       return Promise.resolve({
         turnServerInfo: undefined,
-        turnDiscoverySkippedReason: TURN_DISCOVERY_SKIP_REASON.alreadyInProgress,
+        turnDiscoverySkippedReason: TurnDiscoverySkipReason.alreadyInProgress,
       });
     }
 
@@ -462,7 +462,7 @@ export default class TurnDiscovery {
    * @param {Meeting} meeting
    * @returns {Promise<string>} Promise with empty string if reachability is not skipped or a reason if it is skipped
    */
-  private async getSkipReason(meeting: Meeting): Promise<TURN_DISCOVERY_SKIP_REASON> {
+  private async getSkipReason(meeting: Meeting): Promise<TurnDiscoverySkipReason> {
     const isAnyPublicClusterReachable =
       // @ts-ignore - fix type
       await meeting.webex.meetings.reachability.isAnyPublicClusterReachable();
@@ -472,7 +472,7 @@ export default class TurnDiscovery {
         'Roap:turnDiscovery#getSkipReason --> reachability has not failed, skipping TURN discovery'
       );
 
-      return TURN_DISCOVERY_SKIP_REASON.reachability;
+      return TurnDiscoverySkipReason.reachability;
     }
 
     return undefined;
@@ -513,7 +513,7 @@ export default class TurnDiscovery {
     isReconnecting?: boolean,
     isForced?: boolean
   ): Promise<TurnDiscoveryResult> {
-    let turnDiscoverySkippedReason: TURN_DISCOVERY_SKIP_REASON;
+    let turnDiscoverySkippedReason: TurnDiscoverySkipReason;
 
     if (!isForced) {
       turnDiscoverySkippedReason = await this.getSkipReason(meeting);
@@ -531,7 +531,7 @@ export default class TurnDiscovery {
 
       if (
         turnDiscoveryResult.turnDiscoverySkippedReason !==
-        TURN_DISCOVERY_SKIP_REASON.missing_http_response
+        TurnDiscoverySkipReason.missingHttpResponse
       ) {
         return turnDiscoveryResult;
       }

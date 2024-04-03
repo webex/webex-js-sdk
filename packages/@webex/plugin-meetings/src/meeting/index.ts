@@ -47,7 +47,7 @@ import Trigger from '../common/events/trigger-proxy';
 import Roap, {
   type TurnDiscoveryResult,
   type TurnServerInfo,
-  type TURN_DISCOVERY_SKIP_REASON,
+  type TurnDiscoverySkipReason,
 } from '../roap/index';
 import Media, {type BundlePolicy} from '../media';
 import MediaProperties from '../media/properties';
@@ -591,7 +591,7 @@ export default class Meeting extends StatelessWebexPlugin {
   allowMediaInLobby: boolean;
   localShareInstanceId: string;
   remoteShareInstanceId: string;
-  turnDiscoverySkippedReason: TURN_DISCOVERY_SKIP_REASON;
+  turnDiscoverySkippedReason: TurnDiscoverySkipReason;
   turnServerUsed: boolean;
   private retriedWithTurnServer: boolean;
   private sendSlotManager: SendSlotManager = new SendSlotManager(LoggerProxy);
