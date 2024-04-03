@@ -9199,9 +9199,9 @@ describe('plugin-meetings', () => {
           it('check triggerAnnotationInfoEvent event', () => {
             TriggerProxy.trigger.reset();
             const annotationInfo = {version: '1', policy: 'Approval'};
-            const expectAnnotationInfo = {annotationInfo, meetingId: meeting.id, resourceType: undefined};
+            const expectAnnotationInfo = {annotationInfo, meetingId: meeting.id, resourceType: 'FILE'};
             meeting.webex.meetings = {};
-            meeting.triggerAnnotationInfoEvent({annotation: annotationInfo, resourceType: undefined}, {});
+            meeting.triggerAnnotationInfoEvent({annotation: annotationInfo, resourceType: 'FILE'}, {});
             assert.calledWith(
               TriggerProxy.trigger,
               {},
@@ -9215,8 +9215,8 @@ describe('plugin-meetings', () => {
 
             TriggerProxy.trigger.reset();
             meeting.triggerAnnotationInfoEvent(
-              {annotation: annotationInfo},
-              {annotation: annotationInfo}
+              {annotation: annotationInfo, resourceType: 'FILE'},
+              {annotation: annotationInfo, resourceType: 'FILE'}
             );
             assert.notCalled(TriggerProxy.trigger);
 
@@ -9225,11 +9225,11 @@ describe('plugin-meetings', () => {
             const expectAnnotationInfoUpdated = {
               annotationInfo: annotationInfoUpdate,
               meetingId: meeting.id,
-              resourceType: undefined,
+              resourceType: 'FILE',
             };
             meeting.triggerAnnotationInfoEvent(
-              {annotation: annotationInfoUpdate},
-              {annotation: annotationInfo}
+              {annotation: annotationInfoUpdate, resourceType: 'FILE'},
+              {annotation: annotationInfo, resourceType: 'FILE'}
             );
             assert.calledWith(
               TriggerProxy.trigger,
@@ -9243,7 +9243,7 @@ describe('plugin-meetings', () => {
             );
 
             TriggerProxy.trigger.reset();
-            meeting.triggerAnnotationInfoEvent(null, {annotation: annotationInfoUpdate, resourceType: undefined});
+            meeting.triggerAnnotationInfoEvent(null, {annotation: annotationInfoUpdate, resourceType: 'FILE'});
             assert.notCalled(TriggerProxy.trigger);
           });
         });
