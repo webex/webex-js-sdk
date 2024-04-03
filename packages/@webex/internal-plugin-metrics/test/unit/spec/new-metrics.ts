@@ -1,29 +1,31 @@
 import {assert} from '@webex/test-helper-chai';
-import {NewMetrics} from '@webex/internal-plugin-metrics';
+import {NewMetrics, CallDiagnosticLatencies} from '@webex/internal-plugin-metrics';
 import MockWebex from '@webex/test-helper-mock-webex';
 import sinon from 'sinon';
 import {Utils} from '@webex/internal-plugin-metrics';
 
 describe('internal-plugin-metrics', () => {
 
+  const mockWebex = () => new MockWebex({
+    children: {
+      newMetrics: NewMetrics,
+    },
+    meetings: {
+      meetingCollection: {
+        get: sinon.stub(),
+      },
+    },
+    request: sinon.stub().resolves({}),
+    logger: {
+      log: sinon.stub(),
+      error: sinon.stub(),
+    }
+  });
+
   describe('check submitClientEvent when webex is not ready', () => {
     let webex;
     //@ts-ignore
-    webex = new MockWebex({
-      children: {
-        newMetrics: NewMetrics,
-      },
-      meetings: {
-        meetingCollection: {
-          get: sinon.stub(),
-        },
-      },
-      request: sinon.stub().resolves({}),
-      logger: {
-        log: sinon.stub(),
-        error: sinon.stub(),
-      }
-    });
+    webex = mockWebex();
 
     it('checks the log', () => {
       webex.internal.newMetrics.submitClientEvent({
@@ -38,26 +40,22 @@ describe('internal-plugin-metrics', () => {
       );
     });
   });
+
+  describe('new-metrics contstructor', () => {
+    it('checks callDiagnosticLatencies is defined before ready emit', () => {
+
+      const webex = mockWebex();
+
+      assert.instanceOf(webex.internal.newMetrics.callDiagnosticLatencies, CallDiagnosticLatencies);
+    });
+  });
+
   describe('new-metrics', () => {
     let webex;
 
     beforeEach(() => {
       //@ts-ignore
-      webex = new MockWebex({
-        children: {
-          newMetrics: NewMetrics,
-        },
-        meetings: {
-          meetingCollection: {
-            get: sinon.stub(),
-          },
-        },
-        request: sinon.stub().resolves({}),
-        logger: {
-          log: sinon.stub(),
-          error: sinon.stub(),
-        }
-      });
+      webex = mockWebex();
 
       webex.emit('ready');
 
