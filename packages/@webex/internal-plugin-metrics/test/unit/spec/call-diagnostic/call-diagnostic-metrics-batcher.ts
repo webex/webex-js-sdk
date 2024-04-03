@@ -188,7 +188,6 @@ describe('plugin-metrics', () => {
               clickToInterstitial: 10,
               interstitialToJoinOK: 10,
               joinReqResp: 10,
-              joinReqSentReceived: 20,
               meetingInfoReqResp: 10,
               pageJmt: 30,
               totalJmt: 20,
