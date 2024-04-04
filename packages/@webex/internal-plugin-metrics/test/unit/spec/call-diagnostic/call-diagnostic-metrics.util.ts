@@ -333,7 +333,6 @@ describe('internal-plugin-metrics', () => {
             meetingInfoReqResp: undefined,
             callInitJoinReq: undefined,
             joinReqResp: undefined,
-            joinReqSentReceived: undefined,
             pageJmt: undefined,
             clickToInterstitial: undefined,
             interstitialToJoinOK: undefined,
