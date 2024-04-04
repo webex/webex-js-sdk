@@ -2652,7 +2652,7 @@ describe('plugin-meetings', () => {
             meeting.webex.meetings.geoHintInfo = {regionCode: 'EU', countryCode: 'UK'};
             meeting.roap.doTurnDiscovery = sinon
               .stub()
-              .resolves({turnServerInfo: {}, turnDiscoverySkippedReason: 'reachability'});
+              .resolves({turnServerInfo: { url: 'turn-url', username: 'turn user', password: 'turn password'}, turnDiscoverySkippedReason: 'reachability'});
             meeting.deferSDPAnswer = new Defer();
             meeting.deferSDPAnswer.resolve();
             meeting.webex.meetings.meetingCollection = new MeetingCollection();
@@ -2663,7 +2663,7 @@ describe('plugin-meetings', () => {
             // setup things that are expected to be the same across all the tests and are actually irrelevant for these tests
             expectedDebugId = `MC-${meeting.id.substring(0, 4)}`;
             expectedMediaConnectionConfig = {
-              iceServers: [{urls: undefined, username: '', credential: ''}],
+              iceServers: [{urls: 'turn-url', username: 'turn user', credential: 'turn password'}],
               skipInactiveTransceivers: false,
               requireH264: true,
               sdpMunging: {
@@ -9199,9 +9199,9 @@ describe('plugin-meetings', () => {
           it('check triggerAnnotationInfoEvent event', () => {
             TriggerProxy.trigger.reset();
             const annotationInfo = {version: '1', policy: 'Approval'};
-            const expectAnnotationInfo = {annotationInfo, meetingId: meeting.id};
+            const expectAnnotationInfo = {annotationInfo, meetingId: meeting.id, resourceType: 'FILE'};
             meeting.webex.meetings = {};
-            meeting.triggerAnnotationInfoEvent({annotation: annotationInfo}, {});
+            meeting.triggerAnnotationInfoEvent({annotation: annotationInfo, resourceType: 'FILE'}, {});
             assert.calledWith(
               TriggerProxy.trigger,
               {},
@@ -9215,8 +9215,8 @@ describe('plugin-meetings', () => {
 
             TriggerProxy.trigger.reset();
             meeting.triggerAnnotationInfoEvent(
-              {annotation: annotationInfo},
-              {annotation: annotationInfo}
+              {annotation: annotationInfo, resourceType: 'FILE'},
+              {annotation: annotationInfo, resourceType: 'FILE'}
             );
             assert.notCalled(TriggerProxy.trigger);
 
@@ -9225,10 +9225,11 @@ describe('plugin-meetings', () => {
             const expectAnnotationInfoUpdated = {
               annotationInfo: annotationInfoUpdate,
               meetingId: meeting.id,
+              resourceType: 'FILE',
             };
             meeting.triggerAnnotationInfoEvent(
-              {annotation: annotationInfoUpdate},
-              {annotation: annotationInfo}
+              {annotation: annotationInfoUpdate, resourceType: 'FILE'},
+              {annotation: annotationInfo, resourceType: 'FILE'}
             );
             assert.calledWith(
               TriggerProxy.trigger,
@@ -9242,7 +9243,7 @@ describe('plugin-meetings', () => {
             );
 
             TriggerProxy.trigger.reset();
-            meeting.triggerAnnotationInfoEvent(null, {annotation: annotationInfoUpdate});
+            meeting.triggerAnnotationInfoEvent(null, {annotation: annotationInfoUpdate, resourceType: 'FILE'});
             assert.notCalled(TriggerProxy.trigger);
           });
         });
@@ -9277,11 +9278,14 @@ describe('plugin-meetings', () => {
             beneficiaryId = null,
             disposition = null,
             deviceUrlSharing = null,
-            annotation = undefined
+            annotation = undefined,
+            resourceType = undefined,
           ) => ({
             beneficiaryId,
             disposition,
             deviceUrlSharing,
+            annotation,
+            resourceType,
           });
           const generateWhiteboard = (
             beneficiaryId = null,
@@ -9300,7 +9304,8 @@ describe('plugin-meetings', () => {
             annotation,
             url,
             shareInstanceId,
-            deviceUrlSharing
+            deviceUrlSharing,
+            resourceType
           ) => {
             const newPayload = cloneDeep(payload);
 
@@ -9334,7 +9339,8 @@ describe('plugin-meetings', () => {
                   beneficiaryId,
                   FLOOR_ACTION.GRANTED,
                   deviceUrlSharing,
-                  annotation
+                  annotation,
+                    resourceType
                 );
 
                 if (isEqual(newPayload.current, newPayload.previous)) {
@@ -9395,6 +9401,7 @@ describe('plugin-meetings', () => {
                         url,
                         shareInstanceId,
                         annotationInfo: undefined,
+                        resourceType: undefined
                       },
                     });
                   }
@@ -10236,7 +10243,8 @@ describe('plugin-meetings', () => {
                 undefined,
                 undefined,
                 undefined,
-                DEVICE_URL.REMOTE_A
+                DEVICE_URL.REMOTE_A,
+                undefined
               );
               const data2 = generateData(
                 data1.payload,
@@ -10249,9 +10257,10 @@ describe('plugin-meetings', () => {
                 undefined,
                 undefined,
                 undefined,
-                DEVICE_URL.REMOTE_B
+                DEVICE_URL.REMOTE_B,
+                undefined
               );
-              const data3 = generateData(data2.payload, false, true, USER_IDS.REMOTE_B);
+              const data3 = generateData(data2.payload, false, true, USER_IDS.REMOTE_B, undefined);
 
               payloadTestHelper([data1, data2, data3]);
             });
