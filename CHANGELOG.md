@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.389](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.388...v3.0.0-beta.389) (2024-04-03)
+
+
+### Bug Fixes
+
+* **meetings-and-device:** installationid-and-machineid ([#3454](https://github.com/webex/webex-js-sdk/issues/3454)) ([2d6ea18](https://github.com/webex/webex-js-sdk/commit/2d6ea18738ac1e9e56007c1729d066882c31ba15))
+
+## [3.0.0-beta.388](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.387...v3.0.0-beta.388) (2024-04-03)
+
+
+### Bug Fixes
+
+* handle empty TURN url ([#3516](https://github.com/webex/webex-js-sdk/issues/3516)) ([a173745](https://github.com/webex/webex-js-sdk/commit/a173745819fb6d9a6d412eabe23638868c5fffda))
+
+## [3.0.0-beta.387](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.386...v3.0.0-beta.387) (2024-04-03)
+
+
+### Bug Fixes
+
+* **internal-plugin-metrics:** define latency before ready ([#3514](https://github.com/webex/webex-js-sdk/issues/3514)) ([cb69e9e](https://github.com/webex/webex-js-sdk/commit/cb69e9e07fa4f5c7689bd89520459a6e9b03a938))
+
 ## [3.0.0-beta.386](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.385...v3.0.0-beta.386) (2024-04-03)
 
 

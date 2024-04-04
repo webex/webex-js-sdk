@@ -1,6 +1,6 @@
 {
   "name": "@webex/plugin-webhooks",
-  "version": "3.0.0-beta.386",
+  "version": "3.0.0-beta.389",
   "description": "",
   "license": "MIT",
   "main": "dist/index.js",
