@@ -1,4 +1,4 @@
-import {assert} from '@webex/test-helper-chai';
+import {assert, expect} from '@webex/test-helper-chai';
 import CallDiagnosticLatencies from '../../../../src/call-diagnostic/call-diagnostic-metrics-latencies';
 import sinon from 'sinon';
 
@@ -41,11 +41,24 @@ describe('internal-plugin-metrics', () => {
       assert.deepEqual(cdl.latencyTimestamps.get('client.alert.displayed'), now.getTime());
     });
 
-    it('should save latency correctly by default', () => {
+    it('should save latency correctly by default and overwrites', () => {
       assert.deepEqual(cdl.precomputedLatencies.size, 0);
       cdl.saveLatency('internal.client.pageJMT', 10);
       assert.deepEqual(cdl.precomputedLatencies.size, 1);
       assert.deepEqual(cdl.precomputedLatencies.get('internal.client.pageJMT'), 10);
+      cdl.saveLatency('internal.client.pageJMT', 20);
+      assert.deepEqual(cdl.precomputedLatencies.size, 1);
+      assert.deepEqual(cdl.precomputedLatencies.get('internal.client.pageJMT'), 20);
+    });
+
+    it('should overwrite latency when overwrite is true', () => {
+      assert.deepEqual(cdl.precomputedLatencies.size, 0);
+      cdl.saveLatency('internal.client.pageJMT', 10, true);
+      assert.deepEqual(cdl.precomputedLatencies.size, 1);
+      assert.deepEqual(cdl.precomputedLatencies.get('internal.client.pageJMT'), 10);
+      cdl.saveLatency('internal.client.pageJMT', 20, true);
+      assert.deepEqual(cdl.precomputedLatencies.size, 1);
+      assert.deepEqual(cdl.precomputedLatencies.get('internal.client.pageJMT'), 20);
     });
 
     it('should save latency correctly when overwrite is false', () => {
@@ -130,7 +143,6 @@ describe('internal-plugin-metrics', () => {
 
     describe('measureLatency', () => {
       let clock;
-      let callbackStub;
       let saveLatencySpy;
 
       beforeEach(() => {       
@@ -147,40 +159,50 @@ describe('internal-plugin-metrics', () => {
       it('checks measureLatency with overwrite false', async () => {
         const key = 'internal.client.pageJMT';
         const overwrite = false;
-        callbackStub = sinon.stub().resolves();
+        const callbackStub = sinon.stub().callsFake(() => {
+          clock.tick(50);
+          return Promise.resolve('test');
+        });
 
         const promise = cdl.measureLatency(callbackStub, 'internal.client.pageJMT', overwrite);
-        clock.tick(50);
 
-        await promise;
-        assert.calledOnce(callbackStub);
-        sinon.assert.calledWith(saveLatencySpy, key, 50, overwrite)       
+        const resolvedValue = await promise;
+        expect(resolvedValue).to.equal('test');
+        assert.calledOnceWithExactly(callbackStub);
+        assert.calledOnceWithExactly(saveLatencySpy, key, 50, overwrite)       
       });
 
       it('checks measureLatency with overwrite true', async () => {
-        const key = 'internal.client.pageJMT';
+        const key = 'internal.download.time';
         const overwrite = true;
-        callbackStub = sinon.stub().resolves();
+        const callbackStub = sinon.stub().callsFake(() => {
+          clock.tick(50);
+          return Promise.resolve('test');
+        });
 
-        const promise = cdl.measureLatency(callbackStub, 'internal.client.pageJMT', overwrite);
-        clock.tick(50);
+        const promise = cdl.measureLatency(callbackStub, 'internal.download.time', overwrite);
 
-        await promise;
-        assert.calledOnce(callbackStub);
-        sinon.assert.calledWith(saveLatencySpy, key, 50, overwrite)       
+        const resolvedValue = await promise;
+        expect(resolvedValue).to.equal('test');
+        assert.calledOnceWithExactly(callbackStub);
+        assert.calledOnceWithExactly(saveLatencySpy, key, 50, overwrite)       
       });
 
       it('checks measureLatency when callBack rejects', async () => {
         const key = 'internal.client.pageJMT';
         const overwrite = true;
-        callbackStub = sinon.stub().rejects(new Error('some error'));
+        const error = new Error('some error');
+        const callbackStub = sinon.stub().callsFake(() => {
+          clock.tick(50);
+          return Promise.reject(error);
+        });
 
         const promise = cdl.measureLatency(callbackStub, 'internal.client.pageJMT', overwrite);
-        clock.tick(50);
 
-        await await assert.isRejected(promise);
-        assert.calledOnce(callbackStub);
-        sinon.assert.calledWith(saveLatencySpy, key, 50, overwrite)       
+        const rejectedValue = await assert.isRejected(promise);
+        expect(rejectedValue).to.equal(error);
+        assert.calledOnceWithExactly(callbackStub);
+        assert.calledOnceWithExactly(saveLatencySpy, key, 50, overwrite)       
       });
     });
 
