@@ -568,7 +568,7 @@ export default class ReconnectionManager {
 
     const iceServers = [];
 
-    if (turnServerResult.turnServerInfo) {
+    if (turnServerResult.turnServerInfo?.url) {
       iceServers.push({
         urls: turnServerResult.turnServerInfo.url,
         username: turnServerResult.turnServerInfo.username || '',

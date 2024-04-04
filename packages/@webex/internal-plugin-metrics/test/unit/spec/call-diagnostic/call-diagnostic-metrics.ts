@@ -301,6 +301,11 @@ describe('internal-plugin-metrics', () => {
 
     describe('#getIdentifiers', () => {
       it('should build identifiers correctly', () => {
+        webex.internal.device = {
+          ...webex.internal.device,
+          config: {installationId: 'installationId'},
+        };
+
         const res = cd.getIdentifiers({
           mediaConnections: [
             {mediaAgentAlias: 'mediaAgentAlias', mediaAgentGroupId: 'mediaAgentGroupId'},
@@ -314,6 +319,7 @@ describe('internal-plugin-metrics', () => {
           locusId: 'url',
           locusStartTime: 'lastActive',
           locusUrl: 'locus/url',
+          machineId: 'installationId',
           mediaAgentAlias: 'mediaAgentAlias',
           mediaAgentGroupId: 'mediaAgentGroupId',
           orgId: 'orgId',
@@ -1797,6 +1803,27 @@ describe('internal-plugin-metrics', () => {
             serviceErrorCode: undefined,
             shownToUser: true,
           });
+        });
+      });
+
+      it('should override custom properties for an unknown error', () => {
+        const error = new Error('bad times');
+
+        (error as any).payloadOverrides = {
+          shownToUser: true,
+          category: 'expected',
+        };
+
+        const res = cd.generateClientEventErrorPayload(error);
+        assert.deepEqual(res, {
+          category: 'expected',
+          errorDescription: 'UnknownError',
+          fatal: true,
+          name: 'other',
+          shownToUser: true,
+          serviceErrorCode: 9999,
+          errorCode: 9999,
+          rawErrorMessage: 'bad times',
         });
       });
 
