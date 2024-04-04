@@ -4743,6 +4743,7 @@ __metadata:
     "@webex/test-helper-mock-webex": "workspace:^"
     "@webex/ts-events": "npm:^1.1.0"
     "@webex/web-media-effects": "npm:^2.15.6"
+    jsdom-global: "npm:3.0.2"
     sinon: "npm:^9.2.4"
   languageName: unknown
   linkType: soft
