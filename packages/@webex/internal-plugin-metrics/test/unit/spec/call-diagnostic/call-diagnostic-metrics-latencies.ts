@@ -1,4 +1,4 @@
-import {assert, expect} from '@webex/test-helper-chai';
+import {assert} from '@webex/test-helper-chai';
 import CallDiagnosticLatencies from '../../../../src/call-diagnostic/call-diagnostic-metrics-latencies';
 import sinon from 'sinon';
 
@@ -167,7 +167,7 @@ describe('internal-plugin-metrics', () => {
         const promise = cdl.measureLatency(callbackStub, 'internal.client.pageJMT', overwrite);
 
         const resolvedValue = await promise;
-        expect(resolvedValue).to.equal('test');
+        assert.deepEqual(resolvedValue, 'test');
         assert.calledOnceWithExactly(callbackStub);
         assert.calledOnceWithExactly(saveLatencySpy, key, 50, overwrite)       
       });
@@ -176,16 +176,16 @@ describe('internal-plugin-metrics', () => {
         const key = 'internal.download.time';
         const overwrite = true;
         const callbackStub = sinon.stub().callsFake(() => {
-          clock.tick(50);
-          return Promise.resolve('test');
+          clock.tick(20);
+          return Promise.resolve('test123');
         });
 
         const promise = cdl.measureLatency(callbackStub, 'internal.download.time', overwrite);
 
         const resolvedValue = await promise;
-        expect(resolvedValue).to.equal('test');
+        assert.deepEqual(resolvedValue, 'test123');
         assert.calledOnceWithExactly(callbackStub);
-        assert.calledOnceWithExactly(saveLatencySpy, key, 50, overwrite)       
+        assert.calledOnceWithExactly(saveLatencySpy, key, 20, overwrite)       
       });
 
       it('checks measureLatency when callBack rejects', async () => {
@@ -200,7 +200,7 @@ describe('internal-plugin-metrics', () => {
         const promise = cdl.measureLatency(callbackStub, 'internal.client.pageJMT', overwrite);
 
         const rejectedValue = await assert.isRejected(promise);
-        expect(rejectedValue).to.equal(error);
+        assert.deepEqual(rejectedValue, error);
         assert.calledOnceWithExactly(callbackStub);
         assert.calledOnceWithExactly(saveLatencySpy, key, 50, overwrite)       
       });
