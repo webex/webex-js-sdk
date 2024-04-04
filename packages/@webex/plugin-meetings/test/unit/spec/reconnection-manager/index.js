@@ -144,6 +144,34 @@ describe('plugin-meetings', () => {
       });
     });
 
+    // this can happen when we land on a video mesh node
+    it('does not use TURN server if TURN url is an empty string', async () => {
+      const rm = new ReconnectionManager(fakeMeeting);
+
+      fakeMeeting.roap.doTurnDiscovery.resolves({
+        turnServerInfo: {
+          url: '',
+          username: 'whatever',
+          password: 'whatever',
+        },
+        turnDiscoverySkippedReason: undefined,
+      });
+
+      await rm.reconnect();
+
+      assert.calledOnce(fakeMeeting.roap.doTurnDiscovery);
+      assert.calledWith(fakeMeeting.roap.doTurnDiscovery, fakeMeeting, true, true);
+      assert.calledOnce(fakeMediaConnection.reconnect);
+      assert.calledWith(fakeMediaConnection.reconnect, []);
+
+      assert.calledWith(fakeMeeting.webex.internal.newMetrics.submitClientEvent, {
+        name: 'client.media.reconnecting',
+        options: {
+          meetingId: rm.meeting.id,
+        },
+      });
+    });
+
     it('does not clear previous requests and re-request media for non-multistream meetings', async () => {
       fakeMeeting.isMultistream = false;
       const rm = new ReconnectionManager(fakeMeeting);
