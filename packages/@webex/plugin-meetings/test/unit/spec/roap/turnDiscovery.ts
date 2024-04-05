@@ -86,7 +86,7 @@ describe('TurnDiscovery', () => {
       expectedSendRoapArgs.ipVersion = 0;
       expectedSendRoapArgs.roapMessage.headers = ['includeAnswerInHttpResponse', 'noOkInTransaction'];
     }
-    
+
     assert.calledWith(mockRoapRequest.sendRoap, expectedSendRoapArgs);
   };
 
