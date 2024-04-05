@@ -180,6 +180,14 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
   }
 
   /**
+   * getU2CTime
+   * @returns - latency
+   */
+  public getU2CTime() {
+    return this.precomputedLatencies.get('internal.get.u2c.time') || undefined;
+  }
+
+  /**
    * Device Register Time
    * @returns - latency
    */

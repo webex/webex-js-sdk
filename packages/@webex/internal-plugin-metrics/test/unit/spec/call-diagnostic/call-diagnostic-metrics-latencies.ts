@@ -607,6 +607,11 @@ describe('internal-plugin-metrics', () => {
       assert.deepEqual(cdl.getInterstitialToMediaOKJMT(), 10);
     });
 
+    it('calculates getU2CTime correctly', () => {
+      cdl.saveLatency('internal.get.u2c.time', 100);
+      assert.deepEqual(cdl.getU2CTime(), 100);
+    });
+
     it('calculates getDownloadTimeJMT correctly', () => {
       cdl.saveLatency('internal.download.time', 1000);
       assert.deepEqual(cdl.getDownloadTimeJMT(), 1000);

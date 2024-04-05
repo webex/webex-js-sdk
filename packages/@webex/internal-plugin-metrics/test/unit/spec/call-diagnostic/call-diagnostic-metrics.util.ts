@@ -323,6 +323,7 @@ describe('internal-plugin-metrics', () => {
             showInterstitialTime: undefined,
             meetingInfoReqResp: undefined,
             registerWDMDeviceJMT: undefined,
+            getU2CTime: undefined
           },
         },
       ],
