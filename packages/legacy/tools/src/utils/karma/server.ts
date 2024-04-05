@@ -13,26 +13,26 @@ let child:any;
  * Stops the test server
  * @returns {Promise<void>}
  */
-export async function stop(): Promise<void> {
+export async function stopServer(): Promise<void> {
   return new Promise((resolve) => {
     if (child !== null && child.kill) {
       debug('stopping test server');
       child.kill('SIGTERM');
-      process.removeListener('exit', stop);
+      process.removeListener('exit', stopServer);
       child = null;
       debug('stopped test server');
     }
 
-    resolve();
+    resolve(child);
   });
 }
 /**
  * Starts the test server
  * @returns {Promise<void>}
  */
-export async function start(): Promise<void> {
+export async function startServer(): Promise<void> {
   if (child) {
-    await stop();
+    await stopServer();
   }
 
   return new Promise((resolve) => {
@@ -49,10 +49,10 @@ export async function start(): Promise<void> {
       const pattern = /.+/gi;
 
       if (pattern.test(message)) {
-        resolve();
+        resolve(child);
       }
     });
 
-    process.on('exit', stop);
+    process.on('exit', stopServer);
   });
 }
