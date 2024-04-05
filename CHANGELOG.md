@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.393](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.392...v3.0.0-beta.393) (2024-04-05)
+
+
+### Features
+
+* **metrics:** add otherAppApi jmt ([#3496](https://github.com/webex/webex-js-sdk/issues/3496)) ([6b3c580](https://github.com/webex/webex-js-sdk/commit/6b3c580db1aa6a0ce91d863fe0be9731d7e710dd))
+
 ## [3.0.0-beta.392](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.391...v3.0.0-beta.392) (2024-04-05)
 
 
