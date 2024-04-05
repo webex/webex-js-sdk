@@ -244,6 +244,9 @@ export const prepareDiagnosticMetricItem = (webex: any, item: any) => {
     case 'client.webexapp.launched':
       joinTimes.downloadTime = cdl.getDownloadTimeJMT();
       break;
+    case 'client.login.end':
+      joinTimes.otherAppApiReqResp = cdl.getOtherAppApiReqResp();
+      break;
     case 'client.interstitial-window.launched':
       joinTimes.meetingInfoReqResp = cdl.getMeetingInfoReqResp();
       joinTimes.clickToInterstitial = cdl.getClickToInterstitial();
