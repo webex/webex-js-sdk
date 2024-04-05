@@ -184,7 +184,9 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
    * @returns - latency
    */
   public getU2CTime() {
-    return this.precomputedLatencies.get('internal.get.u2c.time') || undefined;
+    const u2cLatency = this.precomputedLatencies.get('internal.get.u2c.time');
+
+    return u2cLatency ? Math.floor(u2cLatency) : undefined;
   }
 
   /**
