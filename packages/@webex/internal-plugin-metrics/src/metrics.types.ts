@@ -171,4 +171,5 @@ export type PreComputedLatencies =
   | 'internal.client.pageJMT'
   | 'internal.download.time'
   | 'internal.click.to.interstitial'
-  | 'internal.call.init.join.req';
+  | 'internal.call.init.join.req'
+  | 'internal.other.app.api.time';

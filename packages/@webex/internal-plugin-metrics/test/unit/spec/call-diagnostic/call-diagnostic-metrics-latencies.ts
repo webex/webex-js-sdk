@@ -145,9 +145,9 @@ describe('internal-plugin-metrics', () => {
       let clock;
       let saveLatencySpy;
 
-      beforeEach(() => {       
-        clock = sinon.useFakeTimers(); 
-        
+      beforeEach(() => {
+        clock = sinon.useFakeTimers();
+
         saveLatencySpy = sinon.stub(cdl, 'saveLatency');
       });
 
@@ -155,7 +155,7 @@ describe('internal-plugin-metrics', () => {
         clock.restore();
         sinon.restore();
       });
-      
+
       it('checks measureLatency with overwrite false', async () => {
         const key = 'internal.client.pageJMT';
         const overwrite = false;
@@ -169,7 +169,7 @@ describe('internal-plugin-metrics', () => {
         const resolvedValue = await promise;
         assert.deepEqual(resolvedValue, 'test');
         assert.calledOnceWithExactly(callbackStub);
-        assert.calledOnceWithExactly(saveLatencySpy, key, 50, overwrite)       
+        assert.calledOnceWithExactly(saveLatencySpy, key, 50, overwrite)
       });
 
       it('checks measureLatency with overwrite true', async () => {
@@ -185,7 +185,7 @@ describe('internal-plugin-metrics', () => {
         const resolvedValue = await promise;
         assert.deepEqual(resolvedValue, 'test123');
         assert.calledOnceWithExactly(callbackStub);
-        assert.calledOnceWithExactly(saveLatencySpy, key, 20, overwrite)       
+        assert.calledOnceWithExactly(saveLatencySpy, key, 20, overwrite)
       });
 
       it('checks measureLatency when callBack rejects', async () => {
@@ -202,7 +202,7 @@ describe('internal-plugin-metrics', () => {
         const rejectedValue = await assert.isRejected(promise);
         assert.deepEqual(rejectedValue, error);
         assert.calledOnceWithExactly(callbackStub);
-        assert.calledOnceWithExactly(saveLatencySpy, key, 50, overwrite)       
+        assert.calledOnceWithExactly(saveLatencySpy, key, 50, overwrite)
       });
     });
 
@@ -613,72 +613,27 @@ describe('internal-plugin-metrics', () => {
     });
 
     describe('getOtherAppApiReqResp', () => {
-      it('calculates correct latency when none of the sub components are available', () => {
+      it('returns undefined when no precomputed value available', () => {
         assert.deepEqual(cdl.getOtherAppApiReqResp(), undefined);
       })
 
-      it('calculates correct latency when password is available', () => {
-        cdl.saveTimestamp({
-          key: 'internal.app.api.password.request',
-          value: 10,
-        });
-        cdl.saveTimestamp({
-          key: 'internal.app.api.password.response',
-          value: 20,
-        });
-        assert.deepEqual(cdl.getOtherAppApiReqResp(), 10);
+      it('returns undefined if it is less than 0', () => {
+        cdl.saveLatency('internal.other.app.api.time', 0);
+
+        assert.deepEqual(cdl.getOtherAppApiReqResp(), undefined);
       });
 
-      it('calculates correct latency when password and captcha is available', () => {
-        cdl.saveTimestamp({
-          key: 'internal.app.api.password.request',
-          value: 10,
-        });
-        cdl.saveTimestamp({
-          key: 'internal.app.api.password.response',
-          value: 20,
-        });
+      it('returns the correct value', () => {
+        cdl.saveLatency('internal.other.app.api.time', 123);
 
-        cdl.saveTimestamp({
-          key: 'internal.app.api.captcha.request',
-          value: 30,
-        });
-        cdl.saveTimestamp({
-          key: 'internal.app.api.captcha.response',
-          value: 50,
-        });
-        assert.deepEqual(cdl.getOtherAppApiReqResp(), 15);
+        assert.deepEqual(cdl.getOtherAppApiReqResp(), 123);
       });
 
-      it('calculates correct latency when all 3 available', () => {
-        cdl.saveTimestamp({
-          key: 'internal.app.api.password.request',
-          value: 10,
-        });
-        cdl.saveTimestamp({
-          key: 'internal.app.api.password.response',
-          value: 20,
-        });
+      it('returns the correct whole number', () => {
+        cdl.saveLatency('internal.other.app.api.time', 321.44);
 
-        cdl.saveTimestamp({
-          key: 'internal.app.api.captcha.request',
-          value: 30,
-        });
-        cdl.saveTimestamp({
-          key: 'internal.app.api.captcha.response',
-          value: 50,
-        });
-
-        cdl.saveTimestamp({
-          key: 'internal.app.api.guest.auth.request',
-          value: 60,
-        });
-        cdl.saveTimestamp({
-          key: 'internal.app.api.guest.auth.response',
-          value: 80,
-        });
-        assert.deepEqual(cdl.getOtherAppApiReqResp(), 16);
-      })
+        assert.deepEqual(cdl.getOtherAppApiReqResp(), 321);
+      });
     })
   });
 });
