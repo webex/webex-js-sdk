@@ -1,6 +1,6 @@
 {
   "name": "@webex/internal-plugin-voicea",
-  "version": "3.0.0-beta.389",
+  "version": "3.0.0-beta.392",
   "description": "",
   "license": "Cisco EULA (https://www.cisco.com/c/en/us/products/end-user-license-agreement.html)",
   "main": "dist/index.js",
@@ -16,7 +16,6 @@
   "dependencies": {
     "@webex/internal-plugin-llm": "workspace:^",
     "@webex/internal-plugin-mercury": "workspace:^",
-    "@webex/internal-plugin-voicea": "workspace:^",
     "@webex/plugin-meetings": "workspace:^",
     "@webex/webex-core": "workspace:^",
     "uuid": "^3.3.2"

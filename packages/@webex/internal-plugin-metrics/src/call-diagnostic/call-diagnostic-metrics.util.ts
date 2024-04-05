@@ -262,7 +262,6 @@ export const prepareDiagnosticMetricItem = (webex: any, item: any) => {
       joinTimes.meetingInfoReqResp = cdl.getMeetingInfoReqResp();
       joinTimes.callInitJoinReq = cdl.getCallInitJoinReq();
       joinTimes.joinReqResp = cdl.getJoinReqResp();
-      joinTimes.joinReqSentReceived = cdl.getJoinRespSentReceived();
       joinTimes.pageJmt = cdl.getPageJMT();
       joinTimes.clickToInterstitial = cdl.getClickToInterstitial();
       joinTimes.interstitialToJoinOK = cdl.getInterstitialToJoinOK();

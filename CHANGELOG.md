@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.392](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.391...v3.0.0-beta.392) (2024-04-05)
+
+
+### Bug Fixes
+
+* add-next-in-beta-plugin-meetings ([#3493](https://github.com/webex/webex-js-sdk/issues/3493)) ([82f4357](https://github.com/webex/webex-js-sdk/commit/82f4357ad3a39fcfb863bf9219799b2c1642af3d))
+
+## [3.0.0-beta.391](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.390...v3.0.0-beta.391) (2024-04-04)
+
+
+### Features
+
+* **jmt:** remove server side JMT ([#3511](https://github.com/webex/webex-js-sdk/issues/3511)) ([7ffd27a](https://github.com/webex/webex-js-sdk/commit/7ffd27a5c8891ac9665877e9491989773f381627))
+
+## [3.0.0-beta.390](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.389...v3.0.0-beta.390) (2024-04-04)
+
+
+### Features
+
+* **internal-plugin-metrics:** added helpers ([#3515](https://github.com/webex/webex-js-sdk/issues/3515)) ([030bfa3](https://github.com/webex/webex-js-sdk/commit/030bfa35a730512035b872ddd9cce5fed1c99407))
+
 ## [3.0.0-beta.389](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.388...v3.0.0-beta.389) (2024-04-03)
 
 

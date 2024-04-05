@@ -210,15 +210,6 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
   }
 
   /**
-   * Locus Join Response Sent Received
-   * @returns - latency
-   */
-  public getJoinRespSentReceived() {
-    // TODO: not clear SPARK-440554
-    return undefined;
-  }
-
-  /**
    * Time taken to do turn discovery
    * @returns - latency
    */
