@@ -611,5 +611,29 @@ describe('internal-plugin-metrics', () => {
       cdl.saveLatency('internal.download.time', 1000);
       assert.deepEqual(cdl.getDownloadTimeJMT(), 1000);
     });
+
+    describe('getOtherAppApiReqResp', () => {
+      it('returns undefined when no precomputed value available', () => {
+        assert.deepEqual(cdl.getOtherAppApiReqResp(), undefined);
+      });
+
+      it('returns undefined if it is less than 0', () => {
+        cdl.saveLatency('internal.other.app.api.time', 0);
+
+        assert.deepEqual(cdl.getOtherAppApiReqResp(), undefined);
+      });
+
+      it('returns the correct value', () => {
+        cdl.saveLatency('internal.other.app.api.time', 123);
+
+        assert.deepEqual(cdl.getOtherAppApiReqResp(), 123);
+      });
+
+      it('returns the correct whole number', () => {
+        cdl.saveLatency('internal.other.app.api.time', 321.44);
+
+        assert.deepEqual(cdl.getOtherAppApiReqResp(), 321);
+      });
+    });
   });
 });
