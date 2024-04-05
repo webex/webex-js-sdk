@@ -20,6 +20,15 @@ describe('getContentUrl', () => {
   });
 });
 
+describe('getContentResourceType', () => {
+  it('getContentResourceType return correct resourceType value', () => {
+    const stub = Sinon.stub(MediaSharesUtils, 'extractContent').returns({resourceType:'resourceType'});
+    const resourceType = MediaSharesUtils.getContentResourceType();
+    assert.equal(resourceType,'resourceType');
+    stub.restore();
+  });
+});
+
 describe('getContentBeneficiaryDeviceUrl', () => {
   it('getContentBeneficiaryDeviceUrl return correct deviceUrl value', () => {
     const mockContentBeneficiaryDeviceUrl = "https://wdm-a.wbx2.com/wdm/api/v1/devices/e9ffd8a1-1fae-42d1-afbe-013e951f93ab"

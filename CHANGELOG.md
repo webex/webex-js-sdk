@@ -2,6 +2,80 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.392](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.391...v3.0.0-beta.392) (2024-04-05)
+
+
+### Bug Fixes
+
+* add-next-in-beta-plugin-meetings ([#3493](https://github.com/webex/webex-js-sdk/issues/3493)) ([82f4357](https://github.com/webex/webex-js-sdk/commit/82f4357ad3a39fcfb863bf9219799b2c1642af3d))
+
+## [3.0.0-beta.391](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.390...v3.0.0-beta.391) (2024-04-04)
+
+
+### Features
+
+* **jmt:** remove server side JMT ([#3511](https://github.com/webex/webex-js-sdk/issues/3511)) ([7ffd27a](https://github.com/webex/webex-js-sdk/commit/7ffd27a5c8891ac9665877e9491989773f381627))
+
+## [3.0.0-beta.390](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.389...v3.0.0-beta.390) (2024-04-04)
+
+
+### Features
+
+* **internal-plugin-metrics:** added helpers ([#3515](https://github.com/webex/webex-js-sdk/issues/3515)) ([030bfa3](https://github.com/webex/webex-js-sdk/commit/030bfa35a730512035b872ddd9cce5fed1c99407))
+
+## [3.0.0-beta.389](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.388...v3.0.0-beta.389) (2024-04-03)
+
+
+### Bug Fixes
+
+* **meetings-and-device:** installationid-and-machineid ([#3454](https://github.com/webex/webex-js-sdk/issues/3454)) ([2d6ea18](https://github.com/webex/webex-js-sdk/commit/2d6ea18738ac1e9e56007c1729d066882c31ba15))
+
+## [3.0.0-beta.388](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.387...v3.0.0-beta.388) (2024-04-03)
+
+
+### Bug Fixes
+
+* handle empty TURN url ([#3516](https://github.com/webex/webex-js-sdk/issues/3516)) ([a173745](https://github.com/webex/webex-js-sdk/commit/a173745819fb6d9a6d412eabe23638868c5fffda))
+
+## [3.0.0-beta.387](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.386...v3.0.0-beta.387) (2024-04-03)
+
+
+### Bug Fixes
+
+* **internal-plugin-metrics:** define latency before ready ([#3514](https://github.com/webex/webex-js-sdk/issues/3514)) ([cb69e9e](https://github.com/webex/webex-js-sdk/commit/cb69e9e07fa4f5c7689bd89520459a6e9b03a938))
+
+## [3.0.0-beta.386](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.385...v3.0.0-beta.386) (2024-04-03)
+
+
+### Features
+
+* **plugin-meetings:** Return resourceType when get locus annotation info ([#3504](https://github.com/webex/webex-js-sdk/issues/3504)) ([7aafc3b](https://github.com/webex/webex-js-sdk/commit/7aafc3be9f2d8b5c0ac915e5da50062f9cbc4f99))
+
+## [3.0.0-beta.385](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.384...v3.0.0-beta.385) (2024-04-03)
+
+## [3.0.0-beta.384](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.383...v3.0.0-beta.384) (2024-03-28)
+
+
+### Bug Fixes
+
+* **metrics:** adding-appVersion-to-behavioral-metric ([#3462](https://github.com/webex/webex-js-sdk/issues/3462)) ([ab2e1de](https://github.com/webex/webex-js-sdk/commit/ab2e1de2f9cd284b0d84bbd4854c017821b773e8))
+
+## [3.0.0-beta.383](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.382...v3.0.0-beta.383) (2024-03-28)
+
+
+### Features
+
+* **internal-plugin-metrics:** allow payload modifications for unknow… ([#3492](https://github.com/webex/webex-js-sdk/issues/3492)) ([90b8e6c](https://github.com/webex/webex-js-sdk/commit/90b8e6cdfce6e09ffddd1d9c9a78603a71372d62))
+
+## [3.0.0-beta.382](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.381...v3.0.0-beta.382) (2024-03-27)
+
+## [3.0.0-beta.381](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.380...v3.0.0-beta.381) (2024-03-22)
+
+
+### Bug Fixes
+
+* **metrics:** remove debug metrics ([#3460](https://github.com/webex/webex-js-sdk/issues/3460)) ([a9985a3](https://github.com/webex/webex-js-sdk/commit/a9985a3f8e5ac6b86b9b50381e549bc392bb6734))
+
 ## [3.0.0-beta.380](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.379...v3.0.0-beta.380) (2024-03-20)
 
 

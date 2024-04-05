@@ -159,9 +159,6 @@ describe('plugin-metrics', () => {
           webex.internal.newMetrics.callDiagnosticLatencies.getDiffBetweenTimestamps = sinon
             .stub()
             .returns(10);
-          webex.internal.newMetrics.callDiagnosticLatencies.getJoinRespSentReceived = sinon
-            .stub()
-            .returns(20);
           webex.internal.newMetrics.callDiagnosticLatencies.getPageJMT = sinon.stub().returns(30);
           webex.internal.newMetrics.callDiagnosticLatencies.getClientJMT = sinon.stub().returns(5);
           webex.internal.newMetrics.callDiagnosticLatencies.getClickToInterstitial = sinon
@@ -191,7 +188,6 @@ describe('plugin-metrics', () => {
               clickToInterstitial: 10,
               interstitialToJoinOK: 10,
               joinReqResp: 10,
-              joinReqSentReceived: 20,
               meetingInfoReqResp: 10,
               pageJmt: 30,
               totalJmt: 20,
