@@ -49,13 +49,7 @@ export type InternalEvent = {
     | 'internal.client.meeting.interstitial-window.showed'
     | 'internal.client.interstitial-window.click.joinbutton'
     | 'internal.client.add-media.turn-discovery.start'
-    | 'internal.client.add-media.turn-discovery.end'
-    | 'internal.app.api.password.request'
-    | 'internal.app.api.password.response'
-    | 'internal.app.api.captcha.request'
-    | 'internal.app.api.captcha.response'
-    | 'internal.app.api.guest.auth.request'
-    | 'internal.app.api.guest.auth.response';
+    | 'internal.client.add-media.turn-discovery.end';
 
   payload?: never;
   options?: never;

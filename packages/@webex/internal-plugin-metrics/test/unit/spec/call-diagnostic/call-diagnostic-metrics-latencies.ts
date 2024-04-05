@@ -145,9 +145,9 @@ describe('internal-plugin-metrics', () => {
       let clock;
       let saveLatencySpy;
 
-      beforeEach(() => {
-        clock = sinon.useFakeTimers();
-
+      beforeEach(() => {       
+        clock = sinon.useFakeTimers(); 
+        
         saveLatencySpy = sinon.stub(cdl, 'saveLatency');
       });
 
@@ -155,7 +155,7 @@ describe('internal-plugin-metrics', () => {
         clock.restore();
         sinon.restore();
       });
-
+      
       it('checks measureLatency with overwrite false', async () => {
         const key = 'internal.client.pageJMT';
         const overwrite = false;
@@ -169,7 +169,7 @@ describe('internal-plugin-metrics', () => {
         const resolvedValue = await promise;
         assert.deepEqual(resolvedValue, 'test');
         assert.calledOnceWithExactly(callbackStub);
-        assert.calledOnceWithExactly(saveLatencySpy, key, 50, overwrite)
+        assert.calledOnceWithExactly(saveLatencySpy, key, 50, overwrite)       
       });
 
       it('checks measureLatency with overwrite true', async () => {
@@ -185,7 +185,7 @@ describe('internal-plugin-metrics', () => {
         const resolvedValue = await promise;
         assert.deepEqual(resolvedValue, 'test123');
         assert.calledOnceWithExactly(callbackStub);
-        assert.calledOnceWithExactly(saveLatencySpy, key, 20, overwrite)
+        assert.calledOnceWithExactly(saveLatencySpy, key, 20, overwrite)       
       });
 
       it('checks measureLatency when callBack rejects', async () => {
@@ -202,7 +202,7 @@ describe('internal-plugin-metrics', () => {
         const rejectedValue = await assert.isRejected(promise);
         assert.deepEqual(rejectedValue, error);
         assert.calledOnceWithExactly(callbackStub);
-        assert.calledOnceWithExactly(saveLatencySpy, key, 50, overwrite)
+        assert.calledOnceWithExactly(saveLatencySpy, key, 50, overwrite)       
       });
     });
 
@@ -615,7 +615,7 @@ describe('internal-plugin-metrics', () => {
     describe('getOtherAppApiReqResp', () => {
       it('returns undefined when no precomputed value available', () => {
         assert.deepEqual(cdl.getOtherAppApiReqResp(), undefined);
-      })
+      });
 
       it('returns undefined if it is less than 0', () => {
         cdl.saveLatency('internal.other.app.api.time', 0);
@@ -634,6 +634,6 @@ describe('internal-plugin-metrics', () => {
 
         assert.deepEqual(cdl.getOtherAppApiReqResp(), 321);
       });
-    })
+    });
   });
 });
