@@ -120,7 +120,6 @@ import {
   MeetingInfoV2CaptchaError,
   MeetingInfoV2PolicyError,
 } from '../meeting-info/meeting-info-v2';
-import BrowserDetection from '../common/browser-detection';
 import {CSI, ReceiveSlotManager} from '../multistream/receiveSlotManager';
 import SendSlotManager from '../multistream/sendSlotManager';
 import {MediaRequestManager} from '../multistream/mediaRequestManager';
@@ -147,8 +146,6 @@ import RecordingController from '../recording-controller';
 import ControlsOptionsManager from '../controls-options-manager';
 import PermissionError from '../common/errors/permission';
 import {LocusMediaRequest} from './locusMediaRequest';
-
-const {isBrowser} = BrowserDetection();
 
 const logRequest = (request: any, {logText = ''}) => {
   LoggerProxy.logger.info(`${logText} - sending request`);
