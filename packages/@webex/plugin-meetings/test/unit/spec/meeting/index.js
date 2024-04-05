@@ -712,6 +712,8 @@ describe('plugin-meetings', () => {
         it('should reject if join() fails', async () => {
           const error = new Error('fake');
           meeting.join = sinon.stub().returns(Promise.reject(error));
+          meeting.locusUrl = null; // when join fails, we end up with null locusUrl
+
           await assert.isRejected(meeting.joinWithMedia({mediaOptions: {allowMediaInLobby: true}}));
 
           assert.calledOnceWithExactly(abortTurnDiscoveryStub);
@@ -720,7 +722,7 @@ describe('plugin-meetings', () => {
             BEHAVIORAL_METRICS.JOIN_WITH_MEDIA_FAILURE,
             {
               correlation_id: meeting.correlationId,
-              locus_id: meeting.locusUrl.split('/').pop(),
+              locus_id: undefined,
               reason: error.message,
               stack: error.stack,
               leaveErrorReason: undefined,

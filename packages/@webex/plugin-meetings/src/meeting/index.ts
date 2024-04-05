@@ -4391,7 +4391,7 @@ export default class Meeting extends StatelessWebexPlugin {
         BEHAVIORAL_METRICS.JOIN_WITH_MEDIA_FAILURE,
         {
           correlation_id: this.correlationId,
-          locus_id: this.locusUrl.split('/').pop(),
+          locus_id: this.locusUrl?.split('/').pop(), // if join fails, we may end up with no locusUrl
           reason: error.message,
           stack: error.stack,
           leaveErrorReason: leaveError?.message,
