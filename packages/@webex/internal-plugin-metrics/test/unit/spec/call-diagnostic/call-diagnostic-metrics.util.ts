@@ -302,6 +302,11 @@ describe('internal-plugin-metrics', () => {
 
     [
       ['client.exit.app', {}],
+      ['client.login.end', {
+        joinTimes: {
+          otherAppApiReqResp: undefined,
+        }
+      }],
       ['client.webexapp.launched', {
         joinTimes: {
           downloadTime: undefined,

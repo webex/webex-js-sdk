@@ -444,4 +444,14 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
   public getVideoJoinRespTxStart() {
     return this.getDiffBetweenTimestamps('client.locus.join.response', 'client.media.tx.start');
   }
+
+  /**
+   * Total latency for all other app api requests.
+   * Excludes meeting info, because it's measured separately.
+   */
+  public getOtherAppApiReqResp() {
+    const otherAppApiJMT = this.precomputedLatencies.get('internal.other.app.api.time');
+
+    return otherAppApiJMT > 0 ? Math.floor(otherAppApiJMT) : undefined;
+  }
 }
