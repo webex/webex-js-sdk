@@ -4194,9 +4194,9 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/event-dictionary-ts@npm:^1.0.1329":
-  version: 1.0.1339
-  resolution: "@webex/event-dictionary-ts@npm:1.0.1339"
+"@webex/event-dictionary-ts@npm:^1.0.1387":
+  version: 1.0.1387
+  resolution: "@webex/event-dictionary-ts@npm:1.0.1387"
   dependencies:
     amf-client-js: "npm:^5.2.6"
     json-schema-to-typescript: "npm:^12.0.0"
@@ -4204,7 +4204,7 @@ __metadata:
     ramldt2jsonschema: "npm:^1.2.3"
     shelljs: "npm:^0.8.5"
     webapi-parser: "npm:^0.5.0"
-  checksum: b5a29aab5e6e74c0d26973e6666b3834cb8aa70860bbc5fd4946b694831784b4098571e09f59331f9948aff897e2e81ae6f6c4cd96b5bf03f26cdf8268c148e4
+  checksum: b4a1ee9a1ac7f366500c9a3f5435a93db77634b2e436908021210c6e1582f48bb292acecaa45d73353af6259d97584216e4ddfb10db7214ff9b94393d5c35ca9
   languageName: node
   linkType: hard
 
@@ -4572,7 +4572,7 @@ __metadata:
     "@sinonjs/fake-timers": "npm:^6.0.1"
     "@webex/common": "workspace:^"
     "@webex/common-timers": "workspace:^"
-    "@webex/event-dictionary-ts": "npm:^1.0.1329"
+    "@webex/event-dictionary-ts": "npm:^1.0.1387"
     "@webex/internal-plugin-device": "workspace:^"
     "@webex/internal-plugin-metrics": "workspace:^"
     "@webex/test-helper-chai": "workspace:^"
@@ -4674,13 +4674,12 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/internal-plugin-voicea@workspace:^, @webex/internal-plugin-voicea@workspace:packages/@webex/internal-plugin-voicea":
+"@webex/internal-plugin-voicea@workspace:packages/@webex/internal-plugin-voicea":
   version: 0.0.0-use.local
   resolution: "@webex/internal-plugin-voicea@workspace:packages/@webex/internal-plugin-voicea"
   dependencies:
     "@webex/internal-plugin-llm": "workspace:^"
     "@webex/internal-plugin-mercury": "workspace:^"
-    "@webex/internal-plugin-voicea": "workspace:^"
     "@webex/plugin-meetings": "workspace:^"
     "@webex/test-helper-chai": "workspace:^"
     "@webex/test-helper-mock-web-socket": "workspace:^"
@@ -4904,7 +4903,7 @@ __metadata:
     ip-anonymize: "npm:^0.1.0"
     javascript-state-machine: "npm:^3.1.0"
     jsdom-global: "npm:3.0.2"
-    jsonwebtoken: "npm:^8.5.1"
+    jwt-decode: "npm:3.1.2"
     lodash: "npm:^4.17.21"
     sdp-transform: "npm:^2.12.0"
     sinon: "npm:^9.2.4"
@@ -14919,6 +14918,13 @@ __metadata:
     jwa: "npm:^1.4.1"
     safe-buffer: "npm:^5.0.1"
   checksum: 347ed7c334c5b67e3c3a3d0de5053278f5004c342420e880321a9ff8fc7d731e95be969529984cd140a34fe48c7a46c0287faf8e15414b61d96b1d922f7dcce3
+  languageName: node
+  linkType: hard
+
+"jwt-decode@npm:3.1.2":
+  version: 3.1.2
+  resolution: "jwt-decode@npm:3.1.2"
+  checksum: b3258357db379db40da7bc5987d5224b3b1f3dfb36116b506c026cdb642e15b448e4547bedf314a249f0bafb63af062c281b7aa7986aab4dc2fa090598118a43
   languageName: node
   linkType: hard
 

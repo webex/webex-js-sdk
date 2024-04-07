@@ -43,6 +43,8 @@ class Metrics extends WebexPlugin {
   constructor(...args) {
     super(...args);
 
+    // @ts-ignore
+    this.callDiagnosticLatencies = new CallDiagnosticLatencies({}, {parent: this.webex});
     this.onReady();
   }
 
@@ -54,8 +56,6 @@ class Metrics extends WebexPlugin {
     this.webex.once('ready', () => {
       // @ts-ignore
       this.callDiagnosticMetrics = new CallDiagnosticMetrics({}, {parent: this.webex});
-      // @ts-ignore
-      this.callDiagnosticLatencies = new CallDiagnosticLatencies({}, {parent: this.webex});
     });
   }
 
