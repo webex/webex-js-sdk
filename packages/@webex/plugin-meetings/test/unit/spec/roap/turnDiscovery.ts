@@ -945,6 +945,17 @@ describe('TurnDiscovery', () => {
           // check also that doTurnDiscovery()  works after abort()
           result = await td.doTurnDiscovery(testMeeting, false);
         });
+
+        it('does nothing when called outside of a TURN discovery', async () => {
+          let result;
+
+          // call abort() without any other calls before it - it should do nothing
+          // there is not much we can check, so afterwards we just check that we can start a new TURN discovery
+          td.abort();
+
+          result = await td.generateTurnDiscoveryRequestMessage(testMeeting, true);
+          assert.isDefined(result.roapMessage);
+        });
       });
   });
 });

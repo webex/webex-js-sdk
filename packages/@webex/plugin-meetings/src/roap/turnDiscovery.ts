@@ -4,13 +4,11 @@ import {Defer} from '@webex/common';
 import Metrics from '../metrics';
 import BEHAVIORAL_METRICS from '../metrics/constants';
 import LoggerProxy from '../common/logs/logger-proxy';
-import {ROAP} from '../constants';
+import {ROAP, Enum} from '../constants';
 
 import RoapRequest from './request';
 import Meeting from '../meeting';
 import MeetingUtil from '../meeting/util';
-
-type Enum<T extends Record<string, unknown>> = T[keyof T];
 
 const TURN_DISCOVERY_TIMEOUT = 10; // in seconds
 
@@ -325,6 +323,8 @@ export default class TurnDiscovery {
   }
 
   /**
+   * Parses the TURN_DISCOVERY_RESPONSE roap message out of the http response
+   * and returns it.
    *
    * @param {Meeting} meeting
    * @param {any} httpResponse
