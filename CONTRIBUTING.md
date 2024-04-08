@@ -1,429 +1,255 @@
 # Contributing
 
-We'd love for you to contribute to our source code and to make **Webex Javascript SDK** even better than it is today!
-If you would like to contribute to this repository by adding features, enhancements, or bug fixes, you must follow our process:
+This project is open for contributions. This article serves as an entrypoint to begin contributing to this project.
 
-1. Let core members know about your proposal by creating an issue under the [issues page](https://github.com/webex/webex-js-sdk/issues).
-2. A core member will review your proposal and if necessary may suggest having a meeting to better understand your approach.
-3. If your proposal is approved you should start coding at this point.
-4. We recommend opening a draft PR to receive feedback before finalizing your solution. When opening a draft PR, specify with PR comments where in the code you would like to get feedback.
-5. Before opening a PR ensure **all** [PR guidelines](#submitting-a-pull-request) are followed.
-6. Core members will review the pull request and provide feedback when necessary. If a PR is too large, you may be asked to break it down into multiple smaller-scoped PRs.
-7. Once the PR is approved by a core member, it will be merged
-8. Celebrate! Your code is released 🎈🎉🍻
+* [Reporting an Issue](#reporting-an-issue)
+* [Providing Contributions](#providing-contributions)
+  * [Setup](#setup)
+    * [Requirements](#requirements)
+    * [Downloading](#downloading)
+    * [Environment](#environment)
+    * [Dependencies](#dependencies)
+    * [Prebuilding](#prebuilding)
+  * [Contribute](#contribute)
+    * [Project Changes](#project-changes)
+      * [Automation](#automation)
+      * [Configuration](#configuration)
+        * [Modern Configuration](#modern-configuration)
+        * [Legacy Configuration](#legacy-configuration)
+      * [Documentation](#documentation)
+        * [General Documentation](#general-documentation)
+        * [Samples Documentation](#samples-documentation)
+    * [Module Changes](#module-changes)
+      * [Creating](#creating)
+      * [Building](#building)
+      * [Testing](#testing)
+    * [Submitting Changes](#submitting-changes)
+* [Requesting Support](#requesting-support)
 
-- [Contributing](#contributing)
-  - [Reporting Issues](#reporting-issues)
-  - [Contributing Code](#contributing-code)
-    - [Build Dependencies](#build-dependencies)
-      - [NOTE FOR WINDOWS 10](#note-for-windows-10)
-    - [Building the SDK](#building-the-sdk)
-    - [Environment Variables](#environment-variables)
-      - [Advanced Environment Variables](#advanced-environment-variables)
-    - [Running Tests](#running-tests)
-      - [Running Samples Locally](#running-samples-locally)
-      - [Samples Tests](#samples-tests)
-        - [Local Samples Tests](#local-samples-tests)
-        - [Mobile Samples Tests (Sauce)](#mobile-samples-tests-sauce)
-        - [Local Mobile Samples Tests](#local-mobile-samples-tests)
-    - [Git Commit Guidelines](#git-commit-guidelines)
-      - [Commit Message Format](#commit-message-format)
-      - [Revert](#revert)
-      - [Type](#type)
-      - [Scope](#scope)
-      - [Subject](#subject)
-      - [Body](#body)
-      - [Footer](#footer)
-      - [Special Commit Messages](#special-commit-messages)
-        - [`[skip npm]`](#skip-npm)
-        - [`[skip ci]`](#skip-ci)
-    - [Submitting a Pull Request](#submitting-a-pull-request)
-    - [Pull Request Checklist](#pull-request-checklist)
+## Reporting an Issue
 
-## Reporting Issues
+If any issues with this project are discovered, please raise a [GitHub Issue](https://github.com/features/issues) via this project's [GitHub Issues Page](https://github.com/webex/webex-js-sdk/issues).
 
-Please raise issues using the [issues page](https://github.com/webex/webex-js-sdk/issues) in the Webex Javascript SDK. Our developer support team will reach out to you once you raise an issue. Use the following channels to reach out to the developer support team directly.
+If additional support is needed, please see our [Requesting Support](#requesting-support) section.
 
-- <https://developer.webex.com/support>
-- <devsupport@webex.com>
+## Providing Contributions
 
-## Contributing Code
+This section outlines the expected workflow when providing contributions to this project.
 
-### Build Dependencies
+### Setup
 
-Before you can build the Cisco Webex JS SDK, you will need the following dependencies:
+In order to prepare a local machine for making contributions to this project, please review the sections within this section.
 
-- [Node.js](https://nodejs.org/) (LTS)
-  - We recommend using [nvm](https://github.com/creationix/nvm) (or [nvs](https://github.com/jasongin/nvs) on Windows _(not WSL)_) to easily switch between Node.js versions
-  - Run `nvm use` to set your node version to the one this package expects
-    - If the required node version is not installed, `nvm`/`nvs` will tell you the command needed to install it
-  - Install the latest npm to enable security audits using `npm install -g npm@latest`
-- [Git](https://git-scm.com/)
-- [node-gyp](https://www.npmjs.com/package/node-gyp)
-  - This is used during the dependency install process and is used to compile some native add-on modules
-  - Install with `npm install -g node-gyp`
-    - On Windows _(not WSL)_, follow [Option 1](https://github.com/nodejs/node-gyp#option-1) on node-gyp's repo, as this will automatically install python 2 and necessary build dependencies
-- [Python 2.7](https://www.python.org/download/releases/2.7/)
-  - This is also used during the dependency install process
-  - Attempting to update dependencies with a Python 3.x environment will fail
-- [jq](https://github.com/stedolan/jq#jq)
-  - jq processes JSON objects in bash. We use this command throughout our tooling
-  - Follow [these instructions on how to install `jq` in your system](https://stedolan.github.io/jq/download/)
+#### Requirements
 
-#### NOTE FOR WINDOWS 10
+This project has platform requirements that must be met before providing contributions. For **Windows Developer Platforms**, it is recommended to use [Windows Subsystem for Linux](https://learn.microsoft.com/en-us/windows/wsl/about) before proceeding.
 
-**We suggest using [Windows Subsystem for Linux](https://docs.microsoft.com/en-us/windows/wsl/about) (WSL) for the best experience on Windows.** 
+The following items are required before providing contributions:
 
-We've seen multiple tooling/package-related errors when trying to build on a regular Windows environment. The build errors are a result of third-party node_modules that we do not maintain. These issues are not seen when using WSL.
+* [Node Version Manager](https://github.com/nvm-sh/nvm) - *install the correct version for your platform*
+* [NodeJS/NPM](https://nodejs.org/en) - *installed via `Node Version Manager`*
+* [Yarn](https://yarnpkg.com/) - *installed via `corepack enable`*
+* [Git](https://git-scm.com/) - *used for submitting contributions*
 
-### Building the SDK
+This project also has some additional requirements that are (sometimes) optional depending on your platform:
 
-Ensure that you have followed all the steps outlined in [Build Dependencies](#build-dependencies).
+* [Python 2](https://www.python.org/download/releases/2.7/) - *used for some tooling, install as necessary*
+* [JQ](https://github.com/stedolan/jq#jq) - *used for processing JSON in terminal, install as necessary*
+* [libcrypt](https://gnupg.org/software/libgcrypt/index.html) - *general purpose cryptography, install as necessary*
+* [graphicsmagick](http://www.graphicsmagick.org/) - *image processor, install as necessary*
 
-Fork the [webex-js-sdk](https://github.com/webex/webex-js-sdk/) repository and `git clone` your fork:
+#### Downloading
+
+This project must be [Forked on GitHub](https://github.com/webex/webex-js-sdk/fork) and downloaded locally using [Git](https://git-scm.com/) in order to begin providing contributions. Once the project is forked, perform the following `bash` operations to download the project.
 
 ```bash
-git clone https://github.com/your-username/webex-js-sdk.git
+# download the forked project
+git clone {https/ssh-target-to-clone}
+
+# move the focus into the directory
+cd ./webex-js-sdk
+
+# add the upstream remote
+git remote add upstream git@github.com:webex/webex-js-sdk.git # for SSH
+# OR
+git remote add upstream https://github.com/webex/webex-js-sdk.git # for HTTPS
 ```
 
-Install tooling dependencies with:
+Some additional setup requirements for [Git](https://git-scm.com/) or [GitHub](https://github.com/) may be required, please review their respective documentation as needed.
+
+#### Environment
+
+In order to operate all parts of this project at runtime, the following `ENV` variables must be provided:
+
+* `WEBEX_CLIENT_ID` - *used for client-type authorization*
+* `WEBEX_CLIENT_SECRET` - *used for client-type authorization*
+* `WEBEX_APPID_ORGID` - *used for test user generation*
+* `WEBEX_APPID_SECRET` - *used for test user generation*
+* `WEBEX_CONVERGED_ORG_ID` - *used for test user generation, meetings-plugin specific*
+
+Note that the above values can also be provided via the `./.env` file within this project.
+
+Additionally, a template for all available ENV values can be found within the `./.env.default` file, which is automatically incorporated when any runtime within this project requires `ENV` values.
+
+#### Dependencies
+
+Installation of this project's dependencies should be performed prior to executing any scripts associated with this project. Follow the below steps to ensure that all dependencies are installed as intended:
+
+1. `nvm install` - Install and set the versions of [NodeJS and NPM](https://nodejs.org/en) identified in the `./.nvmrc` file.
+2. `corepack enable` - Enables `corepack` locally for the current version of [NodeJS and NPM](https://nodejs.org/en). This enables [Yarn](https://yarnpkg.com/) usage.
+3. `yarn` - Install all dependencies listed within this project and links localized modules (symlink)
+
+#### Prebuilding
+
+In order to make the development against this project as streamlined as possible, prebuilding all modules is recommended. The below commands should be executed in their provided order whenever new changes are ingested locally.
+
+1. `yarn` - Installs any new dependencies or links any new localized modules (symlink)
+2. `yarn @tools build:src` - Builds core tooling.
+3. `yarn @legacy-tools build:src` - Builds legacy tooling.
+4. `yarn workspace @webex/webex-core build:src` - Builds the module core.
+5. `yarn @all build:src` - Build all remaining packages in the project.
+
+After prebuilding has been completed, any script within any module should operate as intended. For more information on specifics for each module, please review their respective documentation. This documentation should be located within the module's `./README.md` or built documentation.
+
+### Contribute
+
+When contributing to this project, there are two major areas that can accept changes. The below sections outline those areas and how they operate.
+
+#### Project Changes
+
+Project changes include any changes to items outside of the `./packages/` folder. These changes typically impact all sub-modules within this project. Changes that occur against this scope will require a more strict review from the owners of this project.
+
+##### Automation
+
+Automation for this project exists entirely within the `./.github/workflows/` folder. This includes the following high-importance items:
+
+* [**Deploy**](./.github/workflows/deploy.yml) - Continuous Delivery Workflow
+* [**Pull Request**](./.github/workflows/pull-request.yml) - Pull Request Validation.
+
+The workflows defined above are written using [GitHub Actions](https://github.com/features/actions) and can be reviewed from the projects [actions page](https://github.com/webex/webex-js-sdk/actions).
+
+The [workflows folder](./.github/workflows/) may contain additional items as well, please review this folder to see all additional workflows.
+
+##### Configuration
+
+###### Modern Configuration
+
+Global **modern configuration** for this project can be found exclusively within the `./config/` folder of this project. This folder contains configuration scopes based on their respective runtimes. Each of these folders *should* contain an associated `README.md` file that includes all necessary documentation to consume the contents. Be sure to inspect the documentation for each of the respective runtimes when making changes to a specific scope.
+
+###### Legacy Configuration
+
+Global **legacy configuration** is available within the `./packages/legacy/` folder. This configuration exclusively applies to the following modules scopes:
+
+* `./packages/@webex` - Webex modular modules.
+* `./packages/webex` - Webex unified modules.
+
+These modules utilize older configuration formats that no longer align within the Webex JS SDK product direction, and will eventually be migrated to the newer configurations as resources permit.
+
+##### Documentation
+
+###### General Documentation
+
+Documentation for this project can be broken down into various common files:
+
+* [CONTRIBUTING.md](./CONTRIBUTING.md) - Contribution Guide
+* [ENV.md](./ENV.md) - Environment Variable Documentation
+* [README.md](./README.md) - Project Details
+* [SCRIPTS.md](./SCRIPTS.md) - Script Information
+
+The previous defined list of documentation articles are used to help provide both consumers and contributors with all of the necessary information needed to understand how to get started with this project.
+
+###### Samples Documentation
+
+In addition to the above documentation, there are **samples** that can be built and ran as well. This is done by performing the following actions after [setting up this project locally](#setup):
 
 ```bash
-yarn install
+yarn samples:serve
 ```
 
-Build the SDK locally:
+After the samples have been built, navigate to [https://localhost:8000/](https://localhost:8000/) to view the samples.
 
-```bash
-yarn run build:local
-```
+>**NOTE**: The samples use a self-signed certificate generated by [Webpack Dev Server](https://webpack.js.org/configuration/dev-server/#devserverhttps). Some browsers (such as Chromium-based browsers) may not allow access to view the samples for security reasons. Be sure to enable any flags necessary to allow for navigation to localhost over https.
 
-If at any point your out-of-the-box builds or failing or if you are testing are failing with complaints of an invalid node version, the following commands will reset and rebuild everything:
+#### Module Changes
 
-```bash
-yarn
-```
+All module changes within this project will be scoped to modules within the `./packages/**/{module}` folder. These modules are broken down as follows:
 
-By default, npm uses `sh` which does not support the glob syntax, and as such `distsrc` and `srcdist` will fail with _No such file or directory_. To fix this you can set npm to use bash instead of using:
+* `./packages/@webex` - Feature modules.
+* `./packages/webex` - Unified module.
+* `./packages/legacy` - Legacy configuration and tooling (used by `./packages/@webex` and `./packages/webex`).
+* `./packages/tools` - Modern tooling (used for automation and scripts).
 
-```bash
-npm config set script-shell "/bin/bash"
-```
+All modules within this scope should follow the common script naming rulesets defined within the `[SCRIPTS.md](./SCRIPTS.md) file within this project. This allows for **automation** to run appropriately against these packages.
 
-### Environment Variables
+##### Creating
 
-You will need to create a file called `.env` that defines, at a minimum:
+When creating a new module within this project, it is best to begin by identifying whether or not the new module will exist within one of the three types:
 
-- `WEBEX_CLIENT_ID`
-- `WEBEX_CLIENT_SECRET`
-- `WEBEX_REDIRECT_URI`
-- `WEBEX_SCOPE`
-
-You can get these values by registering a new integration on [Cisco Webex for Developers](https://developer.webex.com/my-apps/new/integration).
-
-#### Advanced Environment Variables
-
-The JS SDK allows you to customize your experience via configuration and environment variables. In general, external developers will not need to set any of the URL-related environment variables.
-
-| **Environment Variable**             | **Details**                                                                                                              | **Default**                                         |
-| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------- |
-| `ATLAS_SERVICE_URL`                  | Used to populate the atlasServiceUrl pre-discovery config                                                                | https://atlas-a.wbx2.com/admin/api/v1               |
-| `CLIENT_LOGS_SERVICE_URL`            | Used to populate the clientLogsServiceUrl pre-discovery config                                                           | https://client-logs-a.wbx2.com/api/v1               |
-| `CONVERSATION_SERVICE`               | Used for validating an auth token                                                                                        | https://conv-a.wbx2.com/conversation/api/v1         |
-| `ENABLE_MERCURY_LOGGING`             | When set, will log all mercury messages                                                                                  | undefined                                           |
-| `ENABLE_VERBOSE_NETWORK_LOGGING`     | Utilized to enable interceptor logging                                                                                   | undefined                                           |
-| `ENCRYPTION_SERVICE_URL`             | Used for plugin-board tests                                                                                              | https://encryption-a.wbx2.com                       |
-| `HYDRA_SERVICE_URL`                  | Stores the public hydra API URL for managing Webex resources.                                                            | https://api.ciscospark.com/v1/                      |
-| `IDBROKER_BASE_URL`                  | Used throughout the SDK as the endpoint for authorization                                                                | https://idbroker.webex.com                          |
-| `IDENTITY_BASE_URL`                  | Used to communicate with the identity API                                                                                | https://identity.webex.com                          |
-| `MERCURY_FORCE_CLOSE_DELAY`          | Milliseconds to wait for a before declaring the socket dead                                                              | 2000                                                |
-| `MERCURY_PING_INTERVAL`              | Milliseconds between pings sent up the socket                                                                            | 15000                                               |
-| `MERCURY_PONG_TIMEOUT`               | Milliseconds to wait for a pong before declaring the connection dead                                                     | 14000                                               |
-| `METRICS_SERVICE_URL`                | Used to populate the metricsServiceUrl pre-discovery config                                                              | https://metrics-a.wbx2.com/metrics/api/v1           |
-| `U2C_SERVICE_URL`                    | Stores the service catalog collecting url, typically the **U2C** service.                                                | https://u2c.wbx2.com/u2c/api/v1                     |
-| `WEBEX_ACCESS_TOKEN`                 | Used to provide access token when using "webex/env"                                                                      | undefined                                           |
-| `WEBEX_AUTHORIZE_URL`                | Populates the Authorization URL which prompts for the user's password.                                                       | https://idbroker.webex.com/idb/oauth2/v1/authorize  |
-| `WEBEX_AUTHORIZATION_STRING`         | This is the authorization URL for the integration from [Cisco Webex for Developers](https://developer.webex.com/my-apps) | undefined                                           |
-| `WEBEX_CLIENT_ID`                    | The Webex client ID used to authorize                                                                                    | undefined                                           |
-| `WEBEX_CLIENT_SECRET`                | The Webex client secret used to authorize                                                                                | undefined                                           |
-| `WEBEX_CONVERSATION_CLUSTER_SERVICE` | Service identifier used to lookup conversation servers in hostmap                                                        | identityLookup                                      |
-| `WEBEX_CONVERSATION_DEFAULT_CLUSTER` | Cluster used to convert from "us" cluster to actual cluster                                                              | urn:TEAM:us-east-2_a:identityLookup                 |
-| `WEBEX_LOG_LEVEL`                    | Maximum log level that should be printed to the console.                                                                 | log                                                 |
-| `WEBEX_REDIRECT_URI`                 | The URI to redirect to after authorization                                                                               | undefined                                           |
-| `WEBEX_SCOPE`                        | The Webex scope the users will authorize with                                                                            | undefined                                           |
-| `WDM_SERVICE_URL`                    | The WDM service URL before the catalog is downloaded                                                                     | https://wdm-a.wbx2.com/wdm/api/v1                   |
-| `WHISTLER_API_SERVICE_URL`           | The URL to the whistler test service                                                                                     | https://whistler-prod.allnint.ciscospark.com/api/v1 |
-| `WHISTLER`                           | Run (meetings) tests using Whistler users                                                                                | FALSE                                               |
-| `JENKINS`                            | Run specific tests that should be run on (internal) Jenkins                                                              | FALSE                                               |
+* **Legacy Module**
+  * Module that will utilize the older tooling (such as [Ampersand](https://www.npmjs.com/package/ampersand) or [Babel](https://babeljs.io/))
+  * This is typically any module that will exist within `./packages/@webex`.
+  * [Legacy Module Example - Messaging Plugin](./packages/@webex/plugin-messages/)
+* **Modern Module**
+  * Module that will be built using newer technology.
+  * This is recommended for any module that will not need to access legacy dependencies (such as [Ampersand](https://www.npmjs.com/package/ampersand)).
+  * [Modern Module Example - Package Tools](./packages/tools/package/)
+* **Migration Module**
+  * Any module that will be migrated into this project from an external project repository.
+  * [Migration Module Example - Calling SDK](./packages/calling/)
 
-### Running Tests
+Once a module type has been determined, follow the linked example modules for examples on creating the module.
 
-Since we are now using yarn workspaces, use the `yarn workspace "plugin name" run test:unit/browser/integration` to run tests for a specific package. This is practical and saves time.
+##### Building
 
-For example, to run various tests on the `plugin-meetings` package, use the commands that follow:
-`yarn workspace @webex/plugin-meetings run test:unit`
+Building modules can be done by following common script semantics provided by [SCRIPTS.md](./SCRIPTS.md). The recommended tooling for each type of module will be listed below:
 
-`yarn workspace @webex/plugin-meetings run test:integration`
+* **Legacy Module** - [Legacy Tools](./packages/legacy/tools/).
+  * All tooling is ran through the CLI via `webex-legacy-tools`.
+  * Use `webex-legacy-tools --help` to get started
+  * Use the [Legacy Module Example - Messaging Plugin](./packages/@webex/plugin-messages/) as a template.
+* **Modern Module** - Any modern tooling that has [localized configuration](./config/).
+  * Typically will use [TypeScript](https://www.typescriptlang.org/) with the modern [TypeScript configuration](./config/typescript/).
+  * Will extract documentation using [API Extractor](https://api-extractor.com/) with the modern [API Extractor Configuration](./config/api-extractor/).
+  * Will build documentation using [API Documenter](https://www.npmjs.com/package/@microsoft/api-documenter).
+* **Migration Module**
+  * Originally, the tooling that existed in the previous project will be consumed.
+  * Ultimately, should be migrated to use **Modern Module Tooling**.
 
-`yarn workspace @webex/plugin-meetings run test:browser`
+##### Testing
 
-A local development flow might look like
+Testing modules can be done by following common script semantics provided by [SCRIPTS.md](./SCRIPTS.md). The recommended tooling for each type of module will be listed below:
 
-1. Edit source code in `MYPACKAGE`.
-2. Use `yarn run build:local` to build all packages.
-3. Use `yarn workspace @webex/MYPACKAGE run test:unit/browser/integration` to run the tests for just that package. 
-4. Repeat steps 1-3 until the tests pass.
+* **Legacy Module** - [Legacy Tools](./packages/legacy/tools/).
+  * Uses [Mocha](https://mochajs.org/) or [Jest](https://jestjs.io/)
+  * Runs in browser using [Karma](https://karma-runner.github.io/latest/index.html)
+  * **Does not** need to pass coverage tests.
+* **Modern Module** - Any modern tooling that has [localized configuration](./config/).
+  * Uses [Jest](https://jestjs.io/) exclusively (while [Jasmine](https://jasmine.github.io/) was previously supported).
+  * **Does not** test pre-compiled code (only test whats in `./dist/**`) for the module.
+  * **Requires** coverage to be 100% for the pull request to pass automated testing.
+* **Migration Module**
+  * Originally, the tooling that existed in the previous project will be consumed.
+  * Ultimately, should be migrated to use **Modern Module Tooling**.
 
-You can use the `test:unit`, `test:integration`, and `test:browser` switches to control what types of tests you run as well as the environments in that you'd like to run those tests in.
+#### Submitting Changes
 
-To run tests on multiple packages at the same time, use the `workspaces` feature in `yarn` as shown below:
-`yarn workspaces foreach --verbose --exclude webex-js-sdk --include '{@webex/MYPACKAGE,@webex/MYPACKAGE2}' run test:unit`. 
+When submitting changes to this project, all changes must go through the [GitHub Pull Request](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/about-pull-requests) process. Below are the steps outlining the process:
 
-`test:browser --karma-debug` will run the browser tests with `{singleRun: false}`, thus allowing automatic rerunning every time you save a file (though, karma does eventually get confused and you need to interrupt and restart the command).
+* The pull request is created on this projects [pull request](https://github.com/webex/webex-js-sdk/pulls) page.
+* The pull request is then **validated** by a code-owner [for any security violations](https://securitylab.github.com/research/github-actions-preventing-pwn-requests/#:%7E:text=of%20the%20PR.-,Having%20said%20that,-%2C%20mixing%20pull_request_target%20with).
+* Once **validated**:
+  * [Pull request automation](https://github.com/webex/webex-js-sdk/actions/workflows/pull-request.yml) tests run.
+  * Code-owners review the changes.
+* Once Automation tests pass, and code-owners approve of the changes:
+  * The pull request is merged
+* [Deployment automation](https://github.com/webex/webex-js-sdk/actions/workflows/deploy.yml) runs.
+* Packages are deployed to their artifact repositories.
 
-You can use the `--browsers` _(not to be confused with the `--browser` tag)_ allows you to specify which browsers you want to run locally. This is restricted to what browsers are installed and available to you on your OS.
-The default browsers that launch are _Headless_ versions of Firefox and Chrome, so `--browsers Chrome Edge` will only launch a normal version of Chrome along with Edge. If you add `defaults` to the browser flag, it will also launch `ChromeHeadless` and `FirefoxHeadless` along with other browsers you've specified. All browsers include flags to enable WebRTC features and permissions.
-Before running the browser tests, ensure you've set the environment variables. An example of setting a variable is included below:
-`export FIREFOX_BIN=/Applications/Firefox.app/Contents/MacOS/firefox`
+>**NOTE**: All pull requests will need to follow [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) in order to be accepted by our code-owners.
 
-To run tests on [Sauce Labs](https://saucelabs.com/) locally, you'll need to add an inline environment variable, `SAUCE=true`. As mentioned above you can specify which browsers you'd like to test on with the `--browser` flag, but with Sauce Labs service available to you, you can also specify which OS you'd like to test on. With the `--os` flag you have the option of testing on `Mac` and `Windows`. You can filter down the browsers that get launched by using the `--browsers` flag, so if you use `--os Windows --browsers Edge IE` it will launch only `Edge` and `IE`. Specifying just `--browsers` with `SAUCE=true` will launch that browser in all available OSs, so `--browsers Firefox` will launch `Firefox` in `Mac` and `Windows`.
+## Requesting Support
 
-> **The default Sauce Labs configuration _"`SAUCE=true yarn run test`"_ is the latest versions of `Chrome` and `Firefox` on both `Mac` and `Windows`, along with `Edge` and `IE 11` on Windows, and `Safari` on Mac**
+Please reach out to our developer support team in regards to any questions or issues related to the Webex JS SDK.
 
-> `--os Mac` will launch `Chrome`, `Firefox`, and `Safari`
->
-> `--os Windows` will launch `Chrome`, `Firefox`, `Edge`, and `IE 11`
->
-> `--os Linux` WILL NEED `--browsers Firefox` as Sauce Labs only supports `Firefox 45` for Linux. This is why it's also not included by default and requires two flags
-
-> See more scripts at [`SCRIPTS.md`](SCRIPTS.md) to learn how to run tests and more.
-
-#### Running Samples Locally
-
-To test your changes locally using the kitchen sink application, you can use the following set of commands to clone, build packages locally, and run the `samples` page, which is another term for the kitchen sink.
-
-```bash
-git clone git@github.com:webex/webex-js-sdk.git
-cd webex-js-sdk
-yarn install
-yarn run build:local
-yarn run samples:serve
-```
-
-> NOTE: This installs all of the SDK's tooling dependencies, so you'll need `libgcrypt` and (possibly) `graphicsmagick`.
->
-> - Mac
->
->   - You can install these with `brew install graphicsmagick libgcrypt`.
->
-> - Ubuntu
->
->   - You can install these with `sudo apt-get install graphicsmagick libgcrypt-dev`
->
-> - Windows
->   - You can install `graphicsmagick` using either [scoop](https://scoop.sh/) or [Chocolatey](https://chocolatey.org/)
->     - scoop: `scoop install graphicsmagick`
->     - chocolatey: `choco install graphicsmagick`
->     - Also _globally_ install `win-node-env` to resolve `NODE_ENV` windows related command issues
-
-Head to [https://localhost:8000/](https://localhost:8000/) to use the samples
-
-> NOTE: The samples use a self-signed certificate generated by [Webpack Dev Server](https://webpack.js.org/configuration/dev-server/#devserverhttps).
-> Some browsers such as Google Chrome (or any other Chromium-based browser) may not allow access by default for security reasons.
-> You may need to configure browser settings to allow these at your own risk by enabling the `chrome://flags/#allow-insecure-localhost` flag.
-
-#### Samples Tests
-
-The samples tests are run by <https://webdriver.io> which spins up two browser instances and has them communicate with each other.
-
-These tests are run with `yarn run samples:test`.
-
-We have found that due to the h.264 codec downloading in Firefox, the best way to run these tests is on Sauce Labs.
-You can run them on Sauce Labs with `SAUCE=true yarn run samples:test`.
-
-To run a specific sample test instead of the full suite, append the `--spec` flag to the `samples:test` command and the path to the specific test
-
-```sh
-yarn run samples:test --spec docs/samples/browser-call-with-screenshare
-```
-
-If an error occurs when running the above command that appears to be related to a missing [Selenium](https://www.selenium.dev/) driver, the following command should install the needed external dependencies:
-
-```sh
-./node_modules/.bin/selenium-standalone install
-```
-
-> _Latest versions of Chrome and firefox need to be installed for Selenium to launch correctly._
-
-##### Local Samples Tests
-
-If you wish to run the samples tests locally, we suggest changing from the Chrome-to-Firefox multi-remote setup to Chrome-to-Chrome.
-
-You can do so by modifying the [`wdio.conf.js`](./wdio.conf.js) file.
-Simply change the `browserFirefox`'s `capabilities` object to the same as `browserChrome` (the Chrome instance).
-When you run, you should see two instances of Chrome open.
-
-##### Mobile Samples Tests (Sauce)
-
-> NOTE: You will need to switch off the VPN for localhost to tunnel correctly
-
-`SAUCE=true yarn run samples:test:mobile`
-
-- You will need to alias `localhost` which will require you to modify your `hosts` file and add that alias to your `.env` file with the name `LOCALHOST_ALIAS`.
-- By default, the config will use `local.localhost` as the alias if `LOCALHOST_ALIAS` isn't provided.
-  - on macOS/Linux, you will add `127.0.0.1 local.localhost` to `/etc/hosts`
-  - on Windows, you will add `127.0.0.1 local.localhost` to `c:\Windows\System32\Drivers\etc\hosts`
-
-##### Local Mobile Samples Tests
-
-> NOTE: You will need to switch off the VPN for localhost to tunnel correctly
-> Testing on an iDevice only works on macOS due to the lockdown of `safaridriver`, you should probably switch to [two Android devices and changes to the `wdio.conf.mobile.js`](https://chromedriver.chromium.org/getting-started/getting-started---android#h.p_ID_306) or swap the iDevice config for a different browser installed on the machine.
-
-`yarn run samples:test:mobile`
-
-By default, the config will look for both an Android and iOS device attached to the system. If you wish to test on a specific/singular device and use Chrome installed on your machine, you can pass either `IOS=true` or `ANDROID=true` environment variables to the command above.
-_Ex. `ANDROID=true yarn run samples:test:mobile` will open Chrome on your local machine and Chrome on your attached Android device._
-
-This process is more involved and requires both devices to be wired to the laptop/machine.
-
-**_Machine/Laptop_**
-
-- You will need to alias `localhost` which will require you to modify your `hosts` file and add that alias to your `.env` file with the name `LOCALHOST_ALIAS`.
-- By default, the config will use `local.localhost` as the alias if `LOCALHOST_ALIAS` isn't provided.
-  - on macOS/Linux, you will add `127.0.0.1 local.localhost` to `/etc/hosts`
-  - on Windows, you will add `127.0.0.1 local.localhost` to `c:\Windows\System32\Drivers\etc\hosts`
-- For iDevices, you'll need to enable `safaridriver`
-  - `safaridriver --enable` (macOS only)
-- For Android, you'll need `adb` installed
-  - You can run `adb devices` which will autostart the server and show you the devices connected
-
-**_iOS_**
-
-- You will need to make sure that the device has already been trusted to be used by the machine/laptop or else it will not be discovered when webdriverio attempts to connect to the device
-- You will need to enable remote debugging on your device
-  - _Settings > Safari > Advanced > Remote automation_
-
-**_Android_**
-
-- On your device, you'll need to enable Developer Options & USB Debugging
-  - _Settings > About Phone > Tap `Build Number` till Developer Options is enabled_
-  - _Settings > Developer Options > USB Debugging > Enable USB Debugging_
-- You will need to make sure that USB Debugging has trusted the machine/laptop or else it will not be discovered when webdriverio attempts to connect to the device
-
-### Git Commit Guidelines
-
-We follow the [Conventional Commits](https://www.conventionalcommits.org/) specification when writing commits and are run/linted through [conventional changelog](https://github.com/conventional-changelog/conventional-changelog)
-to generate the changelog. Please adhere to the following guidelines when formatting your commit messages.
-
-#### Commit Message Format
-
-Each commit message consists of a **header**, a **body**, and a **footer**. The header has a special format that includes a **type**, a **scope** and a **subject**:
-
-```text
-<type>(<scope>): <subject>
-<BLANK LINE>
-<body>
-<BLANK LINE>
-<footer>
-```
-
-The **header** is mandatory and the scope of the header is optional.
-
-Any line of the commit message cannot be longer 100 characters! This allows the message to be easier to read on GitHub as well as in various git tools.
-
-#### Revert
-
-If the commit reverts a previous commit, it should begin with `revert:`, followed by the header of the reverted commit. In the body, it should say: `This reverts commit <hash>`., where the hash is the SHA of the commit being reverted.
-
-#### Type
-
-> Examples can be found on the [Conventional Commits website](https://www.conventionalcommits.org/en/v1.0.0/#examples)
-
-The following types will cause a version bump:
-
-- **fix**: Patches a bug in the code and directly corresponds to the **PATCH**
-- **perf**: A code change that improves performance and corresponds to the **PATCH**
-- **feat**: Describes a new feature and corresponds to the **MINOR**
-- **BREAKING CHANGE**: a commit that has a footer `BREAKING CHANGE:`, or appends a `!` after the type/scope, introduces a breaking API change (correlating with **MAJOR** in semantic versioning).
-
-> Appending a `!` and/or a `BREAKING CHANGE:` footer to **ANY TYPE** will denote a **BREAKING CHANGE** and will cause a **MAJOR** bump
-
-The following types will _**not**_ cause a version bump:
-
-- **build**: Changes that affect the build system or external dependencies
-- **ci**: Changes to our CI configuration files and scripts
-- **docs**: Documentation only changes
-- **refactor**: A code change that neither fixes a bug, adds a feature, nor changes affecting the public API and corresponds to the **PATCH**
-- **style**: Changes that do not affect the meaning of the code (white space, formatting, missing semi-colons, etc)
-- **test**: Adding missing tests or correcting existing tests
-
-#### Scope
-
-The scope should indicate what is being changed. Generally, these should match package names. For example, `http-core`, `common`, `webex`, etc. Other than package names, `tooling` tends to be the most common.
-
-#### Subject
-
-The subject contains a succinct description of the change:
-
-- use the imperative, present tense: "change" not "changed" nor "changes"
-- don't capitalize the first letter
-- no dot (.) at the end
-
-#### Body
-
-Just as in the **subject** the imperative, present tense: "change" not "changed" nor "changes". The body should include the motivation for the change and contrast this with previous behavior.
-
-#### Footer
-
-The footer should contain any information about **Breaking changes** and is also the place to reference GitHub issues that this commit **closes**.
-
-**Breaking Changes** should start with the word `BREAKING CHANGE:` with a space or two newlines. The rest of the commit message is then used for this.
-
-#### Special Commit Messages
-
-These are commit messages that will have an impact on how the build pipeline behaves. They are not to be used without prior approval.
-
-All of these commit messages should include an explanation for why you're using them. You'll need to commit with `-n` or `--no-verify` to bypass the commit message linter.
-
-> For example
-> `git commit -m "docs(webex-core): [skip npm] - docs change" --no-verify`
-
-##### `[skip npm]`
-
-This will run through all the GitHub Checks but will skip any version bumping, tagging, and subsequent publishing to npm after a pull request is merged.
-
-##### `[skip ci]`
-
-This will skip the CircleCI pipeline entirely.
-
-### Submitting a Pull Request
-
-Before developing a new feature, be sure to search the [Pull Requests](https://github.com/webex/webex-js-sdk/pulls) for your idea to ensure you're not creating a duplicate change. Then, create a development branch in your forked repository for your idea and start coding!
-
-When you're ready to submit your change, first check that new commits haven't been made in the upstream's `next` branch. If there are new commits, rebase your development branch to ensure a fast-forward merge when your Pull Request is approved:
-
-```bash
-# Fetch upstream next and update your local next branch
-git fetch upstream
-git checkout next
-git merge upstream/next
-
-# Rebase your development branch
-git checkout feature
-git rebase next
-```
-
-Finally, open a [new Pull Request](https://github.com/webex/webex-js-sdk/compare) with your changes. Be sure to mention the issues this request addresses in the body of the request. Once your request is opened, a developer will review, comment, and, when approved, merge your changes!
-
-### Pull Request Checklist
-
-Before you open that new pull request, make sure to have completed the following checklist:
-
-- Code follows the style guidelines of this project
-- I have performed a self-review of my code
-- I have commented on my code, particularly in hard-to-understand areas
-- I have made corresponding changes to the documentation
-- My changes generate no new warnings
-- I have added tests that prove my fix is effective or that my feature works
-- New and existing unit tests pass locally with my changes
-- Any dependent changes have been merged and published in downstream modules
+* <https://developer.webex.com/support>
+* <devsupport@webex.com>
