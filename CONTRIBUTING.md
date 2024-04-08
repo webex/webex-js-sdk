@@ -109,6 +109,12 @@ In order to make the development against this project as streamlined as possible
 4. `yarn workspace @webex/webex-core build:src` - Builds the module core.
 5. `yarn @all build:src` - Build all remaining packages in the project.
 
+Alternatively, the following command can be executed to run all of the above commands in a single alias:
+
+```bash
+yarn prebuild:modules
+```
+
 After prebuilding has been completed, any script within any module should operate as intended. For more information on specifics for each module, please review their respective documentation. This documentation should be located within the module's `./README.md` or built documentation.
 
 ### Contribute
