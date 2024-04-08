@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.395](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.394...v3.0.0-beta.395) (2024-04-08)
+
+
+### Bug Fixes
+
+* Roap optimizations phase 2 ([#3449](https://github.com/webex/webex-js-sdk/issues/3449)) ([cf8dbe1](https://github.com/webex/webex-js-sdk/commit/cf8dbe10d678f84dcd0f9267635b4418c23dea17))
+
 ## [3.0.0-beta.394](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.393...v3.0.0-beta.394) (2024-04-08)
 
 
