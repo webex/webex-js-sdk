@@ -122,6 +122,7 @@ export default class MeetingRequest extends StatelessWebexPlugin {
     meetingNumber: any;
     permissionToken: any;
     preferTranscoding: any;
+    reachability: any;
     breakoutsSupported: boolean;
     locale?: string;
     deviceCapabilities?: Array<string>;
@@ -143,6 +144,7 @@ export default class MeetingRequest extends StatelessWebexPlugin {
       pin,
       moveToResource,
       roapMessage,
+      reachability,
       preferTranscoding,
       breakoutsSupported,
       locale,
@@ -260,8 +262,15 @@ export default class MeetingRequest extends StatelessWebexPlugin {
       };
     }
 
-    if (roapMessage) {
-      body.localMedias = roapMessage.localMedias;
+    if (roapMessage || reachability) {
+      body.localMedias = [
+        {
+          localSdp: JSON.stringify({
+            roapMessage,
+            reachability,
+          }),
+        },
+      ];
     }
 
     /// @ts-ignore
