@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.394](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.393...v3.0.0-beta.394) (2024-04-08)
+
+
+### Features
+
+* **internal-plugin-meetings:** u2c latency ([#3519](https://github.com/webex/webex-js-sdk/issues/3519)) ([4240115](https://github.com/webex/webex-js-sdk/commit/4240115d48627a8d2daef79956be7d6c9db760d4))
+
 ## [3.0.0-beta.393](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.392...v3.0.0-beta.393) (2024-04-05)
 
 
