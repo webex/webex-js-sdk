@@ -121,7 +121,7 @@ describe('TurnDiscovery', () => {
         });
 
         // checks that OK roap message was sent or not sent and that the result is as expected
-        const checkResult = async (resultPromise, expectedRoapMessageSent, expectedResult) => {
+        const checkResult = async (resultPromise, expectedRoapMessageSent, expectedResult, expectedSkipReason?: string) => {
           let turnServerInfo, turnDiscoverySkippedReason;
 
           if (expectedRoapMessageSent === 'OK') {
@@ -150,7 +150,7 @@ describe('TurnDiscovery', () => {
           }
 
           assert.deepEqual(turnServerInfo, expectedResult);
-          assert.isUndefined(turnDiscoverySkippedReason);
+          assert.equal(turnDiscoverySkippedReason, expectedSkipReason);
         };
 
         it('sends TURN_DISCOVERY_REQUEST, waits for response and sends OK', async () => {
@@ -302,7 +302,7 @@ describe('TurnDiscovery', () => {
           // @ts-ignore
           mockRoapRequest.sendRoap.resetHistory();
 
-          await checkResult(result, undefined, undefined);
+          await checkResult(result, undefined, undefined, 'failure: Unexpected token o in JSON at position 1');
           checkFailureMetricsSent();
         });
 
@@ -366,7 +366,7 @@ describe('TurnDiscovery', () => {
           // @ts-ignore
           mockRoapRequest.sendRoap.resetHistory();
 
-          await checkResult(result, undefined, undefined);
+          await checkResult(result, undefined, undefined, 'failure: TURN_DISCOVERY_RESPONSE in http response has unexpected messageType: {"seq":"0","messageType":"ERROR"}');
         });
       });
     });
@@ -494,7 +494,7 @@ describe('TurnDiscovery', () => {
       assert.isUndefined(turnDiscoverySkippedReason);
     });
 
-    it('resolves with undefined if sending the request fails', async () => {
+    it('resolves with undefined turnServerInfo if sending the request fails', async () => {
       const td = new TurnDiscovery(mockRoapRequest);
 
       mockRoapRequest.sendRoap = sinon.fake.rejects(new Error('fake error'));
@@ -504,11 +504,11 @@ describe('TurnDiscovery', () => {
       const {turnServerInfo, turnDiscoverySkippedReason} = result;
 
       assert.isUndefined(turnServerInfo);
-      assert.isUndefined(turnDiscoverySkippedReason);
+      assert.equal(turnDiscoverySkippedReason, 'failure: fake error');
       checkFailureMetricsSent();
     });
 
-    it('resolves with undefined when cluster is reachable', async () => {
+    it('resolves with undefined turnServerInfo when cluster is reachable', async () => {
       const prev = testMeeting.webex.meetings.reachability.isAnyPublicClusterReachable;
       testMeeting.webex.meetings.reachability.isAnyPublicClusterReachable = () =>
         Promise.resolve(true);
@@ -523,7 +523,7 @@ describe('TurnDiscovery', () => {
       testMeeting.webex.meetings.reachability.isAnyPublicClusterReachable = prev;
     });
 
-    it("resolves with undefined if we don't get a response within 10s", async () => {
+    it("resolves with undefined turnServerInfo if we don't get a response within 10s", async () => {
       const td = new TurnDiscovery(mockRoapRequest);
 
       const promise = td.doTurnDiscovery(testMeeting, false);
@@ -534,11 +534,11 @@ describe('TurnDiscovery', () => {
       const {turnServerInfo, turnDiscoverySkippedReason} = await promise;
 
       assert.isUndefined(turnServerInfo);
-      assert.isUndefined(turnDiscoverySkippedReason);
+      assert.equal(turnDiscoverySkippedReason, 'failure: Timed out waiting for TURN_DISCOVERY_RESPONSE');
       checkFailureMetricsSent();
     });
 
-    it('resolves with undefined if the response does not have all the headers we expect', async () => {
+    it('resolves with undefined turnServerInfo if the response does not have all the headers we expect', async () => {
       const td = new TurnDiscovery(mockRoapRequest);
       const turnDiscoveryPromise = td.doTurnDiscovery(testMeeting, false);
 
@@ -559,11 +559,11 @@ describe('TurnDiscovery', () => {
       const {turnServerInfo, turnDiscoverySkippedReason} = await turnDiscoveryPromise;
 
       assert.isUndefined(turnServerInfo);
-      assert.isUndefined(turnDiscoverySkippedReason);
+      assert.equal(turnDiscoverySkippedReason, `failure: TURN_DISCOVERY_RESPONSE from test missing some headers: ["x-cisco-turn-url=${FAKE_TURN_URL}","x-cisco-turn-username=${FAKE_TURN_USERNAME}"]`);
       checkFailureMetricsSent();
     });
 
-    it('resolves with undefined if the response does not have any headers', async () => {
+    it('resolves with undefined turnServerInfo if the response does not have any headers', async () => {
       const td = new TurnDiscovery(mockRoapRequest);
       const turnDiscoveryPromise = td.doTurnDiscovery(testMeeting, false);
 
@@ -576,11 +576,11 @@ describe('TurnDiscovery', () => {
       const {turnServerInfo, turnDiscoverySkippedReason} = await turnDiscoveryPromise;
 
       assert.isUndefined(turnServerInfo);
-      assert.isUndefined(turnDiscoverySkippedReason);
+      assert.equal(turnDiscoverySkippedReason, 'failure: TURN_DISCOVERY_RESPONSE from test missing some headers: undefined');
       checkFailureMetricsSent();
     });
 
-    it('resolves with undefined if the response has empty headers array', async () => {
+    it('resolves with undefined turnServerInfo if the response has empty headers array', async () => {
       const td = new TurnDiscovery(mockRoapRequest);
       const turnDiscoveryPromise = td.doTurnDiscovery(testMeeting, false);
 
@@ -596,7 +596,7 @@ describe('TurnDiscovery', () => {
       const {turnServerInfo, turnDiscoverySkippedReason} = await turnDiscoveryPromise;
 
       assert.isUndefined(turnServerInfo);
-      assert.isUndefined(turnDiscoverySkippedReason);
+      assert.equal(turnDiscoverySkippedReason, 'failure: TURN_DISCOVERY_RESPONSE from test missing some headers: []');
       checkFailureMetricsSent();
     });
 
@@ -636,7 +636,7 @@ describe('TurnDiscovery', () => {
       const {turnServerInfo, turnDiscoverySkippedReason} = await turnDiscoveryPromise;
 
       assert.isUndefined(turnServerInfo);
-      assert.isUndefined(turnDiscoverySkippedReason);
+      assert.equal(turnDiscoverySkippedReason, 'failure: fake error');
       checkFailureMetricsSent();
     });
   });
@@ -675,5 +675,287 @@ describe('TurnDiscovery', () => {
 
       assert.notCalled(mockRoapRequest.sendRoap);
     });
+  });
+
+  describe('generateTurnDiscoveryRequestMessage', () => {
+    let td;
+
+    beforeEach(() => {
+      td = new TurnDiscovery(mockRoapRequest);
+      sinon.stub(td, 'getSkipReason').resolves(undefined);
+    });
+
+    it('generates TURN_DISCOVERY_REQUEST message irrespective of skip reason when called with isForced=true', async () => {
+      td.getSkipReason.resolves('reachability');
+
+      const result = await td.generateTurnDiscoveryRequestMessage(testMeeting, true);
+
+      assert.deepEqual(result, {
+        roapMessage: {
+          messageType: 'TURN_DISCOVERY_REQUEST',
+          version: '2',
+          seq: 0,
+          headers: ['includeAnswerInHttpResponse', 'noOkInTransaction'],
+        },
+        turnDiscoverySkippedReason: undefined,
+      });
+    });
+
+    it('takes into account skip reason when called with isForced=false', async () => {
+      td.getSkipReason.resolves('reachability');
+
+      const result = await td.generateTurnDiscoveryRequestMessage(testMeeting, false);
+
+      assert.deepEqual(result, {
+        roapMessage: undefined,
+        turnDiscoverySkippedReason: 'reachability',
+      });
+    });
+
+    it('generates TURN_DISCOVERY_REQUEST message if there is no skip reason when called with isForced=false', async () => {
+      const result = await td.generateTurnDiscoveryRequestMessage(testMeeting, false);
+
+      assert.deepEqual(result, {
+        roapMessage: {
+          messageType: 'TURN_DISCOVERY_REQUEST',
+          version: '2',
+          seq: 0,
+          headers: ['includeAnswerInHttpResponse', 'noOkInTransaction'],
+        },
+        turnDiscoverySkippedReason: undefined,
+      });
+    });
+
+    it('returns "already in progress" if TURN_DISCOVERY_REQUEST was already generated', async () => {
+      // 1st call
+      await td.generateTurnDiscoveryRequestMessage(testMeeting, true);
+
+      // 2nd call
+      const result = await td.generateTurnDiscoveryRequestMessage(testMeeting, true);
+
+      assert.deepEqual(result, {
+        roapMessage: undefined,
+        turnDiscoverySkippedReason: 'already in progress',
+      });
+    });
+
+    it('returns "already in progress" if doTurnDiscovery was called and not completed', async () => {
+      let promiseResolve;
+
+      // set it up so that doTurnDiscovery doesn't complete
+      mockRoapRequest.sendRoap = sinon.fake.returns(new Promise((resolve) => {
+        promiseResolve = resolve;
+      }));
+      td.doTurnDiscovery(testMeeting, false, true);
+
+      // now call generateTurnDiscoveryRequestMessage
+      const result = await td.generateTurnDiscoveryRequestMessage(testMeeting, true);
+
+      assert.deepEqual(result, {
+        roapMessage: undefined,
+        turnDiscoverySkippedReason: 'already in progress',
+      });
+
+      // resolve the promise, just so that we don't leave it hanging
+      promiseResolve();
+    });
+  });
+
+  describe('handleTurnDiscoveryHttpResponse', () => {
+    let td;
+    let roapMessage;
+
+    beforeEach(() => {
+      roapMessage = {
+        seq: 1,
+        messageType: 'TURN_DISCOVERY_RESPONSE',
+        errorType: undefined,
+        errorCause: undefined,
+        headers: [
+          `x-cisco-turn-url=${FAKE_TURN_URL}`,
+          `x-cisco-turn-username=${FAKE_TURN_USERNAME}`,
+          `x-cisco-turn-password=${FAKE_TURN_PASSWORD}`,
+          'noOkInTransaction'
+        ],
+      }
+
+      td = new TurnDiscovery(mockRoapRequest);
+    });
+
+    // checks if another TURN discovery can be started without any problem
+    const checkNextTurnDiscovery = async () => {
+        // after each test check that another TURN discovery can be started without any problems
+        const secondMessage = await td.generateTurnDiscoveryRequestMessage(testMeeting, true);
+
+        assert.isDefined(secondMessage.roapMessage);
+    };
+
+    it('works as expected when called with undefined httpResponse', async () => {
+      await td.generateTurnDiscoveryRequestMessage(testMeeting, true);
+
+      const result = await td.handleTurnDiscoveryHttpResponse(testMeeting, undefined);
+
+      assert.deepEqual(result, {
+        turnServerInfo: undefined,
+        turnDiscoverySkippedReason: 'missing http response',
+      });
+    });
+
+    [
+      {testCase: 'is missing mediaConnections', httpResponse: {}},
+      {testCase: 'is missing mediaConnections[0]', httpResponse: {mediaConnections: []}},
+      {testCase: 'is missing mediaConnections[0].remoteSdp', httpResponse: {mediaConnections: [{}]}},
+      {testCase: 'is missing roapMesssage in mediaConnections[0].remoteSdp', httpResponse: {mediaConnections: [{remoteSdp: JSON.stringify({something: "whatever"})}]}},
+    ].forEach(({testCase, httpResponse}) => {
+      it(`handles httpResponse that ${testCase}`, async () => {
+        await td.generateTurnDiscoveryRequestMessage(testMeeting, true);
+
+        const result = await td.handleTurnDiscoveryHttpResponse(testMeeting, httpResponse);
+
+        assert.deepEqual(result, {
+          turnServerInfo: undefined,
+          turnDiscoverySkippedReason: 'missing http response',
+        });
+      });
+      });
+
+      it('handles httpResponse with invalid JSON in mediaConnections[0].remoteSdp', async () => {
+        await td.generateTurnDiscoveryRequestMessage(testMeeting, true);
+
+        const result = await td.handleTurnDiscoveryHttpResponse(testMeeting, {mediaConnections: [{remoteSdp: 'not a json'}]});
+
+        assert.deepEqual(result, {
+          turnServerInfo: undefined,
+          turnDiscoverySkippedReason: 'failure: Unexpected token o in JSON at position 1',
+        });
+      });
+
+      it('fails when called before generateTurnDiscoveryRequestMessage() was called', async () => {
+        const httpResponse = {mediaConnections: [{remoteSdp: JSON.stringify({roapMessage})}]};
+        await assert.isRejected(td.handleTurnDiscoveryHttpResponse(testMeeting, httpResponse),
+          'handleTurnDiscoveryHttpResponse() called before generateTurnDiscoveryRequestMessage()');
+      });
+
+      it('works as expected when called with valid httpResponse', async () => {
+        const httpResponse = {mediaConnections: [{remoteSdp: JSON.stringify({roapMessage})}]};
+
+        // we spy on handleTurnDiscoveryResponse and check that it's called so that we don't have to repeat
+        // all the edge case tests here, they're already covered in other tests that call handleTurnDiscoveryResponse
+        const handleTurnDiscoveryResponseSpy = sinon.spy(td, 'handleTurnDiscoveryResponse');
+
+        await td.generateTurnDiscoveryRequestMessage(testMeeting, true);
+        const result = await td.handleTurnDiscoveryHttpResponse(testMeeting, httpResponse);
+
+        assert.deepEqual(result, {
+          turnServerInfo: {
+            url: FAKE_TURN_URL,
+            username: FAKE_TURN_USERNAME,
+            password: FAKE_TURN_PASSWORD,
+          },
+          turnDiscoverySkippedReason: undefined,
+        });
+
+        assert.calledOnceWithExactly(handleTurnDiscoveryResponseSpy, roapMessage, 'in http response');
+      });
+
+      it('works as expected when httpResponse is missing some headers', async () => {
+        roapMessage.headers = [
+          `x-cisco-turn-url=${FAKE_TURN_URL}`, // missing headers for username and password
+        ];
+
+        const httpResponse = {mediaConnections: [{remoteSdp: JSON.stringify({roapMessage})}]};
+
+        // we spy on handleTurnDiscoveryResponse and check that it's called so that we don't have to repeat
+        // all the edge case tests here, they're already covered in other tests that call handleTurnDiscoveryResponse
+        // we test just this 1 edge case here to confirm that when handleTurnDiscoveryResponse rejects, we get the correct result
+        const handleTurnDiscoveryResponseSpy = sinon.spy(td, 'handleTurnDiscoveryResponse');
+
+        await td.generateTurnDiscoveryRequestMessage(testMeeting, true);
+        const result = await td.handleTurnDiscoveryHttpResponse(testMeeting, httpResponse);
+
+        assert.deepEqual(result, {
+          turnServerInfo: undefined,
+          turnDiscoverySkippedReason: 'failure: TURN_DISCOVERY_RESPONSE in http response missing some headers: ["x-cisco-turn-url=turns:fakeTurnServer.com:443?transport=tcp"]',
+        });
+        assert.calledOnceWithExactly(handleTurnDiscoveryResponseSpy, roapMessage, 'in http response');
+
+        checkNextTurnDiscovery();
+      });
+
+      it('sends OK when required', async () => {
+        roapMessage.headers = [
+          `x-cisco-turn-url=${FAKE_TURN_URL}`,
+          `x-cisco-turn-username=${FAKE_TURN_USERNAME}`,
+          `x-cisco-turn-password=${FAKE_TURN_PASSWORD}`,
+          // noOkInTransaction is missing
+        ];
+        const httpResponse = {mediaConnections: [{remoteSdp: JSON.stringify({roapMessage})}]};
+
+        await td.generateTurnDiscoveryRequestMessage(testMeeting, true);
+        const result = await td.handleTurnDiscoveryHttpResponse(testMeeting, httpResponse);
+
+        assert.deepEqual(result, {
+          turnServerInfo: {
+            url: FAKE_TURN_URL,
+            username: FAKE_TURN_USERNAME,
+            password: FAKE_TURN_PASSWORD,
+          },
+          turnDiscoverySkippedReason: undefined,
+        });
+
+        // check that OK was sent along with the metric for it
+        await checkRoapMessageSent('OK', 0);
+
+        assert.calledWith(
+          Metrics.sendBehavioralMetric,
+          BEHAVIORAL_METRICS.TURN_DISCOVERY_REQUIRES_OK,
+          sinon.match({
+            correlation_id: testMeeting.correlationId,
+            locus_id: FAKE_LOCUS_ID,
+          })
+        );
+
+        checkNextTurnDiscovery();
+      });
+
+      describe('abort', () => {
+        it('allows starting a new TURN discovery', async () => {
+          let result;
+
+          // this mock is required for doTurnDiscovery() to work
+          mockRoapRequest.sendRoap = sinon.fake.resolves({
+            mediaConnections: [
+              {
+                mediaId: '464ff97f-4bda-466a-ad06-3a22184a2274',
+                remoteSdp: `{"roapMessage": {"messageType":"TURN_DISCOVERY_RESPONSE","seq":"0","headers": ["x-cisco-turn-url=${FAKE_TURN_URL}","x-cisco-turn-username=${FAKE_TURN_USERNAME}","x-cisco-turn-password=${FAKE_TURN_PASSWORD}", "noOkInTransaction"]}}`,
+              },
+            ],
+          });
+
+          result = await td.generateTurnDiscoveryRequestMessage(testMeeting, true);
+          assert.isDefined(result.roapMessage);
+
+          td.abort();
+
+          result = await td.generateTurnDiscoveryRequestMessage(testMeeting, true);
+          assert.isDefined(result.roapMessage);
+
+          td.abort();
+
+          // check also that doTurnDiscovery()  works after abort()
+          result = await td.doTurnDiscovery(testMeeting, false);
+        });
+
+        it('does nothing when called outside of a TURN discovery', async () => {
+          let result;
+
+          // call abort() without any other calls before it - it should do nothing
+          // there is not much we can check, so afterwards we just check that we can start a new TURN discovery
+          td.abort();
+
+          result = await td.generateTurnDiscoveryRequestMessage(testMeeting, true);
+          assert.isDefined(result.roapMessage);
+        });
+      });
   });
 });

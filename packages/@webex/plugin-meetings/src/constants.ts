@@ -1,7 +1,7 @@
 // @ts-ignore
 import {hydraTypes} from '@webex/common';
 
-type Enum<T extends Record<string, unknown>> = T[keyof T];
+export type Enum<T extends Record<string, unknown>> = T[keyof T];
 
 // *********** LOWERCASE / CAMELCASE STRINGS ************
 
