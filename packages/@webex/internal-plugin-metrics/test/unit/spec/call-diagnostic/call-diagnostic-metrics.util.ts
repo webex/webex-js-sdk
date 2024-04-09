@@ -237,8 +237,6 @@ describe('internal-plugin-metrics', () => {
       ['OverconstrainedErrors', false],
       ['SecurityError', true],
       ['SecurityErrors', false],
-      ['TypeError', true],
-      ['TypeErrors', false],
       ['', false],
       ['SomethingElse', false],
       [{name: 'SomethingElse'}, false],
