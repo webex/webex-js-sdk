@@ -25,6 +25,7 @@ const {
   isUnauthorizedError,
   generateClientErrorCodeForIceFailure,
   isSdpOfferCreationError,
+  isTypeError,
 } = CallDiagnosticUtils;
 
 describe('internal-plugin-metrics', () => {
@@ -201,6 +202,21 @@ describe('internal-plugin-metrics', () => {
     ].forEach(([errorType, rawError, expected]) => {
       it(`for ${errorType} rawError returns the correct result`, () => {
         assert.strictEqual(isSdpOfferCreationError(rawError), expected);
+      });
+    });
+  });
+
+  describe('isTypeError', () => {
+    [
+      [new TypeError, true],
+      [new TypeError('oh no'), true],
+      [new Error, false],
+      [new Error('oh no'), false],
+      [{name: 'TypeError'}, false],
+    ].forEach(([error, expected]) => {
+      it(`for rawError ${error} returns the correct result`, () => {
+        //@ts-ignore
+        assert.deepEqual(isTypeError(error), expected);
       });
     });
   });

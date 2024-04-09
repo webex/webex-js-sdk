@@ -1594,6 +1594,39 @@ describe('internal-plugin-metrics', () => {
         rawErrorMessage: 'bad times',
       };
 
+      const checkTypeError = (payload: any, isExpectedToBeCalled: boolean) => {
+        const res = cd.generateClientEventErrorPayload(payload);
+        const expectedResult = {
+          category: 'other',
+          errorDescription: 'TypeError',
+          fatal: true,
+          name: 'other',
+          shownToUser: false,
+          serviceErrorCode: undefined,
+          errorCode: 2011,
+          errorData: {errorName: payload.name},
+          rawErrorMessage: payload.message,
+        };
+
+        if (isExpectedToBeCalled) {
+          assert.deepEqual(res, expectedResult);
+        } else {
+          console.log(res);
+          assert.notDeepEqual(res, expectedResult);
+        }
+      };
+
+
+      it('should generate type error payload if rawError isTypeError', () => {
+        const typeError = new TypeError;
+        checkTypeError(typeError, true);
+      });
+
+      it('should not generate type error payload if rawError is not TypeError', () => {
+        const typeError = new Error;
+        checkTypeError(typeError, false);
+      });
+
       const checkNameError = (payload: any, isExpectedToBeCalled: boolean) => {
         const res = cd.generateClientEventErrorPayload(payload);
         const expectedResult = {

@@ -529,7 +529,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     const rawErrorMessage = rawError.message;
     const httpStatusCode = rawError.statusCode;
 
-    if (isTypeError) {
+    if (isTypeError(rawError)) {
       return this.getErrorPayloadForClientErrorCode({
         serviceErrorCode: undefined,
         clientErrorCode: TYPE_ERROR_CLIENT_CODE,
