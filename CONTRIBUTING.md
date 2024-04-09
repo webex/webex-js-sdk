@@ -57,6 +57,8 @@ This project also has some additional requirements that are (sometimes) optional
 * [JQ](https://github.com/stedolan/jq#jq) - *used for processing JSON in terminal, install as necessary*
 * [libcrypt](https://gnupg.org/software/libgcrypt/index.html) - *general purpose cryptography, install as necessary*
 * [graphicsmagick](http://www.graphicsmagick.org/) - *image processor, install as necessary*
+* [FireFox](https://www.mozilla.org/en-US/firefox/) - *browser, required for browser testing, install as necessary*
+* [Chrome](https://www.google.com/chrome/) - *browser, required for browser testing, install as necessary*
 
 #### Downloading
 

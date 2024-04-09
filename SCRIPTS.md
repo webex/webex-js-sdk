@@ -15,7 +15,8 @@ Below is a list of project scripts that can be ran from the root of this project
 * `yarn @legacy {script} {...args}` - Run the provided script on all modules within the `legacy` scope.
 * `yarn @legacy-tools {script} {...args}` - Run the provided script on all modules within the `legacy-tools` scope.
 * `yarn @tools {script} {...args}` - Run the provided script on all modules within the `tools` scope.
-* `yarn @workspaces {...args}` - Run the provided arguments against all workspaces with a common arglist
+* `yarn @workspaces {...args}` - Run the provided arguments against all workspaces with a common arglist.
+* `yarn prebuild:modules` - Run to process all prebuilding workflows in the correct order.
 
 Outside of these project scripts, general usage of [Yarn Workspace](https://yarnpkg.com/features/workspaces) commands. from the root level to access and iterate over all of its respective packages.
 
