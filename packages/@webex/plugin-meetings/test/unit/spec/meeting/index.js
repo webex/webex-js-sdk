@@ -9631,6 +9631,13 @@ describe('plugin-meetings', () => {
               'https://board-a.wbx2.com/board/api/v1/channels/977a7330-54f4-11eb-b1ef-91f5eefc7bf3',
           };
 
+          const SHARE_TYPE = {
+            FILE:
+                'FILE',
+            DESKTOP:
+                'DESKTOP',
+          };
+
           const DEVICE_URL = {
             LOCAL_WEB: 'my-web-url',
             LOCAL_MAC: 'my-mac-url',
@@ -10628,6 +10635,36 @@ describe('plugin-meetings', () => {
 
               payloadTestHelper([data1, data2, data3]);
             });
+          });
+
+          describe('File Share  --> Desktop Share', () => {
+            it('Scenario #1: remote person A shares file then share desktop', () => {
+              const data1 = generateData(
+                  blankPayload,
+                  true,
+                  true,
+                  USER_IDS.ME,
+                  undefined,
+                  false,
+                  undefined,
+                  undefined,
+                  undefined,
+                  undefined,
+                  DEVICE_URL.LOCAL_WEB,
+                  SHARE_TYPE.FILE
+              );
+              const data2 = generateData(
+                  data1.payload,
+                  true,
+                  false,
+                  USER_IDS.ME,
+                  SHARE_TYPE.DESKTOP
+              );
+              const data3 = generateData(data2.payload, true, true, USER_IDS.ME);
+
+              payloadTestHelper([data1, data2, data3]);
+            });
+
           });
         });
       });

@@ -2549,7 +2549,8 @@ export default class Meeting extends StatelessWebexPlugin {
         contentShare.deviceUrlSharing === previousContentShare.deviceUrlSharing &&
         whiteboardShare.beneficiaryId === previousWhiteboardShare?.beneficiaryId &&
         whiteboardShare.disposition === previousWhiteboardShare?.disposition &&
-        whiteboardShare.resourceUrl === previousWhiteboardShare?.resourceUrl
+        whiteboardShare.resourceUrl === previousWhiteboardShare?.resourceUrl &&
+        contentShare.resourceType === previousContentShare?.resourceType
       ) {
         // nothing changed, so ignore
         // (this happens when we steal presentation from remote)
