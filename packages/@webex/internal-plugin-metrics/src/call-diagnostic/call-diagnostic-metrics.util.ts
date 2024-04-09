@@ -179,6 +179,15 @@ export const isSdpOfferCreationError = (rawError: any) => {
 };
 
 /**
+ * Any service can return a TypeError, which tells little about the service it came from
+ * Documentation can be found here: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/TypeError/TypeError
+ *
+ * @param errorCode
+ * @returns
+ */
+export const isTypeError = (error: any) => error instanceof TypeError;
+
+/**
  * MDN Media Devices getUserMedia() method returns a name if it errs
  * Documentation can be found here: https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getUserMedia
  *
