@@ -88,6 +88,7 @@ describe('plugin-meetings', () => {
             trackId: 'RTCMediaStreamTrack_sender_2',
             transportId: 'RTCTransport_0_1',
             type: 'outbound-rtp',
+            requestedBitrate: 10000,
           },
           'audio-send',
           true
@@ -97,6 +98,7 @@ describe('plugin-meetings', () => {
         assert.strictEqual(statsAnalyzer.statsResults['audio-send'].send.totalBytesSent, 50000);
         assert.strictEqual(statsAnalyzer.statsResults['audio-send'].send.totalNackCount, 1);
         assert.strictEqual(statsAnalyzer.statsResults['audio-send'].send.totalPacketsSent, 3600);
+        assert.strictEqual(statsAnalyzer.statsResults['audio-send'].send.requestedBitrate, 10000);
         assert.strictEqual(
           statsAnalyzer.statsResults['audio-send'].send.retransmittedPacketsSent,
           2
@@ -143,6 +145,7 @@ describe('plugin-meetings', () => {
             trackId: 'RTCMediaStreamTrack_receiver_76',
             transportId: 'RTCTransport_0_1',
             type: 'inbound-rtp',
+            requestedBitrate: 10000,
           },
           'audio-recv-1',
           false
@@ -155,6 +158,7 @@ describe('plugin-meetings', () => {
         assert.strictEqual(statsAnalyzer.statsResults['audio-recv-1'].recv.fecPacketsDiscarded, 1);
         assert.strictEqual(statsAnalyzer.statsResults['audio-recv-1'].recv.fecPacketsReceived, 1);
         assert.strictEqual(statsAnalyzer.statsResults['audio-recv-1'].recv.totalBytesReceived, 509);
+        assert.strictEqual(statsAnalyzer.statsResults['audio-recv-1'].recv.requestedBitrate, 10000);
         assert.strictEqual(
           statsAnalyzer.statsResults['audio-recv-1'].recv.headerBytesReceived,
           250
