@@ -312,7 +312,8 @@ export class StatsAnalyzer extends EventsScope {
         newMqa.audioReceive[1].streams.push(audioReceiverStream);
 
         this.lastMqaDataSent[mediaType].recv = cloneDeep(this.statsResults[mediaType].recv);
-      } else if (mediaType.includes('video-send')) {
+      } else if (mediaType.includes('video-send') && mediaType !== 'video-send') {
+        // We only want the stream-specific stats we get with video-send-0, video-send-1, etc.
         const videoSenderStream = cloneDeep(emptyVideoTransmitStream);
 
         getVideoSenderStreamMqa({
@@ -373,9 +374,17 @@ export class StatsAnalyzer extends EventsScope {
         name: MEDIA_DEVICES.MICROPHONE,
       });
     }
-    if (this.statsResults['video-send']) {
+
+    let existingVideoSender;
+    Object.keys(this.statsResults).forEach((item) => {
+      if (item.includes('video-send')) {
+        existingVideoSender = this.statsResults[item];
+      }
+    });
+
+    if (existingVideoSender) {
       newMqa.intervalMetadata.peripherals.push({
-        information: this.statsResults['video-send'].trackLabel || _UNKNOWN_,
+        information: existingVideoSender.trackLabel || _UNKNOWN_,
         name: MEDIA_DEVICES.CAMERA,
       });
     }
@@ -552,9 +561,21 @@ export class StatsAnalyzer extends EventsScope {
       }
     });
 
+    let videoSenderIndex = 0;
     statsItem.report.forEach((result) => {
       if (types.includes(result.type)) {
-        this.parseGetStatsResult(result, type, isSender);
+        // if the video sender has multiple streams in the report, it is a new stream object.
+        if (type === 'video-send' && result.type === 'outbound-rtp') {
+          const newType = `video-send-${videoSenderIndex}`;
+          this.parseGetStatsResult(result, newType, isSender);
+          videoSenderIndex += 1;
+
+          this.statsResults[newType].direction = statsItem.currentDirection;
+          this.statsResults[newType].trackLabel = statsItem.localTrackLabel;
+          this.statsResults[newType].csi = statsItem.csi;
+        } else {
+          this.parseGetStatsResult(result, type, isSender);
+        }
       }
     });
 
@@ -661,15 +682,22 @@ export class StatsAnalyzer extends EventsScope {
    */
   private compareLastStatsResult() {
     if (this.lastStatsResults !== null && this.meetingMediaStatus) {
-      const getCurrentStatsTotals = (keyPrefix: string, value: string): number =>
+      const getCurrentStatsTotals = (keyPrefix: string, value: string, send: boolean): number =>
         Object.keys(this.statsResults)
           .filter((key) => key.startsWith(keyPrefix))
-          .reduce((prev, cur) => prev + (this.statsResults[cur]?.recv[value] || 0), 0);
+          .reduce(
+            (prev, cur) => prev + (this.statsResults[cur]?.[send ? 'send' : 'recv'][value] || 0),
+            0
+          );
 
-      const getPreviousStatsTotals = (keyPrefix: string, value: string): number =>
+      const getPreviousStatsTotals = (keyPrefix: string, value: string, send: boolean): number =>
         Object.keys(this.statsResults)
           .filter((key) => key.startsWith(keyPrefix))
-          .reduce((prev, cur) => prev + (this.lastStatsResults[cur]?.recv[value] || 0), 0);
+          .reduce(
+            (prev, cur) =>
+              prev + (this.lastStatsResults[cur]?.[send ? 'send' : 'recv'][value] || 0),
+            0
+          );
 
       // Audio Transmit
       if (this.lastStatsResults['audio-send']) {
@@ -717,11 +745,13 @@ export class StatsAnalyzer extends EventsScope {
       // Audio Receive
       const currentAudioPacketsReceived = getCurrentStatsTotals(
         'audio-recv',
-        'totalPacketsReceived'
+        'totalPacketsReceived',
+        false
       );
       const previousAudioPacketsReceived = getPreviousStatsTotals(
         'audio-recv',
-        'totalPacketsReceived'
+        'totalPacketsReceived',
+        false
       );
 
       this.emitStartStopEvents(
@@ -731,52 +761,70 @@ export class StatsAnalyzer extends EventsScope {
         false
       );
 
+      const currentTotalPacketsSent = getCurrentStatsTotals('video-send', 'totalPacketsSent', true);
+      const previousTotalPacketsSent = getPreviousStatsTotals(
+        'video-send',
+        'totalPacketsSent',
+        true
+      );
+
+      const currentFramesEncoded = getCurrentStatsTotals('video-send', 'framesEncoded', true);
+      const previousFramesEncoded = getPreviousStatsTotals('video-send', 'framesEncoded', true);
+
+      const currentFramesSent = getCurrentStatsTotals('video-send', 'framesSent', true);
+      const previousFramesSent = getPreviousStatsTotals('video-send', 'framesSent', true);
+
+      let doesVideoSendExist = false;
+      Object.keys(this.lastStatsResults).forEach((item) => {
+        if (item.includes('video-send')) {
+          doesVideoSendExist = true;
+        }
+      });
+
       // Video Transmit
-      if (this.lastStatsResults['video-send']) {
+      if (doesVideoSendExist) {
         // compare video stats sent
-        const currentStats = this.statsResults['video-send'].send;
-        const previousStats = this.lastStatsResults['video-send'].send;
 
         if (
           this.meetingMediaStatus.expected.sendVideo &&
-          (currentStats.totalPacketsSent === previousStats.totalPacketsSent ||
-            currentStats.totalPacketsSent === 0)
+          (currentTotalPacketsSent === previousTotalPacketsSent || currentTotalPacketsSent === 0)
         ) {
           LoggerProxy.logger.info(
             `StatsAnalyzer:index#compareLastStatsResult --> No video RTP packets sent`,
-            currentStats.totalPacketsSent
+            currentTotalPacketsSent
           );
         } else {
           if (
             this.meetingMediaStatus.expected.sendVideo &&
-            (currentStats.framesEncoded === previousStats.framesEncoded ||
-              currentStats.framesEncoded === 0)
+            (currentFramesEncoded === previousFramesEncoded || currentFramesEncoded === 0)
           ) {
             LoggerProxy.logger.info(
               `StatsAnalyzer:index#compareLastStatsResult --> No video Frames Encoded`,
-              currentStats.framesEncoded
+              currentFramesEncoded
             );
           }
 
           if (
             this.meetingMediaStatus.expected.sendVideo &&
-            (this.statsResults['video-send'].send.framesSent ===
-              this.lastStatsResults['video-send'].send.framesSent ||
-              this.statsResults['video-send'].send.framesSent === 0)
+            (currentFramesSent === previousFramesSent || currentFramesSent === 0)
           ) {
             LoggerProxy.logger.info(
               `StatsAnalyzer:index#compareLastStatsResult --> No video Frames sent`,
-              this.statsResults['video-send'].send.framesSent
+              currentFramesSent
             );
           }
         }
 
-        this.emitStartStopEvents('video', previousStats.framesSent, currentStats.framesSent, true);
+        this.emitStartStopEvents('video', previousFramesSent, currentFramesSent, true);
       }
 
       // Video Receive
-      const currentVideoFramesDecoded = getCurrentStatsTotals('video-recv', 'framesDecoded');
-      const previousVideoFramesDecoded = getPreviousStatsTotals('video-recv', 'framesDecoded');
+      const currentVideoFramesDecoded = getCurrentStatsTotals('video-recv', 'framesDecoded', false);
+      const previousVideoFramesDecoded = getPreviousStatsTotals(
+        'video-recv',
+        'framesDecoded',
+        false
+      );
 
       this.emitStartStopEvents(
         'video',
@@ -830,10 +878,15 @@ export class StatsAnalyzer extends EventsScope {
       }
 
       // Share receive
-      const currentShareFramesDecoded = getCurrentStatsTotals('video-share-recv', 'framesDecoded');
+      const currentShareFramesDecoded = getCurrentStatsTotals(
+        'video-share-recv',
+        'framesDecoded',
+        false
+      );
       const previousShareFramesDecoded = getPreviousStatsTotals(
         'video-share-recv',
-        'framesDecoded'
+        'framesDecoded',
+        false
       );
 
       this.emitStartStopEvents(
