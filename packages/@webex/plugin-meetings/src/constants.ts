@@ -1,7 +1,7 @@
 // @ts-ignore
 import {hydraTypes} from '@webex/common';
 
-type Enum<T extends Record<string, unknown>> = T[keyof T];
+export type Enum<T extends Record<string, unknown>> = T[keyof T];
 
 // *********** LOWERCASE / CAMELCASE STRINGS ************
 
@@ -48,6 +48,8 @@ export const MEETINGINFO = 'meetingInfo';
 export const MEET = 'meet';
 export const MEET_M = 'm';
 export const MEDIA = 'media';
+export const MEET_CO = 'co';
+export const MEET_CISCO = 'cisco';
 
 export const OFFLINE = 'offline';
 export const ONLINE = 'online';
@@ -69,6 +71,8 @@ export const TYPE = 'type';
 
 export const VIDEO = 'video';
 export const VIDEO_STATUS = 'videoStatus';
+
+export const LANGUAGE_ENGLISH = 'en';
 
 // *********** UPPERCASE ONLY STRINGS ************
 // Please alphabetize
@@ -298,8 +302,6 @@ export const EVENT_TRIGGERS = {
   MEETING_MEDIA_REMOTE_STARTED: 'meeting:media:remote:start',
   MEETING_STARTED_RECORDING: 'meeting:recording:started',
   MEETING_STOPPED_RECORDING: 'meeting:recording:stopped',
-  MEETING_STARTED_RECEIVING_TRANSCRIPTION: 'meeting:receiveTranscription:started',
-  MEETING_STOPPED_RECEIVING_TRANSCRIPTION: 'meeting:receiveTranscription:stopped',
   MEETING_RECEIVE_REACTIONS: 'meeting:receiveReactions',
   MEETING_PAUSED_RECORDING: 'meeting:recording:paused',
   MEETING_RESUMED_RECORDING: 'meeting:recording:resumed',
@@ -359,6 +361,7 @@ export const EVENT_TRIGGERS = {
   REMOTE_VIDEO_SOURCE_COUNT_CHANGED: 'media:remoteVideoSourceCountChanged',
   REMOTE_AUDIO_SOURCE_COUNT_CHANGED: 'media:remoteAudioSourceCountChanged',
   REMOTE_MEDIA_AUDIO_CREATED: 'media:remoteAudio:created',
+  REMOTE_MEDIA_INTERPRETATION_AUDIO_CREATED: 'media:remoteInterpretationAudio:created',
   REMOTE_MEDIA_SCREEN_SHARE_AUDIO_CREATED: 'media:remoteScreenShareAudio:created',
   REMOTE_MEDIA_VIDEO_LAYOUT_CHANGED: 'media:remoteVideo:layoutChanged',
   // Controls
@@ -373,6 +376,12 @@ export const EVENT_TRIGGERS = {
   // Locus URL changed
   MEETING_LOCUS_URL_UPDATE: 'meeting:locus:locusUrl:update',
   MEETING_STREAM_PUBLISH_STATE_CHANGED: 'meeting:streamPublishStateChanged',
+
+  MEETING_TRANSCRIPTION_CONNECTED: 'meeting:transcription:connected',
+  MEETING_STARTED_RECEIVING_TRANSCRIPTION: 'meeting:receiveTranscription:started',
+  MEETING_STOPPED_RECEIVING_TRANSCRIPTION: 'meeting:receiveTranscription:stopped',
+
+  MEETING_CAPTION_RECEIVED: 'meeting:caption-received',
 };
 
 export const EVENT_TYPES = {
@@ -963,6 +972,7 @@ export const SELF_ROLES = {
   COHOST: 'COHOST',
   MODERATOR: 'MODERATOR',
   ATTENDEE: 'ATTENDEE',
+  PRESENTER: 'PRESENTER',
 };
 
 export const MEETING_STATE = {
@@ -1309,3 +1319,6 @@ export type IP_VERSION = Enum<typeof IP_VERSION>;
 // constant for if the permissionToken is about to expire in the next 30 seconds, refresh it
 export const MEETING_PERMISSION_TOKEN_REFRESH_THRESHOLD_IN_SEC = 30;
 export const MEETING_PERMISSION_TOKEN_REFRESH_REASON = 'ttl-join';
+
+// constant for named media group type
+export const NAMED_MEDIA_GROUP_TYPE_AUDIO = 1;

@@ -131,6 +131,9 @@ describe('plugin-metrics', () => {
           webex.internal.newMetrics.callDiagnosticLatencies.getDiffBetweenTimestamps = sinon
             .stub()
             .returns(10);
+          webex.internal.newMetrics.callDiagnosticLatencies.getU2CTime = sinon
+            .stub()
+            .returns(20);
           const promise = webex.internal.newMetrics.callDiagnosticMetrics.submitToCallDiagnostics(
             //@ts-ignore
             {event: {name: 'client.call.initiated'}}
@@ -147,6 +150,7 @@ describe('plugin-metrics', () => {
               meetingInfoReqResp: 10,
               registerWDMDeviceJMT: 10,
               showInterstitialTime: 10,
+              getU2CTime: 20
             },
           });
           assert.lengthOf(
@@ -159,9 +163,6 @@ describe('plugin-metrics', () => {
           webex.internal.newMetrics.callDiagnosticLatencies.getDiffBetweenTimestamps = sinon
             .stub()
             .returns(10);
-          webex.internal.newMetrics.callDiagnosticLatencies.getJoinRespSentReceived = sinon
-            .stub()
-            .returns(20);
           webex.internal.newMetrics.callDiagnosticLatencies.getPageJMT = sinon.stub().returns(30);
           webex.internal.newMetrics.callDiagnosticLatencies.getClientJMT = sinon.stub().returns(5);
           webex.internal.newMetrics.callDiagnosticLatencies.getClickToInterstitial = sinon
@@ -191,7 +192,6 @@ describe('plugin-metrics', () => {
               clickToInterstitial: 10,
               interstitialToJoinOK: 10,
               joinReqResp: 10,
-              joinReqSentReceived: 20,
               meetingInfoReqResp: 10,
               pageJmt: 30,
               totalJmt: 20,

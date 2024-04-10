@@ -41,11 +41,41 @@ describe('internal-plugin-metrics', () => {
       assert.deepEqual(cdl.latencyTimestamps.get('client.alert.displayed'), now.getTime());
     });
 
-    it('should save latency correctly', () => {
+    it('should save latency correctly by default and overwrites', () => {
       assert.deepEqual(cdl.precomputedLatencies.size, 0);
       cdl.saveLatency('internal.client.pageJMT', 10);
       assert.deepEqual(cdl.precomputedLatencies.size, 1);
       assert.deepEqual(cdl.precomputedLatencies.get('internal.client.pageJMT'), 10);
+      cdl.saveLatency('internal.client.pageJMT', 20);
+      assert.deepEqual(cdl.precomputedLatencies.size, 1);
+      assert.deepEqual(cdl.precomputedLatencies.get('internal.client.pageJMT'), 20);
+    });
+
+    it('should overwrite latency when overwrite is true', () => {
+      assert.deepEqual(cdl.precomputedLatencies.size, 0);
+      cdl.saveLatency('internal.client.pageJMT', 10, true);
+      assert.deepEqual(cdl.precomputedLatencies.size, 1);
+      assert.deepEqual(cdl.precomputedLatencies.get('internal.client.pageJMT'), 10);
+      cdl.saveLatency('internal.client.pageJMT', 20, true);
+      assert.deepEqual(cdl.precomputedLatencies.size, 1);
+      assert.deepEqual(cdl.precomputedLatencies.get('internal.client.pageJMT'), 20);
+    });
+
+    it('should save latency correctly when overwrite is false', () => {
+      assert.deepEqual(cdl.precomputedLatencies.size, 0);
+      cdl.saveLatency('internal.client.pageJMT', 10, false);
+      assert.deepEqual(cdl.precomputedLatencies.size, 1);
+      assert.deepEqual(cdl.precomputedLatencies.get('internal.client.pageJMT'), 10);
+    });
+
+    it('should save latency correctly when overwrite is false and there is existing value', () => {
+      assert.deepEqual(cdl.precomputedLatencies.size, 0);
+      cdl.saveLatency('internal.client.pageJMT', 10);
+      assert.deepEqual(cdl.precomputedLatencies.size, 1);
+      assert.deepEqual(cdl.precomputedLatencies.get('internal.client.pageJMT'), 10);
+      cdl.saveLatency('internal.client.pageJMT', 10, false);
+      assert.deepEqual(cdl.precomputedLatencies.size, 1);
+      assert.deepEqual(cdl.precomputedLatencies.get('internal.client.pageJMT'), 20);
     });
 
     it('should save only first timestamp correctly', () => {
@@ -109,6 +139,71 @@ describe('internal-plugin-metrics', () => {
       cdl.saveTimestamp({key: 'internal.client.meetinginfo.request', value: 47});
       cdl.saveTimestamp({key: 'internal.client.meetinginfo.response', value: 48});
       assert.deepEqual(cdl.getMeetingInfoReqResp(), 10);
+    });
+
+    describe('measureLatency', () => {
+      let clock;
+      let saveLatencySpy;
+
+      beforeEach(() => {       
+        clock = sinon.useFakeTimers(); 
+        
+        saveLatencySpy = sinon.stub(cdl, 'saveLatency');
+      });
+
+      afterEach(() => {
+        clock.restore();
+        sinon.restore();
+      });
+      
+      it('checks measureLatency with overwrite false', async () => {
+        const key = 'internal.client.pageJMT';
+        const overwrite = false;
+        const callbackStub = sinon.stub().callsFake(() => {
+          clock.tick(50);
+          return Promise.resolve('test');
+        });
+
+        const promise = cdl.measureLatency(callbackStub, 'internal.client.pageJMT', overwrite);
+
+        const resolvedValue = await promise;
+        assert.deepEqual(resolvedValue, 'test');
+        assert.calledOnceWithExactly(callbackStub);
+        assert.calledOnceWithExactly(saveLatencySpy, key, 50, overwrite)       
+      });
+
+      it('checks measureLatency with overwrite true', async () => {
+        const key = 'internal.download.time';
+        const overwrite = true;
+        const callbackStub = sinon.stub().callsFake(() => {
+          clock.tick(20);
+          return Promise.resolve('test123');
+        });
+
+        const promise = cdl.measureLatency(callbackStub, 'internal.download.time', overwrite);
+
+        const resolvedValue = await promise;
+        assert.deepEqual(resolvedValue, 'test123');
+        assert.calledOnceWithExactly(callbackStub);
+        assert.calledOnceWithExactly(saveLatencySpy, key, 20, overwrite)       
+      });
+
+      it('checks measureLatency when callBack rejects', async () => {
+        const key = 'internal.client.pageJMT';
+        const overwrite = true;
+        const error = new Error('some error');
+        const callbackStub = sinon.stub().callsFake(() => {
+          clock.tick(50);
+          return Promise.reject(error);
+        });
+
+        const promise = cdl.measureLatency(callbackStub, 'internal.client.pageJMT', overwrite);
+
+        const rejectedValue = await assert.isRejected(promise);
+        assert.deepEqual(rejectedValue, error);
+        assert.calledOnceWithExactly(callbackStub);
+        assert.calledOnceWithExactly(saveLatencySpy, key, 50, overwrite)       
+      });
     });
 
     describe('saveTimestamp', () => {
@@ -512,9 +607,51 @@ describe('internal-plugin-metrics', () => {
       assert.deepEqual(cdl.getInterstitialToMediaOKJMT(), 10);
     });
 
+    it('calculates getU2CTime correctly', () => {
+      it('returns undefined when no precomputed value available', () => {
+        assert.deepEqual(cdl.getU2CTime(), undefined);
+      });
+
+      it('returns the correct value', () => {
+        cdl.saveLatency('internal.get.u2c.time', 123);
+
+        assert.deepEqual(cdl.getU2CTime(), 123);
+      });
+
+      it('returns the correct whole number', () => {
+        cdl.saveLatency('internal.get.u2c.time', 321.44);
+
+        assert.deepEqual(cdl.getU2CTime(), 321);
+      });
+    });
+
     it('calculates getDownloadTimeJMT correctly', () => {
       cdl.saveLatency('internal.download.time', 1000);
       assert.deepEqual(cdl.getDownloadTimeJMT(), 1000);
+    });
+
+    describe('getOtherAppApiReqResp', () => {
+      it('returns undefined when no precomputed value available', () => {
+        assert.deepEqual(cdl.getOtherAppApiReqResp(), undefined);
+      });
+
+      it('returns undefined if it is less than 0', () => {
+        cdl.saveLatency('internal.other.app.api.time', 0);
+
+        assert.deepEqual(cdl.getOtherAppApiReqResp(), undefined);
+      });
+
+      it('returns the correct value', () => {
+        cdl.saveLatency('internal.other.app.api.time', 123);
+
+        assert.deepEqual(cdl.getOtherAppApiReqResp(), 123);
+      });
+
+      it('returns the correct whole number', () => {
+        cdl.saveLatency('internal.other.app.api.time', 321.44);
+
+        assert.deepEqual(cdl.getOtherAppApiReqResp(), 321);
+      });
     });
   });
 });

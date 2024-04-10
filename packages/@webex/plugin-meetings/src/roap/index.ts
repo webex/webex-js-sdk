@@ -5,11 +5,17 @@ import {ROAP} from '../constants';
 import LoggerProxy from '../common/logs/logger-proxy';
 
 import RoapRequest from './request';
-import TurnDiscovery from './turnDiscovery';
+import TurnDiscovery, {TurnDiscoveryResult} from './turnDiscovery';
 import Meeting from '../meeting';
 import MeetingUtil from '../meeting/util';
 import Metrics from '../metrics';
 import BEHAVIORAL_METRICS from '../metrics/constants';
+
+export {
+  type TurnDiscoveryResult,
+  type TurnServerInfo,
+  type TurnDiscoverySkipReason,
+} from './turnDiscovery';
 
 /**
  * Roap options
@@ -39,7 +45,7 @@ export default class Roap extends StatelessWebexPlugin {
   options: any;
   roapHandler: any;
   roapRequest: any;
-  turnDiscovery: any;
+  turnDiscovery: TurnDiscovery;
 
   /**
    *
@@ -260,7 +266,23 @@ export default class Roap extends StatelessWebexPlugin {
    * @param {Boolean} [isForced]
    * @returns {Promise}
    */
-  doTurnDiscovery(meeting: Meeting, isReconnecting: boolean, isForced?: boolean) {
+  doTurnDiscovery(
+    meeting: Meeting,
+    isReconnecting: boolean,
+    isForced?: boolean
+  ): Promise<TurnDiscoveryResult> {
     return this.turnDiscovery.doTurnDiscovery(meeting, isReconnecting, isForced);
+  }
+
+  generateTurnDiscoveryRequestMessage(meeting: Meeting, isForced: boolean) {
+    return this.turnDiscovery.generateTurnDiscoveryRequestMessage(meeting, isForced);
+  }
+
+  handleTurnDiscoveryHttpResponse(meeting: Meeting, httpResponse: object) {
+    return this.turnDiscovery.handleTurnDiscoveryHttpResponse(meeting, httpResponse);
+  }
+
+  abortTurnDiscovery() {
+    return this.turnDiscovery.abort();
   }
 }
