@@ -3074,6 +3074,7 @@ export default class Meeting extends StatelessWebexPlugin {
           options: {meetingId: this.id},
         });
       }
+      this.updateLLMConnection();
     });
 
     // @ts-ignore - check if MEDIA_INACTIVITY exists
