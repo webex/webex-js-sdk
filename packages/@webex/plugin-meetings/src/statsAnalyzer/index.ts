@@ -1098,7 +1098,6 @@ export class StatsAnalyzer extends EventsScope {
         this.statsResults[mediaType][sendrecvType].width = result.frameWidth;
         this.statsResults[mediaType][sendrecvType].height = result.frameHeight;
         this.statsResults[mediaType][sendrecvType].framesReceived = result.framesReceived;
-        this.statsResults[mediaType][sendrecvType].requestedFrameSize = result.requestedFrameSize;
       }
 
       // TODO: check the packet loss value is negative values here
@@ -1113,6 +1112,7 @@ export class StatsAnalyzer extends EventsScope {
       this.statsResults[mediaType][sendrecvType].lastPacketReceivedTimestamp =
         result.lastPacketReceivedTimestamp;
       this.statsResults[mediaType][sendrecvType].requestedBitrate = result.requestedBitrate;
+      this.statsResults[mediaType][sendrecvType].requestedFrameSize = result.requestedFrameSize;
 
       // From Thin
       this.statsResults[mediaType][sendrecvType].totalNackCount = result.nackCount;
