@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.397](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.396...v3.0.0-beta.397) (2024-04-11)
+
+
+### Bug Fixes
+
+* Added updateLLMConnection when guest is admitted from the lobby ([#3529](https://github.com/webex/webex-js-sdk/issues/3529)) ([7edf2c2](https://github.com/webex/webex-js-sdk/commit/7edf2c204c300eae1d82717dd3115f38578e5883))
+
 ## [3.0.0-beta.396](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.395...v3.0.0-beta.396) (2024-04-09)
 
 
