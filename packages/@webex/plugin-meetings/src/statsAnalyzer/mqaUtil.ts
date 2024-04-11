@@ -90,6 +90,7 @@ export const getAudioReceiverStreamMqa = ({
   const lastPacketsReceived = lastMqaDataSent[mediaType]?.[sendrecvType].totalPacketsReceived || 0;
   const lastPacketsLost = lastMqaDataSent[mediaType]?.[sendrecvType].totalPacketsLost || 0;
 
+  console.log('audioReceiverStream', audioReceiverStream);
   const {csi} = statsResults[mediaType];
   if (csi && !audioReceiverStream.common.csi.includes(csi)) {
     audioReceiverStream.common.csi.push(csi);
