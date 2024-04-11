@@ -7496,6 +7496,7 @@ describe('plugin-meetings', () => {
         });
         it('listens to the self admitted guest event', (done) => {
           meeting.stopKeepAlive = sinon.stub();
+          meeting.updateLLMConnection = sinon.stub();
           meeting.locusInfo.emit({function: 'test', file: 'test'}, 'SELF_ADMITTED_GUEST', test1);
           assert.calledOnceWithExactly(meeting.stopKeepAlive);
           assert.calledThrice(TriggerProxy.trigger);
@@ -7506,6 +7507,7 @@ describe('plugin-meetings', () => {
             'meeting:self:guestAdmitted',
             {payload: test1}
           );
+          assert.calledOnce(meeting.updateLLMConnection);
           done();
         });
 
