@@ -57,4 +57,13 @@ export default {
      */
     ephemeralDeviceTTL: 30 * 60,
   },
+
+  /**
+   * installationId is used exclusively as web client for fraud prevention,
+   * and is aliased to as machineId by CA.
+   *
+   * @alias device.machineId
+   * @type {string}
+   */
+  installationId: undefined,
 };

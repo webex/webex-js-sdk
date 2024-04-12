@@ -150,8 +150,7 @@ describe('plugin-meetings', () => {
 
       it('should return false if no breakouts in current', () => {
         const current = {
-          breakoutSessions: {
-          },
+          breakoutSessions: {},
         };
         const previous = {
           breakoutSessions: {
@@ -293,7 +292,7 @@ describe('plugin-meetings', () => {
           const clonedSelf = cloneDeep(self);
 
           clonedSelf.controls.audio.requestedToUnmute = true;
-          clonedSelf.controls.audio.lastModifiedRequestedToUnmute = '2023-06-16T18:25:04.369Z'
+          clonedSelf.controls.audio.lastModifiedRequestedToUnmute = '2023-06-16T18:25:04.369Z';
 
           const {updates} = SelfUtils.getSelves(self, clonedSelf);
 
@@ -371,23 +370,18 @@ describe('plugin-meetings', () => {
     const clonedSelf = cloneDeep(self);
 
     it('get breakoutMoveId works', () => {
-
       assert.deepEqual(SelfUtils.getReplacedBreakoutMoveId(self, deviceId), breakoutMoveId);
-
     });
 
     it('replaces is empty', () => {
-
       clonedSelf.devices[0].replaces = undefined;
       assert.deepEqual(SelfUtils.getReplacedBreakoutMoveId(clonedSelf, deviceId), null);
-
     });
 
     it('no self or self.devices is not array', () => {
-
       assert.deepEqual(SelfUtils.getReplacedBreakoutMoveId(undefined, deviceId), null);
 
-      clonedSelf.devices =     {
+      clonedSelf.devices = {
         url: 'https://wdm-a.wbx2.com/wdm/api/v1/devices/20eabde3-4254-48da-9a24',
         deviceType: 'WEB',
         mediaSessionsExternal: false,
@@ -395,10 +389,11 @@ describe('plugin-meetings', () => {
           {
             breakoutMoveId: 'e5caeb2c-ffcc-4e06-a08a-1122e7710398',
             lastActive: '2023-05-04T07:14:32.068Z',
-            locusUrl: 'https://locus-alpha-apdx.prod.meetapi.webex.com/locus/api/v1/loci/495061ca-7b3c-3b77-85ff-4e1bd58600d1',
+            locusUrl:
+              'https://locus-alpha-apdx.prod.meetapi.webex.com/locus/api/v1/loci/495061ca-7b3c-3b77-85ff-4e1bd58600d1',
             replacedAt: '2023-05-04T07:16:04.905Z',
             sessionId: 'be3147d4-c318-86d8-7611-8d24beaaca8d',
-          }
+          },
         ],
         state: 'JOINED',
       };

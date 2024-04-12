@@ -863,7 +863,9 @@ const Services = WebexPlugin.extend({
       requestObject.headers = {authorization: token};
     }
 
-    return this.request(requestObject).then(({body}) => this._formatReceivedHostmap(body));
+    return this.webex.internal.newMetrics.callDiagnosticLatencies
+      .measureLatency(() => this.request(requestObject), 'internal.get.u2c.time')
+      .then(({body}) => this._formatReceivedHostmap(body));
   },
 
   /**

@@ -92,12 +92,33 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
   /**
    * Store precomputed latency value
    * @param key - key
-   * @param value -value
+   * @param value - value
+   * @param overwrite - overwrite existing value or add it
    * @throws
    * @returns
    */
-  public saveLatency(key: PreComputedLatencies, value: number) {
-    this.precomputedLatencies.set(key, value);
+  public saveLatency(key: PreComputedLatencies, value: number, overwrite = true) {
+    const existingValue = overwrite ? 0 : this.precomputedLatencies.get(key) || 0;
+    this.precomputedLatencies.set(key, value + existingValue);
+  }
+
+  /**
+   * Measure latency for a request
+   * @param key - key
+   * @param callback - callback for which you would like to measure latency
+   * @param overwrite - overwite existing value or add to it
+   * @returns
+   */
+  public measureLatency(
+    callback: () => Promise<any>,
+    key: PreComputedLatencies,
+    overwrite = false
+  ) {
+    const start = performance.now();
+
+    return callback().finally(() => {
+      this.saveLatency(key, performance.now() - start, overwrite);
+    });
   }
 
   /**
@@ -159,6 +180,16 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
   }
 
   /**
+   * getU2CTime
+   * @returns - latency
+   */
+  public getU2CTime() {
+    const u2cLatency = this.precomputedLatencies.get('internal.get.u2c.time');
+
+    return u2cLatency ? Math.floor(u2cLatency) : undefined;
+  }
+
+  /**
    * Device Register Time
    * @returns - latency
    */
@@ -186,15 +217,6 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
    */
   public getJoinReqResp() {
     return this.getDiffBetweenTimestamps('client.locus.join.request', 'client.locus.join.response');
-  }
-
-  /**
-   * Locus Join Response Sent Received
-   * @returns - latency
-   */
-  public getJoinRespSentReceived() {
-    // TODO: not clear SPARK-440554
-    return undefined;
   }
 
   /**
@@ -431,5 +453,15 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
    */
   public getVideoJoinRespTxStart() {
     return this.getDiffBetweenTimestamps('client.locus.join.response', 'client.media.tx.start');
+  }
+
+  /**
+   * Total latency for all other app api requests.
+   * Excludes meeting info, because it's measured separately.
+   */
+  public getOtherAppApiReqResp() {
+    const otherAppApiJMT = this.precomputedLatencies.get('internal.other.app.api.time');
+
+    return otherAppApiJMT > 0 ? Math.floor(otherAppApiJMT) : undefined;
   }
 }

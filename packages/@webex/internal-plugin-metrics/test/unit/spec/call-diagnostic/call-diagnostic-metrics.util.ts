@@ -302,6 +302,11 @@ describe('internal-plugin-metrics', () => {
 
     [
       ['client.exit.app', {}],
+      ['client.login.end', {
+        joinTimes: {
+          otherAppApiReqResp: undefined,
+        }
+      }],
       ['client.webexapp.launched', {
         joinTimes: {
           downloadTime: undefined,
@@ -323,6 +328,7 @@ describe('internal-plugin-metrics', () => {
             showInterstitialTime: undefined,
             meetingInfoReqResp: undefined,
             registerWDMDeviceJMT: undefined,
+            getU2CTime: undefined
           },
         },
       ],
@@ -333,7 +339,6 @@ describe('internal-plugin-metrics', () => {
             meetingInfoReqResp: undefined,
             callInitJoinReq: undefined,
             joinReqResp: undefined,
-            joinReqSentReceived: undefined,
             pageJmt: undefined,
             clickToInterstitial: undefined,
             interstitialToJoinOK: undefined,
