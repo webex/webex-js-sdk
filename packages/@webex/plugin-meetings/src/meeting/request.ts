@@ -128,6 +128,7 @@ export default class MeetingRequest extends StatelessWebexPlugin {
     deviceCapabilities?: Array<string>;
     liveAnnotationSupported: boolean;
     ipVersion?: IP_VERSION;
+    alias?: string;
   }) {
     const {
       asResourceOccupant,
@@ -151,6 +152,7 @@ export default class MeetingRequest extends StatelessWebexPlugin {
       deviceCapabilities = [],
       liveAnnotationSupported,
       ipVersion,
+      alias,
     } = options;
 
     LoggerProxy.logger.info('Meeting:request#joinMeeting --> Joining a meeting', correlationId);
@@ -179,6 +181,10 @@ export default class MeetingRequest extends StatelessWebexPlugin {
         ipver: ipVersion,
       },
     };
+
+    if (alias) {
+      body.alias = alias;
+    }
 
     if (breakoutsSupported) {
       deviceCapabilities.push(BREAKOUTS.BREAKOUTS_SUPPORTED);
