@@ -381,7 +381,7 @@ describe('plugin-mercury', () => {
         });
       });
 
-      describe.skip('when webSocketUrl is provided', () => {
+      describe('when webSocketUrl is provided', () => {
         it('connects to Mercury with provided url', () => {
           const webSocketUrl = 'ws://providedurl.com';
           const promise = mercury.connect(webSocketUrl);
@@ -403,7 +403,7 @@ describe('plugin-mercury', () => {
       });
     });
 
-    describe.skip('Websocket proxy agent', () => {
+    describe('Websocket proxy agent', () => {
       afterEach(() => {
         delete webex.config.defaultMercuryOptions;
       });
@@ -451,7 +451,7 @@ describe('plugin-mercury', () => {
       });
     });
 
-    describe.skip('#disconnect()', () => {
+    describe('#disconnect()', () => {
       it('disconnects the WebSocket', () =>
         mercury
           .connect()
