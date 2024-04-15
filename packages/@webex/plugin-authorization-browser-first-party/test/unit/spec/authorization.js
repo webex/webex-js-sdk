@@ -212,7 +212,7 @@ describe('plugin-authorization-browser-first-party', () => {
           catch (e) {
             err = e;
           }
-          expect(err?.message).toBe('Cannot convert object to primitive value')
+          assert.equal(err?.message, 'Cannot convert object to primitive value');
         });
       });
 
