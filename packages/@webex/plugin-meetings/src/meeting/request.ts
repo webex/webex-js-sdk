@@ -103,6 +103,7 @@ export default class MeetingRequest extends StatelessWebexPlugin {
    * @param {String} options.locale,
    * @param {Array} options.deviceCapabilities
    * @param {boolean} options.liveAnnotationSupported
+   * @param {String} options.alias
    * @returns {Promise}
    */
   async joinMeeting(options: {
