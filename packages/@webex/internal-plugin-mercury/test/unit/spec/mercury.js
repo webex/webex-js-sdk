@@ -152,9 +152,8 @@ describe('plugin-mercury', () => {
       });
 
       describe('when `maxRetries` is set', () => {
-        // skipping due to apparent bug with lolex in all browsers but Chrome.
-        skipInBrowser(it)('fails after `maxRetries` attempts', () => {
-          mercury.config.maxRetries = 2;
+
+        const check = () => {
           socketOpenStub.restore();
           socketOpenStub = sinon.stub(Socket.prototype, 'open');
           socketOpenStub.returns(Promise.reject(new ConnectionError()));
@@ -182,12 +181,42 @@ describe('plugin-mercury', () => {
             .then(() => {
               assert.calledThrice(Socket.prototype.open);
               clock.tick(5 * mercury.config.backoffTimeReset);
-
               return assert.isRejected(promise);
             })
             .then(() => {
               assert.calledThrice(Socket.prototype.open);
             });
+        }
+
+        // skipping due to apparent bug with lolex in all browsers but Chrome.
+        // if initial retries is zero and mercury has never connected max retries is used
+        skipInBrowser(it)('fails after `maxRetries` attempts', () => {
+          mercury.config.maxRetries = 2;
+          mercury.config.initialConnectionMaxRetries = 0;
+
+          return check();
+        });
+
+        // initial retries is non-zero so takes precedence over maxRetries when mercury has never connected
+        skipInBrowser(it)('fails after `initialConnectionMaxRetries` attempts', () => {
+          mercury.config.maxRetries = 0;
+          mercury.config.initialConnectionMaxRetries = 2;
+          return check();
+        });
+
+        // initial retries is non-zero so takes precedence over maxRetries when mercury has never connected
+        skipInBrowser(it)('fails after `initialConnectionMaxRetries` attempts', () => {
+          mercury.config.initialConnectionMaxRetries = 2;
+          mercury.config.maxRetries = 5;
+          return check();
+        });
+
+        // when mercury has connected maxRetries is used and the initialConnectionMaxRetries is ignored
+        skipInBrowser(it)('fails after `initialConnectionMaxRetries` attempts', () => {
+          mercury.config.initialConnectionMaxRetries = 5;
+          mercury.config.maxRetries = 2;
+          mercury.hasEverConnected = true;
+          return check();
         });
       });
 
