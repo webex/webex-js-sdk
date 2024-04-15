@@ -99,7 +99,6 @@ import {
   MeetingInfoV2PolicyError,
 } from '../../../../src/meeting-info/meeting-info-v2';
 import {
-  CLIENT_ERROR_CODE_TO_ERROR_PAYLOAD,
   DTLS_HANDSHAKE_FAILED_CLIENT_CODE,
   ICE_FAILED_WITHOUT_TURN_TLS_CLIENT_CODE,
   ICE_FAILED_WITH_TURN_TLS_CLIENT_CODE,
@@ -3268,28 +3267,50 @@ describe('plugin-meetings', () => {
                 if (stream !== undefined) {
                   switch (type) {
                     case 'audio':
-                      assert.calledOnceWithExactly(
-                        meeting.sendSlotManager.getSlot(MediaType.AudioMain).publishStream,
-                        stream
-                      );
+                      if (stream?.readyState === 'ended') {
+                        assert.notCalled(meeting.sendSlotManager.getSlot(MediaType.AudioMain).publishStream);
+                      } else {
+                        assert.calledOnceWithExactly(
+                          meeting.sendSlotManager.getSlot(MediaType.AudioMain).publishStream,
+                          stream
+                        );
+                      }
                       break;
                     case 'video':
-                      assert.calledOnceWithExactly(
-                        meeting.sendSlotManager.getSlot(MediaType.VideoMain).publishStream,
-                        stream
-                      );
+                      if (stream?.readyState === 'ended') {
+                        assert.notCalled(
+                          meeting.sendSlotManager.getSlot(MediaType.VideoMain).publishStream
+                        );
+                      } else {
+                        assert.calledOnceWithExactly(
+                          meeting.sendSlotManager.getSlot(MediaType.VideoMain).publishStream,
+                          stream
+                        );
+                      }
                       break;
                     case 'screenShareAudio':
-                      assert.calledOnceWithExactly(
-                        meeting.sendSlotManager.getSlot(MediaType.AudioSlides).publishStream,
-                        stream
-                      );
+                      if (stream?.readyState === 'ended') {
+                        assert.notCalled(
+                          meeting.sendSlotManager.getSlot(MediaType.AudioSlides).publishStream
+                        );
+                      } else {
+                        assert.calledOnceWithExactly(
+                          meeting.sendSlotManager.getSlot(MediaType.AudioSlides).publishStream,
+                          stream
+                        );
+                      }
                       break;
                     case 'screenShareVideo':
-                      assert.calledOnceWithExactly(
-                        meeting.sendSlotManager.getSlot(MediaType.VideoSlides).publishStream,
-                        stream
-                      );
+                      if (stream?.readyState === 'ended') {
+                        assert.notCalled(
+                          meeting.sendSlotManager.getSlot(MediaType.VideoSlides).publishStream
+                        );
+                      } else {
+                        assert.calledOnceWithExactly(
+                          meeting.sendSlotManager.getSlot(MediaType.VideoSlides).publishStream,
+                          stream
+                        );
+                      }
                       break;
                   }
                 }
@@ -3395,6 +3416,40 @@ describe('plugin-meetings', () => {
               mediaConnectionConfig: expectedMediaConnectionConfig,
               localStreams: {
                 audio: fakeMicrophoneStream,
+                video: undefined,
+                screenShareVideo: undefined,
+                screenShareAudio: undefined,
+              },
+              direction: {
+                audio: 'sendrecv',
+                video: 'sendrecv',
+                screenShare: 'recvonly',
+              },
+              remoteQualityLevel: 'HIGH',
+              expectedDebugId,
+              meetingId: meeting.id,
+            });
+            // and SDP offer was sent with the right audioMuted/videoMuted values
+            checkSdpOfferSent({audioMuted: true, videoMuted: true});
+            // check OK was sent with the right audioMuted/videoMuted values
+            checkOkSent({audioMuted: true, videoMuted: true});
+
+            // and that these were the only /media requests that were sent
+            assert.calledTwice(locusMediaRequestStub);
+          });
+
+          it('addMedia() works correctly when media is enabled with tracks to publish and track is ended', async () => {
+            fakeMicrophoneStream.readyState = 'ended';
+
+            await meeting.addMedia({localStreams: {microphone: fakeMicrophoneStream}});
+            await simulateRoapOffer();
+            await simulateRoapOk();
+
+            // check RoapMediaConnection was created correctly
+            checkMediaConnectionCreated({
+              mediaConnectionConfig: expectedMediaConnectionConfig,
+              localStreams: {
+                audio: undefined,
                 video: undefined,
                 screenShareVideo: undefined,
                 screenShareAudio: undefined,
@@ -6358,6 +6413,65 @@ describe('plugin-meetings', () => {
             checkVideoPublished(videoStream);
             checkScreenShareVideoPublished(videoShareStream);
             checkScreenShareAudioPublished(audioShareStream);
+          });
+
+          [
+            {
+              endedStream: 'microphone', 
+              streams: {
+                microphone: {
+                  readyState: 'ended',
+                },
+                camera: undefined,
+                screenShare: {
+                  audio: undefined,
+                  video: undefined,
+                },
+              },
+            },
+            {
+              endedStream: 'camera', 
+              streams: {
+                microphone: undefined,
+                camera: {
+                  readyState: 'ended',
+                },
+                screenShare: {
+                  audio: undefined,
+                  video: undefined,
+                },
+              },
+            },
+            {
+              endedStream: 'screenShare audio', 
+              streams: {
+                microphone: undefined,
+                camera: undefined,
+                screenShare: {
+                  audio: {
+                    readyState: 'ended',
+                  },
+                  video: undefined,
+                },
+              },
+            },
+            {
+              endedStream: 'screenShare video', 
+              streams: {
+                microphone: undefined,
+                camera: undefined,
+                screenShare: {
+                  audio: undefined,
+                  video: {
+                    readyState: 'ended',
+                  },
+                },
+              },
+            },
+          ].forEach(({endedStream, streams}) => {
+            it(`throws error if readyState of ${endedStream} is ended`, async () => {
+              assert.isRejected(meeting.publishStreams(streams));
+            })
           });
         });
 
