@@ -71,7 +71,7 @@ describe('plugin-mercury', () => {
       });
     });
 
-    describe.skip('#open()', () => {
+    describe('#open()', () => {
       let socket;
 
       beforeEach(() => {
@@ -215,7 +215,7 @@ describe('plugin-mercury', () => {
       });
     });
 
-    describe.skip('#open()', () => {
+    describe('#open()', () => {
       it('requires a url parameter', () => {
         const s = new Socket();
 
@@ -568,7 +568,7 @@ describe('plugin-mercury', () => {
       });
     });
 
-    describe.skip('#onclose()', () => {
+    describe('#onclose()', () => {
       it('stops further ping checks', () => {
         socket._ping.resetHistory();
         assert.notCalled(socket._ping);
@@ -752,7 +752,7 @@ describe('plugin-mercury', () => {
       });
     });
 
-    describe.skip('#_ping()', () => {
+    describe('#_ping()', () => {
       let id;
 
       beforeEach(() => {
