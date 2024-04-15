@@ -1,3 +1,4 @@
+import 'jsdom-global/register';
 import {assert, expect} from '@webex/test-helper-chai';
 import sinon from 'sinon';
 import {
@@ -54,22 +55,22 @@ describe('media-helpers', () => {
 
         it('by default allows unmuting', async () => {
           assert.equal(stream.isUnmuteAllowed(), true);
-          await stream.setMuted(false);
+          await stream.setUserMuted(false);
         });
 
-        it('rejects setMute(false) if unmute is not allowed', async () => {
+        it('rejects setUserMuted(false) if unmute is not allowed', async () => {
           stream.setUnmuteAllowed(false);
 
           assert.equal(stream.isUnmuteAllowed(), false);
-          const fn = () => stream.setMuted(false);
+          const fn = () => stream.setUserMuted(false);
           expect(fn).to.throw(/Unmute is not allowed/);
         });
 
-        it('resolves setMute(false) if unmute is allowed', async () => {
+        it('resolves setUserMuted(false) if unmute is allowed', async () => {
           stream.setUnmuteAllowed(true);
 
           assert.equal(stream.isUnmuteAllowed(), true);
-          await stream.setMuted(false);
+          await stream.setUserMuted(false);
         });
 
         it('returns a reasonable length string from JSON.stringify()', () => {
@@ -82,16 +83,16 @@ describe('media-helpers', () => {
           });
 
           const checkSetServerMuted = (startMute, setMute, expectedCalled) => {
-            stream.setMuted(startMute);
+            stream.setUserMuted(startMute);
 
-            assert.equal(stream.muted, startMute);
+            assert.equal(stream.userMuted, startMute);
 
             const handler = sinon.fake();
             stream.on(event.ServerMuted, handler);
 
             stream.setServerMuted(setMute, 'remotelyMuted');
 
-            assert.equal(stream.muted, setMute);
+            assert.equal(stream.userMuted, setMute);
             if (expectedCalled) {
               assert.calledOnceWithExactly(handler, setMute, 'remotelyMuted');
             } else {
