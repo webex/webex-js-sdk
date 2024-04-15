@@ -1,15 +1,12 @@
 import {assert} from '@webex/test-helper-chai';
-import {NewMetrics} from '@webex/internal-plugin-metrics';
+import {NewMetrics, CallDiagnosticLatencies} from '@webex/internal-plugin-metrics';
 import MockWebex from '@webex/test-helper-mock-webex';
 import sinon from 'sinon';
 import {Utils} from '@webex/internal-plugin-metrics';
 
 describe('internal-plugin-metrics', () => {
-
-  describe('check submitClientEvent when webex is not ready', () => {
-    let webex;
-    //@ts-ignore
-    webex = new MockWebex({
+  const mockWebex = () =>
+    new MockWebex({
       children: {
         newMetrics: NewMetrics,
       },
@@ -22,8 +19,13 @@ describe('internal-plugin-metrics', () => {
       logger: {
         log: sinon.stub(),
         error: sinon.stub(),
-      }
+      },
     });
+
+  describe('check submitClientEvent when webex is not ready', () => {
+    let webex;
+    //@ts-ignore
+    webex = mockWebex();
 
     it('checks the log', () => {
       webex.internal.newMetrics.submitClientEvent({
@@ -38,26 +40,21 @@ describe('internal-plugin-metrics', () => {
       );
     });
   });
+
+  describe('new-metrics contstructor', () => {
+    it('checks callDiagnosticLatencies is defined before ready emit', () => {
+      const webex = mockWebex();
+
+      assert.instanceOf(webex.internal.newMetrics.callDiagnosticLatencies, CallDiagnosticLatencies);
+    });
+  });
+
   describe('new-metrics', () => {
     let webex;
 
     beforeEach(() => {
       //@ts-ignore
-      webex = new MockWebex({
-        children: {
-          newMetrics: NewMetrics,
-        },
-        meetings: {
-          meetingCollection: {
-            get: sinon.stub(),
-          },
-        },
-        request: sinon.stub().resolves({}),
-        logger: {
-          log: sinon.stub(),
-          error: sinon.stub(),
-        }
-      });
+      webex = mockWebex();
 
       webex.emit('ready');
 
@@ -73,7 +70,7 @@ describe('internal-plugin-metrics', () => {
 
     afterEach(() => {
       sinon.restore();
-    })
+    });
 
     it('submits Client Event successfully', () => {
       webex.internal.newMetrics.submitClientEvent({
@@ -93,7 +90,6 @@ describe('internal-plugin-metrics', () => {
         options: {meetingId: '123'},
       });
     });
-
 
     it('submits MQE successfully', () => {
       webex.internal.newMetrics.submitMQE({
@@ -148,9 +144,9 @@ describe('internal-plugin-metrics', () => {
           method: 'POST',
           api: 'metrics',
           resource: 'clientmetrics',
-          headers: { 'x-prelogin-userid': 'my-id' },
+          headers: {'x-prelogin-userid': 'my-id'},
           body: {},
-          qs: { alias: true },
+          qs: {alias: true},
         });
         assert.calledWith(
           webex.logger.log,
@@ -159,8 +155,8 @@ describe('internal-plugin-metrics', () => {
       });
 
       it('handles failed request correctly', async () => {
-        webex.request.rejects(new Error("test error"));
-        sinon.stub(Utils, 'generateCommonErrorMetadata').returns('formattedError')
+        webex.request.rejects(new Error('test error'));
+        sinon.stub(Utils, 'generateCommonErrorMetadata').returns('formattedError');
         try {
           await webex.internal.newMetrics.clientMetricsAliasUser({event: 'test'}, 'my-id');
         } catch (err) {

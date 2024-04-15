@@ -150,15 +150,30 @@ export class MuteState {
    * @param {Boolean} [mute] true for muting, false for unmuting request
    * @returns {void}
    */
-  public handleLocalStreamMuteStateChange(meeting?: object, mute?: boolean) {
+  public handleLocalStreamMuteStateChange(meeting?: any) {
     if (this.ignoreMuteStateChange) {
       return;
     }
+
+    // either user or system may have triggered a mute state change, but localMute should reflect both
+    let newMuteState: boolean;
+    let userMuteState: boolean;
+    let systemMuteState: boolean;
+    if (this.type === AUDIO) {
+      newMuteState = meeting.mediaProperties.audioStream?.muted;
+      userMuteState = meeting.mediaProperties.audioStream?.userMuted;
+      systemMuteState = meeting.mediaProperties.audioStream?.systemMuted;
+    } else {
+      newMuteState = meeting.mediaProperties.videoStream?.muted;
+      userMuteState = meeting.mediaProperties.videoStream?.userMuted;
+      systemMuteState = meeting.mediaProperties.videoStream?.systemMuted;
+    }
+
     LoggerProxy.logger.info(
-      `Meeting:muteState#handleLocalStreamMuteStateChange --> ${this.type}: local stream new mute state: ${mute}`
+      `Meeting:muteState#handleLocalStreamMuteStateChange --> ${this.type}: local stream new mute state: ${newMuteState} (user mute: ${userMuteState}, system mute: ${systemMuteState})`
     );
 
-    this.state.client.localMute = mute;
+    this.state.client.localMute = newMuteState;
 
     this.applyClientStateToServer(meeting);
   }
@@ -249,7 +264,12 @@ export class MuteState {
           `Meeting:muteState#applyClientStateToServer --> ${this.type}: error: ${e}`
         );
 
-        this.applyServerMuteToLocalStream(meeting, 'clientRequestFailed');
+        // failed to apply client state to server, so revert stream mute state to server state
+        this.muteLocalStream(
+          meeting,
+          this.state.server.localMute || this.state.server.remoteMute,
+          'clientRequestFailed'
+        );
       });
   }
 
@@ -325,18 +345,6 @@ export class MuteState {
       });
   }
 
-  /** Sets the mute state of the local stream according to what server thinks is our state
-   * @param {Object} meeting - the meeting object
-   * @param {ServerMuteReason} serverMuteReason - reason why we're applying server mute to the local stream
-   * @returns {void}
-   */
-  private applyServerMuteToLocalStream(meeting: any, serverMuteReason: ServerMuteReason) {
-    const muted = this.state.server.localMute || this.state.server.remoteMute;
-
-    // update the local stream mute state, but not this.state.client.localMute
-    this.muteLocalStream(meeting, muted, serverMuteReason);
-  }
-
   /** Applies the current value for unmute allowed to the underlying stream
    *
    * @param {Meeting} meeting
@@ -371,7 +379,7 @@ export class MuteState {
     }
     if (muted !== undefined) {
       this.state.server.remoteMute = muted;
-      this.applyServerMuteToLocalStream(meeting, 'remotelyMuted');
+      this.muteLocalStream(meeting, muted, 'remotelyMuted');
     }
   }
 
@@ -383,7 +391,7 @@ export class MuteState {
    * @param {Object} [meeting] the meeting object
    * @returns {undefined}
    */
-  public handleServerLocalUnmuteRequired(meeting?: object) {
+  public handleServerLocalUnmuteRequired(meeting?: any) {
     if (!this.state.client.enabled) {
       LoggerProxy.logger.warn(
         `Meeting:muteState#handleServerLocalUnmuteRequired --> ${this.type}: localAudioUnmuteRequired received while ${this.type} is disabled -> local unmute will not result in ${this.type} being sent`
@@ -396,9 +404,15 @@ export class MuteState {
 
     // todo: I'm seeing "you can now unmute yourself " popup  when this happens - but same thing happens on web.w.c so we can ignore for now
     this.state.server.remoteMute = false;
-    this.state.client.localMute = false;
 
-    this.applyClientStateLocally(meeting, 'localUnmuteRequired');
+    // change user mute state to false, but keep localMute true if overall mute state is still true
+    this.muteLocalStream(meeting, false, 'localUnmuteRequired');
+    if (this.type === AUDIO) {
+      this.state.client.localMute = meeting.mediaProperties.audioStream?.muted;
+    } else {
+      this.state.client.localMute = meeting.mediaProperties.videoStream?.muted;
+    }
+
     this.applyClientStateToServer(meeting);
   }
 

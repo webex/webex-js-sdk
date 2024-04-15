@@ -10,7 +10,7 @@ import {createCameraStream, createDisplayStream, createMicrophoneStream, LocalTr
 
 import testUtils from '../../utils/testUtils';
 import integrationTestUtils from '../../utils/integrationTestUtils';
-import {EVENT_TRIGGERS} from '../../../src/constants';
+import {EVENT_TRIGGERS} from '../../../dist/constants';
 
 require('dotenv').config();
 
@@ -239,7 +239,7 @@ skipInNode(describe)('plugin-meetings', () => {
 
     // Enabled when config.enableUnifiedMeetings = true
     xdescribe('Conversation URL', () => {
-      describe('Successful 1:1 meeting', () => {
+      describe('Successful 1:1 meeting',  () => {
         it('Fetch meeting information with a conversation URL for a 1:1 space', async () => {
           assert.equal(Object.keys(bob.webex.meetings.getAllMeetings()), 0);
           assert.equal(Object.keys(chris.webex.meetings.getAllMeetings()), 0);
@@ -432,11 +432,11 @@ skipInNode(describe)('plugin-meetings', () => {
           {scope: bob.meeting.members, event: 'members:update', match: checkEvent},
         ]);
 
-        localStreams.alice.microphone.setMuted(true);
+        localStreams.alice.microphone.setUserMuted(true);
 
         await membersUpdate;
 
-        assert.equal(localStreams.alice.microphone.muted, true);
+        assert.equal(localStreams.alice.microphone.userMuted, true);
       });
 
       it('alice Audio unMute ', async () => {
@@ -451,11 +451,11 @@ skipInNode(describe)('plugin-meetings', () => {
           {scope: bob.meeting.members, event: 'members:update', match: checkEvent},
         ]);
 
-        localStreams.alice.microphone.setMuted(false);
+        localStreams.alice.microphone.setUserMuted(false);
 
         await membersUpdate;
 
-        assert.equal(localStreams.alice.microphone.muted, false);
+        assert.equal(localStreams.alice.microphone.userMuted, false);
       });
 
       it('alice video mute', async () => {
@@ -470,11 +470,11 @@ skipInNode(describe)('plugin-meetings', () => {
           {scope: bob.meeting.members, event: 'members:update', match: checkEvent},
         ]);
 
-        localStreams.alice.camera.setMuted(true);
+        localStreams.alice.camera.setUserMuted(true);
 
         await membersUpdate;
 
-        assert.equal(localStreams.alice.camera.muted, true);
+        assert.equal(localStreams.alice.camera.userMuted, true);
       });
 
       it('alice video unmute', async () => {
@@ -489,11 +489,11 @@ skipInNode(describe)('plugin-meetings', () => {
           {scope: bob.meeting.members, event: 'members:update', match: checkEvent},
         ]);
 
-        localStreams.alice.camera.setMuted(false);
+        localStreams.alice.camera.setUserMuted(false);
 
         await membersUpdate;
 
-        assert.equal(localStreams.alice.camera.muted, false);
+        assert.equal(localStreams.alice.camera.userMuted, false);
       });
 
       it('alice update Audio', async () => {
@@ -574,11 +574,11 @@ skipInNode(describe)('plugin-meetings', () => {
         ]);
 
         // first bob mutes himself
-        localStreams.bob.microphone.setMuted(true);
+        localStreams.bob.microphone.setUserMuted(true);
 
         await membersUpdate;
 
-        assert.equal(localStreams.bob.microphone.muted, true);
+        assert.equal(localStreams.bob.microphone.userMuted, true);
 
         // now alice tries to unmmute bob
         await testUtils.delayedPromise(alice.meeting.mute(bob.meeting.members.selfId, false))
@@ -593,7 +593,7 @@ skipInNode(describe)('plugin-meetings', () => {
             assert.fail('bob received unexpected meeting:self:unmutedByOthers event');
           })
           .catch(() => {
-            assert.equal(localStreams.bob.microphone.muted, true);
+            assert.equal(localStreams.bob.microphone.userMuted, true);
           });
       });
 
@@ -607,11 +607,11 @@ skipInNode(describe)('plugin-meetings', () => {
           {scope: alice.meeting.members, event: 'members:update', match: checkEvent},
         ]);
 
-        localStreams.bob.microphone.setMuted(false);
+        localStreams.bob.microphone.setUserMuted(false);
 
         await membersUpdate;
 
-        assert.equal(localStreams.bob.microphone.muted, false);
+        assert.equal(localStreams.bob.microphone.userMuted, false);
       });
 
       it('alice shares the screen with highFrameRate', async () => {
