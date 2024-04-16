@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.400](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.398...v3.0.0-beta.400) (2024-04-16)
+
+
+### Features
+
+* **internal-plugin-mercury:** initial max connections ([#3537](https://github.com/webex/webex-js-sdk/issues/3537)) ([0ab9037](https://github.com/webex/webex-js-sdk/commit/0ab90375369d5be94624d37af9b36ade5776bc86))
+* **plugin-meetings:** initialConnectionMaxRetries ([#3534](https://github.com/webex/webex-js-sdk/issues/3534)) ([e9fff88](https://github.com/webex/webex-js-sdk/commit/e9fff88fd35629705ff9f2f0c9c178c7bfca8a68))
+
+
+### Bug Fixes
+
+* **plugin-meetings:** don't attempt to publish ended streams ([#3400](https://github.com/webex/webex-js-sdk/issues/3400)) ([fe570c9](https://github.com/webex/webex-js-sdk/commit/fe570c9055ab68ad4da13fa94fdfe5c6d90b52eb))
+
 ## [3.0.0-beta.399](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.398...v3.0.0-beta.399) (2024-04-15)
 
 
