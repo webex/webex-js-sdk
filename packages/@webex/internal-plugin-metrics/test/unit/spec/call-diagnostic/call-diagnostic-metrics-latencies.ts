@@ -206,6 +206,24 @@ describe('internal-plugin-metrics', () => {
       });
     });
 
+    describe('getRefreshCaptchaReqResp', () => {
+      it('returns undefined when no precomputed value available', () => {
+        assert.deepEqual(cdl.getRefreshCaptchaReqResp(), undefined);
+      });
+
+      it('returns the correct value', () => {
+        cdl.saveLatency('internal.refresh.captcha.time', 123);
+
+        assert.deepEqual(cdl.getRefreshCaptchaReqResp(), 123);
+      });
+
+      it('returns the correct whole number', () => {
+        cdl.saveLatency('internal.refresh.captcha.time', 321.44);
+
+        assert.deepEqual(cdl.getRefreshCaptchaReqResp(), 321);
+      });
+    });
+
     describe('saveTimestamp', () => {
       afterEach(() => {
         sinon.restore();
@@ -605,6 +623,24 @@ describe('internal-plugin-metrics', () => {
         value: 14,
       });
       assert.deepEqual(cdl.getInterstitialToMediaOKJMT(), 10);
+    });
+
+    it('calculates getU2CTime correctly', () => {
+      it('returns undefined when no precomputed value available', () => {
+        assert.deepEqual(cdl.getU2CTime(), undefined);
+      });
+
+      it('returns the correct value', () => {
+        cdl.saveLatency('internal.get.u2c.time', 123);
+
+        assert.deepEqual(cdl.getU2CTime(), 123);
+      });
+
+      it('returns the correct whole number', () => {
+        cdl.saveLatency('internal.get.u2c.time', 321.44);
+
+        assert.deepEqual(cdl.getU2CTime(), 321);
+      });
     });
 
     it('calculates getDownloadTimeJMT correctly', () => {

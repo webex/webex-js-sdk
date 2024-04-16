@@ -180,6 +180,16 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
   }
 
   /**
+   * getU2CTime
+   * @returns - latency
+   */
+  public getU2CTime() {
+    const u2cLatency = this.precomputedLatencies.get('internal.get.u2c.time');
+
+    return u2cLatency ? Math.floor(u2cLatency) : undefined;
+  }
+
+  /**
    * Device Register Time
    * @returns - latency
    */
@@ -443,6 +453,15 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
    */
   public getVideoJoinRespTxStart() {
     return this.getDiffBetweenTimestamps('client.locus.join.response', 'client.media.tx.start');
+  }
+
+  /**
+   * Total latency for all refresh captcha requests.
+   */
+  public getRefreshCaptchaReqResp() {
+    const refreshCaptchaReqResp = this.precomputedLatencies.get('internal.refresh.captcha.time');
+
+    return refreshCaptchaReqResp ? Math.floor(refreshCaptchaReqResp) : undefined;
   }
 
   /**

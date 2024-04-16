@@ -318,6 +318,7 @@ describe('internal-plugin-metrics', () => {
           joinTimes: {
             clickToInterstitial: undefined,
             meetingInfoReqResp: undefined,
+            refreshCaptchaServiceReqResp: undefined,
           },
         },
       ],
@@ -328,6 +329,7 @@ describe('internal-plugin-metrics', () => {
             showInterstitialTime: undefined,
             meetingInfoReqResp: undefined,
             registerWDMDeviceJMT: undefined,
+            getU2CTime: undefined
           },
         },
       ],

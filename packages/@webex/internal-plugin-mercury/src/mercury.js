@@ -33,6 +33,10 @@ const Mercury = WebexPlugin.extend({
       default: false,
       type: 'boolean',
     },
+    hasEverConnected: {
+      default: false,
+      type: 'boolean',
+    },
     socket: 'object',
     localClusterServiceUrls: 'object',
   },
@@ -294,6 +298,7 @@ const Mercury = WebexPlugin.extend({
           return reject(err);
         }
         this.connected = true;
+        this.hasEverConnected = true;
         this._emit('online');
 
         return resolve();
@@ -312,7 +317,9 @@ const Mercury = WebexPlugin.extend({
         })
       );
 
-      if (this.config.maxRetries) {
+      if (this.config.initialConnectionMaxRetries && !this.hasEverConnected) {
+        call.failAfter(this.config.initialConnectionMaxRetries);
+      } else if (this.config.maxRetries) {
         call.failAfter(this.config.maxRetries);
       }
 
