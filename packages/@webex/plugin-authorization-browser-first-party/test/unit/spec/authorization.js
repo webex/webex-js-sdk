@@ -7,6 +7,7 @@
 import url from 'url';
 
 import {assert} from '@webex/test-helper-chai';
+import {browserOnly} from '@webex/test-helper-mocha';
 import sinon from 'sinon';
 import MockWebex from '@webex/test-helper-mock-webex';
 import {Credentials, Services} from '@webex/webex-core';
@@ -19,7 +20,7 @@ import Authorization from '@webex/plugin-authorization-browser-first-party';
 const lodash = require('lodash');
 
 
-describe('plugin-authorization-browser-first-party', () => {
+browserOnly(describe)('plugin-authorization-browser', () => {
   describe('Authorization', () => {
     function makeWebex(
       href = 'https://example.com',

@@ -40,8 +40,6 @@ describe('internal-plugin-metrics', () => {
       );
     });
   });
-<<<<<<< HEAD
-<<<<<<< HEAD
 
   describe('new-metrics contstructor', () => {
     it('checks callDiagnosticLatencies is defined before ready emit', () => {
@@ -52,10 +50,6 @@ describe('internal-plugin-metrics', () => {
     });
   });
 
-=======
->>>>>>> 4e69f66d96 (feat: added all test file)
-=======
->>>>>>> 19a747f21a (feat: added all test file)
   describe('new-metrics', () => {
     let webex;
 

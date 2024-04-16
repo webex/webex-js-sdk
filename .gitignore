@@ -43,3 +43,4 @@ docs/samples/webex.min.js.map
 patches.hash
 bundle.js.map
 webex-server
+junit.xml
