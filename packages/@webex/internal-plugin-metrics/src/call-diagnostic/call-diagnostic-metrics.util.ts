@@ -250,6 +250,7 @@ export const prepareDiagnosticMetricItem = (webex: any, item: any) => {
     case 'client.interstitial-window.launched':
       joinTimes.meetingInfoReqResp = cdl.getMeetingInfoReqResp();
       joinTimes.clickToInterstitial = cdl.getClickToInterstitial();
+      joinTimes.refreshCaptchaServiceReqResp = cdl.getRefreshCaptchaReqResp();
       break;
 
     case 'client.call.initiated':

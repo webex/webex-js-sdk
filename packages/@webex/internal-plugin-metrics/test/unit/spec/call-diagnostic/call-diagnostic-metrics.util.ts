@@ -318,6 +318,7 @@ describe('internal-plugin-metrics', () => {
           joinTimes: {
             clickToInterstitial: undefined,
             meetingInfoReqResp: undefined,
+            refreshCaptchaServiceReqResp: undefined,
           },
         },
       ],
