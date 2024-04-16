@@ -55,6 +55,7 @@ webex.init({
 
 ### Retries
 
+
 The default behaviour is for Mercury to continue to try to connect with an exponential back-off. This behavior can be adjusted with the following config params:
 
 - `maxRetries` - the number of times it will retry before error. Default: 0
