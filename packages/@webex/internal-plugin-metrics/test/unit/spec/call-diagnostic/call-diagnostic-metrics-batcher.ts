@@ -103,6 +103,9 @@ describe('plugin-metrics', () => {
           webex.internal.newMetrics.callDiagnosticLatencies.getClickToInterstitial = sinon
             .stub()
             .returns(10);
+          webex.internal.newMetrics.callDiagnosticLatencies.getRefreshCaptchaReqResp = sinon
+            .stub()
+            .returns(10);
           const promise = webex.internal.newMetrics.callDiagnosticMetrics.submitToCallDiagnostics(
             //@ts-ignore
             {event: {name: 'client.interstitial-window.launched'}}
@@ -119,6 +122,7 @@ describe('plugin-metrics', () => {
             joinTimes: {
               clickToInterstitial: 10,
               meetingInfoReqResp: 10,
+              refreshCaptchaServiceReqResp: 10,
             },
           });
           assert.lengthOf(

@@ -456,6 +456,15 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
   }
 
   /**
+   * Total latency for all refresh captcha requests.
+   */
+  public getRefreshCaptchaReqResp() {
+    const refreshCaptchaReqResp = this.precomputedLatencies.get('internal.refresh.captcha.time');
+
+    return refreshCaptchaReqResp ? Math.floor(refreshCaptchaReqResp) : undefined;
+  }
+
+  /**
    * Total latency for all other app api requests.
    * Excludes meeting info, because it's measured separately.
    */
