@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.401](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.400...v3.0.0-beta.401) (2024-04-16)
+
+
+### Features
+
+* **metrics:** refresh captcha latency ([#3524](https://github.com/webex/webex-js-sdk/issues/3524)) ([9b68481](https://github.com/webex/webex-js-sdk/commit/9b6848157f0f09998b55696ffb3b60eecd4d0b24))
+
 ## [3.0.0-beta.400](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.398...v3.0.0-beta.400) (2024-04-16)
 
 
