@@ -74,6 +74,7 @@ describe('internal-plugin-metrics', () => {
                     joinTimes: {
                       meetingInfoReqResp: undefined,
                       clickToInterstitial: undefined,
+                      refreshCaptchaServiceReqResp: undefined,
                     },
                     name: 'client.interstitial-window.launched',
                   },

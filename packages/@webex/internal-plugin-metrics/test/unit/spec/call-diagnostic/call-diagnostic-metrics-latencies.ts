@@ -206,6 +206,24 @@ describe('internal-plugin-metrics', () => {
       });
     });
 
+    describe('getRefreshCaptchaReqResp', () => {
+      it('returns undefined when no precomputed value available', () => {
+        assert.deepEqual(cdl.getRefreshCaptchaReqResp(), undefined);
+      });
+
+      it('returns the correct value', () => {
+        cdl.saveLatency('internal.refresh.captcha.time', 123);
+
+        assert.deepEqual(cdl.getRefreshCaptchaReqResp(), 123);
+      });
+
+      it('returns the correct whole number', () => {
+        cdl.saveLatency('internal.refresh.captcha.time', 321.44);
+
+        assert.deepEqual(cdl.getRefreshCaptchaReqResp(), 321);
+      });
+    });
+
     describe('saveTimestamp', () => {
       afterEach(() => {
         sinon.restore();
