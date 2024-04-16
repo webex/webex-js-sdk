@@ -29,7 +29,7 @@ describe('media-helpers', () => {
         className: LocalMicrophoneStream,
         title: 'LocalMicrophoneStream',
         event: LocalMicrophoneStreamEventNames,
-        createFn: createMicrophoneStream,g
+        createFn: createMicrophoneStream,
         spyFn: 'createMicrophoneStream',
       },
     ];
