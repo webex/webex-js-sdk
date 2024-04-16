@@ -386,6 +386,10 @@ legend {
   padding: 0.3rem;
 }
 
+.webex-warning {
+  color: #7d4705;
+}
+
 .webex-error {
   color: #de3434;
 }

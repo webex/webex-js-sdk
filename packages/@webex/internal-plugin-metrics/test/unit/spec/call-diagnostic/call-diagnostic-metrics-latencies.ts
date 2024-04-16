@@ -607,6 +607,24 @@ describe('internal-plugin-metrics', () => {
       assert.deepEqual(cdl.getInterstitialToMediaOKJMT(), 10);
     });
 
+    it('calculates getU2CTime correctly', () => {
+      it('returns undefined when no precomputed value available', () => {
+        assert.deepEqual(cdl.getU2CTime(), undefined);
+      });
+
+      it('returns the correct value', () => {
+        cdl.saveLatency('internal.get.u2c.time', 123);
+
+        assert.deepEqual(cdl.getU2CTime(), 123);
+      });
+
+      it('returns the correct whole number', () => {
+        cdl.saveLatency('internal.get.u2c.time', 321.44);
+
+        assert.deepEqual(cdl.getU2CTime(), 321);
+      });
+    });
+
     it('calculates getDownloadTimeJMT correctly', () => {
       cdl.saveLatency('internal.download.time', 1000);
       assert.deepEqual(cdl.getDownloadTimeJMT(), 1000);
