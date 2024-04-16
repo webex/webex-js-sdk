@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.402](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.401...v3.0.0-beta.402) (2024-04-16)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** add alias in joinMeeting request body: SPARK-514797 ([#3532](https://github.com/webex/webex-js-sdk/issues/3532)) ([3544d96](https://github.com/webex/webex-js-sdk/commit/3544d96af0cc916e691c48e108eb698697a6ce03))
+
 ## [3.0.0-beta.401](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.400...v3.0.0-beta.401) (2024-04-16)
 
 
