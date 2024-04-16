@@ -103,19 +103,19 @@ Installation of this project's dependencies should be performed prior to executi
 
 #### Prebuilding
 
-In order to make the development against this project as streamlined as possible, prebuilding all modules is recommended. The below commands should be executed in their provided order whenever new changes are ingested locally.
+In order to make the development against this project as streamlined as possible, prebuilding all modules is recommended. The below command should be executed whenever new changes are ingested locally.
+
+```bash
+yarn prebuild:modules
+```
+
+Alternatively, the following commands can be executed in their provided order to fulfill the same effect as the above command. Note that in some cases, some of these commands may be unnecessary based on the changes that are ingested locally.
 
 1. `yarn` - Installs any new dependencies or links any new localized modules (symlink)
 2. `yarn @tools build:src` - Builds core tooling.
 3. `yarn @legacy-tools build:src` - Builds legacy tooling.
 4. `yarn workspace @webex/webex-core build:src` - Builds the module core.
 5. `yarn @all build:src` - Build all remaining packages in the project.
-
-Alternatively, the following command can be executed to run all of the above commands in a single alias:
-
-```bash
-yarn prebuild:modules
-```
 
 After prebuilding has been completed, any script within any module should operate as intended. For more information on specifics for each module, please review their respective documentation. This documentation should be located within the module's `./README.md` or built documentation.
 
@@ -142,14 +142,14 @@ The [workflows folder](./.github/workflows/) may contain additional items as wel
 
 ###### Modern Configuration
 
-Global **modern configuration** for this project can be found exclusively within the `./config/` folder of this project. This folder contains configuration scopes based on their respective runtimes. Each of these folders *should* contain an associated `README.md` file that includes all necessary documentation to consume the contents. Be sure to inspect the documentation for each of the respective runtimes when making changes to a specific scope.
+Global **modern configuration** for this project can be found exclusively within the [configuration folder](./config/) of this project. This folder contains configuration scopes based on their respective runtimes. Each of these folders *should* contain an associated `README.md` file that includes all necessary documentation to consume the contents. Be sure to inspect the documentation for each of the respective runtimes when making changes to a specific scope.
 
 ###### Legacy Configuration
 
 Global **legacy configuration** is available within the `./packages/legacy/` folder. This configuration exclusively applies to the following modules scopes:
 
-* `./packages/@webex` - Webex modular modules.
-* `./packages/webex` - Webex unified modules.
+* `./packages/@webex` - Webex legacy modules.
+* `./packages/webex` - Webex unified legacy modules.
 
 These modules utilize older configuration formats that no longer align within the Webex JS SDK product direction, and will eventually be migrated to the newer configurations as resources permit.
 
@@ -170,9 +170,8 @@ The previous defined list of documentation articles are used to help provide bot
 
 In addition to the above documentation, there are **samples** that can be built and ran as well. This is done by performing the following actions after [setting up this project locally](#setup):
 
-```bash
-yarn samples:serve
-```
+* `yarn samples:build` - Build the samples into the `./docs/samples` directory.
+* `yarn samples:serve` - Build and Serve the samples in watch mode.
 
 After the samples have been built, navigate to [https://localhost:8000/](https://localhost:8000/) to view the samples.
 
@@ -182,12 +181,12 @@ After the samples have been built, navigate to [https://localhost:8000/](https:/
 
 All module changes within this project will be scoped to modules within the `./packages/**/{module}` folder. These modules are broken down as follows:
 
-* `./packages/@webex` - Feature modules.
-* `./packages/webex` - Unified module.
+* `./packages/@webex` - Webex legacy modules.
+* `./packages/webex` - Webex unified legacy module.
 * `./packages/legacy` - Legacy configuration and tooling (used by `./packages/@webex` and `./packages/webex`).
 * `./packages/tools` - Modern tooling (used for automation and scripts).
 
-All modules within this scope should follow the common script naming rulesets defined within the `[SCRIPTS.md](./SCRIPTS.md) file within this project. This allows for **automation** to run appropriately against these packages.
+All modules within this scope should follow the common script naming rulesets defined within the [SCRIPTS.md](./SCRIPTS.md) file within this project. This allows for **automation** to run appropriately against these packages.
 
 ##### Creating
 
@@ -198,22 +197,24 @@ When creating a new module within this project, it is best to begin by identifyi
   * This is typically any module that will exist within `./packages/@webex`.
   * [Legacy Module Example - Messaging Plugin](./packages/@webex/plugin-messages/)
 * **Modern Module**
-  * Module that will be built using newer technology.
+  * Module that will be built and tested using newer technology.
   * This is recommended for any module that will not need to access legacy dependencies (such as [Ampersand](https://www.npmjs.com/package/ampersand)).
   * [Modern Module Example - Package Tools](./packages/tools/package/)
 * **Migration Module**
   * Any module that will be migrated into this project from an external project repository.
   * [Migration Module Example - Calling SDK](./packages/calling/)
 
-Once a module type has been determined, follow the linked example modules for examples on creating the module.
+Once a module type has been determined, [reach out to our support team](#requesting-support) to start a discussion on how the new module should be introduced. The linked example modules provide a template that can be followed when initializing the root files for the new module.
+
+>**NOTE**: When creating a **Modern Module** or **Migration Module**, all tooling used within its scope can be unique to the module as long as the [respective scripts](./SCRIPTS.md) work in alignment with the rest of the project. It is recommended to use any [existing configurations and tooling](./config/) when possible.
 
 ##### Building
 
 Building modules can be done by following common script semantics provided by [SCRIPTS.md](./SCRIPTS.md). The recommended tooling for each type of module will be listed below:
 
 * **Legacy Module** - [Legacy Tools](./packages/legacy/tools/).
-  * All tooling is ran through the CLI via `webex-legacy-tools`.
-  * Use `webex-legacy-tools --help` to get started
+  * All tooling is ran through the CLI via `webex-legacy-tools`, which refers to the executable for the [@webex/legacy-tools](./packages/legacy/tools/) module listed above.
+  * Use `yarn workspace @webex/legacy-tools start --help` to see help options for this module.
   * Use the [Legacy Module Example - Messaging Plugin](./packages/@webex/plugin-messages/) as a template.
 * **Modern Module** - Any modern tooling that has [localized configuration](./config/).
   * Typically will use [TypeScript](https://www.typescriptlang.org/) with the modern [TypeScript configuration](./config/typescript/).
@@ -222,6 +223,12 @@ Building modules can be done by following common script semantics provided by [S
 * **Migration Module**
   * Originally, the tooling that existed in the previous project will be consumed.
   * Ultimately, should be migrated to use **Modern Module Tooling**.
+
+Building a module can be performed by using the following commands when present within the module's `./package.json` definition:
+
+* `yarn workspace {module-name} build` - Generate documentation and consumption artifacts.
+* `yarn workspace {module-name} build:docs{:...scopes?}` - Generate documentation artifacts.
+* `yarn workspace {module-name} build:src{:...scopes?}` - Generate consumption artifacts.
 
 ##### Testing
 
@@ -238,6 +245,16 @@ Testing modules can be done by following common script semantics provided by [SC
 * **Migration Module**
   * Originally, the tooling that existed in the previous project will be consumed.
   * Ultimately, should be migrated to use **Modern Module Tooling**.
+
+Running tests against a module can be performed by using the following commands when present within the module's `./package.json` definition:
+
+* `yarn workspace {module-name} test` - Run all tests.
+* `yarn workspace {module-name} test:coverage` - Run a coverage test.
+* `yarn workspace {module-name} test:unit` - Run unit tests.
+* `yarn workspace {module-name} test:integration` - Run integration tests.
+* `yarn workspace {module-name} test:style` - Run style tests.
+* `yarn workspace {module-name} test:syntax` - Run syntax tests.
+* `yarn workspace {module-name} test:browser` - Run browser tests.
 
 #### Submitting Changes
 

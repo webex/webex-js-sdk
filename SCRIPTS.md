@@ -36,6 +36,7 @@ To promote module consistency throughout this project, all sub-modules must alig
 * `test:coverage` - Runs a coverage test.
 * `test:unit` - Runs unit tests.
 * `test:integration` - Runs integration tests.
+* `test:browser` - Runs browser tests.
 * `test:style` - Runs style tests.
 * `test:syntax` - Runs syntax tests.
 
