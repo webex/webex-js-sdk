@@ -17,7 +17,7 @@ describe('webex-core', function () {
         webex = new WebexCore();
       });
 
-      it.skip('adds a tracking id to each request', () =>
+      it('adds a tracking id to each request', () =>
         webex
           .request({
             uri: makeLocalUrl('/'),
@@ -35,7 +35,7 @@ describe('webex-core', function () {
             );
           }));
 
-      it.skip('adds a spark-user-agent id to each request', () =>
+      it('adds a spark-user-agent id to each request', () =>
         webex
           .request({
             uri: makeLocalUrl('/'),
@@ -47,7 +47,7 @@ describe('webex-core', function () {
             assert.property(res.options.headers, 'spark-user-agent');
           }));
 
-      it.skip('fails with a WebexHttpError', () =>
+      it('fails with a WebexHttpError', () =>
         assert
           .isRejected(
             webex.request({

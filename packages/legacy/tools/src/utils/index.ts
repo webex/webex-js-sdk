@@ -3,7 +3,7 @@ import Karma from './karma';
 import {
   startServer,
   stopServer,
-} from './karma/server';
+} from './server';
 import Mocha from './mocha';
 
 export {
