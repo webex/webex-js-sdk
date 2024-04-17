@@ -1,7 +1,7 @@
 import Babel from '@babel/register';
 import '@webex/env-config-legacy';
-
 import MochaRunner from 'mocha';
+import { startServer, stopServer } from '../server';
 
 import CONSTANTS from './mocha.constants';
 
@@ -31,11 +31,12 @@ class Mocha {
     files.forEach((file) => mochaRunner.addFile(file));
 
     return new Promise((resolve) => {
+      startServer();
       mochaRunner.run((failures) => {
         if (failures !== 0) {
           process.exit(1);
         }
-
+        stopServer();
         resolve(undefined);
       });
     });

@@ -2,7 +2,7 @@ import '@babel/register';
 import '@webex/env-config-legacy';
 
 import KarmaRunner from 'karma';
-import { startServer, stopServer } from './server';
+import { startServer, stopServer } from '../server';
 
 import Browsers from './browsers';
 
