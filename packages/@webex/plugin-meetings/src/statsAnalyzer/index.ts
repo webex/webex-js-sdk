@@ -264,7 +264,7 @@ export class StatsAnalyzer extends EventsScope {
 
     // Add stats for individual streams
     Object.keys(this.statsResults).forEach((mediaType) => {
-      if (mediaType.includes('audio-send')) {
+      if (mediaType.startsWith('audio-send')) {
         const audioSenderStream = cloneDeep(emptyAudioTransmitStream);
 
         getAudioSenderStreamMqa({
@@ -276,7 +276,7 @@ export class StatsAnalyzer extends EventsScope {
         newMqa.audioTransmit[0].streams.push(audioSenderStream);
 
         this.lastMqaDataSent[mediaType].send = cloneDeep(this.statsResults[mediaType].send);
-      } else if (mediaType.includes('audio-share-send')) {
+      } else if (mediaType.startsWith('audio-share-send')) {
         const audioSenderStream = cloneDeep(emptyAudioTransmitStream);
 
         getAudioSenderStreamMqa({
@@ -288,7 +288,7 @@ export class StatsAnalyzer extends EventsScope {
         newMqa.audioTransmit[1].streams.push(audioSenderStream);
 
         this.lastMqaDataSent[mediaType].send = cloneDeep(this.statsResults[mediaType].send);
-      } else if (mediaType.includes('audio-recv')) {
+      } else if (mediaType.startsWith('audio-recv')) {
         const audioReceiverStream = cloneDeep(emptyAudioReceiveStream);
 
         getAudioReceiverStreamMqa({
@@ -300,7 +300,7 @@ export class StatsAnalyzer extends EventsScope {
         newMqa.audioReceive[0].streams.push(audioReceiverStream);
 
         this.lastMqaDataSent[mediaType].recv = cloneDeep(this.statsResults[mediaType].recv);
-      } else if (mediaType.includes('audio-share-recv')) {
+      } else if (mediaType.startsWith('audio-share-recv')) {
         const audioReceiverStream = cloneDeep(emptyAudioReceiveStream);
 
         getAudioReceiverStreamMqa({
@@ -312,8 +312,8 @@ export class StatsAnalyzer extends EventsScope {
         newMqa.audioReceive[1].streams.push(audioReceiverStream);
 
         this.lastMqaDataSent[mediaType].recv = cloneDeep(this.statsResults[mediaType].recv);
-      } else if (mediaType.includes('video-send') && mediaType !== 'video-send') {
-        // We only want the stream-specific stats we get with video-send-0, video-send-1, etc.
+      } else if (mediaType.startsWith('video-send-layer')) {
+        // We only want the stream-specific stats we get with video-send-layer-0, video-send-layer-1, etc.
         const videoSenderStream = cloneDeep(emptyVideoTransmitStream);
 
         getVideoSenderStreamMqa({
@@ -325,7 +325,7 @@ export class StatsAnalyzer extends EventsScope {
         newMqa.videoTransmit[0].streams.push(videoSenderStream);
 
         this.lastMqaDataSent[mediaType].send = cloneDeep(this.statsResults[mediaType].send);
-      } else if (mediaType.includes('video-share-send')) {
+      } else if (mediaType.startsWith('video-share-send')) {
         const videoSenderStream = cloneDeep(emptyVideoTransmitStream);
 
         getVideoSenderStreamMqa({
@@ -337,7 +337,7 @@ export class StatsAnalyzer extends EventsScope {
         newMqa.videoTransmit[1].streams.push(videoSenderStream);
 
         this.lastMqaDataSent[mediaType].send = cloneDeep(this.statsResults[mediaType].send);
-      } else if (mediaType.includes('video-recv')) {
+      } else if (mediaType.startsWith('video-recv')) {
         const videoReceiverStream = cloneDeep(emptyVideoReceiveStream);
 
         getVideoReceiverStreamMqa({
@@ -349,7 +349,7 @@ export class StatsAnalyzer extends EventsScope {
         newMqa.videoReceive[0].streams.push(videoReceiverStream);
 
         this.lastMqaDataSent[mediaType].recv = cloneDeep(this.statsResults[mediaType].recv);
-      } else if (mediaType.includes('video-share-recv')) {
+      } else if (mediaType.startsWith('video-share-recv')) {
         const videoReceiverStream = cloneDeep(emptyVideoReceiveStream);
 
         getVideoReceiverStreamMqa({
@@ -375,16 +375,13 @@ export class StatsAnalyzer extends EventsScope {
       });
     }
 
-    let existingVideoSender;
-    Object.keys(this.statsResults).forEach((item) => {
-      if (item.includes('video-send')) {
-        existingVideoSender = this.statsResults[item];
-      }
-    });
+    const existingVideoSender = Object.keys(this.statsResults).find((item) =>
+      item.includes('video-send')
+    );
 
     if (existingVideoSender) {
       newMqa.intervalMetadata.peripherals.push({
-        information: existingVideoSender.trackLabel || _UNKNOWN_,
+        information: this.statsResults[existingVideoSender].trackLabel || _UNKNOWN_,
         name: MEDIA_DEVICES.CAMERA,
       });
     }
@@ -566,7 +563,7 @@ export class StatsAnalyzer extends EventsScope {
       if (types.includes(result.type)) {
         // if the video sender has multiple streams in the report, it is a new stream object.
         if (type === 'video-send' && result.type === 'outbound-rtp') {
-          const newType = `video-send-${videoSenderIndex}`;
+          const newType = `video-send-layer-${videoSenderIndex}`;
           this.parseGetStatsResult(result, newType, isSender);
           videoSenderIndex += 1;
 
@@ -682,20 +679,24 @@ export class StatsAnalyzer extends EventsScope {
    */
   private compareLastStatsResult() {
     if (this.lastStatsResults !== null && this.meetingMediaStatus) {
-      const getCurrentStatsTotals = (keyPrefix: string, value: string, send: boolean): number =>
-        Object.keys(this.statsResults)
-          .filter((key) => key.startsWith(keyPrefix))
-          .reduce(
-            (prev, cur) => prev + (this.statsResults[cur]?.[send ? 'send' : 'recv'][value] || 0),
-            0
-          );
-
-      const getPreviousStatsTotals = (keyPrefix: string, value: string, send: boolean): number =>
+      const getCurrentStatsTotals = (keyPrefix: string, value: string): number =>
         Object.keys(this.statsResults)
           .filter((key) => key.startsWith(keyPrefix))
           .reduce(
             (prev, cur) =>
-              prev + (this.lastStatsResults[cur]?.[send ? 'send' : 'recv'][value] || 0),
+              prev +
+              (this.statsResults[cur]?.[keyPrefix.includes('send') ? 'send' : 'recv'][value] || 0),
+            0
+          );
+
+      const getPreviousStatsTotals = (keyPrefix: string, value: string): number =>
+        Object.keys(this.statsResults)
+          .filter((key) => key.startsWith(keyPrefix))
+          .reduce(
+            (prev, cur) =>
+              prev +
+              (this.lastStatsResults[cur]?.[keyPrefix.includes('send') ? 'send' : 'recv'][value] ||
+                0),
             0
           );
 
@@ -745,13 +746,11 @@ export class StatsAnalyzer extends EventsScope {
       // Audio Receive
       const currentAudioPacketsReceived = getCurrentStatsTotals(
         'audio-recv',
-        'totalPacketsReceived',
-        false
+        'totalPacketsReceived'
       );
       const previousAudioPacketsReceived = getPreviousStatsTotals(
         'audio-recv',
-        'totalPacketsReceived',
-        false
+        'totalPacketsReceived'
       );
 
       this.emitStartStopEvents(
@@ -761,25 +760,18 @@ export class StatsAnalyzer extends EventsScope {
         false
       );
 
-      const currentTotalPacketsSent = getCurrentStatsTotals('video-send', 'totalPacketsSent', true);
-      const previousTotalPacketsSent = getPreviousStatsTotals(
-        'video-send',
-        'totalPacketsSent',
-        true
+      const currentTotalPacketsSent = getCurrentStatsTotals('video-send', 'totalPacketsSent');
+      const previousTotalPacketsSent = getPreviousStatsTotals('video-send', 'totalPacketsSent');
+
+      const currentFramesEncoded = getCurrentStatsTotals('video-send', 'framesEncoded');
+      const previousFramesEncoded = getPreviousStatsTotals('video-send', 'framesEncoded');
+
+      const currentFramesSent = getCurrentStatsTotals('video-send', 'framesSent');
+      const previousFramesSent = getPreviousStatsTotals('video-send', 'framesSent');
+
+      const doesVideoSendExist = Object.keys(this.lastStatsResults).some((item) =>
+        item.includes('video-send')
       );
-
-      const currentFramesEncoded = getCurrentStatsTotals('video-send', 'framesEncoded', true);
-      const previousFramesEncoded = getPreviousStatsTotals('video-send', 'framesEncoded', true);
-
-      const currentFramesSent = getCurrentStatsTotals('video-send', 'framesSent', true);
-      const previousFramesSent = getPreviousStatsTotals('video-send', 'framesSent', true);
-
-      let doesVideoSendExist = false;
-      Object.keys(this.lastStatsResults).forEach((item) => {
-        if (item.includes('video-send')) {
-          doesVideoSendExist = true;
-        }
-      });
 
       // Video Transmit
       if (doesVideoSendExist) {
@@ -819,12 +811,8 @@ export class StatsAnalyzer extends EventsScope {
       }
 
       // Video Receive
-      const currentVideoFramesDecoded = getCurrentStatsTotals('video-recv', 'framesDecoded', false);
-      const previousVideoFramesDecoded = getPreviousStatsTotals(
-        'video-recv',
-        'framesDecoded',
-        false
-      );
+      const currentVideoFramesDecoded = getCurrentStatsTotals('video-recv', 'framesDecoded');
+      const previousVideoFramesDecoded = getPreviousStatsTotals('video-recv', 'framesDecoded');
 
       this.emitStartStopEvents(
         'video',
@@ -878,15 +866,10 @@ export class StatsAnalyzer extends EventsScope {
       }
 
       // Share receive
-      const currentShareFramesDecoded = getCurrentStatsTotals(
-        'video-share-recv',
-        'framesDecoded',
-        false
-      );
+      const currentShareFramesDecoded = getCurrentStatsTotals('video-share-recv', 'framesDecoded');
       const previousShareFramesDecoded = getPreviousStatsTotals(
         'video-share-recv',
-        'framesDecoded',
-        false
+        'framesDecoded'
       );
 
       this.emitStartStopEvents(
