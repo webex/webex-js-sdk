@@ -42,22 +42,21 @@ describe('webex-core', () => {
       })
     );
 
-    beforeEach('create webex instance', () => {
+    beforeEach('create webex instance', async () => {
       webex = new WebexCore({credentials: {supertoken: webexUser.token}});
       webexEU = new WebexCore({credentials: {supertoken: webexUserEU.token}});
       services = webex.internal.services;
       servicesEU = webexEU.internal.services;
       catalog = services._getCatalog();
 
-      return Promise.all([
+      await Promise.all([
         services.waitForCatalog('postauth', 10),
         servicesEU.waitForCatalog('postauth', 10),
-      ]).then(() =>
-        services.updateServices({
-          from: 'limited',
-          query: {userId: webexUser.id},
-        })
-      );
+      ]);
+      await services.updateServices({
+        from: 'limited',
+        query: {userId: webexUser.id},
+      })
     });
 
     describe('#_getCatalog()', () => {
@@ -87,14 +86,14 @@ describe('webex-core', () => {
       let testUrlTemplate;
       let testUrl;
 
-      beforeEach('load test url', () => {
+      beforeEach('load test url', async () => {
         testUrlTemplate = {
           defaultUrl: 'https://www.example.com/api/v1',
           hosts: [],
           name: 'exampleValid',
         };
         testUrl = new ServiceUrl(testUrlTemplate);
-        catalog._loadServiceUrls('preauth', [testUrl]);
+        await catalog._loadServiceUrls('preauth', [testUrl]);
       });
 
       afterEach('unload test url', () => {
@@ -532,7 +531,7 @@ describe('webex-core', () => {
       let testUrl;
       let testUrlTemplate;
 
-      beforeEach('load test url', () => {
+      beforeEach('load test url', async () => {
         testUrlTemplate = {
           defaultUrl: 'https://www.example.com/api/v1',
           hosts: [
@@ -553,7 +552,7 @@ describe('webex-core', () => {
           name: 'exampleValid',
         };
         testUrl = new ServiceUrl(testUrlTemplate);
-        catalog._loadServiceUrls('preauth', [testUrl]);
+        await catalog._loadServiceUrls('preauth', [testUrl]);
       });
 
       it('converts the url to a priority host url', () => {
@@ -734,18 +733,15 @@ describe('webex-core', () => {
             done();
           });
       });
-      it('updates the limited catalog when query param mode is provided', (done) => {
+      it('updates the limited catalog when query param mode is provided', async () => {
         catalog.serviceGroups.preauth = [];
 
-        services
+        await services
           .updateServices({
             from: 'limited',
             query: {mode: 'DEFAULT_BY_PROXIMITY'},
-          })
-          .then(() => {
-            assert.isAbove(catalog.serviceGroups.preauth.length, 0);
-            done();
           });
+        assert.isAbove(catalog.serviceGroups.preauth.length, 0);
       });
       it('does not update the limited catalog when nothing is provided', () => {
         catalog.serviceGroups.preauth = [];
@@ -793,11 +789,12 @@ describe('webex-core', () => {
     });
 
     describe('#fetchClientRegionInfo()', () => {
-      it('returns client region info', () =>
+      it('returns client region info', async () => {
         services.fetchClientRegionInfo().then((r) => {
           assert.isDefined(r.countryCode);
           assert.isDefined(r.timezone);
-        }));
+        })
+      });
     });
 
     describe('#validateUser()', () => {
@@ -870,21 +867,21 @@ describe('webex-core', () => {
             assert.equal(Object.keys(unauthServices.list(false, 'postauth')).length, 0);
           }));
 
-      it('validates new user with activationOptions suppressEmail false', () =>
-        unauthServices
+      it('validates new user with activationOptions suppressEmail false', async () => {
+        const r = await unauthServices
           .validateUser({
             email: `Collabctg+webex-js-sdk-${uuid.v4()}@gmail.com`,
             activationOptions: {suppressEmail: false},
-          })
-          .then((r) => {
-            assert.hasAllKeys(r, ['activated', 'exists', 'user', 'details']);
-            assert.equal(r.activated, false);
-            assert.equal(r.exists, false);
-            assert.equal(r.user.verificationEmailTriggered, true);
-            assert.isAbove(Object.keys(unauthServices.list(false, 'preauth')).length, 0);
-            assert.equal(Object.keys(unauthServices.list(false, 'signin')).length, 0);
-            assert.equal(Object.keys(unauthServices.list(false, 'postauth')).length, 0);
-          }));
+          });
+
+        assert.hasAllKeys(r, ['activated', 'exists', 'user', 'details']);
+        assert.equal(r.activated, false);
+        assert.equal(r.exists, false);
+        assert.equal(r.user.verificationEmailTriggered, true);
+        assert.isAbove(Object.keys(unauthServices.list(false, 'preauth')).length, 0);
+        assert.equal(Object.keys(unauthServices.list(false, 'signin')).length, 0);
+        assert.equal(Object.keys(unauthServices.list(false, 'postauth')).length, 0);
+      });
 
       it('validates new user with activationOptions suppressEmail true', () =>
         unauthServices
