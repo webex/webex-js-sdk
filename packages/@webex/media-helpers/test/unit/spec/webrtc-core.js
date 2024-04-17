@@ -58,7 +58,7 @@ describe('media-helpers', () => {
           await stream.setUserMuted(false);
         });
 
-        it('rejects setMute(false) if unmute is not allowed', async () => {
+        it('rejects setUserMuted(false) if unmute is not allowed', async () => {
           stream.setUnmuteAllowed(false);
 
           assert.equal(stream.isUnmuteAllowed(), false);
@@ -66,7 +66,7 @@ describe('media-helpers', () => {
           expect(fn).to.throw(/Unmute is not allowed/);
         });
 
-        it('resolves setMute(false) if unmute is allowed', async () => {
+        it('resolves setUserMuted(false) if unmute is allowed', async () => {
           stream.setUnmuteAllowed(true);
 
           assert.equal(stream.isUnmuteAllowed(), true);
@@ -83,7 +83,7 @@ describe('media-helpers', () => {
           });
 
           const checkSetServerMuted = (startMute, setMute, expectedCalled) => {
-            stream.setMuted(startMute);
+            stream.setUserMuted(startMute);
 
             assert.equal(stream.userMuted, startMute);
 
