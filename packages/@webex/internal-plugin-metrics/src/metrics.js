@@ -10,6 +10,7 @@ import {OS_NAME, OSMap, CLIENT_NAME} from './config';
 
 import Batcher from './batcher';
 import ClientMetricsBatcher from './client-metrics-batcher';
+import ClientMetricsPreloginBatcher from './client-metrics-prelogin-batcher';
 
 const {getOSName, getOSVersion, getBrowserName, getBrowserVersion} = BrowserDetection();
 
@@ -37,6 +38,7 @@ const Metrics = WebexPlugin.extend({
   children: {
     batcher: Batcher,
     clientMetricsBatcher: ClientMetricsBatcher,
+    clientMetricsPreloginBatcher: ClientMetricsPreloginBatcher,
   },
 
   namespace: 'Metrics',
@@ -117,14 +119,9 @@ const Metrics = WebexPlugin.extend({
     const payload = this.getClientMetricsPayload(eventName, props);
 
     if (preLoginId) {
-      const _payload = {
-        metrics: [payload],
-      };
+      this.clientMetricsPreloginBatcher.savePreLoginId(preLoginId);
 
-      // Do not batch these because pre-login events occur during onboarding, so we will be partially blind
-      // to users' progress through the reg flow if we wait to persist pre-login metrics for people who drop off because
-      // their metrics will not post from a queue flush in time
-      return this.postPreLoginMetric(_payload, preLoginId);
+      return this.clientMetricsPreloginBatcher.request(payload);
     }
 
     return this.clientMetricsBatcher.request(payload);
@@ -150,20 +147,20 @@ const Metrics = WebexPlugin.extend({
     });
   },
 
-  postPreLoginMetric(payload, preLoginId) {
-    return this.webex.credentials.getClientToken().then((token) =>
-      this.request({
-        method: 'POST',
-        api: 'metrics',
-        resource: 'clientmetrics-prelogin',
-        headers: {
-          authorization: token.toString(),
-          'x-prelogin-userid': preLoginId,
-        },
-        body: payload,
-      })
-    );
-  },
+  // postPreLoginMetric(payload, preLoginId) {
+  //   return this.webex.credentials.getClientToken().then((token) =>
+  //     this.request({
+  //       method: 'POST',
+  //       api: 'metrics',
+  //       resource: 'clientmetrics-prelogin',
+  //       headers: {
+  //         authorization: token.toString(),
+  //         'x-prelogin-userid': preLoginId,
+  //       },
+  //       body: payload,
+  //     })
+  //   );
+  // },
 });
 
 export default Metrics;

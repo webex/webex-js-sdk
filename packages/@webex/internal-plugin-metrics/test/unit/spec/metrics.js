@@ -91,7 +91,7 @@ describe('plugin-metrics', () => {
       };
 
       webex.credentials = new Credentials(undefined, {parent: webex});
-      sinon.stub(webex.credentials, 'getClientToken').returns(Promise.resolve('token'));
+      // sinon.stub(webex.credentials, 'getClientToken').returns(Promise.resolve('token'));
 
       webex.internal = {...webex.internal, device: {userId: 'userId'}};
       webex.config = {
@@ -111,7 +111,7 @@ describe('plugin-metrics', () => {
       }
 
       sinon.spy(webex, 'request');
-      sinon.spy(metrics, 'postPreLoginMetric');
+      // sinon.spy(metrics, 'postPreLoginMetric');
       sinon.spy(metrics, 'aliasUser');
     });
 
@@ -205,7 +205,7 @@ describe('plugin-metrics', () => {
 
     describe('#submitClientMetrics()', () => {
       describe('before login', () => {
-        it('posts pre-login metric', () => {
+        it('clientMetricsPreloginBatcher pre-login metric', () => {
           const date = clock.now;
           const promise = metrics.submitClientMetrics(eventName, mockPayload, preLoginId);
 
@@ -213,8 +213,6 @@ describe('plugin-metrics', () => {
             .then(() => clock.tick(config.metrics.batcherWait))
             .then(() => promise)
             .then(() => {
-              assert.called(metrics.postPreLoginMetric);
-              assert.calledOnce(webex.credentials.getClientToken);
               assert.calledOnce(webex.request);
               const req = webex.request.args[0][0];
               const metric = req.body.metrics[0];
@@ -302,32 +300,32 @@ describe('plugin-metrics', () => {
       });
     });
 
-    describe('#postPreLoginMetric()', () => {
-      it('returns an HttpResponse object', () => {
-        const promise = metrics.postPreLoginMetric(preLoginProps, preLoginId);
+    // describe('#postPreLoginMetric()', () => {
+    //   it('returns an HttpResponse object', () => {
+    //     const promise = metrics.postPreLoginMetric(preLoginProps, preLoginId);
 
-        return promiseTick(50)
-          .then(() => clock.tick(config.metrics.batcherWait))
-          .then(() => promise)
-          .then(() => {
-            assert.calledOnce(webex.request);
-            const req = webex.request.args[0][0];
-            const metric = req.body.metrics[0];
-            const {headers} = req;
+    //     return promiseTick(50)
+    //       .then(() => clock.tick(config.metrics.batcherWait))
+    //       .then(() => promise)
+    //       .then(() => {
+    //         assert.calledOnce(webex.request);
+    //         const req = webex.request.args[0][0];
+    //         const metric = req.body.metrics[0];
+    //         const {headers} = req;
 
-            assert.property(headers, 'x-prelogin-userid');
-            assert.property(metric, 'metricName');
-            assert.property(metric, 'tags');
-            assert.property(metric, 'fields');
-            assert.property(metric, 'timestamp');
+    //         assert.property(headers, 'x-prelogin-userid');
+    //         assert.property(metric, 'metricName');
+    //         assert.property(metric, 'tags');
+    //         assert.property(metric, 'fields');
+    //         assert.property(metric, 'timestamp');
 
-            assert.equal(metric.timestamp, transformedProps.timestamp);
-            assert.equal(metric.metricName, eventName);
-            assert.equal(metric.tags.testTag, 'tag value');
-            assert.equal(metric.fields.testField, 123);
-          });
-      });
-    });
+    //         assert.equal(metric.timestamp, transformedProps.timestamp);
+    //         assert.equal(metric.metricName, eventName);
+    //         assert.equal(metric.tags.testTag, 'tag value');
+    //         assert.equal(metric.fields.testField, 123);
+    //       });
+    //   });
+    // });
 
     describe('#aliasUser()', () => {
       it('returns an HttpResponse object', () =>
