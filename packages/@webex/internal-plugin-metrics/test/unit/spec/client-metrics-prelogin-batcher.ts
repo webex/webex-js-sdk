@@ -3,14 +3,10 @@
  */
 
 import {assert} from '@webex/test-helper-chai';
-import {config, Utils} from '@webex/internal-plugin-metrics';
-import {Token, Credentials} from '@webex/webex-core';
 import MockWebex from '@webex/test-helper-mock-webex';
 import sinon from 'sinon';
-import FakeTimers from '@sinonjs/fake-timers';
 import Metrics from '@webex/internal-plugin-metrics';
 
-const flushPromises = () => new Promise(setImmediate);
 
 describe('internal-plugin-metrics', () => {
   describe('ClientMetricsPreloginBatcher', () => {
@@ -37,15 +33,15 @@ describe('internal-plugin-metrics', () => {
 
     it('checks prepareItem', async () => {
         const testItem = {id: 1};
-        const p = await webex.internal.metrics.clientMetricsPreloginBatcher.prepareItem(testItem);
-        assert.strictEqual(p, testItem);
+        const resultPromise = await webex.internal.metrics.clientMetricsPreloginBatcher.prepareItem(testItem);
+        assert.strictEqual(resultPromise, testItem);
     });
 
     it('checks prepareRequest', async () => {
         const testQueue = [];
 
-        const p = await webex.internal.metrics.clientMetricsPreloginBatcher.prepareRequest(testQueue);
-        assert.strictEqual(p, testQueue);
+        const resultPromise = await webex.internal.metrics.clientMetricsPreloginBatcher.prepareRequest(testQueue);
+        assert.strictEqual(resultPromise, testQueue);
     });
   });
 });
