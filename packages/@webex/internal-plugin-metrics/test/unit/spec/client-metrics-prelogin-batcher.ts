@@ -6,6 +6,8 @@ import {assert} from '@webex/test-helper-chai';
 import MockWebex from '@webex/test-helper-mock-webex';
 import sinon from 'sinon';
 import Metrics from '@webex/internal-plugin-metrics';
+import PreLoginMetricsBatcher from '@webex/internal-plugin-metrics';
+import ClientMetricsPreloginBatcher from '@webex/internal-plugin-metrics';
 
 
 describe('internal-plugin-metrics', () => {
@@ -28,6 +30,11 @@ describe('internal-plugin-metrics', () => {
 
     afterEach(() => {
       sinon.restore();
+    });
+
+    it('should be an instance of PreLoginMetricsBatcher', () => {
+      const clientMetricsPreloginBatcher = new ClientMetricsPreloginBatcher();
+      assert.instanceOf(clientMetricsPreloginBatcher, PreLoginMetricsBatcher);
     });
 
 
