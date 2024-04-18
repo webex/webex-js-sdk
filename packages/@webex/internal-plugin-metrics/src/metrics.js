@@ -146,21 +146,6 @@ const Metrics = WebexPlugin.extend({
       },
     });
   },
-
-  // postPreLoginMetric(payload, preLoginId) {
-  //   return this.webex.credentials.getClientToken().then((token) =>
-  //     this.request({
-  //       method: 'POST',
-  //       api: 'metrics',
-  //       resource: 'clientmetrics-prelogin',
-  //       headers: {
-  //         authorization: token.toString(),
-  //         'x-prelogin-userid': preLoginId,
-  //       },
-  //       body: payload,
-  //     })
-  //   );
-  // },
 });
 
 export default Metrics;
