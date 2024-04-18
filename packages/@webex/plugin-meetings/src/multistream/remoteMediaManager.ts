@@ -1,8 +1,7 @@
 /* eslint-disable valid-jsdoc */
 import {cloneDeep, forEach, remove} from 'lodash';
 import {EventMap} from 'typed-emitter';
-import {MediaType} from '@webex/internal-media-core';
-import {NamedMediaGroup} from '@webex/json-multistream';
+import {MediaType, NamedMediaGroup} from '@webex/internal-media-core';
 
 import LoggerProxy from '../common/logs/logger-proxy';
 import EventsScope from '../common/events/events-scope';

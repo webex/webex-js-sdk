@@ -615,8 +615,8 @@ export default class Meeting extends StatelessWebexPlugin {
   resourceUrl: string;
   selfId: string;
   state: any;
-  localAudioStreamMuteStateHandler: (muted: boolean) => void;
-  localVideoStreamMuteStateHandler: (muted: boolean) => void;
+  localAudioStreamMuteStateHandler: () => void;
+  localVideoStreamMuteStateHandler: () => void;
   localOutputTrackChangeHandler: () => void;
   roles: any[];
   environment: string;
@@ -1381,12 +1381,12 @@ export default class Meeting extends StatelessWebexPlugin {
      */
     this.remoteMediaManager = null;
 
-    this.localAudioStreamMuteStateHandler = (muted: boolean) => {
-      this.audio.handleLocalStreamMuteStateChange(this, muted);
+    this.localAudioStreamMuteStateHandler = () => {
+      this.audio.handleLocalStreamMuteStateChange(this);
     };
 
-    this.localVideoStreamMuteStateHandler = (muted: boolean) => {
-      this.video.handleLocalStreamMuteStateChange(this, muted);
+    this.localVideoStreamMuteStateHandler = () => {
+      this.video.handleLocalStreamMuteStateChange(this);
     };
 
     // The handling of output track changes should be done inside
@@ -3074,6 +3074,7 @@ export default class Meeting extends StatelessWebexPlugin {
           options: {meetingId: this.id},
         });
       }
+      this.updateLLMConnection();
     });
 
     // @ts-ignore - check if MEDIA_INACTIVITY exists
@@ -3895,7 +3896,14 @@ export default class Meeting extends StatelessWebexPlugin {
   private async setLocalAudioStream(localStream?: LocalMicrophoneStream) {
     const oldStream = this.mediaProperties.audioStream;
 
-    oldStream?.off(StreamEventNames.MuteStateChange, this.localAudioStreamMuteStateHandler);
+    oldStream?.off(
+      LocalStreamEventNames.UserMuteStateChange,
+      this.localAudioStreamMuteStateHandler
+    );
+    oldStream?.off(
+      LocalStreamEventNames.SystemMuteStateChange,
+      this.localAudioStreamMuteStateHandler
+    );
     oldStream?.off(LocalStreamEventNames.OutputTrackChange, this.localOutputTrackChangeHandler);
 
     // we don't update this.mediaProperties.mediaDirection.sendAudio, because we always keep it as true to avoid extra SDP exchanges
@@ -3903,7 +3911,14 @@ export default class Meeting extends StatelessWebexPlugin {
 
     this.audio.handleLocalStreamChange(this);
 
-    localStream?.on(StreamEventNames.MuteStateChange, this.localAudioStreamMuteStateHandler);
+    localStream?.on(
+      LocalStreamEventNames.UserMuteStateChange,
+      this.localAudioStreamMuteStateHandler
+    );
+    localStream?.on(
+      LocalStreamEventNames.SystemMuteStateChange,
+      this.localAudioStreamMuteStateHandler
+    );
     localStream?.on(LocalStreamEventNames.OutputTrackChange, this.localOutputTrackChangeHandler);
 
     if (!this.isMultistream || !localStream) {
@@ -3923,7 +3938,14 @@ export default class Meeting extends StatelessWebexPlugin {
   private async setLocalVideoStream(localStream?: LocalCameraStream) {
     const oldStream = this.mediaProperties.videoStream;
 
-    oldStream?.off(StreamEventNames.MuteStateChange, this.localVideoStreamMuteStateHandler);
+    oldStream?.off(
+      LocalStreamEventNames.UserMuteStateChange,
+      this.localVideoStreamMuteStateHandler
+    );
+    oldStream?.off(
+      LocalStreamEventNames.SystemMuteStateChange,
+      this.localVideoStreamMuteStateHandler
+    );
     oldStream?.off(LocalStreamEventNames.OutputTrackChange, this.localOutputTrackChangeHandler);
 
     // we don't update this.mediaProperties.mediaDirection.sendVideo, because we always keep it as true to avoid extra SDP exchanges
@@ -3931,7 +3953,14 @@ export default class Meeting extends StatelessWebexPlugin {
 
     this.video.handleLocalStreamChange(this);
 
-    localStream?.on(StreamEventNames.MuteStateChange, this.localVideoStreamMuteStateHandler);
+    localStream?.on(
+      LocalStreamEventNames.UserMuteStateChange,
+      this.localVideoStreamMuteStateHandler
+    );
+    localStream?.on(
+      LocalStreamEventNames.SystemMuteStateChange,
+      this.localVideoStreamMuteStateHandler
+    );
     localStream?.on(LocalStreamEventNames.OutputTrackChange, this.localOutputTrackChangeHandler);
 
     if (!this.isMultistream || !localStream) {
@@ -3952,14 +3981,17 @@ export default class Meeting extends StatelessWebexPlugin {
   private async setLocalShareVideoStream(localDisplayStream?: LocalDisplayStream) {
     const oldStream = this.mediaProperties.shareVideoStream;
 
-    oldStream?.off(StreamEventNames.MuteStateChange, this.handleShareVideoStreamMuteStateChange);
+    oldStream?.off(
+      LocalStreamEventNames.SystemMuteStateChange,
+      this.handleShareVideoStreamMuteStateChange
+    );
     oldStream?.off(StreamEventNames.Ended, this.handleShareVideoStreamEnded);
     oldStream?.off(LocalStreamEventNames.OutputTrackChange, this.localOutputTrackChangeHandler);
 
     this.mediaProperties.setLocalShareVideoStream(localDisplayStream);
 
     localDisplayStream?.on(
-      StreamEventNames.MuteStateChange,
+      LocalStreamEventNames.SystemMuteStateChange,
       this.handleShareVideoStreamMuteStateChange
     );
     localDisplayStream?.on(StreamEventNames.Ended, this.handleShareVideoStreamEnded);
@@ -4045,10 +4077,24 @@ export default class Meeting extends StatelessWebexPlugin {
   public cleanupLocalStreams() {
     const {audioStream, videoStream, shareAudioStream, shareVideoStream} = this.mediaProperties;
 
-    audioStream?.off(StreamEventNames.MuteStateChange, this.localAudioStreamMuteStateHandler);
+    audioStream?.off(
+      LocalStreamEventNames.UserMuteStateChange,
+      this.localAudioStreamMuteStateHandler
+    );
+    audioStream?.off(
+      LocalStreamEventNames.SystemMuteStateChange,
+      this.localAudioStreamMuteStateHandler
+    );
     audioStream?.off(LocalStreamEventNames.OutputTrackChange, this.localOutputTrackChangeHandler);
 
-    videoStream?.off(StreamEventNames.MuteStateChange, this.localVideoStreamMuteStateHandler);
+    videoStream?.off(
+      LocalStreamEventNames.UserMuteStateChange,
+      this.localVideoStreamMuteStateHandler
+    );
+    videoStream?.off(
+      LocalStreamEventNames.SystemMuteStateChange,
+      this.localVideoStreamMuteStateHandler
+    );
     videoStream?.off(LocalStreamEventNames.OutputTrackChange, this.localOutputTrackChangeHandler);
 
     shareAudioStream?.off(StreamEventNames.Ended, this.handleShareAudioStreamEnded);
@@ -4056,8 +4102,9 @@ export default class Meeting extends StatelessWebexPlugin {
       LocalStreamEventNames.OutputTrackChange,
       this.localOutputTrackChangeHandler
     );
+
     shareVideoStream?.off(
-      StreamEventNames.MuteStateChange,
+      LocalStreamEventNames.SystemMuteStateChange,
       this.handleShareVideoStreamMuteStateChange
     );
     shareVideoStream?.off(StreamEventNames.Ended, this.handleShareVideoStreamEnded);
@@ -6121,16 +6168,22 @@ export default class Meeting extends StatelessWebexPlugin {
   private async setUpLocalStreamReferences(localStreams: LocalStreams) {
     const setUpStreamPromises = [];
 
-    if (localStreams?.microphone) {
+    if (localStreams?.microphone && localStreams?.microphone?.readyState !== 'ended') {
       setUpStreamPromises.push(this.setLocalAudioStream(localStreams.microphone));
     }
-    if (localStreams?.camera) {
+    if (localStreams?.camera && localStreams?.camera?.readyState !== 'ended') {
       setUpStreamPromises.push(this.setLocalVideoStream(localStreams.camera));
     }
-    if (localStreams?.screenShare?.video) {
+    if (
+      localStreams?.screenShare?.video &&
+      localStreams?.screenShare?.video?.readyState !== 'ended'
+    ) {
       setUpStreamPromises.push(this.setLocalShareVideoStream(localStreams.screenShare.video));
     }
-    if (localStreams?.screenShare?.audio) {
+    if (
+      localStreams?.screenShare?.audio &&
+      localStreams?.screenShare?.audio?.readyState !== 'ended'
+    ) {
       setUpStreamPromises.push(this.setLocalShareAudioStream(localStreams.screenShare.audio));
     }
 
@@ -8272,6 +8325,17 @@ export default class Meeting extends StatelessWebexPlugin {
     ) {
       // nothing to do
       return;
+    }
+
+    if (
+      streams?.microphone?.readyState === 'ended' ||
+      streams?.camera?.readyState === 'ended' ||
+      streams?.screenShare?.audio?.readyState === 'ended' ||
+      streams?.screenShare?.video?.readyState === 'ended'
+    ) {
+      throw new Error(
+        `Attempted to publish stream with ended readyState, correlationId=${this.correlationId}`
+      );
     }
 
     let floorRequestNeeded = false;
