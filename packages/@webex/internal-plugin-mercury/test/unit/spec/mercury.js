@@ -152,7 +152,6 @@ describe('plugin-mercury', () => {
       });
 
       describe('when `maxRetries` is set', () => {
-
         const check = () => {
           socketOpenStub.restore();
           socketOpenStub = sinon.stub(Socket.prototype, 'open');
@@ -772,99 +771,17 @@ describe('plugin-mercury', () => {
             .then((wsUrl) => assert.match(wsUrl, /multipleConnections/)));
       });
     });
-  });
-  describe('ping pong latency event is forwarded', () => {
-    let clock, mercury, mockWebSocket, socketOpenStub, webex;
 
-    const statusStartTypingMessage = JSON.stringify({
-      id: uuid.v4(),
-      data: {
-        eventType: 'status.start_typing',
-        actor: {
-          id: 'actorId',
-        },
-        conversationId: uuid.v4(),
-      },
-      timestamp: Date.now(),
-      trackingId: `suffix_${uuid.v4()}_${Date.now()}`,
-    });
+    describe('ping pong latency event is forwarded', () => {
+      it('should forward ping pong latency event', () => {
+        const spy = sinon.spy();
 
-    beforeEach(() => {
-      clock = FakeTimers.install({now: Date.now()});
-    });
+        mercury.on('ping-pong-latency', spy);
 
-    afterEach(() => {
-      clock.uninstall();
-    });
-
-    beforeEach(() => {
-      webex = new MockWebex({
-        children: {
-          mercury: Mercury,
-        },
-      });
-      webex.credentials = {
-        refresh: sinon.stub().returns(Promise.resolve()),
-        getUserToken: sinon.stub().returns(
-          Promise.resolve({
-            toString() {
-              return 'Bearer FAKE';
-            },
-          })
-        ),
-      };
-      webex.internal.device = {
-        register: sinon.stub().returns(Promise.resolve()),
-        refresh: sinon.stub().returns(Promise.resolve()),
-        webSocketUrl: 'ws://example.com',
-        getWebSocketUrl: sinon.stub().returns(Promise.resolve('ws://example-2.com')),
-        useServiceCatalogUrl: sinon
-          .stub()
-          .returns(Promise.resolve('https://service-catalog-url.com')),
-      };
-      webex.internal.services = {
-        convertUrlToPriorityHostUrl: sinon.stub().returns(Promise.resolve('ws://example-2.com')),
-        markFailedUrl: sinon.stub().returns(Promise.resolve()),
-      };
-      webex.internal.metrics.submitClientMetrics = sinon.stub();
-      webex.trackingId = 'fakeTrackingId';
-      webex.config.mercury = mercuryConfig.mercury;
-
-      webex.logger = console;
-
-      mockWebSocket = new MockWebSocket();
-      sinon.stub(Socket, 'getWebSocketConstructor').returns(() => mockWebSocket);
-
-      const origOpen = Socket.prototype.open;
-
-      socketOpenStub = sinon.stub(Socket.prototype, 'open').callsFake(function (...args) {
-        const promise = Reflect.apply(origOpen, this, args);
-
-        process.nextTick(() => mockWebSocket.open());
-
-        return promise;
-      });
-
-      mercury = webex.internal.mercury;
-    });
-
-    afterEach(() => {
-      if (socketOpenStub) {
-        socketOpenStub.restore();
-      }
-
-      if (Socket.getWebSocketConstructor.restore) {
-        Socket.getWebSocketConstructor.restore();
-      }
-    });
-    it('should forward ping pong latency event', () => {
-      const spy = sinon.spy();
-
-      mercury.on('ping-pong-latency', spy);
-
-      return mercury.connect().then(() => {
-        assert.calledWith(spy, 0);
-        assert.calledOnce(spy);
+        return mercury.connect().then(() => {
+          assert.calledWith(spy, 0);
+          assert.calledOnce(spy);
+        });
       });
     });
   });
