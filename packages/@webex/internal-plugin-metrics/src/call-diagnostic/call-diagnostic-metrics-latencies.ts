@@ -31,6 +31,7 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
    */
   public clearTimestamps() {
     this.latencyTimestamps.clear();
+    this.precomputedLatencies.clear();
   }
 
   /**
@@ -104,13 +105,13 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
 
   /**
    * Measure latency for a request
-   * @param key - key
    * @param callback - callback for which you would like to measure latency
+   * @param key - key
    * @param overwrite - overwite existing value or add to it
    * @returns
    */
   public measureLatency(
-    callback: () => Promise<any>,
+    callback: () => Promise<unknown>,
     key: PreComputedLatencies,
     overwrite = false
   ) {
@@ -118,6 +119,21 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
 
     return callback().finally(() => {
       this.saveLatency(key, performance.now() - start, overwrite);
+    });
+  }
+
+  /**
+   * Accumulate latency for a request
+   * @param callback - callback for which you would like to measure latency
+   * @param key - key
+   * @returns
+   */
+  public accumulateLatency(callback: () => Promise<unknown>, key: PreComputedLatencies) {
+    const start = performance.now();
+
+    return callback().finally(() => {
+      const currentLatency = this.precomputedLatencies.get(key) ?? 0;
+      this.saveLatency(key, currentLatency + (performance.now() - start), true);
     });
   }
 
@@ -483,8 +499,23 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
   }
 
   /**
-   * Total latency for all other app api requests.
+   * Get the latency for downloading intelligence models.
+   * @returns - latency
+   */
+  public getDownloadIntelligenceModelsReqResp() {
+    const downloadIntelligenceModelsReqResp = this.precomputedLatencies.get(
+      'internal.api.fetch.intelligence.models'
+    );
+
+    return downloadIntelligenceModelsReqResp
+      ? Math.floor(downloadIntelligenceModelsReqResp)
+      : undefined;
+  }
+
+  /**
+   * Get the total latency for all other app API requests.
    * Excludes meeting info, because it's measured separately.
+   * @returns - latency
    */
   public getOtherAppApiReqResp() {
     const otherAppApiJMT = this.precomputedLatencies.get('internal.other.app.api.time');
