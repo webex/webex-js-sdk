@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.405](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.404...v3.0.0-beta.405) (2024-04-19)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** handle meetingInfo response without permission token ([#3541](https://github.com/webex/webex-js-sdk/issues/3541)) ([accf8c7](https://github.com/webex/webex-js-sdk/commit/accf8c7cee7cb19969e7d3234ead3026dd45c0d5))
+
 ## [3.0.0-beta.404](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.403...v3.0.0-beta.404) (2024-04-18)
 
 
