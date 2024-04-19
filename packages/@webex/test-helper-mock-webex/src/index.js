@@ -25,7 +25,6 @@ const nonInternalPlugins = [
   'teams',
   'teamMemberships',
   'webhooks',
-  'presence',
 ];
 
 /**
