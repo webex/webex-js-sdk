@@ -357,9 +357,9 @@ describe('plugin-metrics', () => {
         });
       });
 
-      //TODO: The following two skipped tests needs investigation: https://jira-eng-gpk2.cisco.com/jira/browse/SPARK-485382
+      //TODO: The following two skipped tests are failling when run using jest, needs investigation: https://jira-eng-gpk2.cisco.com/jira/browse/SPARK-485382
       describe('when the request fails', () => {
-        it.skip('does not clear the queue', async () => {
+        it('does not clear the queue', async () => {
           // avoid setting .sent timestamp
           webex.internal.newMetrics.callDiagnosticMetrics.callDiagnosticEventsBatcher.prepareRequest =
             (q) => Promise.resolve(q);
@@ -406,7 +406,7 @@ describe('plugin-metrics', () => {
     });
 
     describe('prepareItem', () => {
-      it.skip('calls prepareDiagnosticMetricItem correctly', async () => {
+      it('calls prepareDiagnosticMetricItem correctly', async () => {
         // avoid setting .sent timestamp
         webex.internal.newMetrics.callDiagnosticMetrics.callDiagnosticEventsBatcher.prepareRequest =
           (q) => Promise.resolve(q);

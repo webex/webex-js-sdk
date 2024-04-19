@@ -721,7 +721,7 @@ describe('internal-plugin-metrics', () => {
         ]);
       });
 
-      it('should submit client event successfully with correlationId, webexConferenceIdStr and globalMeetingId', async () => {
+      it('should submit client event successfully with correlationId, webexConferenceIdStr and globalMeetingId', () => {
         const prepareDiagnosticEventSpy = sinon.spy(cd, 'prepareDiagnosticEvent');
         const submitToCallDiagnosticsSpy = sinon.spy(cd, 'submitToCallDiagnostics');
         const generateClientEventErrorPayloadSpy = sinon.spy(cd, 'generateClientEventErrorPayload');
