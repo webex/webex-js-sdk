@@ -4263,9 +4263,9 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/internal-media-core@npm:2.3.0":
-  version: 2.3.0
-  resolution: "@webex/internal-media-core@npm:2.3.0"
+"@webex/internal-media-core@npm:2.3.2":
+  version: 2.3.2
+  resolution: "@webex/internal-media-core@npm:2.3.2"
   dependencies:
     "@babel/runtime": "npm:^7.18.9"
     "@webex/ts-sdp": "npm:1.6.0"
@@ -4275,7 +4275,7 @@ __metadata:
     uuid: "npm:^8.3.2"
     webrtc-adapter: "npm:^8.1.2"
     xstate: "npm:^4.30.6"
-  checksum: ed1610620bb9388dc21649cc08f3c691fbaabe45351e4839dc54f800974a5d76c93285eb1e3f0686f5bf15b6afe19ff243e960335b1bf2fcda429c399fdd0933
+  checksum: 73ef35dfa32fa7dd4d7d1d9f0b6a275efb620f732f41c90751edf1a5c9449399cab32b4d3f4f2fb62924d868d70ae9ec7e88f727cbfe765c5b5fde40ae10d7a5
   languageName: node
   linkType: hard
 
@@ -4737,7 +4737,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@webex/media-helpers@workspace:packages/@webex/media-helpers"
   dependencies:
-    "@webex/internal-media-core": "npm:2.3.0"
+    "@webex/internal-media-core": "npm:2.3.2"
     "@webex/test-helper-chai": "workspace:^"
     "@webex/test-helper-mock-webex": "workspace:^"
     "@webex/ts-events": "npm:^1.1.0"
@@ -4876,7 +4876,7 @@ __metadata:
   dependencies:
     "@peculiar/webcrypto": "npm:^1.4.3"
     "@webex/common": "workspace:^"
-    "@webex/internal-media-core": "npm:2.3.0"
+    "@webex/internal-media-core": "npm:2.3.2"
     "@webex/internal-plugin-conversation": "workspace:^"
     "@webex/internal-plugin-device": "workspace:^"
     "@webex/internal-plugin-llm": "workspace:^"
