@@ -115,7 +115,7 @@ function setSelfPresence() {
 }
 
 function getUserPresence() {
-    const userId = getUserPresenceElm.value;
+    const userId = getUserPresenceElm.value.trim();
     webex.presence.get(userId)
         .then((response) => {
                 userPresenceStatusElm.innerText = JSON.stringify(response, null, 2);
@@ -137,7 +137,7 @@ function startPresenceListener() {
 }
 
 function subscribePresence() {
-    const ids = subscribeUserIds.value.split(',');
+    const ids = subscribeUserIds.value.trim().split(',');
     startPresenceListener();
     webex.presence.subscribe(ids)
         .then(() => {

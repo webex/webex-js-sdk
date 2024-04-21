@@ -8,7 +8,7 @@ export interface IPresenceStatusObject {
   expiresTime: string;
   vectorCounters: object;
   suppressNotifications: boolean;
-  lastseeeDeviceUrl: string;
+  lastseenDeviceUrl: string;
 }
 
 export interface IEventPayload {
