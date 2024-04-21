@@ -8069,6 +8069,7 @@ __metadata:
     lodash: ^4.17.21
     prettier: ^2.7.1
     sinon: ^9.2.4
+    typedoc: 0.23.26
   languageName: unknown
   linkType: soft
 

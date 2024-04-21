@@ -31,7 +31,8 @@
     "@webex/test-helper-test-users": "workspace:*",
     "eslint": "^8.24.0",
     "prettier": "^2.7.1",
-    "sinon": "^9.2.4"
+    "sinon": "^9.2.4",
+    "typedoc": "0.23.26"
   },
   "dependencies": {
     "@webex/internal-plugin-device": "workspace:*",
@@ -45,6 +46,7 @@
   },
   "scripts": {
     "build": "yarn run -T tsc --declaration true --declarationDir ./dist/types && yarn run build:src",
+    "build:docs": "typedoc --out ../../../docs/presence",
     "build:src": "webex-legacy-tools build -dest \"./dist\" -src \"./src\" -js -ts -maps",
     "deploy:npm": "yarn npm publish",
     "test": "yarn test:style && yarn test:unit && yarn test:integration && yarn test:browser",
