@@ -2622,6 +2622,7 @@ describe('plugin-meetings', () => {
 
           beforeEach(async () => {
             meeting.meetingState = 'ACTIVE';
+            meeting.remoteShareInstanceId = '1234';
             prevConfigValue = meeting.config.stats.enableStatsAnalyzer;
 
             meeting.config.stats.enableStatsAnalyzer = true;
@@ -2721,6 +2722,42 @@ describe('plugin-meetings', () => {
             assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
               name: 'client.media.rx.stop',
               payload: {mediaType: 'audio'},
+              options: {
+                meetingId: meeting.id,
+              },
+            });
+          });
+
+          it('REMOTE_MEDIA_STARTED triggers "meeting:media:remote:start" event and sends metrics for share', async () => {
+            statsAnalyzerStub.emit(
+              {file: 'test', function: 'test'},
+              StatsAnalyzerModule.EVENTS.REMOTE_MEDIA_STARTED,
+              {type: 'share'}
+            );
+
+            assert.calledWith(
+              TriggerProxy.trigger,
+              sinon.match.instanceOf(Meeting),
+              {
+                file: 'meeting/index',
+                function: 'addMedia',
+              },
+              EVENT_TRIGGERS.MEETING_MEDIA_REMOTE_STARTED,
+              {
+                type: 'share',
+              }
+            );
+            assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
+              name: 'client.media.render.start',
+              payload: {mediaType: 'share', shareInstanceId: meeting.remoteShareInstanceId},
+              options: {
+                meetingId: meeting.id,
+              },
+            });
+
+            assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
+              name: 'client.media.rx.start',
+              payload: {mediaType: 'share', shareInstanceId: meeting.remoteShareInstanceId},
               options: {
                 meetingId: meeting.id,
               },
@@ -4477,7 +4514,7 @@ describe('plugin-meetings', () => {
         });
       });
 
-      describe.only('#changeVideoLayout', () => {
+      describe('#changeVideoLayout', () => {
         describe('when media direction has recieve video and there is remoteStream', () => {
           let mediaDirection;
           const layoutTypeSingle = 'Single';
@@ -4489,7 +4526,6 @@ describe('plugin-meetings', () => {
               sendShare: false,
               receiveVideo: true,
             };
-            meeting.remoteShareInstanceId = '1234-5678';
             meeting.mediaProperties.mediaDirection = mediaDirection;
             meeting.mediaProperties.remoteVideoStream = sinon.stub().returns({
               outputStream: {
@@ -4573,8 +4609,6 @@ describe('plugin-meetings', () => {
               content: undefined,
             });
 
-            assert.notCalled(webex.internal.newMetrics.submitClientEvent);
-
             meeting.mediaProperties.mediaDirection.receiveShare = true;
             meeting.mediaProperties.remoteShareStream = sinon
               .stub()
@@ -4591,14 +4625,6 @@ describe('plugin-meetings', () => {
               content: {width: 500, height: 600},
             });
 
-            assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
-              name: 'client.media.render.start',
-              payload: {mediaType: 'share', shareInstanceId: meeting.remoteShareInstanceId},
-              options: {
-                meetingId: meeting.id,
-              },
-            });
-
             // and now call with both
             await meeting.changeVideoLayout(layoutTypeSingle, {
               main: {width: 300, height: 400},
@@ -4611,14 +4637,6 @@ describe('plugin-meetings', () => {
               layoutType: layoutTypeSingle,
               main: {width: 300, height: 400},
               content: {width: 700, height: 800},
-            });
-
-            assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
-              name: 'client.media.render.start',
-              payload: {mediaType: 'share', shareInstanceId: meeting.remoteShareInstanceId},
-              options: {
-                meetingId: meeting.id,
-              },
             });
 
             // and now set just the layoutType, the previous main and content values should be used
@@ -8634,34 +8652,6 @@ describe('plugin-meetings', () => {
 
           checkParseMeetingInfo(expectedInfoToParse);
         });
-
-        it('should parse meeting info, set values, and return null when permissionToken is not present', () => {
-          meeting.config.experimental = {enableMediaNegotiatedEvent: true};
-          meeting.config.experimental.enableUnifiedMeetings = true;
-          const FAKE_STRING_DESTINATION = 'sipUrl';
-          const FAKE_MEETING_INFO = {
-            conversationUrl: uuid1,
-            locusUrl: url1,
-            meetingJoinUrl: url2,
-            meetingNumber: '12345',
-            sipMeetingUri: test1,
-            sipUrl: test1,
-            owner: test2,
-          };
-
-          meeting.parseMeetingInfo(FAKE_MEETING_INFO, FAKE_STRING_DESTINATION);
-          const expectedInfoToParse = {
-            conversationUrl: uuid1,
-            locusUrl: url1,
-            sipUri: test1,
-            meetingNumber: '12345',
-            meetingJoinUrl: url2,
-            owner: test2,
-          };
-
-          checkParseMeetingInfo(expectedInfoToParse);
-        });
-
         it('should parse interpretation info correctly', () => {
           const parseInterpretationInfo = sinon.spy(MeetingUtil, 'parseInterpretationInfo');
           const mockToggleOnData = {

@@ -6040,6 +6040,20 @@ export default class Meeting extends StatelessWebexPlugin {
         EVENT_TRIGGERS.MEETING_MEDIA_REMOTE_STARTED,
         data
       );
+      if (data.type === 'share') {
+        // @ts-ignore
+        this.webex.internal.newMetrics.submitClientEvent({
+          name: 'client.media.render.start',
+          payload: {
+            mediaType: 'share',
+            shareInstanceId: this.remoteShareInstanceId,
+          },
+          options: {
+            meetingId: this.id,
+          },
+        });
+      }
+
       // @ts-ignore
       this.webex.internal.newMetrics.submitClientEvent({
         name: 'client.media.rx.start',
@@ -7702,18 +7716,6 @@ export default class Meeting extends StatelessWebexPlugin {
         ) {
           layoutInfo.content = {width: contentWidth, height: contentHeight};
         }
-
-        // @ts-ignore
-        this.webex.internal.newMetrics.submitClientEvent({
-          name: 'client.media.render.start',
-          payload: {
-            mediaType: 'share',
-            shareInstanceId: this.remoteShareInstanceId,
-          },
-          options: {
-            meetingId: this.id,
-          },
-        });
       } else {
         return this.rejectWithErrorLog(
           'Meeting:index#changeVideoLayout --> unable to send renderInfo for content, you are not receiving remote share'
