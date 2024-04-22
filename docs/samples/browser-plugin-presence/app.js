@@ -15,6 +15,7 @@ const saveElm = document.querySelector('#access-token-save');
 const authStatusElm = document.querySelector('#access-token-status');
 const selfPresenceElm = document.querySelector('#self-presence-status');
 const setPresenceStatusElm = document.querySelector('#set-presence');
+const setPresenceTtl = document.querySelector('#presence-ttl');
 const getUserPresenceElm = document.querySelector('#get-user-presence');
 const userPresenceStatusElm = document.querySelector('#user-presence-status');
 const presenceNotifications = document.querySelector('#subscribe-presence-notifications');
@@ -105,7 +106,8 @@ function getSelfPresence() {
 
 function setSelfPresence() {
     const status = setPresenceStatusElm.value;
-    webex.presence.setStatus(status)
+    const ttl = setPresenceTtl.value;
+    webex.presence.setStatus(status, ttl)
         .then(() => {
             console.log('Set status for the user successfully');
         })
