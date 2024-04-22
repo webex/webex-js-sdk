@@ -3459,8 +3459,10 @@ export default class Meeting extends StatelessWebexPlugin {
       this.owner =
         locusMeetingObject?.info.owner || meetingInfo?.owner || meetingInfo?.hostId || this.owner;
       this.permissionToken = meetingInfo?.permissionToken;
-      this.setPermissionTokenPayload(meetingInfo?.permissionToken);
-      this.setSelfUserPolicies();
+      if (this.permissionToken) {
+        this.setPermissionTokenPayload(meetingInfo?.permissionToken);
+        this.setSelfUserPolicies();
+      }
       // Need to populate environment when sending CA event
       this.environment = locusMeetingObject?.info.channel || meetingInfo?.channel;
     }
