@@ -108,8 +108,13 @@ describe('internal-plugin-metrics', () => {
       cdl.saveTimestamp({key: 'client.alert.displayed'});
       cdl.saveTimestamp({key: 'client.alert.removed'});
       assert.deepEqual(cdl.latencyTimestamps.size, 2);
+      cdl.saveLatency('internal.api.fetch.intelligence.models', 42);
+      assert.deepEqual(cdl.precomputedLatencies.size, 1);
+
       cdl.clearTimestamps();
+
       assert.deepEqual(cdl.latencyTimestamps.size, 0);
+      assert.deepEqual(cdl.precomputedLatencies.size, 0);
     });
 
     it('should calculate diff between timestamps correctly', () => {
