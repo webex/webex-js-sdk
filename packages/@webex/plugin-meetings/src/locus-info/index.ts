@@ -1403,7 +1403,6 @@ export default class LocusInfo extends EventsScope {
           }
         );
       }
-
       if (parsedSelves.updates.localAudioUnmuteRequestedByServer) {
         this.emitScoped(
           {
