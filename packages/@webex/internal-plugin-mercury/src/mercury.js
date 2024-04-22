@@ -1,3 +1,4 @@
+/* eslint-disable require-jsdoc */
 /*!
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
@@ -23,6 +24,7 @@ const normalReconnectReasons = ['idle', 'done (forced)', 'pong not received', 'p
 
 const Mercury = WebexPlugin.extend({
   namespace: 'Mercury',
+  lastError: undefined,
 
   session: {
     connected: {
@@ -48,6 +50,14 @@ const Mercury = WebexPlugin.extend({
         return this.connected;
       },
     },
+  },
+
+  /**
+   * Get the last error.
+   * @returns {any} The last error.
+   */
+  getLastError() {
+    return this.lastError;
   },
 
   @oneFlight
@@ -217,6 +227,8 @@ const Mercury = WebexPlugin.extend({
           });
       })
       .catch((reason) => {
+        this.lastError = reason; // remember the last error
+
         // Suppress connection errors that appear to be network related. This
         // may end up suppressing metrics during outages, but we might not care
         // (especially since many of our outages happen in a way that client
