@@ -1543,6 +1543,185 @@ describe('plugin-meetings', () => {
           },
         ]);
       });
+
+      it('has three streams for video senders for simulcast', async () => {
+        pc.getTransceiverStats = sinon.stub().resolves({
+          audio: {
+            senders: [fakeStats.audio.senders[0]],
+            receivers: [fakeStats.audio.receivers[0]],
+          },
+          video: {
+            senders: [
+              {
+                localTrackLabel: 'fake-camera',
+                report: [
+                  {
+                    type: 'outbound-rtp',
+                    bytesSent: 1,
+                    framesSent: 0,
+                    packetsSent: 0,
+                  },
+                  {
+                    type: 'outbound-rtp',
+                    bytesSent: 0,
+                    framesSent: 0,
+                    packetsSent: 0,
+                  },
+                  {
+                    type: 'outbound-rtp',
+                    bytesSent: 1000,
+                    framesSent: 1,
+                    packetsSent: 1,
+                  },
+                  {
+                    type: 'remote-inbound-rtp',
+                    packetsLost: 0,
+                  },
+                  {
+                    type: 'candidate-pair',
+                    state: 'succeeded',
+                    localCandidateId: 'fake-candidate-id',
+                  },
+                  {
+                    type: 'candidate-pair',
+                    state: 'failed',
+                    localCandidateId: 'bad-candidate-id',
+                  },
+                  {
+                    type: 'local-candidate',
+                    id: 'fake-candidate-id',
+                    protocol: 'tcp',
+                  },
+                ],
+              },
+            ],
+            receivers: [fakeStats.video.receivers[0]],
+          },
+          screenShareAudio: {
+            senders: [fakeStats.audio.senders[0]],
+            receivers: [fakeStats.audio.receivers[0]],
+          },
+          screenShareVideo: {
+            senders: [fakeStats.video.senders[0]],
+            receivers: [fakeStats.video.receivers[0]],
+          },
+        });
+
+        await startStatsAnalyzer({expected: {receiveVideo: true}});
+
+        await progressTime();
+
+        assert.deepEqual(mqeData.videoTransmit[0].streams, [
+          {
+            common: {
+              codec: 'H264',
+              csi: [],
+              duplicateSsci: 0,
+              requestedBitrate: 0,
+              requestedFrames: 0,
+              rtpPackets: 0,
+              ssci: 0,
+              transmittedBitrate: 0.13333333333333333,
+              transmittedFrameRate: 0
+            },
+            h264CodecProfile: 'BP',
+            isAvatar: false,
+            isHardwareEncoded: false,
+            localConfigurationChanges: 2,
+            maxFrameQp: 0,
+            maxNoiseLevel: 0,
+            minRegionQp: 0,
+            remoteConfigurationChanges: 0,
+            requestedFrameSize: 0,
+            requestedKeyFrames: 0,
+            transmittedFrameSize: 0,
+            transmittedHeight: 0,
+            transmittedKeyFrames: 0,
+            transmittedKeyFramesClient: 0,
+            transmittedKeyFramesConfigurationChange: 0,
+            transmittedKeyFramesFeedback: 0,
+            transmittedKeyFramesLocalDrop: 0,
+            transmittedKeyFramesOtherLayer: 0,
+            transmittedKeyFramesPeriodic: 0,
+            transmittedKeyFramesSceneChange: 0,
+            transmittedKeyFramesStartup: 0,
+            transmittedKeyFramesUnknown: 0,
+            transmittedWidth: 0,
+          },
+          {
+            common: {
+              codec: 'H264',
+              csi: [],
+              duplicateSsci: 0,
+              requestedBitrate: 0,
+              requestedFrames: 0,
+              rtpPackets: 0,
+              ssci: 0,
+              transmittedBitrate: 0,
+              transmittedFrameRate: 0,
+            },
+            h264CodecProfile: 'BP',
+            isAvatar: false,
+            isHardwareEncoded: false,
+            localConfigurationChanges: 2,
+            maxFrameQp: 0,
+            maxNoiseLevel: 0,
+            minRegionQp: 0,
+            remoteConfigurationChanges: 0,
+            requestedFrameSize: 0,
+            requestedKeyFrames: 0,
+            transmittedFrameSize: 0,
+            transmittedHeight: 0,
+            transmittedKeyFrames: 0,
+            transmittedKeyFramesClient: 0,
+            transmittedKeyFramesConfigurationChange: 0,
+            transmittedKeyFramesFeedback: 0,
+            transmittedKeyFramesLocalDrop: 0,
+            transmittedKeyFramesOtherLayer: 0,
+            transmittedKeyFramesPeriodic: 0,
+            transmittedKeyFramesSceneChange: 0,
+            transmittedKeyFramesStartup: 0,
+            transmittedKeyFramesUnknown: 0,
+            transmittedWidth: 0,
+          },
+          {
+            common: {
+              codec: 'H264',
+              csi: [],
+              duplicateSsci: 0,
+              requestedBitrate: 0,
+              requestedFrames: 0,
+              rtpPackets: 1,
+              ssci: 0,
+              transmittedBitrate: 133.33333333333334,
+              transmittedFrameRate: 0,
+            },
+            h264CodecProfile: 'BP',
+            isAvatar: false,
+            isHardwareEncoded: false,
+            localConfigurationChanges: 2,
+            maxFrameQp: 0,
+            maxNoiseLevel: 0,
+            minRegionQp: 0,
+            remoteConfigurationChanges: 0,
+            requestedFrameSize: 0,
+            requestedKeyFrames: 0,
+            transmittedFrameSize: 0,
+            transmittedHeight: 0,
+            transmittedKeyFrames: 0,
+            transmittedKeyFramesClient: 0,
+            transmittedKeyFramesConfigurationChange: 0,
+            transmittedKeyFramesFeedback: 0,
+            transmittedKeyFramesLocalDrop: 0,
+            transmittedKeyFramesOtherLayer: 0,
+            transmittedKeyFramesPeriodic: 0,
+            transmittedKeyFramesSceneChange: 0,
+            transmittedKeyFramesStartup: 0,
+            transmittedKeyFramesUnknown: 0,
+            transmittedWidth: 0,
+          }
+        ]);
+      });
     });
   });
 });
