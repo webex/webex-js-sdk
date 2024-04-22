@@ -1361,6 +1361,7 @@ async function stopVideo() {
   console.log('MeetingControls#stopVideo()');
   try {
     if (localMedia.cameraStream) {
+      localMedia.cameraStream.disposeEffects();
       localMedia.cameraStream.stop();
     }
 
@@ -1376,6 +1377,7 @@ async function stopAudio() {
   console.log('MeetingControls#stopAudio()');
   try {
     if (localMedia.microphoneStream) {
+      localMedia.microphoneStream.disposeEffects();
       localMedia.microphoneStream.stop();
     }
 
