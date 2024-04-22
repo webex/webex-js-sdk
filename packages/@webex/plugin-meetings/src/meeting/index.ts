@@ -6040,6 +6040,18 @@ export default class Meeting extends StatelessWebexPlugin {
         EVENT_TRIGGERS.MEETING_MEDIA_REMOTE_STARTED,
         data
       );
+      // @ts-ignore
+      this.webex.internal.newMetrics.submitClientEvent({
+        name: 'client.media.rx.start',
+        payload: {
+          mediaType: data.type,
+          shareInstanceId: data.type === 'share' ? this.remoteShareInstanceId : undefined,
+        },
+        options: {
+          meetingId: this.id,
+        },
+      });
+
       if (data.type === 'share') {
         // @ts-ignore
         this.webex.internal.newMetrics.submitClientEvent({
@@ -6053,18 +6065,6 @@ export default class Meeting extends StatelessWebexPlugin {
           },
         });
       }
-
-      // @ts-ignore
-      this.webex.internal.newMetrics.submitClientEvent({
-        name: 'client.media.rx.start',
-        payload: {
-          mediaType: data.type,
-          shareInstanceId: data.type === 'share' ? this.remoteShareInstanceId : undefined,
-        },
-        options: {
-          meetingId: this.id,
-        },
-      });
     });
     this.statsAnalyzer.on(StatsAnalyzerEvents.REMOTE_MEDIA_STOPPED, (data) => {
       // @ts-ignore
@@ -6078,6 +6078,20 @@ export default class Meeting extends StatelessWebexPlugin {
           meetingId: this.id,
         },
       });
+
+      if (data.type === 'share') {
+        // @ts-ignore
+        this.webex.internal.newMetrics.submitClientEvent({
+          name: 'client.media.render.stop',
+          payload: {
+            mediaType: 'share',
+            shareInstanceId: this.remoteShareInstanceId,
+          },
+          options: {
+            meetingId: this.id,
+          },
+        });
+      }
     });
   };
 

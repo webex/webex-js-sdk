@@ -2748,7 +2748,7 @@ describe('plugin-meetings', () => {
               }
             );
             assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
-              name: 'client.media.render.start',
+              name: 'client.media.rx.start',
               payload: {mediaType: 'share', shareInstanceId: meeting.remoteShareInstanceId},
               options: {
                 meetingId: meeting.id,
@@ -2756,7 +2756,31 @@ describe('plugin-meetings', () => {
             });
 
             assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
-              name: 'client.media.rx.start',
+              name: 'client.media.render.start',
+              payload: {mediaType: 'share', shareInstanceId: meeting.remoteShareInstanceId},
+              options: {
+                meetingId: meeting.id,
+              },
+            });
+          });
+
+          it('REMOTE_MEDIA_STOPPED triggers the right metrics for share', async () => {
+            statsAnalyzerStub.emit(
+              {file: 'test', function: 'test'},
+              StatsAnalyzerModule.EVENTS.REMOTE_MEDIA_STOPPED,
+              {type: 'share'}
+            );
+
+            assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
+              name: 'client.media.rx.stop',
+              payload: {mediaType: 'share', shareInstanceId: meeting.remoteShareInstanceId},
+              options: {
+                meetingId: meeting.id,
+              },
+            });
+
+            assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
+              name: 'client.media.render.stop',
               payload: {mediaType: 'share', shareInstanceId: meeting.remoteShareInstanceId},
               options: {
                 meetingId: meeting.id,
