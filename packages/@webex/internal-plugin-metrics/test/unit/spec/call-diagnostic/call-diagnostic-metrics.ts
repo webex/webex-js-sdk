@@ -223,6 +223,43 @@ describe('internal-plugin-metrics', () => {
         });
       });
 
+      it('should build origin correctly with browserLaunchMethod', () => {
+        sinon.stub(CallDiagnosticUtils, 'anonymizeIPAddress').returns('1.1.1.1');
+
+        //@ts-ignore
+        const res = cd.getOrigin(
+          {
+            subClientType: 'WEB_APP',
+            clientType: 'TEAMS_CLIENT',
+            newEnvironment: 'test-new-env',
+            clientLaunchMethod: 'url-handler',
+            browserLaunchMethod: 'thinclient',
+          },
+          fakeMeeting.id
+        );
+
+        assert.deepEqual(res, {
+          clientInfo: {
+            browser: getBrowserName(),
+            browserVersion: getBrowserVersion(),
+            clientType: 'TEAMS_CLIENT',
+            clientVersion: 'webex-js-sdk/webex-version',
+            publicNetworkPrefix: '1.1.1.1',
+            localNetworkPrefix: '1.1.1.1',
+            os: getOSNameInternal(),
+            osVersion: getOSVersion(),
+            subClientType: 'WEB_APP',
+            clientLaunchMethod: 'url-handler',
+            browserLaunchMethod: 'thinclient',
+          },
+          environment: 'meeting_evn',
+          newEnvironment: 'test-new-env',
+          name: 'endpoint',
+          networkType: 'unknown',
+          userAgent,
+        });
+      });
+
       it('should build origin correctly with no meeting', () => {
         sinon.stub(CallDiagnosticUtils, 'anonymizeIPAddress').returns('1.1.1.1');
 

@@ -39,6 +39,7 @@ import {
   ClientInfo,
   ClientEventPayloadError,
   ClientSubServiceType,
+  BrowserLaunchMethodType,
 } from '../metrics.types';
 import CallDiagnosticEventsBatcher from './call-diagnostic-metrics-batcher';
 import PreLoginMetricsBatcher from '../prelogin-metrics-batcher';
@@ -65,6 +66,7 @@ type GetOriginOptions = {
   subClientType: SubClientType;
   networkType?: NetworkType;
   clientLaunchMethod?: ClientLaunchMethodType;
+  browserLaunchMethod?: BrowserLaunchMethodType;
   environment?: EnvironmentType;
   newEnvironment?: NewEnvironmentType;
 };
@@ -256,6 +258,10 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
 
       if (options?.clientLaunchMethod) {
         origin.clientInfo.clientLaunchMethod = options.clientLaunchMethod;
+      }
+
+      if (options?.browserLaunchMethod) {
+        origin.clientInfo.browserLaunchMethod = options.browserLaunchMethod;
       }
 
       return origin;
