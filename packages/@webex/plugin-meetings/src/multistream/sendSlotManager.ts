@@ -3,9 +3,8 @@ import {
   MediaType,
   LocalStream,
   MultistreamRoapMediaConnection,
+  NamedMediaGroup,
 } from '@webex/internal-media-core';
-
-import {NamedMediaGroup} from '@webex/json-multistream';
 
 export default class SendSlotManager {
   private readonly slots: Map<MediaType, SendSlot> = new Map();

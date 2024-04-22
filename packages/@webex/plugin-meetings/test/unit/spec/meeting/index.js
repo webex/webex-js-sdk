@@ -8630,6 +8630,34 @@ describe('plugin-meetings', () => {
 
           checkParseMeetingInfo(expectedInfoToParse);
         });
+
+        it('should parse meeting info, set values, and return null when permissionToken is not present', () => {
+          meeting.config.experimental = {enableMediaNegotiatedEvent: true};
+          meeting.config.experimental.enableUnifiedMeetings = true;
+          const FAKE_STRING_DESTINATION = 'sipUrl';
+          const FAKE_MEETING_INFO = {
+            conversationUrl: uuid1,
+            locusUrl: url1,
+            meetingJoinUrl: url2,
+            meetingNumber: '12345',
+            sipMeetingUri: test1,
+            sipUrl: test1,
+            owner: test2,
+          };
+
+          meeting.parseMeetingInfo(FAKE_MEETING_INFO, FAKE_STRING_DESTINATION);
+          const expectedInfoToParse = {
+            conversationUrl: uuid1,
+            locusUrl: url1,
+            sipUri: test1,
+            meetingNumber: '12345',
+            meetingJoinUrl: url2,
+            owner: test2,
+          };
+
+          checkParseMeetingInfo(expectedInfoToParse);
+        });
+
         it('should parse interpretation info correctly', () => {
           const parseInterpretationInfo = sinon.spy(MeetingUtil, 'parseInterpretationInfo');
           const mockToggleOnData = {

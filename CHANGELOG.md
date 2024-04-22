@@ -2,6 +2,52 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.406](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.404...v3.0.0-beta.406) (2024-04-19)
+
+
+### Features
+
+* **mercury:** remember last error ([#3545](https://github.com/webex/webex-js-sdk/issues/3545)) ([11aaebe](https://github.com/webex/webex-js-sdk/commit/11aaebe3422bc9b78fac1936dbe076345645000b))
+
+
+### Bug Fixes
+
+* **plugin-meetings:** add streams from simulcasts to media quality events ([#3528](https://github.com/webex/webex-js-sdk/issues/3528)) ([54518bc](https://github.com/webex/webex-js-sdk/commit/54518bcc9d3313d4f1898510967d106724fa00a4))
+* **plugin-meetings:** handle meetingInfo response without permission token ([#3541](https://github.com/webex/webex-js-sdk/issues/3541)) ([accf8c7](https://github.com/webex/webex-js-sdk/commit/accf8c7cee7cb19969e7d3234ead3026dd45c0d5))
+
+## [3.0.0-beta.405](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.404...v3.0.0-beta.405) (2024-04-19)
+
+
+### Features
+
+* **mercury:** remember last error ([#3545](https://github.com/webex/webex-js-sdk/issues/3545)) ([11aaebe](https://github.com/webex/webex-js-sdk/commit/11aaebe3422bc9b78fac1936dbe076345645000b))
+
+
+### Bug Fixes
+
+* **plugin-meetings:** handle meetingInfo response without permission token ([#3541](https://github.com/webex/webex-js-sdk/issues/3541)) ([accf8c7](https://github.com/webex/webex-js-sdk/commit/accf8c7cee7cb19969e7d3234ead3026dd45c0d5))
+
+## [3.0.0-beta.404](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.403...v3.0.0-beta.404) (2024-04-18)
+
+
+### Bug Fixes
+
+* **si:** import NamedMediaGroup from internal-media-core lib ([#3542](https://github.com/webex/webex-js-sdk/issues/3542)) ([80f4236](https://github.com/webex/webex-js-sdk/commit/80f4236eb9cdb15e2e76cb26be48c3c2de190a2d))
+
+## [3.0.0-beta.403](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.402...v3.0.0-beta.403) (2024-04-16)
+
+
+### Features
+
+* **internal-plugin-metrics:** bump event-dictionary version ([#3520](https://github.com/webex/webex-js-sdk/issues/3520)) ([af03a3f](https://github.com/webex/webex-js-sdk/commit/af03a3f9333b37f531232672fecd4b2522bb60f8))
+
+## [3.0.0-beta.402](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.401...v3.0.0-beta.402) (2024-04-16)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** add alias in joinMeeting request body: SPARK-514797 ([#3532](https://github.com/webex/webex-js-sdk/issues/3532)) ([3544d96](https://github.com/webex/webex-js-sdk/commit/3544d96af0cc916e691c48e108eb698697a6ce03))
+
 ## [3.0.0-beta.401](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.400...v3.0.0-beta.401) (2024-04-16)
 
 
