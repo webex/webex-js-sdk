@@ -18,7 +18,6 @@ import testUtils from '../../../utils/testUtils';
 import LoggerProxy from '@webex/plugin-meetings/src/common/logs/logger-proxy';
 import LoggerConfig from '@webex/plugin-meetings/src/common/logs/logger-config';
 import { expect } from 'chai';
-import { NamedMediaGroup } from "@webex/json-multistream";
 
 class FakeSlot extends EventEmitter {
   public mediaType: MediaType;
