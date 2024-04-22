@@ -365,7 +365,6 @@ describe('plugin-metrics', () => {
         });
       });
 
-      //TODO: The following two skipped tests are failling when run using jest, needs investigation: https://jira-eng-gpk2.cisco.com/jira/browse/SPARK-485382
       describe('when the request fails', () => {
         it('does not clear the queue', async () => {
           // avoid setting .sent timestamp
