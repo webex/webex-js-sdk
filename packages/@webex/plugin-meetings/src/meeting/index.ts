@@ -7923,8 +7923,8 @@ export default class Meeting extends StatelessWebexPlugin {
       if (roles.includes(SELF_ROLES.COHOST)) {
         return 'cohost';
       }
-      if (roles.includes(SELF_ROLES.PRESENTER)) {
-        return 'presenter';
+      if (roles.includes(SELF_ROLES.PANELIST)) {
+        return 'panelist';
       }
       if (roles.includes(SELF_ROLES.ATTENDEE)) {
         return 'attendee';
