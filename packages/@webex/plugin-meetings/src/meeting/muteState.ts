@@ -392,7 +392,7 @@ export class MuteState {
    * @param {Object} [meeting] the meeting object
    * @returns {undefined}
    */
-  public handleServerLocalUnmuteRequired(unmuteAllowed: boolean, meeting?: any): undefined {
+  public handleServerLocalUnmuteRequired(unmuteAllowed: boolean, meeting?: any) {
     if (!this.state.client.enabled) {
       LoggerProxy.logger.warn(
         `Meeting:muteState#handleServerLocalUnmuteRequired --> ${this.type}: localAudioUnmuteRequired received while ${this.type} is disabled -> local unmute will not result in ${this.type} being sent`
