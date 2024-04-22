@@ -1377,19 +1377,6 @@ export default class LocusInfo extends EventsScope {
           }
         );
       }
-      if (parsedSelves.updates.isMutedByOthersChanged) {
-        this.emitScoped(
-          {
-            file: 'locus-info',
-            function: 'updateSelf',
-          },
-          LOCUSINFO.EVENTS.SELF_REMOTE_MUTE_STATUS_UPDATED,
-          {
-            muted: parsedSelves.current.remoteMuted,
-            unmuteAllowed: parsedSelves.current.unmuteAllowed,
-          }
-        );
-      }
       if (parsedSelves.updates.localAudioUnmuteRequiredByServer) {
         this.emitScoped(
           {
@@ -1397,6 +1384,19 @@ export default class LocusInfo extends EventsScope {
             function: 'updateSelf',
           },
           LOCUSINFO.EVENTS.LOCAL_UNMUTE_REQUIRED,
+          {
+            muted: parsedSelves.current.remoteMuted,
+            unmuteAllowed: parsedSelves.current.unmuteAllowed,
+          }
+        );
+      }
+      if (parsedSelves.updates.isMutedByOthersChanged) {
+        this.emitScoped(
+          {
+            file: 'locus-info',
+            function: 'updateSelf',
+          },
+          LOCUSINFO.EVENTS.SELF_REMOTE_MUTE_STATUS_UPDATED,
           {
             muted: parsedSelves.current.remoteMuted,
             unmuteAllowed: parsedSelves.current.unmuteAllowed,
