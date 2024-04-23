@@ -216,6 +216,8 @@ export const getAudioSenderStreamMqa = ({
     statsResults[mediaType][sendrecvType].totalKeyFramesEncoded - lastFramesEncoded || 0;
   audioSenderStream.requestedKeyFrames =
     statsResults[mediaType][sendrecvType].totalFirCount - lastFirCount || 0;
+
+  audioSenderStream.requestedBitrate = statsResults[mediaType][sendrecvType].requestedBitrate || 0;
 };
 
 export const getVideoReceiverMqa = ({
@@ -437,4 +439,8 @@ export const getVideoSenderStreamMqa = ({
   videoSenderStream.transmittedWidth = statsResults[mediaType][sendrecvType].width || 0;
   videoSenderStream.transmittedFrameSize =
     (videoSenderStream.transmittedHeight * videoSenderStream.transmittedWidth) / 256;
+
+  videoSenderStream.requestedBitrate = statsResults[mediaType][sendrecvType].requestedBitrate || 0;
+  videoSenderStream.requestedFrameSize =
+    statsResults[mediaType][sendrecvType].requestedFrameSize || 0;
 };
