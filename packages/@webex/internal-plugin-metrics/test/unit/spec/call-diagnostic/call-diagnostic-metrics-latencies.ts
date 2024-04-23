@@ -51,29 +51,29 @@ describe('internal-plugin-metrics', () => {
       assert.deepEqual(cdl.precomputedLatencies.get('internal.client.pageJMT'), 20);
     });
 
-    it('should overwrite latency when overwrite is true', () => {
+    it('should overwrite latency when accumulate is false', () => {
       assert.deepEqual(cdl.precomputedLatencies.size, 0);
-      cdl.saveLatency('internal.client.pageJMT', 10, true);
+      cdl.saveLatency('internal.client.pageJMT', 10, false);
       assert.deepEqual(cdl.precomputedLatencies.size, 1);
       assert.deepEqual(cdl.precomputedLatencies.get('internal.client.pageJMT'), 10);
-      cdl.saveLatency('internal.client.pageJMT', 20, true);
+      cdl.saveLatency('internal.client.pageJMT', 20, false);
       assert.deepEqual(cdl.precomputedLatencies.size, 1);
       assert.deepEqual(cdl.precomputedLatencies.get('internal.client.pageJMT'), 20);
     });
 
-    it('should save latency correctly when overwrite is false', () => {
+    it('should save latency correctly when accumulate is true', () => {
       assert.deepEqual(cdl.precomputedLatencies.size, 0);
-      cdl.saveLatency('internal.client.pageJMT', 10, false);
+      cdl.saveLatency('internal.client.pageJMT', 10, true);
       assert.deepEqual(cdl.precomputedLatencies.size, 1);
       assert.deepEqual(cdl.precomputedLatencies.get('internal.client.pageJMT'), 10);
     });
 
-    it('should save latency correctly when overwrite is false and there is existing value', () => {
+    it('should save latency correctly when accumulate is true and there is existing value', () => {
       assert.deepEqual(cdl.precomputedLatencies.size, 0);
       cdl.saveLatency('internal.client.pageJMT', 10);
       assert.deepEqual(cdl.precomputedLatencies.size, 1);
       assert.deepEqual(cdl.precomputedLatencies.get('internal.client.pageJMT'), 10);
-      cdl.saveLatency('internal.client.pageJMT', 10, false);
+      cdl.saveLatency('internal.client.pageJMT', 10, true);
       assert.deepEqual(cdl.precomputedLatencies.size, 1);
       assert.deepEqual(cdl.precomputedLatencies.get('internal.client.pageJMT'), 20);
     });
@@ -161,53 +161,55 @@ describe('internal-plugin-metrics', () => {
         sinon.restore();
       });
 
-      it('checks measureLatency with overwrite false', async () => {
+      it('checks measureLatency with accumulate false', async () => {
         const key = 'internal.client.pageJMT';
-        const overwrite = false;
+        const accumulate = false;
+
         const callbackStub = sinon.stub().callsFake(() => {
           clock.tick(50);
           return Promise.resolve('test');
         });
 
-        const promise = cdl.measureLatency(callbackStub, 'internal.client.pageJMT', overwrite);
+        // accumulate should be false by default
+        const promise = cdl.measureLatency(callbackStub, 'internal.client.pageJMT');
 
         const resolvedValue = await promise;
         assert.deepEqual(resolvedValue, 'test');
         assert.calledOnceWithExactly(callbackStub);
-        assert.calledOnceWithExactly(saveLatencySpy, key, 50, overwrite);
+        assert.calledOnceWithExactly(saveLatencySpy, key, 50, accumulate);
       });
 
-      it('checks measureLatency with overwrite true', async () => {
+      it('checks measureLatency with accumulate true', async () => {
         const key = 'internal.download.time';
-        const overwrite = true;
+        const accumulate = true;
         const callbackStub = sinon.stub().callsFake(() => {
           clock.tick(20);
           return Promise.resolve('test123');
         });
 
-        const promise = cdl.measureLatency(callbackStub, 'internal.download.time', overwrite);
+        const promise = cdl.measureLatency(callbackStub, 'internal.download.time', accumulate);
 
         const resolvedValue = await promise;
         assert.deepEqual(resolvedValue, 'test123');
         assert.calledOnceWithExactly(callbackStub);
-        assert.calledOnceWithExactly(saveLatencySpy, key, 20, overwrite);
+        assert.calledOnceWithExactly(saveLatencySpy, key, 20, accumulate);
       });
 
       it('checks measureLatency when callBack rejects', async () => {
         const key = 'internal.client.pageJMT';
-        const overwrite = true;
+        const accumulate = true;
         const error = new Error('some error');
         const callbackStub = sinon.stub().callsFake(() => {
           clock.tick(50);
           return Promise.reject(error);
         });
 
-        const promise = cdl.measureLatency(callbackStub, 'internal.client.pageJMT', overwrite);
+        const promise = cdl.measureLatency(callbackStub, 'internal.client.pageJMT', accumulate);
 
         const rejectedValue = await assert.isRejected(promise);
         assert.deepEqual(rejectedValue, error);
         assert.calledOnceWithExactly(callbackStub);
-        assert.calledOnceWithExactly(saveLatencySpy, key, 50, overwrite);
+        assert.calledOnceWithExactly(saveLatencySpy, key, 50, accumulate);
       });
     });
 

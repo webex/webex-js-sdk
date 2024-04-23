@@ -58,7 +58,8 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
   /**
    * Store timestamp value
    * @param key - key
-   * @param value -value
+   * @param value - value
+   * @param options - store options
    * @throws
    * @returns
    */
@@ -94,12 +95,12 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
    * Store precomputed latency value
    * @param key - key
    * @param value - value
-   * @param accumulate - when it true, it overwrite existing value with sum of the current value and the new measurement otherwise just store the new measurement
+   * @param accumulate - when it is true, it overwrites existing value with sum of the current value and the new measurement otherwise just store the new measurement
    * @throws
    * @returns
    */
-  public saveLatency(key: PreComputedLatencies, value: number, accumulate = true) {
-    const existingValue = accumulate ? 0 : this.precomputedLatencies.get(key) || 0;
+  public saveLatency(key: PreComputedLatencies, value: number, accumulate = false) {
+    const existingValue = accumulate ? this.precomputedLatencies.get(key) || 0 : 0;
     this.precomputedLatencies.set(key, value + existingValue);
   }
 
@@ -107,7 +108,7 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
    * Measure latency for a request
    * @param callback - callback for which you would like to measure latency
    * @param key - key
-   * @param accumulate - when it true, it overwrite existing value with sum of the current value and the new measurement otherwise just store the new measurement
+   * @param accumulate - when it is true, it overwrites existing value with sum of the current value and the new measurement otherwise just store the new measurement
    * @returns
    */
   public measureLatency(
