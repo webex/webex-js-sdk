@@ -14,7 +14,7 @@
 
         <!-- ############################## ############################## ############################## -->
         <section>
-          <h2>Kitchen sink - Presence</h2>
+          <h2>Webex - Presence</h2>
           <p>Use this kitchen sink to interact with the Webex Presence service</p>
         </section>
 
@@ -23,10 +23,10 @@
         <section id="authentication">
           <h2 class="collapsible">Authentication</h2>
           <div class="section-content">
-            <p class="note">TIP: Get access token from our developer portal: <a
+            <p class="note"><strong>Note:</strong> Get an access token from our developer portal: <a
                 href="https://developer.webex.com/docs/api/getting-started"
                 target="_blank">https://developer.webex.com/docs/api/getting-started</a>.</p>
-            <p class="note">NOTE: Webex JS SDK must be initialized using a valid token.</p>
+            <p class="note"><strong>Note:</strong> Webex JS SDK must be initialized using a valid token.</p>
 
             <!-- meeting / authentication-credentials -->
             <form id="credentials">
@@ -56,7 +56,7 @@
               <button id="sd-get-self-presence" type="button" onclick="getSelfPresence()"
                 class="btn-code">Get Status</button>
             </div>
-            <pre id="self-presence-status">NA</pre>
+            <pre id="self-presence-status"></pre>
 
             <legend>Set Presence Status</legend>
             <div class="u-mv">
@@ -68,9 +68,9 @@
             <legend>Get a different user's presence status</legend>
             <div class="u-mv">
                 <input id="get-user-presence" name="getPresence" placeholder="User ID" type="string" style="display: block; margin-bottom: 0.5rem;">
-                <button id="sd-set-self-presence" type="button" onclick="getUserPresence()" class="btn-code">Get Status</button>
+                <button id="sd-get-user-presence" type="button" onclick="getUserPresence()" class="btn-code">Get Status</button>
             </div>
-            <pre id="user-presence-status">NA</pre>
+            <pre id="user-presence-status"></pre>
             </fieldset>
 
               <fieldset>

@@ -3,12 +3,7 @@ body {
   padding: 0;
   background-color: #eee;
   font-family: sans-serif;
-  font-size: 15px;
-}
-
-video {
-  min-height: 15vh;
-  width: 100%;
+  font-size: 16px;
 }
 
 /* Nice defaults */
@@ -92,13 +87,16 @@ button, input[type="button"] {
   border-color: transparent;
   transition: background-color 0.15s ease;
 }
+
 button:hover, input[type="button"]:hover {
   color: var(--md-button-secondary-text-color, #000);
   background-color: var(--md-button-secondary-hover-bg-color, #ccc);
 }
+
 button:active, input[type="button"]:active {
   background-color: var(--md-button-bg-color, rgba(0, 0, 0, 0.3));
 }
+
 button:disabled, input[type="button"]:disabled {
   color: var(--md-button-disabled-text-color, rgba(0, 0, 0, 0.2));
   fill: var(--md-button-disabled-text-color, rgba(0, 0, 0, 0.2));
@@ -106,16 +104,18 @@ button:disabled, input[type="button"]:disabled {
   pointer-events: none;
   cursor: default;
 }
+
 button.btn--green, input[type="button"].btn--green {
   color: #fff;
   color: var(--md-button-join-text-color, #fff);
   background-color: #00ab50;
-  background-color: var(--md-button-join-bg-color, #00ab50);
   border-color: transparent;
 }
+
 button.btn--green:disabled, input[type="button"].btn--green:disabled{
   opacity: .5;
 }
+
 button.btn--red, input[type="button"].btn--red {
   color: #fff;
   color: var(--md-button-cancel-text-color, #fff);
@@ -123,10 +123,12 @@ button.btn--red, input[type="button"].btn--red {
   background-color: var(--md-button-cancel-bg-color, #f7644a);
   border-color: transparent;
 }
+
 .btn--red:disabled,
 .btn--green:disabled {
   opacity: .5;
 }
+
 button.btn-code, input[type="button"].btn-code {
   font-family: Consolas, Liberation Mono, Courier, monospace;
   margin: 0.2rem 0;
@@ -137,7 +139,6 @@ input[type=password],
 input[type=email] {
   width: 100%;
   margin-bottom: 1rem;
-  padding: 0.5rem;
   box-sizing: border-box;
   border: 0.0625rem solid;
   border-color: var(--md-input-outline-color, #ccc);
@@ -150,6 +151,7 @@ input[type=email] {
   padding: 0 1rem;
   transition: box-shadow 0.15s ease-out;
 }
+
 input[type=text]:focus,
 input[type=password]:focus,
 input[type=email]:focus {
@@ -176,9 +178,11 @@ input[type=email]:focus {
 .flex {
   display: flex;
 }
+
 .flex--wrap {
   flex-wrap: wrap;
 }
+
 .flex--center {
   justify-content: center;
 }
@@ -221,7 +225,6 @@ input[type=email]:focus {
 
 /* Misc Styles */
 .note {
-  padding: 1rem 0;
   margin: 0.8rem 0;
   background: rgba(232, 232, 232, 0.4);
   padding: 1rem;
@@ -233,6 +236,7 @@ input[type=email]:focus {
   display: flex;
   flex-direction: column;
 }
+
 .transcription textarea {
   width: 100%;
   min-height: 10rem;
@@ -266,6 +270,7 @@ input[type=email]:focus {
 .hidden {
   display: none;
 }
+
 th , td {
   border:1px solid black;
   padding: 5px;
@@ -306,27 +311,6 @@ table {
 
 .styled-table tbody tr:last-of-type {
   border-bottom: 0.125rem solid #009879;
-}
-
-#transfer-options {
-  min-width: 150px;
-  min-height: 22px;
-  margin-left: 1rem;
-}
-
-.ServiceData{
-  min-width: 0;
-  min-height: 0;
-  margin-right: 0;
-  padding: 1px 2px;
-}
-
-select.ServiceData {
-  color: black;
-}
-
-select.ServiceData:invalid {
-  color: #555555d4;
 }
 
 h2 {

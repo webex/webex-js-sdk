@@ -8,18 +8,24 @@
 // Declare some globals that we'll need throughout.
 let webex;
 let enableProd = true;
+let subscribedUserIds = [];
 
 const credentialsFormElm = document.querySelector('#credentials');
 const tokenElm = document.querySelector('#access-token');
 const saveElm = document.querySelector('#access-token-save');
 const authStatusElm = document.querySelector('#access-token-status');
 const selfPresenceElm = document.querySelector('#self-presence-status');
+const selfPresenceBtn = document.querySelector('#sd-get-self-presence');
 const setPresenceStatusElm = document.querySelector('#set-presence');
 const setPresenceTtl = document.querySelector('#presence-ttl');
+const setPresenceBtn = document.querySelector('#sd-set-self-presence');
+const getPresenceBtn = document.querySelector('#sd-get-user-presence');
 const getUserPresenceElm = document.querySelector('#get-user-presence');
 const userPresenceStatusElm = document.querySelector('#user-presence-status');
 const presenceNotifications = document.querySelector('#subscribe-presence-notifications');
-const subscribeUserIds = document.querySelector('#subscribe-id');
+const usersToSubOrUnsub = document.querySelector('#subscribe-id');
+const subscribePresenceBtn = document.querySelector('#subscribe-presence');
+const unsubscribePresenceBtn = document.querySelector('#unsubscribe-presence');
 const subscribeNotificationBox = document.querySelector('#subscribe-presence-notifications');
 
 // Store and Grab `access-token` from localstorage
@@ -39,6 +45,14 @@ function changeEnv() {
     enableProduction.innerHTML = enableProd ? 'In Production' : 'In Integration';
 }
 
+function updateStatus(enabled) {
+    selfPresenceBtn.disabled = !enabled;
+    setPresenceBtn.disabled = !enabled;
+    getPresenceBtn.disabled = !enabled;
+    subscribePresenceBtn.disabled = !enabled;
+    unsubscribePresenceBtn.disabled = !enabled;
+}
+
 
 async function initWebex(e) {
     e.preventDefault();
@@ -46,6 +60,12 @@ async function initWebex(e) {
   
     tokenElm.disabled = true;
     saveElm.disabled = true;
+    selfPresenceBtn.disabled = true;
+    setPresenceBtn.disabled = true;
+    getPresenceBtn.disabled = true;
+    subscribePresenceBtn.disabled = true;
+    unsubscribePresenceBtn.disabled = true;
+
     authStatusElm.innerText = 'initializing...';
   
     const webexConfig = {
@@ -87,6 +107,14 @@ async function initWebex(e) {
         console.log('Authentication#initWebex() :: Webex Ready');
         authStatusElm.innerText = 'Webex is ready. Saved access token!';
     });
+
+    webex.messages.listen()
+        .then(() => {
+          updateStatus(true);
+         })
+        .catch((err) => {
+          console.error(`error listening to messages: ${err}`);
+        });
 }
   
 credentialsFormElm.addEventListener('submit', initWebex);
@@ -123,7 +151,7 @@ function getUserPresence() {
                 userPresenceStatusElm.innerText = JSON.stringify(response, null, 2);
             })
         .catch((error) => {
-            console.log('Error occurrec while trying to get user\'s presence', error);
+            console.log('Error occurred while trying to get user\'s presence', error);
         })
 }
 
@@ -134,27 +162,42 @@ function handlePresenceUpdate(payload) {
     subscribeNotificationBox.innerText = value;
 }
 
-function startPresenceListener() {
+function setupPresenceListener() {
     webex.internal.mercury.on('event:apheleia.subscription_update', handlePresenceUpdate);
 }
 
+function removePresenceListener() {
+    webex.internal.mercury.off('event:apheleia.subscription_update', handlePresenceUpdate);
+}
+
 function subscribePresence() {
-    const ids = subscribeUserIds.value.trim().split(',');
-    startPresenceListener();
+    const ids = usersToSubOrUnsub.value.trim().split(',');
+    if (subscribedUserIds.length == 0) {
+        setupPresenceListener();
+    }
     webex.presence.subscribe(ids)
         .then(() => {
             console.log('successfully subscribed');
+            ids.map((id) => subscribedUserIds.push(id));
         })
         .catch((error) => {
             console.log('encountered error while subscribing', error);
         })
 }
 
+function removeFromArray(A, B) {
+    return A.filter(element => !B.includes(element));
+}
+
 function unsubscribePresence() {
-    const ids = subscribeUserIds.value.split(',');
+    const ids = usersToSubOrUnsub.value.trim().split(',');
+    if (subscribedUserIds.length == 0) {
+        removePresenceListener();
+    }
     webex.presence.unsubscribe(ids)
         .then(() => {
             console.log('successfully unsubscribed');
+            subscribedUserIds = removeFromArray(subscribedUserIds, ids);
         })
         .catch((error) => {
             console.log('encountered error while unsubscribing', error);

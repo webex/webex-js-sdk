@@ -17,10 +17,8 @@ export interface IPresenceStatusObject {
   statusTime: string;
   lastActive: string;
   expiresTTL: number;
-  expiresTime: string;
   vectorCounters: object;
   suppressNotifications: boolean;
-  lastseenDeviceUrl: string;
 }
 
 export interface IEventPayload {
