@@ -34,17 +34,21 @@ class ReachabilityRequest {
    * @returns {Promise}
    */
   getClusters = (ipVersion?: IP_VERSION): Promise<{clusters: ClusterList; joinCookie: any}> =>
-    this.webex
-      .request({
-        method: HTTP_VERBS.GET,
-        shouldRefreshAccessToken: false,
-        api: API.CALLIOPEDISCOVERY,
-        resource: RESOURCE.CLUSTERS,
-        qs: {
-          JCSupport: 1,
-          ipver: ipVersion,
-        },
-      })
+    this.webex.internal.newMetrics.callDiagnosticLatencies
+      .measureLatency(
+        () =>
+          this.webex.request({
+            method: HTTP_VERBS.GET,
+            shouldRefreshAccessToken: false,
+            api: API.CALLIOPEDISCOVERY,
+            resource: RESOURCE.CLUSTERS,
+            qs: {
+              JCSupport: 1,
+              ipver: ipVersion,
+            },
+          }),
+        'internal.get.cluster.time'
+      )
       .then((res) => {
         const {clusters, joinCookie} = res.body;
 
