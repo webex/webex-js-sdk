@@ -109,9 +109,7 @@ import CallDiagnosticMetrics from '@webex/internal-plugin-metrics/src/call-diagn
 import {ERROR_DESCRIPTIONS} from '@webex/internal-plugin-metrics/src/call-diagnostic/config';
 import MeetingCollection from '@webex/plugin-meetings/src/meetings/collection';
 
-import {
-  EVENT_TRIGGERS as VOICEAEVENTS,
-} from '@webex/internal-plugin-voicea';
+import {EVENT_TRIGGERS as VOICEAEVENTS} from '@webex/internal-plugin-voicea';
 
 describe('plugin-meetings', () => {
   const logger = {
@@ -686,7 +684,10 @@ describe('plugin-meetings', () => {
         });
 
         it('should call abortTurnDiscovery() if we do not get a TURN server info', async () => {
-          handleTurnDiscoveryHttpResponseStub.resolves({turnServerInfo: undefined, turnDiscoverySkippedReason: 'missing http response'});
+          handleTurnDiscoveryHttpResponseStub.resolves({
+            turnServerInfo: undefined,
+            turnDiscoverySkippedReason: 'missing http response',
+          });
 
           const result = await meeting.joinWithMedia({
             joinOptions,
@@ -720,7 +721,8 @@ describe('plugin-meetings', () => {
 
           assert.calledOnceWithExactly(abortTurnDiscoveryStub);
 
-          assert.calledWith(Metrics.sendBehavioralMetric,
+          assert.calledWith(
+            Metrics.sendBehavioralMetric,
             BEHAVIORAL_METRICS.JOIN_WITH_MEDIA_FAILURE,
             {
               correlation_id: meeting.correlationId,
@@ -765,7 +767,8 @@ describe('plugin-meetings', () => {
             reason: 'joinWithMedia failure',
           });
 
-          assert.calledWith(Metrics.sendBehavioralMetric,
+          assert.calledWith(
+            Metrics.sendBehavioralMetric,
             BEHAVIORAL_METRICS.JOIN_WITH_MEDIA_FAILURE,
             {
               correlation_id: meeting.correlationId,
@@ -804,7 +807,7 @@ describe('plugin-meetings', () => {
 
         it('should subscribe to events for the first time and avoid subscribing for future transcription starts', async () => {
           meeting.joinedWith = {
-            state: 'JOINED'
+            state: 'JOINED',
           };
           meeting.areVoiceaEventsSetup = false;
           meeting.roles = ['MODERATOR'];
@@ -814,27 +817,19 @@ describe('plugin-meetings', () => {
           assert.equal(webex.internal.voicea.on.callCount, 4);
           assert.equal(meeting.areVoiceaEventsSetup, true);
           assert.equal(webex.internal.voicea.listenToEvents.callCount, 1);
-          assert.calledWith(
-            webex.internal.voicea.toggleTranscribing,
-            true,
-          );
+          assert.calledWith(webex.internal.voicea.toggleTranscribing, true);
 
           await meeting.startTranscription();
           assert.equal(webex.internal.voicea.on.callCount, 4);
           assert.equal(meeting.areVoiceaEventsSetup, true);
           assert.equal(webex.internal.voicea.listenToEvents.callCount, 1);
-          assert.calledTwice(
-            webex.internal.voicea.toggleTranscribing,
-          );
-          assert.calledWith(
-            webex.internal.voicea.toggleTranscribing,
-            true,
-          );
+          assert.calledTwice(webex.internal.voicea.toggleTranscribing);
+          assert.calledWith(webex.internal.voicea.toggleTranscribing, true);
         });
 
         it('should listen to events and not toggleTranscribing if the user is not a host', async () => {
           meeting.joinedWith = {
-            state: 'JOINED'
+            state: 'JOINED',
           };
           meeting.areVoiceaEventsSetup = false;
           meeting.roles = ['COHOST'];
@@ -844,9 +839,7 @@ describe('plugin-meetings', () => {
           assert.equal(webex.internal.voicea.on.callCount, 4);
           assert.equal(meeting.areVoiceaEventsSetup, true);
           assert.equal(webex.internal.voicea.listenToEvents.callCount, 1);
-          assert.notCalled(
-            webex.internal.voicea.toggleTranscribing
-          );
+          assert.notCalled(webex.internal.voicea.toggleTranscribing);
         });
 
         it("should throw error if request doesn't work", async () => {
@@ -887,7 +880,7 @@ describe('plugin-meetings', () => {
       describe('#setCaptionLanguage', () => {
         beforeEach(() => {
           meeting.isTranscriptionSupported = sinon.stub();
-          meeting.transcription = { languageOptions: {} };
+          meeting.transcription = {languageOptions: {}};
           webex.internal.voicea.on = sinon.stub();
           webex.internal.voicea.off = sinon.stub();
           webex.internal.voicea.setCaptionLanguage = sinon.stub();
@@ -913,23 +906,23 @@ describe('plugin-meetings', () => {
           const languageCode = 'fr';
 
           meeting.setCaptionLanguage(languageCode).then((resolvedLanguageCode) => {
-            assert.calledWith(
-              webex.internal.voicea.requestLanguage,
+            assert.calledWith(webex.internal.voicea.requestLanguage, languageCode);
+            assert.equal(resolvedLanguageCode, languageCode);
+            assert.equal(
+              meeting.transcription.languageOptions.currentCaptionLanguage,
               languageCode
             );
-            assert.equal(resolvedLanguageCode, languageCode);
-            assert.equal(meeting.transcription.languageOptions.currentCaptionLanguage, languageCode);
             done();
           });
 
           assert.calledOnceWithMatch(
             webex.internal.voicea.on,
-            VOICEAEVENTS.CAPTION_LANGUAGE_UPDATE,
+            VOICEAEVENTS.CAPTION_LANGUAGE_UPDATE
           );
 
           // Trigger the event
           const voiceaListenerLangugeUpdate = webex.internal.voicea.on.getCall(0).args[1];
-          voiceaListenerLangugeUpdate({ statusCode: 200, languageCode });
+          voiceaListenerLangugeUpdate({statusCode: 200, languageCode});
         });
 
         it('should reject if the statusCode in payload is not 200', (done) => {
@@ -937,8 +930,8 @@ describe('plugin-meetings', () => {
           const languageCode = 'fr';
           const rejectPayload = {
             statusCode: 400,
-            message: 'some error message'
-          }
+            message: 'some error message',
+          };
 
           meeting.setCaptionLanguage(languageCode).catch((payload) => {
             assert.equal(payload, rejectPayload);
@@ -947,20 +940,19 @@ describe('plugin-meetings', () => {
 
           assert.calledOnceWithMatch(
             webex.internal.voicea.on,
-            VOICEAEVENTS.CAPTION_LANGUAGE_UPDATE,
+            VOICEAEVENTS.CAPTION_LANGUAGE_UPDATE
           );
 
           // Trigger the event
           const voiceaListenerLangugeUpdate = webex.internal.voicea.on.getCall(0).args[1];
           voiceaListenerLangugeUpdate(rejectPayload);
         });
-
       });
 
       describe('#setSpokenLanguage', () => {
         beforeEach(() => {
           meeting.isTranscriptionSupported = sinon.stub();
-          meeting.transcription = { languageOptions: {} };
+          meeting.transcription = {languageOptions: {}};
           webex.internal.voicea.on = sinon.stub();
           webex.internal.voicea.off = sinon.stub();
           webex.internal.voicea.setSpokenLanguage = sinon.stub();
@@ -985,47 +977,37 @@ describe('plugin-meetings', () => {
           const languageCode = 'fr';
 
           meeting.setSpokenLanguage(languageCode).then((resolvedLanguageCode) => {
-            assert.calledWith(
-              webex.internal.voicea.setSpokenLanguage,
-              languageCode
-            );
+            assert.calledWith(webex.internal.voicea.setSpokenLanguage, languageCode);
             assert.equal(resolvedLanguageCode, languageCode);
             assert.equal(meeting.transcription.languageOptions.currentSpokenLanguage, languageCode);
             done();
           });
 
-          assert.calledOnceWithMatch(
-            webex.internal.voicea.on,
-            VOICEAEVENTS.SPOKEN_LANGUAGE_UPDATE,
-          );
+          assert.calledOnceWithMatch(webex.internal.voicea.on, VOICEAEVENTS.SPOKEN_LANGUAGE_UPDATE);
 
           // Trigger the event
           const voiceaListenerLangugeUpdate = webex.internal.voicea.on.getCall(0).args[1];
-          voiceaListenerLangugeUpdate({ languageCode });
+          voiceaListenerLangugeUpdate({languageCode});
         });
 
         it('should reject if the language code does not exist in payload', (done) => {
           meeting.isTranscriptionSupported.returns(true);
           const languageCode = 'fr';
           const rejectPayload = {
-            'message': 'some error message'
-          }
+            message: 'some error message',
+          };
 
           meeting.setSpokenLanguage(languageCode).catch((payload) => {
             assert.equal(payload, rejectPayload);
             done();
           });
 
-          assert.calledOnceWithMatch(
-            webex.internal.voicea.on,
-            VOICEAEVENTS.SPOKEN_LANGUAGE_UPDATE,
-          );
+          assert.calledOnceWithMatch(webex.internal.voicea.on, VOICEAEVENTS.SPOKEN_LANGUAGE_UPDATE);
 
           // Trigger the event
           const voiceaListenerLangugeUpdate = webex.internal.voicea.on.getCall(0).args[1];
           voiceaListenerLangugeUpdate(rejectPayload);
         });
-
       });
 
       describe('transcription events', () => {
@@ -1269,7 +1251,7 @@ describe('plugin-meetings', () => {
                 file: 'meeting/index',
                 function: 'join',
               },
-              EVENT_TRIGGERS.MEETING_TRANSCRIPTION_CONNECTED,
+              EVENT_TRIGGERS.MEETING_TRANSCRIPTION_CONNECTED
             );
           });
 
@@ -2640,6 +2622,7 @@ describe('plugin-meetings', () => {
 
           beforeEach(async () => {
             meeting.meetingState = 'ACTIVE';
+            meeting.remoteShareInstanceId = '1234';
             prevConfigValue = meeting.config.stats.enableStatsAnalyzer;
 
             meeting.config.stats.enableStatsAnalyzer = true;
@@ -2739,6 +2722,66 @@ describe('plugin-meetings', () => {
             assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
               name: 'client.media.rx.stop',
               payload: {mediaType: 'audio'},
+              options: {
+                meetingId: meeting.id,
+              },
+            });
+          });
+
+          it('REMOTE_MEDIA_STARTED triggers "meeting:media:remote:start" event and sends metrics for share', async () => {
+            statsAnalyzerStub.emit(
+              {file: 'test', function: 'test'},
+              StatsAnalyzerModule.EVENTS.REMOTE_MEDIA_STARTED,
+              {type: 'share'}
+            );
+
+            assert.calledWith(
+              TriggerProxy.trigger,
+              sinon.match.instanceOf(Meeting),
+              {
+                file: 'meeting/index',
+                function: 'addMedia',
+              },
+              EVENT_TRIGGERS.MEETING_MEDIA_REMOTE_STARTED,
+              {
+                type: 'share',
+              }
+            );
+            assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
+              name: 'client.media.rx.start',
+              payload: {mediaType: 'share', shareInstanceId: meeting.remoteShareInstanceId},
+              options: {
+                meetingId: meeting.id,
+              },
+            });
+
+            assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
+              name: 'client.media.render.start',
+              payload: {mediaType: 'share', shareInstanceId: meeting.remoteShareInstanceId},
+              options: {
+                meetingId: meeting.id,
+              },
+            });
+          });
+
+          it('REMOTE_MEDIA_STOPPED triggers the right metrics for share', async () => {
+            statsAnalyzerStub.emit(
+              {file: 'test', function: 'test'},
+              StatsAnalyzerModule.EVENTS.REMOTE_MEDIA_STOPPED,
+              {type: 'share'}
+            );
+
+            assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
+              name: 'client.media.rx.stop',
+              payload: {mediaType: 'share', shareInstanceId: meeting.remoteShareInstanceId},
+              options: {
+                meetingId: meeting.id,
+              },
+            });
+
+            assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
+              name: 'client.media.render.stop',
+              payload: {mediaType: 'share', shareInstanceId: meeting.remoteShareInstanceId},
               options: {
                 meetingId: meeting.id,
               },
@@ -2989,9 +3032,10 @@ describe('plugin-meetings', () => {
             meeting.setMercuryListener = sinon.stub();
             meeting.locusInfo.onFullLocus = sinon.stub();
             meeting.webex.meetings.geoHintInfo = {regionCode: 'EU', countryCode: 'UK'};
-            meeting.roap.doTurnDiscovery = sinon
-              .stub()
-              .resolves({turnServerInfo: { url: 'turn-url', username: 'turn user', password: 'turn password'}, turnDiscoverySkippedReason: 'reachability'});
+            meeting.roap.doTurnDiscovery = sinon.stub().resolves({
+              turnServerInfo: {url: 'turn-url', username: 'turn user', password: 'turn password'},
+              turnDiscoverySkippedReason: 'reachability',
+            });
             meeting.deferSDPAnswer = new Defer();
             meeting.deferSDPAnswer.resolve();
             meeting.webex.meetings.meetingCollection = new MeetingCollection();
@@ -3268,7 +3312,9 @@ describe('plugin-meetings', () => {
                   switch (type) {
                     case 'audio':
                       if (stream?.readyState === 'ended') {
-                        assert.notCalled(meeting.sendSlotManager.getSlot(MediaType.AudioMain).publishStream);
+                        assert.notCalled(
+                          meeting.sendSlotManager.getSlot(MediaType.AudioMain).publishStream
+                        );
                       } else {
                         assert.calledOnceWithExactly(
                           meeting.sendSlotManager.getSlot(MediaType.AudioMain).publishStream,
@@ -6417,7 +6463,7 @@ describe('plugin-meetings', () => {
 
           [
             {
-              endedStream: 'microphone', 
+              endedStream: 'microphone',
               streams: {
                 microphone: {
                   readyState: 'ended',
@@ -6430,7 +6476,7 @@ describe('plugin-meetings', () => {
               },
             },
             {
-              endedStream: 'camera', 
+              endedStream: 'camera',
               streams: {
                 microphone: undefined,
                 camera: {
@@ -6443,7 +6489,7 @@ describe('plugin-meetings', () => {
               },
             },
             {
-              endedStream: 'screenShare audio', 
+              endedStream: 'screenShare audio',
               streams: {
                 microphone: undefined,
                 camera: undefined,
@@ -6456,7 +6502,7 @@ describe('plugin-meetings', () => {
               },
             },
             {
-              endedStream: 'screenShare video', 
+              endedStream: 'screenShare video',
               streams: {
                 microphone: undefined,
                 camera: undefined,
@@ -6471,7 +6517,7 @@ describe('plugin-meetings', () => {
           ].forEach(({endedStream, streams}) => {
             it(`throws error if readyState of ${endedStream} is ended`, async () => {
               assert.isRejected(meeting.publishStreams(streams));
-            })
+            });
           });
         });
 
@@ -9794,9 +9840,16 @@ describe('plugin-meetings', () => {
           it('check triggerAnnotationInfoEvent event', () => {
             TriggerProxy.trigger.reset();
             const annotationInfo = {version: '1', policy: 'Approval'};
-            const expectAnnotationInfo = {annotationInfo, meetingId: meeting.id, resourceType: 'FILE'};
+            const expectAnnotationInfo = {
+              annotationInfo,
+              meetingId: meeting.id,
+              resourceType: 'FILE',
+            };
             meeting.webex.meetings = {};
-            meeting.triggerAnnotationInfoEvent({annotation: annotationInfo, resourceType: 'FILE'}, {});
+            meeting.triggerAnnotationInfoEvent(
+              {annotation: annotationInfo, resourceType: 'FILE'},
+              {}
+            );
             assert.calledWith(
               TriggerProxy.trigger,
               {},
@@ -9838,7 +9891,10 @@ describe('plugin-meetings', () => {
             );
 
             TriggerProxy.trigger.reset();
-            meeting.triggerAnnotationInfoEvent(null, {annotation: annotationInfoUpdate, resourceType: 'FILE'});
+            meeting.triggerAnnotationInfoEvent(null, {
+              annotation: annotationInfoUpdate,
+              resourceType: 'FILE',
+            });
             assert.notCalled(TriggerProxy.trigger);
           });
         });
@@ -9863,10 +9919,8 @@ describe('plugin-meetings', () => {
           };
 
           const SHARE_TYPE = {
-            FILE:
-                'FILE',
-            DESKTOP:
-                'DESKTOP',
+            FILE: 'FILE',
+            DESKTOP: 'DESKTOP',
           };
 
           const DEVICE_URL = {
@@ -9881,7 +9935,7 @@ describe('plugin-meetings', () => {
             disposition = null,
             deviceUrlSharing = null,
             annotation = undefined,
-            resourceType = undefined,
+            resourceType = undefined
           ) => ({
             beneficiaryId,
             disposition,
@@ -9942,7 +9996,7 @@ describe('plugin-meetings', () => {
                   FLOOR_ACTION.GRANTED,
                   deviceUrlSharing,
                   annotation,
-                    resourceType
+                  resourceType
                 );
 
                 if (isEqual(newPayload.current, newPayload.previous)) {
@@ -10003,7 +10057,7 @@ describe('plugin-meetings', () => {
                         url,
                         shareInstanceId,
                         annotationInfo: undefined,
-                        resourceType: undefined
+                        resourceType: undefined,
                       },
                     });
                   }
@@ -10871,31 +10925,30 @@ describe('plugin-meetings', () => {
           describe('File Share  --> Desktop Share', () => {
             it('Scenario #1: remote person A shares file then share desktop', () => {
               const data1 = generateData(
-                  blankPayload,
-                  true,
-                  true,
-                  USER_IDS.ME,
-                  undefined,
-                  false,
-                  undefined,
-                  undefined,
-                  undefined,
-                  undefined,
-                  DEVICE_URL.LOCAL_WEB,
-                  SHARE_TYPE.FILE
+                blankPayload,
+                true,
+                true,
+                USER_IDS.ME,
+                undefined,
+                false,
+                undefined,
+                undefined,
+                undefined,
+                undefined,
+                DEVICE_URL.LOCAL_WEB,
+                SHARE_TYPE.FILE
               );
               const data2 = generateData(
-                  data1.payload,
-                  true,
-                  false,
-                  USER_IDS.ME,
-                  SHARE_TYPE.DESKTOP
+                data1.payload,
+                true,
+                false,
+                USER_IDS.ME,
+                SHARE_TYPE.DESKTOP
               );
               const data3 = generateData(data2.payload, true, true, USER_IDS.ME);
 
               payloadTestHelper([data1, data2, data3]);
             });
-
           });
         });
       });
