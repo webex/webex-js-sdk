@@ -1,4 +1,18 @@
 {
   "extends": "../../../tsconfig.json",
-  "include": ["src"]
+  "include": ["src"],
+  "typedocOptions": {
+    "entryPoints": [
+      "./src/interface.ts"
+    ],
+    "sort": [
+      "source-order"
+    ],
+    "name": "Presence (@webex/plugin-presence)",
+    "disableSources": "true",
+    "entryPointStrategy": "expand",
+    "excludeExternals": "true",
+    "excludePrivate": "true",
+    "hideGenerator": "true",
+  },
 }
