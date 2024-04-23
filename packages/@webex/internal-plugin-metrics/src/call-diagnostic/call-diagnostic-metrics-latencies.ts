@@ -94,12 +94,12 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
    * Store precomputed latency value
    * @param key - key
    * @param value - value
-   * @param overwrite - overwrite existing value or add it
+   * @param accumulate - when it true, it overwrite existing value with sum of the current value and the new measurement otherwise just store the new measurement
    * @throws
    * @returns
    */
-  public saveLatency(key: PreComputedLatencies, value: number, overwrite = true) {
-    const existingValue = overwrite ? 0 : this.precomputedLatencies.get(key) || 0;
+  public saveLatency(key: PreComputedLatencies, value: number, accumulate = true) {
+    const existingValue = accumulate ? 0 : this.precomputedLatencies.get(key) || 0;
     this.precomputedLatencies.set(key, value + existingValue);
   }
 
@@ -107,33 +107,18 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
    * Measure latency for a request
    * @param callback - callback for which you would like to measure latency
    * @param key - key
-   * @param overwrite - overwite existing value or add to it
+   * @param accumulate - when it true, it overwrite existing value with sum of the current value and the new measurement otherwise just store the new measurement
    * @returns
    */
   public measureLatency(
     callback: () => Promise<unknown>,
     key: PreComputedLatencies,
-    overwrite = false
+    accumulate = false
   ) {
     const start = performance.now();
 
     return callback().finally(() => {
-      this.saveLatency(key, performance.now() - start, overwrite);
-    });
-  }
-
-  /**
-   * Accumulate latency for a request
-   * @param callback - callback for which you would like to measure latency
-   * @param key - key
-   * @returns
-   */
-  public accumulateLatency(callback: () => Promise<unknown>, key: PreComputedLatencies) {
-    const start = performance.now();
-
-    return callback().finally(() => {
-      const currentLatency = this.precomputedLatencies.get(key) ?? 0;
-      this.saveLatency(key, currentLatency + (performance.now() - start), true);
+      this.saveLatency(key, performance.now() - start, accumulate);
     });
   }
 
