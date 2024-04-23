@@ -397,7 +397,7 @@ describe('plugin-meetings', () => {
         });
       });
 
-      describe.only('noise reduction effect', () => {
+      describe('noise reduction effect', () => {
         beforeEach(() => {
           webex.credentials = {
             supertoken: {
