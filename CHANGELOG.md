@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.409](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.408...v3.0.0-beta.409) (2024-04-23)
+
+
+### Bug Fixes
+
+* **media-helpers:** vbg effect on local stream ([#3557](https://github.com/webex/webex-js-sdk/issues/3557)) ([507b0f2](https://github.com/webex/webex-js-sdk/commit/507b0f21d85013652c14a8d81fab2c511d59c660))
+
 ## [3.0.0-beta.408](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.407...v3.0.0-beta.408) (2024-04-23)
 
 
