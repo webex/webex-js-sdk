@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.407](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.406...v3.0.0-beta.407) (2024-04-22)
+
+
+### Bug Fixes
+
+* **metrics:** adding browserLaunchMethod metric in CA ([#3550](https://github.com/webex/webex-js-sdk/issues/3550)) ([847e617](https://github.com/webex/webex-js-sdk/commit/847e6171ab37d6e752ebd921d430cc8e45cd18e2))
+
 ## [3.0.0-beta.406](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.404...v3.0.0-beta.406) (2024-04-19)
 
 
