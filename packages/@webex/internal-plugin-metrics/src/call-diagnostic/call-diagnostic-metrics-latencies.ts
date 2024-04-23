@@ -445,9 +445,9 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
    * Total latency for all get clsuter request.
    */
   public getReachabilityClustersReqResp() {
-    const rechablityClusterReqResp = this.precomputedLatencies.get('internal.get.cluster.time');
+    const reachablityClusterReqResp = this.precomputedLatencies.get('internal.get.cluster.time');
 
-    return rechablityClusterReqResp ? Math.floor(rechablityClusterReqResp) : undefined;
+    return reachablityClusterReqResp ? Math.floor(reachablityClusterReqResp) : undefined;
   }
 
   /**
