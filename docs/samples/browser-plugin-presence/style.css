@@ -107,7 +107,6 @@ button:disabled, input[type="button"]:disabled {
 
 button.btn--green, input[type="button"].btn--green {
   color: #fff;
-  color: var(--md-button-join-text-color, #fff);
   background-color: #00ab50;
   border-color: transparent;
 }
