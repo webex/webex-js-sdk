@@ -197,7 +197,7 @@ describe('internal-plugin-metrics', () => {
 
       it('checks measureLatency when callBack rejects', async () => {
         const key = 'internal.client.pageJMT';
-        const accumulate = true;
+        const accumulate = false;
         const error = new Error('some error');
         const callbackStub = sinon.stub().callsFake(() => {
           clock.tick(50);
