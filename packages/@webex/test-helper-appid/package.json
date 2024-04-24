@@ -1,6 +1,6 @@
 {
   "name": "@webex/test-helper-appid",
-  "version": "3.0.0-beta.410",
+  "version": "3.0.0-beta.411",
   "description": "",
   "license": "MIT",
   "main": "dist/index.js",
