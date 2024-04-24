@@ -412,10 +412,8 @@ describe('plugin-meetings', () => {
           assert.exists(result);
           assert.instanceOf(result, NoiseReductionEffect);
           assert.containsAllKeys(result, ['audioContext', 'isEnabled', 'isReady', 'options']);
-          assert.deepEqual(result.options, {
-            authToken: 'fake_token',
-            audioContext: {},
-          });
+          assert.equal(result.options.authToken, 'fake_token');
+          assert.deepEqual(result.options.audioContext, {});
           assert.exists(result.enable);
           assert.exists(result.disable);
           assert.exists(result.dispose);
@@ -426,6 +424,7 @@ describe('plugin-meetings', () => {
             audioContext: {},
             mode: 'WORKLET',
             env: 'prod',
+            avoidSimd: false,
           };
 
           const result = await webex.meetings.createNoiseReductionEffect(effectOptions);
