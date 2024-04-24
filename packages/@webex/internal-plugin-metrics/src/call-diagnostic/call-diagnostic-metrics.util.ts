@@ -246,6 +246,7 @@ export const prepareDiagnosticMetricItem = (webex: any, item: any) => {
       break;
     case 'client.login.end':
       joinTimes.otherAppApiReqResp = cdl.getOtherAppApiReqResp();
+      joinTimes.exchangeCITokenJMT = cdl.getExchangeCITokenJMT();
       break;
     case 'client.interstitial-window.launched':
       joinTimes.meetingInfoReqResp = cdl.getMeetingInfoReqResp();
