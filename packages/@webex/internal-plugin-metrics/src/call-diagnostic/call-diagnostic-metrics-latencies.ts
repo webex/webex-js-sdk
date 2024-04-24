@@ -456,6 +456,15 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
   }
 
   /**
+   * Total latency for all exchange ci token.
+   */
+  public getExchangeCITokenJMT() {
+    const exchangeCITokenJMT = this.precomputedLatencies.get('internal.exchange.ci.token.time');
+
+    return exchangeCITokenJMT ? Math.floor(exchangeCITokenJMT) : undefined;
+  }
+
+  /**
    * Total latency for all refresh captcha requests.
    */
   public getRefreshCaptchaReqResp() {
