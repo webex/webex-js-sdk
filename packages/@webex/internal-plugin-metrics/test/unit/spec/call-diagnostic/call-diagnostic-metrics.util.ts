@@ -305,6 +305,7 @@ describe('internal-plugin-metrics', () => {
       ['client.login.end', {
         joinTimes: {
           otherAppApiReqResp: undefined,
+          exchangeCITokenJMT: undefined,
         }
       }],
       ['client.webexapp.launched', {
