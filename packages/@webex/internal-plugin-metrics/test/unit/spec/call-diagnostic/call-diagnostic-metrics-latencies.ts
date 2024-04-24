@@ -224,6 +224,24 @@ describe('internal-plugin-metrics', () => {
       });
     });
 
+    describe('getExchangeCITokenJMT', () => {
+      it('returns undefined when no precomputed value available', () => {
+        assert.deepEqual(cdl.getExchangeCITokenJMT(), undefined);
+      });
+
+      it('returns the correct value', () => {
+        cdl.saveLatency('internal.exchange.ci.token.time', 123);
+
+        assert.deepEqual(cdl.getExchangeCITokenJMT(), 123);
+      });
+
+      it('returns the correct whole number', () => {
+        cdl.saveLatency('internal.exchange.ci.token.time', 321.44);
+
+        assert.deepEqual(cdl.getExchangeCITokenJMT(), 321);
+      });
+    });
+
     describe('saveTimestamp', () => {
       afterEach(() => {
         sinon.restore();
