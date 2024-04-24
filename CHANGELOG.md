@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.410](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.409...v3.0.0-beta.410) (2024-04-24)
+
+
+### Features
+
+* **internal-pligin-metrics:** latency for exhange ci token ([#3560](https://github.com/webex/webex-js-sdk/issues/3560)) ([9993b17](https://github.com/webex/webex-js-sdk/commit/9993b17a36b316f11188acd2be4f297582fdc1c5))
+
 ## [3.0.0-beta.409](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.408...v3.0.0-beta.409) (2024-04-23)
 
 
