@@ -10,6 +10,8 @@ import {
   ClientEventLeaveReason,
   CallDiagnosticUtils,
 } from '@webex/internal-plugin-metrics';
+import {ClientEvent as RawClientEvent} from '@webex/event-dictionary-ts';
+
 import {
   ConnectionState,
   Errors,
@@ -6051,6 +6053,20 @@ export default class Meeting extends StatelessWebexPlugin {
           meetingId: this.id,
         },
       });
+
+      if (data.type === 'share') {
+        // @ts-ignore
+        this.webex.internal.newMetrics.submitClientEvent({
+          name: 'client.media.render.start',
+          payload: {
+            mediaType: 'share',
+            shareInstanceId: this.remoteShareInstanceId,
+          },
+          options: {
+            meetingId: this.id,
+          },
+        });
+      }
     });
     this.statsAnalyzer.on(StatsAnalyzerEvents.REMOTE_MEDIA_STOPPED, (data) => {
       // @ts-ignore
@@ -6064,6 +6080,20 @@ export default class Meeting extends StatelessWebexPlugin {
           meetingId: this.id,
         },
       });
+
+      if (data.type === 'share') {
+        // @ts-ignore
+        this.webex.internal.newMetrics.submitClientEvent({
+          name: 'client.media.render.stop',
+          payload: {
+            mediaType: 'share',
+            shareInstanceId: this.remoteShareInstanceId,
+          },
+          options: {
+            meetingId: this.id,
+          },
+        });
+      }
     });
   };
 
@@ -7912,9 +7942,9 @@ export default class Meeting extends StatelessWebexPlugin {
 
   /**
    *
-   * @returns {string} one of 'attendee','host','cohost', returns the user type of the current user
+   * @returns {string} one of 'panelist', 'attendee', 'host', 'cohost', returns the user type of the current user
    */
-  getCurUserType() {
+  getCurUserType(): RawClientEvent['userType'] | null {
     const {roles} = this;
     if (roles) {
       if (roles.includes(SELF_ROLES.MODERATOR)) {
@@ -7923,8 +7953,8 @@ export default class Meeting extends StatelessWebexPlugin {
       if (roles.includes(SELF_ROLES.COHOST)) {
         return 'cohost';
       }
-      if (roles.includes(SELF_ROLES.PRESENTER)) {
-        return 'presenter';
+      if (roles.includes(SELF_ROLES.PANELIST)) {
+        return 'panelist';
       }
       if (roles.includes(SELF_ROLES.ATTENDEE)) {
         return 'attendee';

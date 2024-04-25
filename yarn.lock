@@ -4194,9 +4194,9 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/event-dictionary-ts@npm:^1.0.1401":
-  version: 1.0.1401
-  resolution: "@webex/event-dictionary-ts@npm:1.0.1401"
+"@webex/event-dictionary-ts@npm:^1.0.1406":
+  version: 1.0.1406
+  resolution: "@webex/event-dictionary-ts@npm:1.0.1406"
   dependencies:
     amf-client-js: "npm:^5.2.6"
     json-schema-to-typescript: "npm:^12.0.0"
@@ -4204,7 +4204,7 @@ __metadata:
     ramldt2jsonschema: "npm:^1.2.3"
     shelljs: "npm:^0.8.5"
     webapi-parser: "npm:^0.5.0"
-  checksum: db6eb8a5a0052684fcf489190c570352c1022d478afb963469219ec01228a252710d7f2a4c7bf054f7e5da3461a12b5760d46971e12e57a49bc59ac13c95ec79
+  checksum: ed98c974e7ac1a2c4dbb1a11906188cbb7ba3abef9b16c7e789b02231290358e02599eb4fcba2d453138ec2b261670f0e550c06ba34d45f9a6c66d1ea7a9eb98
   languageName: node
   linkType: hard
 
@@ -4572,7 +4572,7 @@ __metadata:
     "@sinonjs/fake-timers": "npm:^6.0.1"
     "@webex/common": "workspace:^"
     "@webex/common-timers": "workspace:^"
-    "@webex/event-dictionary-ts": "npm:^1.0.1401"
+    "@webex/event-dictionary-ts": "npm:^1.0.1406"
     "@webex/internal-plugin-device": "workspace:^"
     "@webex/internal-plugin-metrics": "workspace:^"
     "@webex/test-helper-chai": "workspace:^"
@@ -4733,6 +4733,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@webex/ladon-ts@npm:^4.3.0":
+  version: 4.3.0
+  resolution: "@webex/ladon-ts@npm:4.3.0"
+  dependencies:
+    onnxruntime-web: "npm:^1.15.1"
+  checksum: 681361084325b2af27965bcb77f0747da0503ecce20d8ae8e04386bb06827ec148ab9ae911bef0a1888f4b7fe5dcda30bb0b707aa866d0a69a2fc622c768fe08
+  languageName: node
+  linkType: hard
+
 "@webex/media-helpers@workspace:^, @webex/media-helpers@workspace:packages/@webex/media-helpers":
   version: 0.0.0-use.local
   resolution: "@webex/media-helpers@workspace:packages/@webex/media-helpers"
@@ -4741,7 +4750,7 @@ __metadata:
     "@webex/test-helper-chai": "workspace:^"
     "@webex/test-helper-mock-webex": "workspace:^"
     "@webex/ts-events": "npm:^1.1.0"
-    "@webex/web-media-effects": "npm:^2.15.6"
+    "@webex/web-media-effects": "npm:2.18.0"
     jsdom-global: "npm:3.0.2"
     sinon: "npm:^9.2.4"
   languageName: unknown
@@ -5317,6 +5326,19 @@ __metadata:
     typed-emitter: "npm:^2.1.0"
     uuid: "npm:^8.3.2"
   checksum: ce9104a1dbdd6b37403f47759daeed0213b4a186fc6281e577a9a1d050514619f3e19d7ea33386d2ae2e272bf345f925b8981cc89afc5a6272e6def8204ef742
+  languageName: node
+  linkType: hard
+
+"@webex/web-media-effects@npm:2.18.0":
+  version: 2.18.0
+  resolution: "@webex/web-media-effects@npm:2.18.0"
+  dependencies:
+    "@webex/ladon-ts": "npm:^4.3.0"
+    events: "npm:^3.3.0"
+    js-logger: "npm:^1.6.1"
+    typed-emitter: "npm:^1.4.0"
+    uuid: "npm:^9.0.1"
+  checksum: 63c86214f7a6869e3384cc1ed7ff6dbadb7990216db5b7c83f3126fe40f5848aa4383d427bccc381ca2dad51b249b58de81022eeb97701c0ff95d960571c49de
   languageName: node
   linkType: hard
 

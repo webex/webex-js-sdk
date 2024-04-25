@@ -2,6 +2,55 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.413](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.412...v3.0.0-beta.413) (2024-04-24)
+
+
+### Features
+
+* **metrics:** CA userType update ([#3556](https://github.com/webex/webex-js-sdk/issues/3556)) ([4a31c38](https://github.com/webex/webex-js-sdk/commit/4a31c38532422baaf0e699dba706c1eaf07933ed))
+
+## [3.0.0-beta.412](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.411...v3.0.0-beta.412) (2024-04-24)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** fixed unittests after effect lib update ([#3562](https://github.com/webex/webex-js-sdk/issues/3562)) ([0e38b30](https://github.com/webex/webex-js-sdk/commit/0e38b308530ce002b994b3f4a502d1c3f767656b))
+
+## [3.0.0-beta.411](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.410...v3.0.0-beta.411) (2024-04-24)
+
+
+### Features
+
+* remove authIntelligenceGenerationReqResp latency ([#3559](https://github.com/webex/webex-js-sdk/issues/3559)) ([a19dde2](https://github.com/webex/webex-js-sdk/commit/a19dde2da697cb193f486c958469b30476cd25a3))
+
+## [3.0.0-beta.410](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.409...v3.0.0-beta.410) (2024-04-24)
+
+
+### Features
+
+* **internal-pligin-metrics:** latency for exhange ci token ([#3560](https://github.com/webex/webex-js-sdk/issues/3560)) ([9993b17](https://github.com/webex/webex-js-sdk/commit/9993b17a36b316f11188acd2be4f297582fdc1c5))
+
+## [3.0.0-beta.409](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.408...v3.0.0-beta.409) (2024-04-23)
+
+
+### Bug Fixes
+
+* **media-helpers:** vbg effect on local stream ([#3557](https://github.com/webex/webex-js-sdk/issues/3557)) ([507b0f2](https://github.com/webex/webex-js-sdk/commit/507b0f21d85013652c14a8d81fab2c511d59c660))
+
+## [3.0.0-beta.408](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.407...v3.0.0-beta.408) (2024-04-23)
+
+
+### Features
+
+* **metrics:** Add client.media.render.start event ([#3555](https://github.com/webex/webex-js-sdk/issues/3555)) ([bde0e6e](https://github.com/webex/webex-js-sdk/commit/bde0e6ef8c4aec324768796e85f0fa365e256aec))
+
+## [3.0.0-beta.407](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.406...v3.0.0-beta.407) (2024-04-22)
+
+
+### Bug Fixes
+
+* **metrics:** adding browserLaunchMethod metric in CA ([#3550](https://github.com/webex/webex-js-sdk/issues/3550)) ([847e617](https://github.com/webex/webex-js-sdk/commit/847e6171ab37d6e752ebd921d430cc8e45cd18e2))
+
 ## [3.0.0-beta.406](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.404...v3.0.0-beta.406) (2024-04-19)
 
 

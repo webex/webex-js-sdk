@@ -16,6 +16,10 @@ export type ClientLaunchMethodType = NonNullable<
   RawEvent['origin']['clientInfo']
 >['clientLaunchMethod'];
 
+export type BrowserLaunchMethodType = NonNullable<
+  RawEvent['origin']['clientInfo']
+>['browserLaunchMethod'];
+
 export type SubmitClientEventOptions = {
   meetingId?: string;
   mediaConnections?: any[];
@@ -25,6 +29,7 @@ export type SubmitClientEventOptions = {
   environment?: EnvironmentType;
   newEnvironmentType?: NewEnvironmentType;
   clientLaunchMethod?: ClientLaunchMethodType;
+  browserLaunchMethod?: BrowserLaunchMethodType;
   webexConferenceIdStr?: string;
   globalMeetingId?: string;
 };
@@ -166,6 +171,7 @@ export type PreComputedLatencies =
   | 'internal.download.time'
   | 'internal.click.to.interstitial'
   | 'internal.refresh.captcha.time'
+  | 'internal.exchange.ci.token.time'
   | 'internal.get.u2c.time'
   | 'internal.call.init.join.req'
   | 'internal.other.app.api.time';
