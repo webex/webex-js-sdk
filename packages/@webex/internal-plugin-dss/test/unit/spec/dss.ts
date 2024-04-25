@@ -1155,8 +1155,8 @@ describe('plugin-dss', () => {
         expect(Batcher.prototype.request.getCall(1).args).to.deep.equal(['id2']);
         expect(result).to.equal(response2);
       });
-      // TODO - https://jira-eng-gpk2.cisco.com/jira/browse/SPARK-518037
-      it.skip('fails fails when mercury does not respond, later batches can still pass ok', async () => {
+
+      it('fails fails when mercury does not respond, later batches can still pass ok', async () => {
         // Batch 1
         const {
           promises: [p1, p2, p3],
