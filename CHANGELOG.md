@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.415](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.414...v3.0.0-beta.415) (2024-04-25)
+
+
+### Features
+
+* Phase 2 moving non jest dependent packages ([#3499](https://github.com/webex/webex-js-sdk/issues/3499)) ([4e5a8f9](https://github.com/webex/webex-js-sdk/commit/4e5a8f9e1c18b93e47153ece193a017a82caac9e))
+
 ## [3.0.0-beta.414](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.413...v3.0.0-beta.414) (2024-04-25)
 
 
