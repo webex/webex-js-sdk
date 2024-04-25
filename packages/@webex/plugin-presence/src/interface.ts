@@ -1,14 +1,24 @@
+export enum PresenceStatus {
+  ACTIVE = 'active',
+  CALENDAR_ITEM = 'calendarItem',
+  CALL = 'call',
+  CLEAR = 'clear',
+  DND = 'dnd',
+  INACTIVE = 'inactive',
+  MEETING = 'meeting',
+  OOO = 'ooo',
+  PRESENTING = 'presenting',
+}
+
 export interface IPresenceStatusObject {
   url: string;
   subject: string;
-  status: string;
+  status: PresenceStatus;
   statusTime: string;
   lastActive: string;
   expiresTTL: number;
-  expiresTime: string;
   vectorCounters: object;
   suppressNotifications: boolean;
-  lastseeeDeviceUrl: string;
 }
 
 export interface IEventPayload {

@@ -16,7 +16,6 @@ describe.skip('presence-worker', () => {
     const id = '1234';
 
     beforeEach(() => {
-      console.log(process.env.WEBEX_CLIENT_ID);
       webex = new MockWebex({
         children: {
           mercury: Mercury,
@@ -28,10 +27,31 @@ describe.skip('presence-worker', () => {
     });
 
     describe('#initialize()', () => {
-      it('requires webex', () =>
-        expect(() => worker.initialize()).toThrow(/Must initialize Presence Worker with webex!/));
-      it('requires webex internal', () =>
-        expect(() => worker.initialize({})).toThrow(/Must initialize Presence Worker with webex!/));
+      it('requires webex', () =>{
+        let err=null
+        try{
+          worker.initialize()
+        }
+        catch(e){
+          err=e
+        }
+        assert.equal(err?.message, 'Must initialize Presence Worker with webex!'); 
+
+      });
+        
+
+      it('requires webex internal', () =>{
+        let err=null
+        try{
+          worker.initialize({})
+        }
+        catch(e){
+          err=e
+        }
+        assert.equal(err?.message, 'Must initialize Presence Worker with webex!'); 
+
+      });
+
     });
 
     // This selection of tests fail due to `webex-core`'s batcher config being missing.

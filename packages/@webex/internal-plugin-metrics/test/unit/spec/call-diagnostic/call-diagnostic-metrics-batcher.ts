@@ -103,6 +103,9 @@ describe('plugin-metrics', () => {
           webex.internal.newMetrics.callDiagnosticLatencies.getClickToInterstitial = sinon
             .stub()
             .returns(10);
+          webex.internal.newMetrics.callDiagnosticLatencies.getRefreshCaptchaReqResp = sinon
+            .stub()
+            .returns(10);
           const promise = webex.internal.newMetrics.callDiagnosticMetrics.submitToCallDiagnostics(
             //@ts-ignore
             {event: {name: 'client.interstitial-window.launched'}}
@@ -119,6 +122,7 @@ describe('plugin-metrics', () => {
             joinTimes: {
               clickToInterstitial: 10,
               meetingInfoReqResp: 10,
+              refreshCaptchaServiceReqResp: 10,
             },
           });
           assert.lengthOf(
@@ -357,9 +361,8 @@ describe('plugin-metrics', () => {
         });
       });
 
-      //TODO: The following two skipped tests needs investigation: https://jira-eng-gpk2.cisco.com/jira/browse/SPARK-485382
       describe('when the request fails', () => {
-        it.skip('does not clear the queue', async () => {
+        it('does not clear the queue', async () => {
           // avoid setting .sent timestamp
           webex.internal.newMetrics.callDiagnosticMetrics.callDiagnosticEventsBatcher.prepareRequest =
             (q) => Promise.resolve(q);
@@ -406,7 +409,7 @@ describe('plugin-metrics', () => {
     });
 
     describe('prepareItem', () => {
-      it.skip('calls prepareDiagnosticMetricItem correctly', async () => {
+      it('calls prepareDiagnosticMetricItem correctly', async () => {
         // avoid setting .sent timestamp
         webex.internal.newMetrics.callDiagnosticMetrics.callDiagnosticEventsBatcher.prepareRequest =
           (q) => Promise.resolve(q);

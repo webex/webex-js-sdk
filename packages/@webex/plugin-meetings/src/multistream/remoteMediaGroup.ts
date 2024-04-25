@@ -2,7 +2,7 @@
 /* eslint-disable require-jsdoc */
 /* eslint-disable import/prefer-default-export */
 import {forEach} from 'lodash';
-import {NamedMediaGroup} from '@webex/json-multistream';
+import {NamedMediaGroup} from '@webex/internal-media-core';
 import LoggerProxy from '../common/logs/logger-proxy';
 
 import {getMaxFs, RemoteMedia, RemoteVideoResolution} from './remoteMedia';

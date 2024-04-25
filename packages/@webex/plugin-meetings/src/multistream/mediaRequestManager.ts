@@ -8,10 +8,10 @@ import {
   H264Codec,
   getRecommendedMaxBitrateForFrameSize,
   RecommendedOpusBitrates,
+  NamedMediaGroup,
 } from '@webex/internal-media-core';
 import {cloneDeepWith, debounce, isEmpty} from 'lodash';
 
-import {NamedMediaGroup} from '@webex/json-multistream';
 import LoggerProxy from '../common/logs/logger-proxy';
 
 import {ReceiveSlot, ReceiveSlotEvents} from './receiveSlot';
