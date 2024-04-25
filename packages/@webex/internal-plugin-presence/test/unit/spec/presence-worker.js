@@ -53,8 +53,7 @@ describe('presence-worker', () => {
 
     });
 
-    // This selection of tests fail due to `webex-core`'s batcher config being missing.
-    describe.skip('#enqueue()', () => {
+    describe('#enqueue()', () => {
       it('increments watchers count', () => {
         worker.enqueue(id);
         assert.equal(worker.watchers[id], 1);
