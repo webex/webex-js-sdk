@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.414](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.413...v3.0.0-beta.414) (2024-04-25)
+
+
+### Bug Fixes
+
+* **meetings-plugin:** increase timeout for multistream connection establishment ([#3567](https://github.com/webex/webex-js-sdk/issues/3567)) ([1f03ca4](https://github.com/webex/webex-js-sdk/commit/1f03ca4ea2610f40744cf3d32f8075dfc37a9bef))
+
 ## [3.0.0-beta.413](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.412...v3.0.0-beta.413) (2024-04-24)
 
 
