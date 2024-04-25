@@ -620,22 +620,24 @@ describe('plugin-dss', () => {
       });
 
       it('fails with default timeout when mercury does not respond', async () => {
-        return testMakeRequest({
+        const {promise} = await testMakeRequest({
           method: 'lookup',
           resource: '/lookup/orgid/userOrgId/identities',
           params: {id: 'id1', shouldBatch: false},
           bodyParams: {lookupValues: ['id1']},
-        }).then(async ({promise}) => {
-          promise.catch((err) => {
-            expect(err.toString()).equal(
-              'DssTimeoutError: The DSS did not respond within 6000 ms.' +
-                '\n Request Id: randomid' +
-                '\n Resource: /lookup/orgid/userOrgId/identities' +
-                '\n Params: {"lookupValues":["id1"]}'
-            );
-          });
-          await clock.tickAsync(6000);
         });
+
+        promise.catch(() => {}); // to prevent the test from failing due to unhandled promise rejection
+
+        await clock.tickAsync(6000);
+
+        return assert.isRejected(
+          promise,
+          'The DSS did not respond within 6000 ms.' +
+            '\n Request Id: randomid' +
+            '\n Resource: /lookup/orgid/userOrgId/identities' +
+            '\n Params: {"lookupValues":["id1"]}'
+        );
       });
 
       it('does not fail with timeout when mercury response in time', async () => {
@@ -719,22 +721,24 @@ describe('plugin-dss', () => {
       });
 
       it('fails with default timeout when mercury does not respond', async () => {
-        return testMakeRequest({
+        const {promise} = await testMakeRequest({
           method: 'lookupByEmail',
           resource: '/lookup/orgid/userOrgId/emails',
           params: {email: 'email1'},
           bodyParams: {lookupValues: ['email1']},
-        }).then(async ({promise}) => {
-          promise.catch((err) => {
-            expect(err.toString()).equal(
-              'DssTimeoutError: The DSS did not respond within 6000 ms.' +
-                '\n Request Id: randomid' +
-                '\n Resource: /lookup/orgid/userOrgId/emails' +
-                '\n Params: {"lookupValues":["email1"]}'
-            );
-          });
-          await clock.tickAsync(6000);
         });
+
+        promise.catch(() => {}); // to prevent the test from failing due to unhandled promise rejection
+
+        await clock.tickAsync(6000);
+
+        return assert.isRejected(
+          promise,
+          'The DSS did not respond within 6000 ms.' +
+            '\n Request Id: randomid' +
+            '\n Resource: /lookup/orgid/userOrgId/emails' +
+            '\n Params: {"lookupValues":["email1"]}'
+        );
       });
 
       it('does not fail with timeout when mercury response in time', async () => {
@@ -813,7 +817,7 @@ describe('plugin-dss', () => {
       });
 
       it('fails with default timeout when mercury does not respond', async () => {
-        return testMakeRequest({
+        const {promise} = await testMakeRequest({
           method: 'search',
           resource: '/search/orgid/userOrgId/entities',
           params: {
@@ -826,17 +830,19 @@ describe('plugin-dss', () => {
             resultSize: 100,
             queryString: 'query',
           },
-        }).then(async ({promise}) => {
-          promise.catch((err) => {
-            expect(err.toString()).equal(
-              'DssTimeoutError: The DSS did not respond within 6000 ms.' +
-                '\n Request Id: randomid' +
-                '\n Resource: /search/orgid/userOrgId/entities' +
-                '\n Params: {"queryString":"query","resultSize":100,"requestedTypes":["PERSON","ROBOT"]}'
-            );
-          });
-          await clock.tickAsync(6000);
         });
+
+        promise.catch(() => {}); // to prevent the test from failing due to unhandled promise rejection
+
+        await clock.tickAsync(6000);
+
+        return assert.isRejected(
+          promise,
+          'The DSS did not respond within 6000 ms.' +
+            '\n Request Id: randomid' +
+            '\n Resource: /search/orgid/userOrgId/entities' +
+            '\n Params: {"queryString":"query","resultSize":100,"requestedTypes":["PERSON","ROBOT"]}'
+        );
       });
 
       it('does not fail with timeout when mercury response in time', async () => {
@@ -871,7 +877,7 @@ describe('plugin-dss', () => {
       });
 
       it('fails with timeout when request only partially resolved', async () => {
-        return testMakeRequest({
+        const {requestId, promise} = await testMakeRequest({
           method: 'search',
           resource: '/search/orgid/userOrgId/entities',
           params: {
@@ -884,24 +890,26 @@ describe('plugin-dss', () => {
             resultSize: 100,
             queryString: 'query',
           },
-        }).then(async ({requestId, promise}) => {
-          mercuryCallbacks['event:directory.search'](
-            createData(requestId, 2, true, 'directoryEntities', ['data2'])
-          );
-          mercuryCallbacks['event:directory.search'](
-            createData(requestId, 0, false, 'directoryEntities', ['data0'])
-          );
-
-          promise.catch((err) => {
-            expect(err.toString()).equal(
-              'DssTimeoutError: The DSS did not respond within 6000 ms.' +
-                '\n Request Id: randomid' +
-                '\n Resource: /search/orgid/userOrgId/entities' +
-                '\n Params: {"queryString":"query","resultSize":100,"requestedTypes":["PERSON","ROBOT"]}'
-            );
-          });
-          await clock.tickAsync(6000);
         });
+
+        mercuryCallbacks['event:directory.search'](
+          createData(requestId, 2, true, 'directoryEntities', ['data2'])
+        );
+        mercuryCallbacks['event:directory.search'](
+          createData(requestId, 0, false, 'directoryEntities', ['data0'])
+        );
+
+        promise.catch(() => {}); // to prevent the test from failing due to unhandled promise rejection
+
+        await clock.tickAsync(6000);
+
+        return assert.isRejected(
+          promise,
+          'The DSS did not respond within 6000 ms.' +
+            '\n Request Id: randomid' +
+            '\n Resource: /search/orgid/userOrgId/entities' +
+            '\n Params: {"queryString":"query","resultSize":100,"requestedTypes":["PERSON","ROBOT"]}'
+        );
       });
     });
 
