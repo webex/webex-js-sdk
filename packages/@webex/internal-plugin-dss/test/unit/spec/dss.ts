@@ -241,22 +241,24 @@ describe('plugin-dss', () => {
         expect(result).to.be.null;
       });
       it('fails with default timeout when mercury does not respond', async () => {
-        return testMakeRequest({
+        const {promise} = await testMakeRequest({
           method: 'lookupDetail',
           resource: '/lookup/orgid/userOrgId/identity/test id/detail',
           params: {id: 'test id'},
           bodyParams: {},
-        }).then(async ({promise}) => {
-          promise.catch((err) => {
-            expect(err.toString()).equal(
-              'DssTimeoutError: The DSS did not respond within 6000 ms.' +
-                '\n Request Id: randomid' +
-                '\n Resource: /lookup/orgid/userOrgId/identity/test id/detail' +
-                '\n Params: undefined'
-            );
-          });
-          await clock.tickAsync(6000);
         });
+
+        promise.catch(() => {}); // to prevent the test from failing due to unhandled promise rejection
+
+        await clock.tickAsync(6000);
+
+        return assert.isRejected(
+          promise,
+          'The DSS did not respond within 6000 ms.' +
+            '\n Request Id: randomid' +
+            '\n Resource: /lookup/orgid/userOrgId/identity/test id/detail' +
+            '\n Params: undefined'
+        );
       });
 
       it('does not fail with timeout when mercury response in time', async () => {
@@ -1155,7 +1157,7 @@ describe('plugin-dss', () => {
         expect(Batcher.prototype.request.getCall(1).args).to.deep.equal(['id2']);
         expect(result).to.equal(response2);
       });
-      // TODO
+      // TODO - https://jira-eng-gpk2.cisco.com/jira/browse/SPARK-518037
       it.skip('fails fails when mercury does not respond, later batches can still pass ok', async () => {
         // Batch 1
         const {

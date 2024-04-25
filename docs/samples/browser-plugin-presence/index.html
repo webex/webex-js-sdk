@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Presence Kitchen Sink</title>
+  <link rel="stylesheet" href="./style.css" />
+</head>
+
+<body>
+  <main class="container">
+    <div style="display: flex; justify-content: center;">
+      <article id="docs-content" class="docs">
+
+        <!-- ############################## ############################## ############################## -->
+        <section>
+          <h2>Webex - Presence</h2>
+          <p>Use this kitchen sink to interact with the Webex Presence service</p>
+        </section>
+
+        <!-- ############################## ############################## ############################## -->
+        <!-- meeting / authentication -->
+        <section id="authentication">
+          <h2 class="collapsible">Authentication</h2>
+          <div class="section-content">
+            <p class="note"><strong>Note:</strong> Get an access token from our developer portal: <a
+                href="https://developer.webex.com/docs/api/getting-started"
+                target="_blank">https://developer.webex.com/docs/api/getting-started</a>.</p>
+            <p class="note"><strong>Note:</strong> Webex JS SDK must be initialized using a valid token.</p>
+
+            <!-- meeting / authentication-credentials -->
+            <form id="credentials">
+                <fieldset>
+                  <legend>Credentials</legend>
+                  <div class="u-mv">
+                    <p class="note">Initializes webex object and registers Webex JS SDK as a device.</p>
+                    <button id="enableProduction" type="button" class="btn-code" onclick=changeEnv()>In Production</button><span class="text-color"> ( Click to change the environment )</span>
+                    <input id="access-token" name="accessToken" placeholder="Access Token" value="" type="text" style="margin: 1rem 0 0.5rem 0;" required>
+                  </div>
+  
+                  <button id="access-token-save" class="btn-code" type="submit">Initialize Webex</button>
+                  <pre id="access-token-status">Not initialized</pre>
+                </fieldset>
+              </form>
+          </div>
+        </section>
+
+        <!-- presence-management -->
+        <section id="presenceActions">
+          <h2 class="collapsible">Presence Actions</h2>
+          <p><strong>Note:</strong> To get userIds for the below operations, use the <a href="https://developer.webex.com/docs/api/v1/people/list-people">People API</a> in the developer portal to search names and get user's respective userId values.</p>
+          <div class="section-content">
+            <fieldset>
+            <legend>Get own user's presence status</legend>
+            <div class="u-mv">
+              <button id="sd-get-self-presence" type="button" onclick="getSelfPresence()"
+                class="btn-code">Get Status</button>
+            </div>
+            <pre id="self-presence-status"></pre>
+
+            <legend>Set Presence Status</legend>
+            <div class="u-mv">
+                <input id="set-presence" name="setPresence" placeholder="active" type="string" style="display: block; margin-bottom: 0.5rem;">
+                <input id="presence-ttl" name="presenceTtl" placeholder="600" type="string" style="display: block; margin-bottom: 0.5rem;">
+                <button id="sd-set-self-presence" type="button" onclick="setSelfPresence()" class="btn-code">Set Status</button>
+            </div>
+
+            <legend>Get a different user's presence status</legend>
+            <div class="u-mv">
+                <input id="get-user-presence" name="getPresence" placeholder="User ID" type="string" style="display: block; margin-bottom: 0.5rem;">
+                <button id="sd-get-user-presence" type="button" onclick="getUserPresence()" class="btn-code">Get Status</button>
+            </div>
+            <pre id="user-presence-status"></pre>
+            </fieldset>
+
+              <fieldset>
+                <legend>Subscribe</legend>
+                <div class="u-mv">
+                    <p>Input User IDs to subscribe for their respective presence statuses. Separate multiple IDs with a comma</p>
+                  <input id="subscribe-id" name="id" placeholder="User ID(s)" style="display: block; margin-bottom: 0.5rem;">
+                  <button id="subscribe-presence" class="btn-code btn--green" onclick="subscribePresence()">Subscribe</button>
+                  <button id="unsubscribe-presence" class="btn-code btn--red" onclick="unsubscribePresence()">Unsubscribe</button>
+                  <pre id="subscribe-presence-notifications">Presence Notifications</pre>
+                </div>
+              </fieldset>
+          </div>
+        </section>
+
+      </article>
+    </div>
+  </main>
+  <script src="../webex.min.js"></script>
+  <script src="app.js"></script>
+</body>
+
+</html>
