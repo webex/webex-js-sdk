@@ -67,6 +67,7 @@ describe('Package', () => {
           expect(spies.Package.getFiles.calls.all()[0].args).toEqual([{
             location: path.join(pack.data.packageRoot, config.source),
             pattern: './**/*.js',
+            targets: undefined,
           }]);
         }));
 
@@ -76,6 +77,7 @@ describe('Package', () => {
           expect(spies.Package.getFiles.calls.all()[0].args).toEqual([{
             location: path.join(pack.data.packageRoot, config.source),
             pattern: './**/*.ts',
+            targets: undefined,
           }]);
         }));
 
@@ -84,6 +86,7 @@ describe('Package', () => {
           expect(spies.Package.getFiles.calls.all()[1].args).toEqual([{
             location: path.join(pack.data.packageRoot, config.source),
             pattern: './**/*.ts',
+            targets: undefined,
           }]);
         }));
 
@@ -93,6 +96,7 @@ describe('Package', () => {
           expect(spies.Package.getFiles.calls.all()[0].args).toEqual([{
             location: path.join(pack.data.packageRoot, config.source),
             pattern: './**/*.js',
+            targets: undefined,
           }]);
         }));
 
@@ -133,6 +137,7 @@ describe('Package', () => {
         config = {
           integration: true,
           unit: true,
+          targets: 'sampleFile.ts',
         };
 
         spies.Package = {
@@ -175,6 +180,7 @@ describe('Package', () => {
             expect(spies.Package.getFiles.calls.all()[0].args).toEqual([{
               location: path.join(testDirectory, Package.CONSTANTS.TEST_DIRECTORIES.UNIT),
               pattern: Package.CONSTANTS.PATTERNS.TEST,
+              targets: config.targets,
             }]);
           });
       });
@@ -193,6 +199,7 @@ describe('Package', () => {
             expect(spies.Package.getFiles.calls.all()[0].args).toEqual([{
               location: path.join(testDirectory, Package.CONSTANTS.TEST_DIRECTORIES.INTEGRATION),
               pattern: Package.CONSTANTS.PATTERNS.TEST,
+              targets: config.targets,
             }]);
           });
       });
@@ -208,6 +215,7 @@ describe('Package', () => {
             expect(spies.Package.getFiles.calls.all()[1].args).toEqual([{
               location: path.join(testDirectory, Package.CONSTANTS.TEST_DIRECTORIES.INTEGRATION),
               pattern: Package.CONSTANTS.PATTERNS.TEST,
+              targets: config.targets,
             }]);
           });
       });
@@ -226,6 +234,7 @@ describe('Package', () => {
             expect(spies.Package.getFiles.calls.all()[0].args).toEqual([{
               location: path.join(testDirectory, Package.CONSTANTS.TEST_DIRECTORIES.UNIT),
               pattern: Package.CONSTANTS.PATTERNS.TEST,
+              targets: config.targets,
             }]);
           });
       });
@@ -338,11 +347,10 @@ describe('Package', () => {
           expect(spies.path.join).toHaveBeenCalledOnceWith(config.location, config.pattern);
         }));
 
-      it('should call "path.join()" with the provided location, pattern and targets', () => Package.getFiles(configWithTargets)
+      it('should call "path.join()" with the provided location and targets when "targets" is provided', () => Package.getFiles(configWithTargets)
         .then(() => {
           expect(spies.path.join).toHaveBeenCalledOnceWith(
             configWithTargets.location,
-            configWithTargets.pattern,
             configWithTargets.targets,
           );
         }));

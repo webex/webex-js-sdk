@@ -2,29 +2,30 @@
 
 This project is open for contributions. This article serves as an entrypoint to begin contributing to this project.
 
-* [Reporting an Issue](#reporting-an-issue)
-* [Providing Contributions](#providing-contributions)
-  * [Setup](#setup)
-    * [Requirements](#requirements)
-    * [Downloading](#downloading)
-    * [Environment](#environment)
-    * [Dependencies](#dependencies)
-    * [Prebuilding](#prebuilding)
-  * [Contribute](#contribute)
-    * [Project Changes](#project-changes)
-      * [Automation](#automation)
-      * [Configuration](#configuration)
-        * [Modern Configuration](#modern-configuration)
-        * [Legacy Configuration](#legacy-configuration)
-      * [Documentation](#documentation)
-        * [General Documentation](#general-documentation)
-        * [Samples Documentation](#samples-documentation)
-    * [Module Changes](#module-changes)
-      * [Creating](#creating)
-      * [Building](#building)
-      * [Testing](#testing)
-    * [Submitting Changes](#submitting-changes)
-* [Requesting Support](#requesting-support)
+- [Contributing](#contributing)
+  - [Reporting an Issue](#reporting-an-issue)
+  - [Providing Contributions](#providing-contributions)
+    - [Setup](#setup)
+      - [Requirements](#requirements)
+      - [Downloading](#downloading)
+      - [Environment](#environment)
+      - [Dependencies](#dependencies)
+      - [Prebuilding](#prebuilding)
+    - [Contribute](#contribute)
+      - [Project Changes](#project-changes)
+        - [Automation](#automation)
+        - [Configuration](#configuration)
+          - [Modern Configuration](#modern-configuration)
+          - [Legacy Configuration](#legacy-configuration)
+        - [Documentation](#documentation)
+          - [General Documentation](#general-documentation)
+          - [Samples Documentation](#samples-documentation)
+      - [Module Changes](#module-changes)
+        - [Creating](#creating)
+        - [Building](#building)
+        - [Testing](#testing)
+      - [Submitting Changes](#submitting-changes)
+  - [Requesting Support](#requesting-support)
 
 ## Reporting an Issue
 
@@ -255,6 +256,9 @@ Running tests against a module can be performed by using the following commands 
 * `yarn workspace {module-name} test:style` - Run style tests.
 * `yarn workspace {module-name} test:syntax` - Run syntax tests.
 * `yarn workspace {module-name} test:browser` - Run browser tests.
+
+**Note:** To run individual test files, use the `--targets` option along with the test command. An example is shown below:
+* `yarn workspace {module name} test:unit --targets {filename}` - Run the unit test only for the target filename.
 
 #### Submitting Changes
 

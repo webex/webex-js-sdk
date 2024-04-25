@@ -61,8 +61,8 @@ describe('runTests', () => {
       expect(found.type).toBe('array');
     });
 
-    it('should include the fully qualified "target" option', () => {
-      const found = runTests.config.options.find((option) => option.name === 'target');
+    it('should include the fully qualified "targets" option', () => {
+      const found = runTests.config.options.find((option) => option.name === 'targets');
 
       expect(!!found).toBeTrue();
       expect(typeof found.description).toBe('string');
