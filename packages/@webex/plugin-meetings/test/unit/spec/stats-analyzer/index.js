@@ -807,6 +807,13 @@ describe('plugin-meetings', () => {
         );
       });
 
+      it('emits the correct callingServiceType in MEDIA_QUALITY events', async () => {
+        await startStatsAnalyzer({expected: {receiveVideo: true}});
+        await progressTime();
+
+        assert.strictEqual(mqeData.callingServiceType, 'LOCUS');
+      });
+
       it('emits the correct transmittedFrameRate/receivedFrameRate', async () => {
         it('at the start of the stats analyzer', async () => {
           await startStatsAnalyzer();

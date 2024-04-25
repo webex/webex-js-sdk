@@ -10,6 +10,7 @@ export const emptyMqaInterval = {
     systemMaximumCPU: 0,
   },
   networkType: '',
+  callingServiceType: 'LOCUS',
   intervalNumber: 0,
   videoReceive: [],
   videoTransmit: [],
