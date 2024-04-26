@@ -180,9 +180,8 @@ describe('internal-plugin-metrics', () => {
     describe('prepareItem', () => {
       it('calls prepareDiagnosticMetricItem correctly', async () => {
         // avoid setting .sent timestamp
-        webex.internal.newMetrics.callDiagnosticMetrics.preLoginMetricsBatcher.prepareRequest = (
-          q
-        ) => Promise.resolve(q);
+        webex.internal.newMetrics.callDiagnosticMetrics.preLoginMetricsBatcher.prepareRequest = (q) =>
+          Promise.resolve(q);
 
         const prepareItemSpy = sinon.spy(
           webex.internal.newMetrics.callDiagnosticMetrics.preLoginMetricsBatcher,
