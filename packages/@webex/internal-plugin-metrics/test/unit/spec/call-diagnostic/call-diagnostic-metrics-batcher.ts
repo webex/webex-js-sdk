@@ -106,6 +106,9 @@ describe('plugin-metrics', () => {
           webex.internal.newMetrics.callDiagnosticLatencies.getRefreshCaptchaReqResp = sinon
             .stub()
             .returns(10);
+          webex.internal.newMetrics.callDiagnosticLatencies.getDownloadIntelligenceModelsReqResp =
+            sinon.stub().returns(42);
+
           const promise = webex.internal.newMetrics.callDiagnosticMetrics.submitToCallDiagnostics(
             //@ts-ignore
             {event: {name: 'client.interstitial-window.launched'}}
@@ -123,6 +126,7 @@ describe('plugin-metrics', () => {
               clickToInterstitial: 10,
               meetingInfoReqResp: 10,
               refreshCaptchaServiceReqResp: 10,
+              downloadIntelligenceModelsReqResp: 42,
             },
           });
           assert.lengthOf(
