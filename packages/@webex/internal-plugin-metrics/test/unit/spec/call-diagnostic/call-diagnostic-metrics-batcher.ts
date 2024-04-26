@@ -56,7 +56,7 @@ describe('plugin-metrics', () => {
     });
 
     describe('#request()', () => {
-      describe('when the request completes successfully', async () => {
+      describe('when the request completes successfully', () => {
         it('clears the queue', async () => {
           const promise = webex.internal.newMetrics.callDiagnosticMetrics.submitToCallDiagnostics(
             //@ts-ignore
@@ -138,6 +138,9 @@ describe('plugin-metrics', () => {
           webex.internal.newMetrics.callDiagnosticLatencies.getU2CTime = sinon
             .stub()
             .returns(20);
+          webex.internal.newMetrics.callDiagnosticLatencies.getReachabilityClustersReqResp = sinon
+            .stub()
+            .returns(10);
           const promise = webex.internal.newMetrics.callDiagnosticMetrics.submitToCallDiagnostics(
             //@ts-ignore
             {event: {name: 'client.call.initiated'}}
@@ -154,7 +157,8 @@ describe('plugin-metrics', () => {
               meetingInfoReqResp: 10,
               registerWDMDeviceJMT: 10,
               showInterstitialTime: 10,
-              getU2CTime: 20
+              getU2CTime: 20,
+              getReachabilityClustersReqResp: 10
             },
           });
           assert.lengthOf(
@@ -175,7 +179,7 @@ describe('plugin-metrics', () => {
           webex.internal.newMetrics.callDiagnosticLatencies.getCallInitJoinReq = sinon
             .stub()
             .returns(10);
-            webex.internal.newMetrics.callDiagnosticLatencies.getDownloadTimeJMT = sinon
+          webex.internal.newMetrics.callDiagnosticLatencies.getDownloadTimeJMT = sinon
             .stub()
             .returns(100);
           const promise = webex.internal.newMetrics.callDiagnosticMetrics.submitToCallDiagnostics(

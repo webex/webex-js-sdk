@@ -152,7 +152,6 @@ describe('plugin-mercury', () => {
       });
 
       describe('when `maxRetries` is set', () => {
-
         const check = () => {
           socketOpenStub.restore();
           socketOpenStub = sinon.stub(Socket.prototype, 'open');

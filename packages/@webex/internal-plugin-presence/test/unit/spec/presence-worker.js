@@ -26,10 +26,31 @@ describe('presence-worker', () => {
     });
 
     describe('#initialize()', () => {
-      it('requires webex', () =>
-        assert.throws(worker.initialize, /Must initialize Presence Worker with webex!/));
-      it('requires webex internal', () =>
-        assert.throws(() => worker.initialize({}), /Must initialize Presence Worker with webex!/));
+      it('requires webex', () =>{
+        let err=null
+        try{
+          worker.initialize()
+        }
+        catch(e){
+          err=e
+        }
+        assert.equal(err?.message, 'Must initialize Presence Worker with webex!'); 
+
+      });
+        
+
+      it('requires webex internal', () =>{
+        let err=null
+        try{
+          worker.initialize({})
+        }
+        catch(e){
+          err=e
+        }
+        assert.equal(err?.message, 'Must initialize Presence Worker with webex!'); 
+
+      });
+
     });
 
     describe('#enqueue()', () => {

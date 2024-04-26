@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.417](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.416...v3.0.0-beta.417) (2024-04-26)
+
+
+### Features
+
+* **internal-plugin-metrics:** get cluster latency ([#3561](https://github.com/webex/webex-js-sdk/issues/3561)) ([e92037f](https://github.com/webex/webex-js-sdk/commit/e92037f7ff7348a0e4515228009c297cb915355b))
+
+## [3.0.0-beta.416](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.415...v3.0.0-beta.416) (2024-04-26)
+
+
+### Bug Fixes
+
+* remove the logic of setting b=TIAS lines in the internal media core ([#3574](https://github.com/webex/webex-js-sdk/issues/3574)) ([bfac288](https://github.com/webex/webex-js-sdk/commit/bfac288bab94be77b418f6e3918f2f268c4fe90d))
+
+## [3.0.0-beta.415](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.414...v3.0.0-beta.415) (2024-04-25)
+
+
+### Features
+
+* Phase 2 moving non jest dependent packages ([#3499](https://github.com/webex/webex-js-sdk/issues/3499)) ([4e5a8f9](https://github.com/webex/webex-js-sdk/commit/4e5a8f9e1c18b93e47153ece193a017a82caac9e))
+
 ## [3.0.0-beta.414](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.413...v3.0.0-beta.414) (2024-04-25)
 
 

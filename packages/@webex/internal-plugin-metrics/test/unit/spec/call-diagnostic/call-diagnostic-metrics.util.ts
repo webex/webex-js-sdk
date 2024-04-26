@@ -40,7 +40,6 @@ describe('internal-plugin-metrics', () => {
         },
       };
       clearEmptyKeysRecursively(obj);
-      console.log(obj);
       assert.deepEqual(obj, {nested: {arr: ['test']}});
     });
 
@@ -261,7 +260,7 @@ describe('internal-plugin-metrics', () => {
     });
   });
 
-  describe('prepareDiagnosticMetricItem', async () => {
+  describe('prepareDiagnosticMetricItem', () => {
     let webex: any;
 
     const check = (eventName: string, expectedEvent: any) => {
@@ -283,7 +282,7 @@ describe('internal-plugin-metrics', () => {
       });
     };
 
-    before(async () => {
+    beforeEach(async () => {
       webex = {internal: {newMetrics: {}}};
       webex.internal.newMetrics.callDiagnosticLatencies = new CallDiagnosticLatencies(
         {},
@@ -330,7 +329,8 @@ describe('internal-plugin-metrics', () => {
             showInterstitialTime: undefined,
             meetingInfoReqResp: undefined,
             registerWDMDeviceJMT: undefined,
-            getU2CTime: undefined
+            getU2CTime: undefined,
+            getReachabilityClustersReqResp: undefined,
           },
         },
       ],
@@ -416,7 +416,7 @@ describe('internal-plugin-metrics', () => {
     });
   });
 
-  describe('setMetricTimings', async () => {
+  describe('setMetricTimings', () => {
     let webex: any;
 
     const check = (options: any, expectedOptions: any) => {

@@ -14,6 +14,7 @@ import {omit} from 'lodash';
 
 //@ts-ignore
 global.window = {location: {hostname: 'whatever'}};
+process.env.NODE_ENV = 'test';
 
 const {getOSName, getOSVersion, getBrowserName, getBrowserVersion} = BrowserDetection();
 const userAgent = `webex-js-sdk/test-webex-version client=Cantina; (os=${getOSName()}/${
@@ -1920,7 +1921,6 @@ describe('internal-plugin-metrics', () => {
           body: {},
           options: {headers: {}, url: 'https://example.com'},
         });
-
         error.payloadOverrides = {
           shownToUser: true,
           category: 'expected',
