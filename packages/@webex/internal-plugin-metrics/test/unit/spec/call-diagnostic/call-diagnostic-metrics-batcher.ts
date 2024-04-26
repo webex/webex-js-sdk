@@ -56,7 +56,7 @@ describe('plugin-metrics', () => {
     });
 
     describe('#request()', () => {
-      describe('when the request completes successfully', async () => {
+      describe('when the request completes successfully', () => {
         it('clears the queue', async () => {
           const promise = webex.internal.newMetrics.callDiagnosticMetrics.submitToCallDiagnostics(
             //@ts-ignore
@@ -179,7 +179,7 @@ describe('plugin-metrics', () => {
           webex.internal.newMetrics.callDiagnosticLatencies.getCallInitJoinReq = sinon
             .stub()
             .returns(10);
-            webex.internal.newMetrics.callDiagnosticLatencies.getDownloadTimeJMT = sinon
+          webex.internal.newMetrics.callDiagnosticLatencies.getDownloadTimeJMT = sinon
             .stub()
             .returns(100);
           const promise = webex.internal.newMetrics.callDiagnosticMetrics.submitToCallDiagnostics(

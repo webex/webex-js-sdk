@@ -240,7 +240,6 @@ describe('plugin-dss', () => {
 
         expect(result).to.be.null;
       });
-
       it('fails with default timeout when mercury does not respond', async () => {
         const {promise} = await testMakeRequest({
           method: 'lookupDetail',
@@ -248,6 +247,8 @@ describe('plugin-dss', () => {
           params: {id: 'test id'},
           bodyParams: {},
         });
+
+        promise.catch(() => {}); // to prevent the test from failing due to unhandled promise rejection
 
         await clock.tickAsync(6000);
 
@@ -626,6 +627,8 @@ describe('plugin-dss', () => {
           bodyParams: {lookupValues: ['id1']},
         });
 
+        promise.catch(() => {}); // to prevent the test from failing due to unhandled promise rejection
+
         await clock.tickAsync(6000);
 
         return assert.isRejected(
@@ -724,6 +727,8 @@ describe('plugin-dss', () => {
           params: {email: 'email1'},
           bodyParams: {lookupValues: ['email1']},
         });
+
+        promise.catch(() => {}); // to prevent the test from failing due to unhandled promise rejection
 
         await clock.tickAsync(6000);
 
@@ -827,6 +832,8 @@ describe('plugin-dss', () => {
           },
         });
 
+        promise.catch(() => {}); // to prevent the test from failing due to unhandled promise rejection
+
         await clock.tickAsync(6000);
 
         return assert.isRejected(
@@ -892,6 +899,8 @@ describe('plugin-dss', () => {
           createData(requestId, 0, false, 'directoryEntities', ['data0'])
         );
 
+        promise.catch(() => {}); // to prevent the test from failing due to unhandled promise rejection
+
         await clock.tickAsync(6000);
 
         return assert.isRejected(
@@ -907,7 +916,7 @@ describe('plugin-dss', () => {
     describe('#_request', () => {
       it('handles a request correctly', async () => {
         webex.request = sinon.stub();
-        uuid.v4.returns('randomid');
+        uuid.v4();
         const promise = webex.internal.dss._request({
           resource: '/search/orgid/userOrgId/entities',
           params: {some: 'param'},

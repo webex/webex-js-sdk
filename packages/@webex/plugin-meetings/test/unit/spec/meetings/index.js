@@ -2008,24 +2008,27 @@ describe('plugin-meetings', () => {
           assert.notCalled(loggerProxySpy);
         });
 
-        forEach([
-          {user: undefined},
-          {user: {userPreferences: {}}},
-          {user: {userPreferences: {userPreferencesItems: {}}}},
-          {user: {userPreferences: {userPreferencesItems: {preferredWebExSite: undefined}}}},
-        ], ({user}) => {
-          it(`should handle invalid user data ${user}`, async () => {
-            setup({user});
+        forEach(
+          [
+            {user: undefined},
+            {user: {userPreferences: {}}},
+            {user: {userPreferences: {userPreferencesItems: {}}}},
+            {user: {userPreferences: {userPreferencesItems: {preferredWebExSite: undefined}}}},
+          ],
+          ({user}) => {
+            it(`should handle invalid user data ${user}`, async () => {
+              setup({user});
 
-            await webex.meetings.fetchUserPreferredWebexSite();
+              await webex.meetings.fetchUserPreferredWebexSite();
 
-            assert.equal(webex.meetings.preferredWebexSite, '');
-            assert.calledOnceWithExactly(
-              loggerProxySpy,
-              'Failed to fetch preferred site from user - no site will be set'
-            );
-          });
-        });
+              assert.equal(webex.meetings.preferredWebexSite, '');
+              assert.calledOnceWithExactly(
+                loggerProxySpy,
+                'Failed to fetch preferred site from user - no site will be set'
+              );
+            });
+          }
+        );
 
         it('should handle a get user failure', async () => {
           setup();
@@ -2040,7 +2043,6 @@ describe('plugin-meetings', () => {
             'Failed to fetch preferred site from user - no site will be set'
           );
         });
-
       });
     });
 

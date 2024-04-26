@@ -196,7 +196,7 @@ export const ICE_FAIL_TIMEOUT = 3000;
 
 export const RETRY_TIMEOUT = 3000;
 
-export const ICE_AND_DTLS_CONNECTION_TIMEOUT = 10000;
+export const ICE_AND_DTLS_CONNECTION_TIMEOUT = 20000;
 export const ROAP_OFFER_ANSWER_EXCHANGE_TIMEOUT = 35000;
 
 // ******************** REGEX **********************
@@ -972,7 +972,7 @@ export const SELF_ROLES = {
   COHOST: 'COHOST',
   MODERATOR: 'MODERATOR',
   ATTENDEE: 'ATTENDEE',
-  PRESENTER: 'PRESENTER',
+  PANELIST: 'PANELIST',
 };
 
 export const MEETING_STATE = {
