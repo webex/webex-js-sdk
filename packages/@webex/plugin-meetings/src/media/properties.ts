@@ -1,5 +1,3 @@
-import {ConnectionState, Event} from '@webex/internal-media-core';
-
 import {
   LocalCameraStream,
   LocalMicrophoneStream,
@@ -8,8 +6,9 @@ import {
   RemoteStream,
 } from '@webex/media-helpers';
 
-import {MEETINGS, ICE_AND_DTLS_CONNECTION_TIMEOUT, QUALITY_LEVELS} from '../constants';
+import {MEETINGS, QUALITY_LEVELS} from '../constants';
 import LoggerProxy from '../common/logs/logger-proxy';
+import MediaConnectionAwaiter from './MediaConnectionAwaiter';
 
 export type MediaDirection = {
   sendAudio: boolean;
@@ -175,35 +174,11 @@ export default class MediaProperties {
    * @returns {Promise<void>}
    */
   waitForMediaConnectionConnected(): Promise<void> {
-    const isConnected = () =>
-      this.webrtcMediaConnection.getConnectionState() === ConnectionState.Connected;
-
-    if (isConnected()) {
-      return Promise.resolve();
-    }
-
-    return new Promise<void>((resolve, reject) => {
-      let timer;
-
-      const connectionStateListener = () => {
-        LoggerProxy.logger.log(
-          `Media:properties#waitForMediaConnectionConnected --> connection state: ${this.webrtcMediaConnection.getConnectionState()}`
-        );
-
-        if (isConnected()) {
-          clearTimeout(timer);
-          this.webrtcMediaConnection.off(Event.CONNECTION_STATE_CHANGED, connectionStateListener);
-          resolve();
-        }
-      };
-
-      timer = setTimeout(() => {
-        this.webrtcMediaConnection.off(Event.CONNECTION_STATE_CHANGED, connectionStateListener);
-        reject();
-      }, ICE_AND_DTLS_CONNECTION_TIMEOUT);
-
-      this.webrtcMediaConnection.on(Event.CONNECTION_STATE_CHANGED, connectionStateListener);
+    const mediaConnections = new MediaConnectionAwaiter({
+      webrtcMediaConnection: this.webrtcMediaConnection,
     });
+
+    return mediaConnections.waitForMediaConnectionConnected();
   }
 
   /**

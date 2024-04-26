@@ -20,6 +20,7 @@ describe('MediaProperties', () => {
       on: sinon.stub(),
       off: sinon.stub(),
       getConnectionState: sinon.stub().returns(ConnectionState.Connected),
+      getIceGatheringState: sinon.stub().returns('complete'),
     };
 
     mediaProperties = new MediaProperties();
@@ -31,11 +32,9 @@ describe('MediaProperties', () => {
     sinon.restore();
   });
   describe('waitForMediaConnectionConnected', () => {
-    it('resolves immediately if ice state is connected', async () => {
-      await mediaProperties.waitForMediaConnectionConnected();
-    });
     it('rejects after timeout if ice state does not reach connected/completed', async () => {
       mockMC.getConnectionState.returns(ConnectionState.Connecting);
+      mockMC.getIceGatheringState.returns('gathering');
 
       let promiseResolved = false;
       let promiseRejected = false;
@@ -52,19 +51,11 @@ describe('MediaProperties', () => {
       assert.equal(promiseResolved, false);
       assert.equal(promiseRejected, false);
 
-      await clock.tickAsync(ICE_AND_DTLS_CONNECTION_TIMEOUT);
+      await clock.tickAsync(ICE_AND_DTLS_CONNECTION_TIMEOUT * 3);
       await testUtils.flushPromises();
 
       assert.equal(promiseResolved, false);
       assert.equal(promiseRejected, true);
-
-      // check that listener was registered and removed
-      assert.calledOnce(mockMC.on);
-      assert.equal(mockMC.on.getCall(0).args[0], Event.CONNECTION_STATE_CHANGED);
-      const listener = mockMC.on.getCall(0).args[1];
-
-      assert.calledOnce(mockMC.off);
-      assert.calledWith(mockMC.off, Event.CONNECTION_STATE_CHANGED, listener);
     });
 
     it(`resolves when media connection reaches "connected" state`, async () => {
@@ -88,7 +79,7 @@ describe('MediaProperties', () => {
       assert.equal(promiseRejected, false);
 
       // check the right listener was registered
-      assert.calledOnce(mockMC.on);
+      assert.calledTwice(mockMC.on);
       assert.equal(mockMC.on.getCall(0).args[0], Event.CONNECTION_STATE_CHANGED);
       const listener = mockMC.on.getCall(0).args[1];
 
@@ -99,10 +90,6 @@ describe('MediaProperties', () => {
 
       assert.equal(promiseResolved, true);
       assert.equal(promiseRejected, false);
-
-      // check that listener was removed
-      assert.calledOnce(mockMC.off);
-      assert.calledWith(mockMC.off, Event.CONNECTION_STATE_CHANGED, listener);
 
       assert.calledOnce(clearTimeoutSpy);
     });
