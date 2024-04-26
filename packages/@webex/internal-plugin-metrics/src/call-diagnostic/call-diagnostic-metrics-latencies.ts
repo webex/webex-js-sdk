@@ -442,6 +442,15 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
   }
 
   /**
+   * Total latency for all get cluster request.
+   */
+  public getReachabilityClustersReqResp() {
+    const reachablityClusterReqResp = this.precomputedLatencies.get('internal.get.cluster.time');
+
+    return reachablityClusterReqResp ? Math.floor(reachablityClusterReqResp) : undefined;
+  }
+
+  /**
    * Audio setup delay transmit
    */
   public getAudioJoinRespTxStart() {
