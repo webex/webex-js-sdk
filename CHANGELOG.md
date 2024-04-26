@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.416](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.415...v3.0.0-beta.416) (2024-04-26)
+
+
+### Bug Fixes
+
+* remove the logic of setting b=TIAS lines in the internal media core ([#3574](https://github.com/webex/webex-js-sdk/issues/3574)) ([bfac288](https://github.com/webex/webex-js-sdk/commit/bfac288bab94be77b418f6e3918f2f268c4fe90d))
+
 ## [3.0.0-beta.415](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.414...v3.0.0-beta.415) (2024-04-25)
 
 
