@@ -259,6 +259,7 @@ export const prepareDiagnosticMetricItem = (webex: any, item: any) => {
       joinTimes.showInterstitialTime = cdl.getShowInterstitialTime();
       joinTimes.registerWDMDeviceJMT = cdl.getRegisterWDMDeviceJMT();
       joinTimes.getU2CTime = cdl.getU2CTime();
+      joinTimes.getReachabilityClustersReqResp = cdl.getReachabilityClustersReqResp();
       break;
 
     case 'client.locus.join.response':
