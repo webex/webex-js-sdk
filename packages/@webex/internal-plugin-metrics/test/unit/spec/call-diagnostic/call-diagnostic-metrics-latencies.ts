@@ -224,6 +224,24 @@ describe('internal-plugin-metrics', () => {
       });
     });
 
+    describe('getReachabilityClustersReqResp', () => {
+      it('returns undefined when no precomputed value available', () => {
+        assert.deepEqual(cdl.getReachabilityClustersReqResp(), undefined);
+      });
+
+      it('returns the correct value', () => {
+        cdl.saveLatency('internal.get.cluster.time', 123);
+
+        assert.deepEqual(cdl.getReachabilityClustersReqResp(), 123);
+      });
+
+      it('returns the correct whole number', () => {
+        cdl.saveLatency('internal.get.cluster.time', 321.44);
+
+        assert.deepEqual(cdl.getReachabilityClustersReqResp(), 321);
+      });
+    });
+
     describe('getExchangeCITokenJMT', () => {
       it('returns undefined when no precomputed value available', () => {
         assert.deepEqual(cdl.getExchangeCITokenJMT(), undefined);

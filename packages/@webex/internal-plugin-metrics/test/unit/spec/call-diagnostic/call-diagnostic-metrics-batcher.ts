@@ -135,7 +135,12 @@ describe('plugin-metrics', () => {
           webex.internal.newMetrics.callDiagnosticLatencies.getDiffBetweenTimestamps = sinon
             .stub()
             .returns(10);
-          webex.internal.newMetrics.callDiagnosticLatencies.getU2CTime = sinon.stub().returns(20);
+          webex.internal.newMetrics.callDiagnosticLatencies.getU2CTime = sinon
+            .stub()
+            .returns(20);
+          webex.internal.newMetrics.callDiagnosticLatencies.getReachabilityClustersReqResp = sinon
+            .stub()
+            .returns(10);
           const promise = webex.internal.newMetrics.callDiagnosticMetrics.submitToCallDiagnostics(
             //@ts-ignore
             {event: {name: 'client.call.initiated'}}
@@ -153,6 +158,7 @@ describe('plugin-metrics', () => {
               registerWDMDeviceJMT: 10,
               showInterstitialTime: 10,
               getU2CTime: 20,
+              getReachabilityClustersReqResp: 10
             },
           });
           assert.lengthOf(
