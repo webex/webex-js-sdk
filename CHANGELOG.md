@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.417](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.416...v3.0.0-beta.417) (2024-04-26)
+
+
+### Features
+
+* **internal-plugin-metrics:** get cluster latency ([#3561](https://github.com/webex/webex-js-sdk/issues/3561)) ([e92037f](https://github.com/webex/webex-js-sdk/commit/e92037f7ff7348a0e4515228009c297cb915355b))
+
 ## [3.0.0-beta.416](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.415...v3.0.0-beta.416) (2024-04-26)
 
 
