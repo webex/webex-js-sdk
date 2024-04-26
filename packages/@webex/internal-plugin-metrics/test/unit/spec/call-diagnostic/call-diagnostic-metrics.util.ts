@@ -319,6 +319,7 @@ describe('internal-plugin-metrics', () => {
             clickToInterstitial: undefined,
             meetingInfoReqResp: undefined,
             refreshCaptchaServiceReqResp: undefined,
+            downloadIntelligenceModelsReqResp: undefined,
           },
         },
       ],
@@ -346,7 +347,7 @@ describe('internal-plugin-metrics', () => {
             interstitialToJoinOK: undefined,
             totalJmt: undefined,
             clientJmt: undefined,
-            downloadTime: undefined
+            downloadTime: undefined,
           },
         },
       ],
