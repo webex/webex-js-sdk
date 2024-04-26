@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.418](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.417...v3.0.0-beta.418) (2024-04-26)
+
+
+### Features
+
+* **metrics:** add downloadIntelligenceModelsReqResp to latency metrics ([#3549](https://github.com/webex/webex-js-sdk/issues/3549)) ([d39b06a](https://github.com/webex/webex-js-sdk/commit/d39b06ad6a0826e91cfe8d20f5280bdba26f69c4))
+
 ## [3.0.0-beta.417](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.416...v3.0.0-beta.417) (2024-04-26)
 
 
