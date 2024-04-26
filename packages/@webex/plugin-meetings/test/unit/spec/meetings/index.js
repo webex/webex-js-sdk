@@ -412,9 +412,13 @@ describe('plugin-meetings', () => {
           assert.exists(result);
           assert.instanceOf(result, NoiseReductionEffect);
           assert.containsAllKeys(result, ['audioContext', 'isEnabled', 'isReady', 'options']);
+          assert.equal(result.options.authToken, 'fake_token');
           assert.deepEqual(result.options, {
-            authToken: 'fake_token',
             audioContext: {},
+            authToken: 'fake_token',
+            mode: 'WORKLET',
+            env: 'prod',
+            avoidSimd: false,
           });
           assert.exists(result.enable);
           assert.exists(result.disable);
@@ -424,8 +428,9 @@ describe('plugin-meetings', () => {
         it('creates noise reduction effect with custom options passed', async () => {
           const effectOptions = {
             audioContext: {},
-            mode: 'WORKLET',
-            env: 'prod',
+            mode: 'LEGACY',
+            env: 'int',
+            avoidSimd: true,
           };
 
           const result = await webex.meetings.createNoiseReductionEffect(effectOptions);
@@ -595,6 +600,7 @@ describe('plugin-meetings', () => {
           });
           describe('when destroying meeting is needed', () => {
             let destroySpy;
+            let cleanUpSpy;
 
             const meetingCollectionMeetings = {
               stillValidLocusMeeting: {
@@ -625,7 +631,11 @@ describe('plugin-meetings', () => {
                   loci: [{url: 'still-valid-locus-url'}],
                 })
               );
-              MeetingUtil.cleanUp = sinon.stub().returns(Promise.resolve());
+              cleanUpSpy = sinon.stub(MeetingUtil, 'cleanUp').returns(Promise.resolve());
+            });
+
+            afterEach(() => {
+              cleanUpSpy.restore();
             });
 
             it('destroy any meeting that has no active locus url if keepOnlyLocusMeetings is not defined', async () => {
@@ -1205,7 +1215,8 @@ describe('plugin-meetings', () => {
             webex.meetings.meetingInfo.fetchMeetingInfo = sinon.stub().returns(
               Promise.resolve({
                 body: {
-                  permissionToken: 'PT',
+                  permissionToken:
+                    'eyJhbGciOiJIUzI1NiJ9.eyJleHAiOiIxMjM0NTYiLCJwZXJtaXNzaW9uIjp7InVzZXJQb2xpY2llcyI6eyJhIjp0cnVlfX19.wkTk0Hp8sUlq2wi2nP4-Ym4Xb7aEUHzyXA1kzk6f0V0',
                   meetingJoinUrl: 'meetingJoinUrl',
                 },
               })
@@ -1308,7 +1319,8 @@ describe('plugin-meetings', () => {
             const meeting = await webex.meetings.createMeeting('test destination', 'test type');
 
             const expectedMeetingData = {
-              permissionToken: 'PT',
+              permissionToken:
+                'eyJhbGciOiJIUzI1NiJ9.eyJleHAiOiIxMjM0NTYiLCJwZXJtaXNzaW9uIjp7InVzZXJQb2xpY2llcyI6eyJhIjp0cnVlfX19.wkTk0Hp8sUlq2wi2nP4-Ym4Xb7aEUHzyXA1kzk6f0V0',
               meetingJoinUrl: 'meetingJoinUrl',
               correlationId: meeting.id,
             };
@@ -1324,7 +1336,8 @@ describe('plugin-meetings', () => {
 
           it('accepts injected meeting info', async () => {
             const meetingInfo = {
-              permissionToken: 'PT',
+              permissionToken:
+                'eyJhbGciOiJIUzI1NiJ9.eyJleHAiOiIxMjM0NTYiLCJwZXJtaXNzaW9uIjp7InVzZXJQb2xpY2llcyI6eyJhIjp0cnVlfX19.wkTk0Hp8sUlq2wi2nP4-Ym4Xb7aEUHzyXA1kzk6f0V0',
               meetingJoinUrl: 'meetingJoinUrl',
             };
 
@@ -1356,7 +1369,8 @@ describe('plugin-meetings', () => {
 
           it('accepts injected meeting info with meeting lookup url', async () => {
             const meetingInfo = {
-              permissionToken: 'PT',
+              permissionToken:
+                'eyJhbGciOiJIUzI1NiJ9.eyJleHAiOiIxMjM0NTYiLCJwZXJtaXNzaW9uIjp7InVzZXJQb2xpY2llcyI6eyJhIjp0cnVlfX19.wkTk0Hp8sUlq2wi2nP4-Ym4Xb7aEUHzyXA1kzk6f0V0',
               meetingJoinUrl: 'meetingJoinUrl',
             };
 
@@ -1401,7 +1415,8 @@ describe('plugin-meetings', () => {
                 infoExtraParams
               );
               const expectedMeetingData = {
-                permissionToken: 'PT',
+                permissionToken:
+                  'eyJhbGciOiJIUzI1NiJ9.eyJleHAiOiIxMjM0NTYiLCJwZXJtaXNzaW9uIjp7InVzZXJQb2xpY2llcyI6eyJhIjp0cnVlfX19.wkTk0Hp8sUlq2wi2nP4-Ym4Xb7aEUHzyXA1kzk6f0V0',
                 meetingJoinUrl: 'meetingJoinUrl',
               };
 
@@ -1502,8 +1517,10 @@ describe('plugin-meetings', () => {
               assert.equal(meeting.meetingNumber, 'locusMeetingId');
               assert.equal(meeting.meetingJoinUrl, 'meetingJoinUrl');
               assert.equal(meeting.owner, 'locusOwner');
-              assert.equal(meeting.permissionToken, 'PT');
-
+              assert.equal(
+                meeting.permissionToken,
+                'eyJhbGciOiJIUzI1NiJ9.eyJleHAiOiIxMjM0NTYiLCJwZXJtaXNzaW9uIjp7InVzZXJQb2xpY2llcyI6eyJhIjp0cnVlfX19.wkTk0Hp8sUlq2wi2nP4-Ym4Xb7aEUHzyXA1kzk6f0V0'
+              );
               assert.calledWith(
                 TriggerProxy.trigger,
                 meeting,
@@ -1802,9 +1819,13 @@ describe('plugin-meetings', () => {
       });
     });
     describe('Public Event Triggers', () => {
+      let cleanUpSpy;
       describe('#destroy', () => {
         beforeEach(() => {
-          MeetingUtil.cleanUp = sinon.stub();
+          cleanUpSpy = sinon.stub(MeetingUtil, 'cleanUp');
+        });
+        afterEach(() => {
+          cleanUpSpy.restore();
         });
         it('should have #destroy', () => {
           assert.exists(webex.meetings.destroy);
@@ -1969,6 +1990,59 @@ describe('plugin-meetings', () => {
             'Failed to fetch preferred site from user - no site will be set'
           );
         });
+
+        it('should fall back to fetching the site from the user', async () => {
+          setup({
+            user: {
+              userPreferences: {
+                userPreferencesItems: {
+                  preferredWebExSite: 'site.webex.com',
+                },
+              },
+            },
+          });
+
+          await webex.meetings.fetchUserPreferredWebexSite();
+
+          assert.equal(webex.meetings.preferredWebexSite, 'site.webex.com');
+          assert.notCalled(loggerProxySpy);
+        });
+
+        forEach(
+          [
+            {user: undefined},
+            {user: {userPreferences: {}}},
+            {user: {userPreferences: {userPreferencesItems: {}}}},
+            {user: {userPreferences: {userPreferencesItems: {preferredWebExSite: undefined}}}},
+          ],
+          ({user}) => {
+            it(`should handle invalid user data ${user}`, async () => {
+              setup({user});
+
+              await webex.meetings.fetchUserPreferredWebexSite();
+
+              assert.equal(webex.meetings.preferredWebexSite, '');
+              assert.calledOnceWithExactly(
+                loggerProxySpy,
+                'Failed to fetch preferred site from user - no site will be set'
+              );
+            });
+          }
+        );
+
+        it('should handle a get user failure', async () => {
+          setup();
+
+          webex.internal.user.get.rejects(new Error());
+
+          await webex.meetings.fetchUserPreferredWebexSite();
+
+          assert.equal(webex.meetings.preferredWebexSite, '');
+          assert.calledOnceWithExactly(
+            loggerProxySpy,
+            'Failed to fetch preferred site from user - no site will be set'
+          );
+        });
       });
     });
 
@@ -1986,7 +2060,8 @@ describe('plugin-meetings', () => {
         webex.meetings.meetingInfo.fetchMeetingInfo = sinon.stub().returns(
           Promise.resolve({
             body: {
-              permissionToken: 'PT',
+              permissionToken:
+                'eyJhbGciOiJIUzI1NiJ9.eyJleHAiOiIxMjM0NTYiLCJwZXJtaXNzaW9uIjp7InVzZXJQb2xpY2llcyI6eyJhIjp0cnVlfX19.wkTk0Hp8sUlq2wi2nP4-Ym4Xb7aEUHzyXA1kzk6f0V0',
               meetingJoinUrl: 'meetingJoinUrl',
             },
           })

@@ -793,6 +793,8 @@ const stopShareBtn = document.querySelector('#ts-stop-screenshare');
 const toggleAudioButton = document.querySelector('#ts-toggle-audio');
 const stopVideoButton = document.querySelector('#ts-stop-video');
 const stopAudioButton = document.querySelector('#ts-stop-audio');
+const muteVideoMessage = document.querySelector('#ts-mute-video-message');
+const muteAudioMessage = document.querySelector('#ts-mute-audio-message');
 const modeBtn = document.getElementById('mode-type');
 
 /**
@@ -1191,6 +1193,15 @@ async function loadCamera(constraints) {
 
     meetingStreamsLocalVideo.srcObject = localMedia.cameraStream.outputStream;
 
+    localMedia.cameraStream.on('user-mute-state-change', (muted) => {
+      console.log('MeetingControls#loadCamera() :: local camera stream user mute state changed to', muted);
+    });
+
+    localMedia.cameraStream.on('system-mute-state-change', (muted) => {
+      console.log('MeetingControls#loadCamera() :: local camera stream system mute state changed to', muted);
+      handleMuteVideoMessage();
+    });
+
     localMedia.cameraStream.on('stream-ended', () => {
       console.log('MeetingControls#loadCamera() :: local camera stream ended');
 
@@ -1202,6 +1213,7 @@ async function loadCamera(constraints) {
       clearVideoResolutionCheckInterval(localVideoResElm, localVideoResolutionInterval);
     });
 
+    handleMuteVideoMessage();
     handleEffectsButton(toggleVbgBtn, VBG);
     loadCameraBtn.disabled = true;
     stopVideoButton.disabled = false;
@@ -1262,6 +1274,16 @@ async function loadMicrophone(constraints) {
 
     meetingStreamsLocalAudio.srcObject = localMedia.microphoneStream.outputStream;
 
+    localMedia.microphoneStream.on('user-mute-state-change', (muted) => {
+      console.log('MeetingControls#loadMicrophone() :: local microphone stream user mute state changed to', muted);
+      handleAudioButton();
+    });
+
+    localMedia.microphoneStream.on('system-mute-state-change', (muted) => {
+      console.log('MeetingControls#loadMicrophone() :: local microphone stream system mute state changed to', muted);
+      handleMuteAudioMessage();
+    });
+
     localMedia.microphoneStream.on('stream-ended', () => {
       console.log('MeetingControls#loadMicrophone() :: local microphone stream ended');
 
@@ -1271,6 +1293,7 @@ async function loadMicrophone(constraints) {
       loadMicrophoneBtn.disabled = false;
     });
 
+    handleMuteAudioMessage();
     handleEffectsButton(toggleBNRBtn, BNR);
     loadMicrophoneBtn.disabled = true;
     stopAudioButton.disabled = false;
@@ -1457,12 +1480,12 @@ function setVideoInputDevice() {
   const {video} = getAudioVideoInput();
 
   if (meeting) {
-    const isMuted = localMedia.cameraStream?.muted;
+    const isMuted = localMedia.cameraStream?.userMuted;
     localMedia.cameraStream?.stop();
 
     return getUserMedia({video})
       .then(() => {
-        localMedia.cameraStream.setMuted(!!isMuted);
+        localMedia.cameraStream.setUserMuted(!!isMuted);
         localVideoResolutionCheckInterval();
         meeting.publishStreams({camera: localMedia.cameraStream});
       });
@@ -1477,12 +1500,12 @@ function setAudioInputDevice() {
   const {audio} = getAudioVideoInput();
 
   if (meeting) {
-    const isMuted = localMedia.microphoneStream?.muted;
+    const isMuted = localMedia.microphoneStream?.userMuted;
     localMedia.microphoneStream?.stop();
 
     return getUserMedia({audio})
       .then(() => {
-        localMedia.microphoneStream.setMuted(!!isMuted);
+        localMedia.microphoneStream.setUserMuted(!!isMuted);
         meeting.publishStreams({microphone: localMedia.microphoneStream});
       });
   }
@@ -1505,31 +1528,38 @@ function setAudioOutputDevice() {
 }
 
 function handleAudioButton() {
-  const audioButtonTitle = localMedia.microphoneStream.muted ? 'Unmute' : 'Mute';
+  const audioButtonTitle = localMedia.microphoneStream.userMuted ? 'Unmute' : 'Mute';
   toggleAudioButton.innerHTML = `${audioButtonTitle} Audio`;
+}
+
+function handleMuteAudioMessage() {
+  muteAudioMessage.innerHTML = localMedia.microphoneStream.systemMuted ? "Warning: microphone may be muted by the system" : "";
 }
 
 function toggleSendAudio() {
   console.log('MeetingControls#toggleSendAudio()');
 
   if (localMedia.microphoneStream) {
-    const newMuteValue = !localMedia.microphoneStream.muted;
+    const newMuteValue = !localMedia.microphoneStream.userMuted;
 
-    localMedia.microphoneStream.setMuted(newMuteValue);
-    handleAudioButton();
+    localMedia.microphoneStream.setUserMuted(newMuteValue);
 
     console.log(`MeetingControls#toggleSendAudio() :: Successfully ${newMuteValue ? 'muted': 'unmuted'} audio!`);
     return;
   }
 }
 
+function handleMuteVideoMessage() {
+  muteVideoMessage.innerHTML = localMedia.cameraStream.systemMuted ? "Warning: camera may be muted by the system" : "";
+}
+
 function toggleSendVideo() {
   console.log('MeetingControls#toggleSendVideo()');
 
   if (localMedia.cameraStream) {
-    const newMuteValue = !localMedia.cameraStream.muted;
+    const newMuteValue = !localMedia.cameraStream.userMuted;
 
-    localMedia.cameraStream.setMuted(newMuteValue);
+    localMedia.cameraStream.setUserMuted(newMuteValue);
 
     console.log(`MeetingControls#toggleSendVideo() :: Successfully ${newMuteValue ? 'muted': 'unmuted'} video!`);
     return;
@@ -2897,7 +2927,6 @@ function muteMember(muteButton) {
   if (meeting) {
     meeting.mute(participantID, newMuteStatus).then((res) => {
       console.log(res, `participant is ${newMuteStatus ? 'muted' : 'unmuted'}`);
-      handleAudioButton();
     }).catch((err) => {
       console.log('error', err);
     });

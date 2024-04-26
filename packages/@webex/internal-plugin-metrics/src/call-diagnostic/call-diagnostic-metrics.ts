@@ -39,6 +39,7 @@ import {
   ClientInfo,
   ClientEventPayloadError,
   ClientSubServiceType,
+  BrowserLaunchMethodType,
 } from '../metrics.types';
 import CallDiagnosticEventsBatcher from './call-diagnostic-metrics-batcher';
 import PreLoginMetricsBatcher from '../prelogin-metrics-batcher';
@@ -65,6 +66,7 @@ type GetOriginOptions = {
   subClientType: SubClientType;
   networkType?: NetworkType;
   clientLaunchMethod?: ClientLaunchMethodType;
+  browserLaunchMethod?: BrowserLaunchMethodType;
   environment?: EnvironmentType;
   newEnvironment?: NewEnvironmentType;
 };
@@ -258,6 +260,10 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
         origin.clientInfo.clientLaunchMethod = options.clientLaunchMethod;
       }
 
+      if (options?.browserLaunchMethod) {
+        origin.clientInfo.browserLaunchMethod = options.browserLaunchMethod;
+      }
+
       return origin;
     }
 
@@ -293,11 +299,17 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     if (this.webex.internal) {
       // @ts-ignore
       const {device} = this.webex.internal;
+      const {installationId} = device.config || {};
+
       identifiers.userId = device.userId || preLoginId;
       identifiers.deviceId = device.url;
       identifiers.orgId = device.orgId;
       // @ts-ignore
       identifiers.locusUrl = this.webex.internal.services.get('locus');
+
+      if (installationId) {
+        identifiers.machineId = installationId;
+      }
     }
 
     if (meeting?.locusInfo?.fullState) {

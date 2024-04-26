@@ -18,6 +18,7 @@ import {
   SubmitInternalEvent,
   SubmitOperationalEvent,
   SubmitMQE,
+  PreComputedLatencies,
 } from './metrics.types';
 import * as CALL_DIAGNOSTIC_CONFIG from './call-diagnostic/config';
 import * as CallDiagnosticUtils from './call-diagnostic/call-diagnostic-metrics.util';
@@ -51,4 +52,5 @@ export type {
   SubmitInternalEvent,
   SubmitMQE,
   SubmitOperationalEvent,
+  PreComputedLatencies,
 };

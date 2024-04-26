@@ -40,8 +40,10 @@ describe('plugin-mercury', () => {
     });
 
     beforeEach(() => {
-      sinon.stub(Socket, 'getWebSocketConstructor').callsFake(() => function (...args) {
-        mockWebSocket = new MockWebSocket(...args);
+      sinon.stub(Socket, 'getWebSocketConstructor').callsFake(
+        () =>
+          function (...args) {
+            mockWebSocket = new MockWebSocket(...args);
 
             return mockWebSocket;
           }

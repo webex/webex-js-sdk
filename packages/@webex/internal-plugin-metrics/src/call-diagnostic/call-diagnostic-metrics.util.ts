@@ -244,22 +244,27 @@ export const prepareDiagnosticMetricItem = (webex: any, item: any) => {
     case 'client.webexapp.launched':
       joinTimes.downloadTime = cdl.getDownloadTimeJMT();
       break;
+    case 'client.login.end':
+      joinTimes.otherAppApiReqResp = cdl.getOtherAppApiReqResp();
+      joinTimes.exchangeCITokenJMT = cdl.getExchangeCITokenJMT();
+      break;
     case 'client.interstitial-window.launched':
       joinTimes.meetingInfoReqResp = cdl.getMeetingInfoReqResp();
       joinTimes.clickToInterstitial = cdl.getClickToInterstitial();
+      joinTimes.refreshCaptchaServiceReqResp = cdl.getRefreshCaptchaReqResp();
       break;
 
     case 'client.call.initiated':
       joinTimes.meetingInfoReqResp = cdl.getMeetingInfoReqResp();
       joinTimes.showInterstitialTime = cdl.getShowInterstitialTime();
       joinTimes.registerWDMDeviceJMT = cdl.getRegisterWDMDeviceJMT();
+      joinTimes.getU2CTime = cdl.getU2CTime();
       break;
 
     case 'client.locus.join.response':
       joinTimes.meetingInfoReqResp = cdl.getMeetingInfoReqResp();
       joinTimes.callInitJoinReq = cdl.getCallInitJoinReq();
       joinTimes.joinReqResp = cdl.getJoinReqResp();
-      joinTimes.joinReqSentReceived = cdl.getJoinRespSentReceived();
       joinTimes.pageJmt = cdl.getPageJMT();
       joinTimes.clickToInterstitial = cdl.getClickToInterstitial();
       joinTimes.interstitialToJoinOK = cdl.getInterstitialToJoinOK();

@@ -19,7 +19,7 @@ import Authorization from '@webex/plugin-authorization-browser-first-party';
 const lodash = require('lodash');
 
 
-describe('plugin-authorization-browser-first-party', () => {
+browserOnly(describe)('plugin-authorization-browser', () => {
   describe('Authorization', () => {
     function makeWebex(
       href = 'https://example.com',
@@ -212,7 +212,7 @@ describe('plugin-authorization-browser-first-party', () => {
           catch (e) {
             err = e;
           }
-          expect(err?.message).toBe('Cannot convert object to primitive value')
+          assert.equal(err?.message, 'Cannot convert object to primitive value');
         });
       });
 
