@@ -22,7 +22,6 @@ require('@webex/internal-plugin-device');
 require('@webex/internal-plugin-metrics');
 require('@webex/internal-plugin-support');
 require('@webex/internal-plugin-user');
-require('@webex/internal-plugin-voicea');
 require('@webex/plugin-people');
 
 const merge = require('lodash/merge');
@@ -38,7 +37,6 @@ const Webex = WebexCore.extend({
 Webex.init = function init(attrs = {}) {
   attrs.config = merge(
     {
-      sdkType: 'meetings',
       meetings: {
         disableHydraId: true,
       },
