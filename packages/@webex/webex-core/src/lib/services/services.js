@@ -682,7 +682,6 @@ const Services = WebexPlugin.extend({
    * @returns {object}
    */
   _formatReceivedHostmap(serviceHostmap) {
-    this._updateHostCatalog(serviceHostmap.hostCatalog);
     // map the host catalog items to a formatted hostmap
     const formattedHostmap = Object.keys(serviceHostmap.hostCatalog).reduce((accumulator, key) => {
       if (serviceHostmap.hostCatalog[key].length === 0) {
