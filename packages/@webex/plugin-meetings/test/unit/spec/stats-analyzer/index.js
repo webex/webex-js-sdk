@@ -1651,6 +1651,7 @@ describe('plugin-meetings', () => {
             transmittedKeyFramesStartup: 0,
             transmittedKeyFramesUnknown: 0,
             transmittedWidth: 0,
+            requestedBitrate: 0,
           },
           {
             common: {
@@ -1687,6 +1688,7 @@ describe('plugin-meetings', () => {
             transmittedKeyFramesStartup: 0,
             transmittedKeyFramesUnknown: 0,
             transmittedWidth: 0,
+            requestedBitrate: 0,
           },
           {
             common: {
@@ -1723,6 +1725,7 @@ describe('plugin-meetings', () => {
             transmittedKeyFramesStartup: 0,
             transmittedKeyFramesUnknown: 0,
             transmittedWidth: 0,
+            requestedBitrate: 0,
           }
         ]);
       });
