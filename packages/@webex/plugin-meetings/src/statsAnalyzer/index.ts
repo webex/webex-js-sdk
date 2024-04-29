@@ -11,6 +11,7 @@ import {
   NETWORK_TYPE,
   MEDIA_DEVICES,
   _UNKNOWN_,
+  CALLING_SERVICE_TYPE,
 } from '../constants';
 import {
   emptyAudioReceive,
@@ -387,7 +388,7 @@ export class StatsAnalyzer extends EventsScope {
     }
 
     newMqa.networkType = this.statsResults.connectionType.local.networkType;
-    newMqa.callingServiceType = 'LOCUS';
+    newMqa.callingServiceType = CALLING_SERVICE_TYPE;
 
     this.mqaSentCount += 1;
 
