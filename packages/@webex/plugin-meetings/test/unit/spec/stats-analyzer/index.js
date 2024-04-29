@@ -1202,6 +1202,7 @@ describe('plugin-meetings', () => {
             },
             transmittedKeyFrames: 0,
             requestedKeyFrames: 0,
+            requestedBitrate: 0,
           },
         ]);
         assert.deepEqual(mqeData.audioTransmit[1].streams, [
@@ -1218,6 +1219,7 @@ describe('plugin-meetings', () => {
             },
             transmittedKeyFrames: 0,
             requestedKeyFrames: 0,
+            requestedBitrate: 0,
           },
         ]);
         assert.deepEqual(mqeData.audioReceive[0].streams, [
@@ -1306,6 +1308,7 @@ describe('plugin-meetings', () => {
             transmittedKeyFramesStartup: 0,
             transmittedKeyFramesUnknown: 0,
             transmittedWidth: 0,
+            requestedBitrate: 0,
           },
         ]);
         assert.deepEqual(mqeData.videoTransmit[1].streams, [
@@ -1329,6 +1332,7 @@ describe('plugin-meetings', () => {
             maxNoiseLevel: 0,
             minRegionQp: 0,
             remoteConfigurationChanges: 0,
+            requestedBitrate: 0,
             requestedFrameSize: 0,
             requestedKeyFrames: 0,
             transmittedFrameSize: 0,
