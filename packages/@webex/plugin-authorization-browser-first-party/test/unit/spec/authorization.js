@@ -7,6 +7,7 @@
 import url from 'url';
 
 import {assert} from '@webex/test-helper-chai';
+import {browserOnly} from '@webex/test-helper-mocha';
 import sinon from 'sinon';
 import MockWebex from '@webex/test-helper-mock-webex';
 import {Credentials, Services} from '@webex/webex-core';
