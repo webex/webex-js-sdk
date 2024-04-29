@@ -5706,7 +5706,7 @@ export default class Meeting extends StatelessWebexPlugin {
               logText: `${LOG_HEADER} Roap Offer`,
             }
           ).catch(() => {
-            this.deferSDPAnswer.reject();
+            this.deferSDPAnswer.reject(new Error('failed to send ROAP SDP offer'));
             clearTimeout(this.sdpResponseTimer);
             this.sdpResponseTimer = undefined;
           });
