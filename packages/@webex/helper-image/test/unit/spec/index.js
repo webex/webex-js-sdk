@@ -3,7 +3,8 @@
  */
 
 import {assert} from '@webex/test-helper-chai';
-import {readExifData, orient, updateImageOrientation} from '@webex/helper-image';
+import {readExifData, updateImageOrientation} from '@webex/helper-image';
+import {orient} from './../../../src/orient';
 import fileHelper from '@webex/test-helper-file';
 import sinon from 'sinon';
 import {browserOnly, nodeOnly} from '@webex/test-helper-mocha';
