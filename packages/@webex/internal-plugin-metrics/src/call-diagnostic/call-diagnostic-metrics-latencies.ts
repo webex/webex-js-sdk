@@ -31,6 +31,7 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
    */
   public clearTimestamps() {
     this.latencyTimestamps.clear();
+    this.precomputedLatencies.clear();
   }
 
   /**
@@ -57,7 +58,8 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
   /**
    * Store timestamp value
    * @param key - key
-   * @param value -value
+   * @param value - value
+   * @param options - store options
    * @throws
    * @returns
    */
@@ -93,31 +95,31 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
    * Store precomputed latency value
    * @param key - key
    * @param value - value
-   * @param overwrite - overwrite existing value or add it
+   * @param accumulate - when it is true, it overwrites existing value with sum of the current value and the new measurement otherwise just store the new measurement
    * @throws
    * @returns
    */
-  public saveLatency(key: PreComputedLatencies, value: number, overwrite = true) {
-    const existingValue = overwrite ? 0 : this.precomputedLatencies.get(key) || 0;
+  public saveLatency(key: PreComputedLatencies, value: number, accumulate = false) {
+    const existingValue = accumulate ? this.precomputedLatencies.get(key) || 0 : 0;
     this.precomputedLatencies.set(key, value + existingValue);
   }
 
   /**
    * Measure latency for a request
-   * @param key - key
    * @param callback - callback for which you would like to measure latency
-   * @param overwrite - overwite existing value or add to it
+   * @param key - key
+   * @param accumulate - when it is true, it overwrites existing value with sum of the current value and the new measurement otherwise just store the new measurement
    * @returns
    */
   public measureLatency(
-    callback: () => Promise<any>,
+    callback: () => Promise<unknown>,
     key: PreComputedLatencies,
-    overwrite = false
+    accumulate = false
   ) {
     const start = performance.now();
 
     return callback().finally(() => {
-      this.saveLatency(key, performance.now() - start, overwrite);
+      this.saveLatency(key, performance.now() - start, accumulate);
     });
   }
 
@@ -483,8 +485,23 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
   }
 
   /**
-   * Total latency for all other app api requests.
+   * Get the latency for downloading intelligence models.
+   * @returns - latency
+   */
+  public getDownloadIntelligenceModelsReqResp() {
+    const downloadIntelligenceModelsReqResp = this.precomputedLatencies.get(
+      'internal.api.fetch.intelligence.models'
+    );
+
+    return downloadIntelligenceModelsReqResp
+      ? Math.floor(downloadIntelligenceModelsReqResp)
+      : undefined;
+  }
+
+  /**
+   * Get the total latency for all other app API requests.
    * Excludes meeting info, because it's measured separately.
+   * @returns - latency
    */
   public getOtherAppApiReqResp() {
     const otherAppApiJMT = this.precomputedLatencies.get('internal.other.app.api.time');

@@ -1,5 +1,5 @@
 /*!
- * Copyright (c) 2015-2023 Cisco Systems, Inc. See the LICENSE file.
+ * Copyright (c) 2015-2023 Cisco Systems, Inc. See LICENSE file.
  */
 
 // Note: this file is written using commonjs instead of import/export to
