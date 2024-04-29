@@ -7,7 +7,12 @@ import {ConnectionState} from '@webex/internal-media-core';
 import {StatsAnalyzer, EVENTS} from '../../../../src/statsAnalyzer';
 import NetworkQualityMonitor from '../../../../src/networkQualityMonitor';
 import testUtils from '../../../utils/testUtils';
-import {MEDIA_DEVICES, MQA_INTERVAL, _UNKNOWN_} from '@webex/plugin-meetings/src/constants';
+import {
+  MEDIA_DEVICES,
+  MQA_INTERVAL,
+  _UNKNOWN_,
+  CALLING_SERVICE_TYPE,
+} from "@webex/plugin-meetings/src/constants";
 import LoggerProxy from '../../../../src/common/logs/logger-proxy';
 import LoggerConfig from '../../../../src/common/logs/logger-config';
 
@@ -811,7 +816,7 @@ describe('plugin-meetings', () => {
         await startStatsAnalyzer({expected: {receiveVideo: true}});
         await progressTime();
 
-        assert.strictEqual(mqeData.callingServiceType, 'LOCUS');
+        assert.strictEqual(mqeData.callingServiceType, CALLING_SERVICE_TYPE);
       });
 
       it('emits the correct transmittedFrameRate/receivedFrameRate', async () => {
