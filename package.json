@@ -1,6 +1,6 @@
 {
   "name": "webex-js-sdk",
-  "version": "3.0.0-beta.419",
+  "version": "3.0.0-beta.420",
   "description": "JavaScript SDK for interacting with the Webex API",
   "homepage": "https://github.com/webex/webex-js-sdk",
   "bugs": {
@@ -49,7 +49,7 @@
     "get-current-version": "node ./tooling/index.js version current",
     "get-next-version": "node ./tooling/index.js version next --alwaysIncrement --includeSamples",
     "deps:generate": "node ./tooling/dep2.js",
-    "samples:build": "node ./tooling/index.js build --only-samples",
+    "samples:build": "yarn build && node ./tooling/index.js build --only-samples",
     "samples:serve": "webpack serve --color --env NODE_ENV=development",
     "samples:serve:integration": "webpack serve --color --env NODE_ENV=test",
     "samples:test": "NODE_ENV=test npx wdio run wdio.conf.js",
