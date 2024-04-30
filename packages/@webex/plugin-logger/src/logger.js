@@ -3,7 +3,7 @@
  */
 
 import {inBrowser, patterns} from '@webex/common';
-import {WebexHttpError, WebexPlugin} from '@webex/webex-core';
+import {WebexPlugin} from '@webex/webex-core';
 import {cloneDeep, has, isArray, isObject, isString} from 'lodash';
 
 const precedence = {
@@ -351,7 +351,7 @@ function makeLoggerMethod(level, impl, type, neverPrint = false, alwaysBuffer = 
 
       const filtered = [clientName, ...this.filter(...args)];
       const stringified = filtered.map((item) => {
-        if (item instanceof WebexHttpError) {
+        if (item instanceof Error) {
           return item.toString();
         }
         if (typeof item === 'object') {

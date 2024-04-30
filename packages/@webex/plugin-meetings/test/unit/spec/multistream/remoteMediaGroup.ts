@@ -6,7 +6,6 @@ import {RemoteMedia} from '@webex/plugin-meetings/src/multistream/remoteMedia';
 import {ReceiveSlot} from '@webex/plugin-meetings/src/multistream/receiveSlot';
 import sinon from 'sinon';
 import {assert} from '@webex/test-helper-chai';
-import { NamedMediaGroup } from "@webex/json-multistream";
 
 class FakeSlot extends EventEmitter {
   public mediaType: MediaType;

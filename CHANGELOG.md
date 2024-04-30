@@ -2,6 +2,136 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.420](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.419...v3.0.0-beta.420) (2024-04-29)
+
+
+### Bug Fixes
+
+* **tooling:** fix-samples-build-cmd ([#3579](https://github.com/webex/webex-js-sdk/issues/3579)) ([7d086a0](https://github.com/webex/webex-js-sdk/commit/7d086a00e826c53feb40ed1e34ccc72bbf34d128))
+
+## [3.0.0-beta.419](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.418...v3.0.0-beta.419) (2024-04-29)
+
+
+### Bug Fixes
+
+* improved logging of errors ([#3570](https://github.com/webex/webex-js-sdk/issues/3570)) ([a1d1710](https://github.com/webex/webex-js-sdk/commit/a1d1710ee7b4e428918ece092548f8d47c5596f4))
+
+## [3.0.0-beta.418](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.417...v3.0.0-beta.418) (2024-04-26)
+
+
+### Features
+
+* **metrics:** add downloadIntelligenceModelsReqResp to latency metrics ([#3549](https://github.com/webex/webex-js-sdk/issues/3549)) ([d39b06a](https://github.com/webex/webex-js-sdk/commit/d39b06ad6a0826e91cfe8d20f5280bdba26f69c4))
+
+## [3.0.0-beta.417](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.416...v3.0.0-beta.417) (2024-04-26)
+
+
+### Features
+
+* **internal-plugin-metrics:** get cluster latency ([#3561](https://github.com/webex/webex-js-sdk/issues/3561)) ([e92037f](https://github.com/webex/webex-js-sdk/commit/e92037f7ff7348a0e4515228009c297cb915355b))
+
+## [3.0.0-beta.416](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.415...v3.0.0-beta.416) (2024-04-26)
+
+
+### Bug Fixes
+
+* remove the logic of setting b=TIAS lines in the internal media core ([#3574](https://github.com/webex/webex-js-sdk/issues/3574)) ([bfac288](https://github.com/webex/webex-js-sdk/commit/bfac288bab94be77b418f6e3918f2f268c4fe90d))
+
+## [3.0.0-beta.415](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.414...v3.0.0-beta.415) (2024-04-25)
+
+
+### Features
+
+* Phase 2 moving non jest dependent packages ([#3499](https://github.com/webex/webex-js-sdk/issues/3499)) ([4e5a8f9](https://github.com/webex/webex-js-sdk/commit/4e5a8f9e1c18b93e47153ece193a017a82caac9e))
+
+## [3.0.0-beta.414](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.413...v3.0.0-beta.414) (2024-04-25)
+
+
+### Bug Fixes
+
+* **meetings-plugin:** increase timeout for multistream connection establishment ([#3567](https://github.com/webex/webex-js-sdk/issues/3567)) ([1f03ca4](https://github.com/webex/webex-js-sdk/commit/1f03ca4ea2610f40744cf3d32f8075dfc37a9bef))
+
+## [3.0.0-beta.413](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.412...v3.0.0-beta.413) (2024-04-24)
+
+
+### Features
+
+* **metrics:** CA userType update ([#3556](https://github.com/webex/webex-js-sdk/issues/3556)) ([4a31c38](https://github.com/webex/webex-js-sdk/commit/4a31c38532422baaf0e699dba706c1eaf07933ed))
+
+## [3.0.0-beta.412](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.411...v3.0.0-beta.412) (2024-04-24)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** fixed unittests after effect lib update ([#3562](https://github.com/webex/webex-js-sdk/issues/3562)) ([0e38b30](https://github.com/webex/webex-js-sdk/commit/0e38b308530ce002b994b3f4a502d1c3f767656b))
+
+## [3.0.0-beta.411](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.410...v3.0.0-beta.411) (2024-04-24)
+
+
+### Features
+
+* remove authIntelligenceGenerationReqResp latency ([#3559](https://github.com/webex/webex-js-sdk/issues/3559)) ([a19dde2](https://github.com/webex/webex-js-sdk/commit/a19dde2da697cb193f486c958469b30476cd25a3))
+
+## [3.0.0-beta.410](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.409...v3.0.0-beta.410) (2024-04-24)
+
+
+### Features
+
+* **internal-pligin-metrics:** latency for exhange ci token ([#3560](https://github.com/webex/webex-js-sdk/issues/3560)) ([9993b17](https://github.com/webex/webex-js-sdk/commit/9993b17a36b316f11188acd2be4f297582fdc1c5))
+
+## [3.0.0-beta.409](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.408...v3.0.0-beta.409) (2024-04-23)
+
+
+### Bug Fixes
+
+* **media-helpers:** vbg effect on local stream ([#3557](https://github.com/webex/webex-js-sdk/issues/3557)) ([507b0f2](https://github.com/webex/webex-js-sdk/commit/507b0f21d85013652c14a8d81fab2c511d59c660))
+
+## [3.0.0-beta.408](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.407...v3.0.0-beta.408) (2024-04-23)
+
+
+### Features
+
+* **metrics:** Add client.media.render.start event ([#3555](https://github.com/webex/webex-js-sdk/issues/3555)) ([bde0e6e](https://github.com/webex/webex-js-sdk/commit/bde0e6ef8c4aec324768796e85f0fa365e256aec))
+
+## [3.0.0-beta.407](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.406...v3.0.0-beta.407) (2024-04-22)
+
+
+### Bug Fixes
+
+* **metrics:** adding browserLaunchMethod metric in CA ([#3550](https://github.com/webex/webex-js-sdk/issues/3550)) ([847e617](https://github.com/webex/webex-js-sdk/commit/847e6171ab37d6e752ebd921d430cc8e45cd18e2))
+
+## [3.0.0-beta.406](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.404...v3.0.0-beta.406) (2024-04-19)
+
+
+### Features
+
+* **mercury:** remember last error ([#3545](https://github.com/webex/webex-js-sdk/issues/3545)) ([11aaebe](https://github.com/webex/webex-js-sdk/commit/11aaebe3422bc9b78fac1936dbe076345645000b))
+
+
+### Bug Fixes
+
+* **plugin-meetings:** add streams from simulcasts to media quality events ([#3528](https://github.com/webex/webex-js-sdk/issues/3528)) ([54518bc](https://github.com/webex/webex-js-sdk/commit/54518bcc9d3313d4f1898510967d106724fa00a4))
+* **plugin-meetings:** handle meetingInfo response without permission token ([#3541](https://github.com/webex/webex-js-sdk/issues/3541)) ([accf8c7](https://github.com/webex/webex-js-sdk/commit/accf8c7cee7cb19969e7d3234ead3026dd45c0d5))
+
+## [3.0.0-beta.405](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.404...v3.0.0-beta.405) (2024-04-19)
+
+
+### Features
+
+* **mercury:** remember last error ([#3545](https://github.com/webex/webex-js-sdk/issues/3545)) ([11aaebe](https://github.com/webex/webex-js-sdk/commit/11aaebe3422bc9b78fac1936dbe076345645000b))
+
+
+### Bug Fixes
+
+* **plugin-meetings:** handle meetingInfo response without permission token ([#3541](https://github.com/webex/webex-js-sdk/issues/3541)) ([accf8c7](https://github.com/webex/webex-js-sdk/commit/accf8c7cee7cb19969e7d3234ead3026dd45c0d5))
+
+## [3.0.0-beta.404](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.403...v3.0.0-beta.404) (2024-04-18)
+
+
+### Bug Fixes
+
+* **si:** import NamedMediaGroup from internal-media-core lib ([#3542](https://github.com/webex/webex-js-sdk/issues/3542)) ([80f4236](https://github.com/webex/webex-js-sdk/commit/80f4236eb9cdb15e2e76cb26be48c3c2de190a2d))
+
 ## [3.0.0-beta.403](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.402...v3.0.0-beta.403) (2024-04-16)
 
 

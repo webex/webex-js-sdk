@@ -1,6 +1,6 @@
 {
   "name": "webex-js-sdk",
-  "version": "3.0.0-beta.403",
+  "version": "3.0.0-beta.420",
   "description": "JavaScript SDK for interacting with the Webex API",
   "homepage": "https://github.com/webex/webex-js-sdk",
   "bugs": {
@@ -49,7 +49,7 @@
     "get-current-version": "node ./tooling/index.js version current",
     "get-next-version": "node ./tooling/index.js version next --alwaysIncrement --includeSamples",
     "deps:generate": "node ./tooling/dep2.js",
-    "samples:build": "node ./tooling/index.js build --only-samples",
+    "samples:build": "yarn build && node ./tooling/index.js build --only-samples",
     "samples:serve": "webpack serve --color --env NODE_ENV=development",
     "samples:serve:integration": "webpack serve --color --env NODE_ENV=test",
     "samples:test": "NODE_ENV=test npx wdio run wdio.conf.js",
@@ -89,6 +89,7 @@
     "@commitlint/cli": "^17.1.2",
     "@commitlint/config-conventional": "^17.1.0",
     "@sinonjs/fake-timers": "^6.0.1",
+    "@types/circular-dependency-plugin": "^5",
     "@types/format-util": "^1",
     "@typescript-eslint/eslint-plugin": "^5.38.1",
     "@typescript-eslint/parser": "^5.38.1",
@@ -113,6 +114,7 @@
     "chai": "^4.3.4",
     "chai-as-promised": "^7.1.1",
     "chromedriver": "^101.0.0",
+    "circular-dependency-plugin": "^5.2.2",
     "core-js": "^3.26.0",
     "debug": "^4.3.4",
     "detective": "^5.2.1",

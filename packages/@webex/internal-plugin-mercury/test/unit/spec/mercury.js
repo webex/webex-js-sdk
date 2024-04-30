@@ -152,7 +152,6 @@ describe('plugin-mercury', () => {
       });
 
       describe('when `maxRetries` is set', () => {
-
         const check = () => {
           socketOpenStub.restore();
           socketOpenStub = sinon.stub(Socket.prototype, 'open');
@@ -570,7 +569,10 @@ describe('plugin-mercury', () => {
             // The socket will never be unset (which seems bad)
             assert.isDefined(mercury.socket, 'Mercury socket is not defined');
 
-            return assert.isRejected(promise);
+            return assert.isRejected(promise).then((error) => {
+              // connection did not fail, so no last error
+              assert.isUndefined(mercury.getLastError());
+            });
           });
         });
 
@@ -591,6 +593,30 @@ describe('plugin-mercury', () => {
               reason.message,
               'Mercury: prevent socket open when backoffCall no longer defined'
             );
+          });
+        });
+
+        it('sets lastError when retrying', () => {
+          const realError = new Error('FORCED');
+
+          socketOpenStub.restore();
+          socketOpenStub = sinon.stub(Socket.prototype, 'open');
+          socketOpenStub.onCall(0).returns(Promise.reject(realError));
+          const promise = mercury.connect();
+
+          // Wait for the connect call to setup
+          return promiseTick(webex.internal.mercury.config.backoffTimeReset).then(() => {
+            // Calling disconnect will abort the backoffCall, close the socket, and
+            // reject the connect
+            mercury.disconnect();
+
+            return assert.isRejected(promise).then((error) => {
+              const lastError = mercury.getLastError();
+
+              assert.equal(error.message, "Mercury Connection Aborted");
+              assert.isDefined(lastError);
+              assert.equal(lastError, realError);
+            });
           });
         });
       });

@@ -231,6 +231,18 @@ describe('plugin-logger', () => {
       assert.deepEqual(webex.logger.buffer[0][4], 'bar');
       assert.deepEqual(webex.logger.buffer[0][5], '{"headers":{"trackingid":"123"},"test":"object","nested":{"test2":"object2"}}');
     });
+
+    it('formats Errors correctly', async () => {
+      webex.config.logger.level = 'trace';
+      const err = new Error('fake error for testing')
+
+      webex.logger.log('I got this error:', err);
+      assert.lengthOf(webex.logger.buffer, 1);
+      assert.deepEqual(webex.logger.buffer[0][2], 'wx-js-sdk');
+      assert.deepEqual(webex.logger.buffer[0][3], 'I got this error:');
+      assert.deepEqual(webex.logger.buffer[0][4], 'Error: fake error for testing');
+
+    });
   });
 
   // We can't manipulate NODE_ENV in karma, tests, so run this chunk only in
