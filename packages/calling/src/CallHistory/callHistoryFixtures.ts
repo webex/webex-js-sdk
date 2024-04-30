@@ -1,4 +1,11 @@
-import {Disposition, MOBIUS_EVENT_KEYS, CallSessionEvent, SessionType} from '../Events/types';
+import {
+  Disposition,
+  MOBIUS_EVENT_KEYS,
+  CallSessionEvent,
+  SessionType,
+  CallSessionViewedEvent,
+} from '../Events/types';
+import {UpdateMissedCallsResponse} from './types';
 
 export const sortedCallHistory = {
   body: {
@@ -365,6 +372,10 @@ const SPARK_CALL_SESSION = {
   correlationIds: ['dfe83701-3e1f-4e1d-8aeb-6fe81f53b653'],
 };
 
+const SPARK_CALL_VIEWED_SESSION = {
+  sessionId: '2ce4b9e0-7ee7-12a1-4a94-df524443b520',
+};
+
 export const MOCK_SESSION_EVENT: CallSessionEvent = {
   id: 'id',
   data: {
@@ -389,4 +400,42 @@ export const MOCK_SESSION_EVENT_LEGACY: CallSessionEvent = {
   },
   timestamp: 12345,
   trackingId: 'tracking-id',
+};
+
+export const MOCK_SESSION_EVENT_VIEWED: CallSessionViewedEvent = {
+  id: 'id',
+  data: {
+    userReadSessions: {
+      userReadSessions: [SPARK_CALL_VIEWED_SESSION],
+      statusCode: 0,
+    },
+    eventType: MOBIUS_EVENT_KEYS.CALL_SESSION_EVENT_VIEWED,
+  },
+  timestamp: 12345,
+  trackingId: 'tracking-id',
+};
+
+export const MOCK_UPDATE_MISSED_CALL_RESPONSE: UpdateMissedCallsResponse = {
+  statusCode: 200,
+  data: {
+    data: 'Missed calls are read by the user.',
+  },
+  message: 'SUCCESS',
+};
+export const janusSetReadStateUrl =
+  'https://janus-intb.ciscospark.com/janus/api/v1/history/userSessions/setReadState';
+
+export const ERROR_DETAILS_401 = {
+  statusCode: 401,
+  data: {
+    error: 'User is unauthorised, possible token expiry',
+  },
+  message: 'FAILURE',
+};
+export const ERROR_DETAILS_400 = {
+  statusCode: 400,
+  data: {
+    error: '400 Bad request',
+  },
+  message: 'FAILURE',
 };

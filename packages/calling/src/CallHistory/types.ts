@@ -1,5 +1,5 @@
 import {Eventing} from '../Events/impl';
-import {CallHistoryEventTypes, UserSession} from '../Events/types';
+import {CallHistoryEventTypes, EndTimeSessionId, UserSession} from '../Events/types';
 import {LOGGER} from '../Logger/types';
 import {SORT, SORT_BY} from '../common/types';
 
@@ -11,6 +11,15 @@ export type JanusResponseEvent = {
   statusCode: number;
   data: {
     userSessions?: UserSession[];
+    error?: string;
+  };
+  message: string | null;
+};
+
+export type UpdateMissedCallsResponse = {
+  statusCode: number;
+  data: {
+    data?: string;
     error?: string;
   };
   message: string | null;
@@ -41,4 +50,5 @@ export interface ICallHistory extends Eventing<CallHistoryEventTypes> {
     sort: SORT,
     sortBy: SORT_BY
   ): Promise<JanusResponseEvent>;
+  updateMissedCalls(endTimeSessionIds: EndTimeSessionId[]): Promise<UpdateMissedCallsResponse>;
 }
