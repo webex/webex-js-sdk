@@ -140,7 +140,7 @@ describe('internal-plugin-metrics', () => {
         assert.calledOnceWithExactly(
           webex.logger.error,
           'Pre Login Metrics -->',
-          `PreLoginMetricsBatcher: @submitHttpRequest#prelogin-ca-batch-${expectedBatchId}. Request failed:`,
+          `PreLoginMetricsBatcher: @submitHttpRequest#prelogin-batch-${expectedBatchId}. Request failed:`,
           `error: formattedError`
         );
         assert.lengthOf(
