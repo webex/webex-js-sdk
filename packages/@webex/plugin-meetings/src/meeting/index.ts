@@ -6750,7 +6750,11 @@ export default class Meeting extends StatelessWebexPlugin {
         turnServerInfo
       );
 
-      await Meeting.handleDeviceLogging();
+      if (audioEnabled || videoEnabled) {
+        await Meeting.handleDeviceLogging();
+      } else {
+        LoggerProxy.logger.info(`${LOG_HEADER} device logging not required`);
+      }
 
       if (this.mediaProperties.hasLocalShareStream()) {
         await this.enqueueScreenShareFloorRequest();
