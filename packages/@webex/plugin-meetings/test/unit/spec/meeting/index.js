@@ -3609,7 +3609,7 @@ describe('plugin-meetings', () => {
           })
 
           it('addMedia() works correctly when media is disabled with no streams to publish', async () => {
-            await meeting.addMedia({audioEnabled: false, videoEnabled: false});
+            await meeting.addMedia({audioEnabled: false});
             await simulateRoapOffer();
             await simulateRoapOk();
 
