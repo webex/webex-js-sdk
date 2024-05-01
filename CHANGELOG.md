@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.421](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.420...v3.0.0-beta.421) (2024-05-01)
+
+
+### Bug Fixes
+
+* **internal-plugin-metrics:** batch prelogin client metrics ([#3543](https://github.com/webex/webex-js-sdk/issues/3543)) ([2d49bc6](https://github.com/webex/webex-js-sdk/commit/2d49bc6dd17871d250312bedc9c64271a04fb8f2))
+
 ## [3.0.0-beta.420](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.419...v3.0.0-beta.420) (2024-04-29)
 
 
