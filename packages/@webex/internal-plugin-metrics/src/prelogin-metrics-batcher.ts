@@ -48,7 +48,7 @@ const PreLoginMetricsBatcher = Batcher.extend({
    * @returns {Promise<any>}
    */
   submitHttpRequest(payload: any) {
-    const batchId = uniqueId('prelogin-ca-batch-');
+    const batchId = uniqueId('prelogin-batch-');
     if (this.preLoginId === undefined) {
       this.webex.logger.error(
         PRE_LOGIN_METRICS_IDENTIFIER,
