@@ -49,7 +49,7 @@ interface LocalMicrophoneStreamEvents {
 }
 
 interface LocalCameraStreamEvents {
-  [LocalMicrophoneStreamEventNames.ServerMuted]: TypedEvent<
+  [LocalCameraStreamEventNames.ServerMuted]: TypedEvent<
     (muted: boolean, reason: ServerMuteReason) => void
   >;
 }
