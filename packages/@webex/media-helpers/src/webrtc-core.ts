@@ -32,12 +32,10 @@ export type ServerMuteReason =
   | 'clientRequestFailed' // client called setUserMuted() but server request failed
   | 'localUnmuteRequired'; // server forced the client to be unmuted
 
-// these events are in addition to WCME events. This will be properly typed once webrtc-core event types inheritance is fixed
 export enum LocalMicrophoneStreamEventNames {
   ServerMuted = 'muted:byServer',
 }
 
-// these events are in addition to WCME events. This will be properly typed once webrtc-core event types inheritance is fixed
 export enum LocalCameraStreamEventNames {
   ServerMuted = 'muted:byServer',
 }
@@ -49,7 +47,7 @@ interface LocalMicrophoneStreamEvents {
 }
 
 interface LocalCameraStreamEvents {
-  [LocalMicrophoneStreamEventNames.ServerMuted]: TypedEvent<
+  [LocalCameraStreamEventNames.ServerMuted]: TypedEvent<
     (muted: boolean, reason: ServerMuteReason) => void
   >;
 }
