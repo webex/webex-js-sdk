@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.423](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.422...v3.0.0-beta.423) (2024-05-02)
+
+
+### Bug Fixes
+
+* **media-helpers:** change type for local camera stream events ([#3584](https://github.com/webex/webex-js-sdk/issues/3584)) ([5bf0922](https://github.com/webex/webex-js-sdk/commit/5bf0922819bf4e63491fb856ebd4db293d0ad5ec))
+
 ## [3.0.0-beta.422](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.421...v3.0.0-beta.422) (2024-05-02)
 
 
