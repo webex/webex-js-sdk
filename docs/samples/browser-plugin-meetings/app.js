@@ -1367,7 +1367,8 @@ async function handleVbg() {
         effect = await webex.meetings.createVirtualBackgroundEffect({
           "mode": modeBtn.value,
           "bgImageUrl": blurVBGImageUrl,
-          "bgVideoUrl": blurVBGVideoUrl
+          "bgVideoUrl": blurVBGVideoUrl,
+          env: integrationEnv.checked ? 'int' : 'prod',
         });
         handleEffectsButton(toggleVbgBtn, VBG, effect);
         await localMedia.cameraStream.addEffect(effect);
@@ -1444,7 +1445,7 @@ async function handleBNR() {
       console.log('MeetingControls#handleBNR() :: applying BNR to local microphone stream');
 
       if (!effect) {
-        effect = await webex.meetings.createNoiseReductionEffect();
+        effect = await webex.meetings.createNoiseReductionEffect({env: integrationEnv.checked ? 'int' : 'prod'});
         handleEffectsButton(toggleBNRBtn, BNR, effect);
         await localMedia.microphoneStream.addEffect(effect);
       }
