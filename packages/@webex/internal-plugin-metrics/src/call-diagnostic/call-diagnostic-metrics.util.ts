@@ -252,6 +252,7 @@ export const prepareDiagnosticMetricItem = (webex: any, item: any) => {
       joinTimes.meetingInfoReqResp = cdl.getMeetingInfoReqResp();
       joinTimes.clickToInterstitial = cdl.getClickToInterstitial();
       joinTimes.refreshCaptchaServiceReqResp = cdl.getRefreshCaptchaReqResp();
+      joinTimes.downloadIntelligenceModelsReqResp = cdl.getDownloadIntelligenceModelsReqResp();
       break;
 
     case 'client.call.initiated':
@@ -259,6 +260,7 @@ export const prepareDiagnosticMetricItem = (webex: any, item: any) => {
       joinTimes.showInterstitialTime = cdl.getShowInterstitialTime();
       joinTimes.registerWDMDeviceJMT = cdl.getRegisterWDMDeviceJMT();
       joinTimes.getU2CTime = cdl.getU2CTime();
+      joinTimes.getReachabilityClustersReqResp = cdl.getReachabilityClustersReqResp();
       break;
 
     case 'client.locus.join.response':

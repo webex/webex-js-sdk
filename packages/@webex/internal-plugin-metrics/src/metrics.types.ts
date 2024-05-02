@@ -169,9 +169,11 @@ export type BuildClientEventFetchRequestOptions = (args: {
 export type PreComputedLatencies =
   | 'internal.client.pageJMT'
   | 'internal.download.time'
+  | 'internal.get.cluster.time'
   | 'internal.click.to.interstitial'
   | 'internal.refresh.captcha.time'
   | 'internal.exchange.ci.token.time'
   | 'internal.get.u2c.time'
   | 'internal.call.init.join.req'
-  | 'internal.other.app.api.time';
+  | 'internal.other.app.api.time'
+  | 'internal.api.fetch.intelligence.models';
