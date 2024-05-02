@@ -1,4 +1,3 @@
-/* eslint-disable prettier/prettier */
 /* eslint-disable dot-notation */
 /* eslint-disable no-underscore-dangle */
 import SDKConnector from '../SDKConnector';
@@ -60,8 +59,6 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
   };
 
   private userSessions: UserSession[] | undefined;
-  logger: any;
-  convertedSessionIds: any;
 
   /**
    * @ignore
@@ -148,9 +145,9 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
     }
   }
 
-   /**
-   * Function to update the missed call status in the call history.
-   * @returns - response details or error status.
+  /**
+   * Function to update the missed call status in the call history using sessionId and time.
+   * @returns - response details with success or error status.
    */
   public async updateMissedCalls(
     endTimeSessionIds: EndTimeSessionId[]
@@ -159,7 +156,7 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
       file: CALL_HISTORY_FILE,
       method: 'updateMissedCalls',
     };
-    //* Convert endTime to milliseconds for each session *//
+    // Convert endTime to milliseconds for each session
     const convertedSessionIds: ConvertedEndTimeAndSessionId[] = endTimeSessionIds.map(
       (session) => ({
         ...session,
@@ -171,7 +168,7 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
     };
     try {
       const updateMissedCallContentUrl = `${this.janusUrl}/${HISTORY}/${USER_SESSIONS}/${SET_READ_STATE}`;
-      //* Make a POST request to update missed calls *//
+      // Make a POST request to update missed calls
       const response = await fetch(updateMissedCallContentUrl, {
         method: HTTP_METHODS.POST,
         headers: {
@@ -195,8 +192,8 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
       };
 
       return responseDetails;
-    } catch (err: unknown) {  
-      //* Catch the 401 error from try block, return the error object to user *//
+    } catch (err: unknown) {
+      // Catch the 401 error from try block, return the error object to user
       const errorInfo = {
         statusCode: err instanceof Error ? Number(err.message) : '',
       } as WebexRequestPayload;
