@@ -177,12 +177,12 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
         },
         body: JSON.stringify(requestBody),
       });
-      log.info(`missed call : ${response}`, this.loggerContext);
       if (!response.ok) {
         throw new Error(`${response.status}`);
       }
 
       const data: UpdateMissedCallsResponse = await response.json();
+      log.info(`Missed calls are succesfully read by the user`, loggerContext);
       const responseDetails: UpdateMissedCallsResponse = {
         statusCode: data.statusCode as number,
         data: {
