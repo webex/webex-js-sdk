@@ -56,6 +56,7 @@ describe('MediaConnectionAwaiter', () => {
           promiseRejected = true;
         });
 
+      await testUtils.flushPromises();
       assert.equal(promiseResolved, false);
       assert.equal(promiseRejected, false);
 
@@ -93,6 +94,7 @@ describe('MediaConnectionAwaiter', () => {
           promiseRejected = true;
         });
 
+      await testUtils.flushPromises();
       assert.equal(promiseResolved, false);
       assert.equal(promiseRejected, false);
 
@@ -130,6 +132,7 @@ describe('MediaConnectionAwaiter', () => {
           promiseRejected = true;
         });
 
+      await testUtils.flushPromises();
       assert.equal(promiseResolved, false);
       assert.equal(promiseRejected, false);
 
@@ -137,12 +140,11 @@ describe('MediaConnectionAwaiter', () => {
       assert.calledTwice(mockMC.on);
       assert.equal(mockMC.on.getCall(0).args[0], Event.CONNECTION_STATE_CHANGED);
       assert.equal(mockMC.on.getCall(1).args[0], Event.ICE_GATHERING_STATE_CHANGED);
-      const connectionStateListener = mockMC.on.getCall(0).args[1];
-      const iceGatheringListener = mockMC.on.getCall(1).args[1];
+      const listener = mockMC.on.getCall(0).args[1];
 
       // call the listener and pretend we are now connected
       mockMC.getConnectionState.returns(ConnectionState.Connected);
-      connectionStateListener();
+      listener();
       await testUtils.flushPromises();
 
       assert.equal(promiseResolved, true);
@@ -172,6 +174,7 @@ describe('MediaConnectionAwaiter', () => {
           promiseRejected = true;
         });
 
+      await testUtils.flushPromises();
       assert.equal(promiseResolved, false);
       assert.equal(promiseRejected, false);
 
@@ -217,6 +220,7 @@ describe('MediaConnectionAwaiter', () => {
           promiseRejected = true;
         });
 
+      await testUtils.flushPromises();
       assert.equal(promiseResolved, false);
       assert.equal(promiseRejected, false);
 
@@ -263,6 +267,7 @@ describe('MediaConnectionAwaiter', () => {
           promiseRejected = true;
         });
 
+      await testUtils.flushPromises();
       assert.equal(promiseResolved, false);
       assert.equal(promiseRejected, false);
 
@@ -303,6 +308,7 @@ describe('MediaConnectionAwaiter', () => {
           promiseRejected = true;
         });
 
+      await testUtils.flushPromises();
       assert.equal(promiseResolved, false);
       assert.equal(promiseRejected, false);
 
