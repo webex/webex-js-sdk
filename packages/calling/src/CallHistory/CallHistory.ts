@@ -19,7 +19,7 @@ import {
   HISTORY,
   LIMIT,
   NUMBER_OF_DAYS,
-  SET_READ_STATE,
+  UPDATE_MISSED_CALLS_ENDPOINT,
   SET_READ_STATE_SUCCESS_MESSAGE,
 } from './constants';
 import {STATUS_CODE, SUCCESS_MESSAGE, USER_SESSIONS} from '../common/constants';
@@ -31,7 +31,7 @@ import {
   UserSession,
   EndTimeSessionId,
   CallSessionViewedEvent,
-  ConvertedEndTimeAndSessionId,
+  SanitizedEndTimeAndSessionId,
 } from '../Events/types';
 import {Eventing} from '../Events/impl';
 /**
@@ -157,17 +157,15 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
       method: 'updateMissedCalls',
     };
     // Convert endTime to milliseconds for each session
-    const convertedSessionIds: ConvertedEndTimeAndSessionId[] = endTimeSessionIds.map(
-      (session) => ({
-        ...session,
-        endTime: new Date(session.endTime).getTime(),
-      })
-    );
+    const santizedSessionIds: SanitizedEndTimeAndSessionId[] = endTimeSessionIds.map((session) => ({
+      ...session,
+      endTime: new Date(session.endTime).getTime(),
+    }));
     const requestBody = {
-      endTimeSessionIds: convertedSessionIds,
+      endTimeSessionIds: santizedSessionIds,
     };
     try {
-      const updateMissedCallContentUrl = `${this.janusUrl}/${HISTORY}/${USER_SESSIONS}/${SET_READ_STATE}`;
+      const updateMissedCallContentUrl = `${this.janusUrl}/${HISTORY}/${USER_SESSIONS}/${UPDATE_MISSED_CALLS_ENDPOINT}`;
       // Make a POST request to update missed calls
       const response = await fetch(updateMissedCallContentUrl, {
         method: HTTP_METHODS.POST,

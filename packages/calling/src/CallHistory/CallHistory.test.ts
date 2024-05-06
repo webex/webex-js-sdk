@@ -128,28 +128,27 @@ describe('Call history tests', () => {
       callSessionCallback(MOCK_SESSION_EVENT_LEGACY);
     });
 
-    it('verify the user viewed session event for missed calls update', (done) => {
-      callHistory.on(
-        COMMON_EVENT_KEYS.CALL_HISTORY_USER_VIEWED_SESSIONS,
-        (event: CallSessionViewedEvent) => {
-          expect(event.data).toEqual(MOCK_SESSION_EVENT_VIEWED.data);
-          done();
-        }
-      );
+    it('verify the user viewed session event for missed calls update', async () => {
+      await new Promise<void>((resolve) => {
+        callHistory.on(
+          COMMON_EVENT_KEYS.CALL_HISTORY_USER_VIEWED_SESSIONS,
+          (event: CallSessionViewedEvent) => {
+            expect(event.data).toEqual(MOCK_SESSION_EVENT_VIEWED.data);
+            resolve();
+          }
+        );
 
-      expect(mockOn.mock.calls[2][0]).toEqual(MOBIUS_EVENT_KEYS.CALL_SESSION_EVENT_VIEWED);
-      const callSessionCallback = mockOn.mock.calls[2][1];
+        expect(mockOn.mock.calls[2][0]).toEqual(MOBIUS_EVENT_KEYS.CALL_SESSION_EVENT_VIEWED);
+        const callSessionCallback = mockOn.mock.calls[2][1];
 
-      callSessionCallback(MOCK_SESSION_EVENT_VIEWED);
+        callSessionCallback(MOCK_SESSION_EVENT_VIEWED);
+      });
     });
   });
-
-  describe('updateMissedCalls success tests', () => {
-    const endTimeSessionIds = [{endTime: '1234568', sessionId: '123'}];
+  describe('Update missed calls test', () => {
     afterEach(() => {
       jest.clearAllMocks();
     });
-
     beforeEach(async () => {
       serviceErrorCodeHandlerSpy = jest.spyOn(utils, 'serviceErrorCodeHandler');
       global.fetch = jest.fn(() =>
@@ -160,8 +159,8 @@ describe('Call history tests', () => {
         })
       ) as jest.Mock;
     });
-
     it('successfully updates missed calls', async () => {
+      const endTimeSessionIds = [{endTime: '1234568', sessionId: '123'}];
       const response = await callHistory.updateMissedCalls(endTimeSessionIds);
       const convertedEndTimeSessionIds = endTimeSessionIds.map((session) => ({
         ...session,
@@ -178,14 +177,6 @@ describe('Call history tests', () => {
         },
         body: JSON.stringify({endTimeSessionIds: convertedEndTimeSessionIds}),
       });
-    });
-  });
-  describe('updateMissedCalls failure tests', () => {
-    afterEach(() => {
-      jest.clearAllMocks();
-    });
-    beforeEach(async () => {
-      serviceErrorCodeHandlerSpy = jest.spyOn(utils, 'serviceErrorCodeHandler');
     });
     it('Error: updateMissedCalls throw 400 error', async () => {
       const endTimeSessionIds = [];

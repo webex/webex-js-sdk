@@ -50,5 +50,16 @@ export interface ICallHistory extends Eventing<CallHistoryEventTypes> {
     sort: SORT,
     sortBy: SORT_BY
   ): Promise<JanusResponseEvent>;
+  /**
+   * This API `updateMissedCalls` is utilized to Updates the read state of user missed calls based on the specified parameters.
+   * It accepts the following input parameters:
+   *
+   * @param endTimeSessionIds - An array of objects representing the endTime and sessionId of missed call history records.
+   *
+   * @example
+   * ```javascript
+   * const updateMissedCallHistoryResponse = await callHistory.updateMissedCalls(endTimeSessionIds);
+   * ```
+   */
   updateMissedCalls(endTimeSessionIds: EndTimeSessionId[]): Promise<UpdateMissedCallsResponse>;
 }

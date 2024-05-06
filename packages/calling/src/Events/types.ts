@@ -368,7 +368,7 @@ export type EndTimeSessionId = {
   endTime: string;
   sessionId: string;
 };
-export type ConvertedEndTimeAndSessionId = {
+export type SanitizedEndTimeAndSessionId = {
   endTime: number;
   sessionId: string;
 };
