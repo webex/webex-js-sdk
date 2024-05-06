@@ -34,6 +34,8 @@ interface IInMeetingActions {
   canStartTranscribing?: boolean;
   canStopTranscribing?: boolean;
   isClosedCaptionActive?: boolean;
+  canEnableManualCaption?: boolean;
+  isManualCaptionActive?: boolean;
   isSaveTranscriptsEnabled?: boolean;
   isWebexAssistantActive?: boolean;
   canViewCaptionPanel?: boolean;
@@ -136,6 +138,10 @@ export default class InMeetingActions implements IInMeetingActions {
   canStopTranscribing = null;
 
   isClosedCaptionActive = null;
+
+  canEnableManualCaption = null;
+
+  isManualCaptionActive = null;
 
   isSaveTranscriptsEnabled = null;
 
@@ -257,6 +263,8 @@ export default class InMeetingActions implements IInMeetingActions {
     canStartTranscribing: this.canStartTranscribing,
     canStopTranscribing: this.canStopTranscribing,
     isClosedCaptionActive: this.isClosedCaptionActive,
+    canEnableManualCaption: this.canEnableManualCaption,
+    isManualCaptionActive: this.isManualCaptionActive,
     isSaveTranscriptsEnabled: this.isSaveTranscriptsEnabled,
     isWebexAssistantActive: this.isWebexAssistantActive,
     canViewCaptionPanel: this.canViewCaptionPanel,

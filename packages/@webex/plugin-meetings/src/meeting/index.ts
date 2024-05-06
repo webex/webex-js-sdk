@@ -2396,6 +2396,18 @@ export default class Meeting extends StatelessWebexPlugin {
       }
     );
 
+    this.locusInfo.on(LOCUSINFO.EVENTS.CONTROLS_MEETING_MANUAL_CAPTION_UPDATED, ({enable}) => {
+      Trigger.trigger(
+        this,
+        {
+          file: 'meeting/index',
+          function: 'setupLocusControlsListener',
+        },
+        EVENT_TRIGGERS.MEETING_MANUAL_CAPTION_UPDATED,
+        {enable}
+      );
+    });
+
     this.locusInfo.on(LOCUSINFO.EVENTS.CONTROLS_MEETING_BREAKOUT_UPDATED, ({breakout}) => {
       this.breakouts.updateBreakout(breakout);
       Trigger.trigger(
@@ -3570,6 +3582,8 @@ export default class Meeting extends StatelessWebexPlugin {
           canStartTranscribing: MeetingUtil.canStartTranscribing(this.userDisplayHints),
           canStopTranscribing: MeetingUtil.canStopTranscribing(this.userDisplayHints),
           isClosedCaptionActive: MeetingUtil.isClosedCaptionActive(this.userDisplayHints),
+          canEnableManualCaption: MeetingUtil.canEnableManualCaption(this.userDisplayHints),
+          isManualCaptionActive: MeetingUtil.isManualCaptionActive(this.userDisplayHints),
           isSaveTranscriptsEnabled: MeetingUtil.isSaveTranscriptsEnabled(this.userDisplayHints),
           isWebexAssistantActive: MeetingUtil.isWebexAssistantActive(this.userDisplayHints),
           canViewCaptionPanel: MeetingUtil.canViewCaptionPanel(this.userDisplayHints),
