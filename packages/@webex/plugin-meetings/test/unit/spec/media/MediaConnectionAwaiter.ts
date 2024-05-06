@@ -284,7 +284,7 @@ describe('MediaConnectionAwaiter', () => {
       assert.calledTwice(setTimeoutSpy);
     });
 
-    it(`resolves gathering and connection state complete in single timeout`, async () => {
+    it(`resolves gathering and connection state complete right after`, async () => {
       mockMC.getConnectionState.returns(ConnectionState.Connecting);
       mockMC.getIceGatheringState.returns('new');
 
