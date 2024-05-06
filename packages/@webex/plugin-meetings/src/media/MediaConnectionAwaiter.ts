@@ -15,6 +15,9 @@ export default class MediaConnectionAwaiter {
   private timer: any;
   private defer: Defer;
   private retried: boolean;
+  private onTimeoutCallback: () => void;
+  private connectionStateCallback: () => void;
+  private iceGatheringStateCallback: () => void;
 
   /**
    * @param {MediaConnectionAwaiterProps} mediaConnectionAwaiterProps
@@ -23,6 +26,9 @@ export default class MediaConnectionAwaiter {
     this.webrtcMediaConnection = webrtcMediaConnection;
     this.defer = new Defer();
     this.retried = false;
+    this.onTimeoutCallback = this.onTimeout.bind(this);
+    this.connectionStateCallback = this.connectionStateListenerCallback.bind(this);
+    this.iceGatheringStateCallback = this.iceGatheringStateListenerCallback.bind(this);
   }
 
   /**
@@ -51,12 +57,13 @@ export default class MediaConnectionAwaiter {
   private clearCallbacks(): void {
     this.webrtcMediaConnection.off(
       Event.ICE_GATHERING_STATE_CHANGED,
-      this.iceGatheringStateListenerCallback.bind(this)
+      this.iceGatheringStateCallback
     );
-    this.webrtcMediaConnection.off(
-      Event.CONNECTION_STATE_CHANGED,
-      this.connectionStateListenerCallback.bind(this)
-    );
+    this.webrtcMediaConnection.off(Event.CONNECTION_STATE_CHANGED, this.connectionStateCallback);
+
+    this.onTimeoutCallback = null;
+    this.connectionStateCallback = null;
+    this.iceGatheringStateCallback = null;
   }
 
   /**
@@ -102,7 +109,7 @@ export default class MediaConnectionAwaiter {
 
     clearTimeout(this.timer);
 
-    this.timer = setTimeout(this.onTimeout.bind(this), ICE_AND_DTLS_CONNECTION_TIMEOUT);
+    this.timer = setTimeout(this.onTimeoutCallback, ICE_AND_DTLS_CONNECTION_TIMEOUT);
   }
 
   /**
@@ -128,7 +135,7 @@ export default class MediaConnectionAwaiter {
         // retry once if ICE gathering is not completed
         this.retried = true;
         clearTimeout(this.timer);
-        this.timer = setTimeout(this.onTimeout.bind(this), ICE_AND_DTLS_CONNECTION_TIMEOUT);
+        this.timer = setTimeout(this.onTimeoutCallback, ICE_AND_DTLS_CONNECTION_TIMEOUT);
 
         return;
       }
@@ -157,17 +164,14 @@ export default class MediaConnectionAwaiter {
       return Promise.resolve();
     }
 
-    this.webrtcMediaConnection.on(
-      Event.CONNECTION_STATE_CHANGED,
-      this.connectionStateListenerCallback.bind(this)
-    );
+    this.webrtcMediaConnection.on(Event.CONNECTION_STATE_CHANGED, this.connectionStateCallback);
 
     this.webrtcMediaConnection.on(
       Event.ICE_GATHERING_STATE_CHANGED,
-      this.iceGatheringStateListenerCallback.bind(this)
+      this.iceGatheringStateCallback
     );
 
-    this.timer = setTimeout(this.onTimeout.bind(this), ICE_AND_DTLS_CONNECTION_TIMEOUT);
+    this.timer = setTimeout(this.onTimeoutCallback, ICE_AND_DTLS_CONNECTION_TIMEOUT);
 
     return this.defer.promise;
   }

@@ -174,11 +174,11 @@ export default class MediaProperties {
    * @returns {Promise<void>}
    */
   waitForMediaConnectionConnected(): Promise<void> {
-    const mediaConnections = new MediaConnectionAwaiter({
+    const mediaConnectionAwaiter = new MediaConnectionAwaiter({
       webrtcMediaConnection: this.webrtcMediaConnection,
     });
 
-    return mediaConnections.waitForMediaConnectionConnected();
+    return mediaConnectionAwaiter.waitForMediaConnectionConnected();
   }
 
   /**

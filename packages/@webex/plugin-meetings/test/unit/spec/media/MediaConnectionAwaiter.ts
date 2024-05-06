@@ -137,11 +137,12 @@ describe('MediaConnectionAwaiter', () => {
       assert.calledTwice(mockMC.on);
       assert.equal(mockMC.on.getCall(0).args[0], Event.CONNECTION_STATE_CHANGED);
       assert.equal(mockMC.on.getCall(1).args[0], Event.ICE_GATHERING_STATE_CHANGED);
-      const listener = mockMC.on.getCall(0).args[1];
+      const connectionStateListener = mockMC.on.getCall(0).args[1];
+      const iceGatheringListener = mockMC.on.getCall(1).args[1];
 
       // call the listener and pretend we are now connected
       mockMC.getConnectionState.returns(ConnectionState.Connected);
-      listener();
+      connectionStateListener();
       await testUtils.flushPromises();
 
       assert.equal(promiseResolved, true);
@@ -153,7 +154,7 @@ describe('MediaConnectionAwaiter', () => {
       assert.calledOnce(clearTimeoutSpy);
     });
 
-    it(`ice gathering state update to 'gathering' state does not update timer`, async () => {
+    it(`ice gathering state update to "gathering" state does not update timer`, async () => {
       mockMC.getConnectionState.returns(ConnectionState.Connecting);
       mockMC.getIceGatheringState.returns('new');
 
@@ -283,7 +284,7 @@ describe('MediaConnectionAwaiter', () => {
       assert.calledTwice(setTimeoutSpy);
     });
 
-    it(`reject restart timer once if gathering state is not complete`, async () => {
+    it(`resolves gathering and connection state complete in single timeout`, async () => {
       mockMC.getConnectionState.returns(ConnectionState.Connecting);
       mockMC.getIceGatheringState.returns('new');
 
@@ -309,17 +310,24 @@ describe('MediaConnectionAwaiter', () => {
       assert.calledTwice(mockMC.on);
       assert.equal(mockMC.on.getCall(0).args[0], Event.CONNECTION_STATE_CHANGED);
       assert.equal(mockMC.on.getCall(1).args[0], Event.ICE_GATHERING_STATE_CHANGED);
+      const connectionStateListener = mockMC.on.getCall(0).args[1];
+      const iceGatheringListener = mockMC.on.getCall(1).args[1];
 
-      await clock.tickAsync(ICE_AND_DTLS_CONNECTION_TIMEOUT * 3);
+      mockMC.getIceGatheringState.returns('complete');
+      iceGatheringListener();
+
+      mockMC.getConnectionState.returns(ConnectionState.Connected);
+      connectionStateListener();
+
       await testUtils.flushPromises();
 
-      assert.equal(promiseResolved, false);
-      assert.equal(promiseRejected, true);
+      assert.equal(promiseResolved, true);
+      assert.equal(promiseRejected, false);
 
       // check that listener was removed
       assert.calledTwice(mockMC.off);
 
-      assert.calledOnce(clearTimeoutSpy);
+      assert.calledTwice(clearTimeoutSpy);
       assert.calledTwice(setTimeoutSpy);
     });
   });
