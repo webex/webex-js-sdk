@@ -781,13 +781,11 @@ describe('plugin-meetings', () => {
         await progressTime();
 
         assert.strictEqual(
-          mqeData.intervalMetadata.peripherals.find((val) => val.name === MEDIA_DEVICES.MICROPHONE)
-            .information,
+          mqeData.intervalMetadata.microphoneInfo.deviceName,
           'fake-microphone'
         );
         assert.strictEqual(
-          mqeData.intervalMetadata.peripherals.find((val) => val.name === MEDIA_DEVICES.CAMERA)
-            .information,
+          mqeData.intervalMetadata.cameraInfo.deviceName,
           'fake-camera'
         );
       });
@@ -801,13 +799,11 @@ describe('plugin-meetings', () => {
         await progressTime();
 
         assert.strictEqual(
-          mqeData.intervalMetadata.peripherals.find((val) => val.name === MEDIA_DEVICES.MICROPHONE)
-            .information,
+          mqeData.intervalMetadata.microphoneInfo.deviceName,
           _UNKNOWN_
         );
         assert.strictEqual(
-          mqeData.intervalMetadata.peripherals.find((val) => val.name === MEDIA_DEVICES.CAMERA)
-            .information,
+          mqeData.intervalMetadata.cameraInfo.deviceName,
           _UNKNOWN_
         );
       });

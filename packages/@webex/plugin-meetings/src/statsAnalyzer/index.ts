@@ -368,12 +368,13 @@ export class StatsAnalyzer extends EventsScope {
     newMqa.intervalMetadata.peerReflexiveIP = this.statsResults.connectionType.local.ipAddress;
 
     // Adding peripheral information
-    newMqa.intervalMetadata.peripherals.push({information: _UNKNOWN_, name: MEDIA_DEVICES.SPEAKER});
+    newMqa.intervalMetadata.speakerInfo = {
+      deviceName: _UNKNOWN_,
+    };
     if (this.statsResults['audio-send']) {
-      newMqa.intervalMetadata.peripherals.push({
-        information: this.statsResults['audio-send'].trackLabel || _UNKNOWN_,
-        name: MEDIA_DEVICES.MICROPHONE,
-      });
+      newMqa.intervalMetadata.microphoneInfo = {
+        deviceName: this.statsResults['audio-send'].trackLabel || _UNKNOWN_,
+      };
     }
 
     const existingVideoSender = Object.keys(this.statsResults).find((item) =>
@@ -381,10 +382,9 @@ export class StatsAnalyzer extends EventsScope {
     );
 
     if (existingVideoSender) {
-      newMqa.intervalMetadata.peripherals.push({
-        information: this.statsResults[existingVideoSender].trackLabel || _UNKNOWN_,
-        name: MEDIA_DEVICES.CAMERA,
-      });
+      newMqa.intervalMetadata.cameraInfo = {
+        deviceName: this.statsResults[existingVideoSender].trackLabel || _UNKNOWN_,
+      };
     }
 
     newMqa.networkType = this.statsResults.connectionType.local.networkType;
