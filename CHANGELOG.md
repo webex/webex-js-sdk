@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0-beta.424](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.423...v3.0.0-beta.424) (2024-05-06)
+
+
+### Features
+
+* **plugin-meetings:** use [peripheralName]Info instead of peripherals in MQE ([#3565](https://github.com/webex/webex-js-sdk/issues/3565)) ([a21e8b4](https://github.com/webex/webex-js-sdk/commit/a21e8b4894082b88da32da3d0a0b04b4ce7330b4))
+
 ## [3.0.0-beta.423](https://github.com/webex/webex-js-sdk/compare/v3.0.0-beta.422...v3.0.0-beta.423) (2024-05-02)
 
 
