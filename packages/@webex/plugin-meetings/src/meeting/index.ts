@@ -5706,7 +5706,7 @@ export default class Meeting extends StatelessWebexPlugin {
               logText: `${LOG_HEADER} Roap Offer`,
             }
           ).catch(() => {
-            this.deferSDPAnswer.reject();
+            this.deferSDPAnswer.reject(new Error('failed to send ROAP SDP offer'));
             clearTimeout(this.sdpResponseTimer);
             this.sdpResponseTimer = undefined;
           });
@@ -6750,7 +6750,11 @@ export default class Meeting extends StatelessWebexPlugin {
         turnServerInfo
       );
 
-      await Meeting.handleDeviceLogging();
+      if (audioEnabled || videoEnabled) {
+        await Meeting.handleDeviceLogging();
+      } else {
+        LoggerProxy.logger.info(`${LOG_HEADER} device logging not required`);
+      }
 
       if (this.mediaProperties.hasLocalShareStream()) {
         await this.enqueueScreenShareFloorRequest();

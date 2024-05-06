@@ -75,6 +75,7 @@ describe('internal-plugin-metrics', () => {
                       meetingInfoReqResp: undefined,
                       clickToInterstitial: undefined,
                       refreshCaptchaServiceReqResp: undefined,
+                      downloadIntelligenceModelsReqResp: undefined,
                     },
                     name: 'client.interstitial-window.launched',
                   },
@@ -139,7 +140,7 @@ describe('internal-plugin-metrics', () => {
         assert.calledOnceWithExactly(
           webex.logger.error,
           'Pre Login Metrics -->',
-          `PreLoginMetricsBatcher: @submitHttpRequest#prelogin-ca-batch-${expectedBatchId}. Request failed:`,
+          `PreLoginMetricsBatcher: @submitHttpRequest#prelogin-batch-${expectedBatchId}. Request failed:`,
           `error: formattedError`
         );
         assert.lengthOf(
@@ -149,7 +150,8 @@ describe('internal-plugin-metrics', () => {
       });
 
       it('fails if preLoinId is not set', async () => {
-        webex.internal.newMetrics.callDiagnosticMetrics.preLoginMetricsBatcher.preLoginId = undefined;
+        webex.internal.newMetrics.callDiagnosticMetrics.preLoginMetricsBatcher.preLoginId =
+          undefined;
 
         const promise =
           webex.internal.newMetrics.callDiagnosticMetrics.submitToCallDiagnosticsPreLogin(
@@ -177,7 +179,7 @@ describe('internal-plugin-metrics', () => {
 
     describe('prepareItem', () => {
       it('calls prepareDiagnosticMetricItem correctly', async () => {
-         // avoid setting .sent timestamp
+        // avoid setting .sent timestamp
         webex.internal.newMetrics.callDiagnosticMetrics.preLoginMetricsBatcher.prepareRequest = (q) =>
           Promise.resolve(q);
 

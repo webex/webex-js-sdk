@@ -319,6 +319,7 @@ describe('internal-plugin-metrics', () => {
             clickToInterstitial: undefined,
             meetingInfoReqResp: undefined,
             refreshCaptchaServiceReqResp: undefined,
+            downloadIntelligenceModelsReqResp: undefined,
           },
         },
       ],
@@ -329,7 +330,8 @@ describe('internal-plugin-metrics', () => {
             showInterstitialTime: undefined,
             meetingInfoReqResp: undefined,
             registerWDMDeviceJMT: undefined,
-            getU2CTime: undefined
+            getU2CTime: undefined,
+            getReachabilityClustersReqResp: undefined,
           },
         },
       ],
@@ -345,7 +347,7 @@ describe('internal-plugin-metrics', () => {
             interstitialToJoinOK: undefined,
             totalJmt: undefined,
             clientJmt: undefined,
-            downloadTime: undefined
+            downloadTime: undefined,
           },
         },
       ],
