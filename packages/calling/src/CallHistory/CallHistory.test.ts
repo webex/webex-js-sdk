@@ -145,6 +145,7 @@ describe('Call history tests', () => {
       });
     });
   });
+
   describe('Update missed calls test', () => {
     afterEach(() => {
       jest.clearAllMocks();
@@ -159,6 +160,7 @@ describe('Call history tests', () => {
         })
       ) as jest.Mock;
     });
+
     it('successfully updates missed calls', async () => {
       const endTimeSessionIds = [{endTime: '1234568', sessionId: '123'}];
       const response = await callHistory.updateMissedCalls(endTimeSessionIds);
@@ -178,6 +180,7 @@ describe('Call history tests', () => {
         body: JSON.stringify({endTimeSessionIds: convertedEndTimeSessionIds}),
       });
     });
+
     it('Error: updateMissedCalls throw 400 error', async () => {
       const endTimeSessionIds = [];
       global.fetch = jest.fn(() =>
@@ -212,6 +215,7 @@ describe('Call history tests', () => {
         }
       );
     });
+
     it('Error: updateMissedCalls throw 401 error', async () => {
       const endTimeSessionIds = [];
       global.fetch = jest.fn(() =>
