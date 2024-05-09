@@ -487,6 +487,27 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
   };
 
   /**
+   * Toggle turn on manual caption
+   * @param {bool} enable if true manual caption is turned on
+   * @returns {Promise}
+   */
+  public toggleManualCaption = (enable: boolean): undefined | Promise<void> => {
+    // @ts-ignore
+    return this.request({
+      method: 'PUT',
+      // @ts-ignore
+      url: `${this.webex.internal.llm.getLocusUrl()}/controls/`,
+      body: {
+        manualCaption: {
+          enable,
+        },
+      },
+    }).then((): undefined | Promise<void> => {
+      return undefined;
+    });
+  };
+
+  /**
    * get caption status
    * @returns {string}
    */
