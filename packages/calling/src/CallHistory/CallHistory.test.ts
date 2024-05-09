@@ -170,8 +170,7 @@ describe('Call history tests', () => {
       }));
       expect(response.statusCode).toEqual(200);
       expect(response).toEqual(MOCK_UPDATE_MISSED_CALL_RESPONSE);
-      expect(global.fetch).toHaveBeenCalledTimes(1);
-      expect(global.fetch).toHaveBeenCalledWith(janusSetReadStateUrl, {
+      expect(global.fetch).toBeCalledOnceWith(janusSetReadStateUrl, {
         method: HTTP_METHODS.POST,
         headers: {
           [CONTENT_TYPE]: APPLICATION_JSON,
@@ -196,8 +195,7 @@ describe('Call history tests', () => {
       }));
       expect(response).toStrictEqual(ERROR_DETAILS_400);
       expect(response.statusCode).toBe(400);
-      expect(global.fetch).toHaveBeenCalledTimes(1);
-      expect(global.fetch).toHaveBeenCalledWith(janusSetReadStateUrl, {
+      expect(global.fetch).toBeCalledOnceWith(janusSetReadStateUrl, {
         method: HTTP_METHODS.POST,
         headers: {
           [CONTENT_TYPE]: APPLICATION_JSON,

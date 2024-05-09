@@ -19,7 +19,7 @@ export type JanusResponseEvent = {
 export type UpdateMissedCallsResponse = {
   statusCode: number;
   data: {
-    data?: string;
+    readStatusMessage?: string;
     error?: string;
   };
   message: string | null;

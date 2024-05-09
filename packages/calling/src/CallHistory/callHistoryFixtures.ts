@@ -418,7 +418,7 @@ export const MOCK_SESSION_EVENT_VIEWED: CallSessionViewedEvent = {
 export const MOCK_UPDATE_MISSED_CALL_RESPONSE: UpdateMissedCallsResponse = {
   statusCode: 200,
   data: {
-    data: 'Missed calls are read by the user.',
+    readStatusMessage: 'Missed calls are read by the user.',
   },
   message: 'SUCCESS',
 };

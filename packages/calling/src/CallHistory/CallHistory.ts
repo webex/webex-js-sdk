@@ -147,7 +147,8 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
 
   /**
    * Function to update the missed call status in the call history using sessionId and time.
-   * @returns - response details with success or error status.
+   * @param endTimeSessionIds - An array of objects containing endTime and sessionId of the missed call history records
+   * @returns {Promise} Resolves to an object of type  {@link UpdateMissedCallsResponse}.Response details with success or error status.
    */
   public async updateMissedCalls(
     endTimeSessionIds: EndTimeSessionId[]
@@ -184,7 +185,7 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
       const responseDetails: UpdateMissedCallsResponse = {
         statusCode: data.statusCode as number,
         data: {
-          data: SET_READ_STATE_SUCCESS_MESSAGE,
+          readStatusMessage: SET_READ_STATE_SUCCESS_MESSAGE,
         },
         message: SUCCESS_MESSAGE,
       };
@@ -207,7 +208,7 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
     }
   };
 
-  handleSessionEventsforReadData = async (event?: CallSessionViewedEvent) => {
+  handleUserReadSessionEvents = async (event?: CallSessionViewedEvent) => {
     if (event && event.data.userReadSessions.userReadSessions) {
       this.emit(
         COMMON_EVENT_KEYS.CALL_HISTORY_USER_VIEWED_SESSIONS,
@@ -230,7 +231,7 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
     );
     this.sdkConnector.registerListener<CallSessionViewedEvent>(
       MOBIUS_EVENT_KEYS.CALL_SESSION_EVENT_VIEWED,
-      this.handleSessionEventsforReadData
+      this.handleUserReadSessionEvents
     );
   }
 }
