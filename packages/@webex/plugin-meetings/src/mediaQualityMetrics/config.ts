@@ -1,9 +1,19 @@
+import {_UNKNOWN_} from '../constants';
+
 export const emptyMqaInterval = {
   audioReceive: [],
   audioTransmit: [],
   intervalMetadata: {
     peerReflexiveIP: '0.0.0.0',
-    peripherals: [],
+    speakerInfo: {
+      deviceName: _UNKNOWN_,
+    },
+    microphoneInfo: {
+      deviceName: _UNKNOWN_,
+    },
+    cameraInfo: {
+      deviceName: _UNKNOWN_,
+    },
     processAverageCPU: 0,
     processMaximumCPU: 0,
     systemAverageCPU: 0,
