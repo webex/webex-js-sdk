@@ -147,6 +147,10 @@ describe('Call history tests', () => {
   });
 
   describe('Update missed calls test', () => {
+    const methodDetails = {
+      file: CALL_HISTORY_FILE,
+      method: 'updateMissedCalls',
+    };
     afterEach(() => {
       jest.clearAllMocks();
     });
@@ -207,10 +211,7 @@ describe('Call history tests', () => {
         {
           statusCode: 400,
         },
-        {
-          file: CALL_HISTORY_FILE,
-          method: 'updateMissedCalls',
-        }
+        methodDetails
       );
     });
 
@@ -230,8 +231,7 @@ describe('Call history tests', () => {
       }));
       expect(response).toStrictEqual(ERROR_DETAILS_401);
       expect(response.statusCode).toBe(401);
-      expect(global.fetch).toHaveBeenCalledTimes(1);
-      expect(global.fetch).toHaveBeenCalledWith(janusSetReadStateUrl, {
+      expect(global.fetch).toBeCalledOnceWith(janusSetReadStateUrl, {
         method: HTTP_METHODS.POST,
         headers: {
           [CONTENT_TYPE]: APPLICATION_JSON,
@@ -243,10 +243,7 @@ describe('Call history tests', () => {
         {
           statusCode: 401,
         },
-        {
-          file: CALL_HISTORY_FILE,
-          method: 'updateMissedCalls',
-        }
+        methodDetails
       );
     });
   });
