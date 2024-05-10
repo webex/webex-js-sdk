@@ -3,10 +3,25 @@
 import SDKConnector from '../SDKConnector';
 import {ISDKConnector, WebexSDK} from '../SDKConnector/types';
 import {ALLOWED_SERVICES, HTTP_METHODS, WebexRequestPayload, SORT, SORT_BY} from '../common/types';
-import {ICallHistory, JanusResponseEvent, LoggerInterface} from './types';
+import {
+  ICallHistory,
+  JanusResponseEvent,
+  LoggerInterface,
+  UpdateMissedCallsResponse,
+} from './types';
 import log from '../Logger';
 import {serviceErrorCodeHandler} from '../common/Utils';
-import {CALL_HISTORY_FILE, FROM_DATE, HISTORY, LIMIT, NUMBER_OF_DAYS} from './constants';
+import {
+  APPLICATION_JSON,
+  CALL_HISTORY_FILE,
+  CONTENT_TYPE,
+  FROM_DATE,
+  HISTORY,
+  LIMIT,
+  NUMBER_OF_DAYS,
+  UPDATE_MISSED_CALLS_ENDPOINT,
+  SET_READ_STATE_SUCCESS_MESSAGE,
+} from './constants';
 import {STATUS_CODE, SUCCESS_MESSAGE, USER_SESSIONS} from '../common/constants';
 import {
   COMMON_EVENT_KEYS,
@@ -14,6 +29,9 @@ import {
   CallSessionEvent,
   MOBIUS_EVENT_KEYS,
   UserSession,
+  EndTimeSessionId,
+  CallSessionViewedEvent,
+  SanitizedEndTimeAndSessionId,
 } from '../Events/types';
 import {Eventing} from '../Events/impl';
 /**
@@ -127,9 +145,75 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
     }
   }
 
+  /**
+   * Function to update the missed call status in the call history using sessionId and time.
+   * @param endTimeSessionIds - An array of objects containing endTime and sessionId of the missed call history records
+   * @returns {Promise} Resolves to an object of type  {@link UpdateMissedCallsResponse}.Response details with success or error status.
+   */
+  public async updateMissedCalls(
+    endTimeSessionIds: EndTimeSessionId[]
+  ): Promise<UpdateMissedCallsResponse> {
+    const loggerContext = {
+      file: CALL_HISTORY_FILE,
+      method: 'updateMissedCalls',
+    };
+    // Convert endTime to milliseconds for each session
+    const santizedSessionIds: SanitizedEndTimeAndSessionId[] = endTimeSessionIds.map((session) => ({
+      ...session,
+      endTime: new Date(session.endTime).getTime(),
+    }));
+    const requestBody = {
+      endTimeSessionIds: santizedSessionIds,
+    };
+    try {
+      const updateMissedCallContentUrl = `${this.janusUrl}/${HISTORY}/${USER_SESSIONS}/${UPDATE_MISSED_CALLS_ENDPOINT}`;
+      // Make a POST request to update missed calls
+      const response = await fetch(updateMissedCallContentUrl, {
+        method: HTTP_METHODS.POST,
+        headers: {
+          [CONTENT_TYPE]: APPLICATION_JSON,
+          Authorization: await this.webex.credentials.getUserToken(),
+        },
+        body: JSON.stringify(requestBody),
+      });
+      if (!response.ok) {
+        throw new Error(`${response.status}`);
+      }
+
+      const data: UpdateMissedCallsResponse = await response.json();
+      log.info(`Missed calls are succesfully read by the user`, loggerContext);
+      const responseDetails: UpdateMissedCallsResponse = {
+        statusCode: data.statusCode as number,
+        data: {
+          readStatusMessage: SET_READ_STATE_SUCCESS_MESSAGE,
+        },
+        message: SUCCESS_MESSAGE,
+      };
+
+      return responseDetails;
+    } catch (err: unknown) {
+      // Catch the 401 error from try block, return the error object to user
+      const errorInfo = {
+        statusCode: err instanceof Error ? Number(err.message) : '',
+      } as WebexRequestPayload;
+      const errorStatus = serviceErrorCodeHandler(errorInfo, loggerContext);
+
+      return errorStatus;
+    }
+  }
+
   handleSessionEvents = async (event?: CallSessionEvent) => {
     if (event && event.data.userSessions.userSessions) {
       this.emit(COMMON_EVENT_KEYS.CALL_HISTORY_USER_SESSION_INFO, event as CallSessionEvent);
+    }
+  };
+
+  handleUserReadSessionEvents = async (event?: CallSessionViewedEvent) => {
+    if (event && event.data.userReadSessions.userReadSessions) {
+      this.emit(
+        COMMON_EVENT_KEYS.CALL_HISTORY_USER_VIEWED_SESSIONS,
+        event as CallSessionViewedEvent
+      );
     }
   };
 
@@ -144,6 +228,10 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
     this.sdkConnector.registerListener<CallSessionEvent>(
       MOBIUS_EVENT_KEYS.CALL_SESSION_EVENT_LEGACY,
       this.handleSessionEvents
+    );
+    this.sdkConnector.registerListener<CallSessionViewedEvent>(
+      MOBIUS_EVENT_KEYS.CALL_SESSION_EVENT_VIEWED,
+      this.handleUserReadSessionEvents
     );
   }
 }

@@ -9,6 +9,7 @@ import {CallError, CallingClientError, LineError} from '../Errors';
 export enum COMMON_EVENT_KEYS {
   CB_VOICEMESSAGE_CONTENT_GET = 'call_back_voicemail_content_get',
   CALL_HISTORY_USER_SESSION_INFO = 'callHistory:user_recent_sessions',
+  CALL_HISTORY_USER_VIEWED_SESSIONS = 'callHistory:user_viewed_sessions',
 }
 
 export enum LINE_EVENT_KEYS {
@@ -156,6 +157,7 @@ export enum MOBIUS_EVENT_KEYS {
   SERVER_EVENT_INCLUSIVE = 'event:mobius',
   CALL_SESSION_EVENT_INCLUSIVE = 'event:janus.user_recent_sessions',
   CALL_SESSION_EVENT_LEGACY = 'event:janus.user_sessions',
+  CALL_SESSION_EVENT_VIEWED = 'event:janus.user_viewed_sessions',
 }
 
 export type CallSessionData = {
@@ -230,6 +232,7 @@ export type CallingClientEventTypes = {
 
 export type CallHistoryEventTypes = {
   [COMMON_EVENT_KEYS.CALL_HISTORY_USER_SESSION_INFO]: (event: CallSessionEvent) => void;
+  [COMMON_EVENT_KEYS.CALL_HISTORY_USER_VIEWED_SESSIONS]: (event: CallSessionViewedEvent) => void;
 };
 /* External Eventing End */
 
@@ -341,3 +344,31 @@ export interface RoapMessage {
   tieBreaker?: string;
   errorType?: string;
 }
+
+export type UserReadSessions = {
+  sessionId: string;
+};
+
+export type CallSessionViewedData = {
+  userReadSessions: {
+    userReadSessions: UserReadSessions[];
+    statusCode: number;
+  };
+  eventType: MOBIUS_EVENT_KEYS.CALL_SESSION_EVENT_VIEWED;
+};
+
+export type CallSessionViewedEvent = {
+  id: string;
+  data: CallSessionViewedData;
+  timestamp: number;
+  trackingId: string;
+};
+
+export type EndTimeSessionId = {
+  endTime: string;
+  sessionId: string;
+};
+export type SanitizedEndTimeAndSessionId = {
+  endTime: number;
+  sessionId: string;
+};
