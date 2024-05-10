@@ -1332,6 +1332,9 @@ export const MEETING_PERMISSION_TOKEN_REFRESH_REASON = 'ttl-join';
 // constant for named media group type
 export const NAMED_MEDIA_GROUP_TYPE_AUDIO = 1;
 
+// constant for statsAnalyzer report.callingServiceType
+export const CALLING_SERVICE_TYPE = 'LOCUS' as const;
+
 export const DESTINATION_TYPE = {
   CONVERSATION_URL: 'CONVERSATION_URL',
   MEETING_LINK: 'MEETING_LINK',
