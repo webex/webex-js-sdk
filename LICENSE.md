@@ -1,4 +1,6 @@
-The contents are licensed pursuant to the terms of the MIT License below and [Cisco General Terms](https://www.cisco.com/c/dam/en_us/about/doing_business/legal/Cisco_General_Terms.pdf).
+The contents of this repository are licensed pursuant to the terms of the MIT License below.
+
+Your use of the AI effects in this library (e.g., noise reduction, virtual background, etc.) are subject to the  [Cisco General Terms](https://www.cisco.com/c/dam/en_us/about/doing_business/legal/Cisco_General_Terms.pdf).
 
 MIT License
 
