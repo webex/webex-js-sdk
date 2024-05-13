@@ -334,6 +334,8 @@ export const getVideoReceiverStreamMqa = ({
     statsResults[mediaType][sendrecvType].keyFramesDecoded - lastKeyFramesDecoded || 0;
   videoReceiverStream.requestedKeyFrames =
     statsResults[mediaType][sendrecvType].totalPliCount - lastPliCount || 0;
+  videoReceiverStream.isActiveSpeaker =
+    statsResults[mediaType][sendrecvType].isActiveSpeaker || false;
 };
 
 export const getVideoSenderMqa = ({videoSender, statsResults, lastMqaDataSent, baseMediaType}) => {
