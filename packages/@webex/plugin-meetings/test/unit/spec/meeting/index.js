@@ -8111,6 +8111,21 @@ describe('plugin-meetings', () => {
             EVENT_TRIGGERS.MEETING_INTERPRETATION_UPDATE
           );
         });
+
+        it('listens to the locus manual caption update event', () => {
+          meeting.locusInfo.emit(
+            {function: 'test', file: 'test'},
+            'CONTROLS_MEETING_MANUAL_CAPTION_UPDATED',
+            {enable: true}
+          );
+
+          assert.calledWith(
+            TriggerProxy.trigger,
+            meeting,
+            {file: 'meeting/index', function: 'setupLocusControlsListener'},
+            EVENT_TRIGGERS.MEETING_MANUAL_CAPTION_UPDATED
+          );
+        });
       });
 
       describe('#setUpLocusUrlListener', () => {

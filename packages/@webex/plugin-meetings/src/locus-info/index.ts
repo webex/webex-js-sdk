@@ -925,7 +925,7 @@ export default class LocusInfo extends EventsScope {
       }
 
       if (hasManualCaptionChanged) {
-        const {manualCaption} = current.manualCaption;
+        const {enable} = current.manualCaption;
 
         this.emitScoped(
           {
@@ -934,7 +934,7 @@ export default class LocusInfo extends EventsScope {
           },
           LOCUSINFO.EVENTS.CONTROLS_MEETING_MANUAL_CAPTION_UPDATED,
           {
-            manualCaption,
+            enable,
           }
         );
       }

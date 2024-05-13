@@ -535,8 +535,10 @@ const MeetingUtil = {
   isClosedCaptionActive: (displayHints) =>
     displayHints.includes(DISPLAY_HINTS.CAPTION_STATUS_ACTIVE),
 
-  canEnableManualCaption: (displayHints) =>
+  canStartManualCaption: (displayHints) =>
     displayHints.includes(DISPLAY_HINTS.MANUAL_CAPTION_START),
+
+  canStopManualCaption: (displayHints) => displayHints.includes(DISPLAY_HINTS.MANUAL_CAPTION_STOP),
 
   isManualCaptionActive: (displayHints) =>
     displayHints.includes(DISPLAY_HINTS.MANUAL_CAPTION_STATUS_ACTIVE),
