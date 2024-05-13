@@ -472,7 +472,6 @@ describe('plugin-meetings', () => {
         locusInfo.controls = {
           manualCaption: {enable: false},
         };
-        // newControls.manualCaption.enable = true;
 
         locusInfo.updateControls({manualCaption: { enable: true, }});
 
