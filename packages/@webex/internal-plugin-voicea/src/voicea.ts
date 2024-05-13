@@ -148,7 +148,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
             file: 'voicea',
             function: 'processTranscription',
           },
-          EVENT_TRIGGERS.NEW_MANUAL_CAPTION,
+          EVENT_TRIGGERS.NEW_CAPTION,
           {
             isFinal: false,
             transcriptId: voiceaPayload.transcript_id,
@@ -164,7 +164,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
             file: 'voicea',
             function: 'processTranscription',
           },
-          EVENT_TRIGGERS.NEW_MANUAL_CAPTION,
+          EVENT_TRIGGERS.NEW_CAPTION,
           {
             isFinal: true,
             transcriptId: voiceaPayload.transcript_id,
