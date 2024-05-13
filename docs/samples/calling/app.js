@@ -30,6 +30,7 @@ const voicemailOffset = 0;
 const voicemailOffsetLimit = 20;
 const voicemailSort = 'DESC';
 const credentialsFormElm = document.querySelector('#credentials');
+const fedrampBox = document.getElementById('fedramp');
 const tokenElm = document.querySelector('#access-token');
 const jwtTokenForDestElm = document.querySelector('#jwt-token-for-dest');
 const guestContainerElm = document.querySelector('#guest-container');
@@ -248,8 +249,16 @@ async function initCalling(e) {
     };
   }
 
+  if (fedrampBox.checked) {
+    webexConfig.config.services = {
+      discovery: {
+        u2c: 'https://u2c.gov.ciscospark.com/u2c/api/v1',
+      },
+    };
+  }
+
   const clientConfig = {
-    calling: true,
+    calling: !fedrampBox.checked,
     contact: true,
     callHistory: true,
     callSettings: true,
