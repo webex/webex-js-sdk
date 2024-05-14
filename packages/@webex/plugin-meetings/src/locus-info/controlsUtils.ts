@@ -45,7 +45,7 @@ ControlsUtils.parse = (controls: any) => {
 
   if (controls && controls.manualCaption) {
     parsedControls.manualCaption = {
-      enable: controls.manualCaption.enable,
+      enabled: controls.manualCaption.enabled,
     };
   }
 
@@ -151,8 +151,8 @@ ControlsUtils.getControls = (oldControls: any, newControls: any) => {
 
       hasManualCaptionChanged:
         current?.manualCaption &&
-        !isEqual(previous?.manualCaption?.enable, current?.manualCaption?.enable) &&
-        (previous?.manualCaption?.enable || current?.manualCaption?.enable),
+        !isEqual(previous?.manualCaption?.enabled, current?.manualCaption?.enabled) &&
+        (previous?.manualCaption?.enabled || current?.manualCaption?.enabled),
 
       hasEntryExitToneChanged: !!(
         newControls.entryExitTone &&

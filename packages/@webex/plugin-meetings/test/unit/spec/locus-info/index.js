@@ -470,11 +470,11 @@ describe('plugin-meetings', () => {
       it('should update the manual caption state', () => {
         locusInfo.emitScoped = sinon.stub();
         locusInfo.controls = {
-          manualCaption: {enable: false},
+          manualCaption: {enabled: false},
         };
         // newControls.manualCaption.enable = true;
 
-        locusInfo.updateControls({manualCaption: { enable: true, }});
+        locusInfo.updateControls({manualCaption: { enabled: true, }});
 
         assert.calledWith(
           locusInfo.emitScoped,
@@ -484,7 +484,7 @@ describe('plugin-meetings', () => {
           },
           LOCUSINFO.EVENTS.CONTROLS_MEETING_MANUAL_CAPTION_UPDATED,
           {
-            enable: true,
+            enabled: true,
           }
         );
       });
