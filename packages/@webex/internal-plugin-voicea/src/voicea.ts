@@ -109,6 +109,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
   private processTranscription = (voiceaPayload: TranscriptionResponse): void => {
     switch (voiceaPayload.type) {
       case TRANSCRIPTION_TYPE.TRANSCRIPT_INTERIM_RESULTS:
+        // @ts-ignore
         this.trigger(EVENT_TRIGGERS.NEW_CAPTION, {
           isFinal: false,
           transcriptId: voiceaPayload.transcript_id,
@@ -117,6 +118,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
         break;
 
       case TRANSCRIPTION_TYPE.TRANSCRIPT_FINAL_RESULT:
+        // @ts-ignore
         this.trigger(EVENT_TRIGGERS.NEW_CAPTION, {
           isFinal: true,
           transcriptId: voiceaPayload.transcript_id,
@@ -131,6 +133,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
         break;
 
       case TRANSCRIPTION_TYPE.HIGHLIGHT_CREATED:
+        // @ts-ignore
         this.trigger(EVENT_TRIGGERS.HIGHLIGHT_CREATED, {
           csis: voiceaPayload.highlight.csis,
           highlightId: voiceaPayload.highlight.highlight_id,
@@ -142,6 +145,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
         break;
 
       case TRANSCRIPTION_TYPE.EVA_THANKS:
+        // @ts-ignore
         this.trigger(EVENT_TRIGGERS.EVA_COMMAND, {
           isListening: false,
           text: voiceaPayload.command_response,
@@ -150,6 +154,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
 
       case TRANSCRIPTION_TYPE.EVA_WAKE:
       case TRANSCRIPTION_TYPE.EVA_CANCEL:
+        // @ts-ignore
         this.trigger(EVENT_TRIGGERS.EVA_COMMAND, {
           isListening: voiceaPayload.type === TRANSCRIPTION_TYPE.EVA_WAKE,
         });
@@ -167,8 +172,10 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
    */
   private processCaptionLanguageResponse = (voiceaPayload: CaptionLanguageResponse): void => {
     if (voiceaPayload.statusCode === 200) {
+      // @ts-ignore
       this.trigger(EVENT_TRIGGERS.CAPTION_LANGUAGE_UPDATE, {statusCode: 200});
     } else {
+      // @ts-ignore
       this.trigger(EVENT_TRIGGERS.CAPTION_LANGUAGE_UPDATE, {
         statusCode: voiceaPayload.errorCode,
         errorMessage: voiceaPayload.message,
@@ -188,6 +195,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
       spokenLanguages: voiceaPayload?.ASR?.spoken_languages ?? [],
     };
 
+    // @ts-ignore
     this.trigger(EVENT_TRIGGERS.VOICEA_ANNOUNCEMENT, voiceaLanguageOptions);
   };
 
@@ -236,6 +244,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
         },
       },
     }).then(() => {
+      // @ts-ignore
       this.trigger(EVENT_TRIGGERS.SPOKEN_LANGUAGE_UPDATE, {languageCode});
     });
 
@@ -294,6 +303,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
       body,
     })
       .then(() => {
+        // @ts-ignore
         this.trigger(EVENT_TRIGGERS.CAPTIONS_TURNED_ON);
 
         this.areCaptionsEnabled = true;
