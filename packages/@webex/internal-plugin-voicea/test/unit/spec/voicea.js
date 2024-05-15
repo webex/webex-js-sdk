@@ -436,6 +436,56 @@ describe('plugin-voicea', () => {
       });
     });
 
+    describe('#toggleManualCaption', () => {
+      beforeEach(async () => {
+        const mockWebSocket = new MockWebSocket();
+
+        voiceaService.webex.internal.llm.socket = mockWebSocket;
+      });
+
+      it('turns on manual caption', async () => {
+        // Turn on captions
+        await voiceaService.turnOnCaptions();
+
+        // eslint-disable-next-line no-underscore-dangle
+        voiceaService.webex.internal.llm._emit('event:relay.event', {
+          headers: {from: 'ws'},
+          data: {relayType: 'voicea.annc', voiceaPayload: {}},
+        });
+
+        voiceaService.listenToEvents();
+
+        await voiceaService.toggleManualCaption(true);
+        sinon.assert.calledWith(
+          voiceaService.request,
+          sinon.match({
+            method: 'PUT',
+            url: `${locusUrl}/controls/`,
+            body: {manualCaption: {enable: true}},
+          })
+        );
+
+      });
+
+
+      it('turns off manual caption', async () => {
+        await voiceaService.toggleManualCaption(true);
+
+        voiceaService.listenToEvents();
+
+        await voiceaService.toggleManualCaption(false);
+        sinon.assert.calledWith(
+          voiceaService.request,
+          sinon.match({
+            method: 'PUT',
+            url: `${locusUrl}/controls/`,
+            body: {manualCaption: {enable: false}},
+          })
+        );
+
+      });
+    });
+
     describe('#processCaptionLanguageResponse', () => {
       it('responds to process caption language', async () => {
         const triggerSpy = sinon.spy();
