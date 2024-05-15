@@ -252,6 +252,12 @@ describe('plugin-meetings', () => {
       it('SIP meeting address from excepted domain', () => {
         assert.equal(MeetingInfoUtil.getWebexSite('10019857020@meet.webex.com'), null);
       });
+      it('SIP meeting address from excepted domain for IC', () => {
+        assert.equal(MeetingInfoUtil.getWebexSite('10019857020@meet-intb.ciscospark.com'), null);
+      });
+      it('SIP meeting address from webex domain', () => {
+        assert.equal(MeetingInfoUtil.getWebexSite('10019857020@webex.com'), null);
+      });
       it('invalid domain', () => {
         assert.equal(MeetingInfoUtil.getWebexSite('invaliddomain'), null);
       });
@@ -265,16 +271,6 @@ describe('plugin-meetings', () => {
             destination: 'testing@convergedats.webex.com',
           }),
           'https://convergedats.webex.com/wbxappapi/v1/meetingInfo'
-        );
-      });
-
-      it('for _SIP_URI_ without exempted domain match', () => {
-        assert.equal(
-          MeetingInfoUtil.getDirectMeetingInfoURI({
-            type: _SIP_URI_,
-            destination: 'testing@webex.com',
-          }),
-          undefined
         );
       });
 
