@@ -52,6 +52,7 @@ const Services = WebexPlugin.extend({
 
   props: {
     validateDomains: ['boolean', false, true],
+    initFailed: 'boolean',
   },
 
   _catalogs: new WeakMap(),
@@ -1017,13 +1018,17 @@ const Services = WebexPlugin.extend({
           .then(() => {
             catalog.isReady = true;
           })
-          .catch((error) =>
-            this.logger.error(`services: failed to init initial services, ${error.message}`)
-          );
+          .catch((error) => {
+            this.logger.error(`services: failed to init initial services, ${error.message}`);
+            this.initFailed = true;
+          });
       } else {
         const {email} = this.webex.config;
 
-        this.collectPreauthCatalog(email ? {email} : undefined);
+        this.collectPreauthCatalog(email ? {email} : undefined).catch((error) => {
+          this.initFailed = true;
+          this.logger.error(`services: failed to init initial services, ${error.message}`);
+        });
       }
     });
   },
