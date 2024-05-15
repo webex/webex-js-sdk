@@ -292,7 +292,7 @@ MeetingInfoUtil.getRequestBody = (options: {type: string; destination: object} |
 MeetingInfoUtil.getWebexSite = (uri: string) => {
   const exceptedDomains = ['meet.webex.com', 'meetup.webex.com', 'ciscospark.com'];
   const site = uri?.match(/.+@([^.]+\.[^.]+\.[^.]+)$/)?.[1];
-  const isExceptedDomain = site && exceptedDomains.some((domain) => site.includes(domain));
+  const isExceptedDomain = !!site && exceptedDomains.some((domain) => site.includes(domain));
 
   return isExceptedDomain ? null : site;
 };
