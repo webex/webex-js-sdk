@@ -268,6 +268,16 @@ describe('plugin-meetings', () => {
         );
       });
 
+      it('for _SIP_URI_ without exempted domain match', () => {
+        assert.equal(
+          MeetingInfoUtil.getDirectMeetingInfoURI({
+            type: _SIP_URI_,
+            destination: 'testing@webex.com',
+          }),
+          undefined
+        );
+      });
+
       it('for _LOCUS_ID_ with webExSite', () => {
         assert.equal(
           MeetingInfoUtil.getDirectMeetingInfoURI({
