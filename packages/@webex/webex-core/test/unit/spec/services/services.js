@@ -8,6 +8,13 @@ import sinon from 'sinon';
 import {Services, ServiceRegistry, ServiceState} from '@webex/webex-core';
 import {NewMetrics} from '@webex/internal-plugin-metrics';
 
+const waitForAsync = () =>
+  new Promise((resolve) =>
+    setImmediate(() => {
+      return resolve();
+    })
+  );
+
 /* eslint-disable no-underscore-dangle */
 describe('webex-core', () => {
   describe('Services', () => {
@@ -15,7 +22,7 @@ describe('webex-core', () => {
     let services;
     let catalog;
 
-    beforeAll(() => {
+    beforeEach(() => {
       webex = new MockWebex({
         children: {
           services: Services,
@@ -24,6 +31,66 @@ describe('webex-core', () => {
       });
       services = webex.internal.services;
       catalog = services._getCatalog();
+    });
+
+    describe('#initialize', () => {
+      it.each([
+        {error: new Error('failed'), expectedMessage: 'failed'},
+        {error: undefined, expectedMessage: undefined}
+      ])(
+        'sets initFailed to true when collectPreauthCatalog errors',
+        async ({error, expectedMessage}) => {
+          services.collectPreauthCatalog = sinon.stub().callsFake(() => {
+            return Promise.reject(error);
+          });
+
+          services.listenToOnce = sinon.stub();
+          services.logger.error = sinon.stub();
+
+          services.initialize();
+
+          // call the onReady callback
+          services.listenToOnce.getCall(1).args[2]();
+
+          await waitForAsync();
+
+          assert.isTrue(services.initFailed);
+          sinon.assert.calledWith(
+            services.logger.error,
+            `services: failed to init initial services when no credentials available, ${expectedMessage}`
+          );
+        }
+      );
+
+      it.each([
+        {error: new Error('failed'), expectedMessage: 'failed'},
+        {error: undefined, expectedMessage: undefined}
+      ])('sets initFailed to true when initServiceCatalogs errors', async ({error, expectedMessage}) => {
+        services.initServiceCatalogs = sinon.stub().callsFake(() => {
+          return Promise.reject(error);
+        });
+        services.webex.credentials = {
+          supertoken: {
+            access_token: 'token'
+          }
+        }
+
+        services.listenToOnce = sinon.stub();
+        services.logger.error = sinon.stub();
+
+        services.initialize();
+
+        // call the onReady callback
+        services.listenToOnce.getCall(1).args[2]();
+
+        await waitForAsync();
+
+        assert.isTrue(services.initFailed);
+        sinon.assert.calledWith(
+          services.logger.error,
+          `services: failed to init initial services when credentials available, ${expectedMessage}`
+        );
+      });
     });
 
     describe('class members', () => {
@@ -69,6 +136,12 @@ describe('webex-core', () => {
     describe('#validateDomains', () => {
       it('is a boolean', () => {
         assert.isBoolean(services.validateDomains);
+      });
+    });
+
+    describe('#initFailed', () => {
+      it('is a boolean', () => {
+        assert.isBoolean(services.initFailed);
       });
     });
 
@@ -293,7 +366,7 @@ describe('webex-core', () => {
         );
       });
 
-      it.skip('creates an array of equal or less length of hostMap', () => {
+      it('creates an array of equal or less length of hostMap', () => {
         formattedHM = services._formatReceivedHostmap(serviceHostmap);
 
         assert(

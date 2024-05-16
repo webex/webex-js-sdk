@@ -52,7 +52,7 @@ const Services = WebexPlugin.extend({
 
   props: {
     validateDomains: ['boolean', false, true],
-    initFailed: 'boolean',
+    initFailed: ['boolean', false, true],
   },
 
   _catalogs: new WeakMap(),
@@ -1011,7 +1011,6 @@ const Services = WebexPlugin.extend({
     // to update the service catalogs
     this.listenToOnce(this.webex, 'ready', () => {
       const {supertoken} = this.webex.credentials;
-
       // Validate if the supertoken exists.
       if (supertoken && supertoken.access_token) {
         this.initServiceCatalogs()
@@ -1019,15 +1018,19 @@ const Services = WebexPlugin.extend({
             catalog.isReady = true;
           })
           .catch((error) => {
-            this.logger.error(`services: failed to init initial services, ${error.message}`);
             this.initFailed = true;
+            this.logger.error(
+              `services: failed to init initial services when credentials available, ${error?.message}`
+            );
           });
       } else {
         const {email} = this.webex.config;
 
         this.collectPreauthCatalog(email ? {email} : undefined).catch((error) => {
           this.initFailed = true;
-          this.logger.error(`services: failed to init initial services, ${error.message}`);
+          this.logger.error(
+            `services: failed to init initial services when no credentials available, ${error?.message}`
+          );
         });
       }
     });
