@@ -52,7 +52,7 @@ const Services = WebexPlugin.extend({
 
   props: {
     validateDomains: ['boolean', false, true],
-    initFailed: ['boolean', false, true],
+    initFailed: ['boolean', false, false],
   },
 
   _catalogs: new WeakMap(),

@@ -34,6 +34,37 @@ describe('webex-core', () => {
     });
 
     describe('#initialize', () => {
+      it('initFailed is false when initialization succeeds and credentials are available', async () => {
+        services.listenToOnce = sinon.stub();
+        services.initServiceCatalogs = sinon.stub().returns(Promise.resolve());
+        services.webex.credentials = {
+          supertoken: {
+            access_token: 'token',
+          },
+        };
+
+        services.initialize();
+
+        // call the onReady callback
+        services.listenToOnce.getCall(1).args[2]();
+        await waitForAsync();
+
+        assert.isFalse(services.initFailed);
+      });
+
+      it('initFailed is false when initialization succeeds no credentials are available', async () => {
+        services.listenToOnce = sinon.stub();
+        services.collectPreauthCatalog = sinon.stub().returns(Promise.resolve());
+
+        services.initialize();
+
+        // call the onReady callback
+        services.listenToOnce.getCall(1).args[2]();
+        await waitForAsync();
+
+        assert.isFalse(services.initFailed);
+      });
+
       it.each([
         {error: new Error('failed'), expectedMessage: 'failed'},
         {error: undefined, expectedMessage: undefined}
@@ -141,7 +172,7 @@ describe('webex-core', () => {
 
     describe('#initFailed', () => {
       it('is a boolean', () => {
-        assert.isBoolean(services.initFailed);
+        assert.isFalse(services.initFailed);
       });
     });
 
