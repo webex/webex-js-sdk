@@ -266,7 +266,8 @@ export class StatsAnalyzer extends EventsScope {
           lastMqaDataSent: this.lastMqaDataSent,
           mediaType,
         });
-        newMqa.audioTransmit[0].streams.push(audioSenderStream);
+        if (this.statsResults[mediaType][STATS.SEND_DIRECTION]?.isRequested)
+          newMqa.audioTransmit[0].streams.push(audioSenderStream);
 
         this.lastMqaDataSent[mediaType].send = cloneDeep(this.statsResults[mediaType].send);
       } else if (mediaType.startsWith('audio-share-send')) {
@@ -278,7 +279,8 @@ export class StatsAnalyzer extends EventsScope {
           lastMqaDataSent: this.lastMqaDataSent,
           mediaType,
         });
-        newMqa.audioTransmit[1].streams.push(audioSenderStream);
+        if (this.statsResults[mediaType][STATS.SEND_DIRECTION]?.isRequested)
+          newMqa.audioTransmit[1].streams.push(audioSenderStream);
 
         this.lastMqaDataSent[mediaType].send = cloneDeep(this.statsResults[mediaType].send);
       } else if (mediaType.startsWith('audio-recv')) {
@@ -290,7 +292,8 @@ export class StatsAnalyzer extends EventsScope {
           lastMqaDataSent: this.lastMqaDataSent,
           mediaType,
         });
-        newMqa.audioReceive[0].streams.push(audioReceiverStream);
+        if (this.statsResults[mediaType][STATS.RECEIVE_DIRECTION]?.isRequested)
+          newMqa.audioReceive[0].streams.push(audioReceiverStream);
 
         this.lastMqaDataSent[mediaType].recv = cloneDeep(this.statsResults[mediaType].recv);
       } else if (mediaType.startsWith('audio-share-recv')) {
@@ -302,7 +305,8 @@ export class StatsAnalyzer extends EventsScope {
           lastMqaDataSent: this.lastMqaDataSent,
           mediaType,
         });
-        newMqa.audioReceive[1].streams.push(audioReceiverStream);
+        if (this.statsResults[mediaType][STATS.RECEIVE_DIRECTION]?.isRequested)
+          newMqa.audioReceive[1].streams.push(audioReceiverStream);
 
         this.lastMqaDataSent[mediaType].recv = cloneDeep(this.statsResults[mediaType].recv);
       } else if (mediaType.startsWith('video-send-layer')) {
@@ -315,7 +319,8 @@ export class StatsAnalyzer extends EventsScope {
           lastMqaDataSent: this.lastMqaDataSent,
           mediaType,
         });
-        newMqa.videoTransmit[0].streams.push(videoSenderStream);
+        if (this.statsResults[mediaType][STATS.SEND_DIRECTION]?.isRequested)
+          newMqa.videoTransmit[0].streams.push(videoSenderStream);
 
         this.lastMqaDataSent[mediaType].send = cloneDeep(this.statsResults[mediaType].send);
       } else if (mediaType.startsWith('video-share-send')) {
@@ -327,7 +332,8 @@ export class StatsAnalyzer extends EventsScope {
           lastMqaDataSent: this.lastMqaDataSent,
           mediaType,
         });
-        newMqa.videoTransmit[1].streams.push(videoSenderStream);
+        if (this.statsResults[mediaType][STATS.SEND_DIRECTION]?.isRequested)
+          newMqa.videoTransmit[1].streams.push(videoSenderStream);
 
         this.lastMqaDataSent[mediaType].send = cloneDeep(this.statsResults[mediaType].send);
       } else if (mediaType.startsWith('video-recv')) {
@@ -339,7 +345,8 @@ export class StatsAnalyzer extends EventsScope {
           lastMqaDataSent: this.lastMqaDataSent,
           mediaType,
         });
-        newMqa.videoReceive[0].streams.push(videoReceiverStream);
+        if (this.statsResults[mediaType][STATS.RECEIVE_DIRECTION]?.isRequested)
+          newMqa.videoReceive[0].streams.push(videoReceiverStream);
 
         this.lastMqaDataSent[mediaType].recv = cloneDeep(this.statsResults[mediaType].recv);
       } else if (mediaType.startsWith('video-share-recv')) {
@@ -351,7 +358,8 @@ export class StatsAnalyzer extends EventsScope {
           lastMqaDataSent: this.lastMqaDataSent,
           mediaType,
         });
-        newMqa.videoReceive[1].streams.push(videoReceiverStream);
+        if (this.statsResults[mediaType][STATS.RECEIVE_DIRECTION]?.isRequested)
+          newMqa.videoReceive[1].streams.push(videoReceiverStream);
 
         this.lastMqaDataSent[mediaType].recv = cloneDeep(this.statsResults[mediaType].recv);
       }
@@ -997,6 +1005,10 @@ export class StatsAnalyzer extends EventsScope {
       this.statsResults[mediaType][sendrecvType].headerBytesSent = result.headerBytesSent;
       this.statsResults[mediaType][sendrecvType].retransmittedBytesSent =
         result.retransmittedBytesSent;
+      this.statsResults[mediaType][sendrecvType].isRequested =
+        result.isRequested ||
+        (result.lastRequestedUpdateTimestamp &&
+          performance.timeOrigin + performance.now() - result.lastRequestedUpdateTimestamp < 60000);
     }
   }
 
@@ -1137,6 +1149,10 @@ export class StatsAnalyzer extends EventsScope {
       this.statsResults[mediaType][sendrecvType].totalSamplesDecoded =
         result.totalSamplesDecoded || 0;
       this.statsResults[mediaType][sendrecvType].concealedSamples = result.concealedSamples || 0;
+      this.statsResults[mediaType][sendrecvType].isRequested =
+        result.isRequested ||
+        (result.lastRequestedUpdateTimestamp &&
+          performance.timeOrigin + performance.now() - result.lastRequestedUpdateTimestamp < 60000);
     }
   }
 
