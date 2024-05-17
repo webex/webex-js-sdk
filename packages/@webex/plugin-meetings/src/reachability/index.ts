@@ -338,7 +338,10 @@ export default class Reachability {
     LoggerProxy.logger.log(
       `Reachability:index#performReachabilityChecks --> doing UDP${
         // @ts-ignore
-        this.webex.config.meetings.experimental.enableTcpReachability ? ' and TCP' : ''
+        this.webex.config.meetings.experimental.enableTcpReachability ? ',TCP' : ''
+      }${
+        // @ts-ignore
+        this.webex.config.meetings.experimental.enableTlsReachability ? ',TLS' : ''
       } reachability checks`
     );
 
@@ -352,6 +355,14 @@ export default class Reachability {
 
       if (!includeTcpReachability) {
         cluster.tcp = [];
+      }
+
+      const includeTlsReachability =
+        // @ts-ignore
+        this.webex.config.meetings.experimental.enableTlsReachability && !cluster.isVideoMesh;
+
+      if (!includeTlsReachability) {
+        cluster.xtls = [];
       }
 
       this.clusterReachability[key] = new ClusterReachability(key, cluster);
