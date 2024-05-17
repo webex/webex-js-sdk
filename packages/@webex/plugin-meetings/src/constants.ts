@@ -1249,12 +1249,6 @@ export const AVAILABLE_RESOLUTIONS = {
 
 export const MQA_INTERVAL = 60000; // mqa analyzer interval its fixed to 60000
 
-export const MEDIA_DEVICES = {
-  MICROPHONE: 'microphone',
-  SPEAKER: 'speaker',
-  CAMERA: 'camera',
-};
-
 export const PSTN_STATUS = {
   JOINED: 'JOINED', // we have provisioned a pstn device, which can be used to connect
   CONNECTED: 'CONNECTED', // user is connected to audio with pstn device

@@ -88,7 +88,7 @@ import {
   URL_ENDPOINT,
   UTILS_FILE,
 } from '../CallingClient/constants';
-import {JanusResponseEvent} from '../CallHistory/types';
+import {JanusResponseEvent, UpdateMissedCallsResponse} from '../CallHistory/types';
 import {
   VoicemailResponseEvent,
   MessageInfo,
@@ -684,7 +684,13 @@ export async function handleCallErrors(
 export async function serviceErrorCodeHandler(
   err: WebexRequestPayload,
   loggerContext: LogContext
-): Promise<JanusResponseEvent | VoicemailResponseEvent | CallSettingResponse | ContactResponse> {
+): Promise<
+  | JanusResponseEvent
+  | VoicemailResponseEvent
+  | CallSettingResponse
+  | ContactResponse
+  | UpdateMissedCallsResponse
+> {
   const errorCode = Number(err.statusCode);
   const failureMessage = 'FAILURE';
 
