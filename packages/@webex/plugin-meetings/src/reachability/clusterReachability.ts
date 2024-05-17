@@ -104,7 +104,7 @@ export class ClusterReachability {
       return {
         username: 'webexturnreachuser',
         credential: 'webexturnreachpwd',
-        urls: [convertStunUrlToTurnTls(urlString, 'tcp')],
+        urls: [convertStunUrlToTurnTls(urlString)],
       };
     });
 
