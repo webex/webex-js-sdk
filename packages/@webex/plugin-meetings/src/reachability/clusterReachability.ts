@@ -21,7 +21,6 @@ export type ClusterReachabilityResult = {
   udp: TransportResult;
   tcp: TransportResult;
   xtls: TransportResult;
-  tls: TransportResult;
 };
 
 /**
@@ -30,7 +29,7 @@ export type ClusterReachabilityResult = {
 export class ClusterReachability {
   private numUdpUrls: number;
   private numTcpUrls: number;
-  private numTlsUrls: number;
+  private numXTlsUrls: number;
   private result: ClusterReachabilityResult;
   private pc?: RTCPeerConnection;
   private defer: Defer; // this defer is resolved once reachability checks for this cluster are completed
@@ -48,7 +47,7 @@ export class ClusterReachability {
     this.isVideoMesh = clusterInfo.isVideoMesh;
     this.numUdpUrls = clusterInfo.udp.length;
     this.numTcpUrls = clusterInfo.tcp.length;
-    this.numTlsUrls = clusterInfo.xtls.length;
+    this.numXTlsUrls = clusterInfo.xtls.length;
 
     this.pc = this.createPeerConnection(clusterInfo);
 
@@ -58,9 +57,6 @@ export class ClusterReachability {
         result: 'untested',
       },
       tcp: {
-        result: 'untested',
-      },
-      tls: {
         result: 'untested',
       },
       xtls: {
@@ -221,7 +217,7 @@ export class ClusterReachability {
    * @param {number} latency
    * @returns {void}
    */
-  private storeLatencyResult(protocol: 'udp' | 'tcp' | 'tls', latency: number) {
+  private storeLatencyResult(protocol: 'udp' | 'tcp' | 'xtls', latency: number) {
     const result = this.result[protocol];
 
     if (result.latencyInMilliseconds === undefined) {
@@ -254,7 +250,7 @@ export class ClusterReachability {
         }
 
         if (e.candidate.type === CANDIDATE_TYPES.RELAY) {
-          const protocol = e.candidate.port === TURN_TLS_PORT ? 'tls' : 'tcp';
+          const protocol = e.candidate.port === TURN_TLS_PORT ? 'xtls' : 'tcp';
           this.storeLatencyResult(protocol, this.getElapsedTime());
           // we don't add public IP for TCP, because in the case of relay candidates
           // e.candidate.address is the TURN server address, not the client's public IP
@@ -291,8 +287,8 @@ export class ClusterReachability {
     this.result.tcp = {
       result: this.numTcpUrls > 0 ? 'unreachable' : 'untested',
     };
-    this.result.tls = {
-      result: this.numTlsUrls > 0 ? 'unreachable' : 'untested',
+    this.result.xtls = {
+      result: this.numXTlsUrls > 0 ? 'unreachable' : 'untested',
     };
 
     try {
