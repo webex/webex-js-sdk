@@ -1,11 +1,9 @@
 import {assert} from '@webex/test-helper-chai';
 import sinon from 'sinon';
-import {ConnectionState, Event} from '@webex/internal-media-core';
 import MediaProperties from '@webex/plugin-meetings/src/media/properties';
-import MediaUtil from '@webex/plugin-meetings/src/media/util';
 import testUtils from '../../../utils/testUtils';
-import {ICE_AND_DTLS_CONNECTION_TIMEOUT} from '@webex/plugin-meetings/src/constants';
 import {Defer} from '@webex/common';
+import MediaConnectionAwaiter from '../../../../src/media/MediaConnectionAwaiter';
 
 describe('MediaProperties', () => {
   let mediaProperties;
@@ -19,8 +17,6 @@ describe('MediaProperties', () => {
       getStats: sinon.stub().resolves([]),
       on: sinon.stub(),
       off: sinon.stub(),
-      getConnectionState: sinon.stub().returns(ConnectionState.Connected),
-      getIceGatheringState: sinon.stub().returns('complete'),
     };
 
     mediaProperties = new MediaProperties();
@@ -32,65 +28,27 @@ describe('MediaProperties', () => {
     sinon.restore();
   });
   describe('waitForMediaConnectionConnected', () => {
-    it('resolves immediately if ice state is connected', async () => {
+    it('resolves if media connection is connected', async () => {
+      const waitForMediaConnectionConnectedResult = new Defer();
+
+      sinon
+        .stub(MediaConnectionAwaiter.prototype, 'waitForMediaConnectionConnected')
+        .returns(waitForMediaConnectionConnectedResult.promise);
+
+      waitForMediaConnectionConnectedResult.resolve();
+
       await mediaProperties.waitForMediaConnectionConnected();
     });
-    it('rejects after timeout if ice state does not reach connected/completed', async () => {
-      mockMC.getConnectionState.returns(ConnectionState.Connecting);
-      mockMC.getIceGatheringState.returns('gathering');
+    it('rejects if media connection is not connected', async () => {
+      const waitForMediaConnectionConnectedResult = new Defer();
 
-      let promiseResolved = false;
-      let promiseRejected = false;
+      sinon
+        .stub(MediaConnectionAwaiter.prototype, 'waitForMediaConnectionConnected')
+        .returns(waitForMediaConnectionConnectedResult.promise);
 
-      mediaProperties
-        .waitForMediaConnectionConnected()
-        .then(() => {
-          promiseResolved = true;
-        })
-        .catch(() => {
-          promiseRejected = true;
-        });
+      waitForMediaConnectionConnectedResult.reject();
 
-      assert.equal(promiseResolved, false);
-      assert.equal(promiseRejected, false);
-
-      await clock.tickAsync(ICE_AND_DTLS_CONNECTION_TIMEOUT * 2);
-      await testUtils.flushPromises();
-
-      assert.equal(promiseResolved, false);
-      assert.equal(promiseRejected, true);
-    });
-
-    it(`resolves when media connection reaches "connected" state`, async () => {
-      mockMC.getConnectionState.returns(ConnectionState.Connecting);
-
-      let promiseResolved = false;
-      let promiseRejected = false;
-
-      mediaProperties
-        .waitForMediaConnectionConnected()
-        .then(() => {
-          promiseResolved = true;
-        })
-        .catch(() => {
-          promiseRejected = true;
-        });
-
-      assert.equal(promiseResolved, false);
-      assert.equal(promiseRejected, false);
-
-      // check the right listener was registered
-      assert.calledTwice(mockMC.on);
-      assert.equal(mockMC.on.getCall(0).args[0], Event.CONNECTION_STATE_CHANGED);
-      const listener = mockMC.on.getCall(0).args[1];
-
-      // call the listener and pretend we are now connected
-      mockMC.getConnectionState.returns(ConnectionState.Connected);
-      listener();
-      await testUtils.flushPromises();
-
-      assert.equal(promiseResolved, true);
-      assert.equal(promiseRejected, false);
+      await assert.isRejected(mediaProperties.waitForMediaConnectionConnected());
     });
   });
 

@@ -40,7 +40,7 @@ describe('MediaConnectionAwaiter', () => {
       assert.neverCalledWith(mockMC.on);
     });
 
-    it('rejects after timeout if ice state reach connected/completed', async () => {
+    it('rejects after timeout if ice state is not connected', async () => {
       mockMC.getConnectionState.returns(ConnectionState.Connecting);
       mockMC.getIceGatheringState.returns('gathering');
 
@@ -202,10 +202,11 @@ describe('MediaConnectionAwaiter', () => {
       assert.neverCalledWith(clearTimeoutSpy);
     });
 
-    it(`ice gathering update to 'complete' state update timer`, async () => {
+    it(`ice gathering update to 'complete' state restarts the timer`, async () => {
       mockMC.getConnectionState.returns(ConnectionState.Connecting);
       mockMC.getIceGatheringState.returns('new');
 
+      const setTimeoutSpy = sinon.spy(clock, 'setTimeout');
       const clearTimeoutSpy = sinon.spy(clock, 'clearTimeout');
 
       let promiseResolved = false;
@@ -224,6 +225,8 @@ describe('MediaConnectionAwaiter', () => {
       assert.equal(promiseResolved, false);
       assert.equal(promiseRejected, false);
 
+      assert.calledOnce(setTimeoutSpy);
+
       // check the right listener was registered
       assert.calledTwice(mockMC.on);
       assert.equal(mockMC.on.getCall(0).args[0], Event.CONNECTION_STATE_CHANGED);
@@ -233,6 +236,9 @@ describe('MediaConnectionAwaiter', () => {
       // call the listener and pretend we are now connected
       mockMC.getIceGatheringState.returns('complete');
       listener();
+
+      assert.calledOnce(clearTimeoutSpy);
+      assert.calledTwice(setTimeoutSpy);
 
       mockMC.getConnectionState.returns(ConnectionState.Connected);
 
@@ -244,8 +250,6 @@ describe('MediaConnectionAwaiter', () => {
 
       // check that listener was removed
       assert.calledTwice(mockMC.off);
-
-      assert.calledOnce(clearTimeoutSpy);
     });
 
     it(`reject with restart timer once if gathering state is not complete`, async () => {
