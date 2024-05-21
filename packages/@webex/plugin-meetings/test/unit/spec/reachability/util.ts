@@ -45,29 +45,15 @@ describe('plugin-meetings/src/reachability/util', () => {
   });
 
   describe('#convertStunUrlToTurnTls()', () => {
-    [
-      {
-        title: 'a stun url with port',
-        stunUrl: 'stun:external-media91.public.wjfkm-a-10.prod.infra.webex.com:443',
-         : 'external-media91.public.wjfkm-a-10.prod.infra.webex.com:443',
-      },
-      {
-        title: 'a stun url without port',
-        stunUrl: 'stun:something.somewhere.com',
-        expectedUrlPart: 'something.somewhere.com',
-      },
-    ].forEach(({title, stunUrl, expectedUrlPart}) => {
-      it(`should convert ${title} to a TCP turn url`, () => {
-        const turnUrl = convertStunUrlToTurnTls(stunUrl);
+    it(`should convert to a turns url`, () => {
+      const turnsUrl = convertStunUrlToTurnTls(
+        'stun:external-media91.public.wjfkm-a-10.prod.infra.webex.com:443'
+      );
 
-        assert.equal(turnUrl, `turn:${expectedUrlPart}?transport=tcp`);
-      });
-
-      it(`should convert ${title} to a UDP turn url`, () => {
-        const turnUrl = convertStunUrlToTurnTls(stunUrl);
-
-        assert.equal(turnUrl, `turn:${expectedUrlPart}:443?transport=tcp`);
-      });
+      assert.equal(
+        turnsUrl,
+        'turns:external-media91.public.wjfkm-a-10.prod.infra.webex.com:443?transport=tcp'
+      );
     });
 
     it('show fail if stunUrl is not a valid url', () => {
