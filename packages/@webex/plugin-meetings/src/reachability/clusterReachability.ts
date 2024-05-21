@@ -204,7 +204,7 @@ export class ClusterReachability {
    * @returns {boolean} true if we have all results, false otherwise
    */
   private haveWeGotAllResults(): boolean {
-    return ['udp', 'tcp'].every(
+    return ['udp', 'tcp', 'xtls'].every(
       (protocol) =>
         this.result[protocol].result === 'reachable' || this.result[protocol].result === 'untested'
     );

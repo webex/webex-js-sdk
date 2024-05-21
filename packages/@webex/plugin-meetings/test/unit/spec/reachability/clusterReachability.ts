@@ -128,7 +128,7 @@ describe('ClusterReachability', () => {
       await promise;
     });
 
-    it('resolves and has correct result as soon as it finds that both udp and tcp is reachable', async () => {
+    it('resolves and has correct result as soon as it finds that all udp, tcp and tls are reachable', async () => {
       const promise = clusterReachability.start();
 
       await clock.tickAsync(100);
@@ -137,31 +137,17 @@ describe('ClusterReachability', () => {
       await clock.tickAsync(100);
       fakePeerConnection.onicecandidate({candidate: {type: 'relay', address: 'someTurnRelayIp'}});
 
+      await clock.tickAsync(100);
+      fakePeerConnection.onicecandidate({
+        candidate: {type: 'relay', address: 'someTurnRelayIp', port: 443},
+      });
+
       await promise;
 
       assert.deepEqual(clusterReachability.getResult(), {
         udp: {result: 'reachable', latencyInMilliseconds: 100, clientMediaIPs: ['somePublicIp']},
         tcp: {result: 'reachable', latencyInMilliseconds: 200},
-        xtls: {result: 'unreachable'},
-      });
-    });
-
-    it('timeout with correct result tls reachability', async () => {
-      const promise = clusterReachability.start();
-
-      await clock.tickAsync(100);
-      fakePeerConnection.onicecandidate({
-        candidate: {type: 'relay', address: 'someTurnTlsRelayIp', port: 443},
-      });
-
-      await clock.tickAsync(3000);
-
-      await promise;
-
-      assert.deepEqual(clusterReachability.getResult(), {
-        udp: {result: 'unreachable'},
-        tcp: {result: 'unreachable'},
-        xtls: {result: 'reachable', latencyInMilliseconds: 100},
+        xtls: {result: 'reachable', latencyInMilliseconds: 300},
       });
     });
 
@@ -337,6 +323,9 @@ describe('ClusterReachability', () => {
 
       // send also a relay candidate so that the reachability check finishes
       fakePeerConnection.onicecandidate({candidate: {type: 'relay', address: 'someTurnRelayIp'}});
+      fakePeerConnection.onicecandidate({
+        candidate: {type: 'relay', address: 'someTurnRelayIp', port: 443},
+      });
 
       await promise;
 
@@ -347,7 +336,7 @@ describe('ClusterReachability', () => {
           clientMediaIPs: ['somePublicIp1', 'somePublicIp2'],
         },
         tcp: {result: 'reachable', latencyInMilliseconds: 40},
-        xtls: {result: 'unreachable'},
+        xtls: {result: 'reachable', latencyInMilliseconds: 40},
       });
     });
   });
