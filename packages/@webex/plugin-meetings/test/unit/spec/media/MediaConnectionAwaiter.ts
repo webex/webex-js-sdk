@@ -276,7 +276,7 @@ describe('MediaConnectionAwaiter', () => {
       assert.equal(mockMC.on.getCall(0).args[0], Event.CONNECTION_STATE_CHANGED);
       assert.equal(mockMC.on.getCall(1).args[0], Event.ICE_GATHERING_STATE_CHANGED);
 
-      await clock.tickAsync(ICE_AND_DTLS_CONNECTION_TIMEOUT * 3);
+      await clock.tickAsync(ICE_AND_DTLS_CONNECTION_TIMEOUT * 2);
       await testUtils.flushPromises();
 
       assert.equal(promiseResolved, false);
