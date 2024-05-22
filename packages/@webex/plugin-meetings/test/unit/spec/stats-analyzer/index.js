@@ -354,6 +354,7 @@ describe('plugin-meetings', () => {
                     packetsLost: 0,
                     packetsReceived: 0,
                     isRequested: true,
+                    lastRequestedUpdateTimestamp: 0,
                   },
                   {
                     type: 'remote-outbound-rtp',
@@ -388,6 +389,7 @@ describe('plugin-meetings', () => {
                     framesSent: 0,
                     packetsSent: 0,
                     isRequested: true,
+                    lastRequestedUpdateTimestamp: 0,
                   },
                   {
                     type: 'remote-inbound-rtp',
@@ -423,6 +425,7 @@ describe('plugin-meetings', () => {
                     packetsLost: 0,
                     packetsReceived: 0,
                     isRequested: true,
+                    lastRequestedUpdateTimestamp: 0,
                   },
                   {
                     type: 'remote-outbound-rtp',
@@ -457,6 +460,7 @@ describe('plugin-meetings', () => {
                     framesSent: 0,
                     packetsSent: 0,
                     isRequested: true,
+                    lastRequestedUpdateTimestamp: 0,
                   },
                   {
                     type: 'remote-inbound-rtp',
@@ -493,6 +497,7 @@ describe('plugin-meetings', () => {
                     packetsLost: 0,
                     packetsReceived: 0,
                     isRequested: true,
+                    lastRequestedUpdateTimestamp: 0,
                   },
                   {
                     type: 'remote-outbound-rtp',
@@ -1745,7 +1750,14 @@ describe('plugin-meetings', () => {
           await progressTime(MQA_INTERVAL);
           assert.strictEqual(mqeData.audioReceive[0].streams.length, 0);
         });
+
+        it('should send a stream if it was requested in the last 60 seconds', async () => {
+          fakeStats.audio.receivers[0].report[0].lastRequestedUpdateTimestamp = performance.timeOrigin + performance.now() - 30 * 1000;
+          await progressTime(MQA_INTERVAL);
+          assert.strictEqual(mqeData.audioReceive[0].streams.length, 1);
+        })
       });
+
     })
   });
 });
