@@ -59,7 +59,8 @@ function getClientCredentials({clientId, clientSecret, idbrokerUrl}) {
     json: true,
     form: {
       grant_type: 'client_credentials',
-      scope: 'Identity:SCIM webexsquare:get_conversation',
+      scope:
+        'Identity:SCIM webexsquare:get_conversation spark-test-account:write spark-test-account:read',
       client_id: clientId,
       client_secret: clientSecret,
     },
