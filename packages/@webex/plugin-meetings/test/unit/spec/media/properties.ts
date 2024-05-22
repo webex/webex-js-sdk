@@ -1,5 +1,6 @@
 import {assert} from '@webex/test-helper-chai';
 import sinon from 'sinon';
+import {ConnectionState} from '@webex/internal-media-core';
 import MediaProperties from '@webex/plugin-meetings/src/media/properties';
 import testUtils from '../../../utils/testUtils';
 import {Defer} from '@webex/common';
@@ -17,6 +18,7 @@ describe('MediaProperties', () => {
       getStats: sinon.stub().resolves([]),
       on: sinon.stub(),
       off: sinon.stub(),
+      getConnectionState: sinon.stub().returns(ConnectionState.Connected),
     };
 
     mediaProperties = new MediaProperties();

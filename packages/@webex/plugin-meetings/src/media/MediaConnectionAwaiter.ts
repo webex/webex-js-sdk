@@ -60,10 +60,6 @@ export default class MediaConnectionAwaiter {
       this.iceGatheringStateCallback
     );
     this.webrtcMediaConnection.off(Event.CONNECTION_STATE_CHANGED, this.connectionStateCallback);
-
-    this.onTimeoutCallback = null;
-    this.connectionStateCallback = null;
-    this.iceGatheringStateCallback = null;
   }
 
   /**
