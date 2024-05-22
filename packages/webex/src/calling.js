@@ -72,7 +72,7 @@ class Calling extends EventEmitter {
 
   async deregister() {
     if (!this.registered) {
-      this.log.info('Authentication: deregister already done', logContext);
+      this.log.info('Authentication: webex.internal.device.deregister already done', logContext);
 
       return Promise.resolve();
     }
@@ -82,13 +82,20 @@ class Calling extends EventEmitter {
       this.webex.internal.mercury
         .disconnect()
         // @ts-ignore
-        .then(() => this.webex.internal.device.unregister())
         .then(() => {
-          this.log.info('Authentication: deregister successful', logContext);
+          this.log.info('Authentication: webex.internal.mercury.disconnect successful', logContext);
+
+          return this.webex.internal.device.unregister();
+        })
+        .then(() => {
+          this.log.info('Authentication: webex.internal.device.deregister successful', logContext);
           this.registered = false;
         })
         .catch((error) => {
-          this.log.warn(`Error occurred during device.deregister() ${error}`, logContext);
+          this.log.warn(
+            `Error occurred during mercury.disconnect() or device.deregister() ${error}`,
+            logContext
+          );
         })
     );
   }
