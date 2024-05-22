@@ -28,6 +28,7 @@ class Calling extends EventEmitter {
     this.callingConfig = callingConfig;
     this.log = WebexCalling.Logger;
     this.log.setLogger(callingConfig.logger.level, CALLING_FILE);
+    this.registered = false;
 
     if (webex) {
       this.webex = webex;
@@ -52,6 +53,7 @@ class Calling extends EventEmitter {
           .connect()
           .then(async () => {
             this.log.info('Authentication: webex.internal.mercury.connect successful', logContext);
+            this.registered = true;
 
             try {
               await this.initializeClients();
@@ -66,6 +68,29 @@ class Calling extends EventEmitter {
       .catch((error) => {
         this.log.warn(`Error occurred during device.register() ${error}`, logContext);
       });
+  }
+
+  async deregister() {
+    if (!this.registered) {
+      this.log.info('Authentication: deregister already done', logContext);
+
+      return Promise.resolve();
+    }
+
+    return (
+      // @ts-ignore
+      this.webex.internal.mercury
+        .disconnect()
+        // @ts-ignore
+        .then(() => this.webex.internal.device.unregister())
+        .then(() => {
+          this.log.info('Authentication: deregister successful', logContext);
+          this.registered = false;
+        })
+        .catch((error) => {
+          this.log.warn(`Error occurred during device.deregister() ${error}`, logContext);
+        })
+    );
   }
 
   async initializeClients() {
