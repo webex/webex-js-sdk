@@ -420,6 +420,8 @@ describe('plugin-meetings', () => {
                     framesReceived: 0,
                     packetsLost: 0,
                     packetsReceived: 0,
+                    isActiveSpeaker: false,
+                    lastActiveSpeakerUpdateTimestamp: 0,
                   },
                   {
                     type: 'remote-outbound-rtp',
@@ -1718,6 +1720,19 @@ describe('plugin-meetings', () => {
           }
         ]);
       });
+      it('should emit active speaker status', async () => {
+        it('should mark active speaker as true', async () => {
+          fakeStats.video.receivers[0].report[0].isActiveSpeaker = true;
+          await startStatsAnalyzer();
+          await progressTime(MQA_INTERVAL);
+          assert.strictEqual(mqeData.videoReceive[0].streams[0].isActiveSpeaker, true);
+        })
+        it('should mark active speaker as true if it was active speaker within the last 60 seconds', async () =>{
+          fakeStats.video.receivers[0].report[0].lastActiveSpeakerUpdateTimestamp = performance.timeOrigin + performance.now() - 30 * 1000;
+          await progressTime(MQA_INTERVAL);
+          assert.strictEqual(mqeData.videoReceive[0].streams[0].isActiveSpeaker, true);
+        })
+      })
     });
   });
 });

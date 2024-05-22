@@ -1139,8 +1139,9 @@ export class StatsAnalyzer extends EventsScope {
       this.statsResults[mediaType][sendrecvType].concealedSamples = result.concealedSamples || 0;
       this.statsResults[mediaType][sendrecvType].isActiveSpeaker =
         result.isActiveSpeaker ||
-        (result.lastActiveSpeakerTimestamp &&
-          performance.timeOrigin + performance.now() - result.lastActiveSpeakerTimestamp < 60000);
+        (result.lastActiveSpeakerUpdateTimestamp &&
+          performance.timeOrigin + performance.now() - result.lastActiveSpeakerUpdateTimestamp <
+            60000);
     }
   }
 
