@@ -39,7 +39,6 @@ export function convertStunUrlToTurnTls(stunUrl: string) {
   }
 
   url.protocol = 'turns:';
-  url.port = '443'; // Make sure that the port is 443
   url.searchParams.append('transport', 'tcp');
 
   return url.toString();

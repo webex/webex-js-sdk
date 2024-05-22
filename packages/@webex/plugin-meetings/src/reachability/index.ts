@@ -22,10 +22,14 @@ export type ReachabilityMetrics = {
   reachability_public_udp_failed: number;
   reachability_public_tcp_success: number;
   reachability_public_tcp_failed: number;
+  reachability_public_xtls_success: number;
+  reachability_public_xtls_failed: number;
   reachability_vmn_udp_success: number;
   reachability_vmn_udp_failed: number;
   reachability_vmn_tcp_success: number;
   reachability_vmn_tcp_failed: number;
+  reachability_vmn_xtls_success: number;
+  reachability_vmn_xtls_failed: number;
 };
 
 /**
@@ -141,10 +145,14 @@ export default class Reachability {
       reachability_public_udp_failed: 0,
       reachability_public_tcp_success: 0,
       reachability_public_tcp_failed: 0,
+      reachability_public_xtls_success: 0,
+      reachability_public_xtls_failed: 0,
       reachability_vmn_udp_success: 0,
       reachability_vmn_udp_failed: 0,
       reachability_vmn_tcp_success: 0,
       reachability_vmn_tcp_failed: 0,
+      reachability_vmn_xtls_success: 0,
+      reachability_vmn_xtls_failed: 0,
     };
 
     const updateStats = (clusterType: 'public' | 'vmn', result: ClusterReachabilityResult) => {
@@ -155,6 +163,10 @@ export default class Reachability {
       if (result.tcp && result.tcp.result !== 'untested') {
         const outcome = result.tcp.result === 'reachable' ? 'success' : 'failed';
         stats[`reachability_${clusterType}_tcp_${outcome}`] += 1;
+      }
+      if (result.xtls && result.xtls.result !== 'untested') {
+        const outcome = result.xtls.result === 'reachable' ? 'success' : 'failed';
+        stats[`reachability_${clusterType}_xtls_${outcome}`] += 1;
       }
     };
 

@@ -311,7 +311,7 @@ describe('gatherReachability', () => {
       xtls: ['xtls1.1', 'xtls1.2'],
       isVideoMesh: false,
     });
-    // cluster 2 is video mesh, so we should not do TCP reachability on it
+    // cluster 2 is video mesh, so we should not do TCP or TLS reachability on it
     assert.calledWith(clusterReachabilityCtorStub, 'cluster 2', {
       udp: ['udp2.1', 'udp2.2'],
       tcp: [],
@@ -566,10 +566,14 @@ describe('getReachabilityMetrics', () => {
       reachability_public_udp_failed: 0,
       reachability_public_tcp_success: 0,
       reachability_public_tcp_failed: 0,
+      reachability_public_xtls_success: 0,
+      reachability_public_xtls_failed: 0,
       reachability_vmn_udp_success: 0,
       reachability_vmn_udp_failed: 0,
       reachability_vmn_tcp_success: 0,
       reachability_vmn_tcp_failed: 0,
+      reachability_vmn_xtls_success: 0,
+      reachability_vmn_xtls_failed: 0,
     });
   });
 
@@ -629,10 +633,14 @@ describe('getReachabilityMetrics', () => {
         reachability_public_udp_failed: 2,
         reachability_public_tcp_success: 2,
         reachability_public_tcp_failed: 1,
+        reachability_public_xtls_success: 0,
+        reachability_public_xtls_failed: 0,
         reachability_vmn_udp_success: 1,
         reachability_vmn_udp_failed: 0,
         reachability_vmn_tcp_success: 1,
         reachability_vmn_tcp_failed: 1,
+        reachability_vmn_xtls_success: 0,
+        reachability_vmn_xtls_failed: 0,
       }
     );
   });
@@ -668,7 +676,16 @@ describe('getReachabilityMetrics', () => {
         public5: {
           udp: {result: 'reachable', latencyInMilliseconds: '400', clientMediaIPs: ['10.10.10.10']},
           tcp: {result: 'untested'},
-          xtls: {result: 'untested'},
+          xtls: {result: 'unreachable'},
+        },
+        public6: {
+          udp: {result: 'untested'},
+          tcp: {result: 'untested'},
+          xtls: {
+            result: 'reachable',
+            latencyInMilliseconds: '200',
+            clientMediaIPs: ['10.10.10.10'],
+          },
         },
       },
       // expected result:
@@ -677,10 +694,14 @@ describe('getReachabilityMetrics', () => {
         reachability_public_udp_failed: 1,
         reachability_public_tcp_success: 1,
         reachability_public_tcp_failed: 2,
+        reachability_public_xtls_success: 1,
+        reachability_public_xtls_failed: 1,
         reachability_vmn_udp_success: 0,
         reachability_vmn_udp_failed: 0,
         reachability_vmn_tcp_success: 0,
         reachability_vmn_tcp_failed: 0,
+        reachability_vmn_xtls_success: 0,
+        reachability_vmn_xtls_failed: 0,
       }
     );
   });
@@ -717,9 +738,15 @@ describe('getReachabilityMetrics', () => {
         vmn5: {
           udp: {result: 'reachable', latencyInMilliseconds: 200, clientMediaIPs: ['10.10.10.10']},
           tcp: {result: 'unreachable'},
-          xtls: {result: 'untested'},
+          xtls: {result: 'unreachable'},
           isVideoMesh: true,
           someOtherField: 'any value',
+        },
+        vmn6: {
+          udp: {result: 'untested'},
+          tcp: {result: 'untested'},
+          xtls: {result: 'reachable', latencyInMilliseconds: 100, clientMediaIPs: ['10.10.10.10']},
+          isVideoMesh: true,
         },
       },
       // expected result:
@@ -728,10 +755,14 @@ describe('getReachabilityMetrics', () => {
         reachability_public_udp_failed: 0,
         reachability_public_tcp_success: 0,
         reachability_public_tcp_failed: 0,
+        reachability_public_xtls_success: 0,
+        reachability_public_xtls_failed: 0,
         reachability_vmn_udp_success: 3,
         reachability_vmn_udp_failed: 1,
         reachability_vmn_tcp_success: 1,
         reachability_vmn_tcp_failed: 3,
+        reachability_vmn_xtls_success: 1,
+        reachability_vmn_xtls_failed: 1,
       }
     );
   });
