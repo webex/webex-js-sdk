@@ -182,30 +182,30 @@ export type ContactDetail = {
 };
 
 export interface LookupOptions {
-  ids: string[];
+  id: string;
 }
 
-export type DSSLookupResponse = {
-  additionalInfo: {
-    department: string;
-    firstName: string;
-    identityManager: {
-      managerId: string;
-      displayName: string;
-    };
-    jobTitle: string;
-    lastName: string;
-  };
-  displayName: string;
-  emails: ContactDetail[];
-  entityProviderType: string;
-  identity: string;
-  orgId: string;
-  phoneNumbers: ContactDetail[];
-  photos: ContactDetail[];
-  sipAddresses: ContactDetail[];
-  type: string;
-};
+// export type DSSLookupResponse = {
+//   additionalInfo: {
+//     department: string;
+//     firstName: string;
+//     identityManager: {
+//       managerId: string;
+//       displayName: string;
+//     };
+//     jobTitle: string;
+//     lastName: string;
+//   };
+//   displayName: string;
+//   emails: ContactDetail[];
+//   entityProviderType: string;
+//   identity: string;
+//   orgId: string;
+//   phoneNumbers: ContactDetail[];
+//   photos: ContactDetail[];
+//   sipAddresses: ContactDetail[];
+//   type: string;
+// };
 
 export type KmsKey = {
   uri: string;

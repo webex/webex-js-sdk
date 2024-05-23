@@ -25,6 +25,8 @@ import {
   IContacts,
   ContactGroup,
   GroupType,
+  DirectoryLookupPayload,
+  ContactData,
 } from './types';
 
 import {serviceErrorCodeHandler} from '../common/Utils';
@@ -44,11 +46,13 @@ export class ContactsClient implements IContacts {
 
   private encryptionKeyUrl: string;
 
+  private contactsDataMap: ContactIdContactInfo;
+
   private webex: WebexSDK;
 
-  private groups: ContactGroup[] | undefined;
+  private groups: ContactGroup[];
 
-  private contacts: Contact[] | undefined;
+  private contacts: Contact[];
 
   private defaultGroupId: string;
 
@@ -65,20 +69,92 @@ export class ContactsClient implements IContacts {
     this.webex = this.sdkConnector.getWebex();
 
     this.encryptionKeyUrl = '';
-    this.groups = undefined;
-    this.contacts = undefined;
+    this.groups = [];
+    this.contacts = [];
+    this.contactsDataMap = {};
     this.defaultGroupId = '';
 
     log.setLogger(logger.level, CONTACTS_FILE);
+    this.processDssResponse = this.processDssResponse.bind(this);
+    this.startDSSListener();
+  }
+
+  private async processDssResponse(payload: DirectoryLookupPayload) {
+    const lookupData = payload.data;
+    for (let i = 0; i < lookupData.lookupResult.entities.length; i += 1) {
+      const entity = lookupData.lookupResult.entities[i];
+      const contactId = entity.identity;
+      const {displayName, emails, phoneNumbers, sipAddresses} = entity;
+      const {department, firstName, identityManager, jobTitle, lastName} = entity.additionalInfo;
+      const manager =
+        identityManager && identityManager.displayName ? identityManager.displayName : undefined;
+      const {contactType, avatarUrlDomain, encryptionKeyUrl, ownerId, groups} =
+        this.contactsDataMap[contactId];
+
+      /**
+       * TODO: Fix avatarURL.
+       */
+      // let avatarURL;
+
+      // if (photos.length) {
+      //   avatarURL = photos[0].value || '';
+      // }
+
+      const addedPhoneNumbers = this.contactsDataMap[contactId].phoneNumbers;
+
+      if (addedPhoneNumbers) {
+        const decryptedPhoneNumbers = await this.decryptContactDetail(
+          encryptionKeyUrl,
+          addedPhoneNumbers
+        );
+
+        decryptedPhoneNumbers.forEach((number: any) => phoneNumbers.push(number));
+      }
+
+      const addedSipAddresses = this.contactsDataMap[contactId].sipAddresses;
+
+      if (addedSipAddresses) {
+        const decryptedSipAddresses = await this.decryptContactDetail(
+          encryptionKeyUrl,
+          addedSipAddresses
+        );
+
+        decryptedSipAddresses.forEach((address: any) => sipAddresses.push(address));
+      }
+
+      const cloudContact = {
+        avatarUrlDomain,
+        // avatarURL,
+        contactId,
+        contactType,
+        department,
+        displayName,
+        emails,
+        encryptionKeyUrl,
+        firstName,
+        groups,
+        lastName,
+        manager,
+        ownerId,
+        phoneNumbers,
+        sipAddresses,
+        title: jobTitle,
+      };
+
+      // contactList.push(cloudContact);
+      this.contacts?.push(cloudContact);
+    }
+  }
+
+  private startDSSListener() {
+    this.webex.internal.mercury.off('event:directory.lookup');
+    this.webex.internal.mercury.on('event:directory.lookup', this.processDssResponse);
   }
 
   /**
    * Decrypt emails, phoneNumbers, sipAddresses.
    */
-  private async decryptContactDetail(
-    encryptionKeyUrl: string,
-    contactDetails: ContactDetail[]
-  ): Promise<ContactDetail[]> {
+  private async decryptContactDetail(encryptionKeyUrl: string, contactDetails: any): Promise<any> {
     const decryptedContactDetail = [...contactDetails];
 
     const decryptedValues = await Promise.all(
@@ -252,83 +328,85 @@ export class ContactsClient implements IContacts {
   /**
    * Fetches contacts from DSS.
    */
-  private async fetchContactFromDSS(contactsDataMap: ContactIdContactInfo): Promise<Contact[]> {
-    const contactList = [];
-    const dssResult = await this.webex.internal.dss.lookup({ids: Object.keys(contactsDataMap)});
+  private fetchContactFromDSS(contactsDataMap: ContactIdContactInfo): void {
+    // const contactList = [];
+    const contactsToResolve = Object.keys(contactsDataMap);
 
-    for (let i = 0; i < dssResult.length; i += 1) {
-      const contact = dssResult[i];
-      const contactId = contact.identity;
-      const {displayName, emails, phoneNumbers, sipAddresses, photos} = contact;
-      const {department, firstName, identityManager, jobTitle, lastName} = contact.additionalInfo;
-      const manager =
-        identityManager && identityManager.displayName ? identityManager.displayName : undefined;
-      const {contactType, avatarUrlDomain, encryptionKeyUrl, ownerId, groups} =
-        contactsDataMap[contactId];
-      let avatarURL = '';
+    for (let i = 0; i < contactsToResolve.length; i += 1) {
+      this.webex.internal.dss.lookup({id: contactsToResolve[i]});
 
-      if (photos.length) {
-        avatarURL = photos[0].value;
-      }
+      // const contact = dssResult;
+      // const contactId = contact.identity;
+      // const {displayName, emails, phoneNumbers, sipAddresses, photos} = contact;
+      // const {department, firstName, identityManager, jobTitle, lastName} = contact.additionalInfo;
+      // const manager =
+      //   identityManager && identityManager.displayName ? identityManager.displayName : undefined;
+      // const {contactType, avatarUrlDomain, encryptionKeyUrl, ownerId, groups} =
+      //   contactsDataMap[contactId];
+      // let avatarURL = '';
 
-      const addedPhoneNumbers = contactsDataMap[contactId].phoneNumbers;
+      // if (photos.length) {
+      //   avatarURL = photos[0].value;
+      // }
 
-      if (addedPhoneNumbers) {
-        const decryptedPhoneNumbers = await this.decryptContactDetail(
-          encryptionKeyUrl,
-          addedPhoneNumbers
-        );
+      // const addedPhoneNumbers = contactsDataMap[contactId].phoneNumbers;
 
-        decryptedPhoneNumbers.forEach((number) => phoneNumbers.push(number));
-      }
+      // if (addedPhoneNumbers) {
+      //   const decryptedPhoneNumbers = await this.decryptContactDetail(
+      //     encryptionKeyUrl,
+      //     addedPhoneNumbers
+      //   );
 
-      const addedSipAddresses = contactsDataMap[contactId].sipAddresses;
+      //   decryptedPhoneNumbers.forEach((number) => phoneNumbers.push(number));
+      // }
 
-      if (addedSipAddresses) {
-        const decryptedSipAddresses = await this.decryptContactDetail(
-          encryptionKeyUrl,
-          addedSipAddresses
-        );
+      // const addedSipAddresses = contactsDataMap[contactId].sipAddresses;
 
-        decryptedSipAddresses.forEach((address) => sipAddresses.push(address));
-      }
+      // if (addedSipAddresses) {
+      //   const decryptedSipAddresses = await this.decryptContactDetail(
+      //     encryptionKeyUrl,
+      //     addedSipAddresses
+      //   );
 
-      const cloudContact = {
-        avatarUrlDomain,
-        avatarURL,
-        contactId,
-        contactType,
-        department,
-        displayName,
-        emails,
-        encryptionKeyUrl,
-        firstName,
-        groups,
-        lastName,
-        manager,
-        ownerId,
-        phoneNumbers,
-        sipAddresses,
-        title: jobTitle,
-      };
+      //   decryptedSipAddresses.forEach((address) => sipAddresses.push(address));
+      // }
 
-      contactList.push(cloudContact);
+      // const cloudContact = {
+      //   avatarUrlDomain,
+      //   avatarURL,
+      //   contactId,
+      //   contactType,
+      //   department,
+      //   displayName,
+      //   emails,
+      //   encryptionKeyUrl,
+      //   firstName,
+      //   groups,
+      //   lastName,
+      //   manager,
+      //   ownerId,
+      //   phoneNumbers,
+      //   sipAddresses,
+      //   title: jobTitle,
+      // };
+
+      // contactList.push(cloudContact);
     }
 
-    return contactList;
+    // return contactList;
   }
 
   /**
    * Returns list of contacts.
    */
-  public async getContacts(): Promise<ContactResponse> {
+  public async fetchContacts(): Promise<ContactResponse> {
     const loggerContext = {
       file: CONTACTS_FILE,
-      method: 'getContacts',
+      method: 'fetchContacts',
     };
 
     const contactList: Contact[] = [];
-    const contactsDataMap: ContactIdContactInfo = {};
+    // const contactsDataMap: ContactIdContactInfo = {};
 
     try {
       const response = <WebexRequestPayload>await this.webex.request({
@@ -353,14 +431,14 @@ export class ContactsClient implements IContacts {
 
           contactList.push(decryptedContact);
         } else if (contact.contactType === ContactType.CLOUD && contact.contactId) {
-          contactsDataMap[contact.contactId] = contact;
+          this.contactsDataMap[contact.contactId] = contact;
         }
       }
 
-      if (Object.keys(contactsDataMap).length) {
-        const cloudContacts = await this.fetchContactFromDSS(contactsDataMap);
+      if (Object.keys(this.contactsDataMap).length) {
+        this.fetchContactFromDSS(this.contactsDataMap);
 
-        contactList.push(...cloudContacts);
+        // contactList.push(...cloudContacts);
       }
 
       await Promise.all(
@@ -425,7 +503,7 @@ export class ContactsClient implements IContacts {
     }
     // istanbul ignore else
     if (this.groups === undefined) {
-      this.getContacts();
+      this.fetchContacts();
     }
     // istanbul ignore else
     if (this.groups && this.groups.length) {
@@ -509,7 +587,7 @@ export class ContactsClient implements IContacts {
     const encryptionKeyUrlFinal = encryptionKeyUrl || (await this.fetchEncryptionKeyUrl());
 
     if (this.groups === undefined) {
-      await this.getContacts();
+      await this.fetchContacts();
     }
 
     if (this.groups && this.groups.length) {
@@ -694,17 +772,20 @@ export class ContactsClient implements IContacts {
         message: SUCCESS_MESSAGE,
       };
 
-      if (contact.contactType === ContactType.CLOUD) {
-        const decryptedContacts = await this.fetchContactFromDSS(
-          Object.fromEntries([[newContact.contactId, newContact]]) as ContactIdContactInfo
-        );
+      /**
+       * TODO: Fix cloud contact creation using DSS.
+       */
+      // if (contact.contactType === ContactType.CLOUD) {
+      //   const decryptedContacts = await this.fetchContactFromDSS(
+      //     Object.fromEntries([[newContact.contactId, newContact]]) as ContactIdContactInfo
+      //   );
 
-        if (decryptedContacts.length && decryptedContacts[0]) {
-          this.contacts?.push(decryptedContacts[0]);
-        }
-      } else {
-        this.contacts?.push(contact);
-      }
+      //   if (decryptedContacts.length && decryptedContacts[0]) {
+      //     this.contacts?.push(decryptedContacts[0]);
+      //   }
+      // } else {
+      //   this.contacts?.push(contact);
+      // }
 
       return contactResponse;
     } catch (err: unknown) {
@@ -766,6 +847,13 @@ export class ContactsClient implements IContacts {
    */
   public getSDKConnector(): ISDKConnector {
     return this.sdkConnector;
+  }
+
+  public getContacts(): ContactData {
+    return {
+      contacts: this.contacts,
+      groups: this.groups,
+    };
   }
 }
 

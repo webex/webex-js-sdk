@@ -1,5 +1,4 @@
 import {
-  DSSLookupResponse,
   KmsKey,
   KmsResourceObject,
   LookupOptions,
@@ -83,7 +82,7 @@ export interface WebexSDK {
       };
     };
     dss: {
-      lookup: (options: LookupOptions) => Promise<DSSLookupResponse[]>;
+      lookup: (options: LookupOptions) => Promise<WebexRequestPayload>;
     };
     encryption: {
       decryptText: (encryptionKeyUrl: string, encryptedData?: string) => Promise<string>;

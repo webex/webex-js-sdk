@@ -37,7 +37,7 @@ export type Contact = {
   /**
    * Unique identifier of the contact.
    */
-  contactId?: string;
+  contactId: string;
   /**
    * Indicates the type of the contact, can be `CLOUD` or `CUSTOM`.
    */
@@ -85,7 +85,11 @@ export type Contact = {
   /**
    * This represents the array of different phone numbers of the contact.
    */
-  phoneNumbers?: ContactDetail[];
+  phoneNumbers?: PhoneNumber[];
+  /**
+   * This object stores any photos related to the contact
+   */
+  photos?: ContactDetail[];
   /**
    * Primary contact method as set by the contact.
    */
@@ -156,6 +160,11 @@ export type ContactResponse = {
   message: string | null;
 };
 
+export type ContactData = {
+  contacts: Contact[];
+  groups: ContactGroup[];
+};
+
 /**
  * Interface for Contacts Module.
  * This encompasses a set of APIs that enable the fetching, creation, and updating of contacts and groups.
@@ -190,7 +199,12 @@ export interface IContacts {
    * Each `ContactGroup` adheres to the properties specified in the {@link ContactGroup}.
    *
    */
-  getContacts(): Promise<ContactResponse>;
+  fetchContacts(): Promise<ContactResponse>;
+
+  /**
+   * Getter for contact list
+   */
+  getContacts(): ContactData;
 
   /**
    * This API is used to create a contact group with the given display name.
@@ -246,3 +260,71 @@ export interface IContacts {
 export type ContactIdContactInfo = {
   [Key: string]: Contact;
 };
+
+export interface DirectoryLookupPayload {
+  data: {
+    lookupResult: {
+      entities: Entity[];
+      entitiesFound: string[];
+    };
+  };
+}
+
+interface Entity {
+  identity: string;
+  orgId: string;
+  type: string;
+  entityProviderType: string;
+  displayName: string;
+  emails: Email[];
+  phoneNumbers: PhoneNumber[];
+  sipAddresses: SipAddress[];
+  photos: Photo[];
+  additionalInfo: AdditionalInfo;
+  isSensitive: boolean;
+}
+
+interface Email {
+  value: string;
+}
+
+interface PhoneNumber {
+  type: string;
+  value: string;
+  primary: boolean;
+}
+
+interface SipAddress {
+  type: string;
+  value: string;
+  primary: boolean;
+}
+
+interface Photo {
+  type: string;
+  value: string;
+}
+
+interface AdditionalInfo {
+  firstName: string;
+  lastName: string;
+  nickName: string;
+  userName: string;
+  department: string;
+  jobTitle: string;
+  identityManager: IdentityManager;
+  extLinkedAccts: ExternalLinkedAccount[];
+  created: string;
+  modified: string;
+}
+
+interface IdentityManager {
+  managerId: string;
+  displayName: string;
+}
+
+interface ExternalLinkedAccount {
+  providerID: string;
+  accountGUID: string;
+  status: string;
+}

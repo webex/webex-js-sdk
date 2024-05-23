@@ -824,7 +824,7 @@ function renderContactGroups(groups) {
 }
 
 function createContactsTable(contactsResponse) {
-  const {contacts, groups} = contactsResponse.data;
+  const {contacts, groups} = contactsResponse;
   const groupIdDisplayNameMap = {};
   groups.forEach(group => groupIdDisplayNameMap[group.groupId] = group.displayName);
   renderContacts(contacts, groupIdDisplayNameMap);
@@ -1245,8 +1245,12 @@ async function fetchVoicemailSummary() {
   summaryContent.innerText = summaryStr.replace(/[\{\}"|"]/g, '');
 }
 
+async function fetchContacts() {
+  contacts.fetchContacts();
+}
+
 async function getContacts() {
-  const contactsList = await contacts.getContacts();
+  const contactsList = contacts.getContacts();
   console.log('Contacts: ', contactsList);
   createContactsTable(contactsList);
 }
