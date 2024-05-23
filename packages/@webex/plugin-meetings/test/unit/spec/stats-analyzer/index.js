@@ -393,6 +393,7 @@ describe('plugin-meetings', () => {
                   },
                   {
                     type: 'remote-inbound-rtp',
+                    packetsLost: 0,
                   },
                   {
                     type: 'candidate-pair',
