@@ -4505,9 +4505,11 @@ export default class Meeting extends StatelessWebexPlugin {
     options: {
       joinOptions?: any;
       mediaOptions?: AddMediaOptions;
+      isRetry?: boolean;
+      prevJoinResponse?: any;
     } = {}
   ) {
-    const {mediaOptions, joinOptions = {}} = options;
+    const {mediaOptions, joinOptions = {}, isRetry = false, prevJoinResponse} = options;
 
     if (!mediaOptions?.allowMediaInLobby) {
       return Promise.reject(
@@ -4519,6 +4521,7 @@ export default class Meeting extends StatelessWebexPlugin {
     LoggerProxy.logger.info('Meeting:index#joinWithMedia called');
 
     let joined = false;
+    let joinResponse = prevJoinResponse;
 
     try {
       let turnServerInfo;
@@ -4531,7 +4534,14 @@ export default class Meeting extends StatelessWebexPlugin {
       ({turnDiscoverySkippedReason} = turnDiscoveryRequest);
       joinOptions.roapMessage = turnDiscoveryRequest.roapMessage;
 
-      const joinResponse = await this.join(joinOptions);
+      if (!joinResponse) {
+        LoggerProxy.logger.info(
+          'Meeting:index#joinWithMedia ---> calling join with joinOptions, ',
+          joinOptions
+        );
+
+        joinResponse = await this.join(joinOptions);
+      }
 
       joined = true;
 
@@ -4560,7 +4570,7 @@ export default class Meeting extends StatelessWebexPlugin {
 
       this.roap.abortTurnDiscovery();
 
-      if (joined) {
+      if (joined && isRetry) {
         try {
           await this.leave({resourceId: joinOptions?.resourceId, reason: 'joinWithMedia failure'});
         } catch (e) {
@@ -4577,12 +4587,20 @@ export default class Meeting extends StatelessWebexPlugin {
           reason: error.message,
           stack: error.stack,
           leaveErrorReason: leaveError?.message,
+          isRetry,
         },
         {
           type: error.name,
         }
       );
 
+      if (!isRetry) {
+        LoggerProxy.logger.error('Meeting:index#joinWithMedia --> retrying call to joinWithMedia');
+        options.isRetry = true;
+        options.prevJoinResponse = joinResponse;
+
+        return this.joinWithMedia(options);
+      }
       throw error;
     }
   }

@@ -719,7 +719,7 @@ describe('plugin-meetings', () => {
 
           await assert.isRejected(meeting.joinWithMedia({mediaOptions: {allowMediaInLobby: true}}));
 
-          assert.calledOnceWithExactly(abortTurnDiscoveryStub);
+          assert.calledTwice(abortTurnDiscoveryStub);
 
           assert.calledWith(
             Metrics.sendBehavioralMetric,
@@ -730,11 +730,47 @@ describe('plugin-meetings', () => {
               reason: error.message,
               stack: error.stack,
               leaveErrorReason: undefined,
+              isRetry: false,
             },
             {
               type: error.name,
             }
           );
+        });
+
+        it('should resolve if join() fails the first time but succeeds the second time', async () => {
+          const error = new Error('fake');
+          meeting.join = sinon.stub().onFirstCall().returns(Promise.reject(error)).onSecondCall().returns(Promise.resolve(fakeJoinResult));
+          const leaveStub = sinon.stub(meeting, 'leave').resolves();
+
+          const result = await meeting.joinWithMedia({
+            joinOptions,
+            mediaOptions,
+          });
+
+          assert.calledOnce(abortTurnDiscoveryStub);
+          assert.calledTwice(meeting.join);
+          assert.notCalled(leaveStub);
+
+          // Behavioral metric is sent on both calls of joinWithMedia
+          assert.calledOnce(Metrics.sendBehavioralMetric);
+          assert.calledWith(
+            Metrics.sendBehavioralMetric.firstCall,
+            BEHAVIORAL_METRICS.JOIN_WITH_MEDIA_FAILURE,
+            {
+              correlation_id: meeting.correlationId,
+              locus_id: meeting.locusUrl.split('/').pop(),
+              reason: error.message,
+              stack: error.stack,
+              leaveErrorReason: undefined,
+              isRetry: false,
+            },
+            {
+              type: error.name,
+            }
+          );
+
+          assert.deepEqual(result, {join: fakeJoinResult, media: test4});
         });
 
         it('should fail if called with allowMediaInLobby:false', async () => {
@@ -767,8 +803,26 @@ describe('plugin-meetings', () => {
             reason: 'joinWithMedia failure',
           });
 
+
+          // Behavioral metric is sent on both calls of joinWithMedia
+          assert.calledTwice(Metrics.sendBehavioralMetric);
           assert.calledWith(
-            Metrics.sendBehavioralMetric,
+            Metrics.sendBehavioralMetric.firstCall,
+            BEHAVIORAL_METRICS.JOIN_WITH_MEDIA_FAILURE,
+            {
+              correlation_id: meeting.correlationId,
+              locus_id: meeting.locusUrl.split('/').pop(),
+              reason: addMediaError.message,
+              stack: addMediaError.stack,
+              leaveErrorReason: undefined,
+              isRetry: false,
+            },
+            {
+              type: addMediaError.name,
+            }
+          );
+          assert.calledWith(
+            Metrics.sendBehavioralMetric.secondCall,
             BEHAVIORAL_METRICS.JOIN_WITH_MEDIA_FAILURE,
             {
               correlation_id: meeting.correlationId,
@@ -776,6 +830,47 @@ describe('plugin-meetings', () => {
               reason: addMediaError.message,
               stack: addMediaError.stack,
               leaveErrorReason: leaveError.message,
+              isRetry: true,
+            },
+            {
+              type: addMediaError.name,
+            }
+          );
+        });
+
+        it('should not call leave() if addMedia fails the first time and succeeds the second time and should only call join() once', async () => {
+          const addMediaError = new Error('fake addMedia error');
+          const leaveError = new Error('leave error');
+          const leaveStub = sinon.stub(meeting, 'leave').rejects(leaveError);
+
+          meeting.addMedia = sinon
+            .stub()
+            .onFirstCall()
+            .rejects(addMediaError)
+            .onSecondCall()
+            .resolves(test4);
+
+          const result = await meeting.joinWithMedia({
+            joinOptions,
+            mediaOptions,
+          });
+
+          assert.deepEqual(result, {join: fakeJoinResult, media: test4});
+
+          assert.calledOnce(meeting.join);
+          assert.notCalled(leaveStub);
+
+          assert.calledOnce(Metrics.sendBehavioralMetric);
+          assert.calledWith(
+            Metrics.sendBehavioralMetric.firstCall,
+            BEHAVIORAL_METRICS.JOIN_WITH_MEDIA_FAILURE,
+            {
+              correlation_id: meeting.correlationId,
+              locus_id: meeting.locusUrl.split('/').pop(),
+              reason: addMediaError.message,
+              stack: addMediaError.stack,
+              leaveErrorReason: undefined,
+              isRetry: false,
             },
             {
               type: addMediaError.name,
