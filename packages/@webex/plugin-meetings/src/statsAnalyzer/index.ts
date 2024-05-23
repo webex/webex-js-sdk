@@ -2,7 +2,7 @@
 
 import {cloneDeep, isEmpty} from 'lodash';
 import {ConnectionState} from '@webex/internal-media-core';
-
+import {CpuInfo} from '@webex/web-capabilities';
 import EventsScope from '../common/events/events-scope';
 import {DEFAULT_GET_STATS_FILTER, STATS, MQA_INTERVAL, NETWORK_TYPE, _UNKNOWN_} from '../constants';
 import {
@@ -380,7 +380,7 @@ export class StatsAnalyzer extends EventsScope {
     }
 
     newMqa.networkType = this.statsResults.connectionType.local.networkType;
-
+    newMqa.cpuInfo.numOfCores = CpuInfo.getNumLogicalCores();
     this.mqaSentCount += 1;
 
     newMqa.intervalNumber = this.mqaSentCount;
