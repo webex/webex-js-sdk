@@ -253,6 +253,19 @@ describe('plugin-meetings', () => {
       });
     });
 
+    describe('#_toggleTlsReachability', () => {
+      it('should have _toggleTlsReachability', () => {
+        assert.equal(typeof webex.meetings._toggleTlsReachability, 'function');
+      });
+
+      describe('success', () => {
+        it('should update meetings to do TLS reachability', () => {
+          webex.meetings._toggleTlsReachability(true);
+          assert.equal(webex.meetings.config.experimental.enableTlsReachability, true);
+        });
+      });
+    });
+
     describe('Public API Contracts', () => {
       describe('#register', () => {
         it('emits an event and resolves when register succeeds', async () => {

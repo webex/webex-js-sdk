@@ -795,8 +795,8 @@ describe('webex-core', () => {
     describe('#fetchClientRegionInfo()', () => {
       it('returns client region info', () =>
         services.fetchClientRegionInfo().then((r) => {
-          assert.isDefined(r.countryCode);
-          assert.isDefined(r.timezone);
+          assert.isDefined(r.regionCode);
+          assert.isDefined(r.clientAddress);
         }));
     });
 
