@@ -380,6 +380,7 @@ export class StatsAnalyzer extends EventsScope {
     }
 
     newMqa.networkType = this.statsResults.connectionType.local.networkType;
+
     newMqa.cpuInfo.numOfCores = CpuInfo.getNumLogicalCores();
     this.mqaSentCount += 1;
 
