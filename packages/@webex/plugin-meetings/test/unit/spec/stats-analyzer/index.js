@@ -1753,9 +1753,17 @@ describe('plugin-meetings', () => {
 
         it('should send a stream if it was requested in the last 60 seconds', async () => {
           fakeStats.audio.receivers[0].report[0].lastRequestedUpdateTimestamp = performance.timeOrigin + performance.now() - 30 * 1000;
+          fakeStats.audio.receivers[0].report[0].isRequested = false;
           await progressTime(MQA_INTERVAL);
           assert.strictEqual(mqeData.audioReceive[0].streams.length, 1);
         })
+        it('should not send a stream if it was not requested in the last 60 seconds', async () => {
+          fakeStats.audio.receivers[0].report[0].lastRequestedUpdateTimestamp = performance.timeOrigin + performance.now() + 30 * 1000;
+          fakeStats.audio.receivers[0].report[0].isRequested = false;
+          await progressTime(MQA_INTERVAL);
+          assert.strictEqual(mqeData.audioReceive[0].streams.length, 0);
+        })
+
       });
 
     })
