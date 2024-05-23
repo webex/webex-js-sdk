@@ -1,6 +1,6 @@
 import {debounce} from 'lodash';
 
-import {IGenericKeyValue, IWebex} from './interface';
+import {IGenericKeyValue, IWebex} from './presence.type';
 import {
   FETCH_DELAY,
   GROUNDSKEEPER_INTERVAL,
@@ -144,21 +144,25 @@ export default class PresenceWorker {
     Object.assign(this.flights, boarding);
     this.fetchers = {};
 
-    this.webex.presence.list(Object.keys(boarding)).then((response) => {
-      const now = new Date().getTime();
+    /**
+     * TODO: webex.presence.list is no longer present. How do we handle this?
+     * Should we just subscribe?
+     */
+    // this.webex.presence.list(Object.keys(boarding)).then((response) => {
+    //   const now = new Date().getTime();
 
-      response.statusList.forEach((presence) => {
-        const id = presence.subject;
+    //   response.statusList.forEach((presence) => {
+    //     const id = presence.subject;
 
-        delete this.flights[id];
-        this.presences[id] = now;
-      });
+    //     delete this.flights[id];
+    //     this.presences[id] = now;
+    //   });
 
-      this.webex.presence.emitEvent(PRESENCE_UPDATE, {
-        type: ENVELOPE_TYPE.PRESENCE,
-        payload: response,
-      });
-    });
+    //   this.webex.presence.emitEvent(PRESENCE_UPDATE, {
+    //     type: ENVELOPE_TYPE.PRESENCE,
+    //     payload: response,
+    //   });
+    // });
   }
 
   debouncedFetch = debounce(this.checkFetchers, FETCH_DELAY);

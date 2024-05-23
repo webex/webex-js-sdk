@@ -8,7 +8,7 @@ import {WebexPlugin} from '@webex/webex-core';
 
 import PresenceBatcher from './presence-batcher';
 import PresenceWorker from './presence-worker';
-import {IEventPayload, IPresence, IPresenceStatusObject} from './interface';
+import {IEventPayload, IPresence} from './presence.type';
 
 const defaultSubscriptionTtl = 600;
 const USER = 'user';
@@ -87,62 +87,65 @@ const Presence: IPresence = WebexPlugin.extend({
   },
 
   /**
-   * The status object
-   * @typedef {Object} PresenceStatusObject
-   * @property {string} url: Public resource identifier for presence
-   * @property {string} subject: User ID for the user the returned composed presence represents
-   * @property {string} status: Current composed presence state
-   * @property {string} statusTime: DateTime in RFC3339 format that the current status began
-   * @property {string} lastActive: DateTime in RFC3339 format that the service last saw activity from the user.
-   * @property {string} expires: DEPRECATED - DateTime in RFC3339 format that represents when the current
-   * status will expire. Will not exist if expiresTTL is -1.
-   * @property {Number} expiresTTL: TTL in seconds until the status will expire. If TTL is -1 the current
-   * status has no known expiration.
-   * @property {string} expiresTime: DateTime in RFC3339 format that the current status will expire. Missing
-   * field means no known expiration.
-   * @property {Object} vectorCounters: Used for packet ordering and tracking.
-   * @property {Boolean} suppressNotifications: Indicates if notification suppression is recommended for this status.
-   * @property {string} lastSeenDeviceUrl: Resource Identifier of the last device to post presence activity for
-   * this user.
+   * TODO: We decided to remove this.
    */
+  // /**
+  //  * The status object
+  //  * @typedef {Object} PresenceStatusObject
+  //  * @property {string} url: Public resource identifier for presence
+  //  * @property {string} subject: User ID for the user the returned composed presence represents
+  //  * @property {string} status: Current composed presence state
+  //  * @property {string} statusTime: DateTime in RFC3339 format that the current status began
+  //  * @property {string} lastActive: DateTime in RFC3339 format that the service last saw activity from the user.
+  //  * @property {string} expires: DEPRECATED - DateTime in RFC3339 format that represents when the current
+  //  * status will expire. Will not exist if expiresTTL is -1.
+  //  * @property {Number} expiresTTL: TTL in seconds until the status will expire. If TTL is -1 the current
+  //  * status has no known expiration.
+  //  * @property {string} expiresTime: DateTime in RFC3339 format that the current status will expire. Missing
+  //  * field means no known expiration.
+  //  * @property {Object} vectorCounters: Used for packet ordering and tracking.
+  //  * @property {Boolean} suppressNotifications: Indicates if notification suppression is recommended for this status.
+  //  * @property {string} lastSeenDeviceUrl: Resource Identifier of the last device to post presence activity for
+  //  * this user.
+  //  */
 
-  /**
-   * Gets the current presence status of a given person id
-   * @param {string} personId
-   * @returns {Promise<PresenceStatusObject>} resolves with status object of person
-   */
-  get(personId: string): Promise<IPresenceStatusObject> {
-    if (!personId) {
-      return Promise.reject(new Error('A person id is required'));
-    }
+  // /**
+  //  * Gets the current presence status of a given person id
+  //  * @param {string} personId
+  //  * @returns {Promise<PresenceStatusObject>} resolves with status object of person
+  //  */
+  // get(personId: string): Promise<IPresenceStatusObject> {
+  //   if (!personId) {
+  //     return Promise.reject(new Error('A person id is required'));
+  //   }
 
-    return this.webex
-      .request({
-        method: 'GET',
-        service: 'apheleia',
-        resource: `compositions?userId=${personId}`,
-      })
-      .then((response) => response.body);
-  },
+  //   return this.webex
+  //     .request({
+  //       method: 'GET',
+  //       service: 'apheleia',
+  //       resource: `compositions?userId=${personId}`,
+  //     })
+  //     .then((response) => response.body);
+  // },
 
-  /**
-   * @typedef {Object} PresenceStatusesObject
-   * @property {Array.<PresenceStatusObject>} statusList
-   */
-  /**
-   * Gets the current presence statuses of an array of people ids
-   * @param {Array} personIds
-   * @returns {Promise<PresenceStatusesObject>} resolves with an object with key of `statusList` array
-   */
-  list(personIds: string[]): Promise<{statusList: IPresenceStatusObject[]}> {
-    if (!personIds || !Array.isArray(personIds)) {
-      return Promise.reject(new Error('An array of person ids is required'));
-    }
+  // /**
+  //  * @typedef {Object} PresenceStatusesObject
+  //  * @property {Array.<PresenceStatusObject>} statusList
+  //  */
+  // /**
+  //  * Gets the current presence statuses of an array of people ids
+  //  * @param {Array} personIds
+  //  * @returns {Promise<PresenceStatusesObject>} resolves with an object with key of `statusList` array
+  //  */
+  // list(personIds: string[]): Promise<{statusList: IPresenceStatusObject[]}> {
+  //   if (!personIds || !Array.isArray(personIds)) {
+  //     return Promise.reject(new Error('An array of person ids is required'));
+  //   }
 
-    return Promise.all(personIds.map((id) => this.batcher.request(id))).then((presences) => ({
-      statusList: presences,
-    }));
-  },
+  //   return Promise.all(personIds.map((id) => this.batcher.request(id))).then((presences) => ({
+  //     statusList: presences,
+  //   }));
+  // },
 
   /**
    * Subscribes to a person's presence status updates

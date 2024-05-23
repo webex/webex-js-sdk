@@ -1,25 +1,53 @@
-export enum PresenceStatus {
-  ACTIVE = 'active',
-  CALENDAR_ITEM = 'calendarItem',
-  CALL = 'call',
+export enum Operation {
   CLEAR = 'clear',
-  DND = 'dnd',
-  INACTIVE = 'inactive',
-  MEETING = 'meeting',
-  OOO = 'ooo',
-  PRESENTING = 'presenting',
+  SET = 'set',
 }
 
-export interface IPresenceStatusObject {
-  url: string;
-  subject: string;
-  status: PresenceStatus;
-  statusTime: string;
-  lastActive: string;
-  expiresTTL: number;
-  vectorCounters: object;
-  suppressNotifications: boolean;
+export enum Availability {
+  AVAILABLE = 'available',
+  AWAY = 'away',
+  BUSY = 'busy',
+  DND = 'dnd',
 }
+
+export enum WorkStatus {
+  CALENDAR_ITEM = 'calendarItem',
+  CALL = 'call',
+  MEETING = 'meeting',
+  PRESENTING = 'presenting',
+  OOO = 'ooo',
+}
+
+export type PresenceResponse = {
+  operation: Operation;
+  type: WorkStatus;
+  label: string;
+  ttlSecs: number;
+  expires: string;
+};
+
+// export enum PresenceStatus {
+//   ACTIVE = 'active',
+//   CALENDAR_ITEM = 'calendarItem',
+//   CALL = 'call',
+//   CLEAR = 'clear',
+//   DND = 'dnd',
+//   INACTIVE = 'inactive',
+//   MEETING = 'meeting',
+//   OOO = 'ooo',
+//   PRESENTING = 'presenting',
+// }
+
+// export interface IPresenceStatusObject {
+//   url: string;
+//   subject: string;
+//   status: PresenceStatus;
+//   statusTime: string;
+//   lastActive: string;
+//   expiresTTL: number;
+//   vectorCounters: object;
+//   suppressNotifications: boolean;
+// }
 
 export interface IEventPayload {
   type: string;
@@ -32,11 +60,14 @@ export interface IPresence {
   enable(): Promise<boolean>;
   disable(): Promise<boolean>;
   isEnabled(): Promise<boolean>;
-  get(personId: string): Promise<IPresenceStatusObject>;
-  list(personIds: string[]): Promise<{statusList: IPresenceStatusObject[]}>;
+  // get(personId: string): Promise<IPresenceStatusObject>;
+  // list(personIds: string[]): Promise<{statusList: IPresenceStatusObject[]}>;
   subscribe(personIds: string | string[], subscriptionTtl?: number): Promise<{responses: any[]}>;
   unsubscribe(personIds: string | string[]): Promise<{responses: any}>;
   setStatus(status: string, ttl: number): Promise<any>;
+  setAvailability(availability: Availability): Promise<void>;
+  setWorkStatus(workStatus: WorkStatus): Promise<void>;
+  setActive(): Promise<void>;
   enqueue(id: string): void;
   dequeue(id: string): void;
 }

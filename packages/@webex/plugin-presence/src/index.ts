@@ -9,7 +9,7 @@ import {has} from 'lodash';
 
 import Presence from './presence';
 import config from './config';
-import {IPredicate, IResponse, ITransform} from './interface';
+import {IPredicate, IResponse, ITransform} from './presence.type';
 
 registerPlugin('presence', Presence, {
   payloadTransformer: {
@@ -18,6 +18,9 @@ registerPlugin('presence', Presence, {
         name: 'normalizeSingleStatusResponse',
         direction: 'inbound',
         test(ctx, response: IResponse) {
+          /**
+           * TODO: Might have to change this.
+           */
           // POST to /apheleia/api/v1/events
           return Promise.resolve(has(response, 'body.eventType') && has(response, 'body.subject'));
         },

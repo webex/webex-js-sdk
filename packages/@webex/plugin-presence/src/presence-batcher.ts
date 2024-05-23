@@ -3,7 +3,7 @@
  */
 
 import {Batcher} from '@webex/webex-core';
-import {IPresenceBatcher} from './interface';
+import {IPresenceBatcher} from './presence.type';
 
 /**
  * @class
