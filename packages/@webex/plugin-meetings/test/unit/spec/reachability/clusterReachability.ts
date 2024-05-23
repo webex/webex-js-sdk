@@ -4,7 +4,7 @@ import sinon from 'sinon';
 import testUtils from '../../../utils/testUtils';
 
 // packages/@webex/plugin-meetings/test/unit/spec/reachability/clusterReachability.ts
-import { ClusterReachability } from '@webex/plugin-meetings/src/reachability/clusterReachability'; // replace with actual path
+import {ClusterReachability} from '@webex/plugin-meetings/src/reachability/clusterReachability'; // replace with actual path
 
 describe('ClusterReachability', () => {
   let previousRTCPeerConnection;
@@ -28,9 +28,8 @@ describe('ClusterReachability', () => {
       isVideoMesh: false,
       udp: ['stun:udp1', 'stun:udp2'],
       tcp: ['stun:tcp1.webex.com', 'stun:tcp2.webex.com:5004'],
-      xtls: ['xtls1', 'xtls2'],
+      xtls: ['stun:xtls1.webex.com', 'stun:xtls2.webex.com:443'],
     });
-
   });
 
   afterEach(() => {
@@ -50,8 +49,26 @@ describe('ClusterReachability', () => {
       iceServers: [
         {username: '', credential: '', urls: ['stun:udp1']},
         {username: '', credential: '', urls: ['stun:udp2']},
-        {username: 'webexturnreachuser', credential: 'webexturnreachpwd', urls: ['turn:tcp1.webex.com?transport=tcp']},
-        {username: 'webexturnreachuser', credential: 'webexturnreachpwd', urls: ['turn:tcp2.webex.com:5004?transport=tcp']}
+        {
+          username: 'webexturnreachuser',
+          credential: 'webexturnreachpwd',
+          urls: ['turn:tcp1.webex.com?transport=tcp'],
+        },
+        {
+          username: 'webexturnreachuser',
+          credential: 'webexturnreachpwd',
+          urls: ['turn:tcp2.webex.com:5004?transport=tcp'],
+        },
+        {
+          username: 'webexturnreachuser',
+          credential: 'webexturnreachpwd',
+          urls: ['turns:xtls1.webex.com?transport=tcp'],
+        },
+        {
+          username: 'webexturnreachuser',
+          credential: 'webexturnreachpwd',
+          urls: ['turns:xtls2.webex.com:443?transport=tcp'],
+        },
       ],
       iceCandidatePoolSize: 0,
       iceTransportPolicy: 'all',
@@ -79,7 +96,7 @@ describe('ClusterReachability', () => {
     assert.deepEqual(clusterReachability.getResult(), {
       udp: {result: 'untested'},
       tcp: {result: 'untested'},
-      xtls: {result: 'untested'}
+      xtls: {result: 'untested'},
     });
   });
 
@@ -92,7 +109,7 @@ describe('ClusterReachability', () => {
 
     afterEach(() => {
       clock.restore();
-    })
+    });
 
     it('should initiate the ICE gathering process', async () => {
       const promise = clusterReachability.start();
@@ -107,11 +124,11 @@ describe('ClusterReachability', () => {
       assert.calledOnceWithExactly(fakePeerConnection.createOffer, {offerToReceiveAudio: true});
       assert.calledOnce(fakePeerConnection.setLocalDescription);
 
-      await clock.tickAsync(3000);// move the clock so that reachability times out
+      await clock.tickAsync(3000); // move the clock so that reachability times out
       await promise;
     });
 
-    it('resolves and has correct result as soon as it finds that both udp and tcp is reachable', async () => {
+    it('resolves and has correct result as soon as it finds that all udp, tcp and tls are reachable', async () => {
       const promise = clusterReachability.start();
 
       await clock.tickAsync(100);
@@ -120,12 +137,17 @@ describe('ClusterReachability', () => {
       await clock.tickAsync(100);
       fakePeerConnection.onicecandidate({candidate: {type: 'relay', address: 'someTurnRelayIp'}});
 
+      await clock.tickAsync(100);
+      fakePeerConnection.onicecandidate({
+        candidate: {type: 'relay', address: 'someTurnRelayIp', port: 443},
+      });
+
       await promise;
 
       assert.deepEqual(clusterReachability.getResult(), {
         udp: {result: 'reachable', latencyInMilliseconds: 100, clientMediaIPs: ['somePublicIp']},
         tcp: {result: 'reachable', latencyInMilliseconds: 200},
-        xtls: {result: 'untested'}
+        xtls: {result: 'reachable', latencyInMilliseconds: 300},
       });
     });
 
@@ -139,7 +161,7 @@ describe('ClusterReachability', () => {
       assert.deepEqual(clusterReachability.getResult(), {
         udp: {result: 'unreachable'},
         tcp: {result: 'unreachable'},
-        xtls: {result: 'untested'}
+        xtls: {result: 'unreachable'},
       });
     });
 
@@ -148,7 +170,7 @@ describe('ClusterReachability', () => {
         isVideoMesh: true,
         udp: ['stun:udp1', 'stun:udp2'],
         tcp: ['stun:tcp1.webex.com', 'stun:tcp2.webex.com:5004'],
-        xtls: ['xtls1', 'xtls2'],
+        xtls: ['stun:xtls1.webex.com', 'stun:xtls1.webex.com:443'],
       });
 
       const promise = clusterReachability.start();
@@ -160,7 +182,7 @@ describe('ClusterReachability', () => {
       assert.deepEqual(clusterReachability.getResult(), {
         udp: {result: 'unreachable'},
         tcp: {result: 'unreachable'},
-        xtls: {result: 'untested'}
+        xtls: {result: 'unreachable'},
       });
     });
 
@@ -176,7 +198,7 @@ describe('ClusterReachability', () => {
       assert.deepEqual(clusterReachability.getResult(), {
         udp: {result: 'unreachable'},
         tcp: {result: 'unreachable'},
-        xtls: {result: 'untested'}
+        xtls: {result: 'unreachable'},
       });
     });
 
@@ -194,7 +216,7 @@ describe('ClusterReachability', () => {
       assert.deepEqual(clusterReachability.getResult(), {
         udp: {result: 'reachable', latencyInMilliseconds: 30, clientMediaIPs: ['somePublicIp1']},
         tcp: {result: 'unreachable'},
-        xtls: {result: 'untested'}
+        xtls: {result: 'unreachable'},
       });
     });
 
@@ -211,15 +233,19 @@ describe('ClusterReachability', () => {
       await clock.tickAsync(10);
       fakePeerConnection.onicecandidate({candidate: {type: 'srflx', address: 'somePublicIp3'}});
 
-      await clock.tickAsync(3000);// move the clock so that reachability times out
+      await clock.tickAsync(3000); // move the clock so that reachability times out
 
       await promise;
 
       // latency should be from only the first candidates, but the clientMediaIps should be from all UDP candidates (not TCP)
       assert.deepEqual(clusterReachability.getResult(), {
-        udp: {result: 'reachable', latencyInMilliseconds: 10, clientMediaIPs: ['somePublicIp1', 'somePublicIp2', 'somePublicIp3']},
+        udp: {
+          result: 'reachable',
+          latencyInMilliseconds: 10,
+          clientMediaIPs: ['somePublicIp1', 'somePublicIp2', 'somePublicIp3'],
+        },
         tcp: {result: 'unreachable'},
-        xtls: {result: 'untested'}
+        xtls: {result: 'unreachable'},
       });
     });
 
@@ -236,7 +262,7 @@ describe('ClusterReachability', () => {
       await clock.tickAsync(10);
       fakePeerConnection.onicecandidate({candidate: {type: 'relay', address: 'someTurnRelayIp3'}});
 
-      await clock.tickAsync(3000);// move the clock so that reachability times out
+      await clock.tickAsync(3000); // move the clock so that reachability times out
 
       await promise;
 
@@ -244,7 +270,38 @@ describe('ClusterReachability', () => {
       assert.deepEqual(clusterReachability.getResult(), {
         udp: {result: 'unreachable'},
         tcp: {result: 'reachable', latencyInMilliseconds: 10},
-        xtls: {result: 'untested'}
+        xtls: {result: 'unreachable'},
+      });
+    });
+
+    it('should store latency only for the first tls relay candidate', async () => {
+      const promise = clusterReachability.start();
+
+      await clock.tickAsync(10);
+      fakePeerConnection.onicecandidate({
+        candidate: {type: 'relay', address: 'someTurnRelayIp1', port: 443},
+      });
+
+      // generate more candidates
+      await clock.tickAsync(10);
+      fakePeerConnection.onicecandidate({
+        candidate: {type: 'relay', address: 'someTurnRelayIp2', port: 443},
+      });
+
+      await clock.tickAsync(10);
+      fakePeerConnection.onicecandidate({
+        candidate: {type: 'relay', address: 'someTurnRelayIp3', port: 443},
+      });
+
+      await clock.tickAsync(3000); // move the clock so that reachability times out
+
+      await promise;
+
+      // latency should be from only the first candidates, but the clientMediaIps should be from only from UDP candidates
+      assert.deepEqual(clusterReachability.getResult(), {
+        udp: {result: 'unreachable'},
+        tcp: {result: 'unreachable'},
+        xtls: {result: 'reachable', latencyInMilliseconds: 10},
       });
     });
 
@@ -266,13 +323,20 @@ describe('ClusterReachability', () => {
 
       // send also a relay candidate so that the reachability check finishes
       fakePeerConnection.onicecandidate({candidate: {type: 'relay', address: 'someTurnRelayIp'}});
+      fakePeerConnection.onicecandidate({
+        candidate: {type: 'relay', address: 'someTurnRelayIp', port: 443},
+      });
 
       await promise;
 
       assert.deepEqual(clusterReachability.getResult(), {
-        udp: {result: 'reachable', latencyInMilliseconds: 10, clientMediaIPs: ['somePublicIp1', 'somePublicIp2']},
+        udp: {
+          result: 'reachable',
+          latencyInMilliseconds: 10,
+          clientMediaIPs: ['somePublicIp1', 'somePublicIp2'],
+        },
         tcp: {result: 'reachable', latencyInMilliseconds: 40},
-        xtls: {result: 'untested'}
+        xtls: {result: 'reachable', latencyInMilliseconds: 40},
       });
     });
   });
