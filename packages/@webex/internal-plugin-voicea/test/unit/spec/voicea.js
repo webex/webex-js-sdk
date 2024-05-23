@@ -243,7 +243,7 @@ describe('plugin-voicea', () => {
           })
         );
 
-        assert.calledOnceWithExactly(triggerSpy, undefined);
+        assert.calledOnceWithExactly(triggerSpy);
 
         assert.calledOnce(announcementSpy);
       });

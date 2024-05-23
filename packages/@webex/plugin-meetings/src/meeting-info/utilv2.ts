@@ -299,8 +299,9 @@ export default class MeetingInfoUtil {
   static getWebexSite(uri: string) {
     const exceptedDomains = ['meet.webex.com', 'meetup.webex.com', 'ciscospark.com'];
     const site = uri?.match(/.+@([^.]+\.[^.]+\.[^.]+)$/)?.[1];
+    const isExceptedDomain = !!site && exceptedDomains.some((domain) => site.includes(domain));
 
-    return exceptedDomains.includes(site) ? null : site;
+    return isExceptedDomain ? null : site;
   }
 
   /**
