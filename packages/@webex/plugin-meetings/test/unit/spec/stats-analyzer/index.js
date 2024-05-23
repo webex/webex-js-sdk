@@ -1720,7 +1720,7 @@ describe('plugin-meetings', () => {
           }
         ]);
       });
-      it.only('should emit active speaker status', async () => {
+      it('should emit active speaker status', async () => {
         it('should mark active speaker as true', async () => {
           fakeStats.video.receivers[0].report[0].isActiveSpeaker = true;
           await startStatsAnalyzer();
