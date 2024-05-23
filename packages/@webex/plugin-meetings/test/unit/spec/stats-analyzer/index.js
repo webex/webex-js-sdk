@@ -1720,7 +1720,7 @@ describe('plugin-meetings', () => {
           }
         ]);
       });
-      it('should emit active speaker status', async () => {
+      it.only('should emit active speaker status', async () => {
         it('should mark active speaker as true', async () => {
           fakeStats.video.receivers[0].report[0].isActiveSpeaker = true;
           await startStatsAnalyzer();
@@ -1729,8 +1729,15 @@ describe('plugin-meetings', () => {
         })
         it('should mark active speaker as true if it was active speaker within the last 60 seconds', async () =>{
           fakeStats.video.receivers[0].report[0].lastActiveSpeakerUpdateTimestamp = performance.timeOrigin + performance.now() - 30 * 1000;
+          fakeStats.video.receivers[0].report[0].isActiveSpeaker = false;
           await progressTime(MQA_INTERVAL);
           assert.strictEqual(mqeData.videoReceive[0].streams[0].isActiveSpeaker, true);
+        })
+        it('should not mark active speaker as true if it was not active speaker within the last 60 seconds', async () =>{
+          fakeStats.video.receivers[0].report[0].lastActiveSpeakerUpdateTimestamp = performance.timeOrigin + performance.now() + 30 * 1000;
+          fakeStats.video.receivers[0].report[0].isActiveSpeaker = false;
+          await progressTime(MQA_INTERVAL);
+          assert.strictEqual(mqeData.videoReceive[0].streams[0].isActiveSpeaker, false);
         })
       })
     });
