@@ -18,6 +18,13 @@ export enum WorkStatus {
   OOO = 'ooo',
 }
 
+export type PresenceRequestBody = {
+  operation: Operation;
+  type?: WorkStatus | Availability;
+  ttlSecs?: number;
+  label?: string;
+};
+
 export type PresenceResponse = {
   operation: Operation;
   type: WorkStatus;

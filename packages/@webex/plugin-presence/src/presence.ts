@@ -8,7 +8,14 @@ import {WebexPlugin} from '@webex/webex-core';
 
 import PresenceBatcher from './presence-batcher';
 import PresenceWorker from './presence-worker';
-import {IEventPayload, IPresence} from './presence.type';
+import {
+  Availability,
+  IEventPayload,
+  IPresence,
+  Operation,
+  PresenceRequestBody,
+  WorkStatus,
+} from './presence.type';
 
 const defaultSubscriptionTtl = 600;
 const USER = 'user';
@@ -146,6 +153,90 @@ const Presence: IPresence = WebexPlugin.extend({
   //     statusList: presences,
   //   }));
   // },
+
+  /**
+   *
+   * @returns {Promise<void>} resolves with an object with key of `statusList` array
+   */
+  setActive(): Promise<void> {
+    return this.webex.request({
+      method: 'POST',
+      service: 'apheleiaV2',
+      resource: `activity`,
+    });
+  },
+
+  /**
+   *
+   * @param {Operation} operation
+   * @param {WorkStatus} status
+   * @returns {Promise<void>} resolves with an object with key of `statusList` array
+   */
+  setWorkstatus(operation: Operation, status?: WorkStatus): Promise<void> {
+    let body: PresenceRequestBody;
+
+    if (operation === Operation.SET) {
+      if (!status) {
+        return null; // TODO: Need to have better handling for this.
+      }
+      body = {
+        operation,
+        type: status,
+        ttlSecs: 10,
+      };
+    } else {
+      body = {
+        operation,
+      };
+    }
+
+    return this.webex.request({
+      method: 'POST',
+      api: 'apheleiaV2',
+      resource: 'workStatus',
+      body,
+    });
+  },
+
+  /**
+   *
+   * @param {Operation} operation
+   * @param {String} label
+   * @param {Availability} availabilityStatus
+   * @returns {Promise<void>}
+   */
+  setAvailability(
+    operation: Operation,
+    label: string,
+    availabilityStatus?: Availability
+  ): Promise<void> {
+    let body: PresenceRequestBody;
+
+    if (operation === Operation.SET) {
+      if (!availabilityStatus) {
+        return null; // TODO: Need to have better handling for this.
+      }
+      body = {
+        operation,
+        type: availabilityStatus,
+        ttlSecs: 10,
+        label,
+      };
+    } else {
+      body = {
+        operation,
+        label,
+      };
+    }
+
+    // This endpoint is still not available for all users.
+    return this.webex.request({
+      method: 'POST',
+      api: 'apheleiaV2',
+      resource: 'availability',
+      body,
+    });
+  },
 
   /**
    * Subscribes to a person's presence status updates
