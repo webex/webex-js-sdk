@@ -85,7 +85,7 @@ class Calling extends EventEmitter {
     for (const lineId of lineIds) {
       const line = lines[lineId];
       if (line.getStatus() === 'active') {
-        const thisLinePromise = new Promise((resolve, reject) => {
+        const thisLinePromise = new Promise((resolve) => {
           line.deregister();
           line.on('unregistered', () => {
             this.log.info(
@@ -94,9 +94,6 @@ class Calling extends EventEmitter {
             );
             resolve();
           });
-          setTimeout(() => {
-            reject();
-          }, 30000);
         });
         promises.push(
           thisLinePromise.catch(() => {
