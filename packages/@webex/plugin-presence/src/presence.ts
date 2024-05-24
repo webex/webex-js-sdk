@@ -207,7 +207,7 @@ const Presence: IPresence = WebexPlugin.extend({
    */
   setAvailability(
     operation: Operation,
-    label: string,
+    label: string, // This label can be deviceUrl, need to test and then we can use deviceUrl as the label here.
     availabilityStatus?: Availability
   ): Promise<void> {
     let body: PresenceRequestBody;
