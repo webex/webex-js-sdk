@@ -19,6 +19,7 @@ import {
   isNetworkError,
   isUnauthorizedError,
   isSdpOfferCreationError,
+  isTypeError,
 } from './call-diagnostic-metrics.util';
 import {CLIENT_NAME} from '../config';
 import {
@@ -57,6 +58,7 @@ import {
   AUTHENTICATION_FAILED_CODE,
   WEBEX_SUB_SERVICE_TYPES,
   SDP_OFFER_CREATION_ERROR_MAP,
+  TYPE_ERROR_CLIENT_CODE,
 } from './config';
 
 const {getOSVersion, getBrowserName, getBrowserVersion} = BrowserDetection();
@@ -532,6 +534,17 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
   generateClientEventErrorPayload(rawError: any) {
     const rawErrorMessage = rawError.message;
     const httpStatusCode = rawError.statusCode;
+
+    if (isTypeError(rawError)) {
+      return this.getErrorPayloadForClientErrorCode({
+        serviceErrorCode: undefined,
+        clientErrorCode: TYPE_ERROR_CLIENT_CODE,
+        serviceErrorName: rawError.name,
+        rawErrorMessage,
+        httpStatusCode,
+      });
+    }
+
     if (rawError.name) {
       if (isBrowserMediaErrorName(rawError.name)) {
         return this.getErrorPayloadForClientErrorCode({

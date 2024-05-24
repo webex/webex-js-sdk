@@ -16,6 +16,7 @@ export const MISSING_ROAP_ANSWER_CLIENT_CODE = 2007;
 export const DTLS_HANDSHAKE_FAILED_CLIENT_CODE = 2008;
 export const ICE_FAILED_WITH_TURN_TLS_CLIENT_CODE = 2010;
 export const ICE_FAILED_WITHOUT_TURN_TLS_CLIENT_CODE = 2009;
+export const TYPE_ERROR_CLIENT_CODE = 2011;
 export const WBX_APP_API_URL = 'wbxappapi'; // MeetingInfo WebexAppApi response object normally contains a body.url that includes the string 'wbxappapi'
 
 export const WEBEX_SUB_SERVICE_TYPES: Record<string, ClientSubServiceType> = {
@@ -33,7 +34,6 @@ const BROWSER_MEDIA_ERROR_NAMES = {
   NOT_FOUND_ERROR: 'NotFoundError',
   OVERCONSTRAINED_ERROR: 'OverconstrainedError',
   SECURITY_ERROR: 'SecurityError',
-  TYPE_ERROR: 'TypeError',
 };
 
 export const BROWSER_MEDIA_ERROR_NAME_TO_CLIENT_ERROR_CODES_MAP = {
@@ -44,7 +44,6 @@ export const BROWSER_MEDIA_ERROR_NAME_TO_CLIENT_ERROR_CODES_MAP = {
   [BROWSER_MEDIA_ERROR_NAMES.NOT_FOUND_ERROR]: 2729, // User did not grant permission
   [BROWSER_MEDIA_ERROR_NAMES.OVERCONSTRAINED_ERROR]: 2729, // Thrown if the specified constraints resulted in no candidate devices which met the criteria requested.
   [BROWSER_MEDIA_ERROR_NAMES.SECURITY_ERROR]: 2729, // Thrown if user media support is disabled on the Document on which getUserMedia() was called. The mechanism by which user media support is enabled and disabled is left up to the individual user agent.
-  [BROWSER_MEDIA_ERROR_NAMES.TYPE_ERROR]: 2729, // Thrown if the list of constraints specified is empty, or has all constraints set to false. This can also happen if you try to call getUserMedia() in an insecure context, since navigator.mediaDevices is undefined in an insecure context.
 };
 
 export const SDP_OFFER_CREATION_ERROR_MAP = {
@@ -127,6 +126,7 @@ export const ERROR_DESCRIPTIONS = {
   ICE_FAILED_WITH_TURN_TLS: 'ICEFailedWithTURN_TLS',
   SDP_OFFER_CREATION_ERROR: 'SdpOfferCreationError',
   SDP_OFFER_CREATION_ERROR_MISSING_CODEC: 'SdpOfferCreationErrorMissingCodec',
+  TYPE_ERROR: 'TypeError',
 };
 
 export const SERVICE_ERROR_CODES_TO_CLIENT_ERROR_CODES_MAP = {
@@ -393,6 +393,11 @@ export const CLIENT_ERROR_CODE_TO_ERROR_PAYLOAD: Record<number, Partial<ClientEv
   [ICE_FAILED_WITH_TURN_TLS_CLIENT_CODE]: {
     errorDescription: ERROR_DESCRIPTIONS.ICE_FAILED_WITH_TURN_TLS,
     category: 'network',
+    fatal: true,
+  },
+  [TYPE_ERROR_CLIENT_CODE]: {
+    errorDescription: ERROR_DESCRIPTIONS.TYPE_ERROR,
+    category: 'other',
     fatal: true,
   },
   2050: {
