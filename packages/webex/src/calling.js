@@ -77,33 +77,17 @@ class Calling extends EventEmitter {
       return Promise.resolve();
     }
 
-    const promises = [];
-
     const lineIds = Object.keys(this.callingClient?.getLines());
 
     const lines = lineIds.length ? this.callingClient.getLines() : {};
     for (const lineId of lineIds) {
       const line = lines[lineId];
       if (line.getStatus() === 'active') {
-        const thisLinePromise = new Promise((resolve) => {
-          line.deregister();
-          line.on('unregistered', () => {
-            this.log.info(
-              `line.deregister() successful for the line with ID: ${lineId}`,
-              logContext
-            );
-            resolve();
-          });
-        });
-        promises.push(
-          thisLinePromise.catch(() => {
-            this.log.warn(`Timeout during line.deregister() for ${line}`, logContext);
-          })
-        );
+        line.deregister();
       }
     }
 
-    promises.push(
+    return (
       // @ts-ignore
       this.webex.internal.mercury
         .disconnect()
@@ -124,8 +108,6 @@ class Calling extends EventEmitter {
           );
         })
     );
-
-    return Promise.all(promises);
   }
 
   async initializeClients() {
