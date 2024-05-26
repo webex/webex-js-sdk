@@ -24,7 +24,6 @@ import {
   mockContactResponseBodyOne,
   mockCountry,
   mockDisplayNameOne,
-  mockDSSResponse,
   mockEmail,
   mockFirstName,
   mockLastName,
@@ -114,8 +113,8 @@ describe('ContactClient Tests', () => {
         mockNumber2,
         mockSipAddress,
         mockTitle,
-        mockNumber2,
-        mockSipAddress,
+        // mockNumber2,
+        // mockSipAddress,
         mockGroupName,
       ],
     },
@@ -202,13 +201,13 @@ describe('ContactClient Tests', () => {
       codeObj.decryptTextList.forEach((text) => {
         webex.internal.encryption.decryptText.mockResolvedValueOnce(text);
       });
-      webex.internal.dss.lookup.mockResolvedValueOnce(mockDSSResponse);
     } else {
       respPayload['message'] = FAILURE_MESSAGE;
       respPayload['data'] = codeObj.payloadData;
       webex.request.mockRejectedValueOnce(respPayload);
     }
 
+    contactClient['fetchContactFromDSS'] = jest.fn();
     const contactsResponse = await contactClient.getContacts();
 
     expect(webex.request).toBeCalledOnceWith({
@@ -581,7 +580,7 @@ describe('ContactClient Tests', () => {
     expect(res.statusCode).toEqual(400);
     expect(res.data.error).toEqual('contactId is required for contactType:CLOUD.');
 
-    webex.internal.dss.lookup.mockResolvedValueOnce(mockDSSResponse);
+    // webex.internal.dss.lookup.mockResolvedValueOnce(mockDSSResponse);
     contact.contactId = mockContactResponse.contactId;
 
     res = await contactClient.createContact(contact);
