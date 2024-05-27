@@ -503,7 +503,7 @@ export const getVideoSenderStreamMqa = ({
   if (lastUsedEffect?.mode in VIRTUAL_BACKGROUND_EFFECT_STATS) {
     mode = VIRTUAL_BACKGROUND_EFFECT_STATS[lastUsedEffect.mode];
   }
-  videoSenderStream.backgroundNoiseReductionMode = mode;
+  videoSenderStream.backgroundAugmentationType = mode;
 };
 
 /**
