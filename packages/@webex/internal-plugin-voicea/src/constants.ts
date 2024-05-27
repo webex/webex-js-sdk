@@ -9,14 +9,20 @@ export const EVENT_TRIGGERS = {
   NEW_CAPTION: 'voicea:newCaption',
   EVA_COMMAND: 'voicea:wxa',
   HIGHLIGHT_CREATED: 'voicea:highlightCreated',
+  NEW_MANUAL_CAPTION: 'aibridge:newManualCaption',
 };
 
-export const VOICEA_RELAY_TYPES = {
-  ANNOUNCEMENT: 'voicea.annc',
-  CLIENT_ANNOUNCEMENT: 'client.annc',
-  TRANSLATION_REQUEST: 'voicea.transl.req',
-  TRANSLATION_RESPONSE: 'voicea.transl.rsp',
-  TRANSCRIPTION: 'voicea.transcription',
+export const AIBRIDGE_RELAY_TYPES = {
+  VOICEA: {
+    ANNOUNCEMENT: 'voicea.annc',
+    CLIENT_ANNOUNCEMENT: 'client.annc',
+    TRANSLATION_REQUEST: 'voicea.transl.req',
+    TRANSLATION_RESPONSE: 'voicea.transl.rsp',
+    TRANSCRIPTION: 'voicea.transcription',
+  },
+  MANUAL: {
+    TRANSCRIPTION: 'aibridge.manual_transcription',
+  },
 };
 
 export const TRANSCRIPTION_TYPE = {
