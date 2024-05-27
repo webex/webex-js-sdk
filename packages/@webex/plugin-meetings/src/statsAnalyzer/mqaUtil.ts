@@ -2,7 +2,7 @@
 
 import {mean, max} from 'lodash';
 
-import {MQA_INTERVAL, STATS} from '../constants';
+import {MQA_INTERVAL, NOISE_REDUCTION_EFFECT_STATS, STATS, VIRTUAL_BACKGROUND_EFFECT_STATS} from '../constants';
 
 /**
  * Get the totals of a certain value from a certain media type.
@@ -229,6 +229,14 @@ export const getAudioSenderStreamMqa = ({
     statsResults[mediaType][sendrecvType].totalFirCount - lastFirCount || 0;
 
   audioSenderStream.requestedBitrate = statsResults[mediaType][sendrecvType].requestedBitrate || 0;
+
+  // Get last used effect in this interval
+  const lastUsedEffect = statsResults[mediaType][sendrecvType]?.effect;
+  let mode = NOISE_REDUCTION_EFFECT_STATS.NONE;
+  if (lastUsedEffect?.mode in NOISE_REDUCTION_EFFECT_STATS) {
+    mode = NOISE_REDUCTION_EFFECT_STATS[lastUsedEffect.mode];
+  }
+  audioSenderStream.backgroundNoiseReductionMode = mode;
 };
 
 export const getVideoReceiverMqa = ({
@@ -488,6 +496,14 @@ export const getVideoSenderStreamMqa = ({
   videoSenderStream.requestedBitrate = statsResults[mediaType][sendrecvType].requestedBitrate || 0;
   videoSenderStream.requestedFrameSize =
     statsResults[mediaType][sendrecvType].requestedFrameSize || 0;
+
+  // Get last used effect in this interval
+  const lastUsedEffect = statsResults[mediaType][sendrecvType]?.effect;
+  let mode = VIRTUAL_BACKGROUND_EFFECT_STATS.NONE;
+  if (lastUsedEffect?.mode in VIRTUAL_BACKGROUND_EFFECT_STATS) {
+    mode = VIRTUAL_BACKGROUND_EFFECT_STATS[lastUsedEffect.mode];
+  }
+  videoSenderStream.backgroundNoiseReductionMode = mode;
 };
 
 /**

@@ -1057,6 +1057,10 @@ export class StatsAnalyzer extends EventsScope {
         result.lastRequestedUpdateTimestamp;
       this.statsResults[mediaType][sendrecvType].requestedBitrate = result.requestedBitrate;
       this.statsResults[mediaType][sendrecvType].requestedFrameSize = result.requestedFrameSize;
+
+      if (result.effect) {
+        this.statsResults[mediaType][sendrecvType].effect = result.effect;
+      }
     }
   }
 
