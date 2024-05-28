@@ -256,9 +256,6 @@ export class MuteState {
 
         // need to check if a new sync is required, because this.state.client may have changed while we were doing the current sync
         this.applyClientStateToServer(meeting);
-
-        // need to update the user's mute state to align it in case the last server sync was unmuted, and it mutes the client.
-        meeting.mediaProperties.audioStream?.setUserMuted(this.state.client.localMute);
       })
       .catch((e) => {
         this.state.syncToServerInProgress = false;
