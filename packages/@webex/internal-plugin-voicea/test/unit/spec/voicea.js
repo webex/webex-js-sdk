@@ -830,7 +830,7 @@ describe('plugin-voicea', () => {
               end_millis: 11380,
             }
           ],
-          type: "transcript_final_result",
+          type: "manual_caption_final_result",
         };
 
         // eslint-disable-next-line no-underscore-dangle

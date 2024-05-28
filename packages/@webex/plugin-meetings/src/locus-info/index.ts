@@ -925,7 +925,7 @@ export default class LocusInfo extends EventsScope {
       }
 
       if (hasManualCaptionChanged) {
-        const {enabled} = current.manualCaption;
+        const {enabled} = current.manualCaptionControl;
 
         this.emitScoped(
           {

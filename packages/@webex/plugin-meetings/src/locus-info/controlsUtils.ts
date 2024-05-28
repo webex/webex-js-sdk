@@ -43,9 +43,9 @@ ControlsUtils.parse = (controls: any) => {
     };
   }
 
-  if (controls && controls.manualCaption) {
-    parsedControls.manualCaption = {
-      enabled: controls.manualCaption.enabled,
+  if (controls && controls.manualCaptionControl) {
+    parsedControls.manualCaptionControl = {
+      enabled: controls.manualCaptionControl.enabled,
     };
   }
 
@@ -150,9 +150,9 @@ ControlsUtils.getControls = (oldControls: any, newControls: any) => {
         (previous?.transcribe?.transcribing || current?.transcribe?.transcribing), // therefore, condition added to prevent false firings of #meeting:recording:stopped upon first joining a meeting
 
       hasManualCaptionChanged:
-        current?.manualCaption &&
-        !isEqual(previous?.manualCaption?.enabled, current?.manualCaption?.enabled) &&
-        (previous?.manualCaption?.enabled || current?.manualCaption?.enabled),
+        current?.manualCaptionControl &&
+        !isEqual(previous?.manualCaptionControl?.enabled, current?.manualCaptionControl?.enabled) &&
+        (previous?.manualCaptionControl?.enabled || current?.manualCaptionControl?.enabled),
 
       hasEntryExitToneChanged: !!(
         newControls.entryExitTone &&

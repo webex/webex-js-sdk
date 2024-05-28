@@ -380,7 +380,7 @@ export const EVENT_TRIGGERS = {
   MEETING_TRANSCRIPTION_CONNECTED: 'meeting:transcription:connected',
   MEETING_STARTED_RECEIVING_TRANSCRIPTION: 'meeting:receiveTranscription:started',
   MEETING_STOPPED_RECEIVING_TRANSCRIPTION: 'meeting:receiveTranscription:stopped',
-  MEETING_MANUAL_CAPTION_UPDATED: 'meeting:manualCaption:updated',
+  MEETING_MANUAL_CAPTION_UPDATED: 'meeting:manualCaptionControl:updated',
   MEETING_CAPTION_RECEIVED: 'meeting:caption-received',
 };
 

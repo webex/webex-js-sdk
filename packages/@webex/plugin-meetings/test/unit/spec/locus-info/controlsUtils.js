@@ -271,20 +271,20 @@ describe('plugin-meetings', () => {
 
       it('returns hasManualCaptionChanged = true when it has changed', () => {
         const newControls = {
-          manualCaption: {enabled: false},
+          manualCaptionControl: {enabled: false},
         };
 
-        const {updates} = ControlsUtils.getControls({manualCaption: {enabled: true}}, newControls);
+        const {updates} = ControlsUtils.getControls({manualCaptionControl: {enabled: true}}, newControls);
 
         assert.equal(updates.hasManualCaptionChanged, true);
       });
 
       it('returns hasManualCaptionChanged = false when it has not changed', () => {
         const newControls = {
-          manualCaption: {enabled: true},
+          manualCaptionControl: {enabled: true},
         };
 
-        const {updates} = ControlsUtils.getControls({manualCaption: {enabled: true}}, newControls);
+        const {updates} = ControlsUtils.getControls({manualCaptionControl: {enabled: true}}, newControls);
 
         assert.equal(updates.hasManualCaptionChanged, false);
       });
