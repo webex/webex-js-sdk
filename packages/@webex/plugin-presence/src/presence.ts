@@ -22,6 +22,8 @@ const USER = 'user';
 const USER_PRESENCE_ENABLED = 'user-presence-enabled';
 
 /**
+ * Class for the presence plugin. The presence plugin provides a set of methods to work with
+ * compositions as well as subscriptions of the presence status of users.
  * @class
  * @extends WebexPlugin
  */
@@ -54,9 +56,9 @@ const Presence: IPresence = WebexPlugin.extend({
   },
 
   /**
-   * Trigger an event.
-   * @param {string} event
-   * @param {string} payload
+   * Emits an event to the listener.
+   * @param {string} event - name of the event emitted.
+   * @param {string} payload - payload of the event emitted.
    * @returns {undefined}
    */
   emitEvent(event: string, payload: IEventPayload): void {

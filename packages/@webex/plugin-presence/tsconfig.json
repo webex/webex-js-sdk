@@ -3,7 +3,7 @@
   "include": ["src"],
   "typedocOptions": {
     "entryPoints": [
-      "./src/interface.ts"
+      "./src/api.ts"
     ],
     "sort": [
       "source-order"

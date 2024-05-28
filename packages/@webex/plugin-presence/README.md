@@ -2,7 +2,7 @@
 
 [![standard-readme compliant](https://img.shields.io/badge/readme%20style-standard-brightgreen.svg?style=flat-square)](https://github.com/RichardLitt/standard-readme)
 
-> Plugin for the Presence service
+Plugin for the Presence service in Webex. The presence plugin provides a set of methods to work with compositions as well as subscriptions of the presence status of users.
 
 - [Install](#install)
 - [Usage](#usage)
@@ -33,7 +33,7 @@ This package is maintained by [Cisco Webex for Developers](https://developer.web
 
 ## Contribute
 
-Pull requests are welcome. Please see [CONTRIBUTING.md](https://github.com/webex/webex-js-sdk/blob/master/CONTRIBUTING.md) for more details.
+Pull requests are welcome. Please see [CONTRIBUTING.md](https://github.com/webex/webex-js-sdk/blob/next/CONTRIBUTING.md) for more details.
 
 ## License
 
