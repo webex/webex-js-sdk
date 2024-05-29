@@ -33,6 +33,7 @@ export const TRANSCRIPTION_TYPE = {
   HIGHLIGHT_CREATED: 'highlight_created',
   TRANSCRIPT_INTERIM_RESULTS: 'transcript_interim_results',
   TRANSCRIPT_FINAL_RESULT: 'transcript_final_result',
+  MANUAL_CAPTION_INTERIM_RESULTS: 'manual_caption_interim_results',
   MANUAL_CAPTION_FINAL_RESULT: 'manual_caption_final_result',
 };
 

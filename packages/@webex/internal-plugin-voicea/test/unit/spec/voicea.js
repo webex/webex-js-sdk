@@ -801,7 +801,7 @@ describe('plugin-voicea', () => {
               "text": "Good",
             }
           ],
-          type: "transcript_interim_results",
+          type: "manual_caption_interim_results",
         };
 
         // eslint-disable-next-line no-underscore-dangle
