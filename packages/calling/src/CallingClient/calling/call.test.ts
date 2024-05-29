@@ -233,6 +233,7 @@ describe('Call Tests', () => {
         getAudioTracks: jest.fn().mockReturnValue([mockTrack]),
       },
       on: jest.fn(),
+      setUserMuted: jest.fn(),
     };
 
     const localAudioStream = mockStream as unknown as MediaSDK.LocalMicrophoneStream;
@@ -244,9 +245,9 @@ describe('Call Tests', () => {
     expect(Object.keys(callManager.getActiveCalls()).length).toBe(1);
     call.mute(localAudioStream);
     expect(call.isMuted()).toEqual(true);
-    expect(mockTrack.enabled).toEqual(false);
+    expect(mockStream.setUserMuted).toBeCalledOnceWith(true);
     call.mute(localAudioStream);
-    expect(mockTrack.enabled).toEqual(true);
+    expect(mockStream.setUserMuted).toBeCalledWith(false);
     expect(call.isMuted()).toEqual(false);
     call.end();
     await waitForMsecs(50); // Need to add a small delay for Promise and callback to finish.
