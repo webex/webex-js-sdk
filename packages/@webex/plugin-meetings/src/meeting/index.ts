@@ -52,6 +52,7 @@ import {
 import {StatsAnalyzer, EVENTS as StatsAnalyzerEvents} from '../statsAnalyzer';
 import NetworkQualityMonitor from '../networkQualityMonitor';
 import LoggerProxy from '../common/logs/logger-proxy';
+import EventsUtil from '../common/events/util';
 import Trigger from '../common/events/trigger-proxy';
 import Roap, {
   type TurnDiscoveryResult,
@@ -630,18 +631,20 @@ export default class Meeting extends StatelessWebexPlugin {
   turnDiscoverySkippedReason: TurnDiscoverySkipReason;
   turnServerUsed: boolean;
   areVoiceaEventsSetup = false;
+
   voiceaListenerCallbacks: object = {
     [VOICEAEVENTS.VOICEA_ANNOUNCEMENT]: (payload: Transcription['languageOptions']) => {
       this.transcription.languageOptions = payload;
-      Trigger.trigger(
-        this,
-        {
+
+      LoggerProxy.logger.debug(
+        `${EventsUtil.getScopeLog({
           file: 'meeting/index',
           function: 'setUpVoiceaListeners',
-        },
-        EVENT_TRIGGERS.MEETING_STARTED_RECEIVING_TRANSCRIPTION,
-        payload
+        })}event#${EVENT_TRIGGERS.MEETING_STARTED_RECEIVING_TRANSCRIPTION}`
       );
+
+      // @ts-ignore
+      this.trigger(EVENT_TRIGGERS.MEETING_STARTED_RECEIVING_TRANSCRIPTION, payload);
     },
     [VOICEAEVENTS.CAPTIONS_TURNED_ON]: () => {
       this.transcription.status = TURN_ON_CAPTION_STATUS.ENABLED;
@@ -654,18 +657,19 @@ export default class Meeting extends StatelessWebexPlugin {
     },
     [VOICEAEVENTS.NEW_CAPTION]: (data) => {
       processNewCaptions({data, meeting: this});
-      Trigger.trigger(
-        this,
-        {
+
+      LoggerProxy.logger.debug(
+        `${EventsUtil.getScopeLog({
           file: 'meeting/index',
           function: 'setUpVoiceaListeners',
-        },
-        EVENT_TRIGGERS.MEETING_CAPTION_RECEIVED,
-        {
-          captions: this.transcription.captions,
-          interimCaptions: this.transcription.interimCaptions,
-        }
+        })}event#${EVENT_TRIGGERS.MEETING_CAPTION_RECEIVED}`
       );
+
+      // @ts-ignore
+      this.trigger(EVENT_TRIGGERS.MEETING_CAPTION_RECEIVED, {
+        captions: this.transcription.captions,
+        interimCaptions: this.transcription.interimCaptions,
+      });
     },
   };
 

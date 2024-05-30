@@ -1106,15 +1106,14 @@ describe('plugin-meetings', () => {
       });
 
       describe('transcription events', () => {
+        beforeEach(() => {
+          meeting.trigger = sinon.stub();
+        });
+
         it('should trigger meeting:caption-received event', () => {
           meeting.voiceaListenerCallbacks[VOICEAEVENTS.NEW_CAPTION]({});
           assert.calledWith(
-            TriggerProxy.trigger,
-            sinon.match.instanceOf(Meeting),
-            {
-              file: 'meeting/index',
-              function: 'setUpVoiceaListeners',
-            },
+            meeting.trigger,
             EVENT_TRIGGERS.MEETING_CAPTION_RECEIVED
           );
         });
@@ -1122,12 +1121,7 @@ describe('plugin-meetings', () => {
         it('should trigger meeting:receiveTranscription:started event', () => {
           meeting.voiceaListenerCallbacks[VOICEAEVENTS.VOICEA_ANNOUNCEMENT]({});
           assert.calledWith(
-            TriggerProxy.trigger,
-            sinon.match.instanceOf(Meeting),
-            {
-              file: 'meeting/index',
-              function: 'setUpVoiceaListeners',
-            },
+            meeting.trigger,
             EVENT_TRIGGERS.MEETING_STARTED_RECEIVING_TRANSCRIPTION
           );
         });
@@ -1135,12 +1129,7 @@ describe('plugin-meetings', () => {
         it('should trigger meeting:caption-received event', () => {
           meeting.voiceaListenerCallbacks[VOICEAEVENTS.NEW_CAPTION]({});
           assert.calledWith(
-            TriggerProxy.trigger,
-            sinon.match.instanceOf(Meeting),
-            {
-              file: 'meeting/index',
-              function: 'setUpVoiceaListeners',
-            },
+            meeting.trigger,
             EVENT_TRIGGERS.MEETING_CAPTION_RECEIVED
           );
         });
