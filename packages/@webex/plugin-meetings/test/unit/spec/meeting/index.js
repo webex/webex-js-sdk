@@ -658,6 +658,9 @@ describe('plugin-meetings', () => {
           assert.calledOnceWithExactly(meeting.addMedia, mediaOptions, fakeTurnServerInfo);
 
           assert.deepEqual(result, {join: fakeJoinResult, media: test4});
+
+          // resets joinWithMediaRetryInfo
+          assert.deepEqual(meeting.joinWithMediaRetryInfo, {isRetry: false, prevJoinResponse: undefined});
         });
 
         it("should not call handleTurnDiscoveryHttpResponse if we don't send a TURN discovery request with join", async () => {
@@ -721,6 +724,7 @@ describe('plugin-meetings', () => {
 
           assert.calledTwice(abortTurnDiscoveryStub);
 
+          assert.calledTwice(Metrics.sendBehavioralMetric);
           assert.calledWith(
             Metrics.sendBehavioralMetric,
             BEHAVIORAL_METRICS.JOIN_WITH_MEDIA_FAILURE,
@@ -736,6 +740,24 @@ describe('plugin-meetings', () => {
               type: error.name,
             }
           );
+          assert.calledWith(
+            Metrics.sendBehavioralMetric,
+            BEHAVIORAL_METRICS.JOIN_WITH_MEDIA_FAILURE,
+            {
+              correlation_id: meeting.correlationId,
+              locus_id: undefined,
+              reason: error.message,
+              stack: error.stack,
+              leaveErrorReason: undefined,
+              isRetry: true,
+            },
+            {
+              type: error.name,
+            }
+          );
+
+          // resets joinWithMediaRetryInfo
+          assert.deepEqual(meeting.joinWithMediaRetryInfo, {isRetry: false, prevJoinResponse: undefined});
         });
 
         it('should resolve if join() fails the first time but succeeds the second time', async () => {
@@ -771,6 +793,9 @@ describe('plugin-meetings', () => {
           );
 
           assert.deepEqual(result, {join: fakeJoinResult, media: test4});
+
+          // resets joinWithMediaRetryInfo
+          assert.deepEqual(meeting.joinWithMediaRetryInfo, {isRetry: false, prevJoinResponse: undefined});
         });
 
         it('should fail if called with allowMediaInLobby:false', async () => {
@@ -877,6 +902,9 @@ describe('plugin-meetings', () => {
             }
           );
         });
+
+         // resets joinWithMediaRetryInfo
+        //  assert.deepEqual(meeting.joinWithMediaRetryInfo, {isRetry: false, prevJoinResponse: undefined});
       });
 
       describe('#isTranscriptionSupported', () => {
@@ -1726,6 +1754,7 @@ describe('plugin-meetings', () => {
               turnServerUsed: true,
               retriedWithTurnServer: false,
               isMultistream: false,
+              isJoinWithMediaRetry: false,
               signalingState: 'unknown',
               connectionState: 'unknown',
               iceConnectionState: 'unknown',
@@ -1830,6 +1859,7 @@ describe('plugin-meetings', () => {
               turnServerUsed: true,
               retriedWithTurnServer: false,
               isMultistream: false,
+              isJoinWithMediaRetry: false,
               signalingState: 'unknown',
               connectionState: 'unknown',
               iceConnectionState: 'unknown',
@@ -2308,6 +2338,7 @@ describe('plugin-meetings', () => {
               turnServerUsed: true,
               retriedWithTurnServer: true,
               isMultistream: false,
+              isJoinWithMediaRetry: false,
               signalingState: 'unknown',
               connectionState: 'unknown',
               iceConnectionState: 'unknown',
@@ -2491,6 +2522,7 @@ describe('plugin-meetings', () => {
               connectionType: 'udp',
               isMultistream: false,
               retriedWithTurnServer: true,
+              isJoinWithMediaRetry: false,
             },
           ]);
           meeting.roap.doTurnDiscovery;
@@ -2633,6 +2665,7 @@ describe('plugin-meetings', () => {
               connectionType: 'udp',
               isMultistream: false,
               retriedWithTurnServer: false,
+              isJoinWithMediaRetry: false,
               someReachabilityMetric1: 'some value1',
               someReachabilityMetric2: 'some value2',
             }
@@ -2691,6 +2724,7 @@ describe('plugin-meetings', () => {
               turnServerUsed: true,
               retriedWithTurnServer: false,
               isMultistream: false,
+              isJoinWithMediaRetry: false,
               signalingState: 'unknown',
               connectionState: 'unknown',
               iceConnectionState: 'unknown',

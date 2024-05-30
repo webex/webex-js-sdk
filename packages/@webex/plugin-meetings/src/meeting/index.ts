@@ -678,6 +678,7 @@ export default class Meeting extends StatelessWebexPlugin {
   private deferSDPAnswer?: Defer; // used for waiting for a response
   private sdpResponseTimer?: ReturnType<typeof setTimeout>;
   private hasMediaConnectionConnectedAtLeastOnce: boolean;
+  private joinWithMediaRetryInfo?: {isRetry: boolean; prevJoinResponse?: any};
 
   /**
    * @param {Object} attrs
@@ -1459,6 +1460,15 @@ export default class Meeting extends StatelessWebexPlugin {
      * @memberof Meeting
      */
     this.hasMediaConnectionConnectedAtLeastOnce = false;
+
+    /**
+     * Information needed for a retry of a call to joinWithMedia
+     * @instance
+     * @type {{isRetry: boolean; prevJoinResponse?: any}}
+     * @private
+     * @memberof Meeting
+     */
+    this.joinWithMediaRetryInfo = {isRetry: false, prevJoinResponse: undefined};
   }
 
   /**
@@ -4509,11 +4519,10 @@ export default class Meeting extends StatelessWebexPlugin {
     options: {
       joinOptions?: any;
       mediaOptions?: AddMediaOptions;
-      isRetry?: boolean;
-      prevJoinResponse?: any;
     } = {}
   ) {
-    const {mediaOptions, joinOptions = {}, isRetry = false, prevJoinResponse} = options;
+    const {mediaOptions, joinOptions = {}} = options;
+    const {isRetry, prevJoinResponse} = this.joinWithMediaRetryInfo;
 
     if (!mediaOptions?.allowMediaInLobby) {
       return Promise.reject(
@@ -4563,6 +4572,8 @@ export default class Meeting extends StatelessWebexPlugin {
 
       const mediaResponse = await this.addMedia(mediaOptions, turnServerInfo);
 
+      this.joinWithMediaRetryInfo = {isRetry: false, prevJoinResponse: undefined};
+
       return {
         join: joinResponse,
         media: mediaResponse,
@@ -4600,11 +4611,14 @@ export default class Meeting extends StatelessWebexPlugin {
 
       if (!isRetry) {
         LoggerProxy.logger.error('Meeting:index#joinWithMedia --> retrying call to joinWithMedia');
-        options.isRetry = true;
-        options.prevJoinResponse = joinResponse;
+        this.joinWithMediaRetryInfo.isRetry = true;
+        this.joinWithMediaRetryInfo.prevJoinResponse = joinResponse;
 
         return this.joinWithMedia(options);
       }
+
+      this.joinWithMediaRetryInfo = {isRetry: false, prevJoinResponse: undefined};
+
       throw error;
     }
   }
@@ -6793,6 +6807,7 @@ export default class Meeting extends StatelessWebexPlugin {
         connectionType,
         isMultistream: this.isMultistream,
         retriedWithTurnServer: this.retriedWithTurnServer,
+        isJoinWithMediaRetry: this.joinWithMediaRetryInfo.isRetry,
         ...reachabilityStats,
       });
       // @ts-ignore
@@ -6824,6 +6839,7 @@ export default class Meeting extends StatelessWebexPlugin {
         turnServerUsed: this.turnServerUsed,
         retriedWithTurnServer: this.retriedWithTurnServer,
         isMultistream: this.isMultistream,
+        isJoinWithMediaRetry: this.joinWithMediaRetryInfo.isRetry,
         signalingState:
           this.mediaProperties.webrtcMediaConnection?.multistreamConnection?.pc?.pc
             ?.signalingState ||
