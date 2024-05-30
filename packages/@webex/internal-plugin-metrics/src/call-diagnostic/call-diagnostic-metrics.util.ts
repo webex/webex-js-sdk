@@ -383,11 +383,18 @@ export const generateClientErrorCodeForIceFailure = ({
     errorCode = MISSING_ROAP_ANSWER_CLIENT_CODE;
   }
 
-  if (signalingState === 'stable' && iceConnectionState === 'connected') {
+  if (
+    signalingState === 'stable' &&
+    (iceConnectionState === 'connected' || iceConnectionState === 'disconnected')
+  ) {
     errorCode = DTLS_HANDSHAKE_FAILED_CLIENT_CODE;
   }
 
-  if (signalingState !== 'have-local-offer' && iceConnectionState !== 'connected') {
+  if (
+    signalingState !== 'have-local-offer' &&
+    iceConnectionState !== 'connected' &&
+    iceConnectionState !== 'disconnected'
+  ) {
     if (turnServerUsed) {
       errorCode = ICE_FAILED_WITH_TURN_TLS_CLIENT_CODE;
     } else {
