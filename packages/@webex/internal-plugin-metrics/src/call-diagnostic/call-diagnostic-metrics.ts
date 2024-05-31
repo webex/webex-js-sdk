@@ -1,11 +1,11 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable class-methods-use-this */
 /* eslint-disable valid-jsdoc */
-import {getOSNameInternal} from '@webex/internal-plugin-metrics';
 import {BrowserDetection, getBrowserSerial} from '@webex/common';
 import uuid from 'uuid';
 import {merge} from 'lodash';
 import {StatelessWebexPlugin} from '@webex/webex-core';
+import {getOSNameInternal} from '../metrics';
 
 import {
   anonymizeIPAddress,

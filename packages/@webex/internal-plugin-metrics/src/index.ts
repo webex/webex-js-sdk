@@ -33,7 +33,7 @@ registerInternalPlugin('newMetrics', NewMetrics, {
   config,
 });
 
-export {default, getOSNameInternal} from './metrics';
+export {default} from './metrics';
 
 export {
   config,
