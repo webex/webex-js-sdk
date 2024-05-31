@@ -93,6 +93,8 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
 
   private logger: any; // to avoid adding @ts-ignore everywhere
   private hasLoggedBrowserSerial: boolean;
+  private device: any;
+
   // the default validator before piping an event to the batcher
   // this function can be overridden by the user
   public validator: (options: {
@@ -296,14 +298,14 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       identifiers.correlationId = correlationId;
     }
     // @ts-ignore
-    if (this.webex.internal) {
+    if (this.device) {
       // @ts-ignore
-      const {device} = this.webex.internal;
-      const {installationId} = device.config || {};
+      const {device} = this;
+      const {installationId} = device?.config || {};
 
-      identifiers.userId = device.userId || preLoginId;
-      identifiers.deviceId = device.url;
-      identifiers.orgId = device.orgId;
+      identifiers.userId = device?.userId || preLoginId;
+      identifiers.deviceId = device?.url;
+      identifiers.orgId = device?.orgId;
       // @ts-ignore
       identifiers.locusUrl = this.webex.internal.services.get('locus');
 
@@ -921,5 +923,14 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     const clientErrorPayload = CLIENT_ERROR_CODE_TO_ERROR_PAYLOAD[clientErrorCode];
 
     return clientErrorPayload?.category === 'expected';
+  }
+
+  /**
+   * This method is used to set the device information by an internal plugin
+   * @param {device} object The webex.internal.device object
+   * @returns {undefined}
+   */
+  public setDeviceInfo(device: any): void {
+    this.device = device;
   }
 }

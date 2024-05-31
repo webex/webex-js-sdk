@@ -696,6 +696,8 @@ const Device = WebexPlugin.extend({
       this.refreshTimer = safeSetTimeout(() => this.refresh(), delay);
     }
 
+    this.webex.internal.newMetrics.callDiagnosticMetrics.setDeviceInfo(this);
+
     // Emit the registration:success event.
     this.trigger(DEVICE_EVENT_REGISTRATION_SUCCESS, this);
   },
