@@ -931,6 +931,8 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
    * @returns {undefined}
    */
   public setDeviceInfo(device: any): void {
+    this.logger.log('CallDiagnosticMetrics: @setDeviceInfo called', device);
+
     this.device = device;
   }
 }
