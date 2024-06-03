@@ -2717,13 +2717,14 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    * @param localAudioTrack -.
    */
   public mute = (localAudioStream: LocalMicrophoneStream): void => {
-    const localAudioTrack = localAudioStream.outputStream.getAudioTracks()[0];
-    if (this.muted) {
-      localAudioTrack.enabled = true;
-      this.muted = false;
+    if (localAudioStream) {
+      localAudioStream.setUserMuted(!this.muted);
+      this.muted = !this.muted;
     } else {
-      localAudioTrack.enabled = false;
-      this.muted = true;
+      log.warn(`Did not find a local stream while muting the call ${this.getCorrelationId()}.`, {
+        file: CALL_FILE,
+        method: 'mute',
+      });
     }
   };
 
