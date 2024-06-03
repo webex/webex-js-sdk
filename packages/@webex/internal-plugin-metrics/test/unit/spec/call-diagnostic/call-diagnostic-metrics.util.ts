@@ -301,17 +301,23 @@ describe('internal-plugin-metrics', () => {
 
     [
       ['client.exit.app', {}],
-      ['client.login.end', {
-        joinTimes: {
-          otherAppApiReqResp: undefined,
-          exchangeCITokenJMT: undefined,
-        }
-      }],
-      ['client.webexapp.launched', {
-        joinTimes: {
-          downloadTime: undefined,
-        }
-      }],
+      [
+        'client.login.end',
+        {
+          joinTimes: {
+            otherAppApiReqResp: undefined,
+            exchangeCITokenJMT: undefined,
+          },
+        },
+      ],
+      [
+        'client.webexapp.launched',
+        {
+          joinTimes: {
+            downloadTime: undefined,
+          },
+        },
+      ],
       [
         'client.interstitial-window.launched',
         {
@@ -606,6 +612,12 @@ describe('internal-plugin-metrics', () => {
       {
         signalingState: 'stable',
         iceConnectionState: 'connected',
+        turnServerUsed: true,
+        errorCode: DTLS_HANDSHAKE_FAILED_CLIENT_CODE,
+      },
+      {
+        signalingState: 'stable',
+        iceConnectionState: 'disconnected',
         turnServerUsed: true,
         errorCode: DTLS_HANDSHAKE_FAILED_CLIENT_CODE,
       },
