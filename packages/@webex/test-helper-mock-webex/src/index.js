@@ -298,6 +298,7 @@ function makeWebex(options) {
       submitClientEvent: sinon.stub(),
       callDiagnosticLatencies: {
         saveTimestamp: sinon.stub(),
+        measureLatency: (callback) => callback(),
       },
       callDiagnosticMetrics: {
         submitClientEvent: sinon.stub(),

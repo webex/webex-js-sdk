@@ -7,6 +7,8 @@ import sinon from 'sinon';
 import WebexCore, {MemoryStoreAdapter, registerPlugin, WebexPlugin} from '@webex/webex-core';
 import {set} from 'lodash';
 import {version} from '@webex/webex-core/package';
+// TODO:  fix circular dependency core->metrics->core https://jira-eng-gpk2.cisco.com/jira/browse/SPARK-515520
+require('@webex/internal-plugin-metrics');
 
 describe('Webex', () => {
   let webex;

@@ -1,7 +1,7 @@
 // @ts-ignore
 import {hydraTypes} from '@webex/common';
 
-type Enum<T extends Record<string, unknown>> = T[keyof T];
+export type Enum<T extends Record<string, unknown>> = T[keyof T];
 
 // *********** LOWERCASE / CAMELCASE STRINGS ************
 
@@ -196,7 +196,7 @@ export const ICE_FAIL_TIMEOUT = 3000;
 
 export const RETRY_TIMEOUT = 3000;
 
-export const ICE_AND_DTLS_CONNECTION_TIMEOUT = 10000;
+export const ICE_AND_DTLS_CONNECTION_TIMEOUT = 20000;
 export const ROAP_OFFER_ANSWER_EXCHANGE_TIMEOUT = 35000;
 
 // ******************** REGEX **********************
@@ -361,6 +361,7 @@ export const EVENT_TRIGGERS = {
   REMOTE_VIDEO_SOURCE_COUNT_CHANGED: 'media:remoteVideoSourceCountChanged',
   REMOTE_AUDIO_SOURCE_COUNT_CHANGED: 'media:remoteAudioSourceCountChanged',
   REMOTE_MEDIA_AUDIO_CREATED: 'media:remoteAudio:created',
+  REMOTE_MEDIA_INTERPRETATION_AUDIO_CREATED: 'media:remoteInterpretationAudio:created',
   REMOTE_MEDIA_SCREEN_SHARE_AUDIO_CREATED: 'media:remoteScreenShareAudio:created',
   REMOTE_MEDIA_VIDEO_LAYOUT_CHANGED: 'media:remoteVideo:layoutChanged',
   // Controls
@@ -971,7 +972,7 @@ export const SELF_ROLES = {
   COHOST: 'COHOST',
   MODERATOR: 'MODERATOR',
   ATTENDEE: 'ATTENDEE',
-  PRESENTER: 'PRESENTER',
+  PANELIST: 'PANELIST',
 };
 
 export const MEETING_STATE = {
@@ -1318,3 +1319,6 @@ export type IP_VERSION = Enum<typeof IP_VERSION>;
 // constant for if the permissionToken is about to expire in the next 30 seconds, refresh it
 export const MEETING_PERMISSION_TOKEN_REFRESH_THRESHOLD_IN_SEC = 30;
 export const MEETING_PERMISSION_TOKEN_REFRESH_REASON = 'ttl-join';
+
+// constant for named media group type
+export const NAMED_MEDIA_GROUP_TYPE_AUDIO = 1;

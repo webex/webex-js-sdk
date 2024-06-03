@@ -6,6 +6,14 @@ import {assert} from '@webex/test-helper-chai';
 import MockWebex from '@webex/test-helper-mock-webex';
 import sinon from 'sinon';
 import {Services, ServiceRegistry, ServiceState} from '@webex/webex-core';
+import {NewMetrics} from '@webex/internal-plugin-metrics';
+
+const waitForAsync = () =>
+  new Promise((resolve) =>
+    setImmediate(() => {
+      return resolve();
+    })
+  );
 
 /* eslint-disable no-underscore-dangle */
 describe('webex-core', () => {
@@ -14,14 +22,106 @@ describe('webex-core', () => {
     let services;
     let catalog;
 
-    beforeAll(() => {
+    beforeEach(() => {
       webex = new MockWebex({
         children: {
           services: Services,
+          newMetrics: NewMetrics,
         },
       });
       services = webex.internal.services;
       catalog = services._getCatalog();
+    });
+
+    describe('#initialize', () => {
+      it('initFailed is false when initialization succeeds and credentials are available', async () => {
+        services.listenToOnce = sinon.stub();
+        services.initServiceCatalogs = sinon.stub().returns(Promise.resolve());
+        services.webex.credentials = {
+          supertoken: {
+            access_token: 'token',
+          },
+        };
+
+        services.initialize();
+
+        // call the onReady callback
+        services.listenToOnce.getCall(1).args[2]();
+        await waitForAsync();
+
+        assert.isFalse(services.initFailed);
+      });
+
+      it('initFailed is false when initialization succeeds no credentials are available', async () => {
+        services.listenToOnce = sinon.stub();
+        services.collectPreauthCatalog = sinon.stub().returns(Promise.resolve());
+
+        services.initialize();
+
+        // call the onReady callback
+        services.listenToOnce.getCall(1).args[2]();
+        await waitForAsync();
+
+        assert.isFalse(services.initFailed);
+      });
+
+      it.each([
+        {error: new Error('failed'), expectedMessage: 'failed'},
+        {error: undefined, expectedMessage: undefined}
+      ])(
+        'sets initFailed to true when collectPreauthCatalog errors',
+        async ({error, expectedMessage}) => {
+          services.collectPreauthCatalog = sinon.stub().callsFake(() => {
+            return Promise.reject(error);
+          });
+
+          services.listenToOnce = sinon.stub();
+          services.logger.error = sinon.stub();
+
+          services.initialize();
+
+          // call the onReady callback
+          services.listenToOnce.getCall(1).args[2]();
+
+          await waitForAsync();
+
+          assert.isTrue(services.initFailed);
+          sinon.assert.calledWith(
+            services.logger.error,
+            `services: failed to init initial services when no credentials available, ${expectedMessage}`
+          );
+        }
+      );
+
+      it.each([
+        {error: new Error('failed'), expectedMessage: 'failed'},
+        {error: undefined, expectedMessage: undefined}
+      ])('sets initFailed to true when initServiceCatalogs errors', async ({error, expectedMessage}) => {
+        services.initServiceCatalogs = sinon.stub().callsFake(() => {
+          return Promise.reject(error);
+        });
+        services.webex.credentials = {
+          supertoken: {
+            access_token: 'token'
+          }
+        }
+
+        services.listenToOnce = sinon.stub();
+        services.logger.error = sinon.stub();
+
+        services.initialize();
+
+        // call the onReady callback
+        services.listenToOnce.getCall(1).args[2]();
+
+        await waitForAsync();
+
+        assert.isTrue(services.initFailed);
+        sinon.assert.calledWith(
+          services.logger.error,
+          `services: failed to init initial services when credentials available, ${expectedMessage}`
+        );
+      });
     });
 
     describe('class members', () => {
@@ -67,6 +167,12 @@ describe('webex-core', () => {
     describe('#validateDomains', () => {
       it('is a boolean', () => {
         assert.isBoolean(services.validateDomains);
+      });
+    });
+
+    describe('#initFailed', () => {
+      it('is a boolean', () => {
+        assert.isFalse(services.initFailed);
       });
     });
 
@@ -127,6 +233,60 @@ describe('webex-core', () => {
           resource: 'meetingPreferences',
         });
         assert.isUndefined(res);
+      });
+    });
+
+    describe('#_fetchNewServiceHostmap()', () => {
+
+      beforeEach(() => {
+        sinon.spy(webex.internal.newMetrics.callDiagnosticLatencies, 'measureLatency');
+      });
+
+      afterEach(() => {
+        sinon.restore();
+      });
+
+      it('checks service request resolves', async () => {
+        const mapResponse = 'map response';
+
+        sinon.stub(services, '_formatReceivedHostmap').resolves(mapResponse);
+        sinon.stub(services, 'request').resolves({});
+        
+        const mapResult = await services._fetchNewServiceHostmap({from: 'limited'});
+
+        assert.deepEqual(mapResult, mapResponse);
+
+        assert.calledOnceWithExactly(services.request, {
+          method: 'GET',
+          service: 'u2c',
+          resource: '/limited/catalog',
+          qs: {format: 'hostmap'}
+        }
+        );
+        assert.calledOnceWithExactly(webex.internal.newMetrics.callDiagnosticLatencies.measureLatency, sinon.match.func, 'internal.get.u2c.time');
+      });
+
+      it('checks service request rejects', async () => {
+        const error = new Error('some error');
+
+        sinon.spy(services, '_formatReceivedHostmap');
+        sinon.stub(services, 'request').rejects(error);
+        
+        const promise = services._fetchNewServiceHostmap({from: 'limited'});
+        const rejectedValue = await assert.isRejected(promise);
+
+        assert.deepEqual(rejectedValue, error);
+
+        assert.notCalled(services._formatReceivedHostmap);
+
+        assert.calledOnceWithExactly(services.request, {
+          method: 'GET',
+          service: 'u2c',
+          resource: '/limited/catalog',
+          qs: {format: 'hostmap'}
+        }
+        );
+        assert.calledOnceWithExactly(webex.internal.newMetrics.callDiagnosticLatencies.measureLatency, sinon.match.func, 'internal.get.u2c.time');
       });
     });
 
@@ -237,7 +397,7 @@ describe('webex-core', () => {
         );
       });
 
-      it.skip('creates an array of equal or less length of hostMap', () => {
+      it('creates an array of equal or less length of hostMap', () => {
         formattedHM = services._formatReceivedHostmap(serviceHostmap);
 
         assert(

@@ -1,11 +1,14 @@
 import {assert} from '@webex/test-helper-chai';
 import MockWebex from '@webex/test-helper-mock-webex';
 import sinon from 'sinon';
-import Reachability, {ReachabilityResults, ReachabilityResultsForBackend} from '@webex/plugin-meetings/src/reachability/';
+import Reachability, {
+  ReachabilityResults,
+  ReachabilityResultsForBackend,
+} from '@webex/plugin-meetings/src/reachability/';
 import MeetingUtil from '@webex/plugin-meetings/src/meeting/util';
 import * as ClusterReachabilityModule from '@webex/plugin-meetings/src/reachability/clusterReachability';
 
-import { IP_VERSION } from '@webex/plugin-meetings/src/constants';
+import {IP_VERSION} from '@webex/plugin-meetings/src/constants';
 
 describe('isAnyPublicClusterReachable', () => {
   let webex;
@@ -36,19 +39,31 @@ describe('isAnyPublicClusterReachable', () => {
   };
 
   it('returns true when udp is reachable', async () => {
-    await checkIsClusterReachable({x: {udp: {result: 'reachable'}, tcp: {result: 'unreachable'}}}, true);
+    await checkIsClusterReachable(
+      {x: {udp: {result: 'reachable'}, tcp: {result: 'unreachable'}}},
+      true
+    );
   });
 
   it('returns true when tcp is reachable', async () => {
-    await checkIsClusterReachable({x: {udp: {result: 'unreachable'}, tcp: {result: 'reachable'}}}, true);
+    await checkIsClusterReachable(
+      {x: {udp: {result: 'unreachable'}, tcp: {result: 'reachable'}}},
+      true
+    );
   });
 
   it('returns true when both tcp and udp are reachable', async () => {
-    await checkIsClusterReachable({x: {udp: {result: 'reachable'}, tcp: {result: 'reachable'}}}, true);
+    await checkIsClusterReachable(
+      {x: {udp: {result: 'reachable'}, tcp: {result: 'reachable'}}},
+      true
+    );
   });
 
   it('returns false when both tcp and udp are unreachable', async () => {
-    await checkIsClusterReachable({x: {udp: {result: 'unreachable'}, tcp: {result: 'unreachable'}}}, false);
+    await checkIsClusterReachable(
+      {x: {udp: {result: 'unreachable'}, tcp: {result: 'unreachable'}}},
+      false
+    );
   });
 
   it('returns false when reachability result is empty', async () => {
@@ -61,60 +76,69 @@ describe('isAnyPublicClusterReachable', () => {
 
   describe('ignores video mesh reachability', () => {
     it('returns false if there are no public cluster results, only video mesh', async () => {
-      await checkIsClusterReachable({
-        x: {
-          udp: {result: 'reachable'},
-          tcp: {result: 'reachable'},
-          isVideoMesh: true,
+      await checkIsClusterReachable(
+        {
+          x: {
+            udp: {result: 'reachable'},
+            tcp: {result: 'reachable'},
+            isVideoMesh: true,
+          },
+          y: {
+            udp: {result: 'unreachable'},
+            tcp: {result: 'reachable'},
+            isVideoMesh: true,
+          },
         },
-        y: {
-          udp: {result: 'unreachable'},
-          tcp: {result: 'reachable'},
-          isVideoMesh: true,
-        }
-      }, false);
+        false
+      );
     });
 
     it('returns false if there public cluster reachability failed, only video mesh succeeded', async () => {
-      await checkIsClusterReachable({
-        x: {
-          udp: {result: 'unreachable'},
-          tcp: {result: 'reachable'},
-          isVideoMesh: true,
+      await checkIsClusterReachable(
+        {
+          x: {
+            udp: {result: 'unreachable'},
+            tcp: {result: 'reachable'},
+            isVideoMesh: true,
+          },
+          y: {
+            udp: {result: 'reachable'},
+            tcp: {result: 'unreachable'},
+            isVideoMesh: true,
+          },
+          publicOne: {
+            udp: {result: 'unreachable'},
+            tcp: {result: 'unreachable'},
+            isVideoMesh: false,
+          },
         },
-        y: {
-          udp: {result: 'reachable'},
-          tcp: {result: 'unreachable'},
-          isVideoMesh: true,
-        },
-        publicOne: {
-          udp: {result: 'unreachable'},
-          tcp: {result: 'unreachable'},
-          isVideoMesh: false,
-        }
-      }, false);
+        false
+      );
     });
 
     it('returns true if there is at least 1 public cluster result, while video mesh is not reachable', async () => {
-      await checkIsClusterReachable({
-        x: {
-          udp: {result: 'reachable'},
-          tcp: {result: 'reachable'},
-          isVideoMesh: true,
+      await checkIsClusterReachable(
+        {
+          x: {
+            udp: {result: 'reachable'},
+            tcp: {result: 'reachable'},
+            isVideoMesh: true,
+          },
+          y: {
+            udp: {result: 'unreachable'},
+            tcp: {result: 'reachable'},
+            isVideoMesh: true,
+          },
+          publicOne: {
+            udp: {result: 'unreachable'},
+            tcp: {result: 'reachable'},
+            isVideoMesh: false,
+          },
         },
-        y: {
-          udp: {result: 'unreachable'},
-          tcp: {result: 'reachable'},
-          isVideoMesh: true,
-        },
-        publicOne: {
-          udp: {result: 'unreachable'},
-          tcp: {result: 'reachable'},
-          isVideoMesh: false,
-        }
-      }, true);
+        true
+      );
     });
-  })
+  });
 });
 
 describe('gatherReachability', () => {
@@ -244,7 +268,10 @@ describe('gatherReachability', () => {
   });
 
   it('starts ClusterReachability on each media cluster', async () => {
-    webex.config.meetings.experimental = {enableTcpReachability: true};
+    webex.config.meetings.experimental = {
+      enableTcpReachability: true,
+      enableTlsReachability: true,
+    };
 
     const getClustersResult = {
       clusters: {
@@ -284,11 +311,11 @@ describe('gatherReachability', () => {
       xtls: ['xtls1.1', 'xtls1.2'],
       isVideoMesh: false,
     });
-    // cluster 2 is video mesh, so we should not do TCP reachability on it
+    // cluster 2 is video mesh, so we should not do TCP or TLS reachability on it
     assert.calledWith(clusterReachabilityCtorStub, 'cluster 2', {
       udp: ['udp2.1', 'udp2.2'],
       tcp: [],
-      xtls: ['xtls2.1', 'xtls2.2'],
+      xtls: [],
       isVideoMesh: true,
     });
 
@@ -296,7 +323,10 @@ describe('gatherReachability', () => {
   });
 
   it('does not do TCP reachability if it is disabled in config', async () => {
-    webex.config.meetings.experimental = {enableTcpReachability: false};
+    webex.config.meetings.experimental = {
+      enableTcpReachability: false,
+      enableTlsReachability: true,
+    };
 
     const getClustersResult = {
       clusters: {
@@ -327,6 +357,82 @@ describe('gatherReachability', () => {
       udp: ['testUDP1', 'testUDP2'],
       tcp: [], // empty list because TCP is disabled in config
       xtls: ['testXTLS1', 'testXTLS2'],
+    });
+  });
+
+  it('does not do TLS reachability if it is disabled in config', async () => {
+    webex.config.meetings.experimental = {
+      enableTcpReachability: true,
+      enableTlsReachability: false,
+    };
+
+    const getClustersResult = {
+      clusters: {
+        'cluster name': {
+          udp: ['testUDP1', 'testUDP2'],
+          tcp: ['testTCP1', 'testTCP2'],
+          xtls: ['testXTLS1', 'testXTLS2'],
+          isVideoMesh: false,
+        },
+      },
+      joinCookie: {id: 'id'},
+    };
+
+    const reachability = new Reachability(webex);
+
+    reachability.reachabilityRequest.getClusters = sinon.stub().returns(getClustersResult);
+
+    const clusterReachabilityCtorStub = sinon
+      .stub(ClusterReachabilityModule, 'ClusterReachability')
+      .callsFake(() => ({
+        start: sinon.stub().resolves({}),
+      }));
+
+    await reachability.gatherReachability();
+
+    assert.calledOnceWithExactly(clusterReachabilityCtorStub, 'cluster name', {
+      isVideoMesh: false,
+      udp: ['testUDP1', 'testUDP2'],
+      tcp: ['testTCP1', 'testTCP2'],
+      xtls: [], // empty list because TLS is disabled in config
+    });
+  });
+
+  it('does not do TCP or TLS reachability if it is disabled in config', async () => {
+    webex.config.meetings.experimental = {
+      enableTcpReachability: false,
+      enableTlsReachability: false,
+    };
+
+    const getClustersResult = {
+      clusters: {
+        'cluster name': {
+          udp: ['testUDP1', 'testUDP2'],
+          tcp: ['testTCP1', 'testTCP2'],
+          xtls: ['testXTLS1', 'testXTLS2'],
+          isVideoMesh: false,
+        },
+      },
+      joinCookie: {id: 'id'},
+    };
+
+    const reachability = new Reachability(webex);
+
+    reachability.reachabilityRequest.getClusters = sinon.stub().returns(getClustersResult);
+
+    const clusterReachabilityCtorStub = sinon
+      .stub(ClusterReachabilityModule, 'ClusterReachability')
+      .callsFake(() => ({
+        start: sinon.stub().resolves({}),
+      }));
+
+    await reachability.gatherReachability();
+
+    assert.calledOnceWithExactly(clusterReachabilityCtorStub, 'cluster name', {
+      isVideoMesh: false,
+      udp: ['testUDP1', 'testUDP2'],
+      tcp: [], // empty list because TCP is disabled in config
+      xtls: [], // empty list because TLS is disabled in config
     });
   });
 });
@@ -460,10 +566,14 @@ describe('getReachabilityMetrics', () => {
       reachability_public_udp_failed: 0,
       reachability_public_tcp_success: 0,
       reachability_public_tcp_failed: 0,
+      reachability_public_xtls_success: 0,
+      reachability_public_xtls_failed: 0,
       reachability_vmn_udp_success: 0,
       reachability_vmn_udp_failed: 0,
       reachability_vmn_tcp_success: 0,
       reachability_vmn_tcp_failed: 0,
+      reachability_vmn_xtls_success: 0,
+      reachability_vmn_xtls_failed: 0,
     });
   });
 
@@ -523,10 +633,14 @@ describe('getReachabilityMetrics', () => {
         reachability_public_udp_failed: 2,
         reachability_public_tcp_success: 2,
         reachability_public_tcp_failed: 1,
+        reachability_public_xtls_success: 0,
+        reachability_public_xtls_failed: 0,
         reachability_vmn_udp_success: 1,
         reachability_vmn_udp_failed: 0,
         reachability_vmn_tcp_success: 1,
         reachability_vmn_tcp_failed: 1,
+        reachability_vmn_xtls_success: 0,
+        reachability_vmn_xtls_failed: 0,
       }
     );
   });
@@ -562,7 +676,16 @@ describe('getReachabilityMetrics', () => {
         public5: {
           udp: {result: 'reachable', latencyInMilliseconds: '400', clientMediaIPs: ['10.10.10.10']},
           tcp: {result: 'untested'},
-          xtls: {result: 'untested'},
+          xtls: {result: 'unreachable'},
+        },
+        public6: {
+          udp: {result: 'untested'},
+          tcp: {result: 'untested'},
+          xtls: {
+            result: 'reachable',
+            latencyInMilliseconds: '200',
+            clientMediaIPs: ['10.10.10.10'],
+          },
         },
       },
       // expected result:
@@ -571,10 +694,14 @@ describe('getReachabilityMetrics', () => {
         reachability_public_udp_failed: 1,
         reachability_public_tcp_success: 1,
         reachability_public_tcp_failed: 2,
+        reachability_public_xtls_success: 1,
+        reachability_public_xtls_failed: 1,
         reachability_vmn_udp_success: 0,
         reachability_vmn_udp_failed: 0,
         reachability_vmn_tcp_success: 0,
         reachability_vmn_tcp_failed: 0,
+        reachability_vmn_xtls_success: 0,
+        reachability_vmn_xtls_failed: 0,
       }
     );
   });
@@ -611,9 +738,15 @@ describe('getReachabilityMetrics', () => {
         vmn5: {
           udp: {result: 'reachable', latencyInMilliseconds: 200, clientMediaIPs: ['10.10.10.10']},
           tcp: {result: 'unreachable'},
-          xtls: {result: 'untested'},
+          xtls: {result: 'unreachable'},
           isVideoMesh: true,
           someOtherField: 'any value',
+        },
+        vmn6: {
+          udp: {result: 'untested'},
+          tcp: {result: 'untested'},
+          xtls: {result: 'reachable', latencyInMilliseconds: 100, clientMediaIPs: ['10.10.10.10']},
+          isVideoMesh: true,
         },
       },
       // expected result:
@@ -622,10 +755,14 @@ describe('getReachabilityMetrics', () => {
         reachability_public_udp_failed: 0,
         reachability_public_tcp_success: 0,
         reachability_public_tcp_failed: 0,
+        reachability_public_xtls_success: 0,
+        reachability_public_xtls_failed: 0,
         reachability_vmn_udp_success: 3,
         reachability_vmn_udp_failed: 1,
         reachability_vmn_tcp_success: 1,
         reachability_vmn_tcp_failed: 3,
+        reachability_vmn_xtls_success: 1,
+        reachability_vmn_xtls_failed: 1,
       }
     );
   });

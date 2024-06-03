@@ -123,7 +123,7 @@ export default class RoapRequest extends StatelessWebexPlugin {
         );
         const {locus} = res.body;
 
-        locus.roapSeq = roapMessage.seq;
+        locus.roapSeq = options.roapMessage.seq;
 
         return {
           locus,
@@ -139,9 +139,9 @@ export default class RoapRequest extends StatelessWebexPlugin {
             rawError: err,
           },
         });
-        LoggerProxy.logger.error(`Roap:request#sendRoap --> Error:${JSON.stringify(err, null, 2)}`);
+        LoggerProxy.logger.error(`Roap:request#sendRoap --> Error:`, err);
         LoggerProxy.logger.error(
-          `Roap:request#sendRoapRequest --> errorBody:${JSON.stringify(
+          `Roap:request#sendRoapRequest --> roapMessage that caused error:${JSON.stringify(
             roapMessage,
             null,
             2

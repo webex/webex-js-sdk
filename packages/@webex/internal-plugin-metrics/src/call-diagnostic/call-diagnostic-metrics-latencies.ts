@@ -31,6 +31,7 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
    */
   public clearTimestamps() {
     this.latencyTimestamps.clear();
+    this.precomputedLatencies.clear();
   }
 
   /**
@@ -57,7 +58,8 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
   /**
    * Store timestamp value
    * @param key - key
-   * @param value -value
+   * @param value - value
+   * @param options - store options
    * @throws
    * @returns
    */
@@ -92,12 +94,33 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
   /**
    * Store precomputed latency value
    * @param key - key
-   * @param value -value
+   * @param value - value
+   * @param accumulate - when it is true, it overwrites existing value with sum of the current value and the new measurement otherwise just store the new measurement
    * @throws
    * @returns
    */
-  public saveLatency(key: PreComputedLatencies, value: number) {
-    this.precomputedLatencies.set(key, value);
+  public saveLatency(key: PreComputedLatencies, value: number, accumulate = false) {
+    const existingValue = accumulate ? this.precomputedLatencies.get(key) || 0 : 0;
+    this.precomputedLatencies.set(key, value + existingValue);
+  }
+
+  /**
+   * Measure latency for a request
+   * @param callback - callback for which you would like to measure latency
+   * @param key - key
+   * @param accumulate - when it is true, it overwrites existing value with sum of the current value and the new measurement otherwise just store the new measurement
+   * @returns
+   */
+  public measureLatency(
+    callback: () => Promise<unknown>,
+    key: PreComputedLatencies,
+    accumulate = false
+  ) {
+    const start = performance.now();
+
+    return callback().finally(() => {
+      this.saveLatency(key, performance.now() - start, accumulate);
+    });
   }
 
   /**
@@ -159,6 +182,16 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
   }
 
   /**
+   * getU2CTime
+   * @returns - latency
+   */
+  public getU2CTime() {
+    const u2cLatency = this.precomputedLatencies.get('internal.get.u2c.time');
+
+    return u2cLatency ? Math.floor(u2cLatency) : undefined;
+  }
+
+  /**
    * Device Register Time
    * @returns - latency
    */
@@ -186,15 +219,6 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
    */
   public getJoinReqResp() {
     return this.getDiffBetweenTimestamps('client.locus.join.request', 'client.locus.join.response');
-  }
-
-  /**
-   * Locus Join Response Sent Received
-   * @returns - latency
-   */
-  public getJoinRespSentReceived() {
-    // TODO: not clear SPARK-440554
-    return undefined;
   }
 
   /**
@@ -420,6 +444,15 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
   }
 
   /**
+   * Total latency for all get cluster request.
+   */
+  public getReachabilityClustersReqResp() {
+    const reachablityClusterReqResp = this.precomputedLatencies.get('internal.get.cluster.time');
+
+    return reachablityClusterReqResp ? Math.floor(reachablityClusterReqResp) : undefined;
+  }
+
+  /**
    * Audio setup delay transmit
    */
   public getAudioJoinRespTxStart() {
@@ -431,5 +464,48 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
    */
   public getVideoJoinRespTxStart() {
     return this.getDiffBetweenTimestamps('client.locus.join.response', 'client.media.tx.start');
+  }
+
+  /**
+   * Total latency for all exchange ci token.
+   */
+  public getExchangeCITokenJMT() {
+    const exchangeCITokenJMT = this.precomputedLatencies.get('internal.exchange.ci.token.time');
+
+    return exchangeCITokenJMT ? Math.floor(exchangeCITokenJMT) : undefined;
+  }
+
+  /**
+   * Total latency for all refresh captcha requests.
+   */
+  public getRefreshCaptchaReqResp() {
+    const refreshCaptchaReqResp = this.precomputedLatencies.get('internal.refresh.captcha.time');
+
+    return refreshCaptchaReqResp ? Math.floor(refreshCaptchaReqResp) : undefined;
+  }
+
+  /**
+   * Get the latency for downloading intelligence models.
+   * @returns - latency
+   */
+  public getDownloadIntelligenceModelsReqResp() {
+    const downloadIntelligenceModelsReqResp = this.precomputedLatencies.get(
+      'internal.api.fetch.intelligence.models'
+    );
+
+    return downloadIntelligenceModelsReqResp
+      ? Math.floor(downloadIntelligenceModelsReqResp)
+      : undefined;
+  }
+
+  /**
+   * Get the total latency for all other app API requests.
+   * Excludes meeting info, because it's measured separately.
+   * @returns - latency
+   */
+  public getOtherAppApiReqResp() {
+    const otherAppApiJMT = this.precomputedLatencies.get('internal.other.app.api.time');
+
+    return otherAppApiJMT > 0 ? Math.floor(otherAppApiJMT) : undefined;
   }
 }

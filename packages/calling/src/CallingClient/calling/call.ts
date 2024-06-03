@@ -6,6 +6,7 @@ import {
 } from '@webex/internal-media-core';
 import {createMachine, interpret} from 'xstate';
 import {v4 as uuid} from 'uuid';
+import {EffectEvent, TrackEffect} from '@webex/web-media-effects';
 import {ERROR_LAYER, ERROR_TYPE, ErrorContext} from '../../Errors/types';
 import {handleCallErrors, parseMediaQualityStatistics} from '../../common/Utils';
 import {
@@ -37,6 +38,7 @@ import {
   HOLD_ENDPOINT,
   INITIAL_SEQ_NUMBER,
   MEDIA_ENDPOINT_RESOURCE,
+  NOISE_REDUCTION_EFFECT,
   RESUME_ENDPOINT,
   SPARK_USER_AGENT,
   SUPPLEMENTARY_SERVICES_TIMEOUT,
@@ -152,6 +154,8 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
   private mediaNegotiationCompleted: boolean;
 
   private receivedRoapOKSeq: number;
+
+  private localAudioStream?: LocalMicrophoneStream;
 
   /**
    * Getter to check if the call is muted or not.
@@ -1307,6 +1311,9 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
     this.deleteCb(this.correlationId);
 
+    /* Clear the stream listeners */
+    this.unregisterListeners();
+
     /* istanbul ignore else */
     if (this.sessionTimer) {
       clearInterval(this.sessionTimer);
@@ -1348,6 +1355,9 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
     }
 
     this.deleteCb(this.correlationId);
+
+    /* Clear the stream listeners */
+    this.unregisterListeners();
 
     /* istanbul ignore else */
     if (this.sessionTimer) {
@@ -1984,6 +1994,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    * @param localAudioStream - The local audio stream for the call.
    */
   public async answer(localAudioStream: LocalMicrophoneStream) {
+    this.localAudioStream = localAudioStream;
     const localAudioTrack = localAudioStream.outputStream.getAudioTracks()[0];
 
     if (!localAudioTrack) {
@@ -2003,7 +2014,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       this.initMediaConnection(localAudioTrack);
       this.mediaRoapEventsListener();
       this.mediaTrackListener();
-      this.outputTrackUpdateListener(localAudioStream);
+      this.registerListeners(localAudioStream);
     }
 
     if (this.callStateMachine.state.value === 'S_SEND_CALL_PROGRESS') {
@@ -2021,7 +2032,9 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    * @param settings.localAudioTrack
    */
   public async dial(localAudioStream: LocalMicrophoneStream) {
+    this.localAudioStream = localAudioStream;
     const localAudioTrack = localAudioStream.outputStream.getAudioTracks()[0];
+
     if (!localAudioTrack) {
       log.warn(`Did not find a local track while dialing the call ${this.getCorrelationId()}`, {
         file: CALL_FILE,
@@ -2039,7 +2052,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       this.initMediaConnection(localAudioTrack);
       this.mediaRoapEventsListener();
       this.mediaTrackListener();
-      this.outputTrackUpdateListener(localAudioStream);
+      this.registerListeners(localAudioStream);
     }
 
     if (this.mediaStateMachine.state.value === 'S_ROAP_IDLE') {
@@ -2436,10 +2449,64 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
     });
   }
 
-  private outputTrackUpdateListener(localAudioStream: LocalMicrophoneStream) {
-    localAudioStream.on(LocalStreamEventNames.OutputTrackChange, (track: MediaStreamTrack) => {
-      this.mediaConnection.updateLocalTracks({audio: track});
+  private onEffectEnabled = () => {
+    this.metricManager.submitBNRMetric(
+      METRIC_EVENT.BNR_ENABLED,
+      METRIC_TYPE.BEHAVIORAL,
+      this.callId,
+      this.correlationId
+    );
+  };
+
+  private onEffectDisabled = () => {
+    this.metricManager.submitBNRMetric(
+      METRIC_EVENT.BNR_DISABLED,
+      METRIC_TYPE.BEHAVIORAL,
+      this.callId,
+      this.correlationId
+    );
+  };
+
+  private registerEffectListener = (addedEffect: TrackEffect) => {
+    if (this.localAudioStream) {
+      const effect = this.localAudioStream.getEffectByKind(NOISE_REDUCTION_EFFECT);
+
+      if (effect === addedEffect) {
+        effect.on(EffectEvent.Enabled, this.onEffectEnabled);
+        effect.on(EffectEvent.Disabled, this.onEffectDisabled);
+      }
+    }
+  };
+
+  private unregisterListeners() {
+    if (this.localAudioStream) {
+      const effect = this.localAudioStream.getEffectByKind(NOISE_REDUCTION_EFFECT);
+
+      if (effect) {
+        effect.off(EffectEvent.Enabled, this.onEffectEnabled);
+        effect.off(EffectEvent.Disabled, this.onEffectDisabled);
+      }
+
+      this.localAudioStream.off(LocalStreamEventNames.EffectAdded, this.registerEffectListener);
+    }
+  }
+
+  private registerListeners(localAudioStream: LocalMicrophoneStream) {
+    localAudioStream.on(LocalStreamEventNames.OutputTrackChange, (audioTrack: MediaStreamTrack) => {
+      this.mediaConnection.updateLocalTracks({audio: audioTrack});
     });
+
+    localAudioStream.on(LocalStreamEventNames.EffectAdded, this.registerEffectListener);
+
+    const effect = localAudioStream.getEffectByKind(NOISE_REDUCTION_EFFECT) as any;
+
+    if (effect) {
+      effect.on(EffectEvent.Enabled, this.onEffectEnabled);
+      effect.on(EffectEvent.Disabled, this.onEffectDisabled);
+      if (effect.isEnabled) {
+        this.onEffectEnabled();
+      }
+    }
   }
 
   private async delete(): Promise<MobiusCallResponse> {
@@ -2650,13 +2717,14 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    * @param localAudioTrack -.
    */
   public mute = (localAudioStream: LocalMicrophoneStream): void => {
-    const localAudioTrack = localAudioStream.outputStream.getAudioTracks()[0];
-    if (this.muted) {
-      localAudioTrack.enabled = true;
-      this.muted = false;
+    if (localAudioStream) {
+      localAudioStream.setUserMuted(!this.muted);
+      this.muted = !this.muted;
     } else {
-      localAudioTrack.enabled = false;
-      this.muted = true;
+      log.warn(`Did not find a local stream while muting the call ${this.getCorrelationId()}.`, {
+        file: CALL_FILE,
+        method: 'mute',
+      });
     }
   };
 
@@ -2681,9 +2749,20 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       return;
     }
 
-    this.mediaConnection.updateLocalTracks({
-      audio: localAudioTrack,
-    });
+    try {
+      this.mediaConnection.updateLocalTracks({
+        audio: localAudioTrack,
+      });
+
+      this.unregisterListeners();
+      this.registerListeners(newAudioStream);
+      this.localAudioStream = newAudioStream;
+    } catch (e: any) {
+      log.warn(`Unable to update media on call ${this.getCorrelationId()}. Error: ${e.message}`, {
+        file: CALL_FILE,
+        method: 'updateMedia',
+      });
+    }
   };
 
   /**

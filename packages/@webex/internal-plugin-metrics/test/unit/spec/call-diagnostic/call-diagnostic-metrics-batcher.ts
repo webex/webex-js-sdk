@@ -103,6 +103,12 @@ describe('plugin-metrics', () => {
           webex.internal.newMetrics.callDiagnosticLatencies.getClickToInterstitial = sinon
             .stub()
             .returns(10);
+          webex.internal.newMetrics.callDiagnosticLatencies.getRefreshCaptchaReqResp = sinon
+            .stub()
+            .returns(10);
+          webex.internal.newMetrics.callDiagnosticLatencies.getDownloadIntelligenceModelsReqResp =
+            sinon.stub().returns(42);
+
           const promise = webex.internal.newMetrics.callDiagnosticMetrics.submitToCallDiagnostics(
             //@ts-ignore
             {event: {name: 'client.interstitial-window.launched'}}
@@ -119,6 +125,8 @@ describe('plugin-metrics', () => {
             joinTimes: {
               clickToInterstitial: 10,
               meetingInfoReqResp: 10,
+              refreshCaptchaServiceReqResp: 10,
+              downloadIntelligenceModelsReqResp: 42,
             },
           });
           assert.lengthOf(
@@ -129,6 +137,12 @@ describe('plugin-metrics', () => {
 
         it('appends the correct join times to the request for client.call.initiated', async () => {
           webex.internal.newMetrics.callDiagnosticLatencies.getDiffBetweenTimestamps = sinon
+            .stub()
+            .returns(10);
+          webex.internal.newMetrics.callDiagnosticLatencies.getU2CTime = sinon
+            .stub()
+            .returns(20);
+          webex.internal.newMetrics.callDiagnosticLatencies.getReachabilityClustersReqResp = sinon
             .stub()
             .returns(10);
           const promise = webex.internal.newMetrics.callDiagnosticMetrics.submitToCallDiagnostics(
@@ -147,6 +161,8 @@ describe('plugin-metrics', () => {
               meetingInfoReqResp: 10,
               registerWDMDeviceJMT: 10,
               showInterstitialTime: 10,
+              getU2CTime: 20,
+              getReachabilityClustersReqResp: 10
             },
           });
           assert.lengthOf(
@@ -159,9 +175,6 @@ describe('plugin-metrics', () => {
           webex.internal.newMetrics.callDiagnosticLatencies.getDiffBetweenTimestamps = sinon
             .stub()
             .returns(10);
-          webex.internal.newMetrics.callDiagnosticLatencies.getJoinRespSentReceived = sinon
-            .stub()
-            .returns(20);
           webex.internal.newMetrics.callDiagnosticLatencies.getPageJMT = sinon.stub().returns(30);
           webex.internal.newMetrics.callDiagnosticLatencies.getClientJMT = sinon.stub().returns(5);
           webex.internal.newMetrics.callDiagnosticLatencies.getClickToInterstitial = sinon
@@ -191,7 +204,6 @@ describe('plugin-metrics', () => {
               clickToInterstitial: 10,
               interstitialToJoinOK: 10,
               joinReqResp: 10,
-              joinReqSentReceived: 20,
               meetingInfoReqResp: 10,
               pageJmt: 30,
               totalJmt: 20,
@@ -357,9 +369,8 @@ describe('plugin-metrics', () => {
         });
       });
 
-      //TODO: The following two skipped tests needs investigation: https://jira-eng-gpk2.cisco.com/jira/browse/SPARK-485382
       describe('when the request fails', () => {
-        it.skip('does not clear the queue', async () => {
+        it('does not clear the queue', async () => {
           // avoid setting .sent timestamp
           webex.internal.newMetrics.callDiagnosticMetrics.callDiagnosticEventsBatcher.prepareRequest =
             (q) => Promise.resolve(q);
@@ -406,7 +417,7 @@ describe('plugin-metrics', () => {
     });
 
     describe('prepareItem', () => {
-      it.skip('calls prepareDiagnosticMetricItem correctly', async () => {
+      it('calls prepareDiagnosticMetricItem correctly', async () => {
         // avoid setting .sent timestamp
         webex.internal.newMetrics.callDiagnosticMetrics.callDiagnosticEventsBatcher.prepareRequest =
           (q) => Promise.resolve(q);

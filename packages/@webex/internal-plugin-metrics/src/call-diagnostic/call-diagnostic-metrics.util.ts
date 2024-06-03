@@ -244,22 +244,29 @@ export const prepareDiagnosticMetricItem = (webex: any, item: any) => {
     case 'client.webexapp.launched':
       joinTimes.downloadTime = cdl.getDownloadTimeJMT();
       break;
+    case 'client.login.end':
+      joinTimes.otherAppApiReqResp = cdl.getOtherAppApiReqResp();
+      joinTimes.exchangeCITokenJMT = cdl.getExchangeCITokenJMT();
+      break;
     case 'client.interstitial-window.launched':
       joinTimes.meetingInfoReqResp = cdl.getMeetingInfoReqResp();
       joinTimes.clickToInterstitial = cdl.getClickToInterstitial();
+      joinTimes.refreshCaptchaServiceReqResp = cdl.getRefreshCaptchaReqResp();
+      joinTimes.downloadIntelligenceModelsReqResp = cdl.getDownloadIntelligenceModelsReqResp();
       break;
 
     case 'client.call.initiated':
       joinTimes.meetingInfoReqResp = cdl.getMeetingInfoReqResp();
       joinTimes.showInterstitialTime = cdl.getShowInterstitialTime();
       joinTimes.registerWDMDeviceJMT = cdl.getRegisterWDMDeviceJMT();
+      joinTimes.getU2CTime = cdl.getU2CTime();
+      joinTimes.getReachabilityClustersReqResp = cdl.getReachabilityClustersReqResp();
       break;
 
     case 'client.locus.join.response':
       joinTimes.meetingInfoReqResp = cdl.getMeetingInfoReqResp();
       joinTimes.callInitJoinReq = cdl.getCallInitJoinReq();
       joinTimes.joinReqResp = cdl.getJoinReqResp();
-      joinTimes.joinReqSentReceived = cdl.getJoinRespSentReceived();
       joinTimes.pageJmt = cdl.getPageJMT();
       joinTimes.clickToInterstitial = cdl.getClickToInterstitial();
       joinTimes.interstitialToJoinOK = cdl.getInterstitialToJoinOK();
@@ -376,11 +383,18 @@ export const generateClientErrorCodeForIceFailure = ({
     errorCode = MISSING_ROAP_ANSWER_CLIENT_CODE;
   }
 
-  if (signalingState === 'stable' && iceConnectionState === 'connected') {
+  if (
+    signalingState === 'stable' &&
+    (iceConnectionState === 'connected' || iceConnectionState === 'disconnected')
+  ) {
     errorCode = DTLS_HANDSHAKE_FAILED_CLIENT_CODE;
   }
 
-  if (signalingState !== 'have-local-offer' && iceConnectionState !== 'connected') {
+  if (
+    signalingState !== 'have-local-offer' &&
+    iceConnectionState !== 'connected' &&
+    iceConnectionState !== 'disconnected'
+  ) {
     if (turnServerUsed) {
       errorCode = ICE_FAILED_WITH_TURN_TLS_CLIENT_CODE;
     } else {

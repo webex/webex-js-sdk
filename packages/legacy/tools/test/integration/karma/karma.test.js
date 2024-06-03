@@ -1,5 +1,4 @@
 const KarmaRunner = require('karma');
-
 const { Karma } = require('@webex/legacy-tools');
 
 describe('Karma', () => {
@@ -84,10 +83,11 @@ describe('Karma', () => {
       let config;
       const spies = {};
       const mocks = {};
+      const eventCallback = {};
 
       beforeEach(() => {
         config = {
-          files: ['file1.js', 'file2.js', 'file3.js'],
+          files: ['@webex/test/file1.js', 'file2.js', 'file3.js'],
         };
 
         mocks.KarmaRunner = {
@@ -104,6 +104,8 @@ describe('Karma', () => {
             }
 
             start() { return this; }
+
+            on(event, callback) { eventCallback[event] = callback; return this; }
           },
         };
 
@@ -246,6 +248,21 @@ describe('Karma', () => {
         .then(() => {
           expect(spies.KarmaRunner.Server.start).toHaveBeenCalledTimes(1);
         }));
+
+      it('should start the server', async () => {
+        spyOn(console, 'log');
+        await Karma.test({ config });
+
+        expect(spies.KarmaRunner.Server.start).toHaveBeenCalledTimes(1);
+
+        eventCallback.run_start();
+
+        expect(console.log).toHaveBeenCalledWith('Tests run started');
+
+        eventCallback.run_complete();
+
+        expect(console.log).toHaveBeenCalledWith('Test run complete');
+      });
     });
   });
 });

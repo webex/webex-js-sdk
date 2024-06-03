@@ -23,12 +23,13 @@ export {
   LocalStreamEventNames,
   StreamEventNames,
   RemoteStream,
+  RemoteStreamEventNames,
   type VideoContentHint,
 } from '@webex/internal-media-core';
 
 export type ServerMuteReason =
   | 'remotelyMuted' // other user has remotely muted us
-  | 'clientRequestFailed' // client called setMuted() but server request failed
+  | 'clientRequestFailed' // client called setUserMuted() but server request failed
   | 'localUnmuteRequired'; // server forced the client to be unmuted
 
 // these events are in addition to WCME events. This will be properly typed once webrtc-core event types inheritance is fixed
@@ -48,7 +49,7 @@ interface LocalMicrophoneStreamEvents {
 }
 
 interface LocalCameraStreamEvents {
-  [LocalMicrophoneStreamEventNames.ServerMuted]: TypedEvent<
+  [LocalCameraStreamEventNames.ServerMuted]: TypedEvent<
     (muted: boolean, reason: ServerMuteReason) => void
   >;
 }
@@ -74,22 +75,22 @@ class _LocalMicrophoneStream extends WcmeLocalMicrophoneStream {
     return this.unmuteAllowed;
   }
 
-  setMuted(muted: boolean): void {
+  setUserMuted(muted: boolean): void {
     if (!muted) {
       if (!this.isUnmuteAllowed()) {
         throw new Error('Unmute is not allowed');
       }
     }
 
-    return super.setMuted(muted);
+    return super.setUserMuted(muted);
   }
 
   /**
    * @internal
    */
   setServerMuted(muted: boolean, reason: ServerMuteReason) {
-    if (muted !== this.muted) {
-      this.setMuted(muted);
+    if (muted !== this.userMuted) {
+      this.setUserMuted(muted);
       this[LocalMicrophoneStreamEventNames.ServerMuted].emit(muted, reason);
     }
   }
@@ -116,22 +117,22 @@ class _LocalCameraStream extends WcmeLocalCameraStream {
     return this.unmuteAllowed;
   }
 
-  setMuted(muted: boolean): void {
+  setUserMuted(muted: boolean): void {
     if (!muted) {
       if (!this.isUnmuteAllowed()) {
         throw new Error('Unmute is not allowed');
       }
     }
 
-    return super.setMuted(muted);
+    return super.setUserMuted(muted);
   }
 
   /**
    * @internal
    */
   setServerMuted(muted: boolean, reason: ServerMuteReason) {
-    if (muted !== this.muted) {
-      this.setMuted(muted);
+    if (muted !== this.userMuted) {
+      this.setUserMuted(muted);
       this[LocalCameraStreamEventNames.ServerMuted].emit(muted, reason);
     }
   }

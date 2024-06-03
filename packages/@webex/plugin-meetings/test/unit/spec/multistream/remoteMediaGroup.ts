@@ -24,6 +24,7 @@ describe('RemoteMediaGroup', () => {
 
   let fakeMediaRequestManager;
   let fakeReceiveSlots;
+  let fakeNamedMediaSlots;
 
   let activeSpeakerRequestCounter;
   let receiverSelectedRequestCounter;
@@ -50,6 +51,10 @@ describe('RemoteMediaGroup', () => {
     fakeReceiveSlots = Array(NUM_SLOTS)
       .fill(null)
       .map((_, index) => new FakeSlot(MediaType.VideoMain, `fake receive slot ${index}`));
+
+    fakeNamedMediaSlots = Array(1)
+      .fill(null)
+      .map((_, index) => new FakeSlot(MediaType.AudioMain, `fake named media receive slot ${index}`));
   });
 
   const getLastActiveSpeakerRequestId = () =>
@@ -140,6 +145,79 @@ describe('RemoteMediaGroup', () => {
       assert.notCalled(fakeMediaRequestManager.cancelRequest);
 
       assert.notCalled(fakeMediaRequestManager.addRequest);
+    });
+
+  });
+
+  describe('setNamedMediaGroup', () => {
+    it('updates named media group', () => {
+
+      const nameGroup1 = { type: 1, value: 20 };
+      const nameGroup2 = { type: 1, value: 24 };
+      const group = new RemoteMediaGroup(fakeMediaRequestManager, fakeNamedMediaSlots, 255, true, {
+        namedMediaGroup: nameGroup1,
+      });
+      fakeMediaRequestManager.addRequest.resetHistory();
+      group.setNamedMediaGroup(nameGroup2, false);
+
+      assert.calledOnce(fakeMediaRequestManager.cancelRequest);
+
+      assert.calledOnce(fakeMediaRequestManager.addRequest);
+
+      assert.calledWith(
+        fakeMediaRequestManager.addRequest,
+        sinon.match({
+          policyInfo: sinon.match({
+            policy: 'active-speaker',
+            priority: 255,
+            namedMediaGroups: sinon.match([{type: 1, value: 24}]),
+          }),
+          receiveSlots: fakeNamedMediaSlots,
+          codecInfo: undefined,
+        }),
+        false,
+      );
+    });
+
+    it('does not call add request when named media group has not changed', () => {
+      const group = new RemoteMediaGroup(fakeMediaRequestManager, fakeNamedMediaSlots, 255, true, {
+        namedMediaGroup: { type: 1, value: 20 },
+      });
+      fakeMediaRequestManager.addRequest.resetHistory();
+      group.setNamedMediaGroup({ type: 1, value: 20 }, false);
+
+      assert.notCalled(fakeMediaRequestManager.cancelRequest);
+
+      assert.notCalled(fakeMediaRequestManager.addRequest);
+    });
+
+    it('remove named media group', () => {
+
+      const nameGroup1 = { type: 1, value: 20 };
+      const nameGroup2 = { type: 1, value: 0 };
+      const group = new RemoteMediaGroup(fakeMediaRequestManager, fakeNamedMediaSlots, 255, true, {
+        namedMediaGroup: nameGroup1,
+      });
+      fakeMediaRequestManager.addRequest.resetHistory();
+      group.setNamedMediaGroup(nameGroup2, true);
+
+      assert.calledOnce(fakeMediaRequestManager.cancelRequest);
+
+      assert.calledOnce(fakeMediaRequestManager.addRequest);
+
+      assert.calledWith(
+        fakeMediaRequestManager.addRequest,
+        sinon.match({
+          policyInfo: sinon.match({
+            policy: 'active-speaker',
+            priority: 255,
+            nameMediaGroups: undefined,
+          }),
+          receiveSlots: fakeNamedMediaSlots,
+          codecInfo: undefined,
+        }),
+        true,
+      );
     });
 
   });
@@ -251,7 +329,7 @@ describe('RemoteMediaGroup', () => {
       assert.strictEqual(group.getRemoteMedia('pinned').length, 1);
 
       assert.strictEqual(group.isPinned(remoteMedia), true);
-      
+
       assert.calledTwice(fakeMediaRequestManager.cancelRequest);
       assert.calledWith(fakeMediaRequestManager.cancelRequest, 'fake receiver selected request 1');
 

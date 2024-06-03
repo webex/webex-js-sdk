@@ -1,227 +1,149 @@
-# webex-js-sdk
+# Webex JS SDK
 
-[![Greenkeeper badge](https://badges.greenkeeper.io/webex/webex-js-sdk.svg)](https://greenkeeper.io/)
+[![license: Cisco](https://img.shields.io/badge/License-Cisco-blueviolet?style=flat-square)](https://github.com/webex/webex-js-sdk/blob/master/LICENSE)
+![state: Stable](https://img.shields.io/badge/State-Stable-blue?style=flat-square)
+![scope: Public](https://img.shields.io/badge/Scope-Public-darkgreen?style=flat-square)
 
-[![npm](https://img.shields.io/npm/v/webex.svg?maxAge=86400)](https://www.npmjs.com/package/webex)
-[![license](https://img.shields.io/github/license/webex/webex-js-sdk.svg)](https://github.com/webex/webex-js-sdk/blob/master/LICENSE)
-[![Build status](https://ci.appveyor.com/api/projects/status/tb1i5vdhy5e3xsgv/branch/master?svg=true)](https://ci.appveyor.com/project/ianwremmel/webex-js-sdk/branch/master)
+This project is designed as a mono-repository for all publicly-provided JavaScript packages from Cisco's Webex Developer Experience team. These packages consist of mostly API-related modules that allow for seamless integration with the collection of services that belong to the Webex platform.
 
-# The Cisco Webex JS SDK
+* [Installation](#installation)
+  * [Unified Modules](#unified-modules)
+  * [Modular Modules](#modular-modules)
+* [Usage](#usage)
+  * [Modular Consumption](#modular-consumption)
+  * [Browser Consumption](#browser-consumption)
+  * [Updating the Modules](#updating-the-modules)
+  * [Running and Viewing Samples](#running-and-viewing-samples)
+* [Contribute](#contribute)
+* [Issues](#issues)
+* [Maintainers](#maintainers)
+* [license](#license)
 
-> Upgrading from Cisco Spark to Webex?
->
-> - [Follow this short guide.](UPGRADING.md)
-> - [Read why this is more than just a rebrand.](https://developer.webex.com/blog/the-new-cisco-webex-for-developers-is-here---what-developers-need-to-know-from-our-rebrand)
+## Installation
 
-This is a monorepo containing all officially maintained Cisco Webex JS SDK modules in the same repo.
-[webex](/packages/webex) is a collection of node modules targeting our [external APIs](https://developers.webex.com).
+Since this project is a mono-repository, it provides multiple ways to consume its distributables. Please see the respective sections below for information on how to install and consume this project.
 
-- [webex-js-sdk](#webex-js-sdk)
-- [The Cisco Webex JS SDK](#the-cisco-webex-js-sdk)
-  - [Install](#install)
-  - [Usage](#usage)
-    - [_A note on browser usage_](#a-note-on-browser-usage)
-    - [_Still using `webex/env` or `ciscospark/env`?_](#still-using-webexenv-or-ciscosparkenv)
-  - [Samples](#samples)
-  - [FedRAMP Environment](#fedramp-environment)
-    - [Features that do not work in FedRAMP](#features-that-do-not-work-in-fedramp)
-  - [Contribute](#contribute)
-  - [Issues](#issues)
-  - [License](#license)
+### Unified Modules
 
-## Install
-
-We test against the [Active LTS](https://github.com/nodejs/Release#release-schedule) (Long Term Support) version of Node.js and use **npm@6** to run [security audits](https://docs.npmjs.com/getting-started/running-a-security-audit).
-
-To install the latest stable version of the SDK from NPM:
+Unified modules are the quickest way to begin development using the Webex JS SDK. These modules are meant to be consumed as **dependencies** of another project and can be installed by performing the following commands:
 
 ```bash
-npm install --save webex
+# using NPM
+npm install {module}
+
+# using Yarn
+yarn add {module}
 ```
 
-## Usage
-
-To use the SDK, you will need Cisco Webex credentials. If you do not already have a Cisco Webex account, visit
-[Cisco Webex for Developers](https://developer.webex.com/) to create your account and retrieve your **_access token_**.
-
-See [the detailed docs](https://webex.github.io/webex-js-sdk/) for more usage examples.
-
-```javascript
-const Webex = require(`webex`);
-const webex = Webex.init({
-  credentials: {
-    access_token: <your webex access token>
-  }
-});
-
-// Create a room with the title "My First Room"
-// Add Alice and Bob to the room
-// Send a **Hi Everyone** message to the room
-webex.rooms.create({ title: `My First Room` }).then(room => {
-  return Promise.all([
-    webex.memberships.create({
-      roomId: room.id,
-      personEmail: `alice@example.com`
-    }),
-    webex.memberships.create({
-      roomId: room.id,
-      personEmail: `bob@example.com`
-    })
-  ]).then(() =>
-    webex.messages.create({
-      markdown: `**Hi Everyone**`,
-      roomId: room.id
-    })
-  );
-});
-```
-
-#### _A note on browser usage_
-
-We provide a built, minified version of the SDK, that includes `window.Webex`. You can access it via [unpkg](https://unpkg.com/) or [jsdelivr](https://jsdelivr.com/).
-
-```html
-<!-- unpkg -->
-<script crossorigin src="https://unpkg.com/webex/umd/webex.min.js"></script>
-<!-- jsdelivr -->
-<script crossorigin src="https://cdn.jsdelivr.net/npm/webex/umd/webex.min.js"></script>
-```
-
-If you're already using a bundler (like [Webpack](https://webpack.js.org/) or [Rollup](https://rollupjs.org/)) you can simply import/require the package and use the above snippet and assign the initialized `webex` variable to `window.webex`.
-
-For a quick example, we'll use [Parcel](https://parceljs.org/) to bundle the SDK for a website. For any more information and questions on how to use Parcel, please head to their [website](https://parceljs.org/).
-
-1. Create `index.js`.
-
-```javascript
-import { init as initWebex } from 'webex';
-
-// Initialize the SDK and make it available to the window
-const webex = (window.webex = initWebex({
-  credentials: {
-    access_token: <your webex access token>
-  }
-}));
-
-// Create a room with the title "My First Room"
-webex.rooms
-  .create({
-    title: 'My First Room!'
-  })
-  .catch((error) => {
-    console.error(error);
-  });
-
-// Filter for "My First Room" from the last 10 rooms
-webex.rooms
-  .list({
-    max: 10
-  })
-  .then((rooms) => {
-    // Destructure room properties for its id (aliased to roomId) and title
-    const { id: roomId, title } = rooms.items.filter(
-      room => room.title === 'My First Room!'
-    )[0];
-
-    // Post message "Hello World!" to "My First Room!"
-    webex.messages.create({
-      roomId,
-      text: 'Hello World!'
-    });
-
-    // Log the the room name and the message we created
-    return webex.messages
-      .list({ roomId, max: 1 })
-      // Destructure promised value to get the text property from the first item in items array
-      .then(({ items: [{ text }] }) =>
-        console.log(`Last message sent to room "${title}": ${text}`)
-      );
-  })
-  .catch((error) => {
-    console.error(error);
-  });
-```
-
-2. Create `index.html` .
+In addition to the module consumption via [NPMJS](https://www.npmjs.com/), these modules can also be consumed via our CDN. See the below examples of how to consume the unified modules via our CDN:
 
 ```html
 <html>
   <head>
-    <title>Webex SDK for Browsers</title>
+    <!-- via unpkg -->
+    <script crossorigin src="https://unpkg.com/webex@^1/umd/webex.min.js"></script>
+
+    <!-- via jsdelivr -->
+    <script crossorigin src="https://cdn.jsdelivr.net/npm/webex/umd/webex.min.js"></script>
   </head>
-  <body>
-    <script src="./index.js"></script>
-  </body>
+  <!-- ...application html... -->
 </html>
 ```
 
-3. Add a compatible browser version for parcel to compile for
+The available unified modules within this project are listed below:
 
-- Add the `browserlist` property to your `package.json`. We're using the last two versions of both Chrome and Firefox in this example
+* [webex](./packages/webex/) - The primary webex unified module.
 
-```json
-"browserslist": [
-  "last 2 Chrome versions"
-  "last 2 Firefox versions"
-]
+### Modular Modules
+
+Modular modules are an alternative to using a unified module, and require a greater understanding of how the modules are architected in order to consume them appropriately. These modules are typically consumed as **dependencies** of another project and can be installed by performing the following commands:
+
+```bash
+# using NPM
+npm install {module}
+
+# using Yarn
+yarn add {module}
 ```
 
-> NOTE: This is needed for parcel to correctly compile dependencies the SDK uses for the browser environment. The SDK uses the `last 2 versions of Chrome and Firefox`, so we're including it here too. You can use [browserl.ist](https://browserl.ist/) to configure your own setup
+The available modular modules within this project are visible when inspecting the contents of the `./packages/@webex/` folder, as well as other published modules (see their `README.md` files) within the `./packages/` folder.
 
-4. Run `parcel index.html` in your terminal.
-5. Go to [http://localhost:1234](http://localhost:1234) and open the developer console to see the output.
+## Usage
 
-#### _[Still using `webex/env` or `ciscospark/env`?](documentation/webex.md#shell-script-quick-start)_
+This section will define the general usage examples for this project.
 
-## Samples
+### Module Consumption
 
-Sample code can be found in [docs/samples](./docs/samples). You can demo them by going to [webex.github.io/webex-js-sdk/samples/](https://webex.github.io/webex-js-sdk/samples/) or you can run them yourself by following this guide in the [Contribution Guide](CONTRIBUTING.md#running-samples-locally)
+For general consumption documentation, please visit our [Cisco Webex for Developers portal](https://developer.webex.com/), as this will typically what is necessary to begin development using the various packages within the Webex JS SDK. Additionally, some of the modules within this project contain independent documentation available within each of their respective folder scopes. Please review these independent documentation articles as needed.
 
-| Samples                         | Hosted                                                                                 |
-| ------------------------------- | -------------------------------------------------------------------------------------- |
-| [Samples code](./docs/samples/) | [webex.github.io/webex-js-sdk/](https://webex.github.io/webex-js-sdk/) |
+It is recommended to visit our [Getting Started with NodeJS](https://developer.webex.com/docs/sdks/node) guide for the most up-to-date documentation on consuming the Webex JS SDK via Module.
 
-## FedRAMP Environment
+### Browser Consumption
 
-The `webex` JavaScript SDK is officially supporting FedRAMP environments.
+This section outlines how to directly consume the Webex JS SDK unified `webex` bundle within your HTML document. This bundle can be consumed directly via [unpkg](https://unpkg.com/) or [jsdelivr](https://jsdelivr.com/) respectfully. See the below examples:
 
-To enable usage simply use the `fedramp` configuration setting when creating your `webex` instance:
+```html
+<html>
+  <head>
+    <!-- via unpkg -->
+    <script crossorigin src="https://unpkg.com/webex@^1/umd/webex.min.js"></script>
 
-```javascript
-const Webex = require('webex');
-const webex = Webex.init({
-  config: {
-    fedramp: true,
-  },
-  credentials: {
-    access_token: `<token>`,
-  },
-});
-
-// Use sdk as normal
-webex.rooms.list().then(console.log);
+    <!-- via jsdelivr -->
+    <script crossorigin src="https://cdn.jsdelivr.net/npm/webex/umd/webex.min.js"></script>
+  </head>
+  <!-- ...application html... -->
+</html>
 ```
 
-> For more information on FedRAMP visit https://developer.webex.com/docs/fedramp-overview
+It is recommended to visit our [Getting Started with Browser Usage](https://developer.webex.com/docs/sdks/browser) guide for the most up-to-date documentation on consuming the Webex JS SDK via our CDN within a browser.
 
-### Features that do not work in FedRAMP
+### Updating the Modules
 
-- Creating Guest tokens aka JWT tokens (not SDK limitation but environment limitation)
+Since this mono-repository includes a collection of packages that rely on each other to work as intended, it is best to utilize a static version of the Webex JS SDK modules consumed by your application. The best way to do this is by utilizing our helper package: `@webex/package-tools`.
+
+```bash
+# using NPM
+npm install --dev @webex/package-tools
+
+# using Yarn
+yarn add --dev @webex/package-tools
+```
+
+After installation, the following `script` should be added to your `./package.json` for execution:
+
+```jsonc
+{
+  /* ... */
+  "scripts": {
+    /* ... */
+    "update:sdk": "webex-package-tools update --tag {target-dist-tag} --packages {...packages-to-update}"
+  }
+}
+```
+
+The above executable accepts a **distribution tag**, which will match an available `tag` from the [current tags section](https://www.npmjs.com/package/webex?activeTab=versions) of [NPMJS](https://www.npmjs.com/) as well as a list of packages that should be updated when the command executes (this will collect the latest synced version). It is recommended to provide the `--packages` argument with the complete list of `@webex`-scoped packages your project consumes in order to promote well-synchronized versions between all packages.
+
+The `@webex/package-tools` package contains a collection of helpful tools used to manage packages within this project from both within and outside of this project. Please review the [documentation](./packages/tools/package/) associated with the `@webex/package-tools` package for more information.
+
+### Running and Viewing Samples
+
+Sample code can be found within the [samples documentation folder](./docs/samples). You can preview the contents of this folder by navigating to [https://webex.github.io/webex-js-sdk/samples/](https://webex.github.io/webex-js-sdk/samples/) or by building them locally. Please see our [contributing guide](./CONTRIBUTING.md) for more information.
 
 ## Contribute
 
-Pull requests welcome. Please see [CONTRIBUTING.md](./CONTRIBUTING.md) for more details about building the packages
-and submitting pull requests for suggested changes.
+For detailed instructions on how to contribute, please refer to the [contributing guide](./CONTRIBUTING.md).
 
 ## Issues
 
-Please reach out to our developer support team for any issues you may be experiencing with the SDK.
+Please reach out to our developer support team in regards to any issues you may be experiencing within the Webex JS SDK.
 
-- <https://developer.webex.com/support>
-- <devsupport@webex.com>
+* <https://developer.webex.com/support>
+* <devsupport@webex.com>
+
+## Maintainers
+
+This project is maintained by [Cisco Webex for Developers](https://developer.webex.com/).
 
 ## License
 
-© 2016-2020 Cisco and/or its affiliates. All Rights Reserved.
-
-See [LICENSE](LICENSE) for details.
+See our [license](./LICENSE) for more information.

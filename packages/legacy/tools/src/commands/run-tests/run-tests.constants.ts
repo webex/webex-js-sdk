@@ -45,7 +45,7 @@ const CONFIG: CommandsConfig = {
     },
     {
       description: 'Override the default test target for reading files.',
-      name: 'target',
+      name: 'targets',
       type: 'string',
     },
     {

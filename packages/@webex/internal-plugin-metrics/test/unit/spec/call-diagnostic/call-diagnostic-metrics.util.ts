@@ -301,17 +301,31 @@ describe('internal-plugin-metrics', () => {
 
     [
       ['client.exit.app', {}],
-      ['client.webexapp.launched', {
-        joinTimes: {
-          downloadTime: undefined,
-        }
-      }],
+      [
+        'client.login.end',
+        {
+          joinTimes: {
+            otherAppApiReqResp: undefined,
+            exchangeCITokenJMT: undefined,
+          },
+        },
+      ],
+      [
+        'client.webexapp.launched',
+        {
+          joinTimes: {
+            downloadTime: undefined,
+          },
+        },
+      ],
       [
         'client.interstitial-window.launched',
         {
           joinTimes: {
             clickToInterstitial: undefined,
             meetingInfoReqResp: undefined,
+            refreshCaptchaServiceReqResp: undefined,
+            downloadIntelligenceModelsReqResp: undefined,
           },
         },
       ],
@@ -322,6 +336,8 @@ describe('internal-plugin-metrics', () => {
             showInterstitialTime: undefined,
             meetingInfoReqResp: undefined,
             registerWDMDeviceJMT: undefined,
+            getU2CTime: undefined,
+            getReachabilityClustersReqResp: undefined,
           },
         },
       ],
@@ -332,13 +348,12 @@ describe('internal-plugin-metrics', () => {
             meetingInfoReqResp: undefined,
             callInitJoinReq: undefined,
             joinReqResp: undefined,
-            joinReqSentReceived: undefined,
             pageJmt: undefined,
             clickToInterstitial: undefined,
             interstitialToJoinOK: undefined,
             totalJmt: undefined,
             clientJmt: undefined,
-            downloadTime: undefined
+            downloadTime: undefined,
           },
         },
       ],
@@ -597,6 +612,12 @@ describe('internal-plugin-metrics', () => {
       {
         signalingState: 'stable',
         iceConnectionState: 'connected',
+        turnServerUsed: true,
+        errorCode: DTLS_HANDSHAKE_FAILED_CLIENT_CODE,
+      },
+      {
+        signalingState: 'stable',
+        iceConnectionState: 'disconnected',
         turnServerUsed: true,
         errorCode: DTLS_HANDSHAKE_FAILED_CLIENT_CODE,
       },

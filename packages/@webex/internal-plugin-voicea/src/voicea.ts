@@ -1,5 +1,4 @@
 import uuid from 'uuid';
-import {TriggerProxy as Trigger} from '@webex/plugin-meetings';
 import {WebexPlugin, config} from '@webex/webex-core';
 
 import {
@@ -110,90 +109,55 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
   private processTranscription = (voiceaPayload: TranscriptionResponse): void => {
     switch (voiceaPayload.type) {
       case TRANSCRIPTION_TYPE.TRANSCRIPT_INTERIM_RESULTS:
-        Trigger.trigger(
-          this,
-          {
-            file: 'voicea',
-            function: 'processTranscription',
-          },
-          EVENT_TRIGGERS.NEW_CAPTION,
-          {
-            isFinal: false,
-            transcriptId: voiceaPayload.transcript_id,
-            transcripts: voiceaPayload.transcripts,
-          }
-        );
+        // @ts-ignore
+        this.trigger(EVENT_TRIGGERS.NEW_CAPTION, {
+          isFinal: false,
+          transcriptId: voiceaPayload.transcript_id,
+          transcripts: voiceaPayload.transcripts,
+        });
         break;
 
       case TRANSCRIPTION_TYPE.TRANSCRIPT_FINAL_RESULT:
-        Trigger.trigger(
-          this,
-          {
-            file: 'voicea',
-            function: 'processTranscription',
+        // @ts-ignore
+        this.trigger(EVENT_TRIGGERS.NEW_CAPTION, {
+          isFinal: true,
+          transcriptId: voiceaPayload.transcript_id,
+          translations: voiceaPayload.translations,
+          transcript: {
+            csis: voiceaPayload.csis,
+            text: voiceaPayload.transcript.text,
+            transcriptLanguageCode: voiceaPayload.transcript.transcript_language_code,
           },
-          EVENT_TRIGGERS.NEW_CAPTION,
-          {
-            isFinal: true,
-            transcriptId: voiceaPayload.transcript_id,
-            translations: voiceaPayload.translations,
-            transcript: {
-              csis: voiceaPayload.csis,
-              text: voiceaPayload.transcript.text,
-              transcriptLanguageCode: voiceaPayload.transcript.transcript_language_code,
-            },
-            timestamp: millisToMinutesAndSeconds(voiceaPayload.transcript.end_millis),
-          }
-        );
+          timestamp: millisToMinutesAndSeconds(voiceaPayload.transcript.end_millis),
+        });
         break;
 
       case TRANSCRIPTION_TYPE.HIGHLIGHT_CREATED:
-        Trigger.trigger(
-          this,
-          {
-            file: 'voicea',
-            function: 'processTranscription',
-          },
-          EVENT_TRIGGERS.HIGHLIGHT_CREATED,
-          {
-            csis: voiceaPayload.highlight.csis,
-            highlightId: voiceaPayload.highlight.highlight_id,
-            text: voiceaPayload.highlight.transcript,
-            highlightLabel: voiceaPayload.highlight.highlight_label,
-            highlightSource: voiceaPayload.highlight.highlight_source,
-            timestamp: millisToMinutesAndSeconds(voiceaPayload.highlight.end_millis),
-          }
-        );
+        // @ts-ignore
+        this.trigger(EVENT_TRIGGERS.HIGHLIGHT_CREATED, {
+          csis: voiceaPayload.highlight.csis,
+          highlightId: voiceaPayload.highlight.highlight_id,
+          text: voiceaPayload.highlight.transcript,
+          highlightLabel: voiceaPayload.highlight.highlight_label,
+          highlightSource: voiceaPayload.highlight.highlight_source,
+          timestamp: millisToMinutesAndSeconds(voiceaPayload.highlight.end_millis),
+        });
         break;
 
       case TRANSCRIPTION_TYPE.EVA_THANKS:
-        Trigger.trigger(
-          this,
-          {
-            file: 'voicea',
-            function: 'processTranscription',
-          },
-          EVENT_TRIGGERS.EVA_COMMAND,
-          {
-            isListening: false,
-            text: voiceaPayload.command_response,
-          }
-        );
+        // @ts-ignore
+        this.trigger(EVENT_TRIGGERS.EVA_COMMAND, {
+          isListening: false,
+          text: voiceaPayload.command_response,
+        });
         break;
 
       case TRANSCRIPTION_TYPE.EVA_WAKE:
       case TRANSCRIPTION_TYPE.EVA_CANCEL:
-        Trigger.trigger(
-          this,
-          {
-            file: 'voicea',
-            function: 'processTranscription',
-          },
-          EVENT_TRIGGERS.EVA_COMMAND,
-          {
-            isListening: voiceaPayload.type === TRANSCRIPTION_TYPE.EVA_WAKE,
-          }
-        );
+        // @ts-ignore
+        this.trigger(EVENT_TRIGGERS.EVA_COMMAND, {
+          isListening: voiceaPayload.type === TRANSCRIPTION_TYPE.EVA_WAKE,
+        });
         break;
 
       default:
@@ -208,25 +172,14 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
    */
   private processCaptionLanguageResponse = (voiceaPayload: CaptionLanguageResponse): void => {
     if (voiceaPayload.statusCode === 200) {
-      Trigger.trigger(
-        this,
-        {
-          file: 'voicea',
-          function: 'processCaptionLanguageResponse',
-        },
-        EVENT_TRIGGERS.CAPTION_LANGUAGE_UPDATE,
-        {statusCode: 200}
-      );
+      // @ts-ignore
+      this.trigger(EVENT_TRIGGERS.CAPTION_LANGUAGE_UPDATE, {statusCode: 200});
     } else {
-      Trigger.trigger(
-        this,
-        {
-          file: 'voicea',
-          function: 'processCaptionLanguageResponse',
-        },
-        EVENT_TRIGGERS.CAPTION_LANGUAGE_UPDATE,
-        {statusCode: voiceaPayload.errorCode, errorMessage: voiceaPayload.message}
-      );
+      // @ts-ignore
+      this.trigger(EVENT_TRIGGERS.CAPTION_LANGUAGE_UPDATE, {
+        statusCode: voiceaPayload.errorCode,
+        errorMessage: voiceaPayload.message,
+      });
     }
   };
 
@@ -242,15 +195,8 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
       spokenLanguages: voiceaPayload?.ASR?.spoken_languages ?? [],
     };
 
-    Trigger.trigger(
-      this,
-      {
-        file: 'voicea',
-        function: 'processAnnouncementMessage',
-      },
-      EVENT_TRIGGERS.VOICEA_ANNOUNCEMENT,
-      voiceaLanguageOptions
-    );
+    // @ts-ignore
+    this.trigger(EVENT_TRIGGERS.VOICEA_ANNOUNCEMENT, voiceaLanguageOptions);
   };
 
   /**
@@ -298,15 +244,8 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
         },
       },
     }).then(() => {
-      Trigger.trigger(
-        this,
-        {
-          file: 'voicea',
-          function: 'setSpokenLanguage',
-        },
-        EVENT_TRIGGERS.SPOKEN_LANGUAGE_UPDATE,
-        {languageCode}
-      );
+      // @ts-ignore
+      this.trigger(EVENT_TRIGGERS.SPOKEN_LANGUAGE_UPDATE, {languageCode});
     });
 
   /**
@@ -364,14 +303,9 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
       body,
     })
       .then(() => {
-        Trigger.trigger(
-          this,
-          {
-            file: 'voicea',
-            function: 'turnOnCaptions',
-          },
-          EVENT_TRIGGERS.CAPTIONS_TURNED_ON
-        );
+        // @ts-ignore
+        this.trigger(EVENT_TRIGGERS.CAPTIONS_TURNED_ON);
+
         this.areCaptionsEnabled = true;
         this.captionStatus = TURN_ON_CAPTION_STATUS.ENABLED;
         this.announce();

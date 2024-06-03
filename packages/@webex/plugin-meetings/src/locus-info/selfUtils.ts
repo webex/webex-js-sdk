@@ -428,6 +428,11 @@ SelfUtils.mutedByOthersChanged = (oldSelf, changedSelf) => {
     return false;
   }
 
+  // there is no need to trigger user update if no one muted user
+  if (changedSelf.selfIdentity === changedSelf.modifiedBy) {
+    return false;
+  }
+
   return (
     changedSelf.remoteMuted !== null &&
     (oldSelf.remoteMuted !== changedSelf.remoteMuted ||

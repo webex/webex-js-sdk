@@ -8,6 +8,7 @@ import {
   H264Codec,
   getRecommendedMaxBitrateForFrameSize,
   RecommendedOpusBitrates,
+  NamedMediaGroup,
 } from '@webex/internal-media-core';
 import {cloneDeepWith, debounce, isEmpty} from 'lodash';
 
@@ -22,6 +23,7 @@ export interface ActiveSpeakerPolicyInfo {
   crossPriorityDuplication: boolean;
   crossPolicyDuplication: boolean;
   preferLiveVideo: boolean;
+  namedMediaGroups?: NamedMediaGroup[];
 }
 
 export interface ReceiverSelectedPolicyInfo {
@@ -347,7 +349,8 @@ export class MediaRequestManager {
                   mr.policyInfo.priority,
                   mr.policyInfo.crossPriorityDuplication,
                   mr.policyInfo.crossPolicyDuplication,
-                  mr.policyInfo.preferLiveVideo
+                  mr.policyInfo.preferLiveVideo,
+                  mr.policyInfo.namedMediaGroups
                 )
               : new ReceiverSelectedInfo(mr.policyInfo.csi),
             mr.receiveSlots.map((receiveSlot) => receiveSlot.wcmeReceiveSlot),

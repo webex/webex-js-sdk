@@ -2,6 +2,7 @@
 /* eslint-disable require-jsdoc */
 /* eslint-disable import/prefer-default-export */
 import {forEach} from 'lodash';
+import {NamedMediaGroup} from '@webex/internal-media-core';
 import LoggerProxy from '../common/logs/logger-proxy';
 
 import {getMaxFs, RemoteMedia, RemoteVideoResolution} from './remoteMedia';
@@ -11,6 +12,7 @@ import {CSI, ReceiveSlot} from './receiveSlot';
 type Options = {
   resolution?: RemoteVideoResolution; // applies only to groups of type MediaType.VideoMain and MediaType.VideoSlides
   preferLiveVideo?: boolean; // applies only to groups of type MediaType.VideoMain and MediaType.VideoSlides
+  namedMediaGroup?: NamedMediaGroup; // applies only to named media groups for audio
 };
 
 export class RemoteMediaGroup {
@@ -221,6 +223,9 @@ export class RemoteMediaGroup {
           crossPriorityDuplication: false,
           crossPolicyDuplication: false,
           preferLiveVideo: !!this.options?.preferLiveVideo,
+          namedMediaGroups: this.options.namedMediaGroup?.value
+            ? [this.options?.namedMediaGroup]
+            : undefined,
         },
         receiveSlots: this.unpinnedRemoteMedia.map((remoteMedia) =>
           remoteMedia.getUnderlyingReceiveSlot()
@@ -238,6 +243,20 @@ export class RemoteMediaGroup {
     if (this.mediaRequestId) {
       this.mediaRequestManager.cancelRequest(this.mediaRequestId, commit);
       this.mediaRequestId = undefined;
+    }
+  }
+
+  /**
+   * setNamedMediaGroup - sets named media group type and value
+   * @internal
+   */
+  public setNamedMediaGroup(namedMediaGroup: NamedMediaGroup, commit: boolean) {
+    if (
+      this.options.namedMediaGroup.value !== namedMediaGroup.value ||
+      this.options.namedMediaGroup.type !== namedMediaGroup.type
+    ) {
+      this.options.namedMediaGroup = namedMediaGroup;
+      this.sendActiveSpeakerMediaRequest(commit);
     }
   }
 

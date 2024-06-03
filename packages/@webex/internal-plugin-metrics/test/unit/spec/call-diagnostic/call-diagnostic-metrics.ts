@@ -223,6 +223,43 @@ describe('internal-plugin-metrics', () => {
         });
       });
 
+      it('should build origin correctly with browserLaunchMethod', () => {
+        sinon.stub(CallDiagnosticUtils, 'anonymizeIPAddress').returns('1.1.1.1');
+
+        //@ts-ignore
+        const res = cd.getOrigin(
+          {
+            subClientType: 'WEB_APP',
+            clientType: 'TEAMS_CLIENT',
+            newEnvironment: 'test-new-env',
+            clientLaunchMethod: 'url-handler',
+            browserLaunchMethod: 'thinclient',
+          },
+          fakeMeeting.id
+        );
+
+        assert.deepEqual(res, {
+          clientInfo: {
+            browser: getBrowserName(),
+            browserVersion: getBrowserVersion(),
+            clientType: 'TEAMS_CLIENT',
+            clientVersion: 'webex-js-sdk/webex-version',
+            publicNetworkPrefix: '1.1.1.1',
+            localNetworkPrefix: '1.1.1.1',
+            os: getOSNameInternal(),
+            osVersion: getOSVersion(),
+            subClientType: 'WEB_APP',
+            clientLaunchMethod: 'url-handler',
+            browserLaunchMethod: 'thinclient',
+          },
+          environment: 'meeting_evn',
+          newEnvironment: 'test-new-env',
+          name: 'endpoint',
+          networkType: 'unknown',
+          userAgent,
+        });
+      });
+
       it('should build origin correctly with no meeting', () => {
         sinon.stub(CallDiagnosticUtils, 'anonymizeIPAddress').returns('1.1.1.1');
 
@@ -302,6 +339,11 @@ describe('internal-plugin-metrics', () => {
 
     describe('#getIdentifiers', () => {
       it('should build identifiers correctly', () => {
+        webex.internal.device = {
+          ...webex.internal.device,
+          config: {installationId: 'installationId'},
+        };
+
         const res = cd.getIdentifiers({
           mediaConnections: [
             {mediaAgentAlias: 'mediaAgentAlias', mediaAgentGroupId: 'mediaAgentGroupId'},
@@ -315,6 +357,7 @@ describe('internal-plugin-metrics', () => {
           locusId: 'url',
           locusStartTime: 'lastActive',
           locusUrl: 'locus/url',
+          machineId: 'installationId',
           mediaAgentAlias: 'mediaAgentAlias',
           mediaAgentGroupId: 'mediaAgentGroupId',
           orgId: 'orgId',
@@ -498,7 +541,10 @@ describe('internal-plugin-metrics', () => {
     it('should prepare diagnostic event successfully', () => {
       const options = {meetingId: fakeMeeting.id};
       const getOriginStub = sinon.stub(cd, 'getOrigin').returns({origin: 'fake-origin'});
-      const clearEmptyKeysRecursivelyStub = sinon.stub(CallDiagnosticUtils, 'clearEmptyKeysRecursively');
+      const clearEmptyKeysRecursivelyStub = sinon.stub(
+        CallDiagnosticUtils,
+        'clearEmptyKeysRecursively'
+      );
 
       const res = cd.prepareDiagnosticEvent(
         {
@@ -715,7 +761,7 @@ describe('internal-plugin-metrics', () => {
         ]);
       });
 
-      it('should submit client event successfully with correlationId, webexConferenceIdStr and globalMeetingId', async () => {
+      it('should submit client event successfully with correlationId, webexConferenceIdStr and globalMeetingId', () => {
         const prepareDiagnosticEventSpy = sinon.spy(cd, 'prepareDiagnosticEvent');
         const submitToCallDiagnosticsSpy = sinon.spy(cd, 'submitToCallDiagnostics');
         const generateClientEventErrorPayloadSpy = sinon.spy(cd, 'generateClientEventErrorPayload');
@@ -853,11 +899,13 @@ describe('internal-plugin-metrics', () => {
           options
         );
         assert.notCalled(submitToCallDiagnosticsSpy);
-        assert.calledWith(submitToCallDiagnosticsPreLoginSpy, {
+        assert.calledWith(
+          submitToCallDiagnosticsPreLoginSpy,
+          {
             eventId: 'my-fake-id',
             version: 1,
-            origin: { origin: 'fake-origin' },
-            originTime: { triggered: now.toISOString(), sent: 'not_defined_yet' },
+            origin: {origin: 'fake-origin'},
+            originTime: {triggered: now.toISOString(), sent: 'not_defined_yet'},
             senderCountryCode: 'UK',
             event: {
               name: 'client.alert.displayed',
@@ -869,12 +917,14 @@ describe('internal-plugin-metrics', () => {
                 orgId: 'orgId',
                 locusUrl: 'locus-url',
                 webexConferenceIdStr: 'webexConferenceIdStr1',
-                globalMeetingId: 'globalMeetingId1'
+                globalMeetingId: 'globalMeetingId1',
               },
-              eventData: { webClientDomain: 'whatever' },
-              loginType: 'login-ci'
+              eventData: {webClientDomain: 'whatever'},
+              loginType: 'login-ci',
             },
-        }, options.preLoginId);
+          },
+          options.preLoginId
+        );
       });
 
       it('should use meeting loginType if present and meetingId provided', () => {
@@ -1339,7 +1389,7 @@ describe('internal-plugin-metrics', () => {
       });
     });
 
-    describe("#submitToCallDiagnostics", () => {
+    describe('#submitToCallDiagnostics', () => {
       it('should send request to call diagnostic batcher', () => {
         const requestStub = sinon.stub();
         //@ts-ignore
@@ -1348,7 +1398,7 @@ describe('internal-plugin-metrics', () => {
         cd.submitToCallDiagnostics({event: 'test'});
         assert.calledWith(requestStub, {eventPayload: {event: 'test'}, type: ['diagnostic-event']});
       });
-    })
+    });
 
     describe('#submitMQE', () => {
       it('submits the event correctly', () => {
@@ -1801,6 +1851,27 @@ describe('internal-plugin-metrics', () => {
         });
       });
 
+      it('should override custom properties for an unknown error', () => {
+        const error = new Error('bad times');
+
+        (error as any).payloadOverrides = {
+          shownToUser: true,
+          category: 'expected',
+        };
+
+        const res = cd.generateClientEventErrorPayload(error);
+        assert.deepEqual(res, {
+          category: 'expected',
+          errorDescription: 'UnknownError',
+          fatal: true,
+          name: 'other',
+          shownToUser: true,
+          serviceErrorCode: 9999,
+          errorCode: 9999,
+          rawErrorMessage: 'bad times',
+        });
+      });
+
       it('should override custom properties for a NetworkOrCORSError', () => {
         const error = new WebexHttpError.NetworkOrCORSError({
           url: 'https://example.com',
@@ -1942,12 +2013,16 @@ describe('internal-plugin-metrics', () => {
 
       describe('httpStatusCode', () => {
         it('should include httpStatusCode for browser media errors', () => {
-          const res = cd.generateClientEventErrorPayload({name: 'PermissionDeniedError', message: 'bad times', statusCode: 401});
+          const res = cd.generateClientEventErrorPayload({
+            name: 'PermissionDeniedError',
+            message: 'bad times',
+            statusCode: 401,
+          });
           assert.deepEqual(res, {
             category: 'expected',
             errorCode: 4032,
             errorData: {
-              errorName: 'PermissionDeniedError'
+              errorName: 'PermissionDeniedError',
             },
             errorDescription: 'CameraPermissionDenied',
             fatal: true,
@@ -1960,12 +2035,16 @@ describe('internal-plugin-metrics', () => {
         });
 
         it('should include httpStatusCode for SdpOfferCreationErrors', () => {
-          const res = cd.generateClientEventErrorPayload({name: 'SdpOfferCreationError', message: 'bad times', statusCode: 404});
+          const res = cd.generateClientEventErrorPayload({
+            name: 'SdpOfferCreationError',
+            message: 'bad times',
+            statusCode: 404,
+          });
           assert.deepEqual(res, {
             category: 'media',
             errorCode: 2050,
             errorData: {
-              errorName: 'SdpOfferCreationError'
+              errorName: 'SdpOfferCreationError',
             },
             errorDescription: 'SdpOfferCreationError',
             fatal: true,
@@ -1978,7 +2057,11 @@ describe('internal-plugin-metrics', () => {
         });
 
         it('should include httpStatusCode for service error codes', () => {
-          const res = cd.generateClientEventErrorPayload({body: {errorCode: 58400}, message: 'bad times', statusCode: 400});
+          const res = cd.generateClientEventErrorPayload({
+            body: {errorCode: 58400},
+            message: 'bad times',
+            statusCode: 400,
+          });
           assert.deepEqual(res, {
             category: 'signaling',
             errorCode: 4100,
@@ -1993,7 +2076,11 @@ describe('internal-plugin-metrics', () => {
         });
 
         it('should include httpStatusCode for locus service error codes', () => {
-          const res = cd.generateClientEventErrorPayload({body: {errorCode: 2403001}, message: 'bad times', statusCode: 400});
+          const res = cd.generateClientEventErrorPayload({
+            body: {errorCode: 2403001},
+            message: 'bad times',
+            statusCode: 400,
+          });
           assert.deepEqual(res, {
             category: 'expected',
             errorCode: 3007,
@@ -2008,7 +2095,11 @@ describe('internal-plugin-metrics', () => {
         });
 
         it('should include httpStatusCode for meetingInfo service error codes', () => {
-          const res = cd.generateClientEventErrorPayload({body: {data: {meetingInfo: {}}}, message: 'bad times', statusCode: 400});
+          const res = cd.generateClientEventErrorPayload({
+            body: {data: {meetingInfo: {}}},
+            message: 'bad times',
+            statusCode: 400,
+          });
           assert.deepEqual(res, {
             category: 'signaling',
             errorCode: 4100,
@@ -2023,8 +2114,10 @@ describe('internal-plugin-metrics', () => {
         });
 
         it('should include httpStatusCode for network errors', () => {
-          const error = new WebexHttpError.NetworkOrCORSError(
-            {statusCode: 400, options: {service: '', headers: {}}});
+          const error = new WebexHttpError.NetworkOrCORSError({
+            statusCode: 400,
+            options: {service: '', headers: {}},
+          });
           const res = cd.generateClientEventErrorPayload(error);
           assert.deepEqual(res, {
             category: 'network',
@@ -2040,8 +2133,10 @@ describe('internal-plugin-metrics', () => {
         });
 
         it('should include httpStatusCode for unauthorized errors', () => {
-          const error = new WebexHttpError.Unauthorized(
-            {statusCode: 401, options: {service: '', headers: {}}});
+          const error = new WebexHttpError.Unauthorized({
+            statusCode: 401,
+            options: {service: '', headers: {}},
+          });
           const res = cd.generateClientEventErrorPayload(error);
           assert.deepEqual(res, {
             category: 'network',
@@ -2244,7 +2339,7 @@ describe('internal-plugin-metrics', () => {
       });
     });
 
-    describe("#submitToCallDiagnosticsPreLogin", () => {
+    describe('#submitToCallDiagnosticsPreLogin', () => {
       it('should send request to call diagnostic batcher and saves preLoginId', () => {
         const requestStub = sinon.stub();
         //@ts-ignore
@@ -2257,7 +2352,7 @@ describe('internal-plugin-metrics', () => {
         assert.calledWith(cd.preLoginMetricsBatcher.savePreLoginId, preLoginId);
         assert.calledWith(requestStub, {eventPayload: {event: 'test'}, type: ['diagnostic-event']});
       });
-    })
+    });
 
     describe('#isServiceErrorExpected', () => {
       it('returns true for code mapped to "expected"', () => {
