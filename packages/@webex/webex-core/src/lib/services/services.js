@@ -17,6 +17,18 @@ export const DEFAULT_CLUSTER = 'urn:TEAM:us-east-2_a';
 // The default service name for convo (currently identityLookup due to some weird CSB issue)
 export const DEFAULT_CLUSTER_SERVICE = 'identityLookup';
 
+// The default allowed domains that SDK can make requests to outside of service catalog
+const commercialAllowedDomains = [
+  'wbx2.com',
+  'ciscospark.com',
+  'webex.com',
+  'webexapis.com',
+  'broadcloudpbx.com',
+  'broadcloud.eu',
+  'broadcloud.com.au',
+  'broadcloudpbx.net',
+];
+
 const CLUSTER_SERVICE = process.env.WEBEX_CONVERSATION_CLUSTER_SERVICE || DEFAULT_CLUSTER_SERVICE;
 const DEFAULT_CLUSTER_IDENTIFIER =
   process.env.WEBEX_CONVERSATION_DEFAULT_CLUSTER || `${DEFAULT_CLUSTER}:${CLUSTER_SERVICE}`;
@@ -916,7 +928,7 @@ const Services = WebexPlugin.extend({
     // Validate that the services configuration exists.
     if (services) {
       if (fedramp) {
-        services.discovery = fedRampServices;
+        services.discovery = {...fedRampServices, ...services.discovery};
       }
       // Check for discovery services.
       if (services.discovery) {
@@ -939,6 +951,11 @@ const Services = WebexPlugin.extend({
 
         // Inject formatted override services into services catalog.
         catalog.updateServiceUrls('override', formattedOverrideServices);
+      }
+
+      // if not fedramp, append on the commercialAllowedDomains
+      if (!fedramp) {
+        services.allowedDomains = [...services.allowedDomains, ...commercialAllowedDomains];
       }
 
       // Check for allowed host domains.
