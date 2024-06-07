@@ -4625,7 +4625,7 @@ export default class Meeting extends StatelessWebexPlugin {
       );
 
       if (!isRetry) {
-        LoggerProxy.logger.error('Meeting:index#joinWithMedia --> retrying call to joinWithMedia');
+        LoggerProxy.logger.warn('Meeting:index#joinWithMedia --> retrying call to joinWithMedia');
         this.joinWithMediaRetryInfo.isRetry = true;
         this.joinWithMediaRetryInfo.prevJoinResponse = joinResponse;
 

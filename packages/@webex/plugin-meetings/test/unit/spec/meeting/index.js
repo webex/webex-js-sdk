@@ -774,7 +774,6 @@ describe('plugin-meetings', () => {
           assert.calledTwice(meeting.join);
           assert.notCalled(leaveStub);
 
-          // Behavioral metric is sent on both calls of joinWithMedia
           assert.calledOnce(Metrics.sendBehavioralMetric);
           assert.calledWith(
             Metrics.sendBehavioralMetric.firstCall,
@@ -902,9 +901,6 @@ describe('plugin-meetings', () => {
             }
           );
         });
-
-         // resets joinWithMediaRetryInfo
-        //  assert.deepEqual(meeting.joinWithMediaRetryInfo, {isRetry: false, prevJoinResponse: undefined});
       });
 
       describe('#isTranscriptionSupported', () => {
