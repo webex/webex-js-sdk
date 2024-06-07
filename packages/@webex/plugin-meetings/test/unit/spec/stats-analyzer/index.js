@@ -7,7 +7,12 @@ import {ConnectionState} from '@webex/internal-media-core';
 import {StatsAnalyzer, EVENTS} from '../../../../src/statsAnalyzer';
 import NetworkQualityMonitor from '../../../../src/networkQualityMonitor';
 import testUtils from '../../../utils/testUtils';
-import {MQA_INTERVAL, _UNKNOWN_, CALLING_SERVICE_TYPE} from '@webex/plugin-meetings/src/constants';
+import {
+  MQA_INTERVAL,
+  _UNKNOWN_,
+  CALLING_SERVICE_TYPE,
+  MEDIA_DEVICES,
+} from "@webex/plugin-meetings/src/constants";
 import LoggerProxy from '../../../../src/common/logs/logger-proxy';
 import LoggerConfig from '../../../../src/common/logs/logger-config';
 
