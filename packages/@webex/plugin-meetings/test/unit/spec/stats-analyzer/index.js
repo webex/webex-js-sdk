@@ -822,7 +822,7 @@ describe('plugin-meetings', () => {
           await startStatsAnalyzer({expected: {receiveVideo: true}});
           await progressTime();
 
-          assert.strictEqual(mqeData.callingServiceType, CALLING_SERVICE_TYPE);
+          assert.strictEqual(mqeData.callingServiceType, CALLING_SERVICE_TYPE.TYPE_LOCUS);
         });
 
         it('after frames are sent and received', async () => {

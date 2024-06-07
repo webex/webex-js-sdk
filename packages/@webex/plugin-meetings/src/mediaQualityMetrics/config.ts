@@ -1,4 +1,4 @@
-import {_UNKNOWN_, CALLING_SERVICE_TYPE} from '../constants';
+import {CALLING_SERVICE_TYPE} from '../constants';
 
 export const emptyMqaInterval = {
   audioReceive: [],
@@ -12,7 +12,7 @@ export const emptyMqaInterval = {
     systemMaximumCPU: 0,
   },
   networkType: '',
-  callingServiceType: CALLING_SERVICE_TYPE,
+  callingServiceType: CALLING_SERVICE_TYPE.TYPE_LOCUS,
   intervalNumber: 0,
   videoReceive: [],
   videoTransmit: [],
