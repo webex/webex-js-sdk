@@ -802,7 +802,7 @@ describe('plugin-meetings', () => {
           webex.internal.voicea.on = sinon.stub();
           webex.internal.voicea.off = sinon.stub();
           webex.internal.voicea.listenToEvents = sinon.stub();
-          webex.internal.voicea.toggleTranscribing = sinon.stub();
+          webex.internal.voicea.turnOnCaptions = sinon.stub();
         });
 
         it('should subscribe to events for the first time and avoid subscribing for future transcription starts', async () => {
@@ -817,17 +817,16 @@ describe('plugin-meetings', () => {
           assert.equal(webex.internal.voicea.on.callCount, 4);
           assert.equal(meeting.areVoiceaEventsSetup, true);
           assert.equal(webex.internal.voicea.listenToEvents.callCount, 1);
-          assert.calledWith(webex.internal.voicea.toggleTranscribing, true);
+          assert.called(webex.internal.voicea.turnOnCaptions);
 
           await meeting.startTranscription();
           assert.equal(webex.internal.voicea.on.callCount, 4);
           assert.equal(meeting.areVoiceaEventsSetup, true);
           assert.equal(webex.internal.voicea.listenToEvents.callCount, 1);
-          assert.calledTwice(webex.internal.voicea.toggleTranscribing);
-          assert.calledWith(webex.internal.voicea.toggleTranscribing, true);
+          assert.calledTwice(webex.internal.voicea.turnOnCaptions);
         });
 
-        it('should listen to events and not toggleTranscribing if the user is not a host', async () => {
+        it('should listen to events and not turnOnCaptions if the user is not a host', async () => {
           meeting.joinedWith = {
             state: 'JOINED',
           };
@@ -839,7 +838,7 @@ describe('plugin-meetings', () => {
           assert.equal(webex.internal.voicea.on.callCount, 4);
           assert.equal(meeting.areVoiceaEventsSetup, true);
           assert.equal(webex.internal.voicea.listenToEvents.callCount, 1);
-          assert.notCalled(webex.internal.voicea.toggleTranscribing);
+          assert.notCalled(webex.internal.voicea.turnOnCaptions);
         });
 
         it("should throw error if request doesn't work", async () => {
@@ -858,7 +857,7 @@ describe('plugin-meetings', () => {
           webex.internal.voicea.on = sinon.stub();
           webex.internal.voicea.off = sinon.stub();
           webex.internal.voicea.listenToEvents = sinon.stub();
-          webex.internal.voicea.toggleTranscribing = sinon.stub();
+          webex.internal.voicea.turnOnCaptions = sinon.stub();
         });
 
         it('should stop listening to voicea events and also trigger a stop event', () => {

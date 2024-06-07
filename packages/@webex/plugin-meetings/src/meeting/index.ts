@@ -4869,7 +4869,7 @@ export default class Meeting extends StatelessWebexPlugin {
 
         if (this.getCurUserType() === 'host') {
           // @ts-ignore
-          await this.webex.internal.voicea.toggleTranscribing(true, options?.spokenLanguage);
+          await this.webex.internal.voicea.turnOnCaptions(options?.spokenLanguage);
         }
       } catch (error) {
         LoggerProxy.logger.error(`Meeting:index#startTranscription --> ${error}`);
