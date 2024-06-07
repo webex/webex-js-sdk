@@ -678,6 +678,7 @@ export default class Meeting extends StatelessWebexPlugin {
   private deferSDPAnswer?: Defer; // used for waiting for a response
   private sdpResponseTimer?: ReturnType<typeof setTimeout>;
   private hasMediaConnectionConnectedAtLeastOnce: boolean;
+  private joinWithMediaRetryInfo?: {isRetry: boolean; prevJoinResponse?: any};
 
   /**
    * @param {Object} attrs
@@ -1459,6 +1460,15 @@ export default class Meeting extends StatelessWebexPlugin {
      * @memberof Meeting
      */
     this.hasMediaConnectionConnectedAtLeastOnce = false;
+
+    /**
+     * Information needed for a retry of a call to joinWithMedia
+     * @instance
+     * @type {{isRetry: boolean; prevJoinResponse?: any}}
+     * @private
+     * @memberof Meeting
+     */
+    this.joinWithMediaRetryInfo = {isRetry: false, prevJoinResponse: undefined};
   }
 
   /**
@@ -4527,6 +4537,7 @@ export default class Meeting extends StatelessWebexPlugin {
     } = {}
   ) {
     const {mediaOptions, joinOptions = {}} = options;
+    const {isRetry, prevJoinResponse} = this.joinWithMediaRetryInfo;
 
     if (!mediaOptions?.allowMediaInLobby) {
       return Promise.reject(
@@ -4538,6 +4549,7 @@ export default class Meeting extends StatelessWebexPlugin {
     LoggerProxy.logger.info('Meeting:index#joinWithMedia called');
 
     let joined = false;
+    let joinResponse = prevJoinResponse;
 
     try {
       let turnServerInfo;
@@ -4550,7 +4562,14 @@ export default class Meeting extends StatelessWebexPlugin {
       ({turnDiscoverySkippedReason} = turnDiscoveryRequest);
       joinOptions.roapMessage = turnDiscoveryRequest.roapMessage;
 
-      const joinResponse = await this.join(joinOptions);
+      if (!joinResponse) {
+        LoggerProxy.logger.info(
+          'Meeting:index#joinWithMedia ---> calling join with joinOptions, ',
+          joinOptions
+        );
+
+        joinResponse = await this.join(joinOptions);
+      }
 
       joined = true;
 
@@ -4568,6 +4587,8 @@ export default class Meeting extends StatelessWebexPlugin {
 
       const mediaResponse = await this.addMedia(mediaOptions, turnServerInfo);
 
+      this.joinWithMediaRetryInfo = {isRetry: false, prevJoinResponse: undefined};
+
       return {
         join: joinResponse,
         media: mediaResponse,
@@ -4579,7 +4600,7 @@ export default class Meeting extends StatelessWebexPlugin {
 
       this.roap.abortTurnDiscovery();
 
-      if (joined) {
+      if (joined && isRetry) {
         try {
           await this.leave({resourceId: joinOptions?.resourceId, reason: 'joinWithMedia failure'});
         } catch (e) {
@@ -4596,11 +4617,22 @@ export default class Meeting extends StatelessWebexPlugin {
           reason: error.message,
           stack: error.stack,
           leaveErrorReason: leaveError?.message,
+          isRetry,
         },
         {
           type: error.name,
         }
       );
+
+      if (!isRetry) {
+        LoggerProxy.logger.warn('Meeting:index#joinWithMedia --> retrying call to joinWithMedia');
+        this.joinWithMediaRetryInfo.isRetry = true;
+        this.joinWithMediaRetryInfo.prevJoinResponse = joinResponse;
+
+        return this.joinWithMedia(options);
+      }
+
+      this.joinWithMediaRetryInfo = {isRetry: false, prevJoinResponse: undefined};
 
       throw error;
     }
@@ -6790,6 +6822,7 @@ export default class Meeting extends StatelessWebexPlugin {
         connectionType,
         isMultistream: this.isMultistream,
         retriedWithTurnServer: this.retriedWithTurnServer,
+        isJoinWithMediaRetry: this.joinWithMediaRetryInfo.isRetry,
         ...reachabilityStats,
       });
       // @ts-ignore
@@ -6821,6 +6854,7 @@ export default class Meeting extends StatelessWebexPlugin {
         turnServerUsed: this.turnServerUsed,
         retriedWithTurnServer: this.retriedWithTurnServer,
         isMultistream: this.isMultistream,
+        isJoinWithMediaRetry: this.joinWithMediaRetryInfo.isRetry,
         signalingState:
           this.mediaProperties.webrtcMediaConnection?.multistreamConnection?.pc?.pc
             ?.signalingState ||
