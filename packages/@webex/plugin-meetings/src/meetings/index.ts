@@ -1516,14 +1516,11 @@ export default class Meetings extends WebexPlugin {
 
   /**
    * Get all scheduled meetings.
-   * @param {object} options
-   * @param {object} options.startDate - get meetings after this start date
-   * @param {object} options.endDate - get meetings before this end date
    * @returns {Object} All scheduled meetings.
    * @memberof Meetings
    */
   getScheduledMeetings() {
-    return this.meetingCollection.getAll({scheduled: true});
+    return this.meetingCollection.getAll();
   }
 
   /**
