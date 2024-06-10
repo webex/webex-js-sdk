@@ -1,3 +1,4 @@
+/* eslint-disable class-methods-use-this */
 import {
   LocalCameraStream,
   LocalMicrophoneStream,
@@ -182,25 +183,45 @@ export default class MediaProperties {
   }
 
   /**
-   * Returns the type of a connection that has been established
+   * Returns ICE transport information:
+   * - selectedCandidatePairChanges - number of times the selected candidate pair was changed, it should be at least 1 for successful connections
+   *  it will be -1 if browser doesn't supply this information
+   * - numTransports - number of transports (should be 1 if we're using bundle)
    *
-   * @returns {Promise<'UDP' | 'TCP' | 'TURN-TLS' | 'TURN-TCP' | 'TURN-UDP' | 'unknown'>}
+   * @param {Array<any>} allStatsReports array of RTC stats reports
+   * @returns {Object}
    */
-  async getCurrentConnectionType() {
-    // we can only get the connection type after ICE connection has been established
-    await this.waitForMediaConnectionConnected();
+  private getTransportInfo(allStatsReports: any[]): {
+    selectedCandidatePairChanges: number;
+    numTransports: number;
+  } {
+    const transports = allStatsReports.filter((report) => report.type === 'transport');
 
-    const allStatsReports = [];
-
-    try {
-      const statsResult = await this.webrtcMediaConnection.getStats();
-      statsResult.forEach((report) => allStatsReports.push(report));
-    } catch (error) {
+    if (transports.length > 1) {
       LoggerProxy.logger.warn(
-        `Media:properties#getCurrentConnectionType --> getStats() failed: ${error}`
+        `Media:properties#getSelectedCandidatePairChanges --> found more than 1 transport: ${transports.length}`
       );
     }
 
+    return {
+      selectedCandidatePairChanges:
+        transports.length > 0 && transports[0].selectedCandidatePairChanges !== undefined
+          ? transports[0].selectedCandidatePairChanges
+          : -1,
+      numTransports: transports.length,
+    };
+  }
+
+  /**
+   * Returns the type of a connection that has been established
+   * It should be 'UDP' | 'TCP' | 'TURN-TLS' | 'TURN-TCP' | 'TURN-UDP' | 'unknown'
+   *
+   * If connection was not established, it returns 'unknown'
+   *
+   * @param {Array<any>} allStatsReports array of RTC stats reports
+   * @returns {string}
+   */
+  private getConnectionType(allStatsReports: any[]) {
     const successfulCandidatePairs = allStatsReports.filter(
       (report) => report.type === 'candidate-pair' && report.state?.toLowerCase() === 'succeeded'
     );
@@ -215,7 +236,7 @@ export default class MediaProperties {
 
       if (localCandidate === undefined) {
         LoggerProxy.logger.warn(
-          `Media:properties#getCurrentConnectionType --> failed to find local candidate "${pair.localCandidateId}" in getStats() results`
+          `Media:properties#getConnectionType --> failed to find local candidate "${pair.localCandidateId}" in getStats() results`
         );
 
         return false;
@@ -235,7 +256,7 @@ export default class MediaProperties {
         return true;
       }
       LoggerProxy.logger.warn(
-        `Media:properties#getCurrentConnectionType --> missing localCandidate.protocol, candidateType=${localCandidate.candidateType}`
+        `Media:properties#getConnectionType --> missing localCandidate.protocol, candidateType=${localCandidate.candidateType}`
       );
 
       return false;
@@ -247,12 +268,43 @@ export default class MediaProperties {
         .map((report) => report.state);
 
       LoggerProxy.logger.warn(
-        `Media:properties#getCurrentConnectionType --> all candidate pair states: ${JSON.stringify(
+        `Media:properties#getConnectionType --> all candidate pair states: ${JSON.stringify(
           candidatePairStates
         )}`
       );
     }
 
     return foundConnectionType;
+  }
+
+  /**
+   * Returns information about current webrtc media connection
+   *
+   * @returns {Promise<Object>}
+   */
+  async getCurrentConnectionInfo(): Promise<{
+    connectionType: string;
+    selectedCandidatePairChanges: number;
+    numTransports: number;
+  }> {
+    const allStatsReports = [];
+
+    try {
+      const statsResult = await this.webrtcMediaConnection.getStats();
+      statsResult.forEach((report) => allStatsReports.push(report));
+    } catch (error) {
+      LoggerProxy.logger.warn(
+        `Media:properties#getCurrentConnectionInfo --> getStats() failed: ${error}`
+      );
+    }
+
+    const connectionType = this.getConnectionType(allStatsReports);
+    const {selectedCandidatePairChanges, numTransports} = this.getTransportInfo(allStatsReports);
+
+    return {
+      connectionType,
+      selectedCandidatePairChanges,
+      numTransports,
+    };
   }
 }
