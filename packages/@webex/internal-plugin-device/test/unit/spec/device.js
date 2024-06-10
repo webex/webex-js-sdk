@@ -470,6 +470,20 @@ describe('plugin-device', () => {
         checkFeature('entitlement', '2', false);
         checkFeature('user', '3', false);
       });
+
+      it('sets the deviceInfo for call diagnostic metrics', () => {
+        const clonedDTO = getClonedDTO();
+
+        const response = {
+          body: {
+            ...clonedDTO,
+          },
+        };
+
+        device.processRegistrationSuccess(response);
+
+        assert.called(webex.internal.newMetrics.callDiagnosticMetrics.setDeviceInfo);
+      });
     });
   });
 });
