@@ -678,6 +678,7 @@ export default class Meeting extends StatelessWebexPlugin {
   private deferSDPAnswer?: Defer; // used for waiting for a response
   private sdpResponseTimer?: ReturnType<typeof setTimeout>;
   private hasMediaConnectionConnectedAtLeastOnce: boolean;
+  private joinWithMediaRetryInfo?: {isRetry: boolean; prevJoinResponse?: any};
 
   /**
    * @param {Object} attrs
@@ -1459,6 +1460,15 @@ export default class Meeting extends StatelessWebexPlugin {
      * @memberof Meeting
      */
     this.hasMediaConnectionConnectedAtLeastOnce = false;
+
+    /**
+     * Information needed for a retry of a call to joinWithMedia
+     * @instance
+     * @type {{isRetry: boolean; prevJoinResponse?: any}}
+     * @private
+     * @memberof Meeting
+     */
+    this.joinWithMediaRetryInfo = {isRetry: false, prevJoinResponse: undefined};
   }
 
   /**
@@ -2400,6 +2410,18 @@ export default class Meeting extends StatelessWebexPlugin {
         }
       }
     );
+
+    this.locusInfo.on(LOCUSINFO.EVENTS.CONTROLS_MEETING_MANUAL_CAPTION_UPDATED, ({enable}) => {
+      Trigger.trigger(
+        this,
+        {
+          file: 'meeting/index',
+          function: 'setupLocusControlsListener',
+        },
+        EVENT_TRIGGERS.MEETING_MANUAL_CAPTION_UPDATED,
+        {enable}
+      );
+    });
 
     this.locusInfo.on(LOCUSINFO.EVENTS.CONTROLS_MEETING_BREAKOUT_UPDATED, ({breakout}) => {
       this.breakouts.updateBreakout(breakout);
@@ -3575,6 +3597,9 @@ export default class Meeting extends StatelessWebexPlugin {
           canStartTranscribing: MeetingUtil.canStartTranscribing(this.userDisplayHints),
           canStopTranscribing: MeetingUtil.canStopTranscribing(this.userDisplayHints),
           isClosedCaptionActive: MeetingUtil.isClosedCaptionActive(this.userDisplayHints),
+          canStartManualCaption: MeetingUtil.canStartManualCaption(this.userDisplayHints),
+          canStopManualCaption: MeetingUtil.canStopManualCaption(this.userDisplayHints),
+          isManualCaptionActive: MeetingUtil.isManualCaptionActive(this.userDisplayHints),
           isSaveTranscriptsEnabled: MeetingUtil.isSaveTranscriptsEnabled(this.userDisplayHints),
           isWebexAssistantActive: MeetingUtil.isWebexAssistantActive(this.userDisplayHints),
           canViewCaptionPanel: MeetingUtil.canViewCaptionPanel(this.userDisplayHints),
@@ -4512,6 +4537,7 @@ export default class Meeting extends StatelessWebexPlugin {
     } = {}
   ) {
     const {mediaOptions, joinOptions = {}} = options;
+    const {isRetry, prevJoinResponse} = this.joinWithMediaRetryInfo;
 
     if (!mediaOptions?.allowMediaInLobby) {
       return Promise.reject(
@@ -4523,6 +4549,7 @@ export default class Meeting extends StatelessWebexPlugin {
     LoggerProxy.logger.info('Meeting:index#joinWithMedia called');
 
     let joined = false;
+    let joinResponse = prevJoinResponse;
 
     try {
       let turnServerInfo;
@@ -4535,7 +4562,14 @@ export default class Meeting extends StatelessWebexPlugin {
       ({turnDiscoverySkippedReason} = turnDiscoveryRequest);
       joinOptions.roapMessage = turnDiscoveryRequest.roapMessage;
 
-      const joinResponse = await this.join(joinOptions);
+      if (!joinResponse) {
+        LoggerProxy.logger.info(
+          'Meeting:index#joinWithMedia ---> calling join with joinOptions, ',
+          joinOptions
+        );
+
+        joinResponse = await this.join(joinOptions);
+      }
 
       joined = true;
 
@@ -4553,6 +4587,8 @@ export default class Meeting extends StatelessWebexPlugin {
 
       const mediaResponse = await this.addMedia(mediaOptions, turnServerInfo);
 
+      this.joinWithMediaRetryInfo = {isRetry: false, prevJoinResponse: undefined};
+
       return {
         join: joinResponse,
         media: mediaResponse,
@@ -4564,7 +4600,7 @@ export default class Meeting extends StatelessWebexPlugin {
 
       this.roap.abortTurnDiscovery();
 
-      if (joined) {
+      if (joined && isRetry) {
         try {
           await this.leave({resourceId: joinOptions?.resourceId, reason: 'joinWithMedia failure'});
         } catch (e) {
@@ -4581,11 +4617,22 @@ export default class Meeting extends StatelessWebexPlugin {
           reason: error.message,
           stack: error.stack,
           leaveErrorReason: leaveError?.message,
+          isRetry,
         },
         {
           type: error.name,
         }
       );
+
+      if (!isRetry) {
+        LoggerProxy.logger.warn('Meeting:index#joinWithMedia --> retrying call to joinWithMedia');
+        this.joinWithMediaRetryInfo.isRetry = true;
+        this.joinWithMediaRetryInfo.prevJoinResponse = joinResponse;
+
+        return this.joinWithMedia(options);
+      }
+
+      this.joinWithMediaRetryInfo = {isRetry: false, prevJoinResponse: undefined};
 
       throw error;
     }
@@ -4854,7 +4901,7 @@ export default class Meeting extends StatelessWebexPlugin {
 
         if (this.getCurUserType() === 'host') {
           // @ts-ignore
-          await this.webex.internal.voicea.toggleTranscribing(true, options?.spokenLanguage);
+          await this.webex.internal.voicea.turnOnCaptions(options?.spokenLanguage);
         }
       } catch (error) {
         LoggerProxy.logger.error(`Meeting:index#startTranscription --> ${error}`);
@@ -6775,6 +6822,7 @@ export default class Meeting extends StatelessWebexPlugin {
         connectionType,
         isMultistream: this.isMultistream,
         retriedWithTurnServer: this.retriedWithTurnServer,
+        isJoinWithMediaRetry: this.joinWithMediaRetryInfo.isRetry,
         ...reachabilityStats,
       });
       // @ts-ignore
@@ -6806,6 +6854,7 @@ export default class Meeting extends StatelessWebexPlugin {
         turnServerUsed: this.turnServerUsed,
         retriedWithTurnServer: this.retriedWithTurnServer,
         isMultistream: this.isMultistream,
+        isJoinWithMediaRetry: this.joinWithMediaRetryInfo.isRetry,
         signalingState:
           this.mediaProperties.webrtcMediaConnection?.multistreamConnection?.pc?.pc
             ?.signalingState ||

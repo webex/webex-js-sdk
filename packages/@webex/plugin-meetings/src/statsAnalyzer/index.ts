@@ -1004,6 +1004,8 @@ export class StatsAnalyzer extends EventsScope {
       this.statsResults[mediaType][sendrecvType].headerBytesSent = result.headerBytesSent;
       this.statsResults[mediaType][sendrecvType].retransmittedBytesSent =
         result.retransmittedBytesSent;
+      this.statsResults[mediaType][sendrecvType].requestedBitrate = result.requestedBitrate;
+      this.statsResults[mediaType][sendrecvType].requestedFrameSize = result.requestedFrameSize;
     }
   }
 
@@ -1116,6 +1118,8 @@ export class StatsAnalyzer extends EventsScope {
 
       this.statsResults[mediaType][sendrecvType].lastPacketReceivedTimestamp =
         result.lastPacketReceivedTimestamp;
+      this.statsResults[mediaType][sendrecvType].requestedBitrate = result.requestedBitrate;
+      this.statsResults[mediaType][sendrecvType].requestedFrameSize = result.requestedFrameSize;
 
       // From Thin
       this.statsResults[mediaType][sendrecvType].totalNackCount = result.nackCount;

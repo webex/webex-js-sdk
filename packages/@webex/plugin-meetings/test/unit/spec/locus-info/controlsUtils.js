@@ -269,6 +269,26 @@ describe('plugin-meetings', () => {
         assert.equal(updates.hasInterpretationChanged, false);
       });
 
+      it('returns hasManualCaptionChanged = true when it has changed', () => {
+        const newControls = {
+          manualCaptionControl: {enabled: false},
+        };
+
+        const {updates} = ControlsUtils.getControls({manualCaptionControl: {enabled: true}}, newControls);
+
+        assert.equal(updates.hasManualCaptionChanged, true);
+      });
+
+      it('returns hasManualCaptionChanged = false when it has not changed', () => {
+        const newControls = {
+          manualCaptionControl: {enabled: true},
+        };
+
+        const {updates} = ControlsUtils.getControls({manualCaptionControl: {enabled: true}}, newControls);
+
+        assert.equal(updates.hasManualCaptionChanged, false);
+      });
+
       describe('videoEnabled', () => {
         const testVideoEnabled = (oldControls, newControls, updatedProperty) => {
           const result = ControlsUtils.getControls(oldControls, newControls);

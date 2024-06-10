@@ -792,6 +792,7 @@ export default class LocusInfo extends EventsScope {
           hasRecordingPausedChanged,
           hasMeetingContainerChanged,
           hasTranscribeChanged,
+          hasManualCaptionChanged,
           hasEntryExitToneChanged,
           hasBreakoutChanged,
           hasVideoEnabledChanged,
@@ -919,6 +920,21 @@ export default class LocusInfo extends EventsScope {
           {
             transcribing,
             caption,
+          }
+        );
+      }
+
+      if (hasManualCaptionChanged) {
+        const {enabled} = current.manualCaptionControl;
+
+        this.emitScoped(
+          {
+            file: 'locus-info',
+            function: 'updateControls',
+          },
+          LOCUSINFO.EVENTS.CONTROLS_MEETING_MANUAL_CAPTION_UPDATED,
+          {
+            enabled,
           }
         );
       }
