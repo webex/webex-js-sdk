@@ -1383,22 +1383,12 @@ export default class Meetings extends WebexPlugin {
 
   /**
    * Get all meetings.
-   * @param {object} options
-   * @param {object} options.startDate - get meetings after this start date
-   * @param {object} options.endDate - get meetings before this end date
    * @returns {Object} All currently active meetings.
    * @public
    * @memberof Meetings
    */
-  public getAllMeetings(
-    options: {
-      startDate: object;
-      endDate: object;
-    } = {} as any
-  ) {
-    // Options may include other parameters to filter this collection
-    // of meetings.
-    return this.meetingCollection.getAll(options);
+  public getAllMeetings() {
+    return this.meetingCollection.getAll();
   }
 
   /**
