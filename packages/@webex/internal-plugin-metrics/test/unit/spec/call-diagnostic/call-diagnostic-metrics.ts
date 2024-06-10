@@ -2368,5 +2368,20 @@ describe('internal-plugin-metrics', () => {
         assert.isFalse(cd.isServiceErrorExpected(999999));
       });
     });
+
+    describe.only('#setDeviceInfo', () => {
+      // The method is called in beforeEach itself. We are just testing it here
+      it('sets the received deviceInfo to call-diagnostics', () => {
+        const webexLoggerLogCalls = webex.logger.log.getCalls();
+        const device = { userId: 'userId', url: 'deviceUrl', orgId: 'orgId' };
+
+        assert.deepEqual(webexLoggerLogCalls[0].args, [
+          'CallDiagnosticMetrics: @setDeviceInfo called',
+          device
+        ]);
+
+        assert.deepEqual(cd.device, device);
+      });
+    });
   });
 });
