@@ -1649,7 +1649,7 @@ describe('plugin-meetings', () => {
           };
           meeting.mediaProperties.setMediaDirection = sinon.stub().returns(true);
           meeting.mediaProperties.waitForMediaConnectionConnected = sinon.stub().resolves();
-          meeting.mediaProperties.getCurrentConnectionType = sinon.stub().resolves('udp');
+          meeting.mediaProperties.getCurrentConnectionInfo = sinon.stub().resolves({connectionType: 'udp', selectedCandidatePairChanges: 2, numTransports: 1});
           meeting.audio = muteStateStub;
           meeting.video = muteStateStub;
           sinon.stub(Media, 'createMediaConnection').returns(fakeMediaConnection);
@@ -1755,6 +1755,8 @@ describe('plugin-meetings', () => {
               iceConnectionState: 'unknown',
               someReachabilityMetric1: 'some value1',
               someReachabilityMetric2: 'some value2',
+              selectedCandidatePairChanges: 2,
+              numTransports: 1,
             }
           );
         });
@@ -1860,6 +1862,8 @@ describe('plugin-meetings', () => {
               iceConnectionState: 'unknown',
               someReachabilityMetric1: 'some value1',
               someReachabilityMetric2: 'some value2',
+              selectedCandidatePairChanges: 2,
+              numTransports: 1,
             }
           );
         });
@@ -2337,6 +2341,8 @@ describe('plugin-meetings', () => {
               signalingState: 'unknown',
               connectionState: 'unknown',
               iceConnectionState: 'unknown',
+              selectedCandidatePairChanges: 2,
+              numTransports: 1,
             },
           ]);
 
@@ -2515,6 +2521,8 @@ describe('plugin-meetings', () => {
               correlation_id: meeting.correlationId,
               locus_id: meeting.locusUrl.split('/').pop(),
               connectionType: 'udp',
+              selectedCandidatePairChanges: 2,
+              numTransports: 1,
               isMultistream: false,
               retriedWithTurnServer: true,
               isJoinWithMediaRetry: false,
@@ -2658,6 +2666,8 @@ describe('plugin-meetings', () => {
               correlation_id: meeting.correlationId,
               locus_id: meeting.locusUrl.split('/').pop(),
               connectionType: 'udp',
+              selectedCandidatePairChanges: 2,
+              numTransports: 1,
               isMultistream: false,
               retriedWithTurnServer: false,
               isJoinWithMediaRetry: false,
@@ -2723,6 +2733,8 @@ describe('plugin-meetings', () => {
               signalingState: 'unknown',
               connectionState: 'unknown',
               iceConnectionState: 'unknown',
+              selectedCandidatePairChanges: 2,
+              numTransports: 1,
             }
           );
 
@@ -3141,7 +3153,7 @@ describe('plugin-meetings', () => {
             meeting.mediaId = 'fake media id';
             meeting.selfUrl = 'selfUrl';
             meeting.mediaProperties.waitForMediaConnectionConnected = sinon.stub().resolves();
-            meeting.mediaProperties.getCurrentConnectionType = sinon.stub().resolves('udp');
+            meeting.mediaProperties.getCurrentConnectionInfo = sinon.stub().resolves({connectionType: 'udp', selectedCandidatePairChanges: 2, numTransports: 1});
             meeting.setMercuryListener = sinon.stub();
             meeting.locusInfo.onFullLocus = sinon.stub();
             meeting.webex.meetings.geoHintInfo = {regionCode: 'EU', countryCode: 'UK'};

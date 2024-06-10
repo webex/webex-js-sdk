@@ -6812,7 +6812,8 @@ export default class Meeting extends StatelessWebexPlugin {
         await this.enqueueScreenShareFloorRequest();
       }
 
-      const connectionType = await this.mediaProperties.getCurrentConnectionType();
+      const {connectionType, selectedCandidatePairChanges, numTransports} =
+        await this.mediaProperties.getCurrentConnectionInfo();
       // @ts-ignore
       const reachabilityStats = await this.webex.meetings.reachability.getReachabilityMetrics();
 
@@ -6820,6 +6821,8 @@ export default class Meeting extends StatelessWebexPlugin {
         correlation_id: this.correlationId,
         locus_id: this.locusUrl.split('/').pop(),
         connectionType,
+        selectedCandidatePairChanges,
+        numTransports,
         isMultistream: this.isMultistream,
         retriedWithTurnServer: this.retriedWithTurnServer,
         isJoinWithMediaRetry: this.joinWithMediaRetryInfo.isRetry,
@@ -6844,12 +6847,17 @@ export default class Meeting extends StatelessWebexPlugin {
       // @ts-ignore
       const reachabilityMetrics = await this.webex.meetings.reachability.getReachabilityMetrics();
 
+      const {selectedCandidatePairChanges, numTransports} =
+        await this.mediaProperties.getCurrentConnectionInfo();
+
       Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.ADD_MEDIA_FAILURE, {
         correlation_id: this.correlationId,
         locus_id: this.locusUrl.split('/').pop(),
         reason: error.message,
         stack: error.stack,
         code: error.code,
+        selectedCandidatePairChanges,
+        numTransports,
         turnDiscoverySkippedReason: this.turnDiscoverySkippedReason,
         turnServerUsed: this.turnServerUsed,
         retriedWithTurnServer: this.retriedWithTurnServer,
