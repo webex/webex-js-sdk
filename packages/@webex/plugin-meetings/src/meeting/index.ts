@@ -5489,6 +5489,28 @@ export default class Meeting extends StatelessWebexPlugin {
           },
         };
 
+        const streamsToUnpublish = [];
+
+        if (this.mediaProperties?.audioStream) {
+          streamsToUnpublish.push(this.mediaProperties?.audioStream);
+        }
+
+        if (this.mediaProperties?.videoStream) {
+          streamsToUnpublish.push(this.mediaProperties?.videoStream);
+        }
+
+        if (this.mediaProperties?.shareAudioStream) {
+          streamsToUnpublish.push(this.mediaProperties?.shareAudioStream);
+        }
+
+        if (this.mediaProperties?.shareVideoStream) {
+          streamsToUnpublish.push(this.mediaProperties?.shareVideoStream);
+        }
+
+        if (streamsToUnpublish.length) {
+          this.unpublishStreams(streamsToUnpublish);
+        }
+
         this.cleanupLocalStreams();
 
         this.mediaProperties.setMediaDirection(mediaSettings.mediaDirection);
@@ -5496,10 +5518,7 @@ export default class Meeting extends StatelessWebexPlugin {
 
         // when a move to is intiated by the client , Locus delets the existing media node from the server as soon the DX answers the meeting
         // once the DX answers we establish connection back the media server with only receiveShare enabled
-        // @ts-ignore - reconnectMedia does not accept any argument
-        await this.reconnectionManager.reconnectMedia(mediaSettings).then(() => {
-          Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.MOVE_TO_SUCCESS);
-        });
+        Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.MOVE_TO_SUCCESS);
       } catch (error) {
         LoggerProxy.logger.error('Meeting:index#moveTo --> Failed to moveTo resourceId', error);
         Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.MOVE_TO_FAILURE, {
