@@ -2369,7 +2369,7 @@ describe('internal-plugin-metrics', () => {
       });
     });
 
-    describe.only('#setDeviceInfo', () => {
+    describe('#setDeviceInfo', () => {
       // The method is called in beforeEach itself. We are just testing it here
       it('sets the received deviceInfo to call-diagnostics', () => {
         const webexLoggerLogCalls = webex.logger.log.getCalls();
