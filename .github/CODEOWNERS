@@ -3,7 +3,7 @@
 *                                                                      @webex/web-sdk
 
 
-# Web Client Team Ownership
+# Commonly Owned Packages
 
 packages/@webex/webex-core                                @webex/web-client @webex/web-sdk
 packages/@webex/common                                    @webex/web-client @webex/web-sdk
