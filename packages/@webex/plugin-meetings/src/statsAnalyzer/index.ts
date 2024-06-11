@@ -10,7 +10,6 @@ import {
   MQA_INTERVAL,
   NETWORK_TYPE,
   _UNKNOWN_,
-  CALLING_SERVICE_TYPE,
   MEDIA_DEVICES,
 } from '../constants';
 import {
@@ -388,7 +387,6 @@ export class StatsAnalyzer extends EventsScope {
     }
 
     newMqa.networkType = this.statsResults.connectionType.local.networkType;
-    newMqa.callingServiceType = CALLING_SERVICE_TYPE.TYPE_LOCUS;
 
     this.mqaSentCount += 1;
 

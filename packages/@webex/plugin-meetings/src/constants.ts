@@ -1326,8 +1326,3 @@ export const MEETING_PERMISSION_TOKEN_REFRESH_REASON = 'ttl-join';
 
 // constant for named media group type
 export const NAMED_MEDIA_GROUP_TYPE_AUDIO = 1;
-
-// constant for statsAnalyzer report.callingServiceType
-export enum CALLING_SERVICE_TYPE {
-  TYPE_LOCUS = 'LOCUS',
-}
