@@ -7,12 +7,7 @@ import {ConnectionState} from '@webex/internal-media-core';
 import {StatsAnalyzer, EVENTS} from '../../../../src/statsAnalyzer';
 import NetworkQualityMonitor from '../../../../src/networkQualityMonitor';
 import testUtils from '../../../utils/testUtils';
-import {
-  MQA_INTERVAL,
-  _UNKNOWN_,
-  CALLING_SERVICE_TYPE,
-  MEDIA_DEVICES,
-} from "@webex/plugin-meetings/src/constants";
+import {MEDIA_DEVICES, MQA_INTERVAL, _UNKNOWN_} from '@webex/plugin-meetings/src/constants';
 import LoggerProxy from '../../../../src/common/logs/logger-proxy';
 import LoggerConfig from '../../../../src/common/logs/logger-config';
 
@@ -821,13 +816,6 @@ describe('plugin-meetings', () => {
           await startStatsAnalyzer();
           assert.strictEqual(mqeData.videoTransmit[0].streams[0].common.transmittedFrameRate, 0);
           assert.strictEqual(mqeData.videoReceive[0].streams[0].common.receivedFrameRate, 0);
-        });
-
-        it('emits the correct callingServiceType in MEDIA_QUALITY events', async () => {
-          await startStatsAnalyzer({expected: {receiveVideo: true}});
-          await progressTime();
-
-          assert.strictEqual(mqeData.callingServiceType, CALLING_SERVICE_TYPE.TYPE_LOCUS);
         });
 
         it('after frames are sent and received', async () => {

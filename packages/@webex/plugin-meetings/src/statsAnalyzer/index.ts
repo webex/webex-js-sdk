@@ -9,8 +9,8 @@ import {
   STATS,
   MQA_INTERVAL,
   NETWORK_TYPE,
-  _UNKNOWN_,
   MEDIA_DEVICES,
+  _UNKNOWN_,
 } from '../constants';
 import {
   emptyAudioReceive,
