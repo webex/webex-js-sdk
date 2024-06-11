@@ -172,7 +172,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
           method: this.detectNetworkChange.name,
         });
 
-        line.registration.clearKeepaliveTimer();
+        // line.registration.clearKeepaliveTimer();
 
         retry = true;
       }
