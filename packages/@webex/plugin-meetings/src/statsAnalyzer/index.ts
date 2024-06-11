@@ -4,7 +4,14 @@ import {cloneDeep, isEmpty} from 'lodash';
 import {ConnectionState} from '@webex/internal-media-core';
 
 import EventsScope from '../common/events/events-scope';
-import {DEFAULT_GET_STATS_FILTER, STATS, MQA_INTERVAL, NETWORK_TYPE, _UNKNOWN_} from '../constants';
+import {
+  DEFAULT_GET_STATS_FILTER,
+  STATS,
+  MQA_INTERVAL,
+  NETWORK_TYPE,
+  MEDIA_DEVICES,
+  _UNKNOWN_,
+} from '../constants';
 import {
   emptyAudioReceive,
   emptyAudioTransmit,
@@ -360,13 +367,12 @@ export class StatsAnalyzer extends EventsScope {
     newMqa.intervalMetadata.peerReflexiveIP = this.statsResults.connectionType.local.ipAddress;
 
     // Adding peripheral information
-    newMqa.intervalMetadata.speakerInfo = {
-      deviceName: _UNKNOWN_,
-    };
+    newMqa.intervalMetadata.peripherals.push({information: _UNKNOWN_, name: MEDIA_DEVICES.SPEAKER});
     if (this.statsResults['audio-send']) {
-      newMqa.intervalMetadata.microphoneInfo = {
-        deviceName: this.statsResults['audio-send'].trackLabel || _UNKNOWN_,
-      };
+      newMqa.intervalMetadata.peripherals.push({
+        information: this.statsResults['audio-send'].trackLabel || _UNKNOWN_,
+        name: MEDIA_DEVICES.MICROPHONE,
+      });
     }
 
     const existingVideoSender = Object.keys(this.statsResults).find((item) =>
@@ -374,9 +380,10 @@ export class StatsAnalyzer extends EventsScope {
     );
 
     if (existingVideoSender) {
-      newMqa.intervalMetadata.cameraInfo = {
-        deviceName: this.statsResults[existingVideoSender].trackLabel || _UNKNOWN_,
-      };
+      newMqa.intervalMetadata.peripherals.push({
+        information: this.statsResults[existingVideoSender].trackLabel || _UNKNOWN_,
+        name: MEDIA_DEVICES.CAMERA,
+      });
     }
 
     newMqa.networkType = this.statsResults.connectionType.local.networkType;
@@ -997,6 +1004,8 @@ export class StatsAnalyzer extends EventsScope {
       this.statsResults[mediaType][sendrecvType].headerBytesSent = result.headerBytesSent;
       this.statsResults[mediaType][sendrecvType].retransmittedBytesSent =
         result.retransmittedBytesSent;
+      this.statsResults[mediaType][sendrecvType].requestedBitrate = result.requestedBitrate;
+      this.statsResults[mediaType][sendrecvType].requestedFrameSize = result.requestedFrameSize;
     }
   }
 
@@ -1109,6 +1118,8 @@ export class StatsAnalyzer extends EventsScope {
 
       this.statsResults[mediaType][sendrecvType].lastPacketReceivedTimestamp =
         result.lastPacketReceivedTimestamp;
+      this.statsResults[mediaType][sendrecvType].requestedBitrate = result.requestedBitrate;
+      this.statsResults[mediaType][sendrecvType].requestedFrameSize = result.requestedFrameSize;
 
       // From Thin
       this.statsResults[mediaType][sendrecvType].totalNackCount = result.nackCount;

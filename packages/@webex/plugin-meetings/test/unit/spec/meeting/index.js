@@ -658,6 +658,9 @@ describe('plugin-meetings', () => {
           assert.calledOnceWithExactly(meeting.addMedia, mediaOptions, fakeTurnServerInfo);
 
           assert.deepEqual(result, {join: fakeJoinResult, media: test4});
+
+          // resets joinWithMediaRetryInfo
+          assert.deepEqual(meeting.joinWithMediaRetryInfo, {isRetry: false, prevJoinResponse: undefined});
         });
 
         it("should not call handleTurnDiscoveryHttpResponse if we don't send a TURN discovery request with join", async () => {
@@ -719,8 +722,9 @@ describe('plugin-meetings', () => {
 
           await assert.isRejected(meeting.joinWithMedia({mediaOptions: {allowMediaInLobby: true}}));
 
-          assert.calledOnceWithExactly(abortTurnDiscoveryStub);
+          assert.calledTwice(abortTurnDiscoveryStub);
 
+          assert.calledTwice(Metrics.sendBehavioralMetric);
           assert.calledWith(
             Metrics.sendBehavioralMetric,
             BEHAVIORAL_METRICS.JOIN_WITH_MEDIA_FAILURE,
@@ -730,11 +734,67 @@ describe('plugin-meetings', () => {
               reason: error.message,
               stack: error.stack,
               leaveErrorReason: undefined,
+              isRetry: false,
             },
             {
               type: error.name,
             }
           );
+          assert.calledWith(
+            Metrics.sendBehavioralMetric,
+            BEHAVIORAL_METRICS.JOIN_WITH_MEDIA_FAILURE,
+            {
+              correlation_id: meeting.correlationId,
+              locus_id: undefined,
+              reason: error.message,
+              stack: error.stack,
+              leaveErrorReason: undefined,
+              isRetry: true,
+            },
+            {
+              type: error.name,
+            }
+          );
+
+          // resets joinWithMediaRetryInfo
+          assert.deepEqual(meeting.joinWithMediaRetryInfo, {isRetry: false, prevJoinResponse: undefined});
+        });
+
+        it('should resolve if join() fails the first time but succeeds the second time', async () => {
+          const error = new Error('fake');
+          meeting.join = sinon.stub().onFirstCall().returns(Promise.reject(error)).onSecondCall().returns(Promise.resolve(fakeJoinResult));
+          const leaveStub = sinon.stub(meeting, 'leave').resolves();
+
+          const result = await meeting.joinWithMedia({
+            joinOptions,
+            mediaOptions,
+          });
+
+          assert.calledOnce(abortTurnDiscoveryStub);
+          assert.calledTwice(meeting.join);
+          assert.notCalled(leaveStub);
+
+          assert.calledOnce(Metrics.sendBehavioralMetric);
+          assert.calledWith(
+            Metrics.sendBehavioralMetric.firstCall,
+            BEHAVIORAL_METRICS.JOIN_WITH_MEDIA_FAILURE,
+            {
+              correlation_id: meeting.correlationId,
+              locus_id: meeting.locusUrl.split('/').pop(),
+              reason: error.message,
+              stack: error.stack,
+              leaveErrorReason: undefined,
+              isRetry: false,
+            },
+            {
+              type: error.name,
+            }
+          );
+
+          assert.deepEqual(result, {join: fakeJoinResult, media: test4});
+
+          // resets joinWithMediaRetryInfo
+          assert.deepEqual(meeting.joinWithMediaRetryInfo, {isRetry: false, prevJoinResponse: undefined});
         });
 
         it('should fail if called with allowMediaInLobby:false', async () => {
@@ -767,8 +827,26 @@ describe('plugin-meetings', () => {
             reason: 'joinWithMedia failure',
           });
 
+
+          // Behavioral metric is sent on both calls of joinWithMedia
+          assert.calledTwice(Metrics.sendBehavioralMetric);
           assert.calledWith(
-            Metrics.sendBehavioralMetric,
+            Metrics.sendBehavioralMetric.firstCall,
+            BEHAVIORAL_METRICS.JOIN_WITH_MEDIA_FAILURE,
+            {
+              correlation_id: meeting.correlationId,
+              locus_id: meeting.locusUrl.split('/').pop(),
+              reason: addMediaError.message,
+              stack: addMediaError.stack,
+              leaveErrorReason: undefined,
+              isRetry: false,
+            },
+            {
+              type: addMediaError.name,
+            }
+          );
+          assert.calledWith(
+            Metrics.sendBehavioralMetric.secondCall,
             BEHAVIORAL_METRICS.JOIN_WITH_MEDIA_FAILURE,
             {
               correlation_id: meeting.correlationId,
@@ -776,6 +854,47 @@ describe('plugin-meetings', () => {
               reason: addMediaError.message,
               stack: addMediaError.stack,
               leaveErrorReason: leaveError.message,
+              isRetry: true,
+            },
+            {
+              type: addMediaError.name,
+            }
+          );
+        });
+
+        it('should not call leave() if addMedia fails the first time and succeeds the second time and should only call join() once', async () => {
+          const addMediaError = new Error('fake addMedia error');
+          const leaveError = new Error('leave error');
+          const leaveStub = sinon.stub(meeting, 'leave').rejects(leaveError);
+
+          meeting.addMedia = sinon
+            .stub()
+            .onFirstCall()
+            .rejects(addMediaError)
+            .onSecondCall()
+            .resolves(test4);
+
+          const result = await meeting.joinWithMedia({
+            joinOptions,
+            mediaOptions,
+          });
+
+          assert.deepEqual(result, {join: fakeJoinResult, media: test4});
+
+          assert.calledOnce(meeting.join);
+          assert.notCalled(leaveStub);
+
+          assert.calledOnce(Metrics.sendBehavioralMetric);
+          assert.calledWith(
+            Metrics.sendBehavioralMetric.firstCall,
+            BEHAVIORAL_METRICS.JOIN_WITH_MEDIA_FAILURE,
+            {
+              correlation_id: meeting.correlationId,
+              locus_id: meeting.locusUrl.split('/').pop(),
+              reason: addMediaError.message,
+              stack: addMediaError.stack,
+              leaveErrorReason: undefined,
+              isRetry: false,
             },
             {
               type: addMediaError.name,
@@ -802,7 +921,7 @@ describe('plugin-meetings', () => {
           webex.internal.voicea.on = sinon.stub();
           webex.internal.voicea.off = sinon.stub();
           webex.internal.voicea.listenToEvents = sinon.stub();
-          webex.internal.voicea.toggleTranscribing = sinon.stub();
+          webex.internal.voicea.turnOnCaptions = sinon.stub();
         });
 
         it('should subscribe to events for the first time and avoid subscribing for future transcription starts', async () => {
@@ -817,17 +936,16 @@ describe('plugin-meetings', () => {
           assert.equal(webex.internal.voicea.on.callCount, 4);
           assert.equal(meeting.areVoiceaEventsSetup, true);
           assert.equal(webex.internal.voicea.listenToEvents.callCount, 1);
-          assert.calledWith(webex.internal.voicea.toggleTranscribing, true);
+          assert.called(webex.internal.voicea.turnOnCaptions);
 
           await meeting.startTranscription();
           assert.equal(webex.internal.voicea.on.callCount, 4);
           assert.equal(meeting.areVoiceaEventsSetup, true);
           assert.equal(webex.internal.voicea.listenToEvents.callCount, 1);
-          assert.calledTwice(webex.internal.voicea.toggleTranscribing);
-          assert.calledWith(webex.internal.voicea.toggleTranscribing, true);
+          assert.calledTwice(webex.internal.voicea.turnOnCaptions);
         });
 
-        it('should listen to events and not toggleTranscribing if the user is not a host', async () => {
+        it('should listen to events and not turnOnCaptions if the user is not a host', async () => {
           meeting.joinedWith = {
             state: 'JOINED',
           };
@@ -839,7 +957,7 @@ describe('plugin-meetings', () => {
           assert.equal(webex.internal.voicea.on.callCount, 4);
           assert.equal(meeting.areVoiceaEventsSetup, true);
           assert.equal(webex.internal.voicea.listenToEvents.callCount, 1);
-          assert.notCalled(webex.internal.voicea.toggleTranscribing);
+          assert.notCalled(webex.internal.voicea.turnOnCaptions);
         });
 
         it("should throw error if request doesn't work", async () => {
@@ -858,7 +976,7 @@ describe('plugin-meetings', () => {
           webex.internal.voicea.on = sinon.stub();
           webex.internal.voicea.off = sinon.stub();
           webex.internal.voicea.listenToEvents = sinon.stub();
-          webex.internal.voicea.toggleTranscribing = sinon.stub();
+          webex.internal.voicea.turnOnCaptions = sinon.stub();
         });
 
         it('should stop listening to voicea events and also trigger a stop event', () => {
@@ -1631,6 +1749,7 @@ describe('plugin-meetings', () => {
               turnServerUsed: true,
               retriedWithTurnServer: false,
               isMultistream: false,
+              isJoinWithMediaRetry: false,
               signalingState: 'unknown',
               connectionState: 'unknown',
               iceConnectionState: 'unknown',
@@ -1735,6 +1854,7 @@ describe('plugin-meetings', () => {
               turnServerUsed: true,
               retriedWithTurnServer: false,
               isMultistream: false,
+              isJoinWithMediaRetry: false,
               signalingState: 'unknown',
               connectionState: 'unknown',
               iceConnectionState: 'unknown',
@@ -2213,6 +2333,7 @@ describe('plugin-meetings', () => {
               turnServerUsed: true,
               retriedWithTurnServer: true,
               isMultistream: false,
+              isJoinWithMediaRetry: false,
               signalingState: 'unknown',
               connectionState: 'unknown',
               iceConnectionState: 'unknown',
@@ -2396,6 +2517,7 @@ describe('plugin-meetings', () => {
               connectionType: 'udp',
               isMultistream: false,
               retriedWithTurnServer: true,
+              isJoinWithMediaRetry: false,
             },
           ]);
           meeting.roap.doTurnDiscovery;
@@ -2538,6 +2660,7 @@ describe('plugin-meetings', () => {
               connectionType: 'udp',
               isMultistream: false,
               retriedWithTurnServer: false,
+              isJoinWithMediaRetry: false,
               someReachabilityMetric1: 'some value1',
               someReachabilityMetric2: 'some value2',
             }
@@ -2596,6 +2719,7 @@ describe('plugin-meetings', () => {
               turnServerUsed: true,
               retriedWithTurnServer: false,
               isMultistream: false,
+              isJoinWithMediaRetry: false,
               signalingState: 'unknown',
               connectionState: 'unknown',
               iceConnectionState: 'unknown',
@@ -8098,6 +8222,21 @@ describe('plugin-meetings', () => {
             meeting,
             {file: 'meeting/index', function: 'setupLocusControlsListener'},
             EVENT_TRIGGERS.MEETING_INTERPRETATION_UPDATE
+          );
+        });
+
+        it('listens to the locus manual caption update event', () => {
+          meeting.locusInfo.emit(
+            {function: 'test', file: 'test'},
+            'CONTROLS_MEETING_MANUAL_CAPTION_UPDATED',
+            {enable: true}
+          );
+
+          assert.calledWith(
+            TriggerProxy.trigger,
+            meeting,
+            {file: 'meeting/index', function: 'setupLocusControlsListener'},
+            EVENT_TRIGGERS.MEETING_MANUAL_CAPTION_UPDATED
           );
         });
       });
