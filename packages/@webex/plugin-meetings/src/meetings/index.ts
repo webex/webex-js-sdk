@@ -1515,15 +1515,6 @@ export default class Meetings extends WebexPlugin {
   }
 
   /**
-   * Get all scheduled meetings.
-   * @returns {Object} All scheduled meetings.
-   * @memberof Meetings
-   */
-  getScheduledMeetings() {
-    return this.meetingCollection.getAll();
-  }
-
-  /**
    * Get the logger instance for plugin-meetings
    * @returns {Logger}
    */
