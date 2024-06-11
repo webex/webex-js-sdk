@@ -273,6 +273,17 @@ describe('plugin-device', () => {
         assert.notCalled(webex.internal.newMetrics.submitInternalEvent);
       });
 
+      it('sets the deviceInfo for call diagnostic metrics', async () => {
+        setup();
+        sinon.stub(device, 'canRegister').callsFake(() => Promise.resolve());
+        sinon.spy(device, 'request');
+
+        await device.register();
+
+        assert.called(webex.internal.newMetrics.callDiagnosticMetrics.setDeviceInfo);
+
+      });
+
     });
 
     describe('#processRegistrationSuccess()', () => {
@@ -469,20 +480,6 @@ describe('plugin-device', () => {
         checkFeature('developer', '1', true);
         checkFeature('entitlement', '2', false);
         checkFeature('user', '3', false);
-      });
-
-      it('sets the deviceInfo for call diagnostic metrics', () => {
-        const clonedDTO = getClonedDTO();
-
-        const response = {
-          body: {
-            ...clonedDTO,
-          },
-        };
-
-        device.processRegistrationSuccess(response);
-
-        assert.called(webex.internal.newMetrics.callDiagnosticMetrics.setDeviceInfo);
       });
     });
   });
