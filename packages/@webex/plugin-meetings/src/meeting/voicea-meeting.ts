@@ -74,7 +74,12 @@ export const processNewCaptions = ({data, meeting}) => {
       isFinal: data.isFinal,
       translations: value.translations,
       text: value.text,
-      currentCaptionLanguage: value.currentSpokenLanguage,
+      currentCaptionLanguage:
+        meeting.transcription?.languageOptions?.currentCaptionLanguage ||
+        value.currentSpokenLanguage,
+      currentSpokenLanguage:
+        meeting.transcription?.languageOptions?.currentSpokenLanguage ||
+        data.transcripts[0]?.transcript_language_code,
       timestamp: value?.timestamp,
       speaker,
     };
@@ -100,6 +105,7 @@ export const processNewCaptions = ({data, meeting}) => {
         }
       });
       delete transcriptData.interimCaptions[transcriptId];
+      captionData.id = transcriptId;
     }
     transcriptData.captions.push(captionData);
   }
