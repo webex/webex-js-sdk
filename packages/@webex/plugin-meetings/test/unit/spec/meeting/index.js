@@ -6166,6 +6166,7 @@ describe('plugin-meetings', () => {
         beforeEach(() => {
           sandbox = sinon.createSandbox();
           sandbox.stub(meeting, 'cleanupLocalStreams');
+          sandbox.stub(meeting, 'unpublishStreams');
 
           sandbox.stub(meeting.mediaProperties, 'setMediaDirection');
 
@@ -6231,7 +6232,7 @@ describe('plugin-meetings', () => {
           });
         });
 
-        it('should reconnectMedia after DX joins after moveTo', async () => {
+        it('should unpublishStreams on moveTo', async () => {
           await meeting.moveTo('resourceId');
 
           await meeting.locusInfo.emitScoped(
@@ -6243,6 +6244,12 @@ describe('plugin-meetings', () => {
           );
 
           // beacuse we are calling callback so we need to wait
+          assert.calledWith(meeting.unpublishStreams,[
+            meeting.mediaProperties.audioStream,
+            meeting.mediaProperties.videoStream,
+            meeting.mediaProperties.shareAudioStream,
+            meeting.mediaProperties.shareVideoStream,
+          ]);
 
           assert.called(meeting.cleanupLocalStreams);
 
@@ -6250,17 +6257,6 @@ describe('plugin-meetings', () => {
           await Promise.resolve();
 
           assert.called(meeting.mediaProperties.setMediaDirection);
-
-          assert.calledWith(meeting.reconnectionManager.reconnectMedia, {
-            mediaDirection: {
-              sendVideo: false,
-              receiveVideo: false,
-              sendAudio: false,
-              receiveAudio: false,
-              sendShare: false,
-              receiveShare: true,
-            },
-          });
         });
 
         it('should throw an error if moveTo call fails', async () => {

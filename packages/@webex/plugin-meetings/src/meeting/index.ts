@@ -5489,27 +5489,12 @@ export default class Meeting extends StatelessWebexPlugin {
           },
         };
 
-        const streamsToUnpublish = [];
-
-        if (this.mediaProperties?.audioStream) {
-          streamsToUnpublish.push(this.mediaProperties?.audioStream);
-        }
-
-        if (this.mediaProperties?.videoStream) {
-          streamsToUnpublish.push(this.mediaProperties?.videoStream);
-        }
-
-        if (this.mediaProperties?.shareAudioStream) {
-          streamsToUnpublish.push(this.mediaProperties?.shareAudioStream);
-        }
-
-        if (this.mediaProperties?.shareVideoStream) {
-          streamsToUnpublish.push(this.mediaProperties?.shareVideoStream);
-        }
-
-        if (streamsToUnpublish.length) {
-          this.unpublishStreams(streamsToUnpublish);
-        }
+        this.unpublishStreams([
+          this.mediaProperties.audioStream,
+          this.mediaProperties.videoStream,
+          this.mediaProperties.shareAudioStream,
+          this.mediaProperties.shareVideoStream,
+        ]);
 
         this.cleanupLocalStreams();
 
