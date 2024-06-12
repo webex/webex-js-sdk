@@ -2,7 +2,7 @@ import {ERROR_DICTIONARY} from '../../constants';
 import ReconnectionError from './reconnection';
 
 /**
- * Extended Error object to signify the intent to join for unclaimed PMR scenarios
+ * Error object for cases when new reconnection cannot be started
  */
 export default class ReconnectionNotStartedError extends ReconnectionError {
   /**
