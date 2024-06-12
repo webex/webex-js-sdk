@@ -12,6 +12,7 @@ import {Credentials, Token, WebexPlugin} from '@webex/webex-core';
 import Support from '@webex/internal-plugin-support';
 import MockWebex from '@webex/test-helper-mock-webex';
 import StaticConfig from '@webex/plugin-meetings/src/common/config';
+import ReconnectionNotStartedError from '@webex/plugin-meetings/src/common/errors/reconnection-not-started';
 import {Defer} from '@webex/common';
 import {
   FLOOR_ACTION,
@@ -6914,21 +6915,13 @@ describe('plugin-meetings', () => {
               }),
             };
             meeting.setupMediaConnectionListeners();
-            meeting.deferSDPAnswer = {
-              resolve: sinon.stub(),
-              reject: sinon.stub(),
-            };
             meeting.sdpResponseTimer = '1234';
-            meeting.mediaProperties.waitForMediaConnectionConnected = sinon.stub().resolves();
+            sinon.stub(meeting.mediaProperties, 'waitForMediaConnectionConnected').resolves();
 
-            eventListeners[Event.REMOTE_SDP_ANSWER_PROCESSED]();
             meeting.config.reconnection.enabled = true;
             meeting.currentMediaStatus = {audio: true};
             meeting.reconnectionManager = new ReconnectionManager(meeting);
-            meeting.reconnectionManager.reconnect = sinon.stub().returns(Promise.resolve());
-            meeting.reconnectionManager.reset = sinon.stub().returns(true);
-            meeting.reconnectionManager.cleanup = sinon.stub().returns(true);
-            meeting.reconnectionManager.setStatus = sinon.stub();
+            sinon.stub(meeting.reconnectionManager, 'reconnect').returns(Promise.resolve());
           });
 
           it('should throw error if media not established before trying reconnect', async () => {
@@ -6948,71 +6941,39 @@ describe('plugin-meetings', () => {
             }
           });
 
-          it('should trigger reconnection success and send CA metric', async () => {
-            await meeting.reconnect();
+          it('should call the right functions', async () => {
+            const options = {id: 'fake options'};
+            await meeting.reconnect(options);
 
-            assert.calledWith(
-              TriggerProxy.trigger,
-              sinon.match.instanceOf(Meeting),
-              {file: 'meeting/index', function: 'reconnect'},
-              'meeting:reconnectionSuccess'
-            );
-            assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
-              name: 'client.media.recovered',
-              payload: {
-                recoveredBy: 'new',
-              },
-              options: {
-                meetingId: meeting.id,
-              },
-            });
+            sinon.stub(meeting, 'waitForRemoteSDPAnswer').resolves();
+
             assert.calledOnceWithExactly(
-              meeting.reconnectionManager.setStatus,
-              RECONNECTION.STATE.COMPLETE
+              meeting.reconnectionManager.reconnect,
+              options,
+              sinon.match.any
             );
-          });
+            const callback = meeting.reconnectionManager.reconnect.getCalls()[0].args[1];
 
-          it('should reset after reconnection success', async () => {
-            await meeting.reconnect();
-            assert.calledOnce(meeting.reconnectionManager.reset);
+            // call the completion callback
+            assert.isFunction(callback);
+            await callback();
+
+            // check that the right things were called by the callback
+            assert.calledOnceWithExactly(meeting.waitForRemoteSDPAnswer);
+            assert.calledOnceWithExactly(meeting.mediaProperties.waitForMediaConnectionConnected);
           });
         });
 
         describe('unsuccessful reconnect', () => {
+          let logUploadSpy;
+
           beforeEach(() => {
-            meeting.config.reconnection.enabled = true;
+            logUploadSpy = sinon.spy(meeting, 'uploadLogs');
             meeting.currentMediaStatus = {audio: true};
             meeting.reconnectionManager = new ReconnectionManager(meeting);
             meeting.reconnectionManager.reconnect = sinon
               .stub()
               .returns(Promise.reject(new Error()));
-            meeting.reconnectionManager.reset = sinon.stub().returns(true);
-          });
-
-          it('should trigger an unsuccessful reconnection', async () => {
-            await assert.isRejected(meeting.reconnect());
-            assert.calledWith(
-              TriggerProxy.trigger,
-              sinon.match.instanceOf(Meeting),
-              {file: 'meeting/index', function: 'reconnect'},
-              'meeting:reconnectionFailure',
-              {error: sinon.match.any}
-            );
-          });
-
-          it('should send metrics on reconnect failure', async () => {
-            await assert.isRejected(meeting.reconnect());
-            assert(Metrics.sendBehavioralMetric.calledOnce);
-            assert.calledWith(
-              Metrics.sendBehavioralMetric,
-              BEHAVIORAL_METRICS.MEETING_RECONNECT_FAILURE,
-              {
-                correlation_id: meeting.correlationId,
-                locus_id: meeting.locusUrl.split('/').pop(),
-                reason: sinon.match.any,
-                stack: sinon.match.any,
-              }
-            );
           });
 
           it('should upload logs on reconnect failure', async () => {
@@ -7026,9 +6987,26 @@ describe('plugin-meetings', () => {
             );
           });
 
-          it('should reset after an unsuccessful reconnection', async () => {
+          it('should fail without uploading logs if there is no reconnectionManager', async () => {
+            meeting.reconnectionManager = null;
             await assert.isRejected(meeting.reconnect());
-            assert.calledOnce(meeting.reconnectionManager.reset);
+            assert.notCalled(logUploadSpy);
+          });
+
+          it('should fail without uploading logs if there is no media established', async () => {
+            meeting.currentMediaStatus = null;
+            await assert.isRejected(meeting.reconnect());
+            assert.notCalled(logUploadSpy);
+          });
+
+          it('should resolve if the error is ReconnectionNotStartedError', async () => {
+            meeting.reconnectionManager.reconnect.returns(
+              Promise.reject(new ReconnectionNotStartedError())
+            );
+            await meeting.reconnect();
+
+            // logs shouldn't be uploaded
+            assert.notCalled(logUploadSpy);
           });
         });
       });
