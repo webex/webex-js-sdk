@@ -297,9 +297,8 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     if (correlationId) {
       identifiers.correlationId = correlationId;
     }
-    // @ts-ignore
+
     if (this.device) {
-      // @ts-ignore
       const {device} = this;
       const {installationId} = device?.config || {};
 
@@ -927,11 +926,12 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
   }
 
   /**
-   * This method is used to set the device information by an internal plugin
+   * This method is used to set the device information by internal-plugin-device
    * @param {device} object The webex.internal.device object
    * @returns {undefined}
    */
   public setDeviceInfo(device: any): void {
+    // This was created to fix the circular dependency between internal-plugin-device and internal-plugin-metrics
     this.logger.log('CallDiagnosticMetrics: @setDeviceInfo called', device);
 
     this.device = device;
