@@ -455,6 +455,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
           webClientDomain: window.location.hostname,
         },
         intervals: payload.intervals,
+        callingServiceType: 'LOCUS',
         sourceMetadata: {
           applicationSoftwareType: CLIENT_NAME,
           // @ts-ignore

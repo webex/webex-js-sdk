@@ -1453,6 +1453,7 @@ describe('internal-plugin-metrics', () => {
             },
             eventData: {webClientDomain: 'whatever'},
             intervals: [{}],
+            callingServiceType: 'LOCUS',
             sourceMetadata: {
               applicationSoftwareType: 'webex-js-sdk',
               applicationSoftwareVersion: 'webex-version',
@@ -1488,6 +1489,7 @@ describe('internal-plugin-metrics', () => {
               },
               eventData: {webClientDomain: 'whatever'},
               intervals: [{}],
+              callingServiceType: 'LOCUS',
               sourceMetadata: {
                 applicationSoftwareType: 'webex-js-sdk',
                 applicationSoftwareVersion: 'webex-version',
@@ -1521,6 +1523,7 @@ describe('internal-plugin-metrics', () => {
             },
             eventData: {webClientDomain: 'whatever'},
             intervals: [{}],
+            callingServiceType: 'LOCUS',
             sourceMetadata: {
               applicationSoftwareType: 'webex-js-sdk',
               applicationSoftwareVersion: 'webex-version',
