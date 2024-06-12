@@ -4,6 +4,9 @@ export const emptyMqaInterval = {
   intervalMetadata: {
     peerReflexiveIP: '0.0.0.0',
     peripherals: [],
+    cpuInfo: {
+      numberOfCores: 0,
+    },
     processAverageCPU: 0,
     processMaximumCPU: 0,
     systemAverageCPU: 0,

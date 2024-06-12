@@ -10,6 +10,7 @@ import testUtils from '../../../utils/testUtils';
 import {MEDIA_DEVICES, MQA_INTERVAL, _UNKNOWN_} from '@webex/plugin-meetings/src/constants';
 import LoggerProxy from '../../../../src/common/logs/logger-proxy';
 import LoggerConfig from '../../../../src/common/logs/logger-config';
+import {CpuInfo} from '@webex/web-capabilities';
 
 const {assert} = chai;
 
@@ -2113,6 +2114,14 @@ describe('plugin-meetings', () => {
           }
         });
       });
+
+      it('has correct cpu info about number of cores', async () => {
+        sinon.stub(CpuInfo, 'getNumLogicalCores').returns(12);
+        await startStatsAnalyzer({expected: {receiveVideo: true}});
+
+        await progressTime();
+        assert.equal(mqeData.intervalMetadata.cpuInfo.numberOfCores, 12);
+      })
     });
   });
 });

@@ -1,8 +1,6 @@
-/* eslint-disable prefer-destructuring */
-
 import {cloneDeep, isEmpty} from 'lodash';
+import {CpuInfo} from '@webex/web-capabilities';
 import {ConnectionState} from '@webex/internal-media-core';
-
 import EventsScope from '../common/events/events-scope';
 import {
   DEFAULT_GET_STATS_FILTER,
@@ -398,6 +396,7 @@ export class StatsAnalyzer extends EventsScope {
     });
 
     newMqa.intervalMetadata.peerReflexiveIP = this.statsResults.connectionType.local.ipAddress;
+    newMqa.intervalMetadata.cpuInfo.numberOfCores = CpuInfo.getNumLogicalCores();
 
     // Adding peripheral information
     newMqa.intervalMetadata.peripherals.push({information: _UNKNOWN_, name: MEDIA_DEVICES.SPEAKER});
