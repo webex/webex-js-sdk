@@ -396,9 +396,6 @@ describe('plugin-metrics', () => {
             error = e;
           });
 
-          // This is horrific, but stubbing lodash is proving difficult
-          const expectedBatchId = parseInt(uniqueId()) - 1;
-
           // check that promise was rejected with the original error of the webex.request
           assert.deepEqual(err, error);
 
