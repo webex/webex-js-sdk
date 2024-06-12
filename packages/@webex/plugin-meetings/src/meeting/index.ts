@@ -4757,12 +4757,12 @@ export default class Meeting extends StatelessWebexPlugin {
    * @throws TranscriptionNotSupportedError
    */
   isTranscriptionSupported() {
-    if (this.locusInfo.controls.transcribe?.transcribing) {
+    if (this.locusInfo.controls.transcribe?.caption) {
       return true;
     }
 
     LoggerProxy.logger.error(
-      'Meeting:index#isTranscriptionSupported --> Webex Assistant is not enabled/supported'
+      'Meeting:index#isTranscriptionSupported --> Closed Captions is not enabled/supported'
     );
 
     return false;

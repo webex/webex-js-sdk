@@ -36,6 +36,7 @@ interface Transcription {
   translations: {[x: string]: string};
   csis: number[];
   last_packet_timestamp_ms: number;
+  timestamp: string;
 }
 
 /**
