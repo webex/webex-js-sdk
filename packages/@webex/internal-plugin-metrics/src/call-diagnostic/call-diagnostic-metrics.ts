@@ -93,7 +93,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
 
   private logger: any; // to avoid adding @ts-ignore everywhere
   private hasLoggedBrowserSerial: boolean;
-  public device: any;
+  private device: any;
 
   // the default validator before piping an event to the batcher
   // this function can be overridden by the user

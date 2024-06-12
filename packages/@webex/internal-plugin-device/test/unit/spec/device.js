@@ -280,7 +280,7 @@ describe('plugin-device', () => {
 
         await device.register();
 
-        assert.called(webex.internal.newMetrics.callDiagnosticMetrics.setDeviceInfo);
+        assert.calledWith(webex.internal.newMetrics.callDiagnosticMetrics.setDeviceInfo, device);
 
       });
 

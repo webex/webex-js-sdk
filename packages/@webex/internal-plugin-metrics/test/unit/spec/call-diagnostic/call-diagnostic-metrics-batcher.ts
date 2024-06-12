@@ -371,50 +371,49 @@ describe('plugin-metrics', () => {
 
       describe('when the request fails', () => {
         it('does not clear the queue', async () => {
-          // sinon appears to have gap in its api where stub.onCall(n) doesn't
-          // accept a function, so the following is more verbose than one might
-          // desire
-          webex.request = function () {
-            // noop
-          };
-
-          sinon.stub(webex, 'request').callsFake(() => {
-            return Promise.reject("error")
-          });
-
           // avoid setting .sent timestamp
           webex.internal.newMetrics.callDiagnosticMetrics.callDiagnosticEventsBatcher.prepareRequest =
             (q) => Promise.resolve(q);
+
+          const err = new Error('error');
+          webex.request = sinon.stub().returns(Promise.reject(err));
 
           webex.logger.error = sinon.stub();
           webex.logger.log = sinon.stub();
           sinon.stub(Utils, 'generateCommonErrorMetadata').returns('formattedError');
 
-
           const promise = webex.internal.newMetrics.callDiagnosticMetrics.submitToCallDiagnostics({
             event: 'my.event',
           });
 
-          return promiseTick(100)
-            .then(() => assert.lengthOf(webex.internal.newMetrics.callDiagnosticMetrics.callDiagnosticEventsBatcher.queue, 1))
-            .then(() => clock.tick(config.metrics.batcherWait))
-            .then(() => promise)
-            .catch(() => {
-              const calls = webex.logger.error.getCalls();
+          await flushPromises();
+          clock.tick(config.metrics.batcherWait);
 
-              assert.deepEqual(calls[0].args[0], 'call-diagnostic-events -> ');
-              // This is horrific, but stubbing lodash is proving difficult
-              assert.match(
-                calls[0].args[1],
-                /CallDiagnosticEventsBatcher: @submitHttpRequest#ca-batch-\d{0,}\. Request failed:/
-              );
-              assert.deepEqual(calls[0].args[2], `error: formattedError`);
+          let error;
 
-              assert.lengthOf(
-                webex.internal.newMetrics.callDiagnosticMetrics.callDiagnosticEventsBatcher.queue,
-                0
-              );
-            })
+          // catch the expected error and store it
+          await promise.catch((e) => {
+            error = e;
+          });
+
+          // This is horrific, but stubbing lodash is proving difficult
+          const expectedBatchId = parseInt(uniqueId()) - 1;
+
+          // check that promise was rejected with the original error of the webex.request
+          assert.deepEqual(err, error);
+
+          const calls = webex.logger.error.getCalls();
+          assert.deepEqual(calls[0].args[0], 'call-diagnostic-events -> ');
+          // This is horrific, but stubbing lodash is proving difficult
+          assert.match(
+            calls[0].args[1],
+            /CallDiagnosticEventsBatcher: @submitHttpRequest#ca-batch-\d{0,}\. Request failed:/
+          );
+          assert.deepEqual(calls[0].args[2], `error: formattedError`);
+          assert.lengthOf(
+            webex.internal.newMetrics.callDiagnosticMetrics.callDiagnosticEventsBatcher.queue,
+            0
+          );
         });
       });
     });
