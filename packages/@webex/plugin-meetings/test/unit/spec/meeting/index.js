@@ -6169,6 +6169,10 @@ describe('plugin-meetings', () => {
           sandbox.stub(meeting, 'unpublishStreams');
 
           sandbox.stub(meeting.mediaProperties, 'setMediaDirection');
+          meeting.mediaProperties.audioStream = 'audioStream';
+          meeting.mediaProperties.videoStream = 'videoStream';
+          meeting.mediaProperties.shareAudioStream = 'shareAudioStream';
+          meeting.mediaProperties.shareVideoStream = 'shareVideoStream';
 
           sandbox.stub(meeting.reconnectionManager, 'reconnectMedia').returns(Promise.resolve());
           sandbox
