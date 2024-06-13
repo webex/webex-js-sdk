@@ -233,8 +233,8 @@ export const getAudioSenderStreamMqa = ({
   // Get last used effect in this interval
   const lastUsedEffect = statsResults[mediaType][sendrecvType]?.effect;
   let mode = NOISE_REDUCTION_EFFECT_STATS.NONE;
-  if (lastUsedEffect?.mode in NOISE_REDUCTION_EFFECT_STATS) {
-    mode = NOISE_REDUCTION_EFFECT_STATS[lastUsedEffect.mode];
+  if (lastUsedEffect?.noiseReductionMode in NOISE_REDUCTION_EFFECT_STATS) {
+    mode = NOISE_REDUCTION_EFFECT_STATS[lastUsedEffect.noiseReductionMode];
   }
   audioSenderStream.backgroundNoiseReductionMode = mode;
 };
@@ -500,8 +500,8 @@ export const getVideoSenderStreamMqa = ({
   // Get last used effect in this interval
   const lastUsedEffect = statsResults[mediaType][sendrecvType]?.effect;
   let mode = VIRTUAL_BACKGROUND_EFFECT_STATS.NONE;
-  if (lastUsedEffect?.mode in VIRTUAL_BACKGROUND_EFFECT_STATS) {
-    mode = VIRTUAL_BACKGROUND_EFFECT_STATS[lastUsedEffect.mode];
+  if (lastUsedEffect?.virtualBackgroundMode in VIRTUAL_BACKGROUND_EFFECT_STATS) {
+    mode = VIRTUAL_BACKGROUND_EFFECT_STATS[lastUsedEffect.virtualBackgroundMode];
   }
   videoSenderStream.backgroundAugmentationType = mode;
 };
