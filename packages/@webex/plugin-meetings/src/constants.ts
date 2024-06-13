@@ -535,6 +535,12 @@ export const ERROR_DICTIONARY = {
       'Participant Having Host Role Already. Participant who sends request to reclaim host role has already a host role.',
     CODE: 14,
   },
+  RECONNECTION_NOT_STARTED: {
+    NAME: 'ReconnectionNotStartedError',
+    MESSAGE:
+      'Reconnection was not started, because there is one already in progress or reconnections are disabled in config.',
+    CODE: 15,
+  },
 };
 
 export const FLOOR_ACTION = {
@@ -1047,9 +1053,7 @@ export const PEER_CONNECTION_STATE = {
 export const RECONNECTION = {
   STATE: {
     IN_PROGRESS: 'IN_PROGRESS',
-    COMPLETE: 'COMPLETE',
     FAILURE: 'FAILURE',
-    DEFAULT_TRY_COUNT: 0,
     DEFAULT_STATUS: '',
   },
 } as const;
