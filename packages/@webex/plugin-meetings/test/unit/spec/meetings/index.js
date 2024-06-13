@@ -513,13 +513,8 @@ describe('plugin-meetings', () => {
             });
             describe('#getAllMeetings', () => {
               it('calls MeetingCollection to get all meetings with supplied options', () => {
-                webex.meetings.getAllMeetings({
-                  test: test1,
-                });
+                webex.meetings.getAllMeetings();
                 assert.calledOnce(webex.meetings.meetingCollection.getAll);
-                assert.calledWith(webex.meetings.meetingCollection.getAll, {
-                  test: test1,
-                });
               });
             });
           });

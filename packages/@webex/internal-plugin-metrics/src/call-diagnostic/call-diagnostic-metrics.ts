@@ -1,11 +1,11 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable class-methods-use-this */
 /* eslint-disable valid-jsdoc */
-import {getOSNameInternal} from '@webex/internal-plugin-metrics';
 import {BrowserDetection, getBrowserSerial} from '@webex/common';
 import uuid from 'uuid';
 import {merge} from 'lodash';
 import {StatelessWebexPlugin} from '@webex/webex-core';
+import {getOSNameInternal} from '../metrics';
 
 import {
   anonymizeIPAddress,
@@ -93,6 +93,8 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
 
   private logger: any; // to avoid adding @ts-ignore everywhere
   private hasLoggedBrowserSerial: boolean;
+  private device: any;
+
   // the default validator before piping an event to the batcher
   // this function can be overridden by the user
   public validator: (options: {
@@ -295,15 +297,14 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     if (correlationId) {
       identifiers.correlationId = correlationId;
     }
-    // @ts-ignore
-    if (this.webex.internal) {
-      // @ts-ignore
-      const {device} = this.webex.internal;
-      const {installationId} = device.config || {};
 
-      identifiers.userId = device.userId || preLoginId;
-      identifiers.deviceId = device.url;
-      identifiers.orgId = device.orgId;
+    if (this.device) {
+      const {device} = this;
+      const {installationId} = device?.config || {};
+
+      identifiers.userId = device?.userId || preLoginId;
+      identifiers.deviceId = device?.url;
+      identifiers.orgId = device?.orgId;
       // @ts-ignore
       identifiers.locusUrl = this.webex.internal.services.get('locus');
 
@@ -453,6 +454,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
           webClientDomain: window.location.hostname,
         },
         intervals: payload.intervals,
+        callingServiceType: 'LOCUS',
         sourceMetadata: {
           applicationSoftwareType: CLIENT_NAME,
           // @ts-ignore
@@ -921,5 +923,17 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     const clientErrorPayload = CLIENT_ERROR_CODE_TO_ERROR_PAYLOAD[clientErrorCode];
 
     return clientErrorPayload?.category === 'expected';
+  }
+
+  /**
+   * This method is used to set the device information by internal-plugin-device
+   * @param {device} object The webex.internal.device object
+   * @returns {undefined}
+   */
+  public setDeviceInfo(device: any): void {
+    // This was created to fix the circular dependency between internal-plugin-device and internal-plugin-metrics
+    this.logger.log('CallDiagnosticMetrics: @setDeviceInfo called', device);
+
+    this.device = device;
   }
 }
