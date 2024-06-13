@@ -6237,7 +6237,7 @@ describe('plugin-meetings', () => {
           });
         });
 
-        it('should unpublishStreams on moveTo', async () => {
+        it('should unpublishStreams on moveTo & reconnect after', async () => {
           await meeting.moveTo('resourceId');
 
           await meeting.locusInfo.emitScoped(
@@ -6262,6 +6262,7 @@ describe('plugin-meetings', () => {
           await Promise.resolve();
 
           assert.called(meeting.mediaProperties.setMediaDirection);
+          assert.called(meeting.reconnectionManager.reconnectMedia);
         });
 
         it('should throw an error if moveTo call fails', async () => {

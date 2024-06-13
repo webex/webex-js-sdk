@@ -5438,7 +5438,11 @@ export default class Meeting extends StatelessWebexPlugin {
         this.mediaProperties.setMediaDirection(mediaSettings.mediaDirection);
         this.mediaProperties.unsetRemoteMedia();
 
-        Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.MOVE_TO_SUCCESS);
+        // when a move to is intiated by the client , Locus delets the existing media node from the server as soon the DX answers the meeting
+        // once the DX answers we establish connection back the media server with only receiveShare enabled
+        await this.reconnectionManager.reconnectMedia().then(() => {
+          Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.MOVE_TO_SUCCESS);
+        });
       } catch (error) {
         LoggerProxy.logger.error('Meeting:index#moveTo --> Failed to moveTo resourceId', error);
         Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.MOVE_TO_FAILURE, {
