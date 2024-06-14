@@ -5440,7 +5440,9 @@ export default class Meeting extends StatelessWebexPlugin {
 
         // when a move to is intiated by the client , Locus delets the existing media node from the server as soon the DX answers the meeting
         // once the DX answers we establish connection back the media server with only receiveShare enabled
-        await this.reconnectionManager.reconnectMedia().then(() => {
+        this.closePeerConnections();
+        this.unsetPeerConnections();
+        await this.createMediaConnection({}).then(() => {
           Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.MOVE_TO_SUCCESS);
         });
       } catch (error) {
