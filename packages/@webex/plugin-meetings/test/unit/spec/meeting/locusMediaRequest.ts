@@ -106,6 +106,12 @@ describe('LocusMediaRequest.send()', () => {
       },
     });
 
+    mockWebex.internal = {
+      newMetrics: {
+        submitClientEvent: sinon.stub()
+      },
+    };
+
     locusMediaRequest = new LocusMediaRequest({
       device: {
         url: 'deviceUrl',
@@ -113,6 +119,7 @@ describe('LocusMediaRequest.send()', () => {
         regionCode: 'regionCode',
       },
       correlationId: 'correlationId',
+      meetingId: 'meetingId',
       preferTranscoding: true,
     }, {
       parent: mockWebex,
@@ -134,6 +141,27 @@ describe('LocusMediaRequest.send()', () => {
     await sendRoapMessage('OFFER');
 
     webexRequestStub.resetHistory();
+    mockWebex.internal.newMetrics.submitClientEvent.resetHistory();
+  }
+
+  const checkMetrics = (expectedMetrics: boolean = true) => {
+    if (expectedMetrics) {
+      assert.calledWith(mockWebex.internal.newMetrics.submitClientEvent, {
+        name: 'client.locus.media.request',
+        options: {
+          meetingId: 'meetingId',
+        },
+      });
+
+      assert.calledWith(mockWebex.internal.newMetrics.submitClientEvent, {
+        name: 'client.locus.media.response',
+        options: {
+          meetingId: 'meetingId',
+        },
+      });
+    } else {
+      assert.notCalled(mockWebex.internal.newMetrics.submitClientEvent);
+    }
   }
 
   it('sends a roap message', async () => {
@@ -145,6 +173,21 @@ describe('LocusMediaRequest.send()', () => {
       method: 'PUT',
       uri: 'fakeMeetingSelfUrl/media',
       body: createExpectedRoapBody('OFFER', {audioMuted: true, videoMuted: true}),
+    });
+
+    checkMetrics();
+  });
+
+  it('sends correct metric event when roap message fails', async () => {
+    webexRequestStub.rejects({code: 300, message: 'fake error'});
+    await assert.isRejected(sendRoapMessage('OFFER'));
+
+    assert.calledWith(mockWebex.internal.newMetrics.submitClientEvent, {
+      name: 'client.locus.media.response',
+      options: {
+        meetingId: 'meetingId',
+        rawError: {code: 300, message: 'fake error'},
+      },
     });
   });
 
@@ -160,6 +203,8 @@ describe('LocusMediaRequest.send()', () => {
       uri: 'fakeMeetingSelfUrl/media',
       body: createExpectedLocalMuteBody({audioMuted: false, videoMuted: false}),
     });
+
+    checkMetrics(false);
   });
 
   it('sends a local mute request with sequence', async () => {
@@ -207,6 +252,7 @@ describe('LocusMediaRequest.send()', () => {
       body: createExpectedLocalMuteBody({audioMuted: false, videoMuted: true}),
     });
 
+    checkMetrics(false);
   });
 
   it('sends a local mute request with the last audio/video mute values', async () => {
@@ -225,6 +271,7 @@ describe('LocusMediaRequest.send()', () => {
       body: createExpectedLocalMuteBody({audioMuted: true, videoMuted: false}),
     });
 
+    checkMetrics(false);
   });
 
   it('sends only roap when roap and local mute are requested', async () => {
@@ -242,6 +289,8 @@ describe('LocusMediaRequest.send()', () => {
       uri: 'fakeMeetingSelfUrl/media',
       body: createExpectedRoapBody('OFFER', {audioMuted: true, videoMuted: false}),
     });
+
+    checkMetrics();
   });
 
   describe('queueing', () => {
