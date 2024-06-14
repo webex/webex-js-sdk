@@ -6175,7 +6175,9 @@ describe('plugin-meetings', () => {
           meeting.mediaProperties.shareAudioStream = 'shareAudioStream';
           meeting.mediaProperties.shareVideoStream = 'shareVideoStream';
 
-          sandbox.stub(meeting.reconnectionManager, 'reconnectMedia').returns(Promise.resolve());
+          meeting.closePeerConnections = sinon.stub();
+          meeting.unsetPeerConnections = sinon.stub();
+          meeting.createMediaConnection = sinon.stub();
           sandbox
             .stub(MeetingUtil, 'joinMeeting')
             .returns(
@@ -6262,7 +6264,9 @@ describe('plugin-meetings', () => {
           await Promise.resolve();
 
           assert.called(meeting.mediaProperties.setMediaDirection);
-          assert.called(meeting.reconnectionManager.reconnectMedia);
+          assert.called(meeting.closePeerConnections);
+          assert.called(meeting.unsetPeerConnections);
+          assert.called(meeting.createMediaConnection);
         });
 
         it('should throw an error if moveTo call fails', async () => {
