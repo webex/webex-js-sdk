@@ -2,7 +2,7 @@
 
 import {mean, max} from 'lodash';
 
-import {STATS} from '../constants';
+import {MQA_INTERVAL, STATS} from '../constants';
 
 /**
  * Get the totals of a certain value from a certain media type.
@@ -336,6 +336,18 @@ export const getVideoReceiverStreamMqa = ({
     statsResults[mediaType][sendrecvType].keyFramesDecoded - lastKeyFramesDecoded || 0;
   videoReceiverStream.requestedKeyFrames =
     statsResults[mediaType][sendrecvType].totalPliCount - lastPliCount || 0;
+
+  if (statsResults[mediaType][sendrecvType].isActiveSpeaker !== undefined) {
+    if (statsResults[mediaType][sendrecvType].lastActiveSpeakerTimestamp !== undefined) {
+      const currentTimestamp =
+        statsResults[mediaType][sendrecvType].lastActiveSpeakerTimestamp + MQA_INTERVAL;
+      // check if last true active speaker was set at least once during the last MQA interval
+      videoReceiverStream.isActiveSpeaker =
+        currentTimestamp > performance.now() + performance.timeOrigin;
+    } else {
+      videoReceiverStream.isActiveSpeaker = statsResults[mediaType][sendrecvType].isActiveSpeaker;
+    }
+  }
 };
 
 export const getVideoSenderMqa = ({videoSender, statsResults, lastMqaDataSent, baseMediaType}) => {
