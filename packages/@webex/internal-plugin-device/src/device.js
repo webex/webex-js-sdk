@@ -426,6 +426,8 @@ const Device = WebexPlugin.extend({
   register() {
     this.logger.info('device: registering');
 
+    this.webex.internal.newMetrics.callDiagnosticMetrics.setDeviceInfo(this);
+
     // Validate that the device can be registered.
     return this.canRegister().then(() => {
       // Validate if the device is already registered and refresh instead.
