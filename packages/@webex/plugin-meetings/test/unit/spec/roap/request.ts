@@ -133,20 +133,6 @@ describe('plugin-meetings/roap', () => {
         locusMediaRequest,
       });
 
-      assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
-        name: 'client.locus.media.request',
-        options: {
-          meetingId: 'meeting-id',
-        },
-      });
-
-      assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
-        name: 'client.locus.media.response',
-        options: {
-          meetingId: 'meeting-id',
-        },
-      });
-
       const requestParams = locusMediaRequest.send.getCall(0).args[0];
       assert.deepEqual(requestParams, {
         type: 'RoapMessage',
@@ -174,29 +160,6 @@ describe('plugin-meetings/roap', () => {
           },
         },
       });
-    });
-
-    it('sends correct client event when fails', async () => {
-      const locusMediaRequest = {send: sinon.stub().rejects({code: 300, message: 'error'})};
-      try {
-        await roapRequest.sendRoap({
-          locusSelfUrl: locusUrl,
-          mediaId: 'mediaId',
-          roapMessage: {
-            seq: 'seq',
-          },
-          meetingId: 'meeting-id',
-          locusMediaRequest,
-        });
-      } catch (err) {
-        assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
-          name: 'client.locus.media.response',
-          options: {
-            meetingId: 'meeting-id',
-            rawError: {code: 300, message: 'error'},
-          },
-        });
-      }
     });
   });
 

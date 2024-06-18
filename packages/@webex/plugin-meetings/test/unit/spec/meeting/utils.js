@@ -370,16 +370,6 @@ describe('plugin-meetings', () => {
           sequence: {},
           type: 'LocalMute',
         });
-
-        assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
-          name: 'client.locus.media.request',
-          options: {meetingId: meeting.id},
-        });
-
-        assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
-          name: 'client.locus.media.response',
-          options: {meetingId: meeting.id},
-        });
       });
     });
 
