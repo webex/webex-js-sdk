@@ -47,7 +47,6 @@ const MeetingUtil = {
   },
 
   remoteUpdateAudioVideo: (meeting, audioMuted?: boolean, videoMuted?: boolean) => {
-    const webex = meeting.getWebexObject();
     if (!meeting) {
       return Promise.reject(new ParameterError('You need a meeting object.'));
     }
@@ -60,12 +59,6 @@ const MeetingUtil = {
       );
     }
 
-    // @ts-ignore
-    webex.internal.newMetrics.submitClientEvent({
-      name: 'client.locus.media.request',
-      options: {meetingId: meeting.id},
-    });
-
     return meeting.locusMediaRequest
       .send({
         type: 'LocalMute',
@@ -77,15 +70,7 @@ const MeetingUtil = {
           videoMuted,
         },
       })
-      .then((response) => {
-        // @ts-ignore
-        webex.internal.newMetrics.submitClientEvent({
-          name: 'client.locus.media.response',
-          options: {meetingId: meeting.id},
-        });
-
-        return response?.body?.locus;
-      });
+      .then((response) => response?.body?.locus);
   },
 
   hasOwner: (info) => info && info.owner,
