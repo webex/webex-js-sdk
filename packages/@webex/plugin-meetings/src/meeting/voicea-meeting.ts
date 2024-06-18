@@ -47,7 +47,6 @@ export const processNewCaptions = ({data, meeting}) => {
 
     const newCaption = `${transcriptsPerCsis.get(csisMember)?.text ?? ''} ${text}`.trim();
 
-    // eslint-disable-next-line camelcase
     transcriptsPerCsis.set(csisMember, {
       ...transcript,
       text: newCaption,
