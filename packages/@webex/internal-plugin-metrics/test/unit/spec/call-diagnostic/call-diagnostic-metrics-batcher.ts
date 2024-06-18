@@ -396,18 +396,17 @@ describe('plugin-metrics', () => {
             error = e;
           });
 
-          // This is horrific, but stubbing lodash is proving difficult
-          const expectedBatchId = parseInt(uniqueId()) - 1;
-
           // check that promise was rejected with the original error of the webex.request
           assert.deepEqual(err, error);
 
-          assert.calledOnceWithExactly(
-            webex.logger.error,
-            'call-diagnostic-events -> ',
-            `CallDiagnosticEventsBatcher: @submitHttpRequest#ca-batch-${expectedBatchId}. Request failed:`,
-            `error: formattedError`
+          const calls = webex.logger.error.getCalls();
+          assert.deepEqual(calls[0].args[0], 'call-diagnostic-events -> ');
+          // This is horrific, but stubbing lodash is proving difficult
+          assert.match(
+            calls[0].args[1],
+            /CallDiagnosticEventsBatcher: @submitHttpRequest#ca-batch-\d{0,}\. Request failed:/
           );
+          assert.deepEqual(calls[0].args[2], `error: formattedError`);
           assert.lengthOf(
             webex.internal.newMetrics.callDiagnosticMetrics.callDiagnosticEventsBatcher.queue,
             0

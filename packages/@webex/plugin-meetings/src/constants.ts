@@ -100,7 +100,7 @@ export const _JOINED_ = 'JOINED';
 export const _LOCUS_ID_ = 'LOCUS_ID';
 export const _LEFT_ = 'LEFT';
 export const _MOVED_ = 'MOVED';
-
+export const _ON_HOLD_LOBBY_ = 'ON_HOLD_LOBBY';
 export const _MEETING_LINK_ = 'MEETING_LINK';
 export const _MEETING_UUID_ = 'MEETING_UUID';
 export const _MEETING_ = 'MEETING';
@@ -534,6 +534,12 @@ export const ERROR_DICTIONARY = {
     MESSAGE:
       'Participant Having Host Role Already. Participant who sends request to reclaim host role has already a host role.',
     CODE: 14,
+  },
+  RECONNECTION_NOT_STARTED: {
+    NAME: 'ReconnectionNotStartedError',
+    MESSAGE:
+      'Reconnection was not started, because there is one already in progress or reconnections are disabled in config.',
+    CODE: 15,
   },
 };
 
@@ -1047,9 +1053,7 @@ export const PEER_CONNECTION_STATE = {
 export const RECONNECTION = {
   STATE: {
     IN_PROGRESS: 'IN_PROGRESS',
-    COMPLETE: 'COMPLETE',
     FAILURE: 'FAILURE',
-    DEFAULT_TRY_COUNT: 0,
     DEFAULT_STATUS: '',
   },
 } as const;
