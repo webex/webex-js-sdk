@@ -45,6 +45,8 @@ import {
   MEETINGNUMBER,
   _JOINED_,
   _MOVED_,
+  _ON_HOLD_LOBBY_,
+  _WAIT_,
 } from '../constants';
 import BEHAVIORAL_METRICS from '../metrics/constants';
 import MeetingInfo from '../meeting-info';
@@ -340,6 +342,9 @@ export default class Meetings extends WebexPlugin {
     if (newLocus) {
       const isNewLocusAsBreakout = MeetingsUtil.isBreakoutLocusDTO(newLocus);
       const isSelfMoved = newLocus?.self?.state === _LEFT_ && newLocus?.self?.reason === _MOVED_;
+      const isSelfMovedToLobby =
+        newLocus?.self?.devices[0]?.intent?.reason === _ON_HOLD_LOBBY_ &&
+        newLocus?.self?.devices[0]?.intent?.type === _WAIT_;
       if (!meeting) {
         if (isNewLocusAsBreakout) {
           LoggerProxy.logger.log(
@@ -352,7 +357,7 @@ export default class Meetings extends WebexPlugin {
         return this.isNeedHandleMainLocus(meeting, newLocus);
       }
       if (!isNewLocusAsBreakout) {
-        return this.isNeedHandleMainLocus(meeting, newLocus);
+        return isSelfMovedToLobby || this.isNeedHandleMainLocus(meeting, newLocus);
       }
 
       return !isSelfMoved;

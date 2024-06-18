@@ -1006,6 +1006,7 @@ describe('plugin-meetings', () => {
                   callBackInfo: {
                     callbackAddress: uri1,
                   },
+                  devices: [],
                 },
                 info: {
                   webExMeetingId,
@@ -1033,6 +1034,7 @@ describe('plugin-meetings', () => {
                 callBackInfo: {
                   callbackAddress: uri1,
                 },
+                devices: [],
               },
               info: {
                 webExMeetingId,
@@ -1047,6 +1049,7 @@ describe('plugin-meetings', () => {
                   callBackInfo: {
                     callbackAddress: uri1,
                   },
+                  devices: [],
                 },
                 info: {
                   webExMeetingId,
@@ -1069,6 +1072,7 @@ describe('plugin-meetings', () => {
                 callBackInfo: {
                   callbackAddress: uri1,
                 },
+                devices: [],
               },
               info: {
                 webExMeetingId,
@@ -1086,6 +1090,7 @@ describe('plugin-meetings', () => {
                   callBackInfo: {
                     callbackAddress: uri1,
                   },
+                  devices: [],
                 },
                 info: {
                   webExMeetingId,
@@ -1116,6 +1121,7 @@ describe('plugin-meetings', () => {
                   callBackInfo: {
                     callbackAddress: uri1,
                   },
+                  devices: [],
                 },
                 info: {
                   webExMeetingId,
@@ -1138,6 +1144,7 @@ describe('plugin-meetings', () => {
                 callBackInfo: {
                   callbackAddress: uri1,
                 },
+                devices: [],
               },
               info: {
                 webExMeetingId,
@@ -1152,6 +1159,7 @@ describe('plugin-meetings', () => {
                 callbackInfo: {
                   callbackAddress: uri1,
                 },
+                devices: [],
               },
               info: {
                 isUnifiedSpaceMeeting,
@@ -2294,6 +2302,7 @@ describe('plugin-meetings', () => {
           sessionType: 'BREAKOUT',
         };
         newLocus.self.state = 'JOINED';
+        newLocus.self.devices = [];
         newLocus.fullState = {
           active: true,
         };
@@ -2310,7 +2319,7 @@ describe('plugin-meetings', () => {
           sessionType: 'MAIN',
         };
         newLocus.self.state = 'JOINED';
-
+        newLocus.self.devices = [];
         LoggerProxy.logger.log = sinon.stub();
         const result = webex.meetings.isNeedHandleLocusDTO(meeting, newLocus);
         assert.equal(result, true);
@@ -2325,10 +2334,25 @@ describe('plugin-meetings', () => {
         };
         newLocus.self.state = 'LEFT';
         newLocus.self.reason = 'MOVED';
-
+        newLocus.self.devices = [];
         LoggerProxy.logger.log = sinon.stub();
         const result = webex.meetings.isNeedHandleLocusDTO(meeting, newLocus);
         assert.equal(result, false);
+      });
+      it('moved to lobby, return true', () => {
+        newLocus.controls.breakout = {
+          sessionType: 'MAIN',
+        };
+        newLocus.self.state = 'JOINED';
+        newLocus.self.devices = [{
+          intent: {
+            reason: 'ON_HOLD_LOBBY',
+            type: 'WAIT',
+          }
+        }];
+        LoggerProxy.logger.log = sinon.stub();
+        const result = webex.meetings.isNeedHandleLocusDTO(meeting, newLocus);
+        assert.equal(result, true);
       });
     });
 
