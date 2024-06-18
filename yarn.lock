@@ -7536,7 +7536,6 @@ __metadata:
     "@webex/common-timers": "workspace:*"
     "@webex/eslint-config-legacy": "workspace:*"
     "@webex/event-dictionary-ts": ^1.0.1406
-    "@webex/internal-plugin-device": "workspace:*"
     "@webex/internal-plugin-metrics": "workspace:*"
     "@webex/jest-config-legacy": "workspace:*"
     "@webex/legacy-tools": "workspace:*"
@@ -8265,7 +8264,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/plugin-presence@workspace:*, @webex/plugin-presence@workspace:packages/@webex/plugin-presence":
+"@webex/plugin-presence@workspace:packages/@webex/plugin-presence":
   version: 0.0.0-use.local
   resolution: "@webex/plugin-presence@workspace:packages/@webex/plugin-presence"
   dependencies:
@@ -31464,7 +31463,6 @@ __metadata:
     "@webex/plugin-memberships": "workspace:*"
     "@webex/plugin-messages": "workspace:*"
     "@webex/plugin-people": "workspace:*"
-    "@webex/plugin-presence": "workspace:*"
     "@webex/plugin-rooms": "workspace:*"
     "@webex/plugin-team-memberships": "workspace:*"
     "@webex/plugin-teams": "workspace:*"

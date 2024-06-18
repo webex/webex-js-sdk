@@ -66,6 +66,7 @@ import {createMuteState} from './muteState';
 import LocusInfo from '../locus-info';
 import Metrics from '../metrics';
 import ReconnectionManager from '../reconnection-manager';
+import ReconnectionNotStartedError from '../common/errors/reconnection-not-started';
 import MeetingRequest from './request';
 import Members from '../members/index';
 import MeetingUtil from './util';
@@ -76,8 +77,6 @@ import MediaUtil from '../media/util';
 import {Reactions, SkinTones} from '../reactions/reactions';
 import PasswordError from '../common/errors/password-error';
 import CaptchaError from '../common/errors/captcha-error';
-import ReconnectionError from '../common/errors/reconnection';
-import ReconnectInProgress from '../common/errors/reconnection-in-progress';
 import {
   _CONVERSATION_URL_,
   _INCOMING_,
@@ -4665,90 +4664,28 @@ export default class Meeting extends StatelessWebexPlugin {
       );
     }
 
-    try {
-      LoggerProxy.logger.info('Meeting:index#reconnect --> Validating reconnect ability.');
-      // @ts-ignore
-      this.reconnectionManager.validate();
-    } catch (error) {
-      // Unable to reconnect this call
-      if (error instanceof ReconnectInProgress) {
-        LoggerProxy.logger.info(
-          'Meeting:index#reconnect --> Unable to reconnect, reconnection in progress.'
-        );
-      } else {
-        LoggerProxy.logger.log('Meeting:index#reconnect --> Unable to reconnect.', error);
-      }
-
-      return Promise.resolve();
-    }
-
-    Trigger.trigger(
-      this,
-      {
-        file: 'meeting/index',
-        function: 'reconnect',
-      },
-      EVENT_TRIGGERS.MEETING_RECONNECTION_STARTING
-    );
-
     return this.reconnectionManager
-      .reconnect(options)
-      .then(() => this.waitForRemoteSDPAnswer())
-      .then(() => this.waitForMediaConnectionConnected())
+      .reconnect(options, async () => {
+        await this.waitForRemoteSDPAnswer();
+        await this.waitForMediaConnectionConnected();
+      })
       .then(() => {
-        Trigger.trigger(
-          this,
-          {
-            file: 'meeting/index',
-            function: 'reconnect',
-          },
-          EVENT_TRIGGERS.MEETING_RECONNECTION_SUCCESS
-        );
         LoggerProxy.logger.log('Meeting:index#reconnect --> Meeting reconnect success');
-
-        // @ts-ignore
-        this.webex.internal.newMetrics.submitClientEvent({
-          name: 'client.media.recovered',
-          payload: {
-            recoveredBy: 'new',
-          },
-          options: {
-            meetingId: this.id,
-          },
-        });
-        this.reconnectionManager.setStatus(RECONNECTION.STATE.COMPLETE);
       })
       .catch((error) => {
-        Trigger.trigger(
-          this,
-          {
-            file: 'meeting/index',
-            function: 'reconnect',
-          },
-          EVENT_TRIGGERS.MEETING_RECONNECTION_FAILURE,
-          {
-            error: new ReconnectionError('Reconnection failure event', error),
-          }
-        );
+        if (error instanceof ReconnectionNotStartedError) {
+          LoggerProxy.logger.log('Meeting:index#reconnect --> Meeting reconnect not started');
 
+          return Promise.resolve();
+        }
         LoggerProxy.logger.error('Meeting:index#reconnect --> Meeting reconnect failed', error);
-
-        Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.MEETING_RECONNECT_FAILURE, {
-          correlation_id: this.correlationId,
-          locus_id: this.locusUrl.split('/').pop(),
-          reason: error.message,
-          stack: error.stack,
-        });
 
         this.uploadLogs({
           file: 'meeting/index',
           function: 'reconnect',
         });
 
-        return Promise.reject(new ReconnectionError('Reconnection failure event', error));
-      })
-      .finally(() => {
-        this.reconnectionManager.reset();
+        return Promise.reject(error);
       });
   }
 

@@ -273,6 +273,17 @@ describe('plugin-device', () => {
         assert.notCalled(webex.internal.newMetrics.submitInternalEvent);
       });
 
+      it('sets the deviceInfo for call diagnostic metrics', async () => {
+        setup();
+        sinon.stub(device, 'canRegister').callsFake(() => Promise.resolve());
+        sinon.spy(device, 'request');
+
+        await device.register();
+
+        assert.calledWith(webex.internal.newMetrics.callDiagnosticMetrics.setDeviceInfo, device);
+
+      });
+
     });
 
     describe('#processRegistrationSuccess()', () => {
