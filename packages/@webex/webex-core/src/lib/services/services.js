@@ -928,7 +928,7 @@ const Services = WebexPlugin.extend({
     // Validate that the services configuration exists.
     if (services) {
       if (fedramp) {
-        services.discovery = {...fedRampServices, ...services.discovery};
+        services.discovery = fedRampServices;
       }
       // Check for discovery services.
       if (services.discovery) {
