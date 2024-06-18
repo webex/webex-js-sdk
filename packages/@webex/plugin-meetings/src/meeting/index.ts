@@ -6713,6 +6713,7 @@ export default class Meeting extends StatelessWebexPlugin {
     this.locusMediaRequest = new LocusMediaRequest(
       {
         correlationId: this.correlationId,
+        meetingId: this.id,
         device: {
           url: this.deviceUrl,
           // @ts-ignore

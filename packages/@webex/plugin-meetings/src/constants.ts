@@ -100,7 +100,7 @@ export const _JOINED_ = 'JOINED';
 export const _LOCUS_ID_ = 'LOCUS_ID';
 export const _LEFT_ = 'LEFT';
 export const _MOVED_ = 'MOVED';
-
+export const _ON_HOLD_LOBBY_ = 'ON_HOLD_LOBBY';
 export const _MEETING_LINK_ = 'MEETING_LINK';
 export const _MEETING_UUID_ = 'MEETING_UUID';
 export const _MEETING_ = 'MEETING';
