@@ -7852,6 +7852,7 @@ describe('plugin-meetings', () => {
       describe('#setUpLocusInfoSelfListener', () => {
         it('listens to the self unadmitted guest event', (done) => {
           meeting.startKeepAlive = sinon.stub();
+          meeting.updateLLMConnection = sinon.stub();
           meeting.locusInfo.emit({function: 'test', file: 'test'}, 'SELF_UNADMITTED_GUEST', test1);
           assert.calledOnceWithExactly(meeting.startKeepAlive);
           assert.calledThrice(TriggerProxy.trigger);
@@ -7862,6 +7863,7 @@ describe('plugin-meetings', () => {
             'meeting:self:lobbyWaiting',
             {payload: test1}
           );
+          assert.calledOnce(meeting.updateLLMConnection);
           done();
         });
         it('listens to the self admitted guest event', (done) => {
