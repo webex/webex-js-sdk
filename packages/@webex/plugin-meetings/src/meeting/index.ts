@@ -630,6 +630,7 @@ export default class Meeting extends StatelessWebexPlugin {
   turnDiscoverySkippedReason: TurnDiscoverySkipReason;
   turnServerUsed: boolean;
   areVoiceaEventsSetup = false;
+  isMoveTo = false;
 
   voiceaListenerCallbacks: object = {
     [VOICEAEVENTS.VOICEA_ANNOUNCEMENT]: (payload: Transcription['languageOptions']) => {
@@ -5442,8 +5443,13 @@ export default class Meeting extends StatelessWebexPlugin {
         // once the DX answers we establish connection back the media server with only receiveShare enabled
         this.closePeerConnections();
         this.unsetPeerConnections();
-        await this.createMediaConnection({}).then(() => {
+        await this.addMedia({
+          audioEnabled: false,
+          videoEnabled: false,
+          shareVideoEnabled: true,
+        }).then(() => {
           Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.MOVE_TO_SUCCESS);
+          this.isMoveTo = false;
         });
       } catch (error) {
         LoggerProxy.logger.error('Meeting:index#moveTo --> Failed to moveTo resourceId', error);
@@ -5453,6 +5459,7 @@ export default class Meeting extends StatelessWebexPlugin {
           reason: error.message,
           stack: error.stack,
         });
+        this.isMoveTo = false;
       }
     });
 
@@ -5460,6 +5467,8 @@ export default class Meeting extends StatelessWebexPlugin {
       'Meeting:index#moveTo --> Initated moved to using resourceId',
       resourceId
     );
+
+    this.isMoveTo = true;
 
     return MeetingUtil.joinMeetingOptions(this, {resourceId, moveToResource: true})
       .then(() => {
@@ -5474,6 +5483,7 @@ export default class Meeting extends StatelessWebexPlugin {
           stack: error.stack,
         });
         LoggerProxy.logger.error('Meeting:index#moveTo --> Failed to moveTo resourceId', error);
+        this.isMoveTo = false;
 
         return Promise.reject(error);
       });
@@ -6512,7 +6522,7 @@ export default class Meeting extends StatelessWebexPlugin {
     turnServerInfo?: TurnServerInfo
   ): Promise<void> {
     const LOG_HEADER = 'Meeting:index#addMedia():establishMediaConnection -->';
-    const isRetry = this.retriedWithTurnServer;
+    const isRetry = this.isMoveTo || this.retriedWithTurnServer;
 
     try {
       if (!turnServerInfo) {
