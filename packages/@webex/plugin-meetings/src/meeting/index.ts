@@ -3986,7 +3986,7 @@ export default class Meeting extends StatelessWebexPlugin {
     // we don't update this.mediaProperties.mediaDirection.sendVideo, because we always keep it as true to avoid extra SDP exchanges
     this.mediaProperties.setLocalVideoStream(localStream);
 
-    this.video.handleLocalStreamChange(this);
+    this.video?.handleLocalStreamChange(this);
 
     localStream?.on(
       LocalStreamEventNames.UserMuteStateChange,
@@ -7037,7 +7037,7 @@ export default class Meeting extends StatelessWebexPlugin {
     if (videoEnabled !== undefined) {
       this.mediaProperties.mediaDirection.sendVideo = videoEnabled;
       this.mediaProperties.mediaDirection.receiveVideo = videoEnabled;
-      this.video.enable(this, videoEnabled);
+      this.video?.enable(this, videoEnabled);
       if (this.isMultistream) {
         this.sendSlotManager.setActive(MediaType.VideoMain, videoEnabled);
       }
