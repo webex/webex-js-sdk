@@ -1391,11 +1391,11 @@ export default class Meeting extends StatelessWebexPlugin {
     this.remoteMediaManager = null;
 
     this.localAudioStreamMuteStateHandler = () => {
-      this.audio.handleLocalStreamMuteStateChange(this);
+      this.audio?.handleLocalStreamMuteStateChange(this);
     };
 
     this.localVideoStreamMuteStateHandler = () => {
-      this.video.handleLocalStreamMuteStateChange(this);
+      this.video?.handleLocalStreamMuteStateChange(this);
     };
 
     // The handling of output track changes should be done inside
@@ -3944,7 +3944,7 @@ export default class Meeting extends StatelessWebexPlugin {
     // we don't update this.mediaProperties.mediaDirection.sendAudio, because we always keep it as true to avoid extra SDP exchanges
     this.mediaProperties.setLocalAudioStream(localStream);
 
-    this.audio.handleLocalStreamChange(this);
+    this.audio?.handleLocalStreamChange(this);
 
     localStream?.on(
       LocalStreamEventNames.UserMuteStateChange,
@@ -5428,13 +5428,6 @@ export default class Meeting extends StatelessWebexPlugin {
           },
         };
 
-        this.unpublishStreams([
-          this.mediaProperties.audioStream,
-          this.mediaProperties.videoStream,
-          this.mediaProperties.shareAudioStream,
-          this.mediaProperties.shareVideoStream,
-        ]);
-
         this.cleanupLocalStreams();
 
         this.mediaProperties.setMediaDirection(mediaSettings.mediaDirection);
@@ -5443,6 +5436,14 @@ export default class Meeting extends StatelessWebexPlugin {
         // when a move to is intiated by the client , Locus delets the existing media node from the server as soon the DX answers the meeting
         // once the DX answers we establish connection back the media server with only receiveShare enabled
         this.closePeerConnections();
+
+        await this.unpublishStreams([
+          this.mediaProperties.audioStream,
+          this.mediaProperties.videoStream,
+          this.mediaProperties.shareAudioStream,
+          this.mediaProperties.shareVideoStream,
+        ]);
+
         this.unsetPeerConnections();
         await this.addMedia({
           audioEnabled: false,
@@ -7027,7 +7028,7 @@ export default class Meeting extends StatelessWebexPlugin {
     if (audioEnabled !== undefined) {
       this.mediaProperties.mediaDirection.sendAudio = audioEnabled;
       this.mediaProperties.mediaDirection.receiveAudio = audioEnabled;
-      this.audio.enable(this, audioEnabled);
+      this.audio?.enable(this, audioEnabled);
       if (this.isMultistream) {
         this.sendSlotManager.setActive(MediaType.AudioMain, audioEnabled);
       }
