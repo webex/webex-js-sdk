@@ -906,12 +906,12 @@ describe('plugin-meetings', () => {
 
       describe('#isTranscriptionSupported', () => {
         it('should return false if the feature is not supported for the meeting', () => {
-          meeting.locusInfo.controls = {transcribe: {transcribing: false}};
+          meeting.locusInfo.controls = {transcribe: {caption: false}};
 
           assert.equal(meeting.isTranscriptionSupported(), false);
         });
         it('should return true if webex assitant is enabled', () => {
-          meeting.locusInfo.controls = {transcribe: {transcribing: true}};
+          meeting.locusInfo.controls = {transcribe: {caption: true}};
 
           assert.equal(meeting.isTranscriptionSupported(), true);
         });
