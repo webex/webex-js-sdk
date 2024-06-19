@@ -37,25 +37,6 @@ const defaultServiceIndicator = ServiceIndicator.CALLING;
 const activeUrl = 'FakeActiveUrl';
 const mockLineId = 'e4e8ee2a-a154-4e52-8f11-ef4cde2dce72';
 
-// class MockMediaStream {
-//   private track;
-
-//   constructor(track: any) {
-//     this.track = track;
-//   }
-// }
-
-// globalThis.MediaStream = MockMediaStream;
-
-// // eslint-disable-next-line @typescript-eslint/no-unused-vars
-// jest.spyOn(window, 'MediaStream').mockImplementation((tracks: MediaStreamTrack[]) => {
-//   return {} as MediaStream;
-// });
-
-// // Object.defineProperty(window, 'MediaStream', {
-// //   writable: true,
-// // });
-
 describe('Call Tests', () => {
   const deviceId = '55dfb53f-bed2-36da-8e85-cee7f02aa68e';
   const dest = {
@@ -530,6 +511,11 @@ describe('Call Tests', () => {
     await waitForMsecs(50);
 
     /* Checks for switching off the listeners on call disconnect */
+    expect(offStreamSpy).toBeCalledTimes(2);
+    expect(offStreamSpy).toBeCalledWith(
+      MediaSDK.LocalStreamEventNames.OutputTrackChange,
+      expect.any(Function)
+    );
     expect(offStreamSpy).toBeCalledWith(
       MediaSDK.LocalStreamEventNames.EffectAdded,
       expect.any(Function)
