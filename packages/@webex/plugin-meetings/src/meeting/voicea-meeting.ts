@@ -1,3 +1,22 @@
+type VoiceaTranscripts = {
+  start_mills?: number;
+  end_mills?: number;
+  text: string;
+  last_packet_timestamp_ms?: number;
+  csis: Array<number>;
+  transcript_language_code: string;
+  translations?: {
+    [key: string]: string;
+  };
+  timestamp?: string;
+};
+
+type VoiceaTranscriptPayload = {
+  isFinal: boolean;
+  transcriptId: string;
+  transcripts: Array<VoiceaTranscripts>;
+};
+
 export const getSpeaker = (members, csis = []) =>
   Object.values(members).find((member: any) => {
     const memberCSIs = member.participant.status.csis ?? [];
@@ -31,7 +50,13 @@ export const getSpeakerFromProxyOrStore = ({csisKey, meetingMembers, transcriptD
   return {speaker, needsCaching};
 };
 
-export const processNewCaptions = ({data, meeting}) => {
+export const processNewCaptions = ({
+  data,
+  meeting,
+}: {
+  data: VoiceaTranscriptPayload;
+  meeting: any;
+}) => {
   const {transcriptId} = data;
   const transcriptData = meeting.transcription;
 
