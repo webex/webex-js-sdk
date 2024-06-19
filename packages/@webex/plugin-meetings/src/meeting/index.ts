@@ -6526,6 +6526,11 @@ export default class Meeting extends StatelessWebexPlugin {
     const LOG_HEADER = 'Meeting:index#addMedia():establishMediaConnection -->';
     const isRetry = this.isMoveTo || this.retriedWithTurnServer;
 
+    // We are forcing turn discovery if the case is moveTo and a turn server was used already
+    if (this.isMoveTo && this.turnServerUsed) {
+      isForced = true;
+    }
+
     try {
       if (!turnServerInfo) {
         ({turnServerInfo} = await this.doTurnDiscovery(isRetry, isForced));
