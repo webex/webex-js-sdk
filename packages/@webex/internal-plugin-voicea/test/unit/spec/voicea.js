@@ -654,6 +654,15 @@ describe('plugin-voicea', () => {
           isFinal: true,
           transcriptId: '3ec73890-bffb-f28b-e77f-99dc13caea7e',
           transcripts: voiceaPayload.transcripts,
+          translations: {
+            fr: 'Bonjour.'
+          },
+          transcript: {
+            csis: [3556942592],
+            text: 'Hello.',
+            transcriptLanguageCode: 'en',
+          },
+          timestamp: '0:13',
         });
       });
 
