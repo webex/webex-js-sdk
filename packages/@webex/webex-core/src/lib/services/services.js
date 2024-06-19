@@ -9,6 +9,7 @@ import ServiceCatalog from './service-catalog';
 import ServiceRegistry from './service-registry';
 import ServiceState from './service-state';
 import fedRampServices from './service-fed-ramp';
+import {COMMERCIAL_ALLOWED_DOMAINS} from './constants';
 
 const trailingSlashes = /(?:^\/)|(?:\/$)/;
 
@@ -18,16 +19,6 @@ export const DEFAULT_CLUSTER = 'urn:TEAM:us-east-2_a';
 export const DEFAULT_CLUSTER_SERVICE = 'identityLookup';
 
 // The default allowed domains that SDK can make requests to outside of service catalog
-const commercialAllowedDomains = [
-  'wbx2.com',
-  'ciscospark.com',
-  'webex.com',
-  'webexapis.com',
-  'broadcloudpbx.com',
-  'broadcloud.eu',
-  'broadcloud.com.au',
-  'broadcloudpbx.net',
-];
 
 const CLUSTER_SERVICE = process.env.WEBEX_CONVERSATION_CLUSTER_SERVICE || DEFAULT_CLUSTER_SERVICE;
 const DEFAULT_CLUSTER_IDENTIFIER =
@@ -955,7 +946,7 @@ const Services = WebexPlugin.extend({
 
       // if not fedramp, append on the commercialAllowedDomains
       if (!fedramp) {
-        services.allowedDomains = [...services.allowedDomains, ...commercialAllowedDomains];
+        services.allowedDomains = [...services.allowedDomains, ...COMMERCIAL_ALLOWED_DOMAINS];
       }
 
       // Check for allowed host domains.

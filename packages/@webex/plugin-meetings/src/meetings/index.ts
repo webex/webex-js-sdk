@@ -1004,12 +1004,7 @@ export default class Meetings extends WebexPlugin {
         const preferredWebexSite = MeetingsUtil.parseDefaultSiteFromMeetingPreferences(res);
         this.preferredWebexSite = preferredWebexSite;
         // @ts-ignore
-        this.webex.internal.services._getCatalog().setAllowedDomains(
-          // @ts-ignore
-          union(this.webex.internal.services._getCatalog().getAllowedDomains(), [
-            preferredWebexSite,
-          ])
-        );
+        this.webex.internal.services._getCatalog().addAllowedDomains([preferredWebexSite]);
       }
 
       // fall back to getting the preferred site from the user information
@@ -1023,12 +1018,7 @@ export default class Meetings extends WebexPlugin {
             if (preferredWebexSite) {
               this.preferredWebexSite = preferredWebexSite;
               // @ts-ignore
-              this.webex.internal.services._getCatalog().setAllowedDomains(
-                // @ts-ignore
-                union(this.webex.internal.services._getCatalog().getAllowedDomains(), [
-                  preferredWebexSite,
-                ])
-              );
+              this.webex.internal.services._getCatalog().addAllowedDomains([preferredWebexSite]);
             } else {
               throw new Error('site not found');
             }
