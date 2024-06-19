@@ -38,6 +38,7 @@ import {
 import {
   EVENT_TRIGGERS as VOICEAEVENTS,
   TURN_ON_CAPTION_STATUS,
+  type MeetingTranscriptPayload,
 } from '@webex/internal-plugin-voicea';
 import {processNewCaptions} from './voicea-meeting';
 
@@ -654,7 +655,7 @@ export default class Meeting extends StatelessWebexPlugin {
       this.transcription.isListening = !!data.isListening;
       this.transcription.commandText = data.text ?? '';
     },
-    [VOICEAEVENTS.NEW_CAPTION]: (data) => {
+    [VOICEAEVENTS.NEW_CAPTION]: (data: MeetingTranscriptPayload) => {
       processNewCaptions({data, meeting: this});
 
       LoggerProxy.logger.debug(

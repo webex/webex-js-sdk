@@ -1,21 +1,4 @@
-type VoiceaTranscripts = {
-  start_mills?: number;
-  end_mills?: number;
-  text: string;
-  last_packet_timestamp_ms?: number;
-  csis: Array<number>;
-  transcript_language_code: string;
-  translations?: {
-    [key: string]: string;
-  };
-  timestamp?: string;
-};
-
-type VoiceaTranscriptPayload = {
-  isFinal: boolean;
-  transcriptId: string;
-  transcripts: Array<VoiceaTranscripts>;
-};
+import {type MeetingTranscriptPayload} from '@webex/internal-plugin-voicea';
 
 export const getSpeaker = (members, csis = []) =>
   Object.values(members).find((member: any) => {
@@ -54,7 +37,7 @@ export const processNewCaptions = ({
   data,
   meeting,
 }: {
-  data: VoiceaTranscriptPayload;
+  data: MeetingTranscriptPayload;
   meeting: any;
 }) => {
   const {transcriptId} = data;

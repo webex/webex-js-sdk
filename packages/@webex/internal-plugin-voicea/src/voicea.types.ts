@@ -84,6 +84,25 @@ interface IVoiceaChannel {
   deregisterEvents: () => void;
 }
 
+type MeetingTranscripts = {
+  start_mills?: number;
+  end_mills?: number;
+  text: string;
+  last_packet_timestamp_ms?: number;
+  csis: Array<number>;
+  transcript_language_code: string;
+  translations?: {
+    [key: string]: string;
+  };
+  timestamp?: string;
+};
+
+type MeetingTranscriptPayload = {
+  isFinal: boolean;
+  transcriptId: string;
+  transcripts: Array<MeetingTranscripts>;
+};
+
 export type {
   AnnouncementPayload,
   CaptionLanguageResponse,
@@ -91,4 +110,5 @@ export type {
   Transcription,
   Highlight,
   IVoiceaChannel,
+  MeetingTranscriptPayload,
 };
