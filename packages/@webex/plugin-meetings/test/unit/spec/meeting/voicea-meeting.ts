@@ -101,14 +101,7 @@ describe('plugin-meetings', () => {
                     ],
                     transcript_language_code: "en"
                 }
-            ],
-            transcript: {
-                text: "Don't bother me talking I'm just going to get the transcript data that is interim and I needed if I keep talking, I get the interim data",
-                csis: [
-                    1234867712
-                ],
-                transcript_language_code: "en"
-            }
+            ]
         };
     });
 
@@ -160,7 +153,6 @@ describe('plugin-meetings', () => {
             it('should process new final captions correctly', () => {
                 let transcriptData = fakeMeeting.transcription;
                 let transcriptId = fakeVoiceaPayload.transcriptId;
-                delete fakeVoiceaPayload.transcripts;
 
                 // Assuming that processNewCaptions is a pure function that doesn't mutate the input but returns a new state
                 processNewCaptions({
@@ -169,7 +161,7 @@ describe('plugin-meetings', () => {
                 });
 
                 // Check if speaker details are cached if needed
-                const csisKey = fakeVoiceaPayload.transcript.csis[0];
+                const csisKey = fakeVoiceaPayload.transcripts[0].csis[0];
                 const speaker = transcriptData.speakerProxy[csisKey];
                 expect(speaker).to.exist;
 
@@ -178,6 +170,7 @@ describe('plugin-meetings', () => {
 
                 //check if the interim caption is removed
                 const oldInterimCaption = transcriptData.captions.find(caption => caption.id === `${transcriptId}_${speaker.speakerId}`);
+                console.log(oldInterimCaption);
                 expect(oldInterimCaption).to.not.exist;
 
                 // Check the final caption data
@@ -186,8 +179,8 @@ describe('plugin-meetings', () => {
                 expect(newCaption).to.include({
                   id: transcriptId,
                   isFinal: fakeVoiceaPayload.isFinal,
-                  text: fakeVoiceaPayload.transcript.text,
-                  currentSpokenLanguage: fakeVoiceaPayload.transcript.transcript_language_code,
+                  text: fakeVoiceaPayload.transcripts[0].text,
+                  currentSpokenLanguage: fakeVoiceaPayload.transcripts[0].transcript_language_code,
                 });
 
                 // Check the speaker data in the new caption
@@ -197,7 +190,6 @@ describe('plugin-meetings', () => {
             it('should process new interim captions correctly', () => {
                 let transcriptData = fakeMeeting.transcription;
                 let transcriptId = fakeVoiceaPayload.transcriptId;
-                delete fakeVoiceaPayload.transcript;
 
                 transcriptData.captions.splice(transcriptData.length - 1, 1);
                 fakeVoiceaPayload.isFinal = false;
@@ -232,7 +224,6 @@ describe('plugin-meetings', () => {
             it('should process interim captions with an existing one correctly', () => {
                 let transcriptData = fakeMeeting.transcription;
                 let transcriptId = fakeVoiceaPayload.transcriptId;
-                delete fakeVoiceaPayload.transcript;
                 fakeVoiceaPayload.isFinal = false;
 
                 processNewCaptions({

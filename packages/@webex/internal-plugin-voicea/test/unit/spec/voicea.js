@@ -618,6 +618,7 @@ describe('plugin-voicea', () => {
             start_millis: 12204,
             text: 'Hello?',
             transcript_language_code: 'en',
+            timestamp: '0:13'
           },
           transcripts: [
             {
@@ -629,6 +630,7 @@ describe('plugin-voicea', () => {
               translations: {
                 fr: 'Bonjour.',
               },
+              timestamp: '0:13'
             },
             {
               start_millis: 12204,
@@ -639,6 +641,7 @@ describe('plugin-voicea', () => {
               translations: {
                 fr: "C'est Webex",
               },
+              timestamp: '0:13'
             },
           ],
         };
