@@ -5432,8 +5432,8 @@ export default class Meeting extends StatelessWebexPlugin {
         this.mediaProperties.setMediaDirection(mediaSettings.mediaDirection);
         this.mediaProperties.unsetRemoteMedia();
 
-        // when a move to is intiated by the client , Locus delets the existing media node from the server as soon the DX answers the meeting
-        // once the DX answers we close the old connection and create new media server connection with only share enabled
+        // when a move to is intiated by the client , Locus delets the existing media node from the server as soon the device answers the meeting
+        // once the device answers we close the old connection and create new media server connection with only share enabled
         if (this.statsAnalyzer) {
           await this.statsAnalyzer.stopAnalyzer();
         }
