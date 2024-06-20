@@ -37,7 +37,12 @@ export async function startServer(): Promise<void> {
 
   return new Promise((resolve) => {
     // TODO:  move the logic for spawn the server to test-helper-server
-    const serverPath = '../../@webex/test-helper-server';
+    let serverPath;
+    if (process.cwd().includes('packages/@webex')) {
+      serverPath = '../test-helper-server';
+    } else {
+      serverPath = '../@webex/test-helper-server';
+    }
 
     child = spawn(process.argv[0], [serverPath], {
       env: process.env,
