@@ -5468,6 +5468,8 @@ export default class Meeting extends StatelessWebexPlugin {
       resourceId
     );
 
+    // TODO: Check with locus if SELF_OBSERVING event would ever be not emitted
+    // If yes, introduce a timeout mechanism
     this.isMoveToInProgress = true;
 
     return MeetingUtil.joinMeetingOptions(this, {resourceId, moveToResource: true})

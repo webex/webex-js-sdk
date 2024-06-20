@@ -6260,9 +6260,9 @@ describe('plugin-meetings', () => {
           // Verify that the event handler behaves as expected
           expect(meeting.statsAnalyzer.stopAnalyzer.calledOnce).to.be.true;
           expect(meeting.closeRemoteStreams.calledOnce).to.be.true;
-          await Promise.resolve();
+          await testUtils.flushPromises();
           expect(meeting.closePeerConnections.calledOnce).to.be.true;
-          await Promise.resolve();
+          await testUtils.flushPromises();
           expect(meeting.cleanupLocalStreams.calledOnce).to.be.true;
           expect(meeting.unsetRemoteStreams.calledOnce).to.be.true;
           expect(meeting.unsetPeerConnections.calledOnce).to.be.true;
@@ -6273,7 +6273,7 @@ describe('plugin-meetings', () => {
             videoEnabled: false,
             shareVideoEnabled: true
           })).to.be.true;
-          await Promise.resolve();
+          await testUtils.flushPromises();
           assert.equal(meeting.isMoveToInProgress, false);
         });
 
@@ -6282,6 +6282,7 @@ describe('plugin-meetings', () => {
           try {
             await meeting.moveTo('resourceId');
           } catch {
+            assert.equal(meeting.isMoveToInProgress, false);
             assert.calledOnce(Metrics.sendBehavioralMetric);
             assert.calledWith(Metrics.sendBehavioralMetric, BEHAVIORAL_METRICS.MOVE_TO_FAILURE, {
               correlation_id: meeting.correlationId,
@@ -6303,6 +6304,7 @@ describe('plugin-meetings', () => {
               'SELF_OBSERVING'
             );
           } catch {
+            assert.equal(meeting.isMoveToInProgress, false);
             assert.calledOnce(Metrics.sendBehavioralMetric);
             assert.calledWith(Metrics.sendBehavioralMetric, BEHAVIORAL_METRICS.MOVE_TO_FAILURE, {
               correlation_id: meeting.correlationId,
