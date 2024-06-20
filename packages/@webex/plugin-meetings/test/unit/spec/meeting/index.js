@@ -6166,18 +6166,22 @@ describe('plugin-meetings', () => {
 
         beforeEach(() => {
           sandbox = sinon.createSandbox();
-          sandbox.stub(meeting, 'cleanupLocalStreams');
-          sandbox.stub(meeting, 'unpublishStreams');
+          meeting.statsAnalyzer = {
+            stopAnalyzer: sinon.stub().returns(Promise.resolve())
+          };
 
-          sandbox.stub(meeting.mediaProperties, 'setMediaDirection');
-          meeting.mediaProperties.audioStream = 'audioStream';
-          meeting.mediaProperties.videoStream = 'videoStream';
-          meeting.mediaProperties.shareAudioStream = 'shareAudioStream';
-          meeting.mediaProperties.shareVideoStream = 'shareVideoStream';
+          meeting.reconnectionManager = {
+            cleanUp: sinon.stub()
+          };
 
-          meeting.closePeerConnections = sinon.stub();
+          meeting.cleanupLocalStreams=sinon.stub();
+          meeting.closeRemoteStreams = sinon.stub().returns(Promise.resolve());
+          meeting.closePeerConnections = sinon.stub().returns(Promise.resolve());
+          meeting.unsetRemoteStreams = sinon.stub();
           meeting.unsetPeerConnections = sinon.stub();
-          meeting.createMediaConnection = sinon.stub();
+          meeting.addMedia = sinon.stub().returns(Promise.resolve());
+          meeting.mediaProperties.setMediaDirection = sinon.stub();
+
           sandbox
             .stub(MeetingUtil, 'joinMeeting')
             .returns(
@@ -6239,8 +6243,10 @@ describe('plugin-meetings', () => {
           });
         });
 
-        it('should unpublishStreams on moveTo & reconnect after', async () => {
+        it('should cleanup on moveTo & addMedia after', async () => {
           await meeting.moveTo('resourceId');
+
+          assert.equal(meeting.isMoveTo, true);
 
           await meeting.locusInfo.emitScoped(
             {
@@ -6249,24 +6255,24 @@ describe('plugin-meetings', () => {
             },
             'SELF_OBSERVING'
           );
+          
 
-          // beacuse we are calling callback so we need to wait
-          assert.calledWith(meeting.unpublishStreams,[
-            meeting.mediaProperties.audioStream,
-            meeting.mediaProperties.videoStream,
-            meeting.mediaProperties.shareAudioStream,
-            meeting.mediaProperties.shareVideoStream,
-          ]);
-
-          assert.called(meeting.cleanupLocalStreams);
-
-          // give queued Promise callbacks a chance to run
+          // Verify that the event handler behaves as expected
+          expect(meeting.statsAnalyzer.stopAnalyzer.calledOnce).to.be.true;
+          expect(meeting.closeRemoteStreams.calledOnce).to.be.true;
           await Promise.resolve();
-
-          assert.called(meeting.mediaProperties.setMediaDirection);
-          assert.called(meeting.closePeerConnections);
-          assert.called(meeting.unsetPeerConnections);
-          assert.called(meeting.createMediaConnection);
+          expect(meeting.closePeerConnections.calledOnce).to.be.true;
+          await Promise.resolve();
+          expect(meeting.cleanupLocalStreams.calledOnce).to.be.true;
+          expect(meeting.unsetRemoteStreams.calledOnce).to.be.true;
+          expect(meeting.unsetPeerConnections.calledOnce).to.be.true;
+          expect(meeting.reconnectionManager.cleanUp.calledOnce).to.be.true;
+          expect(meeting.mediaProperties.setMediaDirection.calledOnce).to.be.true;
+          expect(meeting.addMedia.calledOnceWithExactly({
+            audioEnabled: false,
+            videoEnabled: false,
+            shareVideoEnabled: true
+          })).to.be.true;
         });
 
         it('should throw an error if moveTo call fails', async () => {

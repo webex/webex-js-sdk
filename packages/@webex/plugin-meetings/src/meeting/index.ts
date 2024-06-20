@@ -5437,15 +5437,13 @@ export default class Meeting extends StatelessWebexPlugin {
         const stopStatsAnalyzer = this.statsAnalyzer
           ? this.statsAnalyzer.stopAnalyzer()
           : Promise.resolve();
-        await stopStatsAnalyzer
-          .then(() => this.closeRemoteStreams())
-          .then(() => this.closePeerConnections())
-          .then(() => {
-            this.cleanupLocalStreams();
-            this.unsetRemoteStreams();
-            this.unsetPeerConnections();
-            this.reconnectionManager.cleanUp();
-          });
+        await stopStatsAnalyzer;
+        await this.closeRemoteStreams();
+        await this.closePeerConnections();
+        this.cleanupLocalStreams();
+        this.unsetRemoteStreams();
+        this.unsetPeerConnections();
+        this.reconnectionManager.cleanUp();
 
         await this.addMedia({
           audioEnabled: false,
