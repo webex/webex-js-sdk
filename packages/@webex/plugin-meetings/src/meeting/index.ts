@@ -5429,15 +5429,23 @@ export default class Meeting extends StatelessWebexPlugin {
           },
         };
 
-        this.cleanupLocalStreams();
-
         this.mediaProperties.setMediaDirection(mediaSettings.mediaDirection);
         this.mediaProperties.unsetRemoteMedia();
 
         // when a move to is intiated by the client , Locus delets the existing media node from the server as soon the DX answers the meeting
-        // once the DX answers we establish connection back the media server with only receiveShare enabled
-        this.closePeerConnections();
-        this.unsetPeerConnections();
+        // once the DX answers we close the old connection and create new media server connection with only share enabled
+        const stopStatsAnalyzer = this.statsAnalyzer
+          ? this.statsAnalyzer.stopAnalyzer()
+          : Promise.resolve();
+        await stopStatsAnalyzer
+          .then(() => this.closeRemoteStreams())
+          .then(() => this.closePeerConnections())
+          .then(() => {
+            this.cleanupLocalStreams();
+            this.unsetRemoteStreams();
+            this.unsetPeerConnections();
+            this.reconnectionManager.cleanUp();
+          });
 
         await this.addMedia({
           audioEnabled: false,
