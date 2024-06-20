@@ -5439,13 +5439,6 @@ export default class Meeting extends StatelessWebexPlugin {
         this.closePeerConnections();
         this.unsetPeerConnections();
 
-        await this.unpublishStreams([
-          this.mediaProperties.audioStream,
-          this.mediaProperties.videoStream,
-          this.mediaProperties.shareAudioStream,
-          this.mediaProperties.shareVideoStream,
-        ]);
-
         await this.addMedia({
           audioEnabled: false,
           videoEnabled: false,
