@@ -6246,7 +6246,7 @@ describe('plugin-meetings', () => {
         it('should cleanup on moveTo & addMedia after', async () => {
           await meeting.moveTo('resourceId');
 
-          assert.equal(meeting.isMoveTo, true);
+          assert.equal(meeting.isMoveToInProgress, true);
 
           await meeting.locusInfo.emitScoped(
             {
@@ -6273,6 +6273,8 @@ describe('plugin-meetings', () => {
             videoEnabled: false,
             shareVideoEnabled: true
           })).to.be.true;
+          await Promise.resolve();
+          assert.equal(meeting.isMoveToInProgress, false);
         });
 
         it('should throw an error if moveTo call fails', async () => {

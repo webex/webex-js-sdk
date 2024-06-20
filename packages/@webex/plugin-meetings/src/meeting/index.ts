@@ -631,7 +631,7 @@ export default class Meeting extends StatelessWebexPlugin {
   turnDiscoverySkippedReason: TurnDiscoverySkipReason;
   turnServerUsed: boolean;
   areVoiceaEventsSetup = false;
-  isMoveTo = false;
+  isMoveToInProgress = false;
 
   voiceaListenerCallbacks: object = {
     [VOICEAEVENTS.VOICEA_ANNOUNCEMENT]: (payload: Transcription['languageOptions']) => {
@@ -5434,10 +5434,9 @@ export default class Meeting extends StatelessWebexPlugin {
 
         // when a move to is intiated by the client , Locus delets the existing media node from the server as soon the DX answers the meeting
         // once the DX answers we close the old connection and create new media server connection with only share enabled
-        const stopStatsAnalyzer = this.statsAnalyzer
-          ? this.statsAnalyzer.stopAnalyzer()
-          : Promise.resolve();
-        await stopStatsAnalyzer;
+        if (this.statsAnalyzer) {
+          await this.statsAnalyzer.stopAnalyzer();
+        }
         await this.closeRemoteStreams();
         await this.closePeerConnections();
         this.cleanupLocalStreams();
@@ -5449,10 +5448,9 @@ export default class Meeting extends StatelessWebexPlugin {
           audioEnabled: false,
           videoEnabled: false,
           shareVideoEnabled: true,
-        }).then(() => {
-          Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.MOVE_TO_SUCCESS);
-          this.isMoveTo = false;
         });
+        Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.MOVE_TO_SUCCESS);
+        this.isMoveToInProgress = false;
       } catch (error) {
         LoggerProxy.logger.error('Meeting:index#moveTo --> Failed to moveTo resourceId', error);
         Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.MOVE_TO_FAILURE, {
@@ -5461,7 +5459,7 @@ export default class Meeting extends StatelessWebexPlugin {
           reason: error.message,
           stack: error.stack,
         });
-        this.isMoveTo = false;
+        this.isMoveToInProgress = false;
       }
     });
 
@@ -5470,7 +5468,7 @@ export default class Meeting extends StatelessWebexPlugin {
       resourceId
     );
 
-    this.isMoveTo = true;
+    this.isMoveToInProgress = true;
 
     return MeetingUtil.joinMeetingOptions(this, {resourceId, moveToResource: true})
       .then(() => {
@@ -5485,7 +5483,7 @@ export default class Meeting extends StatelessWebexPlugin {
           stack: error.stack,
         });
         LoggerProxy.logger.error('Meeting:index#moveTo --> Failed to moveTo resourceId', error);
-        this.isMoveTo = false;
+        this.isMoveToInProgress = false;
 
         return Promise.reject(error);
       });
@@ -6472,11 +6470,14 @@ export default class Meeting extends StatelessWebexPlugin {
   /**
    * Performs TURN discovery as a separate call to the Locus /media API
    *
-   * @param {boolean} isRetry
+   * @param {boolean} isReconnecting
    * @param {boolean} isForced
    * @returns {Promise}
    */
-  private async doTurnDiscovery(isRetry: boolean, isForced: boolean): Promise<TurnDiscoveryResult> {
+  private async doTurnDiscovery(
+    isReconnecting: boolean,
+    isForced: boolean
+  ): Promise<TurnDiscoveryResult> {
     // @ts-ignore
     const cdl = this.webex.internal.newMetrics.callDiagnosticLatencies;
 
@@ -6485,7 +6486,7 @@ export default class Meeting extends StatelessWebexPlugin {
       name: 'internal.client.add-media.turn-discovery.start',
     });
 
-    const turnDiscoveryResult = await this.roap.doTurnDiscovery(this, isRetry, isForced);
+    const turnDiscoveryResult = await this.roap.doTurnDiscovery(this, isReconnecting, isForced);
 
     this.turnDiscoverySkippedReason = turnDiscoveryResult?.turnDiscoverySkippedReason;
     this.turnServerUsed = !this.turnDiscoverySkippedReason;
@@ -6524,16 +6525,16 @@ export default class Meeting extends StatelessWebexPlugin {
     turnServerInfo?: TurnServerInfo
   ): Promise<void> {
     const LOG_HEADER = 'Meeting:index#addMedia():establishMediaConnection -->';
-    const isRetry = this.isMoveTo || this.retriedWithTurnServer;
+    const isReconnecting = this.isMoveToInProgress || this.retriedWithTurnServer;
 
     // We are forcing turn discovery if the case is moveTo and a turn server was used already
-    if (this.isMoveTo && this.turnServerUsed) {
+    if (this.isMoveToInProgress && this.turnServerUsed) {
       isForced = true;
     }
 
     try {
       if (!turnServerInfo) {
-        ({turnServerInfo} = await this.doTurnDiscovery(isRetry, isForced));
+        ({turnServerInfo} = await this.doTurnDiscovery(isReconnecting, isForced));
       }
 
       const mc = await this.createMediaConnection(turnServerInfo, bundlePolicy);
