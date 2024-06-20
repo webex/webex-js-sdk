@@ -314,6 +314,9 @@ export default class Reachability {
       if (result.tcp.result === 'unreachable') {
         unreachableList.push({name: key, protocol: 'tcp'});
       }
+      if (result.xtls.result === 'unreachable') {
+        unreachableList.push({name: key, protocol: 'xtls'});
+      }
     });
 
     return unreachableList;
