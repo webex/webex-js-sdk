@@ -1013,7 +1013,8 @@ export class StatsAnalyzer extends EventsScope {
       this.statsResults[mediaType][sendrecvType].isRequested =
         result.isRequested ||
         (result.lastRequestedUpdateTimestamp &&
-          performance.timeOrigin + performance.now() - result.lastRequestedUpdateTimestamp < 60000);
+          performance.timeOrigin + performance.now() - result.lastRequestedUpdateTimestamp <
+            MQA_INTERVAL);
     }
   }
 

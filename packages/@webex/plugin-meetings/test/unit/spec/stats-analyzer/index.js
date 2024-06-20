@@ -275,6 +275,7 @@ describe('plugin-meetings', () => {
       let mqeData;
       let loggerSpy;
       let receiveSlot;
+      let performanceNowStub;
 
       let receivedEventsData = {
         local: {},
@@ -305,6 +306,7 @@ describe('plugin-meetings', () => {
       beforeEach(() => {
         clock = sinon.useFakeTimers();
         receiveSlot = undefined;
+        performanceNowStub = sinon.stub(performance, 'now').returns(60000);
 
         resetReceivedEvents();
 
@@ -570,6 +572,7 @@ describe('plugin-meetings', () => {
       afterEach(() => {
         sandbox.reset();
         clock.restore();
+        performanceNowStub.restore();
       });
 
       const startStatsAnalyzer = async (mediaStatus, lastEmittedEvents) => {
