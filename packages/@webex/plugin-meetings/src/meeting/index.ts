@@ -5436,6 +5436,7 @@ export default class Meeting extends StatelessWebexPlugin {
         // when a move to is intiated by the client , Locus delets the existing media node from the server as soon the DX answers the meeting
         // once the DX answers we establish connection back the media server with only receiveShare enabled
         this.closePeerConnections();
+        this.unsetPeerConnections();
 
         await this.unpublishStreams([
           this.mediaProperties.audioStream,
@@ -5444,7 +5445,6 @@ export default class Meeting extends StatelessWebexPlugin {
           this.mediaProperties.shareVideoStream,
         ]);
 
-        this.unsetPeerConnections();
         await this.addMedia({
           audioEnabled: false,
           videoEnabled: false,
