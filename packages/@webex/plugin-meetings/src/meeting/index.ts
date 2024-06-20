@@ -631,6 +631,7 @@ export default class Meeting extends StatelessWebexPlugin {
   turnDiscoverySkippedReason: TurnDiscoverySkipReason;
   turnServerUsed: boolean;
   areVoiceaEventsSetup = false;
+  isMoveToInProgress = false;
 
   voiceaListenerCallbacks: object = {
     [VOICEAEVENTS.VOICEA_ANNOUNCEMENT]: (payload: Transcription['languageOptions']) => {
@@ -1390,11 +1391,11 @@ export default class Meeting extends StatelessWebexPlugin {
     this.remoteMediaManager = null;
 
     this.localAudioStreamMuteStateHandler = () => {
-      this.audio.handleLocalStreamMuteStateChange(this);
+      this.audio?.handleLocalStreamMuteStateChange(this);
     };
 
     this.localVideoStreamMuteStateHandler = () => {
-      this.video.handleLocalStreamMuteStateChange(this);
+      this.video?.handleLocalStreamMuteStateChange(this);
     };
 
     // The handling of output track changes should be done inside
@@ -3944,7 +3945,7 @@ export default class Meeting extends StatelessWebexPlugin {
     // we don't update this.mediaProperties.mediaDirection.sendAudio, because we always keep it as true to avoid extra SDP exchanges
     this.mediaProperties.setLocalAudioStream(localStream);
 
-    this.audio.handleLocalStreamChange(this);
+    this.audio?.handleLocalStreamChange(this);
 
     localStream?.on(
       LocalStreamEventNames.UserMuteStateChange,
@@ -3986,7 +3987,7 @@ export default class Meeting extends StatelessWebexPlugin {
     // we don't update this.mediaProperties.mediaDirection.sendVideo, because we always keep it as true to avoid extra SDP exchanges
     this.mediaProperties.setLocalVideoStream(localStream);
 
-    this.video.handleLocalStreamChange(this);
+    this.video?.handleLocalStreamChange(this);
 
     localStream?.on(
       LocalStreamEventNames.UserMuteStateChange,
@@ -5428,17 +5429,28 @@ export default class Meeting extends StatelessWebexPlugin {
           },
         };
 
-        this.cleanupLocalStreams();
-
         this.mediaProperties.setMediaDirection(mediaSettings.mediaDirection);
         this.mediaProperties.unsetRemoteMedia();
 
-        // when a move to is intiated by the client , Locus delets the existing media node from the server as soon the DX answers the meeting
-        // once the DX answers we establish connection back the media server with only receiveShare enabled
-        // @ts-ignore - reconnectMedia does not accept any argument
-        await this.reconnectionManager.reconnectMedia(mediaSettings).then(() => {
-          Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.MOVE_TO_SUCCESS);
+        // when a move to is intiated by the client , Locus delets the existing media node from the server as soon the device answers the meeting
+        // once the device answers we close the old connection and create new media server connection with only share enabled
+        if (this.statsAnalyzer) {
+          await this.statsAnalyzer.stopAnalyzer();
+        }
+        await this.closeRemoteStreams();
+        await this.closePeerConnections();
+        this.cleanupLocalStreams();
+        this.unsetRemoteStreams();
+        this.unsetPeerConnections();
+        this.reconnectionManager.cleanUp();
+
+        await this.addMedia({
+          audioEnabled: false,
+          videoEnabled: false,
+          shareVideoEnabled: true,
         });
+        Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.MOVE_TO_SUCCESS);
+        this.isMoveToInProgress = false;
       } catch (error) {
         LoggerProxy.logger.error('Meeting:index#moveTo --> Failed to moveTo resourceId', error);
         Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.MOVE_TO_FAILURE, {
@@ -5447,6 +5459,7 @@ export default class Meeting extends StatelessWebexPlugin {
           reason: error.message,
           stack: error.stack,
         });
+        this.isMoveToInProgress = false;
       }
     });
 
@@ -5454,6 +5467,10 @@ export default class Meeting extends StatelessWebexPlugin {
       'Meeting:index#moveTo --> Initated moved to using resourceId',
       resourceId
     );
+
+    // TODO: Check with locus if SELF_OBSERVING event would ever be not emitted
+    // If yes, introduce a timeout mechanism
+    this.isMoveToInProgress = true;
 
     return MeetingUtil.joinMeetingOptions(this, {resourceId, moveToResource: true})
       .then(() => {
@@ -5468,6 +5485,7 @@ export default class Meeting extends StatelessWebexPlugin {
           stack: error.stack,
         });
         LoggerProxy.logger.error('Meeting:index#moveTo --> Failed to moveTo resourceId', error);
+        this.isMoveToInProgress = false;
 
         return Promise.reject(error);
       });
@@ -6454,11 +6472,14 @@ export default class Meeting extends StatelessWebexPlugin {
   /**
    * Performs TURN discovery as a separate call to the Locus /media API
    *
-   * @param {boolean} isRetry
+   * @param {boolean} isReconnecting
    * @param {boolean} isForced
    * @returns {Promise}
    */
-  private async doTurnDiscovery(isRetry: boolean, isForced: boolean): Promise<TurnDiscoveryResult> {
+  private async doTurnDiscovery(
+    isReconnecting: boolean,
+    isForced: boolean
+  ): Promise<TurnDiscoveryResult> {
     // @ts-ignore
     const cdl = this.webex.internal.newMetrics.callDiagnosticLatencies;
 
@@ -6467,7 +6488,7 @@ export default class Meeting extends StatelessWebexPlugin {
       name: 'internal.client.add-media.turn-discovery.start',
     });
 
-    const turnDiscoveryResult = await this.roap.doTurnDiscovery(this, isRetry, isForced);
+    const turnDiscoveryResult = await this.roap.doTurnDiscovery(this, isReconnecting, isForced);
 
     this.turnDiscoverySkippedReason = turnDiscoveryResult?.turnDiscoverySkippedReason;
     this.turnServerUsed = !this.turnDiscoverySkippedReason;
@@ -6506,11 +6527,16 @@ export default class Meeting extends StatelessWebexPlugin {
     turnServerInfo?: TurnServerInfo
   ): Promise<void> {
     const LOG_HEADER = 'Meeting:index#addMedia():establishMediaConnection -->';
-    const isRetry = this.retriedWithTurnServer;
+    const isReconnecting = this.isMoveToInProgress || this.retriedWithTurnServer;
+
+    // We are forcing turn discovery if the case is moveTo and a turn server was used already
+    if (this.isMoveToInProgress && this.turnServerUsed) {
+      isForced = true;
+    }
 
     try {
       if (!turnServerInfo) {
-        ({turnServerInfo} = await this.doTurnDiscovery(isRetry, isForced));
+        ({turnServerInfo} = await this.doTurnDiscovery(isReconnecting, isForced));
       }
 
       const mc = await this.createMediaConnection(turnServerInfo, bundlePolicy);
@@ -7010,7 +7036,7 @@ export default class Meeting extends StatelessWebexPlugin {
     if (audioEnabled !== undefined) {
       this.mediaProperties.mediaDirection.sendAudio = audioEnabled;
       this.mediaProperties.mediaDirection.receiveAudio = audioEnabled;
-      this.audio.enable(this, audioEnabled);
+      this.audio?.enable(this, audioEnabled);
       if (this.isMultistream) {
         this.sendSlotManager.setActive(MediaType.AudioMain, audioEnabled);
       }
@@ -7019,7 +7045,7 @@ export default class Meeting extends StatelessWebexPlugin {
     if (videoEnabled !== undefined) {
       this.mediaProperties.mediaDirection.sendVideo = videoEnabled;
       this.mediaProperties.mediaDirection.receiveVideo = videoEnabled;
-      this.video.enable(this, videoEnabled);
+      this.video?.enable(this, videoEnabled);
       if (this.isMultistream) {
         this.sendSlotManager.setActive(MediaType.VideoMain, videoEnabled);
       }
