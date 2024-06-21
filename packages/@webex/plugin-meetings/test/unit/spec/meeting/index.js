@@ -6166,11 +6166,22 @@ describe('plugin-meetings', () => {
 
         beforeEach(() => {
           sandbox = sinon.createSandbox();
-          sandbox.stub(meeting, 'cleanupLocalStreams');
+          meeting.statsAnalyzer = {
+            stopAnalyzer: sinon.stub().returns(Promise.resolve())
+          };
 
-          sandbox.stub(meeting.mediaProperties, 'setMediaDirection');
+          meeting.reconnectionManager = {
+            cleanUp: sinon.stub()
+          };
 
-          sandbox.stub(meeting.reconnectionManager, 'reconnectMedia').returns(Promise.resolve());
+          meeting.cleanupLocalStreams=sinon.stub();
+          meeting.closeRemoteStreams = sinon.stub().returns(Promise.resolve());
+          meeting.closePeerConnections = sinon.stub().returns(Promise.resolve());
+          meeting.unsetRemoteStreams = sinon.stub();
+          meeting.unsetPeerConnections = sinon.stub();
+          meeting.addMedia = sinon.stub().returns(Promise.resolve());
+          meeting.mediaProperties.setMediaDirection = sinon.stub();
+
           sandbox
             .stub(MeetingUtil, 'joinMeeting')
             .returns(
@@ -6232,8 +6243,10 @@ describe('plugin-meetings', () => {
           });
         });
 
-        it('should reconnectMedia after DX joins after moveTo', async () => {
+        it('should cleanup on moveTo & addMedia after', async () => {
           await meeting.moveTo('resourceId');
+
+          assert.equal(meeting.isMoveToInProgress, true);
 
           await meeting.locusInfo.emitScoped(
             {
@@ -6242,26 +6255,26 @@ describe('plugin-meetings', () => {
             },
             'SELF_OBSERVING'
           );
+          
 
-          // beacuse we are calling callback so we need to wait
-
-          assert.called(meeting.cleanupLocalStreams);
-
-          // give queued Promise callbacks a chance to run
-          await Promise.resolve();
-
-          assert.called(meeting.mediaProperties.setMediaDirection);
-
-          assert.calledWith(meeting.reconnectionManager.reconnectMedia, {
-            mediaDirection: {
-              sendVideo: false,
-              receiveVideo: false,
-              sendAudio: false,
-              receiveAudio: false,
-              sendShare: false,
-              receiveShare: true,
-            },
-          });
+          // Verify that the event handler behaves as expected
+          expect(meeting.statsAnalyzer.stopAnalyzer.calledOnce).to.be.true;
+          expect(meeting.closeRemoteStreams.calledOnce).to.be.true;
+          await testUtils.flushPromises();
+          expect(meeting.closePeerConnections.calledOnce).to.be.true;
+          await testUtils.flushPromises();
+          expect(meeting.cleanupLocalStreams.calledOnce).to.be.true;
+          expect(meeting.unsetRemoteStreams.calledOnce).to.be.true;
+          expect(meeting.unsetPeerConnections.calledOnce).to.be.true;
+          expect(meeting.reconnectionManager.cleanUp.calledOnce).to.be.true;
+          expect(meeting.mediaProperties.setMediaDirection.calledOnce).to.be.true;
+          expect(meeting.addMedia.calledOnceWithExactly({
+            audioEnabled: false,
+            videoEnabled: false,
+            shareVideoEnabled: true
+          })).to.be.true;
+          await testUtils.flushPromises();
+          assert.equal(meeting.isMoveToInProgress, false);
         });
 
         it('should throw an error if moveTo call fails', async () => {
@@ -6269,6 +6282,7 @@ describe('plugin-meetings', () => {
           try {
             await meeting.moveTo('resourceId');
           } catch {
+            assert.equal(meeting.isMoveToInProgress, false);
             assert.calledOnce(Metrics.sendBehavioralMetric);
             assert.calledWith(Metrics.sendBehavioralMetric, BEHAVIORAL_METRICS.MOVE_TO_FAILURE, {
               correlation_id: meeting.correlationId,
@@ -6290,6 +6304,7 @@ describe('plugin-meetings', () => {
               'SELF_OBSERVING'
             );
           } catch {
+            assert.equal(meeting.isMoveToInProgress, false);
             assert.calledOnce(Metrics.sendBehavioralMetric);
             assert.calledWith(Metrics.sendBehavioralMetric, BEHAVIORAL_METRICS.MOVE_TO_FAILURE, {
               correlation_id: meeting.correlationId,
@@ -7852,6 +7867,7 @@ describe('plugin-meetings', () => {
       describe('#setUpLocusInfoSelfListener', () => {
         it('listens to the self unadmitted guest event', (done) => {
           meeting.startKeepAlive = sinon.stub();
+          meeting.updateLLMConnection = sinon.stub();
           meeting.locusInfo.emit({function: 'test', file: 'test'}, 'SELF_UNADMITTED_GUEST', test1);
           assert.calledOnceWithExactly(meeting.startKeepAlive);
           assert.calledThrice(TriggerProxy.trigger);
@@ -7862,6 +7878,7 @@ describe('plugin-meetings', () => {
             'meeting:self:lobbyWaiting',
             {payload: test1}
           );
+          assert.calledOnce(meeting.updateLLMConnection);
           done();
         });
         it('listens to the self admitted guest event', (done) => {
