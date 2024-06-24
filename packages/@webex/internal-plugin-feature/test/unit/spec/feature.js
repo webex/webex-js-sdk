@@ -120,6 +120,37 @@ describe('plugin-feature', () => {
       });
     });
 
+    describe('#listen & #setFeature', () => {
+      beforeEach(() => {
+        webex.internal.mercury.on = sinon.stub();
+        // webex.internal.feature.setFeature()
+      });
+
+      afterEach(() => {
+        webex.internal.feature.mercury = null;
+        webex.internal.feature.isListeningToMercury = undefined;
+      })
+
+      it('listens to mercury if mercury object is available', () => {
+        assert.equal(webex.internal.feature.isListeningToMercury, undefined);
+        webex.internal.feature.setMercury(webex.internal.mercury);
+        assert.equal(webex.internal.feature.isListeningToMercury, undefined);
+        webex.internal.feature.listen();
+        assert.equal(webex.internal.feature.isListeningToMercury, true);
+        assert.calledOnce(webex.internal.mercury.on);
+      });
+
+      it('listens to mercury after mercury object is available', () => {
+        assert.equal(webex.internal.feature.isListeningToMercury, undefined);
+        webex.internal.feature.listen();
+        assert.notCalled(webex.internal.mercury.on);
+        assert.equal(webex.internal.feature.isListeningToMercury, false);
+        webex.internal.feature.setMercury(webex.internal.mercury);
+        assert.equal(webex.internal.feature.isListeningToMercury, true);
+        assert.calledOnce(webex.internal.mercury.on);
+      });
+    })
+
     describe('when a feature is changed', () => {
       ['developer', 'entitlement', 'user'].forEach((keyType) => {
         it(`emits \`change:${keyType}\` on ${keyType} feature change`, () => {
