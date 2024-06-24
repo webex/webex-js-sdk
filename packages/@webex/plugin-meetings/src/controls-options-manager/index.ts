@@ -5,7 +5,7 @@ import MeetingRequest from '../meeting/request';
 import LoggerProxy from '../common/logs/logger-proxy';
 import {Control, Setting} from './enums';
 import {ControlConfig} from './types';
-import Util from './util';
+import Utils, {UtilsMethodKeys} from './util';
 import {CAN_SET, CAN_UNSET, ENABLED} from './constants';
 
 /**
@@ -30,7 +30,7 @@ export default class ControlsOptionsManager {
    * @private
    * @memberof ControlsOptionsManager
    */
-  private request: MeetingRequest;
+  private request: MeetingRequest | undefined;
 
   /**
    * @instance
@@ -38,7 +38,7 @@ export default class ControlsOptionsManager {
    * @private
    * @memberof ControlsOptionsManager
    */
-  private displayHints: Array<string> = [];
+  private displayHints: Array<string> | undefined = [];
 
   /**
    * @instance
@@ -46,7 +46,7 @@ export default class ControlsOptionsManager {
    * @private
    * @memberof ControlsOptionsManager
    */
-  private locusUrl: string;
+  private locusUrl: string | undefined;
 
   /**
    * @param {MeetingRequest} request
@@ -91,7 +91,7 @@ export default class ControlsOptionsManager {
    * @public
    * @memberof ControlsOptionsManager
    */
-  public setLocusUrl(url: string) {
+  public setLocusUrl(url: string | undefined) {
     this.locusUrl = url;
   }
 
@@ -101,7 +101,7 @@ export default class ControlsOptionsManager {
    * @public
    * @memberof ControlsOptionsManager
    */
-  public setDisplayHints(hints: Array<string>) {
+  public setDisplayHints(hints: Array<string> | undefined) {
     this.displayHints = hints;
   }
 
@@ -148,7 +148,7 @@ export default class ControlsOptionsManager {
         );
       }
 
-      if (!Util.canUpdate(control, this.displayHints)) {
+      if (this.displayHints && !Utils.canUpdate(control, this.displayHints)) {
         throw new PermissionError(
           `updating meeting control scope "${control.scope}" not allowed, due to moderator property.`
         );
@@ -183,14 +183,16 @@ export default class ControlsOptionsManager {
     );
 
     const body: Record<string, any> = {};
-    let error: PermissionError;
+    let error: PermissionError | undefined;
 
     let shouldSkipCheckToMergeBody = false;
 
     Object.entries(setting).forEach(([key, value]) => {
+      const utilKey = `${value ? CAN_SET : CAN_UNSET}${key}` as UtilsMethodKeys;
       if (
         !shouldSkipCheckToMergeBody &&
-        !Util?.[`${value ? CAN_SET : CAN_UNSET}${key}`](this.displayHints)
+        this.displayHints &&
+        !Utils?.[utilKey](this.displayHints)
       ) {
         error = new PermissionError(`${key} [${value}] not allowed, due to moderator property.`);
       }

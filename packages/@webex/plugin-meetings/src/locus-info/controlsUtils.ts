@@ -18,7 +18,7 @@ const ControlsUtils: any = {};
  * @returns {Object} parsedObject - parsed host or null if host was undefined
  * @returns {String} parsedObject.recordingId
  */
-ControlsUtils.parse = (controls: any) => {
+ControlsUtils.parse = (controls: Record<string, any>) => {
   const parsedControls = {...controls};
 
   if (controls && controls.record) {

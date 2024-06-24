@@ -86,7 +86,7 @@ export class ReceiveSlot extends EventsScope {
    * Set the max frame size for this slot
    * @param newFs frame size
    */
-  public setMaxFs(newFs) {
+  public setMaxFs(newFs: unknown) {
     // emit event for media request manager to listen to
 
     this.emit(

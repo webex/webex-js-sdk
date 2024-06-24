@@ -23,7 +23,7 @@ export default class LocusRetryStatusInterceptor extends Interceptor {
    * @param {WebexHttpError} reason
    * @returns {Promise<WebexHttpError>}
    */
-  onResponseError(options, reason) {
+  onResponseError(options: any, reason: any) {
     if ((reason.statusCode === 503 || reason.statusCode === 429) && options.uri.includes('locus')) {
       const hasRetriedLocusRequest = rateLimitExpiryTime.get(this);
       const retryAfterTime = options.headers['retry-after'] || 2000;
@@ -47,7 +47,7 @@ export default class LocusRetryStatusInterceptor extends Interceptor {
    * @param {number} retryAfterTime retry after time in milliseconds
    * @returns {Promise}
    */
-  handleRetryRequestLocusServiceError(options, retryAfterTime) {
+  handleRetryRequestLocusServiceError(options: any, retryAfterTime: number | undefined) {
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
         clearTimeout(timeout);

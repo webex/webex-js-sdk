@@ -4,7 +4,7 @@ import LoggerProxy from '../logs/logger-proxy';
 
 const EventsUtil: any = {};
 
-EventsUtil.getEventLog = (args) => {
+EventsUtil.getEventLog = (args: unknown) => {
   let argString = '';
 
   try {
@@ -16,7 +16,7 @@ EventsUtil.getEventLog = (args) => {
   return argString;
 };
 
-EventsUtil.getScopeLog = (scope) => {
+EventsUtil.getScopeLog = (scope: any) => {
   let scopeString = '';
 
   if (scope) {

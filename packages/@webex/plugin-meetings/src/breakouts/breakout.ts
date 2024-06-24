@@ -41,8 +41,8 @@ const Breakout = WebexPlugin.extend({
        * If the breakout has no name, assume it is the main session
        * @returns {boolean}
        */
-      fn() {
-        return this.sessionType === 'MAIN';
+      fn(): boolean {
+        return (this as Record<string, any>).sessionType === 'MAIN';
       },
     },
   },
@@ -99,7 +99,7 @@ const Breakout = WebexPlugin.extend({
       throw new Error('Cannot leave the main session');
     }
 
-    const mainSession = this.parent.breakouts.filter((breakout) => breakout.isMain)[0];
+    const mainSession = this.parent.breakouts.filter((breakout: any) => breakout.isMain)[0];
 
     if (!mainSession) {
       throw new Error('Cannot leave, no main session found');
@@ -157,7 +157,7 @@ const Breakout = WebexPlugin.extend({
    * @param {Object} locus Locus object
    * @returns {void}
    */
-  parseRoster(locus) {
+  parseRoster(locus: any) {
     if (!this.members) {
       this.initMembers();
     }
@@ -174,7 +174,7 @@ const Breakout = WebexPlugin.extend({
    * @param {Object} options
    * @returns {Promise}
    */
-  broadcast(message, options) {
+  broadcast(message: any, options: any) {
     return this.breakoutRequest.broadcast({
       url: this.url,
       message,

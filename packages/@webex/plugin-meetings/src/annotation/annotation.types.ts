@@ -35,12 +35,12 @@ type AnnotationInfo = {
 
 interface IAnnotationChannel {
   // === below is for presenter
-  acceptRequest: (approval) => undefined | Promise<void>;
-  declineRequest: (approval) => undefined | Promise<void>;
+  acceptRequest: (approval: any) => undefined | Promise<void>;
+  declineRequest: (approval: any) => undefined | Promise<void>;
   closeAnnotation: (requestData: RequestData) => undefined | Promise<void>;
   // === below is for attendee
   approveAnnotation: (requestData: RequestData) => undefined | Promise<void>;
-  cancelApproveAnnotation: (requestData: RequestData, approval) => undefined | Promise<void>;
+  cancelApproveAnnotation: (requestData: RequestData, approval: any) => undefined | Promise<void>;
   sendStrokeData: (strokeData: StrokeData) => void;
   // =====
   approvalUrlUpdate: (approvalUrl: string) => void;

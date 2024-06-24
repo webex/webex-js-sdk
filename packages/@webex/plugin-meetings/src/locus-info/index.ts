@@ -72,7 +72,7 @@ export default class LocusInfo extends EventsScope {
    * @param {string} meetingId
    * @returns {undefined}
    */
-  constructor(updateMeeting, webex, meetingId) {
+  constructor(updateMeeting: unknown, webex: Record<string, any>, meetingId: string) {
     super();
     this.parsedLocus = {
       states: [],
@@ -92,8 +92,8 @@ export default class LocusInfo extends EventsScope {
    * @returns {undefined}
    */
   private doLocusSync(meeting: any) {
-    let isDelta;
-    let url;
+    let isDelta: boolean | undefined;
+    let url: string | undefined;
 
     if (this.locusParser.workingCopy.syncUrl) {
       url = this.locusParser.workingCopy.syncUrl;
@@ -112,7 +112,7 @@ export default class LocusInfo extends EventsScope {
     // return value ignored on purpose
     meeting.meetingRequest
       .getLocusDTO({url})
-      .catch((e) => {
+      .catch((e: Record<string, any>) => {
         if (isDelta) {
           LoggerProxy.logger.info(
             'Locus-info:index#doLocusSync --> delta sync failed, falling back to full sync'
@@ -129,13 +129,15 @@ export default class LocusInfo extends EventsScope {
 
           isDelta = false;
 
-          return meeting.meetingRequest.getLocusDTO({url: meeting.locusUrl}).catch((err) => {
-            LoggerProxy.logger.info(
-              'Locus-info:index#doLocusSync --> fallback full sync failed, destroying the meeting'
-            );
-            this.webex.meetings.destroy(meeting, MEETING_REMOVED_REASON.LOCUS_DTO_SYNC_FAILED);
-            throw err;
-          });
+          return meeting.meetingRequest
+            .getLocusDTO({url: meeting.locusUrl})
+            .catch((err: unknown) => {
+              LoggerProxy.logger.info(
+                'Locus-info:index#doLocusSync --> fallback full sync failed, destroying the meeting'
+              );
+              this.webex.meetings.destroy(meeting, MEETING_REMOVED_REASON.LOCUS_DTO_SYNC_FAILED);
+              throw err;
+            });
         }
         LoggerProxy.logger.info(
           'Locus-info:index#doLocusSync --> fallback full sync failed, destroying the meeting'
@@ -143,7 +145,7 @@ export default class LocusInfo extends EventsScope {
         this.webex.meetings.destroy(meeting, MEETING_REMOVED_REASON.LOCUS_DTO_SYNC_FAILED);
         throw e;
       })
-      .then((res) => {
+      .then((res: Record<string, any>) => {
         if (isDelta) {
           if (!isEmpty(res.body)) {
             meeting.locusInfo.handleLocusDelta(res.body, meeting);
@@ -203,7 +205,7 @@ export default class LocusInfo extends EventsScope {
     if (!this.locusParser.onDeltaAction) {
       // delta action, along with associated loci
       // is passed into the function.
-      this.locusParser.onDeltaAction = (action, parsedLoci) => {
+      this.locusParser.onDeltaAction = (action: string, parsedLoci: unknown) => {
         this.applyLocusDeltaData(action, parsedLoci, meeting);
       };
     }
@@ -371,7 +373,7 @@ export default class LocusInfo extends EventsScope {
    * @memberof LocusInfo
    */
   // eslint-disable-next-line @typescript-eslint/no-shadow
-  handleOneOnOneEvent(eventType: string) {
+  handleOneOnOneEvent(eventType: string | undefined) {
     if (
       this.parsedLocus.fullState.type === _CALL_ ||
       this.parsedLocus.fullState.type === _SIP_BRIDGE_
@@ -426,7 +428,7 @@ export default class LocusInfo extends EventsScope {
    * @returns {undefined}
    * @memberof LocusInfo
    */
-  updateLocusInfo(locus) {
+  updateLocusInfo(locus: Record<string, any>) {
     if (locus.self?.reason === 'MOVED' && locus.self?.state === 'LEFT') {
       // When moved to a breakout session locus sends a message for the previous locus
       // indicating that we have been moved. It isn't helpful to continue parsing this
@@ -712,13 +714,13 @@ export default class LocusInfo extends EventsScope {
    */
   updateParticipantDeltas(participants: Array<any> = []) {
     // Used to find a participant within a participants collection.
-    const findParticipant = (participant, collection) =>
+    const findParticipant = (participant: Record<string, any>, collection: Record<string, any>[]) =>
       collection.find((item) => item.person.id === participant.person.id);
 
     // Generates an object that indicates which state properties have changed.
     const generateDelta = (prevState: any = {}, newState: any = {}) => {
       // Setup deltas.
-      const deltas = {
+      const deltas: Record<string, any> = {
         audioStatus: prevState.audioStatus !== newState.audioStatus,
         videoSlidesStatus: prevState.videoSlidesStatus !== newState.videoSlidesStatus,
         videoStatus: prevState.videoStatus !== newState.videoStatus,
@@ -1658,7 +1660,10 @@ export default class LocusInfo extends EventsScope {
    * @memberof LocusInfo
    */
   // eslint-disable-next-line class-methods-use-this
-  mergeParticipants(participants, sourceParticipants) {
+  mergeParticipants(
+    participants: Record<string, any>[],
+    sourceParticipants: Record<string, any>[]
+  ) {
     if (!sourceParticipants || !sourceParticipants.length) return participants;
     if (!participants || !participants.length) {
       return sourceParticipants;

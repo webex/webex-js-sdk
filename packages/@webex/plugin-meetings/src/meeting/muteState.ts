@@ -5,7 +5,7 @@ import MeetingUtil from './util';
 import {AUDIO, VIDEO} from '../constants';
 
 // eslint-disable-next-line import/prefer-default-export
-export const createMuteState = (type, meeting, enabled: boolean) => {
+export const createMuteState = (type: string, meeting: Record<string, any>, enabled: boolean) => {
   // todo: remove the meeting argument  (SPARK-399695)
 
   LoggerProxy.logger.info(
@@ -30,7 +30,7 @@ export class MuteState {
       enabled: boolean; // indicates if audio/video is enabled at all or not
       localMute: boolean;
     };
-    server: {localMute: boolean; remoteMute: boolean; unmuteAllowed: boolean};
+    server: {localMute: boolean | undefined; remoteMute: boolean; unmuteAllowed: boolean};
     syncToServerInProgress: boolean;
   };
 
@@ -132,7 +132,7 @@ export class MuteState {
    * @param {ServerMuteReason} reason - reason for muting/unmuting
    * @returns {void}
    */
-  private muteLocalStream(meeting: any, mute: boolean, reason: ServerMuteReason) {
+  private muteLocalStream(meeting: any, mute: boolean, reason: ServerMuteReason | undefined) {
     this.ignoreMuteStateChange = true;
     if (this.type === AUDIO) {
       meeting.mediaProperties.audioStream?.setServerMuted(mute, reason);
@@ -257,7 +257,7 @@ export class MuteState {
         // need to check if a new sync is required, because this.state.client may have changed while we were doing the current sync
         this.applyClientStateToServer(meeting);
       })
-      .catch((e) => {
+      .catch((e: unknown) => {
         this.state.syncToServerInProgress = false;
 
         LoggerProxy.logger.warn(
@@ -290,7 +290,7 @@ export class MuteState {
     );
 
     return MeetingUtil.remoteUpdateAudioVideo(meeting, audioMuted, videoMuted)
-      .then((locus) => {
+      .then((locus: Record<string, any>) => {
         LoggerProxy.logger.info(
           `Meeting:muteState#sendLocalMuteRequestToServer --> ${this.type}: local mute (audio=${audioMuted}, video=${videoMuted}) applied to server`
         );
@@ -303,7 +303,7 @@ export class MuteState {
 
         return locus;
       })
-      .catch((remoteUpdateError) => {
+      .catch((remoteUpdateError: unknown) => {
         LoggerProxy.logger.warn(
           `Meeting:muteState#sendLocalMuteRequestToServer --> ${this.type}: failed to apply local mute (audio=${audioMuted}, video=${videoMuted}) to server: ${remoteUpdateError}`
         );
@@ -336,7 +336,7 @@ export class MuteState {
 
         this.state.server.remoteMute = remoteMute;
       })
-      .catch((remoteUpdateError) => {
+      .catch((remoteUpdateError: unknown) => {
         LoggerProxy.logger.warn(
           `Meeting:muteState#sendRemoteMuteRequestToServer --> ${this.type}: failed to apply remote mute ${remoteMute} to server: ${remoteUpdateError}`
         );

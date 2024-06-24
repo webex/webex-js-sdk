@@ -1,4 +1,3 @@
-// @ts-ignore - Types not available for @webex/common
 import {Defer} from '@webex/common';
 
 import Metrics from '../metrics';
@@ -34,6 +33,8 @@ export type TurnServerInfo = {
   username: string;
   password: string;
 };
+
+type ExpectedHeaders = {field: keyof TurnServerInfo; headerName: string};
 
 export type TurnDiscoveryResult = {
   turnServerInfo?: TurnServerInfo;
@@ -133,7 +134,7 @@ export default class TurnDiscovery {
       );
     }
 
-    const expectedHeaders = [
+    const expectedHeaders: ExpectedHeaders[] = [
       {headerName: 'x-cisco-turn-url', field: 'url'},
       {headerName: 'x-cisco-turn-username', field: 'username'},
       {headerName: 'x-cisco-turn-password', field: 'password'},
@@ -141,9 +142,9 @@ export default class TurnDiscovery {
 
     let foundHeaders = 0;
 
-    headers?.forEach((receivedHeader) => {
+    headers?.forEach((receivedHeader: string) => {
       // check if it matches any of our expected headers
-      expectedHeaders.forEach((expectedHeader) => {
+      expectedHeaders.forEach((expectedHeader: ExpectedHeaders) => {
         if (receivedHeader.startsWith(`${expectedHeader.headerName}=`)) {
           this.turnInfo[expectedHeader.field] = receivedHeader.substring(
             expectedHeader.headerName.length + 1
@@ -153,8 +154,10 @@ export default class TurnDiscovery {
       });
     });
 
-    clearTimeout(this.responseTimer);
-    this.responseTimer = undefined;
+    if (this.responseTimer) {
+      clearTimeout(this.responseTimer);
+      this.responseTimer = undefined;
+    }
 
     if (foundHeaders !== expectedHeaders.length) {
       LoggerProxy.logger.warn(
@@ -303,7 +306,7 @@ export default class TurnDiscovery {
       LoggerProxy.logger.info('Roap:turnDiscovery#doTurnDiscovery --> TURN discovery completed');
 
       return {turnServerInfo: this.turnInfo, turnDiscoverySkippedReason: undefined};
-    } catch (error) {
+    } catch (error: any) {
       this.abort();
 
       return this.handleTurnDiscoveryFailure(meeting, error);
@@ -375,7 +378,7 @@ export default class TurnDiscovery {
    */
   private sendRoapTurnDiscoveryRequest(
     meeting: Meeting,
-    isReconnecting: boolean
+    isReconnecting: boolean | undefined
   ): Promise<TurnDiscoveryResult> {
     if (this.defer) {
       LoggerProxy.logger.warn(
@@ -484,7 +487,7 @@ export default class TurnDiscovery {
    * @param {Meeting} meeting
    * @returns {Boolean} true if TURN discovery is being skipped, false if it is being done
    */
-  async isSkipped(meeting) {
+  async isSkipped(meeting: Meeting) {
     const skipReason = await this.getSkipReason(meeting);
 
     return !!skipReason;
@@ -548,7 +551,7 @@ export default class TurnDiscovery {
       LoggerProxy.logger.info('Roap:turnDiscovery#doTurnDiscovery --> TURN discovery completed');
 
       return {turnServerInfo: this.turnInfo, turnDiscoverySkippedReason: undefined};
-    } catch (e) {
+    } catch (e: any) {
       return this.handleTurnDiscoveryFailure(meeting, e);
     }
   }

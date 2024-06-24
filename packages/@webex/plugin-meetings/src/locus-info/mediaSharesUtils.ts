@@ -79,7 +79,7 @@ MediaSharesUtils.extractContent = (mediaShares: any) => {
     return null;
   }
 
-  return mediaShares.find((share) => share.name === CONTENT) || null;
+  return mediaShares.find((share: Record<string, string>) => share.name === CONTENT) || null;
 };
 
 /**
@@ -92,7 +92,7 @@ MediaSharesUtils.extractWhiteboard = (mediaShares: any) => {
     return null;
   }
 
-  return mediaShares.find((share) => share.name === WHITEBOARD) || null;
+  return mediaShares.find((share: Record<string, string>) => share.name === WHITEBOARD) || null;
 };
 
 /**

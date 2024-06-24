@@ -97,8 +97,11 @@ class Utils {
    * @param {Array<string>} config.policies - All available policies.
    * @returns {boolean} - True if all of the actions are allowed.
    */
-  public static hasPolicies(config: {requiredPolicies: Array<string>; policies: Array<string>}) {
-    const {requiredPolicies, policies = {}} = config;
+  public static hasPolicies(config: {
+    requiredPolicies: Array<string>;
+    policies: Record<string, unknown>[];
+  }): boolean {
+    const {requiredPolicies, policies = {} as Record<string, any>} = config;
 
     return requiredPolicies.every((hint) => policies[hint]);
   }
@@ -170,10 +173,10 @@ class Utils {
     // This additional if statement avoids the display hint discrepency due to
     // the service blocking partial requests with this property only.
     if (control.properties.showDisplayNameWithReactions !== undefined) {
-      if (control.properties.showDisplayNameWithReactions === true) {
+      if (control.properties.showDisplayNameWithReactions) {
         requiredHints.push(DISPLAY_HINTS.ENABLE_SHOW_DISPLAY_NAME);
       }
-      if (control.properties.showDisplayNameWithReactions === false) {
+      if (!control.properties.showDisplayNameWithReactions) {
         requiredHints.push(DISPLAY_HINTS.DISABLE_SHOW_DISPLAY_NAME);
       }
     } else {
@@ -296,5 +299,9 @@ class Utils {
     return determinant;
   }
 }
+
+export type UtilsMethodKeys = {
+  [K in keyof typeof Utils]: (typeof Utils)[K] extends (arg1: Array<string>) => boolean ? K : never;
+}[keyof typeof Utils];
 
 export default Utils;

@@ -58,8 +58,8 @@ const Breakouts = WebexPlugin.extend({
        * Returns true if the user is in the main session
        * @returns {boolean}
        */
-      fn() {
-        return this.sessionType === BREAKOUTS.SESSION_TYPES.MAIN;
+      fn(): boolean {
+        return (this as Record<string, any>).sessionType === BREAKOUTS.SESSION_TYPES.MAIN;
       },
     },
     isActiveBreakout: {
@@ -69,10 +69,11 @@ const Breakouts = WebexPlugin.extend({
        * Returns true if the breakout status is active
        * @returns {boolean}
        */
-      fn() {
+      fn(): boolean {
         return (
-          this.sessionType === BREAKOUTS.SESSION_TYPES.BREAKOUT &&
-          (this.status === BREAKOUTS.STATUS.OPEN || this.status === BREAKOUTS.STATUS.CLOSING)
+          (this as Record<string, any>).sessionType === BREAKOUTS.SESSION_TYPES.BREAKOUT &&
+          ((this as Record<string, any>).status === BREAKOUTS.STATUS.OPEN ||
+            (this as Record<string, any>).status === BREAKOUTS.STATUS.CLOSING)
         );
       },
     },
@@ -83,10 +84,10 @@ const Breakouts = WebexPlugin.extend({
        * Returns the active group id
        * @returns {boolean}
        */
-      fn() {
-        if (this.manageGroups?.length) {
-          return this.manageGroups[0].status !== BREAKOUTS.STATUS.CLOSED
-            ? this.manageGroups[0].id
+      fn(): boolean | string {
+        if ((this as Record<string, any>).manageGroups?.length) {
+          return (this as Record<string, any>).manageGroups[0].status !== BREAKOUTS.STATUS.CLOSED
+            ? (this as Record<string, any>).manageGroups[0].id
             : '';
         }
 
@@ -100,8 +101,10 @@ const Breakouts = WebexPlugin.extend({
        * Returns the breakout status
        * @returns {boolean}
        */
-      fn() {
-        return this.isInMainSession ? this.groups?.[0]?.status : this.status;
+      fn(): string {
+        return (this as Record<string, any>).isInMainSession
+          ? (this as Record<string, any>).groups?.[0]?.status
+          : (this as Record<string, any>).status;
       },
     },
     shouldQueryPreAssignments: {
@@ -111,11 +114,11 @@ const Breakouts = WebexPlugin.extend({
        * Returns should query preAssignments or not
        * @returns {boolean}
        */
-      fn() {
+      fn(): boolean {
         return !!(
-          this.canManageBreakouts &&
-          this.enableBreakoutSession &&
-          this.hasBreakoutPreAssignments
+          (this as Record<string, any>).canManageBreakouts &&
+          (this as Record<string, any>).enableBreakoutSession &&
+          (this as Record<string, any>).hasBreakoutPreAssignments
         );
       },
     },
@@ -140,11 +143,11 @@ const Breakouts = WebexPlugin.extend({
       leading: true,
       trailing: false,
     });
-    this.listenTo(this.breakouts, 'add', (breakout) => {
+    this.listenTo(this.breakouts, 'add', (breakout: unknown) => {
       this.debouncedQueryRosters();
       this.triggerReturnToMainEvent(breakout);
     });
-    this.listenTo(this.breakouts, 'change:requestedLastModifiedTime', (breakout) => {
+    this.listenTo(this.breakouts, 'change:requestedLastModifiedTime', (breakout: unknown) => {
       this.triggerReturnToMainEvent(breakout);
     });
     this.listenToCurrentSessionTypeChange();
@@ -168,7 +171,7 @@ const Breakouts = WebexPlugin.extend({
    * @param {string} locusUrl // locus url
    * @returns {void}
    */
-  locusUrlUpdate(locusUrl) {
+  locusUrlUpdate(locusUrl: string) {
     this.set('locusUrl', locusUrl);
     const {isInMainSession, mainLocusUrl} = this;
     if (isInMainSession || !mainLocusUrl) {
@@ -181,7 +184,7 @@ const Breakouts = WebexPlugin.extend({
    * @param {boolean} canManageBreakouts
    * @returns {void}
    */
-  updateCanManageBreakouts(canManageBreakouts) {
+  updateCanManageBreakouts(canManageBreakouts: boolean) {
     this.set('canManageBreakouts', canManageBreakouts);
   },
 
@@ -190,7 +193,7 @@ const Breakouts = WebexPlugin.extend({
    * @param {string} breakoutServiceUrl
    * @returns {void}
    */
-  breakoutServiceUrlUpdate(breakoutServiceUrl) {
+  breakoutServiceUrlUpdate(breakoutServiceUrl: string) {
     this.set('breakoutServiceUrl', `${breakoutServiceUrl}/breakout/`);
   },
 
@@ -202,18 +205,18 @@ const Breakouts = WebexPlugin.extend({
   queryRosters() {
     this.webex
       .request({uri: `${this.url}/roster`, qs: {locusUrl: btoa(this.locusUrl)}})
-      .then((result) => {
+      .then((result: Record<string, any>) => {
         const {
           body: {rosters},
         } = result;
 
-        rosters?.forEach(({locus}) => {
+        rosters?.forEach(({locus}: {locus: unknown}) => {
           this.handleRosterUpdate(locus);
         });
 
         this.trigger(BREAKOUTS.EVENTS.MEMBERS_UPDATE);
       })
-      .catch((error) => {
+      .catch((error: unknown) => {
         LoggerProxy.logger.error('Meeting:breakouts#queryRosters failed', error);
       });
   },
@@ -223,7 +226,7 @@ const Breakouts = WebexPlugin.extend({
    * @param {Object} locus // locus object
    * @returns {void}
    */
-  handleRosterUpdate(locus) {
+  handleRosterUpdate(locus: Record<string, any>) {
     const sessionId = locus.controls?.breakout?.sessionId;
 
     const session = this.breakouts.get(sessionId);
@@ -242,7 +245,7 @@ const Breakouts = WebexPlugin.extend({
     this.listenTo(
       this.currentBreakoutSession,
       'change:sessionType',
-      (currentBreakoutSession, sessionType) => {
+      (currentBreakoutSession: Record<string, any>, sessionType: string) => {
         if (isSessionTypeChangedFromSessionToMain(currentBreakoutSession, sessionType)) {
           this.trigger(BREAKOUTS.EVENTS.LEAVE_BREAKOUT);
         }
@@ -255,21 +258,25 @@ const Breakouts = WebexPlugin.extend({
    * @returns {void}
    */
   listenToBroadcastMessages() {
-    this.listenTo(this.webex.internal.llm, 'event:breakout.message', (event) => {
-      const {
-        data: {senderUserId, sentTime, message},
-      } = event;
+    this.listenTo(
+      this.webex.internal.llm,
+      'event:breakout.message',
+      (event: Record<string, any>) => {
+        const {
+          data: {senderUserId, sentTime, message},
+        } = event;
 
-      this.trigger(BREAKOUTS.EVENTS.MESSAGE, {
-        senderUserId,
-        sentTime,
-        message,
-        // FIXME: This is only the current sessionId
-        // We'd need to check that the dataChannelUrl is still the same
-        // to guarantee that this message was sent to this session
-        sessionId: this.currentBreakoutSession.sessionId,
-      });
-    });
+        this.trigger(BREAKOUTS.EVENTS.MESSAGE, {
+          senderUserId,
+          sentTime,
+          message,
+          // FIXME: This is only the current sessionId
+          // We'd need to check that the dataChannelUrl is still the same
+          // to guarantee that this message was sent to this session
+          sessionId: this.currentBreakoutSession.sessionId,
+        });
+      }
+    );
   },
 
   /**
@@ -277,10 +284,14 @@ const Breakouts = WebexPlugin.extend({
    * @returns {void}
    */
   listenToBreakoutRosters() {
-    this.listenTo(this.webex.internal.mercury, 'event:breakout.roster', (event) => {
-      this.handleRosterUpdate(event.data.locus);
-      this.trigger(BREAKOUTS.EVENTS.MEMBERS_UPDATE);
-    });
+    this.listenTo(
+      this.webex.internal.mercury,
+      'event:breakout.roster',
+      (event: Record<string, any>) => {
+        this.handleRosterUpdate(event.data.locus);
+        this.trigger(BREAKOUTS.EVENTS.MEMBERS_UPDATE);
+      }
+    );
   },
 
   /**
@@ -288,12 +299,16 @@ const Breakouts = WebexPlugin.extend({
    * @returns {void}
    */
   listenToBreakoutHelp() {
-    this.listenTo(this.webex.internal.mercury, 'event:breakout.help', (event) => {
-      const {
-        data: {participant, sessionId},
-      } = event;
-      this.trigger(BREAKOUTS.EVENTS.ASK_FOR_HELP, {participant, sessionId});
-    });
+    this.listenTo(
+      this.webex.internal.mercury,
+      'event:breakout.help',
+      (event: Record<string, any>) => {
+        const {
+          data: {participant, sessionId},
+        } = event;
+        this.trigger(BREAKOUTS.EVENTS.ASK_FOR_HELP, {participant, sessionId});
+      }
+    );
   },
 
   /**
@@ -318,7 +333,7 @@ const Breakouts = WebexPlugin.extend({
    * @param {Object} params
    * @returns {void}
    */
-  updateBreakout(params) {
+  updateBreakout(params: Record<string, any>) {
     this.set(params);
     // These values are set manually so they are unset when they are not included in params
     this.set('groups', params.groups);
@@ -366,8 +381,8 @@ const Breakouts = WebexPlugin.extend({
    * @param {Object} payload
    * @returns {void}
    */
-  updateBreakoutSessions(payload) {
-    const breakouts = {};
+  updateBreakoutSessions(payload: Record<string, any>) {
+    const breakouts: Record<string, any> = {};
     if (this.isBreakoutIClosing()) {
       // fix issue: don't clear/update breakouts collection when in closing since locus DTO will send undefined or
       // only the MAIN session info here, if just update it, will miss the breakout roster info during
@@ -421,7 +436,9 @@ const Breakouts = WebexPlugin.extend({
       return this.currentBreakoutSession;
     }
 
-    const mainSession = this.breakouts.filter((breakout) => breakout.isMain)[0];
+    const mainSession = this.breakouts.filter(
+      (breakout: Record<string, any>) => breakout.isMain
+    )[0];
     if (!mainSession) {
       throw new Error('no main session found');
     }
@@ -451,7 +468,7 @@ const Breakouts = WebexPlugin.extend({
    * @param {Object} options
    * @returns {Promise}
    */
-  broadcast(message, options) {
+  broadcast(message: string, options: Record<string, any>) {
     const {breakoutGroupId} = this;
     if (!breakoutGroupId) {
       throw new Error('Cannot broadcast, no breakout session found');
@@ -479,7 +496,7 @@ const Breakouts = WebexPlugin.extend({
             locusUrl: this.locusUrl,
           },
         })
-        .catch((err) => {
+        .catch((err: unknown) => {
           LoggerProxy.logger.error(
             `Meeting:request#touchBreakout --> Error provisioning error ${err}`
           );
@@ -495,7 +512,7 @@ const Breakouts = WebexPlugin.extend({
    * @param {boolean} enable
    * @returns {Promise}
    */
-  async toggleBreakout(enable) {
+  async toggleBreakout(enable: boolean) {
     if (this.enableBreakoutSession === undefined) {
       const info = await this.enableBreakouts();
       // first time enable, set the initial data
@@ -513,7 +530,7 @@ const Breakouts = WebexPlugin.extend({
    * @param {boolean} enable
    * @returns {Promise}
    */
-  doToggleBreakout(enable) {
+  doToggleBreakout(enable: boolean) {
     const body = {
       ...(this.editLock && !!this.editLock.token ? {editlock: {token: this.editLock.token}} : {}),
       ...{enableBreakoutSession: enable},
@@ -532,7 +549,7 @@ const Breakouts = WebexPlugin.extend({
    * @param {Object} breakoutInfo -- breakout groups
    * @returns {void}
    */
-  _setManageGroups(breakoutInfo) {
+  _setManageGroups(breakoutInfo: Record<string, any>) {
     if (breakoutInfo?.body?.groups) {
       this.set('manageGroups', breakoutInfo.body.groups);
     }
@@ -543,7 +560,7 @@ const Breakouts = WebexPlugin.extend({
    * @param {object} params -- breakout session group
    * @returns {Promise}
    */
-  async create(params) {
+  async create(params: Record<string, any>) {
     const payload = {...params};
     const body = {
       ...(this.editLock && !!this.editLock.token ? {editlock: {token: this.editLock.token}} : {}),
@@ -556,7 +573,7 @@ const Breakouts = WebexPlugin.extend({
         uri: this.url,
         body,
       })
-      .catch((error) => {
+      .catch((error: unknown) => {
         return Promise.reject(boServiceErrorHandler(error, 'Breakouts#create'));
       });
 
@@ -584,7 +601,7 @@ const Breakouts = WebexPlugin.extend({
         uri: this.url,
         body,
       })
-      .catch((error) => {
+      .catch((error: unknown) => {
         return Promise.reject(boServiceErrorHandler(error, 'Breakouts#clearSessions'));
       });
 
@@ -619,7 +636,7 @@ const Breakouts = WebexPlugin.extend({
       method: HTTP_VERBS.PUT,
       uri: this.url,
       body,
-    }).catch((error) => {
+    }).catch((error: unknown) => {
       return Promise.reject(boServiceErrorHandler(error, 'Breakouts#start'));
     });
 
@@ -654,7 +671,7 @@ const Breakouts = WebexPlugin.extend({
       method: HTTP_VERBS.PUT,
       uri: this.url,
       body,
-    }).catch((error) => {
+    }).catch((error: unknown) => {
       return Promise.reject(boServiceErrorHandler(error, 'Breakouts#end'));
     });
 
@@ -687,7 +704,7 @@ const Breakouts = WebexPlugin.extend({
       method: HTTP_VERBS.PUT,
       uri: this.url,
       body,
-    }).catch((error) => {
+    }).catch((error: unknown) => {
       return Promise.reject(boServiceErrorHandler(error, 'Breakouts#update'));
     });
 
@@ -705,7 +722,7 @@ const Breakouts = WebexPlugin.extend({
    * @param {boolean} editlock -- lock operations of the breakout sessions
    * @returns {Promise}
    */
-  async getBreakout(editlock) {
+  async getBreakout(editlock: boolean) {
     const breakout = await this.request({
       method: HTTP_VERBS.GET,
       uri: this.url + (editlock ? `?editlock=${editlock}` : ''),
@@ -782,7 +799,7 @@ const Breakouts = WebexPlugin.extend({
         this.request({
           method: HTTP_VERBS.PUT,
           uri: `${this.url}/editlock/${this.editLock.token}`,
-        }).catch((error) => {
+        }).catch((error: unknown) => {
           this._clearEditLockInfo();
 
           return Promise.reject(boServiceErrorHandler(error, 'Breakouts#keepEditLockAlive'));
@@ -804,7 +821,7 @@ const Breakouts = WebexPlugin.extend({
         .then(() => {
           this._clearEditLockInfo();
         })
-        .catch((error) => {
+        .catch((error: unknown) => {
           return Promise.reject(boServiceErrorHandler(error, 'Breakouts#unLockEditBreakout'));
         });
     }
@@ -865,13 +882,13 @@ const Breakouts = WebexPlugin.extend({
   queryPreAssignments() {
     this.webex
       .request({uri: `${this.url}/preassignments`, qs: {locusUrl: btoa(this.locusUrl)}})
-      .then((result) => {
+      .then((result: Record<string, any>) => {
         if (result.body?.groups) {
           this.set('preAssignments', result.body.groups);
           this.trigger(BREAKOUTS.EVENTS.PRE_ASSIGNMENTS_UPDATE);
         }
       })
-      .catch((error) => {
+      .catch((error: unknown) => {
         LoggerProxy.logger.error('Meeting:breakouts#queryPreAssignments failed', error);
       });
   },
@@ -915,7 +932,7 @@ const Breakouts = WebexPlugin.extend({
    * @param {Object} breakout
    * @returns {void}
    */
-  triggerReturnToMainEvent(breakout) {
+  triggerReturnToMainEvent(breakout: Record<string, any>) {
     if (breakout.isMain && breakout.requested) {
       this.trigger(BREAKOUTS.EVENTS.ASK_RETURN_TO_MAIN);
     }

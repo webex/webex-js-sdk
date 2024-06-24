@@ -222,15 +222,16 @@ Media.createMediaConnection = (
         audio: audioStream?.outputStream?.getTracks()[0],
         video: videoStream?.outputStream?.getTracks()[0],
         screenShareVideo: shareVideoStream?.outputStream?.getTracks()[0],
+        // @ts-ignore
         screenShareAudio: shareAudioStream?.outputStream?.getTracks()[0], // TODO: add type for screenShareAudio in internal-media-core SPARK-446923
-      } as unknown,
+      },
       direction: {
-        audio: Media.getDirection(true, mediaDirection.receiveAudio, mediaDirection.sendAudio),
-        video: Media.getDirection(true, mediaDirection.receiveVideo, mediaDirection.sendVideo),
+        audio: Media.getDirection(true, mediaDirection?.receiveAudio, mediaDirection?.sendAudio),
+        video: Media.getDirection(true, mediaDirection?.receiveVideo, mediaDirection?.sendVideo),
         screenShareVideo: Media.getDirection(
           false,
-          mediaDirection.receiveShare,
-          mediaDirection.sendShare
+          mediaDirection?.receiveShare,
+          mediaDirection?.sendShare
         ),
       },
       remoteQualityLevel,
@@ -446,7 +447,7 @@ Media.getUserMedia = (
       sendVideo: mediaSetting.sendVideo ? audioVideo.video || mediaSetting.sendVideo : false,
     },
     config
-  ).then((localStream) =>
+  ).then((localStream: Record<string, any>) =>
     Media.getLocalMedia(
       {
         sendShare: mediaSetting.sendShare,
@@ -454,7 +455,7 @@ Media.getUserMedia = (
         sharePreferences,
       },
       config
-    ).then((shareStream) => [localStream, shareStream])
+    ).then((shareStream: Record<string, any>) => [localStream, shareStream])
   );
 
 export default Media;

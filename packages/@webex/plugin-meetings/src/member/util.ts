@@ -1,28 +1,28 @@
 import {
   IExternalRoles,
+  IMediaStatus,
   ParticipantWithRoles,
   ServerRoles,
   ServerRoleShape,
-  IMediaStatus,
 } from './types';
 import {
-  _USER_,
-  _RESOURCE_ROOM_,
-  _OBSERVE_,
-  _WAIT_,
-  _LEFT_,
-  _JOINED_,
+  _CALL_,
   _IDLE_,
   _IN_LOBBY_,
-  _NOT_IN_MEETING_,
   _IN_MEETING_,
-  AUDIO_STATUS,
-  VIDEO_STATUS,
-  _SEND_RECEIVE_,
+  _JOINED_,
+  _LEFT_,
+  _NOT_IN_MEETING_,
+  _OBSERVE_,
   _RECEIVE_ONLY_,
-  _CALL_,
-  VIDEO,
+  _RESOURCE_ROOM_,
+  _SEND_RECEIVE_,
+  _USER_,
+  _WAIT_,
   AUDIO,
+  AUDIO_STATUS,
+  VIDEO,
+  VIDEO_STATUS,
 } from '../constants';
 import ParameterError from '../common/errors/parameter';
 
@@ -32,7 +32,7 @@ const MemberUtil: any = {};
  * @param {Object} participant the locus participant
  * @returns {Boolean}
  */
-MemberUtil.canReclaimHost = (participant) => {
+MemberUtil.canReclaimHost = (participant: Record<string, any>) => {
   if (!participant) {
     throw new ParameterError(
       'canReclaimHostRole could not be processed, participant is undefined.'
@@ -54,9 +54,9 @@ MemberUtil.getControlsRoles = (participant: ParticipantWithRoles): Array<ServerR
  * @param {ServerRoles} controlRole the search role
  * @returns {Boolean}
  */
-MemberUtil.hasRole = (participant: any, controlRole: ServerRoles): boolean =>
+MemberUtil.hasRole = (participant: Record<string, any>, controlRole: ServerRoles): boolean =>
   MemberUtil.getControlsRoles(participant)?.some(
-    (role) => role.type === controlRole && role.hasRole
+    (role: Record<string, any>) => role.type === controlRole && role.hasRole
   );
 
 /**
@@ -85,13 +85,11 @@ MemberUtil.hasPresenter = (participant: ParticipantWithRoles): boolean =>
  * @returns {IExternalRoles}
  */
 MemberUtil.extractControlRoles = (participant: ParticipantWithRoles): IExternalRoles => {
-  const roles = {
+  return {
     cohost: MemberUtil.hasCohost(participant),
     moderator: MemberUtil.hasModerator(participant),
     presenter: MemberUtil.hasPresenter(participant),
   };
-
-  return roles;
 };
 
 /**
@@ -100,7 +98,7 @@ MemberUtil.extractControlRoles = (participant: ParticipantWithRoles): IExternalR
  */
 MemberUtil.isUser = (participant: any) => participant && participant.type === _USER_;
 
-MemberUtil.isModerator = (participant) => participant && participant.moderator;
+MemberUtil.isModerator = (participant: Record<string, any>) => participant && participant.moderator;
 
 /**
  * @param {Object} participant the locus participant
@@ -114,7 +112,7 @@ MemberUtil.isGuest = (participant: any) => participant && participant.guest;
  */
 MemberUtil.isDevice = (participant: any) => participant && participant.type === _RESOURCE_ROOM_;
 
-MemberUtil.isModeratorAssignmentProhibited = (participant) =>
+MemberUtil.isModeratorAssignmentProhibited = (participant: Record<string, any>) =>
   participant && participant.moderatorAssignmentNotAllowed;
 
 /**
@@ -138,7 +136,7 @@ MemberUtil.isAssociatedSame = (participant: any, id: string) =>
   participant &&
   participant.associatedUsers &&
   participant.associatedUsers.some(
-    (user) => user.id === id || (user.person && user.person.id === id)
+    (user: Record<string, any>) => user.id === id || (user.person && user.person.id === id)
   );
 
 /**
@@ -200,7 +198,7 @@ MemberUtil.isHandRaised = (participant: any) => {
  * @param {Object} participant the locus participant
  * @returns {Boolean}
  */
-MemberUtil.isBreakoutsSupported = (participant) => {
+MemberUtil.isBreakoutsSupported = (participant: Record<string, any>) => {
   if (!participant) {
     throw new ParameterError('Breakout support could not be processed, participant is undefined.');
   }
@@ -212,7 +210,7 @@ MemberUtil.isBreakoutsSupported = (participant) => {
  * @param {Object} participant the locus participant
  * @returns {Boolean}
  */
-MemberUtil.isInterpretationSupported = (participant) => {
+MemberUtil.isInterpretationSupported = (participant: Record<string, any>) => {
   if (!participant) {
     throw new ParameterError(
       'Interpretation support could not be processed, participant is undefined.'
@@ -226,7 +224,7 @@ MemberUtil.isInterpretationSupported = (participant) => {
  * @param {Object} participant the locus participant
  * @returns {Boolean}
  */
-MemberUtil.isLiveAnnotationSupported = (participant) => {
+MemberUtil.isLiveAnnotationSupported = (participant: Record<string, any>) => {
   if (!participant) {
     throw new ParameterError(
       'LiveAnnotation support could not be processed, participant is undefined.'
@@ -293,21 +291,29 @@ MemberUtil.isRecording = (participant: any) => {
   return false;
 };
 
-MemberUtil.isRemovable = (isSelf, isGuest, isInMeeting, type) => {
+MemberUtil.isRemovable = (
+  isSelf: boolean,
+  isGuest: boolean,
+  isInMeeting: boolean,
+  type: string
+) => {
   if (isGuest || isSelf) {
     return false;
   }
   if (type === _CALL_) {
     return false;
   }
-  if (isInMeeting) {
-    return true;
-  }
 
-  return false;
+  return isInMeeting;
 };
 
-MemberUtil.isMutable = (isSelf, isDevice, isInMeeting, isMuted, type) => {
+MemberUtil.isMutable = (
+  isSelf: boolean,
+  isDevice: boolean,
+  isInMeeting: boolean,
+  isMuted: boolean,
+  type: string
+) => {
   if (!isInMeeting) {
     return false;
   }
@@ -317,11 +323,8 @@ MemberUtil.isMutable = (isSelf, isDevice, isInMeeting, isMuted, type) => {
   if (type === _CALL_) {
     return false;
   }
-  if (isSelf || isDevice) {
-    return true;
-  }
 
-  return false;
+  return isSelf || isDevice;
 };
 
 /**
@@ -338,7 +341,7 @@ MemberUtil.extractStatus = (participant: any) => {
   if (participant.state === _IDLE_) {
     if (participant.devices && participant.devices.length > 0) {
       const foundDevice = participant.devices.find(
-        (device) =>
+        (device: Record<string, any>) =>
           device.intent && (device.intent.type === _WAIT_ || device.intent.type === _OBSERVE_)
       );
 

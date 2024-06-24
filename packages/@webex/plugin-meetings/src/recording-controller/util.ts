@@ -30,7 +30,7 @@ const canUserStop = (
   displayHints.includes(DISPLAY_HINTS.RECORDING_CONTROL_STOP) &&
   MeetingUtil.selfSupportsFeature(SELF_POLICY.SUPPORT_NETWORK_BASED_RECORD, userPolicies);
 
-const extractLocusId = (url: string) => {
+const extractLocusId = (url: string | undefined) => {
   return url?.split('/').pop();
 };
 

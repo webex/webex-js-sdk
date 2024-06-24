@@ -87,7 +87,7 @@ export type Config = {
     countryCode?: string;
     regionCode?: string;
   };
-  correlationId: string;
+  correlationId?: string;
   meetingId: string;
   preferTranscoding: boolean;
 };
@@ -260,7 +260,7 @@ export class LocusMediaRequest extends WebexPlugin {
       uri,
       body,
     })
-      .then((result) => {
+      .then((result: unknown) => {
         if (isRequestAffectingConfluenceState(request)) {
           this.confluenceState = 'created';
         }
@@ -277,7 +277,7 @@ export class LocusMediaRequest extends WebexPlugin {
 
         return result;
       })
-      .catch((e) => {
+      .catch((e: unknown) => {
         if (
           isRequestAffectingConfluenceState(request) &&
           this.confluenceState === 'creation in progress'

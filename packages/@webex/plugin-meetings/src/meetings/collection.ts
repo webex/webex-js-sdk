@@ -16,7 +16,7 @@ export default class MeetingCollection extends Collection {
     super('meetings');
   }
 
-  set(meeting) {
+  set(meeting: string) {
     // @ts-ignore
     this.meetings[meeting.id] = meeting;
 

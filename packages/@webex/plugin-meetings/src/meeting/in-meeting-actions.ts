@@ -9,79 +9,79 @@ import {MEETINGS} from '../constants';
  * Type for In-Meeting Actions
  */
 interface IInMeetingActions {
-  canInviteNewParticipants?: boolean;
-  canAdmitParticipant?: boolean;
-  canLock?: boolean;
-  canUnlock?: boolean;
-  canSetMuteOnEntry?: boolean;
-  canUnsetMuteOnEntry?: boolean;
-  canSetDisallowUnmute?: boolean;
-  canUnsetDisallowUnmute?: boolean;
-  canSetMuted?: boolean;
-  canUnsetMuted?: boolean;
-  canAssignHost?: boolean;
-  canSetPresenter?: boolean;
-  canUnsetPresenter?: boolean;
-  canStartRecording?: boolean;
-  canPauseRecording?: boolean;
-  canResumeRecording?: boolean;
-  canStopRecording?: boolean;
-  canRaiseHand?: boolean;
-  canLowerAllHands?: boolean;
-  canLowerSomeoneElsesHand?: boolean;
-  bothLeaveAndEndMeetingAvailable?: boolean;
-  canEnableClosedCaption?: boolean;
-  canStartTranscribing?: boolean;
-  canStopTranscribing?: boolean;
-  isClosedCaptionActive?: boolean;
-  canStartManualCaption?: boolean;
-  canStopManualCaption?: boolean;
-  isManualCaptionActive?: boolean;
-  isSaveTranscriptsEnabled?: boolean;
-  isWebexAssistantActive?: boolean;
-  canViewCaptionPanel?: boolean;
-  isRealTimeTranslationEnabled?: boolean;
-  canSelectSpokenLanguages?: boolean;
-  waitingForOthersToJoin?: boolean;
-  canSendReactions?: boolean;
-  canManageBreakout?: boolean;
-  canBroadcastMessageToBreakout?: boolean;
-  canAdmitLobbyToBreakout?: boolean;
-  isBreakoutPreassignmentsEnabled?: boolean;
-  canUserAskForHelp?: boolean;
-  canUserRenameSelfAndObserved?: boolean;
-  canUserRenameOthers?: boolean;
-  canMuteAll?: boolean;
-  canUnmuteAll?: boolean;
-  canEnableHardMute?: boolean;
-  canDisableHardMute?: boolean;
-  canEnableMuteOnEntry?: boolean;
-  canDisableMuteOnEntry?: boolean;
-  canEnableReactions?: boolean;
-  canDisableReactions?: boolean;
-  canEnableReactionDisplayNames?: boolean;
-  canDisableReactionDisplayNames?: boolean;
-  canUpdateShareControl?: boolean;
-  canEnableViewTheParticipantsList?: boolean;
-  canDisableViewTheParticipantsList?: boolean;
-  canEnableRaiseHand?: boolean;
-  canDisableRaiseHand?: boolean;
-  canEnableVideo?: boolean;
-  canDisableVideo?: boolean;
-  canShareFile?: boolean;
-  canShareApplication?: boolean;
-  canShareCamera?: boolean;
-  canShareDesktop?: boolean;
-  canShareContent?: boolean;
-  canTransferFile?: boolean;
-  canChat?: boolean;
-  canDoVideo?: boolean;
-  canAnnotate?: boolean;
-  canUseVoip?: boolean;
-  supportHQV?: boolean;
-  supportHDV?: boolean;
-  canShareWhiteBoard?: boolean;
-  enforceVirtualBackground?: boolean;
+  canInviteNewParticipants?: boolean | null;
+  canAdmitParticipant?: boolean | null;
+  canLock?: boolean | null;
+  canUnlock?: boolean | null;
+  canSetMuteOnEntry?: boolean | null;
+  canUnsetMuteOnEntry?: boolean | null;
+  canSetDisallowUnmute?: boolean | null;
+  canUnsetDisallowUnmute?: boolean | null;
+  canSetMuted?: boolean | null;
+  canUnsetMuted?: boolean | null;
+  canAssignHost?: boolean | null;
+  canSetPresenter?: boolean | null;
+  canUnsetPresenter?: boolean | null;
+  canStartRecording?: boolean | null;
+  canPauseRecording?: boolean | null;
+  canResumeRecording?: boolean | null;
+  canStopRecording?: boolean | null;
+  canRaiseHand?: boolean | null;
+  canLowerAllHands?: boolean | null;
+  canLowerSomeoneElsesHand?: boolean | null;
+  bothLeaveAndEndMeetingAvailable?: boolean | null;
+  canEnableClosedCaption?: boolean | null;
+  canStartTranscribing?: boolean | null;
+  canStopTranscribing?: boolean | null;
+  isClosedCaptionActive?: boolean | null;
+  canStartManualCaption?: boolean | null;
+  canStopManualCaption?: boolean | null;
+  isManualCaptionActive?: boolean | null;
+  isSaveTranscriptsEnabled?: boolean | null;
+  isWebexAssistantActive?: boolean | null;
+  canViewCaptionPanel?: boolean | null;
+  isRealTimeTranslationEnabled?: boolean | null;
+  canSelectSpokenLanguages?: boolean | null;
+  waitingForOthersToJoin?: boolean | null;
+  canSendReactions?: boolean | null;
+  canManageBreakout?: boolean | null;
+  canBroadcastMessageToBreakout?: boolean | null;
+  canAdmitLobbyToBreakout?: boolean | null;
+  isBreakoutPreassignmentsEnabled?: boolean | null;
+  canUserAskForHelp?: boolean | null;
+  canUserRenameSelfAndObserved?: boolean | null;
+  canUserRenameOthers?: boolean | null;
+  canMuteAll?: boolean | null;
+  canUnmuteAll?: boolean | null;
+  canEnableHardMute?: boolean | null;
+  canDisableHardMute?: boolean | null;
+  canEnableMuteOnEntry?: boolean | null;
+  canDisableMuteOnEntry?: boolean | null;
+  canEnableReactions?: boolean | null;
+  canDisableReactions?: boolean | null;
+  canEnableReactionDisplayNames?: boolean | null;
+  canDisableReactionDisplayNames?: boolean | null;
+  canUpdateShareControl?: boolean | null;
+  canEnableViewTheParticipantsList?: boolean | null;
+  canDisableViewTheParticipantsList?: boolean | null;
+  canEnableRaiseHand?: boolean | null;
+  canDisableRaiseHand?: boolean | null;
+  canEnableVideo?: boolean | null;
+  canDisableVideo?: boolean | null;
+  canShareFile?: boolean | null;
+  canShareApplication?: boolean | null;
+  canShareCamera?: boolean | null;
+  canShareDesktop?: boolean | null;
+  canShareContent?: boolean | null;
+  canTransferFile?: boolean | null;
+  canChat?: boolean | null;
+  canDoVideo?: boolean | null;
+  canAnnotate?: boolean | null;
+  canUseVoip?: boolean | null;
+  supportHQV?: boolean | null;
+  supportHDV?: boolean | null;
+  canShareWhiteBoard?: boolean | null;
+  enforceVirtualBackground?: boolean | null;
 }
 
 /**
@@ -90,151 +90,151 @@ interface IInMeetingActions {
 export default class InMeetingActions implements IInMeetingActions {
   namespace = MEETINGS;
 
-  canInviteNewParticipants = null;
+  canInviteNewParticipants: boolean | null = null;
 
-  canAdmitParticipant = null;
+  canAdmitParticipant: boolean | null = null;
 
-  canLock = null;
+  canLock: boolean | null = null;
 
-  canUnlock = null;
+  canUnlock: boolean | null = null;
 
-  canAssignHost = null;
+  canAssignHost: boolean | null = null;
 
-  canStartRecording = null;
+  canStartRecording: boolean | null = null;
 
-  canPauseRecording = null;
+  canPauseRecording: boolean | null = null;
 
-  canResumeRecording = null;
+  canResumeRecording: boolean | null = null;
 
-  canStopRecording = null;
+  canStopRecording: boolean | null = null;
 
-  canSetMuteOnEntry = null;
+  canSetMuteOnEntry: boolean | null = null;
 
-  canSetPresenter = null;
+  canSetPresenter: boolean | null = null;
 
-  canUnsetPresenter = null;
+  canUnsetPresenter: boolean | null = null;
 
-  canUnsetMuteOnEntry = null;
+  canUnsetMuteOnEntry: boolean | null = null;
 
-  canSetDisallowUnmute = null;
+  canSetDisallowUnmute: boolean | null = null;
 
-  canUnsetDisallowUnmute = null;
+  canUnsetDisallowUnmute: boolean | null = null;
 
-  canSetMuted = null;
+  canSetMuted: boolean | null = null;
 
-  canUnsetMuted = null;
+  canUnsetMuted: boolean | null = null;
 
-  canRaiseHand = null;
+  canRaiseHand: boolean | null = null;
 
-  canLowerAllHands = null;
+  canLowerAllHands: boolean | null = null;
 
-  canLowerSomeoneElsesHand = null;
+  canLowerSomeoneElsesHand: boolean | null = null;
 
-  bothLeaveAndEndMeetingAvailable = null;
+  bothLeaveAndEndMeetingAvailable: boolean | null = null;
 
-  canEnableClosedCaption = null;
+  canEnableClosedCaption: boolean | null = null;
 
-  canStartTranscribing = null;
+  canStartTranscribing: boolean | null = null;
 
-  canStopTranscribing = null;
+  canStopTranscribing: boolean | null = null;
 
-  isClosedCaptionActive = null;
+  isClosedCaptionActive: boolean | null = null;
 
-  canStartManualCaption = null;
+  canStartManualCaption: boolean | null = null;
 
-  canStopManualCaption = null;
+  canStopManualCaption: boolean | null = null;
 
-  isManualCaptionActive = null;
+  isManualCaptionActive: boolean | null = null;
 
-  isSaveTranscriptsEnabled = null;
+  isSaveTranscriptsEnabled: boolean | null = null;
 
-  isWebexAssistantActive = null;
+  isWebexAssistantActive: boolean | null = null;
 
-  canViewCaptionPanel = null;
+  canViewCaptionPanel: boolean | null = null;
 
-  isRealTimeTranslationEnabled = null;
+  isRealTimeTranslationEnabled: boolean | null = null;
 
-  canSelectSpokenLanguages = null;
+  canSelectSpokenLanguages: boolean | null = null;
 
-  waitingForOthersToJoin = null;
+  waitingForOthersToJoin: boolean | null = null;
 
-  canSendReactions = null;
+  canSendReactions: boolean | null = null;
 
-  canManageBreakout = null;
+  canManageBreakout: boolean | null = null;
 
-  canBroadcastMessageToBreakout = null;
+  canBroadcastMessageToBreakout: boolean | null = null;
 
-  canAdmitLobbyToBreakout = null;
+  canAdmitLobbyToBreakout: boolean | null = null;
 
-  isBreakoutPreassignmentsEnabled = null;
+  isBreakoutPreassignmentsEnabled: boolean | null = null;
 
-  canUserAskForHelp = null;
+  canUserAskForHelp: boolean | null = null;
 
-  canUserRenameSelfAndObserved = null;
+  canUserRenameSelfAndObserved: boolean | null = null;
 
-  canUserRenameOthers = null;
+  canUserRenameOthers: boolean | null = null;
 
-  canMuteAll = null;
+  canMuteAll: boolean | null = null;
 
-  canUnmuteAll = null;
+  canUnmuteAll: boolean | null = null;
 
-  canEnableHardMute = null;
+  canEnableHardMute: boolean | null = null;
 
-  canDisableHardMute = null;
+  canDisableHardMute: boolean | null = null;
 
-  canEnableMuteOnEntry = null;
+  canEnableMuteOnEntry: boolean | null = null;
 
-  canDisableMuteOnEntry = null;
+  canDisableMuteOnEntry: boolean | null = null;
 
-  canEnableReactions = null;
+  canEnableReactions: boolean | null = null;
 
-  canDisableReactions = null;
+  canDisableReactions: boolean | null = null;
 
-  canEnableReactionDisplayNames = null;
+  canEnableReactionDisplayNames: boolean | null = null;
 
-  canDisableReactionDisplayNames = null;
+  canDisableReactionDisplayNames: boolean | null = null;
 
-  canUpdateShareControl = null;
+  canUpdateShareControl: boolean | null = null;
 
-  canEnableViewTheParticipantsList = null;
+  canEnableViewTheParticipantsList: boolean | null = null;
 
-  canDisableViewTheParticipantsList = null;
+  canDisableViewTheParticipantsList: boolean | null = null;
 
-  canEnableRaiseHand = null;
+  canEnableRaiseHand: boolean | null = null;
 
-  canDisableRaiseHand = null;
+  canDisableRaiseHand: boolean | null = null;
 
-  canEnableVideo = null;
+  canEnableVideo: boolean | null = null;
 
-  canDisableVideo = null;
+  canDisableVideo: boolean | null = null;
 
-  canShareFile = null;
+  canShareFile: boolean | null = null;
 
-  canShareApplication = null;
+  canShareApplication: boolean | null = null;
 
-  canShareCamera = null;
+  canShareCamera: boolean | null = null;
 
-  canShareDesktop = null;
+  canShareDesktop: boolean | null = null;
 
-  canShareContent = null;
+  canShareContent: boolean | null = null;
 
-  canTransferFile = null;
+  canTransferFile: boolean | null = null;
 
-  canChat = null;
+  canChat: boolean | null = null;
 
-  canDoVideo = null;
+  canDoVideo: boolean | null = null;
 
-  canAnnotate = null;
+  canAnnotate: boolean | null = null;
 
-  canUseVoip = null;
+  canUseVoip: boolean | null = null;
 
-  supportHQV = null;
+  supportHQV: boolean | null = null;
 
-  enforceVirtualBackground = null;
+  enforceVirtualBackground: boolean | null = null;
 
-  supportHDV = null;
+  supportHDV: boolean | null = null;
 
-  canShareWhiteBoard = null;
+  canShareWhiteBoard: boolean | null = null;
 
   /**
    * Returns all meeting action options
@@ -323,16 +323,17 @@ export default class InMeetingActions implements IInMeetingActions {
    */
 
   set = (actions: Partial<IInMeetingActions>) => {
-    const old = this.get();
+    const old: IInMeetingActions = this.get();
 
     let changed = false;
 
     Object.keys(old).forEach((actionKey) => {
-      const actionValue = actions[actionKey];
+      const key = actionKey as keyof IInMeetingActions;
+      const actionValue = actions[key];
 
-      if (actionValue !== undefined && actionValue !== old[actionKey]) {
+      if (actionValue !== undefined && actionValue !== old[key]) {
         changed = true;
-        this[actionKey] = actionValue;
+        this[key] = actionValue;
       }
     });
 

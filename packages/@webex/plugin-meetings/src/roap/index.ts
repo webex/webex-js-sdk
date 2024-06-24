@@ -152,7 +152,7 @@ export default class Roap extends StatelessWebexPlugin {
    * @returns {Promise}
    * @memberof Roap
    */
-  sendRoapError(options) {
+  sendRoapError(options: Record<string, any>) {
     // @ts-ignore
     const meeting = this.webex.meetings.meetingCollection.getByKey(
       'correlationId',
@@ -212,7 +212,7 @@ export default class Roap extends StatelessWebexPlugin {
         locusMediaRequest: meeting.locusMediaRequest,
         ipVersion: MeetingUtil.getIpVersion(meeting.webex),
       })
-      .then(({locus, mediaConnections}) => {
+      .then(({locus, mediaConnections}: Record<string, any>) => {
         if (mediaConnections) {
           meeting.updateMediaConnections(mediaConnections);
         }

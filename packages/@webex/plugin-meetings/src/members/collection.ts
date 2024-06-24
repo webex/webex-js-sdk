@@ -14,11 +14,11 @@ export default class MembersCollection {
     this.members = {};
   }
 
-  set(id, member) {
+  set(id: string, member: unknown) {
     this.members[id] = member;
   }
 
-  setAll(members) {
+  setAll(members: unknown) {
     this.members = members;
   }
 

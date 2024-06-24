@@ -106,7 +106,7 @@ export default class PersonalMeetingRoom extends StatelessWebexPlugin {
       preferred,
     };
 
-    return this.personalMeetingRoomRequest.claimPmr(options).then((pmr) => {
+    return this.personalMeetingRoomRequest.claimPmr(options).then((pmr: Record<string, any>) => {
       if (pmr && pmr.body) {
         this.set(pmr.body);
       } else {
@@ -144,7 +144,7 @@ export default class PersonalMeetingRoom extends StatelessWebexPlugin {
       type: _PERSONAL_ROOM_,
     };
 
-    return this.meetingInfo.fetchMeetingInfo(options).then((pmr) => {
+    return this.meetingInfo.fetchMeetingInfo(options).then((pmr: Record<string, any>) => {
       if (pmr && pmr.body && pmr.body.isPmr) {
         this.set(pmr.body);
       } else {

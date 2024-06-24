@@ -539,7 +539,7 @@ export default class Members extends StatelessWebexPlugin {
    * @public
    * @memberof Members
    */
-  public setLocusUrl(locus: any, locusUrl: string = null) {
+  public setLocusUrl(locus: any, locusUrl: string | null = null) {
     if (locusUrl) {
       this.locusUrl = locusUrl;
     } else if (locus && (locus.locusUrl || locus.url)) {
@@ -560,7 +560,7 @@ export default class Members extends StatelessWebexPlugin {
    * @public
    * @memberof Members
    */
-  public setHostId(locus: any, hostId: string = null) {
+  public setHostId(locus: any, hostId: string | null = null) {
     if (hostId) {
       this.hostId = hostId;
     } else if (locus) {
@@ -581,7 +581,7 @@ export default class Members extends StatelessWebexPlugin {
    * @public
    * @memberof Members
    */
-  public setType(fullState: any, type: string = null) {
+  public setType(fullState: any, type: string | null = null) {
     if (type) {
       this.type = type;
     } else if (fullState) {
@@ -601,7 +601,7 @@ export default class Members extends StatelessWebexPlugin {
    * @returns {undefined}
    * @memberof Members
    */
-  setSelfId(locus: any, selfId: string = null) {
+  setSelfId(locus: any, selfId: string | null = null) {
     if (selfId) {
       this.selfId = selfId;
     } else if (locus) {
@@ -631,7 +631,7 @@ export default class Members extends StatelessWebexPlugin {
       const contentMediaShare =
         locus.mediaShares &&
         locus.mediaShares.length &&
-        locus.mediaShares.find((mediaShare) => mediaShare.name === CONTENT);
+        locus.mediaShares.find((mediaShare: Record<string, any>) => mediaShare.name === CONTENT);
 
       this.mediaShareContentId =
         (contentMediaShare &&
@@ -661,7 +661,7 @@ export default class Members extends StatelessWebexPlugin {
       const whiteboardMediaShare =
         locus.mediaShares &&
         locus.mediaShares.length &&
-        locus.mediaShares.find((mediaShare) => mediaShare.name === WHITEBOARD);
+        locus.mediaShares.find((mediaShare: Record<string, any>) => mediaShare.name === WHITEBOARD);
 
       this.mediaShareWhiteboardId =
         (whiteboardMediaShare &&
@@ -685,8 +685,8 @@ export default class Members extends StatelessWebexPlugin {
    * @private
    * @memberof Members
    */
-  private update(participants: Array<any>) {
-    const membersUpdate = {added: [], updated: []};
+  private update(participants: Record<string, any>[]) {
+    const membersUpdate: {added: Member[]; updated: Member[]} = {added: [], updated: []};
 
     if (participants) {
       participants.forEach((participant) => {
@@ -995,7 +995,7 @@ export default class Members extends StatelessWebexPlugin {
     const {locusUrl} = this;
 
     const deviceArray = member.participant.devices;
-    const device = deviceArray.find(({deviceType}) => deviceType === 'SIP');
+    const device = deviceArray.find(({deviceType}: {deviceType: string}) => deviceType === 'SIP');
     const url = device?.url;
 
     if (locusUrl && url) {
@@ -1016,12 +1016,12 @@ export default class Members extends StatelessWebexPlugin {
    * @param {number} csi
    * @returns {Member}
    */
-  findMemberByCsi(csi) {
-    return Object.values(this.membersCollection.getAll()).find((member) =>
-      // @ts-ignore
-      member.participant?.devices?.find((device) =>
-        device.csis?.find((memberCsi) => memberCsi === csi)
-      )
+  findMemberByCsi(csi: number): Record<string, any> | undefined {
+    return (Object.values(this.membersCollection.getAll()) as Record<string, any>).find(
+      (member: Record<string, any>) =>
+        member.participant?.devices?.find((device: Record<string, any>) =>
+          device.csis?.find((memberCsi: number) => memberCsi === csi)
+        )
     );
   }
 
@@ -1033,21 +1033,23 @@ export default class Members extends StatelessWebexPlugin {
    * @param {string} mediaContent 'main' or 'slides'
    * @returns {Member}
    */
-  getCsisForMember(memberId, mediaType = 'video', mediaContent = 'main') {
-    const csis = [];
+  getCsisForMember(memberId: unknown, mediaType = 'video', mediaContent = 'main') {
+    const csis: unknown[] = [];
 
-    this.membersCollection.get(memberId)?.participant?.devices?.forEach((device) => {
-      if (device.mediaSessions) {
-        const deviceCsis = device.mediaSessions
-          ?.filter(
-            (mediaSession) =>
-              mediaSession.mediaType === mediaType && mediaSession.mediaContent === mediaContent
-          )
-          .map((mediaSession) => mediaSession.csi);
+    this.membersCollection
+      .get(memberId)
+      ?.participant?.devices?.forEach((device: Record<string, any>) => {
+        if (device.mediaSessions) {
+          const deviceCsis = device.mediaSessions
+            ?.filter(
+              (mediaSession: Record<string, any>) =>
+                mediaSession.mediaType === mediaType && mediaSession.mediaContent === mediaContent
+            )
+            .map((mediaSession: Record<string, any>) => mediaSession.csi);
 
-        csis.push(...deviceCsis);
-      }
-    });
+          csis.push(...deviceCsis);
+        }
+      });
 
     return csis;
   }

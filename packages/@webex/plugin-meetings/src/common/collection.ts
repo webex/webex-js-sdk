@@ -8,6 +8,7 @@ import ParameterError from './errors/parameter';
 export default class Collection {
   namespace = 'Meetings';
   propertyName: string;
+  [key: string]: any;
 
   /**
    * @param {String} property

@@ -86,7 +86,7 @@ export default class MeetingInfo {
 
     return this.meetingInfoRequest
       .fetchMeetingInfo(options)
-      .then((info) => {
+      .then((info: Record<string, any>) => {
         if (meetingId && sendCAevents) {
           this.webex.internal.newMetrics.submitInternalEvent({
             name: 'internal.client.meetinginfo.response',
@@ -111,7 +111,7 @@ export default class MeetingInfo {
 
         return info;
       })
-      .catch((error) => {
+      .catch((error: Record<string, any>) => {
         LoggerProxy.logger.error(
           `Meeting-info:index#requestFetchInfo -->  ${error} fetch meetingInfo`
         );
@@ -145,7 +145,7 @@ export default class MeetingInfo {
    * @private
    * @memberof MeetingInfo
    */
-  private fetchInfoOptions(destination: string, type: string) {
+  private fetchInfoOptions(destination: {url: string} | string | null, type: string | null) {
     return MeetingInfoUtil.generateOptions({
       destination,
       type,
@@ -170,14 +170,14 @@ export default class MeetingInfo {
    */
   public fetchMeetingInfo(
     destination: string,
-    type: string = null,
+    type: string | null = null,
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    password: string = null,
+    password: string | null = null,
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     captchaInfo: {
       code: string;
       id: string;
-    } = null,
+    } | null = null,
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     installedOrgID = null,
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -193,7 +193,7 @@ export default class MeetingInfo {
     return this.fetchInfoOptions(MeetingInfoUtil.extractDestination(destination, type), type).then(
       (infoOptions) =>
         // fetch meeting info
-        this.requestFetchInfo({...infoOptions, ...options}).catch((error) => {
+        this.requestFetchInfo({...infoOptions, ...options}).catch((error: unknown) => {
           // if it failed the first time as meeting link
           if (infoOptions.type === _MEETING_LINK_) {
             // convert the meeting link to sip URI and retry

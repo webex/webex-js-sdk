@@ -22,7 +22,7 @@ export default class RtcMetrics {
   /**
    * Array of MetricData items to be sent to the metrics service.
    */
-  metricsQueue = [];
+  metricsQueue: Record<string, any>[] = [];
 
   intervalId: number;
 
@@ -32,7 +32,7 @@ export default class RtcMetrics {
 
   correlationId: string;
 
-  connectionId: string;
+  connectionId: string | undefined;
 
   /**
    * Initialize the interval.
@@ -41,7 +41,7 @@ export default class RtcMetrics {
    * @param {string} meetingId - The meeting id.
    * @param {string} correlationId - The correlation id.
    */
-  constructor(webex, meetingId, correlationId) {
+  constructor(webex: Record<string, any>, meetingId: string, correlationId: string) {
     // `window` is used to prevent typescript from returning a NodeJS.Timer.
     this.intervalId = window.setInterval(this.sendMetricsInQueue.bind(this), 30 * 1000);
     this.meetingId = meetingId;
@@ -71,7 +71,7 @@ export default class RtcMetrics {
    *
    * @returns {void}
    */
-  addMetrics(data) {
+  addMetrics(data: Record<string, any>) {
     if (data.payload.length) {
       if (data.name === 'stats-report') {
         data.payload = data.payload.map(this.anonymizeIp);

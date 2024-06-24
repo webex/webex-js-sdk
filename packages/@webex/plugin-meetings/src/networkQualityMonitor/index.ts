@@ -104,7 +104,7 @@ export default class NetworkQualityMonitor extends EventsScope {
   }: {
     mediaType: string;
     remoteRtpResults: any;
-    statsAnalyzerCurrentStats: object;
+    statsAnalyzerCurrentStats: Record<string, any>;
   }) {
     const roundTripTimeInMilliseconds = remoteRtpResults.roundTripTime * 1000;
     const jitterInMilliseconds = remoteRtpResults.jitter * 1000;

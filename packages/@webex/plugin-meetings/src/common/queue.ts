@@ -46,12 +46,12 @@ export default class SortedQueue<ItemType> {
    * Returns null if the queue is empty.
    * @returns {(object|null)} Queue item or null.
    */
-  dequeue(): ItemType {
+  dequeue(): ItemType | null {
     if (this.queue.length === 0) {
       return null;
     }
 
-    return this.queue.shift();
+    return this.queue.shift() ?? null;
   }
 
   /**

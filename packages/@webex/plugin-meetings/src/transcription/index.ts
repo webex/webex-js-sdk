@@ -59,7 +59,7 @@ export default class Transcription {
    */
   onCloseSocket(callback: any) {
     if (callback) {
-      this.webSocket.onclose = (event) => {
+      this.webSocket.onclose = (event: unknown) => {
         callback(event);
       };
     }
@@ -74,7 +74,7 @@ export default class Transcription {
    */
   onErrorSocket(callback: any) {
     if (callback) {
-      this.webSocket.onerror = (event) => {
+      this.webSocket.onerror = (event: unknown) => {
         callback(event);
       };
     }
@@ -124,7 +124,7 @@ export default class Transcription {
     let speaker;
     let transcription;
 
-    this.webSocket.onmessage = (event) => {
+    this.webSocket.onmessage = (event: Record<string, any>) => {
       data = JSON.parse(event.data);
       csis = data.data?.voiceaPayload?.csis || [];
       speaker = this.getSpeaker(csis);

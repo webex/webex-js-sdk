@@ -8,7 +8,7 @@ const SLIDO_REGEX = /.sli.do\//;
  * @param {Object} embeddedApp - raw embedded app object
  * @returns {Object} parsedObject - parsed embedded app object
  */
-EmbeddedAppsUtils.parseApp = (embeddedApp: object) => {
+EmbeddedAppsUtils.parseApp = (embeddedApp: Record<string, any>) => {
   const parsedApp: any = {...embeddedApp};
 
   parsedApp.type = EMBEDDED_APP_TYPES.OTHER;
@@ -28,7 +28,7 @@ EmbeddedAppsUtils.parseApp = (embeddedApp: object) => {
  * @param {any[]} apps2 - an array of apps
  * @returns {boolean} true if the arrays are different
  */
-EmbeddedAppsUtils.areSimilar = (apps1: any[], apps2: any[]) => {
+EmbeddedAppsUtils.areSimilar = (apps1: Record<string, any>[], apps2: Record<string, any>[]) => {
   if (!apps1 || !apps2) {
     return apps1 === apps2;
   }
@@ -51,7 +51,7 @@ EmbeddedAppsUtils.areSimilar = (apps1: any[], apps2: any[]) => {
  * @param {array} embeddedApps
  * @returns {array} result - new array of parsed embedded app objects
  */
-EmbeddedAppsUtils.parse = (embeddedApps: Array<any>) =>
+EmbeddedAppsUtils.parse = (embeddedApps: Array<Record<string, any>>) =>
   embeddedApps && embeddedApps.map(EmbeddedAppsUtils.parseApp);
 
 export default EmbeddedAppsUtils;

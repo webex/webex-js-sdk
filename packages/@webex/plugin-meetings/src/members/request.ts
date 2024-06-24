@@ -78,7 +78,7 @@ export default class MembersRequest extends StatelessWebexPlugin {
    * @param {String} options.memberId ID of member
    * @returns {Promise}
    */
-  removeMember(options) {
+  removeMember(options: Record<string, any>) {
     if (!options || !options.locusUrl || !options.memberId) {
       throw new ParameterError(
         'memberId must be defined, and the associated locus url for this meeting object must be defined.'
@@ -97,7 +97,7 @@ export default class MembersRequest extends StatelessWebexPlugin {
    * @param {String} options.memberId ID of member
    * @returns {Promise}
    */
-  muteMember(options) {
+  muteMember(options: Record<string, any>) {
     if (!options || !options.locusUrl || !options.memberId) {
       throw new ParameterError(
         'memberId must be defined, and the associated locus url for this meeting object must be defined.'
@@ -136,7 +136,7 @@ export default class MembersRequest extends StatelessWebexPlugin {
    * @param {String} options.memberId ID of member
    * @returns {Promise}
    */
-  raiseOrLowerHandMember(options) {
+  raiseOrLowerHandMember(options: Record<string, any>) {
     if (!options || !options.locusUrl || !options.memberId) {
       throw new ParameterError(
         'memberId must be defined, and the associated locus url for this meeting object must be defined.'
@@ -155,7 +155,7 @@ export default class MembersRequest extends StatelessWebexPlugin {
    * @param {String} options.requestingParticipantId ID of requesting participant
    * @returns {Promise}
    */
-  lowerAllHandsMember(options) {
+  lowerAllHandsMember(options: Record<string, any>) {
     if (!options || !options.locusUrl || !options.requestingParticipantId) {
       throw new ParameterError(
         'requestingParticipantId must be defined, and the associated locus url for this meeting object must be defined.'
@@ -194,7 +194,7 @@ export default class MembersRequest extends StatelessWebexPlugin {
    * @param {String} options.moderator ID of moderator
    * @returns {Promise}
    */
-  transferHostToMember(options) {
+  transferHostToMember(options: Record<string, any>) {
     if (!options || !options.locusUrl || !options.memberId || !options.moderator) {
       throw new ParameterError(
         'memberId must be defined, the associated locus url, and the moderator for this meeting object must be defined.'

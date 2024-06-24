@@ -119,16 +119,16 @@ export class ReceiveSlotManager {
    * @returns {Object}
    */
   getStats() {
-    const numAllocatedSlots = {};
-    const numFreeSlots = {};
+    const numAllocatedSlots: {[key in MediaType]?: number} = {};
+    const numFreeSlots: {[key in MediaType]?: number} = {};
 
-    Object.keys(this.allocatedSlots).forEach((key) => {
+    (Object.keys(this.allocatedSlots) as MediaType[]).forEach((key) => {
       if (this.allocatedSlots[key].length > 0) {
         numAllocatedSlots[key] = this.allocatedSlots[key].length;
       }
     });
 
-    Object.keys(this.freeSlots).forEach((key) => {
+    (Object.keys(this.freeSlots) as MediaType[]).forEach((key) => {
       if (this.freeSlots[key].length > 0) {
         numFreeSlots[key] = this.freeSlots[key].length;
       }
@@ -145,7 +145,7 @@ export class ReceiveSlotManager {
    * This function should be called when new members are added to the meeting.
    */
   updateMemberIds() {
-    Object.keys(this.allocatedSlots).forEach((key) => {
+    (Object.keys(this.allocatedSlots) as MediaType[]).forEach((key) => {
       this.allocatedSlots[key].forEach((slot: ReceiveSlot) => {
         slot.findMemberId();
       });

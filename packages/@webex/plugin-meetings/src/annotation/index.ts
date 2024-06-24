@@ -1,5 +1,4 @@
 import uuid from 'uuid';
-// eslint-disable-next-line import/no-extraneous-dependencies
 import {WebexPlugin, config} from '@webex/webex-core';
 import TriggerProxy from '../common/events/trigger-proxy';
 
@@ -24,16 +23,16 @@ class AnnotationChannel extends WebexPlugin implements IAnnotationChannel {
 
   private seqNum: number;
 
-  hasSubscribedToEvents: boolean;
+  hasSubscribedToEvents: boolean | undefined;
 
-  approvalUrl: string;
-  locusUrl: string;
-  deviceUrl: string;
+  approvalUrl: string | undefined;
+  locusUrl: string | undefined;
+  deviceUrl: string | undefined;
 
   /**
    * Initializes annotation module
    */
-  constructor(...args) {
+  constructor(...args: unknown[]) {
     super(...args);
     this.seqNum = 1;
   }
@@ -43,7 +42,7 @@ class AnnotationChannel extends WebexPlugin implements IAnnotationChannel {
    * @param {object}  data
    * @returns {void}
    */
-  private processStrokeMessage(data) {
+  private processStrokeMessage(data: any) {
     const {request} = data;
     this.decryptContent(request.value.encryptionKeyUrl, request.value.content).then(
       (decryptedContent) => {
@@ -67,7 +66,7 @@ class AnnotationChannel extends WebexPlugin implements IAnnotationChannel {
    * @param {Object} e
    * @returns {undefined}
    */
-  private eventCommandProcessor(e) {
+  private eventCommandProcessor(e: any) {
     if (
       e?.data?.eventType === 'locus.approval_request' &&
       e?.data?.approval?.resourceType === ANNOTATION_RESOURCE_TYPE &&
@@ -92,7 +91,7 @@ class AnnotationChannel extends WebexPlugin implements IAnnotationChannel {
    * @param {Object} e
    * @returns {undefined}
    */
-  private eventDataProcessor(e) {
+  private eventDataProcessor(e: any) {
     switch (e?.data?.relayType) {
       case ANNOTATION_RELAY_TYPES.ANNOTATION_CLIENT:
         this.processStrokeMessage(e.data);
@@ -144,7 +143,7 @@ class AnnotationChannel extends WebexPlugin implements IAnnotationChannel {
    * @param {object} approval
    * @returns {Promise}
    */
-  public acceptRequest(approval) {
+  public acceptRequest(approval: any) {
     // @ts-ignore
     return this.request({
       method: HTTP_VERBS.PUT,
@@ -161,7 +160,7 @@ class AnnotationChannel extends WebexPlugin implements IAnnotationChannel {
    * @param {approval} approval
    * @returns {Promise}
    */
-  public declineRequest(approval) {
+  public declineRequest(approval: any) {
     // @ts-ignore
     return this.request({
       method: HTTP_VERBS.PUT,
@@ -188,7 +187,7 @@ class AnnotationChannel extends WebexPlugin implements IAnnotationChannel {
    * @param {object} approval
    * @returns {Promise}
    */
-  public cancelApproveAnnotation(requestData: RequestData, approval) {
+  public cancelApproveAnnotation(requestData: RequestData, approval: any) {
     const body: CommandRequestBody = {
       actionType: ANNOTATION_ACTION_TYPE.CANCELED,
       resourceType: 'AnnotationOnShare',

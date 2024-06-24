@@ -6,7 +6,7 @@ import EventsUtil from './util';
 
 const TriggerProxy: any = {};
 
-TriggerProxy.trigger = (instance, scope, trigger, payload) => {
+TriggerProxy.trigger = (instance: any, scope: any, trigger: any, payload: any) => {
   if (!instance || !instance.trigger) {
     throw new ParameterError(
       'Instance to trigger from must be defined and have a trigger function.'

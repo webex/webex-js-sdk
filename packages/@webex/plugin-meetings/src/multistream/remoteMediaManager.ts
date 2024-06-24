@@ -226,7 +226,7 @@ export class RemoteMediaManager extends EventsScope {
   private slots: {
     audio: {
       main: ReceiveSlot[];
-      si: ReceiveSlot;
+      si: ReceiveSlot | undefined;
     };
     screenShare: {
       audio: ReceiveSlot[];
@@ -339,9 +339,9 @@ export class RemoteMediaManager extends EventsScope {
 
     // check if each layout is valid
     Object.values(this.config.video.layouts).forEach((layout) => {
-      const groupIds = {};
-      const paneIds = {};
-      const groupPriorites = {};
+      const groupIds: Record<string, any> = {};
+      const paneIds: Record<string, any> = {};
+      const groupPriorites: Record<string, any> = {};
 
       layout.activeSpeakerVideoPaneGroups?.forEach((group) => {
         if (groupIds[group.id]) {
@@ -681,7 +681,7 @@ export class RemoteMediaManager extends EventsScope {
    * the rest are all moved to the "unused" list
    */
   private trimReceiverSelectedSlots() {
-    const requiredCsis = {};
+    const requiredCsis: Record<string, any> = {};
 
     // fill requiredCsis with all the CSIs that the given layout requires
     this.currentLayout?.memberVideoPanes?.forEach((memberVideoPane) => {
@@ -753,9 +753,9 @@ export class RemoteMediaManager extends EventsScope {
         (slot) => slot.csi === memberPane.csi
       );
 
-      const isExistingSlotAlreadyAllocated = Object.values(
-        this.receiveSlotAllocations.receiverSelected
-      ).includes(existingSlot);
+      const isExistingSlotAlreadyAllocated = existingSlot
+        ? Object.values(this.receiveSlotAllocations.receiverSelected).includes(existingSlot)
+        : false;
 
       if (memberPane.csi !== undefined && existingSlot && !isExistingSlotAlreadyAllocated) {
         // found it, so use it
@@ -982,7 +982,7 @@ export class RemoteMediaManager extends EventsScope {
       // we create a group of 1, because for screen share we need to use the "active speaker" policy
       this.media.screenShare.video = new RemoteMediaGroup(
         this.mediaRequestManagers.screenShareVideo,
-        [this.slots.screenShare.video],
+        this.slots.screenShare.video ? [this.slots.screenShare.video] : [],
         255,
         false,
         {resolution: this.currentLayout.screenShareVideo.size}
@@ -1161,7 +1161,8 @@ export class RemoteMediaManager extends EventsScope {
     remoteMedia.stop();
 
     delete this.media.video.memberPanes[paneId];
-    delete this.currentLayout.memberVideoPanes?.[paneId];
+    // TODO: to delete memberVideoPanes using paneId it needs to be a number
+    delete this.currentLayout.memberVideoPanes?.[paneId as any];
 
     return Promise.resolve();
   }

@@ -3,7 +3,7 @@ import {MediaType, StreamState} from '@webex/internal-media-core';
 import LoggerProxy from '../common/logs/logger-proxy';
 import EventsScope from '../common/events/events-scope';
 
-import {MediaRequestId, MediaRequestManager} from './mediaRequestManager';
+import {MediaRequest, MediaRequestId, MediaRequestManager} from './mediaRequestManager';
 import {CSI, ReceiveSlot, ReceiveSlotEvents} from './receiveSlot';
 
 export const RemoteMediaEvents = {
@@ -108,7 +108,7 @@ export class RemoteMedia extends EventsScope {
    * @param width width of the video element
    * @param height height of the video element
    */
-  public setSizeHint(width, height) {
+  public setSizeHint(width: number, height: number) {
     // only base on height for now
     let fs: number;
 
@@ -178,7 +178,7 @@ export class RemoteMedia extends EventsScope {
           codec: 'h264',
           maxFs: getMaxFs(this.options.resolution),
         },
-      },
+      } as MediaRequest,
       commit
     );
   }
@@ -212,7 +212,7 @@ export class RemoteMedia extends EventsScope {
   /**
    * Getter for mediaType
    */
-  public get mediaType(): MediaType {
+  public get mediaType(): MediaType | undefined {
     return this.receiveSlot?.mediaType;
   }
 
@@ -233,7 +233,7 @@ export class RemoteMedia extends EventsScope {
   /**
    * Getter for source state
    */
-  public get sourceState(): StreamState {
+  public get sourceState(): StreamState | undefined {
     return this.receiveSlot?.sourceState;
   }
 

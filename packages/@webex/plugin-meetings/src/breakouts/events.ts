@@ -1,13 +1,12 @@
-// eslint-disable-next-line import/prefer-default-export
 import {ClientEvent} from '@webex/internal-plugin-metrics';
 
 const breakoutEvent: {
-  onBreakoutMoveRequest: (eventInfo: any, submitClientEvent: any) => void;
-  onBreakoutMoveResponse: (eventInfo: any, submitClientEvent: any) => void;
-  onBreakoutJoinResponse: (eventInfo: any, submitClientEvent: any) => void;
+  onBreakoutMoveRequest: (eventInfo: unknown, submitClientEvent: unknown) => void;
+  onBreakoutMoveResponse: (eventInfo: unknown, submitClientEvent: unknown) => void;
+  onBreakoutJoinResponse: (eventInfo: unknown, submitClientEvent: unknown) => void;
   postMoveCallAnalyzer: (
     event: ClientEvent['name'],
-    eventInfo: any,
+    eventInfo: unknown,
     submitClientEvent: any
   ) => void;
 } = {

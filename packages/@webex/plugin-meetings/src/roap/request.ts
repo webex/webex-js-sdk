@@ -14,7 +14,7 @@ export default class RoapRequest extends StatelessWebexPlugin {
    * @param {Object} localSdp
    * @returns {Object}
    */
-  async attachReachabilityData(localSdp) {
+  async attachReachabilityData(localSdp: Record<string, any>) {
     let joinCookie;
 
     // @ts-ignore

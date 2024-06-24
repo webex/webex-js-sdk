@@ -30,14 +30,14 @@ export default class Member {
   isSelf: any;
   isUser: any;
   isVideoMuted: any;
-  roles: IExternalRoles;
+  roles: IExternalRoles | null;
   mediaStatus: IMediaStatus;
   name: any;
   participant: any;
   status: any;
-  supportsBreakouts: boolean;
-  supportsInterpretation: boolean;
-  supportLiveAnnotation: boolean;
+  supportsBreakouts: boolean | null;
+  supportsInterpretation: boolean | undefined;
+  supportLiveAnnotation: boolean | null;
   type: any;
   namespace = MEETINGS;
 
@@ -52,15 +52,15 @@ export default class Member {
    * @memberof Member
    */
   constructor(
-    participant: object,
-    options:
-      | {
-          selfId: string;
-          hostId: string;
-          contentSharingId: string;
-          type: string;
-        }
-      | any = {}
+    participant: Record<string, any>,
+    options: {
+      recordingId: unknown;
+      selfId: string;
+      hostId: string;
+      contentSharingId: string;
+      whiteboardSharingId: string;
+      type: string;
+    }
   ) {
     /**
      * @instance
