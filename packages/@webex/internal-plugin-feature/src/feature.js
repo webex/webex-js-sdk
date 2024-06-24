@@ -8,6 +8,7 @@ import * as WebexCore from '@webex/webex-core';
 
 const Feature = WebexCore.WebexPlugin.extend({
   namespace: 'Feature',
+  isListeningToMercury: undefined,
 
   /**
    * Returns the value of the requested feature toggle.
@@ -63,11 +64,13 @@ const Feature = WebexCore.WebexPlugin.extend({
    * @returns {undefined}
    */
   listen() {
-    this.listenTo(
-      this.webex.internal.mercury,
-      'event:featureToggle_update',
-      this.handleFeatureUpdate
-    );
+    if (this.mercury) {
+      this.listenTo(this.mercury, 'event:featureToggle_update', this.handleFeatureUpdate);
+      this.isListeningToMercury = true;
+
+      return;
+    }
+    this.isListeningToMercury = false;
   },
 
   /**
@@ -139,6 +142,13 @@ const Feature = WebexCore.WebexPlugin.extend({
       'change:internal.device.features.user',
       this.trigger.bind(this, 'change:user')
     );
+  },
+
+  setMercury(mercury) {
+    this.mercury = mercury;
+    if (typeof this.isListeningToMercury !== 'undefined' && !this.isListeningToMercury) {
+      this.listen();
+    }
   },
 });
 

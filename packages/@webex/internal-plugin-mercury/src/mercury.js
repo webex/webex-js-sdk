@@ -312,6 +312,7 @@ const Mercury = WebexPlugin.extend({
         this.connected = true;
         this.hasEverConnected = true;
         this._emit('online');
+        this.webex.internal.feature.setMercury(this);
 
         return resolve();
       };
