@@ -189,10 +189,10 @@ export const emptyVideoTransmit = {
     common: {
       direction: 'inactive',
       isMain: true,
-      mariFecEnabled: false, // Not avaliable
-      mariRtxEnabled: false, // Not avaliable
-      mariQosEnabled: false, // Not avaliable
-      mariLiteEnabled: false, // Not avaliable
+      mariFecEnabled: false,
+      mariRtxEnabled: false,
+      mariQosEnabled: false,
+      mariLiteEnabled: false,
       multistreamEnabled: false, // Not avaliable
     },
     dtlsBitrate: 0, // Not avaliable
