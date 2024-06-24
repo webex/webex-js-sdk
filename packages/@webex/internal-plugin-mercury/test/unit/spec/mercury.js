@@ -138,6 +138,7 @@ describe('plugin-mercury', () => {
       });
 
       it('connects to Mercury using default url', () => {
+        webex.internal.feature.setMercury = sinon.stub();
         const promise = mercury.connect();
 
         assert.isFalse(mercury.connected, 'Mercury is not connected');
@@ -148,6 +149,8 @@ describe('plugin-mercury', () => {
           assert.isTrue(mercury.connected, 'Mercury is connected');
           assert.isFalse(mercury.connecting, 'Mercury is not connecting');
           assert.calledWith(socketOpenStub, sinon.match(/ws:\/\/example.com/), sinon.match.any);
+          assert.calledOnce(webex.internal.feature.setMercury);
+          assert.calledWith(webex.internal.feature.setMercury, mercury);
         });
       });
 
