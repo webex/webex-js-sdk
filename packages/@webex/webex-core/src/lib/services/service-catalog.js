@@ -364,7 +364,7 @@ const ServiceCatalog = AmpState.extend({
 
   /**
    *
-   * @param {Array<string>} newAllowedDomains - new alllowed doamins to add to existing set of allowed domains
+   * @param {Array<string>} newAllowedDomains - new allowed domains to add to existing set of allowed domains
    * @returns {void}
    */
   addAllowedDomains(newAllowedDomains) {

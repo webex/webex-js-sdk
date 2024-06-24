@@ -2,6 +2,7 @@ import Url from 'url';
 
 import sha256 from 'crypto-js/sha256';
 
+import {union} from 'lodash';
 import WebexPlugin from '../webex-plugin';
 
 import METRICS from './metrics';
@@ -17,8 +18,6 @@ const trailingSlashes = /(?:^\/)|(?:\/$)/;
 export const DEFAULT_CLUSTER = 'urn:TEAM:us-east-2_a';
 // The default service name for convo (currently identityLookup due to some weird CSB issue)
 export const DEFAULT_CLUSTER_SERVICE = 'identityLookup';
-
-// The default allowed domains that SDK can make requests to outside of service catalog
 
 const CLUSTER_SERVICE = process.env.WEBEX_CONVERSATION_CLUSTER_SERVICE || DEFAULT_CLUSTER_SERVICE;
 const DEFAULT_CLUSTER_IDENTIFIER =
@@ -946,7 +945,7 @@ const Services = WebexPlugin.extend({
 
       // if not fedramp, append on the commercialAllowedDomains
       if (!fedramp) {
-        services.allowedDomains = [...services.allowedDomains, ...COMMERCIAL_ALLOWED_DOMAINS];
+        services.allowedDomains = union(services.allowedDomains, COMMERCIAL_ALLOWED_DOMAINS);
       }
 
       // Check for allowed host domains.

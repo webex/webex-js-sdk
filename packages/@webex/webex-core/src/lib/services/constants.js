@@ -6,6 +6,7 @@ const SERVICE_CATALOGS_ENUM_TYPES = {
   NUMBER: 'SERVICE_CATALOGS_ENUM_TYPES_NUMBER',
 };
 
+// The default allowed domains that SDK can make requests to outside of service catalog
 const COMMERCIAL_ALLOWED_DOMAINS = [
   'wbx2.com',
   'ciscospark.com',

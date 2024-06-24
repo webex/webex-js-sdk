@@ -1953,10 +1953,6 @@ describe('plugin-meetings', () => {
         it('should not fail if UserPreferred info is not fetched ', async () => {
           setup();
 
-          Object.assign(webex.internal.services, {
-            getMeetingPreferences: sinon.stub().returns(Promise.resolve({})),
-          });
-
           await webex.meetings.fetchUserPreferredWebexSite().then(() => {
             assert.equal(webex.meetings.preferredWebexSite, '');
           });
@@ -2369,12 +2365,14 @@ describe('plugin-meetings', () => {
           sessionType: 'MAIN',
         };
         newLocus.self.state = 'JOINED';
-        newLocus.self.devices = [{
-          intent: {
-            reason: 'ON_HOLD_LOBBY',
-            type: 'WAIT',
-          }
-        }];
+        newLocus.self.devices = [
+          {
+            intent: {
+              reason: 'ON_HOLD_LOBBY',
+              type: 'WAIT',
+            },
+          },
+        ];
         LoggerProxy.logger.log = sinon.stub();
         const result = webex.meetings.isNeedHandleLocusDTO(meeting, newLocus);
         assert.equal(result, true);
