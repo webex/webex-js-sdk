@@ -281,11 +281,7 @@ export default class RecordingController {
     );
 
     // assumes action is proper cased (i.e., Example)
-    if (
-      this.displayHints &&
-      this.selfUserPolicies &&
-      Util?.[`canUser${action}`](this.displayHints, this.selfUserPolicies)
-    ) {
+    if (Util?.[`canUser${action}`](this.displayHints, this.selfUserPolicies)) {
       if (this.serviceUrl) {
         return this.recordingService(action);
       }

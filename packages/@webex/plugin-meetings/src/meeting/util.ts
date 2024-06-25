@@ -662,7 +662,10 @@ const MeetingUtil = {
     return locusDeltaRequest;
   },
 
-  selfSupportsFeature: (feature: SELF_POLICY, userPolicies: Record<SELF_POLICY, boolean>) => {
+  selfSupportsFeature: (
+    feature: SELF_POLICY,
+    userPolicies: Record<SELF_POLICY, boolean> | undefined
+  ) => {
     if (!userPolicies) {
       return true;
     }

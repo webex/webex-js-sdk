@@ -54,6 +54,7 @@ export default class Parser {
   queue: SortedQueue<LocusDeltaDto>;
   workingCopy: any;
   syncTimer?: ReturnType<typeof setTimeout>;
+  onDeltaAction: ((action: string, locus: LocusDeltaDto) => void) | null;
 
   /**
    * @constructs Parser
@@ -83,6 +84,7 @@ export default class Parser {
 
     this.queue = new SortedQueue<LocusDeltaDto>(deltaCompareFunc);
     this.status = 'IDLE';
+    this.onDeltaAction = null;
     this.workingCopy = null;
     this.syncTimer = undefined;
   }
@@ -591,16 +593,6 @@ export default class Parser {
       this.status = 'IDLE';
     }
   }
-
-  /**
-   * Function handler for delta actions,
-   * is set by instance callee.
-   * @param {string} action Locus delta action
-   * @param {Types~Locus} locus Locus delta
-   * @returns {undefined}
-   */
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  onDeltaAction(action: string, locus: LocusDeltaDto) {}
 
   /**
    * Event handler for locus delta events
