@@ -686,7 +686,7 @@ export default class Meeting extends StatelessWebexPlugin {
   private deferSDPAnswer?: Defer; // used for waiting for a response
   private sdpResponseTimer?: ReturnType<typeof setTimeout>;
   private hasMediaConnectionConnectedAtLeastOnce: boolean;
-  private joinWithMediaRetryInfo?: {isRetry: boolean; prevJoinResponse?: any};
+  private joinWithMediaRetryInfo: {isRetry: boolean; prevJoinResponse?: any};
 
   /**
    * @param {Object} attrs
@@ -5512,7 +5512,7 @@ export default class Meeting extends StatelessWebexPlugin {
         });
         Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.MOVE_TO_SUCCESS);
         this.isMoveToInProgress = false;
-      } catch (error) {
+      } catch (error: any) {
         LoggerProxy.logger.error('Meeting:index#moveTo --> Failed to moveTo resourceId', error);
         Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.MOVE_TO_FAILURE, {
           correlation_id: this.correlationId,

@@ -1,6 +1,6 @@
 import {type MeetingTranscriptPayload} from '@webex/internal-plugin-voicea';
 
-export const getSpeaker = (members: Record<string, any>, csis: string[]  = []) =>
+export const getSpeaker = (members: Record<string, any>, csis: string[] = []) =>
   Object.values(members).find((member) => {
     const memberCSIs = member.participant.status.csis ?? [];
 
@@ -106,7 +106,7 @@ export const processNewCaptions = ({
 
       interimTranscriptionIds.push(interimId);
     } else {
-      transcriptData.interimCaptions[transcriptId].forEach((innerInterimId) => {
+      transcriptData.interimCaptions[transcriptId].forEach((innerInterimId: string) => {
         const interimTranscriptIndex = transcriptData.captions.findIndex(
           (transcript: {id: string}) => transcript.id === innerInterimId
         );

@@ -306,7 +306,7 @@ export default class ReconnectionManager {
       `ReconnectionManager:index#reconnect --> Reconnection start for meeting ${this.meeting.id}.`
     );
 
-    const triggerEvent = (event, payload = undefined) =>
+    const triggerEvent = (event: string, payload: undefined | Record<string, any> = undefined) =>
       Trigger.trigger(
         this.meeting,
         {
@@ -352,7 +352,7 @@ export default class ReconnectionManager {
 
       try {
         await this.executeReconnection({networkDisconnect});
-      } catch (reconnectError) {
+      } catch (reconnectError: any) {
         if (reconnectError instanceof NeedsRetryError) {
           LoggerProxy.logger.info(
             'ReconnectionManager:index#reconnect --> Reconnection not successful, retrying.'
@@ -418,7 +418,7 @@ export default class ReconnectionManager {
           meetingId: this.meeting.id,
         },
       });
-    } catch (error) {
+    } catch (error: any) {
       triggerEvent(EVENT_TRIGGERS.MEETING_RECONNECTION_FAILURE, {
         error: new ReconnectionError('Reconnection failure event', error),
       });
