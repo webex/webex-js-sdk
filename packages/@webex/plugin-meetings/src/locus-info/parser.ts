@@ -131,12 +131,15 @@ export default class Parser {
 
   /**
    * Checks if two sequences have unequal ranges.
-   * Chooses sequence with most larger range.
+   * Chooses sequence with larger range.
    * @param {Types~Locus} current
    * @param {Types~Locus} incoming
-   * @returns {object} loci comparison
+   * @returns {string | null} loci comparison
    */
-  static checkUnequalRanges(current: Record<string, any>, incoming: Record<string, any>) {
+  static checkUnequalRanges(
+    current: Record<string, any>,
+    incoming: Record<string, any>
+  ): string | null {
     let comparison = null;
     const currentIsNotUnique = current.unique.length === 0;
     const incomingIsNotUnique = incoming.unique.length === 0;
@@ -171,9 +174,12 @@ export default class Parser {
    * Chooses sequence with the unique entries.
    * @param {Types~Locus} current
    * @param {Types~Locus} incoming
-   * @returns {string} loci comparison state
+   * @returns {string | null} loci comparison state
    */
-  static checkForUniqueEntries(current: Record<string, any>, incoming: Record<string, any>) {
+  static checkForUniqueEntries(
+    current: Record<string, any>,
+    incoming: Record<string, any>
+  ): string | null {
     let comparison = null;
     const currentIsUnique = current.unique.length > 0;
     const incomingIsUnique = incoming.unique.length > 0;
@@ -201,7 +207,7 @@ export default class Parser {
    * @returns {string} loci comparison state
    */
   static checkIfOutOfSync(current: Record<string, any>, incoming: Record<string, any>) {
-    let comparison = null;
+    let comparison: string;
     const currentUniqueMin = current.unique[0];
     const incomingUniqueMin = incoming.unique[0];
 
@@ -241,7 +247,7 @@ export default class Parser {
    * @param {Types~Locus} incoming
    * @returns {string} loci comparison state
    */
-  static compare(current: LocusDeltaDto, incoming: LocusDeltaDto) {
+  static compare(current: LocusDeltaDto, incoming: LocusDeltaDto): string {
     const {isSequenceEmpty} = Parser;
     const {extractComparisonState: extract} = Parser;
     const {packComparisonResult: pack} = Parser;
@@ -270,7 +276,7 @@ export default class Parser {
    * @private
    * @returns {string} loci comparison state
    */
-  private static compareDelta(current: Record<string, any>, incoming: Record<string, any>) {
+  private static compareDelta(current: Record<string, any>, incoming: Record<string, any>): string {
     const {LT, GT, EQ, DESYNC, USE_INCOMING, WAIT, LOCUS_URL_CHANGED} = Parser.loci;
 
     const {extractComparisonState: extract} = Parser;
@@ -327,7 +333,7 @@ export default class Parser {
    * @param {Types~Locus} incomingFullDto New Full Locus DTO
    * @returns {string} either Parser.loci.USE_INCOMING or Parser.loci.USE_CURRENT
    */
-  static compareFullDtoSequence(current: LocusDeltaDto, incomingFullDto: LocusDeltaDto) {
+  static compareFullDtoSequence(current: LocusDeltaDto, incomingFullDto: LocusDeltaDto): string {
     if (Parser.isSequenceEmpty(current) || Parser.isSequenceEmpty(incomingFullDto)) {
       return Parser.loci.USE_INCOMING;
     }
@@ -344,9 +350,9 @@ export default class Parser {
    * Returns true if the incoming full locus DTO is newer than the current working copy
    *
    * @param {Types~Locus} incomingFullDto New Full Locus DTO
-   * @returns {string} either Parser.loci.USE_INCOMING or Parser.loci.USE_CURRENT
+   * @returns {boolean} either Parser.loci.USE_INCOMING or Parser.loci.USE_CURRENT
    */
-  isNewFullLocus(incomingFullDto: LocusDeltaDto) {
+  isNewFullLocus(incomingFullDto: LocusDeltaDto): boolean {
     if (!Parser.isLoci(incomingFullDto)) {
       LoggerProxy.logger.info('Locus-info:parser#isNewFullLocus --> Ignoring non-locus object.');
 
@@ -369,12 +375,12 @@ export default class Parser {
    * @param {Types~Locus} incoming New Locus delta
    * @returns {string}
    */
-  static compareSequence(current: Record<string, any>, incoming: Record<string, any>) {
+  static compareSequence(current: Record<string, any>, incoming: Record<string, any>): string {
     // Locus sequence comparison rules in order of priority.
     // https://sqbu-github.cisco.com/WebExSquared/cloud-apps/wiki/Locus-Sequence-Comparison-Algorithm
 
-    const local: any = Parser.getMetaData(current);
-    const delta: any = Parser.getMetaData(incoming);
+    const local: Record<string, any> = Parser.getMetaData(current);
+    const delta: Record<string, any> = Parser.getMetaData(incoming);
 
     // update loci metadata
     local.unique = Parser.getUniqueSequences(local, delta);
@@ -519,7 +525,7 @@ export default class Parser {
    * @param {Types~Locus} newLoci
    * @returns {boolean}
    */
-  isValidLocus(newLoci: LocusDeltaDto) {
+  isValidLocus(newLoci: LocusDeltaDto): boolean {
     let isValid = false;
     const {isLoci} = Parser;
 
@@ -554,10 +560,10 @@ export default class Parser {
   /**
    * Determines if an object has basic
    * structure of a locus object.
-   * @param {Types~Locus} loci
+   * @param {Types~Locus | null} loci
    * @returns {boolean}
    */
-  static isLoci(loci: LocusDeltaDto | null) {
+  static isLoci(loci: LocusDeltaDto | null): boolean {
     if (!loci || !loci.sequence) {
       return false;
     }
@@ -597,23 +603,25 @@ export default class Parser {
   /**
    * Event handler for locus delta events
    * @param {Types~Locus} loci Locus Delta
-   * @returns {undefined}
+   * @returns {void}
    */
   onDeltaEvent(loci: LocusDeltaDto) {
     // enqueue the new loci
     this.queue.enqueue(loci);
 
-    if (this.status === 'BLOCKED') {
-      if (this.queue.size() > MAX_OOO_DELTA_COUNT) {
-        this.triggerSync('queue too big, blocked on out-of-order delta');
-      } else {
+    if (this.onDeltaAction) {
+      if (this.status === 'BLOCKED') {
+        if (this.queue.size() > MAX_OOO_DELTA_COUNT) {
+          this.triggerSync('queue too big, blocked on out-of-order delta');
+        } else {
+          this.processDeltaEvent();
+        }
+      } else if (this.status === 'IDLE') {
+        // Update status, ensure we only process one event at a time.
+        this.status = 'WORKING';
+
         this.processDeltaEvent();
       }
-    } else if (this.status === 'IDLE') {
-      // Update status, ensure we only process one event at a time.
-      this.status = 'WORKING';
-
-      this.processDeltaEvent();
     }
   }
 
@@ -690,7 +698,7 @@ export default class Parser {
   processDeltaEvent() {
     const {DESYNC, USE_INCOMING, WAIT, LOCUS_URL_CHANGED} = Parser.loci;
     const {extractComparisonState: extract} = Parser;
-    const newLoci: LocusDeltaDto | null = this.queue.dequeue();
+    const newLoci = this.queue.dequeue();
 
     if (newLoci && !this.isValidLocus(newLoci)) {
       this.nextEvent();
@@ -783,9 +791,9 @@ export default class Parser {
    * Gets related debug info for given error code
    * @param {string} debugCode Debug code
    * @param {string} comparison Locus comparison string
-   * @returns {object} Debug message
+   * @returns {Record<string, any>} Debug message
    */
-  static getDebugMessage(debugCode: string, comparison: string) {
+  static getDebugMessage(debugCode: string, comparison: string): Record<string, any> {
     // removes extra spaces from multiline string
     const mStr = (strings: TemplateStringsArray) => strings.join('').replace(/\s{2,}/g, ' ');
 
