@@ -46,7 +46,11 @@ const MeetingUtil = {
     return parsed;
   },
 
-  remoteUpdateAudioVideo: (meeting: Record<string, any>, audioMuted?: boolean, videoMuted?: boolean) => {
+  remoteUpdateAudioVideo: (
+    meeting: Record<string, any>,
+    audioMuted?: boolean,
+    videoMuted?: boolean
+  ) => {
     if (!meeting) {
       return Promise.reject(new ParameterError('You need a meeting object.'));
     }
