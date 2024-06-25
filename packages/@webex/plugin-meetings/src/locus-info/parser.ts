@@ -646,7 +646,7 @@ export default class Parser {
     LoggerProxy.logger.info(`Locus-info:parser#triggerSync --> doing sync, reason: ${reason}`);
     this.stopSyncTimer();
     this.pause();
-    this.onDeltaAction(Parser.loci.DESYNC, this.workingCopy);
+    this.onDeltaAction?.(Parser.loci.DESYNC, this.workingCopy);
   }
 
   /**
