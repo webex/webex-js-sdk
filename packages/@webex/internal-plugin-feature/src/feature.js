@@ -8,7 +8,6 @@ import * as WebexCore from '@webex/webex-core';
 
 const Feature = WebexCore.WebexPlugin.extend({
   namespace: 'Feature',
-  isListeningToMercury: undefined,
 
   /**
    * Returns the value of the requested feature toggle.
