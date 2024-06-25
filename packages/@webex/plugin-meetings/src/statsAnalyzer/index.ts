@@ -1136,6 +1136,10 @@ export class StatsAnalyzer extends EventsScope {
       this.statsResults[mediaType][sendrecvType].fecPacketsReceived = result.fecPacketsReceived;
       this.statsResults[mediaType][sendrecvType].totalBytesReceived = result.bytesReceived;
       this.statsResults[mediaType][sendrecvType].headerBytesReceived = result.headerBytesReceived;
+      this.statsResults[mediaType][sendrecvType].retransmittedPacketsReceived =
+        result.retransmittedPacketsReceived;
+      this.statsResults[mediaType][sendrecvType].retransmittedBytesReceived =
+        result.retransmittedBytesReceived;
 
       this.statsResults[mediaType][sendrecvType].meanRtpJitter.push(result.jitter);
 
