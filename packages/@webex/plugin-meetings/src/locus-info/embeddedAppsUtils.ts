@@ -5,11 +5,11 @@ const SLIDO_REGEX = /.sli.do\//;
 
 /**
  * Parse the relevant values that we care about
- * @param {Object} embeddedApp - raw embedded app object
- * @returns {Object} parsedObject - parsed embedded app object
+ * @param {Record<string, any>} embeddedApp - raw embedded app object
+ * @returns {Record<string, any>} parsedObject - parsed embedded app object
  */
 EmbeddedAppsUtils.parseApp = (embeddedApp: Record<string, any>) => {
-  const parsedApp: any = {...embeddedApp};
+  const parsedApp: Record<string, any> = {...embeddedApp};
 
   parsedApp.type = EMBEDDED_APP_TYPES.OTHER;
   const url = parsedApp.instanceInfo?.appInstanceUrl;
@@ -24,8 +24,8 @@ EmbeddedAppsUtils.parseApp = (embeddedApp: Record<string, any>) => {
 /**
  * Determines if two embedded apps arrays are similar.
  * NOTE: This is a simple test for performance reasons.
- * @param {any[]} apps1 - an array of apps
- * @param {any[]} apps2 - an array of apps
+ * @param {Record<string, any>[]} apps1 - an array of apps
+ * @param {Record<string, any>[]} apps2 - an array of apps
  * @returns {boolean} true if the arrays are different
  */
 EmbeddedAppsUtils.areSimilar = (apps1: Record<string, any>[], apps2: Record<string, any>[]) => {
@@ -48,10 +48,10 @@ EmbeddedAppsUtils.areSimilar = (apps1: Record<string, any>[], apps2: Record<stri
 
 /**
  * Parse the array of embedded apps
- * @param {array} embeddedApps
- * @returns {array} result - new array of parsed embedded app objects
+ * @param {Record<string, any>[]} embeddedApps
+ * @returns {Record<string, any>[]} result - new array of parsed embedded app objects
  */
-EmbeddedAppsUtils.parse = (embeddedApps: Array<Record<string, any>>) =>
+EmbeddedAppsUtils.parse = (embeddedApps: Record<string, any>[]): Record<string, any>[] =>
   embeddedApps && embeddedApps.map(EmbeddedAppsUtils.parseApp);
 
 export default EmbeddedAppsUtils;

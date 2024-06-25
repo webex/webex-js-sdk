@@ -24,7 +24,7 @@ const Webinar = WebexPlugin.extend({
 
   /**
    * Update the current locus url of the webinar
-   * @param {string} locusUrl // locus url
+   * @param {string} locusUrl
    * @returns {void}
    */
   locusUrlUpdate(locusUrl: string) {
@@ -33,7 +33,7 @@ const Webinar = WebexPlugin.extend({
 
   /**
    * Update the current webcast url of the meeting
-   * @param {string} webcastUrl // webcast url
+   * @param {string} webcastUrl
    * @returns {void}
    */
   webcastUrlUpdate(webcastUrl: string) {

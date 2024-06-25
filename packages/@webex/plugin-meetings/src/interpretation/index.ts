@@ -114,7 +114,7 @@ const SimultaneousInterpretation = WebexPlugin.extend({
 
   /**
    * Update the interpretation languages channels which user can choose to subscribe
-   * @param {Object} interpretation
+   * @param {Record<string, any>} interpretation
    * @returns {void}
    */
   updateInterpretation(interpretation: Record<string, any>) {
@@ -122,9 +122,9 @@ const SimultaneousInterpretation = WebexPlugin.extend({
   },
   /**
    * Update self's interpretation information (self is interpreter)
-   * @param {Object} interpretation
-   * @param {String} selfParticipantId
-   * @returns {bool} is target language changed
+   * @param {Record<string, any>} interpretation
+   * @param {string} selfParticipantId
+   * @returns {boolean} is target language changed
    */
   updateSelfInterpretation({
     interpretation,
@@ -132,7 +132,7 @@ const SimultaneousInterpretation = WebexPlugin.extend({
   }: {
     interpretation: Record<string, any>;
     selfParticipantId: string;
-  }) {
+  }): boolean {
     const preTargetLanguage = this.targetLanguage;
     const {originalLanguage, sourceLanguage, order, isActive, targetLanguage, receiveLanguage} =
       interpretation || {};
@@ -188,7 +188,7 @@ const SimultaneousInterpretation = WebexPlugin.extend({
   },
   /**
    * update interpreters of the meeting
-   * @param {Array} interpreters
+   * @param {unknown} interpreters
    * @returns {Promise}
    */
   updateInterpreters(interpreters: unknown) {
@@ -269,7 +269,7 @@ const SimultaneousInterpretation = WebexPlugin.extend({
    * @param {string} participantId the participant id you want to hand off
    * @returns {Promise}
    */
-  handoffInterpreter(participantId: string) {
+  handoffInterpreter(participantId: string): Promise<unknown> {
     if (!participantId) {
       return Promise.reject(new Error('Missing target participant id'));
     }
@@ -317,10 +317,10 @@ const SimultaneousInterpretation = WebexPlugin.extend({
   },
   /**
    * accept the request of handoff
-   * @param {String} url the url get from last approval event
+   * @param {string} url the url get from last approval event
    * @returns {Promise}
    */
-  acceptRequest(url: string) {
+  acceptRequest(url: string): Promise<unknown> {
     if (!url) {
       return Promise.reject(new Error('Missing the url to accept'));
     }
@@ -338,10 +338,10 @@ const SimultaneousInterpretation = WebexPlugin.extend({
   },
   /**
    * decline the request of handoff
-   * @param {String} url the url get from last approval event
+   * @param {string} url the url get from last approval event
    * @returns {Promise}
    */
-  declineRequest(url: string) {
+  declineRequest(url: string): Promise<unknown> {
     if (!url) {
       return Promise.reject(new Error('Missing the url to decline'));
     }

@@ -68,7 +68,7 @@ export default class LocusInfo extends EventsScope {
   /**
    * Constructor
    * @param {function} updateMeeting callback to update the meeting object from an object
-   * @param {object} webex
+   * @param {Record<string, any>} webex
    * @param {string} meetingId
    * @returns {undefined}
    */
@@ -91,7 +91,7 @@ export default class LocusInfo extends EventsScope {
    * @param {Meeting} meeting
    * @returns {undefined}
    */
-  private doLocusSync(meeting: any) {
+  private doLocusSync(meeting: Record<string, any>) {
     let isDelta: boolean | undefined;
     let url: string | undefined;
 
@@ -366,13 +366,12 @@ export default class LocusInfo extends EventsScope {
     this.locusParser.workingCopy = locus;
   }
 
-  // used for ringing stops on one on one
+  // used for ringing stops on one
   /**
-   * @param {String} eventType
-   * @returns {undefined}
+   * @param {string | undefined} eventType
+   * @returns {void}
    * @memberof LocusInfo
    */
-  // eslint-disable-next-line @typescript-eslint/no-shadow
   handleOneOnOneEvent(eventType: string | undefined) {
     if (
       this.parsedLocus.fullState.type === _CALL_ ||
@@ -713,7 +712,7 @@ export default class LocusInfo extends EventsScope {
    * @returns {void}
    */
   updateParticipantDeltas(participants: Array<any> = []) {
-    // Used to find a participant within a participants collection.
+    // Used to find a participant within a participants' collection.
     const findParticipant = (participant: Record<string, any>, collection: Record<string, any>[]) =>
       collection.find((item) => item.person.id === participant.person.id);
 
@@ -1654,16 +1653,16 @@ export default class LocusInfo extends EventsScope {
 
   /**
    * merge participants by participant id
-   * @param {Array} participants
-   * @param {Array} sourceParticipants
-   * @returns {Array} merged participants
+   * @param {Record<string, any>[]} participants
+   * @param {Record<string, any>[]} sourceParticipants
+   * @returns {Record<string, any>[]} merged participants
    * @memberof LocusInfo
    */
   // eslint-disable-next-line class-methods-use-this
   mergeParticipants(
     participants: Record<string, any>[],
     sourceParticipants: Record<string, any>[]
-  ) {
+  ): Record<string, any>[] {
     if (!sourceParticipants || !sourceParticipants.length) return participants;
     if (!participants || !participants.length) {
       return sourceParticipants;

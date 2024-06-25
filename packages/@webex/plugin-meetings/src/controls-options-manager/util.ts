@@ -95,13 +95,13 @@ class Utils {
    * @param {Object} config - Configuration Object.
    * @param {Array<string>} config.requiredPolicies - Policies required for validation.
    * @param {Array<string>} config.policies - All available policies.
-   * @returns {boolean} - True if all of the actions are allowed.
+   * @returns {boolean} - True if all the actions are allowed.
    */
   public static hasPolicies(config: {
     requiredPolicies: Array<string>;
     policies: Record<string, unknown>[];
   }): boolean {
-    const {requiredPolicies, policies = {} as Record<string, any>} = config;
+    const {requiredPolicies, policies = {} as Record<string, unknown>} = config;
 
     return requiredPolicies.every((hint) => policies[hint]);
   }
@@ -111,7 +111,7 @@ class Utils {
    *
    * @param {ControlConfig<AudioProperties>} control - Audio control config to validate.
    * @param {Array<string>} displayHints - All available hints.
-   * @returns {boolean} - True if all of the actions are allowed.
+   * @returns {boolean} - True if all the actions are allowed.
    */
   public static canUpdateAudio(
     control: ControlConfig<AudioProperties>,
@@ -301,7 +301,7 @@ class Utils {
 }
 
 export type UtilsMethodKeys = {
-  [K in keyof typeof Utils]: (typeof Utils)[K] extends (arg1: Array<string>) => boolean ? K : never;
+  [K in keyof typeof Utils]: (typeof Utils)[K] extends (arg: Array<string>) => boolean ? K : never;
 }[keyof typeof Utils];
 
 export default Utils;
