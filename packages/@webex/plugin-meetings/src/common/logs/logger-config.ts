@@ -1,6 +1,6 @@
 const LoggerConfig: any = {};
 
-LoggerConfig.set = (options: any) => {
+LoggerConfig.set = (options: Record<string, any>) => {
   LoggerConfig.verboseEvents = options.verboseEvents;
   LoggerConfig.enable = options.enable;
 };

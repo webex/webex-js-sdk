@@ -82,7 +82,7 @@ const Breakouts = WebexPlugin.extend({
       deps: ['manageGroups'],
       /**
        * Returns the active group id
-       * @returns {boolean}
+       * @returns {boolean | string}
        */
       fn(): boolean | string {
         if ((this as Record<string, any>).manageGroups?.length) {
@@ -99,7 +99,7 @@ const Breakouts = WebexPlugin.extend({
       deps: ['isInMainSession', 'status', 'groups'],
       /**
        * Returns the breakout status
-       * @returns {boolean}
+       * @returns {string}
        */
       fn(): string {
         return (this as Record<string, any>).isInMainSession
@@ -168,7 +168,7 @@ const Breakouts = WebexPlugin.extend({
 
   /**
    * Update the current locus url of the meeting
-   * @param {string} locusUrl // locus url
+   * @param {string} locusUrl
    * @returns {void}
    */
   locusUrlUpdate(locusUrl: string) {
@@ -223,7 +223,7 @@ const Breakouts = WebexPlugin.extend({
 
   /**
    *
-   * @param {Object} locus // locus object
+   * @param {Record<string, any>} locus // locus object
    * @returns {void}
    */
   handleRosterUpdate(locus: Record<string, any>) {
@@ -330,12 +330,12 @@ const Breakouts = WebexPlugin.extend({
   },
   /**
    * Updates the information about the current breakout
-   * @param {Object} params
+   * @param {Record<string, any>} params
    * @returns {void}
    */
   updateBreakout(params: Record<string, any>) {
     this.set(params);
-    // These values are set manually so they are unset when they are not included in params
+    // These values are set manually, so they are unset when they are not included in params
     this.set('groups', params.groups);
     this.set('startTime', params.startTime);
     this.set('status', params.status);
@@ -378,7 +378,7 @@ const Breakouts = WebexPlugin.extend({
 
   /**
    * Updates the information about available breakouts
-   * @param {Object} payload
+   * @param {Record<string, any>} payload
    * @returns {void}
    */
   updateBreakoutSessions(payload: Record<string, any>) {
@@ -464,8 +464,8 @@ const Breakouts = WebexPlugin.extend({
 
   /**
    * Broadcast message to all breakout session's participants
-   * @param {String} message
-   * @param {Object} options
+   * @param {string} message
+   * @param {Record<string, any>} options
    * @returns {Promise}
    */
   broadcast(message: string, options: Record<string, any>) {
@@ -546,7 +546,7 @@ const Breakouts = WebexPlugin.extend({
 
   /**
    * set groups to manageGroups prop
-   * @param {Object} breakoutInfo -- breakout groups
+   * @param {Record<string, any>} breakoutInfo -- breakout groups
    * @returns {void}
    */
   _setManageGroups(breakoutInfo: Record<string, any>) {
@@ -557,7 +557,7 @@ const Breakouts = WebexPlugin.extend({
 
   /**
    * Create new breakout sessions
-   * @param {object} params -- breakout session group
+   * @param {Record<string, any>} params -- breakout session group
    * @returns {Promise}
    */
   async create(params: Record<string, any>) {
@@ -929,7 +929,7 @@ const Breakouts = WebexPlugin.extend({
   },
   /**
    * trigger ASK_RETURN_TO_MAIN event when main session requested
-   * @param {Object} breakout
+   * @param {Record<string, any>} breakout
    * @returns {void}
    */
   triggerReturnToMainEvent(breakout: Record<string, any>) {

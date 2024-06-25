@@ -24,7 +24,7 @@ const LoggerProxy: any = {
   },
 };
 
-LoggerProxy.set = (logger: any) => {
+LoggerProxy.set = (logger: unknown) => {
   if (!LoggerConfig.enable) {
     LoggerProxy.logger = {
       info: () => {},

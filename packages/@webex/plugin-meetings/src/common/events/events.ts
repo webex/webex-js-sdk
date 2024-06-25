@@ -11,7 +11,7 @@ import EventsUtil from './util';
  * Used to emit events internally between modules
  */
 class Events extends EventEmitter {
-  emit(scope: any, eventName: any, args: any) {
+  emit(scope: unknown, eventName: string, args: unknown) {
     LoggerProxy.logger.debug(
       `${EventsUtil.getScopeLog(scope)}event#${eventName}${
         LoggerConfig.verboseEvents ? ` -- ${EventsUtil.getEventLog(args)}` : ''

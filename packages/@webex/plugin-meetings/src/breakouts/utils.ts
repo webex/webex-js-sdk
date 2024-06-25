@@ -45,14 +45,14 @@ export const boServiceErrorHandler = (error: any, position: string): any => {
 
 /**
  *
- * @param {object} breakout
+ * @param {Record<string, any>} breakout
  * @param {string} newSessionType
  * @returns {boolean}
  */
 export const isSessionTypeChangedFromSessionToMain = (
   breakout: Record<string, any>,
   newSessionType: string
-) => {
+): boolean => {
   return (
     breakout.previous('sessionType') === BREAKOUTS.SESSION_TYPES.BREAKOUT &&
     newSessionType === BREAKOUTS.SESSION_TYPES.MAIN
