@@ -2216,7 +2216,7 @@ describe('plugin-meetings', () => {
               turnDiscoverySkippedReason: undefined,
             });
           meeting.meetingState = 'ACTIVE';
-          meeting.mediaProperties.waitForMediaConnectionConnected.rejects(new Error('fake error'));
+          meeting.mediaProperties.waitForMediaConnectionConnected.rejects({iceConnected: false});
 
           const forceRtcMetricsSend = sinon.stub().resolves();
           const closeMediaConnectionStub = sinon.stub();
@@ -2240,12 +2240,12 @@ describe('plugin-meetings', () => {
           assert.calledTwice(generateClientErrorCodeForIceFailureStub);
           assert.calledWith(generateClientErrorCodeForIceFailureStub, {
             signalingState: 'unknown',
-            iceConnectionState: 'unknown',
+            iceConnected: false,
             turnServerUsed: false,
           });
           assert.calledWith(generateClientErrorCodeForIceFailureStub, {
             signalingState: 'unknown',
-            iceConnectionState: 'unknown',
+            iceConnected: false,
             turnServerUsed: true,
           });
 
@@ -2440,7 +2440,7 @@ describe('plugin-meetings', () => {
           assert.calledOnce(generateClientErrorCodeForIceFailureStub);
           assert.calledWith(generateClientErrorCodeForIceFailureStub, {
             signalingState: 'unknown',
-            iceConnectionState: 'unknown',
+            iceConnected: undefined,
             turnServerUsed: false,
           });
 
@@ -2715,7 +2715,7 @@ describe('plugin-meetings', () => {
             turnDiscoverySkippedReason: undefined,
           });
           meeting.meetingState = 'ACTIVE';
-          meeting.mediaProperties.waitForMediaConnectionConnected.rejects(new Error('fake error'));
+          meeting.mediaProperties.waitForMediaConnectionConnected.rejects({iceConnected: false});
 
           const forceRtcMetricsSend = sinon.stub().resolves();
           const closeMediaConnectionStub = sinon.stub();
@@ -3058,7 +3058,7 @@ describe('plugin-meetings', () => {
 
               meeting.meetingState = 'ACTIVE';
               meeting.mediaProperties.waitForMediaConnectionConnected.rejects(
-                new Error('fake error')
+                {iceConnected: false}
               );
 
               let errorThrown = false;
@@ -3073,7 +3073,7 @@ describe('plugin-meetings', () => {
 
               assert.calledOnceWithExactly(generateClientErrorCodeForIceFailureStub, {
                 signalingState: 'unknown',
-                iceConnectionState: 'unknown',
+                iceConnected: false,
                 turnServerUsed: true,
               });
 
@@ -7088,6 +7088,7 @@ describe('plugin-meetings', () => {
             on: sinon.stub().callsFake((event, listener) => {
               eventListeners[event] = listener;
             }),
+            getConnectionState: sinon.stub().returns(ConnectionState.New),
           };
           MediaUtil.createMediaStream.returns(fakeStream);
         });
@@ -7099,7 +7100,8 @@ describe('plugin-meetings', () => {
           assert.isFunction(eventListeners[Event.ROAP_FAILURE]);
           assert.isFunction(eventListeners[Event.ROAP_MESSAGE_TO_SEND]);
           assert.isFunction(eventListeners[Event.REMOTE_TRACK_ADDED]);
-          assert.isFunction(eventListeners[Event.CONNECTION_STATE_CHANGED]);
+          assert.isFunction(eventListeners[Event.PEER_CONNECTION_STATE_CHANGED]);
+          assert.isFunction(eventListeners[Event.ICE_CONNECTION_STATE_CHANGED]);
         });
 
         it('should trigger a media:ready event when REMOTE_TRACK_ADDED is fired', () => {
@@ -7139,19 +7141,19 @@ describe('plugin-meetings', () => {
           it('sends client.ice.start correctly when hasMediaConnectionConnectedAtLeastOnce = true', () => {
             meeting.hasMediaConnectionConnectedAtLeastOnce = true;
             meeting.setupMediaConnectionListeners();
-            eventListeners[Event.CONNECTION_STATE_CHANGED]({
-              state: 'Connecting',
-            });
+
+            meeting.mediaProperties.webrtcMediaConnection.getConnectionState = sinon.stub().returns(ConnectionState.Connecting);
+            eventListeners[Event.PEER_CONNECTION_STATE_CHANGED]();
 
             assert.notCalled(webex.internal.newMetrics.submitClientEvent);
           });
 
           it('sends client.ice.start correctly when hasMediaConnectionConnectedAtLeastOnce = false', () => {
             meeting.hasMediaConnectionConnectedAtLeastOnce = false;
+
+            meeting.mediaProperties.webrtcMediaConnection.getConnectionState = sinon.stub().returns(ConnectionState.Connecting);
             meeting.setupMediaConnectionListeners();
-            eventListeners[Event.CONNECTION_STATE_CHANGED]({
-              state: 'Connecting',
-            });
+            eventListeners[Event.PEER_CONNECTION_STATE_CHANGED]();
 
             assert.calledOnce(webex.internal.newMetrics.submitClientEvent);
             assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
@@ -7177,6 +7179,7 @@ describe('plugin-meetings', () => {
               on: sinon.stub().callsFake((event, listener) => {
                 eventListeners[event] = listener;
               }),
+              getConnectionState: sinon.stub().returns(ConnectionState.Connected),
             };
           };
 
@@ -7230,9 +7233,7 @@ describe('plugin-meetings', () => {
             assert.equal(meeting.hasMediaConnectionConnectedAtLeastOnce, false);
 
             // simulate first connection success
-            eventListeners[Event.CONNECTION_STATE_CHANGED]({
-              state: 'Connected',
-            });
+            eventListeners[Event.PEER_CONNECTION_STATE_CHANGED]();
             checkExpectedSpies({
               icePhase: 'JOIN_MEETING_FINAL',
               setNetworkStatusCallParams: [NETWORK_STATUS.CONNECTED],
@@ -7242,12 +7243,11 @@ describe('plugin-meetings', () => {
             // now simulate short connection loss, client.ice.end is not sent a second time as hasMediaConnectionConnectedAtLeastOnce = true
             resetSpies();
 
-            eventListeners[Event.CONNECTION_STATE_CHANGED]({
-              state: 'Disconnected',
-            });
-            eventListeners[Event.CONNECTION_STATE_CHANGED]({
-              state: 'Connected',
-            });
+            meeting.mediaProperties.webrtcMediaConnection.getConnectionState = sinon.stub().returns(ConnectionState.Disconnected);
+            eventListeners[Event.PEER_CONNECTION_STATE_CHANGED]();
+
+            meeting.mediaProperties.webrtcMediaConnection.getConnectionState = sinon.stub().returns(ConnectionState.Connected);
+            eventListeners[Event.PEER_CONNECTION_STATE_CHANGED]();
 
             checkExpectedSpies({
               setNetworkStatusCallParams: [NETWORK_STATUS.DISCONNECTED, NETWORK_STATUS.CONNECTED],
@@ -7255,12 +7255,11 @@ describe('plugin-meetings', () => {
 
             resetSpies();
 
-            eventListeners[Event.CONNECTION_STATE_CHANGED]({
-              state: 'Disconnected',
-            });
-            eventListeners[Event.CONNECTION_STATE_CHANGED]({
-              state: 'Connected',
-            });
+            meeting.mediaProperties.webrtcMediaConnection.getConnectionState = sinon.stub().returns(ConnectionState.Disconnected);
+            eventListeners[Event.PEER_CONNECTION_STATE_CHANGED]();
+
+            meeting.mediaProperties.webrtcMediaConnection.getConnectionState = sinon.stub().returns(ConnectionState.Connected);
+            eventListeners[Event.PEER_CONNECTION_STATE_CHANGED]();
           });
         });
 
@@ -7282,9 +7281,10 @@ describe('plugin-meetings', () => {
 
           const mockDisconnectedEvent = () => {
             meeting.setupMediaConnectionListeners();
-            eventListeners[Event.CONNECTION_STATE_CHANGED]({
-              state: 'Disconnected',
-            });
+
+            meeting.mediaProperties.webrtcMediaConnection.getConnectionState = sinon.stub().returns(ConnectionState.Disconnected);
+
+            eventListeners[Event.PEER_CONNECTION_STATE_CHANGED]();
           };
 
           const checkBehavioralMetricSent = (hasMediaConnectionConnectedAtLeastOnce = false) => {
@@ -7348,9 +7348,10 @@ describe('plugin-meetings', () => {
         describe('CONNECTION_STATE_CHANGED event when state = "Failed"', () => {
           const mockFailedEvent = () => {
             meeting.setupMediaConnectionListeners();
-            eventListeners[Event.CONNECTION_STATE_CHANGED]({
-              state: 'Failed',
-            });
+
+            meeting.mediaProperties.webrtcMediaConnection.getConnectionState = sinon.stub().returns(ConnectionState.Failed);
+
+            eventListeners[Event.PEER_CONNECTION_STATE_CHANGED]();
           };
 
           const checkBehavioralMetricSent = (hasMediaConnectionConnectedAtLeastOnce = false) => {
