@@ -47,7 +47,7 @@ const Feature = WebexCore.WebexPlugin.extend({
    * @param {Object} envelope
    * @returns {undefined}
    */
-  handleFeatureUpdate(envelope) {
+  updateFeature(envelope) {
     if (envelope && envelope.data) {
       const feature = envelope.data.featureToggle;
       const keyType = feature.type.toLowerCase();
@@ -56,21 +56,6 @@ const Feature = WebexCore.WebexPlugin.extend({
         this.webex.internal.device.features[keyType].add([feature], {merge: true});
       }
     }
-  },
-
-  /**
-   * Register to listen for incoming feature events
-   * @instance
-   * @returns {undefined}
-   */
-  listen() {
-    if (this.mercury) {
-      this.listenTo(this.mercury, 'event:featureToggle_update', this.handleFeatureUpdate);
-      this.isListeningToMercury = true;
-
-      return;
-    }
-    this.isListeningToMercury = false;
   },
 
   /**
@@ -142,13 +127,6 @@ const Feature = WebexCore.WebexPlugin.extend({
       'change:internal.device.features.user',
       this.trigger.bind(this, 'change:user')
     );
-  },
-
-  setMercury(mercury) {
-    this.mercury = mercury;
-    if (typeof this.isListeningToMercury !== 'undefined' && !this.isListeningToMercury) {
-      this.listen();
-    }
   },
 });
 
