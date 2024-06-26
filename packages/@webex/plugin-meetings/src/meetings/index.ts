@@ -1,5 +1,5 @@
 /* eslint no-shadow: ["error", { "allow": ["eventType"] }] */
-
+import {union} from 'lodash';
 import '@webex/internal-plugin-mercury';
 import '@webex/internal-plugin-conversation';
 import '@webex/internal-plugin-metrics';
@@ -1001,7 +1001,10 @@ export default class Meetings extends WebexPlugin {
   fetchUserPreferredWebexSite() {
     return this.request.getMeetingPreferences().then((res) => {
       if (res) {
-        this.preferredWebexSite = MeetingsUtil.parseDefaultSiteFromMeetingPreferences(res);
+        const preferredWebexSite = MeetingsUtil.parseDefaultSiteFromMeetingPreferences(res);
+        this.preferredWebexSite = preferredWebexSite;
+        // @ts-ignore
+        this.webex.internal.services._getCatalog().addAllowedDomains([preferredWebexSite]);
       }
 
       // fall back to getting the preferred site from the user information
@@ -1014,6 +1017,8 @@ export default class Meetings extends WebexPlugin {
               user?.userPreferences?.userPreferencesItems?.preferredWebExSite;
             if (preferredWebexSite) {
               this.preferredWebexSite = preferredWebexSite;
+              // @ts-ignore
+              this.webex.internal.services._getCatalog().addAllowedDomains([preferredWebexSite]);
             } else {
               throw new Error('site not found');
             }
