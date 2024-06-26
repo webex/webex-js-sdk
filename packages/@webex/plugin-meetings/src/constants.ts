@@ -1122,6 +1122,8 @@ export const MQA_STATS = {
         direction: 'sendrecv', // TODO: parse from SDP and save globally
         isMain: false, // always true for share sender
         mariFecEnabled: false, // unavailable
+        mariRtxEnabled: false, // unavailable
+        mariLiteEnabled: false, // unavailable
         mariQosEnabled: false, // unavailable
         multistreamEnabled: false, // unavailable
       },
@@ -1134,7 +1136,6 @@ export const MQA_STATS = {
       queueDelay: 0, // unavailable
       remoteJitter: 0, // unavailable
       remoteLossRate: 0,
-      remoteReceiveRate: 0, // unavailable
       roundTripTime: 0,
       rtcpBitrate: 0, // unavailable
       rtcpPackets: 0, // unavailable
