@@ -40,28 +40,59 @@ describe('isAnyPublicClusterReachable', () => {
 
   it('returns true when udp is reachable', async () => {
     await checkIsClusterReachable(
-      {x: {udp: {result: 'reachable'}, tcp: {result: 'unreachable'}}},
+      {
+        x: {
+          udp: {result: 'reachable'},
+          tcp: {result: 'unreachable'},
+          xtls: {result: 'unreachable'},
+        },
+      },
       true
     );
   });
 
   it('returns true when tcp is reachable', async () => {
     await checkIsClusterReachable(
-      {x: {udp: {result: 'unreachable'}, tcp: {result: 'reachable'}}},
+      {
+        x: {
+          udp: {result: 'unreachable'},
+          tcp: {result: 'reachable'},
+          xtls: {result: 'unreachable'},
+        },
+      },
       true
     );
   });
 
-  it('returns true when both tcp and udp are reachable', async () => {
+  it('returns true when xtls is reachable', async () => {
     await checkIsClusterReachable(
-      {x: {udp: {result: 'reachable'}, tcp: {result: 'reachable'}}},
+      {
+        x: {
+          udp: {result: 'unreachable'},
+          tcp: {result: 'unreachable'},
+          xtls: {result: 'reachable'},
+        },
+      },
       true
     );
   });
 
-  it('returns false when both tcp and udp are unreachable', async () => {
+  it('returns true when udp, tcp and xtls are reachable', async () => {
     await checkIsClusterReachable(
-      {x: {udp: {result: 'unreachable'}, tcp: {result: 'unreachable'}}},
+      {x: {udp: {result: 'reachable'}, tcp: {result: 'reachable'}, xtls: {result: 'reachable'}}},
+      true
+    );
+  });
+
+  it('returns false when udp, tcp and xtls are unreachable', async () => {
+    await checkIsClusterReachable(
+      {
+        x: {
+          udp: {result: 'unreachable'},
+          tcp: {result: 'unreachable'},
+          xtls: {result: 'unreachable'},
+        },
+      },
       false
     );
   });
@@ -81,11 +112,13 @@ describe('isAnyPublicClusterReachable', () => {
           x: {
             udp: {result: 'reachable'},
             tcp: {result: 'reachable'},
+            xtls: {result: 'reachable'},
             isVideoMesh: true,
           },
           y: {
             udp: {result: 'unreachable'},
             tcp: {result: 'reachable'},
+            xtls: {result: 'unreachable'},
             isVideoMesh: true,
           },
         },
@@ -99,16 +132,19 @@ describe('isAnyPublicClusterReachable', () => {
           x: {
             udp: {result: 'unreachable'},
             tcp: {result: 'reachable'},
+            xtls: {result: 'unreachable'},
             isVideoMesh: true,
           },
           y: {
             udp: {result: 'reachable'},
             tcp: {result: 'unreachable'},
+            xtls: {result: 'unreachable'},
             isVideoMesh: true,
           },
           publicOne: {
             udp: {result: 'unreachable'},
             tcp: {result: 'unreachable'},
+            xtls: {result: 'unreachable'},
             isVideoMesh: false,
           },
         },
@@ -122,16 +158,19 @@ describe('isAnyPublicClusterReachable', () => {
           x: {
             udp: {result: 'reachable'},
             tcp: {result: 'reachable'},
+            xtls: {result: 'reachable'},
             isVideoMesh: true,
           },
           y: {
             udp: {result: 'unreachable'},
             tcp: {result: 'reachable'},
+            xtls: {result: 'unreachable'},
             isVideoMesh: true,
           },
           publicOne: {
             udp: {result: 'unreachable'},
             tcp: {result: 'reachable'},
+            xtls: {result: 'unreachable'},
             isVideoMesh: false,
           },
         },

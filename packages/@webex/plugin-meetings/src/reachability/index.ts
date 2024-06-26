@@ -284,7 +284,9 @@ export default class Reachability {
         reachable = Object.values(reachabilityResults).some(
           (result) =>
             !result.isVideoMesh &&
-            (result.udp?.result === 'reachable' || result.tcp?.result === 'reachable')
+            (result.udp?.result === 'reachable' ||
+              result.tcp?.result === 'reachable' ||
+              result.xtls?.result === 'reachable')
         );
       } catch (e) {
         LoggerProxy.logger.error(
