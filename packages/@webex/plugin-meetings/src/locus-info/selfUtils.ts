@@ -22,11 +22,11 @@ const PSTN_DEVICE_TYPE = 'PROVISIONAL';
 
 /**
  * parses the relevant values for self: muted, guest, moderator, mediaStatus, state, joinedWith, pstnDevices, creator, id
- * @param {Object} self
- * @param {String} deviceId
- * @returns {undefined}
+ * @param {Record<string, any>} self
+ * @param {string} deviceId
+ * @returns {null | Record<string, any>}
  */
-SelfUtils.parse = (self: Record<string, any>, deviceId: string) => {
+SelfUtils.parse = (self: Record<string, any>, deviceId: string): Record<string, any> | null => {
   if (self) {
     const joinedWith = self.devices.find((device: {url: string}) => deviceId === device.url);
     const pstnDevices = self.devices.filter(

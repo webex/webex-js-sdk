@@ -9,9 +9,9 @@ import ParameterError from '../common/errors/parameter';
 interface MeetingStateMachineMethods {
   meeting: Record<string, any>;
   onRemote(transition: unknown, stop: unknown): void;
-  onRing(transition: object, type: string): void;
-  onEnterError(transition: any, error: Error): void;
-  onAfterTransition(transition: any): void;
+  onRing(transition: Record<string, any>, type: string): void;
+  onEnterError(transition: Record<string, any>, error: Error): void;
+  onAfterTransition(transition: Record<string, any>): void;
   history?: Record<string, any>;
 }
 

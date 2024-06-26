@@ -36,7 +36,10 @@ import {
  * @class MeetingInfoUtil
  */
 export default class MeetingInfoUtil {
-  static extractDestination(destination: {url: string} | string, type: string | null) {
+  static extractDestination(
+    destination: {url: string} | string,
+    type: string | null
+  ): {url: string} | string {
     let dest = destination;
 
     if (type === _LOCUS_ID_) {

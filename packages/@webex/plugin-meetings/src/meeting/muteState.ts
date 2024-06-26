@@ -127,12 +127,16 @@ export class MuteState {
   /**
    * Mutes/unmutes local stream
    *
-   * @param {Object} meeting - the meeting object
-   * @param {Boolean} mute - true to mute the stream, false to unmute it
-   * @param {ServerMuteReason} reason - reason for muting/unmuting
+   * @param {Record<string, any>} meeting - the meeting object
+   * @param {boolean} mute - true to mute the stream, false to unmute it
+   * @param {ServerMuteReason | undefined} reason - reason for muting/unmuting
    * @returns {void}
    */
-  private muteLocalStream(meeting: any, mute: boolean, reason: ServerMuteReason | undefined) {
+  private muteLocalStream(
+    meeting: Record<string, any>,
+    mute: boolean,
+    reason: ServerMuteReason | undefined
+  ) {
     this.ignoreMuteStateChange = true;
     if (this.type === AUDIO) {
       meeting.mediaProperties.audioStream?.setServerMuted(mute, reason);

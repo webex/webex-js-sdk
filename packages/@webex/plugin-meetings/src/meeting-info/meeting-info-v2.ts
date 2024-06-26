@@ -73,7 +73,7 @@ export class MeetingInfoV2AdhocMeetingError extends Error {
  * Error preventing join because of a meeting policy
  */
 export class MeetingInfoV2PolicyError extends Error {
-  meetingInfo: object | undefined;
+  meetingInfo: Record<string, any> | undefined;
   sdkMessage: string | undefined;
   wbxAppApiCode: number | undefined;
   /**
@@ -140,8 +140,8 @@ export default class MeetingInfoV2 {
 
   /**
    * converts hydra id into conversation url and persons Id
-   * @param {String} destination one of many different types of destinations to look up info for
-   * @param {String} [type] to match up with the destination value
+   * @param {string} destination one of many different types of destinations to look up info for
+   * @param {string | null} [type] to match up with the destination value
    * @returns {Promise} destination and type
    * @public
    * @memberof MeetingInfo
@@ -156,7 +156,7 @@ export default class MeetingInfoV2 {
 
   /**
    * Raises a MeetingInfoV2PolicyError for policy error codes
-   * @param {any} err the error from the request
+   * @param {Record<string, any>} err the error from the request
    * @returns {void}
    */
   handlePolicyError = (err: Record<string, any>) => {
@@ -179,8 +179,8 @@ export default class MeetingInfoV2 {
 
   /**
    * Creates adhoc space meetings for a space by fetching the conversation infomation
-   * @param {String} conversationUrl conversationUrl to start adhoc meeting on
-   * @param {String} installedOrgID org ID of user's machine
+   * @param {string} conversationUrl conversationUrl to start adhoc meeting on
+   * @param {string | null | undefined} installedOrgID org ID of user's machine
    * @returns {Promise} returns a meeting info object
    * @public
    * @memberof MeetingInfo
@@ -247,18 +247,21 @@ export default class MeetingInfoV2 {
   }
 
   /**
-   * Fetches meeting info from the server
-   * @param {String} destination one of many different types of destinations to look up info for
-   * @param {String} [type] to match up with the destination value
-   * @param {String} password
-   * @param {Object} captchaInfo
-   * @param {String} captchaInfo.code
-   * @param {String} captchaInfo.id
-   * @param {String} installedOrgID org ID of user's machine
-   * @param {String} locusId
-   * @param {Object} extraParams
-   * @param {Object} options
-   * @returns {Promise} returns a meeting info object
+   * Fetches meeting info from the server.
+   *
+   * @param {string} destination - One of many different types of destinations to look up info for.
+   * @param {string | null} [type] - Optional type to match up with the destination value.
+   * @param {string | null} [password] - Optional password.
+   * @param {Object} captchaInfo - Captcha information.
+   * @param {string} captchaInfo.code - Captcha code.
+   * @param {string} captchaInfo.id - Captcha ID.
+   * @param {string | null} [installedOrgID] - Optional org ID of user's machine.
+   * @param {string | null} [locusId] - Optional locus ID.
+   * @param {Object} extraParams - Additional parameters.
+   * @param {Object} [options] - Optional settings.
+   * @param {string} [options.meetingId] - Optional meeting ID.
+   * @param {boolean} [options.sendCAevents] - Optional flag to send CA events.
+   * @returns {Promise<Object>} - Returns a promise that resolves with a meeting info object.
    * @public
    * @memberof MeetingInfo
    */
@@ -270,9 +273,9 @@ export default class MeetingInfoV2 {
       code: string;
       id: string;
     } | null = null,
-    installedOrgID = null,
-    locusId = null,
-    extraParams: object = {},
+    installedOrgID: string | null = null,
+    locusId: string | null = null,
+    extraParams: Record<string, any> = {},
     options: {meetingId?: string; sendCAevents?: boolean} = {}
   ) {
     const {meetingId, sendCAevents} = options;

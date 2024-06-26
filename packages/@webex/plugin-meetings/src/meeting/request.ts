@@ -588,9 +588,9 @@ export default class MeetingRequest extends StatelessWebexPlugin {
   /**
    * Make a network request to acknowledge a meeting
    * @param {Object} options
-   * @param {String} options.locusUrl
-   * @param {String} options.deviceUrl
-   * @param {String} options.correlationId
+   * @param {string} options.locusUrl
+   * @param {string} options.deviceUrl
+   * @param {string | undefined} options.correlationId
    * @returns {Promise}
    */
   acknowledgeMeeting(options: {

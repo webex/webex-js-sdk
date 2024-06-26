@@ -1075,14 +1075,14 @@ export default class Meetings extends WebexPlugin {
    * When meeting info passed it should be complete, e.g.: fetched after password or captcha provided
    *
    * @param {string} destination - sipURL, phonenumber, or locus object
-   * @param {string} [type] - the optional specified type, such as locusId
-   * @param {Boolean} useRandomDelayForInfo - whether a random delay should be added to fetching meeting info
-   * @param {Object} infoExtraParams extra parameters to be provided when fetching meeting info
-   * @param {string} correlationId - the optional specified correlationId (callStateForMetrics.correlationId can be provided instead)
-   * @param {Boolean} failOnMissingMeetingInfo - whether to throw an error if meeting info fails to fetch (for calls that are not 1:1 or content share)
-   * @param {CallStateForMetrics} callStateForMetrics - information about call state for metrics
-   * @param {Object} [meetingInfo] - Pre-fetched complete meeting info
-   * @param {String} [meetingLookupUrl] - meeting info prefetch url
+   * @param {string | null} [type] - the optional specified type, such as locusId
+   * @param {boolean} useRandomDelayForInfo - whether a random delay should be added to fetching meeting info
+   * @param {Record<string, any>} infoExtraParams extra parameters to be provided when fetching meeting info
+   * @param {string | undefined} correlationId - the optional specified correlationId (callStateForMetrics.correlationId can be provided instead)
+   * @param {boolean} failOnMissingMeetingInfo - whether to throw an error if meeting info fails to fetch (for calls that are not 1:1 or content share)
+   * @param {CallStateForMetrics | undefined} callStateForMetrics - information about call state for metrics
+   * @param {Record<string, any> | undefined } [meetingInfo] - Pre-fetched complete meeting info
+   * @param {string | undefined} [meetingLookupUrl] - meeting info prefetch url
    * @returns {Promise<Meeting>} A new Meeting.
    * @public
    * @memberof Meetings
@@ -1091,11 +1091,11 @@ export default class Meetings extends WebexPlugin {
     destination: string,
     type: string | null = null,
     useRandomDelayForInfo = false,
-    infoExtraParams = {},
+    infoExtraParams: Record<string, any> = {},
     correlationId: string | undefined = undefined,
     failOnMissingMeetingInfo = false,
     callStateForMetrics: CallStateForMetrics | undefined = undefined,
-    meetingInfo = undefined,
+    meetingInfo: Record<string, any> | undefined = undefined,
     meetingLookupUrl = undefined
   ) {
     // TODO: type should be from a dictionary
@@ -1225,7 +1225,7 @@ export default class Meetings extends WebexPlugin {
    * @param {Object} infoExtraParams extra parameters to be provided when fetching meeting info
    * @param {CallStateForMetrics} callStateForMetrics - information about call state for metrics
    * @param {Boolean} failOnMissingMeetingInfo - whether to throw an error if meeting info fails to fetch (for calls that are not 1:1 or content share)
-   * @param {Object} [meetingInfo] - Pre-fetched complete meeting info
+   * @param {Record<string, any> | undefined} [meetingInfo] - Pre-fetched complete meeting info
    * @param {String} [meetingLookupUrl] - meeting info prefetch url
    * @returns {Promise} a new meeting instance complete with meeting info and destination
    * @private
@@ -1238,7 +1238,7 @@ export default class Meetings extends WebexPlugin {
     infoExtraParams = {},
     callStateForMetrics: CallStateForMetrics | undefined = undefined,
     failOnMissingMeetingInfo = false,
-    meetingInfo = undefined,
+    meetingInfo: Record<string, any> | undefined = undefined,
     meetingLookupUrl = undefined
   ) {
     const meeting = new Meeting(
@@ -1496,8 +1496,8 @@ export default class Meetings extends WebexPlugin {
 
   /**
    * check breakout locus which waiting for main locus's meeting to be created, then handle the breakout locus
-   * @param {Object} newCreatedLocus the locus which just create meeting object of it
-   * @returns {undefined}
+   * @param {Record<string, any>} newCreatedLocus the locus which just create meeting object of it
+   * @returns {void}
    * @public
    * @memberof Meetings
    */

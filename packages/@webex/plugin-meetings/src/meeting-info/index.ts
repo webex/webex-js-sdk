@@ -139,8 +139,8 @@ export default class MeetingInfo {
 
   /**
    * Helper to generate the options for the MeetingInfo request
-   * @param {String} destination
-   * @param {String} type
+   * @param {{url: string} | string | null} destination
+   * @param {string | null} type
    * @returns {Promise}
    * @private
    * @memberof MeetingInfo
@@ -156,14 +156,17 @@ export default class MeetingInfo {
   // eslint-disable-next-line valid-jsdoc
   /**
    * Fetches meeting info from the server
-   * @param {String} destination one of many different types of destinations to look up info for
-   * @param {String} [type] to match up with the destination value
-   * @param {String} [password] meeting password
-   * @param {Object} [captchaInfo] captcha code and id
-   * @param {String} [installedOrgID]
-   * @param {String} [locusId]
-   * @param {Object} [extraParams]
-   * @param {Boolean} [options] meeting Id and whether Call Analyzer events should be sent
+   * @param {string} destination one of many different types of destinations to look up info for
+   * @param {string | null} [type] to match up with the destination value
+   * @param {string | null} [password] meeting password
+   * @param {{
+   *       code: string;
+   *       id: string;
+   *     } | null} [captchaInfo] captcha code and id
+   * @param {string | null} [installedOrgID]
+   * @param {string | null} [locusId]
+   * @param {Record<string, any>} [extraParams]
+   * @param {{meetingId?: string; sendCAevents?: boolean}} [options] meeting Id and whether Call Analyzer events should be sent
    * @returns {Promise} returns a meeting info object
    * @public
    * @memberof MeetingInfo
@@ -179,11 +182,11 @@ export default class MeetingInfo {
       id: string;
     } | null = null,
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    installedOrgID = null,
+    installedOrgID: string | null = null,
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    locusId = null,
+    locusId: string | null = null,
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    extraParams: object = {},
+    extraParams: Record<string, any> = {},
     options: {meetingId?: string; sendCAevents?: boolean} = {}
   ) {
     if (type === _PERSONAL_ROOM_ && !destination) {
