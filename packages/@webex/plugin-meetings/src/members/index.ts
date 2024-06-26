@@ -2,7 +2,6 @@
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
 import {isEmpty} from 'lodash';
-// @ts-ignore
 import {StatelessWebexPlugin} from '@webex/webex-core';
 
 import {
@@ -207,7 +206,7 @@ export default class Members extends StatelessWebexPlugin {
    * @param {Object} payload
    * @param {Object} payload.newSelf
    * @param {Object} payload.oldSelf
-   * @returns {undefined}
+   * @returns {void}
    * @private
    * @memberof Members
    */
@@ -257,7 +256,7 @@ export default class Members extends StatelessWebexPlugin {
    * @param {Object} payload
    * @param {Object} payload.newHost
    * @param {Object} payload.oldHost
-   * @returns {undefined}
+   * @returns {void}
    * @private
    * @memberof Members
    */
@@ -326,7 +325,7 @@ export default class Members extends StatelessWebexPlugin {
    * delta object in the event will have {updated, added} and full will be the full membersCollection
    * @param {Object} payload
    * @param {Object} payload.participants
-   * @returns {undefined}
+   * @returns {void}
    * @private
    * @memberof Members
    */
@@ -361,7 +360,7 @@ export default class Members extends StatelessWebexPlugin {
    * @param {Object} payload
    * @param {Object} payload.current
    * @param {Object} payload.previous
-   * @returns {undefined}
+   * @returns {void}
    * @private
    * @memberof Members
    */
@@ -446,7 +445,7 @@ export default class Members extends StatelessWebexPlugin {
    * Internal update the locus url value
    * @param {Object} payload
    * @param {String} payload.locusUrl
-   * @returns {undefined}
+   * @returns {void}
    * @private
    * @memberof Members
    */
@@ -460,7 +459,7 @@ export default class Members extends StatelessWebexPlugin {
    * Internal update the type of meeting
    * @param {Object} payload
    * @param {String} payload.type
-   * @returns {undefined}
+   * @returns {void}
    * @private
    * @memberof Members
    */
@@ -499,7 +498,7 @@ export default class Members extends StatelessWebexPlugin {
   /**
    * set members to the member collection from each updated/added lists as passed in
    * @param {Array} list
-   * @returns {undefined}
+   * @returns {void}
    * @private
    * @memberof Members
    */
@@ -533,9 +532,9 @@ export default class Members extends StatelessWebexPlugin {
   /**
    * Update the locus Url
    * @param {Object} locus
-   * @param {String} [locusUrl] optional, takes precedence
+   * @param {string | null} [locusUrl] optional, takes precedence
    * @throws {ParameterError}
-   * @returns {undefined}
+   * @returns {void}
    * @public
    * @memberof Members
    */
@@ -554,9 +553,9 @@ export default class Members extends StatelessWebexPlugin {
   /**
    * Update the host id
    * @param {Object} locus
-   * @param {String} [hostId] optional, takes precedence
+   * @param {string | null} [hostId] optional, takes precedence
    * @throws {ParameterError}
-   * @returns {undefined}
+   * @returns {void}
    * @public
    * @memberof Members
    */
@@ -575,9 +574,9 @@ export default class Members extends StatelessWebexPlugin {
   /**
    * Update the type
    * @param {Object} fullState
-   * @param {String} [type] optional, takes precedence
+   * @param {string | null} [type] optional, takes precedence
    * @throws {ParameterError}
-   * @returns {undefined}
+   * @returns {void}
    * @public
    * @memberof Members
    */
@@ -596,9 +595,9 @@ export default class Members extends StatelessWebexPlugin {
   /**
    * Update the self Id
    * @param {Object} locus
-   * @param {String} [selfId] optional, takes precedence
+   * @param {string | null} [selfId] optional, takes precedence
    * @throws {Error}
-   * @returns {undefined}
+   * @returns {void}
    * @memberof Members
    */
   setSelfId(locus: any, selfId: string | null = null) {
@@ -619,9 +618,9 @@ export default class Members extends StatelessWebexPlugin {
   /**
    * Update the media share content id
    * @param {Object} locus
-   * @param {String} [contentId] optional, takes precedence
+   * @param {string | undefined} [contentId] optional, takes precedence
    * @throws {Error}
-   * @returns {undefined}
+   * @returns {void}
    * @memberof Members
    */
   setMediaShareContentId(locus: any, contentId?: string) {
@@ -651,7 +650,7 @@ export default class Members extends StatelessWebexPlugin {
    * @param {Object} locus
    * @param {String} [whiteboardId] optional, takes precedence
    * @throws {Error}
-   * @returns {undefined}
+   * @returns {void}
    * @memberof Members
    */
   setMediaShareWhiteboardId(locus: any, whiteboardId?: string) {
@@ -1014,7 +1013,7 @@ export default class Members extends StatelessWebexPlugin {
   /** Finds a member that has any device with a csi matching provided value
    *
    * @param {number} csi
-   * @returns {Member}
+   * @returns {Member | undefined}
    */
   findMemberByCsi(csi: number): Record<string, any> | undefined {
     return (Object.values(this.membersCollection.getAll()) as Record<string, any>).find(
@@ -1033,7 +1032,7 @@ export default class Members extends StatelessWebexPlugin {
    * @param {string} mediaContent 'main' or 'slides'
    * @returns {Member}
    */
-  getCsisForMember(memberId: unknown, mediaType = 'video', mediaContent = 'main') {
+  getCsisForMember(memberId: string, mediaType = 'video', mediaContent = 'main') {
     const csis: unknown[] = [];
 
     this.membersCollection
