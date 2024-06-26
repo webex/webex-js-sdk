@@ -135,11 +135,11 @@ describe('plugin-meetings', () => {
         assert.strictEqual(statsAnalyzer.statsResults['video-send'].send.totalPacketsSent, 15000);
         assert.strictEqual(statsAnalyzer.statsResults['video-send'].send.requestedBitrate, 50000);
         assert.strictEqual(
-          statsAnalyzer.statsResults['video-send'].send.retransmittedPacketsSent,
+          statsAnalyzer.statsResults['video-send'].send.totalRtxPacketsSent,
           10
         );
         assert.strictEqual(
-          statsAnalyzer.statsResults['video-send'].send.retransmittedBytesSent,
+          statsAnalyzer.statsResults['video-send'].send.totalRtxBytesSent,
           500
         );
       });
@@ -252,8 +252,8 @@ describe('plugin-meetings', () => {
         assert.strictEqual(statsAnalyzer.statsResults['video-recv'].recv.totalBytesReceived, 100000);
         assert.strictEqual(statsAnalyzer.statsResults['video-recv'].recv.requestedBitrate, 50000);
         assert.strictEqual(statsAnalyzer.statsResults['video-recv'].recv.headerBytesReceived, 10000);
-        assert.strictEqual(statsAnalyzer.statsResults['video-recv'].recv.retransmittedBytesReceived, 500);
-        assert.strictEqual(statsAnalyzer.statsResults['video-recv'].recv.retransmittedPacketsReceived, 10);
+        assert.strictEqual(statsAnalyzer.statsResults['video-recv'].recv.totalRtxBytesReceived, 500);
+        assert.strictEqual(statsAnalyzer.statsResults['video-recv'].recv.totalRtxPacketsReceived, 10);
       });
 
 

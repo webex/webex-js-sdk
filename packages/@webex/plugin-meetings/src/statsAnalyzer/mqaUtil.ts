@@ -244,8 +244,8 @@ export const getVideoReceiverMqa = ({
   const totalPacketsReceived = getTotalValue('totalPacketsReceived');
   const totalBytesReceived = getTotalValue('totalBytesReceived');
 
-  const totalRtxPacketsReceived = getTotalValue('retransmittedPacketsReceived');
-  const totalRtxBytesReceived = getTotalValue('retransmittedBytesReceived');
+  const totalRtxPacketsReceived = getTotalValue('totalRtxPacketsReceived');
+  const totalRtxBytesReceived = getTotalValue('totalRtxBytesReceived');
 
   const meanRemoteJitter = Object.keys(statsResults)
     .filter((mt) => mt.includes(baseMediaType))
@@ -367,8 +367,8 @@ export const getVideoSenderMqa = ({videoSender, statsResults, lastMqaDataSent, b
   const totalPacketsSent = getTotalValue('totalPacketsSent');
   const totalBytesSent = getTotalValue('totalBytesSent');
   const availableOutgoingBitrate = getTotalValue('availableOutgoingBitrate');
-  const totalRtxPacketsSent = getTotalValue('retransmittedPacketsSent');
-  const totalRtxBytesSent = getTotalValue('retransmittedBytesSent');
+  const totalRtxPacketsSent = getTotalValue('totalRtxPacketsSent');
+  const totalRtxBytesSent = getTotalValue('totalRtxBytesSent');
 
   videoSender.common.common.direction =
     statsResults[Object.keys(statsResults).find((mediaType) => mediaType.includes(baseMediaType))]
