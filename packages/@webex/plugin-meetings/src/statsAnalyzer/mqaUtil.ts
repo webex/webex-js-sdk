@@ -237,8 +237,8 @@ export const getVideoReceiverMqa = ({
   const lastPacketsLost = getLastTotalValue('totalPacketsLost');
   const lastBytesReceived = getLastTotalValue('totalBytesReceived');
 
-  const lastRtxPacketsReceived = getLastTotalValue('retransmittedPacketsReceived');
-  const lastRtxBytesReceived = getLastTotalValue('retransmittedBytesReceived');
+  const lastRtxPacketsReceived = getLastTotalValue('totalRtxPacketsReceived');
+  const lastRtxBytesReceived = getLastTotalValue('totalRtxBytesReceived');
 
   const packetsLost = getTotalValue('totalPacketsLost');
   const totalPacketsReceived = getTotalValue('totalPacketsReceived');
@@ -360,8 +360,8 @@ export const getVideoSenderMqa = ({videoSender, statsResults, lastMqaDataSent, b
   const lastPacketsSent = getLastTotalValue('totalPacketsSent');
   const lastBytesSent = getLastTotalValue('totalBytesSent');
   const lastPacketsLostTotal = getLastTotalValue('totalPacketsLostOnReceiver');
-  const lastRtxPacketsSent = getLastTotalValue('retransmittedPacketsSent');
-  const lastRtxBytesSent = getLastTotalValue('retransmittedBytesSent');
+  const lastRtxPacketsSent = getLastTotalValue('totalRtxPacketsSent');
+  const lastRtxBytesSent = getLastTotalValue('totalRtxBytesSent');
 
   const totalPacketsLostOnReceiver = getTotalValue('totalPacketsLostOnReceiver');
   const totalPacketsSent = getTotalValue('totalPacketsSent');
