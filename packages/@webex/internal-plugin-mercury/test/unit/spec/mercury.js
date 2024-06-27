@@ -150,9 +150,8 @@ describe('plugin-mercury', () => {
           assert.isTrue(mercury.connected, 'Mercury is connected');
           assert.isFalse(mercury.connecting, 'Mercury is not connecting');
           assert.calledWith(socketOpenStub, sinon.match(/ws:\/\/example.com/), sinon.match.any);
-          mercury._emit('event:featureToggle_update', updatedFeature)
-          assert.calledOnce(webex.internal.feature.updateFeature);
-          assert.calledWith(webex.internal.feature.updateFeature, updatedFeature);
+          mercury._emit('event:featureToggle_update', updatedFeature);
+          assert.calledOnceWithExactly(webex.internal.feature.updateFeature, updatedFeature);
         });
       });
 

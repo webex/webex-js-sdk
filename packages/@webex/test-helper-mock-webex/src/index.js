@@ -282,7 +282,6 @@ function makeWebex(options) {
     feature: {
       setFeature: sinon.stub().returns(Promise.resolve(false)),
       getFeature: sinon.stub().returns(Promise.resolve(false)),
-      setMercury: sinon.stub(),
     },
     encryption: {},
     metrics: {
