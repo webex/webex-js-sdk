@@ -2,7 +2,6 @@ import Url from 'url';
 
 import sha256 from 'crypto-js/sha256';
 
-import {union} from 'lodash';
 import WebexPlugin from '../webex-plugin';
 
 import METRICS from './metrics';
@@ -10,7 +9,6 @@ import ServiceCatalog from './service-catalog';
 import ServiceRegistry from './service-registry';
 import ServiceState from './service-state';
 import fedRampServices from './service-fed-ramp';
-import {COMMERCIAL_ALLOWED_DOMAINS} from './constants';
 
 const trailingSlashes = /(?:^\/)|(?:\/$)/;
 
@@ -941,11 +939,6 @@ const Services = WebexPlugin.extend({
 
         // Inject formatted override services into services catalog.
         catalog.updateServiceUrls('override', formattedOverrideServices);
-      }
-
-      // if not fedramp, append on the commercialAllowedDomains
-      if (!fedramp) {
-        services.allowedDomains = union(services.allowedDomains, COMMERCIAL_ALLOWED_DOMAINS);
       }
 
       // Check for allowed host domains.

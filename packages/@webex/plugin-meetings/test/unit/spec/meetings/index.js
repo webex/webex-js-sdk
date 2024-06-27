@@ -18,7 +18,6 @@ import TriggerProxy from '@webex/plugin-meetings/src/common/events/trigger-proxy
 import LoggerProxy from '@webex/plugin-meetings/src/common/logs/logger-proxy';
 import LoggerConfig from '@webex/plugin-meetings/src/common/logs/logger-config';
 import Meeting, {CallStateForMetrics} from '@webex/plugin-meetings/src/meeting';
-import {Services} from '@webex/webex-core';
 import MeetingUtil from '@webex/plugin-meetings/src/meeting/util';
 import Meetings from '@webex/plugin-meetings/src/meetings';
 import MeetingCollection from '@webex/plugin-meetings/src/meetings/collection';
@@ -76,8 +75,6 @@ describe('plugin-meetings', () => {
   let test1;
   let test2;
   let locusInfo;
-  let services;
-  let catalog;
 
   describe('meetings index', () => {
     beforeEach(() => {
@@ -96,12 +93,8 @@ describe('plugin-meetings', () => {
           device: Device,
           mercury: Mercury,
           meetings: Meetings,
-          services: Services,
         },
       });
-
-      services = webex.internal.services;
-      catalog = services._getCatalog();
 
       Object.assign(webex, {
         logging: logger,
@@ -168,7 +161,6 @@ describe('plugin-meetings', () => {
               ],
             })
           ),
-          _getCatalog: sinon.stub().returns(catalog),
           fetchClientRegionInfo: sinon.stub().returns(Promise.resolve()),
         },
         metrics: {
@@ -1925,33 +1917,33 @@ describe('plugin-meetings', () => {
         let loggerProxySpy;
 
         it('should call request.getMeetingPreferences to get the preferred webex site ', async () => {
-          assert.deepEqual(webex.internal.services._getCatalog().getAllowedDomains(), []);
           assert.isDefined(webex.meetings.preferredWebexSite);
           await webex.meetings.fetchUserPreferredWebexSite();
 
           assert.equal(webex.meetings.preferredWebexSite, 'go.webex.com');
-          assert.deepEqual(webex.internal.services._getCatalog().getAllowedDomains(), [
-            'go.webex.com',
-          ]);
         });
 
         const setup = ({user} = {}) => {
           loggerProxySpy = sinon.spy(LoggerProxy.logger, 'error');
-          assert.deepEqual(webex.internal.services._getCatalog().getAllowedDomains(), []);
 
           Object.assign(webex.internal, {
+            services: {
+              getMeetingPreferences: sinon.stub().returns(Promise.resolve({})),
+            },
             user: {
               get: sinon.stub().returns(Promise.resolve(user)),
             },
-          });
-
-          Object.assign(webex.internal.services, {
-            getMeetingPreferences: sinon.stub().returns(Promise.resolve({})),
           });
         };
 
         it('should not fail if UserPreferred info is not fetched ', async () => {
           setup();
+
+          Object.assign(webex.internal, {
+            services: {
+              getMeetingPreferences: sinon.stub().returns(Promise.resolve({})),
+            },
+          });
 
           await webex.meetings.fetchUserPreferredWebexSite().then(() => {
             assert.equal(webex.meetings.preferredWebexSite, '');
@@ -1960,7 +1952,6 @@ describe('plugin-meetings', () => {
             loggerProxySpy,
             'Failed to fetch preferred site from user - no site will be set'
           );
-          assert.deepEqual(webex.internal.services._getCatalog().getAllowedDomains(), ['']);
         });
 
         it('should fall back to fetching the site from the user', async () => {
@@ -1977,10 +1968,6 @@ describe('plugin-meetings', () => {
           await webex.meetings.fetchUserPreferredWebexSite();
 
           assert.equal(webex.meetings.preferredWebexSite, 'site.webex.com');
-          assert.deepEqual(webex.internal.services._getCatalog().getAllowedDomains(), [
-            '',
-            'site.webex.com',
-          ]);
           assert.notCalled(loggerProxySpy);
         });
 
@@ -2002,7 +1989,6 @@ describe('plugin-meetings', () => {
                 loggerProxySpy,
                 'Failed to fetch preferred site from user - no site will be set'
               );
-              assert.deepEqual(webex.internal.services._getCatalog().getAllowedDomains(), ['']);
             });
           }
         );
@@ -2019,7 +2005,6 @@ describe('plugin-meetings', () => {
             loggerProxySpy,
             'Failed to fetch preferred site from user - no site will be set'
           );
-          assert.deepEqual(webex.internal.services._getCatalog().getAllowedDomains(), ['']);
         });
 
         it('should fall back to fetching the site from the user', async () => {
@@ -2037,10 +2022,6 @@ describe('plugin-meetings', () => {
 
           assert.equal(webex.meetings.preferredWebexSite, 'site.webex.com');
           assert.notCalled(loggerProxySpy);
-          assert.deepEqual(webex.internal.services._getCatalog().getAllowedDomains(), [
-            '',
-            'site.webex.com',
-          ]);
         });
 
         forEach(
@@ -2061,7 +2042,6 @@ describe('plugin-meetings', () => {
                 loggerProxySpy,
                 'Failed to fetch preferred site from user - no site will be set'
               );
-              assert.deepEqual(webex.internal.services._getCatalog().getAllowedDomains(), ['']);
             });
           }
         );
@@ -2078,7 +2058,6 @@ describe('plugin-meetings', () => {
             loggerProxySpy,
             'Failed to fetch preferred site from user - no site will be set'
           );
-          assert.deepEqual(webex.internal.services._getCatalog().getAllowedDomains(), ['']);
         });
       });
     });
@@ -2365,14 +2344,12 @@ describe('plugin-meetings', () => {
           sessionType: 'MAIN',
         };
         newLocus.self.state = 'JOINED';
-        newLocus.self.devices = [
-          {
-            intent: {
-              reason: 'ON_HOLD_LOBBY',
-              type: 'WAIT',
-            },
-          },
-        ];
+        newLocus.self.devices = [{
+          intent: {
+            reason: 'ON_HOLD_LOBBY',
+            type: 'WAIT',
+          }
+        }];
         LoggerProxy.logger.log = sinon.stub();
         const result = webex.meetings.isNeedHandleLocusDTO(meeting, newLocus);
         assert.equal(result, true);

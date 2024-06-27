@@ -101,7 +101,11 @@ describe('webex-core', () => {
       const domains = [];
 
       beforeEach(() => {
-        domains.push('example-a', 'example-b', 'example-c');
+        domains.push(
+          'example-a',
+          'example-b',
+          'example-c'
+        );
 
         catalog.setAllowedDomains(domains);
       });
@@ -121,7 +125,11 @@ describe('webex-core', () => {
       const domains = [];
 
       beforeEach(() => {
-        domains.push('example-a', 'example-b', 'example-c');
+        domains.push(
+          'example-a',
+          'example-b',
+          'example-c'
+        );
 
         catalog.setAllowedDomains(domains);
       });
@@ -160,7 +168,11 @@ describe('webex-core', () => {
       const domains = [];
 
       beforeEach(() => {
-        domains.push('example-a', 'example-b', 'example-c');
+        domains.push(
+          'example-a',
+          'example-b',
+          'example-c'
+        );
 
         catalog.setAllowedDomains(domains);
       });
@@ -175,30 +187,6 @@ describe('webex-core', () => {
         catalog.setAllowedDomains(newValues);
 
         assert.notDeepInclude(domains, newValues);
-      });
-    });
-
-    describe('#addAllowedDomains()', () => {
-      const domains = [];
-
-      beforeEach(() => {
-        domains.push('example-a', 'example-b', 'example-c');
-
-        catalog.setAllowedDomains(domains);
-      });
-
-      afterEach(() => {
-        domains.length = 0;
-      });
-
-      it('merge the allowed domain entries with new values', () => {
-        const newValues = ['example-c', 'example-e', 'example-f'];
-
-        catalog.addAllowedDomains(newValues);
-
-        const list = catalog.getAllowedDomains();
-
-        assert.match(['example-a', 'example-b', 'example-c', 'example-e', 'example-f'], list);
       });
     });
   });
