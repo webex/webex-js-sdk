@@ -64,7 +64,7 @@ describe('plugin-meetings', () => {
         assert(calledSpy.calledOnce);
       });
 
-      it('processOutboundRTPResult should create the correct stats results', () => {
+      it('processOutboundRTPResult should create the correct stats results for audio', () => {
         // establish the `statsResults` object.
         statsAnalyzer.parseGetStatsResult({type: 'none'}, 'audio-send', true);
 
@@ -80,8 +80,6 @@ describe('plugin-meetings', () => {
             nackCount: 1,
             packetsSent: 3600,
             remoteId: 'RTCRemoteInboundRtpAudioStream_123456789',
-            retransmittedBytesSent: 100,
-            retransmittedPacketsSent: 2,
             ssrc: 123456789,
             targetBitrate: 256000,
             timestamp: 1707341489336,
@@ -99,17 +97,54 @@ describe('plugin-meetings', () => {
         assert.strictEqual(statsAnalyzer.statsResults['audio-send'].send.totalNackCount, 1);
         assert.strictEqual(statsAnalyzer.statsResults['audio-send'].send.totalPacketsSent, 3600);
         assert.strictEqual(statsAnalyzer.statsResults['audio-send'].send.requestedBitrate, 10000);
+      });
+
+      it('processOutboundRTPResult should create the correct stats results for video', () => {
+        // establish the `statsResults` object for video.
+        statsAnalyzer.parseGetStatsResult({type: 'none'}, 'video-send', true);
+
+        statsAnalyzer.processOutboundRTPResult(
+          {
+            bytesSent: 250000,
+            codecId: 'RTCCodec_1_Outbound_107',
+            headerBytesSent: 50000,
+            id: 'RTCOutboundRTPVideoStream_987654321',
+            kind: 'video',
+            mediaSourceId: 'RTCVideoSource_3',
+            mediaType: 'video',
+            nackCount: 5,
+            packetsSent: 15000,
+            remoteId: 'RTCRemoteInboundRtpVideoStream_987654321',
+            retransmittedBytesSent: 500,
+            retransmittedPacketsSent: 10,
+            ssrc: 987654321,
+            targetBitrate: 1024000,
+            timestamp: 1707341489336,
+            trackId: 'RTCMediaStreamTrack_sender_3',
+            transportId: 'RTCTransport_0_2',
+            type: 'outbound-rtp',
+            requestedBitrate: 50000,
+          },
+          'video-send',
+          true
+        );
+
+        assert.strictEqual(statsAnalyzer.statsResults['video-send'].send.headerBytesSent, 50000);
+        assert.strictEqual(statsAnalyzer.statsResults['video-send'].send.totalBytesSent, 250000);
+        assert.strictEqual(statsAnalyzer.statsResults['video-send'].send.totalNackCount, 5);
+        assert.strictEqual(statsAnalyzer.statsResults['video-send'].send.totalPacketsSent, 15000);
+        assert.strictEqual(statsAnalyzer.statsResults['video-send'].send.requestedBitrate, 50000);
         assert.strictEqual(
-          statsAnalyzer.statsResults['audio-send'].send.retransmittedPacketsSent,
-          2
+          statsAnalyzer.statsResults['video-send'].send.totalRtxPacketsSent,
+          10
         );
         assert.strictEqual(
-          statsAnalyzer.statsResults['audio-send'].send.retransmittedBytesSent,
-          100
+          statsAnalyzer.statsResults['video-send'].send.totalRtxBytesSent,
+          500
         );
       });
 
-      it('processInboundRTPResult should create the correct stats results', () => {
+      it('processInboundRTPResult should create the correct stats results for audio', () => {
         // establish the `statsResults` object.
         statsAnalyzer.parseGetStatsResult({type: 'none'}, 'audio-recv-1', false);
 
@@ -175,6 +210,52 @@ describe('plugin-meetings', () => {
           200000
         );
       });
+
+      it('processInboundRTPResult should create the correct stats results for video', () => {
+        // establish the `statsResults` object for video.
+        statsAnalyzer.parseGetStatsResult({type: 'none'}, 'video-recv', false);
+
+        statsAnalyzer.processInboundRTPResult(
+          {
+            bytesReceived: 100000,
+            codecId: 'RTCCodec_6_Inbound_107',
+            fecPacketsDiscarded: 2,
+            fecPacketsReceived: 2,
+            headerBytesReceived: 10000,
+            id: 'RTCInboundRTPVideoStream_987654321',
+            jitter: 0.05,
+            jitterBufferDelay: 5000,
+            jitterBufferEmittedCount: 50000,
+            kind: 'video',
+            lastPacketReceivedTimestamp: 1707341488529,
+            mediaType: 'video',
+            packetsDiscarded: 5,
+            packetsLost: 10,
+            packetsReceived: 1500,
+            remoteId: 'RTCRemoteOutboundRTPVideoStream_987654321',
+            ssrc: 987654321,
+            timestamp: 1707341489419,
+            trackId: 'RTCMediaStreamTrack_receiver_3',
+            transportId: 'RTCTransport_0_2',
+            type: 'inbound-rtp',
+            requestedBitrate: 50000,
+            retransmittedBytesReceived: 500,
+            retransmittedPacketsReceived: 10,
+          },
+          'video-recv',
+          false
+        );
+
+        assert.strictEqual(statsAnalyzer.statsResults['video-recv'].recv.totalPacketsReceived, 1500);
+        assert.strictEqual(statsAnalyzer.statsResults['video-recv'].recv.fecPacketsDiscarded, 2);
+        assert.strictEqual(statsAnalyzer.statsResults['video-recv'].recv.fecPacketsReceived, 2);
+        assert.strictEqual(statsAnalyzer.statsResults['video-recv'].recv.totalBytesReceived, 100000);
+        assert.strictEqual(statsAnalyzer.statsResults['video-recv'].recv.requestedBitrate, 50000);
+        assert.strictEqual(statsAnalyzer.statsResults['video-recv'].recv.headerBytesReceived, 10000);
+        assert.strictEqual(statsAnalyzer.statsResults['video-recv'].recv.totalRtxBytesReceived, 500);
+        assert.strictEqual(statsAnalyzer.statsResults['video-recv'].recv.totalRtxPacketsReceived, 10);
+      });
+
 
       it('parseAudioSource should create the correct stats results', () => {
         // establish the `statsResults` object.

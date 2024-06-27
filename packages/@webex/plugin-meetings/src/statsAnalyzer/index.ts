@@ -998,12 +998,11 @@ export class StatsAnalyzer extends EventsScope {
         result.qualityLimitationReason;
       this.statsResults[mediaType][sendrecvType].qualityLimitationResolutionChanges =
         result.qualityLimitationResolutionChanges;
-      this.statsResults[mediaType][sendrecvType].retransmittedPacketsSent =
+      this.statsResults[mediaType][sendrecvType].totalRtxPacketsSent =
         result.retransmittedPacketsSent;
+      this.statsResults[mediaType][sendrecvType].totalRtxBytesSent = result.retransmittedBytesSent;
       this.statsResults[mediaType][sendrecvType].totalBytesSent = result.bytesSent;
       this.statsResults[mediaType][sendrecvType].headerBytesSent = result.headerBytesSent;
-      this.statsResults[mediaType][sendrecvType].retransmittedBytesSent =
-        result.retransmittedBytesSent;
       this.statsResults[mediaType][sendrecvType].requestedBitrate = result.requestedBitrate;
       this.statsResults[mediaType][sendrecvType].requestedFrameSize = result.requestedFrameSize;
     }
@@ -1136,6 +1135,10 @@ export class StatsAnalyzer extends EventsScope {
       this.statsResults[mediaType][sendrecvType].fecPacketsReceived = result.fecPacketsReceived;
       this.statsResults[mediaType][sendrecvType].totalBytesReceived = result.bytesReceived;
       this.statsResults[mediaType][sendrecvType].headerBytesReceived = result.headerBytesReceived;
+      this.statsResults[mediaType][sendrecvType].totalRtxPacketsReceived =
+        result.retransmittedPacketsReceived;
+      this.statsResults[mediaType][sendrecvType].totalRtxBytesReceived =
+        result.retransmittedBytesReceived;
 
       this.statsResults[mediaType][sendrecvType].meanRtpJitter.push(result.jitter);
 
