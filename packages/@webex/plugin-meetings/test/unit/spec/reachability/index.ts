@@ -141,6 +141,272 @@ describe('isAnyPublicClusterReachable', () => {
   });
 });
 
+
+describe('isWebexMediaBackendUnreachable', () => {
+  let webex;
+
+  beforeEach(() => {
+    webex = new MockWebex();
+
+    sinon.stub(MeetingUtil, 'getIpVersion').returns(IP_VERSION.unknown);
+  });
+
+  afterEach(() => {
+    sinon.restore();
+  });
+
+  const runCheck = async (mockStorage: any, expectedValue: boolean) => {
+    if (mockStorage) {
+      await webex.boundedStorage.put(
+        'Reachability',
+        'reachability.result',
+        JSON.stringify(mockStorage)
+      );
+    }
+    const reachability = new Reachability(webex);
+
+    const result = await reachability.isWebexMediaBackendUnreachable();
+
+    assert.equal(result, expectedValue);
+  };
+
+  [
+    {
+      title: 'no clusters at all',
+      mockStorage: {},
+      expectedResult: false,
+    },
+    {
+      title: 'clusters without results',
+      mockStorage: {a: {}, b: {}},
+      expectedResult: false,
+    },
+    {
+      title: 'all clusters untested',
+      mockStorage: {
+        a: {udp: 'untested'},
+        b: {udp: 'untested', tcp: 'untested'},
+      },
+      expectedResult: false,
+    },
+    {
+      title: 'one cluster with udp reachable',
+      mockStorage: {x: {udp: {result: 'reachable'}, tcp: {result: 'unreachable'}}},
+      expectedResult: false,
+    },
+    {
+      title: 'one cluster with tcp reachable',
+      mockStorage: {x: {tcp: {result: 'reachable'}}},
+      expectedResult: false,
+    },
+    {
+      title: 'one cluster with xtls reachable',
+      mockStorage: {x: {xtls: {result: 'reachable'}}, y: {xtls: {result: 'unreachable'}}},
+      expectedResult: false,
+    },
+    {
+      title: 'multiple clusters with various protocols reachable',
+      mockStorage: {
+        a: {udp: {result: 'reachable'}, tcp: {result: 'reachable'}},
+        b: {udp: {result: 'unreachable'}, tcp: {result: 'reachable'}},
+        c: {tcp: {result: 'reachable'}},
+        d: {xtls: {result: 'reachable'}},
+      },
+      expectedResult: false,
+    },
+    {
+      title: 'multiple clusters with all protocols unreachable',
+      mockStorage: {
+        a: {
+          udp: {result: 'unreachable'},
+          tcp: {result: 'unreachable'},
+          xtls: {result: 'unreachable'},
+        },
+        b: {
+          udp: {result: 'unreachable'},
+          tcp: {result: 'unreachable'},
+          xtls: {result: 'unreachable'},
+        },
+        c: {
+          udp: {result: 'unreachable'},
+          tcp: {result: 'unreachable'},
+          xtls: {result: 'unreachable'},
+        },
+      },
+      expectedResult: true,
+    },
+    {
+      title: 'multiple clusters with UDP and TCP protocols unreachable, but TLS not tested',
+      mockStorage: {
+        a: {
+          udp: {result: 'unreachable'},
+          tcp: {result: 'unreachable'},
+          xtls: {result: 'untested'},
+        },
+        b: {
+          udp: {result: 'unreachable'},
+          tcp: {result: 'unreachable'},
+          xtls: {result: 'untested'},
+        },
+        c: {
+          udp: {result: 'unreachable'},
+          tcp: {result: 'unreachable'},
+          xtls: {result: 'untested'},
+        },
+      },
+      expectedResult: false,
+    },
+    {
+      title: 'multiple clusters with UDP and TCP protocols unreachable, but TLS missing',
+      mockStorage: {
+        a: {
+          udp: {result: 'unreachable'},
+          tcp: {result: 'unreachable'},
+        },
+        b: {
+          udp: {result: 'unreachable'},
+          tcp: {result: 'unreachable'},
+        },
+        c: {
+          udp: {result: 'unreachable'},
+          tcp: {result: 'unreachable'},
+        },
+      },
+      expectedResult: false,
+    },
+    {
+      title: 'multiple clusters with UDP and TLS protocols unreachable, but TCP not tested',
+      mockStorage: {
+        a: {
+          udp: {result: 'unreachable'},
+          tcp: {result: 'untested'},
+          xtls: {result: 'unreachable'},
+        },
+        b: {
+          udp: {result: 'unreachable'},
+          tcp: {result: 'untested'},
+          xtls: {result: 'unreachable'},
+        },
+        c: {
+          udp: {result: 'unreachable'},
+          tcp: {result: 'untested'},
+          xtls: {result: 'unreachable'},
+        },
+      },
+      expectedResult: false,
+    },
+    {
+      title: 'multiple clusters with UDP and TLS protocols unreachable, but TCP missing',
+      mockStorage: {
+        a: {
+          udp: {result: 'unreachable'},
+          xtls: {result: 'unreachable'},
+        },
+        b: {
+          udp: {result: 'unreachable'},
+          xtls: {result: 'unreachable'},
+        },
+        c: {
+          udp: {result: 'unreachable'},
+          xtls: {result: 'unreachable'},
+        },
+      },
+      expectedResult: false,
+    },
+    {
+      title: 'multiple clusters with all protocols unreachable, some untested',
+      mockStorage: {
+        a: {
+          udp: {result: 'unreachable'},
+          tcp: {result: 'unreachable'},
+          xtls: {result: 'unreachable'},
+        },
+        b: {udp: {result: 'unreachable'}, tcp: {result: 'untested'}, xtls: {result: 'unreachable'}},
+        c: {udp: {result: 'unreachable'}, tcp: {result: 'unreachable'}, xtls: {result: 'untested'}},
+      },
+      expectedResult: true,
+    },
+    {
+      title: 'multiple clusters with all protocols unreachable, except for 1 reachable on udp',
+      mockStorage: {
+        a: {
+          udp: {result: 'reachable'},
+          tcp: {result: 'unreachable'},
+          xtls: {result: 'unreachable'},
+        },
+        b: {
+          udp: {result: 'unreachable'},
+          tcp: {result: 'unreachable'},
+          xtls: {result: 'unreachable'},
+        },
+        c: {
+          udp: {result: 'unreachable'},
+          tcp: {result: 'unreachable'},
+          xtls: {result: 'unreachable'},
+        },
+      },
+      expectedResult: false,
+    },
+    {
+      title: 'multiple clusters with all protocols unreachable, except for 1 reachable on tcp',
+      mockStorage: {
+        a: {
+          udp: {result: 'unreachable'},
+          tcp: {result: 'unreachable'},
+          xtls: {result: 'unreachable'},
+        },
+        b: {
+          udp: {result: 'unreachable'},
+          tcp: {result: 'unreachable'},
+          xtls: {result: 'unreachable'},
+        },
+        c: {
+          udp: {result: 'unreachable'},
+          tcp: {result: 'reachable'},
+          xtls: {result: 'unreachable'},
+        },
+      },
+      expectedResult: false,
+    },
+    {
+      title: 'multiple clusters with all protocols unreachable, except for 1 reachable on xtls',
+      mockStorage: {
+        a: {
+          udp: {result: 'unreachable'},
+          tcp: {result: 'unreachable'},
+          xtls: {result: 'unreachable'},
+        },
+        b: {
+          udp: {result: 'unreachable'},
+          tcp: {result: 'unreachable'},
+          xtls: {result: 'reachable'},
+        },
+        c: {
+          udp: {result: 'unreachable'},
+          tcp: {result: 'unreachable'},
+          xtls: {result: 'unreachable'},
+        },
+      },
+      expectedResult: false,
+    },
+    {
+      title: 'multiple clusters with some missing results',
+      mockStorage: {
+        a: {udp: {result: 'unreachable'}},
+        b: {tcp: {result: 'unreachable'}},
+        c: {xtls: {result: 'unreachable'}},
+        d: {},
+      },
+      expectedResult: true,
+    },
+  ].forEach(({mockStorage, expectedResult, title}) => {
+    it(`returns ${expectedResult} when ${title}`, async () => {
+      await runCheck(mockStorage, expectedResult);
+    });
+  });
+});
+
+
 describe('gatherReachability', () => {
   let webex;
 
