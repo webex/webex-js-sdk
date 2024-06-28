@@ -158,6 +158,7 @@ describe('plugin-mercury', () => {
           assert.calledWith(socketOpenStub, sinon.match(/ws:\/\/example.com/), sinon.match.any);
           mercury._emit('event:featureToggle_update', envelope);
           assert.calledOnceWithExactly(webex.internal.feature.updateFeature, envelope.data.featureToggle);
+          sinon.restore();
         });
       });
 
@@ -169,6 +170,7 @@ describe('plugin-mercury', () => {
         return promise.then(() => {
           mercury._emit('event:featureToggle_update', envelope);
           assert.notCalled(webex.internal.feature.updateFeature);
+          sinon.restore();
         });
       });
 
