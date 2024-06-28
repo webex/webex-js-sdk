@@ -4954,8 +4954,10 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
-   * This callback is called when LLM comes online
-   * This method in turn will notify the meetings developer that LLM is connected
+   * This is a callback for the LLM event that is triggered when it comes online
+   * This method in turn will trigger an event to the developers that the LLM is connected
+   * @private
+   * @memberof Meeting
    * @returns {null}
    */
   private handleLLMOnline = (): void => {
