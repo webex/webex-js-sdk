@@ -161,6 +161,17 @@ describe('plugin-mercury', () => {
         });
       });
 
+      it('connects to Mercury but does not call updateFeature', () => {
+        webex.internal.feature.updateFeature = sinon.stub();
+        const promise = mercury.connect();
+        const envelope = {};
+
+        return promise.then(() => {
+          mercury._emit('event:featureToggle_update', envelope);
+          assert.notCalled(webex.internal.feature.updateFeature);
+        });
+      });
+
       describe('when `maxRetries` is set', () => {
 
         const check = () => {
