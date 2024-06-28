@@ -209,26 +209,12 @@ export class StatsAnalyzer extends EventsScope {
     const videoReceiver = cloneDeep(emptyVideoReceive);
     const videoShareReceiver = cloneDeep(emptyVideoReceive);
 
-    if (this.isMultistream) {
-      [
-        audioSender,
-        audioShareSender,
-        audioReceiver,
-        audioShareReceiver,
-        videoSender,
-        videoShareSender,
-        videoReceiver,
-        videoShareReceiver,
-      ].forEach((mediaType) => {
-        mediaType.common.common.multistreamEnabled = true;
-      });
-    }
-
     getAudioSenderMqa({
       audioSender,
       statsResults: this.statsResults,
       lastMqaDataSent: this.lastMqaDataSent,
       baseMediaType: 'audio-send',
+      isMultistream: this.isMultistream,
     });
     newMqa.audioTransmit.push(audioSender);
 
@@ -237,6 +223,7 @@ export class StatsAnalyzer extends EventsScope {
       statsResults: this.statsResults,
       lastMqaDataSent: this.lastMqaDataSent,
       baseMediaType: 'audio-share-send',
+      isMultistream: this.isMultistream,
     });
     newMqa.audioTransmit.push(audioShareSender);
 
@@ -245,6 +232,7 @@ export class StatsAnalyzer extends EventsScope {
       statsResults: this.statsResults,
       lastMqaDataSent: this.lastMqaDataSent,
       baseMediaType: 'audio-recv',
+      isMultistream: this.isMultistream,
     });
     newMqa.audioReceive.push(audioReceiver);
 
@@ -253,6 +241,7 @@ export class StatsAnalyzer extends EventsScope {
       statsResults: this.statsResults,
       lastMqaDataSent: this.lastMqaDataSent,
       baseMediaType: 'audio-share-recv',
+      isMultistream: this.isMultistream,
     });
     newMqa.audioReceive.push(audioShareReceiver);
 
@@ -261,6 +250,7 @@ export class StatsAnalyzer extends EventsScope {
       statsResults: this.statsResults,
       lastMqaDataSent: this.lastMqaDataSent,
       baseMediaType: 'video-send',
+      isMultistream: this.isMultistream,
     });
     newMqa.videoTransmit.push(videoSender);
 
@@ -269,6 +259,7 @@ export class StatsAnalyzer extends EventsScope {
       statsResults: this.statsResults,
       lastMqaDataSent: this.lastMqaDataSent,
       baseMediaType: 'video-share-send',
+      isMultistream: this.isMultistream,
     });
     newMqa.videoTransmit.push(videoShareSender);
 
@@ -277,6 +268,7 @@ export class StatsAnalyzer extends EventsScope {
       statsResults: this.statsResults,
       lastMqaDataSent: this.lastMqaDataSent,
       baseMediaType: 'video-recv',
+      isMultistream: this.isMultistream,
     });
     newMqa.videoReceive.push(videoReceiver);
 
@@ -285,6 +277,7 @@ export class StatsAnalyzer extends EventsScope {
       statsResults: this.statsResults,
       lastMqaDataSent: this.lastMqaDataSent,
       baseMediaType: 'video-share-recv',
+      isMultistream: this.isMultistream,
     });
     newMqa.videoReceive.push(videoShareReceiver);
 

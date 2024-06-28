@@ -1990,7 +1990,7 @@ describe('plugin-meetings', () => {
       });
 
       describe('sends multistreamEnabled', async () => {
-        it('false value if StatsAnalyzer initialized with default value for isMultistream', async () => {
+        it('false if StatsAnalyzer initialized with default value for isMultistream', async () => {
           await startStatsAnalyzer({pc, statsAnalyzer, mediaStatus: {expected: {receiveVideo: true}}});
 
           await progressTime();
@@ -2005,7 +2005,7 @@ describe('plugin-meetings', () => {
           }
         });
 
-        it('false value if StatsAnalyzer initialized with false', async () => {
+        it('false if StatsAnalyzer initialized with false', async () => {
           statsAnalyzer = new StatsAnalyzer({
             config: initialConfig,
             receiveSlotCallback: () => receiveSlot,
@@ -2027,7 +2027,7 @@ describe('plugin-meetings', () => {
           }
         });
 
-        it('true value if StatsAnalyzer initialized with multistream', async () => {
+        it('true if StatsAnalyzer initialized with multistream', async () => {
           statsAnalyzer = new StatsAnalyzer({
             config: initialConfig,
             receiveSlotCallback: () => receiveSlot,
