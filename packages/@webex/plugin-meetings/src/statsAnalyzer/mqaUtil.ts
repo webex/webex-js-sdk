@@ -28,7 +28,6 @@ export const getAudioReceiverMqa = ({
   statsResults,
   lastMqaDataSent,
   baseMediaType,
-  // isMultistream,
 }) => {
   const sendrecvType = STATS.RECEIVE_DIRECTION;
 
@@ -53,7 +52,6 @@ export const getAudioReceiverMqa = ({
     statsResults[Object.keys(statsResults).find((mediaType) => mediaType.includes(baseMediaType))]
       ?.direction || 'inactive';
   audioReceiver.common.common.isMain = !baseMediaType.includes('-share');
-  // audioReceiver.common.common.multistreamEnabled = isMultistream;
   audioReceiver.common.transportType = statsResults.connectionType.local.transport;
 
   // add rtpPacket info inside common as also for call analyzer
@@ -79,7 +77,6 @@ export const getAudioReceiverStreamMqa = ({
   statsResults,
   lastMqaDataSent,
   mediaType,
-  // isMultistream,
 }) => {
   const sendrecvType = STATS.RECEIVE_DIRECTION;
 
@@ -128,17 +125,9 @@ export const getAudioReceiverStreamMqa = ({
     statsResults[mediaType][sendrecvType].concealedSamples - lastConcealedSamples || 0;
   audioReceiverStream.common.receivedBitrate =
     ((statsResults[mediaType][sendrecvType].totalBytesReceived - lastBytesReceived) * 8) / 60 || 0;
-
-  // audioReceiverStream.common.common.multistreamEnabled = isMultistream;
 };
 
-export const getAudioSenderMqa = ({
-  audioSender,
-  statsResults,
-  lastMqaDataSent,
-  baseMediaType,
-  // isMultistream,
-}) => {
+export const getAudioSenderMqa = ({audioSender, statsResults, lastMqaDataSent, baseMediaType}) => {
   const sendrecvType = STATS.SEND_DIRECTION;
 
   const getLastTotalValue = (value: string) =>
@@ -195,7 +184,6 @@ export const getAudioSenderMqa = ({
     getTotalValueFromBaseType(lastMqaDataSent, sendrecvType, baseMediaType, 'totalBytesSent');
 
   audioSender.common.rtpBitrate = totalBytesSentInaMin ? (totalBytesSentInaMin * 8) / 60 : 0;
-  // audioSender.common.common.multistreamEnabled = isMultistream;
 };
 
 export const getAudioSenderStreamMqa = ({
@@ -237,7 +225,6 @@ export const getVideoReceiverMqa = ({
   statsResults,
   lastMqaDataSent,
   baseMediaType,
-  // isMultistream,
 }) => {
   const sendrecvType = STATS.RECEIVE_DIRECTION;
 
@@ -267,7 +254,6 @@ export const getVideoReceiverMqa = ({
   videoReceiver.common.common.direction =
     statsResults[Object.keys(statsResults).find((mediaType) => mediaType.includes(baseMediaType))]
       ?.direction || 'inactive';
-  // videoReceiver.common.common.multistreamEnabled = isMultistream;
   videoReceiver.common.common.isMain = !baseMediaType.includes('-share');
   videoReceiver.common.transportType = statsResults.connectionType.local.transport;
 
@@ -395,7 +381,6 @@ export const getVideoSenderMqa = ({videoSender, statsResults, lastMqaDataSent, b
   videoSender.common.common.direction =
     statsResults[Object.keys(statsResults).find((mediaType) => mediaType.includes(baseMediaType))]
       ?.direction || 'inactive';
-  // videoSender.common.common.multistreamEnabled = isMultistream;
   videoSender.common.common.isMain = !baseMediaType.includes('-share');
   videoSender.common.transportType = statsResults.connectionType.local.transport;
 
