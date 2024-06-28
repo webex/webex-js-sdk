@@ -318,7 +318,11 @@ const Mercury = WebexPlugin.extend({
                 * mention-notifications
                 * thread-notifications,
         */
-        this.on('event:featureToggle_update', this.webex.internal.feature.updateFeature);
+        this.on('event:featureToggle_update', (envelope) => {
+          if (envelope && envelope.data) {
+            this.webex.internal.feature.updateFeature(envelope.data.featureToggle);
+          }
+        });
 
         return resolve();
       };

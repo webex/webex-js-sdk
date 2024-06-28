@@ -48,12 +48,11 @@ const Feature = WebexCore.WebexPlugin.extend({
    *     * mention-notifications
    *     * thread-notifications,
    * This handler is being listened from mercury connection success method for the event "event:featureToggle_update"
-   * @param {Object} envelope
+   * @param {Object} feature
    * @returns {undefined}
    */
-  updateFeature(envelope) {
-    if (envelope && envelope.data) {
-      const feature = envelope.data.featureToggle;
+  updateFeature(feature) {
+    if (feature) {
       const keyType = feature.type.toLowerCase();
 
       if (keyType === 'user' || keyType === 'developer') {

@@ -102,20 +102,16 @@ describe('plugin-feature', () => {
       it('updates the feature toggle', () => {
         const key = 'featureName';
         const keyType = 'user';
-        const envelope = {
-          data: {
-            featureToggle: {
-              key,
-              mutable: true,
-              type: 'USER',
-              val: 'true',
-              value: true,
-            },
-          },
+        const feature = {
+          key,
+          mutable: true,
+          type: 'USER',
+          val: 'true',
+          value: true,
         };
 
         sinon.spy(webex.internal.device.features[keyType], 'add');
-        webex.internal.feature.updateFeature(envelope);
+        webex.internal.feature.updateFeature(feature);
         assert.called(webex.internal.device.features[keyType].add);
       });
     });
