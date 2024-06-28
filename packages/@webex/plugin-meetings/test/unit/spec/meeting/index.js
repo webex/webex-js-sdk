@@ -1302,6 +1302,31 @@ describe('plugin-meetings', () => {
           );
         });
       });
+
+      describe('#handleLLMOnline', () => {
+        beforeEach(() => {
+          webex.internal.llm.off = sinon.stub();
+        });
+
+        it('turns off llm online, emits transcription connected events', () => {
+          meeting.handleLLMOnline();
+          assert.calledOnceWithExactly(
+            webex.internal.llm.off,
+            'online',
+            meeting.handleLLMOnline
+          );
+          assert.calledWith(
+            TriggerProxy.trigger,
+            sinon.match.instanceOf(Meeting),
+            {
+              file: 'meeting/index',
+              function: 'handleLLMOnline',
+            },
+            EVENT_TRIGGERS.MEETING_TRANSCRIPTION_CONNECTED
+          );
+        });
+      });
+
       describe('#join', () => {
         let sandbox = null;
         let setCorrelationIdSpy;
@@ -1351,15 +1376,10 @@ describe('plugin-meetings', () => {
             assert.calledOnce(MeetingUtil.joinMeeting);
             assert.calledOnce(meeting.setLocus);
             assert.equal(result, joinMeetingResult);
-
             assert.calledWith(
-              TriggerProxy.trigger,
-              sinon.match.instanceOf(Meeting),
-              {
-                file: 'meeting/index',
-                function: 'join',
-              },
-              EVENT_TRIGGERS.MEETING_TRANSCRIPTION_CONNECTED
+              webex.internal.llm.on,
+              'online',
+              meeting.handleLLMOnline
             );
           });
 
