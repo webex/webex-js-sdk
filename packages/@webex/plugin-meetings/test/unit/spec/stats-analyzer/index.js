@@ -24,7 +24,7 @@ const startStatsAnalyzer = async ({statsAnalyzer, mediaStatus, lastEmittedEvents
   await testUtils.flushPromises();
 };
 
-describe.only('plugin-meetings', () => {
+describe('plugin-meetings', () => {
   describe('StatsAnalyzer', () => {
     describe('parseStatsResult', () => {
       const sandbox = sinon.createSandbox();
@@ -1989,6 +1989,7 @@ describe.only('plugin-meetings', () => {
           assert.strictEqual(mqeData.intervalMetadata.appWindowSize, 3038);
         });
       });
+
       describe('multistreamEnabled', async () => {
         it('sends false value if StatsAnalyzer initialized with default value for isMultistream', async () => {
           await startStatsAnalyzer({pc, statsAnalyzer, mediaStatus: {expected: {receiveVideo: true}}});

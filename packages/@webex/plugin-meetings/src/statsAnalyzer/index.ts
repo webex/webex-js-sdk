@@ -199,13 +199,6 @@ export class StatsAnalyzer extends EventsScope {
       }
     });
 
-    if (this.isMultistream) {
-      emptyAudioTransmit.common.common.multistreamEnabled = true;
-      emptyAudioReceive.common.common.multistreamEnabled = true;
-      emptyVideoTransmit.common.common.multistreamEnabled = true;
-      emptyVideoReceive.common.common.multistreamEnabled = true;
-    }
-
     // Create stats the first level, totals for senders and receivers
     const audioSender = cloneDeep(emptyAudioTransmit);
     const audioShareSender = cloneDeep(emptyAudioTransmit);
@@ -215,6 +208,21 @@ export class StatsAnalyzer extends EventsScope {
     const videoShareSender = cloneDeep(emptyVideoTransmit);
     const videoReceiver = cloneDeep(emptyVideoReceive);
     const videoShareReceiver = cloneDeep(emptyVideoReceive);
+
+    if (this.isMultistream) {
+      [
+        audioSender,
+        audioShareSender,
+        audioReceiver,
+        audioShareReceiver,
+        videoSender,
+        videoShareSender,
+        videoReceiver,
+        videoShareReceiver,
+      ].forEach((mediaType) => {
+        mediaType.common.common.multistreamEnabled = true;
+      });
+    }
 
     getAudioSenderMqa({
       audioSender,
