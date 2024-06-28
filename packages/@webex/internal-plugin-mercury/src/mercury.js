@@ -312,6 +312,12 @@ const Mercury = WebexPlugin.extend({
         this.connected = true;
         this.hasEverConnected = true;
         this._emit('online');
+        /*
+          When one of these legacy feature gets updated, this event would be triggered
+                * group-message-notifications
+                * mention-notifications
+                * thread-notifications,
+        */
         this.on('event:featureToggle_update', this.webex.internal.feature.updateFeature);
 
         return resolve();

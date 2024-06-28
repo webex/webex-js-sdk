@@ -43,6 +43,11 @@ const Feature = WebexCore.WebexPlugin.extend({
 
   /**
    * Handles a feature toggle update from the server.
+   * When one of these legacy feature gets updated, this event handler be triggered
+   *     * group-message-notifications
+   *     * mention-notifications
+   *     * thread-notifications,
+   * This handler is being listened from mercury connection success method for the event "event:featureToggle_update"
    * @param {Object} envelope
    * @returns {undefined}
    */
