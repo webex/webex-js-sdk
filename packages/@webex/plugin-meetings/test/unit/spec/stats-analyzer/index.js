@@ -1989,8 +1989,8 @@ describe('plugin-meetings', () => {
         });
       });
 
-      describe('multistreamEnabled', async () => {
-        it('sends false value if StatsAnalyzer initialized with default value for isMultistream', async () => {
+      describe('sends multistreamEnabled', async () => {
+        it('false value if StatsAnalyzer initialized with default value for isMultistream', async () => {
           await startStatsAnalyzer({pc, statsAnalyzer, mediaStatus: {expected: {receiveVideo: true}}});
 
           await progressTime();
@@ -2005,29 +2005,7 @@ describe('plugin-meetings', () => {
           }
         });
 
-        it('sends true value if StatsAnalyzer initialized with multistream', async () => {
-          statsAnalyzer = new StatsAnalyzer({
-            config: initialConfig,
-            receiveSlotCallback: () => receiveSlot,
-            networkQualityMonitor,
-            isMultistream: true,
-          });
-          registerStatsAnalyzerEvents(statsAnalyzer);
-          await startStatsAnalyzer({pc, statsAnalyzer, mediaStatus: {expected: {receiveVideo: true}}});
-
-          await progressTime();
-
-          for (const data of [
-            mqeData.audioTransmit,
-            mqeData.audioReceive,
-            mqeData.videoTransmit,
-            mqeData.videoReceive,
-          ]) {
-            assert.strictEqual(data[0].common.common.multistreamEnabled, true);
-          }
-        });
-
-        it('sends false value if StatsAnalyzer initialized with false', async () => {
+        it('false value if StatsAnalyzer initialized with false', async () => {
           statsAnalyzer = new StatsAnalyzer({
             config: initialConfig,
             receiveSlotCallback: () => receiveSlot,
@@ -2046,6 +2024,28 @@ describe('plugin-meetings', () => {
             mqeData.videoReceive,
           ]) {
             assert.strictEqual(data[0].common.common.multistreamEnabled, false);
+          }
+        });
+
+        it('true value if StatsAnalyzer initialized with multistream', async () => {
+          statsAnalyzer = new StatsAnalyzer({
+            config: initialConfig,
+            receiveSlotCallback: () => receiveSlot,
+            networkQualityMonitor,
+            isMultistream: true,
+          });
+          registerStatsAnalyzerEvents(statsAnalyzer);
+          await startStatsAnalyzer({pc, statsAnalyzer, mediaStatus: {expected: {receiveVideo: true}}});
+
+          await progressTime();
+
+          for (const data of [
+            mqeData.audioTransmit,
+            mqeData.audioReceive,
+            mqeData.videoTransmit,
+            mqeData.videoReceive,
+          ]) {
+            assert.strictEqual(data[0].common.common.multistreamEnabled, true);
           }
         });
       });
