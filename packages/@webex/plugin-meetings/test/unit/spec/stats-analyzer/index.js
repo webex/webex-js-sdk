@@ -1065,7 +1065,6 @@ describe('plugin-meetings', () => {
         });
       });
 
-
       it('has the correct localIpAddress set when the candidateType is host', async () => {
         await startStatsAnalyzer({pc, statsAnalyzer});
 
