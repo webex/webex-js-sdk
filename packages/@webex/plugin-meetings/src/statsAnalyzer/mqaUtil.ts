@@ -339,11 +339,11 @@ export const getVideoReceiverStreamMqa = ({
 
   if (statsResults[mediaType][sendrecvType].isActiveSpeaker !== undefined) {
     if (statsResults[mediaType][sendrecvType].lastActiveSpeakerTimestamp !== undefined) {
-      const currentTimestamp =
-        statsResults[mediaType][sendrecvType].lastActiveSpeakerTimestamp + MQA_INTERVAL;
+      const currentTimestamp = performance.now() + performance.timeOrigin;
       // check if last true active speaker was set at least once during the last MQA interval
       videoReceiverStream.isActiveSpeaker =
-        currentTimestamp > performance.now() + performance.timeOrigin;
+        statsResults[mediaType][sendrecvType].lastActiveSpeakerTimestamp >
+        currentTimestamp - MQA_INTERVAL;
     } else {
       videoReceiverStream.isActiveSpeaker = statsResults[mediaType][sendrecvType].isActiveSpeaker;
     }
