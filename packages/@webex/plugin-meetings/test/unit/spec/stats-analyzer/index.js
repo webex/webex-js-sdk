@@ -1733,6 +1733,26 @@ describe('plugin-meetings', () => {
           }
         ]);
       });
+
+      describe.only('sends isActiveSpeaker', async () => {
+        it('true if user was constantly an active speaker and did not change his active state within the last interval (without timestamp)', async () => {
+          await startStatsAnalyzer();
+          fakeStats.video.receivers[0].report[0].isActiveSpeaker = true;
+          await progressTime(2 * MQA_INTERVAL);
+
+          assert.equal(mqeData.videoReceive[0].streams[0].isActiveSpeaker, true);
+        });
+
+        it('false if user was not an active speaker and did not change his active state within the last interval (without timestamp)', async () => {
+          await startStatsAnalyzer();
+          fakeStats.video.receivers[0].report[0].isActiveSpeaker = false;
+          await progressTime(2 * MQA_INTERVAL);
+
+          assert.deepEqual(mqeData.videoReceive[0].streams[0].isActiveSpeaker, false);
+        });
+
+        // TODO: add more tests
+      });
     });
   });
 });
