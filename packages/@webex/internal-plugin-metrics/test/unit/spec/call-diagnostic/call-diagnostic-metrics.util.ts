@@ -234,8 +234,14 @@ describe('internal-plugin-metrics', () => {
   });
 
   describe('getBuildType', () => {
+    let webex;
     beforeEach(() => {
       process.env.NODE_ENV = 'production';
+      webex = {
+        logger: {
+          log: () => undefined
+        }
+      }
     });
 
     [
@@ -245,18 +251,18 @@ describe('internal-plugin-metrics', () => {
       ['https://web.webex.com', true, 'test'],
     ].forEach(([webClientDomain, markAsTestEvent, expected]) => {
       it(`returns expected result for ${webClientDomain}`, () => {
-        assert.deepEqual(getBuildType(webClientDomain, markAsTestEvent as any), expected);
+        assert.deepEqual(getBuildType(webex, webClientDomain, markAsTestEvent as any), expected);
       });
     });
 
     it('returns "test" for NODE_ENV "foo"', () => {
       process.env.NODE_ENV = 'foo';
-      assert.deepEqual(getBuildType('production'), 'test');
+      assert.deepEqual(getBuildType(webex, 'production'), 'test');
     });
 
     it('returns "test" for NODE_ENV "production" and markAsTestEvent = true', () => {
       process.env.NODE_ENV = 'production';
-      assert.deepEqual(getBuildType('my.domain', true), 'test');
+      assert.deepEqual(getBuildType(webex, 'my.domain', true), 'test');
     });
   });
 
@@ -410,6 +416,8 @@ describe('internal-plugin-metrics', () => {
       const getBuildTypeSpy = sinon.spy(CallDiagnosticUtils, 'getBuildType');
       const markAsTestEvent = true;
       const webClientDomain = 'https://web.webex.com';
+      webex.logger.log = sinon.spy();
+
 
       // just submit any event
       prepareDiagnosticMetricItem(webex, {
@@ -419,7 +427,14 @@ describe('internal-plugin-metrics', () => {
         type: ['diagnostic-event'],
       });
 
-      assert.calledOnceWithExactly(getBuildTypeSpy, webClientDomain, markAsTestEvent);
+      assert.calledWith(
+        webex.logger.log,
+        `CallDiagnosticMetricsUtil: getBuildType is called`,
+        webClientDomain,
+        markAsTestEvent
+      );
+
+      sinon.restore();
     });
   });
 
