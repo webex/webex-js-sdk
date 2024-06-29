@@ -1734,7 +1734,7 @@ describe('plugin-meetings', () => {
         ]);
       });
 
-      describe.only('sends isActiveSpeaker', async () => {
+      describe('sends isActiveSpeaker', async () => {
         it('true if user was constantly an active speaker and did not change his active state within the last interval (without timestamp)', async () => {
           await startStatsAnalyzer();
           fakeStats.video.receivers[0].report[0].isActiveSpeaker = true;
