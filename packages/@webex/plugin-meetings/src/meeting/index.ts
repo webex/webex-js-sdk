@@ -4954,6 +4954,27 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
+   * This is a callback for the LLM event that is triggered when it comes online
+   * This method in turn will trigger an event to the developers that the LLM is connected
+   * @private
+   * @memberof Meeting
+   * @returns {null}
+   */
+  private handleLLMOnline = (): void => {
+    // @ts-ignore
+    this.webex.internal.llm.off('online', this.handleLLMOnline);
+    Trigger.trigger(
+      this,
+      {
+        file: 'meeting/index',
+        function: 'handleLLMOnline',
+      },
+      EVENT_TRIGGERS.MEETING_TRANSCRIPTION_CONNECTED,
+      undefined
+    );
+  };
+
+  /**
    * Specify joining via audio (option: pstn), video, screenshare
    * @param {JoinOptions} options A configurable options object for joining a meeting
    * @returns {Promise} the join response
@@ -5172,6 +5193,8 @@ export default class Meeting extends StatelessWebexPlugin {
       .then((join) => {
         // @ts-ignore - config coming from registerPlugin
         if (this.config.enableAutomaticLLM) {
+          // @ts-ignore
+          this.webex.internal.llm.on('online', this.handleLLMOnline);
           this.updateLLMConnection()
             .catch((error) => {
               LoggerProxy.logger.error(
@@ -5188,15 +5211,6 @@ export default class Meeting extends StatelessWebexPlugin {
             .then(() => {
               LoggerProxy.logger.info(
                 'Meeting:index#join --> Transcription Socket Connection Success'
-              );
-              Trigger.trigger(
-                this,
-                {
-                  file: 'meeting/index',
-                  function: 'join',
-                },
-                EVENT_TRIGGERS.MEETING_TRANSCRIPTION_CONNECTED,
-                undefined
               );
             });
         }
