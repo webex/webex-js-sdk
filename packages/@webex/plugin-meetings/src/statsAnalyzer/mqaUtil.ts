@@ -73,7 +73,11 @@ export const getAudioReceiverMqa = ({
 
   audioReceiver.common.rtpRecovered = fecRecovered;
 
-  audioReceiver.common.rtpBitrate = ((totalBytesReceived - lastBytesReceived) * 8) / 60 || 0;
+  const currBitrate = ((totalBytesReceived - lastBytesReceived) * 8) / MQA_INTERVAL || 0;
+  audioReceiver.common.rtpBitrate = currBitrate;
+
+  const lastMaxBitrate = lastMqaDataSent?.[baseMediaType]?.[sendrecvType]?.maxBitrate || 0;
+  audioReceiver.common.maxBitrate = Math.max(currBitrate, lastMaxBitrate);
 };
 
 export const getAudioReceiverStreamMqa = ({
@@ -194,7 +198,11 @@ export const getAudioSenderMqa = ({
     getTotalValueFromBaseType(statsResults, sendrecvType, baseMediaType, 'totalBytesSent') -
     getTotalValueFromBaseType(lastMqaDataSent, sendrecvType, baseMediaType, 'totalBytesSent');
 
-  audioSender.common.rtpBitrate = totalBytesSentInaMin ? (totalBytesSentInaMin * 8) / 60 : 0;
+  const currBitrate = totalBytesSentInaMin ? (totalBytesSentInaMin * 8) / MQA_INTERVAL : 0;
+  audioSender.common.rtpBitrate = currBitrate;
+
+  const lastMaxBitrate = lastMqaDataSent?.[baseMediaType]?.[sendrecvType]?.maxBitrate || 0;
+  audioSender.common.maxBitrate = Math.max(currBitrate, lastMaxBitrate);
 };
 
 export const getAudioSenderStreamMqa = ({
@@ -229,14 +237,6 @@ export const getAudioSenderStreamMqa = ({
     statsResults[mediaType][sendrecvType].totalFirCount - lastFirCount || 0;
 
   audioSenderStream.requestedBitrate = statsResults[mediaType][sendrecvType].requestedBitrate || 0;
-
-  // Get last used effect in this interval
-  const lastUsedEffect = statsResults[mediaType][sendrecvType]?.effect;
-  let mode = NOISE_REDUCTION_EFFECT_STATS.NONE;
-  if (lastUsedEffect?.mode in NOISE_REDUCTION_EFFECT_STATS) {
-    mode = NOISE_REDUCTION_EFFECT_STATS[lastUsedEffect.mode];
-  }
-  audioSenderStream.backgroundNoiseReductionMode = mode;
 };
 
 export const getVideoReceiverMqa = ({
@@ -295,9 +295,12 @@ export const getVideoReceiverMqa = ({
   const totalBytesReceivedInaMin = totalBytesReceived - lastBytesReceived;
   const totalRtxBytesReceivedInaMin = totalRtxBytesReceived - lastRtxBytesReceived;
 
-  videoReceiver.common.rtpBitrate = totalBytesReceivedInaMin
-    ? (totalBytesReceivedInaMin * 8) / 60
-    : 0;
+  const currBitrate = totalBytesReceivedInaMin ? (totalBytesReceivedInaMin * 8) / MQA_INTERVAL : 0;
+  videoReceiver.common.rtpBitrate = currBitrate;
+
+  const lastMaxBitrate = lastMqaDataSent?.[baseMediaType]?.[sendrecvType]?.maxBitrate || 0;
+  videoReceiver.common.maxBitrate = Math.max(currBitrate, lastMaxBitrate);
+
   videoReceiver.common.rtxPackets = totalRtxPacketsReceived - lastRtxPacketsReceived;
   videoReceiver.common.rtxBitrate = totalRtxBytesReceivedInaMin
     ? (totalRtxBytesReceivedInaMin * 8) / 60
@@ -442,7 +445,12 @@ export const getVideoSenderMqa = ({
   const totalBytesSentInaMin = totalBytesSent - lastBytesSent;
   const totalRtxBytesSentInaMin = totalRtxBytesSent - lastRtxBytesSent;
 
-  videoSender.common.rtpBitrate = totalBytesSentInaMin ? (totalBytesSentInaMin * 8) / 60 : 0;
+  const currBitrate = totalBytesSentInaMin ? (totalBytesSentInaMin * 8) / MQA_INTERVAL : 0;
+  videoSender.common.rtpBitrate = currBitrate;
+
+  const lastMaxBitrate = lastMqaDataSent?.[baseMediaType]?.[sendrecvType]?.maxBitrate || 0;
+  videoSender.common.maxBitrate = Math.max(currBitrate, lastMaxBitrate);
+
   videoSender.common.rtxPackets = totalRtxPacketsSent - lastRtxPacketsSent;
   videoSender.common.rtxBitrate = totalRtxBytesSentInaMin ? (totalRtxBytesSentInaMin * 8) / 60 : 0;
 };
@@ -496,14 +504,6 @@ export const getVideoSenderStreamMqa = ({
   videoSenderStream.requestedBitrate = statsResults[mediaType][sendrecvType].requestedBitrate || 0;
   videoSenderStream.requestedFrameSize =
     statsResults[mediaType][sendrecvType].requestedFrameSize || 0;
-
-  // Get last used effect in this interval
-  const lastUsedEffect = statsResults[mediaType][sendrecvType]?.effect;
-  let mode = VIRTUAL_BACKGROUND_EFFECT_STATS.NONE;
-  if (lastUsedEffect?.mode in VIRTUAL_BACKGROUND_EFFECT_STATS) {
-    mode = VIRTUAL_BACKGROUND_EFFECT_STATS[lastUsedEffect.mode];
-  }
-  videoSenderStream.backgroundAugmentationType = mode;
 };
 
 /**
