@@ -198,16 +198,9 @@ export const isBrowserMediaErrorName = (errorName: any) => {
  * @returns
  */
 export const getBuildType = (
-  webex,
   webClientDomain,
   markAsTestEvent = false
 ): Event['origin']['buildType'] => {
-  webex.logger.log(
-    `CallDiagnosticMetricsUtil: getBuildType is called`,
-    webClientDomain,
-    markAsTestEvent
-  );
-
   // used temporary to test pre join in production without creating noise data, SPARK-468456
   if (markAsTestEvent) {
     return 'test';
@@ -233,7 +226,6 @@ export const getBuildType = (
 export const prepareDiagnosticMetricItem = (webex: any, item: any) => {
   const origin: Partial<Event['origin']> = {
     buildType: getBuildType(
-      webex,
       item.eventPayload?.event?.eventData?.webClientDomain,
       item.eventPayload?.event?.eventData?.markAsTestEvent
     ),

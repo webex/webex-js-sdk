@@ -251,18 +251,18 @@ describe('internal-plugin-metrics', () => {
       ['https://web.webex.com', true, 'test'],
     ].forEach(([webClientDomain, markAsTestEvent, expected]) => {
       it(`returns expected result for ${webClientDomain}`, () => {
-        assert.deepEqual(getBuildType(webex, webClientDomain, markAsTestEvent as any), expected);
+        assert.deepEqual(getBuildType(webClientDomain, markAsTestEvent as any), expected);
       });
     });
 
     it('returns "test" for NODE_ENV "foo"', () => {
       process.env.NODE_ENV = 'foo';
-      assert.deepEqual(getBuildType(webex, 'production'), 'test');
+      assert.deepEqual(getBuildType('production'), 'test');
     });
 
     it('returns "test" for NODE_ENV "production" and markAsTestEvent = true', () => {
       process.env.NODE_ENV = 'production';
-      assert.deepEqual(getBuildType(webex, 'my.domain', true), 'test');
+      assert.deepEqual(getBuildType('my.domain', true), 'test');
     });
   });
 
@@ -412,29 +412,28 @@ describe('internal-plugin-metrics', () => {
       });
     });
 
-    it('calls getBuildType correctly', () => {
-      const getBuildTypeSpy = sinon.spy(CallDiagnosticUtils, 'getBuildType');
-      const markAsTestEvent = true;
-      const webClientDomain = 'https://web.webex.com';
-      webex.logger.log = sinon.spy();
-
-
-      // just submit any event
-      prepareDiagnosticMetricItem(webex, {
+    it('getBuildType returns correct value', () => {
+      const item: any = {
         eventPayload: {
-          event: {name: 'client.exit.app', eventData: {markAsTestEvent, webClientDomain}},
+          event: {
+            name: 'client.exit.app',
+            eventData: {
+              markAsTestEvent: true,
+              webClientDomain: 'https://web.webex.com'
+            }
+          },
         },
         type: ['diagnostic-event'],
-      });
+      };
 
-      assert.calledWith(
-        webex.logger.log,
-        `CallDiagnosticMetricsUtil: getBuildType is called`,
-        webClientDomain,
-        markAsTestEvent
-      );
+      // just submit any event
+      prepareDiagnosticMetricItem(webex, item);
+      assert.deepEqual(item.eventPayload.origin.buildType, 'test');
 
-      sinon.restore();
+      delete item.eventPayload.origin.buildType;
+      item.eventPayload.event.eventData.markAsTestEvent = false;
+      prepareDiagnosticMetricItem(webex, item);
+      assert.deepEqual(item.eventPayload.origin.buildType, 'prod');
     });
   });
 
