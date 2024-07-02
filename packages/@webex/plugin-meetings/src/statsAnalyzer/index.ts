@@ -143,11 +143,13 @@ export class StatsAnalyzer extends EventsScope {
     Object.keys(this.statsResults).forEach((mediaType) => {
       if (mediaType.includes('recv')) {
         this.statsResults[mediaType].recv.meanRtpJitter = [];
+        this.statsResults[mediaType].recv.maxBitrate = 0;
       }
 
       if (mediaType.includes('send')) {
         this.statsResults[mediaType].send.meanRemoteJitter = [];
         this.statsResults[mediaType].send.meanRoundTripTime = [];
+        this.statsResults[mediaType].send.maxBitrate = 0;
       }
     });
   }
