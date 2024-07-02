@@ -234,14 +234,8 @@ describe('internal-plugin-metrics', () => {
   });
 
   describe('getBuildType', () => {
-    let webex;
     beforeEach(() => {
       process.env.NODE_ENV = 'production';
-      webex = {
-        logger: {
-          log: () => undefined
-        }
-      }
     });
 
     [
