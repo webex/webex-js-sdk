@@ -148,6 +148,7 @@ export class StatsAnalyzer extends EventsScope {
       if (mediaType.includes('send')) {
         this.statsResults[mediaType].send.meanRemoteJitter = [];
         this.statsResults[mediaType].send.meanRoundTripTime = [];
+        this.statsResults[mediaType].send.effect = undefined;
       }
     });
   }
