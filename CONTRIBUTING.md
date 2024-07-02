@@ -102,7 +102,7 @@ yarn install
 Build the SDK:
 
 ```bash
-yarn run build
+yarn run build:local
 ```
 
 If at any point your out-of-the-box builds or failing or if you are tests are failing with complaints of an invalid node version, the following commands will reset and rebuild everything:
@@ -229,7 +229,7 @@ To run tests on [Sauce Labs](https://saucelabs.com/) locally, you'll need to add
 git clone git@github.com:webex/webex-js-sdk.git
 cd webex-js-sdk
 yarn install
-yarn run build
+yarn run build:local
 yarn run samples:serve
 ```
 
