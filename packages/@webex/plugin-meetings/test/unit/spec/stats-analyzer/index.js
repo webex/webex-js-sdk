@@ -7,12 +7,8 @@ import {ConnectionState} from '@webex/internal-media-core';
 import {StatsAnalyzer, EVENTS} from '../../../../src/statsAnalyzer';
 import NetworkQualityMonitor from '../../../../src/networkQualityMonitor';
 import testUtils from '../../../utils/testUtils';
-import {
-  MEDIA_DEVICES,
-  MQA_INTERVAL,
-  _UNKNOWN_,
-  NOISE_REDUCTION_EFFECT_STATS, VIRTUAL_BACKGROUND_EFFECT_STATS,
-} from "@webex/plugin-meetings/src/constants";
+import {MEDIA_DEVICES, MQA_INTERVAL, _UNKNOWN_} from "@webex/plugin-meetings/src/constants";
+import {NOISE_REDUCTION_MODE, VIRTUAL_BACKGROUND_MODE} from "@webex/plugin-meetings/src/statsAnalyzer/constants";
 import LoggerProxy from '../../../../src/common/logs/logger-proxy';
 import LoggerConfig from '../../../../src/common/logs/logger-config';
 import {CpuInfo} from '@webex/web-capabilities';
@@ -1428,7 +1424,7 @@ describe('plugin-meetings', () => {
             transmittedKeyFrames: 0,
             requestedKeyFrames: 0,
             requestedBitrate: 0,
-            backgroundNoiseReductionMode: NOISE_REDUCTION_EFFECT_STATS.NONE,
+            backgroundNoiseReductionMode: NOISE_REDUCTION_MODE.NONE,
           },
         ]);
         assert.deepEqual(mqeData.audioTransmit[1].streams, [
@@ -1446,7 +1442,7 @@ describe('plugin-meetings', () => {
             transmittedKeyFrames: 0,
             requestedKeyFrames: 0,
             requestedBitrate: 0,
-            backgroundNoiseReductionMode: NOISE_REDUCTION_EFFECT_STATS.NONE,
+            backgroundNoiseReductionMode: NOISE_REDUCTION_MODE.NONE,
           },
         ]);
         assert.deepEqual(mqeData.audioReceive[0].streams, [
@@ -1536,7 +1532,7 @@ describe('plugin-meetings', () => {
             transmittedKeyFramesUnknown: 0,
             transmittedWidth: 0,
             requestedBitrate: 0,
-            backgroundAugmentationType: VIRTUAL_BACKGROUND_EFFECT_STATS.NONE,
+            backgroundAugmentationType: VIRTUAL_BACKGROUND_MODE.NONE,
           },
         ]);
         assert.deepEqual(mqeData.videoTransmit[1].streams, [
@@ -1576,7 +1572,7 @@ describe('plugin-meetings', () => {
             transmittedKeyFramesStartup: 0,
             transmittedKeyFramesUnknown: 0,
             transmittedWidth: 0,
-            backgroundAugmentationType: VIRTUAL_BACKGROUND_EFFECT_STATS.NONE,
+            backgroundAugmentationType: VIRTUAL_BACKGROUND_MODE.NONE,
           },
         ]);
         assert.deepEqual(mqeData.videoReceive[0].streams, [
@@ -1893,7 +1889,7 @@ describe('plugin-meetings', () => {
             transmittedKeyFramesUnknown: 0,
             transmittedWidth: 0,
             requestedBitrate: 0,
-            backgroundAugmentationType: VIRTUAL_BACKGROUND_EFFECT_STATS.NONE,
+            backgroundAugmentationType: VIRTUAL_BACKGROUND_MODE.NONE,
           },
           {
             common: {
@@ -1931,7 +1927,7 @@ describe('plugin-meetings', () => {
             transmittedKeyFramesUnknown: 0,
             transmittedWidth: 0,
             requestedBitrate: 0,
-            backgroundAugmentationType: VIRTUAL_BACKGROUND_EFFECT_STATS.NONE,
+            backgroundAugmentationType: VIRTUAL_BACKGROUND_MODE.NONE,
           },
           {
             common: {
@@ -1969,7 +1965,7 @@ describe('plugin-meetings', () => {
             transmittedKeyFramesUnknown: 0,
             transmittedWidth: 0,
             requestedBitrate: 0,
-            backgroundAugmentationType: VIRTUAL_BACKGROUND_EFFECT_STATS.NONE,
+            backgroundAugmentationType: VIRTUAL_BACKGROUND_MODE.NONE,
           }
         ]);
           assert.deepEqual(mqeData.videoTransmit[0].streams, [
