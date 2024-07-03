@@ -1012,10 +1012,8 @@ export class StatsAnalyzer extends EventsScope {
       this.statsResults[mediaType][sendrecvType].retransmittedBytesSent =
         result.retransmittedBytesSent;
       this.statsResults[mediaType][sendrecvType].isRequested = result.isRequested;
-      if (this.statsResults[mediaType][sendrecvType].isRequested) {
-        this.statsResults[mediaType][sendrecvType].lastRequestedUpdateTimestamp =
-          result.lastRequestedUpdateTimestamp;
-      }
+      this.statsResults[mediaType][sendrecvType].lastRequestedUpdateTimestamp =
+        result.lastRequestedUpdateTimestamp;
     }
   }
 
@@ -1157,10 +1155,8 @@ export class StatsAnalyzer extends EventsScope {
         result.totalSamplesDecoded || 0;
       this.statsResults[mediaType][sendrecvType].concealedSamples = result.concealedSamples || 0;
       this.statsResults[mediaType][sendrecvType].isRequested = result.isRequested;
-      if (this.statsResults[mediaType][sendrecvType].isRequested) {
-        this.statsResults[mediaType][sendrecvType].lastRequestedUpdateTimestamp =
-          result.lastRequestedUpdateTimestamp;
-      }
+      this.statsResults[mediaType][sendrecvType].lastRequestedUpdateTimestamp =
+        result.lastRequestedUpdateTimestamp;
     }
   }
 
