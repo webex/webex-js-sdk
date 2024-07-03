@@ -130,7 +130,7 @@
     "builtins": "^5.0.1",
     "chai": "^4.3.4",
     "chai-as-promised": "^7.1.1",
-    "chromedriver": "^101.0.0",
+    "chromedriver": "^119.0.1",
     "circular-dependency-plugin": "^5.2.2",
     "core-js": "^3.26.0",
     "debug": "^4.3.4",
