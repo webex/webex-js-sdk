@@ -113,7 +113,7 @@
     "@wdio/cli": "^7.19.6",
     "@wdio/firefox-profile-service": "^7.19.5",
     "@wdio/junit-reporter": "^7.19.5",
-    "@wdio/local-runner": "^7.19.5",
+    "@wdio/local-runner": "^8.39.0",
     "@wdio/mocha-framework": "^7.19.5",
     "@wdio/sauce-service": "^7.19.5",
     "@wdio/spec-reporter": "^7.19.5",
