@@ -297,6 +297,63 @@ export default class Reachability {
   }
 
   /**
+   * Returns true only if ALL protocols (UDP, TCP and TLS) have been tested and none
+   * of the media clusters where reachable with any of the protocols. This is done
+   * irrespective of the config, so for example:
+   * if config.meetings.experimental.enableTlsReachability === false,
+   * it will return false, because TLS reachability won't be tested,
+   * so we can't say for sure that media backend is unreachable over TLS.
+   *
+   * @returns {boolean}
+   */
+  async isWebexMediaBackendUnreachable() {
+    let unreachable = false;
+
+    // @ts-ignore
+    const reachabilityData = await this.webex.boundedStorage
+      .get(this.namespace, REACHABILITY.localStorageResult)
+      .catch(() => {});
+
+    if (reachabilityData) {
+      try {
+        const reachabilityResults: ReachabilityResults = JSON.parse(reachabilityData);
+
+        const protocols = {
+          udp: {tested: false, reachable: undefined},
+          tcp: {tested: false, reachable: undefined},
+          xtls: {tested: false, reachable: undefined},
+        };
+
+        Object.values(reachabilityResults).forEach((result) => {
+          Object.keys(protocols).forEach((protocol) => {
+            if (
+              result[protocol]?.result === 'reachable' ||
+              result[protocol]?.result === 'unreachable'
+            ) {
+              protocols[protocol].tested = true;
+
+              // we need at least 1 'reachable' result to mark the whole protocol as reachable
+              if (result[protocol].result === 'reachable') {
+                protocols[protocol].reachable = true;
+              }
+            }
+          });
+        });
+
+        unreachable = Object.values(protocols).every(
+          (protocol) => protocol.tested && !protocol.reachable
+        );
+      } catch (e) {
+        LoggerProxy.logger.error(
+          `Roap:request#attachReachabilityData --> Error in parsing reachability data: ${e}`
+        );
+      }
+    }
+
+    return unreachable;
+  }
+
+  /**
    * Get list of all unreachable clusters
    * @returns {array} Unreachable clusters
    * @private
@@ -313,6 +370,9 @@ export default class Reachability {
       }
       if (result.tcp.result === 'unreachable') {
         unreachableList.push({name: key, protocol: 'tcp'});
+      }
+      if (result.xtls.result === 'unreachable') {
+        unreachableList.push({name: key, protocol: 'xtls'});
       }
     });
 

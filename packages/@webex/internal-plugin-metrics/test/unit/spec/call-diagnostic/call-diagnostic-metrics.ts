@@ -114,6 +114,7 @@ describe('internal-plugin-metrics', () => {
       sinon.useFakeTimers(now.getTime());
       cd = new CallDiagnosticMetrics({}, {parent: webex});
       sinon.stub(uuid, 'v4').returns('my-fake-id');
+      cd.setDeviceInfo(webex.internal.device);
     });
 
     afterEach(() => {
@@ -339,8 +340,8 @@ describe('internal-plugin-metrics', () => {
 
     describe('#getIdentifiers', () => {
       it('should build identifiers correctly', () => {
-        webex.internal.device = {
-          ...webex.internal.device,
+        cd.device = {
+          ...cd.device,
           config: {installationId: 'installationId'},
         };
 
@@ -521,7 +522,7 @@ describe('internal-plugin-metrics', () => {
       });
 
       it('should build identifiers correctly given preLoginId and no device userId available', () => {
-        webex.internal.device.userId = undefined;
+        cd.device.userId = undefined;
 
         const res = cd.getIdentifiers({
           correlationId: 'correlationId',
@@ -709,7 +710,7 @@ describe('internal-plugin-metrics', () => {
         });
 
         const webexLoggerLogCalls = webex.logger.log.getCalls();
-        assert.deepEqual(webexLoggerLogCalls[0].args, [
+        assert.deepEqual(webexLoggerLogCalls[1].args, [
           'call-diagnostic-events -> ',
           'CallDiagnosticMetrics: @submitClientEvent. Submit Client Event CA event.',
           `name: client.alert.displayed`,
@@ -740,21 +741,21 @@ describe('internal-plugin-metrics', () => {
 
         const webexLoggerLogCalls = webex.logger.log.getCalls();
 
-        assert.deepEqual(webexLoggerLogCalls.length, 3);
+        assert.deepEqual(webexLoggerLogCalls.length, 4);
 
-        assert.deepEqual(webexLoggerLogCalls[0].args, [
+        assert.deepEqual(webexLoggerLogCalls[1].args, [
           'call-diagnostic-events -> ',
           'CallDiagnosticMetrics: @submitClientEvent. Submit Client Event CA event.',
           `name: client.alert.displayed`,
         ]);
 
-        assert.deepEqual(webexLoggerLogCalls[1].args, [
+        assert.deepEqual(webexLoggerLogCalls[2].args, [
           'call-diagnostic-events -> ',
           'CallDiagnosticMetrics: @createClientEventObjectInMeeting => collected browser data',
           '{"error":"unable to access window.navigator.userAgent"}',
         ]);
 
-        assert.deepEqual(webexLoggerLogCalls[2].args, [
+        assert.deepEqual(webexLoggerLogCalls[3].args, [
           'call-diagnostic-events -> ',
           'CallDiagnosticMetrics: @submitClientEvent. Submit Client Event CA event.',
           `name: client.alert.displayed`,
@@ -840,7 +841,7 @@ describe('internal-plugin-metrics', () => {
 
         const webexLoggerLogCalls = webex.logger.log.getCalls();
 
-        assert.deepEqual(webexLoggerLogCalls[0].args, [
+        assert.deepEqual(webexLoggerLogCalls[1].args, [
           'call-diagnostic-events -> ',
           'CallDiagnosticMetrics: @submitClientEvent. Submit Client Event CA event.',
           `name: client.alert.displayed`,
@@ -848,7 +849,7 @@ describe('internal-plugin-metrics', () => {
       });
 
       it('should submit client event successfully with preLoginId', () => {
-        webex.internal.device.userId = undefined;
+        cd.device.userId = undefined;
 
         const prepareDiagnosticEventSpy = sinon.spy(cd, 'prepareDiagnosticEvent');
         const submitToCallDiagnosticsPreLoginSpy = sinon.spy(cd, 'submitToCallDiagnosticsPreLogin');
@@ -1047,13 +1048,13 @@ describe('internal-plugin-metrics', () => {
         });
 
         const webexLoggerLogCalls = webex.logger.log.getCalls();
-        assert.deepEqual(webexLoggerLogCalls[0].args, [
+        assert.deepEqual(webexLoggerLogCalls[1].args, [
           'call-diagnostic-events -> ',
           'CallDiagnosticMetrics: @submitClientEvent. Submit Client Event CA event.',
           `name: client.alert.displayed`,
         ]);
 
-        assert.deepEqual(webexLoggerLogCalls[1].args, [
+        assert.deepEqual(webexLoggerLogCalls[2].args, [
           'call-diagnostic-events -> ',
           'CallDiagnosticMetrics: @prepareClientEvent. Generated errors:',
           `generatedError: {"fatal":true,"shownToUser":false,"name":"other","category":"expected","errorCode":4029,"serviceErrorCode":2409005,"errorDescription":"StartRecordingFailed"}`,
@@ -1123,13 +1124,13 @@ describe('internal-plugin-metrics', () => {
         });
 
         const webexLoggerLogCalls = webex.logger.log.getCalls();
-        assert.deepEqual(webexLoggerLogCalls[0].args, [
+        assert.deepEqual(webexLoggerLogCalls[1].args, [
           'call-diagnostic-events -> ',
           'CallDiagnosticMetrics: @submitClientEvent. Submit Client Event CA event.',
           `name: client.alert.displayed`,
         ]);
 
-        assert.deepEqual(webexLoggerLogCalls[1].args, [
+        assert.deepEqual(webexLoggerLogCalls[2].args, [
           'call-diagnostic-events -> ',
           'CallDiagnosticMetrics: @prepareClientEvent. Generated errors:',
           `generatedError: {"fatal":true,"shownToUser":false,"name":"other","category":"other","errorCode":9999,"serviceErrorCode":9999,"rawErrorMessage":"bad times","errorDescription":"UnknownError"}`,
@@ -1192,13 +1193,13 @@ describe('internal-plugin-metrics', () => {
 
         const webexLoggerLogCalls = webex.logger.log.getCalls();
 
-        assert.deepEqual(webexLoggerLogCalls[0].args, [
+        assert.deepEqual(webexLoggerLogCalls[1].args, [
           'call-diagnostic-events -> ',
           'CallDiagnosticMetrics: @submitClientEvent. Submit Client Event CA event.',
           `name: client.alert.displayed`,
         ]);
 
-        assert.deepEqual(webexLoggerLogCalls[1].args, [
+        assert.deepEqual(webexLoggerLogCalls[2].args, [
           'call-diagnostic-events -> ',
           'CallDiagnosticMetrics: @prepareClientEvent. Generated errors:',
           `generatedError: {"fatal":true,"shownToUser":false,"name":"other","category":"other","errorCode":9999,"serviceErrorCode":9999,"rawErrorMessage":"bad times","errorDescription":"UnknownError"}`,
@@ -1265,13 +1266,13 @@ describe('internal-plugin-metrics', () => {
 
         const webexLoggerLogCalls = webex.logger.log.getCalls();
 
-        assert.deepEqual(webexLoggerLogCalls[0].args, [
+        assert.deepEqual(webexLoggerLogCalls[1].args, [
           'call-diagnostic-events -> ',
           'CallDiagnosticMetrics: @submitClientEvent. Submit Client Event CA event.',
           `name: client.alert.displayed`,
         ]);
 
-        assert.deepEqual(webexLoggerLogCalls[1].args, [
+        assert.deepEqual(webexLoggerLogCalls[2].args, [
           'call-diagnostic-events -> ',
           'CallDiagnosticMetrics: @prepareClientEvent. Generated errors:',
           `generatedError: {"fatal":true,"shownToUser":false,"name":"other","category":"expected","errorCode":4029,"serviceErrorCode":2409005,"errorDescription":"StartRecordingFailed"}`,
@@ -1452,6 +1453,7 @@ describe('internal-plugin-metrics', () => {
             },
             eventData: {webClientDomain: 'whatever'},
             intervals: [{}],
+            callingServiceType: 'LOCUS',
             sourceMetadata: {
               applicationSoftwareType: 'webex-js-sdk',
               applicationSoftwareVersion: 'webex-version',
@@ -1487,6 +1489,7 @@ describe('internal-plugin-metrics', () => {
               },
               eventData: {webClientDomain: 'whatever'},
               intervals: [{}],
+              callingServiceType: 'LOCUS',
               sourceMetadata: {
                 applicationSoftwareType: 'webex-js-sdk',
                 applicationSoftwareVersion: 'webex-version',
@@ -1520,6 +1523,7 @@ describe('internal-plugin-metrics', () => {
             },
             eventData: {webClientDomain: 'whatever'},
             intervals: [{}],
+            callingServiceType: 'LOCUS',
             sourceMetadata: {
               applicationSoftwareType: 'webex-js-sdk',
               applicationSoftwareVersion: 'webex-version',
@@ -2330,7 +2334,7 @@ describe('internal-plugin-metrics', () => {
 
           const webexLoggerLogCalls = webex.logger.log.getCalls();
 
-          assert.deepEqual(webexLoggerLogCalls[0].args, [
+          assert.deepEqual(webexLoggerLogCalls[1].args, [
             'call-diagnostic-events -> ',
             'CallDiagnosticMetrics: @buildClientEventFetchRequestOptions. Building request options object for fetch()...',
             `name: client.exit.app`,
@@ -2365,6 +2369,21 @@ describe('internal-plugin-metrics', () => {
 
       it('returns false for unmapped code', () => {
         assert.isFalse(cd.isServiceErrorExpected(999999));
+      });
+    });
+
+    describe('#setDeviceInfo', () => {
+      // The method is called in beforeEach itself. We are just testing it here
+      it('sets the received deviceInfo to call-diagnostics', () => {
+        const webexLoggerLogCalls = webex.logger.log.getCalls();
+        const device = { userId: 'userId', url: 'deviceUrl', orgId: 'orgId' };
+
+        assert.deepEqual(webexLoggerLogCalls[0].args, [
+          'CallDiagnosticMetrics: @setDeviceInfo called',
+          device
+        ]);
+
+        assert.deepEqual(cd.device, device);
       });
     });
   });

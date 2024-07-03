@@ -58,16 +58,7 @@ export default {
      *
      * @type {Array<string>}
      */
-    allowedDomains: [
-      'wbx2.com',
-      'ciscospark.com',
-      'webex.com',
-      'webexapis.com',
-      'broadcloudpbx.com',
-      'broadcloud.eu',
-      'broadcloud.com.au',
-      'broadcloudpbx.net',
-    ],
+    allowedDomains: [],
   },
   device: {
     preDiscoveryServices: {

@@ -2467,6 +2467,10 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
     );
   };
 
+  private updateTrack = (audioTrack: MediaStreamTrack) => {
+    this.mediaConnection.updateLocalTracks({audio: audioTrack});
+  };
+
   private registerEffectListener = (addedEffect: TrackEffect) => {
     if (this.localAudioStream) {
       const effect = this.localAudioStream.getEffectByKind(NOISE_REDUCTION_EFFECT);
@@ -2488,13 +2492,12 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       }
 
       this.localAudioStream.off(LocalStreamEventNames.EffectAdded, this.registerEffectListener);
+      this.localAudioStream.off(LocalStreamEventNames.OutputTrackChange, this.updateTrack);
     }
   }
 
   private registerListeners(localAudioStream: LocalMicrophoneStream) {
-    localAudioStream.on(LocalStreamEventNames.OutputTrackChange, (audioTrack: MediaStreamTrack) => {
-      this.mediaConnection.updateLocalTracks({audio: audioTrack});
-    });
+    localAudioStream.on(LocalStreamEventNames.OutputTrackChange, this.updateTrack);
 
     localAudioStream.on(LocalStreamEventNames.EffectAdded, this.registerEffectListener);
 
@@ -2717,13 +2720,14 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    * @param localAudioTrack -.
    */
   public mute = (localAudioStream: LocalMicrophoneStream): void => {
-    const localAudioTrack = localAudioStream.outputStream.getAudioTracks()[0];
-    if (this.muted) {
-      localAudioTrack.enabled = true;
-      this.muted = false;
+    if (localAudioStream) {
+      localAudioStream.setUserMuted(!this.muted);
+      this.muted = !this.muted;
     } else {
-      localAudioTrack.enabled = false;
-      this.muted = true;
+      log.warn(`Did not find a local stream while muting the call ${this.getCorrelationId()}.`, {
+        file: CALL_FILE,
+        method: 'mute',
+      });
     }
   };
 
