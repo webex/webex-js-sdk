@@ -100,7 +100,7 @@ export const _JOINED_ = 'JOINED';
 export const _LOCUS_ID_ = 'LOCUS_ID';
 export const _LEFT_ = 'LEFT';
 export const _MOVED_ = 'MOVED';
-
+export const _ON_HOLD_LOBBY_ = 'ON_HOLD_LOBBY';
 export const _MEETING_LINK_ = 'MEETING_LINK';
 export const _MEETING_UUID_ = 'MEETING_UUID';
 export const _MEETING_ = 'MEETING';
@@ -380,7 +380,7 @@ export const EVENT_TRIGGERS = {
   MEETING_TRANSCRIPTION_CONNECTED: 'meeting:transcription:connected',
   MEETING_STARTED_RECEIVING_TRANSCRIPTION: 'meeting:receiveTranscription:started',
   MEETING_STOPPED_RECEIVING_TRANSCRIPTION: 'meeting:receiveTranscription:stopped',
-
+  MEETING_MANUAL_CAPTION_UPDATED: 'meeting:manualCaptionControl:updated',
   MEETING_CAPTION_RECEIVED: 'meeting:caption-received',
 };
 
@@ -535,6 +535,12 @@ export const ERROR_DICTIONARY = {
       'Participant Having Host Role Already. Participant who sends request to reclaim host role has already a host role.',
     CODE: 14,
   },
+  RECONNECTION_NOT_STARTED: {
+    NAME: 'ReconnectionNotStartedError',
+    MESSAGE:
+      'Reconnection was not started, because there is one already in progress or reconnections are disabled in config.',
+    CODE: 15,
+  },
 };
 
 export const FLOOR_ACTION = {
@@ -671,6 +677,7 @@ export const LOCUSINFO = {
     CONTROLS_MEETING_LAYOUT_UPDATED: 'CONTROLS_MEETING_LAYOUT_UPDATED',
     CONTROLS_RECORDING_UPDATED: 'CONTROLS_RECORDING_UPDATED',
     CONTROLS_MEETING_TRANSCRIBE_UPDATED: 'CONTROLS_MEETING_TRANSCRIBE_UPDATED',
+    CONTROLS_MEETING_MANUAL_CAPTION_UPDATED: 'CONTROLS_MEETING_MANUAL_CAPTION_UPDATED',
     CONTROLS_MEETING_BREAKOUT_UPDATED: 'CONTROLS_MEETING_BREAKOUT_UPDATED',
     CONTROLS_MEETING_CONTAINER_UPDATED: 'CONTROLS_MEETING_CONTAINER_UPDATED',
     CONTROLS_MEETING_INTERPRETATION_UPDATED: 'CONTROLS_MEETING_INTERPRETATION_UPDATED',
@@ -909,6 +916,9 @@ export const DISPLAY_HINTS = {
   LEAVE_END_MEETING: 'LEAVE_END_MEETING',
   CAPTION_START: 'CAPTION_START',
   CAPTION_STATUS_ACTIVE: 'CAPTION_STATUS_ACTIVE',
+  MANUAL_CAPTION_START: 'MANUAL_CAPTION_START',
+  MANUAL_CAPTION_STOP: 'MANUAL_CAPTION_STOP',
+  MANUAL_CAPTION_STATUS_ACTIVE: 'MANUAL_CAPTION_STATUS_ACTIVE',
   DISPLAY_REAL_TIME_TRANSLATION: 'DISPLAY_REAL_TIME_TRANSLATION',
   ENABLE_CAPTION_PANEL: 'ENABLE_CAPTION_PANEL',
   DISPLAY_NON_ENGLISH_ASR: 'DISPLAY_NON_ENGLISH_ASR',
@@ -1043,9 +1053,7 @@ export const PEER_CONNECTION_STATE = {
 export const RECONNECTION = {
   STATE: {
     IN_PROGRESS: 'IN_PROGRESS',
-    COMPLETE: 'COMPLETE',
     FAILURE: 'FAILURE',
-    DEFAULT_TRY_COUNT: 0,
     DEFAULT_STATUS: '',
   },
 } as const;
@@ -1114,6 +1122,8 @@ export const MQA_STATS = {
         direction: 'sendrecv', // TODO: parse from SDP and save globally
         isMain: false, // always true for share sender
         mariFecEnabled: false, // unavailable
+        mariRtxEnabled: false, // unavailable
+        mariLiteEnabled: false, // unavailable
         mariQosEnabled: false, // unavailable
         multistreamEnabled: false, // unavailable
       },
@@ -1126,7 +1136,6 @@ export const MQA_STATS = {
       queueDelay: 0, // unavailable
       remoteJitter: 0, // unavailable
       remoteLossRate: 0,
-      remoteReceiveRate: 0, // unavailable
       roundTripTime: 0,
       rtcpBitrate: 0, // unavailable
       rtcpPackets: 0, // unavailable
@@ -1248,6 +1257,12 @@ export const AVAILABLE_RESOLUTIONS = {
  */
 
 export const MQA_INTERVAL = 60000; // mqa analyzer interval its fixed to 60000
+
+export const MEDIA_DEVICES = {
+  MICROPHONE: 'microphone',
+  SPEAKER: 'speaker',
+  CAMERA: 'camera',
+};
 
 export const PSTN_STATUS = {
   JOINED: 'JOINED', // we have provisioned a pstn device, which can be used to connect

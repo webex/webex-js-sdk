@@ -17,11 +17,11 @@ import {
   RECONNECTION_STATE,
 } from '../constants';
 import BEHAVIORAL_METRICS from '../metrics/constants';
-import ReconnectInProgress from '../common/errors/reconnection-in-progress';
+import ReconnectionError from '../common/errors/reconnection';
+import ReconnectionNotStartedError from '../common/errors/reconnection-not-started';
 import Metrics from '../metrics';
 import Meeting from '../meeting';
 import {MediaRequestManager} from '../multistream/mediaRequestManager';
-import ReconnectionError from '../common/errors/reconnection';
 
 /**
  * Used to indicate that the reconnect logic needs to be retried.
@@ -73,7 +73,6 @@ export default class ReconnectionManager {
   rejoinAttempts: any;
   shareStatus: any;
   status: any;
-  tryCount: any;
   webex: any;
   /**
    * @param {Meeting} meeting
@@ -104,13 +103,6 @@ export default class ReconnectionManager {
     this.status = RECONNECTION.STATE.DEFAULT_STATUS;
     /**
      * @instance
-     * @type {Number}
-     * @private
-     * @memberof ReconnectionManager
-     */
-    this.tryCount = RECONNECTION.STATE.DEFAULT_TRY_COUNT;
-    /**
-     * @instance
      * @type {Object}
      * @private
      * @memberof ReconnectionManager
@@ -131,7 +123,7 @@ export default class ReconnectionManager {
 
     // @ts-ignore
     this.maxRejoinAttempts = meeting.config.reconnection.maxRejoinAttempts;
-    this.rejoinAttempts = RECONNECTION.STATE.DEFAULT_TRY_COUNT;
+    this.rejoinAttempts = 0;
     // @ts-ignore
     this.autoRejoinEnabled = meeting.config.reconnection.autoRejoin;
 
@@ -217,8 +209,7 @@ export default class ReconnectionManager {
    */
   public reset() {
     this.status = RECONNECTION.STATE.DEFAULT_STATUS;
-    this.tryCount = RECONNECTION.STATE.DEFAULT_TRY_COUNT;
-    this.rejoinAttempts = RECONNECTION.STATE.DEFAULT_TRY_COUNT;
+    this.rejoinAttempts = 0;
   }
 
   /**
@@ -266,42 +257,29 @@ export default class ReconnectionManager {
   }
 
   /**
-   * Sets the reconnection status
-   *
-   * @public
-   * @param {RECONNECTION_STATE} status
-   * @memberof ReconnectionManager
-   * @returns {undefined}
-   */
-  public setStatus(status: RECONNECTION_STATE) {
-    this.status = status;
-  }
-
-  /**
    * @returns {Boolean}
-   * @throws {ReconnectionError}
+   * @throws {ReconnectInProgress, ReconnectionDisabled}
    * @private
    * @memberof ReconnectionManager
    */
-  private validate() {
+  private canStartReconnection() {
     if (this.meeting.config.reconnection.enabled) {
-      if (
-        this.status === RECONNECTION.STATE.DEFAULT_STATUS ||
-        this.status === RECONNECTION.STATE.COMPLETE
-      ) {
+      if (this.status === RECONNECTION.STATE.DEFAULT_STATUS) {
         return true;
       }
 
       LoggerProxy.logger.info(
-        'ReconnectionManager:index#validate --> Reconnection already in progress.'
+        'ReconnectionManager:index#canStartReconnection --> Reconnection already in progress.'
       );
 
-      throw new ReconnectInProgress('Reconnection already in progress.');
+      return false;
     }
 
-    LoggerProxy.logger.info('ReconnectionManager:index#validate --> Reconnection is not enabled.');
+    LoggerProxy.logger.info(
+      'ReconnectionManager:index#canStartReconnection --> Reconnection is not enabled.'
+    );
 
-    throw new ReconnectionError('Reconnection is not enabled.');
+    return false;
   }
 
   /**
@@ -309,105 +287,152 @@ export default class ReconnectionManager {
    * @param {Object} reconnectOptions
    * @param {boolean} [reconnectOptions.networkDisconnect=false] indicates if a network disconnect event happened
    * @param {boolean} [reconnectOptions.networkRetry=false] indicates if we are retrying the reconnect
+   * @param {Function} [completionCallback] callback that gets called when reconnection is started successfully
    * @returns {Promise}
    * @public
    * @memberof ReconnectionManager
    */
-  public async reconnect({
-    networkDisconnect = false,
-    networkRetry = false,
-  }: {
-    networkDisconnect?: boolean;
-    networkRetry?: boolean;
-  } = {}) {
+  public async reconnect(
+    {
+      networkDisconnect = false,
+      networkRetry = false,
+    }: {
+      networkDisconnect?: boolean;
+      networkRetry?: boolean;
+    } = {},
+    completionCallback: (() => Promise<void>) | undefined = undefined
+  ) {
     LoggerProxy.logger.info(
       `ReconnectionManager:index#reconnect --> Reconnection start for meeting ${this.meeting.id}.`
     );
-    // First, validate that we can reconnect, if not, it will throw an error
-    try {
-      this.validate();
-    } catch (error) {
-      LoggerProxy.logger.info(
-        'ReconnectionManager:index#reconnect --> Reconnection unable to begin.',
-        error
-      );
-      throw error;
-    }
 
-    if (!networkRetry) {
-      // Only log START metrics on the initial reconnect
-      LoggerProxy.logger.info(
-        'ReconnectionManager:index#reconnect --> Sending reconnect start metric.'
-      );
-
-      // @ts-ignore
-      this.webex.internal.newMetrics.submitClientEvent({
-        name: 'client.media.reconnecting',
-        options: {
-          meetingId: this.meeting.id,
+    const triggerEvent = (event, payload = undefined) =>
+      Trigger.trigger(
+        this.meeting,
+        {
+          file: 'reconnection-manager/index',
+          function: 'reconnect',
         },
-      });
-    }
-
-    try {
-      await this.webex.meetings.startReachability();
-    } catch (err) {
-      LoggerProxy.logger.info(
-        'ReconnectionManager:index#reconnect --> Reachability failed, continuing with reconnection attempt, err: ',
-        err
+        event,
+        payload
       );
+
+    if (!this.canStartReconnection()) {
+      throw new ReconnectionNotStartedError();
     }
 
     try {
-      const media = await this.executeReconnection({networkDisconnect});
+      this.status = RECONNECTION.STATE.IN_PROGRESS;
 
-      return media;
-    } catch (reconnectError) {
-      if (reconnectError instanceof NeedsRetryError) {
+      triggerEvent(EVENT_TRIGGERS.MEETING_RECONNECTION_STARTING);
+
+      if (!networkRetry) {
+        // Only log START metrics on the initial reconnect
         LoggerProxy.logger.info(
-          'ReconnectionManager:index#reconnect --> Reconnection not successful, retrying.'
+          'ReconnectionManager:index#reconnect --> Sending reconnect start metric.'
         );
-        // Reset our reconnect status since we are looping back to the beginning
-        this.status = RECONNECTION.STATE.DEFAULT_STATUS;
 
-        // This is a network retry, so we should not log START metrics again
-        return this.reconnect({networkDisconnect: true, networkRetry: true});
+        // @ts-ignore
+        this.webex.internal.newMetrics.submitClientEvent({
+          name: 'client.media.reconnecting',
+          options: {
+            meetingId: this.meeting.id,
+          },
+        });
       }
 
-      // Reconnect has failed
-      LoggerProxy.logger.error(
-        'ReconnectionManager:index#reconnect --> Reconnection failed.',
-        reconnectError.message
-      );
-      LoggerProxy.logger.info(
-        'ReconnectionManager:index#reconnect --> Sending reconnect abort metric.'
-      );
+      try {
+        await this.webex.meetings.startReachability();
+      } catch (err) {
+        LoggerProxy.logger.info(
+          'ReconnectionManager:index#reconnect --> Reachability failed, continuing with reconnection attempt, err: ',
+          err
+        );
+      }
 
-      // send call aborted event with catogery as expected as we are trying to rejoin
+      try {
+        await this.executeReconnection({networkDisconnect});
+      } catch (reconnectError) {
+        if (reconnectError instanceof NeedsRetryError) {
+          LoggerProxy.logger.info(
+            'ReconnectionManager:index#reconnect --> Reconnection not successful, retrying.'
+          );
+          // Reset our reconnect status since we are looping back to the beginning
+          this.status = RECONNECTION.STATE.DEFAULT_STATUS;
+
+          // This is a network retry, so we should not log START metrics again
+          await this.reconnect({networkDisconnect: true, networkRetry: true}, completionCallback);
+
+          return;
+        }
+
+        // Reconnect has failed
+        LoggerProxy.logger.error(
+          'ReconnectionManager:index#reconnect --> Reconnection failed.',
+          reconnectError.message
+        );
+
+        // send call aborted event with category as expected as we are trying to rejoin
+        // @ts-ignore
+        this.webex.internal.newMetrics.submitClientEvent({
+          name: 'client.call.aborted',
+          payload: {
+            errors: [
+              {
+                category: 'expected',
+                errorCode: 2008,
+                fatal: true,
+                name: 'media-engine',
+                shownToUser: false,
+              },
+            ],
+          },
+          options: {
+            meetingId: this.meeting.id,
+          },
+        });
+
+        if (reconnectError instanceof NeedsRejoinError && this.autoRejoinEnabled) {
+          await this.rejoinMeeting(reconnectError.wasSharing);
+
+          return;
+        }
+
+        throw reconnectError;
+      }
+
+      // finalize the reconnection process by calling the completionCallback
+      if (completionCallback) {
+        await completionCallback();
+      }
+
+      triggerEvent(EVENT_TRIGGERS.MEETING_RECONNECTION_SUCCESS);
+
       // @ts-ignore
       this.webex.internal.newMetrics.submitClientEvent({
-        name: 'client.call.aborted',
+        name: 'client.media.recovered',
         payload: {
-          errors: [
-            {
-              category: 'expected',
-              errorCode: 2008,
-              fatal: true,
-              name: 'media-engine',
-              shownToUser: false,
-            },
-          ],
+          recoveredBy: 'new',
         },
         options: {
           meetingId: this.meeting.id,
         },
       });
+    } catch (error) {
+      triggerEvent(EVENT_TRIGGERS.MEETING_RECONNECTION_FAILURE, {
+        error: new ReconnectionError('Reconnection failure event', error),
+      });
 
-      if (reconnectError instanceof NeedsRejoinError && this.autoRejoinEnabled) {
-        return this.rejoinMeeting(reconnectError.wasSharing);
-      }
+      Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.MEETING_RECONNECT_FAILURE, {
+        correlation_id: this.meeting.correlationId,
+        locus_id: this.meeting.locusUrl.split('/').pop(),
+        reason: error.message,
+        stack: error.stack,
+      });
 
-      throw reconnectError;
+      throw new ReconnectionError('Reconnection failure event', error);
+    } finally {
+      this.reset();
     }
   }
 
@@ -420,8 +445,6 @@ export default class ReconnectionManager {
    * @memberof ReconnectionManager
    */
   private async executeReconnection({networkDisconnect = false}: {networkDisconnect?: boolean}) {
-    this.status = RECONNECTION.STATE.IN_PROGRESS;
-
     LoggerProxy.logger.info(
       'ReconnectionManager:index#executeReconnection --> Attempting to reconnect to meeting.'
     );

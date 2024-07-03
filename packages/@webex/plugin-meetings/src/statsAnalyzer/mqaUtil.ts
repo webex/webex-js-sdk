@@ -216,6 +216,8 @@ export const getAudioSenderStreamMqa = ({
     statsResults[mediaType][sendrecvType].totalKeyFramesEncoded - lastFramesEncoded || 0;
   audioSenderStream.requestedKeyFrames =
     statsResults[mediaType][sendrecvType].totalFirCount - lastFirCount || 0;
+
+  audioSenderStream.requestedBitrate = statsResults[mediaType][sendrecvType].requestedBitrate || 0;
 };
 
 export const getVideoReceiverMqa = ({
@@ -235,9 +237,15 @@ export const getVideoReceiverMqa = ({
   const lastPacketsLost = getLastTotalValue('totalPacketsLost');
   const lastBytesReceived = getLastTotalValue('totalBytesReceived');
 
+  const lastRtxPacketsReceived = getLastTotalValue('totalRtxPacketsReceived');
+  const lastRtxBytesReceived = getLastTotalValue('totalRtxBytesReceived');
+
   const packetsLost = getTotalValue('totalPacketsLost');
   const totalPacketsReceived = getTotalValue('totalPacketsReceived');
   const totalBytesReceived = getTotalValue('totalBytesReceived');
+
+  const totalRtxPacketsReceived = getTotalValue('totalRtxPacketsReceived');
+  const totalRtxBytesReceived = getTotalValue('totalRtxBytesReceived');
 
   const meanRemoteJitter = Object.keys(statsResults)
     .filter((mt) => mt.includes(baseMediaType))
@@ -264,9 +272,14 @@ export const getVideoReceiverMqa = ({
 
   // Calculate the outgoing bitrate
   const totalBytesReceivedInaMin = totalBytesReceived - lastBytesReceived;
+  const totalRtxBytesReceivedInaMin = totalRtxBytesReceived - lastRtxBytesReceived;
 
   videoReceiver.common.rtpBitrate = totalBytesReceivedInaMin
     ? (totalBytesReceivedInaMin * 8) / 60
+    : 0;
+  videoReceiver.common.rtxPackets = totalRtxPacketsReceived - lastRtxPacketsReceived;
+  videoReceiver.common.rtxBitrate = totalRtxBytesReceivedInaMin
+    ? (totalRtxBytesReceivedInaMin * 8) / 60
     : 0;
 };
 
@@ -347,11 +360,15 @@ export const getVideoSenderMqa = ({videoSender, statsResults, lastMqaDataSent, b
   const lastPacketsSent = getLastTotalValue('totalPacketsSent');
   const lastBytesSent = getLastTotalValue('totalBytesSent');
   const lastPacketsLostTotal = getLastTotalValue('totalPacketsLostOnReceiver');
+  const lastRtxPacketsSent = getLastTotalValue('totalRtxPacketsSent');
+  const lastRtxBytesSent = getLastTotalValue('totalRtxBytesSent');
 
   const totalPacketsLostOnReceiver = getTotalValue('totalPacketsLostOnReceiver');
   const totalPacketsSent = getTotalValue('totalPacketsSent');
   const totalBytesSent = getTotalValue('totalBytesSent');
   const availableOutgoingBitrate = getTotalValue('availableOutgoingBitrate');
+  const totalRtxPacketsSent = getTotalValue('totalRtxPacketsSent');
+  const totalRtxBytesSent = getTotalValue('totalRtxBytesSent');
 
   videoSender.common.common.direction =
     statsResults[Object.keys(statsResults).find((mediaType) => mediaType.includes(baseMediaType))]
@@ -387,8 +404,11 @@ export const getVideoSenderMqa = ({videoSender, statsResults, lastMqaDataSent, b
 
   // Calculate the outgoing bitrate
   const totalBytesSentInaMin = totalBytesSent - lastBytesSent;
+  const totalRtxBytesSentInaMin = totalRtxBytesSent - lastRtxBytesSent;
 
   videoSender.common.rtpBitrate = totalBytesSentInaMin ? (totalBytesSentInaMin * 8) / 60 : 0;
+  videoSender.common.rtxPackets = totalRtxPacketsSent - lastRtxPacketsSent;
+  videoSender.common.rtxBitrate = totalRtxBytesSentInaMin ? (totalRtxBytesSentInaMin * 8) / 60 : 0;
 };
 
 export const getVideoSenderStreamMqa = ({
@@ -437,6 +457,9 @@ export const getVideoSenderStreamMqa = ({
   videoSenderStream.transmittedWidth = statsResults[mediaType][sendrecvType].width || 0;
   videoSenderStream.transmittedFrameSize =
     (videoSenderStream.transmittedHeight * videoSenderStream.transmittedWidth) / 256;
+  videoSenderStream.requestedBitrate = statsResults[mediaType][sendrecvType].requestedBitrate || 0;
+  videoSenderStream.requestedFrameSize =
+    statsResults[mediaType][sendrecvType].requestedFrameSize || 0;
 };
 
 /**

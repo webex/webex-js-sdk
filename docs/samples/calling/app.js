@@ -456,14 +456,11 @@ function holdResume() {
   }
 }
 
-function deleteDevice() {
-  line.deregister();
-  line.on('unregistered', () => {
-    console.log("unregistered success");
-    registrationStatusElm.innerText = 'Unregistered';
-  })
+async function deleteDevice() {
+  await calling.deregister();
   registerElm.disabled = false;
   unregisterElm.disabled = true;
+  registrationStatusElm.innerText = "Unregistered";
 }
 
 function populateSourceDevices(mediaDevice) {

@@ -4,7 +4,14 @@ import {cloneDeep, isEmpty} from 'lodash';
 import {ConnectionState} from '@webex/internal-media-core';
 
 import EventsScope from '../common/events/events-scope';
-import {DEFAULT_GET_STATS_FILTER, STATS, MQA_INTERVAL, NETWORK_TYPE, _UNKNOWN_} from '../constants';
+import {
+  DEFAULT_GET_STATS_FILTER,
+  STATS,
+  MQA_INTERVAL,
+  NETWORK_TYPE,
+  MEDIA_DEVICES,
+  _UNKNOWN_,
+} from '../constants';
 import {
   emptyAudioReceive,
   emptyAudioTransmit,
@@ -374,13 +381,12 @@ export class StatsAnalyzer extends EventsScope {
     newMqa.intervalMetadata.peerReflexiveIP = this.statsResults.connectionType.local.ipAddress;
 
     // Adding peripheral information
-    newMqa.intervalMetadata.speakerInfo = {
-      deviceName: _UNKNOWN_,
-    };
+    newMqa.intervalMetadata.peripherals.push({information: _UNKNOWN_, name: MEDIA_DEVICES.SPEAKER});
     if (this.statsResults['audio-send']) {
-      newMqa.intervalMetadata.microphoneInfo = {
-        deviceName: this.statsResults['audio-send'].trackLabel || _UNKNOWN_,
-      };
+      newMqa.intervalMetadata.peripherals.push({
+        information: this.statsResults['audio-send'].trackLabel || _UNKNOWN_,
+        name: MEDIA_DEVICES.MICROPHONE,
+      });
     }
 
     const existingVideoSender = Object.keys(this.statsResults).find((item) =>
@@ -388,9 +394,10 @@ export class StatsAnalyzer extends EventsScope {
     );
 
     if (existingVideoSender) {
-      newMqa.intervalMetadata.cameraInfo = {
-        deviceName: this.statsResults[existingVideoSender].trackLabel || _UNKNOWN_,
-      };
+      newMqa.intervalMetadata.peripherals.push({
+        information: this.statsResults[existingVideoSender].trackLabel || _UNKNOWN_,
+        name: MEDIA_DEVICES.CAMERA,
+      });
     }
 
     newMqa.networkType = this.statsResults.connectionType.local.networkType;
@@ -1005,8 +1012,9 @@ export class StatsAnalyzer extends EventsScope {
         result.qualityLimitationReason;
       this.statsResults[mediaType][sendrecvType].qualityLimitationResolutionChanges =
         result.qualityLimitationResolutionChanges;
-      this.statsResults[mediaType][sendrecvType].retransmittedPacketsSent =
+      this.statsResults[mediaType][sendrecvType].totalRtxPacketsSent =
         result.retransmittedPacketsSent;
+      this.statsResults[mediaType][sendrecvType].totalRtxBytesSent = result.retransmittedBytesSent;
       this.statsResults[mediaType][sendrecvType].totalBytesSent = result.bytesSent;
       this.statsResults[mediaType][sendrecvType].headerBytesSent = result.headerBytesSent;
       this.statsResults[mediaType][sendrecvType].retransmittedBytesSent =
@@ -1014,6 +1022,8 @@ export class StatsAnalyzer extends EventsScope {
       this.statsResults[mediaType][sendrecvType].isRequested = result.isRequested;
       this.statsResults[mediaType][sendrecvType].lastRequestedUpdateTimestamp =
         result.lastRequestedUpdateTimestamp;
+      this.statsResults[mediaType][sendrecvType].requestedBitrate = result.requestedBitrate;
+      this.statsResults[mediaType][sendrecvType].requestedFrameSize = result.requestedFrameSize;
     }
   }
 
@@ -1126,6 +1136,8 @@ export class StatsAnalyzer extends EventsScope {
 
       this.statsResults[mediaType][sendrecvType].lastPacketReceivedTimestamp =
         result.lastPacketReceivedTimestamp;
+      this.statsResults[mediaType][sendrecvType].requestedBitrate = result.requestedBitrate;
+      this.statsResults[mediaType][sendrecvType].requestedFrameSize = result.requestedFrameSize;
 
       // From Thin
       this.statsResults[mediaType][sendrecvType].totalNackCount = result.nackCount;
@@ -1142,6 +1154,10 @@ export class StatsAnalyzer extends EventsScope {
       this.statsResults[mediaType][sendrecvType].fecPacketsReceived = result.fecPacketsReceived;
       this.statsResults[mediaType][sendrecvType].totalBytesReceived = result.bytesReceived;
       this.statsResults[mediaType][sendrecvType].headerBytesReceived = result.headerBytesReceived;
+      this.statsResults[mediaType][sendrecvType].totalRtxPacketsReceived =
+        result.retransmittedPacketsReceived;
+      this.statsResults[mediaType][sendrecvType].totalRtxBytesReceived =
+        result.retransmittedBytesReceived;
 
       this.statsResults[mediaType][sendrecvType].meanRtpJitter.push(result.jitter);
 

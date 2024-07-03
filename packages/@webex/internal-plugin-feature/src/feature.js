@@ -43,31 +43,22 @@ const Feature = WebexCore.WebexPlugin.extend({
 
   /**
    * Handles a feature toggle update from the server.
-   * @param {Object} envelope
+   * When one of these legacy feature gets updated, this event handler be triggered
+   *     * group-message-notifications
+   *     * mention-notifications
+   *     * thread-notifications,
+   * This handler is being listened from mercury connection success method for the event "event:featureToggle_update"
+   * @param {Object} feature
    * @returns {undefined}
    */
-  handleFeatureUpdate(envelope) {
-    if (envelope && envelope.data) {
-      const feature = envelope.data.featureToggle;
+  updateFeature(feature) {
+    if (feature) {
       const keyType = feature.type.toLowerCase();
 
       if (keyType === 'user' || keyType === 'developer') {
         this.webex.internal.device.features[keyType].add([feature], {merge: true});
       }
     }
-  },
-
-  /**
-   * Register to listen for incoming feature events
-   * @instance
-   * @returns {undefined}
-   */
-  listen() {
-    this.listenTo(
-      this.webex.internal.mercury,
-      'event:featureToggle_update',
-      this.handleFeatureUpdate
-    );
   },
 
   /**

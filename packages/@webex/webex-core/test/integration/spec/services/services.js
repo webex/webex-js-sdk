@@ -11,6 +11,7 @@ import WebexCore, {
   ServiceRegistry,
   ServiceState,
   ServiceUrl,
+  serviceConstants,
 } from '@webex/webex-core';
 import testUsers from '@webex/test-helper-test-users';
 import uuid from 'uuid';
@@ -363,7 +364,9 @@ describe('webex-core', () => {
 
         services.initConfig();
 
-        assert.deepEqual(allowedDomains, services._getCatalog().allowedDomains);
+        const expectedResult = [...allowedDomains, ...serviceConstants.COMMERCIAL_ALLOWED_DOMAINS];
+
+        assert.deepEqual(expectedResult, services._getCatalog().allowedDomains);
       });
     });
 

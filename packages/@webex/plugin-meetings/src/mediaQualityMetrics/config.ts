@@ -1,19 +1,9 @@
-import {_UNKNOWN_} from '../constants';
-
 export const emptyMqaInterval = {
   audioReceive: [],
   audioTransmit: [],
   intervalMetadata: {
     peerReflexiveIP: '0.0.0.0',
-    speakerInfo: {
-      deviceName: _UNKNOWN_,
-    },
-    microphoneInfo: {
-      deviceName: _UNKNOWN_,
-    },
-    cameraInfo: {
-      deviceName: _UNKNOWN_,
-    },
+    peripherals: [],
     processAverageCPU: 0,
     processMaximumCPU: 0,
     systemAverageCPU: 0,
@@ -31,7 +21,9 @@ export const emptyAudioReceive = {
       direction: 'inactive',
       isMain: true,
       mariFecEnabled: false,
+      mariRtxEnabled: false,
       mariQosEnabled: false,
+      mariLiteEnabled: false,
       multistreamEnabled: false,
     },
     dtlsBitrate: 0,
@@ -85,7 +77,9 @@ export const emptyAudioTransmit = {
       direction: 'inactive',
       isMain: true,
       mariFecEnabled: false,
+      mariRtxEnabled: false,
       mariQosEnabled: false,
+      mariLiteEnabled: false,
       multistreamEnabled: false,
     },
     dtlsBitrate: 0,
@@ -96,7 +90,6 @@ export const emptyAudioTransmit = {
     queueDelay: 0,
     remoteJitter: 0,
     remoteLossRate: 0,
-    remoteReceiveRate: 0,
     roundTripTime: 0,
     rtcpBitrate: 0,
     rtcpPackets: 0,
@@ -129,8 +122,10 @@ export const emptyVideoReceive = {
     common: {
       direction: 'inactive',
       isMain: true, // Not avaliable
-      mariFecEnabled: true, // Not avaliable
-      mariQosEnabled: true, // Not avaliable
+      mariFecEnabled: false,
+      mariRtxEnabled: false,
+      mariQosEnabled: false,
+      mariLiteEnabled: false,
       multistreamEnabled: true, // Not avaliable
     },
     dtlsBitrate: 0, // Not avaliable
@@ -194,8 +189,10 @@ export const emptyVideoTransmit = {
     common: {
       direction: 'inactive',
       isMain: true,
-      mariFecEnabled: false, // Not avaliable
-      mariQosEnabled: false, // Not avaliable
+      mariFecEnabled: false,
+      mariRtxEnabled: false,
+      mariQosEnabled: false,
+      mariLiteEnabled: false,
       multistreamEnabled: false, // Not avaliable
     },
     dtlsBitrate: 0, // Not avaliable
@@ -203,10 +200,9 @@ export const emptyVideoTransmit = {
     fecBitrate: 0, // Not avaliable
     fecPackets: 0, // TODO: check inbound-rtp// Not avaliable
     maxBitrate: 0, // Currently hardcoded
-    queueDelay: 0, // outboundRtp.totalPacketSentDelay  // TODO: check if totalInterFrameDelay/ packetSentDelay/ jitterBufferDalay
+    queueDelay: 0,
     remoteJitter: 0, // remoteInboundRtp.jitter
     remoteLossRate: 0, // comparedResults.lossRate
-    remoteReceiveRate: 0, // compareResults.packetsLost
     roundTripTime: 0, // compareResults.roundTripTime
     rtcpBitrate: 0, // Dont have access to it
     rtcpPackets: 0, // Dont have access to rtcp
