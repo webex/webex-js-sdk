@@ -1830,16 +1830,10 @@ describe('plugin-meetings', () => {
         ]);
       });
       describe('sends streams according to their is requested flag', async () => {
-        let nowStub;
 
         beforeEach(async () => {
-          performance.timeOrigin = 1
-          nowStub = sinon.stub(performance, 'now');
+          performance.timeOrigin = 0;
           await startStatsAnalyzer();
-        });
-
-        afterEach(() => {
-          nowStub.restore();
         });
 
         it('should send a stream if it is requested', async () => {
@@ -1860,21 +1854,14 @@ describe('plugin-meetings', () => {
           assert.strictEqual(mqeData.audioReceive[0].streams.length, 0);
         });
 
-        it('should send a stream if it was requested in the last 60 seconds', async () => {
-          nowStub.returns(120000);
-          fakeStats.audio.receivers[0].report[0].lastRequestedUpdateTimestamp = performance.timeOrigin + performance.now() - (3 * 10000);
+        it('should send the stream if it was recently requested', async () => {
+          fakeStats.audio.receivers[0].report[0].lastRequestedUpdateTimestamp = performance.timeOrigin + performance.now() + (30 * 1000);
           fakeStats.audio.receivers[0].report[0].isRequested = false;
           await progressTime(MQA_INTERVAL);
           assert.strictEqual(mqeData.audioReceive[0].streams.length, 1);
-        })
-
-        it('should not send a stream if it was not requested in the last 60 seconds', async () => {
-          nowStub.returns(120000);
-          fakeStats.audio.receivers[0].report[0].lastRequestedUpdateTimestamp = performance.timeOrigin + performance.now() - (7 * 10000);
-          fakeStats.audio.receivers[0].report[0].isRequested = false;
           await progressTime(MQA_INTERVAL);
           assert.strictEqual(mqeData.audioReceive[0].streams.length, 0);
-        })
+        });
       });
     })
   });
