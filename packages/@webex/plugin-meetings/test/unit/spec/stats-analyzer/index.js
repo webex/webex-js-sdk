@@ -10,7 +10,6 @@ import testUtils from '../../../utils/testUtils';
 import {MEDIA_DEVICES, MQA_INTERVAL, _UNKNOWN_} from '@webex/plugin-meetings/src/constants';
 import LoggerProxy from '../../../../src/common/logs/logger-proxy';
 import LoggerConfig from '../../../../src/common/logs/logger-config';
-import * as mqaUtil from "../../../../src/statsAnalyzer/mqaUtil";
 
 const {assert} = chai;
 
