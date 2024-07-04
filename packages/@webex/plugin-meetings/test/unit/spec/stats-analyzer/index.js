@@ -981,6 +981,38 @@ describe('plugin-meetings', () => {
         });
       });
 
+      describe('RTP recovered packets emission', async() => {
+        beforeEach(async() => {
+          await startStatsAnalyzer();
+        })
+
+        it('should initially report zero RTP recovered packets', async() => {
+          assert.strictEqual(mqeData.audioReceive[0].common.rtpRecovered, 0);
+        })
+
+        it('should report RTP recovered packets equal to FEC packets received', async() => {
+          fakeStats.audio.receivers[0].report[0].fecPacketsReceived += 10;
+          await progressTime(MQA_INTERVAL);
+          assert.strictEqual(mqeData.audioReceive[0].common.rtpRecovered, 10);
+        })
+
+        it('should reset RTP recovered packets count after each interval', async () => {
+          fakeStats.audio.receivers[0].report[0].fecPacketsReceived += 100;
+          await progressTime(MQA_INTERVAL);
+          assert.strictEqual(mqeData.audioReceive[0].common.rtpRecovered, 100);
+          await progressTime(MQA_INTERVAL);
+          assert.strictEqual(mqeData.audioReceive[0].common.rtpRecovered, 0);
+        })
+
+        it('should correctly calculate RTP recovered packets after discarding FEC packets', async () => {
+          fakeStats.audio.receivers[0].report[0].fecPacketsReceived += 100;
+          fakeStats.audio.receivers[0].report[0].fecPacketsDiscarded += 20;
+          await progressTime(MQA_INTERVAL);
+          assert.strictEqual(mqeData.audioReceive[0].common.rtpRecovered, 80);
+        })
+      })
+
+
       it('emits the correct mediaHopByHopLost/rtpHopByHopLost', async () => {
         it('at the start of the stats analyzer', async () => {
           await startStatsAnalyzer();
