@@ -1830,6 +1830,39 @@ describe('plugin-meetings', () => {
           }
         ]);
       });
+      describe('active speaker status emission', async () => {
+        beforeEach(async () => {
+          await startStatsAnalyzer();
+          performance.timeOrigin = 1;
+        });
+
+        it('reports active speaker as true when the participant has been speaking', async () => {
+          fakeStats.video.receivers[0].report[0].isActiveSpeaker = true;
+          await progressTime(5 * MQA_INTERVAL);
+          assert.strictEqual(mqeData.videoReceive[0].streams[0].isActiveSpeaker, true);
+        });
+
+        it('reports active speaker as false when the participant has not spoken', async () => {
+          fakeStats.video.receivers[0].report[0].isActiveSpeaker = false;
+          await progressTime(5 * MQA_INTERVAL);
+          assert.strictEqual(mqeData.videoReceive[0].streams[0].isActiveSpeaker, false);
+        });
+
+        it('defaults to false when active speaker status is indeterminate', async () => {
+          fakeStats.video.receivers[0].report[0].isActiveSpeaker = undefined;
+          await progressTime(MQA_INTERVAL);
+          assert.strictEqual(mqeData.videoReceive[0].streams[0].isActiveSpeaker, false);
+        });
+
+        it('updates active speaker to true following a recent status change to speaking', async () => {
+          fakeStats.video.receivers[0].report[0].isActiveSpeaker = false;
+          fakeStats.video.receivers[0].report[0].lastActiveSpeakerUpdateTimestamp = performance.timeOrigin + performance.now() + (30 * 1000);
+          await progressTime(MQA_INTERVAL);
+          assert.strictEqual(mqeData.videoReceive[0].streams[0].isActiveSpeaker, true);
+          await progressTime(MQA_INTERVAL);
+          assert.strictEqual(mqeData.videoReceive[0].streams[0].isActiveSpeaker, false);
+        });
+      });
       describe('sends streams according to their is requested flag', async () => {
 
         beforeEach(async () => {
@@ -1865,41 +1898,5 @@ describe('plugin-meetings', () => {
         });
       });
     })
-  });
-})
-      describe('active speaker status emission', async () => {
-        beforeEach(async () => {
-          await startStatsAnalyzer();
-          performance.timeOrigin = 1;
-        });
-
-        it('reports active speaker as true when the participant has been speaking', async () => {
-          fakeStats.video.receivers[0].report[0].isActiveSpeaker = true;
-          await progressTime(5 * MQA_INTERVAL);
-          assert.strictEqual(mqeData.videoReceive[0].streams[0].isActiveSpeaker, true);
-        });
-
-        it('reports active speaker as false when the participant has not spoken', async () => {
-          fakeStats.video.receivers[0].report[0].isActiveSpeaker = false;
-          await progressTime(5 * MQA_INTERVAL);
-          assert.strictEqual(mqeData.videoReceive[0].streams[0].isActiveSpeaker, false);
-        });
-
-        it('defaults to false when active speaker status is indeterminate', async () => {
-          fakeStats.video.receivers[0].report[0].isActiveSpeaker = undefined;
-          await progressTime(MQA_INTERVAL);
-          assert.strictEqual(mqeData.videoReceive[0].streams[0].isActiveSpeaker, false);
-        });
-
-        it('updates active speaker to true following a recent status change to speaking', async () => {
-          fakeStats.video.receivers[0].report[0].isActiveSpeaker = false;
-          fakeStats.video.receivers[0].report[0].lastActiveSpeakerUpdateTimestamp = performance.timeOrigin + performance.now() + (30 * 1000);
-          await progressTime(MQA_INTERVAL);
-          assert.strictEqual(mqeData.videoReceive[0].streams[0].isActiveSpeaker, true);
-          await progressTime(MQA_INTERVAL);
-          assert.strictEqual(mqeData.videoReceive[0].streams[0].isActiveSpeaker, false);
-        });
-      });
-    });
   });
 });
