@@ -903,14 +903,17 @@ describe('plugin-meetings', () => {
         );
       });
 
-      it('emits the correct transmittedFrameRate/receivedFrameRate', async () => {
-        it('at the start of the stats analyzer', async () => {
+      describe('frame rate reporting in stats analyzer', () => {
+        beforeEach(async () => {
           await startStatsAnalyzer();
+        });
+
+        it('should report a zero frame rate for both transmitted and received video at the start', async () => {
           assert.strictEqual(mqeData.videoTransmit[0].streams[0].common.transmittedFrameRate, 0);
           assert.strictEqual(mqeData.videoReceive[0].streams[0].common.receivedFrameRate, 0);
         });
 
-        it('after frames are sent and received', async () => {
+        it('should accurately report the transmitted and received frame rate after video frames are processed', async () => {
           fakeStats.video.senders[0].report[0].framesSent += 300;
           fakeStats.video.receivers[0].report[0].framesReceived += 300;
           await progressTime(MQA_INTERVAL);
@@ -921,9 +924,12 @@ describe('plugin-meetings', () => {
         });
       });
 
-      it('emits the correct rtpPackets', async () => {
-        it('at the start of the stats analyzer', async () => {
+      describe('RTP packets count in stats analyzer', () => {
+        beforeEach(async () => {
           await startStatsAnalyzer();
+        });
+
+        it('should report zero RTP packets for all streams at the start of the stats analyzer', async () => {
           assert.strictEqual(mqeData.audioTransmit[0].common.rtpPackets, 0);
           assert.strictEqual(mqeData.audioTransmit[0].streams[0].common.rtpPackets, 0);
           assert.strictEqual(mqeData.audioReceive[0].common.rtpPackets, 0);
@@ -934,7 +940,7 @@ describe('plugin-meetings', () => {
           assert.strictEqual(mqeData.videoReceive[0].streams[0].common.rtpPackets, 0);
         });
 
-        it('after packets are sent', async () => {
+        it('should update the RTP packets count correctly after audio and video packets are sent', async () => {
           fakeStats.audio.senders[0].report[0].packetsSent += 5;
           fakeStats.video.senders[0].report[0].packetsSent += 5;
           await progressTime(MQA_INTERVAL);
@@ -945,7 +951,7 @@ describe('plugin-meetings', () => {
           assert.strictEqual(mqeData.videoTransmit[0].streams[0].common.rtpPackets, 5);
         });
 
-        it('after packets are received', async () => {
+        it('should update the RTP packets count correctly after audio and video packets are received', async () => {
           fakeStats.audio.senders[0].report[0].packetsSent += 10;
           fakeStats.video.senders[0].report[0].packetsSent += 10;
           fakeStats.audio.receivers[0].report[0].packetsReceived += 10;
@@ -959,20 +965,23 @@ describe('plugin-meetings', () => {
         });
       });
 
-      it('emits the correct fecPackets', async () => {
-        it('at the start of the stats analyzer', async () => {
+      describe('FEC packet reporting in stats analyzer', () => {
+        beforeEach(async () => {
           await startStatsAnalyzer();
+        })
+
+        it('should initially report zero FEC packets at the start of the stats analyzer', async () => {
           assert.strictEqual(mqeData.audioReceive[0].common.fecPackets, 0);
         });
 
-        it('after FEC packets are received', async () => {
+        it('should accurately report the count of FEC packets received', async () => {
           fakeStats.audio.receivers[0].report[0].fecPacketsReceived += 5;
           await progressTime(MQA_INTERVAL);
 
           assert.strictEqual(mqeData.audioReceive[0].common.fecPackets, 5);
         });
 
-        it('after FEC packets are received and some FEC packets are discarded', async () => {
+        it('should correctly adjust the FEC packet count when packets are discarded', async () => {
           fakeStats.audio.receivers[0].report[0].fecPacketsReceived += 15;
           fakeStats.audio.receivers[0].report[0].fecPacketsDiscarded += 5;
           await progressTime(MQA_INTERVAL);
@@ -981,16 +990,19 @@ describe('plugin-meetings', () => {
         });
       });
 
-      it('emits the correct mediaHopByHopLost/rtpHopByHopLost', async () => {
-        it('at the start of the stats analyzer', async () => {
+      describe('packet loss metrics reporting in stats analyzer', () => {
+        beforeEach(async () => {
           await startStatsAnalyzer();
+        })
+
+        it('should report zero packet loss for both audio and video at the start of the stats analyzer', async () => {
           assert.strictEqual(mqeData.audioReceive[0].common.mediaHopByHopLost, 0);
           assert.strictEqual(mqeData.audioReceive[0].common.rtpHopByHopLost, 0);
           assert.strictEqual(mqeData.videoReceive[0].common.mediaHopByHopLost, 0);
           assert.strictEqual(mqeData.videoReceive[0].common.rtpHopByHopLost, 0);
         });
 
-        it('after packets are lost', async () => {
+        it('should update packet loss metrics correctly for both audio and video after packet loss is detected', async () => {
           fakeStats.audio.receivers[0].report[0].packetsLost += 5;
           fakeStats.video.receivers[0].report[0].packetsLost += 5;
           await progressTime(MQA_INTERVAL);
@@ -1002,14 +1014,17 @@ describe('plugin-meetings', () => {
         });
       });
 
-      it('emits the correct remoteLossRate', async () => {
-        it('at the start of the stats analyzer', async () => {
+      describe('remote loss rate reporting in stats analyzer', () => {
+        beforeEach(async () => {
           await startStatsAnalyzer();
+        });
+
+        it('should report a zero remote loss rate for both audio and video at the start', async () => {
           assert.strictEqual(mqeData.audioTransmit[0].common.remoteLossRate, 0);
           assert.strictEqual(mqeData.videoTransmit[0].common.remoteLossRate, 0);
         });
 
-        it('after packets are sent', async () => {
+        it('should maintain a zero remote loss rate for both audio and video after packets are sent without loss', async () => {
           fakeStats.audio.senders[0].report[0].packetsSent += 100;
           fakeStats.video.senders[0].report[0].packetsSent += 100;
           await progressTime(MQA_INTERVAL);
@@ -1018,7 +1033,7 @@ describe('plugin-meetings', () => {
           assert.strictEqual(mqeData.videoTransmit[0].common.remoteLossRate, 0);
         });
 
-        it('after packets are sent and some packets are lost', async () => {
+        it('should accurately calculate the remote loss rate for both audio and video after packet loss is detected', async () => {
           fakeStats.audio.senders[0].report[0].packetsSent += 200;
           fakeStats.audio.senders[0].report[1].packetsLost += 10;
           fakeStats.video.senders[0].report[0].packetsSent += 200;
@@ -1029,6 +1044,7 @@ describe('plugin-meetings', () => {
           assert.strictEqual(mqeData.videoTransmit[0].common.remoteLossRate, 5);
         });
       });
+
 
       it('has the correct localIpAddress set when the candidateType is host', async () => {
         await startStatsAnalyzer();
@@ -1673,7 +1689,7 @@ describe('plugin-meetings', () => {
                     type: 'outbound-rtp',
                     bytesSent: 1000,
                     framesSent: 1,
-                    packetsSent: 1,
+                    packetsSent: 0,
                     isRequested: true,
                   },
                   {
@@ -1796,7 +1812,7 @@ describe('plugin-meetings', () => {
               duplicateSsci: 0,
               requestedBitrate: 0,
               requestedFrames: 0,
-              rtpPackets: 1,
+              rtpPackets: 0,
               ssci: 0,
               transmittedBitrate: 133.33333333333334,
               transmittedFrameRate: 0,
