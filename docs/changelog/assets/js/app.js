@@ -314,7 +314,7 @@ const doSearch_commit = (searchParams, drill_down) => {
                                 thisCommit.includes(searchParams.commitMessage.trim())
                             ) ||
                             (
-                                searchParams.commitHash && hash.includes(searchParams.commitHash)
+                                searchParams.commitHash && (hash.includes(searchParams.commitHash) || searchParams.commitHash.startsWith(hash))
                             )
                         ){
                             resulting_versions.add(`${package}-${version}`);
