@@ -21502,7 +21502,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"karma@npm:^6.3.2, karma@npm:^6.4.1":
+"karma@npm:^6.4.1":
   version: 6.4.2
   resolution: "karma@npm:6.4.2"
   dependencies:
@@ -21533,6 +21533,40 @@ __metadata:
   bin:
     karma: bin/karma
   checksum: e493874729d87955f7c0f1f6c20b2e27184c82a3b33a14607538df9b049077b0263ecb398f5f0ebbba92325cb16f4f43a1461fa486d5a06eabbfdfb5f289f001
+  languageName: node
+  linkType: hard
+
+"karma@npm:^6.4.2":
+  version: 6.4.3
+  resolution: "karma@npm:6.4.3"
+  dependencies:
+    "@colors/colors": 1.5.0
+    body-parser: ^1.19.0
+    braces: ^3.0.2
+    chokidar: ^3.5.1
+    connect: ^3.7.0
+    di: ^0.0.1
+    dom-serialize: ^2.2.1
+    glob: ^7.1.7
+    graceful-fs: ^4.2.6
+    http-proxy: ^1.18.1
+    isbinaryfile: ^4.0.8
+    lodash: ^4.17.21
+    log4js: ^6.4.1
+    mime: ^2.5.2
+    minimatch: ^3.0.4
+    mkdirp: ^0.5.5
+    qjobs: ^1.2.0
+    range-parser: ^1.2.1
+    rimraf: ^3.0.2
+    socket.io: ^4.7.2
+    source-map: ^0.6.1
+    tmp: ^0.2.1
+    ua-parser-js: ^0.7.30
+    yargs: ^16.1.1
+  bin:
+    karma: bin/karma
+  checksum: 4eee6f52c7cf54d860bb35600b61eac3631647efa01282671c9f799dbe4ea80ac729946c8c82e53be778905b5920d221b527c86bd9bec73214ca2f84339aebbe
   languageName: node
   linkType: hard
 
@@ -28226,6 +28260,21 @@ __metadata:
   languageName: node
   linkType: hard
 
+"socket.io@npm:^4.7.2":
+  version: 4.7.5
+  resolution: "socket.io@npm:4.7.5"
+  dependencies:
+    accepts: ~1.3.4
+    base64id: ~2.0.0
+    cors: ~2.8.5
+    debug: ~4.3.2
+    engine.io: ~6.5.2
+    socket.io-adapter: ~2.5.2
+    socket.io-parser: ~4.2.4
+  checksum: b8b57216152cf230bdcb77b5450e124ebe1fee7482eeb50a6ef760b69f2f5a064e9b8640ce9c1efc5c9e081f5d797d3f6ff3f81606e19ddaf5d4114aad9ec7d3
+  languageName: node
+  linkType: hard
+
 "sockjs@npm:^0.3.24":
   version: 0.3.24
   resolution: "sockjs@npm:0.3.24"
@@ -31397,7 +31446,7 @@ __metadata:
     jest-junit: ^14.0.1
     jsdom: 19.0.0
     jsdom-global: 3.0.2
-    karma: ^6.3.2
+    karma: ^6.4.2
     karma-browserify: ^8.1.0
     karma-browserstack-launcher: ^1.6.0
     karma-chai: ^0.1.0
