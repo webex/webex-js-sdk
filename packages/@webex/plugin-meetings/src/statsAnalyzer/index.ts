@@ -402,6 +402,17 @@ export class StatsAnalyzer extends EventsScope {
 
     newMqa.networkType = this.statsResults.connectionType.local.networkType;
 
+    newMqa.intervalMetadata.screenWidth = window.screen.width;
+    newMqa.intervalMetadata.screenHeight = window.screen.height;
+    newMqa.intervalMetadata.screenResolution = Math.round(
+      (window.screen.width * window.screen.height) / 256
+    );
+    newMqa.intervalMetadata.appWindowWidth = window.innerWidth;
+    newMqa.intervalMetadata.appWindowHeight = window.innerHeight;
+    newMqa.intervalMetadata.appWindowSize = Math.round(
+      (window.innerWidth * window.innerHeight) / 256
+    );
+
     this.mqaSentCount += 1;
 
     newMqa.intervalNumber = this.mqaSentCount;
