@@ -122,9 +122,10 @@ const populatePackageNames = (changelog) => {
     let optionsHtml = '<option value="">Select a package</option>'; // Placeholder option
 
     Object.keys(changelog).forEach((packageName) => {
-        optionsHtml += `<option value="${packageName}">${packageName}</option>`;
+        optionsHtml += `<option value="${packageName}" ${packageName === "webex" && "selected"}>${packageName}</option>`;
     });
 
+    packageNameInputDropdown.value = "webex";
     packageNameInputDropdown.innerHTML = optionsHtml; // Set all options at once
 };
 
@@ -136,6 +137,7 @@ const doStableVersionChange = async ({stable_version}) => {
         // Fetch the changelog and populate package names
         await fetchChangelog(versionPaths[stable_version]);
         populatePackageNames(currentChangelog);
+        updateFormState();
         if(versionInput.value.trim() !== ''){
             validateVersionInput({version: versionInput.value});
         }
