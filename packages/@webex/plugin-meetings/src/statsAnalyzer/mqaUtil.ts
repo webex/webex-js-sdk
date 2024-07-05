@@ -2,7 +2,7 @@
 
 import {mean, max} from 'lodash';
 
-import {STATS} from '../constants';
+import {MQA_INTERVAL, STATS} from '../constants';
 
 /**
  * Get the totals of a certain value from a certain media type.
@@ -460,4 +460,24 @@ export const getVideoSenderStreamMqa = ({
   videoSenderStream.requestedBitrate = statsResults[mediaType][sendrecvType].requestedBitrate || 0;
   videoSenderStream.requestedFrameSize =
     statsResults[mediaType][sendrecvType].requestedFrameSize || 0;
+};
+
+/**
+ * Checks if stream stats should be updated based on request status and elapsed time.
+ *
+ * @param {Object} statsResults - Stats results object.
+ * @param {string} mediaType - Media type (e.g., 'audio', 'video').
+ * @param {string} direction - Stats direction (e.g., 'send', 'receive').
+ * @returns {boolean} Whether stats should be updated.
+ */
+export const isStreamRequested = (
+  statsResults: any,
+  mediaType: string,
+  direction: string
+): boolean => {
+  const now = performance.timeOrigin + performance.now();
+  const lastUpdateTimestamp = statsResults[mediaType][direction]?.lastRequestedUpdateTimestamp;
+  const isRequested = statsResults[mediaType][direction]?.isRequested;
+
+  return isRequested || (lastUpdateTimestamp && now - lastUpdateTimestamp < MQA_INTERVAL);
 };
