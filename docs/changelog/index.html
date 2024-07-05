@@ -127,7 +127,7 @@
             <b>Commits: </b>
             <ul>
               {{#each (forIn this.commits)}}
-                <li>{{{this.value}}} (<span class="commit-hash">{{{this.key}}}</span>)</li>
+                <li>{{{github_linking this.value 'message'}}} (<span class="commit-hash">{{{github_linking this.key 'hash'}}}</span>)</li>
               {{/each}}
             </ul>
           </section>

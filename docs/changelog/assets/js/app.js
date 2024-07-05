@@ -1,6 +1,7 @@
 // Global variable to store the current changelog and version paths
 let currentChangelog;
 const versionPaths = {};
+const github_base_url = "https://github.com/webex/webex-js-sdk/";
 
 // DOM elements
 const versionSelectDropdown = document.getElementById('version-select');
@@ -28,6 +29,7 @@ Handlebars.registerHelper("forIn", function(object) {
     }
     return returnArray;
 });
+
 Handlebars.registerHelper('json', function(context, package, version) {
     debugger;
     const copyElem = {
@@ -35,6 +37,16 @@ Handlebars.registerHelper('json', function(context, package, version) {
         [package]: version
     }
     return JSON.stringify(copyElem);
+});
+
+Handlebars.registerHelper('github_linking', function(string, type) {
+    switch(type){
+        case 'hash':
+            return `<a href='${github_base_url}commit/${string}' target='_blank'>${string}</a>`;
+        case 'message':
+            // if commit message has a pr number, replace that pr number with pr anchor link and send back the transformed commit message
+            return string.replace(/#(\d+)/g, `<a href="${github_base_url}pull/$1" target="_blank">#$1</a>`);
+    }
 });
 
 
