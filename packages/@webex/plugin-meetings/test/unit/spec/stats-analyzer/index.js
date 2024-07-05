@@ -2149,6 +2149,47 @@ describe('plugin-meetings', () => {
           assert.equal(mqeData.intervalMetadata.cpuInfo.numberOfCores, 12);
         });
       });
+
+
+      it('maxBitrate is properly calculated', async () => {
+        const stats = {
+          audio: {
+            senders: [fakeStats.audio.senders[0]],
+            receivers: [fakeStats.audio.receivers[0]],
+          },
+          video: {
+            senders: [fakeStats.video.senders[0]],
+            receivers: [fakeStats.video.receivers[0]],
+          },
+          screenShareAudio: {
+            senders: [fakeStats.audio.senders[0]],
+            receivers: [fakeStats.audio.receivers[0]],
+          },
+          screenShareVideo: {
+            senders: [fakeStats.video.senders[0]],
+            receivers: [fakeStats.video.receivers[0]],
+          },
+        };
+
+        const bytesReceived = 480_000;
+        const expectedBitrate = 64;
+
+        stats.audio.receivers[0].report[0].bytesReceived = bytesReceived;
+        stats.audio.senders[0].report[0].bytesSent = bytesReceived;
+
+        stats.video.receivers[0].report[0].bytesReceived = bytesReceived;
+        stats.video.senders[0].report[0].bytesSent = bytesReceived;
+
+        pc.getTransceiverStats = sinon.stub().resolves(stats);
+
+        await startStatsAnalyzer({expected: {receiveVideo: true}});
+        await progressTime();
+
+        assert.equal(mqeData.audioReceive[0].common.maxBitrate, expectedBitrate)
+        assert.equal(mqeData.audioTransmit[0].common.maxBitrate, expectedBitrate)
+        assert.equal(mqeData.videoReceive[0].common.maxBitrate, expectedBitrate)
+        assert.equal(mqeData.videoTransmit[0].common.maxBitrate, expectedBitrate)
+      });
     })
   });
 });
