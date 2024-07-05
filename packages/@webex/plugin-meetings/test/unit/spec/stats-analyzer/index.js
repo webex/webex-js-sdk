@@ -404,6 +404,7 @@ describe('plugin-meetings', () => {
                     type: 'outbound-rtp',
                     bytesSent: 1,
                     packetsSent: 0,
+                    isRequested: true,
                   },
                   {
                     type: 'remote-inbound-rtp',
@@ -437,6 +438,8 @@ describe('plugin-meetings', () => {
                     fecPacketsReceived: 0,
                     packetsLost: 0,
                     packetsReceived: 0,
+                    isRequested: true,
+                    lastRequestedUpdateTimestamp: 0,
                   },
                   {
                     type: 'remote-outbound-rtp',
@@ -470,6 +473,8 @@ describe('plugin-meetings', () => {
                     bytesSent: 1,
                     framesSent: 0,
                     packetsSent: 0,
+                    isRequested: true,
+                    lastRequestedUpdateTimestamp: 0,
                   },
                   {
                     type: 'remote-inbound-rtp',
@@ -505,6 +510,8 @@ describe('plugin-meetings', () => {
                     framesReceived: 0,
                     packetsLost: 0,
                     packetsReceived: 0,
+                    isRequested: true,
+                    lastRequestedUpdateTimestamp: 0,
                   },
                   {
                     type: 'remote-outbound-rtp',
@@ -538,6 +545,8 @@ describe('plugin-meetings', () => {
                     bytesSent: 1,
                     framesSent: 0,
                     packetsSent: 0,
+                    isRequested: true,
+                    lastRequestedUpdateTimestamp: 0,
                   },
                   {
                     type: 'remote-inbound-rtp',
@@ -573,6 +582,8 @@ describe('plugin-meetings', () => {
                     framesReceived: 0,
                     packetsLost: 0,
                     packetsReceived: 0,
+                    isRequested: true,
+                    lastRequestedUpdateTimestamp: 0,
                   },
                   {
                     type: 'remote-outbound-rtp',
@@ -1649,18 +1660,21 @@ describe('plugin-meetings', () => {
                     bytesSent: 1,
                     framesSent: 0,
                     packetsSent: 0,
+                    isRequested: true,
                   },
                   {
                     type: 'outbound-rtp',
-                    bytesSent: 0,
+                    bytesSent: 1,
                     framesSent: 0,
                     packetsSent: 0,
+                    isRequested: true,
                   },
                   {
                     type: 'outbound-rtp',
                     bytesSent: 1000,
                     framesSent: 1,
                     packetsSent: 1,
+                    isRequested: true,
                   },
                   {
                     type: 'remote-inbound-rtp',
@@ -1710,7 +1724,7 @@ describe('plugin-meetings', () => {
               requestedFrames: 0,
               rtpPackets: 0,
               ssci: 0,
-              transmittedBitrate: 0.13333333333333333,
+              transmittedBitrate:  0.13333333333333333,
               transmittedFrameRate: 0
             },
             h264CodecProfile: 'BP',
@@ -1747,7 +1761,7 @@ describe('plugin-meetings', () => {
               requestedFrames: 0,
               rtpPackets: 0,
               ssci: 0,
-              transmittedBitrate: 0,
+              transmittedBitrate: 0.13333333333333333,
               transmittedFrameRate: 0,
             },
             h264CodecProfile: 'BP',
@@ -1814,6 +1828,40 @@ describe('plugin-meetings', () => {
           }
         ]);
       });
-    });
+      describe('sends streams according to their is requested flag', async () => {
+
+        beforeEach(async () => {
+          performance.timeOrigin = 0;
+          await startStatsAnalyzer();
+        });
+
+        it('should send a stream if it is requested', async () => {
+          fakeStats.audio.senders[0].report[0].isRequested = true;
+          await progressTime(MQA_INTERVAL);
+          assert.strictEqual(mqeData.audioTransmit[0].streams.length, 1);
+        });
+
+        it('should not sent a stream if its is requested flag is undefined', async () => {
+          fakeStats.audio.senders[0].report[0].isRequested = undefined;
+          await progressTime(MQA_INTERVAL);
+          assert.strictEqual(mqeData.audioTransmit[0].streams.length, 0);
+        });
+
+        it('should not send a stream if it is not requested', async () => {
+          fakeStats.audio.receivers[0].report[0].isRequested = false;
+          await progressTime(MQA_INTERVAL);
+          assert.strictEqual(mqeData.audioReceive[0].streams.length, 0);
+        });
+
+        it('should send the stream if it was recently requested', async () => {
+          fakeStats.audio.receivers[0].report[0].lastRequestedUpdateTimestamp = performance.timeOrigin + performance.now() + (30 * 1000);
+          fakeStats.audio.receivers[0].report[0].isRequested = false;
+          await progressTime(MQA_INTERVAL);
+          assert.strictEqual(mqeData.audioReceive[0].streams.length, 1);
+          await progressTime(MQA_INTERVAL);
+          assert.strictEqual(mqeData.audioReceive[0].streams.length, 0);
+        });
+      });
+    })
   });
-});
+})
