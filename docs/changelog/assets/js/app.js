@@ -28,6 +28,14 @@ Handlebars.registerHelper("forIn", function(object) {
     }
     return returnArray;
 });
+Handlebars.registerHelper('json', function(context, package, version) {
+    debugger;
+    const copyElem = {
+        ...context,
+        [package]: version
+    }
+    return JSON.stringify(copyElem);
+});
 
 
 // Util Methods
@@ -154,9 +162,11 @@ const validateVersionInput = ({version}) => {
 }
 
 const updateFormState = (formParams) => {
-    // If package name is empty, hide version input and show commit options
-    // If package name is not empty, show all options
-    // if one of commit options is not empty, hide version input and show commit options
+    // If the stable version is empty, show no more fields and disable the search button
+    // If the package name is empty, hide version input and show commit options
+    // If the package name is not empty, show all options
+    // If one of the commit search options is not empty, hide version input and show commit search options
+    // If the version field is not empty, hide the commit search options
     if(formParams === undefined){
         formParams = {
             stable_version: versionSelectDropdown.value,
@@ -402,6 +412,15 @@ searchForm.addEventListener('submit', (event) => {
     window.history.pushState({}, 'Cisco Webex JS SDK', `${window.location.pathname}?${queryParams.toString()}`);
     populateVersions();
 });
+
+const copyToClipboard = (copyButton) => {
+    navigator.clipboard.writeText(JSON.stringify(JSON.parse(copyButton.dataset.alongWith), null, 4));
+    const copyText = copyButton.querySelector('span');
+    copyText.textContent = 'Copied!';
+    setTimeout(() => { 
+        copyText.textContent = 'Copy';
+    },2000);
+}
 
 window.onhashchange = () => {
     populateVersions();

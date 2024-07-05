@@ -101,6 +101,7 @@
             </form>
         </div>
         <div class="results-container" id="search-results">
+            
         </div>            
       </div>
       <div id="scrollTop">^</div>
@@ -133,6 +134,9 @@
 
           <section class="related-packages">
             <b>These packages were also released along with this version:</b>
+            <div class='copy-button' onclick="copyToClipboard(this)" data-along-with = "{{json this.alongWith this.package this.version}}">
+              <span>Copy</span> <img title='Copy' src='./assets/images/copy-icon.png'>
+            </div>
             <div class="table-wrapper">
               <table>
                   <thead>
@@ -151,7 +155,7 @@
                   </tbody>
               </table>
             </div>
-        </section>
+          </section>
         </div>
       {{/each}}
     </script>

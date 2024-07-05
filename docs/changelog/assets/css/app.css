@@ -152,7 +152,7 @@ th {
 .changelog-item {
     padding-bottom: 20px;
     margin-bottom: 20px; /* Space between changelog items */
-    border-bottom: 1px solid #e4e5e6;
+    border-bottom: 3px solid #e4e5e6;
 }
 
 .changelog-item h2, .changelog-item h3 {
@@ -182,13 +182,29 @@ th {
     font-family: monospace;
 }
 
+.changelog-item .related-packages{
+    position: relative;
+}
+
+.changelog-item .related-packages .table-wrapper{
+    max-height: 200px;
+    overflow: scroll;
+    border: 1px solid #ddd;
+    margin-top: 10px;
+}
+
 .changelog-item .related-packages table {
     width: 100%;
     border-collapse: collapse;
-    margin-top: 20px;
 }
 
-.changelog-item table, .changelog-item th, .changelog-item td {
+
+.changelog-item table thead{
+    position: sticky;
+    top: -1px;
+}
+
+.changelog-item th, .changelog-item td {
     border: 1px solid #ddd;
 }
 
@@ -207,4 +223,18 @@ th {
 
 .changelog-item tbody tr:hover {
     background-color: #f1f1f1;
+}
+
+.copy-button {
+    display: inline;
+    position: absolute;
+    margin-left: 5px;
+    cursor: pointer;
+    right: 0px;
+}
+
+.copy-button img {
+    width: 20px;
+    height: auto;
+    margin-right: 5px;
 }
