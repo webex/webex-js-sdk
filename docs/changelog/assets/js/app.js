@@ -130,7 +130,6 @@ const populatePackageNames = (changelog) => {
 };
 
 const doStableVersionChange = async ({stable_version}) => {
-    updateFormState();
     if (stable_version && versionPaths[stable_version]) {
         // Enable the package-name-input dropdown
         packageNameInputDropdown.disabled = false;
