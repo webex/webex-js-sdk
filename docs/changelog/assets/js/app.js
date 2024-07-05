@@ -134,7 +134,7 @@ const populatePackageNames = (changelog) => {
     let optionsHtml = '<option value="">Select a package</option>'; // Placeholder option
 
     Object.keys(changelog).forEach((packageName) => {
-        optionsHtml += `<option value="${packageName}" ${packageName === "webex" && "selected"}>${packageName}</option>`;
+        optionsHtml += `<option value="${packageName}">${packageName}</option>`;
     });
 
     packageNameInputDropdown.value = "webex";
