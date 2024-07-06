@@ -1118,6 +1118,12 @@ export class StatsAnalyzer extends EventsScope {
         }
       }
 
+      if (mediaType.startsWith('video-recv')) {
+        this.statsResults[mediaType][sendrecvType].isActiveSpeaker = result.isActiveSpeaker;
+        this.statsResults[mediaType][sendrecvType].lastActiveSpeakerTimestamp =
+          result.lastActiveSpeakerUpdateTimestamp;
+      }
+
       //  Check the over all packet Lost ratio
       this.statsResults[mediaType][sendrecvType].currentPacketLossRatio =
         currentPacketsLost > 0

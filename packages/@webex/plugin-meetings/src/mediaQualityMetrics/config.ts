@@ -176,7 +176,7 @@ export const emptyVideoReceiveStream = {
     ssci: 0, // Not avaliable
   },
   h264CodecProfile: 'BP',
-  isActiveSpeaker: true,
+  isActiveSpeaker: false,
   optimalFrameSize: 0, // Not avaliable
   receivedFrameSize: 0,
   receivedHeight: 0,
