@@ -67,7 +67,7 @@ export const getAudioReceiverMqa = ({
     totalFecPacketsReceived -
     lastFecPacketsReceived -
     (totalFecPacketsDiscarded - lastFecPacketsDiscarded);
-  audioReceiver.common.fecPackets = fecRecovered;
+  audioReceiver.common.fecPackets = totalFecPacketsReceived - lastFecPacketsReceived;
 
   audioReceiver.common.rtpRecovered = fecRecovered;
 
