@@ -176,6 +176,7 @@ th {
     margin-bottom: 5px;
     padding: 10px;
     border-radius: 3px;
+    word-wrap: break-word;
 }
 
 .changelog-item .commit-hash {
