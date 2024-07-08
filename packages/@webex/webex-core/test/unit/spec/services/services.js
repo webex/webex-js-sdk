@@ -301,6 +301,7 @@ describe('webex-core', () => {
             'example-b': 'https://example-b.com/api/v1',
             'example-c': 'https://example-c.com/api/v1',
             'example-d': 'https://example-d.com/api/v1',
+            'example-e': 'https://example-e.com/api/v1',
           },
           hostCatalog: {
             'example-a.com': [
@@ -383,6 +384,46 @@ describe('webex-core', () => {
                 id: '0:0:0:example-d-x',
               },
             ],
+            'example-e.com': [
+              {
+                host: 'example-e-1.com',
+                ttl: -1,
+                priority: 5,
+                id: '0:0:0:different-e',
+              },
+              {
+                host: 'example-e-2.com',
+                ttl: -1,
+                priority: 3,
+                id: '0:0:0:different-e',
+              },
+              {
+                host: 'example-e-3.com',
+                ttl: -1,
+                priority: 1,
+                id: '0:0:0:different-e',
+              },
+            ],
+            'example-e-1.com': [
+              {
+                host: 'example-e-4.com',
+                ttl: -1,
+                priority: 5,
+                id: '0:0:0:different-e',
+              },
+              {
+                host: 'example-e-5.com',
+                ttl: -1,
+                priority: 3,
+                id: '0:0:0:different-e',
+              },
+              {
+                host: 'example-e-3.com',
+                ttl: -1,
+                priority: 1,
+                id: '0:0:0:different-e-x',
+              },
+            ],
           },
           format: 'hostmap',
         };
@@ -457,6 +498,139 @@ describe('webex-core', () => {
           serviceHostmap.serviceLinks,
           formattedHM.map((item) => item.name)
         );
+      });
+
+      it('creates the expected formatted host map', () => {
+        formattedHM = services._formatReceivedHostmap(serviceHostmap);
+
+        assert.deepEqual(formattedHM, [
+          {
+            defaultHost: 'example-a.com',
+            defaultUrl: 'https://example-a.com/api/v1',
+            hosts: [
+              {
+                homeCluster: true,
+                host: 'example-a-1.com',
+                id: '0:0:0:example-a',
+                priority: 5,
+                ttl: -1,
+              },
+              {
+                homeCluster: true,
+                host: 'example-a-2.com',
+                id: '0:0:0:example-a',
+                priority: 3,
+                ttl: -1,
+              },
+            ],
+            name: 'example-a',
+          },
+          {
+            defaultHost: 'example-b.com',
+            defaultUrl: 'https://example-b.com/api/v1',
+            hosts: [
+              {
+                homeCluster: true,
+                host: 'example-b-1.com',
+                id: '0:0:0:example-b',
+                priority: 5,
+                ttl: -1,
+              },
+              {
+                homeCluster: true,
+                host: 'example-b-2.com',
+                id: '0:0:0:example-b',
+                priority: 3,
+                ttl: -1,
+              },
+            ],
+            name: 'example-b',
+          },
+          {
+            defaultHost: 'example-c.com',
+            defaultUrl: 'https://example-c.com/api/v1',
+            hosts: [
+              {
+                homeCluster: true,
+                host: 'example-c-1.com',
+                id: '0:0:0:example-c',
+                priority: 5,
+                ttl: -1,
+              },
+              {
+                homeCluster: true,
+                host: 'example-c-2.com',
+                id: '0:0:0:example-c',
+                priority: 3,
+                ttl: -1,
+              },
+            ],
+            name: 'example-c',
+          },
+          {
+            defaultHost: 'example-d.com',
+            defaultUrl: 'https://example-d.com/api/v1',
+            hosts: [
+              {
+                homeCluster: true,
+                host: 'example-c-1.com',
+                id: '0:0:0:example-d',
+                priority: 5,
+                ttl: -1,
+              },
+              {
+                homeCluster: true,
+                host: 'example-c-2.com',
+                id: '0:0:0:example-d',
+                priority: 3,
+                ttl: -1,
+              },
+            ],
+            name: 'example-d',
+          },
+          {
+            defaultHost: 'example-e.com',
+            defaultUrl: 'https://example-e.com/api/v1',
+            hosts: [
+              {
+                homeCluster: true,
+                host: 'example-e-1.com',
+                id: '0:0:0:different-e',
+                priority: 5,
+                ttl: -1,
+              },
+              {
+                homeCluster: true,
+                host: 'example-e-2.com',
+                id: '0:0:0:different-e',
+                priority: 3,
+                ttl: -1,
+              },
+              {
+                homeCluster: true,
+                host: 'example-e-3.com',
+                id: '0:0:0:different-e',
+                priority: 1,
+                ttl: -1,
+              },
+              {
+                homeCluster: false,
+                host: 'example-e-4.com',
+                id: '0:0:0:different-e',
+                priority: 5,
+                ttl: -1,
+              },
+              {
+                homeCluster: false,
+                host: 'example-e-5.com',
+                id: '0:0:0:different-e',
+                priority: 3,
+                ttl: -1,
+              },
+            ],
+            name: 'example-e',
+          },
+        ]);
       });
 
       it('has hostCatalog updated', () => {
