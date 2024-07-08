@@ -1897,6 +1897,37 @@ describe('plugin-meetings', () => {
           assert.strictEqual(mqeData.audioReceive[0].streams.length, 0);
         });
       });
+
+      describe('window and screen size emission', async () => {
+        beforeEach(async() => {
+          await startStatsAnalyzer();
+        })
+
+        it('should record the screen size from window.screen properties', async () => {
+          sinon.stub(window.screen, 'width').get(() => 1280);
+          sinon.stub(window.screen, 'height').get(() => 720);
+          await progressTime(MQA_INTERVAL);
+          assert.strictEqual(mqeData.intervalMetadata.screenWidth, 1280);
+          assert.strictEqual(mqeData.intervalMetadata.screenHeight, 720);
+          assert.strictEqual(mqeData.intervalMetadata.screenResolution, 3600);
+        })
+
+        it('should record the initial app window size from window properties', async () => {
+          sinon.stub(window, 'innerWidth').get(() => 720);
+          sinon.stub(window, 'innerHeight').get(() => 360);
+          await progressTime(MQA_INTERVAL);
+          assert.strictEqual(mqeData.intervalMetadata.appWindowWidth, 720);
+          assert.strictEqual(mqeData.intervalMetadata.appWindowHeight, 360);
+          assert.strictEqual(mqeData.intervalMetadata.appWindowSize, 1013);
+
+          sinon.stub(window, 'innerWidth').get(() => 1080);
+          sinon.stub(window, 'innerHeight').get(() => 720);
+          await progressTime(MQA_INTERVAL);
+          assert.strictEqual(mqeData.intervalMetadata.appWindowWidth, 1080);
+          assert.strictEqual(mqeData.intervalMetadata.appWindowHeight, 720);
+          assert.strictEqual(mqeData.intervalMetadata.appWindowSize, 3038);
+        })
+      })
     })
   });
 });
