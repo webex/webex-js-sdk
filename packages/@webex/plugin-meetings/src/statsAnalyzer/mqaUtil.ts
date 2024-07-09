@@ -347,6 +347,14 @@ export const getVideoReceiverStreamMqa = ({
     statsResults[mediaType][sendrecvType].keyFramesDecoded - lastKeyFramesDecoded || 0;
   videoReceiverStream.requestedKeyFrames =
     statsResults[mediaType][sendrecvType].totalPliCount - lastPliCount || 0;
+
+  videoReceiverStream.isActiveSpeaker =
+    statsResults[mediaType][sendrecvType].isActiveSpeaker ||
+    ((statsResults[mediaType][sendrecvType].lastActiveSpeakerTimestamp ?? 0) > 0 &&
+      performance.now() +
+        performance.timeOrigin -
+        (statsResults[mediaType][sendrecvType].lastActiveSpeakerTimestamp ?? 0) <
+        MQA_INTERVAL);
 };
 
 export const getVideoSenderMqa = ({videoSender, statsResults, lastMqaDataSent, baseMediaType}) => {
