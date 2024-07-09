@@ -39,7 +39,7 @@
     "@babel/traverse": "^7.14.9",
     "@babel/types": "^7.14.9",
     "babel-plugin-lodash": "^3.3.4",
-    "babel-plugin-module-resolver": "^4.1.0",
+    "babel-plugin-module-resolver": "^5.0.2",
     "babelify": "^10.0.0"
   },
   "peerDependencies": {
