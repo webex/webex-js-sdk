@@ -702,16 +702,20 @@ const Services = WebexPlugin.extend({
 
       const matchingCatalogEntry = serviceHostmap.hostCatalog[host];
 
-      if (!matchingCatalogEntry) {
-        return;
-      }
-
       const formattedHost = {
         name: serviceName,
         defaultUrl: serviceUrl,
         defaultHost: host,
         hosts: [],
       };
+
+      formattedHostmap.push(formattedHost);
+
+      // If the catalog does not have any hosts we will be unable to find the service ID
+      // so can't search for other hosts
+      if (!matchingCatalogEntry || !matchingCatalogEntry[0]) {
+        return;
+      }
 
       const serviceId = extractId(matchingCatalogEntry[0]);
 
@@ -748,7 +752,6 @@ const Services = WebexPlugin.extend({
       });
 
       formattedHost.hosts.push(...otherHosts);
-      formattedHostmap.push(formattedHost);
     });
 
     // update all the service urls in the host catalog

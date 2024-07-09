@@ -302,6 +302,8 @@ describe('webex-core', () => {
             'example-c': 'https://example-c.com/api/v1',
             'example-d': 'https://example-d.com/api/v1',
             'example-e': 'https://example-e.com/api/v1',
+            'example-f': 'https://example-f.com/api/v1',
+            'example-g': 'https://example-g.com/api/v1',
           },
           hostCatalog: {
             'example-a.com': [
@@ -424,6 +426,8 @@ describe('webex-core', () => {
                 id: '0:0:0:different-e-x',
               },
             ],
+            'example-f.com': [
+            ],
           },
           format: 'hostmap',
         };
@@ -478,16 +482,6 @@ describe('webex-core', () => {
           );
 
           assert.isDefined(foundServiceKey);
-        });
-      });
-
-      it('creates a formmated host map containing all received host map host entries', () => {
-        formattedHM = services._formatReceivedHostmap(serviceHostmap);
-
-        formattedHM.forEach((service) => {
-          const foundHosts = serviceHostmap.hostCatalog[service.defaultHost];
-
-          assert.isDefined(foundHosts);
         });
       });
 
@@ -630,6 +624,18 @@ describe('webex-core', () => {
             ],
             name: 'example-e',
           },
+          {
+            defaultHost: 'example-f.com',
+            defaultUrl: 'https://example-f.com/api/v1',
+            hosts: [],
+            name: 'example-f',
+          },
+          {
+            defaultHost: 'example-g.com',
+            defaultUrl: 'https://example-g.com/api/v1',
+            hosts: [],
+            name: 'example-g',
+          }
         ]);
       });
 
