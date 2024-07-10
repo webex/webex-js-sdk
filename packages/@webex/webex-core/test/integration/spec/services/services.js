@@ -37,11 +37,15 @@ describe('webex-core', () => {
             orgId: process.env.EU_PRIMARY_ORG_ID,
           },
         }),
-      ]).then(([[user], [userEU]]) => {
-        webexUser = user;
-        webexUserEU = userEU;
-      })
-    );
+      ]).then(([[user], [userEU]]) =>
+        new Promise((resolve) => {
+          setTimeout(() => {
+            webexUser = user;
+            webexUserEU = userEU;
+            resolve();
+          }, 1000)
+        })
+    ));
 
     beforeEach('create webex instance', () => {
       webex = new WebexCore({credentials: {supertoken: webexUser.token}});
