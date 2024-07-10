@@ -404,6 +404,7 @@ describe('plugin-meetings', () => {
                     type: 'outbound-rtp',
                     bytesSent: 1,
                     packetsSent: 0,
+                    isRequested: true,
                   },
                   {
                     type: 'remote-inbound-rtp',
@@ -437,6 +438,8 @@ describe('plugin-meetings', () => {
                     fecPacketsReceived: 0,
                     packetsLost: 0,
                     packetsReceived: 0,
+                    isRequested: true,
+                    lastRequestedUpdateTimestamp: 0,
                   },
                   {
                     type: 'remote-outbound-rtp',
@@ -470,6 +473,8 @@ describe('plugin-meetings', () => {
                     bytesSent: 1,
                     framesSent: 0,
                     packetsSent: 0,
+                    isRequested: true,
+                    lastRequestedUpdateTimestamp: 0,
                   },
                   {
                     type: 'remote-inbound-rtp',
@@ -505,6 +510,10 @@ describe('plugin-meetings', () => {
                     framesReceived: 0,
                     packetsLost: 0,
                     packetsReceived: 0,
+                    isRequested: true,
+                    lastRequestedUpdateTimestamp: 0,
+                    isActiveSpeaker: false,
+                    lastActiveSpeakerUpdateTimestamp: 0,
                   },
                   {
                     type: 'remote-outbound-rtp',
@@ -538,6 +547,8 @@ describe('plugin-meetings', () => {
                     bytesSent: 1,
                     framesSent: 0,
                     packetsSent: 0,
+                    isRequested: true,
+                    lastRequestedUpdateTimestamp: 0,
                   },
                   {
                     type: 'remote-inbound-rtp',
@@ -573,6 +584,8 @@ describe('plugin-meetings', () => {
                     framesReceived: 0,
                     packetsLost: 0,
                     packetsReceived: 0,
+                    isRequested: true,
+                    lastRequestedUpdateTimestamp: 0,
                   },
                   {
                     type: 'remote-outbound-rtp',
@@ -1456,7 +1469,7 @@ describe('plugin-meetings', () => {
               framesDropped: 0,
             },
             h264CodecProfile: 'BP',
-            isActiveSpeaker: true,
+            isActiveSpeaker: false,
             optimalFrameSize: 0,
             receivedFrameSize: 3600,
             receivedHeight: 720,
@@ -1490,7 +1503,7 @@ describe('plugin-meetings', () => {
               framesDropped: 0,
             },
             h264CodecProfile: 'BP',
-            isActiveSpeaker: true,
+            isActiveSpeaker: false,
             optimalFrameSize: 0,
             receivedFrameSize: 3600,
             receivedHeight: 720,
@@ -1554,7 +1567,7 @@ describe('plugin-meetings', () => {
               framesDropped: 0,
             },
             h264CodecProfile: 'BP',
-            isActiveSpeaker: true,
+            isActiveSpeaker: false,
             optimalFrameSize: 0,
             receivedFrameSize: 3600,
             receivedHeight: 720,
@@ -1586,7 +1599,7 @@ describe('plugin-meetings', () => {
               framesDropped: 0,
             },
             h264CodecProfile: 'BP',
-            isActiveSpeaker: true,
+            isActiveSpeaker: false,
             optimalFrameSize: 0,
             receivedFrameSize: 3600,
             receivedHeight: 720,
@@ -1618,7 +1631,7 @@ describe('plugin-meetings', () => {
               framesDropped: 0,
             },
             h264CodecProfile: 'BP',
-            isActiveSpeaker: true,
+            isActiveSpeaker: false,
             optimalFrameSize: 0,
             receivedFrameSize: 3600,
             receivedHeight: 720,
@@ -1649,18 +1662,21 @@ describe('plugin-meetings', () => {
                     bytesSent: 1,
                     framesSent: 0,
                     packetsSent: 0,
+                    isRequested: true,
                   },
                   {
                     type: 'outbound-rtp',
-                    bytesSent: 0,
+                    bytesSent: 1,
                     framesSent: 0,
                     packetsSent: 0,
+                    isRequested: true,
                   },
                   {
                     type: 'outbound-rtp',
                     bytesSent: 1000,
                     framesSent: 1,
                     packetsSent: 1,
+                    isRequested: true,
                   },
                   {
                     type: 'remote-inbound-rtp',
@@ -1747,7 +1763,7 @@ describe('plugin-meetings', () => {
               requestedFrames: 0,
               rtpPackets: 0,
               ssci: 0,
-              transmittedBitrate: 0,
+              transmittedBitrate: 0.13333333333333333,
               transmittedFrameRate: 0,
             },
             h264CodecProfile: 'BP',
@@ -1814,6 +1830,104 @@ describe('plugin-meetings', () => {
           }
         ]);
       });
-    });
+      describe('active speaker status emission', async () => {
+        beforeEach(async () => {
+          await startStatsAnalyzer();
+          performance.timeOrigin = 1;
+        });
+
+        it('reports active speaker as true when the participant has been speaking', async () => {
+          fakeStats.video.receivers[0].report[0].isActiveSpeaker = true;
+          await progressTime(5 * MQA_INTERVAL);
+          assert.strictEqual(mqeData.videoReceive[0].streams[0].isActiveSpeaker, true);
+        });
+
+        it('reports active speaker as false when the participant has not spoken', async () => {
+          fakeStats.video.receivers[0].report[0].isActiveSpeaker = false;
+          await progressTime(5 * MQA_INTERVAL);
+          assert.strictEqual(mqeData.videoReceive[0].streams[0].isActiveSpeaker, false);
+        });
+
+        it('defaults to false when active speaker status is indeterminate', async () => {
+          fakeStats.video.receivers[0].report[0].isActiveSpeaker = undefined;
+          await progressTime(MQA_INTERVAL);
+          assert.strictEqual(mqeData.videoReceive[0].streams[0].isActiveSpeaker, false);
+        });
+
+        it('updates active speaker to true following a recent status change to speaking', async () => {
+          fakeStats.video.receivers[0].report[0].isActiveSpeaker = false;
+          fakeStats.video.receivers[0].report[0].lastActiveSpeakerUpdateTimestamp = performance.timeOrigin + performance.now() + (30 * 1000);
+          await progressTime(MQA_INTERVAL);
+          assert.strictEqual(mqeData.videoReceive[0].streams[0].isActiveSpeaker, true);
+          await progressTime(MQA_INTERVAL);
+          assert.strictEqual(mqeData.videoReceive[0].streams[0].isActiveSpeaker, false);
+        });
+      });
+      describe('sends streams according to their is requested flag', async () => {
+
+        beforeEach(async () => {
+          performance.timeOrigin = 0;
+          await startStatsAnalyzer();
+        });
+
+        it('should send a stream if it is requested', async () => {
+          fakeStats.audio.senders[0].report[0].isRequested = true;
+          await progressTime(MQA_INTERVAL);
+          assert.strictEqual(mqeData.audioTransmit[0].streams.length, 1);
+        });
+
+        it('should not sent a stream if its is requested flag is undefined', async () => {
+          fakeStats.audio.senders[0].report[0].isRequested = undefined;
+          await progressTime(MQA_INTERVAL);
+          assert.strictEqual(mqeData.audioTransmit[0].streams.length, 0);
+        });
+
+        it('should not send a stream if it is not requested', async () => {
+          fakeStats.audio.receivers[0].report[0].isRequested = false;
+          await progressTime(MQA_INTERVAL);
+          assert.strictEqual(mqeData.audioReceive[0].streams.length, 0);
+        });
+
+        it('should send the stream if it was recently requested', async () => {
+          fakeStats.audio.receivers[0].report[0].lastRequestedUpdateTimestamp = performance.timeOrigin + performance.now() + (30 * 1000);
+          fakeStats.audio.receivers[0].report[0].isRequested = false;
+          await progressTime(MQA_INTERVAL);
+          assert.strictEqual(mqeData.audioReceive[0].streams.length, 1);
+          await progressTime(MQA_INTERVAL);
+          assert.strictEqual(mqeData.audioReceive[0].streams.length, 0);
+        });
+      });
+
+      describe('window and screen size emission', async () => {
+        beforeEach(async() => {
+          await startStatsAnalyzer();
+        })
+
+        it('should record the screen size from window.screen properties', async () => {
+          sinon.stub(window.screen, 'width').get(() => 1280);
+          sinon.stub(window.screen, 'height').get(() => 720);
+          await progressTime(MQA_INTERVAL);
+          assert.strictEqual(mqeData.intervalMetadata.screenWidth, 1280);
+          assert.strictEqual(mqeData.intervalMetadata.screenHeight, 720);
+          assert.strictEqual(mqeData.intervalMetadata.screenResolution, 3600);
+        })
+
+        it('should record the initial app window size from window properties', async () => {
+          sinon.stub(window, 'innerWidth').get(() => 720);
+          sinon.stub(window, 'innerHeight').get(() => 360);
+          await progressTime(MQA_INTERVAL);
+          assert.strictEqual(mqeData.intervalMetadata.appWindowWidth, 720);
+          assert.strictEqual(mqeData.intervalMetadata.appWindowHeight, 360);
+          assert.strictEqual(mqeData.intervalMetadata.appWindowSize, 1013);
+
+          sinon.stub(window, 'innerWidth').get(() => 1080);
+          sinon.stub(window, 'innerHeight').get(() => 720);
+          await progressTime(MQA_INTERVAL);
+          assert.strictEqual(mqeData.intervalMetadata.appWindowWidth, 1080);
+          assert.strictEqual(mqeData.intervalMetadata.appWindowHeight, 720);
+          assert.strictEqual(mqeData.intervalMetadata.appWindowSize, 3038);
+        })
+      })
+    })
   });
 });
