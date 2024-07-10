@@ -239,3 +239,12 @@ th {
     height: auto;
     margin-right: 5px;
 }
+
+footer {
+    margin: 20px 0px;
+}
+
+footer .copyright {
+    text-align: center;
+    margin: 0 auto;
+}

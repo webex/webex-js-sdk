@@ -76,7 +76,8 @@
         "@webex/xunit-with-logs": "3.3.1-next.1",
         "@webex/calling": "3.3.1-next.1",
         "webex": "3.3.1-next.2"
-      }
+      },
+      "published_date": 1625155200000
     },
     "3.3.1-next.5": {
       "commits": {
@@ -89,7 +90,8 @@
         "@webex/plugin-meetings": "3.3.1-next.5",
         "@webex/package-tools": "0.0.0-next.2",
         "webex": "3.3.1-next.5"
-      }
+      },
+      "published_date": 1725155200000
     }
   },
   "@webex/plugin-meetings": {
@@ -98,7 +100,7 @@
         "c97d971edf": "fix(internal-plugin-metrics): remove exports.getBuildType error (#3671)",
         "e997010a7a": "fix: circular dependency b/w feature and mercury (#3658)"
       },
-      "date":"Tuesday, July 2nd 2024",
+      "published_date": 1825155200000,
       "alongWith": {
         "@webex/common": "3.3.1-next.1",
         "@webex/common-evented": "3.3.1-next.1",
@@ -183,7 +185,8 @@
         "@webex/internal-plugin-voicea": "3.3.1-next.5",
         "@webex/package-tools": "0.0.0-next.2",
         "webex": "3.3.1-next.5"
-      }
+      },
+      "published_date": 1625155200000
     }
   },
   "@webex/internal-plugin-dss": {

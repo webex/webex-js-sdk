@@ -14,17 +14,6 @@
       integrity="sha384-fLW2N01lMqjakBkx3l/M9EahuwpSfeNvV63J5ezn3uZzapT0u7EYsXMjQV+0En5r" crossorigin="anonymous" />
     <link rel="stylesheet" href="assets/css/app.css">
     
-    <style>
-      footer {
-        margin: 20px 0px;
-      }
-
-      footer .copyright {
-        text-align: center;
-        margin: 0 auto;
-      }
-    </style>
-    
     <link rel="canonical" href="https://webex.github.io/webex-js-sdk/changelog/" />
   </head>
 
@@ -123,6 +112,7 @@
         <div class="changelog-item">
           <h3>Changelog for <span id="package-name">{{this.package}}</span>@<span id="version">{{this.version}}</span>:</h3>
 
+          <h4><b>Published: </b> {{convertDate this.published_date}}</h4>
           <section class="commits">
             <b>Commits: </b>
             <ul>

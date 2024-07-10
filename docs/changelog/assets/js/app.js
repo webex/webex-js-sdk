@@ -49,6 +49,10 @@ Handlebars.registerHelper('github_linking', function(string, type) {
     }
 });
 
+Handlebars.registerHelper('convertDate', function(timestamp) {
+    return new Date(timestamp).toDateString();
+});
+
 
 // Util Methods
 const populateFormFieldsFromURL = async () => {
@@ -325,6 +329,7 @@ const doSearch_commit = (searchParams, drill_down) => {
                             search_results.push({
                                 package,
                                 version,
+                                published_date: thisVersion.published_date,
                                 commits: thisVersion.commits,
                                 alongWith: thisVersion.alongWith,
                             });
@@ -368,12 +373,16 @@ const doSearch = (searchParams) => {
                 search_results.push({
                     package,
                     version,
+                    published_date: drill_down[package][version].published_date,
                     commits: drill_down[package][version].commits,
                     alongWith: drill_down[package][version].alongWith,
                 });
             });
         });
     }
+
+    // sort search results based on published date which will be in Unit timestamp
+    search_results.sort((a, b) => b.published_date - a.published_date);
 
     const searchResultsHtml = changelogUI({data: {
         search_results,
