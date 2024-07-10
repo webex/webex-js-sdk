@@ -2,7 +2,7 @@
 
 import {mean, max} from 'lodash';
 
-import {STATS} from '../constants';
+import {MQA_INTERVAL, STATS} from '../constants';
 
 /**
  * Get the totals of a certain value from a certain media type.
@@ -347,6 +347,14 @@ export const getVideoReceiverStreamMqa = ({
     statsResults[mediaType][sendrecvType].keyFramesDecoded - lastKeyFramesDecoded || 0;
   videoReceiverStream.requestedKeyFrames =
     statsResults[mediaType][sendrecvType].totalPliCount - lastPliCount || 0;
+
+  videoReceiverStream.isActiveSpeaker =
+    statsResults[mediaType][sendrecvType].isActiveSpeaker ||
+    ((statsResults[mediaType][sendrecvType].lastActiveSpeakerTimestamp ?? 0) > 0 &&
+      performance.now() +
+        performance.timeOrigin -
+        (statsResults[mediaType][sendrecvType].lastActiveSpeakerTimestamp ?? 0) <
+        MQA_INTERVAL);
 };
 
 export const getVideoSenderMqa = ({videoSender, statsResults, lastMqaDataSent, baseMediaType}) => {
@@ -460,4 +468,24 @@ export const getVideoSenderStreamMqa = ({
   videoSenderStream.requestedBitrate = statsResults[mediaType][sendrecvType].requestedBitrate || 0;
   videoSenderStream.requestedFrameSize =
     statsResults[mediaType][sendrecvType].requestedFrameSize || 0;
+};
+
+/**
+ * Checks if stream stats should be updated based on request status and elapsed time.
+ *
+ * @param {Object} statsResults - Stats results object.
+ * @param {string} mediaType - Media type (e.g., 'audio', 'video').
+ * @param {string} direction - Stats direction (e.g., 'send', 'receive').
+ * @returns {boolean} Whether stats should be updated.
+ */
+export const isStreamRequested = (
+  statsResults: any,
+  mediaType: string,
+  direction: string
+): boolean => {
+  const now = performance.timeOrigin + performance.now();
+  const lastUpdateTimestamp = statsResults[mediaType][direction]?.lastRequestedUpdateTimestamp;
+  const isRequested = statsResults[mediaType][direction]?.isRequested;
+
+  return isRequested || (lastUpdateTimestamp && now - lastUpdateTimestamp < MQA_INTERVAL);
 };
