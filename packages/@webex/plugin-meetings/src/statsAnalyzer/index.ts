@@ -92,22 +92,31 @@ export class StatsAnalyzer extends EventsScope {
   successfulCandidatePair: any;
   localIpAddress: string; // Returns the local IP address for diagnostics. this is the local IP of the interface used for the current media connection a host can have many local Ip Addresses
   receiveSlotCallback: ReceiveSlotCallback;
+  isMultistream: boolean;
 
   /**
    * Creates a new instance of StatsAnalyzer
    * @constructor
    * @public
-   * @param {Object} config SDK Configuration Object
-   * @param {Function} receiveSlotCallback Callback used to access receive slots.
-   * @param {Object} networkQualityMonitor class for assessing network characteristics (jitter, packetLoss, latency)
-   * @param {Object} statsResults Default properties for stats
+   * @param {Object} config - SDK Configuration Object
+   * @param {Function} receiveSlotCallback - Callback used to access receive slots.
+   * @param {Object} networkQualityMonitor - Class for assessing network characteristics (jitter, packetLoss, latency)
+   * @param {Object} statsResults - Default properties for stats
+   * @param {boolean | undefined} isMultistream - Param indicating if the media connection is multistream or not
    */
-  constructor(
-    config: any,
-    receiveSlotCallback: ReceiveSlotCallback = () => undefined,
-    networkQualityMonitor: object = {},
-    statsResults: object = defaultStats
-  ) {
+  constructor({
+    config,
+    receiveSlotCallback = () => undefined,
+    networkQualityMonitor = {},
+    statsResults = defaultStats,
+    isMultistream = false,
+  }: {
+    config: any;
+    receiveSlotCallback: ReceiveSlotCallback;
+    networkQualityMonitor: any;
+    statsResults?: any;
+    isMultistream?: boolean;
+  }) {
     super();
     this.statsStarted = false;
     this.statsResults = statsResults;
@@ -121,6 +130,7 @@ export class StatsAnalyzer extends EventsScope {
     this.receiveSlotCallback = receiveSlotCallback;
     this.successfulCandidatePair = {};
     this.localIpAddress = '';
+    this.isMultistream = isMultistream;
   }
 
   /**
@@ -188,6 +198,13 @@ export class StatsAnalyzer extends EventsScope {
         this.lastMqaDataSent[mediaType].recv = {};
       }
     });
+
+    if (this.isMultistream) {
+      emptyAudioTransmit.common.common.multistreamEnabled = true;
+      emptyAudioReceive.common.common.multistreamEnabled = true;
+      emptyVideoTransmit.common.common.multistreamEnabled = true;
+      emptyVideoReceive.common.common.multistreamEnabled = true;
+    }
 
     // Create stats the first level, totals for senders and receivers
     const audioSender = cloneDeep(emptyAudioTransmit);
