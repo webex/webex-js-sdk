@@ -2115,7 +2115,7 @@ describe('plugin-meetings', () => {
         });
       });
 
-      it('has correct cpu info about number of cores', async () => {
+      it('reports the number of logical CPU cores', async () => {
         sinon.stub(CpuInfo, 'getNumLogicalCores').returns(12);
         await startStatsAnalyzer({expected: {receiveVideo: true}});
 
