@@ -5234,7 +5234,11 @@ export default class Meeting extends StatelessWebexPlugin {
     // @ts-ignore - Fix type
     if (this.webex.internal.llm.isConnected()) {
       // @ts-ignore - Fix type
-      if (url === this.webex.internal.llm.getLocusUrl() && isJoined) {
+      if (
+        url === this.webex.internal.llm.getLocusUrl() &&
+        datachannelUrl === this.webex.internal.llm.getDatachannelUrl() &&
+        isJoined
+      ) {
         return undefined;
       }
       // @ts-ignore - Fix type
