@@ -87,6 +87,7 @@ describe('plugin-meetings', () => {
       // @ts-ignore
       webex = new MockWebex({});
       webex.internal.llm.on = sinon.stub();
+      webex.internal.llm.isConnected = sinon.stub();
       webex.internal.mercury.on = sinon.stub();
       breakouts = new Breakouts({}, {parent: webex});
       breakouts.groupId = 'groupId';
