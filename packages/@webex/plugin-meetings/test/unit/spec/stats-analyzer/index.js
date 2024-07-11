@@ -1017,8 +1017,8 @@ describe('plugin-meetings', () => {
 
       describe('RTP recovered packets emission', async() => {
         beforeEach(async() => {
-          await startStatsAnalyzer();
-        })
+          await startStatsAnalyzer({pc, statsAnalyzer});
+        });
 
         it('should initially report zero RTP recovered packets', async() => {
           assert.strictEqual(mqeData.audioReceive[0].common.rtpRecovered, 0);
