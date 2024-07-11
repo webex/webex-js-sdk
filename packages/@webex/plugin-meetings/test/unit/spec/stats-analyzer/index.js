@@ -925,7 +925,7 @@ describe('plugin-meetings', () => {
 
       describe('frame rate reporting in stats analyzer', () => {
         beforeEach(async () => {
-          await startStatsAnalyzer();
+          await startStatsAnalyzer({pc, statsAnalyzer});
         });
 
         it('should report a zero frame rate for both transmitted and received video at the start', async () => {
@@ -1892,7 +1892,7 @@ describe('plugin-meetings', () => {
       });
       describe('active speaker status emission', async () => {
         beforeEach(async () => {
-          await startStatsAnalyzer();
+          await startStatsAnalyzer({pc, statsAnalyzer});
           performance.timeOrigin = 1;
         });
 
@@ -1927,7 +1927,7 @@ describe('plugin-meetings', () => {
 
         beforeEach(async () => {
           performance.timeOrigin = 0;
-          await startStatsAnalyzer();
+          await startStatsAnalyzer({pc, statsAnalyzer});
         });
 
         it('should send a stream if it is requested', async () => {
@@ -1960,7 +1960,7 @@ describe('plugin-meetings', () => {
 
       describe('window and screen size emission', async () => {
         beforeEach(async () => {
-          await startStatsAnalyzer();
+          await startStatsAnalyzer({pc, statsAnalyzer});
         });
 
         it('should record the screen size from window.screen properties', async () => {
