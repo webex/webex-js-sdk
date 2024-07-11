@@ -1662,7 +1662,7 @@ describe('plugin-meetings', () => {
         ]);
       });
 
-      describe('stream count for simulcats', async() => {
+      describe('stream count for simulcast', async() => {
         it('has three streams for video senders for simulcast', async () => {
           pc.getTransceiverStats = sinon.stub().resolves({
             audio: {
