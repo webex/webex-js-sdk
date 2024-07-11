@@ -148,7 +148,6 @@ const Breakouts = WebexPlugin.extend({
       this.triggerReturnToMainEvent(breakout);
     });
     this.listenToCurrentSessionTypeChange();
-    this.hasSubscribedToMessage = false;
     // this.listenToBroadcastMessages();
     this.listenToBreakoutRosters();
     this.listenToBreakoutHelp();
@@ -162,7 +161,7 @@ const Breakouts = WebexPlugin.extend({
    */
   cleanUp() {
     this.stopListening();
-    this.hasSubscribedToMessage = false;
+    this.hasSubscribedToMessage = undefined;
   },
 
   /**

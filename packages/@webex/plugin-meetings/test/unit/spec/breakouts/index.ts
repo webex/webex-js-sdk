@@ -226,38 +226,6 @@ describe('plugin-meetings', () => {
       });
     });
 
-    describe('#listenToBroadcastMessages', () => {
-      it('triggers message event when a message received', () => {
-        const call = webex.internal.llm.on.getCall(0);
-        const callback = call.args[1];
-
-        assert.equal(call.args[0], 'event:breakout.message');
-
-        let message;
-
-        breakouts.listenTo(breakouts, BREAKOUTS.EVENTS.MESSAGE, (event) => {
-          message = event;
-        });
-
-        breakouts.currentBreakoutSession.sessionId = 'sessionId';
-
-        callback({
-          data: {
-            senderUserId: 'senderUserId',
-            sentTime: 'sentTime',
-            message: 'message',
-          },
-        });
-
-        assert.deepEqual(message, {
-          senderUserId: 'senderUserId',
-          sentTime: 'sentTime',
-          message: 'message',
-          sessionId: 'sessionId',
-        });
-      });
-    });
-
     describe('#listenToBreakoutRosters', () => {
       it('triggers member update event when a roster received', () => {
         const call = webex.internal.mercury.on.getCall(0);
@@ -497,8 +465,58 @@ describe('plugin-meetings', () => {
     describe('#locusUrlUpdate', () => {
       it('sets the locus url', () => {
         breakouts.locusUrlUpdate('newUrl');
-
         assert.equal(breakouts.locusUrl, 'newUrl');
+      });
+    });
+
+    describe('#listenToBroadcastMessages', () => {
+      it('do not subscribe message if llm not connected', () => {
+        webex.internal.llm.isConnected = sinon.stub().returns(false);
+        breakouts.listenTo = sinon.stub();
+        breakouts.locusUrlUpdate('newUrl');
+        assert.equal(breakouts.locusUrl, 'newUrl');
+        assert.notCalled(breakouts.listenTo);
+      });
+
+      it('do not subscribe message if already done', () => {
+        webex.internal.llm.isConnected = sinon.stub().returns(true);
+        breakouts.hasSubscribedToMessage = true;
+        breakouts.listenTo = sinon.stub();
+        breakouts.locusUrlUpdate('newUrl');
+        assert.equal(breakouts.locusUrl, 'newUrl');
+        assert.notCalled(breakouts.listenTo);
+      });
+
+      it('triggers message event when a message received', () => {
+        webex.internal.llm.isConnected = sinon.stub().returns(true);
+        breakouts.locusUrlUpdate('newUrl');
+        const call = webex.internal.llm.on.getCall(0);
+        const callback = call.args[1];
+
+        assert.equal(call.args[0], 'event:breakout.message');
+
+        let message;
+
+        breakouts.listenTo(breakouts, BREAKOUTS.EVENTS.MESSAGE, (event) => {
+          message = event;
+        });
+
+        breakouts.currentBreakoutSession.sessionId = 'sessionId';
+
+        callback({
+          data: {
+            senderUserId: 'senderUserId',
+            sentTime: 'sentTime',
+            message: 'message',
+          },
+        });
+
+        assert.deepEqual(message, {
+          senderUserId: 'senderUserId',
+          sentTime: 'sentTime',
+          message: 'message',
+          sessionId: 'sessionId',
+        });
       });
     });
 
