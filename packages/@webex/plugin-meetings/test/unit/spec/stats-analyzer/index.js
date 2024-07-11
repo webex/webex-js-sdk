@@ -1016,35 +1016,52 @@ describe('plugin-meetings', () => {
         });
       });
 
-      describe('remote loss rate reporting in stats analyzer', () => {
+      describe('maximum remote loss rate reporting in stats analyzer', () => {
         beforeEach(async () => {
           await startStatsAnalyzer();
         });
 
-        it('should report a zero remote loss rate for both audio and video at the start', async () => {
-          assert.strictEqual(mqeData.audioTransmit[0].common.remoteLossRate, 0);
-          assert.strictEqual(mqeData.videoTransmit[0].common.remoteLossRate, 0);
+        it('should report a zero maximum remote loss rate for both audio and video at the start', async () => {
+          assert.strictEqual(mqeData.audioTransmit[0].common.maxRemoteLossRate, 0);
+          assert.strictEqual(mqeData.videoTransmit[0].common.maxRemoteLossRate, 0);
         });
 
-        it('should maintain a zero remote loss rate for both audio and video after packets are sent without loss', async () => {
+        it('should maintain a zero maximum remote loss rate for both audio and video after packets are sent without loss', async () => {
           fakeStats.audio.senders[0].report[0].packetsSent += 100;
           fakeStats.video.senders[0].report[0].packetsSent += 100;
           await progressTime(MQA_INTERVAL);
 
-          assert.strictEqual(mqeData.audioTransmit[0].common.remoteLossRate, 0);
-          assert.strictEqual(mqeData.videoTransmit[0].common.remoteLossRate, 0);
+          assert.strictEqual(mqeData.audioTransmit[0].common.maxRemoteLossRate, 0);
+          assert.strictEqual(mqeData.videoTransmit[0].common.maxRemoteLossRate, 0);
         });
 
-        it('should accurately calculate the remote loss rate for both audio and video after packet loss is detected', async () => {
+        it('should accurately calculate the maximum remote loss rate for both audio and video after packet loss is detected', async () => {
           fakeStats.audio.senders[0].report[0].packetsSent += 200;
           fakeStats.audio.senders[0].report[1].packetsLost += 10;
           fakeStats.video.senders[0].report[0].packetsSent += 200;
           fakeStats.video.senders[0].report[1].packetsLost += 10;
           await progressTime(MQA_INTERVAL);
 
-          assert.strictEqual(mqeData.audioTransmit[0].common.remoteLossRate, 5);
-          assert.strictEqual(mqeData.videoTransmit[0].common.remoteLossRate, 5);
+          assert.strictEqual(mqeData.audioTransmit[0].common.maxRemoteLossRate, 5);
+          assert.strictEqual(mqeData.videoTransmit[0].common.maxRemoteLossRate, 5);
         });
+
+        it('should reset the maximum remote loss rate across MQA intervals', async() => {
+          fakeStats.audio.senders[0].report[0].packetsSent += 100;
+          fakeStats.audio.senders[0].report[1].packetsLost += 10;
+          fakeStats.video.senders[0].report[0].packetsSent += 50;
+          fakeStats.video.senders[0].report[1].packetsLost += 5;
+          await progressTime(MQA_INTERVAL);
+
+          assert.strictEqual(mqeData.audioTransmit[0].common.maxRemoteLossRate, 10);
+          assert.strictEqual(mqeData.videoTransmit[0].common.maxRemoteLossRate, 10);
+
+          await progressTime(MQA_INTERVAL);
+
+          assert.strictEqual(mqeData.audioTransmit[0].common.maxRemoteLossRate, 0);
+          assert.strictEqual(mqeData.videoTransmit[0].common.maxRemoteLossRate, 0);
+
+        })
       });
 
 

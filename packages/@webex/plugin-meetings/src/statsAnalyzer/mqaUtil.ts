@@ -169,7 +169,7 @@ export const getAudioSenderMqa = ({audioSender, statsResults, lastMqaDataSent, b
   // Calculate based on how much packets lost of received compated to how to the client sent
 
   const totalPacketsLostForaMin = totalPacketsLostOnReceiver - lastPacketsLostTotal;
-  audioSender.common.remoteLossRate =
+  audioSender.common.maxRemoteLossRate =
     totalPacketsSent - lastPacketsSent > 0
       ? (totalPacketsLostForaMin * 100) / (totalPacketsSent - lastPacketsSent)
       : 0; // This is the packets sent with in last min
@@ -401,7 +401,7 @@ export const getVideoSenderMqa = ({videoSender, statsResults, lastMqaDataSent, b
   // Calculate based on how much packets lost of received compated to how to the client sent
   const totalPacketsLostForaMin = totalPacketsLostOnReceiver - lastPacketsLostTotal;
 
-  videoSender.common.remoteLossRate =
+  videoSender.common.maxRemoteLossRate =
     totalPacketsSent - lastPacketsSent > 0
       ? (totalPacketsLostForaMin * 100) / (totalPacketsSent - lastPacketsSent)
       : 0; // This is the packets sent with in last min || 0;
