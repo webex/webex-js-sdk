@@ -16,7 +16,7 @@ const CAPTCHA_ERROR_DEFAULT_MESSAGE =
   'Captcha required. Call fetchMeetingInfo() with captchaInfo argument';
 const ADHOC_MEETING_DEFAULT_ERROR =
   'Failed starting the adhoc meeting, Please contact support team ';
-const CAPTCHA_ERROR_REQUIRES_PASSWORD_CODES = [423005, 423006];
+const CAPTCHA_ERROR_REQUIRES_PASSWORD_CODES: (number | undefined)[] = [423005, 423006];
 const POLICY_ERROR_CODES = [403049, 403104, 403103, 403048, 403102, 403101];
 /**
  * Error to indicate that wbxappapi requires a password
@@ -73,9 +73,9 @@ export class MeetingInfoV2AdhocMeetingError extends Error {
  * Error preventing join because of a meeting policy
  */
 export class MeetingInfoV2PolicyError extends Error {
-  meetingInfo: object;
-  sdkMessage: string;
-  wbxAppApiCode: number;
+  meetingInfo: Record<string, any> | undefined;
+  sdkMessage: string | undefined;
+  wbxAppApiCode: number | undefined;
   /**
    *
    * @constructor
@@ -134,19 +134,19 @@ export default class MeetingInfoV2 {
    *
    * @param {WebexSDK} webex
    */
-  constructor(webex) {
+  constructor(webex: unknown) {
     this.webex = webex;
   }
 
   /**
    * converts hydra id into conversation url and persons Id
-   * @param {String} destination one of many different types of destinations to look up info for
-   * @param {String} [type] to match up with the destination value
+   * @param {string} destination one of many different types of destinations to look up info for
+   * @param {string | null} [type] to match up with the destination value
    * @returns {Promise} destination and type
    * @public
    * @memberof MeetingInfo
    */
-  fetchInfoOptions(destination: string, type: string = null) {
+  fetchInfoOptions(destination: string, type: string | null = null) {
     return MeetingInfoUtil.getDestinationType({
       destination,
       type,
@@ -156,10 +156,10 @@ export default class MeetingInfoV2 {
 
   /**
    * Raises a MeetingInfoV2PolicyError for policy error codes
-   * @param {any} err the error from the request
+   * @param {Record<string, any>} err the error from the request
    * @returns {void}
    */
-  handlePolicyError = (err) => {
+  handlePolicyError = (err: Record<string, any>) => {
     if (!err.body) {
       return;
     }
@@ -179,21 +179,21 @@ export default class MeetingInfoV2 {
 
   /**
    * Creates adhoc space meetings for a space by fetching the conversation infomation
-   * @param {String} conversationUrl conversationUrl to start adhoc meeting on
-   * @param {String} installedOrgID org ID of user's machine
+   * @param {string} conversationUrl conversationUrl to start adhoc meeting on
+   * @param {string | null | undefined} installedOrgID org ID of user's machine
    * @returns {Promise} returns a meeting info object
    * @public
    * @memberof MeetingInfo
    */
-  async createAdhocSpaceMeeting(conversationUrl: string, installedOrgID?: string) {
+  async createAdhocSpaceMeeting(conversationUrl: string, installedOrgID?: string | null) {
     if (!this.webex.meetings.preferredWebexSite) {
       throw Error('No preferred webex site found');
     }
     const getInvitees = (particpants = []) => {
-      const invitees = [];
+      const invitees: Record<string, any> = [];
 
       if (particpants) {
-        particpants.forEach((participant) => {
+        particpants.forEach((participant: Record<string, any>) => {
           invitees.push({
             email: participant.emailAddress,
             ciUserUuid: participant.entryUUID,
@@ -206,7 +206,7 @@ export default class MeetingInfoV2 {
 
     return this.webex
       .request({uri: conversationUrl, qs: {includeParticipants: true}, disableTransform: true})
-      .then(({body: conversation}) => {
+      .then(({body: conversation}: Record<string, any>) => {
         const body = {
           title: conversation.displayName,
           spaceUrl: conversation.url,
@@ -230,12 +230,12 @@ export default class MeetingInfoV2 {
           body,
         });
       })
-      .then((requestResult) => {
+      .then((requestResult: unknown) => {
         Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.ADHOC_MEETING_SUCCESS);
 
         return requestResult;
       })
-      .catch((err) => {
+      .catch((err: Record<string, any>) => {
         this.handlePolicyError(err);
 
         Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.ADHOC_MEETING_FAILURE, {
@@ -247,32 +247,35 @@ export default class MeetingInfoV2 {
   }
 
   /**
-   * Fetches meeting info from the server
-   * @param {String} destination one of many different types of destinations to look up info for
-   * @param {String} [type] to match up with the destination value
-   * @param {String} password
-   * @param {Object} captchaInfo
-   * @param {String} captchaInfo.code
-   * @param {String} captchaInfo.id
-   * @param {String} installedOrgID org ID of user's machine
-   * @param {String} locusId
-   * @param {Object} extraParams
-   * @param {Object} options
-   * @returns {Promise} returns a meeting info object
+   * Fetches meeting info from the server.
+   *
+   * @param {string} destination - One of many different types of destinations to look up info for.
+   * @param {string | null} [type] - Optional type to match up with the destination value.
+   * @param {string | null} [password] - Optional password.
+   * @param {Object} captchaInfo - Captcha information.
+   * @param {string} captchaInfo.code - Captcha code.
+   * @param {string} captchaInfo.id - Captcha ID.
+   * @param {string | null} [installedOrgID] - Optional org ID of user's machine.
+   * @param {string | null} [locusId] - Optional locus ID.
+   * @param {Object} extraParams - Additional parameters.
+   * @param {Object} [options] - Optional settings.
+   * @param {string} [options.meetingId] - Optional meeting ID.
+   * @param {boolean} [options.sendCAevents] - Optional flag to send CA events.
+   * @returns {Promise<Object>} - Returns a promise that resolves with a meeting info object.
    * @public
    * @memberof MeetingInfo
    */
   async fetchMeetingInfo(
     destination: string,
-    type: string = null,
-    password: string = null,
+    type: string | null = null,
+    password: string | null = null,
     captchaInfo: {
       code: string;
       id: string;
-    } = null,
-    installedOrgID = null,
-    locusId = null,
-    extraParams: object = {},
+    } | null = null,
+    installedOrgID: string | null = null,
+    locusId: string | null = null,
+    extraParams: Record<string, any> = {},
     options: {meetingId?: string; sendCAevents?: boolean} = {}
   ) {
     const {meetingId, sendCAevents} = options;
@@ -345,7 +348,7 @@ export default class MeetingInfoV2 {
 
     return this.webex
       .request(requestOptions)
-      .then((response) => {
+      .then((response: Record<string, any>) => {
         if (meetingId && sendCAevents) {
           this.webex.internal.newMetrics.submitInternalEvent({
             name: 'internal.client.meetinginfo.response',
@@ -369,7 +372,7 @@ export default class MeetingInfoV2 {
 
         return response;
       })
-      .catch((err) => {
+      .catch((err: Record<string, any>) => {
         if (meetingId && sendCAevents) {
           this.webex.internal.newMetrics.submitInternalEvent({
             name: 'internal.client.meetinginfo.response',

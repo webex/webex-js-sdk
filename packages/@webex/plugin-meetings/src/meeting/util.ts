@@ -4,17 +4,17 @@ import {cloneDeep} from 'lodash';
 import {MeetingNotActiveError, UserNotJoinedError} from '../common/errors/webex-errors';
 import LoggerProxy from '../common/logs/logger-proxy';
 import {
-  INTENT_TO_JOIN,
-  _LEFT_,
   _IDLE_,
   _JOINED_,
-  PASSWORD_STATUS,
+  _LEFT_,
   DISPLAY_HINTS,
-  FULL_STATE,
-  SELF_POLICY,
   EVENT_TRIGGERS,
-  LOCAL_SHARE_ERRORS,
+  FULL_STATE,
+  INTENT_TO_JOIN,
   IP_VERSION,
+  LOCAL_SHARE_ERRORS,
+  PASSWORD_STATUS,
+  SELF_POLICY,
 } from '../constants';
 import BrowserDetection from '../common/browser-detection';
 import IntentToJoinError from '../common/errors/intent-to-join';
@@ -26,7 +26,7 @@ import CaptchaError from '../common/errors/captcha-error';
 import Trigger from '../common/events/trigger-proxy';
 
 const MeetingUtil = {
-  parseLocusJoin: (response) => {
+  parseLocusJoin: (response: Record<string, any>) => {
     const parsed: any = {};
 
     // First todo: add check for existance
@@ -37,7 +37,7 @@ const MeetingUtil = {
     parsed.selfId = parsed.locus.self.id;
 
     // we need mediaId before making roap calls
-    parsed.mediaConnections.forEach((mediaConnection) => {
+    parsed.mediaConnections.forEach((mediaConnection: Record<string, any>) => {
       if (mediaConnection.mediaId) {
         parsed.mediaId = mediaConnection.mediaId;
       }
@@ -46,7 +46,11 @@ const MeetingUtil = {
     return parsed;
   },
 
-  remoteUpdateAudioVideo: (meeting, audioMuted?: boolean, videoMuted?: boolean) => {
+  remoteUpdateAudioVideo: (
+    meeting: Record<string, any>,
+    audioMuted?: boolean,
+    videoMuted?: boolean
+  ) => {
     if (!meeting) {
       return Promise.reject(new ParameterError('You need a meeting object.'));
     }
@@ -70,14 +74,15 @@ const MeetingUtil = {
           videoMuted,
         },
       })
-      .then((response) => response?.body?.locus);
+      .then((response: Record<string, any>) => response?.body?.locus);
   },
 
-  hasOwner: (info) => info && info.owner,
+  hasOwner: (info: Record<string, any>) => info && info.owner,
 
-  isOwnerSelf: (owner, selfId) => owner === selfId,
+  isOwnerSelf: (owner: string, selfId: string) => owner === selfId,
 
-  isPinOrGuest: (err) => err?.body?.errorCode && INTENT_TO_JOIN.includes(err.body.errorCode),
+  isPinOrGuest: (err: Record<string, any>) =>
+    err?.body?.errorCode && INTENT_TO_JOIN.includes(err.body.errorCode),
 
   /**
    * Returns the current state of knowledge about whether we are on an ipv4-only or ipv6-only or mixed (ipv4 and ipv6) network.
@@ -111,7 +116,7 @@ const MeetingUtil = {
     return IP_VERSION.unknown;
   },
 
-  joinMeeting: (meeting, options) => {
+  joinMeeting: (meeting: Record<string, any>, options: Record<string, any>) => {
     if (!meeting) {
       return Promise.reject(new ParameterError('You need a meeting object.'));
     }
@@ -149,8 +154,7 @@ const MeetingUtil = {
         liveAnnotationSupported: options.liveAnnotationSupported,
         ipVersion: MeetingUtil.getIpVersion(meeting.getWebexObject()),
       })
-      .then((res) => {
-        // @ts-ignore
+      .then((res: Record<string, any>) => {
         webex.internal.newMetrics.submitClientEvent({
           name: 'client.locus.join.response',
           payload: {
@@ -169,7 +173,7 @@ const MeetingUtil = {
       });
   },
 
-  cleanUp: (meeting) => {
+  cleanUp: (meeting: Record<string, any>) => {
     meeting.breakouts.cleanUp();
     meeting.simultaneousInterpretation.cleanUp();
 
@@ -195,7 +199,7 @@ const MeetingUtil = {
       });
   },
 
-  disconnectPhoneAudio: (meeting, phoneUrl) => {
+  disconnectPhoneAudio: (meeting: Record<string, any>, phoneUrl: string) => {
     if (meeting.meetingState === FULL_STATE.INACTIVE) {
       return Promise.reject(new MeetingNotActiveError());
     }
@@ -207,7 +211,7 @@ const MeetingUtil = {
       phoneUrl,
     };
 
-    return meeting.meetingRequest.disconnectPhoneAudio(options).catch((err) => {
+    return meeting.meetingRequest.disconnectPhoneAudio(options).catch((err: unknown) => {
       LoggerProxy.logger.error(
         `Meeting:util#disconnectPhoneAudio --> An error occured while disconnecting phone audio in meeting ${meeting.id}, error: ${err}`
       );
@@ -222,7 +226,7 @@ const MeetingUtil = {
    * @param {any} options
    * @returns {any} leave options
    */
-  prepareLeaveMeetingOptions: (meeting, options: any = {}) => {
+  prepareLeaveMeetingOptions: (meeting: Record<string, any>, options: Record<string, any> = {}) => {
     const defaultOptions = {
       locusUrl: meeting.locusUrl,
       selfId: meeting.selfId,
@@ -238,7 +242,7 @@ const MeetingUtil = {
   // if you explicity want it not to leave on resource id, pass
   // {resourceId: null}
   // TODO: chris, you can modify this however you want
-  leaveMeeting: (meeting, options: any = {}) => {
+  leaveMeeting: (meeting: Record<string, any>, options: any = {}) => {
     if (meeting.meetingState === FULL_STATE.INACTIVE) {
       // TODO: clean up if the meeting is already inactive
       return Promise.reject(new MeetingNotActiveError());
@@ -259,7 +263,7 @@ const MeetingUtil = {
 
         return MeetingUtil.cleanUp(meeting);
       })
-      .catch((err) => {
+      .catch((err: unknown) => {
         // TODO: If the meeting state comes as LEFT or INACTIVE as response then
         // 1)  on leave clean up the meeting or simply do a sync on the meeting
         // 2) If the error says meeting is inactive then destroy the meeting object
@@ -270,24 +274,27 @@ const MeetingUtil = {
         return Promise.reject(err);
       });
   },
-  declineMeeting: (meeting, reason) =>
+  declineMeeting: (meeting: Record<string, any>, reason: string) =>
     meeting.meetingRequest.declineMeeting({
       locusUrl: meeting.locusUrl,
       deviceUrl: meeting.deviceUrl,
       reason,
     }),
 
-  isUserInLeftState: (locusInfo) => locusInfo.parsedLocus?.self?.state === _LEFT_,
+  isUserInLeftState: (locusInfo: Record<string, any>) =>
+    locusInfo.parsedLocus?.self?.state === _LEFT_,
 
-  isUserInIdleState: (locusInfo) => locusInfo.parsedLocus?.self?.state === _IDLE_,
+  isUserInIdleState: (locusInfo: Record<string, any>) =>
+    locusInfo.parsedLocus?.self?.state === _IDLE_,
 
-  isUserInJoinedState: (locusInfo) => locusInfo.parsedLocus?.self?.state === _JOINED_,
+  isUserInJoinedState: (locusInfo: Record<string, any>) =>
+    locusInfo.parsedLocus?.self?.state === _JOINED_,
 
-  isMediaEstablished: (currentMediaStatus) =>
+  isMediaEstablished: (currentMediaStatus: Record<string, any>) =>
     currentMediaStatus &&
     (currentMediaStatus.audio || currentMediaStatus.video || currentMediaStatus.share),
 
-  joinMeetingOptions: (meeting, options: any = {}) => {
+  joinMeetingOptions: (meeting: Record<string, any>, options: Record<string, any> = {}) => {
     const webex = meeting.getWebexObject();
 
     meeting.resourceId = meeting.resourceId || options.resourceId;
@@ -311,12 +318,12 @@ const MeetingUtil = {
 
     // normal join meeting, scenario A, D
     return MeetingUtil.joinMeeting(meeting, options)
-      .then((response) => {
+      .then((response: unknown) => {
         meeting.setLocus(response);
 
         return Promise.resolve(response);
       })
-      .catch((err) => {
+      .catch((err: Record<string, any>) => {
         // joining a claimed PMR that is not my own, scenario B
         if (MeetingUtil.isPinOrGuest(err)) {
           // @ts-ignore
@@ -346,13 +353,16 @@ const MeetingUtil = {
    * @param {any} options
    * @returns {any} request options
    */
-  buildLeaveFetchRequestOptions: (meeting, options: any = {}) => {
+  buildLeaveFetchRequestOptions: (
+    meeting: Record<string, any>,
+    options: Record<string, any> = {}
+  ) => {
     const leaveOptions = MeetingUtil.prepareLeaveMeetingOptions(meeting, options);
 
     return meeting.meetingRequest.buildLeaveMeetingRequestOptions(leaveOptions);
   },
 
-  getTrack: (stream) => {
+  getTrack: (stream: Record<string, any>) => {
     let audioTrack = null;
     let videoTrack = null;
     let audioTracks = null;
@@ -379,64 +389,69 @@ const MeetingUtil = {
     return {audioTrack, videoTrack};
   },
 
-  getModeratorFromLocusInfo: (locusInfo) =>
+  getModeratorFromLocusInfo: (locusInfo: Record<string, any>) =>
     locusInfo &&
     locusInfo.parsedLocus &&
     locusInfo.parsedLocus.info &&
     locusInfo.parsedLocus.info &&
     locusInfo.parsedLocus.info.moderator,
 
-  getPolicyFromLocusInfo: (locusInfo) =>
+  getPolicyFromLocusInfo: (locusInfo: Record<string, any>) =>
     locusInfo &&
     locusInfo.parsedLocus &&
     locusInfo.parsedLocus.info &&
     locusInfo.parsedLocus.info &&
     locusInfo.parsedLocus.info.policy,
 
-  getUserDisplayHintsFromLocusInfo: (locusInfo) =>
+  getUserDisplayHintsFromLocusInfo: (locusInfo: Record<string, any>) =>
     locusInfo?.parsedLocus?.info?.userDisplayHints || [],
 
-  canInviteNewParticipants: (displayHints) => displayHints.includes(DISPLAY_HINTS.ADD_GUEST),
+  canInviteNewParticipants: (displayHints: string[]) =>
+    displayHints.includes(DISPLAY_HINTS.ADD_GUEST),
 
-  canAdmitParticipant: (displayHints) =>
+  canAdmitParticipant: (displayHints: string[]) =>
     displayHints.includes(DISPLAY_HINTS.ROSTER_WAITING_TO_JOIN),
 
-  canUserLock: (displayHints) =>
+  canUserLock: (displayHints: string[]) =>
     displayHints.includes(DISPLAY_HINTS.LOCK_CONTROL_LOCK) &&
     displayHints.includes(DISPLAY_HINTS.LOCK_STATUS_UNLOCKED),
 
-  canUserUnlock: (displayHints) =>
+  canUserUnlock: (displayHints: string[]) =>
     displayHints.includes(DISPLAY_HINTS.LOCK_CONTROL_UNLOCK) &&
     displayHints.includes(DISPLAY_HINTS.LOCK_STATUS_LOCKED),
 
-  canUserRaiseHand: (displayHints) => displayHints.includes(DISPLAY_HINTS.RAISE_HAND),
+  canUserRaiseHand: (displayHints: string[]) => displayHints.includes(DISPLAY_HINTS.RAISE_HAND),
 
-  canUserLowerAllHands: (displayHints) => displayHints.includes(DISPLAY_HINTS.LOWER_ALL_HANDS),
+  canUserLowerAllHands: (displayHints: string[]) =>
+    displayHints.includes(DISPLAY_HINTS.LOWER_ALL_HANDS),
 
-  canUserLowerSomeoneElsesHand: (displayHints) =>
+  canUserLowerSomeoneElsesHand: (displayHints: string[]) =>
     displayHints.includes(DISPLAY_HINTS.LOWER_SOMEONE_ELSES_HAND),
 
-  bothLeaveAndEndMeetingAvailable: (displayHints) =>
+  bothLeaveAndEndMeetingAvailable: (displayHints: string[]) =>
     displayHints.includes(DISPLAY_HINTS.LEAVE_TRANSFER_HOST_END_MEETING) ||
     displayHints.includes(DISPLAY_HINTS.LEAVE_END_MEETING),
 
-  canManageBreakout: (displayHints) => displayHints.includes(DISPLAY_HINTS.BREAKOUT_MANAGEMENT),
-  canBroadcastMessageToBreakout: (displayHints, policies = {}) =>
+  canManageBreakout: (displayHints: string[]) =>
+    displayHints.includes(DISPLAY_HINTS.BREAKOUT_MANAGEMENT),
+
+  canBroadcastMessageToBreakout: (displayHints: string, policies: Record<string, any> = {}) =>
     displayHints.includes(DISPLAY_HINTS.BROADCAST_MESSAGE_TO_BREAKOUT) &&
     !!policies[SELF_POLICY.SUPPORT_BROADCAST_MESSAGE],
 
-  isSuppressBreakoutSupport: (displayHints) =>
+  isSuppressBreakoutSupport: (displayHints: string[]) =>
     displayHints.includes(DISPLAY_HINTS.UCF_SUPPRESS_BREAKOUTS_SUPPORT),
 
-  canAdmitLobbyToBreakout: (displayHints) =>
+  canAdmitLobbyToBreakout: (displayHints: string[]) =>
     !displayHints.includes(DISPLAY_HINTS.DISABLE_LOBBY_TO_BREAKOUT),
 
-  isBreakoutPreassignmentsEnabled: (displayHints) =>
+  isBreakoutPreassignmentsEnabled: (displayHints: string[]) =>
     !displayHints.includes(DISPLAY_HINTS.DISABLE_BREAKOUT_PREASSIGNMENTS),
 
-  canUserAskForHelp: (displayHints) => !displayHints.includes(DISPLAY_HINTS.DISABLE_ASK_FOR_HELP),
+  canUserAskForHelp: (displayHints: string[]) =>
+    !displayHints.includes(DISPLAY_HINTS.DISABLE_ASK_FOR_HELP),
 
-  lockMeeting: (actions, request, locusUrl) => {
+  lockMeeting: (actions: Record<string, any>, request: Record<string, any>, locusUrl: string) => {
     if (actions && actions.canLock) {
       return request.lockMeeting({locusUrl, lock: true});
     }
@@ -444,7 +459,7 @@ const MeetingUtil = {
     return Promise.reject(new PermissionError('Lock not allowed, due to joined property.'));
   },
 
-  unlockMeeting: (actions, request, locusUrl) => {
+  unlockMeeting: (actions: Record<string, any>, request: Record<string, any>, locusUrl: string) => {
     if (actions && actions.canUnlock) {
       return request.lockMeeting({locusUrl, lock: false});
     }
@@ -452,7 +467,7 @@ const MeetingUtil = {
     return Promise.reject(new PermissionError('Unlock not allowed, due to joined property.'));
   },
 
-  handleAudioLogging: (audioStream?: LocalMicrophoneStream) => {
+  handleAudioLogging: (audioStream?: LocalMicrophoneStream | null) => {
     const LOG_HEADER = 'MeetingUtil#handleAudioLogging -->';
 
     if (audioStream) {
@@ -464,7 +479,7 @@ const MeetingUtil = {
     }
   },
 
-  handleVideoLogging: (videoStream?: LocalCameraStream) => {
+  handleVideoLogging: (videoStream?: LocalCameraStream | null) => {
     const LOG_HEADER = 'MeetingUtil#handleVideoLogging -->';
 
     if (videoStream) {
@@ -476,7 +491,7 @@ const MeetingUtil = {
     }
   },
 
-  handleDeviceLogging: (devices = []) => {
+  handleDeviceLogging: (devices: Record<string, any>[] = []) => {
     const LOG_HEADER = 'MeetingUtil#handleDeviceLogging -->';
 
     devices.forEach((device) => {
@@ -485,7 +500,7 @@ const MeetingUtil = {
     });
   },
 
-  endMeetingForAll: (meeting) => {
+  endMeetingForAll: (meeting: Record<string, any>) => {
     if (meeting.meetingState === FULL_STATE.INACTIVE) {
       return Promise.reject(new MeetingNotActiveError());
     }
@@ -497,7 +512,7 @@ const MeetingUtil = {
     return meeting.meetingRequest
       .endMeetingForAll(endOptions)
       .then(() => MeetingUtil.cleanUp(meeting))
-      .catch((err) => {
+      .catch((err: unknown) => {
         LoggerProxy.logger.error(
           `Meeting:util#endMeetingForAll An error occured while trying to end meeting for all with an id of ${meeting.id}, error: ${err}`
         );
@@ -506,42 +521,46 @@ const MeetingUtil = {
       });
   },
 
-  canEnableClosedCaption: (displayHints) => displayHints.includes(DISPLAY_HINTS.CAPTION_START),
+  canEnableClosedCaption: (displayHints: string[]) =>
+    displayHints.includes(DISPLAY_HINTS.CAPTION_START),
 
-  isSaveTranscriptsEnabled: (displayHints) =>
+  isSaveTranscriptsEnabled: (displayHints: string[]) =>
     displayHints.includes(DISPLAY_HINTS.SAVE_TRANSCRIPTS_ENABLED),
 
-  canStartTranscribing: (displayHints) =>
+  canStartTranscribing: (displayHints: string[]) =>
     displayHints.includes(DISPLAY_HINTS.TRANSCRIPTION_CONTROL_START),
 
-  canStopTranscribing: (displayHints) =>
+  canStopTranscribing: (displayHints: string[]) =>
     displayHints.includes(DISPLAY_HINTS.TRANSCRIPTION_CONTROL_STOP),
 
-  isClosedCaptionActive: (displayHints) =>
+  isClosedCaptionActive: (displayHints: string[]) =>
     displayHints.includes(DISPLAY_HINTS.CAPTION_STATUS_ACTIVE),
 
-  canStartManualCaption: (displayHints) =>
+  canStartManualCaption: (displayHints: string[]) =>
     displayHints.includes(DISPLAY_HINTS.MANUAL_CAPTION_START),
 
-  canStopManualCaption: (displayHints) => displayHints.includes(DISPLAY_HINTS.MANUAL_CAPTION_STOP),
+  canStopManualCaption: (displayHints: string[]) =>
+    displayHints.includes(DISPLAY_HINTS.MANUAL_CAPTION_STOP),
 
-  isManualCaptionActive: (displayHints) =>
+  isManualCaptionActive: (displayHints: string[]) =>
     displayHints.includes(DISPLAY_HINTS.MANUAL_CAPTION_STATUS_ACTIVE),
 
-  isWebexAssistantActive: (displayHints) =>
+  isWebexAssistantActive: (displayHints: string[]) =>
     displayHints.includes(DISPLAY_HINTS.WEBEX_ASSISTANT_STATUS_ACTIVE),
 
-  canViewCaptionPanel: (displayHints) => displayHints.includes(DISPLAY_HINTS.ENABLE_CAPTION_PANEL),
+  canViewCaptionPanel: (displayHints: string[]) =>
+    displayHints.includes(DISPLAY_HINTS.ENABLE_CAPTION_PANEL),
 
-  isRealTimeTranslationEnabled: (displayHints) =>
+  isRealTimeTranslationEnabled: (displayHints: string[]) =>
     displayHints.includes(DISPLAY_HINTS.DISPLAY_REAL_TIME_TRANSLATION),
 
-  canSelectSpokenLanguages: (displayHints) =>
+  canSelectSpokenLanguages: (displayHints: string[]) =>
     displayHints.includes(DISPLAY_HINTS.DISPLAY_NON_ENGLISH_ASR),
 
-  waitingForOthersToJoin: (displayHints) => displayHints.includes(DISPLAY_HINTS.WAITING_FOR_OTHERS),
+  waitingForOthersToJoin: (displayHints: string[]) =>
+    displayHints.includes(DISPLAY_HINTS.WAITING_FOR_OTHERS),
 
-  canSendReactions: (originalValue, displayHints) => {
+  canSendReactions: (originalValue: boolean | null | undefined, displayHints: string[]) => {
     if (displayHints.includes(DISPLAY_HINTS.REACTIONS_ACTIVE)) {
       return true;
     }
@@ -551,12 +570,14 @@ const MeetingUtil = {
 
     return originalValue;
   },
-  canUserRenameSelfAndObserved: (displayHints) =>
+  canUserRenameSelfAndObserved: (displayHints: string[]) =>
     displayHints.includes(DISPLAY_HINTS.CAN_RENAME_SELF_AND_OBSERVED),
 
-  canUserRenameOthers: (displayHints) => displayHints.includes(DISPLAY_HINTS.CAN_RENAME_OTHERS),
+  canUserRenameOthers: (displayHints: string[]) =>
+    displayHints.includes(DISPLAY_HINTS.CAN_RENAME_OTHERS),
 
-  canShareWhiteBoard: (displayHints) => displayHints.includes(DISPLAY_HINTS.SHARE_WHITEBOARD),
+  canShareWhiteBoard: (displayHints: string[]) =>
+    displayHints.includes(DISPLAY_HINTS.SHARE_WHITEBOARD),
 
   /**
    * Adds the current locus sequence information to a request body
@@ -564,7 +585,7 @@ const MeetingUtil = {
    * @param {Object} requestBody The body of a request to locus
    * @returns {void}
    */
-  addSequence: (meeting, requestBody) => {
+  addSequence: (meeting: Record<string, any>, requestBody: Record<string, any>) => {
     const sequence = meeting?.locusInfo?.sequence;
 
     if (!sequence) {
@@ -582,7 +603,7 @@ const MeetingUtil = {
    * @param {Object} response The response of the http request
    * @returns {Object}
    */
-  updateLocusWithDelta: (meeting, response) => {
+  updateLocusWithDelta: (meeting: Record<string, any>, response: Record<string, any>) => {
     if (!meeting) {
       return response;
     }
@@ -596,10 +617,12 @@ const MeetingUtil = {
     return response;
   },
 
-  generateBuildLocusDeltaRequestOptions: (originalMeeting) => {
+  generateBuildLocusDeltaRequestOptions: (
+    originalMeeting: Record<string, any>
+  ): ((options: Record<string, any>) => Record<string, any>) => {
     const meetingRef = new WeakRef(originalMeeting);
 
-    const buildLocusDeltaRequestOptions = (originalOptions) => {
+    return (originalOptions: Record<string, any>) => {
       const meeting = meetingRef.deref();
 
       if (!meeting) {
@@ -616,17 +639,15 @@ const MeetingUtil = {
 
       return options;
     };
-
-    return buildLocusDeltaRequestOptions;
   },
 
-  generateLocusDeltaRequest: (originalMeeting) => {
+  generateLocusDeltaRequest: (originalMeeting: Record<string, any>) => {
     const meetingRef = new WeakRef(originalMeeting);
 
     const buildLocusDeltaRequestOptions =
       MeetingUtil.generateBuildLocusDeltaRequestOptions(originalMeeting);
 
-    const locusDeltaRequest = (originalOptions) => {
+    const locusDeltaRequest = (originalOptions: Record<string, any>) => {
       const meeting = meetingRef.deref();
 
       if (!meeting) {
@@ -637,13 +658,18 @@ const MeetingUtil = {
 
       return meeting
         .request(options)
-        .then((response) => MeetingUtil.updateLocusWithDelta(meeting, response));
+        .then((response: Record<string, any>) =>
+          MeetingUtil.updateLocusWithDelta(meeting, response)
+        );
     };
 
     return locusDeltaRequest;
   },
 
-  selfSupportsFeature: (feature: SELF_POLICY, userPolicies: Record<SELF_POLICY, boolean>) => {
+  selfSupportsFeature: (
+    feature: SELF_POLICY,
+    userPolicies: Record<SELF_POLICY, boolean> | undefined
+  ) => {
     if (!userPolicies) {
       return true;
     }
@@ -651,7 +677,10 @@ const MeetingUtil = {
     return userPolicies[feature];
   },
 
-  parseInterpretationInfo: (meeting, meetingInfo) => {
+  parseInterpretationInfo: (
+    meeting: Record<string, any>,
+    meetingInfo: Record<string, any> | undefined
+  ) => {
     if (!meeting || !meetingInfo) {
       return;
     }
@@ -666,7 +695,7 @@ const MeetingUtil = {
     );
     meeting.simultaneousInterpretation.updateHostSIEnabled(hostSIEnabled);
 
-    function renameKey(obj, oldKey, newKey) {
+    function renameKey(obj: Record<string, any>, oldKey: string, newKey: string) {
       if (oldKey in obj) {
         obj[newKey] = obj[oldKey];
         delete obj[oldKey];

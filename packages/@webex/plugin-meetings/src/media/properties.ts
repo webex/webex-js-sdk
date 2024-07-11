@@ -24,18 +24,18 @@ export type MediaDirection = {
  * @class MediaProperties
  */
 export default class MediaProperties {
-  audioStream?: LocalMicrophoneStream;
+  audioStream?: LocalMicrophoneStream | null;
   mediaDirection: MediaDirection;
   mediaSettings: any;
   webrtcMediaConnection: any;
-  remoteAudioStream: RemoteStream;
+  remoteAudioStream: RemoteStream | undefined | null;
   remoteQualityLevel: any;
-  remoteShareStream: RemoteStream;
-  remoteVideoStream: RemoteStream;
-  shareVideoStream?: LocalDisplayStream;
-  shareAudioStream?: LocalSystemAudioStream;
+  remoteShareStream: RemoteStream | undefined | null;
+  remoteVideoStream: RemoteStream | undefined | null;
+  shareVideoStream?: LocalDisplayStream | null;
+  shareAudioStream?: LocalSystemAudioStream | null;
   videoDeviceId: any;
-  videoStream?: LocalCameraStream;
+  videoStream?: LocalCameraStream | null;
   namespace = MEETINGS;
 
   /**
@@ -72,15 +72,15 @@ export default class MediaProperties {
     return this.videoDeviceId || null;
   }
 
-  setMediaDirection(mediaDirection) {
+  setMediaDirection(mediaDirection: MediaDirection) {
     this.mediaDirection = mediaDirection;
   }
 
-  setMediaSettings(type, values) {
+  setMediaSettings(type: string, values: unknown) {
     this.mediaSettings[type] = values;
   }
 
-  setMediaPeerConnection(mediaPeerConnection) {
+  setMediaPeerConnection(mediaPeerConnection: unknown) {
     this.webrtcMediaConnection = mediaPeerConnection;
   }
 
@@ -100,7 +100,7 @@ export default class MediaProperties {
     this.shareAudioStream = shareAudioStream;
   }
 
-  setRemoteQualityLevel(remoteQualityLevel) {
+  setRemoteQualityLevel(remoteQualityLevel: unknown) {
     this.remoteQualityLevel = remoteQualityLevel;
   }
 
@@ -287,11 +287,11 @@ export default class MediaProperties {
     selectedCandidatePairChanges: number;
     numTransports: number;
   }> {
-    const allStatsReports = [];
+    const allStatsReports: Record<string, any>[] = [];
 
     try {
       const statsResult = await this.webrtcMediaConnection.getStats();
-      statsResult.forEach((report) => allStatsReports.push(report));
+      statsResult.forEach((report: Record<string, any>) => allStatsReports.push(report));
     } catch (error) {
       LoggerProxy.logger.warn(
         `Media:properties#getCurrentConnectionInfo --> getStats() failed: ${error}`

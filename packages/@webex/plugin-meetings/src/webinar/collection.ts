@@ -15,7 +15,7 @@ class WebinarCollection {
     this.webinarInfo = {};
   }
 
-  set(id, info) {
+  set(id: string, info: unknown) {
     this.webinarInfo[id] = info;
   }
 

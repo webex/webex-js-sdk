@@ -6,6 +6,15 @@ import Trigger from '../common/events/trigger-proxy';
 import {MEETING_STATE_MACHINE, EVENT_TRIGGERS} from '../constants';
 import ParameterError from '../common/errors/parameter';
 
+interface MeetingStateMachineMethods {
+  meeting: Record<string, any>;
+  onRemote(transition: unknown, stop: unknown): void;
+  onRing(transition: Record<string, any>, type: string): void;
+  onEnterError(transition: Record<string, any>, error: Error): void;
+  onAfterTransition(transition: Record<string, any>): void;
+  history?: Record<string, any>;
+}
+
 // TODO: ensure that meeting can be destroyed when in an error state
 const MeetingStateMachine = {
   /**
@@ -125,7 +134,7 @@ const MeetingStateMachine = {
          * @param {Object} stop -- {remoteAnswered: {Boolean}, remoteDeclined: {Boolean}}
          * @returns {Boolean}
          */
-        onRemote(transition: object, stop: object) {
+        onRemote(transition: unknown, stop: unknown) {
           if (this.meeting) {
             Trigger.trigger(
               this.meeting,
@@ -184,7 +193,7 @@ const MeetingStateMachine = {
             `Meeting:state#onAfterTransition --> state->onAfterTransition#meeting.id: ${this.meeting.id} | Transition '${transition.transition}' : ${transition.from} -> ${transition.to} executed. Last states: ${this.history}`
           );
         },
-      },
+      } as MeetingStateMachineMethods,
       // track the last 25 states entered
       plugins: [new StateMachineHistory({max: 25})],
     });

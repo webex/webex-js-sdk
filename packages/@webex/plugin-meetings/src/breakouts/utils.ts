@@ -3,8 +3,8 @@ import LoggerProxy from '../common/logs/logger-proxy';
 import BreakoutEditLockedError from './edit-lock-error';
 import {BREAKOUTS} from '../constants';
 
-export const getBroadcastRoles = (options): string[] => {
-  const recipientRoles = [];
+export const getBroadcastRoles = (options: Record<string, any> | undefined): string[] => {
+  const recipientRoles: string[] = [];
   if (!options || (!options.cohosts && !options.presenters)) {
     return recipientRoles;
   }
@@ -45,11 +45,14 @@ export const boServiceErrorHandler = (error: any, position: string): any => {
 
 /**
  *
- * @param {object} breakout
+ * @param {Record<string, any>} breakout
  * @param {string} newSessionType
  * @returns {boolean}
  */
-export const isSessionTypeChangedFromSessionToMain = (breakout, newSessionType) => {
+export const isSessionTypeChangedFromSessionToMain = (
+  breakout: Record<string, any>,
+  newSessionType: string
+): boolean => {
   return (
     breakout.previous('sessionType') === BREAKOUTS.SESSION_TYPES.BREAKOUT &&
     newSessionType === BREAKOUTS.SESSION_TYPES.MAIN

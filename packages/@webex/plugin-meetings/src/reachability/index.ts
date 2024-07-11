@@ -93,6 +93,42 @@ export default class Reachability {
   }
 
   /**
+   * Maps our internal transport result to the format that backend expects
+   * @param {TransportResult} transportResult
+   * @returns {TransportResultForBackend}
+   */
+  private mapTransportResultToBackendDataFormat(
+    transportResult: TransportResult
+  ): TransportResultForBackend {
+    const output: TransportResultForBackend = {};
+
+    for (const [key, value] of Object.entries(transportResult)) {
+      switch (key) {
+        case 'result':
+          switch (value) {
+            case 'reachable':
+              output.reachable = 'true';
+              break;
+            case 'unreachable':
+              output.reachable = 'false';
+              break;
+            case 'untested':
+              output.untested = 'true';
+              break;
+          }
+          break;
+        case 'latencyInMilliseconds':
+          output.latencyInMilliseconds = value.toString();
+          break;
+        default:
+          output[key as keyof TransportResultForBackend] = value as any;
+      }
+    }
+
+    return output;
+  }
+
+  /**
    * Gets a list of media clusters from the backend and performs reachability checks on all the clusters
    * @returns {Promise<ReachabilityResults>} reachability results
    * @public
@@ -194,48 +230,12 @@ export default class Reachability {
   }
 
   /**
-   * Maps our internal transport result to the format that backend expects
-   * @param {TransportResult} transportResult
-   * @returns {TransportResultForBackend}
-   */
-  private mapTransportResultToBackendDataFormat(
-    transportResult: TransportResult
-  ): TransportResultForBackend {
-    const output: TransportResultForBackend = {};
-
-    for (const [key, value] of Object.entries(transportResult)) {
-      switch (key) {
-        case 'result':
-          switch (value) {
-            case 'reachable':
-              output.reachable = 'true';
-              break;
-            case 'unreachable':
-              output.reachable = 'false';
-              break;
-            case 'untested':
-              output.untested = 'true';
-              break;
-          }
-          break;
-        case 'latencyInMilliseconds':
-          output.latencyInMilliseconds = value.toString();
-          break;
-        default:
-          output[key] = value;
-      }
-    }
-
-    return output;
-  }
-
-  /**
    * Reachability results as an object in the format that backend expects
    *
    * @returns {any} reachability results that need to be sent to the backend
    */
   async getReachabilityResults(): Promise<ReachabilityResultsForBackend | undefined> {
-    let results: ReachabilityResultsForBackend;
+    let results: ReachabilityResultsForBackend | undefined;
 
     try {
       // @ts-ignore
@@ -253,7 +253,7 @@ export default class Reachability {
           clusterResult.xtls || {result: 'untested'}
         ),
       }));
-    } catch (e) {
+    } catch (e: unknown) {
       // empty storage, that's ok
       LoggerProxy.logger.warn(
         'Roap:request#attachReachabilityData --> Error parsing reachability data: ',
@@ -359,8 +359,8 @@ export default class Reachability {
    * @private
    * @memberof Reachability
    */
-  private getUnreachableClusters(): Array<{name: string; protocol: string}> {
-    const unreachableList = [];
+  private getUnreachableClusters(): {name: string; protocol: string}[] {
+    const unreachableList: {name: string; protocol: string}[] = [];
 
     Object.entries(this.clusterReachability).forEach(([key, clusterReachability]) => {
       const result = clusterReachability.getResult();

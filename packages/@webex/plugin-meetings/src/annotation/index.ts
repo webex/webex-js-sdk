@@ -1,5 +1,4 @@
 import uuid from 'uuid';
-// eslint-disable-next-line import/no-extraneous-dependencies
 import {WebexPlugin, config} from '@webex/webex-core';
 import TriggerProxy from '../common/events/trigger-proxy';
 
@@ -24,26 +23,26 @@ class AnnotationChannel extends WebexPlugin implements IAnnotationChannel {
 
   private seqNum: number;
 
-  hasSubscribedToEvents: boolean;
+  hasSubscribedToEvents: boolean | undefined;
 
-  approvalUrl: string;
-  locusUrl: string;
-  deviceUrl: string;
+  approvalUrl: string | undefined;
+  locusUrl: string | undefined;
+  deviceUrl: string | undefined;
 
   /**
    * Initializes annotation module
    */
-  constructor(...args) {
+  constructor(...args: unknown[]) {
     super(...args);
     this.seqNum = 1;
   }
 
   /**
    * Process Stroke Data
-   * @param {object}  data
+   * @param {Record<string, any>}  data
    * @returns {void}
    */
-  private processStrokeMessage(data) {
+  private processStrokeMessage(data: Record<string, any>) {
     const {request} = data;
     this.decryptContent(request.value.encryptionKeyUrl, request.value.content).then(
       (decryptedContent) => {
@@ -64,10 +63,10 @@ class AnnotationChannel extends WebexPlugin implements IAnnotationChannel {
   }
 
   /** bind all events from mercury
-   * @param {Object} e
-   * @returns {undefined}
+   * @param {Record<string, any>} e
+   * @returns {void}
    */
-  private eventCommandProcessor(e) {
+  private eventCommandProcessor(e: Record<string, any>) {
     if (
       e?.data?.eventType === 'locus.approval_request' &&
       e?.data?.approval?.resourceType === ANNOTATION_RESOURCE_TYPE &&
@@ -89,10 +88,10 @@ class AnnotationChannel extends WebexPlugin implements IAnnotationChannel {
   }
 
   /** bind all events from llm
-   * @param {Object} e
+   * @param {Record<string, any>} e
    * @returns {undefined}
    */
-  private eventDataProcessor(e) {
+  private eventDataProcessor(e: Record<string, any>) {
     switch (e?.data?.relayType) {
       case ANNOTATION_RELAY_TYPES.ANNOTATION_CLIENT:
         this.processStrokeMessage(e.data);
@@ -104,7 +103,7 @@ class AnnotationChannel extends WebexPlugin implements IAnnotationChannel {
 
   /**
    * Listen to websocket messages
-   * @returns {undefined}
+   * @returns {void}
    */
   private listenToEvents() {
     if (!this.hasSubscribedToEvents) {
@@ -141,10 +140,10 @@ class AnnotationChannel extends WebexPlugin implements IAnnotationChannel {
 
   /**
    * accept request
-   * @param {object} approval
+   * @param {Record<string, any>} approval
    * @returns {Promise}
    */
-  public acceptRequest(approval) {
+  public acceptRequest(approval: Record<string, any>) {
     // @ts-ignore
     return this.request({
       method: HTTP_VERBS.PUT,
@@ -161,7 +160,7 @@ class AnnotationChannel extends WebexPlugin implements IAnnotationChannel {
    * @param {approval} approval
    * @returns {Promise}
    */
-  public declineRequest(approval) {
+  public declineRequest(approval: Record<string, any>) {
     // @ts-ignore
     return this.request({
       method: HTTP_VERBS.PUT,
@@ -184,11 +183,11 @@ class AnnotationChannel extends WebexPlugin implements IAnnotationChannel {
 
   /**
    * cancel approved annotation
-   * @param {object} requestData
-   * @param {object} approval
+   * @param {RequestData} requestData
+   * @param {Record<string, any>} approval
    * @returns {Promise}
    */
-  public cancelApproveAnnotation(requestData: RequestData, approval) {
+  public cancelApproveAnnotation(requestData: RequestData, approval: Record<string, any>) {
     const body: CommandRequestBody = {
       actionType: ANNOTATION_ACTION_TYPE.CANCELED,
       resourceType: 'AnnotationOnShare',
@@ -205,7 +204,7 @@ class AnnotationChannel extends WebexPlugin implements IAnnotationChannel {
 
   /**
    * close annotation
-   * @param {object} requestData
+   * @param {RequestData} requestData
    * @returns {Promise}
    */
   public closeAnnotation(requestData: RequestData) {

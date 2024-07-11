@@ -1,7 +1,7 @@
-const StaticConfig: any = {};
+const StaticConfig: Record<string, any> = {};
 
-StaticConfig.set = (options) => {
-  const values = {};
+StaticConfig.set = (options: Record<string, any>) => {
+  const values: Record<string, any> = {};
 
   StaticConfig.meetings = Object.assign(values, options);
 };

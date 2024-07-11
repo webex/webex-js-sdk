@@ -2,13 +2,13 @@ import {FULL_STATE} from '../constants';
 
 const FullState: any = {};
 
-FullState.parse = (fullState) => ({
+FullState.parse = (fullState: Record<string, any>) => ({
   type: fullState.type || FULL_STATE.UNKNOWN,
   meetingState: fullState.state,
   locked: fullState.locked,
 });
 
-FullState.getFullState = (oldFullState, newFullState) => {
+FullState.getFullState = (oldFullState: unknown, newFullState: unknown) => {
   const previous = oldFullState && FullState.parse(oldFullState);
   const current = newFullState && FullState.parse(newFullState);
 
@@ -24,7 +24,7 @@ FullState.getFullState = (oldFullState, newFullState) => {
   };
 };
 
-FullState.isMeetingEnded = (previous, current) => {
+FullState.isMeetingEnded = (previous: Record<string, any>, current: Record<string, any>) => {
   if (
     current.state === FULL_STATE.INACTIVE &&
     previous &&
@@ -38,7 +38,7 @@ FullState.isMeetingEnded = (previous, current) => {
   return false;
 };
 
-FullState.isMeetingTerminating = (previous, current) => {
+FullState.isMeetingTerminating = (previous: Record<string, any>, current: Record<string, any>) => {
   if (
     current.state === FULL_STATE.TERMINATING &&
     previous &&
@@ -50,7 +50,7 @@ FullState.isMeetingTerminating = (previous, current) => {
   return false;
 };
 
-FullState.isTypeChanged = (previous, current) => {
+FullState.isTypeChanged = (previous: Record<string, any>, current: Record<string, any>) => {
   if (!previous || current.type !== previous.type) {
     return current && current.type;
   }
@@ -58,7 +58,7 @@ FullState.isTypeChanged = (previous, current) => {
   return null;
 };
 
-FullState.meetingStateChange = (previous, current) => {
+FullState.meetingStateChange = (previous: Record<string, any>, current: Record<string, any>) => {
   if (!previous || current.meetingState !== previous.meetingState) {
     return current && current.meetingState;
   }

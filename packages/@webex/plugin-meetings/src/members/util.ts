@@ -1,15 +1,15 @@
 import uuid from 'uuid';
 import {
-  HTTP_VERBS,
-  CONTROLS,
   _FORCED_,
-  LEAVE,
-  PARTICIPANT,
-  VALID_EMAIL_ADDRESS,
-  DIALER_REGEX,
-  SEND_DTMF_ENDPOINT,
   _REMOVE_,
   ALIAS,
+  CONTROLS,
+  DIALER_REGEX,
+  HTTP_VERBS,
+  LEAVE,
+  PARTICIPANT,
+  SEND_DTMF_ENDPOINT,
+  VALID_EMAIL_ADDRESS,
 } from '../constants';
 
 import {RoleAssignmentOptions, RoleAssignmentRequest, ServerRoleShape} from './types';
@@ -21,7 +21,11 @@ const MembersUtil = {
    * @param {Boolean} alertIfActive
    * @returns {Object} the format object
    */
-  generateAddMemberOptions: (invitee: object, locusUrl: string, alertIfActive: boolean) => ({
+  generateAddMemberOptions: (
+    invitee: object,
+    locusUrl: string,
+    alertIfActive: boolean | undefined
+  ) => ({
     invitee,
     locusUrl,
     alertIfActive,
@@ -100,7 +104,7 @@ const MembersUtil = {
     return requestParams;
   },
 
-  isInvalidInvitee: (invitee) => {
+  isInvalidInvitee: (invitee: Record<string, any>) => {
     if (!(invitee && (invitee.email || invitee.emailAddress || invitee.phoneNumber))) {
       return true;
     }
@@ -112,7 +116,7 @@ const MembersUtil = {
     return !VALID_EMAIL_ADDRESS.test(invitee.email || invitee.emailAddress);
   },
 
-  getRemoveMemberRequestParams: (options) => {
+  getRemoveMemberRequestParams: (options: Record<string, any>) => {
     const body = {
       reason: options.reason,
     };
@@ -125,26 +129,31 @@ const MembersUtil = {
     };
   },
 
-  generateTransferHostMemberOptions: (transfer, moderator, locusUrl) => ({
+  generateTransferHostMemberOptions: (transfer: unknown, moderator: unknown, locusUrl: string) => ({
     moderator,
     locusUrl,
     memberId: transfer,
   }),
 
-  generateRemoveMemberOptions: (removal, locusUrl) => ({
+  generateRemoveMemberOptions: (removal: unknown, locusUrl: string) => ({
     reason: _FORCED_,
     memberId: removal,
     locusUrl,
   }),
 
-  generateMuteMemberOptions: (memberId, status, locusUrl, isAudio) => ({
+  generateMuteMemberOptions: (
+    memberId: unknown,
+    status: unknown,
+    locusUrl: string,
+    isAudio: boolean
+  ) => ({
     memberId,
     muted: status,
     locusUrl,
     isAudio,
   }),
 
-  generateRaiseHandMemberOptions: (memberId, status, locusUrl) => ({
+  generateRaiseHandMemberOptions: (memberId: unknown, status: unknown, locusUrl: string) => ({
     memberId,
     raised: status,
     locusUrl,
@@ -166,7 +175,7 @@ const MembersUtil = {
     locusUrl,
   }),
 
-  generateLowerAllHandsMemberOptions: (requestingParticipantId, locusUrl) => ({
+  generateLowerAllHandsMemberOptions: (requestingParticipantId: unknown, locusUrl: string) => ({
     requestingParticipantId,
     locusUrl,
   }),
@@ -178,14 +187,19 @@ const MembersUtil = {
    * @param {String} locusUrl url
    * @returns {Object} consists of {memberID: string, requestingParticipantId: string, alias: string, locusUrl: string}
    */
-  generateEditDisplayNameMemberOptions: (memberId, requestingParticipantId, alias, locusUrl) => ({
+  generateEditDisplayNameMemberOptions: (
+    memberId: unknown,
+    requestingParticipantId: unknown,
+    alias: unknown,
+    locusUrl: string
+  ) => ({
     memberId,
     requestingParticipantId,
     alias,
     locusUrl,
   }),
 
-  getMuteMemberRequestParams: (options) => {
+  getMuteMemberRequestParams: (options: Record<string, any>) => {
     const property = options.isAudio === false ? 'video' : 'audio';
     const body = {
       [property]: {
@@ -220,7 +234,7 @@ const MembersUtil = {
    * @returns {RoleAssignmentRequest} the request parameters (method, uri, body) needed to make a addMember request
    */
   getRoleAssignmentMemberRequestParams: (options: RoleAssignmentOptions): RoleAssignmentRequest => {
-    const body = {role: {roles: []}};
+    const body: {role: {roles: ServerRoleShape[]}} = {role: {roles: []}};
     options.roles.forEach((role) => {
       body.role.roles.push(MembersUtil.getAddedRoleShape(role));
     });
@@ -234,7 +248,7 @@ const MembersUtil = {
     };
   },
 
-  getRaiseHandMemberRequestParams: (options) => {
+  getRaiseHandMemberRequestParams: (options: Record<string, any>) => {
     const body = {
       hand: {
         raised: options.raised,
@@ -249,7 +263,7 @@ const MembersUtil = {
     };
   },
 
-  getLowerAllHandsMemberRequestParams: (options) => {
+  getLowerAllHandsMemberRequestParams: (options: Record<string, any>) => {
     const body = {
       hand: {
         raised: false,
@@ -269,7 +283,7 @@ const MembersUtil = {
    * @param {Object} options with format of {locusUrl: string, requestingParticipantId: string}
    * @returns {Object} request parameters (method, uri, body) needed to make a editDisplayName request
    */
-  editDisplayNameMemberRequestParams: (options) => {
+  editDisplayNameMemberRequestParams: (options: Record<string, any>) => {
     const body = {
       aliasValue: options.alias,
       requestingParticipantId: options.requestingParticipantId,
@@ -283,7 +297,7 @@ const MembersUtil = {
     };
   },
 
-  getTransferHostToMemberRequestParams: (options) => {
+  getTransferHostToMemberRequestParams: (options: Record<string, any>) => {
     const body = {
       role: {
         moderator: options.moderator,
@@ -298,14 +312,29 @@ const MembersUtil = {
     };
   },
 
-  genderateSendDTMFOptions: (url, tones, memberId, locusUrl) => ({
+  genderateSendDTMFOptions: (
+    url: unknown,
+    tones: unknown,
+    memberId: unknown,
+    locusUrl: string
+  ) => ({
     url,
     tones,
     memberId,
     locusUrl,
   }),
 
-  generateSendDTMFRequestParams: ({url, tones, memberId, locusUrl}) => {
+  generateSendDTMFRequestParams: ({
+    url,
+    tones,
+    memberId,
+    locusUrl,
+  }: {
+    url: unknown;
+    tones: unknown;
+    memberId: unknown;
+    locusUrl: string;
+  }) => {
     const body = {
       device: {
         url,
@@ -326,12 +355,12 @@ const MembersUtil = {
     };
   },
 
-  cancelPhoneInviteOptions: (invitee, locusUrl) => ({
+  cancelPhoneInviteOptions: (invitee: unknown, locusUrl: unknown) => ({
     invitee,
     locusUrl,
   }),
 
-  generateCancelInviteRequestParams: (options) => {
+  generateCancelInviteRequestParams: (options: Record<string, any>) => {
     const body = {
       actionType: _REMOVE_,
       invitees: [
@@ -340,13 +369,12 @@ const MembersUtil = {
         },
       ],
     };
-    const requestParams = {
+
+    return {
       method: HTTP_VERBS.PUT,
       uri: options.locusUrl,
       body,
     };
-
-    return requestParams;
   },
 };
 

@@ -18,7 +18,7 @@ export default class RecordingController {
    * @private
    * @memberof RecordingController
    */
-  private request: MeetingRequest;
+  private request: MeetingRequest | undefined;
 
   /**
    * @instance
@@ -26,7 +26,7 @@ export default class RecordingController {
    * @private
    * @memberof RecordingInfo
    */
-  private displayHints: Array<string> = [];
+  private displayHints: Array<string> | undefined = [];
 
   /**
    * @instance
@@ -34,7 +34,7 @@ export default class RecordingController {
    * @private
    * @memberof RecordingInfo
    */
-  private selfUserPolicies: Record<SELF_POLICY, boolean>;
+  private selfUserPolicies: Record<SELF_POLICY, boolean> | undefined;
 
   /**
    * @instance
@@ -42,7 +42,7 @@ export default class RecordingController {
    * @private
    * @memberof RecordingInfo
    */
-  private serviceUrl: string;
+  private serviceUrl: string | undefined;
 
   /**
    * @instance
@@ -50,7 +50,7 @@ export default class RecordingController {
    * @private
    * @memberof RecordingInfo
    */
-  private sessionId: string;
+  private sessionId: string | undefined;
 
   /**
    * @instance
@@ -58,7 +58,7 @@ export default class RecordingController {
    * @private
    * @memberof RecordingInfo
    */
-  private locusUrl: string;
+  private locusUrl: string | undefined;
 
   /**
    * @instance
@@ -66,7 +66,7 @@ export default class RecordingController {
    * @private
    * @memberof RecordingInfo
    */
-  private locusId: string;
+  private locusId: string | undefined;
 
   /**
    * @param {MeetingRequest} request
@@ -118,7 +118,7 @@ export default class RecordingController {
    * @public
    * @memberof RecordingController
    */
-  public setLocusUrl(url: string) {
+  public setLocusUrl(url: string | undefined) {
     this.locusUrl = url;
     this.locusId = Util.extractLocusId(this.locusUrl);
   }
@@ -129,7 +129,7 @@ export default class RecordingController {
    * @public
    * @memberof RecordingController
    */
-  public setDisplayHints(hints: Array<string>) {
+  public setDisplayHints(hints: Array<string> | undefined) {
     this.displayHints = hints;
   }
 
@@ -149,7 +149,7 @@ export default class RecordingController {
    * @public
    * @memberof RecordingController
    */
-  public setSessionId(id: string) {
+  public setSessionId(id: string | undefined) {
     this.sessionId = id;
   }
 
@@ -159,7 +159,7 @@ export default class RecordingController {
    * @public
    * @memberof RecordingController
    */
-  public setServiceUrl(url: string) {
+  public setServiceUrl(url: string | undefined) {
     this.serviceUrl = url;
   }
 

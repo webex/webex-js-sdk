@@ -24,19 +24,19 @@ const Webinar = WebexPlugin.extend({
 
   /**
    * Update the current locus url of the webinar
-   * @param {string} locusUrl // locus url
+   * @param {string} locusUrl
    * @returns {void}
    */
-  locusUrlUpdate(locusUrl) {
+  locusUrlUpdate(locusUrl: string) {
     this.set('locusUrl', locusUrl);
   },
 
   /**
    * Update the current webcast url of the meeting
-   * @param {string} webcastUrl // webcast url
+   * @param {string} webcastUrl
    * @returns {void}
    */
-  webcastUrlUpdate(webcastUrl) {
+  webcastUrlUpdate(webcastUrl: string) {
     this.set('webcastUrl', webcastUrl);
   },
 
@@ -45,7 +45,7 @@ const Webinar = WebexPlugin.extend({
    * @param {string} webinarAttendeesSearchingUrl // webinarAttendeesSearching url
    * @returns {void}
    */
-  webinarAttendeesSearchingUrlUpdate(webinarAttendeesSearchingUrl) {
+  webinarAttendeesSearchingUrlUpdate(webinarAttendeesSearchingUrl: string) {
     this.set('webinarAttendeesSearchingUrl', webinarAttendeesSearchingUrl);
   },
 
@@ -54,7 +54,7 @@ const Webinar = WebexPlugin.extend({
    * @param {boolean} canManageWebcast
    * @returns {void}
    */
-  updateCanManageWebcast(canManageWebcast) {
+  updateCanManageWebcast(canManageWebcast: boolean) {
     this.set('canManageWebcast', canManageWebcast);
   },
 });

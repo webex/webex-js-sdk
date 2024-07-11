@@ -1,4 +1,4 @@
-export const emptyMqaInterval = {
+export const emptyMqaInterval: Record<string, any> = {
   audioReceive: [],
   audioTransmit: [],
   intervalMetadata: {
@@ -21,7 +21,7 @@ export const emptyMqaInterval = {
   videoTransmit: [],
 };
 
-export const emptyAudioReceive = {
+export const emptyAudioReceive: Record<string, any> = {
   common: {
     common: {
       direction: 'inactive',
@@ -55,7 +55,7 @@ export const emptyAudioReceive = {
   streams: [],
 };
 
-export const emptyAudioReceiveStream = {
+export const emptyAudioReceiveStream: Record<string, any> = {
   common: {
     codec: 'opus',
     concealedFrames: 0,
@@ -76,7 +76,7 @@ export const emptyAudioReceiveStream = {
   },
 };
 
-export const emptyAudioTransmit = {
+export const emptyAudioTransmit: Record<string, any> = {
   common: {
     availableBitrate: 0,
     common: {
@@ -110,7 +110,7 @@ export const emptyAudioTransmit = {
   streams: [],
 };
 
-export const emptyAudioTransmitStream = {
+export const emptyAudioTransmitStream: Record<string, any> = {
   common: {
     codec: 'opus',
     csi: [],
@@ -123,7 +123,7 @@ export const emptyAudioTransmitStream = {
   },
 };
 
-export const emptyVideoReceive = {
+export const emptyVideoReceive: Record<string, any> = {
   common: {
     common: {
       direction: 'inactive',
@@ -157,7 +157,7 @@ export const emptyVideoReceive = {
   streams: [],
 };
 
-export const emptyVideoReceiveStream = {
+export const emptyVideoReceiveStream: Record<string, any> = {
   common: {
     codec: 'H264',
     concealedFrames: 0, // Not avaliable
@@ -189,7 +189,7 @@ export const emptyVideoReceiveStream = {
   requestedKeyFrames: 0,
 };
 
-export const emptyVideoTransmit = {
+export const emptyVideoTransmit: Record<string, any> = {
   common: {
     availableBitrate: 0, // Not avaliable currently hardcoded
     common: {
@@ -223,7 +223,7 @@ export const emptyVideoTransmit = {
   streams: [],
 };
 
-export const emptyVideoTransmitStream = {
+export const emptyVideoTransmitStream: Record<string, any> = {
   common: {
     codec: 'H264',
     csi: [],

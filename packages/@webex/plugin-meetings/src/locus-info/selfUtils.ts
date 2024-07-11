@@ -22,14 +22,16 @@ const PSTN_DEVICE_TYPE = 'PROVISIONAL';
 
 /**
  * parses the relevant values for self: muted, guest, moderator, mediaStatus, state, joinedWith, pstnDevices, creator, id
- * @param {Object} self
- * @param {String} deviceId
- * @returns {undefined}
+ * @param {Record<string, any>} self
+ * @param {string} deviceId
+ * @returns {null | Record<string, any>}
  */
-SelfUtils.parse = (self: any, deviceId: string) => {
+SelfUtils.parse = (self: Record<string, any>, deviceId: string): Record<string, any> | null => {
   if (self) {
-    const joinedWith = self.devices.find((device) => deviceId === device.url);
-    const pstnDevices = self.devices.filter((device) => PSTN_DEVICE_TYPE === device.deviceType);
+    const joinedWith = self.devices.find((device: {url: string}) => deviceId === device.url);
+    const pstnDevices = self.devices.filter(
+      (device: {deviceType: string}) => PSTN_DEVICE_TYPE === device.deviceType
+    );
 
     return {
       remoteVideoMuted: SelfUtils.getRemoteVideoMuted(self),
@@ -72,15 +74,15 @@ SelfUtils.parse = (self: any, deviceId: string) => {
   return null;
 };
 
-SelfUtils.getBreakoutSessions = (self) => self?.controls?.breakout?.sessions;
-SelfUtils.getBreakout = (self) => self?.controls?.breakout;
-SelfUtils.getInterpretation = (self) => self?.controls?.interpretation;
+SelfUtils.getBreakoutSessions = (self: Record<string, any>) => self?.controls?.breakout?.sessions;
+SelfUtils.getBreakout = (self: Record<string, any>) => self?.controls?.breakout;
+SelfUtils.getInterpretation = (self: Record<string, any>) => self?.controls?.interpretation;
 
-SelfUtils.getLayout = (self) =>
+SelfUtils.getLayout = (self: Record<string, any>) =>
   Array.isArray(self?.controls?.layouts) ? self.controls.layouts[0].type : undefined;
 
-SelfUtils.getRoles = (self) =>
-  (self?.controls?.role?.roles || []).reduce((roles, role) => {
+SelfUtils.getRoles = (self: Record<string, any>) =>
+  (self?.controls?.role?.roles || []).reduce((roles: string[], role: Record<string, any>) => {
     if (role.hasRole) {
       roles.push(role.type);
     }
@@ -88,11 +90,16 @@ SelfUtils.getRoles = (self) =>
     return roles;
   }, []);
 
-SelfUtils.canNotViewTheParticipantList = (self) => !!self?.canNotViewTheParticipantList;
+SelfUtils.canNotViewTheParticipantList = (self: Record<string, any>) =>
+  !!self?.canNotViewTheParticipantList;
 
-SelfUtils.isSharingBlocked = (self) => !!self?.isSharingBlocked;
+SelfUtils.isSharingBlocked = (self: Record<string, any>) => !!self?.isSharingBlocked;
 
-SelfUtils.getSelves = (oldSelf, newSelf, deviceId) => {
+SelfUtils.getSelves = (
+  oldSelf: Record<string, any>,
+  newSelf: Record<string, any>,
+  deviceId: unknown
+) => {
   const previous = oldSelf && SelfUtils.parse(oldSelf, deviceId);
   const current = newSelf && SelfUtils.parse(newSelf, deviceId);
   const updates: any = {};
@@ -153,13 +160,13 @@ SelfUtils.isJoined = (self: any) => self?.state === _JOINED_;
 SelfUtils.layoutChanged = (previous: any, current: any) =>
   current?.layout && previous?.layout !== current?.layout;
 
-SelfUtils.breakoutsChanged = (previous, current) =>
+SelfUtils.breakoutsChanged = (previous: Record<string, any>, current: Record<string, any>) =>
   !isEqual(previous?.breakoutSessions, current?.breakoutSessions) && !!current?.breakout;
 
-SelfUtils.interpretationChanged = (previous, current) =>
+SelfUtils.interpretationChanged = (previous: Record<string, any>, current: Record<string, any>) =>
   !isEqual(previous?.interpretation, current?.interpretation) && !!current?.interpretation;
 
-SelfUtils.isMediaInactive = (previous, current) => {
+SelfUtils.isMediaInactive = (previous: Record<string, any>, current: Record<string, any>) => {
   if (
     previous &&
     previous.joinedWith &&
@@ -207,7 +214,7 @@ SelfUtils.isMediaInactive = (previous, current) => {
   return false;
 };
 
-SelfUtils.getLastModified = (self) => {
+SelfUtils.getLastModified = (self: Record<string, any>) => {
   if (
     !self ||
     !self.controls ||
@@ -221,7 +228,7 @@ SelfUtils.getLastModified = (self) => {
   return self.controls.audio.meta.lastModified;
 };
 
-SelfUtils.getModifiedBy = (self) => {
+SelfUtils.getModifiedBy = (self: Record<string, any>) => {
   if (
     !self ||
     !self.controls ||
@@ -240,8 +247,8 @@ SelfUtils.getModifiedBy = (self) => {
  * @param {Object} self
  * @returns {String}
  */
-SelfUtils.getSelfIdentity = (self: any) => {
-  if (!self && !self.person) {
+SelfUtils.getSelfIdentity = (self: Record<string, any>) => {
+  if (!self || !self.person) {
     return null;
   }
 
@@ -253,7 +260,7 @@ SelfUtils.getSelfIdentity = (self: any) => {
  * @param {Object} self
  * @returns {Boolean}
  */
-SelfUtils.getRemoteVideoMuted = (self: any) => {
+SelfUtils.getRemoteVideoMuted = (self: Record<string, any>) => {
   if (!self || !self.controls || !self.controls.video) {
     return null;
   }
@@ -266,7 +273,7 @@ SelfUtils.getRemoteVideoMuted = (self: any) => {
  * @param {Object} self
  * @returns {Boolean}
  */
-SelfUtils.getRemoteMuted = (self: any) => {
+SelfUtils.getRemoteMuted = (self: Record<string, any>) => {
   if (!self || !self.controls || !self.controls.audio) {
     return null;
   }
@@ -274,13 +281,14 @@ SelfUtils.getRemoteMuted = (self: any) => {
   return self.controls.audio.muted;
 };
 
-SelfUtils.getLocalAudioUnmuteRequested = (self) => !!self?.controls?.audio?.requestedToUnmute;
+SelfUtils.getLocalAudioUnmuteRequested = (self: Record<string, any>) =>
+  !!self?.controls?.audio?.requestedToUnmute;
 
 // requestedToUnmute timestamp
-SelfUtils.getLocalAudioUnmuteRequestedTimeStamp = (self) =>
+SelfUtils.getLocalAudioUnmuteRequestedTimeStamp = (self: Record<string, any>) =>
   Date.parse(self?.controls?.audio?.lastModifiedRequestedToUnmute) || 0;
 
-SelfUtils.getUnmuteAllowed = (self) => {
+SelfUtils.getUnmuteAllowed = (self: Record<string, any>) => {
   if (!self || !self.controls || !self.controls.audio) {
     return null;
   }
@@ -288,9 +296,10 @@ SelfUtils.getUnmuteAllowed = (self) => {
   return !self.controls.audio.disallowUnmute;
 };
 
-SelfUtils.getLocalAudioUnmuteRequired = (self) => !!self?.controls?.audio?.localAudioUnmuteRequired;
+SelfUtils.getLocalAudioUnmuteRequired = (self: Record<string, any>) =>
+  !!self?.controls?.audio?.localAudioUnmuteRequired;
 
-SelfUtils.getStatus = (status) => ({
+SelfUtils.getStatus = (status: Record<string, any>) => ({
   audio: status.audioStatus,
   video: status.videoStatus,
   slides: status.videoSlidesStatus,
@@ -301,7 +310,10 @@ SelfUtils.getStatus = (status) => ({
  * @param {Object} changedSelf
  * @returns {Boolean}
  */
-SelfUtils.wasMediaInactiveOrReleased = (oldSelf: any = {}, changedSelf: any) =>
+SelfUtils.wasMediaInactiveOrReleased = (
+  oldSelf: Record<string, any> = {},
+  changedSelf: Record<string, any>
+) =>
   oldSelf.joinedWith &&
   oldSelf.joinedWith.state === _JOINED_ &&
   changedSelf.joinedWith &&
@@ -328,7 +340,7 @@ SelfUtils.isLocusUserAdmitted = (check: any) =>
  * @returns {Boolean}
  * @throws {Error} when self is undefined
  */
-SelfUtils.isUserUnadmitted = (self: object) => {
+SelfUtils.isUserUnadmitted = (self: Record<string, any>) => {
   if (!self) {
     throw new ParameterError('self must be defined to determine if self is unadmitted as guest.');
   }
@@ -336,7 +348,7 @@ SelfUtils.isUserUnadmitted = (self: object) => {
   return SelfUtils.isLocusUserUnadmitted(self);
 };
 
-SelfUtils.moderatorChanged = (oldSelf, changedSelf) => {
+SelfUtils.moderatorChanged = (oldSelf: Record<string, any>, changedSelf: Record<string, any>) => {
   if (!oldSelf) {
     return true;
   }
@@ -355,7 +367,7 @@ SelfUtils.moderatorChanged = (oldSelf, changedSelf) => {
  * @param {Object} changedSelf
  * @returns {Boolean}
  */
-SelfUtils.isRolesChanged = (oldSelf, changedSelf) => {
+SelfUtils.isRolesChanged = (oldSelf: Record<string, any>, changedSelf: Record<string, any>) => {
   if (!changedSelf) {
     // no new self means no change
     return false;
@@ -369,7 +381,7 @@ SelfUtils.isRolesChanged = (oldSelf, changedSelf) => {
  * @returns {Boolean}
  * @throws {Error} if changed self was undefined
  */
-SelfUtils.isDeviceObserving = (oldSelf: any, changedSelf: any) =>
+SelfUtils.isDeviceObserving = (oldSelf: Record<string, any>, changedSelf: Record<string, any>) =>
   oldSelf &&
   oldSelf.joinedWith?.intent?.type === _MOVE_MEDIA_ &&
   changedSelf &&
@@ -381,7 +393,7 @@ SelfUtils.isDeviceObserving = (oldSelf: any, changedSelf: any) =>
  * @returns {Boolean}
  * @throws {Error} if changed self was undefined
  */
-SelfUtils.isUserAdmitted = (oldSelf: object, changedSelf: object) => {
+SelfUtils.isUserAdmitted = (oldSelf: Record<string, any>, changedSelf: Record<string, any>) => {
   if (!oldSelf) {
     // if there was no previous locus, it couldn't have been admitted yet
     return false;
@@ -395,7 +407,10 @@ SelfUtils.isUserAdmitted = (oldSelf: object, changedSelf: object) => {
   return SelfUtils.isLocusUserUnadmitted(oldSelf) && SelfUtils.isLocusUserAdmitted(changedSelf);
 };
 
-SelfUtils.videoMutedByOthersChanged = (oldSelf, changedSelf) => {
+SelfUtils.videoMutedByOthersChanged = (
+  oldSelf: Record<string, any>,
+  changedSelf: Record<string, any>
+) => {
   if (!changedSelf) {
     throw new ParameterError(
       'New self must be defined to determine if self was video muted by others.'
@@ -414,7 +429,10 @@ SelfUtils.videoMutedByOthersChanged = (oldSelf, changedSelf) => {
   return oldSelf.remoteVideoMuted !== changedSelf.remoteVideoMuted;
 };
 
-SelfUtils.mutedByOthersChanged = (oldSelf, changedSelf) => {
+SelfUtils.mutedByOthersChanged = (
+  oldSelf: Record<string, any>,
+  changedSelf: Record<string, any>
+) => {
   if (!changedSelf) {
     throw new ParameterError('New self must be defined to determine if self was muted by others.');
   }
@@ -474,7 +492,7 @@ SelfUtils.localAudioUnmuteRequiredByServer = (oldSelf: any = {}, changedSelf: an
  * @returns {Object}
  */
 
-SelfUtils.getSipUrl = (partner: any, type, sipUri) => {
+SelfUtils.getSipUrl = (partner: Record<string, any>, type: string, sipUri: Record<string, any>) => {
   // For webex meeting the sipUrl gets updated in info parser
   if (partner && type === _CALL_) {
     return {sipUri: partner.person.sipUrl || partner.person.id};
@@ -483,7 +501,7 @@ SelfUtils.getSipUrl = (partner: any, type, sipUri) => {
   return {sipUri};
 };
 
-SelfUtils.getMediaStatus = (mediaSessions = []) => {
+SelfUtils.getMediaStatus = (mediaSessions: Record<string, any> = []) => {
   const mediaStatus = {
     audio: {},
     video: {},
@@ -491,13 +509,16 @@ SelfUtils.getMediaStatus = (mediaSessions = []) => {
   };
 
   mediaStatus.audio = mediaSessions.find(
-    (media) => media.mediaType === AUDIO && media.mediaContent === MediaContent.main
+    (media: Record<string, any>) =>
+      media.mediaType === AUDIO && media.mediaContent === MediaContent.main
   );
   mediaStatus.video = mediaSessions.find(
-    (media) => media.mediaType === VIDEO && media.mediaContent === MediaContent.main
+    (media: Record<string, any>) =>
+      media.mediaType === VIDEO && media.mediaContent === MediaContent.main
   );
   mediaStatus.share = mediaSessions.find(
-    (media) => media.mediaType === VIDEO && media.mediaContent === MediaContent.slides
+    (media: Record<string, any>) =>
+      media.mediaType === VIDEO && media.mediaContent === MediaContent.slides
   );
 
   return mediaStatus;
@@ -505,7 +526,7 @@ SelfUtils.getMediaStatus = (mediaSessions = []) => {
 
 SelfUtils.getReplacedBreakoutMoveId = (self: any, deviceId: string) => {
   if (self && Array.isArray(self.devices)) {
-    const joinedDevice = self.devices.find((device) => deviceId === device.url);
+    const joinedDevice = self.devices.find((device: {url: string}) => deviceId === device.url);
     if (Array.isArray(joinedDevice?.replaces)) {
       return joinedDevice.replaces[0]?.breakoutMoveId;
     }

@@ -6,6 +6,7 @@ import ParameterError from '../common/errors/parameter';
 
 import MembersUtil from './util';
 import MeetingUtil from '../meeting/util';
+import {RoleAssignmentOptions} from './types';
 
 /**
  * @class MembersRequest
@@ -73,12 +74,12 @@ export default class MembersRequest extends StatelessWebexPlugin {
 
   /**
    * Sends a request to remove a member
-   * @param {Object} options
-   * @param {String} options.locusUrl
-   * @param {String} options.memberId ID of member
+   * @param {Record<string, any>} options
+   * @param {string} options.locusUrl
+   * @param {string} options.memberId ID of member
    * @returns {Promise}
    */
-  removeMember(options) {
+  removeMember(options: Record<string, any>) {
     if (!options || !options.locusUrl || !options.memberId) {
       throw new ParameterError(
         'memberId must be defined, and the associated locus url for this meeting object must be defined.'
@@ -92,12 +93,12 @@ export default class MembersRequest extends StatelessWebexPlugin {
 
   /**
    * Sends a request to mute a member
-   * @param {Object} options
-   * @param {String} options.locusUrl
-   * @param {String} options.memberId ID of member
+   * @param {Record<string, any>} options
+   * @param {string} options.locusUrl
+   * @param {string} options.memberId ID of member
    * @returns {Promise}
    */
-  muteMember(options) {
+  muteMember(options: Record<string, any>) {
     if (!options || !options.locusUrl || !options.memberId) {
       throw new ParameterError(
         'memberId must be defined, and the associated locus url for this meeting object must be defined.'
@@ -112,12 +113,12 @@ export default class MembersRequest extends StatelessWebexPlugin {
 
   /**
    * Sends a request to the DTMF endpoint to send tones
-   * @param {Object} options
-   * @param {String} options.locusUrl
-   * @param {String} options.memberId ID of PSTN user
+   * @param {RoleAssignmentOptions} options
+   * @param {string} options.locusUrl
+   * @param {string} options.memberId ID of PSTN user
    * @returns {Promise}
    */
-  assignRolesMember(options: any) {
+  assignRolesMember(options: RoleAssignmentOptions) {
     if (!options || !options.locusUrl || !options.memberId) {
       throw new ParameterError(
         'memberId must be defined, and the associated locus url for this meeting object must be defined.'
@@ -131,12 +132,12 @@ export default class MembersRequest extends StatelessWebexPlugin {
 
   /**
    * Sends a request to raise or lower a member's hand
-   * @param {Object} options
-   * @param {String} options.locusUrl
-   * @param {String} options.memberId ID of member
+   * @param {Record<string, any>} options
+   * @param {string} options.locusUrl
+   * @param {string} options.memberId ID of member
    * @returns {Promise}
    */
-  raiseOrLowerHandMember(options) {
+  raiseOrLowerHandMember(options: Record<string, any>) {
     if (!options || !options.locusUrl || !options.memberId) {
       throw new ParameterError(
         'memberId must be defined, and the associated locus url for this meeting object must be defined.'
@@ -150,12 +151,12 @@ export default class MembersRequest extends StatelessWebexPlugin {
 
   /**
    * Sends a request to lower all hands
-   * @param {Object} options
-   * @param {String} options.locusUrl
-   * @param {String} options.requestingParticipantId ID of requesting participant
+   * @param {Record<string, any>} options
+   * @param {string} options.locusUrl
+   * @param {string} options.requestingParticipantId ID of requesting participant
    * @returns {Promise}
    */
-  lowerAllHandsMember(options) {
+  lowerAllHandsMember(options: Record<string, any>) {
     if (!options || !options.locusUrl || !options.requestingParticipantId) {
       throw new ParameterError(
         'requestingParticipantId must be defined, and the associated locus url for this meeting object must be defined.'
@@ -169,7 +170,7 @@ export default class MembersRequest extends StatelessWebexPlugin {
 
   /**
    *
-   * @param {Object} options with format of {locusUrl: string, requestingParticipantId: string}
+   * @param {Record<string, any>} options with format of {locusUrl: string, requestingParticipantId: string}
    * @returns {Promise}
    * @throws {Error} if the options are not valid and complete, must have requestingParticipantId AND locusUrl
    * @memberof MembersRequest
@@ -188,13 +189,13 @@ export default class MembersRequest extends StatelessWebexPlugin {
 
   /**
    * Sends a request to raise or lower a member's hand
-   * @param {Object} options
-   * @param {String} options.locusUrl
-   * @param {String} options.memberId ID of member
-   * @param {String} options.moderator ID of moderator
+   * @param {Record<string, any>} options
+   * @param {string} options.locusUrl
+   * @param {string} options.memberId ID of member
+   * @param {string} options.moderator ID of moderator
    * @returns {Promise}
    */
-  transferHostToMember(options) {
+  transferHostToMember(options: Record<string, any>) {
     if (!options || !options.locusUrl || !options.memberId || !options.moderator) {
       throw new ParameterError(
         'memberId must be defined, the associated locus url, and the moderator for this meeting object must be defined.'
@@ -216,7 +217,6 @@ export default class MembersRequest extends StatelessWebexPlugin {
    * @returns {Promise}
    */
   sendDialPadKey(options: {locusUrl: string; url: string; tones: string; memberId: string}) {
-    // @ts-ignore
     if (
       !options ||
       !options.locusUrl ||

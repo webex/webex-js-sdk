@@ -1,6 +1,4 @@
 import url from 'url';
-
-// @ts-ignore
 import {deconstructHydraId} from '@webex/common';
 
 import {
@@ -37,7 +35,7 @@ export default class MeetingInfoUtil {
   static meetingInfoError =
     'MeetingInfo is fetched with the meeting link, SIP URI, phone number, Hydra people ID, or a conversation URL.';
 
-  static getParsedUrl(link) {
+  static getParsedUrl(link: string) {
     try {
       let parsedUrl = url.parse(link);
 
@@ -82,7 +80,7 @@ export default class MeetingInfoUtil {
     return hostNameBool && pathNameBool;
   }
 
-  static isConversationUrl(value, webex) {
+  static isConversationUrl(value: unknown, webex: Record<string, any>) {
     const clusterId = webex.internal.services.getClusterId(value);
 
     if (clusterId) {
@@ -92,7 +90,7 @@ export default class MeetingInfoUtil {
     return false;
   }
 
-  static isSipUri(sipString) {
+  static isSipUri(sipString: string) {
     // TODO: lets remove regex from this equation and user URI matchers and such
     // have not found a great sip uri parser library as of now
     const sipUri = DIALER_REGEX.SIP_ADDRESS.exec(sipString);
@@ -100,13 +98,13 @@ export default class MeetingInfoUtil {
     return sipUri;
   }
 
-  static isPhoneNumber(phoneNumber) {
+  static isPhoneNumber(phoneNumber: string) {
     const isValidNumber = DIALER_REGEX.PHONE_NUMBER.test(phoneNumber);
 
     return isValidNumber;
   }
 
-  static getHydraId(destination) {
+  static getHydraId(destination: Record<string, any>) {
     const {type, id, cluster} = deconstructHydraId(destination);
 
     if (id && UUID_REG.test(id)) {
@@ -123,16 +121,16 @@ export default class MeetingInfoUtil {
     return {};
   }
 
-  static getSipUriFromHydraPersonId(destination, webex) {
+  static getSipUriFromHydraPersonId(destination: unknown, webex: Record<string, any>) {
     return webex.people
       .get(destination)
-      .then((res) => {
+      .then((res: Record<string, any>) => {
         if (res.emails && res.emails.length) {
           return res.emails[0];
         }
         throw new ParameterError('Hydra Id Lookup was an invalid hydra person id.');
       })
-      .catch((err) => {
+      .catch((err: unknown) => {
         LoggerProxy.logger.error(
           `Meeting-info:util#MeetingInfoUtil.getSipUriFromHydraPersonId --> getSipUriFromHydraPersonId ${err} `
         );
@@ -140,7 +138,7 @@ export default class MeetingInfoUtil {
       });
   }
 
-  static async getDestinationType(from) {
+  static async getDestinationType(from: Record<string, any>) {
     const {type, webex} = from;
     let {destination} = from;
 
@@ -199,17 +197,19 @@ export default class MeetingInfoUtil {
     } else if (hydraId && hydraId.people) {
       options.type = _SIP_URI_;
 
-      return this.getSipUriFromHydraPersonId(hydraId && hydraId.destination, webex).then((res) => {
-        options.destination = res;
+      return this.getSipUriFromHydraPersonId(hydraId && hydraId.destination, webex).then(
+        (res: unknown) => {
+          options.destination = res;
 
-        // Since hydra person ids require a unique case in which they are
-        // entirely converted to a SIP URI, we need to set a flag for detecting
-        // this type of destination.
-        options.wasHydraPerson = true;
+          // Since hydra person ids require a unique case in which they are
+          // entirely converted to a SIP URI, we need to set a flag for detecting
+          // this type of destination.
+          options.wasHydraPerson = true;
 
-        return Promise.resolve(options);
-      });
-    } else if (hydraId.room) {
+          return Promise.resolve(options);
+        }
+      );
+    } else if (hydraId?.room) {
       LoggerProxy.logger.error(
         `Meeting-info:util#getDestinationType --> Using the space ID as a destination is no longer supported. Please refer to the [migration guide](https://github.com/webex/webex-js-sdk/wiki/Migration-to-Unified-Space-Meetings) to migrate to use the meeting ID or SIP address.`
       );

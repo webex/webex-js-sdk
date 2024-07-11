@@ -7,14 +7,14 @@
 import LoggerProxy from '../common/logs/logger-proxy';
 import Trigger from '../common/events/trigger-proxy';
 import {
+  _CALL_,
+  _ID_,
+  _LEFT_,
   EVENT_TRIGGERS,
   RECONNECTION,
+  RECONNECTION_STATE,
   SHARE_STATUS,
   SHARE_STOPPED_REASON,
-  _CALL_,
-  _LEFT_,
-  _ID_,
-  RECONNECTION_STATE,
 } from '../constants';
 import BEHAVIORAL_METRICS from '../metrics/constants';
 import ReconnectionError from '../common/errors/reconnection';
@@ -306,7 +306,7 @@ export default class ReconnectionManager {
       `ReconnectionManager:index#reconnect --> Reconnection start for meeting ${this.meeting.id}.`
     );
 
-    const triggerEvent = (event, payload = undefined) =>
+    const triggerEvent = (event: string, payload: undefined | Record<string, any> = undefined) =>
       Trigger.trigger(
         this.meeting,
         {
@@ -352,7 +352,7 @@ export default class ReconnectionManager {
 
       try {
         await this.executeReconnection({networkDisconnect});
-      } catch (reconnectError) {
+      } catch (reconnectError: any) {
         if (reconnectError instanceof NeedsRetryError) {
           LoggerProxy.logger.info(
             'ReconnectionManager:index#reconnect --> Reconnection not successful, retrying.'
@@ -418,7 +418,7 @@ export default class ReconnectionManager {
           meetingId: this.meeting.id,
         },
       });
-    } catch (error) {
+    } catch (error: any) {
       triggerEvent(EVENT_TRIGGERS.MEETING_RECONNECTION_FAILURE, {
         error: new ReconnectionError('Reconnection failure event', error),
       });
@@ -462,7 +462,7 @@ export default class ReconnectionManager {
           'ReconnectionManager:index#executeReconnection --> Websocket reconnected.',
           this.webex.internal.device.url
         );
-      } catch (error) {
+      } catch (error: unknown) {
         LoggerProxy.logger.error(
           'ReconnectionManager:index#executeReconnection --> Unable to reconnect to websocket, giving up.'
         );
@@ -476,7 +476,7 @@ export default class ReconnectionManager {
         'ReconnectionManager:index#executeReconnection --> Updating meeting data from server.'
       );
       await this.webex.meetings.syncMeetings({keepOnlyLocusMeetings: false});
-    } catch (syncError) {
+    } catch (syncError: any) {
       LoggerProxy.logger.info(
         'ReconnectionManager:index#executeReconnection --> Unable to sync meetings, reconnecting.',
         syncError
@@ -544,7 +544,7 @@ export default class ReconnectionManager {
       if (wasSharing) {
         await this.stopLocalShareStream(SHARE_STOPPED_REASON.MEETING_REJOIN);
       }
-    } catch (joinError) {
+    } catch (joinError: any) {
       this.rejoinAttempts += 1;
       if (this.rejoinAttempts <= this.maxRejoinAttempts) {
         LoggerProxy.logger.info(
@@ -607,7 +607,7 @@ export default class ReconnectionManager {
 
     // resend media requests
     if (this.meeting.isMultistream) {
-      Object.values(this.meeting.mediaRequestManagers).forEach(
+      (Object.values(this.meeting.mediaRequestManagers) as MediaRequestManager[]).forEach(
         (mediaRequestManager: MediaRequestManager) => {
           mediaRequestManager.clearPreviousRequests();
           mediaRequestManager.commit();

@@ -3,28 +3,28 @@ import LoggerConfig from './logger-config';
 
 const LoggerProxy: any = {
   logger: {
-    info: (args) => {
+    info: () => {
       console.error('LoggerProxy->info#NO LOGGER DEFINED');
     },
-    log: (args) => {
+    log: () => {
       console.error('LoggerProxy->log#NO LOGGER DEFINED');
     },
-    error: (args) => {
+    error: () => {
       console.error('LoggerProxy->error#NO LOGGER DEFINED');
     },
-    warn: (args) => {
+    warn: () => {
       console.error('LoggerProxy->warn#NO LOGGER DEFINED');
     },
-    trace: (args) => {
+    trace: () => {
       console.error('LoggerProxy->trace#NO LOGGER DEFINED');
     },
-    debug: (args) => {
+    debug: () => {
       console.error('LoggerProxy->debug#NO LOGGER DEFINED');
     },
   },
 };
 
-LoggerProxy.set = (logger) => {
+LoggerProxy.set = (logger: unknown) => {
   if (!LoggerConfig.enable) {
     LoggerProxy.logger = {
       info: () => {},

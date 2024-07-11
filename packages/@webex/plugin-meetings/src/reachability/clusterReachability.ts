@@ -4,7 +4,7 @@ import LoggerProxy from '../common/logs/logger-proxy';
 import {ClusterNode} from './request';
 import {convertStunUrlToTurn, convertStunUrlToTurnTls} from './util';
 
-import {ICE_GATHERING_STATE, CONNECTION_STATE} from '../constants';
+import {CONNECTION_STATE, ICE_GATHERING_STATE} from '../constants';
 
 const DEFAULT_TIMEOUT = 3000;
 const VIDEO_MESH_TIMEOUT = 1000;
@@ -33,7 +33,7 @@ export class ClusterReachability {
   private result: ClusterReachabilityResult;
   private pc?: RTCPeerConnection;
   private defer: Defer; // this defer is resolved once reachability checks for this cluster are completed
-  private startTimestamp: number;
+  private startTimestamp: number | undefined;
   public readonly isVideoMesh: boolean;
   public readonly name;
 
@@ -70,7 +70,7 @@ export class ClusterReachability {
    * @returns {Number} Milliseconds
    */
   private getElapsedTime() {
-    return Math.round(performance.now() - this.startTimestamp);
+    return Math.round(performance.now() - (this.startTimestamp || 0));
   }
 
   /**
@@ -120,9 +120,7 @@ export class ClusterReachability {
     try {
       const config = this.buildPeerConnectionConfig(clusterInfo);
 
-      const peerConnection = new RTCPeerConnection(config);
-
-      return peerConnection;
+      return new RTCPeerConnection(config);
     } catch (peerConnectionError) {
       LoggerProxy.logger.warn(
         `Reachability:index#createPeerConnection --> Error creating peerConnection:`,
@@ -188,14 +186,16 @@ export class ClusterReachability {
    * @returns {void}
    */
   private registerIceGatheringStateChangeListener() {
-    this.pc.onicegatheringstatechange = () => {
-      const {COMPLETE} = ICE_GATHERING_STATE;
+    if (this.pc) {
+      this.pc.onicegatheringstatechange = () => {
+        const {COMPLETE} = ICE_GATHERING_STATE;
 
-      if (this.pc.iceConnectionState === COMPLETE) {
-        this.closePeerConnection();
-        this.finishReachabilityCheck();
-      }
-    };
+        if (this.pc?.iceConnectionState === COMPLETE) {
+          this.closePeerConnection();
+          this.finishReachabilityCheck();
+        }
+      };
+    }
   }
 
   /**
@@ -204,7 +204,7 @@ export class ClusterReachability {
    * @returns {boolean} true if we have all results, false otherwise
    */
   private haveWeGotAllResults(): boolean {
-    return ['udp', 'tcp', 'xtls'].every(
+    return (['udp', 'tcp', 'xtls'] as const).every(
       (protocol) =>
         this.result[protocol].result === 'reachable' || this.result[protocol].result === 'untested'
     );
@@ -236,32 +236,34 @@ export class ClusterReachability {
    * @returns {void}
    */
   private registerIceCandidateListener() {
-    this.pc.onicecandidate = (e) => {
-      const TURN_TLS_PORT = 443;
-      const CANDIDATE_TYPES = {
-        SERVER_REFLEXIVE: 'srflx',
-        RELAY: 'relay',
+    if (this.pc) {
+      this.pc.onicecandidate = (e) => {
+        const TURN_TLS_PORT = 443;
+        const CANDIDATE_TYPES = {
+          SERVER_REFLEXIVE: 'srflx',
+          RELAY: 'relay',
+        };
+
+        if (e.candidate) {
+          if (e.candidate.type === CANDIDATE_TYPES.SERVER_REFLEXIVE) {
+            this.storeLatencyResult('udp', this.getElapsedTime());
+            this.addPublicIP('udp', e.candidate.address);
+          }
+
+          if (e.candidate.type === CANDIDATE_TYPES.RELAY) {
+            const protocol = e.candidate.port === TURN_TLS_PORT ? 'xtls' : 'tcp';
+            this.storeLatencyResult(protocol, this.getElapsedTime());
+            // we don't add public IP for TCP, because in the case of relay candidates
+            // e.candidate.address is the TURN server address, not the client's public IP
+          }
+
+          if (this.haveWeGotAllResults()) {
+            this.closePeerConnection();
+            this.finishReachabilityCheck();
+          }
+        }
       };
-
-      if (e.candidate) {
-        if (e.candidate.type === CANDIDATE_TYPES.SERVER_REFLEXIVE) {
-          this.storeLatencyResult('udp', this.getElapsedTime());
-          this.addPublicIP('udp', e.candidate.address);
-        }
-
-        if (e.candidate.type === CANDIDATE_TYPES.RELAY) {
-          const protocol = e.candidate.port === TURN_TLS_PORT ? 'xtls' : 'tcp';
-          this.storeLatencyResult(protocol, this.getElapsedTime());
-          // we don't add public IP for TCP, because in the case of relay candidates
-          // e.candidate.address is the TURN server address, not the client's public IP
-        }
-
-        if (this.haveWeGotAllResults()) {
-          this.closePeerConnection();
-          this.finishReachabilityCheck();
-        }
-      }
-    };
+    }
   }
 
   /**
@@ -324,7 +326,7 @@ export class ClusterReachability {
       const {CLOSED} = CONNECTION_STATE;
 
       // Close any open peerConnections
-      if (this.pc.connectionState !== CLOSED) {
+      if (this.pc?.connectionState !== CLOSED) {
         this.closePeerConnection();
         this.finishReachabilityCheck();
       }

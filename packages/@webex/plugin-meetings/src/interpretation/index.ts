@@ -40,8 +40,11 @@ const SimultaneousInterpretation = WebexPlugin.extend({
        * Returns should query support languages or not
        * @returns {boolean}
        */
-      fn() {
-        return !!(this.canManageInterpreters && this.hostSIEnabled);
+      fn(): boolean {
+        return !!(
+          (this as Record<string, any>).canManageInterpreters &&
+          (this as Record<string, any>).hostSIEnabled
+        );
       },
     },
   },
@@ -70,7 +73,7 @@ const SimultaneousInterpretation = WebexPlugin.extend({
    * @param {string} locusUrl // locus url
    * @returns {void}
    */
-  locusUrlUpdate(locusUrl) {
+  locusUrlUpdate(locusUrl: string) {
     this.set('locusUrl', locusUrl);
   },
   /**
@@ -78,7 +81,7 @@ const SimultaneousInterpretation = WebexPlugin.extend({
    * @param {string} approvalUrl // approval url
    * @returns {void}
    */
-  approvalUrlUpdate(approvalUrl) {
+  approvalUrlUpdate(approvalUrl: string) {
     this.set('approvalUrl', approvalUrl);
   },
   /**
@@ -86,7 +89,7 @@ const SimultaneousInterpretation = WebexPlugin.extend({
    * @param {boolean} canManageInterpreters
    * @returns {void}
    */
-  updateCanManageInterpreters(canManageInterpreters) {
+  updateCanManageInterpreters(canManageInterpreters: boolean) {
     this.set('canManageInterpreters', canManageInterpreters);
   },
   /**
@@ -94,7 +97,7 @@ const SimultaneousInterpretation = WebexPlugin.extend({
    * @param {boolean} hostSIEnabled
    * @returns {void}
    */
-  updateHostSIEnabled(hostSIEnabled) {
+  updateHostSIEnabled(hostSIEnabled: boolean) {
     this.set('hostSIEnabled', hostSIEnabled);
   },
 
@@ -104,26 +107,32 @@ const SimultaneousInterpretation = WebexPlugin.extend({
    * @param {boolean} selfIsInterpreter
    * @returns {void}
    */
-  updateMeetingSIEnabled(meetingSIEnabled: boolean, selfIsInterpreter): void {
+  updateMeetingSIEnabled(meetingSIEnabled: boolean, selfIsInterpreter: boolean): void {
     this.set('meetingSIEnabled', meetingSIEnabled);
     this.set('selfIsInterpreter', selfIsInterpreter);
   },
 
   /**
    * Update the interpretation languages channels which user can choose to subscribe
-   * @param {Object} interpretation
+   * @param {Record<string, any>} interpretation
    * @returns {void}
    */
-  updateInterpretation(interpretation) {
+  updateInterpretation(interpretation: Record<string, any>) {
     this.siLanguages.set(interpretation?.siLanguages || []);
   },
   /**
    * Update self's interpretation information (self is interpreter)
-   * @param {Object} interpretation
-   * @param {String} selfParticipantId
-   * @returns {bool} is target language changed
+   * @param {Record<string, any>} interpretation
+   * @param {string} selfParticipantId
+   * @returns {boolean} is target language changed
    */
-  updateSelfInterpretation({interpretation, selfParticipantId}) {
+  updateSelfInterpretation({
+    interpretation,
+    selfParticipantId,
+  }: {
+    interpretation: Record<string, any>;
+    selfParticipantId: string;
+  }): boolean {
     const preTargetLanguage = this.targetLanguage;
     const {originalLanguage, sourceLanguage, order, isActive, targetLanguage, receiveLanguage} =
       interpretation || {};
@@ -131,7 +140,7 @@ const SimultaneousInterpretation = WebexPlugin.extend({
     this.set('selfParticipantId', selfParticipantId);
     this.set('selfIsInterpreter', !!targetLanguage);
 
-    return !!(preTargetLanguage !== targetLanguage);
+    return preTargetLanguage !== targetLanguage;
   },
 
   /**
@@ -155,11 +164,11 @@ const SimultaneousInterpretation = WebexPlugin.extend({
       method: HTTP_VERBS.GET,
       uri: `${this.locusUrl}/languages/interpretation`,
     })
-      .then((result) => {
+      .then((result: Record<string, any>) => {
         this.set('supportLanguages', result.body?.siLanguages);
         this.trigger(INTERPRETATION.EVENTS.SUPPORT_LANGUAGES_UPDATE);
       })
-      .catch((error) => {
+      .catch((error: unknown) => {
         LoggerProxy.logger.error('Meeting:interpretation#querySupportLanguages failed', error);
         throw error;
       });
@@ -172,17 +181,17 @@ const SimultaneousInterpretation = WebexPlugin.extend({
     return this.request({
       method: HTTP_VERBS.GET,
       uri: `${this.locusUrl}/interpretation/interpreters`,
-    }).catch((error) => {
+    }).catch((error: unknown) => {
       LoggerProxy.logger.error('Meeting:interpretation#getInterpreters failed', error);
       throw error;
     });
   },
   /**
    * update interpreters of the meeting
-   * @param {Array} interpreters
+   * @param {unknown} interpreters
    * @returns {Promise}
    */
-  updateInterpreters(interpreters) {
+  updateInterpreters(interpreters: unknown) {
     return this.request({
       method: HTTP_VERBS.PATCH,
       uri: `${this.locusUrl}/controls`,
@@ -191,7 +200,7 @@ const SimultaneousInterpretation = WebexPlugin.extend({
           interpreters,
         },
       },
-    }).catch((error) => {
+    }).catch((error: unknown) => {
       LoggerProxy.logger.error('Meeting:interpretation#updateInterpreters failed', error);
       throw error;
     });
@@ -220,7 +229,7 @@ const SimultaneousInterpretation = WebexPlugin.extend({
           order: this.order,
         },
       },
-    }).catch((error) => {
+    }).catch((error: unknown) => {
       LoggerProxy.logger.error('Meeting:interpretation#changeDirection failed', error);
       throw error;
     });
@@ -230,33 +239,37 @@ const SimultaneousInterpretation = WebexPlugin.extend({
    * @returns {void}
    */
   listenToHandoffRequests() {
-    this.listenTo(this.webex.internal.mercury, 'event:locus.approval_request', (event) => {
-      if (event?.data?.approval?.resourceType === INTERPRETATION.RESOURCE_TYPE) {
-        const {receivers, initiator, actionType, url} = event.data.approval;
-        const receiverId = receivers?.[0]?.participantId;
-        const isReceiver = !!receiverId && receiverId === this.selfParticipantId;
-        const senderId = initiator?.participantId;
-        const isSender = !!senderId && senderId === this.selfParticipantId;
-        if (!isReceiver && !isSender) {
-          return;
+    this.listenTo(
+      this.webex.internal.mercury,
+      'event:locus.approval_request',
+      (event: Record<string, any>) => {
+        if (event?.data?.approval?.resourceType === INTERPRETATION.RESOURCE_TYPE) {
+          const {receivers, initiator, actionType, url} = event.data.approval;
+          const receiverId = receivers?.[0]?.participantId;
+          const isReceiver = !!receiverId && receiverId === this.selfParticipantId;
+          const senderId = initiator?.participantId;
+          const isSender = !!senderId && senderId === this.selfParticipantId;
+          if (!isReceiver && !isSender) {
+            return;
+          }
+          this.trigger(INTERPRETATION.EVENTS.HANDOFF_REQUESTS_ARRIVED, {
+            actionType,
+            isReceiver,
+            isSender,
+            senderId,
+            receiverId,
+            url,
+          });
         }
-        this.trigger(INTERPRETATION.EVENTS.HANDOFF_REQUESTS_ARRIVED, {
-          actionType,
-          isReceiver,
-          isSender,
-          senderId,
-          receiverId,
-          url,
-        });
       }
-    });
+    );
   },
   /**
    * handoff the active interpreter role to another interpreter in same group, only the interpreter is allowed to call this api
    * @param {string} participantId the participant id you want to hand off
    * @returns {Promise}
    */
-  handoffInterpreter(participantId) {
+  handoffInterpreter(participantId: string): Promise<unknown> {
     if (!participantId) {
       return Promise.reject(new Error('Missing target participant id'));
     }
@@ -276,7 +289,7 @@ const SimultaneousInterpretation = WebexPlugin.extend({
           },
         ],
       },
-    }).catch((error) => {
+    }).catch((error: unknown) => {
       LoggerProxy.logger.error('Meeting:interpretation#handoffInterpreter failed', error);
       throw error;
     });
@@ -297,17 +310,17 @@ const SimultaneousInterpretation = WebexPlugin.extend({
         actionType: INTERPRETATION.ACTION_TYPE.REQUESTED,
         resourceType: INTERPRETATION.RESOURCE_TYPE,
       },
-    }).catch((error) => {
+    }).catch((error: unknown) => {
       LoggerProxy.logger.error('Meeting:interpretation#requestHandoff failed', error);
       throw error;
     });
   },
   /**
    * accept the request of handoff
-   * @param {String} url the url get from last approval event
+   * @param {string} url the url get from last approval event
    * @returns {Promise}
    */
-  acceptRequest(url) {
+  acceptRequest(url: string): Promise<unknown> {
     if (!url) {
       return Promise.reject(new Error('Missing the url to accept'));
     }
@@ -318,17 +331,17 @@ const SimultaneousInterpretation = WebexPlugin.extend({
       body: {
         actionType: INTERPRETATION.ACTION_TYPE.ACCEPTED,
       },
-    }).catch((error) => {
+    }).catch((error: unknown) => {
       LoggerProxy.logger.error('Meeting:interpretation#acceptRequest failed', error);
       throw error;
     });
   },
   /**
    * decline the request of handoff
-   * @param {String} url the url get from last approval event
+   * @param {string} url the url get from last approval event
    * @returns {Promise}
    */
-  declineRequest(url) {
+  declineRequest(url: string): Promise<unknown> {
     if (!url) {
       return Promise.reject(new Error('Missing the url to decline'));
     }
@@ -339,7 +352,7 @@ const SimultaneousInterpretation = WebexPlugin.extend({
       body: {
         actionType: INTERPRETATION.ACTION_TYPE.DECLINED,
       },
-    }).catch((error) => {
+    }).catch((error: unknown) => {
       LoggerProxy.logger.error('Meeting:interpretation#declineRequest failed', error);
       throw error;
     });

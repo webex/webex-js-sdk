@@ -1,6 +1,6 @@
 /* eslint-disable no-param-reassign, prefer-destructuring */
 
-import {mean, max} from 'lodash';
+import {max, mean} from 'lodash';
 
 import {MQA_INTERVAL, STATS} from '../constants';
 
@@ -14,20 +14,25 @@ import {MQA_INTERVAL, STATS} from '../constants';
  * @returns {number}
  */
 const getTotalValueFromBaseType = (
-  stats: object,
+  stats: Record<string, any>,
   sendrecvType: string,
   baseMediaType: string,
   value: string
 ): number =>
   Object.keys(stats)
     .filter((mt) => mt.includes(baseMediaType))
-    .reduce((acc, mt) => acc + (stats[mt]?.[sendrecvType]?.[value] || 0), 0);
+    .reduce((acc: number, mt) => acc + (stats[mt]?.[sendrecvType]?.[value] || 0), 0);
 
 export const getAudioReceiverMqa = ({
   audioReceiver,
   statsResults,
   lastMqaDataSent,
   baseMediaType,
+}: {
+  audioReceiver: Record<string, any>;
+  statsResults: Record<string, any>;
+  lastMqaDataSent: Record<string, any>;
+  baseMediaType: string;
 }) => {
   const sendrecvType = STATS.RECEIVE_DIRECTION;
 
@@ -49,8 +54,9 @@ export const getAudioReceiverMqa = ({
   const totalFecPacketsDiscarded = getTotalValue('fecPacketsDiscarded');
 
   audioReceiver.common.common.direction =
-    statsResults[Object.keys(statsResults).find((mediaType) => mediaType.includes(baseMediaType))]
-      ?.direction || 'inactive';
+    statsResults[
+      Object.keys(statsResults).find((mediaType) => mediaType.includes(baseMediaType)) || ''
+    ]?.direction || 'inactive';
   audioReceiver.common.common.isMain = !baseMediaType.includes('-share');
   audioReceiver.common.transportType = statsResults.connectionType.local.transport;
 
@@ -63,11 +69,10 @@ export const getAudioReceiverMqa = ({
   audioReceiver.common.mediaHopByHopLost = totalPacketsLost;
   audioReceiver.common.rtpHopByHopLost = totalPacketsLost;
 
-  const fecRecovered =
+  audioReceiver.common.fecPackets =
     totalFecPacketsReceived -
     lastFecPacketsReceived -
     (totalFecPacketsDiscarded - lastFecPacketsDiscarded);
-  audioReceiver.common.fecPackets = fecRecovered;
 
   audioReceiver.common.rtpBitrate = ((totalBytesReceived - lastBytesReceived) * 8) / 60 || 0;
 };
@@ -77,6 +82,11 @@ export const getAudioReceiverStreamMqa = ({
   statsResults,
   lastMqaDataSent,
   mediaType,
+}: {
+  audioReceiverStream: Record<string, any>;
+  statsResults: Record<string, any>;
+  lastMqaDataSent: Record<string, any>;
+  mediaType: string;
 }) => {
   const sendrecvType = STATS.RECEIVE_DIRECTION;
 
@@ -127,7 +137,17 @@ export const getAudioReceiverStreamMqa = ({
     ((statsResults[mediaType][sendrecvType].totalBytesReceived - lastBytesReceived) * 8) / 60 || 0;
 };
 
-export const getAudioSenderMqa = ({audioSender, statsResults, lastMqaDataSent, baseMediaType}) => {
+export const getAudioSenderMqa = ({
+  audioSender,
+  statsResults,
+  lastMqaDataSent,
+  baseMediaType,
+}: {
+  audioSender: Record<string, any>;
+  statsResults: Record<string, any>;
+  lastMqaDataSent: Record<string, any>;
+  baseMediaType: string;
+}) => {
   const sendrecvType = STATS.SEND_DIRECTION;
 
   const getLastTotalValue = (value: string) =>
@@ -143,22 +163,26 @@ export const getAudioSenderMqa = ({audioSender, statsResults, lastMqaDataSent, b
 
   const meanRemoteJitter = Object.keys(statsResults)
     .filter((mt) => mt.includes(baseMediaType))
-    .reduce((acc, mt) => acc.concat(statsResults[mt][sendrecvType].meanRemoteJitter), []);
+    .reduce((acc: number[], mt) => acc.concat(statsResults[mt][sendrecvType].meanRemoteJitter), []);
   const meanRoundTripTime = Object.keys(statsResults)
     .filter((mt) => mt.includes(baseMediaType))
-    .reduce((acc, mt) => acc.concat(statsResults[mt][sendrecvType].meanRoundTripTime), []);
+    .reduce(
+      (acc: number[], mt) => acc.concat(statsResults[mt][sendrecvType].meanRoundTripTime),
+      []
+    );
 
   audioSender.common.common.direction =
-    statsResults[Object.keys(statsResults).find((mediaType) => mediaType.includes(baseMediaType))]
-      ?.direction || 'inactive';
+    statsResults[
+      Object.keys(statsResults).find((mediaType) => mediaType.includes(baseMediaType)) || ''
+    ]?.direction || 'inactive';
   audioSender.common.common.isMain = !baseMediaType.includes('-share');
   audioSender.common.transportType = statsResults.connectionType.local.transport;
 
-  audioSender.common.maxRemoteJitter = max(meanRemoteJitter) * 1000 || 0;
-  audioSender.common.meanRemoteJitter = mean(meanRemoteJitter) * 1000 || 0;
+  audioSender.common.maxRemoteJitter = (max(meanRemoteJitter) ?? 0) * 1000;
+  audioSender.common.meanRemoteJitter = (mean(meanRemoteJitter) ?? 0) * 1000;
 
   audioSender.common.rtpPackets = totalPacketsSent - lastPacketsSent || 0;
-  // audioSender.streams[0].common.rtpPackets = audioSender.common.rtpPackets;
+
   // From candidate-pair
   audioSender.common.availableBitrate = getTotalValueFromBaseType(
     statsResults,
@@ -174,8 +198,8 @@ export const getAudioSenderMqa = ({audioSender, statsResults, lastMqaDataSent, b
       ? (totalPacketsLostForaMin * 100) / (totalPacketsSent - lastPacketsSent)
       : 0; // This is the packets sent with in last min
 
-  audioSender.common.maxRoundTripTime = max(meanRoundTripTime) * 1000 || 0;
-  audioSender.common.meanRoundTripTime = mean(meanRoundTripTime) * 1000 || 0;
+  audioSender.common.maxRoundTripTime = (max(meanRoundTripTime) ?? 0) * 1000;
+  audioSender.common.meanRoundTripTime = (mean(meanRoundTripTime) ?? 0) * 1000;
   audioSender.common.roundTripTime = audioSender.common.maxRoundTripTime;
 
   // Calculate the outgoing bitrate
@@ -191,6 +215,11 @@ export const getAudioSenderStreamMqa = ({
   statsResults,
   lastMqaDataSent,
   mediaType,
+}: {
+  audioSenderStream: Record<string, any>;
+  statsResults: Record<string, any>;
+  lastMqaDataSent: Record<string, any>;
+  mediaType: string;
 }) => {
   const sendrecvType = STATS.SEND_DIRECTION;
 
@@ -225,6 +254,11 @@ export const getVideoReceiverMqa = ({
   statsResults,
   lastMqaDataSent,
   baseMediaType,
+}: {
+  videoReceiver: Record<string, any>;
+  statsResults: Record<string, any>;
+  lastMqaDataSent: Record<string, any>;
+  baseMediaType: string;
 }) => {
   const sendrecvType = STATS.RECEIVE_DIRECTION;
 
@@ -249,11 +283,12 @@ export const getVideoReceiverMqa = ({
 
   const meanRemoteJitter = Object.keys(statsResults)
     .filter((mt) => mt.includes(baseMediaType))
-    .reduce((acc, mt) => acc.concat(statsResults[mt][sendrecvType].meanRemoteJitter), []);
+    .reduce((acc: number[], mt) => acc.concat(statsResults[mt][sendrecvType].meanRemoteJitter), []);
 
   videoReceiver.common.common.direction =
-    statsResults[Object.keys(statsResults).find((mediaType) => mediaType.includes(baseMediaType))]
-      ?.direction || 'inactive';
+    statsResults[
+      Object.keys(statsResults).find((mediaType) => mediaType.includes(baseMediaType)) || ''
+    ]?.direction || 'inactive';
   videoReceiver.common.common.isMain = !baseMediaType.includes('-share');
   videoReceiver.common.transportType = statsResults.connectionType.local.transport;
 
@@ -267,8 +302,8 @@ export const getVideoReceiverMqa = ({
   videoReceiver.common.rtpHopByHopLost = totalPacketsLost;
 
   // calculate this values
-  videoReceiver.common.maxRemoteJitter = max(meanRemoteJitter) * 1000 || 0;
-  videoReceiver.common.meanRemoteJitter = mean(meanRemoteJitter) * 1000 || 0;
+  videoReceiver.common.maxRemoteJitter = (max(meanRemoteJitter) ?? 0) * 1000;
+  videoReceiver.common.meanRemoteJitter = (mean(meanRemoteJitter) ?? 0) * 1000;
 
   // Calculate the outgoing bitrate
   const totalBytesReceivedInaMin = totalBytesReceived - lastBytesReceived;
@@ -288,6 +323,11 @@ export const getVideoReceiverStreamMqa = ({
   statsResults,
   lastMqaDataSent,
   mediaType,
+}: {
+  videoReceiverStream: Record<string, any>;
+  statsResults: Record<string, any>;
+  lastMqaDataSent: Record<string, any>;
+  mediaType: string;
 }) => {
   const sendrecvType = STATS.RECEIVE_DIRECTION;
 
@@ -308,11 +348,9 @@ export const getVideoReceiverStreamMqa = ({
   videoReceiverStream.common.rtpPackets =
     statsResults[mediaType][sendrecvType].totalPacketsReceived - lastPacketsReceived || 0;
 
-  const totalPacketLoss =
-    statsResults[mediaType][sendrecvType].totalPacketsLost - lastPacketsLost || 0;
-
   // End to end packetloss is after recovery
-  videoReceiverStream.common.rtpEndToEndLost = totalPacketLoss;
+  videoReceiverStream.common.rtpEndToEndLost =
+    statsResults[mediaType][sendrecvType].totalPacketsLost - lastPacketsLost || 0;
 
   videoReceiverStream.common.rtpJitter =
     // @ts-ignore
@@ -357,7 +395,17 @@ export const getVideoReceiverStreamMqa = ({
         MQA_INTERVAL);
 };
 
-export const getVideoSenderMqa = ({videoSender, statsResults, lastMqaDataSent, baseMediaType}) => {
+export const getVideoSenderMqa = ({
+  videoSender,
+  statsResults,
+  lastMqaDataSent,
+  baseMediaType,
+}: {
+  videoSender: Record<string, any>;
+  statsResults: Record<string, any>;
+  lastMqaDataSent: Record<string, any>;
+  baseMediaType: string;
+}) => {
   const sendrecvType = STATS.SEND_DIRECTION;
 
   const getLastTotalValue = (value: string) =>
@@ -379,17 +427,21 @@ export const getVideoSenderMqa = ({videoSender, statsResults, lastMqaDataSent, b
   const totalRtxBytesSent = getTotalValue('totalRtxBytesSent');
 
   videoSender.common.common.direction =
-    statsResults[Object.keys(statsResults).find((mediaType) => mediaType.includes(baseMediaType))]
-      ?.direction || 'inactive';
+    statsResults[
+      Object.keys(statsResults).find((mediaType) => mediaType.includes(baseMediaType)) || ''
+    ]?.direction || 'inactive';
   videoSender.common.common.isMain = !baseMediaType.includes('-share');
   videoSender.common.transportType = statsResults.connectionType.local.transport;
 
   const meanRemoteJitter = Object.keys(statsResults)
     .filter((mt) => mt.includes(baseMediaType))
-    .reduce((acc, mt) => acc.concat(statsResults[mt][sendrecvType].meanRemoteJitter), []);
+    .reduce((acc: number[], mt) => acc.concat(statsResults[mt][sendrecvType].meanRemoteJitter), []);
   const meanRoundTripTime = Object.keys(statsResults)
     .filter((mt) => mt.includes(baseMediaType))
-    .reduce((acc, mt) => acc.concat(statsResults[mt][sendrecvType].meanRoundTripTime), []);
+    .reduce(
+      (acc: number[], mt) => acc.concat(statsResults[mt][sendrecvType].meanRoundTripTime),
+      []
+    );
 
   // @ts-ignore
   videoSender.common.maxRemoteJitter = max(meanRemoteJitter) * 1000 || 0;
@@ -398,7 +450,7 @@ export const getVideoSenderMqa = ({videoSender, statsResults, lastMqaDataSent, b
   videoSender.common.rtpPackets = totalPacketsSent - lastPacketsSent;
   videoSender.common.availableBitrate = availableOutgoingBitrate;
 
-  // Calculate based on how much packets lost of received compated to how to the client sent
+  // Calculate based on how many packets lost of received compated to how to the client sent
   const totalPacketsLostForaMin = totalPacketsLostOnReceiver - lastPacketsLostTotal;
 
   videoSender.common.remoteLossRate =
@@ -406,8 +458,8 @@ export const getVideoSenderMqa = ({videoSender, statsResults, lastMqaDataSent, b
       ? (totalPacketsLostForaMin * 100) / (totalPacketsSent - lastPacketsSent)
       : 0; // This is the packets sent with in last min || 0;
 
-  videoSender.common.maxRoundTripTime = max(meanRoundTripTime) * 1000 || 0;
-  videoSender.common.meanRoundTripTime = mean(meanRoundTripTime) * 1000 || 0;
+  videoSender.common.maxRoundTripTime = (max(meanRoundTripTime) ?? 0) * 1000;
+  videoSender.common.meanRoundTripTime = (mean(meanRoundTripTime) ?? 0) * 1000;
   videoSender.common.roundTripTime = videoSender.common.maxRoundTripTime;
 
   // Calculate the outgoing bitrate
@@ -424,6 +476,11 @@ export const getVideoSenderStreamMqa = ({
   statsResults,
   lastMqaDataSent,
   mediaType,
+}: {
+  videoSenderStream: Record<string, any>;
+  statsResults: Record<string, any>;
+  lastMqaDataSent: Record<string, any>;
+  mediaType: string;
 }) => {
   const sendrecvType = STATS.SEND_DIRECTION;
 

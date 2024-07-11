@@ -14,14 +14,14 @@ const mockDetectionObject = {
   isBrowser: () => false,
 };
 
-const createDetectionObject = (results) => {
+const createDetectionObject = (results: Record<string, any>) => {
   const getOSName = () => results?.getOSName() ?? '';
   const getOSVersion = () => results?.getOSVersion() ?? '';
 
   const getBrowserName = () => results?.getBrowserName() ?? '';
   const getBrowserVersion = () => results?.getBrowserVersion() ?? '';
 
-  const isBrowser = (name) => !!results?.isBrowser(name, true);
+  const isBrowser = (name: unknown) => !!results?.isBrowser(name, true);
 
   return {
     getOSName,
@@ -32,7 +32,7 @@ const createDetectionObject = (results) => {
   };
 };
 
-export default memoize((agent?: any) =>
+export default memoize((agent?: string) =>
   agent || window.navigator?.userAgent
     ? createDetectionObject(bowser.getParser(agent || window.navigator.userAgent))
     : mockDetectionObject

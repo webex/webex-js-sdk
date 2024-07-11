@@ -6,7 +6,7 @@ import {NamedMediaGroup} from '@webex/internal-media-core';
 import LoggerProxy from '../common/logs/logger-proxy';
 
 import {getMaxFs, RemoteMedia, RemoteVideoResolution} from './remoteMedia';
-import {MediaRequestId, MediaRequestManager} from './mediaRequestManager';
+import {MediaRequest, MediaRequestId, MediaRequestManager} from './mediaRequestManager';
 import {CSI, ReceiveSlot} from './receiveSlot';
 
 type Options = {
@@ -234,7 +234,7 @@ export class RemoteMediaGroup {
           codec: 'h264',
           maxFs: getMaxFs(this.options.resolution),
         },
-      },
+      } as MediaRequest,
       commit
     );
   }
@@ -252,8 +252,8 @@ export class RemoteMediaGroup {
    */
   public setNamedMediaGroup(namedMediaGroup: NamedMediaGroup, commit: boolean) {
     if (
-      this.options.namedMediaGroup.value !== namedMediaGroup.value ||
-      this.options.namedMediaGroup.type !== namedMediaGroup.type
+      this.options.namedMediaGroup?.value !== namedMediaGroup.value ||
+      this.options.namedMediaGroup?.type !== namedMediaGroup.type
     ) {
       this.options.namedMediaGroup = namedMediaGroup;
       this.sendActiveSpeakerMediaRequest(commit);

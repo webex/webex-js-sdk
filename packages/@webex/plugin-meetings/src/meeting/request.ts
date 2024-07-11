@@ -1,8 +1,6 @@
 import uuid from 'uuid';
 import {debounce} from 'lodash';
-// @ts-ignore
 import {StatelessWebexPlugin} from '@webex/webex-core';
-// @ts-ignore
 import {deviceType} from '@webex/common';
 import {CallDiagnosticUtils} from '@webex/internal-plugin-metrics';
 
@@ -37,9 +35,9 @@ import {AnnotationInfo} from '../annotation/annotation.types';
  */
 export default class MeetingRequest extends StatelessWebexPlugin {
   changeVideoLayoutDebounced: any;
-  meetingRef: WeakRef<any>;
+  meetingRef: WeakRef<any> | undefined;
   locusDeltaRequest: (options: object) => Promise<any>;
-  buildLocusDeltaRequestOptions: (options: object) => Promise<any>;
+  buildLocusDeltaRequestOptions: (options: object) => Record<string, any>;
 
   /**
    * Constructor
@@ -312,7 +310,7 @@ export default class MeetingRequest extends StatelessWebexPlugin {
       method: HTTP_VERBS.POST,
       uri: captchaRefreshUrl,
       body,
-    }).catch((err) => {
+    }).catch((err: unknown) => {
       LoggerProxy.logger.error(`Meeting:request#refreshCaptcha --> Error: ${err}`);
 
       throw err;
@@ -335,7 +333,7 @@ export default class MeetingRequest extends StatelessWebexPlugin {
     clientUrl,
     correlationId,
   }: {
-    correlationId: string;
+    correlationId: string | undefined;
     locusUrl: string;
     dialInUrl: string;
     clientUrl: string;
@@ -388,7 +386,7 @@ export default class MeetingRequest extends StatelessWebexPlugin {
     clientUrl,
     correlationId,
   }: {
-    correlationId: string;
+    correlationId: string | undefined;
     locusUrl: string;
     dialOutUrl: string;
     phoneNumber: string;
@@ -411,7 +409,6 @@ export default class MeetingRequest extends StatelessWebexPlugin {
       correlationId,
     };
 
-    // @ts-ignore
     return this.locusDeltaRequest({
       method: HTTP_VERBS.POST,
       uri,
@@ -439,7 +436,7 @@ export default class MeetingRequest extends StatelessWebexPlugin {
       return this.request({
         method: HTTP_VERBS.GET,
         uri: url,
-      }).catch((err) => {
+      }).catch((err: unknown) => {
         LoggerProxy.logger.error(
           `Meeting:request#getLocusDTO --> Error getting latest locus, error ${err}`
         );
@@ -591,12 +588,16 @@ export default class MeetingRequest extends StatelessWebexPlugin {
   /**
    * Make a network request to acknowledge a meeting
    * @param {Object} options
-   * @param {String} options.locusUrl
-   * @param {String} options.deviceUrl
-   * @param {String} options.correlationId
+   * @param {string} options.locusUrl
+   * @param {string} options.deviceUrl
+   * @param {string | undefined} options.correlationId
    * @returns {Promise}
    */
-  acknowledgeMeeting(options: {locusUrl: string; deviceUrl: string; correlationId: string}) {
+  acknowledgeMeeting(options: {
+    locusUrl: string;
+    deviceUrl: string;
+    correlationId: string | undefined;
+  }) {
     const uri = `${options.locusUrl}/${PARTICIPANT}/${ALERT}`;
     const body = {
       device: {
@@ -620,7 +621,7 @@ export default class MeetingRequest extends StatelessWebexPlugin {
    * @param {Boolean} options.lock Whether it is locked or not
    * @returns {Promise}
    */
-  lockMeeting(options) {
+  lockMeeting(options: Record<string, any>) {
     const uri = `${options.locusUrl}/${CONTROLS}`;
     const body = {
       lock: {

@@ -1,58 +1,62 @@
 import url from 'url';
 
 import btoa from 'btoa';
-// @ts-ignore
 import {deconstructHydraId} from '@webex/common';
 
 import ParameterError from '../common/errors/parameter';
 import LoggerProxy from '../common/logs/logger-proxy';
 
 import {
-  _SIP_URI_,
-  _PERSONAL_ROOM_,
-  _MEETING_ID_,
   _CONVERSATION_URL_,
   _LOCUS_ID_,
+  _MEETING_ID_,
   _MEETING_LINK_,
   _PEOPLE_,
+  _PERSONAL_ROOM_,
   _ROOM_,
-  HTTP_VERBS,
-  USE_URI_LOOKUP_FALSE,
-  TYPE,
-  LOCI,
-  MEETINGINFO,
+  _SIP_URI_,
   ALTERNATE_REDIRECT_TRUE,
-  DIALER_REGEX,
-  WEBEX_DOT_COM,
   CONVERSATION_SERVICE,
-  WWW_DOT,
+  DIALER_REGEX,
+  HTTP_VERBS,
+  HTTPS_PROTOCOL,
   JOIN,
+  LOCI,
   MEET,
   MEET_M,
-  HTTPS_PROTOCOL,
+  MEETINGINFO,
+  TYPE,
+  USE_URI_LOOKUP_FALSE,
   UUID_REG,
+  WEBEX_DOT_COM,
+  WWW_DOT,
 } from '../constants';
 
 /**
  * @class MeetingInfoUtil
  */
 export default class MeetingInfoUtil {
-  static extractDestination(destination, type) {
+  static extractDestination(
+    destination: {url: string} | string,
+    type: string | null
+  ): {url: string} | string {
     let dest = destination;
 
     if (type === _LOCUS_ID_) {
-      if (!(destination && destination.url)) {
-        throw new ParameterError(
-          'You cannot create a meeting by locus without a locus.url defined'
-        );
+      if (typeof destination === 'object') {
+        if (!(destination && destination.url)) {
+          throw new ParameterError(
+            'You cannot create a meeting by locus without a locus.url defined'
+          );
+        }
+        dest = destination.url;
       }
-      dest = destination.url;
     }
 
     return dest;
   }
 
-  static getParsedUrl(link) {
+  static getParsedUrl(link: string) {
     try {
       let parsedUrl = url.parse(link);
 
@@ -95,7 +99,7 @@ export default class MeetingInfoUtil {
     return hostNameBool && pathNameBool;
   }
 
-  static isConversationUrl(value, webex) {
+  static isConversationUrl(value: unknown, webex: Record<string, any>) {
     const clusterId = webex.internal.services.getClusterId(value);
 
     if (clusterId) {
@@ -105,7 +109,7 @@ export default class MeetingInfoUtil {
     return false;
   }
 
-  static convertLinkToSip(value) {
+  static convertLinkToSip(value: string) {
     const parsedUrl = this.getParsedUrl(value);
 
     if (!parsedUrl) {
@@ -135,21 +139,17 @@ export default class MeetingInfoUtil {
     return `${user}@${company}.${WEBEX_DOT_COM}`;
   }
 
-  static isSipUri(sipString) {
+  static isSipUri(sipString: string) {
     // TODO: lets remove regex from this equation and user URI matchers and such
     // have not found a great sip uri parser library as of now
-    const sipUri = DIALER_REGEX.SIP_ADDRESS.exec(sipString);
-
-    return sipUri;
+    return DIALER_REGEX.SIP_ADDRESS.exec(sipString);
   }
 
-  static isPhoneNumber(phoneNumber) {
-    const isValidNumber = DIALER_REGEX.PHONE_NUMBER.test(phoneNumber);
-
-    return isValidNumber;
+  static isPhoneNumber(phoneNumber: string) {
+    return DIALER_REGEX.PHONE_NUMBER.test(phoneNumber);
   }
 
-  static getHydraId(destination) {
+  static getHydraId(destination: Record<string, any>) {
     const {type, id, cluster} = deconstructHydraId(destination);
 
     if (id && UUID_REG.test(id)) {
@@ -166,16 +166,16 @@ export default class MeetingInfoUtil {
     return {};
   }
 
-  static getSipUriFromHydraPersonId(destination, webex) {
+  static getSipUriFromHydraPersonId(destination: string, webex: Record<string, any>) {
     return webex.people
       .get(destination)
-      .then((res) => {
+      .then((res: Record<string, any>) => {
         if (res.emails && res.emails.length) {
           return res.emails[0];
         }
         throw new ParameterError('Hydra Id Lookup was an invalid hydra person id.');
       })
-      .catch((err) => {
+      .catch((err: unknown) => {
         LoggerProxy.logger.error(
           `Meeting-info:util#MeetingInfoUtil.getSipUriFromHydraPersonId --> getSipUriFromHydraPersonId ${err} `
         );
@@ -183,7 +183,7 @@ export default class MeetingInfoUtil {
       });
   }
 
-  static async generateOptions(from) {
+  static async generateOptions(from: Record<string, any>) {
     const {destination, type, webex} = from;
 
     if (type) {
@@ -214,16 +214,18 @@ export default class MeetingInfoUtil {
     } else if (hydraId.people) {
       options.type = _SIP_URI_;
 
-      return this.getSipUriFromHydraPersonId(hydraId.destination, webex).then((res) => {
-        options.destination = res;
+      return this.getSipUriFromHydraPersonId(hydraId.destination, webex).then(
+        (res: Record<string, any>) => {
+          options.destination = res;
 
-        // Since hydra person ids require a unique case in which they are
-        // entirely converted to a SIP URI, we need to set a flag for detecting
-        // this type of destination.
-        options.wasHydraPerson = true;
+          // Since hydra person ids require a unique case in which they are
+          // entirely converted to a SIP URI, we need to set a flag for detecting
+          // this type of destination.
+          options.wasHydraPerson = true;
 
-        return Promise.resolve(options);
-      });
+          return Promise.resolve(options);
+        }
+      );
     } else if (hydraId.room) {
       options.type = _CONVERSATION_URL_;
       try {
@@ -293,7 +295,12 @@ export default class MeetingInfoUtil {
     };
   }
 
-  static getRequestParams(resourceOptions, type, value, api) {
+  static getRequestParams(
+    resourceOptions: Record<string, any>,
+    type: string,
+    value: unknown,
+    api: unknown
+  ) {
     let requestParams: any = {
       method: resourceOptions.method,
       api,

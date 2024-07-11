@@ -22,7 +22,6 @@ describe('plugin-meetings', () => {
       describe('canUserStart', () => {
         it('can start recording when the correct display hint is present', () => {
           locusInfo.parsedLocus.info.userDisplayHints.push('RECORDING_CONTROL_START');
-
           assert.equal(
             RecordingUtil.canUserStart(locusInfo.parsedLocus.info.userDisplayHints),
             true

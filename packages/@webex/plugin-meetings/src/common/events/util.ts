@@ -1,10 +1,11 @@
 import {inspect} from 'util';
 
+import {NullableTypeAnnotation} from '@babel/types';
 import LoggerProxy from '../logs/logger-proxy';
 
 const EventsUtil: any = {};
 
-EventsUtil.getEventLog = (args) => {
+EventsUtil.getEventLog = (args: unknown) => {
   let argString = '';
 
   try {
@@ -16,7 +17,7 @@ EventsUtil.getEventLog = (args) => {
   return argString;
 };
 
-EventsUtil.getScopeLog = (scope) => {
+EventsUtil.getScopeLog = (scope: Record<string, any> | null | undefined) => {
   let scopeString = '';
 
   if (scope) {

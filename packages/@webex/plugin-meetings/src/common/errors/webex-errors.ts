@@ -10,7 +10,7 @@
 // add a way to log and send metrics if needed
 import WebexMeetingsError from './webex-meetings-error';
 
-const WebExMeetingsErrors = {};
+const WebExMeetingsErrors: Record<string, any> = {};
 
 /**
  * Create a {@link WebexMeetingsError} for a given code and message.

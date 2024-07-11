@@ -82,11 +82,11 @@ export class StatsAnalyzer extends EventsScope {
   lastMqaDataSent: any;
   lastStatsResults: any;
   meetingMediaStatus: any;
-  mqaInterval: NodeJS.Timeout;
+  mqaInterval: NodeJS.Timeout | undefined;
   mqaSentCount: any;
   networkQualityMonitor: any;
   mediaConnection: any;
-  statsInterval: NodeJS.Timeout;
+  statsInterval: NodeJS.Timeout | undefined;
   statsResults: any;
   statsStarted: any;
   successfulCandidatePair: any;
@@ -577,14 +577,14 @@ export class StatsAnalyzer extends EventsScope {
     const {types} = DEFAULT_GET_STATS_FILTER;
 
     // get the successful candidate pair before parsing stats.
-    statsItem.report.forEach((report) => {
+    statsItem.report.forEach((report: Record<string, any>) => {
       if (report.type === 'candidate-pair' && report.state === 'succeeded') {
         this.successfulCandidatePair = report;
       }
     });
 
     let videoSenderIndex = 0;
-    statsItem.report.forEach((result) => {
+    statsItem.report.forEach((result: Record<string, any>) => {
       if (types.includes(result.type)) {
         // if the video sender has multiple streams in the report, it is a new stream object.
         if (type === 'video-send' && result.type === 'outbound-rtp') {
@@ -931,55 +931,57 @@ export class StatsAnalyzer extends EventsScope {
 
     LoggerProxy.logger.trace('StatsAnalyzer:index#getStatsAndParse --> Collecting Stats');
 
-    return this.mediaConnection.getTransceiverStats().then((transceiverStats) => {
-      transceiverStats.video.receivers.forEach((receiver, i) =>
-        this.filterAndParseGetStatsResults(receiver, `video-recv-${i}`, false)
-      );
-      transceiverStats.audio.receivers.forEach((receiver, i) =>
-        this.filterAndParseGetStatsResults(receiver, `audio-recv-${i}`, false)
-      );
-      transceiverStats.screenShareVideo.receivers.forEach((receiver, i) =>
-        this.filterAndParseGetStatsResults(receiver, `video-share-recv-${i}`, false)
-      );
-      transceiverStats.screenShareAudio.receivers.forEach((receiver, i) =>
-        this.filterAndParseGetStatsResults(receiver, `audio-share-recv-${i}`, false)
-      );
+    return this.mediaConnection
+      .getTransceiverStats()
+      .then((transceiverStats: Record<string, any>) => {
+        transceiverStats.video.receivers.forEach((receiver: unknown, i: number) =>
+          this.filterAndParseGetStatsResults(receiver, `video-recv-${i}`, false)
+        );
+        transceiverStats.audio.receivers.forEach((receiver: unknown, i: number) =>
+          this.filterAndParseGetStatsResults(receiver, `audio-recv-${i}`, false)
+        );
+        transceiverStats.screenShareVideo.receivers.forEach((receiver: unknown, i: number) =>
+          this.filterAndParseGetStatsResults(receiver, `video-share-recv-${i}`, false)
+        );
+        transceiverStats.screenShareAudio.receivers.forEach((receiver: unknown, i: number) =>
+          this.filterAndParseGetStatsResults(receiver, `audio-share-recv-${i}`, false)
+        );
 
-      transceiverStats.video.senders.forEach((sender, i) => {
-        if (i > 0) {
-          throw new Error('Stats Analyzer does not support multiple senders.');
-        }
-        this.filterAndParseGetStatsResults(sender, 'video-send', true);
-      });
-      transceiverStats.audio.senders.forEach((sender, i) => {
-        if (i > 0) {
-          throw new Error('Stats Analyzer does not support multiple senders.');
-        }
-        this.filterAndParseGetStatsResults(sender, 'audio-send', true);
-      });
-      transceiverStats.screenShareVideo.senders.forEach((sender, i) => {
-        if (i > 0) {
-          throw new Error('Stats Analyzer does not support multiple senders.');
-        }
-        this.filterAndParseGetStatsResults(sender, 'video-share-send', true);
-      });
-      transceiverStats.screenShareAudio.senders.forEach((sender, i) => {
-        if (i > 0) {
-          throw new Error('Stats Analyzer does not support multiple senders.');
-        }
-        this.filterAndParseGetStatsResults(sender, 'audio-share-send', true);
-      });
+        transceiverStats.video.senders.forEach((sender: unknown, i: number) => {
+          if (i > 0) {
+            throw new Error('Stats Analyzer does not support multiple senders.');
+          }
+          this.filterAndParseGetStatsResults(sender, 'video-send', true);
+        });
+        transceiverStats.audio.senders.forEach((sender: unknown, i: number) => {
+          if (i > 0) {
+            throw new Error('Stats Analyzer does not support multiple senders.');
+          }
+          this.filterAndParseGetStatsResults(sender, 'audio-send', true);
+        });
+        transceiverStats.screenShareVideo.senders.forEach((sender: unknown, i: number) => {
+          if (i > 0) {
+            throw new Error('Stats Analyzer does not support multiple senders.');
+          }
+          this.filterAndParseGetStatsResults(sender, 'video-share-send', true);
+        });
+        transceiverStats.screenShareAudio.senders.forEach((sender: unknown, i: number) => {
+          if (i > 0) {
+            throw new Error('Stats Analyzer does not support multiple senders.');
+          }
+          this.filterAndParseGetStatsResults(sender, 'audio-share-send', true);
+        });
 
-      this.compareLastStatsResult();
+        this.compareLastStatsResult();
 
-      // Save the last results to compare with the current
-      // DO Deep copy, for some reason it takes the reference all the time rather then old value set
-      this.lastStatsResults = JSON.parse(JSON.stringify(this.statsResults));
+        // Save the last results to compare with the current
+        // DO Deep copy, for some reason it takes the reference all the time rather then old value set
+        this.lastStatsResults = JSON.parse(JSON.stringify(this.statsResults));
 
-      LoggerProxy.logger.trace(
-        'StatsAnalyzer:index#getStatsAndParse --> Finished Collecting Stats'
-      );
-    });
+        LoggerProxy.logger.trace(
+          'StatsAnalyzer:index#getStatsAndParse --> Finished Collecting Stats'
+        );
+      });
   }
 
   /**
@@ -1304,7 +1306,7 @@ export class StatsAnalyzer extends EventsScope {
    * @returns {void}
    * @memberof StatsAnalyzer
    */
-  compareSentAndReceived(result, type) {
+  compareSentAndReceived(result: Record<string, any>, type: string) {
     // Don't compare on transceivers without a sender.
     if (!type || !this.statsResults[type].send) {
       return;

@@ -25,7 +25,7 @@ export default class BreakoutRequest extends StatelessWebexPlugin {
   }: {
     url: string;
     message: string;
-    options?: object;
+    options?: Record<string, any>;
     groupId: string;
     sessionId?: string;
   }) {
@@ -44,7 +44,7 @@ export default class BreakoutRequest extends StatelessWebexPlugin {
         message,
         groups: [params],
       },
-    }).catch((error) => {
+    }).catch((error: Record<string, any>) => {
       if (error.body && error.body.errorCode === 201409036 && error.statusCode === 409) {
         LoggerProxy.logger.info(`Breakouts#broadcast --> no joined participants`);
       } else {

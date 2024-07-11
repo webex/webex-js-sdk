@@ -11,8 +11,8 @@ import {
 
 const PersonalMeetingRoomUtil: any = {};
 
-PersonalMeetingRoomUtil.getClaimPmrLink = (pmrLink) => {
-  let validator = VALID_PMR_ADDRESS.test(pmrLink);
+PersonalMeetingRoomUtil.getClaimPmrLink = (pmrLink: string) => {
+  let validator: boolean | RegExpMatchArray | null = VALID_PMR_ADDRESS.test(pmrLink);
 
   if (validator) {
     return pmrLink;
@@ -26,7 +26,7 @@ PersonalMeetingRoomUtil.getClaimPmrLink = (pmrLink) => {
   return null;
 };
 
-PersonalMeetingRoomUtil.getClaimPmrPin = (hostPin) => {
+PersonalMeetingRoomUtil.getClaimPmrPin = (hostPin: string) => {
   if (VALID_PIN.test(hostPin)) {
     return hostPin;
   }
@@ -34,7 +34,11 @@ PersonalMeetingRoomUtil.getClaimPmrPin = (hostPin) => {
   return null;
 };
 
-PersonalMeetingRoomUtil.getClaimedRequestParams = (link, pin, options) => ({
+PersonalMeetingRoomUtil.getClaimedRequestParams = (
+  link: string,
+  pin: Record<string, any>,
+  options: Record<string, any>
+) => ({
   method: HTTP_VERBS.POST,
   api: HECATE,
   resource: `/${CMR_MEETINGS}/${CLAIM}`,

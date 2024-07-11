@@ -49,7 +49,7 @@ class ReachabilityRequest {
           }),
         'internal.get.cluster.time'
       )
-      .then((res) => {
+      .then((res: Record<string, any>) => {
         const {clusters, joinCookie} = res.body;
 
         Object.keys(clusters).forEach((key) => {
@@ -82,7 +82,7 @@ class ReachabilityRequest {
         resource: RESOURCE.REACHABILITY,
         body: {offers: localSDPList},
       })
-      .then((res) => {
+      .then((res: Record<string, any>) => {
         LoggerProxy.logger.log(
           'Reachability:request#remoteSDPForClusters --> Remote SDPs got succcessfully'
         );

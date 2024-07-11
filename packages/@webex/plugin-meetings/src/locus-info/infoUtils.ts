@@ -1,8 +1,8 @@
 import {SELF_ROLES, DISPLAY_HINTS, INTERSTITIAL_DISPLAY_HINTS} from '../constants';
 
-const InfoUtils: any = {};
+const InfoUtils: Record<string, any> = {};
 
-InfoUtils.parse = (info, roles, isJoined = true) => {
+InfoUtils.parse = (info: Record<string, any>, roles: string[], isJoined = true) => {
   const parsed: any = {
     policy: InfoUtils.parsePolicy(info),
     moderator: InfoUtils.parseModerator(info),
@@ -44,8 +44,8 @@ InfoUtils.parse = (info, roles, isJoined = true) => {
   return parsed;
 };
 
-InfoUtils.parseDisplayHintSection = (info, displayHintKey) => {
-  const displayHints = {};
+InfoUtils.parseDisplayHintSection = (info: Record<string, any>, displayHintKey: string) => {
+  const displayHints: Record<string, any> = {};
 
   if (
     info &&
@@ -53,7 +53,7 @@ InfoUtils.parseDisplayHintSection = (info, displayHintKey) => {
     info.displayHints[displayHintKey] &&
     info.displayHints[displayHintKey].length > 0
   ) {
-    info.displayHints[displayHintKey].forEach((key) => {
+    info.displayHints[displayHintKey].forEach((key: string) => {
       displayHints[key] = true;
     });
   }
@@ -61,25 +61,30 @@ InfoUtils.parseDisplayHintSection = (info, displayHintKey) => {
   return displayHints;
 };
 
-InfoUtils.parsePolicy = (info) => InfoUtils.parseDisplayHintSection(info, 'joined');
+InfoUtils.parsePolicy = (info: unknown) => InfoUtils.parseDisplayHintSection(info, 'joined');
 
-InfoUtils.parseModerator = (info) => {
+InfoUtils.parseModerator = (info: unknown) => {
   const displayHints = InfoUtils.parseDisplayHintSection(info, 'moderator');
 
   return {...displayHints, [DISPLAY_HINTS.LOWER_SOMEONE_ELSES_HAND]: true};
 };
 
-InfoUtils.parseCoHost = (info) => {
+InfoUtils.parseCoHost = (info: unknown) => {
   const displayHints = InfoUtils.parseDisplayHintSection(info, 'coHost');
 
   return {...displayHints, [DISPLAY_HINTS.LOWER_SOMEONE_ELSES_HAND]: true};
 };
 
-InfoUtils.isLocked = (policy) => policy.LOCK_STATUS_LOCKED || false;
+InfoUtils.isLocked = (policy: Record<string, string>) => policy.LOCK_STATUS_LOCKED || false;
 
-InfoUtils.isUnlocked = (policy) => policy.LOCK_STATUS_UNLOCKED || false;
+InfoUtils.isUnlocked = (policy: Record<string, string>) => policy.LOCK_STATUS_UNLOCKED || false;
 
-InfoUtils.getInfos = (oldInfo, newInfo, roles, isJoined) => {
+InfoUtils.getInfos = (
+  oldInfo: Record<string, any>,
+  newInfo: unknown,
+  roles: string[],
+  isJoined: boolean
+) => {
   let previous = null;
 
   if (oldInfo) {

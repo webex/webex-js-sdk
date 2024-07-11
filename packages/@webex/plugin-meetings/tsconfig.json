@@ -1,6 +1,41 @@
 {
     "extends": "../../../tsconfig.json",
+    "compilerOptions": {
+      "module": "es2020",
+      "target": "ESNext",
+      "rootDir": "src",
+      "declaration": true,
+      "declarationMap": true,
+      "declarationDir": "dist/dts",
+      "removeComments": true,
+      "allowJs": true,
+      "lib": [
+        "DOM",
+        "ES2018.Promise",
+        "ES2021.String",
+        "ES2021.WeakRef"
+      ],
+      "strict": true,
+      "preserveSymlinks": true,
+      "isolatedModules": true,
+      "allowSyntheticDefaultImports": true,
+      "alwaysStrict": true,
+      "noImplicitAny": true,
+      "noImplicitThis": true,
+      "strictNullChecks": true,
+      "noImplicitReturns": true,
+      "sourceMap": true,
+      "suppressImplicitAnyIndexErrors": true,
+      "noFallthroughCasesInSwitch": true,
+      "emitDeclarationOnly": false,
+      "moduleResolution": "node",
+      "esModuleInterop": true,
+      "skipLibCheck": true,
+      "stripInternal": true,
+      "forceConsistentCasingInFileNames": true,
+      "baseUrl": "./src"
+    },
     "include": [
-        "src"
+        "src",
     ],
 }

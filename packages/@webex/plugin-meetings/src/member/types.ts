@@ -33,6 +33,6 @@ export enum MediaStatus {
 }
 
 export interface IMediaStatus {
-  audio: MediaStatus;
-  video: MediaStatus;
+  audio: MediaStatus | null;
+  video: MediaStatus | null;
 }

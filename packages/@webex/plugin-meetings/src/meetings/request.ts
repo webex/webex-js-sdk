@@ -18,8 +18,8 @@ export default class MeetingRequest extends StatelessWebexPlugin {
       api: API.LOCUS,
       resource: RESOURCE.LOCI,
     })
-      .then((res) => this.determineRedirections(res.body))
-      .catch((error) => {
+      .then((res: Record<string, any>) => this.determineRedirections(res.body))
+      .catch((error: string | undefined) => {
         LoggerProxy.logger.error(
           `Meetings:request#getActiveMeetings --> failed to get locus details, ${error}`
         );
@@ -55,20 +55,20 @@ export default class MeetingRequest extends StatelessWebexPlugin {
   determineRedirections(responseBody: any) {
     if (responseBody.remoteLocusClusterUrls && responseBody.remoteLocusClusterUrls.length) {
       return Promise.all(
-        responseBody.remoteLocusClusterUrls.map((url) =>
+        responseBody.remoteLocusClusterUrls.map((url: unknown) =>
           // @ts-ignore
           this.request({
             method: HTTP_VERBS.GET,
             url,
             runWhitelistedDomains: true, // allows auth token for whitelisted domain
           })
-            .then((res) => {
+            .then((res: Record<string, any>) => {
               responseBody.loci = responseBody.loci.concat(res.body.loci);
               responseBody.locusUrls = responseBody.locusUrls.concat(res.body.locusUrls);
 
               return Promise.resolve(responseBody);
             })
-            .catch((error) => {
+            .catch((error: string | undefined) => {
               LoggerProxy.logger.error(
                 `Meetings:request#determineRedirections --> failed to get locus details from url: ${url}, reason: ${error}`
               );

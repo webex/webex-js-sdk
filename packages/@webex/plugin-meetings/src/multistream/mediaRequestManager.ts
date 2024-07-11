@@ -1,14 +1,14 @@
 /* eslint-disable require-jsdoc */
 import {
-  StreamRequest,
-  Policy,
   ActiveSpeakerInfo,
-  ReceiverSelectedInfo,
   CodecInfo as WcmeCodecInfo,
-  H264Codec,
   getRecommendedMaxBitrateForFrameSize,
-  RecommendedOpusBitrates,
+  H264Codec,
   NamedMediaGroup,
+  Policy,
+  ReceiverSelectedInfo,
+  RecommendedOpusBitrates,
+  StreamRequest,
 } from '@webex/internal-media-core';
 import {cloneDeepWith, debounce, isEmpty} from 'lodash';
 
@@ -49,7 +49,7 @@ export interface MediaRequest {
   receiveSlots: Array<ReceiveSlot>;
   codecInfo?: CodecInfo;
   preferredMaxFs?: number;
-  handleMaxFs?: ({maxFs}: {maxFs: number}) => void;
+  handleMaxFs: ({maxFs}: {maxFs: number}) => void;
 }
 
 export type MediaRequestId = string;
@@ -208,7 +208,7 @@ export class MediaRequestManager {
     }
 
     return getRecommendedMaxBitrateForFrameSize(
-      mediaRequest.codecInfo.maxFs || CODEC_DEFAULTS.h264.maxFs
+      mediaRequest.codecInfo?.maxFs || CODEC_DEFAULTS.h264.maxFs
     );
   }
 
@@ -224,10 +224,11 @@ export class MediaRequestManager {
   // eslint-disable-next-line class-methods-use-this
   private getH264MaxMbps(mediaRequest: MediaRequest): number {
     // fallback for maxFps (not needed for maxFs, since there is a fallback already in getDegradedClientRequests)
-    const maxFps = mediaRequest.codecInfo.maxFps || CODEC_DEFAULTS.h264.maxFps;
+    const maxFps = mediaRequest.codecInfo?.maxFps || CODEC_DEFAULTS.h264.maxFps;
+    const maxFs = mediaRequest.codecInfo?.maxFs || CODEC_DEFAULTS.h264.maxFs;
 
     // divided by 100 since maxFps is 3000 (for 30 frames per seconds)
-    return (mediaRequest.codecInfo.maxFs * maxFps) / 100;
+    return (maxFs * maxFps) / 100;
   }
 
   /**
@@ -296,7 +297,7 @@ export class MediaRequestManager {
   }
 
   private getPreferLiveVideo(): boolean | undefined {
-    let preferLiveVideo;
+    let preferLiveVideo: undefined | boolean;
 
     Object.values(this.clientRequests).forEach((mr) => {
       if (mr.policyInfo.policy === 'active-speaker') {
@@ -359,7 +360,7 @@ export class MediaRequestManager {
               new WcmeCodecInfo(
                 0x80,
                 new H264Codec(
-                  mr.codecInfo.maxFs,
+                  mr.codecInfo.maxFs || CODEC_DEFAULTS.h264.maxFs,
                   mr.codecInfo.maxFps || CODEC_DEFAULTS.h264.maxFps,
                   this.getH264MaxMbps(mr),
                   mr.codecInfo.maxWidth,
@@ -391,11 +392,10 @@ export class MediaRequestManager {
 
     this.clientRequests[newId] = mediaRequest;
 
-    const eventHandler = ({maxFs}) => {
+    mediaRequest.handleMaxFs = ({maxFs}: {maxFs: number}) => {
       mediaRequest.preferredMaxFs = maxFs;
       this.debouncedSourceUpdateListener();
     };
-    mediaRequest.handleMaxFs = eventHandler;
 
     mediaRequest.receiveSlots.forEach((rs) => {
       rs.on(ReceiveSlotEvents.SourceUpdate, this.sourceUpdateListener);

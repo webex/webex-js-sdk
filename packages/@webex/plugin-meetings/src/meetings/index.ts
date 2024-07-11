@@ -3,7 +3,6 @@ import {union} from 'lodash';
 import '@webex/internal-plugin-mercury';
 import '@webex/internal-plugin-conversation';
 import '@webex/internal-plugin-metrics';
-// @ts-ignore
 import {WebexPlugin} from '@webex/webex-core';
 import {setLogger} from '@webex/internal-media-core';
 
@@ -68,27 +67,27 @@ import NoMeetingInfoError from '../common/errors/no-meeting-info';
 let mediaLogger;
 
 class MediaLogger {
-  info(...args) {
+  info(...args: unknown[]) {
     LoggerProxy.logger.info(...args);
   }
 
-  log(...args) {
+  log(...args: unknown[]) {
     LoggerProxy.logger.log(...args);
   }
 
-  error(...args) {
+  error(...args: unknown[]) {
     LoggerProxy.logger.error(...args);
   }
 
-  warn(...args) {
+  warn(...args: unknown[]) {
     LoggerProxy.logger.warn(...args);
   }
 
-  trace(...args) {
+  trace(...args: unknown[]) {
     LoggerProxy.logger.trace(...args);
   }
 
-  debug(...args) {
+  debug(...args: unknown[]) {
     LoggerProxy.logger.debug(...args);
   }
 }
@@ -165,7 +164,7 @@ export default class Meetings extends WebexPlugin {
    * @public
    * @memberof Meetings
    */
-  constructor(...args) {
+  constructor(...args: unknown[]) {
     super(...args);
 
     /**
@@ -375,7 +374,7 @@ export default class Meetings extends WebexPlugin {
    * @private
    * @memberof Meetings
    */
-  getCorrespondingMeetingByLocus(data) {
+  getCorrespondingMeetingByLocus(data: Record<string, any>) {
     // getting meeting by correlationId. This will happen for the new event
     // Either the locus
     // TODO : Add check for the callBack Address
@@ -486,14 +485,14 @@ export default class Meetings extends WebexPlugin {
       }
 
       this.create(data.locus, _LOCUS_ID_, useRandomDelayForInfo)
-        .then((newMeeting) => {
+        .then((newMeeting: unknown) => {
           meeting = newMeeting;
 
           // It's a new meeting so initialize the locus data
           meeting.locusInfo.initialSetup(data.locus);
           this.checkHandleBreakoutLocus(data.locus);
         })
-        .catch((e) => {
+        .catch((e: unknown) => {
           LoggerProxy.logger.error(e);
         })
         .finally(() => {
@@ -911,7 +910,7 @@ export default class Meetings extends WebexPlugin {
 
     return this.loggerRequest
       .uploadLogs(options)
-      .then((uploadResult) => {
+      .then((uploadResult: unknown) => {
         LoggerProxy.logger.info(
           'Meetings:index#uploadLogs --> Upload logs for meeting completed.',
           uploadResult
@@ -932,7 +931,7 @@ export default class Meetings extends WebexPlugin {
 
         return uploadResult;
       })
-      .catch((uploadError) => {
+      .catch((uploadError: Record<string, any>) => {
         LoggerProxy.logger.error(
           'Meetings:index#uploadLogs --> Unable to upload logs for meeting',
           uploadError
@@ -986,7 +985,7 @@ export default class Meetings extends WebexPlugin {
    * @memberof Meetings
    */
   getGeoHint() {
-    return this.request.fetchGeoHint().then((res) => {
+    return this.request.fetchGeoHint().then((res: unknown) => {
       this.geoHintInfo = res;
     });
   }
@@ -999,7 +998,7 @@ export default class Meetings extends WebexPlugin {
    * @memberof Meetings
    */
   fetchUserPreferredWebexSite() {
-    return this.request.getMeetingPreferences().then((res) => {
+    return this.request.getMeetingPreferences().then((res: unknown) => {
       if (res) {
         const preferredWebexSite = MeetingsUtil.parseDefaultSiteFromMeetingPreferences(res);
         this.preferredWebexSite = preferredWebexSite;
@@ -1012,7 +1011,7 @@ export default class Meetings extends WebexPlugin {
         // @ts-ignore
         return this.webex.internal.user
           .get()
-          .then((user) => {
+          .then((user: Record<string, any>) => {
             const preferredWebexSite =
               user?.userPreferences?.userPreferencesItems?.preferredWebExSite;
             if (preferredWebexSite) {
@@ -1075,28 +1074,28 @@ export default class Meetings extends WebexPlugin {
    *
    * When meeting info passed it should be complete, e.g.: fetched after password or captcha provided
    *
-   * @param {string} destination - sipURL, phonenumber, or locus object}
-   * @param {string} [type] - the optional specified type, such as locusId
-   * @param {Boolean} useRandomDelayForInfo - whether a random delay should be added to fetching meeting info
-   * @param {Object} infoExtraParams extra parameters to be provided when fetching meeting info
-   * @param {string} correlationId - the optional specified correlationId (callStateForMetrics.correlationId can be provided instead)
-   * @param {Boolean} failOnMissingMeetingInfo - whether to throw an error if meeting info fails to fetch (for calls that are not 1:1 or content share)
-   * @param {CallStateForMetrics} callStateForMetrics - information about call state for metrics
-   * @param {Object} [meetingInfo] - Pre-fetched complete meeting info
-   * @param {String} [meetingLookupUrl] - meeting info prefetch url
+   * @param {string} destination - sipURL, phonenumber, or locus object
+   * @param {string | null} [type] - the optional specified type, such as locusId
+   * @param {boolean} useRandomDelayForInfo - whether a random delay should be added to fetching meeting info
+   * @param {Record<string, any>} infoExtraParams extra parameters to be provided when fetching meeting info
+   * @param {string | undefined} correlationId - the optional specified correlationId (callStateForMetrics.correlationId can be provided instead)
+   * @param {boolean} failOnMissingMeetingInfo - whether to throw an error if meeting info fails to fetch (for calls that are not 1:1 or content share)
+   * @param {CallStateForMetrics | undefined} callStateForMetrics - information about call state for metrics
+   * @param {Record<string, any> | undefined } [meetingInfo] - Pre-fetched complete meeting info
+   * @param {string | undefined} [meetingLookupUrl] - meeting info prefetch url
    * @returns {Promise<Meeting>} A new Meeting.
    * @public
    * @memberof Meetings
    */
   public create(
     destination: string,
-    type: string = null,
+    type: string | null = null,
     useRandomDelayForInfo = false,
-    infoExtraParams = {},
-    correlationId: string = undefined,
+    infoExtraParams: Record<string, any> = {},
+    correlationId: string | undefined = undefined,
     failOnMissingMeetingInfo = false,
-    callStateForMetrics: CallStateForMetrics = undefined,
-    meetingInfo = undefined,
+    callStateForMetrics: CallStateForMetrics | undefined = undefined,
+    meetingInfo: Record<string, any> | undefined = undefined,
     meetingLookupUrl = undefined
   ) {
     // TODO: type should be from a dictionary
@@ -1113,7 +1112,7 @@ export default class Meetings extends WebexPlugin {
       this.meetingInfo
         .fetchInfoOptions(destination, type)
         // Catch a failure to fetch info options.
-        .catch((error) => {
+        .catch((error: Record<string, any>) => {
           LoggerProxy.logger.error(
             `Meetings:index#create --> ERROR, unable to determine info options: ${error.message}`
           );
@@ -1126,7 +1125,7 @@ export default class Meetings extends WebexPlugin {
           const targetDest = options.destination || destination;
 
           // check for the conversation URL then sip Url
-          let meeting = null;
+          let meeting: Record<string, any> | null = null;
 
           if (type === _CONVERSATION_URL_ || options.type === _CONVERSATION_URL_) {
             const foundMeeting = this.meetingCollection.getByKey(CONVERSATION_URL, targetDest);
@@ -1163,7 +1162,7 @@ export default class Meetings extends WebexPlugin {
               // If the meeting was successfully created.
               if (createdMeeting && createdMeeting.on) {
                 // Create a destruction event for the meeting.
-                createdMeeting.on(EVENTS.DESTROY_MEETING, (payload) => {
+                createdMeeting.on(EVENTS.DESTROY_MEETING, (payload: Record<string, any>) => {
                   // @ts-ignore
                   if (this.config.autoUploadLogs) {
                     this.uploadLogs({
@@ -1180,20 +1179,23 @@ export default class Meetings extends WebexPlugin {
                   }
                 });
 
-                createdMeeting.on(EVENTS.REQUEST_UPLOAD_LOGS, (meetingInstance) => {
-                  // @ts-ignore
-                  if (this.config.autoUploadLogs) {
-                    this.uploadLogs({
-                      callStart: meetingInstance?.locusInfo?.fullState?.lastActive,
-                      locussessionid: meetingInstance?.locusInfo?.fullState?.sessionId,
-                      correlationId: meetingInstance.correlationId,
-                      feedbackId: meetingInstance.correlationId,
-                      locusId: meetingInstance.locusId,
-                      meetingId: meetingInstance.locusInfo?.info?.webExMeetingId,
-                      autoupload: true,
-                    });
+                createdMeeting.on(
+                  EVENTS.REQUEST_UPLOAD_LOGS,
+                  (meetingInstance: Record<string, any>) => {
+                    // @ts-ignore
+                    if (this.config.autoUploadLogs) {
+                      this.uploadLogs({
+                        callStart: meetingInstance?.locusInfo?.fullState?.lastActive,
+                        locussessionid: meetingInstance?.locusInfo?.fullState?.sessionId,
+                        correlationId: meetingInstance.correlationId,
+                        feedbackId: meetingInstance.correlationId,
+                        locusId: meetingInstance.locusId,
+                        meetingId: meetingInstance.locusInfo?.info?.webExMeetingId,
+                        autoupload: true,
+                      });
+                    }
                   }
-                });
+                );
               } else {
                 LoggerProxy.logger.error(
                   `Meetings:index#create --> ERROR, meeting does not have on method, will not be destroyed, meeting cleanup impossible for meeting: ${meeting}`
@@ -1223,7 +1225,7 @@ export default class Meetings extends WebexPlugin {
    * @param {Object} infoExtraParams extra parameters to be provided when fetching meeting info
    * @param {CallStateForMetrics} callStateForMetrics - information about call state for metrics
    * @param {Boolean} failOnMissingMeetingInfo - whether to throw an error if meeting info fails to fetch (for calls that are not 1:1 or content share)
-   * @param {Object} [meetingInfo] - Pre-fetched complete meeting info
+   * @param {Record<string, any> | undefined} [meetingInfo] - Pre-fetched complete meeting info
    * @param {String} [meetingLookupUrl] - meeting info prefetch url
    * @returns {Promise} a new meeting instance complete with meeting info and destination
    * @private
@@ -1231,12 +1233,12 @@ export default class Meetings extends WebexPlugin {
    */
   private async createMeeting(
     destination: any,
-    type: string = null,
+    type: string | null = null,
     useRandomDelayForInfo = false,
     infoExtraParams = {},
-    callStateForMetrics: CallStateForMetrics = undefined,
+    callStateForMetrics: CallStateForMetrics | undefined = undefined,
     failOnMissingMeetingInfo = false,
-    meetingInfo = undefined,
+    meetingInfo: Record<string, any> | undefined = undefined,
     meetingLookupUrl = undefined
   ) {
     const meeting = new Meeting(
@@ -1420,8 +1422,8 @@ export default class Meetings extends WebexPlugin {
 
     return this.request
       .getActiveMeetings()
-      .then((locusArray) => {
-        const activeLocusUrl = [];
+      .then((locusArray: Record<string, any>) => {
+        const activeLocusUrl: string[] = [];
 
         if (locusArray?.loci && locusArray.loci.length > 0) {
           const lociToUpdate = this.sortLocusArrayToUpdate(locusArray.loci);
@@ -1450,7 +1452,7 @@ export default class Meetings extends WebexPlugin {
           }
         }
       })
-      .catch((error) => {
+      .catch((error: string | undefined) => {
         LoggerProxy.logger.error(
           `Meetings:index#syncMeetings --> failed to sync meetings, ${error}`
         );
@@ -1494,12 +1496,12 @@ export default class Meetings extends WebexPlugin {
 
   /**
    * check breakout locus which waiting for main locus's meeting to be created, then handle the breakout locus
-   * @param {Object} newCreatedLocus the locus which just create meeting object of it
-   * @returns {undefined}
+   * @param {Record<string, any>} newCreatedLocus the locus which just create meeting object of it
+   * @returns {void}
    * @public
    * @memberof Meetings
    */
-  checkHandleBreakoutLocus(newCreatedLocus) {
+  checkHandleBreakoutLocus(newCreatedLocus: Record<string, any>) {
     if (
       !newCreatedLocus ||
       !this.breakoutLocusForHandleLater ||
@@ -1511,7 +1513,7 @@ export default class Meetings extends WebexPlugin {
       return;
     }
     const existIndex = this.breakoutLocusForHandleLater.findIndex(
-      (breakoutLocus) =>
+      (breakoutLocus: Record<string, any>) =>
         breakoutLocus.controls?.breakout?.url === newCreatedLocus.controls?.breakout?.url
     );
 

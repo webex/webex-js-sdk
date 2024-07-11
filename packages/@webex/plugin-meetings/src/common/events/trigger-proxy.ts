@@ -4,9 +4,14 @@ import ParameterError from '../errors/parameter';
 
 import EventsUtil from './util';
 
-const TriggerProxy: any = {};
+const TriggerProxy: Record<string, any> = {};
 
-TriggerProxy.trigger = (instance, scope, trigger, payload) => {
+TriggerProxy.trigger = (
+  instance: Record<string, any> | null,
+  scope: unknown,
+  trigger: unknown,
+  payload: unknown
+) => {
   if (!instance || !instance.trigger) {
     throw new ParameterError(
       'Instance to trigger from must be defined and have a trigger function.'

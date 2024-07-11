@@ -86,7 +86,7 @@ export default class MeetingInfo {
 
     return this.meetingInfoRequest
       .fetchMeetingInfo(options)
-      .then((info) => {
+      .then((info: Record<string, any>) => {
         if (meetingId && sendCAevents) {
           this.webex.internal.newMetrics.submitInternalEvent({
             name: 'internal.client.meetinginfo.response',
@@ -111,7 +111,7 @@ export default class MeetingInfo {
 
         return info;
       })
-      .catch((error) => {
+      .catch((error: Record<string, any>) => {
         LoggerProxy.logger.error(
           `Meeting-info:index#requestFetchInfo -->  ${error} fetch meetingInfo`
         );
@@ -139,13 +139,13 @@ export default class MeetingInfo {
 
   /**
    * Helper to generate the options for the MeetingInfo request
-   * @param {String} destination
-   * @param {String} type
+   * @param {{url: string} | string | null} destination
+   * @param {string | null} type
    * @returns {Promise}
    * @private
    * @memberof MeetingInfo
    */
-  private fetchInfoOptions(destination: string, type: string) {
+  private fetchInfoOptions(destination: {url: string} | string | null, type: string | null) {
     return MeetingInfoUtil.generateOptions({
       destination,
       type,
@@ -156,34 +156,37 @@ export default class MeetingInfo {
   // eslint-disable-next-line valid-jsdoc
   /**
    * Fetches meeting info from the server
-   * @param {String} destination one of many different types of destinations to look up info for
-   * @param {String} [type] to match up with the destination value
-   * @param {String} [password] meeting password
-   * @param {Object} [captchaInfo] captcha code and id
-   * @param {String} [installedOrgID]
-   * @param {String} [locusId]
-   * @param {Object} [extraParams]
-   * @param {Boolean} [options] meeting Id and whether Call Analyzer events should be sent
+   * @param {string} destination one of many different types of destinations to look up info for
+   * @param {string | null} [type] to match up with the destination value
+   * @param {string | null} [password] meeting password
+   * @param {{
+   *       code: string;
+   *       id: string;
+   *     } | null} [captchaInfo] captcha code and id
+   * @param {string | null} [installedOrgID]
+   * @param {string | null} [locusId]
+   * @param {Record<string, any>} [extraParams]
+   * @param {{meetingId?: string; sendCAevents?: boolean}} [options] meeting Id and whether Call Analyzer events should be sent
    * @returns {Promise} returns a meeting info object
    * @public
    * @memberof MeetingInfo
    */
   public fetchMeetingInfo(
     destination: string,
-    type: string = null,
+    type: string | null = null,
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    password: string = null,
+    password: string | null = null,
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     captchaInfo: {
       code: string;
       id: string;
-    } = null,
+    } | null = null,
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    installedOrgID = null,
+    installedOrgID: string | null = null,
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    locusId = null,
+    locusId: string | null = null,
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    extraParams: object = {},
+    extraParams: Record<string, any> = {},
     options: {meetingId?: string; sendCAevents?: boolean} = {}
   ) {
     if (type === _PERSONAL_ROOM_ && !destination) {
@@ -193,7 +196,7 @@ export default class MeetingInfo {
     return this.fetchInfoOptions(MeetingInfoUtil.extractDestination(destination, type), type).then(
       (infoOptions) =>
         // fetch meeting info
-        this.requestFetchInfo({...infoOptions, ...options}).catch((error) => {
+        this.requestFetchInfo({...infoOptions, ...options}).catch((error: unknown) => {
           // if it failed the first time as meeting link
           if (infoOptions.type === _MEETING_LINK_) {
             // convert the meeting link to sip URI and retry

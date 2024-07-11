@@ -39,9 +39,12 @@ import Metrics from '../metrics';
 
 const MeetingsUtil: any = {};
 
-MeetingsUtil.getMeetingAddedType = (type) => (type === _LOCUS_ID_ ? _INCOMING_ : _CREATED_);
+MeetingsUtil.getMeetingAddedType = (type: string) => (type === _LOCUS_ID_ ? _INCOMING_ : _CREATED_);
 
-MeetingsUtil.handleRoapMercury = (envelope, meetingCollection) => {
+MeetingsUtil.handleRoapMercury = (
+  envelope: Record<string, any>,
+  meetingCollection: Record<string, any>
+) => {
   const {data} = envelope;
   const {eventType} = data;
 
@@ -79,17 +82,17 @@ MeetingsUtil.handleRoapMercury = (envelope, meetingCollection) => {
   }
 };
 
-MeetingsUtil.getMediaServer = (sdp) => {
+MeetingsUtil.getMediaServer = (sdp: string) => {
   let mediaServer;
 
   // Attempt to collect the media server from the roap message.
   try {
     mediaServer = sdp
       .split('\r\n')
-      .find((line) => line.startsWith('o='))
-      .split(' ')
-      .shift()
-      .replace('o=', '');
+      ?.find((line) => line.startsWith('o='))
+      ?.split(' ')
+      ?.shift()
+      ?.replace('o=', '');
   } catch {
     mediaServer = undefined;
   }
@@ -97,7 +100,7 @@ MeetingsUtil.getMediaServer = (sdp) => {
   return mediaServer;
 };
 
-MeetingsUtil.checkForCorrelationId = (deviceUrl, locus) => {
+MeetingsUtil.checkForCorrelationId = (deviceUrl: string, locus: Record<string, any>) => {
   let devices = [];
 
   if (locus) {
@@ -105,7 +108,7 @@ MeetingsUtil.checkForCorrelationId = (deviceUrl, locus) => {
       devices = locus.self.devices;
     }
 
-    const foundDevice = devices.find((device) => device.url === deviceUrl);
+    const foundDevice = devices.find((device: {url: string}) => device.url === deviceUrl);
 
     if (foundDevice && foundDevice.correlationId) {
       return foundDevice.correlationId;
@@ -115,11 +118,11 @@ MeetingsUtil.checkForCorrelationId = (deviceUrl, locus) => {
   return false;
 };
 
-MeetingsUtil.parseDefaultSiteFromMeetingPreferences = (userPreferences) => {
+MeetingsUtil.parseDefaultSiteFromMeetingPreferences = (userPreferences: Record<string, any>) => {
   let result = '';
 
   if (userPreferences?.sites?.length) {
-    const defaultSite = userPreferences.sites.find((site) => site.default);
+    const defaultSite = userPreferences.sites.find((site: Record<string, any>) => site.default);
 
     if (defaultSite) {
       result = defaultSite.siteUrl;
@@ -144,7 +147,7 @@ MeetingsUtil.hasH264Codec = async () => {
     const pc = new window.RTCPeerConnection();
     const offer = await pc.createOffer({offerToReceiveVideo: true});
 
-    if (offer.sdp.match(/^a=rtpmap:\d+\s+H264\/\d+/m)) {
+    if (offer.sdp?.match(/^a=rtpmap:\d+\s+H264\/\d+/m)) {
       hasCodec = true;
     }
     pc.close();
@@ -237,9 +240,9 @@ MeetingsUtil.checkH264Support = async function checkH264Support(options: {
  * @param {String} deviceUrl current device url
  * @returns {Object}
  */
-MeetingsUtil.getThisDevice = (newLocus: any, deviceUrl: string) => {
+MeetingsUtil.getThisDevice = (newLocus: Record<string, any>, deviceUrl: string) => {
   if (newLocus?.self?.devices?.length > 0) {
-    return newLocus.self.devices.find((device) => device.url === deviceUrl);
+    return newLocus.self.devices.find((device: {url: string}) => device.url === deviceUrl);
   }
 
   return null;
