@@ -28,6 +28,7 @@ export const getAudioReceiverMqa = ({
   statsResults,
   lastMqaDataSent,
   baseMediaType,
+  isMultistream,
 }) => {
   const sendrecvType = STATS.RECEIVE_DIRECTION;
 
@@ -52,6 +53,7 @@ export const getAudioReceiverMqa = ({
     statsResults[Object.keys(statsResults).find((mediaType) => mediaType.includes(baseMediaType))]
       ?.direction || 'inactive';
   audioReceiver.common.common.isMain = !baseMediaType.includes('-share');
+  audioReceiver.common.common.multistreamEnabled = isMultistream;
   audioReceiver.common.transportType = statsResults.connectionType.local.transport;
 
   // add rtpPacket info inside common as also for call analyzer
@@ -127,7 +129,13 @@ export const getAudioReceiverStreamMqa = ({
     ((statsResults[mediaType][sendrecvType].totalBytesReceived - lastBytesReceived) * 8) / 60 || 0;
 };
 
-export const getAudioSenderMqa = ({audioSender, statsResults, lastMqaDataSent, baseMediaType}) => {
+export const getAudioSenderMqa = ({
+  audioSender,
+  statsResults,
+  lastMqaDataSent,
+  baseMediaType,
+  isMultistream,
+}) => {
   const sendrecvType = STATS.SEND_DIRECTION;
 
   const getLastTotalValue = (value: string) =>
@@ -152,6 +160,7 @@ export const getAudioSenderMqa = ({audioSender, statsResults, lastMqaDataSent, b
     statsResults[Object.keys(statsResults).find((mediaType) => mediaType.includes(baseMediaType))]
       ?.direction || 'inactive';
   audioSender.common.common.isMain = !baseMediaType.includes('-share');
+  audioSender.common.common.multistreamEnabled = isMultistream;
   audioSender.common.transportType = statsResults.connectionType.local.transport;
 
   audioSender.common.maxRemoteJitter = max(meanRemoteJitter) * 1000 || 0;
@@ -166,8 +175,8 @@ export const getAudioSenderMqa = ({audioSender, statsResults, lastMqaDataSent, b
     baseMediaType,
     'availableOutgoingBitrate'
   );
-  // Calculate based on how much packets lost of received compated to how to the client sent
 
+  // Calculate based on how much packets lost of received compated to how to the client sent
   const totalPacketsLostForaMin = totalPacketsLostOnReceiver - lastPacketsLostTotal;
   audioSender.common.maxRemoteLossRate =
     totalPacketsSent - lastPacketsSent > 0
@@ -225,6 +234,7 @@ export const getVideoReceiverMqa = ({
   statsResults,
   lastMqaDataSent,
   baseMediaType,
+  isMultistream,
 }) => {
   const sendrecvType = STATS.RECEIVE_DIRECTION;
 
@@ -254,6 +264,7 @@ export const getVideoReceiverMqa = ({
   videoReceiver.common.common.direction =
     statsResults[Object.keys(statsResults).find((mediaType) => mediaType.includes(baseMediaType))]
       ?.direction || 'inactive';
+  videoReceiver.common.common.multistreamEnabled = isMultistream;
   videoReceiver.common.common.isMain = !baseMediaType.includes('-share');
   videoReceiver.common.transportType = statsResults.connectionType.local.transport;
 
@@ -357,7 +368,13 @@ export const getVideoReceiverStreamMqa = ({
         MQA_INTERVAL);
 };
 
-export const getVideoSenderMqa = ({videoSender, statsResults, lastMqaDataSent, baseMediaType}) => {
+export const getVideoSenderMqa = ({
+  videoSender,
+  statsResults,
+  lastMqaDataSent,
+  baseMediaType,
+  isMultistream,
+}) => {
   const sendrecvType = STATS.SEND_DIRECTION;
 
   const getLastTotalValue = (value: string) =>
@@ -381,6 +398,7 @@ export const getVideoSenderMqa = ({videoSender, statsResults, lastMqaDataSent, b
   videoSender.common.common.direction =
     statsResults[Object.keys(statsResults).find((mediaType) => mediaType.includes(baseMediaType))]
       ?.direction || 'inactive';
+  videoSender.common.common.multistreamEnabled = isMultistream;
   videoSender.common.common.isMain = !baseMediaType.includes('-share');
   videoSender.common.transportType = statsResults.connectionType.local.transport;
 
