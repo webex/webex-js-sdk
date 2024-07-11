@@ -983,7 +983,7 @@ describe('plugin-meetings', () => {
           assert.strictEqual(mqeData.audioReceive[0].common.fecPackets, 5);
         });
 
-        it('should accurately update and reset the FEC packet count based on received packets over time intervals', async () => {
+        it('should accurately update and reset the FEC packet count based on received packets over MQA intervals', async () => {
           fakeStats.audio.receivers[0].report[0].fecPacketsReceived += 15;
           await progressTime(MQA_INTERVAL);
           assert.strictEqual(mqeData.audioReceive[0].common.fecPackets, 15);
