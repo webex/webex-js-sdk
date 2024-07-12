@@ -1762,3 +1762,309 @@ describe('getReachabilityMetrics', () => {
     );
   });
 });
+
+class TestReachability extends Reachability {
+  constructor(webex: object) {
+    super(webex);
+  }
+
+  public testGetStatistics(
+    results: Array<ClusterReachabilityModule.ClusterReachabilityResult & {isVideoMesh: boolean}>,
+    protocol: 'udp' | 'tcp' | 'xtls',
+    isVideoMesh: boolean
+  ) {
+    return this.getStatistics(results, protocol, isVideoMesh);
+  }
+
+  public testSendMetric() {
+    return this.sendMetric();
+  }
+
+  public setFakeClusterReachability(fakeClusterReachability) {
+    this.clusterReachability = fakeClusterReachability;
+  }
+}
+describe('getStatistics', () => {
+  let webex;
+  let reachability;
+
+  beforeEach(() => {
+    webex = new MockWebex();
+    reachability = new TestReachability(webex);
+  });
+
+  it('takes values from the correct protocol', () => {
+    const results = [
+      {
+        udp: {
+          result: 'reachable',
+          latencyInMilliseconds: 10,
+        },
+        tcp: {
+          result: 'reachable',
+          latencyInMilliseconds: 1010,
+        },
+        xtls: {
+          result: 'reachable',
+          latencyInMilliseconds: 2010,
+        },
+        isVideoMesh: false,
+      },
+      {
+        udp: {
+          result: 'reachable',
+          latencyInMilliseconds: 20,
+        },
+        tcp: {
+          result: 'reachable',
+          latencyInMilliseconds: 1020,
+        },
+        xtls: {
+          result: 'reachable',
+          latencyInMilliseconds: 2020,
+        },
+        isVideoMesh: false,
+      },
+      {
+        udp: {
+          result: 'reachable',
+          latencyInMilliseconds: 30,
+        },
+        tcp: {
+          result: 'reachable',
+          latencyInMilliseconds: 1030,
+        },
+        xtls: {
+          result: 'reachable',
+          latencyInMilliseconds: 2030,
+        },
+        isVideoMesh: false,
+      },
+    ];
+
+    assert.deepEqual(reachability.testGetStatistics(results, 'udp', false), {
+      min: 10,
+      max: 30,
+      average: 20,
+    });
+    assert.deepEqual(reachability.testGetStatistics(results, 'tcp', false), {
+      min: 1010,
+      max: 1030,
+      average: 1020,
+    });
+    assert.deepEqual(reachability.testGetStatistics(results, 'xtls', false), {
+      min: 2010,
+      max: 2030,
+      average: 2020,
+    });
+  });
+
+  it('filters based on isVideoMesh value', () => {
+    const results = [
+      {
+        udp: {
+          result: 'reachable',
+          latencyInMilliseconds: 10,
+        },
+        isVideoMesh: true,
+      },
+      {
+        udp: {
+          result: 'reachable',
+          latencyInMilliseconds: 20,
+        },
+        isVideoMesh: true,
+      },
+      {
+        udp: {
+          result: 'reachable',
+          latencyInMilliseconds: 30,
+        },
+        isVideoMesh: true,
+      },
+      {
+        udp: {
+          result: 'reachable',
+          latencyInMilliseconds: 100,
+        },
+        isVideoMesh: false,
+      },
+      {
+        udp: {
+          result: 'reachable',
+          latencyInMilliseconds: 200,
+        },
+        isVideoMesh: false,
+      },
+    ];
+
+    assert.deepEqual(reachability.testGetStatistics(results, 'udp', true), {
+      min: 10,
+      max: 30,
+      average: 20,
+    });
+    assert.deepEqual(reachability.testGetStatistics(results, 'udp', false), {
+      min: 100,
+      max: 200,
+      average: 150,
+    });
+  });
+
+  it('only takes into account "reachable" results', () => {
+    const results = [
+      {
+        udp: {
+          result: 'reachable',
+          latencyInMilliseconds: 10,
+        },
+        isVideoMesh: false,
+      },
+      {
+        udp: {
+          result: 'unreachable',
+          latencyInMilliseconds: 100, // value put in here just for testing, in practice we wouldn't have any value here if it was unreachable
+        },
+        isVideoMesh: false,
+      },
+      {
+        udp: {
+          result: 'reachable',
+          latencyInMilliseconds: 20,
+        },
+        isVideoMesh: false,
+      },
+      {
+        udp: {
+          result: 'untested',
+          latencyInMilliseconds: 200, // value put in here just for testing, in practice we wouldn't have any value here if it was untested
+        },
+        isVideoMesh: false,
+      },
+    ];
+
+    assert.deepEqual(reachability.testGetStatistics(results, 'udp', false), {
+      min: 10,
+      max: 20,
+      average: 15,
+    });
+  });
+
+  it('handles the case when results are empty', () => {
+    assert.deepEqual(reachability.testGetStatistics([], 'udp', false), {
+      min: -1,
+      max: -1,
+      average: -1,
+    });
+  });
+
+  it('handles the case when results are empty after filtering', () => {
+    const fakeResults = [
+      {
+        udp: {
+          result: 'untested', // it will get filtered out because of this value
+          latencyInMilliseconds: 10,
+        },
+        tcp: {
+          result: 'reachable',
+          latencyInMilliseconds: 10, // it will get filtered out because of the tcp protocol
+        },
+        isVideoMesh: false,
+      },
+      {
+        udp: {
+          result: 'reachable',
+          latencyInMilliseconds: 10,
+        },
+        isVideoMesh: true, // it will get filtered out because of this value
+      },
+    ];
+
+    assert.deepEqual(reachability.testGetStatistics(fakeResults, 'udp', false), {
+      min: -1,
+      max: -1,
+      average: -1,
+    });
+  });
+});
+
+describe('sendMetric', () => {
+  let webex;
+  let reachability;
+
+  beforeEach(() => {
+    webex = new MockWebex();
+    reachability = new TestReachability(webex);
+
+    sinon.stub(Metrics, 'sendBehavioralMetric');
+  });
+
+  it('works as expected', async () => {
+    // setup stub for getStatistics to return values that show what parameters it was called with,
+    // this way we can verify that the correct results of calls to getStatistics are placed
+    // in correct data fields when sendBehavioralMetric() is called
+    sinon.stub(reachability, 'getStatistics').callsFake((results, protocol, isVideoMesh) => {
+      return {results, protocol, isVideoMesh};
+    });
+
+    // setup fake clusterReachability results
+    reachability.setFakeClusterReachability({
+      cluster1: {
+        getResult: sinon.stub().returns({result: 'result 1'}),
+        isVideoMesh: true,
+      },
+      cluster2: {
+        getResult: sinon.stub().returns({result: 'result 2'}),
+        isVideoMesh: false,
+      },
+      cluster3: {
+        getResult: sinon.stub().returns({result: 'result 3'}),
+        isVideoMesh: false,
+      },
+    });
+
+    await reachability.sendMetric();
+
+    // each call to getStatistics should be made with all the results from all fake clusterReachability:
+    const expectedResults = [
+      {
+        result: 'result 1',
+        isVideoMesh: true,
+      },
+      {
+        result: 'result 2',
+        isVideoMesh: false,
+      },
+      {
+        result: 'result 3',
+        isVideoMesh: false,
+      },
+    ];
+
+    assert.calledWith(Metrics.sendBehavioralMetric, 'js_sdk_reachability_completed', {
+      vmn: {
+        udp: {
+          results: expectedResults,
+          protocol: 'udp',
+          isVideoMesh: true,
+        },
+      },
+      public: {
+        udp: {
+          results: expectedResults,
+          protocol: 'udp',
+          isVideoMesh: false,
+        },
+        tcp: {
+          results: expectedResults,
+          protocol: 'tcp',
+          isVideoMesh: false,
+        },
+        xtls: {
+          results: expectedResults,
+          protocol: 'xtls',
+          isVideoMesh: false,
+        },
+      },
+    });
+  });
+});

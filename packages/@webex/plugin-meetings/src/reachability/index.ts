@@ -457,32 +457,44 @@ export default class Reachability extends EventsScope {
   }
 
   /**
+   * Helper function for calculating min/max/average values of latency
+   *
+   * @param {Array<any>} results
+   * @param {string} protocol
+   * @param {boolean} isVideoMesh
+   * @returns {{min:number, max: number, average: number}}
+   */
+  protected getStatistics(
+    results: Array<ClusterReachabilityResult & {isVideoMesh: boolean}>,
+    protocol: 'udp' | 'tcp' | 'xtls',
+    isVideoMesh: boolean
+  ) {
+    const values = results
+      .filter((result) => result.isVideoMesh === isVideoMesh)
+      .filter((result) => result[protocol].result === 'reachable')
+      .map((result) => result[protocol].latencyInMilliseconds);
+
+    if (values.length === 0) {
+      return {
+        min: -1,
+        max: -1,
+        average: -1,
+      };
+    }
+
+    return {
+      min: Math.min(...values),
+      max: Math.max(...values),
+      average: mean(values),
+    };
+  }
+
+  /**
    * Sends a metric with all the statistics about how long reachability took
    *
    * @returns {void}
    */
-  private async sendMetric() {
-    const getStatistics = (results, protocol, isVideoMesh) => {
-      const values = results
-        .filter((result) => result.isVideoMesh === isVideoMesh)
-        .filter((result) => result[protocol].result === 'reachable')
-        .map((result) => result[protocol].latencyInMilliseconds);
-
-      if (values.length === 0) {
-        return {
-          min: -1,
-          max: -1,
-          average: -1,
-        };
-      }
-
-      return {
-        min: Math.min(...values),
-        max: Math.max(...values),
-        average: mean(values),
-      };
-    };
-
+  protected async sendMetric() {
     const results = [];
 
     Object.values(this.clusterReachability).forEach((clusterReachability) => {
@@ -494,15 +506,14 @@ export default class Reachability extends EventsScope {
 
     const stats = {
       vmn: {
-        udp: getStatistics(results, 'udp', true),
+        udp: this.getStatistics(results, 'udp', true),
       },
       public: {
-        udp: getStatistics(results, 'udp', false),
-        tcp: getStatistics(results, 'tcp', false),
-        xtls: getStatistics(results, 'xtls', false),
+        udp: this.getStatistics(results, 'udp', false),
+        tcp: this.getStatistics(results, 'tcp', false),
+        xtls: this.getStatistics(results, 'xtls', false),
       },
     };
-
     Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.REACHABILITY_COMPLETED, stats);
   }
 
