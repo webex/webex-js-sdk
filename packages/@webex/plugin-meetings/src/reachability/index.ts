@@ -518,7 +518,7 @@ export default class Reachability extends EventsScope {
       // as they are likely to fail if users are not on corporate network
       if (this.areAllPublicClusterResultsReady()) {
         LoggerProxy.logger.log(
-          'Reachability:index#gatherReachability --> Reachability checks timed out (VMN timeout)'
+          'Reachability:index#startTimers --> Reachability checks timed out (VMN timeout)'
         );
 
         this.resolveReachabilityPromise();
@@ -529,7 +529,7 @@ export default class Reachability extends EventsScope {
       this.publicCloudTimer = undefined;
 
       LoggerProxy.logger.log(
-        `Reachability:index#gatherReachability --> Reachability checks timed out (${DEFAULT_TIMEOUT}s)`
+        `Reachability:index#startTimers --> Reachability checks timed out (${DEFAULT_TIMEOUT}s)`
       );
 
       // resolve the promise, so that the client won't be blocked waiting on meetings.register() for too long
@@ -550,7 +550,7 @@ export default class Reachability extends EventsScope {
       this.sendMetric();
 
       LoggerProxy.logger.log(
-        `Reachability:index#gatherReachability --> Reachability checks fully timed out (${OVERALL_TIMEOUT}s)`
+        `Reachability:index#startTimers --> Reachability checks fully timed out (${OVERALL_TIMEOUT}s)`
       );
     }, OVERALL_TIMEOUT * 1000);
   }

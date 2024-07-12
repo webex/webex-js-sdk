@@ -290,7 +290,7 @@ export class ClusterReachability extends EventsScope {
       this.emit(
         {
           file: 'clusterReachability',
-          function: 'registerIceCandidateListener',
+          function: 'saveResult',
         },
         Events.resultReady,
         {
