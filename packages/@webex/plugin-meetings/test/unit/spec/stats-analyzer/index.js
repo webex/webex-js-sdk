@@ -2115,13 +2115,37 @@ describe('plugin-meetings', () => {
         });
       });
 
-      it('reports the number of logical CPU cores', async () => {
-        sinon.stub(CpuInfo, 'getNumLogicalCores').returns(12);
-        await startStatsAnalyzer({expected: {receiveVideo: true}});
+      describe.only('CPU Information Reporting', async () => {
+        let getNumLogicalCoresStub;
 
-        await progressTime();
-        assert.equal(mqeData.intervalMetadata.cpuInfo.numberOfCores, 12);
-      })
-    });
+        beforeEach(async () => {
+          // Ensure any previous stub is restored before creating a new one
+          if (getNumLogicalCoresStub) {
+            getNumLogicalCoresStub.restore();
+          }
+          getNumLogicalCoresStub = sinon.stub(CpuInfo, 'getNumLogicalCores');
+        });
+
+        afterEach(() => {
+          // Restore the stub to its original method after each test
+          getNumLogicalCoresStub.restore();
+        });
+
+        it('reports undefined of logical CPU cores when not available', async () => {
+          getNumLogicalCoresStub.returns(undefined);
+          await startStatsAnalyzer({expected: {receiveVideo: true}});
+          await progressTime();
+          assert.equal(mqeData.intervalMetadata.cpuInfo.numberOfCores, undefined);
+        });
+
+        it('reports the number of logical CPU cores', async () => {
+          sinon.stub(CpuInfo, 'getNumLogicalCores').returns(12);
+          await startStatsAnalyzer({expected: {receiveVideo: true}});
+
+          await progressTime();
+          assert.equal(mqeData.intervalMetadata.cpuInfo.numberOfCores, 12);
+        });
+      });
+    })
   });
 });
