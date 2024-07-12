@@ -6322,12 +6322,13 @@ export default class Meeting extends StatelessWebexPlugin {
     if (this.config.stats.enableStatsAnalyzer) {
       // @ts-ignore - config coming from registerPlugin
       this.networkQualityMonitor = new NetworkQualityMonitor(this.config.stats);
-      this.statsAnalyzer = new StatsAnalyzer(
+      this.statsAnalyzer = new StatsAnalyzer({
         // @ts-ignore - config coming from registerPlugin
-        this.config.stats,
-        (ssrc: number) => this.receiveSlotManager.findReceiveSlotBySsrc(ssrc),
-        this.networkQualityMonitor
-      );
+        config: this.config.stats,
+        receiveSlotCallback: (ssrc: number) => this.receiveSlotManager.findReceiveSlotBySsrc(ssrc),
+        networkQualityMonitor: this.networkQualityMonitor,
+        isMultistream: this.isMultistream,
+      });
       this.setupStatsAnalyzerEventHandlers();
       this.networkQualityMonitor.on(
         EVENT_TRIGGERS.NETWORK_QUALITY,
