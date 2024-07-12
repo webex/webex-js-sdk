@@ -616,6 +616,7 @@ export class StatsAnalyzer extends EventsScope {
           this.statsResults[newType].csi = statsItem.csi;
         } else if (type === 'video-share-send' && result.type === 'outbound-rtp') {
           this.shareVideoEncoderImplementation = result.encoderImplementation;
+          this.parseGetStatsResult(result, type, isSender);
         } else {
           this.parseGetStatsResult(result, type, isSender);
         }
