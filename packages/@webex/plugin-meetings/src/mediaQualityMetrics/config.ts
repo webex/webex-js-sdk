@@ -5,7 +5,7 @@ export const emptyMqaInterval = {
     peerReflexiveIP: '0.0.0.0',
     peripherals: [],
     cpuInfo: {
-      numberOfCores: undefined,
+      numberOfCores: 1, // default value from spec if web-caability cannot be determined
       description: 'web client',
       architecture: 'unknown',
     },

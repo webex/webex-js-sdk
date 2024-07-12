@@ -2129,16 +2129,17 @@ describe('plugin-meetings', () => {
           getNumLogicalCoresStub.restore();
         });
 
-        it('reports undefined of logical CPU cores when not available', async () => {
+        it('reports 1 of logical CPU cores when not available', async () => {
           getNumLogicalCoresStub.returns(undefined);
-          await startStatsAnalyzer({expected: {receiveVideo: true}});
+          await startStatsAnalyzer({pc, statsAnalyzer, mediaStatus: {expected: {receiveVideo: true}}});
+
           await progressTime();
-          assert.equal(mqeData.intervalMetadata.cpuInfo.numberOfCores, undefined);
+          assert.equal(mqeData.intervalMetadata.cpuInfo.numberOfCores, 1);
         });
 
         it('reports the number of logical CPU cores', async () => {
-          sinon.stub(CpuInfo, 'getNumLogicalCores').returns(12);
-          await startStatsAnalyzer({expected: {receiveVideo: true}});
+          getNumLogicalCoresStub.returns(12);
+          await startStatsAnalyzer({pc, statsAnalyzer, mediaStatus: {expected: {receiveVideo: true}}});
 
           await progressTime();
           assert.equal(mqeData.intervalMetadata.cpuInfo.numberOfCores, 12);
