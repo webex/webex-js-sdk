@@ -2119,7 +2119,6 @@ describe('plugin-meetings', () => {
         let getNumLogicalCoresStub;
 
         beforeEach(async () => {
-          // Ensure any previous stub is restored before creating a new one
           if (getNumLogicalCoresStub) {
             getNumLogicalCoresStub.restore();
           }
@@ -2127,7 +2126,6 @@ describe('plugin-meetings', () => {
         });
 
         afterEach(() => {
-          // Restore the stub to its original method after each test
           getNumLogicalCoresStub.restore();
         });
 
