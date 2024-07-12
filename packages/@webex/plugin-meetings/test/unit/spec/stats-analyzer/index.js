@@ -2115,7 +2115,7 @@ describe('plugin-meetings', () => {
         });
       });
 
-      describe.only('CPU Information Reporting', async () => {
+      describe('CPU Information Reporting', async () => {
         let getNumLogicalCoresStub;
 
         beforeEach(async () => {
