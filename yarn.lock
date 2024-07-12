@@ -8157,7 +8157,7 @@ __metadata:
     "@webex/test-helper-mock-webex": "workspace:*"
     "@webex/test-helper-retry": "workspace:*"
     "@webex/test-helper-test-users": "workspace:*"
-    "@webex/web-capabilities": 1.3.0
+    "@webex/web-capabilities": ^1.3.0
     "@webex/webex-core": "workspace:*"
     ampersand-collection: ^2.0.2
     bowser: ^2.11.0
@@ -8832,21 +8832,21 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/web-capabilities@npm:1.3.0, @webex/web-capabilities@npm:^1.3.0":
-  version: 1.3.0
-  resolution: "@webex/web-capabilities@npm:1.3.0"
-  dependencies:
-    bowser: ^2.11.0
-  checksum: 5e35c7d17cfd21762f86e16e2237d6e6c3a7b157e38f3a694ffa8e9003ada423fb85e2eca502dd7cf09560896e33007bbb244d87b04d4344152ab2049b60f812
-  languageName: node
-  linkType: hard
-
 "@webex/web-capabilities@npm:^1.1.0":
   version: 1.2.0
   resolution: "@webex/web-capabilities@npm:1.2.0"
   dependencies:
     bowser: "npm:^2.11.0"
   checksum: 69bf1521485c0a29f10edc85c06fee33a983f1363639e6662bd65389602f4e2ded8e37be6d3cf845bd6efef6712680fce7592e175d5e1e33291dc2769ac66c4c
+  languageName: node
+  linkType: hard
+
+"@webex/web-capabilities@npm:^1.3.0":
+  version: 1.3.0
+  resolution: "@webex/web-capabilities@npm:1.3.0"
+  dependencies:
+    bowser: ^2.11.0
+  checksum: 5e35c7d17cfd21762f86e16e2237d6e6c3a7b157e38f3a694ffa8e9003ada423fb85e2eca502dd7cf09560896e33007bbb244d87b04d4344152ab2049b60f812
   languageName: node
   linkType: hard
 

@@ -396,7 +396,11 @@ export class StatsAnalyzer extends EventsScope {
     });
 
     newMqa.intervalMetadata.peerReflexiveIP = this.statsResults.connectionType.local.ipAddress;
-    newMqa.intervalMetadata.cpuInfo.numberOfCores = CpuInfo.getNumLogicalCores();
+
+    const numLogicalCores = CpuInfo.getNumLogicalCores();
+    if (numLogicalCores) {
+      newMqa.intervalMetadata.cpuInfo.numberOfCores = numLogicalCores;
+    }
 
     // Adding peripheral information
     newMqa.intervalMetadata.peripherals.push({information: _UNKNOWN_, name: MEDIA_DEVICES.SPEAKER});
