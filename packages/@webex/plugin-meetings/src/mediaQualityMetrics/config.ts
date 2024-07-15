@@ -132,7 +132,7 @@ export const emptyVideoReceive = {
       mariRtxEnabled: false,
       mariQosEnabled: false,
       mariLiteEnabled: false,
-      multistreamEnabled: true, // Not avaliable
+      multistreamEnabled: false,
     },
     dtlsBitrate: 0, // Not avaliable
     dtlsPackets: 0, // Not avaliable
@@ -199,7 +199,7 @@ export const emptyVideoTransmit = {
       mariRtxEnabled: false,
       mariQosEnabled: false,
       mariLiteEnabled: false,
-      multistreamEnabled: false, // Not avaliable
+      multistreamEnabled: false,
     },
     dtlsBitrate: 0, // Not avaliable
     dtlsPackets: 0, // Not avaliable
