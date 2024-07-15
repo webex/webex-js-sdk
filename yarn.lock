@@ -11341,12 +11341,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"builtins@npm:^5.0.1":
-  version: 5.0.1
-  resolution: "builtins@npm:5.0.1"
+"builtins@npm:^5.1.0":
+  version: 5.1.0
+  resolution: "builtins@npm:5.1.0"
   dependencies:
     semver: ^7.0.0
-  checksum: 66d204657fe36522822a95b288943ad11b58f5eaede235b11d8c4edaa28ce4800087d44a2681524c340494aadb120a0068011acabe99d30e8f11a7d826d83515
+  checksum: 76327fa85b8e253b26e52f79988148013ea742691b4ab15f7228ebee47dd757832da308c9d4e4fc89763a1773e3f25a9836fff6315df85c7c6c72190436bf11d
   languageName: node
   linkType: hard
 
@@ -31351,7 +31351,7 @@ __metadata:
     babelify: ^10.0.0
     browserify: ^17.0.0
     browserify-middleware: ^8.1.1
-    builtins: ^5.0.1
+    builtins: ^5.1.0
     chai: ^4.3.4
     chai-as-promised: ^7.1.1
     chromedriver: ^101.0.0
