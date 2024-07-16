@@ -1,0 +1,51 @@
+{
+  "name": "@webex/test-helper-appid",
+  "description": "",
+  "license": "MIT",
+  "main": "dist/index.js",
+  "devMain": "src/index.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/webex/webex-js-sdk.git",
+    "directory": "packages/@webex/test-helper-appid"
+  },
+  "engines": {
+    "node": ">=16"
+  },
+  "browser": {
+    "./dist/create-user.js": "./dist/create-user.browser.js",
+    "./dist/router.js": false,
+    "./src/create-user.js": "./src/create-user.browser.js",
+    "./src/router.js": false
+  },
+  "dependencies": {
+    "@webex/test-helper-make-local-url": "workspace:*",
+    "body-parser": "^1.19.0",
+    "express": "^4.17.1",
+    "jsonwebtoken": "^9.0.0",
+    "safe-buffer": "^5.2.0",
+    "uuid": "^3.3.2",
+    "whatwg-fetch": "^2.0.4"
+  },
+  "scripts": {
+    "build": "yarn build:src",
+    "build:src": "webex-legacy-tools build -dest \"./dist\" -src \"./src\" -js -ts -maps",
+    "deploy:npm": "yarn npm publish",
+    "test": "yarn test:style && yarn test:unit && yarn test:integration && yarn test:browser",
+    "test:browser": "webex-legacy-tools test --integration --runner karma",
+    "test:style": "eslint ./src/**/*.*"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.17.10",
+    "@webex/babel-config-legacy": "workspace:*",
+    "@webex/eslint-config-legacy": "workspace:*",
+    "@webex/jest-config-legacy": "workspace:*",
+    "@webex/legacy-tools": "workspace:*",
+    "@webex/test-helper-chai": "workspace:*",
+    "@webex/test-helper-mocha": "workspace:*",
+    "@webex/test-helper-mock-webex": "workspace:*",
+    "@webex/test-helper-test-users": "workspace:*",
+    "eslint": "^8.24.0",
+    "prettier": "^2.7.1"
+  }
+}
