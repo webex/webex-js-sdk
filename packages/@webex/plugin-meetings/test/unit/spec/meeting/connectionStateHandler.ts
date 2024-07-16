@@ -14,7 +14,7 @@ describe('ConnectionStateHandler', () => {
     mockMC = {
       on: sinon.stub(),
       off: sinon.stub(),
-      getConnectionState: sinon.stub().returns(ConnectionState.New),
+      getConnectionState: sinon.stub().returns(ConnectionState.Connecting),
     };
 
     connectionStateHandler = new ConnectionStateHandler(mockMC);
@@ -41,7 +41,7 @@ describe('ConnectionStateHandler', () => {
         },
         ConnectionStateEvent.CONNECTION_STATE_CHANGED,
         {
-          state: ConnectionState.New,
+          state: ConnectionState.Connecting,
         }
       );
     });
@@ -66,7 +66,35 @@ describe('ConnectionStateHandler', () => {
         },
         ConnectionStateEvent.CONNECTION_STATE_CHANGED,
         {
-          state: ConnectionState.New,
+          state: ConnectionState.Connecting,
+        }
+      );
+    });
+
+    it('should not emit a CONNECTION_STATE_CHANGED event when overall connection state does not change', () => {
+      const spy = sinon.spy(connectionStateHandler, 'emit');
+
+      // check the right listener was registered
+      assert.calledTwice(mockMC.on);
+      assert.equal(mockMC.on.getCall(0).args[0], Event.PEER_CONNECTION_STATE_CHANGED);
+      assert.equal(mockMC.on.getCall(1).args[0], Event.ICE_CONNECTION_STATE_CHANGED);
+      const peerConnectionListener = mockMC.on.getCall(0).args[1];
+      const iceConnectionListener = mockMC.on.getCall(1).args[1];
+
+      peerConnectionListener();
+
+      iceConnectionListener();
+
+      assert.calledOnce(spy);
+      assert.calledOnceWithExactly(
+        connectionStateHandler.emit,
+        {
+          file: 'connectionStateHandler',
+          function: 'handleConnectionStateChange',
+        },
+        ConnectionStateEvent.CONNECTION_STATE_CHANGED,
+        {
+          state: ConnectionState.Connecting,
         }
       );
     });
