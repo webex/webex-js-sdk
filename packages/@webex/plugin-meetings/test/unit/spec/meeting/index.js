@@ -7079,6 +7079,10 @@ describe('plugin-meetings', () => {
           id: 'stream',
           getTracks: () => [{id: 'track', addEventListener: sinon.stub()}],
         };
+        const simulateConnectionStateChange = (newState) => {
+          meeting.mediaProperties.webrtcMediaConnection.getConnectionState = sinon.stub().returns(newState);
+          eventListeners[Event.PEER_CONNECTION_STATE_CHANGED]();
+        }
 
         beforeEach(() => {
           eventListeners = {};
@@ -7142,18 +7146,16 @@ describe('plugin-meetings', () => {
             meeting.hasMediaConnectionConnectedAtLeastOnce = true;
             meeting.setupMediaConnectionListeners();
 
-            meeting.mediaProperties.webrtcMediaConnection.getConnectionState = sinon.stub().returns(ConnectionState.Connecting);
-            eventListeners[Event.PEER_CONNECTION_STATE_CHANGED]();
+            simulateConnectionStateChange(ConnectionState.Connecting);
 
             assert.notCalled(webex.internal.newMetrics.submitClientEvent);
           });
 
           it('sends client.ice.start correctly when hasMediaConnectionConnectedAtLeastOnce = false', () => {
             meeting.hasMediaConnectionConnectedAtLeastOnce = false;
-
-            meeting.mediaProperties.webrtcMediaConnection.getConnectionState = sinon.stub().returns(ConnectionState.Connecting);
             meeting.setupMediaConnectionListeners();
-            eventListeners[Event.PEER_CONNECTION_STATE_CHANGED]();
+
+            simulateConnectionStateChange(ConnectionState.Connecting);
 
             assert.calledOnce(webex.internal.newMetrics.submitClientEvent);
             assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
@@ -7243,11 +7245,9 @@ describe('plugin-meetings', () => {
             // now simulate short connection loss, client.ice.end is not sent a second time as hasMediaConnectionConnectedAtLeastOnce = true
             resetSpies();
 
-            meeting.mediaProperties.webrtcMediaConnection.getConnectionState = sinon.stub().returns(ConnectionState.Disconnected);
-            eventListeners[Event.PEER_CONNECTION_STATE_CHANGED]();
+            simulateConnectionStateChange(ConnectionState.Disconnected);
 
-            meeting.mediaProperties.webrtcMediaConnection.getConnectionState = sinon.stub().returns(ConnectionState.Connected);
-            eventListeners[Event.PEER_CONNECTION_STATE_CHANGED]();
+            simulateConnectionStateChange(ConnectionState.Connected);
 
             checkExpectedSpies({
               setNetworkStatusCallParams: [NETWORK_STATUS.DISCONNECTED, NETWORK_STATUS.CONNECTED],
@@ -7255,11 +7255,9 @@ describe('plugin-meetings', () => {
 
             resetSpies();
 
-            meeting.mediaProperties.webrtcMediaConnection.getConnectionState = sinon.stub().returns(ConnectionState.Disconnected);
-            eventListeners[Event.PEER_CONNECTION_STATE_CHANGED]();
+            simulateConnectionStateChange(ConnectionState.Disconnected);
 
-            meeting.mediaProperties.webrtcMediaConnection.getConnectionState = sinon.stub().returns(ConnectionState.Connected);
-            eventListeners[Event.PEER_CONNECTION_STATE_CHANGED]();
+            simulateConnectionStateChange(ConnectionState.Connected);
           });
         });
 
@@ -7282,9 +7280,7 @@ describe('plugin-meetings', () => {
           const mockDisconnectedEvent = () => {
             meeting.setupMediaConnectionListeners();
 
-            meeting.mediaProperties.webrtcMediaConnection.getConnectionState = sinon.stub().returns(ConnectionState.Disconnected);
-
-            eventListeners[Event.PEER_CONNECTION_STATE_CHANGED]();
+            simulateConnectionStateChange(ConnectionState.Disconnected);
           };
 
           const checkBehavioralMetricSent = (hasMediaConnectionConnectedAtLeastOnce = false) => {
@@ -7349,9 +7345,7 @@ describe('plugin-meetings', () => {
           const mockFailedEvent = () => {
             meeting.setupMediaConnectionListeners();
 
-            meeting.mediaProperties.webrtcMediaConnection.getConnectionState = sinon.stub().returns(ConnectionState.Failed);
-
-            eventListeners[Event.PEER_CONNECTION_STATE_CHANGED]();
+            simulateConnectionStateChange(ConnectionState.Failed);
           };
 
           const checkBehavioralMetricSent = (hasMediaConnectionConnectedAtLeastOnce = false) => {

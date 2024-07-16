@@ -613,7 +613,7 @@ describe('internal-plugin-metrics', () => {
     [
       {
         signalingState: 'have-local-offer',
-        iceConnected: true,
+        iceConnected: false,
         turnServerUsed: true,
         errorCode: MISSING_ROAP_ANSWER_CLIENT_CODE,
       },

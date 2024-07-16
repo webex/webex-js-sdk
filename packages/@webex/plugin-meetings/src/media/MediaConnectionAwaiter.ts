@@ -30,9 +30,9 @@ export default class MediaConnectionAwaiter {
     this.retried = false;
     this.iceConnected = false;
     this.onTimeoutCallback = this.onTimeout.bind(this);
-    this.peerConnectionStateCallback = this.peerConnectionStateListenerCallback.bind(this);
-    this.iceConnectionStateCallback = this.iceConnectionStateListenerCallback.bind(this);
-    this.iceGatheringStateCallback = this.iceGatheringStateListenerCallback.bind(this);
+    this.peerConnectionStateCallback = this.peerConnectionStateHandler.bind(this);
+    this.iceConnectionStateCallback = this.iceConnectionStateHandler.bind(this);
+    this.iceGatheringStateCallback = this.iceGatheringStateHandler.bind(this);
   }
 
   /**
@@ -99,11 +99,11 @@ export default class MediaConnectionAwaiter {
    *
    * @returns {void}
    */
-  peerConnectionStateListenerCallback(): void {
+  peerConnectionStateHandler(): void {
     const peerConnectionState = this.webrtcMediaConnection.getPeerConnectionState();
 
     LoggerProxy.logger.log(
-      `Media:MediaConnectionAwaiter#peerConnectionStateListenerCallback --> Peer connection state change -> ${peerConnectionState}`
+      `Media:MediaConnectionAwaiter#peerConnectionStateHandler --> Peer connection state change -> ${peerConnectionState}`
     );
 
     this.connectionStateChange();
@@ -114,11 +114,11 @@ export default class MediaConnectionAwaiter {
    *
    * @returns {void}
    */
-  iceConnectionStateListenerCallback(): void {
+  iceConnectionStateHandler(): void {
     const iceConnectionState = this.webrtcMediaConnection.getIceConnectionState();
 
     LoggerProxy.logger.log(
-      `Media:MediaConnectionAwaiter#iceConnectionStateListenerCallback --> ICE connection state change -> ${iceConnectionState}`
+      `Media:MediaConnectionAwaiter#iceConnectionStateHandler --> ICE connection state change -> ${iceConnectionState}`
     );
 
     if (iceConnectionState === 'connected' && !this.iceConnected) {
@@ -133,11 +133,11 @@ export default class MediaConnectionAwaiter {
    *
    * @returns {void}
    */
-  iceGatheringStateListenerCallback(): void {
+  iceGatheringStateHandler(): void {
     const iceGatheringState = this.webrtcMediaConnection.getIceGatheringState();
 
     LoggerProxy.logger.log(
-      `Media:MediaConnectionAwaiter#iceGatheringStateListenerCallback --> ICE gathering state change -> ${iceGatheringState}`
+      `Media:MediaConnectionAwaiter#iceGatheringStateHandler --> ICE gathering state change -> ${iceGatheringState}`
     );
 
     if (!this.isIceGatheringCompleted()) {

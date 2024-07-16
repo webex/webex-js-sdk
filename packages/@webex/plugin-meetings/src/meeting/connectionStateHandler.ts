@@ -1,5 +1,5 @@
 import {Event, ConnectionState} from '@webex/internal-media-core';
-import {EventEmitter} from 'events';
+import EventsScope from '../common/events/events-scope';
 
 export enum ConnectionStateEvent {
   CONNECTION_STATE_CHANGED = 'connectionState:changed',
@@ -12,7 +12,7 @@ export interface ConnectionStateChangedEvent {
 /**
  * @class ConnectionStateHandler
  */
-export class ConnectionStateHandler extends EventEmitter {
+export class ConnectionStateHandler extends EventsScope {
   private webrtcMediaConnection: any;
 
   private mediaConnectionState: ConnectionState;
@@ -46,7 +46,14 @@ export class ConnectionStateHandler extends EventEmitter {
 
     if (newConnectionState !== this.mediaConnectionState) {
       this.mediaConnectionState = newConnectionState;
-      this.emit(ConnectionStateEvent.CONNECTION_STATE_CHANGED, {state: this.mediaConnectionState});
+      this.emit(
+        {
+          file: 'connectionStateHandler',
+          function: 'handleConnectionStateChange',
+        },
+        ConnectionStateEvent.CONNECTION_STATE_CHANGED,
+        {state: this.mediaConnectionState}
+      );
     }
   }
 }

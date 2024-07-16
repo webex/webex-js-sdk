@@ -33,6 +33,17 @@ describe('ConnectionStateHandler', () => {
       listener();
 
       assert.calledOnce(spy);
+      assert.calledOnceWithExactly(
+        connectionStateHandler.emit,
+        {
+          file: 'connectionStateHandler',
+          function: 'handleConnectionStateChange',
+        },
+        ConnectionStateEvent.CONNECTION_STATE_CHANGED,
+        {
+          state: ConnectionState.New,
+        }
+      );
     });
 
     it('should emit a CONNECTION_STATE_CHANGED event when the ice connection state changes', () => {
@@ -47,6 +58,17 @@ describe('ConnectionStateHandler', () => {
       listener();
 
       assert.calledOnce(spy);
+      assert.calledOnceWithExactly(
+        connectionStateHandler.emit,
+        {
+          file: 'connectionStateHandler',
+          function: 'handleConnectionStateChange',
+        },
+        ConnectionStateEvent.CONNECTION_STATE_CHANGED,
+        {
+          state: ConnectionState.New,
+        }
+      );
     });
   });
 });
