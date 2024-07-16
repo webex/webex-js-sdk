@@ -5244,8 +5244,13 @@ export default class Meeting extends StatelessWebexPlugin {
 
     // @ts-ignore - Fix type
     if (this.webex.internal.llm.isConnected()) {
-      // @ts-ignore - Fix type
-      if (url === this.webex.internal.llm.getLocusUrl() && isJoined) {
+      if (
+        // @ts-ignore - Fix type
+        url === this.webex.internal.llm.getLocusUrl() &&
+        // @ts-ignore - Fix type
+        datachannelUrl === this.webex.internal.llm.getDatachannelUrl() &&
+        isJoined
+      ) {
         return undefined;
       }
       // @ts-ignore - Fix type
@@ -7909,6 +7914,7 @@ export default class Meeting extends StatelessWebexPlugin {
     Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.MEETING_SHARE_VIDEO_MUTE_STATE_CHANGE, {
       correlationId: this.correlationId,
       muted,
+      encoderImplementation: this.statsAnalyzer?.shareVideoEncoderImplementation,
     });
   };
 

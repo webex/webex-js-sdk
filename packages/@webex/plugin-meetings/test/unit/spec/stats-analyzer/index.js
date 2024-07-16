@@ -579,6 +579,7 @@ describe('plugin-meetings', () => {
                     packetsSent: 0,
                     isRequested: true,
                     lastRequestedUpdateTimestamp: 0,
+                    encoderImplementation: 'fake-encoder',
                   },
                   {
                     type: 'remote-inbound-rtp',
@@ -1167,6 +1168,13 @@ describe('plugin-meetings', () => {
         mergeProperties(fakeStats, {candidateType: 'invalid'});
         await progressTime();
         assert.strictEqual(statsAnalyzer.getLocalIpAddress(), '');
+      });
+
+      it('has the correct share video encoder implementation as provided by the stats', async () => {
+        await startStatsAnalyzer({pc, statsAnalyzer});
+
+        await progressTime();
+        assert.strictEqual(statsAnalyzer.shareVideoEncoderImplementation, 'fake-encoder');
       });
 
       it('logs a message when audio send packets do not increase', async () => {
