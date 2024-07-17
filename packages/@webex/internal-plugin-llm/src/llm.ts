@@ -56,8 +56,6 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
 
   private locusUrl?: string;
 
-  private datachannelUrl?: string;
-
   /**
    * Register to the websocket
    * @param {string} llmSocketUrl
@@ -88,7 +86,6 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
     this.register(datachannelUrl).then(() => {
       if (!locusUrl || !datachannelUrl) return undefined;
       this.locusUrl = locusUrl;
-      this.datachannelUrl = datachannelUrl;
       this.connect(this.webSocketUrl);
     });
 
@@ -111,19 +108,12 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
   public getLocusUrl = (): string => this.locusUrl;
 
   /**
-   * Get data channel URL for the connection
-   * @returns {string} data channel Url
-   */
-  public getDatachannelUrl = (): string => this.datachannelUrl;
-
-  /**
    * Disconnects websocket connection
    * @returns {Promise<void>}
    */
   public disconnectLLM = (): Promise<void> =>
     this.disconnect().then(() => {
       this.locusUrl = undefined;
-      this.datachannelUrl = undefined;
       this.binding = undefined;
       this.webSocketUrl = undefined;
     });

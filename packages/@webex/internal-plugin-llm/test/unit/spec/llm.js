@@ -88,26 +88,12 @@ describe('plugin-llm', () => {
       });
     });
 
-    describe('#getDatachannelUrl', () => {
-      it('gets dataChannel Url', async () => {
-        llmService.register = sinon.stub().resolves({
-          body: {
-            binding: 'binding',
-            webSocketUrl: 'url',
-          },
-        });
-        await llmService.registerAndConnect(locusUrl, datachannelUrl);
-        assert.equal(llmService.getDatachannelUrl(), datachannelUrl);
-      });
-    });
-
     describe('#disconnect', () => {
       it('disconnects mercury', async () => {
         await llmService.disconnect();
         sinon.assert.calledOnce(llmService.disconnect);
         assert.equal(llmService.isConnected(), false);
         assert.equal(llmService.getLocusUrl(), undefined);
-        assert.equal(llmService.getDatachannelUrl(), undefined);
         assert.equal(llmService.getBinding(), undefined);
       });
     });
