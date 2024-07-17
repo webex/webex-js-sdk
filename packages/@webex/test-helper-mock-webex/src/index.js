@@ -311,6 +311,7 @@ function makeWebex(options) {
         },
         submitToCallDiagnostics: sinon.stub(),
         submitToCallDiagnosticsPreLogin: sinon.stub(),
+        setDeviceInfo: sinon.stub(),
       },
     },
   });

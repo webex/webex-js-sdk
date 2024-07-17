@@ -1,5 +1,5 @@
 /* eslint no-shadow: ["error", { "allow": ["eventType"] }] */
-
+import {union} from 'lodash';
 import '@webex/internal-plugin-mercury';
 import '@webex/internal-plugin-conversation';
 import '@webex/internal-plugin-metrics';
@@ -45,6 +45,8 @@ import {
   MEETINGNUMBER,
   _JOINED_,
   _MOVED_,
+  _ON_HOLD_LOBBY_,
+  _WAIT_,
 } from '../constants';
 import BEHAVIORAL_METRICS from '../metrics/constants';
 import MeetingInfo from '../meeting-info';
@@ -340,6 +342,9 @@ export default class Meetings extends WebexPlugin {
     if (newLocus) {
       const isNewLocusAsBreakout = MeetingsUtil.isBreakoutLocusDTO(newLocus);
       const isSelfMoved = newLocus?.self?.state === _LEFT_ && newLocus?.self?.reason === _MOVED_;
+      const isSelfMovedToLobby =
+        newLocus?.self?.devices[0]?.intent?.reason === _ON_HOLD_LOBBY_ &&
+        newLocus?.self?.devices[0]?.intent?.type === _WAIT_;
       if (!meeting) {
         if (isNewLocusAsBreakout) {
           LoggerProxy.logger.log(
@@ -352,7 +357,7 @@ export default class Meetings extends WebexPlugin {
         return this.isNeedHandleMainLocus(meeting, newLocus);
       }
       if (!isNewLocusAsBreakout) {
-        return this.isNeedHandleMainLocus(meeting, newLocus);
+        return isSelfMovedToLobby || this.isNeedHandleMainLocus(meeting, newLocus);
       }
 
       return !isSelfMoved;
@@ -718,6 +723,24 @@ export default class Meetings extends WebexPlugin {
   }
 
   /**
+   * API to toggle TLS reachability, needs to be called before webex.meetings.register()
+   * @param {Boolean} newValue
+   * @private
+   * @memberof Meetings
+   * @returns {undefined}
+   */
+  private _toggleTlsReachability(newValue: boolean) {
+    if (typeof newValue !== 'boolean') {
+      return;
+    }
+    // @ts-ignore
+    if (this.config.experimental.enableTlsReachability !== newValue) {
+      // @ts-ignore
+      this.config.experimental.enableTlsReachability = newValue;
+    }
+  }
+
+  /**
    * Explicitly sets up the meetings plugin by registering
    * the device, connecting to mercury, and listening for locus events.
    *
@@ -978,7 +1001,10 @@ export default class Meetings extends WebexPlugin {
   fetchUserPreferredWebexSite() {
     return this.request.getMeetingPreferences().then((res) => {
       if (res) {
-        this.preferredWebexSite = MeetingsUtil.parseDefaultSiteFromMeetingPreferences(res);
+        const preferredWebexSite = MeetingsUtil.parseDefaultSiteFromMeetingPreferences(res);
+        this.preferredWebexSite = preferredWebexSite;
+        // @ts-ignore
+        this.webex.internal.services._getCatalog().addAllowedDomains([preferredWebexSite]);
       }
 
       // fall back to getting the preferred site from the user information
@@ -991,6 +1017,8 @@ export default class Meetings extends WebexPlugin {
               user?.userPreferences?.userPreferencesItems?.preferredWebExSite;
             if (preferredWebexSite) {
               this.preferredWebexSite = preferredWebexSite;
+              // @ts-ignore
+              this.webex.internal.services._getCatalog().addAllowedDomains([preferredWebexSite]);
             } else {
               throw new Error('site not found');
             }
@@ -1365,22 +1393,12 @@ export default class Meetings extends WebexPlugin {
 
   /**
    * Get all meetings.
-   * @param {object} options
-   * @param {object} options.startDate - get meetings after this start date
-   * @param {object} options.endDate - get meetings before this end date
    * @returns {Object} All currently active meetings.
    * @public
    * @memberof Meetings
    */
-  public getAllMeetings(
-    options: {
-      startDate: object;
-      endDate: object;
-    } = {} as any
-  ) {
-    // Options may include other parameters to filter this collection
-    // of meetings.
-    return this.meetingCollection.getAll(options);
+  public getAllMeetings() {
+    return this.meetingCollection.getAll();
   }
 
   /**
@@ -1504,18 +1522,6 @@ export default class Meetings extends WebexPlugin {
     const associateBreakoutLocus = this.breakoutLocusForHandleLater[existIndex];
     this.handleLocusEvent({locus: associateBreakoutLocus, locusUrl: associateBreakoutLocus.url});
     this.breakoutLocusForHandleLater.splice(existIndex, 1);
-  }
-
-  /**
-   * Get all scheduled meetings.
-   * @param {object} options
-   * @param {object} options.startDate - get meetings after this start date
-   * @param {object} options.endDate - get meetings before this end date
-   * @returns {Object} All scheduled meetings.
-   * @memberof Meetings
-   */
-  getScheduledMeetings() {
-    return this.meetingCollection.getAll({scheduled: true});
   }
 
   /**

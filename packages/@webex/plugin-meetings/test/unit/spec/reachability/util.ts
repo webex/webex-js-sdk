@@ -1,6 +1,9 @@
 import {assert} from '@webex/test-helper-chai';
 
-import {convertStunUrlToTurn} from '@webex/plugin-meetings/src/reachability/util';
+import {
+  convertStunUrlToTurn,
+  convertStunUrlToTurnTls,
+} from '@webex/plugin-meetings/src/reachability/util';
 
 describe('plugin-meetings/src/reachability/util', () => {
   describe('#convertStunUrlToTurn()', () => {
@@ -34,7 +37,34 @@ describe('plugin-meetings/src/reachability/util', () => {
     });
 
     it('show fail if stunUrl is not a STUN url', () => {
-      assert.throws(() => convertStunUrlToTurn('http://webex.com', 'tcp'), 'Not a STUN URL: http://webex.com');
+      assert.throws(
+        () => convertStunUrlToTurn('http://webex.com', 'tcp'),
+        'Not a STUN URL: http://webex.com'
+      );
+    });
+  });
+
+  describe('#convertStunUrlToTurnTls()', () => {
+    it(`should convert to a turns url`, () => {
+      const turnsUrl = convertStunUrlToTurnTls(
+        'stun:external-media91.public.wjfkm-a-10.prod.infra.webex.com:443'
+      );
+
+      assert.equal(
+        turnsUrl,
+        'turns:external-media91.public.wjfkm-a-10.prod.infra.webex.com:443?transport=tcp'
+      );
+    });
+
+    it('show fail if stunUrl is not a valid url', () => {
+      assert.throws(() => convertStunUrlToTurn('not a url', 'tcp'), 'Invalid URL: not a url');
+    });
+
+    it('show fail if stunUrl is not a STUN url', () => {
+      assert.throws(
+        () => convertStunUrlToTurn('http://webex.com', 'tcp'),
+        'Not a STUN URL: http://webex.com'
+      );
     });
   });
 });

@@ -2,6 +2,7 @@ import Url from 'url';
 
 import AmpState from 'ampersand-state';
 
+import {union} from 'lodash';
 import ServiceUrl from './service-url';
 
 /* eslint-disable no-underscore-dangle */
@@ -359,6 +360,15 @@ const ServiceCatalog = AmpState.extend({
    */
   setAllowedDomains(allowedDomains) {
     this.allowedDomains = [...allowedDomains];
+  },
+
+  /**
+   *
+   * @param {Array<string>} newAllowedDomains - new allowed domains to add to existing set of allowed domains
+   * @returns {void}
+   */
+  addAllowedDomains(newAllowedDomains) {
+    this.allowedDomains = union(this.allowedDomains, newAllowedDomains);
   },
 
   /**

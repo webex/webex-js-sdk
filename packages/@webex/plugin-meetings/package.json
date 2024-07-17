@@ -28,7 +28,7 @@
     ]
   },
   "scripts": {
-    "build": "yarn run -T tsc --declaration true --declarationDir ./dist",
+    "build": "yarn run -T tsc --declaration true --declarationDir ./dist/types",
     "build:src": "webex-legacy-tools build -dest \"./dist\" -src \"./src\" -js -ts -maps && yarn build",
     "deploy:npm": "yarn npm publish",
     "test:broken": "yarn test:style && yarn test:unit && yarn test:integration && yarn test:browser",
@@ -62,7 +62,7 @@
   },
   "dependencies": {
     "@webex/common": "workspace:*",
-    "@webex/internal-media-core": "2.3.3",
+    "@webex/internal-media-core": "2.5.3",
     "@webex/internal-plugin-conversation": "workspace:*",
     "@webex/internal-plugin-device": "workspace:*",
     "@webex/internal-plugin-llm": "workspace:*",

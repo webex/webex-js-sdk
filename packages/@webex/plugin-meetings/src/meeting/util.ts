@@ -47,7 +47,6 @@ const MeetingUtil = {
   },
 
   remoteUpdateAudioVideo: (meeting, audioMuted?: boolean, videoMuted?: boolean) => {
-    const webex = meeting.getWebexObject();
     if (!meeting) {
       return Promise.reject(new ParameterError('You need a meeting object.'));
     }
@@ -60,12 +59,6 @@ const MeetingUtil = {
       );
     }
 
-    // @ts-ignore
-    webex.internal.newMetrics.submitClientEvent({
-      name: 'client.locus.media.request',
-      options: {meetingId: meeting.id},
-    });
-
     return meeting.locusMediaRequest
       .send({
         type: 'LocalMute',
@@ -77,15 +70,7 @@ const MeetingUtil = {
           videoMuted,
         },
       })
-      .then((response) => {
-        // @ts-ignore
-        webex.internal.newMetrics.submitClientEvent({
-          name: 'client.locus.media.response',
-          options: {meetingId: meeting.id},
-        });
-
-        return response?.body?.locus;
-      });
+      .then((response) => response?.body?.locus);
   },
 
   hasOwner: (info) => info && info.owner,
@@ -534,6 +519,14 @@ const MeetingUtil = {
 
   isClosedCaptionActive: (displayHints) =>
     displayHints.includes(DISPLAY_HINTS.CAPTION_STATUS_ACTIVE),
+
+  canStartManualCaption: (displayHints) =>
+    displayHints.includes(DISPLAY_HINTS.MANUAL_CAPTION_START),
+
+  canStopManualCaption: (displayHints) => displayHints.includes(DISPLAY_HINTS.MANUAL_CAPTION_STOP),
+
+  isManualCaptionActive: (displayHints) =>
+    displayHints.includes(DISPLAY_HINTS.MANUAL_CAPTION_STATUS_ACTIVE),
 
   isWebexAssistantActive: (displayHints) =>
     displayHints.includes(DISPLAY_HINTS.WEBEX_ASSISTANT_STATUS_ACTIVE),

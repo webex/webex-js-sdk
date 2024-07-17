@@ -8,6 +8,13 @@ import sinon from 'sinon';
 import {Services, ServiceRegistry, ServiceState} from '@webex/webex-core';
 import {NewMetrics} from '@webex/internal-plugin-metrics';
 
+const waitForAsync = () =>
+  new Promise((resolve) =>
+    setImmediate(() => {
+      return resolve();
+    })
+  );
+
 /* eslint-disable no-underscore-dangle */
 describe('webex-core', () => {
   describe('Services', () => {
@@ -15,7 +22,7 @@ describe('webex-core', () => {
     let services;
     let catalog;
 
-    beforeAll(() => {
+    beforeEach(() => {
       webex = new MockWebex({
         children: {
           services: Services,
@@ -24,6 +31,97 @@ describe('webex-core', () => {
       });
       services = webex.internal.services;
       catalog = services._getCatalog();
+    });
+
+    describe('#initialize', () => {
+      it('initFailed is false when initialization succeeds and credentials are available', async () => {
+        services.listenToOnce = sinon.stub();
+        services.initServiceCatalogs = sinon.stub().returns(Promise.resolve());
+        services.webex.credentials = {
+          supertoken: {
+            access_token: 'token',
+          },
+        };
+
+        services.initialize();
+
+        // call the onReady callback
+        services.listenToOnce.getCall(1).args[2]();
+        await waitForAsync();
+
+        assert.isFalse(services.initFailed);
+      });
+
+      it('initFailed is false when initialization succeeds no credentials are available', async () => {
+        services.listenToOnce = sinon.stub();
+        services.collectPreauthCatalog = sinon.stub().returns(Promise.resolve());
+
+        services.initialize();
+
+        // call the onReady callback
+        services.listenToOnce.getCall(1).args[2]();
+        await waitForAsync();
+
+        assert.isFalse(services.initFailed);
+      });
+
+      it.each([
+        {error: new Error('failed'), expectedMessage: 'failed'},
+        {error: undefined, expectedMessage: undefined}
+      ])(
+        'sets initFailed to true when collectPreauthCatalog errors',
+        async ({error, expectedMessage}) => {
+          services.collectPreauthCatalog = sinon.stub().callsFake(() => {
+            return Promise.reject(error);
+          });
+
+          services.listenToOnce = sinon.stub();
+          services.logger.error = sinon.stub();
+
+          services.initialize();
+
+          // call the onReady callback
+          services.listenToOnce.getCall(1).args[2]();
+
+          await waitForAsync();
+
+          assert.isTrue(services.initFailed);
+          sinon.assert.calledWith(
+            services.logger.error,
+            `services: failed to init initial services when no credentials available, ${expectedMessage}`
+          );
+        }
+      );
+
+      it.each([
+        {error: new Error('failed'), expectedMessage: 'failed'},
+        {error: undefined, expectedMessage: undefined}
+      ])('sets initFailed to true when initServiceCatalogs errors', async ({error, expectedMessage}) => {
+        services.initServiceCatalogs = sinon.stub().callsFake(() => {
+          return Promise.reject(error);
+        });
+        services.webex.credentials = {
+          supertoken: {
+            access_token: 'token'
+          }
+        }
+
+        services.listenToOnce = sinon.stub();
+        services.logger.error = sinon.stub();
+
+        services.initialize();
+
+        // call the onReady callback
+        services.listenToOnce.getCall(1).args[2]();
+
+        await waitForAsync();
+
+        assert.isTrue(services.initFailed);
+        sinon.assert.calledWith(
+          services.logger.error,
+          `services: failed to init initial services when credentials available, ${expectedMessage}`
+        );
+      });
     });
 
     describe('class members', () => {
@@ -69,6 +167,12 @@ describe('webex-core', () => {
     describe('#validateDomains', () => {
       it('is a boolean', () => {
         assert.isBoolean(services.validateDomains);
+      });
+    });
+
+    describe('#initFailed', () => {
+      it('is a boolean', () => {
+        assert.isFalse(services.initFailed);
       });
     });
 
@@ -197,6 +301,9 @@ describe('webex-core', () => {
             'example-b': 'https://example-b.com/api/v1',
             'example-c': 'https://example-c.com/api/v1',
             'example-d': 'https://example-d.com/api/v1',
+            'example-e': 'https://example-e.com/api/v1',
+            'example-f': 'https://example-f.com/api/v1',
+            'example-g': 'https://example-g.com/api/v1',
           },
           hostCatalog: {
             'example-a.com': [
@@ -279,6 +386,48 @@ describe('webex-core', () => {
                 id: '0:0:0:example-d-x',
               },
             ],
+            'example-e.com': [
+              {
+                host: 'example-e-1.com',
+                ttl: -1,
+                priority: 5,
+                id: '0:0:0:different-e',
+              },
+              {
+                host: 'example-e-2.com',
+                ttl: -1,
+                priority: 3,
+                id: '0:0:0:different-e',
+              },
+              {
+                host: 'example-e-3.com',
+                ttl: -1,
+                priority: 1,
+                id: '0:0:0:different-e',
+              },
+            ],
+            'example-e-1.com': [
+              {
+                host: 'example-e-4.com',
+                ttl: -1,
+                priority: 5,
+                id: '0:0:0:different-e',
+              },
+              {
+                host: 'example-e-5.com',
+                ttl: -1,
+                priority: 3,
+                id: '0:0:0:different-e',
+              },
+              {
+                host: 'example-e-3.com',
+                ttl: -1,
+                priority: 1,
+                id: '0:0:0:different-e-x',
+              },
+            ],
+            'example-f.com': [
+            ],
           },
           format: 'hostmap',
         };
@@ -293,7 +442,7 @@ describe('webex-core', () => {
         );
       });
 
-      it.skip('creates an array of equal or less length of hostMap', () => {
+      it('creates an array of equal or less length of hostMap', () => {
         formattedHM = services._formatReceivedHostmap(serviceHostmap);
 
         assert(
@@ -336,16 +485,6 @@ describe('webex-core', () => {
         });
       });
 
-      it('creates a formmated host map containing all received host map host entries', () => {
-        formattedHM = services._formatReceivedHostmap(serviceHostmap);
-
-        formattedHM.forEach((service) => {
-          const foundHosts = serviceHostmap.hostCatalog[service.defaultHost];
-
-          assert.isDefined(foundHosts);
-        });
-      });
-
       it('creates an array with matching names', () => {
         formattedHM = services._formatReceivedHostmap(serviceHostmap);
 
@@ -353,6 +492,151 @@ describe('webex-core', () => {
           serviceHostmap.serviceLinks,
           formattedHM.map((item) => item.name)
         );
+      });
+
+      it('creates the expected formatted host map', () => {
+        formattedHM = services._formatReceivedHostmap(serviceHostmap);
+
+        assert.deepEqual(formattedHM, [
+          {
+            defaultHost: 'example-a.com',
+            defaultUrl: 'https://example-a.com/api/v1',
+            hosts: [
+              {
+                homeCluster: true,
+                host: 'example-a-1.com',
+                id: '0:0:0:example-a',
+                priority: 5,
+                ttl: -1,
+              },
+              {
+                homeCluster: true,
+                host: 'example-a-2.com',
+                id: '0:0:0:example-a',
+                priority: 3,
+                ttl: -1,
+              },
+            ],
+            name: 'example-a',
+          },
+          {
+            defaultHost: 'example-b.com',
+            defaultUrl: 'https://example-b.com/api/v1',
+            hosts: [
+              {
+                homeCluster: true,
+                host: 'example-b-1.com',
+                id: '0:0:0:example-b',
+                priority: 5,
+                ttl: -1,
+              },
+              {
+                homeCluster: true,
+                host: 'example-b-2.com',
+                id: '0:0:0:example-b',
+                priority: 3,
+                ttl: -1,
+              },
+            ],
+            name: 'example-b',
+          },
+          {
+            defaultHost: 'example-c.com',
+            defaultUrl: 'https://example-c.com/api/v1',
+            hosts: [
+              {
+                homeCluster: true,
+                host: 'example-c-1.com',
+                id: '0:0:0:example-c',
+                priority: 5,
+                ttl: -1,
+              },
+              {
+                homeCluster: true,
+                host: 'example-c-2.com',
+                id: '0:0:0:example-c',
+                priority: 3,
+                ttl: -1,
+              },
+            ],
+            name: 'example-c',
+          },
+          {
+            defaultHost: 'example-d.com',
+            defaultUrl: 'https://example-d.com/api/v1',
+            hosts: [
+              {
+                homeCluster: true,
+                host: 'example-c-1.com',
+                id: '0:0:0:example-d',
+                priority: 5,
+                ttl: -1,
+              },
+              {
+                homeCluster: true,
+                host: 'example-c-2.com',
+                id: '0:0:0:example-d',
+                priority: 3,
+                ttl: -1,
+              },
+            ],
+            name: 'example-d',
+          },
+          {
+            defaultHost: 'example-e.com',
+            defaultUrl: 'https://example-e.com/api/v1',
+            hosts: [
+              {
+                homeCluster: true,
+                host: 'example-e-1.com',
+                id: '0:0:0:different-e',
+                priority: 5,
+                ttl: -1,
+              },
+              {
+                homeCluster: true,
+                host: 'example-e-2.com',
+                id: '0:0:0:different-e',
+                priority: 3,
+                ttl: -1,
+              },
+              {
+                homeCluster: true,
+                host: 'example-e-3.com',
+                id: '0:0:0:different-e',
+                priority: 1,
+                ttl: -1,
+              },
+              {
+                homeCluster: false,
+                host: 'example-e-4.com',
+                id: '0:0:0:different-e',
+                priority: 5,
+                ttl: -1,
+              },
+              {
+                homeCluster: false,
+                host: 'example-e-5.com',
+                id: '0:0:0:different-e',
+                priority: 3,
+                ttl: -1,
+              },
+            ],
+            name: 'example-e',
+          },
+          {
+            defaultHost: 'example-f.com',
+            defaultUrl: 'https://example-f.com/api/v1',
+            hosts: [],
+            name: 'example-f',
+          },
+          {
+            defaultHost: 'example-g.com',
+            defaultUrl: 'https://example-g.com/api/v1',
+            hosts: [],
+            name: 'example-g',
+          }
+        ]);
       });
 
       it('has hostCatalog updated', () => {

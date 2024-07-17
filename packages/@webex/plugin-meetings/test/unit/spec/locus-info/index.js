@@ -467,6 +467,27 @@ describe('plugin-meetings', () => {
         );
       });
 
+      it('should update the manual caption state', () => {
+        locusInfo.emitScoped = sinon.stub();
+        locusInfo.controls = {
+          manualCaptionControl: {enabled: false},
+        };
+
+        locusInfo.updateControls({manualCaptionControl: { enabled: true, }});
+
+        assert.calledWith(
+          locusInfo.emitScoped,
+          {
+            file: 'locus-info',
+            function: 'updateControls',
+          },
+          LOCUSINFO.EVENTS.CONTROLS_MEETING_MANUAL_CAPTION_UPDATED,
+          {
+            enabled: true,
+          }
+        );
+      });
+
       it('should update the meetingContainerURL from null', () => {
         locusInfo.controls = {
           meetingContainer: {meetingContainerUrl: null},

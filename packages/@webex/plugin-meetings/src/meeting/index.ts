@@ -38,6 +38,7 @@ import {
 import {
   EVENT_TRIGGERS as VOICEAEVENTS,
   TURN_ON_CAPTION_STATUS,
+  type MeetingTranscriptPayload,
 } from '@webex/internal-plugin-voicea';
 import {processNewCaptions} from './voicea-meeting';
 
@@ -52,6 +53,7 @@ import {
 import {StatsAnalyzer, EVENTS as StatsAnalyzerEvents} from '../statsAnalyzer';
 import NetworkQualityMonitor from '../networkQualityMonitor';
 import LoggerProxy from '../common/logs/logger-proxy';
+import EventsUtil from '../common/events/util';
 import Trigger from '../common/events/trigger-proxy';
 import Roap, {
   type TurnDiscoveryResult,
@@ -65,6 +67,7 @@ import {createMuteState} from './muteState';
 import LocusInfo from '../locus-info';
 import Metrics from '../metrics';
 import ReconnectionManager from '../reconnection-manager';
+import ReconnectionNotStartedError from '../common/errors/reconnection-not-started';
 import MeetingRequest from './request';
 import Members from '../members/index';
 import MeetingUtil from './util';
@@ -75,8 +78,6 @@ import MediaUtil from '../media/util';
 import {Reactions, SkinTones} from '../reactions/reactions';
 import PasswordError from '../common/errors/password-error';
 import CaptchaError from '../common/errors/captcha-error';
-import ReconnectionError from '../common/errors/reconnection';
-import ReconnectInProgress from '../common/errors/reconnection-in-progress';
 import {
   _CONVERSATION_URL_,
   _INCOMING_,
@@ -630,18 +631,21 @@ export default class Meeting extends StatelessWebexPlugin {
   turnDiscoverySkippedReason: TurnDiscoverySkipReason;
   turnServerUsed: boolean;
   areVoiceaEventsSetup = false;
+  isMoveToInProgress = false;
+
   voiceaListenerCallbacks: object = {
     [VOICEAEVENTS.VOICEA_ANNOUNCEMENT]: (payload: Transcription['languageOptions']) => {
       this.transcription.languageOptions = payload;
-      Trigger.trigger(
-        this,
-        {
+
+      LoggerProxy.logger.debug(
+        `${EventsUtil.getScopeLog({
           file: 'meeting/index',
           function: 'setUpVoiceaListeners',
-        },
-        EVENT_TRIGGERS.MEETING_STARTED_RECEIVING_TRANSCRIPTION,
-        payload
+        })}event#${EVENT_TRIGGERS.MEETING_STARTED_RECEIVING_TRANSCRIPTION}`
       );
+
+      // @ts-ignore
+      this.trigger(EVENT_TRIGGERS.MEETING_STARTED_RECEIVING_TRANSCRIPTION, payload);
     },
     [VOICEAEVENTS.CAPTIONS_TURNED_ON]: () => {
       this.transcription.status = TURN_ON_CAPTION_STATUS.ENABLED;
@@ -652,20 +656,21 @@ export default class Meeting extends StatelessWebexPlugin {
       this.transcription.isListening = !!data.isListening;
       this.transcription.commandText = data.text ?? '';
     },
-    [VOICEAEVENTS.NEW_CAPTION]: (data) => {
+    [VOICEAEVENTS.NEW_CAPTION]: (data: MeetingTranscriptPayload) => {
       processNewCaptions({data, meeting: this});
-      Trigger.trigger(
-        this,
-        {
+
+      LoggerProxy.logger.debug(
+        `${EventsUtil.getScopeLog({
           file: 'meeting/index',
           function: 'setUpVoiceaListeners',
-        },
-        EVENT_TRIGGERS.MEETING_CAPTION_RECEIVED,
-        {
-          captions: this.transcription.captions,
-          interimCaptions: this.transcription.interimCaptions,
-        }
+        })}event#${EVENT_TRIGGERS.MEETING_CAPTION_RECEIVED}`
       );
+
+      // @ts-ignore
+      this.trigger(EVENT_TRIGGERS.MEETING_CAPTION_RECEIVED, {
+        captions: this.transcription.captions,
+        interimCaptions: this.transcription.interimCaptions,
+      });
     },
   };
 
@@ -674,6 +679,7 @@ export default class Meeting extends StatelessWebexPlugin {
   private deferSDPAnswer?: Defer; // used for waiting for a response
   private sdpResponseTimer?: ReturnType<typeof setTimeout>;
   private hasMediaConnectionConnectedAtLeastOnce: boolean;
+  private joinWithMediaRetryInfo?: {isRetry: boolean; prevJoinResponse?: any};
 
   /**
    * @param {Object} attrs
@@ -1385,11 +1391,11 @@ export default class Meeting extends StatelessWebexPlugin {
     this.remoteMediaManager = null;
 
     this.localAudioStreamMuteStateHandler = () => {
-      this.audio.handleLocalStreamMuteStateChange(this);
+      this.audio?.handleLocalStreamMuteStateChange(this);
     };
 
     this.localVideoStreamMuteStateHandler = () => {
-      this.video.handleLocalStreamMuteStateChange(this);
+      this.video?.handleLocalStreamMuteStateChange(this);
     };
 
     // The handling of output track changes should be done inside
@@ -1455,6 +1461,15 @@ export default class Meeting extends StatelessWebexPlugin {
      * @memberof Meeting
      */
     this.hasMediaConnectionConnectedAtLeastOnce = false;
+
+    /**
+     * Information needed for a retry of a call to joinWithMedia
+     * @instance
+     * @type {{isRetry: boolean; prevJoinResponse?: any}}
+     * @private
+     * @memberof Meeting
+     */
+    this.joinWithMediaRetryInfo = {isRetry: false, prevJoinResponse: undefined};
   }
 
   /**
@@ -2397,6 +2412,18 @@ export default class Meeting extends StatelessWebexPlugin {
       }
     );
 
+    this.locusInfo.on(LOCUSINFO.EVENTS.CONTROLS_MEETING_MANUAL_CAPTION_UPDATED, ({enable}) => {
+      Trigger.trigger(
+        this,
+        {
+          file: 'meeting/index',
+          function: 'setupLocusControlsListener',
+        },
+        EVENT_TRIGGERS.MEETING_MANUAL_CAPTION_UPDATED,
+        {enable}
+      );
+    });
+
     this.locusInfo.on(LOCUSINFO.EVENTS.CONTROLS_MEETING_BREAKOUT_UPDATED, ({breakout}) => {
       this.breakouts.updateBreakout(breakout);
       Trigger.trigger(
@@ -3054,6 +3081,7 @@ export default class Meeting extends StatelessWebexPlugin {
           options: {meetingId: this.id},
         });
       }
+      this.updateLLMConnection();
     });
     this.locusInfo.on(LOCUSINFO.EVENTS.SELF_ADMITTED_GUEST, async (payload) => {
       this.stopKeepAlive();
@@ -3571,6 +3599,9 @@ export default class Meeting extends StatelessWebexPlugin {
           canStartTranscribing: MeetingUtil.canStartTranscribing(this.userDisplayHints),
           canStopTranscribing: MeetingUtil.canStopTranscribing(this.userDisplayHints),
           isClosedCaptionActive: MeetingUtil.isClosedCaptionActive(this.userDisplayHints),
+          canStartManualCaption: MeetingUtil.canStartManualCaption(this.userDisplayHints),
+          canStopManualCaption: MeetingUtil.canStopManualCaption(this.userDisplayHints),
+          isManualCaptionActive: MeetingUtil.isManualCaptionActive(this.userDisplayHints),
           isSaveTranscriptsEnabled: MeetingUtil.isSaveTranscriptsEnabled(this.userDisplayHints),
           isWebexAssistantActive: MeetingUtil.isWebexAssistantActive(this.userDisplayHints),
           canViewCaptionPanel: MeetingUtil.canViewCaptionPanel(this.userDisplayHints),
@@ -3914,7 +3945,7 @@ export default class Meeting extends StatelessWebexPlugin {
     // we don't update this.mediaProperties.mediaDirection.sendAudio, because we always keep it as true to avoid extra SDP exchanges
     this.mediaProperties.setLocalAudioStream(localStream);
 
-    this.audio.handleLocalStreamChange(this);
+    this.audio?.handleLocalStreamChange(this);
 
     localStream?.on(
       LocalStreamEventNames.UserMuteStateChange,
@@ -3956,7 +3987,7 @@ export default class Meeting extends StatelessWebexPlugin {
     // we don't update this.mediaProperties.mediaDirection.sendVideo, because we always keep it as true to avoid extra SDP exchanges
     this.mediaProperties.setLocalVideoStream(localStream);
 
-    this.video.handleLocalStreamChange(this);
+    this.video?.handleLocalStreamChange(this);
 
     localStream?.on(
       LocalStreamEventNames.UserMuteStateChange,
@@ -4508,6 +4539,7 @@ export default class Meeting extends StatelessWebexPlugin {
     } = {}
   ) {
     const {mediaOptions, joinOptions = {}} = options;
+    const {isRetry, prevJoinResponse} = this.joinWithMediaRetryInfo;
 
     if (!mediaOptions?.allowMediaInLobby) {
       return Promise.reject(
@@ -4519,6 +4551,7 @@ export default class Meeting extends StatelessWebexPlugin {
     LoggerProxy.logger.info('Meeting:index#joinWithMedia called');
 
     let joined = false;
+    let joinResponse = prevJoinResponse;
 
     try {
       let turnServerInfo;
@@ -4531,7 +4564,14 @@ export default class Meeting extends StatelessWebexPlugin {
       ({turnDiscoverySkippedReason} = turnDiscoveryRequest);
       joinOptions.roapMessage = turnDiscoveryRequest.roapMessage;
 
-      const joinResponse = await this.join(joinOptions);
+      if (!joinResponse) {
+        LoggerProxy.logger.info(
+          'Meeting:index#joinWithMedia ---> calling join with joinOptions, ',
+          joinOptions
+        );
+
+        joinResponse = await this.join(joinOptions);
+      }
 
       joined = true;
 
@@ -4549,6 +4589,8 @@ export default class Meeting extends StatelessWebexPlugin {
 
       const mediaResponse = await this.addMedia(mediaOptions, turnServerInfo);
 
+      this.joinWithMediaRetryInfo = {isRetry: false, prevJoinResponse: undefined};
+
       return {
         join: joinResponse,
         media: mediaResponse,
@@ -4560,7 +4602,7 @@ export default class Meeting extends StatelessWebexPlugin {
 
       this.roap.abortTurnDiscovery();
 
-      if (joined) {
+      if (joined && isRetry) {
         try {
           await this.leave({resourceId: joinOptions?.resourceId, reason: 'joinWithMedia failure'});
         } catch (e) {
@@ -4577,11 +4619,22 @@ export default class Meeting extends StatelessWebexPlugin {
           reason: error.message,
           stack: error.stack,
           leaveErrorReason: leaveError?.message,
+          isRetry,
         },
         {
           type: error.name,
         }
       );
+
+      if (!isRetry) {
+        LoggerProxy.logger.warn('Meeting:index#joinWithMedia --> retrying call to joinWithMedia');
+        this.joinWithMediaRetryInfo.isRetry = true;
+        this.joinWithMediaRetryInfo.prevJoinResponse = joinResponse;
+
+        return this.joinWithMedia(options);
+      }
+
+      this.joinWithMediaRetryInfo = {isRetry: false, prevJoinResponse: undefined};
 
       throw error;
     }
@@ -4613,90 +4666,28 @@ export default class Meeting extends StatelessWebexPlugin {
       );
     }
 
-    try {
-      LoggerProxy.logger.info('Meeting:index#reconnect --> Validating reconnect ability.');
-      // @ts-ignore
-      this.reconnectionManager.validate();
-    } catch (error) {
-      // Unable to reconnect this call
-      if (error instanceof ReconnectInProgress) {
-        LoggerProxy.logger.info(
-          'Meeting:index#reconnect --> Unable to reconnect, reconnection in progress.'
-        );
-      } else {
-        LoggerProxy.logger.log('Meeting:index#reconnect --> Unable to reconnect.', error);
-      }
-
-      return Promise.resolve();
-    }
-
-    Trigger.trigger(
-      this,
-      {
-        file: 'meeting/index',
-        function: 'reconnect',
-      },
-      EVENT_TRIGGERS.MEETING_RECONNECTION_STARTING
-    );
-
     return this.reconnectionManager
-      .reconnect(options)
-      .then(() => this.waitForRemoteSDPAnswer())
-      .then(() => this.waitForMediaConnectionConnected())
+      .reconnect(options, async () => {
+        await this.waitForRemoteSDPAnswer();
+        await this.waitForMediaConnectionConnected();
+      })
       .then(() => {
-        Trigger.trigger(
-          this,
-          {
-            file: 'meeting/index',
-            function: 'reconnect',
-          },
-          EVENT_TRIGGERS.MEETING_RECONNECTION_SUCCESS
-        );
         LoggerProxy.logger.log('Meeting:index#reconnect --> Meeting reconnect success');
-
-        // @ts-ignore
-        this.webex.internal.newMetrics.submitClientEvent({
-          name: 'client.media.recovered',
-          payload: {
-            recoveredBy: 'new',
-          },
-          options: {
-            meetingId: this.id,
-          },
-        });
-        this.reconnectionManager.setStatus(RECONNECTION.STATE.COMPLETE);
       })
       .catch((error) => {
-        Trigger.trigger(
-          this,
-          {
-            file: 'meeting/index',
-            function: 'reconnect',
-          },
-          EVENT_TRIGGERS.MEETING_RECONNECTION_FAILURE,
-          {
-            error: new ReconnectionError('Reconnection failure event', error),
-          }
-        );
+        if (error instanceof ReconnectionNotStartedError) {
+          LoggerProxy.logger.log('Meeting:index#reconnect --> Meeting reconnect not started');
 
+          return Promise.resolve();
+        }
         LoggerProxy.logger.error('Meeting:index#reconnect --> Meeting reconnect failed', error);
-
-        Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.MEETING_RECONNECT_FAILURE, {
-          correlation_id: this.correlationId,
-          locus_id: this.locusUrl.split('/').pop(),
-          reason: error.message,
-          stack: error.stack,
-        });
 
         this.uploadLogs({
           file: 'meeting/index',
           function: 'reconnect',
         });
 
-        return Promise.reject(new ReconnectionError('Reconnection failure event', error));
-      })
-      .finally(() => {
-        this.reconnectionManager.reset();
+        return Promise.reject(error);
       });
   }
 
@@ -4706,12 +4697,12 @@ export default class Meeting extends StatelessWebexPlugin {
    * @throws TranscriptionNotSupportedError
    */
   isTranscriptionSupported() {
-    if (this.locusInfo.controls.transcribe?.transcribing) {
+    if (this.locusInfo.controls.transcribe?.caption) {
       return true;
     }
 
     LoggerProxy.logger.error(
-      'Meeting:index#isTranscriptionSupported --> Webex Assistant is not enabled/supported'
+      'Meeting:index#isTranscriptionSupported --> Closed Captions is not enabled/supported'
     );
 
     return false;
@@ -4850,7 +4841,7 @@ export default class Meeting extends StatelessWebexPlugin {
 
         if (this.getCurUserType() === 'host') {
           // @ts-ignore
-          await this.webex.internal.voicea.toggleTranscribing(true, options?.spokenLanguage);
+          await this.webex.internal.voicea.turnOnCaptions(options?.spokenLanguage);
         }
       } catch (error) {
         LoggerProxy.logger.error(`Meeting:index#startTranscription --> ${error}`);
@@ -4961,6 +4952,27 @@ export default class Meeting extends StatelessWebexPlugin {
       EVENT_TRIGGERS.MEETING_STOPPED_RECEIVING_TRANSCRIPTION
     );
   }
+
+  /**
+   * This is a callback for the LLM event that is triggered when it comes online
+   * This method in turn will trigger an event to the developers that the LLM is connected
+   * @private
+   * @memberof Meeting
+   * @returns {null}
+   */
+  private handleLLMOnline = (): void => {
+    // @ts-ignore
+    this.webex.internal.llm.off('online', this.handleLLMOnline);
+    Trigger.trigger(
+      this,
+      {
+        file: 'meeting/index',
+        function: 'handleLLMOnline',
+      },
+      EVENT_TRIGGERS.MEETING_TRANSCRIPTION_CONNECTED,
+      undefined
+    );
+  };
 
   /**
    * Specify joining via audio (option: pstn), video, screenshare
@@ -5181,6 +5193,8 @@ export default class Meeting extends StatelessWebexPlugin {
       .then((join) => {
         // @ts-ignore - config coming from registerPlugin
         if (this.config.enableAutomaticLLM) {
+          // @ts-ignore
+          this.webex.internal.llm.on('online', this.handleLLMOnline);
           this.updateLLMConnection()
             .catch((error) => {
               LoggerProxy.logger.error(
@@ -5197,15 +5211,6 @@ export default class Meeting extends StatelessWebexPlugin {
             .then(() => {
               LoggerProxy.logger.info(
                 'Meeting:index#join --> Transcription Socket Connection Success'
-              );
-              Trigger.trigger(
-                this,
-                {
-                  file: 'meeting/index',
-                  function: 'join',
-                },
-                EVENT_TRIGGERS.MEETING_TRANSCRIPTION_CONNECTED,
-                undefined
               );
             });
         }
@@ -5228,8 +5233,13 @@ export default class Meeting extends StatelessWebexPlugin {
 
     // @ts-ignore - Fix type
     if (this.webex.internal.llm.isConnected()) {
-      // @ts-ignore - Fix type
-      if (url === this.webex.internal.llm.getLocusUrl() && isJoined) {
+      if (
+        // @ts-ignore - Fix type
+        url === this.webex.internal.llm.getLocusUrl() &&
+        // @ts-ignore - Fix type
+        datachannelUrl === this.webex.internal.llm.getDatachannelUrl() &&
+        isJoined
+      ) {
         return undefined;
       }
       // @ts-ignore - Fix type
@@ -5438,17 +5448,28 @@ export default class Meeting extends StatelessWebexPlugin {
           },
         };
 
-        this.cleanupLocalStreams();
-
         this.mediaProperties.setMediaDirection(mediaSettings.mediaDirection);
         this.mediaProperties.unsetRemoteMedia();
 
-        // when a move to is intiated by the client , Locus delets the existing media node from the server as soon the DX answers the meeting
-        // once the DX answers we establish connection back the media server with only receiveShare enabled
-        // @ts-ignore - reconnectMedia does not accept any argument
-        await this.reconnectionManager.reconnectMedia(mediaSettings).then(() => {
-          Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.MOVE_TO_SUCCESS);
+        // when a move to is intiated by the client , Locus delets the existing media node from the server as soon the device answers the meeting
+        // once the device answers we close the old connection and create new media server connection with only share enabled
+        if (this.statsAnalyzer) {
+          await this.statsAnalyzer.stopAnalyzer();
+        }
+        await this.closeRemoteStreams();
+        await this.closePeerConnections();
+        this.cleanupLocalStreams();
+        this.unsetRemoteStreams();
+        this.unsetPeerConnections();
+        this.reconnectionManager.cleanUp();
+
+        await this.addMedia({
+          audioEnabled: false,
+          videoEnabled: false,
+          shareVideoEnabled: true,
         });
+        Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.MOVE_TO_SUCCESS);
+        this.isMoveToInProgress = false;
       } catch (error) {
         LoggerProxy.logger.error('Meeting:index#moveTo --> Failed to moveTo resourceId', error);
         Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.MOVE_TO_FAILURE, {
@@ -5457,6 +5478,7 @@ export default class Meeting extends StatelessWebexPlugin {
           reason: error.message,
           stack: error.stack,
         });
+        this.isMoveToInProgress = false;
       }
     });
 
@@ -5464,6 +5486,10 @@ export default class Meeting extends StatelessWebexPlugin {
       'Meeting:index#moveTo --> Initated moved to using resourceId',
       resourceId
     );
+
+    // TODO: Check with locus if SELF_OBSERVING event would ever be not emitted
+    // If yes, introduce a timeout mechanism
+    this.isMoveToInProgress = true;
 
     return MeetingUtil.joinMeetingOptions(this, {resourceId, moveToResource: true})
       .then(() => {
@@ -5478,6 +5504,7 @@ export default class Meeting extends StatelessWebexPlugin {
           stack: error.stack,
         });
         LoggerProxy.logger.error('Meeting:index#moveTo --> Failed to moveTo resourceId', error);
+        this.isMoveToInProgress = false;
 
         return Promise.reject(error);
       });
@@ -6295,12 +6322,13 @@ export default class Meeting extends StatelessWebexPlugin {
     if (this.config.stats.enableStatsAnalyzer) {
       // @ts-ignore - config coming from registerPlugin
       this.networkQualityMonitor = new NetworkQualityMonitor(this.config.stats);
-      this.statsAnalyzer = new StatsAnalyzer(
+      this.statsAnalyzer = new StatsAnalyzer({
         // @ts-ignore - config coming from registerPlugin
-        this.config.stats,
-        (ssrc: number) => this.receiveSlotManager.findReceiveSlotBySsrc(ssrc),
-        this.networkQualityMonitor
-      );
+        config: this.config.stats,
+        receiveSlotCallback: (ssrc: number) => this.receiveSlotManager.findReceiveSlotBySsrc(ssrc),
+        networkQualityMonitor: this.networkQualityMonitor,
+        isMultistream: this.isMultistream,
+      });
       this.setupStatsAnalyzerEventHandlers();
       this.networkQualityMonitor.on(
         EVENT_TRIGGERS.NETWORK_QUALITY,
@@ -6464,11 +6492,14 @@ export default class Meeting extends StatelessWebexPlugin {
   /**
    * Performs TURN discovery as a separate call to the Locus /media API
    *
-   * @param {boolean} isRetry
+   * @param {boolean} isReconnecting
    * @param {boolean} isForced
    * @returns {Promise}
    */
-  private async doTurnDiscovery(isRetry: boolean, isForced: boolean): Promise<TurnDiscoveryResult> {
+  private async doTurnDiscovery(
+    isReconnecting: boolean,
+    isForced: boolean
+  ): Promise<TurnDiscoveryResult> {
     // @ts-ignore
     const cdl = this.webex.internal.newMetrics.callDiagnosticLatencies;
 
@@ -6477,7 +6508,7 @@ export default class Meeting extends StatelessWebexPlugin {
       name: 'internal.client.add-media.turn-discovery.start',
     });
 
-    const turnDiscoveryResult = await this.roap.doTurnDiscovery(this, isRetry, isForced);
+    const turnDiscoveryResult = await this.roap.doTurnDiscovery(this, isReconnecting, isForced);
 
     this.turnDiscoverySkippedReason = turnDiscoveryResult?.turnDiscoverySkippedReason;
     this.turnServerUsed = !this.turnDiscoverySkippedReason;
@@ -6516,11 +6547,16 @@ export default class Meeting extends StatelessWebexPlugin {
     turnServerInfo?: TurnServerInfo
   ): Promise<void> {
     const LOG_HEADER = 'Meeting:index#addMedia():establishMediaConnection -->';
-    const isRetry = this.retriedWithTurnServer;
+    const isReconnecting = this.isMoveToInProgress || this.retriedWithTurnServer;
+
+    // We are forcing turn discovery if the case is moveTo and a turn server was used already
+    if (this.isMoveToInProgress && this.turnServerUsed) {
+      isForced = true;
+    }
 
     try {
       if (!turnServerInfo) {
-        ({turnServerInfo} = await this.doTurnDiscovery(isRetry, isForced));
+        ({turnServerInfo} = await this.doTurnDiscovery(isReconnecting, isForced));
       }
 
       const mc = await this.createMediaConnection(turnServerInfo, bundlePolicy);
@@ -6717,6 +6753,7 @@ export default class Meeting extends StatelessWebexPlugin {
     this.locusMediaRequest = new LocusMediaRequest(
       {
         correlationId: this.correlationId,
+        meetingId: this.id,
         device: {
           url: this.deviceUrl,
           // @ts-ignore
@@ -6761,7 +6798,8 @@ export default class Meeting extends StatelessWebexPlugin {
         await this.enqueueScreenShareFloorRequest();
       }
 
-      const connectionType = await this.mediaProperties.getCurrentConnectionType();
+      const {connectionType, selectedCandidatePairChanges, numTransports} =
+        await this.mediaProperties.getCurrentConnectionInfo();
       // @ts-ignore
       const reachabilityStats = await this.webex.meetings.reachability.getReachabilityMetrics();
 
@@ -6769,8 +6807,11 @@ export default class Meeting extends StatelessWebexPlugin {
         correlation_id: this.correlationId,
         locus_id: this.locusUrl.split('/').pop(),
         connectionType,
+        selectedCandidatePairChanges,
+        numTransports,
         isMultistream: this.isMultistream,
         retriedWithTurnServer: this.retriedWithTurnServer,
+        isJoinWithMediaRetry: this.joinWithMediaRetryInfo.isRetry,
         ...reachabilityStats,
       });
       // @ts-ignore
@@ -6792,16 +6833,22 @@ export default class Meeting extends StatelessWebexPlugin {
       // @ts-ignore
       const reachabilityMetrics = await this.webex.meetings.reachability.getReachabilityMetrics();
 
+      const {selectedCandidatePairChanges, numTransports} =
+        await this.mediaProperties.getCurrentConnectionInfo();
+
       Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.ADD_MEDIA_FAILURE, {
         correlation_id: this.correlationId,
         locus_id: this.locusUrl.split('/').pop(),
         reason: error.message,
         stack: error.stack,
         code: error.code,
+        selectedCandidatePairChanges,
+        numTransports,
         turnDiscoverySkippedReason: this.turnDiscoverySkippedReason,
         turnServerUsed: this.turnServerUsed,
         retriedWithTurnServer: this.retriedWithTurnServer,
         isMultistream: this.isMultistream,
+        isJoinWithMediaRetry: this.joinWithMediaRetryInfo.isRetry,
         signalingState:
           this.mediaProperties.webrtcMediaConnection?.multistreamConnection?.pc?.pc
             ?.signalingState ||
@@ -7009,7 +7056,7 @@ export default class Meeting extends StatelessWebexPlugin {
     if (audioEnabled !== undefined) {
       this.mediaProperties.mediaDirection.sendAudio = audioEnabled;
       this.mediaProperties.mediaDirection.receiveAudio = audioEnabled;
-      this.audio.enable(this, audioEnabled);
+      this.audio?.enable(this, audioEnabled);
       if (this.isMultistream) {
         this.sendSlotManager.setActive(MediaType.AudioMain, audioEnabled);
       }
@@ -7018,7 +7065,7 @@ export default class Meeting extends StatelessWebexPlugin {
     if (videoEnabled !== undefined) {
       this.mediaProperties.mediaDirection.sendVideo = videoEnabled;
       this.mediaProperties.mediaDirection.receiveVideo = videoEnabled;
-      this.video.enable(this, videoEnabled);
+      this.video?.enable(this, videoEnabled);
       if (this.isMultistream) {
         this.sendSlotManager.setActive(MediaType.VideoMain, videoEnabled);
       }
@@ -7855,6 +7902,7 @@ export default class Meeting extends StatelessWebexPlugin {
     Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.MEETING_SHARE_VIDEO_MUTE_STATE_CHANGE, {
       correlationId: this.correlationId,
       muted,
+      encoderImplementation: this.statsAnalyzer?.shareVideoEncoderImplementation,
     });
   };
 

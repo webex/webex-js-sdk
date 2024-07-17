@@ -22,3 +22,24 @@ export function convertStunUrlToTurn(stunUrl: string, protocol: 'udp' | 'tcp') {
 
   return url.toString();
 }
+
+/**
+ * Converts a stun url to a turns url
+ *
+ * @param {string} stunUrl url of a stun server
+ * @returns {string} url of a turns server
+ */
+export function convertStunUrlToTurnTls(stunUrl: string) {
+  // stunUrl looks like this: "stun:external-media1.public.wjfkm-a-15.prod.infra.webex.com:443"
+  // and we need it to be like this: "turns:external-media1.public.wjfkm-a-15.prod.infra.webex.com:443?transport=tcp"
+  const url = new URL(stunUrl);
+
+  if (url.protocol !== 'stun:') {
+    throw new Error(`Not a STUN URL: ${stunUrl}`);
+  }
+
+  url.protocol = 'turns:';
+  url.searchParams.append('transport', 'tcp');
+
+  return url.toString();
+}

@@ -225,7 +225,7 @@ export const getBuildType = (
  */
 export const prepareDiagnosticMetricItem = (webex: any, item: any) => {
   const origin: Partial<Event['origin']> = {
-    buildType: exports.getBuildType(
+    buildType: getBuildType(
       item.eventPayload?.event?.eventData?.webClientDomain,
       item.eventPayload?.event?.eventData?.markAsTestEvent
     ),
@@ -314,7 +314,6 @@ export const prepareDiagnosticMetricItem = (webex: any, item: any) => {
 
   item.eventPayload.origin = Object.assign(origin, item.eventPayload.origin);
 
-  // @ts-ignore
   webex.logger.log(
     `CallDiagnosticLatencies,prepareDiagnosticMetricItem: ${JSON.stringify({
       latencies: Object.fromEntries(cdl.latencyTimestamps),
@@ -383,11 +382,18 @@ export const generateClientErrorCodeForIceFailure = ({
     errorCode = MISSING_ROAP_ANSWER_CLIENT_CODE;
   }
 
-  if (signalingState === 'stable' && iceConnectionState === 'connected') {
+  if (
+    signalingState === 'stable' &&
+    (iceConnectionState === 'connected' || iceConnectionState === 'disconnected')
+  ) {
     errorCode = DTLS_HANDSHAKE_FAILED_CLIENT_CODE;
   }
 
-  if (signalingState !== 'have-local-offer' && iceConnectionState !== 'connected') {
+  if (
+    signalingState !== 'have-local-offer' &&
+    iceConnectionState !== 'connected' &&
+    iceConnectionState !== 'disconnected'
+  ) {
     if (turnServerUsed) {
       errorCode = ICE_FAILED_WITH_TURN_TLS_CLIENT_CODE;
     } else {

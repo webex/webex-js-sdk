@@ -12,7 +12,7 @@
 <body>
   <!-- Expand and Collapse -->
   <div class="box global-toggle-btn-wrapper">
-    <button onclick="expandAll()" class="global-toggle-btn" title="Collapse all">
+    <button onclick="expandAll()" class="global-toggle-btn" title="Expand all">
       <div style="display: flex; align-items: center; gap: 0.5rem;">
         <div style="display: flex; flex-direction: column;">
           <i class="g-arrow fa fa-angle-up" aria-hidden="true"></i>
@@ -88,6 +88,9 @@
               <legend>Meetings</legend>
               <input type="checkbox" id="enable-tcp-reachability">
               <label for="enable-tcp-reachability">Enable TCP reachability (experimental)</label>
+              <br/>
+              <input type="checkbox" id="enable-tls-reachability">
+              <label for="enable-tls-reachability">Enable TLS reachability (experimental)</label>
               <br/>
               <input id="meetings-enable-llm" checked type="checkbox">
               <label for="meetings-enable-llm-label">Enable LLM</label>
@@ -864,7 +867,7 @@
           <fieldset id="meetingControlsTones">
             <legend>Tones</legend>
             <div>
-              <p class="note">NOTE: Supports all DMTF tones.</p>
+              <p class="note">NOTE: Supports all DTMF tones.</p>
               <div class="u-mv">
                 <input id="gc-dtmf-tones" name="dtmfTones" placeholder="Enter DTMF tones" value="" type="text">
                 <button id="gc-dtmf-tones-send" type="button" onclick="sendDtmfTones()"

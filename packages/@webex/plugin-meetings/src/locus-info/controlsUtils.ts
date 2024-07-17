@@ -43,6 +43,12 @@ ControlsUtils.parse = (controls: any) => {
     };
   }
 
+  if (controls && controls.manualCaptionControl) {
+    parsedControls.manualCaptionControl = {
+      enabled: controls.manualCaptionControl.enabled,
+    };
+  }
+
   if (controls && controls.entryExitTone) {
     parsedControls.entryExitTone = controls.entryExitTone.enabled
       ? controls.entryExitTone.mode
@@ -142,6 +148,11 @@ ControlsUtils.getControls = (oldControls: any, newControls: any) => {
         current?.transcribe &&
         !isEqual(previous?.transcribe?.transcribing, current?.transcribe?.transcribing) && // upon first join, previous?.record?.recording = undefined; thus, never going to be equal and will always return true
         (previous?.transcribe?.transcribing || current?.transcribe?.transcribing), // therefore, condition added to prevent false firings of #meeting:recording:stopped upon first joining a meeting
+
+      hasManualCaptionChanged:
+        current?.manualCaptionControl &&
+        !isEqual(previous?.manualCaptionControl?.enabled, current?.manualCaptionControl?.enabled) &&
+        (previous?.manualCaptionControl?.enabled || current?.manualCaptionControl?.enabled),
 
       hasEntryExitToneChanged: !!(
         newControls.entryExitTone &&

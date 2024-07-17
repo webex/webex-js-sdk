@@ -37,25 +37,6 @@ const defaultServiceIndicator = ServiceIndicator.CALLING;
 const activeUrl = 'FakeActiveUrl';
 const mockLineId = 'e4e8ee2a-a154-4e52-8f11-ef4cde2dce72';
 
-// class MockMediaStream {
-//   private track;
-
-//   constructor(track: any) {
-//     this.track = track;
-//   }
-// }
-
-// globalThis.MediaStream = MockMediaStream;
-
-// // eslint-disable-next-line @typescript-eslint/no-unused-vars
-// jest.spyOn(window, 'MediaStream').mockImplementation((tracks: MediaStreamTrack[]) => {
-//   return {} as MediaStream;
-// });
-
-// // Object.defineProperty(window, 'MediaStream', {
-// //   writable: true,
-// // });
-
 describe('Call Tests', () => {
   const deviceId = '55dfb53f-bed2-36da-8e85-cee7f02aa68e';
   const dest = {
@@ -229,10 +210,8 @@ describe('Call Tests', () => {
     const callManager = getCallManager(webex, defaultServiceIndicator);
 
     const mockStream = {
-      outputStream: {
-        getAudioTracks: jest.fn().mockReturnValue([mockTrack]),
-      },
       on: jest.fn(),
+      setUserMuted: jest.fn(),
     };
 
     const localAudioStream = mockStream as unknown as MediaSDK.LocalMicrophoneStream;
@@ -244,9 +223,9 @@ describe('Call Tests', () => {
     expect(Object.keys(callManager.getActiveCalls()).length).toBe(1);
     call.mute(localAudioStream);
     expect(call.isMuted()).toEqual(true);
-    expect(mockTrack.enabled).toEqual(false);
+    expect(mockStream.setUserMuted).toBeCalledOnceWith(true);
     call.mute(localAudioStream);
-    expect(mockTrack.enabled).toEqual(true);
+    expect(mockStream.setUserMuted).toBeCalledWith(false);
     expect(call.isMuted()).toEqual(false);
     call.end();
     await waitForMsecs(50); // Need to add a small delay for Promise and callback to finish.
@@ -532,6 +511,11 @@ describe('Call Tests', () => {
     await waitForMsecs(50);
 
     /* Checks for switching off the listeners on call disconnect */
+    expect(offStreamSpy).toBeCalledTimes(2);
+    expect(offStreamSpy).toBeCalledWith(
+      MediaSDK.LocalStreamEventNames.OutputTrackChange,
+      expect.any(Function)
+    );
     expect(offStreamSpy).toBeCalledWith(
       MediaSDK.LocalStreamEventNames.EffectAdded,
       expect.any(Function)

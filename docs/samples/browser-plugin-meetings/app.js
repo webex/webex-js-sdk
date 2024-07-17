@@ -39,6 +39,7 @@ const breakoutTable = document.getElementById('breakout-table');
 const breakoutHostOperation = document.getElementById('breakout-host-operation');
 const getStatsButton = document.getElementById('get-stats');
 const tcpReachabilityConfigElm = document.getElementById('enable-tcp-reachability'); 
+const tlsReachabilityConfigElm = document.getElementById('enable-tls-reachability');
 
 const guestName = document.querySelector('#guest-name');
 const getGuestToken = document.querySelector('#get-guest-token');
@@ -116,6 +117,7 @@ function generateWebexConfig({credentials}) {
         enableUnifiedMeetings: true,
         enableAdhocMeetings: true,
         enableTcpReachability: tcpReachabilityConfigElm.checked,
+        enableTlsReachability: tlsReachabilityConfigElm.checked,
       },
       enableAutomaticLLM: enableLLM.checked,
     },
@@ -141,6 +143,8 @@ function initOauth() {
     })
   });
 
+  localStorage.setItem('OAuth', true);
+
   webex.once('ready', () => {
     oauthFormElm.addEventListener('submit', (event) => {
       event.preventDefault();
@@ -152,6 +156,14 @@ function initOauth() {
       oauthStatusElm.innerText = 'Authenticated';
     }
   });
+}
+
+// SPARK-499535
+if(localStorage.getItem('OAuth')) {
+  setTimeout(() => {
+    initOauth();
+    localStorage.removeItem('OAuth');
+  }, 500);
 }
 
 function initWebex(e) {
