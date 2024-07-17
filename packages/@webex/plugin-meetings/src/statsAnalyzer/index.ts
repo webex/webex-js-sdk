@@ -35,6 +35,7 @@ import {
   getAudioReceiverStreamMqa,
   getVideoSenderStreamMqa,
   getVideoReceiverStreamMqa,
+  isStreamRequested,
 } from './mqaUtil';
 import {ReceiveSlot} from '../multistream/receiveSlot';
 
@@ -90,23 +91,33 @@ export class StatsAnalyzer extends EventsScope {
   statsStarted: any;
   successfulCandidatePair: any;
   localIpAddress: string; // Returns the local IP address for diagnostics. this is the local IP of the interface used for the current media connection a host can have many local Ip Addresses
+  shareVideoEncoderImplementation?: string;
   receiveSlotCallback: ReceiveSlotCallback;
+  isMultistream: boolean;
 
   /**
    * Creates a new instance of StatsAnalyzer
    * @constructor
    * @public
-   * @param {Object} config SDK Configuration Object
-   * @param {Function} receiveSlotCallback Callback used to access receive slots.
-   * @param {Object} networkQualityMonitor class for assessing network characteristics (jitter, packetLoss, latency)
-   * @param {Object} statsResults Default properties for stats
+   * @param {Object} config - SDK Configuration Object
+   * @param {Function} receiveSlotCallback - Callback used to access receive slots.
+   * @param {Object} networkQualityMonitor - Class for assessing network characteristics (jitter, packetLoss, latency)
+   * @param {Object} statsResults - Default properties for stats
+   * @param {boolean | undefined} isMultistream - Param indicating if the media connection is multistream or not
    */
-  constructor(
-    config: any,
-    receiveSlotCallback: ReceiveSlotCallback = () => undefined,
-    networkQualityMonitor: object = {},
-    statsResults: object = defaultStats
-  ) {
+  constructor({
+    config,
+    receiveSlotCallback = () => undefined,
+    networkQualityMonitor = {},
+    statsResults = defaultStats,
+    isMultistream = false,
+  }: {
+    config: any;
+    receiveSlotCallback: ReceiveSlotCallback;
+    networkQualityMonitor: any;
+    statsResults?: any;
+    isMultistream?: boolean;
+  }) {
     super();
     this.statsStarted = false;
     this.statsResults = statsResults;
@@ -120,6 +131,7 @@ export class StatsAnalyzer extends EventsScope {
     this.receiveSlotCallback = receiveSlotCallback;
     this.successfulCandidatePair = {};
     this.localIpAddress = '';
+    this.isMultistream = isMultistream;
   }
 
   /**
@@ -203,6 +215,7 @@ export class StatsAnalyzer extends EventsScope {
       statsResults: this.statsResults,
       lastMqaDataSent: this.lastMqaDataSent,
       baseMediaType: 'audio-send',
+      isMultistream: this.isMultistream,
     });
     newMqa.audioTransmit.push(audioSender);
 
@@ -211,6 +224,7 @@ export class StatsAnalyzer extends EventsScope {
       statsResults: this.statsResults,
       lastMqaDataSent: this.lastMqaDataSent,
       baseMediaType: 'audio-share-send',
+      isMultistream: this.isMultistream,
     });
     newMqa.audioTransmit.push(audioShareSender);
 
@@ -219,6 +233,7 @@ export class StatsAnalyzer extends EventsScope {
       statsResults: this.statsResults,
       lastMqaDataSent: this.lastMqaDataSent,
       baseMediaType: 'audio-recv',
+      isMultistream: this.isMultistream,
     });
     newMqa.audioReceive.push(audioReceiver);
 
@@ -227,6 +242,7 @@ export class StatsAnalyzer extends EventsScope {
       statsResults: this.statsResults,
       lastMqaDataSent: this.lastMqaDataSent,
       baseMediaType: 'audio-share-recv',
+      isMultistream: this.isMultistream,
     });
     newMqa.audioReceive.push(audioShareReceiver);
 
@@ -235,6 +251,7 @@ export class StatsAnalyzer extends EventsScope {
       statsResults: this.statsResults,
       lastMqaDataSent: this.lastMqaDataSent,
       baseMediaType: 'video-send',
+      isMultistream: this.isMultistream,
     });
     newMqa.videoTransmit.push(videoSender);
 
@@ -243,6 +260,7 @@ export class StatsAnalyzer extends EventsScope {
       statsResults: this.statsResults,
       lastMqaDataSent: this.lastMqaDataSent,
       baseMediaType: 'video-share-send',
+      isMultistream: this.isMultistream,
     });
     newMqa.videoTransmit.push(videoShareSender);
 
@@ -251,6 +269,7 @@ export class StatsAnalyzer extends EventsScope {
       statsResults: this.statsResults,
       lastMqaDataSent: this.lastMqaDataSent,
       baseMediaType: 'video-recv',
+      isMultistream: this.isMultistream,
     });
     newMqa.videoReceive.push(videoReceiver);
 
@@ -259,6 +278,7 @@ export class StatsAnalyzer extends EventsScope {
       statsResults: this.statsResults,
       lastMqaDataSent: this.lastMqaDataSent,
       baseMediaType: 'video-share-recv',
+      isMultistream: this.isMultistream,
     });
     newMqa.videoReceive.push(videoShareReceiver);
 
@@ -273,7 +293,9 @@ export class StatsAnalyzer extends EventsScope {
           lastMqaDataSent: this.lastMqaDataSent,
           mediaType,
         });
-        newMqa.audioTransmit[0].streams.push(audioSenderStream);
+        if (isStreamRequested(this.statsResults, mediaType, STATS.SEND_DIRECTION)) {
+          newMqa.audioTransmit[0].streams.push(audioSenderStream);
+        }
 
         this.lastMqaDataSent[mediaType].send = cloneDeep(this.statsResults[mediaType].send);
       } else if (mediaType.startsWith('audio-share-send')) {
@@ -285,7 +307,9 @@ export class StatsAnalyzer extends EventsScope {
           lastMqaDataSent: this.lastMqaDataSent,
           mediaType,
         });
-        newMqa.audioTransmit[1].streams.push(audioSenderStream);
+        if (isStreamRequested(this.statsResults, mediaType, STATS.SEND_DIRECTION)) {
+          newMqa.audioTransmit[1].streams.push(audioSenderStream);
+        }
 
         this.lastMqaDataSent[mediaType].send = cloneDeep(this.statsResults[mediaType].send);
       } else if (mediaType.startsWith('audio-recv')) {
@@ -297,7 +321,9 @@ export class StatsAnalyzer extends EventsScope {
           lastMqaDataSent: this.lastMqaDataSent,
           mediaType,
         });
-        newMqa.audioReceive[0].streams.push(audioReceiverStream);
+        if (isStreamRequested(this.statsResults, mediaType, STATS.RECEIVE_DIRECTION)) {
+          newMqa.audioReceive[0].streams.push(audioReceiverStream);
+        }
 
         this.lastMqaDataSent[mediaType].recv = cloneDeep(this.statsResults[mediaType].recv);
       } else if (mediaType.startsWith('audio-share-recv')) {
@@ -309,8 +335,9 @@ export class StatsAnalyzer extends EventsScope {
           lastMqaDataSent: this.lastMqaDataSent,
           mediaType,
         });
-        newMqa.audioReceive[1].streams.push(audioReceiverStream);
-
+        if (isStreamRequested(this.statsResults, mediaType, STATS.RECEIVE_DIRECTION)) {
+          newMqa.audioReceive[1].streams.push(audioReceiverStream);
+        }
         this.lastMqaDataSent[mediaType].recv = cloneDeep(this.statsResults[mediaType].recv);
       } else if (mediaType.startsWith('video-send-layer')) {
         // We only want the stream-specific stats we get with video-send-layer-0, video-send-layer-1, etc.
@@ -322,8 +349,9 @@ export class StatsAnalyzer extends EventsScope {
           lastMqaDataSent: this.lastMqaDataSent,
           mediaType,
         });
-        newMqa.videoTransmit[0].streams.push(videoSenderStream);
-
+        if (isStreamRequested(this.statsResults, mediaType, STATS.SEND_DIRECTION)) {
+          newMqa.videoTransmit[0].streams.push(videoSenderStream);
+        }
         this.lastMqaDataSent[mediaType].send = cloneDeep(this.statsResults[mediaType].send);
       } else if (mediaType.startsWith('video-share-send')) {
         const videoSenderStream = cloneDeep(emptyVideoTransmitStream);
@@ -334,7 +362,9 @@ export class StatsAnalyzer extends EventsScope {
           lastMqaDataSent: this.lastMqaDataSent,
           mediaType,
         });
-        newMqa.videoTransmit[1].streams.push(videoSenderStream);
+        if (isStreamRequested(this.statsResults, mediaType, STATS.SEND_DIRECTION)) {
+          newMqa.videoTransmit[1].streams.push(videoSenderStream);
+        }
 
         this.lastMqaDataSent[mediaType].send = cloneDeep(this.statsResults[mediaType].send);
       } else if (mediaType.startsWith('video-recv')) {
@@ -346,7 +376,9 @@ export class StatsAnalyzer extends EventsScope {
           lastMqaDataSent: this.lastMqaDataSent,
           mediaType,
         });
-        newMqa.videoReceive[0].streams.push(videoReceiverStream);
+        if (isStreamRequested(this.statsResults, mediaType, STATS.RECEIVE_DIRECTION)) {
+          newMqa.videoReceive[0].streams.push(videoReceiverStream);
+        }
 
         this.lastMqaDataSent[mediaType].recv = cloneDeep(this.statsResults[mediaType].recv);
       } else if (mediaType.startsWith('video-share-recv')) {
@@ -358,8 +390,9 @@ export class StatsAnalyzer extends EventsScope {
           lastMqaDataSent: this.lastMqaDataSent,
           mediaType,
         });
-        newMqa.videoReceive[1].streams.push(videoReceiverStream);
-
+        if (isStreamRequested(this.statsResults, mediaType, STATS.RECEIVE_DIRECTION)) {
+          newMqa.videoReceive[1].streams.push(videoReceiverStream);
+        }
         this.lastMqaDataSent[mediaType].recv = cloneDeep(this.statsResults[mediaType].recv);
       }
     });
@@ -387,6 +420,17 @@ export class StatsAnalyzer extends EventsScope {
     }
 
     newMqa.networkType = this.statsResults.connectionType.local.networkType;
+
+    newMqa.intervalMetadata.screenWidth = window.screen.width;
+    newMqa.intervalMetadata.screenHeight = window.screen.height;
+    newMqa.intervalMetadata.screenResolution = Math.round(
+      (window.screen.width * window.screen.height) / 256
+    );
+    newMqa.intervalMetadata.appWindowWidth = window.innerWidth;
+    newMqa.intervalMetadata.appWindowHeight = window.innerHeight;
+    newMqa.intervalMetadata.appWindowSize = Math.round(
+      (window.innerWidth * window.innerHeight) / 256
+    );
 
     this.mqaSentCount += 1;
 
@@ -570,6 +614,9 @@ export class StatsAnalyzer extends EventsScope {
           this.statsResults[newType].direction = statsItem.currentDirection;
           this.statsResults[newType].trackLabel = statsItem.localTrackLabel;
           this.statsResults[newType].csi = statsItem.csi;
+        } else if (type === 'video-share-send' && result.type === 'outbound-rtp') {
+          this.shareVideoEncoderImplementation = result.encoderImplementation;
+          this.parseGetStatsResult(result, type, isSender);
         } else {
           this.parseGetStatsResult(result, type, isSender);
         }
@@ -1003,6 +1050,11 @@ export class StatsAnalyzer extends EventsScope {
       this.statsResults[mediaType][sendrecvType].totalRtxBytesSent = result.retransmittedBytesSent;
       this.statsResults[mediaType][sendrecvType].totalBytesSent = result.bytesSent;
       this.statsResults[mediaType][sendrecvType].headerBytesSent = result.headerBytesSent;
+      this.statsResults[mediaType][sendrecvType].retransmittedBytesSent =
+        result.retransmittedBytesSent;
+      this.statsResults[mediaType][sendrecvType].isRequested = result.isRequested;
+      this.statsResults[mediaType][sendrecvType].lastRequestedUpdateTimestamp =
+        result.lastRequestedUpdateTimestamp;
       this.statsResults[mediaType][sendrecvType].requestedBitrate = result.requestedBitrate;
       this.statsResults[mediaType][sendrecvType].requestedFrameSize = result.requestedFrameSize;
     }
@@ -1088,6 +1140,12 @@ export class StatsAnalyzer extends EventsScope {
         }
       }
 
+      if (mediaType.startsWith('video-recv')) {
+        this.statsResults[mediaType][sendrecvType].isActiveSpeaker = result.isActiveSpeaker;
+        this.statsResults[mediaType][sendrecvType].lastActiveSpeakerTimestamp =
+          result.lastActiveSpeakerUpdateTimestamp;
+      }
+
       //  Check the over all packet Lost ratio
       this.statsResults[mediaType][sendrecvType].currentPacketLossRatio =
         currentPacketsLost > 0
@@ -1151,6 +1209,9 @@ export class StatsAnalyzer extends EventsScope {
       this.statsResults[mediaType][sendrecvType].totalSamplesDecoded =
         result.totalSamplesDecoded || 0;
       this.statsResults[mediaType][sendrecvType].concealedSamples = result.concealedSamples || 0;
+      this.statsResults[mediaType][sendrecvType].isRequested = result.isRequested;
+      this.statsResults[mediaType][sendrecvType].lastRequestedUpdateTimestamp =
+        result.lastRequestedUpdateTimestamp;
     }
   }
 

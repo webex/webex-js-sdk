@@ -1,0 +1,250 @@
+* {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Roboto', sans-serif;
+    background-color: #f5f5f5;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+.header_anchor{
+    text-decoration: none;
+}
+
+#header {
+    position: sticky;
+    top: 0;
+    background-color: #00bceb; /* Webex blue */
+    color: white;
+    padding: 20px;
+    margin: 0;
+    text-align: left; /* Align the title text to the left */
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    font-size: 1.5rem;
+    z-index: 1000; /* Ensure the header is above other content */
+}
+
+#body {
+    flex: 1;
+    padding: 20px;
+}
+
+#footer {
+    background-color: #f5f5f5;
+    text-align: center;
+    padding: 10px;
+    box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.2);
+}
+
+#footer a {
+    color: #00bceb; /* Webex blue */
+    text-decoration: none;
+    font-weight: bold;
+}
+
+#footer a:hover {
+    text-decoration: underline;
+}
+
+/* Rest of the CSS for form and results remains the same */
+
+form#search-form {
+    padding: 10px;
+}
+
+label {
+    display: block;
+    margin-bottom: 8px;
+    color: #333;
+}
+
+input[type="text"],
+select {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 20px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+}
+
+button {
+    background-color: #00bceb; /* Webex blue */
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background-color 0.3s;
+}
+
+button:hover {
+    background-color: #0099ba; /* Darker Webex blue */
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+table, th, td {
+    border: 1px solid #ccc;
+}
+
+th, td {
+    padding: 10px;
+    text-align: left;
+}
+
+th {
+    background-color: #f5f5f5;
+}
+
+.search-container {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    margin: auto;
+    width: 100%;
+    padding: 20px; /* Add padding for spacing */
+    box-sizing: border-box; /* Include padding in the width calculation */
+}
+
+.form-row {
+    display: flex;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+}
+
+.form-group {
+    flex: 1 1 25%; /* Each form group will take up half the width of the form-row */
+    padding: 0 10px;
+    box-sizing: border-box;
+}
+
+.full-width {
+    margin: 0 10px; /* Add margin to maintain spacing */
+}
+
+.results-container {
+    width: 100%;
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    margin: auto;
+    margin-top: 20px;
+}
+
+/* Responsive styles */
+@media (max-width: 768px) {
+    .form-group {
+        flex: 1 1 100%; /* Each form group will take up the full width on smaller screens */
+        padding: 0 10px; /* Adjust padding for smaller screens */
+    }
+}
+
+.changelog-item {
+    padding-bottom: 20px;
+    margin-bottom: 20px; /* Space between changelog items */
+    border-bottom: 3px solid #e4e5e6;
+}
+
+.changelog-item h2, .changelog-item h3 {
+    color: #333;
+    margin-bottom: 10px;
+}
+
+.changelog-item .commits{
+    margin-top: 20px;
+    margin-bottom: 20px;
+}
+
+.changelog-item .commits ul {
+    margin-top: 10px;
+    list-style-type: none;
+    padding: 0;
+}
+
+.changelog-item .commits ul li {
+    background-color: #eee;
+    margin-bottom: 5px;
+    padding: 10px;
+    border-radius: 3px;
+    word-wrap: break-word;
+}
+
+.changelog-item .commit-hash {
+    font-family: monospace;
+}
+
+.changelog-item .related-packages{
+    position: relative;
+}
+
+.changelog-item .related-packages .table-wrapper{
+    max-height: 200px;
+    overflow: scroll;
+    border: 1px solid #ddd;
+    margin-top: 10px;
+}
+
+.changelog-item .related-packages table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+
+.changelog-item table thead{
+    position: sticky;
+    top: -1px;
+}
+
+.changelog-item th, .changelog-item td {
+    border: 1px solid #ddd;
+}
+
+.changelog-item th, .changelog-item td {
+    padding: 10px;
+    text-align: left;
+}
+
+.changelog-item th {
+    background-color: #f7f7f7;
+}
+
+.changelog-item tbody tr:nth-child(odd) {
+    background-color: #f9f9f9;
+}
+
+.changelog-item tbody tr:hover {
+    background-color: #f1f1f1;
+}
+
+.copy-button {
+    display: inline;
+    position: absolute;
+    margin-left: 5px;
+    cursor: pointer;
+    right: 0px;
+}
+
+.copy-button img {
+    width: 20px;
+    height: auto;
+    margin-right: 5px;
+}
+
+footer {
+    margin: 20px 0px;
+}
+
+footer .copyright {
+    text-align: center;
+    margin: 0 auto;
+}

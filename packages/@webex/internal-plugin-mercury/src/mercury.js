@@ -52,6 +52,20 @@ const Mercury = WebexPlugin.extend({
     },
   },
 
+  initialize() {
+    /*
+      When one of these legacy feature gets updated, this event would be triggered
+        * group-message-notifications
+        * mention-notifications
+        * thread-notifications
+    */
+    this.on('event:featureToggle_update', (envelope) => {
+      if (envelope && envelope.data) {
+        this.webex.internal.feature.updateFeature(envelope.data.featureToggle);
+      }
+    });
+  },
+
   /**
    * Get the last error.
    * @returns {any} The last error.

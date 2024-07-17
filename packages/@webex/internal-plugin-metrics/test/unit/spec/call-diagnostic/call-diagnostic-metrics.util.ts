@@ -406,20 +406,28 @@ describe('internal-plugin-metrics', () => {
       });
     });
 
-    it('calls getBuildType correctly', () => {
-      const getBuildTypeSpy = sinon.spy(CallDiagnosticUtils, 'getBuildType');
-      const markAsTestEvent = true;
-      const webClientDomain = 'https://web.webex.com';
-
-      // just submit any event
-      prepareDiagnosticMetricItem(webex, {
+    it('getBuildType returns correct value', () => {
+      const item: any = {
         eventPayload: {
-          event: {name: 'client.exit.app', eventData: {markAsTestEvent, webClientDomain}},
+          event: {
+            name: 'client.exit.app',
+            eventData: {
+              markAsTestEvent: true,
+              webClientDomain: 'https://web.webex.com'
+            }
+          },
         },
         type: ['diagnostic-event'],
-      });
+      };
 
-      assert.calledOnceWithExactly(getBuildTypeSpy, webClientDomain, markAsTestEvent);
+      // just submit any event
+      prepareDiagnosticMetricItem(webex, item);
+      assert.deepEqual(item.eventPayload.origin.buildType, 'test');
+
+      delete item.eventPayload.origin.buildType;
+      item.eventPayload.event.eventData.markAsTestEvent = false;
+      prepareDiagnosticMetricItem(webex, item);
+      assert.deepEqual(item.eventPayload.origin.buildType, 'prod');
     });
   });
 

@@ -225,7 +225,7 @@ export const getBuildType = (
  */
 export const prepareDiagnosticMetricItem = (webex: any, item: any) => {
   const origin: Partial<Event['origin']> = {
-    buildType: exports.getBuildType(
+    buildType: getBuildType(
       item.eventPayload?.event?.eventData?.webClientDomain,
       item.eventPayload?.event?.eventData?.markAsTestEvent
     ),
@@ -314,7 +314,6 @@ export const prepareDiagnosticMetricItem = (webex: any, item: any) => {
 
   item.eventPayload.origin = Object.assign(origin, item.eventPayload.origin);
 
-  // @ts-ignore
   webex.logger.log(
     `CallDiagnosticLatencies,prepareDiagnosticMetricItem: ${JSON.stringify({
       latencies: Object.fromEntries(cdl.latencyTimestamps),
