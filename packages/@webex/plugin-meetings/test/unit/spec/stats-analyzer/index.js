@@ -2270,6 +2270,77 @@ describe('plugin-meetings', () => {
           assert.equal(mqeData.intervalMetadata.cpuInfo.numberOfCores, 12);
         });
       });
+
+      it('backgroundNoiseReductionMode stat is properly calculated', async () => {
+        const stats = {
+          audio: {
+            senders: [fakeStats.audio.senders[0]],
+            receivers: [fakeStats.audio.receivers[0]],
+          },
+          video: {
+            senders: [fakeStats.video.senders[0]],
+            receivers: [fakeStats.video.receivers[0]],
+          },
+          screenShareAudio: {
+            senders: [fakeStats.audio.senders[0]],
+            receivers: [fakeStats.audio.receivers[0]],
+          },
+          screenShareVideo: {
+            senders: [fakeStats.video.senders[0]],
+            receivers: [fakeStats.video.receivers[0]],
+          },
+        };
+
+        stats.audio.senders[0].report[0].effect = {
+          kind: 'noise-reduction-effect',
+          noiseReductionMode: 'LOW_POWER',
+        };
+        pc.getTransceiverStats = sinon.stub().resolves(stats);
+
+        await startStatsAnalyzer();
+        await progressTime();
+
+        assert.equal(mqeData.audioTransmit[0].streams[0].backgroundNoiseReductionMode, NOISE_REDUCTION_MODE.LOW_POWER)
+      });
+
+      it('backgroundAugmentationType stat is properly calculated', async () => {
+        const stats = {
+          audio: {
+            senders: [fakeStats.audio.senders[0]],
+            receivers: [fakeStats.audio.receivers[0]],
+          },
+          video: {
+            senders: [fakeStats.video.senders[0]],
+            receivers: [fakeStats.video.receivers[0]],
+          },
+          screenShareAudio: {
+            senders: [fakeStats.audio.senders[0]],
+            receivers: [fakeStats.audio.receivers[0]],
+          },
+          screenShareVideo: {
+            senders: [fakeStats.video.senders[0]],
+            receivers: [fakeStats.video.receivers[0]],
+          },
+        };
+
+        stats.video.senders[0].report[0].effect = {
+          kind: 'virtual-background-effect',
+          virtualBackgroundMode: 'BLUR',
+        };
+        pc.getTransceiverStats = sinon.stub().resolves(stats);
+
+        await startStatsAnalyzer();
+        await progressTime();
+
+        assert.equal(mqeData.videoTransmit[0].streams[0].backgroundAugmentationType, VIRTUAL_BACKGROUND_MODE.BLUR)
+
+        stats.video.senders[0].report[0].effect = {
+          kind: 'virtual-background-effect',
+          virtualBackgroundMode: 'REPLACE_VIDEO',
+        };
+        pc.getTransceiverStats.resolves(stats);
+      });
+
     })
   });
 });
