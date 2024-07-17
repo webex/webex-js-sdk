@@ -8,6 +8,12 @@ export const emptyMqaInterval = {
     processMaximumCPU: 0,
     systemAverageCPU: 0,
     systemMaximumCPU: 0,
+    screenWidth: 0,
+    screenHeight: 0,
+    screenResolution: 0,
+    appWindowWidth: 0,
+    appWindowHeight: 0,
+    appWindowSize: 0,
   },
   networkType: '',
   intervalNumber: 0,
@@ -126,7 +132,7 @@ export const emptyVideoReceive = {
       mariRtxEnabled: false,
       mariQosEnabled: false,
       mariLiteEnabled: false,
-      multistreamEnabled: true, // Not avaliable
+      multistreamEnabled: false,
     },
     dtlsBitrate: 0, // Not avaliable
     dtlsPackets: 0, // Not avaliable
@@ -170,7 +176,7 @@ export const emptyVideoReceiveStream = {
     ssci: 0, // Not avaliable
   },
   h264CodecProfile: 'BP',
-  isActiveSpeaker: true,
+  isActiveSpeaker: false,
   optimalFrameSize: 0, // Not avaliable
   receivedFrameSize: 0,
   receivedHeight: 0,
@@ -193,7 +199,7 @@ export const emptyVideoTransmit = {
       mariRtxEnabled: false,
       mariQosEnabled: false,
       mariLiteEnabled: false,
-      multistreamEnabled: false, // Not avaliable
+      multistreamEnabled: false,
     },
     dtlsBitrate: 0, // Not avaliable
     dtlsPackets: 0, // Not avaliable

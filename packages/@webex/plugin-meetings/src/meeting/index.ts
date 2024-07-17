@@ -5233,8 +5233,13 @@ export default class Meeting extends StatelessWebexPlugin {
 
     // @ts-ignore - Fix type
     if (this.webex.internal.llm.isConnected()) {
-      // @ts-ignore - Fix type
-      if (url === this.webex.internal.llm.getLocusUrl() && isJoined) {
+      if (
+        // @ts-ignore - Fix type
+        url === this.webex.internal.llm.getLocusUrl() &&
+        // @ts-ignore - Fix type
+        datachannelUrl === this.webex.internal.llm.getDatachannelUrl() &&
+        isJoined
+      ) {
         return undefined;
       }
       // @ts-ignore - Fix type
@@ -6317,12 +6322,13 @@ export default class Meeting extends StatelessWebexPlugin {
     if (this.config.stats.enableStatsAnalyzer) {
       // @ts-ignore - config coming from registerPlugin
       this.networkQualityMonitor = new NetworkQualityMonitor(this.config.stats);
-      this.statsAnalyzer = new StatsAnalyzer(
+      this.statsAnalyzer = new StatsAnalyzer({
         // @ts-ignore - config coming from registerPlugin
-        this.config.stats,
-        (ssrc: number) => this.receiveSlotManager.findReceiveSlotBySsrc(ssrc),
-        this.networkQualityMonitor
-      );
+        config: this.config.stats,
+        receiveSlotCallback: (ssrc: number) => this.receiveSlotManager.findReceiveSlotBySsrc(ssrc),
+        networkQualityMonitor: this.networkQualityMonitor,
+        isMultistream: this.isMultistream,
+      });
       this.setupStatsAnalyzerEventHandlers();
       this.networkQualityMonitor.on(
         EVENT_TRIGGERS.NETWORK_QUALITY,
@@ -7896,6 +7902,7 @@ export default class Meeting extends StatelessWebexPlugin {
     Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.MEETING_SHARE_VIDEO_MUTE_STATE_CHANGE, {
       correlationId: this.correlationId,
       muted,
+      encoderImplementation: this.statsAnalyzer?.shareVideoEncoderImplementation,
     });
   };
 
