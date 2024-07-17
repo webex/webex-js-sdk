@@ -1784,6 +1784,7 @@ class TestReachability extends Reachability {
     this.clusterReachability = fakeClusterReachability;
   }
 }
+
 describe('getStatistics', () => {
   let webex;
   let reachability;
