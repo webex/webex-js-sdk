@@ -6,7 +6,7 @@ export const emptyMqaInterval = {
     peripherals: [],
     cpuInfo: {
       numberOfCores: 1, // default value from spec if CpuInfo.getNumLogicalCores cannot be determined
-      description: 'web client',
+      description: 'NA',
       architecture: 'unknown',
     },
     processAverageCPU: 0,

@@ -2119,9 +2119,6 @@ describe('plugin-meetings', () => {
         let getNumLogicalCoresStub;
 
         beforeEach(async () => {
-          if (getNumLogicalCoresStub) {
-            getNumLogicalCoresStub.restore();
-          }
           getNumLogicalCoresStub = sinon.stub(CpuInfo, 'getNumLogicalCores');
         });
 
