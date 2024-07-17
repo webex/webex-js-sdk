@@ -143,6 +143,8 @@ function initOauth() {
     })
   });
 
+  localStorage.setItem('OAuth', true);
+
   webex.once('ready', () => {
     oauthFormElm.addEventListener('submit', (event) => {
       event.preventDefault();
@@ -154,6 +156,14 @@ function initOauth() {
       oauthStatusElm.innerText = 'Authenticated';
     }
   });
+}
+
+// SPARK-499535
+if(localStorage.getItem('OAuth')) {
+  setTimeout(() => {
+    initOauth();
+    localStorage.removeItem('OAuth');
+  }, 500);
 }
 
 function initWebex(e) {
