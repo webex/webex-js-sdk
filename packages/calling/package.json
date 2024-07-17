@@ -88,7 +88,7 @@
     "karma-typescript-es6-transform": "5.5.3",
     "mocha": "10.6.0",
     "prettier": "2.5.1",
-    "puppeteer": "11.0.0",
+    "puppeteer": "22.12.1",
     "rimraf": "3.0.2",
     "rollup": "2.68.0",
     "rollup-plugin-polyfill-node": "0.8.0",
