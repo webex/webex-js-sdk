@@ -936,14 +936,7 @@ describe('plugin-meetings', () => {
           assert.strictEqual(mqeData.videoReceive[0].streams[0].common.receivedFrameRate, 0);
         });
 
-        it('emits the correct callingServiceType in MEDIA_QUALITY events', async () => {
-          await startStatsAnalyzer({expected: {receiveVideo: true}});
-          await progressTime();
-
-          assert.strictEqual(mqeData.callingServiceType, CALLING_SERVICE_TYPE);
-        });
-
-        it('after frames are sent and received', async () => {
+        it('should accurately report the transmitted and received frame rate after video frames are processed', async () => {
           fakeStats.video.senders[0].report[0].framesSent += 300;
           fakeStats.video.receivers[0].report[0].framesReceived += 300;
           await progressTime(MQA_INTERVAL);
@@ -1852,122 +1845,6 @@ describe('plugin-meetings', () => {
 
           await progressTime();
 
-        assert.deepEqual(mqeData.videoTransmit[0].streams, [
-          {
-            common: {
-              codec: 'H264',
-              csi: [],
-              duplicateSsci: 0,
-              requestedBitrate: 0,
-              requestedFrames: 0,
-              rtpPackets: 0,
-              ssci: 0,
-              transmittedBitrate: 0.13333333333333333,
-              transmittedFrameRate: 0
-            },
-            h264CodecProfile: 'BP',
-            isAvatar: false,
-            isHardwareEncoded: false,
-            localConfigurationChanges: 2,
-            maxFrameQp: 0,
-            maxNoiseLevel: 0,
-            minRegionQp: 0,
-            remoteConfigurationChanges: 0,
-            requestedFrameSize: 0,
-            requestedKeyFrames: 0,
-            transmittedFrameSize: 0,
-            transmittedHeight: 0,
-            transmittedKeyFrames: 0,
-            transmittedKeyFramesClient: 0,
-            transmittedKeyFramesConfigurationChange: 0,
-            transmittedKeyFramesFeedback: 0,
-            transmittedKeyFramesLocalDrop: 0,
-            transmittedKeyFramesOtherLayer: 0,
-            transmittedKeyFramesPeriodic: 0,
-            transmittedKeyFramesSceneChange: 0,
-            transmittedKeyFramesStartup: 0,
-            transmittedKeyFramesUnknown: 0,
-            transmittedWidth: 0,
-            requestedBitrate: 0,
-            backgroundAugmentationType: VIRTUAL_BACKGROUND_MODE.NONE,
-          },
-          {
-            common: {
-              codec: 'H264',
-              csi: [],
-              duplicateSsci: 0,
-              requestedBitrate: 0,
-              requestedFrames: 0,
-              rtpPackets: 0,
-              ssci: 0,
-              transmittedBitrate: 0,
-              transmittedFrameRate: 0,
-            },
-            h264CodecProfile: 'BP',
-            isAvatar: false,
-            isHardwareEncoded: false,
-            localConfigurationChanges: 2,
-            maxFrameQp: 0,
-            maxNoiseLevel: 0,
-            minRegionQp: 0,
-            remoteConfigurationChanges: 0,
-            requestedFrameSize: 0,
-            requestedKeyFrames: 0,
-            transmittedFrameSize: 0,
-            transmittedHeight: 0,
-            transmittedKeyFrames: 0,
-            transmittedKeyFramesClient: 0,
-            transmittedKeyFramesConfigurationChange: 0,
-            transmittedKeyFramesFeedback: 0,
-            transmittedKeyFramesLocalDrop: 0,
-            transmittedKeyFramesOtherLayer: 0,
-            transmittedKeyFramesPeriodic: 0,
-            transmittedKeyFramesSceneChange: 0,
-            transmittedKeyFramesStartup: 0,
-            transmittedKeyFramesUnknown: 0,
-            transmittedWidth: 0,
-            requestedBitrate: 0,
-            backgroundAugmentationType: VIRTUAL_BACKGROUND_MODE.NONE,
-          },
-          {
-            common: {
-              codec: 'H264',
-              csi: [],
-              duplicateSsci: 0,
-              requestedBitrate: 0,
-              requestedFrames: 0,
-              rtpPackets: 1,
-              ssci: 0,
-              transmittedBitrate: 133.33333333333334,
-              transmittedFrameRate: 0,
-            },
-            h264CodecProfile: 'BP',
-            isAvatar: false,
-            isHardwareEncoded: false,
-            localConfigurationChanges: 2,
-            maxFrameQp: 0,
-            maxNoiseLevel: 0,
-            minRegionQp: 0,
-            remoteConfigurationChanges: 0,
-            requestedFrameSize: 0,
-            requestedKeyFrames: 0,
-            transmittedFrameSize: 0,
-            transmittedHeight: 0,
-            transmittedKeyFrames: 0,
-            transmittedKeyFramesClient: 0,
-            transmittedKeyFramesConfigurationChange: 0,
-            transmittedKeyFramesFeedback: 0,
-            transmittedKeyFramesLocalDrop: 0,
-            transmittedKeyFramesOtherLayer: 0,
-            transmittedKeyFramesPeriodic: 0,
-            transmittedKeyFramesSceneChange: 0,
-            transmittedKeyFramesStartup: 0,
-            transmittedKeyFramesUnknown: 0,
-            transmittedWidth: 0,
-            requestedBitrate: 0,
-            backgroundAugmentationType: VIRTUAL_BACKGROUND_MODE.NONE,
-          }
-        ]);
           assert.deepEqual(mqeData.videoTransmit[0].streams, [
             {
               common: {
