@@ -43,16 +43,16 @@ describe('changelogUtils', () => {
         .replace(/\./g, '_');
       expect(fs.writeFileSync).toHaveBeenCalledTimes(2);
       // writeFileSync will be called for each package
-      // Here, according to the fixtures first it will be called for webex
-      // and second, it will be called for @webex/package-tools
+      // Here, according to the fixtures first it will be called for webex which is at version 3.3.1
+      // and second, it will be called for @webex/package-tools which is at version 3.3.
       expect(fs.writeFileSync.mock.calls).toEqual([
         [
           `./docs/changelog/v${filePath331}.json`,
-          JSON.stringify(fixtures.packageDataChangelog[0], null, 2),
+          JSON.stringify(fixtures.packageDataChangelog1, null, 2),
         ],
         [
           `./docs/changelog/v${filePath000}.json`,
-          JSON.stringify(fixtures.packageDataChangelog[1], null, 2),
+          JSON.stringify(fixtures.packageDataChangelog2, null, 2),
         ],
       ]);
     });

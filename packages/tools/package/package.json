@@ -29,7 +29,7 @@
     "deploy:npm": "yarn npm publish",
     "start": "node ./index.js",
     "test": "yarn test:style && yarn test:syntax && yarn test:integration && yarn test:coverage",
-    "test:coverage": "yarn test:integration --coverage --reporters=\"jest-silent-reporter\"",
+    "test:coverage": "yarn test:unit --coverage --reporters=\"jest-silent-reporter\"",
     "test:unit": "jest",
     "test:style": "eslint ./test/**/*.* ./src/**/*.*",
     "test:syntax": "tsc --noEmit"

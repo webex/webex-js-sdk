@@ -48,42 +48,95 @@ const packagesData = [
   },
 ];
 
-const packageDataChangelog = [
-  {
-    webex: {
-      '3.3.1-test.6': {
-        published_date: 123456,
-        commits: { mockCommitId: 'mock commit message' },
-        alongWith: { '@webex/package-tools': '0.0.0-test.1' },
+const packageDataChangelog1 = {
+  '@webex/plugin-meetings': {
+    '3.3.1-test.13': {
+      published_date: 765432,
+      commits: {
+        existingCommit: 'existing commit message',
+      },
+      alongWith: {
+        '@webex/calling': '3.3.1-test.13',
       },
     },
   },
-  {
-    '@webex/package-tools': {
-      '0.0.0-test.1': {
-        published_date: 123456,
-        commits: { mockCommitId: 'mock commit message' },
-        alongWith: { webex: '3.3.1-test.6' },
+  '@webex/calling': {
+    '3.3.1-test.13': {
+      published_date: 765432,
+      commits: {
+        existingCommit: 'existing commit message',
+      },
+      alongWith: {
+        '@webex/plugin-meetings': '3.3.1-test.13',
       },
     },
   },
-];
+  webex: {
+    '3.3.1-test.6': {
+      published_date: 123456,
+      commits: {
+        mockCommitId: 'mock commit message',
+      },
+      alongWith: {
+        '@webex/package-tools': '0.0.0-test.1',
+      },
+    },
+  },
+};
+
+const packageDataChangelog2 = {
+  '@webex/plugin-meetings': {
+    '3.3.1-test.13': {
+      published_date: 765432,
+      commits: {
+        existingCommit: 'existing commit message',
+      },
+      alongWith: {
+        '@webex/calling': '3.3.1-test.13',
+      },
+    },
+  },
+  '@webex/calling': {
+    '3.3.1-test.13': {
+      published_date: 765432,
+      commits: {
+        existingCommit: 'existing commit message',
+      },
+      alongWith: {
+        '@webex/plugin-meetings': '3.3.1-test.13',
+      },
+    },
+  },
+  '@webex/package-tools': {
+    '0.0.0-test.1': {
+      published_date: 123456,
+      commits: {
+        mockCommitId: 'mock commit message',
+      },
+      alongWith: {
+        webex: '3.3.1-test.6',
+      },
+    },
+  },
+};
 
 const changelogData = `{
   "@webex/plugin-meetings": {
     "3.3.1-test.13": {
+      "published_date": 765432,
       "commits": {
-        "abc3cd5365e87b568049c2cbec47c27bd652ccb1": "feat(tooling): add-logic-to-generate-changelogs"
+        "existingCommit": "existing commit message"
       },
       "alongWith": {
-        "webex": "3.3.1-test.13"
+        "@webex/calling": "3.3.1-test.13"
       }
     }
   },
-  "webex": {
+  "@webex/calling": {
     "3.3.1-test.13": {
+      "published_date": 765432,
       "commits": {
-        "abc3cd5365e87b568049c2cbec47c27bd652ccb1": "feat(tooling): add-logic-to-generate-changelogs"
+      "existingCommit": "existing commit message"
       },
       "alongWith": {
         "@webex/plugin-meetings": "3.3.1-test.13"
@@ -93,9 +146,10 @@ const changelogData = `{
 }`;
 
 const fixtures = {
-  packagesData,
-  packageDataChangelog,
   changelogData,
+  packagesData,
+  packageDataChangelog1,
+  packageDataChangelog2,
 };
 
 module.exports = fixtures;
