@@ -2143,7 +2143,6 @@ describe('plugin-meetings', () => {
         });
       });
 
-
       it('maxBitrate is properly calculated', async () => {
         const stats = {
           audio: {
@@ -2163,6 +2162,12 @@ describe('plugin-meetings', () => {
             receivers: [fakeStats.video.receivers[0]],
           },
         };
+        statsAnalyzer = new StatsAnalyzer({
+          config: initialConfig,
+          receiveSlotCallback: () => receiveSlot,
+          networkQualityMonitor,
+          isMultistream: true,
+        });
 
         const bytesReceived = 480_000;
         const expectedBitrate = (bytesReceived * 8) / MQA_INTERVAL; // 64
@@ -2175,6 +2180,7 @@ describe('plugin-meetings', () => {
 
         pc.getTransceiverStats = sinon.stub().resolves(stats);
 
+        registerStatsAnalyzerEvents(statsAnalyzer);
         await startStatsAnalyzer({pc, statsAnalyzer, mediaStatus: {expected: {receiveVideo: true}}});
         await progressTime();
 
