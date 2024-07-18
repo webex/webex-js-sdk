@@ -3,7 +3,6 @@ import { getCommits } from './changelog.executor';
 import { AlongWithData, ChangelogEntry } from './changelog.types';
 
 const fs = require('fs');
-const path = require('path');
 
 /**
  * Function to get the along with data
@@ -22,21 +21,6 @@ function getAlongWithData(packageName: string, packages: Package[]): AlongWithDa
     }
   });
   return alongWith;
-}
-
-/**
- * Function to check if a certain changelog file is present
- * if not present then it will create a file based on the version
- * @param filePath - Checks if a file is present matching the filepath
- * @returns - true - if there is a package, undefined if a new file is created
- */
-function ensureDirectoryExistence(filePath: string) {
-  const dirname = path.dirname(filePath);
-  if (fs.existsSync(dirname)) {
-    return true;
-  }
-  fs.mkdirSync(dirname, { recursive: true });
-  return undefined;
 }
 
 /**
@@ -75,7 +59,6 @@ export async function createOrUpdateChangelog(packages: Package[], prevCommitId:
       };
     }
 
-    ensureDirectoryExistence(changelogFilePath);
     // Read existing changelog file or create a new one if it doesn't exist
     let changelogData: ChangelogEntry = {};
     if (fs.existsSync(changelogFilePath)) {

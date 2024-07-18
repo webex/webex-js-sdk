@@ -34,16 +34,7 @@ describe('changelogUtils', () => {
       expect(fs.readFileSync).toHaveBeenCalledWith(`./docs/changelog/v${filePath331}.json`);
     });
 
-    it('dont read changelog data and create changelog file if version file doesnt exists', async () => {
-      fs.existsSync.mockReturnValue(false);
-      await changelogUtils.createOrUpdateChangelog(fixtures.packagesData, 'mock_commit_id');
-      expect(fs.readFileSync).not.toHaveBeenCalledWith();
-      expect(fs.mkdirSync).toHaveBeenCalledWith('./docs/changelog', {
-        recursive: true,
-      });
-    });
-
-    it('creates correct changelog data and writes to the respective changelog file', async () => {
+    it('creates changelog data and creates or put the data in the respective file', async () => {
       jest.spyOn(Date, 'now').mockReturnValue('123456789');
       fs.readFileSync.mockReturnValue(fixtures.changelogData);
       await changelogUtils.createOrUpdateChangelog(fixtures.packagesData, 'mock_commit_id');
@@ -51,6 +42,9 @@ describe('changelogUtils', () => {
         .split('-')[0]
         .replace(/\./g, '_');
       expect(fs.writeFileSync).toHaveBeenCalledTimes(2);
+      // writeFileSync will be called for each package
+      // Here, according to the fixtures first it will be called for webex
+      // and second, it will be called for @webex/package-tools
       expect(fs.writeFileSync.mock.calls).toEqual([
         [
           `./docs/changelog/v${filePath331}.json`,

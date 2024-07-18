@@ -31,7 +31,6 @@
     "test": "yarn test:style && yarn test:syntax && yarn test:integration && yarn test:coverage",
     "test:coverage": "yarn test:integration --coverage --reporters=\"jest-silent-reporter\"",
     "test:unit": "jest",
-    "test:integration": "jest",
     "test:style": "eslint ./test/**/*.* ./src/**/*.*",
     "test:syntax": "tsc --noEmit"
   },
