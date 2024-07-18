@@ -74,7 +74,7 @@
     "eslint-plugin-tsdoc": "0.2.14",
     "jest": "27.5.1",
     "jest-junit": "13.0.0",
-    "karma": "6.3.4",
+    "karma": "6.4.3",
     "karma-chai": "0.1.0",
     "karma-chrome-launcher": "3.1.0",
     "karma-coverage": "2.0.3",

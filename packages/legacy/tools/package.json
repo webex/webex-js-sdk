@@ -87,7 +87,7 @@
     "jest-environment-jsdom": "^29.1.2",
     "jsdom": "19.0.0",
     "jsdom-global": "3.0.2",
-    "karma": "^6.4.1",
+    "karma": "^6.4.3",
     "karma-browserify": "^8.1.0",
     "karma-chai": "^0.1.0",
     "karma-chrome-launcher": "^3.1.1",
