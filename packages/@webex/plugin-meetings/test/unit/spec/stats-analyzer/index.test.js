@@ -4,7 +4,6 @@ import { ConnectionState } from '@webex/internal-media-core';
 import { MEDIA_DEVICES, _UNKNOWN_, MQA_INTERVAL } from '../../../../src/constants';
 import LoggerProxy from '../../../../src/common/logs/logger-proxy';
 import {setImmediate} from "timers";
-import sinon from "sinon";
 import LoggerConfig from "../../../../src/common/logs/logger-config";
 const flushPromises = () => new Promise(setImmediate);
 jest.mock('../../../../src/common/logs/logger-proxy');
