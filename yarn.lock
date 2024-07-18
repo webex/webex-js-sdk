@@ -8971,7 +8971,7 @@ __metadata:
     eslint: ^8.24.0
     express: ^4.17.1
     express-session: ^1.16.2
-    express-validator: ^5.3.1
+    express-validator: ^7.1.0
     lodash: ^4.17.21
     morgan: ^1.9.1
     on-finished: ^2.3.0
@@ -15876,13 +15876,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"express-validator@npm:^5.3.1":
-  version: 5.3.1
-  resolution: "express-validator@npm:5.3.1"
+"express-validator@npm:^7.1.0":
+  version: 7.1.0
+  resolution: "express-validator@npm:7.1.0"
   dependencies:
-    lodash: ^4.17.10
-    validator: ^10.4.0
-  checksum: cf159a0f869d87a40705938ee5ac75bd411ee5db39bd3739e66cdb72bcaad9a9bad4f7d83bebeb2ef28c985f22ee5661feefa10c0a4e4aa7fae2af93b497d8c0
+    lodash: ^4.17.21
+    validator: ~13.12.0
+  checksum: 9b081a1f1f0c5a42f4ad71a9cd3162b50940a4d713b23f9bd5d60a07aa1bd2b768cbeb5ee18745371a412546fd19e37b3cbde7465bcdf20fb7914a5f1f26384c
   languageName: node
   linkType: hard
 
@@ -30813,17 +30813,17 @@ __metadata:
   languageName: node
   linkType: hard
 
-"validator@npm:^10.4.0":
-  version: 10.11.0
-  resolution: "validator@npm:10.11.0"
-  checksum: b945e5712af888fc5c984312cf9a7736d16a03f989556291d7984e5747efaaee6cdff671f6b0ef2630a6e2866a2728ab0f341877b878a9ffb8ad770dfcad7170
-  languageName: node
-  linkType: hard
-
 "validator@npm:^13.0.0, validator@npm:^13.7.0":
   version: 13.11.0
   resolution: "validator@npm:13.11.0"
   checksum: d1e0c27022681420756da25bc03eb08d5f0c66fb008f8ff02ebc95812b77c6be6e03d3bd05cf80ca702e23eeb73dadd66b4b3683173ea2a0bc7cc72820bee131
+  languageName: node
+  linkType: hard
+
+"validator@npm:~13.12.0":
+  version: 13.12.0
+  resolution: "validator@npm:13.12.0"
+  checksum: fb8f070724770b1449ea1a968605823fdb112dbd10507b2802f8841cda3e7b5c376c40f18c84e6a7b59de320a06177e471554101a85f1fa8a70bac1a84e48adf
   languageName: node
   linkType: hard
 
@@ -31382,7 +31382,7 @@ __metadata:
     expect-webdriverio: ^3.3.1
     express: ^4.17.1
     express-session: ^1.16.2
-    express-validator: ^5.3.1
+    express-validator: ^7.1.0
     firefox-profile: ^4.0.0
     fs-extra: ^8.1.0
     geckodriver: ^3.0.1
