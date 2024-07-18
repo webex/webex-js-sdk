@@ -2174,7 +2174,14 @@ describe('plugin-meetings', () => {
         };
         pc.getTransceiverStats = sinon.stub().resolves(stats);
 
-        await startStatsAnalyzer();
+        statsAnalyzer = new StatsAnalyzer({
+          config: initialConfig,
+          receiveSlotCallback: () => receiveSlot,
+          networkQualityMonitor,
+          isMultistream: true,
+        });
+        registerStatsAnalyzerEvents(statsAnalyzer);
+        await startStatsAnalyzer({pc, statsAnalyzer, mediaStatus: {expected: {receiveVideo: true}}});
         await progressTime();
 
         assert.equal(mqeData.audioTransmit[0].streams[0].backgroundNoiseReductionMode, NOISE_REDUCTION_MODE.LOW_POWER)
@@ -2200,22 +2207,34 @@ describe('plugin-meetings', () => {
           },
         };
 
+        // Set tu BLUR
         stats.video.senders[0].report[0].effect = {
           kind: 'virtual-background-effect',
           virtualBackgroundMode: 'BLUR',
         };
         pc.getTransceiverStats = sinon.stub().resolves(stats);
 
-        await startStatsAnalyzer();
+        statsAnalyzer = new StatsAnalyzer({
+          config: initialConfig,
+          receiveSlotCallback: () => receiveSlot,
+          networkQualityMonitor,
+          isMultistream: true,
+        });
+        await startStatsAnalyzer({pc, statsAnalyzer, mediaStatus: {expected: {receiveVideo: true}}});
         await progressTime();
 
-        assert.equal(mqeData.videoTransmit[0].streams[0].backgroundAugmentationType, VIRTUAL_BACKGROUND_MODE.BLUR)
+        for (const data of mqeData.videoTransmit) {
+          for (const stream of data.streams) {
+            // Everything is set to NONE ??
+            // Output: VIDEO_BACKGROUND_AUGMENT_NONE
+            // WHY
+            console.log(stream.backgroundAugmentationType)
+          }
+        }
 
-        stats.video.senders[0].report[0].effect = {
-          kind: 'virtual-background-effect',
-          virtualBackgroundMode: 'REPLACE_VIDEO',
-        };
-        pc.getTransceiverStats.resolves(stats);
+        // This is failing
+        // AssertionError: expected 'VIDEO_BACKGROUND_AUGMENT_NONE' to equal 'VIDEO_BACKGROUND_AUGMENT_BLUR'
+        assert.equal(mqeData.videoTransmit[0].streams[0].backgroundAugmentationType, VIRTUAL_BACKGROUND_MODE.BLUR)
       });
 
     })
