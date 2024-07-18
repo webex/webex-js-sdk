@@ -21,7 +21,7 @@ describe('ConnectionStateHandler', () => {
   });
 
   describe('ConnectionStateChangedEvent', () => {
-    it('should emit a CONNECTION_STATE_CHANGED event when the peer connection state changes', () => {
+    it('should emit a stateChanged event when the peer connection state changes', () => {
       const spy = sinon.spy(connectionStateHandler, 'emit');
 
       // check the right listener was registered
@@ -39,14 +39,14 @@ describe('ConnectionStateHandler', () => {
           file: 'connectionStateHandler',
           function: 'handleConnectionStateChange',
         },
-        ConnectionStateEvent.CONNECTION_STATE_CHANGED,
+        ConnectionStateEvent.stateChanged,
         {
           state: ConnectionState.Connecting,
         }
       );
     });
 
-    it('should emit a CONNECTION_STATE_CHANGED event when the ice connection state changes', () => {
+    it('should emit a stateChanged event when the ice connection state changes', () => {
       const spy = sinon.spy(connectionStateHandler, 'emit');
 
       // check the right listener was registered
@@ -64,14 +64,14 @@ describe('ConnectionStateHandler', () => {
           file: 'connectionStateHandler',
           function: 'handleConnectionStateChange',
         },
-        ConnectionStateEvent.CONNECTION_STATE_CHANGED,
+        ConnectionStateEvent.stateChanged,
         {
           state: ConnectionState.Connecting,
         }
       );
     });
 
-    it('should not emit a CONNECTION_STATE_CHANGED event when overall connection state does not change', () => {
+    it('should not emit a stateChanged event when overall connection state does not change', () => {
       const spy = sinon.spy(connectionStateHandler, 'emit');
 
       // check the right listener was registered
@@ -92,7 +92,7 @@ describe('ConnectionStateHandler', () => {
           file: 'connectionStateHandler',
           function: 'handleConnectionStateChange',
         },
-        ConnectionStateEvent.CONNECTION_STATE_CHANGED,
+        ConnectionStateEvent.stateChanged,
         {
           state: ConnectionState.Connecting,
         }

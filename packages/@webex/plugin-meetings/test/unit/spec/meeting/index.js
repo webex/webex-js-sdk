@@ -7235,7 +7235,7 @@ describe('plugin-meetings', () => {
             assert.equal(meeting.hasMediaConnectionConnectedAtLeastOnce, false);
 
             // simulate first connection success
-            eventListeners[Event.PEER_CONNECTION_STATE_CHANGED]();
+            simulateConnectionStateChange(ConnectionState.Connected);
             checkExpectedSpies({
               icePhase: 'JOIN_MEETING_FINAL',
               setNetworkStatusCallParams: [NETWORK_STATUS.CONNECTED],

@@ -1,9 +1,12 @@
 import {Event, ConnectionState} from '@webex/internal-media-core';
 import EventsScope from '../common/events/events-scope';
+import {Enum} from '../constants';
 
-export enum ConnectionStateEvent {
-  CONNECTION_STATE_CHANGED = 'connectionState:changed',
-}
+export const ConnectionStateEvent = {
+  stateChanged: 'connectionState:changed',
+} as const;
+
+export type ConnectionStateEvent = Enum<typeof ConnectionStateEvent>;
 
 export interface ConnectionStateChangedEvent {
   /**
@@ -54,7 +57,7 @@ export class ConnectionStateHandler extends EventsScope {
           file: 'connectionStateHandler',
           function: 'handleConnectionStateChange',
         },
-        ConnectionStateEvent.CONNECTION_STATE_CHANGED,
+        ConnectionStateEvent.stateChanged,
         {state: this.mediaConnectionState}
       );
     }

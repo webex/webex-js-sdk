@@ -5866,7 +5866,7 @@ export default class Meeting extends StatelessWebexPlugin {
       this.mediaProperties.webrtcMediaConnection
     );
 
-    this.connectionStateHandler.on(ConnectionStateEvent.CONNECTION_STATE_CHANGED, (event) => {
+    this.connectionStateHandler.on(ConnectionStateEvent.stateChanged, (event) => {
       const connectionFailed = () => {
         Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.CONNECTION_FAILURE, {
           correlation_id: this.correlationId,
