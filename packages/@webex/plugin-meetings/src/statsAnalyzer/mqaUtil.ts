@@ -2,7 +2,7 @@
 
 import {mean, max} from 'lodash';
 
-import {MQA_INTERVAL, STATS, NOISE_REDUCTION_EFFECT_STATS, VIRTUAL_BACKGROUND_EFFECT_STATS} from '../constants';
+import {MQA_INTERVAL, STATS} from '../constants';
 
 /**
  * Get the totals of a certain value from a certain media type.

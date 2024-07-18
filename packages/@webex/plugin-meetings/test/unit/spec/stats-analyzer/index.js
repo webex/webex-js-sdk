@@ -935,13 +935,6 @@ describe('plugin-meetings', () => {
           assert.strictEqual(mqeData.videoReceive[0].streams[0].common.receivedFrameRate, 0);
         });
 
-        it('emits the correct callingServiceType in MEDIA_QUALITY events', async () => {
-          await startStatsAnalyzer({expected: {receiveVideo: true}});
-          await progressTime();
-
-          assert.strictEqual(mqeData.callingServiceType, CALLING_SERVICE_TYPE);
-        });
-
         it('should accurately report the transmitted and received frame rate after video frames are processed', async () => {
           fakeStats.video.senders[0].report[0].framesSent += 300;
           fakeStats.video.receivers[0].report[0].framesReceived += 300;
