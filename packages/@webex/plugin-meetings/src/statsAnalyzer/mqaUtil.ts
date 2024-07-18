@@ -505,9 +505,6 @@ export const getVideoSenderStreamMqa = ({
     mode = VIRTUAL_BACKGROUND_MODE[lastUsedEffect.virtualBackgroundMode];
   }
   videoSenderStream.backgroundAugmentationType = mode;
-  // This value is correct
-  // Output: video-send-layer-0 send VIDEO_BACKGROUND_AUGMENT_BLUR VIDEO_BACKGROUND_AUGMENT_BLUR
-  console.log(mediaType, sendrecvType, mode, videoSenderStream.backgroundAugmentationType);
 };
 
 /**

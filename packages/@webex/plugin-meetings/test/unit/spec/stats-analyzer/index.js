@@ -2207,7 +2207,6 @@ describe('plugin-meetings', () => {
           },
         };
 
-        // Set tu BLUR
         stats.video.senders[0].report[0].effect = {
           kind: 'virtual-background-effect',
           virtualBackgroundMode: 'BLUR',
@@ -2220,20 +2219,10 @@ describe('plugin-meetings', () => {
           networkQualityMonitor,
           isMultistream: true,
         });
+        registerStatsAnalyzerEvents(statsAnalyzer);
         await startStatsAnalyzer({pc, statsAnalyzer, mediaStatus: {expected: {receiveVideo: true}}});
         await progressTime();
 
-        for (const data of mqeData.videoTransmit) {
-          for (const stream of data.streams) {
-            // Everything is set to NONE ??
-            // Output: VIDEO_BACKGROUND_AUGMENT_NONE
-            // WHY
-            console.log(stream.backgroundAugmentationType)
-          }
-        }
-
-        // This is failing
-        // AssertionError: expected 'VIDEO_BACKGROUND_AUGMENT_NONE' to equal 'VIDEO_BACKGROUND_AUGMENT_BLUR'
         assert.equal(mqeData.videoTransmit[0].streams[0].backgroundAugmentationType, VIRTUAL_BACKGROUND_MODE.BLUR)
       });
 
