@@ -16,7 +16,7 @@ const CONFIG: CommandsConfig = {
       type: 'string...',
     },
     {
-      description: 'Tag to update this local package with on npm',
+      description: 'Tag to use while fetching details from npm',
       name: 'tag',
       type: 'string',
     },

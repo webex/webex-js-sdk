@@ -26,13 +26,14 @@ const changelog: CommandsCommand<Options> = {
    * @param options - Options provided from the CLI interface.
    * @returns - Promise that resolves once the process is complete.
    */
-  handler: async (options: Options) => {
+  handler: (options: Options) => {
     if (!options.packages) {
       return Promise.resolve({});
     }
     const rootDir = process.cwd();
 
     const tag = options.tag?.split('/').pop();
+
     return Yarn.list()
       .then((packageDetails) => packageDetails.map(
         ({ location, name }: PackageConfig) => new Package({
@@ -46,7 +47,7 @@ const changelog: CommandsCommand<Options> = {
       ))
       .then((packs) => Promise.all(packs.map((pack) => pack.inspect())))
       .then(async (packs) => {
-        await createOrUpdateChangelog(packs, options.commit);
+        createOrUpdateChangelog(packs, options.commit);
       });
   },
 };

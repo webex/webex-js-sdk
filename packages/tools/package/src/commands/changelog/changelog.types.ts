@@ -38,8 +38,21 @@ export interface AlongWithData {
 
 export interface ChangelogEntry {
   [packageName: string]: {
+    /**
+     * Version of the package
+     */
     [version: string]: {
+      /**
+       * Published date of the version
+       */
+      published_date: number;
+      /**
+       * Details about the commits that went into the version
+       */
       commits: CommitDetails;
+      /**
+       * Details about the packages that went into the version along with a package.
+       */
       alongWith: AlongWithData;
     };
   };

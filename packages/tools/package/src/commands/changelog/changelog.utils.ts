@@ -1,37 +1,13 @@
 import { Package } from '../../models';
+import { runShellScript } from './changelog.shell';
 import { AlongWithData, ChangelogEntry } from './changelog.types';
 
 const fs = require('fs');
 const path = require('path');
-const { exec } = require('child_process');
 
 /**
- * Function to execute shell command and capture output
- * @param scriptPath - Path to the script which we want to run.
- * @returns - Promise that resolves once the script is run and returns the output.
- */
-export function runShellScript(scriptPath: string) {
-  return new Promise((resolve, reject) => {
-    // @ts-ignore
-    exec(`bash ${scriptPath}`, (error, stdout, stderr) => {
-      if (error) {
-        console.error(`Error executing script: ${error}`);
-        reject(error);
-      } else if (stderr) {
-        console.error(`Script stderr: ${stderr}`);
-        reject(stderr);
-      } else {
-        // Process the stdout (output) as needed
-        resolve(stdout);
-      }
-    });
-  });
-}
-
-/**
- * Function to get and formate alongWith object
- * alongWith object has the information about packages that are modified `along with`
- * a package
+ * Function to get the along with data
+ * alongWithData object shows the versions of packages that were created with the current package
  * @param packageName - Name of the package for which we need to create the along with object.
  * @param packages - Details of all the modified packages.
  * @returns - AlongWithData for the package.
@@ -69,13 +45,15 @@ function ensureDirectoryExistence(filePath: string) {
  * @param prevCommitId - commitId of the previous commit
  */
 export async function createOrUpdateChangelog(packages: Package[], prevCommitId: string) {
+  console.log(packages);
   Object.keys(packages).forEach(async (index: any) => {
     const pkgName = packages[index].name;
+    // const {version} = packages[index];
+    // console.log(packages[index], version);
     const { version } = packages[index];
     const fileName = version.split('-')[0].replace(/\./g, '_');
     // Constructing the changelog file name
-    const changelogFileName = `./docs/changelog/v${fileName}.json`;
-    const changelogFilePath = changelogFileName;
+    const changelogFilePath = `./docs/changelog/v${fileName}.json`;
     // Prepare the changelog entry
     const changelogEntry: ChangelogEntry = {};
     let commits: string | unknown;
@@ -91,6 +69,7 @@ export async function createOrUpdateChangelog(packages: Package[], prevCommitId:
     if (version && commits) {
       changelogEntry[pkgName] = {
         [version]: {
+          published_date: Math.floor(Date.now() / 1000),
           commits: JSON.parse(commits as string),
           alongWith: getAlongWithData(pkgName, packages),
         },
