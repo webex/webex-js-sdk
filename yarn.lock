@@ -8303,6 +8303,7 @@ __metadata:
     "@webex/test-helper-mock-webex": "workspace:*"
     "@webex/test-helper-retry": "workspace:*"
     "@webex/test-helper-test-users": "workspace:*"
+    "@webex/web-capabilities": ^1.3.0
     "@webex/webex-core": "workspace:*"
     ampersand-collection: ^2.0.2
     bowser: ^2.11.0
