@@ -6,6 +6,9 @@ export enum ConnectionStateEvent {
 }
 
 export interface ConnectionStateChangedEvent {
+  /**
+  Current overall connection state
+  */
   state: ConnectionState; // current overall connection state
 }
 
