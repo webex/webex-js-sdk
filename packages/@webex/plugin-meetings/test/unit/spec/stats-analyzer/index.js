@@ -2165,7 +2165,7 @@ describe('plugin-meetings', () => {
         };
 
         const bytesReceived = 480_000;
-        const expectedBitrate = 64;
+        const expectedBitrate = (bytesReceived * 8) / MQA_INTERVAL; // 64
 
         stats.audio.receivers[0].report[0].bytesReceived = bytesReceived;
         stats.audio.senders[0].report[0].bytesSent = bytesReceived;
