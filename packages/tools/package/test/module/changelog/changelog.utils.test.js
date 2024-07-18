@@ -1,10 +1,10 @@
 const changelogUtils = require('@webex/package-tools/dist/module/commands/changelog/changelog.utils');
-const changelogShell = require('@webex/package-tools/dist/module/commands/changelog/changelog.shell');
+const changelogExecutor = require('@webex/package-tools/dist/module/commands/changelog/changelog.executor');
 const fs = require('fs');
 const fixtures = require('./changelog.fixtures');
 
-jest.mock('@webex/package-tools/dist/module/commands/changelog/changelog.shell', () => ({
-  runShellScript: jest.fn().mockResolvedValue('{"mockCommitId": "mock commit message"}'),
+jest.mock('@webex/package-tools/dist/module/commands/changelog/changelog.executor', () => ({
+  getCommits: jest.fn().mockResolvedValue('{"mockCommitId": "mock commit message"}'),
 }));
 
 jest.mock('fs', () => ({
@@ -20,10 +20,11 @@ describe('changelogUtils', () => {
   describe('createOrUpdateChangelog', () => {
     const filePath331 = fixtures.packagesData[0].version.split('-')[0].replace(/\./g, '_');
 
-    it('should "runShellScript" with correct arguments', async () => {
+    it('should "getCommits" with correct arguments', async () => {
       await changelogUtils.createOrUpdateChangelog(fixtures.packagesData, 'mock_commit_id');
-      expect(changelogShell.runShellScript).toHaveBeenCalledWith(
-        'packages/tools/package/src/commands/changelog/getCommits.sh mock_commit_id',
+      expect(changelogExecutor.getCommits).toHaveBeenCalledTimes(2);
+      expect(changelogExecutor.getCommits).toHaveBeenCalledWith(
+        'mock_commit_id',
       );
     });
 

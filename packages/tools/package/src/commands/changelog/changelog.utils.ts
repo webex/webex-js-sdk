@@ -1,5 +1,5 @@
 import { Package } from '../../models';
-import { runShellScript } from './changelog.shell';
+import { getCommits } from './changelog.executor';
 import { AlongWithData, ChangelogEntry } from './changelog.types';
 
 const fs = require('fs');
@@ -45,7 +45,6 @@ function ensureDirectoryExistence(filePath: string) {
  * @param prevCommitId - commitId of the previous commit
  */
 export async function createOrUpdateChangelog(packages: Package[], prevCommitId: string) {
-  console.log(packages);
   Object.keys(packages).forEach(async (index: any) => {
     const pkgName = packages[index].name;
     // const {version} = packages[index];
@@ -58,8 +57,8 @@ export async function createOrUpdateChangelog(packages: Package[], prevCommitId:
     const changelogEntry: ChangelogEntry = {};
     let commits: string | unknown;
     try {
-      commits = await runShellScript(
-        `packages/tools/package/src/commands/changelog/getCommits.sh ${prevCommitId}`,
+      commits = await getCommits(
+        prevCommitId,
       );
     } catch (err) {
       console.log('Changelog Error: Error while getting commits', err);
