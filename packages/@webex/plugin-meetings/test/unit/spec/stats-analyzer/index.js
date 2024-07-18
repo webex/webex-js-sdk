@@ -16,6 +16,14 @@ const {assert} = chai;
 chai.use(chaiAsPromised);
 sinon.assert.expose(chai.assert, {prefix: ''});
 
+const startStatsAnalyzer = async ({statsAnalyzer, mediaStatus, lastEmittedEvents = {}, pc}) => {
+  statsAnalyzer.updateMediaStatus(mediaStatus);
+  statsAnalyzer.startAnalyzer(pc);
+  statsAnalyzer.lastEmittedStartStopEvent = lastEmittedEvents;
+
+  await testUtils.flushPromises();
+};
+
 describe('plugin-meetings', () => {
   describe('StatsAnalyzer', () => {
     describe('parseStatsResult', () => {
@@ -29,10 +37,12 @@ describe('plugin-meetings', () => {
         const networkQualityMonitor = new NetworkQualityMonitor(initialConfig);
 
         statsAnalyzer = new StatsAnalyzer(
-          initialConfig,
-          () => ({}),
-          networkQualityMonitor,
-          defaultStats
+          {
+            config: initialConfig,
+            receiveSlotCallback: () => ({}),
+            networkQualityMonitor,
+            statsResults: defaultStats,
+          },
         );
       });
 
@@ -89,7 +99,7 @@ describe('plugin-meetings', () => {
             requestedBitrate: 10000,
           },
           'audio-send',
-          true
+          true,
         );
 
         assert.strictEqual(statsAnalyzer.statsResults['audio-send'].send.headerBytesSent, 25000);
@@ -126,7 +136,7 @@ describe('plugin-meetings', () => {
             requestedBitrate: 50000,
           },
           'video-send',
-          true
+          true,
         );
 
         assert.strictEqual(statsAnalyzer.statsResults['video-send'].send.headerBytesSent, 50000);
@@ -136,11 +146,11 @@ describe('plugin-meetings', () => {
         assert.strictEqual(statsAnalyzer.statsResults['video-send'].send.requestedBitrate, 50000);
         assert.strictEqual(
           statsAnalyzer.statsResults['video-send'].send.totalRtxPacketsSent,
-          10
+          10,
         );
         assert.strictEqual(
           statsAnalyzer.statsResults['video-send'].send.totalRtxBytesSent,
-          500
+          500,
         );
       });
 
@@ -183,12 +193,12 @@ describe('plugin-meetings', () => {
             requestedBitrate: 10000,
           },
           'audio-recv-1',
-          false
+          false,
         );
 
         assert.strictEqual(
           statsAnalyzer.statsResults['audio-recv-1'].recv.totalPacketsReceived,
-          12
+          12,
         );
         assert.strictEqual(statsAnalyzer.statsResults['audio-recv-1'].recv.fecPacketsDiscarded, 1);
         assert.strictEqual(statsAnalyzer.statsResults['audio-recv-1'].recv.fecPacketsReceived, 1);
@@ -196,18 +206,18 @@ describe('plugin-meetings', () => {
         assert.strictEqual(statsAnalyzer.statsResults['audio-recv-1'].recv.requestedBitrate, 10000);
         assert.strictEqual(
           statsAnalyzer.statsResults['audio-recv-1'].recv.headerBytesReceived,
-          250
+          250,
         );
         assert.strictEqual(statsAnalyzer.statsResults['audio-recv-1'].recv.audioLevel, 0);
         assert.strictEqual(statsAnalyzer.statsResults['audio-recv-1'].recv.totalAudioEnergy, 133);
         assert.strictEqual(
           statsAnalyzer.statsResults['audio-recv-1'].recv.totalSamplesReceived,
-          300000
+          300000,
         );
         assert.strictEqual(statsAnalyzer.statsResults['audio-recv-1'].recv.totalSamplesDecoded, 0);
         assert.strictEqual(
           statsAnalyzer.statsResults['audio-recv-1'].recv.concealedSamples,
-          200000
+          200000,
         );
       });
 
@@ -243,7 +253,7 @@ describe('plugin-meetings', () => {
             retransmittedPacketsReceived: 10,
           },
           'video-recv',
-          false
+          false,
         );
 
         assert.strictEqual(statsAnalyzer.statsResults['video-recv'].recv.totalPacketsReceived, 1500);
@@ -275,7 +285,7 @@ describe('plugin-meetings', () => {
             type: 'media-source',
           },
           'audio-send',
-          true
+          true,
         );
 
         assert.strictEqual(statsAnalyzer.statsResults['audio-send'].send.audioLevel, 0.03);
@@ -322,15 +332,17 @@ describe('plugin-meetings', () => {
         const networkQualityMonitor = new NetworkQualityMonitor(initialConfig);
 
         statsAnalyzer = new StatsAnalyzer(
-          initialConfig,
-          () => ({}),
-          networkQualityMonitor,
-          defaultStats
+          {
+            config: initialConfig,
+            receiveSlotCallback: () => ({}),
+            networkQualityMonitor,
+            statsResults: defaultStats,
+          },
         );
 
         sandBoxSpy = sandbox.spy(
           statsAnalyzer.networkQualityMonitor,
-          'determineUplinkNetworkQuality'
+          'determineUplinkNetworkQuality',
         );
       });
 
@@ -347,7 +359,7 @@ describe('plugin-meetings', () => {
             mediaType: 'video-send-1',
             remoteRtpResults: statusResult,
             statsAnalyzerCurrentStats: statsAnalyzer.statsResults,
-          })
+          }),
         );
       });
     });
@@ -379,6 +391,24 @@ describe('plugin-meetings', () => {
           local: {},
           remote: {},
         };
+      };
+
+      const registerStatsAnalyzerEvents = (statsAnalyzer) => {
+        statsAnalyzer.on(EVENTS.LOCAL_MEDIA_STARTED, (data) => {
+          receivedEventsData.local.started = data;
+        });
+        statsAnalyzer.on(EVENTS.LOCAL_MEDIA_STOPPED, (data) => {
+          receivedEventsData.local.stopped = data;
+        });
+        statsAnalyzer.on(EVENTS.REMOTE_MEDIA_STARTED, (data) => {
+          receivedEventsData.remote.started = data;
+        });
+        statsAnalyzer.on(EVENTS.REMOTE_MEDIA_STOPPED, (data) => {
+          receivedEventsData.remote.stopped = data;
+        });
+        statsAnalyzer.on(EVENTS.MEDIA_QUALITY, ({data}) => {
+          mqeData = data;
+        });
       };
 
       before(() => {
@@ -512,6 +542,8 @@ describe('plugin-meetings', () => {
                     packetsReceived: 0,
                     isRequested: true,
                     lastRequestedUpdateTimestamp: 0,
+                    isActiveSpeaker: false,
+                    lastActiveSpeakerUpdateTimestamp: 0,
                   },
                   {
                     type: 'remote-outbound-rtp',
@@ -547,6 +579,7 @@ describe('plugin-meetings', () => {
                     packetsSent: 0,
                     isRequested: true,
                     lastRequestedUpdateTimestamp: 0,
+                    encoderImplementation: 'fake-encoder',
                   },
                   {
                     type: 'remote-inbound-rtp',
@@ -633,23 +666,11 @@ describe('plugin-meetings', () => {
 
         networkQualityMonitor = new NetworkQualityMonitor(initialConfig);
 
-        statsAnalyzer = new StatsAnalyzer(initialConfig, () => receiveSlot, networkQualityMonitor);
+        statsAnalyzer = new StatsAnalyzer({
+          config: initialConfig, receiveSlotCallback: () => receiveSlot, networkQualityMonitor,
+        });
 
-        statsAnalyzer.on(EVENTS.LOCAL_MEDIA_STARTED, (data) => {
-          receivedEventsData.local.started = data;
-        });
-        statsAnalyzer.on(EVENTS.LOCAL_MEDIA_STOPPED, (data) => {
-          receivedEventsData.local.stopped = data;
-        });
-        statsAnalyzer.on(EVENTS.REMOTE_MEDIA_STARTED, (data) => {
-          receivedEventsData.remote.started = data;
-        });
-        statsAnalyzer.on(EVENTS.REMOTE_MEDIA_STOPPED, (data) => {
-          receivedEventsData.remote.stopped = data;
-        });
-        statsAnalyzer.on(EVENTS.MEDIA_QUALITY, ({data}) => {
-          mqeData = data;
-        });
+        registerStatsAnalyzerEvents(statsAnalyzer);
       });
 
       afterEach(() => {
@@ -657,20 +678,12 @@ describe('plugin-meetings', () => {
         clock.restore();
       });
 
-      const startStatsAnalyzer = async (mediaStatus, lastEmittedEvents) => {
-        statsAnalyzer.updateMediaStatus(mediaStatus);
-        statsAnalyzer.startAnalyzer(pc);
-        statsAnalyzer.lastEmittedStartStopEvent = lastEmittedEvents || {};
-
-        await testUtils.flushPromises();
-      };
-
       const mergeProperties = (
         target,
         properties,
         keyValue = 'fake-candidate-id',
         matchKey = 'type',
-        matchValue = 'local-candidate'
+        matchValue = 'local-candidate',
       ) => {
         for (let key in target) {
           if (target.hasOwnProperty(key)) {
@@ -715,7 +728,15 @@ describe('plugin-meetings', () => {
       };
 
       it('emits LOCAL_MEDIA_STARTED and LOCAL_MEDIA_STOPPED events for audio', async () => {
-        await startStatsAnalyzer({expected: {sendAudio: true}});
+        await startStatsAnalyzer({
+          statsAnalyzer,
+          pc,
+          mediaStatus: {
+            expected: {
+              sendAudio: true,
+            },
+          },
+        });
 
         // check that we haven't received any events yet
         checkReceivedEvent({expected: {}});
@@ -735,7 +756,7 @@ describe('plugin-meetings', () => {
       });
 
       it('emits LOCAL_MEDIA_STARTED and LOCAL_MEDIA_STOPPED events for video', async () => {
-        await startStatsAnalyzer({expected: {sendVideo: true}});
+        await startStatsAnalyzer({pc, statsAnalyzer, mediaStatus: {expected: {sendVideo: true}}});
 
         // check that we haven't received any events yet
         checkReceivedEvent({expected: {}});
@@ -755,7 +776,7 @@ describe('plugin-meetings', () => {
       });
 
       it('emits LOCAL_MEDIA_STARTED and LOCAL_MEDIA_STOPPED events for share', async () => {
-        await startStatsAnalyzer({expected: {sendShare: true}});
+        await startStatsAnalyzer({pc, statsAnalyzer, mediaStatus: {expected: {sendShare: true}}});
 
         // check that we haven't received any events yet
         checkReceivedEvent({expected: {}});
@@ -775,7 +796,7 @@ describe('plugin-meetings', () => {
       });
 
       it('emits REMOTE_MEDIA_STARTED and REMOTE_MEDIA_STOPPED events for audio', async () => {
-        await startStatsAnalyzer({expected: {receiveAudio: true}});
+        await startStatsAnalyzer({pc, statsAnalyzer, mediaStatus: {expected: {receiveAudio: true}}});
 
         // check that we haven't received any events yet
         checkReceivedEvent({expected: {}});
@@ -795,7 +816,7 @@ describe('plugin-meetings', () => {
       });
 
       it('emits REMOTE_MEDIA_STARTED and REMOTE_MEDIA_STOPPED events for video', async () => {
-        await startStatsAnalyzer({expected: {receiveVideo: true}});
+        await startStatsAnalyzer({pc, statsAnalyzer, mediaStatus: {expected: {receiveVideo: true}}});
 
         // check that we haven't received any events yet
         checkReceivedEvent({expected: {}});
@@ -815,7 +836,7 @@ describe('plugin-meetings', () => {
       });
 
       it('emits REMOTE_MEDIA_STARTED and REMOTE_MEDIA_STOPPED events for share', async () => {
-        await startStatsAnalyzer({expected: {receiveShare: true}});
+        await startStatsAnalyzer({pc, statsAnalyzer, mediaStatus: {expected: {receiveShare: true}}});
 
         // check that we haven't received any events yet
         checkReceivedEvent({expected: {}});
@@ -835,7 +856,7 @@ describe('plugin-meetings', () => {
       });
 
       it('emits the correct MEDIA_QUALITY events', async () => {
-        await startStatsAnalyzer({expected: {receiveVideo: true}});
+        await startStatsAnalyzer({pc, statsAnalyzer, mediaStatus: {expected: {receiveVideo: true}}});
 
         await progressTime();
 
@@ -844,7 +865,7 @@ describe('plugin-meetings', () => {
       });
 
       it('emits the correct transportType in MEDIA_QUALITY events', async () => {
-        await startStatsAnalyzer({expected: {receiveVideo: true}});
+        await startStatsAnalyzer({pc, statsAnalyzer, mediaStatus: {expected: {receiveVideo: true}}});
 
         await progressTime();
 
@@ -858,7 +879,7 @@ describe('plugin-meetings', () => {
         fakeStats.audio.receivers[0].report[4].relayProtocol = 'tls';
         fakeStats.video.receivers[0].report[4].relayProtocol = 'tls';
 
-        await startStatsAnalyzer({expected: {receiveVideo: true}});
+        await startStatsAnalyzer({pc, statsAnalyzer, mediaStatus: {expected: {receiveVideo: true}}});
 
         await progressTime();
 
@@ -867,19 +888,19 @@ describe('plugin-meetings', () => {
       });
 
       it('emits the correct peripherals in MEDIA_QUALITY events', async () => {
-        await startStatsAnalyzer({expected: {receiveVideo: true}});
+        await startStatsAnalyzer({pc, statsAnalyzer, mediaStatus: {expected: {receiveVideo: true}}});
 
         await progressTime();
 
         assert.strictEqual(
           mqeData.intervalMetadata.peripherals.find((val) => val.name === MEDIA_DEVICES.MICROPHONE)
             .information,
-          'fake-microphone'
+          'fake-microphone',
         );
         assert.strictEqual(
           mqeData.intervalMetadata.peripherals.find((val) => val.name === MEDIA_DEVICES.CAMERA)
             .information,
-          'fake-camera'
+          'fake-camera',
         );
       });
 
@@ -887,30 +908,33 @@ describe('plugin-meetings', () => {
         fakeStats.audio.senders[0].localTrackLabel = undefined;
         fakeStats.video.senders[0].localTrackLabel = undefined;
 
-        await startStatsAnalyzer({expected: {receiveVideo: true}});
+        await startStatsAnalyzer({pc, statsAnalyzer, mediaStatus: {expected: {receiveVideo: true}}});
 
         await progressTime();
 
         assert.strictEqual(
           mqeData.intervalMetadata.peripherals.find((val) => val.name === MEDIA_DEVICES.MICROPHONE)
             .information,
-          _UNKNOWN_
+          _UNKNOWN_,
         );
         assert.strictEqual(
           mqeData.intervalMetadata.peripherals.find((val) => val.name === MEDIA_DEVICES.CAMERA)
             .information,
-          _UNKNOWN_
+          _UNKNOWN_,
         );
       });
 
-      it('emits the correct transmittedFrameRate/receivedFrameRate', async () => {
-        it('at the start of the stats analyzer', async () => {
-          await startStatsAnalyzer();
+      describe('frame rate reporting in stats analyzer', () => {
+        beforeEach(async () => {
+          await startStatsAnalyzer({pc, statsAnalyzer});
+        });
+
+        it('should report a zero frame rate for both transmitted and received video at the start', async () => {
           assert.strictEqual(mqeData.videoTransmit[0].streams[0].common.transmittedFrameRate, 0);
           assert.strictEqual(mqeData.videoReceive[0].streams[0].common.receivedFrameRate, 0);
         });
 
-        it('after frames are sent and received', async () => {
+        it('should accurately report the transmitted and received frame rate after video frames are processed', async () => {
           fakeStats.video.senders[0].report[0].framesSent += 300;
           fakeStats.video.receivers[0].report[0].framesReceived += 300;
           await progressTime(MQA_INTERVAL);
@@ -921,9 +945,12 @@ describe('plugin-meetings', () => {
         });
       });
 
-      it('emits the correct rtpPackets', async () => {
-        it('at the start of the stats analyzer', async () => {
-          await startStatsAnalyzer();
+      describe('RTP packets count in stats analyzer', () => {
+        beforeEach(async () => {
+          await startStatsAnalyzer({pc, statsAnalyzer});
+        });
+
+        it('should report zero RTP packets for all streams at the start of the stats analyzer', async () => {
           assert.strictEqual(mqeData.audioTransmit[0].common.rtpPackets, 0);
           assert.strictEqual(mqeData.audioTransmit[0].streams[0].common.rtpPackets, 0);
           assert.strictEqual(mqeData.audioReceive[0].common.rtpPackets, 0);
@@ -934,7 +961,7 @@ describe('plugin-meetings', () => {
           assert.strictEqual(mqeData.videoReceive[0].streams[0].common.rtpPackets, 0);
         });
 
-        it('after packets are sent', async () => {
+        it('should update the RTP packets count correctly after audio and video packets are sent', async () => {
           fakeStats.audio.senders[0].report[0].packetsSent += 5;
           fakeStats.video.senders[0].report[0].packetsSent += 5;
           await progressTime(MQA_INTERVAL);
@@ -945,7 +972,7 @@ describe('plugin-meetings', () => {
           assert.strictEqual(mqeData.videoTransmit[0].streams[0].common.rtpPackets, 5);
         });
 
-        it('after packets are received', async () => {
+        it('should update the RTP packets count correctly after audio and video packets are received', async () => {
           fakeStats.audio.senders[0].report[0].packetsSent += 10;
           fakeStats.video.senders[0].report[0].packetsSent += 10;
           fakeStats.audio.receivers[0].report[0].packetsReceived += 10;
@@ -959,38 +986,83 @@ describe('plugin-meetings', () => {
         });
       });
 
-      it('emits the correct fecPackets', async () => {
-        it('at the start of the stats analyzer', async () => {
-          await startStatsAnalyzer();
+      describe('FEC packet reporting in stats analyzer', () => {
+        beforeEach(async () => {
+          await startStatsAnalyzer({pc, statsAnalyzer});
+        });
+
+        it('should initially report zero FEC packets at the start of the stats analyzer', async () => {
           assert.strictEqual(mqeData.audioReceive[0].common.fecPackets, 0);
         });
 
-        it('after FEC packets are received', async () => {
+        it('should accurately report the count of FEC packets received', async () => {
           fakeStats.audio.receivers[0].report[0].fecPacketsReceived += 5;
           await progressTime(MQA_INTERVAL);
 
           assert.strictEqual(mqeData.audioReceive[0].common.fecPackets, 5);
         });
 
-        it('after FEC packets are received and some FEC packets are discarded', async () => {
+        it('should accurately update and reset the FEC packet count based on received packets over MQA intervals', async () => {
           fakeStats.audio.receivers[0].report[0].fecPacketsReceived += 15;
-          fakeStats.audio.receivers[0].report[0].fecPacketsDiscarded += 5;
           await progressTime(MQA_INTERVAL);
+          assert.strictEqual(mqeData.audioReceive[0].common.fecPackets, 15);
 
-          assert.strictEqual(mqeData.audioReceive[0].common.fecPackets, 10);
+          fakeStats.audio.receivers[0].report[0].fecPacketsReceived += 45;
+          await progressTime(MQA_INTERVAL);
+          assert.strictEqual(mqeData.audioReceive[0].common.fecPackets, 45);
+
+          await progressTime(MQA_INTERVAL);
+          assert.strictEqual(mqeData.audioReceive[0].common.fecPackets, 0);
         });
       });
 
-      it('emits the correct mediaHopByHopLost/rtpHopByHopLost', async () => {
-        it('at the start of the stats analyzer', async () => {
-          await startStatsAnalyzer();
+      describe('RTP recovered packets emission', async() => {
+        beforeEach(async() => {
+          await startStatsAnalyzer({pc, statsAnalyzer});
+        });
+
+        it('should initially report zero RTP recovered packets', async() => {
+          assert.strictEqual(mqeData.audioReceive[0].common.rtpRecovered, 0);
+        })
+
+        it('should report RTP recovered packets equal to FEC packets received', async() => {
+          fakeStats.audio.receivers[0].report[0].fecPacketsReceived += 10;
+
+          await progressTime(MQA_INTERVAL);
+          assert.strictEqual(mqeData.audioReceive[0].common.rtpRecovered, 10);
+        })
+
+        it('should reset RTP recovered packets count after each interval', async () => {
+          fakeStats.audio.receivers[0].report[0].fecPacketsReceived += 100;
+          await progressTime(MQA_INTERVAL);
+          assert.strictEqual(mqeData.audioReceive[0].common.rtpRecovered, 100);
+
+          await progressTime(MQA_INTERVAL);
+          assert.strictEqual(mqeData.audioReceive[0].common.rtpRecovered, 0);
+        })
+
+        it('should correctly calculate RTP recovered packets after discarding FEC packets', async () => {
+          fakeStats.audio.receivers[0].report[0].fecPacketsReceived += 100;
+          fakeStats.audio.receivers[0].report[0].fecPacketsDiscarded += 20;
+
+          await progressTime(MQA_INTERVAL);
+          assert.strictEqual(mqeData.audioReceive[0].common.rtpRecovered, 80);
+        })
+      })
+
+      describe('packet loss metrics reporting in stats analyzer', () => {
+        beforeEach(async () => {
+          await startStatsAnalyzer({pc, statsAnalyzer});
+        });
+
+        it('should report zero packet loss for both audio and video at the start of the stats analyzer', async () => {
           assert.strictEqual(mqeData.audioReceive[0].common.mediaHopByHopLost, 0);
           assert.strictEqual(mqeData.audioReceive[0].common.rtpHopByHopLost, 0);
           assert.strictEqual(mqeData.videoReceive[0].common.mediaHopByHopLost, 0);
           assert.strictEqual(mqeData.videoReceive[0].common.rtpHopByHopLost, 0);
         });
 
-        it('after packets are lost', async () => {
+        it('should update packet loss metrics correctly for both audio and video after packet loss is detected', async () => {
           fakeStats.audio.receivers[0].report[0].packetsLost += 5;
           fakeStats.video.receivers[0].report[0].packetsLost += 5;
           await progressTime(MQA_INTERVAL);
@@ -1002,36 +1074,56 @@ describe('plugin-meetings', () => {
         });
       });
 
-      it('emits the correct remoteLossRate', async () => {
-        it('at the start of the stats analyzer', async () => {
-          await startStatsAnalyzer();
-          assert.strictEqual(mqeData.audioTransmit[0].common.remoteLossRate, 0);
-          assert.strictEqual(mqeData.videoTransmit[0].common.remoteLossRate, 0);
+      describe('maximum remote loss rate reporting in stats analyzer', () => {
+        beforeEach(async () => {
+          await startStatsAnalyzer({pc, statsAnalyzer});
         });
 
-        it('after packets are sent', async () => {
+        it('should report a zero maximum remote loss rate for both audio and video at the start', async () => {
+          assert.strictEqual(mqeData.audioTransmit[0].common.maxRemoteLossRate, 0);
+          assert.strictEqual(mqeData.videoTransmit[0].common.maxRemoteLossRate, 0);
+        });
+
+        it('should maintain a zero maximum remote loss rate for both audio and video after packets are sent without loss', async () => {
           fakeStats.audio.senders[0].report[0].packetsSent += 100;
           fakeStats.video.senders[0].report[0].packetsSent += 100;
           await progressTime(MQA_INTERVAL);
 
-          assert.strictEqual(mqeData.audioTransmit[0].common.remoteLossRate, 0);
-          assert.strictEqual(mqeData.videoTransmit[0].common.remoteLossRate, 0);
+          assert.strictEqual(mqeData.audioTransmit[0].common.maxRemoteLossRate, 0);
+          assert.strictEqual(mqeData.videoTransmit[0].common.maxRemoteLossRate, 0);
         });
 
-        it('after packets are sent and some packets are lost', async () => {
+        it('should accurately calculate the maximum remote loss rate for both audio and video after packet loss is detected', async () => {
           fakeStats.audio.senders[0].report[0].packetsSent += 200;
           fakeStats.audio.senders[0].report[1].packetsLost += 10;
           fakeStats.video.senders[0].report[0].packetsSent += 200;
           fakeStats.video.senders[0].report[1].packetsLost += 10;
           await progressTime(MQA_INTERVAL);
 
-          assert.strictEqual(mqeData.audioTransmit[0].common.remoteLossRate, 5);
-          assert.strictEqual(mqeData.videoTransmit[0].common.remoteLossRate, 5);
+          assert.strictEqual(mqeData.audioTransmit[0].common.maxRemoteLossRate, 5);
+          assert.strictEqual(mqeData.videoTransmit[0].common.maxRemoteLossRate, 5);
         });
+
+        it('should reset the maximum remote loss rate across MQA intervals', async() => {
+          fakeStats.audio.senders[0].report[0].packetsSent += 100;
+          fakeStats.audio.senders[0].report[1].packetsLost += 10;
+          fakeStats.video.senders[0].report[0].packetsSent += 50;
+          fakeStats.video.senders[0].report[1].packetsLost += 5;
+          await progressTime(MQA_INTERVAL);
+
+          assert.strictEqual(mqeData.audioTransmit[0].common.maxRemoteLossRate, 10);
+          assert.strictEqual(mqeData.videoTransmit[0].common.maxRemoteLossRate, 10);
+
+          await progressTime(MQA_INTERVAL);
+
+          assert.strictEqual(mqeData.audioTransmit[0].common.maxRemoteLossRate, 0);
+          assert.strictEqual(mqeData.videoTransmit[0].common.maxRemoteLossRate, 0);
+
+        })
       });
 
       it('has the correct localIpAddress set when the candidateType is host', async () => {
-        await startStatsAnalyzer();
+        await startStatsAnalyzer({pc, statsAnalyzer});
 
         await progressTime();
         assert.strictEqual(statsAnalyzer.getLocalIpAddress(), '');
@@ -1041,7 +1133,7 @@ describe('plugin-meetings', () => {
       });
 
       it('has the correct localIpAddress set when the candidateType is prflx and relayProtocol is set', async () => {
-        await startStatsAnalyzer();
+        await startStatsAnalyzer({pc, statsAnalyzer});
 
         await progressTime();
         assert.strictEqual(statsAnalyzer.getLocalIpAddress(), '');
@@ -1055,7 +1147,7 @@ describe('plugin-meetings', () => {
       });
 
       it('has the correct localIpAddress set when the candidateType is prflx and relayProtocol is not set', async () => {
-        await startStatsAnalyzer();
+        await startStatsAnalyzer({pc, statsAnalyzer});
 
         await progressTime();
         assert.strictEqual(statsAnalyzer.getLocalIpAddress(), '');
@@ -1069,7 +1161,7 @@ describe('plugin-meetings', () => {
       });
 
       it('has no localIpAddress set when the candidateType is invalid', async () => {
-        await startStatsAnalyzer();
+        await startStatsAnalyzer({pc, statsAnalyzer});
 
         await progressTime();
         assert.strictEqual(statsAnalyzer.getLocalIpAddress(), '');
@@ -1078,10 +1170,19 @@ describe('plugin-meetings', () => {
         assert.strictEqual(statsAnalyzer.getLocalIpAddress(), '');
       });
 
+      it('has the correct share video encoder implementation as provided by the stats', async () => {
+        await startStatsAnalyzer({pc, statsAnalyzer});
+
+        await progressTime();
+        assert.strictEqual(statsAnalyzer.shareVideoEncoderImplementation, 'fake-encoder');
+      });
+
       it('logs a message when audio send packets do not increase', async () => {
         await startStatsAnalyzer(
-          {expected: {sendAudio: true}},
-          {audio: {local: EVENTS.LOCAL_MEDIA_STARTED}}
+          {
+            statsAnalyzer, pc, mediaStatus: {expected: {sendAudio: true}},
+            lastEmittedEvents: {audio: {local: EVENTS.LOCAL_MEDIA_STARTED}},
+          },
         );
 
         // don't increase the packets when time progresses.
@@ -1089,15 +1190,17 @@ describe('plugin-meetings', () => {
 
         assert(
           loggerSpy.calledWith(
-            'StatsAnalyzer:index#compareLastStatsResult --> No audio RTP packets sent'
-          )
+            'StatsAnalyzer:index#compareLastStatsResult --> No audio RTP packets sent',
+          ),
         );
       });
 
       it('does not log a message when audio send packets increase', async () => {
-        await startStatsAnalyzer(
-          {expected: {sendAudio: true}},
-          {audio: {local: EVENTS.LOCAL_MEDIA_STOPPED}}
+        await startStatsAnalyzer({
+            statsAnalyzer, pc,
+            mediaStatus: {expected: {sendAudio: true}},
+            lastEmittedEvents: {audio: {local: EVENTS.LOCAL_MEDIA_STOPPED}},
+          },
         );
 
         fakeStats.audio.senders[0].report[0].packetsSent += 5;
@@ -1105,15 +1208,16 @@ describe('plugin-meetings', () => {
 
         assert(
           loggerSpy.neverCalledWith(
-            'StatsAnalyzer:index#compareLastStatsResult --> No audio RTP packets sent'
-          )
+            'StatsAnalyzer:index#compareLastStatsResult --> No audio RTP packets sent',
+          ),
         );
       });
 
       it('logs a message when video send packets do not increase', async () => {
-        await startStatsAnalyzer(
-          {expected: {sendVideo: true}},
-          {video: {local: EVENTS.LOCAL_MEDIA_STARTED}}
+        await startStatsAnalyzer({
+            statsAnalyzer, pc, mediaStatus: {expected: {sendVideo: true}},
+            lastEmittedEvents: {video: {local: EVENTS.LOCAL_MEDIA_STARTED}},
+          },
         );
 
         // don't increase the packets when time progresses.
@@ -1121,31 +1225,42 @@ describe('plugin-meetings', () => {
 
         assert(
           loggerSpy.calledWith(
-            'StatsAnalyzer:index#compareLastStatsResult --> No video RTP packets sent'
-          )
+            'StatsAnalyzer:index#compareLastStatsResult --> No video RTP packets sent',
+          ),
         );
       });
 
       it('does not log a message when video send packets increase', async () => {
         await startStatsAnalyzer(
-          {expected: {sendVideo: true}},
-          {video: {local: EVENTS.LOCAL_MEDIA_STOPPED}}
-        );
+          {
+            statsAnalyzer, pc,
+            mediaStatus: {
+              expected: {
+                sendVideo: true,
+              },
+            },
+            lastEmittedEvents: {
+              video: {
+                local: EVENTS.LOCAL_MEDIA_STOPPED,
+              },
+            },
+          });
 
         fakeStats.video.senders[0].report[0].packetsSent += 5;
         await progressTime();
 
         assert(
           loggerSpy.neverCalledWith(
-            'StatsAnalyzer:index#compareLastStatsResult --> No video RTP packets sent'
-          )
+            'StatsAnalyzer:index#compareLastStatsResult --> No video RTP packets sent',
+          ),
         );
       });
 
       it('logs a message when share send packets do not increase', async () => {
-        await startStatsAnalyzer(
-          {expected: {sendShare: true}},
-          {share: {local: EVENTS.LOCAL_MEDIA_STARTED}}
+        await startStatsAnalyzer({
+            pc, mediaStatus: {expected: {sendShare: true}},
+            lastEmittedEvents: {share: {local: EVENTS.LOCAL_MEDIA_STARTED}}, statsAnalyzer,
+          },
         );
 
         // don't increase the packets when time progresses.
@@ -1153,15 +1268,16 @@ describe('plugin-meetings', () => {
 
         assert(
           loggerSpy.calledWith(
-            'StatsAnalyzer:index#compareLastStatsResult --> No share RTP packets sent'
-          )
+            'StatsAnalyzer:index#compareLastStatsResult --> No share RTP packets sent',
+          ),
         );
       });
 
       it('does not log a message when share send packets increase', async () => {
-        await startStatsAnalyzer(
-          {expected: {sendShare: true}},
-          {share: {local: EVENTS.LOCAL_MEDIA_STOPPED}}
+        await startStatsAnalyzer({
+            pc, statsAnalyzer, mediaStatus: {expected: {sendShare: true}},
+            lastEmittedEvents: {share: {local: EVENTS.LOCAL_MEDIA_STOPPED}},
+          },
         );
 
         fakeStats.share.senders[0].report[0].packetsSent += 5;
@@ -1169,8 +1285,8 @@ describe('plugin-meetings', () => {
 
         assert(
           loggerSpy.neverCalledWith(
-            'StatsAnalyzer:index#compareLastStatsResult --> No share RTP packets sent'
-          )
+            'StatsAnalyzer:index#compareLastStatsResult --> No share RTP packets sent',
+          ),
         );
       });
 
@@ -1183,7 +1299,7 @@ describe('plugin-meetings', () => {
               id: '4',
             };
 
-            await startStatsAnalyzer();
+            await startStatsAnalyzer({pc, statsAnalyzer});
 
             // don't increase the packets when time progresses.
             await progressTime();
@@ -1191,10 +1307,10 @@ describe('plugin-meetings', () => {
             assert.neverCalledWith(
               loggerSpy,
               'StatsAnalyzer:index#processInboundRTPResult --> No packets received for receive slot id: "4" and csi: 2. Total packets received on slot: ',
-              0
+              0,
             );
           });
-        }
+        },
       );
 
       it(`logs a message if no packets are sent`, async () => {
@@ -1203,7 +1319,7 @@ describe('plugin-meetings', () => {
           csi: 2,
           id: '4',
         };
-        await startStatsAnalyzer();
+        await startStatsAnalyzer({pc, statsAnalyzer});
 
         // don't increase the packets when time progresses.
         await progressTime();
@@ -1211,52 +1327,52 @@ describe('plugin-meetings', () => {
         assert.calledWith(
           loggerSpy,
           'StatsAnalyzer:index#processInboundRTPResult --> No packets received for mediaType: video-recv-0, receive slot id: "4" and csi: 2. Total packets received on slot: ',
-          0
+          0,
         );
 
         assert.calledWith(
           loggerSpy,
           'StatsAnalyzer:index#processInboundRTPResult --> No frames received for mediaType: video-recv-0,  receive slot id: "4" and csi: 2. Total frames received on slot: ',
-          0
+          0,
         );
 
         assert.calledWith(
           loggerSpy,
           'StatsAnalyzer:index#processInboundRTPResult --> No frames decoded for mediaType: video-recv-0,  receive slot id: "4" and csi: 2. Total frames decoded on slot: ',
-          0
+          0,
         );
 
         assert.calledWith(
           loggerSpy,
           'StatsAnalyzer:index#processInboundRTPResult --> No packets received for mediaType: audio-recv-0, receive slot id: "4" and csi: 2. Total packets received on slot: ',
-          0
+          0,
         );
 
         assert.calledWith(
           loggerSpy,
           'StatsAnalyzer:index#processInboundRTPResult --> No packets received for mediaType: video-share-recv-0, receive slot id: "4" and csi: 2. Total packets received on slot: ',
-          0
+          0,
         );
 
         assert.calledWith(
           loggerSpy,
           'StatsAnalyzer:index#processInboundRTPResult --> No frames received for mediaType: video-share-recv-0,  receive slot id: "4" and csi: 2. Total frames received on slot: ',
-          0
+          0,
         );
         assert.calledWith(
           loggerSpy,
           'StatsAnalyzer:index#processInboundRTPResult --> No frames decoded for mediaType: video-share-recv-0,  receive slot id: "4" and csi: 2. Total frames decoded on slot: ',
-          0
+          0,
         );
         assert.calledWith(
           loggerSpy,
           'StatsAnalyzer:index#processInboundRTPResult --> No packets received for mediaType: audio-share-recv-0, receive slot id: "4" and csi: 2. Total packets received on slot: ',
-          0
+          0,
         );
       });
 
       it(`does not log a message if receiveSlot is undefined`, async () => {
-        await startStatsAnalyzer();
+        await startStatsAnalyzer({pc, statsAnalyzer});
 
         // don't increase the packets when time progresses.
         await progressTime();
@@ -1264,12 +1380,12 @@ describe('plugin-meetings', () => {
         assert.neverCalledWith(
           loggerSpy,
           'StatsAnalyzer:index#processInboundRTPResult --> No packets received for receive slot "". Total packets received on slot: ',
-          0
+          0,
         );
       });
 
       it('has the correct number of senders and receivers (2)', async () => {
-        await startStatsAnalyzer({expected: {receiveVideo: true}});
+        await startStatsAnalyzer({pc, statsAnalyzer, mediaStatus: {expected: {receiveVideo: true}}});
 
         await progressTime();
 
@@ -1280,7 +1396,7 @@ describe('plugin-meetings', () => {
       });
 
       it('has one stream per sender/reciever', async () => {
-        await startStatsAnalyzer({expected: {receiveVideo: true}});
+        await startStatsAnalyzer({pc, statsAnalyzer, mediaStatus: {expected: {receiveVideo: true}}});
 
         await progressTime();
 
@@ -1467,7 +1583,7 @@ describe('plugin-meetings', () => {
               framesDropped: 0,
             },
             h264CodecProfile: 'BP',
-            isActiveSpeaker: true,
+            isActiveSpeaker: false,
             optimalFrameSize: 0,
             receivedFrameSize: 3600,
             receivedHeight: 720,
@@ -1501,7 +1617,7 @@ describe('plugin-meetings', () => {
               framesDropped: 0,
             },
             h264CodecProfile: 'BP',
-            isActiveSpeaker: true,
+            isActiveSpeaker: false,
             optimalFrameSize: 0,
             receivedFrameSize: 3600,
             receivedHeight: 720,
@@ -1540,7 +1656,7 @@ describe('plugin-meetings', () => {
           },
         });
 
-        await startStatsAnalyzer({expected: {receiveVideo: true}});
+        await startStatsAnalyzer({pc, statsAnalyzer, mediaStatus: {expected: {receiveVideo: true}}});
 
         await progressTime();
 
@@ -1565,7 +1681,7 @@ describe('plugin-meetings', () => {
               framesDropped: 0,
             },
             h264CodecProfile: 'BP',
-            isActiveSpeaker: true,
+            isActiveSpeaker: false,
             optimalFrameSize: 0,
             receivedFrameSize: 3600,
             receivedHeight: 720,
@@ -1597,7 +1713,7 @@ describe('plugin-meetings', () => {
               framesDropped: 0,
             },
             h264CodecProfile: 'BP',
-            isActiveSpeaker: true,
+            isActiveSpeaker: false,
             optimalFrameSize: 0,
             receivedFrameSize: 3600,
             receivedHeight: 720,
@@ -1629,7 +1745,7 @@ describe('plugin-meetings', () => {
               framesDropped: 0,
             },
             h264CodecProfile: 'BP',
-            isActiveSpeaker: true,
+            isActiveSpeaker: false,
             optimalFrameSize: 0,
             receivedFrameSize: 3600,
             receivedHeight: 720,
@@ -1644,195 +1760,238 @@ describe('plugin-meetings', () => {
         ]);
       });
 
-      it('has three streams for video senders for simulcast', async () => {
-        pc.getTransceiverStats = sinon.stub().resolves({
-          audio: {
-            senders: [fakeStats.audio.senders[0]],
-            receivers: [fakeStats.audio.receivers[0]],
-          },
-          video: {
-            senders: [
-              {
-                localTrackLabel: 'fake-camera',
-                report: [
-                  {
-                    type: 'outbound-rtp',
-                    bytesSent: 1,
-                    framesSent: 0,
-                    packetsSent: 0,
-                    isRequested: true,
-                  },
-                  {
-                    type: 'outbound-rtp',
-                    bytesSent: 1,
-                    framesSent: 0,
-                    packetsSent: 0,
-                    isRequested: true,
-                  },
-                  {
-                    type: 'outbound-rtp',
-                    bytesSent: 1000,
-                    framesSent: 1,
-                    packetsSent: 1,
-                    isRequested: true,
-                  },
-                  {
-                    type: 'remote-inbound-rtp',
-                    packetsLost: 0,
-                  },
-                  {
-                    type: 'candidate-pair',
-                    state: 'succeeded',
-                    localCandidateId: 'fake-candidate-id',
-                  },
-                  {
-                    type: 'candidate-pair',
-                    state: 'failed',
-                    localCandidateId: 'bad-candidate-id',
-                  },
-                  {
-                    type: 'local-candidate',
-                    id: 'fake-candidate-id',
-                    protocol: 'tcp',
-                  },
-                ],
+      describe('stream count for simulcast', async () => {
+        it('has three streams for video senders for simulcast', async () => {
+          pc.getTransceiverStats = sinon.stub().resolves({
+            audio: {
+              senders: [fakeStats.audio.senders[0]],
+              receivers: [fakeStats.audio.receivers[0]],
+            },
+            video: {
+              senders: [
+                {
+                  localTrackLabel: 'fake-camera',
+                  report: [
+                    {
+                      type: 'outbound-rtp',
+                      bytesSent: 1,
+                      framesSent: 0,
+                      packetsSent: 0,
+                      isRequested: true,
+                    },
+                    {
+                      type: 'outbound-rtp',
+                      bytesSent: 1,
+                      framesSent: 0,
+                      packetsSent: 1,
+                      isRequested: true,
+                    },
+                    {
+                      type: 'outbound-rtp',
+                      bytesSent: 1000,
+                      framesSent: 1,
+                      packetsSent: 0,
+                      isRequested: true,
+                    },
+                    {
+                      type: 'remote-inbound-rtp',
+                      packetsLost: 0,
+                    },
+                    {
+                      type: 'candidate-pair',
+                      state: 'succeeded',
+                      localCandidateId: 'fake-candidate-id',
+                    },
+                    {
+                      type: 'candidate-pair',
+                      state: 'failed',
+                      localCandidateId: 'bad-candidate-id',
+                    },
+                    {
+                      type: 'local-candidate',
+                      id: 'fake-candidate-id',
+                      protocol: 'tcp',
+                    },
+                  ],
+                },
+              ],
+              receivers: [fakeStats.video.receivers[0]],
+            },
+            screenShareAudio: {
+              senders: [fakeStats.audio.senders[0]],
+              receivers: [fakeStats.audio.receivers[0]],
+            },
+            screenShareVideo: {
+              senders: [fakeStats.video.senders[0]],
+              receivers: [fakeStats.video.receivers[0]],
+            },
+          });
+
+          await startStatsAnalyzer({
+            pc,
+            statsAnalyzer,
+            mediaStatus: {
+              expected: {
+                receiveVideo: true,
               },
-            ],
-            receivers: [fakeStats.video.receivers[0]],
-          },
-          screenShareAudio: {
-            senders: [fakeStats.audio.senders[0]],
-            receivers: [fakeStats.audio.receivers[0]],
-          },
-          screenShareVideo: {
-            senders: [fakeStats.video.senders[0]],
-            receivers: [fakeStats.video.receivers[0]],
-          },
+            },
+          });
+
+          await progressTime();
+
+          assert.deepEqual(mqeData.videoTransmit[0].streams, [
+            {
+              common: {
+                codec: 'H264',
+                csi: [],
+                duplicateSsci: 0,
+                requestedBitrate: 0,
+                requestedFrames: 0,
+                rtpPackets: 0,
+                ssci: 0,
+                transmittedBitrate: 0.13333333333333333,
+                transmittedFrameRate: 0,
+              },
+              h264CodecProfile: 'BP',
+              isAvatar: false,
+              isHardwareEncoded: false,
+              localConfigurationChanges: 2,
+              maxFrameQp: 0,
+              maxNoiseLevel: 0,
+              minRegionQp: 0,
+              remoteConfigurationChanges: 0,
+              requestedFrameSize: 0,
+              requestedKeyFrames: 0,
+              transmittedFrameSize: 0,
+              transmittedHeight: 0,
+              transmittedKeyFrames: 0,
+              transmittedKeyFramesClient: 0,
+              transmittedKeyFramesConfigurationChange: 0,
+              transmittedKeyFramesFeedback: 0,
+              transmittedKeyFramesLocalDrop: 0,
+              transmittedKeyFramesOtherLayer: 0,
+              transmittedKeyFramesPeriodic: 0,
+              transmittedKeyFramesSceneChange: 0,
+              transmittedKeyFramesStartup: 0,
+              transmittedKeyFramesUnknown: 0,
+              transmittedWidth: 0,
+              requestedBitrate: 0,
+            },
+            {
+              common: {
+                codec: 'H264',
+                csi: [],
+                duplicateSsci: 0,
+                requestedBitrate: 0,
+                requestedFrames: 0,
+                rtpPackets: 1,
+                ssci: 0,
+                transmittedBitrate: 0.13333333333333333,
+                transmittedFrameRate: 0,
+              },
+              h264CodecProfile: 'BP',
+              isAvatar: false,
+              isHardwareEncoded: false,
+              localConfigurationChanges: 2,
+              maxFrameQp: 0,
+              maxNoiseLevel: 0,
+              minRegionQp: 0,
+              remoteConfigurationChanges: 0,
+              requestedFrameSize: 0,
+              requestedKeyFrames: 0,
+              transmittedFrameSize: 0,
+              transmittedHeight: 0,
+              transmittedKeyFrames: 0,
+              transmittedKeyFramesClient: 0,
+              transmittedKeyFramesConfigurationChange: 0,
+              transmittedKeyFramesFeedback: 0,
+              transmittedKeyFramesLocalDrop: 0,
+              transmittedKeyFramesOtherLayer: 0,
+              transmittedKeyFramesPeriodic: 0,
+              transmittedKeyFramesSceneChange: 0,
+              transmittedKeyFramesStartup: 0,
+              transmittedKeyFramesUnknown: 0,
+              transmittedWidth: 0,
+              requestedBitrate: 0,
+            },
+            {
+              common: {
+                codec: 'H264',
+                csi: [],
+                duplicateSsci: 0,
+                requestedBitrate: 0,
+                requestedFrames: 0,
+                rtpPackets: 0,
+                ssci: 0,
+                transmittedBitrate: 133.33333333333334,
+                transmittedFrameRate: 0,
+              },
+              h264CodecProfile: 'BP',
+              isAvatar: false,
+              isHardwareEncoded: false,
+              localConfigurationChanges: 2,
+              maxFrameQp: 0,
+              maxNoiseLevel: 0,
+              minRegionQp: 0,
+              remoteConfigurationChanges: 0,
+              requestedFrameSize: 0,
+              requestedKeyFrames: 0,
+              transmittedFrameSize: 0,
+              transmittedHeight: 0,
+              transmittedKeyFrames: 0,
+              transmittedKeyFramesClient: 0,
+              transmittedKeyFramesConfigurationChange: 0,
+              transmittedKeyFramesFeedback: 0,
+              transmittedKeyFramesLocalDrop: 0,
+              transmittedKeyFramesOtherLayer: 0,
+              transmittedKeyFramesPeriodic: 0,
+              transmittedKeyFramesSceneChange: 0,
+              transmittedKeyFramesStartup: 0,
+              transmittedKeyFramesUnknown: 0,
+              transmittedWidth: 0,
+              requestedBitrate: 0,
+            },
+          ]);
+        });
+      });
+      describe('active speaker status emission', async () => {
+        beforeEach(async () => {
+          await startStatsAnalyzer({pc, statsAnalyzer});
+          performance.timeOrigin = 1;
         });
 
-        await startStatsAnalyzer({expected: {receiveVideo: true}});
+        it('reports active speaker as true when the participant has been speaking', async () => {
+          fakeStats.video.receivers[0].report[0].isActiveSpeaker = true;
+          await progressTime(5 * MQA_INTERVAL);
+          assert.strictEqual(mqeData.videoReceive[0].streams[0].isActiveSpeaker, true);
+        });
 
-        await progressTime();
+        it('reports active speaker as false when the participant has not spoken', async () => {
+          fakeStats.video.receivers[0].report[0].isActiveSpeaker = false;
+          await progressTime(5 * MQA_INTERVAL);
+          assert.strictEqual(mqeData.videoReceive[0].streams[0].isActiveSpeaker, false);
+        });
 
-        assert.deepEqual(mqeData.videoTransmit[0].streams, [
-          {
-            common: {
-              codec: 'H264',
-              csi: [],
-              duplicateSsci: 0,
-              requestedBitrate: 0,
-              requestedFrames: 0,
-              rtpPackets: 0,
-              ssci: 0,
-              transmittedBitrate:  0.13333333333333333,
-              transmittedFrameRate: 0
-            },
-            h264CodecProfile: 'BP',
-            isAvatar: false,
-            isHardwareEncoded: false,
-            localConfigurationChanges: 2,
-            maxFrameQp: 0,
-            maxNoiseLevel: 0,
-            minRegionQp: 0,
-            remoteConfigurationChanges: 0,
-            requestedFrameSize: 0,
-            requestedKeyFrames: 0,
-            transmittedFrameSize: 0,
-            transmittedHeight: 0,
-            transmittedKeyFrames: 0,
-            transmittedKeyFramesClient: 0,
-            transmittedKeyFramesConfigurationChange: 0,
-            transmittedKeyFramesFeedback: 0,
-            transmittedKeyFramesLocalDrop: 0,
-            transmittedKeyFramesOtherLayer: 0,
-            transmittedKeyFramesPeriodic: 0,
-            transmittedKeyFramesSceneChange: 0,
-            transmittedKeyFramesStartup: 0,
-            transmittedKeyFramesUnknown: 0,
-            transmittedWidth: 0,
-            requestedBitrate: 0,
-          },
-          {
-            common: {
-              codec: 'H264',
-              csi: [],
-              duplicateSsci: 0,
-              requestedBitrate: 0,
-              requestedFrames: 0,
-              rtpPackets: 0,
-              ssci: 0,
-              transmittedBitrate: 0.13333333333333333,
-              transmittedFrameRate: 0,
-            },
-            h264CodecProfile: 'BP',
-            isAvatar: false,
-            isHardwareEncoded: false,
-            localConfigurationChanges: 2,
-            maxFrameQp: 0,
-            maxNoiseLevel: 0,
-            minRegionQp: 0,
-            remoteConfigurationChanges: 0,
-            requestedFrameSize: 0,
-            requestedKeyFrames: 0,
-            transmittedFrameSize: 0,
-            transmittedHeight: 0,
-            transmittedKeyFrames: 0,
-            transmittedKeyFramesClient: 0,
-            transmittedKeyFramesConfigurationChange: 0,
-            transmittedKeyFramesFeedback: 0,
-            transmittedKeyFramesLocalDrop: 0,
-            transmittedKeyFramesOtherLayer: 0,
-            transmittedKeyFramesPeriodic: 0,
-            transmittedKeyFramesSceneChange: 0,
-            transmittedKeyFramesStartup: 0,
-            transmittedKeyFramesUnknown: 0,
-            transmittedWidth: 0,
-            requestedBitrate: 0,
-          },
-          {
-            common: {
-              codec: 'H264',
-              csi: [],
-              duplicateSsci: 0,
-              requestedBitrate: 0,
-              requestedFrames: 0,
-              rtpPackets: 1,
-              ssci: 0,
-              transmittedBitrate: 133.33333333333334,
-              transmittedFrameRate: 0,
-            },
-            h264CodecProfile: 'BP',
-            isAvatar: false,
-            isHardwareEncoded: false,
-            localConfigurationChanges: 2,
-            maxFrameQp: 0,
-            maxNoiseLevel: 0,
-            minRegionQp: 0,
-            remoteConfigurationChanges: 0,
-            requestedFrameSize: 0,
-            requestedKeyFrames: 0,
-            transmittedFrameSize: 0,
-            transmittedHeight: 0,
-            transmittedKeyFrames: 0,
-            transmittedKeyFramesClient: 0,
-            transmittedKeyFramesConfigurationChange: 0,
-            transmittedKeyFramesFeedback: 0,
-            transmittedKeyFramesLocalDrop: 0,
-            transmittedKeyFramesOtherLayer: 0,
-            transmittedKeyFramesPeriodic: 0,
-            transmittedKeyFramesSceneChange: 0,
-            transmittedKeyFramesStartup: 0,
-            transmittedKeyFramesUnknown: 0,
-            transmittedWidth: 0,
-            requestedBitrate: 0,
-          }
-        ]);
+        it('defaults to false when active speaker status is indeterminate', async () => {
+          fakeStats.video.receivers[0].report[0].isActiveSpeaker = undefined;
+          await progressTime(MQA_INTERVAL);
+          assert.strictEqual(mqeData.videoReceive[0].streams[0].isActiveSpeaker, false);
+        });
+
+        it('updates active speaker to true following a recent status change to speaking', async () => {
+          fakeStats.video.receivers[0].report[0].isActiveSpeaker = false;
+          fakeStats.video.receivers[0].report[0].lastActiveSpeakerUpdateTimestamp = performance.timeOrigin + performance.now() + (30 * 1000);
+          await progressTime(MQA_INTERVAL);
+          assert.strictEqual(mqeData.videoReceive[0].streams[0].isActiveSpeaker, true);
+          await progressTime(MQA_INTERVAL);
+          assert.strictEqual(mqeData.videoReceive[0].streams[0].isActiveSpeaker, false);
+        });
       });
       describe('sends streams according to their is requested flag', async () => {
 
         beforeEach(async () => {
           performance.timeOrigin = 0;
-          await startStatsAnalyzer();
+          await startStatsAnalyzer({pc, statsAnalyzer});
         });
 
         it('should send a stream if it is requested', async () => {
@@ -1862,6 +2021,98 @@ describe('plugin-meetings', () => {
           assert.strictEqual(mqeData.audioReceive[0].streams.length, 0);
         });
       });
-    })
+
+      describe('window and screen size emission', async () => {
+        beforeEach(async () => {
+          await startStatsAnalyzer({pc, statsAnalyzer});
+        });
+
+        it('should record the screen size from window.screen properties', async () => {
+          sinon.stub(window.screen, 'width').get(() => 1280);
+          sinon.stub(window.screen, 'height').get(() => 720);
+          await progressTime(MQA_INTERVAL);
+          assert.strictEqual(mqeData.intervalMetadata.screenWidth, 1280);
+          assert.strictEqual(mqeData.intervalMetadata.screenHeight, 720);
+          assert.strictEqual(mqeData.intervalMetadata.screenResolution, 3600);
+        });
+
+        it('should record the initial app window size from window properties', async () => {
+          sinon.stub(window, 'innerWidth').get(() => 720);
+          sinon.stub(window, 'innerHeight').get(() => 360);
+          await progressTime(MQA_INTERVAL);
+          assert.strictEqual(mqeData.intervalMetadata.appWindowWidth, 720);
+          assert.strictEqual(mqeData.intervalMetadata.appWindowHeight, 360);
+          assert.strictEqual(mqeData.intervalMetadata.appWindowSize, 1013);
+
+          sinon.stub(window, 'innerWidth').get(() => 1080);
+          sinon.stub(window, 'innerHeight').get(() => 720);
+          await progressTime(MQA_INTERVAL);
+          assert.strictEqual(mqeData.intervalMetadata.appWindowWidth, 1080);
+          assert.strictEqual(mqeData.intervalMetadata.appWindowHeight, 720);
+          assert.strictEqual(mqeData.intervalMetadata.appWindowSize, 3038);
+        });
+      });
+
+      describe('sends multistreamEnabled', async () => {
+        it('false if StatsAnalyzer initialized with default value for isMultistream', async () => {
+          await startStatsAnalyzer({pc, statsAnalyzer, mediaStatus: {expected: {receiveVideo: true}}});
+
+          await progressTime();
+
+          for (const data of [
+            mqeData.audioTransmit,
+            mqeData.audioReceive,
+            mqeData.videoTransmit,
+            mqeData.videoReceive,
+          ]) {
+            assert.strictEqual(data[0].common.common.multistreamEnabled, false);
+          }
+        });
+
+        it('false if StatsAnalyzer initialized with false', async () => {
+          statsAnalyzer = new StatsAnalyzer({
+            config: initialConfig,
+            receiveSlotCallback: () => receiveSlot,
+            networkQualityMonitor,
+            isMultistream: false,
+          });
+          registerStatsAnalyzerEvents(statsAnalyzer);
+          await startStatsAnalyzer({pc, statsAnalyzer, mediaStatus: {expected: {receiveVideo: false}}});
+
+          await progressTime();
+
+          for (const data of [
+            mqeData.audioTransmit,
+            mqeData.audioReceive,
+            mqeData.videoTransmit,
+            mqeData.videoReceive,
+          ]) {
+            assert.strictEqual(data[0].common.common.multistreamEnabled, false);
+          }
+        });
+
+        it('true if StatsAnalyzer initialized with multistream', async () => {
+          statsAnalyzer = new StatsAnalyzer({
+            config: initialConfig,
+            receiveSlotCallback: () => receiveSlot,
+            networkQualityMonitor,
+            isMultistream: true,
+          });
+          registerStatsAnalyzerEvents(statsAnalyzer);
+          await startStatsAnalyzer({pc, statsAnalyzer, mediaStatus: {expected: {receiveVideo: true}}});
+
+          await progressTime();
+
+          for (const data of [
+            mqeData.audioTransmit,
+            mqeData.audioReceive,
+            mqeData.videoTransmit,
+            mqeData.videoReceive,
+          ]) {
+            assert.strictEqual(data[0].common.common.multistreamEnabled, true);
+          }
+        });
+      });
+    });
   });
-})
+});

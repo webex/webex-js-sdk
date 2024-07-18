@@ -3,11 +3,9 @@ import {Defer} from '@webex/common';
 import LoggerProxy from '../common/logs/logger-proxy';
 import {ClusterNode} from './request';
 import {convertStunUrlToTurn, convertStunUrlToTurnTls} from './util';
+import EventsScope from '../common/events/events-scope';
 
-import {ICE_GATHERING_STATE, CONNECTION_STATE} from '../constants';
-
-const DEFAULT_TIMEOUT = 3000;
-const VIDEO_MESH_TIMEOUT = 1000;
+import {CONNECTION_STATE, Enum, ICE_GATHERING_STATE} from '../constants';
 
 // result for a specific transport protocol (like udp or tcp)
 export type TransportResult = {
@@ -23,10 +21,32 @@ export type ClusterReachabilityResult = {
   xtls: TransportResult;
 };
 
+// data for the Events.resultReady event
+export type ResultEventData = {
+  protocol: 'udp' | 'tcp' | 'xtls';
+  result: 'reachable' | 'unreachable' | 'untested';
+  latencyInMilliseconds: number; // amount of time it took to get the ICE candidate
+  clientMediaIPs?: string[];
+};
+
+// data for the Events.clientMediaIpsUpdated event
+export type ClientMediaIpsUpdatedEventData = {
+  protocol: 'udp' | 'tcp' | 'xtls';
+  clientMediaIPs: string[];
+};
+
+export const Events = {
+  resultReady: 'resultReady', // emitted when a cluster is reached successfully using specific protocol
+  clientMediaIpsUpdated: 'clientMediaIpsUpdated', // emitted when more public IPs are found after resultReady was already sent for a given protocol
+} as const;
+
+export type Events = Enum<typeof Events>;
+
 /**
  * A class that handles reachability checks for a single cluster.
+ * It emits events from Events enum
  */
-export class ClusterReachability {
+export class ClusterReachability extends EventsScope {
   private numUdpUrls: number;
   private numTcpUrls: number;
   private numXTlsUrls: number;
@@ -43,6 +63,7 @@ export class ClusterReachability {
    * @param {ClusterNode} clusterInfo information about the media cluster
    */
   constructor(name: string, clusterInfo: ClusterNode) {
+    super();
     this.name = name;
     this.isVideoMesh = clusterInfo.isVideoMesh;
     this.numUdpUrls = clusterInfo.udp.length;
@@ -163,22 +184,53 @@ export class ClusterReachability {
   }
 
   /**
+   * Aborts the cluster reachability checks by closing the peer connection
+   *
+   * @returns {void}
+   */
+  public abort() {
+    const {CLOSED} = CONNECTION_STATE;
+
+    if (this.pc.connectionState !== CLOSED) {
+      this.closePeerConnection();
+      this.finishReachabilityCheck();
+    }
+  }
+
+  /**
    * Adds public IP (client media IPs)
    * @param {string} protocol
    * @param {string} publicIP
    * @returns {void}
    */
-  private addPublicIP(protocol: 'udp' | 'tcp', publicIP?: string | null) {
+  private addPublicIP(protocol: 'udp' | 'tcp' | 'xtls', publicIP?: string | null) {
     const result = this.result[protocol];
 
     if (publicIP) {
+      let ipAdded = false;
+
       if (result.clientMediaIPs) {
         if (!result.clientMediaIPs.includes(publicIP)) {
           result.clientMediaIPs.push(publicIP);
+          ipAdded = true;
         }
       } else {
         result.clientMediaIPs = [publicIP];
+        ipAdded = true;
       }
+
+      if (ipAdded)
+        this.emit(
+          {
+            file: 'clusterReachability',
+            function: 'addPublicIP',
+          },
+          Events.clientMediaIpsUpdated,
+          {
+            protocol,
+            clientMediaIPs: result.clientMediaIPs,
+          }
+        );
     }
   }
 
@@ -211,22 +263,43 @@ export class ClusterReachability {
   }
 
   /**
-   * Stores the latency in the result for the given protocol and marks it as reachable
+   * Saves the latency in the result for the given protocol and marks it as reachable,
+   * emits the "resultReady" event if this is the first result for that protocol,
+   * emits the "clientMediaIpsUpdated" event if we already had a result and only found
+   * a new client IP
    *
    * @param {string} protocol
    * @param {number} latency
+   * @param {string|null} [publicIp]
    * @returns {void}
    */
-  private storeLatencyResult(protocol: 'udp' | 'tcp' | 'xtls', latency: number) {
+  private saveResult(protocol: 'udp' | 'tcp' | 'xtls', latency: number, publicIp?: string | null) {
     const result = this.result[protocol];
 
     if (result.latencyInMilliseconds === undefined) {
       LoggerProxy.logger.log(
         // @ts-ignore
-        `Reachability:index#storeLatencyResult --> Successfully reached ${this.name} over ${protocol}: ${latency}ms`
+        `Reachability:index#saveResult --> Successfully reached ${this.name} over ${protocol}: ${latency}ms`
       );
       result.latencyInMilliseconds = latency;
       result.result = 'reachable';
+      if (publicIp) {
+        result.clientMediaIPs = [publicIp];
+      }
+
+      this.emit(
+        {
+          file: 'clusterReachability',
+          function: 'saveResult',
+        },
+        Events.resultReady,
+        {
+          protocol,
+          ...result,
+        }
+      );
+    } else {
+      this.addPublicIP(protocol, publicIp);
     }
   }
 
@@ -243,15 +316,16 @@ export class ClusterReachability {
         RELAY: 'relay',
       };
 
+      const latencyInMilliseconds = this.getElapsedTime();
+
       if (e.candidate) {
         if (e.candidate.type === CANDIDATE_TYPES.SERVER_REFLEXIVE) {
-          this.storeLatencyResult('udp', this.getElapsedTime());
-          this.addPublicIP('udp', e.candidate.address);
+          this.saveResult('udp', latencyInMilliseconds, e.candidate.address);
         }
 
         if (e.candidate.type === CANDIDATE_TYPES.RELAY) {
           const protocol = e.candidate.port === TURN_TLS_PORT ? 'xtls' : 'tcp';
-          this.storeLatencyResult(protocol, this.getElapsedTime());
+          this.saveResult(protocol, latencyInMilliseconds);
           // we don't add public IP for TCP, because in the case of relay candidates
           // e.candidate.address is the TURN server address, not the client's public IP
         }
@@ -314,21 +388,8 @@ export class ClusterReachability {
    * @returns {Promise} promise that's resolved once reachability checks for this cluster are completed or timeout is reached
    */
   private gatherIceCandidates() {
-    const timeout = this.isVideoMesh ? VIDEO_MESH_TIMEOUT : DEFAULT_TIMEOUT;
-
     this.registerIceGatheringStateChangeListener();
     this.registerIceCandidateListener();
-
-    // Set maximum timeout
-    setTimeout(() => {
-      const {CLOSED} = CONNECTION_STATE;
-
-      // Close any open peerConnections
-      if (this.pc.connectionState !== CLOSED) {
-        this.closePeerConnection();
-        this.finishReachabilityCheck();
-      }
-    }, timeout);
 
     return this.defer.promise;
   }

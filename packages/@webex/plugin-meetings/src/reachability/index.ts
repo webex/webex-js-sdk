@@ -3,8 +3,9 @@
  */
 
 /* eslint-disable class-methods-use-this */
-import {mapValues} from 'lodash';
+import {isEqual, mapValues, mean} from 'lodash';
 
+import {Defer} from '@webex/common';
 import LoggerProxy from '../common/logs/logger-proxy';
 import MeetingUtil from '../meeting/util';
 
@@ -12,10 +13,16 @@ import {REACHABILITY} from '../constants';
 
 import ReachabilityRequest, {ClusterList} from './request';
 import {
+  ClientMediaIpsUpdatedEventData,
   ClusterReachability,
   ClusterReachabilityResult,
+  Events,
+  ResultEventData,
   TransportResult,
 } from './clusterReachability';
+import EventsScope from '../common/events/events-scope';
+import BEHAVIORAL_METRICS from '../metrics/constants';
+import Metrics from '../metrics';
 
 export type ReachabilityMetrics = {
   reachability_public_udp_success: number;
@@ -60,11 +67,16 @@ export type ReachabilityResults = Record<
   }
 >;
 
+// timeouts in seconds
+const DEFAULT_TIMEOUT = 3;
+const VIDEO_MESH_TIMEOUT = 1;
+const OVERALL_TIMEOUT = 15;
+
 /**
  * @class Reachability
  * @export
  */
-export default class Reachability {
+export default class Reachability extends EventsScope {
   namespace = REACHABILITY.namespace;
   webex: object;
   reachabilityRequest: ReachabilityRequest;
@@ -72,12 +84,22 @@ export default class Reachability {
     [key: string]: ClusterReachability;
   };
 
+  reachabilityDefer?: Defer;
+
+  vmnTimer?: ReturnType<typeof setTimeout>;
+  publicCloudTimer?: ReturnType<typeof setTimeout>;
+  overallTimer?: ReturnType<typeof setTimeout>;
+
+  expectedResultsCount = {videoMesh: {udp: 0}, public: {udp: 0, tcp: 0, xtls: 0}};
+  resultsCount = {videoMesh: {udp: 0}, public: {udp: 0, tcp: 0, xtls: 0}};
+
   /**
    * Creates an instance of Reachability.
    * @param {object} webex
    * @memberof Reachability
    */
   constructor(webex: object) {
+    super();
     this.webex = webex;
 
     /**
@@ -105,15 +127,6 @@ export default class Reachability {
         MeetingUtil.getIpVersion(this.webex)
       );
 
-      // Perform Reachability Check
-      const results = await this.performReachabilityChecks(clusters);
-
-      // @ts-ignore
-      await this.webex.boundedStorage.put(
-        this.namespace,
-        REACHABILITY.localStorageResult,
-        JSON.stringify(results)
-      );
       // @ts-ignore
       await this.webex.boundedStorage.put(
         this.namespace,
@@ -121,11 +134,12 @@ export default class Reachability {
         JSON.stringify(joinCookie)
       );
 
-      LoggerProxy.logger.log(
-        'Reachability:index#gatherReachability --> Reachability checks completed'
-      );
+      this.reachabilityDefer = new Defer();
 
-      return results;
+      // Perform Reachability Check
+      await this.performReachabilityChecks(clusters);
+
+      return this.reachabilityDefer.promise;
     } catch (error) {
       LoggerProxy.logger.error(`Reachability:index#gatherReachability --> Error:`, error);
 
@@ -396,15 +410,206 @@ export default class Reachability {
   }
 
   /**
+   * Returns true if we've obtained all the reachability results for all the public clusters
+   * In other words, it means that all public clusters are reachable over each protocol,
+   * because we only get a "result" if we managed to reach a cluster
+   *
+   * @returns {boolean}
+   */
+  private areAllPublicClusterResultsReady() {
+    return isEqual(this.expectedResultsCount.public, this.resultsCount.public);
+  }
+
+  /**
+   * Returns true if we've obtained all the reachability results for all the clusters
+   *
+   * @returns {boolean}
+   */
+  private areAllResultsReady() {
+    return isEqual(this.expectedResultsCount, this.resultsCount);
+  }
+
+  /**
+   * Resolves the promise returned by gatherReachability() method
+   * @returns {void}
+   */
+  private resolveReachabilityPromise() {
+    if (this.vmnTimer) {
+      clearTimeout(this.vmnTimer);
+    }
+    if (this.publicCloudTimer) {
+      clearTimeout(this.publicCloudTimer);
+    }
+
+    this.logUnreachableClusters();
+    this.reachabilityDefer?.resolve();
+  }
+
+  /**
+   * Aborts all cluster reachability checks that are in progress
+   *
+   * @returns {void}
+   */
+  private abortClusterReachability() {
+    Object.values(this.clusterReachability).forEach((clusterReachability) => {
+      clusterReachability.abort();
+    });
+  }
+
+  /**
+   * Helper function for calculating min/max/average values of latency
+   *
+   * @param {Array<any>} results
+   * @param {string} protocol
+   * @param {boolean} isVideoMesh
+   * @returns {{min:number, max: number, average: number}}
+   */
+  protected getStatistics(
+    results: Array<ClusterReachabilityResult & {isVideoMesh: boolean}>,
+    protocol: 'udp' | 'tcp' | 'xtls',
+    isVideoMesh: boolean
+  ) {
+    const values = results
+      .filter((result) => result.isVideoMesh === isVideoMesh)
+      .filter((result) => result[protocol].result === 'reachable')
+      .map((result) => result[protocol].latencyInMilliseconds);
+
+    if (values.length === 0) {
+      return {
+        min: -1,
+        max: -1,
+        average: -1,
+      };
+    }
+
+    return {
+      min: Math.min(...values),
+      max: Math.max(...values),
+      average: mean(values),
+    };
+  }
+
+  /**
+   * Sends a metric with all the statistics about how long reachability took
+   *
+   * @returns {void}
+   */
+  protected async sendMetric() {
+    const results = [];
+
+    Object.values(this.clusterReachability).forEach((clusterReachability) => {
+      results.push({
+        ...clusterReachability.getResult(),
+        isVideoMesh: clusterReachability.isVideoMesh,
+      });
+    });
+
+    const stats = {
+      vmn: {
+        udp: this.getStatistics(results, 'udp', true),
+      },
+      public: {
+        udp: this.getStatistics(results, 'udp', false),
+        tcp: this.getStatistics(results, 'tcp', false),
+        xtls: this.getStatistics(results, 'xtls', false),
+      },
+    };
+    Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.REACHABILITY_COMPLETED, stats);
+  }
+
+  /**
+   * Starts all the timers used for various timeouts
+   *
+   * @returns {void}
+   */
+  private startTimers() {
+    this.vmnTimer = setTimeout(() => {
+      this.vmnTimer = undefined;
+      // if we are only missing VMN results, then we don't want to wait for them any longer
+      // as they are likely to fail if users are not on corporate network
+      if (this.areAllPublicClusterResultsReady()) {
+        LoggerProxy.logger.log(
+          'Reachability:index#startTimers --> Reachability checks timed out (VMN timeout)'
+        );
+
+        this.resolveReachabilityPromise();
+      }
+    }, VIDEO_MESH_TIMEOUT * 1000);
+
+    this.publicCloudTimer = setTimeout(() => {
+      this.publicCloudTimer = undefined;
+
+      LoggerProxy.logger.log(
+        `Reachability:index#startTimers --> Reachability checks timed out (${DEFAULT_TIMEOUT}s)`
+      );
+
+      // resolve the promise, so that the client won't be blocked waiting on meetings.register() for too long
+      this.resolveReachabilityPromise();
+    }, DEFAULT_TIMEOUT * 1000);
+
+    this.overallTimer = setTimeout(() => {
+      this.overallTimer = undefined;
+      this.abortClusterReachability();
+      this.emit(
+        {
+          file: 'reachability',
+          function: 'overallTimer timeout',
+        },
+        'reachability:done',
+        {}
+      );
+      this.sendMetric();
+
+      LoggerProxy.logger.log(
+        `Reachability:index#startTimers --> Reachability checks fully timed out (${OVERALL_TIMEOUT}s)`
+      );
+    }, OVERALL_TIMEOUT * 1000);
+  }
+
+  /**
+   * Stores given reachability results in local storage
+   *
+   * @param {ReachabilityResults} results
+   * @returns {Promise<void>}
+   */
+  private async storeResults(results: ReachabilityResults) {
+    // @ts-ignore
+    await this.webex.boundedStorage.put(
+      this.namespace,
+      REACHABILITY.localStorageResult,
+      JSON.stringify(results)
+    );
+  }
+
+  /**
+   * Resets all the internal counters that keep track of the results
+   *
+   * @returns {void}
+   */
+  private resetResultCounters() {
+    this.expectedResultsCount.videoMesh.udp = 0;
+    this.expectedResultsCount.public.udp = 0;
+    this.expectedResultsCount.public.tcp = 0;
+    this.expectedResultsCount.public.xtls = 0;
+
+    this.resultsCount.videoMesh.udp = 0;
+    this.resultsCount.public.udp = 0;
+    this.resultsCount.public.tcp = 0;
+    this.resultsCount.public.xtls = 0;
+  }
+
+  /**
    * Performs reachability checks for all clusters
    * @param {ClusterList} clusterList
-   * @returns {Promise<ReachabilityResults>} reachability check results
+   * @returns {Promise<void>} promise that's resolved as soon as the checks are started
    */
-  private async performReachabilityChecks(clusterList: ClusterList): Promise<ReachabilityResults> {
+  private async performReachabilityChecks(clusterList: ClusterList) {
     const results: ReachabilityResults = {};
 
+    this.clusterReachability = {};
+
     if (!clusterList || !Object.keys(clusterList).length) {
-      return Promise.resolve(results);
+      return;
     }
 
     LoggerProxy.logger.log(
@@ -417,7 +622,11 @@ export default class Reachability {
       } reachability checks`
     );
 
-    const clusterReachabilityChecks = Object.keys(clusterList).map((key) => {
+    this.resetResultCounters();
+    this.startTimers();
+
+    // sanitize the urls in the clusterList
+    Object.keys(clusterList).forEach((key) => {
       const cluster = clusterList[key];
 
       // Linus doesn't support TCP reachability checks on video mesh nodes
@@ -429,6 +638,7 @@ export default class Reachability {
         cluster.tcp = [];
       }
 
+      // Linus doesn't support xTLS reachability checks on video mesh nodes
       const includeTlsReachability =
         // @ts-ignore
         this.webex.config.meetings.experimental.enableTlsReachability && !cluster.isVideoMesh;
@@ -437,18 +647,94 @@ export default class Reachability {
         cluster.xtls = [];
       }
 
-      this.clusterReachability[key] = new ClusterReachability(key, cluster);
+      // initialize the result for this cluster
+      results[key] = {
+        udp: {result: cluster.udp.length > 0 ? 'unreachable' : 'untested'},
+        tcp: {result: cluster.tcp.length > 0 ? 'unreachable' : 'untested'},
+        xtls: {result: cluster.xtls.length > 0 ? 'unreachable' : 'untested'},
+        isVideoMesh: cluster.isVideoMesh,
+      };
 
-      return this.clusterReachability[key].start().then((result) => {
-        results[key] = result;
-        results[key].isVideoMesh = cluster.isVideoMesh;
-      });
+      // update expected results counters to include this cluster
+      this.expectedResultsCount[cluster.isVideoMesh ? 'videoMesh' : 'public'].udp +=
+        cluster.udp.length;
+      if (!cluster.isVideoMesh) {
+        this.expectedResultsCount.public.tcp += cluster.tcp.length;
+        this.expectedResultsCount.public.xtls += cluster.xtls.length;
+      }
     });
 
-    await Promise.all(clusterReachabilityChecks);
+    const isFirstResult = {
+      udp: true,
+      tcp: true,
+      xtls: true,
+    };
 
-    this.logUnreachableClusters();
+    // save the initialized results (in case we don't get any "resultReady" events at all)
+    await this.storeResults(results);
 
-    return results;
+    // now start the reachability on all the clusters
+    Object.keys(clusterList).forEach((key) => {
+      const cluster = clusterList[key];
+
+      this.clusterReachability[key] = new ClusterReachability(key, cluster);
+      this.clusterReachability[key].on(Events.resultReady, async (data: ResultEventData) => {
+        const {protocol, result, clientMediaIPs, latencyInMilliseconds} = data;
+
+        if (isFirstResult[protocol]) {
+          this.emit(
+            {
+              file: 'reachability',
+              function: 'resultReady event handler',
+            },
+            'reachability:firstResultAvailable',
+            {
+              protocol,
+            }
+          );
+          isFirstResult[protocol] = false;
+        }
+        this.resultsCount[cluster.isVideoMesh ? 'videoMesh' : 'public'][protocol] += 1;
+
+        const areAllResultsReady = this.areAllResultsReady();
+
+        results[key][protocol].result = result;
+        results[key][protocol].clientMediaIPs = clientMediaIPs;
+        results[key][protocol].latencyInMilliseconds = latencyInMilliseconds;
+
+        await this.storeResults(results);
+
+        if (areAllResultsReady) {
+          clearTimeout(this.overallTimer);
+          this.overallTimer = undefined;
+          this.emit(
+            {
+              file: 'reachability',
+              function: 'performReachabilityChecks',
+            },
+            'reachability:done',
+            {}
+          );
+          this.sendMetric();
+
+          LoggerProxy.logger.log(
+            `Reachability:index#gatherReachability --> Reachability checks fully completed`
+          );
+          this.resolveReachabilityPromise();
+        }
+      });
+
+      // clientMediaIps can be updated independently from the results, so we need to listen for them too
+      this.clusterReachability[key].on(
+        Events.clientMediaIpsUpdated,
+        async (data: ClientMediaIpsUpdatedEventData) => {
+          results[key][data.protocol].clientMediaIPs = data.clientMediaIPs;
+
+          await this.storeResults(results);
+        }
+      );
+
+      this.clusterReachability[key].start(); // not awaiting on purpose
+    });
   }
 }
