@@ -2182,7 +2182,7 @@ describe('plugin-meetings', () => {
 
         pc.getTransceiverStats = sinon.stub().resolves(stats);
 
-        await startStatsAnalyzer({expected: {receiveVideo: true}});
+        await startStatsAnalyzer({pc, statsAnalyzer, mediaStatus: {expected: {receiveVideo: true}}});
         await progressTime();
 
         assert.equal(mqeData.audioReceive[0].common.maxBitrate, expectedBitrate)
