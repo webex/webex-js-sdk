@@ -6022,9 +6022,24 @@ export default class Meeting extends StatelessWebexPlugin {
     );
 
     this.mediaProperties.webrtcMediaConnection.on(Event.ICE_CANDIDATE_ERROR, (event) => {
-      const {errorCode, errorText} = event.error;
+      const {errorCode} = event.error;
+      let {errorText} = event.error;
 
-      const error = `${errorCode}_${errorText.replace(' ', '_')}`;
+      if (
+        errorCode === 600 &&
+        errorText === 'Address not associated with the desired network interface.'
+      ) {
+        return;
+      }
+
+      if (errorText.endsWith('.')) {
+        errorText = errorText.slice(0, -1);
+      }
+
+      errorText = errorText.toLowerCase();
+      errorText = errorText.replace(/ /g, '_');
+
+      const error = `${errorCode}_${errorText}`;
 
       const count = this.iceCandidateErrors.get(error) || 0;
 
@@ -6868,7 +6883,7 @@ export default class Meeting extends StatelessWebexPlugin {
       const {selectedCandidatePairChanges, numTransports} =
         await this.mediaProperties.getCurrentConnectionInfo();
 
-      // const iceCandidateErrors = Array.from(this.iceCandidateErrors.entries()).map(([error, count]) => ({}));;
+      const iceCandidateErrors = Object.fromEntries(this.iceCandidateErrors);
 
       Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.ADD_MEDIA_FAILURE, {
         correlation_id: this.correlationId,
@@ -6899,7 +6914,7 @@ export default class Meeting extends StatelessWebexPlugin {
           this.mediaProperties.webrtcMediaConnection?.mediaConnection?.pc?.iceConnectionState ||
           'unknown',
         ...reachabilityMetrics,
-        ...this.iceCandidateErrors,
+        ...iceCandidateErrors,
       });
 
       await this.cleanUpOnAddMediaFailure();
