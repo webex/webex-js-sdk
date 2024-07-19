@@ -160,7 +160,7 @@
     "express-validator": "^5.3.1",
     "firefox-profile": "^4.0.0",
     "fs-extra": "^8.1.0",
-    "geckodriver": "^3.0.1",
+    "geckodriver": "^4.4.2",
     "glob": "^7.1.4",
     "humanize-string": "^1.0.2",
     "husky": "^7.0.4",
