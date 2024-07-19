@@ -43,7 +43,7 @@ const changelog: CommandsCommand<Options> = {
         }),
       ))
       .then((packs: Array<Package>) => packs.filter(
-        (pack) => (options.packages ? options.packages.includes(pack.name) : true),
+        (pack) => options.packages.includes(pack.name),
       ))
       .then((packs) => Promise.all(packs.map((pack) => pack.inspect())))
       .then(async (packs) => {

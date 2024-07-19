@@ -3,6 +3,12 @@ const { changelog, Package, Yarn } = require('@webex/package-tools');
 const changelogUtils = require('@webex/package-tools/dist/module/commands/changelog/changelog.utils');
 const fixtures = require('./changelog.fixtures');
 
+jest.mock('@webex/package-tools/dist/module/commands/changelog/changelog.executor', () => ({
+  getCommits: jest.fn(),
+}));
+
+jest.mock('../../../src/models/package');
+
 describe('changelog', () => {
   const options = {
     packages: ['webex', '@webex/package-tools'],
@@ -78,6 +84,45 @@ describe('changelog', () => {
       };
       await changelog.handler(noPackages);
       expect(spies.Yarn.list).not.toHaveBeenCalledWith();
+    });
+    it('should not call "Yarn.list()" if packages are empty', async () => {
+      const noPackages = {
+        packages: [],
+        tag: 'next',
+        commit: 'example_commit_id',
+      };
+      await changelog.handler(noPackages);
+      expect(spies.Yarn.list).toHaveBeenCalledWith();
+    });
+    it('should call "Yarn.list()" and process packages correctly', async () => {
+      jest.spyOn(changelogUtils, 'createOrUpdateChangelog').mockResolvedValue(true);
+      const optionsWithTag = {
+        ...options,
+        tag: 'v1.0.0/feature',
+      };
+      await changelog.handler(optionsWithTag);
+      expect(spies.process.cwd).toHaveBeenCalledTimes(1);
+      expect(spies.Yarn.list).toHaveBeenCalledTimes(1);
+      expect(spies.path.join).toHaveBeenCalledTimes(2);
+      expect(spies.path.join).toHaveBeenCalledWith('/path/to/project', 'packages/@webex/plugin-tools');
+      expect(spies.path.join).toHaveBeenCalledWith('/path/to/project', 'packages/webex');
+    });
+
+    it('should return all packages when packages is not provided', () => {
+      jest.spyOn(changelogUtils, 'createOrUpdateChangelog').mockResolvedValue(true);
+      jest.spyOn(Yarn, 'list').mockResolvedValue(listResolve);
+      changelog.handler({ ...options, packages: undefined });
+      expect(changelogUtils.createOrUpdateChangelog.mock.calls).toHaveLength(0);
+    });
+
+    it('should handle options.tag being undefined', async () => {
+      jest.spyOn(changelogUtils, 'createOrUpdateChangelog').mockResolvedValue(true);
+      const optionsWithoutTag = {
+        ...options,
+        tag: undefined,
+      };
+      await changelog.handler(optionsWithoutTag);
+      expect(spies.Yarn.list).toHaveBeenCalledTimes(1);
     });
 
     it('should call "Yarn.list() and create paths for location"', async () => {
