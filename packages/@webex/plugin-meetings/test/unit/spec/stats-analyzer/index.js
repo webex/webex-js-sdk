@@ -728,6 +728,55 @@ describe('plugin-meetings', () => {
         assert.strictEqual(mqeData.videoReceive[0].streams[0].receivedWidth, 1280);
       };
 
+      it('maxBitrate is properly calculated', async () => {
+        const stats = {
+          audio: {
+            senders: [fakeStats.audio.senders[0]],
+            receivers: [fakeStats.audio.receivers[0]],
+          },
+          video: {
+            senders: [fakeStats.video.senders[0]],
+            receivers: [fakeStats.video.receivers[0]],
+          },
+          screenShareAudio: {
+            senders: [fakeStats.audio.senders[0]],
+            receivers: [fakeStats.audio.receivers[0]],
+          },
+          screenShareVideo: {
+            senders: [fakeStats.video.senders[0]],
+            receivers: [fakeStats.video.receivers[0]],
+          },
+        };
+        stats.video.receivers[0].report = [stats.video.receivers[0].report[0]];
+
+        statsAnalyzer = new StatsAnalyzer({
+          config: initialConfig,
+          receiveSlotCallback: () => receiveSlot,
+          networkQualityMonitor,
+          isMultistream: true,
+        });
+
+        const bytesReceived = 480_000;
+        const expectedBitrate = (bytesReceived * 8) / MQA_INTERVAL; // 64
+
+        stats.audio.receivers[0].report[0].bytesReceived = bytesReceived;
+        stats.audio.senders[0].report[0].bytesSent = bytesReceived;
+
+        stats.video.receivers[0].report[0].bytesReceived = bytesReceived;
+        stats.video.senders[0].report[0].bytesSent = bytesReceived;
+
+        pc.getTransceiverStats = sinon.stub().resolves(stats);
+
+        registerStatsAnalyzerEvents(statsAnalyzer);
+        await startStatsAnalyzer({pc, statsAnalyzer, mediaStatus: {expected: {receiveVideo: true}}});
+        await progressTime();
+
+        assert.equal(mqeData.audioReceive[0].common.maxBitrate, expectedBitrate)
+        assert.equal(mqeData.audioTransmit[0].common.maxBitrate, expectedBitrate)
+        assert.equal(mqeData.videoReceive[0].common.maxBitrate, expectedBitrate)
+        assert.equal(mqeData.videoTransmit[0].common.maxBitrate, expectedBitrate)
+      });
+
       it('emits LOCAL_MEDIA_STARTED and LOCAL_MEDIA_STOPPED events for audio', async () => {
         await startStatsAnalyzer({
           statsAnalyzer,
@@ -2143,52 +2192,6 @@ describe('plugin-meetings', () => {
         });
       });
 
-      it('maxBitrate is properly calculated', async () => {
-        const stats = {
-          audio: {
-            senders: [fakeStats.audio.senders[0]],
-            receivers: [fakeStats.audio.receivers[0]],
-          },
-          video: {
-            senders: [fakeStats.video.senders[0]],
-            receivers: [fakeStats.video.receivers[0]],
-          },
-          screenShareAudio: {
-            senders: [fakeStats.audio.senders[0]],
-            receivers: [fakeStats.audio.receivers[0]],
-          },
-          screenShareVideo: {
-            senders: [fakeStats.video.senders[0]],
-            receivers: [fakeStats.video.receivers[0]],
-          },
-        };
-        statsAnalyzer = new StatsAnalyzer({
-          config: initialConfig,
-          receiveSlotCallback: () => receiveSlot,
-          networkQualityMonitor,
-          isMultistream: true,
-        });
-
-        const bytesReceived = 480_000;
-        const expectedBitrate = (bytesReceived * 8) / MQA_INTERVAL; // 64
-
-        stats.audio.receivers[0].report[0].bytesReceived = bytesReceived;
-        stats.audio.senders[0].report[0].bytesSent = bytesReceived;
-
-        stats.video.receivers[0].report[0].bytesReceived = bytesReceived;
-        stats.video.senders[0].report[0].bytesSent = bytesReceived;
-
-        pc.getTransceiverStats = sinon.stub().resolves(stats);
-
-        registerStatsAnalyzerEvents(statsAnalyzer);
-        await startStatsAnalyzer({pc, statsAnalyzer, mediaStatus: {expected: {receiveVideo: true}}});
-        await progressTime();
-
-        assert.equal(mqeData.audioReceive[0].common.maxBitrate, expectedBitrate)
-        assert.equal(mqeData.audioTransmit[0].common.maxBitrate, expectedBitrate)
-        assert.equal(mqeData.videoReceive[0].common.maxBitrate, expectedBitrate)
-        assert.equal(mqeData.videoTransmit[0].common.maxBitrate, expectedBitrate)
-      });
     })
   });
 });

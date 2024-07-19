@@ -305,13 +305,6 @@ export const getVideoReceiverMqa = ({
   videoReceiver.common.rtxBitrate = totalRtxBytesReceivedInaMin
     ? (totalRtxBytesReceivedInaMin * 8) / 60
     : 0;
-
-  console.log({
-    totalBytesReceivedInaMin,
-    totalBytesReceived,
-    lastBytesReceived,
-    result: (totalBytesReceivedInaMin * 8) / MQA_INTERVAL,
-  });
 };
 
 export const getVideoReceiverStreamMqa = ({
