@@ -1882,6 +1882,7 @@ describe('plugin-meetings', () => {
               transmittedKeyFramesUnknown: 0,
               transmittedWidth: 0,
               requestedBitrate: 0,
+              backgroundAugmentationType: VIRTUAL_BACKGROUND_MODE.NONE,
             },
             {
               common: {
@@ -1919,6 +1920,7 @@ describe('plugin-meetings', () => {
               transmittedKeyFramesUnknown: 0,
               transmittedWidth: 0,
               requestedBitrate: 0,
+              backgroundAugmentationType: VIRTUAL_BACKGROUND_MODE.NONE,
             },
             {
               common: {
@@ -1956,6 +1958,7 @@ describe('plugin-meetings', () => {
               transmittedKeyFramesUnknown: 0,
               transmittedWidth: 0,
               requestedBitrate: 0,
+              backgroundAugmentationType: VIRTUAL_BACKGROUND_MODE.NONE,
             },
           ]);
         });
