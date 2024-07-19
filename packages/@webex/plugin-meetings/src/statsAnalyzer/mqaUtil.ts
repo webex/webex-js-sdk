@@ -78,8 +78,6 @@ export const getAudioReceiverMqa = ({
 
   const lastMaxBitrate = lastMqaDataSent?.[baseMediaType]?.[sendrecvType]?.maxBitrate || 0;
   audioReceiver.common.maxBitrate = Math.max(currBitrate, lastMaxBitrate);
-  console.log({totalBytesReceived, lastBytesReceived, receivedB: (totalBytesReceived - lastBytesReceived) * 8,
-  divided: (totalBytesReceived - lastBytesReceived) * 8 / MQA_INTERVAL, currBitrate, lastMaxBitrate});
 };
 
 export const getAudioReceiverStreamMqa = ({
@@ -307,6 +305,13 @@ export const getVideoReceiverMqa = ({
   videoReceiver.common.rtxBitrate = totalRtxBytesReceivedInaMin
     ? (totalRtxBytesReceivedInaMin * 8) / 60
     : 0;
+
+  console.log({
+    totalBytesReceivedInaMin,
+    totalBytesReceived,
+    lastBytesReceived,
+    result: (totalBytesReceivedInaMin * 8) / MQA_INTERVAL,
+  });
 };
 
 export const getVideoReceiverStreamMqa = ({
