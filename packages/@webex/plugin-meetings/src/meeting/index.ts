@@ -682,6 +682,7 @@ export default class Meeting extends StatelessWebexPlugin {
   private hasMediaConnectionConnectedAtLeastOnce: boolean;
   private joinWithMediaRetryInfo?: {isRetry: boolean; prevJoinResponse?: any};
   private connectionStateHandler?: ConnectionStateHandler;
+  private iceCandidateErrors: Map<string, number>;
 
   /**
    * @param {Object} attrs
@@ -1481,6 +1482,15 @@ export default class Meeting extends StatelessWebexPlugin {
      * @memberof Meeting
      */
     this.connectionStateHandler = undefined;
+
+    /**
+     * ICE Candidates errors map
+     * @instance
+     * @type {Map<[number, string], number>}
+     * @private
+     * @memberof Meeting
+     */
+    this.iceCandidateErrors = new Map();
   }
 
   /**
@@ -6010,6 +6020,16 @@ export default class Meeting extends StatelessWebexPlugin {
         );
       }
     );
+
+    this.mediaProperties.webrtcMediaConnection.on(Event.ICE_CANDIDATE_ERROR, (event) => {
+      const {errorCode, errorText} = event.error;
+
+      const error = `${errorCode}_${errorText.replace(' ', '_')}`;
+
+      const count = this.iceCandidateErrors.get(error) || 0;
+
+      this.iceCandidateErrors.set(error, count + 1);
+    });
   };
 
   /**
@@ -6848,6 +6868,8 @@ export default class Meeting extends StatelessWebexPlugin {
       const {selectedCandidatePairChanges, numTransports} =
         await this.mediaProperties.getCurrentConnectionInfo();
 
+      // const iceCandidateErrors = Array.from(this.iceCandidateErrors.entries()).map(([error, count]) => ({}));;
+
       Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.ADD_MEDIA_FAILURE, {
         correlation_id: this.correlationId,
         locus_id: this.locusUrl.split('/').pop(),
@@ -6877,6 +6899,7 @@ export default class Meeting extends StatelessWebexPlugin {
           this.mediaProperties.webrtcMediaConnection?.mediaConnection?.pc?.iceConnectionState ||
           'unknown',
         ...reachabilityMetrics,
+        ...this.iceCandidateErrors,
       });
 
       await this.cleanUpOnAddMediaFailure();
