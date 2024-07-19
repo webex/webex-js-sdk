@@ -246,10 +246,14 @@ const ServiceCatalog = AmpState.extend({
     ];
 
     return serviceUrls.find((serviceUrl) => {
+      // Check to see if the URL we are checking starts with the default URL
       if (url.startsWith(serviceUrl.defaultUrl)) {
         return true;
       }
 
+      // If not, we check to see if the alternate URLs match
+      // These are made by swapping the host of the default URL
+      // with that of an alternate host
       for (const host of serviceUrl.hosts) {
         const alternateUrl = new URL(serviceUrl.defaultUrl);
         alternateUrl.host = host.host;
