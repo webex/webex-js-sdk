@@ -71,11 +71,23 @@ describe('changelog', () => {
   });
 
   describe('handler()', () => {
-    it('should call "Yarn.list()"', async () => {
+    it('should not call "Yarn.list()" if packages are not present', async () => {
+      const noPackages = {
+        tag: 'next',
+        commit: 'example_commit_id',
+      };
+      await changelog.handler(noPackages);
+      expect(spies.Yarn.list).not.toHaveBeenCalledWith();
+    });
+
+    it('should call "Yarn.list() and create paths for location"', async () => {
       jest.spyOn(changelogUtils, 'createOrUpdateChangelog').mockResolvedValue(true);
       await changelog.handler(options);
       expect(spies.Yarn.list).toHaveBeenCalledTimes(1);
       expect(spies.Yarn.list).toHaveBeenCalledWith();
+      expect(spies.path.join).toHaveBeenCalledTimes(2);
+      expect(spies.path.join).toHaveBeenCalledWith('/path/to/project', 'packages/@webex/plugin-tools');
+      expect(spies.path.join).toHaveBeenCalledWith('/path/to/project', 'packages/webex');
     });
 
     it('should call "package.inspect()" for each located package', async () => {

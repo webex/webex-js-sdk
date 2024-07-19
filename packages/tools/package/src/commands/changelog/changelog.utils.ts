@@ -31,12 +31,12 @@ function getAlongWithData(packageName: string, packages: Package[]): AlongWithDa
 export async function createOrUpdateChangelog(packages: Package[], prevCommitId: string) {
   Object.keys(packages).forEach(async (index: any) => {
     const pkgName = packages[index].name;
-    // const {version} = packages[index];
-    // console.log(packages[index], version);
     const { version } = packages[index];
     const fileName = version.split('-')[0].replace(/\./g, '_');
+
     // Constructing the changelog file name
     const changelogFilePath = `./docs/changelog/v${fileName}.json`;
+
     // Prepare the changelog entry
     const changelogEntry: ChangelogEntry = {};
     let commits: string | unknown;
@@ -46,6 +46,7 @@ export async function createOrUpdateChangelog(packages: Package[], prevCommitId:
       );
     } catch (err) {
       console.log('Changelog Error: Error while getting commits', err);
+      return;
     }
 
     // Create the changelog entry
