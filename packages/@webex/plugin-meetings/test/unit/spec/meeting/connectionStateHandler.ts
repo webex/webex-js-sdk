@@ -71,7 +71,7 @@ describe('ConnectionStateHandler', () => {
       );
     });
 
-    it('should not emit a stateChanged event when overall connection state does not change', () => {
+    it('should emit a stateChanged event only once when overall connection state does not change', () => {
       const spy = sinon.spy(connectionStateHandler, 'emit');
 
       // check the right listener was registered
