@@ -237,7 +237,6 @@ const ServiceCatalog = AmpState.extend({
    * @returns {serviceUrl} - ServiceUrl assocated with provided url
    */
   findServiceUrlFromUrl(url) {
-    const incomingUrlObj = Url.parse(url);
     const serviceUrls = [
       ...this.serviceGroups.discovery,
       ...this.serviceGroups.preauth,
@@ -247,12 +246,17 @@ const ServiceCatalog = AmpState.extend({
     ];
 
     return serviceUrls.find((serviceUrl) => {
-      if (incomingUrlObj.hostname === Url.parse(serviceUrl.defaultUrl).hostname) {
+      if (url.startsWith(serviceUrl.defaultUrl)) {
         return true;
       }
 
-      if (serviceUrl.hosts.find((host) => host.host === incomingUrlObj.hostname)) {
-        return true;
+      for (const host of serviceUrl.hosts) {
+        const alternateUrl = new URL(serviceUrl.defaultUrl);
+        alternateUrl.host = host.host;
+
+        if (url.startsWith(alternateUrl.toString())) {
+          return true;
+        }
       }
 
       return false;
