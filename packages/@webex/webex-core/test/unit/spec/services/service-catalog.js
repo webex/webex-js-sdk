@@ -223,7 +223,7 @@ describe('webex-core', () => {
           hosts: [{host: 'example1.com'}, {host: 'example2.com'}],
         };
 
-        catalog.serviceGroups.preauth.push(otherService, exampleService);
+        catalog.serviceGroups[serviceGroup].push(otherService, exampleService);
 
         const service = catalog.findServiceUrlFromUrl(url);
 
@@ -236,7 +236,7 @@ describe('webex-core', () => {
         'signin',
         'postauth',
         'override'
-      ])('matches an alternate host url', () => {
+      ])('matches an alternate host url', (serviceGroup) => {
         const url = 'https://example2.com/resource/id';
 
         const exampleService = {
@@ -244,7 +244,7 @@ describe('webex-core', () => {
           hosts: [{host: 'example1.com'}, {host: 'example2.com'}],
         };
 
-        catalog.serviceGroups.preauth.push(otherService, exampleService);
+        catalog.serviceGroups[serviceGroup].push(otherService, exampleService);
 
         const service = catalog.findServiceUrlFromUrl(url);
 
