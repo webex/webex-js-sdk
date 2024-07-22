@@ -1,5 +1,6 @@
 import { expect } from '@jest/globals';
 import NetworkQualityMonitor from "../../../../src/networkQualityMonitor";
+import {EVENT_TRIGGERS} from '../../../../src/constants';
 jest.mock('../../../../src/common/logs/logger-proxy');
 describe('plugin-meetings', () => {
   describe('NetworkQualityMonitor', () => {
@@ -67,7 +68,7 @@ describe('plugin-meetings', () => {
           file: 'networkQualityMonitor',
           function: 'emitNetworkQuality',
         }),
-        expect.anything(), // Replace with actual event name if available
+        EVENT_TRIGGERS.NETWORK_QUALITY,
         expect.objectContaining({
           mediaType: 'video-send',
           networkQualityScore: 0,
