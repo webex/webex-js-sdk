@@ -2782,7 +2782,8 @@ describe('plugin-meetings', () => {
             on: sinon.stub(),
           });
 
-          meeting.iceCandidateErrors.set('701_error', 1);
+          meeting.iceCandidateErrors.set('701_error', 2);
+          meeting.iceCandidateErrors.set('701_turn_host_lookup_received_error', 1);
 
           await meeting
             .addMedia({
@@ -2813,7 +2814,8 @@ describe('plugin-meetings', () => {
               iceConnectionState: 'unknown',
               selectedCandidatePairChanges: 2,
               numTransports: 1,
-              '701_error': 1,
+              '701_error': 2,
+              '701_turn_host_lookup_received_error': 1
             }
           );
 
@@ -7220,10 +7222,13 @@ describe('plugin-meetings', () => {
           });
 
           it('should increment counter if same valid ice candidates error collected', () => {
+            eventListeners[Event.ICE_CANDIDATE_ERROR]({error: { errorCode: 701, errorText: '' }});
             eventListeners[Event.ICE_CANDIDATE_ERROR]({error: { errorCode: 701, errorText: 'STUN host lookup received error.' }});
             eventListeners[Event.ICE_CANDIDATE_ERROR]({error: { errorCode: 701, errorText: 'STUN host lookup received error.' }});
 
-            assert.equal(meeting.iceCandidateErrors.size, 1);
+            assert.equal(meeting.iceCandidateErrors.size, 2);
+            assert.equal(meeting.iceCandidateErrors.has('701_'), true);
+            assert.equal(meeting.iceCandidateErrors.get('701_'), 1);
             assert.equal(meeting.iceCandidateErrors.has('701_stun_host_lookup_received_error'), true);
             assert.equal(meeting.iceCandidateErrors.get('701_stun_host_lookup_received_error'), 2);
           });

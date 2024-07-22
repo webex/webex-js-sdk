@@ -154,6 +154,7 @@ import ControlsOptionsManager from '../controls-options-manager';
 import PermissionError from '../common/errors/permission';
 import {LocusMediaRequest} from './locusMediaRequest';
 import {ConnectionStateHandler, ConnectionStateEvent} from './connectionStateHandler';
+import RecordingAction from '../recording-controller/enums';
 
 const logRequest = (request: any, {logText = ''}) => {
   LoggerProxy.logger.info(`${logText} - sending request`);
@@ -6021,6 +6022,7 @@ export default class Meeting extends StatelessWebexPlugin {
       }
     );
 
+    this.iceCandidateErrors.clear();
     this.mediaProperties.webrtcMediaConnection.on(Event.ICE_CANDIDATE_ERROR, (event) => {
       const {errorCode} = event.error;
       let {errorText} = event.error;
