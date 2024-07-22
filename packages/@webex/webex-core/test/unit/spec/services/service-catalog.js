@@ -13,7 +13,7 @@ describe('webex-core', () => {
     let services;
     let catalog;
 
-    beforeAll(() => {
+    beforeEach(() => {
       webex = new MockWebex();
       services = new Services(undefined, {parent: webex});
       catalog = services._getCatalog();
@@ -199,6 +199,56 @@ describe('webex-core', () => {
         const list = catalog.getAllowedDomains();
 
         assert.match(['example-a', 'example-b', 'example-c', 'example-e', 'example-f'], list);
+      });
+    });
+
+    describe('findServiceUrlFromUrl()', () => {
+      const otherService = {
+        defaultUrl: 'https://example.com/differentresource',
+        hosts: [{host: 'example1.com'}, {host: 'example2.com'}],
+      };
+
+      it.each([
+        'discovery',
+        'preauth',
+        'signin',
+        'postauth',
+        'override'
+      ])('matches a default url correctly', (serviceGroup) => {
+        const url = 'https://example.com/resource/id';
+
+
+        const exampleService = {
+          defaultUrl: 'https://example.com/resource',
+          hosts: [{host: 'example1.com'}, {host: 'example2.com'}],
+        };
+
+        catalog.serviceGroups[serviceGroup].push(otherService, exampleService);
+
+        const service = catalog.findServiceUrlFromUrl(url);
+
+        assert.equal(service, exampleService);
+      });
+
+      it.each([
+        'discovery',
+        'preauth',
+        'signin',
+        'postauth',
+        'override'
+      ])('matches an alternate host url', (serviceGroup) => {
+        const url = 'https://example2.com/resource/id';
+
+        const exampleService = {
+          defaultUrl: 'https://example.com/resource',
+          hosts: [{host: 'example1.com'}, {host: 'example2.com'}],
+        };
+
+        catalog.serviceGroups[serviceGroup].push(otherService, exampleService);
+
+        const service = catalog.findServiceUrlFromUrl(url);
+
+        assert.equal(service, exampleService);
       });
     });
   });

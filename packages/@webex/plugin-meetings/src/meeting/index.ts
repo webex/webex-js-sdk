@@ -153,6 +153,7 @@ import RecordingController from '../recording-controller';
 import ControlsOptionsManager from '../controls-options-manager';
 import PermissionError from '../common/errors/permission';
 import {LocusMediaRequest} from './locusMediaRequest';
+import {ConnectionStateHandler, ConnectionStateEvent} from './connectionStateHandler';
 
 const logRequest = (request: any, {logText = ''}) => {
   LoggerProxy.logger.info(`${logText} - sending request`);
@@ -680,6 +681,7 @@ export default class Meeting extends StatelessWebexPlugin {
   private sdpResponseTimer?: ReturnType<typeof setTimeout>;
   private hasMediaConnectionConnectedAtLeastOnce: boolean;
   private joinWithMediaRetryInfo?: {isRetry: boolean; prevJoinResponse?: any};
+  private connectionStateHandler?: ConnectionStateHandler;
 
   /**
    * @param {Object} attrs
@@ -1470,6 +1472,15 @@ export default class Meeting extends StatelessWebexPlugin {
      * @memberof Meeting
      */
     this.joinWithMediaRetryInfo = {isRetry: false, prevJoinResponse: undefined};
+
+    /**
+     * Connection state handler
+     * @instance
+     * @type {ConnectionStateHandler}
+     * @private
+     * @memberof Meeting
+     */
+    this.connectionStateHandler = undefined;
   }
 
   /**
@@ -5233,8 +5244,13 @@ export default class Meeting extends StatelessWebexPlugin {
 
     // @ts-ignore - Fix type
     if (this.webex.internal.llm.isConnected()) {
-      // @ts-ignore - Fix type
-      if (url === this.webex.internal.llm.getLocusUrl() && isJoined) {
+      if (
+        // @ts-ignore - Fix type
+        url === this.webex.internal.llm.getLocusUrl() &&
+        // @ts-ignore - Fix type
+        datachannelUrl === this.webex.internal.llm.getDatachannelUrl() &&
+        isJoined
+      ) {
         return undefined;
       }
       // @ts-ignore - Fix type
@@ -5846,7 +5862,11 @@ export default class Meeting extends StatelessWebexPlugin {
       }
     });
 
-    this.mediaProperties.webrtcMediaConnection.on(Event.CONNECTION_STATE_CHANGED, (event) => {
+    this.connectionStateHandler = new ConnectionStateHandler(
+      this.mediaProperties.webrtcMediaConnection
+    );
+
+    this.connectionStateHandler.on(ConnectionStateEvent.stateChanged, (event) => {
       const connectionFailed = () => {
         Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.CONNECTION_FAILURE, {
           correlation_id: this.correlationId,
@@ -6264,6 +6284,8 @@ export default class Meeting extends StatelessWebexPlugin {
     try {
       await this.mediaProperties.waitForMediaConnectionConnected();
     } catch (error) {
+      const {iceConnected} = error;
+
       if (!this.hasMediaConnectionConnectedAtLeastOnce) {
         // Only send CA event for join flow if we haven't successfully connected media yet
         // @ts-ignore
@@ -6283,12 +6305,7 @@ export default class Meeting extends StatelessWebexPlugin {
                       this.mediaProperties.webrtcMediaConnection?.mediaConnection?.pc
                         ?.signalingState ||
                       'unknown',
-                    iceConnectionState:
-                      this.mediaProperties.webrtcMediaConnection?.multistreamConnection?.pc?.pc
-                        ?.iceConnectionState ||
-                      this.mediaProperties.webrtcMediaConnection?.mediaConnection?.pc
-                        ?.iceConnectionState ||
-                      'unknown',
+                    iceConnected,
                     turnServerUsed: this.turnServerUsed,
                   }),
                 }
@@ -7897,6 +7914,7 @@ export default class Meeting extends StatelessWebexPlugin {
     Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.MEETING_SHARE_VIDEO_MUTE_STATE_CHANGE, {
       correlationId: this.correlationId,
       muted,
+      encoderImplementation: this.statsAnalyzer?.shareVideoEncoderImplementation,
     });
   };
 

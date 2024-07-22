@@ -1,8 +1,6 @@
-/* eslint-disable prefer-destructuring */
-
 import {cloneDeep, isEmpty} from 'lodash';
+import {CpuInfo} from '@webex/web-capabilities';
 import {ConnectionState} from '@webex/internal-media-core';
-
 import EventsScope from '../common/events/events-scope';
 import {
   DEFAULT_GET_STATS_FILTER,
@@ -91,6 +89,7 @@ export class StatsAnalyzer extends EventsScope {
   statsStarted: any;
   successfulCandidatePair: any;
   localIpAddress: string; // Returns the local IP address for diagnostics. this is the local IP of the interface used for the current media connection a host can have many local Ip Addresses
+  shareVideoEncoderImplementation?: string;
   receiveSlotCallback: ReceiveSlotCallback;
   isMultistream: boolean;
 
@@ -398,6 +397,8 @@ export class StatsAnalyzer extends EventsScope {
 
     newMqa.intervalMetadata.peerReflexiveIP = this.statsResults.connectionType.local.ipAddress;
 
+    newMqa.intervalMetadata.cpuInfo.numberOfCores = CpuInfo.getNumLogicalCores() || 1;
+
     // Adding peripheral information
     newMqa.intervalMetadata.peripherals.push({information: _UNKNOWN_, name: MEDIA_DEVICES.SPEAKER});
     if (this.statsResults['audio-send']) {
@@ -613,6 +614,9 @@ export class StatsAnalyzer extends EventsScope {
           this.statsResults[newType].direction = statsItem.currentDirection;
           this.statsResults[newType].trackLabel = statsItem.localTrackLabel;
           this.statsResults[newType].csi = statsItem.csi;
+        } else if (type === 'video-share-send' && result.type === 'outbound-rtp') {
+          this.shareVideoEncoderImplementation = result.encoderImplementation;
+          this.parseGetStatsResult(result, type, isSender);
         } else {
           this.parseGetStatsResult(result, type, isSender);
         }
