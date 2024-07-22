@@ -1265,9 +1265,12 @@ describe('plugin-meetings', () => {
             extraParams = {},
             expectedMeetingData = {},
             sendCAevents = false,
-            injectMeetingInfo = false
+            injectMeetingInfo = false,
+            isOne2OneMeeting = false
           ) => {
-            if (injectMeetingInfo) {
+            if (isOne2OneMeeting) {
+              assert.notCalled(webex.meetings.meetingInfo.fetchMeetingInfo);
+            } else if (injectMeetingInfo) {
               assert.notCalled(webex.meetings.meetingInfo.fetchMeetingInfo);
             } else {
               assert.calledOnce(webex.meetings.meetingInfo.fetchMeetingInfo);
@@ -1355,6 +1358,28 @@ describe('plugin-meetings', () => {
               'test type',
               {},
               expectedMeetingData
+            );
+          });
+
+          it('creates the meeting avoiding meeting info fetch by passing one2OneMeeting true', async () => {
+
+            const meeting = await webex.meetings.createMeeting('test destination', 'test type', false, {}, undefined, false, undefined, undefined, true);
+
+            const expectedMeetingData = {
+              permissionToken:
+                'eyJhbGciOiJIUzI1NiJ9.eyJleHAiOiIxMjM0NTYiLCJwZXJtaXNzaW9uIjp7InVzZXJQb2xpY2llcyI6eyJhIjp0cnVlfX19.wkTk0Hp8sUlq2wi2nP4-Ym4Xb7aEUHzyXA1kzk6f0V0',
+              meetingJoinUrl: 'meetingJoinUrl',
+              correlationId: meeting.id,
+            };
+
+            checkCreateWithoutDelay(
+              meeting,
+              'test destination',
+              'test type',
+              {},
+              expectedMeetingData,
+              false,
+              true,
             );
           });
 
