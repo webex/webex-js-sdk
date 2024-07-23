@@ -167,5 +167,21 @@ describe('Meeting metrics', () => {
         topLevelArray_1_3_prop2: '2nd prop of object 2',
       });
     });
+
+    it('prepends the prefix', () => {
+      const result = metrics.prepareMetricFields({
+        someStringProp: 'a string',
+        numberProp: 111,
+        booleanPropFalse: false,
+        booleanPropTrue: true,
+      }, 'testPrefix');
+
+      assert.deepEqual(result, {
+        testPrefix_someStringProp: 'a string',
+        testPrefix_numberProp: 111,
+        testPrefix_booleanPropFalse: false,
+        testPrefix_booleanPropTrue: true,
+      });
+    })
   });
 });
