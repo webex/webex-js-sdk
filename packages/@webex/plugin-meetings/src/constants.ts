@@ -136,6 +136,8 @@ export const _WEBEX_MEETING_ = 'WEBEX_MEETING';
 export const _WAIT_ = 'WAIT';
 export const _MOVE_MEDIA_ = 'MOVE_MEDIA';
 
+export const _ONE_2_ONE_MEEETING_ = 'ONE_2_ONE_MEETING';
+
 // *********** PARTICIPANT DELTAS ***********
 export const PARTICIPANT_DELTAS = {
   TARGETS: {

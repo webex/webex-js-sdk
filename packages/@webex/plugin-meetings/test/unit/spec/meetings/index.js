@@ -35,6 +35,7 @@ import {
   ROAP,
   LOCUSINFO,
   EVENT_TRIGGERS,
+  _ONE_2_ONE_MEEETING_,
 } from '../../../../src/constants';
 import CaptchaError from '@webex/plugin-meetings/src/common/errors/captcha-error';
 import {forEach} from 'lodash';
@@ -1265,10 +1266,9 @@ describe('plugin-meetings', () => {
             extraParams = {},
             expectedMeetingData = {},
             sendCAevents = false,
-            injectMeetingInfo = false,
-            isOne2OneMeeting = false
+            injectMeetingInfo = false
           ) => {
-            if (isOne2OneMeeting) {
+            if (type === _ONE_2_ONE_MEEETING_) {
               assert.notCalled(webex.meetings.meetingInfo.fetchMeetingInfo);
             } else if (injectMeetingInfo) {
               assert.notCalled(webex.meetings.meetingInfo.fetchMeetingInfo);
@@ -1361,9 +1361,9 @@ describe('plugin-meetings', () => {
             );
           });
 
-          it('creates the meeting avoiding meeting info fetch by passing one2OneMeeting true', async () => {
+          it('creates the meeting avoiding meeting info fetch by passing type as _ONE_2_ONE_MEEETING_', async () => {
 
-            const meeting = await webex.meetings.createMeeting('test destination', 'test type', false, {}, undefined, false, undefined, undefined, true);
+            const meeting = await webex.meetings.createMeeting('test destination', _ONE_2_ONE_MEEETING_);
 
             const expectedMeetingData = {
               permissionToken:
@@ -1375,11 +1375,9 @@ describe('plugin-meetings', () => {
             checkCreateWithoutDelay(
               meeting,
               'test destination',
-              'test type',
+              _ONE_2_ONE_MEEETING_,
               {},
-              expectedMeetingData,
-              false,
-              true,
+              expectedMeetingData
             );
           });
 
