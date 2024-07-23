@@ -1268,9 +1268,7 @@ describe('plugin-meetings', () => {
             sendCAevents = false,
             injectMeetingInfo = false
           ) => {
-            if (type === _ONE_2_ONE_MEEETING_) {
-              assert.notCalled(webex.meetings.meetingInfo.fetchMeetingInfo);
-            } else if (injectMeetingInfo) {
+            if (injectMeetingInfo) {
               assert.notCalled(webex.meetings.meetingInfo.fetchMeetingInfo);
             } else {
               assert.calledOnce(webex.meetings.meetingInfo.fetchMeetingInfo);
@@ -1356,26 +1354,6 @@ describe('plugin-meetings', () => {
               meeting,
               'test destination',
               'test type',
-              {},
-              expectedMeetingData
-            );
-          });
-
-          it('creates the meeting avoiding meeting info fetch by passing type as _ONE_2_ONE_MEEETING_', async () => {
-
-            const meeting = await webex.meetings.createMeeting('test destination', _ONE_2_ONE_MEEETING_);
-
-            const expectedMeetingData = {
-              permissionToken:
-                'eyJhbGciOiJIUzI1NiJ9.eyJleHAiOiIxMjM0NTYiLCJwZXJtaXNzaW9uIjp7InVzZXJQb2xpY2llcyI6eyJhIjp0cnVlfX19.wkTk0Hp8sUlq2wi2nP4-Ym4Xb7aEUHzyXA1kzk6f0V0',
-              meetingJoinUrl: 'meetingJoinUrl',
-              correlationId: meeting.id,
-            };
-
-            checkCreateWithoutDelay(
-              meeting,
-              'test destination',
-              _ONE_2_ONE_MEEETING_,
               {},
               expectedMeetingData
             );
@@ -1607,7 +1585,7 @@ describe('plugin-meetings', () => {
             );
             checkCreateWithoutDelay(meeting, FAKE_LOCUS_MEETING, 'test type');
           });
-
+          
           it('creates the meeting from a successful meeting info fetch that has no random delay because meeting start time is in the past', async () => {
             const FAKE_LOCUS_MEETING = {
               conversationUrl: 'locusConvURL',
@@ -1805,6 +1783,30 @@ describe('plugin-meetings', () => {
           it('creates the meeting from a rejected meeting info fetch and destroys it if failOnMissingMeetingInfo', async () => {
             checkCreateMeetingWithNoMeetingInfo(true, true);
           });
+
+          const checkCreateMeetingWithOne2OneType = async () => {
+            try {
+              const meeting = await webex.meetings.createMeeting(
+                'test destination',
+                _ONE_2_ONE_MEEETING_
+              );
+
+              assert.instanceOf(
+                meeting,
+                Meeting,
+                'createMeeting should eventually resolve to a Meeting Object'
+              );
+              assert.notCalled(webex.meetings.meetingInfo.fetchMeetingInfo);
+              assert.calledThrice(TriggerProxy.trigger);
+            } catch (err) {
+              assert.instanceOf(err, NoMeetingInfoError);
+            }
+          };
+
+          it('creates the meeting avoiding meeting info fetch by passing type as _ONE_2_ONE_MEEETING_', async () => {
+            checkCreateMeetingWithOne2OneType();
+          });
+
         });
 
         describe('rejected MeetingInfo.#fetchMeetingInfo - does not log for known Error types', () => {
