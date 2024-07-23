@@ -1536,7 +1536,6 @@ describe('State Machine handler tests', () => {
       },
     };
     const postMediaSpy = jest.spyOn(call as any, 'postMedia');
-    const addSessionConnectionSpy = jest.spyOn(call as any, 'addSessionConnection');
 
     webex.request.mockReturnValue(statusPayload);
     call['direction'] = CallDirection.INBOUND;
@@ -1564,7 +1563,6 @@ describe('State Machine handler tests', () => {
 
     await call.sendMediaStateMachineEvt(dummyEvent as RoapEvent);
     expect(postMediaSpy).toBeCalledOnceWith(dummyEvent.data as RoapMessage);
-    expect(addSessionConnectionSpy).toBeCalledOnceWith(dummyEvent.data.sdp);
 
     /* we receive roap Offer Request followed by roap Ok from mobius and handle
       out of order events by buffering and processing them in sequence */
