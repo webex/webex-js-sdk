@@ -1585,7 +1585,7 @@ describe('plugin-meetings', () => {
             );
             checkCreateWithoutDelay(meeting, FAKE_LOCUS_MEETING, 'test type');
           });
-          
+
           it('creates the meeting from a successful meeting info fetch that has no random delay because meeting start time is in the past', async () => {
             const FAKE_LOCUS_MEETING = {
               conversationUrl: 'locusConvURL',
@@ -1784,27 +1784,22 @@ describe('plugin-meetings', () => {
             checkCreateMeetingWithNoMeetingInfo(true, true);
           });
 
-          const checkCreateMeetingWithOne2OneType = async () => {
-            try {
-              const meeting = await webex.meetings.createMeeting(
-                'test destination',
-                _ONE_2_ONE_MEEETING_
-              );
-
-              assert.instanceOf(
-                meeting,
-                Meeting,
-                'createMeeting should eventually resolve to a Meeting Object'
-              );
-              assert.notCalled(webex.meetings.meetingInfo.fetchMeetingInfo);
-              assert.calledThrice(TriggerProxy.trigger);
-            } catch (err) {
-              assert.instanceOf(err, NoMeetingInfoError);
-            }
-          };
-
           it('creates the meeting avoiding meeting info fetch by passing type as _ONE_2_ONE_MEEETING_', async () => {
-            checkCreateMeetingWithOne2OneType();
+            const meeting = await webex.meetings.createMeeting('test destination', _ONE_2_ONE_MEEETING_);
+
+            assert.instanceOf(
+              meeting,
+              Meeting,
+              'createMeeting should eventually resolve to a Meeting Object'
+            );
+
+            assert.instanceOf(
+              meeting,
+              Meeting,
+              'createMeeting should eventually resolve to a Meeting Object'
+            );
+
+            assert.notCalled(webex.meetings.meetingInfo.fetchMeetingInfo);
           });
 
         });
