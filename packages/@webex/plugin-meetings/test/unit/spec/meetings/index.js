@@ -1793,12 +1793,6 @@ describe('plugin-meetings', () => {
               'createMeeting should eventually resolve to a Meeting Object'
             );
 
-            assert.instanceOf(
-              meeting,
-              Meeting,
-              'createMeeting should eventually resolve to a Meeting Object'
-            );
-
             assert.notCalled(webex.meetings.meetingInfo.fetchMeetingInfo);
           });
 
