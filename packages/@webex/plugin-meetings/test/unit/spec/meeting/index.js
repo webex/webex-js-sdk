@@ -2762,6 +2762,66 @@ describe('plugin-meetings', () => {
           assert.isOk(errorThrown);
         });
 
+        it('should send ICE_CANDIDATE_ERROR metric if media connection fails and ice candidate errors have been gathered', async () => {
+          let errorThrown = undefined;
+
+          meeting.roap.doTurnDiscovery = sinon.stub().returns({
+            turnServerInfo: undefined,
+            turnDiscoverySkippedReason: undefined,
+          });
+          meeting.meetingState = 'ACTIVE';
+          meeting.mediaProperties.waitForMediaConnectionConnected.rejects({iceConnected: false});
+
+          const forceRtcMetricsSend = sinon.stub().resolves();
+          const closeMediaConnectionStub = sinon.stub();
+          Media.createMediaConnection = sinon.stub().returns({
+            close: closeMediaConnectionStub,
+            forceRtcMetricsSend,
+            getConnectionState: sinon.stub().returns(ConnectionState.Connected),
+            initiateOffer: sinon.stub().resolves({}),
+            on: sinon.stub(),
+          });
+
+          meeting.iceCandidateErrors.set('701_error', 2);
+          meeting.iceCandidateErrors.set('701_turn_host_lookup_received_error', 1);
+
+          await meeting
+            .addMedia({
+              mediaSettings: {},
+            })
+            .catch((err) => {
+              errorThrown = err;
+              assert.instanceOf(err, AddMediaFailed);
+            });
+
+          // Check that the only metric sent is ADD_MEDIA_FAILURE
+          assert.calledOnceWithExactly(
+            Metrics.sendBehavioralMetric,
+            BEHAVIORAL_METRICS.ADD_MEDIA_FAILURE,
+            {
+              correlation_id: meeting.correlationId,
+              locus_id: meeting.locusUrl.split('/').pop(),
+              reason: errorThrown.message,
+              stack: errorThrown.stack,
+              code: errorThrown.code,
+              turnDiscoverySkippedReason: undefined,
+              turnServerUsed: true,
+              retriedWithTurnServer: false,
+              isMultistream: false,
+              isJoinWithMediaRetry: false,
+              signalingState: 'unknown',
+              connectionState: 'unknown',
+              iceConnectionState: 'unknown',
+              selectedCandidatePairChanges: 2,
+              numTransports: 1,
+              '701_error': 2,
+              '701_turn_host_lookup_received_error': 1
+            }
+          );
+
+          assert.isOk(errorThrown);
+        });
+
         describe('handles StatsAnalyzer events', () => {
           let prevConfigValue;
           let statsAnalyzerStub;
@@ -7106,6 +7166,7 @@ describe('plugin-meetings', () => {
           assert.isFunction(eventListeners[Event.REMOTE_TRACK_ADDED]);
           assert.isFunction(eventListeners[Event.PEER_CONNECTION_STATE_CHANGED]);
           assert.isFunction(eventListeners[Event.ICE_CONNECTION_STATE_CHANGED]);
+          assert.isFunction(eventListeners[Event.ICE_CANDIDATE_ERROR]);
         });
 
         it('should trigger a media:ready event when REMOTE_TRACK_ADDED is fired', () => {
@@ -7138,6 +7199,39 @@ describe('plugin-meetings', () => {
           assert.deepEqual(TriggerProxy.trigger.getCall(4).args[3], {
             type: 'remoteShare',
             stream: fakeStream,
+          });
+        });
+
+        describe('should react on a ICE_CANDIDATE_ERROR event', () => {
+          beforeEach(() => {
+            meeting.setupMediaConnectionListeners();
+
+          });
+
+          it('should not collect skipped ice candidates error', () => {
+            eventListeners[Event.ICE_CANDIDATE_ERROR]({error: { errorCode: 600, errorText: 'Address not associated with the desired network interface.' }});
+
+            assert.equal(meeting.iceCandidateErrors.size, 0);
+          });
+
+          it('should collect valid ice candidates error', () => {
+            eventListeners[Event.ICE_CANDIDATE_ERROR]({error: { errorCode: 701, errorText: '' }});
+
+            assert.equal(meeting.iceCandidateErrors.size, 1);
+            assert.equal(meeting.iceCandidateErrors.has('701_'), true);
+          });
+
+          it('should increment counter if same valid ice candidates error collected', () => {
+            eventListeners[Event.ICE_CANDIDATE_ERROR]({error: { errorCode: 701, errorText: '' }});
+
+            eventListeners[Event.ICE_CANDIDATE_ERROR]({error: { errorCode: 701, errorText: 'STUN host lookup received error.' }});
+            eventListeners[Event.ICE_CANDIDATE_ERROR]({error: { errorCode: 701, errorText: 'STUN host lookup received error.' }});
+
+            assert.equal(meeting.iceCandidateErrors.size, 2);
+            assert.equal(meeting.iceCandidateErrors.has('701_'), true);
+            assert.equal(meeting.iceCandidateErrors.get('701_'), 1);
+            assert.equal(meeting.iceCandidateErrors.has('701_stun_host_lookup_received_error'), true);
+            assert.equal(meeting.iceCandidateErrors.get('701_stun_host_lookup_received_error'), 2);
           });
         });
 
