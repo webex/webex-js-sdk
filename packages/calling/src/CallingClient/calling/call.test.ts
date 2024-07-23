@@ -716,11 +716,10 @@ describe('Call Tests', () => {
   describe('#addSessionConnection', () => {
     let call;
 
-    beforeEach(async () => {
+    beforeEach(() => {
       call = callManager.createCall(dest, CallDirection.INBOUND, deviceId, mockLineId);
     });
 
-    it('should add a session connection', () => {});
     it('should copy the c-line from media level to the session level', () => {
       const sdp = `v=0\r\no=- 2890844526 2890842807 IN IP4 192.0.2.3\r\ns=-\r\nt=0 0\r\nm=audio 49170 RTP/AVP 0\r\nc=IN IP4 203.0.113.1\r\na=rtpmap:0 PCMU/8000`;
 

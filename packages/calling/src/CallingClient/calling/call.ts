@@ -2439,11 +2439,10 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
             break;
           }
 
-          case RoapScenario.ANSWER: {
+          case RoapScenario.ANSWER:
             this.localRoapMessage = event.roapMessage;
             this.sendMediaStateMachineEvt({type: 'E_SEND_ROAP_ANSWER', data: event.roapMessage});
             break;
-          }
 
           case RoapScenario.ERROR:
             this.sendMediaStateMachineEvt({type: 'E_ROAP_ERROR', data: event.roapMessage});
