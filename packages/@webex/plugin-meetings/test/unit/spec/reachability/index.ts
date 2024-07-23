@@ -575,12 +575,18 @@ describe('gatherReachability', () => {
         },
       },
       expectedMetrics: {
-        vmn: {udp: {min: -1, max: -1, average: -1}},
-        public: {
-          udp: {min: 22, max: 22, average: 22},
-          tcp: {min: 11, max: 11, average: 11},
-          xtls: {min: 33, max: 33, average: 33},
-        },
+        vmn_udp_min: -1,
+        vmn_udp_max: -1,
+        vmn_udp_average: -1,
+        public_udp_min: 22,
+        public_udp_max: 22,
+        public_udp_average: 22,
+        public_tcp_min: 11,
+        public_tcp_max: 11,
+        public_tcp_average: 11,
+        public_xtls_min: 33,
+        public_xtls_max: 33,
+        public_xtls_average: 33,
       },
     },
     // ========================================================================
@@ -657,12 +663,18 @@ describe('gatherReachability', () => {
         },
       },
       expectedMetrics: {
-        vmn: {udp: {min: -1, max: -1, average: -1}},
-        public: {
-          udp: {min: 13, max: 13, average: 13},
-          tcp: {min: 53, max: 53, average: 53},
-          xtls: {min: 113, max: 113, average: 113},
-        },
+        vmn_udp_min: -1,
+        vmn_udp_max: -1,
+        vmn_udp_average: -1,
+        public_udp_min: 13,
+        public_udp_max: 13,
+        public_udp_average: 13,
+        public_tcp_min: 53,
+        public_tcp_max: 53,
+        public_tcp_average: 53,
+        public_xtls_min: 113,
+        public_xtls_max: 113,
+        public_xtls_average: 113,
       },
     },
     // ========================================================================
@@ -788,12 +800,18 @@ describe('gatherReachability', () => {
         },
       },
       expectedMetrics: {
-        vmn: {udp: {min: -1, max: -1, average: -1}},
-        public: {
-          udp: {min: 10, max: 30, average: 20},
-          tcp: {min: 100, max: 120, average: 110},
-          xtls: {min: 200, max: 240, average: 220},
-        },
+        vmn_udp_min: -1,
+        vmn_udp_max: -1,
+        vmn_udp_average: -1,
+        public_udp_min: 10,
+        public_udp_max: 30,
+        public_udp_average: 20,
+        public_tcp_min: 100,
+        public_tcp_max: 120,
+        public_tcp_average: 110,
+        public_xtls_min: 200,
+        public_xtls_max: 240,
+        public_xtls_average: 220,
       },
     },
     // ========================================================================
@@ -831,12 +849,18 @@ describe('gatherReachability', () => {
         },
       },
       expectedMetrics: {
-        vmn: {udp: {min: -1, max: -1, average: -1}},
-        public: {
-          udp: {min: -1, max: -1, average: -1},
-          tcp: {min: -1, max: -1, average: -1},
-          xtls: {min: -1, max: -1, average: -1},
-        },
+        vmn_udp_min: -1,
+        vmn_udp_max: -1,
+        vmn_udp_average: -1,
+        public_udp_min: -1,
+        public_udp_max: -1,
+        public_udp_average: -1,
+        public_tcp_min: -1,
+        public_tcp_max: -1,
+        public_tcp_average: -1,
+        public_xtls_min: -1,
+        public_xtls_max: -1,
+        public_xtls_average: -1,
       },
     },
     // ========================================================================
@@ -913,12 +937,18 @@ describe('gatherReachability', () => {
         },
       },
       expectedMetrics: {
-        vmn: {udp: {min: -1, max: -1, average: -1}},
-        public: {
-          udp: {min: 10, max: 10, average: 10},
-          tcp: {min: 100, max: 100, average: 100},
-          xtls: {min: 200, max: 200, average: 200},
-        },
+        vmn_udp_min: -1,
+        vmn_udp_max: -1,
+        vmn_udp_average: -1,
+        public_udp_min: 10,
+        public_udp_max: 10,
+        public_udp_average: 10,
+        public_tcp_min: 100,
+        public_tcp_max: 100,
+        public_tcp_average: 100,
+        public_xtls_min: 200,
+        public_xtls_max: 200,
+        public_xtls_average: 200,
       },
     },
     // ========================================================================
@@ -975,12 +1005,18 @@ describe('gatherReachability', () => {
         },
       },
       expectedMetrics: {
-        vmn: {udp: {min: 100, max: 300, average: 200}},
-        public: {
-          udp: {min: -1, max: -1, average: -1},
-          tcp: {min: -1, max: -1, average: -1},
-          xtls: {min: -1, max: -1, average: -1},
-        },
+        vmn_udp_min: 100,
+        vmn_udp_max: 300,
+        vmn_udp_average: 200,
+        public_udp_min: -1,
+        public_udp_max: -1,
+        public_udp_average: -1,
+        public_tcp_min: -1,
+        public_tcp_max: -1,
+        public_tcp_average: -1,
+        public_xtls_min: -1,
+        public_xtls_max: -1,
+        public_xtls_average: -1,
       },
     },
   ].forEach(
@@ -2003,9 +2039,11 @@ describe('sendMetric', () => {
     // setup stub for getStatistics to return values that show what parameters it was called with,
     // this way we can verify that the correct results of calls to getStatistics are placed
     // in correct data fields when sendBehavioralMetric() is called
-    sinon.stub(reachability, 'getStatistics').callsFake((results, protocol, isVideoMesh) => {
-      return {results, protocol, isVideoMesh};
-    });
+    const getStatisticsStub = sinon
+      .stub(reachability, 'getStatistics')
+      .callsFake((results, protocol, isVideoMesh) => {
+        return {result: 'fake', protocol, isVideoMesh};
+      });
 
     // setup fake clusterReachability results
     reachability.setFakeClusterReachability({
@@ -2041,31 +2079,26 @@ describe('sendMetric', () => {
       },
     ];
 
+    // check that getStatistics is called 4 times and each time with all the results
+    assert.callCount(getStatisticsStub, 4);
+    assert.alwaysCalledWith(getStatisticsStub, expectedResults, sinon.match.any, sinon.match.any);
+
     assert.calledWith(Metrics.sendBehavioralMetric, 'js_sdk_reachability_completed', {
-      vmn: {
-        udp: {
-          results: expectedResults,
-          protocol: 'udp',
-          isVideoMesh: true,
-        },
-      },
-      public: {
-        udp: {
-          results: expectedResults,
-          protocol: 'udp',
-          isVideoMesh: false,
-        },
-        tcp: {
-          results: expectedResults,
-          protocol: 'tcp',
-          isVideoMesh: false,
-        },
-        xtls: {
-          results: expectedResults,
-          protocol: 'xtls',
-          isVideoMesh: false,
-        },
-      },
+      vmn_udp_result: 'fake',
+      vmn_udp_protocol: 'udp',
+      vmn_udp_isVideoMesh: true,
+
+      public_udp_result: 'fake',
+      public_udp_protocol: 'udp',
+      public_udp_isVideoMesh: false,
+
+      public_tcp_result: 'fake',
+      public_tcp_protocol: 'tcp',
+      public_tcp_isVideoMesh: false,
+
+      public_xtls_result: 'fake',
+      public_xtls_protocol: 'xtls',
+      public_xtls_isVideoMesh: false,
     });
   });
 });
