@@ -22410,7 +22410,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"karma@npm:^6.4.2":
+"karma@npm:^6.4.3":
   version: 6.4.3
   resolution: "karma@npm:6.4.3"
   dependencies:
@@ -32771,7 +32771,7 @@ __metadata:
     jest-junit: ^14.0.1
     jsdom: 19.0.0
     jsdom-global: 3.0.2
-    karma: ^6.4.2
+    karma: ^6.4.3
     karma-browserify: ^8.1.0
     karma-browserstack-launcher: ^1.6.0
     karma-chai: ^0.1.0
