@@ -712,6 +712,33 @@ describe('Call Tests', () => {
       {file: 'call', method: 'updateMedia'}
     );
   });
+
+  describe('#addSessionConnection', () => {
+    let call;
+
+    beforeEach(async () => {
+      call = callManager.createCall(dest, CallDirection.INBOUND, deviceId, mockLineId);
+    });
+
+    it('should add a session connection', () => {});
+    it('should copy the c-line from media level to the session level', () => {
+      const sdp = `v=0\r\no=- 2890844526 2890842807 IN IP4 192.0.2.3\r\ns=-\r\nt=0 0\r\nm=audio 49170 RTP/AVP 0\r\nc=IN IP4 203.0.113.1\r\na=rtpmap:0 PCMU/8000`;
+
+      const expectedSdp = `v=0\r\no=- 2890844526 2890842807 IN IP4 192.0.2.3\r\ns=-\r\nc=IN IP4 203.0.113.1\r\nt=0 0\r\nm=audio 49170 RTP/AVP 0\r\nc=IN IP4 203.0.113.1\r\na=rtpmap:0 PCMU/8000`;
+
+      const result = call.addSessionConnection(sdp);
+      expect(result).toBe(expectedSdp);
+    });
+
+    it('should handle multiple media sections correctly', () => {
+      const sdp = `v=0\r\no=- 2890844526 2890842807 IN IP4 192.0.2.3\r\ns=-\r\nt=0 0\r\nm=audio 49170 RTP/AVP 0\r\nc=IN IP4 203.0.113.1\r\na=rtpmap:0 PCMU/8000\r\nm=video 51372 RTP/AVP 31\r\nc=IN IP4 203.0.113.2\r\na=rtpmap:31 H261/90000`;
+
+      const expectedSdp = `v=0\r\no=- 2890844526 2890842807 IN IP4 192.0.2.3\r\ns=-\r\nc=IN IP4 203.0.113.1\r\nt=0 0\r\nm=audio 49170 RTP/AVP 0\r\nc=IN IP4 203.0.113.1\r\na=rtpmap:0 PCMU/8000\r\nm=video 51372 RTP/AVP 31\r\nc=IN IP4 203.0.113.2\r\na=rtpmap:31 H261/90000`;
+
+      const result = call.addSessionConnection(sdp);
+      expect(result).toBe(expectedSdp);
+    });
+  });
 });
 
 describe('State Machine handler tests', () => {
@@ -1509,6 +1536,7 @@ describe('State Machine handler tests', () => {
       },
     };
     const postMediaSpy = jest.spyOn(call as any, 'postMedia');
+    const addSessionConnectionSpy = jest.spyOn(call as any, 'addSessionConnection');
 
     webex.request.mockReturnValue(statusPayload);
     call['direction'] = CallDirection.INBOUND;
@@ -1536,6 +1564,7 @@ describe('State Machine handler tests', () => {
 
     await call.sendMediaStateMachineEvt(dummyEvent as RoapEvent);
     expect(postMediaSpy).toBeCalledOnceWith(dummyEvent.data as RoapMessage);
+    expect(addSessionConnectionSpy).toBeCalledOnceWith(dummyEvent.data.sdp);
 
     /* we receive roap Offer Request followed by roap Ok from mobius and handle
       out of order events by buffering and processing them in sequence */

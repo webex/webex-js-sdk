@@ -2410,6 +2410,11 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
           file: CALL_FILE,
           method: this.mediaRoapEventsListener.name,
         });
+
+        if (event.roapMessage?.sdp) {
+          event.roapMessage.sdp = this.addSessionConnection(event.roapMessage.sdp);
+        }
+
         switch (event.roapMessage.messageType) {
           case RoapScenario.OK: {
             const mediaOk = {
@@ -2435,8 +2440,6 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
           }
 
           case RoapScenario.ANSWER: {
-            const sdp = this.addSessionConnection(event.roapMessage.sdp);
-            event.roapMessage.sdp = sdp;
             this.localRoapMessage = event.roapMessage;
             this.sendMediaStateMachineEvt({type: 'E_SEND_ROAP_ANSWER', data: event.roapMessage});
             break;
