@@ -37,6 +37,11 @@
                     require token with spark:calls_write scope.</p>
                   <button id="enableProduction" type="button" class="btn-code" onclick=changeEnv()>In Production</button><span class="text-color"> ( Click to change the environment )</span>
                   <input id="access-token" name="accessToken" placeholder="Access Token" value="" type="text" style="margin: 1rem 0 0.5rem 0;" required>
+
+                  <div id="guest-container" class="hidden">
+                    <input id="jwt-token-for-dest" name="jwtToken" placeholder="JWT token for destination" value="" type="text" style="margin: 0.5rem 0 0.5rem 0;" required>
+                    <button type="button" onclick="generateGuestToken()">Generate Guest Token [Prod only]</button>
+                  </div>
                 </div>
 
                 <fieldset>
@@ -49,10 +54,11 @@
                   </p>
 
                   <div class="u-mv">
-                    <select name="Service Indicator" id="ServiceIndicator" class="ServiceData">
+                    <select name="Service Indicator" id="ServiceIndicator" class="ServiceData" onchange="handleServiceSelect(event)">
                       <option value="" disabled selected hidden>Choose Service ...</option>
                       <option value="calling">calling</option>
                       <option value="contactcenter">contactcenter</option>
+                      <option value="guestCalling">guest calling</option>
                     </select>
                     <input id="ServiceDomain" name="ServiceDomain" placeholder="Service Domain" type="string">
                   </div>
