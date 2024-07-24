@@ -153,6 +153,7 @@ import RecordingController from '../recording-controller';
 import ControlsOptionsManager from '../controls-options-manager';
 import PermissionError from '../common/errors/permission';
 import {LocusMediaRequest} from './locusMediaRequest';
+import {ConnectionStateHandler, ConnectionStateEvent} from './connectionStateHandler';
 
 const logRequest = (request: any, {logText = ''}) => {
   LoggerProxy.logger.info(`${logText} - sending request`);
@@ -680,6 +681,8 @@ export default class Meeting extends StatelessWebexPlugin {
   private sdpResponseTimer?: ReturnType<typeof setTimeout>;
   private hasMediaConnectionConnectedAtLeastOnce: boolean;
   private joinWithMediaRetryInfo?: {isRetry: boolean; prevJoinResponse?: any};
+  private connectionStateHandler?: ConnectionStateHandler;
+  private iceCandidateErrors: Map<string, number>;
 
   /**
    * @param {Object} attrs
@@ -1470,6 +1473,24 @@ export default class Meeting extends StatelessWebexPlugin {
      * @memberof Meeting
      */
     this.joinWithMediaRetryInfo = {isRetry: false, prevJoinResponse: undefined};
+
+    /**
+     * Connection state handler
+     * @instance
+     * @type {ConnectionStateHandler}
+     * @private
+     * @memberof Meeting
+     */
+    this.connectionStateHandler = undefined;
+
+    /**
+     * ICE Candidates errors map
+     * @instance
+     * @type {Map<[number, string], number>}
+     * @private
+     * @memberof Meeting
+     */
+    this.iceCandidateErrors = new Map();
   }
 
   /**
@@ -5851,7 +5872,11 @@ export default class Meeting extends StatelessWebexPlugin {
       }
     });
 
-    this.mediaProperties.webrtcMediaConnection.on(Event.CONNECTION_STATE_CHANGED, (event) => {
+    this.connectionStateHandler = new ConnectionStateHandler(
+      this.mediaProperties.webrtcMediaConnection
+    );
+
+    this.connectionStateHandler.on(ConnectionStateEvent.stateChanged, (event) => {
       const connectionFailed = () => {
         Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.CONNECTION_FAILURE, {
           correlation_id: this.correlationId,
@@ -5995,6 +6020,32 @@ export default class Meeting extends StatelessWebexPlugin {
         );
       }
     );
+
+    this.iceCandidateErrors.clear();
+    this.mediaProperties.webrtcMediaConnection.on(Event.ICE_CANDIDATE_ERROR, (event) => {
+      const {errorCode} = event.error;
+      let {errorText} = event.error;
+
+      if (
+        errorCode === 600 &&
+        errorText === 'Address not associated with the desired network interface.'
+      ) {
+        return;
+      }
+
+      if (errorText.endsWith('.')) {
+        errorText = errorText.slice(0, -1);
+      }
+
+      errorText = errorText.toLowerCase();
+      errorText = errorText.replace(/ /g, '_');
+
+      const error = `${errorCode}_${errorText}`;
+
+      const count = this.iceCandidateErrors.get(error) || 0;
+
+      this.iceCandidateErrors.set(error, count + 1);
+    });
   };
 
   /**
@@ -6269,6 +6320,8 @@ export default class Meeting extends StatelessWebexPlugin {
     try {
       await this.mediaProperties.waitForMediaConnectionConnected();
     } catch (error) {
+      const {iceConnected} = error;
+
       if (!this.hasMediaConnectionConnectedAtLeastOnce) {
         // Only send CA event for join flow if we haven't successfully connected media yet
         // @ts-ignore
@@ -6288,12 +6341,7 @@ export default class Meeting extends StatelessWebexPlugin {
                       this.mediaProperties.webrtcMediaConnection?.mediaConnection?.pc
                         ?.signalingState ||
                       'unknown',
-                    iceConnectionState:
-                      this.mediaProperties.webrtcMediaConnection?.multistreamConnection?.pc?.pc
-                        ?.iceConnectionState ||
-                      this.mediaProperties.webrtcMediaConnection?.mediaConnection?.pc
-                        ?.iceConnectionState ||
-                      'unknown',
+                    iceConnected,
                     turnServerUsed: this.turnServerUsed,
                   }),
                 }
@@ -6836,6 +6884,8 @@ export default class Meeting extends StatelessWebexPlugin {
       const {selectedCandidatePairChanges, numTransports} =
         await this.mediaProperties.getCurrentConnectionInfo();
 
+      const iceCandidateErrors = Object.fromEntries(this.iceCandidateErrors);
+
       Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.ADD_MEDIA_FAILURE, {
         correlation_id: this.correlationId,
         locus_id: this.locusUrl.split('/').pop(),
@@ -6865,6 +6915,7 @@ export default class Meeting extends StatelessWebexPlugin {
           this.mediaProperties.webrtcMediaConnection?.mediaConnection?.pc?.iceConnectionState ||
           'unknown',
         ...reachabilityMetrics,
+        ...iceCandidateErrors,
       });
 
       await this.cleanUpOnAddMediaFailure();

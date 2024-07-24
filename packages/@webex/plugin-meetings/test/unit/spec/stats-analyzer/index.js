@@ -10,6 +10,7 @@ import testUtils from '../../../utils/testUtils';
 import {MEDIA_DEVICES, MQA_INTERVAL, _UNKNOWN_} from '@webex/plugin-meetings/src/constants';
 import LoggerProxy from '../../../../src/common/logs/logger-proxy';
 import LoggerConfig from '../../../../src/common/logs/logger-config';
+import {CpuInfo} from '@webex/web-capabilities';
 
 const {assert} = chai;
 
@@ -2113,6 +2114,34 @@ describe('plugin-meetings', () => {
           }
         });
       });
-    });
+
+      describe('CPU Information Reporting', async () => {
+        let getNumLogicalCoresStub;
+
+        beforeEach(async () => {
+          getNumLogicalCoresStub = sinon.stub(CpuInfo, 'getNumLogicalCores');
+        });
+
+        afterEach(() => {
+          getNumLogicalCoresStub.restore();
+        });
+
+        it('reports 1 of logical CPU cores when not available', async () => {
+          getNumLogicalCoresStub.returns(undefined);
+          await startStatsAnalyzer({pc, statsAnalyzer, mediaStatus: {expected: {receiveVideo: true}}});
+
+          await progressTime();
+          assert.equal(mqeData.intervalMetadata.cpuInfo.numberOfCores, 1);
+        });
+
+        it('reports the number of logical CPU cores', async () => {
+          getNumLogicalCoresStub.returns(12);
+          await startStatsAnalyzer({pc, statsAnalyzer, mediaStatus: {expected: {receiveVideo: true}}});
+
+          await progressTime();
+          assert.equal(mqeData.intervalMetadata.cpuInfo.numberOfCores, 12);
+        });
+      });
+    })
   });
 });
