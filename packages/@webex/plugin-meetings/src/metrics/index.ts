@@ -65,6 +65,50 @@ class Metrics {
       tags: metricTags,
     });
   }
+
+  /**
+   * Flattens an object into one that has no nested properties. Each level of nesting is represented
+   * by "_" in the flattened object property names.
+   * This function is needed, because Amplitude doesn't allow passing nested objects as metricFields.
+   * Use this function for metricFields before calling sendBehavioralMetric() if you want to send
+   * nested objects in your metrics.
+   *
+   * If the function is called with a literal, it returns an object with a single property "value"
+   * and the literal value in it.
+   *
+   * @param {any} payload object you want to flatten
+   * @param {string} prefix string prefix prepended to any property names in flatten object
+   * @returns {Object}
+   */
+  prepareMetricFields(payload: any = {}, prefix = '') {
+    let output = {};
+
+    if (Array.isArray(payload)) {
+      payload.forEach((item, index) => {
+        const propName = prefix.length > 0 ? `${prefix}_${index}` : `${index}`;
+
+        output = {...output, ...this.prepareMetricFields(item, propName)};
+      });
+
+      return output;
+    }
+
+    if (typeof payload !== 'object' || payload === null) {
+      if (prefix.length > 0) {
+        return {[prefix]: payload};
+      }
+
+      return {value: payload};
+    }
+
+    Object.entries(payload).forEach(([key, value]) => {
+      const propName = prefix.length > 0 ? `${prefix}_${key}` : key;
+
+      output = {...output, ...this.prepareMetricFields(value, propName)};
+    });
+
+    return output;
+  }
 }
 
 // Export Metrics singleton ---------------------------------------------------
