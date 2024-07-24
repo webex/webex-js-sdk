@@ -514,10 +514,7 @@ export default class Reachability extends EventsScope {
         xtls: this.getStatistics(results, 'xtls', false),
       },
     };
-    Metrics.sendBehavioralMetric(
-      BEHAVIORAL_METRICS.REACHABILITY_COMPLETED,
-      Metrics.prepareMetricFields(stats)
-    );
+    Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.REACHABILITY_COMPLETED, stats);
   }
 
   /**
