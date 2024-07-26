@@ -31,6 +31,8 @@ const voicemailOffsetLimit = 20;
 const voicemailSort = 'DESC';
 const credentialsFormElm = document.querySelector('#credentials');
 const tokenElm = document.querySelector('#access-token');
+const jwtTokenForDestElm = document.querySelector('#jwt-token-for-dest');
+const guestContainerElm = document.querySelector('#guest-container');
 const saveElm = document.querySelector('#access-token-save');
 const authStatusElm = document.querySelector('#access-token-status');
 const registerElm = document.querySelector('#registration-register');
@@ -161,6 +163,51 @@ function changeEnv() {
   enableProduction.innerHTML = enableProd ? 'In Production' : 'In Integration';
 }
 
+const guestUrl = 'https://webexapis.com/v1/guests/token';
+const guestIssuerAccessToken = '';
+
+// Guest access token via Service App
+async function getGuestAccessToken() {
+  const response = await fetch(guestUrl, {
+    method: 'post',
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${guestIssuerAccessToken}`,
+    },
+    body: JSON.stringify({
+      subject: 'Guest token for Webex Calling SDK Sample App',
+      displayName: 'Calling Guest User',
+    }),
+  });
+
+  const data = await response.json();
+
+  return data.accessToken;
+}
+
+async function generateGuestToken() {
+  try {
+    const guestAccessToken = await getGuestAccessToken();
+    tokenElm.value = guestAccessToken;
+  } catch (error) {
+    if (error.code === 401) {
+      // TODO: Refresh the access token and try again with the new token
+    }
+  }    
+}
+
+async function handleServiceSelect(e) {
+  const value = e.target.value;
+  tokenElm.value = '';
+
+  if (value === 'guestCalling') {
+    guestContainerElm.classList.remove('hidden');
+  } else {
+    guestContainerElm.classList.add('hidden');
+  }
+}
+
 async function initCalling(e) {
   e.preventDefault();
   console.log('Authentication#initWebex()');
@@ -233,6 +280,7 @@ async function initCalling(e) {
       country: country.value,
     },
     serviceData,
+    jwe: jwtTokenForDestElm.value,
   };
 
   if (callingClientConfig.discovery.country === 'Country') {
