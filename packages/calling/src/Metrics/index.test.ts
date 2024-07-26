@@ -2,6 +2,7 @@
 import {getMockDeviceInfo, getTestUtilsWebex} from '../common/testUtil';
 import {getMetricManager} from './index';
 import {METRIC_TYPE, METRIC_EVENT, REG_ACTION, VOICEMAIL_ACTION} from './types';
+import {VERSION} from '../CallingClient/constants';
 import {createClientError} from '../Errors/catalog/CallingDeviceError';
 import {CallErrorObject, ErrorObject, ERROR_LAYER, ERROR_TYPE} from '../Errors/types';
 import {RegistrationStatus, ServiceIndicator} from '../common/types';
@@ -537,6 +538,39 @@ describe('CALLING: Metric tests', () => {
           method: 'submitVoicemailMetric',
         }
       );
+    });
+  });
+
+  describe('Calling_Sdk_Version fallback test', () => {
+    it('submit metric with fallback version', () => {
+      process.env = {
+        ...originalEnv,
+        CALLING_SDK_VERSION: undefined,
+      };
+      metricManager.setDeviceInfo(mockDeviceInfo);
+      const expectedData = {
+        tags: {
+          device_id: mockDeviceInfo.device.deviceId,
+          service_indicator: ServiceIndicator.CALLING,
+        },
+        fields: {
+          device_url: mockDeviceInfo.device.clientDeviceUri,
+          mobius_url: mockDeviceInfo.device.uri,
+          calling_sdk_version: VERSION,
+          call_id: mockCallId,
+          correlation_id: mockCorrelationId,
+        },
+        type: METRIC_TYPE.BEHAVIORAL,
+      };
+
+      metricManager.submitBNRMetric(
+        METRIC_EVENT.BNR_ENABLED,
+        METRIC_TYPE.BEHAVIORAL,
+        mockCallId,
+        mockCorrelationId
+      );
+
+      expect(mockSubmitClientMetric).toBeCalledOnceWith(METRIC_EVENT.BNR_ENABLED, expectedData);
     });
   });
 });
