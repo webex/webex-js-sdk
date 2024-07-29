@@ -543,10 +543,7 @@ describe('CALLING: Metric tests', () => {
 
   describe('Calling_Sdk_Version fallback test', () => {
     it('submit metric with fallback version', () => {
-      process.env = {
-        ...originalEnv,
-        CALLING_SDK_VERSION: undefined,
-      };
+      process.env = {};
       metricManager.setDeviceInfo(mockDeviceInfo);
       const expectedData = {
         tags: {
