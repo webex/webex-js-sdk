@@ -36,6 +36,7 @@ import {
   DEFAULT_SESSION_TIMER,
   DEVICES_ENDPOINT_RESOURCE,
   HOLD_ENDPOINT,
+  ICE_CANDIDATES_TIMEOUT,
   INITIAL_SEQ_NUMBER,
   MEDIA_ENDPOINT_RESOURCE,
   NOISE_REDUCTION_EFFECT,
@@ -1899,6 +1900,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       {
         skipInactiveTransceivers: true,
         iceServers: [],
+        iceCandidatesTimeout: ICE_CANDIDATES_TIMEOUT,
         sdpMunging: {
           convertPort9to0: true,
           addContentSlides: false,
