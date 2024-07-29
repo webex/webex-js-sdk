@@ -126,3 +126,4 @@ export const MOBIUS_US_PROD = 'mobius-us-east-1.prod.infra.webex.com';
 export const MOBIUS_EU_PROD = 'mobius-eu-central-1.prod.infra.webex.com';
 export const MOBIUS_US_INT = 'mobius-us-east-1.int.infra.webex.com';
 export const MOBIUS_EU_INT = 'mobius-eu-central-1.int.infra.webex.com';
+export const ICE_CANDIDATES_TIMEOUT = 3000;
