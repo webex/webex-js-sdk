@@ -6,7 +6,7 @@ import {EffectEvent} from '@webex/web-media-effects';
 import {ERROR_TYPE, ERROR_LAYER} from '../../Errors/types';
 import * as Utils from '../../common/Utils';
 import {CALL_EVENT_KEYS, CallEvent, RoapEvent, RoapMessage} from '../../Events/types';
-import {DEFAULT_SESSION_TIMER} from '../constants';
+import {DEFAULT_SESSION_TIMER, ICE_CANDIDATES_TIMEOUT} from '../constants';
 import {CallDirection, CallType, ServiceIndicator, WebexRequestPayload} from '../../common/types';
 import {METRIC_EVENT, TRANSFER_ACTION, METRIC_TYPE} from '../../Metrics/types';
 import {Call, createCall} from './call';
@@ -103,6 +103,7 @@ describe('Call Tests', () => {
   const roapMediaConnectionConfig = {
     skipInactiveTransceivers: true,
     iceServers: [],
+    iceCandidatesTimeout: ICE_CANDIDATES_TIMEOUT,
     sdpMunging: {
       convertPort9to0: true,
       addContentSlides: false,
