@@ -9835,13 +9835,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"adm-zip@npm:0.5.9":
-  version: 0.5.9
-  resolution: "adm-zip@npm:0.5.9"
-  checksum: 4909bc04119fdd5e8f8ba43826e50623e5c427cf0a939c809d4f9456a6a03c6aa0544e82088739de9ba16b7649f71b99ccbbddc7b2c38bd6143f9c4726cc7ed9
-  languageName: node
-  linkType: hard
-
 "adm-zip@npm:~0.5.x":
   version: 0.5.10
   resolution: "adm-zip@npm:0.5.10"
@@ -17733,21 +17726,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"geckodriver@npm:^3.0.1":
-  version: 3.2.0
-  resolution: "geckodriver@npm:3.2.0"
-  dependencies:
-    adm-zip: 0.5.9
-    bluebird: 3.7.2
-    got: 11.8.5
-    https-proxy-agent: 5.0.1
-    tar: 6.1.11
-  bin:
-    geckodriver: bin/geckodriver
-  checksum: fe196312c97927be943aa97f2343ba15a6fb612b51a1e8ea96c0c8c6e8d50c81d33517e604e3db3777ada28bb9f5b0dad7e822ca4e841f16375a8f1d77df08ae
-  languageName: node
-  linkType: hard
-
 "geckodriver@npm:^4.3.1":
   version: 4.4.1
   resolution: "geckodriver@npm:4.4.1"
@@ -17763,6 +17741,24 @@ __metadata:
   bin:
     geckodriver: bin/geckodriver.js
   checksum: 47abacf5a630f813d025d82e8dcee4a89fe67ec75c32972ef50710a54914bd8379dd38c73bbc308dd155d18265a87e7736004b2a8357a1bffcada285617a93f8
+  languageName: node
+  linkType: hard
+
+"geckodriver@npm:^4.4.2":
+  version: 4.4.2
+  resolution: "geckodriver@npm:4.4.2"
+  dependencies:
+    "@wdio/logger": ^8.28.0
+    "@zip.js/zip.js": ^2.7.44
+    decamelize: ^6.0.0
+    http-proxy-agent: ^7.0.2
+    https-proxy-agent: ^7.0.4
+    node-fetch: ^3.3.2
+    tar-fs: ^3.0.6
+    which: ^4.0.0
+  bin:
+    geckodriver: bin/geckodriver.js
+  checksum: 3aacdf716a5f84860f84fccbda127b65e639008b2aeadd616a70e7d5f6d742730b59d9dd12dfba81cd8fb6ec4eaa875af05e5af38965adc997906d9971a80d99
   languageName: node
   linkType: hard
 
@@ -18327,25 +18323,6 @@ __metadata:
   dependencies:
     get-intrinsic: ^1.1.3
   checksum: a5ccfb8806e0917a94e0b3de2af2ea4979c1da920bc381667c260e00e7cafdbe844e2cb9c5bcfef4e5412e8bf73bab837285bc35c7ba73aaaf0134d4583393a6
-  languageName: node
-  linkType: hard
-
-"got@npm:11.8.5":
-  version: 11.8.5
-  resolution: "got@npm:11.8.5"
-  dependencies:
-    "@sindresorhus/is": ^4.0.0
-    "@szmarczak/http-timer": ^4.0.5
-    "@types/cacheable-request": ^6.0.1
-    "@types/responselike": ^1.0.0
-    cacheable-lookup: ^5.0.3
-    cacheable-request: ^7.0.2
-    decompress-response: ^6.0.0
-    http2-wrapper: ^1.0.0-beta.5.2
-    lowercase-keys: ^2.0.0
-    p-cancelable: ^2.0.0
-    responselike: ^2.0.0
-  checksum: 2de8a1bbda4e9b6b2b72b2d2100bc055a59adc1740529e631f61feb44a8b9a1f9f8590941ed9da9df0090b6d6d0ed8ffee94cd9ac086ec3409b392b33440f7d2
   languageName: node
   linkType: hard
 
@@ -30458,20 +30435,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"tar@npm:6.1.11":
-  version: 6.1.11
-  resolution: "tar@npm:6.1.11"
-  dependencies:
-    chownr: ^2.0.0
-    fs-minipass: ^2.0.0
-    minipass: ^3.0.0
-    minizlib: ^2.1.1
-    mkdirp: ^1.0.3
-    yallist: ^4.0.0
-  checksum: a04c07bb9e2d8f46776517d4618f2406fb977a74d914ad98b264fc3db0fe8224da5bec11e5f8902c5b9bcb8ace22d95fbe3c7b36b8593b7dfc8391a25898f32f
-  languageName: node
-  linkType: hard
-
 "tar@npm:^6.0.2, tar@npm:^6.1.11, tar@npm:^6.1.2":
   version: 6.2.0
   resolution: "tar@npm:6.2.0"
@@ -32764,7 +32727,7 @@ __metadata:
     express-validator: ^5.3.1
     firefox-profile: ^4.0.0
     fs-extra: ^8.1.0
-    geckodriver: ^3.0.1
+    geckodriver: ^4.4.2
     glob: ^7.1.4
     humanize-string: ^1.0.2
     husky: ^7.0.4
