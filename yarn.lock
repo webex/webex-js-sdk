@@ -31369,6 +31369,7 @@ __metadata:
     chromedriver: ^101.0.0
     circular-dependency-plugin: ^5.2.2
     core-js: ^3.26.0
+    debug: ^4.3.4
     detective: ^5.2.1
     documentation: ^14.0.1
     documentation-theme-utils: ^3.0.0
