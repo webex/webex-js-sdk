@@ -36,18 +36,19 @@ import {
   _INCOMING_,
   LOCUS,
   CORRELATION_ID,
-  SIP_URI,
+  SIP_URI_KEY,
   _LEFT_,
   _ID_,
   MEETING_REMOVED_REASON,
   _CONVERSATION_URL_,
-  CONVERSATION_URL,
+  CONVERSATION_URL_KEY,
   MEETINGNUMBER,
   _JOINED_,
   _MOVED_,
   _ON_HOLD_LOBBY_,
   _WAIT_,
-  _ONE_2_ONE_MEEETING_,
+  _ONE_ON_ONE_CALL_,
+  MeetingType,
 } from '../constants';
 import BEHAVIORAL_METRICS from '../metrics/constants';
 import MeetingInfo from '../meeting-info';
@@ -389,14 +390,14 @@ export default class Meetings extends WebexPlugin {
         MeetingsUtil.checkForCorrelationId(this.webex.internal.device.url, data.locus)
       ) ||
       this.meetingCollection.getByKey(
-        SIP_URI,
+        SIP_URI_KEY,
         data.locus.self &&
           data.locus.self.callbackInfo &&
           data.locus.self.callbackInfo.callbackAddress
       ) ||
       (data.locus.info?.isUnifiedSpaceMeeting
         ? undefined
-        : this.meetingCollection.getByKey(CONVERSATION_URL, data.locus.conversationUrl)) ||
+        : this.meetingCollection.getByKey(CONVERSATION_URL_KEY, data.locus.conversationUrl)) ||
       this.meetingCollection.getByKey(MEETINGNUMBER, data.locus?.info?.webExMeetingId)
     );
   }
@@ -1091,7 +1092,7 @@ export default class Meetings extends WebexPlugin {
    */
   public create(
     destination: string,
-    type: string = null,
+    type: string | MeetingType = null,
     useRandomDelayForInfo = false,
     infoExtraParams = {},
     correlationId: string = undefined,
@@ -1106,6 +1107,11 @@ export default class Meetings extends WebexPlugin {
     // type. This must be performed prior to determining if the meeting is
     // found in the collection, as we mutate the destination for hydra person
     // id values.
+    // Convert `type` to string if it's of type MeetingType
+    if (type && typeof type !== 'string') {
+      type = MeetingType[type as keyof typeof MeetingType]; // Explicitly convert to string
+    }
+
     if (correlationId) {
       callStateForMetrics = {...(callStateForMetrics || {}), correlationId};
     }
@@ -1130,7 +1136,7 @@ export default class Meetings extends WebexPlugin {
           let meeting = null;
 
           if (type === _CONVERSATION_URL_ || options.type === _CONVERSATION_URL_) {
-            const foundMeeting = this.meetingCollection.getByKey(CONVERSATION_URL, targetDest);
+            const foundMeeting = this.meetingCollection.getByKey(CONVERSATION_URL_KEY, targetDest);
 
             if (foundMeeting) {
               const foundMeetingIsNotCalendarMeeting = !foundMeeting.locusInfo.scheduledMeeting;
@@ -1145,7 +1151,7 @@ export default class Meetings extends WebexPlugin {
 
           // Attempt to collect the meeting if it exists.
           if (!meeting) {
-            meeting = this.meetingCollection.getByKey(SIP_URI, targetDest);
+            meeting = this.meetingCollection.getByKey(SIP_URI_KEY, targetDest);
           }
 
           // Validate if a meeting was found.
@@ -1291,7 +1297,7 @@ export default class Meetings extends WebexPlugin {
 
       if (meetingInfo) {
         meeting.injectMeetingInfo(meetingInfo, meetingInfoOptions, meetingLookupUrl);
-      } else if (type !== _ONE_2_ONE_MEEETING_) {
+      } else if (type !== _ONE_ON_ONE_CALL_) {
         // ignore fetchMeetingInfo for 1:1 meetings
         if (enableUnifiedMeetings && !isMeetingActive && useRandomDelayForInfo && waitingTime > 0) {
           meeting.fetchMeetingInfoTimeoutId = setTimeout(
