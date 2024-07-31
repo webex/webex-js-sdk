@@ -1078,7 +1078,7 @@ export default class Meetings extends WebexPlugin {
    * When meeting info passed it should be complete, e.g.: fetched after password or captcha provided
    *
    * @param {string} destination - sipURL, phonenumber, or locus object}
-   * @param {string} [type] - the optional specified type, such as locusId
+   * @param {string | MeetingType} [type] - the optional specified type, such as locusId
    * @param {Boolean} useRandomDelayForInfo - whether a random delay should be added to fetching meeting info
    * @param {Object} infoExtraParams extra parameters to be provided when fetching meeting info
    * @param {string} correlationId - the optional specified correlationId (callStateForMetrics.correlationId can be provided instead)
