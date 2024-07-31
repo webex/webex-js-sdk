@@ -1,7 +1,7 @@
 import lodash from 'lodash';
 import {
   HTTP_VERBS,
-  _CONVERSATION_URL_,
+  DestinationType,
   WBXAPPAPI_SERVICE,
   DEFAULT_MEETING_INFO_REQUEST_BODY,
 } from '../constants';
@@ -284,7 +284,7 @@ export default class MeetingInfoV2 {
     });
 
     if (
-      destinationType.type === _CONVERSATION_URL_ &&
+      destinationType.type === DestinationType.CONVERSATION_URL &&
       this.webex.config.meetings.experimental.enableAdhocMeetings &&
       this.webex.meetings.preferredWebexSite
     ) {

@@ -32,7 +32,6 @@ import {
   OFFLINE,
   _MEETING_,
   _JOIN_,
-  _LOCUS_ID_,
   _INCOMING_,
   LOCUS,
   CORRELATION_ID,
@@ -40,15 +39,13 @@ import {
   _LEFT_,
   _ID_,
   MEETING_REMOVED_REASON,
-  _CONVERSATION_URL_,
   CONVERSATION_URL_KEY,
   MEETINGNUMBER,
   _JOINED_,
   _MOVED_,
   _ON_HOLD_LOBBY_,
   _WAIT_,
-  _ONE_ON_ONE_CALL_,
-  MeetingType,
+  DestinationType,
 } from '../constants';
 import BEHAVIORAL_METRICS from '../metrics/constants';
 import MeetingInfo from '../meeting-info';
@@ -487,7 +484,7 @@ export default class Meetings extends WebexPlugin {
         return;
       }
 
-      this.create(data.locus, _LOCUS_ID_, useRandomDelayForInfo)
+      this.create(data.locus, DestinationType.LOCUS_ID, useRandomDelayForInfo)
         .then((newMeeting) => {
           meeting = newMeeting;
 
@@ -1078,7 +1075,7 @@ export default class Meetings extends WebexPlugin {
    * When meeting info passed it should be complete, e.g.: fetched after password or captcha provided
    *
    * @param {string} destination - sipURL, phonenumber, or locus object}
-   * @param {string | MeetingType} [type] - the optional specified type, such as locusId
+   * @param {DestinationType} [type] - the optional specified type, such as locusId
    * @param {Boolean} useRandomDelayForInfo - whether a random delay should be added to fetching meeting info
    * @param {Object} infoExtraParams extra parameters to be provided when fetching meeting info
    * @param {string} correlationId - the optional specified correlationId (callStateForMetrics.correlationId can be provided instead)
@@ -1092,7 +1089,7 @@ export default class Meetings extends WebexPlugin {
    */
   public create(
     destination: string,
-    type: string | MeetingType = null,
+    type: DestinationType = null,
     useRandomDelayForInfo = false,
     infoExtraParams = {},
     correlationId: string = undefined,
@@ -1101,16 +1098,14 @@ export default class Meetings extends WebexPlugin {
     meetingInfo = undefined,
     meetingLookupUrl = undefined
   ) {
+    LoggerProxy.logger.warn('ravi chandra sekhar');
+    LoggerProxy.logger.warn(`ravi ${type}. dsadas ${typeof type}`);
     // TODO: type should be from a dictionary
 
     // Validate meeting information based on the provided destination and
     // type. This must be performed prior to determining if the meeting is
     // found in the collection, as we mutate the destination for hydra person
     // id values.
-    // Convert `type` to string if it's of type MeetingType
-    if (type && typeof type !== 'string') {
-      type = MeetingType[type as keyof typeof MeetingType]; // Explicitly convert to string
-    }
 
     if (correlationId) {
       callStateForMetrics = {...(callStateForMetrics || {}), correlationId};
@@ -1135,7 +1130,10 @@ export default class Meetings extends WebexPlugin {
           // check for the conversation URL then sip Url
           let meeting = null;
 
-          if (type === _CONVERSATION_URL_ || options.type === _CONVERSATION_URL_) {
+          if (
+            type === DestinationType.CONVERSATION_URL ||
+            options.type === DestinationType.CONVERSATION_URL
+          ) {
             const foundMeeting = this.meetingCollection.getByKey(CONVERSATION_URL_KEY, targetDest);
 
             if (foundMeeting) {
@@ -1254,7 +1252,7 @@ export default class Meetings extends WebexPlugin {
         deviceUrl: this.webex.internal.device.url,
         // @ts-ignore
         orgId: this.webex.internal.device.orgId,
-        locus: type === _LOCUS_ID_ ? destination : null, // pass the locus object if present
+        locus: type === DestinationType.LOCUS_ID ? destination : null, // pass the locus object if present
         meetingInfoProvider: this.meetingInfo,
         destination,
         destinationType: type,
@@ -1297,7 +1295,7 @@ export default class Meetings extends WebexPlugin {
 
       if (meetingInfo) {
         meeting.injectMeetingInfo(meetingInfo, meetingInfoOptions, meetingLookupUrl);
-      } else if (type !== _ONE_ON_ONE_CALL_) {
+      } else if (type !== DestinationType.ONE_ON_ONE_CALL) {
         // ignore fetchMeetingInfo for 1:1 meetings
         if (enableUnifiedMeetings && !isMeetingActive && useRandomDelayForInfo && waitingTime > 0) {
           meeting.fetchMeetingInfoTimeoutId = setTimeout(
@@ -1338,7 +1336,7 @@ export default class Meetings extends WebexPlugin {
       // For type LOCUS_ID we need to parse the locus object to get the information
       // about the caller and callee
       // Meeting Added event will be created in `handleLocusEvent`
-      if (type !== _LOCUS_ID_) {
+      if (type !== DestinationType.LOCUS_ID) {
         if (!meeting.sipUri) {
           meeting.setSipUri(destination);
         }

@@ -5,7 +5,7 @@ import {
   _INCOMING_,
   _JOINED_,
   _LEFT_,
-  _LOCUS_ID_,
+  DestinationType,
   _MOVED_,
   BREAKOUTS,
   CORRELATION_ID,
@@ -39,7 +39,8 @@ import Metrics from '../metrics';
 
 const MeetingsUtil: any = {};
 
-MeetingsUtil.getMeetingAddedType = (type) => (type === _LOCUS_ID_ ? _INCOMING_ : _CREATED_);
+MeetingsUtil.getMeetingAddedType = (type) =>
+  type === DestinationType.LOCUS_ID ? _INCOMING_ : _CREATED_;
 
 MeetingsUtil.handleRoapMercury = (envelope, meetingCollection) => {
   const {data} = envelope;

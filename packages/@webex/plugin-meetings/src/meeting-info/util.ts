@@ -8,12 +8,7 @@ import ParameterError from '../common/errors/parameter';
 import LoggerProxy from '../common/logs/logger-proxy';
 
 import {
-  _SIP_URI_,
-  _PERSONAL_ROOM_,
-  _MEETING_ID_,
-  _CONVERSATION_URL_,
-  _LOCUS_ID_,
-  _MEETING_LINK_,
+  DestinationType,
   _PEOPLE_,
   _ROOM_,
   HTTP_VERBS,
@@ -40,7 +35,7 @@ export default class MeetingInfoUtil {
   static extractDestination(destination, type) {
     let dest = destination;
 
-    if (type === _LOCUS_ID_) {
+    if (type === DestinationType.LOCUS_ID) {
       if (!(destination && destination.url)) {
         throw new ParameterError(
           'You cannot create a meeting by locus without a locus.url defined'
@@ -200,19 +195,19 @@ export default class MeetingInfoUtil {
         'Meeting-info:util#generateOptions --> WARN, use of Meeting Link is deprecated, please use a SIP URI instead'
       );
 
-      options.type = _MEETING_LINK_;
+      options.type = DestinationType.MEETING_LINK;
       options.destination = destination;
     } else if (this.isSipUri(destination)) {
-      options.type = _SIP_URI_;
+      options.type = DestinationType.SIP_URI;
       options.destination = destination;
     } else if (this.isPhoneNumber(destination)) {
-      options.type = _SIP_URI_;
+      options.type = DestinationType.SIP_URI;
       options.destination = destination;
     } else if (this.isConversationUrl(destination, webex)) {
-      options.type = _CONVERSATION_URL_;
+      options.type = DestinationType.CONVERSATION_URL;
       options.destination = destination;
     } else if (hydraId.people) {
-      options.type = _SIP_URI_;
+      options.type = DestinationType.SIP_URI;
 
       return this.getSipUriFromHydraPersonId(hydraId.destination, webex).then((res) => {
         options.destination = res;
@@ -225,7 +220,7 @@ export default class MeetingInfoUtil {
         return Promise.resolve(options);
       });
     } else if (hydraId.room) {
-      options.type = _CONVERSATION_URL_;
+      options.type = DestinationType.CONVERSATION_URL;
       try {
         await webex.internal.services.waitForCatalog('postauth');
 
@@ -264,24 +259,24 @@ export default class MeetingInfoUtil {
     let uri = null;
 
     switch (type) {
-      case _SIP_URI_:
-      case _PERSONAL_ROOM_:
-      case _MEETING_ID_:
+      case DestinationType.SIP_URI:
+      case DestinationType.PERSONAL_ROOM:
+      case DestinationType.MEETING_ID:
         resource = `/${LOCI}/${MEETINGINFO}/${encodeURIComponent(
           value
         )}?${TYPE}=${type}&${USE_URI_LOOKUP_FALSE}`;
         break;
-      case _CONVERSATION_URL_:
+      case DestinationType.CONVERSATION_URL:
         method = HTTP_VERBS.PUT;
         break;
-      case _LOCUS_ID_:
+      case DestinationType.LOCUS_ID:
         uri = `${value}/${MEETINGINFO}`;
         method = HTTP_VERBS.PUT;
         break;
-      case _MEETING_LINK_:
-        resource = `$/${LOCI}/${MEETINGINFO}/${btoa(
-          value
-        )}?${TYPE}=${_MEETING_LINK_}&${USE_URI_LOOKUP_FALSE}`;
+      case DestinationType.MEETING_LINK:
+        resource = `$/${LOCI}/${MEETINGINFO}/${btoa(value)}?${TYPE}=${
+          DestinationType.MEETING_LINK
+        }&${USE_URI_LOOKUP_FALSE}`;
         break;
       default:
     }
@@ -303,14 +298,14 @@ export default class MeetingInfoUtil {
     if (resourceOptions.method === HTTP_VERBS.GET) {
       // for handling URL redirections
       requestParams.resource = requestParams.resource.concat(`&${ALTERNATE_REDIRECT_TRUE}`);
-    } else if (type !== _LOCUS_ID_) {
+    } else if (type !== DestinationType.LOCUS_ID) {
       // locus id check is a PUT not sure why
       requestParams.resource = requestParams.resource.concat(`?${ALTERNATE_REDIRECT_TRUE}`);
       requestParams.body = {
         value,
         lookupType: type,
       };
-    } else if (type === _LOCUS_ID_) {
+    } else if (type === DestinationType.LOCUS_ID) {
       requestParams = {
         method: resourceOptions.method,
         uri: resourceOptions.uri,

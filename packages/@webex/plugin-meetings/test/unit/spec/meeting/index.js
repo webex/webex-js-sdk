@@ -21,8 +21,7 @@ import {
   PASSWORD_STATUS,
   EVENTS,
   EVENT_TRIGGERS,
-  _SIP_URI_,
-  _MEETING_ID_,
+  DestinationType,
   MEETING_REMOVED_REASON,
   LOCUSINFO,
   ICE_AND_DTLS_CONNECTION_TIMEOUT,
@@ -279,7 +278,7 @@ describe('plugin-meetings', () => {
         deviceUrl: uuid3,
         locus: {url: url1},
         destination: testDestination,
-        destinationType: _MEETING_ID_,
+        destinationType: DestinationType.MEETING_ID,
         correlationId,
         selfId: uuid1,
       },
@@ -347,7 +346,7 @@ describe('plugin-meetings', () => {
           assert.equal(meeting.requiredCaptcha, null);
           assert.equal(meeting.meetingInfoFailureReason, undefined);
           assert.equal(meeting.destination, testDestination);
-          assert.equal(meeting.destinationType, _MEETING_ID_);
+          assert.equal(meeting.destinationType, DestinationType.MEETING_ID);
           assert.instanceOf(meeting.breakouts, Breakouts);
           assert.instanceOf(meeting.simultaneousInterpretation, SimultaneousInterpretation);
           assert.instanceOf(meeting.webinar, Webinar);
@@ -367,7 +366,7 @@ describe('plugin-meetings', () => {
               deviceUrl: uuid3,
               locus: {url: url1},
               destination: testDestination,
-              destinationType: _MEETING_ID_,
+              destinationType: DestinationType.MEETING_ID,
             },
             {
               parent: webex,
@@ -385,7 +384,7 @@ describe('plugin-meetings', () => {
               deviceUrl: uuid3,
               locus: {url: url1},
               destination: testDestination,
-              destinationType: _MEETING_ID_,
+              destinationType: DestinationType.MEETING_ID,
               callStateForMetrics: {
                 correlationId: uuid4,
                 joinTrigger: 'fake-join-trigger',
@@ -426,7 +425,7 @@ describe('plugin-meetings', () => {
                 deviceUrl: uuid3,
                 locus: {url: url1},
                 destination: testDestination,
-                destinationType: _MEETING_ID_,
+                destinationType: DestinationType.MEETING_ID,
               },
               {
                 parent: webex,
@@ -502,7 +501,7 @@ describe('plugin-meetings', () => {
                 deviceUrl: uuid3,
                 locus: {url: url1},
                 destination: testDestination,
-                destinationType: _MEETING_ID_,
+                destinationType: DestinationType.MEETING_ID,
               },
               {
                 parent: webex,
@@ -5199,7 +5198,7 @@ describe('plugin-meetings', () => {
 
       describe('#fetchMeetingInfo', () => {
         const FAKE_DESTINATION = 'something@somecompany.com';
-        const FAKE_TYPE = _SIP_URI_;
+        const FAKE_TYPE = DestinationType.SIP_URI;
         const FAKE_TIMEOUT_FETCHMEETINGINFO_ID = '123456';
         const FAKE_PASSWORD = '123abc';
         const FAKE_CAPTCHA_CODE = 'a1b2c3XYZ';
@@ -5634,7 +5633,7 @@ describe('plugin-meetings', () => {
         const FAKE_PASSWORD = '123456';
         const FAKE_CAPTCHA_CODE = '654321';
         const FAKE_DESTINATION = 'something@somecompany.com';
-        const FAKE_TYPE = _SIP_URI_;
+        const FAKE_TYPE = DestinationType.SIP_URI;
         const FAKE_INSTALLED_ORG_ID = '123456';
         const FAKE_MEETING_INFO_LOOKUP_URL = 'meetingLookupUrl';
 

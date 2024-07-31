@@ -2,7 +2,7 @@
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
 
-import {_MEETING_LINK_, _SIP_URI_, _PERSONAL_ROOM_} from '../constants';
+import {DestinationType} from '../constants';
 import LoggerProxy from '../common/logs/logger-proxy';
 
 import MeetingInfoCollection from './collection';
@@ -186,7 +186,7 @@ export default class MeetingInfo {
     extraParams: object = {},
     options: {meetingId?: string; sendCAevents?: boolean} = {}
   ) {
-    if (type === _PERSONAL_ROOM_ && !destination) {
+    if (type === DestinationType.PERSONAL_ROOM && !destination) {
       destination = this.webex.internal.device.userId;
     }
 
@@ -195,10 +195,13 @@ export default class MeetingInfo {
         // fetch meeting info
         this.requestFetchInfo({...infoOptions, ...options}).catch((error) => {
           // if it failed the first time as meeting link
-          if (infoOptions.type === _MEETING_LINK_) {
+          if (infoOptions.type === DestinationType.MEETING_LINK) {
             // convert the meeting link to sip URI and retry
             return this.requestFetchInfo({
-              ...this.fetchInfoOptions(MeetingInfoUtil.convertLinkToSip(destination), _SIP_URI_),
+              ...this.fetchInfoOptions(
+                MeetingInfoUtil.convertLinkToSip(destination),
+                DestinationType.SIP_URI
+              ),
               ...options,
             });
           }

@@ -4,15 +4,9 @@ import url from 'url';
 import {deconstructHydraId} from '@webex/common';
 
 import {
-  _SIP_URI_,
-  _PERSONAL_ROOM_,
-  _MEETING_ID_,
-  _CONVERSATION_URL_,
-  _LOCUS_ID_,
-  _MEETING_LINK_,
+  DestinationType,
   _PEOPLE_,
   _ROOM_,
-  _MEETING_UUID_,
   DIALER_REGEX,
   WEBEX_DOT_COM,
   CONVERSATION_SERVICE,
@@ -144,7 +138,7 @@ export default class MeetingInfoUtil {
     const {type, webex} = from;
     let {destination} = from;
 
-    if (type === _PERSONAL_ROOM_) {
+    if (type === DestinationType.PERSONAL_ROOM) {
       // this case checks if your type is personal room
       if (!destination) {
         // if we are not getting anything in desination we fetch org and user ids from webex instance
@@ -185,19 +179,19 @@ export default class MeetingInfoUtil {
         'Meeting-info:util#generateOptions --> WARN, use of Meeting Link is deprecated, please use a SIP URI instead'
       );
 
-      options.type = _MEETING_LINK_;
+      options.type = DestinationType.MEETING_LINK;
       options.destination = destination;
     } else if (this.isSipUri(destination)) {
-      options.type = _SIP_URI_;
+      options.type = DestinationType.SIP_URI;
       options.destination = destination;
     } else if (this.isPhoneNumber(destination)) {
-      options.type = _SIP_URI_;
+      options.type = DestinationType.SIP_URI;
       options.destination = destination;
     } else if (this.isConversationUrl(destination, webex)) {
-      options.type = _CONVERSATION_URL_;
+      options.type = DestinationType.CONVERSATION_URL;
       options.destination = destination;
     } else if (hydraId && hydraId.people) {
-      options.type = _SIP_URI_;
+      options.type = DestinationType.SIP_URI;
 
       return this.getSipUriFromHydraPersonId(hydraId && hydraId.destination, webex).then((res) => {
         options.destination = res;
@@ -240,20 +234,20 @@ export default class MeetingInfoUtil {
     };
 
     switch (type) {
-      case _SIP_URI_:
+      case DestinationType.SIP_URI:
         body.sipUrl = destination;
         break;
-      case _PERSONAL_ROOM_:
+      case DestinationType.PERSONAL_ROOM:
         body.userId = destination.userId;
         body.orgId = destination.orgId;
         break;
-      case _MEETING_ID_:
+      case DestinationType.MEETING_ID:
         body.meetingKey = destination;
         break;
-      case _CONVERSATION_URL_:
+      case DestinationType.CONVERSATION_URL:
         body.conversationUrl = destination;
         break;
-      case _LOCUS_ID_:
+      case DestinationType.LOCUS_ID:
         // use meetingID for the completer meeting info for the already started meeting
         if (destination.info?.webExMeetingId) {
           body.meetingKey = destination.info.webExMeetingId;
@@ -261,10 +255,10 @@ export default class MeetingInfoUtil {
           body.sipUrl = destination.info.sipUri;
         }
         break;
-      case _MEETING_LINK_:
+      case DestinationType.MEETING_LINK:
         body.meetingUrl = destination;
         break;
-      case _MEETING_UUID_: {
+      case DestinationType.MEETING_UUID: {
         body.meetingUUID = destination;
         break;
       }
@@ -317,10 +311,10 @@ export default class MeetingInfoUtil {
     let preferredWebexSite = null;
 
     switch (type) {
-      case _SIP_URI_:
+      case DestinationType.SIP_URI:
         preferredWebexSite = this.getWebexSite(destination);
         break;
-      case _LOCUS_ID_:
+      case DestinationType.LOCUS_ID:
         preferredWebexSite = destination.info?.webExSite;
         break;
       default:

@@ -1325,7 +1325,7 @@ export const MEETING_PERMISSION_TOKEN_REFRESH_REASON = 'ttl-join';
 // constant for named media group type
 export const NAMED_MEDIA_GROUP_TYPE_AUDIO = 1;
 
-export enum MeetingType {
+export enum DestinationType {
   CONVERSATION_URL = 'CONVERSATION_URL',
   MEETING_LINK = 'MEETING_LINK',
   SIP_URI = 'SIP_URI',
@@ -1335,13 +1335,3 @@ export enum MeetingType {
   MEETING_ID = 'MEETING_ID',
   MEETING_UUID = 'MEETING_UUID',
 }
-
-// TODO: remove this after the meeting type is fully migrated to MeetingType
-export const _CONVERSATION_URL_ = 'CONVERSATION_URL';
-export const _MEETING_LINK_ = 'MEETING_LINK';
-export const _SIP_URI_ = 'SIP_URI';
-export const _PERSONAL_ROOM_ = 'PERSONAL_ROOM';
-export const _ONE_ON_ONE_CALL_ = 'ONE_ON_ONE_CALL';
-export const _LOCUS_ID_ = 'LOCUS_ID';
-export const _MEETING_ID_ = 'MEETING_ID';
-export const _MEETING_UUID_ = 'MEETING_UUID';
