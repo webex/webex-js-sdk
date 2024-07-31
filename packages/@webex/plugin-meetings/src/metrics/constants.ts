@@ -69,6 +69,7 @@ const BEHAVIORAL_METRICS = {
   ROAP_OFFER_TO_ANSWER_LATENCY: 'js_sdk_roap_offer_to_answer_latency',
   ROAP_HTTP_RESPONSE_MISSING: 'js_sdk_roap_http_response_missing',
   TURN_DISCOVERY_REQUIRES_OK: 'js_sdk_turn_discovery_requires_ok',
+  REACHABILITY_COMPLETED: 'js_sdk_reachability_completed',
 };
 
 export {BEHAVIORAL_METRICS as default};
