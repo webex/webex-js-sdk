@@ -3,7 +3,7 @@ import {WebexPlugin, config} from '@webex/webex-core';
 
 import {
   EVENT_TRIGGERS,
-  VOICEA_RELAY_TYPES,
+  AIBRIDGE_RELAY_TYPES,
   TRANSCRIPTION_TYPE,
   VOICEA,
   ANNOUNCE_STATUS,
@@ -46,16 +46,19 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
   private eventProcessor = (e) => {
     this.seqNum = e.sequenceNumber + 1;
     switch (e.data.relayType) {
-      case VOICEA_RELAY_TYPES.ANNOUNCEMENT:
+      case AIBRIDGE_RELAY_TYPES.VOICEA.ANNOUNCEMENT:
         this.vmcDeviceId = e.headers.from;
         this.announceStatus = ANNOUNCE_STATUS.JOINED;
         this.processAnnouncementMessage(e.data.voiceaPayload);
         break;
-      case VOICEA_RELAY_TYPES.TRANSLATION_RESPONSE:
+      case AIBRIDGE_RELAY_TYPES.VOICEA.TRANSLATION_RESPONSE:
         this.processCaptionLanguageResponse(e.data.voiceaPayload);
         break;
-      case VOICEA_RELAY_TYPES.TRANSCRIPTION:
+      case AIBRIDGE_RELAY_TYPES.VOICEA.TRANSCRIPTION:
         this.processTranscription(e.data.voiceaPayload);
+        break;
+      case AIBRIDGE_RELAY_TYPES.MANUAL.TRANSCRIPTION:
+        this.processManualTranscription(e.data.transcriptPayload);
         break;
       default:
         break;
@@ -102,6 +105,28 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
   }
 
   /**
+   * Process manual Transcript and send alert
+   * @param {TranscriptionResponse} transcriptPayload
+   * @returns {void}
+   */
+  private processManualTranscription = (transcriptPayload: TranscriptionResponse): void => {
+    switch (transcriptPayload.type) {
+      case TRANSCRIPTION_TYPE.MANUAL_CAPTION_FINAL_RESULT:
+      case TRANSCRIPTION_TYPE.MANUAL_CAPTION_INTERIM_RESULTS:
+        // @ts-ignore
+        this.trigger(EVENT_TRIGGERS.NEW_MANUAL_CAPTION, {
+          isFinal: transcriptPayload.type === TRANSCRIPTION_TYPE.MANUAL_CAPTION_FINAL_RESULT,
+          transcriptId: transcriptPayload.id,
+          transcripts: transcriptPayload.transcripts,
+        });
+        break;
+
+      default:
+        break;
+    }
+  };
+
+  /**
    * Process Transcript and send alert
    * @param {TranscriptionResponse} voiceaPayload
    * @returns {void}
@@ -122,13 +147,11 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
         this.trigger(EVENT_TRIGGERS.NEW_CAPTION, {
           isFinal: true,
           transcriptId: voiceaPayload.transcript_id,
-          translations: voiceaPayload.translations,
-          transcript: {
-            csis: voiceaPayload.csis,
-            text: voiceaPayload.transcript.text,
-            transcriptLanguageCode: voiceaPayload.transcript.transcript_language_code,
-          },
-          timestamp: millisToMinutesAndSeconds(voiceaPayload.transcript.end_millis),
+          transcripts: voiceaPayload.transcripts.map((transcript) => {
+            transcript.timestamp = millisToMinutesAndSeconds(transcript.end_millis);
+
+            return transcript;
+          }),
         });
         break;
 
@@ -220,7 +243,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
           version: 'v2',
         },
         eventType: 'relay.event',
-        relayType: VOICEA_RELAY_TYPES.CLIENT_ANNOUNCEMENT,
+        relayType: AIBRIDGE_RELAY_TYPES.VOICEA.CLIENT_ANNOUNCEMENT,
       },
       trackingId: `${config.trackingIdPrefix}_${uuid.v4().toString()}`,
     });
@@ -273,7 +296,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
           id: uuid.v4(),
         },
         eventType: 'relay.event',
-        relayType: VOICEA_RELAY_TYPES.TRANSLATION_REQUEST,
+        relayType: AIBRIDGE_RELAY_TYPES.VOICEA.TRANSLATION_REQUEST,
       },
       trackingId: `${config.trackingIdPrefix}_${uuid.v4().toString()}`,
     });
@@ -384,6 +407,27 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
         return this.turnOnCaptions(spokenLanguage);
       }
 
+      return undefined;
+    });
+  };
+
+  /**
+   * Toggle turn on manual caption
+   * @param {bool} enable if true manual caption is turned on
+   * @returns {Promise}
+   */
+  public toggleManualCaption = (enable: boolean): undefined | Promise<void> => {
+    // @ts-ignore
+    return this.request({
+      method: 'PUT',
+      // @ts-ignore
+      url: `${this.webex.internal.llm.getLocusUrl()}/controls/`,
+      body: {
+        manualCaption: {
+          enable,
+        },
+      },
+    }).then((): undefined | Promise<void> => {
       return undefined;
     });
   };

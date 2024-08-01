@@ -6,7 +6,7 @@ import {EffectEvent} from '@webex/web-media-effects';
 import {ERROR_TYPE, ERROR_LAYER} from '../../Errors/types';
 import * as Utils from '../../common/Utils';
 import {CALL_EVENT_KEYS, CallEvent, RoapEvent, RoapMessage} from '../../Events/types';
-import {DEFAULT_SESSION_TIMER} from '../constants';
+import {DEFAULT_SESSION_TIMER, ICE_CANDIDATES_TIMEOUT} from '../constants';
 import {CallDirection, CallType, ServiceIndicator, WebexRequestPayload} from '../../common/types';
 import {METRIC_EVENT, TRANSFER_ACTION, METRIC_TYPE} from '../../Metrics/types';
 import {Call, createCall} from './call';
@@ -36,25 +36,6 @@ const mockMediaSDK = MediaSDK as jest.Mocked<typeof MediaSDK>;
 const defaultServiceIndicator = ServiceIndicator.CALLING;
 const activeUrl = 'FakeActiveUrl';
 const mockLineId = 'e4e8ee2a-a154-4e52-8f11-ef4cde2dce72';
-
-// class MockMediaStream {
-//   private track;
-
-//   constructor(track: any) {
-//     this.track = track;
-//   }
-// }
-
-// globalThis.MediaStream = MockMediaStream;
-
-// // eslint-disable-next-line @typescript-eslint/no-unused-vars
-// jest.spyOn(window, 'MediaStream').mockImplementation((tracks: MediaStreamTrack[]) => {
-//   return {} as MediaStream;
-// });
-
-// // Object.defineProperty(window, 'MediaStream', {
-// //   writable: true,
-// // });
 
 describe('Call Tests', () => {
   const deviceId = '55dfb53f-bed2-36da-8e85-cee7f02aa68e';
@@ -122,6 +103,7 @@ describe('Call Tests', () => {
   const roapMediaConnectionConfig = {
     skipInactiveTransceivers: true,
     iceServers: [],
+    iceCandidatesTimeout: ICE_CANDIDATES_TIMEOUT,
     sdpMunging: {
       convertPort9to0: true,
       addContentSlides: false,
@@ -229,10 +211,8 @@ describe('Call Tests', () => {
     const callManager = getCallManager(webex, defaultServiceIndicator);
 
     const mockStream = {
-      outputStream: {
-        getAudioTracks: jest.fn().mockReturnValue([mockTrack]),
-      },
       on: jest.fn(),
+      setUserMuted: jest.fn(),
     };
 
     const localAudioStream = mockStream as unknown as MediaSDK.LocalMicrophoneStream;
@@ -244,9 +224,9 @@ describe('Call Tests', () => {
     expect(Object.keys(callManager.getActiveCalls()).length).toBe(1);
     call.mute(localAudioStream);
     expect(call.isMuted()).toEqual(true);
-    expect(mockTrack.enabled).toEqual(false);
+    expect(mockStream.setUserMuted).toBeCalledOnceWith(true);
     call.mute(localAudioStream);
-    expect(mockTrack.enabled).toEqual(true);
+    expect(mockStream.setUserMuted).toBeCalledWith(false);
     expect(call.isMuted()).toEqual(false);
     call.end();
     await waitForMsecs(50); // Need to add a small delay for Promise and callback to finish.
@@ -532,6 +512,11 @@ describe('Call Tests', () => {
     await waitForMsecs(50);
 
     /* Checks for switching off the listeners on call disconnect */
+    expect(offStreamSpy).toBeCalledTimes(2);
+    expect(offStreamSpy).toBeCalledWith(
+      MediaSDK.LocalStreamEventNames.OutputTrackChange,
+      expect.any(Function)
+    );
     expect(offStreamSpy).toBeCalledWith(
       MediaSDK.LocalStreamEventNames.EffectAdded,
       expect.any(Function)
@@ -727,6 +712,32 @@ describe('Call Tests', () => {
       `Did not find a local track while updating media for call ${call.getCorrelationId()}. Will not update media`,
       {file: 'call', method: 'updateMedia'}
     );
+  });
+
+  describe('#addSessionConnection', () => {
+    let call;
+
+    beforeEach(() => {
+      call = callManager.createCall(dest, CallDirection.INBOUND, deviceId, mockLineId);
+    });
+
+    it('should copy the c-line from media level to the session level', () => {
+      const sdp = `v=0\r\no=- 2890844526 2890842807 IN IP4 192.0.2.3\r\ns=-\r\nt=0 0\r\nm=audio 49170 RTP/AVP 0\r\nc=IN IP4 203.0.113.1\r\na=rtpmap:0 PCMU/8000`;
+
+      const expectedSdp = `v=0\r\no=- 2890844526 2890842807 IN IP4 192.0.2.3\r\ns=-\r\nc=IN IP4 203.0.113.1\r\nt=0 0\r\nm=audio 49170 RTP/AVP 0\r\nc=IN IP4 203.0.113.1\r\na=rtpmap:0 PCMU/8000`;
+
+      const result = call.addSessionConnection(sdp);
+      expect(result).toBe(expectedSdp);
+    });
+
+    it('should handle multiple media sections correctly', () => {
+      const sdp = `v=0\r\no=- 2890844526 2890842807 IN IP4 192.0.2.3\r\ns=-\r\nt=0 0\r\nm=audio 49170 RTP/AVP 0\r\nc=IN IP4 203.0.113.1\r\na=rtpmap:0 PCMU/8000\r\nm=video 51372 RTP/AVP 31\r\nc=IN IP4 203.0.113.2\r\na=rtpmap:31 H261/90000`;
+
+      const expectedSdp = `v=0\r\no=- 2890844526 2890842807 IN IP4 192.0.2.3\r\ns=-\r\nc=IN IP4 203.0.113.1\r\nt=0 0\r\nm=audio 49170 RTP/AVP 0\r\nc=IN IP4 203.0.113.1\r\na=rtpmap:0 PCMU/8000\r\nm=video 51372 RTP/AVP 31\r\nc=IN IP4 203.0.113.2\r\na=rtpmap:31 H261/90000`;
+
+      const result = call.addSessionConnection(sdp);
+      expect(result).toBe(expectedSdp);
+    });
   });
 });
 

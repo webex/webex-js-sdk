@@ -370,16 +370,6 @@ describe('plugin-meetings', () => {
           sequence: {},
           type: 'LocalMute',
         });
-
-        assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
-          name: 'client.locus.media.request',
-          options: {meetingId: meeting.id},
-        });
-
-        assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
-          name: 'client.locus.media.response',
-          options: {meetingId: meeting.id},
-        });
       });
     });
 
@@ -765,6 +755,9 @@ describe('plugin-meetings', () => {
       {functionName: 'canStartTranscribing', displayHint: 'TRANSCRIPTION_CONTROL_START'},
       {functionName: 'canStopTranscribing', displayHint: 'TRANSCRIPTION_CONTROL_STOP'},
       {functionName: 'isClosedCaptionActive', displayHint: 'CAPTION_STATUS_ACTIVE'},
+      {functionName: 'canStartManualCaption', displayHint: 'MANUAL_CAPTION_START'},
+      {functionName: 'canStopManualCaption', displayHint: 'MANUAL_CAPTION_STOP'},
+      {functionName: 'isManualCaptionActive', displayHint: 'MANUAL_CAPTION_STATUS_ACTIVE'},
       {functionName: 'isWebexAssistantActive', displayHint: 'WEBEX_ASSISTANT_STATUS_ACTIVE'},
       {functionName: 'canViewCaptionPanel', displayHint: 'ENABLE_CAPTION_PANEL'},
       {functionName: 'isRealTimeTranslationEnabled', displayHint: 'DISPLAY_REAL_TIME_TRANSLATION'},

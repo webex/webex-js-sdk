@@ -251,7 +251,7 @@ describe('plugin-voicea', () => {
       it("should handle request fail", async () => {
         voiceaService.captionStatus = 'sending';
         voiceaService.request = sinon.stub().rejects();
-        
+
         try {
           await voiceaService.requestTurnOnCaptions();
         } catch (error) {
@@ -436,6 +436,56 @@ describe('plugin-voicea', () => {
       });
     });
 
+    describe('#toggleManualCaption', () => {
+      beforeEach(async () => {
+        const mockWebSocket = new MockWebSocket();
+
+        voiceaService.webex.internal.llm.socket = mockWebSocket;
+      });
+
+      it('turns on manual caption', async () => {
+        // Turn on captions
+        await voiceaService.turnOnCaptions();
+
+        // eslint-disable-next-line no-underscore-dangle
+        voiceaService.webex.internal.llm._emit('event:relay.event', {
+          headers: {from: 'ws'},
+          data: {relayType: 'voicea.annc', voiceaPayload: {}},
+        });
+
+        voiceaService.listenToEvents();
+
+        await voiceaService.toggleManualCaption(true);
+        sinon.assert.calledWith(
+          voiceaService.request,
+          sinon.match({
+            method: 'PUT',
+            url: `${locusUrl}/controls/`,
+            body: {manualCaption: {enable: true}},
+          })
+        );
+
+      });
+
+
+      it('turns off manual caption', async () => {
+        await voiceaService.toggleManualCaption(true);
+
+        voiceaService.listenToEvents();
+
+        await voiceaService.toggleManualCaption(false);
+        sinon.assert.calledWith(
+          voiceaService.request,
+          sinon.match({
+            method: 'PUT',
+            url: `${locusUrl}/controls/`,
+            body: {manualCaption: {enable: false}},
+          })
+        );
+
+      });
+    });
+
     describe('#processCaptionLanguageResponse', () => {
       it('responds to process caption language', async () => {
         const triggerSpy = sinon.spy();
@@ -568,6 +618,7 @@ describe('plugin-voicea', () => {
             start_millis: 12204,
             text: 'Hello?',
             transcript_language_code: 'en',
+            timestamp: '0:13'
           },
           transcripts: [
             {
@@ -579,6 +630,7 @@ describe('plugin-voicea', () => {
               translations: {
                 fr: 'Bonjour.',
               },
+              timestamp: '0:13'
             },
             {
               start_millis: 12204,
@@ -589,6 +641,7 @@ describe('plugin-voicea', () => {
               translations: {
                 fr: "C'est Webex",
               },
+              timestamp: '0:13'
             },
           ],
         };
@@ -603,15 +656,7 @@ describe('plugin-voicea', () => {
         assert.calledOnceWithExactly(triggerSpy, {
           isFinal: true,
           transcriptId: '3ec73890-bffb-f28b-e77f-99dc13caea7e',
-          translations: {
-            en: "Hello?"
-          },
-          transcript: {
-            csis: [3556942592],
-            text: 'Hello?',
-            transcriptLanguageCode: 'en',
-          },
-          timestamp: '0:13',
+          transcripts: voiceaPayload.transcripts,
         });
       });
 
@@ -737,6 +782,71 @@ describe('plugin-voicea', () => {
           highlightLabel: 'Decision',
           highlightSource: 'voice-command',
           timestamp: '11:00',
+        });
+      });
+    });
+
+    describe('#processManualTranscription', () => {
+      let triggerSpy, functionSpy;
+
+      beforeEach(() => {
+        triggerSpy = sinon.spy();
+        functionSpy = sinon.spy(voiceaService, 'processManualTranscription');
+        voiceaService.listenToEvents();
+      });
+
+      it('processes interim manual transcription', async () => {
+        voiceaService.on(EVENT_TRIGGERS.NEW_MANUAL_CAPTION, triggerSpy);
+        const transcriptPayload = {
+          id: "747d711d-3414-fd69-7081-e842649f2d28",
+          transcripts: [
+            {
+              "text": "Good",
+            }
+          ],
+          type: "manual_caption_interim_results",
+        };
+
+        // eslint-disable-next-line no-underscore-dangle
+        await voiceaService.webex.internal.llm._emit('event:relay.event', {
+          headers: {from: 'ws'},
+          data: {relayType: 'aibridge.manual_transcription', transcriptPayload},
+        });
+
+        assert.calledOnceWithExactly(functionSpy, transcriptPayload);
+        assert.calledOnceWithExactly(triggerSpy, {
+          isFinal: false,
+          transcriptId: '747d711d-3414-fd69-7081-e842649f2d28',
+          transcripts: transcriptPayload.transcripts,
+        });
+      });
+
+      it('processes final manual transcription', async () => {
+        voiceaService.on(EVENT_TRIGGERS.NEW_MANUAL_CAPTION, triggerSpy);
+
+        const transcriptPayload = {
+          id: "8d226d31-044a-8d11-cc39-cedbde183154",
+          transcripts: [
+            {
+              text: "Good Morning",
+              start_millis: 10420,
+              end_millis: 11380,
+            }
+          ],
+          type: "manual_caption_final_result",
+        };
+
+        // eslint-disable-next-line no-underscore-dangle
+        await voiceaService.webex.internal.llm._emit('event:relay.event', {
+          headers: {from: 'ws'},
+          data: {relayType: 'aibridge.manual_transcription', transcriptPayload},
+        });
+
+        assert.calledOnceWithExactly(functionSpy, transcriptPayload);
+        assert.calledOnceWithExactly(triggerSpy, {
+          isFinal: true,
+          transcriptId: '8d226d31-044a-8d11-cc39-cedbde183154',
+          transcripts: transcriptPayload.transcripts,
         });
       });
     });

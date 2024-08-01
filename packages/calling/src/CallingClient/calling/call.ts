@@ -36,6 +36,7 @@ import {
   DEFAULT_SESSION_TIMER,
   DEVICES_ENDPOINT_RESOURCE,
   HOLD_ENDPOINT,
+  ICE_CANDIDATES_TIMEOUT,
   INITIAL_SEQ_NUMBER,
   MEDIA_ENDPOINT_RESOURCE,
   NOISE_REDUCTION_EFFECT,
@@ -1899,6 +1900,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       {
         skipInactiveTransceivers: true,
         iceServers: [],
+        iceCandidatesTimeout: ICE_CANDIDATES_TIMEOUT,
         sdpMunging: {
           convertPort9to0: true,
           addContentSlides: false,
@@ -2375,6 +2377,24 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
   /* istanbul ignore next */
   /**
+   * Copy SDP's c-line to session level from media level.
+   * SPARK-522437
+   */
+  private addSessionConnection(sdp: string): string {
+    const lines: string[] = sdp.split(/\r\n|\r|\n/);
+    const mIndex: number = lines.findIndex((line) => line.startsWith('m='));
+    const tIndex: number = lines.findIndex((line) => line.startsWith('t='));
+
+    if (mIndex !== -1 && mIndex < lines.length - 1 && lines[mIndex + 1].startsWith('c=')) {
+      const cLine: string = lines[mIndex + 1];
+      lines.splice(tIndex, 0, cLine);
+    }
+
+    return lines.join('\r\n');
+  }
+
+  /* istanbul ignore next */
+  /**
    * Setup a listener for roap events emitted by the media sdk.
    */
   private mediaRoapEventsListener() {
@@ -2392,6 +2412,11 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
           file: CALL_FILE,
           method: this.mediaRoapEventsListener.name,
         });
+
+        if (event.roapMessage?.sdp) {
+          event.roapMessage.sdp = this.addSessionConnection(event.roapMessage.sdp);
+        }
+
         switch (event.roapMessage.messageType) {
           case RoapScenario.OK: {
             const mediaOk = {
@@ -2467,6 +2492,10 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
     );
   };
 
+  private updateTrack = (audioTrack: MediaStreamTrack) => {
+    this.mediaConnection.updateLocalTracks({audio: audioTrack});
+  };
+
   private registerEffectListener = (addedEffect: TrackEffect) => {
     if (this.localAudioStream) {
       const effect = this.localAudioStream.getEffectByKind(NOISE_REDUCTION_EFFECT);
@@ -2488,13 +2517,12 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       }
 
       this.localAudioStream.off(LocalStreamEventNames.EffectAdded, this.registerEffectListener);
+      this.localAudioStream.off(LocalStreamEventNames.OutputTrackChange, this.updateTrack);
     }
   }
 
   private registerListeners(localAudioStream: LocalMicrophoneStream) {
-    localAudioStream.on(LocalStreamEventNames.OutputTrackChange, (audioTrack: MediaStreamTrack) => {
-      this.mediaConnection.updateLocalTracks({audio: audioTrack});
-    });
+    localAudioStream.on(LocalStreamEventNames.OutputTrackChange, this.updateTrack);
 
     localAudioStream.on(LocalStreamEventNames.EffectAdded, this.registerEffectListener);
 
@@ -2717,13 +2745,14 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    * @param localAudioTrack -.
    */
   public mute = (localAudioStream: LocalMicrophoneStream): void => {
-    const localAudioTrack = localAudioStream.outputStream.getAudioTracks()[0];
-    if (this.muted) {
-      localAudioTrack.enabled = true;
-      this.muted = false;
+    if (localAudioStream) {
+      localAudioStream.setUserMuted(!this.muted);
+      this.muted = !this.muted;
     } else {
-      localAudioTrack.enabled = false;
-      this.muted = true;
+      log.warn(`Did not find a local stream while muting the call ${this.getCorrelationId()}.`, {
+        file: CALL_FILE,
+        method: 'mute',
+      });
     }
   };
 

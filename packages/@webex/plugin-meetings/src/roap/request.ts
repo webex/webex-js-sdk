@@ -61,7 +61,7 @@ export default class RoapRequest extends StatelessWebexPlugin {
     ipVersion?: IP_VERSION;
     locusMediaRequest?: LocusMediaRequest;
   }) {
-    const {roapMessage, locusSelfUrl, mediaId, meetingId, locusMediaRequest, ipVersion} = options;
+    const {roapMessage, locusSelfUrl, mediaId, locusMediaRequest, ipVersion} = options;
 
     if (!mediaId) {
       LoggerProxy.logger.info('Roap:request#sendRoap --> sending empty mediaID');
@@ -82,14 +82,6 @@ export default class RoapRequest extends StatelessWebexPlugin {
       `Roap:request#sendRoap --> ${locusSelfUrl} \n ${roapMessage.messageType} \n seq:${roapMessage.seq}`
     );
 
-    // @ts-ignore
-    this.webex.internal.newMetrics.submitClientEvent({
-      name: 'client.locus.media.request',
-      options: {
-        meetingId,
-      },
-    });
-
     return locusMediaRequest
       .send({
         type: 'RoapMessage',
@@ -101,13 +93,6 @@ export default class RoapRequest extends StatelessWebexPlugin {
         ipVersion,
       })
       .then((res) => {
-        // @ts-ignore
-        this.webex.internal.newMetrics.submitClientEvent({
-          name: 'client.locus.media.response',
-          options: {
-            meetingId,
-          },
-        });
         // always it will be the first mediaConnection Object
         const mediaConnections =
           res.body.mediaConnections &&
@@ -131,14 +116,6 @@ export default class RoapRequest extends StatelessWebexPlugin {
         };
       })
       .catch((err) => {
-        // @ts-ignore
-        this.webex.internal.newMetrics.submitClientEvent({
-          name: 'client.locus.media.response',
-          options: {
-            meetingId,
-            rawError: err,
-          },
-        });
         LoggerProxy.logger.error(`Roap:request#sendRoap --> Error:`, err);
         LoggerProxy.logger.error(
           `Roap:request#sendRoapRequest --> roapMessage that caused error:${JSON.stringify(

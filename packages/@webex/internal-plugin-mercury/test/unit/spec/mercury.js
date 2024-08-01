@@ -138,7 +138,15 @@ describe('plugin-mercury', () => {
       });
 
       it('connects to Mercury using default url', () => {
+        webex.internal.feature.updateFeature = sinon.stub();
         const promise = mercury.connect();
+        const envelope = {
+          data: {
+            featureToggle: {
+              'feature-name': true
+            }
+          }
+        };
 
         assert.isFalse(mercury.connected, 'Mercury is not connected');
         assert.isTrue(mercury.connecting, 'Mercury is connecting');
@@ -148,6 +156,21 @@ describe('plugin-mercury', () => {
           assert.isTrue(mercury.connected, 'Mercury is connected');
           assert.isFalse(mercury.connecting, 'Mercury is not connecting');
           assert.calledWith(socketOpenStub, sinon.match(/ws:\/\/example.com/), sinon.match.any);
+          mercury._emit('event:featureToggle_update', envelope);
+          assert.calledOnceWithExactly(webex.internal.feature.updateFeature, envelope.data.featureToggle);
+          sinon.restore();
+        });
+      });
+
+      it('connects to Mercury but does not call updateFeature', () => {
+        webex.internal.feature.updateFeature = sinon.stub();
+        const promise = mercury.connect();
+        const envelope = {};
+
+        return promise.then(() => {
+          mercury._emit('event:featureToggle_update', envelope);
+          assert.notCalled(webex.internal.feature.updateFeature);
+          sinon.restore();
         });
       });
 

@@ -301,17 +301,23 @@ describe('internal-plugin-metrics', () => {
 
     [
       ['client.exit.app', {}],
-      ['client.login.end', {
-        joinTimes: {
-          otherAppApiReqResp: undefined,
-          exchangeCITokenJMT: undefined,
-        }
-      }],
-      ['client.webexapp.launched', {
-        joinTimes: {
-          downloadTime: undefined,
-        }
-      }],
+      [
+        'client.login.end',
+        {
+          joinTimes: {
+            otherAppApiReqResp: undefined,
+            exchangeCITokenJMT: undefined,
+          },
+        },
+      ],
+      [
+        'client.webexapp.launched',
+        {
+          joinTimes: {
+            downloadTime: undefined,
+          },
+        },
+      ],
       [
         'client.interstitial-window.launched',
         {
@@ -400,20 +406,28 @@ describe('internal-plugin-metrics', () => {
       });
     });
 
-    it('calls getBuildType correctly', () => {
-      const getBuildTypeSpy = sinon.spy(CallDiagnosticUtils, 'getBuildType');
-      const markAsTestEvent = true;
-      const webClientDomain = 'https://web.webex.com';
-
-      // just submit any event
-      prepareDiagnosticMetricItem(webex, {
+    it('getBuildType returns correct value', () => {
+      const item: any = {
         eventPayload: {
-          event: {name: 'client.exit.app', eventData: {markAsTestEvent, webClientDomain}},
+          event: {
+            name: 'client.exit.app',
+            eventData: {
+              markAsTestEvent: true,
+              webClientDomain: 'https://web.webex.com'
+            }
+          },
         },
         type: ['diagnostic-event'],
-      });
+      };
 
-      assert.calledOnceWithExactly(getBuildTypeSpy, webClientDomain, markAsTestEvent);
+      // just submit any event
+      prepareDiagnosticMetricItem(webex, item);
+      assert.deepEqual(item.eventPayload.origin.buildType, 'test');
+
+      delete item.eventPayload.origin.buildType;
+      item.eventPayload.event.eventData.markAsTestEvent = false;
+      prepareDiagnosticMetricItem(webex, item);
+      assert.deepEqual(item.eventPayload.origin.buildType, 'prod');
     });
   });
 
@@ -599,34 +613,34 @@ describe('internal-plugin-metrics', () => {
     [
       {
         signalingState: 'have-local-offer',
-        iceConnectionState: 'connected',
+        iceConnected: false,
         turnServerUsed: true,
         errorCode: MISSING_ROAP_ANSWER_CLIENT_CODE,
       },
       {
         signalingState: 'stable',
-        iceConnectionState: 'connected',
+        iceConnected: true,
         turnServerUsed: true,
         errorCode: DTLS_HANDSHAKE_FAILED_CLIENT_CODE,
       },
       {
         signalingState: 'stable',
-        iceConnectionState: 'failed',
+        iceConnected: false,
         turnServerUsed: true,
         errorCode: ICE_FAILED_WITH_TURN_TLS_CLIENT_CODE,
       },
       {
         signalingState: 'stable',
-        iceConnectionState: 'failed',
+        iceConnected: false,
         turnServerUsed: false,
         errorCode: ICE_FAILED_WITHOUT_TURN_TLS_CLIENT_CODE,
       },
-    ].forEach(({signalingState, iceConnectionState, turnServerUsed, errorCode}: any) => {
+    ].forEach(({signalingState, iceConnected, turnServerUsed, errorCode}: any) => {
       it('returns expected result', () => {
         assert.deepEqual(
           generateClientErrorCodeForIceFailure({
             signalingState,
-            iceConnectionState,
+            iceConnected,
             turnServerUsed,
           }),
           errorCode

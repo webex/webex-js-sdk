@@ -9,14 +9,20 @@ export const EVENT_TRIGGERS = {
   NEW_CAPTION: 'voicea:newCaption',
   EVA_COMMAND: 'voicea:wxa',
   HIGHLIGHT_CREATED: 'voicea:highlightCreated',
+  NEW_MANUAL_CAPTION: 'aibridge:newManualCaption',
 };
 
-export const VOICEA_RELAY_TYPES = {
-  ANNOUNCEMENT: 'voicea.annc',
-  CLIENT_ANNOUNCEMENT: 'client.annc',
-  TRANSLATION_REQUEST: 'voicea.transl.req',
-  TRANSLATION_RESPONSE: 'voicea.transl.rsp',
-  TRANSCRIPTION: 'voicea.transcription',
+export const AIBRIDGE_RELAY_TYPES = {
+  VOICEA: {
+    ANNOUNCEMENT: 'voicea.annc',
+    CLIENT_ANNOUNCEMENT: 'client.annc',
+    TRANSLATION_REQUEST: 'voicea.transl.req',
+    TRANSLATION_RESPONSE: 'voicea.transl.rsp',
+    TRANSCRIPTION: 'voicea.transcription',
+  },
+  MANUAL: {
+    TRANSCRIPTION: 'aibridge.manual_transcription',
+  },
 };
 
 export const TRANSCRIPTION_TYPE = {
@@ -27,6 +33,8 @@ export const TRANSCRIPTION_TYPE = {
   HIGHLIGHT_CREATED: 'highlight_created',
   TRANSCRIPT_INTERIM_RESULTS: 'transcript_interim_results',
   TRANSCRIPT_FINAL_RESULT: 'transcript_final_result',
+  MANUAL_CAPTION_INTERIM_RESULTS: 'manual_caption_interim_results',
+  MANUAL_CAPTION_FINAL_RESULT: 'manual_caption_final_result',
 };
 
 export const VOICEA = 'voicea';

@@ -54,189 +54,194 @@ describe('MediaProperties', () => {
     });
   });
 
-  describe('getCurrentConnectionType', () => {
-    it('calls waitForMediaConnectionConnected', async () => {
-      const spy = sinon.stub(mediaProperties, 'waitForMediaConnectionConnected');
-
-      await mediaProperties.getCurrentConnectionType();
-
-      assert.calledOnce(spy);
-    });
-    it('calls getStats() only after waitForMediaConnectionConnected resolves', async () => {
-      const waitForMediaConnectionConnectedResult = new Defer();
-
-      const waitForMediaConnectionConnectedStub = sinon
-        .stub(mediaProperties, 'waitForMediaConnectionConnected')
-        .returns(waitForMediaConnectionConnectedResult.promise);
-
-      const result = mediaProperties.getCurrentConnectionType();
-
-      await testUtils.flushPromises();
-
-      assert.called(waitForMediaConnectionConnectedStub);
-      assert.notCalled(mockMC.getStats);
-
-      waitForMediaConnectionConnectedResult.resolve();
-      await testUtils.flushPromises();
-
-      assert.called(mockMC.getStats);
-      await result;
-    });
-    it('rejects if waitForMediaConnectionConnected rejects', async () => {
-      const waitForMediaConnectionConnectedResult = new Defer();
-
-      const waitForMediaConnectionConnectedStub = sinon
-        .stub(mediaProperties, 'waitForMediaConnectionConnected')
-        .returns(waitForMediaConnectionConnectedResult.promise);
-
-      const result = mediaProperties.getCurrentConnectionType();
-
-      await testUtils.flushPromises();
-
-      assert.called(waitForMediaConnectionConnectedStub);
-
-      waitForMediaConnectionConnectedResult.reject(new Error('fake error'));
-      await testUtils.flushPromises();
-
-      assert.notCalled(mockMC.getStats);
-
-      await assert.isRejected(result);
-    });
-    it('returns "unknown" if getStats() fails', async () => {
+  describe('getCurrentConnectionInfo', () => {
+    it('handles the case when getStats() fails', async () => {
       mockMC.getStats.rejects(new Error());
 
-      const connectionType = await mediaProperties.getCurrentConnectionType();
+      const {connectionType, selectedCandidatePairChanges, numTransports} =
+        await mediaProperties.getCurrentConnectionInfo();
+
       assert.equal(connectionType, 'unknown');
+      assert.equal(selectedCandidatePairChanges, -1);
+      assert.equal(numTransports, 0);
     });
 
-    it('returns "unknown" if getStats() returns no candidate pairs', async () => {
-      mockMC.getStats.resolves([{type: 'something', id: '1234'}]);
+    describe('selectedCandidatePairChanges and numTransports', () => {
+      it('returns correct values when getStats() returns no transport stats at all', async () => {
+        mockMC.getStats.resolves([{type: 'something', id: '1234'}]);
 
-      const connectionType = await mediaProperties.getCurrentConnectionType();
-      assert.equal(connectionType, 'unknown');
+        const {selectedCandidatePairChanges, numTransports} =
+          await mediaProperties.getCurrentConnectionInfo();
+
+        assert.equal(selectedCandidatePairChanges, -1);
+        assert.equal(numTransports, 0);
+      });
+
+      it('returns correct values when getStats() returns transport stats without selectedCandidatePairChanges', async () => {
+        mockMC.getStats.resolves([{type: 'transport', id: '1234'}]);
+
+        const {selectedCandidatePairChanges, numTransports} =
+          await mediaProperties.getCurrentConnectionInfo();
+
+        assert.equal(selectedCandidatePairChanges, -1);
+        assert.equal(numTransports, 1);
+      });
+
+      it('returns correct values when getStats() returns transport stats with selectedCandidatePairChanges', async () => {
+        mockMC.getStats.resolves([
+          {type: 'transport', id: '1234', selectedCandidatePairChanges: 13},
+        ]);
+
+        const {selectedCandidatePairChanges, numTransports} =
+          await mediaProperties.getCurrentConnectionInfo();
+
+        assert.equal(selectedCandidatePairChanges, 13);
+        assert.equal(numTransports, 1);
+      });
+
+      it('returns correct values when getStats() returns multiple transport stats', async () => {
+        mockMC.getStats.resolves([
+          {type: 'transport', id: '1', selectedCandidatePairChanges: 11},
+          {type: 'transport', id: '2', selectedCandidatePairChanges: 12},
+        ]);
+
+        const {selectedCandidatePairChanges, numTransports} =
+          await mediaProperties.getCurrentConnectionInfo();
+
+        assert.equal(selectedCandidatePairChanges, 11); // we expect stats from the first transport to be returned
+        assert.equal(numTransports, 2);
+      });
     });
+    describe('connectionType', () => {
+      it('returns "unknown" if getStats() returns no candidate pairs', async () => {
+        mockMC.getStats.resolves([{type: 'something', id: '1234'}]);
 
-    it('returns "unknown" if getStats() returns no successful candidate pair', async () => {
-      mockMC.getStats.resolves([{type: 'candidate-pair', id: '1234', state: 'inprogress'}]);
+        const {connectionType} = await mediaProperties.getCurrentConnectionInfo();
+        assert.equal(connectionType, 'unknown');
+      });
 
-      const connectionType = await mediaProperties.getCurrentConnectionType();
-      assert.equal(connectionType, 'unknown');
-    });
+      it('returns "unknown" if getStats() returns no successful candidate pair', async () => {
+        mockMC.getStats.resolves([{type: 'candidate-pair', id: '1234', state: 'inprogress'}]);
 
-    it('returns "unknown" if getStats() returns a successful candidate pair but local candidate is missing', async () => {
-      mockMC.getStats.resolves([
-        {type: 'candidate-pair', id: '1234', state: 'succeeded', localCandidateId: 'wrong id'},
-      ]);
+        const {connectionType} = await mediaProperties.getCurrentConnectionInfo();
+        assert.equal(connectionType, 'unknown');
+      });
 
-      const connectionType = await mediaProperties.getCurrentConnectionType();
-      assert.equal(connectionType, 'unknown');
-    });
+      it('returns "unknown" if getStats() returns a successful candidate pair but local candidate is missing', async () => {
+        mockMC.getStats.resolves([
+          {type: 'candidate-pair', id: '1234', state: 'succeeded', localCandidateId: 'wrong id'},
+        ]);
 
-    it('returns "UDP" if getStats() returns a successful candidate pair with udp local candidate', async () => {
-      mockMC.getStats.resolves([
-        {
-          type: 'candidate-pair',
-          id: 'some candidate pair id',
-          state: 'succeeded',
-          localCandidateId: 'local candidate id',
-        },
-        {type: 'local-candidate', id: 'some other candidate id', protocol: 'tcp'},
-        {type: 'local-candidate', id: 'local candidate id', protocol: 'udp'},
-      ]);
+        const {connectionType} = await mediaProperties.getCurrentConnectionInfo();
+        assert.equal(connectionType, 'unknown');
+      });
 
-      const connectionType = await mediaProperties.getCurrentConnectionType();
-      assert.equal(connectionType, 'UDP');
-    });
-
-    it('returns "TCP" if getStats() returns a successful candidate pair with tcp local candidate', async () => {
-      mockMC.getStats.resolves([
-        {
-          type: 'candidate-pair',
-          id: 'some candidate pair id',
-          state: 'succeeded',
-          localCandidateId: 'some candidate id',
-        },
-        {type: 'local-candidate', id: 'some other candidate id', protocol: 'udp'},
-        {type: 'local-candidate', id: 'some candidate id', protocol: 'tcp'},
-      ]);
-
-      const connectionType = await mediaProperties.getCurrentConnectionType();
-      assert.equal(connectionType, 'TCP');
-    });
-
-    [
-      {relayProtocol: 'tls', expectedConnectionType: 'TURN-TLS'},
-      {relayProtocol: 'tcp', expectedConnectionType: 'TURN-TCP'},
-      {relayProtocol: 'udp', expectedConnectionType: 'TURN-UDP'},
-    ].forEach(({relayProtocol, expectedConnectionType}) =>
-      it(`returns "${expectedConnectionType}" if getStats() returns a successful candidate pair with a local candidate with relayProtocol=${relayProtocol}`, async () => {
+      it('returns "UDP" if getStats() returns a successful candidate pair with udp local candidate', async () => {
         mockMC.getStats.resolves([
           {
             type: 'candidate-pair',
             id: 'some candidate pair id',
             state: 'succeeded',
-            localCandidateId: 'selected candidate id',
+            localCandidateId: 'local candidate id',
+          },
+          {type: 'local-candidate', id: 'some other candidate id', protocol: 'tcp'},
+          {type: 'local-candidate', id: 'local candidate id', protocol: 'udp'},
+        ]);
+
+        const {connectionType} = await mediaProperties.getCurrentConnectionInfo();
+        assert.equal(connectionType, 'UDP');
+      });
+
+      it('returns "TCP" if getStats() returns a successful candidate pair with tcp local candidate', async () => {
+        mockMC.getStats.resolves([
+          {
+            type: 'candidate-pair',
+            id: 'some candidate pair id',
+            state: 'succeeded',
+            localCandidateId: 'some candidate id',
+          },
+          {type: 'local-candidate', id: 'some other candidate id', protocol: 'udp'},
+          {type: 'local-candidate', id: 'some candidate id', protocol: 'tcp'},
+        ]);
+
+        const {connectionType} = await mediaProperties.getCurrentConnectionInfo();
+        assert.equal(connectionType, 'TCP');
+      });
+
+      [
+        {relayProtocol: 'tls', expectedConnectionType: 'TURN-TLS'},
+        {relayProtocol: 'tcp', expectedConnectionType: 'TURN-TCP'},
+        {relayProtocol: 'udp', expectedConnectionType: 'TURN-UDP'},
+      ].forEach(({relayProtocol, expectedConnectionType}) =>
+        it(`returns "${expectedConnectionType}" if getStats() returns a successful candidate pair with a local candidate with relayProtocol=${relayProtocol}`, async () => {
+          mockMC.getStats.resolves([
+            {
+              type: 'candidate-pair',
+              id: 'some candidate pair id',
+              state: 'succeeded',
+              localCandidateId: 'selected candidate id',
+            },
+            {
+              type: 'candidate-pair',
+              id: 'some other candidate pair id',
+              state: 'failed',
+              localCandidateId: 'some other candidate id 1',
+            },
+            {type: 'local-candidate', id: 'some other candidate id 1', protocol: 'udp'},
+            {type: 'local-candidate', id: 'some other candidate id 2', protocol: 'tcp'},
+            {
+              type: 'local-candidate',
+              id: 'selected candidate id',
+              protocol: 'udp',
+              relayProtocol,
+            },
+          ]);
+
+          const {connectionType} = await mediaProperties.getCurrentConnectionInfo();
+          assert.equal(connectionType, expectedConnectionType);
+        })
+      );
+
+      it('returns connection type of the first successful candidate pair', async () => {
+        // in real life this will never happen and all active candidate pairs will have same transport,
+        // but here we're simulating a situation where they have different transports and just checking
+        // that the code still works and just returns the first one
+        mockMC.getStats.resolves([
+          {
+            type: 'inbound-rtp',
+            id: 'whatever',
+          },
+          {
+            type: 'candidate-pair',
+            id: 'some candidate pair id',
+            state: 'succeeded',
+            localCandidateId: '1st selected candidate id',
           },
           {
             type: 'candidate-pair',
             id: 'some other candidate pair id',
-            state: 'failed',
-            localCandidateId: 'some other candidate id 1',
+            state: 'succeeded',
+            localCandidateId: '2nd selected candidate id',
           },
           {type: 'local-candidate', id: 'some other candidate id 1', protocol: 'udp'},
           {type: 'local-candidate', id: 'some other candidate id 2', protocol: 'tcp'},
           {
             type: 'local-candidate',
-            id: 'selected candidate id',
+            id: '1st selected candidate id',
             protocol: 'udp',
-            relayProtocol,
+            relayProtocol: 'tls',
+          },
+          {
+            type: 'local-candidate',
+            id: '2nd selected candidate id',
+            protocol: 'udp',
+            relayProtocol: 'tcp',
           },
         ]);
 
-        const connectionType = await mediaProperties.getCurrentConnectionType();
-        assert.equal(connectionType, expectedConnectionType);
-      })
-    );
-
-    it('returns connection type of the first successful candidate pair', async () => {
-      // in real life this will never happen and all active candidate pairs will have same transport,
-      // but here we're simulating a situation where they have different transports and just checking
-      // that the code still works and just returns the first one
-      mockMC.getStats.resolves([
-        {
-          type: 'inbound-rtp',
-          id: 'whatever',
-        },
-        {
-          type: 'candidate-pair',
-          id: 'some candidate pair id',
-          state: 'succeeded',
-          localCandidateId: '1st selected candidate id',
-        },
-        {
-          type: 'candidate-pair',
-          id: 'some other candidate pair id',
-          state: 'succeeded',
-          localCandidateId: '2nd selected candidate id',
-        },
-        {type: 'local-candidate', id: 'some other candidate id 1', protocol: 'udp'},
-        {type: 'local-candidate', id: 'some other candidate id 2', protocol: 'tcp'},
-        {
-          type: 'local-candidate',
-          id: '1st selected candidate id',
-          protocol: 'udp',
-          relayProtocol: 'tls',
-        },
-        {
-          type: 'local-candidate',
-          id: '2nd selected candidate id',
-          protocol: 'udp',
-          relayProtocol: 'tcp',
-        },
-      ]);
-
-      const connectionType = await mediaProperties.getCurrentConnectionType();
-      assert.equal(connectionType, 'TURN-TLS');
+        const {connectionType} = await mediaProperties.getCurrentConnectionInfo();
+        assert.equal(connectionType, 'TURN-TLS');
+      });
     });
   });
 });

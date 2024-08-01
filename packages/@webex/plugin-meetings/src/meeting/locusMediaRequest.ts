@@ -88,6 +88,7 @@ export type Config = {
     regionCode?: string;
   };
   correlationId: string;
+  meetingId: string;
   preferTranscoding: boolean;
 };
 
@@ -223,6 +224,14 @@ export class LocusMediaRequest extends WebexPlugin {
         localMedias.roapMessage = request.roapMessage;
         localMedias.reachability = request.reachability;
         body.clientMediaPreferences.joinCookie = request.joinCookie;
+
+        // @ts-ignore
+        this.webex.internal.newMetrics.submitClientEvent({
+          name: 'client.locus.media.request',
+          options: {
+            meetingId: this.config.meetingId,
+          },
+        });
         break;
     }
 
@@ -256,6 +265,16 @@ export class LocusMediaRequest extends WebexPlugin {
           this.confluenceState = 'created';
         }
 
+        if (request.type === 'RoapMessage') {
+          // @ts-ignore
+          this.webex.internal.newMetrics.submitClientEvent({
+            name: 'client.locus.media.response',
+            options: {
+              meetingId: this.config.meetingId,
+            },
+          });
+        }
+
         return result;
       })
       .catch((e) => {
@@ -265,6 +284,18 @@ export class LocusMediaRequest extends WebexPlugin {
         ) {
           this.confluenceState = 'not created';
         }
+
+        if (request.type === 'RoapMessage') {
+          // @ts-ignore
+          this.webex.internal.newMetrics.submitClientEvent({
+            name: 'client.locus.media.response',
+            options: {
+              meetingId: this.config.meetingId,
+              rawError: e,
+            },
+          });
+        }
+
         throw e;
       });
   }
