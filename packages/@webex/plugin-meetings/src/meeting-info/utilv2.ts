@@ -220,12 +220,12 @@ export default class MeetingInfoUtil {
   /**
    * Helper function to build up a correct locus url depending on the value passed
    * @param {Object} options type and value to fetch meeting info
-   * @param {String} options.type One of [SIP_URI, PERSONAL_ROOM, MEETING_ID, CONVERSATION_URL, LOCUS_ID, MEETING_LINK]
+   * @param {DestinationType} options.type One of [SIP_URI, PERSONAL_ROOM, MEETING_ID, CONVERSATION_URL, LOCUS_ID, MEETING_LINK]
    * @param {String} options.installedOrgID org ID of user's machine
    * @param {Object} options.destination ?? value.value
    * @returns {Object} returns an object with {resource, method}
    */
-  static getRequestBody(options: {type: string; destination: object} | any) {
+  static getRequestBody(options: {type: DestinationType; destination: object} | any) {
     const {type, destination, password, captchaInfo, installedOrgID, locusId, extraParams} =
       options;
     const body: any = {

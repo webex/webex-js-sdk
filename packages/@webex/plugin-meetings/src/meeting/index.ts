@@ -526,7 +526,7 @@ export default class Meeting extends StatelessWebexPlugin {
   conversationUrl: string;
   callStateForMetrics: CallStateForMetrics;
   destination: string;
-  destinationType: string;
+  destinationType: DestinationType;
   deviceUrl: string;
   hostId: string;
   id: string;

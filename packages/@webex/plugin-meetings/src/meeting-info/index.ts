@@ -157,7 +157,7 @@ export default class MeetingInfo {
   /**
    * Fetches meeting info from the server
    * @param {String} destination one of many different types of destinations to look up info for
-   * @param {String} [type] to match up with the destination value
+   * @param {DestinationType} [type] to match up with the destination value
    * @param {String} [password] meeting password
    * @param {Object} [captchaInfo] captcha code and id
    * @param {String} [installedOrgID]
@@ -170,7 +170,7 @@ export default class MeetingInfo {
    */
   public fetchMeetingInfo(
     destination: string,
-    type: string = null,
+    type: DestinationType = null,
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     password: string = null,
     // eslint-disable-next-line @typescript-eslint/no-unused-vars

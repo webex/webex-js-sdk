@@ -39,7 +39,7 @@ import Metrics from '../metrics';
 
 const MeetingsUtil: any = {};
 
-MeetingsUtil.getMeetingAddedType = (type) =>
+MeetingsUtil.getMeetingAddedType = (type: DestinationType) =>
   type === DestinationType.LOCUS_ID ? _INCOMING_ : _CREATED_;
 
 MeetingsUtil.handleRoapMercury = (envelope, meetingCollection) => {

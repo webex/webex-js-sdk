@@ -32,7 +32,7 @@ import {
  * @class MeetingInfoUtil
  */
 export default class MeetingInfoUtil {
-  static extractDestination(destination, type) {
+  static extractDestination(destination, type: DestinationType) {
     let dest = destination;
 
     if (type === DestinationType.LOCUS_ID) {
@@ -249,11 +249,11 @@ export default class MeetingInfoUtil {
 
   /**
    * Helper function to build up a correct locus url depending on the value passed
-   * @param {String} type One of [SIP_URI, PERSONAL_ROOM, MEETING_ID, CONVERSATION_URL, LOCUS_ID, MEETING_LINK]
+   * @param {DestinationType} type One of [SIP_URI, PERSONAL_ROOM, MEETING_ID, CONVERSATION_URL, LOCUS_ID, MEETING_LINK]
    * @param {Object} value ?? value.value
    * @returns {Object} returns an object with {resource, method}
    */
-  static getResourceUrl(type: string, value: any) {
+  static getResourceUrl(type: DestinationType, value: any) {
     let resource = `/${LOCI}/${MEETINGINFO}`;
     let method = HTTP_VERBS.GET;
     let uri = null;
@@ -288,7 +288,7 @@ export default class MeetingInfoUtil {
     };
   }
 
-  static getRequestParams(resourceOptions, type, value, api) {
+  static getRequestParams(resourceOptions, type: DestinationType, value, api) {
     let requestParams: any = {
       method: resourceOptions.method,
       api,

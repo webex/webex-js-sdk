@@ -1223,7 +1223,7 @@ export default class Meetings extends WebexPlugin {
    * When meeting info passed it should be complete, e.g.: fetched after password or captcha provided
    *
    * @param {String} destination see create()
-   * @param {String} type see create()
+   * @param {DestinationType} type see create()
    * @param {Boolean} useRandomDelayForInfo whether a random delay should be added to fetching meeting info
    * @param {Object} infoExtraParams extra parameters to be provided when fetching meeting info
    * @param {CallStateForMetrics} callStateForMetrics - information about call state for metrics
@@ -1236,7 +1236,7 @@ export default class Meetings extends WebexPlugin {
    */
   private async createMeeting(
     destination: any,
-    type: string = null,
+    type: DestinationType = null,
     useRandomDelayForInfo = false,
     infoExtraParams = {},
     callStateForMetrics: CallStateForMetrics = undefined,
