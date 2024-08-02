@@ -84,6 +84,47 @@ describe('MediaConnectionAwaiter', () => {
       assert.calledThrice(mockMC.off);
     });
 
+    it('rejects immediately if ice state is FAILED', async () => {
+      mockMC.getConnectionState.returns(ConnectionState.Connecting);
+      mockMC.getIceGatheringState.returns('gathering');
+
+      let promiseResolved = false;
+      let promiseRejected = false;
+
+      mediaConnectionAwaiter
+        .waitForMediaConnectionConnected()
+        .then(() => {
+          promiseResolved = true;
+        })
+        .catch((error) => {
+          promiseRejected = true;
+
+          const {iceConnected} = error;
+          assert.equal(iceConnected, false);
+        });
+
+      await testUtils.flushPromises();
+      assert.equal(promiseResolved, false);
+      assert.equal(promiseRejected, false);
+
+      // check the right listener was registered
+      assert.calledThrice(mockMC.on);
+      assert.equal(mockMC.on.getCall(0).args[0], Event.PEER_CONNECTION_STATE_CHANGED);
+      assert.equal(mockMC.on.getCall(1).args[0], Event.ICE_CONNECTION_STATE_CHANGED);
+      assert.equal(mockMC.on.getCall(2).args[0], Event.ICE_GATHERING_STATE_CHANGED);
+      const iceConnectionListener = mockMC.on.getCall(1).args[1];
+
+      mockMC.getConnectionState.returns(ConnectionState.Failed);
+      iceConnectionListener();
+
+      await testUtils.flushPromises();
+
+      assert.equal(promiseResolved, false);
+      assert.equal(promiseRejected, true);
+
+      assert.calledThrice(mockMC.off);
+    });
+
     it('rejects after timeout if dtls state is not connected', async () => {
       mockMC.getConnectionState.returns(ConnectionState.Connecting);
       mockMC.getIceGatheringState.returns('gathering');

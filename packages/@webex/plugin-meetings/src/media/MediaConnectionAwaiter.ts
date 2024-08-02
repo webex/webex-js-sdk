@@ -45,6 +45,15 @@ export default class MediaConnectionAwaiter {
   }
 
   /**
+   * Returns true if the connection is in an unrecoverable "failed" state
+   *
+   * @returns {boolean}
+   */
+  private isFailed(): boolean {
+    return this.webrtcMediaConnection.getConnectionState() === ConnectionState.Failed;
+  }
+
+  /**
    * Returns true if the ICE Gathering is completed, false otherwise.
    *
    * @returns {boolean}
@@ -82,6 +91,17 @@ export default class MediaConnectionAwaiter {
     LoggerProxy.logger.log(
       `Media:MediaConnectionAwaiter#connectionStateChange --> connection state: ${this.webrtcMediaConnection.getConnectionState()}`
     );
+
+    if (this.isFailed()) {
+      LoggerProxy.logger.warn(
+        'Media:MediaConnectionAwaiter#connectionStateChange --> ICE failed, rejecting'
+      );
+      this.clearCallbacks();
+
+      this.defer.reject({
+        iceConnected: this.iceConnected,
+      });
+    }
 
     if (!this.isConnected()) {
       return;
