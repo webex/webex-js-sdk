@@ -165,8 +165,8 @@ Media.createMediaConnection = (
   if (turnServerInfo?.url) {
     iceServers.push({
       urls: turnServerInfo.url,
-      username: turnServerInfo.username || '',
-      credential: turnServerInfo.password || '',
+      username: turnServerInfo.username || '', // 'marcin-test', //
+      credential: turnServerInfo.password || '', // 'marcin-test', //
     });
   }
 

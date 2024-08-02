@@ -2103,6 +2103,10 @@ export default class Meeting extends StatelessWebexPlugin {
   private setUpLocusInfoMediaInactiveListener() {
     // User gets kicked off the meeting due to inactivity or user did a refresh
     this.locusInfo.on(EVENTS.DISCONNECT_DUE_TO_INACTIVITY, (res) => {
+      console.log(
+        // @ts-ignore
+        `marcin: got MEDIA INACTIVE from backend: reason=${res.reason}, this.config.reconnection.autoRejoin=${this.config.reconnection.autoRejoin}`
+      );
       // https:// jira-eng-gpk2.cisco.com/jira/browse/SPARK-240520
       // TODO: send custom parameter explaining why the inactivity happened
       // refresh , no media or network got dsconnected or something else
@@ -3135,6 +3139,9 @@ export default class Meeting extends StatelessWebexPlugin {
         correlation_id: this.correlationId,
         locus_id: this.locusId,
       });
+      LoggerProxy.logger.info(
+        'Meeting:index#setUpLocusInfoSelfListener --> MEDIA_INACTIVITY received, reconnecting...'
+      );
       this.reconnect();
     });
 
@@ -4578,20 +4585,36 @@ export default class Meeting extends StatelessWebexPlugin {
       let turnServerInfo;
       let turnDiscoverySkippedReason;
 
-      // @ts-ignore
-      joinOptions.reachability = await this.webex.meetings.reachability.getReachabilityResults();
-      const turnDiscoveryRequest = await this.roap.generateTurnDiscoveryRequestMessage(this, true);
-
-      ({turnDiscoverySkippedReason} = turnDiscoveryRequest);
-      joinOptions.roapMessage = turnDiscoveryRequest.roapMessage;
-
       if (!joinResponse) {
+        // @ts-ignore
+        joinOptions.reachability = await this.webex.meetings.reachability.getReachabilityResults();
+        const turnDiscoveryRequest = await this.roap.generateTurnDiscoveryRequestMessage(
+          this,
+          true
+        );
+
+        ({turnDiscoverySkippedReason} = turnDiscoveryRequest);
+        joinOptions.roapMessage = turnDiscoveryRequest.roapMessage;
+
         LoggerProxy.logger.info(
           'Meeting:index#joinWithMedia ---> calling join with joinOptions, ',
           joinOptions
         );
 
         joinResponse = await this.join(joinOptions);
+      } else {
+        // this is a retry, where join succeeded, so we need to do a TURN discovery as a separate /media call to Locus
+
+        // joinOptions.roapMessage is from the previous join attempt, so we need to reset it
+        joinOptions.roapMessage = undefined;
+
+        this.setupLocusMediaRequest();
+
+        const turnServerResult = await this.roap.doTurnDiscovery(this, true, true);
+
+        if (turnServerResult.turnServerInfo?.url) {
+          turnServerInfo = turnServerResult.turnServerInfo;
+        }
       }
 
       joined = true;
@@ -6727,6 +6750,36 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
+   * Makes sure that we have a reference to a LocusMediaRequest instance.
+   *
+   * @returns {void}
+   */
+  private setupLocusMediaRequest() {
+    if (!this.locusMediaRequest) {
+      this.locusMediaRequest = new LocusMediaRequest(
+        {
+          correlationId: this.correlationId,
+          meetingId: this.id,
+          device: {
+            url: this.deviceUrl,
+            // @ts-ignore
+            deviceType: this.config.deviceType,
+            // @ts-ignore
+            countryCode: this.webex.meetings.geoHintInfo?.countryCode,
+            // @ts-ignore
+            regionCode: this.webex.meetings.geoHintInfo?.regionCode,
+          },
+          preferTranscoding: !this.isMultistream,
+        },
+        {
+          // @ts-ignore
+          parent: this.webex,
+        }
+      );
+    }
+  }
+
+  /**
    * Creates a media connection to the server. Media connection is required for sending or receiving any audio/video.
    *
    * @param {AddMediaOptions} options
@@ -6807,26 +6860,7 @@ export default class Meeting extends StatelessWebexPlugin {
       receiveShare: shareAudioEnabled || shareVideoEnabled,
     });
 
-    this.locusMediaRequest = new LocusMediaRequest(
-      {
-        correlationId: this.correlationId,
-        meetingId: this.id,
-        device: {
-          url: this.deviceUrl,
-          // @ts-ignore
-          deviceType: this.config.deviceType,
-          // @ts-ignore
-          countryCode: this.webex.meetings.geoHintInfo?.countryCode,
-          // @ts-ignore
-          regionCode: this.webex.meetings.geoHintInfo?.regionCode,
-        },
-        preferTranscoding: !this.isMultistream,
-      },
-      {
-        // @ts-ignore
-        parent: this.webex,
-      }
-    );
+    this.setupLocusMediaRequest();
 
     this.audio = createMuteState(AUDIO, this, audioEnabled);
     this.video = createMuteState(VIDEO, this, videoEnabled);

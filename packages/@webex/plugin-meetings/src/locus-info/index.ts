@@ -501,6 +501,7 @@ export default class LocusInfo extends EventsScope {
       // When we dont add MEDIA for condition 2. The state of bob='IDLE'
 
       if (this.fullState && this.fullState.state === LOCUS.STATE.INACTIVE) {
+        console.log('marcin: isMeetingActive: 1st case CALL_INACTIVE');
         // TODO: update the meeting state
         LoggerProxy.logger.warn(
           'Locus-info:index#isMeetingActive --> Call Ended, locus state is inactive.'
@@ -532,6 +533,7 @@ export default class LocusInfo extends EventsScope {
           this.parsedLocus.self.state === MEETING_STATE.STATES.NOTIFIED ||
           this.parsedLocus.self.state === MEETING_STATE.STATES.JOINED)
       ) {
+        console.log('marcin: isMeetingActive: 2nd case PARTNER_LEFT');
         // @ts-ignore
         this.webex.internal.newMetrics.submitClientEvent({
           name: 'client.call.remote-ended',
@@ -559,6 +561,7 @@ export default class LocusInfo extends EventsScope {
           partner.state === MEETING_STATE.STATES.NOTIFIED ||
           partner.state === MEETING_STATE.STATES.IDLE) // Happens when user just joins and adds no Media
       ) {
+        console.log('marcin: isMeetingActive: last case SELF_LEFT');
         // @ts-ignore
         this.webex.internal.newMetrics.submitClientEvent({
           name: 'client.call.remote-ended',
