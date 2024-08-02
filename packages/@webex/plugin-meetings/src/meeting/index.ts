@@ -4647,7 +4647,16 @@ export default class Meeting extends StatelessWebexPlugin {
         }
       );
 
-      if (!isRetry) {
+      // if this was the first attempt, let's do a retry
+      let shouldRetry = !isRetry;
+
+      if (CallDiagnosticUtils.isSdpOfferCreationError(error)) {
+        // errors related to offer creation (for example missing H264 codec) will happen again no matter how many times we try,
+        // so there is no point doing a retry
+        shouldRetry = false;
+      }
+
+      if (shouldRetry) {
         LoggerProxy.logger.warn('Meeting:index#joinWithMedia --> retrying call to joinWithMedia');
         this.joinWithMediaRetryInfo.isRetry = true;
         this.joinWithMediaRetryInfo.prevJoinResponse = joinResponse;

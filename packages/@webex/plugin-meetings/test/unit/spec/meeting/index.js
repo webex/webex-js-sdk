@@ -902,6 +902,38 @@ describe('plugin-meetings', () => {
             }
           );
         });
+
+        it('should not attempt a retry if we fail to create the offer on first atttempt', async () => {
+          const addMediaError = new Error('fake addMedia error');
+          addMediaError.name = 'SdpOfferCreationError';
+
+          meeting.addMedia.rejects(addMediaError)
+
+          await assert.isRejected(meeting.joinWithMedia({
+            joinOptions,
+            mediaOptions,
+          }), addMediaError);
+
+          // check that only 1 attempt was done
+          assert.calledOnce(meeting.join);
+          assert.calledOnce(meeting.addMedia);
+          assert.calledOnce(Metrics.sendBehavioralMetric);
+          assert.calledWith(
+            Metrics.sendBehavioralMetric.firstCall,
+            BEHAVIORAL_METRICS.JOIN_WITH_MEDIA_FAILURE,
+            {
+              correlation_id: meeting.correlationId,
+              locus_id: meeting.locusUrl.split('/').pop(),
+              reason: addMediaError.message,
+              stack: addMediaError.stack,
+              leaveErrorReason: undefined,
+              isRetry: false,
+            },
+            {
+              type: addMediaError.name,
+            }
+          );
+        });
       });
 
       describe('#isTranscriptionSupported', () => {
