@@ -355,6 +355,16 @@ describe('ContactClient Tests', () => {
     const contactsResponse = await contactClient.createContactGroup('New group');
 
     expect(contactsResponse.statusCode).toBe(503);
+    expect(webex.request).toBeCalledOnceWith({
+      uri: contactServiceGroupUrl,
+      method: HTTP_METHODS.POST,
+      body: {
+        displayName: 'Encrypted group name',
+        encryptionKeyUrl: 'kms://cisco.com/keys/dcf18f9d-155e-44ff-ad61-c8a69b7103ab',
+        groupType: 'NORMAL',
+        schemas: 'urn:cisco:codev:identity:contact:core:1.0',
+      },
+    });
     expect(warnSpy).toBeCalledTimes(2);
     expect(warnSpy).toHaveBeenNthCalledWith(1, 'Unable to create contact group.', loggerContext);
     expect(warnSpy).toHaveBeenNthCalledWith(
