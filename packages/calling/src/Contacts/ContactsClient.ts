@@ -28,6 +28,9 @@ import {
 } from './types';
 
 import {serviceErrorCodeHandler} from '../common/Utils';
+import Logger from '../Logger';
+import ExtendedError from '../Errors/catalog/ExtendedError';
+import {ERROR_TYPE} from '../Errors/types';
 
 /**
  * `ContactsClient` module is designed to offer a set of APIs for retrieving and updating contacts and groups from the contacts-service.
@@ -63,6 +66,7 @@ export class ContactsClient implements IContacts {
     }
 
     this.webex = this.sdkConnector.getWebex();
+    this.webex.internal.dss.register();
 
     this.encryptionKeyUrl = '';
     this.groups = undefined;
@@ -252,12 +256,13 @@ export class ContactsClient implements IContacts {
   /**
    * Fetches contacts from DSS.
    */
-  private async fetchContactFromDSS(contactsDataMap: ContactIdContactInfo): Promise<Contact[]> {
-    const contactList = [];
-    const dssResult = await this.webex.internal.dss.lookup({ids: Object.keys(contactsDataMap)});
+  private async fetchContactFromDSS(
+    contactsDataMap: ContactIdContactInfo,
+    id: string
+  ): Promise<Contact | null> {
+    try {
+      const contact = await this.webex.internal.dss.lookup({id, shouldBatch: true});
 
-    for (let i = 0; i < dssResult.length; i += 1) {
-      const contact = dssResult[i];
       const contactId = contact.identity;
       const {displayName, emails, phoneNumbers, sipAddresses, photos} = contact;
       const {department, firstName, identityManager, jobTitle, lastName} = contact.additionalInfo;
@@ -270,7 +275,6 @@ export class ContactsClient implements IContacts {
       if (photos.length) {
         avatarURL = photos[0].value;
       }
-
       const addedPhoneNumbers = contactsDataMap[contactId].phoneNumbers;
 
       if (addedPhoneNumbers) {
@@ -312,10 +316,12 @@ export class ContactsClient implements IContacts {
         title: jobTitle,
       };
 
-      contactList.push(cloudContact);
-    }
+      return cloudContact;
+    } catch (error: any) {
+      Logger.error(new ExtendedError(error.message, {}, ERROR_TYPE.DEFAULT), {});
 
-    return contactList;
+      return null;
+    }
   }
 
   /**
@@ -354,13 +360,11 @@ export class ContactsClient implements IContacts {
           contactList.push(decryptedContact);
         } else if (contact.contactType === ContactType.CLOUD && contact.contactId) {
           contactsDataMap[contact.contactId] = contact;
+          const contactDetails = await this.fetchContactFromDSS(contactsDataMap, contact.contactId);
+          if (contactDetails) {
+            contactList.push(contactDetails);
+          }
         }
-      }
-
-      if (Object.keys(contactsDataMap).length) {
-        const cloudContacts = await this.fetchContactFromDSS(contactsDataMap);
-
-        contactList.push(...cloudContacts);
       }
 
       await Promise.all(
@@ -694,13 +698,14 @@ export class ContactsClient implements IContacts {
         message: SUCCESS_MESSAGE,
       };
 
-      if (contact.contactType === ContactType.CLOUD) {
-        const decryptedContacts = await this.fetchContactFromDSS(
-          Object.fromEntries([[newContact.contactId, newContact]]) as ContactIdContactInfo
+      if (contact.contactType === ContactType.CLOUD && newContact.contactId) {
+        const decryptedContact = await this.fetchContactFromDSS(
+          Object.fromEntries([[newContact.contactId, newContact]]) as ContactIdContactInfo,
+          newContact.contactId
         );
 
-        if (decryptedContacts.length && decryptedContacts[0]) {
-          this.contacts?.push(decryptedContacts[0]);
+        if (decryptedContact) {
+          this.contacts?.push(decryptedContact);
         }
       } else {
         this.contacts?.push(contact);
