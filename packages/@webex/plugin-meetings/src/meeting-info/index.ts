@@ -2,7 +2,7 @@
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
 
-import {DestinationType} from '../constants';
+import {DESTINATION_TYPE} from '../constants';
 import LoggerProxy from '../common/logs/logger-proxy';
 
 import MeetingInfoCollection from './collection';
@@ -157,7 +157,7 @@ export default class MeetingInfo {
   /**
    * Fetches meeting info from the server
    * @param {String} destination one of many different types of destinations to look up info for
-   * @param {DestinationType} [type] to match up with the destination value
+   * @param {DESTINATION_TYPE} [type] to match up with the destination value
    * @param {String} [password] meeting password
    * @param {Object} [captchaInfo] captcha code and id
    * @param {String} [installedOrgID]
@@ -170,7 +170,7 @@ export default class MeetingInfo {
    */
   public fetchMeetingInfo(
     destination: string,
-    type: DestinationType = null,
+    type: DESTINATION_TYPE = null,
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     password: string = null,
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -186,7 +186,7 @@ export default class MeetingInfo {
     extraParams: object = {},
     options: {meetingId?: string; sendCAevents?: boolean} = {}
   ) {
-    if (type === DestinationType.PERSONAL_ROOM && !destination) {
+    if (type === DESTINATION_TYPE.PERSONAL_ROOM && !destination) {
       destination = this.webex.internal.device.userId;
     }
 
@@ -195,12 +195,12 @@ export default class MeetingInfo {
         // fetch meeting info
         this.requestFetchInfo({...infoOptions, ...options}).catch((error) => {
           // if it failed the first time as meeting link
-          if (infoOptions.type === DestinationType.MEETING_LINK) {
+          if (infoOptions.type === DESTINATION_TYPE.MEETING_LINK) {
             // convert the meeting link to sip URI and retry
             return this.requestFetchInfo({
               ...this.fetchInfoOptions(
                 MeetingInfoUtil.convertLinkToSip(destination),
-                DestinationType.SIP_URI
+                DESTINATION_TYPE.SIP_URI
               ),
               ...options,
             });

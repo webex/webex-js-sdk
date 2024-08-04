@@ -1,6 +1,17 @@
 import {find} from 'lodash';
+import {Enum} from '../constants';
 
 import Collection from '../common/collection';
+
+export const MEETING_KEY = {
+  CONVERSATION_URL: 'conversationUrl',
+  SIP_URI: 'sipUri',
+  LOCUS_URL: 'locusUrl',
+  MEETINGNUMBER: 'meetingNumber',
+  CORRELATION_ID: 'correlationId',
+} as const;
+
+export type MEETING_KEY = Enum<typeof MEETING_KEY>;
 
 /**
  * @export
@@ -26,13 +37,13 @@ export default class MeetingCollection extends Collection {
 
   /**
    * get a specific meeting searching for key
-   * @param {String} key
+   * @param {MEETING_KEY} key
    * @param {Any} value
    * @returns {Meeting} if found, else returns null
    * @public
    * @memberof MeetingCollection
    */
-  public getByKey(key: string, value: any) {
+  public getByKey(key: MEETING_KEY, value: any) {
     if (key && value) {
       // @ts-ignore
       return find(this.meetings, (meeting) => meeting[key] === value);

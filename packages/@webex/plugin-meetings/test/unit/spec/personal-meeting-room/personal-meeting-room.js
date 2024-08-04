@@ -5,7 +5,7 @@
 import 'jsdom-global/register';
 import {assert} from '@webex/test-helper-chai';
 import sinon from 'sinon';
-import {DestinationType} from '@webex/plugin-meetings/src/constants';
+import {DESTINATION_TYPE} from '@webex/plugin-meetings/src/constants';
 import PersonalMeetingRoom from '@webex/plugin-meetings/src/personal-meeting-room';
 
 describe('personal-meeting-room', () => {
@@ -23,7 +23,7 @@ describe('personal-meeting-room', () => {
     it('returns personal meeting room info', async () => {
       await pmr.get();
       assert.calledOnce(meetingInfo.fetchMeetingInfo);
-      assert.calledWith(meetingInfo.fetchMeetingInfo, {type: DestinationType.PERSONAL_ROOM});
+      assert.calledWith(meetingInfo.fetchMeetingInfo, {type: DESTINATION_TYPE.PERSONAL_ROOM});
     });
   });
 });

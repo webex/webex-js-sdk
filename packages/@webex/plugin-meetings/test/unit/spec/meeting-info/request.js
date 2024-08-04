@@ -8,7 +8,7 @@ import MockWebex from '@webex/test-helper-mock-webex';
 import Device from '@webex/internal-plugin-device';
 import Mercury from '@webex/internal-plugin-mercury';
 import Meetings from '@webex/plugin-meetings/src/meetings';
-import {DestinationType} from '@webex/plugin-meetings/src/constants';
+import {DESTINATION_TYPE} from '@webex/plugin-meetings/src/constants';
 
 import MeetingInfoRequest from '../../../../src/meeting-info/request';
 
@@ -53,7 +53,7 @@ describe('plugin-meetings', () => {
 
       it('Should call request with valid parameter', () => {
         meetingInfoRequest.fetchMeetingInfo({
-          type: DestinationType.LOCUS_ID,
+          type: DESTINATION_TYPE.LOCUS_ID,
           destination: 'locus_url',
         });
 

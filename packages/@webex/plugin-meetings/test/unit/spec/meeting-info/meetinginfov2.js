@@ -8,7 +8,7 @@ import MockWebex from '@webex/test-helper-mock-webex';
 import Device from '@webex/internal-plugin-device';
 import Mercury from '@webex/internal-plugin-mercury';
 import {
-  DestinationType,
+  DESTINATION_TYPE,
   WBXAPPAPI_SERVICE,
 } from '@webex/plugin-meetings/src/constants';
 
@@ -104,7 +104,7 @@ describe('plugin-meetings', () => {
         webex.request.resolves(requestResponse);
 
         const result = await meetingInfo.fetchMeetingInfo({
-          type: DestinationType.MEETING_ID,
+          type: DESTINATION_TYPE.MEETING_ID,
           destination: '1234323',
         });
 
@@ -131,7 +131,7 @@ describe('plugin-meetings', () => {
         webex.request.resolves(requestResponse);
 
         const result = await meetingInfo.fetchMeetingInfo({
-          type: DestinationType.PERSONAL_ROOM,
+          type: DESTINATION_TYPE.PERSONAL_ROOM,
         });
 
         assert.calledWith(webex.request, {
@@ -152,21 +152,21 @@ describe('plugin-meetings', () => {
 
         sinon
           .stub(MeetingInfoUtil, 'getDestinationType')
-          .returns(Promise.resolve({type: DestinationType.SIP_URI, destination: 'example@something.webex.com'}));
+          .returns(Promise.resolve({type: DESTINATION_TYPE.SIP_URI, destination: 'example@something.webex.com'}));
         sinon.stub(MeetingInfoUtil, 'getRequestBody').returns(Promise.resolve(body));
         sinon.stub(MeetingInfoUtil, 'getDirectMeetingInfoURI').returns('https://example.com');
         webex.request.resolves(requestResponse);
 
-        const result = await meetingInfo.fetchMeetingInfo('example@something.webex.com', DestinationType.SIP_URI);
+        const result = await meetingInfo.fetchMeetingInfo('example@something.webex.com', DESTINATION_TYPE.SIP_URI);
 
         assert.calledWith(MeetingInfoUtil.getDestinationType, {
           destination: 'example@something.webex.com',
-          type: DestinationType.SIP_URI,
+          type: DESTINATION_TYPE.SIP_URI,
           webex,
         });
         assert.calledWith(MeetingInfoUtil.getDirectMeetingInfoURI, {
           destination: 'example@something.webex.com',
-          type: DestinationType.SIP_URI,
+          type: DESTINATION_TYPE.SIP_URI,
         });
         assert.calledWith(webex.request, {
           method: 'POST',
@@ -185,7 +185,7 @@ describe('plugin-meetings', () => {
 
         webex.request.resolves(requestResponse);
 
-        const result = await meetingInfo.fetchMeetingInfo('1234323', DestinationType.MEETING_ID, 'abc', {
+        const result = await meetingInfo.fetchMeetingInfo('1234323', DESTINATION_TYPE.MEETING_ID, 'abc', {
           id: '999',
           code: 'aabbcc11',
         });
@@ -217,7 +217,7 @@ describe('plugin-meetings', () => {
 
         webex.request.resolves(requestResponse);
 
-        const result = await meetingInfo.fetchMeetingInfo('1234323', DestinationType.MEETING_ID, null, null, installedOrgID);
+        const result = await meetingInfo.fetchMeetingInfo('1234323', DESTINATION_TYPE.MEETING_ID, null, null, installedOrgID);
 
         assert.calledWith(webex.request, {
           method: 'POST',
@@ -244,7 +244,7 @@ describe('plugin-meetings', () => {
 
         webex.request.resolves(requestResponse);
 
-        const result = await meetingInfo.fetchMeetingInfo('1234323', DestinationType.MEETING_ID, null, null, null, locusId);
+        const result = await meetingInfo.fetchMeetingInfo('1234323', DESTINATION_TYPE.MEETING_ID, null, null, null, locusId);
 
         assert.calledWith(webex.request, {
           method: 'POST',
@@ -271,7 +271,7 @@ describe('plugin-meetings', () => {
 
         webex.request.resolves(requestResponse);
 
-        const result = await meetingInfo.fetchMeetingInfo('1234323', DestinationType.MEETING_ID, null, null, null, null, extraParams);
+        const result = await meetingInfo.fetchMeetingInfo('1234323', DESTINATION_TYPE.MEETING_ID, null, null, null, null, extraParams);
 
         assert.calledWith(webex.request, {
           method: 'POST',
@@ -294,7 +294,7 @@ describe('plugin-meetings', () => {
 
       it('create adhoc meeting when conversationUrl passed with enableAdhocMeetings toggle', async () => {
         sinon.stub(meetingInfo, 'createAdhocSpaceMeeting').returns(Promise.resolve());
-        await meetingInfo.fetchMeetingInfo('conversationUrl', DestinationType.CONVERSATION_URL);
+        await meetingInfo.fetchMeetingInfo('conversationUrl', DESTINATION_TYPE.CONVERSATION_URL);
 
         assert.calledWith(meetingInfo.createAdhocSpaceMeeting, 'conversationUrl');
         assert.notCalled(webex.request);
@@ -308,7 +308,7 @@ describe('plugin-meetings', () => {
 
         await meetingInfo.fetchMeetingInfo(
           'conversationUrl',
-          DestinationType.CONVERSATION_URL,
+          DESTINATION_TYPE.CONVERSATION_URL,
           null,
           null,
           installedOrgID
@@ -328,7 +328,7 @@ describe('plugin-meetings', () => {
         webex.config.meetings.experimental.enableAdhocMeetings = false;
         sinon.stub(meetingInfo, 'createAdhocSpaceMeeting').returns(Promise.resolve());
 
-        await meetingInfo.fetchMeetingInfo('conversationUrl', DestinationType.CONVERSATION_URL);
+        await meetingInfo.fetchMeetingInfo('conversationUrl', DESTINATION_TYPE.CONVERSATION_URL);
 
         assert.notCalled(meetingInfo.createAdhocSpaceMeeting);
         assert.called(webex.request);
@@ -339,7 +339,7 @@ describe('plugin-meetings', () => {
         sinon.stub(meetingInfo, 'createAdhocSpaceMeeting').returns(Promise.resolve());
         webex.meetings.preferredWebexSite = undefined;
 
-        await meetingInfo.fetchMeetingInfo('conversationUrl', DestinationType.CONVERSATION_URL);
+        await meetingInfo.fetchMeetingInfo('conversationUrl', DESTINATION_TYPE.CONVERSATION_URL);
 
         assert.notCalled(meetingInfo.createAdhocSpaceMeeting);
         assert.called(webex.request);
@@ -402,7 +402,7 @@ describe('plugin-meetings', () => {
             try {
               await meetingInfo.fetchMeetingInfo(
                 '1234323',
-                DestinationType.MEETING_ID,
+                DESTINATION_TYPE.MEETING_ID,
                 'abc',
                 {
                   id: '999',
@@ -489,7 +489,7 @@ describe('plugin-meetings', () => {
     
             const result = await meetingInfo.fetchMeetingInfo(
               '1234323',
-              DestinationType.MEETING_ID,
+              DESTINATION_TYPE.MEETING_ID,
               null,
               null,
               null,
@@ -562,7 +562,7 @@ describe('plugin-meetings', () => {
 
         const result = await meetingInfo.fetchMeetingInfo(
           '1234323',
-          DestinationType.MEETING_ID,
+          DESTINATION_TYPE.MEETING_ID,
           null,
           null,
           null,
@@ -638,7 +638,7 @@ describe('plugin-meetings', () => {
             try {
               await meetingInfo.fetchMeetingInfo(
                 '1234323',
-                DestinationType.MEETING_ID,
+                DESTINATION_TYPE.MEETING_ID,
                 'abc',
                 {
                   id: '999',
@@ -666,7 +666,7 @@ describe('plugin-meetings', () => {
           .rejects({statusCode: 403, body: {code: 403000, data: {meetingInfo: FAKE_MEETING_INFO}}});
 
         try {
-          await meetingInfo.fetchMeetingInfo('1234323', DestinationType.MEETING_ID, 'abc', {
+          await meetingInfo.fetchMeetingInfo('1234323', DESTINATION_TYPE.MEETING_ID, 'abc', {
             id: '999',
             code: 'aabbcc11',
           });
@@ -693,7 +693,7 @@ describe('plugin-meetings', () => {
             },
           });
           try {
-            await meetingInfo.fetchMeetingInfo('1234323', DestinationType.MEETING_ID, 'abc', {
+            await meetingInfo.fetchMeetingInfo('1234323', DESTINATION_TYPE.MEETING_ID, 'abc', {
               id: '999',
               code: 'aabbcc11',
             });
@@ -735,13 +735,13 @@ describe('plugin-meetings', () => {
 
         sinon
           .stub(MeetingInfoUtil, 'getDestinationType')
-          .returns(Promise.resolve({type: DestinationType.LOCUS_ID, destination: '123456'}));
+          .returns(Promise.resolve({type: DESTINATION_TYPE.LOCUS_ID, destination: '123456'}));
         sinon.stub(MeetingInfoUtil, 'getRequestBody').returns(Promise.resolve(body));
         webex.request.resolves(requestResponse);
 
         try {
           await meetingInfo.fetchMeetingInfo({
-            type: DestinationType.LOCUS_ID,
+            type: DESTINATION_TYPE.LOCUS_ID,
           });
           assert.fail('fetchMeetingInfo should have thrown, but has not done that');
         } catch (err) {
@@ -750,7 +750,7 @@ describe('plugin-meetings', () => {
             BEHAVIORAL_METRICS.FETCH_MEETING_INFO_V1_FAILURE,
             {
               reason: 'Not enough information to fetch meeting info',
-              destinationType: DestinationType.LOCUS_ID,
+              destinationType: DESTINATION_TYPE.LOCUS_ID,
               webExMeetingId: undefined,
               sipUri: undefined,
             }

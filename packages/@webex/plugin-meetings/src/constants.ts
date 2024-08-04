@@ -12,9 +12,6 @@ export const ALIAS = 'alias';
 export const ANSWER = 'answer';
 
 export const CALL = 'call';
-export const CORRELATION_ID = 'correlationId';
-export const MEETINGNUMBER = 'meetingNumber';
-export const CONVERSATION_URL_KEY = 'conversationUrl';
 export const CALENDAR = 'calendar';
 export const CALENDAR_EVENTS_API = 'calendarEvents';
 export const CMR_MEETINGS = 'cmrmeetings';
@@ -40,7 +37,6 @@ export const LEAVE = 'leave';
 export const LIVE = 'live';
 export const LOCAL = 'local';
 export const LOCI = 'loci';
-export const LOCUS_URL = 'locusUrl';
 export const END = 'end';
 
 export const MAX_RANDOM_DELAY_FOR_MEETING_INFO = 3 * 60 * 1000;
@@ -64,7 +60,6 @@ export const READY = 'ready';
 
 export const SEND_DTMF_ENDPOINT = 'sendDtmf';
 export const SENDRECV = 'sendrecv';
-export const SIP_URI_KEY = 'sipUri';
 export const SHARE = 'share';
 
 export const TYPE = 'type';
@@ -1325,13 +1320,15 @@ export const MEETING_PERMISSION_TOKEN_REFRESH_REASON = 'ttl-join';
 // constant for named media group type
 export const NAMED_MEDIA_GROUP_TYPE_AUDIO = 1;
 
-export enum DestinationType {
-  CONVERSATION_URL = 'CONVERSATION_URL',
-  MEETING_LINK = 'MEETING_LINK',
-  SIP_URI = 'SIP_URI',
-  PERSONAL_ROOM = 'PERSONAL_ROOM',
-  ONE_ON_ONE_CALL = 'ONE_ON_ONE_CALL',
-  LOCUS_ID = 'LOCUS_ID',
-  MEETING_ID = 'MEETING_ID',
-  MEETING_UUID = 'MEETING_UUID',
-}
+export const DESTINATION_TYPE = {
+  CONVERSATION_URL: 'CONVERSATION_URL',
+  MEETING_LINK: 'MEETING_LINK',
+  SIP_URI: 'SIP_URI',
+  PERSONAL_ROOM: 'PERSONAL_ROOM',
+  ONE_ON_ONE_CALL: 'ONE_ON_ONE_CALL',
+  LOCUS_ID: 'LOCUS_ID',
+  MEETING_ID: 'MEETING_ID',
+  MEETING_UUID: 'MEETING_UUID',
+} as const;
+
+export type DESTINATION_TYPE = Enum<typeof DESTINATION_TYPE>;
