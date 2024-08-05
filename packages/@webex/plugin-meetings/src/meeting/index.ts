@@ -2103,10 +2103,10 @@ export default class Meeting extends StatelessWebexPlugin {
   private setUpLocusInfoMediaInactiveListener() {
     // User gets kicked off the meeting due to inactivity or user did a refresh
     this.locusInfo.on(EVENTS.DISCONNECT_DUE_TO_INACTIVITY, (res) => {
-      console.log(
-        // @ts-ignore
-        `marcin: got MEDIA INACTIVE from backend: reason=${res.reason}, this.config.reconnection.autoRejoin=${this.config.reconnection.autoRejoin}`
-      );
+      // console.log(
+      //   // @ts-ignore
+      //   `marcin: got MEDIA INACTIVE from backend: reason=${res.reason}, this.config.reconnection.autoRejoin=${this.config.reconnection.autoRejoin}`
+      // );
       // https:// jira-eng-gpk2.cisco.com/jira/browse/SPARK-240520
       // TODO: send custom parameter explaining why the inactivity happened
       // refresh , no media or network got dsconnected or something else

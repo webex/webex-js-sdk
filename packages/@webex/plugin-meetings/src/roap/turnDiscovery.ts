@@ -377,7 +377,7 @@ export default class TurnDiscovery {
     meeting: Meeting,
     isReconnecting: boolean
   ): Promise<TurnDiscoveryResult> {
-    console.log('marcin: sendRoapTurnDiscoveryRequest');
+    // console.log('marcin: sendRoapTurnDiscoveryRequest');
     if (this.defer) {
       LoggerProxy.logger.warn(
         'Roap:turnDiscovery#sendRoapTurnDiscoveryRequest --> already in progress'
