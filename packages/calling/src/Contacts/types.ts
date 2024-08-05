@@ -49,7 +49,7 @@ export type Contact = {
   /**
    * This represents the display name of the contact.
    */
-  displayName?: string;
+  displayName: string;
   /**
    * This represents the array of different email addresses of the contact.
    */

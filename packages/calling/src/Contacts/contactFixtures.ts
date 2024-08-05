@@ -272,42 +272,40 @@ export const mockContactGroupListTwo = [
   },
 ];
 
-export const mockDSSResponse = [
-  {
-    additionalInfo: {
-      created: '2022-08-05T02:51:46.055Z',
-      department: '123029217',
-      extLinkedAccts: [{providerID: 'cisco.webex.com', accountGUID: '500802287', status: 'active'}],
-      firstName: 'Emily',
-      identityManager: {
-        displayName: 'Robert Langdon',
-        managerId: '9d0fce00-95b2-435f-99d1-b6b44759fbdc',
-      },
-      jobTitle: 'Software Engineer',
-      lastName: 'Nagakawa',
-      modified: '2023-03-03T13:37:03.196Z',
-      nickName: 'Emily',
-      userName: 'emikawa2@cisco.com',
+export const mockDSSResponse = {
+  additionalInfo: {
+    created: '2022-08-05T02:51:46.055Z',
+    department: '123029217',
+    extLinkedAccts: [{providerID: 'cisco.webex.com', accountGUID: '500802287', status: 'active'}],
+    firstName: 'Emily',
+    identityManager: {
+      displayName: 'Robert Langdon',
+      managerId: '9d0fce00-95b2-435f-99d1-b6b44759fbdc',
     },
-    displayName: 'Emily Nagakawa',
-    emails: [{value: 'emikawa2@cisco.com'}],
-    entityProviderType: 'CI_USER',
-    identity: '801bb994-343b-4f6b-97ae-d13c91d4b877',
-    orgId: '1eb65fdf-9643-417f-9974-ad72cae0e10f',
-    phoneNumbers: [
-      {type: 'mobile', value: '+1 835 648 8750'},
-      {type: 'work', value: '+1 791 723 8825'},
-    ],
-    photos: [{value: 'avatar-prod-us-east-2.webexcontent.com'}],
-    sipAddresses: [
-      {type: 'cloud-calling', value: 'emikawa2@cisco.call.ciscospark.com', primary: true},
-      {type: 'personal-room', value: 'emikawa2@cisco.webex.com', primary: false},
-      {type: 'enterprise', value: 'emikawa2@cisco.com', primary: true},
-      {type: 'personal-room', value: '25762555827@cisco.webex.com', primary: false},
-    ],
-    type: 'PERSON',
+    jobTitle: 'Software Engineer',
+    lastName: 'Nagakawa',
+    modified: '2023-03-03T13:37:03.196Z',
+    nickName: 'Emily',
+    userName: 'emikawa2@cisco.com',
   },
-];
+  displayName: 'Emily Nagakawa',
+  emails: [{value: 'emikawa2@cisco.com'}],
+  entityProviderType: 'CI_USER',
+  identity: '801bb994-343b-4f6b-97ae-d13c91d4b877',
+  orgId: '1eb65fdf-9643-417f-9974-ad72cae0e10f',
+  phoneNumbers: [
+    {type: 'mobile', value: '+1 835 648 8750'},
+    {type: 'work', value: '+1 791 723 8825'},
+  ],
+  photos: [{value: 'avatar-prod-us-east-2.webexcontent.com'}],
+  sipAddresses: [
+    {type: 'cloud-calling', value: 'emikawa2@cisco.call.ciscospark.com', primary: true},
+    {type: 'personal-room', value: 'emikawa2@cisco.webex.com', primary: false},
+    {type: 'enterprise', value: 'emikawa2@cisco.com', primary: true},
+    {type: 'personal-room', value: '25762555827@cisco.webex.com', primary: false},
+  ],
+  type: 'PERSON',
+};
 
 export const mockKmsKey = {
   uri: 'kms://kms-cisco.wbx2.com/keys/16095024-612d-4424-ba51-57cad2402e14',
