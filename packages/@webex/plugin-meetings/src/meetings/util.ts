@@ -17,7 +17,7 @@ import LoggerProxy from '../common/logs/logger-proxy';
 import Trigger from '../common/events/trigger-proxy';
 import BEHAVIORAL_METRICS from '../metrics/constants';
 import Metrics from '../metrics';
-import {MEETING_KEY} from './collection';
+import {MEETING_KEY} from './meetings.types';
 
 /**
  * Meetings Media Codec Missing Event

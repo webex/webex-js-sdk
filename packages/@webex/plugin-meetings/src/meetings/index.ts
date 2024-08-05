@@ -51,10 +51,10 @@ import Reachability from '../reachability';
 import Request from './request';
 import PasswordError from '../common/errors/password-error';
 import CaptchaError from '../common/errors/captcha-error';
-import MeetingCollection, {MEETING_KEY} from './collection';
+import MeetingCollection from './collection';
+import {MEETING_KEY, INoiseReductionEffect, IVirtualBackgroundEffect} from './meetings.types';
 import MeetingsUtil from './util';
 import PermissionError from '../common/errors/permission';
-import {INoiseReductionEffect, IVirtualBackgroundEffect} from './meetings.types';
 import {SpaceIDDeprecatedError} from '../common/errors/webex-errors';
 import NoMeetingInfoError from '../common/errors/no-meeting-info';
 
