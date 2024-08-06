@@ -12,6 +12,9 @@ export const ALIAS = 'alias';
 export const ANSWER = 'answer';
 
 export const CALL = 'call';
+export const CORRELATION_ID = 'correlationId';
+export const MEETINGNUMBER = 'meetingNumber';
+export const CONVERSATION_URL = 'conversationUrl';
 export const CALENDAR = 'calendar';
 export const CALENDAR_EVENTS_API = 'calendarEvents';
 export const CMR_MEETINGS = 'cmrmeetings';
@@ -37,6 +40,7 @@ export const LEAVE = 'leave';
 export const LIVE = 'live';
 export const LOCAL = 'local';
 export const LOCI = 'loci';
+export const LOCUS_URL = 'locusUrl';
 export const END = 'end';
 
 export const MAX_RANDOM_DELAY_FOR_MEETING_INFO = 3 * 60 * 1000;
@@ -60,6 +64,7 @@ export const READY = 'ready';
 
 export const SEND_DTMF_ENDPOINT = 'sendDtmf';
 export const SENDRECV = 'sendrecv';
+export const SIP_URI = 'sipUri';
 export const SHARE = 'share';
 
 export const TYPE = 'type';
@@ -76,6 +81,7 @@ export const _ACTIVE_ = 'ACTIVE';
 export const _CALL_ = 'CALL';
 export const _CREATED_ = 'CREATED';
 export const _CONFLICT_ = 'CONFLICT';
+export const _CONVERSATION_URL_ = 'CONVERSATION_URL';
 
 export const _ERROR_ = 'ERROR';
 
@@ -91,17 +97,22 @@ export const _ID_ = 'id';
 export const _JOIN_ = 'JOIN';
 export const _JOINED_ = 'JOINED';
 
+export const _LOCUS_ID_ = 'LOCUS_ID';
 export const _LEFT_ = 'LEFT';
 export const _MOVED_ = 'MOVED';
 export const _ON_HOLD_LOBBY_ = 'ON_HOLD_LOBBY';
+export const _MEETING_LINK_ = 'MEETING_LINK';
+export const _MEETING_UUID_ = 'MEETING_UUID';
 export const _MEETING_ = 'MEETING';
 export const _MEETING_CENTER_ = 'MEETING_CENTER';
+export const _MEETING_ID_ = 'MEETING_ID';
 
 export const _NOT_IN_MEETING_ = 'NOT_IN_MEETING';
 export const _NONE_ = 'NONE';
 
 export const _OBSERVE_ = 'OBSERVE';
 
+export const _PERSONAL_ROOM_ = 'PERSONAL_ROOM';
 export const _PEOPLE_ = hydraTypes.PEOPLE;
 
 export const _REQUESTED_ = 'REQUESTED';
@@ -111,6 +122,7 @@ export const _REMOVE_ = 'REMOVE';
 export const _ROOM_ = hydraTypes.ROOM;
 
 export const _SIP_BRIDGE_ = 'SIP_BRIDGE';
+export const _SIP_URI_ = 'SIP_URI';
 export const _SEND_RECEIVE_ = 'SENDRECV';
 export const _SEND_ONLY_ = 'SENDONLY';
 export const _INACTIVE_ = 'INACTIVE';
