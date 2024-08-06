@@ -8744,7 +8744,6 @@ __metadata:
     jwt-decode: 3.1.2
     lodash: ^4.17.21
     prettier: ^2.7.1
-    sdp-transform: ^2.12.0
     sinon: ^9.2.4
     typed-emitter: ^2.1.0
     typescript: ^4.7.4
@@ -28669,15 +28668,6 @@ __metadata:
     ajv-formats: ^2.1.1
     ajv-keywords: ^5.1.0
   checksum: 26a0463d47683258106e6652e9aeb0823bf0b85843039e068b57da1892f7ae6b6b1094d48e9ed5ba5cbe9f7166469d880858b9d91abe8bd249421eb813850cde
-  languageName: node
-  linkType: hard
-
-"sdp-transform@npm:^2.12.0":
-  version: 2.14.1
-  resolution: "sdp-transform@npm:2.14.1"
-  bin:
-    sdp-verify: checker.js
-  checksum: 8b3179786db1a0f1ebfdacb1ac0dfe2833e63e8c64b638884cec212455061d53beaa8d9c8bf76fdbd5f844b7885f3892adec27e87734cfbc2b3e5c65e18a489b
   languageName: node
   linkType: hard
 
