@@ -48,7 +48,7 @@ describe('changelogUtils', () => {
       expect(logSpy).toHaveBeenCalledWith('Changelog Error: Error while getting commits', Error('mockError'));
     });
 
-    it('read changelog data if version file exists', async () => {
+    it('read changelog data and main.json data if file exists', async () => {
       fs.readFileSync.mockReturnValue(fixtures.changelogData);
       await changelogUtils.createOrUpdateChangelog(fixtures.packagesData, 'mock_commit_id');
       // Twice to read changelog data and twice to read main.json
