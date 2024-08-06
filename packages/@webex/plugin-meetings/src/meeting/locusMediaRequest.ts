@@ -341,4 +341,28 @@ export class LocusMediaRequest extends WebexPlugin {
 
     return pendingPromise.promise;
   }
+
+  /** Returns true if a confluence on the server is already created */
+  public isConfluenceCreated() {
+    return this.confluenceState === 'created';
+  }
+
+  /**
+   * Resets the state of LocusMediaRequest - this method should be called when the confluence in the backend is destroyed,
+   * for example when we leave the meeting.
+   */
+  public reset() {
+    this.confluenceState = 'not created';
+  }
+
+  /**
+   * Updates the config with new values.
+   *
+   * @param correlationId
+   * @param preferTranscoding
+   */
+  public updateConfig(correlationId: string, preferTranscoding: boolean) {
+    this.config.correlationId = correlationId;
+    this.config.preferTranscoding = preferTranscoding;
+  }
 }

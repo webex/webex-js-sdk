@@ -2127,6 +2127,8 @@ export default class Meeting extends StatelessWebexPlugin {
         `Meeting:index#setUpLocusInfoMediaInactiveListener --> Meeting disconnected due to inactivity: ${res.reason}`
       );
 
+      this.locusMediaRequest?.reset();
+
       // @ts-ignore - config coming from registerPlugin
       if (this.config.reconnection.autoRejoin) {
         this.reconnect();
@@ -4263,8 +4265,6 @@ export default class Meeting extends StatelessWebexPlugin {
    * @memberof Meeting
    */
   public closePeerConnections() {
-    this.locusMediaRequest = undefined;
-
     if (this.mediaProperties.webrtcMediaConnection) {
       if (this.remoteMediaManager) {
         this.remoteMediaManager.stop();
@@ -4573,29 +4573,42 @@ export default class Meeting extends StatelessWebexPlugin {
 
     let joined = false;
     let joinResponse = prevJoinResponse;
+    let forceTurnDiscovery = false;
 
     try {
       let turnServerInfo;
       let turnDiscoverySkippedReason;
 
-      // @ts-ignore
-      joinOptions.reachability = await this.webex.meetings.reachability.getReachabilityResults();
-      const turnDiscoveryRequest = await this.roap.generateTurnDiscoveryRequestMessage(this, true);
-
-      ({turnDiscoverySkippedReason} = turnDiscoveryRequest);
-      joinOptions.roapMessage = turnDiscoveryRequest.roapMessage;
-
+      // if this is the 1st attempt or a retry after join request failed -> we need to do a join with TURN discovery
       if (!joinResponse) {
+        // @ts-ignore
+        joinOptions.reachability = await this.webex.meetings.reachability.getReachabilityResults();
+        const turnDiscoveryRequest = await this.roap.generateTurnDiscoveryRequestMessage(
+          this,
+          true
+        );
+
+        ({turnDiscoverySkippedReason} = turnDiscoveryRequest);
+        joinOptions.roapMessage = turnDiscoveryRequest.roapMessage;
+
         LoggerProxy.logger.info(
           'Meeting:index#joinWithMedia ---> calling join with joinOptions, ',
           joinOptions
         );
 
         joinResponse = await this.join(joinOptions);
+      } else {
+        // this is a retry after join succeeded
+        // reset the roapMessage, because it may contain data from the previous join attempt
+        joinOptions.roapMessage = undefined;
+
+        // and force TURN discovery, because it needs to be done again
+        forceTurnDiscovery = true;
       }
 
       joined = true;
 
+      // if we have sent a TURN discovery roap message with the join, process the roap response
       if (joinOptions.roapMessage) {
         ({turnServerInfo, turnDiscoverySkippedReason} =
           await this.roap.handleTurnDiscoveryHttpResponse(this, joinResponse));
@@ -4608,7 +4621,7 @@ export default class Meeting extends StatelessWebexPlugin {
         }
       }
 
-      const mediaResponse = await this.addMedia(mediaOptions, turnServerInfo);
+      const mediaResponse = await this.addMedia(mediaOptions, turnServerInfo, forceTurnDiscovery);
 
       this.joinWithMediaRetryInfo = {isRetry: false, prevJoinResponse: undefined};
 
@@ -6604,7 +6617,10 @@ export default class Meeting extends StatelessWebexPlugin {
     turnServerInfo?: TurnServerInfo
   ): Promise<void> {
     const LOG_HEADER = 'Meeting:index#addMedia():establishMediaConnection -->';
-    const isReconnecting = this.isMoveToInProgress || this.retriedWithTurnServer;
+    const isReconnecting =
+      this.isMoveToInProgress || // this can be probably be removed as locusMediaRequest.isConfluenceCreated() will also return true whenever isMoveToInProgress is true
+      this.retriedWithTurnServer || // this can be probably be removed as locusMediaRequest.isConfluenceCreated() will also return true whenever retriedWithTurnServer is true
+      this.locusMediaRequest.isConfluenceCreated();
 
     // We are forcing turn discovery if the case is moveTo and a turn server was used already
     if (this.isMoveToInProgress && this.turnServerUsed) {
@@ -6731,13 +6747,15 @@ export default class Meeting extends StatelessWebexPlugin {
    *
    * @param {AddMediaOptions} options
    * @param {TurnServerInfo} turnServerInfo - TURN server information (used only internally by the SDK)
+   * @param {boolean} forceTurnDiscovery - if true, TURN discovery will be done
    * @returns {Promise<void>}
    * @public
    * @memberof Meeting
    */
   async addMedia(
     options: AddMediaOptions = {},
-    turnServerInfo: TurnServerInfo = undefined
+    turnServerInfo: TurnServerInfo = undefined,
+    forceTurnDiscovery = false
   ): Promise<void> {
     this.retriedWithTurnServer = false;
     this.hasMediaConnectionConnectedAtLeastOnce = false;
@@ -6807,26 +6825,30 @@ export default class Meeting extends StatelessWebexPlugin {
       receiveShare: shareAudioEnabled || shareVideoEnabled,
     });
 
-    this.locusMediaRequest = new LocusMediaRequest(
-      {
-        correlationId: this.correlationId,
-        meetingId: this.id,
-        device: {
-          url: this.deviceUrl,
-          // @ts-ignore
-          deviceType: this.config.deviceType,
-          // @ts-ignore
-          countryCode: this.webex.meetings.geoHintInfo?.countryCode,
-          // @ts-ignore
-          regionCode: this.webex.meetings.geoHintInfo?.regionCode,
+    if (!this.locusMediaRequest) {
+      this.locusMediaRequest = new LocusMediaRequest(
+        {
+          correlationId: this.correlationId,
+          meetingId: this.id,
+          device: {
+            url: this.deviceUrl,
+            // @ts-ignore
+            deviceType: this.config.deviceType,
+            // @ts-ignore
+            countryCode: this.webex.meetings.geoHintInfo?.countryCode,
+            // @ts-ignore
+            regionCode: this.webex.meetings.geoHintInfo?.regionCode,
+          },
+          preferTranscoding: !this.isMultistream,
         },
-        preferTranscoding: !this.isMultistream,
-      },
-      {
-        // @ts-ignore
-        parent: this.webex,
-      }
-    );
+        {
+          // @ts-ignore
+          parent: this.webex,
+        }
+      );
+    } else {
+      this.locusMediaRequest.updateConfig(this.correlationId, !this.isMultistream);
+    }
 
     this.audio = createMuteState(AUDIO, this, audioEnabled);
     this.video = createMuteState(VIDEO, this, videoEnabled);
@@ -6841,7 +6863,7 @@ export default class Meeting extends StatelessWebexPlugin {
       await this.establishMediaConnection(
         remoteMediaManagerConfig,
         bundlePolicy,
-        false,
+        forceTurnDiscovery,
         turnServerInfo
       );
 
