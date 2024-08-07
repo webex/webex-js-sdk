@@ -145,8 +145,14 @@ const changelogData = `{
   }
 }`;
 
+const mainJsonData = `{
+  "1.2.3": "logs/v1_2_3.json",
+  "3.2.1": "logs/v3_2_1.json"
+}`;
+
 const fixtures = {
   changelogData,
+  mainJsonData,
   packagesData,
   packageDataChangelog1,
   packageDataChangelog2,

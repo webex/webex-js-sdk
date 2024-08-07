@@ -22,6 +22,9 @@ describe('changelogUtils', () => {
   fs.readFileSync.mockReturnValue(fixtures.changelogData);
   describe('createOrUpdateChangelog', () => {
     const filePath331 = fixtures.packagesData[0].version.split('-')[0].replace(/\./g, '_');
+    const filePath000 = fixtures.packagesData[1].data.packageInfo.version
+      .split('-')[0]
+      .replace(/\./g, '_');
 
     it('should "getCommits" with correct arguments', async () => {
       await changelogUtils.createOrUpdateChangelog(fixtures.packagesData, 'mock_commit_id');
@@ -45,31 +48,54 @@ describe('changelogUtils', () => {
       expect(logSpy).toHaveBeenCalledWith('Changelog Error: Error while getting commits', Error('mockError'));
     });
 
-    it('read changelog data if version file exists', async () => {
+    it('read changelog data and main.json data if file exists', async () => {
       fs.readFileSync.mockReturnValue(fixtures.changelogData);
       await changelogUtils.createOrUpdateChangelog(fixtures.packagesData, 'mock_commit_id');
-      expect(fs.readFileSync).toHaveBeenCalledWith(`./docs/changelog/v${filePath331}.json`);
+      // Twice to read changelog data and twice to read main.json
+      expect(fs.readFileSync).toHaveBeenCalledTimes(4);
+      expect(fs.readFileSync).toHaveBeenCalledWith(`./docs/changelog/logs/v${filePath331}.json`);
+      expect(fs.readFileSync).toHaveBeenCalledWith(`./docs/changelog/logs/v${filePath000}.json`);
+      expect(fs.readFileSync).toHaveBeenCalledWith('./docs/changelog/logs/main.json');
     });
 
-    it('creates changelog data and creates or put the data in the respective file', async () => {
+    it('creates changelog data and main.json data and creates or put the data in the respective file', async () => {
       jest.spyOn(Date, 'now').mockReturnValue('123456789');
-      fs.readFileSync.mockReturnValue(fixtures.changelogData);
+      fs.readFileSync
+        .mockReturnValueOnce(fixtures.changelogData)
+        .mockReturnValueOnce(fixtures.mainJsonData)
+        .mockReturnValueOnce(fixtures.changelogData)
+        .mockReturnValueOnce(fixtures.mainJsonData);
+
       await changelogUtils.createOrUpdateChangelog(fixtures.packagesData, 'mock_commit_id');
-      const filePath000 = fixtures.packagesData[1].data.packageInfo.version
-        .split('-')[0]
-        .replace(/\./g, '_');
-      expect(fs.writeFileSync).toHaveBeenCalledTimes(2);
+      // Twice to write changelog data and twice to read main.json
+      expect(fs.writeFileSync).toHaveBeenCalledTimes(4);
       // writeFileSync will be called for each package
       // Here, according to the fixtures first it will be called for webex which is at version 3.3.1
       // and second, it will be called for @webex/package-tools which is at version 3.3.
       expect(fs.writeFileSync.mock.calls).toEqual([
         [
-          `./docs/changelog/v${filePath331}.json`,
+          `./docs/changelog/logs/v${filePath331}.json`,
           JSON.stringify(fixtures.packageDataChangelog1, null, 2),
         ],
         [
-          `./docs/changelog/v${filePath000}.json`,
+          './docs/changelog/logs/main.json',
+          JSON.stringify({
+            '1.2.3': 'logs/v1_2_3.json',
+            '3.2.1': 'logs/v3_2_1.json',
+            '3.3.1': 'logs/v3_3_1.json',
+          }, null, 2),
+        ],
+        [
+          `./docs/changelog/logs/v${filePath000}.json`,
           JSON.stringify(fixtures.packageDataChangelog2, null, 2),
+        ],
+        [
+          './docs/changelog/logs/main.json',
+          JSON.stringify({
+            '1.2.3': 'logs/v1_2_3.json',
+            '3.2.1': 'logs/v3_2_1.json',
+            '0.0.0': 'logs/v0_0_0.json',
+          }, null, 2),
         ],
       ]);
     });

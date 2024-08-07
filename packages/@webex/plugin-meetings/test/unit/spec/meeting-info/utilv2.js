@@ -4,15 +4,7 @@
 
 import {assert, expect} from '@webex/test-helper-chai';
 import sinon from 'sinon';
-import {
-  _MEETING_ID_,
-  _SIP_URI_,
-  _CONVERSATION_URL_,
-  _MEETING_LINK_,
-  _PERSONAL_ROOM_,
-  _LOCUS_ID_,
-  _MEETING_UUID_,
-} from '@webex/plugin-meetings/src/constants';
+import {DESTINATION_TYPE} from '@webex/plugin-meetings/src/constants';
 import MeetingInfoUtil from '@webex/plugin-meetings/src/meeting-info/utilv2';
 import LoggerProxy from '@webex/plugin-meetings/src/common/logs/logger-proxy';
 import LoggerConfig from '@webex/plugin-meetings/src/common/logs/logger-config';
@@ -39,11 +31,11 @@ describe('plugin-meetings', () => {
     describe('#getDestinationType', () => {
       it('For destination with type', async () => {
         const res = await MeetingInfoUtil.getDestinationType({
-          type: _MEETING_ID_,
+          type: DESTINATION_TYPE.MEETING_ID,
           destination: '1234323',
         });
 
-        assert.equal(res.type, _MEETING_ID_);
+        assert.equal(res.type, DESTINATION_TYPE.MEETING_ID);
         assert.equal(res.destination, '1234323');
       });
 
@@ -52,7 +44,7 @@ describe('plugin-meetings', () => {
           destination: 'https://cisco.webex.com/meet/arungane',
         });
 
-        assert.equal(res.type, _MEETING_LINK_);
+        assert.equal(res.type, DESTINATION_TYPE.MEETING_LINK);
         assert.equal(res.destination, 'https://cisco.webex.com/meet/arungane');
       });
 
@@ -61,7 +53,7 @@ describe('plugin-meetings', () => {
           destination: 'testing@webex.com',
         });
 
-        assert.equal(res.type, _SIP_URI_);
+        assert.equal(res.type, DESTINATION_TYPE.SIP_URI);
         assert.equal(res.destination, 'testing@webex.com');
       });
 
@@ -70,7 +62,7 @@ describe('plugin-meetings', () => {
           destination: '+14252086070',
         });
 
-        assert.equal(res.type, _SIP_URI_);
+        assert.equal(res.type, DESTINATION_TYPE.SIP_URI);
         assert.equal(res.destination, '+14252086070');
       });
 
@@ -80,7 +72,7 @@ describe('plugin-meetings', () => {
           destination: 'https://conv-a.wbx2.com/conversation/api/v1/conversations/bfb49280',
         });
 
-        assert.equal(res.type, _CONVERSATION_URL_);
+        assert.equal(res.type, DESTINATION_TYPE.CONVERSATION_URL);
         assert.equal(
           res.destination,
           'https://conv-a.wbx2.com/conversation/api/v1/conversations/bfb49280'
@@ -104,7 +96,7 @@ describe('plugin-meetings', () => {
 
         it('should return a userID and orgID without passing a destination', async () => {
           const res = await MeetingInfoUtil.getDestinationType({
-            type: _PERSONAL_ROOM_,
+            type: DESTINATION_TYPE.PERSONAL_ROOM,
             webex: {
               internal: {
                 device: {
@@ -121,7 +113,7 @@ describe('plugin-meetings', () => {
 
         it('should return a userID and orgID when passing an email', async () => {
           const res = await MeetingInfoUtil.getDestinationType({
-            type: _PERSONAL_ROOM_,
+            type: DESTINATION_TYPE.PERSONAL_ROOM,
             destination: 'amritesi@cisco.com',
             webex: {
               people: {list: sinon.stub().returns(mockedList)},
@@ -135,7 +127,7 @@ describe('plugin-meetings', () => {
 
         it('should return a userID and orgID when passing an id', async () => {
           const res = await MeetingInfoUtil.getDestinationType({
-            type: _PERSONAL_ROOM_,
+            type: DESTINATION_TYPE.PERSONAL_ROOM,
             destination: '01824b9b-adef-4b10-b5c1-8a2fe2fb7c0e',
             webex: {
               people: {list: sinon.stub().returns(mockedList)},
@@ -151,9 +143,9 @@ describe('plugin-meetings', () => {
 
     describe('#getRequestBody', () => {
 
-      it('for _PERSONAL_ROOM_', () => {
+      it('for DESTINATION_TYPE.PERSONAL_ROOM', () => {
         const res = MeetingInfoUtil.getRequestBody({
-          type: _PERSONAL_ROOM_,
+          type: DESTINATION_TYPE.PERSONAL_ROOM,
           destination: {
             userId: '01824b9b-adef-4b10-b5c1-8a2fe2fb7c0e',
             orgId: '1eb65fdf-9643-417f-9974-ad72cae0e10f',
@@ -164,54 +156,54 @@ describe('plugin-meetings', () => {
         assert.equal(res.userId, '01824b9b-adef-4b10-b5c1-8a2fe2fb7c0e');
       });
 
-      it('for _MEETING_ID_', () => {
+      it('for DESTINATION_TYPE.MEETING_ID', () => {
         const res = MeetingInfoUtil.getRequestBody({
-          type: _MEETING_ID_,
+          type: DESTINATION_TYPE.MEETING_ID,
           destination: '1234323',
         });
 
         assert.equal(res.meetingKey, '1234323');
       });
 
-      it('for _MEETING_LINK_', () => {
+      it('for DESTINATION_TYPE.MEETING_LINK', () => {
         const res = MeetingInfoUtil.getRequestBody({
-          type: _MEETING_LINK_,
+          type: DESTINATION_TYPE.MEETING_LINK,
           destination: 'https://cisco.webex.com/meet/arungane',
         });
 
         assert.equal(res.meetingUrl, 'https://cisco.webex.com/meet/arungane');
       });
 
-      it('for _SIP_URI_', () => {
+      it('for DESTINATION_TYPE.SIP_URI', () => {
         const res = MeetingInfoUtil.getRequestBody({
-          type: _SIP_URI_,
+          type: DESTINATION_TYPE.SIP_URI,
           destination: 'testing@webex.com',
         });
 
         assert.equal(res.sipUrl, 'testing@webex.com');
       });
 
-      it('for _MEETING_UUID_', () => {
+      it('for DESTINATION_TYPE.MEETING_UUID', () => {
         const res = MeetingInfoUtil.getRequestBody({
-          type: _MEETING_UUID_,
+          type: DESTINATION_TYPE.MEETING_UUID,
           destination: 'xsddsdsdsdssdsdsdsdsd',
         });
 
         assert.equal(res.meetingUUID, 'xsddsdsdsdssdsdsdsdsd');
       });
 
-      it('for _LOCUS_ID_', () => {
+      it('for DESTINATION_TYPE.LOCUS_ID', () => {
         const res = MeetingInfoUtil.getRequestBody({
-          type: _LOCUS_ID_,
+          type: DESTINATION_TYPE.LOCUS_ID,
           destination: {info: {webExMeetingId: '123456'}},
         });
 
         assert.equal(res.meetingKey, '123456');
       });
 
-      it('for _CONVERSATION_URL_', () => {
+      it('for DESTINATION_TYPE.CONVERSATION_URL', () => {
         const res = MeetingInfoUtil.getRequestBody({
-          type: _CONVERSATION_URL_,
+          type: DESTINATION_TYPE.CONVERSATION_URL,
           destination: 'https://conv-a.wbx2.com/conversation/api/v1/conversations/bfb49280',
         });
 
@@ -225,7 +217,7 @@ describe('plugin-meetings', () => {
         const extraParams = {mtid: 'm9fe0afd8c435e892afcce9ea25b97046', joinTXId: 'TSmrX61wNF'}
 
         const res = MeetingInfoUtil.getRequestBody({
-          type: _CONVERSATION_URL_,
+          type: DESTINATION_TYPE.CONVERSATION_URL,
           destination: 'https://conv-a.wbx2.com/conversation/api/v1/conversations/bfb49281',
           extraParams,
         });
@@ -264,20 +256,20 @@ describe('plugin-meetings', () => {
     });
 
     describe('#getDirectMeetingInfoURI', () => {
-      it('for _SIP_URI_', () => {
+      it('for DESTINATION_TYPE.SIP_URI', () => {
         assert.equal(
           MeetingInfoUtil.getDirectMeetingInfoURI({
-            type: _SIP_URI_,
+            type: DESTINATION_TYPE.SIP_URI,
             destination: 'testing@convergedats.webex.com',
           }),
           'https://convergedats.webex.com/wbxappapi/v1/meetingInfo'
         );
       });
 
-      it('for _LOCUS_ID_ with webExSite', () => {
+      it('for DESTINATION_TYPE.LOCUS_ID with webExSite', () => {
         assert.equal(
           MeetingInfoUtil.getDirectMeetingInfoURI({
-            type: _LOCUS_ID_,
+            type: DESTINATION_TYPE.LOCUS_ID,
             destination: {
               info: {
                 webExMeetingId: '123456',
@@ -290,10 +282,10 @@ describe('plugin-meetings', () => {
       });
 
       // null means fall back to default meeting info URI
-      it('for _PERSONAL_ROOM_', () => {
+      it('for DESTINATION_TYPE.PERSONAL_ROOM', () => {
         assert.equal(
           MeetingInfoUtil.getDirectMeetingInfoURI({
-            type: _PERSONAL_ROOM_,
+            type: DESTINATION_TYPE.PERSONAL_ROOM,
             destination: {
               userId: '01824b9b-adef-4b10-b5c1-8a2fe2fb7c0e',
               orgId: '1eb65fdf-9643-417f-9974-ad72cae0e10f',
@@ -303,50 +295,50 @@ describe('plugin-meetings', () => {
         );
       });
 
-      it('for _MEETING_ID_', () => {
+      it('for DESTINATION_TYPE.MEETING_ID', () => {
         assert.equal(
           MeetingInfoUtil.getDirectMeetingInfoURI({
-            type: _MEETING_ID_,
+            type: DESTINATION_TYPE.MEETING_ID,
             destination: '1234323',
           }),
           null
         );
       });
 
-      it('for _MEETING_UUID_', () => {
+      it('for DESTINATION_TYPE.MEETING_UUID', () => {
         assert.equal(
           MeetingInfoUtil.getDirectMeetingInfoURI({
-            type: _MEETING_UUID_,
+            type: DESTINATION_TYPE.MEETING_UUID,
             destination: 'xsddsdsdsdssdsdsdsdsd',
           }),
           null
         );
       });
 
-      it('for _LOCUS_ID_ with sipUri with excepted domain', () => {
+      it('for DESTINATION_TYPE.LOCUS_ID with sipUri with excepted domain', () => {
         assert.equal(
           MeetingInfoUtil.getDirectMeetingInfoURI({
-            type: _LOCUS_ID_,
+            type: DESTINATION_TYPE.LOCUS_ID,
             destination: {info: {webExMeetingId: '123456', sipUri: 'testing@meetup.webex.com'}},
           }),
           null
         );
       });
 
-      it('for _CONVERSATION_URL_', () => {
+      it('for DESTINATION_TYPE.CONVERSATION_URL', () => {
         assert.equal(
           MeetingInfoUtil.getDirectMeetingInfoURI({
-            type: _CONVERSATION_URL_,
+            type: DESTINATION_TYPE.CONVERSATION_URL,
             destination: 'https://conv-a.wbx2.com/conversation/api/v1/conversations/bfb49280',
           }),
           null
         );
       });
 
-      it('for _SIP_URI_ with an email address', () => {
+      it('for DESTINATION_TYPE.SIP_URI with an email address', () => {
         assert.equal(
           MeetingInfoUtil.getDirectMeetingInfoURI({
-            type: _SIP_URI_,
+            type: DESTINATION_TYPE.SIP_URI,
             destination: 'testing@email.com',
           }),
           null

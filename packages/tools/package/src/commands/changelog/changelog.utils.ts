@@ -33,9 +33,10 @@ export async function createOrUpdateChangelog(packages: Package[], prevCommitId:
     const pkgName = packages[index].name;
     const { version } = packages[index];
     const fileName = version.split('-')[0].replace(/\./g, '_');
+    const mainFilePath = './docs/changelog/logs/main.json';
 
     // Constructing the changelog file name
-    const changelogFilePath = `./docs/changelog/v${fileName}.json`;
+    const changelogFilePath = `./docs/changelog/logs/v${fileName}.json`;
 
     // Prepare the changelog entry
     const changelogEntry: ChangelogEntry = {};
@@ -76,5 +77,19 @@ export async function createOrUpdateChangelog(packages: Package[], prevCommitId:
 
     // Write the updated changelog data back to the file
     fs.writeFileSync(changelogFilePath, JSON.stringify(changelogData, null, 2));
+
+    // Update main.json with the new version entry
+    let mainData: Record<string, string> = {};
+    if (fs.existsSync(mainFilePath)) {
+      const mainFileData = fs.readFileSync(mainFilePath);
+      mainData = JSON.parse(mainFileData);
+    }
+
+    // Add or update the version entry in main.json
+    const versionKey = version.split('-')[0];
+    mainData[versionKey] = `logs/v${fileName}.json`;
+
+    // Write the updated main.json data back to the file
+    fs.writeFileSync(mainFilePath, JSON.stringify(mainData, null, 2));
   });
 }
