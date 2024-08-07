@@ -731,25 +731,6 @@ async function toggleNoiseReductionEffect() {
   }
 }
 
-// async function addNoiseReductionEffect() {
-//   effect = await localAudioStream.getEffectByKind('noise-reduction-effect');
-
-//   if (!effect) {
-//     effect = await Calling.createNoiseReductionEffect({authToken: tokenElm.value, env: enableProd ? 'prod': 'int'});
-
-//     await localAudioStream.addEffect(effect);
-//   }
-
-//   await effect.enable();
-// }
-
-// async function removeNoiseReductionEffect() {
-//   effect = await localAudioStream.getEffectByKind('noise-reduction-effect');
-//   if (effect) {
-//     await effect.disable();
-//   }
-// }
-
 // Listen for submit on create meeting
 createCallForm.addEventListener('submit', createCall);
 
