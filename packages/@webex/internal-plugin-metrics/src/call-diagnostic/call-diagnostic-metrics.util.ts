@@ -284,6 +284,8 @@ export const prepareDiagnosticMetricItem = (webex: any, item: any) => {
 
     case 'client.media.rx.start':
       joinTimes.localSDPGenRemoteSDPRecv = cdl.getLocalSDPGenRemoteSDPRecv();
+      audioSetupDelay.joinRespRxStart = cdl.getAudioJoinRespRxStart();
+      videoSetupDelay.joinRespRxStart = cdl.getVideoJoinRespRxStart();
       break;
 
     case 'client.media-engine.ready':
@@ -293,10 +295,8 @@ export const prepareDiagnosticMetricItem = (webex: any, item: any) => {
       joinTimes.stayLobbyTime = cdl.getStayLobbyTime();
       break;
 
-    case 'client.mediaquality.event':
-      audioSetupDelay.joinRespRxStart = cdl.getAudioJoinRespRxStart();
+    case 'client.media.tx.start':
       audioSetupDelay.joinRespTxStart = cdl.getAudioJoinRespTxStart();
-      videoSetupDelay.joinRespRxStart = cdl.getVideoJoinRespRxStart();
       videoSetupDelay.joinRespTxStart = cdl.getVideoJoinRespTxStart();
   }
 
