@@ -53,7 +53,7 @@ export async function createOrUpdateChangelog(packages: Package[], prevCommitId:
     if (version && commits) {
       changelogEntry[pkgName] = {
         [version]: {
-          published_date: Math.floor(Date.now() / 1000),
+          published_date: Math.floor(Date.now()),
           commits: JSON.parse(commits as string),
           alongWith: getAlongWithData(pkgName, packages),
         },

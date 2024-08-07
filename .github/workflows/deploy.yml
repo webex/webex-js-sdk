@@ -256,10 +256,13 @@ jobs:
           git config user.email "${GIT_AUTHOR_EMAIL}"
           git config user.name "${GIT_AUTHOR_NAME}"
 
+      - name: Get existing changelog from documentation Branch
+        run: | 
+          git fetch origin documentation
+          git checkout origin/documentation -- docs/changelog/logs
+
       - name: Update changelog
-        run: |
-          git checkout documentation docs/changelog/
-          yarn package-tools changelog --packages ${{ needs.generate-package-matrix.outputs.node-recursive }} --tag ${GITHUB_REF##*/} --commit ${{ github.event.before }}
+        run: yarn package-tools changelog --packages ${{ needs.generate-package-matrix.outputs.node-recursive }} --tag ${GITHUB_REF##*/} --commit ${{ github.event.before }}
 
       - name: Update Changelog and Publish Docs Folder
         run: |
