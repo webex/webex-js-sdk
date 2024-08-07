@@ -4599,27 +4599,26 @@ export default class Meeting extends StatelessWebexPlugin {
         );
 
         joinResponse = await this.join(joinOptions);
+
+        joined = true;
+
+        // if we sent out TURN discovery Roap message with join, process the TURN discovery response
+        if (joinOptions.roapMessage) {
+          ({turnServerInfo, turnDiscoverySkippedReason} =
+            await this.roap.handleTurnDiscoveryHttpResponse(this, joinResponse));
+
+          this.turnDiscoverySkippedReason = turnDiscoverySkippedReason;
+          this.turnServerUsed = !!turnServerInfo;
+
+          if (turnServerInfo === undefined) {
+            this.roap.abortTurnDiscovery();
+          }
+        }
       } else {
         // This is a retry, when join succeeded but addMedia failed, so we'll just call addMedia() again,
         // but we need to ensure that it also does a new TURN discovery
         forceTurnDiscovery = true;
-
-        // joinOptions.roapMessage is from the previous join attempt, we need to reset it
-        joinOptions.roapMessage = undefined;
-      }
-
-      joined = true;
-
-      if (joinOptions.roapMessage) {
-        ({turnServerInfo, turnDiscoverySkippedReason} =
-          await this.roap.handleTurnDiscoveryHttpResponse(this, joinResponse));
-
-        this.turnDiscoverySkippedReason = turnDiscoverySkippedReason;
-        this.turnServerUsed = !!turnServerInfo;
-
-        if (turnServerInfo === undefined) {
-          this.roap.abortTurnDiscovery();
-        }
+        joined = true;
       }
 
       const mediaResponse = await this.addMedia(mediaOptions, turnServerInfo, forceTurnDiscovery);
@@ -6620,7 +6619,8 @@ export default class Meeting extends StatelessWebexPlugin {
     turnServerInfo?: TurnServerInfo
   ): Promise<void> {
     const LOG_HEADER = 'Meeting:index#addMedia():establishMediaConnection -->';
-    const isReconnecting = this.isMoveToInProgress || this.locusMediaRequest?.isConfluenceCreated();
+    const isReconnecting =
+      this.isMoveToInProgress || !!this.locusMediaRequest?.isConfluenceCreated();
 
     // We are forcing turn discovery if the case is moveTo and a turn server was used already
     if (this.isMoveToInProgress && this.turnServerUsed) {
@@ -6790,9 +6790,11 @@ export default class Meeting extends StatelessWebexPlugin {
     this.hasMediaConnectionConnectedAtLeastOnce = false;
     const LOG_HEADER = 'Meeting:index#addMedia -->';
     LoggerProxy.logger.info(
-      `${LOG_HEADER} called with: ${JSON.stringify(options)}, ${JSON.stringify(
+      `${LOG_HEADER} called with: options=${JSON.stringify(
+        options
+      )}, turnServerInfo=${JSON.stringify(
         turnServerInfo
-      )}, ${forceTurnDiscovery}`
+      )}, forceTurnDiscovery=${forceTurnDiscovery}`
     );
 
     if (options.allowMediaInLobby !== true && this.meetingState !== FULL_STATE.ACTIVE) {
