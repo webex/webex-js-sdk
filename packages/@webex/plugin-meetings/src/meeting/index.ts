@@ -79,10 +79,9 @@ import {Reactions, SkinTones} from '../reactions/reactions';
 import PasswordError from '../common/errors/password-error';
 import CaptchaError from '../common/errors/captcha-error';
 import {
-  _CONVERSATION_URL_,
+  DESTINATION_TYPE,
   _INCOMING_,
   _JOIN_,
-  _MEETING_LINK_,
   AUDIO,
   CONTENT,
   DISPLAY_HINTS,
@@ -527,7 +526,7 @@ export default class Meeting extends StatelessWebexPlugin {
   conversationUrl: string;
   callStateForMetrics: CallStateForMetrics;
   destination: string;
-  destinationType: string;
+  destinationType: DESTINATION_TYPE;
   deviceUrl: string;
   hostId: string;
   id: string;
@@ -1739,7 +1738,7 @@ export default class Meeting extends StatelessWebexPlugin {
     }
 
     const isStartingSpaceInstantV2Meeting =
-      this.destinationType === _CONVERSATION_URL_ &&
+      this.destinationType === DESTINATION_TYPE.CONVERSATION_URL &&
       // @ts-ignore - config coming from registerPlugin
       this.config.experimental.enableAdhocMeetings &&
       // @ts-ignore
@@ -1748,7 +1747,9 @@ export default class Meeting extends StatelessWebexPlugin {
     const destination = isStartingSpaceInstantV2Meeting
       ? this.meetingInfo.meetingJoinUrl
       : this.destination;
-    const destinationType = isStartingSpaceInstantV2Meeting ? _MEETING_LINK_ : this.destinationType;
+    const destinationType = isStartingSpaceInstantV2Meeting
+      ? DESTINATION_TYPE.MEETING_LINK
+      : this.destinationType;
 
     const permissionTokenExpiryInfo = this.getPermissionTokenExpiryInfo();
 
