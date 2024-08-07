@@ -1,7 +1,7 @@
 import lodash from 'lodash';
 import {
   HTTP_VERBS,
-  _CONVERSATION_URL_,
+  DESTINATION_TYPE,
   WBXAPPAPI_SERVICE,
   DEFAULT_MEETING_INFO_REQUEST_BODY,
 } from '../constants';
@@ -249,7 +249,7 @@ export default class MeetingInfoV2 {
   /**
    * Fetches meeting info from the server
    * @param {String} destination one of many different types of destinations to look up info for
-   * @param {String} [type] to match up with the destination value
+   * @param {DESTINATION_TYPE} [type] to match up with the destination value
    * @param {String} password
    * @param {Object} captchaInfo
    * @param {String} captchaInfo.code
@@ -264,7 +264,7 @@ export default class MeetingInfoV2 {
    */
   async fetchMeetingInfo(
     destination: string,
-    type: string = null,
+    type: DESTINATION_TYPE = null,
     password: string = null,
     captchaInfo: {
       code: string;
@@ -284,7 +284,7 @@ export default class MeetingInfoV2 {
     });
 
     if (
-      destinationType.type === _CONVERSATION_URL_ &&
+      destinationType.type === DESTINATION_TYPE.CONVERSATION_URL &&
       this.webex.config.meetings.experimental.enableAdhocMeetings &&
       this.webex.meetings.preferredWebexSite
     ) {
