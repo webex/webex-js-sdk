@@ -25,28 +25,22 @@ import {
   EVENT_TRIGGERS,
   READY,
   LOCUSEVENT,
-  LOCUS_URL,
   MAX_RANDOM_DELAY_FOR_MEETING_INFO,
   ROAP,
   ONLINE,
   OFFLINE,
   _MEETING_,
   _JOIN_,
-  _LOCUS_ID_,
   _INCOMING_,
   LOCUS,
-  CORRELATION_ID,
-  SIP_URI,
   _LEFT_,
   _ID_,
   MEETING_REMOVED_REASON,
-  _CONVERSATION_URL_,
-  CONVERSATION_URL,
-  MEETINGNUMBER,
   _JOINED_,
   _MOVED_,
   _ON_HOLD_LOBBY_,
   _WAIT_,
+  DESTINATION_TYPE,
 } from '../constants';
 import BEHAVIORAL_METRICS from '../metrics/constants';
 import MeetingInfo from '../meeting-info';
@@ -57,11 +51,10 @@ import Reachability from '../reachability';
 import Request from './request';
 import PasswordError from '../common/errors/password-error';
 import CaptchaError from '../common/errors/captcha-error';
-
 import MeetingCollection from './collection';
+import {MEETING_KEY, INoiseReductionEffect, IVirtualBackgroundEffect} from './meetings.types';
 import MeetingsUtil from './util';
 import PermissionError from '../common/errors/permission';
-import {INoiseReductionEffect, IVirtualBackgroundEffect} from './meetings.types';
 import {SpaceIDDeprecatedError} from '../common/errors/webex-errors';
 import NoMeetingInfoError from '../common/errors/no-meeting-info';
 
@@ -380,23 +373,26 @@ export default class Meetings extends WebexPlugin {
     // Either the locus
     // TODO : Add check for the callBack Address
     return (
-      this.meetingCollection.getByKey(LOCUS_URL, data.locusUrl) ||
+      this.meetingCollection.getByKey(MEETING_KEY.LOCUS_URL, data.locusUrl) ||
       // @ts-ignore
       this.meetingCollection.getByKey(
-        CORRELATION_ID,
+        MEETING_KEY.CORRELATION_ID,
         // @ts-ignore
         MeetingsUtil.checkForCorrelationId(this.webex.internal.device.url, data.locus)
       ) ||
       this.meetingCollection.getByKey(
-        SIP_URI,
+        MEETING_KEY.SIP_URI,
         data.locus.self &&
           data.locus.self.callbackInfo &&
           data.locus.self.callbackInfo.callbackAddress
       ) ||
       (data.locus.info?.isUnifiedSpaceMeeting
         ? undefined
-        : this.meetingCollection.getByKey(CONVERSATION_URL, data.locus.conversationUrl)) ||
-      this.meetingCollection.getByKey(MEETINGNUMBER, data.locus?.info?.webExMeetingId)
+        : this.meetingCollection.getByKey(
+            MEETING_KEY.CONVERSATION_URL,
+            data.locus.conversationUrl
+          )) ||
+      this.meetingCollection.getByKey(MEETING_KEY.MEETINGNUMBER, data.locus?.info?.webExMeetingId)
     );
   }
 
@@ -420,7 +416,7 @@ export default class Meetings extends WebexPlugin {
     if (!meeting && data.locus?.replaces?.length > 0) {
       // Always the last element in the replace is the active one
       meeting = this.meetingCollection.getByKey(
-        LOCUS_URL,
+        MEETING_KEY.LOCUS_URL,
         data.locus.replaces[data.locus.replaces.length - 1].locusUrl
       );
     }
@@ -485,7 +481,7 @@ export default class Meetings extends WebexPlugin {
         return;
       }
 
-      this.create(data.locus, _LOCUS_ID_, useRandomDelayForInfo)
+      this.create(data.locus, DESTINATION_TYPE.LOCUS_ID, useRandomDelayForInfo)
         .then((newMeeting) => {
           meeting = newMeeting;
 
@@ -1076,7 +1072,7 @@ export default class Meetings extends WebexPlugin {
    * When meeting info passed it should be complete, e.g.: fetched after password or captcha provided
    *
    * @param {string} destination - sipURL, phonenumber, or locus object}
-   * @param {string} [type] - the optional specified type, such as locusId
+   * @param {DESTINATION_TYPE} [type] - the optional specified type, such as locusId
    * @param {Boolean} useRandomDelayForInfo - whether a random delay should be added to fetching meeting info
    * @param {Object} infoExtraParams extra parameters to be provided when fetching meeting info
    * @param {string} correlationId - the optional specified correlationId (callStateForMetrics.correlationId can be provided instead)
@@ -1090,7 +1086,7 @@ export default class Meetings extends WebexPlugin {
    */
   public create(
     destination: string,
-    type: string = null,
+    type: DESTINATION_TYPE = null,
     useRandomDelayForInfo = false,
     infoExtraParams = {},
     correlationId: string = undefined,
@@ -1099,12 +1095,11 @@ export default class Meetings extends WebexPlugin {
     meetingInfo = undefined,
     meetingLookupUrl = undefined
   ) {
-    // TODO: type should be from a dictionary
-
     // Validate meeting information based on the provided destination and
     // type. This must be performed prior to determining if the meeting is
     // found in the collection, as we mutate the destination for hydra person
     // id values.
+
     if (correlationId) {
       callStateForMetrics = {...(callStateForMetrics || {}), correlationId};
     }
@@ -1128,8 +1123,14 @@ export default class Meetings extends WebexPlugin {
           // check for the conversation URL then sip Url
           let meeting = null;
 
-          if (type === _CONVERSATION_URL_ || options.type === _CONVERSATION_URL_) {
-            const foundMeeting = this.meetingCollection.getByKey(CONVERSATION_URL, targetDest);
+          if (
+            type === DESTINATION_TYPE.CONVERSATION_URL ||
+            options.type === DESTINATION_TYPE.CONVERSATION_URL
+          ) {
+            const foundMeeting = this.meetingCollection.getByKey(
+              MEETING_KEY.CONVERSATION_URL,
+              targetDest
+            );
 
             if (foundMeeting) {
               const foundMeetingIsNotCalendarMeeting = !foundMeeting.locusInfo.scheduledMeeting;
@@ -1144,7 +1145,7 @@ export default class Meetings extends WebexPlugin {
 
           // Attempt to collect the meeting if it exists.
           if (!meeting) {
-            meeting = this.meetingCollection.getByKey(SIP_URI, targetDest);
+            meeting = this.meetingCollection.getByKey(MEETING_KEY.SIP_URI, targetDest);
           }
 
           // Validate if a meeting was found.
@@ -1218,7 +1219,7 @@ export default class Meetings extends WebexPlugin {
    * When meeting info passed it should be complete, e.g.: fetched after password or captcha provided
    *
    * @param {String} destination see create()
-   * @param {String} type see create()
+   * @param {DESTINATION_TYPE} type see create()
    * @param {Boolean} useRandomDelayForInfo whether a random delay should be added to fetching meeting info
    * @param {Object} infoExtraParams extra parameters to be provided when fetching meeting info
    * @param {CallStateForMetrics} callStateForMetrics - information about call state for metrics
@@ -1231,7 +1232,7 @@ export default class Meetings extends WebexPlugin {
    */
   private async createMeeting(
     destination: any,
-    type: string = null,
+    type: DESTINATION_TYPE = null,
     useRandomDelayForInfo = false,
     infoExtraParams = {},
     callStateForMetrics: CallStateForMetrics = undefined,
@@ -1247,7 +1248,7 @@ export default class Meetings extends WebexPlugin {
         deviceUrl: this.webex.internal.device.url,
         // @ts-ignore
         orgId: this.webex.internal.device.orgId,
-        locus: type === _LOCUS_ID_ ? destination : null, // pass the locus object if present
+        locus: type === DESTINATION_TYPE.LOCUS_ID ? destination : null, // pass the locus object if present
         meetingInfoProvider: this.meetingInfo,
         destination,
         destinationType: type,
@@ -1290,19 +1291,17 @@ export default class Meetings extends WebexPlugin {
 
       if (meetingInfo) {
         meeting.injectMeetingInfo(meetingInfo, meetingInfoOptions, meetingLookupUrl);
-      } else if (
-        enableUnifiedMeetings &&
-        !isMeetingActive &&
-        useRandomDelayForInfo &&
-        waitingTime > 0
-      ) {
-        meeting.fetchMeetingInfoTimeoutId = setTimeout(
-          () => meeting.fetchMeetingInfo(meetingInfoOptions),
-          waitingTime
-        );
-        meeting.parseMeetingInfo(undefined, destination);
-      } else {
-        await meeting.fetchMeetingInfo(meetingInfoOptions);
+      } else if (type !== DESTINATION_TYPE.ONE_ON_ONE_CALL) {
+        // ignore fetchMeetingInfo for 1:1 meetings
+        if (enableUnifiedMeetings && !isMeetingActive && useRandomDelayForInfo && waitingTime > 0) {
+          meeting.fetchMeetingInfoTimeoutId = setTimeout(
+            () => meeting.fetchMeetingInfo(meetingInfoOptions),
+            waitingTime
+          );
+          meeting.parseMeetingInfo(undefined, destination);
+        } else {
+          await meeting.fetchMeetingInfo(meetingInfoOptions);
+        }
       }
     } catch (err) {
       if (
@@ -1333,7 +1332,7 @@ export default class Meetings extends WebexPlugin {
       // For type LOCUS_ID we need to parse the locus object to get the information
       // about the caller and callee
       // Meeting Added event will be created in `handleLocusEvent`
-      if (type !== _LOCUS_ID_) {
+      if (type !== DESTINATION_TYPE.LOCUS_ID) {
         if (!meeting.sipUri) {
           meeting.setSipUri(destination);
         }
