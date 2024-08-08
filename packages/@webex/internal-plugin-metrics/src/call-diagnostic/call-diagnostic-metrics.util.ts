@@ -21,7 +21,7 @@ import {
   MISSING_ROAP_ANSWER_CLIENT_CODE,
   WBX_APP_API_URL,
   ERROR_DESCRIPTIONS,
-  ICE_FAILED_WITH_TURN_TLS_AND_REACHABILITY_CLIENT_CODE,
+  ICE_AND_REACHABILITY_FAILED_CLIENT_CODE,
 } from './config';
 
 const {getOSName, getOSVersion, getBrowserName, getBrowserVersion} = BrowserDetection();
@@ -392,7 +392,7 @@ export const generateClientErrorCodeForIceFailure = ({
   if (signalingState !== 'have-local-offer' && !iceConnected) {
     if (turnServerUsed) {
       if (unreachable) {
-        errorCode = ICE_FAILED_WITH_TURN_TLS_AND_REACHABILITY_CLIENT_CODE;
+        errorCode = ICE_AND_REACHABILITY_FAILED_CLIENT_CODE;
       } else {
         errorCode = ICE_FAILED_WITH_TURN_TLS_CLIENT_CODE;
       }

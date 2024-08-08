@@ -102,7 +102,7 @@ import {
 import {
   DTLS_HANDSHAKE_FAILED_CLIENT_CODE,
   ICE_FAILED_WITHOUT_TURN_TLS_CLIENT_CODE,
-  ICE_FAILED_WITH_TURN_TLS_AND_REACHABILITY_CLIENT_CODE,
+  ICE_AND_REACHABILITY_FAILED_CLIENT_CODE,
   ICE_FAILED_WITH_TURN_TLS_CLIENT_CODE,
   ICE_FAILURE_CLIENT_CODE,
   MISSING_ROAP_ANSWER_CLIENT_CODE,
@@ -2423,6 +2423,10 @@ describe('plugin-meetings', () => {
 
         it('should resolve if waitForMediaConnectionConnected() rejects the first time but resolves the second time', async () => {
           const FAKE_ERROR = {fatal: true};
+          webex.meetings.reachability = {
+            isWebexMediaBackendUnreachable: sinon.stub().onCall(0).rejects().onCall(1).resolves(true).onCall(2).resolves(false),
+            getReachabilityMetrics: sinon.stub().resolves({}),
+          }
           const getErrorPayloadForClientErrorCodeStub =
             (webex.internal.newMetrics.callDiagnosticMetrics.getErrorPayloadForClientErrorCode =
               sinon.stub().returns(FAKE_ERROR));
@@ -3145,10 +3149,10 @@ describe('plugin-meetings', () => {
               },
             },
             {
-              clientErrorCode: ICE_FAILED_WITH_TURN_TLS_AND_REACHABILITY_CLIENT_CODE,
+              clientErrorCode: ICE_AND_REACHABILITY_FAILED_CLIENT_CODE,
               unreachable: true,
               expectedErrorPayload: {
-                errorDescription: ERROR_DESCRIPTIONS.ICE_FAILED_WITH_TURN_TLS_AND_REACHABILITY,
+                errorDescription: ERROR_DESCRIPTIONS.ICE_AND_REACHABILITY_FAILED,
                 category: 'network',
               },
             },

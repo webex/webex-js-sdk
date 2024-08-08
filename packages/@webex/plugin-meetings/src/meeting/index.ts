@@ -6354,9 +6354,9 @@ export default class Meeting extends StatelessWebexPlugin {
                     turnServerUsed: this.turnServerUsed,
                     unreachable:
                       // @ts-ignore
-                      await (this.webex.meetings?.reachability
-                        ?.isWebexMediaBackendUnreachable?.()
-                        .catch(() => false) || Promise.resolve(false)),
+                      await this.webex.meetings.reachability
+                        .isWebexMediaBackendUnreachable()
+                        .catch(() => false),
                   }),
                 }
               ),
