@@ -248,9 +248,15 @@ describe('plugin-metrics', () => {
         });
 
         it('appends the correct join times to the request for client.media.rx.start', async () => {
-          webex.internal.newMetrics.callDiagnosticLatencies.getDiffBetweenTimestamps = sinon
+          webex.internal.newMetrics.callDiagnosticLatencies.getLocalSDPGenRemoteSDPRecv = sinon
+            .stub()
+            .returns(5);
+          webex.internal.newMetrics.callDiagnosticLatencies.getAudioJoinRespRxStart = sinon
             .stub()
             .returns(10);
+          webex.internal.newMetrics.callDiagnosticLatencies.getVideoJoinRespRxStart = sinon
+            .stub()
+            .returns(20);
           const promise = webex.internal.newMetrics.callDiagnosticMetrics.submitToCallDiagnostics(
             //@ts-ignore
             {event: {name: 'client.media.rx.start'}}
@@ -265,13 +271,13 @@ describe('plugin-metrics', () => {
           assert.deepEqual(webex.request.getCalls()[0].args[0].body.metrics[0].eventPayload.event, {
             name: 'client.media.rx.start',
             joinTimes: {
-              localSDPGenRemoteSDPRecv: 10,
+              localSDPGenRemoteSDPRecv: 5,
             },
             audioSetupDelay: {
               joinRespRxStart: 10,
             },
             videoSetupDelay: {
-              joinRespRxStart: 10,
+              joinRespRxStart: 20,
             },
           });
           assert.lengthOf(
@@ -281,9 +287,12 @@ describe('plugin-metrics', () => {
         });
 
         it('appends the correct join times to the request for client.media.tx.start', async () => {
-          webex.internal.newMetrics.callDiagnosticLatencies.getDiffBetweenTimestamps = sinon
+          webex.internal.newMetrics.callDiagnosticLatencies.getAudioJoinRespTxStart = sinon
             .stub()
             .returns(10);
+          webex.internal.newMetrics.callDiagnosticLatencies.getVideoJoinRespTxStart = sinon
+            .stub()
+            .returns(20);
           const promise = webex.internal.newMetrics.callDiagnosticMetrics.submitToCallDiagnostics(
             //@ts-ignore
             {event: {name: 'client.media.tx.start'}}
@@ -301,7 +310,7 @@ describe('plugin-metrics', () => {
               joinRespTxStart: 10,
             },
             videoSetupDelay: {
-              joinRespTxStart: 10,
+              joinRespTxStart: 20,
             },
           });
           assert.lengthOf(
@@ -316,10 +325,19 @@ describe('plugin-metrics', () => {
             .returns(10);
           webex.internal.newMetrics.callDiagnosticLatencies.getInterstitialToMediaOKJMT = sinon
             .stub()
-            .returns(10);
+            .returns(22);
           webex.internal.newMetrics.callDiagnosticLatencies.getClickToInterstitial = sinon
             .stub()
-            .returns(10);
+            .returns(35);
+          webex.internal.newMetrics.callDiagnosticLatencies.getInterstitialToJoinOK = sinon
+            .stub()
+            .returns(5);
+          webex.internal.newMetrics.callDiagnosticLatencies.getInterstitialToJoinOK = sinon
+            .stub()
+            .returns(7);
+            webex.internal.newMetrics.callDiagnosticLatencies.getStayLobbyTime = sinon
+            .stub()
+            .returns(1);
           const promise = webex.internal.newMetrics.callDiagnosticMetrics.submitToCallDiagnostics(
             //@ts-ignore
             {event: {name: 'client.media-engine.ready'}}
@@ -334,10 +352,10 @@ describe('plugin-metrics', () => {
           assert.deepEqual(webex.request.getCalls()[0].args[0].body.metrics[0].eventPayload.event, {
             name: 'client.media-engine.ready',
             joinTimes: {
-              totalMediaJMT: 30,
-              interstitialToMediaOKJMT: 10,
+              totalMediaJMT: 61,
+              interstitialToMediaOKJMT: 22,
               callInitMediaEngineReady: 10,
-              stayLobbyTime: 10,
+              stayLobbyTime: 1,
             },
           });
           assert.lengthOf(
