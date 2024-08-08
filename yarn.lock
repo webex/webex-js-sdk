@@ -7400,7 +7400,7 @@ __metadata:
     "@typescript-eslint/eslint-plugin": 5.38.1
     "@typescript-eslint/parser": 5.38.1
     "@web/dev-server": 0.4.5
-    "@webex/internal-media-core": 2.7.2
+    "@webex/internal-media-core": 2.7.3
     "@webex/media-helpers": "workspace:*"
     async-mutex: 0.4.0
     buffer: 6.0.3
@@ -7691,19 +7691,19 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/internal-media-core@npm:2.7.2":
-  version: 2.7.2
-  resolution: "@webex/internal-media-core@npm:2.7.2"
+"@webex/internal-media-core@npm:2.7.3":
+  version: 2.7.3
+  resolution: "@webex/internal-media-core@npm:2.7.3"
   dependencies:
     "@babel/runtime": ^7.18.9
-    "@webex/ts-sdp": 1.6.0
-    "@webex/web-client-media-engine": 3.22.2
+    "@webex/ts-sdp": 1.7.0
+    "@webex/web-client-media-engine": 3.22.3
     events: ^3.3.0
     typed-emitter: ^2.1.0
     uuid: ^8.3.2
     webrtc-adapter: ^8.1.2
     xstate: ^4.30.6
-  checksum: 91a7e8c356a4e874508e8c47e931fa98e40f14e8716b073bf4b6cd37d5293026ce693cba06275b16774bf042700caf6ee6ea3909284df02b30a780d4d46452f6
+  checksum: 1be5011d68f3d18ac8d95e4b8ae699f24b99fd6f1872bd52639e863121a2f21201999d3fcba71aeef94bfabcb7701c629cc4b5b4af1bf16b083d4e4ab2d0cf5d
   languageName: node
   linkType: hard
 
@@ -8471,7 +8471,7 @@ __metadata:
     "@babel/preset-typescript": 7.22.11
     "@webex/babel-config-legacy": "workspace:*"
     "@webex/eslint-config-legacy": "workspace:*"
-    "@webex/internal-media-core": 2.7.2
+    "@webex/internal-media-core": 2.7.3
     "@webex/jest-config-legacy": "workspace:*"
     "@webex/legacy-tools": "workspace:*"
     "@webex/test-helper-chai": "workspace:*"
@@ -8707,7 +8707,7 @@ __metadata:
     "@webex/babel-config-legacy": "workspace:*"
     "@webex/common": "workspace:*"
     "@webex/eslint-config-legacy": "workspace:*"
-    "@webex/internal-media-core": 2.7.2
+    "@webex/internal-media-core": 2.7.3
     "@webex/internal-plugin-conversation": "workspace:*"
     "@webex/internal-plugin-device": "workspace:*"
     "@webex/internal-plugin-llm": "workspace:*"
@@ -8727,7 +8727,7 @@ __metadata:
     "@webex/test-helper-mock-webex": "workspace:*"
     "@webex/test-helper-retry": "workspace:*"
     "@webex/test-helper-test-users": "workspace:*"
-    "@webex/web-capabilities": ^1.3.0
+    "@webex/web-capabilities": ^1.4.0
     "@webex/webex-core": "workspace:*"
     ampersand-collection: ^2.0.2
     bowser: ^2.11.0
@@ -8744,7 +8744,6 @@ __metadata:
     jwt-decode: 3.1.2
     lodash: ^4.17.21
     prettier: ^2.7.1
-    sdp-transform: ^2.12.0
     sinon: ^9.2.4
     typed-emitter: ^2.1.0
     typescript: ^4.7.4
@@ -9106,7 +9105,7 @@ __metadata:
     "@webex/test-helper-test-users": "workspace:*"
     body-parser: ^1.19.0
     eslint: ^8.24.0
-    express: ^4.17.1
+    express: ^4.19.2
     jsonwebtoken: ^9.0.0
     prettier: ^2.7.1
     safe-buffer: ^5.2.0
@@ -9318,7 +9317,7 @@ __metadata:
     cookie-parser: ^1.4.4
     cors: ^2.8.5
     eslint: ^8.24.0
-    express: ^4.17.1
+    express: ^4.19.2
     glob: ^7.1.4
     mkdirp: ^0.5.1
     morgan: ^1.9.1
@@ -9389,10 +9388,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@webex/ts-sdp@npm:1.6.0":
-  version: 1.6.0
-  resolution: "@webex/ts-sdp@npm:1.6.0"
-  checksum: 37d826c7226e3ba3f7231d8d06e23645a6d9910d714c36a7c5e86c7690f857bfea20f4d9f2064edb0c367db0f899a23db5af304ba10b4cd963130a21c155c852
+"@webex/ts-sdp@npm:1.7.0":
+  version: 1.7.0
+  resolution: "@webex/ts-sdp@npm:1.7.0"
+  checksum: e86d5ed240ebc013b95460db2476afd93ad2fea4318bb6b7a336927f2d2ff65decd6b25b15fe428a65f685b3ef78703dca316b5328cb37fa40e9eddd583c475b
   languageName: node
   linkType: hard
 
@@ -9411,31 +9410,31 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@webex/web-capabilities@npm:^1.3.0":
-  version: 1.3.0
-  resolution: "@webex/web-capabilities@npm:1.3.0"
+"@webex/web-capabilities@npm:^1.4.0":
+  version: 1.4.1
+  resolution: "@webex/web-capabilities@npm:1.4.1"
   dependencies:
     bowser: ^2.11.0
-  checksum: 5e35c7d17cfd21762f86e16e2237d6e6c3a7b157e38f3a694ffa8e9003ada423fb85e2eca502dd7cf09560896e33007bbb244d87b04d4344152ab2049b60f812
+  checksum: 53333816edd02b27162c891bc24bad9135ec7bc2173a7929b316aa3be50e1d191b0a6a328840e71b5c5bd8842dfcae81b107d7fcf06167b097b71368c904b265
   languageName: node
   linkType: hard
 
-"@webex/web-client-media-engine@npm:3.22.2":
-  version: 3.22.2
-  resolution: "@webex/web-client-media-engine@npm:3.22.2"
+"@webex/web-client-media-engine@npm:3.22.3":
+  version: 3.22.3
+  resolution: "@webex/web-client-media-engine@npm:3.22.3"
   dependencies:
     "@webex/json-multistream": 2.1.3
     "@webex/rtcstats": ^1.3.2
     "@webex/ts-events": ^1.0.1
-    "@webex/ts-sdp": 1.6.0
-    "@webex/web-capabilities": ^1.3.0
+    "@webex/ts-sdp": 1.7.0
+    "@webex/web-capabilities": ^1.4.0
     "@webex/web-media-effects": ^2.15.6
     "@webex/webrtc-core": 2.10.0
     async: ^3.2.4
     js-logger: ^1.6.1
     typed-emitter: ^2.1.0
     uuid: ^8.3.2
-  checksum: 6c60a87af1a52a2795b6a43f85c215d0215fcff0c56896444f51733827d0ca29b9b0d5fa01dcf9f05bbd03a04b00bc650c3fe8399b7da6ffbb7381062f3c3ab7
+  checksum: 7a6fbea08f38fe8fd7d11f20d585749ea6df7d42692bc97a470eeee48cc4091ddcbe38f3415857d0b3e1450ef87df42cd516d19800cc502bf28e97f51ad53195
   languageName: node
   linkType: hard
 
@@ -9539,7 +9538,7 @@ __metadata:
     cors: ^2.8.5
     errorhandler: ^1.5.1
     eslint: ^8.24.0
-    express: ^4.17.1
+    express: ^4.19.2
     express-session: ^1.16.2
     express-validator: ^5.3.1
     lodash: ^4.17.21
@@ -11392,7 +11391,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"body-parser@npm:^1.19.0":
+"body-parser@npm:1.20.2, body-parser@npm:^1.19.0":
   version: 1.20.2
   resolution: "body-parser@npm:1.20.2"
   dependencies:
@@ -13545,6 +13544,13 @@ __metadata:
   version: 0.5.0
   resolution: "cookie@npm:0.5.0"
   checksum: 1f4bd2ca5765f8c9689a7e8954183f5332139eb72b6ff783d8947032ec1fdf43109852c178e21a953a30c0dd42257828185be01b49d1eb1a67fd054ca588a180
+  languageName: node
+  linkType: hard
+
+"cookie@npm:0.6.0":
+  version: 0.6.0
+  resolution: "cookie@npm:0.6.0"
+  checksum: f56a7d32a07db5458e79c726b77e3c2eff655c36792f2b6c58d351fb5f61531e5b1ab7f46987150136e366c65213cbe31729e02a3eaed630c3bf7334635fb410
   languageName: node
   linkType: hard
 
@@ -16662,7 +16668,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"express@npm:^4.14.0, express@npm:^4.17.1, express@npm:^4.17.3":
+"express@npm:^4.14.0, express@npm:^4.17.3":
   version: 4.18.2
   resolution: "express@npm:4.18.2"
   dependencies:
@@ -16698,6 +16704,45 @@ __metadata:
     utils-merge: 1.0.1
     vary: ~1.1.2
   checksum: 3c4b9b076879442f6b968fe53d85d9f1eeacbb4f4c41e5f16cc36d77ce39a2b0d81b3f250514982110d815b2f7173f5561367f9110fcc541f9371948e8c8b037
+  languageName: node
+  linkType: hard
+
+"express@npm:^4.19.2":
+  version: 4.19.2
+  resolution: "express@npm:4.19.2"
+  dependencies:
+    accepts: ~1.3.8
+    array-flatten: 1.1.1
+    body-parser: 1.20.2
+    content-disposition: 0.5.4
+    content-type: ~1.0.4
+    cookie: 0.6.0
+    cookie-signature: 1.0.6
+    debug: 2.6.9
+    depd: 2.0.0
+    encodeurl: ~1.0.2
+    escape-html: ~1.0.3
+    etag: ~1.8.1
+    finalhandler: 1.2.0
+    fresh: 0.5.2
+    http-errors: 2.0.0
+    merge-descriptors: 1.0.1
+    methods: ~1.1.2
+    on-finished: 2.4.1
+    parseurl: ~1.3.3
+    path-to-regexp: 0.1.7
+    proxy-addr: ~2.0.7
+    qs: 6.11.0
+    range-parser: ~1.2.1
+    safe-buffer: 5.2.1
+    send: 0.18.0
+    serve-static: 1.15.0
+    setprototypeof: 1.2.0
+    statuses: 2.0.1
+    type-is: ~1.6.18
+    utils-merge: 1.0.1
+    vary: ~1.1.2
+  checksum: 212dbd6c2c222a96a61bc927639c95970a53b06257080bb9e2838adb3bffdb966856551fdad1ab5dd654a217c35db94f987d0aa88d48fb04d306340f5f34dca5
   languageName: node
   linkType: hard
 
@@ -28626,15 +28671,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"sdp-transform@npm:^2.12.0":
-  version: 2.14.1
-  resolution: "sdp-transform@npm:2.14.1"
-  bin:
-    sdp-verify: checker.js
-  checksum: 8b3179786db1a0f1ebfdacb1ac0dfe2833e63e8c64b638884cec212455061d53beaa8d9c8bf76fdbd5f844b7885f3892adec27e87734cfbc2b3e5c65e18a489b
-  languageName: node
-  linkType: hard
-
 "sdp@npm:^3.0.2":
   version: 3.1.0
   resolution: "sdp@npm:3.1.0"
@@ -32722,7 +32758,7 @@ __metadata:
     eslint-plugin-prettier: ^4.2.1
     eslint-plugin-tsdoc: ^0.2.14
     expect-webdriverio: ^3.3.1
-    express: ^4.17.1
+    express: ^4.19.2
     express-session: ^1.16.2
     express-validator: ^5.3.1
     firefox-profile: ^4.0.0

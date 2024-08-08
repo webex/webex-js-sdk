@@ -60,7 +60,7 @@ const packageDataChangelog1 = {
       },
     },
     '3.3.1-test.6': {
-      published_date: 123456,
+      published_date: 123456789,
       commits: {
         mockCommitId: 'mock commit message',
       },
@@ -109,7 +109,7 @@ const packageDataChangelog2 = {
   },
   '@webex/package-tools': {
     '0.0.0-test.1': {
-      published_date: 123456,
+      published_date: 123456789,
       commits: {
         mockCommitId: 'mock commit message',
       },
@@ -145,8 +145,14 @@ const changelogData = `{
   }
 }`;
 
+const mainJsonData = `{
+  "1.2.3": "logs/v1_2_3.json",
+  "3.2.1": "logs/v3_2_1.json"
+}`;
+
 const fixtures = {
   changelogData,
+  mainJsonData,
   packagesData,
   packageDataChangelog1,
   packageDataChangelog2,

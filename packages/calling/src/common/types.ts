@@ -182,7 +182,8 @@ export type ContactDetail = {
 };
 
 export interface LookupOptions {
-  ids: string[];
+  id: string;
+  shouldBatch: boolean;
 }
 
 export type DSSLookupResponse = {
