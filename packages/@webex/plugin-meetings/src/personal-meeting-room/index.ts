@@ -1,7 +1,7 @@
 // @ts-ignore
 import {StatelessWebexPlugin} from '@webex/webex-core';
 
-import {MEETINGS, _PERSONAL_ROOM_} from '../constants';
+import {MEETINGS, DESTINATION_TYPE} from '../constants';
 import ParameterError from '../common/errors/parameter';
 
 import PersonalMeetingRoomRequest from './request';
@@ -141,7 +141,7 @@ export default class PersonalMeetingRoom extends StatelessWebexPlugin {
    */
   public get() {
     const options = {
-      type: _PERSONAL_ROOM_,
+      type: DESTINATION_TYPE.PERSONAL_ROOM,
     };
 
     return this.meetingInfo.fetchMeetingInfo(options).then((pmr) => {
