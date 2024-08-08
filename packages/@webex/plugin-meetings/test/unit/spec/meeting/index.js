@@ -33,6 +33,7 @@ import {
   ONLINE,
   OFFLINE,
   RECONNECTION,
+  ROAP_OFFER_ANSWER_EXCHANGE_TIMEOUT,
 } from '@webex/plugin-meetings/src/constants';
 import * as InternalMediaCoreModule from '@webex/internal-media-core';
 import {
@@ -1705,13 +1706,12 @@ describe('plugin-meetings', () => {
           meeting.audio = muteStateStub;
           meeting.video = muteStateStub;
           sinon.stub(Media, 'createMediaConnection').returns(fakeMediaConnection);
-          meeting.setMercuryListener = sinon.stub().returns(true);
-          meeting.setupMediaConnectionListeners = sinon.stub();
-          meeting.setMercuryListener = sinon.stub();
-          meeting.roap.doTurnDiscovery = sinon
-            .stub()
+          sinon.stub(meeting, 'setupMediaConnectionListeners');
+          sinon.stub(meeting, 'setMercuryListener');
+          sinon
+            .stub(meeting.roap, 'doTurnDiscovery')
             .resolves({turnServerInfo: {}, turnDiscoverySkippedReason: undefined});
-          meeting.waitForRemoteSDPAnswer = sinon.stub().resolves();
+          sinon.stub(meeting, 'waitForRemoteSDPAnswer').resolves();
         });
 
         it('should have #addMedia', () => {
@@ -2057,6 +2057,61 @@ describe('plugin-meetings', () => {
           } catch (err) {
             assert.fail('should not throw an error');
           }
+        });
+
+        it('sends correct CA event when times out waiting for SDP answer', async () => {
+          const eventListeners = {};
+          const clock = sinon.useFakeTimers();
+
+          // these 2 are stubbed, we need the real versions:
+          meeting.waitForRemoteSDPAnswer.restore();
+          meeting.setupMediaConnectionListeners.restore();
+
+          meeting.meetingState = 'ACTIVE';
+
+          // setup a mock media connection that will trigger an offer when initiateOffer() is called
+          Media.createMediaConnection = sinon.stub().returns({
+            initiateOffer: sinon.stub().callsFake(() => {
+              // simulate offer being generated
+              eventListeners[Event.LOCAL_SDP_OFFER_GENERATED]();
+
+              return Promise.resolve();
+            }),
+            close: sinon.stub(),
+            on: (event, listener) => {
+              eventListeners[event] = listener;
+            },
+            forceRtcMetricsSend: sinon.stub().resolves(),
+          });
+
+          const getErrorPayloadForClientErrorCodeStub =
+            (webex.internal.newMetrics.callDiagnosticMetrics.getErrorPayloadForClientErrorCode =
+              sinon
+                .stub()
+                .callsFake(({clientErrorCode}) => ({errorCode: clientErrorCode, fatal: true})));
+
+          const result = meeting.addMedia();
+          await testUtils.flushPromises();
+
+          // simulate timeout waiting for the SDP answer that never comes
+          await clock.tickAsync(ROAP_OFFER_ANSWER_EXCHANGE_TIMEOUT);
+
+          await assert.isRejected(result);
+
+          assert.calledOnceWithExactly(getErrorPayloadForClientErrorCodeStub, {
+            clientErrorCode: 2007,
+          });
+          assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
+            name: 'client.media-engine.remote-sdp-received',
+            payload: {
+              canProceed: false,
+              errors: [{errorCode: 2007, fatal: true}],
+            },
+            options: {
+              meetingId: meeting.id,
+              rawError: sinon.match.instanceOf(Error),
+            },
+          });
         });
 
         it('if an error occurs after media request has already been sent, and the user waits until the server kicks them out, a UserNotJoinedError should be thrown when attempting to addMedia again', async () => {
@@ -3112,7 +3167,7 @@ describe('plugin-meetings', () => {
               clientErrorCode: MISSING_ROAP_ANSWER_CLIENT_CODE,
               expectedErrorPayload: {
                 errorDescription: ERROR_DESCRIPTIONS.MISSING_ROAP_ANSWER,
-                category: 'signaling',
+                category: 'media',
               },
             },
             {
@@ -7776,12 +7831,18 @@ describe('plugin-meetings', () => {
           });
 
           it('handles OFFER message correctly when request fails', async () => {
+            const fakeError = new Error('fake error');
             const clock = sinon.useFakeTimers();
             sinon.spy(clock, 'clearTimeout');
             meeting.deferSDPAnswer = {reject: sinon.stub()};
             meeting.sdpResponseTimer = '1234';
-            sendRoapMediaRequestStub.rejects();
+            sendRoapMediaRequestStub.rejects(fakeError);
             sinon.stub(meeting, 'roapMessageReceived');
+            const getErrorPayloadForClientErrorCodeStub =
+              (webex.internal.newMetrics.callDiagnosticMetrics.getErrorPayloadForClientErrorCode =
+                sinon
+                  .stub()
+                  .callsFake(({clientErrorCode}) => ({errorCode: clientErrorCode, fatal: true})));
 
             eventListeners[Event.ROAP_MESSAGE_TO_SEND]({
               roapMessage: {
@@ -7806,6 +7867,21 @@ describe('plugin-meetings', () => {
             assert.calledOnce(clock.clearTimeout);
             assert.calledWith(clock.clearTimeout, '1234');
             assert.equal(meeting.sdpResponseTimer, undefined);
+
+            assert.calledOnceWithExactly(getErrorPayloadForClientErrorCodeStub, {
+              clientErrorCode: 2007,
+            });
+            assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
+              name: 'client.media-engine.remote-sdp-received',
+              payload: {
+                canProceed: false,
+                errors: [{errorCode: 2007, fatal: true}],
+              },
+              options: {
+                meetingId: meeting.id,
+                rawError: fakeError,
+              },
+            });
           });
 
           it('handles ANSWER message correctly', () => {
