@@ -101,6 +101,7 @@ import {
 import {
   DTLS_HANDSHAKE_FAILED_CLIENT_CODE,
   ICE_FAILED_WITHOUT_TURN_TLS_CLIENT_CODE,
+  ICE_AND_REACHABILITY_FAILED_CLIENT_CODE,
   ICE_FAILED_WITH_TURN_TLS_CLIENT_CODE,
   ICE_FAILURE_CLIENT_CODE,
   MISSING_ROAP_ANSWER_CLIENT_CODE,
@@ -2218,8 +2219,13 @@ describe('plugin-meetings', () => {
         it('should reject if waitForMediaConnectionConnected() rejects after turn server retry', async () => {
           const FAKE_ERROR = {fatal: true};
           const getErrorPayloadForClientErrorCodeStub =
+          
             (webex.internal.newMetrics.callDiagnosticMetrics.getErrorPayloadForClientErrorCode =
               sinon.stub().returns(FAKE_ERROR));
+          webex.meetings.reachability = {
+            isWebexMediaBackendUnreachable: sinon.stub().resolves(false),
+            getReachabilityMetrics: sinon.stub().resolves(),
+          };
           const MOCK_CLIENT_ERROR_CODE = 2004;
           const generateClientErrorCodeForIceFailureStub = sinon
             .stub(CallDiagnosticUtils, 'generateClientErrorCodeForIceFailure')
@@ -2273,11 +2279,13 @@ describe('plugin-meetings', () => {
             signalingState: 'unknown',
             iceConnected: false,
             turnServerUsed: false,
+            unreachable: false,
           });
           assert.calledWith(generateClientErrorCodeForIceFailureStub, {
             signalingState: 'unknown',
             iceConnected: false,
             turnServerUsed: true,
+            unreachable: false,
           });
 
           assert.calledTwice(getErrorPayloadForClientErrorCodeStub);
@@ -2414,6 +2422,10 @@ describe('plugin-meetings', () => {
 
         it('should resolve if waitForMediaConnectionConnected() rejects the first time but resolves the second time', async () => {
           const FAKE_ERROR = {fatal: true};
+          webex.meetings.reachability = {
+            isWebexMediaBackendUnreachable: sinon.stub().onCall(0).rejects().onCall(1).resolves(true).onCall(2).resolves(false),
+            getReachabilityMetrics: sinon.stub().resolves({}),
+          }
           const getErrorPayloadForClientErrorCodeStub =
             (webex.internal.newMetrics.callDiagnosticMetrics.getErrorPayloadForClientErrorCode =
               sinon.stub().returns(FAKE_ERROR));
@@ -2473,6 +2485,7 @@ describe('plugin-meetings', () => {
             signalingState: 'unknown',
             iceConnected: undefined,
             turnServerUsed: false,
+            unreachable: false,
           });
 
           assert.calledOnce(getErrorPayloadForClientErrorCodeStub);
@@ -3131,10 +3144,18 @@ describe('plugin-meetings', () => {
               clientErrorCode: ICE_FAILED_WITH_TURN_TLS_CLIENT_CODE,
               expectedErrorPayload: {
                 errorDescription: ERROR_DESCRIPTIONS.ICE_FAILED_WITH_TURN_TLS,
+                category: 'media',
+              },
+            },
+            {
+              clientErrorCode: ICE_AND_REACHABILITY_FAILED_CLIENT_CODE,
+              unreachable: true,
+              expectedErrorPayload: {
+                errorDescription: ERROR_DESCRIPTIONS.ICE_AND_REACHABILITY_FAILED,
                 category: 'network',
               },
             },
-          ].forEach(({clientErrorCode, expectedErrorPayload}) => {
+          ].forEach(({clientErrorCode, expectedErrorPayload, unreachable}) => {
             it(`should handle all ice failures correctly for ${clientErrorCode}`, async () => {
               // setting the method to the real implementation
               // because newMetrics is mocked completely in the webex-mock
@@ -3142,6 +3163,10 @@ describe('plugin-meetings', () => {
               const CD = new CallDiagnosticMetrics({}, {parent: webex});
               webex.internal.newMetrics.callDiagnosticMetrics.getErrorPayloadForClientErrorCode =
                 CD.getErrorPayloadForClientErrorCode;
+
+              webex.meetings.reachability = {
+                isWebexMediaBackendUnreachable: sinon.stub().resolves(unreachable || false),
+              };
 
               const generateClientErrorCodeForIceFailureStub = sinon
                 .stub(CallDiagnosticUtils, 'generateClientErrorCodeForIceFailure')
@@ -3166,6 +3191,7 @@ describe('plugin-meetings', () => {
                 signalingState: 'unknown',
                 iceConnected: false,
                 turnServerUsed: true,
+                unreachable: unreachable || false,
               });
 
               const submitClientEventCalls = webex.internal.newMetrics.submitClientEvent.getCalls();
