@@ -1,7 +1,7 @@
 {
   "@webex/plugin-meetings": {
     "3.3.1-next.27": {
-      "published_date": 1723026841,
+      "published_date": 1723028345568,
       "commits": {
         "612ac9be208c35bc7561b4281845f98ee9c3aaca": "fix(plugin-meetings): prevent fetchMeetingInfo service call for one2one meeting.  (#3726)"
       },
@@ -267,7 +267,7 @@
   },
   "@webex/internal-plugin-voicea": {
     "3.3.1-next.27": {
-      "published_date": 1723026841,
+      "published_date": 1723028345568,
       "commits": {
         "612ac9be208c35bc7561b4281845f98ee9c3aaca": "fix(plugin-meetings): prevent fetchMeetingInfo service call for one2one meeting.  (#3726)"
       },
@@ -533,7 +533,7 @@
   },
   "webex": {
     "3.3.1-next.33": {
-      "published_date": 1723026841,
+      "published_date": 1723028345568,
       "commits": {
         "612ac9be208c35bc7561b4281845f98ee9c3aaca": "fix(plugin-meetings): prevent fetchMeetingInfo service call for one2one meeting.  (#3726)"
       },
