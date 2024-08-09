@@ -9,6 +9,7 @@ import {
   ClientEvent,
   ClientEventLeaveReason,
   CallDiagnosticUtils,
+  CALL_DIAGNOSTIC_CONFIG,
 } from '@webex/internal-plugin-metrics';
 import {ClientEvent as RawClientEvent} from '@webex/event-dictionary-ts';
 
@@ -5779,7 +5780,24 @@ export default class Meeting extends StatelessWebexPlugin {
             {
               logText: `${LOG_HEADER} Roap Offer`,
             }
-          ).catch(() => {
+          ).catch((error) => {
+            // @ts-ignore
+            this.webex.internal.newMetrics.submitClientEvent({
+              name: 'client.media-engine.remote-sdp-received',
+              payload: {
+                canProceed: false,
+                errors: [
+                  // @ts-ignore
+                  this.webex.internal.newMetrics.callDiagnosticMetrics.getErrorPayloadForClientErrorCode(
+                    {
+                      clientErrorCode: CALL_DIAGNOSTIC_CONFIG.MISSING_ROAP_ANSWER_CLIENT_CODE,
+                    }
+                  ),
+                ],
+              },
+              options: {meetingId: this.id, rawError: error},
+            });
+
             this.deferSDPAnswer.reject(new Error('failed to send ROAP SDP offer'));
             clearTimeout(this.sdpResponseTimer);
             this.sdpResponseTimer = undefined;
@@ -6458,6 +6476,21 @@ export default class Meeting extends StatelessWebexPlugin {
           ROAP_OFFER_ANSWER_EXCHANGE_TIMEOUT / 1000
         } seconds`
       );
+      // @ts-ignore
+      this.webex.internal.newMetrics.submitClientEvent({
+        name: 'client.media-engine.remote-sdp-received',
+        payload: {
+          canProceed: false,
+          errors: [
+            // @ts-ignore
+            this.webex.internal.newMetrics.callDiagnosticMetrics.getErrorPayloadForClientErrorCode({
+              clientErrorCode: CALL_DIAGNOSTIC_CONFIG.MISSING_ROAP_ANSWER_CLIENT_CODE,
+            }),
+          ],
+        },
+        options: {meetingId: this.id, rawError: new Error('Timeout waiting for SDP answer')},
+      });
+
       deferSDPAnswer.reject(new Error('Timed out waiting for REMOTE SDP ANSWER'));
     }, ROAP_OFFER_ANSWER_EXCHANGE_TIMEOUT);
 

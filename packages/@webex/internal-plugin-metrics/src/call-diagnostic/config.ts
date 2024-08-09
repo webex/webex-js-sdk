@@ -379,7 +379,7 @@ export const CLIENT_ERROR_CODE_TO_ERROR_PAYLOAD: Record<number, Partial<ClientEv
   },
   [MISSING_ROAP_ANSWER_CLIENT_CODE]: {
     errorDescription: ERROR_DESCRIPTIONS.MISSING_ROAP_ANSWER,
-    category: 'signaling',
+    category: 'media',
     fatal: true,
   },
   [DTLS_HANDSHAKE_FAILED_CLIENT_CODE]: {
