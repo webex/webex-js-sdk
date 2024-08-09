@@ -71,6 +71,7 @@ import {MediaRequestManager} from '@webex/plugin-meetings/src/multistream/mediaR
 import * as ReceiveSlotManagerModule from '@webex/plugin-meetings/src/multistream/receiveSlotManager';
 import * as SendSlotManagerModule from '@webex/plugin-meetings/src/multistream/sendSlotManager';
 import {CallDiagnosticUtils} from '@webex/internal-plugin-metrics';
+import * as LocusMediaRequestModule from '@webex/plugin-meetings/src/meeting/locusMediaRequest';
 
 import CallDiagnosticLatencies from '@webex/internal-plugin-metrics/src/call-diagnostic/call-diagnostic-metrics-latencies';
 import LLM from '@webex/internal-plugin-llm';
@@ -656,7 +657,7 @@ describe('plugin-meetings', () => {
             meeting,
             fakeJoinResult
           );
-          assert.calledOnceWithExactly(meeting.addMedia, mediaOptions, fakeTurnServerInfo);
+          assert.calledOnceWithExactly(meeting.addMedia, mediaOptions, fakeTurnServerInfo, false);
 
           assert.deepEqual(result, {join: fakeJoinResult, media: test4});
 
@@ -681,7 +682,7 @@ describe('plugin-meetings', () => {
           assert.calledOnceWithExactly(generateTurnDiscoveryRequestMessageStub, meeting, true);
           assert.notCalled(handleTurnDiscoveryHttpResponseStub);
           assert.notCalled(abortTurnDiscoveryStub);
-          assert.calledOnceWithExactly(meeting.addMedia, mediaOptions, undefined);
+          assert.calledOnceWithExactly(meeting.addMedia, mediaOptions, undefined, false);
 
           assert.deepEqual(result, {join: fakeJoinResult, media: test4});
           assert.equal(meeting.turnServerUsed, false);
@@ -711,7 +712,7 @@ describe('plugin-meetings', () => {
             fakeJoinResult
           );
           assert.calledOnceWithExactly(abortTurnDiscoveryStub);
-          assert.calledOnceWithExactly(meeting.addMedia, mediaOptions, undefined);
+          assert.calledOnceWithExactly(meeting.addMedia, mediaOptions, undefined, false);
 
           assert.deepEqual(result, {join: fakeJoinResult, media: test4});
         });
@@ -865,8 +866,7 @@ describe('plugin-meetings', () => {
 
         it('should not call leave() if addMedia fails the first time and succeeds the second time and should only call join() once', async () => {
           const addMediaError = new Error('fake addMedia error');
-          const leaveError = new Error('leave error');
-          const leaveStub = sinon.stub(meeting, 'leave').rejects(leaveError);
+          const leaveStub = sinon.stub(meeting, 'leave');
 
           meeting.addMedia = sinon
             .stub()
@@ -901,6 +901,32 @@ describe('plugin-meetings', () => {
               type: addMediaError.name,
             }
           );
+        });
+
+        it('should force TURN discovery on the 2nd attempt, if addMedia() fails the first time', async () => {
+          const addMediaError = new Error('fake addMedia error');
+
+          meeting.addMedia = sinon
+            .stub()
+            .onFirstCall()
+            .rejects(addMediaError)
+            .onSecondCall()
+            .resolves(test4);
+
+          const result = await meeting.joinWithMedia({
+            joinOptions,
+            mediaOptions,
+          });
+
+          assert.deepEqual(result, {join: fakeJoinResult, media: test4});
+
+          assert.calledOnce(meeting.join);
+
+          // first addMedia() call without forcing TURN
+          assert.calledWith(meeting.addMedia.firstCall, mediaOptions, fakeTurnServerInfo, false);
+
+          // second addMedia() call with forcing TURN
+          assert.calledWith(meeting.addMedia.secondCall, mediaOptions, undefined, true);
         });
 
         it('should not attempt a retry if we fail to create the offer on first atttempt', async () => {
@@ -1415,6 +1441,39 @@ describe('plugin-meetings', () => {
             );
           });
 
+          [true, false].forEach((enableMultistream) => {
+            it(`should instantiate LocusMediaRequest with correct parameters (enableMultistream=${enableMultistream})`, async () => {
+              meeting.config.deviceType = 'web';
+              meeting.webex.meetings.geoHintInfo = {regionCode: 'EU', countryCode: 'UK'};
+
+              const mockLocusMediaRequestCtor = sinon
+                .stub(LocusMediaRequestModule, 'LocusMediaRequest')
+                .returns({
+                  id: 'fake LocusMediaRequest instance',
+                });
+
+              await meeting.join({enableMultistream});
+
+              assert.calledOnceWithExactly(
+                mockLocusMediaRequestCtor,
+                {
+                  correlationId: meeting.correlationId,
+                  meetingId: meeting.id,
+                  device: {
+                    url: meeting.deviceUrl,
+                    deviceType: meeting.config.deviceType,
+                    countryCode: 'UK',
+                    regionCode: 'EU',
+                  },
+                  preferTranscoding: !enableMultistream,
+                },
+                {
+                  parent: meeting.webex,
+                }
+              );
+            });
+          });
+
           it('should take trigger from meeting joinTrigger if available', () => {
             meeting.updateCallStateForMetrics({joinTrigger: 'fake-join-trigger'});
             const join = meeting.join();
@@ -1693,7 +1752,7 @@ describe('plugin-meetings', () => {
 
         let fakeMediaConnection;
 
-        beforeEach(() => {
+        beforeEach(async () => {
           fakeMediaConnection = {
             close: sinon.stub(),
             getConnectionState: sinon.stub().returns(ConnectionState.Connected),
@@ -1713,6 +1772,12 @@ describe('plugin-meetings', () => {
             .stub()
             .resolves({turnServerInfo: {}, turnDiscoverySkippedReason: undefined});
           meeting.waitForRemoteSDPAnswer = sinon.stub().resolves();
+
+          // normally the first Roap message we send is creating confluence, so mock LocusMediaRequest.isConfluenceCreated()
+          // to return false the first time it's called and true the 2nd time, to simulate how it would happen for real
+          meeting.locusMediaRequest = {
+            isConfluenceCreated: sinon.stub().onFirstCall().returns(false).onSecondCall().returns(true)
+          };
         });
 
         it('should have #addMedia', () => {
@@ -2410,7 +2475,7 @@ describe('plugin-meetings', () => {
           const doTurnDiscoveryCalls = meeting.roap.doTurnDiscovery.getCalls();
           assert.equal(doTurnDiscoveryCalls.length, 2);
           assert.deepEqual(doTurnDiscoveryCalls[0].args, [meeting, false, false]);
-          assert.deepEqual(doTurnDiscoveryCalls[1].args, [meeting, true, true]);
+          assert.deepEqual(doTurnDiscoveryCalls[1].args.slice(1), [true, true]);
 
           // Some clean up steps happens twice
           assert.calledTwice(forceRtcMetricsSend);
@@ -2866,6 +2931,16 @@ describe('plugin-meetings', () => {
           assert.isOk(errorThrown);
         });
 
+        it('should pass the forceTurnDiscovery parameter to doTurnDiscovery()', async () => {
+          meeting.meetingState = 'ACTIVE';
+
+          // call addMedia() with forceTurnDiscovery=true
+          await meeting.addMedia({}, undefined, true);
+
+          // Check that the value was passed on to doTurnDiscovery()
+          assert.calledOnceWithExactly(meeting.roap.doTurnDiscovery, meeting, false, true);
+        });
+
         describe('handles StatsAnalyzer events', () => {
           let prevConfigValue;
           let statsAnalyzerStub;
@@ -3279,7 +3354,7 @@ describe('plugin-meetings', () => {
 
           let clock;
 
-          beforeEach(() => {
+          beforeEach(async () => {
             clock = sinon.useFakeTimers();
 
             sinon.stub(MeetingUtil, 'getIpVersion').returns(IP_VERSION.unknown);
@@ -3288,7 +3363,6 @@ describe('plugin-meetings', () => {
             meeting.config.deviceType = 'web';
             meeting.isMultistream = isMultistream;
             meeting.meetingState = 'ACTIVE';
-            meeting.mediaId = 'fake media id';
             meeting.selfUrl = 'selfUrl';
             meeting.mediaProperties.waitForMediaConnectionConnected = sinon.stub().resolves();
             meeting.mediaProperties.getCurrentConnectionInfo = sinon.stub().resolves({connectionType: 'udp', selectedCandidatePairChanges: 2, numTransports: 1});
@@ -3388,6 +3462,20 @@ describe('plugin-meetings', () => {
             locusMediaRequestStub = sinon
               .stub(WebexPlugin.prototype, 'request')
               .resolves({body: {locus: {fullState: {}}}});
+
+            // setup some things and mocks so that the call to join() works
+            // (we need to call join() because it creates the LocusMediaRequest instance
+            // that's being tested in these tests)
+            meeting.webex.meetings.registered = true;
+            meeting.webex.internal.device.config = {};
+            sinon
+              .stub(MeetingUtil, 'joinMeeting')
+              .resolves({
+                id: 'fake locus from mocked join request',
+                locusUrl: 'fake locus url',
+                mediaId: 'fake media id',
+              });
+            await meeting.join({enableMultistream: isMultistream});
           });
 
           afterEach(() => {
