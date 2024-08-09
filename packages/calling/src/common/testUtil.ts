@@ -53,6 +53,7 @@ export function getTestUtilsWebex() {
       },
       dss: {
         lookup: jest.fn(),
+        register: jest.fn(),
       },
       encryption: {
         decryptText: jest.fn(),

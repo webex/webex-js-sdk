@@ -8,6 +8,7 @@ const TerserPlugin = require('terser-webpack-plugin');
 
 const CircularDependencyPlugin = require('circular-dependency-plugin');
 const {version} = require('./packages/webex/package.json');
+const callingPackage = require('./packages/calling/package.json');
 
 dotenv.config();
 dotenv.config({path: '.env.default'});
@@ -170,6 +171,7 @@ module.exports = (env = {NODE_ENV: process.env.NODE_ENV || 'production'}) => ({
               WHISTLER_API_SERVICE_URL: JSON.stringify(
                 'https://whistler-prod.allnint.ciscospark.com/api/v1'
               ),
+              CALLING_SDK_VERSION: JSON.stringify(callingPackage.version),
             },
           }),
         ]),

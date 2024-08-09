@@ -35,6 +35,7 @@ import {
   ROAP,
   LOCUSINFO,
   EVENT_TRIGGERS,
+  DESTINATION_TYPE,
 } from '../../../../src/constants';
 import CaptchaError from '@webex/plugin-meetings/src/common/errors/captcha-error';
 import {forEach} from 'lodash';
@@ -1782,6 +1783,19 @@ describe('plugin-meetings', () => {
           it('creates the meeting from a rejected meeting info fetch and destroys it if failOnMissingMeetingInfo', async () => {
             checkCreateMeetingWithNoMeetingInfo(true, true);
           });
+
+          it('creates the meeting avoiding meeting info fetch by passing type as DESTINATION_TYPE.ONE_ON_ONE_CALL', async () => {
+            const meeting = await webex.meetings.createMeeting('test destination', DESTINATION_TYPE.ONE_ON_ONE_CALL);
+
+            assert.instanceOf(
+              meeting,
+              Meeting,
+              'createMeeting should eventually resolve to a Meeting Object'
+            );
+
+            assert.notCalled(webex.meetings.meetingInfo.fetchMeetingInfo);
+          });
+
         });
 
         describe('rejected MeetingInfo.#fetchMeetingInfo - does not log for known Error types', () => {

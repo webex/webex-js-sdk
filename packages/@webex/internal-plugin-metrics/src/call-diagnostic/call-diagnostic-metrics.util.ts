@@ -21,6 +21,7 @@ import {
   MISSING_ROAP_ANSWER_CLIENT_CODE,
   WBX_APP_API_URL,
   ERROR_DESCRIPTIONS,
+  ICE_AND_REACHABILITY_FAILED_CLIENT_CODE,
 } from './config';
 
 const {getOSName, getOSVersion, getBrowserName, getBrowserVersion} = BrowserDetection();
@@ -369,12 +370,14 @@ export const extractVersionMetadata = (version: string) => {
  */
 export const generateClientErrorCodeForIceFailure = ({
   signalingState,
-  iceConnectionState,
+  iceConnected,
   turnServerUsed,
+  unreachable,
 }: {
   signalingState: RTCPeerConnection['signalingState'];
-  iceConnectionState: RTCPeerConnection['iceConnectionState'];
+  iceConnected: boolean;
   turnServerUsed: boolean;
+  unreachable: boolean;
 }) => {
   let errorCode = ICE_FAILURE_CLIENT_CODE; // default;
 
@@ -382,20 +385,17 @@ export const generateClientErrorCodeForIceFailure = ({
     errorCode = MISSING_ROAP_ANSWER_CLIENT_CODE;
   }
 
-  if (
-    signalingState === 'stable' &&
-    (iceConnectionState === 'connected' || iceConnectionState === 'disconnected')
-  ) {
+  if (signalingState === 'stable' && iceConnected) {
     errorCode = DTLS_HANDSHAKE_FAILED_CLIENT_CODE;
   }
 
-  if (
-    signalingState !== 'have-local-offer' &&
-    iceConnectionState !== 'connected' &&
-    iceConnectionState !== 'disconnected'
-  ) {
+  if (signalingState !== 'have-local-offer' && !iceConnected) {
     if (turnServerUsed) {
-      errorCode = ICE_FAILED_WITH_TURN_TLS_CLIENT_CODE;
+      if (unreachable) {
+        errorCode = ICE_AND_REACHABILITY_FAILED_CLIENT_CODE;
+      } else {
+        errorCode = ICE_FAILED_WITH_TURN_TLS_CLIENT_CODE;
+      }
     } else {
       errorCode = ICE_FAILED_WITHOUT_TURN_TLS_CLIENT_CODE;
     }

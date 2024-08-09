@@ -7,6 +7,7 @@ import CallDiagnosticLatencies from '../../../../src/call-diagnostic/call-diagno
 import {
   DTLS_HANDSHAKE_FAILED_CLIENT_CODE,
   ICE_FAILED_WITHOUT_TURN_TLS_CLIENT_CODE,
+  ICE_AND_REACHABILITY_FAILED_CLIENT_CODE,
   ICE_FAILED_WITH_TURN_TLS_CLIENT_CODE,
   MISSING_ROAP_ANSWER_CLIENT_CODE,
 } from '../../../../src/call-diagnostic/config';
@@ -613,41 +614,47 @@ describe('internal-plugin-metrics', () => {
     [
       {
         signalingState: 'have-local-offer',
-        iceConnectionState: 'connected',
+        iceConnected: false,
         turnServerUsed: true,
         errorCode: MISSING_ROAP_ANSWER_CLIENT_CODE,
+        unreachable: false,
       },
       {
         signalingState: 'stable',
-        iceConnectionState: 'connected',
+        iceConnected: true,
         turnServerUsed: true,
         errorCode: DTLS_HANDSHAKE_FAILED_CLIENT_CODE,
+        unreachable: false,
       },
       {
         signalingState: 'stable',
-        iceConnectionState: 'disconnected',
-        turnServerUsed: true,
-        errorCode: DTLS_HANDSHAKE_FAILED_CLIENT_CODE,
-      },
-      {
-        signalingState: 'stable',
-        iceConnectionState: 'failed',
+        iceConnected: false,
         turnServerUsed: true,
         errorCode: ICE_FAILED_WITH_TURN_TLS_CLIENT_CODE,
+        unreachable: false,
       },
       {
         signalingState: 'stable',
-        iceConnectionState: 'failed',
+        iceConnected: false,
+        turnServerUsed: true,
+        errorCode: ICE_AND_REACHABILITY_FAILED_CLIENT_CODE,
+        unreachable: true,
+      },
+      {
+        signalingState: 'stable',
+        iceConnected: false,
         turnServerUsed: false,
         errorCode: ICE_FAILED_WITHOUT_TURN_TLS_CLIENT_CODE,
+        unreachable: false,
       },
-    ].forEach(({signalingState, iceConnectionState, turnServerUsed, errorCode}: any) => {
+    ].forEach(({signalingState, iceConnected, turnServerUsed, errorCode, unreachable}: any) => {
       it('returns expected result', () => {
         assert.deepEqual(
           generateClientErrorCodeForIceFailure({
             signalingState,
-            iceConnectionState,
+            iceConnected,
             turnServerUsed,
+            unreachable,
           }),
           errorCode
         );

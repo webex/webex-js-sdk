@@ -172,6 +172,7 @@ const MeetingUtil = {
   cleanUp: (meeting) => {
     meeting.breakouts.cleanUp();
     meeting.simultaneousInterpretation.cleanUp();
+    meeting.locusMediaRequest = undefined;
 
     // make sure we send last metrics before we close the peerconnection
     const stopStatsAnalyzer = meeting.statsAnalyzer

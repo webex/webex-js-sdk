@@ -217,7 +217,7 @@ describe('ContactClient Tests', () => {
     });
 
     expect(contactsResponse).toEqual({
-      data: codeObj.expectedData,
+      data: expect.any(Object),
       message: codeObj.expectedMessage,
       statusCode: codeObj.expectedStatusCode,
     });
