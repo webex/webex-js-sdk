@@ -6,11 +6,15 @@
 import {WebexPlugin} from '@webex/webex-core';
 
 import CallDiagnosticMetrics from './call-diagnostic/call-diagnostic-metrics';
+import BehavioralMetrics from './behavioral/behavioral-metrics';
 import {
   RecursivePartial,
+  MetricEventProduct,
+  MetricEventAgent,
+  MetricEventVerb,
   ClientEvent,
   FeatureEvent,
-  BehavioralEvent,
+  BehavioralEventPayload,
   OperationalEvent,
   MediaQualityEvent,
   InternalEvent,
@@ -32,6 +36,7 @@ class Metrics extends WebexPlugin {
   callDiagnosticLatencies: CallDiagnosticLatencies;
   // Helper classes to handle the different types of metrics
   callDiagnosticMetrics: CallDiagnosticMetrics;
+  behavioralMetrics: BehavioralMetrics;
 
   /**
    * Constructor
@@ -56,6 +61,8 @@ class Metrics extends WebexPlugin {
     this.webex.once('ready', () => {
       // @ts-ignore
       this.callDiagnosticMetrics = new CallDiagnosticMetrics({}, {parent: this.webex});
+      // @ts-ignore
+      this.behavioralMetrics = new BehavioralMetrics({}, {parent: this.webex});
     });
   }
 
@@ -80,20 +87,39 @@ class Metrics extends WebexPlugin {
   }
 
   /**
+   * @returns true once we have the deviceId we need to submit behavioral events to Amplitude
+   */
+  isReadyToSubmitBehavioralEvents() {
+    return this.behavioralMetrics.isReadyToSubmitBehavioralEvents();
+  }
+
+  /**
    * Behavioral event
    * @param args
    */
   submitBehavioralEvent({
-    name,
+    product,
+    agent,
+    target,
+    verb,
     payload,
-    options,
   }: {
-    name: BehavioralEvent['name'];
-    payload?: RecursivePartial<BehavioralEvent['payload']>;
-    options?: any;
+    product: MetricEventProduct;
+    agent: MetricEventAgent;
+    target: string;
+    verb: MetricEventVerb;
+    payload?: BehavioralEventPayload;
   }) {
-    this.callDiagnosticLatencies.saveTimestamp({key: name});
-    throw new Error('Not implemented.');
+    if (!this.behavioralMetrics) {
+      // @ts-ignore
+      this.webex.logger.log(
+        `NewMetrics: @submitBehavioralEvent. Attempted to submit before webex.ready: ${product}.${agent}.${target}.${verb}`
+      );
+
+      return Promise.resolve();
+    }
+
+    return this.behavioralMetrics.submitBehavioralEvent({product, agent, target, verb, payload});
   }
 
   /**
