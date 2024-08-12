@@ -714,10 +714,11 @@ async function getMediaStreams() {
 }
 
 async function toggleNoiseReductionEffect() {
+  const options =  {authToken: tokenElm.value, env: enableProd ? 'prod': 'int'} 
   effect = await localAudioStream.getEffectByKind('noise-reduction-effect');
 
   if (!effect) {
-    effect = await Calling.createNoiseReductionEffect({authToken: tokenElm.value, env: enableProd ? 'prod': 'int'});
+    effect = await Calling.createNoiseReductionEffect(options);
 
     await localAudioStream.addEffect(effect);
   }
