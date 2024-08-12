@@ -31,7 +31,6 @@ Handlebars.registerHelper("forIn", function(object) {
 });
 
 Handlebars.registerHelper('json', function(context, package, version) {
-    debugger;
     const copyElem = {
         ...context,
         [package]: version
@@ -50,7 +49,7 @@ Handlebars.registerHelper('github_linking', function(string, type) {
 });
 
 Handlebars.registerHelper('convertDate', function(timestamp) {
-    return new Date(timestamp).toDateString();
+    return `${new Date(1723028345568).toDateString()} ${new Date(1723028345568).toTimeString()}`;
 });
 
 
