@@ -6181,6 +6181,7 @@ export default class Meeting extends StatelessWebexPlugin {
         name: 'client.mediaquality.event',
         options: {
           meetingId: this.id,
+          networkType: options.data.networkType,
         },
         payload: {
           intervals: [options.data],

@@ -3313,7 +3313,7 @@ describe('plugin-meetings', () => {
           });
 
           it('calls submitMQE correctly', async () => {
-            const fakeData = {intervalMetadata: {bla: 'bla'}};
+            const fakeData = {intervalMetadata: {bla: 'bla'}, networkType: 'wifi'};
 
             statsAnalyzerStub.emit(
               {file: 'test', function: 'test'},
