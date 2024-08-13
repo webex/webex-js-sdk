@@ -6838,7 +6838,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@wdio/logger@npm:7.26.0, @wdio/logger@npm:^7.19.0, @wdio/logger@npm:^7.5.3":
+"@wdio/logger@npm:7.26.0, @wdio/logger@npm:^7.19.0":
   version: 7.26.0
   resolution: "@wdio/logger@npm:7.26.0"
   dependencies:
@@ -6850,7 +6850,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@wdio/logger@npm:8.38.0, @wdio/logger@npm:^8.28.0":
+"@wdio/logger@npm:8.38.0, @wdio/logger@npm:^8.1.0, @wdio/logger@npm:^8.28.0":
   version: 8.38.0
   resolution: "@wdio/logger@npm:8.38.0"
   dependencies:
@@ -30485,7 +30485,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"tcp-port-used@npm:^1.0.1, tcp-port-used@npm:^1.0.2":
+"tcp-port-used@npm:^1.0.2":
   version: 1.0.2
   resolution: "tcp-port-used@npm:1.0.2"
   dependencies:
@@ -32437,19 +32437,18 @@ __metadata:
   languageName: node
   linkType: hard
 
-"wdio-chromedriver-service@npm:^7.3.2":
-  version: 7.3.2
-  resolution: "wdio-chromedriver-service@npm:7.3.2"
+"wdio-chromedriver-service@npm:^8.1.1":
+  version: 8.1.1
+  resolution: "wdio-chromedriver-service@npm:8.1.1"
   dependencies:
-    "@wdio/logger": ^7.5.3
-    fs-extra: ^9.1.0
-    split2: ^3.2.2
-    tcp-port-used: ^1.0.1
+    "@wdio/logger": ^8.1.0
+    fs-extra: ^11.1.0
+    split2: ^4.1.0
+    tcp-port-used: ^1.0.2
   peerDependencies:
-    "@wdio/cli": ^7.0.0
-    "@wdio/types": ^7.0.0
+    "@wdio/types": ^7.0.0 || ^8.0.0-alpha.219
     chromedriver: "*"
-    webdriverio: ^7.0.0
+    webdriverio: ^7.0.0 || ^8.0.0-alpha.219
   peerDependenciesMeta:
     "@wdio/types":
       optional: true
@@ -32457,7 +32456,7 @@ __metadata:
       optional: true
     webdriverio:
       optional: false
-  checksum: 281d63c500eda2fe0f6bd08e9aa9d84590ea66bd53494d913801ddaf36f9edda3991327202820e9328a1a1dbbb42af2c43623cdeddadddeef3a83ccbda2bb067
+  checksum: e9e797bf1c3366e2dd5cf6b2c362c1fc1a22a8d97c23afff31a670f42dd99a33cb73228011cef7e799613e70ecd30529472a1e00f42dcc28f8a0e88c0ce299e0
   languageName: node
   linkType: hard
 
@@ -32811,7 +32810,7 @@ __metadata:
     typescript: ^4.7.4
     uuid: ^3.3.2
     wd: ^1.14.0
-    wdio-chromedriver-service: ^7.3.2
+    wdio-chromedriver-service: ^8.1.1
     wdio-geckodriver-service: ^2.1.1
     webdriverio: ^7.19.5
     webpack: ^5.74.0
