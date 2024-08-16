@@ -139,7 +139,7 @@
                     {{#each (forIn this.alongWith)}}
                       <tr>
                           <td>{{{this.key}}}</td>
-                          <td><a href='/changelog/?stable_version={{@root.data.stable_version}}&package={{{this.key}}}&version={{{this.value}}}'>{{{this.value}}}</a></td>
+                          <td><a href='?stable_version={{@root.data.stable_version}}&package={{{this.key}}}&version={{{this.value}}}'>{{{this.value}}}</a></td>
                       </tr>
                     {{/each}}
                   </tbody>
