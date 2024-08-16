@@ -208,7 +208,7 @@ export default class MeetingInfoV2 {
       .request({uri: conversationUrl, qs: {includeParticipants: true}, disableTransform: true})
       .then(({body: conversation}) => {
         const body = {
-          title: conversation.displayName ? conversation.displayName : conversation.computedTitle,
+          title: conversation.displayName ? conversation.displayName : 'AdHoc Meeting',
           spaceUrl: conversation.url,
           keyUrl: conversation.encryptionKeyUrl,
           kroUrl: conversation.kmsResourceObjectUrl,
