@@ -645,6 +645,10 @@ export default class Meeting extends StatelessWebexPlugin {
         })}event#${EVENT_TRIGGERS.MEETING_STARTED_RECEIVING_TRANSCRIPTION}`
       );
 
+      if (this.getCurUserType() !== 'host') {
+        delete payload.spokenLanguages;
+      }
+
       // @ts-ignore
       this.trigger(EVENT_TRIGGERS.MEETING_STARTED_RECEIVING_TRANSCRIPTION, payload);
     },
@@ -4831,6 +4835,14 @@ export default class Meeting extends StatelessWebexPlugin {
         reject(new Error('Webex Assistant is not enabled/supported'));
       }
 
+      if (this.getCurUserType() !== 'host') {
+        LoggerProxy.logger.error(
+          'Meeting:index#setSpokenLanguage --> Only host can set spoken language'
+        );
+
+        reject(new Error('Only host can set spoken language'));
+      }
+
       try {
         const voiceaListenerLanguageUpdate = (payload) => {
           // @ts-ignore
@@ -4884,10 +4896,8 @@ export default class Meeting extends StatelessWebexPlugin {
           this.setUpVoiceaListeners();
         }
 
-        if (this.getCurUserType() === 'host') {
-          // @ts-ignore
-          await this.webex.internal.voicea.turnOnCaptions(options?.spokenLanguage);
-        }
+        // @ts-ignore
+        await this.webex.internal.voicea.turnOnCaptions(options?.spokenLanguage);
       } catch (error) {
         LoggerProxy.logger.error(`Meeting:index#startTranscription --> ${error}`);
         Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.RECEIVE_TRANSCRIPTION_FAILURE, {

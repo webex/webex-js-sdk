@@ -1010,14 +1010,12 @@ describe('plugin-meetings', () => {
             state: 'JOINED',
           };
           meeting.areVoiceaEventsSetup = false;
-          meeting.roles = ['COHOST'];
 
           await meeting.startTranscription();
 
           assert.equal(webex.internal.voicea.on.callCount, 4);
           assert.equal(meeting.areVoiceaEventsSetup, true);
           assert.equal(webex.internal.voicea.listenToEvents.callCount, 1);
-          assert.notCalled(webex.internal.voicea.turnOnCaptions);
         });
 
         it("should throw error if request doesn't work", async () => {
@@ -1134,6 +1132,7 @@ describe('plugin-meetings', () => {
           webex.internal.voicea.on = sinon.stub();
           webex.internal.voicea.off = sinon.stub();
           webex.internal.voicea.setSpokenLanguage = sinon.stub();
+          meeting.roles = ['MODERATOR'];
         });
 
         afterEach(() => {
@@ -1146,6 +1145,16 @@ describe('plugin-meetings', () => {
 
           meeting.setSpokenLanguage('fr').catch((error) => {
             assert.equal(error.message, 'Webex Assistant is not enabled/supported');
+            done();
+          });
+        });
+
+        it('should reject if current user is not a host', (done) => {
+          meeting.isTranscriptionSupported.returns(true);
+          meeting.roles = ['COHOST'];
+
+          meeting.setSpokenLanguage('fr').catch((error) => {
+            assert.equal(error.message, 'Only host can set spoken language');
             done();
           });
         });
