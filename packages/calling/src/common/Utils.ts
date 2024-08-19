@@ -1426,7 +1426,10 @@ function isValidServiceDomain(serviceData: ServiceData): boolean {
   const {domain} = serviceData;
 
   if (!domain) {
-    return serviceData.indicator === ServiceIndicator.CALLING;
+    return (
+      serviceData.indicator === ServiceIndicator.CALLING ||
+      serviceData.indicator === ServiceIndicator.GUEST_CALLING
+    );
   }
 
   return regexp.test(domain);

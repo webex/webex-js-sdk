@@ -81,6 +81,7 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
     backupMobiusUris: string[],
     logLevel: LOGGER,
     serviceDataConfig?: CallingClientConfig['serviceData'],
+    jwe?: string,
     phoneNumber?: string,
     extension?: string,
     voicemail?: string
@@ -111,7 +112,8 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
       serviceData,
       this.#mutex,
       this.lineEmitter,
-      logLevel
+      logLevel,
+      jwe
     );
 
     log.setLogger(logLevel, LINE_FILE);
