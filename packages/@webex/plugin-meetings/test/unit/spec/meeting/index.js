@@ -1016,6 +1016,7 @@ describe('plugin-meetings', () => {
           assert.equal(webex.internal.voicea.on.callCount, 4);
           assert.equal(meeting.areVoiceaEventsSetup, true);
           assert.equal(webex.internal.voicea.listenToEvents.callCount, 1);
+          assert.calledOnce(webex.internal.voicea.turnOnCaptions);
         });
 
         it("should throw error if request doesn't work", async () => {
