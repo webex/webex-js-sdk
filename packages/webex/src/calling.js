@@ -137,8 +137,8 @@ class Calling extends EventEmitter {
     return WebexCalling.createMicrophoneStream;
   }
 
-  static createNoiseReductionEffect(authToken) {
-    return new WebexCalling.NoiseReductionEffect({authToken});
+  static createNoiseReductionEffect(options) {
+    return new WebexCalling.NoiseReductionEffect(options);
   }
 }
 

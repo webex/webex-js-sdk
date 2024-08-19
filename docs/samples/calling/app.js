@@ -700,41 +700,22 @@ async function getMediaStreams() {
   makeCallBtn.disabled = false;
 }
 
-// TODO: This code will be uncommented and added once the DOM exception bug is resolved 
-// async function toggleNoiseReductionEffect() {
-//   effect = await localAudioStream.getEffectByKind('noise-reduction-effect');
-
-//   if (!effect) {
-//     effect = await Calling.createNoiseReductionEffect(tokenElm.value);
-
-//     await localAudioStream.addEffect(effect);
-//   }
-
-//   if (effect.isEnabled) {
-//     await effect.disable();
-//     bnrButton.innerText = 'Enable BNR';
-//   } else {
-//     await effect.enable();
-//     bnrButton.innerText = 'Disable BNR';
-//   }
-// }
-
-async function addNoiseReductionEffect() {
+async function toggleNoiseReductionEffect() {
+  const options =  {authToken: tokenElm.value, env: enableProd ? 'prod': 'int'} 
   effect = await localAudioStream.getEffectByKind('noise-reduction-effect');
 
   if (!effect) {
-    effect = await Calling.createNoiseReductionEffect(tokenElm.value);
+    effect = await Calling.createNoiseReductionEffect(options);
 
     await localAudioStream.addEffect(effect);
   }
 
-  await effect.enable();
-}
-
-async function removeNoiseReductionEffect() {
-  effect = await localAudioStream.getEffectByKind('noise-reduction-effect');
-  if (effect) {
+  if (effect.isEnabled) {
     await effect.disable();
+    bnrButton.innerText = 'Enable BNR';
+  } else {
+    await effect.enable();
+    bnrButton.innerText = 'Disable BNR';
   }
 }
 

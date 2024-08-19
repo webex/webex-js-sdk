@@ -106,7 +106,7 @@ const Authorization = WebexPlugin.extend({
     // Wait until nextTick in case `credentials` hasn't initialized yet
     process.nextTick(() => {
       this.webex.internal.services
-        .collectPreauthCatalog({emailhash})
+        .collectPreauthCatalog(emailhash ? {emailhash}: undefined)
         .catch(() => Promise.resolve())
         .then(() => this.requestAuthorizationCodeGrant({code, codeVerifier}))
         .catch((error) => {
