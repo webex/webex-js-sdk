@@ -1005,7 +1005,7 @@ describe('plugin-meetings', () => {
           assert.calledTwice(webex.internal.voicea.turnOnCaptions);
         });
 
-        it('should listen to events and not turnOnCaptions if the user is not a host', async () => {
+        it('should listen to events and turnOnCaptions for all users', async () => {
           meeting.joinedWith = {
             state: 'JOINED',
           };
