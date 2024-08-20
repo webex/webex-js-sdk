@@ -56,6 +56,7 @@ const currentMeetingInfoStatus = document.getElementById('current-meeting-info-s
 
 const enableLLM = document.getElementById('meetings-enable-llm');
 const enableTranscript = document.getElementById('meetings-enable-transcription');
+const spokenLangNote = document.getElementById('only-host-spoken-language');
 
 // Store and Grab `access-token` from localstorage
 if (localStorage.getItem('date') > new Date().getTime()) {
@@ -1120,9 +1121,14 @@ function setTranscriptEvents() {
 
     meeting.on('meeting:receiveTranscription:started', (payload) => {
       fillLanguageDropDowns(voiceaCaptionLanguage,payload.captionLanguages);
-      fillLanguageDropDowns(voiceaSpokenLanguage,payload.spokenLanguages);
-      voiceaSpokenLanguage.disabled = false;
-      voiceaSpokenLanguageBtn.disabled = false;
+      if(typeof payload.spokenLanguages !== "undefined" && meeting.getCurUserType() === "host"){
+        fillLanguageDropDowns(voiceaSpokenLanguage,payload.spokenLanguages);
+        voiceaSpokenLanguage.disabled = false;
+        voiceaSpokenLanguageBtn.disabled = false;
+      }
+      else {
+        spokenLangNote.classList.remove("hidden");
+      }
       voiceaCaptionLanguage.disabled = false;
       voiceaCaptionLanguageBtn.disabled = false;
     });

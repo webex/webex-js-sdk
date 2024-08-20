@@ -163,32 +163,19 @@ function changeEnv() {
   enableProduction.innerHTML = enableProd ? 'In Production' : 'In Integration';
 }
 
-const guestUrl = 'https://webexapis.com/v1/guests/token';
-const guestIssuerAccessToken = '';
+// Guest access token via Service App - Logic deployed on the AWS Lambda
+async function fetchGuestAccessTokenLambda() {
+  const response = await fetch('https://pbw56237i55l2vkcpc5dhskhra0bplhr.lambda-url.us-east-2.on.aws');
+  const token = await response.text();
 
-// Guest access token via Service App
-async function getGuestAccessToken() {
-  const response = await fetch(guestUrl, {
-    method: 'post',
-    headers: {
-      Accept: 'application/json',
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${guestIssuerAccessToken}`,
-    },
-    body: JSON.stringify({
-      subject: 'Guest token for Webex Calling SDK Sample App',
-      displayName: 'Calling Guest User',
-    }),
-  });
-
-  const data = await response.json();
-
-  return data.accessToken;
+  return token;
 }
 
 async function generateGuestToken() {
   try {
-    const guestAccessToken = await getGuestAccessToken();
+    const guestAccessToken = await fetchGuestAccessTokenLambda();
+    console.log('Guest Access Token: ', guestAccessToken);
+
     tokenElm.value = guestAccessToken;
   } catch (error) {
     if (error.code === 401) {
