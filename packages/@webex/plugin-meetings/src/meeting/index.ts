@@ -1459,7 +1459,10 @@ export default class Meeting extends StatelessWebexPlugin {
     this.turnServerUsed = false;
 
     /**
-     * Contains information used during the addMedia() operation
+     * Contains information used during the addMedia() operation:
+     * retriedWithTurnServer - whether retry was done using TURN Discovery
+     * icePhaseCallback - callback for determining the value for icePhase when sending failure event to CA
+     *
      * @instance
      * @type {Object}
      * @private
