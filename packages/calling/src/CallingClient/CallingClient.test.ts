@@ -119,7 +119,7 @@ describe('CallingClient Tests', () => {
         callingClient = await createClient(webex, {serviceData: serviceDataObj});
       } catch (e) {
         expect(e.message).toEqual(
-          'Invalid service indicator, Allowed values are: calling,contactcenter'
+          'Invalid service indicator, Allowed values are: calling,contactcenter,guestcalling'
         );
       }
       expect.assertions(1);

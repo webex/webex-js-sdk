@@ -36,6 +36,8 @@ describe('Line Tests', () => {
   const backupMobiusUris = jest.fn(() => mobiusUris.backup);
   const userId = webex.internal.device.userId;
   const clientDeviceUri = webex.internal.device.url;
+  const mockJwe = 'mockJwe';
+  const guestServiceData = {indicator: ServiceIndicator.GUEST_CALLING, domain: ''};
 
   const handleErrorSpy = jest.spyOn(utils, 'handleRegistrationErrors');
 
@@ -80,7 +82,8 @@ describe('Line Tests', () => {
         defaultServiceData,
         expect.any(Mutex),
         expect.anything(),
-        LOGGER.INFO
+        LOGGER.INFO,
+        undefined
       );
       expect(line.getStatus()).toEqual(RegistrationStatus.IDLE);
       await line.register();
@@ -101,6 +104,62 @@ describe('Line Tests', () => {
       expect(line.getActiveMobiusUrl()).toEqual(primaryUrl);
       expect(line.getLoggingLevel()).toEqual(LOGGER.INFO);
       expect(line.getDeviceId()).toEqual(mockRegistrationBody.device.deviceId);
+
+      webex.request.mockClear();
+
+      jest.advanceTimersByTime(30 * 1000);
+      await Promise.resolve();
+
+      expect(webex.request).toBeCalledOnceWith({
+        ...getMockRequestTemplate(),
+        uri: `${mockRegistrationBody.device.uri}/status`,
+        method: 'POST',
+      });
+      jest.useRealTimers();
+    });
+
+    it('verify successful Registration cases and keepalive for a guest user', async () => {
+      createRegistrationSpy.mockClear();
+      const guestLine = new Line(
+        userId,
+        clientDeviceUri,
+        mutex,
+        primaryMobiusUris(),
+        backupMobiusUris(),
+        LOGGER.INFO,
+        guestServiceData,
+        mockJwe
+      );
+      jest.useFakeTimers();
+      webex.request.mockReturnValue(registrationPayload);
+
+      expect(createRegistrationSpy).toBeCalledOnceWith(
+        webex,
+        guestServiceData,
+        expect.any(Mutex),
+        expect.anything(),
+        LOGGER.INFO,
+        mockJwe
+      );
+      expect(guestLine.getStatus()).toEqual(RegistrationStatus.IDLE);
+      await guestLine.register();
+
+      expect(webex.request).toBeCalledOnceWith({
+        ...getMockRequestTemplate(),
+        body: {
+          userId,
+          clientDeviceUri,
+          serviceData: {...guestServiceData, jwe: mockJwe},
+        },
+        uri: `${primaryUrl}device`,
+        method: 'POST',
+      });
+      expect(handleErrorSpy).not.toBeCalled();
+
+      expect(guestLine.getStatus()).toEqual(RegistrationStatus.ACTIVE);
+      expect(guestLine.getActiveMobiusUrl()).toEqual(primaryUrl);
+      expect(guestLine.getLoggingLevel()).toEqual(LOGGER.INFO);
+      expect(guestLine.getDeviceId()).toEqual(mockRegistrationBody.device.deviceId);
 
       webex.request.mockClear();
 
