@@ -905,6 +905,69 @@ describe('plugin-meetings', () => {
           );
         });
 
+        it('should send the right CA events when media connection fails', async () => {
+          const fakeClientError = {id: 'error'};
+
+          const fakeMediaConnection = {
+            close: sinon.stub(),
+            getConnectionState: sinon.stub().returns(ConnectionState.Connected),
+            initiateOffer: sinon.stub().resolves({}),
+            on: sinon.stub(),
+            forceRtcMetricsSend: sinon.stub().resolves(),
+          };
+
+          // setup the stubs so that media connection always fails on waitForMediaConnectionConnected()
+          addMediaInternalStub.restore();
+          meeting.join.returns(
+            Promise.resolve({id: 'join result', roapMessage: 'fake TURN discovery response'})
+          );
+
+          sinon.stub(Media, 'createMediaConnection').returns(fakeMediaConnection);
+          sinon.stub(meeting, 'waitForRemoteSDPAnswer').resolves();
+          sinon.stub(meeting.roap, 'doTurnDiscovery').resolves({turnServerInfo: 'fake turn info'});
+          sinon
+            .stub(meeting.mediaProperties, 'waitForMediaConnectionConnected')
+            .rejects(new Error('fake error'));
+
+          webex.meetings.reachability.isWebexMediaBackendUnreachable = sinon.stub().resolves(false);
+          webex.internal.newMetrics.callDiagnosticMetrics.getErrorPayloadForClientErrorCode = sinon
+            .stub()
+            .returns(fakeClientError);
+
+          // call joinWithMedia() - it should fail
+          await assert.isRejected(
+            meeting.joinWithMedia({
+              joinOptions,
+              mediaOptions,
+            })
+          );
+
+          // check the right CA events have been sent:
+          // calls at index 0 and 2 to submitClientEvent are for "client.media.capabilities" which we don't care about in this test
+          assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent.getCall(1), {
+            name: 'client.ice.end',
+            payload: {
+              canProceed: false,
+              icePhase: 'JOIN_MEETING_RETRY',
+              errors: [fakeClientError],
+            },
+            options: {
+              meetingId: meeting.id,
+            },
+          });
+          assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent.getCall(3), {
+            name: 'client.ice.end',
+            payload: {
+              canProceed: false,
+              icePhase: 'JOIN_MEETING_FINAL',
+              errors: [fakeClientError],
+            },
+            options: {
+              meetingId: meeting.id,
+            },
+          });
+        });
+
         it('should force TURN discovery on the 2nd attempt, if addMediaInternal() fails the first time', async () => {
           const addMediaError = new Error('fake addMedia error');
 
