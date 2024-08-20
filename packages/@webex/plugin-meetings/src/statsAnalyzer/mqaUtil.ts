@@ -343,10 +343,10 @@ export const getVideoReceiverStreamMqa = ({
     statsResults[mediaType][sendrecvType].framesDecoded - lastFramesDecoded;
 
   videoReceiverStream.common.receivedFrameRate = Math.round(
-    totalFrameReceivedInaMin ? totalFrameReceivedInaMin / 60 : 0
+    totalFrameReceivedInaMin ? (totalFrameReceivedInaMin * 100) / 60 : 0
   );
   videoReceiverStream.common.renderedFrameRate = Math.round(
-    totalFrameDecodedInaMin ? totalFrameDecodedInaMin / 60 : 0
+    totalFrameDecodedInaMin ? (totalFrameDecodedInaMin * 100) / 60 : 0
   );
 
   videoReceiverStream.common.framesDropped =
@@ -479,7 +479,7 @@ export const getVideoSenderStreamMqa = ({
     statsResults[mediaType][sendrecvType].framesSent - (lastFramesSent || 0);
 
   videoSenderStream.common.transmittedFrameRate = Math.round(
-    totalFrameSentInaMin ? totalFrameSentInaMin / 60 : 0
+    totalFrameSentInaMin ? (totalFrameSentInaMin * 100) / 60 : 0
   );
   videoSenderStream.transmittedHeight = statsResults[mediaType][sendrecvType].height || 0;
   videoSenderStream.transmittedWidth = statsResults[mediaType][sendrecvType].width || 0;
