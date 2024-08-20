@@ -155,7 +155,7 @@ import PermissionError from '../common/errors/permission';
 import {LocusMediaRequest} from './locusMediaRequest';
 import {ConnectionStateHandler, ConnectionStateEvent} from './connectionStateHandler';
 
-// default callback so we don't call an undefined function, but it practice it should never be used
+// default callback so we don't call an undefined function, but in practice it should never be used
 const DEFAULT_ICE_PHASE_CALLBACK = () => 'JOIN_MEETING_FINAL';
 
 const logRequest = (request: any, {logText = ''}) => {

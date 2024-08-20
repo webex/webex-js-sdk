@@ -624,10 +624,11 @@ describe('plugin-meetings', () => {
         let generateTurnDiscoveryRequestMessageStub;
         let handleTurnDiscoveryHttpResponseStub;
         let abortTurnDiscoveryStub;
+        let addMediaInternalStub;
 
         beforeEach(() => {
           meeting.join = sinon.stub().returns(Promise.resolve(fakeJoinResult));
-          meeting.addMediaInternal = sinon.stub().returns(Promise.resolve(test4));
+          addMediaInternalStub = sinon.stub(meeting, 'addMediaInternal').returns(Promise.resolve(test4));
 
           webex.meetings.reachability.getReachabilityResults.resolves(fakeReachabilityResults);
 
@@ -907,27 +908,58 @@ describe('plugin-meetings', () => {
         it('should force TURN discovery on the 2nd attempt, if addMediaInternal() fails the first time', async () => {
           const addMediaError = new Error('fake addMedia error');
 
-          meeting.addMediaInternal = sinon
-            .stub()
-            .onFirstCall()
-            .rejects(addMediaError)
-            .onSecondCall()
-            .resolves(test4);
+          const fakeMediaConnection = {
+            close: sinon.stub(),
+            getConnectionState: sinon.stub().returns(ConnectionState.Connected),
+            initiateOffer: sinon.stub().resolves({}),
+            on: sinon.stub(),
+          };
+
+          /* Setup the stubs so that the first call to addMediaInternal() fails
+             and the 2nd call calls the real implementation - so that we can check that
+             addMediaInternal() eventually calls meeting.roap.doTurnDiscovery() with isForced=true.
+             As a result we need to also stub a few other methods like createMediaConnection() and waitForRemoteSDPAnswer() */
+          sinon.stub(Media, 'createMediaConnection').returns(fakeMediaConnection);
+          sinon.stub(meeting, 'waitForRemoteSDPAnswer').resolves();
+
+          addMediaInternalStub.onFirstCall().rejects(addMediaError);
+          addMediaInternalStub.onSecondCall().callsFake((...args) => {
+            return addMediaInternalStub.wrappedMethod.bind(meeting)(...args);
+          });
+
+          sinon.stub(meeting.roap, 'doTurnDiscovery').resolves({turnServerInfo: 'fake turn info'});
 
           const result = await meeting.joinWithMedia({
             joinOptions,
             mediaOptions,
           });
 
-          assert.deepEqual(result, {join: fakeJoinResult, media: test4});
+          assert.deepEqual(result, {join: fakeJoinResult, media: undefined});
 
           assert.calledOnce(meeting.join);
 
           // first addMediaInternal() call without forcing TURN
-          assert.calledWith(meeting.addMediaInternal.firstCall, sinon.match.any, fakeTurnServerInfo, false, mediaOptions);
+          assert.calledWith(
+            meeting.addMediaInternal.firstCall,
+            sinon.match.any,
+            fakeTurnServerInfo,
+            false,
+            mediaOptions
+          );
 
           // second addMediaInternal() call with forcing TURN
-          assert.calledWith(meeting.addMediaInternal.secondCall, sinon.match.any, undefined, true, mediaOptions);
+          assert.calledWith(
+            meeting.addMediaInternal.secondCall,
+            sinon.match.any,
+            undefined,
+            true,
+            mediaOptions
+          );
+
+          // now check that TURN is actually forced by addMediaInternal(),
+          // we're not checking the isReconnecting param value, because it depends on the full sequence of things
+          // being done correctly (like SDP offer creation) and some of these are stubbed in this test
+          assert.calledWith(meeting.roap.doTurnDiscovery, meeting, sinon.match.any, true);
         });
 
         it('should return the right icePhase in icePhaseCallback on 1st attempt and retry', async () => {
