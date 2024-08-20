@@ -103,10 +103,12 @@ const Authorization = WebexPlugin.extend({
     this._verifySecurityToken(location.query);
     this._cleanUrl(location);
 
+    const orgId = code.split('_')[2];
+
     // Wait until nextTick in case `credentials` hasn't initialized yet
     process.nextTick(() => {
       this.webex.internal.services
-        .collectPreauthCatalog(emailhash ? {emailhash}: undefined)
+        .collectPreauthCatalog(emailhash ? {emailhash}: {orgId})
         .catch(() => Promise.resolve())
         .then(() => this.requestAuthorizationCodeGrant({code, codeVerifier}))
         .catch((error) => {
