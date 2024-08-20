@@ -136,7 +136,7 @@ export enum SORT_BY {
 export enum ServiceIndicator {
   CALLING = 'calling',
   CONTACT_CENTER = 'contactcenter',
-  GUEST_CALLING = 'guestCalling',
+  GUEST_CALLING = 'guestcalling',
 }
 
 export type ServiceData = {

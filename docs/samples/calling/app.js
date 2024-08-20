@@ -188,7 +188,7 @@ async function handleServiceSelect(e) {
   const value = e.target.value;
   tokenElm.value = '';
 
-  if (value === 'guestCalling') {
+  if (value === 'guestcalling') {
     guestContainerElm.classList.remove('hidden');
   } else {
     guestContainerElm.classList.add('hidden');
