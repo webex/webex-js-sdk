@@ -37,7 +37,11 @@ describe('Line Tests', () => {
   const userId = webex.internal.device.userId;
   const clientDeviceUri = webex.internal.device.url;
   const mockJwe = 'mockJwe';
-  const guestServiceData = {indicator: ServiceIndicator.GUEST_CALLING, domain: ''};
+  const guestServiceData = {
+    indicator: ServiceIndicator.GUEST_CALLING,
+    domain: '',
+    guestName: 'testUser',
+  };
 
   const handleErrorSpy = jest.spyOn(utils, 'handleRegistrationErrors');
 

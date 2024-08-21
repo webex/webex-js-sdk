@@ -248,7 +248,7 @@ async function initCalling(e) {
     level: 'info'
   }
 
-  const {region, country} = credentialsFormElm.elements;
+  const {region, country, guestName} = credentialsFormElm.elements;
 
   const serviceData = {indicator: 'calling', domain: ''};
 
@@ -258,6 +258,10 @@ async function initCalling(e) {
 
   if (serviceDomain.value) {
     serviceData.domain = serviceDomain.value;
+  }
+
+  if(guestName){
+    serviceData.guestName = guestName.value
   }
 
   const callingClientConfig = {
