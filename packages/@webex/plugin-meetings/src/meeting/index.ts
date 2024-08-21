@@ -155,6 +155,9 @@ import PermissionError from '../common/errors/permission';
 import {LocusMediaRequest} from './locusMediaRequest';
 import {ConnectionStateHandler, ConnectionStateEvent} from './connectionStateHandler';
 
+// default callback so we don't call an undefined function, but in practice it should never be used
+const DEFAULT_ICE_PHASE_CALLBACK = () => 'JOIN_MEETING_FINAL';
+
 const logRequest = (request: any, {logText = ''}) => {
   LoggerProxy.logger.info(`${logText} - sending request`);
 
@@ -679,7 +682,11 @@ export default class Meeting extends StatelessWebexPlugin {
     },
   };
 
-  private retriedWithTurnServer: boolean;
+  private addMediaData: {
+    retriedWithTurnServer: boolean;
+    icePhaseCallback: () => string;
+  };
+
   private sendSlotManager: SendSlotManager = new SendSlotManager(LoggerProxy);
   private deferSDPAnswer?: Defer; // used for waiting for a response
   private sdpResponseTimer?: ReturnType<typeof setTimeout>;
@@ -1452,13 +1459,19 @@ export default class Meeting extends StatelessWebexPlugin {
     this.turnServerUsed = false;
 
     /**
-     * Whether retry was done using TURN Discovery.
+     * Contains information used during the addMedia() operation:
+     * retriedWithTurnServer - whether retry was done using TURN Discovery
+     * icePhaseCallback - callback for determining the value for icePhase when sending failure event to CA
+     *
      * @instance
-     * @type {boolean}
+     * @type {Object}
      * @private
      * @memberof Meeting
      */
-    this.retriedWithTurnServer = false;
+    this.addMediaData = {
+      retriedWithTurnServer: false,
+      icePhaseCallback: DEFAULT_ICE_PHASE_CALLBACK,
+    };
 
     /**
      * Whether or not the media connection has ever successfully connected.
@@ -4627,7 +4640,14 @@ export default class Meeting extends StatelessWebexPlugin {
         joined = true;
       }
 
-      const mediaResponse = await this.addMedia(mediaOptions, turnServerInfo, forceTurnDiscovery);
+      const mediaResponse = await this.addMediaInternal(
+        () => {
+          return this.joinWithMediaRetryInfo.isRetry ? 'JOIN_MEETING_FINAL' : 'JOIN_MEETING_RETRY';
+        },
+        turnServerInfo,
+        forceTurnDiscovery,
+        mediaOptions
+      );
 
       this.joinWithMediaRetryInfo = {isRetry: false, prevJoinResponse: undefined};
 
@@ -6382,7 +6402,7 @@ export default class Meeting extends StatelessWebexPlugin {
           name: 'client.ice.end',
           payload: {
             canProceed: !this.turnServerUsed, // If we haven't done turn tls retry yet we will proceed with join attempt
-            icePhase: this.turnServerUsed ? 'JOIN_MEETING_FINAL' : 'JOIN_MEETING_RETRY',
+            icePhase: this.addMediaData.icePhaseCallback(),
             errors: [
               // @ts-ignore
               this.webex.internal.newMetrics.callDiagnosticMetrics.getErrorPayloadForClientErrorCode(
@@ -6549,7 +6569,7 @@ export default class Meeting extends StatelessWebexPlugin {
     remoteMediaManagerConfig?: RemoteMediaManagerConfiguration,
     bundlePolicy?: BundlePolicy
   ): Promise<void> {
-    this.retriedWithTurnServer = true;
+    this.addMediaData.retriedWithTurnServer = true;
     const LOG_HEADER = 'Meeting:index#addMedia():retryWithForcedTurnDiscovery -->';
 
     await this.cleanUpBeforeRetryWithTurnServer();
@@ -6644,7 +6664,7 @@ export default class Meeting extends StatelessWebexPlugin {
         correlation_id: this.correlationId,
         latency: cdl.getTurnDiscoveryTime(),
         turnServerUsed: this.turnServerUsed,
-        retriedWithTurnServer: this.retriedWithTurnServer,
+        retriedWithTurnServer: this.addMediaData.retriedWithTurnServer,
       });
     }
 
@@ -6824,18 +6844,39 @@ export default class Meeting extends StatelessWebexPlugin {
    * Creates a media connection to the server. Media connection is required for sending or receiving any audio/video.
    *
    * @param {AddMediaOptions} options
-   * @param {TurnServerInfo} turnServerInfo - TURN server information (used only internally by the SDK)
-   * @param {boolean} forceTurnDiscovery - if true, TURN discovery will be done (used only internally by the SDK)
    * @returns {Promise<void>}
    * @public
    * @memberof Meeting
    */
-  async addMedia(
-    options: AddMediaOptions = {},
-    turnServerInfo: TurnServerInfo = undefined,
-    forceTurnDiscovery = false
+  addMedia(options: AddMediaOptions = {}): Promise<void> {
+    return this.addMediaInternal(
+      () => (this.turnServerUsed ? 'JOIN_MEETING_FINAL' : 'JOIN_MEETING_RETRY'),
+      undefined,
+      false,
+      options
+    );
+  }
+
+  /**
+   * Internal version of addMedia() with some more arguments for finer control of its behavior
+   *
+   * @param {Function} icePhaseCallback - callback to determine the icePhase for CA "client.ice.end" failure events
+   * @param {TurnServerInfo} turnServerInfo - TURN server information
+   * @param {boolean} forceTurnDiscovery - if true, TURN discovery will be done
+   * @param {AddMediaOptions} options - same as options of the public addMedia() method
+   * @returns {Promise<void>}
+   * @protected
+   * @memberof Meeting
+   */
+  protected async addMediaInternal(
+    icePhaseCallback: () => string,
+    turnServerInfo: TurnServerInfo,
+    forceTurnDiscovery,
+    options: AddMediaOptions = {}
   ): Promise<void> {
-    this.retriedWithTurnServer = false;
+    this.addMediaData.retriedWithTurnServer = false;
+    this.addMediaData.icePhaseCallback = icePhaseCallback;
+
     this.hasMediaConnectionConnectedAtLeastOnce = false;
     const LOG_HEADER = 'Meeting:index#addMedia -->';
     LoggerProxy.logger.info(
@@ -6946,7 +6987,7 @@ export default class Meeting extends StatelessWebexPlugin {
         selectedCandidatePairChanges,
         numTransports,
         isMultistream: this.isMultistream,
-        retriedWithTurnServer: this.retriedWithTurnServer,
+        retriedWithTurnServer: this.addMediaData.retriedWithTurnServer,
         isJoinWithMediaRetry: this.joinWithMediaRetryInfo.isRetry,
         ...reachabilityStats,
       });
@@ -6984,7 +7025,7 @@ export default class Meeting extends StatelessWebexPlugin {
         numTransports,
         turnDiscoverySkippedReason: this.turnDiscoverySkippedReason,
         turnServerUsed: this.turnServerUsed,
-        retriedWithTurnServer: this.retriedWithTurnServer,
+        retriedWithTurnServer: this.addMediaData.retriedWithTurnServer,
         isMultistream: this.isMultistream,
         isJoinWithMediaRetry: this.joinWithMediaRetryInfo.isRetry,
         signalingState:
@@ -7024,6 +7065,8 @@ export default class Meeting extends StatelessWebexPlugin {
       }
 
       throw error;
+    } finally {
+      this.addMediaData.icePhaseCallback = DEFAULT_ICE_PHASE_CALLBACK;
     }
   }
 

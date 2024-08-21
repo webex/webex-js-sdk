@@ -624,10 +624,11 @@ describe('plugin-meetings', () => {
         let generateTurnDiscoveryRequestMessageStub;
         let handleTurnDiscoveryHttpResponseStub;
         let abortTurnDiscoveryStub;
+        let addMediaInternalStub;
 
         beforeEach(() => {
           meeting.join = sinon.stub().returns(Promise.resolve(fakeJoinResult));
-          meeting.addMedia = sinon.stub().returns(Promise.resolve(test4));
+          addMediaInternalStub = sinon.stub(meeting, 'addMediaInternal').returns(Promise.resolve(test4));
 
           webex.meetings.reachability.getReachabilityResults.resolves(fakeReachabilityResults);
 
@@ -646,7 +647,7 @@ describe('plugin-meetings', () => {
             mediaOptions,
           });
 
-          // check that TURN discovery is done with join and addMedia called
+          // check that TURN discovery is done with join and addMediaInternal() called
           assert.calledOnceWithExactly(meeting.join, {
             ...joinOptions,
             roapMessage: fakeRoapMessage,
@@ -658,7 +659,7 @@ describe('plugin-meetings', () => {
             meeting,
             fakeJoinResult
           );
-          assert.calledOnceWithExactly(meeting.addMedia, mediaOptions, fakeTurnServerInfo, false);
+          assert.calledOnceWithExactly(meeting.addMediaInternal, sinon.match.any, fakeTurnServerInfo, false, mediaOptions);
 
           assert.deepEqual(result, {join: fakeJoinResult, media: test4});
 
@@ -674,7 +675,7 @@ describe('plugin-meetings', () => {
             mediaOptions,
           });
 
-          // check that TURN discovery is done with join and addMedia called
+          // check that TURN discovery is done with join and addMediaInternal() called
           assert.calledOnceWithExactly(meeting.join, {
             ...joinOptions,
             roapMessage: undefined,
@@ -683,7 +684,7 @@ describe('plugin-meetings', () => {
           assert.calledOnceWithExactly(generateTurnDiscoveryRequestMessageStub, meeting, true);
           assert.notCalled(handleTurnDiscoveryHttpResponseStub);
           assert.notCalled(abortTurnDiscoveryStub);
-          assert.calledOnceWithExactly(meeting.addMedia, mediaOptions, undefined, false);
+          assert.calledOnceWithExactly(meeting.addMediaInternal, sinon.match.any, undefined, false, mediaOptions);
 
           assert.deepEqual(result, {join: fakeJoinResult, media: test4});
           assert.equal(meeting.turnServerUsed, false);
@@ -700,7 +701,7 @@ describe('plugin-meetings', () => {
             mediaOptions,
           });
 
-          // check that TURN discovery is done with join and addMedia called
+          // check that TURN discovery is done with join and addMediaInternal() called
           assert.calledOnceWithExactly(meeting.join, {
             ...joinOptions,
             roapMessage: fakeRoapMessage,
@@ -713,7 +714,7 @@ describe('plugin-meetings', () => {
             fakeJoinResult
           );
           assert.calledOnceWithExactly(abortTurnDiscoveryStub);
-          assert.calledOnceWithExactly(meeting.addMedia, mediaOptions, undefined, false);
+          assert.calledOnceWithExactly(meeting.addMediaInternal, sinon.match.any, undefined, false, mediaOptions);
 
           assert.deepEqual(result, {join: fakeJoinResult, media: test4});
         });
@@ -802,19 +803,19 @@ describe('plugin-meetings', () => {
 
         it('should fail if called with allowMediaInLobby:false', async () => {
           meeting.join = sinon.stub().returns(Promise.resolve(test1));
-          meeting.addMedia = sinon.stub().returns(Promise.resolve(test4));
+          meeting.addMediaInternal = sinon.stub().returns(Promise.resolve(test4));
 
           await assert.isRejected(
             meeting.joinWithMedia({mediaOptions: {allowMediaInLobby: false}})
           );
         });
 
-        it('should call leave() if addMedia fails and ignore leave() failure', async () => {
+        it('should call leave() if addMediaInternal() fails and ignore leave() failure', async () => {
           const leaveError = new Error('leave error');
           const addMediaError = new Error('fake addMedia error');
 
           const leaveStub = sinon.stub(meeting, 'leave').rejects(leaveError);
-          meeting.addMedia = sinon.stub().rejects(addMediaError);
+          meeting.addMediaInternal = sinon.stub().rejects(addMediaError);
 
           await assert.isRejected(
             meeting.joinWithMedia({
@@ -865,11 +866,11 @@ describe('plugin-meetings', () => {
           );
         });
 
-        it('should not call leave() if addMedia fails the first time and succeeds the second time and should only call join() once', async () => {
+        it('should not call leave() if addMediaInternal() fails the first time and succeeds the second time and should only call join() once', async () => {
           const addMediaError = new Error('fake addMedia error');
           const leaveStub = sinon.stub(meeting, 'leave');
 
-          meeting.addMedia = sinon
+          meeting.addMediaInternal = sinon
             .stub()
             .onFirstCall()
             .rejects(addMediaError)
@@ -904,37 +905,173 @@ describe('plugin-meetings', () => {
           );
         });
 
-        it('should force TURN discovery on the 2nd attempt, if addMedia() fails the first time', async () => {
+        it('should send the right CA events when media connection fails', async () => {
+          const fakeClientError = {id: 'error'};
+
+          const fakeMediaConnection = {
+            close: sinon.stub(),
+            getConnectionState: sinon.stub().returns(ConnectionState.Connected),
+            initiateOffer: sinon.stub().resolves({}),
+            on: sinon.stub(),
+            forceRtcMetricsSend: sinon.stub().resolves(),
+          };
+
+          // setup the stubs so that media connection always fails on waitForMediaConnectionConnected()
+          addMediaInternalStub.restore();
+          meeting.join.returns(
+            Promise.resolve({id: 'join result', roapMessage: 'fake TURN discovery response'})
+          );
+
+          sinon.stub(Media, 'createMediaConnection').returns(fakeMediaConnection);
+          sinon.stub(meeting, 'waitForRemoteSDPAnswer').resolves();
+          sinon.stub(meeting.roap, 'doTurnDiscovery').resolves({turnServerInfo: 'fake turn info'});
+          sinon
+            .stub(meeting.mediaProperties, 'waitForMediaConnectionConnected')
+            .rejects(new Error('fake error'));
+
+          webex.meetings.reachability.isWebexMediaBackendUnreachable = sinon.stub().resolves(false);
+          webex.internal.newMetrics.callDiagnosticMetrics.getErrorPayloadForClientErrorCode = sinon
+            .stub()
+            .returns(fakeClientError);
+
+          // call joinWithMedia() - it should fail
+          await assert.isRejected(
+            meeting.joinWithMedia({
+              joinOptions,
+              mediaOptions,
+            })
+          );
+
+          // check the right CA events have been sent:
+          // calls at index 0 and 2 to submitClientEvent are for "client.media.capabilities" which we don't care about in this test
+          assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent.getCall(1), {
+            name: 'client.ice.end',
+            payload: {
+              canProceed: false,
+              icePhase: 'JOIN_MEETING_RETRY',
+              errors: [fakeClientError],
+            },
+            options: {
+              meetingId: meeting.id,
+            },
+          });
+          assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent.getCall(3), {
+            name: 'client.ice.end',
+            payload: {
+              canProceed: false,
+              icePhase: 'JOIN_MEETING_FINAL',
+              errors: [fakeClientError],
+            },
+            options: {
+              meetingId: meeting.id,
+            },
+          });
+        });
+
+        it('should force TURN discovery on the 2nd attempt, if addMediaInternal() fails the first time', async () => {
           const addMediaError = new Error('fake addMedia error');
 
-          meeting.addMedia = sinon
-            .stub()
-            .onFirstCall()
-            .rejects(addMediaError)
-            .onSecondCall()
-            .resolves(test4);
+          const fakeMediaConnection = {
+            close: sinon.stub(),
+            getConnectionState: sinon.stub().returns(ConnectionState.Connected),
+            initiateOffer: sinon.stub().resolves({}),
+            on: sinon.stub(),
+          };
+
+          /* Setup the stubs so that the first call to addMediaInternal() fails
+             and the 2nd call calls the real implementation - so that we can check that
+             addMediaInternal() eventually calls meeting.roap.doTurnDiscovery() with isForced=true.
+             As a result we need to also stub a few other methods like createMediaConnection() and waitForRemoteSDPAnswer() */
+          sinon.stub(Media, 'createMediaConnection').returns(fakeMediaConnection);
+          sinon.stub(meeting, 'waitForRemoteSDPAnswer').resolves();
+
+          addMediaInternalStub.onFirstCall().rejects(addMediaError);
+          addMediaInternalStub.onSecondCall().callsFake((...args) => {
+            return addMediaInternalStub.wrappedMethod.bind(meeting)(...args);
+          });
+
+          sinon.stub(meeting.roap, 'doTurnDiscovery').resolves({turnServerInfo: 'fake turn info'});
 
           const result = await meeting.joinWithMedia({
             joinOptions,
             mediaOptions,
           });
 
-          assert.deepEqual(result, {join: fakeJoinResult, media: test4});
+          assert.deepEqual(result, {join: fakeJoinResult, media: undefined});
 
           assert.calledOnce(meeting.join);
 
-          // first addMedia() call without forcing TURN
-          assert.calledWith(meeting.addMedia.firstCall, mediaOptions, fakeTurnServerInfo, false);
+          // first addMediaInternal() call without forcing TURN
+          assert.calledWith(
+            meeting.addMediaInternal.firstCall,
+            sinon.match.any,
+            fakeTurnServerInfo,
+            false,
+            mediaOptions
+          );
 
-          // second addMedia() call with forcing TURN
-          assert.calledWith(meeting.addMedia.secondCall, mediaOptions, undefined, true);
+          // second addMediaInternal() call with forcing TURN
+          assert.calledWith(
+            meeting.addMediaInternal.secondCall,
+            sinon.match.any,
+            undefined,
+            true,
+            mediaOptions
+          );
+
+          // now check that TURN is actually forced by addMediaInternal(),
+          // we're not checking the isReconnecting param value, because it depends on the full sequence of things
+          // being done correctly (like SDP offer creation) and some of these are stubbed in this test
+          assert.calledWith(meeting.roap.doTurnDiscovery, meeting, sinon.match.any, true);
+        });
+
+        it('should return the right icePhase in icePhaseCallback on 1st attempt and retry', async () => {
+          const addMediaError = new Error('fake addMedia error');
+
+          const icePhaseCallbacks = [];
+          const addMediaInternalResults = [];
+
+          meeting.addMediaInternal = sinon
+            .stub()
+            .callsFake((icePhaseCallback, _turnServerInfo, _forceTurnDiscovery) => {
+              const defer = new Defer();
+
+              icePhaseCallbacks.push(icePhaseCallback);
+              addMediaInternalResults.push(defer);
+              return defer.promise;
+            });
+
+          const result = meeting.joinWithMedia({
+            joinOptions,
+            mediaOptions,
+          });
+
+          await testUtils.flushPromises();
+
+          // check the callback works correctly on the 1st attempt
+          assert.equal(icePhaseCallbacks.length, 1);
+          assert.equal(icePhaseCallbacks[0](), 'JOIN_MEETING_RETRY');
+
+          // now trigger the failure, so that joinWithMedia() does a retry
+          addMediaInternalResults[0].reject(addMediaError);
+
+          await testUtils.flushPromises();
+
+          // check the callback works correctly on the 2nd attempt
+          assert.equal(icePhaseCallbacks.length, 2);
+          assert.equal(icePhaseCallbacks[1](), 'JOIN_MEETING_FINAL');
+
+          // trigger 2nd failure
+          addMediaInternalResults[1].reject(addMediaError);
+
+          await assert.isRejected(result);
         });
 
         it('should not attempt a retry if we fail to create the offer on first atttempt', async () => {
           const addMediaError = new Error('fake addMedia error');
           addMediaError.name = 'SdpOfferCreationError';
 
-          meeting.addMedia.rejects(addMediaError)
+          meeting.addMediaInternal.rejects(addMediaError)
 
           await assert.isRejected(meeting.joinWithMedia({
             joinOptions,
@@ -943,7 +1080,7 @@ describe('plugin-meetings', () => {
 
           // check that only 1 attempt was done
           assert.calledOnce(meeting.join);
-          assert.calledOnce(meeting.addMedia);
+          assert.calledOnce(meeting.addMediaInternal);
           assert.calledOnce(Metrics.sendBehavioralMetric);
           assert.calledWith(
             Metrics.sendBehavioralMetric.firstCall,
@@ -2994,16 +3131,6 @@ describe('plugin-meetings', () => {
           );
 
           assert.isOk(errorThrown);
-        });
-
-        it('should pass the forceTurnDiscovery parameter to doTurnDiscovery()', async () => {
-          meeting.meetingState = 'ACTIVE';
-
-          // call addMedia() with forceTurnDiscovery=true
-          await meeting.addMedia({}, undefined, true);
-
-          // Check that the value was passed on to doTurnDiscovery()
-          assert.calledOnceWithExactly(meeting.roap.doTurnDiscovery, meeting, false, true);
         });
 
         describe('handles StatsAnalyzer events', () => {
