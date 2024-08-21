@@ -3419,7 +3419,7 @@ describe('plugin-meetings', () => {
               unreachable: true,
               expectedErrorPayload: {
                 errorDescription: ERROR_DESCRIPTIONS.ICE_AND_REACHABILITY_FAILED,
-                category: 'network',
+                category: 'expected',
               },
             },
           ].forEach(({clientErrorCode, expectedErrorPayload, unreachable}) => {
