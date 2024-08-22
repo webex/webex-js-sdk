@@ -4,7 +4,7 @@
 import 'jsdom-global/register';
 import {cloneDeep, forEach, isEqual, isUndefined} from 'lodash';
 import sinon from 'sinon';
-import * as InternalMediaModule from '@webex/internal-media-core';
+import * as InternalMediaCoreModule from '@webex/internal-media-core';
 import StateMachine from 'javascript-state-machine';
 import uuid from 'uuid';
 import {assert, expect} from '@webex/test-helper-chai';
@@ -31,7 +31,6 @@ import {
   NETWORK_STATUS,
   ONLINE,
   OFFLINE,
-  RECONNECTION,
   ROAP_OFFER_ANSWER_EXCHANGE_TIMEOUT,
 } from '@webex/plugin-meetings/src/constants';
 import {
@@ -2286,7 +2285,7 @@ describe('plugin-meetings', () => {
           Media.createMediaConnection = sinon.stub().returns({
             initiateOffer: sinon.stub().callsFake(() => {
               // simulate offer being generated
-              eventListeners[Event.LOCAL_SDP_OFFER_GENERATED]();
+              eventListeners[MediaConnectionEventNames.LOCAL_SDP_OFFER_GENERATED]();
 
               return Promise.resolve();
             }),
@@ -3153,7 +3152,7 @@ describe('plugin-meetings', () => {
 
             statsAnalyzerStub = new EventsScope();
             // mock the StatsAnalyzer constructor
-            sinon.stub(InternalMediaModule, 'StatsAnalyzer').returns(statsAnalyzerStub);
+            sinon.stub(InternalMediaCoreModule, 'StatsAnalyzer').returns(statsAnalyzerStub);
 
             await meeting.addMedia({
               mediaSettings: {},
@@ -3381,7 +3380,7 @@ describe('plugin-meetings', () => {
         it('succeeds even if getDevices() throws', async () => {
           meeting.meetingState = 'ACTIVE';
 
-          sinon.stub(InternalMediaModule, 'getDevices').rejects(new Error('fake error'));
+          sinon.stub(InternalMediaCoreModule, 'getDevices').rejects(new Error('fake error'));
 
           await meeting.addMedia();
         });
@@ -3650,11 +3649,11 @@ describe('plugin-meetings', () => {
             };
 
             roapMediaConnectionConstructorStub = sinon
-              .stub(InternalMediaModule, 'RoapMediaConnection')
+              .stub(InternalMediaCoreModule, 'RoapMediaConnection')
               .returns(fakeRoapMediaConnection);
 
             multistreamRoapMediaConnectionConstructorStub = sinon
-              .stub(InternalMediaModule, 'MultistreamRoapMediaConnection')
+              .stub(InternalMediaCoreModule, 'MultistreamRoapMediaConnection')
               .returns(fakeMultistreamRoapMediaConnection);
 
             locusMediaRequestStub = sinon
