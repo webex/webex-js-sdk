@@ -73,6 +73,7 @@ export class Registration implements IRegistration {
   private backupMobiusUris: string[];
   private registerRetry = false;
   private reconnectPending = false;
+  private jwe?: string;
 
   /**
    */
@@ -81,8 +82,10 @@ export class Registration implements IRegistration {
     serviceData: ServiceData,
     mutex: Mutex,
     lineEmitter: LineEmitterCallback,
-    logLevel: LOGGER
+    logLevel: LOGGER,
+    jwe?: string
   ) {
+    this.jwe = jwe;
     this.sdkConnector = SDKConnector;
     this.serviceData = serviceData;
     if (!this.sdkConnector.getWebex()) {
@@ -169,7 +172,7 @@ export class Registration implements IRegistration {
     const deviceInfo = {
       userId: this.userId,
       clientDeviceUri: this.webex.internal.device.url,
-      serviceData: this.serviceData,
+      serviceData: this.jwe ? {...this.serviceData, jwe: this.jwe} : this.serviceData,
     };
 
     return <WebexRequestPayload>this.webex.request({
@@ -847,5 +850,6 @@ export const createRegistration = (
   serviceData: ServiceData,
   mutex: Mutex,
   lineEmitter: LineEmitterCallback,
-  logLevel: LOGGER
-): IRegistration => new Registration(webex, serviceData, mutex, lineEmitter, logLevel);
+  logLevel: LOGGER,
+  jwe?: string
+): IRegistration => new Registration(webex, serviceData, mutex, lineEmitter, logLevel, jwe);
