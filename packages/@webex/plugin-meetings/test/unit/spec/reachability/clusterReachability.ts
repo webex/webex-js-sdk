@@ -32,7 +32,7 @@ describe('ClusterReachability', () => {
       setLocalDescription: sinon.stub().resolves(),
       close: sinon.stub(),
       iceGatheringState: 'new',
-      getStats: sinon.stub().resolves(),
+      getStats: sinon.stub().resolves([]),
     };
 
     previousRTCPeerConnection = global.RTCPeerConnection;
@@ -166,6 +166,8 @@ describe('ClusterReachability', () => {
       await clock.tickAsync(100);
       fakePeerConnection.onicecandidate({candidate: {type: 'srflx', address: 'somePublicIp'}});
 
+      await testUtils.flushPromises();
+
       // check the right events were emitted
       assert.equal(emittedEvents[Events.resultReady].length, 1);
       assert.deepEqual(emittedEvents[Events.resultReady][0], {
@@ -236,6 +238,8 @@ describe('ClusterReachability', () => {
 
       await clock.tickAsync(100);
       fakePeerConnection.onicecandidate({candidate: {type: 'srflx', address: 'somePublicIp'}});
+
+      await testUtils.flushPromises();
 
       // check the right event was emitted
       assert.equal(emittedEvents[Events.resultReady].length, 1);
@@ -379,6 +383,8 @@ describe('ClusterReachability', () => {
       await clock.tickAsync(10);
       fakePeerConnection.onicecandidate({candidate: {type: 'srflx', address: 'somePublicIp1'}});
 
+      await testUtils.flushPromises();
+
       // check events emitted: there should be a resultReady and no clientMediaIpsUpdated
       assert.equal(emittedEvents[Events.resultReady].length, 1);
       assert.deepEqual(emittedEvents[Events.resultReady][0], {
@@ -393,12 +399,16 @@ describe('ClusterReachability', () => {
       await clock.tickAsync(10);
       fakePeerConnection.onicecandidate({candidate: {type: 'srflx', address: 'somePublicIp1'}});
 
+      await testUtils.flushPromises();
+
       // no new event was emitted
       assert.equal(emittedEvents[Events.resultReady].length, 0);
       assert.equal(emittedEvents[Events.clientMediaIpsUpdated].length, 0);
 
       await clock.tickAsync(10);
       fakePeerConnection.onicecandidate({candidate: {type: 'srflx', address: 'somePublicIp2'}});
+
+      await testUtils.flushPromises();
 
       // check new events: now only clientMediaIpsUpdated event and no resultReady events
       assert.equal(emittedEvents[Events.resultReady].length, 0);
@@ -411,6 +421,8 @@ describe('ClusterReachability', () => {
 
       await clock.tickAsync(10);
       fakePeerConnection.onicecandidate({candidate: {type: 'srflx', address: 'somePublicIp2'}});
+
+      await testUtils.flushPromises();
 
       // no new event was emitted
       assert.equal(emittedEvents[Events.resultReady].length, 0);
