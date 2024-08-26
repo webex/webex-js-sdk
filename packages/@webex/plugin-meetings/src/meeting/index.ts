@@ -694,6 +694,7 @@ export default class Meeting extends StatelessWebexPlugin {
   private joinWithMediaRetryInfo?: {isRetry: boolean; prevJoinResponse?: any};
   private connectionStateHandler?: ConnectionStateHandler;
   private iceCandidateErrors: Map<string, number>;
+  private iceCandidatesCount: number;
 
   /**
    * @param {Object} attrs
@@ -1508,6 +1509,15 @@ export default class Meeting extends StatelessWebexPlugin {
      * @memberof Meeting
      */
     this.iceCandidateErrors = new Map();
+
+    /**
+     * Gathered ICE Candidates count
+     * @instance
+     * @type {number}
+     * @private
+     * @memberof Meeting
+     */
+    this.iceCandidatesCount = 0;
   }
 
   /**
@@ -6119,6 +6129,13 @@ export default class Meeting extends StatelessWebexPlugin {
 
       this.iceCandidateErrors.set(error, count + 1);
     });
+
+    this.iceCandidatesCount = 0;
+    this.mediaProperties.webrtcMediaConnection.on(Event.ICE_CANDIDATE, (event) => {
+      if (event.candidate) {
+        this.iceCandidatesCount += 1;
+      }
+    });
   };
 
   /**
@@ -6990,6 +7007,7 @@ export default class Meeting extends StatelessWebexPlugin {
         retriedWithTurnServer: this.addMediaData.retriedWithTurnServer,
         isJoinWithMediaRetry: this.joinWithMediaRetryInfo.isRetry,
         ...reachabilityStats,
+        iceCandidatesCount: this.iceCandidatesCount,
       });
       // @ts-ignore
       this.webex.internal.newMetrics.submitClientEvent({
@@ -7045,6 +7063,7 @@ export default class Meeting extends StatelessWebexPlugin {
           'unknown',
         ...reachabilityMetrics,
         ...iceCandidateErrors,
+        iceCandidatesCount: this.iceCandidatesCount,
       });
 
       await this.cleanUpOnAddMediaFailure();
