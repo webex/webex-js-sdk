@@ -21,6 +21,7 @@ export interface CallingClientConfig {
   logger?: LoggerConfig;
   discovery?: DiscoveryConfig;
   serviceData?: ServiceData;
+  jwe?: string;
 }
 
 export type CallingClientErrorEmitterCallback = (
