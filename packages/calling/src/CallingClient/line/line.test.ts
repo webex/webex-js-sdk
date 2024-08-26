@@ -243,12 +243,10 @@ describe('Line Tests', () => {
       const createCallSpy = jest.spyOn(line.callManager, 'createCall');
       const call = line.makeCall({address: '5003', type: CallType.URI});
 
-      expect(createCallSpy).toBeCalledOnceWith(
-        {address: 'tel:5003', type: 'uri'},
-        CallDirection.OUTBOUND,
-        undefined,
-        line.lineId
-      );
+      expect(createCallSpy).toBeCalledOnceWith(CallDirection.OUTBOUND, undefined, line.lineId, {
+        address: 'tel:5003',
+        type: 'uri',
+      });
       expect(call).toBeTruthy();
       expect(line.getCall(call ? call.getCorrelationId() : '')).toBe(call);
       expect(call ? call.direction : undefined).toStrictEqual(CallDirection.OUTBOUND);
@@ -259,12 +257,10 @@ describe('Line Tests', () => {
       const createCallSpy = jest.spyOn(line.callManager, 'createCall');
       const call = line.makeCall({address: '*25', type: CallType.URI});
 
-      expect(createCallSpy).toBeCalledOnceWith(
-        {address: 'tel:*25', type: 'uri'},
-        CallDirection.OUTBOUND,
-        undefined,
-        line.lineId
-      );
+      expect(createCallSpy).toBeCalledOnceWith(CallDirection.OUTBOUND, undefined, line.lineId, {
+        address: 'tel:*25',
+        type: 'uri',
+      });
       expect(call).toBeTruthy();
       expect(call ? call.direction : undefined).toStrictEqual(CallDirection.OUTBOUND);
       call?.end();
@@ -274,12 +270,10 @@ describe('Line Tests', () => {
       const createCallSpy = jest.spyOn(line.callManager, 'createCall');
       const call = line.makeCall({address: '+91 123 456 7890', type: CallType.URI});
 
-      expect(createCallSpy).toBeCalledOnceWith(
-        {address: 'tel:+911234567890', type: 'uri'},
-        CallDirection.OUTBOUND,
-        undefined,
-        line.lineId
-      );
+      expect(createCallSpy).toBeCalledOnceWith(CallDirection.OUTBOUND, undefined, line.lineId, {
+        address: 'tel:+911234567890',
+        type: 'uri',
+      });
       expect(call).toBeTruthy();
       expect(call ? call.direction : undefined).toStrictEqual(CallDirection.OUTBOUND);
       expect(call ? call.destination.address : undefined).toStrictEqual('tel:+911234567890');
@@ -290,12 +284,10 @@ describe('Line Tests', () => {
       const createCallSpy = jest.spyOn(line.callManager, 'createCall');
       const call = line.makeCall({address: '123-456-7890', type: CallType.URI});
 
-      expect(createCallSpy).toBeCalledOnceWith(
-        {address: 'tel:1234567890', type: 'uri'},
-        CallDirection.OUTBOUND,
-        undefined,
-        line.lineId
-      );
+      expect(createCallSpy).toBeCalledOnceWith(CallDirection.OUTBOUND, undefined, line.lineId, {
+        address: 'tel:1234567890',
+        type: 'uri',
+      });
       expect(call).toBeTruthy();
       expect(call ? call.direction : undefined).toStrictEqual(CallDirection.OUTBOUND);
       expect(call ? call.destination.address : undefined).toStrictEqual('tel:1234567890');
@@ -325,8 +317,6 @@ describe('Line Tests', () => {
 
     it('attempt to create call with incorrect number format 2', (done) => {
       expect.assertions(4);
-      // There may be other listeners , which may create race
-      line.removeAllListeners(LINE_EVENTS.ERROR);
       const createCallSpy = jest.spyOn(line.callManager, 'createCall');
 
       line.on(LINE_EVENTS.ERROR, (error) => {
@@ -344,6 +334,26 @@ describe('Line Tests', () => {
       } catch (error) {
         done(error);
       }
+    });
+
+    it('attempt to create call with guest calling service indicator', () => {
+      expect.assertions(2);
+      const createCallSpy = jest.spyOn(line.callManager, 'createCall');
+
+      // Mocking the serviceData to have GUEST_CALLING indicator
+      line = new Line(
+        userId,
+        clientDeviceUri,
+        mutex,
+        primaryMobiusUris(),
+        backupMobiusUris(),
+        LOGGER.INFO,
+        {indicator: ServiceIndicator.GUEST_CALLING}
+      );
+      const call = line.makeCall();
+
+      expect(call).toBeTruthy();
+      expect(createCallSpy).toBeCalledWith(CallDirection.OUTBOUND, undefined, expect.any(String));
     });
   });
 });

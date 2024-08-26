@@ -69,6 +69,8 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
 
   private callManager: ICallManager;
 
+  private serviceData: CallingClientConfig['serviceData'];
+
   #primaryMobiusUris: string[];
 
   #backupMobiusUris: string[];
@@ -104,6 +106,7 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
     const serviceData = serviceDataConfig?.indicator
       ? serviceDataConfig
       : {indicator: ServiceIndicator.CALLING, domain: ''};
+    this.serviceData = serviceData;
 
     validateServiceData(serviceData);
 
@@ -227,7 +230,7 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
    * Initiates a call to the specified destination.
    * @param dest - The call details including destination information.
    */
-  public makeCall = (dest: CallDetails): ICall | undefined => {
+  public makeCall = (dest?: CallDetails): ICall | undefined => {
     let call;
 
     if (dest) {
@@ -244,10 +247,10 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
         };
 
         call = this.callManager.createCall(
-          formattedDest,
           CallDirection.OUTBOUND,
           this.registration.getDeviceInfo().device?.deviceId as string,
-          this.lineId
+          this.lineId,
+          formattedDest
         );
         log.log(`New call created, callId: ${call.getCallId()}`, {});
       } else {
@@ -262,6 +265,16 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
 
         this.emit(LINE_EVENTS.ERROR, err);
       }
+
+      return call;
+    }
+    if (this.serviceData?.indicator === ServiceIndicator.GUEST_CALLING) {
+      call = this.callManager.createCall(
+        CallDirection.OUTBOUND,
+        this.registration.getDeviceInfo().device?.deviceId as string,
+        this.lineId
+      );
+      log.log(`New call created, callId: ${call.getCallId()}`, {});
 
       return call;
     }
