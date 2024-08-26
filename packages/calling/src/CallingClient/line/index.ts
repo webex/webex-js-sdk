@@ -274,7 +274,7 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
         this.registration.getDeviceInfo().device?.deviceId as string,
         this.lineId
       );
-      log.log(`New call created, callId: ${call.getCallId()}`, {});
+      log.log(`New guest call created, callId: ${call.getCallId()}`, {});
 
       return call;
     }
