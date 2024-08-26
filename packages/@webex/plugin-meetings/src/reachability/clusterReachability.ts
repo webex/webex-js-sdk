@@ -271,15 +271,23 @@ export class ClusterReachability extends EventsScope {
    * @param {string} protocol
    * @param {number} latency
    * @param {string|null} [publicIp]
+   * @param {number|null} [serverPort]
    * @returns {void}
    */
-  private saveResult(protocol: 'udp' | 'tcp' | 'xtls', latency: number, publicIp?: string | null) {
+  private saveResult(
+    protocol: 'udp' | 'tcp' | 'xtls',
+    latency: number,
+    publicIp?: string | null,
+    serverPort?: number | null
+  ) {
     const result = this.result[protocol];
 
     if (result.latencyInMilliseconds === undefined) {
+      const port = serverPort ? `(${serverPort})` : '';
+
       LoggerProxy.logger.log(
         // @ts-ignore
-        `Reachability:index#saveResult --> Successfully reached ${this.name} over ${protocol}: ${latency}ms`
+        `Reachability:index#saveResult --> Successfully reached ${this.name} over ${protocol}${port}: ${latency}ms`
       );
       result.latencyInMilliseconds = latency;
       result.result = 'reachable';
@@ -309,7 +317,7 @@ export class ClusterReachability extends EventsScope {
    * @returns {void}
    */
   private registerIceCandidateListener() {
-    this.pc.onicecandidate = (e) => {
+    this.pc.onicecandidate = async (e) => {
       const TURN_TLS_PORT = 443;
       const CANDIDATE_TYPES = {
         SERVER_REFLEXIVE: 'srflx',
@@ -320,7 +328,23 @@ export class ClusterReachability extends EventsScope {
 
       if (e.candidate) {
         if (e.candidate.type === CANDIDATE_TYPES.SERVER_REFLEXIVE) {
-          this.saveResult('udp', latencyInMilliseconds, e.candidate.address);
+          const stats = await this.pc.getStats();
+
+          let port = null;
+          stats.forEach((report) => {
+            if (
+              report.type === 'local-candidate' &&
+              report.address === e.candidate.address &&
+              report.port === e.candidate.port &&
+              report.url
+            ) {
+              const urlParts = report.url.split(':');
+
+              port = urlParts.pop();
+            }
+          });
+
+          this.saveResult('udp', latencyInMilliseconds, e.candidate.address, port);
         }
 
         if (e.candidate.type === CANDIDATE_TYPES.RELAY) {
