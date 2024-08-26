@@ -328,6 +328,9 @@ async function initCalling(e) {
       }
 
       fetchLines();
+      if (serviceIndicator === 'guestcalling') {
+        makeCallBtn.disabled = false;
+      }
     });
   });
 
