@@ -32,6 +32,7 @@ describe('ClusterReachability', () => {
       setLocalDescription: sinon.stub().resolves(),
       close: sinon.stub(),
       iceGatheringState: 'new',
+      getStats: sinon.stub().resolves(),
     };
 
     previousRTCPeerConnection = global.RTCPeerConnection;
