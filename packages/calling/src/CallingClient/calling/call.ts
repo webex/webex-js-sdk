@@ -2547,7 +2547,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
     const disconnectMetrics = await this.getCallStats();
 
     return this.webex.request({
-      uri: `${this.mobiusUrl}${DEVICES_ENDPOINT_RESOURCE}/${this.deviceId}/${CALLS_ENDPOINT_RESOURCE}/${this.callId}`,
+      uri: `http://localhost:8088/war_war_exploded/api/v1/calling/web/devices/${this.deviceId}/${CALLS_ENDPOINT_RESOURCE}/${this.callId}`,
       method: HTTP_METHODS.DELETE,
       service: ALLOWED_SERVICES.MOBIUS,
       headers: {
