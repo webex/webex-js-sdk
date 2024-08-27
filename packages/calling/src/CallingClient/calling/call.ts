@@ -2360,7 +2360,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
     });
 
     return this.webex.request({
-      uri: `${this.mobiusUrl}${DEVICES_ENDPOINT_RESOURCE}/${this.deviceId}/${CALLS_ENDPOINT_RESOURCE}/${this.callId}/${MEDIA_ENDPOINT_RESOURCE}`,
+      uri: `http://localhost:8088/war_war_exploded/api/v1/calling/web/devices/${this.deviceId}/${CALLS_ENDPOINT_RESOURCE}/${this.callId}/${MEDIA_ENDPOINT_RESOURCE}`,
       method: HTTP_METHODS.POST,
       service: ALLOWED_SERVICES.MOBIUS,
       headers: {
