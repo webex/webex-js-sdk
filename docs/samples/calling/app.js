@@ -328,7 +328,7 @@ async function initCalling(e) {
       }
 
       fetchLines();
-      if (serviceIndicator === 'guestcalling') {
+      if (serviceIndicator.value === 'guestcalling') {
         makeCallBtn.disabled = false;
       }
     });
@@ -573,7 +573,7 @@ function createCall(e) {
   console.log(destination.value);
   makeCallBtn.disabled = true;
   outboundEndElm.disabled = false
-  if (serviceIndicator !== 'guestcalling') {
+  if (serviceIndicator.value !== 'guestcalling') {
     line.makeCall({
       type: 'uri',
       address: destination.value,
