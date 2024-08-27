@@ -574,13 +574,13 @@ function createCall(e) {
   makeCallBtn.disabled = true;
   outboundEndElm.disabled = false
   if (serviceIndicator.value !== 'guestcalling') {
-    line.makeCall({
+    call = line.makeCall({
       type: 'uri',
       address: destination.value,
     });
   }
   else {
-    line.makeCall();
+    call = line.makeCall();
   }
 
   call.on('caller_id', (CallerIdEmitter) => {
