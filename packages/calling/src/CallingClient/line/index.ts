@@ -7,6 +7,7 @@ import {
   IDeviceInfo,
   MobiusDeviceId,
   RegistrationStatus,
+  ServiceData,
   ServiceIndicator,
 } from '../../common/types';
 import {ILine, LINE_EVENTS} from './types';
@@ -25,6 +26,8 @@ import {LINE_EVENT_KEYS, LineEventTypes} from '../../Events/types';
 import {ICall, ICallManager} from '../calling/types';
 import {getCallManager} from '../calling/callManager';
 import {ERROR_TYPE} from '../../Errors/types';
+
+let SERVICE_DATA: ServiceData = {indicator: ServiceIndicator.CALLING, domain: ''};
 
 export default class Line extends Eventing<LineEventTypes> implements ILine {
   #webex: WebexSDK;
@@ -69,8 +72,6 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
 
   private callManager: ICallManager;
 
-  private serviceData: CallingClientConfig['serviceData'];
-
   #primaryMobiusUris: string[];
 
   #backupMobiusUris: string[];
@@ -103,16 +104,13 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
     this.#primaryMobiusUris = primaryMobiusUris;
     this.#backupMobiusUris = backupMobiusUris;
 
-    const serviceData = serviceDataConfig?.indicator
-      ? serviceDataConfig
-      : {indicator: ServiceIndicator.CALLING, domain: ''};
-    this.serviceData = serviceData;
+    SERVICE_DATA = serviceDataConfig?.indicator ? serviceDataConfig : SERVICE_DATA;
 
-    validateServiceData(serviceData);
+    validateServiceData(SERVICE_DATA);
 
     this.registration = createRegistration(
       this.#webex,
-      serviceData,
+      SERVICE_DATA,
       this.#mutex,
       this.lineEmitter,
       logLevel,
@@ -121,7 +119,7 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
 
     log.setLogger(logLevel, LINE_FILE);
 
-    this.callManager = getCallManager(this.#webex, serviceData.indicator);
+    this.callManager = getCallManager(this.#webex, SERVICE_DATA.indicator);
 
     this.incomingCallListener();
   }
@@ -268,7 +266,7 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
 
       return call;
     }
-    if (this.serviceData?.indicator === ServiceIndicator.GUEST_CALLING) {
+    if (SERVICE_DATA.indicator === ServiceIndicator.GUEST_CALLING) {
       call = this.callManager.createCall(
         CallDirection.OUTBOUND,
         this.registration.getDeviceInfo().device?.deviceId as string,
