@@ -168,7 +168,6 @@ export class Registration implements IRegistration {
    * Implementation of POST request for device registration.
    *
    */
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private async postRegistration(url: string) {
     const deviceInfo = {
       userId: this.userId,
@@ -177,7 +176,7 @@ export class Registration implements IRegistration {
     };
 
     return <WebexRequestPayload>this.webex.request({
-      uri: `http://localhost:8088/war_war_exploded/api/v1/calling/web/device`,
+      uri: `${url}device`,
       method: HTTP_METHODS.POST,
       headers: {
         [CISCO_DEVICE_URL]: deviceInfo.clientDeviceUri,

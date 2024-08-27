@@ -27,7 +27,7 @@ import {ICall, ICallManager} from '../calling/types';
 import {getCallManager} from '../calling/callManager';
 import {ERROR_TYPE} from '../../Errors/types';
 
-let SERVICE_DATA: ServiceData = {indicator: ServiceIndicator.CALLING, domain: ''};
+let serviceData: ServiceData = {indicator: ServiceIndicator.CALLING, domain: ''};
 
 export default class Line extends Eventing<LineEventTypes> implements ILine {
   #webex: WebexSDK;
@@ -104,13 +104,13 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
     this.#primaryMobiusUris = primaryMobiusUris;
     this.#backupMobiusUris = backupMobiusUris;
 
-    SERVICE_DATA = serviceDataConfig?.indicator ? serviceDataConfig : SERVICE_DATA;
+    serviceData = serviceDataConfig?.indicator ? serviceDataConfig : serviceData;
 
-    validateServiceData(SERVICE_DATA);
+    validateServiceData(serviceData);
 
     this.registration = createRegistration(
       this.#webex,
-      SERVICE_DATA,
+      serviceData,
       this.#mutex,
       this.lineEmitter,
       logLevel,
@@ -119,7 +119,7 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
 
     log.setLogger(logLevel, LINE_FILE);
 
-    this.callManager = getCallManager(this.#webex, SERVICE_DATA.indicator);
+    this.callManager = getCallManager(this.#webex, serviceData.indicator);
 
     this.incomingCallListener();
   }
@@ -266,7 +266,7 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
 
       return call;
     }
-    if (SERVICE_DATA.indicator === ServiceIndicator.GUEST_CALLING) {
+    if (serviceData.indicator === ServiceIndicator.GUEST_CALLING) {
       call = this.callManager.createCall(
         CallDirection.OUTBOUND,
         this.registration.getDeviceInfo().device?.deviceId as string,
