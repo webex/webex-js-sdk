@@ -7551,13 +7551,13 @@ describe('plugin-meetings', () => {
           });
 
           it('should collect ice candidates', () => {
-            eventListeners[Event.ICE_CANDIDATE]({candidate: 'candidate'});
+            eventListeners[MediaConnectionEventNames.ICE_CANDIDATE]({candidate: 'candidate'});
 
             assert.equal(meeting.iceCandidatesCount, 1);
           });
 
           it('should not collect null ice candidates', () => {
-            eventListeners[Event.ICE_CANDIDATE]({candidate: null});
+            eventListeners[MediaConnectionEventNames.ICE_CANDIDATE]({candidate: null});
 
             assert.equal(meeting.iceCandidatesCount, 0);
           });

@@ -6149,15 +6149,19 @@ export default class Meeting extends StatelessWebexPlugin {
 
         const count = this.iceCandidateErrors.get(error) || 0;
 
-      this.iceCandidateErrors.set(error, count + 1);
-    });
+        this.iceCandidateErrors.set(error, count + 1);
+      }
+    );
 
     this.iceCandidatesCount = 0;
-    this.mediaProperties.webrtcMediaConnection.on(Event.ICE_CANDIDATE, (event) => {
-      if (event.candidate) {
-        this.iceCandidatesCount += 1;
+    this.mediaProperties.webrtcMediaConnection.on(
+      MediaConnectionEventNames.ICE_CANDIDATE,
+      (event) => {
+        if (event.candidate) {
+          this.iceCandidatesCount += 1;
+        }
       }
-    });
+    );
   };
 
   /**
