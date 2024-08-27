@@ -2022,6 +2022,7 @@ describe('plugin-meetings', () => {
               someReachabilityMetric2: 'some value2',
               selectedCandidatePairChanges: 2,
               numTransports: 1,
+              iceCandidatesCount: 0,
             }
           );
         });
@@ -2129,6 +2130,7 @@ describe('plugin-meetings', () => {
               someReachabilityMetric2: 'some value2',
               selectedCandidatePairChanges: 2,
               numTransports: 1,
+              iceCandidatesCount: 0,
             }
           );
         });
@@ -2670,6 +2672,7 @@ describe('plugin-meetings', () => {
               iceConnectionState: 'unknown',
               selectedCandidatePairChanges: 2,
               numTransports: 1,
+              iceCandidatesCount: 0,
             },
           ]);
 
@@ -2858,6 +2861,7 @@ describe('plugin-meetings', () => {
               isMultistream: false,
               retriedWithTurnServer: true,
               isJoinWithMediaRetry: false,
+              iceCandidatesCount: 0,
             },
           ]);
           meeting.roap.doTurnDiscovery;
@@ -2986,6 +2990,8 @@ describe('plugin-meetings', () => {
               someReachabilityMetric2: 'some value2',
             }),
           };
+          meeting.iceCandidatesCount = 3;
+          
           await meeting.addMedia({
             mediaSettings: {},
           });
@@ -3005,6 +3011,7 @@ describe('plugin-meetings', () => {
               isJoinWithMediaRetry: false,
               someReachabilityMetric1: 'some value1',
               someReachabilityMetric2: 'some value2',
+              iceCandidatesCount: 3,
             }
           );
 
@@ -3067,6 +3074,7 @@ describe('plugin-meetings', () => {
               iceConnectionState: 'unknown',
               selectedCandidatePairChanges: 2,
               numTransports: 1,
+              iceCandidatesCount: 0,
             }
           );
 
@@ -3126,7 +3134,8 @@ describe('plugin-meetings', () => {
               selectedCandidatePairChanges: 2,
               numTransports: 1,
               '701_error': 2,
-              '701_turn_host_lookup_received_error': 1
+              '701_turn_host_lookup_received_error': 1,
+              iceCandidatesCount: 0,
             }
           );
 
@@ -7503,6 +7512,7 @@ describe('plugin-meetings', () => {
           assert.isFunction(eventListeners[Event.REMOTE_TRACK_ADDED]);
           assert.isFunction(eventListeners[Event.PEER_CONNECTION_STATE_CHANGED]);
           assert.isFunction(eventListeners[Event.ICE_CONNECTION_STATE_CHANGED]);
+          assert.isFunction(eventListeners[Event.ICE_CANDIDATE]);
           assert.isFunction(eventListeners[Event.ICE_CANDIDATE_ERROR]);
         });
 
@@ -7539,10 +7549,27 @@ describe('plugin-meetings', () => {
           });
         });
 
+        describe('should react on a ICE_CANDIDATE event', () => {
+          beforeEach(() => {
+            meeting.setupMediaConnectionListeners();
+          });
+
+          it('should collect ice candidates', () => {
+            eventListeners[Event.ICE_CANDIDATE]({candidate: 'candidate'});
+
+            assert.equal(meeting.iceCandidatesCount, 1);
+          });
+
+          it('should not collect null ice candidates', () => {
+            eventListeners[Event.ICE_CANDIDATE]({candidate: null});
+
+            assert.equal(meeting.iceCandidatesCount, 0);
+          });
+        });
+
         describe('should react on a ICE_CANDIDATE_ERROR event', () => {
           beforeEach(() => {
             meeting.setupMediaConnectionListeners();
-
           });
 
           it('should not collect skipped ice candidates error', () => {
