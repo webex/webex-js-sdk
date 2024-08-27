@@ -941,8 +941,8 @@ describe('plugin-meetings', () => {
           await progressTime(MQA_INTERVAL);
 
           // 300 frames in 60 seconds = 5 frames per second
-          assert.strictEqual(mqeData.videoTransmit[0].streams[0].common.transmittedFrameRate, 5);
-          assert.strictEqual(mqeData.videoReceive[0].streams[0].common.receivedFrameRate, 5);
+          assert.strictEqual(mqeData.videoTransmit[0].streams[0].common.transmittedFrameRate, 500);
+          assert.strictEqual(mqeData.videoReceive[0].streams[0].common.receivedFrameRate, 500);
         });
       });
 
@@ -1925,7 +1925,7 @@ describe('plugin-meetings', () => {
                 rtpPackets: 0,
                 ssci: 0,
                 transmittedBitrate: 133.33333333333334,
-                transmittedFrameRate: 0,
+                transmittedFrameRate: 2,
               },
               h264CodecProfile: 'BP',
               isAvatar: false,

@@ -341,4 +341,9 @@ export class LocusMediaRequest extends WebexPlugin {
 
     return pendingPromise.promise;
   }
+
+  /** Returns true if a confluence on the server is already created */
+  public isConfluenceCreated() {
+    return this.confluenceState === 'created';
+  }
 }

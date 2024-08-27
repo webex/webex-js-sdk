@@ -22,7 +22,7 @@
       <div class="container">
         <div class="navbar-header">
           <div class="navbar-left">
-            <a class="navbar-brand" href="/">Cisco Webex JS SDK</a>
+            <a class="navbar-brand" href="../">Cisco Webex JS SDK</a>
           </div>
 
           <button class="navbar-toggle collapsed" type="button" data-toggle="collapse" data-target="#primary-navigation"
@@ -35,10 +35,10 @@
         </div>
         <ul class="nav navbar-nav navbar-right">
           <li>
-            <a class="page-link" href="/changelog/">Changelog</a>
+            <a class="page-link" href="../changelog/">Changelog</a>
           </li>
           <li>
-            <a class="page-link" href="/samples/">Samples</a>
+            <a class="page-link" href="../samples/">Samples</a>
           </li>
           <li>
             <a class="page-link" href="https://developer.webex.com/docs/sdks/browser#samples">Developer Portal</a>
@@ -48,47 +48,66 @@
     </header>
     <main>
       <div class="container">
-        <div class="search-container">
-            <form id="search-form" method="GET">
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="version-select">Select Stable Version:</label>
-                        <select id="version-select" class="full-width">
-                            <option value="">Select a version</option>
-                            <!-- Options will be populated here -->
-                        </select>
-                    </div>
-                </div>
-                <div class="form-row">
-                    <div class="form-group" id="package-input-group">
-                        <label for="package-name-input">Package Name:</label>
-                        <!-- <input type="text" id="package-name-input" class="full-width"> -->
-                        <select id="package-name-input" class="full-width">
-                            <!-- Options will be populated here -->
-                        </select>
-                    </div>
-                    <div class="form-group" id="version-input-group">
-                        <label for="version-input">Version:</label>
-                        <input type="text" id="version-input" class="full-width">
-                        <span style="color:red" id="version-input-error"></span>
-                    </div>
-                    <div class="form-group" id="commit-message-group">
-                        <label for="commit-message-input">Commit Message:</label>
-                        <input type="text" id="commit-message-input" class="full-width">
-                    </div>
-                    <div class="form-group" id="commit-hash-group">
-                        <label for="commit-hash-input">Commit Hash:</label>
-                        <input type="text" id="commit-hash-input" class="full-width">
-                    </div>
-                </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <button type="submit" id="search-button" class="btn btn-primary">Search</button>
-                        <a id="reset-button" href="./" class="btn btn-default">Reset</a>
-                    </div>
-                </div>
-            </form>
+        <div class="col-md-6">
+          <div class="search-container">
+              <form id="search-form" method="GET">
+                  <div class="form-row">
+                      <div class="form-group">
+                          <label for="version-select">Select Stable Version:</label>
+                          <select id="version-select" class="full-width">
+                              <option value="">Select a version</option>
+                              <!-- Options will be populated here -->
+                          </select>
+                      </div>
+                  </div>
+                  <div class="form-row">
+                      <div class="form-group" id="package-input-group">
+                          <label for="package-name-input">Package Name:</label>
+                          <!-- <input type="text" id="package-name-input" class="full-width"> -->
+                          <select id="package-name-input" class="full-width">
+                              <!-- Options will be populated here -->
+                          </select>
+                      </div>
+                      <div class="form-group" id="version-input-group">
+                          <label for="version-input">Version number:</label>
+                          <input type="text" id="version-input" class="full-width">
+                          <span style="color:red" id="version-input-error"></span>
+                      </div>
+                      <div class="form-group" id="commit-message-group">
+                          <label for="commit-message-input">Commit Message:</label>
+                          <input type="text" id="commit-message-input" class="full-width">
+                      </div>
+                      <div class="form-group" id="commit-hash-group">
+                          <label for="commit-hash-input">Commit Hash ID:</label>
+                          <input type="text" id="commit-hash-input" class="full-width">
+                      </div>
+                  </div>
+                  <div class="form-row">
+                      <div class="form-group">
+                          <button type="submit" id="search-button" class="btn btn-primary">Search</button>
+                          <a id="reset-button" href="./" class="btn btn-default">Reset</a>
+                      </div>
+                  </div>
+              </form>
+          </div>
         </div>
+        <div class="col-md-6">
+          <div class="search-container" id="helper-section">
+              <b>Search Examples:</b>
+              <ul>
+                  <li><a href="?stable_version=3.3.1&package=webex">Just package search - webex@3.3.1</a></li>
+                  <li><a href="?stable_version=3.3.1&package=webex&version=3.3.1-next.33">Package + version search - webex@3.3.1-next.33</a></li>
+                  <li><a href="?stable_version=3.3.1&commitMessage=behavioral+metrics&commitHash=ddb2adf9367a83d82f6a0c18815bef578bc9b07a">Commit Hash + Commit Message Search</a></li>
+                  <li><a href="?stable_version=3.3.1&commitHash=221c77c">Commit Hash Search</a></li>
+                  <li><a href="?stable_version=3.3.1&commitMessage=%233726">PR Number search - #3726</a></li>
+                  <li><a href="?stable_version=3.3.1&commitMessage=fix%28">Fix Releases</a> and <a href="?stable_version=3.3.1&commitMessage=feat%28">Feature Releases</a></li>
+              </ul>
+              <b>A quick Vidcast on how to use this portal:</b><br/>
+              <ul><li><a href="https://app.vidcast.io/share/072f82d1-3735-4a13-8c74-1ece59723ff3" target="_blank">Watch the vidcast here</a></li></ul>
+          </div>
+        </div>
+      </div> 
+      <div class="container">
         <div class="results-container" id="search-results">
             
         </div>            
@@ -100,7 +119,7 @@
         <div class="row">
           <div class="col-xs-12 col-md-12">
             <div class="copyright">
-              &copy; 2015-2022 Cisco and/or its affiliates. All Rights Reserved.
+              &copy; 2015-2024 Cisco and/or its affiliates. All Rights Reserved.
             </div>
           </div>
         </div>
@@ -139,7 +158,7 @@
                     {{#each (forIn this.alongWith)}}
                       <tr>
                           <td>{{{this.key}}}</td>
-                          <td><a href='/changelog/?stable_version={{@root.data.stable_version}}&package={{{this.key}}}&version={{{this.value}}}'>{{{this.value}}}</a></td>
+                          <td><a href='?stable_version={{@root.data.stable_version}}&package={{{this.key}}}&version={{{this.value}}}'>{{{this.value}}}</a></td>
                       </tr>
                     {{/each}}
                   </tbody>
