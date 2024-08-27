@@ -260,7 +260,7 @@ async function initCalling(e) {
     serviceData.domain = serviceDomain.value;
   }
 
-  if (guestName) {
+  if (guestName && serviceData.indicator === 'guestcalling') {
     serviceData.guestName = guestName.value
   }
 
