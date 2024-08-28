@@ -38,7 +38,7 @@ export default {
      *
      * @type {boolean}
      */
-    enableInactivityEnforcement: false,
+    enableInactivityEnforcement: true,
 
     /**
      * When true, the device registration will include a ttl value of
