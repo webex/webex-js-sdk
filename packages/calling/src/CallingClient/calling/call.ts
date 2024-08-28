@@ -1,5 +1,5 @@
 import {
-  Event,
+  MediaConnectionEventNames,
   LocalMicrophoneStream,
   LocalStreamEventNames,
   RoapMediaConnection,
@@ -2399,7 +2399,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    */
   private mediaRoapEventsListener() {
     this.mediaConnection.on(
-      Event.ROAP_MESSAGE_TO_SEND,
+      MediaConnectionEventNames.ROAP_MESSAGE_TO_SEND,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       async (event: any) => {
         log.info(
@@ -2467,7 +2467,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    */
   private mediaTrackListener() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    this.mediaConnection.on(Event.REMOTE_TRACK_ADDED, (e: any) => {
+    this.mediaConnection.on(MediaConnectionEventNames.REMOTE_TRACK_ADDED, (e: any) => {
       if (e.type === MEDIA_CONNECTION_EVENT_KEYS.MEDIA_TYPE_AUDIO) {
         this.emit(CALL_EVENT_KEYS.REMOTE_MEDIA, e.track);
       }
