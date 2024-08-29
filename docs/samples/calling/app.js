@@ -570,10 +570,15 @@ function createCall(e) {
   console.log(destination.value);
   makeCallBtn.disabled = true;
   outboundEndElm.disabled = false
-  call = line.makeCall({
-    type: 'uri',
-    address: destination.value,
-  });
+  if (serviceIndicator.value !== 'guestcalling') {
+    call = line.makeCall({
+      type: 'uri',
+      address: destination.value,
+    });
+  }
+  else {
+    call = line.makeCall();
+  }
 
   call.on('caller_id', (CallerIdEmitter) => {
     callDetailsElm.innerText = `Name: ${CallerIdEmitter.callerId.name}, Number: ${CallerIdEmitter.callerId.num}, Avatar: ${CallerIdEmitter.callerId.avatarSrc} , UserId: ${CallerIdEmitter.callerId.id}`;
