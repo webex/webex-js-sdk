@@ -714,6 +714,56 @@ describe('Call Tests', () => {
     );
   });
 
+  describe('Guest Calling Flow Tests', () => {
+    const dummyEvent = {
+      type: 'E_SEND_CALL_SETUP',
+      data: undefined as any,
+    };
+
+    let call: Call;
+
+    it('outgoing call without guest calling must have callee', async () => {
+      call = new Call(
+        activeUrl,
+        webex,
+        CallDirection.OUTBOUND,
+        deviceId,
+        mockLineId,
+        () => {
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          const dummy = 10;
+        },
+        defaultServiceIndicator,
+        dest
+      );
+      call['callStateMachine'].state.value = 'S_IDLE';
+      const requestSpy = jest.spyOn(webex, 'request');
+      call.sendCallStateMachineEvt(dummyEvent as CallEvent);
+      const requestArgs = requestSpy.mock.calls[0][0];
+      expect('callee' in requestArgs.body).toBe(true);
+    });
+
+    it('outgoing call for guest calling must not have callee', async () => {
+      call = new Call(
+        activeUrl,
+        webex,
+        CallDirection.OUTBOUND,
+        deviceId,
+        mockLineId,
+        () => {
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          const dummy = 10;
+        },
+        defaultServiceIndicator
+      );
+      call['callStateMachine'].state.value = 'S_IDLE';
+      const requestSpy = jest.spyOn(webex, 'request');
+      call.sendCallStateMachineEvt(dummyEvent as CallEvent);
+      const requestArgs = requestSpy.mock.calls[0][0];
+      expect('callee' in requestArgs.body).toBe(false);
+    });
+  });
+
   describe('#addSessionConnection', () => {
     let call;
 
