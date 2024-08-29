@@ -27,8 +27,6 @@ import {ICall, ICallManager} from '../calling/types';
 import {getCallManager} from '../calling/callManager';
 import {ERROR_TYPE} from '../../Errors/types';
 
-let serviceData: ServiceData = {indicator: ServiceIndicator.CALLING, domain: ''};
-
 export default class Line extends Eventing<LineEventTypes> implements ILine {
   #webex: WebexSDK;
 
@@ -72,6 +70,8 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
 
   private callManager: ICallManager;
 
+  private serviceData: ServiceData;
+
   #primaryMobiusUris: string[];
 
   #backupMobiusUris: string[];
@@ -104,13 +104,15 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
     this.#primaryMobiusUris = primaryMobiusUris;
     this.#backupMobiusUris = backupMobiusUris;
 
-    serviceData = serviceDataConfig?.indicator ? serviceDataConfig : serviceData;
+    this.serviceData = serviceDataConfig?.indicator
+      ? serviceDataConfig
+      : {indicator: ServiceIndicator.CALLING, domain: ''};
 
-    validateServiceData(serviceData);
+    validateServiceData(this.serviceData);
 
     this.registration = createRegistration(
       this.#webex,
-      serviceData,
+      this.serviceData,
       this.#mutex,
       this.lineEmitter,
       logLevel,
@@ -119,7 +121,7 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
 
     log.setLogger(logLevel, LINE_FILE);
 
-    this.callManager = getCallManager(this.#webex, serviceData.indicator);
+    this.callManager = getCallManager(this.#webex, this.serviceData.indicator);
 
     this.incomingCallListener();
   }
@@ -266,7 +268,7 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
 
       return call;
     }
-    if (serviceData.indicator === ServiceIndicator.GUEST_CALLING) {
+    if (this.serviceData.indicator === ServiceIndicator.GUEST_CALLING) {
       call = this.callManager.createCall(
         CallDirection.OUTBOUND,
         this.registration.getDeviceInfo().device?.deviceId as string,
