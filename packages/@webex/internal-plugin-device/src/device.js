@@ -395,6 +395,7 @@ const Device = WebexPlugin.extend({
         uri: this.url,
         body,
         headers,
+        qs: {includeUpstreamServices: `all${this.config.energyForecast ? ',energyforecast' : ''}`},
       })
         .then((response) => this.processRegistrationSuccess(response))
         .catch((reason) => {
@@ -464,6 +465,7 @@ const Device = WebexPlugin.extend({
         resource: 'devices',
         body,
         headers,
+        qs: {includeUpstreamServices: `all${this.config.energyForecast ? ',energyforecast' : ''}`},
       })
         .catch((error) => {
           this.webex.internal.newMetrics.submitInternalEvent({
