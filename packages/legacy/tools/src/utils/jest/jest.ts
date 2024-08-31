@@ -13,6 +13,7 @@ class Jest {
    * @returns - Empty Promise.
    */
   public static test({ files }: { files: Array<string> }): Promise<void> {
+    console.log('sreenara running jest.test files', files);
     return Jest.wrapper.run(files);
   }
 
