@@ -145,15 +145,18 @@ export class Registration implements IRegistration {
   private async deleteRegistration(url: string, deviceId: string, deviceUrl: string) {
     let response;
     try {
-      response = await fetch(`${url}${DEVICES_ENDPOINT_RESOURCE}/${deviceId}`, {
-        method: HTTP_METHODS.DELETE,
-        headers: {
-          [CISCO_DEVICE_URL]: deviceUrl,
-          Authorization: await this.webex.credentials.getUserToken(),
-          trackingId: `${WEBEX_WEB_CLIENT}_${uuid()}`,
-          [SPARK_USER_AGENT]: CALLING_USER_AGENT,
-        },
-      });
+      response = await fetch(
+        `http://localhost:8088/war_war_exploded/api/v1/calling/web/devices/${deviceId}`,
+        {
+          method: HTTP_METHODS.DELETE,
+          headers: {
+            [CISCO_DEVICE_URL]: deviceUrl,
+            Authorization: await this.webex.credentials.getUserToken(),
+            trackingId: `${WEBEX_WEB_CLIENT}_${uuid()}`,
+            [SPARK_USER_AGENT]: CALLING_USER_AGENT,
+          },
+        }
+      );
     } catch (error) {
       log.warn(`Delete failed with Mobius`, {});
     }
@@ -168,6 +171,7 @@ export class Registration implements IRegistration {
    * Implementation of POST request for device registration.
    *
    */
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private async postRegistration(url: string) {
     const deviceInfo = {
       userId: this.userId,
@@ -176,7 +180,7 @@ export class Registration implements IRegistration {
     };
 
     return <WebexRequestPayload>this.webex.request({
-      uri: `${url}device`,
+      uri: `http://localhost:8088/war_war_exploded/api/v1/calling/web/device`,
       method: HTTP_METHODS.POST,
       headers: {
         [CISCO_DEVICE_URL]: deviceInfo.clientDeviceUri,
