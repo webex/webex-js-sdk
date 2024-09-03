@@ -322,171 +322,171 @@ describe('plugin-meetings', () => {
         assert.equal(updates.isSharingBlockedChanged, false);
       });
     });
+  });
 
-    describe('isJoined', () => {
-      it(' returns true if state is joined', () => {
-        assert.deepEqual(SelfUtils.isJoined(self), true);
-      });
-
-      it(' returns true if state is not joined', () => {
-        const customSelf = {...self, state: 'NOT_JOINED'};
-
-        assert.deepEqual(SelfUtils.isJoined(customSelf), false);
-      });
-
-      it(' returns true if state is empty', () => {
-        const customSelf = {...self};
-
-        delete customSelf.state;
-
-        assert.deepEqual(SelfUtils.isJoined(customSelf), false);
-      });
+  describe('isJoined', () => {
+    it(' returns true if state is joined', () => {
+      assert.deepEqual(SelfUtils.isJoined(self), true);
     });
 
-    describe('mutedByOthersChanged', () => {
-      it('throws an error if changedSelf is not provided', function () {
-        assert.throws(
-          () => SelfUtils.mutedByOthersChanged({}, null),
-          'New self must be defined to determine if self was muted by others.'
-        );
-      });
+    it(' returns true if state is not joined', () => {
+      const customSelf = {...self, state: 'NOT_JOINED'};
 
-      it('return false when oldSelf is not defined', function () {
-        assert.equal(SelfUtils.mutedByOthersChanged(null, {remoteMuted: false}), false);
-      });
-
-      it('should return true when remoteMuted is true on entry', function () {
-        assert.equal(SelfUtils.mutedByOthersChanged(null, {remoteMuted: true}), true);
-      });
-
-      it('should return true when remoteMuted values are different', function () {
-        assert.equal(
-          SelfUtils.mutedByOthersChanged(
-            {remoteMuted: false},
-            {remoteMuted: true, selfIdentity: 'user1', modifiedBy: 'user2'}
-          ),
-          true
-        );
-      });
-
-      it('should return true when remoteMuted is true and unmuteAllowed has changed', function () {
-        assert.equal(
-          SelfUtils.mutedByOthersChanged(
-            {remoteMuted: true, unmuteAllowed: false},
-            {remoteMuted: true, unmuteAllowed: true, selfIdentity: 'user1', modifiedBy: 'user2'}
-          ),
-          true
-        );
-      });
+      assert.deepEqual(SelfUtils.isJoined(customSelf), false);
     });
 
-    describe('videoMutedByOthersChanged', () => {
-      it('returns true if changed', () => {
-        assert.equal(
-          SelfUtils.videoMutedByOthersChanged({remoteVideoMuted: true}, {remoteVideoMuted: false}),
-          true
-        );
-      });
+    it(' returns true if state is empty', () => {
+      const customSelf = {...self};
 
-      it('returns true if changed from undefined', () => {
-        assert.equal(SelfUtils.videoMutedByOthersChanged({}, {remoteVideoMuted: false}), true);
-      });
+      delete customSelf.state;
 
-      it('returns false if not changed', () => {
-        assert.equal(
-          SelfUtils.videoMutedByOthersChanged({remoteVideoMuted: false}, {remoteVideoMuted: false}),
-          false
-        );
-      });
+      assert.deepEqual(SelfUtils.isJoined(customSelf), false);
+    });
+  });
+
+  describe('mutedByOthersChanged', () => {
+    it('throws an error if changedSelf is not provided', function () {
+      assert.throws(
+        () => SelfUtils.mutedByOthersChanged({}, null),
+        'New self must be defined to determine if self was muted by others.'
+      );
     });
 
-    describe('getReplacedBreakoutMoveId', () => {
-      const deviceId = 'https://wdm-a.wbx2.com/wdm/api/v1/devices/20eabde3-4254-48da-9a24';
-      const breakoutMoveId = 'e5caeb2c-ffcc-4e06-a08a-1122e7710398';
-      const clonedSelf = cloneDeep(self);
-
-      it('get breakoutMoveId works', () => {
-        assert.deepEqual(SelfUtils.getReplacedBreakoutMoveId(self, deviceId), breakoutMoveId);
-      });
-
-      it('replaces is empty', () => {
-        clonedSelf.devices[0].replaces = undefined;
-        assert.deepEqual(SelfUtils.getReplacedBreakoutMoveId(clonedSelf, deviceId), null);
-      });
-
-      it('no self or self.devices is not array', () => {
-        assert.deepEqual(SelfUtils.getReplacedBreakoutMoveId(undefined, deviceId), null);
-
-        clonedSelf.devices = {
-          url: 'https://wdm-a.wbx2.com/wdm/api/v1/devices/20eabde3-4254-48da-9a24',
-          deviceType: 'WEB',
-          mediaSessionsExternal: false,
-          replaces: [
-            {
-              breakoutMoveId: 'e5caeb2c-ffcc-4e06-a08a-1122e7710398',
-              lastActive: '2023-05-04T07:14:32.068Z',
-              locusUrl:
-                'https://locus-alpha-apdx.prod.meetapi.webex.com/locus/api/v1/loci/495061ca-7b3c-3b77-85ff-4e1bd58600d1',
-              replacedAt: '2023-05-04T07:16:04.905Z',
-              sessionId: 'be3147d4-c318-86d8-7611-8d24beaaca8d',
-            },
-          ],
-          state: 'JOINED',
-        };
-        assert.deepEqual(SelfUtils.getReplacedBreakoutMoveId(clonedSelf, deviceId), null);
-      });
+    it('return false when oldSelf is not defined', function () {
+      assert.equal(SelfUtils.mutedByOthersChanged(null, {remoteMuted: false}), false);
     });
 
-    describe('isRolesChanged', () => {
-      it('should return false if new self is null', () => {
-        const parsedSelf = SelfUtils.parse(self);
-
-        assert.deepEqual(SelfUtils.isRolesChanged(parsedSelf, null), false);
-      });
-
-      it('should return true if self roles has changed', () => {
-        const parsedSelf = SelfUtils.parse(self);
-        const clonedSelf = cloneDeep(parsedSelf);
-
-        clonedSelf.roles = ['COHOST'];
-
-        assert.deepEqual(SelfUtils.isRolesChanged(parsedSelf, clonedSelf), true);
-      });
-
-      it('should return false if self roles has not changed', () => {
-        const parsedSelf = SelfUtils.parse(self);
-        const clonedSelf = cloneDeep(parsedSelf);
-
-        clonedSelf.roles = ['PRESENTER'];
-
-        assert.deepEqual(SelfUtils.isRolesChanged(parsedSelf, clonedSelf), false);
-      });
+    it('should return true when remoteMuted is true on entry', function () {
+      assert.equal(SelfUtils.mutedByOthersChanged(null, {remoteMuted: true}), true);
     });
 
-    describe('interpretationChanged', () => {
-      it('should return false if new self is null', () => {
-        const parsedSelf = SelfUtils.parse(self);
+    it('should return true when remoteMuted values are different', function () {
+      assert.equal(
+        SelfUtils.mutedByOthersChanged(
+          {remoteMuted: false},
+          {remoteMuted: true, selfIdentity: 'user1', modifiedBy: 'user2'}
+        ),
+        true
+      );
+    });
 
-        assert.deepEqual(SelfUtils.interpretationChanged(parsedSelf, null), false);
-      });
+    it('should return true when remoteMuted is true and unmuteAllowed has changed', function () {
+      assert.equal(
+        SelfUtils.mutedByOthersChanged(
+          {remoteMuted: true, unmuteAllowed: false},
+          {remoteMuted: true, unmuteAllowed: true, selfIdentity: 'user1', modifiedBy: 'user2'}
+        ),
+        true
+      );
+    });
+  });
 
-      it('should return true if interpretation info has changed', () => {
-        const parsedSelf = SelfUtils.parse(self);
-        const clonedSelf = cloneDeep(parsedSelf);
+  describe('videoMutedByOthersChanged', () => {
+    it('returns true if changed', () => {
+      assert.equal(
+        SelfUtils.videoMutedByOthersChanged({remoteVideoMuted: true}, {remoteVideoMuted: false}),
+        true
+      );
+    });
 
-        clonedSelf.interpretation.sourceLanguage = 'ja';
+    it('returns true if changed from undefined', () => {
+      assert.equal(SelfUtils.videoMutedByOthersChanged({}, {remoteVideoMuted: false}), true);
+    });
 
-        assert.deepEqual(SelfUtils.interpretationChanged(parsedSelf, clonedSelf), true);
-      });
+    it('returns false if not changed', () => {
+      assert.equal(
+        SelfUtils.videoMutedByOthersChanged({remoteVideoMuted: false}, {remoteVideoMuted: false}),
+        false
+      );
+    });
+  });
 
-      it('should return false if interpretation info  has not changed', () => {
-        const parsedSelf = SelfUtils.parse(self);
-        const clonedSelf = cloneDeep(parsedSelf);
+  describe('getReplacedBreakoutMoveId', () => {
+    const deviceId = 'https://wdm-a.wbx2.com/wdm/api/v1/devices/20eabde3-4254-48da-9a24';
+    const breakoutMoveId = 'e5caeb2c-ffcc-4e06-a08a-1122e7710398';
+    const clonedSelf = cloneDeep(self);
 
-        clonedSelf.interpretation.sourceLanguage = 'en';
+    it('get breakoutMoveId works', () => {
+      assert.deepEqual(SelfUtils.getReplacedBreakoutMoveId(self, deviceId), breakoutMoveId);
+    });
 
-        assert.deepEqual(SelfUtils.interpretationChanged(parsedSelf, clonedSelf), false);
-      });
+    it('replaces is empty', () => {
+      clonedSelf.devices[0].replaces = undefined;
+      assert.deepEqual(SelfUtils.getReplacedBreakoutMoveId(clonedSelf, deviceId), null);
+    });
+
+    it('no self or self.devices is not array', () => {
+      assert.deepEqual(SelfUtils.getReplacedBreakoutMoveId(undefined, deviceId), null);
+
+      clonedSelf.devices = {
+        url: 'https://wdm-a.wbx2.com/wdm/api/v1/devices/20eabde3-4254-48da-9a24',
+        deviceType: 'WEB',
+        mediaSessionsExternal: false,
+        replaces: [
+          {
+            breakoutMoveId: 'e5caeb2c-ffcc-4e06-a08a-1122e7710398',
+            lastActive: '2023-05-04T07:14:32.068Z',
+            locusUrl:
+              'https://locus-alpha-apdx.prod.meetapi.webex.com/locus/api/v1/loci/495061ca-7b3c-3b77-85ff-4e1bd58600d1',
+            replacedAt: '2023-05-04T07:16:04.905Z',
+            sessionId: 'be3147d4-c318-86d8-7611-8d24beaaca8d',
+          },
+        ],
+        state: 'JOINED',
+      };
+      assert.deepEqual(SelfUtils.getReplacedBreakoutMoveId(clonedSelf, deviceId), null);
+    });
+  });
+
+  describe('isRolesChanged', () => {
+    it('should return false if new self is null', () => {
+      const parsedSelf = SelfUtils.parse(self);
+
+      assert.deepEqual(SelfUtils.isRolesChanged(parsedSelf, null), false);
+    });
+
+    it('should return true if self roles has changed', () => {
+      const parsedSelf = SelfUtils.parse(self);
+      const clonedSelf = cloneDeep(parsedSelf);
+
+      clonedSelf.roles = ['COHOST'];
+
+      assert.deepEqual(SelfUtils.isRolesChanged(parsedSelf, clonedSelf), true);
+    });
+
+    it('should return false if self roles has not changed', () => {
+      const parsedSelf = SelfUtils.parse(self);
+      const clonedSelf = cloneDeep(parsedSelf);
+
+      clonedSelf.roles = ['PRESENTER'];
+
+      assert.deepEqual(SelfUtils.isRolesChanged(parsedSelf, clonedSelf), false);
+    });
+  });
+
+  describe('interpretationChanged', () => {
+    it('should return false if new self is null', () => {
+      const parsedSelf = SelfUtils.parse(self);
+
+      assert.deepEqual(SelfUtils.interpretationChanged(parsedSelf, null), false);
+    });
+
+    it('should return true if interpretation info has changed', () => {
+      const parsedSelf = SelfUtils.parse(self);
+      const clonedSelf = cloneDeep(parsedSelf);
+
+      clonedSelf.interpretation.sourceLanguage = 'ja';
+
+      assert.deepEqual(SelfUtils.interpretationChanged(parsedSelf, clonedSelf), true);
+    });
+
+    it('should return false if interpretation info  has not changed', () => {
+      const parsedSelf = SelfUtils.parse(self);
+      const clonedSelf = cloneDeep(parsedSelf);
+
+      clonedSelf.interpretation.sourceLanguage = 'en';
+
+      assert.deepEqual(SelfUtils.interpretationChanged(parsedSelf, clonedSelf), false);
     });
   });
 });
