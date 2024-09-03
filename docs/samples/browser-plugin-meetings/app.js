@@ -434,11 +434,17 @@ meetingsListElm.onclick = (e) => {
     document.getElementById('btn-join').disabled = true;
     document.getElementById('btn-join-media').disabled = true;
   }
-  else if (meeting && meeting.passwordStatus === 'UNKNOWN') {
+  else if (meeting && (meeting.passwordStatus === 'UNKNOWN' && meeting.destinationType!="")) {
     meetingsJoinPinElm.disabled = true;
     verifyPasswordElm.disabled = true;
     document.getElementById('btn-join').disabled = true;
     document.getElementById('btn-join-media').disabled = true;
+  }
+  else if(meeting && (meeting.passwordStatus === 'UNKNOWN' && meeting.destinationType==="")) {
+    meetingsJoinPinElm.disabled = true;
+    verifyPasswordElm.disabled = true;
+    document.getElementById('btn-join').disabled = false;
+    document.getElementById('btn-join-media').disabled = false;
   }
   else {
     meetingsJoinPinElm.disabled = true;
