@@ -18,7 +18,7 @@
     "@webex/internal-plugin-mercury": "workspace:*",
     "@webex/plugin-meetings": "workspace:*",
     "@webex/webex-core": "workspace:*",
-    "uuid": "^3.3.2"
+    "uuid": "^10.0.0"
   },
   "browserify": {
     "transform": [

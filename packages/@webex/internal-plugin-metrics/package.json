@@ -44,7 +44,7 @@
     "@webex/webex-core": "workspace:*",
     "ip-anonymize": "^0.1.0",
     "lodash": "^4.17.21",
-    "uuid": "^3.3.2"
+    "uuid": "^10.0.0"
   },
   "scripts": {
     "build": " yarn run -T tsc --declaration true --declarationDir ./dist/types",
