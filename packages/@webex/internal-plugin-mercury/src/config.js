@@ -30,5 +30,10 @@ export default {
      * @type {[type]}
      */
     forceCloseDelay: process.env.MERCURY_FORCE_CLOSE_DELAY || 2000,
+    /**
+     * parameter to tell this plugin to use the cc socket server to handle pong and authentication
+     * @type {number}
+     */
+    useCCSocketServer: process.env.MERCURY_USE_CC_SOCKET_SERVER || false,
   },
 };

@@ -89,6 +89,7 @@
     "@webex/plugin-webhooks": "workspace:*",
     "@webex/storage-adapter-local-storage": "workspace:*",
     "@webex/webex-core": "workspace:*",
+    "@webex/webexcc": "workspace:*",
     "lodash": "^4.17.21"
   }
 }
