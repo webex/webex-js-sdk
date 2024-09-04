@@ -365,6 +365,7 @@ export const EVENT_TRIGGERS = {
   MEETING_STOPPED_RECEIVING_TRANSCRIPTION: 'meeting:receiveTranscription:stopped',
   MEETING_MANUAL_CAPTION_UPDATED: 'meeting:manualCaptionControl:updated',
   MEETING_CAPTION_RECEIVED: 'meeting:caption-received',
+  MEETING_HIGHLIGHT_CREATED: 'meeting:highlight-created',
 };
 
 export const EVENT_TYPES = {

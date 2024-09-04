@@ -42,9 +42,10 @@ import {
   EVENT_TRIGGERS as VOICEAEVENTS,
   TURN_ON_CAPTION_STATUS,
   type MeetingTranscriptPayload,
+  type MeetingHighlightPayload,
 } from '@webex/internal-plugin-voicea';
 
-import {processNewCaptions} from './voicea-meeting';
+import {processHighlightCreated, processNewCaptions} from './voicea-meeting';
 
 import {
   MeetingNotActiveError,
@@ -183,6 +184,17 @@ export type CaptionData = {
   speaker: string;
 };
 
+export type Highlight = {
+  id: string;
+  meta: {
+    label: string;
+    source: string;
+  };
+  text: string;
+  timestamp: string;
+  speaker: any;
+};
+
 export type Transcription = {
   languageOptions: {
     captionLanguages?: string; // list of supported caption languages from backend
@@ -201,6 +213,7 @@ export type Transcription = {
   isCaptioning: boolean;
   speakerProxy: Map<string, any>;
   interimCaptions: Map<string, CaptionData>;
+  highlights: Array<Highlight>;
 };
 
 export type LocalStreams = {
@@ -678,6 +691,21 @@ export default class Meeting extends StatelessWebexPlugin {
       this.trigger(EVENT_TRIGGERS.MEETING_CAPTION_RECEIVED, {
         captions: this.transcription.captions,
         interimCaptions: this.transcription.interimCaptions,
+      });
+    },
+    [VOICEAEVENTS.HIGHLIGHT_CREATED]: (data: MeetingHighlightPayload) => {
+      processHighlightCreated({data, meeting: this});
+
+      LoggerProxy.logger.debug(
+        `${EventsUtil.getScopeLog({
+          file: 'meeting/index',
+          function: 'setUpVoiceaListeners',
+        })}event#${EVENT_TRIGGERS.MEETING_HIGHLIGHT_CREATED}`
+      );
+
+      // @ts-ignore
+      this.trigger(EVENT_TRIGGERS.MEETING_HIGHLIGHT_CREATED, {
+        highlights: this.transcription.highlights,
       });
     },
   };
@@ -4941,6 +4969,48 @@ export default class Meeting extends StatelessWebexPlugin {
         `Meeting:index#startTranscription --> meeting joined : ${this.isJoined()}`
       );
       throw new Error('Meeting is not joined');
+    }
+  }
+
+  /**
+   * This method will toggle the highlights for the current meeting if the meeting has enabled/supports Webex Assistant
+   * @param {Boolean} activate flag to enable/disable highlights
+   * @param {Object} options object with spokenlanguage setting
+   * @public
+   * @returns {Promise<void>} a promise to open the WebSocket connection
+   */
+  public async toggleHighlighting(activate: boolean, options?: {spokenLanguage?: string}) {
+    if (this.isJoined() && this.isTranscriptionSupported()) {
+      LoggerProxy.logger.info(
+        'Meeting:index#toggleHighlighting --> Attempting to enable highlights!'
+      );
+
+      try {
+        if (activate) {
+          // @ts-ignore
+          this.webex.internal.voicea.on(
+            VOICEAEVENTS.HIGHLIGHT_CREATED,
+            this.voiceaListenerCallbacks[VOICEAEVENTS.HIGHLIGHT_CREATED]
+          );
+        } else {
+          // @ts-ignore
+          this.webex.internal.voicea.off(
+            VOICEAEVENTS.HIGHLIGHT_CREATED,
+            this.voiceaListenerCallbacks[VOICEAEVENTS.HIGHLIGHT_CREATED]
+          );
+        }
+        // @ts-ignore
+        await this.webex.internal.voicea.toggleTranscribing(activate, options?.spokenLanguage);
+      } catch (error) {
+        LoggerProxy.logger.error(`Meeting:index#toggleHighlighting --> ${error}`);
+        Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.RECEIVE_TRANSCRIPTION_FAILURE, {
+          correlation_id: this.correlationId,
+          reason: error.message,
+          stack: error.stack,
+        });
+      }
+    } else {
+      throw new Error('This operation is not allowed in your org. Contact org administrator.');
     }
   }
 

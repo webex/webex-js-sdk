@@ -1,6 +1,7 @@
 import {
     getSpeakerFromProxyOrStore,
     processNewCaptions,
+    processHighlightCreated,
 } from '@webex/plugin-meetings/src/meeting/voicea-meeting';
 import {assert} from '@webex/test-helper-chai';
 import { expect } from 'chai';
@@ -253,5 +254,51 @@ describe('plugin-meetings', () => {
                 expect(newCaption.speaker).to.deep.equal(speaker);
             });
         });
+
+        describe('processHighlightCreated', () => {
+            beforeEach(() => {
+              fakeVoiceaPayload = {
+                highlightId: 'highlight1',
+                highlightLabel: 'Important',
+                highlightSource: 'User',
+                text: 'This is a highlight',
+                timestamp: '2023-10-10T10:00:00Z',
+                csis: ['3060099329'],
+              };
+            });
+        
+            it('should initialize highlights array if it does not exist', () => {
+              fakeMeeting.transcription.highlights = undefined;
+        
+              processHighlightCreated({data: fakeVoiceaPayload, meeting: fakeMeeting});
+        
+              expect(fakeMeeting.transcription.highlights).to.be.an('array');
+              expect(fakeMeeting.transcription.highlights).to.have.lengthOf(1);
+            });
+        
+            it('should process highlight creation correctly', () => {
+              processHighlightCreated({data: fakeVoiceaPayload, meeting: fakeMeeting});
+        
+              const csisKey = fakeVoiceaPayload.csis[0];
+              const speaker = fakeMeeting.transcription.speakerProxy[csisKey];
+              expect(speaker).to.exist;
+        
+              const newHighlight = fakeMeeting.transcription.highlights.find(
+                (highlight) => highlight.id === fakeVoiceaPayload.highlightId
+              );
+              expect(newHighlight).to.exist;
+              expect(newHighlight).to.deep.include({
+                id: fakeVoiceaPayload.highlightId,
+                meta: {
+                  label: fakeVoiceaPayload.highlightLabel,
+                  source: fakeVoiceaPayload.highlightSource,
+                },
+                text: fakeVoiceaPayload.text,
+                timestamp: fakeVoiceaPayload.timestamp,
+              });
+        
+              expect(newHighlight.speaker).to.deep.equal(speaker);
+            });
+          });
     });
 });

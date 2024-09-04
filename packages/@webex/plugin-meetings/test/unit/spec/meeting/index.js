@@ -1188,6 +1188,49 @@ describe('plugin-meetings', () => {
         });
       });
 
+      describe('#toggleHighlighting', () => {
+        beforeEach(() => {
+          webex.internal.voicea.on = sinon.stub();
+          webex.internal.voicea.off = sinon.stub();
+          webex.internal.voicea.listenToEvents = sinon.stub();
+          webex.internal.voicea.toggleTranscribing = sinon.stub();
+          meeting.isTranscriptionSupported = sinon.stub();
+        });
+      
+        afterEach(() => {
+          sinon.restore();
+        });
+
+        it('should reject if transcription is not supported', (done) => {
+          meeting.isTranscriptionSupported.returns(false);
+      
+          meeting.toggleHighlighting(true).catch((error) => {
+            assert.equal(error.message, 'This operation is not allowed in your org. Contact org administrator.');
+            done();
+          });
+        });
+      
+        it('should enable highlights when meeting is joined and transcription is supported', async () => {
+          meeting.joinedWith = {
+            state: 'JOINED',
+          };
+          meeting.isTranscriptionSupported.returns(true);
+          await meeting.toggleHighlighting(true);
+          assert.calledOnce(meeting.webex.internal.voicea.toggleTranscribing);
+          assert.equal(webex.internal.voicea.on.callCount, 1);
+        });
+      
+        it('should disable highlights when meeting is joined and transcription is supported', async () => {
+          meeting.joinedWith = {
+            state: 'JOINED',
+          };
+          meeting.isTranscriptionSupported.returns(true);
+          await meeting.toggleHighlighting(false)
+          assert.calledOnce(meeting.webex.internal.voicea.toggleTranscribing);
+          assert.equal(webex.internal.voicea.off.callCount, 1);
+        });
+      });
+
       describe('#setCaptionLanguage', () => {
         beforeEach(() => {
           meeting.isTranscriptionSupported = sinon.stub();
@@ -1358,6 +1401,14 @@ describe('plugin-meetings', () => {
           assert.calledWith(
             meeting.trigger,
             EVENT_TRIGGERS.MEETING_CAPTION_RECEIVED
+          );
+        });
+
+        it('should trigger meeting:highlight-created event', () => {
+          meeting.voiceaListenerCallbacks[VOICEAEVENTS.HIGHLIGHT_CREATED]({});
+          assert.calledWith(
+            meeting.trigger,
+            EVENT_TRIGGERS.MEETING_HIGHLIGHT_CREATED
           );
         });
       });
