@@ -250,23 +250,6 @@ export const ASSIGN_ROLES_ERROR_CODES = {
   ReclaimHostIsHostAlreadyErrorCode: 2409150,
 };
 
-export const DEFAULT_GET_STATS_FILTER = {
-  types: [
-    'track',
-    'transport',
-    'candidate-pair',
-    'outbound-rtp',
-    'outboundrtp',
-    'inbound-rtp',
-    'inboundrtp',
-    'remote-inbound-rtp',
-    'remote-outbound-rtp',
-    'remote-candidate',
-    'local-candidate',
-    'media-source',
-  ],
-};
-
 export const RECORDING_STATE = {
   RECORDING: 'recording',
   IDLE: 'idle',
@@ -1331,3 +1314,16 @@ export const MEETING_PERMISSION_TOKEN_REFRESH_REASON = 'ttl-join';
 
 // constant for named media group type
 export const NAMED_MEDIA_GROUP_TYPE_AUDIO = 1;
+
+export const DESTINATION_TYPE = {
+  CONVERSATION_URL: 'CONVERSATION_URL',
+  MEETING_LINK: 'MEETING_LINK',
+  SIP_URI: 'SIP_URI',
+  PERSONAL_ROOM: 'PERSONAL_ROOM',
+  ONE_ON_ONE_CALL: 'ONE_ON_ONE_CALL',
+  LOCUS_ID: 'LOCUS_ID',
+  MEETING_ID: 'MEETING_ID',
+  MEETING_UUID: 'MEETING_UUID',
+} as const;
+
+export type DESTINATION_TYPE = Enum<typeof DESTINATION_TYPE>;

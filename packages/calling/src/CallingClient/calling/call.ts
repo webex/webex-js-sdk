@@ -1,5 +1,5 @@
 import {
-  Event,
+  MediaConnectionEventNames,
   LocalMicrophoneStream,
   LocalStreamEventNames,
   RoapMediaConnection,
@@ -36,6 +36,7 @@ import {
   DEFAULT_SESSION_TIMER,
   DEVICES_ENDPOINT_RESOURCE,
   HOLD_ENDPOINT,
+  ICE_CANDIDATES_TIMEOUT,
   INITIAL_SEQ_NUMBER,
   MEDIA_ENDPOINT_RESOURCE,
   NOISE_REDUCTION_EFFECT,
@@ -1899,6 +1900,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       {
         skipInactiveTransceivers: true,
         iceServers: [],
+        iceCandidatesTimeout: ICE_CANDIDATES_TIMEOUT,
         sdpMunging: {
           convertPort9to0: true,
           addContentSlides: false,
@@ -2375,11 +2377,29 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
   /* istanbul ignore next */
   /**
+   * Copy SDP's c-line to session level from media level.
+   * SPARK-522437
+   */
+  private addSessionConnection(sdp: string): string {
+    const lines: string[] = sdp.split(/\r\n|\r|\n/);
+    const mIndex: number = lines.findIndex((line) => line.startsWith('m='));
+    const tIndex: number = lines.findIndex((line) => line.startsWith('t='));
+
+    if (mIndex !== -1 && mIndex < lines.length - 1 && lines[mIndex + 1].startsWith('c=')) {
+      const cLine: string = lines[mIndex + 1];
+      lines.splice(tIndex, 0, cLine);
+    }
+
+    return lines.join('\r\n');
+  }
+
+  /* istanbul ignore next */
+  /**
    * Setup a listener for roap events emitted by the media sdk.
    */
   private mediaRoapEventsListener() {
     this.mediaConnection.on(
-      Event.ROAP_MESSAGE_TO_SEND,
+      MediaConnectionEventNames.ROAP_MESSAGE_TO_SEND,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       async (event: any) => {
         log.info(
@@ -2392,6 +2412,11 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
           file: CALL_FILE,
           method: this.mediaRoapEventsListener.name,
         });
+
+        if (event.roapMessage?.sdp) {
+          event.roapMessage.sdp = this.addSessionConnection(event.roapMessage.sdp);
+        }
+
         switch (event.roapMessage.messageType) {
           case RoapScenario.OK: {
             const mediaOk = {
@@ -2442,7 +2467,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    */
   private mediaTrackListener() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    this.mediaConnection.on(Event.REMOTE_TRACK_ADDED, (e: any) => {
+    this.mediaConnection.on(MediaConnectionEventNames.REMOTE_TRACK_ADDED, (e: any) => {
       if (e.type === MEDIA_CONNECTION_EVENT_KEYS.MEDIA_TYPE_AUDIO) {
         this.emit(CALL_EVENT_KEYS.REMOTE_MEDIA, e.track);
       }

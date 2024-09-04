@@ -1,7 +1,7 @@
 import {find} from 'lodash';
 
 import Collection from '../common/collection';
-
+import {MEETING_KEY} from './meetings.types';
 /**
  * @export
  * @class MeetingCollection
@@ -26,13 +26,13 @@ export default class MeetingCollection extends Collection {
 
   /**
    * get a specific meeting searching for key
-   * @param {String} key
+   * @param {MEETING_KEY} key
    * @param {Any} value
    * @returns {Meeting} if found, else returns null
    * @public
    * @memberof MeetingCollection
    */
-  public getByKey(key: string, value: any) {
+  public getByKey(key: MEETING_KEY, value: any) {
     if (key && value) {
       // @ts-ignore
       return find(this.meetings, (meeting) => meeting[key] === value);

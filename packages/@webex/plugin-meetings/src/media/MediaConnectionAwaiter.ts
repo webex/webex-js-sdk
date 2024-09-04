@@ -1,5 +1,5 @@
 import {Defer} from '@webex/common';
-import {ConnectionState, Event} from '@webex/internal-media-core';
+import {ConnectionState, MediaConnectionEventNames} from '@webex/internal-media-core';
 import LoggerProxy from '../common/logs/logger-proxy';
 import {ICE_AND_DTLS_CONNECTION_TIMEOUT} from '../constants';
 
@@ -15,8 +15,10 @@ export default class MediaConnectionAwaiter {
   private timer: any;
   private defer: Defer;
   private retried: boolean;
+  private iceConnected: boolean;
   private onTimeoutCallback: () => void;
-  private connectionStateCallback: () => void;
+  private peerConnectionStateCallback: () => void;
+  private iceConnectionStateCallback: () => void;
   private iceGatheringStateCallback: () => void;
 
   /**
@@ -26,9 +28,11 @@ export default class MediaConnectionAwaiter {
     this.webrtcMediaConnection = webrtcMediaConnection;
     this.defer = new Defer();
     this.retried = false;
+    this.iceConnected = false;
     this.onTimeoutCallback = this.onTimeout.bind(this);
-    this.connectionStateCallback = this.connectionStateListenerCallback.bind(this);
-    this.iceGatheringStateCallback = this.iceGatheringStateListenerCallback.bind(this);
+    this.peerConnectionStateCallback = this.peerConnectionStateHandler.bind(this);
+    this.iceConnectionStateCallback = this.iceConnectionStateHandler.bind(this);
+    this.iceGatheringStateCallback = this.iceGatheringStateHandler.bind(this);
   }
 
   /**
@@ -38,6 +42,15 @@ export default class MediaConnectionAwaiter {
    */
   private isConnected(): boolean {
     return this.webrtcMediaConnection.getConnectionState() === ConnectionState.Connected;
+  }
+
+  /**
+   * Returns true if the connection is in an unrecoverable "failed" state
+   *
+   * @returns {boolean}
+   */
+  private isFailed(): boolean {
+    return this.webrtcMediaConnection.getConnectionState() === ConnectionState.Failed;
   }
 
   /**
@@ -56,21 +69,39 @@ export default class MediaConnectionAwaiter {
    */
   private clearCallbacks(): void {
     this.webrtcMediaConnection.off(
-      Event.ICE_GATHERING_STATE_CHANGED,
+      MediaConnectionEventNames.ICE_GATHERING_STATE_CHANGED,
       this.iceGatheringStateCallback
     );
-    this.webrtcMediaConnection.off(Event.CONNECTION_STATE_CHANGED, this.connectionStateCallback);
+    this.webrtcMediaConnection.off(
+      MediaConnectionEventNames.PEER_CONNECTION_STATE_CHANGED,
+      this.peerConnectionStateCallback
+    );
+    this.webrtcMediaConnection.off(
+      MediaConnectionEventNames.ICE_CONNECTION_STATE_CHANGED,
+      this.iceConnectionStateCallback
+    );
   }
 
   /**
-   * Listener for connection state change.
+   * On connection state change.
    *
    * @returns {void}
    */
-  connectionStateListenerCallback(): void {
+  connectionStateChange(): void {
     LoggerProxy.logger.log(
-      `Media:MediaConnectionAwaiter#connectionStateListenerCallback --> connection state: ${this.webrtcMediaConnection.getConnectionState()}`
+      `Media:MediaConnectionAwaiter#connectionStateChange --> connection state: ${this.webrtcMediaConnection.getConnectionState()}`
     );
+
+    if (this.isFailed()) {
+      LoggerProxy.logger.warn(
+        'Media:MediaConnectionAwaiter#connectionStateChange --> ICE failed, rejecting'
+      );
+      this.clearCallbacks();
+
+      this.defer.reject({
+        iceConnected: this.iceConnected,
+      });
+    }
 
     if (!this.isConnected()) {
       return;
@@ -84,15 +115,49 @@ export default class MediaConnectionAwaiter {
   }
 
   /**
+   * Listener for peer connection state change.
+   *
+   * @returns {void}
+   */
+  peerConnectionStateHandler(): void {
+    const peerConnectionState = this.webrtcMediaConnection.getPeerConnectionState();
+
+    LoggerProxy.logger.log(
+      `Media:MediaConnectionAwaiter#peerConnectionStateHandler --> Peer connection state change -> ${peerConnectionState}`
+    );
+
+    this.connectionStateChange();
+  }
+
+  /**
+   * Listener for ICE connection state change.
+   *
+   * @returns {void}
+   */
+  iceConnectionStateHandler(): void {
+    const iceConnectionState = this.webrtcMediaConnection.getIceConnectionState();
+
+    LoggerProxy.logger.log(
+      `Media:MediaConnectionAwaiter#iceConnectionStateHandler --> ICE connection state change -> ${iceConnectionState}`
+    );
+
+    if (iceConnectionState === 'connected' && !this.iceConnected) {
+      this.iceConnected = true;
+    }
+
+    this.connectionStateChange();
+  }
+
+  /**
    * Listener for ICE gathering state change.
    *
    * @returns {void}
    */
-  iceGatheringStateListenerCallback(): void {
+  iceGatheringStateHandler(): void {
     const iceGatheringState = this.webrtcMediaConnection.getIceGatheringState();
 
     LoggerProxy.logger.log(
-      `Media:MediaConnectionAwaiter#iceGatheringStateListenerCallback --> ICE gathering state change -> ${iceGatheringState}`
+      `Media:MediaConnectionAwaiter#iceGatheringStateHandler --> ICE gathering state change -> ${iceGatheringState}`
     );
 
     if (!this.isIceGatheringCompleted()) {
@@ -147,7 +212,9 @@ export default class MediaConnectionAwaiter {
 
     this.clearCallbacks();
 
-    this.defer.reject();
+    this.defer.reject({
+      iceConnected: this.iceConnected,
+    });
   }
 
   /**
@@ -160,10 +227,18 @@ export default class MediaConnectionAwaiter {
       return Promise.resolve();
     }
 
-    this.webrtcMediaConnection.on(Event.CONNECTION_STATE_CHANGED, this.connectionStateCallback);
+    this.webrtcMediaConnection.on(
+      MediaConnectionEventNames.PEER_CONNECTION_STATE_CHANGED,
+      this.peerConnectionStateCallback
+    );
 
     this.webrtcMediaConnection.on(
-      Event.ICE_GATHERING_STATE_CHANGED,
+      MediaConnectionEventNames.ICE_CONNECTION_STATE_CHANGED,
+      this.iceConnectionStateCallback
+    );
+
+    this.webrtcMediaConnection.on(
+      MediaConnectionEventNames.ICE_GATHERING_STATE_CHANGED,
       this.iceGatheringStateCallback
     );
 

@@ -20,6 +20,42 @@ export type BrowserLaunchMethodType = NonNullable<
   RawEvent['origin']['clientInfo']
 >['browserLaunchMethod'];
 
+export type MetricEventProduct = 'webex' | 'wxcc_desktop';
+
+export type MetricEventAgent = 'user' | 'browser' | 'system' | 'sdk' | 'redux' | 'service';
+
+export type MetricEventVerb =
+  | 'create'
+  | 'get'
+  | 'fetch'
+  | 'update'
+  | 'list'
+  | 'delete'
+  | 'select'
+  | 'view'
+  | 'set'
+  | 'toggle'
+  | 'load'
+  | 'reload'
+  | 'click'
+  | 'hover'
+  | 'register'
+  | 'unregister'
+  | 'enable'
+  | 'disable'
+  | 'use'
+  | 'complete'
+  | 'submit'
+  | 'apply'
+  | 'cancel'
+  | 'abort'
+  | 'sync'
+  | 'login'
+  | 'logout'
+  | 'answer'
+  | 'activate'
+  | 'deactivate';
+
 export type SubmitClientEventOptions = {
   meetingId?: string;
   mediaConnections?: any[];
@@ -66,12 +102,25 @@ export interface ClientEvent {
   options?: SubmitClientEventOptions;
 }
 
-export interface BehavioralEvent {
-  // TODO: not implemented
-  name: 'host.meeting.participant.admitted' | 'sdk.media-flow.started';
-  payload?: never;
-  options?: never;
+export interface BehavioralEventContext {
+  app: {version: string};
+  device: {id: string};
+  locale: string;
+  os: {
+    name: string;
+    version: string;
+  };
 }
+
+export interface BehavioralEvent {
+  context: BehavioralEventContext;
+  metricName: string;
+  tags: Record<string, string | number | boolean>;
+  timestamp: number;
+  type: string[];
+}
+
+export type BehavioralEventPayload = BehavioralEvent['tags'];
 
 export interface OperationalEvent {
   // TODO: not implemented
@@ -104,7 +153,7 @@ export type RecursivePartial<T> = {
 export type MetricEventNames =
   | InternalEvent['name']
   | ClientEvent['name']
-  | BehavioralEvent['name']
+  | BehavioralEvent['metricName']
   | OperationalEvent['name']
   | FeatureEvent['name']
   | MediaQualityEvent['name'];
@@ -137,9 +186,11 @@ export type SubmitInternalEvent = (args: {
 }) => void;
 
 export type SubmitBehavioralEvent = (args: {
-  name: BehavioralEvent['name'];
-  payload?: RecursivePartial<BehavioralEvent['payload']>;
-  options?: any;
+  product: MetricEventProduct;
+  agent: MetricEventAgent;
+  target: string;
+  verb: MetricEventVerb;
+  payload?: BehavioralEventPayload;
 }) => void;
 
 export type SubmitClientEvent = (args: {

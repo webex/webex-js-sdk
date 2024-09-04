@@ -1,3 +1,4 @@
+import 'jsdom-global/register';
 import RtcMetrics from '@webex/plugin-meetings/src/rtcMetrics';
 import MockWebex from '@webex/test-helper-mock-webex';
 import {assert} from '@webex/test-helper-chai';

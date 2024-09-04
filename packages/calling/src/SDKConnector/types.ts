@@ -83,7 +83,8 @@ export interface WebexSDK {
       };
     };
     dss: {
-      lookup: (options: LookupOptions) => Promise<DSSLookupResponse[]>;
+      lookup: (options: LookupOptions) => Promise<DSSLookupResponse>;
+      register: () => Promise<void>;
     };
     encryption: {
       decryptText: (encryptionKeyUrl: string, encryptedData?: string) => Promise<string>;
