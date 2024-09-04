@@ -90,5 +90,6 @@
     "@webex/storage-adapter-local-storage": "workspace:*",
     "@webex/webex-core": "workspace:*",
     "lodash": "^4.17.21"
-  }
+  },
+  "version": "3.3.1-next.50"
 }
