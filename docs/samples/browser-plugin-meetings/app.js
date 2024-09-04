@@ -804,6 +804,8 @@ const generalControlsDtmfTones = document.querySelector('#gc-dtmf-tones');
 const generalControlsDtmfStatus = document.querySelector('#gc-dtmf-status');
 const generalToggleTranscription = document.querySelector('#gc-toggle-transcription');
 const generalTranscriptionContent = document.querySelector('#gc-transcription-content');
+const generalHighlightTranscription = document.querySelector('#gc-toggle-highlights');
+const generalHighlightContent = document.querySelector('#gc-highlights-content');
 
 const sourceDevicesGetMedia = document.querySelector('#sd-get-media-devices');
 const sourceDevicesAudioInput = document.querySelector('#sd-audio-input-devices');
@@ -1104,6 +1106,44 @@ async function toggleTranscription(enable = false){
   }
 }
 
+async function toggleHighlights() {
+  const isEnabled = generalHighlightTranscription.getAttribute('data-enabled') === "true";
+  if (isEnabled) {
+    try {
+      await meeting.toggleHighlighting(!isEnabled);
+      generalHighlightTranscription.setAttribute('data-enabled', "false");
+      generalHighlightTranscription.innerText = "Start Highlight";
+      generalHighlightContent.innerHTML = 'Highlight Content: Webex Assistant must be enabled, check the console!';
+    }
+    catch (e) {
+      console.error("Error stopping highlight", e);
+    }
+  }
+  else {
+    let firsttime = generalHighlightTranscription.dataset.firsttime;
+    if (firsttime === undefined) {
+      const currentMeeting = getCurrentMeeting();
+      if (currentMeeting) {
+        generalHighlightContent.innerHTML = '';
+        meeting.on('meeting:highlight-created', (payload) => {
+          generalHighlightContent.innerHTML = `\n${JSON.stringify(payload,null,4)}`;
+        });
+      }
+      generalHighlightTranscription.dataset.firsttime = "yes";
+    }
+    try {
+      generalHighlightContent.innerHTML = '';
+      await meeting.toggleHighlighting(!isEnabled);
+      generalHighlightTranscription.setAttribute('data-enabled', "true");
+      generalHighlightTranscription.innerText = "Stop Highlight";
+    }
+    catch (e) {
+      generalHighlightContent.innerHTML = 'Highlight Content: Webex Assistant must be enabled, check the console!';
+      console.error("Error starting highlight", e);
+    }
+  }
+}
+
 function setTranscriptEvents() {
   const meeting = getCurrentMeeting();
 
@@ -1144,6 +1184,9 @@ function setTranscriptEvents() {
     meeting.on('meeting:receiveTranscription:stopped', () => {
       generalToggleTranscription.innerText = "Start Transcription";
       generalTranscriptionContent.innerHTML = 'Transcription Content: Webex Assistant must be enabled, check the console!';
+      generalHighlightTranscription.setAttribute('data-enabled', "false");
+      generalHighlightTranscription.innerText = "Start Highlight";
+      generalHighlightContent.innerHTML = 'Highlight Content: Webex Assistant must be enabled, check the console!';
     });
   }
   else {

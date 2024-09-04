@@ -103,6 +103,15 @@ type MeetingTranscriptPayload = {
   transcripts: Array<MeetingTranscripts>;
 };
 
+type MeetingHighlightPayload = {
+  csis: string;
+  highlightId: string;
+  text: string;
+  highlightLabel: string;
+  highlightSource: string;
+  timestamp?: string;
+};
+
 export type {
   AnnouncementPayload,
   CaptionLanguageResponse,
@@ -111,4 +120,5 @@ export type {
   Highlight,
   IVoiceaChannel,
   MeetingTranscriptPayload,
+  MeetingHighlightPayload,
 };

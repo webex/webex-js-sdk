@@ -1,4 +1,7 @@
-import {type MeetingTranscriptPayload} from '@webex/internal-plugin-voicea';
+import {
+  type MeetingTranscriptPayload,
+  type MeetingHighlightPayload,
+} from '@webex/internal-plugin-voicea';
 
 export const getSpeaker = (members, csis = []) =>
   Object.values(members).find((member: any) => {
@@ -117,4 +120,42 @@ export const processNewCaptions = ({
     transcriptData.captions.push(captionData);
   }
   transcriptData.interimCaptions[transcriptId] = interimTranscriptionIds;
+};
+
+export const processHighlightCreated = ({
+  data,
+  meeting,
+}: {
+  data: MeetingHighlightPayload;
+  meeting: any;
+}) => {
+  const transcriptData = meeting.transcription;
+
+  if (!transcriptData.highlights) {
+    transcriptData.highlights = [];
+  }
+
+  const csisKey = data.csis && data.csis.length > 0 ? data.csis[0] : undefined;
+  const {needsCaching, speaker} = getSpeakerFromProxyOrStore({
+    meetingMembers: meeting.members.membersCollection.members,
+    transcriptData,
+    csisKey,
+  });
+
+  if (needsCaching) {
+    transcriptData.speakerProxy[csisKey] = speaker;
+  }
+
+  const highlightCreated = {
+    id: data.highlightId,
+    meta: {
+      label: data.highlightLabel,
+      source: data.highlightSource,
+    },
+    text: data.text,
+    timestamp: data.timestamp,
+    speaker,
+  };
+
+  meeting.transcription.highlights.push(highlightCreated);
 };
