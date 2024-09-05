@@ -165,7 +165,7 @@ Media.createMediaConnection = (
   if (turnServerInfo?.url) {
     if (!isBrowser('firefox')) {
       let bareTurnServer = turnServerInfo.url;
-      bareTurnServer = bareTurnServer.replace('turns', 'turn');
+      bareTurnServer = bareTurnServer.replace('turns:', 'turn:');
       bareTurnServer = bareTurnServer.replace('443', '5004');
 
       iceServers.push({
