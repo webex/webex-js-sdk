@@ -7429,7 +7429,8 @@ __metadata:
     "@typescript-eslint/eslint-plugin": 5.38.1
     "@typescript-eslint/parser": 5.38.1
     "@web/dev-server": 0.4.5
-    "@webex/media-helpers": "workspace:^"
+    "@webex/legacy-tools": "workspace:*"
+    "@webex/media-helpers": "workspace:*"
     chai: 4.3.4
     cspell: 5.19.2
     esbuild: ^0.17.19
@@ -8548,7 +8549,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/media-helpers@workspace:*, @webex/media-helpers@workspace:^, @webex/media-helpers@workspace:packages/@webex/media-helpers":
+"@webex/media-helpers@workspace:*, @webex/media-helpers@workspace:packages/@webex/media-helpers":
   version: 0.0.0-use.local
   resolution: "@webex/media-helpers@workspace:packages/@webex/media-helpers"
   dependencies:

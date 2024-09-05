@@ -18,17 +18,14 @@
     "node": ">=20.x"
   },
   "scripts": {
-    "prebuild": "rimraf dist",
-    "build": "tsc",
-    "build:src": "tsc",
-    "clean": "rimraf dist",
-    "test:unit": "jest --config=jest.config.js --runInBand",
-    "test:style": "eslint 'src/**/*.ts'",
+    "build:docs": "typedoc --out ../../docs/byods",
+    "build:src": "webex-legacy-tools build -dest \"./dist\" -src \"./src\" -js -ts && yarn build",
+    "build": "yarn run -T tsc --declaration true --declarationDir ./dist/types",
+    "deploy:npm": "yarn npm publish",
+    "docs": "typedoc --emit none",
     "fix:lint": "eslint 'src/**/*.ts' --fix",
     "fix:prettier": "prettier \"src/**/*.ts\" --write",
-    "build:docs": "typedoc --out ../../docs/byods",
-    "docs": "typedoc --emit none",
-    "deploy:npm": "yarn npm publish"
+    "prebuild": "rimraf dist"
   },
   "devDependencies": {
     "@babel/preset-typescript": "7.16.7",
@@ -115,7 +112,8 @@
   },
   "dependencies": {
     "@types/node-fetch": "^2.6.11",
-    "@webex/media-helpers": "workspace:^",
+    "@webex/legacy-tools": "workspace:*",
+    "@webex/media-helpers": "workspace:*",
     "node-fetch": "^3.3.2"
   },
   "type": "module"
