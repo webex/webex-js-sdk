@@ -54,7 +54,9 @@ export type MetricEventVerb =
   | 'logout'
   | 'answer'
   | 'activate'
-  | 'deactivate';
+  | 'deactivate'
+  | 'connect'
+  | 'disconnect';
 
 export type SubmitClientEventOptions = {
   meetingId?: string;
