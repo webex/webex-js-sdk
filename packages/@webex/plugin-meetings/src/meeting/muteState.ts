@@ -410,11 +410,18 @@ export class MuteState {
 
     // todo: I'm seeing "you can now unmute yourself " popup  when this happens - but same thing happens on web.w.c so we can ignore for now
     this.state.server.remoteMute = false;
-    this.state.client.localMute = false;
     this.state.server.unmuteAllowed = unmuteAllowed;
 
     this.applyUnmuteAllowedToStream(meeting);
-    this.applyClientStateLocally(meeting, 'localUnmuteRequired');
+
+    // change user mute state to false, but keep localMute true if overall mute state is still true
+    this.muteLocalStream(meeting, false, 'localUnmuteRequired');
+    if (this.type === AUDIO) {
+      this.state.client.localMute = meeting.mediaProperties.audioStream?.muted;
+    } else {
+      this.state.client.localMute = meeting.mediaProperties.videoStream?.muted;
+    }
+
     this.applyClientStateToServer(meeting);
   }
 
