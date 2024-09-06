@@ -183,7 +183,7 @@ describe('plugin-authorization-browser-first-party', () => {
         });
 
         it('collects the preauth catalog when emailhash is present in the state', async () => {
-          const code = 'auth code';
+          const code = 'authcode_clusterid_theOrgId';
           const webex = makeWebex(
             `http://example.com/?code=${code}&state=${base64.encode(
               JSON.stringify({emailhash: 'someemailhash'})
@@ -205,7 +205,7 @@ describe('plugin-authorization-browser-first-party', () => {
         });
 
         it('collects the preauth catalog no emailhash is present in the state', async () => {
-          const code = 'auth code';
+          const code = 'authcode_clusterid_theOrgId';
           const webex = makeWebex(
             `http://example.com/?code=${code}`
           );
@@ -223,7 +223,7 @@ describe('plugin-authorization-browser-first-party', () => {
           assert.calledOnce(requestAuthorizationCodeGrantStub);
           assert.calledWith(requestAuthorizationCodeGrantStub, {code, codeVerifier: undefined});
           assert.calledOnce(collectPreauthCatalogStub);
-          assert.calledWith(collectPreauthCatalogStub, undefined);
+          assert.calledWith(collectPreauthCatalogStub, {orgId: 'theOrgId'});
         });
 
         it('handles an error when exchanging an authorization code and becomes ready', () => {
@@ -502,6 +502,47 @@ describe('plugin-authorization-browser-first-party', () => {
         assert.equal(href, `?state=${base64.encode(JSON.stringify({key: 'value'}))}`);
         assert.notInclude(href, 'csrf_token');
       });
+    });
+
+    describe('#_extractOrgIdFromCode', () => {
+      it('extracts the orgId from the code', () => {
+        const webex = makeWebex(undefined, undefined, {
+          credentials: {
+            clientType: 'confidential',
+          },
+        });
+
+        const code = 'authcode_clusterid_theOrgId';
+        const orgId = webex.authorization._extractOrgIdFromCode(code);
+
+        assert.equal(orgId, 'theOrgId');
+      });
+
+      it('handles an invalid code', () => {
+        const webex = makeWebex(undefined, undefined, {
+          credentials: {
+            clientType: 'confidential',
+          },
+        });
+
+        const code = 'authcode_clusterid_';
+        const orgId = webex.authorization._extractOrgIdFromCode(code);
+
+        assert.isUndefined(orgId);
+      });
+
+      it('handles an completely invalid code', () => {
+        const webex = makeWebex(undefined, undefined, {
+          credentials: {
+            clientType: 'confidential',
+          },
+        });
+
+        const code = 'authcode';
+        const orgId = webex.authorization._extractOrgIdFromCode(code);
+
+        assert.isUndefined(orgId);
+      })
     });
   });
 });

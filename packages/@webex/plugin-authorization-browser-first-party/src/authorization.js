@@ -103,12 +103,12 @@ const Authorization = WebexPlugin.extend({
     this._verifySecurityToken(location.query);
     this._cleanUrl(location);
 
-    const orgId = code.split('_')[2];
+    const orgId = this._extractOrgIdFromCode(code);
 
     // Wait until nextTick in case `credentials` hasn't initialized yet
     process.nextTick(() => {
       this.webex.internal.services
-        .collectPreauthCatalog(emailhash ? {emailhash}: {orgId})
+        .collectPreauthCatalog(emailhash ? {emailhash} : {orgId})
         .catch(() => Promise.resolve())
         .then(() => this.requestAuthorizationCodeGrant({code, codeVerifier}))
         .catch((error) => {
@@ -230,6 +230,25 @@ const Authorization = WebexPlugin.extend({
 
         return Promise.reject(new ErrorConstructor(res._res || res));
       });
+  },
+
+  /**
+   * Extracts the orgId from the returned code from idbroker
+   * @instance
+   * @memberof AuthorizationBrowserFirstParty
+   * @param {String} code
+   * @private
+   * @returns {String}
+   */
+  _extractOrgIdFromCode(code) {
+    let orgId;
+
+    try {
+      orgId = code.split('_')[2];
+    } catch (error) {}
+    if (orgId) {
+      return orgId;
+    }
   },
 
   /**
