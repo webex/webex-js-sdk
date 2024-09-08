@@ -226,6 +226,26 @@ describe('plugin-authorization-browser-first-party', () => {
           assert.calledWith(collectPreauthCatalogStub, {orgId: 'theOrgId'});
         });
 
+        it('collects the preauth catalog with no emailhash and no orgId', async () => {
+          const code = 'authcode_clusterid';
+          const webex = makeWebex(`http://example.com/?code=${code}`);
+
+          const requestAuthorizationCodeGrantStub = sinon.stub(
+            Authorization.prototype,
+            'requestAuthorizationCodeGrant'
+          );
+          const collectPreauthCatalogStub = sinon
+            .stub(Services.prototype, 'collectPreauthCatalog')
+            .resolves();
+
+          await webex.authorization.when('change:ready');
+
+          assert.calledOnce(requestAuthorizationCodeGrantStub);
+          assert.calledWith(requestAuthorizationCodeGrantStub, {code, codeVerifier: undefined});
+          assert.calledOnce(collectPreauthCatalogStub);
+          assert.calledWith(collectPreauthCatalogStub, undefined);
+        });
+
         it('handles an error when exchanging an authorization code and becomes ready', () => {
           const code = 'errors-when-exchanging';
           const error = new Error('something bad happened');
