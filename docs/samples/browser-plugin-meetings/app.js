@@ -427,6 +427,8 @@ function refreshCaptcha() {
 meetingsListElm.onclick = (e) => {
   selectedMeetingId = e.target.value;
   const meeting = webex.meetings.getAllMeetings()[selectedMeetingId];
+  const selectedMeetingType = createMeetingSelectElm.options[createMeetingSelectElm.selectedIndex].innerText;
+  console.log("MEETING TYPE AAAA: ",selectedMeetingType);
 
   if (meeting && meeting.passwordStatus === 'REQUIRED') {
     meetingsJoinPinElm.disabled = false;
@@ -434,13 +436,13 @@ meetingsListElm.onclick = (e) => {
     document.getElementById('btn-join').disabled = true;
     document.getElementById('btn-join-media').disabled = true;
   }
-  else if (meeting && (meeting.passwordStatus === 'UNKNOWN' && meeting.destinationType!="")) {
+  else if (meeting && (meeting.passwordStatus === 'UNKNOWN' && (selectedMeetingType !== "One to One Meeting" && selectedMeetingType!=="Email" && selectedMeetingType!=="PERSON ID" ))) {
     meetingsJoinPinElm.disabled = true;
     verifyPasswordElm.disabled = true;
     document.getElementById('btn-join').disabled = true;
     document.getElementById('btn-join-media').disabled = true;
   }
-  else if(meeting && (meeting.passwordStatus === 'UNKNOWN' && meeting.destinationType==="")) {
+  else if(meeting && (meeting.passwordStatus === 'UNKNOWN' && (selectedMeetingType === "One to One Meeting" && selectedMeetingType==="Email" && selectedMeetingType==="PERSON ID" ))) {
     meetingsJoinPinElm.disabled = true;
     verifyPasswordElm.disabled = true;
     document.getElementById('btn-join').disabled = false;
