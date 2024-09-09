@@ -5,7 +5,7 @@ import {
   SessionType,
   CallSessionViewedEvent,
 } from '../Events/types';
-import {UpdateMissedCallsResponse} from './types';
+import {LinesResponse, UpdateMissedCallsResponse} from './types';
 
 export const sortedCallHistory = {
   body: {
@@ -287,6 +287,106 @@ export const mockCallHistoryBody = {
   },
 };
 
+export const mockCallHistoryforMultiLineBody = {
+  body: {
+    statusCode: 200,
+    userSessions: [
+      {
+        id: 'd74d19cc-6aa7-f341-6012-aec433cc6f8d',
+        durationSecs: 438,
+        self: {
+          id: 'a24027e7-9b6e-4047-a950-42f4492148ec',
+          name: 'Mark',
+          cucmDN: '1001',
+          lineNumber: 1,
+          incomingCallProtocols: [],
+          callbackInfo: {
+            callbackAddress: 'test@cisco.com',
+            callbackType: 'EMAIL',
+          },
+          lookUpInfo: {
+            lookupLink:
+              'https://conv-a.wbx2.com/conversation/api/v1/conversations/c9252ff0-9de2-11ec-a582-59d00c02cca9',
+            type: 'CONVERSATION',
+          },
+        },
+        url: 'https://janus-a.wbx2.com/janus/api/v1/history/userSessions/d74d19cc-6aa7-f341-6012-aec433cc6f8d',
+        sessionId: 'd74d19cc-6aa7-f341-6012-aec433cc6f8d',
+        sessionType: 'SPARK',
+        startTime: '2022-08-22T10:45:21.565Z',
+        endTime: '2022-08-22T10:53:01.624Z',
+        direction: 'OUTGOING',
+        disposition: 'INITIATED',
+        other: {
+          id: 'c9bde63c-e3e2-4db4-ba45-0d6c698ffd65',
+          name: 'test',
+          isPrivate: false,
+          callbackAddress: 'c9bde63c-e3e2-4db4-ba45-0d6c698ffd65',
+        },
+        durationSeconds: 438,
+        joinedDurationSeconds: 457,
+        participantCount: 2,
+        links: {
+          locusUrl:
+            'https://locus-a.wbx2.com/locus/api/v1/loci/f5dbe4da-663b-3f73-a2fc-3a2fb0f12080',
+          conversationUrl:
+            'https://conv-a.wbx2.com/conversation/api/v1/conversations/c9252ff0-9de2-11ec-a582-59d00c02cca9',
+          callbackAddress: 'c9bde63c-e3e2-4db4-ba45-0d6c698ffd65',
+        },
+        isDeleted: false,
+        isPMR: false,
+        correlationIds: ['58ea6cd9-852b-4a77-957f-e704c8b0e63e'],
+      },
+      {
+        id: 'd74d19cc-6aa7-f341-6012-aec433cc6f8d',
+        durationSecs: 438,
+        self: {
+          id: 'a24027e7-9b6e-4047-a950-42f4492148ec',
+          name: 'Mark',
+          cucmDN: '1002',
+          lineNumber: 2,
+          incomingCallProtocols: [],
+          callbackInfo: {
+            callbackAddress: 'test@cisco.com',
+            callbackType: 'EMAIL',
+          },
+          lookUpInfo: {
+            lookupLink:
+              'https://conv-a.wbx2.com/conversation/api/v1/conversations/c9252ff0-9de2-11ec-a582-59d00c02cca9',
+            type: 'CONVERSATION',
+          },
+        },
+        url: 'https://janus-a.wbx2.com/janus/api/v1/history/userSessions/d74d19cc-6aa7-f341-6012-aec433cc6f8d',
+        sessionId: 'd74d19cc-6aa7-f341-6012-aec433cc6f8d',
+        sessionType: 'SPARK',
+        startTime: '2022-08-30T10:45:21.565Z',
+        endTime: '2022-08-30T10:53:01.624Z',
+        direction: 'OUTGOING',
+        disposition: 'INITIATED',
+        other: {
+          id: 'c9bde63c-e3e2-4db4-ba45-0d6c698ffd65',
+          name: 'test',
+          isPrivate: false,
+          callbackAddress: 'c9bde63c-e3e2-4db4-ba45-0d6c698ffd65',
+        },
+        durationSeconds: 438,
+        joinedDurationSeconds: 457,
+        participantCount: 2,
+        links: {
+          locusUrl:
+            'https://locus-a.wbx2.com/locus/api/v1/loci/f5dbe4da-663b-3f73-a2fc-3a2fb0f12080',
+          conversationUrl:
+            'https://conv-a.wbx2.com/conversation/api/v1/conversations/c9252ff0-9de2-11ec-a582-59d00c02cca9',
+          callbackAddress: 'c9bde63c-e3e2-4db4-ba45-0d6c698ffd65',
+        },
+        isDeleted: false,
+        isPMR: false,
+        correlationIds: ['58ea6cd9-852b-4a77-957f-e704c8b0e63e'],
+      },
+    ],
+  },
+};
+
 const WEBEX_CALL_SESSION = {
   id: 'd74d19cc-6aa7-f341-6012-aec433cc6f8d',
   durationSecs: 438,
@@ -438,4 +538,30 @@ export const ERROR_DETAILS_400 = {
     error: '400 Bad request',
   },
   message: 'FAILURE',
+};
+export const MOCK_LINES_API_CALL_RESPONSE: LinesResponse = {
+  statusCode: 200,
+  data: {
+    lines: {
+      devices: [
+        {
+          name: 'CSFheliosucm01',
+          model: 503,
+          lines: [
+            {
+              dnorpattern: '+14928000001',
+              index: 1,
+              label: '',
+            },
+            {
+              dnorpattern: '+14928000003',
+              index: 2,
+              label: '',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  message: 'SUCCESS',
 };

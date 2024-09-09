@@ -79,6 +79,8 @@ export type CallRecordSelf = {
   id: string;
   name?: string;
   phoneNumber?: string;
+  cucmDN?: string;
+  lineNumber?: number;
 };
 
 export type CallRecordListOther = {
@@ -371,4 +373,17 @@ export type EndTimeSessionId = {
 export type SanitizedEndTimeAndSessionId = {
   endTime: number;
   sessionId: string;
+};
+export type Line = {
+  dnorpattern: string;
+  index: number;
+  label: string | null;
+};
+export type Device = {
+  name: string;
+  model: number;
+  lines: Line[];
+};
+export type LinesApiResponse = {
+  devices: Device[];
 };

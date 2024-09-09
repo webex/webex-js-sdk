@@ -2,15 +2,23 @@
 /* eslint-disable no-underscore-dangle */
 import SDKConnector from '../SDKConnector';
 import {ISDKConnector, WebexSDK} from '../SDKConnector/types';
-import {ALLOWED_SERVICES, HTTP_METHODS, WebexRequestPayload, SORT, SORT_BY} from '../common/types';
+import {
+  ALLOWED_SERVICES,
+  HTTP_METHODS,
+  WebexRequestPayload,
+  SORT,
+  SORT_BY,
+  CALLING_BACKEND,
+} from '../common/types';
 import {
   ICallHistory,
   JanusResponseEvent,
   LoggerInterface,
   UpdateMissedCallsResponse,
+  LinesResponse,
 } from './types';
 import log from '../Logger';
-import {serviceErrorCodeHandler} from '../common/Utils';
+import {serviceErrorCodeHandler, getVgActionEndpoint, getCallingBackEnd} from '../common/Utils';
 import {
   APPLICATION_JSON,
   CALL_HISTORY_FILE,
@@ -21,6 +29,12 @@ import {
   NUMBER_OF_DAYS,
   UPDATE_MISSED_CALLS_ENDPOINT,
   SET_READ_STATE_SUCCESS_MESSAGE,
+  V1,
+  UC,
+  CONFIG,
+  PEOPLE,
+  LINES,
+  ORG_ID,
 } from './constants';
 import {STATUS_CODE, SUCCESS_MESSAGE, USER_SESSIONS} from '../common/constants';
 import {
@@ -128,6 +142,32 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
           );
         }
       }
+      // Check the calling backend
+      const callingBackend = getCallingBackEnd(this.webex);
+      if (callingBackend === CALLING_BACKEND.UCM) {
+        // Fetch the Lines data
+        const linesResponse = await this.fetchLinesData();
+
+        // Check if the Lines API response was successful
+        if (linesResponse.statusCode === 200 && linesResponse?.data?.lines?.devices) {
+          const linesData = linesResponse?.data?.lines?.devices;
+
+          // Iterate over user sessions and match with Lines data
+          this.userSessions[USER_SESSIONS].forEach((session) => {
+            const cucmDN = session.self.cucmDN;
+            if (cucmDN) {
+              linesData.forEach((device) => {
+                device.lines.forEach((line) => {
+                  if (line.dnorpattern === cucmDN) {
+                    session.self.lineNumber = line.index; // Assign the lineNumber
+                  }
+                });
+              });
+            }
+          });
+        }
+      }
+
       const responseDetails = {
         statusCode: this.userSessions[STATUS_CODE],
         data: {
@@ -196,6 +236,45 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
       const errorInfo = {
         statusCode: err instanceof Error ? Number(err.message) : '',
       } as WebexRequestPayload;
+      const errorStatus = serviceErrorCodeHandler(errorInfo, loggerContext);
+
+      return errorStatus;
+    }
+  }
+
+  /**
+   * Function to display the Lines API response.
+   * @returns {Promise} Resolves to an object of type  {@link LinesResponse}.Response details with success or error status.
+   */
+  public async fetchLinesData(): Promise<LinesResponse> {
+    const loggerContext = {
+      file: CALL_HISTORY_FILE,
+      method: 'fetchLinesData',
+    };
+    const vgEndpoint = getVgActionEndpoint(this.webex, CALLING_BACKEND.UCM);
+    const userId = this.webex.internal.device.userId;
+    const orgId = this.webex.internal.device.orgId;
+    const linesURI = `${vgEndpoint}/${V1}/${UC}/${CONFIG}/${PEOPLE}/${userId}/${LINES}?${ORG_ID}=${orgId}`;
+
+    try {
+      const response = <WebexRequestPayload>await this.webex.request({
+        uri: `${linesURI}`,
+        method: HTTP_METHODS.GET,
+      });
+
+      const lineDetails: LinesResponse = {
+        statusCode: Number(response.statusCode),
+        data: {
+          lines: response.body,
+        },
+        message: SUCCESS_MESSAGE,
+      };
+
+      log.info(`Line details are fetched successfully`, loggerContext);
+
+      return lineDetails;
+    } catch (err: unknown) {
+      const errorInfo = err as WebexRequestPayload;
       const errorStatus = serviceErrorCodeHandler(errorInfo, loggerContext);
 
       return errorStatus;

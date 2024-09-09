@@ -3,7 +3,7 @@
 /* eslint-disable @typescript-eslint/no-shadow */
 import {LOGGER} from '../Logger/types';
 import {getTestUtilsWebex} from '../common/testUtil';
-import {HTTP_METHODS, SORT, SORT_BY, WebexRequestPayload} from '../common/types';
+import {CALLING_BACKEND, HTTP_METHODS, SORT, SORT_BY, WebexRequestPayload} from '../common/types';
 import {CallHistory, createCallHistoryClient} from './CallHistory';
 import {ICallHistory} from './types';
 import {
@@ -16,6 +16,8 @@ import {
   janusSetReadStateUrl,
   ERROR_DETAILS_401,
   ERROR_DETAILS_400,
+  MOCK_LINES_API_CALL_RESPONSE,
+  mockCallHistoryforMultiLineBody,
 } from './callHistoryFixtures';
 import {
   COMMON_EVENT_KEYS,
@@ -245,6 +247,44 @@ describe('Call history tests', () => {
         },
         methodDetails
       );
+    });
+  });
+
+  describe('fetchLinesData test', () => {
+    it('verify successful lines API case', async () => {
+      const linesAPIPayload = <WebexRequestPayload>(<unknown>MOCK_LINES_API_CALL_RESPONSE);
+
+      webex.request.mockResolvedValue(linesAPIPayload);
+      const response = await callHistory.fetchLinesData();
+
+      expect(response.statusCode).toBe(200);
+      expect(response.message).toBe('SUCCESS');
+    });
+    it('should call fetchLinesData when calling backend is UCM', async () => {
+      jest.spyOn(utils, 'getCallingBackEnd').mockReturnValue(CALLING_BACKEND.UCM);
+      const fetchLinesDataSpy = jest
+        .spyOn(callHistory, 'fetchLinesData')
+        .mockResolvedValue(MOCK_LINES_API_CALL_RESPONSE);
+      const callHistoryPayload = <WebexRequestPayload>(<unknown>mockCallHistoryforMultiLineBody);
+      webex.request.mockResolvedValue(callHistoryPayload);
+
+      const response = await callHistory.getCallHistoryData(7, 10, SORT.DEFAULT, SORT_BY.DEFAULT);
+
+      expect(fetchLinesDataSpy).toHaveBeenCalledTimes(1); // Check that fetchLinesData was called once
+      expect(response.statusCode).toBe(200);
+      expect(
+        response?.data?.userSessions && response?.data?.userSessions[0]?.self?.lineNumber
+      ).toEqual(1);
+    });
+
+    it('should not call fetchLinesData when calling backend is not UCM', async () => {
+      jest.spyOn(utils, 'getCallingBackEnd').mockReturnValue(CALLING_BACKEND.WXC);
+      const fetchLinesDataSpy = jest.spyOn(callHistory, 'fetchLinesData').mockResolvedValue({});
+
+      const callHistoryPayload = <WebexRequestPayload>(<unknown>mockCallHistoryBody);
+      webex.request.mockResolvedValue(callHistoryPayload);
+      await callHistory.getCallHistoryData(7, 10, SORT.DEFAULT, SORT_BY.DEFAULT);
+      expect(fetchLinesDataSpy).not.toHaveBeenCalled(); // Check that fetchLinesData was not called
     });
   });
 });

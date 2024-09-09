@@ -1,5 +1,10 @@
 import {Eventing} from '../Events/impl';
-import {CallHistoryEventTypes, EndTimeSessionId, UserSession} from '../Events/types';
+import {
+  CallHistoryEventTypes,
+  EndTimeSessionId,
+  UserSession,
+  LinesApiResponse,
+} from '../Events/types';
 import {LOGGER} from '../Logger/types';
 import {SORT, SORT_BY} from '../common/types';
 
@@ -20,6 +25,15 @@ export type UpdateMissedCallsResponse = {
   statusCode: number;
   data: {
     readStatusMessage?: string;
+    error?: string;
+  };
+  message: string | null;
+};
+
+export type LinesResponse = {
+  statusCode: number;
+  data: {
+    lines?: LinesApiResponse;
     error?: string;
   };
   message: string | null;
@@ -62,4 +76,5 @@ export interface ICallHistory extends Eventing<CallHistoryEventTypes> {
    * ```
    */
   updateMissedCalls(endTimeSessionIds: EndTimeSessionId[]): Promise<UpdateMissedCallsResponse>;
+  fetchLinesData(): Promise<LinesResponse>;
 }
