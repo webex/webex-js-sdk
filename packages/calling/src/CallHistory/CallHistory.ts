@@ -46,6 +46,7 @@ import {
   EndTimeSessionId,
   CallSessionViewedEvent,
   SanitizedEndTimeAndSessionId,
+  LinesApiResponse,
 } from '../Events/types';
 import {Eventing} from '../Events/impl';
 /**
@@ -153,7 +154,7 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
           const linesData = linesResponse?.data?.lines?.devices;
 
           // Iterate over user sessions and match with Lines data
-          this.userSessions[USER_SESSIONS].forEach((session) => {
+          this.userSessions[USER_SESSIONS].forEach((session: UserSession) => {
             const cucmDN = session.self.cucmDN;
             if (cucmDN) {
               linesData.forEach((device) => {
@@ -265,7 +266,7 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
       const lineDetails: LinesResponse = {
         statusCode: Number(response.statusCode),
         data: {
-          lines: response.body,
+          lines: response.body as LinesApiResponse,
         },
         message: SUCCESS_MESSAGE,
       };

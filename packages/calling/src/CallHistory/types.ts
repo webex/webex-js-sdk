@@ -76,5 +76,13 @@ export interface ICallHistory extends Eventing<CallHistoryEventTypes> {
    * ```
    */
   updateMissedCalls(endTimeSessionIds: EndTimeSessionId[]): Promise<UpdateMissedCallsResponse>;
+  /**
+   * This API `fetchLinesData` is utilized to request and retrieve line details.
+   *
+   * @example
+   * ```javascript
+   * const linesResponse = await callHistory.fetchLinesData();
+   * ```
+   */
   fetchLinesData(): Promise<LinesResponse>;
 }
