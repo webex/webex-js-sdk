@@ -7419,7 +7419,7 @@ __metadata:
     "@typescript-eslint/eslint-plugin": 5.38.1
     "@typescript-eslint/parser": 5.38.1
     "@web/dev-server": 0.4.5
-    "@webex/internal-media-core": 2.9.2
+    "@webex/internal-media-core": 2.9.3
     "@webex/media-helpers": "workspace:*"
     async-mutex: 0.4.0
     buffer: 6.0.3
@@ -7710,9 +7710,9 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/internal-media-core@npm:2.9.2":
-  version: 2.9.2
-  resolution: "@webex/internal-media-core@npm:2.9.2"
+"@webex/internal-media-core@npm:2.9.3":
+  version: 2.9.3
+  resolution: "@webex/internal-media-core@npm:2.9.3"
   dependencies:
     "@babel/runtime": ^7.18.9
     "@babel/runtime-corejs2": ^7.25.0
@@ -7724,7 +7724,7 @@ __metadata:
     uuid: ^8.3.2
     webrtc-adapter: ^8.1.2
     xstate: ^4.30.6
-  checksum: 429ccc2a73ae226fb721f6fcd72f50653ded0fd54f8682542321d2b3dd7504a79d46c8746e2abf24d83c17401c0302c82bde4c73d232036afbbbcb544fd6639e
+  checksum: 568e54be4afa7f5a93a843f927c5af12828b781deebeb651f89e7f4639f149b7b1e1642a9f3c75d8d20a065838d170853f3ea90a0f57aed0601481d584e321b6
   languageName: node
   linkType: hard
 
@@ -8483,7 +8483,7 @@ __metadata:
     "@babel/preset-typescript": 7.22.11
     "@webex/babel-config-legacy": "workspace:*"
     "@webex/eslint-config-legacy": "workspace:*"
-    "@webex/internal-media-core": 2.9.2
+    "@webex/internal-media-core": 2.9.3
     "@webex/jest-config-legacy": "workspace:*"
     "@webex/legacy-tools": "workspace:*"
     "@webex/test-helper-chai": "workspace:*"
@@ -8719,7 +8719,7 @@ __metadata:
     "@webex/babel-config-legacy": "workspace:*"
     "@webex/common": "workspace:*"
     "@webex/eslint-config-legacy": "workspace:*"
-    "@webex/internal-media-core": 2.9.2
+    "@webex/internal-media-core": 2.9.3
     "@webex/internal-plugin-conversation": "workspace:*"
     "@webex/internal-plugin-device": "workspace:*"
     "@webex/internal-plugin-llm": "workspace:*"
