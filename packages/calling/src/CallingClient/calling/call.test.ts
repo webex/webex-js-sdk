@@ -109,6 +109,7 @@ describe('Call Tests', () => {
     sdpMunging: {
       convertPort9to0: true,
       addContentSlides: false,
+      copyClineToSessionLevel: true,
     },
   };
 
@@ -716,32 +717,6 @@ describe('Call Tests', () => {
       `Did not find a local track while updating media for call ${call.getCorrelationId()}. Will not update media`,
       {file: 'call', method: 'updateMedia'}
     );
-  });
-
-  describe('#addSessionConnection', () => {
-    let call;
-
-    beforeEach(() => {
-      call = callManager.createCall(dest, CallDirection.INBOUND, deviceId, mockLineId);
-    });
-
-    it('should copy the c-line from media level to the session level', () => {
-      const sdp = `v=0\r\no=- 2890844526 2890842807 IN IP4 192.0.2.3\r\ns=-\r\nt=0 0\r\nm=audio 49170 RTP/AVP 0\r\nc=IN IP4 203.0.113.1\r\na=rtpmap:0 PCMU/8000`;
-
-      const expectedSdp = `v=0\r\no=- 2890844526 2890842807 IN IP4 192.0.2.3\r\ns=-\r\nc=IN IP4 203.0.113.1\r\nt=0 0\r\nm=audio 49170 RTP/AVP 0\r\nc=IN IP4 203.0.113.1\r\na=rtpmap:0 PCMU/8000`;
-
-      const result = call.addSessionConnection(sdp);
-      expect(result).toBe(expectedSdp);
-    });
-
-    it('should handle multiple media sections correctly', () => {
-      const sdp = `v=0\r\no=- 2890844526 2890842807 IN IP4 192.0.2.3\r\ns=-\r\nt=0 0\r\nm=audio 49170 RTP/AVP 0\r\nc=IN IP4 203.0.113.1\r\na=rtpmap:0 PCMU/8000\r\nm=video 51372 RTP/AVP 31\r\nc=IN IP4 203.0.113.2\r\na=rtpmap:31 H261/90000`;
-
-      const expectedSdp = `v=0\r\no=- 2890844526 2890842807 IN IP4 192.0.2.3\r\ns=-\r\nc=IN IP4 203.0.113.1\r\nt=0 0\r\nm=audio 49170 RTP/AVP 0\r\nc=IN IP4 203.0.113.1\r\na=rtpmap:0 PCMU/8000\r\nm=video 51372 RTP/AVP 31\r\nc=IN IP4 203.0.113.2\r\na=rtpmap:31 H261/90000`;
-
-      const result = call.addSessionConnection(sdp);
-      expect(result).toBe(expectedSdp);
-    });
   });
 });
 
