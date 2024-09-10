@@ -119,6 +119,7 @@ import {
   MEETING_PERMISSION_TOKEN_REFRESH_REASON,
   ROAP_OFFER_ANSWER_EXCHANGE_TIMEOUT,
   NAMED_MEDIA_GROUP_TYPE_AUDIO,
+  VALID_MEETING_LINK_URL,
 } from '../constants';
 import BEHAVIORAL_METRICS from '../metrics/constants';
 import ParameterError from '../common/errors/parameter';
@@ -5145,6 +5146,14 @@ export default class Meeting extends StatelessWebexPlugin {
     // TODO: does this really need to be here?
     if (options.resourceId && this.destination && options.resourceId === this.destination) {
       this.wirelessShare = true;
+    }
+
+    const link = options.startMeetingLink || options.joinMeetingLink;
+    if (link && typeof link === 'string' && !VALID_MEETING_LINK_URL.test(link)) {
+      const invalidLink = options.joinMeetingLink ? 'joinMeetingLink' : 'startMeetingLink';
+      const errorMessage = `Meeting:index#join --> Invalid ${invalidLink} format`;
+
+      return Promise.reject(new Error(errorMessage));
     }
 
     if (options.meetingQuality) {

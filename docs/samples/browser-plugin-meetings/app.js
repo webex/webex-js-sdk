@@ -292,6 +292,8 @@ const meetingsListMsgElm = document.querySelector('#meetings-list-msg');
 const meetingsListElm = document.querySelector('#meetings-list');
 const meetingsAddMediaElm = document.querySelector('#meetings-add-media');
 const meetingsLeaveElm = document.querySelector('#meetings-leave');
+const meetingStartLinkElm = document.querySelector('#meetings-start-link');
+const meetingJoinLinkElm = document.querySelector('#meetings-join-link');
 // captcha elements
 const meetingsJoinCaptchaImgElm = document.querySelector('#meetings-join-captcha');
 const meetingsJoinCaptchaElm = document.querySelector('#meetings-join-captcha-input');
@@ -612,6 +614,8 @@ async function joinMeeting({withMedia, withDevice} = {withMedia: false, withDevi
     resourceId,
     locale: 'en_UK', // audio disclaimer language
     deviceCapabilities: ['SERVER_AUDIO_ANNOUNCEMENT_SUPPORTED'], // audio disclaimer toggle
+    startMeetingLink: meetingStartLinkElm.value,
+    joinMeetingLink: meetingJoinLinkElm.value,
   };
 
   if (meetingsMediaInLobbySupportElm.checked) {

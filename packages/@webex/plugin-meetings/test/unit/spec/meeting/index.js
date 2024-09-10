@@ -1669,6 +1669,37 @@ describe('plugin-meetings', () => {
             sinon.assert.called(setCorrelationIdSpy);
             assert.equal(meeting.correlationId, '123');
           });
+          it('should join the meeting successfully with a valid joinMeetingLink', async () => {
+            const validLink = `
+              https://example.webex.com/wbxmjs/joinservice/sites/example/meeting/download/1234567890abcdef1234567890abcdef
+              ?siteurl=example
+              &integrationJoinToken=token123
+              &displayname=John+Doe
+              &email=john.doe%40example.com
+              &principal=principal123
+              &integrationEndUrl=https%3A%2F%2Fexample.com%2Fmc3300%2Fmeetingcenter%2Fmeetingend%2Fmeetingend.do%3Fsiteurl%3Dexample%26from%3Dmeeting%26backurl%3D
+            `.replace(/\s+/g, '');
+            const options = { joinMeetingLink: validLink };
+            await meeting.join(options);        
+            assert.calledOnce(MeetingUtil.joinMeeting);
+            assert.calledOnce(meeting.setLocus);
+          });
+        
+          it('should join the meeting successfully with a valid startMeetingLink', async () => {
+            const validLink = `
+              https://example.webex.com/wbxmjs/joinservice/sites/example/meeting/download/1234567890abcdef1234567890abcdef
+              ?siteurl=example
+              &integrationJoinToken=token123
+              &displayname=John+Doe
+              &email=john.doe%40example.com
+              &principal=principal123
+              &integrationEndUrl=https%3A%2F%2Fexample.com%2Fmc3300%2Fmeetingcenter%2Fmeetingend%2Fmeetingend.do%3Fsiteurl%3Dexample%26from%3Dmeeting%26backurl%3D
+            `.replace(/\s+/g, '');
+            const options = { startMeetingLink: validLink };
+            await meeting.join(options);
+            assert.calledOnce(MeetingUtil.joinMeeting);
+            assert.calledOnce(meeting.setLocus);
+          });
         });
 
         describe('failure', () => {
@@ -1749,6 +1780,20 @@ describe('plugin-meetings', () => {
             await meeting.join().catch(() => {
               assert.calledOnce(MeetingUtil.joinMeeting);
             });
+          });
+
+          it('should reject the promise if the joinMeetingLink is invalid', async () => {
+            const invalidLink = 'invalidLink';
+            const options = { joinMeetingLink: invalidLink };
+            await assert.isRejected(meeting.join(options), Error, 'Meeting:index#join --> Invalid joinMeetingLink format');
+            assert.notCalled(MeetingUtil.joinMeeting);
+          });
+        
+          it('should reject the promise if the startMeetingLink is invalid', async () => {
+            const invalidLink = 'invalidLink';
+            const options = { startMeetingLink: invalidLink };
+            await assert.isRejected(meeting.join(options), Error, 'Meeting:index#join --> Invalid startMeetingLink format');
+            assert.notCalled(MeetingUtil.joinMeeting);
           });
         });
         describe('lmm, transcription & permissionTokenRefresh decoupling', () => {

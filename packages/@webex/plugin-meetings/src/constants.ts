@@ -225,7 +225,8 @@ export const VALID_PMR_LINK =
 export const VALID_PIN = /([0-9]{4,6})/;
 export const UUID_REG =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
+export const VALID_MEETING_LINK_URL =
+  /^https:\/\/[\w.-]+\.webex\.com\/wbxmjs\/joinservice\/sites\/[\w.-]+\/meeting\/download\/\w{32}\?siteurl=[\w.-]+&integrationJoinToken=[\w%]+&displayname=[\w%+.-]+&email=[\w%.-]+&principal=[\w%]+&integrationEndUrl=https%3A%2F%2F[\w.-]+%2Fmc3300%2Fmeetingcenter%2Fmeetingend%2Fmeetingend.do%3Fsiteurl%3D[\w.-]+%26from%3Dmeeting%26backurl%3D$/i;
 // ******************** OBJECTS ********************
 // Please alphabetize, and keep objects organized
 
