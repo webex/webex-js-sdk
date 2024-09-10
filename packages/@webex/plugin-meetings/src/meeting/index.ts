@@ -24,6 +24,7 @@ import {
   RoapMessage,
   StatsAnalyzer,
   StatsAnalyzerEventNames,
+  NetworkQualityMonitor,
 } from '@webex/internal-media-core';
 
 import {
@@ -54,7 +55,6 @@ import {
   AddMediaFailed,
 } from '../common/errors/webex-errors';
 
-import NetworkQualityMonitor from '../networkQualityMonitor';
 import LoggerProxy from '../common/logs/logger-proxy';
 import EventsUtil from '../common/events/util';
 import Trigger from '../common/events/trigger-proxy';
