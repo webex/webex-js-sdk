@@ -25,10 +25,12 @@
     "docs": "typedoc --emit none",
     "fix:lint": "eslint 'src/**/*.ts' --fix",
     "fix:prettier": "prettier \"src/**/*.ts\" --write",
-    "prebuild": "rimraf dist"
+    "prebuild": "rimraf dist",
+    "test": "yarn test:style && yarn test:unit",
+    "test:style": "eslint 'src/**/*.ts'",
+    "test:unit": "jest --config=jest.config.js --runInBand"
   },
   "devDependencies": {
-    "@babel/preset-typescript": "7.16.7",
     "@commitlint/cli": "15.0.0",
     "@commitlint/config-conventional": "15.0.0",
     "@rollup/plugin-commonjs": "22.0.2",

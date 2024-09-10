@@ -7414,7 +7414,6 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@webex/byods@workspace:packages/byods"
   dependencies:
-    "@babel/preset-typescript": 7.16.7
     "@commitlint/cli": 15.0.0
     "@commitlint/config-conventional": 15.0.0
     "@rollup/plugin-commonjs": 22.0.2
