@@ -676,6 +676,33 @@ const Services = WebexPlugin.extend({
   },
 
   /**
+   * Looks up the hostname in the host catalog
+   * and replaces it with the first host if it finds it
+   * @param {string} uri
+   * @returns {string} uri with the host replaced
+   */
+  replaceHostFromHostmap(uri) {
+    const url = new URL(uri);
+    const hostCatalog = this._hostCatalog;
+
+    if (!hostCatalog) {
+      return uri;
+    }
+
+    const host = hostCatalog[url.host];
+
+    if (host && host[0]) {
+      const newHost = host[0].host;
+
+      url.host = newHost;
+
+      return url.toString();
+    }
+
+    return uri;
+  },
+
+  /**
    * @private
    * Organize a received hostmap from a service
    * catalog endpoint.
