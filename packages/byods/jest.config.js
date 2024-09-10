@@ -1,6 +1,7 @@
 export default {
   preset: 'ts-jest',
   rootDir: './',
+  setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
   testEnvironment: 'jsdom',
   transformIgnorePatterns: ['/node_modules/(?!node-fetch)|data-uri-to-buffer'],
   testPathIgnorePatterns: ['/node_modules/', '/dist/'],

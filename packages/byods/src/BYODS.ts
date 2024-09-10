@@ -1,6 +1,6 @@
-import {LocalStream} from '@webex/media-helpers'; // Just to show that you can import other packages from the workspace
 /* eslint-disable no-console */
 import fetch from 'node-fetch';
+import {LocalStream} from '@webex/media-helpers'; // Just to show that you can import other packages from the workspace
 
 interface SDKConfig {
   clientId: string;
