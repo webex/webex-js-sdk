@@ -8,7 +8,8 @@ export default {
   testResultsProcessor: 'jest-junit',
   // Clear mocks in between tests by default
   clearMocks: true,
-  collectCoverage: true,
+  // TODO: Set this to true once we have the source code and their corresponding test files added
+  collectCoverage: false,
   coverageThreshold: {
     global: {
       lines: 85,
