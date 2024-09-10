@@ -1904,6 +1904,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         sdpMunging: {
           convertPort9to0: true,
           addContentSlides: false,
+          copyClineToSessionLevel: true,
         },
       },
       {
@@ -2377,24 +2378,6 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
   /* istanbul ignore next */
   /**
-   * Copy SDP's c-line to session level from media level.
-   * SPARK-522437
-   */
-  private addSessionConnection(sdp: string): string {
-    const lines: string[] = sdp.split(/\r\n|\r|\n/);
-    const mIndex: number = lines.findIndex((line) => line.startsWith('m='));
-    const tIndex: number = lines.findIndex((line) => line.startsWith('t='));
-
-    if (mIndex !== -1 && mIndex < lines.length - 1 && lines[mIndex + 1].startsWith('c=')) {
-      const cLine: string = lines[mIndex + 1];
-      lines.splice(tIndex, 0, cLine);
-    }
-
-    return lines.join('\r\n');
-  }
-
-  /* istanbul ignore next */
-  /**
    * Setup a listener for roap events emitted by the media sdk.
    */
   private mediaRoapEventsListener() {
@@ -2412,10 +2395,6 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
           file: CALL_FILE,
           method: this.mediaRoapEventsListener.name,
         });
-
-        if (event.roapMessage?.sdp) {
-          event.roapMessage.sdp = this.addSessionConnection(event.roapMessage.sdp);
-        }
 
         switch (event.roapMessage.messageType) {
           case RoapScenario.OK: {
