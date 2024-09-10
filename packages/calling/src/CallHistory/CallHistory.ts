@@ -29,8 +29,8 @@ import {
   NUMBER_OF_DAYS,
   UPDATE_MISSED_CALLS_ENDPOINT,
   SET_READ_STATE_SUCCESS_MESSAGE,
-  V1,
-  UC,
+  VERSION_1,
+  UNIFIED_COMMUNICATIONS,
   CONFIG,
   PEOPLE,
   LINES,
@@ -255,7 +255,7 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
     const vgEndpoint = getVgActionEndpoint(this.webex, CALLING_BACKEND.UCM);
     const userId = this.webex.internal.device.userId;
     const orgId = this.webex.internal.device.orgId;
-    const linesURI = `${vgEndpoint}/${V1}/${UC}/${CONFIG}/${PEOPLE}/${userId}/${LINES}?${ORG_ID}=${orgId}`;
+    const linesURI = `${vgEndpoint}/${VERSION_1}/${UNIFIED_COMMUNICATIONS}/${CONFIG}/${PEOPLE}/${userId}/${LINES}?${ORG_ID}=${orgId}`;
 
     try {
       const response = <WebexRequestPayload>await this.webex.request({
