@@ -1,18 +1,10 @@
 import {ISDKConnector} from '../SDKConnector/types';
-import {ContactDetail} from '../common/types';
+import {Address, PhoneNumber, URIAddress} from '../common/types';
 
 export enum ContactType {
   CUSTOM = 'CUSTOM',
   CLOUD = 'CLOUD',
 }
-
-export type AddressType = {
-  city?: string;
-  country?: string;
-  state?: string;
-  street?: string;
-  zipCode?: string;
-};
 
 /**
  * `Contact` object is used to represent a contact.
@@ -21,7 +13,7 @@ export type Contact = {
   /**
    * This represents the complete address of the contact.
    */
-  addressInfo?: AddressType;
+  addressInfo?: Address;
   /**
    * This represents the URL of the avatar of the contact.
    */
@@ -53,7 +45,7 @@ export type Contact = {
   /**
    * This represents the array of different email addresses of the contact.
    */
-  emails?: ContactDetail[];
+  emails?: URIAddress[];
   /**
    * This is encrypted key url of the contact used for encryption.
    */
@@ -85,7 +77,7 @@ export type Contact = {
   /**
    * This represents the array of different phone numbers of the contact.
    */
-  phoneNumbers?: ContactDetail[];
+  phoneNumbers?: PhoneNumber[];
   /**
    * Primary contact method as set by the contact.
    */
@@ -97,7 +89,7 @@ export type Contact = {
   /**
    * This represents the array of different sip addresses of the contact.
    */
-  sipAddresses?: ContactDetail[];
+  sipAddresses?: URIAddress[];
   /**
    * This represents the job title of the contact.
    */

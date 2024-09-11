@@ -20,15 +20,7 @@ import {
   RegistrationStatus,
 } from './types';
 import log from '../Logger';
-import {
-  CALL_FILE,
-  DUMMY_METRICS,
-  UTILS_FILE,
-  IDENTITY_ENDPOINT_RESOURCE,
-  SCIM_ENDPOINT_RESOURCE,
-  SCIM_USER_FILTER,
-  REGISTER_UTIL,
-} from '../CallingClient/constants';
+import {CALL_FILE, DUMMY_METRICS, UTILS_FILE, REGISTER_UTIL} from '../CallingClient/constants';
 import {
   CALL_ERROR_CODE,
   ERROR_CODE,
@@ -54,7 +46,12 @@ import {
   getAscVoicemailListJsonWXC,
   getDescVoicemailListJsonWXC,
 } from '../Voicemail/voicemailFixture';
-import {INFER_ID_CONSTANT} from './constants';
+import {
+  IDENTITY_ENDPOINT_RESOURCE,
+  INFER_ID_CONSTANT,
+  SCIM_ENDPOINT_RESOURCE,
+  SCIM_USER_FILTER,
+} from './constants';
 import {CALL_EVENT_KEYS} from '../Events/types';
 
 const mockSubmitRegistrationMetric = jest.fn();

@@ -1,9 +1,15 @@
-import {HTTP_METHODS, WebexRequestPayload} from '../common/types';
+import {HTTP_METHODS, SCIMListResponse, WebexRequestPayload} from '../common/types';
 import {getTestUtilsWebex} from '../common/testUtil';
 import {LOGGER} from '../Logger/types';
 import {Contact, ContactResponse, IContacts} from './types';
 import {createContactsClient} from './ContactsClient';
-import {FAILURE_MESSAGE, SUCCESS_MESSAGE} from '../common/constants';
+import {
+  FAILURE_MESSAGE,
+  IDENTITY_ENDPOINT_RESOURCE,
+  SCIM_ENDPOINT_RESOURCE,
+  SCIM_USER_FILTER,
+  SUCCESS_MESSAGE,
+} from '../common/constants';
 import log from '../Logger';
 import {
   CONTACTS_FILE,
@@ -24,12 +30,12 @@ import {
   mockContactResponseBodyOne,
   mockCountry,
   mockDisplayNameOne,
-  mockDSSResponse,
   mockEmail,
   mockFirstName,
   mockLastName,
   mockNumber1,
   mockNumber2,
+  mockSCIMListResponse,
   mockSipAddress,
   mockState,
   mockStreet,
@@ -51,6 +57,7 @@ describe('ContactClient Tests', () => {
 
   // eslint-disable-next-line no-underscore-dangle
   const contactServiceUrl = `${webex.internal.services._serviceUrls.contactsService}/${ENCRYPT_FILTER}/${USERS}/${CONTACT_FILTER}`;
+  const scimUrl = `${webex.internal.services._serviceUrls.identity}/${IDENTITY_ENDPOINT_RESOURCE}/${SCIM_ENDPOINT_RESOURCE}/${webex.internal.device.orgId}/${SCIM_USER_FILTER}id%20eq%20%22801bb994-343b-4f6b-97ae-d13c91d4b877%22`;
   // eslint-disable-next-line no-underscore-dangle
   const contactServiceGroupUrl = `${webex.internal.services._serviceUrls.contactsService}/${ENCRYPT_FILTER}/${USERS}/${GROUP_FILTER}`;
   const serviceErrorCodeHandlerSpy = jest.spyOn(utils, 'serviceErrorCodeHandler');
@@ -90,6 +97,8 @@ describe('ContactClient Tests', () => {
     expectedMessage: string;
     expectedStatusCode: number;
     decryptTextList: Array<string>;
+    cloudContactPresent?: boolean;
+    scimResponse?: SCIMListResponse;
   }[] = [
     {
       name: 'Success case 1: fetch contacts using get contacts api, custom and cloud contact present',
@@ -118,6 +127,8 @@ describe('ContactClient Tests', () => {
         mockSipAddress,
         mockGroupName,
       ],
+      cloudContactPresent: true,
+      scimResponse: mockSCIMListResponse,
     },
     {
       name: 'Success case 2: fetch contacts using get contacts api, single custom contact with mandatory details present',
@@ -202,7 +213,10 @@ describe('ContactClient Tests', () => {
       codeObj.decryptTextList.forEach((text) => {
         webex.internal.encryption.decryptText.mockResolvedValueOnce(text);
       });
-      webex.internal.dss.lookup.mockResolvedValueOnce(mockDSSResponse);
+
+      if (codeObj.scimResponse) {
+        webex.request.mockResolvedValueOnce(mockSCIMListResponse);
+      }
     } else {
       respPayload['message'] = FAILURE_MESSAGE;
       respPayload['data'] = codeObj.payloadData;
@@ -211,10 +225,34 @@ describe('ContactClient Tests', () => {
 
     const contactsResponse = await contactClient.getContacts();
 
-    expect(webex.request).toBeCalledOnceWith({
-      uri: contactServiceUrl,
-      method: HTTP_METHODS.GET,
-    });
+    if (codeObj.inputStatusCode === 200) {
+      if (codeObj.cloudContactPresent) {
+        expect(webex.request).toBeCalledTimes(2);
+      } else {
+        expect(webex.request).toBeCalledTimes(1);
+      }
+      expect(webex.request).toHaveBeenNthCalledWith(1, {
+        uri: contactServiceUrl,
+        method: HTTP_METHODS.GET,
+      });
+
+      if (codeObj.cloudContactPresent) {
+        expect(webex.request).toHaveBeenNthCalledWith(2, {
+          uri: scimUrl,
+          method: HTTP_METHODS.GET,
+          headers: {
+            'cisco-device-url':
+              'https://wdm-intb.ciscospark.com/wdm/api/v1/devices/c5ae3b86-1bb7-40f1-a6a9-c296ee7e61d5',
+            'spark-user-agent': 'webex-calling/beta',
+          },
+        });
+      }
+    } else {
+      expect(webex.request).toBeCalledOnceWith({
+        uri: contactServiceUrl,
+        method: HTTP_METHODS.GET,
+      });
+    }
 
     expect(contactsResponse).toEqual({
       data: expect.any(Object),
@@ -563,7 +601,8 @@ describe('ContactClient Tests', () => {
 
     webex.request
       .mockResolvedValueOnce(successResponsePayloadGroup)
-      .mockResolvedValueOnce(successResponsePayload);
+      .mockResolvedValueOnce(successResponsePayload)
+      .mockResolvedValueOnce(mockSCIMListResponse);
 
     webex.internal.encryption.encryptText.mockResolvedValueOnce('Encrypted group name');
 
@@ -581,14 +620,13 @@ describe('ContactClient Tests', () => {
     expect(res.statusCode).toEqual(400);
     expect(res.data.error).toEqual('contactId is required for contactType:CLOUD.');
 
-    webex.internal.dss.lookup.mockResolvedValueOnce(mockDSSResponse);
     contact.contactId = mockContactResponse.contactId;
 
     res = await contactClient.createContact(contact);
     expect(res.statusCode).toEqual(201);
     expect(res.data.contact?.contactId).toBe(mockContactResponse.contactId);
 
-    expect(webex.request).toBeCalledTimes(2);
+    expect(webex.request).toBeCalledTimes(3);
     expect(webex.request).toHaveBeenNthCalledWith(1, {
       method: HTTP_METHODS.POST,
       uri: contactServiceGroupUrl,
@@ -608,6 +646,15 @@ describe('ContactClient Tests', () => {
         encryptionKeyUrl: mockContactResponseBodyOne.groups[0].encryptionKeyUrl,
         schemas: CONTACTS_SCHEMA,
         groups: ['1561977e-3443-4ccf-a591-69686275d7d2'],
+      },
+    });
+    expect(webex.request).toHaveBeenNthCalledWith(3, {
+      uri: scimUrl,
+      method: HTTP_METHODS.GET,
+      headers: {
+        'cisco-device-url':
+          'https://wdm-intb.ciscospark.com/wdm/api/v1/devices/c5ae3b86-1bb7-40f1-a6a9-c296ee7e61d5',
+        'spark-user-agent': 'webex-calling/beta',
       },
     });
   });
