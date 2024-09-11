@@ -1,5 +1,6 @@
 /* eslint-disable no-console */
 import fetch, {RequestInit, Response} from 'node-fetch';
+import {jwksCache, createRemoteJWKSet} from 'jose';
 
 interface ApiResponse<T> {
   data: T;
@@ -13,6 +14,8 @@ interface SDKConfig {
 }
 
 const userAgent = 'BYoDS NodeJS SDK / 0.0.1';
+const jwksUrl = 'https://idbroker.webex.com/idb/oauth2/v2/keys/verificationjwk';
+const defaultBaseUrl = 'https://webexapis.com/v1';
 
 /**
  * TokenResponse JSON shape from Webex APIs.
@@ -73,13 +76,23 @@ export default class BYODS {
     'User-Agent': userAgent,
   };
 
+  private jwksCache: Record<string, never> = {};
+  private jwks: any;
+
   private config: SDKConfig;
   private serviceAppAuthorizations: ServiceAppAuthorizations = {};
 
-  constructor(clientId: string, clientSecret: string, baseUrl = 'https://webexapis.com/v1') {
+  constructor(clientId: string, clientSecret: string, baseUrl = defaultBaseUrl) {
     this.baseUrl = baseUrl;
     this.config = {clientId, clientSecret, baseUrl};
     this.serviceAppId = Buffer.from(`ciscospark://us/APPLICATION/${clientId}`).toString('base64');
+
+    // Create a remote JWK Set
+    this.jwks = createRemoteJWKSet(new URL(jwksUrl), {
+      [jwksCache]: this.jwksCache,
+      cacheMaxAge: 600000, // 10 minutes
+      cooldownDuration: 30000, // 30 seconds
+    });
   }
 
   /**

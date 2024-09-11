@@ -114,6 +114,7 @@
     "@types/node-fetch": "^2.6.11",
     "@webex/legacy-tools": "workspace:*",
     "@webex/media-helpers": "workspace:*",
+    "jose": "^5.8.0",
     "node-fetch": "^3.3.2"
   },
   "type": "module"

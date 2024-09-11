@@ -7444,6 +7444,7 @@ __metadata:
     eslint-plugin-tsdoc: 0.2.14
     jest: 27.5.1
     jest-junit: 13.0.0
+    jose: ^5.8.0
     karma: 6.4.3
     karma-chai: 0.1.0
     karma-chrome-launcher: 3.1.0
@@ -21686,6 +21687,13 @@ __metadata:
   version: 1.4.0
   resolution: "jju@npm:1.4.0"
   checksum: 3790481bd2b7827dd6336e6e3dc2dcc6d425679ba7ebde7b679f61dceb4457ea0cda330972494de608571f4973c6dfb5f70fab6f3c5037dbab19ac449a60424f
+  languageName: node
+  linkType: hard
+
+"jose@npm:^5.8.0":
+  version: 5.8.0
+  resolution: "jose@npm:5.8.0"
+  checksum: bb9cd97ac6ccb8148a8e23d6a7f61e5756a3373a7d65dd783051d8af409c3534bdc2a2c30ecd1820988ea943aba5755b2a45b86955c5765d71691bb0ddd45d61
   languageName: node
   linkType: hard
 
