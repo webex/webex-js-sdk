@@ -435,13 +435,13 @@ meetingsListElm.onclick = (e) => {
     document.getElementById('btn-join').disabled = true;
     document.getElementById('btn-join-media').disabled = true;
   }
-  else if (meeting && (meeting.passwordStatus === 'UNKNOWN' && selectedMeetingType==="SIP URI" )) {
+  else if (meeting && (meeting.passwordStatus === 'UNKNOWN' && selectedMeetingType === 'SIP URI')) {
     meetingsJoinPinElm.disabled = true;
     verifyPasswordElm.disabled = true;
     document.getElementById('btn-join').disabled = true;
     document.getElementById('btn-join-media').disabled = true;
   }
-  else if(meeting && (meeting.passwordStatus === 'UNKNOWN' && selectedMeetingType!="SIP URI")) {
+  else if(meeting && (meeting.passwordStatus === 'UNKNOWN' && selectedMeetingType != 'SIP URI')) {
     meetingsJoinPinElm.disabled = true;
     verifyPasswordElm.disabled = true;
     document.getElementById('btn-join').disabled = false;
