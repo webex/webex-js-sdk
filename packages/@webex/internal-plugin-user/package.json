@@ -50,5 +50,6 @@
     "test:browser:broken": "webex-legacy-tools test --integration --runner karma",
     "test:style": "eslint ./src/**/*.*",
     "test:unit": "webex-legacy-tools test --unit --runner jest"
-  }
+  },
+  "version": "3.3.1-next.12"
 }

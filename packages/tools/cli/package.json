@@ -47,5 +47,6 @@
   "dependencies": {
     "commander": "11.1.0",
     "shelljs": "^0.8.5"
-  }
+  },
+  "version": "0.0.0-next.2"
 }

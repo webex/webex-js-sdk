@@ -53,5 +53,6 @@
     "test:browser": "webex-legacy-tools test --integration --runner karma",
     "test:integration": "webex-legacy-tools test --integration --runner mocha",
     "test:style": "eslint ./src/**/*.*"
-  }
+  },
+  "version": "3.3.1-next.13"
 }

@@ -128,5 +128,6 @@
   "gh-pages-deploy": {
     "staticpath": "docs",
     "noprompt": true
-  }
+  },
+  "version": "3.3.1-next.26"
 }

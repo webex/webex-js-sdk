@@ -36,7 +36,7 @@ export default class UserAgentInterceptor extends Interceptor {
    */
   constructor(options = {}) {
     const appName = get(options, 'webex.config.appName');
-    const appVersion = get(options, 'webex.config.appVersion') || '0.0';
+    const appVersion = get(options, 'webex.config.appVersion') || '0.0.0';
 
     super(options);
     if (appName) {
