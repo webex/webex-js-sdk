@@ -1,7 +1,10 @@
-export default {
+import config from '@webex/jest-config-legacy';
+
+const jestConfig = {
   rootDir: './',
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
   testEnvironment: 'node',
+  testMatch: ['<rootDir>/**/*.test.ts'],
   transformIgnorePatterns: ['/node_modules/(?!node-fetch)|data-uri-to-buffer'],
   testPathIgnorePatterns: ['/node_modules/', '/dist/'],
   testResultsProcessor: 'jest-junit',
@@ -40,3 +43,5 @@ export default {
     ],
   ],
 };
+
+export default {...config, ...jestConfig};

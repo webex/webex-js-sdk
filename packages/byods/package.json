@@ -28,7 +28,7 @@
     "prebuild": "rimraf dist",
     "test": "yarn test:style && yarn test:unit",
     "test:style": "eslint 'src/**/*.ts'",
-    "test:unit": "jest --config=jest.config.js --runInBand"
+    "test:unit": "webex-legacy-tools test --unit --runner jest"
   },
   "devDependencies": {
     "@babel/preset-typescript": "7.16.7",
@@ -115,6 +115,7 @@
   },
   "dependencies": {
     "@types/node-fetch": "^2.6.11",
+    "@webex/jest-config-legacy": "workspace:*",
     "@webex/legacy-tools": "workspace:*",
     "@webex/media-helpers": "workspace:*",
     "node-fetch": "^3.3.2"
