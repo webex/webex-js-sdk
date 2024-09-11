@@ -51,10 +51,6 @@ export function getTestUtilsWebex() {
           },
         },
       },
-      dss: {
-        lookup: jest.fn(),
-        register: jest.fn(),
-      },
       encryption: {
         decryptText: jest.fn(),
         encryptText: jest.fn(),
@@ -78,7 +74,6 @@ export function getTestUtilsWebex() {
           mercuryApi: 'https://mercury-api-intb.ciscospark.com/v1',
           'ucmgmt-gateway': 'https://gw.telemetry.int-ucmgmt.cisco.com',
           contactsService: 'https://contacts-service-a.wbx2.com/contact/api/v1',
-          directorySearch: 'https://directory-search-a.wbx2.com/direcory-search/api/v1/',
         },
         fetchClientRegionInfo: jest.fn(),
       },
