@@ -24,6 +24,8 @@ import {
   RoapMessage,
   StatsAnalyzer,
   StatsAnalyzerEventNames,
+  NetworkQualityEventNames,
+  NetworkQualityMonitor,
 } from '@webex/internal-media-core';
 
 import {
@@ -54,7 +56,6 @@ import {
   AddMediaFailed,
 } from '../common/errors/webex-errors';
 
-import NetworkQualityMonitor from '../networkQualityMonitor';
 import LoggerProxy from '../common/logs/logger-proxy';
 import EventsUtil from '../common/events/util';
 import Trigger from '../common/events/trigger-proxy';
@@ -6500,7 +6501,7 @@ export default class Meeting extends StatelessWebexPlugin {
       });
       this.setupStatsAnalyzerEventHandlers();
       this.networkQualityMonitor.on(
-        EVENT_TRIGGERS.NETWORK_QUALITY,
+        NetworkQualityEventNames.NETWORK_QUALITY,
         this.sendNetworkQualityEvent.bind(this)
       );
     }
@@ -8193,7 +8194,7 @@ export default class Meeting extends StatelessWebexPlugin {
    * @private
    * @memberof Meeting
    */
-  private sendNetworkQualityEvent(res: any) {
+  private sendNetworkQualityEvent(res: {networkQualityScore: number; mediaType: string}) {
     Trigger.trigger(
       this,
       {
