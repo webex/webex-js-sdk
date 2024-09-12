@@ -1,3 +1,5 @@
+import {SCIM_ENTERPRISE_USER, SCIM_WEBEXIDENTITY_USER} from './constants';
+
 export type MobiusDeviceId = string;
 export type MobiusDeviceUri = string;
 export type SettingEnabled = boolean;
@@ -30,14 +32,13 @@ export enum CALLING_BACKEND {
 export type DeviceList = unknown;
 export type CallId = string; // guid;
 export type CorrelationId = string;
-export type SipAddress = string;
 export enum CallType {
   URI = 'uri',
   TEL = 'tel',
 }
 export type CallDetails = {
   type: CallType;
-  address: SipAddress; // sip address
+  address: string; // sip address
 };
 
 export type CallDestination = CallDetails;
@@ -181,32 +182,11 @@ export type ContactDetail = {
   value: string;
 };
 
-export interface LookupOptions {
-  id: string;
-  shouldBatch: boolean;
-}
-
-export type DSSLookupResponse = {
-  additionalInfo: {
-    department: string;
-    firstName: string;
-    identityManager: {
-      managerId: string;
-      displayName: string;
-    };
-    jobTitle: string;
-    lastName: string;
-  };
-  displayName: string;
-  emails: ContactDetail[];
-  entityProviderType: string;
-  identity: string;
-  orgId: string;
-  phoneNumbers: ContactDetail[];
-  photos: ContactDetail[];
-  sipAddresses: ContactDetail[];
+export interface URIAddress {
+  value: string;
   type: string;
-};
+  primary?: boolean;
+}
 
 export type KmsKey = {
   uri: string;
@@ -222,3 +202,59 @@ export type KmsResourceObject = {
   keyUris: string[];
   authorizationUris: string[];
 };
+
+export interface Name {
+  familyName: string;
+  givenName: string;
+}
+
+export interface Address {
+  city?: string;
+  country?: string;
+  state?: string;
+  street?: string;
+  zipCode?: string;
+}
+
+interface WebexIdentityMeta {
+  organizationId: string;
+}
+interface WebexIdentityUser {
+  sipAddresses: URIAddress[];
+  meta: WebexIdentityMeta;
+}
+
+interface Manager {
+  value: string;
+  displayName: string;
+  $ref: string;
+}
+
+interface EnterpriseUser {
+  department: string;
+  manager: Manager;
+}
+
+interface Resource {
+  schemas: string[];
+  id: string;
+  userName: string;
+  active: boolean;
+  name: Name;
+  displayName: string;
+  emails: URIAddress[];
+  userType: string;
+  phoneNumbers: PhoneNumber[];
+  photos?: ContactDetail[];
+  addresses: Address[];
+  [SCIM_WEBEXIDENTITY_USER]: WebexIdentityUser;
+  [SCIM_ENTERPRISE_USER]: EnterpriseUser;
+}
+
+export interface SCIMListResponse {
+  schemas: string[];
+  totalResults: number;
+  itemsPerPage: number;
+  startIndex: number;
+  Resources: Resource[];
+}
