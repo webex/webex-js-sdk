@@ -106,7 +106,7 @@
   },
   "typedocOptions": {
     "entryPoints": [
-      "./src/index.ts"
+      "./src/**"
     ],
     "sort": [
       "source-order"
