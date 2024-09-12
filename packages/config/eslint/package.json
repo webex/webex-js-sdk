@@ -23,7 +23,7 @@
     "eslint-config-airbnb-typescript": "^17.0.0",
     "eslint-plugin-import": "^2.27.5",
     "eslint-plugin-jasmine": "^4.1.3",
-    "eslint-plugin-jsdoc": "^40.0.0",
+    "eslint-plugin-jsdoc": "^50.2.2",
     "eslint-plugin-tsdoc": "^0.2.17"
   },
   "devDependencies": {
