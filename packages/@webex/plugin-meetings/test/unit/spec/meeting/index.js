@@ -3023,6 +3023,8 @@ describe('plugin-meetings', () => {
             }),
           };
           meeting.iceCandidatesCount = 3;
+          meeting.iceCandidateErrors.set('701_error', 3);
+          meeting.iceCandidateErrors.set('701_turn_host_lookup_received_error', 1);
 
           await meeting.addMedia({
             mediaSettings: {},
@@ -3044,6 +3046,8 @@ describe('plugin-meetings', () => {
               someReachabilityMetric1: 'some value1',
               someReachabilityMetric2: 'some value2',
               iceCandidatesCount: 3,
+              '701_error': 3,
+              '701_turn_host_lookup_received_error': 1,
             }
           );
 
