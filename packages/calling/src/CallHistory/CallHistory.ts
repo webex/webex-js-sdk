@@ -15,7 +15,7 @@ import {
   JanusResponseEvent,
   LoggerInterface,
   UpdateMissedCallsResponse,
-  LinesResponse,
+  UCMLinesResponse,
 } from './types';
 import log from '../Logger';
 import {serviceErrorCodeHandler, getVgActionEndpoint, getCallingBackEnd} from '../common/Utils';
@@ -46,7 +46,7 @@ import {
   EndTimeSessionId,
   CallSessionViewedEvent,
   SanitizedEndTimeAndSessionId,
-  LinesApiResponse,
+  UCMLinesApiResponse,
 } from '../Events/types';
 import {Eventing} from '../Events/impl';
 /**
@@ -146,26 +146,37 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
       // Check the calling backend
       const callingBackend = getCallingBackEnd(this.webex);
       if (callingBackend === CALLING_BACKEND.UCM) {
-        // Fetch the Lines data
-        const linesResponse = await this.fetchLinesData();
+        // Check if userSessions exist and the length is greater than 0
+        if (this.userSessions[USER_SESSIONS] && this.userSessions?.[USER_SESSIONS]?.length > 0) {
+          // Check if cucmDN exists and is valid in any of the userSessions
+          const hasCucmDN = this.userSessions[USER_SESSIONS].some(
+            (session: UserSession) => session.self.cucmDN && session.self.cucmDN.length > 0
+          );
+          // If any user session has cucmDN, proceed to fetch line data
+          if (hasCucmDN) {
+            // Fetch the Lines data
+            const ucmLinesResponse = await this.fetchUCMLinesData();
 
-        // Check if the Lines API response was successful
-        if (linesResponse.statusCode === 200 && linesResponse?.data?.lines?.devices) {
-          const linesData = linesResponse?.data?.lines?.devices;
+            // Check if the Lines API response was successful
+            if (ucmLinesResponse.statusCode === 200 && ucmLinesResponse?.data?.lines?.devices) {
+              const ucmLinesData = ucmLinesResponse.data.lines.devices;
 
-          // Iterate over user sessions and match with Lines data
-          this.userSessions[USER_SESSIONS].forEach((session: UserSession) => {
-            const cucmDN = session.self.cucmDN;
-            if (cucmDN) {
-              linesData.forEach((device) => {
-                device.lines.forEach((line) => {
-                  if (line.dnorpattern === cucmDN) {
-                    session.self.lineNumber = line.index; // Assign the lineNumber
-                  }
-                });
+              // Iterate over user sessions and match with Lines data
+              this.userSessions[USER_SESSIONS].forEach((session: UserSession) => {
+                const cucmDN = session.self.cucmDN;
+
+                if (cucmDN) {
+                  ucmLinesData.forEach((device) => {
+                    device.lines.forEach((line) => {
+                      if (line.dnorpattern === cucmDN) {
+                        session.self.lineNumber = line.index; // Assign the lineNumber
+                      }
+                    });
+                  });
+                }
               });
             }
-          });
+          }
         }
       }
 
@@ -244,10 +255,10 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
   }
 
   /**
-   * Function to display the Lines API response.
-   * @returns {Promise} Resolves to an object of type  {@link LinesResponse}.Response details with success or error status.
+   * Function to display the UCM Lines API response.
+   * @returns {Promise} Resolves to an object of type  {@link UCMLinesResponse}.Response details with success or error status.
    */
-  public async fetchLinesData(): Promise<LinesResponse> {
+  public async fetchUCMLinesData(): Promise<UCMLinesResponse> {
     const loggerContext = {
       file: CALL_HISTORY_FILE,
       method: 'fetchLinesData',
@@ -255,25 +266,25 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
     const vgEndpoint = getVgActionEndpoint(this.webex, CALLING_BACKEND.UCM);
     const userId = this.webex.internal.device.userId;
     const orgId = this.webex.internal.device.orgId;
-    const linesURI = `${vgEndpoint}/${VERSION_1}/${UNIFIED_COMMUNICATIONS}/${CONFIG}/${PEOPLE}/${userId}/${LINES}?${ORG_ID}=${orgId}`;
+    const linesURIForUCM = `${vgEndpoint}/${VERSION_1}/${UNIFIED_COMMUNICATIONS}/${CONFIG}/${PEOPLE}/${userId}/${LINES}?${ORG_ID}=${orgId}`;
 
     try {
       const response = <WebexRequestPayload>await this.webex.request({
-        uri: `${linesURI}`,
+        uri: `${linesURIForUCM}`,
         method: HTTP_METHODS.GET,
       });
 
-      const lineDetails: LinesResponse = {
+      const ucmLineDetails: UCMLinesResponse = {
         statusCode: Number(response.statusCode),
         data: {
-          lines: response.body as LinesApiResponse,
+          lines: response.body as UCMLinesApiResponse,
         },
         message: SUCCESS_MESSAGE,
       };
 
       log.info(`Line details are fetched successfully`, loggerContext);
 
-      return lineDetails;
+      return ucmLineDetails;
     } catch (err: unknown) {
       const errorInfo = err as WebexRequestPayload;
       const errorStatus = serviceErrorCodeHandler(errorInfo, loggerContext);

@@ -5,7 +5,7 @@ import {
   SessionType,
   CallSessionViewedEvent,
 } from '../Events/types';
-import {LinesResponse, UpdateMissedCallsResponse} from './types';
+import {UCMLinesResponse, UpdateMissedCallsResponse} from './types';
 
 export const sortedCallHistory = {
   body: {
@@ -539,7 +539,7 @@ export const ERROR_DETAILS_400 = {
   },
   message: 'FAILURE',
 };
-export const MOCK_LINES_API_CALL_RESPONSE: LinesResponse = {
+export const MOCK_LINES_API_CALL_RESPONSE: UCMLinesResponse = {
   statusCode: 200,
   data: {
     lines: {

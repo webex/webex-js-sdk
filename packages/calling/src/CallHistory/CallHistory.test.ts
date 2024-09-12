@@ -250,41 +250,77 @@ describe('Call history tests', () => {
     });
   });
 
-  describe('fetchLinesData test', () => {
-    it('verify successful lines API case', async () => {
-      const linesAPIPayload = <WebexRequestPayload>(<unknown>MOCK_LINES_API_CALL_RESPONSE);
+  describe('fetchUCMLinesData test', () => {
+    it('verify successful UCM lines API case', async () => {
+      const ucmLinesAPIPayload = <WebexRequestPayload>(<unknown>MOCK_LINES_API_CALL_RESPONSE);
 
-      webex.request.mockResolvedValue(linesAPIPayload);
-      const response = await callHistory.fetchLinesData();
+      webex.request.mockResolvedValue(ucmLinesAPIPayload);
+      const response = await callHistory.fetchUCMLinesData();
 
       expect(response.statusCode).toBe(200);
       expect(response.message).toBe('SUCCESS');
     });
-    it('should call fetchLinesData when calling backend is UCM', async () => {
+
+    it('verify bad request failed UCM lines API case', async () => {
+      const failurePayload = {
+        statusCode: 400,
+      };
+      const ucmLinesAPIPayload = <WebexRequestPayload>(<unknown>failurePayload);
+
+      webex.request.mockRejectedValue(ucmLinesAPIPayload);
+      const response = await callHistory.fetchUCMLinesData();
+
+      expect(response.statusCode).toBe(400);
+      expect(response.message).toBe('FAILURE');
+    });
+
+    it('should call fetchUCMLinesData when calling backend is UCM and userSessions contain valid cucmDN', async () => {
       jest.spyOn(utils, 'getCallingBackEnd').mockReturnValue(CALLING_BACKEND.UCM);
-      const fetchLinesDataSpy = jest
-        .spyOn(callHistory, 'fetchLinesData')
+
+      const fetchUCMLinesDataSpy = jest
+        .spyOn(callHistory, 'fetchUCMLinesData')
         .mockResolvedValue(MOCK_LINES_API_CALL_RESPONSE);
-      const callHistoryPayload = <WebexRequestPayload>(<unknown>mockCallHistoryforMultiLineBody);
-      webex.request.mockResolvedValue(callHistoryPayload);
+
+      const mockCallHistoryPayload = <WebexRequestPayload>(
+        (<unknown>mockCallHistoryforMultiLineBody)
+      );
+      webex.request.mockResolvedValue(mockCallHistoryPayload);
 
       const response = await callHistory.getCallHistoryData(7, 10, SORT.DEFAULT, SORT_BY.DEFAULT);
 
-      expect(fetchLinesDataSpy).toHaveBeenCalledTimes(1); // Check that fetchLinesData was called once
+      expect(fetchUCMLinesDataSpy).toHaveBeenCalledTimes(1);
+
       expect(response.statusCode).toBe(200);
       expect(
         response?.data?.userSessions && response?.data?.userSessions[0]?.self?.lineNumber
       ).toEqual(1);
     });
 
-    it('should not call fetchLinesData when calling backend is not UCM', async () => {
+    it('should not call fetchUCMLinesData when calling backend is UCM but no valid cucmDN is present', async () => {
+      jest.spyOn(utils, 'getCallingBackEnd').mockReturnValue(CALLING_BACKEND.UCM);
+
+      const fetchUCMLinesDataSpy = jest
+        .spyOn(callHistory, 'fetchUCMLinesData')
+        .mockResolvedValue({});
+
+      const callHistoryPayload = <WebexRequestPayload>(<unknown>mockCallHistoryBody);
+      webex.request.mockResolvedValue(callHistoryPayload);
+
+      await callHistory.getCallHistoryData(7, 10, SORT.DEFAULT, SORT_BY.DEFAULT);
+
+      expect(fetchUCMLinesDataSpy).not.toHaveBeenCalled();
+    });
+
+    it('should not call fetchUCMLinesData when calling backend is not UCM', async () => {
       jest.spyOn(utils, 'getCallingBackEnd').mockReturnValue(CALLING_BACKEND.WXC);
-      const fetchLinesDataSpy = jest.spyOn(callHistory, 'fetchLinesData').mockResolvedValue({});
+      const fetchUCMLinesDataSpy = jest
+        .spyOn(callHistory, 'fetchUCMLinesData')
+        .mockResolvedValue({});
 
       const callHistoryPayload = <WebexRequestPayload>(<unknown>mockCallHistoryBody);
       webex.request.mockResolvedValue(callHistoryPayload);
       await callHistory.getCallHistoryData(7, 10, SORT.DEFAULT, SORT_BY.DEFAULT);
-      expect(fetchLinesDataSpy).not.toHaveBeenCalled(); // Check that fetchLinesData was not called
+      expect(fetchUCMLinesDataSpy).not.toHaveBeenCalled(); // Check that fetchUCMLinesData was not called
     });
   });
 });

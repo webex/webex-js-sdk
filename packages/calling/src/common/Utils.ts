@@ -85,7 +85,11 @@ import {
   URL_ENDPOINT,
   UTILS_FILE,
 } from '../CallingClient/constants';
-import {JanusResponseEvent, LinesResponse, UpdateMissedCallsResponse} from '../CallHistory/types';
+import {
+  JanusResponseEvent,
+  UCMLinesResponse,
+  UpdateMissedCallsResponse,
+} from '../CallHistory/types';
 import {
   VoicemailResponseEvent,
   MessageInfo,
@@ -689,7 +693,7 @@ export async function serviceErrorCodeHandler(
   | CallSettingResponse
   | ContactResponse
   | UpdateMissedCallsResponse
-  | LinesResponse
+  | UCMLinesResponse
 > {
   const errorCode = Number(err.statusCode);
   const failureMessage = 'FAILURE';

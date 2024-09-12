@@ -3,7 +3,7 @@ import {
   CallHistoryEventTypes,
   EndTimeSessionId,
   UserSession,
-  LinesApiResponse,
+  UCMLinesApiResponse,
 } from '../Events/types';
 import {LOGGER} from '../Logger/types';
 import {SORT, SORT_BY} from '../common/types';
@@ -30,10 +30,10 @@ export type UpdateMissedCallsResponse = {
   message: string | null;
 };
 
-export type LinesResponse = {
+export type UCMLinesResponse = {
   statusCode: number;
   data: {
-    lines?: LinesApiResponse;
+    lines?: UCMLinesApiResponse;
     error?: string;
   };
   message: string | null;
@@ -77,12 +77,12 @@ export interface ICallHistory extends Eventing<CallHistoryEventTypes> {
    */
   updateMissedCalls(endTimeSessionIds: EndTimeSessionId[]): Promise<UpdateMissedCallsResponse>;
   /**
-   * This API `fetchLinesData` is utilized to request and retrieve line details.
+   * This API `fetchUCMLinesData` is utilized to request and retrieve line details.
    *
    * @example
    * ```javascript
-   * const linesResponse = await callHistory.fetchLinesData();
+   * const ucmLinesResponse = await callHistory.fetchUCMLinesData();
    * ```
    */
-  fetchLinesData(): Promise<LinesResponse>;
+  fetchUCMLinesData(): Promise<UCMLinesResponse>;
 }

@@ -374,16 +374,16 @@ export type SanitizedEndTimeAndSessionId = {
   endTime: number;
   sessionId: string;
 };
-export type Line = {
+export type UCMLine = {
   dnorpattern: string;
   index: number;
   label: string | null;
 };
-export type Device = {
+export type UCMDevice = {
   name: string;
   model: number;
-  lines: Line[];
+  lines: UCMLine[];
 };
-export type LinesApiResponse = {
-  devices: Device[];
+export type UCMLinesApiResponse = {
+  devices: UCMDevice[];
 };
