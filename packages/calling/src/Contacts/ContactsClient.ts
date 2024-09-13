@@ -268,10 +268,8 @@ export class ContactsClient implements IContacts {
     const finalContactList: Contact[] = [];
 
     try {
-      const contactList = Object.keys(contactsDataMap);
-      for (let n = 0; n < contactList.length; n += 1) {
-        const filteredContact = inputList.Resources.filter((item) => item.id === contactList[n])[0];
-
+      for (let n = 0; n < inputList.Resources.length; n += 1) {
+        const filteredContact = inputList.Resources[n];
         const {displayName, emails, phoneNumbers, photos} = filteredContact;
         let sipAddresses;
         if (filteredContact[SCIM_WEBEXIDENTITY_USER]) {
@@ -284,12 +282,12 @@ export class ContactsClient implements IContacts {
         const avatarURL = photos?.length ? photos[0].value : '';
 
         const {contactType, avatarUrlDomain, encryptionKeyUrl, ownerId, groups} =
-          contactsDataMap[contactList[n]];
+          contactsDataMap[inputList.Resources[n].id];
 
         const cloudContact = {
           avatarUrlDomain,
           avatarURL,
-          contactId: contactList[n],
+          contactId: inputList.Resources[n].id,
           contactType,
           department,
           displayName,
