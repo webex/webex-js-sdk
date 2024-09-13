@@ -81,7 +81,7 @@
           </form>
         </fieldset>
 
-        <form id="streams">
+        <!-- <form id="streams">
           <fieldset>
             <legend>Registration</legend>
             <p class="note">
@@ -95,7 +95,7 @@
               <p id="registration-status" class="status-par">Not Registered</p>
             </div>
           </fieldset>
-        </form>
+        </form> -->
       </div>
   </div>
   </section>
@@ -123,7 +123,13 @@
               </fieldset>
               <fieldset>
                 <legend>Agent Login</legend>
-                <button id="loginAgent" class="btn btn-primary my-3" onclick="loginAgentWithSelectedTeam()">Login With
+                <select name="AgentLogin" id="AgentLogin" class="AgentLogin" onchange="handleAgentLogin(event)">
+                  <option value="" selected hidden>Choose Agent Login ...</option>
+                  <option value="Dial Number">Dial Number</option>
+                  <option value="Extension">Extension</option>
+                  <option value="Desktop">Desktop</option>
+                </select>
+                <button id="loginAgent" disabled class="btn btn-primary my-3" onclick="loginAgentWithSelectedTeam()">Login With
                   Selected Team</button>
                 <button id="logoutAgent" class="btn btn-primary my-3 ml-2" onclick="logoutAgent()">Logout Agent</button>
               </fieldset>
@@ -140,9 +146,34 @@
     </section>
   </div>
 
+       <!-- calling / incoming -->
+       <div id="incomingsection">
+        <fieldset>
+          <legend>Incoming Call</legend>
+          <div class="u-mv">
+            <button onclick="answer()" disabled="" id="answer" class="btn--green">Answer</button>
+            <button onclick="endCall()" disabled="" id="end" class="btn--red">Decline</button>
+          </div>
+        </fieldset>
+      </div>
+
+      <div id="agentcontrols">
+        <fieldset>
+          <legend>Agent Call Controls</legend>
+          <div class="u-mv">
+            <button onclick="holdResume()" disabled="" id="hold-resume" class="btn--green">Hold</button>
+            <button onclick="consult()" disabled="" id="consult" class="btn--green">Consult</button>
+            <button onclick="transfer()" disabled="" id="transfer" class="btn--green">Transfer</button>
+            <button onclick="pauseRecording()" disabled="" id="recording" class="btn--green">Pause Recording</button>
+            <button onclick="wrapUp()" disabled="" id="wrapup" class="btn--green">Wrap Up</button>
+          </div>
+        </fieldset>
+      </div>
+
   <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/handlebars@latest/dist/handlebars.js"></script>
   <script src="../webex.min.js"></script>
+  <script src="../calling.min.js"></script>
   <script src="app.js"></script>
 </body>
 

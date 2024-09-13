@@ -2,6 +2,7 @@
 /* eslint-env browser */
 
 /* global Webex */
+/* global Calling */
 
 /* eslint-disable require-jsdoc */
 /* eslint-disable no-unused-vars */
@@ -11,8 +12,11 @@
 /* eslint-disable max-len */
 
 // Globals
+let calling;
 let webex;
 let sdk;
+let agentDeviceType;
+let deviceId;
 
 const authTypeElm = document.querySelector('#auth-type');
 const credentialsFormElm = document.querySelector('#credentials');
@@ -22,8 +26,8 @@ const authStatusElm = document.querySelector('#access-token-status');
 const oauthFormElm = document.querySelector('#oauth');
 const oauthLoginElm = document.querySelector('#oauth-login-btn');
 const oauthStatusElm = document.querySelector('#oauth-status');
-const registerElm = document.querySelector('#registration-register');
-const unregisterElm = document.querySelector('#registration-unregister');
+// const registerElm = document.querySelector('#registration-register');
+// const unregisterElm = document.querySelector('#registration-unregister');
 const registrationStatusElm = document.querySelector('#registration-status');
 const integrationEnv = document.getElementById('integration-env');
 const fetchTeamsButton = document.querySelector('#fetchTeams');
@@ -32,6 +36,12 @@ const statusDropdown = document.querySelector('#statusDropdown');
 const agentLoginButton = document.querySelector('#loginAgent');
 const agentLogoutButton = document.querySelector('#logoutAgent');
 const setAgentStatusButton = document.querySelector('#setAgentStatus');
+const answerElm = document.querySelector('#answer');
+const holdResumeElm = document.querySelector('#hold-resume');
+const consultElm = document.querySelector('#consult');
+const transferElm = document.querySelector('#transfer');
+const recordingElm = document.querySelector('#recording');
+const wrapupElm = document.querySelector('#wrapup');
 
 // Store and Grab `access-token` from localstorage
 if (localStorage.getItem('date') > new Date().getTime()) {
@@ -143,19 +153,47 @@ function initWebex(e) {
   saveElm.disabled = true;
   authStatusElm.innerText = 'initializing...';
 
+  const webexConfig = generateWebexConfig({})
+  const callingConfig = {
+    clientConfig: {
+      calling: true,
+      contact: false,
+      callHistory: false,
+      callSettings: false,
+      voicemail: false,
+    },
+    callingClientConfig: {
+      logger: {
+        level: 'info'
+      },
+      discovery: {},
+      serviceData: {
+        indicator: 'contactcenter',
+        domain: 'test.example.com'
+      }   
+    },
+    logger: {
+      level: 'info'
+    }
+  }
+
   webex = window.webex = Webex.init({
-    config: generateWebexConfig({}),
+    config: webexConfig,
     credentials: {
       access_token: tokenElm.value
     }
   });
 
-  webex.once('ready', () => {
+  webex.once('ready', async () => {
     console.log('Authentication#initWebex() :: Webex Ready');
-    registerElm.disabled = false;
+    // registerElm.disabled = false;
     authStatusElm.innerText = 'Saved access token!';
-    sdk = Webex.getWebexCCSDK(webex);
-    registerElm.classList.add('btn--green');
+    // calling = await Calling.init({webex, webexConfig, callingConfig});
+
+    // calling.register().then(async () => {
+      sdk = Webex.getWebexCCSDK(webex);
+      // registerElm.classList.add('btn--green');
+    // });
   });
 
   return false;
@@ -163,51 +201,51 @@ function initWebex(e) {
 credentialsFormElm.addEventListener('submit', initWebex);
 
 
-function register() {
-  console.log('Authentication#register()');
-  registerElm.disabled = true;
-  unregisterElm.disabled = true;
-  registrationStatusElm.innerText = 'Registering...';
+// function register() {
+//   console.log('Authentication#register()');
+//   registerElm.disabled = true;
+//   unregisterElm.disabled = true;
+//   registrationStatusElm.innerText = 'Registering...';
 
-  sdk.register()
-    .then(() => {
-      console.log('Authentication#register() :: successfully registered');
-      unregisterElm.disabled = false;
-      unregisterElm.classList.add('btn--red');
-      fetchTeamsButton.style.display = 'block';
-    })
-    .catch((error) => {
-      console.warn('Authentication#register() :: error registering', error);
-      registerElm.disabled = false;
-    })
-    .finally(() => {
-      registrationStatusElm.innerText = sdk.isRegistred() ?
-        'Registered' :
-        'Not Registered';
-    });
-}
+//   sdk.register()
+//     .then(() => {
+//       console.log('Authentication#register() :: successfully registered');
+//       unregisterElm.disabled = false;
+//       unregisterElm.classList.add('btn--red');
+//       fetchTeamsButton.style.display = 'block';
+//     })
+//     .catch((error) => {
+//       console.warn('Authentication#register() :: error registering', error);
+//       registerElm.disabled = false;
+//     })
+//     .finally(() => {
+//       registrationStatusElm.innerText = sdk.isRegistred() ?
+//         'Registered' :
+//         'Not Registered';
+//     });
+// }
 
-function unregister() {
-  console.log('Authentication#unregister()');
-  registerElm.disabled = true;
-  unregisterElm.disabled = true;
-  registrationStatusElm.innerText = 'Unregistering...';
+// function unregister() {
+//   console.log('Authentication#unregister()');
+//   registerElm.disabled = true;
+//   unregisterElm.disabled = true;
+//   registrationStatusElm.innerText = 'Unregistering...';
 
-  sdk.unregister()
-    .then(() => {
-      console.log('Authentication#register() :: successfully unregistered');
-      registerElm.disabled = false;
-    })
-    .catch((error) => {
-      console.warn('Authentication#register() :: error unregistering', error);
-      unregisterElm.disabled = false;
-    })
-    .finally(() => {
-      registrationStatusElm.innerText = sdk.isRegistred() ?
-        'Registered' :
-        'Not Registered';
-    });
-}
+//   sdk.unregister()
+//     .then(() => {
+//       console.log('Authentication#register() :: successfully unregistered');
+//       registerElm.disabled = false;
+//     })
+//     .catch((error) => {
+//       console.warn('Authentication#register() :: error unregistering', error);
+//       unregisterElm.disabled = false;
+//     })
+//     .finally(() => {
+//       registrationStatusElm.innerText = sdk.isRegistred() ?
+//         'Registered' :
+//         'Not Registered';
+//     });
+// }
 
 // Separate logic for Safari enables video playback after previously
 // setting the srcObject to null regardless if autoplay is set.
@@ -281,9 +319,21 @@ function expandAll() {
   });
 }
 
+async function handleAgentLogin(e) {
+  const value = e.target.value;
+  if (value === 'Desktop') {
+    agentDeviceType = 'BROWSER';
+    deviceId = 'webrtc-6b310dff-569e-4ac7-b064-70f834ea56d8'
+  } else {
+    agentDeviceType = 'EXTENSION';
+    deviceId = '1001'
+  }
+  agentLoginButton.disabled = false;
+}
+
 
 function loginAgentWithSelectedTeam() {
-  sdk.loginAgentWithSelectedTeam(teamsDropdown.value);
+  sdk.loginAgentWithSelectedTeam(teamsDropdown.value, agentDeviceType, deviceId);
 }
 
 function logoutAgent() {
@@ -338,4 +388,65 @@ function getTeams() {
       .catch((error) => {
           console.error('Error fetching teams:', error);
       }); 
+}
+
+window.addEventListener('line:incoming_call', (event) => {
+  console.log('Received incoming webrtc call: ', event.detail.call);
+  answerElm.disabled = false;
+})
+
+window.addEventListener('enable-controls', (event) => {
+  console.log('Agent is on call for logintype: ', event.detail.deviceType);
+  holdResumeElm.disabled = false;
+  consultElm.disabled = false;
+  transferElm.disabled = false;
+  recordingElm.disabled = false;
+  wrapupElm.disabled = false
+})
+
+function holdResume() {
+  if (holdResumeElm.innerText === 'Hold') {
+    sdk.holdTask();
+    holdResumeElm.innerText = 'Resume';
+  } else {
+    sdk.resumeTask();
+    holdResumeElm.innerText = 'Hold';
+  }
+}
+
+function consult() {
+  if (consultElm.innerText === 'Consult') {
+    sdk.consultTask('1003', 'dialNumber');
+    consultElm.innerText = 'End Consult'
+  } else {
+    sdk.consultEndTask();
+    consultElm.innerText = 'Consult'
+  }
+}
+
+function transfer() {
+  if (consultElm.innerText === 'End Consult') {
+     sdk.consultTransferTask();
+  } else {
+    sdk.transferTask('1003', 'dialNumber');
+  }
+
+  holdResumeElm.disabled = true;
+  consultElm.disabled = true;
+  transferElm.disabled = true;
+  recordingElm.disabled = true;
+}
+
+function pauseRecording() {
+  if (recordingElm.innerText === 'Pause Recording') {
+    sdk.pauseRecordingTask();
+    recordingElm.innerText = 'Resume Recording';
+  } else {
+    sdk.resumeRecordingTask();
+    recordingElm.innerText = 'Pause Recording';
+  }
+}
+
+function wrapUp() {
+  sdk.wrapUpTask();
 }
