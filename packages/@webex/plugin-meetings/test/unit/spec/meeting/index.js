@@ -4054,6 +4054,8 @@ describe('plugin-meetings', () => {
             assert.calledTwice(locusMediaRequestStub);
 
             assert.calledOnce(handleDeviceLoggingSpy);
+            assert.calledWith(handleDeviceLoggingSpy, true);
+
           });
 
           it('addMedia() works correctly when media is enabled with streams to publish and stream is user muted', async () => {
@@ -4090,6 +4092,8 @@ describe('plugin-meetings', () => {
             // and that these were the only /media requests that were sent
             assert.calledTwice(locusMediaRequestStub);
             assert.calledOnce(handleDeviceLoggingSpy);
+            assert.calledWith(handleDeviceLoggingSpy, true);
+
           });
 
           it('addMedia() works correctly when media is enabled with tracks to publish and track is ended', async () => {
@@ -4196,6 +4200,8 @@ describe('plugin-meetings', () => {
             // and that these were the only /media requests that were sent
             assert.calledTwice(locusMediaRequestStub);
             assert.calledOnce(handleDeviceLoggingSpy);
+            assert.calledWith(handleDeviceLoggingSpy, false);
+
           });
 
           it('handleDeviceLogging not called when media is disabled', async () => {
