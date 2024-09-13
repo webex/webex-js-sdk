@@ -6512,12 +6512,21 @@ export default class Meeting extends StatelessWebexPlugin {
    *
    * @private
    * @static
+   * @param {boolean} isAudioEnabled
+   * @param {boolean} isVideoEnabled
    * @returns {Promise<void>}
    */
-  private static async handleDeviceLogging(): Promise<void> {
+  private static async handleDeviceLogging(
+    isAudioEnabled = false,
+    isVideoEnabled = false
+  ): Promise<void> {
     try {
-      const devices = await getDevices();
+      const deviceKind =
+        (isVideoEnabled && Media.DeviceKind.VIDEO_INPUT) ||
+        (isAudioEnabled && Media.DeviceKind.AUDIO_INPUT) ||
+        undefined;
 
+      const devices = await getDevices(deviceKind);
       MeetingUtil.handleDeviceLogging(devices);
     } catch {
       // getDevices may fail if we don't have browser permissions, that's ok, we still can have a media connection
@@ -7010,7 +7019,7 @@ export default class Meeting extends StatelessWebexPlugin {
       );
 
       if (audioEnabled || videoEnabled) {
-        await Meeting.handleDeviceLogging();
+        await Meeting.handleDeviceLogging(audioEnabled, videoEnabled);
       } else {
         LoggerProxy.logger.info(`${LOG_HEADER} device logging not required`);
       }
