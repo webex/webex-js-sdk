@@ -24,12 +24,12 @@
     "test:style": "eslint 'src/**/*.ts'",
     "fix:lint": "eslint 'src/**/*.ts' --fix",
     "fix:prettier": "prettier \"src/**/*.ts\" --write",
-    "build:docs": "typedoc --out ../../docs/calling",
     "docs": "typedoc --emit none",
     "deploy:npm": "yarn npm publish"
   },
   "dependencies": {
     "@types/platform": "1.3.4",
+    "@webex/calling": "workspace:*",
     "@webex/internal-media-core": "2.7.4",
     "@webex/media-helpers": "workspace:*",
     "async-mutex": "0.4.0",
