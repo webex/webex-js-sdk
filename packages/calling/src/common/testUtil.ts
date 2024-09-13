@@ -260,6 +260,32 @@ export const getSampleScimResponse = () => {
   };
 };
 
+export const getSampleMinimumScimResponse = () => {
+  return {
+    totalResults: '1',
+    itemsPerPage: '1',
+    startIndex: '1',
+    schemas: ['urn:scim:schemas:core:1.0'],
+    Resources: [
+      {
+        userName: 'atlas.test.wxcwebrtc+user8@gmail.com',
+        id: 'userExternalId',
+        meta: {
+          created: '2022-03-16T16:13:53.847Z',
+          lastModified: '2022-05-31T14:39:12.782Z',
+          lastLoginTime: '2022-05-31T14:39:12.780Z',
+          version: 'W/"66025591113"',
+          location:
+            'https://identitybts.webex.com/identity/scim/1704d30d-a131-4bc7-9449-948487643793/v1/Users/652fe0c7-05ce-4acd-8bda-9a080830187f',
+          organizationID: '1704d30d-a131-4bc7-9449-948487643793',
+          creator: '97fe25e3-d3e8-400e-856b-5b0cd5b0c790',
+          modifier: '8c7abf2f-0c8e-49cf-b8e4-693d4ec7daee',
+        },
+      },
+    ],
+  };
+};
+
 /**
  * Returns a sample people list response object.
  */
