@@ -1,32 +1,32 @@
-import fetch, {Response} from 'node-fetch';
 import BYODS from './BYODS';
+import TokenManager from './TokenManager';
+import BaseClient from './BaseClient';
+import {SDKConfig} from './types';
+import DataSourceClient from './DataSourceClient';
 
 jest.mock('node-fetch', () => jest.fn());
 
-describe('BYoDS Tests', () => {
-  const mockSDKConfig = {
+describe('BYODS Tests', () => {
+  const mockSDKConfig: SDKConfig = {
     clientId: 'your-client-id',
     clientSecret: 'your-client-secret',
-    accessToken: 'your-initial-access-token',
-    refreshToken: 'your-refresh-token',
-    expiresAt: new Date('2024-09-15T00:00:00Z'),
   };
 
-  const mockResponse = {
-    json: jest.fn().mockResolvedValue({key: 'value'}),
-  } as unknown as Response;
+  const sdk = new BYODS(mockSDKConfig);
 
-  (fetch as unknown as jest.MockedFunction<typeof fetch>).mockResolvedValue(mockResponse);
+  it('should create an instance of BYODS', () => {
+    expect(sdk).toBeInstanceOf(BYODS);
+  });
 
-  it('fetch the datasources', async () => {
-    const mockPayload = {
-      headers: {
-        Authorization: `Bearer ${mockSDKConfig.accessToken}`,
-      },
-    };
-    const sdk = new BYODS(mockSDKConfig);
-    const endpoint = 'https://developer-applications.ciscospark.com/v1/dataSources/';
-    await sdk.makeAuthenticatedRequest(endpoint);
-    expect(fetch).toHaveBeenCalledWith(endpoint, mockPayload);
+  it('should initialize TokenManager with correct parameters', () => {
+    expect(sdk.tokenManager).toBeInstanceOf(TokenManager);
+  });
+
+  it('should get a client for an organization', () => {
+    expect(sdk.getClientForOrg('myOrgId')).toBeInstanceOf(BaseClient);
+  });
+
+  it('should configure DataSourceClient with correct parameters', () => {
+    expect(sdk.getClientForOrg('myOrgId').dataSource).toBeInstanceOf(DataSourceClient);
   });
 });

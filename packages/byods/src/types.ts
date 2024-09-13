@@ -101,6 +101,14 @@ export interface HttpClient {
    * @returns {Promise<ApiResponse<T>>} - A promise that resolves to the response data.
    */
   put<T>(endpoint: string, body: Record<string, any>): Promise<ApiResponse<T>>;
+
+  /**
+   * Make a PATCH request to the specified endpoint with the given body.
+   * @param {string} endpoint - The endpoint to send the PATCH request to.
+   * @param {Record<string, any>} body - The body of the PATCH request.
+   * @returns {Promise<ApiResponse<T>>} - A promise that resolves to the response data.
+   */
+  patch<T>(endpoint: string, body: Record<string, any>): Promise<ApiResponse<T>>;
 }
 
 // Models

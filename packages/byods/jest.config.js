@@ -5,7 +5,7 @@ const jestConfig = {
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
   testEnvironment: 'node',
   testMatch: ['<rootDir>/**/*.test.ts'],
-  transformIgnorePatterns: ['/node_modules/(?!node-fetch)|data-uri-to-buffer'],
+  transformIgnorePatterns: ['/node_modules/(?!node-fetch)', '/node_modules/(?!data-uri-to-buffer)'],
   testPathIgnorePatterns: ['/node_modules/', '/dist/'],
   testResultsProcessor: 'jest-junit',
   // Clear mocks in between tests by default

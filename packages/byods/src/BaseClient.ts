@@ -1,3 +1,4 @@
+import fetch, {Response, RequestInit} from 'node-fetch';
 import TokenManager from './TokenManager';
 import DataSourceClient from './DataSourceClient';
 import {ApiResponse, HttpClient} from './types';
@@ -177,6 +178,7 @@ export default class BaseClient {
       delete: <T>(endpoint: string) => this.delete<T>(endpoint),
       post: <T>(endpoint: string, body: Record<string, any>) => this.post<T>(endpoint, body),
       put: <T>(endpoint: string, body: Record<string, any>) => this.put<T>(endpoint, body),
+      patch: <T>(endpoint: string, body: Record<string, any>) => this.patch<T>(endpoint, body),
     };
   }
 }

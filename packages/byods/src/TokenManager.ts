@@ -1,3 +1,4 @@
+import fetch, {Response} from 'node-fetch';
 import {DEFAULT_BASE_URL} from './constants';
 import {TokenResponse, ServiceAppAuthorization, ServiceAppAuthorizations} from './types';
 
@@ -41,6 +42,14 @@ export default class TokenManager {
   }
 
   /**
+   * Get the service app ID.
+   * @returns {string}
+   */
+  public getServiceAppId(): string {
+    return this.serviceAppId;
+  }
+
+  /**
    * Get the service app authorization for a given organization ID.
    * @param {string} orgId - The organization ID.
    * @returns {Promise<ServiceAppAuthorization>}
@@ -68,10 +77,10 @@ export default class TokenManager {
       throw new Error('Refresh token is undefined');
     }
     try {
-      const response = await fetch(`${this.baseUrl}/access_token`, {
+      const response: Response = await fetch(`${this.baseUrl}/access_token`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
+          'Content-Type': 'application/x-www-form-urlencoded', // https://developer.webex.com/docs/login-with-webex#access-token-endpoint
           ...headers,
         },
         body: new URLSearchParams({
@@ -109,19 +118,22 @@ export default class TokenManager {
     headers: Record<string, string> = {}
   ): Promise<void> {
     try {
-      const response = await fetch(`${this.baseUrl}/applications/${this.serviceAppId}/token`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${personalAccessToken}`,
-          'Content-Type': 'application/x-www-form-urlencoded',
-          ...headers,
-        },
-        body: new URLSearchParams({
-          targetOrgId: orgId,
-          clientId: this.clientId,
-          clientSecret: this.clientSecret,
-        }),
-      });
+      const response: Response = await fetch(
+        `${this.baseUrl}/applications/${this.serviceAppId}/token`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${personalAccessToken}`,
+            'Content-Type': 'application/json',
+            ...headers,
+          },
+          body: JSON.stringify({
+            targetOrgId: orgId,
+            clientId: this.clientId,
+            clientSecret: this.clientSecret,
+          }),
+        }
+      );
 
       if (!response.ok) {
         throw new Error(`Failed to retrieve token: ${response.statusText}`);
@@ -147,10 +159,10 @@ export default class TokenManager {
     headers: Record<string, string> = {}
   ): Promise<void> {
     try {
-      const response = await fetch(`${this.baseUrl}/access_token`, {
+      const response: Response = await fetch(`${this.baseUrl}/access_token`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
+          'Content-Type': 'application/x-www-form-urlencoded', // https://developer.webex.com/docs/login-with-webex#access-token-endpoint
           ...headers,
         },
         body: new URLSearchParams({
