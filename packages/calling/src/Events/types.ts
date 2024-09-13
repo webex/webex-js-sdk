@@ -80,7 +80,7 @@ export type CallRecordSelf = {
   name?: string;
   phoneNumber?: string;
   cucmDN?: string;
-  lineNumber?: number;
+  ucmLineNumber?: number;
 };
 
 export type CallRecordListOther = {

@@ -298,7 +298,7 @@ export const mockCallHistoryforMultiLineBody = {
           id: 'a24027e7-9b6e-4047-a950-42f4492148ec',
           name: 'Mark',
           cucmDN: '1001',
-          lineNumber: 1,
+          ucmLineNumber: 1,
           incomingCallProtocols: [],
           callbackInfo: {
             callbackAddress: 'test@cisco.com',
@@ -344,7 +344,7 @@ export const mockCallHistoryforMultiLineBody = {
           id: 'a24027e7-9b6e-4047-a950-42f4492148ec',
           name: 'Mark',
           cucmDN: '1002',
-          lineNumber: 2,
+          ucmLineNumber: 2,
           incomingCallProtocols: [],
           callbackInfo: {
             callbackAddress: 'test@cisco.com',

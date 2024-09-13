@@ -272,6 +272,10 @@ describe('Call history tests', () => {
 
       expect(response.statusCode).toBe(400);
       expect(response.message).toBe('FAILURE');
+      expect(serviceErrorCodeHandlerSpy).toHaveBeenCalledWith(
+        {statusCode: 400},
+        {file: 'CallHistory', method: 'fetchLinesData'}
+      );
     });
 
     it('should call fetchUCMLinesData when calling backend is UCM and userSessions contain valid cucmDN', async () => {
@@ -292,7 +296,7 @@ describe('Call history tests', () => {
 
       expect(response.statusCode).toBe(200);
       expect(
-        response?.data?.userSessions && response?.data?.userSessions[0]?.self?.lineNumber
+        response?.data?.userSessions && response?.data?.userSessions[0]?.self?.ucmLineNumber
       ).toEqual(1);
     });
 

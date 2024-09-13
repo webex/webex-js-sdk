@@ -169,7 +169,7 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
                   ucmLinesData.forEach((device) => {
                     device.lines.forEach((line) => {
                       if (line.dnorpattern === cucmDN) {
-                        session.self.lineNumber = line.index; // Assign the lineNumber
+                        session.self.ucmLineNumber = line.index; // Assign the ucmLineNumber
                       }
                     });
                   });
