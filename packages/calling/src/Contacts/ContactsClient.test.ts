@@ -48,6 +48,8 @@ import {
   mockContactGroupListOne,
   mockContactGroupListTwo,
   mockAvatarURL,
+  mockSCIMMinListResponse,
+  mockContactMinimum,
 } from './contactFixtures';
 
 describe('ContactClient Tests', () => {
@@ -723,5 +725,41 @@ describe('ContactClient Tests', () => {
     });
 
     expect(contactClient['contacts']).toEqual(mockContactListOne);
+  });
+
+  it('test resolveContacts function for a minimal contact with few details', () => {
+    const contact = contactClient['resolveCloudContacts'](
+      {userId: mockContactMinimum},
+      mockSCIMMinListResponse.body
+    );
+
+    expect(contact).toEqual([
+      {
+        avatarURL: '',
+        avatarUrlDomain: undefined,
+        contactId: 'userId',
+        contactType: 'CLOUD',
+        department: undefined,
+        displayName: undefined,
+        emails: undefined,
+        encryptionKeyUrl: 'kms://cisco.com/keys/dcf18f9d-155e-44ff-ad61-c8a69b7103ab',
+        firstName: undefined,
+        groups: ['1561977e-3443-4ccf-a591-69686275d7d2'],
+        lastName: undefined,
+        manager: undefined,
+        ownerId: 'ownerId',
+        phoneNumbers: undefined,
+        sipAddresses: undefined,
+      },
+    ]);
+  });
+
+  it('test resolveContacts function encountering an error', () => {
+    const contact = contactClient['resolveCloudContacts'](
+      {userId: mockContactMinimum},
+      mockSCIMMinListResponse
+    );
+
+    expect(contact).toEqual(null);
   });
 });

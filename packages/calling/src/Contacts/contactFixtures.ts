@@ -272,6 +272,21 @@ export const mockContactGroupListTwo = [
   },
 ];
 
+export const mockContactMinimum = {
+  contactId: 'userId',
+  contactType: 'CLOUD',
+  encryptionKeyUrl: 'kms://cisco.com/keys/dcf18f9d-155e-44ff-ad61-c8a69b7103ab',
+  groups: ['1561977e-3443-4ccf-a591-69686275d7d2'],
+  ownerId: 'ownerId',
+};
+
+export const scimUserMinimum = {
+  schemas: ['urn:ietf:params:scim:schemas:core:2.0:User'],
+  id: 'userId',
+  userName: 'userName',
+  userType: 'user',
+};
+
 const scimUser1 = {
   schemas: [
     'urn:ietf:params:scim:schemas:core:2.0:User',
@@ -448,10 +463,21 @@ export const mockSCIMListResponse = {
   statusCode: 200,
   body: {
     schemas: ['urn:ietf:params:scim:api:messages:2.0:ListResponse'],
-    totalResults: 11,
-    itemsPerPage: 11,
+    totalResults: 2,
+    itemsPerPage: 2,
     startIndex: 1,
     Resources: [scimUser1, scimUser2NoPhoto],
+  },
+};
+
+export const mockSCIMMinListResponse = {
+  statusCode: 200,
+  body: {
+    schemas: ['urn:ietf:params:scim:api:messages:2.0:ListResponse'],
+    totalResults: 1,
+    itemsPerPage: 1,
+    startIndex: 1,
+    Resources: [scimUserMinimum],
   },
 };
 

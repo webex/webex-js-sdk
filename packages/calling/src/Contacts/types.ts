@@ -29,7 +29,7 @@ export type Contact = {
   /**
    * Unique identifier of the contact.
    */
-  contactId?: string;
+  contactId: string;
   /**
    * Indicates the type of the contact, can be `CLOUD` or `CUSTOM`.
    */
@@ -41,7 +41,7 @@ export type Contact = {
   /**
    * This represents the display name of the contact.
    */
-  displayName: string;
+  displayName?: string;
   /**
    * This represents the array of different email addresses of the contact.
    */

@@ -8,6 +8,7 @@ import {
   getSamplePeopleListResponse,
   getSampleRawAndParsedMediaStats,
   getMobiusDiscoveryResponse,
+  getSampleMinimumScimResponse,
 } from './testUtil';
 import {
   CallDirection,
@@ -1041,6 +1042,29 @@ describe('resolveContact tests', () => {
       expect(displayInfo?.num).toStrictEqual('5008');
       expect(displayInfo?.avatarSrc).toStrictEqual('unknown');
       expect(displayInfo?.id).toStrictEqual(getSampleScimResponse().Resources[0].id);
+
+      const query = scimUrl + encodeURIComponent(`id eq "${callingPartyInfo.userExternalId?.$}"`);
+
+      expect(webexSpy).toBeCalledOnceWith(expect.objectContaining({uri: query}));
+    });
+  });
+
+  it('Resolve with minimal response from SCIM', () => {
+    const callingPartyInfo = {} as CallingPartyInfo;
+    const scimResponse = getSampleMinimumScimResponse();
+
+    // scimResponse.Resources[0].photos = [];
+    const webexSpy = jest.spyOn(webex, 'request').mockResolvedValue({
+      statusCode: 200,
+      body: scimResponse,
+    });
+
+    callingPartyInfo.userExternalId = {$: 'userExternalId'};
+    resolveContact(callingPartyInfo).then((displayInfo) => {
+      expect(displayInfo?.name).toBeUndefined();
+      expect(displayInfo?.num).toBeUndefined();
+      expect(displayInfo?.avatarSrc).toStrictEqual('unknown');
+      expect(displayInfo?.id).toStrictEqual(getSampleMinimumScimResponse().Resources[0].id);
 
       const query = scimUrl + encodeURIComponent(`id eq "${callingPartyInfo.userExternalId?.$}"`);
 

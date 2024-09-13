@@ -220,8 +220,8 @@ interface WebexIdentityMeta {
   organizationId: string;
 }
 interface WebexIdentityUser {
-  sipAddresses: URIAddress[];
-  meta: WebexIdentityMeta;
+  sipAddresses?: URIAddress[];
+  meta?: WebexIdentityMeta;
 }
 
 interface Manager {
@@ -231,24 +231,24 @@ interface Manager {
 }
 
 interface EnterpriseUser {
-  department: string;
-  manager: Manager;
+  department?: string;
+  manager?: Manager;
 }
 
 interface Resource {
   schemas: string[];
   id: string;
   userName: string;
-  active: boolean;
-  name: Name;
-  displayName: string;
-  emails: URIAddress[];
+  active?: boolean;
+  name?: Name;
+  displayName?: string;
+  emails?: URIAddress[];
   userType: string;
-  phoneNumbers: PhoneNumber[];
+  phoneNumbers?: PhoneNumber[];
   photos?: ContactDetail[];
-  addresses: Address[];
-  [SCIM_WEBEXIDENTITY_USER]: WebexIdentityUser;
-  [SCIM_ENTERPRISE_USER]: EnterpriseUser;
+  addresses?: Address[];
+  [SCIM_WEBEXIDENTITY_USER]?: WebexIdentityUser;
+  [SCIM_ENTERPRISE_USER]?: EnterpriseUser;
 }
 
 export interface SCIMListResponse {

@@ -1234,12 +1234,12 @@ export async function resolveCallerIdDisplay(filter: string) {
 
     /* Pick only the primary number  OR  2nd preference Work */
     const numberObj =
-      scimResource.phoneNumbers.find((num) => num.primary) ||
-      scimResource.phoneNumbers.find((num) => num.type.toLowerCase() === 'work');
+      scimResource.phoneNumbers?.find((num) => num.primary) ||
+      scimResource.phoneNumbers?.find((num) => num.type.toLowerCase() === 'work');
 
     if (numberObj) {
       displayResult.num = <string>numberObj.value;
-    } else if (scimResource.phoneNumbers.length > 0) {
+    } else if (scimResource.phoneNumbers && scimResource.phoneNumbers.length > 0) {
       /* When no primary number exists OR PA-ID/From failed to populate, we take the first number */
       log.info('Failure to resolve caller information. Setting number as caller ID', {
         file: UTILS_FILE,
