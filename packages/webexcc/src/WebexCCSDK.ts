@@ -16,6 +16,8 @@ export default class WebexCCSDK {
   mediaResourceId = '';
   auxCodeId = '';
   wrapUpReason='';
+  buddyAgentId='';
+  destType=''
   constructor(webex: any) {
     this.webex = webex;
     this.callingClientConfig = {
@@ -141,7 +143,6 @@ export default class WebexCCSDK {
       }
 
       case 'AgentWrapup': {
-
         break;
       }
 
@@ -178,6 +179,14 @@ export default class WebexCCSDK {
       }
 
       case 'ConsultTransfer': {
+        break;
+      }
+
+      case 'BuddyAgents': {
+        for (const agent of payload.data.agentList) {
+          console.log('WxCCSDK: BuddyAgent list: ', agent);
+          this.buddyAgentId = agent.agentId;
+        }
         break;
       }
       
@@ -283,8 +292,10 @@ export default class WebexCCSDK {
           qs: params,
         })
         .then((res: any) => {
-          for(const item of res.data) {
+          console.log('WxCC-SDK: aux code response: ', res.body.data);
+          for(const item of res.body.data) {
             if (item.workTypeCode === 'WRAP_UP_CODE') {
+              console.log('wxCC-SDK: aux code item: ', item);
               this.auxCodeId = item.id;
               this.wrapUpReason = item.name;
             }
@@ -395,10 +406,10 @@ export default class WebexCCSDK {
   public async buddyAgent(): Promise<number> {
     try {
       const response = await this.webex.request({
-        method: 'PUT',
+        method: 'POST',
         uri: `${this.ccApiURL}v1/agents/buddyList`,
         body: {
-          agentProfileId: '25126bcc-e54e-45ba-92c5-cfe744395bfc',
+          agentProfileId: 'ecb766e6-335f-4f20-86da-3a41b3a051ab',
           mediaType: 'telephony',
         }
       });
@@ -496,13 +507,16 @@ export default class WebexCCSDK {
   }
 
  // To initiate a consult, applicable for all types of login
-  public async consultTask(consultDest: string, consultDestType: string): Promise<number> {
+  public async consultTask(consultDestType: string): Promise<number> {
     try {
+      await this.buddyAgent();
+      await this.holdTask(this.taskId);
+      console.log('Buddy Agent: ', this.buddyAgentId);
       const response = await this.webex.request({
         method: 'POST',
         uri: `${this.ccApiURL}v1/tasks/${this.taskId}/consult`,
         body: {
-          to: consultDest,   // This would be the value for agent or the entrypoint number entered for consult
+          to: this.buddyAgentId,   // This would be the value for agent or the entrypoint number entered for consult
           destinationType: consultDestType,  // This would be agent or dial number
         }
       });
@@ -559,14 +573,14 @@ export default class WebexCCSDK {
   }
 
     // To initiate a transfer, applicable for all types of login for consult transfer using buddy agent/dial number
-    public async consultTransferTask(transferDest: string, transferDestType: string): Promise<number> {
+    public async consultTransferTask(transferDestType: string): Promise<number> {
       // Fetch buddy list first and choose based on that
       try {
         const response = await this.webex.request({
           method: 'POST',
           uri: `${this.ccApiURL}v1/tasks/${this.taskId}/consult/transfer`,
           body: {
-            to: transferDest,   // This would be the value for agent or the entrypoint number entered for consult
+            to: this.buddyAgentId,   // This would be the value for agent or the entrypoint number entered for consult
             destinationType: transferDestType,  // This would be agent or dial number
           }
         });

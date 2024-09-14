@@ -416,7 +416,8 @@ function holdResume() {
 
 function consult() {
   if (consultElm.innerText === 'Consult') {
-    sdk.consultTask('1003', 'dialNumber');
+    sdk.consultTask('agent');
+    holdResumeElm.innerText = 'Resume';
     consultElm.innerText = 'End Consult'
   } else {
     sdk.consultEndTask();
@@ -426,7 +427,9 @@ function consult() {
 
 function transfer() {
   if (consultElm.innerText === 'End Consult') {
-     sdk.consultTransferTask();
+     sdk.consultTransferTask('agent');
+     holdResumeElm.innerText = 'Hold';
+     consultElm.innerText = 'Consult'
   } else {
     sdk.transferTask('1003', 'dialNumber');
   }
