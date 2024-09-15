@@ -24,6 +24,8 @@ const sockets = new WeakMap();
  * Generalized socket abstraction
  */
 export default class Socket extends EventEmitter {
+  skipAck = false;
+
   /**
    * constructor
    * @returns {Socket}
@@ -169,6 +171,8 @@ export default class Socket extends EventEmitter {
    * @param {string} options.trackingId (required)
    * @param {Logger} options.logger (required)
    * @param {string} options.logLevelToken
+   * @param {boolean} options.skipAuth
+   * @param {boolean} options.skipAck
    * @returns {Promise}
    */
   open(url, options) {
@@ -193,7 +197,7 @@ export default class Socket extends EventEmitter {
       }
 
       options = options || {};
-
+      this.skipAck = options.skipAck || false;
       checkRequired(
         ['forceCloseDelay', 'pingInterval', 'pongTimeout', 'token', 'trackingId', 'logger'],
         options
@@ -239,13 +243,17 @@ export default class Socket extends EventEmitter {
 
       socket.onopen = () => {
         this.logger.info(`socket,${this._domain}: connected`);
-        this._authorize()
-          .then(() => {
-            this.logger.info(`socket,${this._domain}: authorized`);
-            socket.onclose = this.onclose;
-            resolve();
-          })
-          .catch(reject);
+        if (options.skipAuth) {
+          this._ping();
+        } else {
+          this._authorize()
+            .then(() => {
+              this.logger.info(`socket,${this._domain}: authorized`);
+              socket.onclose = this.onclose;
+              resolve();
+            })
+            .catch(reject);
+        }
       };
 
       socket.onerror = (event) => {
@@ -299,8 +307,10 @@ export default class Socket extends EventEmitter {
       // modified and we don't actually care about anything but the data property
       const processedEvent = {data};
 
-      this._acknowledge(processedEvent);
-      if (data.type === 'pong') {
+      if (this.skipAck) {
+        this._acknowledge(processedEvent);
+      }
+      if (data.type === 'pong' || data.type === 'ping') {
         this.emit('pong', processedEvent);
       } else {
         this.emit('message', processedEvent);

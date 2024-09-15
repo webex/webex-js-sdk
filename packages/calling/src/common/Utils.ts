@@ -113,6 +113,8 @@ import {
   IDENTITY_ENDPOINT_RESOURCE,
   SCIM_ENDPOINT_RESOURCE,
   SCIM_USER_FILTER,
+  WEBEX_API_PROD,
+  WEBEX_API_BTS,
 } from './constants';
 import {Model, WebexSDK} from '../SDKConnector/types';
 import SDKConnector from '../SDKConnector';
@@ -1184,7 +1186,10 @@ export async function scimQuery(filter: string) {
   const sdkConnector = SDKConnector;
   const webex = sdkConnector.getWebex();
 
-  const scimUrl = `${webex.internal.services._serviceUrls.identity}/${IDENTITY_ENDPOINT_RESOURCE}/${SCIM_ENDPOINT_RESOURCE}/${webex.internal.device.orgId}/${SCIM_USER_FILTER}`;
+  const isProd = !webex.internal.device.url.includes('-int');
+  const webexHost = isProd ? WEBEX_API_PROD : WEBEX_API_BTS;
+
+  const scimUrl = `${webexHost}/${IDENTITY_ENDPOINT_RESOURCE}/${SCIM_ENDPOINT_RESOURCE}/${webex.internal.device.orgId}/${SCIM_USER_FILTER}`;
   const query = scimUrl + encodeURIComponent(filter);
 
   return <WebexRequestPayload>(<unknown>webex.request({

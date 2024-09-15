@@ -44,3 +44,7 @@ export const UCM_CONNECTOR_FILE = 'UcmBackendConnector';
 export const VOICEMAIL = 'VOICEMAIL';
 export const SCIM_WEBEXIDENTITY_USER = 'urn:scim:schemas:extension:cisco:webexidentity:2.0:User';
 export const SCIM_ENTERPRISE_USER = 'urn:ietf:params:scim:schemas:extension:enterprise:2.0:User';
+export const WEBEX_API_PROD = 'https://webexapis.com';
+export const WEBEX_API_BTS = 'https://integration.webexapis.com';
+export const WEBEX_API_CONFIG_INT_URL = `https://${WEBEX_API_BTS}/v1/uc/config`;
+export const WEBEX_API_CONFIG_PROD_URL = `https://${WEBEX_API_PROD}/v1/uc/config`;

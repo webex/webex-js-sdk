@@ -58,6 +58,7 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
 
   private datachannelUrl?: string;
 
+  private body?: object;
   /**
    * Register to the websocket
    * @param {string} llmSocketUrl
@@ -79,6 +80,27 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
       });
 
   /**
+   * Register to the websocket
+   * @param {string} llmSocketUrl
+   * @param {string} body
+   * @returns {Promise<void>}
+   */
+  private registerWithBody = (llmSocketUrl: string, body: object): Promise<void> =>
+    this.request({
+      method: 'POST',
+      url: llmSocketUrl,
+      body,
+    })
+      .then((res: {body: {webSocketUrl: string; subscriptionId: string}}) => {
+        this.webSocketUrl = res.body.webSocketUrl;
+        this.binding = res.body.subscriptionId;
+      })
+      .catch((error: any) => {
+        this.logger.error(`Error connecting to websocket: ${error}`);
+        throw error;
+      });
+
+  /**
    * Register and connect to the websocket
    * @param {string} locusUrl
    * @param {string} datachannelUrl
@@ -89,6 +111,16 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
       if (!locusUrl || !datachannelUrl) return undefined;
       this.locusUrl = locusUrl;
       this.datachannelUrl = datachannelUrl;
+      this.connect(this.webSocketUrl);
+    });
+
+  // write new funtion which takes url and body as input same as registerandconnect function
+  // and call register function and then connect function
+  public registerWithBodyAndConnect = (datachannelUrl: string, body: object): Promise<void> =>
+    this.registerWithBody(datachannelUrl, body).then(() => {
+      if (!datachannelUrl) return undefined;
+      this.datachannelUrl = datachannelUrl;
+      this.body = body;
       this.connect(this.webSocketUrl);
     });
 

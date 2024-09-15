@@ -5,4 +5,10 @@ WebexCore.registerInternalPlugin('llm', LLMChannel, {
   config,
 });
 
+WebexCore.registerInternalPlugin('llmcc', LLMChannel, {
+  skipAuth: true,
+  skipAck: true,
+  ...config,
+});
+
 export {default} from './llm';

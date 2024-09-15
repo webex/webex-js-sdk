@@ -7,5 +7,3 @@ export const CF_ENDPOINT = 'features/callForwarding';
 export const VM_ENDPOINT = 'features/voicemail';
 export const CALL_WAITING_ENDPOINT = 'CallWaiting';
 export const XSI_VERSION = 'v2.0';
-export const WEBEX_APIS_INT_URL = 'https://integration.webexapis.com/v1/uc/config';
-export const WEBEX_APIS_PROD_URL = 'https://webexapis.com/v1/uc/config';

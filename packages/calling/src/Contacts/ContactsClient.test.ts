@@ -9,6 +9,7 @@ import {
   SCIM_ENDPOINT_RESOURCE,
   SCIM_USER_FILTER,
   SUCCESS_MESSAGE,
+  WEBEX_API_BTS,
 } from '../common/constants';
 import log from '../Logger';
 import {
@@ -59,7 +60,7 @@ describe('ContactClient Tests', () => {
 
   // eslint-disable-next-line no-underscore-dangle
   const contactServiceUrl = `${webex.internal.services._serviceUrls.contactsService}/${ENCRYPT_FILTER}/${USERS}/${CONTACT_FILTER}`;
-  const scimUrl = `${webex.internal.services._serviceUrls.identity}/${IDENTITY_ENDPOINT_RESOURCE}/${SCIM_ENDPOINT_RESOURCE}/${webex.internal.device.orgId}/${SCIM_USER_FILTER}id%20eq%20%22801bb994-343b-4f6b-97ae-d13c91d4b877%22`;
+  const scimUrl = `${WEBEX_API_BTS}/${IDENTITY_ENDPOINT_RESOURCE}/${SCIM_ENDPOINT_RESOURCE}/${webex.internal.device.orgId}/${SCIM_USER_FILTER}id%20eq%20%22801bb994-343b-4f6b-97ae-d13c91d4b877%22`;
   // eslint-disable-next-line no-underscore-dangle
   const contactServiceGroupUrl = `${webex.internal.services._serviceUrls.contactsService}/${ENCRYPT_FILTER}/${USERS}/${GROUP_FILTER}`;
   const serviceErrorCodeHandlerSpy = jest.spyOn(utils, 'serviceErrorCodeHandler');

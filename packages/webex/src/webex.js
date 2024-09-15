@@ -27,7 +27,7 @@ require('@webex/plugin-rooms');
 require('@webex/plugin-teams');
 require('@webex/plugin-team-memberships');
 require('@webex/plugin-webhooks');
-
+const getCCSDK = require('@webex/webexcc').default;
 const merge = require('lodash/merge');
 const WebexCore = require('@webex/webex-core').default;
 
@@ -84,4 +84,7 @@ Webex.init = function init(attrs = {}) {
   return new Webex(attrs);
 };
 
+Webex.getWebexCCSDK = function getWebexCCSDK(webex) {
+  return getCCSDK(webex);
+};
 module.exports = Webex;
