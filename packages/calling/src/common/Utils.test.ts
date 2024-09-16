@@ -52,6 +52,7 @@ import {
   INFER_ID_CONSTANT,
   SCIM_ENDPOINT_RESOURCE,
   SCIM_USER_FILTER,
+  WEBEX_API_BTS,
 } from './constants';
 import {CALL_EVENT_KEYS} from '../Events/types';
 
@@ -913,7 +914,7 @@ describe('Voicemail Sorting Tests', () => {
 });
 
 describe('resolveContact tests', () => {
-  const scimUrl = `${webex.internal.services._serviceUrls.identity}/${IDENTITY_ENDPOINT_RESOURCE}/${SCIM_ENDPOINT_RESOURCE}/${webex.internal.device.orgId}/${SCIM_USER_FILTER}`;
+  const scimUrl = `${WEBEX_API_BTS}/${IDENTITY_ENDPOINT_RESOURCE}/${SCIM_ENDPOINT_RESOURCE}/${webex.internal.device.orgId}/${SCIM_USER_FILTER}`;
 
   it('Invalid CallingPartyInfo', () => {
     const callingPartyInfo = {} as CallingPartyInfo;
