@@ -36,9 +36,6 @@ import {
 } from './types';
 
 import {scimQuery, serviceErrorCodeHandler} from '../common/Utils';
-import Logger from '../Logger';
-import ExtendedError from '../Errors/catalog/ExtendedError';
-import {ERROR_TYPE} from '../Errors/types';
 
 /**
  * `ContactsClient` module is designed to offer a set of APIs for retrieving and updating contacts and groups from the contacts-service.
@@ -264,32 +261,33 @@ export class ContactsClient implements IContacts {
     contactsDataMap: ContactIdContactInfo,
     inputList: SCIMListResponse
   ): Contact[] | null {
+    const loggerContext = {
+      file: CONTACTS_FILE,
+      method: 'resolveCloudContacts',
+    };
     const finalContactList: Contact[] = [];
 
     try {
-      const contactList = Object.keys(contactsDataMap);
-      for (let n = 0; n < contactList.length; n += 1) {
-        const filteredContact = inputList.Resources.filter((item) => item.id === contactList[n])[0];
-
+      for (let n = 0; n < inputList.Resources.length; n += 1) {
+        const filteredContact = inputList.Resources[n];
         const {displayName, emails, phoneNumbers, photos} = filteredContact;
-        const {sipAddresses} = filteredContact[SCIM_WEBEXIDENTITY_USER];
-        const firstName = filteredContact.name.givenName;
-        const lastName = filteredContact.name.familyName;
-        const manager = filteredContact[SCIM_ENTERPRISE_USER].manager.displayName;
-        const department = filteredContact[SCIM_ENTERPRISE_USER].department;
-
-        let avatarURL = '';
-        if (photos?.length) {
-          avatarURL = photos[0].value;
+        let sipAddresses;
+        if (filteredContact[SCIM_WEBEXIDENTITY_USER]) {
+          sipAddresses = filteredContact[SCIM_WEBEXIDENTITY_USER].sipAddresses;
         }
+        const firstName = filteredContact.name?.givenName;
+        const lastName = filteredContact.name?.familyName;
+        const manager = filteredContact[SCIM_ENTERPRISE_USER]?.manager?.displayName;
+        const department = filteredContact[SCIM_ENTERPRISE_USER]?.department;
+        const avatarURL = photos?.length ? photos[0].value : '';
 
         const {contactType, avatarUrlDomain, encryptionKeyUrl, ownerId, groups} =
-          contactsDataMap[contactList[n]];
+          contactsDataMap[inputList.Resources[n].id];
 
         const cloudContact = {
           avatarUrlDomain,
           avatarURL,
-          contactId: contactList[n],
+          contactId: inputList.Resources[n].id,
           contactType,
           department,
           displayName,
@@ -307,7 +305,7 @@ export class ContactsClient implements IContacts {
         finalContactList.push(cloudContact);
       }
     } catch (error: any) {
-      Logger.error(new ExtendedError(error.message, {}, ERROR_TYPE.DEFAULT), {});
+      log.warn('Error occurred while parsing resolved contacts', loggerContext);
 
       return null;
     }

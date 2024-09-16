@@ -113,6 +113,8 @@ import {
   IDENTITY_ENDPOINT_RESOURCE,
   SCIM_ENDPOINT_RESOURCE,
   SCIM_USER_FILTER,
+  WEBEX_API_PROD,
+  WEBEX_API_BTS,
 } from './constants';
 import {Model, WebexSDK} from '../SDKConnector/types';
 import SDKConnector from '../SDKConnector';
@@ -1184,7 +1186,10 @@ export async function scimQuery(filter: string) {
   const sdkConnector = SDKConnector;
   const webex = sdkConnector.getWebex();
 
-  const scimUrl = `${webex.internal.services._serviceUrls.identity}/${IDENTITY_ENDPOINT_RESOURCE}/${SCIM_ENDPOINT_RESOURCE}/${webex.internal.device.orgId}/${SCIM_USER_FILTER}`;
+  const isProd = !webex.internal.device.url.includes('-int');
+  const webexHost = isProd ? WEBEX_API_PROD : WEBEX_API_BTS;
+
+  const scimUrl = `${webexHost}/${IDENTITY_ENDPOINT_RESOURCE}/${SCIM_ENDPOINT_RESOURCE}/${webex.internal.device.orgId}/${SCIM_USER_FILTER}`;
   const query = scimUrl + encodeURIComponent(filter);
 
   return <WebexRequestPayload>(<unknown>webex.request({
@@ -1234,12 +1239,12 @@ export async function resolveCallerIdDisplay(filter: string) {
 
     /* Pick only the primary number  OR  2nd preference Work */
     const numberObj =
-      scimResource.phoneNumbers.find((num) => num.primary) ||
-      scimResource.phoneNumbers.find((num) => num.type.toLowerCase() === 'work');
+      scimResource.phoneNumbers?.find((num) => num.primary) ||
+      scimResource.phoneNumbers?.find((num) => num.type.toLowerCase() === 'work');
 
     if (numberObj) {
       displayResult.num = <string>numberObj.value;
-    } else if (scimResource.phoneNumbers.length > 0) {
+    } else if (scimResource.phoneNumbers && scimResource.phoneNumbers.length > 0) {
       /* When no primary number exists OR PA-ID/From failed to populate, we take the first number */
       log.info('Failure to resolve caller information. Setting number as caller ID', {
         file: UTILS_FILE,

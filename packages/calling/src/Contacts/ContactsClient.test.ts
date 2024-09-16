@@ -9,6 +9,7 @@ import {
   SCIM_ENDPOINT_RESOURCE,
   SCIM_USER_FILTER,
   SUCCESS_MESSAGE,
+  WEBEX_API_BTS,
 } from '../common/constants';
 import log from '../Logger';
 import {
@@ -48,6 +49,8 @@ import {
   mockContactGroupListOne,
   mockContactGroupListTwo,
   mockAvatarURL,
+  mockSCIMMinListResponse,
+  mockContactMinimum,
 } from './contactFixtures';
 
 describe('ContactClient Tests', () => {
@@ -57,7 +60,7 @@ describe('ContactClient Tests', () => {
 
   // eslint-disable-next-line no-underscore-dangle
   const contactServiceUrl = `${webex.internal.services._serviceUrls.contactsService}/${ENCRYPT_FILTER}/${USERS}/${CONTACT_FILTER}`;
-  const scimUrl = `${webex.internal.services._serviceUrls.identity}/${IDENTITY_ENDPOINT_RESOURCE}/${SCIM_ENDPOINT_RESOURCE}/${webex.internal.device.orgId}/${SCIM_USER_FILTER}id%20eq%20%22801bb994-343b-4f6b-97ae-d13c91d4b877%22`;
+  const scimUrl = `${WEBEX_API_BTS}/${IDENTITY_ENDPOINT_RESOURCE}/${SCIM_ENDPOINT_RESOURCE}/${webex.internal.device.orgId}/${SCIM_USER_FILTER}id%20eq%20%22801bb994-343b-4f6b-97ae-d13c91d4b877%22`;
   // eslint-disable-next-line no-underscore-dangle
   const contactServiceGroupUrl = `${webex.internal.services._serviceUrls.contactsService}/${ENCRYPT_FILTER}/${USERS}/${GROUP_FILTER}`;
   const serviceErrorCodeHandlerSpy = jest.spyOn(utils, 'serviceErrorCodeHandler');
@@ -723,5 +726,41 @@ describe('ContactClient Tests', () => {
     });
 
     expect(contactClient['contacts']).toEqual(mockContactListOne);
+  });
+
+  it('test resolveContacts function for a minimal contact with few details', () => {
+    const contact = contactClient['resolveCloudContacts'](
+      {userId: mockContactMinimum},
+      mockSCIMMinListResponse.body
+    );
+
+    expect(contact).toEqual([
+      {
+        avatarURL: '',
+        avatarUrlDomain: undefined,
+        contactId: 'userId',
+        contactType: 'CLOUD',
+        department: undefined,
+        displayName: undefined,
+        emails: undefined,
+        encryptionKeyUrl: 'kms://cisco.com/keys/dcf18f9d-155e-44ff-ad61-c8a69b7103ab',
+        firstName: undefined,
+        groups: ['1561977e-3443-4ccf-a591-69686275d7d2'],
+        lastName: undefined,
+        manager: undefined,
+        ownerId: 'ownerId',
+        phoneNumbers: undefined,
+        sipAddresses: undefined,
+      },
+    ]);
+  });
+
+  it('test resolveContacts function encountering an error', () => {
+    const contact = contactClient['resolveCloudContacts'](
+      {userId: mockContactMinimum},
+      mockSCIMMinListResponse
+    );
+
+    expect(contact).toEqual(null);
   });
 });
