@@ -5,6 +5,8 @@ import 'jsdom-global/register';
 import {cloneDeep, forEach, isEqual, isUndefined} from 'lodash';
 import sinon from 'sinon';
 import * as InternalMediaCoreModule from '@webex/internal-media-core';
+import * as RtcMetricsModule from '@webex/plugin-meetings/src/rtcMetrics';
+import * as RemoteMediaManagerModule from '@webex/plugin-meetings/src/multistream/remoteMediaManager';
 import StateMachine from 'javascript-state-machine';
 import uuid from 'uuid';
 import {assert, expect} from '@webex/test-helper-chai';
@@ -2405,9 +2407,7 @@ describe('plugin-meetings', () => {
             Media.createMediaConnection,
             false,
             meeting.getMediaConnectionDebugId(),
-            webex,
             meeting.id,
-            meeting.correlationId,
             sinon.match({turnServerInfo: undefined})
           );
           assert.calledOnce(meeting.setMercuryListener);
@@ -2449,6 +2449,44 @@ describe('plugin-meetings', () => {
           checkWorking({allowMediaInLobby: true});
         });
 
+        it('should create rtcMetrics and pass them to Media.createMediaConnection()', async () => {
+          const fakeRtcMetrics = {id: 'fake rtc metrics object'};
+          const rtcMetricsCtor = sinon.stub(RtcMetricsModule, 'default').returns(fakeRtcMetrics);
+
+          // setup the minimum mocks required for multistream connection
+          fakeMediaConnection.createSendSlot = sinon.stub().returns({
+            publishStream: sinon.stub(),
+            unpublishStream: sinon.stub(),
+            setNamedMediaGroups: sinon.stub(),
+          });
+          sinon.stub(RemoteMediaManagerModule, 'RemoteMediaManager').returns({
+            start: sinon.stub().resolves(),
+            on: sinon.stub(),
+            logAllReceiveSlots: sinon.stub(),
+          });
+
+          meeting.meetingState = 'ACTIVE';
+          meeting.isMultistream = true;
+
+          await meeting.addMedia({
+            mediaSettings: {},
+          });
+
+          assert.calledOnceWithExactly(rtcMetricsCtor, webex, meeting.id, meeting.correlationId);
+
+          // check that rtcMetrics was passed to Media.createMediaConnection
+          assert.calledOnce(Media.createMediaConnection);
+          assert.calledWith(
+            Media.createMediaConnection,
+            true,
+            meeting.getMediaConnectionDebugId(),
+            meeting.id,
+            sinon.match({
+              rtcMetrics: fakeRtcMetrics,
+            })
+          );
+        });
+
         it('should pass the turn server info to the peer connection', async () => {
           const FAKE_TURN_URL = 'turns:webex.com:3478';
           const FAKE_TURN_USER = 'some-turn-username';
@@ -2478,9 +2516,7 @@ describe('plugin-meetings', () => {
             Media.createMediaConnection,
             false,
             meeting.getMediaConnectionDebugId(),
-            webex,
             meeting.id,
-            meeting.correlationId,
             sinon.match({
               turnServerInfo: {
                 url: FAKE_TURN_URL,
@@ -3401,9 +3437,7 @@ describe('plugin-meetings', () => {
             Media.createMediaConnection,
             false,
             meeting.getMediaConnectionDebugId(),
-            webex,
             meeting.id,
-            meeting.correlationId,
             sinon.match({
               turnServerInfo: {
                 url: FAKE_TURN_URL,
@@ -8454,6 +8488,9 @@ describe('plugin-meetings', () => {
         it('listens to the self admitted guest event', (done) => {
           meeting.stopKeepAlive = sinon.stub();
           meeting.updateLLMConnection = sinon.stub();
+          meeting.rtcMetrics = {
+            sendNextMetrics: sinon.stub(),
+          };
           meeting.locusInfo.emit({function: 'test', file: 'test'}, 'SELF_ADMITTED_GUEST', test1);
           assert.calledOnceWithExactly(meeting.stopKeepAlive);
           assert.calledThrice(TriggerProxy.trigger);
@@ -8465,6 +8502,8 @@ describe('plugin-meetings', () => {
             {payload: test1}
           );
           assert.calledOnce(meeting.updateLLMConnection);
+          assert.calledOnceWithExactly(meeting.rtcMetrics.sendNextMetrics);
+
           done();
         });
 
