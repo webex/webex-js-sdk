@@ -1,9 +1,8 @@
 import sinon from 'sinon';
 import {assert} from '@webex/test-helper-chai';
 import {BrowserDetection} from '@webex/common';
-import {BehavioralMetrics, config, getOSNameInternal} from '@webex/internal-plugin-metrics';
+import {OperationalMetrics, config, getOSNameInternal} from '@webex/internal-plugin-metrics';
 import uuid from 'uuid';
-import {merge} from 'lodash';
 
 //@ts-ignore
 global.window = {location: {hostname: 'whatever'}, navigator: {language: 'language'}};
@@ -12,10 +11,10 @@ process.env.NODE_ENV = 'test';
 const {getOSVersion, getBrowserName, getBrowserVersion} = BrowserDetection();
 
 describe('internal-plugin-metrics', () => {
-  describe('BehavioralMetrics', () => {
+  describe('OperationalMetrics', () => {
     let webex;
     let now;
-    let behavioralMetrics: BehavioralMetrics;
+    let operationalMetrics: OperationalMetrics;
 
     const tags = {key: 'val'};
 
@@ -66,7 +65,7 @@ describe('internal-plugin-metrics', () => {
 
       sinon.createSandbox();
       sinon.useFakeTimers(now.getTime());
-      behavioralMetrics = new BehavioralMetrics({}, {parent: webex});
+      operationalMetrics = new OperationalMetrics({}, {parent: webex});
       sinon.stub(uuid, 'v4').returns('my-fake-id');
     });
 
@@ -75,15 +74,15 @@ describe('internal-plugin-metrics', () => {
     });
 
     describe('#sendEvent', () => {
-      it('should send correctly shaped behavioral event (check name building and internal tagged event building)', () => {
+      it('should send correctly shaped operational event (check name building and internal tagged event building)', () => {
         // For some reasons `jest` isn't available when testing form build server - so can't use `jest.fn()` here...
         const requestCalls = [];
         const request = function(arg) { requestCalls.push(arg) }
 
-        behavioralMetrics.clientMetricsBatcher.request = request;
+        operationalMetrics.clientMetricsBatcher.request = request;
         
         assert.equal(requestCalls.length, 0)
-        behavioralMetrics.submitBehavioralEvent({ product: "webex", agent: "user", target: "foo", verb: "get", payload: {bar:"gee"} })
+        operationalMetrics.submitOperationalEvent({ name: "foobar", payload: {bar:"gee"} })
         assert.equal(requestCalls.length, 1)
         assert.deepEqual(requestCalls[0], {
           context: {
@@ -95,7 +94,7 @@ describe('internal-plugin-metrics', () => {
               version: getOSVersion(),
             },
           },
-          metricName: 'webex.user.foo.get',
+          metricName: 'foobar',
           tags: {
             browser: getBrowserName(),
             browserHeight: window.innerHeight,
@@ -105,96 +104,23 @@ describe('internal-plugin-metrics', () => {
             inIframe: false,
             locale: window.navigator.language,
             os: getOSNameInternal(),
-            bar:"gee"
+            bar: "gee"
           },
-          timestamp: requestCalls[0].timestamp, // This is to bypass time check, which is correctly tested below.
-          type: ['behavioral'],
+          timestamp: requestCalls[0].timestamp, // This is to bypass time check, which is correctly tested in behavioral-metrics tests.
+          type: ['operational'],
         });
       })
     })
 
-    describe('#getContext', () => {
-      it('should build context correctly', () => {
-        const res = behavioralMetrics.getContext();
-
-        assert.deepEqual(res, {
-          app: {
-            version: 'webex-version',
-          },
-          device: {
-            id: 'deviceId',
-          },
-          locale: 'language',
-          os: {
-            name: getOSNameInternal(),
-            version: getOSVersion(),
-          },
-        });
-      });
-    });
-
-    describe('#getDefaultTags', () => {
-      it('should build tags correctly', () => {
-        const res = behavioralMetrics.getBrowserDetails();
-
-        assert.deepEqual(res, {
-          browser: getBrowserName(),
-          browserHeight: window.innerHeight,
-          browserVersion: getBrowserVersion(),
-          browserWidth: window.innerWidth,
-          domain: window.location.hostname,
-          inIframe: false,
-          locale: window.navigator.language,
-          os: getOSNameInternal(),
-        });
-      });
-    });
-
     describe('#isReadyToSubmitEvents', () => {
       it('should return true when we have a deviceId, false when deviceId is empty or undefined', async () => {
-        assert.equal(true, behavioralMetrics.isReadyToSubmitEvents());
+        assert.equal(true, operationalMetrics.isReadyToSubmitEvents());
 
         webex.internal.device.url = "";
-        assert.equal(false, behavioralMetrics.isReadyToSubmitEvents());
+        assert.equal(false, operationalMetrics.isReadyToSubmitEvents());
 
         delete webex.internal.device.url;
-        assert.equal(false, behavioralMetrics.isReadyToSubmitEvents());
-      });
-    });
-
-    describe('#createEventObject', () => {
-      it('should build event object correctly', async () => {
-        const res = behavioralMetrics.createTaggedEventObject({
-          type:['behavioral'],
-          name:'webex.user.target.create',
-          payload: tags,
-        });
-
-        assert.deepEqual(res, {
-          context: {
-            app: {
-              version: 'webex-version',
-            },
-            device: {
-              id: 'deviceId',
-            },
-            locale: 'language',
-            os: {
-              name: getOSNameInternal(),
-              version: getOSVersion(),
-            },
-          },
-          metricName: 'webex.user.target.create',
-          tags: merge(tags, {
-            browser: getBrowserName(),
-            browserVersion: getBrowserVersion(),
-            domain: window.location.hostname,
-            locale: window.navigator.language,
-            os: getOSNameInternal(),
-          }),
-          timestamp: res.timestamp,
-          type: ['behavioral'],
-        });
+        assert.equal(false, operationalMetrics.isReadyToSubmitEvents());
       });
     });
   });

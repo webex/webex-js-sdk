@@ -23,6 +23,8 @@ import * as CallDiagnosticUtils from './call-diagnostic/call-diagnostic-metrics.
 import CallDiagnosticMetrics from './call-diagnostic/call-diagnostic-metrics';
 import CallDiagnosticLatencies from './call-diagnostic/call-diagnostic-metrics-latencies';
 import BehavioralMetrics from './behavioral/behavioral-metrics';
+import OperationalMetrics from './operational/operational-metrics';
+import BusinessMetrics from './business/business-metrics';
 
 registerInternalPlugin('metrics', Metrics, {
   config,
@@ -43,6 +45,8 @@ export {
   CallDiagnosticLatencies,
   CallDiagnosticMetrics,
   BehavioralMetrics,
+  OperationalMetrics,
+  BusinessMetrics,
 };
 export type {
   ClientEvent,

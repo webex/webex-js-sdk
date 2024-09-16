@@ -7,6 +7,8 @@ import {WebexPlugin} from '@webex/webex-core';
 
 import CallDiagnosticMetrics from './call-diagnostic/call-diagnostic-metrics';
 import BehavioralMetrics from './behavioral/behavioral-metrics';
+import OperationalMetrics from './operational/operational-metrics';
+import BusinessMetrics from './business/business-metrics';
 import {
   RecursivePartial,
   MetricEventProduct,
@@ -14,7 +16,7 @@ import {
   MetricEventVerb,
   ClientEvent,
   FeatureEvent,
-  BehavioralEventPayload,
+  EventPayload,
   OperationalEvent,
   MediaQualityEvent,
   InternalEvent,
@@ -37,6 +39,8 @@ class Metrics extends WebexPlugin {
   // Helper classes to handle the different types of metrics
   callDiagnosticMetrics: CallDiagnosticMetrics;
   behavioralMetrics: BehavioralMetrics;
+  operationalMetrics: OperationalMetrics;
+  businessMetrics: BusinessMetrics;
 
   /**
    * Constructor
@@ -63,6 +67,10 @@ class Metrics extends WebexPlugin {
       this.callDiagnosticMetrics = new CallDiagnosticMetrics({}, {parent: this.webex});
       // @ts-ignore
       this.behavioralMetrics = new BehavioralMetrics({}, {parent: this.webex});
+      // @ts-ignore
+      this.operationalMetrics = new OperationalMetrics({}, {parent: this.webex});
+      // @ts-ignore
+      this.businessMetrics = new BusinessMetrics({}, {parent: this.webex});
     });
   }
 
@@ -90,7 +98,21 @@ class Metrics extends WebexPlugin {
    * @returns true once we have the deviceId we need to submit behavioral events to Amplitude
    */
   isReadyToSubmitBehavioralEvents() {
-    return this.behavioralMetrics.isReadyToSubmitBehavioralEvents();
+    return this.behavioralMetrics.isReadyToSubmitEvents();
+  }
+
+  /**
+   * @returns true once we have the deviceId we need to submit operational events
+   */
+  isReadyToSubmitOperationalEvents() {
+    return this.operationalMetrics.isReadyToSubmitEvents();
+  }
+
+  /**
+   * @returns true once we have the deviceId we need to submit buisness events
+   */
+  isReadyToSubmitBusinessEvents() {
+    return this.businessMetrics.isReadyToSubmitEvents();
   }
 
   /**
@@ -108,7 +130,7 @@ class Metrics extends WebexPlugin {
     agent: MetricEventAgent;
     target: string;
     verb: MetricEventVerb;
-    payload?: BehavioralEventPayload;
+    payload?: EventPayload;
   }) {
     if (!this.behavioralMetrics) {
       // @ts-ignore
@@ -126,16 +148,16 @@ class Metrics extends WebexPlugin {
    * Operational event
    * @param args
    */
-  submitOperationalEvent({
-    name,
-    payload,
-    options,
-  }: {
-    name: OperationalEvent['name'];
-    payload?: RecursivePartial<OperationalEvent['payload']>;
-    options?: any;
-  }) {
-    throw new Error('Not implemented.');
+  submitOperationalEvent({name, payload}: {name: string; payload?: EventPayload}) {
+    return this.operationalMetrics.submitOperationalEvent({name, payload});
+  }
+
+  /**
+   * Buisness event
+   * @param args
+   */
+  submitBusinessEvent({name, payload}: {name: string; payload: EventPayload}) {
+    return this.businessMetrics.submitBusinessEvent({name, payload});
   }
 
   /**
