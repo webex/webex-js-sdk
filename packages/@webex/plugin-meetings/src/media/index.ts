@@ -20,7 +20,7 @@ import {MEDIA_TRACK_CONSTRAINT} from '../constants';
 import Config from '../config';
 import StaticConfig from '../common/config';
 import BrowserDetection from '../common/browser-detection';
-import RtcMetrics from '../rtcMetrics';
+import {RtcMetrics} from '@webex/internal-plugin-metrics';
 
 const {isBrowser} = BrowserDetection();
 

@@ -25,6 +25,7 @@ import CallDiagnosticLatencies from './call-diagnostic/call-diagnostic-metrics-l
 import BehavioralMetrics from './behavioral-metrics';
 import OperationalMetrics from './operational-metrics';
 import BusinessMetrics from './business-metrics';
+import RtcMetrics from './rtcMetrics';
 
 registerInternalPlugin('metrics', Metrics, {
   config,
@@ -34,6 +35,7 @@ registerInternalPlugin('newMetrics', NewMetrics, {
   config,
 });
 
+// eslint-disable-next-line no-restricted-exports
 export {default, getOSNameInternal} from './metrics';
 
 export {
@@ -47,6 +49,7 @@ export {
   BehavioralMetrics,
   OperationalMetrics,
   BusinessMetrics,
+  RtcMetrics,
 };
 export type {
   ClientEvent,

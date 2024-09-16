@@ -346,7 +346,10 @@ describe('Call Tests', () => {
     expect(mockInternalMediaCoreModule.RoapMediaConnection).toBeCalledOnceWith(
       roapMediaConnectionConfig,
       roapMediaConnectionOptions,
-      expect.any(String)
+      expect.any(String),
+      expect.any(Function),
+      expect.any(Function),
+      expect.any(Function)
     );
     expect(call['mediaStateMachine'].state.value).toBe('S_SEND_ROAP_OFFER');
 
@@ -400,7 +403,10 @@ describe('Call Tests', () => {
     expect(mockInternalMediaCoreModule.RoapMediaConnection).toBeCalledOnceWith(
       roapMediaConnectionConfig,
       roapMediaConnectionOptions,
-      expect.any(String)
+      expect.any(String),
+      expect.any(Function),
+      expect.any(Function),
+      expect.any(Function)
     );
     expect(call['callStateMachine'].state.value).toBe('S_IDLE');
     expect(warnSpy).toBeCalledOnceWith(`Call cannot be answered because the state is : S_IDLE`, {
@@ -454,7 +460,10 @@ describe('Call Tests', () => {
     expect(mockInternalMediaCoreModule.RoapMediaConnection).toBeCalledOnceWith(
       roapMediaConnectionConfig,
       roapMediaConnectionOptions,
-      expect.any(String)
+      expect.any(String),
+      expect.any(Function),
+      expect.any(Function),
+      expect.any(Function)
     );
     expect(call['mediaStateMachine'].state.value).toBe('S_SEND_ROAP_OFFER');
 
@@ -565,7 +574,7 @@ describe('Call Tests', () => {
     call.answer(localAudioStream);
 
     await waitForMsecs(50);
-    expect(warnSpy).toBeCalledTimes(2);
+    expect(warnSpy).toBeCalledTimes(1);
     expect(warnSpy).toBeCalledWith(
       `Did not find a local track while answering the call ${call.getCorrelationId()}`,
       {file: 'call', method: 'answer'}

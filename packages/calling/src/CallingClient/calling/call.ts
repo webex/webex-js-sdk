@@ -3,12 +3,19 @@ import {
   LocalMicrophoneStream,
   LocalStreamEventNames,
   RoapMediaConnection,
+  RoapMessage,
 } from '@webex/internal-media-core';
 import {createMachine, interpret} from 'xstate';
 import {v4 as uuid} from 'uuid';
 import {EffectEvent, TrackEffect} from '@webex/web-media-effects';
+import {RtcMetrics} from '@webex/internal-plugin-metrics';
+import ExtendedError from 'Errors/catalog/ExtendedError';
 import {ERROR_LAYER, ERROR_TYPE, ErrorContext} from '../../Errors/types';
-import {handleCallErrors, parseMediaQualityStatistics} from '../../common/Utils';
+import {
+  handleCallErrors,
+  parseMediaQualityStatistics,
+  serviceErrorCodeHandler,
+} from '../../common/Utils';
 import {
   ALLOWED_SERVICES,
   CallDetails,
@@ -21,8 +28,6 @@ import {
   WebexRequestPayload,
 } from '../../common/types';
 import {CallError, createCallError} from '../../Errors/catalog/CallError';
-/* eslint-disable tsdoc/syntax */
-/* eslint-disable no-param-reassign */
 import {
   CALL_ENDPOINT_RESOURCE,
   CALL_FILE,
@@ -55,7 +60,6 @@ import {
   MEDIA_CONNECTION_EVENT_KEYS,
   MOBIUS_MIDCALL_STATE,
   RoapEvent,
-  RoapMessage,
   SUPPLEMENTARY_SERVICES,
 } from '../../Events/types';
 import {ISDKConnector, WebexSDK} from '../../SDKConnector/types';
@@ -115,9 +119,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
   private seq: number; // TODO: remove later
 
-  /* TODO: Need to change the type from any to RoapMediaConnection  */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  public mediaConnection?: any;
+  public mediaConnection?: RoapMediaConnection;
 
   private earlyMedia: boolean;
 
@@ -1249,7 +1251,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
     try {
       /* Start Offer/Answer as we might have buffered the offer by now */
-      this.mediaConnection.roapMessageReceived(this.remoteRoapMessage);
+      this.mediaConnection?.roapMessageReceived(this.remoteRoapMessage);
 
       /* send call_connect PATCH */
       const res = await this.patch(MobiusCallState.CONNECTED);
@@ -1733,7 +1735,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         file: CALL_FILE,
         method: this.handleOutgoingRoapOffer.name,
       });
-      this.mediaConnection.initiateOffer();
+      this.mediaConnection?.initiateOffer();
 
       return;
     }
@@ -1887,6 +1889,33 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
     }
   }
 
+  /**
+   * Media failed, so collect a stats report from webrtc using the wcme connection to grab the rtc stats report
+   * send a webrtc telemetry dump to the configured server using the internal media core check metrics configured callback
+   * @param {String} callFrom - the function calling this function, optional.
+   * @returns {Promise<void>}
+   */
+  // eslint-disable-next-line no-unused-vars
+  private forceSendStatsReport = async ({callFrom}: {callFrom?: string}) => {
+    const loggerContext = {
+      file: CALL_FILE,
+      method: this.forceSendStatsReport.name,
+    };
+
+    try {
+      await this.mediaConnection?.forceRtcMetricsSend();
+      log.info(`successfully uploaded available webrtc telemetry statistics`, loggerContext);
+    } catch (error) {
+      const errorInfo = error as WebexRequestPayload;
+      const errorStatus = serviceErrorCodeHandler(errorInfo, loggerContext);
+      const errorLog = new Error(
+        `failed to upload webrtc telemetry statistics. ${errorStatus}`
+      ) as ExtendedError;
+
+      log.error(errorLog, loggerContext);
+    }
+  };
+
   /* istanbul ignore next */
   /**
    * Initialize Media Connection.
@@ -1896,6 +1925,8 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    * @param settings.debugId - String.
    */
   private initMediaConnection(localAudioTrack: MediaStreamTrack, debugId?: string) {
+    const rtcMetrics = new RtcMetrics(this.webex, this.correlationId, undefined, this.callId);
+
     const mediaConnection = new RoapMediaConnection(
       {
         skipInactiveTransceivers: true,
@@ -1915,7 +1946,10 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
           screenShareVideo: 'inactive',
         },
       },
-      debugId || `WebexCallSDK-${this.correlationId}`
+      debugId || `WebexCallSDK-${this.correlationId}`,
+      (data) => rtcMetrics.addMetrics(data),
+      () => rtcMetrics.closeMetrics(),
+      () => rtcMetrics.sendMetricsInQueue()
     );
 
     this.mediaConnection = mediaConnection;
@@ -2332,7 +2366,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
     let stats!: RTCStatsReport;
 
     try {
-      stats = await this.mediaConnection.getStats();
+      stats = (await this.mediaConnection?.getStats()) as RTCStatsReport;
     } catch (err) {
       log.warn('Stats collection failed, using dummy stats', {
         file: CALL_FILE,
@@ -2381,7 +2415,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    * Setup a listener for roap events emitted by the media sdk.
    */
   private mediaRoapEventsListener() {
-    this.mediaConnection.on(
+    this.mediaConnection?.on(
       MediaConnectionEventNames.ROAP_MESSAGE_TO_SEND,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       async (event: any) => {
@@ -2446,7 +2480,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    */
   private mediaTrackListener() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    this.mediaConnection.on(MediaConnectionEventNames.REMOTE_TRACK_ADDED, (e: any) => {
+    this.mediaConnection?.on(MediaConnectionEventNames.REMOTE_TRACK_ADDED, (e: any) => {
       if (e.type === MEDIA_CONNECTION_EVENT_KEYS.MEDIA_TYPE_AUDIO) {
         this.emit(CALL_EVENT_KEYS.REMOTE_MEDIA, e.track);
       }
@@ -2472,7 +2506,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
   };
 
   private updateTrack = (audioTrack: MediaStreamTrack) => {
-    this.mediaConnection.updateLocalTracks({audio: audioTrack});
+    this.mediaConnection?.updateLocalTracks({audio: audioTrack});
   };
 
   private registerEffectListener = (addedEffect: TrackEffect) => {
@@ -2709,7 +2743,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         method: 'sendDigit',
       });
 
-      this.mediaConnection.insertDTMF(tone);
+      this.mediaConnection?.insertDTMF(tone);
     } catch (e: any) {
       log.warn(`Unable to send digit on call: ${e.message}`, {
         file: CALL_FILE,
@@ -2757,7 +2791,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
     }
 
     try {
-      this.mediaConnection.updateLocalTracks({
+      this.mediaConnection?.updateLocalTracks({
         audio: localAudioTrack,
       });
 

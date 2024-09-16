@@ -1,3 +1,4 @@
 const RTC_METRICS = {APP_ID: 'FFB51ED5-4319-4C55-8303-B1F2FCCDE231'};
 
+// eslint-disable-next-line no-restricted-exports
 export {RTC_METRICS as default};

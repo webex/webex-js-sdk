@@ -752,7 +752,7 @@ describe('internal-plugin-metrics', () => {
         assert.deepEqual(webexLoggerLogCalls[2].args, [
           'call-diagnostic-events -> ',
           'CallDiagnosticMetrics: @createClientEventObjectInMeeting => collected browser data',
-          '{"error":"unable to access window.navigator.userAgent"}',
+          '{"_ua":"Mozilla/5.0 (darwin) AppleWebKit/537.36 (KHTML, like Gecko) jsdom/19.0.0","parsedResult":{"browser":{"name":"Safari"},"os":{},"platform":{},"engine":{"name":"Blink"}}}',
         ]);
 
         assert.deepEqual(webexLoggerLogCalls[3].args, [
@@ -2385,11 +2385,11 @@ describe('internal-plugin-metrics', () => {
       // The method is called in beforeEach itself. We are just testing it here
       it('sets the received deviceInfo to call-diagnostics', () => {
         const webexLoggerLogCalls = webex.logger.log.getCalls();
-        const device = { userId: 'userId', url: 'deviceUrl', orgId: 'orgId' };
+        const device = {userId: 'userId', url: 'deviceUrl', orgId: 'orgId'};
 
         assert.deepEqual(webexLoggerLogCalls[0].args, [
           'CallDiagnosticMetrics: @setDeviceInfo called',
-          device
+          device,
         ]);
 
         assert.deepEqual(cd.device, device);
