@@ -1,5 +1,5 @@
-import * as CallDiagnosticUtils from '../call-diagnostic/call-diagnostic-metrics.util';
 import uuid from 'uuid';
+import * as CallDiagnosticUtils from '../call-diagnostic/call-diagnostic-metrics.util';
 import RTC_METRICS from './constants';
 
 const parseJsonPayload = (payload: any[]): any | null => {
@@ -42,8 +42,8 @@ export default class RtcMetrics {
    *
    * @param {object} webex - The main `webex` object.
    * @param {string} correlationId - The correlation id.
-   * @param {string} meetingId - The meeting id (optional).
-   * @param {string} callId - The meeting id.
+   * @param {string} meetingId - The meeting id (optional - mutually exclusive with callId).
+   * @param {string} callId - The meeting id (optional - mutually exclusive with meetingId).
    */
   constructor(webex, correlationId, meetingId, callId) {
     // `window` is used to prevent typescript from returning a NodeJS.Timer.

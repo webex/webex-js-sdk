@@ -1895,7 +1895,6 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    * @param {String} callFrom - the function calling this function, optional.
    * @returns {Promise<void>}
    */
-  // eslint-disable-next-line no-unused-vars
   private forceSendStatsReport = async ({callFrom}: {callFrom?: string}) => {
     const loggerContext = {
       file: CALL_FILE,
@@ -1905,6 +1904,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
     try {
       await this.mediaConnection?.forceRtcMetricsSend();
       log.info(`successfully uploaded available webrtc telemetry statistics`, loggerContext);
+      log.info(`callFrom: ${callFrom}`, loggerContext);
     } catch (error) {
       const errorInfo = error as WebexRequestPayload;
       const errorStatus = serviceErrorCodeHandler(errorInfo, loggerContext);

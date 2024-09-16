@@ -26,8 +26,8 @@ describe('RtcMetrics', () => {
   const sandbox = sinon.createSandbox();
 
   beforeEach(() => {
-    window.setInterval = sinon.stub();
     clock = sinon.useFakeTimers();
+    window.setInterval = setInterval;
     webex = new MockWebex();
     metrics = new RtcMetrics(webex, 'mock-correlation-id', 'mock-meeting-id', undefined);
     anonymizeIpSpy = sandbox.spy(metrics, 'anonymizeIp');
