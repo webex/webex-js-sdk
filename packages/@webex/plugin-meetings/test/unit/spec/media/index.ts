@@ -3,14 +3,12 @@ import Media from '@webex/plugin-meetings/src/media/index';
 import {assert} from '@webex/test-helper-chai';
 import sinon from 'sinon';
 import StaticConfig from '@webex/plugin-meetings/src/common/config';
-import MockWebex from '@webex/test-helper-mock-webex';
 
 describe('createMediaConnection', () => {
   let clock;
   beforeEach(() => {
     clock = sinon.useFakeTimers();
   });
-  const webex = MockWebex();
 
   const fakeRoapMediaConnection = {
     id: 'roap media connection',
@@ -61,7 +59,7 @@ describe('createMediaConnection', () => {
     const ENABLE_EXTMAP = false;
     const ENABLE_RTX = true;
 
-    Media.createMediaConnection(false, 'some debug id', webex, 'meetingId', 'correlationId', {
+    Media.createMediaConnection(false, 'some debug id', 'meetingId', {
       mediaProperties: {
         mediaDirection: {
           sendAudio: false,
@@ -139,7 +137,13 @@ describe('createMediaConnection', () => {
       .stub(InternalMediaCoreModule, 'MultistreamRoapMediaConnection')
       .returns(fakeRoapMediaConnection);
 
-    Media.createMediaConnection(true, 'some debug id', webex, 'meeting id', 'correlationId', {
+    const rtcMetrics = {
+      addMetrics: sinon.stub(),
+      closeMetrics: sinon.stub(),
+      sendMetricsInQueue: sinon.stub(),
+    };
+
+    Media.createMediaConnection(true, 'some debug id', 'meeting id', {
       mediaProperties: {
         mediaDirection: {
           sendAudio: true,
@@ -150,6 +154,7 @@ describe('createMediaConnection', () => {
           receiveShare: true,
         },
       },
+      rtcMetrics,
       turnServerInfo: {
         url: 'turns:turn-server-url:443?transport=tcp',
         username: 'turn username',
@@ -177,6 +182,27 @@ describe('createMediaConnection', () => {
       },
       'meeting id'
     );
+
+    // check if rtcMetrics callbacks are configured correctly
+    const addMetricsCallback = multistreamRoapMediaConnectionConstructorStub.getCalls()[0].args[2];
+    const closeMetricsCallback = multistreamRoapMediaConnectionConstructorStub.getCalls()[0].args[3];
+    const sendMetricsInQueueCallback = multistreamRoapMediaConnectionConstructorStub.getCalls()[0].args[4];
+
+    assert.isFunction(addMetricsCallback);
+    assert.isFunction(closeMetricsCallback);
+    assert.isFunction(sendMetricsInQueueCallback);
+
+    const fakeMetricsData = {id: 'metrics data'};
+
+    addMetricsCallback(fakeMetricsData);
+    assert.calledOnceWithExactly(rtcMetrics.addMetrics, fakeMetricsData);
+
+    closeMetricsCallback();
+    assert.calledOnce(rtcMetrics.closeMetrics);
+
+    sendMetricsInQueueCallback();
+    assert.calledOnce(rtcMetrics.sendMetricsInQueue);
+
   });
 
   [
@@ -191,7 +217,7 @@ describe('createMediaConnection', () => {
         .stub(InternalMediaCoreModule, 'MultistreamRoapMediaConnection')
         .returns(fakeRoapMediaConnection);
 
-      Media.createMediaConnection(true, 'debug string', webex, 'meeting id', 'correlationId', {
+      Media.createMediaConnection(true, 'debug string', 'meeting id', {
         mediaProperties: {
           mediaDirection: {
             sendAudio: true,
@@ -220,7 +246,7 @@ describe('createMediaConnection', () => {
       .stub(InternalMediaCoreModule, 'MultistreamRoapMediaConnection')
       .returns(fakeRoapMediaConnection);
 
-    Media.createMediaConnection(true, 'debug string', webex, 'meeting id', 'correlationId', {
+    Media.createMediaConnection(true, 'debug string', 'meeting id', {
       mediaProperties: {
         mediaDirection: {
           sendAudio: true,
@@ -260,7 +286,7 @@ describe('createMediaConnection', () => {
       const ENABLE_EXTMAP = false;
       const ENABLE_RTX = true;
 
-      Media.createMediaConnection(false, 'some debug id', webex, 'meeting id', 'correlationId', {
+      Media.createMediaConnection(false, 'some debug id', 'meeting id', {
         mediaProperties: {
           mediaDirection: {
             sendAudio: true,
