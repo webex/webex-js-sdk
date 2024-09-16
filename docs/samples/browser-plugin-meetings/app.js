@@ -299,6 +299,7 @@ const passwordCaptchaStatusElm = document.querySelector('#password-captcha-statu
 const refreshCaptchaElm = document.querySelector('#meetings-join-captcha-refresh');
 const verifyPasswordElm = document.querySelector('#btn-verify-password');
 const displayMeetingStatusElm = document.querySelector('#display-meeting-status');
+const notes=document.querySelector('#notes');
 const spaceIDError = `Using the space ID as a destination is no longer supported. Please refer to the <a href="https://github.com/webex/webex-js-sdk/wiki/Migration-to-Unified-Space-Meetings" target="_blank">migration guide</a> to migrate to use the meeting ID or SIP address.`;
 const BNR = 'BNR';
 const VBG = 'VBG';
@@ -380,6 +381,17 @@ createMeetingSelectElm.addEventListener('change', (event) => {
     createMeetingActionElm.innerText = 'Create Meeting';
   }
 });
+
+createMeetingSelectElm.addEventListener('change', (event) => {
+  if (event.target.value === 'Others') {
+      notes.classList.remove('hidden');
+  }
+  else {
+     notes.classList.add('hidden');
+    
+  }
+});
+
 
 function createMeeting(e) {
   e.preventDefault();
