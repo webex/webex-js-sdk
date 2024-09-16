@@ -22,7 +22,7 @@
     "deploy:npm": "yarn npm publish"
   },
   "dependencies": {
-    "@webex/internal-media-core": "2.10.0",
+    "@webex/internal-media-core": "2.10.2",
     "@webex/ts-events": "^1.1.0",
     "@webex/web-media-effects": "2.18.0"
   },
