@@ -18,6 +18,7 @@ export default abstract class GenericMetrics extends StatelessWebexPlugin {
   private logger: any; // to avoid adding @ts-ignore everywhere
   private device: any;
   private version: string;
+  private deviceId = '';
 
   /**
    * Constructor
@@ -53,15 +54,17 @@ export default abstract class GenericMetrics extends StatelessWebexPlugin {
    * @returns {string} deviceId or empty string
    */
   protected getDeviceId(): string {
-    const {url} = this.device;
-    if (url && url.length !== 0) {
-      const n = url.lastIndexOf('/');
-      if (n !== -1) {
-        return url.substring(n + 1);
+    if (this.deviceId === '') {
+      const {url} = this.device;
+      if (url && url.length !== 0) {
+        const n = url.lastIndexOf('/');
+        if (n !== -1) {
+          this.deviceId = url.substring(n + 1);
+        }
       }
     }
 
-    return '';
+    return this.deviceId;
   }
 
   /**
