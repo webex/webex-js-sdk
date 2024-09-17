@@ -152,13 +152,17 @@ describe('internal-plugin-metrics', () => {
 
     describe('#isReadyToSubmitEvents', () => {
       it('should return true when we have a deviceId, false when deviceId is empty or undefined', async () => {
-        assert.equal(true, behavioralMetrics.isReadyToSubmitEvents());
+        let deviceIdUrl = webex.internal.device.url;
 
+        // testing case w/o device id url first, as the internal deviceId cache would bypass that flow.
         webex.internal.device.url = "";
         assert.equal(false, behavioralMetrics.isReadyToSubmitEvents());
 
         delete webex.internal.device.url;
         assert.equal(false, behavioralMetrics.isReadyToSubmitEvents());
+
+        webex.internal.device.url = deviceIdUrl;
+        assert.equal(true, behavioralMetrics.isReadyToSubmitEvents());
       });
     });
 

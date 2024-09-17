@@ -116,17 +116,5 @@ describe('internal-plugin-metrics', () => {
         assert.isNumber(requestCalls[0].eventPayload.timestamp)
       })
     })
-
-    describe('#isReadyToSubmitEvents', () => {
-      it('should return true when we have a deviceId, false when deviceId is empty or undefined', async () => {
-        assert.equal(true, businessMetrics.isReadyToSubmitEvents());
-
-        webex.internal.device.url = "";
-        assert.equal(false, businessMetrics.isReadyToSubmitEvents());
-
-        delete webex.internal.device.url;
-        assert.equal(false, businessMetrics.isReadyToSubmitEvents());
-      });
-    });
   });
 });

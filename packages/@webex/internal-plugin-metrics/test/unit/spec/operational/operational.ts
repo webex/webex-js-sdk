@@ -111,17 +111,5 @@ describe('internal-plugin-metrics', () => {
         });
       })
     })
-
-    describe('#isReadyToSubmitEvents', () => {
-      it('should return true when we have a deviceId, false when deviceId is empty or undefined', async () => {
-        assert.equal(true, operationalMetrics.isReadyToSubmitEvents());
-
-        webex.internal.device.url = "";
-        assert.equal(false, operationalMetrics.isReadyToSubmitEvents());
-
-        delete webex.internal.device.url;
-        assert.equal(false, operationalMetrics.isReadyToSubmitEvents());
-      });
-    });
   });
 });
