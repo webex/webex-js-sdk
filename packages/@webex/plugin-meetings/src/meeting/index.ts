@@ -155,6 +155,7 @@ import ControlsOptionsManager from '../controls-options-manager';
 import PermissionError from '../common/errors/permission';
 import {LocusMediaRequest} from './locusMediaRequest';
 import {ConnectionStateHandler, ConnectionStateEvent} from './connectionStateHandler';
+import RtcMetrics from '../rtcMetrics';
 
 // default callback so we don't call an undefined function, but in practice it should never be used
 const DEFAULT_ICE_PHASE_CALLBACK = () => 'JOIN_MEETING_FINAL';
@@ -696,6 +697,7 @@ export default class Meeting extends StatelessWebexPlugin {
   private connectionStateHandler?: ConnectionStateHandler;
   private iceCandidateErrors: Map<string, number>;
   private iceCandidatesCount: number;
+  private rtcMetrics?: RtcMetrics;
 
   /**
    * @param {Object} attrs
@@ -3156,6 +3158,7 @@ export default class Meeting extends StatelessWebexPlugin {
           options: {meetingId: this.id},
         });
       }
+      this.rtcMetrics?.sendNextMetrics();
       this.updateLLMConnection();
     });
 
@@ -6307,14 +6310,17 @@ export default class Meeting extends StatelessWebexPlugin {
    * @returns {RoapMediaConnection | MultistreamRoapMediaConnection}
    */
   private async createMediaConnection(turnServerInfo, bundlePolicy?: BundlePolicy) {
+    this.rtcMetrics = this.isMultistream
+      ? // @ts-ignore
+        new RtcMetrics(this.webex, this.id, this.correlationId)
+      : undefined;
+
     const mc = Media.createMediaConnection(
       this.isMultistream,
       this.getMediaConnectionDebugId(),
-      // @ts-ignore
-      this.webex,
       this.id,
-      this.correlationId,
       {
+        rtcMetrics: this.rtcMetrics,
         mediaProperties: this.mediaProperties,
         remoteQualityLevel: this.mediaProperties.remoteQualityLevel,
         // @ts-ignore - config coming from registerPlugin
