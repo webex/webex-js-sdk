@@ -129,7 +129,7 @@ export default class Reachability extends EventsScope {
       return {clusters, joinCookie};
     } catch (error) {
       if (isRetry) {
-        throw new Error('Failed to get clusters list');
+        throw error;
       }
 
       LoggerProxy.logger.error(
