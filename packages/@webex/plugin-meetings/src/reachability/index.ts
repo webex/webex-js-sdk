@@ -115,6 +115,32 @@ export default class Reachability extends EventsScope {
   }
 
   /**
+   * Fetches the list of media clusters from the backend
+   * @param {boolean} isRetry
+   * @private
+   * @returns {Promise<{clusters: ClusterList, joinCookie: any}>}
+   */
+  async getClusters(isRetry = false): Promise<{clusters: ClusterList; joinCookie: any}> {
+    try {
+      const {clusters, joinCookie} = await this.reachabilityRequest.getClusters(
+        MeetingUtil.getIpVersion(this.webex)
+      );
+
+      return {clusters, joinCookie};
+    } catch (error) {
+      if (isRetry) {
+        throw error;
+      }
+
+      LoggerProxy.logger.error(
+        `Reachability:index#getClusters --> Failed with error: ${error}, retrying...`
+      );
+
+      return this.getClusters(true);
+    }
+  }
+
+  /**
    * Gets a list of media clusters from the backend and performs reachability checks on all the clusters
    * @returns {Promise<ReachabilityResults>} reachability results
    * @public
@@ -123,9 +149,7 @@ export default class Reachability extends EventsScope {
   public async gatherReachability(): Promise<ReachabilityResults> {
     // Fetch clusters and measure latency
     try {
-      const {clusters, joinCookie} = await this.reachabilityRequest.getClusters(
-        MeetingUtil.getIpVersion(this.webex)
-      );
+      const {clusters, joinCookie} = await this.getClusters();
 
       // @ts-ignore
       await this.webex.boundedStorage.put(
