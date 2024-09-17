@@ -257,9 +257,7 @@ describe('Call history tests', () => {
       const ucmLinesAPIPayload = <WebexRequestPayload>(<unknown>MOCK_LINES_API_CALL_RESPONSE);
 
       webex.request.mockResolvedValue(ucmLinesAPIPayload);
-      // Since fetchUCMLinesData is a private method, TypeScript restricts direct access to it.
-      // To bypass this restriction, we are using 'as any' to access and invoke the method for testing purposes.
-      const response = await (callHistory as any).fetchUCMLinesData();
+      const response = await callHistory['fetchUCMLinesData']();
 
       expect(response.statusCode).toBe(200);
       expect(response.message).toBe('SUCCESS');
@@ -272,9 +270,7 @@ describe('Call history tests', () => {
       const ucmLinesAPIPayload = <WebexRequestPayload>(<unknown>failurePayload);
 
       webex.request.mockRejectedValue(ucmLinesAPIPayload);
-      // Since fetchUCMLinesData is a private method, TypeScript restricts direct access to it.
-      // To bypass this restriction, we are using 'as any' to access and invoke the method for testing purposes.
-      const response = await (callHistory as any).fetchUCMLinesData();
+      const response = await callHistory['fetchUCMLinesData']();
 
       expect(response).toStrictEqual(ERROR_DETAILS_400);
       expect(response.data.error).toEqual(ERROR_DETAILS_400.data.error);

@@ -670,10 +670,6 @@ export const MOCK_LINES_API_CALL_RESPONSE: UCMLinesResponse = {
  */
 export const MOCK_LINES_API_CALL_RESPONSE_WITH_NO_LINEDATA: UCMLinesResponse = {
   statusCode: 200,
-  data: {
-    lines: {
-      devices: [],
-    },
-  },
+  data: {},
   message: 'SUCCESS',
 };
