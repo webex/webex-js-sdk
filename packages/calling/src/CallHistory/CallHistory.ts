@@ -147,7 +147,7 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
       const callingBackend = getCallingBackEnd(this.webex);
       if (callingBackend === CALLING_BACKEND.UCM) {
         // Check if userSessions exist and the length is greater than 0
-        if (this.userSessions[USER_SESSIONS] && this.userSessions?.[USER_SESSIONS]?.length > 0) {
+        if (this.userSessions[USER_SESSIONS] && this.userSessions[USER_SESSIONS].length > 0) {
           // Check if cucmDN exists and is valid in any of the userSessions
           const hasCucmDN = this.userSessions[USER_SESSIONS].some(
             (session: UserSession) => session.self.cucmDN && session.self.cucmDN.length > 0
@@ -158,7 +158,7 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
             const ucmLinesResponse = await this.fetchUCMLinesData();
 
             // Check if the Lines API response was successful
-            if (ucmLinesResponse.statusCode === 200 && ucmLinesResponse?.data?.lines?.devices) {
+            if (ucmLinesResponse.statusCode === 200 && ucmLinesResponse.data.lines?.devices) {
               const ucmLinesData = ucmLinesResponse.data.lines.devices;
 
               // Iterate over user sessions and match with Lines data
@@ -258,7 +258,7 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
    * Function to display the UCM Lines API response.
    * @returns {Promise} Resolves to an object of type  {@link UCMLinesResponse}.Response details with success or error status.
    */
-  public async fetchUCMLinesData(): Promise<UCMLinesResponse> {
+  private async fetchUCMLinesData(): Promise<UCMLinesResponse> {
     const loggerContext = {
       file: CALL_HISTORY_FILE,
       method: 'fetchLinesData',
@@ -282,7 +282,7 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
         message: SUCCESS_MESSAGE,
       };
 
-      log.info(`Line details are fetched successfully`, loggerContext);
+      log.info(`Line details fetched successfully`, loggerContext);
 
       return ucmLineDetails;
     } catch (err: unknown) {

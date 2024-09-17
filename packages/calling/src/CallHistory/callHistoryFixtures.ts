@@ -287,15 +287,19 @@ export const mockCallHistoryBody = {
   },
 };
 
-export const mockCallHistoryforMultiLineBody = {
+/**
+ * MOCK_CALL_HISTORY_WITH_UCM_LINE_NUMBER simulates a call history response where the session contains
+ * both cucmDN and ucmLineNumber data. This implies that the cucmDN was successfully matched with the UCM lines data.
+ */
+export const MOCK_CALL_HISTORY_WITH_UCM_LINE_NUMBER = {
   body: {
     statusCode: 200,
     userSessions: [
       {
-        id: 'd74d19cc-6aa7-f341-6012-aec433cc6f8d',
+        id: '123456',
         durationSecs: 438,
         self: {
-          id: 'a24027e7-9b6e-4047-a950-42f4492148ec',
+          id: 'fd2e1234',
           name: 'Mark',
           cucmDN: '1001',
           ucmLineNumber: 1,
@@ -305,43 +309,40 @@ export const mockCallHistoryforMultiLineBody = {
             callbackType: 'EMAIL',
           },
           lookUpInfo: {
-            lookupLink:
-              'https://conv-a.wbx2.com/conversation/api/v1/conversations/c9252ff0-9de2-11ec-a582-59d00c02cca9',
+            lookupLink: 'https://conv-a.wbx2.com/conversation/api/v1/conversations/98765',
             type: 'CONVERSATION',
           },
         },
-        url: 'https://janus-a.wbx2.com/janus/api/v1/history/userSessions/d74d19cc-6aa7-f341-6012-aec433cc6f8d',
-        sessionId: 'd74d19cc-6aa7-f341-6012-aec433cc6f8d',
+        url: 'https://janus-a.wbx2.com/janus/api/v1/history/userSessions/654321',
+        sessionId: '123456',
         sessionType: 'SPARK',
         startTime: '2022-08-22T10:45:21.565Z',
         endTime: '2022-08-22T10:53:01.624Z',
         direction: 'OUTGOING',
         disposition: 'INITIATED',
         other: {
-          id: 'c9bde63c-e3e2-4db4-ba45-0d6c698ffd65',
+          id: '100001',
           name: 'test',
           isPrivate: false,
-          callbackAddress: 'c9bde63c-e3e2-4db4-ba45-0d6c698ffd65',
+          callbackAddress: '89998888',
         },
         durationSeconds: 438,
         joinedDurationSeconds: 457,
         participantCount: 2,
         links: {
-          locusUrl:
-            'https://locus-a.wbx2.com/locus/api/v1/loci/f5dbe4da-663b-3f73-a2fc-3a2fb0f12080',
-          conversationUrl:
-            'https://conv-a.wbx2.com/conversation/api/v1/conversations/c9252ff0-9de2-11ec-a582-59d00c02cca9',
-          callbackAddress: 'c9bde63c-e3e2-4db4-ba45-0d6c698ffd65',
+          locusUrl: 'https://locus-a.wbx2.com/locus/api/v1/loci/786765',
+          conversationUrl: 'https://conv-a.wbx2.com/conversation/api/v1/conversations/55443322',
+          callbackAddress: '01010101',
         },
         isDeleted: false,
         isPMR: false,
-        correlationIds: ['58ea6cd9-852b-4a77-957f-e704c8b0e63e'],
+        correlationIds: ['008899'],
       },
       {
-        id: 'd74d19cc-6aa7-f341-6012-aec433cc6f8d',
+        id: '20191817',
         durationSecs: 438,
         self: {
-          id: 'a24027e7-9b6e-4047-a950-42f4492148ec',
+          id: '12131415',
           name: 'Mark',
           cucmDN: '1002',
           ucmLineNumber: 2,
@@ -351,37 +352,130 @@ export const mockCallHistoryforMultiLineBody = {
             callbackType: 'EMAIL',
           },
           lookUpInfo: {
-            lookupLink:
-              'https://conv-a.wbx2.com/conversation/api/v1/conversations/c9252ff0-9de2-11ec-a582-59d00c02cca9',
+            lookupLink: 'https://conv-a.wbx2.com/conversation/api/v1/conversations/21314151',
             type: 'CONVERSATION',
           },
         },
-        url: 'https://janus-a.wbx2.com/janus/api/v1/history/userSessions/d74d19cc-6aa7-f341-6012-aec433cc6f8d',
-        sessionId: 'd74d19cc-6aa7-f341-6012-aec433cc6f8d',
+        url: 'https://janus-a.wbx2.com/janus/api/v1/history/userSessions/100101102',
+        sessionId: '20191817',
         sessionType: 'SPARK',
         startTime: '2022-08-30T10:45:21.565Z',
         endTime: '2022-08-30T10:53:01.624Z',
         direction: 'OUTGOING',
         disposition: 'INITIATED',
         other: {
-          id: 'c9bde63c-e3e2-4db4-ba45-0d6c698ffd65',
+          id: '301302303',
           name: 'test',
           isPrivate: false,
-          callbackAddress: 'c9bde63c-e3e2-4db4-ba45-0d6c698ffd65',
+          callbackAddress: '401402403',
         },
         durationSeconds: 438,
         joinedDurationSeconds: 457,
         participantCount: 2,
         links: {
-          locusUrl:
-            'https://locus-a.wbx2.com/locus/api/v1/loci/f5dbe4da-663b-3f73-a2fc-3a2fb0f12080',
-          conversationUrl:
-            'https://conv-a.wbx2.com/conversation/api/v1/conversations/c9252ff0-9de2-11ec-a582-59d00c02cca9',
-          callbackAddress: 'c9bde63c-e3e2-4db4-ba45-0d6c698ffd65',
+          locusUrl: 'https://locus-a.wbx2.com/locus/api/v1/loci/501502503',
+          conversationUrl: 'https://conv-a.wbx2.com/conversation/api/v1/conversations/601602603',
+          callbackAddress: '801802803',
         },
         isDeleted: false,
         isPMR: false,
-        correlationIds: ['58ea6cd9-852b-4a77-957f-e704c8b0e63e'],
+        correlationIds: ['901902903'],
+      },
+    ],
+  },
+};
+
+/**
+ * MOCK_CALL_HISTORY_WITHOUT_UCM_LINE_NUMBER simulates a call history response where the session contains
+ * cucmDN, but no ucmLineNumber is present. This implies that the cucmDN was not matched with any UCM lines data.
+ */
+export const MOCK_CALL_HISTORY_WITHOUT_UCM_LINE_NUMBER = {
+  body: {
+    statusCode: 200,
+    userSessions: [
+      {
+        id: '123456',
+        durationSecs: 438,
+        self: {
+          id: 'fd2e1234',
+          name: 'Mark',
+          cucmDN: '1001',
+          incomingCallProtocols: [],
+          callbackInfo: {
+            callbackAddress: 'test@cisco.com',
+            callbackType: 'EMAIL',
+          },
+          lookUpInfo: {
+            lookupLink: 'https://conv-a.wbx2.com/conversation/api/v1/conversations/98765',
+            type: 'CONVERSATION',
+          },
+        },
+        url: 'https://janus-a.wbx2.com/janus/api/v1/history/userSessions/654321',
+        sessionId: '123456',
+        sessionType: 'SPARK',
+        startTime: '2022-08-22T10:45:21.565Z',
+        endTime: '2022-08-22T10:53:01.624Z',
+        direction: 'OUTGOING',
+        disposition: 'INITIATED',
+        other: {
+          id: '100001',
+          name: 'test',
+          isPrivate: false,
+          callbackAddress: '89998888',
+        },
+        durationSeconds: 438,
+        joinedDurationSeconds: 457,
+        participantCount: 2,
+        links: {
+          locusUrl: 'https://locus-a.wbx2.com/locus/api/v1/loci/786765',
+          conversationUrl: 'https://conv-a.wbx2.com/conversation/api/v1/conversations/55443322',
+          callbackAddress: '01010101',
+        },
+        isDeleted: false,
+        isPMR: false,
+        correlationIds: ['008899'],
+      },
+      {
+        id: '20191817',
+        durationSecs: 438,
+        self: {
+          id: '12131415',
+          name: 'Mark',
+          cucmDN: '1002',
+          incomingCallProtocols: [],
+          callbackInfo: {
+            callbackAddress: 'test@cisco.com',
+            callbackType: 'EMAIL',
+          },
+          lookUpInfo: {
+            lookupLink: 'https://conv-a.wbx2.com/conversation/api/v1/conversations/21314151',
+            type: 'CONVERSATION',
+          },
+        },
+        url: 'https://janus-a.wbx2.com/janus/api/v1/history/userSessions/100101102',
+        sessionId: '20191817',
+        sessionType: 'SPARK',
+        startTime: '2022-08-30T10:45:21.565Z',
+        endTime: '2022-08-30T10:53:01.624Z',
+        direction: 'OUTGOING',
+        disposition: 'INITIATED',
+        other: {
+          id: '301302303',
+          name: 'test',
+          isPrivate: false,
+          callbackAddress: '401402403',
+        },
+        durationSeconds: 438,
+        joinedDurationSeconds: 457,
+        participantCount: 2,
+        links: {
+          locusUrl: 'https://locus-a.wbx2.com/locus/api/v1/loci/501502503',
+          conversationUrl: 'https://conv-a.wbx2.com/conversation/api/v1/conversations/601602603',
+          callbackAddress: '801802803',
+        },
+        isDeleted: false,
+        isPMR: false,
+        correlationIds: ['901902903'],
       },
     ],
   },
@@ -539,6 +633,10 @@ export const ERROR_DETAILS_400 = {
   },
   message: 'FAILURE',
 };
+
+/*
+ * MOCK_LINES_API_CALL_RESPONSE simulates a successful response from the UCM lines API.
+ */
 export const MOCK_LINES_API_CALL_RESPONSE: UCMLinesResponse = {
   statusCode: 200,
   data: {
@@ -561,6 +659,20 @@ export const MOCK_LINES_API_CALL_RESPONSE: UCMLinesResponse = {
           ],
         },
       ],
+    },
+  },
+  message: 'SUCCESS',
+};
+
+/**
+ * MOCK_LINES_API_CALL_RESPONSE_WITH_NO_LINEDATA simulates a successful UCM lines API response
+ * where no line data is present. The `lines` field is empty, indicating no devices or lines available.
+ */
+export const MOCK_LINES_API_CALL_RESPONSE_WITH_NO_LINEDATA: UCMLinesResponse = {
+  statusCode: 200,
+  data: {
+    lines: {
+      devices: [],
     },
   },
   message: 'SUCCESS',

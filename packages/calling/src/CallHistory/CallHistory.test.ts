@@ -17,7 +17,9 @@ import {
   ERROR_DETAILS_401,
   ERROR_DETAILS_400,
   MOCK_LINES_API_CALL_RESPONSE,
-  mockCallHistoryforMultiLineBody,
+  MOCK_LINES_API_CALL_RESPONSE_WITH_NO_LINEDATA,
+  MOCK_CALL_HISTORY_WITH_UCM_LINE_NUMBER,
+  MOCK_CALL_HISTORY_WITHOUT_UCM_LINE_NUMBER,
 } from './callHistoryFixtures';
 import {
   COMMON_EVENT_KEYS,
@@ -255,7 +257,9 @@ describe('Call history tests', () => {
       const ucmLinesAPIPayload = <WebexRequestPayload>(<unknown>MOCK_LINES_API_CALL_RESPONSE);
 
       webex.request.mockResolvedValue(ucmLinesAPIPayload);
-      const response = await callHistory.fetchUCMLinesData();
+      // Since fetchUCMLinesData is a private method, TypeScript restricts direct access to it.
+      // To bypass this restriction, we are using 'as any' to access and invoke the method for testing purposes.
+      const response = await (callHistory as any).fetchUCMLinesData();
 
       expect(response.statusCode).toBe(200);
       expect(response.message).toBe('SUCCESS');
@@ -268,8 +272,12 @@ describe('Call history tests', () => {
       const ucmLinesAPIPayload = <WebexRequestPayload>(<unknown>failurePayload);
 
       webex.request.mockRejectedValue(ucmLinesAPIPayload);
-      const response = await callHistory.fetchUCMLinesData();
+      // Since fetchUCMLinesData is a private method, TypeScript restricts direct access to it.
+      // To bypass this restriction, we are using 'as any' to access and invoke the method for testing purposes.
+      const response = await (callHistory as any).fetchUCMLinesData();
 
+      expect(response).toStrictEqual(ERROR_DETAILS_400);
+      expect(response.data.error).toEqual(ERROR_DETAILS_400.data.error);
       expect(response.statusCode).toBe(400);
       expect(response.message).toBe('FAILURE');
       expect(serviceErrorCodeHandlerSpy).toHaveBeenCalledWith(
@@ -280,13 +288,14 @@ describe('Call history tests', () => {
 
     it('should call fetchUCMLinesData when calling backend is UCM and userSessions contain valid cucmDN', async () => {
       jest.spyOn(utils, 'getCallingBackEnd').mockReturnValue(CALLING_BACKEND.UCM);
-
+      // Since fetchUCMLinesData is a private method, TypeScript restricts direct access to it.
+      // To bypass this restriction, we are using 'as any' to access and invoke the method for testing purposes.
       const fetchUCMLinesDataSpy = jest
-        .spyOn(callHistory, 'fetchUCMLinesData')
+        .spyOn(callHistory as any, 'fetchUCMLinesData')
         .mockResolvedValue(MOCK_LINES_API_CALL_RESPONSE);
 
       const mockCallHistoryPayload = <WebexRequestPayload>(
-        (<unknown>mockCallHistoryforMultiLineBody)
+        (<unknown>MOCK_CALL_HISTORY_WITH_UCM_LINE_NUMBER)
       );
       webex.request.mockResolvedValue(mockCallHistoryPayload);
 
@@ -296,15 +305,41 @@ describe('Call history tests', () => {
 
       expect(response.statusCode).toBe(200);
       expect(
-        response?.data?.userSessions && response?.data?.userSessions[0]?.self?.ucmLineNumber
+        response.data.userSessions && response.data.userSessions[0].self.ucmLineNumber
       ).toEqual(1);
+    });
+
+    it('should fetchUCMLinesData but not assign ucmLineNumber when UCM backend has no line data', async () => {
+      jest.spyOn(utils, 'getCallingBackEnd').mockReturnValue(CALLING_BACKEND.UCM);
+
+      // Since fetchUCMLinesData is a private method, TypeScript restricts direct access to it.
+      // To bypass this restriction, we are using 'as any' to access and invoke the method for testing purposes.
+      const fetchUCMLinesDataSpy = jest
+        .spyOn(callHistory as any, 'fetchUCMLinesData')
+        .mockResolvedValue(MOCK_LINES_API_CALL_RESPONSE_WITH_NO_LINEDATA);
+
+      const mockCallHistoryPayload = <WebexRequestPayload>(
+        (<unknown>MOCK_CALL_HISTORY_WITHOUT_UCM_LINE_NUMBER)
+      );
+      webex.request.mockResolvedValue(mockCallHistoryPayload);
+
+      const response = await callHistory.getCallHistoryData(7, 10, SORT.DEFAULT, SORT_BY.DEFAULT);
+
+      expect(fetchUCMLinesDataSpy).toHaveBeenCalledTimes(1);
+
+      expect(response.statusCode).toBe(200);
+      expect(response.data.userSessions && response.data.userSessions[0].self.cucmDN).toBeDefined();
+      expect(
+        response.data.userSessions && response.data.userSessions[0].self.ucmLineNumber
+      ).toEqual(undefined);
     });
 
     it('should not call fetchUCMLinesData when calling backend is UCM but no valid cucmDN is present', async () => {
       jest.spyOn(utils, 'getCallingBackEnd').mockReturnValue(CALLING_BACKEND.UCM);
-
+      // Since fetchUCMLinesData is a private method, TypeScript restricts direct access to it.
+      // To bypass this restriction, we are using 'as any' to access and invoke the method for testing purposes.
       const fetchUCMLinesDataSpy = jest
-        .spyOn(callHistory, 'fetchUCMLinesData')
+        .spyOn(callHistory as any, 'fetchUCMLinesData')
         .mockResolvedValue({});
 
       const callHistoryPayload = <WebexRequestPayload>(<unknown>mockCallHistoryBody);
@@ -317,8 +352,10 @@ describe('Call history tests', () => {
 
     it('should not call fetchUCMLinesData when calling backend is not UCM', async () => {
       jest.spyOn(utils, 'getCallingBackEnd').mockReturnValue(CALLING_BACKEND.WXC);
+      // Since fetchUCMLinesData is a private method, TypeScript restricts direct access to it.
+      // To bypass this restriction, we are using 'as any' to access and invoke the method for testing purposes.
       const fetchUCMLinesDataSpy = jest
-        .spyOn(callHistory, 'fetchUCMLinesData')
+        .spyOn(callHistory as any, 'fetchUCMLinesData')
         .mockResolvedValue({});
 
       const callHistoryPayload = <WebexRequestPayload>(<unknown>mockCallHistoryBody);
