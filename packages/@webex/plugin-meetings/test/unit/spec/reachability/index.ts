@@ -7,7 +7,7 @@ import Reachability, {
   ReachabilityResults,
   ReachabilityResultsForBackend,
 } from '@webex/plugin-meetings/src/reachability/';
-import { ClusterNode } from '../../../../src/reachability/request';
+import {ClusterNode} from '../../../../src/reachability/request';
 import MeetingUtil from '@webex/plugin-meetings/src/meeting/util';
 import * as ClusterReachabilityModule from '@webex/plugin-meetings/src/reachability/clusterReachability';
 import Metrics from '@webex/plugin-meetings/src/metrics';
@@ -144,7 +144,6 @@ describe('isAnyPublicClusterReachable', () => {
     });
   });
 });
-
 
 describe('isWebexMediaBackendUnreachable', () => {
   let webex;
@@ -1465,6 +1464,70 @@ describe('gatherReachability', () => {
       tcp: [], // empty list because TCP is disabled in config
       xtls: [], // empty list because TLS is disabled in config
     });
+  });
+
+  it('retry of getClusters is succesfull', async () => {
+    webex.config.meetings.experimental = {
+      enableTcpReachability: true,
+      enableTlsReachability: false,
+    };
+
+    const getClustersResult = {
+      clusters: {
+        'cluster name': {
+          udp: ['testUDP1', 'testUDP2'],
+          tcp: ['testTCP1', 'testTCP2'],
+          xtls: ['testXTLS1', 'testXTLS2'],
+          isVideoMesh: false,
+        },
+      },
+      joinCookie: {id: 'id'},
+    };
+
+    const reachability = new Reachability(webex);
+
+    let getClustersCallCount = 0;
+    
+    reachability.reachabilityRequest.getClusters = sinon.stub().callsFake(() => {
+      getClustersCallCount++;
+
+      if (getClustersCallCount == 1) {
+        throw new Error('fake error');
+      }
+      
+      return getClustersResult;
+    });
+
+    const promise = reachability.gatherReachability();
+
+    await simulateTimeout();
+    await promise;
+    
+    assert.equal(getClustersCallCount, 2);
+
+    assert.calledOnce(clusterReachabilityCtorStub);
+  });
+
+  it('two failed calls to getClusters', async () => {
+    const reachability = new Reachability(webex);
+
+    let getClustersCallCount = 0;
+    
+    reachability.reachabilityRequest.getClusters = sinon.stub().callsFake(() => {
+      getClustersCallCount++;
+
+      throw new Error('fake error');
+    });
+
+    const promise = reachability.gatherReachability();
+
+    await simulateTimeout();
+    
+    await promise;
+    
+    assert.equal(getClustersCallCount, 2);
+
+    assert.neverCalledWith(clusterReachabilityCtorStub);
   });
 });
 
