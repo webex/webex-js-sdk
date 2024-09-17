@@ -1,6 +1,5 @@
 {
   "name": "@webex/internal-plugin-metrics",
-  "version": "1.0.0",
   "description": "",
   "license": "MIT",
   "main": "dist/index.js",

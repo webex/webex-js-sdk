@@ -112,6 +112,8 @@ export interface DeviceContext {
   };
 }
 
+export type MetricType = 'behavioral' | 'operational' | 'business';
+
 export type EventPayload = Record<string, string | number | boolean>;
 export type BehavioralEventPayload = EventPayload; // for compatibilty, can be remove after wxcc-desktop did change their imports.
 
@@ -133,7 +135,7 @@ export interface TaggedEvent {
   metricName: string;
   tags: EventPayload;
   timestamp: number;
-  type: string[];
+  type: [MetricType];
 }
 
 export type BehavioralEvent = TaggedEvent;

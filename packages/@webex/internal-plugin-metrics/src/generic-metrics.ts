@@ -3,7 +3,7 @@ import {BrowserDetection} from '@webex/common';
 import {merge} from 'lodash';
 import ClientMetricsBatcher from './client-metrics-batcher';
 import {getOSNameInternal} from './metrics';
-import {DeviceContext, TaggedEvent, EventPayload} from './metrics.types';
+import {DeviceContext, TaggedEvent, EventPayload, MetricType} from './metrics.types';
 
 const {getOSVersion, getBrowserName, getBrowserVersion} = BrowserDetection();
 
@@ -113,7 +113,7 @@ export default abstract class GenericMetrics extends StatelessWebexPlugin {
 
   /**
    * Creates the object to send to our metrics endpoint for a tagged event (i.e. behavoral or operational)
-   * @param {[string]} list of event type (i.e. ['behavioral'], ['operational', 'behavioral'])
+   * @param {[MetricType]} list of event type (i.e. ['behavioral'], ['operational', 'behavioral'])
    * @param {string} metric name
    * @param {EventPayload} user payload
    * @returns {EventPayload}
@@ -123,14 +123,14 @@ export default abstract class GenericMetrics extends StatelessWebexPlugin {
     name,
     payload,
   }: {
-    type: [string];
+    type: [MetricType];
     name: string;
     payload: EventPayload;
   }): TaggedEvent {
     let allTags: EventPayload = payload;
     allTags = merge(allTags, this.getBrowserDetails());
 
-    const event: TaggedEvent = {
+    const event = {
       context: this.getContext(),
       metricName: name,
       tags: allTags,
