@@ -1,6 +1,7 @@
 import fetch, {Response} from 'node-fetch';
-import TokenManager from './TokenManager';
-import {TokenResponse} from './types';
+
+import TokenManager from '../../../../src/token-manager';
+import {TokenResponse} from '../../../../src/types';
 
 jest.mock('node-fetch', () => jest.fn());
 
@@ -34,10 +35,10 @@ describe('TokenManager', () => {
 
     tokenManager.updateServiceAppToken(tokenResponse, orgId);
 
-    const serviceAppAuthorization = await tokenManager.getServiceAppAuthorization(orgId);
+    const serviceAppAuthorization = await tokenManager.getOrgServiceAppAuthorization(orgId);
     expect(serviceAppAuthorization).toBeDefined();
-    expect(serviceAppAuthorization.token.accessToken).toBe('new-access-token');
-    expect(serviceAppAuthorization.token.refreshToken).toBe('new-refresh-token');
+    expect(serviceAppAuthorization.serviceAppToken.accessToken).toBe('new-access-token');
+    expect(serviceAppAuthorization.serviceAppToken.refreshToken).toBe('new-refresh-token');
   });
 
   it('should get service app authorization', async () => {
@@ -51,13 +52,13 @@ describe('TokenManager', () => {
 
     tokenManager.updateServiceAppToken(tokenResponse, orgId);
 
-    const serviceAppAuthorization = await tokenManager.getServiceAppAuthorization(orgId);
+    const serviceAppAuthorization = await tokenManager.getOrgServiceAppAuthorization(orgId);
     expect(serviceAppAuthorization).toBeDefined();
-    expect(serviceAppAuthorization.token.accessToken).toBe('new-access-token');
+    expect(serviceAppAuthorization.serviceAppToken.accessToken).toBe('new-access-token');
   });
 
   it('should throw error if service app authorization not found', async () => {
-    await expect(tokenManager.getServiceAppAuthorization(orgId)).rejects.toThrow(
+    await expect(tokenManager.getOrgServiceAppAuthorization(orgId)).rejects.toThrow(
       'Service app authorization not found'
     );
   });
@@ -94,8 +95,8 @@ describe('TokenManager', () => {
         refresh_token: refreshToken,
       }),
     });
-    const serviceAppAuthorization = await tokenManager.getServiceAppAuthorization(orgId);
-    expect(serviceAppAuthorization.token.accessToken).toBe('new-access-token');
+    const serviceAppAuthorization = await tokenManager.getOrgServiceAppAuthorization(orgId);
+    expect(serviceAppAuthorization.serviceAppToken.accessToken).toBe('new-access-token');
   });
 
   it('should throw error if refresh token is undefined', async () => {
@@ -120,7 +121,7 @@ describe('TokenManager', () => {
 
     (fetch as unknown as jest.MockedFunction<typeof fetch>).mockResolvedValue(mockResponse);
 
-    await tokenManager.retrieveTokenAfterAuthorization(orgId, personalAccessToken);
+    await tokenManager.getServiceAppTokenUsingPAT(orgId, personalAccessToken);
 
     expect(fetch).toHaveBeenCalledWith(
       `${baseUrl}/applications/${tokenManager.getServiceAppId()}/token`,
@@ -137,7 +138,7 @@ describe('TokenManager', () => {
         }),
       }
     );
-    const serviceAppAuthorization = await tokenManager.getServiceAppAuthorization(orgId);
-    expect(serviceAppAuthorization.token.accessToken).toBe('new-access-token');
+    const serviceAppAuthorization = await tokenManager.getOrgServiceAppAuthorization(orgId);
+    expect(serviceAppAuthorization.serviceAppToken.accessToken).toBe('new-access-token');
   });
 });

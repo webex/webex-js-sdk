@@ -1,5 +1,6 @@
-import DataSourceClient from './DataSourceClient';
-import {DataSourceRequest, DataSourceResponse, HttpClient, ApiResponse} from './types';
+import DataSourceClient from '../../../../src/data-source-client';
+import {DataSourceRequest, DataSourceResponse} from '../../../../src/data-source-client/types';
+import {HttpClient, ApiResponse} from '../../../../src/http-client/types';
 
 describe('DataSourceClient', () => {
   let httpClient: jest.Mocked<HttpClient>;

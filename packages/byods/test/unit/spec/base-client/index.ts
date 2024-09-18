@@ -1,11 +1,11 @@
-import BaseClient from './BaseClient';
-import TokenManager from './TokenManager';
-import DataSourceClient from './DataSourceClient';
-import {DEFAULT_BASE_URL} from './constants';
+import BaseClient from '../../../../src/base-client';
+import TokenManager from '../../../../src/token-manager';
+import DataSourceClient from '../../../../src/data-source-client';
+import {PRODUCTION_BASE_URL} from '../../../../src/constants';
 
 describe('BaseClient Tests', () => {
   const baseClient: BaseClient = new BaseClient(
-    DEFAULT_BASE_URL,
+    PRODUCTION_BASE_URL,
     {},
     new TokenManager('clientId', 'clientSecret'),
     'orgId'

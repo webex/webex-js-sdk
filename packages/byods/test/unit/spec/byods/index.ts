@@ -1,8 +1,8 @@
-import BYODS from './BYODS';
-import TokenManager from './TokenManager';
-import BaseClient from './BaseClient';
-import {SDKConfig} from './types';
-import DataSourceClient from './DataSourceClient';
+import BYODS from '../../../../src/byods';
+import TokenManager from '../../../../src/token-manager';
+import BaseClient from '../../../../src/base-client';
+import {SDKConfig} from '../../../../src/types';
+import DataSourceClient from '../../../../src/data-source-client';
 
 jest.mock('node-fetch', () => jest.fn());
 
