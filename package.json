@@ -10,6 +10,7 @@
     "./packages/@webex/*",
     "./packages/webex",
     "./packages/calling",
+    "./packages/byods",
     "./packages/config/*",
     "./packages/legacy/*",
     "./packages/tools/*"

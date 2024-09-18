@@ -1,0 +1,124 @@
+{
+  "name": "@webex/byods",
+  "files": [
+    "dist"
+  ],
+  "contributors": [],
+  "main": "dist/module/index.js",
+  "module": "dist/module/index.js",
+  "types": "dist/types/index.d.ts",
+  "license": "MIT",
+  "author": "devsupport@webex.com",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/webex/webex-js-sdk.git",
+    "directory": "packages/byods"
+  },
+  "engines": {
+    "node": ">=20.x"
+  },
+  "scripts": {
+    "build:docs": "typedoc --out ../../docs/byods",
+    "build:src": "webex-legacy-tools build -dest \"./dist\" -src \"./src\" -js -ts && yarn build",
+    "build": "yarn run -T tsc --declaration true --declarationDir ./dist/types",
+    "deploy:npm": "yarn npm publish",
+    "docs": "typedoc --emit none",
+    "fix:lint": "eslint 'src/**/*.ts' --fix",
+    "fix:prettier": "prettier \"src/**/*.ts\" --write",
+    "prebuild": "rimraf dist",
+    "test": "yarn test:style && yarn test:unit",
+    "test:style": "eslint 'src/**/*.ts'",
+    "test:unit": "webex-legacy-tools test --unit --runner jest"
+  },
+  "devDependencies": {
+    "@babel/preset-typescript": "7.16.7",
+    "@commitlint/cli": "15.0.0",
+    "@commitlint/config-conventional": "15.0.0",
+    "@rollup/plugin-commonjs": "22.0.2",
+    "@rollup/plugin-json": "4.1.0",
+    "@rollup/plugin-node-resolve": "13.1.3",
+    "@types/chai": "4.2.21",
+    "@types/jest": "27.4.1",
+    "@types/mocha": "9.0.0",
+    "@types/node": "16.11.9",
+    "@types/uuid": "8.3.4",
+    "@typescript-eslint/eslint-plugin": "5.38.1",
+    "@typescript-eslint/parser": "5.38.1",
+    "@web/dev-server": "0.4.5",
+    "@webex/jest-config-legacy": "workspace:*",
+    "@webex/legacy-tools": "workspace:*",
+    "chai": "4.3.4",
+    "cspell": "5.19.2",
+    "esbuild": "^0.17.19",
+    "eslint": "^8.24.0",
+    "eslint-config-airbnb-base": "15.0.0",
+    "eslint-config-prettier": "8.3.0",
+    "eslint-import-resolver-typescript": "2.4.0",
+    "eslint-plugin-import": "2.25.3",
+    "eslint-plugin-jsdoc": "38.0.4",
+    "eslint-plugin-prettier": "4.0.0",
+    "eslint-plugin-tsdoc": "0.2.14",
+    "jest": "27.5.1",
+    "jest-junit": "13.0.0",
+    "karma": "6.4.3",
+    "karma-chai": "0.1.0",
+    "karma-chrome-launcher": "3.1.0",
+    "karma-coverage": "2.0.3",
+    "karma-firefox-launcher": "2.1.1",
+    "karma-junit-reporter": "2.0.1",
+    "karma-mocha": "2.0.1",
+    "karma-mocha-reporter": "2.2.5",
+    "karma-safari-launcher": "1.0.0",
+    "karma-sauce-launcher": "4.3.6",
+    "karma-typescript": "5.5.3",
+    "karma-typescript-es6-transform": "5.5.3",
+    "mocha": "10.6.0",
+    "prettier": "2.5.1",
+    "puppeteer": "22.13.0",
+    "rimraf": "3.0.2",
+    "rollup": "2.68.0",
+    "rollup-plugin-polyfill-node": "0.8.0",
+    "rollup-plugin-terser": "7.0.2",
+    "rollup-plugin-typescript2": "0.31.2",
+    "sinon": "12.0.1",
+    "ts-jest": "27.1.4",
+    "typed-emitter": "2.1.0",
+    "typedoc": "0.23.26",
+    "typescript": "4.9.5"
+  },
+  "commitlint": {
+    "extends": [
+      "@commitlint/config-conventional"
+    ],
+    "rules": {
+      "scope-case": [
+        2,
+        "always",
+        [
+          "lower-case",
+          "pascal-case"
+        ]
+      ],
+      "body-max-line-length": [
+        0,
+        "always",
+        400
+      ],
+      "footer-max-line-length": [
+        0,
+        "always",
+        400
+      ]
+    }
+  },
+  "gh-pages-deploy": {
+    "staticpath": "docs",
+    "noprompt": true
+  },
+  "dependencies": {
+    "@types/node-fetch": "2.6.11",
+    "jose": "5.8.0",
+    "node-fetch": "3.3.2"
+  },
+  "type": "module"
+}
