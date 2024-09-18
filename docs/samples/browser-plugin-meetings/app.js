@@ -299,6 +299,7 @@ const passwordCaptchaStatusElm = document.querySelector('#password-captcha-statu
 const refreshCaptchaElm = document.querySelector('#meetings-join-captcha-refresh');
 const verifyPasswordElm = document.querySelector('#btn-verify-password');
 const displayMeetingStatusElm = document.querySelector('#display-meeting-status');
+const notes=document.querySelector('#notes');
 const spaceIDError = `Using the space ID as a destination is no longer supported. Please refer to the <a href="https://github.com/webex/webex-js-sdk/wiki/Migration-to-Unified-Space-Meetings" target="_blank">migration guide</a> to migrate to use the meeting ID or SIP address.`;
 const BNR = 'BNR';
 const VBG = 'VBG';
@@ -381,6 +382,17 @@ createMeetingSelectElm.addEventListener('change', (event) => {
   }
 });
 
+createMeetingSelectElm.addEventListener('change', (event) => {
+  if (event.target.value === 'Others') {
+      notes.classList.remove('hidden');
+  }
+  else {
+     notes.classList.add('hidden');
+    
+  }
+});
+
+
 function createMeeting(e) {
   e.preventDefault();
 
@@ -427,6 +439,7 @@ function refreshCaptcha() {
 meetingsListElm.onclick = (e) => {
   selectedMeetingId = e.target.value;
   const meeting = webex.meetings.getAllMeetings()[selectedMeetingId];
+  const selectedMeetingType = createMeetingSelectElm.options[createMeetingSelectElm.selectedIndex].innerText;
 
   if (meeting && meeting.passwordStatus === 'REQUIRED') {
     meetingsJoinPinElm.disabled = false;
@@ -434,11 +447,17 @@ meetingsListElm.onclick = (e) => {
     document.getElementById('btn-join').disabled = true;
     document.getElementById('btn-join-media').disabled = true;
   }
-  else if (meeting && meeting.passwordStatus === 'UNKNOWN') {
+  else if (meeting && (meeting.passwordStatus === 'UNKNOWN' && selectedMeetingType === 'SIP URI')) {
     meetingsJoinPinElm.disabled = true;
     verifyPasswordElm.disabled = true;
     document.getElementById('btn-join').disabled = true;
     document.getElementById('btn-join-media').disabled = true;
+  }
+  else if(meeting && (meeting.passwordStatus === 'UNKNOWN' && selectedMeetingType != 'SIP URI')) {
+    meetingsJoinPinElm.disabled = true;
+    verifyPasswordElm.disabled = true;
+    document.getElementById('btn-join').disabled = false;
+    document.getElementById('btn-join-media').disabled = false;
   }
   else {
     meetingsJoinPinElm.disabled = true;

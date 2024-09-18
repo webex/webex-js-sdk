@@ -43,9 +43,7 @@ export const DUMMY_METRICS = {
 };
 export const DUMMY_MOBIUS_URL = 'https://mobius.aintgen-a-1.int.infra.webex.com/api/v1';
 export const FETCH_NAME = /^[a-zA-Z ]+/;
-export const IDENTITY_BROKER = 'https://identitybts.webex.com/';
 export const IP_ENDPOINT = 'myip';
-export const IDENTITY_ENDPOINT_RESOURCE = 'identity';
 export const INITIAL_SEQ_NUMBER = 1;
 export const MEDIA_ENDPOINT_RESOURCE = 'media';
 export const NETWORK_FLAP_TIMEOUT = 2000;
@@ -54,8 +52,6 @@ export const CALL_TRANSFER_SERVICE = 'calltransfer';
 export const HOLD_ENDPOINT = 'hold';
 export const TRANSFER_ENDPOINT = 'commit';
 export const RESUME_ENDPOINT = 'resume';
-export const SCIM_ENDPOINT_RESOURCE = 'scim';
-export const SCIM_USER_FILTER = 'v1/Users?filter=';
 export const SPARK_USER_AGENT = 'spark-user-agent';
 export const REGISTER_RETRY_TIMEOUT = 10000;
 export const SUPPLEMENTARY_SERVICES_TIMEOUT = 10000;

@@ -1,4 +1,4 @@
-import {Event, ConnectionState} from '@webex/internal-media-core';
+import {MediaConnectionEventNames, ConnectionState} from '@webex/internal-media-core';
 import EventsScope from '../common/events/events-scope';
 import {Enum} from '../constants';
 
@@ -32,12 +32,12 @@ export class ConnectionStateHandler extends EventsScope {
     this.webrtcMediaConnection = webrtcMediaConnection;
 
     this.webrtcMediaConnection.on(
-      Event.PEER_CONNECTION_STATE_CHANGED,
+      MediaConnectionEventNames.PEER_CONNECTION_STATE_CHANGED,
       this.handleConnectionStateChange.bind(this)
     );
 
     this.webrtcMediaConnection.on(
-      Event.ICE_CONNECTION_STATE_CHANGED,
+      MediaConnectionEventNames.ICE_CONNECTION_STATE_CHANGED,
       this.handleConnectionStateChange.bind(this)
     );
   }

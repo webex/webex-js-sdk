@@ -25,6 +25,7 @@ export {
   Services,
   ServiceHost,
   ServiceUrl,
+  HostMapInterceptor,
 } from './lib/services';
 
 export {
