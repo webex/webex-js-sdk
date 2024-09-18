@@ -106,7 +106,7 @@
   },
   "typedocOptions": {
     "entryPoints": [
-      "./src/index.ts"
+      "./src/**"
     ],
     "sort": [
       "source-order"
@@ -120,7 +120,8 @@
   },
   "include": [
     "src/**/*.ts",
-    "jest.global.d.ts"
+    "jest.global.d.ts",
+    "test/unit/spec/**/*.ts",
   ],
   "exclude": [
     "./node_modules/**",

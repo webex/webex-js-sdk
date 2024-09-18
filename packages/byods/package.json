@@ -45,6 +45,8 @@
     "@typescript-eslint/eslint-plugin": "5.38.1",
     "@typescript-eslint/parser": "5.38.1",
     "@web/dev-server": "0.4.5",
+    "@webex/jest-config-legacy": "workspace:*",
+    "@webex/legacy-tools": "workspace:*",
     "chai": "4.3.4",
     "cspell": "5.19.2",
     "esbuild": "^0.17.19",
@@ -114,11 +116,9 @@
     "noprompt": true
   },
   "dependencies": {
-    "@types/node-fetch": "^2.6.11",
-    "@webex/jest-config-legacy": "workspace:*",
-    "@webex/legacy-tools": "workspace:*",
-    "@webex/media-helpers": "workspace:*",
-    "node-fetch": "^3.3.2"
+    "@types/node-fetch": "2.6.11",
+    "jose": "5.8.0",
+    "node-fetch": "3.3.2"
   },
   "type": "module"
 }
