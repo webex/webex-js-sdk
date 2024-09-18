@@ -5861,7 +5861,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/node-fetch@npm:^2.6.11":
+"@types/node-fetch@npm:2.6.11":
   version: 2.6.11
   resolution: "@types/node-fetch@npm:2.6.11"
   dependencies:
@@ -7424,14 +7424,13 @@ __metadata:
     "@types/jest": 27.4.1
     "@types/mocha": 9.0.0
     "@types/node": 16.11.9
-    "@types/node-fetch": ^2.6.11
+    "@types/node-fetch": 2.6.11
     "@types/uuid": 8.3.4
     "@typescript-eslint/eslint-plugin": 5.38.1
     "@typescript-eslint/parser": 5.38.1
     "@web/dev-server": 0.4.5
     "@webex/jest-config-legacy": "workspace:*"
     "@webex/legacy-tools": "workspace:*"
-    "@webex/media-helpers": "workspace:*"
     chai: 4.3.4
     cspell: 5.19.2
     esbuild: ^0.17.19
@@ -7445,7 +7444,7 @@ __metadata:
     eslint-plugin-tsdoc: 0.2.14
     jest: 27.5.1
     jest-junit: 13.0.0
-    jose: ^5.8.0
+    jose: 5.8.0
     karma: 6.4.3
     karma-chai: 0.1.0
     karma-chrome-launcher: 3.1.0
@@ -7459,7 +7458,7 @@ __metadata:
     karma-typescript: 5.5.3
     karma-typescript-es6-transform: 5.5.3
     mocha: 10.6.0
-    node-fetch: ^3.3.2
+    node-fetch: 3.3.2
     prettier: 2.5.1
     puppeteer: 22.13.0
     rimraf: 3.0.2
@@ -21691,7 +21690,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"jose@npm:^5.8.0":
+"jose@npm:5.8.0":
   version: 5.8.0
   resolution: "jose@npm:5.8.0"
   checksum: bb9cd97ac6ccb8148a8e23d6a7f61e5756a3373a7d65dd783051d8af409c3534bdc2a2c30ecd1820988ea943aba5755b2a45b86955c5765d71691bb0ddd45d61
@@ -25203,6 +25202,17 @@ __metadata:
   languageName: node
   linkType: hard
 
+"node-fetch@npm:3.3.2, node-fetch@npm:^3.3.2":
+  version: 3.3.2
+  resolution: "node-fetch@npm:3.3.2"
+  dependencies:
+    data-uri-to-buffer: ^4.0.0
+    fetch-blob: ^3.1.4
+    formdata-polyfill: ^4.0.10
+  checksum: 06a04095a2ddf05b0830a0d5302699704d59bda3102894ea64c7b9d4c865ecdff2d90fd042df7f5bc40337266961cb6183dcc808ea4f3000d024f422b462da92
+  languageName: node
+  linkType: hard
+
 "node-fetch@npm:^2.6.1, node-fetch@npm:^2.6.12":
   version: 2.7.0
   resolution: "node-fetch@npm:2.7.0"
@@ -25214,17 +25224,6 @@ __metadata:
     encoding:
       optional: true
   checksum: d76d2f5edb451a3f05b15115ec89fc6be39de37c6089f1b6368df03b91e1633fd379a7e01b7ab05089a25034b2023d959b47e59759cb38d88341b2459e89d6e5
-  languageName: node
-  linkType: hard
-
-"node-fetch@npm:^3.3.2":
-  version: 3.3.2
-  resolution: "node-fetch@npm:3.3.2"
-  dependencies:
-    data-uri-to-buffer: ^4.0.0
-    fetch-blob: ^3.1.4
-    formdata-polyfill: ^4.0.10
-  checksum: 06a04095a2ddf05b0830a0d5302699704d59bda3102894ea64c7b9d4c865ecdff2d90fd042df7f5bc40337266961cb6183dcc808ea4f3000d024f422b462da92
   languageName: node
   linkType: hard
 
