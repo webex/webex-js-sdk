@@ -160,8 +160,6 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
   private callEventsTimeout: NodeJS.Timeout | null = null;
 
-  private callState: CALL_EVENT_KEYS | null = null;
-
   /**
    * Getter to check if the call is muted or not.
    *
@@ -912,7 +910,6 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    * @param event - Call Events.
    */
   private async handleOutgoingCallSetup(event: CallEvent) {
-    this.callState = CALL_EVENT_KEYS.SETUP;
     log.info(`handleOutgoingCallSetup: ${this.getCorrelationId()}  `, {
       file: CALL_FILE,
       method: this.handleOutgoingCallSetup.name,
@@ -928,11 +925,8 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         method: this.handleOutgoingCallSetup.name,
       });
       this.setCallId(response.body.callId);
-      this.setTimeoutForState(
-        [CALL_EVENT_KEYS.PROGRESS, CALL_EVENT_KEYS.CONNECT],
-        20000,
-        'Call timed out waiting for call progress or call connect.'
-      );
+
+      this.setTimeoutForState(20000);
     } catch (e) {
       log.warn('Failed to setup the call', {
         file: CALL_FILE,
@@ -1102,7 +1096,6 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    */
   private handleIncomingCallProgress(event: CallEvent) {
     this.clearCallEventsTimeout();
-    this.callState = CALL_EVENT_KEYS.PROGRESS;
 
     log.info(`handleIncomingCallProgress: ${this.getCorrelationId()}  `, {
       file: CALL_FILE,
@@ -1131,11 +1124,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       this.startCallerIdResolution(data.callerId);
     }
     this.emit(CALL_EVENT_KEYS.PROGRESS, this.correlationId);
-    this.setTimeoutForState(
-      [CALL_EVENT_KEYS.CONNECT],
-      20000,
-      'Call timed out waiting for call connect.'
-    );
+    this.setTimeoutForState(20000);
   }
 
   /**
@@ -1186,7 +1175,6 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private async handleOutgoingCallAlerting(event: CallEvent) {
     this.clearCallEventsTimeout();
-    this.callState = CALL_EVENT_KEYS.ALERTING;
     log.info(`handleOutgoingCallAlerting: ${this.getCorrelationId()}  `, {
       file: CALL_FILE,
       method: this.handleOutgoingCallAlerting.name,
@@ -1199,11 +1187,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         file: CALL_FILE,
         method: this.handleOutgoingCallAlerting.name,
       });
-      this.setTimeoutForState(
-        [CALL_EVENT_KEYS.CONNECT],
-        20000,
-        'Call timed out waiting for call connect.'
-      );
+      this.setTimeoutForState(20000);
     } catch (err) {
       log.warn('Failed to signal call progression', {
         file: CALL_FILE,
@@ -1236,7 +1220,6 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private handleIncomingCallConnect(event: CallEvent) {
     this.clearCallEventsTimeout();
-    this.callState = CALL_EVENT_KEYS.CONNECT;
     log.info(`handleIncomingCallConnect: ${this.getCorrelationId()}  `, {
       file: CALL_FILE,
       method: this.handleIncomingCallConnect.name,
@@ -1250,11 +1233,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       this.mediaNegotiationCompleted = false;
       this.sendCallStateMachineEvt({type: 'E_CALL_ESTABLISHED'});
     }
-    this.setTimeoutForState(
-      [CALL_EVENT_KEYS.ESTABLISHED],
-      60000,
-      'Call timed out waiting for call establishment.'
-    );
+    this.setTimeoutForState(60000);
   }
 
   /**
@@ -1265,7 +1244,6 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private async handleOutgoingCallConnect(event: CallEvent) {
     this.clearCallEventsTimeout();
-    this.callState = CALL_EVENT_KEYS.CONNECT;
     log.info(`handleOutgoingCallConnect: ${this.getCorrelationId()}  `, {
       file: CALL_FILE,
       method: this.handleOutgoingCallConnect.name,
@@ -1292,11 +1270,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         file: CALL_FILE,
         method: this.handleOutgoingCallConnect.name,
       });
-      this.setTimeoutForState(
-        [CALL_EVENT_KEYS.ESTABLISHED],
-        60000,
-        'Call timed out waiting for call establishment.'
-      );
+      this.setTimeoutForState(60000);
     } catch (err) {
       log.warn('Failed to connect the call', {
         file: CALL_FILE,
@@ -1422,7 +1396,6 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private handleCallEstablished(event: CallEvent) {
     this.clearCallEventsTimeout();
-    this.callState = CALL_EVENT_KEYS.ESTABLISHED;
     log.info(`handleCallEstablished: ${this.getCorrelationId()}  `, {
       file: CALL_FILE,
       method: this.handleCallEstablished.name,
@@ -2842,13 +2815,12 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    * @param timeoutDuration - Timeout duration in milliseconds after which the call will be disconnected
    * @param errorMessage - Error message to be emitted if the call is not in the expected state in expected time
    */
-  private setTimeoutForState(
-    expectedStates: CALL_EVENT_KEYS[],
-    timeoutDuration: number,
-    errorMessage: string
-  ) {
+  private setTimeoutForState(timeoutDuration: number) {
     this.callEventsTimeout = setTimeout(() => {
-      this.handleTimeout(expectedStates, errorMessage);
+      this.handleTimeout(
+        this.callStateMachine.state.nextEvents,
+        `Call timed out in state: ${this.callStateMachine.state.value}`
+      );
     }, timeoutDuration);
   }
 
@@ -2857,8 +2829,11 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    * @param expectedStates - An array of next expected states
    * @param errorMessage - Error message to be emitted if the call is not in the expected state in expected time
    */
-  private handleTimeout(expectedStates: CALL_EVENT_KEYS[], errorMessage: string) {
-    if (this.callState && !expectedStates.includes(this.callState)) {
+  private handleTimeout(expectedStates: string[], errorMessage: string) {
+    if (
+      this.callStateMachine.state.value &&
+      !expectedStates.includes(this.callStateMachine.state.value.toString())
+    ) {
       log.warn(errorMessage, {
         file: CALL_FILE,
         method: 'handleTimeout',

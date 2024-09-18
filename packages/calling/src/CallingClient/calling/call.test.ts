@@ -1977,23 +1977,15 @@ describe('State Machine handler tests', () => {
 
       // handleOutgoingCallSetup is asynchronous
       await call.sendCallStateMachineEvt(dummyEvent as CallEvent);
-      expect(call['callState']).toBe(CALL_EVENT_KEYS.SETUP);
-      expect(setTimeoutForStateSpy).toHaveBeenCalledWith(
-        [CALL_EVENT_KEYS.PROGRESS, CALL_EVENT_KEYS.CONNECT],
-        20000,
-        'Call timed out waiting for call progress or call connect.'
-      );
+      expect(call['callStateMachine'].state.value).toBe('S_SEND_CALL_SETUP');
+      expect(setTimeoutForStateSpy).toHaveBeenCalledWith(20000);
       expect(clearCallEventsTimeoutSpy).not.toHaveBeenCalledTimes(1);
 
       clearCallEventsTimeoutSpy.mockClear();
       dummyEvent.type = 'E_RECV_CALL_PROGRESS';
       call.sendCallStateMachineEvt(dummyEvent as CallEvent);
-      expect(call['callState']).toBe(CALL_EVENT_KEYS.PROGRESS);
-      expect(setTimeoutForStateSpy).toHaveBeenCalledWith(
-        [CALL_EVENT_KEYS.CONNECT],
-        20000,
-        'Call timed out waiting for call connect.'
-      );
+      expect(call['callStateMachine'].state.value).toBe('S_RECV_CALL_PROGRESS');
+      expect(setTimeoutForStateSpy).toHaveBeenCalledWith(20000);
       expect(clearCallEventsTimeoutSpy).toHaveBeenCalledTimes(1);
 
       // Media setup for the call
@@ -2021,32 +2013,25 @@ describe('State Machine handler tests', () => {
         },
       };
       call.sendMediaStateMachineEvt(dummyOkEvent as RoapEvent);
-
       dummyEvent.type = 'E_RECV_ROAP_OFFER_REQUEST';
       call.sendMediaStateMachineEvt(dummyEvent as RoapEvent);
-
       dummyEvent.type = 'E_SEND_ROAP_OFFER';
       call.sendMediaStateMachineEvt(dummyEvent as RoapEvent);
-
       dummyEvent.type = 'E_RECV_ROAP_ANSWER';
       call.sendMediaStateMachineEvt(dummyEvent as RoapEvent);
-
       call.sendMediaStateMachineEvt(dummyOkEvent as RoapEvent);
 
       setTimeoutForStateSpy.mockClear();
       clearCallEventsTimeoutSpy.mockClear();
+
       dummyEvent.type = 'E_RECV_CALL_CONNECT';
       call.sendCallStateMachineEvt(dummyEvent as CallEvent);
-      expect(setTimeoutForStateSpy).toHaveBeenCalledWith(
-        [CALL_EVENT_KEYS.ESTABLISHED],
-        60000,
-        'Call timed out waiting for call establishment.'
-      );
+      expect(call['callStateMachine'].state.value).toBe('S_CALL_ESTABLISHED');
+      expect(setTimeoutForStateSpy).toHaveBeenCalledWith(60000);
       // 1st time when we receive call connect, we clear the timeout
       // 2nd time when we receive call established, we clear the timeout
       expect(clearCallEventsTimeoutSpy).toHaveBeenCalledTimes(2);
 
-      expect(call['callState']).toBe(CALL_EVENT_KEYS.ESTABLISHED);
       expect(call.isConnected()).toBe(true);
     });
 
@@ -2065,21 +2050,15 @@ describe('State Machine handler tests', () => {
       webex.request.mockReturnValue(statusPayload);
 
       await call.sendCallStateMachineEvt(dummyEvent as CallEvent);
-      expect(call['callState']).toBe(CALL_EVENT_KEYS.ALERTING);
-      expect(setTimeoutForStateSpy).toHaveBeenCalledWith(
-        [CALL_EVENT_KEYS.CONNECT],
-        20000,
-        'Call timed out waiting for call connect.'
-      );
+      expect(call['callStateMachine'].state.value).toBe('S_SEND_CALL_PROGRESS');
+
+      expect(setTimeoutForStateSpy).toHaveBeenCalledWith(20000);
 
       dummyEvent.type = 'E_SEND_CALL_ALERTING';
       call.sendCallStateMachineEvt(dummyEvent as CallEvent);
-      expect(call['callState']).toBe(CALL_EVENT_KEYS.ALERTING);
-      expect(setTimeoutForStateSpy).toHaveBeenCalledWith(
-        [CALL_EVENT_KEYS.CONNECT],
-        20000,
-        'Call timed out waiting for call connect.'
-      );
+
+      expect(call['callStateMachine'].state.value).toBe('S_SEND_CALL_PROGRESS');
+      expect(setTimeoutForStateSpy).toHaveBeenCalledWith(20000);
       expect(clearCallEventsTimeoutSpy).toHaveBeenCalledTimes(1);
 
       // Media setup for the call
@@ -2107,29 +2086,22 @@ describe('State Machine handler tests', () => {
         },
       };
       call.sendMediaStateMachineEvt(dummyOkEvent as RoapEvent);
-
       dummyEvent.type = 'E_RECV_ROAP_OFFER_REQUEST';
       call.sendMediaStateMachineEvt(dummyEvent as RoapEvent);
-
       dummyEvent.type = 'E_SEND_ROAP_OFFER';
       call.sendMediaStateMachineEvt(dummyEvent as RoapEvent);
-
       dummyEvent.type = 'E_RECV_ROAP_ANSWER';
       call.sendMediaStateMachineEvt(dummyEvent as RoapEvent);
-
       call.sendMediaStateMachineEvt(dummyOkEvent as RoapEvent);
 
       setTimeoutForStateSpy.mockClear();
       clearCallEventsTimeoutSpy.mockClear();
+
       dummyEvent.type = 'E_SEND_CALL_CONNECT';
       await call.sendCallStateMachineEvt(dummyEvent as CallEvent);
-      expect(setTimeoutForStateSpy).toHaveBeenCalledWith(
-        [CALL_EVENT_KEYS.ESTABLISHED],
-        60000,
-        'Call timed out waiting for call establishment.'
-      );
+      expect(setTimeoutForStateSpy).toHaveBeenCalledWith(60000);
 
-      expect(call['callState']).toBe(CALL_EVENT_KEYS.ESTABLISHED);
+      expect(call['callStateMachine'].state.value).toBe('S_CALL_ESTABLISHED');
       expect(call.isConnected()).toBe(true);
     });
 
@@ -2143,14 +2115,13 @@ describe('State Machine handler tests', () => {
         data: undefined as any,
       };
       const emitSpy = jest.spyOn(call, 'emit');
-
       webex.request.mockReturnValue(statusPayload);
 
       // handleOutgoingCallSetup is asynchronous
       await call.sendCallStateMachineEvt(dummyEvent as CallEvent);
-      expect(call['callState']).toBe(CALL_EVENT_KEYS.SETUP);
-      jest.advanceTimersByTime(70000);
+      expect(call['callStateMachine'].state.value).toBe('S_SEND_CALL_SETUP');
 
+      jest.advanceTimersByTime(70000);
       expect(emitSpy).toHaveBeenCalledWith(CALL_EVENT_KEYS.DISCONNECT, call.getCorrelationId());
     });
   });
