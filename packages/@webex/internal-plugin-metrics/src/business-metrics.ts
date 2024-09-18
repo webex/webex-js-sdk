@@ -1,6 +1,5 @@
-import GenericMetrics from '../generic-metrics';
-import {BUISNESS_LOG_IDENTIFIER} from './config';
-import {EventPayload} from '../metrics.types';
+import GenericMetrics from './generic-metrics';
+import {EventPayload} from './metrics.types';
 
 /**
  * @description Util class to handle Buisness Metrics
@@ -26,6 +25,6 @@ export default class BusinessMetrics extends GenericMetrics {
       },
     };
 
-    this.submitEvent({kind: BUISNESS_LOG_IDENTIFIER, name, event});
+    this.submitEvent({kind: 'buisness-events -> ', name, event});
   }
 }

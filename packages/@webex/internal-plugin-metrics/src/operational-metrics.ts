@@ -1,6 +1,5 @@
-import GenericMetrics from '../generic-metrics';
-import {OPERATIONAL_LOG_IDENTIFIER} from './config';
-import {EventPayload} from '../metrics.types';
+import GenericMetrics from './generic-metrics';
+import {EventPayload} from './metrics.types';
 
 /**
  * @description Util class to handle Operational Metrics
@@ -20,6 +19,6 @@ export default class OperationalMetrics extends GenericMetrics {
       name,
       payload,
     });
-    this.submitEvent({kind: OPERATIONAL_LOG_IDENTIFIER, name, event});
+    this.submitEvent({kind: 'operational-events -> ', name, event});
   }
 }

@@ -1,11 +1,5 @@
-import {BEHAVIORAL_LOG_IDENTIFIER} from './config';
-import {
-  MetricEventProduct,
-  MetricEventAgent,
-  MetricEventVerb,
-  EventPayload,
-} from '../metrics.types';
-import GenericMetrics from '../generic-metrics';
+import {MetricEventProduct, MetricEventAgent, MetricEventVerb, EventPayload} from './metrics.types';
+import GenericMetrics from './generic-metrics';
 
 /**
  * @description Util class to handle Behavioral Metrics
@@ -41,6 +35,6 @@ export default class BehavioralMetrics extends GenericMetrics {
       name,
       payload,
     });
-    this.submitEvent({kind: BEHAVIORAL_LOG_IDENTIFIER, name, event});
+    this.submitEvent({kind: 'behavioral-events -> ', name, event});
   }
 }

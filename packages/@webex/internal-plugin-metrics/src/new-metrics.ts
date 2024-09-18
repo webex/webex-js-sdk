@@ -6,9 +6,9 @@
 import {WebexPlugin} from '@webex/webex-core';
 
 import CallDiagnosticMetrics from './call-diagnostic/call-diagnostic-metrics';
-import BehavioralMetrics from './behavioral/behavioral-metrics';
-import OperationalMetrics from './operational/operational-metrics';
-import BusinessMetrics from './business/business-metrics';
+import BehavioralMetrics from './behavioral-metrics';
+import OperationalMetrics from './operational-metrics';
+import BusinessMetrics from './business-metrics';
 import {
   RecursivePartial,
   MetricEventProduct,

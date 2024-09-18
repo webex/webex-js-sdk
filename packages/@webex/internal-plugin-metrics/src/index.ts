@@ -22,9 +22,9 @@ import * as CALL_DIAGNOSTIC_CONFIG from './call-diagnostic/config';
 import * as CallDiagnosticUtils from './call-diagnostic/call-diagnostic-metrics.util';
 import CallDiagnosticMetrics from './call-diagnostic/call-diagnostic-metrics';
 import CallDiagnosticLatencies from './call-diagnostic/call-diagnostic-metrics-latencies';
-import BehavioralMetrics from './behavioral/behavioral-metrics';
-import OperationalMetrics from './operational/operational-metrics';
-import BusinessMetrics from './business/business-metrics';
+import BehavioralMetrics from './behavioral-metrics';
+import OperationalMetrics from './operational-metrics';
+import BusinessMetrics from './business-metrics';
 
 registerInternalPlugin('metrics', Metrics, {
   config,
