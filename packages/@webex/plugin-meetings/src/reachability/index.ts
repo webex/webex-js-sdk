@@ -149,6 +149,11 @@ export default class Reachability extends EventsScope {
   public async gatherReachability(): Promise<ReachabilityResults> {
     // Fetch clusters and measure latency
     try {
+      // kick off ip version detection. For now we don't await it, as we're doing it
+      // to gather the timings and send them with our reachability metrics
+      // @ts-ignore
+      this.webex.internal.device.ipNetworkDetector.detect();
+
       const {clusters, joinCookie} = await this.getClusters();
 
       // @ts-ignore
@@ -536,6 +541,16 @@ export default class Reachability extends EventsScope {
         udp: this.getStatistics(results, 'udp', false),
         tcp: this.getStatistics(results, 'tcp', false),
         xtls: this.getStatistics(results, 'xtls', false),
+      },
+      ipver: {
+        // @ts-ignore
+        firstIpV4: this.webex.internal.device.ipNetworkDetector.firstIpV4,
+        // @ts-ignore
+        firstIpV6: this.webex.internal.device.ipNetworkDetector.firstIpV6,
+        // @ts-ignore
+        firstMdns: this.webex.internal.device.ipNetworkDetector.firstMdns,
+        // @ts-ignore
+        totalTime: this.webex.internal.device.ipNetworkDetector.totalTime,
       },
     };
     Metrics.sendBehavioralMetric(
