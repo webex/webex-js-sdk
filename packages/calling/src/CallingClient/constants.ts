@@ -107,6 +107,7 @@ export const SEC_TO_MSEC_MFACTOR = 1000;
 export const MINUTES_TO_SEC_MFACTOR = 60;
 export const REG_RANDOM_T_FACTOR_UPPER_LIMIT = 10000;
 export const REG_TRY_BACKUP_TIMER_VAL_IN_SEC = 1200;
+export const REG_TRY_BACKUP_TIMER_VAL_FOR_CC_IN_SEC = 114;
 export const REG_FAILBACK_429_MAX_RETRIES = 5;
 export const REGISTER_UTIL = 'registerDevice';
 export const GET_MOBIUS_SERVERS_UTIL = 'getMobiusServers';
