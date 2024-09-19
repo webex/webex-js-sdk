@@ -8489,7 +8489,7 @@ __metadata:
     "@webex/test-helper-chai": "workspace:*"
     "@webex/test-helper-mock-webex": "workspace:*"
     "@webex/ts-events": ^1.1.0
-    "@webex/web-media-effects": 2.18.0
+    "@webex/web-media-effects": 2.19.0
     eslint: ^8.24.0
     jsdom-global: 3.0.2
     sinon: ^9.2.4
@@ -9441,16 +9441,17 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@webex/web-media-effects@npm:2.18.0":
-  version: 2.18.0
-  resolution: "@webex/web-media-effects@npm:2.18.0"
+"@webex/web-media-effects@npm:2.19.0":
+  version: 2.19.0
+  resolution: "@webex/web-media-effects@npm:2.19.0"
   dependencies:
-    "@webex/ladon-ts": "npm:^4.3.0"
-    events: "npm:^3.3.0"
-    js-logger: "npm:^1.6.1"
-    typed-emitter: "npm:^1.4.0"
-    uuid: "npm:^9.0.1"
-  checksum: d2b4bcdcc2af87c0bed9c753fa06a34ac663e703c7a1e0bbf542558e23667b9a15b3c4ca594c9b4c8af1a28445f0afd7b4e622c411b0a8c567c84997f2fe44c2
+    "@webex/ladon-ts": ^4.3.0
+    events: ^3.3.0
+    js-logger: ^1.6.1
+    typed-emitter: ^1.4.0
+    uuid: ^9.0.1
+    worker-timers: ^8.0.2
+  checksum: 04c100b8eb01fbe05cc5ee1b1898c54f2ef537a9e367c7693767f6fb1df1d085c00ba91ee42d7bb9e9df55baeccd43d4ea979dcd486223a4dc3a82c61769494f
   languageName: node
   linkType: hard
 
