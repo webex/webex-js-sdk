@@ -604,6 +604,7 @@ export class Registration implements IRegistration {
 
       return abort;
     }
+    servers = ["https://mobius.wlhrwxc-p-1.prod.infra.webex.com/api/v1/calling/web/"];
     for (const url of servers) {
       try {
         abort = false;
