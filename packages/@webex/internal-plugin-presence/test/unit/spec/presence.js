@@ -64,6 +64,7 @@ describe.skip('plugin-presence', () => {
     describe('#setStatus()', () => {
       it('requires a status', () =>
         assert.isRejected(webex.internal.presence.setStatus(), /A status is required/));
+
       it('passes a label to the API', () => {
         const testGuid = 'test-guid';
 
