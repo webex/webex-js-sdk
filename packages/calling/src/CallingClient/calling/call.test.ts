@@ -2115,6 +2115,7 @@ describe('State Machine handler tests', () => {
         data: undefined as any,
       };
       const emitSpy = jest.spyOn(call, 'emit');
+      const deleteSpy = jest.spyOn(call as any, 'delete');
       webex.request.mockReturnValue(statusPayload);
 
       // handleOutgoingCallSetup is asynchronous
@@ -2123,6 +2124,7 @@ describe('State Machine handler tests', () => {
 
       jest.advanceTimersByTime(70000);
       expect(emitSpy).toHaveBeenCalledWith(CALL_EVENT_KEYS.DISCONNECT, call.getCorrelationId());
+      expect(deleteSpy).toHaveBeenCalledTimes(1);
     });
   });
 });

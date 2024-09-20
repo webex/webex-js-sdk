@@ -2817,8 +2817,9 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    */
   private setTimeoutForState(timeoutDuration: number) {
     this.callEventsTimeout = setTimeout(() => {
+      const expectedStates = this.callStateMachine.state.nextEvents;
       this.handleTimeout(
-        this.callStateMachine.state.nextEvents,
+        expectedStates,
         `Call timed out in state: ${this.callStateMachine.state.value}`
       );
     }, timeoutDuration);
@@ -2829,7 +2830,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    * @param expectedStates - An array of next expected states
    * @param errorMessage - Error message to be emitted if the call is not in the expected state in expected time
    */
-  private handleTimeout(expectedStates: string[], errorMessage: string) {
+  private async handleTimeout(expectedStates: string[], errorMessage: string) {
     if (
       this.callStateMachine.state.value &&
       !expectedStates.includes(this.callStateMachine.state.value.toString())
@@ -2840,6 +2841,12 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       });
       this.deleteCb(this.getCorrelationId());
       this.emit(CALL_EVENT_KEYS.DISCONNECT, this.getCorrelationId());
+      const response = await this.delete();
+
+      log.log(`handleTimeout: Response code: ${response.statusCode}`, {
+        file: CALL_FILE,
+        method: this.handleTimeout.name,
+      });
     }
   }
 
