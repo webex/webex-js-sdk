@@ -1957,8 +1957,10 @@ describe('State Machine handler tests', () => {
   });
 
   describe('Call event timers tests', () => {
+    let callManager;
     beforeEach(() => {
       jest.useFakeTimers();
+      callManager = getCallManager(webex, defaultServiceIndicator);
     });
 
     it('call state is set and timers are set when we receive call state', async () => {
@@ -2114,17 +2116,24 @@ describe('State Machine handler tests', () => {
         type: 'E_SEND_CALL_SETUP',
         data: undefined as any,
       };
+      callManager.callCollection = {};
+      const call = callManager.createCall(dest, CallDirection.OUTBOUND, deviceId, mockLineId);
       const emitSpy = jest.spyOn(call, 'emit');
       const deleteSpy = jest.spyOn(call as any, 'delete');
+      const logSpy = jest.spyOn(log, 'warn');
       webex.request.mockReturnValue(statusPayload);
+      expect(Object.keys(callManager.callCollection)[0]).toBe(call.getCorrelationId());
 
       // handleOutgoingCallSetup is asynchronous
       await call.sendCallStateMachineEvt(dummyEvent as CallEvent);
       expect(call['callStateMachine'].state.value).toBe('S_SEND_CALL_SETUP');
-
+      logSpy.mockClear();
       jest.advanceTimersByTime(70000);
+      expect(logSpy.mock.calls[0][0]).toBe('Call timed out in state: S_SEND_CALL_SETUP');
       expect(emitSpy).toHaveBeenCalledWith(CALL_EVENT_KEYS.DISCONNECT, call.getCorrelationId());
       expect(deleteSpy).toHaveBeenCalledTimes(1);
+      // @ts-ignore
+      expect(Object.keys(callManager.callCollection)[0]).toBe(undefined);
     });
   });
 });
