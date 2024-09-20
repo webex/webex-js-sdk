@@ -238,7 +238,7 @@ const Presence: IPresence = WebexPlugin.extend({
         body: {
           subject: this.webex.internal.device.userId,
           eventType: status,
-		  label: this.webex.internal.device.userId,
+          label: this.webex.internal.device.userId,
           ttl,
         },
       })

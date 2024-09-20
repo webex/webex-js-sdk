@@ -206,10 +206,10 @@ describe.skip('plugin-presence', function () {
         spock.webex.internal.presence.setStatus('dnd', 1500).then((statusResponse) => {
           assert.property(statusResponse, 'subject');
           assert.property(statusResponse, 'status');
-		  assert.property(statusResponse, 'label');
+          assert.property(statusResponse, 'label');
           assert.equal(statusResponse.subject, spock.id);
           assert.equal(statusResponse.status, 'dnd');
-		  assert.equal(statusResponse.label, spock.id);
+          assert.equal(statusResponse.label, spock.id);
         }));
     });
   });
