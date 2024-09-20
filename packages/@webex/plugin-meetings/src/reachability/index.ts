@@ -93,6 +93,8 @@ export default class Reachability extends EventsScope {
   expectedResultsCount = {videoMesh: {udp: 0}, public: {udp: 0, tcp: 0, xtls: 0}};
   resultsCount = {videoMesh: {udp: 0}, public: {udp: 0, tcp: 0, xtls: 0}};
 
+  protected lastTrigger?: string;
+
   /**
    * Creates an instance of Reachability.
    * @param {object} webex
@@ -142,13 +144,16 @@ export default class Reachability extends EventsScope {
 
   /**
    * Gets a list of media clusters from the backend and performs reachability checks on all the clusters
+   * @param {string} trigger - explains the reason for starting reachability
    * @returns {Promise<ReachabilityResults>} reachability results
    * @public
    * @memberof Reachability
    */
-  public async gatherReachability(): Promise<ReachabilityResults> {
+  public async gatherReachability(trigger: string): Promise<ReachabilityResults> {
     // Fetch clusters and measure latency
     try {
+      this.lastTrigger = trigger;
+
       // kick off ip version detection. For now we don't await it, as we're doing it
       // to gather the timings and send them with our reachability metrics
       // @ts-ignore
@@ -552,6 +557,7 @@ export default class Reachability extends EventsScope {
         // @ts-ignore
         totalTime: this.webex.internal.device.ipNetworkDetector.totalTime,
       },
+      trigger: this.lastTrigger,
     };
     Metrics.sendBehavioralMetric(
       BEHAVIORAL_METRICS.REACHABILITY_COMPLETED,
