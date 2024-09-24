@@ -2818,10 +2818,8 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
   private setTimeoutForState(timeoutDuration: number) {
     this.callEventsTimeout = setTimeout(() => {
       const expectedStates = this.callStateMachine.state.nextEvents;
-      this.handleTimeout(
-        expectedStates,
-        `Call timed out in state: ${this.callStateMachine.state.value}`
-      );
+      const currentState = this.callStateMachine.state.value;
+      this.handleTimeout(expectedStates, `Call timed out in state: ${currentState}`);
     }, timeoutDuration);
   }
 
