@@ -4,7 +4,6 @@ import sinon from 'sinon';
 import EventEmitter from 'events';
 import testUtils from '../../../utils/testUtils';
 import Reachability, {
-  ReachabilityResults,
   ReachabilityResultsForBackend,
 } from '@webex/plugin-meetings/src/reachability/';
 import {ClusterNode} from '../../../../src/reachability/request';
@@ -507,6 +506,11 @@ describe('gatherReachability', () => {
         mockClusterReachabilityInstances[id] = mockInstance;
         return mockInstance;
       });
+
+    webex.config.meetings.experimental = {
+      enableTcpReachability: false,
+      enableTlsReachability: false,
+    };
   });
 
   afterEach(() => {
@@ -1044,13 +1048,14 @@ describe('gatherReachability', () => {
           enableTlsReachability: true,
         };
 
-        // the metrics related to ipver are not tested in these tests and are all the same, so setting them up here
+        // the metrics related to ipver and trigger are not tested in these tests and are all the same, so setting them up here
         const expectedMetricsFull = {
           ...expectedMetrics,
           ipver_firstIpV4: -1,
           ipver_firstIpV6: -1,
           ipver_firstMdns: -1,
           ipver_totalTime: -1,
+          trigger: 'test',
         };
 
         const receivedEvents = {
@@ -1082,7 +1087,7 @@ describe('gatherReachability', () => {
 
         reachability.reachabilityRequest.getClusters = sinon.stub().returns(mockGetClustersResult);
 
-        const resultPromise = reachability.gatherReachability();
+        const resultPromise = reachability.gatherReachability('test');
 
         await testUtils.flushPromises();
 
@@ -1142,6 +1147,38 @@ describe('gatherReachability', () => {
       })
   );
 
+  it('sends the trigger parameter in the metrics', async () => {
+    const reachability = new TestReachability(webex);
+
+    const mockGetClustersResult = {
+      clusters: {
+        clusterA: {
+          udp: ['udp-url'],
+          tcp: [],
+          xtls: [],
+          isVideoMesh: false,
+        },
+      },
+      joinCookie: {id: 'id'},
+    };
+
+    reachability.reachabilityRequest.getClusters = sinon.stub().returns(mockGetClustersResult);
+
+    const resultPromise = reachability.gatherReachability('some trigger');
+
+    // let it time out
+    await testUtils.flushPromises();
+    clock.tick(15000);
+    await resultPromise;
+
+    // check the metric contains the right trigger value
+    assert.calledWith(
+      Metrics.sendBehavioralMetric,
+      'js_sdk_reachability_completed',
+      sinon.match({trigger: 'some trigger'})
+    );
+  });
+
   it(`starts ip network version detection and includes the results in the metrics`, async () => {
     webex.config.meetings.experimental = {
       enableTcpReachability: true,
@@ -1180,7 +1217,7 @@ describe('gatherReachability', () => {
       joinCookie: {id: 'id'},
     });
 
-    const resultPromise = reachability.gatherReachability();
+    const resultPromise = reachability.gatherReachability('test');
 
     await testUtils.flushPromises();
 
@@ -1217,6 +1254,7 @@ describe('gatherReachability', () => {
       ipver_firstIpV6: webex.internal.device.ipNetworkDetector.firstIpV6,
       ipver_firstMdns: webex.internal.device.ipNetworkDetector.firstMdns,
       ipver_totalTime: webex.internal.device.ipNetworkDetector.totalTime,
+      trigger: 'test',
     });
   });
 
@@ -1248,7 +1286,7 @@ describe('gatherReachability', () => {
 
     reachability.reachabilityRequest.getClusters = sinon.stub().returns(mockGetClustersResult);
 
-    const resultPromise = reachability.gatherReachability();
+    const resultPromise = reachability.gatherReachability('test');
 
     await testUtils.flushPromises();
 
@@ -1341,7 +1379,7 @@ describe('gatherReachability', () => {
 
     reachability.reachabilityRequest.getClusters = sinon.stub().returns(mockGetClustersResult);
 
-    const resultPromise = reachability.gatherReachability();
+    const resultPromise = reachability.gatherReachability('test');
 
     await testUtils.flushPromises();
 
@@ -1382,7 +1420,7 @@ describe('gatherReachability', () => {
 
     reachability.reachabilityRequest.getClusters = sinon.stub().throws();
 
-    const result = await reachability.gatherReachability();
+    const result = await reachability.gatherReachability('test');
 
     assert.empty(result);
 
@@ -1400,7 +1438,7 @@ describe('gatherReachability', () => {
     reachability.reachabilityRequest.getClusters = sinon.stub().returns(getClustersResult);
     (reachability as any).performReachabilityChecks = sinon.stub().throws();
 
-    const result = await reachability.gatherReachability();
+    const result = await reachability.gatherReachability('test');
 
     assert.empty(result);
 
@@ -1435,7 +1473,7 @@ describe('gatherReachability', () => {
 
     reachability.reachabilityRequest.getClusters = sinon.stub().returns(getClustersResult);
 
-    const promise = reachability.gatherReachability();
+    const promise = reachability.gatherReachability('test');
 
     await simulateTimeout();
     await promise;
@@ -1481,7 +1519,7 @@ describe('gatherReachability', () => {
 
     reachability.reachabilityRequest.getClusters = sinon.stub().returns(getClustersResult);
 
-    const promise = reachability.gatherReachability();
+    const promise = reachability.gatherReachability('test');
     await simulateTimeout();
     await promise;
 
@@ -1515,7 +1553,7 @@ describe('gatherReachability', () => {
 
     reachability.reachabilityRequest.getClusters = sinon.stub().returns(getClustersResult);
 
-    const promise = reachability.gatherReachability();
+    const promise = reachability.gatherReachability('test');
 
     await simulateTimeout();
     await promise;
@@ -1550,7 +1588,7 @@ describe('gatherReachability', () => {
 
     reachability.reachabilityRequest.getClusters = sinon.stub().returns(getClustersResult);
 
-    const promise = reachability.gatherReachability();
+    const promise = reachability.gatherReachability('test');
 
     await simulateTimeout();
     await promise;
@@ -1595,7 +1633,7 @@ describe('gatherReachability', () => {
       return getClustersResult;
     });
 
-    const promise = reachability.gatherReachability();
+    const promise = reachability.gatherReachability('test');
 
     await simulateTimeout();
     await promise;
@@ -1616,7 +1654,7 @@ describe('gatherReachability', () => {
       throw new Error('fake error');
     });
 
-    const promise = reachability.gatherReachability();
+    const promise = reachability.gatherReachability('test');
 
     await simulateTimeout();
     
