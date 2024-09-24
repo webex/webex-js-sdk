@@ -1963,6 +1963,10 @@ describe('State Machine handler tests', () => {
       callManager = getCallManager(webex, defaultServiceIndicator);
     });
 
+    afterEach(() => {
+      jest.clearAllTimers();
+    });
+
     it('call state is set and timers are set when we receive call state', async () => {
       const statusPayload = <WebexRequestPayload>(<unknown>{
         statusCode: 200,
