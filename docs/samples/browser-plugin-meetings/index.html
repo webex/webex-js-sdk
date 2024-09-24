@@ -338,14 +338,14 @@
                     <input id="create-meeting-destination" name="createMeetingDestination" placeholder="Destination"
                       value="" type="text" required>
                     <select name="createMeetingDest" id="createMeetingDest">
-                      <option value="">Email</option>
-                      <option value="">Person ID</option>
                       <option value="">SIP URI</option>
                       <option value="CONVERSATION_URL">Conversation URL</option>
+                      <option value="Others">Others</option>
                     </select>
                     <button id="create-meeting-action" type="submit" class="btn-code">Create Meeting</button>
                   </div>
                 </div>
+                <p class="note hidden" id="notes">NOTE: The destination shall be "Person ID" or "Email".</p>
               </form>
             </div>
 
@@ -853,7 +853,7 @@
                   onclick="toggleTranscription()" class="btn-code" data-enabled="false">Start Transcription</button>
                 <br>
                 Caption Language: <select id="voicea-caption-language" style="display: inline;" disabled></select><button id="voicea-caption-language-btn" onclick="setCaptionLanguage()" disabled>meeting.setCaptionLanguage()</button><br/>
-                Spoken Language: <select id="voicea-spoken-language" style="display: inline;" disabled></select><button id="voicea-spoken-language-btn"  onclick="setSpokenLanguage()" disabled>meeting.setSpokenLanguage()</button>
+                Spoken Language: <select id="voicea-spoken-language" style="display: inline;" disabled></select><button id="voicea-spoken-language-btn"  onclick="setSpokenLanguage()" disabled>meeting.setSpokenLanguage()</button> <p id="only-host-spoken-language" class="hidden">Only Meeting Host can Set Spoken Language</p>
                 <br>
               </div>
               <textarea id="gc-transcription-content"

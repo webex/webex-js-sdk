@@ -414,6 +414,8 @@ describe('LocusMediaRequest.send()', () => {
 
     describe('confluence creation', () => {
       it('resolves without sending the request if LocalMute is requested before Roap Offer is sent (confluence state is "not created")', async () => {
+        assert.equal(locusMediaRequest.isConfluenceCreated(), false);
+
         const result = await sendLocalMute({audioMuted: false, videoMuted: true});
 
         assert.notCalled(webexRequestStub);
@@ -440,11 +442,14 @@ describe('LocusMediaRequest.send()', () => {
           body: createExpectedRoapBody('OFFER', {audioMuted: true, videoMuted: true}),
         });
         assert.equal(result, undefined); // sendLocalMute shouldn't resolve yet, as the request should be queued
+        assert.equal(locusMediaRequest.isConfluenceCreated(), false);
 
         // now let the Offer be completed - so confluence state will be "complete"
         webexRequestStub.resetHistory();
         requestsToLocus[0].resolve({});
         await testUtils.flushPromises();
+
+        assert.equal(locusMediaRequest.isConfluenceCreated(), true);
 
         // now the queued up local mute request should have been sent out
         assert.calledOnceWithExactly(webexRequestStub, {
@@ -470,6 +475,8 @@ describe('LocusMediaRequest.send()', () => {
       requestsToLocus[0].resolve({});
       await testUtils.flushPromises();
       webexRequestStub.resetHistory();
+
+      assert.equal(locusMediaRequest.isConfluenceCreated(), true);
 
       // now send local mute
       sendLocalMute({audioMuted: false, videoMuted: true})

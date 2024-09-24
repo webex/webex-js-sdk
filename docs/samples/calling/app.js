@@ -163,32 +163,19 @@ function changeEnv() {
   enableProduction.innerHTML = enableProd ? 'In Production' : 'In Integration';
 }
 
-const guestUrl = 'https://webexapis.com/v1/guests/token';
-const guestIssuerAccessToken = '';
+// Guest access token via Service App - Logic deployed on the AWS Lambda
+async function fetchGuestAccessTokenLambda() {
+  const response = await fetch('https://pbw56237i55l2vkcpc5dhskhra0bplhr.lambda-url.us-east-2.on.aws');
+  const token = await response.text();
 
-// Guest access token via Service App
-async function getGuestAccessToken() {
-  const response = await fetch(guestUrl, {
-    method: 'post',
-    headers: {
-      Accept: 'application/json',
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${guestIssuerAccessToken}`,
-    },
-    body: JSON.stringify({
-      subject: 'Guest token for Webex Calling SDK Sample App',
-      displayName: 'Calling Guest User',
-    }),
-  });
-
-  const data = await response.json();
-
-  return data.accessToken;
+  return token;
 }
 
 async function generateGuestToken() {
   try {
-    const guestAccessToken = await getGuestAccessToken();
+    const guestAccessToken = await fetchGuestAccessTokenLambda();
+    console.log('Guest Access Token: ', guestAccessToken);
+
     tokenElm.value = guestAccessToken;
   } catch (error) {
     if (error.code === 401) {
@@ -713,41 +700,22 @@ async function getMediaStreams() {
   makeCallBtn.disabled = false;
 }
 
-// TODO: This code will be uncommented and added once the DOM exception bug is resolved 
-// async function toggleNoiseReductionEffect() {
-//   effect = await localAudioStream.getEffectByKind('noise-reduction-effect');
-
-//   if (!effect) {
-//     effect = await Calling.createNoiseReductionEffect(tokenElm.value);
-
-//     await localAudioStream.addEffect(effect);
-//   }
-
-//   if (effect.isEnabled) {
-//     await effect.disable();
-//     bnrButton.innerText = 'Enable BNR';
-//   } else {
-//     await effect.enable();
-//     bnrButton.innerText = 'Disable BNR';
-//   }
-// }
-
-async function addNoiseReductionEffect() {
+async function toggleNoiseReductionEffect() {
+  const options =  {authToken: tokenElm.value, env: enableProd ? 'prod': 'int'} 
   effect = await localAudioStream.getEffectByKind('noise-reduction-effect');
 
   if (!effect) {
-    effect = await Calling.createNoiseReductionEffect(tokenElm.value);
+    effect = await Calling.createNoiseReductionEffect(options);
 
     await localAudioStream.addEffect(effect);
   }
 
-  await effect.enable();
-}
-
-async function removeNoiseReductionEffect() {
-  effect = await localAudioStream.getEffectByKind('noise-reduction-effect');
-  if (effect) {
+  if (effect.isEnabled) {
     await effect.disable();
+    bnrButton.innerText = 'Enable BNR';
+  } else {
+    await effect.enable();
+    bnrButton.innerText = 'Disable BNR';
   }
 }
 
@@ -1332,6 +1300,10 @@ async function createCustomContact() {
     phoneNumbers: [{
       type: 'work',
       value: formData.get('phone')
+    }],
+    emails: [{
+      type: 'work',
+      value: formData.get('email')
     }],
     contactType: 'CUSTOM',
   };

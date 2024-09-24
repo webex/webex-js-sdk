@@ -5,7 +5,6 @@ import EventEmitter from 'events';
 require('@webex/internal-plugin-device');
 require('@webex/internal-plugin-mercury');
 require('@webex/internal-plugin-encryption');
-require('@webex/internal-plugin-dss');
 
 const merge = require('lodash/merge');
 const WebexCore = require('@webex/webex-core').default;
@@ -137,8 +136,8 @@ class Calling extends EventEmitter {
     return WebexCalling.createMicrophoneStream;
   }
 
-  static createNoiseReductionEffect(authToken) {
-    return new WebexCalling.NoiseReductionEffect({authToken});
+  static createNoiseReductionEffect(options) {
+    return new WebexCalling.NoiseReductionEffect(options);
   }
 }
 

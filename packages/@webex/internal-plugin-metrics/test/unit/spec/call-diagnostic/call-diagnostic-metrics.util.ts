@@ -7,6 +7,7 @@ import CallDiagnosticLatencies from '../../../../src/call-diagnostic/call-diagno
 import {
   DTLS_HANDSHAKE_FAILED_CLIENT_CODE,
   ICE_FAILED_WITHOUT_TURN_TLS_CLIENT_CODE,
+  ICE_AND_REACHABILITY_FAILED_CLIENT_CODE,
   ICE_FAILED_WITH_TURN_TLS_CLIENT_CODE,
   MISSING_ROAP_ANSWER_CLIENT_CODE,
 } from '../../../../src/call-diagnostic/config';
@@ -374,6 +375,12 @@ describe('internal-plugin-metrics', () => {
           joinTimes: {
             localSDPGenRemoteSDPRecv: undefined,
           },
+          audioSetupDelay: {
+            joinRespRxStart: undefined,
+          },
+          videoSetupDelay: {
+            joinRespRxStart: undefined,
+          },
         },
       ],
       [
@@ -388,14 +395,12 @@ describe('internal-plugin-metrics', () => {
         },
       ],
       [
-        'client.mediaquality.event',
+        'client.media.tx.start',
         {
           audioSetupDelay: {
-            joinRespRxStart: undefined,
             joinRespTxStart: undefined,
           },
           videoSetupDelay: {
-            joinRespRxStart: undefined,
             joinRespTxStart: undefined,
           },
         },
@@ -616,32 +621,44 @@ describe('internal-plugin-metrics', () => {
         iceConnected: false,
         turnServerUsed: true,
         errorCode: MISSING_ROAP_ANSWER_CLIENT_CODE,
+        unreachable: false,
       },
       {
         signalingState: 'stable',
         iceConnected: true,
         turnServerUsed: true,
         errorCode: DTLS_HANDSHAKE_FAILED_CLIENT_CODE,
+        unreachable: false,
       },
       {
         signalingState: 'stable',
         iceConnected: false,
         turnServerUsed: true,
         errorCode: ICE_FAILED_WITH_TURN_TLS_CLIENT_CODE,
+        unreachable: false,
+      },
+      {
+        signalingState: 'stable',
+        iceConnected: false,
+        turnServerUsed: true,
+        errorCode: ICE_AND_REACHABILITY_FAILED_CLIENT_CODE,
+        unreachable: true,
       },
       {
         signalingState: 'stable',
         iceConnected: false,
         turnServerUsed: false,
         errorCode: ICE_FAILED_WITHOUT_TURN_TLS_CLIENT_CODE,
+        unreachable: false,
       },
-    ].forEach(({signalingState, iceConnected, turnServerUsed, errorCode}: any) => {
+    ].forEach(({signalingState, iceConnected, turnServerUsed, errorCode, unreachable}: any) => {
       it('returns expected result', () => {
         assert.deepEqual(
           generateClientErrorCodeForIceFailure({
             signalingState,
             iceConnected,
             turnServerUsed,
+            unreachable,
           }),
           errorCode
         );
