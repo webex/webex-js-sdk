@@ -485,6 +485,16 @@ describe('gatherReachability', () => {
       JSON.stringify({old: 'joinCookie'})
     );
 
+    webex.internal.device.ipNetworkDetector = {
+      supportsIpV4: false,
+      supportsIpV6: false,
+      firstIpV4: -1,
+      firstIpV6: -1,
+      firstMdns: -1,
+      totalTime: -1,
+      detect: sinon.stub().resolves(),
+    };
+
     clock = sinon.useFakeTimers();
 
     mockClusterReachabilityInstances = {};
@@ -1034,6 +1044,15 @@ describe('gatherReachability', () => {
           enableTlsReachability: true,
         };
 
+        // the metrics related to ipver are not tested in these tests and are all the same, so setting them up here
+        const expectedMetricsFull = {
+          ...expectedMetrics,
+          ipver_firstIpV4: -1,
+          ipver_firstIpV6: -1,
+          ipver_firstMdns: -1,
+          ipver_totalTime: -1,
+        };
+
         const receivedEvents = {
           done: 0,
           firstResultAvailable: {
@@ -1118,10 +1137,88 @@ describe('gatherReachability', () => {
         assert.calledWith(
           Metrics.sendBehavioralMetric,
           'js_sdk_reachability_completed',
-          expectedMetrics
+          expectedMetricsFull
         );
       })
   );
+
+  it(`starts ip network version detection and includes the results in the metrics`, async () => {
+    webex.config.meetings.experimental = {
+      enableTcpReachability: true,
+      enableTlsReachability: true,
+    };
+    webex.internal.device.ipNetworkDetector = {
+      supportsIpV4: true,
+      supportsIpV6: true,
+      firstIpV4: 10,
+      firstIpV6: 20,
+      firstMdns: 30,
+      totalTime: 40,
+      detect: sinon.stub().resolves(),
+    };
+
+    const receivedEvents = {
+      done: 0,
+    };
+
+    const reachability = new Reachability(webex);
+
+    reachability.on('reachability:done', () => {
+      receivedEvents.done += 1;
+    });
+
+    // simulate having just 1 cluster, we don't need more for this test
+    reachability.reachabilityRequest.getClusters = sinon.stub().returns({
+      clusters: {
+        publicCluster: {
+          udp: ['udp-url'],
+          tcp: [],
+          xtls: [],
+          isVideoMesh: false,
+        },
+      },
+      joinCookie: {id: 'id'},
+    });
+
+    const resultPromise = reachability.gatherReachability();
+
+    await testUtils.flushPromises();
+
+    // trigger mock result events from ClusterReachability instance
+    mockClusterReachabilityInstances['publicCluster'].emitFakeResult('udp', {
+      result: 'reachable',
+      clientMediaIPs: ['1.2.3.4'],
+      latencyInMilliseconds: 100,
+    });
+
+    await resultPromise;
+
+    // check events emitted by Reachability class
+    assert.equal(receivedEvents['done'], 1);
+
+    // and that ip network detection was started
+    assert.calledOnceWithExactly(webex.internal.device.ipNetworkDetector.detect);
+
+    // finally, check the metrics - they should contain values from ipNetworkDetector
+    assert.calledWith(Metrics.sendBehavioralMetric, 'js_sdk_reachability_completed', {
+      vmn_udp_min: -1,
+      vmn_udp_max: -1,
+      vmn_udp_average: -1,
+      public_udp_min: 100,
+      public_udp_max: 100,
+      public_udp_average: 100,
+      public_tcp_min: -1,
+      public_tcp_max: -1,
+      public_tcp_average: -1,
+      public_xtls_min: -1,
+      public_xtls_max: -1,
+      public_xtls_average: -1,
+      ipver_firstIpV4: webex.internal.device.ipNetworkDetector.firstIpV4,
+      ipver_firstIpV6: webex.internal.device.ipNetworkDetector.firstIpV6,
+      ipver_firstMdns: webex.internal.device.ipNetworkDetector.firstMdns,
+      ipver_totalTime: webex.internal.device.ipNetworkDetector.totalTime,
+    });
+  });
 
   it('keeps updating reachability results after the 3s public cloud timeout expires', async () => {
     webex.config.meetings.experimental = {
