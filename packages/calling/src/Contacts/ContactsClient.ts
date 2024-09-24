@@ -266,8 +266,20 @@ export class ContactsClient implements IContacts {
       method: 'resolveCloudContacts',
     };
     const finalContactList: Contact[] = [];
+    const resolvedList: string[] = [];
 
     try {
+      inputList.Resources.forEach((item) => {
+        resolvedList.push(item.id);
+      });
+
+      Object.values(contactsDataMap).forEach((item) => {
+        const isResolved = resolvedList.some((listItem) => listItem === item.contactId);
+        if (!isResolved) {
+          finalContactList.push({...item, resolved: false});
+        }
+      });
+
       for (let n = 0; n < inputList.Resources.length; n += 1) {
         const filteredContact = inputList.Resources[n];
         const {displayName, emails, phoneNumbers, photos} = filteredContact;
@@ -300,6 +312,7 @@ export class ContactsClient implements IContacts {
           ownerId,
           phoneNumbers,
           sipAddresses,
+          resolved: true,
         };
 
         finalContactList.push(cloudContact);

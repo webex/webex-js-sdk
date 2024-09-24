@@ -91,9 +91,9 @@ export type Contact = {
    */
   sipAddresses?: URIAddress[];
   /**
-   * This represents the job title of the contact.
+   * This field indicates whether the contact was resolved successfully.
    */
-  title?: string;
+  resolved: boolean;
 };
 
 export enum GroupType {
