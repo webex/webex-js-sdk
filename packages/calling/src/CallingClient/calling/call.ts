@@ -43,6 +43,8 @@ import {
   RESUME_ENDPOINT,
   SPARK_USER_AGENT,
   SUPPLEMENTARY_SERVICES_TIMEOUT,
+  TIMER_20_SEC,
+  TIMER_60_SEC,
   TRANSFER_ENDPOINT,
 } from '../constants';
 import SDKConnector from '../../SDKConnector';
@@ -926,7 +928,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       });
       this.setCallId(response.body.callId);
 
-      this.setTimeoutForState(20000);
+      this.setTimeoutForState(TIMER_20_SEC);
     } catch (e) {
       log.warn('Failed to setup the call', {
         file: CALL_FILE,
@@ -1124,7 +1126,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       this.startCallerIdResolution(data.callerId);
     }
     this.emit(CALL_EVENT_KEYS.PROGRESS, this.correlationId);
-    this.setTimeoutForState(20000);
+    this.setTimeoutForState(TIMER_20_SEC);
   }
 
   /**
@@ -1187,7 +1189,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         file: CALL_FILE,
         method: this.handleOutgoingCallAlerting.name,
       });
-      this.setTimeoutForState(20000);
+      this.setTimeoutForState(TIMER_20_SEC);
     } catch (err) {
       log.warn('Failed to signal call progression', {
         file: CALL_FILE,
@@ -1233,7 +1235,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       this.mediaNegotiationCompleted = false;
       this.sendCallStateMachineEvt({type: 'E_CALL_ESTABLISHED'});
     }
-    this.setTimeoutForState(60000);
+    this.setTimeoutForState(TIMER_60_SEC);
   }
 
   /**
@@ -1270,7 +1272,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         file: CALL_FILE,
         method: this.handleOutgoingCallConnect.name,
       });
-      this.setTimeoutForState(60000);
+      this.setTimeoutForState(TIMER_60_SEC);
     } catch (err) {
       log.warn('Failed to connect the call', {
         file: CALL_FILE,
