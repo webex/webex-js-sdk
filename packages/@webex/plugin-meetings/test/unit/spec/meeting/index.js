@@ -4278,6 +4278,76 @@ describe('plugin-meetings', () => {
             assert.calledTwice(locusMediaRequestStub);
           });
 
+          it('addMedia() works correctly when media is disabled with no streams to publish', async () => {
+            const handleDeviceLoggingSpy = sinon.spy(Meeting, 'handleDeviceLogging');
+            await meeting.addMedia({audioEnabled: false});
+            await simulateRoapOffer();
+            await simulateRoapOk();
+
+            // check RoapMediaConnection was created correctly
+            checkMediaConnectionCreated({
+              mediaConnectionConfig: expectedMediaConnectionConfig,
+              localStreams: {
+                audio: undefined,
+                video: undefined,
+                screenShareVideo: undefined,
+                screenShareAudio: undefined,
+              },
+              direction: {
+                audio: 'inactive',
+                video: 'sendrecv',
+                screenShare: 'recvonly',
+              },
+              remoteQualityLevel: 'HIGH',
+              expectedDebugId,
+              meetingId: meeting.id,
+            });
+
+            // and SDP offer was sent with the right audioMuted/videoMuted values
+            checkSdpOfferSent({audioMuted: true, videoMuted: true});
+            // check OK was sent with the right audioMuted/videoMuted values
+            checkOkSent({audioMuted: true, videoMuted: true});
+
+            // and that these were the only /media requests that were sent
+            assert.calledTwice(locusMediaRequestStub);
+            assert.calledWith(handleDeviceLoggingSpy,false,true);
+          });
+
+          it('addMedia() works correctly when video is disabled with no streams to publish', async () => {
+            const handleDeviceLoggingSpy = sinon.spy(Meeting, 'handleDeviceLogging');
+            await meeting.addMedia({videoEnabled: false});
+            await simulateRoapOffer();
+            await simulateRoapOk();
+
+            // check RoapMediaConnection was created correctly
+            checkMediaConnectionCreated({
+              mediaConnectionConfig: expectedMediaConnectionConfig,
+              localStreams: {
+                audio: undefined,
+                video: undefined,
+                screenShareVideo: undefined,
+                screenShareAudio: undefined,
+              },
+              direction: {
+                audio: 'sendrecv',
+                video: 'inactive',
+                screenShare: 'recvonly',
+              },
+              remoteQualityLevel: 'HIGH',
+              expectedDebugId,
+              meetingId: meeting.id,
+            });
+
+            // and SDP offer was sent with the right audioMuted/videoMuted values
+            checkSdpOfferSent({audioMuted: true, videoMuted: true});
+            // check OK was sent with the right audioMuted/videoMuted values
+            checkOkSent({audioMuted: true, videoMuted: true});
+
+            // and that these were the only /media requests that were sent
+            assert.calledTwice(locusMediaRequestStub);
+            assert.calledWith(handleDeviceLoggingSpy,true,false);
+          });
+
           it('addMedia() works correctly when video is disabled with no streams to publish', async () => {
             await meeting.addMedia({videoEnabled: false});
             await simulateRoapOffer();
@@ -4342,6 +4412,42 @@ describe('plugin-meetings', () => {
 
             // and that these were the only /media requests that were sent
             assert.calledTwice(locusMediaRequestStub);
+          });
+
+
+          it('addMedia() works correctly when both video and audio is disabled with no streams publish', async () => {
+            const handleDeviceLoggingSpy = sinon.spy(Meeting, 'handleDeviceLogging');
+            await meeting.addMedia({shareAudioEnabled: false, shareVideoEnabled: false});
+            await simulateRoapOffer();
+            await simulateRoapOk();
+
+            // check RoapMediaConnection was created correctly
+            checkMediaConnectionCreated({
+              mediaConnectionConfig: expectedMediaConnectionConfig,
+              localStreams: {
+                audio: undefined,
+                video: undefined,
+                screenShareVideo: undefined,
+                screenShareAudio: undefined,
+              },
+              direction: {
+                audio: 'sendrecv',
+                video: 'sendrecv',
+                screenShare: 'inactive',
+              },
+              remoteQualityLevel: 'HIGH',
+              expectedDebugId,
+              meetingId: meeting.id,
+            });
+
+            // and SDP offer was sent with the right audioMuted/videoMuted values
+            checkSdpOfferSent({audioMuted: true, videoMuted: true});
+            // check OK was sent with the right audioMuted/videoMuted values
+            checkOkSent({audioMuted: true, videoMuted: true});
+
+            // and that these were the only /media requests that were sent
+            assert.calledTwice(locusMediaRequestStub);
+            assert.calledWith(handleDeviceLoggingSpy,true,true);
           });
 
           describe('publishStreams()/unpublishStreams() calls', () => {
