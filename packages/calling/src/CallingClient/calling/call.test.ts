@@ -1987,7 +1987,6 @@ describe('State Machine handler tests', () => {
       expect(setTimeoutForStateSpy).toHaveBeenCalledWith(20000);
       expect(clearCallEventsTimeoutSpy).not.toHaveBeenCalledTimes(1);
 
-      clearCallEventsTimeoutSpy.mockClear();
       dummyEvent.type = 'E_RECV_CALL_PROGRESS';
       call.sendCallStateMachineEvt(dummyEvent as CallEvent);
       expect(call['callStateMachine'].state.value).toBe('S_RECV_CALL_PROGRESS');
@@ -2136,8 +2135,7 @@ describe('State Machine handler tests', () => {
       expect(logSpy.mock.calls[0][0]).toBe('Call timed out in state: S_SEND_CALL_SETUP');
       expect(emitSpy).toHaveBeenCalledWith(CALL_EVENT_KEYS.DISCONNECT, call.getCorrelationId());
       expect(deleteSpy).toHaveBeenCalledTimes(1);
-      // @ts-ignore
-      expect(Object.keys(callManager.callCollection)[0]).toBe(undefined);
+      expect(callManager.callCollection).toStrictEqual({});
     });
   });
 });
