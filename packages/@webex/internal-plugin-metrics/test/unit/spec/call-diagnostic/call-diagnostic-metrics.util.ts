@@ -235,7 +235,7 @@ describe('internal-plugin-metrics', () => {
   });
 
   describe('getBuildType', () => {
-    const webex = {internal: {}};
+    const webex = {internal: {metrics: {config: {}}}};
 
     beforeEach(() => {
       process.env.NODE_ENV = 'production';
@@ -264,7 +264,10 @@ describe('internal-plugin-metrics', () => {
 
     it('returns "test" for NODE_ENV "production" when webex.caBuildType = "test"', () => {
       process.env.NODE_ENV = 'production';
-      assert.deepEqual(getBuildType({internal: {ceBuildType: 'test'}}, 'my.domain', true), 'test');
+      assert.deepEqual(
+        getBuildType({internal: {metrics: {config: {caBuildType: 'test'}}}}, 'my.domain'),
+        'test'
+      );
     });
   });
 
