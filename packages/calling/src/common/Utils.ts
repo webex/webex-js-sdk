@@ -1434,7 +1434,10 @@ function isValidServiceDomain(serviceData: ServiceData): boolean {
   const {domain} = serviceData;
 
   if (!domain) {
-    return serviceData.indicator === ServiceIndicator.CALLING;
+    return (
+      serviceData.indicator === ServiceIndicator.CALLING ||
+      serviceData.indicator === ServiceIndicator.GUEST_CALLING
+    );
   }
 
   return regexp.test(domain);
@@ -1448,10 +1451,11 @@ function isValidServiceDomain(serviceData: ServiceData): boolean {
  * @param serviceData - Input service data to be validated.
  */
 export function validateServiceData(serviceData: ServiceData) {
+  const allowedValues = Object.values(ServiceIndicator);
+  const formattedValues = allowedValues.join(', ').replace(/,([^,]*)$/, ' and$1');
+
   if (!isValidServiceIndicator(serviceData.indicator)) {
-    throw new Error(
-      `Invalid service indicator, Allowed values are: ${Object.values(ServiceIndicator)}`
-    );
+    throw new Error(`Invalid service indicator, Allowed values are: ${formattedValues}`);
   }
 
   if (!isValidServiceDomain(serviceData)) {
