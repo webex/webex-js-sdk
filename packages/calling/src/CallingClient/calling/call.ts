@@ -43,8 +43,8 @@ import {
   RESUME_ENDPOINT,
   SPARK_USER_AGENT,
   SUPPLEMENTARY_SERVICES_TIMEOUT,
-  DEFAULT_CALL_STATE_TIMER,
-  EXTENDED_CALL_STATE_TIMER,
+  DEFAULT_CALL_STATE_TIMEOUT,
+  EXTENDED_CALL_STATE_TIMEOUT,
   TRANSFER_ENDPOINT,
 } from '../constants';
 import SDKConnector from '../../SDKConnector';
@@ -928,7 +928,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       });
       this.setCallId(response.body.callId);
 
-      this.setTimeoutForState(DEFAULT_CALL_STATE_TIMER);
+      this.setTimeoutForState(DEFAULT_CALL_STATE_TIMEOUT);
     } catch (e) {
       log.warn('Failed to setup the call', {
         file: CALL_FILE,
@@ -1126,7 +1126,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       this.startCallerIdResolution(data.callerId);
     }
     this.emit(CALL_EVENT_KEYS.PROGRESS, this.correlationId);
-    this.setTimeoutForState(DEFAULT_CALL_STATE_TIMER);
+    this.setTimeoutForState(DEFAULT_CALL_STATE_TIMEOUT);
   }
 
   /**
@@ -1189,7 +1189,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         file: CALL_FILE,
         method: this.handleOutgoingCallAlerting.name,
       });
-      this.setTimeoutForState(DEFAULT_CALL_STATE_TIMER);
+      this.setTimeoutForState(DEFAULT_CALL_STATE_TIMEOUT);
     } catch (err) {
       log.warn('Failed to signal call progression', {
         file: CALL_FILE,
@@ -1235,7 +1235,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       this.mediaNegotiationCompleted = false;
       this.sendCallStateMachineEvt({type: 'E_CALL_ESTABLISHED'});
     }
-    this.setTimeoutForState(EXTENDED_CALL_STATE_TIMER);
+    this.setTimeoutForState(EXTENDED_CALL_STATE_TIMEOUT);
   }
 
   /**
@@ -1272,7 +1272,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         file: CALL_FILE,
         method: this.handleOutgoingCallConnect.name,
       });
-      this.setTimeoutForState(EXTENDED_CALL_STATE_TIMER);
+      this.setTimeoutForState(EXTENDED_CALL_STATE_TIMEOUT);
     } catch (err) {
       log.warn('Failed to connect the call', {
         file: CALL_FILE,
