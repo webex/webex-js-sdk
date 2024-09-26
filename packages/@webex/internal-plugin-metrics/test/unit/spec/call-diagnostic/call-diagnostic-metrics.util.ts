@@ -235,6 +235,8 @@ describe('internal-plugin-metrics', () => {
   });
 
   describe('getBuildType', () => {
+    const webex = {internal: {}};
+
     beforeEach(() => {
       process.env.NODE_ENV = 'production';
     });
@@ -246,18 +248,23 @@ describe('internal-plugin-metrics', () => {
       ['https://web.webex.com', true, 'test'],
     ].forEach(([webClientDomain, markAsTestEvent, expected]) => {
       it(`returns expected result for ${webClientDomain}`, () => {
-        assert.deepEqual(getBuildType(webClientDomain, markAsTestEvent as any), expected);
+        assert.deepEqual(getBuildType(webex, webClientDomain, markAsTestEvent as any), expected);
       });
     });
 
     it('returns "test" for NODE_ENV "foo"', () => {
       process.env.NODE_ENV = 'foo';
-      assert.deepEqual(getBuildType('production'), 'test');
+      assert.deepEqual(getBuildType(webex, 'production'), 'test');
     });
 
     it('returns "test" for NODE_ENV "production" and markAsTestEvent = true', () => {
       process.env.NODE_ENV = 'production';
-      assert.deepEqual(getBuildType('my.domain', true), 'test');
+      assert.deepEqual(getBuildType(webex, 'my.domain', true), 'test');
+    });
+
+    it('returns "test" for NODE_ENV "production" when webex.caBuildType = "test"', () => {
+      process.env.NODE_ENV = 'production';
+      assert.deepEqual(getBuildType({internal: {ceBuildType: 'test'}}, 'my.domain', true), 'test');
     });
   });
 
@@ -418,8 +425,8 @@ describe('internal-plugin-metrics', () => {
             name: 'client.exit.app',
             eventData: {
               markAsTestEvent: true,
-              webClientDomain: 'https://web.webex.com'
-            }
+              webClientDomain: 'https://web.webex.com',
+            },
           },
         },
         type: ['diagnostic-event'],

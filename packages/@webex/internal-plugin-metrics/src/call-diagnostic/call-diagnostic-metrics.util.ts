@@ -195,16 +195,22 @@ export const isBrowserMediaErrorName = (errorName: any) => {
 };
 
 /**
+ * @param {Object} webex sdk instance
  * @param webClientDomain
  * @returns
  */
 export const getBuildType = (
+  webex,
   webClientDomain,
   markAsTestEvent = false
 ): Event['origin']['buildType'] => {
   // used temporary to test pre join in production without creating noise data, SPARK-468456
   if (markAsTestEvent) {
     return 'test';
+  }
+
+  if (webex.internal.caBuildType) {
+    return webex.internal.caBuildType;
   }
 
   if (
@@ -227,6 +233,7 @@ export const getBuildType = (
 export const prepareDiagnosticMetricItem = (webex: any, item: any) => {
   const origin: Partial<Event['origin']> = {
     buildType: getBuildType(
+      webex,
       item.eventPayload?.event?.eventData?.webClientDomain,
       item.eventPayload?.event?.eventData?.markAsTestEvent
     ),
