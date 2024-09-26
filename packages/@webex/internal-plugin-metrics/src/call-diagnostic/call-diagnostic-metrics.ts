@@ -455,6 +455,9 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
         },
         intervals: payload.intervals,
         callingServiceType: 'LOCUS',
+        meetingJoinInfo: {
+          clientSignallingProtocol: 'WebRTC',
+        },
         sourceMetadata: {
           applicationSoftwareType: CLIENT_NAME,
           // @ts-ignore

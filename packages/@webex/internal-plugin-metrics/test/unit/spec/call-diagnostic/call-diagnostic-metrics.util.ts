@@ -375,6 +375,12 @@ describe('internal-plugin-metrics', () => {
           joinTimes: {
             localSDPGenRemoteSDPRecv: undefined,
           },
+          audioSetupDelay: {
+            joinRespRxStart: undefined,
+          },
+          videoSetupDelay: {
+            joinRespRxStart: undefined,
+          },
         },
       ],
       [
@@ -389,14 +395,12 @@ describe('internal-plugin-metrics', () => {
         },
       ],
       [
-        'client.mediaquality.event',
+        'client.media.tx.start',
         {
           audioSetupDelay: {
-            joinRespRxStart: undefined,
             joinRespTxStart: undefined,
           },
           videoSetupDelay: {
-            joinRespRxStart: undefined,
             joinRespTxStart: undefined,
           },
         },

@@ -79,6 +79,8 @@ export type CallRecordSelf = {
   id: string;
   name?: string;
   phoneNumber?: string;
+  cucmDN?: string;
+  ucmLineNumber?: number;
 };
 
 export type CallRecordListOther = {
@@ -242,32 +244,38 @@ enum CALL_STATE {
   REMOTE_HELD = 'remoteheld',
   CONNECTED = 'connected',
 }
+
 type eventType = string;
+
 type callProgressData = {
   alerting: boolean;
   inbandROAP: boolean;
 };
+
 export type CallerIdInfo = {
   'x-broadworks-remote-party-info'?: string;
   'p-asserted-identity'?: string;
   from?: string;
 };
+
 type callId = string;
 type deviceId = string;
 type correlationId = string;
 type callUrl = string;
 type causecode = number;
 type cause = string;
+
 type eventData = {
   callerId: CallerIdInfo;
   callState: CALL_STATE;
 };
+
 type midCallServiceData = {
   eventType: eventType;
   eventData: eventData;
 };
-type midCallService = Array<midCallServiceData>;
 
+type midCallService = Array<midCallServiceData>;
 interface BaseMessage {
   eventType: eventType;
   correlationId: correlationId;
@@ -275,19 +283,18 @@ interface BaseMessage {
   callId: callId;
   callUrl: callUrl;
 }
-
 export interface CallSetupMessage extends BaseMessage {
   callerId: CallerIdInfo;
   trackingId: string;
   alertType: string;
 }
-
 interface CallProgressMessage extends BaseMessage {
   callProgressData: callProgressData;
   callerId: CallerIdInfo;
 }
 
 export const WEBSOCKET_SCOPE = 'mobius';
+
 export enum WEBSOCKET_KEYS {
   CALL_PROGRESS = 'callprogress',
   CALL_CONNECTED = 'callconnected',
@@ -368,7 +375,24 @@ export type EndTimeSessionId = {
   endTime: string;
   sessionId: string;
 };
+
 export type SanitizedEndTimeAndSessionId = {
   endTime: number;
   sessionId: string;
+};
+
+export type UCMLine = {
+  dnorpattern: string;
+  index: number;
+  label: string | null;
+};
+
+export type UCMDevice = {
+  name: string;
+  model: number;
+  lines: UCMLine[];
+};
+
+export type UCMLinesApiResponse = {
+  devices: UCMDevice[];
 };

@@ -399,7 +399,7 @@ export const CLIENT_ERROR_CODE_TO_ERROR_PAYLOAD: Record<number, Partial<ClientEv
   },
   [ICE_AND_REACHABILITY_FAILED_CLIENT_CODE]: {
     errorDescription: ERROR_DESCRIPTIONS.ICE_AND_REACHABILITY_FAILED,
-    category: 'network',
+    category: 'expected',
     fatal: true,
   },
   2050: {

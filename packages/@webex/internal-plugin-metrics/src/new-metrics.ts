@@ -6,7 +6,9 @@
 import {WebexPlugin} from '@webex/webex-core';
 
 import CallDiagnosticMetrics from './call-diagnostic/call-diagnostic-metrics';
-import BehavioralMetrics from './behavioral/behavioral-metrics';
+import BehavioralMetrics from './behavioral-metrics';
+import OperationalMetrics from './operational-metrics';
+import BusinessMetrics from './business-metrics';
 import {
   RecursivePartial,
   MetricEventProduct,
@@ -14,7 +16,7 @@ import {
   MetricEventVerb,
   ClientEvent,
   FeatureEvent,
-  BehavioralEventPayload,
+  EventPayload,
   OperationalEvent,
   MediaQualityEvent,
   InternalEvent,
@@ -37,6 +39,9 @@ class Metrics extends WebexPlugin {
   // Helper classes to handle the different types of metrics
   callDiagnosticMetrics: CallDiagnosticMetrics;
   behavioralMetrics: BehavioralMetrics;
+  operationalMetrics: OperationalMetrics;
+  businessMetrics: BusinessMetrics;
+  isReady = false;
 
   /**
    * Constructor
@@ -61,8 +66,7 @@ class Metrics extends WebexPlugin {
     this.webex.once('ready', () => {
       // @ts-ignore
       this.callDiagnosticMetrics = new CallDiagnosticMetrics({}, {parent: this.webex});
-      // @ts-ignore
-      this.behavioralMetrics = new BehavioralMetrics({}, {parent: this.webex});
+      this.isReady = true;
     });
   }
 
@@ -90,7 +94,21 @@ class Metrics extends WebexPlugin {
    * @returns true once we have the deviceId we need to submit behavioral events to Amplitude
    */
   isReadyToSubmitBehavioralEvents() {
-    return this.behavioralMetrics.isReadyToSubmitBehavioralEvents();
+    return this.behavioralMetrics?.isReadyToSubmitEvents() ?? false;
+  }
+
+  /**
+   * @returns true once we have the deviceId we need to submit operational events
+   */
+  isReadyToSubmitOperationalEvents() {
+    return this.operationalMetrics?.isReadyToSubmitEvents() ?? false;
+  }
+
+  /**
+   * @returns true once we have the deviceId we need to submit buisness events
+   */
+  isReadyToSubmitBusinessEvents() {
+    return this.businessMetrics?.isReadyToSubmitEvents() ?? false;
   }
 
   /**
@@ -108,15 +126,20 @@ class Metrics extends WebexPlugin {
     agent: MetricEventAgent;
     target: string;
     verb: MetricEventVerb;
-    payload?: BehavioralEventPayload;
+    payload?: EventPayload;
   }) {
-    if (!this.behavioralMetrics) {
+    if (!this.isReady) {
       // @ts-ignore
       this.webex.logger.log(
         `NewMetrics: @submitBehavioralEvent. Attempted to submit before webex.ready: ${product}.${agent}.${target}.${verb}`
       );
 
       return Promise.resolve();
+    }
+
+    if (!this.behavioralMetrics) {
+      // @ts-ignore
+      this.behavioralMetrics = new BehavioralMetrics({}, {parent: this.webex});
     }
 
     return this.behavioralMetrics.submitBehavioralEvent({product, agent, target, verb, payload});
@@ -126,16 +149,44 @@ class Metrics extends WebexPlugin {
    * Operational event
    * @param args
    */
-  submitOperationalEvent({
-    name,
-    payload,
-    options,
-  }: {
-    name: OperationalEvent['name'];
-    payload?: RecursivePartial<OperationalEvent['payload']>;
-    options?: any;
-  }) {
-    throw new Error('Not implemented.');
+  submitOperationalEvent({name, payload}: {name: string; payload?: EventPayload}) {
+    if (!this.isReady) {
+      // @ts-ignore
+      this.webex.logger.log(
+        `NewMetrics: @submitOperationalEvent. Attempted to submit before webex.ready: ${name}`
+      );
+
+      return Promise.resolve();
+    }
+
+    if (!this.operationalMetrics) {
+      // @ts-ignore
+      this.operationalMetrics = new OperationalMetrics({}, {parent: this.webex});
+    }
+
+    return this.operationalMetrics.submitOperationalEvent({name, payload});
+  }
+
+  /**
+   * Buisness event
+   * @param args
+   */
+  submitBusinessEvent({name, payload}: {name: string; payload: EventPayload}) {
+    if (!this.isReady) {
+      // @ts-ignore
+      this.webex.logger.log(
+        `NewMetrics: @submitBusinessEvent. Attempted to submit before webex.ready: ${name}`
+      );
+
+      return Promise.resolve();
+    }
+
+    if (!this.businessMetrics) {
+      // @ts-ignore
+      this.businessMetrics = new BusinessMetrics({}, {parent: this.webex});
+    }
+
+    return this.businessMetrics.submitBusinessEvent({name, payload});
   }
 
   /**

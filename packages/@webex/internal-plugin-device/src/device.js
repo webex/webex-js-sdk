@@ -307,6 +307,14 @@ const Device = WebexPlugin.extend({
     isReachabilityChecked: ['boolean', false, false],
 
     /**
+     * This property stores whether or not the next refresh or register request should request energy forecast data
+     * in order to prevent over fetching energy forecasts
+     *
+     * @type {boolean}
+     */
+    energyForecastConfig: 'boolean',
+
+    /**
      * This property stores whether or not the current device is in a meeting
      * to prevent an unneeded timeout of a meeting due to inactivity.
      *
@@ -342,6 +350,15 @@ const Device = WebexPlugin.extend({
    */
   meetingEnded() {
     this.webex.trigger('meeting ended');
+  },
+
+  /**
+   * Set the value of energy forecast config for the current registered device.
+   * @param {boolean} [energyForecastConfig=false] - fetch an energy forecast on the next refresh/register
+   * @returns {void}
+   */
+  setEnergyForecastConfig(energyForecastConfig = false) {
+    this.energyForecastConfig = energyForecastConfig;
   },
 
   // Registration method members
@@ -395,6 +412,11 @@ const Device = WebexPlugin.extend({
         uri: this.url,
         body,
         headers,
+        qs: {
+          includeUpstreamServices: `all${
+            this.config.energyForecast && this.energyForecastConfig ? ',energyforecast' : ''
+          }`,
+        },
       })
         .then((response) => this.processRegistrationSuccess(response))
         .catch((reason) => {
@@ -464,6 +486,11 @@ const Device = WebexPlugin.extend({
         resource: 'devices',
         body,
         headers,
+        qs: {
+          includeUpstreamServices: `all${
+            this.config.energyForecast && this.energyForecastConfig ? ',energyforecast' : ''
+          }`,
+        },
       })
         .catch((error) => {
           this.webex.internal.newMetrics.submitInternalEvent({

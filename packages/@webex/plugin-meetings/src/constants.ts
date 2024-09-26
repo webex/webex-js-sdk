@@ -250,23 +250,6 @@ export const ASSIGN_ROLES_ERROR_CODES = {
   ReclaimHostIsHostAlreadyErrorCode: 2409150,
 };
 
-export const DEFAULT_GET_STATS_FILTER = {
-  types: [
-    'track',
-    'transport',
-    'candidate-pair',
-    'outbound-rtp',
-    'outboundrtp',
-    'inbound-rtp',
-    'inboundrtp',
-    'remote-inbound-rtp',
-    'remote-outbound-rtp',
-    'remote-candidate',
-    'local-candidate',
-    'media-source',
-  ],
-};
-
 export const RECORDING_STATE = {
   RECORDING: 'recording',
   IDLE: 'idle',

@@ -22,6 +22,7 @@ import {
   KEEPALIVE_UTIL,
   MINUTES_TO_SEC_MFACTOR,
   REGISTRATION_FILE,
+  REG_TRY_BACKUP_TIMER_VAL_FOR_CC_IN_SEC,
   REG_TRY_BACKUP_TIMER_VAL_IN_SEC,
   SEC_TO_MSEC_MFACTOR,
 } from '../constants';
@@ -64,6 +65,17 @@ describe('Registration Tests', () => {
     },
   };
 
+  const ccMockResponse = {
+    ...mockResponse,
+    body: {
+      ...mockResponse.body,
+      serviceData: {
+        domain: '',
+        indicator: 'contactcenter',
+      },
+    },
+  };
+
   const failurePayload = <WebexRequestPayload>(<unknown>{
     statusCode: 500,
     body: mockPostResponse,
@@ -85,15 +97,19 @@ describe('Registration Tests', () => {
   let restoreSpy;
   let postRegistrationSpy;
 
-  beforeEach(() => {
+  const setupRegistration = (mockServiceData) => {
     const mutex = new Mutex();
-    reg = createRegistration(webex, MockServiceData, mutex, lineEmitter, LOGGER.INFO);
+    reg = createRegistration(webex, mockServiceData, mutex, lineEmitter, LOGGER.INFO);
     reg.setMobiusServers(mobiusUris.primary, mobiusUris.backup);
     jest.clearAllMocks();
     restartSpy = jest.spyOn(reg, 'restartRegistration');
     failbackRetry429Spy = jest.spyOn(reg, FAILBACK_429_RETRY_UTIL);
     restoreSpy = jest.spyOn(reg, 'restorePreviousRegistration');
     postRegistrationSpy = jest.spyOn(reg, 'postRegistration');
+  };
+
+  beforeEach(() => {
+    setupRegistration(MockServiceData);
   });
 
   afterEach(() => {
@@ -210,6 +226,36 @@ describe('Registration Tests', () => {
       });
       expect(webex.request).toBeCalledWith({
         ...mockResponse,
+        method: 'POST',
+        uri: `${mobiusUris.backup[0]}device`,
+      });
+      expect(reg.getStatus()).toEqual(RegistrationStatus.ACTIVE);
+      /* Active Url must match with the backup url as per the test */
+      expect(reg.getActiveMobiusUrl()).toEqual(mobiusUris.backup[0]);
+    });
+
+    it('cc: verify unreachable primary with reachable backup server', async () => {
+      setupRegistration({...MockServiceData, indicator: ServiceIndicator.CONTACT_CENTER});
+
+      jest.useFakeTimers();
+      webex.request
+        .mockRejectedValueOnce(failurePayload)
+        .mockRejectedValueOnce(failurePayload)
+        .mockResolvedValueOnce(successPayload);
+
+      expect(reg.getStatus()).toEqual(RegistrationStatus.IDLE);
+      await reg.triggerRegistration();
+      jest.advanceTimersByTime(REG_TRY_BACKUP_TIMER_VAL_FOR_CC_IN_SEC * SEC_TO_MSEC_MFACTOR);
+      await flushPromises();
+
+      expect(webex.request).toBeCalledTimes(3);
+      expect(webex.request).toBeCalledWith({
+        ...ccMockResponse,
+        method: 'POST',
+        uri: `${mobiusUris.primary[0]}device`,
+      });
+      expect(webex.request).toBeCalledWith({
+        ...ccMockResponse,
         method: 'POST',
         uri: `${mobiusUris.backup[0]}device`,
       });
@@ -444,15 +490,14 @@ describe('Registration Tests', () => {
       file: REGISTRATION_FILE,
       method: 'startKeepaliveTimer',
     };
-
     const mockKeepAliveBody = {device: mockPostResponse.device};
 
-    beforeEach(async () => {
+    const beforeEachSetupForKeepalive = async () => {
       postRegistrationSpy.mockResolvedValueOnce(successPayload);
       jest.useFakeTimers();
       await reg.triggerRegistration();
       expect(reg.getStatus()).toBe(RegistrationStatus.ACTIVE);
-    });
+    };
 
     afterEach(() => {
       jest.clearAllTimers();
@@ -471,6 +516,7 @@ describe('Registration Tests', () => {
     });
 
     it('verify successful keep-alive cases', async () => {
+      await beforeEachSetupForKeepalive();
       const keepAlivePayload = <WebexRequestPayload>(<unknown>{
         statusCode: 200,
         body: mockKeepAliveBody,
@@ -487,6 +533,7 @@ describe('Registration Tests', () => {
     });
 
     it('verify failure keep-alive cases: Retry Success', async () => {
+      await beforeEachSetupForKeepalive();
       const failurePayload = <WebexRequestPayload>(<unknown>{
         statusCode: 503,
         body: mockKeepAliveBody,
@@ -517,6 +564,7 @@ describe('Registration Tests', () => {
     });
 
     it('verify failure keep-alive cases: Restore failure', async () => {
+      await beforeEachSetupForKeepalive();
       const restoreSpy = jest.spyOn(reg, 'restorePreviousRegistration');
       const restartRegSpy = jest.spyOn(reg, 'restartRegistration');
       const reconnectSpy = jest.spyOn(reg, 'reconnectOnFailure');
@@ -565,6 +613,7 @@ describe('Registration Tests', () => {
     });
 
     it('verify failure keep-alive cases: Restore Success', async () => {
+      await beforeEachSetupForKeepalive();
       const restoreSpy = jest.spyOn(reg, 'restorePreviousRegistration');
       const restartRegSpy = jest.spyOn(reg, 'restartRegistration');
       const reconnectSpy = jest.spyOn(reg, 'reconnectOnFailure');
@@ -616,6 +665,7 @@ describe('Registration Tests', () => {
     });
 
     it('verify failure followed by recovery of keepalive', async () => {
+      await beforeEachSetupForKeepalive();
       const failurePayload = <WebexRequestPayload>(<unknown>{
         statusCode: 503,
         body: mockKeepAliveBody,
@@ -647,7 +697,53 @@ describe('Registration Tests', () => {
       expect(reg.keepaliveTimer).toBe(timer);
     });
 
+    it('cc: verify failover to backup server after 4 keep alive failure with primary server', async () => {
+      // Register with contact center service
+      setupRegistration({...MockServiceData, indicator: ServiceIndicator.CONTACT_CENTER});
+      await beforeEachSetupForKeepalive();
+
+      const failurePayload = <WebexRequestPayload>(<unknown>{
+        statusCode: 503,
+        body: mockKeepAliveBody,
+      });
+      const successPayload = <WebexRequestPayload>(<unknown>{
+        statusCode: 200,
+        body: mockKeepAliveBody,
+      });
+
+      const clearIntervalSpy = jest.spyOn(global, 'clearInterval');
+
+      jest
+        .spyOn(reg, 'postKeepAlive')
+        .mockRejectedValueOnce(failurePayload)
+        .mockRejectedValueOnce(failurePayload)
+        .mockRejectedValueOnce(failurePayload)
+        .mockRejectedValueOnce(failurePayload)
+        .mockResolvedValue(successPayload);
+
+      expect(reg.getStatus()).toBe(RegistrationStatus.ACTIVE);
+
+      const timer = reg.keepaliveTimer;
+
+      jest.advanceTimersByTime(5 * mockPostResponse.keepaliveInterval * SEC_TO_MSEC_MFACTOR);
+      await flushPromises();
+
+      expect(clearIntervalSpy).toBeCalledOnceWith(timer);
+      expect(reg.getStatus()).toBe(RegistrationStatus.INACTIVE);
+      expect(reg.keepaliveTimer).not.toBe(timer);
+
+      webex.request.mockRejectedValueOnce(failurePayload).mockResolvedValue(successPayload);
+
+      jest.advanceTimersByTime(REG_TRY_BACKUP_TIMER_VAL_FOR_CC_IN_SEC * SEC_TO_MSEC_MFACTOR);
+      await flushPromises();
+
+      /* Active Url must match with the backup url as per the test */
+      expect(reg.getActiveMobiusUrl()).toEqual(mobiusUris.backup[0]);
+      expect(reg.getStatus()).toBe(RegistrationStatus.ACTIVE);
+    });
+
     it('verify final error for keep-alive', async () => {
+      await beforeEachSetupForKeepalive();
       const restoreSpy = jest.spyOn(reg, 'restorePreviousRegistration');
       const restartRegSpy = jest.spyOn(reg, 'restartRegistration');
       const reconnectSpy = jest.spyOn(reg, 'reconnectOnFailure');
@@ -686,6 +782,7 @@ describe('Registration Tests', () => {
     });
 
     it('verify failure keep-alive case with active call present: Restore Success after call ends', async () => {
+      await beforeEachSetupForKeepalive();
       const restoreSpy = jest.spyOn(reg, 'restorePreviousRegistration');
       const restartRegSpy = jest.spyOn(reg, 'restartRegistration');
       const reconnectSpy = jest.spyOn(reg, 'reconnectOnFailure');

@@ -176,11 +176,14 @@ describe('plugin-device', () => {
     describe('#refresh()', () => {
       let requestSpy;
 
-      const setup = () => {
+      const setup = (config = {}) => {
         sinon.stub(device, 'canRegister').callsFake(() => Promise.resolve());
         sinon.stub(device, 'processRegistrationSuccess').callsFake(() => {});
         requestSpy = sinon.spy(device, 'request');
         device.config.defaults = {};
+        Object.keys((config)).forEach((key) => {
+          device.config[key] = config[key];
+        });
         device.set('registered', true);
       };
 
@@ -207,15 +210,40 @@ describe('plugin-device', () => {
 
         assert.deepEqual(requestSpy.args[0][0].headers, {});
       });
+
+      it('uses the energy forecast config to append upstream services to the outgoing call', async () => {
+        setup({energyForecast: true});
+        device.setEnergyForecastConfig(true);
+
+        await device.register();
+
+        assert.calledWith(requestSpy, sinon.match({
+          qs: { includeUpstreamServices: 'all,energyforecast' }
+        }))
+      });
+
+      it('uses the energy forecast config to not append upstream services to the outgoing call', async () => {
+        setup({energyForecast: true});
+        device.setEnergyForecastConfig(false);
+
+        await device.register();
+
+        assert.calledWith(requestSpy, sinon.match({
+          qs: { includeUpstreamServices: 'all' }
+        }))
+      });
     });
 
     describe('#register()', () => {
-      const setup = () => {
+      const setup = (config = {}) => {
         webex.internal.metrics.submitClientMetrics = sinon.stub();
         
         sinon.stub(device, 'processRegistrationSuccess').callsFake(() => {});
 
         device.config.defaults = {};
+        Object.keys(config).forEach((key) => {
+          device.config[key] = config[key];
+        });
         device.set('registered', false);
       };
 
@@ -282,6 +310,42 @@ describe('plugin-device', () => {
 
         assert.calledWith(webex.internal.newMetrics.callDiagnosticMetrics.setDeviceInfo, device);
 
+      });
+
+      it('uses the energy forecast config to append upstream services to the outgoing call', async () => {
+        setup({energyForecast: true});
+        sinon.stub(device, 'canRegister').callsFake(() => Promise.resolve());
+        const spy = sinon.spy(device, 'request');
+        device.setEnergyForecastConfig(true);
+
+        await device.register();
+
+        assert.calledWith(spy, {
+          method: 'POST',
+          service: 'wdm',
+          resource: 'devices',
+          body: {},
+          headers: {},
+          qs: { includeUpstreamServices: 'all,energyforecast' }
+        } )
+      });
+
+      it('uses the energy forecast config to not append upstream services to the outgoing call', async () => {
+        setup({energyForecast: true});
+        sinon.stub(device, 'canRegister').callsFake(() => Promise.resolve());
+        const spy = sinon.spy(device, 'request');
+        device.setEnergyForecastConfig(false);
+
+        await device.register();
+
+        assert.calledWith(spy, {
+          method: 'POST',
+          service: 'wdm',
+          resource: 'devices',
+          body: {},
+          headers: {},
+          qs: { includeUpstreamServices: 'all' }
+        } )
       });
 
     });

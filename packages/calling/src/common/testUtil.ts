@@ -51,10 +51,6 @@ export function getTestUtilsWebex() {
           },
         },
       },
-      dss: {
-        lookup: jest.fn(),
-        register: jest.fn(),
-      },
       encryption: {
         decryptText: jest.fn(),
         encryptText: jest.fn(),
@@ -78,7 +74,6 @@ export function getTestUtilsWebex() {
           mercuryApi: 'https://mercury-api-intb.ciscospark.com/v1',
           'ucmgmt-gateway': 'https://gw.telemetry.int-ucmgmt.cisco.com',
           contactsService: 'https://contacts-service-a.wbx2.com/contact/api/v1',
-          directorySearch: 'https://directory-search-a.wbx2.com/direcory-search/api/v1/',
         },
         fetchClientRegionInfo: jest.fn(),
       },
@@ -260,6 +255,32 @@ export const getSampleScimResponse = () => {
         userType: 'user',
         mfaEnabled: false,
         teamsClusterId: 'urn:TEAM:us-east-1_int13',
+      },
+    ],
+  };
+};
+
+export const getSampleMinimumScimResponse = () => {
+  return {
+    totalResults: '1',
+    itemsPerPage: '1',
+    startIndex: '1',
+    schemas: ['urn:scim:schemas:core:1.0'],
+    Resources: [
+      {
+        userName: 'atlas.test.wxcwebrtc+user8@gmail.com',
+        id: 'userExternalId',
+        meta: {
+          created: '2022-03-16T16:13:53.847Z',
+          lastModified: '2022-05-31T14:39:12.782Z',
+          lastLoginTime: '2022-05-31T14:39:12.780Z',
+          version: 'W/"66025591113"',
+          location:
+            'https://identitybts.webex.com/identity/scim/1704d30d-a131-4bc7-9449-948487643793/v1/Users/652fe0c7-05ce-4acd-8bda-9a080830187f',
+          organizationID: '1704d30d-a131-4bc7-9449-948487643793',
+          creator: '97fe25e3-d3e8-400e-856b-5b0cd5b0c790',
+          modifier: '8c7abf2f-0c8e-49cf-b8e4-693d4ec7daee',
+        },
       },
     ],
   };

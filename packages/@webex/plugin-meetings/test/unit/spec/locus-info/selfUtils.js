@@ -345,37 +345,39 @@ describe('plugin-meetings', () => {
   });
 
   describe('mutedByOthersChanged', () => {
-    it('throws an error if changedSelf is not provided', function() {
-      assert.throws(() => SelfUtils.mutedByOthersChanged({}, null), 'New self must be defined to determine if self was muted by others.');
+    it('throws an error if changedSelf is not provided', function () {
+      assert.throws(
+        () => SelfUtils.mutedByOthersChanged({}, null),
+        'New self must be defined to determine if self was muted by others.'
+      );
     });
 
-    it('return false when oldSelf is not defined', function() {
-      assert.equal(SelfUtils.mutedByOthersChanged(null, { remoteMuted: false }), false);
+    it('return false when oldSelf is not defined', function () {
+      assert.equal(SelfUtils.mutedByOthersChanged(null, {remoteMuted: false}), false);
     });
 
-    it('should return true when remoteMuted is true on entry', function() {
-      assert.equal(SelfUtils.mutedByOthersChanged(null, { remoteMuted: true }), true);
+    it('should return true when remoteMuted is true on entry', function () {
+      assert.equal(SelfUtils.mutedByOthersChanged(null, {remoteMuted: true}), true);
     });
 
-    it('should return false when selfIdentity and modifiedBy are the same', function() {
-      assert.equal(SelfUtils.mutedByOthersChanged(
-        { remoteMuted: false },
-        { remoteMuted: true, selfIdentity: 'user1', modifiedBy: 'user1' }
-      ), false);
+    it('should return true when remoteMuted values are different', function () {
+      assert.equal(
+        SelfUtils.mutedByOthersChanged(
+          {remoteMuted: false},
+          {remoteMuted: true, selfIdentity: 'user1', modifiedBy: 'user2'}
+        ),
+        true
+      );
     });
 
-    it('should return true when remoteMuted values are different', function() {
-      assert.equal(SelfUtils.mutedByOthersChanged(
-        { remoteMuted: false },
-        { remoteMuted: true, selfIdentity: 'user1', modifiedBy: 'user2' }
-      ), true);
-    });
-
-    it('should return true when remoteMuted is true and unmuteAllowed has changed', function() {
-      assert.equal(SelfUtils.mutedByOthersChanged(
-        { remoteMuted: true, unmuteAllowed: false },
-        { remoteMuted: true, unmuteAllowed: true, selfIdentity: 'user1', modifiedBy: 'user2' }
-      ), true);
+    it('should return true when remoteMuted is true and unmuteAllowed has changed', function () {
+      assert.equal(
+        SelfUtils.mutedByOthersChanged(
+          {remoteMuted: true, unmuteAllowed: false},
+          {remoteMuted: true, unmuteAllowed: true, selfIdentity: 'user1', modifiedBy: 'user2'}
+        ),
+        true
+      );
     });
   });
 

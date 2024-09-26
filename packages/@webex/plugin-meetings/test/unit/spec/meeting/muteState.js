@@ -113,6 +113,30 @@ describe('plugin-meetings', () => {
       assert.isTrue(audio.isRemotelyMuted());
     });
 
+    it('does not locally unmute on a server unmute', async () => {
+      const setServerMutedSpy = meeting.mediaProperties.audioStream.setServerMuted;
+
+      // simulate remote mute
+      audio.handleServerRemoteMuteUpdate(meeting, true, true);
+
+      assert.isTrue(audio.isRemotelyMuted());
+      assert.isTrue(audio.isLocallyMuted());
+
+      // mutes local
+      assert.calledOnceWithExactly(setServerMutedSpy, true, 'remotelyMuted');
+
+      setServerMutedSpy.resetHistory();
+
+      // simulate remote unmute
+      audio.handleServerRemoteMuteUpdate(meeting, false, true);
+
+      assert.isFalse(audio.isRemotelyMuted());
+      assert.isTrue(audio.isLocallyMuted());
+
+      // does not unmute local
+      assert.notCalled(setServerMutedSpy);
+    });
+
     it('does local audio unmute if localAudioUnmuteRequired is received', async () => {
       // first we need to have the local stream user muted
       meeting.mediaProperties.audioStream.userMuted = true;

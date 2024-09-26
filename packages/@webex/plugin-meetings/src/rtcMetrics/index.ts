@@ -34,6 +34,8 @@ export default class RtcMetrics {
 
   connectionId: string;
 
+  shouldSendMetricsOnNextStatsReport: boolean;
+
   /**
    * Initialize the interval.
    *
@@ -47,9 +49,7 @@ export default class RtcMetrics {
     this.meetingId = meetingId;
     this.webex = webex;
     this.correlationId = correlationId;
-    this.setNewConnectionId();
-    // Send the first set of metrics at 5 seconds in the case of a user leaving the call shortly after joining.
-    setTimeout(this.sendMetricsInQueue.bind(this), 5 * 1000);
+    this.resetConnection();
   }
 
   /**
@@ -62,6 +62,18 @@ export default class RtcMetrics {
       this.sendMetrics();
       this.metricsQueue = [];
     }
+  }
+
+  /**
+   * Forces sending metrics when we get the next stats-report
+   *
+   * This is useful for cases when something important happens that affects the media connection,
+   * for example when we move from lobby into the meeting.
+   *
+   * @returns {void}
+   */
+  public sendNextMetrics() {
+    this.shouldSendMetricsOnNextStatsReport = true;
   }
 
   /**
@@ -79,6 +91,13 @@ export default class RtcMetrics {
 
       this.metricsQueue.push(data);
 
+      if (this.shouldSendMetricsOnNextStatsReport && data.name === 'stats-report') {
+        // this is the first useful set of data (WCME gives it to us after 5s), send it out immediately
+        // in case the user is unhappy and closes the browser early
+        this.sendMetricsInQueue();
+        this.shouldSendMetricsOnNextStatsReport = false;
+      }
+
       try {
         // If a connection fails, send the rest of the metrics in queue and get a new connection id.
         const parsedPayload = parseJsonPayload(data.payload);
@@ -88,7 +107,7 @@ export default class RtcMetrics {
           parsedPayload.value === 'failed'
         ) {
           this.sendMetricsInQueue();
-          this.setNewConnectionId();
+          this.resetConnection();
         }
       } catch (e) {
         console.error(e);
@@ -130,8 +149,9 @@ export default class RtcMetrics {
    *
    * @returns {void}
    */
-  private setNewConnectionId() {
+  private resetConnection() {
     this.connectionId = uuid.v4();
+    this.shouldSendMetricsOnNextStatsReport = true;
   }
 
   /**

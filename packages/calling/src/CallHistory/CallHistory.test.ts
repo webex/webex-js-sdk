@@ -3,7 +3,7 @@
 /* eslint-disable @typescript-eslint/no-shadow */
 import {LOGGER} from '../Logger/types';
 import {getTestUtilsWebex} from '../common/testUtil';
-import {HTTP_METHODS, SORT, SORT_BY, WebexRequestPayload} from '../common/types';
+import {CALLING_BACKEND, HTTP_METHODS, SORT, SORT_BY, WebexRequestPayload} from '../common/types';
 import {CallHistory, createCallHistoryClient} from './CallHistory';
 import {ICallHistory} from './types';
 import {
@@ -16,6 +16,10 @@ import {
   janusSetReadStateUrl,
   ERROR_DETAILS_401,
   ERROR_DETAILS_400,
+  MOCK_LINES_API_CALL_RESPONSE,
+  MOCK_LINES_API_CALL_RESPONSE_WITH_NO_LINEDATA,
+  MOCK_CALL_HISTORY_WITH_UCM_LINE_NUMBER,
+  MOCK_CALL_HISTORY_WITHOUT_UCM_LINE_NUMBER,
 } from './callHistoryFixtures';
 import {
   COMMON_EVENT_KEYS,
@@ -245,6 +249,115 @@ describe('Call history tests', () => {
         },
         methodDetails
       );
+    });
+  });
+
+  describe('fetchUCMLinesData test', () => {
+    it('verify successful UCM lines API case', async () => {
+      const ucmLinesAPIPayload = <WebexRequestPayload>(<unknown>MOCK_LINES_API_CALL_RESPONSE);
+
+      webex.request.mockResolvedValue(ucmLinesAPIPayload);
+      const response = await callHistory['fetchUCMLinesData']();
+
+      expect(response.statusCode).toBe(200);
+      expect(response.message).toBe('SUCCESS');
+    });
+
+    it('verify bad request failed UCM lines API case', async () => {
+      const failurePayload = {
+        statusCode: 400,
+      };
+      const ucmLinesAPIPayload = <WebexRequestPayload>(<unknown>failurePayload);
+
+      webex.request.mockRejectedValue(ucmLinesAPIPayload);
+      const response = await callHistory['fetchUCMLinesData']();
+
+      expect(response).toStrictEqual(ERROR_DETAILS_400);
+      expect(response.data.error).toEqual(ERROR_DETAILS_400.data.error);
+      expect(response.statusCode).toBe(400);
+      expect(response.message).toBe('FAILURE');
+      expect(serviceErrorCodeHandlerSpy).toHaveBeenCalledWith(
+        {statusCode: 400},
+        {file: 'CallHistory', method: 'fetchLinesData'}
+      );
+    });
+
+    it('should call fetchUCMLinesData when calling backend is UCM and userSessions contain valid cucmDN', async () => {
+      jest.spyOn(utils, 'getCallingBackEnd').mockReturnValue(CALLING_BACKEND.UCM);
+      // Since fetchUCMLinesData is a private method, TypeScript restricts direct access to it.
+      // To bypass this restriction, we are using 'as any' to access and invoke the method for testing purposes.
+      const fetchUCMLinesDataSpy = jest
+        .spyOn(callHistory as any, 'fetchUCMLinesData')
+        .mockResolvedValue(MOCK_LINES_API_CALL_RESPONSE);
+
+      const mockCallHistoryPayload = <WebexRequestPayload>(
+        (<unknown>MOCK_CALL_HISTORY_WITH_UCM_LINE_NUMBER)
+      );
+      webex.request.mockResolvedValue(mockCallHistoryPayload);
+
+      const response = await callHistory.getCallHistoryData(7, 10, SORT.DEFAULT, SORT_BY.DEFAULT);
+
+      expect(fetchUCMLinesDataSpy).toHaveBeenCalledTimes(1);
+
+      expect(response.statusCode).toBe(200);
+      expect(
+        response.data.userSessions && response.data.userSessions[0].self.ucmLineNumber
+      ).toEqual(1);
+    });
+
+    it('should fetchUCMLinesData but not assign ucmLineNumber when UCM backend has no line data', async () => {
+      jest.spyOn(utils, 'getCallingBackEnd').mockReturnValue(CALLING_BACKEND.UCM);
+
+      // Since fetchUCMLinesData is a private method, TypeScript restricts direct access to it.
+      // To bypass this restriction, we are using 'as any' to access and invoke the method for testing purposes.
+      const fetchUCMLinesDataSpy = jest
+        .spyOn(callHistory as any, 'fetchUCMLinesData')
+        .mockResolvedValue(MOCK_LINES_API_CALL_RESPONSE_WITH_NO_LINEDATA);
+
+      const mockCallHistoryPayload = <WebexRequestPayload>(
+        (<unknown>MOCK_CALL_HISTORY_WITHOUT_UCM_LINE_NUMBER)
+      );
+      webex.request.mockResolvedValue(mockCallHistoryPayload);
+
+      const response = await callHistory.getCallHistoryData(7, 10, SORT.DEFAULT, SORT_BY.DEFAULT);
+
+      expect(fetchUCMLinesDataSpy).toHaveBeenCalledTimes(1);
+
+      expect(response.statusCode).toBe(200);
+      expect(response.data.userSessions && response.data.userSessions[0].self.cucmDN).toBeDefined();
+      expect(
+        response.data.userSessions && response.data.userSessions[0].self.ucmLineNumber
+      ).toEqual(undefined);
+    });
+
+    it('should not call fetchUCMLinesData when calling backend is UCM but no valid cucmDN is present', async () => {
+      jest.spyOn(utils, 'getCallingBackEnd').mockReturnValue(CALLING_BACKEND.UCM);
+      // Since fetchUCMLinesData is a private method, TypeScript restricts direct access to it.
+      // To bypass this restriction, we are using 'as any' to access and invoke the method for testing purposes.
+      const fetchUCMLinesDataSpy = jest
+        .spyOn(callHistory as any, 'fetchUCMLinesData')
+        .mockResolvedValue({});
+
+      const callHistoryPayload = <WebexRequestPayload>(<unknown>mockCallHistoryBody);
+      webex.request.mockResolvedValue(callHistoryPayload);
+
+      await callHistory.getCallHistoryData(7, 10, SORT.DEFAULT, SORT_BY.DEFAULT);
+
+      expect(fetchUCMLinesDataSpy).not.toHaveBeenCalled();
+    });
+
+    it('should not call fetchUCMLinesData when calling backend is not UCM', async () => {
+      jest.spyOn(utils, 'getCallingBackEnd').mockReturnValue(CALLING_BACKEND.WXC);
+      // Since fetchUCMLinesData is a private method, TypeScript restricts direct access to it.
+      // To bypass this restriction, we are using 'as any' to access and invoke the method for testing purposes.
+      const fetchUCMLinesDataSpy = jest
+        .spyOn(callHistory as any, 'fetchUCMLinesData')
+        .mockResolvedValue({});
+
+      const callHistoryPayload = <WebexRequestPayload>(<unknown>mockCallHistoryBody);
+      webex.request.mockResolvedValue(callHistoryPayload);
+      await callHistory.getCallHistoryData(7, 10, SORT.DEFAULT, SORT_BY.DEFAULT);
+      expect(fetchUCMLinesDataSpy).not.toHaveBeenCalled(); // Check that fetchUCMLinesData was not called
     });
   });
 });

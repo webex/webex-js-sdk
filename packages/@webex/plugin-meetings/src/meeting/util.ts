@@ -170,6 +170,8 @@ const MeetingUtil = {
   },
 
   cleanUp: (meeting) => {
+    meeting.getWebexObject().internal.device.meetingEnded();
+
     meeting.breakouts.cleanUp();
     meeting.simultaneousInterpretation.cleanUp();
     meeting.locusMediaRequest = undefined;

@@ -1,5 +1,5 @@
 import {Defer} from '@webex/common';
-import {ConnectionState, Event} from '@webex/internal-media-core';
+import {ConnectionState, MediaConnectionEventNames} from '@webex/internal-media-core';
 import LoggerProxy from '../common/logs/logger-proxy';
 import {ICE_AND_DTLS_CONNECTION_TIMEOUT} from '../constants';
 
@@ -69,15 +69,15 @@ export default class MediaConnectionAwaiter {
    */
   private clearCallbacks(): void {
     this.webrtcMediaConnection.off(
-      Event.ICE_GATHERING_STATE_CHANGED,
+      MediaConnectionEventNames.ICE_GATHERING_STATE_CHANGED,
       this.iceGatheringStateCallback
     );
     this.webrtcMediaConnection.off(
-      Event.PEER_CONNECTION_STATE_CHANGED,
+      MediaConnectionEventNames.PEER_CONNECTION_STATE_CHANGED,
       this.peerConnectionStateCallback
     );
     this.webrtcMediaConnection.off(
-      Event.ICE_CONNECTION_STATE_CHANGED,
+      MediaConnectionEventNames.ICE_CONNECTION_STATE_CHANGED,
       this.iceConnectionStateCallback
     );
   }
@@ -228,17 +228,17 @@ export default class MediaConnectionAwaiter {
     }
 
     this.webrtcMediaConnection.on(
-      Event.PEER_CONNECTION_STATE_CHANGED,
+      MediaConnectionEventNames.PEER_CONNECTION_STATE_CHANGED,
       this.peerConnectionStateCallback
     );
 
     this.webrtcMediaConnection.on(
-      Event.ICE_CONNECTION_STATE_CHANGED,
+      MediaConnectionEventNames.ICE_CONNECTION_STATE_CHANGED,
       this.iceConnectionStateCallback
     );
 
     this.webrtcMediaConnection.on(
-      Event.ICE_GATHERING_STATE_CHANGED,
+      MediaConnectionEventNames.ICE_GATHERING_STATE_CHANGED,
       this.iceGatheringStateCallback
     );
 

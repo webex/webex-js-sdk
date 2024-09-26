@@ -342,7 +342,7 @@ export default class ReconnectionManager {
       }
 
       try {
-        await this.webex.meetings.startReachability();
+        await this.webex.meetings.startReachability('reconnection');
       } catch (err) {
         LoggerProxy.logger.info(
           'ReconnectionManager:index#reconnect --> Reachability failed, continuing with reconnection attempt, err: ',

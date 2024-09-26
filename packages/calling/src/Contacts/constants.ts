@@ -5,6 +5,8 @@ export const ENCRYPT_FILTER = 'encrypt';
 export const USERS = 'Users';
 export const DEFAULT_GROUP_NAME = 'Other contacts';
 export const CONTACTS_SCHEMA = 'urn:cisco:codev:identity:contact:core:1.0';
+export const SCIM_ID_FILTER = 'id eq';
+export const OR = ' or ';
 
 export enum encryptedFields {
   ADDRESS_INFO = 'addressInfo',

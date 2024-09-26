@@ -1,10 +1,15 @@
 import {LOGGER} from '../Logger/types';
 import * as utils from '../common/Utils';
-import {FAILURE_MESSAGE, SUCCESS_MESSAGE, UCM_CONNECTOR_FILE} from '../common/constants';
+import {
+  FAILURE_MESSAGE,
+  SUCCESS_MESSAGE,
+  UCM_CONNECTOR_FILE,
+  WEBEX_API_CONFIG_INT_URL,
+} from '../common/constants';
 import {getTestUtilsWebex} from '../common/testUtil';
 import {HTTP_METHODS, WebexRequestPayload} from '../common/types';
 import {UcmBackendConnector} from './UcmBackendConnector';
-import {CF_ENDPOINT, ORG_ENDPOINT, PEOPLE_ENDPOINT, WEBEX_APIS_INT_URL} from './constants';
+import {CF_ENDPOINT, ORG_ENDPOINT, PEOPLE_ENDPOINT} from './constants';
 import {CallForwardAlwaysSetting, CallForwardingSettingsUCM, IUcmBackendConnector} from './types';
 
 describe('Call Settings Client Tests for UcmBackendConnector', () => {
@@ -44,7 +49,7 @@ describe('Call Settings Client Tests for UcmBackendConnector', () => {
       },
     };
 
-    const callForwardingUri = `${WEBEX_APIS_INT_URL}/${PEOPLE_ENDPOINT}/${userId}/${CF_ENDPOINT.toLowerCase()}?${ORG_ENDPOINT}=${orgId}`;
+    const callForwardingUri = `${WEBEX_API_CONFIG_INT_URL}/${PEOPLE_ENDPOINT}/${userId}/${CF_ENDPOINT.toLowerCase()}?${ORG_ENDPOINT}=${orgId}`;
 
     beforeAll(() => {
       callSettingsClient = new UcmBackendConnector(webex, {level: LOGGER.INFO}, false);

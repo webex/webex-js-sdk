@@ -668,7 +668,7 @@ describe('internal-plugin-metrics', () => {
       assert.deepEqual(cdl.getInterstitialToMediaOKJMT(), 10);
     });
 
-    it('calculates getU2CTime correctly', () => {
+    describe('calculates getU2CTime correctly', () => {
       it('returns undefined when no precomputed value available', () => {
         assert.deepEqual(cdl.getU2CTime(), undefined);
       });

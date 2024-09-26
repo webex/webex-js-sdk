@@ -103,14 +103,24 @@ const Authorization = WebexPlugin.extend({
     this._verifySecurityToken(location.query);
     this._cleanUrl(location);
 
+    let preauthCatalogParams;
+
+    const orgId = this._extractOrgIdFromCode(code);
+
+    if (emailhash) {
+      preauthCatalogParams = {emailhash};
+    } else if (orgId) {
+      preauthCatalogParams = {orgId};
+    }
+
     // Wait until nextTick in case `credentials` hasn't initialized yet
     process.nextTick(() => {
       this.webex.internal.services
-        .collectPreauthCatalog(emailhash ? {emailhash}: undefined)
+        .collectPreauthCatalog(preauthCatalogParams)
         .catch(() => Promise.resolve())
         .then(() => this.requestAuthorizationCodeGrant({code, codeVerifier}))
         .catch((error) => {
-          this.logger.warn('authorization: failed initial authorization code grant request', error)
+          this.logger.warn('authorization: failed initial authorization code grant request', error);
         })
         .then(() => {
           this.ready = true;
@@ -228,6 +238,20 @@ const Authorization = WebexPlugin.extend({
 
         return Promise.reject(new ErrorConstructor(res._res || res));
       });
+  },
+
+  /**
+   * Extracts the orgId from the returned code from idbroker
+   * Description of how to parse the code can be found here:
+   * https://wiki.cisco.com/display/IDENTITY/Federated+Token+Validation
+   * @instance
+   * @memberof AuthorizationBrowserFirstParty
+   * @param {String} code
+   * @private
+   * @returns {String}
+   */
+  _extractOrgIdFromCode(code) {
+    return code?.split('_')[2] || undefined;
   },
 
   /**
