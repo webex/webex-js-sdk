@@ -1,4 +1,4 @@
-import {jwksCache, createRemoteJWKSet, JWKSCacheInput} from 'jose';
+import {jwksCache, createRemoteJWKSet, JWKSCacheInput, jwtVerify} from 'jose';
 
 import BaseClient from '../base-client';
 import {
@@ -71,6 +71,23 @@ export default class BYODS {
       cacheMaxAge: 600000, // 10 minutes
       cooldownDuration: 30000, // 30 seconds
     });
+  }
+
+  public async verifyToken(jws: string): Promise<any> {
+    try {
+      const {payload} = await jwtVerify(jws, this.jwks);
+
+      // Check if the token has expired
+      const currentTime = Math.floor(Date.now() / 1000); // Current time in seconds
+      if (payload.exp && payload.exp < currentTime) {
+        throw new Error('Token has expired');
+      }
+
+      return payload;
+    } catch (error: any) {
+      console.error('Error verifying token:', error.message || error);
+      throw new Error(`Failed to verify token: ${error.message || error}`);
+    }
   }
 
   /**
