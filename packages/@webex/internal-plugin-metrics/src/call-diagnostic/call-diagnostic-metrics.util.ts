@@ -210,7 +210,7 @@ export const getBuildType = (
   }
 
   if (webex.internal.metrics?.config?.caBuildType) {
-    return webex.internal.metrics?.config?.caBuildType;
+    return webex.internal.metrics.config.caBuildType;
   }
 
   if (
