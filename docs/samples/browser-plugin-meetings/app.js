@@ -175,7 +175,7 @@ function register() {
   unregisterElm.disabled = true;
   registrationStatusElm.innerText = 'Registering...';
 
-  webex.meetings.register()
+  webex.meetings.register(isGuest)
     .then(() => {
       console.log('Authentication#register() :: successfully registered');
       toggleUnifiedMeetings.removeAttribute('disabled');
@@ -226,7 +226,7 @@ function unregister() {
     });
 }
 
-
+let isGuest = false;
 async function getGuestAccessToken() {
 
   await axios({
@@ -238,6 +238,7 @@ async function getGuestAccessToken() {
   }).then(function (response) {
     console.log("guest token response", response.data.body.token);
     tokenElm.value = response.data.body.token
+    isGuest = true;
   }).catch((e) =>{
     console.error("Error fetching guest", e)
   })

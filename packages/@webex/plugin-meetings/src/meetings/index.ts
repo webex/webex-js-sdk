@@ -526,8 +526,9 @@ export default class Meetings extends WebexPlugin {
    * @returns {Promise}
    * @public
    * @memberof Meetings
+   * @param {boolean} isGuest
    */
-  public register() {
+  public register(isGuest) {
     // @ts-ignore
     if (!this.webex.canAuthorize) {
       LoggerProxy.logger.error(
@@ -545,8 +546,16 @@ export default class Meetings extends WebexPlugin {
       return Promise.resolve();
     }
 
-    return Promise.all([
-      this.fetchUserPreferredWebexSite(),
+    const promises = [];
+    // Only call fetchUserPreferredWebexSite() if not a guest
+    if (!isGuest) {
+      promises.push(this.fetchUserPreferredWebexSite());
+    } else {
+      LoggerProxy.logger.info(
+        'Meetings:index#register --> INFO, Skipping fetchUserPreferredWebexSite() because user is a guest'
+      );
+    }
+    promises.push(
       this.getGeoHint(),
       this.startReachability().catch((error) => {
         LoggerProxy.logger.error(`Meetings:index#register --> GDM error, ${error.message}`);
@@ -563,8 +572,10 @@ export default class Meetings extends WebexPlugin {
         )
         // @ts-ignore
         .then(() => this.webex.internal.mercury.connect()),
-      MeetingsUtil.checkH264Support.call(this),
-    ])
+      MeetingsUtil.checkH264Support.call(this)
+    );
+
+    return Promise.all(promises)
       .then(() => {
         this.listenForEvents();
         Trigger.trigger(
@@ -774,7 +785,6 @@ export default class Meetings extends WebexPlugin {
    * @public
    * @memberof Meetings
    */
-
   getPersonalMeetingRoom() {
     return this.personalMeetingRoom;
   }
