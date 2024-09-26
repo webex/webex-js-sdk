@@ -6513,6 +6513,16 @@ export default class Meeting extends StatelessWebexPlugin {
     }
   }
 
+  /**
+   * Handles device logging
+   *
+   * @private
+   * @static
+   * @param {boolean} isAudioEnabled
+   * @param {boolean} isVideoEnabled
+   * @returns {Promise<void>}
+   */
+
   private static async handleDeviceLogging(isAudioEnabled, isVideoEnabled): Promise<void> {
     try {
       let devices = [];
