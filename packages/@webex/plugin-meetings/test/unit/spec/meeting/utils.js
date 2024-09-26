@@ -71,6 +71,7 @@ describe('plugin-meetings', () => {
         assert.calledOnce(meeting.updateLLMConnection);
         assert.calledOnce(meeting.breakouts.cleanUp);
         assert.calledOnce(meeting.simultaneousInterpretation.cleanUp);
+        assert.calledOnce(webex.internal.device.meetingEnded);
       });
 
       it('do clean up on meeting object with LLM disabled', async () => {
@@ -87,6 +88,7 @@ describe('plugin-meetings', () => {
         assert.notCalled(meeting.updateLLMConnection);
         assert.calledOnce(meeting.breakouts.cleanUp);
         assert.calledOnce(meeting.simultaneousInterpretation.cleanUp);
+        assert.calledOnce(webex.internal.device.meetingEnded);
       });
 
       it('do clean up on meeting object with no config', async () => {
@@ -102,6 +104,7 @@ describe('plugin-meetings', () => {
         assert.notCalled(meeting.updateLLMConnection);
         assert.calledOnce(meeting.breakouts.cleanUp);
         assert.calledOnce(meeting.simultaneousInterpretation.cleanUp);
+        assert.calledOnce(webex.internal.device.meetingEnded);
       });
     });
 

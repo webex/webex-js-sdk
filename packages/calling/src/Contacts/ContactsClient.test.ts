@@ -751,6 +751,47 @@ describe('ContactClient Tests', () => {
         ownerId: 'ownerId',
         phoneNumbers: undefined,
         sipAddresses: undefined,
+        resolved: true,
+      },
+    ]);
+  });
+
+  it("test resolveContacts function when contactsDataMap list doesn't match resolved list", () => {
+    const mockContact = {
+      firstName: 'Jane',
+      lastName: 'Doe',
+      contactId: 'janeDoe',
+    };
+
+    const contact = contactClient['resolveCloudContacts'](
+      {userId: mockContactMinimum, janeDoe: mockContact},
+      mockSCIMMinListResponse.body
+    );
+
+    expect(contact).toEqual([
+      {
+        firstName: 'Jane',
+        lastName: 'Doe',
+        contactId: 'janeDoe',
+        resolved: false,
+      },
+      {
+        avatarURL: '',
+        avatarUrlDomain: undefined,
+        contactId: 'userId',
+        contactType: 'CLOUD',
+        department: undefined,
+        displayName: undefined,
+        emails: undefined,
+        encryptionKeyUrl: 'kms://cisco.com/keys/dcf18f9d-155e-44ff-ad61-c8a69b7103ab',
+        firstName: undefined,
+        groups: ['1561977e-3443-4ccf-a591-69686275d7d2'],
+        lastName: undefined,
+        manager: undefined,
+        ownerId: 'ownerId',
+        phoneNumbers: undefined,
+        sipAddresses: undefined,
+        resolved: true,
       },
     ]);
   });
