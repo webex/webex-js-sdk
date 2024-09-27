@@ -1,6 +1,15 @@
 import {APPLICATION_ID_PREFIX, PRODUCTION_BASE_URL} from '../constants';
 import {TokenResponse, OrgServiceAppAuthorization, ServiceAppAuthorizationMap} from '../types';
 import {httpUtils} from '../http-utils';
+import fetch, {Response} from 'node-fetch';
+import log from '../Logger';
+import {LOGGER} from '../Logger/types';
+import {APPLICATION_ID_PREFIX, PRODUCTION_BASE_URL} from '../constants';
+import {TokenResponse, OrgServiceAppAuthorization, ServiceAppAuthorizationMap} from '../types';
+import ExtendedError from 'Errors/catalog/ExtendedError';
+import { ERROR_TYPE } from 'Errors/types';
+import {BYODSConfig} from '../token-manager/type';
+import { BYODS_TOKEN_MANAGER_FILE } from './constant';
 
 /**
  * The token manager for the BYoDS SDK.
@@ -11,6 +20,7 @@ export default class TokenManager {
   private clientSecret: string;
   private serviceAppId: string;
   private baseUrl: string;
+  private sdkConfig?: BYODSConfig;
 
   /**
    * Creates an instance of TokenManager.
@@ -21,14 +31,17 @@ export default class TokenManager {
    * @example
    * const tokenManager = new TokenManager('your-client-id', 'your-client-secret');
    */
-  constructor(clientId: string, clientSecret: string, baseUrl: string = PRODUCTION_BASE_URL) {
+  constructor(clientId: string, clientSecret: string, baseUrl: string = PRODUCTION_BASE_URL,config?:BYODSConfig) {
     if (!clientId || !clientSecret) {
       throw new Error('clientId and clientSecret are required');
     }
     this.clientId = clientId;
     this.clientSecret = clientSecret;
     this.baseUrl = baseUrl;
+    this.sdkConfig = config;
     this.serviceAppId = Buffer.from(`${APPLICATION_ID_PREFIX}${clientId}`).toString('base64');
+    const logLevel = this.sdkConfig?.logger?.level ? this.sdkConfig.logger.level : LOGGER.ERROR;
+    log.setLogger(logLevel, BYODS_TOKEN_MANAGER_FILE);
   }
 
   /**
@@ -107,7 +120,12 @@ export default class TokenManager {
 
       this.updateServiceAppToken(response.data, orgId);
     } catch (error) {
-      console.error('Error retrieving token after authorization:', error);
+      log.error(
+        new ExtendedError(
+          'Error retrieving token after authorization', ERROR_TYPE.REGISTRATION_ERROR
+        ),{ file: 'BYODS_TOKEN_MANAGER_FILE', method: 'getServiceAppTokenUsingPAT' }
+      );
+      
       throw error;
     }
   }
@@ -166,7 +184,12 @@ export default class TokenManager {
 
       this.updateServiceAppToken(response.data, orgId);
     } catch (error) {
-      console.error('Error saving service app registration:', error);
+      log.error(
+        new ExtendedError(
+          'Error saving service app registration', ERROR_TYPE.REGISTRATION_ERROR
+        ),{ file: 'BYODS_TOKEN_MANAGER_FILE', method: 'saveServiceAppRegistration' }
+      );
+      
       throw error;
     }
   }

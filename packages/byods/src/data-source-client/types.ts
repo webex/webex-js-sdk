@@ -1,3 +1,28 @@
+import {LOGGER} from '../Logger/types';
+import {BYODSError} from '../Errors';
+
+export interface LoggerConfig {
+  level: LOGGER;
+}
+
+export interface BYODSConfig {
+  logger?: LoggerConfig;
+}
+
+export type BYODSErrorEmitterCallback = (
+  err: BYODSError,
+  finalError?: boolean
+) => void;
+
+  /**
+   * @ignore
+   */
+  getLoggingLevel(); LOGGER;
+
+  function getLoggingLevel() {
+    throw new Error('Function not implemented.');
+  }
+  
 /**
  * Represents the response from a data source.
  *
@@ -58,6 +83,7 @@ export interface DataSourceResponse {
    * The error message associated with the data source response, if any.
    */
   errorMessage?: string;
+
 }
 
 /**
@@ -96,3 +122,4 @@ export interface DataSourceRequest {
    */
   tokenLifetimeMinutes: number;
 }
+
