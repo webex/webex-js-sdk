@@ -24,7 +24,6 @@ export enum CALLING_CLIENT_EVENT_KEYS {
 }
 
 export enum CALL_EVENT_KEYS {
-  SETUP = 'setup',
   ALERTING = 'alerting',
   CALL_ERROR = 'call_error',
   CALLER_ID = 'caller_id',
