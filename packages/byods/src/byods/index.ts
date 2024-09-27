@@ -37,9 +37,14 @@ export default class BYODS {
    * @example
    * const sdk = new BYODS({ clientId: 'your-client-id', clientSecret: 'your-client-secret' });
    */
-  constructor({clientId, clientSecret}: SDKConfig) {
-    this.config = {clientId, clientSecret};
-    this.tokenManager = new TokenManager(clientId, clientSecret);
+  constructor({clientId, clientSecret, tokenStorageAdapter}: SDKConfig) {
+    this.config = {clientId, clientSecret, tokenStorageAdapter};
+    this.tokenManager = new TokenManager(
+      clientId,
+      clientSecret,
+      PRODUCTION_BASE_URL,
+      tokenStorageAdapter
+    );
 
     /**
      * The environment variable `process.env.BYODS_ENVIRONMENT` determines the environment in which the SDK operates.

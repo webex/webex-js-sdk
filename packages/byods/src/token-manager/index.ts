@@ -1,17 +1,19 @@
 import fetch, {Response} from 'node-fetch';
 
 import {APPLICATION_ID_PREFIX, PRODUCTION_BASE_URL} from '../constants';
-import {TokenResponse, OrgServiceAppAuthorization, ServiceAppAuthorizationMap} from '../types';
+import {TokenResponse, OrgServiceAppAuthorization} from '../types';
+import {TokenStorageAdapter} from '../token-storage-adapter/types';
+import {InMemoryTokenStorageAdapter} from '../token-storage-adapter/inMemoryTokenStorage';
 
 /**
  * The token manager for the BYoDS SDK.
  */
 export default class TokenManager {
-  private serviceAppAuthorizations: ServiceAppAuthorizationMap = {};
   private clientId: string;
   private clientSecret: string;
   private serviceAppId: string;
   private baseUrl: string;
+  private tokenStorageAdapter: TokenStorageAdapter;
 
   /**
    * Creates an instance of TokenManager.
@@ -22,7 +24,12 @@ export default class TokenManager {
    * @example
    * const tokenManager = new TokenManager('your-client-id', 'your-client-secret');
    */
-  constructor(clientId: string, clientSecret: string, baseUrl: string = PRODUCTION_BASE_URL) {
+  constructor(
+    clientId: string,
+    clientSecret: string,
+    baseUrl: string = PRODUCTION_BASE_URL,
+    tokenStorageAdapter: TokenStorageAdapter = new InMemoryTokenStorageAdapter()
+  ) {
     if (!clientId || !clientSecret) {
       throw new Error('clientId and clientSecret are required');
     }
@@ -30,6 +37,7 @@ export default class TokenManager {
     this.clientSecret = clientSecret;
     this.baseUrl = baseUrl;
     this.serviceAppId = Buffer.from(`${APPLICATION_ID_PREFIX}${clientId}`).toString('base64');
+    this.tokenStorageAdapter = tokenStorageAdapter;
   }
 
   /**
@@ -41,7 +49,7 @@ export default class TokenManager {
    * tokenManager.updateServiceAppToken(tokenResponse, 'org-id');
    */
   public updateServiceAppToken(data: TokenResponse, orgId: string): void {
-    this.serviceAppAuthorizations[orgId] = {
+    this.tokenStorageAdapter.setToken(orgId, {
       orgId,
       serviceAppToken: {
         accessToken: data.access_token,
@@ -49,7 +57,7 @@ export default class TokenManager {
         expiresAt: new Date(Date.now() + data.expires_in * 1000),
         refreshAccessTokenExpiresAt: new Date(Date.now() + data.refresh_token_expires_in * 1000),
       },
-    };
+    });
   }
 
   /**
@@ -70,11 +78,12 @@ export default class TokenManager {
    * const authorization = await tokenManager.getOrgServiceAppAuthorization('org-id');
    */
   public async getOrgServiceAppAuthorization(orgId: string): Promise<OrgServiceAppAuthorization> {
-    if (!this.serviceAppAuthorizations[orgId]) {
+    const token = this.tokenStorageAdapter.getToken(orgId);
+    if (!token) {
       return Promise.reject(new Error('Service app authorization not found'));
     }
 
-    return Promise.resolve(this.serviceAppAuthorizations[orgId]);
+    return Promise.resolve(token);
   }
 
   /**
