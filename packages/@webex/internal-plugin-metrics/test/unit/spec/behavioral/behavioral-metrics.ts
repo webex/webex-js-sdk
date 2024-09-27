@@ -74,6 +74,45 @@ describe('internal-plugin-metrics', () => {
       sinon.restore();
     });
 
+    describe('#sendEvent', () => {
+      it('should send correctly shaped behavioral event (check name building and internal tagged event building)', () => {
+        // For some reasons `jest` isn't available when testing form build server - so can't use `jest.fn()` here...
+        const requestCalls = [];
+        const request = function(arg) { requestCalls.push(arg) }
+
+        behavioralMetrics.clientMetricsBatcher.request = request;
+        
+        assert.equal(requestCalls.length, 0)
+        behavioralMetrics.submitBehavioralEvent({ product: "webex", agent: "user", target: "foo", verb: "get", payload: {bar:"gee"} })
+        assert.equal(requestCalls.length, 1)
+        assert.deepEqual(requestCalls[0], {
+          context: {
+            app: {version: 'webex-version'},
+            device: {id: 'deviceId'},
+            locale: 'language',
+            os: {
+              name: getOSNameInternal(),
+              version: getOSVersion(),
+            },
+          },
+          metricName: 'webex.user.foo.get',
+          tags: {
+            browser: getBrowserName(),
+            browserHeight: window.innerHeight,
+            browserVersion: getBrowserVersion(),
+            browserWidth: window.innerWidth,
+            domain: window.location.hostname,
+            inIframe: false,
+            locale: window.navigator.language,
+            os: getOSNameInternal(),
+            bar:"gee"
+          },
+          timestamp: requestCalls[0].timestamp, // This is to bypass time check, which is correctly tested below.
+          type: ['behavioral'],
+        });
+      })
+    })
+
     describe('#getContext', () => {
       it('should build context correctly', () => {
         const res = behavioralMetrics.getContext();
@@ -96,7 +135,7 @@ describe('internal-plugin-metrics', () => {
 
     describe('#getDefaultTags', () => {
       it('should build tags correctly', () => {
-        const res = behavioralMetrics.getDefaultTags();
+        const res = behavioralMetrics.getBrowserDetails();
 
         assert.deepEqual(res, {
           browser: getBrowserName(),
@@ -111,25 +150,27 @@ describe('internal-plugin-metrics', () => {
       });
     });
 
-    describe('#isReadyToSubmitBehavioralEvents', () => {
+    describe('#isReadyToSubmitEvents', () => {
       it('should return true when we have a deviceId, false when deviceId is empty or undefined', async () => {
-        assert.equal(true, behavioralMetrics.isReadyToSubmitBehavioralEvents());
+        let deviceIdUrl = webex.internal.device.url;
 
+        // testing case w/o device id url first, as the internal deviceId cache would bypass that flow.
         webex.internal.device.url = "";
-        assert.equal(false, behavioralMetrics.isReadyToSubmitBehavioralEvents());
+        assert.equal(false, behavioralMetrics.isReadyToSubmitEvents());
 
         delete webex.internal.device.url;
-        assert.equal(false, behavioralMetrics.isReadyToSubmitBehavioralEvents());
+        assert.equal(false, behavioralMetrics.isReadyToSubmitEvents());
+
+        webex.internal.device.url = deviceIdUrl;
+        assert.equal(true, behavioralMetrics.isReadyToSubmitEvents());
       });
     });
 
     describe('#createEventObject', () => {
       it('should build event object correctly', async () => {
-        const res = behavioralMetrics.createEventObject({
-          product: 'webex',
-          agent: 'user',
-          target: 'target',
-          verb: 'create',
+        const res = behavioralMetrics.createTaggedEventObject({
+          type:['behavioral'],
+          name:'webex.user.target.create',
           payload: tags,
         });
 
