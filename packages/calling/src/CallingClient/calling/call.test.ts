@@ -1967,7 +1967,7 @@ describe('State Machine handler tests', () => {
       jest.clearAllTimers();
     });
 
-    it('call state is set and timers are set when we receive call state', async () => {
+    it('times out if the next event is not received - 60 seconds timeout', async () => {
       const statusPayload = <WebexRequestPayload>(<unknown>{
         statusCode: 200,
         body: mockStatusBody,
@@ -2022,14 +2022,14 @@ describe('State Machine handler tests', () => {
       call.sendMediaStateMachineEvt(dummyEvent as RoapEvent);
       dummyEvent.type = 'E_RECV_ROAP_ANSWER';
       logSpy.mockClear();
-      jest.advanceTimersByTime(70000);
+      jest.advanceTimersByTime(60000);
       expect(logSpy.mock.calls[0][0]).toBe('Call timed out');
       expect(emitSpy).toHaveBeenCalledWith(CALL_EVENT_KEYS.DISCONNECT, call.getCorrelationId());
       expect(deleteSpy).toHaveBeenCalledTimes(1);
       expect(callManager.callCollection).toStrictEqual({});
     });
 
-    it('times out if the next event is not received - 15 seconds timeout', async () => {
+    it('times out if the next event is not received - 10 seconds timeout', async () => {
       const statusPayload = <WebexRequestPayload>(<unknown>{
         statusCode: 200,
         body: mockStatusBody,
@@ -2050,7 +2050,7 @@ describe('State Machine handler tests', () => {
       await call.sendCallStateMachineEvt(dummyEvent as CallEvent);
       expect(call['callStateMachine'].state.value).toBe('S_SEND_CALL_SETUP');
       logSpy.mockClear();
-      jest.advanceTimersByTime(20000);
+      jest.advanceTimersByTime(10000);
       expect(logSpy.mock.calls[0][0]).toBe('Call timed out');
       expect(emitSpy).toHaveBeenCalledWith(CALL_EVENT_KEYS.DISCONNECT, call.getCorrelationId());
       expect(deleteSpy).toHaveBeenCalledTimes(1);

@@ -158,8 +158,6 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
   private localAudioStream?: LocalMicrophoneStream;
 
-  private callEventsTimeout: NodeJS.Timeout | null = null;
-
   /**
    * Getter to check if the call is muted or not.
    *
