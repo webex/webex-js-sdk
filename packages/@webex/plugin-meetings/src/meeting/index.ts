@@ -5232,6 +5232,9 @@ export default class Meeting extends StatelessWebexPlugin {
         this.meetingFiniteStateMachine.join();
         this.setupLocusMediaRequest();
 
+        // @ts-ignore
+        this.webex.internal.device.meetingStarted();
+
         LoggerProxy.logger.log('Meeting:index#join --> Success');
 
         Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.JOIN_SUCCESS, {
