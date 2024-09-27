@@ -10,6 +10,10 @@ import {
 } from '../constants';
 import {SDKConfig} from '../types';
 import TokenManager from '../token-manager';
+import {BYODSConfig} from '../token-manager/type';
+import {BYODS_FILE} from './constant';
+import log from '../Logger';
+import {LOGGER} from '../Logger/types';
 
 /**
  * The BYoDS SDK.
@@ -24,6 +28,7 @@ export default class BYODS {
   private env: 'production' | 'integration';
   private config: SDKConfig;
   private baseUrl: string;
+  private sdkConfig?: BYODSConfig;
 
   /**
    * The token manager for the SDK.
@@ -37,9 +42,12 @@ export default class BYODS {
    * @example
    * const sdk = new BYODS({ clientId: 'your-client-id', clientSecret: 'your-client-secret' });
    */
-  constructor({clientId, clientSecret}: SDKConfig) {
+  constructor({clientId, clientSecret}: SDKConfig,config?:BYODSConfig) {
     this.config = {clientId, clientSecret};
     this.tokenManager = new TokenManager(clientId, clientSecret);
+    this.sdkConfig = config;
+    const logLevel = this.sdkConfig?.logger?.level ? this.sdkConfig.logger.level : LOGGER.ERROR;
+    log.setLogger(logLevel, BYODS_FILE);
 
     /**
      * The environment variable `process.env.BYODS_ENVIRONMENT` determines the environment in which the SDK operates.

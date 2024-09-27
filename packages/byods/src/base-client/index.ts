@@ -3,13 +3,17 @@ import fetch, {Response, RequestInit} from 'node-fetch';
 import TokenManager from '../token-manager';
 import DataSourceClient from '../data-source-client';
 import {HttpClient, ApiResponse} from '../http-client/types';
+import {BYODSConfig} from '../token-manager/type';
+import {BYODS_BASE_CLIENT_FILE} from './constant';
+import log from '../Logger';
+import {LOGGER} from '../Logger/types';
 
 export default class BaseClient {
   private baseUrl: string;
   private headers: Record<string, string>;
   private tokenManager: TokenManager;
   private orgId: string;
-
+  private sdkConfig?: BYODSConfig;
   public dataSource: DataSourceClient;
 
   /**
@@ -25,13 +29,17 @@ export default class BaseClient {
     baseUrl: string,
     headers: Record<string, string>,
     tokenManager: TokenManager,
-    orgId: string
+    orgId: string,
+    config?:BYODSConfig
   ) {
     this.baseUrl = baseUrl;
     this.headers = headers;
     this.tokenManager = tokenManager;
     this.orgId = orgId;
     this.dataSource = new DataSourceClient(this.getHttpClientForOrg());
+    this.sdkConfig = config;
+    const logLevel = this.sdkConfig?.logger?.level ? this.sdkConfig.logger.level : LOGGER.ERROR;
+    log.setLogger(logLevel, BYODS_BASE_CLIENT_FILE);
   }
 
   /**
