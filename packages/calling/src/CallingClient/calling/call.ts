@@ -285,7 +285,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
           /* CALL SETUP */
           S_RECV_CALL_SETUP: {
             after: {
-              15000: {
+              10000: {
                 target: 'S_CALL_CLEARED',
                 actions: ['triggerTimeout'],
               },
@@ -311,7 +311,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
           },
           S_SEND_CALL_SETUP: {
             after: {
-              15000: {
+              10000: {
                 target: 'S_CALL_CLEARED',
                 actions: ['triggerTimeout'],
               },
@@ -402,7 +402,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
           /* CALL_CONNECT */
           S_RECV_CALL_CONNECT: {
             after: {
-              15000: {
+              10000: {
                 target: 'S_CALL_CLEARED',
                 actions: ['triggerTimeout'],
               },
@@ -428,7 +428,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
           },
           S_SEND_CALL_CONNECT: {
             after: {
-              15000: {
+              10000: {
                 target: 'S_CALL_CLEARED',
                 actions: ['triggerTimeout'],
               },
