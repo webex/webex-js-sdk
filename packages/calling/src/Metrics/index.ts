@@ -285,7 +285,10 @@ class MetricManager implements IMetricManager {
           },
           fields: {
             device_url: this.deviceInfo?.device?.clientDeviceUri,
-            calling_sdk_version: process.env.CALLING_SDK_VERSION || VERSION,
+            calling_sdk_version:
+              process && process.env.CALLING_SDK_VERSION
+                ? process.env.CALLING_SDK_VERSION
+                : VERSION,
           },
           type,
         };

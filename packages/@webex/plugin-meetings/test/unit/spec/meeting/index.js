@@ -1605,6 +1605,7 @@ describe('plugin-meetings', () => {
             const result = await join;
 
             assert.calledOnce(MeetingUtil.joinMeeting);
+            assert.calledOnce(webex.internal.device.meetingStarted);
             assert.calledOnce(meeting.setLocus);
             assert.equal(result, joinMeetingResult);
             assert.calledWith(webex.internal.llm.on, 'online', meeting.handleLLMOnline);

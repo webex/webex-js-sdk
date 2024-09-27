@@ -1406,6 +1406,7 @@ async function handleVbg() {
           "bgImageUrl": blurVBGImageUrl,
           "bgVideoUrl": blurVBGVideoUrl,
           env: integrationEnv.checked ? 'int' : 'prod',
+          preventBackgroundThrottling: true,
         });
         handleEffectsButton(toggleVbgBtn, VBG, effect);
         await localMedia.cameraStream.addEffect(effect);
