@@ -43,8 +43,6 @@ import {
   RESUME_ENDPOINT,
   SPARK_USER_AGENT,
   SUPPLEMENTARY_SERVICES_TIMEOUT,
-  DEFAULT_CALL_STATE_TIMEOUT,
-  EXTENDED_CALL_STATE_TIMEOUT,
   TRANSFER_ENDPOINT,
 } from '../constants';
 import SDKConnector from '../../SDKConnector';
@@ -286,6 +284,12 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
           /* CALL SETUP */
           S_RECV_CALL_SETUP: {
+            after: {
+              15000: {
+                target: 'S_CALL_CLEARED',
+                actions: ['triggerTimeout'],
+              },
+            },
             on: {
               E_SEND_CALL_ALERTING: {
                 target: 'S_SEND_CALL_PROGRESS',
@@ -306,6 +310,12 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
             },
           },
           S_SEND_CALL_SETUP: {
+            after: {
+              15000: {
+                target: 'S_CALL_CLEARED',
+                actions: ['triggerTimeout'],
+              },
+            },
             on: {
               E_RECV_CALL_PROGRESS: {
                 target: 'S_RECV_CALL_PROGRESS',
@@ -332,6 +342,12 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
           /* CALL_PROGRESS */
           S_RECV_CALL_PROGRESS: {
+            after: {
+              60000: {
+                target: 'S_CALL_CLEARED',
+                actions: ['triggerTimeout'],
+              },
+            },
             on: {
               E_RECV_CALL_CONNECT: {
                 target: 'S_RECV_CALL_CONNECT',
@@ -357,6 +373,12 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
             },
           },
           S_SEND_CALL_PROGRESS: {
+            after: {
+              60000: {
+                target: 'S_CALL_CLEARED',
+                actions: ['triggerTimeout'],
+              },
+            },
             on: {
               E_SEND_CALL_CONNECT: {
                 target: 'S_SEND_CALL_CONNECT',
@@ -379,6 +401,12 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
           /* CALL_CONNECT */
           S_RECV_CALL_CONNECT: {
+            after: {
+              15000: {
+                target: 'S_CALL_CLEARED',
+                actions: ['triggerTimeout'],
+              },
+            },
             on: {
               E_CALL_ESTABLISHED: {
                 target: 'S_CALL_ESTABLISHED',
@@ -399,6 +427,12 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
             },
           },
           S_SEND_CALL_CONNECT: {
+            after: {
+              15000: {
+                target: 'S_CALL_CLEARED',
+                actions: ['triggerTimeout'],
+              },
+            },
             on: {
               E_CALL_ESTABLISHED: {
                 target: 'S_CALL_ESTABLISHED',
@@ -610,6 +644,10 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
            * @param event
            */
           unknownState: (context, event: CallEvent) => this.handleUnknownState(event),
+          /**
+           *
+           */
+          triggerTimeout: () => this.handleTimeout(),
         },
       }
     );
@@ -927,8 +965,6 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         method: this.handleOutgoingCallSetup.name,
       });
       this.setCallId(response.body.callId);
-
-      this.setTimeoutForState(DEFAULT_CALL_STATE_TIMEOUT);
     } catch (e) {
       log.warn('Failed to setup the call', {
         file: CALL_FILE,
@@ -1097,8 +1133,6 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    * @param event - Call Events.
    */
   private handleIncomingCallProgress(event: CallEvent) {
-    this.clearCallEventsTimeout();
-
     log.info(`handleIncomingCallProgress: ${this.getCorrelationId()}  `, {
       file: CALL_FILE,
       method: this.handleIncomingCallProgress.name,
@@ -1126,7 +1160,6 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       this.startCallerIdResolution(data.callerId);
     }
     this.emit(CALL_EVENT_KEYS.PROGRESS, this.correlationId);
-    this.setTimeoutForState(DEFAULT_CALL_STATE_TIMEOUT);
   }
 
   /**
@@ -1176,7 +1209,6 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    */
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private async handleOutgoingCallAlerting(event: CallEvent) {
-    this.clearCallEventsTimeout();
     log.info(`handleOutgoingCallAlerting: ${this.getCorrelationId()}  `, {
       file: CALL_FILE,
       method: this.handleOutgoingCallAlerting.name,
@@ -1189,7 +1221,6 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         file: CALL_FILE,
         method: this.handleOutgoingCallAlerting.name,
       });
-      this.setTimeoutForState(DEFAULT_CALL_STATE_TIMEOUT);
     } catch (err) {
       log.warn('Failed to signal call progression', {
         file: CALL_FILE,
@@ -1221,7 +1252,6 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    */
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private handleIncomingCallConnect(event: CallEvent) {
-    this.clearCallEventsTimeout();
     log.info(`handleIncomingCallConnect: ${this.getCorrelationId()}  `, {
       file: CALL_FILE,
       method: this.handleIncomingCallConnect.name,
@@ -1235,7 +1265,6 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       this.mediaNegotiationCompleted = false;
       this.sendCallStateMachineEvt({type: 'E_CALL_ESTABLISHED'});
     }
-    this.setTimeoutForState(EXTENDED_CALL_STATE_TIMEOUT);
   }
 
   /**
@@ -1245,7 +1274,6 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    */
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private async handleOutgoingCallConnect(event: CallEvent) {
-    this.clearCallEventsTimeout();
     log.info(`handleOutgoingCallConnect: ${this.getCorrelationId()}  `, {
       file: CALL_FILE,
       method: this.handleOutgoingCallConnect.name,
@@ -1272,7 +1300,6 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         file: CALL_FILE,
         method: this.handleOutgoingCallConnect.name,
       });
-      this.setTimeoutForState(EXTENDED_CALL_STATE_TIMEOUT);
     } catch (err) {
       log.warn('Failed to connect the call', {
         file: CALL_FILE,
@@ -1397,7 +1424,6 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    */
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private handleCallEstablished(event: CallEvent) {
-    this.clearCallEventsTimeout();
     log.info(`handleCallEstablished: ${this.getCorrelationId()}  `, {
       file: CALL_FILE,
       method: this.handleCallEstablished.name,
@@ -2812,52 +2838,23 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
   }
 
   /**
-   * Create a timeout for the next expected state
-   * @param expectedStates - An array of next expected states
-   * @param timeoutDuration - Timeout duration in milliseconds after which the call will be disconnected
-   * @param errorMessage - Error message to be emitted if the call is not in the expected state in expected time
-   */
-  private setTimeoutForState(timeoutDuration: number) {
-    this.callEventsTimeout = setTimeout(() => {
-      const expectedStates = this.callStateMachine.state.nextEvents;
-      const currentState = this.callStateMachine.state.value;
-      this.handleTimeout(expectedStates, `Call timed out in state: ${currentState}`);
-    }, timeoutDuration);
-  }
-
-  /**
    * Handle timeout for the missed events
    * @param expectedStates - An array of next expected states
    * @param errorMessage - Error message to be emitted if the call is not in the expected state in expected time
    */
-  private async handleTimeout(expectedStates: string[], errorMessage: string) {
-    if (
-      this.callStateMachine.state.value &&
-      !expectedStates.includes(this.callStateMachine.state.value.toString())
-    ) {
-      log.warn(errorMessage, {
-        file: CALL_FILE,
-        method: 'handleTimeout',
-      });
-      this.deleteCb(this.getCorrelationId());
-      this.emit(CALL_EVENT_KEYS.DISCONNECT, this.getCorrelationId());
-      const response = await this.delete();
+  private async handleTimeout() {
+    log.warn(`Call timed out`, {
+      file: CALL_FILE,
+      method: 'handleTimeout',
+    });
+    this.deleteCb(this.getCorrelationId());
+    this.emit(CALL_EVENT_KEYS.DISCONNECT, this.getCorrelationId());
+    const response = await this.delete();
 
-      log.log(`handleTimeout: Response code: ${response.statusCode}`, {
-        file: CALL_FILE,
-        method: this.handleTimeout.name,
-      });
-    }
-  }
-
-  /**
-   * Clears the timeout if expected state is reached
-   */
-  private clearCallEventsTimeout() {
-    if (this.callEventsTimeout) {
-      clearTimeout(this.callEventsTimeout);
-      this.callEventsTimeout = null;
-    }
+    log.log(`handleTimeout: Response code: ${response.statusCode}`, {
+      file: CALL_FILE,
+      method: this.handleTimeout.name,
+    });
   }
 }
 

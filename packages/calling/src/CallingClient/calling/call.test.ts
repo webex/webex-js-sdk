@@ -1976,22 +1976,20 @@ describe('State Machine handler tests', () => {
         type: 'E_SEND_CALL_SETUP',
         data: undefined as any,
       };
-      const setTimeoutForStateSpy = jest.spyOn(call as any, 'setTimeoutForState');
-      const clearCallEventsTimeoutSpy = jest.spyOn(call as any, 'clearCallEventsTimeout');
+      const logSpy = jest.spyOn(log, 'warn');
+      const emitSpy = jest.spyOn(call, 'emit');
+      const deleteSpy = jest.spyOn(call as any, 'delete');
+      callManager.callCollection = {};
 
       webex.request.mockReturnValue(statusPayload);
 
       // handleOutgoingCallSetup is asynchronous
       await call.sendCallStateMachineEvt(dummyEvent as CallEvent);
       expect(call['callStateMachine'].state.value).toBe('S_SEND_CALL_SETUP');
-      expect(setTimeoutForStateSpy).toHaveBeenCalledWith(20000);
-      expect(clearCallEventsTimeoutSpy).not.toHaveBeenCalledTimes(1);
 
       dummyEvent.type = 'E_RECV_CALL_PROGRESS';
       call.sendCallStateMachineEvt(dummyEvent as CallEvent);
       expect(call['callStateMachine'].state.value).toBe('S_RECV_CALL_PROGRESS');
-      expect(setTimeoutForStateSpy).toHaveBeenCalledWith(20000);
-      expect(clearCallEventsTimeoutSpy).toHaveBeenCalledTimes(1);
 
       // Media setup for the call
       dummyEvent.type = 'E_SEND_ROAP_OFFER';
@@ -2023,94 +2021,15 @@ describe('State Machine handler tests', () => {
       dummyEvent.type = 'E_SEND_ROAP_OFFER';
       call.sendMediaStateMachineEvt(dummyEvent as RoapEvent);
       dummyEvent.type = 'E_RECV_ROAP_ANSWER';
-      call.sendMediaStateMachineEvt(dummyEvent as RoapEvent);
-      call.sendMediaStateMachineEvt(dummyOkEvent as RoapEvent);
-
-      setTimeoutForStateSpy.mockClear();
-      clearCallEventsTimeoutSpy.mockClear();
-
-      dummyEvent.type = 'E_RECV_CALL_CONNECT';
-      call.sendCallStateMachineEvt(dummyEvent as CallEvent);
-      expect(call['callStateMachine'].state.value).toBe('S_CALL_ESTABLISHED');
-      expect(setTimeoutForStateSpy).toHaveBeenCalledWith(60000);
-      // 1st time when we receive call connect, we clear the timeout
-      // 2nd time when we receive call established, we clear the timeout
-      expect(clearCallEventsTimeoutSpy).toHaveBeenCalledTimes(2);
-
-      expect(call.isConnected()).toBe(true);
+      logSpy.mockClear();
+      jest.advanceTimersByTime(70000);
+      expect(logSpy.mock.calls[0][0]).toBe('Call timed out');
+      expect(emitSpy).toHaveBeenCalledWith(CALL_EVENT_KEYS.DISCONNECT, call.getCorrelationId());
+      expect(deleteSpy).toHaveBeenCalledTimes(1);
+      expect(callManager.callCollection).toStrictEqual({});
     });
 
-    it('call state is set and timers are set when we receive call state - for code coverage', async () => {
-      const statusPayload = <WebexRequestPayload>(<unknown>{
-        statusCode: 200,
-        body: mockStatusBody,
-      });
-      const dummyEvent = {
-        type: 'E_RECV_CALL_SETUP',
-        data: undefined as any,
-      };
-      const setTimeoutForStateSpy = jest.spyOn(call as any, 'setTimeoutForState');
-      const clearCallEventsTimeoutSpy = jest.spyOn(call as any, 'clearCallEventsTimeout');
-
-      webex.request.mockReturnValue(statusPayload);
-
-      await call.sendCallStateMachineEvt(dummyEvent as CallEvent);
-      expect(call['callStateMachine'].state.value).toBe('S_SEND_CALL_PROGRESS');
-
-      expect(setTimeoutForStateSpy).toHaveBeenCalledWith(20000);
-
-      dummyEvent.type = 'E_SEND_CALL_ALERTING';
-      call.sendCallStateMachineEvt(dummyEvent as CallEvent);
-
-      expect(call['callStateMachine'].state.value).toBe('S_SEND_CALL_PROGRESS');
-      expect(setTimeoutForStateSpy).toHaveBeenCalledWith(20000);
-      expect(clearCallEventsTimeoutSpy).toHaveBeenCalledTimes(1);
-
-      // Media setup for the call
-      dummyEvent.type = 'E_SEND_ROAP_OFFER';
-      call.sendMediaStateMachineEvt(dummyEvent as RoapEvent);
-
-      dummyEvent.data = {
-        seq: 1,
-        messageType: 'OFFER',
-        sdp: 'sdp',
-      };
-      call.sendMediaStateMachineEvt(dummyEvent as RoapEvent);
-
-      dummyEvent.type = 'E_RECV_ROAP_ANSWER';
-      call.sendMediaStateMachineEvt(dummyEvent as RoapEvent);
-
-      const dummyOkEvent = {
-        type: 'E_ROAP_OK',
-        data: {
-          received: false,
-          message: {
-            seq: 1,
-            messageType: 'OK',
-          },
-        },
-      };
-      call.sendMediaStateMachineEvt(dummyOkEvent as RoapEvent);
-      dummyEvent.type = 'E_RECV_ROAP_OFFER_REQUEST';
-      call.sendMediaStateMachineEvt(dummyEvent as RoapEvent);
-      dummyEvent.type = 'E_SEND_ROAP_OFFER';
-      call.sendMediaStateMachineEvt(dummyEvent as RoapEvent);
-      dummyEvent.type = 'E_RECV_ROAP_ANSWER';
-      call.sendMediaStateMachineEvt(dummyEvent as RoapEvent);
-      call.sendMediaStateMachineEvt(dummyOkEvent as RoapEvent);
-
-      setTimeoutForStateSpy.mockClear();
-      clearCallEventsTimeoutSpy.mockClear();
-
-      dummyEvent.type = 'E_SEND_CALL_CONNECT';
-      await call.sendCallStateMachineEvt(dummyEvent as CallEvent);
-      expect(setTimeoutForStateSpy).toHaveBeenCalledWith(60000);
-
-      expect(call['callStateMachine'].state.value).toBe('S_CALL_ESTABLISHED');
-      expect(call.isConnected()).toBe(true);
-    });
-
-    it('times out if the next event is not received', async () => {
+    it('times out if the next event is not received - 15 seconds timeout', async () => {
       const statusPayload = <WebexRequestPayload>(<unknown>{
         statusCode: 200,
         body: mockStatusBody,
@@ -2131,8 +2050,8 @@ describe('State Machine handler tests', () => {
       await call.sendCallStateMachineEvt(dummyEvent as CallEvent);
       expect(call['callStateMachine'].state.value).toBe('S_SEND_CALL_SETUP');
       logSpy.mockClear();
-      jest.advanceTimersByTime(70000);
-      expect(logSpy.mock.calls[0][0]).toBe('Call timed out in state: S_SEND_CALL_SETUP');
+      jest.advanceTimersByTime(20000);
+      expect(logSpy.mock.calls[0][0]).toBe('Call timed out');
       expect(emitSpy).toHaveBeenCalledWith(CALL_EVENT_KEYS.DISCONNECT, call.getCorrelationId());
       expect(deleteSpy).toHaveBeenCalledTimes(1);
       expect(callManager.callCollection).toStrictEqual({});
