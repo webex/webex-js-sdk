@@ -102,7 +102,7 @@ export interface ClientEvent {
   options?: SubmitClientEventOptions;
 }
 
-export interface BehavioralEventContext {
+export interface DeviceContext {
   app: {version: string};
   device: {id: string};
   locale: string;
@@ -112,22 +112,35 @@ export interface BehavioralEventContext {
   };
 }
 
-export interface BehavioralEvent {
-  context: BehavioralEventContext;
+export type MetricType = 'behavioral' | 'operational' | 'business';
+
+type InternalEventPayload = string | number | boolean;
+export type EventPayload = Record<string, InternalEventPayload>;
+export type BehavioralEventPayload = EventPayload; // for compatibilty, can be remove after wxcc-desktop did change their imports.
+
+export interface BusinessEventPayload {
   metricName: string;
-  tags: Record<string, string | number | boolean>;
   timestamp: number;
+  context: DeviceContext;
+  browserDetails: EventPayload;
+  value: EventPayload;
+}
+
+export interface BusinessEvent {
   type: string[];
+  eventPayload: BusinessEventPayload;
 }
 
-export type BehavioralEventPayload = BehavioralEvent['tags'];
-
-export interface OperationalEvent {
-  // TODO: not implemented
-  name: never;
-  payload?: never;
-  options?: never;
+export interface TaggedEvent {
+  context: DeviceContext;
+  metricName: string;
+  tags: EventPayload;
+  timestamp: number;
+  type: [MetricType];
 }
+
+export type BehavioralEvent = TaggedEvent;
+export type OperationalEvent = TaggedEvent;
 
 export interface FeatureEvent {
   // TODO: not implemented
@@ -154,7 +167,8 @@ export type MetricEventNames =
   | InternalEvent['name']
   | ClientEvent['name']
   | BehavioralEvent['metricName']
-  | OperationalEvent['name']
+  | OperationalEvent['metricName']
+  | BusinessEvent['eventPayload']['metricName']
   | FeatureEvent['name']
   | MediaQualityEvent['name'];
 
@@ -190,7 +204,7 @@ export type SubmitBehavioralEvent = (args: {
   agent: MetricEventAgent;
   target: string;
   verb: MetricEventVerb;
-  payload?: BehavioralEventPayload;
+  payload?: EventPayload;
 }) => void;
 
 export type SubmitClientEvent = (args: {
@@ -200,9 +214,8 @@ export type SubmitClientEvent = (args: {
 }) => Promise<any>;
 
 export type SubmitOperationalEvent = (args: {
-  name: OperationalEvent['name'];
-  payload?: RecursivePartial<OperationalEvent['payload']>;
-  options?: any;
+  name: OperationalEvent['metricName'];
+  payload: EventPayload;
 }) => void;
 
 export type SubmitMQE = (args: {

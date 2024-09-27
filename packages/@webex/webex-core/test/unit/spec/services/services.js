@@ -290,6 +290,61 @@ describe('webex-core', () => {
       });
     });
 
+    describe('replaceHostFromHostmap', () => {
+      it('returns the same uri if the hostmap is not set', () => {
+        services._hostCatalog = null;
+
+        const uri = 'http://example.com';
+
+        assert.equal(services.replaceHostFromHostmap(uri), uri);
+      });
+
+      it('returns the same uri if the hostmap does not contain the host', () => {
+        services._hostCatalog = {
+          'not-example.com': [
+            {
+              host: 'example-1.com',
+              ttl: -1,
+              priority: 5,
+              id: '0:0:0:example',
+            },
+          ],
+        };
+
+        const uri = 'http://example.com';
+
+        assert.equal(services.replaceHostFromHostmap(uri), uri);
+      });
+
+      it('returns the original uri if the hostmap has no hosts for the host', () => {
+
+        services._hostCatalog = {
+          'example.com': [],
+        };
+
+        const uri = 'http://example.com';
+
+        assert.equal(services.replaceHostFromHostmap(uri), uri);
+      });
+
+      it('returns the replaces the host in the uri with the host from the hostmap', () => {
+        services._hostCatalog = {
+          'example.com': [
+            {
+              host: 'example-1.com',
+              ttl: -1,
+              priority: 5,
+              id: '0:0:0:example',
+            },
+          ],
+        };
+
+        const uri = 'http://example.com/somepath';
+
+        assert.equal(services.replaceHostFromHostmap(uri), 'http://example-1.com/somepath');
+      });
+    });
+
     describe('#_formatReceivedHostmap()', () => {
       let serviceHostmap;
       let formattedHM;
