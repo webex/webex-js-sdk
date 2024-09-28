@@ -95,7 +95,7 @@ describe('internal-plugin-metrics', () => {
                 version: getOSVersion(),
               },
             },
-            metricName: 'foobar',
+            key: 'foobar',
             browserDetails: {
               browser: getBrowserName(),
               browserHeight: window.innerHeight,
@@ -106,14 +106,14 @@ describe('internal-plugin-metrics', () => {
               locale: window.navigator.language,
               os: getOSNameInternal(),
             },
-            timestamp: requestCalls[0].eventPayload.timestamp, // This is to bypass time check, which is checked below.
+            client_timestamp: requestCalls[0].eventPayload.client_timestamp, // This is to bypass time check, which is checked below.
             value: {
               bar: "gee"
             }
           },
           type: ['business'],
         });
-        assert.isNumber(requestCalls[0].eventPayload.timestamp)
+        assert.isNumber(requestCalls[0].eventPayload.client_timestamp)
       })
     })
   });
