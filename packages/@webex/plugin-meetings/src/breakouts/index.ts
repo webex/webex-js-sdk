@@ -1,6 +1,7 @@
 /*!
  * Copyright (c) 2015-2023 Cisco Systems, Inc. See LICENSE file.
  */
+import 'jsdom-global/register';
 import {WebexPlugin} from '@webex/webex-core';
 import {debounce, forEach} from 'lodash';
 import LoggerProxy from '../common/logs/logger-proxy';

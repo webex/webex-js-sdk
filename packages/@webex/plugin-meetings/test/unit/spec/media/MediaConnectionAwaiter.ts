@@ -1,3 +1,4 @@
+import 'jsdom-global/register';
 import {assert} from '@webex/test-helper-chai';
 import sinon from 'sinon';
 import {ConnectionState, MediaConnectionEventNames} from '@webex/internal-media-core';
