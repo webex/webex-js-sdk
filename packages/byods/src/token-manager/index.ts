@@ -153,7 +153,7 @@ export default class TokenManager {
         }
       );
 
-      this.updateServiceAppToken(response.data, orgId);
+      await this.updateServiceAppToken(response.data, orgId);
     } catch (error) {
       console.error('Error retrieving token after authorization:', error);
       throw error;

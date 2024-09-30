@@ -208,16 +208,11 @@ describe('TokenManager', () => {
     };
     await tokenManager.updateServiceAppToken(expiredTokenResponse, orgId);
 
-    // Mock the token storage adapter to return the expired token
-    const mockResponse = {
-      json: jest.fn().mockResolvedValue(refreshedTokenResponse),
-      ok: true,
-    } as unknown as Response;
-    (fetch as unknown as jest.MockedFunction<typeof fetch>).mockResolvedValue(mockResponse);
+    httpUtils.post = jest.fn().mockResolvedValueOnce({data: refreshedTokenResponse, status: 200});
+    jest.spyOn(httpUtils, 'post');
   
     const serviceAppAuthorization = await tokenManager.getOrgServiceAppAuthorization(orgId);
-    expect(fetch).toHaveBeenCalledWith(`${baseUrl}/access_token`, {
-      method: 'POST',
+    expect(httpUtils.post).toHaveBeenCalledWith(`${baseUrl}/access_token`, {
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
       },
@@ -226,7 +221,7 @@ describe('TokenManager', () => {
         client_id: clientId,
         client_secret: clientSecret,
         refresh_token: 'valid-refresh-token',
-      }),
+      }).toString(),
     });
   
     expect(serviceAppAuthorization.serviceAppToken.accessToken).toBe('new-access-token');
