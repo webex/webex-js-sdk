@@ -3,11 +3,19 @@ import TokenManager from '../../../../src/token-manager';
 import BaseClient from '../../../../src/base-client';
 import {SDKConfig} from '../../../../src/types';
 import DataSourceClient from '../../../../src/data-source-client';
-import { jwtVerify } from 'jose';
+import { jwtVerify, createRemoteJWKSet } from 'jose';
 
 jest.mock('node-fetch', () => jest.fn());
 
+jest.mock('jose', () => ({
+  jwtVerify: jest.fn(),
+  createRemoteJWKSet: jest.fn()
+}));
+
 describe('BYODS Tests', () => {
+  beforeAll(() => {
+    console.error = jest.fn();
+  });
   const mockSDKConfig: SDKConfig = {
     clientId: 'your-client-id',
     clientSecret: 'your-client-secret',
