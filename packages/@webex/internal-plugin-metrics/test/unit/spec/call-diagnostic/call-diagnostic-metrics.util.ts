@@ -461,6 +461,7 @@ describe('internal-plugin-metrics', () => {
       };
 
       prepareDiagnosticMetricItem(webex, item);
+      assert.deepEqual(item.eventPayload.origin.buildType, 'prod');
       assert.deepEqual(item.eventPayload.origin.upgradeChannel, 'gold');
     });
 
