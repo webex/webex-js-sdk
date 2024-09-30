@@ -102,3 +102,21 @@ export interface ServiceAppAuthorizationMap {
    */
   [orgId: string]: OrgServiceAppAuthorization;
 }
+
+/**
+ * Represents the result of verifying a token.
+ *
+ * @public
+ */
+export interface VerifyTokenResult {
+  /**
+   * Indicates whether the token is valid.
+   */
+  isValid: boolean;
+  /**
+   * The error message if the token is invalid.
+   * If the token is valid, this field is not present.
+   * If the token is invalid, this field contains the error message.
+   */
+  error?: string;
+}

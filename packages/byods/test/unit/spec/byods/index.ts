@@ -39,41 +39,41 @@ describe('BYODS Tests', () => {
     expect(sdk.getClientForOrg('myOrgId').dataSource).toBeInstanceOf(DataSourceClient);
   });
 
-  it('should verify the token and return payload when valid', async () => {
+  it('should return true when token is valid', async () => {
     const jws = 'valid-jwt';
-    const mockPayload = { exp: Math.floor(Date.now() / 1000) + 3600 }; // Token expires in 1 hour
-    const mockProtectedHeader = { alg: 'HS256' };
 
-    (jwtVerify as jest.Mock).mockResolvedValueOnce({
-      payload: mockPayload,
-      protectedHeader: mockProtectedHeader,
+    (jwtVerify as jest.Mock).mockResolvedValue({
+      payload: {},
+      protectedHeader: { alg: 'HS256' },
     });
 
     const result = await sdk.verifyToken(jws);
-    // @ts-ignore 
+
     expect(jwtVerify).toHaveBeenCalledWith(jws, sdk.jwks);
-    expect(result).toEqual(mockPayload);
+    expect(result).toEqual({ isValid: true });
   });
 
-  it('should throw an error if the token has expired', async () => {
+  it('should return false with error if the token has expired', async () => {
     const jws = 'expired-jwt';
-    const mockPayload = { exp: Math.floor(Date.now() / 1000) - 3600 }; // Token expired 1 hour ago
-    const mockProtectedHeader = { alg: 'HS256' };
+    const errorMessage = 'Token has expired';
 
-    (jwtVerify as jest.Mock).mockResolvedValueOnce({
-      payload: mockPayload,
-      protectedHeader: mockProtectedHeader,
-    });
+    (jwtVerify as jest.Mock).mockRejectedValueOnce(new Error(errorMessage));
 
-    await expect(sdk.verifyToken(jws)).rejects.toThrow('Token has expired');
+    const result = await sdk.verifyToken(jws);
+
+    expect(jwtVerify).toHaveBeenCalledWith(jws, sdk.jwks);
+    expect(result).toEqual({ isValid: false, error: errorMessage });
   });
 
-  it('should throw an error if jwtVerify throws an error', async () => {
+  it('should return false with error if jwtVerify throws an error', async () => {
     const jws = 'invalid-jwt';
     const errorMessage = 'Invalid token';
 
     (jwtVerify as jest.Mock).mockRejectedValueOnce(new Error(errorMessage));
 
-    await expect(sdk.verifyToken(jws)).rejects.toThrow(`Failed to verify token: ${errorMessage}`);
+    const result = await sdk.verifyToken(jws);
+
+    expect(jwtVerify).toHaveBeenCalledWith(jws, sdk.jwks);
+    expect(result).toEqual({ isValid: false, error: `Invalid token` });
   });
 });

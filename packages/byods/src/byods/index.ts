@@ -8,7 +8,7 @@ import {
   PRODUCTION_BASE_URL,
   INTEGRATION_BASE_URL,
 } from '../constants';
-import {SDKConfig} from '../types';
+import {SDKConfig, VerifyTokenResult} from '../types';
 import TokenManager from '../token-manager';
 
 /**
@@ -73,20 +73,22 @@ export default class BYODS {
     });
   }
 
-  public async verifyToken(jws: string): Promise<any> {
+  /**
+   * Verifies a token using the public key.
+   * @param {string} jws - The JWS token to verify.
+   * @returns {Promise<VerifyTokenResult>} A promise that resolves to an object containing the result of the verification.
+   * @example
+   * const result = await sdk.verifyToken('jws-token');
+   */
+  public async verifyToken(jws: string): Promise<VerifyTokenResult> {
     try {
-      const {payload} = await jwtVerify(jws, this.jwks);
+      await jwtVerify(jws, this.jwks);
 
-      // Check if the token has expired
-      const currentTime = Math.floor(Date.now() / 1000); // Current time in seconds
-      if (payload.exp && payload.exp < currentTime) {
-        throw new Error('Token has expired');
-      }
-
-      return payload;
+      return {isValid: true};
     } catch (error: any) {
       console.error('Error verifying token:', error.message || error);
-      throw new Error(`Failed to verify token: ${error.message || error}`);
+
+      return {isValid: false, error: error.message || 'Unknown error'};
     }
   }
 
