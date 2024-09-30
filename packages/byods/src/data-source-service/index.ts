@@ -27,6 +27,9 @@ export default class DataSourceService {
    * @param {string} dataSourceId The id of data source
    * @param {number} tokenLifetimeMinutes The Life time minutes for the data source. <=1440
    * @returns {Promise<void>}
+   * @example
+   * const dataSourceService = new DataSourceService(dataSourceClient); Create an instance of dataSourceService by passing instance of dataSourceClient.
+   * dataSourceService.refreshDataSourceToken(12345, 60); Invoke refreshDataSourceToken method by invoking dataSourceId and tokenLifetimeMinutes.
    */
 
   public async refreshDataSourceToken(
@@ -36,11 +39,14 @@ export default class DataSourceService {
     try {
       if (dataSourceId) {
         if (tokenLifetimeMinutes) {
-          this.startAutoRefresh(dataSourceId, tokenLifetimeMinutes - 5);
+          const reducedTokenLifetimeMinutes = await this.getReduceTokenLifetimeMinutes(
+            tokenLifetimeMinutes
+          );
+          this.startAutoRefresh(dataSourceId, reducedTokenLifetimeMinutes);
         } else {
           console.log('tokenLifetimeMinutes is not provided, setting up default value');
-          tokenLifetimeMinutes = 55;
-          this.startAutoRefresh(dataSourceId, tokenLifetimeMinutes);
+          const reducedTokenLifetimeMinutes = await this.getReduceTokenLifetimeMinutes(60);
+          this.startAutoRefresh(dataSourceId, reducedTokenLifetimeMinutes);
         }
       } else {
         console.log('Required field is missing, Please pass dataSourceId.');
@@ -48,6 +54,22 @@ export default class DataSourceService {
     } catch (error) {
       console.log('Encountered some error, error is', error);
     }
+  }
+
+  /**
+   * This Private method will be used to reduce the tokenLifetimeMinutes from 5% to 10%
+   * @param {number} tokenLifetimeMinutes The Life time minutes for the data source. <=1440
+   * @returns {number} It returns a reduced token lifetime minutes.
+   * @example
+   */
+
+  private async getReduceTokenLifetimeMinutes(tokenLifetimeMinutes: number): Promise<number> {
+    // Below code will generate a random percentage between 5% and 10%
+    const randomPercentage = Math.random() * (10 - 5) + 5;
+    // Then calculate the reducedTokenLifetimeMinutes
+    const reducedTokenLifetimeMinutes = tokenLifetimeMinutes * (1 - randomPercentage / 100);
+
+    return reducedTokenLifetimeMinutes;
   }
 
   /**
@@ -59,7 +81,7 @@ export default class DataSourceService {
 
   private async startAutoRefresh(
     dataSourceId: string,
-    tokenLifetimeMinutes?: number
+    tokenLifetimeMinutes: number
   ): Promise<void> {
     try {
       // Call the get method to fetch the dataSource details & then call the update method to update the token!
@@ -79,16 +101,17 @@ export default class DataSourceService {
         .catch((error: any) => {
           console.log('error while calling the get method to update the dataSource', error);
         });
-
-      await this.dataSourceClient
-        .update(dataSourceId, payloadForDataSourceUpdateMethod)
-        .then((response) => {
-          console.log('dataSource has been updated successfully!', response);
-        })
-        .catch((error) => {
-          console.log('error while updating the dataSource', error);
-        });
-      console.log('dataSource has been refreshed successfully');
+      setInterval(async () => {
+        await this.dataSourceClient
+          .update(dataSourceId, payloadForDataSourceUpdateMethod)
+          .then((response) => {
+            console.log('dataSource has been updated successfully!', response);
+          })
+          .catch((error) => {
+            console.log('error while updating the dataSource', error);
+          });
+        console.log('dataSource has been refreshed successfully');
+      }, tokenLifetimeMinutes * 60 * 1000); // Converts minutes to milliseconds.
     } catch (error) {
       console.log('Got error while starting auto refreshing dataSource token', error);
     }
@@ -97,6 +120,9 @@ export default class DataSourceService {
   /**
    * This method will stop auto refreshing the DataSource token.
    * @returns {void}
+   * @example
+   * const dataSourceService = new DataSourceService(dataSourceClient); Create an instance of DataSourceService class.
+   * dataSourceService.stopAutoRefresh(); call the stopAutoRefresh method to stop refreshing the dataSource token.
    */
 
   public stopAutoRefresh(): void {
@@ -114,7 +140,6 @@ export default class DataSourceService {
    * @returns {Promise<JWTPayload>} This method return a promise which eventually resolved to decoded payload.
    */
 
-  // Function to decode a JWS token
   private async decodeJWSTokenAndGetPayload(token: string): Promise<{payload: JWTPayload} | null> {
     try {
       // Decode the token
