@@ -65,7 +65,7 @@ export default class DataSourceService {
 
   private async getReduceTokenLifetimeMinutes(tokenLifetimeMinutes: number): Promise<number> {
     // Below code will generate a random percentage between 5% and 10%
-    const randomPercentage = Math.random() * (10 - 5) + 5;
+    const randomPercentage = Math.random() * (10 - 5) + 7;
     // Then calculate the reducedTokenLifetimeMinutes
     const reducedTokenLifetimeMinutes = tokenLifetimeMinutes * (1 - randomPercentage / 100);
 
@@ -81,7 +81,8 @@ export default class DataSourceService {
 
   private async startAutoRefresh(
     dataSourceId: string,
-    tokenLifetimeMinutes: number
+    tokenLifetimeMinutes: number,
+    nonceGenerator: () => string = uuidv4 // Defaults to uuidv4 if nonceGenerator is not provided.
   ): Promise<void> {
     try {
       // Call the get method to fetch the dataSource details & then call the update method to update the token!
@@ -95,7 +96,7 @@ export default class DataSourceService {
           payloadForDataSourceUpdateMethod.url = jwsTokenPayload.payload.com.cisco.datasource.url;
           payloadForDataSourceUpdateMethod.subject = jwsTokenPayload.payload.sub;
           payloadForDataSourceUpdateMethod.audience = jwsTokenPayload.payload.aud;
-          payloadForDataSourceUpdateMethod.nonce = uuidv4();
+          payloadForDataSourceUpdateMethod.nonce = nonceGenerator(); // Use the provided nonce generator
           payloadForDataSourceUpdateMethod.tokenLifetimeMinutes = tokenLifetimeMinutes;
         })
         .catch((error: any) => {
