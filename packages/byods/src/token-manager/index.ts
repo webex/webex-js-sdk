@@ -1,7 +1,6 @@
-import fetch, {Response} from 'node-fetch';
-
 import {APPLICATION_ID_PREFIX, PRODUCTION_BASE_URL} from '../constants';
 import {TokenResponse, OrgServiceAppAuthorization, ServiceAppToken} from '../types';
+import {httpUtils} from '../http-utils';
 import {TokenStorageAdapter} from '../token-storage-adapter/types';
 import {InMemoryTokenStorageAdapter} from '../token-storage-adapter';
 
@@ -138,10 +137,9 @@ export default class TokenManager {
     headers: Record<string, string> = {}
   ): Promise<void> {
     try {
-      const response: Response = await fetch(
+      const response = await httpUtils.post<TokenResponse>(
         `${this.baseUrl}/applications/${this.serviceAppId}/token`,
         {
-          method: 'POST',
           headers: {
             Authorization: `Bearer ${personalAccessToken}`,
             'Content-Type': 'application/json',
@@ -155,12 +153,7 @@ export default class TokenManager {
         }
       );
 
-      if (!response.ok) {
-        throw new Error(`Failed to retrieve token: ${response.statusText}`);
-      }
-
-      const data: TokenResponse = (await response.json()) as TokenResponse;
-      this.updateServiceAppToken(data, orgId);
+      this.updateServiceAppToken(response.data, orgId);
     } catch (error) {
       console.error('Error retrieving token after authorization:', error);
       throw error;
@@ -212,8 +205,7 @@ export default class TokenManager {
     headers: Record<string, string> = {}
   ): Promise<void> {
     try {
-      const response: Response = await fetch(`${this.baseUrl}/access_token`, {
-        method: 'POST',
+      const response = await httpUtils.post<TokenResponse>(`${this.baseUrl}/access_token`, {
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded', // https://developer.webex.com/docs/login-with-webex#access-token-endpoint
           ...headers,
@@ -223,15 +215,10 @@ export default class TokenManager {
           client_id: this.clientId,
           client_secret: this.clientSecret,
           refresh_token: refreshToken,
-        }),
+        }).toString(),
       });
 
-      if (!response.ok) {
-        throw new Error(`Failed to save service app registration: ${response.statusText}`);
-      }
-
-      const data: TokenResponse = (await response.json()) as TokenResponse;
-      await this.updateServiceAppToken(data, orgId);
+      await this.updateServiceAppToken(response.data, orgId);
     } catch (error) {
       console.error('Error saving service app registration:', error);
       throw error;
