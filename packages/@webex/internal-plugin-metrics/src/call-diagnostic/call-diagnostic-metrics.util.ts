@@ -237,7 +237,7 @@ export const prepareDiagnosticMetricItem = (webex: any, item: any) => {
     item.eventPayload?.event?.eventData?.markAsTestEvent
   );
 
-  // Set upgradeChannel to 'gold' if buildType is 'prod', otherwise undefined
+  // Set upgradeChannel to 'gold' if buildType is 'prod', otherwise to the buildType value
   const upgradeChannel = buildType === 'prod' ? 'gold' : buildType;
 
   const origin: Partial<Event['origin']> = {
