@@ -1955,6 +1955,108 @@ describe('State Machine handler tests', () => {
       method: 'handleCallHold',
     });
   });
+
+  describe('Call event timers tests', () => {
+    let callManager;
+    beforeEach(() => {
+      jest.useFakeTimers();
+      callManager = getCallManager(webex, defaultServiceIndicator);
+    });
+
+    afterEach(() => {
+      jest.clearAllTimers();
+    });
+
+    it('times out if the next event is not received - 60 seconds timeout', async () => {
+      const statusPayload = <WebexRequestPayload>(<unknown>{
+        statusCode: 200,
+        body: mockStatusBody,
+      });
+      const dummyEvent = {
+        type: 'E_SEND_CALL_SETUP',
+        data: undefined as any,
+      };
+      const logSpy = jest.spyOn(log, 'warn');
+      const emitSpy = jest.spyOn(call, 'emit');
+      const deleteSpy = jest.spyOn(call as any, 'delete');
+      callManager.callCollection = {};
+
+      webex.request.mockReturnValue(statusPayload);
+
+      // handleOutgoingCallSetup is asynchronous
+      await call.sendCallStateMachineEvt(dummyEvent as CallEvent);
+      expect(call['callStateMachine'].state.value).toBe('S_SEND_CALL_SETUP');
+
+      dummyEvent.type = 'E_RECV_CALL_PROGRESS';
+      call.sendCallStateMachineEvt(dummyEvent as CallEvent);
+      expect(call['callStateMachine'].state.value).toBe('S_RECV_CALL_PROGRESS');
+
+      // Media setup for the call
+      dummyEvent.type = 'E_SEND_ROAP_OFFER';
+      call.sendMediaStateMachineEvt(dummyEvent as RoapEvent);
+
+      dummyEvent.data = {
+        seq: 1,
+        messageType: 'OFFER',
+        sdp: 'sdp',
+      };
+      call.sendMediaStateMachineEvt(dummyEvent as RoapEvent);
+
+      dummyEvent.type = 'E_RECV_ROAP_ANSWER';
+      call.sendMediaStateMachineEvt(dummyEvent as RoapEvent);
+
+      const dummyOkEvent = {
+        type: 'E_ROAP_OK',
+        data: {
+          received: false,
+          message: {
+            seq: 1,
+            messageType: 'OK',
+          },
+        },
+      };
+      call.sendMediaStateMachineEvt(dummyOkEvent as RoapEvent);
+      dummyEvent.type = 'E_RECV_ROAP_OFFER_REQUEST';
+      call.sendMediaStateMachineEvt(dummyEvent as RoapEvent);
+      dummyEvent.type = 'E_SEND_ROAP_OFFER';
+      call.sendMediaStateMachineEvt(dummyEvent as RoapEvent);
+      dummyEvent.type = 'E_RECV_ROAP_ANSWER';
+      logSpy.mockClear();
+      jest.advanceTimersByTime(60000);
+      expect(logSpy.mock.calls[0][0]).toBe('Call timed out');
+      expect(emitSpy).toHaveBeenCalledWith(CALL_EVENT_KEYS.DISCONNECT, call.getCorrelationId());
+      expect(deleteSpy).toHaveBeenCalledTimes(1);
+      expect(callManager.callCollection).toStrictEqual({});
+    });
+
+    it('times out if the next event is not received - 10 seconds timeout', async () => {
+      const statusPayload = <WebexRequestPayload>(<unknown>{
+        statusCode: 200,
+        body: mockStatusBody,
+      });
+      const dummyEvent = {
+        type: 'E_SEND_CALL_SETUP',
+        data: undefined as any,
+      };
+      callManager.callCollection = {};
+      const call = callManager.createCall(dest, CallDirection.OUTBOUND, deviceId, mockLineId);
+      const emitSpy = jest.spyOn(call, 'emit');
+      const deleteSpy = jest.spyOn(call as any, 'delete');
+      const logSpy = jest.spyOn(log, 'warn');
+      webex.request.mockReturnValue(statusPayload);
+      expect(Object.keys(callManager.callCollection)[0]).toBe(call.getCorrelationId());
+
+      // handleOutgoingCallSetup is asynchronous
+      await call.sendCallStateMachineEvt(dummyEvent as CallEvent);
+      expect(call['callStateMachine'].state.value).toBe('S_SEND_CALL_SETUP');
+      logSpy.mockClear();
+      jest.advanceTimersByTime(10000);
+      expect(logSpy.mock.calls[0][0]).toBe('Call timed out');
+      expect(emitSpy).toHaveBeenCalledWith(CALL_EVENT_KEYS.DISCONNECT, call.getCorrelationId());
+      expect(deleteSpy).toHaveBeenCalledTimes(1);
+      expect(callManager.callCollection).toStrictEqual({});
+    });
+  });
 });
 
 describe('Supplementary Services tests', () => {
