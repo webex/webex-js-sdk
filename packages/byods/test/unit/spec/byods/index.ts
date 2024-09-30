@@ -39,39 +39,39 @@ describe('BYODS Tests', () => {
     expect(sdk.getClientForOrg('myOrgId').dataSource).toBeInstanceOf(DataSourceClient);
   });
 
-  it('should return true when token is valid', async () => {
-    const jws = 'valid-jwt';
+  it('should return true when JWS token is valid', async () => {
+    const jws = 'valid-jws';
 
     (jwtVerify as jest.Mock).mockResolvedValue({
       payload: {},
       protectedHeader: { alg: 'HS256' },
     });
 
-    const result = await sdk.verifyToken(jws);
+    const result = await sdk.verifyJWSToken(jws);
 
     expect(jwtVerify).toHaveBeenCalledWith(jws, sdk.jwks);
     expect(result).toEqual({ isValid: true });
   });
 
-  it('should return false with error if the token has expired', async () => {
-    const jws = 'expired-jwt';
+  it('should return false with error if the JWS token has expired', async () => {
+    const jws = 'expired-jws';
     const errorMessage = 'Token has expired';
 
     (jwtVerify as jest.Mock).mockRejectedValueOnce(new Error(errorMessage));
 
-    const result = await sdk.verifyToken(jws);
+    const result = await sdk.verifyJWSToken(jws);
 
     expect(jwtVerify).toHaveBeenCalledWith(jws, sdk.jwks);
     expect(result).toEqual({ isValid: false, error: errorMessage });
   });
 
-  it('should return false with error if jwtVerify throws an error', async () => {
-    const jws = 'invalid-jwt';
+  it('should return false with error if JWS Verify throws an error', async () => {
+    const jws = 'invalid-jws';
     const errorMessage = 'Invalid token';
 
     (jwtVerify as jest.Mock).mockRejectedValueOnce(new Error(errorMessage));
 
-    const result = await sdk.verifyToken(jws);
+    const result = await sdk.verifyJWSToken(jws);
 
     expect(jwtVerify).toHaveBeenCalledWith(jws, sdk.jwks);
     expect(result).toEqual({ isValid: false, error: `Invalid token` });

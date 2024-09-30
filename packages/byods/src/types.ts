@@ -104,19 +104,19 @@ export interface ServiceAppAuthorizationMap {
 }
 
 /**
- * Represents the result of verifying a token.
+ * Represents the result of verifying a JWS token.
  *
  * @public
  */
-export interface VerifyTokenResult {
+export interface JWSTokenVerificationResult {
   /**
    * Indicates whether the token is valid.
    */
   isValid: boolean;
   /**
-   * The error message if the token is invalid.
-   * If the token is valid, this field is not present.
-   * If the token is invalid, this field contains the error message.
+   * The error message if the JWS token is invalid.
+   * If the JWS token is valid, this field is not present.
+   * If the JWS token is invalid, this field contains the error message.
    */
   error?: string;
 }

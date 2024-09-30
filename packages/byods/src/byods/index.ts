@@ -8,7 +8,7 @@ import {
   PRODUCTION_BASE_URL,
   INTEGRATION_BASE_URL,
 } from '../constants';
-import {SDKConfig, VerifyTokenResult} from '../types';
+import {SDKConfig, JWSTokenVerificationResult} from '../types';
 import TokenManager from '../token-manager';
 
 /**
@@ -74,22 +74,25 @@ export default class BYODS {
   }
 
   /**
-   * Verifies a token using the public key.
+   * Verifies a JWS token using the public key.
    * @param {string} jws - The JWS token to verify.
-   * @returns {Promise<VerifyTokenResult>} A promise that resolves to an object containing the result of the verification.
+   * @returns {Promise<JWSTokenVerificationResult>} A promise that resolves to an object containing the result of the verification.
    * @example
-   * const result = await sdk.verifyToken('jws-token');
+   * const result = await sdk.verifyJWSToken('jws-token');
    */
-  public async verifyToken(jws: string): Promise<VerifyTokenResult> {
+  public async verifyJWSToken(jws: string): Promise<JWSTokenVerificationResult> {
+    const result: JWSTokenVerificationResult = {isValid: false};
     try {
       await jwtVerify(jws, this.jwks);
 
-      return {isValid: true};
+      result.isValid = true;
     } catch (error: any) {
-      console.error('Error verifying token:', error.message || error);
-
-      return {isValid: false, error: error.message || 'Unknown error'};
+      console.error('Error verifying JWS token:', error.message || error);
+      result.isValid = false;
+      result.error = error.message || 'Unknown error';
     }
+
+    return result;
   }
 
   /**
