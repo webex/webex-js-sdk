@@ -10,7 +10,7 @@ import {
 } from '../constants';
 import {SDKConfig} from '../types';
 import TokenManager from '../token-manager';
-import {InMemoryTokenStorageAdapter} from '../token-storage-adapter/index';
+import {InMemoryTokenStorageAdapter} from '../token-storage-adapter';
 
 /**
  * The BYoDS SDK.

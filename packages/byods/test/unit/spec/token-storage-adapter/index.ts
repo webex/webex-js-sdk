@@ -24,9 +24,11 @@ describe('InMemoryTokenStorageAdapter', () => {
     expect(retrievedToken).toEqual(token);
   });
 
-  test('should return undefined for a non-existent token', async () => {
-    const retrievedToken = await tokenStorage.getToken('non-existent-org');
-    expect(retrievedToken).toBeUndefined();
+  test('should throw error for a non-existent token', async () => {
+    const nonExistentOrgId = 'non-existent-org';
+    await expect(tokenStorage.getToken(nonExistentOrgId)).rejects.toThrow(
+      `Service App token not found for org ID: ${nonExistentOrgId}`
+    );
   });
 
   test('should list all stored tokens', async () => {
@@ -53,8 +55,9 @@ describe('InMemoryTokenStorageAdapter', () => {
     await tokenStorage.setToken(orgId, token);
     await tokenStorage.deleteToken(orgId);
 
-    const retrievedToken = await tokenStorage.getToken(orgId);
-    expect(retrievedToken).toBeUndefined();
+    await expect(tokenStorage.getToken(orgId)).rejects.toThrow(
+      `Service App token not found for org ID: ${orgId}`
+    );
   });
 
   test('should reset all tokens', async () => {

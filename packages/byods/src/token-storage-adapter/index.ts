@@ -10,7 +10,11 @@ export class InMemoryTokenStorageAdapter implements TokenStorageAdapter {
   /**
    * The local memory cache for the tokens.
    */
-  private storage: {[orgId: string]: OrgServiceAppAuthorization} = {};
+  private tokenCache: {[orgId: string]: OrgServiceAppAuthorization};
+
+  constructor(tokenCache: {[orgId: string]: OrgServiceAppAuthorization} = {}) {
+    this.tokenCache = tokenCache;
+  }
 
   /**
    * Method to set the token for an organization.
@@ -20,7 +24,7 @@ export class InMemoryTokenStorageAdapter implements TokenStorageAdapter {
    * await storageAdapter.setToken('org-id', token);
    */
   async setToken(orgId: string, token: OrgServiceAppAuthorization): Promise<void> {
-    this.storage[orgId] = token;
+    this.tokenCache[orgId] = token;
   }
 
   /**
@@ -30,8 +34,11 @@ export class InMemoryTokenStorageAdapter implements TokenStorageAdapter {
    * @example
    * const token = await storageAdapter.getToken('org-id');
    */
-  async getToken(orgId: string): Promise<OrgServiceAppAuthorization | undefined> {
-    return this.storage[orgId];
+  async getToken(orgId: string): Promise<OrgServiceAppAuthorization> {
+    if (this.tokenCache[orgId]) {
+      return this.tokenCache[orgId];
+    }
+    throw new Error(`Service App token not found for org ID: ${orgId}`);
   }
 
   /**
@@ -41,7 +48,7 @@ export class InMemoryTokenStorageAdapter implements TokenStorageAdapter {
    * const tokens = await storageAdapter.listTokens();
    */
   async listTokens(): Promise<OrgServiceAppAuthorization[]> {
-    return Object.values(this.storage);
+    return Object.values(this.tokenCache);
   }
 
   /**
@@ -52,7 +59,10 @@ export class InMemoryTokenStorageAdapter implements TokenStorageAdapter {
    * await storageAdapter.deleteToken('org-id');
    */
   async deleteToken(orgId: string): Promise<void> {
-    delete this.storage[orgId];
+    if (!this.tokenCache[orgId]) {
+      throw new Error(`Service App token not found for org ID: ${orgId}`);
+    }
+    delete this.tokenCache[orgId];
   }
 
   /**
@@ -62,6 +72,6 @@ export class InMemoryTokenStorageAdapter implements TokenStorageAdapter {
    * await storageAdapter.resetTokens();
    */
   async resetTokens(): Promise<void> {
-    this.storage = {};
+    this.tokenCache = {};
   }
 }

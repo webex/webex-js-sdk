@@ -119,7 +119,7 @@ describe('TokenManager', () => {
 
   it('should throw error if service app authorization not found', async () => {
     await expect(tokenManager.getOrgServiceAppAuthorization(orgId)).rejects.toThrow(
-      'Service app authorization not found'
+      `Service App token not found for org ID: ${orgId}`
     );
   });
 
@@ -161,7 +161,7 @@ describe('TokenManager', () => {
 
   it('should throw error if refresh token is undefined', async () => {
     await expect(tokenManager.refreshServiceAppAccessToken(orgId)).rejects.toThrow(
-      'Service app authorization not found'
+      `Service App token not found for org ID: ${orgId}`
     );
   });
 

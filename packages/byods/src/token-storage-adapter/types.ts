@@ -22,7 +22,7 @@ export interface TokenStorageAdapter {
    * @example
    * const token = await storageAdapter.getToken('org-id');
    */
-  getToken(orgId: string): Promise<OrgServiceAppAuthorization | undefined>;
+  getToken(orgId: string): Promise<OrgServiceAppAuthorization>;
 
   /**
    * Method which returns the list of all tokens stored in the TokenStorageAdapter.
