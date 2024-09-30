@@ -460,13 +460,22 @@ describe('internal-plugin-metrics', () => {
         type: ['diagnostic-event'],
       };
 
+      delete item.eventPayload.origin.buildType;
+      item.eventPayload.origin.buildType = 'prod';
+
+      delete item.eventPayload.origin.upgradeChannel;
       prepareDiagnosticMetricItem(webex, item);
       assert.deepEqual(item.eventPayload.origin.upgradeChannel, 'gold');
 
-      delete item.eventPayload.origin.upgradeChannel;
-      item.eventPayload.event.eventData.markAsTestEvent = true;
-      prepareDiagnosticMetricItem(webex, item);
-      assert.deepEqual(item.eventPayload.origin.upgradeChannel, undefined);
+      const otherBuildTypes = ["debug", "test" ,"tap", "analyzer-test"];
+      otherBuildTypes.forEach((buildType) => {
+        delete item.eventPayload.origin.buildType;
+        item.eventPayload.origin.buildType = buildType;
+
+        delete item.eventPayload.origin.upgradeChannel;
+        prepareDiagnosticMetricItem(webex, item);
+        assert.deepEqual(item.eventPayload.origin.upgradeChannel, buildType)
+      });
     });
   });
 
