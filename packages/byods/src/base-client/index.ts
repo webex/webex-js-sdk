@@ -1,8 +1,7 @@
-import fetch, {Response, RequestInit} from 'node-fetch';
-
 import TokenManager from '../token-manager';
 import DataSourceClient from '../data-source-client';
 import {HttpClient, ApiResponse} from '../http-client/types';
+import {httpUtils, HttpRequestInit} from '../http-utils';
 
 export default class BaseClient {
   private baseUrl: string;
@@ -37,17 +36,20 @@ export default class BaseClient {
   /**
    * Makes an HTTP request.
    * @param {string} endpoint - The API endpoint.
-   * @param {RequestInit} [options=\{\}] - The request options.
+   * @param {HttpRequestInit} [options=\{\}] - The request options.
    * @returns {Promise<ApiResponse<T>>} - The API response.
    * @template T
    * @example
    * const response = await client.request('/endpoint', { method: 'GET', headers: {} });
    */
-  public async request<T>(endpoint: string, options: RequestInit = {}): Promise<ApiResponse<T>> {
+  public async request<T>(
+    endpoint: string,
+    options: HttpRequestInit = {}
+  ): Promise<ApiResponse<T>> {
     const url = `${this.baseUrl}${endpoint}`;
     const token = await this.getToken();
 
-    const response: Response = await fetch(url, {
+    return httpUtils.request<T>(url, {
       ...options,
       headers: {
         Authorization: `Bearer ${token}`,
@@ -55,13 +57,6 @@ export default class BaseClient {
         ...options.headers,
       },
     });
-
-    const data: any = await response.json();
-    if (!response.ok) {
-      throw new Error(`Error: ${response.status} - ${data.message}`);
-    }
-
-    return {data, status: response.status};
   }
 
   /**
