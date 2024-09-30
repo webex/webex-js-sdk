@@ -18,6 +18,7 @@ describe('TokenManager', () => {
   beforeEach(() => {
     (fetch as jest.Mock).mockClear();
     tokenManager = new TokenManager(clientId, clientSecret, baseUrl);
+    console.error = jest.fn();
   });
 
   afterEach(() => {

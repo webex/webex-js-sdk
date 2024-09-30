@@ -79,14 +79,19 @@ export default class TokenManager {
    * const authorization = await tokenManager.getOrgServiceAppAuthorization('org-id');
    */
   public async getOrgServiceAppAuthorization(orgId: string): Promise<OrgServiceAppAuthorization> {
-    let token = await this.getTokenFromAdapter(orgId);
-    const currentTime = new Date();
-    if (token.serviceAppToken.expiresAt <= currentTime) {
-      await this.saveServiceAppRegistrationData(orgId, token.serviceAppToken.refreshToken);
-      token = await this.getTokenFromAdapter(orgId); // Fetch the refreshed token
-    }
+    try {
+      let token = await this.getTokenFromAdapter(orgId);
+      const currentTime = new Date();
+      if (token.serviceAppToken.expiresAt <= currentTime) {
+        await this.saveServiceAppRegistrationData(orgId, token.serviceAppToken.refreshToken);
+        token = await this.getTokenFromAdapter(orgId); // Fetch the refreshed token
+      }
 
-    return token;
+      return token;
+    } catch (error) {
+      console.error('Error fetching token:', error);
+      throw error;
+    }
   }
 
   /**
@@ -176,7 +181,13 @@ export default class TokenManager {
       throw new Error('orgId not provided');
     }
 
-    const serviceAppAuthorization = await this.getTokenFromAdapter(orgId);
+    let serviceAppAuthorization: OrgServiceAppAuthorization;
+    try {
+      serviceAppAuthorization = await this.getTokenFromAdapter(orgId);
+    } catch (error) {
+      console.error('Error fetching token:', error);
+      throw error;
+    }
     const refreshToken = serviceAppAuthorization?.serviceAppToken.refreshToken;
 
     if (!refreshToken) {
