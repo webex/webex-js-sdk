@@ -91,9 +91,41 @@ class Metrics extends WebexPlugin {
   }
 
   /**
+   * if webex metrics is ready, build behavioral metric backend if not already done.
+   */
+  private lazyBuildBehavioralMetrics() {
+    if (this.isReady && !this.behavioralMetrics) {
+      // @ts-ignore
+      this.behavioralMetrics = new BehavioralMetrics({}, {parent: this.webex});
+    }
+  }
+
+  /**
+   * if webex metrics is ready, build operational metric backend if not already done.
+   */
+  private lazyBuildOperationalMetrics() {
+    if (this.isReady && !this.operationalMetrics) {
+      // @ts-ignore
+      this.operationalMetrics = new OperationalMetrics({}, {parent: this.webex});
+    }
+  }
+
+  /**
+   * if webex metrics is ready, build business metric backend if not already done.
+   */
+  private lazyBuildBusinessMetrics() {
+    if (this.isReady && !this.businessMetrics) {
+      // @ts-ignore
+      this.businessMetrics = new BusinessMetrics({}, {parent: this.webex});
+    }
+  }
+
+  /**
    * @returns true once we have the deviceId we need to submit behavioral events to Amplitude
    */
   isReadyToSubmitBehavioralEvents() {
+    this.lazyBuildBehavioralMetrics();
+
     return this.behavioralMetrics?.isReadyToSubmitEvents() ?? false;
   }
 
@@ -101,6 +133,8 @@ class Metrics extends WebexPlugin {
    * @returns true once we have the deviceId we need to submit operational events
    */
   isReadyToSubmitOperationalEvents() {
+    this.lazyBuildOperationalMetrics();
+
     return this.operationalMetrics?.isReadyToSubmitEvents() ?? false;
   }
 
@@ -108,6 +142,8 @@ class Metrics extends WebexPlugin {
    * @returns true once we have the deviceId we need to submit buisness events
    */
   isReadyToSubmitBusinessEvents() {
+    this.lazyBuildBusinessMetrics();
+
     return this.businessMetrics?.isReadyToSubmitEvents() ?? false;
   }
 
@@ -137,10 +173,7 @@ class Metrics extends WebexPlugin {
       return Promise.resolve();
     }
 
-    if (!this.behavioralMetrics) {
-      // @ts-ignore
-      this.behavioralMetrics = new BehavioralMetrics({}, {parent: this.webex});
-    }
+    this.lazyBuildBehavioralMetrics();
 
     return this.behavioralMetrics.submitBehavioralEvent({product, agent, target, verb, payload});
   }
@@ -159,10 +192,7 @@ class Metrics extends WebexPlugin {
       return Promise.resolve();
     }
 
-    if (!this.operationalMetrics) {
-      // @ts-ignore
-      this.operationalMetrics = new OperationalMetrics({}, {parent: this.webex});
-    }
+    this.lazyBuildOperationalMetrics();
 
     return this.operationalMetrics.submitOperationalEvent({name, payload});
   }
@@ -181,10 +211,7 @@ class Metrics extends WebexPlugin {
       return Promise.resolve();
     }
 
-    if (!this.businessMetrics) {
-      // @ts-ignore
-      this.businessMetrics = new BusinessMetrics({}, {parent: this.webex});
-    }
+    this.lazyBuildBusinessMetrics();
 
     return this.businessMetrics.submitBusinessEvent({name, payload});
   }

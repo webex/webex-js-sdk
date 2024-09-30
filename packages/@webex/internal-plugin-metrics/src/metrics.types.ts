@@ -61,6 +61,7 @@ export type SubmitClientEventOptions = {
   mediaConnections?: any[];
   rawError?: any;
   correlationId?: string;
+  sessionCorrelationId?: string;
   preLoginId?: string;
   environment?: EnvironmentType;
   newEnvironmentType?: NewEnvironmentType;
