@@ -76,6 +76,7 @@ export default class DataSourceService {
    * This Private method will start auto refreshing the DataSource token with interval as tokenLifetimeMinutes.
    * @param {string} dataSourceId The id of data source
    * @param {number} tokenLifetimeMinutes The Life time minutes for the data source. <=1440
+   * @param {string} nonceGenerator This accepts an optional nonceGenerator, developer can provide their own nonceGenerator.
    * @returns {Promise<void>}
    */
 

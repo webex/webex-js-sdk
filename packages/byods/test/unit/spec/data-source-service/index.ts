@@ -1,4 +1,3 @@
-import { v4 as uuidv4 } from 'uuid';
 import {decodeJwt} from 'jose';
 import DataSourceClient from '../../../../src/data-source-client/index';
 import {DataSourceRequest, DataSourceResponse} from '../../../../src/data-source-client/types';
