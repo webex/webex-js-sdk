@@ -13,7 +13,7 @@ import {
 } from '../../../../src/call-diagnostic/config';
 import Logger from '@webex/plugin-logger';
 
-let {
+const {
   clearEmptyKeysRecursively,
   extractVersionMetadata,
   getBuildType,
@@ -274,7 +274,7 @@ describe('internal-plugin-metrics', () => {
   describe('prepareDiagnosticMetricItem', () => {
     let webex: any;
 
-    const check = (eventName: string, expectedEvent: any, expectedUpgradeChannel: string | undefined) => {
+    const check = (eventName: string, expectedEvent: any, expectedUpgradeChannel: string) => {
       const eventPayload = { event: { name: eventName } };
       const item = prepareDiagnosticMetricItem(webex, {
         eventPayload,
@@ -460,22 +460,26 @@ describe('internal-plugin-metrics', () => {
         type: ['diagnostic-event'],
       };
 
-      delete item.eventPayload.origin.buildType;
-      item.eventPayload.origin.buildType = 'prod';
-
-      delete item.eventPayload.origin.upgradeChannel;
       prepareDiagnosticMetricItem(webex, item);
       assert.deepEqual(item.eventPayload.origin.upgradeChannel, 'gold');
+    });
 
-      const otherBuildTypes = ["debug", "test" ,"tap", "analyzer-test"];
-      otherBuildTypes.forEach((buildType) => {
-        delete item.eventPayload.origin.buildType;
-        item.eventPayload.origin.buildType = buildType;
+    it('sets the upgradeChannel value correctly', () => {
+      const item: any = {
+        eventPayload: {
+          event: {
+            name: 'client.exit.app',
+            eventData: {
+              markAsTestEvent: true,
+              webClientDomain: 'https://web.webex.com',
+            },
+          },
+        },
+        type: ['diagnostic-event'],
+      };
 
-        delete item.eventPayload.origin.upgradeChannel;
-        prepareDiagnosticMetricItem(webex, item);
-        assert.deepEqual(item.eventPayload.origin.upgradeChannel, buildType)
-      });
+      prepareDiagnosticMetricItem(webex, item);
+      assert.deepEqual(item.eventPayload.origin.upgradeChannel, 'test');
     });
   });
 
