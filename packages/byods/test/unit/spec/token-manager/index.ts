@@ -33,7 +33,7 @@ describe('TokenManager', () => {
       refresh_token_expires_in: 7200,
     };
 
-    tokenManager.updateServiceAppToken(tokenResponse, orgId);
+    await tokenManager.updateServiceAppToken(tokenResponse, orgId);
 
     const serviceAppAuthorization = await tokenManager.getOrgServiceAppAuthorization(orgId);
     expect(serviceAppAuthorization).toBeDefined();
@@ -50,11 +50,71 @@ describe('TokenManager', () => {
       refresh_token_expires_in: 7200,
     };
 
-    tokenManager.updateServiceAppToken(tokenResponse, orgId);
+    await tokenManager.updateServiceAppToken(tokenResponse, orgId);
 
     const serviceAppAuthorization = await tokenManager.getOrgServiceAppAuthorization(orgId);
     expect(serviceAppAuthorization).toBeDefined();
     expect(serviceAppAuthorization.serviceAppToken.accessToken).toBe('new-access-token');
+  });
+
+  it('should list all stored tokens', async () => {
+    const tokenResponse: TokenResponse = {
+      access_token: 'new-access-token',
+      refresh_token: 'new-refresh-token',
+      expires_in: 3600,
+      token_type: 'Bearer',
+      refresh_token_expires_in: 7200,
+    };
+
+    await tokenManager.updateServiceAppToken(tokenResponse, orgId);
+
+    // List tokens using tokenManager
+    const tokens = await tokenManager.listTokens();
+    expect(tokens).toBeDefined();
+    expect(tokens.length).toBe(1);
+  });
+
+  it('should delete a token for a given orgId', async () => {
+    const tokenResponse: TokenResponse = {
+      access_token: 'new-access-token',
+      refresh_token: 'new-refresh-token',
+      expires_in: 3600,
+      token_type: 'Bearer',
+      refresh_token_expires_in: 7200,
+    };
+    await tokenManager.updateServiceAppToken(tokenResponse, orgId);
+    await tokenManager.deleteToken(orgId);
+
+    const tokens = await tokenManager.listTokens();
+    expect(tokens).toBeDefined();
+    expect(tokens.length).toBe(0);
+  });
+
+  it('should reset all tokens', async () => {
+    const tokenResponse: TokenResponse = {
+      access_token: 'new-access-token',
+      refresh_token: 'new-refresh-token',
+      expires_in: 3600,
+      token_type: 'Bearer',
+      refresh_token_expires_in: 7200,
+    };
+    const dummyOrgId = 'org-456';
+    const dummyTokenResponse: TokenResponse = {
+      access_token: 'another-access-token',
+      refresh_token: 'another-refresh-token',
+      expires_in: 3600,
+      token_type: 'Bearer',
+      refresh_token_expires_in: 7200,
+    };
+
+    await tokenManager.updateServiceAppToken(tokenResponse, orgId);
+    await tokenManager.updateServiceAppToken(dummyTokenResponse, dummyOrgId);
+
+    await tokenManager.resetTokens();
+
+    const tokens = await tokenManager.listTokens();
+    expect(tokens).toBeDefined();
+    expect(tokens.length).toBe(0);
   });
 
   it('should throw error if service app authorization not found', async () => {
@@ -72,7 +132,7 @@ describe('TokenManager', () => {
       refresh_token_expires_in: 7200,
     };
 
-    tokenManager.updateServiceAppToken(tokenResponse, orgId);
+    await tokenManager.updateServiceAppToken(tokenResponse, orgId);
 
     const mockResponse = {
       json: jest.fn().mockResolvedValue(tokenResponse),

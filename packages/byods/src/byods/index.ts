@@ -10,6 +10,7 @@ import {
 } from '../constants';
 import {SDKConfig} from '../types';
 import TokenManager from '../token-manager';
+import {InMemoryTokenStorageAdapter} from '../token-storage-adapter/index';
 
 /**
  * The BYoDS SDK.
@@ -37,14 +38,12 @@ export default class BYODS {
    * @example
    * const sdk = new BYODS({ clientId: 'your-client-id', clientSecret: 'your-client-secret' });
    */
-  constructor({clientId, clientSecret, tokenStorageAdapter}: SDKConfig) {
+  constructor({
+    clientId,
+    clientSecret,
+    tokenStorageAdapter = new InMemoryTokenStorageAdapter(),
+  }: SDKConfig) {
     this.config = {clientId, clientSecret, tokenStorageAdapter};
-    this.tokenManager = new TokenManager(
-      clientId,
-      clientSecret,
-      PRODUCTION_BASE_URL,
-      tokenStorageAdapter
-    );
 
     /**
      * The environment variable `process.env.BYODS_ENVIRONMENT` determines the environment in which the SDK operates.
@@ -69,6 +68,9 @@ export default class BYODS {
         this.baseUrl = PRODUCTION_BASE_URL;
         jwksUrl = PRODUCTION_JWKS_URL;
     }
+
+    // Create token manager
+    this.tokenManager = new TokenManager(clientId, clientSecret, this.baseUrl, tokenStorageAdapter);
 
     // Create a remote JWK Set
     this.jwks = createRemoteJWKSet(new URL(jwksUrl), {

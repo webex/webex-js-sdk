@@ -17,9 +17,9 @@ export class InMemoryTokenStorageAdapter implements TokenStorageAdapter {
    * @param orgId Organization ID
    * @param token Respective token
    * @example
-   * storageAdapter.setToken('org-id', token);
+   * await storageAdapter.setToken('org-id', token);
    */
-  setToken(orgId: string, token: OrgServiceAppAuthorization): void {
+  async setToken(orgId: string, token: OrgServiceAppAuthorization): Promise<void> {
     this.storage[orgId] = token;
   }
 
@@ -28,9 +28,9 @@ export class InMemoryTokenStorageAdapter implements TokenStorageAdapter {
    * @param orgId Organization ID
    * @returns {OrgServiceAppAuthorization} The token object for the organization
    * @example
-   * const token = storageAdapter.getToken('org-id');
+   * const token = await storageAdapter.getToken('org-id');
    */
-  getToken(orgId: string): OrgServiceAppAuthorization | undefined {
+  async getToken(orgId: string): Promise<OrgServiceAppAuthorization | undefined> {
     return this.storage[orgId];
   }
 
@@ -38,9 +38,30 @@ export class InMemoryTokenStorageAdapter implements TokenStorageAdapter {
    * Method which returns the list of all tokens stored in the InMemoryTokenStorageAdapter.
    * @returns {OrgServiceAppAuthorization[]} List of
    * @example
-   * const tokens = storageAdapter.listTokens();
+   * const tokens = await storageAdapter.listTokens();
    */
-  listTokens(): OrgServiceAppAuthorization[] {
+  async listTokens(): Promise<OrgServiceAppAuthorization[]> {
     return Object.values(this.storage);
+  }
+
+  /**
+   * Method to delete a token based on the organization id.
+   * @param orgId Organization ID
+   * @returns {Promise<void>}
+   * @example
+   * await storageAdapter.deleteToken('org-id');
+   */
+  async deleteToken(orgId: string): Promise<void> {
+    delete this.storage[orgId];
+  }
+
+  /**
+   * Method to remove all tokens stored in the InMemoryTokenStorageAdapter.
+   * @returns {Promise<void>}
+   * @example
+   * await storageAdapter.resetTokens();
+   */
+  async resetTokens(): Promise<void> {
+    this.storage = {};
   }
 }

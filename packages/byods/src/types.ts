@@ -19,7 +19,7 @@ export interface SDKConfig {
   /**
    * The token storage adapter passed by the client
    */
-  tokenStorageAdapter?: TokenStorageAdapter;
+  tokenStorageAdapter: TokenStorageAdapter;
 }
 
 /**

@@ -1,4 +1,4 @@
-import {InMemoryTokenStorageAdapter} from '../../../../src/token-storage-adapter/inMemoryTokenStorage';;
+import {InMemoryTokenStorageAdapter} from '../../../../src/token-storage-adapter/index';;
 import {OrgServiceAppAuthorization} from '../../../../src/types';;
 
 describe('InMemoryTokenStorageAdapter', () => {
@@ -18,23 +18,18 @@ describe('InMemoryTokenStorageAdapter', () => {
     tokenStorage = new InMemoryTokenStorageAdapter();
   });
 
-  test('should store a token', () => {
-    tokenStorage.setToken(orgId, token);
-    expect(tokenStorage.getToken(orgId)).toEqual(token);
-  });
-
-  test('should retrieve a token', () => {
-    tokenStorage.setToken(orgId, token);
-    const retrievedToken = tokenStorage.getToken(orgId);
+  test('should store and retrieve a token', async () => {
+    await tokenStorage.setToken(orgId, token);
+    const retrievedToken = await tokenStorage.getToken(orgId);
     expect(retrievedToken).toEqual(token);
   });
 
-  test('should return undefined for a non-existent token', () => {
-    const retrievedToken = tokenStorage.getToken('non-existent-org');
+  test('should return undefined for a non-existent token', async () => {
+    const retrievedToken = await tokenStorage.getToken('non-existent-org');
     expect(retrievedToken).toBeUndefined();
   });
 
-  test('should list all stored tokens', () => {
+  test('should list all stored tokens', async () => {
     const dummyOrgId = 'org-456';
     const dummyToken: OrgServiceAppAuthorization = {
       orgId: dummyOrgId,
@@ -46,10 +41,40 @@ describe('InMemoryTokenStorageAdapter', () => {
       },
     };
 
-    tokenStorage.setToken(orgId, token);
-    tokenStorage.setToken(dummyOrgId, dummyToken);
+    await tokenStorage.setToken(orgId, token);
+    await tokenStorage.setToken(dummyOrgId, dummyToken);
 
-    const tokens = tokenStorage.listTokens();
+    const tokens = await tokenStorage.listTokens();
     expect(tokens).toContain(token);
-    expect(tokens).toContain(dummyToken);});
+    expect(tokens).toContain(dummyToken);
+  });
+
+  test('should delete a token for a given orgId', async () => {
+    await tokenStorage.setToken(orgId, token);
+    await tokenStorage.deleteToken(orgId);
+
+    const retrievedToken = await tokenStorage.getToken(orgId);
+    expect(retrievedToken).toBeUndefined();
+  });
+
+  test('should reset all tokens', async () => {
+    const dummyOrgId = 'org-456';
+    const dummyToken: OrgServiceAppAuthorization = {
+      orgId: dummyOrgId,
+      serviceAppToken: {
+        accessToken: 'another-access-token',
+        refreshToken: 'another-refresh-token',
+        expiresAt: new Date(Date.now() + 3600 * 1000),
+        refreshAccessTokenExpiresAt: new Date(Date.now() + 7200 * 1000),
+      },
+    };
+
+    await tokenStorage.setToken(orgId, token);
+    await tokenStorage.setToken(dummyOrgId, dummyToken);
+
+    await tokenStorage.resetTokens();
+
+    const tokens = await tokenStorage.listTokens();
+    expect(tokens.length).toEqual(0);
+  });
 });
