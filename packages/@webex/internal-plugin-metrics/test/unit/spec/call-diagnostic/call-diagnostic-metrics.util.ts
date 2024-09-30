@@ -13,7 +13,7 @@ import {
 } from '../../../../src/call-diagnostic/config';
 import Logger from '@webex/plugin-logger';
 
-const {
+let {
   clearEmptyKeysRecursively,
   extractVersionMetadata,
   getBuildType,
@@ -274,8 +274,8 @@ describe('internal-plugin-metrics', () => {
   describe('prepareDiagnosticMetricItem', () => {
     let webex: any;
 
-    const check = (eventName: string, expectedEvent: any) => {
-      const eventPayload = {event: {name: eventName}};
+    const check = (eventName: string, expectedEvent: any, expectedUpgradeChannel: string | undefined) => {
+      const eventPayload = { event: { name: eventName } };
       const item = prepareDiagnosticMetricItem(webex, {
         eventPayload,
         type: ['diagnostic-event'],
@@ -286,20 +286,21 @@ describe('internal-plugin-metrics', () => {
           origin: {
             buildType: 'prod',
             networkType: 'unknown',
+            upgradeChannel: expectedUpgradeChannel
           },
-          event: {name: eventName, ...expectedEvent},
+          event: { name: eventName, ...expectedEvent },
         },
         type: ['diagnostic-event'],
       });
     };
 
     beforeEach(async () => {
-      webex = {internal: {newMetrics: {}}};
+      webex = { internal: { newMetrics: {} } };
       webex.internal.newMetrics.callDiagnosticLatencies = new CallDiagnosticLatencies(
         {},
-        {parent: webex}
+        { parent: webex }
       );
-      webex.logger = new Logger({}, {parent: webex});
+      webex.logger = new Logger({}, { parent: webex });
     });
 
     beforeEach(() => {
@@ -417,7 +418,7 @@ describe('internal-plugin-metrics', () => {
       ],
     ].forEach(([eventName, expectedEvent]) => {
       it(`returns expected result for ${eventName}`, () => {
-        check(eventName as string, expectedEvent);
+        check(eventName as string, expectedEvent, 'gold');
       });
     });
 
@@ -444,7 +445,31 @@ describe('internal-plugin-metrics', () => {
       prepareDiagnosticMetricItem(webex, item);
       assert.deepEqual(item.eventPayload.origin.buildType, 'prod');
     });
+
+    it('sets the upgradeChannel value correctly', () => {
+      const item: any = {
+        eventPayload: {
+          event: {
+            name: 'client.exit.app',
+            eventData: {
+              markAsTestEvent: false,
+              webClientDomain: 'https://web.webex.com',
+            },
+          },
+        },
+        type: ['diagnostic-event'],
+      };
+
+      prepareDiagnosticMetricItem(webex, item);
+      assert.deepEqual(item.eventPayload.origin.upgradeChannel, 'gold');
+
+      delete item.eventPayload.origin.upgradeChannel;
+      item.eventPayload.event.eventData.markAsTestEvent = true;
+      prepareDiagnosticMetricItem(webex, item);
+      assert.deepEqual(item.eventPayload.origin.upgradeChannel, undefined);
+    });
   });
+
 
   describe('setMetricTimings', () => {
     let webex: any;

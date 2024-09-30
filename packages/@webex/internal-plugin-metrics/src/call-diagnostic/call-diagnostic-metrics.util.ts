@@ -231,13 +231,19 @@ export const getBuildType = (
  * @returns {Object} prepared item
  */
 export const prepareDiagnosticMetricItem = (webex: any, item: any) => {
+  const buildType = getBuildType(
+    webex,
+    item.eventPayload?.event?.eventData?.webClientDomain,
+    item.eventPayload?.event?.eventData?.markAsTestEvent
+  );
+
+  // Set upgradeChannel to 'gold' if buildType is 'prod', otherwise undefined
+  const upgradeChannel = buildType === 'prod' ? 'gold' : undefined;
+
   const origin: Partial<Event['origin']> = {
-    buildType: getBuildType(
-      webex,
-      item.eventPayload?.event?.eventData?.webClientDomain,
-      item.eventPayload?.event?.eventData?.markAsTestEvent
-    ),
+    buildType,
     networkType: 'unknown',
+    upgradeChannel,
   };
 
   // check event names and append latencies?
