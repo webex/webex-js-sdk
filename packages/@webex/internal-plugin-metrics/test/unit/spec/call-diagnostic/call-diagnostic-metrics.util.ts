@@ -446,7 +446,7 @@ describe('internal-plugin-metrics', () => {
       assert.deepEqual(item.eventPayload.origin.buildType, 'prod');
     });
 
-    it('sets the upgradeChannel value correctly', () => {
+    it('sets the upgradeChannel as "gold" when the buildType is "prod"', () => {
       const item: any = {
         eventPayload: {
           event: {
@@ -464,14 +464,14 @@ describe('internal-plugin-metrics', () => {
       assert.deepEqual(item.eventPayload.origin.upgradeChannel, 'gold');
     });
 
-    it('sets the upgradeChannel value correctly', () => {
+    it('sets the upgradeChannel as buildType value if it is not "prod"' , () => {
       const item: any = {
         eventPayload: {
           event: {
             name: 'client.exit.app',
             eventData: {
               markAsTestEvent: true,
-              webClientDomain: 'https://web.webex.com',
+              webClientDomain: 'https://test.webex.com',
             },
           },
         },
@@ -479,10 +479,10 @@ describe('internal-plugin-metrics', () => {
       };
 
       prepareDiagnosticMetricItem(webex, item);
+      assert.deepEqual(item.eventPayload.origin.buildType, 'test')
       assert.deepEqual(item.eventPayload.origin.upgradeChannel, 'test');
     });
   });
-
 
   describe('setMetricTimings', () => {
     let webex: any;
