@@ -79,12 +79,14 @@ export default class TokenManager {
    * const authorization = await tokenManager.getOrgServiceAppAuthorization('org-id');
    */
   public async getOrgServiceAppAuthorization(orgId: string): Promise<OrgServiceAppAuthorization> {
-    const token = await this.tokenStorageAdapter.getToken(orgId);
-    if (!token) {
-      return Promise.reject(new Error('Service app authorization not found'));
+    let token = await this.getTokenFromAdapter(orgId);
+    const currentTime = new Date();
+    if (token.serviceAppToken.expiresAt <= currentTime) {
+      await this.saveServiceAppRegistrationData(orgId, token.serviceAppToken.refreshToken);
+      token = await this.getTokenFromAdapter(orgId); // Fetch the refreshed token
     }
 
-    return Promise.resolve(token);
+    return token;
   }
 
   /**
@@ -174,7 +176,7 @@ export default class TokenManager {
       throw new Error('orgId not provided');
     }
 
-    const serviceAppAuthorization = await this.getOrgServiceAppAuthorization(orgId);
+    const serviceAppAuthorization = await this.getTokenFromAdapter(orgId);
     const refreshToken = serviceAppAuthorization?.serviceAppToken.refreshToken;
 
     if (!refreshToken) {
@@ -223,5 +225,15 @@ export default class TokenManager {
       console.error('Error saving service app registration:', error);
       throw error;
     }
+  }
+
+  /**
+   * Proxy for extracting the token from the token adapter
+   * @param {string} orgId - The organization ID.
+   * @returns {Promise<OrgServiceAppAuthorization>}
+   * @private
+   */
+  private async getTokenFromAdapter(orgId: string): Promise<OrgServiceAppAuthorization> {
+    return this.tokenStorageAdapter.getToken(orgId);
   }
 }

@@ -201,4 +201,47 @@ describe('TokenManager', () => {
     const serviceAppAuthorization = await tokenManager.getOrgServiceAppAuthorization(orgId);
     expect(serviceAppAuthorization.serviceAppToken.accessToken).toBe('new-access-token');
   });
+
+  it('should refresh the token if it is expired', async () => {
+    const expiredTokenResponse: TokenResponse = {
+      access_token: 'expired-access-token',
+      refresh_token: 'valid-refresh-token',
+      expires_in: -3600, // Token expired 1 hour ago
+      token_type: 'Bearer',
+      refresh_token_expires_in: 7200,
+    };
+  
+    const refreshedTokenResponse: TokenResponse = {
+      access_token: 'new-access-token',
+      refresh_token: 'new-refresh-token',
+      expires_in: 3600,
+      token_type: 'Bearer',
+      refresh_token_expires_in: 7200,
+    };
+    await tokenManager.updateServiceAppToken(expiredTokenResponse, orgId);
+
+    // Mock the token storage adapter to return the expired token
+    const mockResponse = {
+      json: jest.fn().mockResolvedValue(refreshedTokenResponse),
+      ok: true,
+    } as unknown as Response;
+    (fetch as unknown as jest.MockedFunction<typeof fetch>).mockResolvedValue(mockResponse);
+  
+    const serviceAppAuthorization = await tokenManager.getOrgServiceAppAuthorization(orgId);
+    expect(fetch).toHaveBeenCalledWith(`${baseUrl}/access_token`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        grant_type: 'refresh_token',
+        client_id: clientId,
+        client_secret: clientSecret,
+        refresh_token: 'valid-refresh-token',
+      }),
+    });
+  
+    expect(serviceAppAuthorization.serviceAppToken.accessToken).toBe('new-access-token');
+    expect(serviceAppAuthorization.serviceAppToken.refreshToken).toBe('new-refresh-token');
+  });
 });
