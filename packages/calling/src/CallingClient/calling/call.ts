@@ -282,6 +282,12 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
           /* CALL SETUP */
           S_RECV_CALL_SETUP: {
+            after: {
+              10000: {
+                target: 'S_CALL_CLEARED',
+                actions: ['triggerTimeout'],
+              },
+            },
             on: {
               E_SEND_CALL_ALERTING: {
                 target: 'S_SEND_CALL_PROGRESS',
@@ -302,6 +308,12 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
             },
           },
           S_SEND_CALL_SETUP: {
+            after: {
+              10000: {
+                target: 'S_CALL_CLEARED',
+                actions: ['triggerTimeout'],
+              },
+            },
             on: {
               E_RECV_CALL_PROGRESS: {
                 target: 'S_RECV_CALL_PROGRESS',
@@ -328,6 +340,12 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
           /* CALL_PROGRESS */
           S_RECV_CALL_PROGRESS: {
+            after: {
+              60000: {
+                target: 'S_CALL_CLEARED',
+                actions: ['triggerTimeout'],
+              },
+            },
             on: {
               E_RECV_CALL_CONNECT: {
                 target: 'S_RECV_CALL_CONNECT',
@@ -353,6 +371,12 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
             },
           },
           S_SEND_CALL_PROGRESS: {
+            after: {
+              60000: {
+                target: 'S_CALL_CLEARED',
+                actions: ['triggerTimeout'],
+              },
+            },
             on: {
               E_SEND_CALL_CONNECT: {
                 target: 'S_SEND_CALL_CONNECT',
@@ -375,6 +399,12 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
           /* CALL_CONNECT */
           S_RECV_CALL_CONNECT: {
+            after: {
+              10000: {
+                target: 'S_CALL_CLEARED',
+                actions: ['triggerTimeout'],
+              },
+            },
             on: {
               E_CALL_ESTABLISHED: {
                 target: 'S_CALL_ESTABLISHED',
@@ -395,6 +425,12 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
             },
           },
           S_SEND_CALL_CONNECT: {
+            after: {
+              10000: {
+                target: 'S_CALL_CLEARED',
+                actions: ['triggerTimeout'],
+              },
+            },
             on: {
               E_CALL_ESTABLISHED: {
                 target: 'S_CALL_ESTABLISHED',
@@ -606,6 +642,10 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
            * @param event
            */
           unknownState: (context, event: CallEvent) => this.handleUnknownState(event),
+          /**
+           *
+           */
+          triggerTimeout: () => this.handleTimeout(),
         },
       }
     );
@@ -2793,6 +2833,26 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    */
   getCallRtpStats(): Promise<CallRtpStats> {
     return this.getCallStats();
+  }
+
+  /**
+   * Handle timeout for the missed events
+   * @param expectedStates - An array of next expected states
+   * @param errorMessage - Error message to be emitted if the call is not in the expected state in expected time
+   */
+  private async handleTimeout() {
+    log.warn(`Call timed out`, {
+      file: CALL_FILE,
+      method: 'handleTimeout',
+    });
+    this.deleteCb(this.getCorrelationId());
+    this.emit(CALL_EVENT_KEYS.DISCONNECT, this.getCorrelationId());
+    const response = await this.delete();
+
+    log.log(`handleTimeout: Response code: ${response.statusCode}`, {
+      file: CALL_FILE,
+      method: this.handleTimeout.name,
+    });
   }
 }
 
