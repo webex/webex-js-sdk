@@ -1,4 +1,4 @@
-import {jwksCache, createRemoteJWKSet, JWKSCacheInput} from 'jose';
+import {jwksCache, createRemoteJWKSet, JWKSCacheInput, jwtVerify} from 'jose';
 
 import BaseClient from '../base-client';
 import {
@@ -8,7 +8,7 @@ import {
   PRODUCTION_BASE_URL,
   INTEGRATION_BASE_URL,
 } from '../constants';
-import {SDKConfig} from '../types';
+import {SDKConfig, JWSTokenVerificationResult} from '../types';
 import TokenManager from '../token-manager';
 
 /**
@@ -71,6 +71,28 @@ export default class BYODS {
       cacheMaxAge: 600000, // 10 minutes
       cooldownDuration: 30000, // 30 seconds
     });
+  }
+
+  /**
+   * Verifies a JWS token using the public key.
+   * @param {string} jws - The JWS token to verify.
+   * @returns {Promise<JWSTokenVerificationResult>} A promise that resolves to an object containing the result of the verification.
+   * @example
+   * const result = await sdk.verifyJWSToken('jws-token');
+   */
+  public async verifyJWSToken(jws: string): Promise<JWSTokenVerificationResult> {
+    const result: JWSTokenVerificationResult = {isValid: false};
+    try {
+      await jwtVerify(jws, this.jwks);
+
+      result.isValid = true;
+    } catch (error: any) {
+      console.error('Error verifying JWS token:', error.message || error);
+      result.isValid = false;
+      result.error = error.message || 'Unknown error';
+    }
+
+    return result;
   }
 
   /**
