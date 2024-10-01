@@ -4,7 +4,7 @@
 /* eslint-disable import/no-extraneous-dependencies */
 
 import {v4 as uuidv4} from 'uuid';
-import {decodeJwt, JWTPayload} from 'jose';
+import {decodeJwt} from 'jose';
 import DataSourceClient from '../data-source-client/index';
 
 export default class DataSourceService {
@@ -64,8 +64,8 @@ export default class DataSourceService {
    */
 
   private async getReduceTokenLifetimeMinutes(tokenLifetimeMinutes: number): Promise<number> {
-    // Below code will generate a random percentage between 5% and 10%
-    const randomPercentage = Math.random() * (10 - 5) + 7;
+    // Below logic will generate a random percentage between 5% and 10%
+    const randomPercentage = Math.random() * 5 + 5;
     // Then calculate the reducedTokenLifetimeMinutes
     const reducedTokenLifetimeMinutes = tokenLifetimeMinutes * (1 - randomPercentage / 100);
 
@@ -92,18 +92,23 @@ export default class DataSourceService {
         .get(dataSourceId)
         .then((response: any) => {
           const jwsToken: any = response.jwsToken;
-          const jwsTokenPayload: any = this.decodeJWSTokenAndGetPayload(jwsToken);
+          const jwsTokenPayload: any = decodeJwt(jwsToken);
           payloadForDataSourceUpdateMethod.schemaId = response.schemaId;
-          payloadForDataSourceUpdateMethod.url = jwsTokenPayload.payload.com.cisco.datasource.url;
-          payloadForDataSourceUpdateMethod.subject = jwsTokenPayload.payload.sub;
-          payloadForDataSourceUpdateMethod.audience = jwsTokenPayload.payload.aud;
-          payloadForDataSourceUpdateMethod.nonce = nonceGenerator(); // Use the provided nonce generator
           payloadForDataSourceUpdateMethod.tokenLifetimeMinutes = tokenLifetimeMinutes;
+          payloadForDataSourceUpdateMethod.nonce = nonceGenerator(); // Use the provided nonce generator
+          if (jwsTokenPayload) {
+            payloadForDataSourceUpdateMethod.url = jwsTokenPayload.com.cisco.datasource.url;
+            payloadForDataSourceUpdateMethod.subject = jwsTokenPayload.sub;
+            payloadForDataSourceUpdateMethod.audience = jwsTokenPayload.aud;
+          } else {
+            console.log('jwsTokenPayload is coming as undefined!');
+          }
         })
         .catch((error: any) => {
           console.log('error while calling the get method to update the dataSource', error);
         });
-      setInterval(async () => {
+
+      this.timer = setInterval(async () => {
         await this.dataSourceClient
           .update(dataSourceId, payloadForDataSourceUpdateMethod)
           .then((response) => {
@@ -133,28 +138,6 @@ export default class DataSourceService {
       console.log('timer has been cleared successfully.');
     } else {
       console.info('timer has not started yet!');
-    }
-  }
-
-  /**
-   * This Private method decodes the JWS token that accepts the parameter which is a token.
-   * @param {string} token A JWS token
-   * @returns {Promise<JWTPayload>} This method return a promise which eventually resolved to decoded payload.
-   */
-
-  private async decodeJWSTokenAndGetPayload(token: string): Promise<{payload: JWTPayload} | null> {
-    try {
-      // Decode the token
-      const decoded = decodeJwt(token);
-
-      // Return the decoded payload
-      return {
-        payload: decoded.payload as JWTPayload,
-      };
-    } catch (error) {
-      console.log('Error occurred while decoding JWS token:', error);
-
-      return null;
     }
   }
 }

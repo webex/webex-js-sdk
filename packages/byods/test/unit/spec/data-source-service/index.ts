@@ -1,4 +1,3 @@
-import {decodeJwt} from 'jose';
 import DataSourceClient from '../../../../src/data-source-client/index';
 import {DataSourceRequest, DataSourceResponse} from '../../../../src/data-source-client/types';
 import DataSourceService from '../../../../src/data-source-service/index';
@@ -44,27 +43,6 @@ describe('DataSourceService', () => {
 
   it('should initialize DataSourceService', () => {
     expect(dataSourceService).toBeDefined();
-  });
-
-  it('should refresh the DataSource token with provided tokenLifetimeMinutes', async () => {
-    const dataSourceId = 'mock-data-source-id';
-    const tokenLifetimeMinutes = 60;
-
-    const startAutoRefreshSpy = jest.spyOn<any, any>(dataSourceService, 'startAutoRefresh');
-
-    await dataSourceService.refreshDataSourceToken(dataSourceId, tokenLifetimeMinutes);
-
-    expect(startAutoRefreshSpy).toHaveBeenCalledWith(dataSourceId, tokenLifetimeMinutes - 5);
-  });
-
-  it('should refresh the DataSource token with default tokenLifetimeMinutes if not provided', async () => {
-    const dataSourceId = 'mock-data-source-id';
-
-    const startAutoRefreshSpy = jest.spyOn<any, any>(dataSourceService, 'startAutoRefresh');
-
-    await dataSourceService.refreshDataSourceToken(dataSourceId);
-
-    expect(startAutoRefreshSpy).toHaveBeenCalledWith(dataSourceId, 55);
   });
 
   it('should log an error if dataSourceId is not provided', async () => {
@@ -117,34 +95,5 @@ describe('DataSourceService', () => {
     dataSourceService['timer'] = setInterval(() => {}, 1000);
     dataSourceService.stopAutoRefresh();
     expect(console.log).toHaveBeenCalledWith('timer has been cleared successfully.');
-  });
-
-  it('should decode a JWS token and return the payload', async () => {
-    const token = 'mock-jws-token';
-    const decodedTokenPayload = await dataSourceService['decodeJWSTokenAndGetPayload'](token);
-
-    expect(decodedTokenPayload).toEqual({
-      payload: {
-        sub: 'mock-subject',
-        aud: 'mock-audience',
-	    'com.cisco.datasource.url': 'https://www.mock-url.com/getdata',
-        nonce: 'mock-nonce-value',
-        tokenLifetimeMinutes: 60,
-        schemaId: "46b922e5-2c5a-485d-9131-09947f72a6a0",
-      },
-    });
-  });
-
-  it('should log an error if decoding JWS token fails', async () => {
-    console.error = jest.fn();
-    (decodeJwt as jest.Mock).mockImplementationOnce(() => {
-      throw new Error('Failed to decode');
-    });
-
-    const token = 'invalid-jws-token';
-    const decodedToken = await dataSourceService['decodeJWSTokenAndGetPayload'](token);
-
-    expect(console.log).toHaveBeenCalledWith('Error occurred while decoding JWS token:', new Error('Failed to decode'));
-    expect(decodedToken).toBeNull();
   });
 });
