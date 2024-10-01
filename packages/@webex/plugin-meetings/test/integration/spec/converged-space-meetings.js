@@ -1,5 +1,5 @@
-import { config } from 'dotenv';
 import 'jsdom-global/register';
+import { config } from 'dotenv';
 import {assert} from '@webex/test-helper-chai';
 import {skipInNode} from '@webex/test-helper-mocha';
 import BrowserDetection from '@webex/plugin-meetings/dist/common/browser-detection';
