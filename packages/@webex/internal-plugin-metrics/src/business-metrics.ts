@@ -17,8 +17,8 @@ export default class BusinessMetrics extends GenericMetrics {
     const event = {
       type: ['business'],
       eventPayload: {
-        metricName: name,
-        timestamp: Date.now(),
+        key: name,
+        client_timestamp: Date.now(),
         context: this.getContext(),
         browserDetails: this.getBrowserDetails(),
         value: payload,
