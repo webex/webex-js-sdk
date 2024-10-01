@@ -2,7 +2,7 @@ import BYODS from '../../../../src/byods';
 import TokenManager from '../../../../src/token-manager';
 import BaseClient from '../../../../src/base-client';
 import {SDKConfig} from '../../../../src/types';
-import {InMemoryTokenStorageAdapter} from '../../../../src/token-storage-adapter/index';
+import {InMemoryTokenStorageAdapter} from '../../../../src/token-storage-adapter';
 import DataSourceClient from '../../../../src/data-source-client';
 import { jwtVerify, createRemoteJWKSet } from 'jose';
 

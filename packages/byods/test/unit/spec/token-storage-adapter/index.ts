@@ -1,4 +1,4 @@
-import {InMemoryTokenStorageAdapter} from '../../../../src/token-storage-adapter/index';;
+import {InMemoryTokenStorageAdapter} from '../../../../src/token-storage-adapter';;
 import {OrgServiceAppAuthorization} from '../../../../src/types';;
 
 describe('InMemoryTokenStorageAdapter', () => {
