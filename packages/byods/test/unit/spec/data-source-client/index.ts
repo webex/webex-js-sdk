@@ -1,6 +1,9 @@
 import DataSourceClient from '../../../../src/data-source-client';
 import {DataSourceRequest, DataSourceResponse} from '../../../../src/data-source-client/types';
 import {HttpClient, ApiResponse} from '../../../../src/http-client/types';
+import { v4 as uuidv4 } from 'uuid';
+
+jest.mock('uuid', () => ({ v4: jest.fn() }));
 
 describe('DataSourceClient', () => {
   let httpClient: jest.Mocked<HttpClient>;
@@ -201,4 +204,64 @@ describe('DataSourceClient', () => {
     await expect(dataSourceClient.delete(id)).rejects.toThrowError('Network error');
     expect(httpClient.delete).toHaveBeenCalledWith(`/dataSources/${id}`);
   });
+
+
+  it('should refresh data source token and allow cancellation', async () => {
+    const dataSourceId = '123';
+    const tokenLifetimeMinutes = 60;
+    const reducedTokenLifetimeMinutes = 54; // assuming a 10% reduction for the test
+    const getReduceTokenLifetimeMinutesMock = jest
+      .spyOn(dataSourceClient, 'getReduceTokenLifetimeMinutes')
+      .mockResolvedValue(reducedTokenLifetimeMinutes);
+
+    const startAutoRefreshMock = jest
+      .spyOn(dataSourceClient, 'startAutoRefresh')
+      .mockResolvedValue(undefined);
+
+    const { promise, cancel } = await dataSourceClient.refreshDataSourceToken(dataSourceId, tokenLifetimeMinutes);
+
+    await expect(promise).resolves.toBeUndefined();
+    expect(getReduceTokenLifetimeMinutesMock).toHaveBeenCalledWith(tokenLifetimeMinutes);
+    expect(startAutoRefreshMock).toHaveBeenCalledWith(dataSourceId, reducedTokenLifetimeMinutes);
+
+    cancel();
+    expect(dataSourceClient.timer).toBeNull();
+  });
+
+  it('should reject refreshDataSourceToken when dataSourceId is missing', async () => {
+    const dataSourceId = '';
+    const { promise, cancel } = await dataSourceClient.refreshDataSourceToken(dataSourceId);
+
+    await expect(promise).rejects.toEqual('Required field is missing, Please pass dataSourceId.');
+  });
+
+  it('should handle errors in refreshDataSourceToken', async () => {
+    const dataSourceId = '123';
+    const error = new Error('Network error');
+    jest.spyOn(dataSourceClient, 'getReduceTokenLifetimeMinutes').mockRejectedValue(error);
+
+    const { promise } = await dataSourceClient.refreshDataSourceToken(dataSourceId);
+
+    await expect(promise).rejects.toThrow('Network error');
+  });
+
+  it('should reduce token lifetime minutes correctly', async () => {
+    const tokenLifetimeMinutes = 60;
+    const reducedTokenLifetimeMinutes = await dataSourceClient.getReduceTokenLifetimeMinutes(tokenLifetimeMinutes);
+    expect(reducedTokenLifetimeMinutes).toBeLessThan(tokenLifetimeMinutes);
+    expect(reducedTokenLifetimeMinutes).toBeGreaterThanOrEqual(54); // with 10% reduction
+  });
+
+  it('should handle errors in startAutoRefresh', async () => {
+    const dataSourceId = '123';
+    const tokenLifetimeMinutes = 54; // reduced value
+    const error = new Error('Network error');
+
+    httpClient.get.mockRejectedValue(error);
+
+    await dataSourceClient.startAutoRefresh(dataSourceId, tokenLifetimeMinutes);
+
+    expect(httpClient.get).toHaveBeenCalledWith(`/dataSources/${dataSourceId}`);
+    expect(httpClient.put).not.toHaveBeenCalled();
+  });  
 });
