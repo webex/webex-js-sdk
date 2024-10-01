@@ -2,6 +2,7 @@ import BYODS from '../../../../src/byods';
 import TokenManager from '../../../../src/token-manager';
 import BaseClient from '../../../../src/base-client';
 import {SDKConfig} from '../../../../src/types';
+import {InMemoryTokenStorageAdapter} from '../../../../src/token-storage-adapter';
 import DataSourceClient from '../../../../src/data-source-client';
 import { jwtVerify, createRemoteJWKSet } from 'jose';
 
@@ -19,6 +20,7 @@ describe('BYODS Tests', () => {
   const mockSDKConfig: SDKConfig = {
     clientId: 'your-client-id',
     clientSecret: 'your-client-secret',
+    tokenStorageAdapter: new InMemoryTokenStorageAdapter(),
   };
 
   const sdk = new BYODS(mockSDKConfig);
