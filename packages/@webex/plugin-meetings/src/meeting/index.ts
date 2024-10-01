@@ -24,6 +24,8 @@ import {
   RoapMessage,
   StatsAnalyzer,
   StatsAnalyzerEventNames,
+  NetworkQualityEventNames,
+  NetworkQualityMonitor,
 } from '@webex/internal-media-core';
 
 import {
@@ -54,7 +56,6 @@ import {
   AddMediaFailed,
 } from '../common/errors/webex-errors';
 
-import NetworkQualityMonitor from '../networkQualityMonitor';
 import LoggerProxy from '../common/logs/logger-proxy';
 import EventsUtil from '../common/events/util';
 import Trigger from '../common/events/trigger-proxy';
@@ -154,6 +155,7 @@ import ControlsOptionsManager from '../controls-options-manager';
 import PermissionError from '../common/errors/permission';
 import {LocusMediaRequest} from './locusMediaRequest';
 import {ConnectionStateHandler, ConnectionStateEvent} from './connectionStateHandler';
+import RtcMetrics from '../rtcMetrics';
 
 // default callback so we don't call an undefined function, but in practice it should never be used
 const DEFAULT_ICE_PHASE_CALLBACK = () => 'JOIN_MEETING_FINAL';
@@ -695,6 +697,7 @@ export default class Meeting extends StatelessWebexPlugin {
   private connectionStateHandler?: ConnectionStateHandler;
   private iceCandidateErrors: Map<string, number>;
   private iceCandidatesCount: number;
+  private rtcMetrics?: RtcMetrics;
 
   /**
    * @param {Object} attrs
@@ -3155,6 +3158,7 @@ export default class Meeting extends StatelessWebexPlugin {
           options: {meetingId: this.id},
         });
       }
+      this.rtcMetrics?.sendNextMetrics();
       this.updateLLMConnection();
     });
 
@@ -5228,6 +5232,9 @@ export default class Meeting extends StatelessWebexPlugin {
         this.meetingFiniteStateMachine.join();
         this.setupLocusMediaRequest();
 
+        // @ts-ignore
+        this.webex.internal.device.meetingStarted();
+
         LoggerProxy.logger.log('Meeting:index#join --> Success');
 
         Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.JOIN_SUCCESS, {
@@ -6306,14 +6313,17 @@ export default class Meeting extends StatelessWebexPlugin {
    * @returns {RoapMediaConnection | MultistreamRoapMediaConnection}
    */
   private async createMediaConnection(turnServerInfo, bundlePolicy?: BundlePolicy) {
+    this.rtcMetrics = this.isMultistream
+      ? // @ts-ignore
+        new RtcMetrics(this.webex, this.id, this.correlationId)
+      : undefined;
+
     const mc = Media.createMediaConnection(
       this.isMultistream,
       this.getMediaConnectionDebugId(),
-      // @ts-ignore
-      this.webex,
       this.id,
-      this.correlationId,
       {
+        rtcMetrics: this.rtcMetrics,
         mediaProperties: this.mediaProperties,
         remoteQualityLevel: this.mediaProperties.remoteQualityLevel,
         // @ts-ignore - config coming from registerPlugin
@@ -6500,7 +6510,7 @@ export default class Meeting extends StatelessWebexPlugin {
       });
       this.setupStatsAnalyzerEventHandlers();
       this.networkQualityMonitor.on(
-        EVENT_TRIGGERS.NETWORK_QUALITY,
+        NetworkQualityEventNames.NETWORK_QUALITY,
         this.sendNetworkQualityEvent.bind(this)
       );
     }
@@ -7022,6 +7032,7 @@ export default class Meeting extends StatelessWebexPlugin {
         await this.mediaProperties.getCurrentConnectionInfo();
       // @ts-ignore
       const reachabilityStats = await this.webex.meetings.reachability.getReachabilityMetrics();
+      const iceCandidateErrors = Object.fromEntries(this.iceCandidateErrors);
 
       Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.ADD_MEDIA_SUCCESS, {
         correlation_id: this.correlationId,
@@ -7033,6 +7044,7 @@ export default class Meeting extends StatelessWebexPlugin {
         retriedWithTurnServer: this.addMediaData.retriedWithTurnServer,
         isJoinWithMediaRetry: this.joinWithMediaRetryInfo.isRetry,
         ...reachabilityStats,
+        ...iceCandidateErrors,
         iceCandidatesCount: this.iceCandidatesCount,
       });
       // @ts-ignore
@@ -8191,7 +8203,7 @@ export default class Meeting extends StatelessWebexPlugin {
    * @private
    * @memberof Meeting
    */
-  private sendNetworkQualityEvent(res: any) {
+  private sendNetworkQualityEvent(res: {networkQualityScore: number; mediaType: string}) {
     Trigger.trigger(
       this,
       {

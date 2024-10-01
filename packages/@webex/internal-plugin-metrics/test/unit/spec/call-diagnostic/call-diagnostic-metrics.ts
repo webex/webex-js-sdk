@@ -372,6 +372,7 @@ describe('internal-plugin-metrics', () => {
             {mediaAgentAlias: 'mediaAgentAlias', mediaAgentGroupId: 'mediaAgentGroupId'},
           ],
           webexConferenceIdStr: 'webexConferenceIdStr',
+          sessionCorrelationId: 'sessionCorrelationId',
           globalMeetingId: 'globalMeetingId',
           meeting: {
             ...fakeMeeting,
@@ -386,6 +387,7 @@ describe('internal-plugin-metrics', () => {
         assert.deepEqual(res, {
           correlationId: 'correlationId',
           webexConferenceIdStr: 'webexConferenceIdStr1',
+          sessionCorrelationId: 'sessionCorrelationId',
           globalMeetingId: 'globalMeetingId1',
           deviceId: 'deviceUrl',
           locusId: 'url',
@@ -608,6 +610,7 @@ describe('internal-plugin-metrics', () => {
           meeting: fakeMeeting,
           mediaConnections: [{mediaAgentAlias: 'alias', mediaAgentGroupId: '1'}],
           webexConferenceIdStr: undefined,
+          sessionCorrelationId: undefined,
           globalMeetingId: undefined,
         });
         assert.notCalled(generateClientEventErrorPayloadSpy);
@@ -762,7 +765,7 @@ describe('internal-plugin-metrics', () => {
         ]);
       });
 
-      it('should submit client event successfully with correlationId, webexConferenceIdStr and globalMeetingId', () => {
+      it('should submit client event successfully with correlationId, webexConferenceIdStr, sessionCorrelationId, and globalMeetingId', () => {
         const prepareDiagnosticEventSpy = sinon.spy(cd, 'prepareDiagnosticEvent');
         const submitToCallDiagnosticsSpy = sinon.spy(cd, 'submitToCallDiagnostics');
         const generateClientEventErrorPayloadSpy = sinon.spy(cd, 'generateClientEventErrorPayload');
@@ -773,6 +776,7 @@ describe('internal-plugin-metrics', () => {
           correlationId: 'correlationId',
           webexConferenceIdStr: 'webexConferenceIdStr1',
           globalMeetingId: 'globalMeetingId1',
+          sessionCorrelationId: 'sessionCorrelationId1'
         };
 
         cd.submitClientEvent({
@@ -784,6 +788,7 @@ describe('internal-plugin-metrics', () => {
           correlationId: 'correlationId',
           webexConferenceIdStr: 'webexConferenceIdStr1',
           globalMeetingId: 'globalMeetingId1',
+          sessionCorrelationId: 'sessionCorrelationId1',
           preLoginId: undefined,
         });
 
@@ -798,6 +803,7 @@ describe('internal-plugin-metrics', () => {
             identifiers: {
               correlationId: 'correlationId',
               webexConferenceIdStr: 'webexConferenceIdStr1',
+              sessionCorrelationId: 'sessionCorrelationId1',
               globalMeetingId: 'globalMeetingId1',
               deviceId: 'deviceUrl',
               locusUrl: 'locus-url',
@@ -818,6 +824,7 @@ describe('internal-plugin-metrics', () => {
             identifiers: {
               correlationId: 'correlationId',
               webexConferenceIdStr: 'webexConferenceIdStr1',
+              sessionCorrelationId: 'sessionCorrelationId1',
               globalMeetingId: 'globalMeetingId1',
               deviceId: 'deviceUrl',
               locusUrl: 'locus-url',
@@ -863,6 +870,7 @@ describe('internal-plugin-metrics', () => {
           webexConferenceIdStr: 'webexConferenceIdStr1',
           globalMeetingId: 'globalMeetingId1',
           preLoginId: 'myPreLoginId',
+          sessionCorrelationId: 'sessionCorrelationId1'
         };
 
         cd.submitClientEvent({
@@ -875,6 +883,7 @@ describe('internal-plugin-metrics', () => {
           webexConferenceIdStr: 'webexConferenceIdStr1',
           globalMeetingId: 'globalMeetingId1',
           preLoginId: 'myPreLoginId',
+          sessionCorrelationId: 'sessionCorrelationId1'
         });
 
         assert.notCalled(generateClientEventErrorPayloadSpy);
@@ -887,6 +896,7 @@ describe('internal-plugin-metrics', () => {
             },
             identifiers: {
               correlationId: 'correlationId',
+              sessionCorrelationId: 'sessionCorrelationId1',
               webexConferenceIdStr: 'webexConferenceIdStr1',
               globalMeetingId: 'globalMeetingId1',
               deviceId: 'deviceUrl',
@@ -913,6 +923,7 @@ describe('internal-plugin-metrics', () => {
               canProceed: true,
               identifiers: {
                 correlationId: 'correlationId',
+                sessionCorrelationId: 'sessionCorrelationId1',
                 userId: 'myPreLoginId',
                 deviceId: 'deviceUrl',
                 orgId: 'orgId',
@@ -1417,6 +1428,7 @@ describe('internal-plugin-metrics', () => {
           meetingId: fakeMeeting.id,
           webexConferenceIdStr: 'webexConferenceIdStr1',
           globalMeetingId: 'globalMeetingId1',
+          sessionCorrelationId: 'sessionCorrelationId1'
         };
 
         cd.submitMQE({
@@ -1454,6 +1466,9 @@ describe('internal-plugin-metrics', () => {
             eventData: {webClientDomain: 'whatever'},
             intervals: [{}],
             callingServiceType: 'LOCUS',
+            meetingJoinInfo: {
+              clientSignallingProtocol: 'WebRTC',
+            },
             sourceMetadata: {
               applicationSoftwareType: 'webex-js-sdk',
               applicationSoftwareVersion: 'webex-version',
@@ -1490,6 +1505,9 @@ describe('internal-plugin-metrics', () => {
               eventData: {webClientDomain: 'whatever'},
               intervals: [{}],
               callingServiceType: 'LOCUS',
+              meetingJoinInfo: {
+                clientSignallingProtocol: 'WebRTC',
+              },
               sourceMetadata: {
                 applicationSoftwareType: 'webex-js-sdk',
                 applicationSoftwareVersion: 'webex-version',
@@ -1524,6 +1542,9 @@ describe('internal-plugin-metrics', () => {
             eventData: {webClientDomain: 'whatever'},
             intervals: [{}],
             callingServiceType: 'LOCUS',
+            meetingJoinInfo: {
+              clientSignallingProtocol: 'WebRTC',
+            },
             sourceMetadata: {
               applicationSoftwareType: 'webex-js-sdk',
               applicationSoftwareVersion: 'webex-version',

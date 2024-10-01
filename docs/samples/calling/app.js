@@ -1301,6 +1301,10 @@ async function createCustomContact() {
       type: 'work',
       value: formData.get('phone')
     }],
+    emails: [{
+      type: 'work',
+      value: formData.get('email')
+    }],
     contactType: 'CUSTOM',
   };
   const res = await contacts.createContact(contact);
