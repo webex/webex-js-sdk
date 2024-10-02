@@ -1,3 +1,4 @@
+import 'jsdom-global/register';
 import * as InternalMediaCoreModule from '@webex/internal-media-core';
 import Media from '@webex/plugin-meetings/src/media/index';
 import {assert} from '@webex/test-helper-chai';

@@ -1,7 +1,7 @@
 /*!
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
-
+import 'jsdom-global/register';
 import {assert} from '@webex/test-helper-chai';
 import sinon from 'sinon';
 import MockWebex from '@webex/test-helper-mock-webex';
@@ -23,7 +23,6 @@ import MeetingInfoUtil from '@webex/plugin-meetings/src/meeting-info/utilv2';
 import Metrics from '@webex/plugin-meetings/src/metrics';
 import BEHAVIORAL_METRICS from '@webex/plugin-meetings/src/metrics/constants';
 import {forEach} from 'lodash';
-import { request } from 'express';
 
 describe('plugin-meetings', () => {
   const conversation = {
@@ -433,7 +432,7 @@ describe('plugin-meetings', () => {
                 assert.deepEqual(submitInternalEventCalls[1].args[0], {
                   name: 'internal.client.meetinginfo.response',
                 });
-                
+
                 assert.deepEqual(submitClientEventCalls[1].args[0], {
                   name: 'client.meetinginfo.response',
                   payload: {
@@ -484,9 +483,9 @@ describe('plugin-meetings', () => {
               requestResponse.body.confIdStr = confIdStr;
             }
             const extraParams = {mtid: 'm9fe0afd8c435e892afcce9ea25b97046', joinTXId: 'TSmrX61wNF'}
-    
+
             webex.request.resolves(requestResponse);
-    
+
             const result = await meetingInfo.fetchMeetingInfo(
               '1234323',
               DESTINATION_TYPE.MEETING_ID,
@@ -497,7 +496,7 @@ describe('plugin-meetings', () => {
               extraParams,
               {meetingId, sendCAevents}
             );
-    
+
             assert.calledWith(webex.request, {
               method: 'POST',
               service: WBXAPPAPI_SERVICE,
@@ -515,7 +514,7 @@ describe('plugin-meetings', () => {
               Metrics.sendBehavioralMetric,
               BEHAVIORAL_METRICS.FETCH_MEETING_INFO_V1_SUCCESS
             );
-    
+
             const submitInternalEventCalls = webex.internal.newMetrics.submitInternalEvent.getCalls();
             const submitClientEventCalls = webex.internal.newMetrics.submitClientEvent.getCalls();
 
@@ -529,7 +528,7 @@ describe('plugin-meetings', () => {
                   meetingId,
                 }
               });
-              
+
               assert.deepEqual(submitInternalEventCalls[1].args[0], {
                 name: 'internal.client.meetinginfo.response',
               });
@@ -591,7 +590,7 @@ describe('plugin-meetings', () => {
 
         const submitInternalEventCalls = webex.internal.newMetrics.submitInternalEvent.getCalls();
         const submitClientEventCalls = webex.internal.newMetrics.submitClientEvent.getCalls();
-        
+
         assert.deepEqual(submitInternalEventCalls[0].args[0], {
           name: 'internal.client.meetinginfo.request',
         });
@@ -601,7 +600,7 @@ describe('plugin-meetings', () => {
             meetingId: 'meetingId',
           }
         });
-        
+
         assert.deepEqual(submitInternalEventCalls[1].args[0], {
           name: 'internal.client.meetinginfo.response',
         });
@@ -629,7 +628,7 @@ describe('plugin-meetings', () => {
           it(`should not send CA metric if meetingId is not provided disregarding if sendCAevents is ${sendCAevents}`, async () => {
             const message = 'a message';
             const meetingInfoData = 'meeting info';
-    
+
             webex.request = sinon.stub().rejects({
               statusCode: 403,
               body: {message, code: 403102, data: {meetingInfo: meetingInfoData}},
