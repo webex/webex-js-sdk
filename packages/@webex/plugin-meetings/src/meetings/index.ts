@@ -526,9 +526,8 @@ export default class Meetings extends WebexPlugin {
    * @returns {Promise}
    * @public
    * @memberof Meetings
-   * @param {boolean} isGuest
    */
-  public register(isGuest) {
+  public register() {
     // @ts-ignore
     if (!this.webex.canAuthorize) {
       LoggerProxy.logger.error(
@@ -546,16 +545,8 @@ export default class Meetings extends WebexPlugin {
       return Promise.resolve();
     }
 
-    const promises = [];
-    // Only call fetchUserPreferredWebexSite() if not a guest
-    if (!isGuest) {
-      promises.push(this.fetchUserPreferredWebexSite());
-    } else {
-      LoggerProxy.logger.info(
-        'Meetings:index#register --> INFO, Skipping fetchUserPreferredWebexSite() because user is a guest'
-      );
-    }
-    promises.push(
+    return Promise.all([
+      this.fetchUserPreferredWebexSite(),
       this.getGeoHint(),
       this.startReachability().catch((error) => {
         LoggerProxy.logger.error(`Meetings:index#register --> GDM error, ${error.message}`);
@@ -572,10 +563,8 @@ export default class Meetings extends WebexPlugin {
         )
         // @ts-ignore
         .then(() => this.webex.internal.mercury.connect()),
-      MeetingsUtil.checkH264Support.call(this)
-    );
-
-    return Promise.all(promises)
+      MeetingsUtil.checkH264Support.call(this),
+    ])
       .then(() => {
         this.listenForEvents();
         Trigger.trigger(
@@ -772,10 +761,18 @@ export default class Meetings extends WebexPlugin {
    * @memberof Meetings
    */
   fetchUserPreferredWebexSite() {
-    return this.request.getMeetingPreferences().then((res) => {
-      if (res) {
-        this.preferredWebexSite = MeetingsUtil.parseDefaultSiteFromMeetingPreferences(res);
+    // @ts-ignore
+    return this.webex.people._getMe().then((me) => {
+      const Guest = me.type === 'appuser';
+      if (!Guest) {
+        return this.request.getMeetingPreferences().then((res) => {
+          if (res) {
+            this.preferredWebexSite = MeetingsUtil.parseDefaultSiteFromMeetingPreferences(res);
+          }
+        });
       }
+
+      return Promise.resolve();
     });
   }
 
