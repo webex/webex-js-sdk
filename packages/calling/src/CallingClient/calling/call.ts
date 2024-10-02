@@ -2542,7 +2542,6 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
   private registerListeners(localAudioStream: LocalMicrophoneStream) {
     localAudioStream.on(LocalStreamEventNames.OutputTrackChange, this.updateTrack);
-
     localAudioStream.on(LocalStreamEventNames.EffectAdded, this.registerEffectListener);
 
     const effect = localAudioStream.getEffectByKind(NOISE_REDUCTION_EFFECT) as any;
@@ -2764,7 +2763,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    * @param localAudioTrack -.
    */
   public mute = (localAudioStream: LocalMicrophoneStream): void => {
-    if (localAudioStream) {
+    if (localAudioStream && !localAudioStream.systemMuted) {
       localAudioStream.setUserMuted(!this.muted);
       this.muted = !this.muted;
     } else {
