@@ -4279,6 +4279,20 @@ describe('plugin-meetings', () => {
             assert.calledTwice(locusMediaRequestStub);
           });
 
+          it('addMedia() works correctly when media is disabled with no streams to publish', async () => {
+            const handleDeviceLoggingSpy = sinon.spy(Meeting, 'handleDeviceLogging');
+            await meeting.addMedia({audioEnabled: false});
+            //calling handleDeviceLogging with audioEnaled as true adn videoEnabled as false
+            assert.calledWith(handleDeviceLoggingSpy,false,true);
+          });
+
+          it('addMedia() works correctly when video is disabled with no streams to publish', async () => {
+            const handleDeviceLoggingSpy = sinon.spy(Meeting, 'handleDeviceLogging');
+            await meeting.addMedia({videoEnabled: false});
+            //calling handleDeviceLogging audioEnabled as true videoEnabled as false
+            assert.calledWith(handleDeviceLoggingSpy,true,false);
+          });
+
           it('addMedia() works correctly when video is disabled with no streams to publish', async () => {
             await meeting.addMedia({videoEnabled: false});
             await simulateRoapOffer();
@@ -4343,6 +4357,14 @@ describe('plugin-meetings', () => {
 
             // and that these were the only /media requests that were sent
             assert.calledTwice(locusMediaRequestStub);
+          });
+
+
+          it('addMedia() works correctly when both shareAudio and shareVideo is disabled with no streams publish', async () => {
+            const handleDeviceLoggingSpy = sinon.spy(Meeting, 'handleDeviceLogging');
+            await meeting.addMedia({shareAudioEnabled: false, shareVideoEnabled: false});
+            //calling handleDeviceLogging with audioEnabled true and videoEnabled as true
+            assert.calledWith(handleDeviceLoggingSpy,true,true);
           });
 
           describe('publishStreams()/unpublishStreams() calls', () => {
