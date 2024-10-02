@@ -331,6 +331,7 @@ describe('plugin-meetings', () => {
           assert.isNull(meeting.partner);
           assert.isNull(meeting.type);
           assert.isNull(meeting.owner);
+          assert.isUndefined(meeting.isoLocalClientMeetingJoinTime);
           assert.isNull(meeting.hostId);
           assert.isNull(meeting.policy);
           assert.instanceOf(meeting.meetingRequest, MeetingRequest);
@@ -1585,6 +1586,10 @@ describe('plugin-meetings', () => {
         describe('successful', () => {
           beforeEach(() => {
             sandbox.stub(MeetingUtil, 'joinMeeting').returns(Promise.resolve(joinMeetingResult));
+          });
+
+          afterEach(() => {
+            assert.exists(meeting.isoLocalClientMeetingJoinTime);
           });
 
           it('should join the meeting and return promise', async () => {
