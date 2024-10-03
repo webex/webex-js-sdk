@@ -37,7 +37,7 @@
   "dependencies": {
     "@webex/common": "workspace:*",
     "@webex/common-timers": "workspace:*",
-    "@webex/event-dictionary-ts": "^1.0.1406",
+    "@webex/event-dictionary-ts": "^1.0.1546",
     "@webex/internal-plugin-metrics": "workspace:*",
     "@webex/test-helper-chai": "workspace:*",
     "@webex/test-helper-mock-webex": "workspace:*",

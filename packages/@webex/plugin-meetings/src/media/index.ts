@@ -104,9 +104,7 @@ Media.getDirection = (forceSendRecv: boolean, receive: boolean, send: boolean) =
  *
  * @param {boolean} isMultistream
  * @param {string} debugId string useful for debugging (will appear in media connection logs)
- * @param {object} webex main `webex` object.
  * @param {string} meetingId id for the meeting using this connection
- * @param {string} correlationId id used in requests to correlate to this session
  * @param {Object} options
  * @param {Object} [options.mediaProperties] contains mediaDirection and local tracks:
  *                                 audioTrack, videoTrack, shareVideoTrack, and shareAudioTrack
@@ -120,10 +118,9 @@ Media.getDirection = (forceSendRecv: boolean, receive: boolean, send: boolean) =
 Media.createMediaConnection = (
   isMultistream: boolean,
   debugId: string,
-  webex: object,
   meetingId: string,
-  correlationId: string,
   options: {
+    rtcMetrics?: RtcMetrics;
     mediaProperties: {
       mediaDirection?: {
         receiveAudio: boolean;
@@ -150,6 +147,7 @@ Media.createMediaConnection = (
   }
 ) => {
   const {
+    rtcMetrics,
     mediaProperties,
     remoteQualityLevel,
     enableRtx,
@@ -163,6 +161,19 @@ Media.createMediaConnection = (
   // we might not have any TURN server if TURN discovery failed or wasn't done or
   // we might get an empty TURN url if we land on a video mesh node
   if (turnServerInfo?.url) {
+    if (!isBrowser('firefox')) {
+      let bareTurnServer = turnServerInfo.url;
+      bareTurnServer = bareTurnServer.replace('turns:', 'turn:');
+      bareTurnServer = bareTurnServer.replace('443', '5004');
+
+      iceServers.push({
+        urls: bareTurnServer,
+        username: turnServerInfo.username || '',
+        credential: turnServerInfo.password || '',
+      });
+    }
+
+    // TURN-TLS server
     iceServers.push({
       urls: turnServerInfo.url,
       username: turnServerInfo.username || '',
@@ -179,15 +190,13 @@ Media.createMediaConnection = (
       config.bundlePolicy = bundlePolicy;
     }
 
-    const rtcMetrics = new RtcMetrics(webex, meetingId, correlationId);
-
     return new MultistreamRoapMediaConnection(
       config,
       meetingId,
       /* the rtc metrics objects callbacks */
-      (data) => rtcMetrics.addMetrics(data),
-      () => rtcMetrics.closeMetrics(),
-      () => rtcMetrics.sendMetricsInQueue()
+      (data) => rtcMetrics?.addMetrics(data),
+      () => rtcMetrics?.closeMetrics(),
+      () => rtcMetrics?.sendMetricsInQueue()
     );
   }
 

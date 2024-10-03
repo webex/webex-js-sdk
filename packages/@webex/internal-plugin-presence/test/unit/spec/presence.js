@@ -64,6 +64,29 @@ describe.skip('plugin-presence', () => {
     describe('#setStatus()', () => {
       it('requires a status', () =>
         assert.isRejected(webex.internal.presence.setStatus(), /A status is required/));
+
+      it('passes a label to the API', () => {
+        const testGuid = 'test-guid';
+
+        webex.internal.device.userId = testGuid;
+
+        webex.request = function (options) {
+          return Promise.resolve({
+            statusCode: 204,
+            body: [],
+            options,
+          });
+        };
+        sinon.spy(webex, 'request');
+
+        webex.internal.presence.setStatus('dnd');
+
+        assert.calledOnce(webex.request);
+
+        const request = webex.request.getCall(0);
+
+        assert.equal(request.args[0].body.label, testGuid);
+      });
     });
   });
 });
