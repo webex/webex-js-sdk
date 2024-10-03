@@ -763,8 +763,8 @@ export default class Meetings extends WebexPlugin {
   fetchUserPreferredWebexSite() {
     // @ts-ignore
     return this.webex.people._getMe().then((me) => {
-      const Guest = me.type === 'appuser';
-      if (!Guest) {
+      const isGuestUser = me.type === 'appuser';
+      if (!isGuestUser) {
         return this.request.getMeetingPreferences().then((res) => {
           if (res) {
             this.preferredWebexSite = MeetingsUtil.parseDefaultSiteFromMeetingPreferences(res);

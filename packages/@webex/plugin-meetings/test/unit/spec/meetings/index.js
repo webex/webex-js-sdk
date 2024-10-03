@@ -1281,14 +1281,10 @@ describe('plugin-meetings', () => {
           assert.equal(webex.meetings.preferredWebexSite, 'go.webex.com');
         });
 
-        const setup = ({me = {type: 'validuser'}} = {}) => {
-          Object.assign(webex.people,{
-            _getMe: sinon.stub().returns(Promise.resolve(me)),
-          })
-        }
-
         it('should not call request.getMeetingPreferences if user is a guest', async () => {
-          setup({me: {type: 'appuser'}});
+          Object.assign(webex.people,{
+            _getMe: sinon.stub().returns(Promise.resolve({type: 'appuser'})),
+          })
       
           await webex.meetings.fetchUserPreferredWebexSite();
       
