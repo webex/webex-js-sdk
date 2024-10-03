@@ -1,12 +1,7 @@
-/* eslint-disable no-async-promise-executor */
-/* eslint-disable prefer-promise-reject-errors */
-/* eslint-disable no-useless-catch */
 /* eslint-disable no-console */
-/* eslint-disable class-methods-use-this */
-/* eslint-disable import/no-extraneous-dependencies */
 
 import {v4 as uuidv4} from 'uuid';
-import {decodeJwt} from 'jose';
+import {decodeJwt, JWTPayload} from 'jose';
 import {DataSourceRequest, DataSourceResponse} from './types';
 import {DATASOURCE_ENDPOINT} from './constants';
 import {HttpClient, ApiResponse} from '../http-client/types';
@@ -102,72 +97,54 @@ export default class DataSourceClient {
    * This method refreshes the DataSource token using dataSourceId and tokenLifetimeMinute
    * @param {string} dataSourceId The id of data source
    * @param {number} tokenLifetimeMinutes The Life time minutes for the data source. <=1440
-   * @returns {Promise<void>}
+   * @returns {Promise<any>}
    * @example
-   * const dataSourceClient = new DataSourceClient(httpClient); Create an instance of dataSourceClient by passing instance of HttpClient.
-   * Start auto-refresh
-   * const { promise, cancel } = dataSourceClient.refreshDataSourceToken('12345', 30); Invoke refreshDataSourceToken method by passing dataSourceId and tokenLifetimeMinutes.
-    promise
-    .then(() => {
-        console.log('Auto-refresh started successfully.');
-    })
-    .catch((error) => {
-      console.error('Failed to start auto-refresh:', error);
-    });
+   * try {
+    const dataSourceId = '123'; // Replace with your actual dataSourceId
+    const tokenLifetimeMinutes = 60; // Optional, replace with your actual token lifetime minutes
 
-    Way to Cancel the auto-refresh if needed
-    cancel();
+    const result = await dataSourceClient.refreshDataSourceToken(dataSourceId, tokenLifetimeMinutes);
+    // Use the cancel function if needed
+    result.cancel();
+  } catch (error) {
+    console.error('Error refreshing data source token:', error);
+  }
    */
 
   public async refreshDataSourceToken(
     dataSourceId: string,
     tokenLifetimeMinutes?: number
-  ): Promise<{promise: Promise<void>; cancel: () => void}> {
-    let rejectPromise: (reason?: any) => void;
-    const promise = new Promise<void>(async (resolve, reject) => {
-      rejectPromise = reject;
-
-      try {
-        if (dataSourceId) {
-          const reducedTokenLifetimeMinutes = await this.getReduceTokenLifetimeMinutes(
-            tokenLifetimeMinutes || 60
+  ): Promise<any> {
+    try {
+      if (dataSourceId) {
+        let reducedTokenLifetimeMinutes = 55; // reducing the tokenlifetimeMinute by 8%, considering default value 60.
+        if (tokenLifetimeMinutes) {
+          // Below logic will generate a random percentage between 5% and 10%
+          const randomPercentage = Math.random() * 5 + 5;
+          // Then calculate the reducedTokenLifetimeMinutes
+          reducedTokenLifetimeMinutes = Math.floor(
+            tokenLifetimeMinutes * (1 - randomPercentage / 100)
           );
-          this.startAutoRefresh(dataSourceId, reducedTokenLifetimeMinutes);
-          resolve();
-        } else {
-          console.log('Required field is missing, Please pass dataSourceId.');
-          reject('Required field is missing, Please pass dataSourceId.');
         }
-      } catch (error) {
-        console.log('Encountered some error, error is', error);
-        reject(error);
+        this.startAutoRefresh(dataSourceId, reducedTokenLifetimeMinutes);
+        const cancel = () => {
+          if (this.timer) {
+            clearInterval(this.timer);
+            this.timer = null;
+            console.log('Auto-refresh has been cancelled successfully.');
+          }
+        };
+
+        return Promise.resolve({cancel});
       }
-    });
-    const cancel = () => {
-      if (this.timer) {
-        clearInterval(this.timer);
-        this.timer = null;
-        console.log('Auto-refresh has been cancelled successfully.');
-        rejectPromise('Auto-refresh cancelled');
-      }
-    };
+      console.log('Required field is missing, Please pass dataSourceId.');
 
-    return {promise, cancel};
-  }
+      return Promise.reject(new Error('Required field is missing, Please pass dataSourceId'));
+    } catch (error) {
+      console.log('Encountered some error, error is', error);
 
-  /**
-   * This Private method will be used to reduce the tokenLifetimeMinutes between 5% to 10%
-   * @param {number} tokenLifetimeMinutes The Life time minutes for the data source. <=1440
-   * @returns {number} It returns a reduced token lifetime minutes.
-   */
-
-  private async getReduceTokenLifetimeMinutes(tokenLifetimeMinutes: number): Promise<number> {
-    // Below logic will generate a random percentage between 5% and 10%
-    const randomPercentage = Math.random() * 5 + 5;
-    // Then calculate the reducedTokenLifetimeMinutes
-    const reducedTokenLifetimeMinutes = tokenLifetimeMinutes * (1 - randomPercentage / 100);
-
-    return reducedTokenLifetimeMinutes;
+      return Promise.reject(error);
+    }
   }
 
   /**
@@ -185,36 +162,33 @@ export default class DataSourceClient {
   ): Promise<void> {
     try {
       // Call the get method to fetch the dataSource details & then call the update method to update the token!
-      const payloadForDataSourceUpdateMethod: any = {};
-      await this.get(dataSourceId)
-        .then((response: any) => {
-          const jwsToken: any = response.jwsToken;
-          const jwsTokenPayload: any = decodeJwt(jwsToken);
-          payloadForDataSourceUpdateMethod.schemaId = response.schemaId;
-          payloadForDataSourceUpdateMethod.tokenLifetimeMinutes = tokenLifetimeMinutes;
-          payloadForDataSourceUpdateMethod.nonce = nonceGenerator(); // Use the provided nonce generator
-          if (jwsTokenPayload) {
-            payloadForDataSourceUpdateMethod.url = jwsTokenPayload.com.cisco.datasource.url;
-            payloadForDataSourceUpdateMethod.subject = jwsTokenPayload.sub;
-            payloadForDataSourceUpdateMethod.audience = jwsTokenPayload.aud;
-          } else {
-            console.log('jwsTokenPayload is coming as undefined!');
-          }
-        })
-        .catch((error: any) => {
-          console.log('error while calling the get method to update the dataSource', error);
-        });
-
-      this.timer = setInterval(async () => {
-        await this.update(dataSourceId, payloadForDataSourceUpdateMethod)
-          .then((response) => {
-            console.log('dataSource has been updated successfully!', response);
-          })
-          .catch((error) => {
-            console.log('error while updating the dataSource', error);
-          });
-        console.log('dataSource has been refreshed successfully');
-      }, tokenLifetimeMinutes * 60 * 1000); // Converts minutes to milliseconds.
+      const payloadForDataSourceUpdateMethod: DataSourceRequest = {
+        schemaId: '',
+        url: '',
+        audience: '',
+        subject: '',
+        nonce: '',
+        tokenLifetimeMinutes: 0,
+      };
+      const getResponse = await this.get(dataSourceId);
+      const jwsToken: string = getResponse?.data?.jwsToken;
+      const jwsTokenPayload: JWTPayload = decodeJwt(jwsToken);
+      payloadForDataSourceUpdateMethod.schemaId = getResponse?.data?.schemaId;
+      payloadForDataSourceUpdateMethod.tokenLifetimeMinutes = tokenLifetimeMinutes;
+      payloadForDataSourceUpdateMethod.nonce = nonceGenerator(); // Use the provided nonce generator
+      if (jwsTokenPayload) {
+        payloadForDataSourceUpdateMethod.url = jwsTokenPayload[
+          'com.cisco.datasource.url'
+        ] as string;
+        payloadForDataSourceUpdateMethod.subject = jwsTokenPayload.sub ?? '';
+        payloadForDataSourceUpdateMethod.audience = jwsTokenPayload.aud ?? '';
+        this.timer = setInterval(async () => {
+          const updateResponse = await this.update(dataSourceId, payloadForDataSourceUpdateMethod);
+          console.log('dataSource has been refreshed successfully, response is', updateResponse);
+        }, tokenLifetimeMinutes * 60 * 1000); // Converts minutes to milliseconds.
+      } else {
+        console.log('jwsTokenPayload is coming as undefined!');
+      }
     } catch (error) {
       console.log('Got error while starting auto refreshing dataSource token', error);
     }

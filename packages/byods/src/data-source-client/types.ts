@@ -79,7 +79,7 @@ export interface DataSourceRequest {
   /**
    * The audience for the data source request.
    */
-  audience: string;
+  audience: string | string[];
 
   /**
    * The subject of the data source request.
