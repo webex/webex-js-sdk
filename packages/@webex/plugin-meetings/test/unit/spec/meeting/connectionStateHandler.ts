@@ -1,10 +1,11 @@
+import 'jsdom-global/register'
 import sinon from 'sinon';
 import {assert} from '@webex/test-helper-chai';
 import {
   ConnectionStateHandler,
   ConnectionStateEvent,
 } from '@webex/plugin-meetings/src/meeting/connectionStateHandler';
-import {Event, ConnectionState} from '@webex/internal-media-core';
+import {ConnectionState, MediaConnectionEventNames} from '@webex/internal-media-core';
 
 describe('ConnectionStateHandler', () => {
   let connectionStateHandler: ConnectionStateHandler;
@@ -26,8 +27,8 @@ describe('ConnectionStateHandler', () => {
 
       // check the right listener was registered
       assert.calledTwice(mockMC.on);
-      assert.equal(mockMC.on.getCall(0).args[0], Event.PEER_CONNECTION_STATE_CHANGED);
-      assert.equal(mockMC.on.getCall(1).args[0], Event.ICE_CONNECTION_STATE_CHANGED);
+      assert.equal(mockMC.on.getCall(0).args[0], MediaConnectionEventNames.PEER_CONNECTION_STATE_CHANGED);
+      assert.equal(mockMC.on.getCall(1).args[0], MediaConnectionEventNames.ICE_CONNECTION_STATE_CHANGED);
       const listener = mockMC.on.getCall(0).args[1];
 
       listener();
@@ -51,8 +52,8 @@ describe('ConnectionStateHandler', () => {
 
       // check the right listener was registered
       assert.calledTwice(mockMC.on);
-      assert.equal(mockMC.on.getCall(0).args[0], Event.PEER_CONNECTION_STATE_CHANGED);
-      assert.equal(mockMC.on.getCall(1).args[0], Event.ICE_CONNECTION_STATE_CHANGED);
+      assert.equal(mockMC.on.getCall(0).args[0], MediaConnectionEventNames.PEER_CONNECTION_STATE_CHANGED);
+      assert.equal(mockMC.on.getCall(1).args[0], MediaConnectionEventNames.ICE_CONNECTION_STATE_CHANGED);
       const listener = mockMC.on.getCall(1).args[1];
 
       listener();
@@ -76,8 +77,8 @@ describe('ConnectionStateHandler', () => {
 
       // check the right listener was registered
       assert.calledTwice(mockMC.on);
-      assert.equal(mockMC.on.getCall(0).args[0], Event.PEER_CONNECTION_STATE_CHANGED);
-      assert.equal(mockMC.on.getCall(1).args[0], Event.ICE_CONNECTION_STATE_CHANGED);
+      assert.equal(mockMC.on.getCall(0).args[0], MediaConnectionEventNames.PEER_CONNECTION_STATE_CHANGED);
+      assert.equal(mockMC.on.getCall(1).args[0], MediaConnectionEventNames.ICE_CONNECTION_STATE_CHANGED);
       const peerConnectionListener = mockMC.on.getCall(0).args[1];
       const iceConnectionListener = mockMC.on.getCall(1).args[1];
 

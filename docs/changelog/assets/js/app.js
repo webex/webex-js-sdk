@@ -134,9 +134,21 @@ const fetchChangelog = async (versionPath) => {
 };
 
 const populatePackageNames = (changelog) => {
+    let specialPackages = ['webex', '@webex/calling'];
+    let filteredPackages = Object.keys(changelog).filter(pkg => !specialPackages.includes(pkg));
+
+    // Sort the remaining packages alphabetically
+    filteredPackages.sort();
+
+    // Add 'webex' and '@webex/calling' back to the beginning of the array
+    let sortedPackages = ['separator', ...specialPackages, 'separator', ...filteredPackages];
     let optionsHtml = '<option value="">Select a package</option>'; // Placeholder option
 
-    Object.keys(changelog).forEach((packageName) => {
+    sortedPackages.forEach((packageName) => {
+        if(packageName === 'separator'){
+            optionsHtml += `<option disabled>──────────</option>`;
+            return;
+        }
         optionsHtml += `<option value="${packageName}">${packageName}</option>`;
     });
 

@@ -1,11 +1,4 @@
-import {
-  DSSLookupResponse,
-  KmsKey,
-  KmsResourceObject,
-  LookupOptions,
-  PeopleListResponse,
-  WebexRequestPayload,
-} from '../common/types';
+import {KmsKey, KmsResourceObject, PeopleListResponse, WebexRequestPayload} from '../common/types';
 /* eslint-disable no-shadow */
 
 type Listener = (e: string, data?: unknown) => void;
@@ -82,10 +75,6 @@ export interface WebexSDK {
         };
       };
     };
-    dss: {
-      lookup: (options: LookupOptions) => Promise<DSSLookupResponse>;
-      register: () => Promise<void>;
-    };
     encryption: {
       decryptText: (encryptionKeyUrl: string, encryptedData?: string) => Promise<string>;
       encryptText: (encryptionKeyUrl: string, text?: string) => Promise<string>;
@@ -109,7 +98,6 @@ export interface WebexSDK {
         mercuryApi: string;
         'ucmgmt-gateway': string;
         contactsService: string;
-        directorySearch: string;
       };
       fetchClientRegionInfo: () => Promise<ClientRegionInfo>;
     };

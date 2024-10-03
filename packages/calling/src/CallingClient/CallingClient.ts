@@ -106,6 +106,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
       : {indicator: ServiceIndicator.CALLING, domain: ''};
 
     const logLevel = this.sdkConfig?.logger?.level ? this.sdkConfig.logger.level : LOGGER.ERROR;
+    log.setLogger(logLevel, CALLING_CLIENT_FILE);
     validateServiceData(serviceData);
 
     this.callManager = getCallManager(this.webex, serviceData.indicator);
@@ -115,7 +116,18 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
 
     this.primaryMobiusUris = [];
     this.backupMobiusUris = [];
+    let mobiusServiceHost = '';
+    try {
+      mobiusServiceHost = new URL(this.webex.internal.services._serviceUrls.mobius).host;
+    } catch (error) {
+      log.warn(`Failed to parse mobius service URL`, {
+        file: CALLING_CLIENT_FILE,
+        method: this.constructor.name,
+      });
+    }
+
     this.mobiusClusters =
+      (mobiusServiceHost && this.webex.internal.services._hostCatalog[mobiusServiceHost]) ||
       this.webex.internal.services._hostCatalog[MOBIUS_US_PROD] ||
       this.webex.internal.services._hostCatalog[MOBIUS_EU_PROD] ||
       this.webex.internal.services._hostCatalog[MOBIUS_US_INT] ||
@@ -123,8 +135,6 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
     this.mobiusHost = '';
 
     this.registerSessionsListener();
-
-    log.setLogger(logLevel, CALLING_CLIENT_FILE);
 
     this.registerCallsClearedListener();
   }

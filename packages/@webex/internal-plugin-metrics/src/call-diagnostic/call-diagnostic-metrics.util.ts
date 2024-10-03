@@ -195,16 +195,22 @@ export const isBrowserMediaErrorName = (errorName: any) => {
 };
 
 /**
+ * @param {Object} webex sdk instance
  * @param webClientDomain
  * @returns
  */
 export const getBuildType = (
+  webex,
   webClientDomain,
   markAsTestEvent = false
 ): Event['origin']['buildType'] => {
   // used temporary to test pre join in production without creating noise data, SPARK-468456
   if (markAsTestEvent) {
     return 'test';
+  }
+
+  if (webex.internal.metrics?.config?.caBuildType) {
+    return webex.internal.metrics.config.caBuildType;
   }
 
   if (
@@ -227,6 +233,7 @@ export const getBuildType = (
 export const prepareDiagnosticMetricItem = (webex: any, item: any) => {
   const origin: Partial<Event['origin']> = {
     buildType: getBuildType(
+      webex,
       item.eventPayload?.event?.eventData?.webClientDomain,
       item.eventPayload?.event?.eventData?.markAsTestEvent
     ),
@@ -285,6 +292,8 @@ export const prepareDiagnosticMetricItem = (webex: any, item: any) => {
 
     case 'client.media.rx.start':
       joinTimes.localSDPGenRemoteSDPRecv = cdl.getLocalSDPGenRemoteSDPRecv();
+      audioSetupDelay.joinRespRxStart = cdl.getAudioJoinRespRxStart();
+      videoSetupDelay.joinRespRxStart = cdl.getVideoJoinRespRxStart();
       break;
 
     case 'client.media-engine.ready':
@@ -294,10 +303,8 @@ export const prepareDiagnosticMetricItem = (webex: any, item: any) => {
       joinTimes.stayLobbyTime = cdl.getStayLobbyTime();
       break;
 
-    case 'client.mediaquality.event':
-      audioSetupDelay.joinRespRxStart = cdl.getAudioJoinRespRxStart();
+    case 'client.media.tx.start':
       audioSetupDelay.joinRespTxStart = cdl.getAudioJoinRespTxStart();
-      videoSetupDelay.joinRespRxStart = cdl.getVideoJoinRespRxStart();
       videoSetupDelay.joinRespTxStart = cdl.getVideoJoinRespTxStart();
   }
 

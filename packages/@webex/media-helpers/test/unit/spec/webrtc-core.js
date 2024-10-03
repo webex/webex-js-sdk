@@ -13,7 +13,7 @@ import {
   createDisplayStream,
   createDisplayStreamWithAudio,
 } from '@webex/media-helpers';
-import * as wcmestreams from '@webex/internal-media-core';
+import * as InternalMediaCoreModule from '@webex/internal-media-core';
 
 describe('media-helpers', () => {
   describe('webrtc-core', () => {
@@ -120,7 +120,7 @@ describe('media-helpers', () => {
           it('checks creating tracks', async () => {
             const constraints = {deviceId: 'abc'};
 
-            const spy = sinon.stub(wcmestreams, spyFn).returns('something');
+            const spy = sinon.stub(InternalMediaCoreModule, spyFn).returns('something');
             const result = await createFn(constraints);
 
             assert.equal(result, 'something');
@@ -132,7 +132,7 @@ describe('media-helpers', () => {
 
     describe('createDisplayStream', () => {
       it('checks createDisplayStream', async () => {
-        const spy = sinon.stub(wcmestreams, 'createDisplayStream').returns('something');
+        const spy = sinon.stub(InternalMediaCoreModule, 'createDisplayStream').returns('something');
         const result = await createDisplayStream();
         assert.equal(result, 'something');
         assert.calledOnceWithExactly(spy, LocalDisplayStream);
@@ -141,7 +141,7 @@ describe('media-helpers', () => {
 
     describe('createDisplayStreamWithAudio', () => {
       it('checks createDisplayStreamWithAudio', async () => {
-        const spy = sinon.stub(wcmestreams, 'createDisplayStreamWithAudio').returns('something');
+        const spy = sinon.stub(InternalMediaCoreModule, 'createDisplayStreamWithAudio').returns('something');
         const result = await createDisplayStreamWithAudio();
         assert.equal(result, 'something');
         assert.calledOnceWithExactly(spy, LocalDisplayStream, LocalSystemAudioStream);

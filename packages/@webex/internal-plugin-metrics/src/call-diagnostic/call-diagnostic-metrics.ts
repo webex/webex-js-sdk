@@ -75,6 +75,7 @@ type GetIdentifiersOptions = {
   meeting?: any;
   mediaConnections?: any[];
   correlationId?: string;
+  sessionCorrelationId?: string;
   preLoginId?: string;
   globalMeetingId?: string;
   webexConferenceIdStr?: string;
@@ -285,6 +286,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       webexConferenceIdStr,
       globalMeetingId,
       preLoginId,
+      sessionCorrelationId,
     } = options;
     const identifiers: Event['event']['identifiers'] = {
       correlationId: 'unknown',
@@ -292,6 +294,10 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
 
     if (meeting) {
       identifiers.correlationId = meeting.correlationId;
+    }
+
+    if (sessionCorrelationId) {
+      identifiers.sessionCorrelationId = sessionCorrelationId;
     }
 
     if (correlationId) {
@@ -455,6 +461,9 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
         },
         intervals: payload.intervals,
         callingServiceType: 'LOCUS',
+        meetingJoinInfo: {
+          clientSignallingProtocol: 'WebRTC',
+        },
         sourceMetadata: {
           applicationSoftwareType: CLIENT_NAME,
           // @ts-ignore
@@ -643,7 +652,13 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     options?: SubmitClientEventOptions;
     errors?: ClientEventPayloadError;
   }) {
-    const {meetingId, mediaConnections, globalMeetingId, webexConferenceIdStr} = options;
+    const {
+      meetingId,
+      mediaConnections,
+      globalMeetingId,
+      webexConferenceIdStr,
+      sessionCorrelationId,
+    } = options;
 
     // @ts-ignore
     const meeting = this.webex.meetings.meetingCollection.get(meetingId);
@@ -670,6 +685,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       mediaConnections: meeting?.mediaConnections || mediaConnections,
       webexConferenceIdStr,
       globalMeetingId,
+      sessionCorrelationId,
     });
 
     // create client event object
@@ -711,11 +727,13 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     options?: SubmitClientEventOptions;
     errors?: ClientEventPayloadError;
   }) {
-    const {correlationId, globalMeetingId, webexConferenceIdStr, preLoginId} = options;
+    const {correlationId, globalMeetingId, webexConferenceIdStr, preLoginId, sessionCorrelationId} =
+      options;
 
     // grab identifiers
     const identifiers = this.getIdentifiers({
       correlationId,
+      sessionCorrelationId,
       preLoginId,
       globalMeetingId,
       webexConferenceIdStr,

@@ -5,7 +5,6 @@ import EventEmitter from 'events';
 require('@webex/internal-plugin-device');
 require('@webex/internal-plugin-mercury');
 require('@webex/internal-plugin-encryption');
-require('@webex/internal-plugin-dss');
 
 const merge = require('lodash/merge');
 const WebexCore = require('@webex/webex-core').default;

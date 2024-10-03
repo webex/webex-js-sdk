@@ -1,10 +1,11 @@
+import 'jsdom-global/register';
 import {MediaRequestManager} from '@webex/plugin-meetings/src/multistream/mediaRequestManager';
 import {ReceiveSlot} from '@webex/plugin-meetings/src/multistream/receiveSlot';
 import sinon from 'sinon';
 import {assert} from '@webex/test-helper-chai';
 import {getMaxFs} from '@webex/plugin-meetings/src/multistream/remoteMedia';
 import FakeTimers from '@sinonjs/fake-timers';
-import * as mediaCore from '@webex/internal-media-core';
+import * as InternalMediaCoreModule from '@webex/internal-media-core';
 import { expect } from 'chai';
 
 type ExpectedActiveSpeaker = {
@@ -978,7 +979,7 @@ describe('MediaRequestManager', () => {
     beforeEach(() => {
       sendMediaRequestsCallback.resetHistory();
       getRecommendedMaxBitrateForFrameSizeSpy = sinon.spy(
-        mediaCore,
+        InternalMediaCoreModule,
         'getRecommendedMaxBitrateForFrameSize'
       );
     });

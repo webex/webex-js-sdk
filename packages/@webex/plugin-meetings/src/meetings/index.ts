@@ -765,7 +765,7 @@ export default class Meetings extends WebexPlugin {
     return Promise.all([
       this.fetchUserPreferredWebexSite(),
       this.getGeoHint(),
-      this.startReachability().catch((error) => {
+      this.startReachability('registration').catch((error) => {
         LoggerProxy.logger.error(`Meetings:index#register --> GDM error, ${error.message}`);
       }),
       // @ts-ignore
@@ -967,12 +967,13 @@ export default class Meetings extends WebexPlugin {
 
   /**
    * initializes and starts gathering reachability for Meetings
+   * @param {string} trigger - explains the reason for starting reachability
    * @returns {Promise}
    * @public
    * @memberof Meetings
    */
-  startReachability() {
-    return this.getReachability().gatherReachability();
+  startReachability(trigger = 'client') {
+    return this.getReachability().gatherReachability(trigger);
   }
 
   /**
