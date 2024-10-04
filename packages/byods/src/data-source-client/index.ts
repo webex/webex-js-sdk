@@ -172,7 +172,7 @@ export default class DataSourceClient {
   /**
    * This Private method will start auto refreshing the DataSource token with interval as tokenLifetimeMinutes.
    * @param {string} dataSourceId The id of the data source
-   * @param {number} tokenLifetimeMinutes A Life time minutes for the data source. <=1440
+   * @param {number} tokenLifetimeMinutes The refresh interval in minutes for the data source. Defaults to 60 but less than < 1440
    * @param {string} nonce A unique nonce for the data source request.
    * @returns {Promise<NodeJS.Timer>}
    */
