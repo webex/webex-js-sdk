@@ -1,9 +1,6 @@
 import DataSourceClient from '../../../../src/data-source-client';
 import {DataSourceRequest, DataSourceResponse} from '../../../../src/data-source-client/types';
 import {HttpClient, ApiResponse} from '../../../../src/http-client/types';
-import { v4 as uuidv4 } from 'uuid';
-
-jest.mock('uuid', () => ({ v4: jest.fn() }));
 
 describe('DataSourceClient', () => {
   let httpClient: jest.Mocked<HttpClient>;
@@ -18,6 +15,10 @@ describe('DataSourceClient', () => {
       delete: jest.fn(),
     };
     dataSourceClient = new DataSourceClient(httpClient);
+    // Mock crypto.randomUUID
+    global.crypto = {
+      randomUUID: jest.fn().mockReturnValue('uniqueNonce'),
+    } as any;
   });
 
   afterEach(() => {
@@ -206,62 +207,60 @@ describe('DataSourceClient', () => {
   });
 
 
-  it('should refresh data source token and allow cancellation', async () => {
-    const dataSourceId = '123';
-    const tokenLifetimeMinutes = 60;
-    const reducedTokenLifetimeMinutes = 54; // assuming a 10% reduction for the test
-    const getReduceTokenLifetimeMinutesMock = jest
-      .spyOn(dataSourceClient, 'getReduceTokenLifetimeMinutes')
-      .mockResolvedValue(reducedTokenLifetimeMinutes);
+    it('should schedule JWS token refresh and provide a cancel function', async () => {
+      const dataSourceId = '123';
+      const tokenLifetimeMinutes = 60;
 
-    const startAutoRefreshMock = jest
-      .spyOn(dataSourceClient, 'startAutoRefresh')
-      .mockResolvedValue(undefined);
+      jest.spyOn(dataSourceClient, 'startAutoRefresh').mockResolvedValue(setInterval(() => {}, 1000));
 
-    const { promise, cancel } = await dataSourceClient.refreshDataSourceToken(dataSourceId, tokenLifetimeMinutes);
+      const result = await dataSourceClient.scheduleJWSTokenRefresh(dataSourceId, tokenLifetimeMinutes);
 
-    await expect(promise).resolves.toBeUndefined();
-    expect(getReduceTokenLifetimeMinutesMock).toHaveBeenCalledWith(tokenLifetimeMinutes);
-    expect(startAutoRefreshMock).toHaveBeenCalledWith(dataSourceId, reducedTokenLifetimeMinutes);
+      expect(result).toHaveProperty('cancel');
+      result.cancel();
+    });
 
-    cancel();
-    expect(dataSourceClient.timer).toBeNull();
-  });
+    it('should reject with an error if dataSourceId is missing or invalid', async () => {
+      await expect(dataSourceClient.scheduleJWSTokenRefresh('', 60)).rejects.toThrow('Encountered some error');
+      await expect(dataSourceClient.scheduleJWSTokenRefresh(null as any, 60)).rejects.toThrow('Encountered some error');
+    });
 
-  it('should reject refreshDataSourceToken when dataSourceId is missing', async () => {
-    const dataSourceId = '';
-    const { promise, cancel } = await dataSourceClient.refreshDataSourceToken(dataSourceId);
+    it('should reject with an error if tokenLifetimeMinutes is invalid', async () => {
+      await expect(dataSourceClient.scheduleJWSTokenRefresh('123', 0)).rejects.toThrow('Encountered some error');
+      await expect(dataSourceClient.scheduleJWSTokenRefresh('123', 1441)).rejects.toThrow('Encountered some error');
+      await expect(dataSourceClient.scheduleJWSTokenRefresh('123', NaN)).rejects.toThrow('Encountered some error');
+    });
 
-    await expect(promise).rejects.toEqual('Required field is missing, Please pass dataSourceId.');
-  });
+    it('should handle errors when scheduling JWS token refresh', async () => {
+      jest.spyOn(dataSourceClient, 'startAutoRefresh').mockRejectedValue(new Error('startAutoRefresh error'));
 
-  it('should handle errors in refreshDataSourceToken', async () => {
-    const dataSourceId = '123';
-    const error = new Error('Network error');
-    jest.spyOn(dataSourceClient, 'getReduceTokenLifetimeMinutes').mockRejectedValue(error);
+      await expect(dataSourceClient.scheduleJWSTokenRefresh('123', 60)).rejects.toThrow('Encountered some error');
+    });
 
-    const { promise } = await dataSourceClient.refreshDataSourceToken(dataSourceId);
+    it('should handle errors in startAutoRefresh gracefully', async () => {
+      const dataSourceId = '123';
+      const tokenLifetimeMinutes = 54; // assuming a 10% reduction for the test
+      const nonce = 'uniqueNonce';
+      const error = new Error('Network error');
 
-    await expect(promise).rejects.toThrow('Network error');
-  });
+      httpClient.get.mockRejectedValue(error);
 
-  it('should reduce token lifetime minutes correctly', async () => {
-    const tokenLifetimeMinutes = 60;
-    const reducedTokenLifetimeMinutes = await dataSourceClient.getReduceTokenLifetimeMinutes(tokenLifetimeMinutes);
-    expect(reducedTokenLifetimeMinutes).toBeLessThan(tokenLifetimeMinutes);
-    expect(reducedTokenLifetimeMinutes).toBeGreaterThanOrEqual(54); // with 10% reduction
-  });
+      await expect(dataSourceClient.startAutoRefresh(dataSourceId, tokenLifetimeMinutes, nonce)).rejects.toThrow('Failed to start auto-refresh.');
+    });
 
-  it('should handle errors in startAutoRefresh', async () => {
-    const dataSourceId = '123';
-    const tokenLifetimeMinutes = 54; // reduced value
-    const error = new Error('Network error');
+    it('should handle undefined jwsTokenPayload', async () => {
+      const dataSourceId = '123';
+      const tokenLifetimeMinutes = 54;
+      const nonce = 'uniqueNonce';
+      const response: ApiResponse<DataSourceResponse> = {
+        status: 200,
+        data: { schemaId: 'schemaId', jwsToken: 'someJwsToken' },
+      };
 
-    httpClient.get.mockRejectedValue(error);
+      httpClient.get.mockResolvedValue(response);
+      jest.mock('jsonwebtoken', () => ({
+        decode: jest.fn().mockReturnValue(undefined),
+      }));
 
-    await dataSourceClient.startAutoRefresh(dataSourceId, tokenLifetimeMinutes);
-
-    expect(httpClient.get).toHaveBeenCalledWith(`/dataSources/${dataSourceId}`);
-    expect(httpClient.put).not.toHaveBeenCalled();
-  });  
+      await expect(dataSourceClient.startAutoRefresh(dataSourceId, tokenLifetimeMinutes, nonce)).rejects.toThrow('Failed to start auto-refresh.');
+    });  
 });
