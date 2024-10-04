@@ -1,0 +1,45 @@
+{
+  "name": "@webex/contact-center",
+  "description": "Package that provides ",
+  "license": "Cisco EULA (https://www.cisco.com/c/en/us/products/end-user-license-agreement.html)",
+  "main": "dist/index.js",
+  "devMain": "src/index.ts",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/webex/webex-js-sdk.git",
+    "directory": "packages/@webex/contact-center"
+  },
+  "engines": {
+    "node": ">=20.x"
+  },
+  "scripts": {
+    "build:src": "webex-legacy-tools build -dest \"./dist\" -src \"./src\" -js -ts && yarn build",
+    "build": "yarn run -T tsc --declaration true --declarationDir ./dist/types",
+    "deploy:npm": "yarn npm publish",
+    "docs": "typedoc --emit none",
+    "fix:lint": "eslint 'src/**/*.ts' --fix",
+    "fix:prettier": "prettier \"src/**/*.ts\" --write",
+    "prebuild": "rimraf dist",
+    "test": "yarn test:style && yarn test:unit",
+    "test:style": "eslint 'src/**/*.ts'",
+    "test:unit": "webex-legacy-tools test --unit --runner jest"
+  },
+  "dependencies": {
+    "@types/platform": "1.3.4",
+    "async-mutex": "0.4.0",
+    "buffer": "6.0.3",
+    "jest-html-reporters": "3.0.11",
+    "platform": "1.3.6",
+    "uuid": "8.3.2",
+    "xstate": "4.30.6"
+  },
+  "devDependencies": {
+    "@babel/preset-typescript": "7.22.11",
+    "@webex/babel-config-legacy": "workspace:^",
+    "@webex/eslint-config-legacy": "workspace:^",
+    "@webex/jest-config-legacy": "workspace:^",
+    "@webex/legacy-tools": "workspace:^",
+    "eslint": "^8.24.0",
+    "sinon": "^9.2.4"
+  }
+}

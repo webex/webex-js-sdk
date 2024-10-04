@@ -7129,6 +7129,27 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@webex/contact-center@workspace:^, @webex/contact-center@workspace:packages/@webex/contact-center":
+  version: 0.0.0-use.local
+  resolution: "@webex/contact-center@workspace:packages/@webex/contact-center"
+  dependencies:
+    "@babel/preset-typescript": 7.22.11
+    "@types/platform": 1.3.4
+    "@webex/babel-config-legacy": "workspace:^"
+    "@webex/eslint-config-legacy": "workspace:^"
+    "@webex/jest-config-legacy": "workspace:^"
+    "@webex/legacy-tools": "workspace:^"
+    async-mutex: 0.4.0
+    buffer: 6.0.3
+    eslint: ^8.24.0
+    jest-html-reporters: 3.0.11
+    platform: 1.3.6
+    sinon: ^9.2.4
+    uuid: 8.3.2
+    xstate: 4.30.6
+  languageName: unknown
+  linkType: soft
+
 "@webex/env-config-legacy@workspace:^, @webex/env-config-legacy@workspace:packages/legacy/env":
   version: 0.0.0-use.local
   resolution: "@webex/env-config-legacy@workspace:packages/legacy/env"
@@ -30754,6 +30775,7 @@ __metadata:
     "@webex/babel-config-legacy": "workspace:^"
     "@webex/calling": "workspace:^"
     "@webex/common": "workspace:^"
+    "@webex/contact-center": "workspace:^"
     "@webex/eslint-config-legacy": "workspace:^"
     "@webex/internal-plugin-calendar": "workspace:^"
     "@webex/internal-plugin-device": "workspace:^"

@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Webex JavaScript SDK Sample: Meetings Plugin</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/water.css@2/out/light.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css">
+  <link rel="stylesheet" href="./style.css" />
+</head>
+
+<body>
+  <!-- Expand and Collapse -->
+  <div class="box global-toggle-btn-wrapper">
+    <button onclick="expandAll()" class="global-toggle-btn" title="Expand all">
+      <div style="display: flex; align-items: center; gap: 0.5rem;">
+        <div style="display: flex; flex-direction: column;">
+          <i class="g-arrow fa fa-angle-up" aria-hidden="true"></i>
+          <i class="g-arrow fa fa-angle-down" aria-hidden="true" style="margin-top: -6px;"></i>
+        </div>
+        <div>EXPAND ALL</div>
+      </div>
+    </button>
+
+    <button onclick="collapseAll()" class="global-toggle-btn" title="Collapse all">
+      <div style="display: flex; align-items: center; gap: 0.5rem;">
+        <div style="display: flex; flex-direction: column;">
+          <i class="g-arrow fa fa-angle-down" aria-hidden="true"></i>
+          <i class="g-arrow fa fa-angle-up" aria-hidden="true" style="margin-top: -8px;"></i>
+        </div>
+        <div>COLLAPSE ALL</div>
+      </div>
+    </button>
+  </div>
+
+  <!-- authentication-credentials -->
+  <div class="box">
+    <section class="section-box">
+      <h2 class="collapsible">
+        Auth & Registration
+        <i class="arrow fa fa-angle-up" aria-hidden="true"></i>
+      </h2>
+
+      <div class="section-content">
+        <fieldset>
+          <legend>Authentication</legend>
+          <form id="credentials">
+            <div>
+              <input id="access-token" name="accessToken" placeholder="Access Token" value="" type="text">
+              <button id="access-token-save" class="btn-code" type="submit">webex.init()</button>
+              <p id="access-token-status" class="status-par">Not initialized</p>
+            </div>
+          </form>
+
+        <form id="streams">
+            <fieldset>
+              <legend>Registration</legend>
+              <p class="note">
+                NOTE: Setup mercury connections
+              </p>
+              <div class="u-mv">
+                <button id="registration-register" type="button" onclick="register()" disabled=""
+                  class="btn-code">webex.cc.register()</button>
+                <p id="registration-status" class="status-par">Not Registered</p>
+              </div>
+            </fieldset>
+          </form>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- Events published -->
+  <div class="box">
+    <section class="section-box">
+      <h2 class="collapsible">
+        Events published
+        <i class="arrow fa fa-angle-down" aria-hidden="true"></i>
+      </h2>
+        <!-- events published -->
+        <div>
+          <fieldset>
+            <legend>Events Published</legend>
+            <div id="events-list">
+            </div>
+          </fieldset>
+        </div>
+      </div>
+    </section>
+  </div>
+ 
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+  <script src="../webex.min.js"></script>
+  <script src="app.js"></script>
+</body>
+
+</html>
