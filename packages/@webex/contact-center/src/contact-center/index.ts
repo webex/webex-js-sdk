@@ -1,19 +1,22 @@
 import {WebexPlugin} from '@webex/webex-core';
+import EventEmitter from 'events';
 import { EVENT, POST_AUTH, SUBSCRIBE_API, WCC_API_GATEWAY, WEBEX_READY } from '../constants';
 
 export default class ContactCenter extends WebexPlugin {
-    webex: any;
+    clientType = '';
     wccApiUrl = '';
-    constructor(webex) {
-        super();
-        this.webex = webex
+    webex: any;
+  
+    constructor(...options) {
+        super(...options);
+        this.webex = webex;
         this.webex.once(WEBEX_READY, () => {
             // this.emit('cc:ready');
         });
     }
 
-    private handleAgentEvents() {
-        console.log('WebexCC:index#handleAgentEvents --> ');
+    private handleAgentEvents(event: any) {
+        console.log('WebexCC:index#handleAgentEvents --> event ', event);
         //TODO: Placeholder for event handling, this needs to be in different file dedicated for event listeners 
     }
 
@@ -22,14 +25,14 @@ export default class ContactCenter extends WebexPlugin {
         this.wccApiUrl = this.webex.internal.services.get(WCC_API_GATEWAY);
         this.webex.internal.llmcc.registerWithBodyAndConnect(`${this.wccApiUrl}${SUBSCRIBE_API}`, {
             isKeepAliveEnabled: false,
-            clientType: 'WebexCCSDK',
+            clientType: this.clientType,
             allowMultiLogin: true,
             force: true,
         })
         .then((result: any) => {
             this.webex.internal.llmcc.off(EVENT, this.handleAgentEvents);
             this.webex.internal.llmcc.on(EVENT, this.handleAgentEvents);
-            console.log('WebexCC:index#updateLLMConnection --> enabled to receive relay events!');
+            console.log('WebexCC:index#register --> receive contact center events');
 
             return Promise.resolve(result);
         })

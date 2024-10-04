@@ -98,14 +98,13 @@ function initWebex(e) {
 
   webex.once('ready', async () => {
     console.log('Authentication#initWebex() :: Webex Ready');
-    // registerElm.disabled = false;
-    authStatusElm.innerText = 'Saved access token!';
-    // calling = await Calling.init({webex, webexConfig, callingConfig});
 
-    // calling.register().then(async () => {
-      sdk = Webex.getWebexCCSDK(webex);
-      // registerElm.classList.add('btn--green');
-    // });
+    authStatusElm.innerText = 'Saved access token!';
+
+    webex.cc.register().then(() => {
+        console.log('notification subscriptiin succesful');
+    })
+     
   });
 
   return false;
