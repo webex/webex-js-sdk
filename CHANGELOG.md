@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.60.2](https://github.com/webex/webex-js-sdk/compare/v2.60.1...v2.60.2) (2024-10-04)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** resolved guest issue forbidden error ([#3861](https://github.com/webex/webex-js-sdk/issues/3861)) ([5015271](https://github.com/webex/webex-js-sdk/commit/50152715973df94ef6bba6e10a76a776b5989eae))
+
 ### [2.60.1](https://github.com/webex/webex-js-sdk/compare/v2.60.0...v2.60.1) (2024-02-15)
 
 
