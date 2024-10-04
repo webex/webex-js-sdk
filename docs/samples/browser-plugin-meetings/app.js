@@ -226,7 +226,6 @@ function unregister() {
     });
 }
 
-
 async function getGuestAccessToken() {
 
   await axios({

@@ -101,6 +101,11 @@ describe('plugin-meetings', () => {
 
       Object.assign(webex, {
         logger,
+        people: {
+          _getMe: sinon.stub().resolves({
+            type: 'validuser', 
+          }),
+        }
       });
 
       Object.assign(webex.meetings, {
@@ -1274,6 +1279,17 @@ describe('plugin-meetings', () => {
           await webex.meetings.fetchUserPreferredWebexSite();
 
           assert.equal(webex.meetings.preferredWebexSite, 'go.webex.com');
+        });
+
+        it('should not call request.getMeetingPreferences if user is a guest', async () => {
+          Object.assign(webex.people,{
+            _getMe: sinon.stub().returns(Promise.resolve({type: 'appuser'})),
+          })
+      
+          await webex.meetings.fetchUserPreferredWebexSite();
+      
+          assert.equal(webex.meetings.preferredWebexSite, '');
+          assert.notCalled(webex.internal.services.getMeetingPreferences);
         });
 
         it('should not fail if UserPreferred info is not fetched ', async () => {

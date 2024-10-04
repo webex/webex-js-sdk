@@ -761,10 +761,18 @@ export default class Meetings extends WebexPlugin {
    * @memberof Meetings
    */
   fetchUserPreferredWebexSite() {
-    return this.request.getMeetingPreferences().then((res) => {
-      if (res) {
-        this.preferredWebexSite = MeetingsUtil.parseDefaultSiteFromMeetingPreferences(res);
+    // @ts-ignore
+    return this.webex.people._getMe().then((me) => {
+      const isGuestUser = me.type === 'appuser';
+      if (!isGuestUser) {
+        return this.request.getMeetingPreferences().then((res) => {
+          if (res) {
+            this.preferredWebexSite = MeetingsUtil.parseDefaultSiteFromMeetingPreferences(res);
+          }
+        });
       }
+
+      return Promise.resolve();
     });
   }
 
@@ -774,7 +782,6 @@ export default class Meetings extends WebexPlugin {
    * @public
    * @memberof Meetings
    */
-
   getPersonalMeetingRoom() {
     return this.personalMeetingRoom;
   }
