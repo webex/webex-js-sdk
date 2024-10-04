@@ -121,11 +121,14 @@ export default class DataSourceClient {
         tokenLifetimeMinutes > 1440 ||
         Number.isNaN(tokenLifetimeMinutes)
       ) {
-        console.log(
+        console.error(
           'dataSourceId is missing which is a required parameter or invalid tokenLifetimeMinutes is provided.'
         );
-        throw new Error(
-          'dataSourceId is missing which is a required parameter or invalid tokenLifetimeMinutes is provided.'
+
+        return Promise.reject(
+          new Error(
+            'dataSourceId is missing which is a required parameter or invalid tokenLifetimeMinutes is provided.'
+          )
         );
       }
 
@@ -151,14 +154,18 @@ export default class DataSourceClient {
               'Failed to cancel the timer, may be the timer has expired or the timer is invalid',
               error
             );
+            throw new Error(
+              'Failed to cancel the timer, may be the timer has expired or the timer is invalid'
+            );
           }
         }
       };
 
-      return {cancel};
+      return Promise.resolve({cancel});
     } catch (error) {
       console.error('Encountered some error', error);
-      throw new Error('Encountered some error');
+
+      return Promise.reject(error);
     }
   }
 
@@ -187,14 +194,14 @@ export default class DataSourceClient {
       };
       const getMethodResponse: ApiResponse<DataSourceResponse> = await this.get(dataSourceId);
       if (!getMethodResponse || !getMethodResponse.data || !getMethodResponse.data.jwsToken) {
-        throw new Error('Invalid response from get method.');
+        return Promise.reject(new Error('Invalid response from get method.'));
       }
 
       const jwsToken: string = getMethodResponse?.data?.jwsToken;
       const jwsTokenPayload: JWTPayload = decodeJwt(jwsToken);
 
       if (!jwsTokenPayload || !jwsToken) {
-        throw new Error('jwsTokenPayload or jwsToken is undefined.');
+        return Promise.reject(new Error('jwsTokenPayload or jwsToken is undefined.'));
       }
 
       payloadForDataSourceUpdateMethod.schemaId = getMethodResponse?.data?.schemaId;
@@ -218,13 +225,15 @@ export default class DataSourceClient {
           // If there is some error than clear the Interval only if interval is active/
           if (interval) clearInterval(interval);
           console.error('Error while updating dataSource token', updateError);
+          throw new Error('Error while updating dataSource token');
         }
       }, tokenLifetimeMinutes * 60 * 1000); // Converts minutes to milliseconds.
 
       return interval;
     } catch (error) {
       console.error('Error while starting auto-refresh for dataSource token:', error);
-      throw new Error('Failed to start auto-refresh.');
+
+      return Promise.reject(error);
     }
   }
 }

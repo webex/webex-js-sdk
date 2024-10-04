@@ -220,20 +220,20 @@ describe('DataSourceClient', () => {
     });
 
     it('should reject with an error if dataSourceId is missing or invalid', async () => {
-      await expect(dataSourceClient.scheduleJWSTokenRefresh('', 60)).rejects.toThrow('Encountered some error');
-      await expect(dataSourceClient.scheduleJWSTokenRefresh(null as any, 60)).rejects.toThrow('Encountered some error');
+      await expect(dataSourceClient.scheduleJWSTokenRefresh('', 60)).rejects.toThrow('dataSourceId is missing which is a required parameter or invalid tokenLifetimeMinutes is provided.');
+      await expect(dataSourceClient.scheduleJWSTokenRefresh(null as any, 60)).rejects.toThrow('dataSourceId is missing which is a required parameter or invalid tokenLifetimeMinutes is provided.');
     });
 
     it('should reject with an error if tokenLifetimeMinutes is invalid', async () => {
-      await expect(dataSourceClient.scheduleJWSTokenRefresh('123', 0)).rejects.toThrow('Encountered some error');
-      await expect(dataSourceClient.scheduleJWSTokenRefresh('123', 1441)).rejects.toThrow('Encountered some error');
-      await expect(dataSourceClient.scheduleJWSTokenRefresh('123', NaN)).rejects.toThrow('Encountered some error');
+      await expect(dataSourceClient.scheduleJWSTokenRefresh('123', 0)).rejects.toThrow('dataSourceId is missing which is a required parameter or invalid tokenLifetimeMinutes is provided.');
+      await expect(dataSourceClient.scheduleJWSTokenRefresh('123', 1441)).rejects.toThrow('dataSourceId is missing which is a required parameter or invalid tokenLifetimeMinutes is provided.');
+      await expect(dataSourceClient.scheduleJWSTokenRefresh('123', NaN)).rejects.toThrow('dataSourceId is missing which is a required parameter or invalid tokenLifetimeMinutes is provided.');
     });
 
     it('should handle errors when scheduling JWS token refresh', async () => {
       jest.spyOn(dataSourceClient, 'startAutoRefresh').mockRejectedValue(new Error('startAutoRefresh error'));
 
-      await expect(dataSourceClient.scheduleJWSTokenRefresh('123', 60)).rejects.toThrow('Encountered some error');
+      await expect(dataSourceClient.scheduleJWSTokenRefresh('123', 60)).rejects.toThrow('startAutoRefresh error');
     });
 
     it('should handle errors in startAutoRefresh gracefully', async () => {
@@ -244,7 +244,7 @@ describe('DataSourceClient', () => {
 
       httpClient.get.mockRejectedValue(error);
 
-      await expect(dataSourceClient.startAutoRefresh(dataSourceId, tokenLifetimeMinutes, nonce)).rejects.toThrow('Failed to start auto-refresh.');
+      await expect(dataSourceClient.startAutoRefresh(dataSourceId, tokenLifetimeMinutes, nonce)).rejects.toThrow('Network error');
     });
 
     it('should handle undefined jwsTokenPayload', async () => {
@@ -261,6 +261,6 @@ describe('DataSourceClient', () => {
         decode: jest.fn().mockReturnValue(undefined),
       }));
 
-      await expect(dataSourceClient.startAutoRefresh(dataSourceId, tokenLifetimeMinutes, nonce)).rejects.toThrow('Failed to start auto-refresh.');
+      await expect(dataSourceClient.startAutoRefresh(dataSourceId, tokenLifetimeMinutes, nonce)).rejects.toThrow('Invalid JWT');
     });  
 });
