@@ -1,15 +1,12 @@
-import {APPLICATION_ID_PREFIX, PRODUCTION_BASE_URL} from '../constants';
-import {TokenResponse, OrgServiceAppAuthorization, ServiceAppAuthorizationMap} from '../types';
-import {httpUtils} from '../http-utils';
 import fetch, {Response} from 'node-fetch';
+import ExtendedError from 'Errors/catalog/ExtendedError';
+import {ERROR_TYPE} from 'Errors/types';
 import log from '../Logger';
 import {LOGGER} from '../Logger/types';
 import {APPLICATION_ID_PREFIX, PRODUCTION_BASE_URL} from '../constants';
 import {TokenResponse, OrgServiceAppAuthorization, ServiceAppAuthorizationMap} from '../types';
-import ExtendedError from 'Errors/catalog/ExtendedError';
-import { ERROR_TYPE } from 'Errors/types';
-import {BYODSConfig} from '../token-manager/type';
-import { BYODS_TOKEN_MANAGER_FILE } from './constant';
+import {BYODSConfig} from './type';
+import {BYODS_TOKEN_MANAGER_FILE} from './constant';
 
 /**
  * The token manager for the BYoDS SDK.
@@ -31,7 +28,12 @@ export default class TokenManager {
    * @example
    * const tokenManager = new TokenManager('your-client-id', 'your-client-secret');
    */
-  constructor(clientId: string, clientSecret: string, baseUrl: string = PRODUCTION_BASE_URL,config?:BYODSConfig) {
+  constructor(
+    clientId: string,
+    clientSecret: string,
+    config?: BYODSConfig,
+    baseUrl: string = PRODUCTION_BASE_URL
+  ) {
     if (!clientId || !clientSecret) {
       throw new Error('clientId and clientSecret are required');
     }
@@ -102,9 +104,10 @@ export default class TokenManager {
     headers: Record<string, string> = {}
   ): Promise<void> {
     try {
-      const response = await httpUtils.post<TokenResponse>(
+      const response: Response = await fetch(
         `${this.baseUrl}/applications/${this.serviceAppId}/token`,
         {
+          method: 'POST',
           headers: {
             Authorization: `Bearer ${personalAccessToken}`,
             'Content-Type': 'application/json',
@@ -118,14 +121,21 @@ export default class TokenManager {
         }
       );
 
-      this.updateServiceAppToken(response.data, orgId);
+      if (!response.ok) {
+        throw new Error(`Failed to retrieve token: ${response.statusText}`);
+      }
+
+      const data: TokenResponse = (await response.json()) as TokenResponse;
+      this.updateServiceAppToken(data, orgId);
     } catch (error) {
       log.error(
         new ExtendedError(
-          'Error retrieving token after authorization', ERROR_TYPE.REGISTRATION_ERROR
-        ),{ file: 'BYODS_TOKEN_MANAGER_FILE', method: 'getServiceAppTokenUsingPAT' }
+          'Error retrieving token after authorization',
+          ERROR_TYPE.REGISTRATION_ERROR
+        ),
+        {file: 'BYODS_TOKEN_MANAGER_FILE', method: 'getServiceAppTokenUsingPAT'}
       );
-      
+
       throw error;
     }
   }
@@ -169,7 +179,8 @@ export default class TokenManager {
     headers: Record<string, string> = {}
   ): Promise<void> {
     try {
-      const response = await httpUtils.post<TokenResponse>(`${this.baseUrl}/access_token`, {
+      const response: Response = await fetch(`${this.baseUrl}/access_token`, {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded', // https://developer.webex.com/docs/login-with-webex#access-token-endpoint
           ...headers,
@@ -179,17 +190,21 @@ export default class TokenManager {
           client_id: this.clientId,
           client_secret: this.clientSecret,
           refresh_token: refreshToken,
-        }).toString(),
+        }),
       });
 
-      this.updateServiceAppToken(response.data, orgId);
+      if (!response.ok) {
+        throw new Error(`Failed to save service app registration: ${response.statusText}`);
+      }
+
+      const data: TokenResponse = (await response.json()) as TokenResponse;
+      this.updateServiceAppToken(data, orgId);
     } catch (error) {
       log.error(
-        new ExtendedError(
-          'Error saving service app registration', ERROR_TYPE.REGISTRATION_ERROR
-        ),{ file: 'BYODS_TOKEN_MANAGER_FILE', method: 'saveServiceAppRegistration' }
+        new ExtendedError('Error saving service app registration', ERROR_TYPE.REGISTRATION_ERROR),
+        {file: 'BYODS_TOKEN_MANAGER_FILE', method: 'saveServiceAppRegistration'}
       );
-      
+
       throw error;
     }
   }

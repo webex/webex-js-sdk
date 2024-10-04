@@ -1,11 +1,9 @@
-/* eslint-disable @typescript-eslint/no-empty-interface */
-// import {IMetaContext} from '../common/types';
 export interface IMetaContext {
   file?: string;
   method?: string;
 }
 
-export interface LogContext extends IMetaContext {}
+export type LogContext = IMetaContext;
 
 export enum LOG_PREFIX {
   MAIN = 'CALLING_SDK',
