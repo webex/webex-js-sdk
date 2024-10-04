@@ -8,7 +8,6 @@ export enum ERROR_LAYER {
 }
 
 export enum ERROR_TYPE {
-  CALL_ERROR = 'call_error',
   DEFAULT = 'default_error',
   FORBIDDEN_ERROR = 'forbidden',
   NOT_FOUND = 'not_found',
@@ -31,25 +30,8 @@ export enum ERROR_CODE {
   TOO_MANY_REQUESTS = 429,
 }
 
-export enum CALL_ERROR_CODE {
-  INVALID_STATUS_UPDATE = 111,
-  DEVICE_NOT_REGISTERED = 112,
-  CALL_NOT_FOUND = 113,
-  ERROR_PROCESSING = 114,
-  USER_BUSY = 115,
-  PARSING_ERROR = 116,
-  TIMEOUT_ERROR = 117,
-  NOT_ACCEPTABLE = 118,
-  CALL_REJECTED = 119,
-  NOT_AVAILABLE = 120,
-}
-
-export enum DEVICE_ERROR_CODE {
-  DEVICE_LIMIT_EXCEEDED = 101,
-  DEVICE_CREATION_DISABLED = 102,
-  DEVICE_CREATION_FAILED = 103,
-}
-
+// Disable ESLint for empty interface as it may be extended in the future
+// eslint-disable-next-line @typescript-eslint/no-empty-interface
 export interface ErrorContext extends IMetaContext {}
 
 export type ErrorObject = {
@@ -57,4 +39,3 @@ export type ErrorObject = {
   type: ERROR_TYPE;
   context: ErrorContext;
 };
-

@@ -3,7 +3,7 @@ import DataSourceClient from '../data-source-client';
 import {HttpClient, ApiResponse} from '../http-client/types';
 import {httpUtils, HttpRequestInit} from '../http-utils';
 import {BYODSConfig} from '../token-manager/type';
-import {BYODS_BASE_CLIENT_FILE} from './constant';
+import BYODS_BASE_CLIENT_FILE from './constant';
 import log from '../Logger';
 import {LOGGER} from '../Logger/types';
 
@@ -29,7 +29,7 @@ export default class BaseClient {
     headers: Record<string, string>,
     tokenManager: TokenManager,
     orgId: string,
-    config?:BYODSConfig
+    config?: BYODSConfig
   ) {
     this.baseUrl = baseUrl;
     this.headers = headers;
@@ -44,7 +44,7 @@ export default class BaseClient {
   /**
    * Makes an HTTP request.
    * @param {string} endpoint - The API endpoint.
-   * @param {HttpRequestInit} [options=\{\}] - The request options.
+   * @param {HttpRequestInit} [options={}] - The request options.
    * @returns {Promise<ApiResponse<T>>} - The API response.
    * @template T
    * @example
@@ -71,7 +71,7 @@ export default class BaseClient {
    * Makes a POST request.
    * @param {string} endpoint - The API endpoint.
    * @param {Record<string, any>} body - The request body.
-   * @param {Record<string, string>} [headers=\{\}] - The request headers.
+   * @param {Record<string, string>} [headers={}] - The request headers.
    * @returns {Promise<ApiResponse<T>>} - The API response.
    * @template T
    * @example

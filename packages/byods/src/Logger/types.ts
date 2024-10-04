@@ -6,7 +6,7 @@ export interface IMetaContext {
 export type LogContext = IMetaContext;
 
 export enum LOG_PREFIX {
-  MAIN = 'CALLING_SDK',
+  MAIN = 'BYODOS_SDK',
   FILE = 'file',
   METHOD = 'method',
   EVENT = 'event',

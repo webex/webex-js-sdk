@@ -42,7 +42,7 @@ export default class BYODS {
    * @example
    * const sdk = new BYODS({ clientId: 'your-client-id', clientSecret: 'your-client-secret' });
    */
-  constructor({clientId, clientSecret}: SDKConfig,config?:BYODSConfig) {
+  constructor({clientId, clientSecret}: SDKConfig, config?: BYODSConfig) {
     this.config = {clientId, clientSecret};
     this.tokenManager = new TokenManager(clientId, clientSecret);
     this.sdkConfig = config;
@@ -92,7 +92,6 @@ export default class BYODS {
     const result: JWSTokenVerificationResult = {isValid: false};
     try {
       await jwtVerify(jws, this.jwks);
-
       result.isValid = true;
     } catch (error: any) {
       console.error('Error verifying JWS token:', error.message || error);

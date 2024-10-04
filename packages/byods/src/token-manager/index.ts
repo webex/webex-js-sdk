@@ -6,7 +6,7 @@ import {LOGGER} from '../Logger/types';
 import {APPLICATION_ID_PREFIX, PRODUCTION_BASE_URL} from '../constants';
 import {TokenResponse, OrgServiceAppAuthorization, ServiceAppAuthorizationMap} from '../types';
 import {BYODSConfig} from './type';
-import {BYODS_TOKEN_MANAGER_FILE} from './constant';
+import BYODS_TOKEN_MANAGER_FILE from './constant';
 
 /**
  * The token manager for the BYoDS SDK.
