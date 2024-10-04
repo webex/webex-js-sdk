@@ -91,16 +91,15 @@ export default class DataSourceClient {
   }
 
   /**
-   * This method refreshes the DataSource token using dataSourceId and tokenLifetimeMinute
+   * This method refreshes the DataSource token using dataSourceId, tokenLifetimeMinutes (optional) & nonceGenerator (optional)
    * @param {string} dataSourceId The id of the data source.
-   * @param {number} tokenLifetimeMinutes The refresh interval in minutes for the data source. Defaults to 60 but less than < 1440
-   * @param {string} nonceGenerator This method accepts an optional nonceGenerator, developer can provide their own nonceGenerator, defaults to randomUUID.
-   * @returns {Promise<void>}
+   * @param {number} tokenLifetimeMinutes The refresh interval in minutes for the data source. Defaults to 60. should be less than < 1440 & greater than > 1
+   * @param {string} nonceGenerator Accepts an optional nonceGenerator, developer can provide their own nonceGenerator, defaults to randomUUID.
+   * @returns {Promise<() => void>} A promise that resolves to the API response containing a cancellable function.
+   * @example
    * @example
    * try {
-    const dataSourceId = '123'; // Replace with your actual dataSourceId
-    const tokenLifetimeMinutes = 60; // Optional, replace with your actual dataSourceToken lifetime minutes
-    const result = await dataSourceClient.scheduleJWSTokenRefresh(123, 60, '550e8400-e29b-41d4-a716-446655440000');
+    const result = await dataSourceClient.scheduleJWSTokenRefresh('myDataSourceId', 'myTokenLifeTimeMinutes', 'uniqueNonce');
     // Use the cancel function if needed
     result.cancel();
   } catch (error) {
@@ -170,11 +169,11 @@ export default class DataSourceClient {
   }
 
   /**
-   * This Private method will start auto refreshing the DataSource token with interval as tokenLifetimeMinutes.
+   * This Private method will start auto refreshing the DataSource token. Accepts dataSourceId, tokenLifetimeMinutes & nonce.
    * @param {string} dataSourceId The id of the data source
    * @param {number} tokenLifetimeMinutes The refresh interval in minutes for the data source. Defaults to 60 but less than < 1440
    * @param {string} nonce A unique nonce for the data source request.
-   * @returns {Promise<NodeJS.Timer>}
+   * @returns {Promise<NodeJS.Timer>} A promise that resolves to the API response containing NodeJS.Timer.
    */
 
   private async startAutoRefresh(
@@ -198,7 +197,7 @@ export default class DataSourceClient {
       }
 
       const jwsToken: string = getMethodResponse?.data?.jwsToken;
-      const jwsTokenPayload: JWTPayload = decodeJwt(jwsToken);
+      const jwsTokenPayload: JWTPayload = decodeJwt(jwsToken) as JWTPayload;
 
       if (!jwsTokenPayload || !jwsToken) {
         return Promise.reject(new Error('jwsTokenPayload or jwsToken is undefined.'));
@@ -229,7 +228,7 @@ export default class DataSourceClient {
         }
       }, tokenLifetimeMinutes * 60 * 1000); // Converts minutes to milliseconds.
 
-      return interval;
+      return Promise.resolve(interval);
     } catch (error) {
       console.error('Error while starting auto-refresh for dataSource token:', error);
 
