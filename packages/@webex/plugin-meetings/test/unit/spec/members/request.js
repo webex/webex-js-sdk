@@ -1,3 +1,4 @@
+import 'jsdom-global/register';
 import sinon from 'sinon';
 import chai from 'chai';
 import uuid from 'uuid';
@@ -131,7 +132,7 @@ describe('plugin-meetings', () => {
           locusUrl: url1,
           memberIds: ['1', '2'],
         };
-  
+
         await membersRequest.admitMember(options)
 
         checkRequest({
