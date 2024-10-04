@@ -405,6 +405,35 @@ describe('plugin-meetings', () => {
           });
         });
 
+        it('sessionCorrelationId can be provided in callStateForMetrics', () => {
+          const newMeeting = new Meeting(
+            {
+              userId: uuid1,
+              resource: uuid2,
+              deviceUrl: uuid3,
+              locus: {url: url1},
+              destination: testDestination,
+              destinationType: DESTINATION_TYPE.MEETING_ID,
+              callStateForMetrics: {
+                correlationId: uuid4,
+                sessionCorrelationId: uuid1,
+                joinTrigger: 'fake-join-trigger',
+                loginType: 'fake-login-type',
+              },
+            },
+            {
+              parent: webex,
+            }
+          );
+          assert.equal(newMeeting.sessionCorrelationId, uuid1);
+          assert.deepEqual(newMeeting.callStateForMetrics, {
+            correlationId: uuid4,
+            sessionCorrelationId: uuid1,
+            joinTrigger: 'fake-join-trigger',
+            loginType: 'fake-login-type',
+          });
+        });
+
         describe('creates ReceiveSlot manager instance', () => {
           let mockReceiveSlotManagerCtor;
           let providedCreateSlotCallback;

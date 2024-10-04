@@ -466,6 +466,42 @@ describe('internal-plugin-metrics', () => {
         });
       });
 
+      it('should build identifiers correctly with a meeting that has sessionCorrelationId', () => {
+        const res = cd.getIdentifiers({
+          mediaConnections: [
+            {mediaAgentAlias: 'mediaAgentAlias', mediaAgentGroupId: 'mediaAgentGroupId'},
+          ],
+          webexConferenceIdStr: 'webexConferenceIdStr',
+          globalMeetingId: 'globalMeetingId',
+          meeting: {
+            ...fakeMeeting,
+            sessionCorrelationId: 'sessionCorrelationId1',
+            meetingInfo: {
+              ...fakeMeeting.meetingInfo,
+              confIdStr: 'webexConferenceIdStr1',
+              meetingId: 'globalMeetingId1',
+              siteName: 'siteName1',
+            },
+          },
+        });
+
+        assert.deepEqual(res, {
+          correlationId: 'correlationId',
+          sessionCorrelationId: 'sessionCorrelationId1',
+          webexConferenceIdStr: 'webexConferenceIdStr1',
+          globalMeetingId: 'globalMeetingId1',
+          deviceId: 'deviceUrl',
+          locusId: 'url',
+          locusStartTime: 'lastActive',
+          locusUrl: 'locus/url',
+          mediaAgentAlias: 'mediaAgentAlias',
+          mediaAgentGroupId: 'mediaAgentGroupId',
+          orgId: 'orgId',
+          userId: 'userId',
+          webexSiteName: 'siteName1',
+        });
+      });
+
       it('should build identifiers correctly given webexConferenceIdStr', () => {
         const res = cd.getIdentifiers({
           correlationId: 'correlationId',
@@ -505,6 +541,22 @@ describe('internal-plugin-metrics', () => {
 
         assert.deepEqual(res, {
           correlationId: 'correlationId',
+          deviceId: 'deviceUrl',
+          locusUrl: 'locus-url',
+          orgId: 'orgId',
+          userId: 'userId',
+        });
+      });
+
+      it('should build identifiers correctly given sessionCorrelationId', () => {
+        const res = cd.getIdentifiers({
+          correlationId: 'correlationId',
+          sessionCorrelationId: 'sessionCorrelationId',
+        });
+
+        assert.deepEqual(res, {
+          correlationId: 'correlationId',
+          sessionCorrelationId: 'sessionCorrelationId',
           deviceId: 'deviceUrl',
           locusUrl: 'locus-url',
           orgId: 'orgId',
