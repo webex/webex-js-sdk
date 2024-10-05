@@ -22,6 +22,7 @@ require('@webex/internal-plugin-device');
 require('@webex/internal-plugin-metrics');
 require('@webex/internal-plugin-support');
 require('@webex/internal-plugin-user');
+require('@webex/internal-plugin-voicea');
 require('@webex/plugin-people');
 
 const merge = require('lodash/merge');

@@ -29,6 +29,7 @@ const packages = [
   '@webex/internal-plugin-voicea',
   '@webex/internal-plugin-wdm',
   '@webex/jsdoctrinetest',
+  '@webex/plugin-presence',
   '@webex/plugin-attachment-actions',
   '@webex/plugin-authorization',
   '@webex/plugin-authorization-browser',

@@ -37,4 +37,10 @@ umd/
 types/
 webex.min.js
 *.yml
+*.patch
+yarn.lock
+*.md
+*.json
+*.html
 packages/calling/calling/docs/
+jest.global.d.ts

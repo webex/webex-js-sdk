@@ -13,18 +13,18 @@
     "node": ">=16"
   },
   "scripts": {
-    "build:src": "yarn run -T tsc --declaration true --declarationDir ./dist",
+    "build": "yarn run -T tsc --declaration true --declarationDir ./dist",
+    "build:src": "webex-legacy-tools build -dest \"./dist\" -src \"./src\" -js -ts -maps && yarn run -T tsc --declaration true --declarationDir ./dist",
     "test:broken": "yarn test:style && yarn test:unit && yarn test:integration && yarn test:browser",
-    "test:browser:broken": "webex-legacy-tools test --integration --unit --runner karma",
-    "test:integration:broken": "webex-legacy-tools test --integration --runner mocha",
+    "test:browser": "webex-legacy-tools test --integration --runner karma",
     "test:style": "eslint 'src/**/*.ts' --fix",
-    "test:unit:broken": "webex-legacy-tools test --unit --runner mocha",
+    "test:unit": "webex-legacy-tools test --unit --runner jest",
     "deploy:npm": "yarn npm publish"
   },
   "dependencies": {
-    "@webex/internal-media-core": "^2.0.0",
+    "@webex/internal-media-core": "2.11.1",
     "@webex/ts-events": "^1.1.0",
-    "@webex/web-media-effects": "^2.13.1"
+    "@webex/web-media-effects": "2.19.0"
   },
   "browserify": {
     "transform": [
@@ -34,13 +34,14 @@
   },
   "devDependencies": {
     "@babel/preset-typescript": "7.22.11",
-    "@webex/babel-config-legacy": "workspace:^",
-    "@webex/eslint-config-legacy": "workspace:^",
-    "@webex/jest-config-legacy": "workspace:^",
-    "@webex/legacy-tools": "workspace:^",
-    "@webex/test-helper-chai": "workspace:^",
-    "@webex/test-helper-mock-webex": "workspace:^",
+    "@webex/babel-config-legacy": "workspace:*",
+    "@webex/eslint-config-legacy": "workspace:*",
+    "@webex/jest-config-legacy": "workspace:*",
+    "@webex/legacy-tools": "workspace:*",
+    "@webex/test-helper-chai": "workspace:*",
+    "@webex/test-helper-mock-webex": "workspace:*",
     "eslint": "^8.24.0",
+    "jsdom-global": "3.0.2",
     "sinon": "^9.2.4"
   }
 }

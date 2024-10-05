@@ -28,6 +28,7 @@ class Calling extends EventEmitter {
     this.callingConfig = callingConfig;
     this.log = WebexCalling.Logger;
     this.log.setLogger(callingConfig.logger.level, CALLING_FILE);
+    this.registered = false;
 
     if (webex) {
       this.webex = webex;
@@ -52,6 +53,7 @@ class Calling extends EventEmitter {
           .connect()
           .then(async () => {
             this.log.info('Authentication: webex.internal.mercury.connect successful', logContext);
+            this.registered = true;
 
             try {
               await this.initializeClients();
@@ -66,6 +68,44 @@ class Calling extends EventEmitter {
       .catch((error) => {
         this.log.warn(`Error occurred during device.register() ${error}`, logContext);
       });
+  }
+
+  async deregister() {
+    if (!this.registered) {
+      this.log.info('Authentication: webex.internal.device.deregister already done', logContext);
+
+      return Promise.resolve();
+    }
+
+    const lines = Object.values(this.callingClient?.getLines());
+
+    for (const line of lines) {
+      if (line.getStatus() === 'active') {
+        line.deregister();
+      }
+    }
+
+    return (
+      // @ts-ignore
+      this.webex.internal.mercury
+        .disconnect()
+        .then(() => {
+          this.log.info('Authentication: webex.internal.mercury.disconnect successful', logContext);
+
+          // @ts-ignore
+          return this.webex.internal.device.unregister();
+        })
+        .then(() => {
+          this.log.info('Authentication: webex.internal.device.deregister successful', logContext);
+          this.registered = false;
+        })
+        .catch((error) => {
+          this.log.warn(
+            `Error occurred during mercury.disconnect() or device.deregister() ${error}`,
+            logContext
+          );
+        })
+    );
   }
 
   async initializeClients() {
@@ -96,8 +136,8 @@ class Calling extends EventEmitter {
     return WebexCalling.createMicrophoneStream;
   }
 
-  static createNoiseReductionEffect(authToken) {
-    return new WebexCalling.NoiseReductionEffect({authToken});
+  static createNoiseReductionEffect(options) {
+    return new WebexCalling.NoiseReductionEffect(options);
   }
 }
 

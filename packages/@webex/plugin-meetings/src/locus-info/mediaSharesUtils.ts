@@ -13,6 +13,11 @@ MediaSharesUtils.parse = (mediaShares: object) => {
       content: {
         beneficiaryId: MediaSharesUtils.getContentBeneficiaryId(mediaShares),
         disposition: MediaSharesUtils.getContentDisposition(mediaShares),
+        annotation: MediaSharesUtils.getContentAnnotation(mediaShares),
+        url: MediaSharesUtils.getContentUrl(mediaShares),
+        shareInstanceId: MediaSharesUtils.getShareInstanceId(mediaShares),
+        deviceUrlSharing: MediaSharesUtils.getContentBeneficiaryDeviceUrl(mediaShares),
+        resourceType: MediaSharesUtils.getContentResourceType(mediaShares),
       },
       whiteboard: {
         beneficiaryId: MediaSharesUtils.getWhiteboardBeneficiaryId(mediaShares),
@@ -138,6 +143,81 @@ MediaSharesUtils.getContentBeneficiaryId = (mediaShares: object) => {
   }
 
   return contentFloor.beneficiary.id;
+};
+
+/**
+ * get live annotation is sharing from media shares (content)
+ * @param {Object} mediaShares
+ * @returns {Object}
+ */
+MediaSharesUtils.getContentAnnotation = (mediaShares: object) => {
+  const extractContent = MediaSharesUtils.extractContent(mediaShares);
+
+  if (!extractContent || !extractContent.annotation) {
+    return undefined;
+  }
+
+  return extractContent.annotation;
+};
+
+/**
+ * get live resourceType is sharing from media shares (content)
+ * @param {Object} mediaShares
+ * @returns {Object}
+ */
+MediaSharesUtils.getContentResourceType = (mediaShares: object) => {
+  const extractContent = MediaSharesUtils.extractContent(mediaShares);
+
+  if (!extractContent || !extractContent.resourceType) {
+    return undefined;
+  }
+
+  return extractContent.resourceType;
+};
+
+/**
+ * get url is sharing from media shares (content)
+ * @param {Object} mediaShares
+ * @returns {Object}
+ */
+MediaSharesUtils.getContentUrl = (mediaShares: object) => {
+  const extractContent = MediaSharesUtils.extractContent(mediaShares);
+
+  if (!extractContent || !extractContent.url) {
+    return undefined;
+  }
+
+  return extractContent.url;
+};
+
+/**
+ * get shareInstanceId is sharing from media shares (content)
+ * @param {Object} mediaShares
+ * @returns {Object}
+ */
+MediaSharesUtils.getShareInstanceId = (mediaShares: object) => {
+  const extractContent = MediaSharesUtils.extractContent(mediaShares);
+
+  if (!extractContent || !extractContent.floor || !extractContent.floor.shareInstanceId) {
+    return undefined;
+  }
+
+  return extractContent.floor.shareInstanceId;
+};
+
+/**
+ * get deviceUrl that is requesting the floor for media shares (content)
+ * @param {Object} mediaShares
+ * @returns {Object}
+ */
+MediaSharesUtils.getContentBeneficiaryDeviceUrl = (mediaShares: object) => {
+  const contentFloor = MediaSharesUtils.extractContentFloor(mediaShares);
+
+  if (!contentFloor || !contentFloor.beneficiary || !contentFloor.beneficiary.deviceUrl) {
+    return null;
+  }
+
+  return contentFloor.beneficiary.deviceUrl;
 };
 
 /**

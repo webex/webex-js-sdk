@@ -2,7 +2,7 @@
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
 
-import {_MEETING_LINK_, _SIP_URI_, _PERSONAL_ROOM_} from '../constants';
+import {DESTINATION_TYPE} from '../constants';
 import LoggerProxy from '../common/logs/logger-proxy';
 
 import MeetingInfoCollection from './collection';
@@ -70,10 +70,41 @@ export default class MeetingInfo {
    * @private
    * @memberof MeetingInfo
    */
-  private requestFetchInfo(options: object) {
+  private requestFetchInfo(options: any) {
+    const {meetingId, sendCAevents} = options;
+    if (meetingId && sendCAevents) {
+      this.webex.internal.newMetrics.submitInternalEvent({
+        name: 'internal.client.meetinginfo.request',
+      });
+      this.webex.internal.newMetrics.submitClientEvent({
+        name: 'client.meetinginfo.request',
+        options: {
+          meetingId,
+        },
+      });
+    }
+
     return this.meetingInfoRequest
       .fetchMeetingInfo(options)
       .then((info) => {
+        if (meetingId && sendCAevents) {
+          this.webex.internal.newMetrics.submitInternalEvent({
+            name: 'internal.client.meetinginfo.response',
+          });
+          this.webex.internal.newMetrics.submitClientEvent({
+            name: 'client.meetinginfo.response',
+            payload: {
+              identifiers: {
+                meetingLookupUrl: info?.url,
+              },
+            },
+            options: {
+              meetingId,
+              webexConferenceIdStr: info?.body?.confIdStr || info?.body?.confID,
+              globalMeetingId: info?.body?.meetingId,
+            },
+          });
+        }
         if (info && info.body) {
           this.setMeetingInfo(info.body.sipMeetingUri || info.body.meetingLink, info.body);
         }
@@ -84,6 +115,23 @@ export default class MeetingInfo {
         LoggerProxy.logger.error(
           `Meeting-info:index#requestFetchInfo -->  ${error} fetch meetingInfo`
         );
+        if (meetingId && sendCAevents) {
+          this.webex.internal.newMetrics.submitInternalEvent({
+            name: 'internal.client.meetinginfo.response',
+          });
+          this.webex.internal.newMetrics.submitClientEvent({
+            name: 'client.meetinginfo.response',
+            payload: {
+              identifiers: {
+                meetingLookupUrl: error?.url,
+              },
+            },
+            options: {
+              meetingId,
+              rawError: error,
+            },
+          });
+        }
 
         return Promise.reject(error);
       });
@@ -105,29 +153,57 @@ export default class MeetingInfo {
     });
   }
 
+  // eslint-disable-next-line valid-jsdoc
   /**
    * Fetches meeting info from the server
    * @param {String} destination one of many different types of destinations to look up info for
-   * @param {String} [type] to match up with the destination value
+   * @param {DESTINATION_TYPE} [type] to match up with the destination value
+   * @param {String} [password] meeting password
+   * @param {Object} [captchaInfo] captcha code and id
+   * @param {String} [installedOrgID]
+   * @param {String} [locusId]
+   * @param {Object} [extraParams]
+   * @param {Boolean} [options] meeting Id and whether Call Analyzer events should be sent
    * @returns {Promise} returns a meeting info object
    * @public
    * @memberof MeetingInfo
    */
-  public fetchMeetingInfo(destination: string, type: string = null) {
-    if (type === _PERSONAL_ROOM_ && !destination) {
+  public fetchMeetingInfo(
+    destination: string,
+    type: DESTINATION_TYPE = null,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    password: string = null,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    captchaInfo: {
+      code: string;
+      id: string;
+    } = null,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    installedOrgID = null,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    locusId = null,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    extraParams: object = {},
+    options: {meetingId?: string; sendCAevents?: boolean} = {}
+  ) {
+    if (type === DESTINATION_TYPE.PERSONAL_ROOM && !destination) {
       destination = this.webex.internal.device.userId;
     }
 
     return this.fetchInfoOptions(MeetingInfoUtil.extractDestination(destination, type), type).then(
-      (options) =>
+      (infoOptions) =>
         // fetch meeting info
-        this.requestFetchInfo(options).catch((error) => {
+        this.requestFetchInfo({...infoOptions, ...options}).catch((error) => {
           // if it failed the first time as meeting link
-          if (options.type === _MEETING_LINK_) {
+          if (infoOptions.type === DESTINATION_TYPE.MEETING_LINK) {
             // convert the meeting link to sip URI and retry
-            return this.requestFetchInfo(
-              this.fetchInfoOptions(MeetingInfoUtil.convertLinkToSip(destination), _SIP_URI_)
-            );
+            return this.requestFetchInfo({
+              ...this.fetchInfoOptions(
+                MeetingInfoUtil.convertLinkToSip(destination),
+                DESTINATION_TYPE.SIP_URI
+              ),
+              ...options,
+            });
           }
 
           return Promise.reject(error);

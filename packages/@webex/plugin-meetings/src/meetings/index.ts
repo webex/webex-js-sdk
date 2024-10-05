@@ -1,13 +1,17 @@
 /* eslint no-shadow: ["error", { "allow": ["eventType"] }] */
-
+import {union} from 'lodash';
 import '@webex/internal-plugin-mercury';
+import '@webex/internal-plugin-conversation';
+import '@webex/internal-plugin-metrics';
 // @ts-ignore
 import {WebexPlugin} from '@webex/webex-core';
+import {setLogger} from '@webex/internal-media-core';
+
+import * as mediaHelpersModule from '@webex/media-helpers';
 
 import 'webrtc-adapter';
 
 import Metrics from '../metrics';
-import {trigger, eventType} from '../metrics/config';
 import LoggerConfig from '../common/logs/logger-config';
 import StaticConfig from '../common/config';
 import LoggerProxy from '../common/logs/logger-proxy';
@@ -21,37 +25,66 @@ import {
   EVENT_TRIGGERS,
   READY,
   LOCUSEVENT,
-  LOCUS_URL,
   MAX_RANDOM_DELAY_FOR_MEETING_INFO,
   ROAP,
   ONLINE,
   OFFLINE,
   _MEETING_,
   _JOIN_,
-  _LOCUS_ID_,
   _INCOMING_,
   LOCUS,
-  CORRELATION_ID,
-  SIP_URI,
   _LEFT_,
   _ID_,
   MEETING_REMOVED_REASON,
-  _CONVERSATION_URL_,
-  CONVERSATION_URL,
+  _JOINED_,
+  _MOVED_,
+  _ON_HOLD_LOBBY_,
+  _WAIT_,
+  DESTINATION_TYPE,
 } from '../constants';
 import BEHAVIORAL_METRICS from '../metrics/constants';
 import MeetingInfo from '../meeting-info';
 import MeetingInfoV2 from '../meeting-info/meeting-info-v2';
-import Meeting from '../meeting';
+import Meeting, {CallStateForMetrics} from '../meeting';
 import PersonalMeetingRoom from '../personal-meeting-room';
 import Reachability from '../reachability';
 import Request from './request';
 import PasswordError from '../common/errors/password-error';
 import CaptchaError from '../common/errors/captcha-error';
-
 import MeetingCollection from './collection';
+import {MEETING_KEY, INoiseReductionEffect, IVirtualBackgroundEffect} from './meetings.types';
 import MeetingsUtil from './util';
+import PermissionError from '../common/errors/permission';
+import {SpaceIDDeprecatedError} from '../common/errors/webex-errors';
+import NoMeetingInfoError from '../common/errors/no-meeting-info';
 
+let mediaLogger;
+
+class MediaLogger {
+  info(...args) {
+    LoggerProxy.logger.info(...args);
+  }
+
+  log(...args) {
+    LoggerProxy.logger.log(...args);
+  }
+
+  error(...args) {
+    LoggerProxy.logger.error(...args);
+  }
+
+  warn(...args) {
+    LoggerProxy.logger.warn(...args);
+  }
+
+  trace(...args) {
+    LoggerProxy.logger.trace(...args);
+  }
+
+  debug(...args) {
+    LoggerProxy.logger.debug(...args);
+  }
+}
 /**
  * Meetings Ready Event
  * Emitted when the meetings instance on webex is ready
@@ -110,12 +143,13 @@ export default class Meetings extends WebexPlugin {
   meetingCollection: any;
   personalMeetingRoom: any;
   preferredWebexSite: any;
-  reachability: any;
+  reachability: Reachability;
   registered: any;
   request: any;
   geoHintInfo: any;
   meetingInfo: any;
-
+  mediaHelpers: any;
+  breakoutLocusForHandleLater: any;
   namespace = MEETINGS;
 
   /**
@@ -126,6 +160,17 @@ export default class Meetings extends WebexPlugin {
    */
   constructor(...args) {
     super(...args);
+
+    /**
+     * The webrtc-core media helpers. This is a temporary solution required for the SDK sample app
+     * to be able to call media helper functions.
+     *
+     * @instance
+     * @type {Object}
+     * @private
+     * @memberof Meetings
+     */
+    this.mediaHelpers = mediaHelpersModule;
 
     /**
      * The Meetings request to interact with server
@@ -154,15 +199,17 @@ export default class Meetings extends WebexPlugin {
      * @memberof Meetings
      */
     this.personalMeetingRoom = null;
+
     /**
-     * The Reachability object to interact with server, starts as null until {@link Meeting#setReachability} is called
+     * The Reachability object to interact with server
      * starts as null
      * @instance
      * @type {Object}
      * @private
      * @memberof Meetings
      */
-    this.reachability = null;
+    // @ts-ignore
+    this.reachability = new Reachability(this.webex);
 
     /**
      * If the meetings plugin has been registered and listening via {@link Meetings#register}
@@ -192,10 +239,161 @@ export default class Meetings extends WebexPlugin {
      */
     this.media = {
       getUserMedia: Media.getUserMedia,
-      getSupportedDevice: Media.getSupportedDevice,
     };
 
     this.onReady();
+  }
+
+  /**
+   * check whether you need to handle this main session's locus data or not
+   * @param {Object} meeting current meeting data
+   * @param {Object} newLocus new locus data
+   * @returns {boolean}
+   * @private
+   * @memberof Meetings
+   */
+  private isNeedHandleMainLocus(meeting: any, newLocus: any) {
+    const breakoutUrl = newLocus.controls?.breakout?.url;
+    const breakoutLocus = this.meetingCollection.getActiveBreakoutLocus(breakoutUrl);
+
+    const isSelfJoined = newLocus?.self?.state === _JOINED_;
+    const isSelfMoved = newLocus?.self?.state === _LEFT_ && newLocus?.self?.reason === _MOVED_;
+    // @ts-ignore
+    const deviceFromNewLocus = MeetingsUtil.getThisDevice(newLocus, this.webex.internal.device.url);
+    const isResourceMovedOnThisDevice =
+      deviceFromNewLocus?.state === _LEFT_ && deviceFromNewLocus?.reason === _MOVED_;
+
+    const isNewLocusJoinThisDevice = MeetingsUtil.joinedOnThisDevice(
+      meeting,
+      newLocus,
+      // @ts-ignore
+      this.webex.internal.device.url
+    );
+    const isBreakoutLocusJoinThisDevice =
+      breakoutLocus?.joinedWith?.correlationId &&
+      breakoutLocus.joinedWith.correlationId === meeting?.correlationId;
+
+    if (isSelfJoined && isNewLocusJoinThisDevice) {
+      LoggerProxy.logger.log(
+        'Meetings:index#isNeedHandleMainLocus --> self this device shown as JOINED in the main session'
+      );
+      if (breakoutLocus?.joinedWith && deviceFromNewLocus) {
+        const breakoutReplaceAt =
+          breakoutLocus.joinedWith.replaces?.length > 0
+            ? breakoutLocus.joinedWith.replaces[0].replaceAt
+            : '';
+        const newLocusReplaceAt =
+          deviceFromNewLocus.replaces?.length > 0 ? deviceFromNewLocus.replaces[0].replaceAt : '';
+        if (breakoutReplaceAt && newLocusReplaceAt && breakoutReplaceAt > newLocusReplaceAt) {
+          LoggerProxy.logger.log(
+            `Meetings:index#isNeedHandleMainLocus --> this is expired main joined status locus_dto replacedAt ${newLocusReplaceAt} bo replacedAt ${breakoutReplaceAt}`
+          );
+
+          return false;
+        }
+      }
+
+      return true;
+    }
+    if (isBreakoutLocusJoinThisDevice) {
+      LoggerProxy.logger.log(
+        `Meetings:index#isNeedHandleMainLocus --> there is active breakout session and joined on this device, and don't need to handle main session: ${breakoutUrl}`
+      );
+
+      return false;
+    }
+    if (isSelfMoved && (newLocus?.self?.removed || isResourceMovedOnThisDevice)) {
+      LoggerProxy.logger.log(
+        'Meetings:index#isNeedHandleMainLocus --> self moved main locus with self removed status or with device resource moved, not need to handle'
+      );
+
+      return false;
+    }
+    if (isSelfJoined && isResourceMovedOnThisDevice) {
+      LoggerProxy.logger.log(
+        'Meetings:index#isNeedHandleMainLocus --> self device left&moved in main locus with self joined status, not need to handle'
+      );
+
+      return false;
+    }
+    LoggerProxy.logger.log(
+      'Meetings:index#isNeedHandleMainLocus --> this is a normal main session locusDTO update case'
+    );
+
+    return true;
+  }
+
+  /**
+   * check whether you need to handle this locus data or not
+   * @param {Object} meeting old locus data
+   * @param {Object} newLocus new locus data
+   * @returns {boolean}
+   * @private
+   * @memberof Meetings
+   */
+  private isNeedHandleLocusDTO(meeting: any, newLocus: any) {
+    if (newLocus) {
+      const isNewLocusAsBreakout = MeetingsUtil.isBreakoutLocusDTO(newLocus);
+      const isSelfMoved = newLocus?.self?.state === _LEFT_ && newLocus?.self?.reason === _MOVED_;
+      const isSelfMovedToLobby =
+        newLocus?.self?.devices[0]?.intent?.reason === _ON_HOLD_LOBBY_ &&
+        newLocus?.self?.devices[0]?.intent?.type === _WAIT_;
+      if (!meeting) {
+        if (isNewLocusAsBreakout) {
+          LoggerProxy.logger.log(
+            `Meetings:index#isNeedHandleLocusDTO --> the first breakout session locusDTO active status: ${newLocus.fullState?.active}`
+          );
+
+          return newLocus.self?.state === _JOINED_;
+        }
+
+        return this.isNeedHandleMainLocus(meeting, newLocus);
+      }
+      if (!isNewLocusAsBreakout) {
+        return isSelfMovedToLobby || this.isNeedHandleMainLocus(meeting, newLocus);
+      }
+
+      return !isSelfMoved;
+    }
+
+    return true;
+  }
+
+  /**
+   * get corresponding meeting object by locus data
+   * @param {Object} data a locus event
+   * @param {String} data.locusUrl
+   * @param {Object} data.locus
+   * @returns {Object}
+   * @private
+   * @memberof Meetings
+   */
+  getCorrespondingMeetingByLocus(data) {
+    // getting meeting by correlationId. This will happen for the new event
+    // Either the locus
+    // TODO : Add check for the callBack Address
+    return (
+      this.meetingCollection.getByKey(MEETING_KEY.LOCUS_URL, data.locusUrl) ||
+      // @ts-ignore
+      this.meetingCollection.getByKey(
+        MEETING_KEY.CORRELATION_ID,
+        // @ts-ignore
+        MeetingsUtil.checkForCorrelationId(this.webex.internal.device.url, data.locus)
+      ) ||
+      this.meetingCollection.getByKey(
+        MEETING_KEY.SIP_URI,
+        data.locus.self &&
+          data.locus.self.callbackInfo &&
+          data.locus.self.callbackInfo.callbackAddress
+      ) ||
+      (data.locus.info?.isUnifiedSpaceMeeting
+        ? undefined
+        : this.meetingCollection.getByKey(
+            MEETING_KEY.CONVERSATION_URL,
+            data.locus.conversationUrl
+          )) ||
+      this.meetingCollection.getByKey(MEETING_KEY.MEETINGNUMBER, data.locus?.info?.webExMeetingId)
+    );
   }
 
   /**
@@ -210,28 +408,7 @@ export default class Meetings extends WebexPlugin {
    * @memberof Meetings
    */
   private handleLocusEvent(data: {locusUrl: string; locus: any}, useRandomDelayForInfo = false) {
-    let meeting = null;
-
-    // getting meeting by correlationId. This will happen for the new event
-    // Either the locus
-    // TODO : Add check for the callBack Address
-    meeting =
-      this.meetingCollection.getByKey(LOCUS_URL, data.locusUrl) ||
-      // @ts-ignore
-      this.meetingCollection.getByKey(
-        CORRELATION_ID,
-        // @ts-ignore
-        MeetingsUtil.checkForCorrelationId(this.webex.internal.device.url, data.locus)
-      ) ||
-      this.meetingCollection.getByKey(
-        SIP_URI,
-        data.locus.self &&
-          data.locus.self.callbackInfo &&
-          data.locus.self.callbackInfo.callbackAddress
-      ) ||
-      (data.locus.info?.isUnifiedSpaceMeeting
-        ? undefined
-        : this.meetingCollection.getByKey(CONVERSATION_URL, data.locus.conversationUrl));
+    let meeting = this.getCorrespondingMeetingByLocus(data);
 
     // Special case when locus has got replaced, This only happend once if a replace locus exists
     // https://sqbu-github.cisco.com/WebExSquared/locus/wiki/Locus-changing-mid-call
@@ -239,11 +416,21 @@ export default class Meetings extends WebexPlugin {
     if (!meeting && data.locus?.replaces?.length > 0) {
       // Always the last element in the replace is the active one
       meeting = this.meetingCollection.getByKey(
-        LOCUS_URL,
+        MEETING_KEY.LOCUS_URL,
         data.locus.replaces[data.locus.replaces.length - 1].locusUrl
       );
     }
 
+    if (meeting && !MeetingsUtil.isBreakoutLocusDTO(data.locus)) {
+      meeting.locusInfo.updateMainSessionLocusCache(data.locus);
+    }
+    if (!this.isNeedHandleLocusDTO(meeting, data.locus)) {
+      LoggerProxy.logger.log(
+        `Meetings:index#handleLocusEvent --> doesn't need to process locus event`
+      );
+
+      return;
+    }
     if (!meeting) {
       // TODO: create meeting when we get a meeting object
       // const checkForEnded = (locus) => {
@@ -294,12 +481,13 @@ export default class Meetings extends WebexPlugin {
         return;
       }
 
-      this.create(data.locus, _LOCUS_ID_, useRandomDelayForInfo)
+      this.create(data.locus, DESTINATION_TYPE.LOCUS_ID, useRandomDelayForInfo)
         .then((newMeeting) => {
           meeting = newMeeting;
 
           // It's a new meeting so initialize the locus data
           meeting.locusInfo.initialSetup(data.locus);
+          this.checkHandleBreakoutLocus(data.locus);
         })
         .catch((e) => {
           LoggerProxy.logger.error(e);
@@ -309,10 +497,15 @@ export default class Meetings extends WebexPlugin {
           // because the other user left so before sending 'added' event make sure it exists in the collection
 
           if (this.getMeetingByType(_ID_, meeting.id)) {
-            Metrics.postEvent({
-              event: eventType.REMOTE_STARTED,
-              meeting,
-              data: {trigger: trigger.MERCURY_EVENT},
+            // @ts-ignore
+            this.webex.internal.newMetrics.submitClientEvent({
+              name: 'client.call.remote-started',
+              payload: {
+                trigger: 'mercury-event',
+              },
+              options: {
+                meetingId: meeting.id,
+              },
             });
             Trigger.trigger(
               this,
@@ -392,7 +585,7 @@ export default class Meetings extends WebexPlugin {
 
     // @ts-ignore
     this.webex.internal.mercury.on(ONLINE, () => {
-      this.syncMeetings();
+      this.syncMeetings({keepOnlyLocusMeetings: false});
     });
 
     // @ts-ignore
@@ -431,6 +624,9 @@ export default class Meetings extends WebexPlugin {
       // @ts-ignore
       LoggerProxy.set(this.webex.logger);
 
+      mediaLogger = new MediaLogger();
+      setLogger(mediaLogger);
+
       /**
        * The MeetingInfo object to interact with server
        * @instance
@@ -462,7 +658,7 @@ export default class Meetings extends WebexPlugin {
 
       MeetingsUtil.checkH264Support({disableNotifications: true});
       // @ts-ignore
-      Metrics.initialSetup(this.meetingCollection, this.webex);
+      Metrics.initialSetup(this.webex);
     });
   }
 
@@ -487,21 +683,6 @@ export default class Meetings extends WebexPlugin {
   }
 
   /**
-   * API to enable or disable TURN discovery
-   * @param {Boolean} enable
-   * @private
-   * @memberof Meetings
-   * @returns {undefined}
-   */
-  private _toggleTurnDiscovery(enable: boolean) {
-    if (typeof enable !== 'boolean') {
-      return;
-    }
-    // @ts-ignore
-    this.config.experimental.enableTurnDiscovery = enable;
-  }
-
-  /**
    * API to toggle starting adhoc meeting
    * @param {Boolean} changeState
    * @private
@@ -516,6 +697,42 @@ export default class Meetings extends WebexPlugin {
     if (this.config?.experimental?.enableAdhocMeetings !== changeState) {
       // @ts-ignore
       this.config.experimental.enableAdhocMeetings = changeState;
+    }
+  }
+
+  /**
+   * API to toggle TCP reachability, needs to be called before webex.meetings.register()
+   * @param {Boolean} newValue
+   * @private
+   * @memberof Meetings
+   * @returns {undefined}
+   */
+  private _toggleTcpReachability(newValue: boolean) {
+    if (typeof newValue !== 'boolean') {
+      return;
+    }
+    // @ts-ignore
+    if (this.config.experimental.enableTcpReachability !== newValue) {
+      // @ts-ignore
+      this.config.experimental.enableTcpReachability = newValue;
+    }
+  }
+
+  /**
+   * API to toggle TLS reachability, needs to be called before webex.meetings.register()
+   * @param {Boolean} newValue
+   * @private
+   * @memberof Meetings
+   * @returns {undefined}
+   */
+  private _toggleTlsReachability(newValue: boolean) {
+    if (typeof newValue !== 'boolean') {
+      return;
+    }
+    // @ts-ignore
+    if (this.config.experimental.enableTlsReachability !== newValue) {
+      // @ts-ignore
+      this.config.experimental.enableTlsReachability = newValue;
     }
   }
 
@@ -548,7 +765,7 @@ export default class Meetings extends WebexPlugin {
     return Promise.all([
       this.fetchUserPreferredWebexSite(),
       this.getGeoHint(),
-      this.startReachability().catch((error) => {
+      this.startReachability('registration').catch((error) => {
         LoggerProxy.logger.error(`Meetings:index#register --> GDM error, ${error.message}`);
       }),
       // @ts-ignore
@@ -632,6 +849,36 @@ export default class Meetings extends WebexPlugin {
   }
 
   /**
+   * Creates a noise reduction effect
+   *
+   * @param {INoiseReductionEffect} options optional custom effect options
+   * @returns {Promise<effect>} noise reduction effect.
+   * @public
+   * @memberof Meetings
+   */
+  createNoiseReductionEffect = async (options?: INoiseReductionEffect) => {
+    // @ts-ignore
+    const authToken = this.webex.credentials.supertoken.access_token;
+
+    return new mediaHelpersModule.NoiseReductionEffect({authToken, ...options});
+  };
+
+  /**
+   * Creates a virtual background effect
+   *
+   * @param {IVirtualBackgroundEffect} options optional custom effect options
+   * @returns {Promise<effect>} virtual background effect.
+   * @public
+   * @memberof Meetings
+   */
+  createVirtualBackgroundEffect = async (options?: IVirtualBackgroundEffect) => {
+    // @ts-ignore
+    const authToken = this.webex.credentials.supertoken.access_token;
+
+    return new mediaHelpersModule.VirtualBackgroundEffect({authToken, ...options});
+  };
+
+  /**
    * Uploads logs to the webex services for tracking
    * @param {Object} [options={}]
    * @param {String} [options.callStart] Call Start Time
@@ -645,8 +892,10 @@ export default class Meetings extends WebexPlugin {
    */
   uploadLogs(
     options: {
+      autoupload?: boolean;
       callStart?: string;
       feedbackId?: string;
+      locussessionid?: string;
       locusId?: string;
       correlationId?: string;
       meetingId?: string;
@@ -663,6 +912,7 @@ export default class Meetings extends WebexPlugin {
           'Meetings:index#uploadLogs --> Upload logs for meeting completed.',
           uploadResult
         );
+        Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.UPLOAD_LOGS_SUCCESS, options);
         Trigger.trigger(
           this,
           {
@@ -697,24 +947,12 @@ export default class Meetings extends WebexPlugin {
         );
 
         Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.UPLOAD_LOGS_FAILURE, {
-          // @ts-ignore - seems like typo
-          meetingId: options.meetingsId,
+          ...options,
           reason: uploadError.message,
           stack: uploadError.stack,
           code: uploadError.code,
         });
       });
-  }
-
-  /**
-   * initializes the reachability instance for Meetings
-   * @returns {undefined}
-   * @public
-   * @memberof Meetings
-   */
-  setReachability() {
-    // @ts-ignore
-    this.reachability = new Reachability(this.webex);
   }
 
   /**
@@ -729,16 +967,13 @@ export default class Meetings extends WebexPlugin {
 
   /**
    * initializes and starts gathering reachability for Meetings
+   * @param {string} trigger - explains the reason for starting reachability
    * @returns {Promise}
    * @public
    * @memberof Meetings
    */
-  startReachability() {
-    if (!this.reachability) {
-      this.setReachability();
-    }
-
-    return this.getReachability().gatherReachability();
+  startReachability(trigger = 'client') {
+    return this.getReachability().gatherReachability(trigger);
   }
 
   /**
@@ -763,8 +998,36 @@ export default class Meetings extends WebexPlugin {
   fetchUserPreferredWebexSite() {
     return this.request.getMeetingPreferences().then((res) => {
       if (res) {
-        this.preferredWebexSite = MeetingsUtil.parseDefaultSiteFromMeetingPreferences(res);
+        const preferredWebexSite = MeetingsUtil.parseDefaultSiteFromMeetingPreferences(res);
+        this.preferredWebexSite = preferredWebexSite;
+        // @ts-ignore
+        this.webex.internal.services._getCatalog().addAllowedDomains([preferredWebexSite]);
       }
+
+      // fall back to getting the preferred site from the user information
+      if (!this.preferredWebexSite) {
+        // @ts-ignore
+        return this.webex.internal.user
+          .get()
+          .then((user) => {
+            const preferredWebexSite =
+              user?.userPreferences?.userPreferencesItems?.preferredWebExSite;
+            if (preferredWebexSite) {
+              this.preferredWebexSite = preferredWebexSite;
+              // @ts-ignore
+              this.webex.internal.services._getCatalog().addAllowedDomains([preferredWebexSite]);
+            } else {
+              throw new Error('site not found');
+            }
+          })
+          .catch(() => {
+            LoggerProxy.logger.error(
+              'Failed to fetch preferred site from user - no site will be set'
+            );
+          });
+      }
+
+      return Promise.resolve();
     });
   }
 
@@ -805,29 +1068,54 @@ export default class Meetings extends WebexPlugin {
   }
 
   /**
-   * Create a meeting.
-   * @param {string} destination - sipURL, spaceId, phonenumber, or locus object}
-   * @param {string} [type] - the optional specified type, such as locusId
+   * Create a meeting or return an existing meeting.
+   *
+   * When meeting info passed it should be complete, e.g.: fetched after password or captcha provided
+   *
+   * @param {string} destination - sipURL, phonenumber, or locus object}
+   * @param {DESTINATION_TYPE} [type] - the optional specified type, such as locusId
    * @param {Boolean} useRandomDelayForInfo - whether a random delay should be added to fetching meeting info
+   * @param {Object} infoExtraParams extra parameters to be provided when fetching meeting info
+   * @param {string} correlationId - the optional specified correlationId (callStateForMetrics.correlationId can be provided instead)
+   * @param {Boolean} failOnMissingMeetingInfo - whether to throw an error if meeting info fails to fetch (for calls that are not 1:1 or content share)
+   * @param {CallStateForMetrics} callStateForMetrics - information about call state for metrics
+   * @param {Object} [meetingInfo] - Pre-fetched complete meeting info
+   * @param {String} [meetingLookupUrl] - meeting info prefetch url
    * @returns {Promise<Meeting>} A new Meeting.
    * @public
    * @memberof Meetings
    */
-  public create(destination: string, type: string = null, useRandomDelayForInfo = false) {
-    // TODO: type should be from a dictionary
-
+  public create(
+    destination: string,
+    type: DESTINATION_TYPE = null,
+    useRandomDelayForInfo = false,
+    infoExtraParams = {},
+    correlationId: string = undefined,
+    failOnMissingMeetingInfo = false,
+    callStateForMetrics: CallStateForMetrics = undefined,
+    meetingInfo = undefined,
+    meetingLookupUrl = undefined
+  ) {
     // Validate meeting information based on the provided destination and
     // type. This must be performed prior to determining if the meeting is
     // found in the collection, as we mutate the destination for hydra person
     // id values.
+
+    if (correlationId) {
+      callStateForMetrics = {...(callStateForMetrics || {}), correlationId};
+    }
+
     return (
       this.meetingInfo
         .fetchInfoOptions(destination, type)
         // Catch a failure to fetch info options.
         .catch((error) => {
-          LoggerProxy.logger.info(
-            `Meetings:index#create --> INFO, unable to determine info options: ${error.message}`
+          LoggerProxy.logger.error(
+            `Meetings:index#create --> ERROR, unable to determine info options: ${error.message}`
           );
+          if (error instanceof SpaceIDDeprecatedError) {
+            throw new SpaceIDDeprecatedError();
+          }
         })
         .then((options: any = {}) => {
           // Normalize the destination.
@@ -836,8 +1124,14 @@ export default class Meetings extends WebexPlugin {
           // check for the conversation URL then sip Url
           let meeting = null;
 
-          if (type === _CONVERSATION_URL_ || options.type === _CONVERSATION_URL_) {
-            const foundMeeting = this.meetingCollection.getByKey(CONVERSATION_URL, targetDest);
+          if (
+            type === DESTINATION_TYPE.CONVERSATION_URL ||
+            options.type === DESTINATION_TYPE.CONVERSATION_URL
+          ) {
+            const foundMeeting = this.meetingCollection.getByKey(
+              MEETING_KEY.CONVERSATION_URL,
+              targetDest
+            );
 
             if (foundMeeting) {
               const foundMeetingIsNotCalendarMeeting = !foundMeeting.locusInfo.scheduledMeeting;
@@ -852,55 +1146,67 @@ export default class Meetings extends WebexPlugin {
 
           // Attempt to collect the meeting if it exists.
           if (!meeting) {
-            meeting = this.meetingCollection.getByKey(SIP_URI, targetDest);
+            meeting = this.meetingCollection.getByKey(MEETING_KEY.SIP_URI, targetDest);
           }
 
           // Validate if a meeting was found.
           if (!meeting) {
             // Create a meeting based on the normalized destination and type.
-            return this.createMeeting(targetDest, type, useRandomDelayForInfo).then(
-              (createdMeeting: any) => {
-                // If the meeting was successfully created.
-                if (createdMeeting && createdMeeting.on) {
-                  // Create a destruction event for the meeting.
-                  createdMeeting.on(EVENTS.DESTROY_MEETING, (payload) => {
-                    // @ts-ignore
-                    if (this.config.autoUploadLogs) {
-                      this.uploadLogs({
-                        callStart: createdMeeting.locusInfo?.fullState?.lastActive,
-                        correlationId: createdMeeting.correlationId,
-                        feedbackId: createdMeeting.correlationId,
-                        locusId: createdMeeting.locusId,
-                        meetingId: createdMeeting.locusInfo?.info?.webExMeetingId,
-                      }).then(() => this.destroy(createdMeeting, payload.reason));
-                    } else {
-                      this.destroy(createdMeeting, payload.reason);
-                    }
-                  });
+            return this.createMeeting(
+              targetDest,
+              type,
+              useRandomDelayForInfo,
+              infoExtraParams,
+              callStateForMetrics,
+              failOnMissingMeetingInfo,
+              meetingInfo,
+              meetingLookupUrl
+            ).then((createdMeeting: any) => {
+              // If the meeting was successfully created.
+              if (createdMeeting && createdMeeting.on) {
+                // Create a destruction event for the meeting.
+                createdMeeting.on(EVENTS.DESTROY_MEETING, (payload) => {
+                  // @ts-ignore
+                  if (this.config.autoUploadLogs) {
+                    this.uploadLogs({
+                      callStart: createdMeeting.locusInfo?.fullState?.lastActive,
+                      locussessionid: createdMeeting.locusInfo?.fullState?.sessionId,
+                      correlationId: createdMeeting.correlationId,
+                      feedbackId: createdMeeting.correlationId,
+                      locusId: createdMeeting.locusId,
+                      meetingId: createdMeeting.locusInfo?.info?.webExMeetingId,
+                      autoupload: true,
+                    }).then(() => this.destroy(createdMeeting, payload.reason));
+                  } else {
+                    this.destroy(createdMeeting, payload.reason);
+                  }
+                });
 
-                  createdMeeting.on(EVENTS.REQUEST_UPLOAD_LOGS, (meetingInstance) => {
-                    // @ts-ignore
-                    if (this.config.autoUploadLogs) {
-                      this.uploadLogs({
-                        callStart: meetingInstance?.locusInfo?.fullState?.lastActive,
-                        correlationId: meetingInstance.correlationId,
-                        feedbackId: meetingInstance.correlationId,
-                        locusId: meetingInstance.locusId,
-                        meetingId: meetingInstance.locusInfo?.info?.webExMeetingId,
-                      });
-                    }
-                  });
-                } else {
-                  LoggerProxy.logger.error(
-                    `Meetings:index#create --> ERROR, meeting does not have on method, will not be destroyed, meeting cleanup impossible for meeting: ${meeting}`
-                  );
-                }
-
-                // Return the newly created meeting.
-                return Promise.resolve(createdMeeting);
+                createdMeeting.on(EVENTS.REQUEST_UPLOAD_LOGS, (meetingInstance) => {
+                  // @ts-ignore
+                  if (this.config.autoUploadLogs) {
+                    this.uploadLogs({
+                      callStart: meetingInstance?.locusInfo?.fullState?.lastActive,
+                      locussessionid: meetingInstance?.locusInfo?.fullState?.sessionId,
+                      correlationId: meetingInstance.correlationId,
+                      feedbackId: meetingInstance.correlationId,
+                      locusId: meetingInstance.locusId,
+                      meetingId: meetingInstance.locusInfo?.info?.webExMeetingId,
+                      autoupload: true,
+                    });
+                  }
+                });
+              } else {
+                LoggerProxy.logger.error(
+                  `Meetings:index#create --> ERROR, meeting does not have on method, will not be destroyed, meeting cleanup impossible for meeting: ${meeting}`
+                );
               }
-            );
+
+              // Return the newly created meeting.
+              return Promise.resolve(createdMeeting);
+            });
           }
+          meeting.setCallStateForMetrics(callStateForMetrics);
 
           // Return the existing meeting.
           return Promise.resolve(meeting);
@@ -909,17 +1215,31 @@ export default class Meetings extends WebexPlugin {
   }
 
   /**
+   * Create meeting
+   *
+   * When meeting info passed it should be complete, e.g.: fetched after password or captcha provided
+   *
    * @param {String} destination see create()
-   * @param {String} type see create()
+   * @param {DESTINATION_TYPE} type see create()
    * @param {Boolean} useRandomDelayForInfo whether a random delay should be added to fetching meeting info
+   * @param {Object} infoExtraParams extra parameters to be provided when fetching meeting info
+   * @param {CallStateForMetrics} callStateForMetrics - information about call state for metrics
+   * @param {Boolean} failOnMissingMeetingInfo - whether to throw an error if meeting info fails to fetch (for calls that are not 1:1 or content share)
+   * @param {Object} [meetingInfo] - Pre-fetched complete meeting info
+   * @param {String} [meetingLookupUrl] - meeting info prefetch url
    * @returns {Promise} a new meeting instance complete with meeting info and destination
    * @private
    * @memberof Meetings
    */
   private async createMeeting(
     destination: any,
-    type: string = null,
-    useRandomDelayForInfo = false
+    type: DESTINATION_TYPE = null,
+    useRandomDelayForInfo = false,
+    infoExtraParams = {},
+    callStateForMetrics: CallStateForMetrics = undefined,
+    failOnMissingMeetingInfo = false,
+    meetingInfo = undefined,
+    meetingLookupUrl = undefined
   ) {
     const meeting = new Meeting(
       {
@@ -929,11 +1249,11 @@ export default class Meetings extends WebexPlugin {
         deviceUrl: this.webex.internal.device.url,
         // @ts-ignore
         orgId: this.webex.internal.device.orgId,
-        roapSeq: 0,
-        locus: type === _LOCUS_ID_ ? destination : null, // pass the locus object if present
+        locus: type === DESTINATION_TYPE.LOCUS_ID ? destination : null, // pass the locus object if present
         meetingInfoProvider: this.meetingInfo,
         destination,
         destinationType: type,
+        callStateForMetrics,
       },
       {
         // @ts-ignore
@@ -965,22 +1285,43 @@ export default class Meetings extends WebexPlugin {
       const isMeetingActive = !!destination.fullState?.active;
       // @ts-ignore
       const {enableUnifiedMeetings} = this.config.experimental;
+      const meetingInfoOptions = {
+        extraParams: infoExtraParams,
+        sendCAevents: !!callStateForMetrics?.correlationId, // if client sends correlation id as argument of public create(), then it means that this meeting creation is part of a pre-join intent from user
+      };
 
-      if (enableUnifiedMeetings && !isMeetingActive && useRandomDelayForInfo && waitingTime > 0) {
-        meeting.fetchMeetingInfoTimeoutId = setTimeout(
-          () => meeting.fetchMeetingInfo({}),
-          waitingTime
-        );
-        meeting.parseMeetingInfo(undefined, destination);
-      } else {
-        await meeting.fetchMeetingInfo({});
+      if (meetingInfo) {
+        meeting.injectMeetingInfo(meetingInfo, meetingInfoOptions, meetingLookupUrl);
+      } else if (type !== DESTINATION_TYPE.ONE_ON_ONE_CALL) {
+        // ignore fetchMeetingInfo for 1:1 meetings
+        if (enableUnifiedMeetings && !isMeetingActive && useRandomDelayForInfo && waitingTime > 0) {
+          meeting.fetchMeetingInfoTimeoutId = setTimeout(
+            () => meeting.fetchMeetingInfo(meetingInfoOptions),
+            waitingTime
+          );
+          meeting.parseMeetingInfo(undefined, destination);
+        } else {
+          await meeting.fetchMeetingInfo(meetingInfoOptions);
+        }
       }
     } catch (err) {
-      if (!(err instanceof CaptchaError) && !(err instanceof PasswordError)) {
-        // if there is no meeting info we assume its a 1:1 call or wireless share
+      if (
+        !(err instanceof CaptchaError) &&
+        !(err instanceof PasswordError) &&
+        !(err instanceof PermissionError)
+      ) {
         LoggerProxy.logger.info(
           `Meetings:index#createMeeting --> Info Unable to fetch meeting info for ${destination}.`
         );
+        if (failOnMissingMeetingInfo) {
+          LoggerProxy.logger.info(
+            `Meetings:index#createMeeting --> Destroying meeting due to missing meeting info.`
+          );
+          // @ts-ignore
+          this.destroy(meeting, MEETING_REMOVED_REASON.MISSING_MEETING_INFO);
+          throw new NoMeetingInfoError();
+        }
+        // if there is no meeting info and no error should be thrown then we assume its a 1:1 call or wireless share
         LoggerProxy.logger.info(
           'Meetings:index#createMeeting --> Info assuming this destination is a 1:1 or wireless share'
         );
@@ -992,7 +1333,7 @@ export default class Meetings extends WebexPlugin {
       // For type LOCUS_ID we need to parse the locus object to get the information
       // about the caller and callee
       // Meeting Added event will be created in `handleLocusEvent`
-      if (type !== _LOCUS_ID_) {
+      if (type !== DESTINATION_TYPE.LOCUS_ID) {
         if (!meeting.sipUri) {
           meeting.setSipUri(destination);
         }
@@ -1033,7 +1374,7 @@ export default class Meetings extends WebexPlugin {
     //
     // Our job is to determine the appropriate one
     // and its corresponding service so that developers
-    // need only sipURL or spaceID to get a meeting
+    // need only sipURL to get a meeting
     // and its ID, but have the option to use createWithType()
     // and specify those types to get meetingInfo
   }
@@ -1052,70 +1393,135 @@ export default class Meetings extends WebexPlugin {
 
   /**
    * Get all meetings.
-   * @param {object} options
-   * @param {object} options.startDate - get meetings after this start date
-   * @param {object} options.endDate - get meetings before this end date
    * @returns {Object} All currently active meetings.
    * @public
    * @memberof Meetings
    */
-  public getAllMeetings(
-    options: {
-      startDate: object;
-      endDate: object;
-    } = {} as any
-  ) {
-    // Options may include other parameters to filter this collection
-    // of meetings.
-    return this.meetingCollection.getAll(options);
+  public getAllMeetings() {
+    return this.meetingCollection.getAll();
   }
 
   /**
-   * syncs all the meeting from server
+   * Syncs all the meetings from server. Does nothing and returns immediately if unverified guest.
+   * @param {boolean} keepOnlyLocusMeetings - whether the sync should keep only locus meetings or any other meeting in meetingCollection
+   * @returns {Promise<void>}
+   * @public
+   * @memberof Meetings
+   */
+  public syncMeetings({keepOnlyLocusMeetings = true} = {}): Promise<void> {
+    // @ts-ignore
+    if (this.webex.credentials.isUnverifiedGuest) {
+      LoggerProxy.logger.info(
+        'Meetings:index#syncMeetings --> skipping meeting sync as unverified guest'
+      );
+
+      return Promise.resolve();
+    }
+
+    return this.request
+      .getActiveMeetings()
+      .then((locusArray) => {
+        const activeLocusUrl = [];
+
+        if (locusArray?.loci && locusArray.loci.length > 0) {
+          const lociToUpdate = this.sortLocusArrayToUpdate(locusArray.loci);
+          lociToUpdate.forEach((locus) => {
+            activeLocusUrl.push(locus.url);
+            this.handleLocusEvent({
+              locus,
+              locusUrl: locus.url,
+            });
+          });
+        }
+        const meetingsCollection = this.meetingCollection.getAll();
+
+        if (Object.keys(meetingsCollection).length > 0) {
+          // Sometimes the mercury events are lost after mercury reconnect
+          // Remove any Locus meetings that are not returned by Locus
+          // (they had a locusUrl previously but are no longer active) in the sync
+          for (const meeting of Object.values(meetingsCollection)) {
+            // @ts-ignore
+            const {locusUrl} = meeting;
+            if ((keepOnlyLocusMeetings || locusUrl) && !activeLocusUrl.includes(locusUrl)) {
+              // destroy function also uploads logs
+              // @ts-ignore
+              this.destroy(meeting, MEETING_REMOVED_REASON.NO_MEETINGS_TO_SYNC);
+            }
+          }
+        }
+      })
+      .catch((error) => {
+        LoggerProxy.logger.error(
+          `Meetings:index#syncMeetings --> failed to sync meetings, ${error}`
+        );
+        throw new Error(error);
+      });
+  }
+
+  /**
+   * sort out locus array for initial creating
+   * @param {Array} loci original locus array
    * @returns {undefined}
    * @public
    * @memberof Meetings
    */
-  public syncMeetings() {
-    return this.request.getActiveMeetings().then((locusArray) => {
-      const activeLocusUrl = [];
+  sortLocusArrayToUpdate(loci: any[]) {
+    const mainLoci = loci.filter((locus) => !MeetingsUtil.isBreakoutLocusDTO(locus));
+    const breakoutLoci = loci.filter((locus) => MeetingsUtil.isValidBreakoutLocus(locus));
+    this.breakoutLocusForHandleLater = [];
+    const lociToUpdate = [...mainLoci];
+    breakoutLoci.forEach((breakoutLocus) => {
+      const associateMainLocus = mainLoci.find(
+        (mainLocus) => mainLocus.controls?.breakout?.url === breakoutLocus.controls?.breakout?.url
+      );
+      const existCorrespondingMeeting = this.getCorrespondingMeetingByLocus({
+        locus: breakoutLocus,
+        locusUrl: breakoutLocus.url,
+      });
 
-      if (locusArray?.loci && locusArray.loci.length > 0) {
-        locusArray.loci.forEach((locus) => {
-          activeLocusUrl.push(locus.url);
-          this.handleLocusEvent({
-            locus,
-            locusUrl: locus.url,
-          });
-        });
-      }
-      const meetingsCollection = this.meetingCollection.getAll();
-
-      if (Object.keys(meetingsCollection).length > 0) {
-        // Some time the mercury event is missed after mercury reconnect
-        // if sync returns no locus then clear all the meetings
-        for (const meeting of Object.values(meetingsCollection)) {
-          // @ts-ignore
-          if (!activeLocusUrl.includes(meeting.locusUrl)) {
-            // destroy function also uploads logs
-            // @ts-ignore
-            this.destroy(meeting, MEETING_REMOVED_REASON.NO_MEETINGS_TO_SYNC);
-          }
-        }
+      if (associateMainLocus && !existCorrespondingMeeting) {
+        // if exists both main session and breakout session locus of the same non-exist meeting, handle main locus first,
+        // after meeting create with main locus, then handle the associate breakout locus.
+        // if only handle breakout locus, will miss some date
+        this.breakoutLocusForHandleLater.push(breakoutLocus);
+      } else {
+        lociToUpdate.push(breakoutLocus);
       }
     });
+
+    return lociToUpdate;
   }
 
   /**
-   * Get all scheduled meetings.
-   * @param {object} options
-   * @param {object} options.startDate - get meetings after this start date
-   * @param {object} options.endDate - get meetings before this end date
-   * @returns {Object} All scheduled meetings.
+   * check breakout locus which waiting for main locus's meeting to be created, then handle the breakout locus
+   * @param {Object} newCreatedLocus the locus which just create meeting object of it
+   * @returns {undefined}
+   * @public
    * @memberof Meetings
    */
-  getScheduledMeetings() {
-    return this.meetingCollection.getAll({scheduled: true});
+  checkHandleBreakoutLocus(newCreatedLocus) {
+    if (
+      !newCreatedLocus ||
+      !this.breakoutLocusForHandleLater ||
+      !this.breakoutLocusForHandleLater.length
+    ) {
+      return;
+    }
+    if (MeetingsUtil.isBreakoutLocusDTO(newCreatedLocus)) {
+      return;
+    }
+    const existIndex = this.breakoutLocusForHandleLater.findIndex(
+      (breakoutLocus) =>
+        breakoutLocus.controls?.breakout?.url === newCreatedLocus.controls?.breakout?.url
+    );
+
+    if (existIndex < 0) {
+      return;
+    }
+
+    const associateBreakoutLocus = this.breakoutLocusForHandleLater[existIndex];
+    this.handleLocusEvent({locus: associateBreakoutLocus, locusUrl: associateBreakoutLocus.url});
+    this.breakoutLocusForHandleLater.splice(existIndex, 1);
   }
 
   /**
@@ -1124,5 +1530,16 @@ export default class Meetings extends WebexPlugin {
    */
   getLogger() {
     return LoggerProxy.get();
+  }
+
+  /**
+   * Returns the first meeting it finds that has the webrtc media connection created.
+   * Useful for debugging in the console.
+   *
+   * @private
+   * @returns {Meeting} Meeting object that has a webrtc media connection, else undefined
+   */
+  getActiveWebrtcMeeting() {
+    return this.meetingCollection.getActiveWebrtcMeeting();
   }
 }

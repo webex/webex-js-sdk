@@ -1,11 +1,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable dot-notation */
 /* eslint-disable @typescript-eslint/no-shadow */
-import * as MediaSDK from '@webex/internal-media-core';
+import * as InternalMediaCoreModule from '@webex/internal-media-core';
+import {EffectEvent} from '@webex/web-media-effects';
 import {ERROR_TYPE, ERROR_LAYER} from '../../Errors/types';
 import * as Utils from '../../common/Utils';
 import {CALL_EVENT_KEYS, CallEvent, RoapEvent, RoapMessage} from '../../Events/types';
-import {DEFAULT_SESSION_TIMER} from '../constants';
+import {DEFAULT_SESSION_TIMER, ICE_CANDIDATES_TIMEOUT} from '../constants';
 import {CallDirection, CallType, ServiceIndicator, WebexRequestPayload} from '../../common/types';
 import {METRIC_EVENT, TRANSFER_ACTION, METRIC_TYPE} from '../../Metrics/types';
 import {Call, createCall} from './call';
@@ -30,30 +31,13 @@ jest.mock('@webex/internal-media-core');
 
 const webex = getTestUtilsWebex();
 
-const mockMediaSDK = MediaSDK as jest.Mocked<typeof MediaSDK>;
+const mockInternalMediaCoreModule = InternalMediaCoreModule as jest.Mocked<
+  typeof InternalMediaCoreModule
+>;
 
 const defaultServiceIndicator = ServiceIndicator.CALLING;
 const activeUrl = 'FakeActiveUrl';
 const mockLineId = 'e4e8ee2a-a154-4e52-8f11-ef4cde2dce72';
-
-// class MockMediaStream {
-//   private track;
-
-//   constructor(track: any) {
-//     this.track = track;
-//   }
-// }
-
-// globalThis.MediaStream = MockMediaStream;
-
-// // eslint-disable-next-line @typescript-eslint/no-unused-vars
-// jest.spyOn(window, 'MediaStream').mockImplementation((tracks: MediaStreamTrack[]) => {
-//   return {} as MediaStream;
-// });
-
-// // Object.defineProperty(window, 'MediaStream', {
-// //   writable: true,
-// // });
 
 describe('Call Tests', () => {
   const deviceId = '55dfb53f-bed2-36da-8e85-cee7f02aa68e';
@@ -111,12 +95,21 @@ describe('Call Tests', () => {
     enabled: false,
   } as MediaStreamTrack;
 
+  const mockEffect = {
+    isEnabled: true,
+    effectTrack: mockTrack,
+    on: jest.fn(),
+    off: jest.fn(),
+  };
+
   const roapMediaConnectionConfig = {
     skipInactiveTransceivers: true,
     iceServers: [],
+    iceCandidatesTimeout: ICE_CANDIDATES_TIMEOUT,
     sdpMunging: {
       convertPort9to0: true,
       addContentSlides: false,
+      copyClineToSessionLevel: true,
     },
   };
 
@@ -165,6 +158,47 @@ describe('Call Tests', () => {
     expect(call).toBeTruthy();
   });
 
+  it('should log a warning when sending a digit fails', async () => {
+    const tone = '1';
+    const errorMessage = 'Failed to send digit';
+
+    // Mock the mediaConnection object
+    const mockMediaConnection = {
+      insertDTMF: jest.fn(() => {
+        throw new Error(errorMessage);
+      }),
+    };
+
+    const callManager = getCallManager(webex, defaultServiceIndicator);
+
+    const call = callManager.createCall(dest, CallDirection.OUTBOUND, deviceId, mockLineId);
+
+    const realMediaConnection = call.mediaConnection;
+    // Set the mock mediaConnection object
+    call.mediaConnection = mockMediaConnection;
+
+    // Spy on the log.warn method
+    const logWarnSpy = jest.spyOn(log, 'warn');
+
+    // Call the sendDigit method
+    call.sendDigit(tone);
+
+    // Expect the log.warn method to be called with the error message
+    expect(logWarnSpy).toHaveBeenLastCalledWith(`Unable to send digit on call: ${errorMessage}`, {
+      file: 'call',
+      method: 'sendDigit',
+    });
+
+    // Restore the real mediaConnection object
+    call.mediaConnection = realMediaConnection;
+
+    call.end();
+    await waitForMsecs(50); // Need to add a small delay for Promise and callback to finish.
+
+    /* After call ends, call manager should have 0 record */
+    expect(Object.keys(callManager.getActiveCalls()).length).toBe(0);
+  });
+
   it('delete call object when ending the call', async () => {
     webex.request.mockReturnValue({
       statusCode: 200,
@@ -180,13 +214,11 @@ describe('Call Tests', () => {
     const callManager = getCallManager(webex, defaultServiceIndicator);
 
     const mockStream = {
-      outputStream: {
-        getAudioTracks: jest.fn().mockReturnValue([mockTrack]),
-      },
       on: jest.fn(),
+      setUserMuted: jest.fn(),
     };
 
-    const localAudioStream = mockStream as unknown as MediaSDK.LocalMicrophoneStream;
+    const localAudioStream = mockStream as unknown as InternalMediaCoreModule.LocalMicrophoneStream;
 
     const call = callManager.createCall(dest, CallDirection.OUTBOUND, deviceId, mockLineId);
 
@@ -195,9 +227,9 @@ describe('Call Tests', () => {
     expect(Object.keys(callManager.getActiveCalls()).length).toBe(1);
     call.mute(localAudioStream);
     expect(call.isMuted()).toEqual(true);
-    expect(mockTrack.enabled).toEqual(false);
+    expect(mockStream.setUserMuted).toBeCalledOnceWith(true);
     call.mute(localAudioStream);
-    expect(mockTrack.enabled).toEqual(true);
+    expect(mockStream.setUserMuted).toBeCalledWith(false);
     expect(call.isMuted()).toEqual(false);
     call.end();
     await waitForMsecs(50); // Need to add a small delay for Promise and callback to finish.
@@ -287,9 +319,12 @@ describe('Call Tests', () => {
         getAudioTracks: jest.fn().mockReturnValue([mockTrack]),
       },
       on: jest.fn(),
+      getEffectByKind: jest.fn().mockImplementation(() => {
+        return mockEffect;
+      }),
     };
 
-    const localAudioStream = mockStream as unknown as MediaSDK.LocalMicrophoneStream;
+    const localAudioStream = mockStream as unknown as InternalMediaCoreModule.LocalMicrophoneStream;
 
     const warnSpy = jest.spyOn(log, 'warn');
     const call = createCall(
@@ -303,15 +338,25 @@ describe('Call Tests', () => {
       defaultServiceIndicator
     );
 
+    const bnrMetricSpy = jest.spyOn(call['metricManager'], 'submitBNRMetric');
+
     call.dial(localAudioStream);
 
     expect(mockTrack.enabled).toEqual(true);
-    expect(mockMediaSDK.RoapMediaConnection).toBeCalledOnceWith(
+    expect(mockInternalMediaCoreModule.RoapMediaConnection).toBeCalledOnceWith(
       roapMediaConnectionConfig,
       roapMediaConnectionOptions,
       expect.any(String)
     );
     expect(call['mediaStateMachine'].state.value).toBe('S_SEND_ROAP_OFFER');
+
+    expect(bnrMetricSpy).toBeCalledOnceWith(
+      METRIC_EVENT.BNR_ENABLED,
+      METRIC_TYPE.BEHAVIORAL,
+      call.getCallId(),
+      call.getCorrelationId()
+    );
+
     /* Now change the state and recall to check for error */
     call['mediaStateMachine'].state.value = 'S_SEND_ROAP_OFFER';
     call.dial(localAudioStream);
@@ -328,9 +373,12 @@ describe('Call Tests', () => {
         getAudioTracks: jest.fn().mockReturnValue([mockTrack]),
       },
       on: jest.fn(),
+      getEffectByKind: jest.fn().mockImplementation(() => {
+        return mockEffect;
+      }),
     };
 
-    const localAudioStream = mockStream as unknown as MediaSDK.LocalMicrophoneStream;
+    const localAudioStream = mockStream as unknown as InternalMediaCoreModule.LocalMicrophoneStream;
 
     const warnSpy = jest.spyOn(log, 'warn');
     const call = createCall(
@@ -345,9 +393,11 @@ describe('Call Tests', () => {
     );
     /** Cannot answer in idle state */
 
+    const bnrMetricSpy = jest.spyOn(call['metricManager'], 'submitBNRMetric');
+
     call.answer(localAudioStream);
     expect(mockTrack.enabled).toEqual(true);
-    expect(mockMediaSDK.RoapMediaConnection).toBeCalledOnceWith(
+    expect(mockInternalMediaCoreModule.RoapMediaConnection).toBeCalledOnceWith(
       roapMediaConnectionConfig,
       roapMediaConnectionOptions,
       expect.any(String)
@@ -362,6 +412,311 @@ describe('Call Tests', () => {
     call['callStateMachine'].state.value = 'S_SEND_CALL_PROGRESS';
     call.answer(localAudioStream);
     expect(call['callStateMachine'].state.value).toBe('S_SEND_CALL_CONNECT');
+
+    expect(bnrMetricSpy).toBeCalledOnceWith(
+      METRIC_EVENT.BNR_ENABLED,
+      METRIC_TYPE.BEHAVIORAL,
+      call.getCallId(),
+      call.getCorrelationId()
+    );
+  });
+
+  it('testing enabling/disabling the BNR on an active call', async () => {
+    const mockStream = {
+      outputStream: {
+        getAudioTracks: jest.fn().mockReturnValue([mockTrack]),
+      },
+      on: jest.fn(),
+      off: jest.fn(),
+      getEffectByKind: jest.fn(),
+    };
+
+    const localAudioStream = mockStream as unknown as InternalMediaCoreModule.LocalMicrophoneStream;
+    const onStreamSpy = jest.spyOn(localAudioStream, 'on');
+    const onEffectSpy = jest.spyOn(mockEffect, 'on');
+    const offStreamSpy = jest.spyOn(localAudioStream, 'off');
+    const offEffectSpy = jest.spyOn(mockEffect, 'off');
+
+    const call = createCall(
+      activeUrl,
+      webex,
+      dest,
+      CallDirection.OUTBOUND,
+      deviceId,
+      mockLineId,
+      deleteCallFromCollection,
+      defaultServiceIndicator
+    );
+
+    call.dial(localAudioStream);
+
+    expect(mockTrack.enabled).toEqual(true);
+    expect(mockInternalMediaCoreModule.RoapMediaConnection).toBeCalledOnceWith(
+      roapMediaConnectionConfig,
+      roapMediaConnectionOptions,
+      expect.any(String)
+    );
+    expect(call['mediaStateMachine'].state.value).toBe('S_SEND_ROAP_OFFER');
+
+    const updateLocalTracksSpy = jest.spyOn(call['mediaConnection'], 'updateLocalTracks');
+    const bnrMetricSpy = jest.spyOn(call['metricManager'], 'submitBNRMetric');
+
+    /* Update the stream with the effect */
+    jest.spyOn(localAudioStream, 'getEffectByKind').mockReturnValue(mockEffect as any);
+
+    /* Checking if listeners on the localAudioStream have been registered */
+    expect(onStreamSpy).toBeCalledTimes(2);
+    expect(onStreamSpy).toBeCalledWith(
+      InternalMediaCoreModule.LocalStreamEventNames.OutputTrackChange,
+      expect.any(Function)
+    );
+    expect(onStreamSpy).toBeCalledWith(
+      InternalMediaCoreModule.LocalStreamEventNames.EffectAdded,
+      expect.any(Function)
+    );
+
+    bnrMetricSpy.mockClear();
+    /* Invoking the callback function to trigger EffectAdded event to simulate adding effect to the stream */
+    onStreamSpy.mock.calls[1][1](mockEffect as any);
+
+    expect(onEffectSpy).toBeCalledWith(EffectEvent.Enabled, expect.any(Function));
+    expect(onEffectSpy).toBeCalledWith(EffectEvent.Disabled, expect.any(Function));
+
+    /* Send Enabled event on the effect, update track and send metrics for BNR disabled */
+    onStreamSpy.mock.calls[0][1](mockTrack as any);
+    onEffectSpy.mock.calls[0][1]();
+
+    expect(updateLocalTracksSpy).toBeCalledOnceWith({audio: mockTrack});
+    expect(bnrMetricSpy).toBeCalledOnceWith(
+      METRIC_EVENT.BNR_ENABLED,
+      METRIC_TYPE.BEHAVIORAL,
+      call.getCallId(),
+      call.getCorrelationId()
+    );
+
+    /* Clear the mocks */
+    updateLocalTracksSpy.mockClear();
+    bnrMetricSpy.mockClear();
+
+    /* Send Disabled event on the effect, update track and send metrics for BNR disabled */
+    mockEffect.isEnabled = false;
+    onStreamSpy.mock.calls[0][1](mockTrack as any);
+    onEffectSpy.mock.calls[1][1]();
+
+    expect(updateLocalTracksSpy).toBeCalledOnceWith({audio: mockTrack});
+    expect(bnrMetricSpy).toBeCalledOnceWith(
+      METRIC_EVENT.BNR_DISABLED,
+      METRIC_TYPE.BEHAVIORAL,
+      call.getCallId(),
+      call.getCorrelationId()
+    );
+
+    call.end();
+    await waitForMsecs(50);
+
+    /* Checks for switching off the listeners on call disconnect */
+    expect(offStreamSpy).toBeCalledTimes(2);
+    expect(offStreamSpy).toBeCalledWith(
+      InternalMediaCoreModule.LocalStreamEventNames.OutputTrackChange,
+      expect.any(Function)
+    );
+    expect(offStreamSpy).toBeCalledWith(
+      InternalMediaCoreModule.LocalStreamEventNames.EffectAdded,
+      expect.any(Function)
+    );
+    expect(offEffectSpy).toBeCalledWith(EffectEvent.Enabled, expect.any(Function));
+    expect(offEffectSpy).toBeCalledWith(EffectEvent.Disabled, expect.any(Function));
+  });
+
+  it('answer fails if localAudioTrack is empty', async () => {
+    const mockStream = {
+      outputStream: {
+        getAudioTracks: jest.fn().mockReturnValue([]),
+      },
+      on: jest.fn(),
+      off: jest.fn(),
+      getEffectByKind: jest.fn(),
+    };
+
+    const localAudioStream = mockStream as unknown as InternalMediaCoreModule.LocalMicrophoneStream;
+    webex.request.mockReturnValue({
+      statusCode: 200,
+      body: {
+        device: {
+          deviceId: '8a67806f-fc4d-446b-a131-31e71ea5b010',
+          correlationId: '8a67806f-fc4d-446b-a131-31e71ea5b011',
+        },
+        callId: '8a67806f-fc4d-446b-a131-31e71ea5b020',
+      },
+    });
+
+    const warnSpy = jest.spyOn(log, 'warn');
+    const call = createCall(
+      activeUrl,
+      webex,
+      dest,
+      CallDirection.OUTBOUND,
+      deviceId,
+      mockLineId,
+      deleteCallFromCollection,
+      defaultServiceIndicator
+    );
+
+    call.answer(localAudioStream);
+
+    await waitForMsecs(50);
+    expect(warnSpy).toBeCalledTimes(2);
+    expect(warnSpy).toBeCalledWith(
+      `Did not find a local track while answering the call ${call.getCorrelationId()}`,
+      {file: 'call', method: 'answer'}
+    );
+    expect(call['callStateMachine'].state.value).toBe('S_CALL_CLEARED');
+    expect(call['mediaStateMachine'].state.value).toBe('S_ROAP_IDLE');
+
+    expect(call.getDisconnectReason().code).toBe(DisconnectCode.MEDIA_INACTIVITY);
+    expect(call.getDisconnectReason().cause).toBe(DisconnectCause.MEDIA_INACTIVITY);
+
+    expect(webex.request.mock.calls[0][0].body.metrics).toStrictEqual(disconnectStats);
+  });
+
+  it('dial fails if localAudioTrack is empty', async () => {
+    const mockStream = {
+      outputStream: {
+        getAudioTracks: jest.fn().mockReturnValue([]),
+      },
+      on: jest.fn(),
+    };
+
+    const localAudioStream = mockStream as unknown as InternalMediaCoreModule.LocalMicrophoneStream;
+
+    const warnSpy = jest.spyOn(log, 'warn');
+    const call = createCall(
+      activeUrl,
+      webex,
+      dest,
+      CallDirection.OUTBOUND,
+      deviceId,
+      mockLineId,
+      deleteCallFromCollection,
+      defaultServiceIndicator
+    );
+
+    call.dial(localAudioStream);
+
+    await waitForMsecs(50);
+    expect(warnSpy).toBeCalledTimes(1);
+    expect(warnSpy).toBeCalledWith(
+      `Did not find a local track while dialing the call ${call.getCorrelationId()}`,
+      {file: 'call', method: 'dial'}
+    );
+    expect(call['callStateMachine'].state.value).toBe('S_IDLE');
+    expect(call['mediaStateMachine'].state.value).toBe('S_ROAP_IDLE');
+
+    expect(webex.request).not.toBeCalledOnceWith();
+  });
+
+  it('update media after call creation with valid stream', () => {
+    const callManager = getCallManager(webex, defaultServiceIndicator);
+
+    const mockStream = {
+      outputStream: {
+        getAudioTracks: jest.fn().mockReturnValue([mockTrack]),
+      },
+      on: jest.fn(),
+      off: jest.fn(),
+      getEffectByKind: jest.fn(),
+    };
+
+    const localAudioStream = mockStream as unknown as InternalMediaCoreModule.LocalMicrophoneStream;
+
+    const onStream1Spy = jest.spyOn(localAudioStream, 'on');
+    const offStream1Spy = jest.spyOn(localAudioStream, 'off');
+
+    const call = callManager.createCall(dest, CallDirection.OUTBOUND, deviceId, mockLineId);
+
+    call.dial(localAudioStream);
+
+    expect(mockTrack.enabled).toEqual(true);
+    expect(onStream1Spy).toBeCalledTimes(2);
+    expect(onStream1Spy).toBeCalledWith(
+      InternalMediaCoreModule.LocalStreamEventNames.OutputTrackChange,
+      expect.any(Function)
+    );
+    expect(onStream1Spy).toBeCalledWith(
+      InternalMediaCoreModule.LocalStreamEventNames.EffectAdded,
+      expect.any(Function)
+    );
+
+    const mockTrack2 = {
+      enabled: true,
+    };
+
+    const mockStream2 = {
+      outputStream: {
+        getAudioTracks: jest.fn().mockReturnValue([mockTrack2]),
+      },
+      on: jest.fn(),
+      getEffectByKind: jest.fn(),
+    };
+
+    const localAudioStream2 =
+      mockStream2 as unknown as InternalMediaCoreModule.LocalMicrophoneStream;
+    const onStream2Spy = jest.spyOn(localAudioStream2, 'on');
+
+    call.updateMedia(localAudioStream2);
+
+    expect(call['mediaConnection'].updateLocalTracks).toBeCalledOnceWith({audio: mockTrack2});
+    expect(call['localAudioStream']).toEqual(localAudioStream2);
+    expect(offStream1Spy).toBeCalledWith(
+      InternalMediaCoreModule.LocalStreamEventNames.EffectAdded,
+      expect.any(Function)
+    );
+    expect(onStream2Spy).toBeCalledWith(
+      InternalMediaCoreModule.LocalStreamEventNames.OutputTrackChange,
+      expect.any(Function)
+    );
+    expect(onStream2Spy).toBeCalledWith(
+      InternalMediaCoreModule.LocalStreamEventNames.EffectAdded,
+      expect.any(Function)
+    );
+  });
+
+  it('update media with invalid stream', () => {
+    const callManager = getCallManager(webex, defaultServiceIndicator);
+    const warnSpy = jest.spyOn(log, 'warn');
+
+    const mockStream = {
+      outputStream: {
+        getAudioTracks: jest.fn().mockReturnValue([mockTrack]),
+      },
+      on: jest.fn(),
+      getEffectByKind: jest.fn(),
+    };
+
+    const localAudioStream = mockStream as unknown as InternalMediaCoreModule.LocalMicrophoneStream;
+
+    const call = callManager.createCall(dest, CallDirection.OUTBOUND, deviceId, mockLineId);
+
+    call.dial(localAudioStream);
+
+    expect(mockTrack.enabled).toEqual(true);
+
+    const errorStream = {
+      outputStream: {
+        getAudioTracks: jest.fn().mockReturnValue([]),
+      },
+    };
+
+    const localAudioStream2 =
+      errorStream as unknown as InternalMediaCoreModule.LocalMicrophoneStream;
+
+    call.updateMedia(localAudioStream2);
+
+    expect(call['mediaConnection'].updateLocalTracks).not.toBeCalled();
+    expect(warnSpy).toBeCalledOnceWith(
+      `Did not find a local track while updating media for call ${call.getCorrelationId()}. Will not update media`,
+      {file: 'call', method: 'updateMedia'}
+    );
   });
 });
 
@@ -598,13 +953,6 @@ describe('State Machine handler tests', () => {
     expect(call['callStateMachine'].state.value).toBe('S_UNKNOWN');
     expect(stateMachineSpy).toBeCalledTimes(3);
     expect(warnSpy).toBeCalledTimes(4);
-    warnSpy.mockClear();
-    /* Try sending a dtmf which shouldn't work as call is not connected. */
-    call.sendDigit('1');
-    expect(warnSpy).toBeCalledOnceWith(`Can't send DTMF as call is not yet connected`, {
-      file: 'call',
-      method: 'sendDigit',
-    });
   });
 
   it('state changes during successful outgoing call', async () => {
@@ -690,6 +1038,87 @@ describe('State Machine handler tests', () => {
 
     dummyEvent.type = 'E_RECV_CALL_CONNECT';
     call.sendCallStateMachineEvt(dummyEvent as CallEvent);
+    expect(call['callStateMachine'].state.value).toBe('S_CALL_ESTABLISHED');
+    expect(call.isConnected()).toBe(true);
+
+    call.sendCallStateMachineEvt({type: 'E_SEND_CALL_DISCONNECT'});
+    expect(call['callStateMachine'].state.value).toBe('S_SEND_CALL_DISCONNECT');
+  });
+
+  it('outgoing call where we receive connect directly after setup. Media established before connect. test call and media state changes', async () => {
+    const statusPayload = <WebexRequestPayload>(<unknown>{
+      statusCode: 200,
+      body: mockStatusBody,
+    });
+
+    const dummySetupEvent = {
+      type: 'E_SEND_CALL_SETUP',
+      data: undefined as any,
+    };
+
+    const dummyConnectEvent = {
+      type: 'E_RECV_CALL_CONNECT',
+      data: undefined as any,
+    };
+
+    const dummyOfferEvent = {
+      type: 'E_SEND_ROAP_OFFER',
+      data: undefined as any,
+    };
+
+    const dummyAnswerEvent = {
+      type: 'E_RECV_ROAP_ANSWER',
+      data: {
+        seq: 1,
+        messageType: 'ANSWER',
+        sdp: 'sdp',
+      },
+    };
+
+    const dummyOkEvent = {
+      type: 'E_ROAP_OK',
+      data: {
+        received: false,
+        message: {
+          seq: 1,
+          messageType: 'OK',
+        },
+      },
+    };
+
+    const postMediaSpy = jest.spyOn(call as any, 'postMedia');
+
+    webex.request.mockReturnValue(statusPayload);
+
+    call.sendCallStateMachineEvt(dummySetupEvent as CallEvent);
+    expect(call['callStateMachine'].state.value).toBe('S_SEND_CALL_SETUP');
+
+    call.sendMediaStateMachineEvt(dummyOfferEvent as RoapEvent);
+
+    /**
+     * Since the event doesn't have any data above, we should request media sdk for an offer here.
+     * The below event is expected to be called again my mediaSdk.
+     */
+    dummyOfferEvent.data = {
+      seq: 1,
+      messageType: 'OFFER',
+      sdp: 'sdp',
+    };
+    call.sendMediaStateMachineEvt(dummyOfferEvent as RoapEvent);
+    expect(mediaConnection.initiateOffer).toHaveBeenCalledTimes(1);
+    expect(postMediaSpy).toHaveBeenLastCalledWith(dummyOfferEvent.data as RoapMessage);
+
+    call.sendMediaStateMachineEvt(dummyAnswerEvent as RoapEvent);
+    expect(mediaConnection.roapMessageReceived).toHaveBeenLastCalledWith(
+      dummyAnswerEvent.data as RoapMessage
+    );
+
+    call.sendMediaStateMachineEvt(dummyOkEvent as RoapEvent);
+    expect(postMediaSpy).toHaveBeenLastCalledWith(dummyOkEvent.data.message as RoapMessage);
+
+    expect(call['mediaStateMachine'].state.value).toBe('S_ROAP_OK');
+
+    call.sendCallStateMachineEvt(dummyConnectEvent as CallEvent);
     expect(call['callStateMachine'].state.value).toBe('S_CALL_ESTABLISHED');
     expect(call.isConnected()).toBe(true);
 
@@ -1526,6 +1955,108 @@ describe('State Machine handler tests', () => {
       method: 'handleCallHold',
     });
   });
+
+  describe('Call event timers tests', () => {
+    let callManager;
+    beforeEach(() => {
+      jest.useFakeTimers();
+      callManager = getCallManager(webex, defaultServiceIndicator);
+    });
+
+    afterEach(() => {
+      jest.clearAllTimers();
+    });
+
+    it('times out if the next event is not received - 60 seconds timeout', async () => {
+      const statusPayload = <WebexRequestPayload>(<unknown>{
+        statusCode: 200,
+        body: mockStatusBody,
+      });
+      const dummyEvent = {
+        type: 'E_SEND_CALL_SETUP',
+        data: undefined as any,
+      };
+      const logSpy = jest.spyOn(log, 'warn');
+      const emitSpy = jest.spyOn(call, 'emit');
+      const deleteSpy = jest.spyOn(call as any, 'delete');
+      callManager.callCollection = {};
+
+      webex.request.mockReturnValue(statusPayload);
+
+      // handleOutgoingCallSetup is asynchronous
+      await call.sendCallStateMachineEvt(dummyEvent as CallEvent);
+      expect(call['callStateMachine'].state.value).toBe('S_SEND_CALL_SETUP');
+
+      dummyEvent.type = 'E_RECV_CALL_PROGRESS';
+      call.sendCallStateMachineEvt(dummyEvent as CallEvent);
+      expect(call['callStateMachine'].state.value).toBe('S_RECV_CALL_PROGRESS');
+
+      // Media setup for the call
+      dummyEvent.type = 'E_SEND_ROAP_OFFER';
+      call.sendMediaStateMachineEvt(dummyEvent as RoapEvent);
+
+      dummyEvent.data = {
+        seq: 1,
+        messageType: 'OFFER',
+        sdp: 'sdp',
+      };
+      call.sendMediaStateMachineEvt(dummyEvent as RoapEvent);
+
+      dummyEvent.type = 'E_RECV_ROAP_ANSWER';
+      call.sendMediaStateMachineEvt(dummyEvent as RoapEvent);
+
+      const dummyOkEvent = {
+        type: 'E_ROAP_OK',
+        data: {
+          received: false,
+          message: {
+            seq: 1,
+            messageType: 'OK',
+          },
+        },
+      };
+      call.sendMediaStateMachineEvt(dummyOkEvent as RoapEvent);
+      dummyEvent.type = 'E_RECV_ROAP_OFFER_REQUEST';
+      call.sendMediaStateMachineEvt(dummyEvent as RoapEvent);
+      dummyEvent.type = 'E_SEND_ROAP_OFFER';
+      call.sendMediaStateMachineEvt(dummyEvent as RoapEvent);
+      dummyEvent.type = 'E_RECV_ROAP_ANSWER';
+      logSpy.mockClear();
+      jest.advanceTimersByTime(60000);
+      expect(logSpy.mock.calls[0][0]).toBe('Call timed out');
+      expect(emitSpy).toHaveBeenCalledWith(CALL_EVENT_KEYS.DISCONNECT, call.getCorrelationId());
+      expect(deleteSpy).toHaveBeenCalledTimes(1);
+      expect(callManager.callCollection).toStrictEqual({});
+    });
+
+    it('times out if the next event is not received - 10 seconds timeout', async () => {
+      const statusPayload = <WebexRequestPayload>(<unknown>{
+        statusCode: 200,
+        body: mockStatusBody,
+      });
+      const dummyEvent = {
+        type: 'E_SEND_CALL_SETUP',
+        data: undefined as any,
+      };
+      callManager.callCollection = {};
+      const call = callManager.createCall(dest, CallDirection.OUTBOUND, deviceId, mockLineId);
+      const emitSpy = jest.spyOn(call, 'emit');
+      const deleteSpy = jest.spyOn(call as any, 'delete');
+      const logSpy = jest.spyOn(log, 'warn');
+      webex.request.mockReturnValue(statusPayload);
+      expect(Object.keys(callManager.callCollection)[0]).toBe(call.getCorrelationId());
+
+      // handleOutgoingCallSetup is asynchronous
+      await call.sendCallStateMachineEvt(dummyEvent as CallEvent);
+      expect(call['callStateMachine'].state.value).toBe('S_SEND_CALL_SETUP');
+      logSpy.mockClear();
+      jest.advanceTimersByTime(10000);
+      expect(logSpy.mock.calls[0][0]).toBe('Call timed out');
+      expect(emitSpy).toHaveBeenCalledWith(CALL_EVENT_KEYS.DISCONNECT, call.getCorrelationId());
+      expect(deleteSpy).toHaveBeenCalledTimes(1);
+      expect(callManager.callCollection).toStrictEqual({});
+    });
+  });
 });
 
 describe('Supplementary Services tests', () => {
@@ -1825,7 +2356,7 @@ describe('Supplementary Services tests', () => {
       /* We should return back to call established state */
       expect(call['callStateMachine'].state.value).toStrictEqual('S_CALL_ESTABLISHED');
 
-      expect(warnSpy).toHaveBeenCalledWith('MediaOk failed with Mobius', {
+      expect(warnSpy).toHaveBeenCalledWith('Failed to process MediaOk request', {
         file: 'call',
         method: 'handleRoapEstablished',
       });
@@ -1869,7 +2400,7 @@ describe('Supplementary Services tests', () => {
       expect(call.isHeld()).toStrictEqual(true);
       /* We should return back to call established state */
       expect(call['callStateMachine'].state.value).toStrictEqual('S_CALL_ESTABLISHED');
-      expect(warnSpy).toHaveBeenCalledWith('MediaOk failed with Mobius', {
+      expect(warnSpy).toHaveBeenCalledWith('Failed to process MediaOk request', {
         file: 'call',
         method: 'handleRoapEstablished',
       });

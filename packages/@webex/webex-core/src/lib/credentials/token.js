@@ -9,7 +9,7 @@ import {safeSetTimeout} from '@webex/common-timers';
 import WebexHttpError from '../webex-http-error';
 import WebexPlugin from '../webex-plugin';
 
-import {sortScope} from './scope';
+import {sortScope, diffScopes} from './scope';
 import grantErrors, {OAuthError} from './grant-errors';
 
 /* eslint-disable camelcase */
@@ -257,6 +257,14 @@ const Token = WebexPlugin.extend({
       }
 
       return Promise.reject(new Error('cannot downscope access token'));
+    }
+
+    if (diffScopes(scope, this.config.scope) !== '') {
+      return Promise.reject(
+        new Error(
+          `new scope (${scope}) is not subset of the available scopes (${this.config.scope})`
+        )
+      );
     }
 
     // Since we're going to use scope as the index in our token collection, it's

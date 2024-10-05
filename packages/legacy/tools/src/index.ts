@@ -6,7 +6,10 @@
 
 import { build, runTests } from './commands';
 import { Package, PackageFile } from './models';
-import { Jest, Karma, Mocha } from './utils';
+import {
+  Jest, Karma, Mocha, startServer,
+  stopServer,
+} from './utils';
 
 export type {
   PackageBuildConfig,
@@ -25,4 +28,6 @@ export {
   Mocha,
   Package,
   PackageFile,
+  startServer,
+  stopServer,
 };

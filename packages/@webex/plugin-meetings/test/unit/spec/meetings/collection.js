@@ -48,5 +48,31 @@ describe('plugin-meetings', () => {
         assert.deepEqual(meetingCollection.getByKey('value', 'test'), {value: 'test', id: uuid1});
       });
     });
+
+    describe('#getActiveBreakoutLocus', () => {
+      beforeEach(() => {
+        meetingCollection.meetings.test = {breakouts: {url: 'url', isActiveBreakout: true}, id: uuid1};
+      });
+      it('return null if empty breakoutUrl', () => {
+        assert.deepEqual(meetingCollection.getActiveBreakoutLocus(), null);
+      });
+
+      it('should get the meeting which joined breakout by breakoutUrl', () => {
+        assert.deepEqual(meetingCollection.getActiveBreakoutLocus('url'), {
+          breakouts: {url: 'url', isActiveBreakout: true}, id: uuid1});
+      });
+    });
+
+    describe('#getActiveWebrtcMeeting', () => {
+      it('returns the meeting with a webrtc media connection', () => {
+        const activeMeeting = {value: 'test3', id: uuid.v4(), mediaProperties: { webrtcMediaConnection: 'something'}};
+
+        meetingCollection.meetings.test = {value: 'test', id: uuid1, mediaProperties: {}};
+        meetingCollection.meetings.test2 = {value: 'test2', id: uuid2, mediaProperties: {}};
+        meetingCollection.meetings.test3 = activeMeeting;
+
+        assert.equal(meetingCollection.getActiveWebrtcMeeting(), activeMeeting);
+      })
+    })
   });
 });

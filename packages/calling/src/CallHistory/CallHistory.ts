@@ -2,11 +2,40 @@
 /* eslint-disable no-underscore-dangle */
 import SDKConnector from '../SDKConnector';
 import {ISDKConnector, WebexSDK} from '../SDKConnector/types';
-import {ALLOWED_SERVICES, HTTP_METHODS, WebexRequestPayload, SORT, SORT_BY} from '../common/types';
-import {ICallHistory, JanusResponseEvent, LoggerInterface} from './types';
+import {
+  ALLOWED_SERVICES,
+  HTTP_METHODS,
+  WebexRequestPayload,
+  SORT,
+  SORT_BY,
+  CALLING_BACKEND,
+} from '../common/types';
+import {
+  ICallHistory,
+  JanusResponseEvent,
+  LoggerInterface,
+  UpdateMissedCallsResponse,
+  UCMLinesResponse,
+} from './types';
 import log from '../Logger';
-import {serviceErrorCodeHandler} from '../common/Utils';
-import {CALL_HISTORY_FILE, FROM_DATE, HISTORY, LIMIT, NUMBER_OF_DAYS} from './constants';
+import {serviceErrorCodeHandler, getVgActionEndpoint, getCallingBackEnd} from '../common/Utils';
+import {
+  APPLICATION_JSON,
+  CALL_HISTORY_FILE,
+  CONTENT_TYPE,
+  FROM_DATE,
+  HISTORY,
+  LIMIT,
+  NUMBER_OF_DAYS,
+  UPDATE_MISSED_CALLS_ENDPOINT,
+  SET_READ_STATE_SUCCESS_MESSAGE,
+  VERSION_1,
+  UNIFIED_COMMUNICATIONS,
+  CONFIG,
+  PEOPLE,
+  LINES,
+  ORG_ID,
+} from './constants';
 import {STATUS_CODE, SUCCESS_MESSAGE, USER_SESSIONS} from '../common/constants';
 import {
   COMMON_EVENT_KEYS,
@@ -14,6 +43,10 @@ import {
   CallSessionEvent,
   MOBIUS_EVENT_KEYS,
   UserSession,
+  EndTimeSessionId,
+  CallSessionViewedEvent,
+  SanitizedEndTimeAndSessionId,
+  UCMLinesApiResponse,
 } from '../Events/types';
 import {Eventing} from '../Events/impl';
 /**
@@ -110,6 +143,43 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
           );
         }
       }
+      // Check the calling backend
+      const callingBackend = getCallingBackEnd(this.webex);
+      if (callingBackend === CALLING_BACKEND.UCM) {
+        // Check if userSessions exist and the length is greater than 0
+        if (this.userSessions[USER_SESSIONS] && this.userSessions[USER_SESSIONS].length > 0) {
+          // Check if cucmDN exists and is valid in any of the userSessions
+          const hasCucmDN = this.userSessions[USER_SESSIONS].some(
+            (session: UserSession) => session.self.cucmDN && session.self.cucmDN.length > 0
+          );
+          // If any user session has cucmDN, proceed to fetch line data
+          if (hasCucmDN) {
+            // Fetch the Lines data
+            const ucmLinesResponse = await this.fetchUCMLinesData();
+
+            // Check if the Lines API response was successful
+            if (ucmLinesResponse.statusCode === 200 && ucmLinesResponse.data.lines?.devices) {
+              const ucmLinesData = ucmLinesResponse.data.lines.devices;
+
+              // Iterate over user sessions and match with Lines data
+              this.userSessions[USER_SESSIONS].forEach((session: UserSession) => {
+                const cucmDN = session.self.cucmDN;
+
+                if (cucmDN) {
+                  ucmLinesData.forEach((device) => {
+                    device.lines.forEach((line) => {
+                      if (line.dnorpattern === cucmDN) {
+                        session.self.ucmLineNumber = line.index; // Assign the ucmLineNumber
+                      }
+                    });
+                  });
+                }
+              });
+            }
+          }
+        }
+      }
+
       const responseDetails = {
         statusCode: this.userSessions[STATUS_CODE],
         data: {
@@ -128,16 +198,131 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
   }
 
   /**
+   * Function to update the missed call status in the call history using sessionId and time.
+   * @param endTimeSessionIds - An array of objects containing endTime and sessionId of the missed call history records
+   * @returns {Promise} Resolves to an object of type  {@link UpdateMissedCallsResponse}.Response details with success or error status.
+   */
+  public async updateMissedCalls(
+    endTimeSessionIds: EndTimeSessionId[]
+  ): Promise<UpdateMissedCallsResponse> {
+    const loggerContext = {
+      file: CALL_HISTORY_FILE,
+      method: 'updateMissedCalls',
+    };
+    // Convert endTime to milliseconds for each session
+    const santizedSessionIds: SanitizedEndTimeAndSessionId[] = endTimeSessionIds.map((session) => ({
+      ...session,
+      endTime: new Date(session.endTime).getTime(),
+    }));
+    const requestBody = {
+      endTimeSessionIds: santizedSessionIds,
+    };
+    try {
+      const updateMissedCallContentUrl = `${this.janusUrl}/${HISTORY}/${USER_SESSIONS}/${UPDATE_MISSED_CALLS_ENDPOINT}`;
+      // Make a POST request to update missed calls
+      const response = await fetch(updateMissedCallContentUrl, {
+        method: HTTP_METHODS.POST,
+        headers: {
+          [CONTENT_TYPE]: APPLICATION_JSON,
+          Authorization: await this.webex.credentials.getUserToken(),
+        },
+        body: JSON.stringify(requestBody),
+      });
+      if (!response.ok) {
+        throw new Error(`${response.status}`);
+      }
+
+      const data: UpdateMissedCallsResponse = await response.json();
+      log.info(`Missed calls are succesfully read by the user`, loggerContext);
+      const responseDetails: UpdateMissedCallsResponse = {
+        statusCode: data.statusCode as number,
+        data: {
+          readStatusMessage: SET_READ_STATE_SUCCESS_MESSAGE,
+        },
+        message: SUCCESS_MESSAGE,
+      };
+
+      return responseDetails;
+    } catch (err: unknown) {
+      // Catch the 401 error from try block, return the error object to user
+      const errorInfo = {
+        statusCode: err instanceof Error ? Number(err.message) : '',
+      } as WebexRequestPayload;
+      const errorStatus = serviceErrorCodeHandler(errorInfo, loggerContext);
+
+      return errorStatus;
+    }
+  }
+
+  /**
+   * Function to display the UCM Lines API response.
+   * @returns {Promise} Resolves to an object of type  {@link UCMLinesResponse}.Response details with success or error status.
+   */
+  private async fetchUCMLinesData(): Promise<UCMLinesResponse> {
+    const loggerContext = {
+      file: CALL_HISTORY_FILE,
+      method: 'fetchLinesData',
+    };
+    const vgEndpoint = getVgActionEndpoint(this.webex, CALLING_BACKEND.UCM);
+    const userId = this.webex.internal.device.userId;
+    const orgId = this.webex.internal.device.orgId;
+    const linesURIForUCM = `${vgEndpoint}/${VERSION_1}/${UNIFIED_COMMUNICATIONS}/${CONFIG}/${PEOPLE}/${userId}/${LINES}?${ORG_ID}=${orgId}`;
+
+    try {
+      const response = <WebexRequestPayload>await this.webex.request({
+        uri: `${linesURIForUCM}`,
+        method: HTTP_METHODS.GET,
+      });
+
+      const ucmLineDetails: UCMLinesResponse = {
+        statusCode: Number(response.statusCode),
+        data: {
+          lines: response.body as UCMLinesApiResponse,
+        },
+        message: SUCCESS_MESSAGE,
+      };
+
+      log.info(`Line details fetched successfully`, loggerContext);
+
+      return ucmLineDetails;
+    } catch (err: unknown) {
+      const errorInfo = err as WebexRequestPayload;
+      const errorStatus = serviceErrorCodeHandler(errorInfo, loggerContext);
+
+      return errorStatus;
+    }
+  }
+
+  handleSessionEvents = async (event?: CallSessionEvent) => {
+    if (event && event.data.userSessions.userSessions) {
+      this.emit(COMMON_EVENT_KEYS.CALL_HISTORY_USER_SESSION_INFO, event as CallSessionEvent);
+    }
+  };
+
+  handleUserReadSessionEvents = async (event?: CallSessionViewedEvent) => {
+    if (event && event.data.userReadSessions.userReadSessions) {
+      this.emit(
+        COMMON_EVENT_KEYS.CALL_HISTORY_USER_VIEWED_SESSIONS,
+        event as CallSessionViewedEvent
+      );
+    }
+  };
+
+  /**
    *
    */
   private registerSessionsListener() {
     this.sdkConnector.registerListener<CallSessionEvent>(
       MOBIUS_EVENT_KEYS.CALL_SESSION_EVENT_INCLUSIVE,
-      async (event?: CallSessionEvent) => {
-        if (event && event.data.userSessions.userSessions) {
-          this.emit(COMMON_EVENT_KEYS.CALL_HISTORY_USER_SESSION_INFO, event as CallSessionEvent);
-        }
-      }
+      this.handleSessionEvents
+    );
+    this.sdkConnector.registerListener<CallSessionEvent>(
+      MOBIUS_EVENT_KEYS.CALL_SESSION_EVENT_LEGACY,
+      this.handleSessionEvents
+    );
+    this.sdkConnector.registerListener<CallSessionViewedEvent>(
+      MOBIUS_EVENT_KEYS.CALL_SESSION_EVENT_VIEWED,
+      this.handleUserReadSessionEvents
     );
   }
 }

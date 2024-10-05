@@ -1,15 +1,23 @@
 /* globals window */
 
 import {
-  _LOCUS_ID_,
-  _INCOMING_,
   _CREATED_,
-  LOCUSEVENT,
-  CORRELATION_ID,
+  _INCOMING_,
+  _JOINED_,
+  _LEFT_,
+  DESTINATION_TYPE,
+  _MOVED_,
+  BREAKOUTS,
   EVENT_TRIGGERS,
+  LOCUS,
+  LOCUSEVENT,
+  ROAP,
 } from '../constants';
 import LoggerProxy from '../common/logs/logger-proxy';
 import Trigger from '../common/events/trigger-proxy';
+import BEHAVIORAL_METRICS from '../metrics/constants';
+import Metrics from '../metrics';
+import {MEETING_KEY} from './meetings.types';
 
 /**
  * Meetings Media Codec Missing Event
@@ -31,19 +39,63 @@ import Trigger from '../common/events/trigger-proxy';
 
 const MeetingsUtil: any = {};
 
-MeetingsUtil.getMeetingAddedType = (type) => (type === _LOCUS_ID_ ? _INCOMING_ : _CREATED_);
+MeetingsUtil.getMeetingAddedType = (type: DESTINATION_TYPE) =>
+  type === DESTINATION_TYPE.LOCUS_ID ? _INCOMING_ : _CREATED_;
 
 MeetingsUtil.handleRoapMercury = (envelope, meetingCollection) => {
   const {data} = envelope;
   const {eventType} = data;
 
   if (eventType === LOCUSEVENT.MESSAGE_ROAP) {
-    const meeting = meetingCollection.getByKey(CORRELATION_ID, data.correlationId);
+    const meeting = meetingCollection.getByKey(MEETING_KEY.CORRELATION_ID, data.correlationId);
 
     if (meeting) {
-      meeting.roap.roapEvent(data);
+      const {seq, messageType, tieBreaker, errorType, errorCause} = data.message;
+
+      Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.ROAP_MERCURY_EVENT_RECEIVED, {
+        correlation_id: data.correlationId,
+        seq,
+        message_type: messageType,
+        error_type: errorType,
+        error_cause: errorCause,
+      });
+
+      if (messageType === ROAP.ROAP_TYPES.TURN_DISCOVERY_RESPONSE) {
+        // turn discovery is not part of normal roap protocol and so we are not handling it
+        // through the usual roap state machine
+        meeting.roap.turnDiscovery.handleTurnDiscoveryResponse(data.message, 'from mercury');
+      } else {
+        const roapMessage = {
+          seq,
+          messageType,
+          sdp: data.message.sdps?.length > 0 ? data.message.sdps[0] : undefined,
+          tieBreaker,
+          errorType,
+          errorCause,
+        };
+
+        meeting.roapMessageReceived(roapMessage);
+      }
     }
   }
+};
+
+MeetingsUtil.getMediaServer = (sdp) => {
+  let mediaServer;
+
+  // Attempt to collect the media server from the roap message.
+  try {
+    mediaServer = sdp
+      .split('\r\n')
+      .find((line) => line.startsWith('o='))
+      .split(' ')
+      .shift()
+      .replace('o=', '');
+  } catch {
+    mediaServer = undefined;
+  }
+
+  return mediaServer;
 };
 
 MeetingsUtil.checkForCorrelationId = (deviceUrl, locus) => {
@@ -67,11 +119,13 @@ MeetingsUtil.checkForCorrelationId = (deviceUrl, locus) => {
 MeetingsUtil.parseDefaultSiteFromMeetingPreferences = (userPreferences) => {
   let result = '';
 
-  if (userPreferences && userPreferences.sites) {
+  if (userPreferences?.sites?.length) {
     const defaultSite = userPreferences.sites.find((site) => site.default);
 
     if (defaultSite) {
       result = defaultSite.siteUrl;
+    } else {
+      result = userPreferences.sites[0].siteUrl;
     }
   }
 
@@ -178,4 +232,62 @@ MeetingsUtil.checkH264Support = async function checkH264Support(options: {
   }, delay);
 };
 
+/**
+ * get device from locus data
+ * @param {Object} newLocus new locus data
+ * @param {String} deviceUrl current device url
+ * @returns {Object}
+ */
+MeetingsUtil.getThisDevice = (newLocus: any, deviceUrl: string) => {
+  if (newLocus?.self?.devices?.length > 0) {
+    return newLocus.self.devices.find((device) => device.url === deviceUrl);
+  }
+
+  return null;
+};
+
+/**
+ * get self device joined status from locus data
+ * @param {Object} meeting current meeting data
+ * @param {Object} newLocus new locus data
+ * @param {String} deviceUrl current device url
+ * @returns {Object}
+ */
+MeetingsUtil.joinedOnThisDevice = (meeting: any, newLocus: any, deviceUrl: string) => {
+  const thisDevice = MeetingsUtil.getThisDevice(newLocus, deviceUrl);
+  if (thisDevice) {
+    if (!thisDevice.correlationId || meeting?.correlationId === thisDevice.correlationId) {
+      return (
+        thisDevice.state === _JOINED_ ||
+        (thisDevice.state === _LEFT_ && thisDevice.reason === _MOVED_)
+      );
+    }
+  }
+
+  return false;
+};
+
+/**
+ * check the new locus is breakout session's one or not
+ * @param {Object} newLocus new locus data
+ * @returns {boolean}
+ * @private
+ */
+MeetingsUtil.isBreakoutLocusDTO = (newLocus: any) => {
+  return newLocus?.controls?.breakout?.sessionType === BREAKOUTS.SESSION_TYPES.BREAKOUT;
+};
+
+/**
+ * check the locus is valid breakout locus or not
+ * @param {Object} locus
+ * @returns {boolean}
+ * @private
+ */
+MeetingsUtil.isValidBreakoutLocus = (locus: any) => {
+  const inActiveStatus = locus?.fullState?.state === LOCUS.STATE.INACTIVE;
+  const isLocusAsBreakout = MeetingsUtil.isBreakoutLocusDTO(locus);
+  const selfJoined = locus.self?.state === _JOINED_;
+
+  return isLocusAsBreakout && !inActiveStatus && selfJoined;
+};
 export default MeetingsUtil;

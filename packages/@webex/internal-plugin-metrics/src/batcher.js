@@ -7,9 +7,18 @@ import {safeSetTimeout} from '@webex/common-timers';
 
 const sym = Symbol('metric id');
 
+/**
+ * @class
+ * @extends Batcher
+ * @memberof Metrics
+ */
 const MetricsBatcher = Batcher.extend({
   namespace: 'Metrics',
 
+  /**
+   * @param {any} item
+   * @returns {Promise<any>}
+   */
   prepareItem(item) {
     // Keep non-prod data out of metrics
     const env = process.env.NODE_ENV === 'production' ? null : 'TEST';
@@ -22,6 +31,10 @@ const MetricsBatcher = Batcher.extend({
     return Promise.resolve(item);
   },
 
+  /**
+   * @param {any[]} queue
+   * @returns {Promise<any[]>}
+   */
   prepareRequest(queue) {
     return Promise.resolve(
       queue.map((item) => {
@@ -32,6 +45,10 @@ const MetricsBatcher = Batcher.extend({
     );
   },
 
+  /**
+   * @param {any} payload
+   * @returns {Promise<any>}
+   */
   submitHttpRequest(payload) {
     return this.webex.request({
       method: 'POST',
@@ -40,13 +57,22 @@ const MetricsBatcher = Batcher.extend({
       body: {
         metrics: payload,
       },
+      waitForServiceTimeout: this.webex.config.metrics.waitForServiceTimeout,
     });
   },
 
+  /**
+   * @param {any} res
+   * @returns {Promise<any>}
+   */
   handleHttpSuccess(res) {
     return Promise.all(res.options.body.metrics.map((item) => this.acceptItem(item)));
   },
 
+  /**
+   * @param {any} reason
+   * @returns {Promise<any>}
+   */
   handleHttpError(reason) {
     if (reason instanceof WebexHttpError.NetworkOrCORSError) {
       this.logger.warn(
@@ -73,6 +99,10 @@ const MetricsBatcher = Batcher.extend({
     return Reflect.apply(Batcher.prototype.handleHttpError, this, [reason]);
   },
 
+  /**
+   * @param {any} item
+   * @returns {Promise<any>}
+   */
   rerequest(item) {
     return Promise.all([this.getDeferredForRequest(item), this.prepareItem(item)]).then(
       ([defer, req]) => {
@@ -83,6 +113,10 @@ const MetricsBatcher = Batcher.extend({
     );
   },
 
+  /**
+   * @param {any} item
+   * @returns {Promise<any>}
+   */
   fingerprintRequest(item) {
     item[sym] = item[sym] || {
       nextDelay: 1000,
@@ -91,6 +125,10 @@ const MetricsBatcher = Batcher.extend({
     return Promise.resolve(item[sym]);
   },
 
+  /**
+   * @param {any} item
+   * @returns {Promise<any>}
+   */
   fingerprintResponse(item) {
     return Promise.resolve(item[sym]);
   },

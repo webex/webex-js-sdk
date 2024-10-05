@@ -1,12 +1,15 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */ // TODO: remove once we define the payloads
+import {ILine} from '../api';
+import {LINE_EVENTS} from '../CallingClient/line/types';
 import type {ICall} from '../CallingClient/calling/types';
 import {CallId, DisplayInformation} from '../common/types';
-import {CallError, CallingClientError} from '../Errors';
+import {CallError, CallingClientError, LineError} from '../Errors';
 
 /** External Eventing Start */
 export enum COMMON_EVENT_KEYS {
   CB_VOICEMESSAGE_CONTENT_GET = 'call_back_voicemail_content_get',
   CALL_HISTORY_USER_SESSION_INFO = 'callHistory:user_recent_sessions',
+  CALL_HISTORY_USER_VIEWED_SESSIONS = 'callHistory:user_viewed_sessions',
 }
 
 export enum LINE_EVENT_KEYS {
@@ -75,7 +78,9 @@ export type LookUpInfo = {
 export type CallRecordSelf = {
   id: string;
   name?: string;
-  phoneNumber: string;
+  phoneNumber?: string;
+  cucmDN?: string;
+  ucmLineNumber?: number;
 };
 
 export type CallRecordListOther = {
@@ -87,7 +92,7 @@ export type CallRecordListOther = {
   secondaryDisplayString?: string;
   isPrivate: boolean;
   callbackAddress: string;
-  phoneNumber: string;
+  phoneNumber?: string;
   contact?: string;
   email?: string;
 };
@@ -153,6 +158,8 @@ export type Item = {
 export enum MOBIUS_EVENT_KEYS {
   SERVER_EVENT_INCLUSIVE = 'event:mobius',
   CALL_SESSION_EVENT_INCLUSIVE = 'event:janus.user_recent_sessions',
+  CALL_SESSION_EVENT_LEGACY = 'event:janus.user_sessions',
+  CALL_SESSION_EVENT_VIEWED = 'event:janus.user_viewed_sessions',
 }
 
 export type CallSessionData = {
@@ -160,7 +167,9 @@ export type CallSessionData = {
     userSessions: UserSession[];
     statusCode: number;
   };
-  eventType: MOBIUS_EVENT_KEYS.CALL_SESSION_EVENT_INCLUSIVE;
+  eventType:
+    | MOBIUS_EVENT_KEYS.CALL_SESSION_EVENT_INCLUSIVE
+    | MOBIUS_EVENT_KEYS.CALL_SESSION_EVENT_LEGACY;
 };
 
 export type CallSessionEvent = {
@@ -178,6 +187,16 @@ export enum MEDIA_CONNECTION_EVENT_KEYS {
 export type CallerIdDisplay = {
   correlationId: string;
   callerId: DisplayInformation;
+};
+
+export type LineEventTypes = {
+  [LINE_EVENTS.CONNECTING]: () => void;
+  [LINE_EVENTS.ERROR]: (error: LineError) => void;
+  [LINE_EVENTS.RECONNECTED]: () => void;
+  [LINE_EVENTS.RECONNECTING]: () => void;
+  [LINE_EVENTS.REGISTERED]: (lineInfo: ILine) => void;
+  [LINE_EVENTS.UNREGISTERED]: () => void;
+  [LINE_EVENTS.INCOMING_CALL]: (callObj: ICall) => void;
 };
 
 export type CallEventTypes = {
@@ -215,43 +234,48 @@ export type CallingClientEventTypes = {
 
 export type CallHistoryEventTypes = {
   [COMMON_EVENT_KEYS.CALL_HISTORY_USER_SESSION_INFO]: (event: CallSessionEvent) => void;
+  [COMMON_EVENT_KEYS.CALL_HISTORY_USER_VIEWED_SESSIONS]: (event: CallSessionViewedEvent) => void;
 };
 /* External Eventing End */
 
 /** Internal Eventing Start */
-// https://sqbu-github.cisco.com/pages/webrtc-calling/mobius/mobius-api-spec/docs/async.html#operation-publish-calls
-
 enum CALL_STATE {
   HELD = 'held',
   REMOTE_HELD = 'remoteheld',
   CONNECTED = 'connected',
 }
+
 type eventType = string;
+
 type callProgressData = {
   alerting: boolean;
   inbandROAP: boolean;
 };
+
 export type CallerIdInfo = {
   'x-broadworks-remote-party-info'?: string;
   'p-asserted-identity'?: string;
   from?: string;
 };
+
 type callId = string;
 type deviceId = string;
 type correlationId = string;
 type callUrl = string;
 type causecode = number;
 type cause = string;
+
 type eventData = {
   callerId: CallerIdInfo;
   callState: CALL_STATE;
 };
+
 type midCallServiceData = {
   eventType: eventType;
   eventData: eventData;
 };
-type midCallService = Array<midCallServiceData>;
 
+type midCallService = Array<midCallServiceData>;
 interface BaseMessage {
   eventType: eventType;
   correlationId: correlationId;
@@ -259,19 +283,18 @@ interface BaseMessage {
   callId: callId;
   callUrl: callUrl;
 }
-
 export interface CallSetupMessage extends BaseMessage {
   callerId: CallerIdInfo;
   trackingId: string;
   alertType: string;
 }
-
 interface CallProgressMessage extends BaseMessage {
   callProgressData: callProgressData;
   callerId: CallerIdInfo;
 }
 
 export const WEBSOCKET_SCOPE = 'mobius';
+
 export enum WEBSOCKET_KEYS {
   CALL_PROGRESS = 'callprogress',
   CALL_CONNECTED = 'callconnected',
@@ -328,3 +351,48 @@ export interface RoapMessage {
   tieBreaker?: string;
   errorType?: string;
 }
+
+export type UserReadSessions = {
+  sessionId: string;
+};
+
+export type CallSessionViewedData = {
+  userReadSessions: {
+    userReadSessions: UserReadSessions[];
+    statusCode: number;
+  };
+  eventType: MOBIUS_EVENT_KEYS.CALL_SESSION_EVENT_VIEWED;
+};
+
+export type CallSessionViewedEvent = {
+  id: string;
+  data: CallSessionViewedData;
+  timestamp: number;
+  trackingId: string;
+};
+
+export type EndTimeSessionId = {
+  endTime: string;
+  sessionId: string;
+};
+
+export type SanitizedEndTimeAndSessionId = {
+  endTime: number;
+  sessionId: string;
+};
+
+export type UCMLine = {
+  dnorpattern: string;
+  index: number;
+  label: string | null;
+};
+
+export type UCMDevice = {
+  name: string;
+  model: number;
+  lines: UCMLine[];
+};
+
+export type UCMLinesApiResponse = {
+  devices: UCMDevice[];
+};

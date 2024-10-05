@@ -14,8 +14,6 @@ const shouldToAssert = require('./should-to-assert');
 module.exports = function (chai) {
   const {Assertion, assert} = chai;
 
-  /* eslint no-unused-expressions: [0] */
-
   const uuidPattern = /^[a-f\d]{8}(?:-[a-f\d]{4}){3}-[a-f\d]{12}$/;
   const emailPattern = /^[^\s]+?@[^\s]+?$/;
 

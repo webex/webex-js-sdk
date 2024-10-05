@@ -1,5 +1,10 @@
 import {Eventing} from '../Events/impl';
-import {CallHistoryEventTypes, UserSession} from '../Events/types';
+import {
+  CallHistoryEventTypes,
+  EndTimeSessionId,
+  UserSession,
+  UCMLinesApiResponse,
+} from '../Events/types';
 import {LOGGER} from '../Logger/types';
 import {SORT, SORT_BY} from '../common/types';
 
@@ -11,6 +16,24 @@ export type JanusResponseEvent = {
   statusCode: number;
   data: {
     userSessions?: UserSession[];
+    error?: string;
+  };
+  message: string | null;
+};
+
+export type UpdateMissedCallsResponse = {
+  statusCode: number;
+  data: {
+    readStatusMessage?: string;
+    error?: string;
+  };
+  message: string | null;
+};
+
+export type UCMLinesResponse = {
+  statusCode: number;
+  data: {
+    lines?: UCMLinesApiResponse;
     error?: string;
   };
   message: string | null;
@@ -41,4 +64,16 @@ export interface ICallHistory extends Eventing<CallHistoryEventTypes> {
     sort: SORT,
     sortBy: SORT_BY
   ): Promise<JanusResponseEvent>;
+  /**
+   * This API `updateMissedCalls` is utilized to update the read state of user missed calls based on the specified parameters.
+   * It accepts the following input parameters:
+   *
+   * @param endTimeSessionIds - An array of objects representing the endTime and sessionId of missed call history records.
+   *
+   * @example
+   * ```javascript
+   * const updateMissedCallHistoryResponse = await callHistory.updateMissedCalls(endTimeSessionIds);
+   * ```
+   */
+  updateMissedCalls(endTimeSessionIds: EndTimeSessionId[]): Promise<UpdateMissedCallsResponse>;
 }

@@ -10,7 +10,7 @@
     "directory": "packages/@webex/internal-plugin-encryption"
   },
   "engines": {
-    "node": ">=14"
+    "node": ">=16"
   },
   "browser": {
     "./dist/ensure-buffer.js": "./dist/ensure-buffer.browser.js",
@@ -24,27 +24,27 @@
   },
   "devDependencies": {
     "@babel/core": "^7.17.10",
-    "@webex/babel-config-legacy": "workspace:^",
-    "@webex/eslint-config-legacy": "workspace:^",
-    "@webex/jest-config-legacy": "workspace:^",
-    "@webex/legacy-tools": "workspace:^",
-    "@webex/test-helper-chai": "workspace:^",
-    "@webex/test-helper-make-local-url": "workspace:^",
-    "@webex/test-helper-mocha": "workspace:^",
-    "@webex/test-helper-mock-webex": "workspace:^",
-    "@webex/test-helper-test-users": "workspace:^",
+    "@webex/babel-config-legacy": "workspace:*",
+    "@webex/eslint-config-legacy": "workspace:*",
+    "@webex/jest-config-legacy": "workspace:*",
+    "@webex/legacy-tools": "workspace:*",
+    "@webex/test-helper-chai": "workspace:*",
+    "@webex/test-helper-make-local-url": "workspace:*",
+    "@webex/test-helper-mocha": "workspace:*",
+    "@webex/test-helper-mock-webex": "workspace:*",
+    "@webex/test-helper-test-users": "workspace:*",
     "eslint": "^8.24.0",
     "prettier": "^2.7.1",
     "sinon": "^9.2.4"
   },
   "dependencies": {
-    "@webex/common": "workspace:^",
-    "@webex/common-timers": "workspace:^",
-    "@webex/http-core": "workspace:^",
-    "@webex/internal-plugin-device": "workspace:^",
-    "@webex/internal-plugin-mercury": "workspace:^",
-    "@webex/test-helper-file": "workspace:^",
-    "@webex/webex-core": "workspace:^",
+    "@webex/common": "workspace:*",
+    "@webex/common-timers": "workspace:*",
+    "@webex/http-core": "workspace:*",
+    "@webex/internal-plugin-device": "workspace:*",
+    "@webex/internal-plugin-mercury": "workspace:*",
+    "@webex/test-helper-file": "workspace:*",
+    "@webex/webex-core": "workspace:*",
     "asn1js": "^2.0.26",
     "debug": "^4.3.4",
     "isomorphic-webcrypto": "^2.3.8",
@@ -62,8 +62,8 @@
     "build:src": "webex-legacy-tools build -dest \"./dist\" -src \"./src\" -js -ts -maps",
     "deploy:npm": "yarn npm publish",
     "test": "yarn test:style && yarn test:unit && yarn test:integration && yarn test:browser",
-    "test:browser": "webex-legacy-tools test --integration --unit --runner karma",
-    "test:integration:broken": "webex-legacy-tools test --integration --runner mocha",
+    "test:browser": "webex-legacy-tools test --integration --runner karma",
+    "test:integration": "webex-legacy-tools test --integration --runner mocha",
     "test:style": "eslint ./src/**/*.*",
     "test:unit": "webex-legacy-tools test --unit --runner jest"
   }

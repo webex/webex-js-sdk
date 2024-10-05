@@ -1,6 +1,7 @@
+import 'jsdom-global/register';
 import MockWebex from '@webex/test-helper-mock-webex';
 import MockWebSocket from '@webex/test-helper-mock-web-socket';
-import {assert} from '@webex/test-helper-chai';
+import {assert, expect} from '@webex/test-helper-chai';
 import sinon from 'sinon';
 import Mercury from '@webex/internal-plugin-mercury';
 import LLMChannel from '@webex/internal-plugin-llm';
@@ -41,17 +42,26 @@ describe('plugin-voicea', () => {
       });
     });
 
+    describe("#constructor", () => {
+      it('should init status', () => {
+        assert.equal(voiceaService.announceStatus, 'idle');
+        assert.equal(voiceaService.captionStatus, 'idle');
+      });
+    });
+
     describe('#sendAnnouncement', () => {
       beforeEach(async () => {
         const mockWebSocket = new MockWebSocket();
 
         voiceaService.webex.internal.llm.socket = mockWebSocket;
+        voiceaService.announceStatus = "idle";
       });
 
       it("sends announcement if voicea hasn't joined", () => {
         const spy = sinon.spy(voiceaService, 'listenToEvents');
 
         voiceaService.sendAnnouncement();
+        assert.equal(voiceaService.announceStatus, 'joining');
         assert.calledOnce(spy);
 
         assert.calledOnceWithExactly(voiceaService.webex.internal.llm.socket.send, {
@@ -98,14 +108,14 @@ describe('plugin-voicea', () => {
           data: {relayType: 'voicea.annc', voiceaPayload: {}},
         });
 
-        assert.equal(voiceaService.hasVoiceaJoined, true);
         assert.equal(voiceaService.areCaptionsEnabled, true);
         assert.equal(voiceaService.vmcDeviceId, 'ws');
 
         voiceaService.deregisterEvents();
-        assert.equal(voiceaService.hasVoiceaJoined, false);
         assert.equal(voiceaService.areCaptionsEnabled, false);
         assert.equal(voiceaService.vmcDeviceId, undefined);
+        assert.equal(voiceaService.announceStatus, 'idle');
+        assert.equal(voiceaService.captionStatus, 'idle');
       });
     });
     describe('#processAnnouncementMessage', () => {
@@ -192,28 +202,38 @@ describe('plugin-voicea', () => {
           sinon.match({
             method: 'PUT',
             url: `${locusUrl}/controls/`,
-            body: {languageCode},
+            body: {
+              transcribe: {
+                spokenLanguage: languageCode
+              }
+            },
           })
         );
       });
     });
 
-    describe('#turnOnCaptions', () => {
+    describe('#requestTurnOnCaptions', () => {
       beforeEach(async () => {
         const mockWebSocket = new MockWebSocket();
 
         voiceaService.webex.internal.llm.socket = mockWebSocket;
+        voiceaService.captionStatus = 'idle';
       });
 
+      afterEach( () => {
+        voiceaService.captionStatus = 'idle';
+      })
+
       it('turns on captions', async () => {
-        const announcementSpy = sinon.spy(voiceaService, 'sendAnnouncement');
+        const announcementSpy = sinon.spy(voiceaService, 'announce');
 
         const triggerSpy = sinon.spy();
 
         voiceaService.on(EVENT_TRIGGERS.CAPTIONS_TURNED_ON, triggerSpy);
         voiceaService.listenToEvents();
 
-        await voiceaService.turnOnCaptions();
+        await voiceaService.requestTurnOnCaptions();
+        assert.equal(voiceaService.captionStatus, 'enabled');
         sinon.assert.calledWith(
           voiceaService.request,
           sinon.match({
@@ -223,23 +243,124 @@ describe('plugin-voicea', () => {
           })
         );
 
-        assert.calledOnceWithExactly(triggerSpy, undefined);
+        assert.calledOnceWithExactly(triggerSpy);
 
         assert.calledOnce(announcementSpy);
       });
 
-      it("doesn't call API on captions", async () => {
-        await voiceaService.turnOnCaptions();
+      it("should handle request fail", async () => {
+        voiceaService.captionStatus = 'sending';
+        voiceaService.request = sinon.stub().rejects();
 
-        // eslint-disable-next-line no-underscore-dangle
-        voiceaService.webex.internal.llm._emit('event:relay.event', {
-          headers: {from: 'ws'},
-          data: {relayType: 'voicea.annc', voiceaPayload: {}},
+        try {
+          await voiceaService.requestTurnOnCaptions();
+        } catch (error) {
+          expect(error.message).to.include('turn on captions fail');
+          return;
+        }
+        assert.equal(voiceaService.captionStatus, 'idle');
+      });
+    });
+
+    describe("#isAnnounceProcessing", () => {
+      afterEach(() => {
+        voiceaService.announceStatus = 'idle';
+      });
+
+      ['joining', 'joined'].forEach((status) => {
+        it(`should return true when status is ${status}`, () => {
+          voiceaService.announceStatus = status;
+          assert.equal(voiceaService.isAnnounceProcessing(), true);
         });
+      });
 
-        const response = await voiceaService.turnOnCaptions();
+      it('should return false when status is not processing status', () => {
+        voiceaService.announceStatus = 'idle';
+          assert.equal(voiceaService.isAnnounceProcessing(), false);
+      });
+    });
 
-        assert.equal(response, undefined);
+    describe("#announce", () => {
+      let isAnnounceProcessing, sendAnnouncement;
+      beforeEach(() => {
+        voiceaService.webex.internal.llm.isConnected.returns(true);
+        sendAnnouncement = sinon.stub(voiceaService, 'sendAnnouncement');
+        isAnnounceProcessing = sinon.stub(voiceaService, 'isAnnounceProcessing').returns(false)
+      });
+
+      afterEach(() => {
+        voiceaService.webex.internal.llm.isConnected.returns(true);
+        isAnnounceProcessing.restore();
+        sendAnnouncement.restore();
+      });
+
+      it('announce to llm data channel', ()=> {
+        voiceaService.announce();
+        assert.calledOnce(sendAnnouncement);
+      });
+
+      it('announce to llm data channel before llm connected', ()=> {
+        voiceaService.webex.internal.llm.isConnected.returns(false);
+        assert.throws(() =>  voiceaService.announce(), "voicea can not announce before llm connected");
+        assert.notCalled(sendAnnouncement);
+      });
+
+      it('should not announce duplicate', () => {
+        isAnnounceProcessing.returns(true);
+        voiceaService.announce();
+        assert.notCalled(sendAnnouncement);
+      })
+    });
+
+    describe("#isCaptionProcessing", () => {
+      afterEach(() => {
+        voiceaService.captionStatus = 'idle';
+      });
+
+      ['sending', 'enabled'].forEach((status) => {
+        it(`should return true when status is ${status}`, () => {
+          voiceaService.captionStatus = status;
+          assert.equal(voiceaService.isCaptionProcessing(), true);
+        });
+      });
+
+      it('should return false when status is not processing status', () => {
+        voiceaService.captionStatus = 'idle';
+          assert.equal(voiceaService.isCaptionProcessing(), false);
+      });
+    });
+
+    describe('#turnOnCaptions', () => {
+      let requestTurnOnCaptions, isCaptionProcessing;
+      beforeEach(() => {
+        requestTurnOnCaptions = sinon.stub(voiceaService, 'requestTurnOnCaptions');
+        isCaptionProcessing = sinon.stub(voiceaService, 'isCaptionProcessing').returns(false);
+        voiceaService.webex.internal.llm.isConnected.returns(true);
+      });
+
+      afterEach(() => {
+        requestTurnOnCaptions.restore();
+        isCaptionProcessing.restore();
+        voiceaService.webex.internal.llm.isConnected.returns(true);
+      });
+
+      it('call request turn on captions', () => {
+        isCaptionProcessing.returns(false);
+        voiceaService.turnOnCaptions();
+        assert.calledOnce(requestTurnOnCaptions);
+      });
+
+      it("turns on captions before llm connected", () => {
+        isCaptionProcessing.returns(false);
+        voiceaService.webex.internal.llm.isConnected.returns(true);
+        // assert.throws(() => voiceaService.turnOnCaptions(), "can not turn on captions before llm connected");
+        assert.notCalled(requestTurnOnCaptions);
+      });
+
+      it('should not turn on duplicate when processing', () => {
+        isCaptionProcessing.returns(true);
+        voiceaService.turnOnCaptions();
+        assert.notCalled(voiceaService.requestTurnOnCaptions);
       });
     });
 
@@ -312,6 +433,56 @@ describe('plugin-voicea', () => {
         );
 
         assert.notCalled(announcementSpy);
+      });
+    });
+
+    describe('#toggleManualCaption', () => {
+      beforeEach(async () => {
+        const mockWebSocket = new MockWebSocket();
+
+        voiceaService.webex.internal.llm.socket = mockWebSocket;
+      });
+
+      it('turns on manual caption', async () => {
+        // Turn on captions
+        await voiceaService.turnOnCaptions();
+
+        // eslint-disable-next-line no-underscore-dangle
+        voiceaService.webex.internal.llm._emit('event:relay.event', {
+          headers: {from: 'ws'},
+          data: {relayType: 'voicea.annc', voiceaPayload: {}},
+        });
+
+        voiceaService.listenToEvents();
+
+        await voiceaService.toggleManualCaption(true);
+        sinon.assert.calledWith(
+          voiceaService.request,
+          sinon.match({
+            method: 'PUT',
+            url: `${locusUrl}/controls/`,
+            body: {manualCaption: {enable: true}},
+          })
+        );
+
+      });
+
+
+      it('turns off manual caption', async () => {
+        await voiceaService.toggleManualCaption(true);
+
+        voiceaService.listenToEvents();
+
+        await voiceaService.toggleManualCaption(false);
+        sinon.assert.calledWith(
+          voiceaService.request,
+          sinon.match({
+            method: 'PUT',
+            url: `${locusUrl}/controls/`,
+            body: {manualCaption: {enable: false}},
+          })
+        );
+
       });
     });
 
@@ -430,6 +601,9 @@ describe('plugin-voicea', () => {
           transcript_id: '3ec73890-bffb-f28b-e77f-99dc13caea7e',
           ts: 1611653204.3147924,
           type: 'transcript_final_result',
+          translations: {
+            en: "Hello?",
+          },
           transcript: {
             alignments: [
               {
@@ -444,6 +618,7 @@ describe('plugin-voicea', () => {
             start_millis: 12204,
             text: 'Hello?',
             transcript_language_code: 'en',
+            timestamp: '0:13'
           },
           transcripts: [
             {
@@ -455,6 +630,7 @@ describe('plugin-voicea', () => {
               translations: {
                 fr: 'Bonjour.',
               },
+              timestamp: '0:13'
             },
             {
               start_millis: 12204,
@@ -465,6 +641,7 @@ describe('plugin-voicea', () => {
               translations: {
                 fr: "C'est Webex",
               },
+              timestamp: '0:13'
             },
           ],
         };
@@ -479,12 +656,7 @@ describe('plugin-voicea', () => {
         assert.calledOnceWithExactly(triggerSpy, {
           isFinal: true,
           transcriptId: '3ec73890-bffb-f28b-e77f-99dc13caea7e',
-          transcript: {
-            csis: [3556942592],
-            text: 'Hello?',
-            transcriptLanguageCode: 'en',
-          },
-          timestamp: '0:13',
+          transcripts: voiceaPayload.transcripts,
         });
       });
 
@@ -611,6 +783,85 @@ describe('plugin-voicea', () => {
           highlightSource: 'voice-command',
           timestamp: '11:00',
         });
+      });
+    });
+
+    describe('#processManualTranscription', () => {
+      let triggerSpy, functionSpy;
+
+      beforeEach(() => {
+        triggerSpy = sinon.spy();
+        functionSpy = sinon.spy(voiceaService, 'processManualTranscription');
+        voiceaService.listenToEvents();
+      });
+
+      it('processes interim manual transcription', async () => {
+        voiceaService.on(EVENT_TRIGGERS.NEW_MANUAL_CAPTION, triggerSpy);
+        const transcriptPayload = {
+          id: "747d711d-3414-fd69-7081-e842649f2d28",
+          transcripts: [
+            {
+              "text": "Good",
+            }
+          ],
+          type: "manual_caption_interim_results",
+        };
+
+        // eslint-disable-next-line no-underscore-dangle
+        await voiceaService.webex.internal.llm._emit('event:relay.event', {
+          headers: {from: 'ws'},
+          data: {relayType: 'aibridge.manual_transcription', transcriptPayload},
+        });
+
+        assert.calledOnceWithExactly(functionSpy, transcriptPayload);
+        assert.calledOnceWithExactly(triggerSpy, {
+          isFinal: false,
+          transcriptId: '747d711d-3414-fd69-7081-e842649f2d28',
+          transcripts: transcriptPayload.transcripts,
+        });
+      });
+
+      it('processes final manual transcription', async () => {
+        voiceaService.on(EVENT_TRIGGERS.NEW_MANUAL_CAPTION, triggerSpy);
+
+        const transcriptPayload = {
+          id: "8d226d31-044a-8d11-cc39-cedbde183154",
+          transcripts: [
+            {
+              text: "Good Morning",
+              start_millis: 10420,
+              end_millis: 11380,
+            }
+          ],
+          type: "manual_caption_final_result",
+        };
+
+        // eslint-disable-next-line no-underscore-dangle
+        await voiceaService.webex.internal.llm._emit('event:relay.event', {
+          headers: {from: 'ws'},
+          data: {relayType: 'aibridge.manual_transcription', transcriptPayload},
+        });
+
+        assert.calledOnceWithExactly(functionSpy, transcriptPayload);
+        assert.calledOnceWithExactly(triggerSpy, {
+          isFinal: true,
+          transcriptId: '8d226d31-044a-8d11-cc39-cedbde183154',
+          transcripts: transcriptPayload.transcripts,
+        });
+      });
+    });
+
+    describe("#getCaptionStatus", () => {
+      it('works correctly', () => {
+        voiceaService.captionStatus = "enabled"
+        assert.equal(voiceaService.getCaptionStatus(), "enabled");
+      });
+    });
+
+    describe("#getAnnounceStatus", () => {
+      it('works correctly', () => {
+        voiceaService.announceStatus = "joined"
+        assert.equal(voiceaService.getAnnounceStatus(), "joined");
       });
     });
   });

@@ -197,12 +197,12 @@ async function checkLastCommit() {
 }
 
 /**
- * Determines if there are any breaking changes between HEAD and upstream/master
+ * Determines if there are any breaking changes between HEAD and upstream/beta
  * @returns {boolean}
  */
 async function hasBreakingChange() {
-  debug('checking for breaking changes between HEAD and upstream/master');
-  const {stdout: bodies} = await exec('git log upstream/master.. --format=%b');
+  debug('checking for breaking changes between HEAD and upstream/beta');
+  const {stdout: bodies} = await exec('git log upstream/beta.. --format=%b');
 
   if (/^BREAKING CHANGE:/.test(bodies)) {
     debug('found breaking change');
@@ -219,7 +219,7 @@ async function hasBreakingChange() {
  * @returns {Promise<boolean>}
  */
 async function getChangeType() {
-  const {stdout: subjects} = await exec('git log upstream/master.. --format=%s');
+  const {stdout: subjects} = await exec('git log upstream/beta.. --format=%s');
 
   for (const subject of subjects.split('\n')) {
     if (subject.startsWith('feat')) {

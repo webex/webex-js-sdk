@@ -1,3 +1,7 @@
+:root {
+  --video-grid-max-width: 100%;
+}
+
 body {
   max-width: 100%;
   margin: 1rem;
@@ -32,7 +36,6 @@ button.btn--red {
 
 button.btn-code {
   font-family: Consolas, Liberation Mono, Courier, monospace;
-  margin: 0.2rem 0;
 }
 
 .container {
@@ -40,6 +43,7 @@ button.btn-code {
   width: 100%;
   flex-direction: row;
   justify-content: space-between;
+  margin-bottom: 1rem;
 }
 
 .column {
@@ -47,6 +51,12 @@ button.btn-code {
   flex-direction: column;
   gap: 1rem;
   width: 100%;
+}
+
+.box {
+  max-width: 70rem; 
+  margin-inline: auto;
+  margin-bottom: 1rem;
 }
 
 .section-box {
@@ -58,7 +68,13 @@ button.btn-code {
 }
 
 .section-box h2 {
-  margin: 1rem 0rem;
+  margin: 0.5rem 0rem;
+  font-size: 1.25rem;
+  font-weight: 400;
+}
+
+.section-wide {
+  width: 100%;
 }
 
 .collapsible {
@@ -85,6 +101,12 @@ button.btn-code {
   flex-grow: 1;
 }
 
+.screenshare-section {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+}
+
 .status-par {
   padding: 0.5rem;
   background-color: #eeeeee;
@@ -100,6 +122,123 @@ button.btn-code {
 #events-list {
   max-height: 200px;
   overflow: auto;
+}
+
+.multistream-videos-container {
+  display: flex;
+  flex-direction: column;
+}
+
+.multistream-videos-container video {
+  border-radius: 0.5rem;
+}
+
+.video-grid-row {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  flex-wrap: wrap;
+  align-items: center;
+  align-content: center;
+}
+
+.video-container,
+.audio-container,
+.screenshare-container {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  margin: 0.4rem;
+}
+
+.multistream-remote-video {
+  z-index: 0;
+}
+.video-label {
+  z-index: 2;
+  position: absolute;
+  bottom: 0px;
+  left: 0px;
+  width: 100%;
+  text-align: center;
+  color: black;
+  background-color: rgba(255,255,255,0.5);
+}
+
+.video-overlay {
+  z-index: 1;
+  position: absolute;
+  top: 0px;
+  left: 0px;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  align-content: center;
+  border-radius: 0.5rem;
+  background-color: lightgray;
+}
+
+.video-overlay-text {
+  color: black;
+  width: 100%;
+  text-align: center;
+}
+
+.speaking {
+  background-color: rgba(94, 217, 248, 0.5);
+}
+
+.clickable {
+  cursor: pointer;
+}
+
+.grid-video {
+  max-width: var(--video-grid-max-width);
+}
+
+.big-video {
+  max-width: 100%;
+}
+
+.small-video {
+  max-width: 18%;
+}
+
+.multistream-buttons {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.multistream-buttons select {
+  /* margin: 0 0.5rem; */
+}
+
+.stage {
+  min-height: 30rem;
+}
+
+.stageThumbnails {
+  min-height: 7rem;
+}
+
+.stage-control-wrapper {
+  display: flex;
+  align-items: center;
+}
+
+.stage-control-wrapper span {
+  margin-right: 0.5rem;
+}
+
+.prefer-live-video {
+  display: flex;
+}
+
+.prefer-live-video span {
+  margin-top: 1rem;
+  margin-right: 0.5rem;
 }
 
 /* Utilities */
@@ -228,7 +367,7 @@ h2 {
 }
 
 legend {
-  font-size: 1.15rem;
+  font-size: 1.05rem;
   color: #1a73e8;
 }
 
@@ -245,4 +384,65 @@ legend {
   color: #083f88;
   background-color: rgb(255 255 255);
   padding: 0.3rem;
+}
+
+.webex-warning {
+  color: #7d4705;
+}
+
+.webex-error {
+  color: #de3434;
+}
+
+.arrow {
+  font-weight: 500;
+  font-size: 1.75rem;
+  float: right;
+  margin-top: -2px;
+}
+
+
+.global-toggle-btn-wrapper {
+  display: flex;
+  justify-content: end;
+  margin: -0.5rem auto;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.global-toggle-btn {
+  width: 10rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.25rem;
+  background-color: white;
+  color: #0052bf;
+  border: #0052bf 1px solid;
+  box-shadow: 3px 3px 4px 1px rgb(0 0 0 / 40%);
+}
+
+.global-toggle-btn:hover {
+  border: #1a73e8 1px solid;
+  background-color: whitesmoke
+}
+
+.global-toggle-btn:focus {
+  box-shadow: 3px 3px 4px 1px rgb(0 0 0 / 40%);
+}
+
+#voicea-transcription-formatted-display{
+  max-height: 200px;
+  overflow: auto;
+  padding: 0.5rem;
+  background-color: #eeeeee;
+  margin: 0.2rem;
+  border-radius: 5px;
+}
+
+.inline-code{
+  background-color:lightgrey;
+  border-radius:5px;
+  padding: 0 2px;
 }

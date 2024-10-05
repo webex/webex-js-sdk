@@ -10,661 +10,894 @@
 </head>
 
 <body>
-  <div class="container">
-    <div id="docs-content" class="column">
-      <section id="meetingAuthentication" class="section-box">
-        <h2 class="collapsible">Meeting Management</h2>
-        <div class="section-content">
-          <div>
-            <select name="auth-type" id="auth-type" onchange="changeAuthType()">
-              <option value="accessToken">Access Token</option>
-              <option value="oauth">OAuth</option>
-            </select>
-          </div>
-
-          <!-- meeting / authentication-credentials -->
-          <div>
-            <fieldset>
-              <legend>Authentication</legend>
-
-              <div>
-                <legend>Environment</legend>
-                <input type="checkbox" id="integration-env">
-                <label for="integration-env">Enable Integration Environment</label><br>
-              </div>
-
-              <div>
-                <legend>FedRAMP</legend>
-                <input type="checkbox" id="enable-fedramp">
-                <label for="enable-fedramp">Enable Fedramp</label>
-              </div>
-
-              <div>
-                <legend>Meetings</legend>
-                <input type="checkbox" checked id="enable-turn-discovery">
-                <label for="enable-turn-discovery">Enable TURN discovery (experimental)</label>
-              </div>
-
-
-              <form id="credentials">
-                <p class="note">
-                  NOTE: Click <a href="https://developer.webex.com/docs/getting-started" target="_blank">here</a> for
-                  access token
-                </p>
-                <div>
-                  <input id="guest-name" name="guestName" placeholder="Guest Name" value="guest user" type="text">
-                  <button id="get-guest-token" class="btn-code" type="button" onclick=getGuestAccessToken()>generate
-                    Guest Token [prod only]</button>
-                  <input id="access-token" name="accessToken" placeholder="Access Token" value="" type="text">
-                  <button id="access-token-save" class="btn-code" type="submit">webex.init()</button>
-                  <p id="access-token-status" class="status-par">Not initialized</p>
-                </div>
-              </form>
-
-              <form id="oauth" class="hidden">
-                <div>
-                  <button id="oauth-login-btn" type="submit">Login</button>
-                  <p id="oauth-status" class="status-par">Not Logged In.</p>
-                </div>
-              </form>
-            </fieldset>
-          </div>
-
-          <!-- meeting / authentication-registration -->
-          <div>
-            <form id="auth-registration">
-              <fieldset>
-                <legend>Registration</legend>
-                <p class="note">
-                  NOTE: Webex JS SDK must be registered as a device.
-                </p>
-                <div class="u-mv">
-                  <button id="registration-register" type="button" onclick="register()" disabled=""
-                    class="btn-code">webex.meetings.register()</button>
-                  <button id="registration-unregister" type="button" onclick="unregister()" disabled=""
-                    class="btn-code">webex.meetings.unregister()</button>
-                  <p id="registration-status" class="status-par">Not Registered</p>
-                </div>
-                <div>
-                  <p class="note">Toggles meeting between old and new versions. (Does not apply to currently running
-                    meetings)
-                  </p>
-                  <button disabled id="toggle-unified-meeting" type="button" onclick="toggleMeetingInfo()"
-                    class="btn-code">webex.meetings._toggleUnifiedMeetings()</button>
-                  <label id="current-meeting-info">Currently using : <span
-                      id="current-meeting-info-status">_NOT_INIT_YET_</span></label>
-                </div>
-              </fieldset>
-            </form>
-          </div>
-
-          <!-- webex devices -->
-          <div>
-            <fieldset>
-              <legend>Pair WebEx Device</legend>
-              <button id="sd-pair-webex-device" type="button" onclick="toggleWebexDeviceSection()">Pair</button>
-
-              <div id="webex-device-pairing-sec" class="hidden">
-                <form id="current-device">
-                  <fieldset id="meetingDeviceCurrent">
-                    <legend>Current Device</legend>
-
-                    <div class="u-mv">
-                      <pre id="current-device-details">No Device Selected</pre>
-                    </div>
-
-                    <!-- meeting-device / list -->
-                    <fieldset id="meetingDeviceList">
-                      <legend>Device List</legend>
-                      <div>
-                        <div id="devices-list-items" class="u-mv">There are currently no meetings devices to display
-                        </div>
-                        <button id="devices-list-refresh" type="button" onclick="refreshDevicesList()"
-                          class="btn-code">webex.devicemanager.refresh()</button>
-                      </div>
-                    </fieldset>
-
-                    <!-- meeting-device / device-query -->
-                    <fieldset id="meetingDeviceQuery">
-                      <legend>Device Query</legend>
-                      <div class="u-mt">
-                        <input id="find-devices-query" name="searchQuery" placeholder="Device ID" value="" type="text">
-                        <button id="find-devices-action" type="button" onclick="searchForDevices()"
-                          class="btn-code">webex.devicemanager.search()</button>
-                        <pre id="find-devices-status"></pre>
-                      </div>
-                      <div id="find-devices-list"></div>
-                    </fieldset>
-
-                    <!-- meeting-device / device-paring -->
-                    <fieldset id="meetingDeviceParing">
-                      <legend>Device Paring</legend>
-                      <div>
-                        <input id="device-pin-query" name="devicePinQuery" placeholder="PIN" value="" type="number" />
-                        <button id="device-request-pin" type="button"
-                          onclick="webex.devicemanager.requestPin(currentDevice)" class="btn-code">
-                          webex.devicemanager.requestPin()
-                        </button>
-
-                        <div class="btn-group">
-                          <button id="device-request-pair" type="button" onclick="deviceRequestPair()" class="btn-code">
-                            webex.devicemanager.pair()
-                          </button>
-                          <button id="device-request-unpair" type="button" onclick="deviceRequestUnpair()"
-                            class="btn-code">
-                            webex.devicemanager.unpair()
-                          </button>
-                        </div>
-                        <pre id="device-pair-state">Not paired</pre>
-                      </div>
-                    </fieldset>
-
-                    <!-- meeting-device / audio-state -->
-                    <fieldset id="meetingDeviceAudioState">
-                      <legend>Audio State</legend>
-                      <div>
-                        <p class="note">NOTE: Must be called manually to view the updated state.</p>
-                        <button id="device-get-audio-state" type="button" onclick="deviceGetAudioState()"
-                          class="btn-code">
-                          webex.devicemanager.getAudioState()
-                        </button>
-                        <pre id="current-device-audio-state">No Device Selected</pre>
-                      </div>
-                    </fieldset>
-
-                    <!-- meeting-device / volume -->
-                    <fieldset id="meetingDeviceVolume">
-                      <legend>Volume</legend>
-                      <div class="btn-group">
-                        <button id="device-volume-up" type="button" onclick="webex.devicemanager.increaseVolume()"
-                          class="btn-code">
-                          webex.devicemanager.increaseVolume()
-                        </button>
-                        <button id="device-volume-down" type="button" onclick="webex.devicemanager.decreaseVolume()"
-                          class="btn-code">
-                          webex.devicemanager.decreaseVolume()
-                        </button>
-                      </div>
-                    </fieldset>
-
-                    <!-- meeting-device / mute -->
-                    <fieldset id="meetingDeviceMute">
-                      <legend>Mute</legend>
-                      <div class="btn-group">
-                        <button id="device-volume-mute" type="button" onclick="webex.devicemanager.mute()"
-                          class="btn-code">
-                          webex.devicemanager.mute()
-                        </button>
-                        <button id="device-volume-unmute" type="button" onclick="webex.devicemanager.unmute()"
-                          class="btn-code">
-                          webex.devicemanager.unmute()
-                        </button>
-                      </div>
-                    </fieldset>
-                  </fieldset>
-                </form>
-              </div>
-            </fieldset>
-          </div>
-
-          <!-- meeting / select -->
-          <div>
-            <fieldset>
-              <legend>Choose a Meeting</legend>
-              <div>
-                <form id="meetings-create">
-                  <div class="u-mv">
-                    <div class="flex">
-                      <input id="create-meeting-destination" name="createMeetingDestination" placeholder="Destination"
-                        value="" type="text" required>
-                      <select name="createMeetingDest" id="createMeetingDest">
-                        <option value="">Email</option>
-                        <option value="">Person ID</option>
-                        <option value="">Room ID</option>
-                        <option value="">SIP URI</option>
-                        <option value="CONVERSATION_URL">Conversation URL</option>
-                      </select>
-                      <button id="create-meeting-action" type="submit">Create Meeting</button>
-                    </div>
-                  </div>
-                </form>
-              </div>
-              <!-- meetings / active list -->
-              <div class="u-mv">
-                <button id="meetings-list-collect" type="button" onclick="collectMeetings()">Sync Meetings</button>
-                <p id="meetings-list-msg" class="note">There are currently no meetings to display</p>
-                <div id="meetings-list" class="u-mv">
-                </div>
-              </div>
-            </fieldset>
-          </div>
-
-          <!-- meetings / join -->
-          <div>
-            <fieldset>
-              <legend>Join Meeting</legend>
-              <!-- Password, captcha image and input html code -->
-              <div class="u-mv">
-                <input id="meetings-join-pin" name="meetingPin" placeholder="Password/PIN" value="" type="text">
-                <div>
-                  <img id="meetings-join-captcha" src="" alt="captcha" style="width: 150px; height: 70px;" hidden>
-              
-                  <!-- refresh icon -->
-                  <span id="meetings-join-captcha-refresh" type="button" onclick="refreshCaptcha()" hidden>
-                    <i class="fa fa-refresh"></i>
-                  </span>
-                  <input id="meetings-join-captcha-input" name="createMeetingCaptcha" placeholder="Captcha" value="" type="hidden">
-                </div>
-                <div class="u-mt">
-                  <button id="btn-verify-password" disabled onclick="verifyPassword()">Verify Password</button>
-                </div>
-                <input id="meetings-join-moderator" type="checkbox">
-                <label for="meetings-join-moderator">Join as Moderator</label>
-                <p id="password-captcha-status" class="status-par">Click verifyPassword for details</p>
-              </div>
-
-              <!-- meetings / media quality -->
-              <div>
-                <fieldset>
-                  <legend>Media Quality</legend>
-              
-                  <!-- Media quality dropdown -->
-                  <p class="note">NOTE: You can change the local, remote or meeting quality.</p>
-
-                  <div >
-                    <!-- Local Media -->
-                    <div class="u-mv flex flex--align-center">
-                      <label class="media-button-label" for="local-resolution">Local Resolution</label>
-                      <select name="local-resolution" id="local-resolution" class="media-select"></select>
-
-                      <button 
-                        id="ts-set-local-meeting-quality" 
-                        type="button" 
-                        onclick="setLocalMeetingQuality()"
-                        class="btn-code media-button"
-                      >
-                        meeting.setLocalVideoQuality()
-                      </button>
-                    </div>
-
-                    <!-- Remote Media -->
-                    <div class="u-mv flex flex--align-center">
-                      <label class="media-button-label" for="remote-resolution">Remote Resolution</label>
-                      <select name="remote-resolution" id="remote-resolution" class="media-select"></select>
-
-                      <button 
-                        id="ts-set-remote-meeting-quality" 
-                        type="button" 
-                        onclick="setRemoteMeetingQuality()"
-                        class="btn-code media-button"
-                      >
-                        meeting.setRemoteVideoQuality()
-                      </button>
-                    </div>
-                    <label id="ts-sending-quality-status"></label>
-                  </div>                  
-                </fieldset>
-              </div>
-
-              <div>
-                <p class="note">NOTE: Choose your sending and receiving options for the meeting.</p>
-                <div class="u-mv">
-                  <label>
-                    <input type="checkbox" name="ts-media-direction" value="receiveAudio" checked="">receiveAudio
-                  </label>
-                  <label>
-                    <input type="checkbox" name="ts-media-direction" value="receiveVideo" checked="">receiveVideo
-                  </label>
-                  <label>
-                    <input type="checkbox" name="ts-media-direction" value="receiveShare" checked="">receiveShare
-                  </label>
-                  <label>
-                    <input type="checkbox" name="ts-media-direction" value="sendAudio" checked="">sendAudio
-                  </label>
-                  <label>
-                    <input type="checkbox" name="ts-media-direction" value="sendVideo" checked="">sendVideo
-                  </label>
-                  <label>
-                    <input type="checkbox" name="ts-media-direction" value="sendShare" id="sendShareToggle">sendShare
-                  </label>
-                </div>
-              </div>
-
-              <div class="join-meeting-btn-grid">
-                <div style="text-align: center; border-right: 1px solid rgba(0,150,191,0.67)">
-                  <div style="display: flex; flex-direction: column;">
-                    <div>Advanced Join</div>
-                    <div class="u-mt">
-                      <button style="width: 95%;" id="btn-join" onclick="joinMeeting()">Join Meeting</button>
-                    </div>
-                    <div>
-                      <button style="width: 95%;" id="btn-join" onclick="getMediaStreams()">Get Media Streams</button>
-                    </div>
-                    <div>
-                      <button style="width: 95%;" id="btn-join" onclick="addMedia()">Add Media</button>
-                    </div>
-                  </div>
-                </div>
-
-                <div style="text-align: center; border-right: 1px solid rgba(0,150,191,0.67)">
-                  <div style="display: flex; flex-direction: column;">
-                    <div>Join With Media</div>
-                    <div class="u-mt">
-                      <button id="btn-join-media" onclick="joinMeeting({withMedia: true})">Join with Media</button>
-                    </div>
-                  </div>
-                </div>
-
-                <div style="text-align: center;">
-                  <div style="display: flex; flex-direction: column;">
-                    <div>Join With Device</div>
-                    <div class="u-mt">
-                      <button id="btn-join-device" disabled onclick="joinMeeting({withDevice: true})">Join with Device</button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-            </fieldset>
-          </div>
-
-          <!-- meetings / device-management -->
-          <div>
-            <fieldset id="meetingControlsDevices">
-              <legend>Media Devices</legend>
-              <div>
-                <button id="sd-get-media-devices" type="button" onclick="clearMediaDeviceList(); getMediaDevices()">Get Devices</button>
-                <button id="update-media" type="button" onclick="updateMedia()">Update Media</button>
-              </div>
-
-              <div>
-                <label class="context-info">Audio Input Device</label>
-                <div class="u-mv flex">
-                  <select id="sd-audio-input-devices"></select>
-                  <button type="button" onclick="setAudioInputDevice()">Update Audio</button>
-                  <label id="sd-audio-input-device-status"></label>
-                </div>
-                <label class="context-info">Video Input Device</label>
-                <div class="u-mv flex">
-                  <select id="sd-video-input-devices"></select>
-                  <button type="button" onclick="setVideoInputDevice()">Update Video</button>
-                  <label id="sd-video-input-device-status"></label>
-                </div>
-                <label class="context-info">Audio Output Device</label>
-                <div class="u-mv flex">
-                  <select id="sd-audio-output-devices"></select>
-                  <button type="button" onclick="setAudioOutputDevice()">Set SinkId</button>
-                  <label id="sd-audio-output-device-status"></label>
-                </div>
-              </div>
-            </fieldset>
-          </div>
-
-          <!-- meetings / incoming -->
-          <div>
-            <fieldset id="incomingsection" class="hidden">
-              <legend>Incoming Call</legend>
-              <div class="u-mv">
-                <button onclick="answerMeeting(this)" id="answer" class="btn--green">Answer</button>
-                <button onclick="rejectMeeting(this)" id="reject" class="btn--red">Reject</button>
-              </div>
-            </fieldset>
-          </div>
-        
-          <!-- PMR management -->
-          <div>
-            <form id="pmr-management">
-              <fieldset>
-                <legend>Personal Meeting Room</legend>
-                <div>
-                  <input id="pmr-id" name="PmrId" placeholder="PMR ID" value="" type="text">
-                  <input id="pmr-pin" name="prmPin" placeholder="PMR PIN" value="" type="text">
-                  <button id="pmr-claim" type="button" onclick="claimPersonalMeetingRoom()"
-                    class="btn-code">webex.meetings.personalMeetingRoom.claim()</button>
-                  <pre id="pmr-details"></pre>
-                </div>
-              </fieldset>
-            </form>
-          </div>
+  <!-- Expand and Collapse -->
+  <div class="box global-toggle-btn-wrapper">
+    <button onclick="expandAll()" class="global-toggle-btn" title="Expand all">
+      <div style="display: flex; align-items: center; gap: 0.5rem;">
+        <div style="display: flex; flex-direction: column;">
+          <i class="g-arrow fa fa-angle-up" aria-hidden="true"></i>
+          <i class="g-arrow fa fa-angle-down" aria-hidden="true" style="margin-top: -6px;"></i>
         </div>
-      </section>
-    </div>
-    <div class="column">
-      <!-- meetings info -->
-      <section id="meeting-info-section" class="section-box hidden">
-        <div style="display: flex; align-items: center;" class="collapsible">
-          <div style="flex-grow: 4;">
-            <h2 id="meeting-info-title">Chirag Kasat's meeting</h2>
-            <h5 id="meeting-info-subtitle" style="margin-top: 0;">25783912061@cisco.webex.com
-              (92e04d6f-8c70-4b9b-886f-9e11c13454f3)</h5>
-          </div>
-          <div>
-            <button id="meetings-leave" type="button" onclick="leaveMeeting()">Leave</button>
-          </div>
-        </div>
-        <div class="section-content collapsed">
+        <div>EXPAND ALL</div>
+      </div>
+    </button>
 
+    <button onclick="collapseAll()" class="global-toggle-btn" title="Collapse all">
+      <div style="display: flex; align-items: center; gap: 0.5rem;">
+        <div style="display: flex; flex-direction: column;">
+          <i class="g-arrow fa fa-angle-down" aria-hidden="true"></i>
+          <i class="g-arrow fa fa-angle-up" aria-hidden="true" style="margin-top: -8px;"></i>
         </div>
-      </section>
+        <div>COLLAPSE ALL</div>
+      </div>
+    </button>
+  </div>
 
-      <!-- meeting streams -->
-      <section class="section-box">
-        <h2 class="collapsible">Meeting Streams</h2>
-        <div class="section-content">
-          <div class="video-section">
+  <!-- Leave Meeting -->
+  <div class="box" style="margin-top: 1rem;">
+    <section id="meeting-info-section" class="section-box hidden">
+      <div style="display: flex; align-items: center;" class="collapsible">
+        <div style="flex-grow: 4;">
+          <h2 id="meeting-info-title">Chirag Kasat's meeting</h2>
+          <h5 id="meeting-info-subtitle" style="margin-top: 0;">25783912061@cisco.webex.com
+            (92e04d6f-8c70-4b9b-886f-9e11c13454f3)</h5>
+        </div>
+        <div>
+          <button id="meetings-leave" type="button" onclick="leaveMeeting()" class="btn-code">Leave</button>
+        </div>
+      </div>
+      <div class="section-content collapsed">
+
+      </div>
+    </section>
+  </div>
+
+  <!-- meeting / authentication-credentials -->
+  <div class="box">
+    <section class="section-box">
+      <h2 class="collapsible">
+        Auth & Registration
+        <i class="arrow fa fa-angle-up" aria-hidden="true"></i>
+      </h2>
+
+      <div class="section-content">
+        <div>
+          <select name="auth-type" id="auth-type" onchange="changeAuthType()">
+            <option value="accessToken">Access Token</option>
+            <option value="oauth">OAuth</option>
+          </select>
+        </div>
+
+        <fieldset>
+          <legend>Authentication</legend>
+
+          <div style="display: flex; justify-content: space-between;">
             <div>
-              <div class="flex" style="gap: 0.5rem;">
+              <legend>Environment</legend>
+              <input type="checkbox" id="integration-env">
+              <label for="integration-env">Enable Integration Environment</label><br>
+            </div>
+
+            <div>
+              <legend>FedRAMP</legend>
+              <input type="checkbox" id="enable-fedramp">
+              <label for="enable-fedramp">Enable Fedramp</label>
+            </div>
+
+            <div>
+              <legend>Meetings</legend>
+              <input type="checkbox" id="enable-tcp-reachability">
+              <label for="enable-tcp-reachability">Enable TCP reachability (experimental)</label>
+              <br/>
+              <input type="checkbox" id="enable-tls-reachability">
+              <label for="enable-tls-reachability">Enable TLS reachability (experimental)</label>
+              <br/>
+              <input id="meetings-enable-llm" checked type="checkbox">
+              <label for="meetings-enable-llm-label">Enable LLM</label>
+            </div>
+          </div>
+
+
+          <form id="credentials">
+            <p class="note">
+              NOTE: Click <a href="https://developer.webex.com/docs/getting-started" target="_blank">here</a> for
+              access token
+            </p>
+            <div>
+              <input id="guest-name" name="guestName" placeholder="Guest Name" value="guest user" type="text">
+              <button id="get-guest-token" class="btn-code" type="button" onclick=getGuestAccessToken()>generate
+                Guest Token [prod only]</button>
+              <input id="access-token" name="accessToken" placeholder="Access Token" value="" type="text">
+              <button id="access-token-save" class="btn-code" type="submit">webex.init()</button>
+              <p id="access-token-status" class="status-par">Not initialized</p>
+            </div>
+          </form>
+
+          <form id="oauth" class="hidden">
+            <div>
+              <button id="oauth-login-btn" type="submit" class="btn-code">Login</button>
+              <p id="oauth-status" class="status-par">Not Logged In.</p>
+            </div>
+          </form>
+        </fieldset>
+
+        <form id="streams">
+            <fieldset>
+              <legend>Registration</legend>
+              <p class="note">
+                NOTE: Webex JS SDK must be registered as a device.
+              </p>
+              <div class="u-mv">
+                <button id="registration-register" type="button" onclick="register()" disabled=""
+                  class="btn-code">webex.meetings.register()</button>
+                <button id="registration-unregister" type="button" onclick="unregister()" disabled=""
+                  class="btn-code">webex.meetings.unregister()</button>
+                <p id="registration-status" class="status-par">Not Registered</p>
+              </div>
+              <div>
+                <p class="note">Toggles meeting between old and new versions. (Does not apply to currently running
+                  meetings)
+                </p>
+                <button disabled id="toggle-unified-meeting" type="button" onclick="toggleMeetingInfo()"
+                  class="btn-code">webex.meetings._toggleUnifiedMeetings()</button>
+                <label id="current-meeting-info">Currently using : <span
+                    id="current-meeting-info-status">_NOT_INIT_YET_</span></label>
+              </div>
+            </fieldset>
+          </form>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- Streams -->
+  <div class="box">
+    <section class="section-box">
+      <h2 class="collapsible">
+        Streams
+        <i class="arrow fa fa-angle-down" aria-hidden="true"></i>
+      </h2>
+      <div class="section-content collapsed">
+        <!-- Local video - Streams / effects -->
+        <form id="streams">
+          <fieldset>
+            <legend>Local Stream</legend>
+            <p class="note">
+              NOTE: Can start audio/video without a meeting(or click Get Media Streams after joining meeting) and
+              play around with effects.
+              Audio/video streams will persist after leaving a meeting as well and can be used in another meeting.
+            </p>
+            <div class="video-section">
+              <div style="display: flex; align-items: center; gap: 1rem;">
                 <fieldset>
                   <legend>Local Video</legend>
                   <div class="video-container">
-                    <video id="local-video" class="video-el" muted="true" autoplay playsinline style="height: 200px;"></video>
+                    <video id="local-video" class="video-el" muted="true" autoplay playsinline
+                      style="height: 250px;"></video>
                     <span id="local-video-resolution" class="video-resolution"></span>
+                    <span id="local-video-published-state" class="video-published"></span>
                   </div>
                 </fieldset>
 
-                <fieldset style="display: flex; align-items: center;">
+                <div style="display: flex; flex-direction: column;">
+                  <!-- Video settings -->
+                  <!--enable virtual bg -->
+                  <button id="ts-load-camera" type="button" onclick="loadCamera()" class="btn-code">Load Camera</button>
+                  <select name="mode" id="mode-type">
+                    <option value="BLUR" selected="selected">Blur</option>
+                    <option value="IMAGE">Image</option>
+                    <option value="VIDEO">Video</option>
+                  </select>
+                  <button id="ts-enable-VBG" type="button" onclick="handleVbg()" class="btn-code">Enable VBG</button>
+                  <!--mute-unmute-video -->
+                  <button id="ts-toggle-video" type="button" onclick="toggleSendVideo()" class="btn-code">Toggle Video</button>
+                  <button id="ts-stop-video" type="button" disabled onclick="stopStartVideo()" class="btn-code">Stop Video</button>
+                  <span id="ts-mute-video-message" class="webex-warning"></span>
+                </div>
+              </div>
+
+              <div style="display: flex; align-items: center; gap: 1rem;">
+                <fieldset style="padding: 2px; margin: 0;">
                   <legend>Local Audio</legend>
-                  <audio id="local-audio" muted controls></audio>
+                  <div class="audio-container">
+                    <audio id="local-audio" muted controls></audio>
+                    <span id="local-audio-published-state" class="audio-published"></span>
+                  </div>
                 </fieldset>
-              </div>
-              <div class="flex">
-                <!--mute-unmute audio -->
-                <div>
-                  <div class="u-mb">
-                    <button id="ts-toggle-audio" type="button" onclick="toggleSendAudio()">Toggle Audio</button>
-                  </div>
-                </div>
 
-                <!--mute-unmute-video -->
                 <div>
-                  <div class="u-mb">
-                    <button id="ts-toggle-video" type="button" onclick="toggleSendVideo()">Toggle Video</button>
-                  </div>
-                </div>
-
-                <!-- change background -->
-                <div>
-                  <div class="u-mb">
-                    <button id="ts-change-bg" type="button" onclick="">Change Background</button>
-                  </div>
-                </div>
-                <!-- BNR -->
-                <div>
-                  <div class="u-mb">
-                    <button id="ts-toggle-BNR" type="button" onclick="toggleBNR()">Enable BNR</button>
-                  </div>
+                  <!-- Audio settings -->
+                  <!--enable noise reduction -->
+                  <button id="ts-load-mic" type="button" onclick="loadMicrophone()" class="btn-code">Load Microphone</button>
+                  <button id="ts-enable-BNR" type="button" onclick="handleBNR()" class="btn-code">Enable BNR</button>
+                  <!--mute-unmute audio -->
+                  <button id="ts-toggle-audio" type="button" onclick="toggleSendAudio()" class="btn-code">Mute Audio</button>
+                  <button id="ts-stop-audio" type="button" disabled onclick="stopStartAudio()" class="btn-code">Stop Audio</button>
+                  <span id="ts-mute-audio-message" class="webex-warning"></span>
                 </div>
               </div>
+
+            </div>
+          </fieldset>
+        </form>
+
+        <!-- Remote video -->
+        <div id="remote-transcoded-video-wrapper">
+          <fieldset>
+            <legend>Remote Video</legend>
+            <div class="video-container">
+              <video id="remote-video" class="video-el" autoplay playsinline></video>
+              <audio id="remote-audio" autoplay></audio>
+              <span id="remote-video-resolution" class="video-resolution"></span>
             </div>
 
-            <div>
-              <fieldset>
-                <legend>Remote Video</legend>
-                <div class="video-container">
-                  <video id="remote-video" class="video-el" autoplay playsinline></video>
-                  <audio id="remote-audio" autoplay></audio>
-                  <span id="remote-video-resolution" class="video-resolution"></span>
-                </div>
+            <fieldset id="transcoded-video-resolution">
+              <legend>Set Resolution</legend>
+              <div class="u-mv">
+                <div class="flex" style="align-items: center; gap:10px">
+                  <select name="layout" id="layout-type">
+                    <option value="Single">Single</option>
+                    <option value="Equal" selected="selected">Equal</option>
+                    <option value="ActivePresence">Active Presence</option>
+                    <option value="Prominent">Prominent</option>
+                    <option value="OnePlusN">One+N</option>
+                  </select>
+                  <label for="width">Width</label>
+                  <input type="number" name="width" id="layout-width" />
+                  <label for="height">Height</label>
+                  <input type="number" name='height' id="layout-height" />
 
-                <fieldset>
-                  <legend>Set Resolution</legend>
-                  <div class="u-mv">
-                    <div class="flex" style="align-items: center; gap:10px">
-                      <select name="layout" id="layout-type">
-                        <option value="Single">Single</option>
-                        <option value="Equal" selected="selected">Equal</option>
-                        <option value="ActivePresence">Active Presence</option>
-                        <option value="Prominent">Prominent</option>
-                        <option value="OnePlusN">One+N</option>
-                      </select>
-                      <label for="width">Width</label>
-                      <input type="number" name="width" id="layout-width" />
-                      <label for="height">Height</label>
-                      <input type="number" name='height' id="layout-height" />
-                    </div>
-                  </div>
                   <button type="submit" name="submit" id="layout-submit" onclick="changeLayout()">Submit</button>
-                </fieldset>
-              </fieldset>
+                </div>
+              </div>
+            </fieldset>
+          </fieldset>
+        </div>
+
+        <!-- Remote video - Multistream -->
+        <div id="multistream-remote-streams">
+          <fieldset>
+            <legend>Multistream Remote Videos</legend>
+            <audio id="multistream-remote-audio-0" class="multistream-remote-audio" autoplay></audio>
+            <audio id="multistream-remote-audio-1" class="multistream-remote-audio" autoplay></audio>
+            <audio id="multistream-remote-audio-2" class="multistream-remote-audio" autoplay></audio>
+            <audio id="multistream-remote-share-audio" autoplay></audio>
+            <div id="multistream-videos-container" class="multistream-videos-container">
+            </div>
+            <div class="multistream-buttons">
+              <div class="stage-control-wrapper">
+                <span>Choose Layout:</span>
+                <select name="multistream-layout" id="multistream-layout" disabled
+                  onchange="updateMultistreamVideoLayout()">
+                  <option value="AllEqual">All Equal (max 9)</option>
+                  <option value="OnePlusFive">One big plane + five small</option>
+                  <option value="Single">Single video pane</option>
+                  <option value="Stage">Stage with thumbnails</option>
+                  <option value="ScreenShareView">Screen share with thumbnails</option>
+                </select>
+              </div>
+              <div id="stage-selector-wrapper" class="stage-control-wrapper hidden">
+                <select name="multistream-stage-selector" id="multistream-stage-selector"></select>
+                <button id="add-to-stage" type="submit" onclick="addToStage()" class="btn-code">Add to stage</button>
+              </div>
+            </div>
+            <div><button id="get-stats" onclick="getStats()" class="btn-code">Get stats</button> or CTRL+click on a video
+              pane to see its stats.</div>
+            <div style="display: flex">
+              <select name="remote-media-selector" id="remote-media-selector"></select>
+              <input id="size-hint-input" />
+              <button id="size-hint" onclick="setSizeHint()" class="btn-code">Set size hint</button>
+            </div>
+            <div class="prefer-live-video">
+              <span>Set Prefer Live Video:</span>
+              <select name="prefer-live-video" id="prefer-live-video" onchange="setPreferLiveVideo()">
+                <option value="Enable">Enable</option>
+                <option value="Disable">Disable</option>
+              </select>
+            </div>
+          </fieldset>
+        </div>
+
+        <div id="voicea-transcription-formatted-display-wrapper">
+          <fieldset>
+            <legend>Voicea Transcription</legend>
+            <div class="u-mv">
+              You will see the formatted transcription below if you have did the following,
+              <ul>
+                <li>Set the <span class="inline-code">enableAutomaticLLM</span> config to <span class="inline-code">true</span> before doing <span class="inline-code">webex.init()</span></li>
+                <li>Invoked <span class="inline-code">meeting.startTranscription()</span> after joining the meeting</li>
+              </ul>
+              <div id="voicea-transcription-formatted-display">
+
+              </div>
+              <br>
+              <span style='color:red;font-weight: bold;'>Note</span> - Scroll to <b>Advanced Meeting Controls</b> section for transcription controls
+            </div>
+          </fieldset>
+      </div>
+    </section>
+  </div>
+
+  <!-- Manage Meeting -->
+  <div class="box">
+    <section class="section-box">
+      <h2 class="collapsible">
+        Manage Meeting
+        <i class="arrow fa fa-angle-down" aria-hidden="true"></i>
+      </h2>
+
+      <div class="section-content collapsed">
+        <!-- meeting / select -->
+        <div>
+          <fieldset>
+            <legend>Choose a Meeting</legend>
+            <div>
+              <form id="meetings-create">
+                <div class="u-mv">
+                  <div class="flex">
+                    <input id="create-meeting-destination" name="createMeetingDestination" placeholder="Destination"
+                      value="" type="text" required>
+                    <select name="createMeetingDest" id="createMeetingDest">
+                      <option value="">SIP URI</option>
+                      <option value="CONVERSATION_URL">Conversation URL</option>
+                      <option value="Others">Others</option>
+                    </select>
+                    <button id="create-meeting-action" type="submit" class="btn-code">Create Meeting</button>
+                  </div>
+                </div>
+                <p class="note hidden" id="notes">NOTE: The destination shall be "Person ID" or "Email".</p>
+              </form>
+            </div>
+
+            <!-- meetings / create meeting status error -->
+            <div class="u-mv">
+              <p id="display-meeting-status" class="webex-error"></p>
+            </div>
+
+            <!-- meetings / active list -->
+            <div class="u-mv">
+              <button id="meetings-list-collect" type="button" onclick="collectMeetings()" class="btn-code">
+                Sync Meetings
+              </button>
+              <p id="meetings-list-msg" class="note">There are currently no meetings to display</p>
+              <div id="meetings-list" class="u-mv"></div>
+            </div>
+          </fieldset>
+        </div>
+
+        <!-- meetings / join -->
+        <div>
+          <fieldset>
+            <legend>Join Meeting</legend>
+            <!-- Password, captcha image and input html code -->
+            <div class="u-mv">
+              <input id="meetings-join-pin" name="meetingPin" placeholder="Password/PIN" value="" type="text">
+              <div>
+                <img id="meetings-join-captcha" src="" alt="captcha" style="width: 150px; height: 70px;" hidden>
+
+                <!-- refresh icon -->
+                <span id="meetings-join-captcha-refresh" type="button" onclick="refreshCaptcha()" hidden>
+                  <i class="fa fa-refresh"></i>
+                </span>
+                <input id="meetings-join-captcha-input" name="createMeetingCaptcha" placeholder="Captcha" value="" type="hidden">
+              </div>
+
+              <div class="u-mt">
+                <button id="btn-verify-password" disabled onclick="verifyPassword()" class="btn-code">
+                  Verify Password
+                </button>
+              </div>
+              <input id="meetings-join-moderator" type="checkbox">
+              <label for="meetings-join-moderator">Join as Moderator</label>
+              <input id="meetings-join-breakout-enabled" type="checkbox">
+              <label for="meetings-join-breakout-enabled">Support breakout sessions</label>
+              <input id="meetings-media-in-lobby-enabled" checked type="checkbox">
+              <label for="meetings-media-in-lobby-enabled">Support media in lobby</label>
+              <input id="meetings-enable-transcription" type="checkbox">
+              <label for="meetings-enable-transcription-label">Enable Transcription (Sample app only)</label>
+              <p id="password-captcha-status" class="status-par">Click verifyPassword for details</p>
+            </div>
+
+
+            <div>
+              <p class="note">NOTE: Choose your sending and receiving options for the meeting.</p>
+              <div class="u-mv">
+                <label for="meetings-join-multistream">
+                  <input id="meetings-join-multistream" type="checkbox" onclick="updateMultistreamUI()">Use a multistream connection
+                </label>
+                <label>
+                  <input type="checkbox" name="ts-media-direction" value="audioEnabled" checked="">audioEnabled
+                </label>
+                <label>
+                  <input type="checkbox" name="ts-media-direction" value="videoEnabled" checked="">videoEnabled
+                </label>
+                <label>
+                  <input type="checkbox" name="ts-media-direction" value="shareAudioEnabled"
+                    checked="">shareAudioEnabled
+                </label>
+                <label>
+                  <input type="checkbox" name="ts-media-direction" value="shareVideoEnabled"
+                    checked="">shareVideoEnabled
+                </label>
+              </div>
+            </div>
+
+            <div class="join-meeting-btn-grid">
+              <div style="text-align: center; border-right: 1px solid rgba(0,150,191,0.67)">
+                <div style="display: flex; flex-direction: column;">
+                  <div>Advanced Join</div>
+                  <div class="u-mt">
+                    <button style="width: 95%;" id="btn-join" onclick="joinMeeting()" class="btn-code">Join Meeting</button>
+                    <button style="width: 95%;" id="btn-join" onclick="getUserMedia()" class="btn-code meeting-dependent">Get Media Streams</button>
+                    <button style="width: 95%;" id="btn-join" onclick="addMedia()" class="btn-code meeting-dependent">Add Media</button>
+                    <button style="width: 95%;" id="update-media" type="button" onclick="updateMedia()" class="btn-code meeting-dependent">Update Media</button>
+                  </div>
+                </div>
+              </div>
+
+              <div style="text-align: center; border-right: 1px solid rgba(0,150,191,0.67)">
+                <div style="display: flex; flex-direction: column;">
+                  <div>Join With Media</div>
+                  <div class="u-mt">
+                    <button id="btn-join-media" onclick="joinMeeting({withMedia: true})" class="btn-code">Join with Media</button>
+                  </div>
+                </div>
+              </div>
+
+              <div style="text-align: center;">
+                <div style="display: flex; flex-direction: column;">
+                  <div>Join With Device</div>
+                  <div class="u-mt">
+                    <button id="btn-join-device" disabled onclick="joinMeeting({withDevice: true})"
+                      class="btn-code">Join with Device</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </fieldset>
+        </div>
+
+        <!-- meetings / incoming -->
+        <div>
+          <fieldset id="incomingsection" class="hidden">
+            <legend>Incoming Call</legend>
+            <div class="u-mv">
+              <button onclick="answerMeeting(this)" id="answer" class="btn--green">Answer</button>
+              <button onclick="rejectMeeting(this)" id="reject" class="btn--red">Reject</button>
+            </div>
+          </fieldset>
+        </div>
+
+        <!-- PMR management -->
+        <div>
+          <form id="pmr-management">
+            <fieldset>
+              <legend>Personal Meeting Room</legend>
+              <div>
+                <input id="pmr-id" name="PmrId" placeholder="PMR ID" value="" type="text">
+                <input id="pmr-pin" name="prmPin" placeholder="PMR PIN" value="" type="text">
+                <button id="pmr-claim" type="button" onclick="claimPersonalMeetingRoom()"
+                  class="btn-code">webex.meetings.personalMeetingRoom.claim()</button>
+                <pre id="pmr-details"></pre>
+              </div>
+            </fieldset>
+          </form>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- Media devices and quality -->
+  <div class="box">
+    <section class="section-box">
+      <h2 class="collapsible">
+        Devices and Media Quality
+        <i class="arrow fa fa-angle-down" aria-hidden="true"></i>
+      </h2>
+
+      <div class="section-content collapsed">
+
+        <!-- meetings / device-management -->
+        <div>
+          <fieldset id="meetingControlsDevices">
+            <legend>Media Devices</legend>
+
+            <div>
+              <button id="sd-get-media-devices" type="button" onclick="clearMediaDeviceList(); getMediaDevices()"
+                class="btn-code meeting-dependent">Get Devices</button>
             </div>
 
             <div>
-              <fieldset>
-                <legend>Local Screenshare</legend>
-                <video id="local-screenshare" autoplay playsinline></video>
-              </fieldset>
-              <div class="btn-group">
-                <button id="ts-start-screenshare" type="button" onclick="startScreenShare()"
-                  class="btn-code">meeting.shareScreen()</button>
-                <button id="ts-stop-screenshare" type="button" onclick="stopScreenShare()"
-                  class="btn-code">meeting.stopScreenScreen()</button>
+              <label class="context-info">Audio Input Device</label>
+              <div class="u-mv flex">
+                <select id="sd-audio-input-devices"></select>
+                <button type="button" onclick="setAudioInputDevice()" class="btn-code meeting-dependent">Publish Audio</button>
+                <label id="sd-audio-input-device-status"></label>
+              </div>
+              <label class="context-info">Video Input Device</label>
+              <div class="u-mv flex">
+                <select id="sd-video-input-devices"></select>
+                <button type="button" onclick="setVideoInputDevice()" class="btn-code meeting-dependent">Publish Video</button>
+                <label id="sd-video-input-device-status"></label>
+              </div>
+              <label class="context-info">Audio Output Device</label>
+              <div class="u-mv flex">
+                <select id="sd-audio-output-devices"></select>
+                <button type="button" onclick="setAudioOutputDevice()" class="btn-code meeting-dependent">Set SinkId</button>
+                <label id="sd-audio-output-device-status"></label>
               </div>
             </div>
+          </fieldset>
+        </div>
 
-            <div class="u-mt">
-              <fieldset>
-                <legend>Remote Screenshare</legend>
-                <video id="remote-screenshare" autoplay playsinline></video>
-              </fieldset>
+        <!-- webex devices -->
+        <div>
+          <fieldset>
+            <legend>Pair WebEx Device</legend>
+            <button id="sd-pair-webex-device" type="button" onclick="toggleWebexDeviceSection()"
+              class="btn-code">Pair</button>
+
+            <div id="webex-device-pairing-sec" class="hidden">
+              <form id="current-device">
+                <fieldset id="meetingDeviceCurrent">
+                  <legend>Current Device</legend>
+
+                  <div class="u-mv">
+                    <pre id="current-device-details">No Device Selected</pre>
+                  </div>
+
+                  <!-- meeting-device / list -->
+                  <fieldset id="meetingDeviceList">
+                    <legend>Device List</legend>
+                    <div>
+                      <div id="devices-list-items" class="u-mv">There are currently no meetings devices to display
+                      </div>
+                      <button id="devices-list-refresh" type="button" onclick="refreshDevicesList()"
+                        class="btn-code">webex.devicemanager.refresh()</button>
+                    </div>
+                  </fieldset>
+
+                  <!-- meeting-device / device-query -->
+                  <fieldset id="meetingDeviceQuery">
+                    <legend>Device Query</legend>
+                    <div class="u-mt">
+                      <input id="find-devices-query" name="searchQuery" placeholder="Device ID" value="" type="text">
+                      <button id="find-devices-action" type="button" onclick="searchForDevices()"
+                        class="btn-code">webex.devicemanager.search()</button>
+                      <pre id="find-devices-status"></pre>
+                    </div>
+                    <div id="find-devices-list"></div>
+                  </fieldset>
+
+                  <!-- meeting-device / device-paring -->
+                  <fieldset id="meetingDeviceParing">
+                    <legend>Device Paring</legend>
+                    <div>
+                      <input id="device-pin-query" name="devicePinQuery" placeholder="PIN" value="" type="number" />
+                      <button id="device-request-pin" type="button"
+                        onclick="webex.devicemanager.requestPin(currentDevice)" class="btn-code">
+                        webex.devicemanager.requestPin()
+                      </button>
+
+                      <div class="btn-group">
+                        <button id="device-request-pair" type="button" onclick="deviceRequestPair()" class="btn-code">
+                          webex.devicemanager.pair()
+                        </button>
+                        <button id="device-request-unpair" type="button" onclick="deviceRequestUnpair()"
+                          class="btn-code">
+                          webex.devicemanager.unpair()
+                        </button>
+                      </div>
+                      <pre id="device-pair-state">Not paired</pre>
+                    </div>
+                  </fieldset>
+
+                  <!-- meeting-device / audio-state -->
+                  <fieldset id="meetingDeviceAudioState">
+                    <legend>Audio State</legend>
+                    <div>
+                      <p class="note">NOTE: Must be called manually to view the updated state.</p>
+                      <button id="device-get-audio-state" type="button" onclick="deviceGetAudioState()"
+                        class="btn-code">
+                        webex.devicemanager.getAudioState()
+                      </button>
+                      <pre id="current-device-audio-state">No Device Selected</pre>
+                    </div>
+                  </fieldset>
+
+                  <!-- meeting-device / volume -->
+                  <fieldset id="meetingDeviceVolume">
+                    <legend>Volume</legend>
+                    <div class="btn-group">
+                      <button id="device-volume-up" type="button" onclick="webex.devicemanager.increaseVolume()"
+                        class="btn-code">
+                        webex.devicemanager.increaseVolume()
+                      </button>
+                      <button id="device-volume-down" type="button" onclick="webex.devicemanager.decreaseVolume()"
+                        class="btn-code">
+                        webex.devicemanager.decreaseVolume()
+                      </button>
+                    </div>
+                  </fieldset>
+
+                  <!-- meeting-device / mute -->
+                  <fieldset id="meetingDeviceMute">
+                    <legend>Mute</legend>
+                    <div class="btn-group">
+                      <button id="device-volume-mute" type="button" onclick="webex.devicemanager.mute()"
+                        class="btn-code">
+                        webex.devicemanager.mute()
+                      </button>
+                      <button id="device-volume-unmute" type="button" onclick="webex.devicemanager.unmute()"
+                        class="btn-code">
+                        webex.devicemanager.unmute()
+                      </button>
+                    </div>
+                  </fieldset>
+                </fieldset>
+              </form>
             </div>
-          </div>
-          <!-- meetings / participants -->
-          <div>
-            <fieldset>
-              <legend>Participants</legend>
-              <div id="participant-list">
-                <div id="participant-table"></div>
-                <div id="participant-btn"></div>
-              </div>
-            </fieldset>
-          </div>
-          <!-- meetings / events published -->
-          <div>
-            <fieldset>
-              <legend>Events Published</legend>
-              <div id="events-list">
-              </div>
-            </fieldset>
-          </div>
+          </fieldset>
         </div>
-      </section>
 
-      <!-- meeting controls -->
-      <section class="section-box">
-        <h2 class="collapsible">Meeting Controls</h2>
-        <div class="section-content">
-          <!-- meeting-controls / move-to-device -->
-          <div>
-            <fieldset id="meetingsMoveToDevice">
-              <legend>Move to Device</legend>
-              <p class="note">NOTE: You must be paired with a device.</p>
-              <p id="p-paired-device-id"></p>
+        <!-- meetings / media quality -->
+        <div>
+          <fieldset id="meeting-quality">
+            <legend>Media Quality</legend>
+
+            <!-- Media quality dropdown -->
+            <p class="note">NOTE: You can change the local, remote or meeting quality.</p>
+
+            <div>
+              <!-- Local Media -->
+              <div class="u-mv flex flex--align-center">
+                <label class="media-button-label" for="local-resolution">Local Resolution</label>
+                <select name="local-resolution" id="local-resolution" class="media-select"></select>
+
+                <button id="ts-set-local-meeting-quality" type="button" onclick="setLocalMeetingQuality()"
+                  class="btn-code media-button">
+                  meeting.setLocalVideoQuality()
+                </button>
+              </div>
+
+              <!-- Remote Media -->
+              <div class="u-mv flex flex--align-center">
+                <label class="media-button-label" for="remote-resolution">Remote Resolution</label>
+                <select name="remote-resolution" id="remote-resolution" class="media-select"></select>
+
+                <button id="ts-set-remote-meeting-quality" type="button" onclick="setRemoteMeetingQuality()"
+                  class="btn-code media-button">
+                  meeting.setRemoteVideoQuality()
+                </button>
+              </div>
+              <label id="ts-sending-quality-status"></label>
+            </div>
+          </fieldset>
+        </div>
+
+      </div>
+    </section>
+  </div>
+
+  <!-- Participants, Breakout Sessions and Events published -->
+  <div class="box">
+    <section class="section-box">
+      <h2 class="collapsible">
+        Participants, Breakout Sessions, and Events published
+        <i class="arrow fa fa-angle-down" aria-hidden="true"></i>
+      </h2>
+      <div class="section-content collapsed">
+        <!-- meetings / participants -->
+        <div>
+          <fieldset>
+            <legend>Participants</legend>
+            <div id="participant-list">
+              <div id="participant-table"></div>
+              <div id="participant-btn"></div>
+            </div>
+            <p class="note multistream" id="remote-sources-info"></p>
+          </fieldset>
+        </div>
+        <!-- meetings / breakout sessions -->
+        <div>
+          <fieldset>
+            <legend>Breakout Sessions</legend>
+            <input type="checkbox" id="enable-breakout" onclick="toggleBreakout()">
+            <label for="enable-breakout">Enable breakout</label><br>
+            <div id="newBreakout-div"></div>
+            <div id="breakouts-list">
+              <div id="breakout-host-operation"></div>
+              <div id="breakout-table"></div>
+            </div>
+          </fieldset>
+        </div>
+        <!-- meetings / events published -->
+        <div>
+          <fieldset>
+            <legend>Events Published</legend>
+            <div id="events-list">
+            </div>
+          </fieldset>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- Screen share -->
+  <div class="box">
+    <section class="section-box">
+      <h2 class="collapsible">
+        Screen share
+        <i class="arrow fa fa-angle-down" aria-hidden="true"></i>
+      </h2>
+
+      <div class="section-content collapsed">
+        <!-- Local screen share -->
+        <form id="streams">
+          <fieldset>
+            <legend>Local Screenshare</legend>
+            <p class="note">
+              NOTE: Start screenshare without a meeting and join meeting with a screenshare.
+              If started after joining a meeting then click Publish in meeting also.
+            </p>
+            <div class="screenshare-section">
+              <div style="display: flex; gap: 1rem;">
+                <fieldset style="flex: 0.69;">
+                  <legend>Screenshare Video</legend>
+                  <video id="local-screenshare-video" autoplay playsinline></video>
+                </fieldset>
+                <fieldset>
+                  <legend>Screenshare Audio</legend>
+                  <audio id="local-screenshare-audio" muted controls></audio>
+                </fieldset>
+              </div>
               <div class="btn-group">
-                <button id="gc-start-recording" type="button" onclick="moveToDevice()"
-                  class="btn-code">meeting.moveTo()</button>
-                <button id="gc-pause-recording" type="button" onclick="moveFromDevice()"
-                  class="btn-code">meeting.moveFrom()</button>
+                <button id="ts-start-screenshare" type="button" onclick="startScreenShare()" class="btn-code">
+                  Share Screen</button>
+                <button id="ts-publish-screenshare" type="button" disabled onclick="publishScreenShare()"
+                  class="btn-code meeting-dependent">
+                  Publish in meeting</button>
+                <button id="ts-unpublish-screenshare" type="button" disabled onclick="unpublishScreenShare()"
+                  class="btn-code meeting-dependent">
+                  Unpublish in meeting</button>
+                <button id="ts-stop-screenshare" type="button" disabled onclick="stopScreenShare()" class="btn-code">
+                  Stop share</button>
               </div>
-            </fieldset>
-          </div>
+            </div>
+          </fieldset>
+        </form>
 
-          <!-- meeting-controls / recording -->
-          <div>
-            <fieldset id="meetingControlsRecording">
-              <legend>Recording</legend>
-              <div>
-                <p class="note">NOTE: You must be a meeting <u>moderator</u> to record a meeting.</p>
-                <div class="btn-group">
-                  <button id="gc-start-recording" type="button" onclick="startRecording()"
-                    class="btn-code">meeting.startRecording()</button>
-                  <button id="gc-pause-recording" type="button" onclick="pauseRecording()"
-                    class="btn-code">meeting.pauseRecording()</button>
-                </div>
-                <div class="btn-group">
-                  <button id="gc-resume-recording" type="button" onclick="resumeRecording()"
-                    class="btn-code">meeting.resumeRecording()</button>
-                  <button id="gc-stop-recording" type="button" onclick="stopRecording()"
-                    class="btn-code">meeting.stopRecording()</button>
-                </div>
-                <label id="gc-recording-status"></label>
-              </div>
-            </fieldset>
-          </div>
-
-          <div>
-            <!-- meeting-controls / locking -->
-            <fieldset id="meetingControlsLocking">
-              <legend>Locking</legend>
-              <div>
-                <p class="note">NOTE: You must be a meeting <u>moderator</u> to lock a meeting.</p>
-                <div class="btn-group">
-                  <button id="gc-lock" type="button" onclick="lockMeeting()"
-                    class="btn-code">meeting.lockMeeting()</button>
-                  <button id="gc-unlock" type="button" onclick="unlockMeeting()"
-                    class="btn-code">meeting.unlockMeeting()</button>
-                </div>
-                <label id="gc-lock-status"></label>
-              </div>
-            </fieldset>
-          </div>
-
-          <div>
-            <!-- meeting-controls / transcription -->
-            <fieldset id="meetingControlsTranscription">
-              <legend>Transcription</legend>
-              <div class="transcription">
-                <div class="btn-group u-mb">
-                  <button id="gc-start-receiving-transcription" disabled="" type="button"
-                    onclick="startReceivingTranscription()" class="btn-code">startReceivingTranscription()</button>
-                  <button id="gc-stop-receiving-transcription" disabled="" type="button"
-                    onclick="stopReceivingTranscription()" class="btn-code">stopReceivingTranscription()</button>
-                </div>
-                <textarea id="gc-transcription-content"
-                  disabled="">Transcription Content: Webex Assistant must be enabled, check the console!</textarea>
-              </div>
-            </fieldset>
-          </div>
-
-          <div>
-            <!-- meeting-controls / tones -->
-            <fieldset id="meetingControlsTones">
-              <legend>Tones</legend>
-              <div>
-                <p class="note">NOTE: Supports all DMTF tones.</p>
-                <div class="u-mv">
-                  <input id="gc-dtmf-tones" name="dtmfTones" placeholder="Enter DTMF tones" value="" type="text">
-                  <button id="gc-dtmf-tones-send" type="button" onclick="sendDtmfTones()"
-                    class="btn-code">meeting.sendDTMF()</button>
-                  <label id="gc-dtmf-status"></label>
-                </div>
-              </div>
-            </fieldset>
-          </div>
+        <!-- Remote screenshare -->
+        <div class="u-mt" id="remote-transcoded-screenshare-wrapper">
+          <fieldset>
+            <legend>Remote Screenshare</legend>
+            <video id="remote-screenshare" autoplay playsinline></video>
+          </fieldset>
         </div>
-      </section>
-    </div>
+      </div>
+    </section>
+  </div>
+
+  <div class="box">
+    <!-- meeting controls -->
+    <section class="section-box">
+      <h2 class="collapsible">
+        Advance Meeting Controls
+        <i class="arrow fa fa-angle-down" aria-hidden="true"></i>
+      </h2>
+
+      <div class="section-content collapsed">
+        <!-- meeting-controls / move-to-device -->
+        <div>
+          <fieldset id="meetingsMoveToDevice">
+            <legend>Move to Device</legend>
+            <p class="note">NOTE: You must be paired with a device.</p>
+            <p id="p-paired-device-id"></p>
+            <div class="btn-group">
+              <button id="gc-start-recording" type="button" onclick="moveToDevice()"
+                class="btn-code meeting-dependent">meeting.moveTo()</button>
+              <button id="gc-pause-recording" type="button" onclick="moveFromDevice()"
+                class="btn-code meeting-dependent">meeting.moveFrom()</button>
+            </div>
+          </fieldset>
+        </div>
+
+        <!-- meeting-controls / recording -->
+        <div>
+          <fieldset id="meetingControlsRecording">
+            <legend>Recording</legend>
+            <div>
+              <p class="note">NOTE: You must be a meeting <u>moderator</u> to record a meeting.</p>
+              <div class="btn-group">
+                <button id="gc-start-recording" type="button" onclick="startRecording()"
+                  class="btn-code meeting-dependent">meeting.startRecording()</button>
+                <button id="gc-pause-recording" type="button" onclick="pauseRecording()"
+                  class="btn-code meeting-dependent">meeting.pauseRecording()</button>
+              </div>
+              <div class="btn-group">
+                <button id="gc-resume-recording" type="button" onclick="resumeRecording()"
+                  class="btn-code meeting-dependent">meeting.resumeRecording()</button>
+                <button id="gc-stop-recording" type="button" onclick="stopRecording()"
+                  class="btn-code meeting-dependent">meeting.stopRecording()</button>
+              </div>
+              <label id="gc-recording-status"></label>
+            </div>
+          </fieldset>
+        </div>
+
+        <div>
+          <!-- meeting-controls / locking -->
+          <fieldset id="meetingControlsLocking">
+            <legend>Locking</legend>
+            <div>
+              <p class="note">NOTE: You must be a meeting <u>moderator</u> to lock a meeting.</p>
+              <div class="btn-group">
+                <button id="gc-lock" type="button" onclick="lockMeeting()"
+                  class="btn-code meeting-dependent">meeting.lockMeeting()</button>
+                <button id="gc-unlock" type="button" onclick="unlockMeeting()"
+                  class="btn-code meeting-dependent">meeting.unlockMeeting()</button>
+              </div>
+              <label id="gc-lock-status"></label>
+            </div>
+          </fieldset>
+        </div>
+
+        <div>
+          <!-- meeting-controls / transcription -->
+          <fieldset id="meetingControlsTranscription">
+            <legend>Transcription</legend>
+            <div class="transcription">
+              <div class="btn-group u-mb">
+                <button id="gc-toggle-transcription" type="button"
+                  onclick="toggleTranscription()" class="btn-code" data-enabled="false">Start Transcription</button>
+                <br>
+                Caption Language: <select id="voicea-caption-language" style="display: inline;" disabled></select><button id="voicea-caption-language-btn" onclick="setCaptionLanguage()" disabled>meeting.setCaptionLanguage()</button><br/>
+                Spoken Language: <select id="voicea-spoken-language" style="display: inline;" disabled></select><button id="voicea-spoken-language-btn"  onclick="setSpokenLanguage()" disabled>meeting.setSpokenLanguage()</button> <p id="only-host-spoken-language" class="hidden">Only Meeting Host can Set Spoken Language</p>
+                <br>
+              </div>
+              <textarea id="gc-transcription-content"
+                disabled="">Transcription Content: Webex Assistant must be enabled, check the console!</textarea>
+            </div>
+          </fieldset>
+        </div>
+
+        <div>
+          <!-- meeting-controls / tones -->
+          <fieldset id="meetingControlsTones">
+            <legend>Tones</legend>
+            <div>
+              <p class="note">NOTE: Supports all DTMF tones.</p>
+              <div class="u-mv">
+                <input id="gc-dtmf-tones" name="dtmfTones" placeholder="Enter DTMF tones" value="" type="text">
+                <button id="gc-dtmf-tones-send" type="button" onclick="sendDtmfTones()"
+                  class="btn-code meeting-dependent">meeting.sendDTMF()</button>
+                <label id="gc-dtmf-status"></label>
+              </div>
+            </div>
+          </fieldset>
+        </div>
+      </div>
+    </section>
   </div>
   <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/handlebars@latest/dist/handlebars.js"></script>
+  <script src="../webex.min.js"></script>
+  <script id="voicea-transcription-template" type="text/x-handlebars-template">
+    {{#each data}}
+      <div>
+        <b>{{this.speaker.name}}:</b>
+        {{#if this.translations}}
+          {{#each (forIn this.translations)}}
+            {{{this.value}}}
+          {{/each}}
+        {{else}}
+          {{{this.text}}}
+        {{/if}}
+        <sub><b>{{this.timestamp}}</b></sub>
+      </div>
+    {{/each}}
+  </script>
   <script src="app.js"></script>
 </body>
 

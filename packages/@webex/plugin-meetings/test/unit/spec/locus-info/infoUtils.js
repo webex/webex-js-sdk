@@ -1,6 +1,5 @@
 import {assert} from '@webex/test-helper-chai';
 import Sinon from 'sinon';
-
 import InfoUtils from '@webex/plugin-meetings/src/locus-info/infoUtils';
 
 describe('plugin-meetings', () => {
@@ -8,7 +7,7 @@ describe('plugin-meetings', () => {
     const info = {
       displayHints: {
         moderator: ['HINT_1', 'HINT_2'],
-        joined: ['HINT_3'],
+        joined: ['HINT_3', 'VOIP_IS_ENABLED'],
         coHost: ['HINT_4'],
       },
     };
@@ -28,47 +27,83 @@ describe('plugin-meetings', () => {
     describe('parse', () => {
       it('only gives includes display hints when user has the correct role', () => {
         assert.deepEqual(InfoUtils.parse(info, ['MODERATOR']), {
-          policy: {HINT_3: true},
+          policy: {HINT_3: true, VOIP_IS_ENABLED: true},
           moderator: {HINT_1: true, HINT_2: true, LOWER_SOMEONE_ELSES_HAND: true},
           coHost: {HINT_4: true, LOWER_SOMEONE_ELSES_HAND: true},
-          userDisplayHints: ['HINT_3', 'HINT_1', 'HINT_2', 'LOWER_SOMEONE_ELSES_HAND'],
+          userDisplayHints: [
+            'HINT_3',
+            'VOIP_IS_ENABLED',
+            'HINT_1',
+            'HINT_2',
+            'LOWER_SOMEONE_ELSES_HAND',
+          ],
         });
 
         assert.deepEqual(InfoUtils.parse(info, ['MODERATOR', 'COHOST']), {
-          policy: {HINT_3: true},
+          policy: {HINT_3: true, VOIP_IS_ENABLED: true},
           moderator: {HINT_1: true, HINT_2: true, LOWER_SOMEONE_ELSES_HAND: true},
           coHost: {HINT_4: true, LOWER_SOMEONE_ELSES_HAND: true},
-          userDisplayHints: ['HINT_3', 'HINT_4', 'LOWER_SOMEONE_ELSES_HAND', 'HINT_1', 'HINT_2'],
+          userDisplayHints: [
+            'HINT_3',
+            'VOIP_IS_ENABLED',
+            'HINT_4',
+            'LOWER_SOMEONE_ELSES_HAND',
+            'HINT_1',
+            'HINT_2',
+          ],
         });
 
         assert.deepEqual(InfoUtils.parse(info, ['COHOST']), {
-          policy: {HINT_3: true},
+          policy: {HINT_3: true, VOIP_IS_ENABLED: true},
           moderator: {HINT_1: true, HINT_2: true, LOWER_SOMEONE_ELSES_HAND: true},
           coHost: {HINT_4: true, LOWER_SOMEONE_ELSES_HAND: true},
-          userDisplayHints: ['HINT_3', 'HINT_4', 'LOWER_SOMEONE_ELSES_HAND'],
+          userDisplayHints: ['HINT_3', 'VOIP_IS_ENABLED', 'HINT_4', 'LOWER_SOMEONE_ELSES_HAND'],
         });
 
         assert.deepEqual(InfoUtils.parse(info, []), {
-          policy: {HINT_3: true},
+          policy: {HINT_3: true, VOIP_IS_ENABLED: true},
           moderator: {HINT_1: true, HINT_2: true, LOWER_SOMEONE_ELSES_HAND: true},
           coHost: {HINT_4: true, LOWER_SOMEONE_ELSES_HAND: true},
-          userDisplayHints: ['HINT_3'],
+          userDisplayHints: ['HINT_3', 'VOIP_IS_ENABLED'],
         });
       });
 
-      it('only gives includes display hints when user has joined the meeting role', () => {
+      it('only includes interstitial display hints when user has not joined the meeting', () => {
         assert.deepEqual(InfoUtils.parse(info, ['MODERATOR'], false), {
-          policy: {HINT_3: true},
+          policy: {HINT_3: true, VOIP_IS_ENABLED: true},
           moderator: {HINT_1: true, HINT_2: true, LOWER_SOMEONE_ELSES_HAND: true},
           coHost: {HINT_4: true, LOWER_SOMEONE_ELSES_HAND: true},
-          userDisplayHints: ['HINT_1', 'HINT_2', 'LOWER_SOMEONE_ELSES_HAND'],
+          userDisplayHints: ['VOIP_IS_ENABLED', 'HINT_1', 'HINT_2', 'LOWER_SOMEONE_ELSES_HAND'],
         });
 
         assert.deepEqual(InfoUtils.parse(info, ['MODERATOR'], true), {
-          policy: {HINT_3: true},
+          policy: {HINT_3: true, VOIP_IS_ENABLED: true},
           moderator: {HINT_1: true, HINT_2: true, LOWER_SOMEONE_ELSES_HAND: true},
           coHost: {HINT_4: true, LOWER_SOMEONE_ELSES_HAND: true},
-          userDisplayHints: ['HINT_3', 'HINT_1', 'HINT_2', 'LOWER_SOMEONE_ELSES_HAND'],
+          userDisplayHints: [
+            'HINT_3',
+            'VOIP_IS_ENABLED',
+            'HINT_1',
+            'HINT_2',
+            'LOWER_SOMEONE_ELSES_HAND',
+          ],
+        });
+      });
+
+      it('only adds datachannel url when present', () => {
+        assert.deepEqual(InfoUtils.parse({datachannelUrl: 'some url'}, []), {
+          coHost: {LOWER_SOMEONE_ELSES_HAND: true},
+          moderator: {LOWER_SOMEONE_ELSES_HAND: true},
+          datachannelUrl: 'some url',
+          policy: {},
+          userDisplayHints: [],
+        });
+
+        assert.deepEqual(InfoUtils.parse({}, []), {
+          coHost: {LOWER_SOMEONE_ELSES_HAND: true},
+          moderator: {LOWER_SOMEONE_ELSES_HAND: true},
+          policy: {},
+          userDisplayHints: [],
         });
       });
     });
@@ -80,7 +115,10 @@ describe('plugin-meetings', () => {
           HINT_2: true,
         });
 
-        assert.deepEqual(InfoUtils.parseDisplayHintSection(info, 'joined'), {HINT_3: true});
+        assert.deepEqual(InfoUtils.parseDisplayHintSection(info, 'joined'), {
+          HINT_3: true,
+          VOIP_IS_ENABLED: true,
+        });
 
         assert.deepEqual(InfoUtils.parseDisplayHintSection({}, 'joined'), {});
 

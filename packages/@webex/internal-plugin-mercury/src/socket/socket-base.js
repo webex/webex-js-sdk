@@ -30,6 +30,7 @@ export default class Socket extends EventEmitter {
    */
   constructor() {
     super();
+    this._domain = 'unknown-domain';
     this.onmessage = this.onmessage.bind(this);
     this.onclose = this.onclose.bind(this);
   }
@@ -111,18 +112,25 @@ export default class Socket extends EventEmitter {
         return;
       }
       // logger is defined once open is called
-      this.logger.info('socket: closing');
+      this.logger.info(`socket,${this._domain}: closing`);
 
       if (socket.readyState === 2 || socket.readyState === 3) {
-        this.logger.info('socket: already closed');
+        this.logger.info(`socket,${this._domain}: already closed`);
         resolve();
 
         return;
       }
 
       options = options || {};
-      if (options.code && options.code !== 1000 && (options.code < 3000 || options.code > 4999)) {
-        reject(new Error('`options.code` must be 1000 or between 3000 and 4999 (inclusive)'));
+      if (
+        options.code &&
+        options.code !== 1000 &&
+        options.code !== 1050 &&
+        (options.code < 3000 || options.code > 4999)
+      ) {
+        reject(
+          new Error('`options.code` must be 1000 or 1050 or between 3000 and 4999 (inclusive)')
+        );
 
         return;
       }
@@ -134,20 +142,24 @@ export default class Socket extends EventEmitter {
 
       const closeTimer = safeSetTimeout(() => {
         try {
-          this.logger.info('socket: no close event received, forcing closure');
+          this.logger.info(`socket,${this._domain}: no close event received, forcing closure`);
           resolve(
-            this.onclose({
-              code: 1000,
-              reason: 'Done (forced)',
-            })
+            this.onclose(
+              options.code === 1050
+                ? {code: 1050, reason: options.reason}
+                : {
+                    code: 1000,
+                    reason: 'Done (forced)',
+                  }
+            )
           );
         } catch (error) {
-          this.logger.warn('socket: force-close failed', error);
+          this.logger.warn(`socket,${this._domain}: force-close failed`, error);
         }
       }, this.forceCloseDelay);
 
       socket.onclose = (event) => {
-        this.logger.info('socket: close event fired', event.code, event.reason);
+        this.logger.info(`socket,${this._domain}: close event fired`, event.code, event.reason);
         clearTimeout(closeTimer);
         this.onclose(event);
         resolve(event);
@@ -171,6 +183,12 @@ export default class Socket extends EventEmitter {
    * @returns {Promise}
    */
   open(url, options) {
+    try {
+      this._domain = new URL(url).hostname;
+    } catch {
+      this._domain = url;
+    }
+
     return new Promise((resolve, reject) => {
       /* eslint complexity: [0] */
       if (!url) {
@@ -201,7 +219,7 @@ export default class Socket extends EventEmitter {
 
       const WebSocket = Socket.getWebSocketConstructor();
 
-      this.logger.info('socket: creating WebSocket');
+      this.logger.info(`socket,${this._domain}: creating WebSocket`);
       const socket = new WebSocket(url, [], options);
 
       socket.binaryType = 'arraybuffer';
@@ -209,7 +227,7 @@ export default class Socket extends EventEmitter {
 
       socket.onclose = (event) => {
         event = this._fixCloseCode(event);
-        this.logger.info('socket: closed before open', event.code, event.reason);
+        this.logger.info(`socket,${this._domain}: closed before open`, event.code, event.reason);
         switch (event.code) {
           case 1005:
             // IE 11 doesn't seem to allow 4XXX codes, so if we get a 1005, assume
@@ -231,10 +249,10 @@ export default class Socket extends EventEmitter {
       };
 
       socket.onopen = () => {
-        this.logger.info('socket: connected');
+        this.logger.info(`socket,${this._domain}: connected`);
         this._authorize()
           .then(() => {
-            this.logger.info('socket: authorized');
+            this.logger.info(`socket,${this._domain}: authorized`);
             socket.onclose = this.onclose;
             resolve();
           })
@@ -242,11 +260,11 @@ export default class Socket extends EventEmitter {
       };
 
       socket.onerror = (event) => {
-        this.logger.warn('socket: error event fired', event);
+        this.logger.warn(`socket,${this._domain}: error event fired`, event);
       };
 
       sockets.set(this, socket);
-      this.logger.info('socket: waiting for server');
+      this.logger.info(`socket,${this._domain}: waiting for server`);
     });
   }
 
@@ -256,7 +274,7 @@ export default class Socket extends EventEmitter {
    * @returns {undefined}
    */
   onclose(event) {
-    this.logger.info('socket: closed', event.code, event.reason);
+    this.logger.info(`socket,${this._domain}: closed`, event.code, event.reason);
     clearTimeout(this.pongTimer);
     clearTimeout(this.pingTimer);
 
@@ -278,10 +296,10 @@ export default class Socket extends EventEmitter {
       const data = JSON.parse(event.data);
       const sequenceNumber = parseInt(data.sequenceNumber, 10);
 
-      this.logger.debug('socket: sequence number: ', sequenceNumber);
+      this.logger.debug(`socket,${this._domain}: sequence number: `, sequenceNumber);
       if (this.expectedSequenceNumber && sequenceNumber !== this.expectedSequenceNumber) {
         this.logger.debug(
-          `socket: sequence number mismatch indicates lost mercury message. expected: ${this.expectedSequenceNumber}, actual: ${sequenceNumber}`
+          `socket,${this._domain}: sequence number mismatch indicates lost mercury message. expected: ${this.expectedSequenceNumber}, actual: ${sequenceNumber}`
         );
         this.emit('sequence-mismatch', sequenceNumber, this.expectedSequenceNumber);
       }
@@ -303,7 +321,7 @@ export default class Socket extends EventEmitter {
       // message from Mercury. At this time, the only action we have is to
       // ignore it and move on.
       /* istanbul ignore next */
-      this.logger.warn('socket: error while receiving WebSocket message', error);
+      this.logger.warn(`socket,${this._domain}: error while receiving WebSocket message`, error);
     }
   }
 
@@ -357,7 +375,7 @@ export default class Socket extends EventEmitter {
    */
   _authorize() {
     return new Promise((resolve) => {
-      this.logger.info('socket: authorizing');
+      this.logger.info(`socket,${this._domain}: authorizing`);
       this.send({
         id: uuid.v4(),
         type: 'authorization',
@@ -395,12 +413,18 @@ export default class Socket extends EventEmitter {
     if (event.code === 1005 && event.reason) {
       switch (event.reason.toLowerCase()) {
         case 'replaced':
-          this.logger.info('socket: fixing CloseEvent code for reason: ', event.reason);
+          this.logger.info(
+            `socket,${this._domain}: fixing CloseEvent code for reason: `,
+            event.reason
+          );
           event.code = 4000;
           break;
         case 'authentication failed':
         case 'authentication did not happen within the timeout window of 30000 seconds.':
-          this.logger.info('socket: fixing CloseEvent code for reason: ', event.reason);
+          this.logger.info(
+            `socket,${this._domain}: fixing CloseEvent code for reason: `,
+            event.reason
+          );
           event.code = 1008;
           break;
         default:
@@ -420,10 +444,12 @@ export default class Socket extends EventEmitter {
   _ping(id) {
     const confirmPongId = (event) => {
       try {
-        this.logger.debug('socket: pong', event.data.id);
+        this.logger.debug(`socket,${this._domain}: pong`, event.data.id);
         if (event.data && event.data.id !== id) {
-          this.logger.info('socket: received pong for wrong ping id, closing socket');
-          this.logger.debug('socket: expected', id, 'received', event.data.id);
+          this.logger.info(
+            `socket,${this._domain}: received pong for wrong ping id, closing socket`
+          );
+          this.logger.debug(`socket,${this._domain}: expected`, id, 'received', event.data.id);
           this.close({
             code: 1000,
             reason: 'Pong mismatch',
@@ -433,24 +459,29 @@ export default class Socket extends EventEmitter {
         // This try/catch block was added as a debugging step; to the best of my
         // knowledge, the above can never throw.
         /* istanbul ignore next */
-        this.logger.error('socket: error occurred in confirmPongId', error);
+        this.logger.error(`socket,${this._domain}: error occurred in confirmPongId`, error);
       }
     };
 
     const onPongNotReceived = () => {
       try {
-        this.logger.info('socket: pong not receive in expected period, closing socket');
+        this.logger.info(
+          `socket,${this._domain}: pong not receive in expected period, closing socket`
+        );
         this.close({
           code: 1000,
           reason: 'Pong not received',
         }).catch((reason) => {
-          this.logger.warn('socket: failed to close socket after missed pong', reason);
+          this.logger.warn(
+            `socket,${this._domain}: failed to close socket after missed pong`,
+            reason
+          );
         });
       } catch (error) {
         // This try/catch block was added as a debugging step; to the best of my
         // knowledge, the above can never throw.
         /* istanbul ignore next */
-        this.logger.error('socket: error occurred in onPongNotReceived', error);
+        this.logger.error(`socket,${this._domain}: error occurred in onPongNotReceived`, error);
       }
     };
 
@@ -462,16 +493,29 @@ export default class Socket extends EventEmitter {
         // This try/catch block was added as a debugging step; to the best of my
         // knowledge, the above can never throw.
         /* istanbul ignore next */
-        this.logger.error('socket: error occurred in scheduleNextPingAndCancelPongTimer', error);
+        this.logger.error(
+          `socket,${this._domain}: error occurred in scheduleNextPingAndCancelPongTimer`,
+          error
+        );
       }
     };
 
+    const calculateLatency = (pingTimestamp) => {
+      const now = performance.now();
+      const latency = now - pingTimestamp;
+
+      this.logger.debug(`socket,${this._domain}: latency: `, latency);
+      this.emit('ping-pong-latency', latency);
+    };
+
     id = id || uuid.v4();
+    const pingTimestamp = performance.now();
+
     this.pongTimer = safeSetTimeout(onPongNotReceived, this.pongTimeout);
     this.once('pong', scheduleNextPingAndCancelPongTimer);
     this.once('pong', confirmPongId);
-
-    this.logger.debug(`socket: ping ${id}`);
+    this.once('pong', () => calculateLatency(pingTimestamp));
+    this.logger.debug(`socket,${this._domain}: ping ${id}`);
 
     return this.send({
       id,

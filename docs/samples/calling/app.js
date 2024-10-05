@@ -31,6 +31,8 @@ const voicemailOffsetLimit = 20;
 const voicemailSort = 'DESC';
 const credentialsFormElm = document.querySelector('#credentials');
 const tokenElm = document.querySelector('#access-token');
+const jwtTokenForDestElm = document.querySelector('#jwt-token-for-dest');
+const guestContainerElm = document.querySelector('#guest-container');
 const saveElm = document.querySelector('#access-token-save');
 const authStatusElm = document.querySelector('#access-token-status');
 const registerElm = document.querySelector('#registration-register');
@@ -85,6 +87,7 @@ const directoryNumberCFA = document.querySelector('#directoryNumber');
 const cfaDataElem = document.querySelector('#callforwardalways-data');
 const makeCallBtn = document.querySelector('#create-call-action');
 const muteElm = document.getElementById('mute_button');
+const bnrButton = document.getElementById('bnr-button');
 
 let base64;
 let audio64;
@@ -160,6 +163,38 @@ function changeEnv() {
   enableProduction.innerHTML = enableProd ? 'In Production' : 'In Integration';
 }
 
+// Guest access token via Service App - Logic deployed on the AWS Lambda
+async function fetchGuestAccessTokenLambda() {
+  const response = await fetch('https://pbw56237i55l2vkcpc5dhskhra0bplhr.lambda-url.us-east-2.on.aws');
+  const token = await response.text();
+
+  return token;
+}
+
+async function generateGuestToken() {
+  try {
+    const guestAccessToken = await fetchGuestAccessTokenLambda();
+    console.log('Guest Access Token: ', guestAccessToken);
+
+    tokenElm.value = guestAccessToken;
+  } catch (error) {
+    if (error.code === 401) {
+      // TODO: Refresh the access token and try again with the new token
+    }
+  }    
+}
+
+async function handleServiceSelect(e) {
+  const value = e.target.value;
+  tokenElm.value = '';
+
+  if (value === 'guestCalling') {
+    guestContainerElm.classList.remove('hidden');
+  } else {
+    guestContainerElm.classList.add('hidden');
+  }
+}
+
 async function initCalling(e) {
   e.preventDefault();
   console.log('Authentication#initWebex()');
@@ -232,6 +267,7 @@ async function initCalling(e) {
       country: country.value,
     },
     serviceData,
+    jwe: jwtTokenForDestElm.value,
   };
 
   if (callingClientConfig.discovery.country === 'Country') {
@@ -415,7 +451,7 @@ function muteUnmute() {
   if (callTransferObj){
     callTransferObj.mute(localAudioStream)
   }
-  else {  
+  else {
     call.mute(localAudioStream);
   }
 }
@@ -428,7 +464,7 @@ function holdResume() {
         holdResumeElm.value = 'Resume';
       }
     });
-  
+
     callTransferObj.on('resumed', (correlationId) => {
       if (holdResumeElm.value === 'Resume') {
         callDetailsElm.innerText = 'Call is Resumed';
@@ -444,7 +480,7 @@ function holdResume() {
         holdResumeElm.value = 'Resume';
       }
     });
-  
+
     call.on('resumed', (correlationId) => {
       if (holdResumeElm.value === 'Resume') {
         callDetailsElm.innerText = 'Call is Resumed';
@@ -455,14 +491,11 @@ function holdResume() {
   }
 }
 
-function deleteDevice() {
-  line.deregister();
-  line.on('unregistered', () => {
-    console.log("unregistered success");
-    registrationStatusElm.innerText = 'Unregistered';
-  })
+async function deleteDevice() {
+  await calling.deregister();
   registerElm.disabled = false;
   unregisterElm.disabled = true;
+  registrationStatusElm.innerText = "Unregistered";
 }
 
 function populateSourceDevices(mediaDevice) {
@@ -486,6 +519,29 @@ function populateSourceDevices(mediaDevice) {
   option.value = mediaDevice.ID;
   option.text = mediaDevice.label;
   select && select.appendChild(option);
+}
+
+async function changeInputStream() {
+  const selectedDevice = audioInputDevicesElem.options[audioInputDevicesElem.selectedIndex].value;
+
+  const constraints = {
+    audio: true,
+    deviceId: selectedDevice ? { exact: selectedDevice } : undefined
+  };
+  const newStream  = await Calling.createMicrophoneStream(constraints);
+
+  call.updateMedia(newStream);
+  localAudioStream = newStream;
+}
+
+async function changeOutputStream() {
+  const selectedDevice = audioOutputDevicesElem.options[audioOutputDevicesElem.selectedIndex].value;
+  mediaStreamsRemoteAudio.setSinkId(selectedDevice);
+}
+
+async function changeStream() {
+  changeInputStream();
+  changeOutputStream();
 }
 
 /**
@@ -644,22 +700,22 @@ async function getMediaStreams() {
   makeCallBtn.disabled = false;
 }
 
-async function addNoiseReductionEffect() {
-  effect = await localAudioStream.getEffect('background-noise-removal');
+async function toggleNoiseReductionEffect() {
+  const options =  {authToken: tokenElm.value, env: enableProd ? 'prod': 'int'} 
+  effect = await localAudioStream.getEffectByKind('noise-reduction-effect');
 
   if (!effect) {
-    effect = await Calling.createNoiseReductionEffect(tokenElm.value);
+    effect = await Calling.createNoiseReductionEffect(options);
 
-    await localAudioStream.addEffect('background-noise-removal', effect);
+    await localAudioStream.addEffect(effect);
   }
 
-  await effect.enable();
-}
-
-async function removeNoiseReductionEffect() {
-  effect = await localAudioStream.getEffect('background-noise-removal');
-  if (effect) {
+  if (effect.isEnabled) {
     await effect.disable();
+    bnrButton.innerText = 'Enable BNR';
+  } else {
+    await effect.enable();
+    bnrButton.innerText = 'Disable BNR';
   }
 }
 
@@ -1244,6 +1300,10 @@ async function createCustomContact() {
     phoneNumbers: [{
       type: 'work',
       value: formData.get('phone')
+    }],
+    emails: [{
+      type: 'work',
+      value: formData.get('email')
     }],
     contactType: 'CUSTOM',
   };

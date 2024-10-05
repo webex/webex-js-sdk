@@ -1,6 +1,6 @@
 import {assert} from '@webex/test-helper-chai';
 
-import validateCert, {KMSError} from '../../../src/kms-certificate-validation';
+import validateCert, {KMSError, validateCommonName, X509_SUBJECT_ALT_NAME_KEY} from '../../../src/kms-certificate-validation';
 
 const caroots = [
   'MIID6TCCAtGgAwIBAgIURmBu688C9oUIJXlykr1J3fi5H4kwDQYJKoZIhvcNAQELBQAwgYMxCzAJBgNVBAYTAlVTMREwDwYDVQQIDAhDb2xvcmFkbzEPMA0GA1UEBwwGRGVudmVyMRAwDgYDVQQKDAdFeGFtcGxlMR8wHQYDVQQDDBZodHRwczovL2NhLmV4YW1wbGUuY29tMR0wGwYJKoZIhvcNAQkBFg5jYUBleGFtcGxlLmNvbTAeFw0yMDAyMDYyMDIyMDhaFw00MDAyMDEyMDIyMDhaMIGDMQswCQYDVQQGEwJVUzERMA8GA1UECAwIQ29sb3JhZG8xDzANBgNVBAcMBkRlbnZlcjEQMA4GA1UECgwHRXhhbXBsZTEfMB0GA1UEAwwWaHR0cHM6Ly9jYS5leGFtcGxlLmNvbTEdMBsGCSqGSIb3DQEJARYOY2FAZXhhbXBsZS5jb20wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQC7TaDWldwjU65y4fnNDIuNu4dZi3bZvaN9nJ3A8D9pwFcNx3DL5cPpafAkJuE/2ZBrsZxJWKwXLQFuNE9V3XVslv0OPgEZVfY5AKuPhVezRqEqsCdUgODMkJat6PE02r0NZRFpBiRCThh0wY5u/tiTiPgjHwEPhBEyLgcJ6FOWLn9wBsS4SvBzfppYGL5GW1G0eN9yORnKKgqkgyf0x8FvTMyVSjtkhcI/kA/8061sl4DFG6sefQmAOVvH7tp7YmN+jpQ7cOKQtjOpZS6Gp22u7LEI0/qb5n2QvjjcUQM81mN6CZ8nciWXRgjBhdAJJhmyMvcx8rnVb6vtU26fCaetAgMBAAGjUzBRMB0GA1UdDgQWBBRZiCyKaTYL94gwhxzktYg32qMOYjAfBgNVHSMEGDAWgBRZiCyKaTYL94gwhxzktYg32qMOYjAPBgNVHRMBAf8EBTADAQH/MA0GCSqGSIb3DQEBCwUAA4IBAQATa2QkTGcj8IPjItnvg23ihlRjHdFHn6lB7uYPhcDurwRlBrlC2/OB44P3dHB9tEPbV4unoF9ftEKO3nNY3HUDcPrQwRqkPftlYYr4/6z/jnmNBRgiDICVaiTZNlX54fLiPsSAbIymPWLLLNtq17vjVEcfGUXhi/F+EkN/uXZ4yH6RK0YjBRwPV9cfziz1YsF2WVYVYtQErf+NTjnYR5S4Ba2kEqhI5j7mNhiafPNODaOchHcaRMvfWcBhlHt+atwNyPxNr4NP+cDjAWg0I8xAUdbZGQiRJecjkctolLHsfZXj+ulEv3eaKw7gSo3Aekexw8aZS7soy+VM1fzmLopw',
@@ -161,5 +161,38 @@ describe('internal-plugin-encryption', () => {
 
       return validateCert()(jwt).then((results) => assert.equal(results, jwt));
     });
+  });
+});
+
+describe('validateCommonName', () => {
+
+  const checkValidate = (SAN, kidHostname) => {
+    validateCommonName(
+      [
+        {
+          extensions: [
+            {
+              extnID: X509_SUBJECT_ALT_NAME_KEY,
+              parsedValue: {
+                altNames: [{value: 'Example.com'}],
+              },
+            },
+          ],
+        },
+      ],
+      {kid: 'https://Example.com'}
+    );
+  }
+
+  it('handles mixed case SAN', () => {
+    checkValidate('Example.com', 'https://Example.com');
+  });
+
+  it('handles different case SAN', () => {
+    checkValidate('ExAmpLe.cOm', 'https://example.com');
+  });
+
+  it('handles different case kid hostname', () => {
+    checkValidate('example.com', 'https://ExAmpLe.cOm');
   });
 });

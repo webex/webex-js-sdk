@@ -8,6 +8,9 @@ const sinon = require('sinon');
 const registerAssertions = require('./assertions');
 
 chai.use(registerAssertions);
+
+chai.config.truncateThreshold = 0;
+
 sinon.assert.expose(chai.assert, {prefix: ''});
 
 module.exports = chai;

@@ -6,7 +6,12 @@ import {EventEmitter} from 'events';
 import util from 'util';
 
 import {proxyEvents, retry, transferEvents} from '@webex/common';
-import {HttpStatusInterceptor, defaults as requestDefaults} from '@webex/http-core';
+import {
+  HttpStatusInterceptor,
+  defaults as requestDefaults,
+  protoprepareFetchOptions as prepareFetchOptions,
+  setTimingsAndFetch as _setTimingsAndFetch,
+} from '@webex/http-core';
 import {defaultsDeep, get, isFunction, isString, last, merge, omit, set, unset} from 'lodash';
 import AmpState from 'ampersand-state';
 import uuid from 'uuid';
@@ -26,6 +31,7 @@ import WebexUserAgentInterceptor from './interceptors/webex-user-agent';
 import RateLimitInterceptor from './interceptors/rate-limit';
 import EmbargoInterceptor from './interceptors/embargo';
 import DefaultOptionsInterceptor from './interceptors/default-options';
+import HostMapInterceptor from './lib/services/interceptors/hostmap';
 import config from './config';
 import {makeWebexStore} from './lib/storage';
 import mixinWebexCorePlugins from './lib/webex-core-plugin-mixin';
@@ -66,6 +72,7 @@ const interceptors = {
   NetworkTimingInterceptor: NetworkTimingInterceptor.create,
   EmbargoInterceptor: EmbargoInterceptor.create,
   DefaultOptionsInterceptor: DefaultOptionsInterceptor.create,
+  HostMapInterceptor: HostMapInterceptor.create,
 };
 
 const preInterceptors = [
@@ -401,6 +408,13 @@ const WebexCore = AmpState.extend({
       json: true,
       interceptors: ints,
     });
+
+    this.prepareFetchOptions = prepareFetchOptions({
+      json: true,
+      interceptors: ints,
+    });
+
+    this.setTimingsAndFetch = _setTimingsAndFetch;
 
     let sessionId = `${get(this, 'config.trackingIdPrefix', 'webex-js-sdk')}_${get(
       this,

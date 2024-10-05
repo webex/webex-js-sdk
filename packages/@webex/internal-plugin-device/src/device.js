@@ -6,6 +6,7 @@ import {safeSetTimeout} from '@webex/common-timers';
 import METRICS from './metrics';
 import {FEATURE_COLLECTION_NAMES, DEVICE_EVENT_REGISTRATION_SUCCESS} from './constants';
 import FeaturesModel from './features/features-model';
+import IpNetworkDetector from './ipNetworkDetector';
 
 /**
  * Determine if the plugin should be initialized based on cached storage.
@@ -34,6 +35,12 @@ const Device = WebexPlugin.extend({
      * @type {FeaturesModel}
      */
     features: FeaturesModel,
+    /**
+     * Helper class for detecting what IP network version (ipv4, ipv6) we're on.
+     *
+     * @type {IpNetworkDetector}
+     */
+    ipNetworkDetector: IpNetworkDetector,
   },
 
   /**
@@ -300,6 +307,14 @@ const Device = WebexPlugin.extend({
     isReachabilityChecked: ['boolean', false, false],
 
     /**
+     * This property stores whether or not the next refresh or register request should request energy forecast data
+     * in order to prevent over fetching energy forecasts
+     *
+     * @type {boolean}
+     */
+    energyForecastConfig: 'boolean',
+
+    /**
      * This property stores whether or not the current device is in a meeting
      * to prevent an unneeded timeout of a meeting due to inactivity.
      *
@@ -335,6 +350,15 @@ const Device = WebexPlugin.extend({
    */
   meetingEnded() {
     this.webex.trigger('meeting ended');
+  },
+
+  /**
+   * Set the value of energy forecast config for the current registered device.
+   * @param {boolean} [energyForecastConfig=false] - fetch an energy forecast on the next refresh/register
+   * @returns {void}
+   */
+  setEnergyForecastConfig(energyForecastConfig = false) {
+    this.energyForecastConfig = energyForecastConfig;
   },
 
   // Registration method members
@@ -388,6 +412,11 @@ const Device = WebexPlugin.extend({
         uri: this.url,
         body,
         headers,
+        qs: {
+          includeUpstreamServices: `all${
+            this.config.energyForecast && this.energyForecastConfig ? ',energyforecast' : ''
+          }`,
+        },
       })
         .then((response) => this.processRegistrationSuccess(response))
         .catch((reason) => {
@@ -419,6 +448,8 @@ const Device = WebexPlugin.extend({
   register() {
     this.logger.info('device: registering');
 
+    this.webex.internal.newMetrics.callDiagnosticMetrics.setDeviceInfo(this);
+
     // Validate that the device can be registered.
     return this.canRegister().then(() => {
       // Validate if the device is already registered and refresh instead.
@@ -444,6 +475,9 @@ const Device = WebexPlugin.extend({
       if (this.config.ephemeral) {
         body.ttl = this.config.ephemeralDeviceTTL;
       }
+      this.webex.internal.newMetrics.submitInternalEvent({
+        name: 'internal.register.device.request',
+      });
 
       // This will be replaced by a `create()` method.
       return this.request({
@@ -452,8 +486,25 @@ const Device = WebexPlugin.extend({
         resource: 'devices',
         body,
         headers,
+        qs: {
+          includeUpstreamServices: `all${
+            this.config.energyForecast && this.energyForecastConfig ? ',energyforecast' : ''
+          }`,
+        },
       })
+        .catch((error) => {
+          this.webex.internal.newMetrics.submitInternalEvent({
+            name: 'internal.register.device.response',
+          });
+
+          throw error;
+        })
         .then((response) => {
+          // Do not add any processing of response above this as that will affect timestamp
+          this.webex.internal.newMetrics.submitInternalEvent({
+            name: 'internal.register.device.response',
+          });
+
           this.webex.internal.metrics.submitClientMetrics(
             METRICS.JS_SDK_WDM_REGISTRATION_SUCCESSFUL
           );

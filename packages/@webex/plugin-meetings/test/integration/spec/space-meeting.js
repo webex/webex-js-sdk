@@ -3,15 +3,32 @@ import {assert} from '@webex/test-helper-chai';
 import {skipInNode, jenkinsOnly} from '@webex/test-helper-mocha';
 import {patterns} from '@webex/common';
 import MeetingInfoUtil from '@webex/plugin-meetings/dist/meeting-info/utilv2';
+import {createCameraStream, createMicrophoneStream} from '@webex/plugin-meetings';
 
 import CMR from '../../utils/cmr';
 import testUtils from '../../utils/testUtils';
+import integrationTestUtils from '../../utils/integrationTestUtils';
 
 require('dotenv').config();
 
 const webexTestUsers = require('../../utils/webex-test-users');
 
 let userSet, alice, bob, chris, guest;
+
+const localTracks = {
+  alice: {
+    microphone: undefined,
+    camera: undefined,
+  },
+  bob: {
+    microphone: undefined,
+    camera: undefined,
+  },
+  guest: {
+    microphone: undefined,
+    camera: undefined,
+  },
+};
 
 skipInNode(describe)('plugin-meetings', () => {
   describe('space-meeting', () => {
@@ -135,13 +152,22 @@ skipInNode(describe)('plugin-meetings', () => {
         .then(() => testUtils.waitForStateChange(bob.meeting, 'JOINED'))
         .then(() => testUtils.waitForStateChange(chris.meeting, 'JOINED')));
 
+    it('Bob and Alice create local microphone and camera tracks', async () => {
+      localTracks.alice.microphone = await createMicrophoneStream();
+      localTracks.alice.camera = await createCameraStream();
+
+      localTracks.bob.microphone = await createMicrophoneStream();
+      localTracks.bob.camera = await createCameraStream();
+    });
+
     it('Bob and Alice addsMedia', () =>
-      testUtils.addMedia(bob).then(() => testUtils.addMedia(alice)));
+      integrationTestUtils.addMedia(bob, {microphone: localTracks.bob.microphone, camera: localTracks.bob.camera})
+        .then(() => integrationTestUtils.addMedia(alice, {microphone: localTracks.alice.microphone, camera: localTracks.alice.camera})));
 
     it('Bob has flowing streams on reconnect', () => {
       const retrieveStats = () => {
         assert.isAbove(
-          bob.meeting.statsAnalyzer.statsResults.audio.recv.totalPacketsReceived,
+          bob.meeting.statsAnalyzer.statsResults['audio-recv-0'].recv.totalPacketsReceived,
           0,
           'total packets received greater than 0'
         );
@@ -187,7 +213,11 @@ skipInNode(describe)('plugin-meetings', () => {
           ])
         )
         .then(() => testUtils.waitForStateChange(guest.meeting, 'JOINED'))
-        .then(() => testUtils.addMedia(guest))
+        .then(async () => {
+          localTracks.guest.microphone = await createMicrophoneStream();
+          localTracks.guest.camera = await createCameraStream();
+        })
+        .then(() => integrationTestUtils.addMedia(guest, {microphone: localTracks.guest.microphone, camera: localTracks.guest.camera}))
         .catch((e) => {
           console.error('Error chris joining the meeting ', e);
           throw e;
@@ -219,6 +249,35 @@ skipInNode(describe)('plugin-meetings', () => {
         .then(() => testUtils.waitForStateChange(bob.meeting, 'LEFT'))
         .then(() => chris.meeting.leave())
         .then(() => testUtils.waitUntil(4000)));
+
+    it('alice, bob and chris stop all local tracks', () => {
+      if (localTracks.alice.microphone) {
+        localTracks.alice.microphone.stop();
+        localTracks.alice.microphone = undefined;
+      }
+      if (localTracks.alice.camera) {
+        localTracks.alice.camera.stop();
+        localTracks.alice.camera = undefined;
+      }
+
+      if (localTracks.bob.microphone) {
+        localTracks.bob.microphone.stop();
+        localTracks.bob.microphone = undefined;
+      }
+      if (localTracks.bob.camera) {
+        localTracks.bob.camera.stop();
+        localTracks.bob.camera = undefined;
+      }
+
+      if (localTracks.guest.microphone) {
+        localTracks.guest.microphone.stop();
+        localTracks.guest.microphone = undefined;
+      }
+      if (localTracks.guest.camera) {
+        localTracks.guest.camera.stop();
+        localTracks.guest.camera = undefined;
+      }
+    });
 
     it('check for meeting cleanup', () => {
       console.log('Alice ', alice.webex.meetings.getAllMeetings());
@@ -414,7 +473,11 @@ skipInNode(describe)('plugin-meetings', () => {
                 }),
             ])
               .then(() => testUtils.waitForStateChange(guest.meeting, 'JOINED'))
-              .then(() => testUtils.addMedia(guest));
+              .then(async () => {
+                localTracks.guest.microphone = await createMicrophoneStream();
+                localTracks.guest.camera = await createCameraStream();
+              })
+              .then(() => integrationTestUtils.addMedia(guest, {microphone: localTracks.guest.microphone, camera: localTracks.guest.camera}));
           })
           .catch((e) => {
             console.error('Error guest joining the meeting ', e);
@@ -451,6 +514,16 @@ skipInNode(describe)('plugin-meetings', () => {
               testUtils.waitForCallEnded(bob, alice.sipAddress),
               testUtils.waitForCallEnded(chris, alice.sipAddress),
             ])
+          .then(() => {
+            if (localTracks.guest.microphone) {
+              localTracks.guest.microphone.stop();
+              localTracks.guest.microphone = undefined;
+            }
+            if (localTracks.guest.camera) {
+              localTracks.guest.camera.stop();
+              localTracks.guest.camera = undefined;
+            }
+          })
           ));
     });
   });

@@ -11,6 +11,7 @@
     "Taymoor Khan <taykhan@cisco.com>"
   ],
   "main": "dist/index.js",
+  "types": "dist/types/index.d.ts",
   "devMain": "src/index.js",
   "repository": {
     "type": "git",
@@ -18,7 +19,7 @@
     "directory": "packages/@webex/plugin-meetings"
   },
   "engines": {
-    "node": ">=14"
+    "node": ">=16"
   },
   "browserify": {
     "transform": [
@@ -27,29 +28,28 @@
     ]
   },
   "scripts": {
-    "build": "yarn run -T tsc --declaration true --declarationDir ./dist",
-    "build:src": "webex-legacy-tools build -dest \"./dist\" -src \"./src\" -js -ts -maps",
+    "build": "yarn run -T tsc --declaration true --declarationDir ./dist/types",
+    "build:src": "webex-legacy-tools build -dest \"./dist\" -src \"./src\" -js -ts -maps && yarn build",
     "deploy:npm": "yarn npm publish",
     "test:broken": "yarn test:style && yarn test:unit && yarn test:integration && yarn test:browser",
-    "test:browser:broken": "webex-legacy-tools test --integration --unit --runner karma",
-    "test:integration:broken": "webex-legacy-tools test --integration --runner mocha",
+    "test:browser": "webex-legacy-tools test --integration --runner karma",
     "test:style": "eslint ./src/**/*.*",
-    "test:unit:broken": "webex-legacy-tools test --unit --runner mocha"
+    "test:unit": "webex-legacy-tools test --unit --runner mocha"
   },
   "devDependencies": {
     "@babel/core": "^7.17.10",
     "@types/jsdom": "^21",
-    "@webex/babel-config-legacy": "workspace:^",
-    "@webex/eslint-config-legacy": "workspace:^",
-    "@webex/jest-config-legacy": "workspace:^",
-    "@webex/legacy-tools": "workspace:^",
-    "@webex/plugin-meetings": "workspace:^",
-    "@webex/plugin-rooms": "workspace:^",
-    "@webex/test-helper-chai": "workspace:^",
-    "@webex/test-helper-mocha": "workspace:^",
-    "@webex/test-helper-mock-webex": "workspace:^",
-    "@webex/test-helper-retry": "workspace:^",
-    "@webex/test-helper-test-users": "workspace:^",
+    "@webex/babel-config-legacy": "workspace:*",
+    "@webex/eslint-config-legacy": "workspace:*",
+    "@webex/jest-config-legacy": "workspace:*",
+    "@webex/legacy-tools": "workspace:*",
+    "@webex/plugin-meetings": "workspace:*",
+    "@webex/plugin-rooms": "workspace:*",
+    "@webex/test-helper-chai": "workspace:*",
+    "@webex/test-helper-mocha": "workspace:*",
+    "@webex/test-helper-mock-webex": "workspace:*",
+    "@webex/test-helper-retry": "workspace:*",
+    "@webex/test-helper-test-users": "workspace:*",
     "chai": "^4.3.4",
     "chai-as-promised": "^7.1.1",
     "eslint": "^8.24.0",
@@ -57,27 +57,38 @@
     "jsdom-global": "3.0.2",
     "prettier": "^2.7.1",
     "sinon": "^9.2.4",
+    "typed-emitter": "^2.1.0",
     "typescript": "^4.7.4"
   },
   "dependencies": {
-    "@webex/common": "workspace:^",
-    "@webex/internal-media-core": "0.0.7-beta",
-    "@webex/internal-plugin-device": "workspace:^",
-    "@webex/internal-plugin-metrics": "workspace:^",
-    "@webex/internal-plugin-support": "workspace:^",
-    "@webex/internal-plugin-user": "workspace:^",
-    "@webex/plugin-people": "workspace:^",
-    "@webex/ts-sdp": "1.0.1",
-    "@webex/webex-core": "workspace:^",
+    "@webex/common": "workspace:*",
+    "@webex/internal-media-core": "2.11.1",
+    "@webex/internal-plugin-conversation": "workspace:*",
+    "@webex/internal-plugin-device": "workspace:*",
+    "@webex/internal-plugin-llm": "workspace:*",
+    "@webex/internal-plugin-mercury": "workspace:*",
+    "@webex/internal-plugin-metrics": "workspace:*",
+    "@webex/internal-plugin-support": "workspace:*",
+    "@webex/internal-plugin-user": "workspace:*",
+    "@webex/internal-plugin-voicea": "workspace:*",
+    "@webex/media-helpers": "workspace:*",
+    "@webex/plugin-people": "workspace:*",
+    "@webex/plugin-rooms": "workspace:*",
+    "@webex/web-capabilities": "^1.4.0",
+    "@webex/webex-core": "workspace:*",
+    "ampersand-collection": "^2.0.2",
     "bowser": "^2.11.0",
     "btoa": "^1.2.1",
     "dotenv": "^4.0.0",
     "global": "^4.4.0",
     "ip-anonymize": "^0.1.0",
     "javascript-state-machine": "^3.1.0",
+    "jwt-decode": "3.1.2",
     "lodash": "^4.17.21",
-    "sdp-transform": "^2.12.0",
     "uuid": "^3.3.2",
-    "webrtc-adapter": "^7.7.0"
-  }
+    "webrtc-adapter": "^8.1.2"
+  },
+  "//": [
+    "TODO: upgrade jwt-decode when moving to node 18"
+  ]
 }

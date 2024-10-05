@@ -1,6 +1,7 @@
 const Jasmine = require('jasmine');
 
 const { config, reporter } = require('@webex/jasmine-config');
+// eslint-disable-next-line import/no-unresolved
 const { Commands } = require('@webex/cli-tools');
 
 const test = {

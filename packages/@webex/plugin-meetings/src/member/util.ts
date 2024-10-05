@@ -1,4 +1,11 @@
 import {
+  IExternalRoles,
+  ParticipantWithRoles,
+  ServerRoles,
+  ServerRoleShape,
+  IMediaStatus,
+} from './types';
+import {
   _USER_,
   _RESOURCE_ROOM_,
   _OBSERVE_,
@@ -14,11 +21,78 @@ import {
   _SEND_RECEIVE_,
   _RECEIVE_ONLY_,
   _CALL_,
+  VIDEO,
+  AUDIO,
 } from '../constants';
 import ParameterError from '../common/errors/parameter';
-import {IMediaStatus} from './member.types';
 
 const MemberUtil: any = {};
+
+/**
+ * @param {Object} participant the locus participant
+ * @returns {Boolean}
+ */
+MemberUtil.canReclaimHost = (participant) => {
+  if (!participant) {
+    throw new ParameterError(
+      'canReclaimHostRole could not be processed, participant is undefined.'
+    );
+  }
+
+  return participant.canReclaimHostRole || false;
+};
+
+/**
+ * @param {Object} participant the locus participant
+ * @returns {[ServerRoleShape]}
+ */
+MemberUtil.getControlsRoles = (participant: ParticipantWithRoles): Array<ServerRoleShape> =>
+  participant?.controls?.role?.roles;
+
+/**
+ * @param {Object} participant the locus participant
+ * @param {ServerRoles} controlRole the search role
+ * @returns {Boolean}
+ */
+MemberUtil.hasRole = (participant: any, controlRole: ServerRoles): boolean =>
+  MemberUtil.getControlsRoles(participant)?.some(
+    (role) => role.type === controlRole && role.hasRole
+  );
+
+/**
+ * @param {Object} participant the locus participant
+ * @returns {Boolean}
+ */
+MemberUtil.hasCohost = (participant: ParticipantWithRoles): boolean =>
+  MemberUtil.hasRole(participant, ServerRoles.Cohost) || false;
+
+/**
+ * @param {Object} participant the locus participant
+ * @returns {Boolean}
+ */
+MemberUtil.hasModerator = (participant: ParticipantWithRoles): boolean =>
+  MemberUtil.hasRole(participant, ServerRoles.Moderator) || false;
+
+/**
+ * @param {Object} participant the locus participant
+ * @returns {Boolean}
+ */
+MemberUtil.hasPresenter = (participant: ParticipantWithRoles): boolean =>
+  MemberUtil.hasRole(participant, ServerRoles.Presenter) || false;
+
+/**
+ * @param {Object} participant the locus participant
+ * @returns {IExternalRoles}
+ */
+MemberUtil.extractControlRoles = (participant: ParticipantWithRoles): IExternalRoles => {
+  const roles = {
+    cohost: MemberUtil.hasCohost(participant),
+    moderator: MemberUtil.hasModerator(participant),
+    presenter: MemberUtil.hasPresenter(participant),
+  };
+
+  return roles;
+};
 
 /**
  * @param {Object} participant the locus participant
@@ -94,30 +168,20 @@ MemberUtil.isAudioMuted = (participant: any) => {
   if (!participant) {
     throw new ParameterError('Audio could not be processed, participant is undefined.');
   }
-  const mutedStatus = MemberUtil.isMuted(participant.status, AUDIO_STATUS);
 
-  if (participant.controls && participant.controls.audio) {
-    if (participant.controls.audio.muted) {
-      return true;
-    }
-    if (mutedStatus) {
-      return true;
-    }
-  }
-
-  return false;
+  return MemberUtil.isMuted(participant, AUDIO_STATUS, AUDIO);
 };
 
 /**
  * @param {Object} participant the locus participant
  * @returns {Boolean}
  */
-MemberUtil.isVideoMuted = (participant: any) => {
+MemberUtil.isVideoMuted = (participant: any): boolean => {
   if (!participant) {
     throw new ParameterError('Video could not be processed, participant is undefined.');
   }
 
-  return MemberUtil.isMuted(participant.status, VIDEO_STATUS);
+  return MemberUtil.isMuted(participant, VIDEO_STATUS, VIDEO);
 };
 
 /**
@@ -133,22 +197,69 @@ MemberUtil.isHandRaised = (participant: any) => {
 };
 
 /**
- * utility method for audio/video muted status
- * @param {String} status
- * @param {String} accessor
+ * @param {Object} participant the locus participant
  * @returns {Boolean}
  */
-MemberUtil.isMuted = (status: string, accessor: string) => {
-  if (status) {
-    if (status[accessor] === _RECEIVE_ONLY_) {
-      return true;
-    }
-    if (status[accessor] === _SEND_RECEIVE_) {
-      return false;
-    }
+MemberUtil.isBreakoutsSupported = (participant) => {
+  if (!participant) {
+    throw new ParameterError('Breakout support could not be processed, participant is undefined.');
   }
 
-  return null;
+  return !participant.doesNotSupportBreakouts;
+};
+
+/**
+ * @param {Object} participant the locus participant
+ * @returns {Boolean}
+ */
+MemberUtil.isInterpretationSupported = (participant) => {
+  if (!participant) {
+    throw new ParameterError(
+      'Interpretation support could not be processed, participant is undefined.'
+    );
+  }
+
+  return !participant.doesNotSupportSiInterpreter;
+};
+
+/**
+ * @param {Object} participant the locus participant
+ * @returns {Boolean}
+ */
+MemberUtil.isLiveAnnotationSupported = (participant) => {
+  if (!participant) {
+    throw new ParameterError(
+      'LiveAnnotation support could not be processed, participant is undefined.'
+    );
+  }
+
+  return !participant.annotatorAssignmentNotAllowed;
+};
+
+/**
+ * utility method for audio/video muted status
+ * @param {any} participant
+ * @param {String} statusAccessor
+ * @param {String} controlsAccessor
+ * @returns {Boolean | undefined}
+ */
+MemberUtil.isMuted = (participant: any, statusAccessor: string, controlsAccessor: string) => {
+  // check remote mute
+  const remoteMute = participant?.controls?.[controlsAccessor]?.muted;
+  if (remoteMute === true) {
+    return true;
+  }
+
+  // check local mute
+  const localStatus = participant?.status?.[statusAccessor];
+  if (localStatus === _RECEIVE_ONLY_) {
+    return true;
+  }
+  if (localStatus === _SEND_RECEIVE_) {
+    return false;
+  }
+
+  return remoteMute;
 };
 
 /**
@@ -266,8 +377,8 @@ MemberUtil.extractMediaStatus = (participant: any): IMediaStatus => {
   }
 
   return {
-    audio: participant.status.audioStatus,
-    video: participant.status.videoStatus,
+    audio: participant.status?.audioStatus,
+    video: participant.status?.videoStatus,
   };
 };
 

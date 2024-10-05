@@ -29,7 +29,7 @@ export {
   INTERNAL_US_INTEGRATION_CLUSTER_NAME,
 } from './constants';
 
-export {default as BrowserDetection} from './browser-detection';
+export {default as BrowserDetection, getBrowserSerial} from './browser-detection';
 export {
   buildHydraMembershipId,
   buildHydraMessageId,

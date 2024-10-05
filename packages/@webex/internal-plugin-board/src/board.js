@@ -126,17 +126,31 @@ const Board = WebexPlugin.extend({
       .then((res) => res.body);
   },
 
-  _prepareChannel(conversation, channel) {
-    return {
+  /**
+   * Prepare a create request body to the board services based on the provided
+   * conversation and channel.
+   *
+   * @param {Conversation} conversation - Conversation object.
+   * @param {Channel} channel - Channel Object
+   * @returns {Object} - Create channel request body.
+   */
+  _prepareChannel(conversation = {}, channel = {}) {
+    const results = {
       aclUrlLink: conversation.aclUrl,
       kmsMessage: {
         method: 'create',
         uri: '/resources',
-        userIds: [conversation.kmsResourceObjectUrl],
+        userIds: [],
         keyUris: [],
       },
       ...channel,
     };
+
+    if (conversation.kmsResourceObjectUrl) {
+      results.kmsMessage.userIds.push(conversation.kmsResourceObjectUrl);
+    }
+
+    return results;
   },
 
   /**
@@ -307,6 +321,8 @@ const Board = WebexPlugin.extend({
 
   /**
    * Deletes Contents from a Channel except the ones listed in contentsToKeep
+   *
+   * THIS API HAS CHANGED!!! SEE SPARK-412694. NEEDS UPDATING.
    * @memberof Board.BoardService
    * @param  {Board~Channel} channel
    * @param  {Array<Board~Content>} contentsToKeep Array of board objects (curves, text, and images) with valid contentId (received from server)

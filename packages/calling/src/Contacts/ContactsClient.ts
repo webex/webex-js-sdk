@@ -1,6 +1,12 @@
 /* eslint-disable no-await-in-loop */
-import {FAILURE_MESSAGE, STATUS_CODE, SUCCESS_MESSAGE} from '../common/constants';
-import {HTTP_METHODS, WebexRequestPayload, ContactDetail} from '../common/types';
+import {
+  FAILURE_MESSAGE,
+  SCIM_ENTERPRISE_USER,
+  SCIM_WEBEXIDENTITY_USER,
+  STATUS_CODE,
+  SUCCESS_MESSAGE,
+} from '../common/constants';
+import {HTTP_METHODS, WebexRequestPayload, ContactDetail, SCIMListResponse} from '../common/types';
 import {LoggerInterface} from '../Voicemail/types';
 import {ISDKConnector, WebexSDK} from '../SDKConnector/types';
 import SDKConnector from '../SDKConnector';
@@ -13,6 +19,8 @@ import {
   DEFAULT_GROUP_NAME,
   ENCRYPT_FILTER,
   GROUP_FILTER,
+  OR,
+  SCIM_ID_FILTER,
   USERS,
   encryptedFields,
 } from './constants';
@@ -27,7 +35,7 @@ import {
   GroupType,
 } from './types';
 
-import {serviceErrorCodeHandler} from '../common/Utils';
+import {scimQuery, serviceErrorCodeHandler} from '../common/Utils';
 
 /**
  * `ContactsClient` module is designed to offer a set of APIs for retrieving and updating contacts and groups from the contacts-service.
@@ -249,73 +257,73 @@ export class ContactsClient implements IContacts {
     return decryptedContact;
   }
 
-  /**
-   * Fetches contacts from DSS.
-   */
-  private async fetchContactFromDSS(contactsDataMap: ContactIdContactInfo): Promise<Contact[]> {
-    const contactList = [];
-    const dssResult = await this.webex.internal.dss.lookup({ids: Object.keys(contactsDataMap)});
+  private resolveCloudContacts(
+    contactsDataMap: ContactIdContactInfo,
+    inputList: SCIMListResponse
+  ): Contact[] | null {
+    const loggerContext = {
+      file: CONTACTS_FILE,
+      method: 'resolveCloudContacts',
+    };
+    const finalContactList: Contact[] = [];
+    const resolvedList: string[] = [];
 
-    for (let i = 0; i < dssResult.length; i += 1) {
-      const contact = dssResult[i];
-      const contactId = contact.identity;
-      const {displayName, emails, phoneNumbers, sipAddresses, photos} = contact;
-      const {department, firstName, identityManager, jobTitle, lastName} = contact.additionalInfo;
-      const manager =
-        identityManager && identityManager.displayName ? identityManager.displayName : undefined;
-      const {contactType, avatarUrlDomain, encryptionKeyUrl, ownerId, groups} =
-        contactsDataMap[contactId];
-      let avatarURL = '';
+    try {
+      inputList.Resources.forEach((item) => {
+        resolvedList.push(item.id);
+      });
 
-      if (photos.length) {
-        avatarURL = photos[0].value;
-      }
+      Object.values(contactsDataMap).forEach((item) => {
+        const isResolved = resolvedList.some((listItem) => listItem === item.contactId);
+        if (!isResolved) {
+          finalContactList.push({...item, resolved: false});
+        }
+      });
 
-      const addedPhoneNumbers = contactsDataMap[contactId].phoneNumbers;
+      for (let n = 0; n < inputList.Resources.length; n += 1) {
+        const filteredContact = inputList.Resources[n];
+        const {displayName, emails, phoneNumbers, photos} = filteredContact;
+        let sipAddresses;
+        if (filteredContact[SCIM_WEBEXIDENTITY_USER]) {
+          sipAddresses = filteredContact[SCIM_WEBEXIDENTITY_USER].sipAddresses;
+        }
+        const firstName = filteredContact.name?.givenName;
+        const lastName = filteredContact.name?.familyName;
+        const manager = filteredContact[SCIM_ENTERPRISE_USER]?.manager?.displayName;
+        const department = filteredContact[SCIM_ENTERPRISE_USER]?.department;
+        const avatarURL = photos?.length ? photos[0].value : '';
 
-      if (addedPhoneNumbers) {
-        const decryptedPhoneNumbers = await this.decryptContactDetail(
+        const {contactType, avatarUrlDomain, encryptionKeyUrl, ownerId, groups} =
+          contactsDataMap[inputList.Resources[n].id];
+
+        const cloudContact = {
+          avatarUrlDomain,
+          avatarURL,
+          contactId: inputList.Resources[n].id,
+          contactType,
+          department,
+          displayName,
+          emails,
           encryptionKeyUrl,
-          addedPhoneNumbers
-        );
+          firstName,
+          groups,
+          lastName,
+          manager,
+          ownerId,
+          phoneNumbers,
+          sipAddresses,
+          resolved: true,
+        };
 
-        decryptedPhoneNumbers.forEach((number) => phoneNumbers.push(number));
+        finalContactList.push(cloudContact);
       }
+    } catch (error: any) {
+      log.warn('Error occurred while parsing resolved contacts', loggerContext);
 
-      const addedSipAddresses = contactsDataMap[contactId].sipAddresses;
-
-      if (addedSipAddresses) {
-        const decryptedSipAddresses = await this.decryptContactDetail(
-          encryptionKeyUrl,
-          addedSipAddresses
-        );
-
-        decryptedSipAddresses.forEach((address) => sipAddresses.push(address));
-      }
-
-      const cloudContact = {
-        avatarUrlDomain,
-        avatarURL,
-        contactId,
-        contactType,
-        department,
-        displayName,
-        emails,
-        encryptionKeyUrl,
-        firstName,
-        groups,
-        lastName,
-        manager,
-        ownerId,
-        phoneNumbers,
-        sipAddresses,
-        title: jobTitle,
-      };
-
-      contactList.push(cloudContact);
+      return null;
     }
 
-    return contactList;
+    return finalContactList;
   }
 
   /**
@@ -328,7 +336,7 @@ export class ContactsClient implements IContacts {
     };
 
     const contactList: Contact[] = [];
-    const contactsDataMap: ContactIdContactInfo = {};
+    const cloudContactsMap: ContactIdContactInfo = {};
 
     try {
       const response = <WebexRequestPayload>await this.webex.request({
@@ -345,22 +353,28 @@ export class ContactsClient implements IContacts {
 
       const {contacts, groups} = responseBody;
 
-      for (let i = 0; i < contacts.length; i += 1) {
-        const contact = contacts[i];
-
+      contacts.map(async (contact) => {
         if (contact.contactType === ContactType.CUSTOM) {
           const decryptedContact = await this.decryptContact(contact);
 
           contactList.push(decryptedContact);
         } else if (contact.contactType === ContactType.CLOUD && contact.contactId) {
-          contactsDataMap[contact.contactId] = contact;
+          cloudContactsMap[contact.contactId] = contact;
         }
-      }
+      });
 
-      if (Object.keys(contactsDataMap).length) {
-        const cloudContacts = await this.fetchContactFromDSS(contactsDataMap);
-
-        contactList.push(...cloudContacts);
+      // Resolve cloud contacts
+      if (Object.keys(cloudContactsMap).length) {
+        const contactIdList = Object.keys(cloudContactsMap);
+        const query = contactIdList.map((item) => `${SCIM_ID_FILTER} "${item}"`).join(OR);
+        const result = await scimQuery(query);
+        const resolvedContacts = this.resolveCloudContacts(
+          cloudContactsMap,
+          result.body as SCIMListResponse
+        );
+        if (resolvedContacts) {
+          resolvedContacts.map((item) => contactList.push(item));
+        }
       }
 
       await Promise.all(
@@ -694,13 +708,15 @@ export class ContactsClient implements IContacts {
         message: SUCCESS_MESSAGE,
       };
 
-      if (contact.contactType === ContactType.CLOUD) {
-        const decryptedContacts = await this.fetchContactFromDSS(
-          Object.fromEntries([[newContact.contactId, newContact]]) as ContactIdContactInfo
+      if (contact.contactType === ContactType.CLOUD && newContact.contactId) {
+        const query = `${SCIM_ID_FILTER} "${newContact.contactId}"`;
+        const res = await scimQuery(query);
+        const resolvedContact = this.resolveCloudContacts(
+          Object.fromEntries([[newContact.contactId, newContact]]) as ContactIdContactInfo,
+          res.body as SCIMListResponse
         );
-
-        if (decryptedContacts.length && decryptedContacts[0]) {
-          this.contacts?.push(decryptedContacts[0]);
+        if (resolvedContact) {
+          this.contacts?.push(resolvedContact[0]);
         }
       } else {
         this.contacts?.push(contact);

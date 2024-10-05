@@ -52,7 +52,10 @@ export default function _request(options) {
     const x = xhr(params, (error, response) => {
       /* istanbul ignore next */
       if (error) {
-        options.logger.warn(error);
+        options.logger.warn(
+          `XHR error for ${options.method || 'request'} to ${options.uri} :`,
+          error
+        );
       }
 
       /* istanbul ignore else */
@@ -142,7 +145,7 @@ export default function _request(options) {
 
         const token = btoa(`${user}:${pass}`);
 
-        params.headers.authorization = `Basic ${token}`;
+        params.headers.Authorization = `Basic ${token}`;
       }
     }
   }

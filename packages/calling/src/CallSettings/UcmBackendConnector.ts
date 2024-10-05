@@ -1,29 +1,25 @@
+import log from '../Logger';
+import SDKConnector from '../SDKConnector';
+import {ISDKConnector, WebexSDK} from '../SDKConnector/types';
+import {serviceErrorCodeHandler} from '../common/Utils';
 import {
   FAILURE_MESSAGE,
   STATUS_CODE,
   SUCCESS_MESSAGE,
   UCM_CONNECTOR_FILE,
   VOICEMAIL,
+  WEBEX_API_CONFIG_INT_URL,
+  WEBEX_API_CONFIG_PROD_URL,
 } from '../common/constants';
-import SDKConnector from '../SDKConnector';
-import {ISDKConnector, WebexSDK} from '../SDKConnector/types';
+import {HTTP_METHODS, WebexRequestPayload} from '../common/types';
+import {CF_ENDPOINT, ORG_ENDPOINT, PEOPLE_ENDPOINT} from './constants';
 import {
-  LoggerInterface,
-  CallSettingResponse,
   CallForwardAlwaysSetting,
-  IUcmBackendConnector,
   CallForwardingSettingsUCM,
+  CallSettingResponse,
+  IUcmBackendConnector,
+  LoggerInterface,
 } from './types';
-import log from '../Logger';
-import {WebexRequestPayload, HTTP_METHODS} from '../common/types';
-import {
-  CF_ENDPOINT,
-  ORG_ENDPOINT,
-  PEOPLE_ENDPOINT,
-  WEBEX_APIS_INT_URL,
-  WEBEX_APIS_PROD_URL,
-} from './constants';
-import {serviceErrorCodeHandler} from '../common/Utils';
 
 /**
  * This Connector class will implement child interface of ICallSettings and
@@ -132,7 +128,9 @@ export class UcmBackendConnector implements IUcmBackendConnector {
       method: this.getCallForwardAlwaysSetting.name,
     };
 
-    const webexApisUrl = this.useProdWebexApis ? WEBEX_APIS_PROD_URL : WEBEX_APIS_INT_URL;
+    const webexApisUrl = this.useProdWebexApis
+      ? WEBEX_API_CONFIG_PROD_URL
+      : WEBEX_API_CONFIG_INT_URL;
 
     try {
       if (directoryNumber) {
@@ -144,7 +142,9 @@ export class UcmBackendConnector implements IUcmBackendConnector {
         });
 
         const {callForwarding} = resp.body as CallForwardingSettingsUCM;
-        const cfa = callForwarding.always.find((item) => item.dn.endsWith(directoryNumber));
+        const cfa = callForwarding.always.find(
+          (item) => item.dn.endsWith(directoryNumber) || item.e164Number.endsWith(directoryNumber)
+        );
 
         if (cfa) {
           const response = {

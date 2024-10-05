@@ -1,6 +1,6 @@
 {
   "name": "@webex/contact-center",
-  "description": "Package that provides ",
+  "description": "",
   "main": "dist/index.js",
   "devMain": "src/index.ts",
   "repository": {

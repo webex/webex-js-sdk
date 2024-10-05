@@ -6,7 +6,7 @@
 import {assert} from '@webex/test-helper-chai';
 import MockWebex from '@webex/test-helper-mock-webex';
 import sinon from 'sinon';
-import {browserOnly, nodeOnly} from '@webex/test-helper-mocha';
+import {browserOnly, nodeOnly, inBrowser} from '@webex/test-helper-mocha';
 import Logger, {levels} from '@webex/plugin-logger';
 import {WebexHttpError} from '@webex/webex-core';
 
@@ -48,6 +48,7 @@ describe('plugin-logger', () => {
         logger: Logger,
       },
     });
+    webex.logger.config.historyLength = 10000;
   });
 
   const fallbacks = {
@@ -183,6 +184,64 @@ describe('plugin-logger', () => {
       webex.logger.log(error);
       assert.lengthOf(webex.logger.buffer, 1);
       assert.match(webex.logger.buffer[0][3], /WebexHttpError/g);
+    });
+
+    it('formats objects as strings passed to the logger for readability not [Object object]', async () => {
+      webex.config.logger.level = 'trace';
+      const obj = {
+        headers: {
+          authorization: 'Bearer',
+          trackingid: '123',
+        },
+        test: 'object',
+        nested: {
+          test2: 'object2',
+        }
+      }
+
+      webex.logger.log('foo', 'bar', obj);
+      assert.lengthOf(webex.logger.buffer, 1);
+      assert.lengthOf(webex.logger.buffer[0], 6);
+      assert.deepEqual(webex.logger.buffer[0][2], 'wx-js-sdk');
+      assert.deepEqual(webex.logger.buffer[0][3], 'foo');
+      assert.deepEqual(webex.logger.buffer[0][4], 'bar');
+      assert.deepEqual(webex.logger.buffer[0][5], '{"headers":{"trackingid":"123"},"test":"object","nested":{"test2":"object2"}}');
+    });
+
+    it('formats objects as strings passed to the logger for readability not [Object object] w/ circular reference', async () => {
+      webex.config.logger.level = 'trace';
+      const obj = {
+        headers: {
+          authorization: 'Bearer',
+          trackingid: '123',
+        },
+        test: 'object',
+        nested: {
+          test2: 'object2',
+        }
+      }
+
+      obj.selfReference = obj;
+
+      webex.logger.log('foo', 'bar', obj);
+      assert.lengthOf(webex.logger.buffer, 1);
+      assert.lengthOf(webex.logger.buffer[0], 6);
+      assert.deepEqual(webex.logger.buffer[0][2], 'wx-js-sdk');
+      assert.deepEqual(webex.logger.buffer[0][3], 'foo');
+      assert.deepEqual(webex.logger.buffer[0][4], 'bar');
+      assert.deepEqual(webex.logger.buffer[0][5], '{"headers":{"trackingid":"123"},"test":"object","nested":{"test2":"object2"}}');
+    });
+
+    it('formats Errors correctly', async () => {
+      webex.config.logger.level = 'trace';
+      const err = new Error('fake error for testing')
+
+      webex.logger.log('I got this error:', err);
+      assert.lengthOf(webex.logger.buffer, 1);
+      assert.deepEqual(webex.logger.buffer[0][2], 'wx-js-sdk');
+      assert.deepEqual(webex.logger.buffer[0][3], 'I got this error:');
+      assert.deepEqual(webex.logger.buffer[0][4], 'Error: fake error for testing');
+
     });
   });
 
@@ -589,11 +648,20 @@ describe('plugin-logger', () => {
             trackingid: '123',
           },
         });
-        assert.calledWith(console[impl(level)], 'wx-js-sdk', {
-          headers: {
-            trackingid: '123',
-          },
-        });
+
+        if(inBrowser()) {
+          assert.calledWith(console[impl(level)], 'wx-js-sdk', JSON.stringify({
+            headers: {
+              trackingid: '123',
+            },
+          }));
+        } else {
+          assert.calledWith(console[impl(level)], 'wx-js-sdk', {
+            headers: {
+              trackingid: '123',
+            },
+          });
+        }
       });
     });
   });
@@ -607,15 +675,25 @@ describe('plugin-logger', () => {
       });
 
       // Assert auth was filtered
-      assert.calledWith(console.log, 'wx-js-sdk', {Key: 'myKey'});
 
-      webex.logger.log({
+      if(inBrowser()) { 
+        assert.calledWith(console.log, "wx-js-sdk", JSON.stringify({Key: 'myKey'}));
+      } else {
+        assert.calledWith(console.log, "wx-js-sdk", {Key: 'myKey'});
+      }
+        webex.logger.log({
         authorization: 'XXXXXXX',
         Key: 'myKey',
       });
+9
+      
+      if(inBrowser()) { 
+      assert.calledWith(console.log, "wx-js-sdk", JSON.stringify({Key: 'myKey'}));
 
-      assert.calledWith(console.log, 'wx-js-sdk', {Key: 'myKey'});
-    });
+      } else {
+      assert.calledWith(console.log, "wx-js-sdk", {Key: 'myKey'});
+
+      } });
 
     it('redact emails', () => {
       webex.config.logger.level = 'trace';
@@ -627,7 +705,27 @@ describe('plugin-logger', () => {
       assert.calledWith(console.log, 'wx-js-sdk', '[REDACTED]');
     });
 
-    it('handle circular references', () => {
+    it('redact MTID', () => {
+      webex.config.logger.level = 'trace';
+
+      const destination = 'https://example.com/example/j.php?MTID=m678957bc1eff989c2176b43ead9d46b5';
+
+      webex.logger.log(
+        `Info Unable to fetch meeting info for ${destination}.`
+      );
+      assert.calledWith(console.log, 'wx-js-sdk', 'Info Unable to fetch meeting info for https://example.com/example/j.php?MTID=[REDACTED]');
+
+      webex.logger.log('https://example.com/example/j.php?MTID=m678957bc1eff989c2176b43ead9d46b5&abcdefg');
+      assert.calledWith(console.log, 'wx-js-sdk', 'https://example.com/example/j.php?MTID=[REDACTED]&abcdefg');
+
+      webex.logger.log('https://example.com/example/j.php?MTID=m678957bc1eff989c2176b43ead9d46b5$abcdefg');
+      assert.calledWith(console.log, 'wx-js-sdk', 'https://example.com/example/j.php?MTID=[REDACTED]$abcdefg');
+
+      webex.logger.log('https://example.com/example/j.php?MTID=m678957bc1eff989c2176b43ead9d46b5#abcdefg');
+      assert.calledWith(console.log, 'wx-js-sdk', 'https://example.com/example/j.php?MTID=[REDACTED]#abcdefg');
+    });
+
+    nodeOnly(it)('handle circular references', () => {
       webex.config.logger.level = 'trace';
 
       const object = {
@@ -646,12 +744,19 @@ describe('plugin-logger', () => {
         Key: 'myKey',
       };
 
+      // Has self reference which is bad 
       expected.selfReference = expected;
 
-      assert.calledWith(console.log, 'wx-js-sdk', expected);
-    });
+      if(inBrowser()) { 
+        assert.calledWith(console.log, "wx-js-sdk", JSON.stringify(expected));
+  
+        } else {
+        assert.calledWith(console.log, "wx-js-sdk", expected);
+  
+        } 
+      });
 
-    it('handle circular references in complex objects', () => {
+    nodeOnly(it)('handle circular references in complex objects', () => {
       webex.config.logger.level = 'trace';
 
       const func = () => true;
@@ -680,7 +785,7 @@ describe('plugin-logger', () => {
 
       webex.logger.log(object);
 
-      assert.calledWith(console.log, 'wx-js-sdk', {
+      const res = {
         primativeString: 'justastring',
         primativeNum: 5,
         primativeBool: true,
@@ -697,9 +802,18 @@ describe('plugin-logger', () => {
           circularObjectRef: object,
           circularFunctionRef: func,
         },
+      }
+
+
+      if(inBrowser()) { 
+        assert.calledWith(console.log, "wx-js-sdk", JSON.stringify(res));
+  
+        } else {
+        assert.calledWith(console.log, "wx-js-sdk", res);
+  
+        }
       });
     });
-  });
 
   describe('#formatLogs()', () => {
     function sendRandomLog(log) {
@@ -800,6 +914,44 @@ describe('plugin-logger', () => {
       logSpies.forEach((logSpy) => {
         assert.notCalled(logSpy);
       });
+    });
+  });
+  describe('limit', () => {
+    function logMessages() {
+      return webex.logger.buffer.map((item) => item[3]);
+    }
+
+    it('can be increased in runtime', () => {
+      webex.logger.config.historyLength = 5;
+      for (let i = 0; i < 10; i += 1) {
+        webex.logger.log(i);
+      }
+
+      assert.deepEqual(logMessages(), [5, 6, 7, 8, 9]);
+      assert.lengthOf(webex.logger.buffer, 5);
+
+      webex.logger.config.historyLength = 10;
+      webex.logger.log(10);
+      assert.deepEqual(logMessages(), [5, 6, 7, 8, 9, 10]);
+      assert.lengthOf(webex.logger.buffer, 6);
+    });
+
+    it('can be decreased in runtime', () => {
+      for (let i = 0; i < 10; i += 1) {
+        webex.logger.log(i);
+      }
+
+      assert.deepEqual(logMessages(), [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+      assert.lengthOf(webex.logger.buffer, 10);
+
+      webex.logger.config.historyLength = 5;
+
+      // Log buffer truncated when the next log added
+      assert.lengthOf(webex.logger.buffer, 10);
+
+      webex.logger.log(10);
+      assert.deepEqual(logMessages(), [6, 7, 8, 9, 10]);
+      assert.lengthOf(webex.logger.buffer, 5);
     });
   });
 });

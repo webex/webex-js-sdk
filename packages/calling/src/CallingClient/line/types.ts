@@ -1,3 +1,5 @@
+import {LineEventTypes} from '../../Events/types';
+import {Eventing} from '../../Events/impl';
 import {IRegistration} from '../registration/types';
 import {LineError} from '../../Errors/catalog/LineError';
 import {
@@ -22,7 +24,7 @@ export enum LINE_EVENTS {
 /**
  * Represents an interface for managing a telephony line.
  */
-export interface ILine {
+export interface ILine extends Eventing<LineEventTypes> {
   /**
    * The unique identifier of the user associated with the line.
    */
@@ -171,16 +173,6 @@ export interface ILine {
    */
   getCall(correlationId: CorrelationId): ICall;
 }
-
-export type LineEventTypes = {
-  [LINE_EVENTS.CONNECTING]: () => void;
-  [LINE_EVENTS.ERROR]: (error: LineError) => void;
-  [LINE_EVENTS.RECONNECTED]: () => void;
-  [LINE_EVENTS.RECONNECTING]: () => void;
-  [LINE_EVENTS.REGISTERED]: (lineInfo: ILine) => void;
-  [LINE_EVENTS.UNREGISTERED]: () => void;
-  [LINE_EVENTS.INCOMING_CALL]: (callObj: ICall) => void;
-};
 
 export type LineEmitterCallback = (
   event: LINE_EVENTS,

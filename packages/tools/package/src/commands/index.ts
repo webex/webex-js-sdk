@@ -1,7 +1,9 @@
-import increment from './increment';
-import list from './list';
-import scripts from './scripts';
-import sync from './sync';
+export { default as increment } from './increment';
+export { default as list } from './list';
+export { default as scripts } from './scripts';
+export { default as sync } from './sync';
+export { default as update } from './update';
+export { default as changelog } from './changelog';
 
 export type {
   IncrementOptions,
@@ -20,9 +22,10 @@ export type {
   SyncOptions,
 } from './sync';
 
-export {
-  increment,
-  list,
-  scripts,
-  sync,
-};
+export type {
+  UpdateOptions,
+} from './update';
+
+export type{
+  ChangelogOptions,
+} from './changelog';

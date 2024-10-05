@@ -176,11 +176,14 @@ describe('plugin-device', () => {
     describe('#refresh()', () => {
       let requestSpy;
 
-      const setup = () => {
+      const setup = (config = {}) => {
         sinon.stub(device, 'canRegister').callsFake(() => Promise.resolve());
         sinon.stub(device, 'processRegistrationSuccess').callsFake(() => {});
         requestSpy = sinon.spy(device, 'request');
         device.config.defaults = {};
+        Object.keys((config)).forEach((key) => {
+          device.config[key] = config[key];
+        });
         device.set('registered', true);
       };
 
@@ -207,6 +210,144 @@ describe('plugin-device', () => {
 
         assert.deepEqual(requestSpy.args[0][0].headers, {});
       });
+
+      it('uses the energy forecast config to append upstream services to the outgoing call', async () => {
+        setup({energyForecast: true});
+        device.setEnergyForecastConfig(true);
+
+        await device.register();
+
+        assert.calledWith(requestSpy, sinon.match({
+          qs: { includeUpstreamServices: 'all,energyforecast' }
+        }))
+      });
+
+      it('uses the energy forecast config to not append upstream services to the outgoing call', async () => {
+        setup({energyForecast: true});
+        device.setEnergyForecastConfig(false);
+
+        await device.register();
+
+        assert.calledWith(requestSpy, sinon.match({
+          qs: { includeUpstreamServices: 'all' }
+        }))
+      });
+    });
+
+    describe('#register()', () => {
+      const setup = (config = {}) => {
+        webex.internal.metrics.submitClientMetrics = sinon.stub();
+        
+        sinon.stub(device, 'processRegistrationSuccess').callsFake(() => {});
+
+        device.config.defaults = {};
+        Object.keys(config).forEach((key) => {
+          device.config[key] = config[key];
+        });
+        device.set('registered', false);
+      };
+
+      it('checks that submitInternalEvent gets called with internal.register.device.request', async () => {
+        setup();
+        sinon.stub(device, 'canRegister').callsFake(() => Promise.resolve());
+        sinon.spy(device, 'request');
+
+        await device.register();
+
+        assert.calledWith(webex.internal.newMetrics.submitInternalEvent, {
+          name: 'internal.register.device.request',
+        });
+
+      });
+
+      it('checks that submitInternalEvent gets called with internal.register.device.response on error', async () => {
+        setup();
+        sinon.stub(device, 'canRegister').callsFake(() => Promise.resolve());
+        sinon.stub(device, 'request').rejects(new Error('some error'));
+
+        const result = device.register();
+
+        await assert.isRejected(result);
+
+        assert.calledWith(webex.internal.newMetrics.submitInternalEvent, {
+          name: 'internal.register.device.response',
+        });
+
+      });
+
+      it('checks that submitInternalEvent gets called with internal.register.device.response on success', async () => {
+        setup();
+        sinon.stub(device, 'canRegister').callsFake(() => Promise.resolve());
+
+        sinon.stub(device, 'request').callsFake(() => Promise.resolve({
+          exampleKey: 'example response value',
+        }));
+
+        await device.register();
+
+        assert.calledWith(webex.internal.newMetrics.submitInternalEvent, {
+          name: 'internal.register.device.response',
+        });
+      });
+
+      it('checks that submitInternalEvent not called when canRegister fails', async () => {
+        setup();
+        sinon.stub(device, 'canRegister').rejects(new Error('some error'));
+
+        const result =  device.register();
+
+        await assert.isRejected(result);
+
+        assert.notCalled(webex.internal.newMetrics.submitInternalEvent);
+      });
+
+      it('sets the deviceInfo for call diagnostic metrics', async () => {
+        setup();
+        sinon.stub(device, 'canRegister').callsFake(() => Promise.resolve());
+        sinon.spy(device, 'request');
+
+        await device.register();
+
+        assert.calledWith(webex.internal.newMetrics.callDiagnosticMetrics.setDeviceInfo, device);
+
+      });
+
+      it('uses the energy forecast config to append upstream services to the outgoing call', async () => {
+        setup({energyForecast: true});
+        sinon.stub(device, 'canRegister').callsFake(() => Promise.resolve());
+        const spy = sinon.spy(device, 'request');
+        device.setEnergyForecastConfig(true);
+
+        await device.register();
+
+        assert.calledWith(spy, {
+          method: 'POST',
+          service: 'wdm',
+          resource: 'devices',
+          body: {},
+          headers: {},
+          qs: { includeUpstreamServices: 'all,energyforecast' }
+        } )
+      });
+
+      it('uses the energy forecast config to not append upstream services to the outgoing call', async () => {
+        setup({energyForecast: true});
+        sinon.stub(device, 'canRegister').callsFake(() => Promise.resolve());
+        const spy = sinon.spy(device, 'request');
+        device.setEnergyForecastConfig(false);
+
+        await device.register();
+
+        assert.calledWith(spy, {
+          method: 'POST',
+          service: 'wdm',
+          resource: 'devices',
+          body: {},
+          headers: {},
+          qs: { includeUpstreamServices: 'all' }
+        } )
+      });
+
     });
 
     describe('#processRegistrationSuccess()', () => {

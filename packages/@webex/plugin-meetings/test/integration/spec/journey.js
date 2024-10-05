@@ -6,9 +6,11 @@ import {skipInNode} from '@webex/test-helper-mocha';
 import sinon from 'sinon';
 
 import BrowserDetection from '@webex/plugin-meetings/dist/common/browser-detection';
+import {createCameraStream, createDisplayStream, createMicrophoneStream, LocalTrackEvents, LocalStreamEventNames} from '@webex/plugin-meetings';
 
-import DEFAULT_RESOLUTIONS from '../../../src/config';
 import testUtils from '../../utils/testUtils';
+import integrationTestUtils from '../../utils/integrationTestUtils';
+import {EVENT_TRIGGERS} from '../../../dist/constants';
 
 require('dotenv').config();
 
@@ -17,6 +19,42 @@ const webexTestUsers = require('../../utils/webex-test-users');
 const {isBrowser} = BrowserDetection();
 
 let userSet, alice, bob, chris, enumerateSpy, channelUrlA, channelUrlB;
+
+const localStreams = {
+  alice: {
+    microphone: undefined,
+    camera: undefined,
+    screenShare: {
+      video: undefined,
+    }
+  },
+  bob: {
+    microphone: undefined,
+    camera: undefined,
+    screenShare: {
+      video: undefined,
+    }
+  },
+  chris: {
+    microphone: undefined,
+    camera: undefined,
+    screenShare: {
+      video: undefined,
+    }
+  },
+};
+
+// Updated expectedPublished from a boolean value to an object containing the stream and status properties
+const waitForPublished = (meeting, expectedPublished, description) => {
+  return testUtils.waitForEvents([{
+    scope: meeting,
+    event: EVENT_TRIGGERS.MEETING_STREAM_PUBLISH_STATE_CHANGED,
+    match: (event) => {
+      console.log(`${description} is now ${event.isPublished ? 'published': 'not published'}`);
+      return (event.isPublished === expectedPublished.status && event.stream.id === expectedPublished.stream.id) ;
+    }
+  }]);
+};
 
 skipInNode(describe)('plugin-meetings', () => {
   describe('journey', () => {
@@ -201,7 +239,7 @@ skipInNode(describe)('plugin-meetings', () => {
 
     // Enabled when config.enableUnifiedMeetings = true
     xdescribe('Conversation URL', () => {
-      describe('Successful 1:1 meeting', () => {
+      describe('Successful 1:1 meeting',  () => {
         it('Fetch meeting information with a conversation URL for a 1:1 space', async () => {
           assert.equal(Object.keys(bob.webex.meetings.getAllMeetings()), 0);
           assert.equal(Object.keys(chris.webex.meetings.getAllMeetings()), 0);
@@ -274,6 +312,11 @@ skipInNode(describe)('plugin-meetings', () => {
           );
       });
 
+      it('alice creates local microphone and camera tracks', async () => {
+        localStreams.alice.microphone = await createMicrophoneStream();
+        localStreams.alice.camera = await createCameraStream();
+      });
+
       it('alice dials bob and adds media', () =>
         Promise.all([
           testUtils.delayedPromise(alice.webex.meetings.create(bob.emailAddress)),
@@ -301,7 +344,7 @@ skipInNode(describe)('plugin-meetings', () => {
           })
           .then(() =>
             Promise.all([
-              testUtils.addMedia(alice),
+              integrationTestUtils.addMedia(alice, {microphone: localStreams.alice.microphone, camera: localStreams.alice.camera}),
               testUtils.waitForEvents([
                 {scope: alice.meeting, event: 'meeting:media:local:start', user: alice},
               ]),
@@ -328,9 +371,14 @@ skipInNode(describe)('plugin-meetings', () => {
         ]);
       });
 
+      it('bob creates local microphone and camera tracks', async () => {
+        localStreams.bob.microphone = await createMicrophoneStream();
+        localStreams.bob.camera = await createCameraStream();
+      });
+
       it('bob adds media to the meeting', () =>
         Promise.all([
-          testUtils.addMedia(bob),
+          integrationTestUtils.addMedia(bob, {microphone: localStreams.bob.microphone, camera: localStreams.bob.camera}),
           testUtils
             .waitForEvents([
               {scope: bob.meeting, event: 'meeting:media:local:start', user: bob},
@@ -372,136 +420,126 @@ skipInNode(describe)('plugin-meetings', () => {
         assert.exists(alice.meeting.members.selfId, 'selfId not present');
       });
 
-      it('alice Audio Mute ', () => {
+      it('alice Audio Mute ', async () => {
         const checkEvent = (event) =>
           !!event.delta.updated.find(
             (member) => alice.meeting.members.selfId === member.id && member.isAudioMuted === true
           );
 
-        return Promise.all([
-          testUtils.delayedPromise(alice.meeting.muteAudio()),
-          testUtils.waitForEvents([
-            {scope: bob.meeting.members, event: 'members:update', match: checkEvent},
-          ]),
-        ]).then(() => {
-          assert.equal(alice.meeting.audio.muted, true);
-          assert.equal(alice.meeting.isAudioMuted(), true);
-        });
+        await testUtils.waitUntil(2000);
+
+        const membersUpdate = testUtils.waitForEvents([
+          {scope: bob.meeting.members, event: 'members:update', match: checkEvent},
+        ]);
+
+        localStreams.alice.microphone.setUserMuted(true);
+
+        await membersUpdate;
+
+        assert.equal(localStreams.alice.microphone.userMuted, true);
       });
 
-      it('alice Audio unMute ', () => {
+      it('alice Audio unMute ', async () => {
         const checkEvent = (event) =>
           !!event.delta.updated.find(
             (member) => alice.meeting.members.selfId === member.id && member.isAudioMuted === false
           );
 
-        return Promise.all([
-          testUtils.delayedPromise(alice.meeting.unmuteAudio()),
-          testUtils.waitForEvents([
-            {scope: bob.meeting.members, event: 'members:update', match: checkEvent},
-          ]),
-        ]).then(() => {
-          assert.equal(alice.meeting.audio.muted, false);
-          assert.equal(alice.meeting.isAudioMuted(), false);
-        });
+        await testUtils.waitUntil(2000);
+
+        const membersUpdate = testUtils.waitForEvents([
+          {scope: bob.meeting.members, event: 'members:update', match: checkEvent},
+        ]);
+
+        localStreams.alice.microphone.setUserMuted(false);
+
+        await membersUpdate;
+
+        assert.equal(localStreams.alice.microphone.userMuted, false);
       });
 
-      it('alice Video Mute', () => {
+      it('alice video mute', async () => {
         const checkEvent = (event) =>
           !!event.delta.updated.find(
             (member) => alice.meeting.members.selfId === member.id && member.isVideoMuted === true
           );
 
-        return Promise.all([
-          testUtils.delayedPromise(alice.meeting.muteVideo()),
-          testUtils.waitForEvents([
-            {scope: alice.meeting.members, event: 'members:update', match: checkEvent},
-          ]),
-        ]).then(() => {
-          assert.equal(alice.meeting.video.muted, true);
-          assert.equal(alice.meeting.isVideoMuted(), true);
-        });
+        await testUtils.waitUntil(2000);
+
+        const membersUpdate = testUtils.waitForEvents([
+          {scope: bob.meeting.members, event: 'members:update', match: checkEvent},
+        ]);
+
+        localStreams.alice.camera.setUserMuted(true);
+
+        await membersUpdate;
+
+        assert.equal(localStreams.alice.camera.userMuted, true);
       });
 
-      it('alice video unMute', () => {
+      it('alice video unmute', async () => {
         const checkEvent = (event) =>
           !!event.delta.updated.find(
             (member) => alice.meeting.members.selfId === member.id && member.isVideoMuted === false
           );
 
-        return Promise.all([
-          testUtils.delayedPromise(alice.meeting.unmuteVideo()),
-          testUtils.waitForEvents([
-            {scope: bob.meeting.members, event: 'members:update', match: checkEvent},
-          ]),
-        ]).then(() => {
-          assert.equal(alice.meeting.video.muted, false);
-          assert.equal(alice.meeting.isVideoMuted(), false);
-        });
+        await testUtils.waitUntil(2000);
+
+        const membersUpdate = testUtils.waitForEvents([
+          {scope: bob.meeting.members, event: 'members:update', match: checkEvent},
+        ]);
+
+        localStreams.alice.camera.setUserMuted(false);
+
+        await membersUpdate;
+
+        assert.equal(localStreams.alice.camera.userMuted, false);
       });
 
-      it('alice update Audio', () => {
-        const oldVideoTrackId = alice.meeting.mediaProperties.videoTrack.id;
+      it('alice update Audio', async () => {
+        const newMicrophoneStream = await createMicrophoneStream();
+        const newStreamPublished = waitForPublished(alice.meeting, {stream: newMicrophoneStream, status: true}, "Alice AUDIO: new microphone stream");
 
-        return alice.meeting.getMediaStreams({sendAudio: true}).then((response) =>
-          Promise.all([
-            testUtils.delayedPromise(
-              alice.meeting
-                .updateAudio({
-                  sendAudio: true,
-                  receiveAudio: true,
-                  stream: response[0],
-                })
-                .then(() => {
-                  console.log(
-                    'AUDIO ',
-                    alice.meeting.mediaProperties.peerConnection.audioTransceiver.sender.track
-                  );
-                  assert.equal(
-                    alice.meeting.mediaProperties.audioTrack.id,
-                    response[0].getAudioTracks()[0].id
-                  );
-                  assert.equal(alice.meeting.mediaProperties.videoTrack.id, oldVideoTrackId);
-                })
-            ),
-            testUtils
-              .waitForEvents([{scope: alice.meeting, event: 'media:ready'}])
-              .then((response) => {
-                console.log('MEDIA:READY event ', response[0].result);
-                assert.equal(response[0].result.type === 'local', true);
-              }),
-          ])
-        );
+        await testUtils.delayedPromise(
+            alice.meeting
+              .publishStreams({
+                microphone: newMicrophoneStream,
+              })
+              .then(() => {
+                console.log('Alice AUDIO: new stream on meeting object:', alice.meeting.mediaProperties.audioStream);
+                assert.equal(
+                  alice.meeting.mediaProperties.audioStream.id,
+                  newMicrophoneStream.id
+                );
+              })
+          );
+
+        await newStreamPublished;
+
+        localStreams.alice.microphone = newMicrophoneStream;
       });
 
-      it('alice update video', () => {
-        const oldAudioTrackId = alice.meeting.mediaProperties.audioTrack.id;
+      it('alice update video', async () => {
+        const newCameraStream = await createCameraStream();
+        const newStreamPublished = waitForPublished(alice.meeting, {stream: newCameraStream, status:  true}, "Alice VIDEO: new camera stream");
 
-        return alice.meeting.getMediaStreams({sendVideo: true}).then((response) =>
-          Promise.all([
-            testUtils.delayedPromise(
-              alice.meeting
-                .updateVideo({
-                  sendVideo: true,
-                  receiveVideo: true,
-                  stream: response[0],
-                })
-                .then(() => {
-                  assert.equal(
-                    alice.meeting.mediaProperties.videoTrack.id,
-                    response[0].getVideoTracks()[0].id
-                  );
-                  assert.equal(alice.meeting.mediaProperties.audioTrack.id, oldAudioTrackId);
-                })
-            ),
-            testUtils
-              .waitForEvents([{scope: alice.meeting, event: 'media:ready'}])
-              .then((response) => {
-                console.log('MEDIA:READY event ', response[0].result);
-                assert.equal(response[0].result.type === 'local', true);
-              }),
-          ])
-        );
+        await testUtils.delayedPromise(
+            alice.meeting
+              .publishStreams({
+                camera: newCameraStream,
+              })
+              .then(() => {
+                console.log('Alice VIDEO: new stream on meeting:', alice.meeting.mediaProperties.videoStream);
+                assert.equal(
+                  alice.meeting.mediaProperties.videoStream.id,
+                  newCameraStream.id
+                );
+              })
+          );
+
+        await newStreamPublished;
+
+        localStreams.alice.camera = newCameraStream;
       });
 
       it('alice mutes bob', () =>
@@ -525,27 +563,25 @@ skipInNode(describe)('plugin-meetings', () => {
             }),
         ]));
 
-      it('bob audio mute, so alice cannot unmute bob', (done) => {
+      it('bob audio mute, so alice cannot unmute bob', async () => {
         const checkEvent = (event) =>
           !!event.delta.updated.find(
             (member) => bob.meeting.members.selfId === member.id && member.isAudioMuted === true
           );
 
+        const membersUpdate = testUtils.waitForEvents([
+          {scope: bob.meeting.members, event: 'members:update', match: checkEvent},
+        ]);
+
         // first bob mutes himself
-        Promise.all([
-          testUtils.delayedPromise(bob.meeting.muteAudio()),
-          testUtils.waitForEvents([
-            {scope: bob.meeting.members, event: 'members:update', match: checkEvent},
-          ]),
-        ])
-          .then(() => {
-            assert.equal(bob.meeting.audio.muted, true);
-            assert.equal(bob.meeting.isAudioMuted(), true);
-          })
-          // now alice tries to unmmut bob
-          .then(() =>
-            testUtils.delayedPromise(alice.meeting.mute(bob.meeting.members.selfId, false))
-          )
+        localStreams.bob.microphone.setUserMuted(true);
+
+        await membersUpdate;
+
+        assert.equal(localStreams.bob.microphone.userMuted, true);
+
+        // now alice tries to unmmute bob
+        await testUtils.delayedPromise(alice.meeting.mute(bob.meeting.members.selfId, false))
           // expect the waitForEvents to timeout
           .then(() =>
             testUtils.waitForEvents(
@@ -557,126 +593,121 @@ skipInNode(describe)('plugin-meetings', () => {
             assert.fail('bob received unexpected meeting:self:unmutedByOthers event');
           })
           .catch(() => {
-            assert.equal(bob.meeting.audio.muted, true);
-            assert.equal(bob.meeting.isAudioMuted(), true);
-            done();
+            assert.equal(localStreams.bob.microphone.userMuted, true);
           });
       });
 
-      it('bob audio unmute ', () => {
+      it('bob audio unmute ', async () => {
         const checkEvent = (event) =>
           !!event.delta.updated.find(
             (member) => bob.meeting.members.selfId === member.id && member.isAudioMuted === false
           );
 
-        return Promise.all([
-          testUtils.delayedPromise(bob.meeting.unmuteAudio()),
-          testUtils.waitForEvents([
-            {scope: alice.meeting.members, event: 'members:update', match: checkEvent},
-          ]),
-        ]).then(() => {
-          assert.equal(bob.meeting.audio.muted, false);
-          assert.equal(bob.meeting.isAudioMuted(), false);
-        });
+        const membersUpdate = testUtils.waitForEvents([
+          {scope: alice.meeting.members, event: 'members:update', match: checkEvent},
+        ]);
+
+        localStreams.bob.microphone.setUserMuted(false);
+
+        await membersUpdate;
+
+        assert.equal(localStreams.bob.microphone.userMuted, false);
       });
 
-      it('alice shares the screen with highFrameRate', () =>
-        Promise.all([
-          testUtils.delayedPromise(
-            alice.meeting.shareScreen({sharePreferences: {highFrameRate: true}})
-          ),
-          testUtils.waitForEvents([{scope: alice.meeting, event: 'meeting:startedSharingLocal'}]),
-          testUtils
-            .waitForEvents([{scope: bob.meeting, event: 'meeting:startedSharingRemote'}])
-            .then((response) => {
-              assert.equal(response[0].result.memberId, alice.meeting.selfId);
-            }),
-          testUtils
-            .waitForEvents([{scope: bob.meeting.members, event: 'members:update'}])
-            .then((response) => {
-              console.log(
-                'SCREEN SHARE RESPONSE ',
-                JSON.stringify(response, testUtils.getCircularReplacer())
-              );
-            }),
-          testUtils
-            .waitForEvents([{scope: alice.meeting, event: 'media:ready'}])
-            .then((response) => {
-              console.log('MEDIA:READY event ', response[0].result);
-              assert.equal(response[0].result.type === 'localShare', true);
-            }),
-        ]).then(() => {
-          // TODO: Re-eanable Safari when screensharing issues have been resolved
-          if (!isBrowser('safari')) {
-            assert.equal(alice.meeting.mediaProperties.shareTrack.getConstraints().height, 720);
-          }
-          assert.equal(alice.meeting.isSharing, true);
-          assert.equal(alice.meeting.shareStatus, 'local_share_active');
-          assert.equal(bob.meeting.shareStatus, 'remote_share_active');
-          console.log(
-            'SCREEN SHARE PARTICIPANTS ',
-            JSON.stringify(alice.meeting.locusInfo.participants)
-          );
+      it('alice shares the screen with highFrameRate', async () => {
+        localStreams.alice.screenShare.video = await createDisplayStream();
 
-          return testUtils.waitUntil(10000);
-        }));
-
-      it('bob steals the screen share from alice', () =>
-        Promise.all([
-          testUtils.delayedPromise(bob.meeting.shareScreen()),
-          testUtils.waitForEvents([{scope: alice.meeting, event: 'meeting:stoppedSharingLocal'}]),
-          testUtils.waitForEvents([{scope: bob.meeting, event: 'meeting:startedSharingLocal'}]),
-          testUtils
-            .waitForEvents([{scope: alice.meeting, event: 'meeting:startedSharingRemote'}])
-            .then((response) => {
-              assert.equal(response[0].result.memberId, bob.meeting.selfId);
-            }),
-          testUtils
-            .waitForEvents([{scope: alice.meeting.members, event: 'members:update'}])
-            .then((response) => {
-              console.log(
-                'SCREEN SHARE RESPONSE ',
-                JSON.stringify(response, testUtils.getCircularReplacer())
-              );
-            }),
-          testUtils.waitForEvents([{scope: bob.meeting, event: 'media:ready'}]).then((response) => {
-            console.log('MEDIA:READY event ', response[0].result);
-            assert.equal(response[0].result.type === 'localShare', true);
-          }),
-        ]).then(() => {
-          const heightResolution = DEFAULT_RESOLUTIONS.meetings.screenResolution.idealHeight;
-
-          // TODO: Re-eanable Safari when screensharing issues have been resolved
-          if (!isBrowser('safari')) {
-            assert.equal(
-              bob.meeting.mediaProperties.shareTrack.getConstraints().height,
-              heightResolution
+        const startedSharingLocal = testUtils.waitForEvents([{scope: alice.meeting, event: 'meeting:startedSharingLocal'}]);
+        const startedSharingRemote = testUtils.waitForEvents([{scope: bob.meeting, event: 'meeting:startedSharingRemote'}])
+          .then((response) => {
+            assert.equal(response[0].result.memberId, alice.meeting.selfId);
+          });
+        const bobReceivesMembersUpdate = testUtils.waitForEvents([{scope: bob.meeting.members, event: 'members:update'}])
+          .then((response) => {
+            console.log(
+              'SCREEN SHARE RESPONSE ',
+              JSON.stringify(response, testUtils.getCircularReplacer())
             );
-          }
-          assert.equal(bob.meeting.isSharing, true);
-          assert.equal(bob.meeting.shareStatus, 'local_share_active');
-          assert.equal(alice.meeting.shareStatus, 'remote_share_active');
+          });
 
-          return testUtils.waitUntil(10000);
-        }));
+        const screenShareVideoPublished = waitForPublished(alice.meeting, {stream: localStreams.alice.screenShare.video, status: true}, "alice's screen share video stream");
 
-      it('bob stops sharing ', () =>
-        Promise.all([
-          // Wait for peerConnection to stabalize
-          testUtils.waitUntil(20000),
-          testUtils.delayedPromise(
-            bob.meeting.updateShare({
-              sendShare: false,
-              receiveShare: true,
-            })
-          ),
-          testUtils.waitForEvents([{scope: bob.meeting, event: 'meeting:stoppedSharingLocal'}]),
-          testUtils.waitForEvents([{scope: alice.meeting, event: 'meeting:stoppedSharingRemote'}]),
-        ]).then(() => {
-          assert.equal(bob.meeting.isSharing, false);
-          assert.equal(bob.meeting.shareStatus, 'no_share');
-          assert.equal(alice.meeting.shareStatus, 'no_share');
-        }));
+        await testUtils.delayedPromise(alice.meeting.publishStreams({screenShare: {video: localStreams.alice.screenShare.video}}));
+
+        await screenShareVideoPublished;
+        await startedSharingLocal;
+        await startedSharingRemote;
+        await bobReceivesMembersUpdate;
+
+        assert.equal(alice.meeting.screenShareFloorState, 'floor_request_granted');
+        assert.equal(alice.meeting.shareStatus, 'local_share_active');
+        assert.equal(bob.meeting.shareStatus, 'remote_share_active');
+        console.log(
+          'SCREEN SHARE PARTICIPANTS ',
+          JSON.stringify(alice.meeting.locusInfo.participants)
+        );
+
+        await testUtils.waitUntil(10000);
+      });
+
+      it('bob steals the screen share from alice', async () => {
+        localStreams.bob.screenShare.video = await createDisplayStream();
+
+        const stoppedSharingLocal = testUtils.waitForEvents([{scope: alice.meeting, event: 'meeting:stoppedSharingLocal'}]);
+        const startedSharingLocal = testUtils.waitForEvents([{scope: bob.meeting, event: 'meeting:startedSharingLocal'}]);
+        const startedSharingRemote = testUtils.waitForEvents([{scope: alice.meeting, event: 'meeting:startedSharingRemote'}])
+          .then((response) => {
+            assert.equal(response[0].result.memberId, bob.meeting.selfId);
+          });
+        const aliceReceivesMembersUpdate = testUtils.waitForEvents([{scope: alice.meeting.members, event: 'members:update'}])
+          .then((response) => {
+            console.log(
+              'SCREEN SHARE RESPONSE ',
+              JSON.stringify(response, testUtils.getCircularReplacer())
+            );
+          });
+        const aliceScreenShareVideoUnpublished = waitForPublished(alice.meeting, {stream: localStreams.alice.screenShare.video, status: false}, "alice's screen share video stream");
+        const bobScreenShareVideoPublished = waitForPublished(bob.meeting, {stream: localStreams.bob.screenShare.video, status: true}, "bob's screen share video stream");
+
+        await testUtils.delayedPromise(bob.meeting.publishStreams({screenShare: {video: localStreams.bob.screenShare.video}}));
+
+        await bobScreenShareVideoPublished;
+        await aliceScreenShareVideoUnpublished;
+        await stoppedSharingLocal;
+        await startedSharingLocal;
+        await startedSharingRemote;
+        await aliceReceivesMembersUpdate;
+
+        localStreams.alice.screenShare.video.stop();
+        localStreams.alice.screenShare.video = undefined;
+
+        assert.equal(bob.meeting.screenShareFloorState, 'floor_request_granted');
+        assert.equal(bob.meeting.shareStatus, 'local_share_active');
+        assert.equal(alice.meeting.shareStatus, 'remote_share_active');
+
+        await testUtils.waitUntil(10000);
+      });
+
+      it('bob stops sharing', async () => {
+        const screenShareVideoUnpublished = waitForPublished(bob.meeting, {stream: localStreams.bob.screenShare.video, status: false}, "bob's screen share video stream");
+        const stoppedSharingLocal = testUtils.waitForEvents([{scope: bob.meeting, event: 'meeting:stoppedSharingLocal'}]);
+        const stoppedSharingRemote = testUtils.waitForEvents([{scope: alice.meeting, event: 'meeting:stoppedSharingRemote'}]);
+
+        await testUtils.delayedPromise(bob.meeting.unpublishStreams([localStreams.bob.screenShare.video]));
+
+        await screenShareVideoUnpublished;
+        await stoppedSharingLocal;
+        await stoppedSharingRemote;
+
+        localStreams.bob.screenShare.video.stop();
+        localStreams.bob.screenShare.video = undefined;
+
+        assert.equal(bob.meeting.screenShareFloorState, 'floor_released');
+        assert.equal(bob.meeting.shareStatus, 'no_share');
+        assert.equal(alice.meeting.shareStatus, 'no_share');
+
+        await testUtils.waitUntil(10000);
+      });
 
       it('alice shares whiteboard A', () =>
         Promise.all([
@@ -701,7 +732,7 @@ skipInNode(describe)('plugin-meetings', () => {
               );
             }),
         ]).then(() => {
-          assert.equal(alice.meeting.isSharing, false);
+          assert.equal(alice.meeting.screenShareFloorState, 'floor_released');
           assert.equal(alice.meeting.shareStatus, 'whiteboard_share_active');
           assert.equal(bob.meeting.shareStatus, 'whiteboard_share_active');
         }));
@@ -729,12 +760,12 @@ skipInNode(describe)('plugin-meetings', () => {
               );
             }),
         ]).then(() => {
-          assert.equal(bob.meeting.isSharing, false);
+          assert.equal(bob.meeting.screenShareFloorState, 'floor_released');
           assert.equal(alice.meeting.shareStatus, 'whiteboard_share_active');
           assert.equal(bob.meeting.shareStatus, 'whiteboard_share_active');
         }));
 
-      it('bob stops sharing ', () =>
+      it('bob stops sharing again', () =>
         Promise.all([
           // Wait for peerConnection to stabalize
           testUtils.waitUntil(20000),
@@ -746,7 +777,7 @@ skipInNode(describe)('plugin-meetings', () => {
             {scope: alice.meeting, event: 'meeting:stoppedSharingWhiteboard'},
           ]),
         ]).then(() => {
-          assert.equal(bob.meeting.isSharing, false);
+          assert.equal(bob.meeting.screenShareFloorState, 'floor_released');
           assert.equal(bob.meeting.shareStatus, 'no_share');
           assert.equal(alice.meeting.shareStatus, 'no_share');
         }));
@@ -774,51 +805,43 @@ skipInNode(describe)('plugin-meetings', () => {
               );
             }),
         ]).then(() => {
-          assert.equal(alice.meeting.isSharing, false);
+          assert.equal(alice.meeting.screenShareFloorState, 'floor_released');
           assert.equal(alice.meeting.shareStatus, 'whiteboard_share_active');
           assert.equal(bob.meeting.shareStatus, 'whiteboard_share_active');
         }));
 
-      it('bob steals the share from alice with desktop share', () =>
-        Promise.all([
-          testUtils.delayedPromise(bob.meeting.shareScreen()),
-          testUtils.waitForEvents([
-            {scope: alice.meeting, event: 'meeting:stoppedSharingWhiteboard'},
-          ]),
-          testUtils.waitForEvents([{scope: bob.meeting, event: 'meeting:startedSharingLocal'}]),
-          testUtils
-            .waitForEvents([{scope: alice.meeting, event: 'meeting:startedSharingRemote'}])
-            .then((response) => {
-              assert.equal(response[0].result.memberId, bob.meeting.selfId);
-            }),
-          testUtils
-            .waitForEvents([{scope: alice.meeting.members, event: 'members:update'}])
-            .then((response) => {
-              console.log(
-                'SCREEN SHARE RESPONSE ',
-                JSON.stringify(response, testUtils.getCircularReplacer())
-              );
-            }),
-          testUtils.waitForEvents([{scope: bob.meeting, event: 'media:ready'}]).then((response) => {
-            console.log('MEDIA:READY event ', response[0].result);
-            assert.equal(response[0].result.type === 'localShare', true);
-          }),
-        ]).then(() => {
-          const heightResolution = DEFAULT_RESOLUTIONS.meetings.screenResolution.idealHeight;
+      it('bob steals the share from alice with desktop share', async () => {
+        localStreams.bob.screenShare.video = await createDisplayStream();
 
-          // TODO: Re-eanable Safari when screensharing issues have been resolved
-          if (!isBrowser('safari')) {
-            assert.equal(
-              bob.meeting.mediaProperties.shareTrack.getConstraints().height,
-              heightResolution
+        const stoppedSharingWhiteboard = testUtils.waitForEvents([{scope: alice.meeting, event: 'meeting:stoppedSharingWhiteboard'}]);
+        const startedSharingLocal = testUtils.waitForEvents([{scope: bob.meeting, event: 'meeting:startedSharingLocal'}]);
+        const startedSharingRemote = testUtils.waitForEvents([{scope: alice.meeting, event: 'meeting:startedSharingRemote'}])
+          .then((response) => {
+            assert.equal(response[0].result.memberId, bob.meeting.selfId);
+          });
+        const aliceReceivesMembersUpdate = testUtils.waitForEvents([{scope: alice.meeting.members, event: 'members:update'}])
+          .then((response) => {
+            console.log(
+              'SCREEN SHARE RESPONSE ',
+              JSON.stringify(response, testUtils.getCircularReplacer())
             );
-          }
-          assert.equal(bob.meeting.isSharing, true);
-          assert.equal(bob.meeting.shareStatus, 'local_share_active');
-          assert.equal(alice.meeting.shareStatus, 'remote_share_active');
+          });
+        const bobScreenShareVideoPublished = waitForPublished(bob.meeting, {stream: localStreams.bob.screenShare.video, status: true}, "bob's screen share video stream");
 
-          return testUtils.waitUntil(10000);
-        }));
+        await testUtils.delayedPromise(bob.meeting.publishStreams({screenShare: {video: localStreams.bob.screenShare.video}}));
+
+        await bobScreenShareVideoPublished;
+        await stoppedSharingWhiteboard;
+        await startedSharingLocal;
+        await startedSharingRemote;
+        await aliceReceivesMembersUpdate;
+
+        assert.equal(bob.meeting.screenShareFloorState, 'floor_request_granted');
+        assert.equal(bob.meeting.shareStatus, 'local_share_active');
+        assert.equal(alice.meeting.shareStatus, 'remote_share_active');
+
+        await testUtils.waitUntil(10000);
+      });
 
       it('bob shares whiteboard B', () =>
         Promise.all([
@@ -843,7 +866,7 @@ skipInNode(describe)('plugin-meetings', () => {
               );
             }),
         ]).then(() => {
-          assert.equal(bob.meeting.isSharing, false);
+          assert.equal(bob.meeting.screenShareFloorState, 'floor_released');
           assert.equal(alice.meeting.shareStatus, 'whiteboard_share_active');
           assert.equal(bob.meeting.shareStatus, 'whiteboard_share_active');
         }));
@@ -889,7 +912,11 @@ skipInNode(describe)('plugin-meetings', () => {
                 );
               })
               .then(() => testUtils.waitForStateChange(chris.meeting, 'JOINED'))
-              .then(() => testUtils.addMedia(chris))
+              .then(async () => {
+                localStreams.chris.microphone = await createMicrophoneStream();
+                localStreams.chris.camera = await createCameraStream();
+              })
+              .then(() => integrationTestUtils.addMedia(chris, {microphone: localStreams.chris.microphone, camera: localStreams.chris.camera}))
               .then(() => assert(enumerateSpy.called));
           })
           .then(() =>
@@ -935,6 +962,35 @@ skipInNode(describe)('plugin-meetings', () => {
             assert.equal(alice.webex.meetings.getMeetingByType('sipUri', bob.emailAddress), null);
             assert.equal(bob.webex.meetings.getMeetingByType('sipUri', alice.emailAddress), null);
           });
+      });
+
+      it('stop all local streams', () => {
+        if (localStreams.alice.microphone) {
+          localStreams.alice.microphone.stop();
+          localStreams.alice.microphone = undefined;
+        }
+        if (localStreams.alice.camera) {
+          localStreams.alice.camera.stop();
+          localStreams.alice.camera = undefined;
+        }
+
+        if (localStreams.bob.microphone) {
+          localStreams.bob.microphone.stop();
+          localStreams.bob.microphone = undefined;
+        }
+        if (localStreams.bob.camera) {
+          localStreams.bob.camera.stop();
+          localStreams.bob.camera = undefined;
+        }
+
+        if (localStreams.chris.microphone) {
+          localStreams.chris.microphone.stop();
+          localStreams.chris.microphone = undefined;
+        }
+        if (localStreams.chris.camera) {
+          localStreams.chris.camera.stop();
+          localStreams.chris.camera = undefined;
+        }
       });
     });
   });

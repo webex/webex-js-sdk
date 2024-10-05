@@ -57,6 +57,10 @@ Config.webex = {
       enabled: true,
     },
     enableRtx: true,
+    experimental: {
+      enableMediaNegotiatedEvent: true,
+      enableUnifiedMeetings: true,
+    },
   },
   people: {
     showAllTypes: true,

@@ -4,13 +4,14 @@
   "license": "MIT",
   "main": "dist/index.js",
   "devMain": "src/index.js",
+  "types": "dist/types/index.d.ts",
   "repository": {
     "type": "git",
     "url": "https://github.com/webex/webex-js-sdk.git",
     "directory": "packages/@webex/internal-plugin-metrics"
   },
   "engines": {
-    "node": ">=14"
+    "node": ">=16"
   },
   "browserify": {
     "transform": [
@@ -21,33 +22,36 @@
   "devDependencies": {
     "@babel/core": "^7.17.10",
     "@sinonjs/fake-timers": "^6.0.1",
-    "@webex/babel-config-legacy": "workspace:^",
-    "@webex/eslint-config-legacy": "workspace:^",
-    "@webex/jest-config-legacy": "workspace:^",
-    "@webex/legacy-tools": "workspace:^",
-    "@webex/test-helper-chai": "workspace:^",
-    "@webex/test-helper-mocha": "workspace:^",
-    "@webex/test-helper-mock-webex": "workspace:^",
-    "@webex/test-helper-test-users": "workspace:^",
+    "@webex/babel-config-legacy": "workspace:*",
+    "@webex/eslint-config-legacy": "workspace:*",
+    "@webex/jest-config-legacy": "workspace:*",
+    "@webex/legacy-tools": "workspace:*",
+    "@webex/test-helper-chai": "workspace:*",
+    "@webex/test-helper-mocha": "workspace:*",
+    "@webex/test-helper-mock-webex": "workspace:*",
+    "@webex/test-helper-test-users": "workspace:*",
     "eslint": "^8.24.0",
     "prettier": "^2.7.1",
     "sinon": "^9.2.4"
   },
   "dependencies": {
-    "@webex/common": "workspace:^",
-    "@webex/common-timers": "workspace:^",
-    "@webex/test-helper-chai": "workspace:^",
-    "@webex/test-helper-mock-webex": "workspace:^",
-    "@webex/webex-core": "workspace:^"
+    "@webex/common": "workspace:*",
+    "@webex/common-timers": "workspace:*",
+    "@webex/event-dictionary-ts": "^1.0.1546",
+    "@webex/internal-plugin-metrics": "workspace:*",
+    "@webex/test-helper-chai": "workspace:*",
+    "@webex/test-helper-mock-webex": "workspace:*",
+    "@webex/webex-core": "workspace:*",
+    "ip-anonymize": "^0.1.0",
+    "lodash": "^4.17.21",
+    "uuid": "^3.3.2"
   },
   "scripts": {
-    "build": "yarn build:src",
-    "build:src": "webex-legacy-tools build -dest \"./dist\" -src \"./src\" -js -ts -maps",
+    "build": " yarn run -T tsc --declaration true --declarationDir ./dist/types",
+    "build:src": "webex-legacy-tools build -dest \"./dist\" -src \"./src\" -js -ts -maps && yarn build",
     "deploy:npm": "yarn npm publish",
     "test": "yarn test:style && yarn test:unit && yarn test:integration && yarn test:browser",
-    "test:browser": "webex-legacy-tools test --integration --unit --runner karma",
-    "test:integration": "webex-legacy-tools test --integration --runner mocha",
     "test:style": "eslint ./src/**/*.*",
-    "test:unit": "webex-legacy-tools test --unit --runner jest"
+    "test:unit": "webex-legacy-tools test --unit --runner mocha"
   }
 }

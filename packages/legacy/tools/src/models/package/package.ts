@@ -62,11 +62,11 @@ class Package {
     const inputPath = path.join(this.data.packageRoot, source);
 
     const javascriptFileCollector = javascript
-      ? Package.getFiles({ location: inputPath, pattern: CONSTANTS.PATTERNS.JAVASCRIPT })
+      ? Package.getFiles({ location: inputPath, pattern: CONSTANTS.PATTERNS.JAVASCRIPT, targets: undefined })
       : Promise.resolve([]);
 
     const typescriptFileCollector = typescript
-      ? Package.getFiles({ location: inputPath, pattern: CONSTANTS.PATTERNS.TYPESCRIPT })
+      ? Package.getFiles({ location: inputPath, pattern: CONSTANTS.PATTERNS.TYPESCRIPT, targets: undefined })
       : Promise.resolve([]);
 
     return Promise.all([javascriptFileCollector, typescriptFileCollector])
@@ -104,6 +104,7 @@ class Package {
       ? Package.getFiles({
         location: path.join(testDirectory, CONSTANTS.TEST_DIRECTORIES.UNIT),
         pattern: CONSTANTS.PATTERNS.TEST,
+        targets: config.targets,
       })
       : Promise.resolve([]);
 
@@ -111,6 +112,7 @@ class Package {
       ? Package.getFiles({
         location: path.join(testDirectory, CONSTANTS.TEST_DIRECTORIES.INTEGRATION),
         pattern: CONSTANTS.PATTERNS.TEST,
+        targets: config.targets,
       })
       : Promise.resolve([]);
 
@@ -155,8 +157,14 @@ class Package {
    * @param options - Options for getting files.
    * @returns - Promise resolving to an Array of file paths.
    */
-  protected static getFiles({ location, pattern }: { location: string, pattern: string }): Promise<Array<string>> {
-    const target = path.join(location, pattern);
+  protected static getFiles({ location, pattern, targets }:
+  { location: string, pattern: string, targets: string | undefined }): Promise<Array<string>> {
+    let target;
+    if (!targets) {
+      target = path.join(location, pattern);
+    } else {
+      target = path.join(location, targets);
+    }
 
     return glob.glob(target);
   }

@@ -49,7 +49,6 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
    * @type {Boolean}
    * @public
    */
-  private registered = false;
 
   private webSocketUrl?: string;
 
@@ -57,17 +56,7 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
 
   private locusUrl?: string;
 
-  /**
-   * Initializes the LLM Plugin
-   * @constructor
-   * @public
-   */
-  constructor(...args) {
-    // eslint-disable-next-line constructor-super
-    super(...args);
-
-    this.registered = false;
-  }
+  private datachannelUrl?: string;
 
   /**
    * Register to the websocket
@@ -78,6 +67,7 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
     this.request({
       method: 'POST',
       url: llmSocketUrl,
+      body: {deviceUrl: this.webex.internal.device.url},
     })
       .then((res: {body: {webSocketUrl: string; binding: string}}) => {
         this.webSocketUrl = res.body.webSocketUrl;
@@ -98,20 +88,19 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
     this.register(datachannelUrl).then(() => {
       if (!locusUrl || !datachannelUrl) return undefined;
       this.locusUrl = locusUrl;
-      this.connect(this.webSocketUrl).then(() => {
-        this.registered = true;
-      });
+      this.datachannelUrl = datachannelUrl;
+      this.connect(this.webSocketUrl);
     });
 
   /**
    * Tells if LLM socket is connected
-   * @returns {boolean} isRegistered
+   * @returns {boolean} connected
    */
-  public isConnected = (): boolean => this.registered;
+  public isConnected = (): boolean => this.connected;
 
   /**
-   * Tells if LLM socket is connected
-   * @returns {bool} isRegistered
+   * Tells if LLM socket is binding
+   * @returns {string} binding
    */
   public getBinding = (): string => this.binding;
 
@@ -122,13 +111,19 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
   public getLocusUrl = (): string => this.locusUrl;
 
   /**
+   * Get data channel URL for the connection
+   * @returns {string} data channel Url
+   */
+  public getDatachannelUrl = (): string => this.datachannelUrl;
+
+  /**
    * Disconnects websocket connection
    * @returns {Promise<void>}
    */
   public disconnectLLM = (): Promise<void> =>
     this.disconnect().then(() => {
-      this.registered = false;
       this.locusUrl = undefined;
+      this.datachannelUrl = undefined;
       this.binding = undefined;
       this.webSocketUrl = undefined;
     });

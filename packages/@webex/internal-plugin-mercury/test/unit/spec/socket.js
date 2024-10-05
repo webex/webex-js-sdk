@@ -40,8 +40,10 @@ describe('plugin-mercury', () => {
     });
 
     beforeEach(() => {
-      sinon.stub(Socket, 'getWebSocketConstructor').callsFake(() => function (...args) {
-        mockWebSocket = new MockWebSocket(...args);
+      sinon.stub(Socket, 'getWebSocketConstructor').callsFake(
+        () =>
+          function (...args) {
+            mockWebSocket = new MockWebSocket(...args);
 
             return mockWebSocket;
           }
@@ -69,7 +71,7 @@ describe('plugin-mercury', () => {
       });
     });
 
-    describe.skip('#open()', () => {
+    describe('#open()', () => {
       let socket;
 
       beforeEach(() => {
@@ -213,7 +215,7 @@ describe('plugin-mercury', () => {
       });
     });
 
-    describe.skip('#open()', () => {
+    describe('#open()', () => {
       it('requires a url parameter', () => {
         const s = new Socket();
 
@@ -450,7 +452,7 @@ describe('plugin-mercury', () => {
         Promise.all([
           assert.isRejected(
             socket.close({code: 1001}),
-            /`options.code` must be 1000 or between 3000 and 4999 \(inclusive\)/
+            /`options.code` must be 1000 or 1050 or between 3000 and 4999 \(inclusive\)/
           ),
           socket.close({code: 1000}),
         ]));
@@ -462,6 +464,14 @@ describe('plugin-mercury', () => {
             reason: 'Custom Normal',
           })
           .then(() => assert.calledWith(mockWebSocket.close, 3001, 'Custom Normal')));
+
+      it('accepts the logout reason', () =>
+            socket
+              .close({
+                code: 1050,
+                reason: 'done (permanent)',
+              })
+              .then(() => assert.calledWith(mockWebSocket.close, 1050, 'done (permanent)')));
 
       it('can safely be called called multiple times', () => {
         const p1 = socket.close();
@@ -498,6 +508,84 @@ describe('plugin-mercury', () => {
           mockWebSocket.removeAllListeners('close');
 
           const promise = socket.close();
+
+          clock.tick(mockoptions.forceCloseDelay);
+
+          return promise.then(() => {
+            assert.called(spy);
+            assert.calledWith(spy, {
+              code: 1000,
+              reason: 'Done (forced)',
+            });
+          });
+        });
+      });
+
+      it('signals closure if no close frame is received within the specified window, but uses the initial options as 1050 if specified by options call', () => {
+        const socket = new Socket();
+        const promise = socket.open('ws://example.com', mockoptions);
+
+        mockWebSocket.readyState = 1;
+        mockWebSocket.emit('open');
+        mockWebSocket.emit('message', {
+          data: JSON.stringify({
+            id: uuid.v4(),
+            data: {
+              eventType: 'mercury.buffer_state',
+            },
+          }),
+        });
+
+        return promise.then(() => {
+          const spy = sinon.spy();
+
+          socket.on('close', spy);
+          mockWebSocket.close = () =>
+            new Promise(() => {
+              /* eslint no-inline-comments: [0] */
+            });
+          mockWebSocket.removeAllListeners('close');
+
+          const promise = socket.close({code: 1050, reason: 'done (permanent)'});
+
+          clock.tick(mockoptions.forceCloseDelay);
+
+          return promise.then(() => {
+            assert.called(spy);
+            assert.calledWith(spy, {
+              code: 1050,
+              reason: 'done (permanent)',
+            });
+          });
+        });
+      });
+
+      it('signals closure if no close frame is received within the specified window, and uses default options as 1000 if the code is not 1050', () => {
+        const socket = new Socket();
+        const promise = socket.open('ws://example.com', mockoptions);
+
+        mockWebSocket.readyState = 1;
+        mockWebSocket.emit('open');
+        mockWebSocket.emit('message', {
+          data: JSON.stringify({
+            id: uuid.v4(),
+            data: {
+              eventType: 'mercury.buffer_state',
+            },
+          }),
+        });
+
+        return promise.then(() => {
+          const spy = sinon.spy();
+
+          socket.on('close', spy);
+          mockWebSocket.close = () =>
+            new Promise(() => {
+              /* eslint no-inline-comments: [0] */
+            });
+          mockWebSocket.removeAllListeners('close');
+
+          const promise = socket.close({code: 1000, reason: 'test'});
 
           clock.tick(mockoptions.forceCloseDelay);
 
@@ -566,7 +654,7 @@ describe('plugin-mercury', () => {
       });
     });
 
-    describe.skip('#onclose()', () => {
+    describe('#onclose()', () => {
       it('stops further ping checks', () => {
         socket._ping.resetHistory();
         assert.notCalled(socket._ping);
@@ -615,6 +703,26 @@ describe('plugin-mercury', () => {
             });
           }
         );
+      });
+
+      describe('when it receives close code 1050', () => {
+        it(`emits code 1050 for code 1050`, () => {
+          const code = 1050;
+          const reason = 'done (permanent)';
+          const spy = sinon.spy();
+
+          socket.on('close', spy);
+
+          mockWebSocket.emit('close', {
+            code,
+            reason,
+          });
+          assert.called(spy);
+          assert.calledWith(spy, {
+            code,
+            reason,
+          });
+        });
       });
     });
 
@@ -750,7 +858,7 @@ describe('plugin-mercury', () => {
       });
     });
 
-    describe.skip('#_ping()', () => {
+    describe('#_ping()', () => {
       let id;
 
       beforeEach(() => {
@@ -806,6 +914,23 @@ describe('plugin-mercury', () => {
           code: 1000,
           reason: 'Pong mismatch',
         });
+      });
+
+      it('emits ping pong latency correctly', () => {
+        const spy = sinon.spy();
+
+        socket.on('ping-pong-latency', spy);
+
+        socket._ping(123);
+        mockWebSocket.emit('message', {
+          data: JSON.stringify({
+            type: 'pong',
+            id: 123,
+          }),
+        });
+
+        assert.calledWith(spy, 0);
+        assert.calledOnce(spy);
       });
     });
   });

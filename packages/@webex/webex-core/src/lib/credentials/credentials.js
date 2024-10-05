@@ -13,10 +13,11 @@ import {clone, cloneDeep, isObject, isEmpty} from 'lodash';
 import WebexPlugin from '../webex-plugin';
 import {persist, waitForValue} from '../storage/decorators';
 
-import grantErrors from './grant-errors';
-import {filterScope, sortScope} from './scope';
+import grantErrors, {OAuthError} from './grant-errors';
+import {filterScope, diffScopes, sortScope} from './scope';
 import Token from './token';
 import TokenCollection from './token-collection';
+import {METRICS} from '../constants';
 
 /**
  * @class
@@ -46,6 +47,25 @@ const Credentials = WebexPlugin.extend({
         }
 
         return Boolean(this.supertoken && this.supertoken.canRefresh);
+      },
+    },
+    isUnverifiedGuest: {
+      deps: ['supertoken'],
+      /**
+       * Returns true if the user is an unverified guest
+       * @returns {boolean}
+       */
+      fn() {
+        let isGuest = false;
+        try {
+          isGuest =
+            JSON.parse(base64.decode(this.supertoken.access_token.split('.')[1])).user_type ===
+            'guest';
+        } catch {
+          /* the non-guest token is formatted differently so catch is expected */
+        }
+
+        return isGuest;
       },
     },
   },
@@ -240,8 +260,15 @@ const Credentials = WebexPlugin.extend({
    */
   downscope(scope) {
     return this.supertoken.downscope(scope).catch((reason) => {
-      this.logger.trace(`credentials: failed to downscope supertoken to ${scope}`, reason);
+      const failReason = reason?.body ?? reason;
+      this.logger.warn(`credentials: failed to downscope supertoken to "${scope}"`, failReason);
       this.logger.trace(`credentials: falling back to supertoken for ${scope}`);
+      this.webex.internal.metrics.submitClientMetrics(METRICS.JS_SDK_CREDENTIALS_DOWNSCOPE_FAILED, {
+        fields: {
+          requestedScope: scope,
+          failReason,
+        },
+      });
 
       return Promise.resolve(new Token({scope, ...this.supertoken.serialize()}), {
         parent: this,
@@ -322,12 +349,12 @@ const Credentials = WebexPlugin.extend({
       }
 
       if (!scope) {
-        scope = filterScope('spark:kms', this.config.scope);
+        scope = filterScope('spark:kms', this.supertoken.scope);
       }
 
       scope = sortScope(scope);
 
-      if (scope === sortScope(this.config.scope)) {
+      if (scope === sortScope(this.supertoken.scope)) {
         return Promise.resolve(this.supertoken);
       }
 
@@ -477,42 +504,10 @@ const Credentials = WebexPlugin.extend({
 
     return supertoken
       .refresh()
-      .then((st) => {
-        // clear refresh timer
-        if (this.refreshTimer) {
-          clearTimeout(this.refreshTimer);
-          this.unset('refreshTimer');
-        }
-        this.supertoken = st;
-
-        return Promise.all(
-          tokens.map((token) =>
-            this.downscope(token.scope)
-              // eslint-disable-next-line max-nested-callbacks
-              .then((t) => {
-                this.logger.info(`credentials: revoking token for ${token.scope}`);
-
-                return token
-                  .revoke()
-                  .catch((err) => {
-                    this.logger.warn('credentials: failed to revoke user token', err);
-                  })
-                  .then(() => {
-                    this.userTokens.remove(token.scope);
-                    this.userTokens.add(t);
-                  });
-              })
-          )
-        );
-      })
-      .then(() => {
-        this.scheduleRefresh(this.supertoken.expires);
-      })
       .catch((error) => {
-        const {InvalidRequestError} = grantErrors;
-
-        if (error instanceof InvalidRequestError) {
-          // Error: The refresh token provided is expired, revoked, malformed, or invalid. Hence emit an event to the client, an opportunity to logout.
+        if (error instanceof OAuthError) {
+          // Error: super token refresh failed with 400 status code.
+          // Hence emit an event to the client, an opportunity to logout.
           this.unset('supertoken');
           while (this.userTokens.models.length) {
             try {
@@ -525,6 +520,53 @@ const Credentials = WebexPlugin.extend({
         }
 
         return Promise.reject(error);
+      })
+      .then((st) => {
+        // clear refresh timer
+        if (this.refreshTimer) {
+          clearTimeout(this.refreshTimer);
+          this.unset('refreshTimer');
+        }
+        this.supertoken = st;
+
+        const invalidScopes = diffScopes(this.config.scope, st.scope);
+
+        if (invalidScopes !== '') {
+          this.logger.warn(
+            `credentials: "${invalidScopes}" scope(s) are invalid because not listed in the supertoken, they will be excluded from user token requests.`
+          );
+          this.webex.internal.metrics.submitClientMetrics(
+            METRICS.JS_SDK_CREDENTIALS_TOKEN_REFRESH_SCOPE_MISMATCH,
+            {fields: {invalidScopes}}
+          );
+        }
+
+        return Promise.all(
+          tokens.map((token) => {
+            const tokenScope = filterScope(diffScopes(token.scope, st.scope), token.scope);
+
+            return (
+              this.downscope(tokenScope)
+                // eslint-disable-next-line max-nested-callbacks
+                .then((t) => {
+                  this.logger.info(`credentials: revoking token for ${token.scope}`);
+
+                  return token
+                    .revoke()
+                    .catch((err) => {
+                      this.logger.warn('credentials: failed to revoke user token', err);
+                    })
+                    .then(() => {
+                      this.userTokens.remove(token.scope);
+                      this.userTokens.add(t);
+                    });
+                })
+            );
+          })
+        );
+      })
+      .then(() => {
+        this.scheduleRefresh(this.supertoken.expires);
       });
   },
 

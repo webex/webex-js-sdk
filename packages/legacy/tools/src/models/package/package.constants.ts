@@ -11,9 +11,9 @@ const PATTERNS = {
  * Test directories for organizing test runners.
  */
 const TEST_DIRECTORIES = {
-  INTEGRATION: './integration',
+  INTEGRATION: './integration/spec',
   ROOT: './test',
-  UNIT: './unit',
+  UNIT: './unit/spec',
 };
 
 const CONSTANTS = {

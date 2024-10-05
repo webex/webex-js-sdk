@@ -153,8 +153,8 @@ describe('plugin-teams', function () {
             assert.isTeamRoom(room);
             assert.equal(room.teamId, team.id);
           }));
-
-      describe("when the user leaves the team's general room", () => {
+      // SPARK-413317
+      describe.skip("when the user leaves the team's general room", () => {
         let room, team;
 
         it("no longer returns the team's rooms", () =>

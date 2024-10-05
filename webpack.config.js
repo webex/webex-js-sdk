@@ -8,6 +8,7 @@ const TerserPlugin = require('terser-webpack-plugin');
 
 const CircularDependencyPlugin = require('circular-dependency-plugin');
 const {version} = require('./packages/webex/package.json');
+const callingPackage = require('./packages/calling/package.json');
 
 dotenv.config();
 dotenv.config({path: '.env.default'});
@@ -74,6 +75,7 @@ module.exports = (env = {NODE_ENV: process.env.NODE_ENV || 'production'}) => ({
       fs: false,
       os: require.resolve('os-browserify'),
       stream: require.resolve('stream-browserify'),
+      querystring: require.resolve('querystring-es3'),
       crypto: false,
     },
     extensions: ['.ts', '.js', '.json'],
@@ -86,7 +88,7 @@ module.exports = (env = {NODE_ENV: process.env.NODE_ENV || 'production'}) => ({
         // we don't need to manually rebuild after changing code.
         alias[`./packages/${packageName}`] = path.resolve(
           __dirname,
-          `./packages/${packageName}/src/index.js`
+          `./packages/${packageName}/src/index`
         );
         alias[`${packageName}`] = path.resolve(__dirname, `./packages/${packageName}/src/index`);
 
@@ -176,6 +178,7 @@ module.exports = (env = {NODE_ENV: process.env.NODE_ENV || 'production'}) => ({
               WHISTLER_API_SERVICE_URL: JSON.stringify(
                 'https://whistler-prod.allnint.ciscospark.com/api/v1'
               ),
+              CALLING_SDK_VERSION: JSON.stringify(callingPackage.version),
             },
           }),
         ]),
@@ -183,7 +186,7 @@ module.exports = (env = {NODE_ENV: process.env.NODE_ENV || 'production'}) => ({
       // exclude detection of files based on a RegExp
       exclude: /a\.js|node_modules/,
       // add errors to webpack instead of warnings
-      failOnError: false,
+      failOnError: true,
       // allow import cycles that include an asyncronous import,
       // e.g. via import(/* webpackMode: "weak" */ './file.js')
       allowAsyncCycles: false,

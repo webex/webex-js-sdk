@@ -517,6 +517,22 @@
       "new": "seq4g",
       "result": "DESYNC",
       "description": "New seq is greater than current, but both current and new base have some unique entries."
+    },
+    "updt25": {
+      "current": "seq4",
+      "newbase": "seq5c",
+      "new": "seq5b",
+      "result": "WAIT",
+      "description": "Both new seq and new base are newer than current but are not equal"
+    },
+    "updt26": {
+      "current": "seq4",
+      "currentUrl": "locus url 1",
+      "newbase": "seq5c",
+      "new": "seq5b",
+      "newUrl": "locus url 2",
+      "result": "LOCUS_URL_CHANGED",
+      "description": "Locus url changes in incoming"
     }
   }
 }

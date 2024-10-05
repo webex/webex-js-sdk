@@ -32,6 +32,8 @@ export default class LogsRequest {
    */
   async uploadLogs(
     options: {
+      autoupload?: boolean;
+      locussessionid?: string;
       feedbackId?: string;
       locusId?: string;
       correlationId?: string;
@@ -40,7 +42,7 @@ export default class LogsRequest {
     } = {}
   ) {
     const id = options.feedbackId || uuid.v4();
-    const {locusId, correlationId, meetingId, callStart} = options;
+    const {locusId, correlationId, meetingId, callStart, locussessionid, autoupload} = options;
 
     LoggerProxy.logger.info(
       `Logs:request#uploadLogs --> uploading user logs for feedbackId: ${id}`
@@ -48,6 +50,8 @@ export default class LogsRequest {
 
     try {
       await this.webex.internal.support.submitLogs({
+        autoupload,
+        locussessionid,
         feedbackId: id,
         locusId,
         correlationId,

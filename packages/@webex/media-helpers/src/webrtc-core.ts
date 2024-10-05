@@ -13,7 +13,7 @@ import {
   LocalCameraStream as WcmeLocalCameraStream,
   VideoDeviceConstraints,
 } from '@webex/internal-media-core';
-import {TypedEvent} from '@webex/ts-events';
+import {AddEvents, TypedEvent, WithEventsDummyType} from '@webex/ts-events';
 
 export {
   getDevices,
@@ -23,11 +23,13 @@ export {
   LocalStreamEventNames,
   StreamEventNames,
   RemoteStream,
+  RemoteStreamEventNames,
+  type VideoContentHint,
 } from '@webex/internal-media-core';
 
 export type ServerMuteReason =
   | 'remotelyMuted' // other user has remotely muted us
-  | 'clientRequestFailed' // client called setMuted() but server request failed
+  | 'clientRequestFailed' // client called setUserMuted() but server request failed
   | 'localUnmuteRequired'; // server forced the client to be unmuted
 
 // these events are in addition to WCME events. This will be properly typed once webrtc-core event types inheritance is fixed
@@ -40,7 +42,19 @@ export enum LocalCameraStreamEventNames {
   ServerMuted = 'muted:byServer',
 }
 
-export class LocalMicrophoneStream extends WcmeLocalMicrophoneStream {
+interface LocalMicrophoneStreamEvents {
+  [LocalMicrophoneStreamEventNames.ServerMuted]: TypedEvent<
+    (muted: boolean, reason: ServerMuteReason) => void
+  >;
+}
+
+interface LocalCameraStreamEvents {
+  [LocalCameraStreamEventNames.ServerMuted]: TypedEvent<
+    (muted: boolean, reason: ServerMuteReason) => void
+  >;
+}
+
+class _LocalMicrophoneStream extends WcmeLocalMicrophoneStream {
   private unmuteAllowed = true;
 
   [LocalMicrophoneStreamEventNames.ServerMuted] = new TypedEvent<
@@ -50,39 +64,39 @@ export class LocalMicrophoneStream extends WcmeLocalMicrophoneStream {
   /**
    * @internal
    */
-  setUnmuteAllowed(allowed) {
+  setUnmuteAllowed(allowed: boolean) {
     this.unmuteAllowed = allowed;
   }
 
   /**
-   * @returns true if user is allowed to unmute the Stream, false otherwise
+   * @returns true if user is allowed to unmute the track, false otherwise
    */
   isUnmuteAllowed() {
     return this.unmuteAllowed;
   }
 
-  setMuted(muted: boolean): void {
+  setUserMuted(muted: boolean): void {
     if (!muted) {
       if (!this.isUnmuteAllowed()) {
         throw new Error('Unmute is not allowed');
       }
     }
 
-    return super.setMuted(muted);
+    return super.setUserMuted(muted);
   }
 
   /**
    * @internal
    */
   setServerMuted(muted: boolean, reason: ServerMuteReason) {
-    if (muted !== this.muted) {
-      this.setMuted(muted);
+    if (muted !== this.userMuted) {
+      this.setUserMuted(muted);
       this[LocalMicrophoneStreamEventNames.ServerMuted].emit(muted, reason);
     }
   }
 }
 
-export class LocalCameraStream extends WcmeLocalCameraStream {
+class _LocalCameraStream extends WcmeLocalCameraStream {
   private unmuteAllowed = true;
 
   [LocalCameraStreamEventNames.ServerMuted] = new TypedEvent<
@@ -92,33 +106,33 @@ export class LocalCameraStream extends WcmeLocalCameraStream {
   /**
    * @internal
    */
-  setUnmuteAllowed(allowed) {
+  setUnmuteAllowed(allowed: boolean) {
     this.unmuteAllowed = allowed;
   }
 
   /**
-   * @returns true if user is allowed to unmute the Stream, false otherwise
+   * @returns true if user is allowed to unmute the track, false otherwise
    */
   isUnmuteAllowed() {
     return this.unmuteAllowed;
   }
 
-  setMuted(muted: boolean): void {
+  setUserMuted(muted: boolean): void {
     if (!muted) {
       if (!this.isUnmuteAllowed()) {
         throw new Error('Unmute is not allowed');
       }
     }
 
-    return super.setMuted(muted);
+    return super.setUserMuted(muted);
   }
 
   /**
    * @internal
    */
   setServerMuted(muted: boolean, reason: ServerMuteReason) {
-    if (muted !== this.muted) {
-      this.setMuted(muted);
+    if (muted !== this.userMuted) {
+      this.setUserMuted(muted);
       this[LocalCameraStreamEventNames.ServerMuted].emit(muted, reason);
     }
   }
@@ -134,3 +148,17 @@ export const createDisplayStream = () => wcmeCreateDisplayStream(LocalDisplayStr
 
 export const createDisplayStreamWithAudio = () =>
   wcmeCreateDisplayStreamWithAudio(LocalDisplayStream, LocalSystemAudioStream);
+
+export const LocalMicrophoneStream = AddEvents<
+  typeof _LocalMicrophoneStream,
+  LocalMicrophoneStreamEvents
+>(_LocalMicrophoneStream);
+
+export type LocalMicrophoneStream = _LocalMicrophoneStream &
+  WithEventsDummyType<LocalMicrophoneStreamEvents>;
+
+export const LocalCameraStream = AddEvents<typeof _LocalCameraStream, LocalCameraStreamEvents>(
+  _LocalCameraStream
+);
+
+export type LocalCameraStream = _LocalCameraStream & WithEventsDummyType<LocalCameraStreamEvents>;

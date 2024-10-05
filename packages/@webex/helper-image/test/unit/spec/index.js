@@ -2,6 +2,7 @@
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
 
+//*** This is mocha test file running on browser as well  */
 import {assert} from '@webex/test-helper-chai';
 import {readExifData, updateImageOrientation} from '@webex/helper-image';
 import {orient} from './../../../src/orient';
@@ -14,7 +15,7 @@ describe('helper-image', () => {
   xdescribe('readExifData()', () => {
     let buffer;
 
-    browserOnly(beforeAll)(() => fileHelper.fetch('/Portrait_7.jpg')
+    browserOnly(before)(() => fileHelper.fetch('/Portrait_7.jpg')
       .then((resFile) => {
         /* global FileReader */
         const fileReader = new FileReader();
@@ -30,7 +31,7 @@ describe('helper-image', () => {
       })
     );
 
-    nodeOnly(beforeAll)(() => fileHelper.fetch('/Portrait_7.jpg')
+    nodeOnly(before)(() => fileHelper.fetch('/Portrait_7.jpg')
       .then((resFile) => {
         buffer = resFile;
       })
@@ -80,7 +81,7 @@ describe('helper-image', () => {
   browserOnly(describe)('updateImageOrientation()', () => {
     let file;
 
-    beforeAll(() => fileHelper.fetch('/Portrait_7.jpg')
+    before(() => fileHelper.fetch('/Portrait_7.jpg')
       .then((resFile) => {
         file = resFile;
         file.displayName = 'Portrait_7.jpg';

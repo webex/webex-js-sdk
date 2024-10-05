@@ -59,6 +59,10 @@ export const SDK_EVENT = {
   },
 };
 
+export const browserDetection = {
+  unableToAccessUserAgent: 'unable to access window.navigator.userAgent',
+};
+
 export const hydraTypes = {
   ATTACHMENT_ACTION: 'ATTACHMENT_ACTION',
   CONTENT: 'CONTENT',

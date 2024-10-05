@@ -29,6 +29,7 @@ let ucmBackendConnector: UcmBackendConnector;
 const webex = getTestUtilsWebex();
 let voicemailPayload: WebexRequestPayload;
 let serviceErrorCodeHandlerSpy: jest.SpyInstance;
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 let sdkConnector: ISDKConnector;
 const messageId = mockUCMVoicemailBody.body.items['messageId'];
 

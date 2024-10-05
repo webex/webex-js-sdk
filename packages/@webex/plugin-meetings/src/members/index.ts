@@ -5,15 +5,31 @@ import {isEmpty} from 'lodash';
 // @ts-ignore
 import {StatelessWebexPlugin} from '@webex/webex-core';
 
-import {MEETINGS, EVENT_TRIGGERS, FLOOR_ACTION, CONTENT, WHITEBOARD} from '../constants';
+import {
+  MEETINGS,
+  EVENT_TRIGGERS,
+  FLOOR_ACTION,
+  CONTENT,
+  WHITEBOARD,
+  ASSIGN_ROLES_ERROR_CODES,
+} from '../constants';
 import Trigger from '../common/events/trigger-proxy';
 import Member from '../member';
 import LoggerProxy from '../common/logs/logger-proxy';
 import ParameterError from '../common/errors/parameter';
+import {
+  ReclaimHostEmptyWrongKeyError,
+  ReclaimHostIsHostAlreadyError,
+  ReclaimHostNotAllowedError,
+  ReclaimHostNotSupportedError,
+} from '../common/errors/reclaim-host-role-errors';
 
 import MembersCollection from './collection';
 import MembersRequest from './request';
 import MembersUtil from './util';
+import {ReceiveSlotManager} from '../multistream/receiveSlotManager';
+import {MediaRequestManager} from '../multistream/mediaRequestManager';
+import {ServerRoleShape} from './types';
 
 /**
  * Members Update Event
@@ -67,6 +83,12 @@ export default class Members extends StatelessWebexPlugin {
   mediaShareWhiteboardId: any;
   membersCollection: any;
   membersRequest: any;
+  receiveSlotManager: ReceiveSlotManager;
+  mediaRequestManagers: {
+    audio: MediaRequestManager;
+    video: MediaRequestManager;
+  };
+
   recordingId: any;
   selfId: any;
   type: any;
@@ -88,8 +110,14 @@ export default class Members extends StatelessWebexPlugin {
      * @private
      * @memberof Members
      */
+
     // @ts-ignore
-    this.membersRequest = new MembersRequest({}, options);
+    this.membersRequest = new MembersRequest(
+      {
+        meeting: attrs.meeting,
+      },
+      options
+    );
     /**
      * The Members Collection cache
      * @instance
@@ -160,6 +188,18 @@ export default class Members extends StatelessWebexPlugin {
      * @memberof Members
      */
     this.recordingId = null;
+
+    /**
+     * reference to a ReceiveSlotManager instance (for multistream)
+     * @private
+     */
+    this.receiveSlotManager = attrs.receiveSlotManager;
+
+    /**
+     * reference to a MediaRequestManager instance that manages main video requests (for multistream)
+     * @private
+     */
+    this.mediaRequestManagers = attrs.mediaRequestManagers;
   }
 
   /**
@@ -263,6 +303,25 @@ export default class Members extends StatelessWebexPlugin {
   }
 
   /**
+   * clear member collection
+   * @returns {void}
+   * @private
+   * @memberof Members
+   */
+  clearMembers() {
+    this.membersCollection.reset();
+    Trigger.trigger(
+      this,
+      {
+        file: 'members',
+        function: 'clearMembers',
+      },
+      EVENT_TRIGGERS.MEMBERS_CLEAR,
+      {}
+    );
+  }
+
+  /**
    * when new participant updates come in, both delta and full participants, update them in members collection
    * delta object in the event will have {updated, added} and full will be the full membersCollection
    * @param {Object} payload
@@ -271,10 +330,15 @@ export default class Members extends StatelessWebexPlugin {
    * @private
    * @memberof Members
    */
-  locusParticipantsUpdate(payload: {participants: object}) {
+  locusParticipantsUpdate(payload: {participants: object; isReplace?: boolean}) {
     if (payload) {
+      if (payload.isReplace) {
+        this.clearMembers();
+      }
       const delta = this.handleLocusInfoUpdatedParticipants(payload);
       const full = this.handleMembersUpdate(delta); // SDK should propagate the full list for both delta and non delta updates
+
+      this.receiveSlotManager?.updateMemberIds();
 
       Trigger.trigger(
         this,
@@ -286,6 +350,7 @@ export default class Members extends StatelessWebexPlugin {
         {
           delta,
           full,
+          isReplace: !!payload.isReplace,
         }
       );
     }
@@ -711,15 +776,22 @@ export default class Members extends StatelessWebexPlugin {
   /**
    * Admits waiting members (invited guests to meeting)
    * @param {Array} memberIds
+   * @param {Object} sessionLocusUrls: {authorizingLocusUrl, mainLocusUrl}
    * @returns {Promise}
    * @public
    * @memberof Members
    */
-  public admitMembers(memberIds: Array<any>) {
+  public admitMembers(
+    memberIds: Array<any>,
+    sessionLocusUrls?: {authorizingLocusUrl: string; mainLocusUrl: string}
+  ) {
     if (isEmpty(memberIds)) {
       return Promise.reject(new ParameterError('No member ids provided to admit.'));
     }
-    const options = MembersUtil.generateAdmitMemberOptions(memberIds, this.locusUrl);
+    const options = {
+      sessionLocusUrls,
+      ...MembersUtil.generateAdmitMemberOptions(memberIds, this.locusUrl),
+    };
 
     return this.membersRequest.admitMember(options);
   }
@@ -751,11 +823,12 @@ export default class Members extends StatelessWebexPlugin {
    * Audio mutes another member in a meeting
    * @param {String} memberId
    * @param {boolean} [mute] default true
+   * @param {boolean} [isAudio] default true
    * @returns {Promise}
    * @public
    * @memberof Members
    */
-  public muteMember(memberId: string, mute = true) {
+  public muteMember(memberId: string, mute = true, isAudio = true) {
     if (!this.locusUrl) {
       return Promise.reject(
         new ParameterError(
@@ -768,9 +841,49 @@ export default class Members extends StatelessWebexPlugin {
         new ParameterError('The member id must be defined to mute the member.')
       );
     }
-    const options = MembersUtil.generateMuteMemberOptions(memberId, mute, this.locusUrl);
+    const options = MembersUtil.generateMuteMemberOptions(memberId, mute, this.locusUrl, isAudio);
 
     return this.membersRequest.muteMember(options);
+  }
+
+  /**
+   * Assign role(s) to a member in the meeting
+   * @param {String} memberId
+   * @param {[ServerRoleShape]} roles - to assign an array of roles
+   * @returns {Promise}
+   * @public
+   * @memberof Members
+   */
+  public assignRoles(memberId: string, roles: Array<ServerRoleShape>) {
+    if (!this.locusUrl) {
+      return Promise.reject(
+        new ParameterError(
+          'The associated locus url for this meetings members object must be defined.'
+        )
+      );
+    }
+    if (!memberId) {
+      return Promise.reject(
+        new ParameterError('The member id must be defined to assign the roles to a member.')
+      );
+    }
+    const options = MembersUtil.generateRoleAssignmentMemberOptions(memberId, roles, this.locusUrl);
+
+    return this.membersRequest.assignRolesMember(options).catch((error: any) => {
+      const errorCode = error.body?.errorCode;
+      switch (errorCode) {
+        case ASSIGN_ROLES_ERROR_CODES.ReclaimHostNotSupportedErrorCode:
+          return Promise.reject(new ReclaimHostNotSupportedError());
+        case ASSIGN_ROLES_ERROR_CODES.ReclaimHostNotAllowedErrorCode:
+          return Promise.reject(new ReclaimHostNotAllowedError());
+        case ASSIGN_ROLES_ERROR_CODES.ReclaimHostEmptyWrongKeyErrorCode:
+          return Promise.reject(new ReclaimHostEmptyWrongKeyError());
+        case ASSIGN_ROLES_ERROR_CODES.ReclaimHostIsHostAlreadyErrorCode:
+          return Promise.reject(new ReclaimHostIsHostAlreadyError());
+        default:
+          return Promise.reject(error);
+      }
+    });
   }
 
   /**
@@ -896,5 +1009,81 @@ export default class Members extends StatelessWebexPlugin {
         'Members:index#sendDialPadKey --> cannot send DTMF, meeting does not have a connection to the "locus" call control service.'
       )
     );
+  }
+
+  /** Finds a member that has any device with a csi matching provided value
+   *
+   * @param {number} csi
+   * @returns {Member}
+   */
+  findMemberByCsi(csi) {
+    return Object.values(this.membersCollection.getAll()).find((member) =>
+      // @ts-ignore
+      member.participant?.devices?.find((device) =>
+        device.csis?.find((memberCsi) => memberCsi === csi)
+      )
+    );
+  }
+
+  /**
+   * Returns an array of a member's CSIs matching the mediaType and mediaContent
+   *
+   * @param {string} memberId
+   * @param {string} mediaType 'audio' or 'video'
+   * @param {string} mediaContent 'main' or 'slides'
+   * @returns {Member}
+   */
+  getCsisForMember(memberId, mediaType = 'video', mediaContent = 'main') {
+    const csis = [];
+
+    this.membersCollection.get(memberId)?.participant?.devices?.forEach((device) => {
+      if (device.mediaSessions) {
+        const deviceCsis = device.mediaSessions
+          ?.filter(
+            (mediaSession) =>
+              mediaSession.mediaType === mediaType && mediaSession.mediaContent === mediaContent
+          )
+          .map((mediaSession) => mediaSession.csi);
+
+        csis.push(...deviceCsis);
+      }
+    });
+
+    return csis;
+  }
+
+  /**
+   * Edit display name of participants in a meeting
+   * @param {string} memberId - id of the participant who is receiving request
+   * @param {string} requestingParticipantId - id of the participant who is sending request (optional)
+   * @param {string} [alias] - alias name
+   * @returns {Promise}
+   * @public
+   * @memberof Members
+   */
+  public editDisplayName(memberId: string, requestingParticipantId: string, alias: string) {
+    if (!this.locusUrl) {
+      return Promise.reject(
+        new ParameterError(
+          'The associated locus url for this meetings members object must be defined.'
+        )
+      );
+    }
+    if (!memberId) {
+      return Promise.reject(
+        new ParameterError('The member id must be defined to edit display name of the member.')
+      );
+    }
+
+    const {locusUrl} = this;
+
+    const options = MembersUtil.generateEditDisplayNameMemberOptions(
+      memberId,
+      requestingParticipantId,
+      alias,
+      locusUrl
+    );
+
+    return this.membersRequest.editDisplayNameMember(options);
   }
 }

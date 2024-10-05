@@ -106,7 +106,11 @@ function _createXHR(options) {
   function errorFunc(evt) {
     clearTimeout(timeoutTimer);
     if (!(evt instanceof Error)) {
-      evt = new Error('' + (evt || 'Unknown XMLHttpRequest Error'));
+      if (evt instanceof ProgressEvent) {
+        evt = new Error(`XMLHttpRequest Error: ProgressEvent: loaded=${evt.loaded}, total=${evt.total}, lengthComputable=${evt.lengthComputable}, target.readyState=${evt.target?.readyState}`)
+      } else {
+        evt = new Error('' + (evt || 'Unknown XMLHttpRequest Error'));
+      }
     }
     evt.statusCode = 0;
     return callback(evt, failureResponse);

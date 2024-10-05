@@ -166,11 +166,21 @@ describe('webex-core', () => {
           );
         });
 
+        it('rejects downscope when the new scope is not super set of the available scopes', () => {
+          const token = makeToken();
+          token.config.scope = 'scopeY scopeZ';
+
+          return assert.isRejected(
+            token.downscope('scopeX'),
+            /new scope \(scopeX\) is not subset of the available scopes \(scopeY scopeZ\)/
+          );
+        });
+
         it('alphabetizes the requested scope', () => {
           const token = makeToken();
 
           webex.request.returns(Promise.resolve({body: {access_token: 'AT2'}}));
-
+          token.config.scope = 'a b c';
           return token
             .downscope('b a')
             .then(() => assert.equal(webex.request.args[0][0].form.scope, 'a b'));

@@ -60,7 +60,7 @@ class MetricManager implements IMetricManager {
           fields: {
             device_url: this.deviceInfo?.device?.clientDeviceUri,
             mobius_url: this.deviceInfo?.device?.uri,
-            calling_sdk_version: VERSION,
+            calling_sdk_version: process.env.CALLING_SDK_VERSION || VERSION,
           },
           type,
         };
@@ -78,7 +78,7 @@ class MetricManager implements IMetricManager {
             fields: {
               device_url: this.deviceInfo?.device?.clientDeviceUri,
               mobius_url: this.deviceInfo?.device?.uri,
-              calling_sdk_version: VERSION,
+              calling_sdk_version: process.env.CALLING_SDK_VERSION || VERSION,
               error: clientError.getError().message,
               error_type: clientError.getError().type,
             },
@@ -130,7 +130,7 @@ class MetricManager implements IMetricManager {
           fields: {
             device_url: this.deviceInfo?.device?.clientDeviceUri,
             mobius_url: this.deviceInfo?.device?.uri,
-            calling_sdk_version: VERSION,
+            calling_sdk_version: process.env.CALLING_SDK_VERSION || VERSION,
             call_id: callId,
             correlation_id: correlationId,
           },
@@ -150,7 +150,7 @@ class MetricManager implements IMetricManager {
             fields: {
               device_url: this.deviceInfo?.device?.clientDeviceUri,
               mobius_url: this.deviceInfo?.device?.uri,
-              calling_sdk_version: VERSION,
+              calling_sdk_version: process.env.CALLING_SDK_VERSION || VERSION,
               call_id: callId,
               correlation_id: correlationId,
               error: callError.getCallError().message,
@@ -208,7 +208,7 @@ class MetricManager implements IMetricManager {
           fields: {
             device_url: this.deviceInfo?.device?.clientDeviceUri,
             mobius_url: this.deviceInfo?.device?.uri,
-            calling_sdk_version: VERSION,
+            calling_sdk_version: process.env.CALLING_SDK_VERSION || VERSION,
             call_id: callId,
             correlation_id: correlationId,
             local_media_details: localSdp,
@@ -230,7 +230,7 @@ class MetricManager implements IMetricManager {
             fields: {
               device_url: this.deviceInfo?.device?.clientDeviceUri,
               mobius_url: this.deviceInfo?.device?.uri,
-              calling_sdk_version: VERSION,
+              calling_sdk_version: process.env.CALLING_SDK_VERSION || VERSION,
               call_id: callId,
               correlation_id: correlationId,
               local_media_details: localSdp,
@@ -285,7 +285,10 @@ class MetricManager implements IMetricManager {
           },
           fields: {
             device_url: this.deviceInfo?.device?.clientDeviceUri,
-            calling_sdk_version: VERSION,
+            calling_sdk_version:
+              typeof process !== 'undefined' && process.env.CALLING_SDK_VERSION
+                ? process.env.CALLING_SDK_VERSION
+                : VERSION,
           },
           type,
         };
@@ -303,7 +306,10 @@ class MetricManager implements IMetricManager {
           },
           fields: {
             device_url: this.deviceInfo?.device?.clientDeviceUri,
-            calling_sdk_version: VERSION,
+            calling_sdk_version:
+              typeof process !== 'undefined' && process.env.CALLING_SDK_VERSION
+                ? process.env.CALLING_SDK_VERSION
+                : VERSION,
           },
           type,
         };
@@ -317,6 +323,41 @@ class MetricManager implements IMetricManager {
         });
         break;
     }
+    if (data) {
+      this.webex.internal.metrics.submitClientMetrics(name, data);
+    }
+  }
+
+  public submitBNRMetric(
+    name: METRIC_EVENT,
+    type: METRIC_TYPE,
+    callId: CallId,
+    correlationId: CorrelationId
+  ) {
+    let data;
+
+    if (name === METRIC_EVENT.BNR_ENABLED || name === METRIC_EVENT.BNR_DISABLED) {
+      data = {
+        tags: {
+          device_id: this.deviceInfo?.device?.deviceId,
+          service_indicator: this.serviceIndicator,
+        },
+        fields: {
+          device_url: this.deviceInfo?.device?.clientDeviceUri,
+          mobius_url: this.deviceInfo?.device?.uri,
+          calling_sdk_version: process.env.CALLING_SDK_VERSION || VERSION,
+          call_id: callId,
+          correlation_id: correlationId,
+        },
+        type,
+      };
+    } else {
+      log.warn('Invalid metric name received. Rejecting request to submit metric.', {
+        file: METRIC_FILE,
+        method: this.submitBNRMetric.name,
+      });
+    }
+
     if (data) {
       this.webex.internal.metrics.submitClientMetrics(name, data);
     }

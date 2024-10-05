@@ -59,7 +59,8 @@ function getClientCredentials({clientId, clientSecret, idbrokerUrl}) {
     json: true,
     form: {
       grant_type: 'client_credentials',
-      scope: 'Identity:SCIM webexsquare:get_conversation',
+      scope:
+        'Identity:SCIM webexsquare:get_conversation spark-test-account:write spark-test-account:read',
       client_id: clientId,
       client_secret: clientSecret,
     },
@@ -128,6 +129,10 @@ function requestWithAuth(options) {
  * @property {string} [roles] defaults to []
  * @property {string} [scope] defaults to WEBEX_SCOPE
  * @property {string} [type] used to create a machine
+ * @property {boolean} [forceCreate] force creates the user, to be used in conjunction with ensureExistsInWebexSites
+ * @property {boolean} [ensureExistsInWebexSites] syncs the user in provided webexSites (syncInWebexSites)
+ * @property {Array.<string>} [syncInWebexSites] used to define in which sites account should be synced
+ * @property {string} [orgAdminAuthorization] bearer token of org admin to use syncInWebexSites
  */
 
 /**
@@ -190,6 +195,7 @@ export function createTestUser(options = {}) {
       'squaredRoomModeration',
       'squaredInviter',
       'webExSquared',
+      'basicMessage',
     ],
     idbrokerUrl,
     machineType: options.machineType,
@@ -199,6 +205,10 @@ export function createTestUser(options = {}) {
     roles: options.roles || [],
     scopes: options.scope || process.env.WEBEX_SCOPE,
     type: options.type,
+    forceCreate: options.forceCreate || false,
+    ensureExistsInWebexSites: options.ensureExistsInWebexSites || false,
+    syncInWebexSites: options.syncInWebexSites,
+    orgAdminAuthorization: options.orgAdminAuthorization,
   };
 
   return requestWithAuth({
@@ -309,6 +319,55 @@ export function removeTestUser(options = {}) {
       /* eslint-enable camelcase */
     },
     uri: `${cigServiceUrl}${BASE_PATH}/delete`,
+  });
+}
+
+/**
+ * Sets the preferredWebexSite for the provided user
+ *
+ * This method should be used to ensure a created test user has the right webex site set.
+ *
+ * @param {Object} options
+ * @param {string} options.userId user id to set site
+ * @param {string} options.preferredSite new preferred webexsite
+ * @param {string} options.orgId orgId of the site
+ * @param {string} options.identityServiceUrl url of identity service
+ * @param {string} options.authorization
+ * @param {string} options.clientId
+ * @param {string} options.clientSecret
+ * @returns {Promise}
+ */
+export function setPreferredSite(options = {}) {
+  const clientId = options.clientId || process.env.WEBEX_CLIENT_ID;
+  const clientSecret = options.clientSecret || process.env.WEBEX_CLIENT_SECRET;
+
+  if (!clientId) {
+    throw new Error('options.clientId or process.env.WEBEX_CLIENT_ID must be defined');
+  }
+
+  if (!clientSecret) {
+    throw new Error('options.clientSecret or process.env.WEBEX_CLIENT_SECRET must be defined');
+  }
+
+  /* eslint-disable no-useless-escape */
+  const body = {
+    schemas: ['urn:scim:schemas:core:1.0', 'urn:scim:schemas:extension:cisco:commonidentity:1.0'],
+    userPreferences: [
+      {
+        value: `\"preferredWebExSite\":\"${options.preferredSite}\"`,
+      },
+    ],
+  };
+  /* eslint-enable no-useless-escape */
+
+  return request({
+    method: 'PATCH',
+    headers: {
+      authorization: options.authorization,
+    },
+    uri: `${options.identityServiceUrl}/identity/scim/${options.orgId}/v1/Users/${options.userId}`,
+    json: true,
+    body,
   });
 }
 

@@ -240,6 +240,7 @@ export default {
         },
       },
       doesNotSupportBreakouts: true,
+      annotatorAssignmentNotAllowed: true,
       identityTrustLevel: 'INTERNAL',
       id: 'e0d54e94-226c-3290-b75a-83cc1dbf',
       guest: false,

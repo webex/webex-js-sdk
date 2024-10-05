@@ -9,7 +9,7 @@ import {
   RegistrationStatus,
   ServiceIndicator,
 } from '../../common/types';
-import {ILine, LINE_EVENTS, LineEventTypes} from './types';
+import {ILine, LINE_EVENTS} from './types';
 import {LINE_FILE, VALID_PHONE} from '../constants';
 import log from '../../Logger';
 import {IRegistration} from '../registration/types';
@@ -21,7 +21,7 @@ import {LineError} from '../../Errors/catalog/LineError';
 import {LOGGER} from '../../Logger/types';
 import {validateServiceData} from '../../common';
 import SDKConnector from '../../SDKConnector';
-import {LINE_EVENT_KEYS} from '../../Events/types';
+import {LINE_EVENT_KEYS, LineEventTypes} from '../../Events/types';
 import {ICall, ICallManager} from '../calling/types';
 import {getCallManager} from '../calling/callManager';
 import {ERROR_TYPE} from '../../Errors/types';
@@ -49,7 +49,7 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
 
   public extension?: string;
 
-  public sipAddresses?: string[];
+  public sipAddresses: string[] = [];
 
   public voicemail?: string;
 
@@ -161,7 +161,7 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
     this.mobiusDeviceId = device?.deviceId;
     this.mobiusUri = device?.uri;
     this.lastSeen = device?.lastSeen;
-    this.sipAddresses = device?.addresses;
+    this.sipAddresses = device?.addresses ?? [];
     this.keepaliveInterval = keepaliveInterval;
     this.callKeepaliveInterval = callKeepaliveInterval;
     this.rehomingIntervalMin = rehomingIntervalMin;

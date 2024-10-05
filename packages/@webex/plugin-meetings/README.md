@@ -98,10 +98,22 @@ return webex.meetings.create(locusObj, 'LOCUS_ID').then((meeting) ==> {...});
 
 We want to sync our meetings collection with the server.
 
+To keep only Locus meetings with an locus url that is still active:
+
 ```js
 let existingMeetings;
 // Sync Meetings From Server
 webex.meetings.syncMeetings().then(() => {
+  // Existing meetings live in the meeting collection
+  existingMeetings = webex.meetings.getAllMeetings();
+});
+```
+
+Or, to keep meetings with an locus url that is still active and any meeting without a locus url:
+```js
+let existingMeetings;
+// Sync Meetings From Server
+webex.meetings.syncMeetings({keepOnlyLocusMeetings: false}).then(() => {
   // Existing meetings live in the meeting collection
   existingMeetings = webex.meetings.getAllMeetings();
 });
@@ -117,7 +129,7 @@ webex.meetings.getMeetingByType('SIP_URI', sipUri);
 
 ```js
 webex.meetings.personalMeetingRoom; // the personal meeting room instance
-webex.meetings.reachability; // the reachability instance, not initialized until after setReachability is called
+webex.meetings.reachability; // the reachability instance
 webex.meetings.meetingCollection; // the collection of meetings instance
 webex.meetings.meetingInfo; // the meeting info instance
 ```
@@ -331,7 +343,6 @@ webex.meetings.on('meeting:added', (addedMeeting) => {
     addedMeeting.join().then(() => {});
   }
 ```
-
 ##### Reject an incoming meeting
 
 When listening to an added meeting, to determine if it is an "incoming" meeting, check the type property of the meeting:
@@ -456,6 +467,51 @@ function attachSinkId(element, sinkId) {
 audioOutputSelect.onchange = function () {
   attachSinkId(document.getElementById('remoteaudio'), audioOutputSelect.value);
 };
+```
+##### Availabel joining options
+```
+/**
+   * Make a network request to join a meeting
+   * @param {Object} options
+   * @param {String} options.sipUri
+   * @param {String} options.deviceUrl
+   * @param {String} options.locusUrl
+   * @param {String} options.resourceId,
+   * @param {String} options.correlationId
+   * @param {boolean} options.ensureConversation
+   * @param {boolean} options.moderator
+   * @param {boolean} options.pin
+   * @param {boolean} options.moveToResource
+   * @param {Object} options.roapMessage
+   * @param {boolean} options.breakoutsSupported
+   * @param {String} options.locale,
+   * @param {Array} options.deviceCapabilities
+   * @param {boolean} options.liveAnnotationSupported
+   * @returns {Promise}
+   */
+```
+##### options.deviceCapabilities
+This option provides toggles that Locus service needs, and those toggles will control the performance or features of the meetings to be joined, see examples:
+###### Breakout Sessions
+```
+  if (breakoutsSupported) {
+    deviceCapabilities.push(BREAKOUTS.BREAKOUTS_SUPPORTED);
+  }
+```
+###### Live Annotation
+```
+  if (liveAnnotationSupported) {
+    deviceCapabilities.push(ANNOTATION.ANNOTATION_ON_SHARE_SUPPORTED);
+  }
+```
+###### Audio Disclaimer
+```
+const joinOptions = {
+    locale: 'en_UK', // audio disclaimer language
+    deviceCapabilities: ['SERVER_AUDIO_ANNOUNCEMENT_SUPPORTED'], // audio disclaimer toggle
+  };
+
+  const joinMeeting = () => { meeting.join(joinOptions)}
 ```
 
 ##### Record
@@ -956,9 +1012,6 @@ meeting.on('media:ready', (media) => {
   if (media.type === 'remoteShare') {
     document.getElementById('sharevideo').srcObject = media.stream;
   }
-  if (media.type === 'localShare') {
-    document.getElementById('localshare').srcObject = media.stream;
-  }
 });
 ```
 
@@ -978,9 +1031,6 @@ meeting.on('media:stopped', (media) => {
   }
   if (media.type === 'remoteAudio') {
     document.getElementById('remoteaudio').srcObject = null;
-  }
-  if (media.type === 'localShare') {
-    document.getElementById('localshare').srcObject = null;
   }
   if (media.type === 'remoteShare') {
     document.getElementById('sharevideo').srcObject = null;

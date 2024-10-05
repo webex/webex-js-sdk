@@ -31,20 +31,16 @@ Noise reduction (e.g., background noise removal)
 The virtual background effect provides a virtual background for video calling. The virtual background may be an image, an mp4 video, or the user's background with blur applied.
 
 **Applying the effect**
-1. Create a new camera track instance by using LocalCameraTrack() method.
+1. Create a new camera stream instance by using createCameraStream() method.
 2. Create a VirtualBackgroundEffect instance by passing appropriate constraints.
-3. Use addEffect() method on cameraTrack to apply effect on it.
-4. Enable the effect after adding it to cameraTrack using enable() method available on effect. Effect will be enabled on cameraTrack.
+3. Use addEffect() method on cameraStream to apply effect on it.
+4. Enable the effect after adding it to cameraStream using enable() method available on effect. Effect will be enabled on cameraStream.
 
 ```javascript
-import {LocalCameraTrack, VirtualBackgroundEffect} from '@webex/media-helpers';
+import {createCameraStream, VirtualBackgroundEffect} from '@webex/media-helpers';
 
-// Create a new video stream by a getting user's video media.
-const stream = await navigator.mediaDevices.getUserMedia({ video: { width, height } });
-
-const videoTrackFromLocalStream = stream.getVideoTracks()[0];
-
-const cameraTrack = new LocalCameraTrack(new MediaStream([videoTrackFromLocalStream]));
+// Create a new video stream.
+const cameraStream = createCameraStream(optionalVideoConstraints);
 
 // Create the effect.
 const effect = new VirtualBackgroundEffect({
@@ -54,10 +50,10 @@ const effect = new VirtualBackgroundEffect({
   quality: `LOW`,
 });
 
-// add the effect on the input camera track.
-await cameraTrack.addEffect("background-blur", effect);
+// add the effect on the input camera stream.
+await cameraStream.addEffect(effect);
 
-//enable the effect once it is added to the track
+//enable the effect once it is added to the stream
 await effect.enable()
 ```
 
@@ -65,20 +61,16 @@ await effect.enable()
 The noise reduction effect removes background noise from an audio stream to provide clear audio for calling.
 
 **Applying the effect**
-1. Create a new microphone track instance by using LocalMicrophoneTrack() method.
+1. Create a new microphone stream instance by using createMicrophoneStream() method.
 2. Create a NoiseReductionEffect instance by passing appropriate constraints.
-3. Use addEffect() method on microphoneTrack to apply effect on it.
-4. Enable the effect after adding it to microphoneTrack using enable() method available on effect. Effect will be enabled on microphoneTrack.
+3. Use addEffect() method on microphoneStream to apply effect on it.
+4. Enable the effect after adding it to microphoneStream using enable() method available on effect. Effect will be enabled on microphoneStream.
 
 ```javascript
-import {LocalMicrophoneTrack, NoiseReductionEffect} from '@webex/media-helpers';
+import {createMicrophoneStream, NoiseReductionEffect} from '@webex/media-helpers';
 
-// Create a new audio stream by getting a user's audio media.
-const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-
-const audioTrackFromLocalStream = stream.getAudioTracks()[0];
-
-const microphoneTrack = new LocalMicrophoneTrack(new MediaStream([audioTrackFromLocalStream]));
+// Create a new audio stream.
+const microphoneStream = createMicrophoneStream(optionalAudioConstraints);
 
 // Create the effect.
 const effect = new NoiseReductionEffect({
@@ -86,8 +78,8 @@ const effect = new NoiseReductionEffect({
   mode: 'WORKLET', // or 'LEGACY'
 });
 
-// add the effect on microphone track.
-await microphoneTrack.addEffect("background-noise-removal", effect);
+// add the effect on microphone stream.
+await microphoneStream.addEffect(effect);
 
 //enable the effect once it is added to the track
 await effect.enable()

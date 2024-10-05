@@ -1,11 +1,16 @@
-import {getTestUtilsWebex} from '../common/testUtil';
 import {LOGGER} from '../Logger/types';
-import {IUcmBackendConnector, CallForwardAlwaysSetting, CallForwardingSettingsUCM} from './types';
-import {HTTP_METHODS, WebexRequestPayload} from '../common/types';
-import {FAILURE_MESSAGE, SUCCESS_MESSAGE, UCM_CONNECTOR_FILE} from '../common/constants';
-import {CF_ENDPOINT, ORG_ENDPOINT, PEOPLE_ENDPOINT, WEBEX_APIS_INT_URL} from './constants';
 import * as utils from '../common/Utils';
+import {
+  FAILURE_MESSAGE,
+  SUCCESS_MESSAGE,
+  UCM_CONNECTOR_FILE,
+  WEBEX_API_CONFIG_INT_URL,
+} from '../common/constants';
+import {getTestUtilsWebex} from '../common/testUtil';
+import {HTTP_METHODS, WebexRequestPayload} from '../common/types';
 import {UcmBackendConnector} from './UcmBackendConnector';
+import {CF_ENDPOINT, ORG_ENDPOINT, PEOPLE_ENDPOINT} from './constants';
+import {CallForwardAlwaysSetting, CallForwardingSettingsUCM, IUcmBackendConnector} from './types';
 
 describe('Call Settings Client Tests for UcmBackendConnector', () => {
   const webex = getTestUtilsWebex();
@@ -22,20 +27,29 @@ describe('Call Settings Client Tests for UcmBackendConnector', () => {
             dn: '8001',
             destination: '8004',
             destinationVoicemailEnabled: false,
+            e164Number: '+14922999903',
           },
           {
             dn: '8002',
             destinationVoicemailEnabled: true,
+            e164Number: '',
           },
           {
             dn: '8003',
             destinationVoicemailEnabled: false,
+            e164Number: '',
+          },
+          {
+            dn: '8000',
+            destination: '8007',
+            destinationVoicemailEnabled: false,
+            e164Number: '8006',
           },
         ],
       },
     };
 
-    const callForwardingUri = `${WEBEX_APIS_INT_URL}/${PEOPLE_ENDPOINT}/${userId}/${CF_ENDPOINT.toLowerCase()}?${ORG_ENDPOINT}=${orgId}`;
+    const callForwardingUri = `${WEBEX_API_CONFIG_INT_URL}/${PEOPLE_ENDPOINT}/${userId}/${CF_ENDPOINT.toLowerCase()}?${ORG_ENDPOINT}=${orgId}`;
 
     beforeAll(() => {
       callSettingsClient = new UcmBackendConnector(webex, {level: LOGGER.INFO}, false);
@@ -89,6 +103,21 @@ describe('Call Settings Client Tests for UcmBackendConnector', () => {
       expect(response.message).toEqual(SUCCESS_MESSAGE);
       expect(callForwardSetting.enabled).toEqual(false);
       expect(callForwardSetting.destination).toBeFalsy();
+      expect(webex.request).toBeCalledOnceWith({
+        method: HTTP_METHODS.GET,
+        uri: callForwardingUri,
+      });
+    });
+
+    it('Success: Get Call Forward Always setting when directory num matching with e16number and set to destination', async () => {
+      const response = await callSettingsClient.getCallForwardAlwaysSetting('8006');
+
+      const callForwardSetting = response.data.callSetting as CallForwardAlwaysSetting;
+
+      expect(response.statusCode).toEqual(200);
+      expect(response.message).toEqual(SUCCESS_MESSAGE);
+      expect(callForwardSetting.enabled).toEqual(true);
+      expect(callForwardSetting.destination).toEqual('8007');
       expect(webex.request).toBeCalledOnceWith({
         method: HTTP_METHODS.GET,
         uri: callForwardingUri,

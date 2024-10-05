@@ -138,7 +138,15 @@ describe('plugin-mercury', () => {
       });
 
       it('connects to Mercury using default url', () => {
+        webex.internal.feature.updateFeature = sinon.stub();
         const promise = mercury.connect();
+        const envelope = {
+          data: {
+            featureToggle: {
+              'feature-name': true
+            }
+          }
+        };
 
         assert.isFalse(mercury.connected, 'Mercury is not connected');
         assert.isTrue(mercury.connecting, 'Mercury is connecting');
@@ -148,13 +156,27 @@ describe('plugin-mercury', () => {
           assert.isTrue(mercury.connected, 'Mercury is connected');
           assert.isFalse(mercury.connecting, 'Mercury is not connecting');
           assert.calledWith(socketOpenStub, sinon.match(/ws:\/\/example.com/), sinon.match.any);
+          mercury._emit('event:featureToggle_update', envelope);
+          assert.calledOnceWithExactly(webex.internal.feature.updateFeature, envelope.data.featureToggle);
+          sinon.restore();
+        });
+      });
+
+      it('connects to Mercury but does not call updateFeature', () => {
+        webex.internal.feature.updateFeature = sinon.stub();
+        const promise = mercury.connect();
+        const envelope = {};
+
+        return promise.then(() => {
+          mercury._emit('event:featureToggle_update', envelope);
+          assert.notCalled(webex.internal.feature.updateFeature);
+          sinon.restore();
         });
       });
 
       describe('when `maxRetries` is set', () => {
-        // skipping due to apparent bug with lolex in all browsers but Chrome.
-        skipInBrowser(it)('fails after `maxRetries` attempts', () => {
-          mercury.config.maxRetries = 2;
+
+        const check = () => {
           socketOpenStub.restore();
           socketOpenStub = sinon.stub(Socket.prototype, 'open');
           socketOpenStub.returns(Promise.reject(new ConnectionError()));
@@ -182,12 +204,42 @@ describe('plugin-mercury', () => {
             .then(() => {
               assert.calledThrice(Socket.prototype.open);
               clock.tick(5 * mercury.config.backoffTimeReset);
-
               return assert.isRejected(promise);
             })
             .then(() => {
               assert.calledThrice(Socket.prototype.open);
             });
+        }
+
+        // skipping due to apparent bug with lolex in all browsers but Chrome.
+        // if initial retries is zero and mercury has never connected max retries is used
+        skipInBrowser(it)('fails after `maxRetries` attempts', () => {
+          mercury.config.maxRetries = 2;
+          mercury.config.initialConnectionMaxRetries = 0;
+
+          return check();
+        });
+
+        // initial retries is non-zero so takes precedence over maxRetries when mercury has never connected
+        skipInBrowser(it)('fails after `initialConnectionMaxRetries` attempts', () => {
+          mercury.config.maxRetries = 0;
+          mercury.config.initialConnectionMaxRetries = 2;
+          return check();
+        });
+
+        // initial retries is non-zero so takes precedence over maxRetries when mercury has never connected
+        skipInBrowser(it)('fails after `initialConnectionMaxRetries` attempts', () => {
+          mercury.config.initialConnectionMaxRetries = 2;
+          mercury.config.maxRetries = 5;
+          return check();
+        });
+
+        // when mercury has connected maxRetries is used and the initialConnectionMaxRetries is ignored
+        skipInBrowser(it)('fails after `initialConnectionMaxRetries` attempts', () => {
+          mercury.config.initialConnectionMaxRetries = 5;
+          mercury.config.maxRetries = 2;
+          mercury.hasEverConnected = true;
+          return check();
         });
       });
 
@@ -381,7 +433,7 @@ describe('plugin-mercury', () => {
         });
       });
 
-      describe.skip('when webSocketUrl is provided', () => {
+      describe('when webSocketUrl is provided', () => {
         it('connects to Mercury with provided url', () => {
           const webSocketUrl = 'ws://providedurl.com';
           const promise = mercury.connect(webSocketUrl);
@@ -403,7 +455,7 @@ describe('plugin-mercury', () => {
       });
     });
 
-    describe.skip('Websocket proxy agent', () => {
+    describe('Websocket proxy agent', () => {
       afterEach(() => {
         delete webex.config.defaultMercuryOptions;
       });
@@ -451,12 +503,43 @@ describe('plugin-mercury', () => {
       });
     });
 
-    describe.skip('#disconnect()', () => {
-      it('disconnects the WebSocket', () => mercury.connect()
-        .then(() => {
-          assert.isTrue(mercury.connected, 'Mercury is connected');
-          assert.isFalse(mercury.connecting, 'Mercury is not connecting');
-          const promise = mercury.disconnect();
+    describe('#logout()', () => {
+      it('calls disconnect', () => {
+        sinon.stub(mercury, 'disconnect');
+        mercury.logout();
+        assert.called(mercury.disconnect);
+      });
+
+      it('uses the config.beforeLogoutOptionsCloseReason to disconnect and will send code 1050 for logout', () => {
+        sinon.stub(mercury, 'disconnect');
+        mercury.config.beforeLogoutOptionsCloseReason = 'done (permanent)';
+        mercury.logout();
+        assert.calledWith(mercury.disconnect, {code: 1050, reason: 'done (permanent)'});
+      });
+
+      it('uses the config.beforeLogoutOptionsCloseReason to disconnect and will send code 1050 for logout if the reason is different than standard', () => {
+        sinon.stub(mercury, 'disconnect');
+        mercury.config.beforeLogoutOptionsCloseReason = 'test';
+        mercury.logout();
+        assert.calledWith(mercury.disconnect, {code: 1050, reason: 'test'});
+      });
+
+      it('uses the config.beforeLogoutOptionsCloseReason to disconnect and will send undefined for logout if the reason is same as standard', () => {
+        sinon.stub(mercury, 'disconnect');
+        mercury.config.beforeLogoutOptionsCloseReason = 'done (forced)';
+        mercury.logout();
+        assert.calledWith(mercury.disconnect, undefined);
+      });
+    });
+
+    describe('#disconnect()', () => {
+      it('disconnects the WebSocket', () =>
+        mercury
+          .connect()
+          .then(() => {
+            assert.isTrue(mercury.connected, 'Mercury is connected');
+            assert.isFalse(mercury.connecting, 'Mercury is not connecting');
+            const promise = mercury.disconnect();
 
             mockWebSocket.emit('close', {
               code: 1000,
@@ -470,6 +553,27 @@ describe('plugin-mercury', () => {
             assert.isFalse(mercury.connecting, 'Mercury is not connecting');
             assert.isUndefined(mercury.mockWebSocket, 'Mercury does not have a mockWebSocket');
           }));
+
+          it('disconnects the WebSocket with code 1050', () =>
+            mercury
+              .connect()
+              .then(() => {
+                assert.isTrue(mercury.connected, 'Mercury is connected');
+                assert.isFalse(mercury.connecting, 'Mercury is not connecting');
+                const promise = mercury.disconnect();
+    
+                mockWebSocket.emit('close', {
+                  code: 1050,
+                  reason: 'done (permanent)',
+                });
+    
+                return promise;
+              })
+              .then(() => {
+                assert.isFalse(mercury.connected, 'Mercury is not connected');
+                assert.isFalse(mercury.connecting, 'Mercury is not connecting');
+                assert.isUndefined(mercury.mockWebSocket, 'Mercury does not have a mockWebSocket');
+              }));
 
       it('stops emitting message events', () => {
         const spy = sinon.spy();
@@ -539,7 +643,10 @@ describe('plugin-mercury', () => {
             // The socket will never be unset (which seems bad)
             assert.isDefined(mercury.socket, 'Mercury socket is not defined');
 
-            return assert.isRejected(promise);
+            return assert.isRejected(promise).then((error) => {
+              // connection did not fail, so no last error
+              assert.isUndefined(mercury.getLastError());
+            });
           });
         });
 
@@ -558,20 +665,53 @@ describe('plugin-mercury', () => {
           return promiseTick(webex.internal.mercury.config.backoffTimeReset).then(() => {
             assert.equal(
               reason.message,
-              'mercury: prevent socket open when backoffCall no longer defined'
+              'Mercury: prevent socket open when backoffCall no longer defined'
             );
+          });
+        });
+
+        it('sets lastError when retrying', () => {
+          const realError = new Error('FORCED');
+
+          socketOpenStub.restore();
+          socketOpenStub = sinon.stub(Socket.prototype, 'open');
+          socketOpenStub.onCall(0).returns(Promise.reject(realError));
+          const promise = mercury.connect();
+
+          // Wait for the connect call to setup
+          return promiseTick(webex.internal.mercury.config.backoffTimeReset).then(() => {
+            // Calling disconnect will abort the backoffCall, close the socket, and
+            // reject the connect
+            mercury.disconnect();
+
+            return assert.isRejected(promise).then((error) => {
+              const lastError = mercury.getLastError();
+
+              assert.equal(error.message, "Mercury Connection Aborted");
+              assert.isDefined(lastError);
+              assert.equal(lastError, realError);
+            });
           });
         });
       });
     });
 
     describe('#_emit()', () => {
-      it('emits Error-safe events', () => {
+      it('emits Error-safe events and log the error with the call parameters', () => {
+        const error = 'error';
+        const event = {data: 'some data'};
         mercury.on('break', () => {
-          throw new Error();
+          throw error;
         });
+        sinon.stub(mercury.logger, 'error');
 
-        return Promise.resolve(mercury._emit('break'));
+        return Promise.resolve(mercury._emit('break', event)).then((res) => {
+          assert.calledWith(mercury.logger.error, 'Mercury: error occurred in event handler', {
+            error,
+            arguments: ['break', event],
+          });
+          return res;
+        });
       });
     });
 
@@ -703,6 +843,19 @@ describe('plugin-mercury', () => {
           webex.internal.mercury
             ._prepareUrl()
             .then((wsUrl) => assert.match(wsUrl, /multipleConnections/)));
+      });
+    });
+
+    describe('ping pong latency event is forwarded', () => {
+      it('should forward ping pong latency event', () => {
+        const spy = sinon.spy();
+
+        mercury.on('ping-pong-latency', spy);
+
+        return mercury.connect().then(() => {
+          assert.calledWith(spy, 0);
+          assert.calledOnce(spy);
+        });
       });
     });
   });

@@ -20,10 +20,10 @@ import type { Options } from './sync.types';
  * @example
  * ```js
  * const { Commands } = require('@webex/cli-tools');
- * const increment = require('./relative/path/increment.js');
+ * const sync = require('./relative/path/sync.js');
  *
  * const commands = new Commands();
- * commands.mount(increment);
+ * commands.mount(sync);
  * commands.mount(otherCommandConfig);
  * commands.process();
  * ```

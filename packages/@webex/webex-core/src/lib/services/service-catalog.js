@@ -2,6 +2,7 @@ import Url from 'url';
 
 import AmpState from 'ampersand-state';
 
+import {union} from 'lodash';
 import ServiceUrl from './service-url';
 
 /* eslint-disable no-underscore-dangle */
@@ -236,7 +237,6 @@ const ServiceCatalog = AmpState.extend({
    * @returns {serviceUrl} - ServiceUrl assocated with provided url
    */
   findServiceUrlFromUrl(url) {
-    const incomingUrlObj = Url.parse(url);
     const serviceUrls = [
       ...this.serviceGroups.discovery,
       ...this.serviceGroups.preauth,
@@ -246,12 +246,21 @@ const ServiceCatalog = AmpState.extend({
     ];
 
     return serviceUrls.find((serviceUrl) => {
-      if (incomingUrlObj.hostname === Url.parse(serviceUrl.defaultUrl).hostname) {
+      // Check to see if the URL we are checking starts with the default URL
+      if (url.startsWith(serviceUrl.defaultUrl)) {
         return true;
       }
 
-      if (serviceUrl.hosts.find((host) => host.host === incomingUrlObj.hostname)) {
-        return true;
+      // If not, we check to see if the alternate URLs match
+      // These are made by swapping the host of the default URL
+      // with that of an alternate host
+      for (const host of serviceUrl.hosts) {
+        const alternateUrl = new URL(serviceUrl.defaultUrl);
+        alternateUrl.host = host.host;
+
+        if (url.startsWith(alternateUrl.toString())) {
+          return true;
+        }
       }
 
       return false;
@@ -362,6 +371,15 @@ const ServiceCatalog = AmpState.extend({
   },
 
   /**
+   *
+   * @param {Array<string>} newAllowedDomains - new allowed domains to add to existing set of allowed domains
+   * @returns {void}
+   */
+  addAllowedDomains(newAllowedDomains) {
+    this.allowedDomains = union(this.allowedDomains, newAllowedDomains);
+  },
+
+  /**
    * Update the current list of `ServiceUrl`s against a provided
    * service hostmap.
    * @emits ServiceCatalog#preauthorized
@@ -413,6 +431,8 @@ const ServiceCatalog = AmpState.extend({
         resolve();
       }
 
+      const validatedTimeout = typeof timeout === 'number' && timeout >= 0 ? timeout : 60;
+
       const timeoutTimer = setTimeout(
         () =>
           reject(
@@ -420,7 +440,7 @@ const ServiceCatalog = AmpState.extend({
               `services: timeout occured while waiting for '${serviceGroup}' catalog to populate`
             )
           ),
-        timeout ? timeout * 1000 : 60000
+        validatedTimeout * 1000
       );
 
       this.once(serviceGroup, () => {

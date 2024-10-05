@@ -54,8 +54,58 @@ describe('internal-plugin-calendar', () => {
             uri: "kms://kms-us-int.wbx2.com/keys/xxxx-xxxx-xxxx-xxxx"
           }])
         },
-        encryptText: sinon.stub().resolves("encryptedText")
+        encryptText: sinon.stub().resolves("encryptedText"),
+        getKey: sinon.stub().resolves(undefined),
       };
+    });
+
+    describe('Private API', () => {
+      describe('#prefetchEncryptionKey', () => {
+        it('waits for the ability to authorize before doing anything', () => {
+          webex.canAuthorize = false;
+
+          webex.internal.calendar.prefetchEncryptionKey();
+
+          assert.notCalled(webex.internal.encryption.kms.createUnboundKeys);
+
+          // Behaviour when the user can authorize is tested elsewhere, so just ensure it gets called again
+          const prefetchEncryptionKeyStub = sinon.stub(webex.internal.calendar, 'prefetchEncryptionKey');
+
+          webex.trigger('change:canAuthorize');
+
+          assert.calledOnce(prefetchEncryptionKeyStub);
+          assert.calledWith(prefetchEncryptionKeyStub);
+        });
+
+        it('does nothing when the current user is an unverified guest', () => {
+          webex.credentials.isUnverifiedGuest = true;
+
+          webex.internal.calendar.prefetchEncryptionKey();
+
+          assert.notCalled(webex.internal.encryption.kms.createUnboundKeys);
+        });
+
+        it('creates an encryption key when the current user can authorize', () => {
+          webex.internal.calendar.prefetchEncryptionKey();
+
+          assert.calledOnce(webex.internal.encryption.kms.createUnboundKeys);
+          assert.calledWith(webex.internal.encryption.kms.createUnboundKeys, {count: 1});
+        });
+      });
+
+      describe('#initialize', () => {
+        it('adds relevant handlers when webex is ready', () => {
+          const prefetchEncryptionKeyStub = sinon.stub(webex.internal.calendar, 'prefetchEncryptionKey');
+
+          assert.notCalled(prefetchEncryptionKeyStub);
+
+          // Initialize should have already run, so there should be an event handler already
+          webex.trigger('ready');
+
+          assert.calledOnce(prefetchEncryptionKeyStub);
+          assert.calledWith(prefetchEncryptionKeyStub);
+        });
+      });
     });
 
     describe('Public Api Contract', () => {
@@ -299,7 +349,7 @@ describe('internal-plugin-calendar', () => {
       });
 
       describe('#getParticipants()', () => {
-        const id = 'meetingId123';
+        const uri = 'participantsUrl';
 
         it('should fetch the meeting participants', async () => {
           webex.request = sinon.stub().returns(
@@ -310,13 +360,34 @@ describe('internal-plugin-calendar', () => {
             })
           );
 
-          const res = await webex.internal.calendar.getParticipants(id);
+          const res = await webex.internal.calendar.getParticipants(uri);
 
           assert.equal(res.body.encryptedParticipants.length, 1);
           assert.calledWith(webex.request, {
             method: 'GET',
-            service: 'calendar',
-            resource: `calendarEvents/${base64.encode(id)}/participants`,
+            uri,
+          });
+        });
+      });
+
+      describe('#getNotesByUrl()', () => {
+        const uri = 'notesUrl';
+
+        it('should fetch the meeting notes', async () => {
+          webex.request = sinon.stub().returns(
+            Promise.resolve({
+              body: {
+                encryptedParticipants: ['participant1'],
+              },
+            })
+          );
+
+          const res = await webex.internal.calendar.getNotesByUrl(uri);
+
+          assert.equal(res.body.encryptedParticipants.length, 1);
+          assert.calledWith(webex.request, {
+            method: 'GET',
+            uri,
           });
         });
       });

@@ -1,11 +1,12 @@
 import {
-  Event,
+  MediaConnectionEventNames,
   LocalMicrophoneStream,
   LocalStreamEventNames,
   RoapMediaConnection,
 } from '@webex/internal-media-core';
 import {createMachine, interpret} from 'xstate';
 import {v4 as uuid} from 'uuid';
+import {EffectEvent, TrackEffect} from '@webex/web-media-effects';
 import {ERROR_LAYER, ERROR_TYPE, ErrorContext} from '../../Errors/types';
 import {handleCallErrors, parseMediaQualityStatistics} from '../../common/Utils';
 import {
@@ -35,8 +36,10 @@ import {
   DEFAULT_SESSION_TIMER,
   DEVICES_ENDPOINT_RESOURCE,
   HOLD_ENDPOINT,
+  ICE_CANDIDATES_TIMEOUT,
   INITIAL_SEQ_NUMBER,
   MEDIA_ENDPOINT_RESOURCE,
+  NOISE_REDUCTION_EFFECT,
   RESUME_ENDPOINT,
   SPARK_USER_AGENT,
   SUPPLEMENTARY_SERVICES_TIMEOUT,
@@ -120,6 +123,8 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
   private connected: boolean;
 
+  private mediaInactivity: boolean;
+
   private callerInfo: DisplayInformation;
 
   private localRoapMessage: RoapMessage; // Use it for new offer
@@ -150,6 +155,8 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
   private mediaNegotiationCompleted: boolean;
 
   private receivedRoapOKSeq: number;
+
+  private localAudioStream?: LocalMicrophoneStream;
 
   /**
    * Getter to check if the call is muted or not.
@@ -209,6 +216,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
     this.correlationId = uuid();
     this.deleteCb = deleteCb;
     this.connected = false;
+    this.mediaInactivity = false;
     this.held = false;
     this.earlyMedia = false;
     this.callerInfo = {} as DisplayInformation;
@@ -218,7 +226,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
     this.receivedRoapOKSeq = 0;
     this.mediaNegotiationCompleted = false;
 
-    log.info(`Mobius Url:- ${this.mobiusUrl}`, {
+    log.info(`Webex Calling Url:- ${this.mobiusUrl}`, {
       file: CALL_FILE,
       method: 'constructor',
     });
@@ -274,6 +282,12 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
           /* CALL SETUP */
           S_RECV_CALL_SETUP: {
+            after: {
+              10000: {
+                target: 'S_CALL_CLEARED',
+                actions: ['triggerTimeout'],
+              },
+            },
             on: {
               E_SEND_CALL_ALERTING: {
                 target: 'S_SEND_CALL_PROGRESS',
@@ -294,10 +308,20 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
             },
           },
           S_SEND_CALL_SETUP: {
+            after: {
+              10000: {
+                target: 'S_CALL_CLEARED',
+                actions: ['triggerTimeout'],
+              },
+            },
             on: {
               E_RECV_CALL_PROGRESS: {
                 target: 'S_RECV_CALL_PROGRESS',
                 actions: ['incomingCallProgress'],
+              },
+              E_RECV_CALL_CONNECT: {
+                target: 'S_RECV_CALL_CONNECT',
+                actions: ['incomingCallConnect'],
               },
               E_RECV_CALL_DISCONNECT: {
                 target: 'S_RECV_CALL_DISCONNECT',
@@ -316,6 +340,12 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
           /* CALL_PROGRESS */
           S_RECV_CALL_PROGRESS: {
+            after: {
+              60000: {
+                target: 'S_CALL_CLEARED',
+                actions: ['triggerTimeout'],
+              },
+            },
             on: {
               E_RECV_CALL_CONNECT: {
                 target: 'S_RECV_CALL_CONNECT',
@@ -341,6 +371,12 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
             },
           },
           S_SEND_CALL_PROGRESS: {
+            after: {
+              60000: {
+                target: 'S_CALL_CLEARED',
+                actions: ['triggerTimeout'],
+              },
+            },
             on: {
               E_SEND_CALL_CONNECT: {
                 target: 'S_SEND_CALL_CONNECT',
@@ -363,6 +399,12 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
           /* CALL_CONNECT */
           S_RECV_CALL_CONNECT: {
+            after: {
+              10000: {
+                target: 'S_CALL_CLEARED',
+                actions: ['triggerTimeout'],
+              },
+            },
             on: {
               E_CALL_ESTABLISHED: {
                 target: 'S_CALL_ESTABLISHED',
@@ -383,6 +425,12 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
             },
           },
           S_SEND_CALL_CONNECT: {
+            after: {
+              10000: {
+                target: 'S_CALL_CLEARED',
+                actions: ['triggerTimeout'],
+              },
+            },
             on: {
               E_CALL_ESTABLISHED: {
                 target: 'S_CALL_ESTABLISHED',
@@ -594,6 +642,10 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
            * @param event
            */
           unknownState: (context, event: CallEvent) => this.handleUnknownState(event),
+          /**
+           *
+           */
+          triggerTimeout: () => this.handleTimeout(),
         },
       }
     );
@@ -912,7 +964,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       });
       this.setCallId(response.body.callId);
     } catch (e) {
-      log.warn('Call setup failed with Mobius', {
+      log.warn('Failed to setup the call', {
         file: CALL_FILE,
         method: this.handleOutgoingCallSetup.name,
       });
@@ -981,7 +1033,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         }, SUPPLEMENTARY_SERVICES_TIMEOUT);
       }
     } catch (e) {
-      log.warn('Call Hold failed with Mobius', {
+      log.warn('Failed to put the call on hold', {
         file: CALL_FILE,
         method: this.handleCallHold.name,
       });
@@ -1050,7 +1102,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         }, SUPPLEMENTARY_SERVICES_TIMEOUT);
       }
     } catch (e) {
-      log.warn('Call Resume failed with Mobius', {
+      log.warn('Failed to resume the call', {
         file: CALL_FILE,
         method: this.handleCallResume.name,
       });
@@ -1168,7 +1220,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         method: this.handleOutgoingCallAlerting.name,
       });
     } catch (err) {
-      log.warn('Call Progress failed with Mobius', {
+      log.warn('Failed to signal call progression', {
         file: CALL_FILE,
         method: this.handleOutgoingCallAlerting.name,
       });
@@ -1235,18 +1287,19 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       return;
     }
 
-    /* send call_connect PATCH */
     try {
+      /* Start Offer/Answer as we might have buffered the offer by now */
+      this.mediaConnection.roapMessageReceived(this.remoteRoapMessage);
+
+      /* send call_connect PATCH */
       const res = await this.patch(MobiusCallState.CONNECTED);
 
       log.log(`PATCH response: ${res.statusCode}`, {
         file: CALL_FILE,
         method: this.handleOutgoingCallConnect.name,
       });
-      /* Start Offer/Answer as we might have buffered the offer by now */
-      this.mediaConnection.roapMessageReceived(this.remoteRoapMessage);
     } catch (err) {
-      log.warn('Call Connect failed with Mobius', {
+      log.warn('Failed to connect the call', {
         file: CALL_FILE,
         method: this.handleOutgoingCallConnect.name,
       });
@@ -1291,13 +1344,16 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         method: this.handleIncomingCallDisconnect.name,
       });
     } catch (e) {
-      log.warn('Delete Call failed with Mobius', {
+      log.warn('Failed to delete the call', {
         file: CALL_FILE,
         method: this.handleIncomingCallDisconnect.name,
       });
     }
 
     this.deleteCb(this.correlationId);
+
+    /* Clear the stream listeners */
+    this.unregisterListeners();
 
     /* istanbul ignore else */
     if (this.sessionTimer) {
@@ -1333,13 +1389,16 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         method: this.handleOutgoingCallDisconnect.name,
       });
     } catch (e) {
-      log.warn('Delete Call failed with Mobius', {
+      log.warn('Failed to delete the call', {
         file: CALL_FILE,
         method: this.handleOutgoingCallDisconnect.name,
       });
     }
 
     this.deleteCb(this.correlationId);
+
+    /* Clear the stream listeners */
+    this.unregisterListeners();
 
     /* istanbul ignore else */
     if (this.sessionTimer) {
@@ -1467,7 +1526,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         method: this.handleUnknownState.name,
       });
     } catch (e) {
-      log.warn('Delete Call failed with Mobius', {
+      log.warn('Failed to delete the call', {
         file: CALL_FILE,
         method: this.handleUnknownState.name,
       });
@@ -1557,7 +1616,10 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       });
 
       try {
-        if (this.callStateMachine.state.value === 'S_RECV_CALL_PROGRESS') {
+        if (
+          this.callStateMachine.state.value === 'S_RECV_CALL_PROGRESS' ||
+          this.callStateMachine.state.value === 'S_SEND_CALL_SETUP'
+        ) {
           log.info(
             'Media negotiation completed before call connect. Setting media negotiation completed flag.',
             {
@@ -1579,7 +1641,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
           this.sendCallStateMachineEvt({type: 'E_CALL_ESTABLISHED'});
         }
       } catch (err) {
-        log.warn('MediaOk failed with Mobius', {
+        log.warn('Failed to process MediaOk request', {
           file: CALL_FILE,
           method: 'handleRoapEstablished',
         });
@@ -1658,7 +1720,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
           method: this.handleRoapError.name,
         });
       } catch (err) {
-        log.warn('Failed to communicate ROAP error with Mobius', {
+        log.warn('Failed to communicate ROAP error to Webex Calling', {
           file: CALL_FILE,
           method: this.handleRoapError.name,
         });
@@ -1726,7 +1788,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         method: this.handleOutgoingRoapOffer.name,
       });
     } catch (err) {
-      log.warn('MediaOk failed with Mobius', {
+      log.warn('Failed to process MediaOk request', {
         file: CALL_FILE,
         method: this.handleOutgoingRoapOffer.name,
       });
@@ -1774,7 +1836,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         method: this.handleOutgoingRoapAnswer.name,
       });
     } catch (err) {
-      log.warn('MediaAnswer failed with Mobius', {
+      log.warn('Failed to send MediaAnswer request', {
         file: CALL_FILE,
         method: this.handleOutgoingRoapAnswer.name,
       });
@@ -1878,9 +1940,11 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       {
         skipInactiveTransceivers: true,
         iceServers: [],
+        iceCandidatesTimeout: ICE_CANDIDATES_TIMEOUT,
         sdpMunging: {
           convertPort9to0: true,
           addContentSlides: false,
+          copyClineToSessionLevel: true,
         },
       },
       {
@@ -1946,7 +2010,10 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    *
    */
   private setDisconnectReason() {
-    if (this.connected || this.direction === CallDirection.OUTBOUND) {
+    if (this.mediaInactivity) {
+      this.disconnectReason.code = DisconnectCode.MEDIA_INACTIVITY;
+      this.disconnectReason.cause = DisconnectCause.MEDIA_INACTIVITY;
+    } else if (this.connected || this.direction === CallDirection.OUTBOUND) {
       this.disconnectReason.code = DisconnectCode.NORMAL;
       this.disconnectReason.cause = DisconnectCause.NORMAL;
     } else {
@@ -1970,14 +2037,27 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    * @param localAudioStream - The local audio stream for the call.
    */
   public async answer(localAudioStream: LocalMicrophoneStream) {
+    this.localAudioStream = localAudioStream;
     const localAudioTrack = localAudioStream.outputStream.getAudioTracks()[0];
+
+    if (!localAudioTrack) {
+      log.warn(`Did not find a local track while answering the call ${this.getCorrelationId()}`, {
+        file: CALL_FILE,
+        method: 'answer',
+      });
+      this.mediaInactivity = true;
+      this.sendCallStateMachineEvt({type: 'E_SEND_CALL_DISCONNECT'});
+
+      return;
+    }
+
     localAudioTrack.enabled = true;
 
     if (!this.mediaConnection) {
       this.initMediaConnection(localAudioTrack);
       this.mediaRoapEventsListener();
       this.mediaTrackListener();
-      this.outputTrackUpdateListener(localAudioStream);
+      this.registerListeners(localAudioStream);
     }
 
     if (this.callStateMachine.state.value === 'S_SEND_CALL_PROGRESS') {
@@ -1995,14 +2075,27 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    * @param settings.localAudioTrack
    */
   public async dial(localAudioStream: LocalMicrophoneStream) {
+    this.localAudioStream = localAudioStream;
     const localAudioTrack = localAudioStream.outputStream.getAudioTracks()[0];
+
+    if (!localAudioTrack) {
+      log.warn(`Did not find a local track while dialing the call ${this.getCorrelationId()}`, {
+        file: CALL_FILE,
+        method: 'dial',
+      });
+
+      this.deleteCb(this.getCorrelationId());
+      this.emit(CALL_EVENT_KEYS.DISCONNECT, this.getCorrelationId());
+
+      return;
+    }
     localAudioTrack.enabled = true;
 
     if (!this.mediaConnection) {
       this.initMediaConnection(localAudioTrack);
       this.mediaRoapEventsListener();
       this.mediaTrackListener();
-      this.outputTrackUpdateListener(localAudioStream);
+      this.registerListeners(localAudioStream);
     }
 
     if (this.mediaStateMachine.state.value === 'S_ROAP_IDLE') {
@@ -2052,7 +2145,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    * @param state -.
    */
   private async patch(state: MobiusCallState): Promise<PatchResponse> {
-    log.info(`Send a PATCH for ${state} to mobius`, {
+    log.info(`Send a PATCH for ${state} to Webex Calling`, {
       file: CALL_FILE,
       method: this.patch.name,
     });
@@ -2296,7 +2389,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    * @param roapMessage -.
    */
   private async postMedia(roapMessage: RoapMessage): Promise<WebexRequestPayload> {
-    log.log('Posting message to mobius', {
+    log.log('Posting message to Webex Calling', {
       file: CALL_FILE,
       method: this.postMedia.name,
     });
@@ -2329,7 +2422,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    */
   private mediaRoapEventsListener() {
     this.mediaConnection.on(
-      Event.ROAP_MESSAGE_TO_SEND,
+      MediaConnectionEventNames.ROAP_MESSAGE_TO_SEND,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       async (event: any) => {
         log.info(
@@ -2342,6 +2435,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
           file: CALL_FILE,
           method: this.mediaRoapEventsListener.name,
         });
+
         switch (event.roapMessage.messageType) {
           case RoapScenario.OK: {
             const mediaOk = {
@@ -2392,17 +2486,74 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    */
   private mediaTrackListener() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    this.mediaConnection.on(Event.REMOTE_TRACK_ADDED, (e: any) => {
+    this.mediaConnection.on(MediaConnectionEventNames.REMOTE_TRACK_ADDED, (e: any) => {
       if (e.type === MEDIA_CONNECTION_EVENT_KEYS.MEDIA_TYPE_AUDIO) {
         this.emit(CALL_EVENT_KEYS.REMOTE_MEDIA, e.track);
       }
     });
   }
 
-  private outputTrackUpdateListener(localAudioStream: LocalMicrophoneStream) {
-    localAudioStream.on(LocalStreamEventNames.OutputTrackChange, (track: MediaStreamTrack) => {
-      this.mediaConnection.updateLocalTracks({audio: track});
-    });
+  private onEffectEnabled = () => {
+    this.metricManager.submitBNRMetric(
+      METRIC_EVENT.BNR_ENABLED,
+      METRIC_TYPE.BEHAVIORAL,
+      this.callId,
+      this.correlationId
+    );
+  };
+
+  private onEffectDisabled = () => {
+    this.metricManager.submitBNRMetric(
+      METRIC_EVENT.BNR_DISABLED,
+      METRIC_TYPE.BEHAVIORAL,
+      this.callId,
+      this.correlationId
+    );
+  };
+
+  private updateTrack = (audioTrack: MediaStreamTrack) => {
+    this.mediaConnection.updateLocalTracks({audio: audioTrack});
+  };
+
+  private registerEffectListener = (addedEffect: TrackEffect) => {
+    if (this.localAudioStream) {
+      const effect = this.localAudioStream.getEffectByKind(NOISE_REDUCTION_EFFECT);
+
+      if (effect === addedEffect) {
+        effect.on(EffectEvent.Enabled, this.onEffectEnabled);
+        effect.on(EffectEvent.Disabled, this.onEffectDisabled);
+      }
+    }
+  };
+
+  private unregisterListeners() {
+    if (this.localAudioStream) {
+      const effect = this.localAudioStream.getEffectByKind(NOISE_REDUCTION_EFFECT);
+
+      if (effect) {
+        effect.off(EffectEvent.Enabled, this.onEffectEnabled);
+        effect.off(EffectEvent.Disabled, this.onEffectDisabled);
+      }
+
+      this.localAudioStream.off(LocalStreamEventNames.EffectAdded, this.registerEffectListener);
+      this.localAudioStream.off(LocalStreamEventNames.OutputTrackChange, this.updateTrack);
+    }
+  }
+
+  private registerListeners(localAudioStream: LocalMicrophoneStream) {
+    localAudioStream.on(LocalStreamEventNames.OutputTrackChange, this.updateTrack);
+
+    localAudioStream.on(LocalStreamEventNames.EffectAdded, this.registerEffectListener);
+
+    const effect = localAudioStream.getEffectByKind(NOISE_REDUCTION_EFFECT) as any;
+
+    if (effect) {
+      effect.on(EffectEvent.Enabled, this.onEffectEnabled);
+      effect.on(EffectEvent.Disabled, this.onEffectDisabled);
+      if (effect.isEnabled) {
+        this.onEffectEnabled();
+      }
+    }
   }
 
   private async delete(): Promise<MobiusCallResponse> {
@@ -2592,36 +2743,72 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    */
   public sendDigit(tone: string) {
     /* istanbul ignore else */
-    if (!this.connected) {
-      log.warn(`Can't send DTMF as call is not yet connected`, {
+    try {
+      log.info(`Sending digit : ${tone}`, {
         file: CALL_FILE,
         method: 'sendDigit',
       });
 
-      return;
+      this.mediaConnection.insertDTMF(tone);
+    } catch (e: any) {
+      log.warn(`Unable to send digit on call: ${e.message}`, {
+        file: CALL_FILE,
+        method: 'sendDigit',
+      });
     }
-
-    log.info(`Sending digit : ${tone}`, {
-      file: CALL_FILE,
-      method: 'sendDigit',
-    });
-
-    this.mediaConnection.insertDTMF(tone);
   }
 
   /**
-   * .
+   * Mutes/Unmutes the call.
    *
    * @param localAudioTrack -.
    */
   public mute = (localAudioStream: LocalMicrophoneStream): void => {
-    const localAudioTrack = localAudioStream.outputStream.getAudioTracks()[0];
-    if (this.muted) {
-      localAudioTrack.enabled = true;
-      this.muted = false;
+    if (localAudioStream) {
+      localAudioStream.setUserMuted(!this.muted);
+      this.muted = !this.muted;
     } else {
-      localAudioTrack.enabled = false;
-      this.muted = true;
+      log.warn(`Did not find a local stream while muting the call ${this.getCorrelationId()}.`, {
+        file: CALL_FILE,
+        method: 'mute',
+      });
+    }
+  };
+
+  /**
+   * Change the audio stream of the call.
+   *
+   * @param newAudioStream - The new audio stream to be used in the call.
+   */
+
+  public updateMedia = (newAudioStream: LocalMicrophoneStream): void => {
+    const localAudioTrack = newAudioStream.outputStream.getAudioTracks()[0];
+
+    if (!localAudioTrack) {
+      log.warn(
+        `Did not find a local track while updating media for call ${this.getCorrelationId()}. Will not update media`,
+        {
+          file: CALL_FILE,
+          method: 'updateMedia',
+        }
+      );
+
+      return;
+    }
+
+    try {
+      this.mediaConnection.updateLocalTracks({
+        audio: localAudioTrack,
+      });
+
+      this.unregisterListeners();
+      this.registerListeners(newAudioStream);
+      this.localAudioStream = newAudioStream;
+    } catch (e: any) {
+      log.warn(`Unable to update media on call ${this.getCorrelationId()}. Error: ${e.message}`, {
+        file: CALL_FILE,
+        method: 'updateMedia',
+      });
     }
   };
 
@@ -2646,6 +2833,26 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    */
   getCallRtpStats(): Promise<CallRtpStats> {
     return this.getCallStats();
+  }
+
+  /**
+   * Handle timeout for the missed events
+   * @param expectedStates - An array of next expected states
+   * @param errorMessage - Error message to be emitted if the call is not in the expected state in expected time
+   */
+  private async handleTimeout() {
+    log.warn(`Call timed out`, {
+      file: CALL_FILE,
+      method: 'handleTimeout',
+    });
+    this.deleteCb(this.getCorrelationId());
+    this.emit(CALL_EVENT_KEYS.DISCONNECT, this.getCorrelationId());
+    const response = await this.delete();
+
+    log.log(`handleTimeout: Response code: ${response.statusCode}`, {
+      file: CALL_FILE,
+      method: this.handleTimeout.name,
+    });
   }
 }
 

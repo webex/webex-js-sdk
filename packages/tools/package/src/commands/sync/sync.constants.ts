@@ -1,7 +1,7 @@
 import type { CommandsConfig } from '@webex/cli-tools';
 
 /**
- * `Commands.mount()` Commands Configuration Object for the increment Command
+ * `Commands.mount()` Commands Configuration Object for the sync Command
  * Configuration Object.
  *
  * @public

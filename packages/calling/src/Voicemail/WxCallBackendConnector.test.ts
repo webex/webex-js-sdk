@@ -18,7 +18,6 @@ import {
 } from './voicemailFixture';
 import {WxCallBackendConnector} from './WxCallBackendConnector';
 import * as utils from '../common/Utils';
-import {FAILURE_MESSAGE} from '../common/constants';
 
 describe('Voicemail webex call Backend Connector Test case', () => {
   let wxCallBackendConnector: IWxCallBackendConnector;

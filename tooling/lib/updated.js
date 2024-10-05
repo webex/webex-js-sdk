@@ -15,11 +15,11 @@ const {diff} = require('./git');
  * @param {boolean=} options.dependents if true, also includes dependents of
  * updated packages
  * @param {boolean=} options.npm if true, compares to the last tag published to
- * npm instead of upstream/master
+ * npm instead of upstream/beta
  * @returns {Promise<Array<string>>}
  */
 exports.updated = async function updated({dependents, npm = !!process.env.CI}) {
-  const tag = npm ? await last() : 'upstream/master';
+  const tag = npm ? await last() : 'upstream/beta';
   const changedPackages = _(await diff(tag))
     .map((d) => d.path)
     .filter()

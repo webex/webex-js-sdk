@@ -1,5 +1,5 @@
 import LoggerProxy from '../common/logs/logger-proxy';
-import {HTTP_VERBS, RESOURCE, API} from '../constants';
+import {HTTP_VERBS, RESOURCE, API, IP_VERSION} from '../constants';
 
 export interface ClusterNode {
   isVideoMesh: boolean;
@@ -28,31 +28,44 @@ class ReachabilityRequest {
   }
 
   /**
-   * gets the cluster information
+   * Gets the cluster information
    *
-   * @param {boolean} includeVideoMesh whether to include the video mesh clusters in the result or not
+   * @param {IP_VERSION} ipVersion information about current ip network we're on
    * @returns {Promise}
    */
-  getClusters = (): Promise<ClusterList> =>
-    this.webex
-      .request({
-        method: HTTP_VERBS.GET,
-        shouldRefreshAccessToken: false,
-        api: API.CALLIOPEDISCOVERY,
-        resource: RESOURCE.CLUSTERS,
-      })
+  getClusters = (ipVersion?: IP_VERSION): Promise<{clusters: ClusterList; joinCookie: any}> =>
+    this.webex.internal.newMetrics.callDiagnosticLatencies
+      .measureLatency(
+        () =>
+          this.webex.request({
+            method: HTTP_VERBS.GET,
+            shouldRefreshAccessToken: false,
+            api: API.CALLIOPEDISCOVERY,
+            resource: RESOURCE.CLUSTERS,
+            qs: {
+              JCSupport: 1,
+              ipver: ipVersion,
+            },
+          }),
+        'internal.get.cluster.time'
+      )
       .then((res) => {
-        const {clusters} = res.body;
+        const {clusters, joinCookie} = res.body;
 
         Object.keys(clusters).forEach((key) => {
-          clusters[key].isVideoMesh = res.body.clusterClasses?.hybridMedia?.includes(key);
+          clusters[key].isVideoMesh = !!res.body.clusterClasses?.hybridMedia?.includes(key);
         });
 
         LoggerProxy.logger.log(
-          `Reachability:request#getClusters --> get clusters successful:${JSON.stringify(clusters)}`
+          `Reachability:request#getClusters --> get clusters (ipver=${ipVersion}) successful:${JSON.stringify(
+            clusters
+          )}`
         );
 
-        return clusters;
+        return {
+          clusters,
+          joinCookie,
+        };
       });
 
   /**

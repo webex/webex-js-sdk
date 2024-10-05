@@ -67,19 +67,19 @@ const Encryption = WebexPlugin.extend({
 
   /**
    * Validate and initiate a Download request for requested file
-   *
+   * @param {Object} fileUrl - Plaintext
    * @param {Object} scr - Plaintext
    * @param {Object} options - optional parameters to download a file
    * @returns {promise}
    */
-  download(scr, options) {
+  download(fileUrl, scr, options) {
     /* istanbul ignore if */
-    if (!scr.loc) {
-      return Promise.reject(new Error('`scr.loc` is required'));
+    if (!fileUrl || !scr) {
+      return Promise.reject(new Error('`scr` and `fileUrl` are required'));
     }
 
     const shunt = new EventEmitter();
-    const promise = this._fetchDownloadUrl(scr, options)
+    const promise = this._fetchDownloadUrl(fileUrl, options)
       .then((uri) => {
         // eslint-disable-next-line no-shadow
         const options = {
@@ -103,26 +103,25 @@ const Encryption = WebexPlugin.extend({
 
   /**
    * Fetch Download URL for the requested file
-   *
-   * @param {Object} scr - Plaintext
+   * @param {Object} fileUrl - Plaintext
    * @param {Object} options - optional parameters to download a file
    * @returns {promise} url of the downloadable file
    */
-  _fetchDownloadUrl(scr, options) {
+  _fetchDownloadUrl(fileUrl, options) {
     this.logger.info('encryption: retrieving download url for encrypted file');
 
-    if (process.env.NODE_ENV !== 'production' && scr.loc.includes('localhost')) {
+    if (process.env.NODE_ENV !== 'production' && fileUrl.includes('localhost')) {
       this.logger.info(
         'encryption: bypassing webex files because this looks to be a test file on localhost'
       );
 
-      return Promise.resolve(scr.loc);
+      return Promise.resolve(fileUrl);
     }
 
     const inputBody = {
-      endpoints: [scr.loc],
+      endpoints: [fileUrl],
     };
-    const endpointUrl = url.parse(scr.loc);
+    const endpointUrl = url.parse(fileUrl);
 
     // hardcode the url to use 'https' and the file service '/v1/download/endpoints' api
     endpointUrl.protocol = 'https';
@@ -137,21 +136,29 @@ const Encryption = WebexPlugin.extend({
             allow: options.params.allow,
           }
         : inputBody,
-    }).then((res) => {
-      // eslint-disable-next-line no-shadow
-      const url = res.body.endpoints[scr.loc];
+    })
+      .then((res) => {
+        // eslint-disable-next-line no-shadow
+        const url = res.body.endpoints[fileUrl];
 
-      if (!url) {
+        if (!url) {
+          this.logger.warn(
+            'encryption: could not determine download url for `fileUrl`; attempting to download `fileUrl` directly'
+          );
+
+          return fileUrl;
+        }
+        this.logger.info('encryption: retrieved download url for encrypted file');
+
+        return url;
+      })
+      .catch((err) => {
         this.logger.warn(
-          'encryption: could not determine download url for `scr.loc`; attempting to download `scr.loc` directly'
+          `encryption: ${err} could not determine download url for ${fileUrl}; attempting to download ${fileUrl} directly`
         );
 
-        return scr.loc;
-      }
-      this.logger.info('encryption: retrieved download url for encrypted file');
-
-      return url;
-    });
+        return fileUrl;
+      });
   },
 
   encryptBinary(file) {

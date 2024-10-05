@@ -1,7 +1,29 @@
 import {difference} from 'lodash';
 
-import SimpleQueue from '../common/queue';
+import SortedQueue from '../common/queue';
 import LoggerProxy from '../common/logs/logger-proxy';
+
+import Metrics from '../metrics';
+import BEHAVIORAL_METRICS from '../metrics/constants';
+
+const MAX_OOO_DELTA_COUNT = 5; // when we receive an out-of-order delta and the queue builds up to MAX_OOO_DELTA_COUNT, we do a sync with Locus
+const OOO_DELTA_WAIT_TIME = 10000; // [ms] minimum wait time before we do a sync if we get out-of-order deltas
+const OOO_DELTA_WAIT_TIME_RANDOM_DELAY = 5000; // [ms] max random delay added to OOO_DELTA_WAIT_TIME
+
+type LocusDeltaDto = {
+  url: string;
+  baseSequence: {
+    rangeStart: number;
+    rangeEnd: number;
+    entries: number[];
+  };
+  sequence: {
+    rangeStart: number;
+    rangeEnd: number;
+    entries: number[];
+  };
+  syncUrl: string;
+};
 
 /**
  * Locus Delta Parser
@@ -10,11 +32,11 @@ import LoggerProxy from '../common/logs/logger-proxy';
  */
 export default class Parser {
   // processing status
-  static status = {
-    IDLE: 'IDLE',
-    PAUSED: 'PAUSED',
-    WORKING: 'WORKING',
-  };
+  status:
+    | 'IDLE' // not doing anything
+    | 'PAUSED' // paused, because we are doing a sync
+    | 'WORKING' // processing a delta event
+    | 'BLOCKED'; // received an out-of-order delta, so waiting for the missing one
 
   // loci comparison states
   static loci = {
@@ -24,21 +46,60 @@ export default class Parser {
     DESYNC: 'DESYNC',
     USE_INCOMING: 'USE_INCOMING',
     USE_CURRENT: 'USE_CURRENT',
+    WAIT: 'WAIT',
     ERROR: 'ERROR',
+    LOCUS_URL_CHANGED: 'LOCUS_URL_CHANGED',
   };
 
-  queue: any;
+  queue: SortedQueue<LocusDeltaDto>;
   workingCopy: any;
+  syncTimer?: ReturnType<typeof setTimeout>;
 
   /**
    * @constructs Parser
    */
   constructor() {
-    this.queue = new SimpleQueue();
-    // @ts-ignore - This is declared as static class member and again being initialized here from same
-    this.status = Parser.status.IDLE;
+    const deltaCompareFunc = (left: LocusDeltaDto, right: LocusDeltaDto) => {
+      const {LT, GT} = Parser.loci;
+      const {extractComparisonState: extract} = Parser;
+
+      if (Parser.isSequenceEmpty(left)) {
+        return -1;
+      }
+      if (Parser.isSequenceEmpty(right)) {
+        return 1;
+      }
+      const result = extract(Parser.compareSequence(left.baseSequence, right.baseSequence));
+
+      if (result === LT) {
+        return -1;
+      }
+      if (result === GT) {
+        return 1;
+      }
+
+      return 0;
+    };
+
+    this.queue = new SortedQueue<LocusDeltaDto>(deltaCompareFunc);
+    this.status = 'IDLE';
     this.onDeltaAction = null;
     this.workingCopy = null;
+    this.syncTimer = undefined;
+  }
+
+  /**
+   * Returns a debug string representing a locus delta - useful for logging
+   *
+   * @param {LocusDeltaDto} locus Locus delta
+   * @returns {string}
+   */
+  static locus2string(locus: LocusDeltaDto) {
+    if (!locus.sequence?.entries) {
+      return 'invalid';
+    }
+
+    return locus.sequence.entries.length ? `seq=${locus.sequence.entries.at(-1)}` : 'empty';
   }
 
   /**
@@ -208,7 +269,7 @@ export default class Parser {
    * @returns {string} loci comparison state
    */
   private static compareDelta(current, incoming) {
-    const {LT, GT, EQ, DESYNC, USE_INCOMING} = Parser.loci;
+    const {LT, GT, EQ, DESYNC, USE_INCOMING, WAIT, LOCUS_URL_CHANGED} = Parser.loci;
 
     const {extractComparisonState: extract} = Parser;
     const {packComparisonResult: pack} = Parser;
@@ -220,6 +281,13 @@ export default class Parser {
       return pack(Parser.compareToAction(comparison), result);
     }
 
+    if (incoming.url !== current.url) {
+      // when moving to/from a breakout session, the locus URL will change and also
+      // the baseSequence, making incoming and current incomparable, so use a
+      // unique comparison state
+      return pack(LOCUS_URL_CHANGED, result);
+    }
+
     comparison = Parser.compareSequence(current.sequence, incoming.baseSequence);
 
     switch (extract(comparison)) {
@@ -228,11 +296,69 @@ export default class Parser {
         comparison = USE_INCOMING;
         break;
 
+      case LT:
+        if (extract(Parser.compareSequence(incoming.baseSequence, incoming.sequence)) === EQ) {
+          // special case where Locus sends a delta with baseSequence === sequence to trigger a sync,
+          // because the delta event is too large to be sent over mercury connection
+          comparison = DESYNC;
+        } else {
+          // the incoming locus has baseSequence from the future, so it is out-of-order,
+          // we are missing 1 or more locus that should be in front of it, we need to wait for it
+          comparison = WAIT;
+
+          Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.LOCUS_DELTA_OUT_OF_ORDER, {
+            stack: new Error().stack,
+          });
+        }
+        break;
       default:
         comparison = DESYNC;
     }
 
     return pack(comparison, result);
+  }
+
+  /**
+   * Compares Locus sequences - it should be called only for full Locus DTOs, not deltas
+   *
+   * @param {Types~Locus} current Current working copy
+   * @param {Types~Locus} incomingFullDto New Full Locus DTO
+   * @returns {string} either Parser.loci.USE_INCOMING or Parser.loci.USE_CURRENT
+   */
+  static compareFullDtoSequence(current, incomingFullDto) {
+    if (Parser.isSequenceEmpty(current) || Parser.isSequenceEmpty(incomingFullDto)) {
+      return Parser.loci.USE_INCOMING;
+    }
+
+    // the sequence.entries list will always contain at least 1 entry
+    // https://sqbu-github.cisco.com/WebExSquared/cloud-apps/wiki/Locus-Sequence-Comparison-Algorithm
+
+    return incomingFullDto.sequence.entries.slice(-1)[0] > current.sequence.entries.slice(-1)[0]
+      ? Parser.loci.USE_INCOMING
+      : Parser.loci.USE_CURRENT;
+  }
+
+  /**
+   * Returns true if the incoming full locus DTO is newer than the current working copy
+   *
+   * @param {Types~Locus} incomingFullDto New Full Locus DTO
+   * @returns {string} either Parser.loci.USE_INCOMING or Parser.loci.USE_CURRENT
+   */
+  isNewFullLocus(incomingFullDto) {
+    if (!Parser.isLoci(incomingFullDto)) {
+      LoggerProxy.logger.info('Locus-info:parser#isNewFullLocus --> Ignoring non-locus object.');
+
+      return false;
+    }
+
+    if (!this.workingCopy) {
+      // we don't have a working copy yet, so any full locus is better than nothing
+      return true;
+    }
+
+    const comparisonResult = Parser.compareFullDtoSequence(this.workingCopy, incomingFullDto);
+
+    return comparisonResult === Parser.loci.USE_INCOMING;
   }
 
   /**
@@ -393,17 +519,10 @@ export default class Parser {
    */
   isValidLocus(newLoci) {
     let isValid = false;
-    const {IDLE} = Parser.status;
     const {isLoci} = Parser;
-    // @ts-ignore
-    const setStatus = (status) => {
-      // @ts-ignore
-      this.status = status;
-    };
 
     // one or both objects are not locus delta events
     if (!isLoci(this.workingCopy) || !isLoci(newLoci)) {
-      setStatus(IDLE);
       LoggerProxy.logger.info(
         'Locus-info:parser#processDeltaEvent --> Ignoring non-locus object. workingCopy:',
         this.workingCopy,
@@ -455,9 +574,16 @@ export default class Parser {
    * @returns {undefined}
    */
   nextEvent() {
-    // @ts-ignore
-    if (this.status === Parser.status.PAUSED) {
+    if (this.status === 'PAUSED') {
       LoggerProxy.logger.info('Locus-info:parser#nextEvent --> Locus parser paused.');
+
+      return;
+    }
+
+    if (this.status === 'BLOCKED') {
+      LoggerProxy.logger.info(
+        'Locus-info:parser#nextEvent --> Locus parser blocked by out-of-order delta.'
+      );
 
       return;
     }
@@ -466,8 +592,7 @@ export default class Parser {
     if (this.queue.size() > 0) {
       this.processDeltaEvent();
     } else {
-      // @ts-ignore
-      this.status = Parser.status.IDLE;
+      this.status = 'IDLE';
     }
   }
 
@@ -478,7 +603,7 @@ export default class Parser {
    * @param {Types~Locus} locus Locus delta
    * @returns {undefined}
    */
-  // eslint-disable-next-line no-unused-vars
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   onDeltaAction(action: string, locus) {}
 
   /**
@@ -489,15 +614,20 @@ export default class Parser {
   onDeltaEvent(loci) {
     // enqueue the new loci
     this.queue.enqueue(loci);
-    // start processing events in the queue if idle
-    // and a function handler is defined
-    // @ts-ignore
-    if (this.status === Parser.status.IDLE && this.onDeltaAction) {
-      // Update status, ensure we only process one event at a time.
-      // @ts-ignore
-      this.status = Parser.status.WORKING;
 
-      this.processDeltaEvent();
+    if (this.onDeltaAction) {
+      if (this.status === 'BLOCKED') {
+        if (this.queue.size() > MAX_OOO_DELTA_COUNT) {
+          this.triggerSync('queue too big, blocked on out-of-order delta');
+        } else {
+          this.processDeltaEvent();
+        }
+      } else if (this.status === 'IDLE') {
+        // Update status, ensure we only process one event at a time.
+        this.status = 'WORKING';
+
+        this.processDeltaEvent();
+      }
     }
   }
 
@@ -516,9 +646,53 @@ export default class Parser {
    * @returns {undefined}
    */
   pause() {
-    // @ts-ignore
-    this.status = Parser.status.PAUSED;
+    this.status = 'PAUSED';
     LoggerProxy.logger.info('Locus-info:parser#pause --> Locus parser paused.');
+  }
+
+  /**
+   * Triggers a sync with Locus
+   *
+   * @param {string} reason used just for logging
+   * @returns {undefined}
+   */
+  private triggerSync(reason: string) {
+    LoggerProxy.logger.info(`Locus-info:parser#triggerSync --> doing sync, reason: ${reason}`);
+    this.stopSyncTimer();
+    this.pause();
+    this.onDeltaAction(Parser.loci.DESYNC, this.workingCopy);
+  }
+
+  /**
+   * Starts a timer with a random delay. When that timer expires we will do a sync.
+   *
+   * The main purpose of this timer is to handle a case when we get some out-of-order deltas,
+   * so we start waiting to receive the missing delta. If that delta never arrives, this timer
+   * will trigger a sync with Locus.
+   *
+   * @returns {undefined}
+   */
+  private startSyncTimer() {
+    if (this.syncTimer === undefined) {
+      const timeout = OOO_DELTA_WAIT_TIME + Math.random() * OOO_DELTA_WAIT_TIME_RANDOM_DELAY;
+
+      this.syncTimer = setTimeout(() => {
+        this.syncTimer = undefined;
+        this.triggerSync('timer expired, blocked on out-of-order delta');
+      }, timeout);
+    }
+  }
+
+  /**
+   * Stops the timer for triggering a sync
+   *
+   * @returns {undefined}
+   */
+  private stopSyncTimer() {
+    if (this.syncTimer !== undefined) {
+      clearTimeout(this.syncTimer);
+      this.syncTimer = undefined;
+    }
   }
 
   /**
@@ -528,11 +702,13 @@ export default class Parser {
    * @returns {undefined}
    */
   processDeltaEvent() {
-    const {DESYNC, USE_INCOMING} = Parser.loci;
+    const {DESYNC, USE_INCOMING, WAIT, LOCUS_URL_CHANGED} = Parser.loci;
     const {extractComparisonState: extract} = Parser;
     const newLoci = this.queue.dequeue();
 
     if (!this.isValidLocus(newLoci)) {
+      this.nextEvent();
+
       return;
     }
 
@@ -543,23 +719,59 @@ export default class Parser {
     // for full debugging.
     LoggerProxy.logger.debug(`Locus-info:parser#processDeltaEvent --> Locus Debug: ${result}`);
 
-    if (lociComparison === DESYNC) {
-      // wait for desync response
-      this.pause();
-    } else if (lociComparison === USE_INCOMING) {
-      // update working copy for future comparisons.
-      // Note: The working copy of parser gets updated in .onFullLocus()
-      // and here when USE_INCOMING locus.
-      this.workingCopy = newLoci;
+    let needToWait = false;
+
+    switch (lociComparison) {
+      case DESYNC:
+        // wait for desync response
+        this.pause();
+        break;
+
+      case USE_INCOMING:
+      case LOCUS_URL_CHANGED:
+        // update working copy for future comparisons.
+        // Note: The working copy of parser gets updated in .onFullLocus()
+        // and here when USE_INCOMING or LOCUS_URL_CHANGED locus.
+        this.workingCopy = newLoci;
+        break;
+
+      case WAIT:
+        // we've taken newLoci from the front of the queue, so put it back there as we have to wait
+        // for the one that should be in front of it, before we can process it
+        this.queue.enqueue(newLoci);
+        needToWait = true;
+        break;
+
+      default:
+        break;
+    }
+
+    if (needToWait) {
+      this.status = 'BLOCKED';
+      this.startSyncTimer();
+    } else {
+      this.stopSyncTimer();
+
+      if (this.status === 'BLOCKED') {
+        // we are not blocked anymore
+        this.status = 'WORKING';
+
+        LoggerProxy.logger.info(
+          `Locus-info:parser#processDeltaEvent --> received delta that we were waiting for ${Parser.locus2string(
+            newLoci
+          )}, not blocked anymore`
+        );
+      }
     }
 
     if (this.onDeltaAction) {
       LoggerProxy.logger.info(
-        `Locus-info:parser#processDeltaEvent --> Locus Delta Action: ${lociComparison}`
+        `Locus-info:parser#processDeltaEvent --> Locus Delta ${Parser.locus2string(
+          newLoci
+        )}, Action: ${lociComparison}`
       );
 
-      // eslint-disable-next-line no-useless-call
-      this.onDeltaAction.call(this, lociComparison, newLoci);
+      this.onDeltaAction(lociComparison, newLoci);
     }
 
     this.nextEvent();
@@ -571,8 +783,7 @@ export default class Parser {
    */
   resume() {
     LoggerProxy.logger.info('Locus-info:parser#resume --> Locus parser resumed.');
-    // @ts-ignore
-    this.status = Parser.status.WORKING;
+    this.status = 'WORKING';
     this.nextEvent();
   }
 

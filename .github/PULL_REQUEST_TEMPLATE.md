@@ -24,6 +24,7 @@ This is for compliance purposes with FedRAMP program.
 ### Change Type
 
 <!--- What types of changes does your code introduce? Put an `x` in all the boxes that apply: -->
+
 - [ ] Bug fix (non-breaking change which fixes an issue)
 - [ ] New feature (non-breaking change which adds functionality)
 - [ ] Breaking change (fix or feature that would cause existing functionality to change)
@@ -31,7 +32,7 @@ This is for compliance purposes with FedRAMP program.
 - [ ] Tooling change
 - [ ] Internal code refactor
 
-## The following scenarios where tested
+## The following scenarios were tested
 
 < ENUMERATE TESTS PERFORMED, WHETHER MANUAL OR AUTOMATED >
 

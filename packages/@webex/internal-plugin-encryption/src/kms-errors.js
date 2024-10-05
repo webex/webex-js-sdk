@@ -5,6 +5,12 @@
 import {Exception} from '@webex/common';
 import {WebexHttpError} from '@webex/webex-core';
 
+import {
+  KMS_KEY_REVOKE_ERROR_CODES,
+  KMS_KEY_REVOKE_FAILURE,
+  KMS_KEY_REVOKE_ERROR_STATUS,
+} from './constants';
+
 /**
  * Error class for KMS errors
  */
@@ -145,3 +151,17 @@ export class DryError extends WebexHttpError {
     return message;
   }
 }
+
+/**
+ * Function triggers an event when specific encryption failures are received.
+ */
+
+// eslint-disable-next-line consistent-return
+export const handleKmsKeyRevokedEncryptionFailure = (item, webex) => {
+  if (
+    item.status === KMS_KEY_REVOKE_ERROR_STATUS &&
+    KMS_KEY_REVOKE_ERROR_CODES.includes(item.body.errorCode)
+  ) {
+    webex.internal.encryption.trigger(KMS_KEY_REVOKE_FAILURE);
+  }
+};

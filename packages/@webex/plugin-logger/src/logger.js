@@ -3,7 +3,7 @@
  */
 
 import {inBrowser, patterns} from '@webex/common';
-import {WebexHttpError, WebexPlugin} from '@webex/webex-core';
+import {WebexPlugin} from '@webex/webex-core';
 import {cloneDeep, has, isArray, isObject, isString} from 'lodash';
 
 const precedence = {
@@ -59,6 +59,9 @@ function walkAndFilter(object, visited = []) {
     if (isString(object)) {
       if (patterns.containsEmails.test(object)) {
         return object.replace(patterns.containsEmails, '[REDACTED]');
+      }
+      if (patterns.containsMTID.test(object)) {
+        return object.replace(patterns.containsMTID, '$1[REDACTED]');
       }
     }
 
@@ -348,8 +351,31 @@ function makeLoggerMethod(level, impl, type, neverPrint = false, alwaysBuffer = 
 
       const filtered = [clientName, ...this.filter(...args)];
       const stringified = filtered.map((item) => {
-        if (item instanceof WebexHttpError) {
+        if (item instanceof Error) {
           return item.toString();
+        }
+        if (typeof item === 'object') {
+          let cache = [];
+          let returnItem;
+          try {
+            returnItem = JSON.stringify(item, (_key, value) => {
+              if (typeof value === 'object' && value !== null) {
+                if (cache.includes(value)) {
+                  // Circular reference found, discard key
+                  return undefined;
+                }
+                // Store value in our collection
+                cache.push(value);
+              }
+
+              return value;
+            });
+          } catch (e) {
+            returnItem = `Failed to stringify: ${item}`;
+          }
+          cache = null;
+
+          return returnItem;
         }
 
         return item;
@@ -377,7 +403,7 @@ function makeLoggerMethod(level, impl, type, neverPrint = false, alwaysBuffer = 
         stringified.unshift('|  '.repeat(this.groupLevel));
         buffer.push(stringified);
         if (buffer.length > historyLength) {
-          buffer.shift();
+          buffer.splice(0, buffer.length - historyLength);
         }
         if (level === 'group') this.groupLevel += 1;
         if (level === 'groupEnd' && this.groupLevel > 0) this.groupLevel -= 1;

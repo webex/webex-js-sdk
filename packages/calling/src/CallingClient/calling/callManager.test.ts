@@ -275,7 +275,7 @@ describe('Call Manager Tests with respect to calls', () => {
     await waitForMsecs(50);
 
     expect(patchMock).toHaveBeenCalledWith(MobiusCallState.ALERTING);
-    expect(warnSpy).toHaveBeenCalledWith('Call Progress failed with Mobius', {
+    expect(warnSpy).toHaveBeenCalledWith('Failed to signal call progression', {
       file: 'call',
       method: 'handleOutgoingCallAlerting',
     });

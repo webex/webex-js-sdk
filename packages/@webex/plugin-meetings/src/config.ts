@@ -8,13 +8,7 @@ export default {
   meetings: {
     deviceType: deviceType.WEB,
     mediaSettings: {
-      sendAudio: true,
-      sendVideo: true,
-      receiveAudio: true,
-      receiveVideo: true,
       pstn: false,
-      sendShare: false,
-      receiveShare: false,
     },
     reconnection: {
       enabled: false,
@@ -86,11 +80,17 @@ export default {
     enableRtx: true,
     receiveTranscription: false,
     enableExtmap: false,
+    enableAutomaticLLM: false,
+    installedOrgID: undefined,
     experimental: {
       enableMediaNegotiatedEvent: false,
-      enableUnifiedMeetings: false,
-      enableAdhocMeetings: false,
-      enableTurnDiscovery: true,
+      enableUnifiedMeetings: true,
+      enableAdhocMeetings: true,
+      enableTcpReachability: false,
+      enableTlsReachability: false,
+    },
+    degradationPreferences: {
+      maxMacroblocksLimit: 8192,
     },
   },
 };

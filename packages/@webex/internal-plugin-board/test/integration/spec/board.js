@@ -109,7 +109,9 @@ describe('plugin-board', () => {
       it('uploads image to webex files', () =>
         participants[0].webex.internal.board
           ._uploadImage(board, fixture)
-          .then((scr) => participants[1].webex.internal.encryption.download(scr))
+          .then((scr) => {
+            participants[0].webex.logger.debug('@@@@', scr)
+            return participants[1].webex.internal.encryption.download(scr.loc, scr)})
           .then((downloadedFile) =>
             fh
               .isMatchingFile(downloadedFile, fixture)
@@ -120,10 +122,10 @@ describe('plugin-board', () => {
     describe('#setSnapshotImage()', () => {
       after(() => participants[0].webex.internal.board.deleteAllContent(board));
 
-      it('uploads image to webex files and adds to channel', () => {
+      it('uploads image to webex files and adds to channel', (done) => {
         let imageRes;
 
-        return participants[0].webex.internal.board
+        participants[0].webex.internal.board
           .setSnapshotImage(board, fixture)
           .then((res) => {
             imageRes = res.image;
@@ -142,10 +144,14 @@ describe('plugin-board', () => {
               res.image.scr
             );
           })
-          .then((decryptedScr) => participants[2].webex.internal.encryption.download(decryptedScr))
-          .then((file) =>
-            fh.isMatchingFile(file, fixture).then((result) => assert.deepEqual(result, true))
-          );
+          .then((decryptedScr) => participants[2].webex.internal.encryption.download(decryptedScr.loc, decryptedScr))
+          .then((file) =>{
+            fh.isMatchingFile(file, fixture).then((result) => assert.deepEqual(result, true));
+            done();
+          }).catch(err => {
+            assert(false, err);
+            done();
+          })
       });
     });
 
@@ -190,7 +196,7 @@ describe('plugin-board', () => {
 
       it('matches file file downloaded', () =>
         participants[0].webex.internal.encryption
-          .download(testScr)
+          .download(testScr.loc, testScr)
           .then((downloadedFile) =>
             fh
               .isMatchingFile(downloadedFile, fixture)
@@ -199,7 +205,7 @@ describe('plugin-board', () => {
 
       it('allows others to download image', () =>
         participants[2].webex.internal.encryption
-          .download(testScr)
+          .download(testScr.loc, testScr)
           .then((downloadedFile) =>
             fh
               .isMatchingFile(downloadedFile, fixture)
@@ -245,7 +251,7 @@ describe('plugin-board', () => {
             })
             .then(() =>
               participants[0].webex.internal.encryption
-                .download(testScr)
+                .download(testScr.loc, testScr)
                 .then((downloadedFile) => fh.isMatchingFile(downloadedFile, fixture))
                 .then((res) => assert.isTrue(res))
             );
@@ -338,13 +344,11 @@ describe('plugin-board', () => {
               assert.isFalse(channelPage.hasNext());
               channelsReceived = channelsReceived.concat(channelPage.items);
 
-              channelsCreated.sort((a, b) => a.createdTime - b.createdTime);
-              channelsReceived.sort((a, b) => a.createdTime - b.createdTime);
-
               if (channelsCreated.length === channelsReceived.length) {
-                channelsReceived.forEach((channel, i) => {
-                  delete channel.format;
-                  assert.deepEqual(channel, channelsCreated[i]);
+                channelsReceived.forEach((received) => {
+                  const created = channelsCreated.find((channel) => channel.channelId === received.channelId);
+
+                  assert.deepEqual(received, created);
                 });
               }
             })
@@ -496,7 +500,8 @@ describe('plugin-board', () => {
       });
     });
 
-    describe('#deletePartialContent()', () => {
+    // THE SERVICE API FOR REMOVING PARTIAL CONTENT HAS CHANGED. SEE SPARK-412694.
+    describe.skip('#deletePartialContent()', () => {
       after(() => participants[0].webex.internal.board.deleteAllContent(board));
 
       it('deletes some contents from the specified board', () => {

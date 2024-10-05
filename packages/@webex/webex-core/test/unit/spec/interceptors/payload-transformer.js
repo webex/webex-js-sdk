@@ -5,6 +5,8 @@
 import {assert} from '@webex/test-helper-chai';
 import {capitalize} from 'lodash';
 import WebexCore from '@webex/webex-core';
+// TODO:  fix circular dependency core->metrics->core https://jira-eng-gpk2.cisco.com/jira/browse/SPARK-515520
+require('@webex/internal-plugin-metrics');
 
 describe('webex-core', () => {
   describe('Interceptors', () => {

@@ -32,12 +32,13 @@ describe('plugin-mercury', function () {
   );
 
   describe('onBeforeLogout()', () => {
-    it('disconnects the web socket', () =>
+    it('disconnects the web socket', () => {
       webex.logout({noRedirect: true}).then(() => {
         assert.called(webex.internal.mercury.disconnect);
         assert.isFalse(webex.internal.mercury.connected);
         assert.called(webex.internal.device.unregister);
         assert.isFalse(webex.internal.device.registered);
-      }));
+      });
+    });
   });
 });

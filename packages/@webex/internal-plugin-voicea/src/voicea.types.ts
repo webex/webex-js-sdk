@@ -36,6 +36,7 @@ interface Transcription {
   translations: {[x: string]: string};
   csis: number[];
   last_packet_timestamp_ms: number;
+  timestamp: string;
 }
 
 /**
@@ -55,6 +56,7 @@ interface Highlight {
  */
 interface TranscriptionResponse {
   type: TRANSCRIPTION_TYPES;
+  id: string;
   transcript_id: string;
   translations?: {[x: string]: string};
   transcripts?: Transcription[];
@@ -78,9 +80,28 @@ interface IVoiceaChannel {
   setSpokenLanguage: (languageCode: string) => Promise<void>;
   requestLanguage: (languageCode: string) => void;
   turnOnCaptions: () => undefined | Promise<void>;
-  toggleTranscribing: (activate: boolean) => undefined | Promise<void>;
-  deregisterEvents: () => undefined | Promise<void>;
+  toggleTranscribing: (activate: boolean, spokenLanguage: string) => undefined | Promise<void>;
+  deregisterEvents: () => void;
 }
+
+type MeetingTranscripts = {
+  start_mills?: number;
+  end_mills?: number;
+  text: string;
+  last_packet_timestamp_ms?: number;
+  csis: Array<number>;
+  transcript_language_code: string;
+  translations?: {
+    [key: string]: string;
+  };
+  timestamp?: string;
+};
+
+type MeetingTranscriptPayload = {
+  isFinal: boolean;
+  transcriptId: string;
+  transcripts: Array<MeetingTranscripts>;
+};
 
 export type {
   AnnouncementPayload,
@@ -89,4 +110,5 @@ export type {
   Transcription,
   Highlight,
   IVoiceaChannel,
+  MeetingTranscriptPayload,
 };

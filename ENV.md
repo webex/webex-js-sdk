@@ -1,0 +1,34 @@
+# ENV
+
+This article is designed to provide additional context in regards to potentially ENV values consumed within this project. These values can be provided by any means, but, it is recommended to specify a `./.env` file for maximum compatibility with this project.
+
+| **Environment Variable**             | **Details**                                                                                                              | **Default**                                         |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------- |
+| `ATLAS_SERVICE_URL`                  | Used to populate the atlasServiceUrl pre-discovery config                                                                | https://atlas-a.wbx2.com/admin/api/v1               |
+| `CLIENT_LOGS_SERVICE_URL`            | Used to populate the clientLogsServiceUrl pre-discovery config                                                           | https://client-logs-a.wbx2.com/api/v1               |
+| `CONVERSATION_SERVICE`               | Used for validating an auth token                                                                                        | https://conv-a.wbx2.com/conversation/api/v1         |
+| `ENABLE_MERCURY_LOGGING`             | When set, will log all mercury messages                                                                                  | undefined                                           |
+| `ENABLE_VERBOSE_NETWORK_LOGGING`     | Utilized to enable interceptor logging                                                                                   | undefined                                           |
+| `ENCRYPTION_SERVICE_URL`             | Used for plugin-board tests                                                                                              | https://encryption-a.wbx2.com                       |
+| `HYDRA_SERVICE_URL`                  | Stores the public hydra API URL for managing Webex resources.                                                            | https://api.ciscospark.com/v1/                      |
+| `IDBROKER_BASE_URL`                  | Used throughout the SDK as the endpoint for authorization                                                                | https://idbroker.webex.com                          |
+| `IDENTITY_BASE_URL`                  | Used to communicate with the identity API                                                                                | https://identity.webex.com                          |
+| `MERCURY_FORCE_CLOSE_DELAY`          | Milliseconds to wait for a before declaring the socket dead                                                              | 2000                                                |
+| `MERCURY_PING_INTERVAL`              | Milliseconds between pings sent up the socket                                                                            | 15000                                               |
+| `MERCURY_PONG_TIMEOUT`               | Milliseconds to wait for a pong before declaring the connection dead                                                     | 14000                                               |
+| `METRICS_SERVICE_URL`                | Used to populate the metricsServiceUrl pre-discovery config                                                              | https://metrics-a.wbx2.com/metrics/api/v1           |
+| `U2C_SERVICE_URL`                    | Stores the service catalog collecting url, typically the **U2C** service.                                                | https://u2c.wbx2.com/u2c/api/v1                     |
+| `WEBEX_ACCESS_TOKEN`                 | Used to provide access token when using "webex/env"                                                                      | undefined                                           |
+| `WEBEX_AUTHORIZE_URL`                | Populates the Authorization URL which prompts for the user's password.                                                       | https://idbroker.webex.com/idb/oauth2/v1/authorize  |
+| `WEBEX_AUTHORIZATION_STRING`         | This is the authorization URL for the integration from [Cisco Webex for Developers](https://developer.webex.com/my-apps) | undefined                                           |
+| `WEBEX_CLIENT_ID`                    | The Webex client ID used to authorize                                                                                    | undefined                                           |
+| `WEBEX_CLIENT_SECRET`                | The Webex client secret used to authorize                                                                                | undefined                                           |
+| `WEBEX_CONVERSATION_CLUSTER_SERVICE` | Service identifier used to lookup conversation servers in hostmap                                                        | identityLookup                                      |
+| `WEBEX_CONVERSATION_DEFAULT_CLUSTER` | Cluster used to convert from "us" cluster to actual cluster                                                              | urn:TEAM:us-east-2_a:identityLookup                 |
+| `WEBEX_LOG_LEVEL`                    | Maximum log level that should be printed to the console.                                                                 | log                                                 |
+| `WEBEX_REDIRECT_URI`                 | The URI to redirect to after authorization                                                                               | undefined                                           |
+| `WEBEX_SCOPE`                        | The Webex scope the users will authorize with                                                                            | undefined                                           |
+| `WDM_SERVICE_URL`                    | The WDM service URL before the catalog is downloaded                                                                     | https://wdm-a.wbx2.com/wdm/api/v1                   |
+| `WHISTLER_API_SERVICE_URL`           | The URL to the whistler test service                                                                                     | https://whistler-prod.allnint.ciscospark.com/api/v1 |
+| `WHISTLER`                           | Run (meetings) tests using Whistler users                                                                                | FALSE                                               |
+| `JENKINS`                            | Run specific tests that should be run on (internal) Jenkins                                                              | FALSE                                               |
