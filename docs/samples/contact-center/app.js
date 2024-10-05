@@ -22,6 +22,7 @@ const credentialsFormElm = document.querySelector('#credentials');
 const tokenElm = document.querySelector('#access-token');
 const saveElm = document.querySelector('#access-token-save');
 const authStatusElm = document.querySelector('#access-token-status');
+const registerBtn = document.querySelector('#webexcc-register');
 
 
 // Store and Grab `access-token` from localstorage
@@ -42,11 +43,6 @@ function changeAuthType() {
     case 'accessToken':
       toggleDisplay('credentials', true);
       toggleDisplay('oauth', false);
-      break;
-    case 'oauth':
-      initOauth();
-      toggleDisplay('credentials', false);
-      toggleDisplay('oauth', true);
       break;
     default:
       break;
@@ -82,7 +78,6 @@ function initWebex(e) {
   e.preventDefault();
   console.log('Authentication#initWebex()');
 
-  integrationEnv.disabled = true;
   tokenElm.disabled = true;
   saveElm.disabled = true;
   authStatusElm.innerText = 'initializing...';
@@ -101,10 +96,7 @@ function initWebex(e) {
 
     authStatusElm.innerText = 'Saved access token!';
 
-    webex.cc.register().then(() => {
-        console.log('notification subscriptiin succesful');
-    })
-     
+    registerBtn.disabled = false;
   });
 
   return false;
@@ -112,20 +104,14 @@ function initWebex(e) {
 
 credentialsFormElm.addEventListener('submit', initWebex);
 
-// Separate logic for Safari enables video playback after previously
-// setting the srcObject to null regardless if autoplay is set.
-window.onload = () => {
-  const params = new URLSearchParams(window.location.search);
-  const meetingSdk = document.createElement('script');
-  meetingSdk.type = 'text/javascript';
-  if(params.get('meetings') !== null){
-    meetingSdk.src = '../meetings.min.js';
-  }
-  else{
-    meetingSdk.src = '../webex.min.js';
-  }
-  document.body.appendChild(meetingSdk);
-};
+function register() {
+    console.log('register function invoked');
+    webex.cc.register().then(() => {
+        console.log('Event subscription successful');
+    }).catch(() => {
+        console.log('Event subscription failed');
+    })
+}
 
 const allCollapsibleElements = document.querySelectorAll('.collapsible');
 allCollapsibleElements.forEach((el) => {

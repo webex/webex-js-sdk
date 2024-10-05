@@ -1,6 +1,6 @@
 import {WebexPlugin} from '@webex/webex-core';
 import EventEmitter from 'events';
-import { EVENT, POST_AUTH, SUBSCRIBE_API, WCC_API_GATEWAY, WEBEX_READY } from '../constants';
+import { CC_READY, EVENT, POST_AUTH, SUBSCRIBE_API, WCC_API_GATEWAY, WEBEX_READY } from '../constants';
 
 export default class ContactCenter extends WebexPlugin {
     clientType = '';
@@ -10,9 +10,9 @@ export default class ContactCenter extends WebexPlugin {
     constructor(...options) {
         super(...options);
         this.webex = webex;
-        this.webex.once(WEBEX_READY, () => {
-            // this.emit('cc:ready');
-        });
+        // this.webex.once(WEBEX_READY, () => {
+        //     this.emit(CC_READY);
+        // });
     }
 
     private handleAgentEvents(event: any) {
