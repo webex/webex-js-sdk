@@ -1,7 +1,7 @@
 import {registerPlugin} from '@webex/webex-core';
 
-import ContactCenter from './contact-center';
 import config from './config';
+import ContactCenter from './cc';
 
 registerPlugin('cc', ContactCenter, {
   config,

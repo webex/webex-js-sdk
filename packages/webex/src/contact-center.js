@@ -1,6 +1,5 @@
-import '@webex/plugin-authorization';
-import '@webex/internal-plugin-device';
-import '@webex/contact-center';
+require('@webex/plugin-authorization');
+require('@webex/contact-center');
 
 import merge from 'lodash/merge';
 import WebexCore from '@webex/webex-core';
@@ -22,4 +21,4 @@ Webex.init = function init(attrs = {}) {
     return new Webex(attrs);
 };
 
-export default Webex;
+module.exports = Webex;
