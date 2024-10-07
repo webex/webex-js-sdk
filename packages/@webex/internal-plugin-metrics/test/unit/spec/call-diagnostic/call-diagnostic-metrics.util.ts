@@ -422,7 +422,7 @@ describe('internal-plugin-metrics', () => {
       });
     });
 
-    it('getBuildType returns correct value', () => {
+    it('sets buildType and upgradeChannel correctly', () => {
       const item: any = {
         eventPayload: {
           event: {
@@ -439,49 +439,14 @@ describe('internal-plugin-metrics', () => {
       // just submit any event
       prepareDiagnosticMetricItem(webex, item);
       assert.deepEqual(item.eventPayload.origin.buildType, 'test');
+      assert.deepEqual(item.eventPayload.origin.upgradeChannel, 'test');
 
       delete item.eventPayload.origin.buildType;
+      delete item.eventPayload.origin.upgradeChannel;
       item.eventPayload.event.eventData.markAsTestEvent = false;
       prepareDiagnosticMetricItem(webex, item);
       assert.deepEqual(item.eventPayload.origin.buildType, 'prod');
-    });
-
-    it('sets the upgradeChannel as "gold" when the buildType is "prod"', () => {
-      const item: any = {
-        eventPayload: {
-          event: {
-            name: 'client.exit.app',
-            eventData: {
-              markAsTestEvent: false,
-              webClientDomain: 'https://web.webex.com',
-            },
-          },
-        },
-        type: ['diagnostic-event'],
-      };
-
-      prepareDiagnosticMetricItem(webex, item);
-      assert.deepEqual(item.eventPayload.origin.buildType, 'prod');
       assert.deepEqual(item.eventPayload.origin.upgradeChannel, 'gold');
-    });
-
-    it('sets the upgradeChannel as buildType value if it is not "prod"' , () => {
-      const item: any = {
-        eventPayload: {
-          event: {
-            name: 'client.exit.app',
-            eventData: {
-              markAsTestEvent: true,
-              webClientDomain: 'https://test.webex.com',
-            },
-          },
-        },
-        type: ['diagnostic-event'],
-      };
-
-      prepareDiagnosticMetricItem(webex, item);
-      assert.deepEqual(item.eventPayload.origin.buildType, 'test')
-      assert.deepEqual(item.eventPayload.origin.upgradeChannel, 'test');
     });
   });
 
