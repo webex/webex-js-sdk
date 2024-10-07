@@ -275,7 +275,7 @@ describe('internal-plugin-metrics', () => {
     let webex: any;
 
     const check = (eventName: string, expectedEvent: any, expectedUpgradeChannel: string) => {
-      const eventPayload = { event: { name: eventName } };
+      const eventPayload = {event: {name: eventName}};
       const item = prepareDiagnosticMetricItem(webex, {
         eventPayload,
         type: ['diagnostic-event'],
@@ -288,19 +288,19 @@ describe('internal-plugin-metrics', () => {
             networkType: 'unknown',
             upgradeChannel: expectedUpgradeChannel
           },
-          event: { name: eventName, ...expectedEvent },
+          event: {name: eventName, ...expectedEvent},
         },
         type: ['diagnostic-event'],
       });
     };
 
     beforeEach(async () => {
-      webex = { internal: { newMetrics: {} } };
+      webex = {internal: {newMetrics: {}}};
       webex.internal.newMetrics.callDiagnosticLatencies = new CallDiagnosticLatencies(
         {},
-        { parent: webex }
+        {parent: webex}
       );
-      webex.logger = new Logger({}, { parent: webex });
+      webex.logger = new Logger({}, {parent: webex});
     });
 
     beforeEach(() => {
