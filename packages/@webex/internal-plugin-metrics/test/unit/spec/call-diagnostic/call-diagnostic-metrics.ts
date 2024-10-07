@@ -2314,6 +2314,7 @@ describe('internal-plugin-metrics', () => {
                     environment: 'meeting_evn',
                     name: 'endpoint',
                     networkType: 'unknown',
+                    upgradeChannel: 'test',
                     userAgent,
                   },
                   originTime: {
