@@ -1,7 +1,7 @@
+import {LoggerConfig} from 'types';
 import {DataSourceRequest, DataSourceResponse} from './types';
 import {DATASOURCE_ENDPOINT} from './constants';
 import {HttpClient, ApiResponse} from '../http-client/types';
-import {BYODSConfig} from '../token-manager/type';
 import {BYODS_DATA_SOURCE_CLIENT_FILE} from './constants'; // Fixed import
 import log from '../Logger';
 import {LOGGER} from '../Logger/types';
@@ -11,7 +11,7 @@ import {LOGGER} from '../Logger/types';
  */
 export default class DataSourceClient {
   private httpClient: HttpClient;
-  private sdkConfig?: BYODSConfig;
+  private sdkConfig: LoggerConfig;
 
   /**
    * Creates an instance of DataSourceClient.
@@ -20,11 +20,11 @@ export default class DataSourceClient {
    * const httpClient = new HttpClient();
    * const client = new DataSourceClient(httpClient);
    */
-  constructor(httpClient: HttpClient, config?: BYODSConfig) {
+  constructor(httpClient: HttpClient, config: LoggerConfig = {level: LOGGER.ERROR}) {
     // Fixed formatting
     this.httpClient = httpClient;
     this.sdkConfig = config;
-    const logLevel = this.sdkConfig?.logger?.level ? this.sdkConfig.logger.level : LOGGER.ERROR;
+    const logLevel = this.sdkConfig.level;
     log.setLogger(logLevel, BYODS_DATA_SOURCE_CLIENT_FILE);
   }
 

@@ -1,8 +1,8 @@
+import {LoggerConfig} from 'types';
 import TokenManager from '../token-manager';
 import DataSourceClient from '../data-source-client';
 import {HttpClient, ApiResponse} from '../http-client/types';
 import {httpUtils, HttpRequestInit} from '../http-utils';
-import {BYODSConfig} from '../token-manager/type';
 import BYODS_BASE_CLIENT_FILE from './constant';
 import log from '../Logger';
 import {LOGGER} from '../Logger/types';
@@ -12,7 +12,7 @@ export default class BaseClient {
   private headers: Record<string, string>;
   private tokenManager: TokenManager;
   private orgId: string;
-  private sdkConfig?: BYODSConfig;
+  private sdkConfig: LoggerConfig;
   public dataSource: DataSourceClient;
 
   /**
@@ -29,7 +29,7 @@ export default class BaseClient {
     headers: Record<string, string>,
     tokenManager: TokenManager,
     orgId: string,
-    config?: BYODSConfig
+    config: LoggerConfig = {level: LOGGER.ERROR}
   ) {
     this.baseUrl = baseUrl;
     this.headers = headers;
@@ -37,7 +37,7 @@ export default class BaseClient {
     this.orgId = orgId;
     this.dataSource = new DataSourceClient(this.getHttpClientForOrg());
     this.sdkConfig = config;
-    const logLevel = this.sdkConfig?.logger?.level ? this.sdkConfig.logger.level : LOGGER.ERROR;
+    const logLevel = this.sdkConfig.level;
     log.setLogger(logLevel, BYODS_BASE_CLIENT_FILE);
   }
 

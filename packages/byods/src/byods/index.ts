@@ -8,10 +8,8 @@ import {
   PRODUCTION_BASE_URL,
   INTEGRATION_BASE_URL,
 } from '../constants';
-import {SDKConfig, JWSTokenVerificationResult} from '../types';
+import {SDKConfig, JWSTokenVerificationResult, LoggerConfig} from '../types';
 import TokenManager from '../token-manager';
-import {InMemoryTokenStorageAdapter} from '../token-storage-adapter';
-import {BYODSConfig} from '../token-manager/type';
 import {BYODS_FILE} from './constant';
 import log from '../Logger';
 import {LOGGER} from '../Logger/types';
@@ -29,7 +27,7 @@ export default class BYODS {
   private env: 'production' | 'integration';
   private config: SDKConfig;
   private baseUrl: string;
-  private sdkConfig?: BYODSConfig;
+  private sdkConfig?: LoggerConfig;
 
   /**
    * The token manager for the SDK.
@@ -43,13 +41,14 @@ export default class BYODS {
    * @example
    * const sdk = new BYODS({ clientId: 'your-client-id', clientSecret: 'your-client-secret' });
    */
-  constructor(
-    {clientId, clientSecret, tokenStorageAdapter = new InMemoryTokenStorageAdapter()}: SDKConfig,
-    config?: BYODSConfig
-  ) {
-    this.config = {clientId, clientSecret, tokenStorageAdapter};
-    this.sdkConfig = config;
-    const logLevel = this.sdkConfig?.logger?.level ? this.sdkConfig.logger.level : LOGGER.ERROR;
+  constructor({
+    clientId,
+    clientSecret,
+    tokenStorageAdapter,
+    logger = {level: LOGGER.ERROR},
+  }: SDKConfig) {
+    this.config = {clientId, clientSecret, tokenStorageAdapter, logger};
+    const logLevel = this.config.logger.level;
     log.setLogger(logLevel, BYODS_FILE);
 
     /**
@@ -77,7 +76,13 @@ export default class BYODS {
     }
 
     // Create token manager
-    this.tokenManager = new TokenManager(clientId, clientSecret, this.baseUrl, tokenStorageAdapter);
+    this.tokenManager = new TokenManager(
+      clientId,
+      clientSecret,
+      this.baseUrl,
+      tokenStorageAdapter,
+      this.sdkConfig
+    );
 
     // Create a remote JWK Set
     this.jwks = createRemoteJWKSet(new URL(jwksUrl), {
