@@ -1104,7 +1104,11 @@ export default class Meetings extends WebexPlugin {
     // id values.
 
     if (correlationId) {
-      callStateForMetrics = {...(callStateForMetrics || {}), correlationId, sessionCorrelationId};
+      callStateForMetrics = {...(callStateForMetrics || {}), correlationId};
+    }
+
+    if (sessionCorrelationId) {
+      callStateForMetrics = {...(callStateForMetrics || {}), sessionCorrelationId};
     }
 
     return (

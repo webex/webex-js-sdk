@@ -755,6 +755,7 @@ describe('plugin-meetings', () => {
         const correlationId = 'my-correlationId';
         const sessionCorrelationId = 'my-session-correlationId';
         const callStateForMetrics = {
+          sessionCorrelationId: 'my-session-correlationId2',
           correlationId: 'my-correlationId2',
           joinTrigger: 'my-join-trigger',
           loginType: 'my-login-type',
@@ -771,6 +772,8 @@ describe('plugin-meetings', () => {
             correlationId,
             true,
             callStateForMetrics,
+            undefined,
+            undefined,
             sessionCorrelationId
           );
           assert.calledOnceWithExactly(fakeMeeting.setCallStateForMetrics, {
@@ -824,11 +827,10 @@ describe('plugin-meetings', () => {
               test2,
               FAKE_USE_RANDOM_DELAY,
               {},
-              {correlationId},
+              {correlationId, sessionCorrelationId},
               true,
               meetingInfo,
               'meetingLookupURL',
-              sessionCorrelationId
             ]
           );
         });
@@ -1724,6 +1726,7 @@ describe('plugin-meetings', () => {
             const expectedMeetingData = {
               correlationId: 'my-correlationId',
               callStateForMetrics: {
+                sessionCorrelationId: '',
                 correlationId: 'my-correlationId',
                 joinTrigger: 'my-join-trigger',
                 loginType: 'my-login-type',

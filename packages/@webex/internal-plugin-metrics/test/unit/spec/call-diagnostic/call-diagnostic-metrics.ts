@@ -30,6 +30,7 @@ describe('internal-plugin-metrics', () => {
     const fakeMeeting = {
       id: '1',
       correlationId: 'correlationId',
+      sessionCorrelationId: undefined,
       callStateForMetrics: {},
       environment: 'meeting_evn',
       locusUrl: 'locus/url',
@@ -354,6 +355,36 @@ describe('internal-plugin-metrics', () => {
 
         assert.deepEqual(res, {
           correlationId: 'correlationId',
+          sessionCorrelationId: undefined,
+          deviceId: 'deviceUrl',
+          locusId: 'url',
+          locusStartTime: 'lastActive',
+          locusUrl: 'locus/url',
+          machineId: 'installationId',
+          mediaAgentAlias: 'mediaAgentAlias',
+          mediaAgentGroupId: 'mediaAgentGroupId',
+          orgId: 'orgId',
+          userId: 'userId',
+        });
+      });
+
+      it('should build identifiers correctly', () => {
+        cd.device = {
+          ...cd.device,
+          config: {installationId: 'installationId'},
+        };
+
+        const res = cd.getIdentifiers({
+          mediaConnections: [
+            {mediaAgentAlias: 'mediaAgentAlias', mediaAgentGroupId: 'mediaAgentGroupId'},
+          ],
+          meeting: fakeMeeting,
+          sessionCorrelationId: 'sessionCorrelationId',
+        });
+
+        assert.deepEqual(res, {
+          correlationId: 'correlationId',
+          sessionCorrelationId: 'sessionCorrelationId',
           deviceId: 'deviceUrl',
           locusId: 'url',
           locusStartTime: 'lastActive',
@@ -419,6 +450,7 @@ describe('internal-plugin-metrics', () => {
 
         assert.deepEqual(res, {
           correlationId: 'correlationId',
+          sessionCorrelationId: undefined,
           webexConferenceIdStr: 'webexConferenceIdStr1',
           globalMeetingId: 'globalMeetingId1',
           deviceId: 'deviceUrl',
@@ -452,6 +484,7 @@ describe('internal-plugin-metrics', () => {
 
         assert.deepEqual(res, {
           correlationId: 'correlationId',
+          sessionCorrelationId: undefined,
           webexConferenceIdStr: 'webexConferenceIdStr1',
           globalMeetingId: 'globalMeetingId1',
           deviceId: 'deviceUrl',
@@ -510,6 +543,7 @@ describe('internal-plugin-metrics', () => {
 
         assert.deepEqual(res, {
           correlationId: 'correlationId',
+          sessionCorrelationId: 'unknown',
           webexConferenceIdStr: 'webexConferenceIdStr1',
           deviceId: 'deviceUrl',
           locusUrl: 'locus-url',
@@ -526,6 +560,7 @@ describe('internal-plugin-metrics', () => {
 
         assert.deepEqual(res, {
           correlationId: 'correlationId',
+          sessionCorrelationId: 'unknown',
           globalMeetingId: 'globalMeetingId1',
           deviceId: 'deviceUrl',
           locusUrl: 'locus-url',
@@ -541,6 +576,7 @@ describe('internal-plugin-metrics', () => {
 
         assert.deepEqual(res, {
           correlationId: 'correlationId',
+          sessionCorrelationId: 'unknown',
           deviceId: 'deviceUrl',
           locusUrl: 'locus-url',
           orgId: 'orgId',
@@ -585,6 +621,7 @@ describe('internal-plugin-metrics', () => {
 
         assert.deepEqual(res, {
           correlationId: 'correlationId',
+          sessionCorrelationId: 'unknown',
           locusUrl: 'locus-url',
           deviceId: 'deviceUrl',
           orgId: 'orgId',
@@ -675,6 +712,7 @@ describe('internal-plugin-metrics', () => {
             },
             identifiers: {
               correlationId: 'correlationId',
+              sessionCorrelationId: undefined,
               deviceId: 'deviceUrl',
               locusId: 'url',
               locusStartTime: 'lastActive',
@@ -700,6 +738,7 @@ describe('internal-plugin-metrics', () => {
             },
             identifiers: {
               correlationId: 'correlationId',
+              sessionCorrelationId: undefined,
               deviceId: 'deviceUrl',
               locusId: 'url',
               locusStartTime: 'lastActive',
@@ -736,6 +775,7 @@ describe('internal-plugin-metrics', () => {
               },
               identifiers: {
                 correlationId: 'correlationId',
+                sessionCorrelationId: undefined,
                 deviceId: 'deviceUrl',
                 locusId: 'url',
                 locusStartTime: 'lastActive',
@@ -1012,6 +1052,58 @@ describe('internal-plugin-metrics', () => {
             },
             identifiers: {
               correlationId: 'correlationId2',
+              sessionCorrelationId: undefined,
+              deviceId: 'deviceUrl',
+              locusId: 'url',
+              locusStartTime: 'lastActive',
+              locusUrl: 'locus/url',
+              mediaAgentAlias: 'alias',
+              mediaAgentGroupId: '1',
+              orgId: 'orgId',
+              userId: 'userId',
+            },
+            loginType: 'fakeLoginType',
+            name: 'client.alert.displayed',
+            userType: 'host',
+            isConvergedArchitectureEnabled: undefined,
+            webexSubServiceType: undefined,
+          },
+          eventId: 'my-fake-id',
+          origin: {
+            origin: 'fake-origin',
+          },
+          originTime: {
+            sent: 'not_defined_yet',
+            triggered: now.toISOString(),
+          },
+          senderCountryCode: 'UK',
+          version: 1,
+        });
+      });
+
+      it('should use meeting loginType if present and meetingId provided, with sessionCorrelationId', () => {
+        const submitToCallDiagnosticsSpy = sinon.spy(cd, 'submitToCallDiagnostics');
+        sinon.stub(cd, 'getOrigin').returns({origin: 'fake-origin'});
+        const options = {
+          meetingId: fakeMeeting2.id,
+          mediaConnections: [{mediaAgentAlias: 'alias', mediaAgentGroupId: '1'}],
+          sessionCorrelationId: 'sessionCorrelationId1'
+        };
+
+        cd.submitClientEvent({
+          name: 'client.alert.displayed',
+          options,
+        });
+
+        assert.calledWith(submitToCallDiagnosticsSpy, {
+          event: {
+            canProceed: true,
+            eventData: {
+              webClientDomain: 'whatever',
+            },
+            identifiers: {
+              correlationId: 'correlationId2',
+              sessionCorrelationId: 'sessionCorrelationId1',
               deviceId: 'deviceUrl',
               locusId: 'url',
               locusStartTime: 'lastActive',
@@ -1069,6 +1161,7 @@ describe('internal-plugin-metrics', () => {
             },
             identifiers: {
               correlationId: 'correlationId',
+              sessionCorrelationId: undefined,
               webexConferenceIdStr: 'webexConferenceIdStr1',
               globalMeetingId: 'globalMeetingId1',
               deviceId: 'deviceUrl',
@@ -1147,6 +1240,7 @@ describe('internal-plugin-metrics', () => {
             },
             identifiers: {
               correlationId: 'correlationId',
+              sessionCorrelationId: undefined,
               deviceId: 'deviceUrl',
               locusId: 'url',
               locusStartTime: 'lastActive',
@@ -1222,6 +1316,7 @@ describe('internal-plugin-metrics', () => {
             },
             identifiers: {
               correlationId: 'correlationId',
+              sessionCorrelationId: 'unknown',
               deviceId: 'deviceUrl',
               locusUrl: 'locus-url',
               orgId: 'orgId',
@@ -1295,6 +1390,7 @@ describe('internal-plugin-metrics', () => {
             },
             identifiers: {
               correlationId: 'correlationId',
+              sessionCorrelationId: 'unknown',
               deviceId: 'deviceUrl',
               locusUrl: 'locus-url',
               orgId: 'orgId',
@@ -1374,6 +1470,7 @@ describe('internal-plugin-metrics', () => {
             },
             identifiers: {
               correlationId: 'correlationId',
+              sessionCorrelationId: undefined,
               deviceId: 'deviceUrl',
               locusId: 'url',
               locusStartTime: 'lastActive',
@@ -1506,6 +1603,7 @@ describe('internal-plugin-metrics', () => {
             canProceed: true,
             identifiers: {
               correlationId: 'correlationId',
+              sessionCorrelationId: undefined,
               webexConferenceIdStr: 'webexConferenceIdStr1',
               globalMeetingId: 'globalMeetingId1',
               userId: 'userId',
@@ -1545,6 +1643,7 @@ describe('internal-plugin-metrics', () => {
               canProceed: true,
               identifiers: {
                 correlationId: 'correlationId',
+                sessionCorrelationId: undefined,
                 webexConferenceIdStr: 'webexConferenceIdStr1',
                 globalMeetingId: 'globalMeetingId1',
                 userId: 'userId',
@@ -1590,6 +1689,7 @@ describe('internal-plugin-metrics', () => {
               locusUrl: 'locus/url',
               locusId: 'url',
               locusStartTime: 'lastActive',
+              sessionCorrelationId: undefined,
             },
             eventData: {webClientDomain: 'whatever'},
             intervals: [{}],
@@ -2343,6 +2443,7 @@ describe('internal-plugin-metrics', () => {
                       locusUrl: 'locus/url',
                       orgId: 'orgId',
                       userId: 'userId',
+                      sessionCorrelationId: undefined,
                     },
                     loginType: 'login-ci',
                     name: 'client.exit.app',
