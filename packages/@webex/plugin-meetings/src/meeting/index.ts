@@ -538,6 +538,7 @@ export default class Meeting extends StatelessWebexPlugin {
   id: string;
   isMultistream: boolean;
   locusUrl: string;
+  #isoLocalClientMeetingJoinTime?: string;
   mediaConnections: any[];
   mediaId?: string;
   meetingFiniteStateMachine: any;
@@ -1521,6 +1522,17 @@ export default class Meeting extends StatelessWebexPlugin {
      * @memberof Meeting
      */
     this.iceCandidatesCount = 0;
+
+    /**
+     * Start time of meeting as an ISO string
+     * based on browser time, so can only be used to compute durations client side
+     * undefined if meeting has not been joined, set once on meeting join, and not updated again
+     * @instance
+     * @type {string}
+     * @private
+     * @memberof Meeting
+     */
+    this.#isoLocalClientMeetingJoinTime = undefined;
   }
 
   /**
@@ -1567,6 +1579,15 @@ export default class Meeting extends StatelessWebexPlugin {
    */
   set correlationId(correlationId: string) {
     this.callStateForMetrics.correlationId = correlationId;
+  }
+
+  /**
+   * Getter - Returns isoLocalClientMeetingJoinTime
+   * This will be set once on meeting join, and not updated again
+   * @returns {string | undefined}
+   */
+  get isoLocalClientMeetingJoinTime(): string | undefined {
+    return this.#isoLocalClientMeetingJoinTime;
   }
 
   /**
@@ -5235,6 +5256,8 @@ export default class Meeting extends StatelessWebexPlugin {
         // @ts-ignore
         this.webex.internal.device.meetingStarted();
 
+        this.#isoLocalClientMeetingJoinTime = new Date().toISOString();
+
         LoggerProxy.logger.log('Meeting:index#join --> Success');
 
         Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.JOIN_SUCCESS, {
@@ -6521,12 +6544,21 @@ export default class Meeting extends StatelessWebexPlugin {
    *
    * @private
    * @static
+   * @param {boolean} isAudioEnabled
+   * @param {boolean} isVideoEnabled
    * @returns {Promise<void>}
    */
-  private static async handleDeviceLogging(): Promise<void> {
-    try {
-      const devices = await getDevices();
 
+  private static async handleDeviceLogging(isAudioEnabled, isVideoEnabled): Promise<void> {
+    try {
+      let devices = [];
+      if (isVideoEnabled && isAudioEnabled) {
+        devices = await getDevices();
+      } else if (isVideoEnabled) {
+        devices = await getDevices(Media.DeviceKind.VIDEO_INPUT);
+      } else if (isAudioEnabled) {
+        devices = await getDevices(Media.DeviceKind.AUDIO_INPUT);
+      }
       MeetingUtil.handleDeviceLogging(devices);
     } catch {
       // getDevices may fail if we don't have browser permissions, that's ok, we still can have a media connection
@@ -7019,7 +7051,7 @@ export default class Meeting extends StatelessWebexPlugin {
       );
 
       if (audioEnabled || videoEnabled) {
-        await Meeting.handleDeviceLogging();
+        await Meeting.handleDeviceLogging(audioEnabled, videoEnabled);
       } else {
         LoggerProxy.logger.info(`${LOG_HEADER} device logging not required`);
       }

@@ -1,8 +1,8 @@
+import 'jsdom-global/register';
 import {assert} from '@webex/test-helper-chai';
 import sinon from 'sinon';
 import {ConnectionState} from '@webex/internal-media-core';
 import MediaProperties from '@webex/plugin-meetings/src/media/properties';
-import testUtils from '../../../utils/testUtils';
 import {Defer} from '@webex/common';
 import MediaConnectionAwaiter from '../../../../src/media/MediaConnectionAwaiter';
 
