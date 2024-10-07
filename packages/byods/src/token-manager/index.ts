@@ -1,6 +1,6 @@
 import fetch, {Response} from 'node-fetch';
-import ExtendedError from 'Errors/catalog/ExtendedError';
-import {ERROR_TYPE} from 'Errors/types';
+import ExtendedError from '../Errors/catalog/ExtendedError';
+import {ERROR_TYPE} from '../Errors/types';
 import log from '../Logger';
 import {LOGGER} from '../Logger/types';
 import {APPLICATION_ID_PREFIX, PRODUCTION_BASE_URL} from '../constants';
