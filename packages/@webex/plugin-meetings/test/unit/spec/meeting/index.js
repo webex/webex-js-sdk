@@ -428,6 +428,7 @@ describe('plugin-meetings', () => {
             }
           );
           assert.exists(newMeeting.sessionCorrelationId);
+          assert.equal(newMeeting.sessionCorrelationId, uuid1);
           assert.deepEqual(newMeeting.callStateForMetrics, {
             correlationId: uuid4,
             sessionCorrelationId: uuid1,
