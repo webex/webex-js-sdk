@@ -227,6 +227,7 @@ export type AddMediaOptions = {
 
 export type CallStateForMetrics = {
   correlationId?: string;
+  sessionCorrelationId?: string;
   joinTrigger?: string;
   loginType?: string;
 };
@@ -742,12 +743,29 @@ export default class Meeting extends StatelessWebexPlugin {
      */
     this.callStateForMetrics = attrs.callStateForMetrics || {};
     const correlationId = attrs.correlationId || attrs.callStateForMetrics?.correlationId;
+    const sessionCorrelationId =
+      attrs.sessionCorrelationId || attrs.callStateForMetrics?.sessionCorrelationId;
+    if (sessionCorrelationId) {
+      LoggerProxy.logger.log(
+        `Meetings:index#constructor --> Initializing the meeting object with session correlation id from app ${correlationId}`
+      );
+      this.callStateForMetrics.sessionCorrelationId = sessionCorrelationId;
+    } else {
+      LoggerProxy.logger.log(
+        `Meetings:index#constructor --> No session correlation id supplied. None will be generated and this field will remain blank`
+      );
+      // TODO: supply a session from the meetings instance
+      this.callStateForMetrics.sessionCorrelationId = '';
+    }
     if (correlationId) {
       LoggerProxy.logger.log(
         `Meetings:index#constructor --> Initializing the meeting object with correlation id from app ${correlationId}`
       );
       this.callStateForMetrics.correlationId = correlationId;
     } else {
+      LoggerProxy.logger.log(
+        `Meetings:index#constructor --> Initializing the meeting object with generated correlation id from sdk ${this.id}`
+      );
       this.callStateForMetrics.correlationId = this.id;
     }
     /**
@@ -1579,6 +1597,22 @@ export default class Meeting extends StatelessWebexPlugin {
    */
   set correlationId(correlationId: string) {
     this.callStateForMetrics.correlationId = correlationId;
+  }
+
+  /**
+   * Getter - Returns callStateForMetrics.sessionCorrelationId
+   * @returns {string}
+   */
+  get sessionCorrelationId() {
+    return this.callStateForMetrics.correlationId;
+  }
+
+  /**
+   * Setter - sets callStateForMetrics.sessionCorrelationId
+   * @param {string} sessionCorrelationId
+   */
+  set sessionCorrelationId(sessionCorrelationId: string) {
+    this.callStateForMetrics.sessionCorrelationId = sessionCorrelationId;
   }
 
   /**

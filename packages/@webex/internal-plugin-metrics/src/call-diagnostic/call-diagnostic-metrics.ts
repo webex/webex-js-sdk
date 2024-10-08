@@ -290,10 +290,12 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     } = options;
     const identifiers: Event['event']['identifiers'] = {
       correlationId: 'unknown',
+      sessionCorrelationId: 'unknown',
     };
 
     if (meeting) {
       identifiers.correlationId = meeting.correlationId;
+      identifiers.sessionCorrelationId = meeting.sessionCorrelationId;
     }
 
     if (sessionCorrelationId) {
