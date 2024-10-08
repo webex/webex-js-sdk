@@ -1,15 +1,3 @@
-import {LOGGER} from '../Logger/types';
-import {BYODSError} from '../Errors';
-
-export type BYODSErrorEmitterCallback = (err: BYODSError, finalError?: boolean) => void;
-
-/**
- * @ignore
- */
-function getLoggingLevel(): LOGGER {
-  throw new Error('Function not implemented.');
-}
-getLoggingLevel();
 /**
  * Represents the response from a data source.
  *

@@ -7,10 +7,10 @@ import {
   INTEGRATION_JWKS_URL,
   PRODUCTION_BASE_URL,
   INTEGRATION_BASE_URL,
+  BYODS_MODULE,
 } from '../constants';
 import {SDKConfig, JWSTokenVerificationResult, LoggerConfig} from '../types';
 import TokenManager from '../token-manager';
-import {BYODS_FILE} from './constant';
 import log from '../Logger';
 import {LOGGER} from '../Logger/types';
 
@@ -48,8 +48,7 @@ export default class BYODS {
     logger = {level: LOGGER.ERROR},
   }: SDKConfig) {
     this.config = {clientId, clientSecret, tokenStorageAdapter, logger};
-    const logLevel = this.config.logger.level;
-    log.setLogger(logLevel, BYODS_FILE);
+    log.setLogger(this.config.logger.level, BYODS_MODULE);
 
     /**
      * The environment variable `process.env.BYODS_ENVIRONMENT` determines the environment in which the SDK operates.

@@ -1,4 +1,3 @@
-/* eslint-disable valid-jsdoc */
 import {ErrorMessage, ErrorObject, ERROR_TYPE} from '../types';
 import ExtendedError from './ExtendedError';
 

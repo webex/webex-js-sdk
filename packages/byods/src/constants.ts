@@ -8,3 +8,6 @@ export const PRODUCTION_JWKS_URL = 'https://idbroker.webex.com/idb/oauth2/v2/key
 export const INTEGRATION_JWKS_URL =
   'https://idbrokerbts.webex.com/idb/oauth2/v2/keys/verificationjwk';
 export const APPLICATION_ID_PREFIX = 'ciscospark://us/APPLICATION/';
+export const BYODS_BASE_CLIENT_MODULE = 'base-client';
+export const BYODS_MODULE = 'byods';
+export const BYODS_TOKEN_MANAGER_MODULE = 'token-manager';

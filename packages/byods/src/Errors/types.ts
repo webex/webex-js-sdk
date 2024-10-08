@@ -2,11 +2,6 @@ import {IMetaContext} from '../Logger/types';
 
 export type ErrorMessage = string;
 
-export enum ERROR_LAYER {
-  CALL_CONTROL = 'call_control',
-  MEDIA = 'media',
-}
-
 export enum ERROR_TYPE {
   DEFAULT = 'default_error',
   FORBIDDEN_ERROR = 'forbidden',

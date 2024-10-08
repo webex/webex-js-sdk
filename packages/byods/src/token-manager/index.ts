@@ -2,9 +2,8 @@ import ExtendedError from '../Errors/catalog/ExtendedError';
 import {ERROR_TYPE} from '../Errors/types';
 import log from '../Logger';
 import {LOGGER} from '../Logger/types';
-import {APPLICATION_ID_PREFIX, PRODUCTION_BASE_URL} from '../constants';
+import {APPLICATION_ID_PREFIX, PRODUCTION_BASE_URL, BYODS_TOKEN_MANAGER_MODULE} from '../constants';
 import {TokenResponse, OrgServiceAppAuthorization, ServiceAppToken, LoggerConfig} from '../types';
-import BYODS_TOKEN_MANAGER_FILE from './constant';
 import {TokenStorageAdapter} from '../token-storage-adapter/types';
 import {InMemoryTokenStorageAdapter} from '../token-storage-adapter';
 import {httpUtils} from '../http-utils';
@@ -18,7 +17,7 @@ export default class TokenManager {
   private serviceAppId: string;
   private baseUrl: string;
   private tokenStorageAdapter: TokenStorageAdapter;
-  private sdkConfig: LoggerConfig;
+  private loggerConfig: LoggerConfig;
 
   /**
    * Creates an instance of TokenManager.
@@ -44,11 +43,10 @@ export default class TokenManager {
     this.clientId = clientId;
     this.clientSecret = clientSecret;
     this.baseUrl = baseUrl;
-    this.sdkConfig = config;
+    this.loggerConfig = config;
     this.serviceAppId = Buffer.from(`${APPLICATION_ID_PREFIX}${clientId}`).toString('base64');
     this.tokenStorageAdapter = tokenStorageAdapter;
-    const logLevel = this.sdkConfig.level;
-    log.setLogger(logLevel, BYODS_TOKEN_MANAGER_FILE);
+    log.setLogger(this.loggerConfig.level, BYODS_TOKEN_MANAGER_MODULE);
   }
 
   /**
