@@ -93,7 +93,7 @@ export default class DataSourceClient {
   /**
    * This method refreshes the DataSource token using dataSourceId, tokenLifetimeMinutes & nonceGenerator.
    * @param {string} dataSourceId The id of the data source.
-   * @param {string} nonceGenerator Accepts an optional nonceGenerator, developer can provide their own nonceGenerator, defaults to randomUUID.
+   * @param {string} nonceGenerator Accepts an nonceGenerator, developer can provide their own nonceGenerator, defaults to randomUUID.
    * @param {number} tokenLifetimeMinutes The refresh interval in minutes for the data source. Defaults to 60 mins. Should be <= 1440 & >=1.
    * @returns {Promise<() => void>} A promise that resolves to the API response containing a cancellable function.
    * @example
