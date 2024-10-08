@@ -2,7 +2,7 @@ import {ErrorMessage, ErrorObject, ERROR_TYPE} from '../types';
 import ExtendedError from './ExtendedError';
 
 /**
- * Any error reported from Calling client should be stored here.
+ * Any error reported from BYODS should be stored here.
  */
 export class BYODSError extends ExtendedError {
   /**

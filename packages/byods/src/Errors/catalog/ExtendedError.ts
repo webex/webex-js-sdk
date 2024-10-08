@@ -1,4 +1,3 @@
-/* eslint-disable valid-jsdoc */
 import {ErrorMessage, ERROR_TYPE} from '../types';
 
 /**

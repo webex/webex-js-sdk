@@ -1,5 +1,4 @@
 import {jwksCache, createRemoteJWKSet, JWKSCacheInput, jwtVerify} from 'jose';
-
 import BaseClient from '../base-client';
 import {
   USER_AGENT,
@@ -9,10 +8,12 @@ import {
   INTEGRATION_BASE_URL,
   BYODS_MODULE,
 } from '../constants';
-import {SDKConfig, JWSTokenVerificationResult, LoggerConfig} from '../types';
+import {SDKConfig, JWSTokenVerificationResult} from '../types';
 import TokenManager from '../token-manager';
 import log from '../Logger';
 import {LOGGER} from '../Logger/types';
+import {ERROR_TYPE} from '../Errors/types';
+import ExtendedError from '../Errors/catalog/ExtendedError';
 
 /**
  * The BYoDS SDK.
@@ -27,7 +28,6 @@ export default class BYODS {
   private env: 'production' | 'integration';
   private config: SDKConfig;
   private baseUrl: string;
-  private loggerConfig?: LoggerConfig;
 
   /**
    * The token manager for the SDK.
@@ -80,7 +80,7 @@ export default class BYODS {
       clientSecret,
       this.baseUrl,
       tokenStorageAdapter,
-      this.loggerConfig
+      this.config.logger
     );
 
     // Create a remote JWK Set
@@ -104,7 +104,10 @@ export default class BYODS {
       await jwtVerify(jws, this.jwks);
       result.isValid = true;
     } catch (error: any) {
-      console.error('Error verifying JWS token:', error.message || error);
+      log.error(new ExtendedError('Error verifying JWS token', ERROR_TYPE.TOKEN_ERROR), {
+        file: BYODS_MODULE,
+        method: 'verifyJWSToken',
+      });
       result.isValid = false;
       result.error = error.message || 'Unknown error';
     }

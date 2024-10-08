@@ -1,12 +1,12 @@
+import {APPLICATION_ID_PREFIX, PRODUCTION_BASE_URL, BYODS_TOKEN_MANAGER_MODULE} from '../constants';
+import {TokenResponse, OrgServiceAppAuthorization, ServiceAppToken, LoggerConfig} from '../types';
+import {httpUtils} from '../http-utils';
 import ExtendedError from '../Errors/catalog/ExtendedError';
 import {ERROR_TYPE} from '../Errors/types';
 import log from '../Logger';
 import {LOGGER} from '../Logger/types';
-import {APPLICATION_ID_PREFIX, PRODUCTION_BASE_URL, BYODS_TOKEN_MANAGER_MODULE} from '../constants';
-import {TokenResponse, OrgServiceAppAuthorization, ServiceAppToken, LoggerConfig} from '../types';
 import {TokenStorageAdapter} from '../token-storage-adapter/types';
 import {InMemoryTokenStorageAdapter} from '../token-storage-adapter';
-import {httpUtils} from '../http-utils';
 
 /**
  * The token manager for the BYoDS SDK.
@@ -98,7 +98,10 @@ export default class TokenManager {
 
       return token;
     } catch (error) {
-      console.error('Error fetching token:', error);
+      log.error(new ExtendedError('Error fetching token', ERROR_TYPE.TOKEN_ERROR), {
+        file: BYODS_TOKEN_MANAGER_MODULE,
+        method: 'getOrgServiceAppAuthorization',
+      });
       throw error;
     }
   }
@@ -163,11 +166,8 @@ export default class TokenManager {
       await this.updateServiceAppToken(response.data, orgId);
     } catch (error) {
       log.error(
-        new ExtendedError(
-          'Error retrieving token after authorization',
-          ERROR_TYPE.REGISTRATION_ERROR
-        ),
-        {file: 'BYODS_TOKEN_MANAGER_FILE', method: 'getServiceAppTokenUsingPAT'}
+        new ExtendedError('Error retrieving token after authorization', ERROR_TYPE.TOKEN_ERROR),
+        {file: BYODS_TOKEN_MANAGER_MODULE, method: 'getServiceAppTokenUsingPAT'}
       );
 
       throw error;
@@ -192,7 +192,10 @@ export default class TokenManager {
     try {
       serviceAppAuthorization = await this.getTokenFromAdapter(orgId);
     } catch (error) {
-      console.error('Error fetching token:', error);
+      log.error(new ExtendedError('Error fetching token', ERROR_TYPE.TOKEN_ERROR), {
+        file: BYODS_TOKEN_MANAGER_MODULE,
+        method: 'getServiceAppTokenUsingPAT',
+      });
       throw error;
     }
     const refreshToken = serviceAppAuthorization?.serviceAppToken.refreshToken;
@@ -236,7 +239,7 @@ export default class TokenManager {
     } catch (error) {
       log.error(
         new ExtendedError('Error saving service app registration', ERROR_TYPE.REGISTRATION_ERROR),
-        {file: 'BYODS_TOKEN_MANAGER_FILE', method: 'saveServiceAppRegistration'}
+        {file: BYODS_TOKEN_MANAGER_MODULE, method: 'saveServiceAppRegistration'}
       );
 
       throw error;

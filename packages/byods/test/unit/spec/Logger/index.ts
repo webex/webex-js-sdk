@@ -38,13 +38,13 @@ describe('Coverage tests for logger', () => {
   });
 
   it('Set the logger and verify the level', () => {
-    expect(logLevel).toStrictEqual(LOGGER.ERROR);
-    log.setLogger(LOGGER.TRACE);
-    expect(log.getLogLevel()).toStrictEqual(LOGGER.TRACE);
+    expect(logLevel).toEqual(LOGGER.ERROR);
+    log.setLogger(LOGGER.TRACE, "test");
+    expect(log.getLogLevel()).toEqual(LOGGER.TRACE);
   });
 
   it('Set the log level to  Info and verify levels below info are executed or not', () => {
-    log.setLogger(LOGGER.INFO);
+    log.setLogger(LOGGER.INFO, "test");
 
     log.info(fakePrint, dummyContext);
     expect(logSpy).toHaveBeenCalledTimes(2);
@@ -60,7 +60,7 @@ describe('Coverage tests for logger', () => {
   });
 
   it('Set the log level to Trace  and verify that all levels are executed', () => {
-    log.setLogger(LOGGER.TRACE);
+    log.setLogger(LOGGER.TRACE, "test");
 
     log.info(fakePrint, dummyContext);
     expect(logSpy).toHaveBeenCalledTimes(2); // one during initialization and one with the statement

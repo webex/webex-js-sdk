@@ -1,6 +1,5 @@
 /* eslint-disable valid-jsdoc */
 import {BYODS_PACKAGE_NAME} from '../constants';
-import {IMetaContext} from './types';
 import ExtendedError from '../Errors/catalog/ExtendedError';
 import {LOGGING_LEVEL, LogContext, LOGGER, LOG_PREFIX} from './types';
 
@@ -52,20 +51,20 @@ const writeToConsole = (message: string, level: LOGGER) => {
 };
 
 /**
- * Format the Log message  as 'timestamp Calling SDK - [level]: file:example.ts - method:methodName - Actual log message'.
+ * Format the Log message  as 'timestamp BYODS SDK - [level]: file:example.ts - method:methodName - Actual log message'.
  *
  * @param  context - File and method.
  * @param level - Log level.
  * @returns - Formatted string.
  */
-const format = (context: IMetaContext, level: string): string => {
+const format = (context: LogContext, level: string): string => {
   const timestamp = new Date().toUTCString();
 
   return `${BYODS_PACKAGE_NAME}: ${timestamp}: ${level}: ${LOG_PREFIX.FILE}:${context.file} - ${LOG_PREFIX.METHOD}:${context.method}`;
 };
 
 /**
- * Used by the Calling Client to initialize the logger module
+ * Used to initialize the logger module
  * with a certain level.
  *
  * @param level - Log Level.
@@ -92,9 +91,7 @@ const setLogger = (level: string, module: string) => {
       currentLogLevel = LOGGING_LEVEL.error;
     }
   }
-
   const message = `Logger initialized for module: ${module} with level: ${currentLogLevel}`;
-
   writeToConsole(
     `${format({file: 'logger.ts', method: 'setLogger'}, '')}  - ${LOG_PREFIX.MESSAGE}:${message}`,
     LOGGER.INFO
