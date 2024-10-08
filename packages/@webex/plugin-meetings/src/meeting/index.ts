@@ -3771,6 +3771,10 @@ export default class Meeting extends StatelessWebexPlugin {
             requiredPolicies: [SELF_POLICY.SUPPORT_CHAT],
             policies: this.selfUserPolicies,
           }),
+          canPollingAndQA: ControlsOptionsUtil.hasPolicies({
+            requiredPolicies: [SELF_POLICY.SUPPORT_POLLING_AND_QA],
+            policies: this.selfUserPolicies,
+          }),
           canShareApplication:
             (ControlsOptionsUtil.hasHints({
               requiredHints: [DISPLAY_HINTS.SHARE_APPLICATION],
