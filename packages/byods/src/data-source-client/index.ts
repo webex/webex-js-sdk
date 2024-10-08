@@ -2,7 +2,7 @@ import {LoggerConfig} from '../types';
 import {DataSourceRequest, DataSourceResponse} from './types';
 import {DATASOURCE_ENDPOINT} from './constants';
 import {HttpClient, ApiResponse} from '../http-client/types';
-import {BYODS_DATA_SOURCE_CLIENT_MODULE} from './constants'; // Fixed import
+import {BYODS_DATA_SOURCE_CLIENT_MODULE} from '../constants';
 import log from '../Logger';
 import {LOGGER} from '../Logger/types';
 

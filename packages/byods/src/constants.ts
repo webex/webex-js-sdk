@@ -15,3 +15,4 @@ export const APPLICATION_ID_PREFIX = 'ciscospark://us/APPLICATION/';
 export const BYODS_BASE_CLIENT_MODULE = 'base-client';
 export const BYODS_MODULE = 'byods';
 export const BYODS_TOKEN_MANAGER_MODULE = 'token-manager';
+export const BYODS_DATA_SOURCE_CLIENT_MODULE = 'data-source-client';
