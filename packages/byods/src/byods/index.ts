@@ -27,7 +27,7 @@ export default class BYODS {
   private env: 'production' | 'integration';
   private config: SDKConfig;
   private baseUrl: string;
-  private sdkConfig?: LoggerConfig;
+  private loggerConfig?: LoggerConfig;
 
   /**
    * The token manager for the SDK.
@@ -80,7 +80,7 @@ export default class BYODS {
       clientSecret,
       this.baseUrl,
       tokenStorageAdapter,
-      this.sdkConfig
+      this.loggerConfig
     );
 
     // Create a remote JWK Set

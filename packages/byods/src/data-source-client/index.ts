@@ -21,7 +21,6 @@ export default class DataSourceClient {
    * const client = new DataSourceClient(httpClient);
    */
   constructor(httpClient: HttpClient, config: LoggerConfig = {level: LOGGER.ERROR}) {
-    // Fixed formatting
     this.httpClient = httpClient;
     this.loggerConfig = config;
     log.setLogger(this.loggerConfig.level, BYODS_DATA_SOURCE_CLIENT_MODULE);
