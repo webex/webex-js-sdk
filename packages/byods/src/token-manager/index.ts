@@ -30,9 +30,7 @@ export default class TokenManager {
    */
   constructor(
     clientId: string,
-
     clientSecret: string,
-
     baseUrl: string = PRODUCTION_BASE_URL,
     tokenStorageAdapter: TokenStorageAdapter = new InMemoryTokenStorageAdapter(),
     config: LoggerConfig = {level: LOGGER.ERROR}
