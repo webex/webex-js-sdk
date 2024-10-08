@@ -1,5 +1,8 @@
 import fetch from 'node-fetch';
+import {randomUUID} from 'crypto';
+
 import {ApiResponse} from 'http-client/types';
+import {BYODS_PACKAGE_NAME, USER_AGENT} from '../constants';
 
 export interface HttpRequestInit {
   body?: string | null;
@@ -16,7 +19,16 @@ export interface HttpRequestInit {
  * const response = await request('https://webexapis.com/v1/endpoint', { method: 'GET', headers: {} });
  */
 async function request<T>(url: string, options: HttpRequestInit = {}): Promise<ApiResponse<T>> {
-  const response = await fetch(url, options);
+  const optionsWithHeaders = {
+    ...options,
+    headers: {
+      Trackingid: `${BYODS_PACKAGE_NAME}_${randomUUID()}`,
+      'User-Agent': USER_AGENT,
+      ...options.headers,
+    },
+  };
+
+  const response = await fetch(url, optionsWithHeaders);
 
   if (!response.ok) {
     throw new Error(`HTTP Error Response: ${response.status} ${response.statusText}`);
