@@ -9871,6 +9871,11 @@ describe('plugin-meetings', () => {
               requiredDisplayHints: [],
               requiredPolicies: [SELF_POLICY.SUPPORT_ANNOTATION],
             },
+            {
+              actionName: 'canPollingAndQA',
+              requiredDisplayHints: [],
+              requiredPolicies: [SELF_POLICY.SUPPORT_POLLING_AND_QA],
+            },
           ],
           ({
             actionName,
