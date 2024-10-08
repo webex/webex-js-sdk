@@ -194,7 +194,7 @@ export default class TokenManager {
     } catch (error) {
       log.error(new ExtendedError('Error fetching token', ERROR_TYPE.TOKEN_ERROR), {
         file: BYODS_TOKEN_MANAGER_MODULE,
-        method: 'getServiceAppTokenUsingPAT',
+        method: 'refreshServiceAppAccessToken',
       });
       throw error;
     }
