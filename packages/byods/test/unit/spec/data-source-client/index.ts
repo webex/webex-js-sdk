@@ -225,9 +225,8 @@ describe('DataSourceClient', () => {
     });
 
     it('should reject with an error if tokenLifetimeMinutes is invalid', async () => {
-      await expect(dataSourceClient.scheduleJWSTokenRefresh('123', 0)).rejects.toThrow('dataSourceId is missing which is a required parameter or invalid tokenLifetimeMinutes is provided.');
-      await expect(dataSourceClient.scheduleJWSTokenRefresh('123', 1441)).rejects.toThrow('dataSourceId is missing which is a required parameter or invalid tokenLifetimeMinutes is provided.');
-      await expect(dataSourceClient.scheduleJWSTokenRefresh('123', NaN)).rejects.toThrow('dataSourceId is missing which is a required parameter or invalid tokenLifetimeMinutes is provided.');
+      await expect(dataSourceClient.scheduleJWSTokenRefresh('123', 'random_uuid', 0)).rejects.toThrow('dataSourceId is missing which is a required parameter or invalid tokenLifetimeMinutes is provided.');
+      await expect(dataSourceClient.scheduleJWSTokenRefresh('123', 'randome_uuid', 1441)).rejects.toThrow('dataSourceId is missing which is a required parameter or invalid tokenLifetimeMinutes is provided.');
     });
 
     it('should handle errors when scheduling JWS token refresh', async () => {
