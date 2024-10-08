@@ -274,7 +274,7 @@ describe('internal-plugin-metrics', () => {
   describe('prepareDiagnosticMetricItem', () => {
     let webex: any;
 
-    const check = (eventName: string, expectedEvent: any) => {
+    const check = (eventName: string, expectedEvent: any, expectedUpgradeChannel: string) => {
       const eventPayload = {event: {name: eventName}};
       const item = prepareDiagnosticMetricItem(webex, {
         eventPayload,
@@ -286,6 +286,7 @@ describe('internal-plugin-metrics', () => {
           origin: {
             buildType: 'prod',
             networkType: 'unknown',
+            upgradeChannel: expectedUpgradeChannel
           },
           event: {name: eventName, ...expectedEvent},
         },
@@ -417,11 +418,11 @@ describe('internal-plugin-metrics', () => {
       ],
     ].forEach(([eventName, expectedEvent]) => {
       it(`returns expected result for ${eventName}`, () => {
-        check(eventName as string, expectedEvent);
+        check(eventName as string, expectedEvent, 'gold');
       });
     });
 
-    it('getBuildType returns correct value', () => {
+    it('sets buildType and upgradeChannel correctly', () => {
       const item: any = {
         eventPayload: {
           event: {
@@ -438,11 +439,14 @@ describe('internal-plugin-metrics', () => {
       // just submit any event
       prepareDiagnosticMetricItem(webex, item);
       assert.deepEqual(item.eventPayload.origin.buildType, 'test');
+      assert.deepEqual(item.eventPayload.origin.upgradeChannel, 'test');
 
       delete item.eventPayload.origin.buildType;
+      delete item.eventPayload.origin.upgradeChannel;
       item.eventPayload.event.eventData.markAsTestEvent = false;
       prepareDiagnosticMetricItem(webex, item);
       assert.deepEqual(item.eventPayload.origin.buildType, 'prod');
+      assert.deepEqual(item.eventPayload.origin.upgradeChannel, 'gold');
     });
   });
 
