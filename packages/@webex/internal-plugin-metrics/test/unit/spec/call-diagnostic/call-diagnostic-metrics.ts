@@ -2195,7 +2195,7 @@ describe('internal-plugin-metrics', () => {
         });
         assert.deepEqual(res, {
           category: 'expected',
-          errorDescription: 'WdmRegionRestricted',
+          errorDescription: 'WdmRestrictedRegion',
           fatal: true,
           name: 'other',
           shownToUser: false,
@@ -2212,7 +2212,7 @@ describe('internal-plugin-metrics', () => {
         });
         assert.deepEqual(res, {
           category: 'expected',
-          errorDescription: 'WdmRegionRestricted',
+          errorDescription: 'WdmRestrictedRegion',
           fatal: true,
           name: 'other',
           shownToUser: false,
