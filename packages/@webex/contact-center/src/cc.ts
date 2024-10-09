@@ -1,17 +1,17 @@
 import {WebexPlugin} from '@webex/webex-core';
-import {WEBEX_READY } from './constants';
 
 export default class ContactCenter extends WebexPlugin {
-    clientType = '';
+    letclientType = '';
     wccApiUrl = '';
     namespace = 'WebexCC';
+    $webex: any;
+
   
     constructor(...args) {
         super(...args);
-        this.webex.once(WEBEX_READY, () => {
-            console.log('WebexCC: webex object ready: ', this.webex);
-            // this.emit(CC_READY);
-        });
+        //@ts-ignore
+        this.$webex = this.webex;
+        console.log('pkesari_local webex object: ', this.$webex);
     }
 
     register(success: boolean) {

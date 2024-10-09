@@ -5,6 +5,7 @@ const PATTERNS = {
   JAVASCRIPT: './**/*.js',
   TYPESCRIPT: './**/*.ts',
   TEST: './**/*.*',
+  TEST_NEW: './*.test.ts',
 };
 
 /**
@@ -14,6 +15,7 @@ const TEST_DIRECTORIES = {
   INTEGRATION: './integration/spec',
   ROOT: './test',
   UNIT: './unit/spec',
+  SRC: './src',
 };
 
 const CONSTANTS = {

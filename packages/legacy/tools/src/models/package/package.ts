@@ -116,10 +116,18 @@ class Package {
       })
       : Promise.resolve([]);
 
-    return Promise.all([unitTestFileCollector, integrationTestFileCollector])
-      .then(async ([unitFiles, integrationFiles]) => {
+      const unitTestFileCollectorInSrc = config.unit
+      ? Package.getFiles({
+        location: path.join(this.data.packageRoot, CONSTANTS.TEST_DIRECTORIES.SRC),
+        pattern: CONSTANTS.PATTERNS.TEST_NEW,
+        targets: config.targets,
+      })
+      : Promise.resolve([]);
+
+    return Promise.all([unitTestFileCollector, integrationTestFileCollector, unitTestFileCollectorInSrc])
+      .then(async ([unitFiles, integrationFiles, srcUnitFiles]) => {
         if (config.runner === 'jest') {
-          const testFiles = [...unitFiles];
+          const testFiles = [...unitFiles, ...srcUnitFiles];
 
           if (testFiles.length > 0) {
             await Jest.test({ files: testFiles });
