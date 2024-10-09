@@ -2188,6 +2188,40 @@ describe('internal-plugin-metrics', () => {
         });
       });
 
+      it('should generate event error payload correctly for wdm error 4404002', () => {
+        const res = cd.generateClientEventErrorPayload({
+          body: {errorCode: 4404002},
+          message: 'Operation denied due to region restriction',
+        });
+        assert.deepEqual(res, {
+          category: 'expected',
+          errorDescription: 'WdmRestrictedRegion',
+          fatal: true,
+          name: 'other',
+          shownToUser: false,
+          serviceErrorCode: 4404002,
+          errorCode: 13000,
+          rawErrorMessage: 'Operation denied due to region restriction',
+        });
+      });
+
+      it('should generate event error payload correctly for wdm error 4404003', () => {
+        const res = cd.generateClientEventErrorPayload({
+          body: {errorCode: 4404003},
+          message: 'Operation denied due to region restriction',
+        });
+        assert.deepEqual(res, {
+          category: 'expected',
+          errorDescription: 'WdmRestrictedRegion',
+          fatal: true,
+          name: 'other',
+          shownToUser: false,
+          serviceErrorCode: 4404003,
+          errorCode: 13000,
+          rawErrorMessage: 'Operation denied due to region restriction',
+        });
+      });
+
       describe('httpStatusCode', () => {
         it('should include httpStatusCode for browser media errors', () => {
           const res = cd.generateClientEventErrorPayload({
