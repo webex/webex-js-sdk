@@ -1604,7 +1604,7 @@ export default class Meeting extends StatelessWebexPlugin {
    * @returns {string}
    */
   get sessionCorrelationId() {
-    return this.callStateForMetrics.correlationId;
+    return this.callStateForMetrics.sessionCorrelationId;
   }
 
   /**
