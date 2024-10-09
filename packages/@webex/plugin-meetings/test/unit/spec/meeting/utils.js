@@ -39,6 +39,7 @@ describe('plugin-meetings', () => {
       meeting.cleanupLocalStreams = sinon.stub().returns(Promise.resolve());
       meeting.closeRemoteStreams = sinon.stub().returns(Promise.resolve());
       meeting.closePeerConnections = sinon.stub().returns(Promise.resolve());
+      meeting.stopPeriodicLogUpload = sinon.stub();
 
       meeting.unsetRemoteStreams = sinon.stub();
       meeting.unsetPeerConnections = sinon.stub();
@@ -64,6 +65,7 @@ describe('plugin-meetings', () => {
         assert.calledOnce(meeting.cleanupLocalStreams);
         assert.calledOnce(meeting.closeRemoteStreams);
         assert.calledOnce(meeting.closePeerConnections);
+        assert.calledOnce(meeting.stopPeriodicLogUpload);
 
         assert.calledOnce(meeting.unsetRemoteStreams);
         assert.calledOnce(meeting.unsetPeerConnections);

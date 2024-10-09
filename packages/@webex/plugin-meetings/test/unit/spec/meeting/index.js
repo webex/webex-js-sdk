@@ -2471,6 +2471,63 @@ describe('plugin-meetings', () => {
           checkWorking();
         });
 
+        it('should upload logs periodically', async () => {
+          const clock = sinon.useFakeTimers();
+
+          meeting.roap.doTurnDiscovery = sinon
+            .stub()
+            .resolves({turnServerInfo: undefined, turnDiscoverySkippedReason: undefined});
+
+          let logUploadCounter = 0;
+
+          TriggerProxy.trigger.callsFake((meetingObject, options, event) => {
+            if (
+              meetingObject === meeting &&
+              options.file === 'meeting/index' &&
+              options.function === 'uploadLogs' &&
+              event === 'REQUEST_UPLOAD_LOGS'
+            ) {
+              logUploadCounter += 1;
+            }
+          });
+
+          meeting.config.logUploadIntervalMultiplicationFactor = 1;
+          meeting.meetingState = 'ACTIVE';
+
+          await meeting.addMedia({
+            mediaSettings: {},
+          });
+
+          const checkLogCounter = (delay, expectedCounter) => {
+            // first check that the counter is not increased just before the delay
+            clock.tick(delay - 50);
+            assert.equal(logUploadCounter, expectedCounter - 1);
+
+            // and now check that it has reached expected value after the delay
+            clock.tick(50);
+            assert.equal(logUploadCounter, expectedCounter);
+          };
+
+          checkLogCounter(100, 1);
+          checkLogCounter(1000, 2);
+          checkLogCounter(15000, 3);
+          checkLogCounter(15000, 4);
+          checkLogCounter(30000, 5);
+          checkLogCounter(30000, 6);
+          checkLogCounter(30000, 7);
+          checkLogCounter(60000, 8);
+          checkLogCounter(60000, 9);
+          checkLogCounter(60000, 10);
+
+          // simulate media connection being removed -> no more log uploads should happen
+          meeting.mediaProperties.webrtcMediaConnection = undefined;
+
+          clock.tick(60000);
+          assert.equal(logUploadCounter, 11);
+
+          clock.restore();
+        });
+
         it('should attach the media and return promise when in the lobby if allowMediaInLobby is set', async () => {
           meeting.roap.doTurnDiscovery = sinon
             .stub()
