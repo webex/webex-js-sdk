@@ -1,0 +1,51 @@
+{
+  "name": "@webex/cli-tools",
+  "packageManager": "yarn@3.4.1",
+  "engines": {
+    "node": ">=16.0.0",
+    "npm": ">=8.0.0"
+  },
+  "type": "commonjs",
+  "main": "./dist/module/index.js",
+  "types": "./dist/types/index.d.ts",
+  "files": [
+    "./dist"
+  ],
+  "scripts": {
+    "build": "yarn build:module && yarn build:types && yarn build:docs",
+    "build:docs": "yarn build:docs:api",
+    "build:docs:api": "yarn build:docs:api:metadata && yarn build:docs:api:markdown",
+    "build:docs:api:metadata": "api-extractor run -c ./api-extractor.config.json",
+    "build:docs:api:markdown": "api-documenter markdown --input-folder ./docs/api/metadata --output-folder ./docs/api/markdown",
+    "build:module": "tsc --declaration false --outDir ./dist/module",
+    "build:src": "yarn build:module && yarn build:types",
+    "build:types": "tsc --declaration --declarationMap --declarationDir ./dist/types --emitDeclarationOnly",
+    "clean": "yarn clean:dist",
+    "clean:dist": "rimraf ./dist",
+    "deploy:npm": "yarn npm publish",
+    "test": "yarn test:style && yarn test:syntax && yarn test:integration && yarn test:coverage",
+    "test:coverage": "yarn test:integration --coverage --reporters=\"jest-silent-reporter\"",
+    "test:integration": "jest",
+    "test:style": "eslint ./src/**/*.*",
+    "test:syntax": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@microsoft/api-documenter": "7.23.20",
+    "@microsoft/api-extractor": "7.39.4",
+    "@types/eslint": "8.56.0",
+    "eslint": "8.56.0",
+    "eslint-config-airbnb-base": "15.0.0",
+    "eslint-config-airbnb-typescript": "17.1.0",
+    "eslint-plugin-import": "2.29.1",
+    "eslint-plugin-jsdoc": "48.0.4",
+    "eslint-plugin-tsdoc": "0.2.17",
+    "jest": "29.7.0",
+    "jest-silent-reporter": "0.5.0",
+    "rimraf": "5.0.5",
+    "typescript": "5.3.3"
+  },
+  "dependencies": {
+    "commander": "11.1.0",
+    "shelljs": "^0.8.5"
+  }
+}

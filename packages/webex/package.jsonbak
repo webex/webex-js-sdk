@@ -1,0 +1,94 @@
+{
+  "name": "webex",
+  "description": "SDK for Cisco Webex",
+  "license": "Cisco EULA (https://www.cisco.com/c/en/us/products/end-user-license-agreement.html)",
+  "contributors": [
+    "Adam Weeks <adweeks@cisco.com> (https://adamweeks.com/)",
+    "Arun Ganeshan <arungane@cisco.com>",
+    "Christopher DuBois <chdubois@cisco.com> (https://chrisadubois.github.io/)",
+    "Dipanshu Sharma <dipashar@cisco.com>",
+    "Kesava Krishnan Madavan <kmadavan@cisco.com>",
+    "Priya Kesari <pkesari@cisco.com>",
+    "Rajesh Kumar <rarajes2@cisco.com>",
+    "Shreyas Sharma <shreysh2@cisco.com>",
+    "Sreekanth Narayanan <sreenara@cisco.com>"
+  ],
+  "main": "dist/index.js",
+  "exports": {
+    "./calling": "./dist/calling.js",
+    ".": "./dist/index.js",
+    "./meetings": "./dist/meetings.js",
+    "./package": "./package.json"
+  },
+  "devMain": "src/index.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/webex/webex-js-sdk.git",
+    "directory": "packages/webex"
+  },
+  "engines": {
+    "node": ">=16"
+  },
+  "browser": {
+    "./dist/config-storage.js": "./dist/config-storage.shim.js",
+    "./src/config-storage.js": "./src/config-storage.shim.js"
+  },
+  "browserify": {
+    "transform": [
+      "babelify",
+      "envify"
+    ]
+  },
+  "scripts": {
+    "build": "yarn build:src",
+    "build:src": "webex-legacy-tools build -dest \"./dist\" -src \"./src\" -js -ts -maps",
+    "test": "yarn test:style && yarn test:unit && yarn test:integration",
+    "test:browser:broken": "webex-legacy-tools test --integration --runner karma",
+    "test:integration": "webex-legacy-tools test --integration --runner mocha",
+    "test:style": "eslint ./src/**/*.*",
+    "test:unit": "webex-legacy-tools test --unit --runner jest",
+    "deploy:npm": "yarn npm publish"
+  },
+  "devDependencies": {
+    "@webex/babel-config-legacy": "workspace:*",
+    "@webex/eslint-config-legacy": "workspace:*",
+    "@webex/jest-config-legacy": "workspace:*",
+    "@webex/legacy-tools": "workspace:*",
+    "@webex/plugin-authorization": "workspace:*",
+    "@webex/test-helper-chai": "workspace:*",
+    "@webex/test-helper-file": "workspace:*",
+    "@webex/test-helper-mocha": "workspace:*",
+    "@webex/test-helper-mock-webex": "workspace:*",
+    "@webex/test-helper-test-users": "workspace:*",
+    "eslint": "^8.24.0",
+    "sinon": "^9.2.4",
+    "webex": "workspace:*"
+  },
+  "dependencies": {
+    "@babel/polyfill": "^7.12.1",
+    "@babel/runtime-corejs2": "^7.14.8",
+    "@webex/calling": "workspace:*",
+    "@webex/common": "workspace:*",
+    "@webex/internal-plugin-calendar": "workspace:*",
+    "@webex/internal-plugin-device": "workspace:*",
+    "@webex/internal-plugin-llm": "workspace:*",
+    "@webex/internal-plugin-presence": "workspace:*",
+    "@webex/internal-plugin-support": "workspace:*",
+    "@webex/internal-plugin-voicea": "workspace:*",
+    "@webex/plugin-attachment-actions": "workspace:*",
+    "@webex/plugin-authorization": "workspace:*",
+    "@webex/plugin-device-manager": "workspace:*",
+    "@webex/plugin-logger": "workspace:*",
+    "@webex/plugin-meetings": "workspace:*",
+    "@webex/plugin-memberships": "workspace:*",
+    "@webex/plugin-messages": "workspace:*",
+    "@webex/plugin-people": "workspace:*",
+    "@webex/plugin-rooms": "workspace:*",
+    "@webex/plugin-team-memberships": "workspace:*",
+    "@webex/plugin-teams": "workspace:*",
+    "@webex/plugin-webhooks": "workspace:*",
+    "@webex/storage-adapter-local-storage": "workspace:*",
+    "@webex/webex-core": "workspace:*",
+    "lodash": "^4.17.21"
+  }
+}

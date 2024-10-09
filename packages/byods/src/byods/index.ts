@@ -8,9 +8,11 @@ import {
   PRODUCTION_BASE_URL,
   INTEGRATION_BASE_URL,
 } from '../constants';
-import {SDKConfig, JWSTokenVerificationResult} from '../types';
+import {SDKConfig, JWSTokenVerificationResult, LoggerConfig} from '../types';
 import TokenManager from '../token-manager';
-import {InMemoryTokenStorageAdapter} from '../token-storage-adapter';
+import {BYODS_FILE} from './constant';
+import log from '../Logger';
+import {LOGGER} from '../Logger/types';
 
 /**
  * The BYoDS SDK.
@@ -25,6 +27,7 @@ export default class BYODS {
   private env: 'production' | 'integration';
   private config: SDKConfig;
   private baseUrl: string;
+  private sdkConfig?: LoggerConfig;
 
   /**
    * The token manager for the SDK.
@@ -41,9 +44,12 @@ export default class BYODS {
   constructor({
     clientId,
     clientSecret,
-    tokenStorageAdapter = new InMemoryTokenStorageAdapter(),
+    tokenStorageAdapter,
+    logger = {level: LOGGER.ERROR},
   }: SDKConfig) {
-    this.config = {clientId, clientSecret, tokenStorageAdapter};
+    this.config = {clientId, clientSecret, tokenStorageAdapter, logger};
+    const logLevel = this.config.logger.level;
+    log.setLogger(logLevel, BYODS_FILE);
 
     /**
      * The environment variable `process.env.BYODS_ENVIRONMENT` determines the environment in which the SDK operates.
@@ -70,7 +76,13 @@ export default class BYODS {
     }
 
     // Create token manager
-    this.tokenManager = new TokenManager(clientId, clientSecret, this.baseUrl, tokenStorageAdapter);
+    this.tokenManager = new TokenManager(
+      clientId,
+      clientSecret,
+      this.baseUrl,
+      tokenStorageAdapter,
+      this.sdkConfig
+    );
 
     // Create a remote JWK Set
     this.jwks = createRemoteJWKSet(new URL(jwksUrl), {
@@ -91,7 +103,6 @@ export default class BYODS {
     const result: JWSTokenVerificationResult = {isValid: false};
     try {
       await jwtVerify(jws, this.jwks);
-
       result.isValid = true;
     } catch (error: any) {
       console.error('Error verifying JWS token:', error.message || error);
