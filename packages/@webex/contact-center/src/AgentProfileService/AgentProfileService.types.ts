@@ -1,3 +1,9 @@
+/**
+ * Represents the request to UserRequest.
+ *
+ * @public
+ */
+
 export interface UserRequest {
   /**
    * Org id of the User
@@ -9,6 +15,12 @@ export interface UserRequest {
    */
   ciUserId: string;
 }
+
+/**
+ * Represents the response from UserResponse.
+ *
+ * @public
+ */
 
 export interface UserResponse {
   /**
@@ -27,6 +39,12 @@ export interface UserResponse {
   userProfileId: string;
 }
 
+/**
+ * Represents the request to DesktopProfileRequest.
+ *
+ * @public
+ */
+
 export interface DesktopProfileRequest {
   /**
    * ID of the Organization containing the Desktop Profile to be retrieved.
@@ -36,9 +54,14 @@ export interface DesktopProfileRequest {
   /**
    * ID of the Desktop Profile to be retrieved.
    */
-  id: string;
+  desktopProfileId: string;
 }
 
+/**
+ * Represents the response from DesktopProfileResponse.
+ *
+ * @public
+ */
 export interface DesktopProfileResponse {
   /**
    * Specify the teams list that the agents can select from the Agent drop-down list on the Agent Desktop.
@@ -71,6 +94,12 @@ export interface DesktopProfileResponse {
   loginVoiceOptions: string[];
 }
 
+/**
+ * Represents the request to ListTeamsRequest.
+ *
+ * @public
+ */
+
 export interface ListTeamsRequest {
   /**
    * Represents Organization ID to be used for this operation..
@@ -78,6 +107,11 @@ export interface ListTeamsRequest {
   orgId: string;
 }
 
+/**
+ * Represents the response from ListTeamsResponse.
+ *
+ * @public
+ */
 export interface ListTeamsResponse {
   /**
    * ID of the team.
@@ -105,6 +139,12 @@ export interface ListTeamsResponse {
   teamType: string;
 }
 
+/**
+ * Represents the request to ListAuxCodesRequest.
+ *
+ * @public
+ */
+
 export interface ListAuxCodesRequest {
   /**
    * Represents Organization ID to be used for this operation.
@@ -112,6 +152,12 @@ export interface ListAuxCodesRequest {
 
   ordId: string;
 }
+
+/**
+ * Represents the response from ListAuxCodesResponse.
+ *
+ * @public
+ */
 
 export interface ListAuxCodesResponse {
   /**
