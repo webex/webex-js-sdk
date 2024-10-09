@@ -1,12 +1,11 @@
 /*!
- * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
+ * Copyright (c) 2015-2024 Cisco Systems, Inc. See LICENSE file.
  */
 
 import querystring from 'querystring';
 import util from 'util';
 
 import {safeSetTimeout} from '@webex/common-timers';
-import {oneFlight} from '@webex/common';
 import {WebexPlugin} from '@webex/webex-core';
 import {Context, Request, Response} from 'node-kms';
 import jose from 'node-jose';
@@ -14,7 +13,7 @@ import {omit} from 'lodash';
 import uuid from 'uuid';
 
 import KMSBatcher, {TIMEOUT_SYMBOL} from './kms-batcher';
-import validateKMS, {KMSError} from './kms-certificate-validation';
+import {KMSError} from './kms-certificate-validation';
 
 const contexts = new WeakMap();
 const kmsDetails = new WeakMap();
@@ -275,10 +274,11 @@ const KMS = WebexPlugin.extend({
    * @param {Object} options
    * @param {UUID} options.assignedOrgId the orgId
    * @param {string} options.customerMasterKey the master key
+   * @param {string} options.customerMasterKeyBackup the master key backup
    * @param {boolean} options.awsKms enable amazon aws keys
    * @returns {Promise.<UploadCmkResponse>} response of upload CMK api
    */
-  uploadCustomerMasterKey({assignedOrgId, customerMasterKey, awsKms = false}) {
+  uploadCustomerMasterKey({assignedOrgId, customerMasterKey, customerMasterKeyBackup, awsKms = false}) {
     this.logger.info('kms: upload customer master key for byok');
 
     return this.request({
@@ -287,6 +287,7 @@ const KMS = WebexPlugin.extend({
       assignedOrgId,
       customerMasterKey,
       requestId: uuid.v4(),
+      customerMasterKeyBackup
     }).then((res) => {
       this.logger.info('kms: finish to upload customer master key');
 
