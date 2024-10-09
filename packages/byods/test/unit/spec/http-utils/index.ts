@@ -1,5 +1,8 @@
 import fetch, {Response} from 'node-fetch';
-import {httpUtils} from "../../../../src/http-utils";
+import crypto from 'crypto';
+
+import {httpUtils} from '../../../../src/http-utils';
+import * as CONSTANT from '../../../../src/constants';
 
 jest.mock('node-fetch', () => jest.fn());
 
@@ -9,8 +12,11 @@ describe('HttpUtils Tests', () => {
   });
 
   it('should make an HTTP request', async () => {
+    jest.spyOn(crypto, 'randomUUID').mockReturnValue('f0f9aa89-3083-4055-9cc5-d8284a815436');
+    (CONSTANT as any).USER_AGENT = 'mocked-user-agent';
+
     const mockResponse = {
-      json: jest.fn().mockResolvedValue({ dummyKey: 'dummy-value' }),
+      json: jest.fn().mockResolvedValue({dummyKey: 'dummy-value'}),
       ok: true,
       status: 200,
     } as unknown as Response;
@@ -18,9 +24,15 @@ describe('HttpUtils Tests', () => {
     (fetch as unknown as jest.MockedFunction<typeof fetch>).mockResolvedValue(mockResponse);
 
     const response = await httpUtils.request('/test-endpoint', {method: 'GET', headers: {}});
-    console.debug('response', response);
 
-    expect(response).toEqual({ data: { dummyKey: 'dummy-value' }, status: 200 });
+    expect(response).toEqual({data: {dummyKey: 'dummy-value'}, status: 200});
+    expect(fetch).toBeCalledOnceWith('/test-endpoint', {
+      headers: {
+        Trackingid: `${CONSTANT.BYODS_PACKAGE_NAME}_f0f9aa89-3083-4055-9cc5-d8284a815436`,
+        'User-Agent': `mocked-user-agent`,
+      },
+      method: 'GET',
+    });
   });
 
   it('should make an HTTP GET request', async () => {
