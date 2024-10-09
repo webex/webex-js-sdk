@@ -42,7 +42,7 @@
     "@webex/test-helper-chai": "workspace:*",
     "@webex/test-helper-file": "workspace:*",
     "@webex/test-helper-mocha": "workspace:*",
-    "exifr": "^5.0.3",
+    "exifr": "^7.1.3",
     "gm": "^1.23.1",
     "lodash": "^4.17.21",
     "mime": "^2.4.4",
