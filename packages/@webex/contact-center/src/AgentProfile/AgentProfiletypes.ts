@@ -5,9 +5,14 @@
  */
 export interface AgentProfileRequest {
   /**
-   * CI ID of the User
+   * CI user id of the User
    */
   ciUserId: string;
+
+  /**
+   * Org id of the User
+   */
+  orgId: string;
 }
 
 /**
