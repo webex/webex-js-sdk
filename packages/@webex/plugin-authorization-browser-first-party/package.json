@@ -45,7 +45,7 @@
     "@webex/webex-core": "workspace:*",
     "crypto-js": "^4.1.1",
     "lodash": "^4.17.21",
-    "uuid": "^3.3.2"
+    "uuid": "^10.0.0"
   },
   "scripts": {
     "build": "yarn build:src",
