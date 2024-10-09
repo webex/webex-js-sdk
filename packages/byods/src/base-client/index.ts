@@ -3,9 +3,8 @@ import TokenManager from '../token-manager';
 import DataSourceClient from '../data-source-client';
 import {HttpClient, ApiResponse} from '../http-client/types';
 import {httpUtils, HttpRequestInit} from '../http-utils';
-import {BYODS_BASE_CLIENT_MODULE} from '../constants';
+import {BYODS_BASE_CLIENT_MODULE, DEFAULT_LOGGER_CONFIG} from '../constants';
 import log from '../Logger';
-import {LOGGER} from '../Logger/types';
 
 export default class BaseClient {
   private baseUrl: string;
@@ -29,7 +28,7 @@ export default class BaseClient {
     headers: Record<string, string>,
     tokenManager: TokenManager,
     orgId: string,
-    loggerConfig: LoggerConfig = {level: LOGGER.ERROR}
+    loggerConfig: LoggerConfig = DEFAULT_LOGGER_CONFIG
   ) {
     this.baseUrl = baseUrl;
     this.headers = headers;

@@ -7,11 +7,11 @@ import {
   PRODUCTION_BASE_URL,
   INTEGRATION_BASE_URL,
   BYODS_MODULE,
+  DEFAULT_LOGGER_CONFIG,
 } from '../constants';
 import {SDKConfig, JWSTokenVerificationResult} from '../types';
 import TokenManager from '../token-manager';
 import log from '../Logger';
-import {LOGGER} from '../Logger/types';
 import {ERROR_TYPE} from '../Errors/types';
 import ExtendedError from '../Errors/catalog/ExtendedError';
 
@@ -45,7 +45,7 @@ export default class BYODS {
     clientId,
     clientSecret,
     tokenStorageAdapter,
-    logger = {level: LOGGER.ERROR},
+    logger = DEFAULT_LOGGER_CONFIG,
   }: SDKConfig) {
     this.config = {clientId, clientSecret, tokenStorageAdapter, logger};
     log.setLogger(this.config.logger.level, BYODS_MODULE);

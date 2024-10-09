@@ -1,10 +1,14 @@
-import {APPLICATION_ID_PREFIX, PRODUCTION_BASE_URL, BYODS_TOKEN_MANAGER_MODULE} from '../constants';
+import {
+  APPLICATION_ID_PREFIX,
+  PRODUCTION_BASE_URL,
+  BYODS_TOKEN_MANAGER_MODULE,
+  DEFAULT_LOGGER_CONFIG,
+} from '../constants';
 import {TokenResponse, OrgServiceAppAuthorization, ServiceAppToken, LoggerConfig} from '../types';
 import {httpUtils} from '../http-utils';
 import ExtendedError from '../Errors/catalog/ExtendedError';
 import {ERROR_TYPE} from '../Errors/types';
 import log from '../Logger';
-import {LOGGER} from '../Logger/types';
 import {TokenStorageAdapter} from '../token-storage-adapter/types';
 import {InMemoryTokenStorageAdapter} from '../token-storage-adapter';
 
@@ -33,7 +37,7 @@ export default class TokenManager {
     clientSecret: string,
     baseUrl: string = PRODUCTION_BASE_URL,
     tokenStorageAdapter: TokenStorageAdapter = new InMemoryTokenStorageAdapter(),
-    loggerConfig: LoggerConfig = {level: LOGGER.ERROR}
+    loggerConfig: LoggerConfig = DEFAULT_LOGGER_CONFIG
   ) {
     if (!clientId || !clientSecret) {
       throw new Error('clientId and clientSecret are required');

@@ -2,9 +2,8 @@ import {LoggerConfig} from '../types';
 import {DataSourceRequest, DataSourceResponse} from './types';
 import {DATASOURCE_ENDPOINT} from './constants';
 import {HttpClient, ApiResponse} from '../http-client/types';
-import {BYODS_DATA_SOURCE_CLIENT_MODULE} from '../constants';
+import {BYODS_DATA_SOURCE_CLIENT_MODULE, DEFAULT_LOGGER_CONFIG} from '../constants';
 import log from '../Logger';
-import {LOGGER} from '../Logger/types';
 
 /**
  * Client for interacting with the /dataSource API.
@@ -20,7 +19,7 @@ export default class DataSourceClient {
    * const httpClient = new HttpClient();
    * const client = new DataSourceClient(httpClient);
    */
-  constructor(httpClient: HttpClient, loggerConfig: LoggerConfig = {level: LOGGER.ERROR}) {
+  constructor(httpClient: HttpClient, loggerConfig: LoggerConfig = DEFAULT_LOGGER_CONFIG) {
     this.httpClient = httpClient;
     this.loggerConfig = loggerConfig;
     log.setLogger(this.loggerConfig.level, BYODS_DATA_SOURCE_CLIENT_MODULE);

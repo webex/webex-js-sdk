@@ -1,4 +1,5 @@
 import os from 'os';
+import {LOGGER} from './Logger/types';
 
 export const BYODS_FILE = 'BYODS';
 export const BYODS_SDK_VERSION = '0.0.1';
@@ -16,3 +17,4 @@ export const BYODS_BASE_CLIENT_MODULE = 'base-client';
 export const BYODS_MODULE = 'byods';
 export const BYODS_TOKEN_MANAGER_MODULE = 'token-manager';
 export const BYODS_DATA_SOURCE_CLIENT_MODULE = 'data-source-client';
+export const DEFAULT_LOGGER_CONFIG = {level: LOGGER.ERROR};
