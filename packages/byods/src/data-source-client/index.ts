@@ -1,7 +1,7 @@
 /* eslint-disable no-console */
 
 import {decodeJwt, JWTPayload} from 'jose';
-import {DataSourceRequest, DataSourceResponse} from './types';
+import {DataSourceRequest, DataSourceResponse, Cancelable} from './types';
 import {DATASOURCE_ENDPOINT} from './constants';
 import {HttpClient, ApiResponse} from '../http-client/types';
 
@@ -93,51 +93,42 @@ export default class DataSourceClient {
   /**
    * This method refreshes the DataSource token using dataSourceId, tokenLifetimeMinutes & nonceGenerator.
    * @param {string} dataSourceId The id of the data source.
+   * @param {number} tokenLifetimeMinutes The refresh interval in minutes for the data source. Defaults to 60 mins. Should be an integer.
    * @param {string} nonceGenerator Accepts an nonceGenerator, developer can provide their own nonceGenerator, defaults to randomUUID.
-   * @param {number} tokenLifetimeMinutes The refresh interval in minutes for the data source. Defaults to 60 mins. Should be <= 1440 & >=1.
-   * @returns {Promise<() => void>} A promise that resolves to the API response containing a cancellable function.
+   * @returns {Promise<Cancelable>} A promise that resolves to an object containing a cancel method that cancels the timer.
    * @example
    * try {
     const result = await dataSourceClient.scheduleJWSTokenRefresh('myDataSourceId', 'uniqueNonce', 'myTokenLifeTimeMinutes');
     // Use the cancel function if needed!
     result.cancel();
   } catch (error) {
-    console.error('Error refreshing data source token:', error);
+    console.error('Error scheduling JWS refresh for data source:', error);
   }
    */
 
   public async scheduleJWSTokenRefresh(
     dataSourceId: string,
-    nonceGenerator?: () => string,
-    tokenLifetimeMinutes = 60
-  ): Promise<{cancel: () => void}> {
+    tokenLifetimeMinutes = 60,
+    nonceGenerator: () => string = crypto.randomUUID
+  ): Promise<Cancelable> {
     try {
-      if (!dataSourceId || tokenLifetimeMinutes < 1 || tokenLifetimeMinutes > 1440) {
-        console.error(
-          'dataSourceId is missing which is a required parameter or invalid tokenLifetimeMinutes is provided.'
-        );
-
-        return Promise.reject(
-          new Error(
-            'dataSourceId is missing which is a required parameter or invalid tokenLifetimeMinutes is provided.'
-          )
-        );
-      }
-
       const timer = await this.startAutoRefresh(dataSourceId, tokenLifetimeMinutes, nonceGenerator);
 
       const cancel = () => {
         if (timer) {
           try {
             clearInterval(timer);
-            console.log('Auto-refresh has been cancelled successfully.');
+            console.log(
+              'JWS Auto-refresh has been cancelled successfully for dataSource:',
+              dataSourceId
+            );
           } catch (error) {
             console.error(
-              'Failed to cancel the timer, may be the timer has expired or the timer is invalid',
+              'Failed to cancel the timer, the timer might have expired or is invalid',
               error
             );
             throw new Error(
-              'Failed to cancel the timer, may be the timer has expired or the timer is invalid'
+              'Failed to cancel the timer, the timer might have expired or is invalid'
             );
           }
         }
@@ -145,54 +136,26 @@ export default class DataSourceClient {
 
       return Promise.resolve({cancel});
     } catch (error) {
-      console.error('Encountered some error', error);
+      console.error('Encountered error while trying to setup JWS refresh schedule', error);
 
       return Promise.reject(error);
     }
   }
 
   /**
-   * This Private method will start auto refreshing the DataSource token. Accepts dataSourceId, nonceGenerator & tokenLifetimeMinutes.
+   * Sets up a timer that will auto refresh the DataSource JWS token for given intervals
    * @param {string} dataSourceId The id of the data source
    * @param {number} tokenLifetimeMinutes The refresh interval in minutes for the data source. Defaults to 60 mins. Should be <= 1440 & >=1.
    * @param {string} nonceGenerator Accepts an nonceGenerator that will generate nonce for the data source request.
    * @returns {Promise<NodeJS.Timer>} A promise that resolves to the API response containing NodeJS.Timer.
    */
-
   private async startAutoRefresh(
     dataSourceId: string,
     tokenLifetimeMinutes: number,
     nonceGenerator?: () => string
   ): Promise<NodeJS.Timer> {
     try {
-      // Call the get method to fetch the dataSource details & then call the update method to update the token!
-      const payloadForDataSourceUpdateMethod: DataSourceRequest = {
-        schemaId: '',
-        url: '',
-        audience: '',
-        subject: '',
-        nonce: '',
-        tokenLifetimeMinutes: 0,
-      };
-      const getMethodResponse: ApiResponse<DataSourceResponse> = await this.get(dataSourceId);
-      if (!getMethodResponse || !getMethodResponse.data || !getMethodResponse.data.jwsToken) {
-        return Promise.reject(new Error('Invalid response from get method.'));
-      }
-
-      const jwsToken: string = getMethodResponse?.data?.jwsToken;
-      const jwsTokenPayload: JWTPayload = decodeJwt(jwsToken) as JWTPayload;
-
-      if (!jwsTokenPayload || !jwsToken) {
-        return Promise.reject(new Error('jwsTokenPayload or jwsToken is undefined.'));
-      }
-
-      payloadForDataSourceUpdateMethod.schemaId = getMethodResponse?.data?.schemaId;
-      payloadForDataSourceUpdateMethod.tokenLifetimeMinutes = tokenLifetimeMinutes;
-      payloadForDataSourceUpdateMethod.url = jwsTokenPayload['com.cisco.datasource.url'] as string;
-      payloadForDataSourceUpdateMethod.subject = jwsTokenPayload.sub as string;
-      payloadForDataSourceUpdateMethod.audience = jwsTokenPayload.aud as string;
-
-      // Below logic will generate a random percentage between 5% and 10%
+      // Generate a random percentage between 5% and 10%
       const randomPercentage = Math.random() * 5 + 5;
       // Then calculate the reducedTokenLifetimeMinutes
       const reducedTokenLifetimeMinutes = Math.ceil(
@@ -201,22 +164,42 @@ export default class DataSourceClient {
 
       const interval = setInterval(async () => {
         try {
-          if (nonceGenerator) payloadForDataSourceUpdateMethod.nonce = nonceGenerator();
-          else payloadForDataSourceUpdateMethod.nonce = crypto.randomUUID();
+          // Fetch the dataSource details before each update
+          const getMethodResponse: ApiResponse<DataSourceResponse> = await this.get(dataSourceId);
+          if (!getMethodResponse || !getMethodResponse.data || !getMethodResponse.data.jwsToken) {
+            throw new Error('Invalid response from get method.');
+          }
 
-          const updateMethodResponse = await this.update(
-            dataSourceId,
-            payloadForDataSourceUpdateMethod
-          );
-          console.log(
-            'dataSource has been refreshed successfully, response is',
-            updateMethodResponse
-          );
+          const jwsToken: string = getMethodResponse?.data?.jwsToken;
+          const jwsTokenPayload: JWTPayload = decodeJwt(jwsToken) as JWTPayload;
+
+          if (!jwsTokenPayload || !jwsToken) {
+            throw new Error('jwsTokenPayload or jwsToken is undefined.');
+          }
+
+          const payloadForDataSourceUpdateMethod: DataSourceRequest = {
+            schemaId: getMethodResponse?.data?.schemaId,
+            tokenLifetimeMinutes,
+            url: jwsTokenPayload['com.cisco.datasource.url'] as string,
+            subject: jwsTokenPayload.sub as string,
+            audience: jwsTokenPayload.aud as string,
+            nonce: nonceGenerator ? nonceGenerator() : crypto.randomUUID(),
+          };
+
+          await this.update(dataSourceId, payloadForDataSourceUpdateMethod);
+          console.log('dataSource has been refreshed successfully');
+
+          return Promise.resolve();
         } catch (updateError) {
-          // If there is some error than clear the Interval only if interval is active/
-          if (interval) clearInterval(interval);
+          // If there is some error then clear the Interval only if interval is active
+          if (interval) {
+            clearInterval(interval);
+          }
           console.error('Error while updating dataSource token', updateError);
-          throw new Error('Error while updating dataSource token');
+
+          return Promise.reject(
+            new Error(`Error while starting auto-refresh for dataSource token: ${updateError}`)
+          );
         }
       }, reducedTokenLifetimeMinutes * 60 * 1000); // Converts minutes to milliseconds.
 
@@ -224,7 +207,9 @@ export default class DataSourceClient {
     } catch (error) {
       console.error('Error while starting auto-refresh for dataSource token:', error);
 
-      return Promise.reject(error);
+      return Promise.reject(
+        new Error(`Error while starting auto-refresh for dataSource token: ${error}`)
+      );
     }
   }
 }

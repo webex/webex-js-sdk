@@ -96,3 +96,7 @@ export interface DataSourceRequest {
    */
   tokenLifetimeMinutes: number;
 }
+
+export interface Cancelable {
+  cancel: () => void;
+}
