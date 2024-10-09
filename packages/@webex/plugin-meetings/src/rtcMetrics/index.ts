@@ -34,7 +34,7 @@ export default class RtcMetrics {
 
   connectionId: string;
 
-  shouldSendMetricsOnNextStatsReport: boolean;
+  shouldSendMetricsOnNextStatsReport: number;
 
   /**
    * Initialize the interval.
@@ -70,10 +70,11 @@ export default class RtcMetrics {
    * This is useful for cases when something important happens that affects the media connection,
    * for example when we move from lobby into the meeting.
    *
+   * @param {number} n - The number of next N metrics reports to send.
    * @returns {void}
    */
-  public sendNextMetrics() {
-    this.shouldSendMetricsOnNextStatsReport = true;
+  public sendNextMetrics(n = 1) {
+    this.shouldSendMetricsOnNextStatsReport = n;
   }
 
   /**
@@ -95,7 +96,7 @@ export default class RtcMetrics {
         // this is the first useful set of data (WCME gives it to us after 5s), send it out immediately
         // in case the user is unhappy and closes the browser early
         this.sendMetricsInQueue();
-        this.shouldSendMetricsOnNextStatsReport = false;
+        this.shouldSendMetricsOnNextStatsReport -= 1;
       }
 
       try {
@@ -151,7 +152,7 @@ export default class RtcMetrics {
    */
   private resetConnection() {
     this.connectionId = uuid.v4();
-    this.shouldSendMetricsOnNextStatsReport = true;
+    this.shouldSendMetricsOnNextStatsReport = 1;
   }
 
   /**

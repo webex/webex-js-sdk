@@ -3213,7 +3213,8 @@ export default class Meeting extends StatelessWebexPlugin {
           options: {meetingId: this.id},
         });
       }
-      this.rtcMetrics?.sendNextMetrics();
+      const numberOfReportsToSend = 30000 / 5000; // 30 seconds divided by 5 seconds
+      this.rtcMetrics?.sendNextMetrics(numberOfReportsToSend);
       this.updateLLMConnection();
     });
 
