@@ -207,7 +207,7 @@
     "typescript": "^4.7.4",
     "uuid": "^3.3.2",
     "wd": "^1.14.0",
-    "wdio-chromedriver-service": "^7.3.2",
+    "wdio-chromedriver-service": "^8.1.1",
     "wdio-geckodriver-service": "^2.1.1",
     "webdriverio": "^7.19.5",
     "webpack": "^5.74.0",
