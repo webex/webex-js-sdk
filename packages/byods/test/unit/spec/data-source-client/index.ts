@@ -284,7 +284,7 @@ describe('DataSourceClient', () => {
       await expect(dataSourceClient['startAutoRefresh'](dataSourceId, tokenLifetimeMinutes, nonceGenerator)).rejects.toThrow('Failed to start auto-refresh');
     });
 
-  it('should clear interval on error during auto-refresh', async () => {
+  it('should reject with an error during auto-refresh when update method fails', async () => {
       const dataSourceId = '123';
       const tokenLifetimeMinutes = 60;
       const nonceGenerator = jest.fn().mockReturnValue('uniqueNonce');

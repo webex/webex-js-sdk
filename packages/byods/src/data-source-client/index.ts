@@ -1,7 +1,7 @@
 /* eslint-disable no-console */
 
 import {decodeJwt, JWTPayload} from 'jose';
-import {DataSourceRequest, DataSourceResponse, Cancelable} from './types';
+import {DataSourceRequest, DataSourceResponse, Cancellable} from './types';
 import {DATASOURCE_ENDPOINT} from './constants';
 import {HttpClient, ApiResponse} from '../http-client/types';
 
@@ -110,7 +110,7 @@ export default class DataSourceClient {
     dataSourceId: string,
     tokenLifetimeMinutes = 60,
     nonceGenerator: () => string = crypto.randomUUID
-  ): Promise<Cancelable> {
+  ): Promise<Cancellable> {
     try {
       const timer = await this.startAutoRefresh(dataSourceId, tokenLifetimeMinutes, nonceGenerator);
 
