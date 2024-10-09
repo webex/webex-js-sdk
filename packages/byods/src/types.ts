@@ -1,4 +1,9 @@
 import {TokenStorageAdapter} from 'token-storage-adapter/types';
+import {LOGGER} from './Logger/types';
+
+export interface LoggerConfig {
+  level: LOGGER;
+}
 
 /**
  * Configuration options for the SDK.
@@ -20,6 +25,11 @@ export interface SDKConfig {
    * The token storage adapter passed by the client
    */
   tokenStorageAdapter: TokenStorageAdapter;
+
+  /**
+   * The Logger Config
+   */
+  logger: LoggerConfig;
 }
 
 /**

@@ -5,6 +5,9 @@ import {SDKConfig} from '../../../../src/types';
 import {InMemoryTokenStorageAdapter} from '../../../../src/token-storage-adapter';
 import DataSourceClient from '../../../../src/data-source-client';
 import { jwtVerify, createRemoteJWKSet } from 'jose';
+import log from '../../../../src/Logger';
+import {LOGGER} from '../../../../src/Logger/types';
+import {BYODS_MODULE} from '../../../../src/constants';
 
 jest.mock('node-fetch', () => jest.fn());
 
@@ -15,8 +18,9 @@ jest.mock('jose', () => ({
 
 describe('BYODS Tests', () => {
   beforeAll(() => {
-    console.error = jest.fn();
+    log.setLogger = jest.fn();
   });
+
   const mockSDKConfig: SDKConfig = {
     clientId: 'your-client-id',
     clientSecret: 'your-client-secret',
@@ -27,6 +31,12 @@ describe('BYODS Tests', () => {
 
   it('should create an instance of BYODS', () => {
     expect(sdk).toBeInstanceOf(BYODS);
+  });
+
+  it('should initialize with default logger configuration', () => {
+    log.setLogger = jest.fn();
+    const sdk = new BYODS(mockSDKConfig);
+    expect(log.setLogger).toHaveBeenCalledWith(LOGGER.ERROR, BYODS_MODULE);
   });
 
   it('should initialize TokenManager with correct parameters', () => {

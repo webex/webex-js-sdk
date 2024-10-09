@@ -1,7 +1,9 @@
 import BaseClient from '../../../../src/base-client';
 import TokenManager from '../../../../src/token-manager';
 import DataSourceClient from '../../../../src/data-source-client';
-import {PRODUCTION_BASE_URL} from '../../../../src/constants';
+import {PRODUCTION_BASE_URL, BYODS_BASE_CLIENT_MODULE} from '../../../../src/constants';
+import log from '../../../../src/Logger';
+import {LOGGER} from '../../../../src/Logger/types';
 
 describe('BaseClient Tests', () => {
   const baseClient: BaseClient = new BaseClient(
@@ -10,6 +12,17 @@ describe('BaseClient Tests', () => {
     new TokenManager('clientId', 'clientSecret'),
     'orgId'
   );
+
+  it('should initialize with default logger configuration', () => {
+    log.setLogger = jest.fn();
+    const baseClient: BaseClient = new BaseClient(
+      PRODUCTION_BASE_URL,
+      {},
+      new TokenManager('clientId', 'clientSecret'),
+      'orgId'
+    );
+    expect(log.setLogger).toHaveBeenCalledWith(LOGGER.ERROR, BYODS_BASE_CLIENT_MODULE);
+  });
 
   it('creates an instance of BaseClient', () => {
     expect(baseClient).toBeInstanceOf(BaseClient);

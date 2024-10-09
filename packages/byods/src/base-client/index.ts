@@ -1,14 +1,17 @@
+import {LoggerConfig} from '../types';
 import TokenManager from '../token-manager';
 import DataSourceClient from '../data-source-client';
 import {HttpClient, ApiResponse} from '../http-client/types';
 import {httpUtils, HttpRequestInit} from '../http-utils';
+import {BYODS_BASE_CLIENT_MODULE, DEFAULT_LOGGER_CONFIG} from '../constants';
+import log from '../Logger';
 
 export default class BaseClient {
   private baseUrl: string;
   private headers: Record<string, string>;
   private tokenManager: TokenManager;
   private orgId: string;
-
+  private loggerConfig: LoggerConfig;
   public dataSource: DataSourceClient;
 
   /**
@@ -24,19 +27,22 @@ export default class BaseClient {
     baseUrl: string,
     headers: Record<string, string>,
     tokenManager: TokenManager,
-    orgId: string
+    orgId: string,
+    loggerConfig: LoggerConfig = DEFAULT_LOGGER_CONFIG
   ) {
     this.baseUrl = baseUrl;
     this.headers = headers;
     this.tokenManager = tokenManager;
     this.orgId = orgId;
     this.dataSource = new DataSourceClient(this.getHttpClientForOrg());
+    this.loggerConfig = loggerConfig;
+    log.setLogger(this.loggerConfig.level, BYODS_BASE_CLIENT_MODULE);
   }
 
   /**
    * Makes an HTTP request.
    * @param {string} endpoint - The API endpoint.
-   * @param {HttpRequestInit} [options=\{\}] - The request options.
+   * @param {HttpRequestInit} [options={}] - The request options.
    * @returns {Promise<ApiResponse<T>>} - The API response.
    * @template T
    * @example
@@ -63,7 +69,7 @@ export default class BaseClient {
    * Makes a POST request.
    * @param {string} endpoint - The API endpoint.
    * @param {Record<string, any>} body - The request body.
-   * @param {Record<string, string>} [headers=\{\}] - The request headers.
+   * @param {Record<string, string>} [headers={}] - The request headers.
    * @returns {Promise<ApiResponse<T>>} - The API response.
    * @template T
    * @example
