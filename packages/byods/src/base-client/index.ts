@@ -29,14 +29,14 @@ export default class BaseClient {
     headers: Record<string, string>,
     tokenManager: TokenManager,
     orgId: string,
-    config: LoggerConfig = {level: LOGGER.ERROR}
+    loggerConfig: LoggerConfig = {level: LOGGER.ERROR}
   ) {
     this.baseUrl = baseUrl;
     this.headers = headers;
     this.tokenManager = tokenManager;
     this.orgId = orgId;
     this.dataSource = new DataSourceClient(this.getHttpClientForOrg());
-    this.loggerConfig = config;
+    this.loggerConfig = loggerConfig;
     log.setLogger(this.loggerConfig.level, BYODS_BASE_CLIENT_MODULE);
   }
 

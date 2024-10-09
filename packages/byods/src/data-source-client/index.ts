@@ -20,9 +20,9 @@ export default class DataSourceClient {
    * const httpClient = new HttpClient();
    * const client = new DataSourceClient(httpClient);
    */
-  constructor(httpClient: HttpClient, config: LoggerConfig = {level: LOGGER.ERROR}) {
+  constructor(httpClient: HttpClient, loggerConfig: LoggerConfig = {level: LOGGER.ERROR}) {
     this.httpClient = httpClient;
-    this.loggerConfig = config;
+    this.loggerConfig = loggerConfig;
     log.setLogger(this.loggerConfig.level, BYODS_DATA_SOURCE_CLIENT_MODULE);
   }
 

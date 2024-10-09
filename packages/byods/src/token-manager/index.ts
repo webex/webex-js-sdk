@@ -33,7 +33,7 @@ export default class TokenManager {
     clientSecret: string,
     baseUrl: string = PRODUCTION_BASE_URL,
     tokenStorageAdapter: TokenStorageAdapter = new InMemoryTokenStorageAdapter(),
-    config: LoggerConfig = {level: LOGGER.ERROR}
+    loggerConfig: LoggerConfig = {level: LOGGER.ERROR}
   ) {
     if (!clientId || !clientSecret) {
       throw new Error('clientId and clientSecret are required');
@@ -41,7 +41,7 @@ export default class TokenManager {
     this.clientId = clientId;
     this.clientSecret = clientSecret;
     this.baseUrl = baseUrl;
-    this.loggerConfig = config;
+    this.loggerConfig = loggerConfig;
     this.serviceAppId = Buffer.from(`${APPLICATION_ID_PREFIX}${clientId}`).toString('base64');
     this.tokenStorageAdapter = tokenStorageAdapter;
     log.setLogger(this.loggerConfig.level, BYODS_TOKEN_MANAGER_MODULE);
