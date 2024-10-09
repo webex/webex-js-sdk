@@ -129,7 +129,7 @@ export const ERROR_DESCRIPTIONS = {
   ICE_AND_REACHABILITY_FAILED: 'ICEAndReachabilityFailed',
   SDP_OFFER_CREATION_ERROR: 'SdpOfferCreationError',
   SDP_OFFER_CREATION_ERROR_MISSING_CODEC: 'SdpOfferCreationErrorMissingCodec',
-  WDM_RESTRICTED_REGION: 'WdmRegionRestricted',
+  WDM_RESTRICTED_REGION: 'WdmRestrictedRegion',
 };
 
 export const SERVICE_ERROR_CODES_TO_CLIENT_ERROR_CODES_MAP = {
