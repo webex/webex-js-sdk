@@ -1,6 +1,6 @@
 /* eslint-disable class-methods-use-this */
-import {CallDiagnosticUtils} from '@webex/internal-plugin-metrics';
 import uuid from 'uuid';
+import * as CallDiagnosticUtils from '../call-diagnostic/call-diagnostic-metrics.util';
 import RTC_METRICS from './constants';
 
 const parseJsonPayload = (payload: any[]): any | null => {
