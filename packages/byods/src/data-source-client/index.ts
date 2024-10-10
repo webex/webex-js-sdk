@@ -1,6 +1,7 @@
 /* eslint-disable no-console */
 
 import {decodeJwt, JWTPayload} from 'jose';
+import {LoggerConfig} from 'types';
 import {DataSourceRequest, DataSourceResponse, Cancellable} from './types';
 import {DATASOURCE_ENDPOINT} from './constants';
 import {HttpClient, ApiResponse} from '../http-client/types';
