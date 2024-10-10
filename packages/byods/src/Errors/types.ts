@@ -11,6 +11,8 @@ export enum ERROR_TYPE {
   TIMEOUT = 'timeout',
   TOKEN_ERROR = 'token_error',
   SERVER_ERROR = 'server_error',
+  SCHEDULE_JWS_TOKEN_REFRESH_ERROR = 'schedule_jws_token_refresh_error',
+  START_AUTO_REFRESH_ERROR = 'start_auto_refresh_error',
 }
 
 export enum ERROR_CODE {

@@ -10,7 +10,7 @@ export default class BaseClient {
   private baseUrl: string;
   private headers: Record<string, string>;
   private tokenManager: TokenManager;
-  private orgId: string;
+  private orgId: strping;
   private loggerConfig: LoggerConfig;
   public dataSource: DataSourceClient;
 

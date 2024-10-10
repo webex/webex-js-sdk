@@ -1,7 +1,7 @@
-/* eslint-disable no-console */
-
 import {decodeJwt, JWTPayload} from 'jose';
-import {LoggerConfig} from 'types';
+import {ERROR_TYPE} from '../Errors/types';
+import ExtendedError from '../Errors/catalog/ExtendedError';
+import {LoggerConfig} from '../types';
 import {DataSourceRequest, DataSourceResponse, Cancellable} from './types';
 import {DATASOURCE_ENDPOINT} from './constants';
 import {HttpClient, ApiResponse} from '../http-client/types';
@@ -124,14 +124,23 @@ export default class DataSourceClient {
         if (timer) {
           try {
             clearInterval(timer);
-            console.log(
-              'JWS Auto-refresh has been cancelled successfully for dataSource:',
-              dataSourceId
+            log.info(
+              `JWS Auto-refresh has been cancelled successfully for dataSource: ${dataSourceId}`,
+              {
+                file: BYODS_DATA_SOURCE_CLIENT_MODULE,
+                method: 'scheduleJWSTokenRefresh',
+              }
             );
           } catch (error) {
-            console.error(
-              'Failed to cancel the timer, the timer might have expired or is invalid',
-              error
+            log.error(
+              new ExtendedError(
+                `Failed to cancel the timer, the timer might have expired or is invalid ${error}`,
+                ERROR_TYPE.SCHEDULE_JWS_TOKEN_REFRESH_ERROR
+              ),
+              {
+                file: BYODS_DATA_SOURCE_CLIENT_MODULE,
+                method: 'scheduleJWSTokenRefresh',
+              }
             );
             throw new Error(
               'Failed to cancel the timer, the timer might have expired or is invalid'
@@ -142,7 +151,16 @@ export default class DataSourceClient {
 
       return Promise.resolve({cancel});
     } catch (error) {
-      console.error('Encountered error while trying to setup JWS refresh schedule', error);
+      log.error(
+        new ExtendedError(
+          `Encountered error while trying to setup JWS refresh schedule ${error}`,
+          ERROR_TYPE.SCHEDULE_JWS_TOKEN_REFRESH_ERROR
+        ),
+        {
+          file: BYODS_DATA_SOURCE_CLIENT_MODULE,
+          method: 'scheduleJWSTokenRefresh',
+        }
+      );
 
       return Promise.reject(error);
     }
@@ -193,7 +211,10 @@ export default class DataSourceClient {
           };
 
           await this.update(dataSourceId, payloadForDataSourceUpdateMethod);
-          console.log('dataSource has been refreshed successfully');
+          log.info('dataSource has been refreshed successfully', {
+            file: BYODS_DATA_SOURCE_CLIENT_MODULE,
+            method: 'startAutoRefresh',
+          });
 
           return Promise.resolve();
         } catch (updateError) {
@@ -201,7 +222,16 @@ export default class DataSourceClient {
           if (interval) {
             clearInterval(interval);
           }
-          console.error('Error while updating dataSource token', updateError);
+          log.error(
+            new ExtendedError(
+              `Error while updating dataSource token ${updateError}`,
+              ERROR_TYPE.START_AUTO_REFRESH_ERROR
+            ),
+            {
+              file: BYODS_DATA_SOURCE_CLIENT_MODULE,
+              method: 'startAutoRefresh',
+            }
+          );
 
           return Promise.reject(
             new Error(`Error while starting auto-refresh for dataSource token: ${updateError}`)
@@ -211,7 +241,16 @@ export default class DataSourceClient {
 
       return Promise.resolve(interval);
     } catch (error) {
-      console.error('Error while starting auto-refresh for dataSource token:', error);
+      log.error(
+        new ExtendedError(
+          `Error while starting auto-refresh for dataSource token: ${error}`,
+          ERROR_TYPE.START_AUTO_REFRESH_ERROR
+        ),
+        {
+          file: BYODS_DATA_SOURCE_CLIENT_MODULE,
+          method: 'startAutoRefresh',
+        }
+      );
 
       return Promise.reject(
         new Error(`Error while starting auto-refresh for dataSource token: ${error}`)

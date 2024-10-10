@@ -1,7 +1,11 @@
 import DataSourceClient from '../../../../src/data-source-client';
 import { DataSourceRequest, DataSourceResponse, Cancellable } from '../../../../src/data-source-client/types';
 import { HttpClient, ApiResponse } from '../../../../src/http-client/types';
-import { decodeJwt, JWTPayload } from 'jose';
+import { decodeJwt } from 'jose';
+import log from '../../../../src/Logger';
+import {LOGGER} from '../../../../src/Logger/types';
+import {BYODS_DATA_SOURCE_CLIENT_MODULE} from '../../../../src/constants';
+
 
 jest.mock('jose', () => ({
   decodeJwt: jest.fn(),
@@ -20,6 +24,7 @@ describe('DataSourceClient', () => {
       delete: jest.fn(),
     };
     dataSourceClient = new DataSourceClient(httpClient);
+    log.setLogger = jest.fn();
     // Mock crypto.randomUUID
     global.crypto = {
       randomUUID: jest.fn().mockReturnValue('uniqueNonce'),
