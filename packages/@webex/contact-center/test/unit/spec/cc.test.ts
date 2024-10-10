@@ -16,15 +16,15 @@ describe('CC Tests', () => {
     });
   })
 
-  it('Success: invoke the register function, resolved promise', async () => {
+  it('Success: invoke the register function, resolved promise', () => {
     webex.cc.register(true).then((data) => {
         expect(data).toEqual('Success: Dummy data returned');
     })
   });
 
-  it('Failed: invoke the register function, rejected promise', async () => {
+  it('Failed: invoke the register function, rejected promise', () => {
     webex.cc.register(false).catch((error) => {
-        expect(error).toEqual('Simulated error');
+        expect(error).toEqual(new Error('Simulated Error'));
     });
   });
 });
