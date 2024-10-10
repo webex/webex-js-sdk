@@ -6,7 +6,7 @@ export enum HTTP_METHODS {
   DELETE = 'DELETE',
 }
 
-export type WebexRequestPayload = {
+type WebexRequestPayload = {
   method?: HTTP_METHODS;
   uri?: string;
   addAuthHeader?: boolean;
@@ -21,7 +21,7 @@ export type WebexRequestPayload = {
 type Listener = (e: string, data?: unknown) => void;
 type ListenerOff = (e: string) => void;
 
-export type ServiceHost = {
+type ServiceHost = {
   host: string;
   ttl: number;
   priority: number;
@@ -100,9 +100,27 @@ export interface WebexSDK {
   };
 }
 
+/**
+ * An interface for the `ContactCenter` class.
+ * The `ContactCenter` package is designed to provide a set of APIs to perform various operations for the Agent flow within Webex Contact Center.
+ */
 export interface IContactCenter {
+  /**
+   * @ignore
+   */
   $config: CCConfig;
+  /**
+   * @ignore
+   */
   $webex: WebexSDK;
-  wccAPIURL: string;
+  /**
+   * WCC API Gateway Url
+   */
+  wccApiUrl: string;
+  /**
+   * TODO: This is a dummy function which will be modified by Ravi and he can add description as per use.
+   * This will be public API used for setting up the mercury connection.
+   * @param success
+   */
   register(success: boolean): Promise<string>;
 }

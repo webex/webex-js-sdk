@@ -2,7 +2,6 @@
 /* eslint-env browser */
 
 /* global Webex */
-/* global Calling */
 
 /* eslint-disable require-jsdoc */
 /* eslint-disable no-unused-vars */

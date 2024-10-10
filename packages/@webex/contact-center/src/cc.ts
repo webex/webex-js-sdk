@@ -6,7 +6,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   namespace = 'WebexCC';
   $config: CCConfig;
   $webex: WebexSDK;
-  wccAPIURL: string;
+  wccApiUrl: string;
 
   constructor(...args) {
     super(...args);
@@ -17,7 +17,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   }
 
   register(success: boolean): Promise<string> {
-    this.wccAPIURL = this.$webex.internal.services.get(WCC_API_GATEWAY); // Added this change for Ravi's PR, he will move this under different function if needed.
+    this.wccApiUrl = this.$webex.internal.services.get(WCC_API_GATEWAY); // Added this change for Ravi's PR, he will move this under different function if needed.
     // TODO: Mercury Subsciption code should be added as part of this function
 
     return new Promise((resolve, reject) => {
