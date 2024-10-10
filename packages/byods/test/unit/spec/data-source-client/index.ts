@@ -1,6 +1,9 @@
 import DataSourceClient from '../../../../src/data-source-client';
 import {DataSourceRequest, DataSourceResponse} from '../../../../src/data-source-client/types';
 import {HttpClient, ApiResponse} from '../../../../src/http-client/types';
+import log from '../../../../src/Logger';
+import {LOGGER} from '../../../../src/Logger/types';
+import {BYODS_DATA_SOURCE_CLIENT_MODULE} from '../../../../src/constants';
 
 describe('DataSourceClient', () => {
   let httpClient: jest.Mocked<HttpClient>;
@@ -15,10 +18,22 @@ describe('DataSourceClient', () => {
       delete: jest.fn(),
     };
     dataSourceClient = new DataSourceClient(httpClient);
+    log.setLogger = jest.fn();
   });
 
   afterEach(() => {
     jest.clearAllMocks();
+  });
+
+  it('should initialize with default logger configuration', () => {
+    dataSourceClient = new DataSourceClient(httpClient);
+    expect(log.setLogger).toHaveBeenCalledWith(LOGGER.ERROR, BYODS_DATA_SOURCE_CLIENT_MODULE);
+  });
+
+  it('should initialize with custom logger configuration', () => {
+    const customConfig = {level: LOGGER.INFO};
+    dataSourceClient = new DataSourceClient(httpClient, customConfig);
+    expect(log.setLogger).toHaveBeenCalledWith(LOGGER.INFO, BYODS_DATA_SOURCE_CLIENT_MODULE);
   });
 
   it('should create a new data source', async () => {

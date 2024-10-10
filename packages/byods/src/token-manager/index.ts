@@ -1,16 +1,27 @@
-import {APPLICATION_ID_PREFIX, PRODUCTION_BASE_URL} from '../constants';
-import {TokenResponse, OrgServiceAppAuthorization, ServiceAppAuthorizationMap} from '../types';
+import {
+  APPLICATION_ID_PREFIX,
+  PRODUCTION_BASE_URL,
+  BYODS_TOKEN_MANAGER_MODULE,
+  DEFAULT_LOGGER_CONFIG,
+} from '../constants';
+import {TokenResponse, OrgServiceAppAuthorization, ServiceAppToken, LoggerConfig} from '../types';
 import {httpUtils} from '../http-utils';
+import ExtendedError from '../Errors/catalog/ExtendedError';
+import {ERROR_TYPE} from '../Errors/types';
+import log from '../Logger';
+import {TokenStorageAdapter} from '../token-storage-adapter/types';
+import {InMemoryTokenStorageAdapter} from '../token-storage-adapter';
 
 /**
  * The token manager for the BYoDS SDK.
  */
 export default class TokenManager {
-  private serviceAppAuthorizations: ServiceAppAuthorizationMap = {};
   private clientId: string;
   private clientSecret: string;
   private serviceAppId: string;
   private baseUrl: string;
+  private tokenStorageAdapter: TokenStorageAdapter;
+  private loggerConfig: LoggerConfig;
 
   /**
    * Creates an instance of TokenManager.
@@ -21,14 +32,23 @@ export default class TokenManager {
    * @example
    * const tokenManager = new TokenManager('your-client-id', 'your-client-secret');
    */
-  constructor(clientId: string, clientSecret: string, baseUrl: string = PRODUCTION_BASE_URL) {
+  constructor(
+    clientId: string,
+    clientSecret: string,
+    baseUrl: string = PRODUCTION_BASE_URL,
+    tokenStorageAdapter: TokenStorageAdapter = new InMemoryTokenStorageAdapter(),
+    loggerConfig: LoggerConfig = DEFAULT_LOGGER_CONFIG
+  ) {
     if (!clientId || !clientSecret) {
       throw new Error('clientId and clientSecret are required');
     }
     this.clientId = clientId;
     this.clientSecret = clientSecret;
     this.baseUrl = baseUrl;
+    this.loggerConfig = loggerConfig;
     this.serviceAppId = Buffer.from(`${APPLICATION_ID_PREFIX}${clientId}`).toString('base64');
+    this.tokenStorageAdapter = tokenStorageAdapter;
+    log.setLogger(this.loggerConfig.level, BYODS_TOKEN_MANAGER_MODULE);
   }
 
   /**
@@ -37,18 +57,19 @@ export default class TokenManager {
    * @param {string} orgId - The organization ID.
    * @returns {void}
    * @example
-   * tokenManager.updateServiceAppToken(tokenResponse, 'org-id');
+   * await tokenManager.updateServiceAppToken(tokenResponse, 'org-id');
    */
-  public updateServiceAppToken(data: TokenResponse, orgId: string): void {
-    this.serviceAppAuthorizations[orgId] = {
-      orgId,
-      serviceAppToken: {
-        accessToken: data.access_token,
-        refreshToken: data.refresh_token,
-        expiresAt: new Date(Date.now() + data.expires_in * 1000),
-        refreshAccessTokenExpiresAt: new Date(Date.now() + data.refresh_token_expires_in * 1000),
-      },
+  public async updateServiceAppToken(data: TokenResponse, orgId: string): Promise<void> {
+    const serviceAppToken: ServiceAppToken = {
+      accessToken: data.access_token,
+      refreshToken: data.refresh_token,
+      expiresAt: new Date(Date.now() + data.expires_in * 1000), // Adding 1000 here to represent milliseconds
+      refreshAccessTokenExpiresAt: new Date(Date.now() + data.refresh_token_expires_in * 1000), // Adding 1000 here to represent milliseconds
     };
+    await this.tokenStorageAdapter.setToken(orgId, {
+      orgId,
+      serviceAppToken,
+    });
   }
 
   /**
@@ -69,11 +90,53 @@ export default class TokenManager {
    * const authorization = await tokenManager.getOrgServiceAppAuthorization('org-id');
    */
   public async getOrgServiceAppAuthorization(orgId: string): Promise<OrgServiceAppAuthorization> {
-    if (!this.serviceAppAuthorizations[orgId]) {
-      return Promise.reject(new Error('Service app authorization not found'));
-    }
+    try {
+      let token = await this.getTokenFromAdapter(orgId);
+      const currentTime = new Date();
+      if (token.serviceAppToken.expiresAt <= currentTime) {
+        await this.saveServiceAppRegistrationData(orgId, token.serviceAppToken.refreshToken);
+        token = await this.getTokenFromAdapter(orgId); // Fetch the refreshed token
+      }
 
-    return Promise.resolve(this.serviceAppAuthorizations[orgId]);
+      return token;
+    } catch (error) {
+      log.error(new ExtendedError('Error fetching token', ERROR_TYPE.TOKEN_ERROR), {
+        file: BYODS_TOKEN_MANAGER_MODULE,
+        method: 'getOrgServiceAppAuthorization',
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * List all stored tokens.
+   * @returns {Promise<OrgServiceAppAuthorization[]>} List of tokens
+   * @example
+   * const tokens = await tokenManager.listTokens();
+   */
+  public async listTokens(): Promise<OrgServiceAppAuthorization[]> {
+    return this.tokenStorageAdapter.listTokens();
+  }
+
+  /**
+   * Delete a token for a given orgId.
+   * @param {string} orgId - The organization ID.
+   * @returns {Promise<void>}
+   * @example
+   * await tokenManager.deleteToken('org-id');
+   */
+  public async deleteToken(orgId: string): Promise<void> {
+    await this.tokenStorageAdapter.deleteToken(orgId);
+  }
+
+  /**
+   * Remove all tokens stored in the TokenStorageAdapter.
+   * @returns {Promise<void>}
+   * @example
+   * await tokenManager.resetTokens();
+   */
+  public async resetTokens(): Promise<void> {
+    await this.tokenStorageAdapter.resetTokens();
   }
 
   /**
@@ -89,25 +152,26 @@ export default class TokenManager {
     headers: Record<string, string> = {}
   ): Promise<void> {
     try {
-      const response = await httpUtils.post<TokenResponse>(
-        `${this.baseUrl}/applications/${this.serviceAppId}/token`,
-        {
-          headers: {
-            Authorization: `Bearer ${personalAccessToken}`,
-            'Content-Type': 'application/json',
-            ...headers,
-          },
-          body: JSON.stringify({
-            targetOrgId: orgId,
-            clientId: this.clientId,
-            clientSecret: this.clientSecret,
-          }),
-        }
+      const response = await httpUtils.post<TokenResponse>(`${this.baseUrl}/access_token`, {
+        headers: {
+          Authorization: `Bearer ${personalAccessToken}`,
+          'Content-Type': 'application/json',
+          ...headers,
+        },
+        body: JSON.stringify({
+          targetOrgId: orgId,
+          clientId: this.clientId,
+          clientSecret: this.clientSecret,
+        }),
+      });
+
+      await this.updateServiceAppToken(response.data, orgId);
+    } catch (error) {
+      log.error(
+        new ExtendedError('Error retrieving token after authorization', ERROR_TYPE.TOKEN_ERROR),
+        {file: BYODS_TOKEN_MANAGER_MODULE, method: 'getServiceAppTokenUsingPAT'}
       );
 
-      this.updateServiceAppToken(response.data, orgId);
-    } catch (error) {
-      console.error('Error retrieving token after authorization:', error);
       throw error;
     }
   }
@@ -126,7 +190,16 @@ export default class TokenManager {
       throw new Error('orgId not provided');
     }
 
-    const serviceAppAuthorization = await this.getOrgServiceAppAuthorization(orgId);
+    let serviceAppAuthorization: OrgServiceAppAuthorization;
+    try {
+      serviceAppAuthorization = await this.getTokenFromAdapter(orgId);
+    } catch (error) {
+      log.error(new ExtendedError('Error fetching token', ERROR_TYPE.TOKEN_ERROR), {
+        file: BYODS_TOKEN_MANAGER_MODULE,
+        method: 'refreshServiceAppAccessToken',
+      });
+      throw error;
+    }
     const refreshToken = serviceAppAuthorization?.serviceAppToken.refreshToken;
 
     if (!refreshToken) {
@@ -164,10 +237,24 @@ export default class TokenManager {
         }).toString(),
       });
 
-      this.updateServiceAppToken(response.data, orgId);
+      await this.updateServiceAppToken(response.data, orgId);
     } catch (error) {
-      console.error('Error saving service app registration:', error);
+      log.error(
+        new ExtendedError('Error saving service app registration', ERROR_TYPE.REGISTRATION_ERROR),
+        {file: BYODS_TOKEN_MANAGER_MODULE, method: 'saveServiceAppRegistration'}
+      );
+
       throw error;
     }
+  }
+
+  /**
+   * Proxy for extracting the token from the token adapter
+   * @param {string} orgId - The organization ID.
+   * @returns {Promise<OrgServiceAppAuthorization>}
+   * @private
+   */
+  private async getTokenFromAdapter(orgId: string): Promise<OrgServiceAppAuthorization> {
+    return this.tokenStorageAdapter.getToken(orgId);
   }
 }

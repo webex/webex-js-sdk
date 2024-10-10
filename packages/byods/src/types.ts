@@ -1,3 +1,10 @@
+import {TokenStorageAdapter} from 'token-storage-adapter/types';
+import {LOGGER} from './Logger/types';
+
+export interface LoggerConfig {
+  level: LOGGER;
+}
+
 /**
  * Configuration options for the SDK.
  *
@@ -13,6 +20,16 @@ export interface SDKConfig {
    * The client secret of the service app.
    */
   clientSecret: string;
+
+  /**
+   * The token storage adapter passed by the client
+   */
+  tokenStorageAdapter: TokenStorageAdapter;
+
+  /**
+   * The Logger Config
+   */
+  logger: LoggerConfig;
 }
 
 /**
@@ -89,18 +106,6 @@ export interface OrgServiceAppAuthorization {
    * The token details.
    */
   serviceAppToken: ServiceAppToken;
-}
-
-/**
- * Represents a map of service app authorizations to the orgId.
- *
- * @public
- */
-export interface ServiceAppAuthorizationMap {
-  /**
-   * The organization ID mapped to its authorization details.
-   */
-  [orgId: string]: OrgServiceAppAuthorization;
 }
 
 /**
