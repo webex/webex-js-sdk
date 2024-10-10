@@ -190,6 +190,22 @@ describe('plugin-meetings', () => {
         assert.equal(requestParams.uri, 'locusUrl/loci/call?alternateRedirect=true');
         assert.equal(requestParams.body.invitee.address, 'sipUrl');
       });
+      
+      it('adds alias to request when they are provided', async () => {
+        await meetingsRequest.joinMeeting({
+          alias: 'assigned name',
+        });
+        const requestParams = meetingsRequest.request.getCall(0).args[0];
+
+        assert.deepEqual(requestParams.body.alias, 'assigned name');
+      });
+
+      it('does not add alias to request when they are not provided', async () => {
+        await meetingsRequest.joinMeeting({});
+        const requestParams = meetingsRequest.request.getCall(0).args[0];
+
+        assert.deepEqual(requestParams.body.alias, undefined);
+      });
     });
 
     describe('#pstn', () => {
