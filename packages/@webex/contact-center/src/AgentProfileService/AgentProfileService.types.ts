@@ -105,6 +105,26 @@ export interface ListTeamsRequest {
    * Represents Organization ID to be used for this operation..
    */
   orgId: string;
+
+  /**
+   * Represents Index of the page of results to be fetched.
+   */
+  page?: number;
+
+  /**
+   * Represents Number of items to be displayed on a page.
+   */
+  pageSize?: number;
+
+  /**
+   * Represents filter which can be applied to the elements to be fetched.
+   */
+  filter: string[];
+
+  /**
+   * Specify the attributes to be returned. Supported attributes are id, name, active and workTypeCode.
+   */
+  attributes: string[];
 }
 
 /**
@@ -151,6 +171,26 @@ export interface ListAuxCodesRequest {
    */
 
   ordId: string;
+
+  /**
+   * Represents Index of the page of results to be fetched.
+   */
+  page?: number;
+
+  /**
+   * Represents Number of items to be displayed on a page.
+   */
+  pageSize?: number;
+
+  /**
+   * Represents filter which can be applied to the elements to be fetched.
+   */
+  filter: string[];
+
+  /**
+   * Specify the attributes to be returned. Supported attributes are id, name, active and workTypeCode.
+   */
+  attributes: string[];
 }
 
 /**

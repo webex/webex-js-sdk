@@ -16,6 +16,12 @@ export default class AgentProfile {
     this.ciUserId = ciUserId;
   }
 
+  /**
+   * Method to get Agent Profile by providing ciUserId.
+   * @param {string} ciUserId The CI ID of a User.
+   * @returns {Promise<AgentProfileResponse>} A promise that eventually resolves to an API response and return configuration of an Agent.
+   */
+
   public async getAgentProfile(ciUserId: string): Promise<AgentProfileResponse> {
     try {
       const orgId = this.webex.credentials.getOrgId();
@@ -26,21 +32,12 @@ export default class AgentProfile {
 
       const agentProfileService = new AgentProfileService(ciUserId, orgId);
 
-      // Step: 1
-      // Retrieve a User using the CI ID for a given organization.
-      // Required Path Param: orgId (Organization ID to be used for this operation) and CI ID of the User.
-      // Call the CC internal API to get user by CI User ID.
       const tempResponse: any = {};
       const user: UserResponse = await agentProfileService.getUserUsingCI(ciUserId, orgId);
       console.log('user is', user);
       tempResponse.agentProfileId = user.agentProfileId;
       tempResponse.teamIds = user.teamIds;
       tempResponse.userProfileId = user.userProfileId;
-
-      // Step: 2
-      // Retrieve an Desktop Profile by ID for a given organization.
-      // Call the CC internal API to get desktop profile by ID.
-      // Required Path Param: (id) ID of the Desktop Profile to be retrieved and orgid (ID of the Organization containing the Desktop Profile to be retrieved.
 
       const agentDesktopProfile: DesktopProfileResponse =
         await agentProfileService.retrieveDesktopProfileById(orgId, user.agentProfileId);
@@ -51,10 +48,6 @@ export default class AgentProfile {
       tempResponse.teams = agentDesktopProfile.teams;
       tempResponse.loginVoiceOptions = agentDesktopProfile.loginVoiceOptions;
 
-      // Step: 3
-      // Retrieve a list of Teams for a given organization.
-      // Call the CC internal API to get list of teams by orgId
-      // Required Path Param: orgId (Organization ID to be used for this operation.)
       const page = 0;
       const pageSize = 10;
       const filter = user.teamIds;
@@ -72,11 +65,6 @@ export default class AgentProfile {
       tempResponse.active = teamsList.active;
       tempResponse.teamStatus = teamsList.teamStatus;
       tempResponse.teamType = teamsList.teamType;
-
-      // Step: 4
-      // Retrieve a list of Auxiliary Codes for a given organization.
-      // Call the CC internal API to get list of Aux code for a given orgId.
-      // Required Path Params: orgId (Organization ID to be used for this operation.)
 
       const auxCodesList: ListAuxCodesResponse = await agentProfileService.getListOfAuxCodes(
         orgId,
@@ -97,6 +85,7 @@ export default class AgentProfile {
       tempResponse.createdTime = auxCodesList.createdTime;
       tempResponse.lastUpdatedTime = auxCodesList.lastUpdatedTime;
       tempResponse.version = auxCodesList.version;
+      console.log('tempResponse is', tempResponse);
 
       this.agentProfile = {...tempResponse};
 
