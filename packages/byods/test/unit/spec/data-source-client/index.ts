@@ -236,6 +236,24 @@ describe('DataSourceClient', () => {
       expect(dataSourceClient['startAutoRefresh']).toHaveBeenCalledWith(dataSourceId, tokenLifetimeMinutes, nonceGenerator);
     });
 
+  it('should clear the interval when the cancel function is called', async () => {
+      const dataSourceId = '123';
+      const tokenLifetimeMinutes = 60;
+      const nonceGenerator = jest.fn().mockReturnValue('uniqueNonce');
+      const timer = setInterval(() => {}, 1000);
+  
+      jest.spyOn(global, 'setInterval').mockReturnValue(timer as unknown as NodeJS.Timer);
+      const clearIntervalSpy = jest.spyOn(global, 'clearInterval');
+      jest.spyOn(dataSourceClient as any, 'startAutoRefresh').mockResolvedValue(timer);
+  
+      const result = await dataSourceClient.scheduleJWSTokenRefresh(dataSourceId, tokenLifetimeMinutes, nonceGenerator);
+  
+      expect(result).toHaveProperty('cancel');
+      result.cancel();
+  
+      expect(clearIntervalSpy).toHaveBeenCalledWith(timer);
+      expect(dataSourceClient['startAutoRefresh']).toHaveBeenCalledWith(dataSourceId, tokenLifetimeMinutes, nonceGenerator);
+    });
 
   it('should start auto-refresh and return a timer', async () => {
       const dataSourceId = '123';
