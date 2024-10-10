@@ -1373,3 +1373,84 @@ describe('Get endpoint by CALLING_BACKEND tests', () => {
     expect(await getVgActionEndpoint(webex, CALLING_BACKEND.WXC)).toBeInstanceOf(Error);
   });
 });
+
+describe('Get XSI Action Endpoint tests', () => {
+  const mockWebex: any = {
+    request: jest.fn(),
+    internal: {
+      services: {
+        _serviceUrls: {
+          wdm: 'https://fake-webex-url.com',
+        },
+      },
+    },
+  };
+
+  const loggerContext = {
+    file: 'testFile',
+    method: 'testMethod',
+  };
+
+  it('should return xsiEndpoint for BWRKS backend when URL ends with /v2.0', async () => {
+    const mockResponse = {
+      body: {
+        devices: [
+          {
+            settings: {
+              broadworksXsiActionsUrl: 'https://fake-broadworks-url.com/v2.0',
+            },
+          },
+        ],
+      },
+    };
+
+    mockWebex.request.mockResolvedValue(mockResponse);
+
+    const xsiEndpoint = await getXsiActionEndpoint(mockWebex, loggerContext, CALLING_BACKEND.BWRKS);
+
+    expect(mockWebex.request).toHaveBeenCalledTimes(1);
+    expect(xsiEndpoint).toBe('https://fake-broadworks-url.com');
+  });
+
+  it('should return xsiEndpoint for BWRKS backend when URL ends with /v2.0/', async () => {
+    const mockResponse = {
+      body: {
+        devices: [
+          {
+            settings: {
+              broadworksXsiActionsUrl: 'https://fake-broadworks-url.com/v2.0/',
+            },
+          },
+        ],
+      },
+    };
+
+    mockWebex.request.mockResolvedValue(mockResponse);
+
+    const xsiEndpoint = await getXsiActionEndpoint(mockWebex, loggerContext, CALLING_BACKEND.BWRKS);
+
+    expect(mockWebex.request).toHaveBeenCalledTimes(1);
+    expect(xsiEndpoint).toBe('https://fake-broadworks-url.com');
+  });
+
+  it('should return xsiEndpoint for BWRKS backend when URL does not end with any version', async () => {
+    const mockResponse = {
+      body: {
+        devices: [
+          {
+            settings: {
+              broadworksXsiActionsUrl: 'https://fake-broadworks-url.com',
+            },
+          },
+        ],
+      },
+    };
+
+    mockWebex.request.mockResolvedValue(mockResponse);
+
+    const xsiEndpoint = await getXsiActionEndpoint(mockWebex, loggerContext, CALLING_BACKEND.BWRKS);
+
+    expect(mockWebex.request).toHaveBeenCalledTimes(1);
+    expect(xsiEndpoint).toBe('https://fake-broadworks-url.com');
+  });
+});

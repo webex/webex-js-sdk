@@ -119,6 +119,7 @@ import {
   SCIM_USER_FILTER,
   WEBEX_API_PROD,
   WEBEX_API_BTS,
+  BW_XSI_ENDPOINT_VERSION_WITH_SLASH,
 } from './constants';
 import {Model, WebexSDK} from '../SDKConnector/types';
 import SDKConnector from '../SDKConnector';
@@ -1110,8 +1111,13 @@ export async function getXsiActionEndpoint(
 
         let xsiEndpoint = response[DEVICES][0][SETTINGS][BW_XSI_URL];
 
-        if (response[DEVICES][0][SETTINGS][BW_XSI_URL].endsWith(BW_XSI_ENDPOINT_VERSION)) {
-          xsiEndpoint = response[DEVICES][0][SETTINGS][BW_XSI_URL].slice(0, -5);
+        const xsiUrl = response[DEVICES][0][SETTINGS][BW_XSI_URL];
+
+        // Check if it ends with specific version and slice accordingly
+        if (xsiUrl.endsWith(BW_XSI_ENDPOINT_VERSION)) {
+          xsiEndpoint = xsiUrl.slice(0, -5); // Remove 'v2.0'
+        } else if (xsiUrl.endsWith(BW_XSI_ENDPOINT_VERSION_WITH_SLASH)) {
+          xsiEndpoint = xsiUrl.slice(0, -6); // Remove 'v2.0/'
         }
 
         return xsiEndpoint;
