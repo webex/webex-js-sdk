@@ -7367,7 +7367,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/babel-config-legacy@workspace:*, @webex/babel-config-legacy@workspace:^, @webex/babel-config-legacy@workspace:packages/legacy/babel":
+"@webex/babel-config-legacy@workspace:*, @webex/babel-config-legacy@workspace:packages/legacy/babel":
   version: 0.0.0-use.local
   resolution: "@webex/babel-config-legacy@workspace:packages/legacy/babel"
   dependencies:
@@ -7566,11 +7566,15 @@ __metadata:
     "@types/platform": 1.3.4
     "@typescript-eslint/eslint-plugin": 5.38.1
     "@typescript-eslint/parser": 5.38.1
-    "@webex/babel-config-legacy": "workspace:^"
-    "@webex/eslint-config-legacy": "workspace:^"
-    "@webex/jest-config-legacy": "workspace:^"
-    "@webex/legacy-tools": "workspace:^"
-    "@webex/webex-core": "workspace:^"
+    "@webex/babel-config-legacy": "workspace:*"
+    "@webex/contact-center": "workspace:*"
+    "@webex/eslint-config-legacy": "workspace:*"
+    "@webex/internal-plugin-llm": "workspace:*"
+    "@webex/internal-plugin-mercury": "workspace:*"
+    "@webex/jest-config-legacy": "workspace:*"
+    "@webex/legacy-tools": "workspace:*"
+    "@webex/test-helper-mock-webex": "workspace:*"
+    "@webex/webex-core": "workspace:*"
     async-mutex: 0.4.0
     buffer: 6.0.3
     eslint: ^8.24.0
@@ -7616,7 +7620,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/eslint-config-legacy@workspace:*, @webex/eslint-config-legacy@workspace:^, @webex/eslint-config-legacy@workspace:packages/legacy/eslint":
+"@webex/eslint-config-legacy@workspace:*, @webex/eslint-config-legacy@workspace:packages/legacy/eslint":
   version: 0.0.0-use.local
   resolution: "@webex/eslint-config-legacy@workspace:packages/legacy/eslint"
   dependencies:
@@ -8395,7 +8399,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/jest-config-legacy@workspace:*, @webex/jest-config-legacy@workspace:^, @webex/jest-config-legacy@workspace:packages/legacy/jest":
+"@webex/jest-config-legacy@workspace:*, @webex/jest-config-legacy@workspace:packages/legacy/jest":
   version: 0.0.0-use.local
   resolution: "@webex/jest-config-legacy@workspace:packages/legacy/jest"
   dependencies:
@@ -8447,7 +8451,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@webex/legacy-tools@workspace:*, @webex/legacy-tools@workspace:^, @webex/legacy-tools@workspace:packages/legacy/tools":
+"@webex/legacy-tools@workspace:*, @webex/legacy-tools@workspace:packages/legacy/tools":
   version: 0.0.0-use.local
   resolution: "@webex/legacy-tools@workspace:packages/legacy/tools"
   dependencies:
@@ -9508,7 +9512,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@webex/webex-core@workspace:*, @webex/webex-core@workspace:^, @webex/webex-core@workspace:packages/@webex/webex-core":
+"@webex/webex-core@workspace:*, @webex/webex-core@workspace:packages/@webex/webex-core":
   version: 0.0.0-use.local
   resolution: "@webex/webex-core@workspace:packages/@webex/webex-core"
   dependencies:

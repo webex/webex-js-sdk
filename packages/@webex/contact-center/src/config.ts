@@ -1,8 +1,8 @@
 export default {
   cc: {
-    isKeepAliveEnabled: false,
-    clientType: 'WebexCCSDK',
     allowMultiLogin: true,
+    clientType: 'WebexCCSDK',
+    isKeepAliveEnabled: false,
     force: true,
     metrics: {
       clientName: 'WEBEX_JS_SDK',
