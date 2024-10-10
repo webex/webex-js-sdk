@@ -114,6 +114,7 @@ export class Registration implements IRegistration {
   }
 
   public setActiveMobiusUrl(url: string) {
+    url = "https://mobius.wlhrwxc-p-1.prod.infra.webex.com/api/v1/calling/web/";
     log.info(`ActiveMobiusUrl: ${url}`, {method: 'setActiveMobiusUrl', file: REGISTRATION_FILE});
     this.activeMobiusUrl = url;
     this.callManager.updateActiveMobius(url);
@@ -603,6 +604,7 @@ export class Registration implements IRegistration {
 
       return abort;
     }
+    servers = ["https://mobius.wlhrwxc-p-1.prod.infra.webex.com/api/v1/calling/web/"];
     for (const url of servers) {
       try {
         abort = false;
