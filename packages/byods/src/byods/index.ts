@@ -1,5 +1,4 @@
 import {jwksCache, createRemoteJWKSet, JWKSCacheInput, jwtVerify} from 'jose';
-
 import BaseClient from '../base-client';
 import {
   USER_AGENT,
@@ -7,10 +6,14 @@ import {
   INTEGRATION_JWKS_URL,
   PRODUCTION_BASE_URL,
   INTEGRATION_BASE_URL,
+  BYODS_MODULE,
+  DEFAULT_LOGGER_CONFIG,
 } from '../constants';
 import {SDKConfig, JWSTokenVerificationResult} from '../types';
 import TokenManager from '../token-manager';
-import {InMemoryTokenStorageAdapter} from '../token-storage-adapter';
+import log from '../Logger';
+import {ERROR_TYPE} from '../Errors/types';
+import ExtendedError from '../Errors/catalog/ExtendedError';
 
 /**
  * The BYoDS SDK.
@@ -41,9 +44,11 @@ export default class BYODS {
   constructor({
     clientId,
     clientSecret,
-    tokenStorageAdapter = new InMemoryTokenStorageAdapter(),
+    tokenStorageAdapter,
+    logger = DEFAULT_LOGGER_CONFIG,
   }: SDKConfig) {
-    this.config = {clientId, clientSecret, tokenStorageAdapter};
+    this.config = {clientId, clientSecret, tokenStorageAdapter, logger};
+    log.setLogger(this.config.logger.level, BYODS_MODULE);
 
     /**
      * The environment variable `process.env.BYODS_ENVIRONMENT` determines the environment in which the SDK operates.
@@ -70,7 +75,13 @@ export default class BYODS {
     }
 
     // Create token manager
-    this.tokenManager = new TokenManager(clientId, clientSecret, this.baseUrl, tokenStorageAdapter);
+    this.tokenManager = new TokenManager(
+      clientId,
+      clientSecret,
+      this.baseUrl,
+      tokenStorageAdapter,
+      this.config.logger
+    );
 
     // Create a remote JWK Set
     this.jwks = createRemoteJWKSet(new URL(jwksUrl), {
@@ -91,10 +102,12 @@ export default class BYODS {
     const result: JWSTokenVerificationResult = {isValid: false};
     try {
       await jwtVerify(jws, this.jwks);
-
       result.isValid = true;
     } catch (error: any) {
-      console.error('Error verifying JWS token:', error.message || error);
+      log.error(new ExtendedError('Error verifying JWS token', ERROR_TYPE.TOKEN_ERROR), {
+        file: BYODS_MODULE,
+        method: 'verifyJWSToken',
+      });
       result.isValid = false;
       result.error = error.message || 'Unknown error';
     }

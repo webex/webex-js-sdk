@@ -1,6 +1,9 @@
 import TokenManager from '../../../../src/token-manager';
 import {TokenResponse} from '../../../../src/types';
 import {httpUtils} from '../../../../src/http-utils';
+import log from '../../../../src/Logger';
+import {LOGGER} from '../../../../src/Logger/types';
+import {BYODS_TOKEN_MANAGER_MODULE} from '../../../../src/constants';;
 
 describe('TokenManager', () => {
   const clientId = 'test-client-id';
@@ -14,11 +17,16 @@ describe('TokenManager', () => {
 
   beforeEach(() => {
     tokenManager = new TokenManager(clientId, clientSecret, baseUrl);
-    console.error = jest.fn();
+    log.setLogger = jest.fn();
   });
 
   afterEach(() => {
     jest.resetAllMocks();
+  });
+
+  it('should initialize with default logger configuration', () => {
+    tokenManager = new TokenManager(clientId, clientSecret, baseUrl);
+    expect(log.setLogger).toHaveBeenCalledWith(LOGGER.ERROR, BYODS_TOKEN_MANAGER_MODULE);
   });
 
   it('should update service app token', async () => {
