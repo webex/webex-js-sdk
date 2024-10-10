@@ -10,6 +10,7 @@ import {
   ClientEventLeaveReason,
   CallDiagnosticUtils,
   CALL_DIAGNOSTIC_CONFIG,
+  RtcMetrics,
 } from '@webex/internal-plugin-metrics';
 import {ClientEvent as RawClientEvent} from '@webex/event-dictionary-ts';
 
@@ -155,7 +156,6 @@ import ControlsOptionsManager from '../controls-options-manager';
 import PermissionError from '../common/errors/permission';
 import {LocusMediaRequest} from './locusMediaRequest';
 import {ConnectionStateHandler, ConnectionStateEvent} from './connectionStateHandler';
-import RtcMetrics from '../rtcMetrics';
 
 // default callback so we don't call an undefined function, but in practice it should never be used
 const DEFAULT_ICE_PHASE_CALLBACK = () => 'JOIN_MEETING_FINAL';
@@ -227,6 +227,7 @@ export type AddMediaOptions = {
 
 export type CallStateForMetrics = {
   correlationId?: string;
+  sessionCorrelationId?: string;
   joinTrigger?: string;
   loginType?: string;
 };
@@ -538,6 +539,7 @@ export default class Meeting extends StatelessWebexPlugin {
   id: string;
   isMultistream: boolean;
   locusUrl: string;
+  #isoLocalClientMeetingJoinTime?: string;
   mediaConnections: any[];
   mediaId?: string;
   meetingFiniteStateMachine: any;
@@ -741,12 +743,29 @@ export default class Meeting extends StatelessWebexPlugin {
      */
     this.callStateForMetrics = attrs.callStateForMetrics || {};
     const correlationId = attrs.correlationId || attrs.callStateForMetrics?.correlationId;
+    const sessionCorrelationId =
+      attrs.sessionCorrelationId || attrs.callStateForMetrics?.sessionCorrelationId;
+    if (sessionCorrelationId) {
+      LoggerProxy.logger.log(
+        `Meetings:index#constructor --> Initializing the meeting object with session correlation id from app ${correlationId}`
+      );
+      this.callStateForMetrics.sessionCorrelationId = sessionCorrelationId;
+    } else {
+      LoggerProxy.logger.log(
+        `Meetings:index#constructor --> No session correlation id supplied. None will be generated and this field will remain blank`
+      );
+      // TODO: supply a session from the meetings instance
+      this.callStateForMetrics.sessionCorrelationId = '';
+    }
     if (correlationId) {
       LoggerProxy.logger.log(
         `Meetings:index#constructor --> Initializing the meeting object with correlation id from app ${correlationId}`
       );
       this.callStateForMetrics.correlationId = correlationId;
     } else {
+      LoggerProxy.logger.log(
+        `Meetings:index#constructor --> Initializing the meeting object with generated correlation id from sdk ${this.id}`
+      );
       this.callStateForMetrics.correlationId = this.id;
     }
     /**
@@ -1521,6 +1540,17 @@ export default class Meeting extends StatelessWebexPlugin {
      * @memberof Meeting
      */
     this.iceCandidatesCount = 0;
+
+    /**
+     * Start time of meeting as an ISO string
+     * based on browser time, so can only be used to compute durations client side
+     * undefined if meeting has not been joined, set once on meeting join, and not updated again
+     * @instance
+     * @type {string}
+     * @private
+     * @memberof Meeting
+     */
+    this.#isoLocalClientMeetingJoinTime = undefined;
   }
 
   /**
@@ -1567,6 +1597,31 @@ export default class Meeting extends StatelessWebexPlugin {
    */
   set correlationId(correlationId: string) {
     this.callStateForMetrics.correlationId = correlationId;
+  }
+
+  /**
+   * Getter - Returns callStateForMetrics.sessionCorrelationId
+   * @returns {string}
+   */
+  get sessionCorrelationId() {
+    return this.callStateForMetrics.sessionCorrelationId;
+  }
+
+  /**
+   * Setter - sets callStateForMetrics.sessionCorrelationId
+   * @param {string} sessionCorrelationId
+   */
+  set sessionCorrelationId(sessionCorrelationId: string) {
+    this.callStateForMetrics.sessionCorrelationId = sessionCorrelationId;
+  }
+
+  /**
+   * Getter - Returns isoLocalClientMeetingJoinTime
+   * This will be set once on meeting join, and not updated again
+   * @returns {string | undefined}
+   */
+  get isoLocalClientMeetingJoinTime(): string | undefined {
+    return this.#isoLocalClientMeetingJoinTime;
   }
 
   /**
@@ -3771,6 +3826,10 @@ export default class Meeting extends StatelessWebexPlugin {
             requiredPolicies: [SELF_POLICY.SUPPORT_CHAT],
             policies: this.selfUserPolicies,
           }),
+          canPollingAndQA: ControlsOptionsUtil.hasPolicies({
+            requiredPolicies: [SELF_POLICY.SUPPORT_POLLING_AND_QA],
+            policies: this.selfUserPolicies,
+          }),
           canShareApplication:
             (ControlsOptionsUtil.hasHints({
               requiredHints: [DISPLAY_HINTS.SHARE_APPLICATION],
@@ -5235,6 +5294,8 @@ export default class Meeting extends StatelessWebexPlugin {
         // @ts-ignore
         this.webex.internal.device.meetingStarted();
 
+        this.#isoLocalClientMeetingJoinTime = new Date().toISOString();
+
         LoggerProxy.logger.log('Meeting:index#join --> Success');
 
         Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.JOIN_SUCCESS, {
@@ -6521,12 +6582,21 @@ export default class Meeting extends StatelessWebexPlugin {
    *
    * @private
    * @static
+   * @param {boolean} isAudioEnabled
+   * @param {boolean} isVideoEnabled
    * @returns {Promise<void>}
    */
-  private static async handleDeviceLogging(): Promise<void> {
-    try {
-      const devices = await getDevices();
 
+  private static async handleDeviceLogging(isAudioEnabled, isVideoEnabled): Promise<void> {
+    try {
+      let devices = [];
+      if (isVideoEnabled && isAudioEnabled) {
+        devices = await getDevices();
+      } else if (isVideoEnabled) {
+        devices = await getDevices(Media.DeviceKind.VIDEO_INPUT);
+      } else if (isAudioEnabled) {
+        devices = await getDevices(Media.DeviceKind.AUDIO_INPUT);
+      }
       MeetingUtil.handleDeviceLogging(devices);
     } catch {
       // getDevices may fail if we don't have browser permissions, that's ok, we still can have a media connection
@@ -7019,7 +7089,7 @@ export default class Meeting extends StatelessWebexPlugin {
       );
 
       if (audioEnabled || videoEnabled) {
-        await Meeting.handleDeviceLogging();
+        await Meeting.handleDeviceLogging(audioEnabled, videoEnabled);
       } else {
         LoggerProxy.logger.info(`${LOG_HEADER} device logging not required`);
       }

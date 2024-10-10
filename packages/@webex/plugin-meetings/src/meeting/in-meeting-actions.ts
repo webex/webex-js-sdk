@@ -82,6 +82,7 @@ interface IInMeetingActions {
   supportHDV?: boolean;
   canShareWhiteBoard?: boolean;
   enforceVirtualBackground?: boolean;
+  canPollingAndQA?: boolean;
 }
 
 /**
@@ -236,6 +237,7 @@ export default class InMeetingActions implements IInMeetingActions {
 
   canShareWhiteBoard = null;
 
+  canPollingAndQA = null;
   /**
    * Returns all meeting action options
    * @returns {Object}
@@ -314,6 +316,7 @@ export default class InMeetingActions implements IInMeetingActions {
     supportHQV: this.supportHQV,
     supportHDV: this.supportHDV,
     canShareWhiteBoard: this.canShareWhiteBoard,
+    canPollingAndQA: this.canPollingAndQA,
   });
 
   /**

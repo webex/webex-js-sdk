@@ -879,6 +879,7 @@ export enum SELF_POLICY {
   SUPPORT_HDV = 'supportHDV',
   SUPPORT_PARTICIPANT_LIST = 'supportParticipantList',
   SUPPORT_VOIP = 'supportVoIP',
+  SUPPORT_POLLING_AND_QA = 'supportPollingAndQA',
 }
 
 export const DISPLAY_HINTS = {
