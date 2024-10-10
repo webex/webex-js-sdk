@@ -7567,6 +7567,7 @@ __metadata:
     "@typescript-eslint/eslint-plugin": 5.38.1
     "@typescript-eslint/parser": 5.38.1
     "@webex/babel-config-legacy": "workspace:*"
+    "@webex/contact-center": "workspace:*"
     "@webex/eslint-config-legacy": "workspace:*"
     "@webex/internal-plugin-llm": "workspace:*"
     "@webex/internal-plugin-mercury": "workspace:*"
