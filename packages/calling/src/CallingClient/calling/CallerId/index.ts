@@ -129,7 +129,11 @@ export class CallerId implements ICallerId {
    */
   private parseSipUri(paid: string) {
     const result = {} as DisplayInformation;
-
+    // SIP uri can look like this: "Name" <sip:1234567890@domain> or sip:1234567890@domain or "Name (guest)" <sip:1234567890>
+    // We need to extract the name alone from this.
+    // eg output: "Name", "Name (guest)"
+    // Another eg: "\"test hunt group  -  SdkGuestCall (Guest)\" <sip:+12142865895@173.39.236.33;user=phone>;tag=239386521-1728551389606-"
+    // expected output for name: "test hunt group  -  SdkGuestCall (Guest)"
     const data = paid.split('@')[0].replace(/"/g, '');
 
     const nameMatch = FETCH_NAME.exec(data);
