@@ -18,6 +18,7 @@
     "./calling": "./dist/calling.js",
     ".": "./dist/index.js",
     "./meetings": "./dist/meetings.js",
+    "./contact-center": "./dist/contact-center.js",
     "./package": "./package.json"
   },
   "devMain": "src/index.js",
@@ -69,6 +70,7 @@
     "@babel/runtime-corejs2": "^7.14.8",
     "@webex/calling": "workspace:*",
     "@webex/common": "workspace:*",
+    "@webex/contact-center": "workspace:*",
     "@webex/internal-plugin-calendar": "workspace:*",
     "@webex/internal-plugin-device": "workspace:*",
     "@webex/internal-plugin-llm": "workspace:*",
