@@ -132,6 +132,29 @@ describe('CallerId tests', () => {
     expect(callerId['callerInfo'].num).toStrictEqual('5008');
   });
 
+  it('When PA-ID, From header is present for guest user', async () => {
+    const dummyCallerId = {
+      'x-broadworks-remote-party-info':
+        'userId="nkjwuovmbo@64941297.int10.bcld.webex.com";userDn="tel:+12142865888;ext=5888;country-code=1";externalId=69fde5ad-fb8b-4a1b-9998-b0999e95719b',
+      'p-asserted-identity':
+        '"Bob Marley  -  SdkGuestCall (Guest)" <sip:5888@10.155.4.7;user=phone>',
+      from: '"Alice -  SdkGuestCall (Guest)" <sip:5889@64941297.int10.bcld.webex.com>;tag=1932136170-1654008881246',
+    };
+
+    const output = callerId.fetchCallerDetails(dummyCallerId);
+
+    /* PAI should be preferred */
+    expect(output.name).toStrictEqual('Bob Marley  -  SdkGuestCall (Guest)');
+    expect(output.num).toStrictEqual('5888');
+    await waitForMsecs(50);
+
+    /* Should be overwritten by x-broadworks */
+    expect(callerId['callerInfo'].avatarSrc).toStrictEqual(dummyAvatar);
+    expect(callerId['callerInfo'].id).toStrictEqual(dummyScimResponse.Resources[0].id);
+    expect(callerId['callerInfo'].name).toStrictEqual('Cathy');
+    expect(callerId['callerInfo'].num).toStrictEqual('5008');
+  });
+
   it(' When PA-ID ,From header is present along with x-broad-works , but name in PAI is of wrong format', async () => {
     const dummyCallerId = {
       'x-broadworks-remote-party-info':
@@ -146,6 +169,30 @@ describe('CallerId tests', () => {
 
     /* PAI name is ignored and From's name should be taken, but number is taken from PAI */
     expect(output.name).toStrictEqual('Alice');
+    expect(output.num).toStrictEqual('5888');
+    await waitForMsecs(50);
+
+    /* Should be overwritten by x-broadworks */
+    expect(callerId['callerInfo'].avatarSrc).toStrictEqual(dummyAvatar);
+    expect(callerId['callerInfo'].id).toStrictEqual(dummyScimResponse.Resources[0].id);
+    expect(callerId['callerInfo'].name).toStrictEqual('Cathy');
+    expect(callerId['callerInfo'].num).toStrictEqual('5008');
+  });
+
+  it(' When PA-ID ,From header is present for guest along with x-broad-works , but name in PAI is of wrong format', async () => {
+    const dummyCallerId = {
+      'x-broadworks-remote-party-info':
+        'userId="nkjwuovmbo@64941297.int10.bcld.webex.com";userDn="tel:+12142865888;ext=5888;country-code=1";externalId=69fde5ad-fb8b-4a1b-9998-b0999e95719b',
+      'p-asserted-identity':
+        '"69fde5ad-fb8b-4a1b-9998-b0999e95719b" <sip:5888@10.155.4.7;user=phone>',
+      from: '"Alice  -  SdkGuestCall (Guest)" <sip:5889@64941297.int10.bcld.webex.com>;tag=1932136170-1654008881246',
+    };
+
+    callerId['callerInfo'] = {} as DisplayInformation;
+    const output = callerId.fetchCallerDetails(dummyCallerId);
+
+    /* PAI name is ignored and From's name should be taken, but number is taken from PAI */
+    expect(output.name).toStrictEqual('Alice  -  SdkGuestCall (Guest)');
     expect(output.num).toStrictEqual('5888');
     await waitForMsecs(50);
 

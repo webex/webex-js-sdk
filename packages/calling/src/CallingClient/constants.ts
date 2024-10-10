@@ -42,7 +42,7 @@ export const DUMMY_METRICS = {
   },
 };
 export const DUMMY_MOBIUS_URL = 'https://mobius.aintgen-a-1.int.infra.webex.com/api/v1';
-export const FETCH_NAME = /^[a-zA-Z ]+/;
+export const FETCH_NAME = /^[a-zA-Z ()-]+/; // Match only alphabets, space, parenthesis, and hyphen. Ignores rest of the chars as soon a non matching char is found.
 export const IP_ENDPOINT = 'myip';
 export const INITIAL_SEQ_NUMBER = 1;
 export const MEDIA_ENDPOINT_RESOURCE = 'media';
