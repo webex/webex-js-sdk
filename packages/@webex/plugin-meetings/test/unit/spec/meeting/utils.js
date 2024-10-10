@@ -4,6 +4,8 @@ import MeetingUtil from '@webex/plugin-meetings/src/meeting/util';
 import LoggerProxy from '@webex/plugin-meetings/src/common/logs/logger-proxy';
 import LoggerConfig from '@webex/plugin-meetings/src/common/logs/logger-config';
 import Metrics from '@webex/plugin-meetings/src/metrics/index';
+import { options } from 'yargs';
+import { alias } from 'yargs';
 
 describe('plugin-meetings', () => {
   describe('Meeting utils function', () => {
@@ -138,12 +140,13 @@ describe('plugin-meetings', () => {
         };
 
         MeetingUtil.parseLocusJoin = sinon.stub();
-        await MeetingUtil.joinMeeting(meeting, {});
+        await MeetingUtil.joinMeeting(meeting, {alias: 'userName'});
 
         assert.calledOnce(meeting.meetingRequest.joinMeeting);
         const parameter = meeting.meetingRequest.joinMeeting.getCall(0).args[0];
 
         assert.equal(parameter.inviteeAddress, 'meetingJoinUrl');
+        assert.equal(parameter.alias, 'userName');
       });
 
       it('#Should fallback sipUrl if meetingJoinUrl does not exists', async () => {
@@ -156,12 +159,13 @@ describe('plugin-meetings', () => {
         };
 
         MeetingUtil.parseLocusJoin = sinon.stub();
-        await MeetingUtil.joinMeeting(meeting, {});
+        await MeetingUtil.joinMeeting(meeting, {alias: 'userName'});
 
         assert.calledOnce(meeting.meetingRequest.joinMeeting);
         const parameter = meeting.meetingRequest.joinMeeting.getCall(0).args[0];
 
         assert.equal(parameter.inviteeAddress, 'sipUri');
+        assert.equal(parameter.alias, 'userName');
       });
 
       it('#Should fallback to meetingNumber if meetingJoinUrl/sipUrl  does not exists', async () => {
@@ -174,13 +178,14 @@ describe('plugin-meetings', () => {
         };
 
         MeetingUtil.parseLocusJoin = sinon.stub();
-        await MeetingUtil.joinMeeting(meeting, {});
+        await MeetingUtil.joinMeeting(meeting, {alias: 'userName'});
 
         assert.calledOnce(meeting.meetingRequest.joinMeeting);
         const parameter = meeting.meetingRequest.joinMeeting.getCall(0).args[0];
 
         assert.isUndefined(parameter.inviteeAddress);
         assert.equal(parameter.meetingNumber, 'meetingNumber');
+        assert.equal(parameter.alias, 'userName');
       });
     });
 
