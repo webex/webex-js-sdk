@@ -6,6 +6,7 @@ import querystring from 'querystring';
 import util from 'util';
 
 import {safeSetTimeout} from '@webex/common-timers';
+import {oneFlight} from '@webex/common';
 import {WebexPlugin} from '@webex/webex-core';
 import {Context, Request, Response} from 'node-kms';
 import jose from 'node-jose';
@@ -287,7 +288,7 @@ const KMS = WebexPlugin.extend({
       assignedOrgId,
       customerMasterKey,
       requestId: uuid.v4(),
-      customerMasterKeyBackup
+      customerMasterKeyBackup: awsKms ? customerMasterKeyBackup : undefined,
     }).then((res) => {
       this.logger.info('kms: finish to upload customer master key');
 
