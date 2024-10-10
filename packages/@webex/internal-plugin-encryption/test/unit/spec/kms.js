@@ -48,7 +48,7 @@ describe('internal-plugin-encryption', () => {
         assert.equal(spyStub.args[1][0].uri, '/awsKmsCmk');
       });
 
-      it('uploadCustomerMasterKey', async () => {
+      it('uploadCustomerMasterKey without backup', async () => {
         await webex.internal.encryption.kms.uploadCustomerMasterKey({
           assignedOrgId: 'xx-sds-assdf',
           awsKms: false,

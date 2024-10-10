@@ -6,7 +6,6 @@ import querystring from 'querystring';
 import util from 'util';
 
 import {safeSetTimeout} from '@webex/common-timers';
-import {oneFlight} from '@webex/common';
 import {WebexPlugin} from '@webex/webex-core';
 import {Context, Request, Response} from 'node-kms';
 import jose from 'node-jose';
