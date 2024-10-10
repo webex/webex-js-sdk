@@ -83,6 +83,7 @@ export interface WebexSDK {
         'ucmgmt-gateway': string;
         contactsService: string;
       };
+      get(name: string, priorityHost?: boolean, serviceGroup?: string): string;
     };
     metrics: {
       submitClientMetrics: (name: string, data: unknown) => void;
