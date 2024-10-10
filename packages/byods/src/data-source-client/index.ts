@@ -4,12 +4,15 @@ import {decodeJwt, JWTPayload} from 'jose';
 import {DataSourceRequest, DataSourceResponse, Cancellable} from './types';
 import {DATASOURCE_ENDPOINT} from './constants';
 import {HttpClient, ApiResponse} from '../http-client/types';
+import {BYODS_DATA_SOURCE_CLIENT_MODULE, DEFAULT_LOGGER_CONFIG} from '../constants';
+import log from '../Logger';
 
 /**
  * Client for interacting with the /dataSource API.
  */
 export default class DataSourceClient {
   private httpClient: HttpClient;
+  private loggerConfig: LoggerConfig;
 
   /**
    * Creates an instance of DataSourceClient.
@@ -18,8 +21,10 @@ export default class DataSourceClient {
    * const httpClient = new HttpClient();
    * const client = new DataSourceClient(httpClient);
    */
-  constructor(httpClient: HttpClient) {
+  constructor(httpClient: HttpClient, loggerConfig: LoggerConfig = DEFAULT_LOGGER_CONFIG) {
     this.httpClient = httpClient;
+    this.loggerConfig = loggerConfig;
+    log.setLogger(this.loggerConfig.level, BYODS_DATA_SOURCE_CLIENT_MODULE);
   }
 
   /**

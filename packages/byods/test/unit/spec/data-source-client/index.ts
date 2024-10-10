@@ -1,5 +1,5 @@
 import DataSourceClient from '../../../../src/data-source-client';
-import { DataSourceRequest, DataSourceResponse, Cancelable } from '../../../../src/data-source-client/types';
+import { DataSourceRequest, DataSourceResponse, Cancellable } from '../../../../src/data-source-client/types';
 import { HttpClient, ApiResponse } from '../../../../src/http-client/types';
 import { decodeJwt, JWTPayload } from 'jose';
 
@@ -28,6 +28,17 @@ describe('DataSourceClient', () => {
 
   afterEach(() => {
     jest.clearAllMocks();
+  });
+
+  it('should initialize with default logger configuration', () => {
+    dataSourceClient = new DataSourceClient(httpClient);
+    expect(log.setLogger).toHaveBeenCalledWith(LOGGER.ERROR, BYODS_DATA_SOURCE_CLIENT_MODULE);
+  });
+
+  it('should initialize with custom logger configuration', () => {
+    const customConfig = {level: LOGGER.INFO};
+    dataSourceClient = new DataSourceClient(httpClient, customConfig);
+    expect(log.setLogger).toHaveBeenCalledWith(LOGGER.INFO, BYODS_DATA_SOURCE_CLIENT_MODULE);
   });
 
   it('should create a new data source', async () => {
