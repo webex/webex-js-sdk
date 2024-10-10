@@ -379,7 +379,12 @@ export class MuteState {
     }
     if (muted !== undefined) {
       this.state.server.remoteMute = muted;
-      this.muteLocalStream(meeting, muted, 'remotelyMuted');
+
+      // We never want to unmute the local stream from a server remote mute update.
+      // Moderated unmute is handled by a different function.
+      if (muted) {
+        this.muteLocalStream(meeting, muted, 'remotelyMuted');
+      }
     }
   }
 

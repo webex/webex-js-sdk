@@ -93,8 +93,17 @@ const Mercury = WebexPlugin.extend({
     });
   },
 
+  logout() {
+    return this.disconnect(
+      this.config.beforeLogoutOptionsCloseReason &&
+        !normalReconnectReasons.includes(this.config.beforeLogoutOptionsCloseReason)
+        ? {code: 1050, reason: this.config.beforeLogoutOptionsCloseReason}
+        : undefined
+    );
+  },
+
   @oneFlight
-  disconnect() {
+  disconnect(options) {
     return new Promise((resolve) => {
       if (this.backoffCall) {
         this.logger.info(`${this.namespace}: aborting connection`);
@@ -104,7 +113,7 @@ const Mercury = WebexPlugin.extend({
       if (this.socket) {
         this.socket.removeAllListeners('message');
         this.once('offline', resolve);
-        resolve(this.socket.close());
+        resolve(this.socket.close(options || undefined));
       }
 
       resolve();
@@ -446,6 +455,7 @@ const Mercury = WebexPlugin.extend({
           // if (code == 1011 && reason !== ping error) metric: unexpected disconnect
           break;
         case 1000:
+        case 1050: // 1050 indicates logout form of closure, default to old behavior, use config reason defined by consumer to proceed with the permanent block
           if (normalReconnectReasons.includes(reason)) {
             this.logger.info(`${this.namespace}: socket disconnected; reconnecting`);
             this._emit('offline.transient', event);
@@ -453,7 +463,9 @@ const Mercury = WebexPlugin.extend({
             // metric: disconnect
             // if (reason === done forced) metric: force closure
           } else {
-            this.logger.info(`${this.namespace}: socket disconnected; will not reconnect`);
+            this.logger.info(
+              `${this.namespace}: socket disconnected; will not reconnect: ${event.reason}`
+            );
             this._emit('offline.permanent', event);
           }
           break;

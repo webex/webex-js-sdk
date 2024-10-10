@@ -503,6 +503,35 @@ describe('plugin-mercury', () => {
       });
     });
 
+    describe('#logout()', () => {
+      it('calls disconnect', () => {
+        sinon.stub(mercury, 'disconnect');
+        mercury.logout();
+        assert.called(mercury.disconnect);
+      });
+
+      it('uses the config.beforeLogoutOptionsCloseReason to disconnect and will send code 1050 for logout', () => {
+        sinon.stub(mercury, 'disconnect');
+        mercury.config.beforeLogoutOptionsCloseReason = 'done (permanent)';
+        mercury.logout();
+        assert.calledWith(mercury.disconnect, {code: 1050, reason: 'done (permanent)'});
+      });
+
+      it('uses the config.beforeLogoutOptionsCloseReason to disconnect and will send code 1050 for logout if the reason is different than standard', () => {
+        sinon.stub(mercury, 'disconnect');
+        mercury.config.beforeLogoutOptionsCloseReason = 'test';
+        mercury.logout();
+        assert.calledWith(mercury.disconnect, {code: 1050, reason: 'test'});
+      });
+
+      it('uses the config.beforeLogoutOptionsCloseReason to disconnect and will send undefined for logout if the reason is same as standard', () => {
+        sinon.stub(mercury, 'disconnect');
+        mercury.config.beforeLogoutOptionsCloseReason = 'done (forced)';
+        mercury.logout();
+        assert.calledWith(mercury.disconnect, undefined);
+      });
+    });
+
     describe('#disconnect()', () => {
       it('disconnects the WebSocket', () =>
         mercury
@@ -524,6 +553,27 @@ describe('plugin-mercury', () => {
             assert.isFalse(mercury.connecting, 'Mercury is not connecting');
             assert.isUndefined(mercury.mockWebSocket, 'Mercury does not have a mockWebSocket');
           }));
+
+          it('disconnects the WebSocket with code 1050', () =>
+            mercury
+              .connect()
+              .then(() => {
+                assert.isTrue(mercury.connected, 'Mercury is connected');
+                assert.isFalse(mercury.connecting, 'Mercury is not connecting');
+                const promise = mercury.disconnect();
+    
+                mockWebSocket.emit('close', {
+                  code: 1050,
+                  reason: 'done (permanent)',
+                });
+    
+                return promise;
+              })
+              .then(() => {
+                assert.isFalse(mercury.connected, 'Mercury is not connected');
+                assert.isFalse(mercury.connecting, 'Mercury is not connecting');
+                assert.isUndefined(mercury.mockWebSocket, 'Mercury does not have a mockWebSocket');
+              }));
 
       it('stops emitting message events', () => {
         const spy = sinon.spy();
