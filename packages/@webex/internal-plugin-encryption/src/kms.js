@@ -6,6 +6,7 @@ import querystring from 'querystring';
 import util from 'util';
 
 import {safeSetTimeout} from '@webex/common-timers';
+import {oneFlight} from '@webex/common';
 import {WebexPlugin} from '@webex/webex-core';
 import {Context, Request, Response} from 'node-kms';
 import jose from 'node-jose';
@@ -278,7 +279,7 @@ const KMS = WebexPlugin.extend({
    * @param {boolean} options.awsKms enable amazon aws keys
    * @returns {Promise.<UploadCmkResponse>} response of upload CMK api
    */
-  uploadCustomerMasterKey({assignedOrgId, customerMasterKey, customerMasterKeyBackup, awsKms = false}) {
+  uploadCustomerMasterKey({assignedOrgId, customerMasterKey, awsKms = false, customerMasterKeyBackup = undefined}) {
     this.logger.info('kms: upload customer master key for byok');
 
     return this.request({

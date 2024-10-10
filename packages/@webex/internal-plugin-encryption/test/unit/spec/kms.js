@@ -64,8 +64,8 @@ describe('internal-plugin-encryption', () => {
         await webex.internal.encryption.kms.uploadCustomerMasterKey({
           assignedOrgId: 'xx-sds-assdf',
           customerMasterKey: 'masterKey',
-          customerMasterKeyBackup: 'masterKeyBackup',
           awsKms: true,
+          customerMasterKeyBackup: 'masterKeyBackup',
         });
 
         // Ensures backup cmd is undefined for non-aws
