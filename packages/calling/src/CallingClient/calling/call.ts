@@ -7,8 +7,14 @@ import {
 import {createMachine, interpret} from 'xstate';
 import {v4 as uuid} from 'uuid';
 import {EffectEvent, TrackEffect} from '@webex/web-media-effects';
+import {RtcMetrics} from '@webex/internal-plugin-metrics';
+import ExtendedError from '../../Errors/catalog/ExtendedError';
 import {ERROR_LAYER, ERROR_TYPE, ErrorContext} from '../../Errors/types';
-import {handleCallErrors, parseMediaQualityStatistics} from '../../common/Utils';
+import {
+  handleCallErrors,
+  parseMediaQualityStatistics,
+  serviceErrorCodeHandler,
+} from '../../common/Utils';
 import {
   ALLOWED_SERVICES,
   CallDetails,
@@ -158,6 +164,8 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
   private localAudioStream?: LocalMicrophoneStream;
 
+  private rtcMetrics: RtcMetrics;
+
   /**
    * Getter to check if the call is muted or not.
    *
@@ -243,6 +251,8 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
     });
     this.remoteRoapMessage = null;
     this.disconnectReason = {code: DisconnectCode.NORMAL, cause: DisconnectCause.NORMAL};
+
+    this.rtcMetrics = new RtcMetrics(this.webex, {callId: this.callId}, this.correlationId);
 
     const callMachine = createMachine(
       {
@@ -1927,6 +1937,33 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
     }
   }
 
+  /**
+   * Media failed, so collect a stats report from webrtc
+   * send a webrtc telemetry dump to the configured server using the internal media core check metrics configured callback
+   * @param {String} callFrom - the function calling this function, optional.
+   * @returns {Promise<void>}
+   */
+  private forceSendStatsReport = async ({callFrom}: {callFrom?: string}) => {
+    const loggerContext = {
+      file: CALL_FILE,
+      method: this.forceSendStatsReport.name,
+    };
+
+    try {
+      await this.mediaConnection.forceRtcMetricsSend();
+      log.info(`Successfully uploaded available webrtc telemetry statistics`, loggerContext);
+      log.info(`callFrom: ${callFrom}`, loggerContext);
+    } catch (error) {
+      const errorInfo = error as WebexRequestPayload;
+      const errorStatus = serviceErrorCodeHandler(errorInfo, loggerContext);
+      const errorLog = new Error(
+        `Failed to upload webrtc telemetry statistics. ${errorStatus}`
+      ) as ExtendedError;
+
+      log.error(errorLog, loggerContext);
+    }
+  };
+
   /* istanbul ignore next */
   /**
    * Initialize Media Connection.
@@ -1955,7 +1992,10 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
           screenShareVideo: 'inactive',
         },
       },
-      debugId || `WebexCallSDK-${this.correlationId}`
+      debugId || `WebexCallSDK-${this.correlationId}`,
+      (data) => this.rtcMetrics.addMetrics(data),
+      () => this.rtcMetrics.closeMetrics(),
+      () => this.rtcMetrics.sendMetricsInQueue()
     );
 
     this.mediaConnection = mediaConnection;
@@ -1999,6 +2039,8 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    */
   public setCallId = (callId: CallId) => {
     this.callId = callId;
+    this.rtcMetrics.updateCallId(callId);
+
     log.info(`Setting callId : ${this.callId} for correlationId: ${this.correlationId}`, {
       file: CALL_FILE,
       method: this.setCallId.name,

@@ -2,6 +2,7 @@
 import uuid from 'uuid';
 import * as CallDiagnosticUtils from '../call-diagnostic/call-diagnostic-metrics.util';
 import RTC_METRICS from './constants';
+import {IdType, IMetricsAttributes} from '../metrics.types';
 
 const parseJsonPayload = (payload: any[]): any | null => {
   try {
@@ -28,7 +29,9 @@ export default class RtcMetrics {
 
   webex: any;
 
-  meetingId: string;
+  meetingId?: string;
+
+  callId?: string;
 
   correlationId: string;
 
@@ -40,16 +43,27 @@ export default class RtcMetrics {
    * Initialize the interval.
    *
    * @param {object} webex - The main `webex` object.
-   * @param {string} meetingId - The meeting id.
+   * @param {IdType} Ids - Meeting or Calling id.
    * @param {string} correlationId - The correlation id.
    */
-  constructor(webex, meetingId, correlationId) {
+  constructor(webex, {meetingId, callId}: IdType, correlationId) {
     // `window` is used to prevent typescript from returning a NodeJS.Timer.
     this.intervalId = window.setInterval(this.sendMetricsInQueue.bind(this), 30 * 1000);
     this.meetingId = meetingId;
+    this.callId = callId;
     this.webex = webex;
     this.correlationId = correlationId;
     this.resetConnection();
+  }
+
+  /**
+   * Updates the call identifier with the provided value.
+   *
+   * @param {string} callId - The new call identifier to set.
+   * @returns {void}
+   */
+  public updateCallId(callId: string) {
+    this.callId = callId;
   }
 
   /**
@@ -160,6 +174,21 @@ export default class RtcMetrics {
    * @returns {void}
    */
   private sendMetrics() {
+    const metricsAttributes: IMetricsAttributes = {
+      type: 'webrtc',
+      version: '1.1.0',
+      userId: this.webex.internal.device.userId,
+      correlationId: this.correlationId,
+      connectionId: this.connectionId,
+      data: this.metricsQueue,
+    };
+
+    if (this.meetingId) {
+      metricsAttributes.meetingId = this.meetingId;
+    } else if (this.callId) {
+      metricsAttributes.callId = this.callId;
+    }
+
     this.webex.request({
       method: 'POST',
       service: 'unifiedTelemetry',
@@ -169,17 +198,7 @@ export default class RtcMetrics {
         appId: RTC_METRICS.APP_ID,
       },
       body: {
-        metrics: [
-          {
-            type: 'webrtc',
-            version: '1.1.0',
-            userId: this.webex.internal.device.userId,
-            meetingId: this.meetingId,
-            correlationId: this.correlationId,
-            connectionId: this.connectionId,
-            data: this.metricsQueue,
-          },
-        ],
+        metrics: [metricsAttributes],
       },
     });
   }
