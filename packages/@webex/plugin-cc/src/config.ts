@@ -7,8 +7,4 @@ export default {
     clientName: 'WEBEX_JS_SDK',
     clientType: 'WebexCCSDK',
   },
-  logging: {
-    enable: true,
-    verboseEvents: true,
-  },
 };

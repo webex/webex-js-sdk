@@ -4,7 +4,7 @@ import WebexCore from '@webex/webex-core';
 import config from './config';
 
 require('@webex/plugin-authorization');
-require('@webex/contact-center');
+require('@webex/plugin-cc');
 
 const Webex = WebexCore.extend({
   webex: true,

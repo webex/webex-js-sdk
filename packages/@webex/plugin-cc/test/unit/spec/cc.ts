@@ -1,4 +1,4 @@
-import ContactCenter from '@webex/contact-center/src'
+import ContactCenter from 'packages/@webex/plugin-cc/src';
 import Mercury from '@webex/internal-plugin-mercury';
 import MockWebex from '@webex/test-helper-mock-webex';
 import {Services} from '@webex/webex-core';
