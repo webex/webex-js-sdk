@@ -1,6 +1,6 @@
 import express, {Request, Response, NextFunction} from 'express';
 import logger from 'jet-logger';
-import BYODS from '@webex/byods';
+import * as BYODS from '@webex/byods';
 import 'express-async-errors';
 import path from 'path';
 import helmet from 'helmet';
@@ -9,10 +9,10 @@ import cookieParser from 'cookie-parser';
 import handlebars from 'handlebars';
 import fs from 'fs';
 
-const app = express();
+const app: any = express();
 
-let organizationId = '';
-let sdk = new BYODS({
+let organizationId = 'sodiluhbgiovfdvyhisou';
+let sdk = new BYODS.BYODS({
   clientId: 'your-client-id',
   clientSecret: 'your-client-secret',
   tokenStorageAdapter: undefined,
@@ -77,7 +77,7 @@ app.post('/config', (req: Request, res: Response) => {
     clientSecret,
     tokenStorageAdapter: undefined,
   };
-  sdk = new BYODS(mockSDKConfig);
+  sdk = new BYODS.BYODS(mockSDKConfig);
   organizationId = orgId;
   baseClient = sdk.getClientForOrg(organizationId);
   res.redirect('/data-source');

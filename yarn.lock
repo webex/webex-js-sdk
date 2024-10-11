@@ -12399,6 +12399,7 @@ __metadata:
     "@types/node": ^22.7.5
     "@types/supertest": ^6.0.2
     "@webex/byods": "workspace:*"
+    "@webex/legacy-tools": "workspace:*"
     cookie-parser: ^1.4.7
     dotenv: ^16.4.5
     eslint: ^9.12.0

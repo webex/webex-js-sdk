@@ -20,12 +20,7 @@
     "sourceMap": true,
     "stripInternal": true,
     "target": "ES6",
-    "lib": [
-      "ESNext",
-      "DOM"
-    ]
+    "lib": ["ESNext", "DOM"]
   },
-  "include": [
-    "./packages/**/*.*"
-  ]
+  "include": ["./packages/**/*.*", "./packages/byods-demo-server/*"]
 }

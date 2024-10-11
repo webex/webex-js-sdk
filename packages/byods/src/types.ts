@@ -1,4 +1,4 @@
-import {TokenStorageAdapter} from 'token-storage-adapter/types';
+import {TokenStorageAdapter} from './token-storage-adapter/types';
 
 /**
  * Configuration options for the SDK.

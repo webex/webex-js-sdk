@@ -4,8 +4,7 @@
     "dist"
   ],
   "contributors": [],
-  "main": "dist/module/index.js",
-  "module": "dist/module/index.js",
+  "main": "dist/index.js",
   "types": "dist/types/index.d.ts",
   "license": "MIT",
   "author": "devsupport@webex.com",
@@ -19,8 +18,8 @@
   },
   "scripts": {
     "build:docs": "typedoc --out ../../docs/byods",
-    "build:src": "webex-legacy-tools build -dest \"./dist\" -src \"./src\" -js -ts && yarn build",
     "build": "yarn run -T tsc --declaration true --declarationDir ./dist/types",
+    "build:src": "webex-legacy-tools build -dest \"./dist\" -src \"./src\" -js -ts -maps && yarn build",
     "deploy:npm": "yarn npm publish",
     "docs": "typedoc --emit none",
     "fix:lint": "eslint 'src/**/*.ts' --fix",
@@ -119,6 +118,5 @@
     "@types/node-fetch": "2.6.11",
     "jose": "5.8.0",
     "node-fetch": "3.3.2"
-  },
-  "type": "module"
+  }
 }

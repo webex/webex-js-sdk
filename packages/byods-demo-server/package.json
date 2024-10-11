@@ -1,10 +1,14 @@
 {
   "name": "byods-demo-server",
   "version": "0.0.0",
+  "main": "dist/index.js",
+  "types": "dist/types/index.d.ts",
   "scripts": {
-    "build": "npx ts-node src/index.ts",
+    "build": "yarn run -T tsc --declaration true --declarationDir ./dist/types",
+    "build:src": "webex-legacy-tools build -dest \"./dist\" -src \"./src\" -js -ts -maps && yarn build",
+    "serve": "node dist/server.js",
     "dev": "NODE_ENV=development npx ts-node ./src",
-    "dev:hot": "nodemon --exec \"npm run dev\" --watch ./src -e ts",
+    "dev:hot": "nodemon --exec \"npm run dev\" --watch ./dist",
     "start": "NODE_ENV=production node -r ./preload.js ./dist",
     "test": "NODE_ENV=test npx ts-node ./spec",
     "test:hot": "nodemon --exec \"npm run test\" --watch ./src --watch ./spec -e ts"
@@ -42,6 +46,7 @@
     "@types/morgan": "^1.9.9",
     "@types/node": "^22.7.5",
     "@types/supertest": "^6.0.2",
+    "@webex/legacy-tools": "workspace:*",
     "eslint": "^9.12.0",
     "eslint-plugin-n": "^17.11.1",
     "find": "^0.3.0",

@@ -1,5 +1,9 @@
-import fetch from 'node-fetch';
-import {ApiResponse} from 'http-client/types';
+// packages/byods/dist/http-utils/index.js
+
+// Remove the static require statement
+// const fetch = require('node-fetch');
+
+import {ApiResponse} from '../http-client/types';
 
 export interface HttpRequestInit {
   body?: string | null;
@@ -16,6 +20,9 @@ export interface HttpRequestInit {
  * const response = await request('https://webexapis.com/v1/endpoint', { method: 'GET', headers: {} });
  */
 async function request<T>(url: string, options: HttpRequestInit = {}): Promise<ApiResponse<T>> {
+  // Use dynamic import to load node-fetch
+  const fetch = (await import('node-fetch')).default;
+
   const response = await fetch(url, options);
 
   if (!response.ok) {
