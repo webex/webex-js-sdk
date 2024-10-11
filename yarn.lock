@@ -8679,7 +8679,6 @@ __metadata:
     "@webex/legacy-tools": "workspace:*"
     "@webex/test-helper-mock-webex": "workspace:*"
     "@webex/webex-core": "workspace:*"
-    async-mutex: 0.4.0
     buffer: 6.0.3
     eslint: ^8.24.0
     eslint-config-airbnb-base: 15.0.0

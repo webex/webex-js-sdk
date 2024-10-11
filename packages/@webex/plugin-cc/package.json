@@ -1,6 +1,6 @@
 {
   "name": "@webex/plugin-cc",
-  "description": "",
+  "description": "This package provides a set of APIs to perform various operations for the Agent flow within Webex Contact Center",
   "main": "dist/index.js",
   "devMain": "src/index.ts",
   "repository": {
@@ -27,7 +27,6 @@
     "@webex/calling": "workspace:*",
     "@webex/internal-plugin-mercury": "workspace:*",
     "@webex/webex-core": "workspace:*",
-    "async-mutex": "0.4.0",
     "buffer": "6.0.3",
     "jest-html-reporters": "3.0.11"
   },

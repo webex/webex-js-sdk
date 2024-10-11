@@ -1,8 +1,39 @@
-import {ServiceHost} from 'packages/calling/dist/types/SDKConnector/types';
-import {WebexRequestPayload} from 'packages/calling/dist/types/common/types';
+type Enum<T extends Record<string, unknown>> = T[keyof T];
+
+// Define the HTTP_METHODS object
+const HTTP_METHODS = {
+  GET: 'GET',
+  POST: 'POST',
+  PATCH: 'PATCH',
+  PUT: 'PUT',
+  DELETE: 'DELETE',
+} as const;
+
+// Derive the type using the utility type
+type HTTP_METHODS_TYPE = Enum<typeof HTTP_METHODS>;
+
+type WebexRequestPayload = {
+  method?: HTTP_METHODS_TYPE;
+  uri?: string;
+  addAuthHeader?: boolean;
+  headers?: {
+    [key: string]: string | null;
+  };
+  body?: object;
+  statusCode?: number;
+  json?: boolean;
+};
 
 type Listener = (e: string, data?: unknown) => void;
 type ListenerOff = (e: string) => void;
+
+type ServiceHost = {
+  host: string;
+  ttl: number;
+  priority: number;
+  id: string;
+  homeCluster?: boolean;
+};
 
 export interface CCPluginConfig {
   allowMultiLogin: boolean;
