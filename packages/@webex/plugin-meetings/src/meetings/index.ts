@@ -1,5 +1,4 @@
 /* eslint no-shadow: ["error", { "allow": ["eventType"] }] */
-import {union} from 'lodash';
 import '@webex/internal-plugin-mercury';
 import '@webex/internal-plugin-conversation';
 import '@webex/internal-plugin-metrics';
@@ -737,18 +736,17 @@ export default class Meetings extends WebexPlugin {
   }
 
   /**
-   * Explicitly sets up the meetings plugin by registering
-   * the device, connecting to mercury, and listening for locus events.
+   * Do some pre-initialization before the full registration is done.
    *
    * @returns {Promise}
    * @public
    * @memberof Meetings
    */
-  public register() {
+  public preregister(): Promise<any> {
     // @ts-ignore
     if (!this.webex.canAuthorize) {
       LoggerProxy.logger.error(
-        'Meetings:index#register --> ERROR, Unable to register, SDK cannot authorize'
+        'Meetings:index#register --> ERROR, Unable to preregister, SDK cannot authorize'
       );
 
       return Promise.reject(new Error('SDK cannot authorize'));
@@ -777,36 +775,71 @@ export default class Meetings extends WebexPlugin {
             // @ts-ignore
             `Meetings:index#register --> INFO, Device registered ${this.webex.internal.device.url}`
           )
-        )
-        // @ts-ignore
-        .then(() => this.webex.internal.mercury.connect()),
+        ),
       MeetingsUtil.checkH264Support.call(this),
-    ])
-      .then(() => {
-        this.listenForEvents();
-        Trigger.trigger(
-          this,
-          {
-            file: 'meetings',
-            function: 'register',
-          },
-          EVENT_TRIGGERS.MEETINGS_REGISTERED
-        );
-        this.registered = true;
-        Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.MEETINGS_REGISTRATION_SUCCESS);
-      })
-      .catch((error) => {
-        LoggerProxy.logger.error(
-          `Meetings:index#register --> ERROR, Unable to register, ${error.message}`
-        );
+    ]).catch((error) => {
+      LoggerProxy.logger.error(
+        `Meetings:index#register --> ERROR, Unable to preregister, ${error.message}`
+      );
 
-        Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.MEETINGS_REGISTRATION_FAILED, {
-          reason: error.message,
-          stack: error.stack,
-        });
-
-        return Promise.reject(error);
+      Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.MEETINGS_REGISTRATION_FAILED, {
+        reason: error.message,
+        stack: error.stack,
       });
+
+      return Promise.reject(error);
+    });
+  }
+
+  /**
+   * Explicitly sets up the meetings plugin by registering
+   * the device, connecting to mercury, and listening for locus events.
+   *
+   * @param {boolean} [preregister=true] if false, will not preregister
+   * @returns {Promise}
+   * @public
+   * @memberof Meetings
+   */
+  public register(preregister = true): Promise<any> {
+    if (this.registered) {
+      LoggerProxy.logger.info(
+        'Meetings:index#register --> INFO, Meetings plugin already registered'
+      );
+
+      return Promise.resolve();
+    }
+    const preregisterPromise = preregister ? this.preregister() : Promise.resolve();
+
+    return (
+      preregisterPromise
+        // @ts-ignore
+        .then(() => this.webex.internal.mercury.connect())
+        .then(() => {
+          this.listenForEvents();
+          Trigger.trigger(
+            this,
+            {
+              file: 'meetings',
+              function: 'register',
+            },
+            EVENT_TRIGGERS.MEETINGS_REGISTERED
+          );
+          this.registered = true;
+          Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.MEETINGS_REGISTRATION_SUCCESS);
+        })
+        .catch((error) => {
+          LoggerProxy.logger.error(
+            `Meetings:index#register --> ERROR, Unable to register, ${error.message}`
+          );
+
+          Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.MEETINGS_REGISTRATION_FAILED, {
+            reason: error.message,
+            stack: error.stack,
+          });
+
+          return Promise.reject(error);
+        })
+    );
   }
 
   /**
@@ -1037,7 +1070,6 @@ export default class Meetings extends WebexPlugin {
    * @public
    * @memberof Meetings
    */
-
   getPersonalMeetingRoom() {
     return this.personalMeetingRoom;
   }

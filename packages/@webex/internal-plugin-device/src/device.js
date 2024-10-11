@@ -1,3 +1,4 @@
+/* eslint-disable require-jsdoc */
 // Internal Dependencies
 import {deprecated, oneFlight} from '@webex/common';
 import {persist, waitForValue, WebexPlugin} from '@webex/webex-core';
@@ -7,6 +8,7 @@ import METRICS from './metrics';
 import {FEATURE_COLLECTION_NAMES, DEVICE_EVENT_REGISTRATION_SUCCESS} from './constants';
 import FeaturesModel from './features/features-model';
 import IpNetworkDetector from './ipNetworkDetector';
+import {CatalogDetails} from './types';
 
 /**
  * Determine if the plugin should be initialized based on cached storage.
@@ -363,15 +365,15 @@ const Device = WebexPlugin.extend({
 
   // Registration method members
 
-  /* eslint-disable require-jsdoc */
   /**
    * Refresh the current registered device if able.
    *
+   * @param {CatalogDetails} includeDetails - The details to include in the refresh/register request.
    * @returns {Promise<void, Error>}
    */
   @oneFlight
   @waitForValue('@')
-  refresh() {
+  refresh(includeDetails = CatalogDetails.all) {
     this.logger.info('device: refreshing');
 
     // Validate that the device can be registered.
@@ -380,7 +382,7 @@ const Device = WebexPlugin.extend({
       if (!this.registered) {
         this.logger.info('device: device not registered, registering');
 
-        return this.register();
+        return this.register(includeDetails);
       }
 
       // Merge body configurations, overriding defaults.
@@ -413,7 +415,7 @@ const Device = WebexPlugin.extend({
         body,
         headers,
         qs: {
-          includeUpstreamServices: `all${
+          includeUpstreamServices: `${includeDetails}${
             this.config.energyForecast && this.energyForecastConfig ? ',energyforecast' : ''
           }`,
         },
@@ -428,7 +430,7 @@ const Device = WebexPlugin.extend({
 
             this.clear();
 
-            return this.register();
+            return this.register(includeDetails);
           }
 
           return Promise.reject(reason);
@@ -441,11 +443,12 @@ const Device = WebexPlugin.extend({
    * registration utilizes the services plugin to send the request to the
    * **WDM** service.
    *
+   * @param {CatalogDetails} includeDetails - The details to include in the refresh/register request.
    * @returns {Promise<void, Error>}
    */
   @oneFlight
   @waitForValue('@')
-  register() {
+  register(includeDetails = CatalogDetails.all) {
     this.logger.info('device: registering');
 
     this.webex.internal.newMetrics.callDiagnosticMetrics.setDeviceInfo(this);
@@ -456,7 +459,7 @@ const Device = WebexPlugin.extend({
       if (this.registered) {
         this.logger.info('device: device already registered, refreshing');
 
-        return this.refresh();
+        return this.refresh(includeDetails);
       }
 
       // Merge body configurations, overriding defaults.
@@ -487,7 +490,7 @@ const Device = WebexPlugin.extend({
         body,
         headers,
         qs: {
-          includeUpstreamServices: `all${
+          includeUpstreamServices: `${includeDetails}${
             this.config.energyForecast && this.energyForecastConfig ? ',energyforecast' : ''
           }`,
         },

@@ -35,7 +35,7 @@ const Presence: IPresence = WebexPlugin.extend({
   },
 
   /**
-   * Initialize the presence worker for client
+   * Initialize the presence plugin
    * @returns {undefined}
    */
   initialize(): void {
@@ -43,6 +43,16 @@ const Presence: IPresence = WebexPlugin.extend({
       if (this.config.initializeWorker) {
         this.worker.initialize(this.webex);
       }
+    });
+  },
+
+  /**
+   * Initializes the presence worker.
+   * @returns {undefined}
+   */
+  initializeWorker(): void {
+    this.webex.once('ready', () => {
+      this.worker.initialize(this.webex);
     });
   },
 
