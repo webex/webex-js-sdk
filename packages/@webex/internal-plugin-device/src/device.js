@@ -1,4 +1,3 @@
-/* eslint-disable require-jsdoc */
 // Internal Dependencies
 import {deprecated, oneFlight} from '@webex/common';
 import {persist, waitForValue, WebexPlugin} from '@webex/webex-core';
