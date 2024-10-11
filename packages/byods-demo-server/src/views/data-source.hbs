@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <title>{{title}}</title>
+    <link rel="stylesheet" type="text/css" href="/stylesheets/data-source.css" />
+  </head>
+  <body>
+    <h1>Data Source Page</h1>
+    <div>
+      <button id="getAllData">Get All Data</button>
+      <button id="addData">Add Data</button>
+      <button id="updateData">Update Data</button>
+      <button id="deleteData">Delete Data</button>
+    </div>
+    <div id="result"></div>
+
+    <script>
+      document.getElementById('getAllData').addEventListener('click', function() {
+        fetch('/api/data-source/all')
+          .then(response => response.json())
+          .then(data => {
+            document.getElementById('result').innerText = JSON.stringify(data, null, 2);
+          });
+      });
+
+      document.getElementById('addData').addEventListener('click', function() {
+        const data = { name: 'New Data', value: 'newValue' };
+        fetch('/api/data-source/add', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ data })
+        })
+          .then(response => response.json())
+          .then(data => {
+            document.getElementById('result').innerText = JSON.stringify(data, null, 2);
+          });
+      });
+
+      document.getElementById('updateData').addEventListener('click', function() {
+        const data = { id: 1, name: 'Updated Data', value: 'updatedValue' };
+        fetch('/api/data-source/update', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ data })
+        })
+          .then(response => response.json())
+          .then(data => {
+            document.getElementById('result').innerText = JSON.stringify(data, null, 2);
+          });
+      });
+
+      document.getElementById('deleteData').addEventListener('click', function() {
+        const dataId = 1; // Replace with the actual data ID to delete
+        fetch(`/api/data-source/delete/${dataId}`, {
+          method: 'DELETE'
+        })
+          .then(response => response.json())
+          .then(data => {
+            document.getElementById('result').innerText = JSON.stringify(data, null, 2);
+          });
+      });
+    </script>
+  </body>
+</html>

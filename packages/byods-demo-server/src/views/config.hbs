@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <title>{{title}}</title>
+    <link rel="stylesheet" type="text/css" href="/stylesheets/config.css" />
+  </head>
+  <body>
+    <h1>Configuration Page</h1>
+    <form action="/config" method="post">
+      <div>
+        <label for="clientId">Client ID:</label>
+        <input type="text" id="clientId" name="clientId" required />
+      </div>
+      <div>
+        <label for="clientSecret">Client Secret:</label>
+        <input type="text" id="clientSecret" name="clientSecret" required />
+      </div>
+      <div>
+        <label for="orgId">Client Secret:</label>
+        <input type="text" id="orgId" name="orgId" required />
+      </div>
+      <button type="submit">Submit</button>
+    </form>
+  </body>
+</html>

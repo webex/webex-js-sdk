@@ -1,0 +1,37 @@
+{
+  "compilerOptions": {
+    "target": "es6",
+    "module": "esnext",
+    "moduleResolution": "node",
+    "baseUrl": "./",
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "paths": {
+      "@src/*": [
+        "src/*"
+      ]
+    },
+    "useUnknownInCatchVariables": false,
+    "inlineSourceMap": true,
+    "inlineSources": true,
+    "noEmit" : true,
+    "allowImportingTsExtensions": true
+  },
+  "ts-node": {
+    "require": ["tsconfig-paths/register"],
+    "transpileOnly": true,
+    "compilerOptions": {
+      "module": "esnext"
+    }
+  },
+  "include": [
+    "src/**/*.ts",
+    "spec/**/*.ts",
+    "scripts"
+  ],
+  "exclude": [
+    "src/public/*",
+    "node_modules"
+  ]
+}
