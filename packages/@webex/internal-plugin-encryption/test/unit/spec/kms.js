@@ -1,9 +1,6 @@
 /*!
- * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
+ * Copyright (c) 2015-2024 Cisco Systems, Inc. See LICENSE file.
  */
-/* eslint-disable no-underscore-dangle */
-import Url from 'url';
-
 import {assert} from '@webex/test-helper-chai';
 import MockWebex from '@webex/test-helper-mock-webex';
 import sinon from 'sinon';
@@ -51,7 +48,7 @@ describe('internal-plugin-encryption', () => {
         assert.equal(spyStub.args[1][0].uri, '/awsKmsCmk');
       });
 
-      it('uploadCustomerMasterKey', async () => {
+      it('uploadCustomerMasterKey without backup', async () => {
         await webex.internal.encryption.kms.uploadCustomerMasterKey({
           assignedOrgId: 'xx-sds-assdf',
           awsKms: false,
@@ -59,11 +56,32 @@ describe('internal-plugin-encryption', () => {
 
         await webex.internal.encryption.kms.uploadCustomerMasterKey({
           assignedOrgId: 'xx-sds-assdf',
+          customerMasterKey: 'masterKey',
           awsKms: true,
+        });
+
+        // Upload backup cmk for aws
+        await webex.internal.encryption.kms.uploadCustomerMasterKey({
+          assignedOrgId: 'xx-sds-assdf',
+          customerMasterKey: 'masterKey',
+          awsKms: true,
+          customerMasterKeyBackup: 'masterKeyBackup',
+        });
+
+        // Ensures backup cmd is undefined for non-aws
+        await webex.internal.encryption.kms.uploadCustomerMasterKey({
+          assignedOrgId: 'xx-sds-assdf',
+          customerMasterKey: 'masterKey',
+          customerMasterKeyBackup: 'masterKeyBackup',
         });
 
         assert.equal(spyStub.args[0][0].uri, '/cmk');
         assert.equal(spyStub.args[1][0].uri, '/awsKmsCmk');
+        assert.equal(spyStub.args[1][0].customerMasterKeyBackup, undefined);
+        assert.equal(spyStub.args[2][0].uri, '/awsKmsCmk');
+        assert.equal(spyStub.args[2][0].customerMasterKeyBackup, 'masterKeyBackup');
+        assert.equal(spyStub.args[3][0].uri, '/cmk');
+        assert.equal(spyStub.args[3][0].customerMasterKeyBackup, undefined);
       });
 
       it('deleteAllCustomerMasterKeys', async () => {

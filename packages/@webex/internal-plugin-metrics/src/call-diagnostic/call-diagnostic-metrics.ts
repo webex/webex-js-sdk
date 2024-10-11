@@ -289,11 +289,14 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       sessionCorrelationId,
     } = options;
     const identifiers: Event['event']['identifiers'] = {
-      correlationId: 'unknown',
+      correlationId: 'unknown', // concerned with setting this to unknown. This will fail diagnostic events parsing because it's not a uuid pattern
     };
 
     if (meeting) {
       identifiers.correlationId = meeting.correlationId;
+      if (meeting.sessionCorrelationId) {
+        identifiers.sessionCorrelationId = meeting.sessionCorrelationId;
+      }
     }
 
     if (sessionCorrelationId) {
@@ -303,6 +306,8 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     if (correlationId) {
       identifiers.correlationId = correlationId;
     }
+
+    // TODO: should we use patterns.uuid to validate correlationId and session correlation id? they will fail the diagnostic events validation pipeline if improperly formatted
 
     if (this.device) {
       const {device} = this;

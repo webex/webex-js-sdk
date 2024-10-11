@@ -5,7 +5,6 @@ import 'jsdom-global/register';
 import {cloneDeep, forEach, isEqual, isUndefined} from 'lodash';
 import sinon from 'sinon';
 import * as InternalMediaCoreModule from '@webex/internal-media-core';
-import * as RtcMetricsModule from '@webex/plugin-meetings/src/rtcMetrics';
 import * as RemoteMediaManagerModule from '@webex/plugin-meetings/src/multistream/remoteMediaManager';
 import StateMachine from 'javascript-state-machine';
 import uuid from 'uuid';
@@ -307,7 +306,7 @@ describe('plugin-meetings', () => {
           assert.equal(meeting.resource, uuid2);
           assert.equal(meeting.deviceUrl, uuid3);
           assert.equal(meeting.correlationId, correlationId);
-          assert.deepEqual(meeting.callStateForMetrics, {correlationId});
+          assert.deepEqual(meeting.callStateForMetrics, {correlationId, sessionCorrelationId: ''});
           assert.deepEqual(meeting.meetingInfo, {});
           assert.instanceOf(meeting.members, Members);
           assert.calledOnceWithExactly(
@@ -331,6 +330,7 @@ describe('plugin-meetings', () => {
           assert.isNull(meeting.partner);
           assert.isNull(meeting.type);
           assert.isNull(meeting.owner);
+          assert.isUndefined(meeting.isoLocalClientMeetingJoinTime);
           assert.isNull(meeting.hostId);
           assert.isNull(meeting.policy);
           assert.instanceOf(meeting.meetingRequest, MeetingRequest);
@@ -375,7 +375,7 @@ describe('plugin-meetings', () => {
             }
           );
           assert.equal(newMeeting.correlationId, newMeeting.id);
-          assert.deepEqual(newMeeting.callStateForMetrics, {correlationId: newMeeting.id});
+          assert.deepEqual(newMeeting.callStateForMetrics, {correlationId: newMeeting.id, sessionCorrelationId: ''});
         });
 
         it('correlationId can be provided in callStateForMetrics', () => {
@@ -400,6 +400,37 @@ describe('plugin-meetings', () => {
           assert.equal(newMeeting.correlationId, uuid4);
           assert.deepEqual(newMeeting.callStateForMetrics, {
             correlationId: uuid4,
+            joinTrigger: 'fake-join-trigger',
+            loginType: 'fake-login-type',
+            sessionCorrelationId: '',
+          });
+        });
+
+        it('sessionCorrelationId can be provided in callStateForMetrics', () => {
+          const newMeeting = new Meeting(
+            {
+              userId: uuid1,
+              resource: uuid2,
+              deviceUrl: uuid3,
+              locus: {url: url1},
+              destination: testDestination,
+              destinationType: DESTINATION_TYPE.MEETING_ID,
+              callStateForMetrics: {
+                correlationId: uuid4,
+                sessionCorrelationId: uuid1,
+                joinTrigger: 'fake-join-trigger',
+                loginType: 'fake-login-type',
+              },
+            },
+            {
+              parent: webex,
+            }
+          );
+          assert.exists(newMeeting.sessionCorrelationId);
+          assert.equal(newMeeting.sessionCorrelationId, uuid1);
+          assert.deepEqual(newMeeting.callStateForMetrics, {
+            correlationId: uuid4,
+            sessionCorrelationId: uuid1,
             joinTrigger: 'fake-join-trigger',
             loginType: 'fake-login-type',
           });
@@ -1587,6 +1618,10 @@ describe('plugin-meetings', () => {
             sandbox.stub(MeetingUtil, 'joinMeeting').returns(Promise.resolve(joinMeetingResult));
           });
 
+          afterEach(() => {
+            assert.exists(meeting.isoLocalClientMeetingJoinTime);
+          });
+
           it('should join the meeting and return promise', async () => {
             const join = meeting.join({pstnAudioType: 'dial-in'});
             meeting.config.enableAutomaticLLM = true;
@@ -2451,8 +2486,8 @@ describe('plugin-meetings', () => {
         });
 
         it('should create rtcMetrics and pass them to Media.createMediaConnection()', async () => {
-          const fakeRtcMetrics = {id: 'fake rtc metrics object'};
-          const rtcMetricsCtor = sinon.stub(RtcMetricsModule, 'default').returns(fakeRtcMetrics);
+          const setIntervalOriginal = window.setInterval;
+          window.setInterval = sinon.stub().returns(1);
 
           // setup the minimum mocks required for multistream connection
           fakeMediaConnection.createSendSlot = sinon.stub().returns({
@@ -2473,8 +2508,6 @@ describe('plugin-meetings', () => {
             mediaSettings: {},
           });
 
-          assert.calledOnceWithExactly(rtcMetricsCtor, webex, meeting.id, meeting.correlationId);
-
           // check that rtcMetrics was passed to Media.createMediaConnection
           assert.calledOnce(Media.createMediaConnection);
           assert.calledWith(
@@ -2482,10 +2515,10 @@ describe('plugin-meetings', () => {
             true,
             meeting.getMediaConnectionDebugId(),
             meeting.id,
-            sinon.match({
-              rtcMetrics: fakeRtcMetrics,
-            })
+            sinon.match.hasNested('rtcMetrics.webex', webex)
           );
+
+          window.setInterval = setIntervalOriginal;
         });
 
         it('should pass the turn server info to the peer connection', async () => {
@@ -4279,6 +4312,20 @@ describe('plugin-meetings', () => {
             assert.calledTwice(locusMediaRequestStub);
           });
 
+          it('addMedia() works correctly when media is disabled with no streams to publish', async () => {
+            const handleDeviceLoggingSpy = sinon.spy(Meeting, 'handleDeviceLogging');
+            await meeting.addMedia({audioEnabled: false});
+            //calling handleDeviceLogging with audioEnaled as true adn videoEnabled as false
+            assert.calledWith(handleDeviceLoggingSpy,false,true);
+          });
+
+          it('addMedia() works correctly when video is disabled with no streams to publish', async () => {
+            const handleDeviceLoggingSpy = sinon.spy(Meeting, 'handleDeviceLogging');
+            await meeting.addMedia({videoEnabled: false});
+            //calling handleDeviceLogging audioEnabled as true videoEnabled as false
+            assert.calledWith(handleDeviceLoggingSpy,true,false);
+          });
+
           it('addMedia() works correctly when video is disabled with no streams to publish', async () => {
             await meeting.addMedia({videoEnabled: false});
             await simulateRoapOffer();
@@ -4343,6 +4390,14 @@ describe('plugin-meetings', () => {
 
             // and that these were the only /media requests that were sent
             assert.calledTwice(locusMediaRequestStub);
+          });
+
+
+          it('addMedia() works correctly when both shareAudio and shareVideo is disabled with no streams publish', async () => {
+            const handleDeviceLoggingSpy = sinon.spy(Meeting, 'handleDeviceLogging');
+            await meeting.addMedia({shareAudioEnabled: false, shareVideoEnabled: false});
+            //calling handleDeviceLogging with audioEnabled true and videoEnabled as true
+            assert.calledWith(handleDeviceLoggingSpy,true,true);
           });
 
           describe('publishStreams()/unpublishStreams() calls', () => {
@@ -6900,33 +6955,36 @@ describe('plugin-meetings', () => {
       describe('#setCorrelationId', () => {
         it('should set the correlationId and return undefined', () => {
           assert.equal(meeting.correlationId, correlationId);
-          assert.deepEqual(meeting.callStateForMetrics, {correlationId});
+          assert.deepEqual(meeting.callStateForMetrics, {correlationId, sessionCorrelationId: ''});
           meeting.setCorrelationId(uuid1);
           assert.equal(meeting.correlationId, uuid1);
-          assert.deepEqual(meeting.callStateForMetrics, {correlationId: uuid1});
+          assert.deepEqual(meeting.callStateForMetrics, {correlationId: uuid1, sessionCorrelationId: ''});
         });
       });
 
       describe('#updateCallStateForMetrics', () => {
         it('should update the callState, overriding existing values', () => {
-          assert.deepEqual(meeting.callStateForMetrics, {correlationId});
+          assert.deepEqual(meeting.callStateForMetrics, {correlationId, sessionCorrelationId: ''});
           meeting.updateCallStateForMetrics({
             correlationId: uuid1,
+            sessionCorrelationId: uuid3,
             joinTrigger: 'jt',
             loginType: 'lt',
           });
           assert.deepEqual(meeting.callStateForMetrics, {
             correlationId: uuid1,
+            sessionCorrelationId: uuid3,
             joinTrigger: 'jt',
             loginType: 'lt',
           });
         });
 
         it('should update the callState, keeping non-supplied values', () => {
-          assert.deepEqual(meeting.callStateForMetrics, {correlationId});
+          assert.deepEqual(meeting.callStateForMetrics, {correlationId, sessionCorrelationId: ''});
           meeting.updateCallStateForMetrics({joinTrigger: 'jt', loginType: 'lt'});
           assert.deepEqual(meeting.callStateForMetrics, {
             correlationId,
+            sessionCorrelationId: '',
             joinTrigger: 'jt',
             loginType: 'lt',
           });
@@ -9809,6 +9867,11 @@ describe('plugin-meetings', () => {
               actionName: 'canAnnotate',
               requiredDisplayHints: [],
               requiredPolicies: [SELF_POLICY.SUPPORT_ANNOTATION],
+            },
+            {
+              actionName: 'canPollingAndQA',
+              requiredDisplayHints: [],
+              requiredPolicies: [SELF_POLICY.SUPPORT_POLLING_AND_QA],
             },
           ],
           ({

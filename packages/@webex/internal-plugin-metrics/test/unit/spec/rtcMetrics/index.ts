@@ -1,5 +1,5 @@
 import 'jsdom-global/register';
-import RtcMetrics from '@webex/plugin-meetings/src/rtcMetrics';
+import RtcMetrics from '../../../../src/rtcMetrics';
 import MockWebex from '@webex/test-helper-mock-webex';
 import {assert} from '@webex/test-helper-chai';
 import sinon from 'sinon';
@@ -25,6 +25,7 @@ describe('RtcMetrics', () => {
 
   beforeEach(() => {
     clock = sinon.useFakeTimers();
+    window.setInterval = setInterval;
     webex = new MockWebex();
     metrics = new RtcMetrics(webex, 'mock-meeting-id', 'mock-correlation-id');
     anonymizeIpSpy = sandbox.spy(metrics, 'anonymizeIp');

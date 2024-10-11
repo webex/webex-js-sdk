@@ -1,3 +1,4 @@
+import 'jsdom-global/register';
 import sinon from 'sinon';
 import {assert} from '@webex/test-helper-chai';
 import MockWebex from '@webex/test-helper-mock-webex';

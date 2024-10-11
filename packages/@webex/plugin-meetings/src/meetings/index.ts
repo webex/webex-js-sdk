@@ -1091,6 +1091,7 @@ export default class Meetings extends WebexPlugin {
    * @param {CallStateForMetrics} callStateForMetrics - information about call state for metrics
    * @param {Object} [meetingInfo] - Pre-fetched complete meeting info
    * @param {String} [meetingLookupUrl] - meeting info prefetch url
+   * @param {string} sessionCorrelationId - the optional specified sessionCorrelationId (callStateForMetrics.sessionCorrelationId) can be provided instead
    * @returns {Promise<Meeting>} A new Meeting.
    * @public
    * @memberof Meetings
@@ -1104,7 +1105,8 @@ export default class Meetings extends WebexPlugin {
     failOnMissingMeetingInfo = false,
     callStateForMetrics: CallStateForMetrics = undefined,
     meetingInfo = undefined,
-    meetingLookupUrl = undefined
+    meetingLookupUrl = undefined,
+    sessionCorrelationId: string = undefined
   ) {
     // Validate meeting information based on the provided destination and
     // type. This must be performed prior to determining if the meeting is
@@ -1113,6 +1115,10 @@ export default class Meetings extends WebexPlugin {
 
     if (correlationId) {
       callStateForMetrics = {...(callStateForMetrics || {}), correlationId};
+    }
+
+    if (sessionCorrelationId) {
+      callStateForMetrics = {...(callStateForMetrics || {}), sessionCorrelationId};
     }
 
     return (

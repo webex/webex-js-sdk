@@ -1,3 +1,4 @@
+import 'jsdom-global/register';
 import SendSlotManager from '@webex/plugin-meetings/src/multistream/sendSlotManager';
 import { LocalStream, MediaType, MultistreamRoapMediaConnection } from "@webex/internal-media-core";
 import {expect} from '@webex/test-helper-chai';
