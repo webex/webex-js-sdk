@@ -188,6 +188,58 @@ describe('plugin-device', () => {
         device.set('registered', true);
       };
 
+      it('If-None-Match header is added if etag is set', async () => {
+        setup();
+
+        device.set('etag', 'etag-value');
+
+        const result = device.refresh();
+
+        await result;
+
+        assert.deepEqual(requestSpy.args[0][0].headers, {
+          'If-None-Match': 'etag-value',
+        });
+      });
+
+      it('If-None-Match header is not added if etag is not set', async () => {
+        setup();
+
+        const result = device.refresh();
+
+        await result;
+
+        assert.deepEqual(requestSpy.args[0][0].headers, {});
+      });
+
+      it('uses the energy forecast config to append upstream services to the outgoing call', async () => {
+        setup({energyForecast: true});
+        device.setEnergyForecastConfig(true);
+
+        await device.register();
+
+        assert.calledWith(
+          requestSpy,
+          sinon.match({
+            qs: {includeUpstreamServices: 'all,energyforecast'},
+          })
+        );
+      });
+
+      it('uses the energy forecast config to not append upstream services to the outgoing call', async () => {
+        setup({energyForecast: true});
+        device.setEnergyForecastConfig(false);
+
+        await device.register();
+
+        assert.calledWith(
+          requestSpy,
+          sinon.match({
+            qs: {includeUpstreamServices: 'all'},
+          })
+        );
+      });
+
       it('calls request with the expected properties when includeDetails is specified', async () => {
         setup();
 
