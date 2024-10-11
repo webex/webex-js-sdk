@@ -64,8 +64,8 @@ To consume the latest stable version of the Calling SDK one can use NPM or CDN.
 ```
 # CDN
 ```javascript
-  <script src="../webexcc.min.js"></script>
+  <script src="../contact-center.min.js"></script>
 ```
 
 ### Kitchen Sink App
-To test Contact Center SDK API, use this Kitchen Sink app: https://webex.github.io/webex-js-sdk/samples/plugin-cc/
+To test Contact Center SDK API, use this Kitchen Sink app: https://webex.github.io/webex-js-sdk/samples/contact-center/

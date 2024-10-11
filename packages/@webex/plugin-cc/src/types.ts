@@ -1,33 +1,8 @@
-export enum HTTP_METHODS {
-  GET = 'GET',
-  POST = 'POST',
-  PATCH = 'PATCH',
-  PUT = 'PUT',
-  DELETE = 'DELETE',
-}
-
-type WebexRequestPayload = {
-  method?: HTTP_METHODS;
-  uri?: string;
-  addAuthHeader?: boolean;
-  headers?: {
-    [key: string]: string | null;
-  };
-  body?: object;
-  statusCode?: number;
-  json?: boolean;
-};
+import {ServiceHost} from 'packages/calling/dist/types/SDKConnector/types';
+import {WebexRequestPayload} from 'packages/calling/dist/types/common/types';
 
 type Listener = (e: string, data?: unknown) => void;
 type ListenerOff = (e: string) => void;
-
-type ServiceHost = {
-  host: string;
-  ttl: number;
-  priority: number;
-  id: string;
-  homeCluster?: boolean;
-};
 
 export interface CCPluginConfig {
   allowMultiLogin: boolean;
