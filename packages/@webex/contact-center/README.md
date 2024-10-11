@@ -39,7 +39,7 @@ yarn build:local
 ## Testing
 
 ```bash
- yarn workspace @webex/contact-center run test
+ yarn workspace @webex/contact-center run test:unit
 ```
 
 ## Samples 
@@ -64,7 +64,7 @@ To consume the latest stable version of the Calling SDK one can use NPM or CDN.
 ```
 # CDN
 ```javascript
-  <script src="../contact-center.min.js"></script>
+  <script src="../webexcc.min.js"></script>
 ```
 
 ### Kitchen Sink App

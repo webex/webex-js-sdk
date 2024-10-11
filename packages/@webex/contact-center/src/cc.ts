@@ -1,10 +1,10 @@
 import {WebexPlugin} from '@webex/webex-core';
-import {CCConfig, IContactCenter, WebexSDK} from './types';
+import {CCPluginConfig, IContactCenter, WebexSDK} from './types';
 import {WCC_API_GATEWAY} from './constants';
 
 export default class ContactCenter extends WebexPlugin implements IContactCenter {
   namespace = 'WebexCC';
-  $config: CCConfig;
+  $config: CCPluginConfig;
   $webex: WebexSDK;
   wccApiUrl: string;
 

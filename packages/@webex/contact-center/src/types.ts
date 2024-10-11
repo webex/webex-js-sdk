@@ -29,20 +29,18 @@ type ServiceHost = {
   homeCluster?: boolean;
 };
 
-export interface CCConfig {
-  cc: {
-    allowMultiLogin: boolean;
+export interface CCPluginConfig {
+  allowMultiLogin: boolean;
+  clientType: string;
+  isKeepAliveEnabled: boolean;
+  force: boolean;
+  metrics: {
+    clientName: string;
     clientType: string;
-    isKeepAliveEnabled: boolean;
-    force: boolean;
-    metrics: {
-      clientName: string;
-      clientType: string;
-    };
-    logging: {
-      enable: boolean;
-      verboseEvents: boolean;
-    };
+  };
+  logging: {
+    enable: boolean;
+    verboseEvents: boolean;
   };
 }
 
@@ -108,7 +106,7 @@ export interface IContactCenter {
   /**
    * @ignore
    */
-  $config: CCConfig;
+  $config: CCPluginConfig;
   /**
    * @ignore
    */
