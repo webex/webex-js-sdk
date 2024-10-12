@@ -1,4 +1,5 @@
 /* eslint-disable no-console */
+import {HTTP_METHODS, WebexSDK} from '../types';
 import {
   DesktopProfileResponse,
   ListAuxCodesResponse,
@@ -10,10 +11,12 @@ import {AGENT_PROFILE_BASE_URL} from './constants';
 export default class AgentProfileService {
   ciUserId: string;
   orgId: string;
+  webex: WebexSDK;
 
-  constructor(ciUserId: string, orgId: string) {
+  constructor(ciUserId: string, orgId: string, webex: WebexSDK) {
     this.ciUserId = ciUserId;
     this.orgId = orgId;
+    this.webex = webex;
   }
 
   /**
@@ -30,7 +33,7 @@ export default class AgentProfileService {
       const URL = `${AGENT_PROFILE_BASE_URL}${orgId}/user/by-ci-user-id/${ciUserId}`;
       console.log('getUserUsingCI api called successfully.');
 
-      return Promise.resolve(this.makeGETRequest(URL));
+      return Promise.resolve(await this.makeGETRequest(URL));
     } catch (error) {
       console.error('Error while calling getUserUsingCI API', error);
 
@@ -55,7 +58,7 @@ export default class AgentProfileService {
 
       const URL = `${AGENT_PROFILE_BASE_URL}${orgId}/agent-profile/${desktopProfileId}`;
 
-      return Promise.resolve(this.makeGETRequest(URL));
+      return Promise.resolve(await this.makeGETRequest(URL));
     } catch (error) {
       console.error('Error while calling retrieveDesktopProfileById API', error);
 
@@ -130,11 +133,8 @@ export default class AgentProfileService {
   public async makeGETRequest(URL: string): Promise<any> {
     try {
       const response = await this.webex.request({
-        method: 'GET',
-        uri: {URL},
-        headers: {
-          Accept: 'application/json',
-        },
+        method: HTTP_METHODS.GET,
+        uri: URL,
       });
 
       return response;

@@ -23,6 +23,7 @@ export interface UserRequest {
  */
 
 export interface UserResponse {
+  // [x: string]: any;
   /**
    * Identifier for a Desktop Profile.
    */
@@ -63,6 +64,7 @@ export interface DesktopProfileRequest {
  * @public
  */
 export interface DesktopProfileResponse {
+  [x: string]: any;
   /**
    * Specify the teams list that the agents can select from the Agent drop-down list on the Agent Desktop.
    */
@@ -133,6 +135,7 @@ export interface ListTeamsRequest {
  * @public
  */
 export interface ListTeamsResponse {
+  [x: string]: any;
   /**
    * ID of the team.
    */
@@ -200,6 +203,7 @@ export interface ListAuxCodesRequest {
  */
 
 export interface ListAuxCodesResponse {
+  [x: string]: any;
   /**
    * ID of the Auxiliary Code.
    */

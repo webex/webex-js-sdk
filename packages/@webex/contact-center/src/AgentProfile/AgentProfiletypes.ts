@@ -1,3 +1,10 @@
+import {
+  DesktopProfileResponse,
+  ListAuxCodesResponse,
+  ListTeamsResponse,
+  UserResponse,
+} from '../AgentProfileService/AgentProfileService.types';
+
 /**
  * Represents the request to a AgentProfile.
  *
@@ -22,19 +29,19 @@ export interface AgentProfileRequest {
  */
 export interface AgentProfileResponse {
   /**
-   * Represents teams of an Logged in Agent.
+   * Represents details of a user.
    */
-  teams: string[];
+  userDetails: UserResponse;
   /**
-   * Represent loginOptions of an Logged in Agent.
+   * Represents desktop profile of an agent.
    */
-  loginOptions: string[];
+  agentDesktopProfile: DesktopProfileResponse;
   /**
-   * Represent idleCodes of an Logged in Agent.
+   * Represents list of teams of an agent.
    */
-  idleCodes: string[];
+  teamsList: ListTeamsResponse;
   /**
-   * Represent wrapUpCodes of an Logged in Agent.
+   * Represents list of Aux codes of an agent.
    */
-  wrapUpCodes: string[];
+  auxCodesList: ListAuxCodesResponse;
 }
