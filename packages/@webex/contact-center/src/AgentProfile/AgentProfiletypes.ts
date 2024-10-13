@@ -31,17 +31,17 @@ export interface AgentProfileResponse {
   /**
    * Represents details of a user.
    */
-  userDetails: UserResponse;
+  userDetails: UserResponse['body'];
   /**
    * Represents desktop profile of an agent.
    */
-  agentDesktopProfile: DesktopProfileResponse;
+  agentDesktopProfile: DesktopProfileResponse['body'];
   /**
    * Represents list of teams of an agent.
    */
-  teamsList: ListTeamsResponse;
+  teamsList: ListTeamsResponse['body'];
   /**
    * Represents list of Aux codes of an agent.
    */
-  auxCodesList: ListAuxCodesResponse;
+  auxCodesList: ListAuxCodesResponse['body']['data'];
 }

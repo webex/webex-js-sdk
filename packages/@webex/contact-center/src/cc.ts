@@ -28,10 +28,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     // to get Agent Profile by passing CI Id as a parameter.
     const ciUserId = '01bb0021-6ede-49d4-a47d-fd5af9752665';
     // const orgId = '17842240-df69-4620-87d7-e48fd178f79b';
-    const agentProfile = new AgentProfile(ciUserId, this.$webex, this.agentProfile);
-    console.log('invoking agentProfile method!');
+    const agentProfile = new AgentProfile(ciUserId, this.$webex, this.wccAPIURL);
     this.agentProfile = await agentProfile.getAgentProfile(ciUserId);
-    console.log('agent profile from register method is', this.agentProfile);
 
     return new Promise((resolve, reject) => {
       setTimeout(() => {

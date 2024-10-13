@@ -6,17 +6,18 @@ import {
   ListTeamsResponse,
   UserResponse,
 } from './AgentProfileService.types';
-import {AGENT_PROFILE_BASE_URL} from './constants';
 
 export default class AgentProfileService {
   ciUserId: string;
   orgId: string;
   webex: WebexSDK;
+  wccAPIURL: string;
 
-  constructor(ciUserId: string, orgId: string, webex: WebexSDK) {
+  constructor(ciUserId: string, orgId: string, webex: WebexSDK, wccAPIURL: string) {
     this.ciUserId = ciUserId;
     this.orgId = orgId;
     this.webex = webex;
+    this.wccAPIURL = wccAPIURL;
   }
 
   /**
@@ -30,7 +31,7 @@ export default class AgentProfileService {
     try {
       if (!ciUserId || !orgId) Promise.reject(new Error('ciUserId or orgId is undefined'));
 
-      const URL = `${AGENT_PROFILE_BASE_URL}${orgId}/user/by-ci-user-id/${ciUserId}`;
+      const URL = `${this.wccAPIURL}organization/${orgId}/user/by-ci-user-id/${ciUserId}`;
       console.log('getUserUsingCI api called successfully.');
 
       return Promise.resolve(await this.makeGETRequest(URL));
@@ -56,7 +57,7 @@ export default class AgentProfileService {
       if (!orgId || !desktopProfileId)
         Promise.reject(new Error('orgId or desktopProfileId is undefined'));
 
-      const URL = `${AGENT_PROFILE_BASE_URL}${orgId}/agent-profile/${desktopProfileId}`;
+      const URL = `${this.wccAPIURL}organization/${orgId}/agent-profile/${desktopProfileId}`;
 
       return Promise.resolve(await this.makeGETRequest(URL));
     } catch (error) {
@@ -85,7 +86,7 @@ export default class AgentProfileService {
   ): Promise<ListTeamsResponse> {
     try {
       if (!orgId) Promise.reject(new Error('orgId is undefined'));
-      const URL = `${AGENT_PROFILE_BASE_URL}${orgId}/team?page=${page}&pageSize=${pageSize}&filter=id=in=${filter}&attributes=${attributes}`;
+      const URL = `${this.wccAPIURL}organization/${orgId}/team?page=${page}&pageSize=${pageSize}&filter=id=in=${filter}&attributes=${attributes}`;
 
       return Promise.resolve(this.makeGETRequest(URL));
     } catch (error) {
@@ -114,7 +115,7 @@ export default class AgentProfileService {
   ): Promise<ListAuxCodesResponse> {
     try {
       if (!orgId) Promise.reject(new Error('orgId is undefined'));
-      const URL = `${AGENT_PROFILE_BASE_URL}${orgId}/v2/auxiliary-code?page=${page}&pageSize=${pageSize}&filter=id=in=${filter}&attributes=${attributes}`;
+      const URL = `${this.wccAPIURL}organization/${orgId}/v2/auxiliary-code?page=${page}&pageSize=${pageSize}&filter=id=in=${filter}&attributes=${attributes}`;
 
       return Promise.resolve(this.makeGETRequest(URL));
     } catch (error) {
@@ -139,7 +140,7 @@ export default class AgentProfileService {
 
       return response;
     } catch (error) {
-      console.log('Error while making GET Request', error);
+      console.error('Error while making GET Request', error);
       throw new Error(error);
     }
   }

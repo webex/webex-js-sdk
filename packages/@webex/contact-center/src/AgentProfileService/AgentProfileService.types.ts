@@ -23,21 +23,22 @@ export interface UserRequest {
  */
 
 export interface UserResponse {
-  // [x: string]: any;
-  /**
-   * Identifier for a Desktop Profile.
-   */
-  agentProfileId: string;
+  body: {
+    /**
+     * Identifier for a Desktop Profile.
+     */
+    agentProfileId: string;
 
-  /**
-   * This Specify the teams id which got assigned to the user.
-   */
-  teamIds: string[];
+    /**
+     * This Specify the teams id which got assigned to the user.
+     */
+    teamIds: string[];
 
-  /**
-   * Identifier for an user profile which a Contact Center administrator has configured.
-   */
-  userProfileId: string;
+    /**
+     * Identifier for an user profile which a Contact Center administrator has configured.
+     */
+    userProfileId: string;
+  };
 }
 
 /**
@@ -64,36 +65,32 @@ export interface DesktopProfileRequest {
  * @public
  */
 export interface DesktopProfileResponse {
-  [x: string]: any;
-  /**
-   * Specify the teams list that the agents can select from the Agent drop-down list on the Agent Desktop.
-   */
-  buddyTeams: string[];
+  body: {
+    /**
+     * Specify the teams list that the agents can select from the Agent drop-down list on the Agent Desktop.
+     */
+    buddyTeams: string[];
 
-  /**
-   * Specify the Idle codes list that the agents can select in Agent Desktop.
-   */
-  idleCodes: string[];
+    /**
+     * Specify the Idle codes list that the agents can select in Agent Desktop.
+     */
+    idleCodes: string[];
 
-  /**
-   * Specify the queues list that the agents can select from the Queue drop-down list on the Agent Desktop.
-   */
-  queues: string[];
+    /**
+     * Specify the queues list that the agents can select from the Queue drop-down list on the Agent Desktop.
+     */
+    queues: string[];
 
-  /**
-   * Specify the wrap-up codes list that the agents can select when they wrap up a contact.
-   */
-  wrapUpCodes: string[];
+    /**
+     * Specify the wrap-up codes list that the agents can select when they wrap up a contact.
+     */
+    wrapUpCodes: string[];
 
-  /**
-   * Represents the teams that an agent is part of.
-   */
-  teams: string[];
-
-  /**
-   * Represents the voice options of an agent.
-   */
-  loginVoiceOptions: string[];
+    /**
+     * Represents the voice options of an agent.
+     */
+    loginVoiceOptions: string[];
+  };
 }
 
 /**
@@ -135,31 +132,32 @@ export interface ListTeamsRequest {
  * @public
  */
 export interface ListTeamsResponse {
-  [x: string]: any;
-  /**
-   * ID of the team.
-   */
-  id: string;
+  body: {
+    /**
+     * ID of the team.
+     */
+    id: string;
 
-  /**
-   *  Name of the Team.
-   */
-  name: string;
+    /**
+     *  Name of the Team.
+     */
+    name: string;
 
-  /**
-   * Indicates whether the Team is active or not active.
-   */
-  active: boolean;
+    /**
+     * Indicates whether the Team is active or not active.
+     */
+    active: boolean;
 
-  /**
-   * Status indicating whether the team is available to handle customer contacts.
-   */
-  teamStatus: string;
+    /**
+     * Status indicating whether the team is available to handle customer contacts.
+     */
+    teamStatus: string;
 
-  /**
-   * Represent type of the team, it can be of type AGENT or CAPACITY.
-   */
-  teamType: string;
+    /**
+     * Represent type of the team, it can be of type AGENT or CAPACITY.
+     */
+    teamType: string;
+  }[];
 }
 
 /**
@@ -203,59 +201,62 @@ export interface ListAuxCodesRequest {
  */
 
 export interface ListAuxCodesResponse {
-  [x: string]: any;
-  /**
-   * ID of the Auxiliary Code.
-   */
-  id: string;
+  body: {
+    data: {
+      /**
+       * ID of the Auxiliary Code.
+       */
+      id: string;
 
-  /**
-   * Indicates whether the auxiliary code is active or not active.
-   */
-  active: boolean;
+      /**
+       * Indicates whether the auxiliary code is active or not active.
+       */
+      active: boolean;
 
-  /**
-   * Indicates whether this is the default code (true) or not (false).
-   */
-  defaultCode: boolean;
+      /**
+       * Indicates whether this is the default code (true) or not (false).
+       */
+      defaultCode: boolean;
 
-  /**
-   * Indicates whether this is the system default code (true) or not (false).
-   */
-  isSystemCode: boolean;
+      /**
+       * Indicates whether this is the system default code (true) or not (false).
+       */
+      isSystemCode: boolean;
 
-  /**
-   * A short description indicating the context of the code.
-   */
-  description: string;
+      /**
+       * A short description indicating the context of the code.
+       */
+      description: string;
 
-  /**
-   * Name for the Auxiliary Code.
-   */
-  name: string;
+      /**
+       * Name for the Auxiliary Code.
+       */
+      name: string;
 
-  /**
-   * Indicates the work type associated with this code.
-   */
-  workTypeCode: string;
+      /**
+       * Indicates the work type associated with this code.
+       */
+      workTypeCode: string;
 
-  /**
-   * Indicates the work type associated with this code.
-   */
-  workTypeId: string;
+      /**
+       * Indicates the work type associated with this code.
+       */
+      workTypeId: string;
 
-  /**
-   * Creation time (in epoch millis) of this resource.
-   */
-  createdTime: number;
+      /**
+       * Creation time (in epoch millis) of this resource.
+       */
+      createdTime: number;
 
-  /**
-   * Time (in epoch millis) when this resource was last updated.
-   */
-  lastUpdatedTime: number;
+      /**
+       * Time (in epoch millis) when this resource was last updated.
+       */
+      lastUpdatedTime: number;
 
-  /**
-   * The version number (revision count) for the resource.
-   */
-  version: number;
+      /**
+       * The version number (revision count) for the resource.
+       */
+      version: number;
+    }[];
+  };
 }
