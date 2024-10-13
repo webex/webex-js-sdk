@@ -8705,6 +8705,41 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@webex/plugin-cc@workspace:*, @webex/plugin-cc@workspace:packages/@webex/plugin-cc":
+  version: 0.0.0-use.local
+  resolution: "@webex/plugin-cc@workspace:packages/@webex/plugin-cc"
+  dependencies:
+    "@babel/preset-typescript": 7.22.11
+    "@types/jest": 27.4.1
+    "@types/platform": 1.3.4
+    "@typescript-eslint/eslint-plugin": 5.38.1
+    "@typescript-eslint/parser": 5.38.1
+    "@webex/babel-config-legacy": "workspace:*"
+    "@webex/calling": "workspace:*"
+    "@webex/eslint-config-legacy": "workspace:*"
+    "@webex/internal-plugin-mercury": "workspace:*"
+    "@webex/jest-config-legacy": "workspace:*"
+    "@webex/legacy-tools": "workspace:*"
+    "@webex/test-helper-mock-webex": "workspace:*"
+    "@webex/webex-core": "workspace:*"
+    buffer: 6.0.3
+    eslint: ^8.24.0
+    eslint-config-airbnb-base: 15.0.0
+    eslint-config-prettier: 8.3.0
+    eslint-import-resolver-typescript: 2.4.0
+    eslint-plugin-import: 2.25.3
+    eslint-plugin-jsdoc: 38.0.4
+    eslint-plugin-prettier: 4.0.0
+    eslint-plugin-tsdoc: 0.2.14
+    jest: 27.5.1
+    jest-html-reporters: 3.0.11
+    jest-junit: 13.0.0
+    prettier: 2.5.1
+    typedoc: 0.23.26
+    typescript: 4.9.5
+  languageName: unknown
+  linkType: soft
+
 "@webex/plugin-device-manager@workspace:*, @webex/plugin-device-manager@workspace:packages/@webex/plugin-device-manager":
   version: 0.0.0-use.local
   resolution: "@webex/plugin-device-manager@workspace:packages/@webex/plugin-device-manager"
@@ -32918,6 +32953,7 @@ __metadata:
     "@webex/legacy-tools": "workspace:*"
     "@webex/plugin-attachment-actions": "workspace:*"
     "@webex/plugin-authorization": "workspace:*"
+    "@webex/plugin-cc": "workspace:*"
     "@webex/plugin-device-manager": "workspace:*"
     "@webex/plugin-logger": "workspace:*"
     "@webex/plugin-meetings": "workspace:*"
