@@ -150,7 +150,9 @@ const MeetingUtil = {
         ipVersion: MeetingUtil.getIpVersion(meeting.getWebexObject()),
       })
       .then((res) => {
-        // @ts-ignore
+        const parsed = MeetingUtil.parseLocusJoin(res);
+
+        meeting.locusInfo.initialSetup(parsed.locus);
         webex.internal.newMetrics.submitClientEvent({
           name: 'client.locus.join.response',
           payload: {
@@ -161,11 +163,11 @@ const MeetingUtil = {
           },
           options: {
             meetingId: meeting.id,
-            mediaConnections: res.body.mediaConnections,
+            mediaConnections: parsed.mediaConnections,
           },
         });
 
-        return MeetingUtil.parseLocusJoin(res);
+        return parsed;
       });
   },
 
