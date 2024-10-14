@@ -52,6 +52,7 @@ export {default as RequestEventInterceptor} from './interceptors/request-event';
 export {default as RequestLoggerInterceptor} from './interceptors/request-logger';
 export {default as RequestTimingInterceptor} from './interceptors/request-timing';
 export {default as UserAgentInterceptor} from './interceptors/user-agent';
+export {default as ProxyInterceptor} from './interceptors/proxy';
 export {default as WebexTrackingIdInterceptor} from './interceptors/webex-tracking-id';
 export {default as WebexUserAgentInterceptor} from './interceptors/webex-user-agent';
 export {default as RateLimitInterceptor} from './interceptors/rate-limit';
