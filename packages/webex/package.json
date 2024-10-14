@@ -70,7 +70,6 @@
     "@babel/runtime-corejs2": "^7.14.8",
     "@webex/calling": "workspace:*",
     "@webex/common": "workspace:*",
-    "@webex/contact-center": "workspace:*",
     "@webex/internal-plugin-calendar": "workspace:*",
     "@webex/internal-plugin-device": "workspace:*",
     "@webex/internal-plugin-llm": "workspace:*",

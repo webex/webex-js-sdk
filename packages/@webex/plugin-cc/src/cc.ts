@@ -1,15 +1,15 @@
 /* eslint-disable no-console */
 import {WebexPlugin} from '@webex/webex-core';
+import {CCPluginConfig, IContactCenter, WebexSDK} from './types';
 import AgentProfile from './AgentProfile/AgentProfile';
-import {CConfig, IContactCenter, WebexSDK} from './types';
 import {WCC_API_GATEWAY} from './constants';
 import {AgentProfileResponse} from './AgentProfile/AgentProfiletypes';
 
 export default class ContactCenter extends WebexPlugin implements IContactCenter {
-  namespace = 'WebexCC';
-  $config: CCConfig;
+  namespace = 'ContactCenter';
+  $config: CCPluginConfig;
   $webex: WebexSDK;
-  wccAPIURL: string;
+  wccApiUrl: string;
   agentProfile: AgentProfileResponse;
 
   constructor(...args) {
@@ -20,16 +20,14 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     this.$webex = this.webex;
   }
 
-  wccApiUrl: string;
-
   async register(success: boolean): Promise<string> {
-    this.wccAPIURL = this.$webex.internal.services.get(WCC_API_GATEWAY); // Added this change for Ravi's PR, he will move this under different function if needed.
+    this.wccApiUrl = this.$webex.internal.services.get(WCC_API_GATEWAY); // Added this change for Ravi's PR, he will move this under different function if needed.
     // TODO: Mercury Subsciption code should be added as part of this function
     // TODO: Mercury Subsciption code should be added as part of this function
     // Establishing Mercury Connection here to get CI Id, which will be used by getAgentProfile method
     // to get Agent Profile by passing CI Id as a parameter.
     const ciUserId = 'dummy_uuid';
-    const agentProfile = new AgentProfile(ciUserId, this.$webex, this.wccAPIURL);
+    const agentProfile = new AgentProfile(ciUserId, this.$webex, this.wccApiUrl);
     this.agentProfile = await agentProfile.getAgentProfile(ciUserId);
 
     return new Promise((resolve, reject) => {
