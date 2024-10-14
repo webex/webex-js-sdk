@@ -79,6 +79,7 @@ describe('plugin-meetings', () => {
   let locusInfo;
   let services;
   let catalog;
+  let startReachabilityStub;
 
   describe('meetings index', () => {
     beforeEach(() => {
@@ -129,9 +130,7 @@ describe('plugin-meetings', () => {
         logger,
       });
 
-      Object.assign(webex.meetings, {
-        startReachability: sinon.stub().returns(Promise.resolve()),
-      });
+      startReachabilityStub = sinon.stub(webex.meetings, 'startReachability').resolves();
 
       Object.assign(webex.internal, {
         llm: {on: sinon.stub()},
@@ -195,6 +194,34 @@ describe('plugin-meetings', () => {
 
     it('Should trigger h264 download', () => {
       assert.calledOnce(MeetingsUtil.checkH264Support);
+    });
+
+    describe('#startReachability', () => {
+      let gatherReachabilitySpy;
+      let fakeResult = {id: 'fake-result'};
+
+      beforeEach(() => {
+        startReachabilityStub.restore();
+        gatherReachabilitySpy = sinon
+          .stub(webex.meetings.getReachability(), 'gatherReachability')
+          .resolves(fakeResult);
+      });
+
+      it('should gather reachability with default trigger value', async () => {
+        const result = await webex.meetings.startReachability();
+
+        assert.calledOnceWithExactly(gatherReachabilitySpy, 'client');
+        assert.equal(result, fakeResult);
+      });
+
+      it('should gather reachability and pass custom trigger value', async () => {
+        const trigger = 'custom-trigger';
+
+        const result = await webex.meetings.startReachability(trigger);
+
+        assert.calledOnceWithExactly(gatherReachabilitySpy, trigger);
+        assert.equal(result, fakeResult);
+      });
     });
 
     describe('#_toggleUnifiedMeetings', () => {
@@ -726,7 +753,9 @@ describe('plugin-meetings', () => {
 
         const FAKE_USE_RANDOM_DELAY = true;
         const correlationId = 'my-correlationId';
+        const sessionCorrelationId = 'my-session-correlationId';
         const callStateForMetrics = {
+          sessionCorrelationId: 'my-session-correlationId2',
           correlationId: 'my-correlationId2',
           joinTrigger: 'my-join-trigger',
           loginType: 'my-login-type',
@@ -742,11 +771,15 @@ describe('plugin-meetings', () => {
             {},
             correlationId,
             true,
-            callStateForMetrics
+            callStateForMetrics,
+            undefined,
+            undefined,
+            sessionCorrelationId
           );
           assert.calledOnceWithExactly(fakeMeeting.setCallStateForMetrics, {
             ...callStateForMetrics,
             correlationId,
+            sessionCorrelationId,
           });
         });
 
@@ -787,13 +820,14 @@ describe('plugin-meetings', () => {
               undefined,
               meetingInfo,
               'meetingLookupURL',
+              sessionCorrelationId
             ],
             [
               test1,
               test2,
               FAKE_USE_RANDOM_DELAY,
               {},
-              {correlationId},
+              {correlationId, sessionCorrelationId},
               true,
               meetingInfo,
               'meetingLookupURL',
@@ -1692,6 +1726,7 @@ describe('plugin-meetings', () => {
             const expectedMeetingData = {
               correlationId: 'my-correlationId',
               callStateForMetrics: {
+                sessionCorrelationId: '',
                 correlationId: 'my-correlationId',
                 joinTrigger: 'my-join-trigger',
                 loginType: 'my-login-type',

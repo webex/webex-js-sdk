@@ -1,3 +1,4 @@
+import 'jsdom-global/register';
 import {assert, expect} from '@webex/test-helper-chai';
 import Breakouts from '@webex/plugin-meetings/src/breakouts';
 import LoggerProxy from '@webex/plugin-meetings/src/common/logs/logger-proxy';

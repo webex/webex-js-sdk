@@ -17,6 +17,7 @@ import {
   IDeviceInfo,
   RegistrationStatus,
   ServiceData,
+  ServiceIndicator,
   WebexRequestPayload,
 } from '../../common/types';
 import {ISDKConnector, WebexSDK} from '../../SDKConnector/types';
@@ -39,6 +40,7 @@ import {
   DEFAULT_REHOMING_INTERVAL_MIN,
   DEFAULT_REHOMING_INTERVAL_MAX,
   DEFAULT_KEEPALIVE_INTERVAL,
+  REG_TRY_BACKUP_TIMER_VAL_FOR_CC_IN_SEC,
 } from '../constants';
 import {LINE_EVENTS, LineEmitterCallback} from '../line/types';
 import {LineError} from '../../Errors/catalog/LineError';
@@ -73,6 +75,7 @@ export class Registration implements IRegistration {
   private backupMobiusUris: string[];
   private registerRetry = false;
   private reconnectPending = false;
+  private isCCFlow = false;
 
   /**
    */
@@ -85,6 +88,8 @@ export class Registration implements IRegistration {
   ) {
     this.sdkConnector = SDKConnector;
     this.serviceData = serviceData;
+    this.isCCFlow = serviceData.indicator === ServiceIndicator.CONTACT_CENTER;
+
     if (!this.sdkConnector.getWebex()) {
       SDKConnector.setWebex(webex);
     }
@@ -257,8 +262,12 @@ export class Registration implements IRegistration {
 
     let interval = this.getRegRetryInterval(attempt);
 
-    if (timeElapsed + interval > REG_TRY_BACKUP_TIMER_VAL_IN_SEC) {
-      const excessVal = timeElapsed + interval - REG_TRY_BACKUP_TIMER_VAL_IN_SEC;
+    const TIMER_THRESHOLD = this.isCCFlow
+      ? REG_TRY_BACKUP_TIMER_VAL_FOR_CC_IN_SEC
+      : REG_TRY_BACKUP_TIMER_VAL_IN_SEC;
+
+    if (timeElapsed + interval > TIMER_THRESHOLD) {
+      const excessVal = timeElapsed + interval - TIMER_THRESHOLD;
 
       interval -= excessVal;
     }
@@ -681,13 +690,15 @@ export class Registration implements IRegistration {
   private startKeepaliveTimer(url: string, interval: number) {
     let keepAliveRetryCount = 0;
     this.clearKeepaliveTimer();
+    const RETRY_COUNT_THRESHOLD = this.isCCFlow ? 4 : 5;
+
     this.keepaliveTimer = setInterval(async () => {
       const logContext = {
         file: REGISTRATION_FILE,
         method: this.startKeepaliveTimer.name,
       };
       await this.mutex.runExclusive(async () => {
-        if (this.isDeviceRegistered() && keepAliveRetryCount < 5) {
+        if (this.isDeviceRegistered() && keepAliveRetryCount < RETRY_COUNT_THRESHOLD) {
           try {
             const res = await this.postKeepAlive(url);
             log.info(`Sent Keepalive, status: ${res.statusCode}`, logContext);
@@ -720,7 +731,7 @@ export class Registration implements IRegistration {
               {method: this.startKeepaliveTimer.name, file: REGISTRATION_FILE}
             );
 
-            if (abort || keepAliveRetryCount >= 5) {
+            if (abort || keepAliveRetryCount >= RETRY_COUNT_THRESHOLD) {
               this.setStatus(RegistrationStatus.INACTIVE);
               this.clearKeepaliveTimer();
               this.clearFailbackTimer();

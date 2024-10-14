@@ -14,7 +14,7 @@ import config from './config';
 registerInternalPlugin('mercury', Mercury, {
   config,
   onBeforeLogout() {
-    return this.disconnect();
+    return this.logout();
   },
 });
 

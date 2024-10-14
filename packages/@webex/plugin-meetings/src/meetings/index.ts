@@ -765,7 +765,7 @@ export default class Meetings extends WebexPlugin {
     return Promise.all([
       this.fetchUserPreferredWebexSite(),
       this.getGeoHint(),
-      this.startReachability().catch((error) => {
+      this.startReachability('registration').catch((error) => {
         LoggerProxy.logger.error(`Meetings:index#register --> GDM error, ${error.message}`);
       }),
       // @ts-ignore
@@ -967,12 +967,13 @@ export default class Meetings extends WebexPlugin {
 
   /**
    * initializes and starts gathering reachability for Meetings
+   * @param {string} trigger - explains the reason for starting reachability
    * @returns {Promise}
    * @public
    * @memberof Meetings
    */
-  startReachability() {
-    return this.getReachability().gatherReachability();
+  startReachability(trigger = 'client') {
+    return this.getReachability().gatherReachability(trigger);
   }
 
   /**
@@ -1080,6 +1081,7 @@ export default class Meetings extends WebexPlugin {
    * @param {CallStateForMetrics} callStateForMetrics - information about call state for metrics
    * @param {Object} [meetingInfo] - Pre-fetched complete meeting info
    * @param {String} [meetingLookupUrl] - meeting info prefetch url
+   * @param {string} sessionCorrelationId - the optional specified sessionCorrelationId (callStateForMetrics.sessionCorrelationId) can be provided instead
    * @returns {Promise<Meeting>} A new Meeting.
    * @public
    * @memberof Meetings
@@ -1093,7 +1095,8 @@ export default class Meetings extends WebexPlugin {
     failOnMissingMeetingInfo = false,
     callStateForMetrics: CallStateForMetrics = undefined,
     meetingInfo = undefined,
-    meetingLookupUrl = undefined
+    meetingLookupUrl = undefined,
+    sessionCorrelationId: string = undefined
   ) {
     // Validate meeting information based on the provided destination and
     // type. This must be performed prior to determining if the meeting is
@@ -1102,6 +1105,10 @@ export default class Meetings extends WebexPlugin {
 
     if (correlationId) {
       callStateForMetrics = {...(callStateForMetrics || {}), correlationId};
+    }
+
+    if (sessionCorrelationId) {
+      callStateForMetrics = {...(callStateForMetrics || {}), sessionCorrelationId};
     }
 
     return (

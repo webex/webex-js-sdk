@@ -78,6 +78,7 @@ describe('plugin-meetings', () => {
         supportHDV: null,
         canShareWhiteBoard: null,
         enforceVirtualBackground: null,
+        canPollingAndQA: null,
         ...expected,
       };
 
@@ -161,6 +162,7 @@ describe('plugin-meetings', () => {
       'supportHDV',
       'canShareWhiteBoard',
       'enforceVirtualBackground',
+      'canPollingAndQA',
     ].forEach((key) => {
       it(`get and set for ${key} work as expected`, () => {
         const inMeetingActions = new InMeetingActions();

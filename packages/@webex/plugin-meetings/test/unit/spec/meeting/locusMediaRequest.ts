@@ -1,6 +1,7 @@
+import 'jsdom-global/register';
 import sinon from 'sinon';
 import {assert} from '@webex/test-helper-chai';
-import { cloneDeep, defer } from 'lodash';
+import { cloneDeep } from 'lodash';
 
 import MockWebex from '@webex/test-helper-mock-webex';
 import Meetings from '@webex/plugin-meetings';

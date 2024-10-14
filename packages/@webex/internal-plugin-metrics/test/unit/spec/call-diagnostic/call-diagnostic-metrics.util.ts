@@ -235,6 +235,8 @@ describe('internal-plugin-metrics', () => {
   });
 
   describe('getBuildType', () => {
+    const webex = {internal: {metrics: {config: {}}}};
+
     beforeEach(() => {
       process.env.NODE_ENV = 'production';
     });
@@ -246,25 +248,33 @@ describe('internal-plugin-metrics', () => {
       ['https://web.webex.com', true, 'test'],
     ].forEach(([webClientDomain, markAsTestEvent, expected]) => {
       it(`returns expected result for ${webClientDomain}`, () => {
-        assert.deepEqual(getBuildType(webClientDomain, markAsTestEvent as any), expected);
+        assert.deepEqual(getBuildType(webex, webClientDomain, markAsTestEvent as any), expected);
       });
     });
 
     it('returns "test" for NODE_ENV "foo"', () => {
       process.env.NODE_ENV = 'foo';
-      assert.deepEqual(getBuildType('production'), 'test');
+      assert.deepEqual(getBuildType(webex, 'production'), 'test');
     });
 
     it('returns "test" for NODE_ENV "production" and markAsTestEvent = true', () => {
       process.env.NODE_ENV = 'production';
-      assert.deepEqual(getBuildType('my.domain', true), 'test');
+      assert.deepEqual(getBuildType(webex, 'my.domain', true), 'test');
+    });
+
+    it('returns "test" for NODE_ENV "production" when webex.caBuildType = "test"', () => {
+      process.env.NODE_ENV = 'production';
+      assert.deepEqual(
+        getBuildType({internal: {metrics: {config: {caBuildType: 'test'}}}}, 'my.domain'),
+        'test'
+      );
     });
   });
 
   describe('prepareDiagnosticMetricItem', () => {
     let webex: any;
 
-    const check = (eventName: string, expectedEvent: any) => {
+    const check = (eventName: string, expectedEvent: any, expectedUpgradeChannel: string) => {
       const eventPayload = {event: {name: eventName}};
       const item = prepareDiagnosticMetricItem(webex, {
         eventPayload,
@@ -276,6 +286,7 @@ describe('internal-plugin-metrics', () => {
           origin: {
             buildType: 'prod',
             networkType: 'unknown',
+            upgradeChannel: expectedUpgradeChannel
           },
           event: {name: eventName, ...expectedEvent},
         },
@@ -407,19 +418,19 @@ describe('internal-plugin-metrics', () => {
       ],
     ].forEach(([eventName, expectedEvent]) => {
       it(`returns expected result for ${eventName}`, () => {
-        check(eventName as string, expectedEvent);
+        check(eventName as string, expectedEvent, 'gold');
       });
     });
 
-    it('getBuildType returns correct value', () => {
+    it('sets buildType and upgradeChannel correctly', () => {
       const item: any = {
         eventPayload: {
           event: {
             name: 'client.exit.app',
             eventData: {
               markAsTestEvent: true,
-              webClientDomain: 'https://web.webex.com'
-            }
+              webClientDomain: 'https://web.webex.com',
+            },
           },
         },
         type: ['diagnostic-event'],
@@ -428,11 +439,14 @@ describe('internal-plugin-metrics', () => {
       // just submit any event
       prepareDiagnosticMetricItem(webex, item);
       assert.deepEqual(item.eventPayload.origin.buildType, 'test');
+      assert.deepEqual(item.eventPayload.origin.upgradeChannel, 'test');
 
       delete item.eventPayload.origin.buildType;
+      delete item.eventPayload.origin.upgradeChannel;
       item.eventPayload.event.eventData.markAsTestEvent = false;
       prepareDiagnosticMetricItem(webex, item);
       assert.deepEqual(item.eventPayload.origin.buildType, 'prod');
+      assert.deepEqual(item.eventPayload.origin.upgradeChannel, 'gold');
     });
   });
 

@@ -1,5 +1,5 @@
 import 'jsdom-global/register';
-import RtcMetrics from '@webex/plugin-meetings/src/rtcMetrics';
+import RtcMetrics from '../../../../src/rtcMetrics';
 import MockWebex from '@webex/test-helper-mock-webex';
 import {assert} from '@webex/test-helper-chai';
 import sinon from 'sinon';
@@ -25,6 +25,7 @@ describe('RtcMetrics', () => {
 
   beforeEach(() => {
     clock = sinon.useFakeTimers();
+    window.setInterval = setInterval;
     webex = new MockWebex();
     metrics = new RtcMetrics(webex, 'mock-meeting-id', 'mock-correlation-id');
     anonymizeIpSpy = sandbox.spy(metrics, 'anonymizeIp');
@@ -120,4 +121,35 @@ describe('RtcMetrics', () => {
     metrics.addMetrics({ name: 'stats-report', payload: [STATS_WITH_IP] });
     assert.calledOnce(anonymizeIpSpy);
   })
+
+  it('should send metrics on first stats-report', () => {
+    assert.callCount(webex.request, 0);
+
+    metrics.addMetrics(FAKE_METRICS_ITEM);
+    assert.callCount(webex.request, 0);
+
+    // first stats-report should trigger a call to webex.request
+    metrics.addMetrics({ name: 'stats-report', payload: [STATS_WITH_IP] });
+    assert.callCount(webex.request, 1);
+  });
+
+  it('should send metrics on first stats-report after a new connection', () => {
+    assert.callCount(webex.request, 0);
+
+    // first stats-report should trigger a call to webex.request
+    metrics.addMetrics({ name: 'stats-report', payload: [STATS_WITH_IP] });
+    assert.callCount(webex.request, 1);
+
+    // subsequent stats-report doesn't trigger it
+    metrics.addMetrics({ name: 'stats-report', payload: [STATS_WITH_IP] });
+    assert.callCount(webex.request, 1);
+
+    // now, simulate a failure - that triggers a new connection and upload of the metrics
+    metrics.addMetrics(FAILURE_METRICS_ITEM);
+    assert.callCount(webex.request, 2);
+
+    // and another stats-report should trigger another upload of the metrics
+    metrics.addMetrics({ name: 'stats-report', payload: [STATS_WITH_IP] });
+    assert.callCount(webex.request, 3);
+  });
 });
