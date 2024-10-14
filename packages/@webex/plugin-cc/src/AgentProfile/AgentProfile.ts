@@ -38,7 +38,7 @@ export default class AgentProfile {
     try {
       const orgId = await this.webex.credentials.getOrgId();
       if (!ciUserId || !orgId) {
-        console.error('Please provide ciUserId and orgId');
+        this.webex.logger.error(`Please provide ciUserId and orgId`);
         Promise.reject(new Error('Please provide ciUserId and orgId'));
       }
 
@@ -102,7 +102,7 @@ export default class AgentProfile {
 
       return Promise.resolve(this.agentProfile);
     } catch (error) {
-      console.error('Error while fetching agent profile', error);
+      this.webex.logger.error(`Error while fetching agent profile, ${error}`);
 
       return Promise.reject(error);
     }

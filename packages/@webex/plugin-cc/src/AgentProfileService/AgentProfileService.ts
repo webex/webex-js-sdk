@@ -32,11 +32,11 @@ export default class AgentProfileService {
       if (!ciUserId || !orgId) Promise.reject(new Error('ciUserId or orgId is undefined'));
 
       const URL = `${this.wccAPIURL}organization/${orgId}/user/by-ci-user-id/${ciUserId}`;
-      console.log('getUserUsingCI api called successfully.');
+      this.webex.logger.log('getUserUsingCI api called successfully.');
 
       return Promise.resolve(await this.makeGETRequest(URL));
     } catch (error) {
-      console.error('Error while calling getUserUsingCI API', error);
+      this.webex.logger.error(`Error while calling getUserUsingCI API, ${error}`);
 
       return Promise.reject(error);
     }
@@ -61,7 +61,7 @@ export default class AgentProfileService {
 
       return Promise.resolve(await this.makeGETRequest(URL));
     } catch (error) {
-      console.error('Error while calling retrieveDesktopProfileById API', error);
+      this.webex.logger.error(`Error while calling retrieveDesktopProfileById API, ${error}`);
 
       return Promise.reject(error);
     }
@@ -90,7 +90,7 @@ export default class AgentProfileService {
 
       return Promise.resolve(this.makeGETRequest(URL));
     } catch (error) {
-      console.error('Error while calling getListOfTeams API', error);
+      this.webex.logger.error(`Error while calling getListOfTeams API, ${error}`);
 
       return Promise.reject(error);
     }
@@ -119,7 +119,7 @@ export default class AgentProfileService {
 
       return Promise.resolve(this.makeGETRequest(URL));
     } catch (error) {
-      console.error('Error while calling getListOfAuxCodes API', error);
+      this.webex.logger.error(`Error while calling getListOfAuxCodes API, ${error}`);
 
       return Promise.reject(error);
     }
@@ -140,7 +140,7 @@ export default class AgentProfileService {
 
       return response;
     } catch (error) {
-      console.error('Error while making GET Request', error);
+      this.webex.logger.error(`Error while making GET Request, ${error}`);
       throw new Error(error);
     }
   }
