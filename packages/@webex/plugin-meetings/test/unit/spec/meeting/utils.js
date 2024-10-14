@@ -9,7 +9,6 @@ import LoggerConfig from '@webex/plugin-meetings/src/common/logs/logger-config';
 import {SELF_POLICY, IP_VERSION} from '@webex/plugin-meetings/src/constants';
 import MockWebex from '@webex/test-helper-mock-webex';
 import * as BrowserDetectionModule from '@webex/plugin-meetings/src/common/browser-detection';
-import LocusInfo from "../../../../src/locus-info";
 
 describe('plugin-meetings', () => {
   let webex;
