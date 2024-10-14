@@ -44,6 +44,7 @@ export const mercuryConfig = {
    *
    */
   acknowledgementRequired: false,
+  deviceRegistrationRequired: false,
 };
 
 const CCMercury = Mercury.extend({

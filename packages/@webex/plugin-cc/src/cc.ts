@@ -1,6 +1,6 @@
 import {WebexPlugin} from '@webex/webex-core';
 import {CCPluginConfig, IContactCenter, WebexSDK} from './types';
-import {SUBSCRIBE_API, WCC_API_GATEWAY} from './constants';
+import {CCMercuryEvents, SUBSCRIBE_API, WCC_API_GATEWAY} from './constants';
 import CCMercury from './CCMercury';
 
 export default class ContactCenter extends WebexPlugin implements IContactCenter {
@@ -19,6 +19,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   }
 
   register(): Promise<string> {
+    this.$webex.logger.log(`ContactCenter: Registering ${this.$config}`);
     this.wccApiUrl = this.$webex.internal.services.get(WCC_API_GATEWAY);
     this.ccMercury = new CCMercury(
       {},
@@ -42,7 +43,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       }, timeoutDuration);
 
       this.ccMercury.on('event', (event) => {
-        if (event.type === 'Welcome') {
+        if (event.type === CCMercuryEvents.Welcome) {
           this.ciUserId = event.data.agentId;
           // TODO: call get AgentProfile Method here
           clearTimeout(timeout); // Clear the timeout if the Welcome event occurs
