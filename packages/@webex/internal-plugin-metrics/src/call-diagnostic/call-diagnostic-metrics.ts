@@ -631,10 +631,11 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       });
     }
 
-    // otherwise return unkown error
+    // otherwise return unkown error but passing serviceErrorCode and serviceErrorName so that we know the issue
     return this.getErrorPayloadForClientErrorCode({
       clientErrorCode: UNKNOWN_ERROR,
-      serviceErrorCode: UNKNOWN_ERROR,
+      serviceErrorCode: serviceErrorCode || UNKNOWN_ERROR,
+      serviceErrorName: rawError?.name,
       payloadOverrides: rawError.payloadOverrides,
       rawErrorMessage,
       httpStatusCode,

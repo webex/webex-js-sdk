@@ -1452,6 +1452,9 @@ describe('internal-plugin-metrics', () => {
                 name: 'other',
                 category: 'other',
                 errorCode: 9999,
+                errorData: {
+                  errorName: 'Error'
+                },
                 serviceErrorCode: 9999,
                 errorDescription: 'UnknownError',
                 rawErrorMessage: 'bad times',
@@ -1485,7 +1488,7 @@ describe('internal-plugin-metrics', () => {
         assert.deepEqual(webexLoggerLogCalls[2].args, [
           'call-diagnostic-events -> ',
           'CallDiagnosticMetrics: @prepareClientEvent. Generated errors:',
-          `generatedError: {"fatal":true,"shownToUser":false,"name":"other","category":"other","errorCode":9999,"serviceErrorCode":9999,"rawErrorMessage":"bad times","errorDescription":"UnknownError"}`,
+          `generatedError: {"fatal":true,"shownToUser":false,"name":"other","category":"other","errorCode":9999,"errorData":{"errorName":"Error"},"serviceErrorCode":9999,"rawErrorMessage":"bad times","errorDescription":"UnknownError"}`,
         ]);
       });
 
@@ -1523,6 +1526,9 @@ describe('internal-plugin-metrics', () => {
                 name: 'other',
                 category: 'other',
                 errorCode: 9999,
+                errorData: {
+                  errorName: 'Error'
+                },
                 serviceErrorCode: 9999,
                 errorDescription: 'UnknownError',
                 rawErrorMessage: 'bad times',
@@ -1554,7 +1560,7 @@ describe('internal-plugin-metrics', () => {
         assert.deepEqual(webexLoggerLogCalls[2].args, [
           'call-diagnostic-events -> ',
           'CallDiagnosticMetrics: @prepareClientEvent. Generated errors:',
-          `generatedError: {"fatal":true,"shownToUser":false,"name":"other","category":"other","errorCode":9999,"serviceErrorCode":9999,"rawErrorMessage":"bad times","errorDescription":"UnknownError"}`,
+          `generatedError: {"fatal":true,"shownToUser":false,"name":"other","category":"other","errorCode":9999,"errorData":{"errorName":"Error"},"serviceErrorCode":9999,"rawErrorMessage":"bad times","errorDescription":"UnknownError"}`,
         ]);
       });
 
@@ -2234,6 +2240,9 @@ describe('internal-plugin-metrics', () => {
           shownToUser: true,
           serviceErrorCode: 9999,
           errorCode: 9999,
+          errorData: {
+            errorName: 'Error'
+          },
           rawErrorMessage: 'bad times',
         });
       });
