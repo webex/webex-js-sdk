@@ -3,7 +3,7 @@ import Mercury from '@webex/internal-plugin-mercury';
 import MockWebex from '@webex/test-helper-mock-webex';
 import Services from '@webex/webex-core/dist/lib/services/services';
 import CCMercury from '../../../src/CCMercury';
-import { CCMercuryEvents } from '../../../src/constants';
+import { CC_EVENTS } from '../../../src/constants';
 
 describe('CC Tests', () => {
   let webex;
@@ -35,7 +35,7 @@ describe('CC Tests', () => {
       return new Promise((resolve) => {
         setTimeout(() => {
           const event = {
-            type: CCMercuryEvents.Welcome,
+            type: CC_EVENTS.Welcome,
             data: {
               agentId: 'dummy-agent-id'
             }
@@ -56,7 +56,7 @@ describe('CC Tests', () => {
         }, 5000);
 
         webex.cc.ccMercury.on('event', (event) => {
-          if (event.type === CCMercuryEvents.Welcome) {
+          if (event.type === CC_EVENTS.Welcome) {
             clearTimeout(timeout);
             resolve(`Success: CI User ID is ${event.data.agentId}`);
           }

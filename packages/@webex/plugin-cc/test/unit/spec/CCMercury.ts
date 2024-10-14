@@ -3,7 +3,7 @@ import {assert} from '@webex/test-helper-chai';
 import sinon from 'sinon';
 import Mercury from '@webex/internal-plugin-mercury';
 import CCMercury, {mercuryConfig} from '../../../src/CCMercury';
-import {CCMercuryEvents} from '../../../src/constants';
+import {CC_EVENTS} from '../../../src/constants';
 
 describe('plugin-cc CCMercury tests', () => {
   const locusUrl = 'locusUrl';

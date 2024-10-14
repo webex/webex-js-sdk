@@ -1,6 +1,6 @@
 import {WebexPlugin} from '@webex/webex-core';
 import {CCPluginConfig, IContactCenter, WebexSDK} from './types';
-import {CCMercuryEvents, SUBSCRIBE_API, WCC_API_GATEWAY} from './constants';
+import {CC_EVENTS, REGISTER_TIMEOUT, SUBSCRIBE_API, WCC_API_GATEWAY} from './constants';
 import CCMercury from './CCMercury';
 
 export default class ContactCenter extends WebexPlugin implements IContactCenter {
@@ -16,10 +16,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     this.$config = this.config;
     // @ts-ignore
     this.$webex = this.webex;
-  }
-
-  register(): Promise<string> {
-    this.$webex.logger.log(`ContactCenter: Registering ${this.$config}`);
     this.wccApiUrl = this.$webex.internal.services.get(WCC_API_GATEWAY);
     this.ccMercury = new CCMercury(
       {},
@@ -27,6 +23,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         parent: this.$webex,
       }
     );
+  }
+
+  register(): Promise<string> {
+    this.$webex.logger.log(`ContactCenter: Registering ${this.$config}`);
 
     this.ccMercury.registerAndConnect(`${this.wccApiUrl}${SUBSCRIBE_API}`, {
       force: this.$config?.force || true,
@@ -36,18 +36,18 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     });
 
     return new Promise((resolve, reject) => {
-      const timeoutDuration = 20000; // Define your timeout duration here (e.g., 10 seconds)
+      const timeoutDuration = REGISTER_TIMEOUT; // Define your timeout duration here (e.g., 10 seconds)
 
       const timeout = setTimeout(() => {
-        reject(new Error('Timeout: Welcome event did not occur within the expected time frame'));
+        reject(new Error('Subscription Failed: Time out'));
       }, timeoutDuration);
 
       this.ccMercury.on('event', (event) => {
-        if (event.type === CCMercuryEvents.Welcome) {
+        if (event.type === CC_EVENTS.Welcome) {
           this.ciUserId = event.data.agentId;
           // TODO: call get AgentProfile Method here
           clearTimeout(timeout); // Clear the timeout if the Welcome event occurs
-          resolve(`Success: CI User ID is ${this.ciUserId}`);
+          resolve(`Success: CI User ID is ${this.ciUserId}`); // TODO: resolve with AgentProfile after Parv's PR
         }
       });
     });
