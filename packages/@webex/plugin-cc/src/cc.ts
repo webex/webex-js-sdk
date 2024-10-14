@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 import {WebexPlugin} from '@webex/webex-core';
 import {CCPluginConfig, IContactCenter, WebexSDK} from './types';
 import AgentProfile from './AgentProfile/AgentProfile';

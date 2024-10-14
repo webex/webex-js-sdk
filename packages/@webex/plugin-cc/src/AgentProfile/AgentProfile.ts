@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 import {AgentProfileResponse} from './types';
 import AgentProfileService from '../AgentProfileService/AgentProfileService';
 import {

@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 import {WebexSDK, HTTP_METHODS} from '../types';
 import {
   DesktopProfileResponse,
