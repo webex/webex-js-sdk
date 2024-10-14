@@ -250,6 +250,7 @@ const createMeetingSelectElm = document.querySelector('#createMeetingDest');
 const createMeetingActionElm = document.querySelector('#create-meeting-action');
 const meetingsJoinDeviceElm = document.querySelector('#meetings-join-device');
 const meetingsJoinPinElm = document.querySelector('#meetings-join-pin');
+const meetingsGuestName = document.querySelector('#meetings-guest-name');
 const meetingsJoinModeratorElm = document.querySelector('#meetings-join-moderator');
 const meetingsListCollectElm = document.querySelector('#meetings-list-collect');
 const meetingsListMsgElm = document.querySelector('#meetings-list-msg');
@@ -464,12 +465,13 @@ function joinMeeting({withMedia, withDevice} = {withMedia: false, withDevice: fa
 
   const joinOptions = {
     pin: meetingsJoinPinElm.value,
+    alias: meetingsGuestName.value,
     moderator: meetingsJoinModeratorElm.checked,
     moveToResource: false,
     resourceId,
     receiveTranscription: receiveTranscriptionOption
   };
-
+  
   const joinMeetingNow = () => {
     meeting.join(joinOptions)
     .then(() => { // eslint-disable-line

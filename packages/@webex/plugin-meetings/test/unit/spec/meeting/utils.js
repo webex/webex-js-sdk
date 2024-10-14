@@ -138,13 +138,13 @@ describe('plugin-meetings', () => {
         };
 
         MeetingUtil.parseLocusJoin = sinon.stub();
-        await MeetingUtil.joinMeeting(meeting, {alias: 'userName'});
+        await MeetingUtil.joinMeeting(meeting, {alias: 'assigned name'});
 
         assert.calledOnce(meeting.meetingRequest.joinMeeting);
         const parameter = meeting.meetingRequest.joinMeeting.getCall(0).args[0];
 
         assert.equal(parameter.inviteeAddress, 'meetingJoinUrl');
-        assert.equal(parameter.alias, 'userName');
+        assert.equal(parameter.alias, 'assigned name');
       });
 
       it('#Should fallback sipUrl if meetingJoinUrl does not exists', async () => {
@@ -157,13 +157,13 @@ describe('plugin-meetings', () => {
         };
 
         MeetingUtil.parseLocusJoin = sinon.stub();
-        await MeetingUtil.joinMeeting(meeting, {alias: 'userName'});
+        await MeetingUtil.joinMeeting(meeting, {alias: 'assigned name'});
 
         assert.calledOnce(meeting.meetingRequest.joinMeeting);
         const parameter = meeting.meetingRequest.joinMeeting.getCall(0).args[0];
 
         assert.equal(parameter.inviteeAddress, 'sipUri');
-        assert.equal(parameter.alias, 'userName');
+        assert.equal(parameter.alias, 'assigned name');
       });
 
       it('#Should fallback to meetingNumber if meetingJoinUrl/sipUrl  does not exists', async () => {
@@ -176,14 +176,14 @@ describe('plugin-meetings', () => {
         };
 
         MeetingUtil.parseLocusJoin = sinon.stub();
-        await MeetingUtil.joinMeeting(meeting, {alias: 'userName'});
+        await MeetingUtil.joinMeeting(meeting, {alias: 'assigned name'});
 
         assert.calledOnce(meeting.meetingRequest.joinMeeting);
         const parameter = meeting.meetingRequest.joinMeeting.getCall(0).args[0];
 
         assert.isUndefined(parameter.inviteeAddress);
         assert.equal(parameter.meetingNumber, 'meetingNumber');
-        assert.equal(parameter.alias, 'userName');
+        assert.equal(parameter.alias, 'assigned name');
       });
     });
 
