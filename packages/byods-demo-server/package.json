@@ -3,6 +3,7 @@
   "version": "0.0.0",
   "scripts": {
     "build": "npx ts-node src/index.ts",
+    "serve": "node dist/server.js",
     "dev": "NODE_ENV=development npx ts-node ./src",
     "dev:hot": "nodemon --exec \"npm run dev\" --watch ./src -e ts",
     "start": "NODE_ENV=production node -r ./preload.js ./dist",

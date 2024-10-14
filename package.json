@@ -14,7 +14,6 @@
     "./packages/config/*",
     "./packages/legacy/*",
     "./packages/tools/*",
-    "./packages/byods-test-server",
     "./packages/byods-demo-server"
   ],
   "license": "Cisco EULA (https://www.cisco.com/c/en/us/products/end-user-license-agreement.html)",

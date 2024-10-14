@@ -1,6 +1,6 @@
 import express, {Request, Response, NextFunction} from 'express';
 import logger from 'jet-logger';
-import BYODS from '@webex/byods';
+import * as BYODS from '@webex/byods/src/index';
 import 'express-async-errors';
 import path from 'path';
 import helmet from 'helmet';
@@ -11,8 +11,8 @@ import fs from 'fs';
 
 const app = express();
 
-let organizationId = '';
-let sdk = new BYODS({
+let organizationId = 'asdsads';
+let sdk = new BYODS.BYODS({
   clientId: 'your-client-id',
   clientSecret: 'your-client-secret',
   tokenStorageAdapter: undefined,
@@ -77,15 +77,10 @@ app.post('/config', (req: Request, res: Response) => {
     clientSecret,
     tokenStorageAdapter: undefined,
   };
-  sdk = new BYODS(mockSDKConfig);
+  sdk = new BYODS.BYODS(mockSDKConfig);
   organizationId = orgId;
   baseClient = sdk.getClientForOrg(organizationId);
   res.redirect('/data-source');
-});
-
-// Render the token page
-app.get('/token', (req: Request, res: Response) => {
-  renderTemplate(res, 'token', {title: 'Token'});
 });
 
 // Handle token refresh

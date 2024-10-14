@@ -6,21 +6,28 @@
     <link rel="stylesheet" type="text/css" href="/stylesheets/config.css" />
   </head>
   <body>
-    <h1>Configuration Page</h1>
-    <form action="/config" method="post">
-      <div>
-        <label for="clientId">Client ID:</label>
-        <input type="text" id="clientId" name="clientId" required />
-      </div>
-      <div>
-        <label for="clientSecret">Client Secret:</label>
-        <input type="text" id="clientSecret" name="clientSecret" required />
-      </div>
-      <div>
-        <label for="orgId">Client Secret:</label>
-        <input type="text" id="orgId" name="orgId" required />
-      </div>
-      <button type="submit">Submit</button>
-    </form>
+    <header>
+      <h1>{{title}}</h1>
+    </header>
+    <main>
+      <form action="/config" method="post">
+        <div>
+          <label for="clientId">Client ID:</label>
+          <input type="text" id="clientId" name="clientId" required />
+        </div>
+        <div>
+          <label for="clientSecret">Client Secret:</label>
+          <input type="text" id="clientSecret" name="clientSecret" required />
+        </div>
+        <div>
+          <label for="orgId">Organization ID:</label>
+          <input type="text" id="orgId" name="orgId" required />
+        </div>
+        <button type="submit">Submit</button>
+      </form>
+    </main>
+    <footer>
+      <p>&copy; 2023 Cisco</p>
+    </footer>
   </body>
 </html>

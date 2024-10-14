@@ -4,14 +4,34 @@
     <meta charset="UTF-8">
     <title>{{title}}</title>
     <link rel="stylesheet" type="text/css" href="/stylesheets/data-source.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
   </head>
   <body>
     <h1>Data Source Page</h1>
-    <div>
-      <button id="getAllData">Get All Data</button>
-      <button id="addData">Add Data</button>
-      <button id="updateData">Update Data</button>
-      <button id="deleteData">Delete Data</button>
+    <div class="main-container">
+      <div class="data-container">
+        <button id="getAllData">Get All Data</button>
+        
+        <h2>Add Data</h2>
+        <input type="text" id="addName" placeholder="Name" />
+        <input type="text" id="addValue" placeholder="Value" />
+        <button id="addData">Add Data</button>
+        
+        <h2>Update Data</h2>
+        <input type="text" id="updateId" placeholder="ID" />
+        <input type="text" id="updateName" placeholder="Name" />
+        <input type="text" id="updateValue" placeholder="Value" />
+        <button id="updateData">Update Data</button>
+        
+        <h2>Delete Data</h2>
+        <input type="text" id="deleteId" placeholder="ID" />
+        <button id="deleteData">Delete Data</button>
+        
+        <hr class="separator">
+        
+        <h2>Token Management</h2>
+        <button id="refreshToken">Refresh Token</button>
+      </div>
     </div>
     <div id="result"></div>
 
@@ -25,7 +45,9 @@
       });
 
       document.getElementById('addData').addEventListener('click', function() {
-        const data = { name: 'New Data', value: 'newValue' };
+        const name = document.getElementById('addName').value;
+        const value = document.getElementById('addValue').value;
+        const data = { name, value };
         fetch('/api/data-source/add', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -38,7 +60,10 @@
       });
 
       document.getElementById('updateData').addEventListener('click', function() {
-        const data = { id: 1, name: 'Updated Data', value: 'updatedValue' };
+        const id = document.getElementById('updateId').value;
+        const name = document.getElementById('updateName').value;
+        const value = document.getElementById('updateValue').value;
+        const data = { id, name, value };
         fetch('/api/data-source/update', {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
@@ -51,7 +76,7 @@
       });
 
       document.getElementById('deleteData').addEventListener('click', function() {
-        const dataId = 1; // Replace with the actual data ID to delete
+        const dataId = document.getElementById('deleteId').value;
         fetch(`/api/data-source/delete/${dataId}`, {
           method: 'DELETE'
         })
@@ -59,6 +84,12 @@
           .then(data => {
             document.getElementById('result').innerText = JSON.stringify(data, null, 2);
           });
+      });
+
+      document.getElementById('refreshToken').addEventListener('click', function() {
+        fetch('/refresh-token', { method: 'POST' })
+          .then(response => response.text())
+          .then(data => alert(data));
       });
     </script>
   </body>

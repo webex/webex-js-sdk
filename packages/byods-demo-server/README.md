@@ -1,6 +1,6 @@
-## About
+## BYoDS Demo Server
 
-This project was created with [express-generator-typescript](https://github.com/seanpmaxwell/express-generator-typescript).
+This is the package for running the BYoDS demo server. Follow the scripts, to run the server. 
 
 
 ## Available Scripts
@@ -9,27 +9,6 @@ This project was created with [express-generator-typescript](https://github.com/
 
 Run the server in development mode.
 
-### `npm test` or `npm run test:hot` (hot reloading)
-
-Run all unit-tests.
-
-### `npm test -- "name of test file" (i.e. users).`
-
-Run a single unit-test.
-
-### `npm run lint`
-
-Check for linting errors.
-
-### `npm run build`
-
-Build the project for production.
-
-### `npm start`
-
-Run the production build (Must be built first).
-
-
 ## Additional Notes
 
-- If `npm run dev` gives you issues with bcrypt on MacOS you may need to run: `npm rebuild bcrypt --build-from-source`. 
+- If `npm run dev` or `npm run dev:hot` gives you issues with bcrypt on macOS you may need to run: `npm rebuild bcrypt --build-from-source`. 

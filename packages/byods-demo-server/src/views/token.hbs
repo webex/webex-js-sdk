@@ -1,8 +1,0 @@
-<h1>BYODS Demo Server - Token</h1>
-<button id="refreshToken">Refresh Token</button>
-
-<script>
-  document.getElementById('refreshToken').addEventListener('click', function() {
-    fetch('/refresh-token', { method: 'POST' }).then(response => response.text()).then(data => alert(data));
-  });
-</script>

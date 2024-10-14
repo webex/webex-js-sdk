@@ -1,5 +1,4 @@
-import fetch from 'node-fetch';
-import {ApiResponse} from 'http-client/types';
+import {ApiResponse} from '../http-client/types';
 
 export interface HttpRequestInit {
   body?: string | null;
@@ -16,6 +15,8 @@ export interface HttpRequestInit {
  * const response = await request('https://webexapis.com/v1/endpoint', { method: 'GET', headers: {} });
  */
 async function request<T>(url: string, options: HttpRequestInit = {}): Promise<ApiResponse<T>> {
+  // TODO: Fix this issue (which is being tracked in node_fetch) https://github.com/node-fetch/node-fetch/issues/1809
+  const fetch = (await import('node-fetch')).default;
   const response = await fetch(url, options);
 
   if (!response.ok) {
