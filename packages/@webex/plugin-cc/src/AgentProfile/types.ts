@@ -3,7 +3,7 @@ import {
   ListAuxCodesResponse,
   ListTeamsResponse,
   UserResponse,
-} from '../AgentProfileService/AgentProfileService.types';
+} from '../AgentProfileService/types';
 
 /**
  * Represents the request to a AgentProfile.

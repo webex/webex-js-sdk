@@ -1,7 +1,7 @@
 type Enum<T extends Record<string, unknown>> = T[keyof T];
 
 // Define the HTTP_METHODS object
-const HTTP_METHODS = {
+export const HTTP_METHODS = {
   GET: 'GET',
   POST: 'POST',
   PATCH: 'PATCH',
@@ -55,6 +55,7 @@ export interface WebexSDK {
   canAuthorize: boolean;
   credentials: {
     getUserToken: () => Promise<string>;
+    getOrgId: () => Promise<string>;
   };
   ready: boolean;
   request: <T>(payload: WebexRequestPayload) => Promise<T>;

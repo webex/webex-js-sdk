@@ -3,7 +3,7 @@ import {WebexPlugin} from '@webex/webex-core';
 import {CCPluginConfig, IContactCenter, WebexSDK} from './types';
 import AgentProfile from './AgentProfile/AgentProfile';
 import {WCC_API_GATEWAY} from './constants';
-import {AgentProfileResponse} from './AgentProfile/AgentProfiletypes';
+import {AgentProfileResponse} from './AgentProfile/types';
 
 export default class ContactCenter extends WebexPlugin implements IContactCenter {
   namespace = 'ContactCenter';

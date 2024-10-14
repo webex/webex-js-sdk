@@ -1,12 +1,12 @@
 /* eslint-disable no-console */
-import {AgentProfileResponse} from './AgentProfiletypes';
+import {AgentProfileResponse} from './types';
 import AgentProfileService from '../AgentProfileService/AgentProfileService';
 import {
   DesktopProfileResponse,
   ListAuxCodesResponse,
   ListTeamsResponse,
   UserResponse,
-} from '../AgentProfileService/AgentProfileService.types';
+} from '../AgentProfileService/types';
 import {WebexSDK} from '../types';
 import {attributes, page, pageSize} from '../AgentProfileService/constants';
 
