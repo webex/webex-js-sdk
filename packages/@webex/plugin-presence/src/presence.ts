@@ -51,9 +51,13 @@ const Presence: IPresence = WebexPlugin.extend({
    * @returns {undefined}
    */
   initializeWorker(): void {
-    this.webex.once('ready', () => {
+    if (this.webex.ready) {
       this.worker.initialize(this.webex);
-    });
+    } else {
+      this.webex.once('ready', () => {
+        this.worker.initialize(this.webex);
+      });
+    }
   },
 
   /**
