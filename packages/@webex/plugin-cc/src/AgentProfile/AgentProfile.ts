@@ -65,7 +65,6 @@ export default class AgentProfile {
         queues: agentDesktopProfile?.body?.queues || [''],
       };
       const filter = user?.body?.teamIds;
-
       // Call the below two APIs parallel to optimise the Performance.
       const [teamsList, auxCodesList]: [ListTeamsResponse, ListAuxCodesResponse] =
         await Promise.all([
