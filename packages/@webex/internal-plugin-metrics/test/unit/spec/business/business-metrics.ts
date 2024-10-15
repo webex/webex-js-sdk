@@ -86,6 +86,7 @@ describe('internal-plugin-metrics', () => {
         assert.equal(requestCalls.length, 1)
         assert.deepEqual(requestCalls[0], {
           eventPayload: {
+            appType: 'Web Client',
             context: {
               app: {version: 'webex-version'},
               device: {id: 'deviceId'},
@@ -131,7 +132,10 @@ describe('internal-plugin-metrics', () => {
             eventPayload: {
               key: 'callEnd',
               client_timestamp: requestCalls[0].eventPayload.client_timestamp, // This is to bypass time check, which is checked below.
-              bar: 'gee'
+              appType: 'Web Client',
+              value: {
+                bar: 'gee'
+              }
             },
             type: ['business'],
           });
@@ -151,9 +155,21 @@ describe('internal-plugin-metrics', () => {
           assert.deepEqual(requestCalls[0], {
             eventPayload: {
               key: 'foobar',
+              appType: 'Web Client',
               client_timestamp: requestCalls[0].eventPayload.client_timestamp, // This is to bypass time check, which is checked below.
               value: {
-                bar: "gee"
+                bar: "gee",
+                browser: getBrowserName(),
+                browserHeight: window.innerHeight,
+                browserVersion: getBrowserVersion(),
+                browserWidth: window.innerWidth,
+                domain: window.location.hostname,
+                inIframe: false,
+                locale: window.navigator.language,
+                os: getOSNameInternal(),
+                app: {version: 'webex-version'},
+                device: {id: 'deviceId'},
+                locale: 'language',
               }
             },
             type: ['business'],

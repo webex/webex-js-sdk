@@ -19,7 +19,10 @@ export default class BusinessMetrics extends GenericMetrics {
       eventPayload: {
         key: 'callEnd',
         client_timestamp: Date.now(),
-        ...payload,
+        appType: 'Web Client',
+        value: {
+          ...payload,
+        },
       },
     };
 
@@ -45,7 +48,12 @@ export default class BusinessMetrics extends GenericMetrics {
       eventPayload: {
         key: name,
         client_timestamp: Date.now(),
-        value: payload,
+        appType: 'Web Client',
+        value: {
+          ...this.getContext(),
+          ...this.getBrowserDetails(),
+          ...payload,
+        },
       },
     };
 
@@ -64,6 +72,7 @@ export default class BusinessMetrics extends GenericMetrics {
       type: ['business'],
       eventPayload: {
         key: name,
+        appType: 'Web Client',
         client_timestamp: Date.now(),
         context: this.getContext(),
         browserDetails: this.getBrowserDetails(),
