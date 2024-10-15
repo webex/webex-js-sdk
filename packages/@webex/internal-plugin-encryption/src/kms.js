@@ -14,7 +14,7 @@ import {omit} from 'lodash';
 import uuid from 'uuid';
 
 import KMSBatcher, {TIMEOUT_SYMBOL} from './kms-batcher';
-import {KMSError} from './kms-certificate-validation';
+import validateKMS, {KMSError} from './kms-certificate-validation';
 
 const contexts = new WeakMap();
 const kmsDetails = new WeakMap();
