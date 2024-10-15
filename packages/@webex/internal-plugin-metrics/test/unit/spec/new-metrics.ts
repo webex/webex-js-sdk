@@ -11,9 +11,6 @@ describe('internal-plugin-metrics', () => {
       newMetrics: NewMetrics,
     },
     meetings: {
-      meetingCollection: {
-        get: sinon.stub(),
-      },
     },
     request: sinon.stub().resolves({}),
     logger: {
