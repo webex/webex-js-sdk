@@ -151,8 +151,8 @@ const MeetingUtil = {
       })
       .then((res) => {
         const parsed = MeetingUtil.parseLocusJoin(res);
+        meeting.setLocus(parsed);
 
-        meeting.locusInfo.initialSetup(parsed.locus);
         webex.internal.newMetrics.submitClientEvent({
           name: 'client.locus.join.response',
           payload: {
@@ -315,34 +315,25 @@ const MeetingUtil = {
     }
 
     // normal join meeting, scenario A, D
-    return MeetingUtil.joinMeeting(meeting, options)
-      .then((response) => {
-        meeting.setLocus(response);
+    return MeetingUtil.joinMeeting(meeting, options).catch((err) => {
+      // joining a claimed PMR that is not my own, scenario B
+      if (MeetingUtil.isPinOrGuest(err)) {
+        // @ts-ignore
+        webex.internal.newMetrics.submitClientEvent({
+          name: 'client.pin.prompt',
+          options: {
+            meetingId: meeting.id,
+          },
+        });
 
-        return Promise.resolve(response);
-      })
-      .catch((err) => {
-        // joining a claimed PMR that is not my own, scenario B
-        if (MeetingUtil.isPinOrGuest(err)) {
-          // @ts-ignore
-          webex.internal.newMetrics.submitClientEvent({
-            name: 'client.pin.prompt',
-            options: {
-              meetingId: meeting.id,
-            },
-          });
+        // request host pin or non host for unclaimed PMR, start of Scenario C
+        // see https://sqbu-github.cisco.com/WebExSquared/locus/wiki/Locus-Lobby-and--IVR-Feature
+        return Promise.reject(new IntentToJoinError('Error Joining Meeting', err));
+      }
+      LoggerProxy.logger.error('Meeting:util#joinMeetingOptions --> Error joining the call, ', err);
 
-          // request host pin or non host for unclaimed PMR, start of Scenario C
-          // see https://sqbu-github.cisco.com/WebExSquared/locus/wiki/Locus-Lobby-and--IVR-Feature
-          return Promise.reject(new IntentToJoinError('Error Joining Meeting', err));
-        }
-        LoggerProxy.logger.error(
-          'Meeting:util#joinMeetingOptions --> Error joining the call, ',
-          err
-        );
-
-        return Promise.reject(new JoinMeetingError(options, 'Error Joining Meeting', err));
-      });
+      return Promise.reject(new JoinMeetingError(options, 'Error Joining Meeting', err));
+    });
   },
 
   /**
