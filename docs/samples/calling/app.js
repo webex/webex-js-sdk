@@ -448,7 +448,7 @@ function endSecondCall() {
 
 function muteUnmute() {
   if (callTransferObj){
-    callTransferObj.mute(localAudioStream)
+    callTransferObj.mute(localAudioStream, false);
   }
   else {
     call.mute(localAudioStream);
@@ -610,6 +610,7 @@ function createCall(e) {
   });
 
   localAudioStream.on('system-mute-state-change', (systemMuted) => {
+    call.mute(localAudioStream, true);
     if (!localAudioStream.userMuted) {
       muteElm.value = systemMuted && muteElm.value === 'Mute' ? 'Unmute' : 'Mute';
     }

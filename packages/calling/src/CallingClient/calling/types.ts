@@ -290,7 +290,7 @@ export interface ICall extends Eventing<CallEventTypes> {
    *
    * @param localAudioStream - The local audio stream to mute or unmute.
    */
-  mute(localAudioStream: LocalMicrophoneStream): void;
+  mute(localAudioStream: LocalMicrophoneStream, systemInvoked: boolean): void;
 
   /**
    * Fetches the caller information associated with the call.
