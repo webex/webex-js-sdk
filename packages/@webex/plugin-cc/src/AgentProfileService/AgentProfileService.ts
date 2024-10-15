@@ -79,13 +79,13 @@ export default class AgentProfileService {
   public async getListOfTeams(
     orgId: string,
     page?: number,
-    pageSize?: number,
-    filter?: string[],
-    attributes?: string[]
+    pageSize?: number
+    // filter?: string[],
+    // attributes?: string[]
   ): Promise<ListTeamsResponse> {
     try {
       if (!orgId) Promise.reject(new Error('orgId is undefined'));
-      const URL = `${this.wccAPIURL}organization/${orgId}/team?page=${page}&pageSize=${pageSize}&filter=id=in=${filter}&attributes=${attributes}`;
+      const URL = `${this.wccAPIURL}organization/${orgId}/team?page=${page}&pageSize=${pageSize}`;
 
       return Promise.resolve(this.makeGETRequest(URL));
     } catch (error) {
@@ -108,13 +108,13 @@ export default class AgentProfileService {
   public async getListOfAuxCodes(
     orgId: string,
     page?: number,
-    pageSize?: number,
-    filter?: string[],
-    attributes?: string[]
+    pageSize?: number
+    // filter?: string[],
+    // attributes?: string[]
   ): Promise<ListAuxCodesResponse> {
     try {
       if (!orgId) Promise.reject(new Error('orgId is undefined'));
-      const URL = `${this.wccAPIURL}organization/${orgId}/v2/auxiliary-code?page=${page}&pageSize=${pageSize}&filter=id=in=${filter}&attributes=${attributes}`;
+      const URL = `${this.wccAPIURL}organization/${orgId}/v2/auxiliary-code?page=${page}&pageSize=${pageSize}`;
 
       return Promise.resolve(this.makeGETRequest(URL));
     } catch (error) {

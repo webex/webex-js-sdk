@@ -64,12 +64,12 @@ export default class AgentProfile {
         loginVoiceOptions: agentDesktopProfile?.body?.loginVoiceOptions || [''],
         queues: agentDesktopProfile?.body?.queues || [''],
       };
-      const filter = user?.body?.teamIds;
+      // const filter = user?.body?.teamIds;
       // Call the below two APIs parallel to optimise the Performance.
       const [teamsList, auxCodesList]: [ListTeamsResponse, ListAuxCodesResponse] =
         await Promise.all([
-          agentProfileService.getListOfTeams(orgId, page, pageSize, filter, attributes),
-          agentProfileService.getListOfAuxCodes(orgId, page, pageSize, filter, attributes),
+          agentProfileService.getListOfTeams(orgId, page, pageSize),
+          agentProfileService.getListOfAuxCodes(orgId, page, pageSize),
         ]);
 
       for (const team of teamsList.body) {
