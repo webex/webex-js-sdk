@@ -391,8 +391,8 @@ describe('plugin-meetings', () => {
         headers: {
           trackingid: 'trackingId',
         },
-      }
-      let meeting
+      };
+      let meeting;
 
       beforeEach(() => {
         meeting = {
@@ -406,8 +406,8 @@ describe('plugin-meetings', () => {
           locusInfo: {
             initialSetup: sinon.stub(),
           },
-        }
-      })
+        };
+      });
 
       it('#Should call `meetingRequest.joinMeeting', async () => {
         await MeetingUtil.joinMeeting(meeting, {
@@ -494,8 +494,8 @@ describe('plugin-meetings', () => {
       });
 
       it('#Should fallback sipUrl if meetingJoinUrl does not exists', async () => {
-        delete meeting.meetingJoinUrl
-        meeting.sipUri = 'sipUri'
+        delete meeting.meetingJoinUrl;
+        meeting.sipUri = 'sipUri';
         await MeetingUtil.joinMeeting(meeting, {});
 
         assert.calledOnce(meeting.meetingRequest.joinMeeting);
@@ -505,8 +505,8 @@ describe('plugin-meetings', () => {
       });
 
       it('#Should fallback to meetingNumber if meetingJoinUrl/sipUrl  does not exists', async () => {
-        delete meeting.meetingJoinUrl
-        meeting.meetingNumber = 'meetingNumber'
+        delete meeting.meetingJoinUrl;
+        meeting.meetingNumber = 'meetingNumber';
         await MeetingUtil.joinMeeting(meeting, {});
 
         assert.calledOnce(meeting.meetingRequest.joinMeeting);
@@ -519,7 +519,7 @@ describe('plugin-meetings', () => {
       it('should pass in the locusClusterUrl from meetingInfo', async () => {
         meeting.meetingInfo = {
           locusClusterUrl: 'locusClusterUrl',
-        }
+        };
         await MeetingUtil.joinMeeting(meeting, {});
 
         assert.calledOnce(meeting.meetingRequest.joinMeeting);
