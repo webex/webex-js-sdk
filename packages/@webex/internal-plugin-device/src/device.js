@@ -442,12 +442,13 @@ const Device = WebexPlugin.extend({
    * registration utilizes the services plugin to send the request to the
    * **WDM** service.
    *
-   * @param {CatalogDetails} includeDetails - The details to include in the refresh/register request.
+   * @param {Object} options - The options for registration.
+   * @param {CatalogDetails} options.includeDetails - The details to include in the refresh/register request.
    * @returns {Promise<void, Error>}
    */
   @oneFlight
   @waitForValue('@')
-  register(includeDetails = CatalogDetails.all) {
+  register({includeDetails = CatalogDetails.all}) {
     this.logger.info('device: registering');
 
     this.webex.internal.newMetrics.callDiagnosticMetrics.setDeviceInfo(this);

@@ -738,6 +738,12 @@ export default class Meetings extends WebexPlugin {
   /**
    * Do some pre-initialization before the full registration is done.
    *
+   * Fetches the user preferred webex site, gets the geo hint, starts reachability,
+   * and registers the device.
+   *
+   * These are the parts of meetings registration that can be done with a "fake"
+   * guest token (for use with the embedded interstitial flow).
+   *
    * @returns {Promise}
    * @public
    * @memberof Meetings
@@ -792,8 +798,10 @@ export default class Meetings extends WebexPlugin {
   }
 
   /**
-   * Explicitly sets up the meetings plugin by registering
-   * the device, connecting to mercury, and listening for locus events.
+   * Explicitly sets up the meetings plugin by connecting to mercury
+   * and listening for locus events. If preregister is set to true
+   * (or is not specified), then the preregister function will be
+   * called before registering.
    *
    * @param {boolean} [preregister=true] if false, will not preregister
    * @returns {Promise}
