@@ -41,9 +41,6 @@ tasks/selenium
 .yarn/install-state.gz
 .sauce.tid
 browsers.processed.js
-docs/samples/webex.min.js
-docs/samples/webex.min.js.map
-docs/samples/meetings.min.js.map
 coverage
 
 # patch-package
