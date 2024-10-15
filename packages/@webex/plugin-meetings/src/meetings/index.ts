@@ -1,4 +1,5 @@
 /* eslint no-shadow: ["error", { "allow": ["eventType"] }] */
+import {cloneDeep} from 'lodash';
 import '@webex/internal-plugin-mercury';
 import '@webex/internal-plugin-conversation';
 import '@webex/internal-plugin-metrics';
@@ -133,6 +134,21 @@ class MediaLogger {
  */
 
 /**
+ * Object containing only the most basic information about a meeting.
+ * This is the information that is kept even after the meeting is deleted from the MeetingCollection
+ */
+export type BasicMeetingInformation = {
+  allowMediaInLobby: boolean;
+  correlationId: string;
+  environment: string;
+  id: string;
+  locusUrl: string;
+  locusInfo: any; // it's only a very small subset of the locus info, see what's populated in the destroy() method
+  meetingInfo: any;
+  sessionCorrelationId: string;
+};
+
+/**
  * Maintain a cache of meetings and sync with services.
  * @class
  */
@@ -140,6 +156,7 @@ export default class Meetings extends WebexPlugin {
   loggerRequest: any;
   media: any;
   meetingCollection: any;
+  deletedMeetings: Map<string, BasicMeetingInformation>;
   personalMeetingRoom: any;
   preferredWebexSite: any;
   reachability: Reachability;
@@ -190,6 +207,8 @@ export default class Meetings extends WebexPlugin {
     // @ts-ignore
     this.loggerRequest = new LoggerRequest({webex: this.webex});
     this.meetingCollection = new MeetingCollection();
+    this.deletedMeetings = new Map();
+
     /**
      * The PersonalMeetingRoom object to interact with server
      * @instance
@@ -1083,6 +1102,17 @@ export default class Meetings extends WebexPlugin {
   }
 
   /**
+   * Returns basic information about a meeting that exists or
+   * used to exist in the MeetingCollection
+   *
+   * @param {string} meetingId
+   * @returns {BasicMeetingInformation|undefined}
+   */
+  public getBasicMeetingInformation(meetingId: string): BasicMeetingInformation {
+    return this.meetingCollection.get(meetingId) || this.deletedMeetings.get(meetingId);
+  }
+
+  /**
    * @param {Meeting} meeting
    * @param {Object} reason
    * @param {String} type
@@ -1092,6 +1122,25 @@ export default class Meetings extends WebexPlugin {
    */
   private destroy(meeting: Meeting, reason: object) {
     MeetingUtil.cleanUp(meeting);
+    // keep some basic info about the deleted meeting forever
+    this.deletedMeetings.set(meeting.id, {
+      id: meeting.id,
+      allowMediaInLobby: meeting.allowMediaInLobby,
+      correlationId: meeting.correlationId,
+      sessionCorrelationId: meeting.sessionCorrelationId,
+      environment: meeting.environment,
+      locusUrl: meeting.locusUrl,
+      meetingInfo: cloneDeep(meeting.meetingInfo),
+      locusInfo: {
+        // locusInfo can be quite big, so keep just the minimal info
+        sequence: meeting.locusInfo?.sequence,
+        url: meeting.locusInfo?.url,
+        fullState: {
+          lastActive: meeting.locusInfo?.fullState?.lastActive,
+          sessionId: meeting.locusInfo?.fullState?.sessionId,
+        },
+      },
+    });
     this.meetingCollection.delete(meeting.id);
     Trigger.trigger(
       this,

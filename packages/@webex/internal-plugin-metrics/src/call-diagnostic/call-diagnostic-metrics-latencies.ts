@@ -49,7 +49,7 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
   private getMeeting() {
     if (this.meetingId) {
       // @ts-ignore
-      return this.webex.meetings.meetingCollection.get(this.meetingId);
+      return this.webex.meetings.getBasicMeetingInformation(this.meetingId);
     }
 
     return undefined;
