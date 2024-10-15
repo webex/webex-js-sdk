@@ -7,7 +7,7 @@ import {
   UserResponse,
 } from '../AgentProfileService/types';
 import {WebexSDK} from '../types';
-import {attributes, page, pageSize} from '../AgentProfileService/constants';
+import {page, pageSize} from '../AgentProfileService/constants';
 
 export default class AgentProfile {
   ciUserId: string;
