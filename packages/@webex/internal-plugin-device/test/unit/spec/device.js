@@ -247,7 +247,7 @@ describe('plugin-device', () => {
         device.setEnergyForecastConfig(false);
         device.set('registered', true);
 
-        await device.refresh(CatalogDetails.features);
+        await device.refresh({includeDetails: CatalogDetails.features});
 
         assert.calledWith(requestSpy, {
           method: 'PUT',
@@ -269,7 +269,19 @@ describe('plugin-device', () => {
 
         await device.refresh();
 
-        assert.calledWith(registerSpy, CatalogDetails.all);
+        assert.calledWith(registerSpy, {includeDetails: CatalogDetails.all});
+      });
+
+      it('calls register with default includeDetails when empty options passed', async () => {
+        setup();
+
+        const registerSpy = sinon.stub(device, 'register').callsFake(() => Promise.resolve());
+        device.setEnergyForecastConfig(false);
+        device.set('registered', false);
+
+        await device.refresh({});
+
+        assert.calledWith(registerSpy, {includeDetails: CatalogDetails.all});
       });
 
       it('calls register with specified includeDetails when not registered', async () => {
@@ -279,9 +291,9 @@ describe('plugin-device', () => {
         device.setEnergyForecastConfig(false);
         device.set('registered', false);
 
-        await device.refresh(CatalogDetails.websocket);
+        await device.refresh({includeDetails: CatalogDetails.websocket});
 
-        assert.calledWith(registerSpy, CatalogDetails.websocket);
+        assert.calledWith(registerSpy, {includeDetails: CatalogDetails.websocket});
       });
     });
 
@@ -407,7 +419,7 @@ describe('plugin-device', () => {
 
         device.setEnergyForecastConfig(false);
 
-        await device.register(CatalogDetails.features);
+        await device.register({includeDetails: CatalogDetails.features});
 
         assert.calledWith(requestSpy, {
           method: 'POST',
@@ -432,7 +444,7 @@ describe('plugin-device', () => {
 
         await device.register();
 
-        assert.calledWith(refreshSpy, CatalogDetails.all);
+        assert.calledWith(refreshSpy, {includeDetails: CatalogDetails.all});
       });
 
       it('calls refresh with specified includeDetails when registered', async () => {
@@ -445,9 +457,9 @@ describe('plugin-device', () => {
         device.setEnergyForecastConfig(false);
         device.set('registered', true);
 
-        await device.register(CatalogDetails.websocket);
+        await device.register({includeDetails: CatalogDetails.websocket});
 
-        assert.calledWith(refreshSpy, CatalogDetails.websocket);
+        assert.calledWith(refreshSpy, {includeDetails: CatalogDetails.websocket});
       });
     });
 

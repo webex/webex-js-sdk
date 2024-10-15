@@ -367,12 +367,13 @@ const Device = WebexPlugin.extend({
   /**
    * Refresh the current registered device if able.
    *
-   * @param {CatalogDetails} includeDetails - The details to include in the refresh/register request.
+   * @param {Object} options - The options for registration.
+   * @param {CatalogDetails} options.includeDetails - The details to include in the refresh/register request.
    * @returns {Promise<void, Error>}
    */
   @oneFlight
   @waitForValue('@')
-  refresh(includeDetails = CatalogDetails.all) {
+  refresh({includeDetails = CatalogDetails.all} = {}) {
     this.logger.info('device: refreshing');
 
     // Validate that the device can be registered.
@@ -381,7 +382,7 @@ const Device = WebexPlugin.extend({
       if (!this.registered) {
         this.logger.info('device: device not registered, registering');
 
-        return this.register(includeDetails);
+        return this.register({includeDetails});
       }
 
       // Merge body configurations, overriding defaults.
@@ -448,7 +449,7 @@ const Device = WebexPlugin.extend({
    */
   @oneFlight
   @waitForValue('@')
-  register({includeDetails = CatalogDetails.all}) {
+  register({includeDetails = CatalogDetails.all} = {}) {
     this.logger.info('device: registering');
 
     this.webex.internal.newMetrics.callDiagnosticMetrics.setDeviceInfo(this);
@@ -459,7 +460,7 @@ const Device = WebexPlugin.extend({
       if (this.registered) {
         this.logger.info('device: device already registered, refreshing');
 
-        return this.refresh(includeDetails);
+        return this.refresh({includeDetails});
       }
 
       // Merge body configurations, overriding defaults.
