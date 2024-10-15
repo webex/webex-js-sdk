@@ -367,7 +367,7 @@ const Device = WebexPlugin.extend({
   /**
    * Refresh the current registered device if able.
    *
-   * @param {Object} options - The options for registration.
+   * @param {Object} options - The options for refresh.
    * @param {CatalogDetails} options.includeDetails - The details to include in the refresh/register request.
    * @returns {Promise<void, Error>}
    */
