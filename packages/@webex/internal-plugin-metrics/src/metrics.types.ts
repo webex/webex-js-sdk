@@ -115,6 +115,8 @@ export interface DeviceContext {
 
 export type MetricType = 'behavioral' | 'operational' | 'business';
 
+export type Table = 'wbxapp_callend_metrics' | 'business_metrics' | 'business_ucf' | 'default';
+
 type InternalEventPayload = string | number | boolean;
 export type EventPayload = Record<string, InternalEventPayload>;
 export type BehavioralEventPayload = EventPayload; // for compatibilty, can be remove after wxcc-desktop did change their imports.
