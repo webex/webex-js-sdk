@@ -101,6 +101,7 @@ MeetingUtil.joinMeeting = (meeting, options) => {
       resourceId: options.resourceId || null,
       moderator: options.moderator,
       pin: options.pin,
+      alias: options.alias,
       moveToResource: options.moveToResource,
       preferTranscoding: options.preferTranscoding,
       asResourceOccupant: options.asResourceOccupant,

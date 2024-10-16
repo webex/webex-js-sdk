@@ -54,6 +54,7 @@ export default class MeetingRequest extends StatelessWebexPlugin {
    * @param {boolean} options.pin
    * @param {boolean} options.moveToResource
    * @param {Object} options.roapMessage
+   * @param {String} options.alias
    * @returns {Promise}
    */
   async joinMeeting(options: {
@@ -72,6 +73,7 @@ export default class MeetingRequest extends StatelessWebexPlugin {
     meetingNumber: any;
     permissionToken: any;
     preferTranscoding: any;
+    alias?: string;
   }) {
     const {
       asResourceOccupant,
@@ -88,6 +90,7 @@ export default class MeetingRequest extends StatelessWebexPlugin {
       moveToResource,
       roapMessage,
       preferTranscoding,
+      alias,
     } = options;
 
     LoggerProxy.logger.info('Meeting:request#joinMeeting --> Joining a meeting', correlationId);
@@ -112,6 +115,10 @@ export default class MeetingRequest extends StatelessWebexPlugin {
         preferTranscoding: preferTranscoding ?? true,
       },
     };
+
+    if (alias) {
+      body.alias = alias;
+    }
 
     // @ts-ignore
     if (this.webex.meetings.clientRegion) {
