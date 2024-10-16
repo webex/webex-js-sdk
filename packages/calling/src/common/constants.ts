@@ -38,6 +38,7 @@ export const ENTITLEMENT_STANDARD = 'bc-sp-standard';
 export const NATIVE_SIP_CALL_TO_UCM = 'NATIVE_SIP_CALL_TO_UCM';
 export const NATIVE_WEBEX_TEAMS_CALLING = 'NATIVE_WEBEX_TEAMS_CALLING';
 export const BW_XSI_ENDPOINT_VERSION = 'v2.0';
+export const BW_XSI_ENDPOINT_VERSION_WITH_SLASH = 'v2.0/';
 export const BW_XSI_URL = 'broadworksXsiActionsUrl';
 export const WEBEX_CALLING_CONNECTOR_FILE = 'WxCallBackendConnector';
 export const UCM_CONNECTOR_FILE = 'UcmBackendConnector';

@@ -139,7 +139,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
   getIsConvergedArchitectureEnabled({meetingId}: {meetingId?: string}): boolean {
     if (meetingId) {
       // @ts-ignore
-      const meeting = this.webex.meetings.meetingCollection.get(meetingId);
+      const meeting = this.webex.meetings.getBasicMeetingInformation(meetingId);
 
       return meeting?.meetingInfo?.enableConvergedArchitecture;
     }
@@ -245,7 +245,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
 
       if (meetingId) {
         // @ts-ignore
-        const meeting = this.webex.meetings.meetingCollection.get(meetingId);
+        const meeting = this.webex.meetings.getBasicMeetingInformation(meetingId);
         if (meeting?.environment) {
           origin.environment = meeting.environment;
         }
@@ -289,11 +289,18 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       sessionCorrelationId,
     } = options;
     const identifiers: Event['event']['identifiers'] = {
-      correlationId: 'unknown',
+      correlationId: 'unknown', // concerned with setting this to unknown. This will fail diagnostic events parsing because it's not a uuid pattern
     };
 
     if (meeting) {
       identifiers.correlationId = meeting.correlationId;
+      if (meeting.sessionCorrelationId) {
+        identifiers.sessionCorrelationId = meeting.sessionCorrelationId;
+      }
+    }
+
+    if (sessionCorrelationId) {
+      identifiers.sessionCorrelationId = sessionCorrelationId;
     }
 
     if (sessionCorrelationId) {
@@ -303,6 +310,8 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     if (correlationId) {
       identifiers.correlationId = correlationId;
     }
+
+    // TODO: should we use patterns.uuid to validate correlationId and session correlation id? they will fail the diagnostic events validation pipeline if improperly formatted
 
     if (this.device) {
       const {device} = this;
@@ -425,7 +434,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     // events that will most likely happen in join phase
     if (meetingId) {
       // @ts-ignore
-      const meeting = this.webex.meetings.meetingCollection.get(meetingId);
+      const meeting = this.webex.meetings.getBasicMeetingInformation(meetingId);
 
       if (!meeting) {
         console.warn(
@@ -626,10 +635,11 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       });
     }
 
-    // otherwise return unkown error
+    // otherwise return unkown error but passing serviceErrorCode and serviceErrorName so that we know the issue
     return this.getErrorPayloadForClientErrorCode({
       clientErrorCode: UNKNOWN_ERROR,
-      serviceErrorCode: UNKNOWN_ERROR,
+      serviceErrorCode: serviceErrorCode || UNKNOWN_ERROR,
+      serviceErrorName: rawError?.name,
       payloadOverrides: rawError.payloadOverrides,
       rawErrorMessage,
       httpStatusCode,
@@ -661,7 +671,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     } = options;
 
     // @ts-ignore
-    const meeting = this.webex.meetings.meetingCollection.get(meetingId);
+    const meeting = this.webex.meetings.getBasicMeetingInformation(meetingId);
 
     if (!meeting) {
       console.warn(

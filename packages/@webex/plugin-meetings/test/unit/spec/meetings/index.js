@@ -196,6 +196,43 @@ describe('plugin-meetings', () => {
       assert.calledOnce(MeetingsUtil.checkH264Support);
     });
 
+    describe('#getBasicMeetingInformation', () => {
+      beforeEach(() => {
+        sinon.stub(MeetingUtil, 'cleanUp');
+      });
+
+      it('returns correct meeting information', async () => {
+        const meeting = await webex.meetings.createMeeting('test', 'test');
+
+        const meetingIds = {
+          meetingId: meeting.id,
+          correlationId: meeting.correlationId,
+        };
+
+        // before meeting is destroyed - it should return information from the meetingCollection
+        assert.equal(
+          webex.meetings.getBasicMeetingInformation(meetingIds.meetingId).id,
+          meetingIds.meetingId
+        );
+        assert.equal(
+          webex.meetings.getBasicMeetingInformation(meetingIds.meetingId).correlationId,
+          meetingIds.correlationId
+        );
+
+        webex.meetings.destroy(meeting, test1);
+
+        // and it should still return the information after the meeting is destroyed
+        assert.equal(
+          webex.meetings.getBasicMeetingInformation(meetingIds.meetingId).id,
+          meetingIds.meetingId
+        );
+        assert.equal(
+          webex.meetings.getBasicMeetingInformation(meetingIds.meetingId).correlationId,
+          meetingIds.correlationId
+        );
+      });
+    });
+
     describe('#startReachability', () => {
       let gatherReachabilitySpy;
       let fakeResult = {id: 'fake-result'};
@@ -753,7 +790,9 @@ describe('plugin-meetings', () => {
 
         const FAKE_USE_RANDOM_DELAY = true;
         const correlationId = 'my-correlationId';
+        const sessionCorrelationId = 'my-session-correlationId';
         const callStateForMetrics = {
+          sessionCorrelationId: 'my-session-correlationId2',
           correlationId: 'my-correlationId2',
           joinTrigger: 'my-join-trigger',
           loginType: 'my-login-type',
@@ -769,11 +808,15 @@ describe('plugin-meetings', () => {
             {},
             correlationId,
             true,
-            callStateForMetrics
+            callStateForMetrics,
+            undefined,
+            undefined,
+            sessionCorrelationId
           );
           assert.calledOnceWithExactly(fakeMeeting.setCallStateForMetrics, {
             ...callStateForMetrics,
             correlationId,
+            sessionCorrelationId,
           });
         });
 
@@ -814,13 +857,14 @@ describe('plugin-meetings', () => {
               undefined,
               meetingInfo,
               'meetingLookupURL',
+              sessionCorrelationId
             ],
             [
               test1,
               test2,
               FAKE_USE_RANDOM_DELAY,
               {},
-              {correlationId},
+              {correlationId, sessionCorrelationId},
               true,
               meetingInfo,
               'meetingLookupURL',
@@ -1719,6 +1763,7 @@ describe('plugin-meetings', () => {
             const expectedMeetingData = {
               correlationId: 'my-correlationId',
               callStateForMetrics: {
+                sessionCorrelationId: '',
                 correlationId: 'my-correlationId',
                 joinTrigger: 'my-join-trigger',
                 loginType: 'my-login-type',
@@ -1896,17 +1941,23 @@ describe('plugin-meetings', () => {
           assert.exists(webex.meetings.destroy);
         });
         describe('correctly established meeting', () => {
+          let deleteSpy;
           beforeEach(() => {
-            webex.meetings.meetingCollection.delete = sinon.stub().returns(true);
+            deleteSpy = sinon.spy(webex.meetings.meetingCollection, 'delete');
           });
 
-          it('tests the destroy removal from the collection', async () => {
+          it('tests the destroy removal from the collection and storing basic info in deletedMeetings', async () => {
             const meeting = await webex.meetings.createMeeting('test', 'test');
+
+            const meetingIds = {
+              meetingId: meeting.id,
+              correlationId: meeting.correlationId,
+            };
 
             webex.meetings.destroy(meeting, test1);
 
-            assert.calledOnce(webex.meetings.meetingCollection.delete);
-            assert.calledWith(webex.meetings.meetingCollection.delete, meeting.id);
+            assert.calledOnce(deleteSpy);
+            assert.calledWith(deleteSpy, meeting.id);
             assert.calledWith(
               TriggerProxy.trigger,
               sinon.match.instanceOf(Meetings),
@@ -1920,6 +1971,23 @@ describe('plugin-meetings', () => {
                 reason: test1,
               }
             );
+
+            // check that the meeting is stored in deletedMeetings and removed from meetingCollection
+            assert.equal(webex.meetings.deletedMeetings.get(meeting.id).id, meetingIds.meetingId);
+            assert.equal(
+              webex.meetings.deletedMeetings.get(meeting.id).correlationId,
+              meetingIds.correlationId
+            );
+
+            assert.equal(webex.meetings.meetingCollection.get(meeting.id), undefined);
+
+            // and that getBasicMeetingInformation() still returns the meeting info
+            const deletedMeetingInfo = webex.meetings.getBasicMeetingInformation(
+              meetingIds.meetingId
+            );
+
+            assert.equal(deletedMeetingInfo.id, meetingIds.meetingId);
+            assert.equal(deletedMeetingInfo.correlationId, meetingIds.correlationId);
           });
         });
 

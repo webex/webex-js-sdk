@@ -10,6 +10,7 @@ import {
   ClientEventLeaveReason,
   CallDiagnosticUtils,
   CALL_DIAGNOSTIC_CONFIG,
+  RtcMetrics,
 } from '@webex/internal-plugin-metrics';
 import {ClientEvent as RawClientEvent} from '@webex/event-dictionary-ts';
 
@@ -155,7 +156,9 @@ import ControlsOptionsManager from '../controls-options-manager';
 import PermissionError from '../common/errors/permission';
 import {LocusMediaRequest} from './locusMediaRequest';
 import {ConnectionStateHandler, ConnectionStateEvent} from './connectionStateHandler';
-import RtcMetrics from '../rtcMetrics';
+
+// default callback so we don't call an undefined function, but in practice it should never be used
+const DEFAULT_ICE_PHASE_CALLBACK = () => 'JOIN_MEETING_FINAL';
 
 // default callback so we don't call an undefined function, but in practice it should never be used
 const DEFAULT_ICE_PHASE_CALLBACK = () => 'JOIN_MEETING_FINAL';
@@ -227,6 +230,7 @@ export type AddMediaOptions = {
 
 export type CallStateForMetrics = {
   correlationId?: string;
+  sessionCorrelationId?: string;
   joinTrigger?: string;
   loginType?: string;
 };
@@ -742,12 +746,29 @@ export default class Meeting extends StatelessWebexPlugin {
      */
     this.callStateForMetrics = attrs.callStateForMetrics || {};
     const correlationId = attrs.correlationId || attrs.callStateForMetrics?.correlationId;
+    const sessionCorrelationId =
+      attrs.sessionCorrelationId || attrs.callStateForMetrics?.sessionCorrelationId;
+    if (sessionCorrelationId) {
+      LoggerProxy.logger.log(
+        `Meetings:index#constructor --> Initializing the meeting object with session correlation id from app ${correlationId}`
+      );
+      this.callStateForMetrics.sessionCorrelationId = sessionCorrelationId;
+    } else {
+      LoggerProxy.logger.log(
+        `Meetings:index#constructor --> No session correlation id supplied. None will be generated and this field will remain blank`
+      );
+      // TODO: supply a session from the meetings instance
+      this.callStateForMetrics.sessionCorrelationId = '';
+    }
     if (correlationId) {
       LoggerProxy.logger.log(
         `Meetings:index#constructor --> Initializing the meeting object with correlation id from app ${correlationId}`
       );
       this.callStateForMetrics.correlationId = correlationId;
     } else {
+      LoggerProxy.logger.log(
+        `Meetings:index#constructor --> Initializing the meeting object with generated correlation id from sdk ${this.id}`
+      );
       this.callStateForMetrics.correlationId = this.id;
     }
     /**
@@ -1579,6 +1600,22 @@ export default class Meeting extends StatelessWebexPlugin {
    */
   set correlationId(correlationId: string) {
     this.callStateForMetrics.correlationId = correlationId;
+  }
+
+  /**
+   * Getter - Returns callStateForMetrics.sessionCorrelationId
+   * @returns {string}
+   */
+  get sessionCorrelationId() {
+    return this.callStateForMetrics.sessionCorrelationId;
+  }
+
+  /**
+   * Setter - sets callStateForMetrics.sessionCorrelationId
+   * @param {string} sessionCorrelationId
+   */
+  set sessionCorrelationId(sessionCorrelationId: string) {
+    this.callStateForMetrics.sessionCorrelationId = sessionCorrelationId;
   }
 
   /**
@@ -3790,6 +3827,10 @@ export default class Meeting extends StatelessWebexPlugin {
           }),
           canChat: ControlsOptionsUtil.hasPolicies({
             requiredPolicies: [SELF_POLICY.SUPPORT_CHAT],
+            policies: this.selfUserPolicies,
+          }),
+          canPollingAndQA: ControlsOptionsUtil.hasPolicies({
+            requiredPolicies: [SELF_POLICY.SUPPORT_POLLING_AND_QA],
             policies: this.selfUserPolicies,
           }),
           canShareApplication:
