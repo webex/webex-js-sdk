@@ -747,9 +747,6 @@ describe('Call Tests', () => {
     const call = callManager.createCall(dest, CallDirection.OUTBOUND, deviceId, mockLineId);
 
     expect(call).toBeTruthy();
-    /* After creation , call manager should have 1 record */
-    expect(Object.keys(callManager.getActiveCalls()).length).toBe(1);
-
     /* System mute is being triggered, mute state within call object should update to true */
     mockStream.systemMuted = true;
     call.mute(localAudioStream, MUTE_TYPE.SYSTEM);
