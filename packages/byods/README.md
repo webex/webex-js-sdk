@@ -28,7 +28,7 @@ project after some code changes, state them here:
 ```bash
 yarn workspaces foreach --parallel --verbose run build:src
 
-yarn build:local
+yarn build:src
 ```
 
 ## Testing
