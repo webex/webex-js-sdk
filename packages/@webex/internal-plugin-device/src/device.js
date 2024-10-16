@@ -520,7 +520,6 @@ const Device = WebexPlugin.extend({
           return this.processRegistrationSuccess(response);
         })
         .catch((error) => {
-          console.error(error);
           this.webex.internal.metrics.submitClientMetrics(METRICS.JS_SDK_WDM_REGISTRATION_FAILED, {
             fields: {error},
           });
