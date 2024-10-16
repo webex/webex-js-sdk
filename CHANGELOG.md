@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.60.4](https://github.com/webex/webex-js-sdk/compare/v2.60.3...v2.60.4) (2024-10-16)
+
+
+### Bug Fixes
+
+* **plugin-meetings:** added alias as option in joinmeeting ([#3902](https://github.com/webex/webex-js-sdk/issues/3902)) ([afd2ae5](https://github.com/webex/webex-js-sdk/commit/afd2ae5d877a2de4c59557993f08044d0c3274c0))
+
 ### [2.60.3](https://github.com/webex/webex-js-sdk/compare/v2.60.2...v2.60.3) (2024-10-16)
 
 
