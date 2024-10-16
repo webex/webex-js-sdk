@@ -155,6 +155,11 @@ export enum TransferType {
   CONSULT = 'CONSULT',
 }
 
+export enum MUTE_TYPE {
+  USER = 'user_mute',
+  SYSTEM = 'system_mute',
+}
+
 export type ParkContext = {
   isGroupPark: boolean;
   destination: string;
@@ -289,8 +294,9 @@ export interface ICall extends Eventing<CallEventTypes> {
    * Mutes or unmutes the call's local audio stream.
    *
    * @param localAudioStream - The local audio stream to mute or unmute.
+   * @param muteType - Identifies if mute was triggered by system or user.
    */
-  mute(localAudioStream: LocalMicrophoneStream, systemInvoked: boolean): void;
+  mute(localAudioStream: LocalMicrophoneStream, muteType?: MUTE_TYPE): void;
 
   /**
    * Fetches the caller information associated with the call.
