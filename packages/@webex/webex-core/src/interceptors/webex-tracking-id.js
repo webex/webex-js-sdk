@@ -4,7 +4,7 @@
 
 import {Interceptor} from '@webex/http-core';
 
-const sequenceNumbers = new WeakMap();
+export const sequenceNumbers = new Map();
 
 /**
  * @class

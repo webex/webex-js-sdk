@@ -11,9 +11,6 @@ describe('internal-plugin-metrics', () => {
       newMetrics: NewMetrics,
     },
     meetings: {
-      meetingCollection: {
-        get: sinon.stub(),
-      },
     },
     request: sinon.stub().resolves({}),
     logger: {
@@ -86,6 +83,24 @@ describe('internal-plugin-metrics', () => {
       webex.internal.newMetrics.isReadyToSubmitBusinessEvents();
       assert.isDefined(webex.internal.newMetrics.businessMetrics);
     })
+
+    it('passes the table through to the business metrics', () => {
+      assert.isUndefined(webex.internal.newMetrics.businessMetrics)
+      webex.internal.newMetrics.isReadyToSubmitBusinessEvents();
+      assert.isDefined(webex.internal.newMetrics.businessMetrics);
+      webex.internal.newMetrics.businessMetrics.submitBusinessEvent = sinon.stub();
+      webex.internal.newMetrics.submitBusinessEvent({
+        name: 'foobar',
+        payload: {},
+        table: 'test',
+      });
+
+      assert.calledWith(webex.internal.newMetrics.businessMetrics.submitBusinessEvent, {
+        name: 'foobar',
+        payload: {},
+        table: 'test',
+      });
+    });
   
     it('submits Client Event successfully', () => {
       webex.internal.newMetrics.submitClientEvent({

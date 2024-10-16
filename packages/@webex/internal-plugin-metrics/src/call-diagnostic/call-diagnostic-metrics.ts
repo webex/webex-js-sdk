@@ -139,7 +139,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
   getIsConvergedArchitectureEnabled({meetingId}: {meetingId?: string}): boolean {
     if (meetingId) {
       // @ts-ignore
-      const meeting = this.webex.meetings.meetingCollection.get(meetingId);
+      const meeting = this.webex.meetings.getBasicMeetingInformation(meetingId);
 
       return meeting?.meetingInfo?.enableConvergedArchitecture;
     }
@@ -245,7 +245,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
 
       if (meetingId) {
         // @ts-ignore
-        const meeting = this.webex.meetings.meetingCollection.get(meetingId);
+        const meeting = this.webex.meetings.getBasicMeetingInformation(meetingId);
         if (meeting?.environment) {
           origin.environment = meeting.environment;
         }
@@ -430,7 +430,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     // events that will most likely happen in join phase
     if (meetingId) {
       // @ts-ignore
-      const meeting = this.webex.meetings.meetingCollection.get(meetingId);
+      const meeting = this.webex.meetings.getBasicMeetingInformation(meetingId);
 
       if (!meeting) {
         console.warn(
@@ -631,10 +631,11 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       });
     }
 
-    // otherwise return unkown error
+    // otherwise return unkown error but passing serviceErrorCode and serviceErrorName so that we know the issue
     return this.getErrorPayloadForClientErrorCode({
       clientErrorCode: UNKNOWN_ERROR,
-      serviceErrorCode: UNKNOWN_ERROR,
+      serviceErrorCode: serviceErrorCode || UNKNOWN_ERROR,
+      serviceErrorName: rawError?.name,
       payloadOverrides: rawError.payloadOverrides,
       rawErrorMessage,
       httpStatusCode,
@@ -666,7 +667,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     } = options;
 
     // @ts-ignore
-    const meeting = this.webex.meetings.meetingCollection.get(meetingId);
+    const meeting = this.webex.meetings.getBasicMeetingInformation(meetingId);
 
     if (!meeting) {
       console.warn(
