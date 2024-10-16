@@ -58,6 +58,7 @@ export interface WebexSDK {
   };
   ready: boolean;
   request: <T>(payload: WebexRequestPayload) => Promise<T>;
+  once: (event: string, callBack: () => void) => void;
   // internal plugins
   internal: {
     mercury: {
@@ -122,9 +123,8 @@ export interface IContactCenter {
    */
   wccApiUrl: string;
   /**
-   * TODO: This is a dummy function which will be modified by Ravi and he can add description as per use.
-   * This will be public API used for setting up the mercury connection.
+   * This will be public API used for making the CC SDK ready by setting up the cc mercury connection.
    * @param success
    */
-  register(success: boolean): Promise<string>;
+  register(): Promise<string>;
 }

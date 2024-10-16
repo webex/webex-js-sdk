@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 import {WebexPlugin} from '@webex/webex-core';
 import {CCPluginConfig, IContactCenter, WebexSDK} from './types';
 import {CC_EVENTS, REGISTER_TIMEOUT, SUBSCRIBE_API, WCC_API_GATEWAY} from './constants';
@@ -16,12 +17,11 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     this.$config = this.config;
     // @ts-ignore
     this.$webex = this.webex;
-    this.ccMercury = new CCMercury(
-      {},
-      {
+    this.$webex.once('ready', () => {
+      this.ccMercury = new CCMercury({
         parent: this.$webex,
-      }
-    );
+      });
+    });
   }
 
   private establishCCMercuryConnection(): void {
