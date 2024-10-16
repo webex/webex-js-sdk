@@ -20,6 +20,8 @@ describe('internal-plugin-metrics', () => {
 
     beforeEach(() => {
       now = new Date();
+      sinon.createSandbox();
+      sinon.useFakeTimers(now.getTime());
 
       webex = {
         canAuthorize: true,
@@ -114,7 +116,8 @@ describe('internal-plugin-metrics', () => {
           },
           type: ['business'],
         });
-        assert.isNumber(requestCalls[0].eventPayload.client_timestamp)
+        assert.isString(requestCalls[0].eventPayload.client_timestamp)
+        assert.equal(requestCalls[0].eventPayload.client_timestamp, now.toISOString())
       })
 
       describe('when table is provided', () => {
@@ -139,7 +142,8 @@ describe('internal-plugin-metrics', () => {
             },
             type: ['business'],
           });
-          assert.isNumber(requestCalls[0].eventPayload.client_timestamp)
+          assert.isString(requestCalls[0].eventPayload.client_timestamp)
+          assert.equal(requestCalls[0].eventPayload.client_timestamp, now.toISOString())
         });
 
         it('should send correctly shaped business event with table: business_metrics', () => {
@@ -174,7 +178,8 @@ describe('internal-plugin-metrics', () => {
             },
             type: ['business'],
           });
-          assert.isNumber(requestCalls[0].eventPayload.client_timestamp)
+          assert.isString(requestCalls[0].eventPayload.client_timestamp)
+          assert.equal(requestCalls[0].eventPayload.client_timestamp, now.toISOString())
         });
       });
     })
