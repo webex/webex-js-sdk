@@ -44,11 +44,6 @@ export const mercuryConfig = {
    *
    */
   acknowledgementRequired: false,
-  /**
-   * Whether or not to register the device with the websocket
-   *
-   */
-  deviceRegistrationRequired: false,
 };
 
 const CCMercury = Mercury.extend({
@@ -87,8 +82,7 @@ const CCMercury = Mercury.extend({
     });
   },
 
-  initialize(options = {}) {
-    Mercury.prototype.initialize.call(this, options);
+  initialize() {
     this.updateConfig(mercuryConfig);
   },
 
