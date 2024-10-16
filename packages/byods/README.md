@@ -26,9 +26,7 @@ If your project needs some additional steps for the developer to build the
 project after some code changes, state them here:
 
 ```bash
-yarn workspaces foreach --parallel --verbose run build:src
-
-yarn build:src
+yarn workspace @webex/byods run build:src
 ```
 
 ## Testing
