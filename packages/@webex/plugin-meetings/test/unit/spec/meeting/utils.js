@@ -400,12 +400,10 @@ describe('plugin-meetings', () => {
           locusUrl: 'locusUrl',
           meetingRequest: {
             joinMeeting: sinon.stub().returns(
-              Promise.resolve(joinMeetingResponse))
+              Promise.resolve(joinMeetingResponse)),
           },
           getWebexObject: sinon.stub().returns(webex),
-          locusInfo: {
-            initialSetup: sinon.stub(),
-          },
+          setLocus: sinon.stub(),
         };
       });
 
@@ -423,9 +421,9 @@ describe('plugin-meetings', () => {
         assert.equal(parameter.reachability, 'reachability');
         assert.equal(parameter.roapMessage, 'roapMessage');
 
-        assert.calledOnce(meeting.locusInfo.initialSetup)
-        const initialSetupParameter = meeting.locusInfo.initialSetup.getCall(0).args[0];
-        assert.deepEqual(initialSetupParameter, joinMeetingResponse.body.locus)
+        assert.calledOnce(meeting.setLocus)
+        const setLocusParameter = meeting.setLocus.getCall(0).args[0];
+        assert.deepEqual(setLocusParameter, MeetingUtil.parseLocusJoin(joinMeetingResponse))
 
         assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
           name: 'client.locus.join.request',
