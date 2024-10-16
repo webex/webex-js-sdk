@@ -74,7 +74,7 @@ describe('internal-plugin-metrics', () => {
     });
 
     describe('#sendEvent', () => {
-      it('should send correctly shaped business event (check name building and internal tagged event building)', () => {
+      it('should send correctly shaped business event (check name building and internal tagged event building) and default correctly', () => {
         // For some reasons `jest` isn't available when testing form build server - so can't use `jest.fn()` here...
         const requestCalls = [];
         const request = function(arg) { requestCalls.push(arg) }
@@ -86,6 +86,7 @@ describe('internal-plugin-metrics', () => {
         assert.equal(requestCalls.length, 1)
         assert.deepEqual(requestCalls[0], {
           eventPayload: {
+            appType: 'Web Client',
             context: {
               app: {version: 'webex-version'},
               device: {id: 'deviceId'},
@@ -115,6 +116,67 @@ describe('internal-plugin-metrics', () => {
         });
         assert.isNumber(requestCalls[0].eventPayload.client_timestamp)
       })
+
+      describe('when table is provided', () => {
+        it('should send correctly shaped business event with table: wbx_app_callend_metrics and ignore the key name', () => {
+          // For some reasons `jest` isn't available when testing form build server - so can't use `jest.fn()` here...
+          const requestCalls = [];
+          const request = function(arg) { requestCalls.push(arg) }
+
+          businessMetrics.clientMetricsBatcher.request = request;
+          
+          assert.equal(requestCalls.length, 0)
+          businessMetrics.submitBusinessEvent({ name: "foobar", payload: {bar:"gee"}, table: 'wbxapp_callend_metrics' })
+          assert.equal(requestCalls.length, 1)
+          assert.deepEqual(requestCalls[0], {
+            eventPayload: {
+              key: 'callEnd',
+              client_timestamp: requestCalls[0].eventPayload.client_timestamp, // This is to bypass time check, which is checked below.
+              appType: 'Web Client',
+              value: {
+                bar: 'gee'
+              }
+            },
+            type: ['business'],
+          });
+          assert.isNumber(requestCalls[0].eventPayload.client_timestamp)
+        });
+
+        it('should send correctly shaped business event with table: business_metrics', () => {
+          // For some reasons `jest` isn't available when testing form build server - so can't use `jest.fn()` here...
+          const requestCalls = [];
+          const request = function(arg) { requestCalls.push(arg) }
+
+          businessMetrics.clientMetricsBatcher.request = request;
+          
+          assert.equal(requestCalls.length, 0)
+          businessMetrics.submitBusinessEvent({ name: "foobar", payload: {bar:"gee"}, table: 'business_metrics' })
+          assert.equal(requestCalls.length, 1)
+          assert.deepEqual(requestCalls[0], {
+            eventPayload: {
+              key: 'foobar',
+              appType: 'Web Client',
+              client_timestamp: requestCalls[0].eventPayload.client_timestamp, // This is to bypass time check, which is checked below.
+              value: {
+                bar: "gee",
+                browser: getBrowserName(),
+                browserHeight: window.innerHeight,
+                browserVersion: getBrowserVersion(),
+                browserWidth: window.innerWidth,
+                domain: window.location.hostname,
+                inIframe: false,
+                locale: window.navigator.language,
+                os: getOSNameInternal(),
+                app: {version: 'webex-version'},
+                device: {id: 'deviceId'},
+                locale: 'language',
+              }
+            },
+            type: ['business'],
+          });
+          assert.isNumber(requestCalls[0].eventPayload.client_timestamp)
+        });
+      });
     })
   });
 });
