@@ -20,6 +20,7 @@ import {
   CallRtpStats,
   SSResponse,
   TransferType,
+  MUTE_TYPE,
 } from './types';
 import {mediaConnection, getTestUtilsWebex, flushPromises} from '../../common/testUtil';
 import {getCallManager} from './callManager';
@@ -225,10 +226,10 @@ describe('Call Tests', () => {
     expect(call).toBeTruthy();
     /* After creation , call manager should have 1 record */
     expect(Object.keys(callManager.getActiveCalls()).length).toBe(1);
-    call.mute(localAudioStream, false);
+    call.mute(localAudioStream, MUTE_TYPE.USER);
     expect(call.isMuted()).toEqual(true);
     expect(mockStream.setUserMuted).toBeCalledOnceWith(true);
-    call.mute(localAudioStream, false);
+    call.mute(localAudioStream, MUTE_TYPE.USER);
     expect(mockStream.setUserMuted).toBeCalledWith(false);
     expect(call.isMuted()).toEqual(false);
     call.end();
@@ -717,6 +718,92 @@ describe('Call Tests', () => {
       `Did not find a local track while updating media for call ${call.getCorrelationId()}. Will not update media`,
       {file: 'call', method: 'updateMedia'}
     );
+  });
+
+  it('test system mute and user mute different scnearios', async () => {
+    const logSpy = jest.spyOn(log, 'info');
+    webex.request.mockReturnValue({
+      statusCode: 200,
+      body: {
+        device: {
+          deviceId: '8a67806f-fc4d-446b-a131-31e71ea5b010',
+          correlationId: '8a67806f-fc4d-446b-a131-31e71ea5b011',
+        },
+        callId: '8a67806f-fc4d-446b-a131-31e71ea5b020',
+      },
+    });
+
+    const callManager = getCallManager(webex, defaultServiceIndicator);
+
+    const mockStream = {
+      on: jest.fn(),
+      setUserMuted: jest.fn(),
+      systemMuted: false,
+      userMuted: false,
+    };
+
+    const localAudioStream = mockStream as unknown as InternalMediaCoreModule.LocalMicrophoneStream;
+
+    const call = callManager.createCall(dest, CallDirection.OUTBOUND, deviceId, mockLineId);
+
+    expect(call).toBeTruthy();
+    /* After creation , call manager should have 1 record */
+    expect(Object.keys(callManager.getActiveCalls()).length).toBe(1);
+
+    /* System mute is being triggered, mute state within call object should update to true */
+    mockStream.systemMuted = true;
+    call.mute(localAudioStream, MUTE_TYPE.SYSTEM);
+    expect(call.isMuted()).toEqual(true);
+
+    /* User mute is triggered, but no change will happen to the call object mute state since it is system muted */
+    logSpy.mockClear();
+    call.mute(localAudioStream, MUTE_TYPE.USER);
+    expect(call.isMuted()).toEqual(true);
+    expect(mockStream.setUserMuted).not.toBeCalledOnceWith(true);
+    expect(logSpy).toBeCalledOnceWith(`Call is muted on the system - ${call.getCorrelationId()}.`, {
+      file: 'call',
+      method: 'mute',
+    });
+
+    /* System mute is being triggered, mute state within call object should update to false */
+    mockStream.systemMuted = false;
+    call.mute(localAudioStream, MUTE_TYPE.SYSTEM);
+    expect(call.isMuted()).toEqual(false);
+
+    /* User mute can be triggered now updating call object mute state as well */
+    call.mute(localAudioStream, MUTE_TYPE.USER);
+    expect(call.isMuted()).toEqual(true);
+    expect(mockStream.setUserMuted).toBeCalledOnceWith(true);
+    mockStream.userMuted = true;
+
+    /* System mute being triggered now won't update the mute state within call object but will block the user unmute */
+    logSpy.mockClear();
+    mockStream.systemMuted = true;
+    call.mute(localAudioStream, MUTE_TYPE.SYSTEM);
+    expect(call.isMuted()).toEqual(true);
+    expect(logSpy).toBeCalledOnceWith(
+      `Call is muted by the user already - ${call.getCorrelationId()}.`,
+      {
+        file: 'call',
+        method: 'mute',
+      }
+    );
+
+    /* User mute now won't be able to update mute state back to false as system mute is also set */
+    call.mute(localAudioStream, MUTE_TYPE.USER);
+    expect(call.isMuted()).toEqual(true);
+    expect(mockStream.setUserMuted).not.toBeCalledOnceWith(false);
+
+    /* Revert the system mute but call mute state remains same */
+    mockStream.systemMuted = false;
+    call.mute(localAudioStream, MUTE_TYPE.SYSTEM);
+    expect(call.isMuted()).toEqual(true);
+
+    /* User mute will be able update the mute state now */
+    mockStream.setUserMuted.mockClear();
+    call.mute(localAudioStream, MUTE_TYPE.USER);
+    expect(call.isMuted()).toEqual(false);
+    expect(mockStream.setUserMuted).toBeCalledOnceWith(false);
   });
 });
 

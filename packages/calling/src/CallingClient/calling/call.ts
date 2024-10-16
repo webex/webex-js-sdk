@@ -2781,7 +2781,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       if (!localAudioStream.userMuted) {
         this.muted = localAudioStream.systemMuted;
       } else {
-        log.info(`Call is muted by the user already ${this.getCorrelationId()}.`, {
+        log.info(`Call is muted by the user already - ${this.getCorrelationId()}.`, {
           file: CALL_FILE,
           method: 'mute',
         });
