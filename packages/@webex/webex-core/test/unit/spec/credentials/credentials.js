@@ -368,7 +368,7 @@ describe('webex-core', () => {
       });
 
       it('should throw when provided an invalid token', () =>
-        expect(() => credentials.extractOrgIdFromUserToken()).toThrow('the provided token is not a valid format'));
+        expect(() => credentials.extractOrgIdFromUserToken()).toThrow('the provided token is not a valid format, token has 1 sections'));
 
       it('should throw when no token is provided', () =>
         expect(() => credentials.extractOrgIdFromUserToken()).toThrow());
