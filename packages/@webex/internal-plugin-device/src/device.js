@@ -367,13 +367,13 @@ const Device = WebexPlugin.extend({
   /**
    * Refresh the current registered device if able.
    *
-   * @param {Object} options - The options for refresh.
+   * @param {DeviceRegistrationOptions} options - The options for refresh.
    * @param {CatalogDetails} options.includeDetails - The details to include in the refresh/register request.
    * @returns {Promise<void, Error>}
    */
   @oneFlight
   @waitForValue('@')
-  refresh({includeDetails = CatalogDetails.all} = {}) {
+  refresh(deviceRegistrationOptions = {}) {
     this.logger.info('device: refreshing');
 
     // Validate that the device can be registered.
@@ -382,7 +382,7 @@ const Device = WebexPlugin.extend({
       if (!this.registered) {
         this.logger.info('device: device not registered, registering');
 
-        return this.register({includeDetails});
+        return this.register(deviceRegistrationOptions);
       }
 
       // Merge body configurations, overriding defaults.
@@ -409,6 +409,8 @@ const Device = WebexPlugin.extend({
         ...(this.etag ? {'If-None-Match': this.etag} : {}),
       };
 
+      const {includeDetails} = deviceRegistrationOptions;
+
       return this.request({
         method: 'PUT',
         uri: this.url,
@@ -430,7 +432,7 @@ const Device = WebexPlugin.extend({
 
             this.clear();
 
-            return this.register(includeDetails);
+            return this.register(deviceRegistrationOptions);
           }
 
           return Promise.reject(reason);
@@ -449,7 +451,7 @@ const Device = WebexPlugin.extend({
    */
   @oneFlight
   @waitForValue('@')
-  register({includeDetails = CatalogDetails.all} = {}) {
+  register(deviceRegistrationOptions = {}) {
     this.logger.info('device: registering');
 
     this.webex.internal.newMetrics.callDiagnosticMetrics.setDeviceInfo(this);
@@ -460,7 +462,7 @@ const Device = WebexPlugin.extend({
       if (this.registered) {
         this.logger.info('device: device already registered, refreshing');
 
-        return this.refresh({includeDetails});
+        return this.refresh(deviceRegistrationOptions);
       }
 
       // Merge body configurations, overriding defaults.
@@ -482,6 +484,8 @@ const Device = WebexPlugin.extend({
       this.webex.internal.newMetrics.submitInternalEvent({
         name: 'internal.register.device.request',
       });
+
+      const {includeDetails = CatalogDetails.all} = deviceRegistrationOptions;
 
       // This will be replaced by a `create()` method.
       return this.request({
@@ -516,6 +520,7 @@ const Device = WebexPlugin.extend({
           return this.processRegistrationSuccess(response);
         })
         .catch((error) => {
+          console.error(error);
           this.webex.internal.metrics.submitClientMetrics(METRICS.JS_SDK_WDM_REGISTRATION_FAILED, {
             fields: {error},
           });

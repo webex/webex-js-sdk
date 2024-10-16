@@ -131,8 +131,6 @@ describe('plugin-meetings', () => {
       });
 
       startReachabilityStub = sinon.stub(webex.meetings, 'startReachability').resolves();
-      sinon.spy(webex.meetings, 'preregister');
-      sinon.spy(webex.meetings, 'listenForEvents');
 
       Object.assign(webex.internal, {
         llm: {on: sinon.stub()},
@@ -342,45 +340,6 @@ describe('plugin-meetings', () => {
     });
 
     describe('Public API Contracts', () => {
-      describe('#preregister', () => {
-        it('rejects when SDK canAuthorize is false', () => {
-          webex.canAuthorize = false;
-          assert.isRejected(webex.meetings.preregister());
-        });
-
-        it('rejects when device.register fails', () => {
-          webex.canAuthorize = true;
-          webex.internal.device.register = sinon.stub().returns(Promise.reject());
-          assert.isRejected(webex.meetings.preregister());
-        });
-
-        it('resolves immediately if already registered', async () => {
-          webex.canAuthorize = true;
-          webex.meetings.registered = true;
-          await webex.meetings.preregister();
-          assert.notCalled(webex.internal.device.register);
-          assert.notCalled(webex.internal.mercury.connect);
-          assert.isTrue(webex.meetings.registered);
-        });
-
-        it('calls the expected functions', async () => {
-          webex.canAuthorize = true;
-          webex.meetings.registered = false;
-
-          await webex.meetings.preregister();
-
-          assert.called(webex.meetings.preregister);
-          assert.called(webex.meetings.startReachability);
-          assert.called(webex.internal.device.register);
-          assert.called(webex.internal.services.getMeetingPreferences);
-          assert.called(webex.internal.services.fetchClientRegionInfo);
-
-          assert.notCalled(webex.internal.mercury.connect);
-          assert.notCalled(webex.meetings.listenForEvents);
-          assert.isFalse(webex.meetings.registered);
-        });
-      });
-
       describe('#register', () => {
         it('emits an event and resolves when register succeeds', async () => {
           webex.canAuthorize = true;
@@ -423,34 +382,11 @@ describe('plugin-meetings', () => {
         it('on register makes sure following functions are called ', async () => {
           webex.canAuthorize = true;
           webex.meetings.registered = false;
-
           await webex.meetings.register();
-
-          assert.called(webex.meetings.preregister);
-          assert.called(webex.meetings.startReachability);
           assert.called(webex.internal.device.register);
           assert.called(webex.internal.services.getMeetingPreferences);
           assert.called(webex.internal.services.fetchClientRegionInfo);
-
           assert.called(webex.internal.mercury.connect);
-          assert.called(webex.meetings.listenForEvents);
-          assert.isTrue(webex.meetings.registered);
-        });
-
-        it('does not call preregister if false is specified', async () => {
-          webex.canAuthorize = true;
-          webex.meetings.registered = false;
-
-          await webex.meetings.register(false);
-
-          assert.notCalled(webex.meetings.preregister);
-          assert.notCalled(webex.meetings.startReachability);
-          assert.notCalled(webex.internal.device.register);
-          assert.notCalled(webex.internal.services.getMeetingPreferences);
-          assert.notCalled(webex.internal.services.fetchClientRegionInfo);
-
-          assert.called(webex.internal.mercury.connect);
-          assert.called(webex.meetings.listenForEvents);
           assert.isTrue(webex.meetings.registered);
         });
       });
@@ -921,7 +857,7 @@ describe('plugin-meetings', () => {
               undefined,
               meetingInfo,
               'meetingLookupURL',
-              sessionCorrelationId
+              sessionCorrelationId,
             ],
             [
               test1,

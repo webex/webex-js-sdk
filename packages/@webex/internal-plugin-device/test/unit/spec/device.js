@@ -178,6 +178,8 @@ describe('plugin-device', () => {
       let requestSpy;
 
       const setup = (config = {}) => {
+        webex.internal.metrics.submitClientMetrics = sinon.stub();
+
         sinon.stub(device, 'canRegister').callsFake(() => Promise.resolve());
         sinon.stub(device, 'processRegistrationSuccess').callsFake(() => {});
         requestSpy = sinon.spy(device, 'request');
@@ -187,6 +189,10 @@ describe('plugin-device', () => {
         });
         device.set('registered', true);
       };
+
+      afterEach(() => {
+        sinon.restore();
+      });
 
       it('If-None-Match header is added if etag is set', async () => {
         setup();
@@ -212,9 +218,42 @@ describe('plugin-device', () => {
         assert.deepEqual(requestSpy.args[0][0].headers, {});
       });
 
+      it('calls request with the expected properties when includeDetails is specified', async () => {
+        setup();
+
+        const registerSpy = sinon.spy(device, 'register');
+        device.setEnergyForecastConfig(false);
+        device.set('registered', true);
+
+        await device.refresh({includeDetails: CatalogDetails.features});
+
+        assert.calledWith(requestSpy, {
+          method: 'PUT',
+          uri: 'https://locus-a.wbx2.com/locus/api/v1/devices/88888888-4444-4444-4444-CCCCCCCCCCCC',
+          body: sinon.match.any,
+          headers: {},
+          qs: {includeUpstreamServices: CatalogDetails.features},
+        });
+
+        assert.notCalled(registerSpy);
+      });
+
+      it('calls register with default includeDetails when not registered', async () => {
+        setup();
+
+        const registerSpy = sinon.stub(device, 'register').callsFake(() => Promise.resolve());
+        device.setEnergyForecastConfig(false);
+        device.set('registered', false);
+
+        await device.refresh();
+
+        assert.calledWith(registerSpy, {});
+      });
+
       it('uses the energy forecast config to append upstream services to the outgoing call', async () => {
         setup({energyForecast: true});
         device.setEnergyForecastConfig(true);
+        device.set('registered', false);
 
         await device.register();
 
@@ -229,6 +268,7 @@ describe('plugin-device', () => {
       it('uses the energy forecast config to not append upstream services to the outgoing call', async () => {
         setup({energyForecast: true});
         device.setEnergyForecastConfig(false);
+        device.set('registered', false);
 
         await device.register();
 
@@ -269,7 +309,7 @@ describe('plugin-device', () => {
 
         await device.refresh();
 
-        assert.calledWith(registerSpy, {includeDetails: CatalogDetails.all});
+        assert.calledWith(registerSpy, {});
       });
 
       it('calls register with default includeDetails when empty options passed', async () => {
@@ -281,7 +321,7 @@ describe('plugin-device', () => {
 
         await device.refresh({});
 
-        assert.calledWith(registerSpy, {includeDetails: CatalogDetails.all});
+        assert.calledWith(registerSpy, {});
       });
 
       it('calls register with specified includeDetails when not registered', async () => {
@@ -309,6 +349,10 @@ describe('plugin-device', () => {
         });
         device.set('registered', false);
       };
+
+      afterEach(() => {
+        sinon.restore();
+      });
 
       it('checks that submitInternalEvent gets called with internal.register.device.request', async () => {
         setup();
@@ -444,7 +488,7 @@ describe('plugin-device', () => {
 
         await device.register();
 
-        assert.calledWith(refreshSpy, {includeDetails: CatalogDetails.all});
+        assert.calledWith(refreshSpy, {});
       });
 
       it('calls refresh with specified includeDetails when registered', async () => {
