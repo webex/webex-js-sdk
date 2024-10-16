@@ -39,7 +39,7 @@ yarn build:local
 
 ## Samples 
 ```bash
-  yarn run samples:serve
+  yarn workspace @webex/byods-demo-server dev:hot
 ```
 
 ## Consuming SDK
