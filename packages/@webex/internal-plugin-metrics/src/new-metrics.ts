@@ -21,6 +21,7 @@ import {
   MediaQualityEvent,
   InternalEvent,
   SubmitClientEventOptions,
+  Table,
 } from './metrics.types';
 import CallDiagnosticLatencies from './call-diagnostic/call-diagnostic-metrics-latencies';
 import {setMetricTimings} from './call-diagnostic/call-diagnostic-metrics.util';
@@ -201,7 +202,15 @@ class Metrics extends WebexPlugin {
    * Buisness event
    * @param args
    */
-  submitBusinessEvent({name, payload}: {name: string; payload: EventPayload}) {
+  submitBusinessEvent({
+    name,
+    payload,
+    table,
+  }: {
+    name: string;
+    payload: EventPayload;
+    table?: Table;
+  }) {
     if (!this.isReady) {
       // @ts-ignore
       this.webex.logger.log(
@@ -213,7 +222,7 @@ class Metrics extends WebexPlugin {
 
     this.lazyBuildBusinessMetrics();
 
-    return this.businessMetrics.submitBusinessEvent({name, payload});
+    return this.businessMetrics.submitBusinessEvent({name, payload, table});
   }
 
   /**
