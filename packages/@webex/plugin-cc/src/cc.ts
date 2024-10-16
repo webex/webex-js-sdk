@@ -24,10 +24,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     // TODO: Mercury Subsciption code should be added as part of this function
     // Establishing Mercury Connection here to get CI Id, which will be used by getAgentProfile method
     // to get Agent Profile by passing CI Id as a parameter.
-    const ciUserId = 'dummy_ciUserId';
+    const ciUserId = 'your_ciUserId';
     const agentProfile = new AgentProfile(ciUserId, this.$webex, this.wccApiUrl);
-    this.agentProfile = await agentProfile.getAgentProfile(ciUserId);
-    this.$webex.logger.log(`agent profile is: ${this.agentProfile}`);
+    this.agentProfile = await agentProfile.getAgentProfile();
+    this.$webex.logger.log(`agent profile is: ${JSON.stringify(this.agentProfile)})`);
 
     return new Promise((resolve, reject) => {
       setTimeout(() => {
