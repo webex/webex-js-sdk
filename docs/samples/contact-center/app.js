@@ -108,7 +108,7 @@ credentialsFormElm.addEventListener('submit', initWebex);
 
 
 function register() {
-    webex.cc.register().then((data) => {
+    webex.cc.register(true).then((data) => {
         console.log('Event subscription successful: ', data);
         const agentProfile = webex.cc.getAgentProfileData();
         console.log('agent profile is', agentProfile);
