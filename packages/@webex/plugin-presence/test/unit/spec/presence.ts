@@ -17,6 +17,7 @@ describe('plugin-presence', () => {
           presence: Presence,
         },
       });
+      webex.config.presence = {};
     });
 
     describe('#get()', () => {
@@ -83,6 +84,21 @@ describe('plugin-presence', () => {
         const request = webex.request.getCall(0);
 
         assert.equal(request.args[0].body.label, testGuid);
+      });
+    });
+
+    describe('#initializeWorker()', () => {
+      it('initializes the worker once webex is ready', () => {
+        webex.presence.worker = {initialize: sinon.spy()};
+        webex.presence.config.initializeWorker = false;
+
+        webex.presence.initializeWorker();
+
+        assert.notCalled(webex.presence.worker.initialize);
+
+        webex.trigger('ready');
+
+        assert.calledOnce(webex.presence.worker.initialize);
       });
     });
   });

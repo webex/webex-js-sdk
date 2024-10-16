@@ -8,6 +8,7 @@ import {Crypto} from '@peculiar/webcrypto';
 global.crypto = new Crypto();
 
 import Device from '@webex/internal-plugin-device';
+import {CatalogDetails} from '@webex/internal-plugin-device';
 import Mercury from '@webex/internal-plugin-mercury';
 import {assert} from '@webex/test-helper-chai';
 import MockWebex from '@webex/test-helper-mock-webex';
@@ -383,11 +384,20 @@ describe('plugin-meetings', () => {
           webex.canAuthorize = true;
           webex.meetings.registered = false;
           await webex.meetings.register();
-          assert.called(webex.internal.device.register);
+          assert.calledOnceWithExactly(webex.internal.device.register, undefined);
           assert.called(webex.internal.services.getMeetingPreferences);
           assert.called(webex.internal.services.fetchClientRegionInfo);
           assert.called(webex.internal.mercury.connect);
           assert.isTrue(webex.meetings.registered);
+        });
+
+        it('passes on the device registration options', async () => {
+          webex.canAuthorize = true;
+          webex.meetings.registered = false;
+          await webex.meetings.register({includeDetails: CatalogDetails.features});
+          assert.calledOnceWithExactly(webex.internal.device.register, {
+            includeDetails: CatalogDetails.features,
+          });
         });
       });
 
@@ -857,7 +867,7 @@ describe('plugin-meetings', () => {
               undefined,
               meetingInfo,
               'meetingLookupURL',
-              sessionCorrelationId
+              sessionCorrelationId,
             ],
             [
               test1,
@@ -1857,7 +1867,10 @@ describe('plugin-meetings', () => {
           });
 
           it('creates the meeting avoiding meeting info fetch by passing type as DESTINATION_TYPE.ONE_ON_ONE_CALL', async () => {
-            const meeting = await webex.meetings.createMeeting('test destination', DESTINATION_TYPE.ONE_ON_ONE_CALL);
+            const meeting = await webex.meetings.createMeeting(
+              'test destination',
+              DESTINATION_TYPE.ONE_ON_ONE_CALL
+            );
 
             assert.instanceOf(
               meeting,
@@ -1867,7 +1880,6 @@ describe('plugin-meetings', () => {
 
             assert.notCalled(webex.meetings.meetingInfo.fetchMeetingInfo);
           });
-
         });
 
         describe('rejected MeetingInfo.#fetchMeetingInfo - does not log for known Error types', () => {
