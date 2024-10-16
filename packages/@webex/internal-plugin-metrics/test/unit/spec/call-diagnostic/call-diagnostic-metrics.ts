@@ -42,9 +42,6 @@ describe('internal-plugin-metrics', () => {
       },
       meetingInfo: {},
       getCurUserType: () => 'host',
-      statsAnalyzer: {
-        getLocalIpAddress: () => '192.168.1.90',
-      },
     };
 
     const fakeMeeting2 = {
@@ -96,8 +93,19 @@ describe('internal-plugin-metrics', () => {
               clientName: 'Cantina',
             },
           },
+          getBasicMeetingInformation: (id) => fakeMeetings[id],
           meetingCollection: {
-            get: (id) => fakeMeetings[id],
+            get: (meetingId) => {
+              return {
+                statsAnalyzer: {
+                  getLocalIpAddress: () => {
+                    if (meetingId) {
+                      return '192.168.1.90';
+                    }
+                  },
+                }
+              }
+            },
           },
           geoHintInfo: {
             clientAddress: '1.3.4.5',
@@ -1714,7 +1722,8 @@ describe('internal-plugin-metrics', () => {
       });
 
       it('should send behavioral event if meetingId provided but meeting is undefined', () => {
-        webex.meetings.meetingCollection.get = sinon.stub().returns(undefined);
+        webex.meetings.getBasicMeetingInformation = sinon.stub().returns(undefined);
+
         cd.submitClientEvent({name: 'client.alert.displayed', options: {meetingId: 'meetingId'}});
         assert.calledWith(
           webex.internal.metrics.submitClientMetrics,
@@ -1918,7 +1927,7 @@ describe('internal-plugin-metrics', () => {
       });
 
       it('should send behavioral event if meeting is undefined', () => {
-        webex.meetings.meetingCollection.get = sinon.stub().returns(undefined);
+        webex.meetings.getBasicMeetingInformation = sinon.stub().returns(undefined);
         cd.submitMQE({
           name: 'client.mediaquality.event',
           payload: {
