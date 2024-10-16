@@ -7,90 +7,145 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
   </head>
   <body>
-    <h1>Data Source Page</h1>
+    <h1>Data Sources</h1>
+    <h2>Org ID: {{orgId}}</h2>
     <div class="main-container">
       <div class="data-container">
-        <button id="getAllData">Get All Data</button>
-        
-        <h2>Add Data</h2>
-        <input type="text" id="addName" placeholder="Name" />
-        <input type="text" id="addValue" placeholder="Value" />
-        <button id="addData">Add Data</button>
-        
-        <h2>Update Data</h2>
-        <input type="text" id="updateId" placeholder="ID" />
-        <input type="text" id="updateName" placeholder="Name" />
-        <input type="text" id="updateValue" placeholder="Value" />
-        <button id="updateData">Update Data</button>
-        
-        <h2>Delete Data</h2>
-        <input type="text" id="deleteId" placeholder="ID" />
-        <button id="deleteData">Delete Data</button>
-        
-        <hr class="separator">
-        
-        <h2>Token Management</h2>
-        <button id="refreshToken">Refresh Token</button>
+        <div id="dataSourcesList" class="data-sources-list">
+          {{#each dataSources}}
+            <div class="data-source-card">
+              <h3>Data Source {{@index}}</h3>
+              <p><strong>ID:</strong> {{this.id}}</p>
+              <p><strong>Schema ID:</strong> {{this.schemaId}}</p>
+              <p><strong>Application ID:</strong> <span class="application-id">{{this.applicationId}}</span></p>
+              <p><strong>Status:</strong> <span class="status {{this.status}}">{{this.status}}</span></p>
+              <p><strong>Created By:</strong> {{this.createdBy}}</p>
+              <p><strong>Created At:</strong> {{this.createdAt}}</p>
+              <div class="card-buttons">
+                <button class="edit-button" onclick="editDataSource('{{this.id}}')">Edit</button>
+                <button class="delete-button" onclick="deleteDataSource('{{this.id}}')">Delete</button>
+              </div>
+            </div>
+          {{/each}}
+        </div>
       </div>
     </div>
-    <div id="result"></div>
+
+    <!-- Plus Button for Adding New Data Source -->
+    <button id="addDataSourceButton" class="add-button" onclick="openAddForm()">+</button>
+
+    <!-- Edit/Add Data Source Modal -->
+    <div id="editDataSourceModal" class="modal">
+      <div class="modal-content">
+        <span class="close" onclick="closeEditForm()">&times;</span>
+        <form id="editForm">
+          <h2 id="formTitle">Edit Data Source</h2>
+          <input type="hidden" id="editDataSourceId" name="id">
+          <label for="schemaId">Schema ID:</label>
+          <input type="text" id="editSchemaId" name="schemaId" required>
+          <label for="url">URL:</label>
+          <input type="text" id="editUrl" name="url" required>
+          <label for="audience">Audience:</label>
+          <input type="text" id="editAudience" name="audience" required>
+          <label for="subject">Subject:</label>
+          <input type="text" id="editSubject" name="subject" required>
+          <label for="nonce">Nonce:</label>
+          <input type="text" id="editNonce" name="nonce" required>
+          <label for="tokenLifetimeMinutes">Token Lifetime (Minutes):</label>
+          <input type="number" id="editTokenLifetimeMinutes" name="tokenLifetimeMinutes" required>
+          <button type="submit" class="form-button">Save</button>
+          <button type="button" class="form-button cancel-button" onclick="closeEditForm()">Cancel</button>
+        </form>
+      </div>
+    </div>
 
     <script>
-      document.getElementById('getAllData').addEventListener('click', function() {
-        fetch('/api/data-source/all')
-          .then(response => response.json())
-          .then(data => {
-            document.getElementById('result').innerText = JSON.stringify(data, null, 2);
-          });
-      });
+      let isEdit = true;
+      let currentId = null;
 
-      document.getElementById('addData').addEventListener('click', function() {
-        const name = document.getElementById('addName').value;
-        const value = document.getElementById('addValue').value;
-        const data = { name, value };
-        fetch('/api/data-source/add', {
+      function openAddForm() {
+        isEdit = false;
+        document.getElementById('formTitle').textContent = 'Add Data Source';
+        document.getElementById('editForm').reset();
+        document.getElementById('editDataSourceModal').style.display = 'block';
+      }
+
+      function editDataSource(id) {
+        isEdit = true;
+        currentId = id;
+        document.getElementById('formTitle').textContent = 'Update Data Source';
+        document.getElementById('editForm').reset();
+        document.getElementById('editDataSourceModal').style.display = 'block';
+        const dataSource = dataSources.find(ds => ds.id === id);
+        if (dataSource) {
+          document.getElementById('editDataSourceId').value = dataSource.id;
+          document.getElementById('editSchemaId').value = dataSource.schemaId;
+          document.getElementById('editUrl').value = dataSource.url;
+          document.getElementById('editAudience').value = dataSource.audience;
+          document.getElementById('editSubject').value = dataSource.subject;
+          document.getElementById('editNonce').value = dataSource.nonce;
+          document.getElementById('editTokenLifetimeMinutes').value = dataSource.tokenLifetimeMinutes;
+          document.getElementById('editDataSourceModal').style.display = 'block';
+        }
+      }
+
+      function closeEditForm() {
+        document.getElementById('editDataSourceModal').style.display = 'none';
+      }
+
+      document.getElementById('editForm').addEventListener('submit', function(event) {
+        event.preventDefault();
+        const id = document.getElementById('editDataSourceId').value;
+        const dataSourcePayload = {
+          schemaId: document.getElementById('editSchemaId').value,
+          url: document.getElementById('editUrl').value,
+          audience: document.getElementById('editAudience').value,
+          subject: document.getElementById('editSubject').value,
+          nonce: document.getElementById('editNonce').value,
+          tokenLifetimeMinutes: document.getElementById('editTokenLifetimeMinutes').value,
+        };
+        const endpoint = isEdit ? `/api/data-source/update` : `/api/data-source/add`;
+        fetch(endpoint, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ data })
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(isEdit ? { id: currentId, ...dataSourcePayload } : dataSourcePayload)
         })
           .then(response => response.json())
           .then(data => {
-            document.getElementById('result').innerText = JSON.stringify(data, null, 2);
+            if (data.error) {
+              throw new Error(data.error);
+            }
+            alert(`Data source with ID: ${id} deleted successfully`);
+            location.reload();
+          })
+          .catch(error => {
+            alert(`Error ${isEdit ? 'updating' : 'adding'} data source`);
           });
       });
 
-      document.getElementById('updateData').addEventListener('click', function() {
-        const id = document.getElementById('updateId').value;
-        const name = document.getElementById('updateName').value;
-        const value = document.getElementById('updateValue').value;
-        const data = { id, name, value };
-        fetch('/api/data-source/update', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ data })
-        })
-          .then(response => response.json())
-          .then(data => {
-            document.getElementById('result').innerText = JSON.stringify(data, null, 2);
-          });
-      });
-
-      document.getElementById('deleteData').addEventListener('click', function() {
-        const dataId = document.getElementById('deleteId').value;
-        fetch(`/api/data-source/delete/${dataId}`, {
+      function deleteDataSource(id) {
+        fetch(`/api/data-source/delete/${id}`, {
           method: 'DELETE'
         })
           .then(response => response.json())
           .then(data => {
-            document.getElementById('result').innerText = JSON.stringify(data, null, 2);
+            alert(`Data source with ID: ${id} deleted successfully`);
+            location.reload();
+          })
+          .catch(error => {
+            alert(`Error deleting data source with ID: ${id}`);
           });
-      });
+      }
 
-      document.getElementById('refreshToken').addEventListener('click', function() {
-        fetch('/refresh-token', { method: 'POST' })
-          .then(response => response.text())
-          .then(data => alert(data));
-      });
+      // Close the modal when clicking outside of it
+      window.onclick = function(event) {
+        const modal = document.getElementById('editDataSourceModal');
+        if (event.target === modal) {
+          modal.style.display = 'none';
+        }
+      }
     </script>
   </body>
 </html>

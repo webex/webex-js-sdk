@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <title>{{title}}</title>
+    <link rel="stylesheet" type="text/css" href="/stylesheets/orgs.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+  </head>
+  <body>
+    <h1>Organizations Page</h1>
+    <div class="main-container">
+      <div class="orgs-container">
+        <h2>Token Management</h2>
+        
+        <h2>Save Service App Token</h2>
+        <input type="text" id="orgId" value="Y2lzY29zcGFyazovL3VzL09SR0FOSVpBVElPTi9kMTIwMGQ4NC02MjczLTRmYWQtOGYyZi0zZjY1NzhmMTg2ZGM" placeholder="Organization ID" />
+        <input type="text" id="refreshToken" value="OWQ5MDNhZjctMjE1Ni00YjA1LWI5YTAtOTk4MzljODBlNmY3MTlkNDZhYjUtNWEw_A52D_d1200d84-6273-4fad-8f2f-3f6578f186dc" placeholder="Refresh Token" />
+        <button id="saveServiceAppToken">Save Service App Token</button>
+        
+        <div id="orgsSection" style="display: none;">
+          <h2>List of Orgs</h2>
+          <div id="orgsList" class="orgs-list"></div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      document.getElementById('saveServiceAppToken').addEventListener('click', function() {
+        const orgId = document.getElementById('orgId').value;
+        const refreshToken = document.getElementById('refreshToken').value;
+        fetch('/api/token/save', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ orgId, refreshToken })
+        })
+          .then(response => response.text())
+          .then(data => {
+            alert(data);
+            if (data.includes('successfully')) {
+              fetch('/api/token/list')
+                .then(response => response.json())
+                .then(tokens => {
+                  const orgsList = document.getElementById('orgsList');
+                  const orgsSection = document.getElementById('orgsSection');
+                  orgsList.innerHTML = '';
+                  if (tokens.length > 0) {
+                    orgsSection.style.display = 'block';
+                    tokens.forEach(token => {
+                      const orgCard = document.createElement('div');
+                      orgCard.className = 'org-card';
+                      orgCard.innerHTML = `
+                        <h3>${token.orgId.slice(0, 10)}...${token.orgId.slice(-10)}</h3>
+                        <button onclick="showDataSource('${token.orgId}')">Show Data Source</button>
+                      `;
+                      orgsList.appendChild(orgCard);
+                    });
+                  } else {
+                    orgsSection.style.display = 'none';
+                  }
+                });
+            }
+          });
+      });
+
+      function showDataSource(orgId) {
+        window.location.href = `/data-source?orgId=${orgId}`;
+      }
+    </script>
+  </body>
+</html>

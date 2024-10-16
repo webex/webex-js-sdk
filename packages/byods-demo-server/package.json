@@ -4,7 +4,7 @@
   "scripts": {
     "build": "npx ts-node src/index.ts",
     "serve": "node dist/server.js",
-    "dev": "NODE_ENV=development npx ts-node ./src",
+    "dev": "NODE_ENV=development BYODS_ENVIRONMENT=integration npx ts-node ./src",
     "dev:hot": "nodemon --exec \"npm run dev\" --watch ./src -e ts",
     "start": "NODE_ENV=production node -r ./preload.js ./dist",
     "test": "NODE_ENV=test npx ts-node ./spec",
@@ -20,6 +20,7 @@
     "express": "^4.21.1",
     "express-async-errors": "^3.1.1",
     "express-handlebars": "^8.0.1",
+    "handlebars": "^4.7.8",
     "helmet": "^8.0.0",
     "inserturlparams": "^2.0.4",
     "jet-logger": "^2.0.1",

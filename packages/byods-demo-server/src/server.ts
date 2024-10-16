@@ -9,17 +9,17 @@ import cookieParser from 'cookie-parser';
 import handlebars from 'handlebars';
 import fs from 'fs';
 
+// **** Core Setup **** //
 const app = express();
 
-let organizationId = 'asdsads';
 let sdk = new BYODS.BYODS({
   clientId: 'your-client-id',
   clientSecret: 'your-client-secret',
   tokenStorageAdapter: undefined,
 });
-let baseClient = sdk.getClientForOrg(organizationId);
+let baseClient = sdk.getClientForOrg('temp');
 
-// **** Functions **** //
+// **** Helper Functions **** //
 // Function to render Handlebars templates
 function renderTemplate(res: Response, templateName: string, data: any) {
   const templatePath = path.join(__dirname, 'views', `${templateName}.hbs`);
@@ -69,73 +69,91 @@ app.get('/config', (req: Request, res: Response) => {
   renderTemplate(res, 'config', {title: 'Configuration'});
 });
 
+// **** Configuration **** //
 // Handle config form submission
 app.post('/config', (req: Request, res: Response) => {
-  const {clientId, clientSecret, orgId} = req.body;
+  const {clientId, clientSecret} = req.body;
   const mockSDKConfig = {
     clientId,
     clientSecret,
     tokenStorageAdapter: undefined,
   };
   sdk = new BYODS.BYODS(mockSDKConfig);
-  organizationId = orgId;
-  baseClient = sdk.getClientForOrg(organizationId);
-  res.redirect('/data-source');
+  res.redirect('/orgs');
 });
 
-// Handle token refresh
-app.post('/refresh-token', async (req: Request, res: Response) => {
+// **** Token Management **** //
+// Render the orgs page
+app.get('/orgs', (req: Request, res: Response) => {
+  renderTemplate(res, 'orgs', {title: 'Organizations'});
+});
+
+// Handle saving access token
+app.post('/api/token/save', async (req: Request, res: Response) => {
+  const {orgId, refreshToken} = req.body;
   try {
-    const tokenManager = sdk.tokenManager;
-    await tokenManager.refreshServiceAppAccessToken(organizationId);
-    res.send('Token refreshed successfully');
+    await sdk.tokenManager.saveServiceAppRegistrationData(orgId, refreshToken);
+    res.status(201).send('Acess token saved successfully');
   } catch (error) {
-    res.status(500).send(`Error refreshing token: ${error.message}`);
+    res.status(500).send(`Error saving refresh token: ${error.message}`);
   }
 });
 
+// **** Data Source Client Setup **** //
 // Render the data source page
-app.get('/data-source', (req: Request, res: Response) => {
-  renderTemplate(res, 'data-source', {title: 'Data Source'});
+app.get('/data-source', async (req: Request, res: Response) => {
+  const {orgId} = req.query;
+  baseClient = sdk.getClientForOrg(orgId as string);
+  try {
+    const dataSourcesResponse = await baseClient.dataSource.list();
+    const dataSources = dataSourcesResponse.data;
+    renderTemplate(res, 'data-source', {title: 'Data Sources', orgId, dataSources});
+  } catch (error) {
+    res.status(400).send(`Error fetching data sources: ${error.message}`);
+  }
 });
 
+// **** Data Source Client CRUD Operations **** //
 // Handle CRUD operations for data source
 app.post('/api/data-source/add', async (req: Request, res: Response) => {
   try {
-    const {data} = req.body;
-    const response = await baseClient.post('/data-source', {data});
-    res.status(201).json({message: 'Data added successfully', data: response.data});
+    const {schemaId, url, audience, subject, nonce, tokenLifetimeMinutes} = req.body;
+    const dataSourcePayload = {schemaId, url, audience, subject, nonce, tokenLifetimeMinutes};
+    const response = await baseClient.dataSource.create(dataSourcePayload);
+    res.status(201).json({message: 'Data source added successfully', data: response.data});
   } catch (error) {
-    res.status(500).json({error: error.message});
+    res.status(400).json({error});
   }
 });
 
-app.put('/api/data-source/update', async (req: Request, res: Response) => {
+app.post('/api/data-source/update', async (req: Request, res: Response) => {
   try {
-    const {data} = req.body;
-    const response = await baseClient.put(`/data-source/${data.id}`, {data});
+    const {id, schemaId, url, audience, subject, nonce, tokenLifetimeMinutes} = req.body;
+    const dataSourcePayload = {schemaId, url, audience, subject, nonce, tokenLifetimeMinutes};
+    const response = await baseClient.dataSource.update(id, dataSourcePayload);
     res.json({message: 'Data updated successfully', data: response.data});
   } catch (error) {
-    res.status(500).json({error: error.message});
+    res.status(400).json({error});
   }
 });
 
 app.delete('/api/data-source/delete/:id', async (req: Request, res: Response) => {
   try {
     const {id} = req.params;
-    const response = await baseClient.delete(`/data-source/${id}`);
+    const response = await baseClient.dataSource.delete(id);
     res.json({message: 'Data deleted successfully', data: response.data});
   } catch (error) {
-    res.status(500).json({error: error.message});
+    res.status(400).json({error: error.message});
   }
 });
 
-app.get('/api/data-source/all', async (req: Request, res: Response) => {
+// Endpoint to list tokens
+app.get('/api/token/list', async (req: Request, res: Response) => {
   try {
-    const response = await baseClient.get('/data-source');
-    res.json(response.data);
+    const tokens = await sdk.tokenManager.listTokens();
+    res.json(tokens);
   } catch (error) {
-    res.status(500).json({error: error.message});
+    res.status(400).json({error: error.message});
   }
 });
 
