@@ -44,6 +44,10 @@ export const mercuryConfig = {
    *
    */
   acknowledgementRequired: false,
+  /**
+   * Whether or not to register the device with the websocket
+   *
+   */
   deviceRegistrationRequired: false,
 };
 
@@ -88,13 +92,21 @@ const CCMercury = Mercury.extend({
     this.updateConfig(mercuryConfig);
   },
 
+  // TODO: this will be moved to a separate file in request module/file
   /**
    * Register to the websocket
-   * @param {string} llmSocketUrl
-   * @param {object} body
+   * @param {object} params
+   * @param {string} params.datachannelUrl
+   * @param {object} params.body
    * @returns {Promise<void>}
    */
-  register(datachannelUrl, body: object): Promise<void> {
+  subscribeNotifications({
+    datachannelUrl,
+    body,
+  }: {
+    datachannelUrl: string;
+    body: object;
+  }): Promise<void> {
     return this.request({
       method: 'POST',
       url: datachannelUrl,
@@ -112,12 +124,19 @@ const CCMercury = Mercury.extend({
 
   /**
    * Register and connect to the websocket
-   * @param {string} datachannelUrl
-   * @param {object} body
+   * @param {object} params
+   * @param {string} params.datachannelUrl
+   * @param {object} params.body
    * @returns {Promise<void>}
    */
-  registerAndConnect(datachannelUrl: string, body: object): Promise<void> {
-    return this.register(datachannelUrl, body).then(() => {
+  establishConnection({
+    datachannelUrl,
+    body,
+  }: {
+    datachannelUrl: string;
+    body: object;
+  }): Promise<void> {
+    return this.subscribeNotifications({datachannelUrl, body}).then(() => {
       if (!datachannelUrl) return undefined;
       this.datachannelUrl = datachannelUrl;
 

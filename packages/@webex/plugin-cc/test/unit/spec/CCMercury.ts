@@ -46,34 +46,40 @@ describe('plugin-cc CCMercury tests', () => {
       });
     });
 
-    describe('#registerAndConnect', () => {
+    describe('#establishConnection', () => {
       it('registers connection', async () => {
-        ccMercury.register = sinon.stub().resolves({
+        ccMercury.subscribeNotifications = sinon.stub().resolves({
           body: {
             binding: 'binding',
             webSocketUrl: 'url',
           },
         });
         assert.equal(ccMercury.isConnected(), false);
-        await ccMercury.registerAndConnect(datachannelUrl, {deviceUrl: webex.internal.device.url});
+        await ccMercury.establishConnection({
+          datachannelUrl,
+          body: {deviceUrl: webex.internal.device.url}
+        });
         assert.equal(ccMercury.isConnected(), true);
       });
 
       it("doesn't register connection for invalid input", async () => {
-        ccMercury.register = sinon.stub().resolves({
+        ccMercury.subscribeNotifications = sinon.stub().resolves({
           body: {
             binding: 'binding',
             webSocketUrl: 'url',
           },
         });
-        await ccMercury.registerAndConnect();
+        await ccMercury.establishConnection({});
         assert.equal(ccMercury.isConnected(), false);
       });
     });
 
-    describe('#register', () => {
+    describe('#subscribeNotifications', () => {
       it('registers connection', async () => {
-        await ccMercury.register(datachannelUrl, {deviceUrl: webex.internal.device.url});
+        await ccMercury.subscribeNotifications({
+          datachannelUrl,
+          body: {deviceUrl: webex.internal.device.url}
+        });
 
         sinon.assert.calledOnceWithExactly(
           ccMercury.request,
@@ -90,7 +96,10 @@ describe('plugin-cc CCMercury tests', () => {
         ccMercury.request.rejects(mockError);
 
         try {
-          await ccMercury.register(datachannelUrl, {deviceUrl: webex.internal.device.url});
+          await ccMercury.subscribeNotifications({
+            datachannelUrl,
+            body: {deviceUrl: webex.internal.device.url}
+          });
           assert.fail('Expected error was not thrown');
         } catch (error) {
           assert.equal(error, mockError);
@@ -100,13 +109,16 @@ describe('plugin-cc CCMercury tests', () => {
 
     describe('#getDatachannelUrl', () => {
       it('gets dataChannel Url', async () => {
-        ccMercury.register = sinon.stub().resolves({
+        ccMercury.subscribeNotifications = sinon.stub().resolves({
           body: {
             binding: 'binding',
             webSocketUrl: 'url',
           },
         });
-        await ccMercury.registerAndConnect(datachannelUrl, {deviceUrl: webex.internal.device.url});
+        await ccMercury.establishConnection({
+          datachannelUrl,
+          body: {deviceUrl: webex.internal.device.url}
+        });
         assert.equal(ccMercury.getDatachannelUrl(), datachannelUrl);
       });
     });

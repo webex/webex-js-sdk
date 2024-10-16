@@ -30,12 +30,12 @@ describe('CC Tests', () => {
       }
     });
 
-    // Mock the registerAndConnect function to trigger the event with Welcome type
-    webex.cc.ccMercury.registerAndConnect = jest.fn().mockImplementation(() => {
+    // Mock the establishConnection function to trigger the event with Welcome type
+    webex.cc.ccMercury.establishConnection = jest.fn().mockImplementation(() => {
       return new Promise((resolve) => {
         setTimeout(() => {
           const event = {
-            type: CC_EVENTS.Welcome,
+            type: CC_EVENTS.WELCOME,
             data: {
               agentId: 'dummy-agent-id'
             }
@@ -48,7 +48,7 @@ describe('CC Tests', () => {
       });
     });
 
-    // Mock the register function to call registerAndConnect and handle Welcome event
+    // Mock the register function to call establishConnection and handle Welcome event
     webex.cc.register = jest.fn().mockImplementation(() => {
       return new Promise((resolve, reject) => {
         const timeout = setTimeout(() => {
@@ -56,13 +56,13 @@ describe('CC Tests', () => {
         }, 5000);
 
         webex.cc.ccMercury.on('event', (event) => {
-          if (event.type === CC_EVENTS.Welcome) {
+          if (event.type === CC_EVENTS.WELCOME) {
             clearTimeout(timeout);
             resolve(`Success: CI User ID is ${event.data.agentId}`);
           }
         });
 
-        webex.cc.ccMercury.registerAndConnect().catch(reject);
+        webex.cc.ccMercury.establishConnection().catch(reject);
       });
     });
   });

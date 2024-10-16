@@ -4,5 +4,5 @@ export const EVENT = 'event';
 export const SUBSCRIBE_API = 'v1/notification/subscribe';
 export const REGISTER_TIMEOUT = 20000;
 export enum CC_EVENTS {
-  Welcome = 'Welcome',
+  WELCOME = 'Welcome',
 }

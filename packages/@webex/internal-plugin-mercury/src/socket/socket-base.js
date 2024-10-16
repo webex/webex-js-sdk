@@ -212,7 +212,18 @@ export default class Socket extends EventEmitter {
         options
       );
 
-      Object.keys(options).forEach((key) => {
+      // Destructure and set default values for authorizationRequired and acknowledgementRequired
+      const {
+        authorizationRequired = true,
+        acknowledgementRequired = true,
+        ...restOptions
+      } = options;
+
+      this.authorizationRequired = authorizationRequired;
+      this.acknowledgementRequired = acknowledgementRequired;
+
+      // Assign the rest of the options to the instance
+      Object.keys(restOptions).forEach((key) => {
         Reflect.defineProperty(this, key, {
           enumerable: false,
           value: options[key],
@@ -252,7 +263,7 @@ export default class Socket extends EventEmitter {
 
       socket.onopen = () => {
         this.logger.info(`socket,${this._domain}: connected`);
-        if (this.authorizationRequired ?? true) {
+        if (this.authorizationRequired) {
           this._authorize()
             .then(() => {
               this.logger.info(`socket,${this._domain}: authorized`);
@@ -316,7 +327,7 @@ export default class Socket extends EventEmitter {
       // modified and we don't actually care about anything but the data property
       const processedEvent = {data};
 
-      if (this.acknowledgementRequired ?? true) {
+      if (this.acknowledgementRequired) {
         this._acknowledge(processedEvent);
       }
       if (data.type === 'pong' || data.type === 'ping') {

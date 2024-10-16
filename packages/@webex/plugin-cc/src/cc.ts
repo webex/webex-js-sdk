@@ -16,7 +16,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     this.$config = this.config;
     // @ts-ignore
     this.$webex = this.webex;
-    this.wccApiUrl = this.$webex.internal.services.get(WCC_API_GATEWAY);
     this.ccMercury = new CCMercury(
       {},
       {
@@ -25,31 +24,43 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     );
   }
 
-  register(): Promise<string> {
-    this.$webex.logger.log(`ContactCenter: Registering ${this.$config}`);
+  private establishCCMercuryConnection(): void {
+    const datachannelUrl = `${this.wccApiUrl}${SUBSCRIBE_API}`;
 
-    this.ccMercury.registerAndConnect(`${this.wccApiUrl}${SUBSCRIBE_API}`, {
-      force: this.$config?.force || true,
-      isKeepAliveEnabled: this.$config?.isKeepAliveEnabled || false,
-      clientType: this.$config?.clientType || 'WxCCSDK',
-      allowMultiLogin: this.$config?.allowMultiLogin || true,
+    const connectionConfig = {
+      force: this.$config?.force ?? true,
+      isKeepAliveEnabled: this.$config?.isKeepAliveEnabled ?? false,
+      clientType: this.$config?.clientType ?? 'WxCCSDK',
+      allowMultiLogin: this.$config?.allowMultiLogin ?? true,
+    };
+
+    this.ccMercury.establishConnection({
+      datachannelUrl,
+      body: connectionConfig,
     });
+  }
+
+  register(): Promise<string> {
+    this.wccApiUrl = this.$webex.internal.services.get(WCC_API_GATEWAY);
 
     return new Promise((resolve, reject) => {
-      const timeoutDuration = REGISTER_TIMEOUT; // Define your timeout duration here (e.g., 10 seconds)
+      const timeoutDuration = REGISTER_TIMEOUT;
 
       const timeout = setTimeout(() => {
         reject(new Error('Subscription Failed: Time out'));
       }, timeoutDuration);
 
       this.ccMercury.on('event', (event) => {
-        if (event.type === CC_EVENTS.Welcome) {
+        if (event.type === CC_EVENTS.WELCOME) {
           this.ciUserId = event.data.agentId;
-          // TODO: call get AgentProfile Method here
+          // TODO: call getAgentProfile Method here
           clearTimeout(timeout); // Clear the timeout if the Welcome event occurs
-          resolve(`Success: CI User ID is ${this.ciUserId}`); // TODO: resolve with AgentProfile after Parv's PR
+          // TODO: resolve with AgentProfile after Parv's PR
+          resolve(`Success: CI User ID is ${this.ciUserId}`);
         }
       });
+
+      this.establishCCMercuryConnection(); // Establish the connection after setting up the event listener
     });
   }
 }
