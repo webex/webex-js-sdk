@@ -32,8 +32,6 @@ export default class AgentLogin {
 
       return loginResponse;
     } catch (error) {
-      console.error('Error while performing agent login', error);
-
       return Promise.reject(new Error('Error while performing agent login', error));
     }
   }
