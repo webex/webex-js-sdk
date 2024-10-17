@@ -218,6 +218,26 @@ describe('plugin-device', () => {
         assert.deepEqual(requestSpy.args[0][0].headers, {});
       });
 
+      it('calls request with the expected properties when includeDetails is not specified', async () => {
+        setup();
+
+        const registerSpy = sinon.spy(device, 'register');
+        device.setEnergyForecastConfig(false);
+        device.set('registered', true);
+
+        await device.refresh();
+
+        assert.calledWith(requestSpy, {
+          method: 'PUT',
+          uri: 'https://locus-a.wbx2.com/locus/api/v1/devices/88888888-4444-4444-4444-CCCCCCCCCCCC',
+          body: sinon.match.any,
+          headers: {},
+          qs: {includeUpstreamServices: CatalogDetails.all},
+        });
+
+        assert.notCalled(registerSpy);
+      });
+
       it('calls request with the expected properties when includeDetails is specified', async () => {
         setup();
 
@@ -472,6 +492,29 @@ describe('plugin-device', () => {
           body: {},
           headers: {},
           qs: {includeUpstreamServices: CatalogDetails.features},
+        });
+
+        assert.notCalled(refreshSpy);
+      });
+
+      it('calls request with the expected properties when includeDetails is not specified', async () => {
+        setup();
+
+        sinon.stub(device, 'canRegister').callsFake(() => Promise.resolve());
+        const requestSpy = sinon.spy(device, 'request');
+        const refreshSpy = sinon.spy(device, 'refresh');
+
+        device.setEnergyForecastConfig(false);
+
+        await device.register();
+
+        assert.calledWith(requestSpy, {
+          method: 'POST',
+          service: 'wdm',
+          resource: 'devices',
+          body: {},
+          headers: {},
+          qs: {includeUpstreamServices: CatalogDetails.all},
         });
 
         assert.notCalled(refreshSpy);

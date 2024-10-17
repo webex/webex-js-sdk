@@ -409,7 +409,7 @@ const Device = WebexPlugin.extend({
         ...(this.etag ? {'If-None-Match': this.etag} : {}),
       };
 
-      const {includeDetails} = deviceRegistrationOptions;
+      const {includeDetails = CatalogDetails.all} = deviceRegistrationOptions;
 
       return this.request({
         method: 'PUT',
