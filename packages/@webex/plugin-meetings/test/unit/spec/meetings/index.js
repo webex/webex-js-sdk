@@ -129,6 +129,11 @@ describe('plugin-meetings', () => {
 
       Object.assign(webex, {
         logger,
+        people: {
+          _getMe: sinon.stub().resolves({
+            type: 'validuser', 
+          }),
+        }
       });
 
       startReachabilityStub = sinon.stub(webex.meetings, 'startReachability').resolves();
@@ -2056,7 +2061,7 @@ describe('plugin-meetings', () => {
           ]);
         });
 
-        const setup = ({user} = {}) => {
+        const setup = ({me = { type: 'validuser'}, user} = {}) => {
           loggerProxySpy = sinon.spy(LoggerProxy.logger, 'error');
           assert.deepEqual(webex.internal.services._getCatalog().getAllowedDomains(), []);
 
@@ -2069,7 +2074,21 @@ describe('plugin-meetings', () => {
           Object.assign(webex.internal.services, {
             getMeetingPreferences: sinon.stub().returns(Promise.resolve({})),
           });
+
+          Object.assign(webex.people, {
+            _getMe: sinon.stub().returns(Promise.resolve(me)),
+        });
         };
+
+        it('should not call request.getMeetingPreferences if user is a guest', async () => {
+          setup({me: {type: 'appuser'}});
+      
+          await webex.meetings.fetchUserPreferredWebexSite();
+      
+          assert.equal(webex.meetings.preferredWebexSite, '');
+          assert.deepEqual(webex.internal.services._getCatalog().getAllowedDomains(), []);
+          assert.notCalled(webex.internal.services.getMeetingPreferences);
+        });
 
         it('should not fail if UserPreferred info is not fetched ', async () => {
           setup();

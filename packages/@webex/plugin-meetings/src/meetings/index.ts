@@ -1016,35 +1016,45 @@ export default class Meetings extends WebexPlugin {
    * @memberof Meetings
    */
   fetchUserPreferredWebexSite() {
-    return this.request.getMeetingPreferences().then((res) => {
-      if (res) {
-        const preferredWebexSite = MeetingsUtil.parseDefaultSiteFromMeetingPreferences(res);
-        this.preferredWebexSite = preferredWebexSite;
-        // @ts-ignore
-        this.webex.internal.services._getCatalog().addAllowedDomains([preferredWebexSite]);
-      }
+    // @ts-ignore
+    return this.webex.people._getMe().then((me) => {
+      const isGuestUser = me.type === 'appuser';
+      if (!isGuestUser) {
+        return this.request.getMeetingPreferences().then((res) => {
+          if (res) {
+            const preferredWebexSite = MeetingsUtil.parseDefaultSiteFromMeetingPreferences(res);
+            this.preferredWebexSite = preferredWebexSite;
+            // @ts-ignore
+            this.webex.internal.services._getCatalog().addAllowedDomains([preferredWebexSite]);
+          }
 
-      // fall back to getting the preferred site from the user information
-      if (!this.preferredWebexSite) {
-        // @ts-ignore
-        return this.webex.internal.user
-          .get()
-          .then((user) => {
-            const preferredWebexSite =
-              user?.userPreferences?.userPreferencesItems?.preferredWebExSite;
-            if (preferredWebexSite) {
-              this.preferredWebexSite = preferredWebexSite;
-              // @ts-ignore
-              this.webex.internal.services._getCatalog().addAllowedDomains([preferredWebexSite]);
-            } else {
-              throw new Error('site not found');
-            }
-          })
-          .catch(() => {
-            LoggerProxy.logger.error(
-              'Failed to fetch preferred site from user - no site will be set'
-            );
-          });
+          // fall back to getting the preferred site from the user information
+          if (!this.preferredWebexSite) {
+            // @ts-ignore
+            return this.webex.internal.user
+              .get()
+              .then((user) => {
+                const preferredWebexSite =
+                  user?.userPreferences?.userPreferencesItems?.preferredWebExSite;
+                if (preferredWebexSite) {
+                  this.preferredWebexSite = preferredWebexSite;
+                  // @ts-ignore
+                  this.webex.internal.services
+                    ._getCatalog()
+                    .addAllowedDomains([preferredWebexSite]);
+                } else {
+                  throw new Error('site not found');
+                }
+              })
+              .catch(() => {
+                LoggerProxy.logger.error(
+                  'Failed to fetch preferred site from user - no site will be set'
+                );
+              });
+          }
+
+          return Promise.resolve();
+        });
       }
 
       return Promise.resolve();
