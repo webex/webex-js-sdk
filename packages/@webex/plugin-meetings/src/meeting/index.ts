@@ -160,9 +160,6 @@ import {ConnectionStateHandler, ConnectionStateEvent} from './connectionStateHan
 // default callback so we don't call an undefined function, but in practice it should never be used
 const DEFAULT_ICE_PHASE_CALLBACK = () => 'JOIN_MEETING_FINAL';
 
-// default callback so we don't call an undefined function, but in practice it should never be used
-const DEFAULT_ICE_PHASE_CALLBACK = () => 'JOIN_MEETING_FINAL';
-
 const logRequest = (request: any, {logText = ''}) => {
   LoggerProxy.logger.info(`${logText} - sending request`);
 
