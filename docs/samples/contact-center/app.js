@@ -111,14 +111,10 @@ function register() {
     webex.cc.register(true).then((data) => {
         console.log('Event subscription successful: ', data);
         const agentProfile = webex.cc.getAgentProfileData();
-        console.log('agent profile is', agentProfile);
         teamsDropdown.innerHTML = ''; // Clear previously selected option on teamsDropdown
         const listTeams = agentProfile.teamsList;
-        console.log('teams list is', listTeams);
         listTeams.forEach((team) => {
-          console.log(team);
           if(team.teamType === "AGENT") {
-            console.log('inside if condition!');
             const option = document.createElement('option');
             option.value = team.id;
             option.text = team.name;
@@ -127,7 +123,6 @@ function register() {
         });
         const loginVoiceOptions = agentProfile.agentDesktopProfile.loginVoiceOptions;
         agentLogin.innerHTML = '' // Clear previously selected option on agentLogin.
-        console.log('loginVoiceOptions is', loginVoiceOptions);
         if(loginVoiceOptions.length > 0) agentLoginButton.disabled = false;
         loginVoiceOptions.forEach((voiceOptions)=> {
           const option = document.createElement('option');
