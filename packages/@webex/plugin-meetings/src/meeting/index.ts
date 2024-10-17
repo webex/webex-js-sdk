@@ -5,6 +5,7 @@ import jwtDecode from 'jwt-decode';
 import {StatelessWebexPlugin} from '@webex/webex-core';
 // @ts-ignore - Types not available for @webex/common
 import {Defer} from '@webex/common';
+import {safeSetTimeout, safeSetInterval} from '@webex/common-timers';
 import {
   ClientEvent,
   ClientEventLeaveReason,
@@ -700,6 +701,7 @@ export default class Meeting extends StatelessWebexPlugin {
   private iceCandidateErrors: Map<string, number>;
   private iceCandidatesCount: number;
   private rtcMetrics?: RtcMetrics;
+  private uploadLogsIntervalId?: ReturnType<typeof setInterval>;
 
   /**
    * @param {Object} attrs
@@ -3965,6 +3967,43 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
+   * Starts a periodic upload of logs
+   *
+   * @returns {undefined}
+   */
+  public startPeriodicLogUpload() {
+    if (!this.uploadLogsIntervalId) {
+      // start a periodic log upload after an initial delay of a few seconds to let things settle down first
+      safeSetTimeout(() => {
+        this.uploadLogs();
+
+        this.uploadLogsIntervalId = safeSetInterval(() => {
+          this.uploadLogs();
+
+          // just as an extra precaution, to avoid uploading logs forever in case something goes wrong
+          // and the page remains opened, we stop it if there is no media connection
+          if (!this.mediaProperties.webrtcMediaConnection) {
+            this.stopPeriodicLogUpload();
+          }
+          // @ts-ignore - config coming from registerPlugin
+        }, this.config.logUploadInterval * 1000);
+      }, 3000);
+    }
+  }
+
+  /**
+   * Stops the periodic upload of logs
+   *
+   * @returns {undefined}
+   */
+  public stopPeriodicLogUpload() {
+    if (this.uploadLogsIntervalId) {
+      clearInterval(this.uploadLogsIntervalId);
+      this.uploadLogsIntervalId = undefined;
+    }
+  }
+
+  /**
    * Removes remote audio, video and share streams from class instance's mediaProperties
    * @returns {undefined}
    */
@@ -7130,6 +7169,7 @@ export default class Meeting extends StatelessWebexPlugin {
 
       // We can log ReceiveSlot SSRCs only after the SDP exchange, so doing it here:
       this.remoteMediaManager?.logAllReceiveSlots();
+      this.startPeriodicLogUpload();
     } catch (error) {
       LoggerProxy.logger.error(`${LOG_HEADER} failed to establish media connection: `, error);
 
