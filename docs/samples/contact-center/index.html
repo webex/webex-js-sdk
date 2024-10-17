@@ -85,19 +85,46 @@
   </section>
   </div>
 
-  <div class="box">
-    <section class="section-box">
-      <h2 class="collapsible">
-        Agent Desktop Using Webex CC SDK
-        <i class="arrow fa fa-angle-down" aria-hidden="true"></i>
-      </h2>
-
-      <div class="section-content">
+    <div class="box">
+      <section class="section-box">
+        <h2 class="collapsible">
+          Agent Desktop Using Webex CC SDK
+          <i class="arrow fa fa-angle-down" aria-hidden="true"></i>
+        </h2>
+  
+        <div class="section-content">
+          <fieldset>
+            <legend>Agent</legend>
+            <p class="note">
+              NOTE: Teams are fetched automatically for the Agent Login.
+            </p>
+            <div class="screenshare-section">
+              <div style="display: flex; gap: 1rem;">
+                <fieldset style="flex: 0.69;">
+                  <legend>Select Team</legend>
+                  <select id="teamsDropdown" class="form-control w-auto my-3">Teams</select>
+                </fieldset>
+                <fieldset>
+                  <legend>Agent Login</legend>
+                  <select name="AgentLogin" id="AgentLogin" class="AgentLogin" onchange="handleAgentLogin(event)">
+                    <option value="" selected hidden>Choose Agent Login ...</option>
+                  </select>
+                  <button id="loginAgent" disabled class="btn btn-primary my-3" onclick="doAgentLogin()">Login With
+                    Selected Team</button>
+                  <button id="logoutAgent" class="btn btn-primary my-3 ml-2" onclick="logoutAgent()">Logout Agent</button>
+                </fieldset>
+                <fieldset>
+                  <legend>Agent status</legend>
+                  <select id="statusDropdown" class="form-control w-auto my-3"></select>
+                  <button id="setAgentStatus" class="btn btn-primary my-3 ml-2" onclick="setAgentStatus()">set
+                    sate</button>
+                </fieldset>
+              </div>
             </div>
-          </div>
-        </fieldset>
-      </div>
-    </section>
+          </fieldset>
+        </div>
+      </section>
+    </div>
   </div>
 
   <script src="../webex.min.js"></script>

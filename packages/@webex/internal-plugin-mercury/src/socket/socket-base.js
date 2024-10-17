@@ -179,6 +179,8 @@ export default class Socket extends EventEmitter {
    * @param {string} options.token (required)
    * @param {string} options.trackingId (required)
    * @param {Logger} options.logger (required)
+   * @param {boolean} options.authorizationRequired
+   * @param {boolean} options.acknowledgementRequired
    * @param {string} options.logLevelToken
    * @returns {Promise}
    */
@@ -250,13 +252,17 @@ export default class Socket extends EventEmitter {
 
       socket.onopen = () => {
         this.logger.info(`socket,${this._domain}: connected`);
-        this._authorize()
-          .then(() => {
-            this.logger.info(`socket,${this._domain}: authorized`);
-            socket.onclose = this.onclose;
-            resolve();
-          })
-          .catch(reject);
+        if (this.authorizationRequired ?? true) {
+          this._authorize()
+            .then(() => {
+              this.logger.info(`socket,${this._domain}: authorized`);
+              socket.onclose = this.onclose;
+              resolve();
+            })
+            .catch(reject);
+        } else {
+          this._ping();
+        }
       };
 
       socket.onerror = (event) => {
@@ -310,9 +316,11 @@ export default class Socket extends EventEmitter {
       // modified and we don't actually care about anything but the data property
       const processedEvent = {data};
 
-      this._acknowledge(processedEvent);
-      if (data.type === 'pong') {
-        this.emit('pong', processedEvent);
+      if (this.acknowledgementRequired ?? true) {
+        this._acknowledge(processedEvent);
+      }
+      if (data.type === 'pong' || data.type === 'ping') {
+        this.emit('pong', {...processedEvent, type: 'pong'});
       } else {
         this.emit('message', processedEvent);
       }
