@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 import {WebexPlugin} from '@webex/webex-core';
 import {CCPluginConfig, IContactCenter, WebexSDK} from './types';
 import AgentProfile from './AgentProfile/AgentProfile';
@@ -52,7 +51,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         if (event.type === CC_EVENTS.Welcome) {
           this.ciUserId = event.data.agentId;
           const agentProfile = new AgentProfile(this.ciUserId, this.$webex, this.wccApiUrl);
-          this.agentProfile = await agentProfile.getAgentProfile(this.ciUserId);
+          this.agentProfile = await agentProfile.getAgentProfile();
           this.$webex.logger.log(`agent profile is: ${JSON.stringify(this.agentProfile)}`);
           clearTimeout(timeout); // Clear the timeout if the Welcome event occurs
           resolve(`Success: agentProfile is ${this.agentProfile}`); // TODO: resolve with AgentProfile after Parv's PR

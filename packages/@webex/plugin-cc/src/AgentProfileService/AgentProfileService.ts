@@ -28,16 +28,13 @@ export default class AgentProfileService {
 
   public async getUserUsingCI(ciUserId: string, orgId: string): Promise<UserResponse> {
     try {
-      if (!ciUserId || !orgId) Promise.reject(new Error('ciUserId or orgId is undefined'));
-
       const URL = `${this.wccAPIURL}organization/${orgId}/user/by-ci-user-id/${ciUserId}`;
+      const response = await this.makeGETRequest(URL);
       this.webex.logger.log('getUserUsingCI api called successfully.');
 
-      return Promise.resolve(await this.makeGETRequest(URL));
+      return Promise.resolve(response);
     } catch (error) {
-      this.webex.logger.error(`Error while calling getUserUsingCI API, ${error}`);
-
-      return Promise.reject(error);
+      return Promise.reject(new Error(`Error while calling getUserUsingCI API, ${error}`));
     }
   }
 
@@ -53,16 +50,15 @@ export default class AgentProfileService {
     desktopProfileId: string
   ): Promise<DesktopProfileResponse> {
     try {
-      if (!orgId || !desktopProfileId)
-        Promise.reject(new Error('orgId or desktopProfileId is undefined'));
-
       const URL = `${this.wccAPIURL}organization/${orgId}/agent-profile/${desktopProfileId}`;
+      const response = await this.makeGETRequest(URL);
+      this.webex.logger.log('retrieveDesktopProfileById api called successfully.');
 
-      return Promise.resolve(await this.makeGETRequest(URL));
+      return Promise.resolve(response);
     } catch (error) {
-      this.webex.logger.error(`Error while calling retrieveDesktopProfileById API, ${error}`);
-
-      return Promise.reject(error);
+      return Promise.reject(
+        new Error(`Error while calling retrieveDesktopProfileById API, ${error}`)
+      );
     }
   }
 
@@ -79,19 +75,18 @@ export default class AgentProfileService {
   public async getListOfTeams(
     orgId: string,
     page?: number,
-    pageSize?: number
-    // filter?: string[],
-    // attributes?: string[]
+    pageSize?: number,
+    filter?: string[],
+    attributes?: string[]
   ): Promise<ListTeamsResponse> {
     try {
-      if (!orgId) Promise.reject(new Error('orgId is undefined'));
-      const URL = `${this.wccAPIURL}organization/${orgId}/team?page=${page}&pageSize=${pageSize}`;
+      const URL = `${this.wccAPIURL}organization/${orgId}/team?page=${page}&pageSize=${pageSize}&filter=id=in=${filter}&attributes=${attributes}`;
+      const response = await this.makeGETRequest(URL);
+      this.webex.logger.log('getListOfTeams api called successfully.');
 
-      return Promise.resolve(this.makeGETRequest(URL));
+      return Promise.resolve(response);
     } catch (error) {
-      this.webex.logger.error(`Error while calling getListOfTeams API, ${error}`);
-
-      return Promise.reject(error);
+      return Promise.reject(new Error(`Error while calling getListOfTeams API, ${error}`));
     }
   }
 
@@ -108,19 +103,19 @@ export default class AgentProfileService {
   public async getListOfAuxCodes(
     orgId: string,
     page?: number,
-    pageSize?: number
-    // filter?: string[],
-    // attributes?: string[]
+    pageSize?: number,
+    filter?: string[],
+    attributes?: string[]
   ): Promise<ListAuxCodesResponse> {
     try {
-      if (!orgId) Promise.reject(new Error('orgId is undefined'));
-      const URL = `${this.wccAPIURL}organization/${orgId}/v2/auxiliary-code?page=${page}&pageSize=${pageSize}`;
+      const URL = `${this.wccAPIURL}organization/${orgId}/v2/auxiliary-code?page=${page}&pageSize=${pageSize}&filter=id=in=${filter}&attributes=${attributes}`;
 
-      return Promise.resolve(this.makeGETRequest(URL));
+      const response = await this.makeGETRequest(URL);
+      this.webex.logger.log('getListOfAuxCodes api called successfully.');
+
+      return Promise.resolve(response);
     } catch (error) {
-      this.webex.logger.error(`Error while calling getListOfAuxCodes API, ${error}`);
-
-      return Promise.reject(error);
+      return Promise.reject(new Error(`Error while calling getListOfAuxCodes API, ${error}`));
     }
   }
 
@@ -139,7 +134,7 @@ export default class AgentProfileService {
 
       return response;
     } catch (error) {
-      this.webex.logger.error(`Error while making GET Request, ${error}`);
+      this.webex.logger.error(`Error while making GET Request, ${JSON.stringify(error)}`);
       throw new Error(error);
     }
   }

@@ -7,7 +7,7 @@ import {
   UserResponse,
 } from '../AgentProfileService/types';
 import {WebexSDK} from '../types';
-import {page, pageSize} from '../AgentProfileService/constants';
+import {defaultAttributes, defaultPage, defaultPageSize} from '../AgentProfileService/constants';
 
 export default class AgentProfile {
   ciUserId: string;
@@ -28,27 +28,30 @@ export default class AgentProfile {
   }
 
   /**
-   * Method to get Agent Profile by providing ciUserId.
-   * @param {string} ciUserId The CI ID of a User.
+   * Method to get Agent Profile.
    * @returns {Promise<AgentProfileResponse>} A promise that eventually resolves to an API response and return configuration of an Agent.
+   * @example
+   * // Create a AgentProfile class instance and invoke the getAgentProfile method.
+   * const agentProfile = new AgentProfile('ciUserId', 'webexObject', 'contactCenterApiUrl');
+   * const agentProfileResponse = agentProfile.getAgentProfile();
+   * console.log(JSON.stringify(agentProfileResponse));
    */
 
-  public async getAgentProfile(ciUserId: string): Promise<AgentProfileResponse> {
+  public async getAgentProfile(): Promise<AgentProfileResponse> {
     try {
       const orgId = await this.webex.credentials.getOrgId();
-      if (!ciUserId || !orgId) {
-        this.webex.logger.error(`Please provide ciUserId and orgId`);
+      if (!this.ciUserId || !orgId) {
         Promise.reject(new Error('Please provide ciUserId and orgId'));
       }
 
       const agentProfileService = new AgentProfileService(
-        ciUserId,
+        this.ciUserId,
         orgId,
         this.webex,
         this.wccAPIURL
       );
 
-      const user: UserResponse = await agentProfileService.getUserUsingCI(ciUserId, orgId);
+      const user: UserResponse = await agentProfileService.getUserUsingCI(this.ciUserId, orgId);
       this.agentProfile.userDetails = {
         agentProfileId: user?.body?.agentProfileId || '',
         teamIds: user?.body?.teamIds || [''],
@@ -64,12 +67,26 @@ export default class AgentProfile {
         loginVoiceOptions: agentDesktopProfile?.body?.loginVoiceOptions || [''],
         queues: agentDesktopProfile?.body?.queues || [''],
       };
-      // const filter = user?.body?.teamIds;
+
+      const filter = user?.body?.teamIds;
+
       // Call the below two APIs parallel to optimise the Performance.
       const [teamsList, auxCodesList]: [ListTeamsResponse, ListAuxCodesResponse] =
         await Promise.all([
-          agentProfileService.getListOfTeams(orgId, page, pageSize),
-          agentProfileService.getListOfAuxCodes(orgId, page, pageSize),
+          agentProfileService.getListOfTeams(
+            orgId,
+            defaultPage,
+            defaultPageSize,
+            filter,
+            defaultAttributes
+          ),
+          agentProfileService.getListOfAuxCodes(
+            orgId,
+            defaultPage,
+            defaultPageSize,
+            filter,
+            defaultAttributes
+          ),
         ]);
 
       for (const team of teamsList.body) {
@@ -100,9 +117,7 @@ export default class AgentProfile {
 
       return Promise.resolve(this.agentProfile);
     } catch (error) {
-      this.webex.logger.error(`Error while fetching agent profile, ${error}`);
-
-      return Promise.reject(error);
+      return Promise.reject(new Error(`Error while fetching agent profile, ${error}`));
     }
   }
 }
