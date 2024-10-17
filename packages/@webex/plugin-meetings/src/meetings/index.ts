@@ -1,11 +1,12 @@
 /* eslint no-shadow: ["error", { "allow": ["eventType"] }] */
-import {cloneDeep, union} from 'lodash';
+import {cloneDeep} from 'lodash';
 import '@webex/internal-plugin-mercury';
 import '@webex/internal-plugin-conversation';
 import '@webex/internal-plugin-metrics';
 // @ts-ignore
 import {WebexPlugin} from '@webex/webex-core';
 import {setLogger} from '@webex/internal-media-core';
+import {DeviceRegistrationOptions} from '@webex/internal-plugin-device';
 
 import * as mediaHelpersModule from '@webex/media-helpers';
 
@@ -758,11 +759,12 @@ export default class Meetings extends WebexPlugin {
    * Explicitly sets up the meetings plugin by registering
    * the device, connecting to mercury, and listening for locus events.
    *
+   * @param {DeviceRegistrationOptions} [deviceRegistrationOptions] - The options for registering the device (optional)
    * @returns {Promise}
    * @public
    * @memberof Meetings
    */
-  public register() {
+  public register(deviceRegistrationOptions?: DeviceRegistrationOptions): Promise<any> {
     // @ts-ignore
     if (!this.webex.canAuthorize) {
       LoggerProxy.logger.error(
@@ -788,7 +790,7 @@ export default class Meetings extends WebexPlugin {
       }),
       // @ts-ignore
       this.webex.internal.device
-        .register()
+        .register(deviceRegistrationOptions)
         // @ts-ignore
         .then(() =>
           LoggerProxy.logger.info(
@@ -1065,7 +1067,6 @@ export default class Meetings extends WebexPlugin {
    * @public
    * @memberof Meetings
    */
-
   getPersonalMeetingRoom() {
     return this.personalMeetingRoom;
   }

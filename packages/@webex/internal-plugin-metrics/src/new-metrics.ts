@@ -29,6 +29,7 @@ import {generateCommonErrorMetadata} from './utils';
 
 /**
  * Metrics plugin to centralize all types of metrics.
+ * https://confluence-eng-gpk2.cisco.com/conf/pages/viewpage.action?pageId=231011379
  * @class
  */
 class Metrics extends WebexPlugin {
