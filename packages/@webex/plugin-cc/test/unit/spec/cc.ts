@@ -2,7 +2,7 @@ import ContactCenter from '@webex/plugin-cc/src';
 import Mercury from '@webex/internal-plugin-mercury';
 import MockWebex from '@webex/test-helper-mock-webex';
 import Services from '@webex/webex-core/dist/lib/services/services';
-import CCMercury from '../../../src/CCMercury';
+import WebSocket from '../../../src/WebSocket';
 import { CC_EVENTS } from '../../../src/constants';
 
 describe('CC Tests', () => {
@@ -16,22 +16,21 @@ describe('CC Tests', () => {
       },
     });
 
-    webex.cc.ccMercury = new CCMercury(
-      {},
+    webex.cc.webSocket = new WebSocket(
       {
         parent: webex,
       }
     );
 
-    webex.cc.ccMercury.on = jest.fn((event, callback) => {
+    webex.cc.webSocket.on = jest.fn((event, callback) => {
       if (event === 'event') {
         // Store the callback to call it later
-        webex.cc.ccMercury._eventCallback = callback;
+        webex.cc.webSocket._eventCallback = callback;
       }
     });
 
     // Mock the establishConnection function to trigger the event with Welcome type
-    webex.cc.ccMercury.establishConnection = jest.fn().mockImplementation(() => {
+    webex.cc.webSocket.establishConnection = jest.fn().mockImplementation(() => {
       return new Promise((resolve) => {
         setTimeout(() => {
           const event = {
@@ -40,8 +39,8 @@ describe('CC Tests', () => {
               agentId: 'dummy-agent-id'
             }
           };
-          if (webex.cc.ccMercury._eventCallback) {
-            webex.cc.ccMercury._eventCallback(event); // Trigger the stored event callback
+          if (webex.cc.webSocket._eventCallback) {
+            webex.cc.webSocket._eventCallback(event); // Trigger the stored event callback
           }
           resolve('Success: Dummy data returned');
         }, 100); // Simulate the event being fired after 100ms
@@ -55,21 +54,21 @@ describe('CC Tests', () => {
           reject(new Error('Timeout: Welcome event did not occur within the expected time frame'));
         }, 5000);
 
-        webex.cc.ccMercury.on('event', (event) => {
+        webex.cc.webSocket.on('event', (event) => {
           if (event.type === CC_EVENTS.WELCOME) {
             clearTimeout(timeout);
             resolve(`Success: CI User ID is ${event.data.agentId}`);
           }
         });
 
-        webex.cc.ccMercury.establishConnection().catch(reject);
+        webex.cc.webSocket.establishConnection().catch(reject);
       });
     });
   });
 
   afterEach(() => {
-    if (webex.cc && webex.cc.ccMercury && webex.cc.ccMercury.disconnect) {
-      webex.cc.ccMercury.disconnect();
+    if (webex.cc && webex.cc.webSocket && webex.cc.webSocket.disconnect) {
+      webex.cc.webSocket.disconnect();
     }
   });
 

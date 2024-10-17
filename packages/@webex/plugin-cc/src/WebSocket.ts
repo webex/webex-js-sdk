@@ -1,6 +1,6 @@
 import Mercury from '@webex/internal-plugin-mercury';
 
-export const mercuryConfig = {
+export const webSocketConfig = {
   /**
    * Milliseconds between pings sent up the socket
    * @type {number}
@@ -46,45 +46,50 @@ export const mercuryConfig = {
   acknowledgementRequired: false,
 };
 
-const CCMercury = Mercury.extend({
+class WebSocket extends Mercury {
   /**
    * @instance
-   * @memberof CCMercury
+   * @memberof WebSocket
    * @private
    * @type {string}
    */
-  webSocketUrl: undefined,
+  private webSocketUrl: string;
 
   /**
    * @instance
-   * @memberof CCMercury
+   * @memberof WebSocket
    * @private
    * @type {string}
    */
-  binding: undefined,
+  private subscriptionId: string;
 
   /**
    * @instance
-   * @memberof CCMercury
+   * @memberof WebSocket
    * @private
    * @type {string}
    */
-  datachannelUrl: undefined,
+  private datachannelUrl: string;
+
+  constructor(options: object = {}) {
+    super(options);
+    Mercury.prototype.initialize(this, options);
+  }
 
   /**
-   * updates the Mercury config
+   * Updates the Mercury config
    * @private
    * @type {string}
    */
-  updateConfig(config) {
+  private updateConfig(config: Record<string, any>): void {
     Object.keys(config).forEach((key) => {
       this.config[key] = config[key];
     });
-  },
+  }
 
-  initialize() {
-    this.updateConfig(mercuryConfig);
-  },
+  initialize(): void {
+    this.updateConfig(webSocketConfig);
+  }
 
   // TODO: this will be moved to a separate file in request module/file
   /**
@@ -108,13 +113,12 @@ const CCMercury = Mercury.extend({
     })
       .then((res) => {
         this.webSocketUrl = res.body.webSocketUrl;
-        this.binding = res.body.subscriptionId;
+        this.subscriptionId = res.body.subscriptionId;
       })
       .catch((error) => {
-        this.logger.error(`Error connecting to websocket: ${error}`);
         throw error;
       });
-  },
+  }
 
   /**
    * Register and connect to the websocket
@@ -136,7 +140,7 @@ const CCMercury = Mercury.extend({
 
       return this.connect(this.webSocketUrl);
     });
-  },
+  }
 
   /**
    * Tells if LLM socket is connected
@@ -144,23 +148,23 @@ const CCMercury = Mercury.extend({
    */
   isConnected(): boolean {
     return this.connected;
-  },
+  }
 
   /**
-   * Tells if LLM socket is binding
-   * @returns {string} binding
+   * gives the subscriptionId
+   * @returns {string} subscriptionId
    */
-  getBinding(): string {
-    return this.binding;
-  },
+  getSubscriptionId(): string | undefined {
+    return this.subscriptionId;
+  }
 
   /**
    * Get data channel URL for the connection
    * @returns {string} data channel Url
    */
-  getDatachannelUrl(): string {
+  getDatachannelUrl(): string | undefined {
     return this.datachannelUrl;
-  },
+  }
 
   /**
    * Disconnects websocket connection
@@ -168,12 +172,11 @@ const CCMercury = Mercury.extend({
    */
   disconnectLLM(): Promise<void> {
     return this.disconnect().then(() => {
-      this.locusUrl = undefined;
       this.datachannelUrl = undefined;
-      this.binding = undefined;
+      this.subscriptionId = undefined;
       this.webSocketUrl = undefined;
     });
-  },
-});
+  }
+}
 
-export default CCMercury;
+export default WebSocket;

@@ -1,15 +1,22 @@
 /* eslint-disable no-console */
 import {WebexPlugin} from '@webex/webex-core';
 import {CCPluginConfig, IContactCenter, WebexSDK} from './types';
-import {CC_EVENTS, REGISTER_TIMEOUT, SUBSCRIBE_API, WCC_API_GATEWAY} from './constants';
-import CCMercury from './CCMercury';
+import {
+  CC_EVENTS,
+  EVENT,
+  READY,
+  REGISTER_TIMEOUT,
+  SUBSCRIBE_API,
+  WCC_API_GATEWAY,
+} from './constants';
+import WebSocket from './WebSocket';
 
 export default class ContactCenter extends WebexPlugin implements IContactCenter {
   namespace = 'ContactCenter';
   $config: CCPluginConfig;
   $webex: WebexSDK;
   wccApiUrl: string;
-  ccMercury: typeof CCMercury;
+  webSocket: WebSocket;
   ciUserId: string;
   constructor(...args) {
     super(...args);
@@ -17,14 +24,14 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     this.$config = this.config;
     // @ts-ignore
     this.$webex = this.webex;
-    this.$webex.once('ready', () => {
-      this.ccMercury = new CCMercury({
+    this.$webex.once(READY, () => {
+      this.webSocket = new WebSocket({
         parent: this.$webex,
       });
     });
   }
 
-  private establishCCMercuryConnection(): void {
+  private establishConnection(): void {
     const datachannelUrl = `${this.wccApiUrl}${SUBSCRIBE_API}`;
 
     const connectionConfig = {
@@ -34,7 +41,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       allowMultiLogin: this.$config?.allowMultiLogin ?? true,
     };
 
-    this.ccMercury.establishConnection({
+    this.webSocket.establishConnection({
       datachannelUrl,
       body: connectionConfig,
     });
@@ -49,8 +56,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       const timeout = setTimeout(() => {
         reject(new Error('Subscription Failed: Time out'));
       }, timeoutDuration);
-
-      this.ccMercury.on('event', (event) => {
+      this.webSocket.on(EVENT, (event: any) => {
+        // TODO:  Create an Event interface to handle all events
         if (event.type === CC_EVENTS.WELCOME) {
           this.ciUserId = event.data.agentId;
           // TODO: call getAgentProfile Method here
@@ -60,7 +67,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         }
       });
 
-      this.establishCCMercuryConnection(); // Establish the connection after setting up the event listener
+      this.establishConnection(); // Establish the connection after setting up the event listener
     });
   }
 }
