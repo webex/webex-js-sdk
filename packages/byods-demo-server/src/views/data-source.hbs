@@ -24,6 +24,7 @@
               <div class="card-buttons">
                 <button class="edit-button" onclick="editDataSource('{{this.id}}')">Edit</button>
                 <button class="delete-button" onclick="deleteDataSource('{{this.id}}')">Delete</button>
+                <button class="refresh-button" onclick="refreshJWSToken('{{this.id}}')">Refresh Token</button>
               </div>
             </div>
           {{/each}}
@@ -117,11 +118,11 @@
             if (data.error) {
               throw new Error(data.error);
             }
-            alert(`Data source with ID: ${id} deleted successfully`);
+            alert(`Data source ${isEdit ? 'updated' : 'added'} successfully`);
             location.reload();
           })
           .catch(error => {
-            alert(`Error ${isEdit ? 'updating' : 'adding'} data source`);
+            alert(`Error ${isEdit ? 'updating' : 'adding'} data source: ${error.message}`);
           });
       });
 
@@ -131,11 +132,31 @@
         })
           .then(response => response.json())
           .then(data => {
+            if (data.error) {
+              throw new Error(data.error);
+            }
             alert(`Data source with ID: ${id} deleted successfully`);
             location.reload();
           })
           .catch(error => {
-            alert(`Error deleting data source with ID: ${id}`);
+            alert(`Error deleting data source with ID: ${id}: ${error.message}`);
+          });
+      }
+
+      function refreshJWSToken(id) {
+        fetch(`/api/data-source/refresh-token/${id}`, {
+          method: 'POST'
+        })
+          .then(response => response.json())
+          .then(data => {
+            if (data.error) {
+              throw new Error(data.error);
+            }
+            alert(`JWS token for data source with ID: ${id} refreshed successfully`);
+            location.reload();
+          })
+          .catch(error => {
+            alert(`Error refreshing JWS token for data source with ID: ${id}: ${error.message}`);
           });
       }
 

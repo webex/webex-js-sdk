@@ -16,6 +16,7 @@ let sdk = new BYODS.BYODS({
   clientId: 'your-client-id',
   clientSecret: 'your-client-secret',
   tokenStorageAdapter: undefined,
+  logger: {level: BYODS.LOGGER.INFO},
 });
 let baseClient = sdk.getClientForOrg('temp');
 
@@ -77,6 +78,7 @@ app.post('/config', (req: Request, res: Response) => {
     clientId,
     clientSecret,
     tokenStorageAdapter: undefined,
+    logger: {level: BYODS.LOGGER.INFO},
   };
   sdk = new BYODS.BYODS(mockSDKConfig);
   res.redirect('/orgs');
@@ -122,7 +124,7 @@ app.post('/api/data-source/add', async (req: Request, res: Response) => {
     const response = await baseClient.dataSource.create(dataSourcePayload);
     res.status(201).json({message: 'Data source added successfully', data: response.data});
   } catch (error) {
-    res.status(400).json({error});
+    res.status(400).json({error: error.message});
   }
 });
 
@@ -131,9 +133,9 @@ app.post('/api/data-source/update', async (req: Request, res: Response) => {
     const {id, schemaId, url, audience, subject, nonce, tokenLifetimeMinutes} = req.body;
     const dataSourcePayload = {schemaId, url, audience, subject, nonce, tokenLifetimeMinutes};
     const response = await baseClient.dataSource.update(id, dataSourcePayload);
-    res.json({message: 'Data updated successfully', data: response.data});
+    res.status(201).json({message: 'Data updated successfully', data: response.data});
   } catch (error) {
-    res.status(400).json({error});
+    res.status(400).json({error: error.message});
   }
 });
 
@@ -141,7 +143,7 @@ app.delete('/api/data-source/delete/:id', async (req: Request, res: Response) =>
   try {
     const {id} = req.params;
     const response = await baseClient.dataSource.delete(id);
-    res.json({message: 'Data deleted successfully', data: response.data});
+    res.status(201).json({message: 'Data deleted successfully', data: response.data});
   } catch (error) {
     res.status(400).json({error: error.message});
   }
@@ -151,7 +153,19 @@ app.delete('/api/data-source/delete/:id', async (req: Request, res: Response) =>
 app.get('/api/token/list', async (req: Request, res: Response) => {
   try {
     const tokens = await sdk.tokenManager.listTokens();
-    res.json(tokens);
+    res.status(201).json(tokens);
+  } catch (error) {
+    res.status(400).json({error: error.message});
+  }
+});
+
+// JWS Token refresh
+// Handle JWS token refresh
+app.post('/api/data-source/refresh-token/:id', async (req: Request, res: Response) => {
+  try {
+    const {id} = req.params;
+    await baseClient.dataSource.scheduleJWSTokenRefresh(id, 60, () => 'test');
+    res.status(201).json({message: 'JWS token refreshed successfully'});
   } catch (error) {
     res.status(400).json({error: error.message});
   }

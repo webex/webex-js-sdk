@@ -35,6 +35,11 @@ async function request<T>(url: string, options: HttpRequestInit = {}): Promise<A
     throw new Error(`HTTP Error Response: ${response.status} ${response.statusText}`);
   }
 
+  // Handle 204 No Content responses
+  if (response.status === 204) {
+    return {data: {} as T, status: response.status};
+  }
+
   const data = (await response.json()) as T;
 
   return {data, status: response.status};

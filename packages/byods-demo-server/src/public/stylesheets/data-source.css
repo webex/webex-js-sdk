@@ -99,16 +99,17 @@ h2 {
 .card-buttons {
   display: flex;
   justify-content: center;
-  gap: 10px;
+  gap: 5px;
   margin-top: 10px;
 }
 
 .edit-button,
-.delete-button {
-  padding: 10px 20px;
+.delete-button,
+.refresh-button {
+  padding: 8px 15px;
   border: none;
   border-radius: 5px;
-  font-size: 1em;
+  font-size: 0.9em;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
@@ -132,18 +133,27 @@ h2 {
   background-color: #a71d2a;
 }
 
+.refresh-button {
+  background-color: #28a745;
+  color: #fff;
+}
+
+.refresh-button:hover {
+  background-color: #218838;
+}
+
 /* Plus Button */
 .add-button {
   position: fixed;
   bottom: 20px;
   right: 20px;
-  width: 60px;
-  height: 60px;
+  width: 50px;
+  height: 50px;
   background-color: #007bff;
   color: #fff;
   border: none;
   border-radius: 50%;
-  font-size: 2em;
+  font-size: 1.5em;
   font-weight: 600;
   cursor: pointer;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
