@@ -171,13 +171,13 @@ export default class DataSourceClient {
    * @param {string} dataSourceId The id of the data source
    * @param {number} tokenLifetimeMinutes The refresh interval in minutes for the data source. Defaults to 60 mins. Should be <= 1440 & >=1.
    * @param {string} nonceGenerator Accepts an nonceGenerator that will generate nonce for the data source request.
-   * @returns {Promise<NodeJS.Timer>} A promise that resolves to the API response containing NodeJS.Timer.
+   * @returns {Promise<NodeJS.Timeout>} A promise that resolves to the API response containing NodeJS.Timer.
    */
   private async startAutoRefresh(
     dataSourceId: string,
     tokenLifetimeMinutes: number,
     nonceGenerator?: () => string
-  ): Promise<NodeJS.Timer> {
+  ): Promise<NodeJS.Timeout> {
     try {
       // Generate a random percentage between 5% and 10%
       const randomPercentage = Math.random() * 5 + 5;
