@@ -195,16 +195,22 @@ export const isBrowserMediaErrorName = (errorName: any) => {
 };
 
 /**
+ * @param {Object} webex sdk instance
  * @param webClientDomain
  * @returns
  */
 export const getBuildType = (
+  webex,
   webClientDomain,
   markAsTestEvent = false
 ): Event['origin']['buildType'] => {
   // used temporary to test pre join in production without creating noise data, SPARK-468456
   if (markAsTestEvent) {
     return 'test';
+  }
+
+  if (webex.internal.metrics?.config?.caBuildType) {
+    return webex.internal.metrics.config.caBuildType;
   }
 
   if (
@@ -225,12 +231,19 @@ export const getBuildType = (
  * @returns {Object} prepared item
  */
 export const prepareDiagnosticMetricItem = (webex: any, item: any) => {
+  const buildType = getBuildType(
+    webex,
+    item.eventPayload?.event?.eventData?.webClientDomain,
+    item.eventPayload?.event?.eventData?.markAsTestEvent
+  );
+
+  // Set upgradeChannel to 'gold' if buildType is 'prod', otherwise to the buildType value
+  const upgradeChannel = buildType === 'prod' ? 'gold' : buildType;
+
   const origin: Partial<Event['origin']> = {
-    buildType: getBuildType(
-      item.eventPayload?.event?.eventData?.webClientDomain,
-      item.eventPayload?.event?.eventData?.markAsTestEvent
-    ),
+    buildType,
     networkType: 'unknown',
+    upgradeChannel,
   };
 
   // check event names and append latencies?

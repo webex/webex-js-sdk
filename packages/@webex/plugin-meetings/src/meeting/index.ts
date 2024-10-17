@@ -10,6 +10,7 @@ import {
   ClientEventLeaveReason,
   CallDiagnosticUtils,
   CALL_DIAGNOSTIC_CONFIG,
+  RtcMetrics,
 } from '@webex/internal-plugin-metrics';
 import {ClientEvent as RawClientEvent} from '@webex/event-dictionary-ts';
 
@@ -24,6 +25,8 @@ import {
   RoapMessage,
   StatsAnalyzer,
   StatsAnalyzerEventNames,
+  NetworkQualityEventNames,
+  NetworkQualityMonitor,
 } from '@webex/internal-media-core';
 
 import {
@@ -54,7 +57,6 @@ import {
   AddMediaFailed,
 } from '../common/errors/webex-errors';
 
-import NetworkQualityMonitor from '../networkQualityMonitor';
 import LoggerProxy from '../common/logs/logger-proxy';
 import EventsUtil from '../common/events/util';
 import Trigger from '../common/events/trigger-proxy';
@@ -225,6 +227,7 @@ export type AddMediaOptions = {
 
 export type CallStateForMetrics = {
   correlationId?: string;
+  sessionCorrelationId?: string;
   joinTrigger?: string;
   loginType?: string;
 };
@@ -536,6 +539,7 @@ export default class Meeting extends StatelessWebexPlugin {
   id: string;
   isMultistream: boolean;
   locusUrl: string;
+  #isoLocalClientMeetingJoinTime?: string;
   mediaConnections: any[];
   mediaId?: string;
   meetingFiniteStateMachine: any;
@@ -695,6 +699,7 @@ export default class Meeting extends StatelessWebexPlugin {
   private connectionStateHandler?: ConnectionStateHandler;
   private iceCandidateErrors: Map<string, number>;
   private iceCandidatesCount: number;
+  private rtcMetrics?: RtcMetrics;
 
   /**
    * @param {Object} attrs
@@ -738,12 +743,29 @@ export default class Meeting extends StatelessWebexPlugin {
      */
     this.callStateForMetrics = attrs.callStateForMetrics || {};
     const correlationId = attrs.correlationId || attrs.callStateForMetrics?.correlationId;
+    const sessionCorrelationId =
+      attrs.sessionCorrelationId || attrs.callStateForMetrics?.sessionCorrelationId;
+    if (sessionCorrelationId) {
+      LoggerProxy.logger.log(
+        `Meetings:index#constructor --> Initializing the meeting object with session correlation id from app ${correlationId}`
+      );
+      this.callStateForMetrics.sessionCorrelationId = sessionCorrelationId;
+    } else {
+      LoggerProxy.logger.log(
+        `Meetings:index#constructor --> No session correlation id supplied. None will be generated and this field will remain blank`
+      );
+      // TODO: supply a session from the meetings instance
+      this.callStateForMetrics.sessionCorrelationId = '';
+    }
     if (correlationId) {
       LoggerProxy.logger.log(
         `Meetings:index#constructor --> Initializing the meeting object with correlation id from app ${correlationId}`
       );
       this.callStateForMetrics.correlationId = correlationId;
     } else {
+      LoggerProxy.logger.log(
+        `Meetings:index#constructor --> Initializing the meeting object with generated correlation id from sdk ${this.id}`
+      );
       this.callStateForMetrics.correlationId = this.id;
     }
     /**
@@ -1518,6 +1540,17 @@ export default class Meeting extends StatelessWebexPlugin {
      * @memberof Meeting
      */
     this.iceCandidatesCount = 0;
+
+    /**
+     * Start time of meeting as an ISO string
+     * based on browser time, so can only be used to compute durations client side
+     * undefined if meeting has not been joined, set once on meeting join, and not updated again
+     * @instance
+     * @type {string}
+     * @private
+     * @memberof Meeting
+     */
+    this.#isoLocalClientMeetingJoinTime = undefined;
   }
 
   /**
@@ -1564,6 +1597,31 @@ export default class Meeting extends StatelessWebexPlugin {
    */
   set correlationId(correlationId: string) {
     this.callStateForMetrics.correlationId = correlationId;
+  }
+
+  /**
+   * Getter - Returns callStateForMetrics.sessionCorrelationId
+   * @returns {string}
+   */
+  get sessionCorrelationId() {
+    return this.callStateForMetrics.sessionCorrelationId;
+  }
+
+  /**
+   * Setter - sets callStateForMetrics.sessionCorrelationId
+   * @param {string} sessionCorrelationId
+   */
+  set sessionCorrelationId(sessionCorrelationId: string) {
+    this.callStateForMetrics.sessionCorrelationId = sessionCorrelationId;
+  }
+
+  /**
+   * Getter - Returns isoLocalClientMeetingJoinTime
+   * This will be set once on meeting join, and not updated again
+   * @returns {string | undefined}
+   */
+  get isoLocalClientMeetingJoinTime(): string | undefined {
+    return this.#isoLocalClientMeetingJoinTime;
   }
 
   /**
@@ -3155,6 +3213,7 @@ export default class Meeting extends StatelessWebexPlugin {
           options: {meetingId: this.id},
         });
       }
+      this.rtcMetrics?.sendNextMetrics();
       this.updateLLMConnection();
     });
 
@@ -3765,6 +3824,10 @@ export default class Meeting extends StatelessWebexPlugin {
           }),
           canChat: ControlsOptionsUtil.hasPolicies({
             requiredPolicies: [SELF_POLICY.SUPPORT_CHAT],
+            policies: this.selfUserPolicies,
+          }),
+          canPollingAndQA: ControlsOptionsUtil.hasPolicies({
+            requiredPolicies: [SELF_POLICY.SUPPORT_POLLING_AND_QA],
             policies: this.selfUserPolicies,
           }),
           canShareApplication:
@@ -5228,6 +5291,11 @@ export default class Meeting extends StatelessWebexPlugin {
         this.meetingFiniteStateMachine.join();
         this.setupLocusMediaRequest();
 
+        // @ts-ignore
+        this.webex.internal.device.meetingStarted();
+
+        this.#isoLocalClientMeetingJoinTime = new Date().toISOString();
+
         LoggerProxy.logger.log('Meeting:index#join --> Success');
 
         Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.JOIN_SUCCESS, {
@@ -6306,14 +6374,17 @@ export default class Meeting extends StatelessWebexPlugin {
    * @returns {RoapMediaConnection | MultistreamRoapMediaConnection}
    */
   private async createMediaConnection(turnServerInfo, bundlePolicy?: BundlePolicy) {
+    this.rtcMetrics = this.isMultistream
+      ? // @ts-ignore
+        new RtcMetrics(this.webex, this.id, this.correlationId)
+      : undefined;
+
     const mc = Media.createMediaConnection(
       this.isMultistream,
       this.getMediaConnectionDebugId(),
-      // @ts-ignore
-      this.webex,
       this.id,
-      this.correlationId,
       {
+        rtcMetrics: this.rtcMetrics,
         mediaProperties: this.mediaProperties,
         remoteQualityLevel: this.mediaProperties.remoteQualityLevel,
         // @ts-ignore - config coming from registerPlugin
@@ -6500,7 +6571,7 @@ export default class Meeting extends StatelessWebexPlugin {
       });
       this.setupStatsAnalyzerEventHandlers();
       this.networkQualityMonitor.on(
-        EVENT_TRIGGERS.NETWORK_QUALITY,
+        NetworkQualityEventNames.NETWORK_QUALITY,
         this.sendNetworkQualityEvent.bind(this)
       );
     }
@@ -6511,12 +6582,21 @@ export default class Meeting extends StatelessWebexPlugin {
    *
    * @private
    * @static
+   * @param {boolean} isAudioEnabled
+   * @param {boolean} isVideoEnabled
    * @returns {Promise<void>}
    */
-  private static async handleDeviceLogging(): Promise<void> {
-    try {
-      const devices = await getDevices();
 
+  private static async handleDeviceLogging(isAudioEnabled, isVideoEnabled): Promise<void> {
+    try {
+      let devices = [];
+      if (isVideoEnabled && isAudioEnabled) {
+        devices = await getDevices();
+      } else if (isVideoEnabled) {
+        devices = await getDevices(Media.DeviceKind.VIDEO_INPUT);
+      } else if (isAudioEnabled) {
+        devices = await getDevices(Media.DeviceKind.AUDIO_INPUT);
+      }
       MeetingUtil.handleDeviceLogging(devices);
     } catch {
       // getDevices may fail if we don't have browser permissions, that's ok, we still can have a media connection
@@ -7009,7 +7089,7 @@ export default class Meeting extends StatelessWebexPlugin {
       );
 
       if (audioEnabled || videoEnabled) {
-        await Meeting.handleDeviceLogging();
+        await Meeting.handleDeviceLogging(audioEnabled, videoEnabled);
       } else {
         LoggerProxy.logger.info(`${LOG_HEADER} device logging not required`);
       }
@@ -7022,6 +7102,7 @@ export default class Meeting extends StatelessWebexPlugin {
         await this.mediaProperties.getCurrentConnectionInfo();
       // @ts-ignore
       const reachabilityStats = await this.webex.meetings.reachability.getReachabilityMetrics();
+      const iceCandidateErrors = Object.fromEntries(this.iceCandidateErrors);
 
       Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.ADD_MEDIA_SUCCESS, {
         correlation_id: this.correlationId,
@@ -7033,6 +7114,7 @@ export default class Meeting extends StatelessWebexPlugin {
         retriedWithTurnServer: this.addMediaData.retriedWithTurnServer,
         isJoinWithMediaRetry: this.joinWithMediaRetryInfo.isRetry,
         ...reachabilityStats,
+        ...iceCandidateErrors,
         iceCandidatesCount: this.iceCandidatesCount,
       });
       // @ts-ignore
@@ -8191,7 +8273,7 @@ export default class Meeting extends StatelessWebexPlugin {
    * @private
    * @memberof Meeting
    */
-  private sendNetworkQualityEvent(res: any) {
+  private sendNetworkQualityEvent(res: {networkQualityScore: number; mediaType: string}) {
     Trigger.trigger(
       this,
       {
