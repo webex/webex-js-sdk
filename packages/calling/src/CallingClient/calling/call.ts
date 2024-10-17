@@ -2776,6 +2776,8 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         file: CALL_FILE,
         method: 'mute',
       });
+
+      return;
     }
     if (muteType === MUTE_TYPE.SYSTEM) {
       if (!localAudioStream.userMuted) {

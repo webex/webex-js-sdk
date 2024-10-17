@@ -226,10 +226,10 @@ describe('Call Tests', () => {
     expect(call).toBeTruthy();
     /* After creation , call manager should have 1 record */
     expect(Object.keys(callManager.getActiveCalls()).length).toBe(1);
-    call.mute(localAudioStream, MUTE_TYPE.USER);
+    call.mute(localAudioStream);
     expect(call.isMuted()).toEqual(true);
     expect(mockStream.setUserMuted).toBeCalledOnceWith(true);
-    call.mute(localAudioStream, MUTE_TYPE.USER);
+    call.mute(localAudioStream);
     expect(mockStream.setUserMuted).toBeCalledWith(false);
     expect(call.isMuted()).toEqual(false);
     call.end();
