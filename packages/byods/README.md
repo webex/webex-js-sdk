@@ -1,15 +1,20 @@
+### Bring Your Own Data Source (BYoDS) Node.JS SDK
+
 ### Table of Contents
+
 - [Getting Started](#getting-started)
 - [Developing](#developing)
-- [Building](#building) 
+- [Building](#building)
 - [Testing](#testing)
-- [Samples](#samples) 
+- [Samples](#samples)
 - [Consuming SDK](#consuming-sdk)
   - [NPM](#npm)
+
 ---
 
 ## Getting Started
-The BYoDS Node.js SDK makes it easy for developers to register their data sources to the BYoDS system. It allows developers to build data sources without needing to manage the complexities of integration with features like customizable storage, service app token management and auto refresh of JWS token the BYoDS SDK provides a solid foundation for creating secure and reliable data sources.
+
+The BYoDS Node.js SDK makes it easy for developers to register their data sources to the BYoDS system. It allows developers to build data sources without needing to manage the complexities of integration. With features like customizable storage, service app token management, and auto refresh of JWS tokens. The BYoDS SDK provides a solid foundation for creating secure and reliable data sources.
 
 ## Developing
 
@@ -31,20 +36,25 @@ yarn workspace @webex/byods run build:src
 ## Testing
 
 ```bash
- yarn workspace @webex/byods run test
+ yarn workspace @webex/byods run test:unit
 ```
 
-## Samples 
+## Samples
+
 ```bash
   yarn workspace @webex/byods-demo-server dev:hot
 ```
 
 ## Consuming SDK
+
 To consume the latest stable version of the BYoDS SDK, you can use NPM.
+
 # NPM
+
 ```javascript
   npm install @webex/byods
 ```
+
 (or)
 
 ```javascript
