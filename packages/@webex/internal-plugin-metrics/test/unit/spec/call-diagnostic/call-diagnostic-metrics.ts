@@ -769,6 +769,7 @@ describe('internal-plugin-metrics', () => {
           meeting: fakeMeeting,
           mediaConnections: [{mediaAgentAlias: 'alias', mediaAgentGroupId: '1'}],
           webexConferenceIdStr: undefined,
+          sessionCorrelationId: undefined,
           globalMeetingId: undefined,
           sessionCorrelationId: undefined,
         });

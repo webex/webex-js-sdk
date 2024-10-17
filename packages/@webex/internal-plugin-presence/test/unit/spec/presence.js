@@ -88,5 +88,20 @@ describe.skip('plugin-presence', () => {
         assert.equal(request.args[0].body.label, testGuid);
       });
     });
+
+    describe('#initializeWorker()', () => {
+      it('initializes the worker once webex is ready', () => {
+        webex.internal.presence.worker = {initialize: sinon.spy()};
+        webex.presence.config.initializeWorker = false;
+
+        webex.internal.presence.initializeWorker();
+
+        assert.notCalled(webex.internal.presence.worker.initialize);
+
+        webex.trigger('ready');
+
+        assert.calledOnce(webex.internal.presence.worker.initialize);
+      });
+    });
   });
 });
