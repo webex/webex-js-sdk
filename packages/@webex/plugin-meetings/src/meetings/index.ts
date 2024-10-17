@@ -144,7 +144,14 @@ export type BasicMeetingInformation = {
   environment: string;
   id: string;
   locusUrl: string;
-  locusInfo: any; // it's only a very small subset of the locus info, see what's populated in the destroy() method
+  locusInfo: {
+    // it's only a very small subset of the locus info, to avoid using much memory
+    url: string;
+    fullState: {
+      lastActive: string;
+      sessionId: string;
+    };
+  };
   meetingInfo: any;
   sessionCorrelationId: string;
 };
@@ -1103,7 +1110,6 @@ export default class Meetings extends WebexPlugin {
       meetingInfo: cloneDeep(meeting.meetingInfo),
       locusInfo: {
         // locusInfo can be quite big, so keep just the minimal info
-        sequence: meeting.locusInfo?.sequence,
         url: meeting.locusInfo?.url,
         fullState: {
           lastActive: meeting.locusInfo?.fullState?.lastActive,
