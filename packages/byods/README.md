@@ -6,11 +6,10 @@
 - [Samples](#samples) 
 - [Consuming SDK](#consuming-sdk)
   - [NPM](#npm)
-  - [CDN](#cdn)
 ---
 
 ## Getting Started
-With the BYoDS SDK, you can easily integrate device management capabilities into your Webex applications, allowing users to bring their own devices seamlessly into the Webex ecosystem.
+The BYoDS Node.js SDK makes it easy for developers to connect their own data sources to the BYoDS system. It allows developers to build data sources without needing to manage the complexities of integration with features like fast performance, customizable storage, and strong security, the BYoDS SDK provides a solid foundation for creating secure and reliable data sources.
 
 ## Developing
 
@@ -41,7 +40,7 @@ yarn workspace @webex/byods run build:src
 ```
 
 ## Consuming SDK
-To consume the latest stable version of the BYoDS SDK, you can use either NPM or CDN.
+To consume the latest stable version of the BYoDS SDK, you can use NPM.
 # NPM
 ```javascript
   npm install @webex/byods
@@ -54,8 +53,4 @@ To consume the latest stable version of the BYoDS SDK, you can use either NPM or
 
 ```javascript
   import BYoDS from '@webex/byods';
-```
-# CDN
-```javascript
-  <script src="../byods.min.js"></script>
 ```
