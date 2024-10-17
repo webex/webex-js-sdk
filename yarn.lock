@@ -12408,6 +12408,7 @@ __metadata:
     express-handlebars: ^8.0.1
     find: ^0.3.0
     fs-extra: ^11.2.0
+    handlebars: ^4.7.8
     helmet: ^8.0.0
     inserturlparams: ^2.0.4
     jasmine: ^5.3.1
