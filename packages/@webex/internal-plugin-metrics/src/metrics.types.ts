@@ -244,3 +244,19 @@ export type PreComputedLatencies =
   | 'internal.call.init.join.req'
   | 'internal.other.app.api.time'
   | 'internal.api.fetch.intelligence.models';
+
+export interface IdType {
+  meetingId?: string;
+  callId?: string;
+}
+
+export interface IMetricsAttributes {
+  type: string;
+  version: string;
+  userId: string;
+  correlationId: string;
+  connectionId: string;
+  data: any[];
+  meetingId?: string;
+  callId?: string;
+}
