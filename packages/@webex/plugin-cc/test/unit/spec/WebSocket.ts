@@ -3,10 +3,8 @@ import { assert } from '@webex/test-helper-chai';
 import sinon from 'sinon';
 import Mercury from '@webex/internal-plugin-mercury';
 import WebSocket, { webSocketConfig } from '../../../src/WebSocket';
-import { CC_EVENTS } from '../../../src/constants';
 
 describe('plugin-cc WebSocket tests', () => {
-const locusUrl = 'locusUrl';
 const datachannelUrl = 'datachannelUrl';
 
 describe('WebSocket', () => {
@@ -55,7 +53,7 @@ describe('#establishConnection', () => {
       },
     });
     assert.equal(webSocket.isConnected(), false);
-    await webSocket.establishConnection({
+    await webSocket.subscribeAndConnect({
       datachannelUrl,
       body: { deviceUrl: webex.internal.device.url },
     });
@@ -69,7 +67,7 @@ describe('#establishConnection', () => {
         webSocketUrl: 'url',
       },
     });
-    await webSocket.establishConnection({} as any);
+    await webSocket.subscribeAndConnect({} as any);
     assert.equal(webSocket.isConnected(), false);
   });
 });
@@ -115,7 +113,7 @@ describe('#getDatachannelUrl', () => {
         webSocketUrl: 'url',
       },
     });
-    await webSocket.establishConnection({
+    await webSocket.subscribeAndConnect({
       datachannelUrl,
       body: { deviceUrl: webex.internal.device.url },
     });
@@ -123,9 +121,9 @@ describe('#getDatachannelUrl', () => {
   });
 });
 
-describe('#disconnectLLM', () => {
-  it('disconnects mercury', async () => {
-    await webSocket.disconnectLLM();
+describe('#disconnectWebSocket', () => {
+  it('disconnects webSocket', async () => {
+    await webSocket.disconnectWebSocket();
     sinon.assert.calledOnce(webSocket.disconnect);
     assert.equal(webSocket.isConnected(), false);
     assert.equal(webSocket.getDatachannelUrl(), undefined);

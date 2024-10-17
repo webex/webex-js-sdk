@@ -30,7 +30,7 @@ describe('CC Tests', () => {
     });
 
     // Mock the establishConnection function to trigger the event with Welcome type
-    webex.cc.webSocket.establishConnection = jest.fn().mockImplementation(() => {
+    webex.cc.webSocket.subscribeAndConnect = jest.fn().mockImplementation(() => {
       return new Promise((resolve) => {
         setTimeout(() => {
           const event = {
@@ -61,7 +61,7 @@ describe('CC Tests', () => {
           }
         });
 
-        webex.cc.webSocket.establishConnection().catch(reject);
+        webex.cc.webSocket.subscribeAndConnect().catch(reject);
       });
     });
   });

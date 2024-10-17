@@ -121,13 +121,13 @@ class WebSocket extends Mercury {
   }
 
   /**
-   * Register and connect to the websocket
+   * Subscribe and connect to the websocket
    * @param {object} params
    * @param {string} params.datachannelUrl
    * @param {object} params.body
    * @returns {Promise<void>}
    */
-  establishConnection({
+  subscribeAndConnect({
     datachannelUrl,
     body,
   }: {
@@ -143,7 +143,7 @@ class WebSocket extends Mercury {
   }
 
   /**
-   * Tells if LLM socket is connected
+   * Tells if WebSocket socket is connected
    * @returns {boolean} connected
    */
   isConnected(): boolean {
@@ -151,7 +151,7 @@ class WebSocket extends Mercury {
   }
 
   /**
-   * gives the subscriptionId
+   * Get the subscriptionId for the connection
    * @returns {string} subscriptionId
    */
   getSubscriptionId(): string | undefined {
@@ -170,7 +170,7 @@ class WebSocket extends Mercury {
    * Disconnects websocket connection
    * @returns {Promise<void>}
    */
-  disconnectLLM(): Promise<void> {
+  disconnectWebSocket(): Promise<void> {
     return this.disconnect().then(() => {
       this.datachannelUrl = undefined;
       this.subscriptionId = undefined;

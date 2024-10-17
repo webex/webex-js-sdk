@@ -41,7 +41,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       allowMultiLogin: this.$config?.allowMultiLogin ?? true,
     };
 
-    this.webSocket.establishConnection({
+    this.webSocket.subscribeAndConnect({
       datachannelUrl,
       body: connectionConfig,
     });
@@ -57,7 +57,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         reject(new Error('Subscription Failed: Time out'));
       }, timeoutDuration);
       this.webSocket.on(EVENT, (event: any) => {
-        // TODO:  Create an Event interface to handle all events
+        // TODO:  Create an Event interface to handle all events after Parv's PR
         if (event.type === CC_EVENTS.WELCOME) {
           this.ciUserId = event.data.agentId;
           // TODO: call getAgentProfile Method here
