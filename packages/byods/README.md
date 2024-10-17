@@ -9,7 +9,7 @@
 ---
 
 ## Getting Started
-The BYoDS Node.js SDK makes it easy for developers to connect their own data sources to the BYoDS system. It allows developers to build data sources without needing to manage the complexities of integration with features like fast performance, customizable storage, and strong security, the BYoDS SDK provides a solid foundation for creating secure and reliable data sources.
+The BYoDS Node.js SDK makes it easy for developers to register their data sources to the BYoDS system. It allows developers to build data sources without needing to manage the complexities of integration with features like customizable storage, service app token management and auto refresh of JWS token the BYoDS SDK provides a solid foundation for creating secure and reliable data sources.
 
 ## Developing
 
