@@ -5,8 +5,9 @@ import {
   ListTeamsResponse,
   UserResponse,
 } from './types';
+import Request from '../request';
 
-export default class AgentProfileService {
+export default class AgentConfigService {
   ciUserId: string;
   orgId: string;
   webex: WebexSDK;
@@ -29,10 +30,10 @@ export default class AgentProfileService {
   public async getUserUsingCI(ciUserId: string, orgId: string): Promise<UserResponse> {
     try {
       const URL = `${this.wccAPIURL}organization/${orgId}/user/by-ci-user-id/${ciUserId}`;
-      const response = await this.makeGETRequest(URL);
+      const response = await request.request(URL);
       this.webex.logger.log('getUserUsingCI api called successfully.');
 
-      return Promise.resolve(response);
+      return Promise.resolve(response?.body);
     } catch (error) {
       return Promise.reject(new Error(`Error while calling getUserUsingCI API, ${error}`));
     }
@@ -45,16 +46,16 @@ export default class AgentProfileService {
    * @returns {Promise<DesktopProfileResponse>} A promise that eventually resolves to an API response.
    */
 
-  public async retrieveDesktopProfileById(
+  public async getDesktopProfileById(
     orgId: string,
     desktopProfileId: string
   ): Promise<DesktopProfileResponse> {
     try {
       const URL = `${this.wccAPIURL}organization/${orgId}/agent-profile/${desktopProfileId}`;
-      const response = await this.makeGETRequest(URL);
+      const response = await new Request(this.webex, URL, HTTP_METHODS.GET).request();
       this.webex.logger.log('retrieveDesktopProfileById api called successfully.');
 
-      return Promise.resolve(response);
+      return Promise.resolve(response?.body);
     } catch (error) {
       return Promise.reject(
         new Error(`Error while calling retrieveDesktopProfileById API, ${error}`)
@@ -81,10 +82,10 @@ export default class AgentProfileService {
   ): Promise<ListTeamsResponse> {
     try {
       const URL = `${this.wccAPIURL}organization/${orgId}/team?page=${page}&pageSize=${pageSize}&filter=id=in=${filter}&attributes=${attributes}`;
-      const response = await this.makeGETRequest(URL);
+      const response = await new Request(this.webex, URL, HTTP_METHODS.GET).request();
       this.webex.logger.log('getListOfTeams api called successfully.');
 
-      return Promise.resolve(response);
+      return Promise.resolve(response?.body);
     } catch (error) {
       return Promise.reject(new Error(`Error while calling getListOfTeams API, ${error}`));
     }
@@ -110,32 +111,12 @@ export default class AgentProfileService {
     try {
       const URL = `${this.wccAPIURL}organization/${orgId}/v2/auxiliary-code?page=${page}&pageSize=${pageSize}&filter=id=in=${filter}&attributes=${attributes}`;
 
-      const response = await this.makeGETRequest(URL);
+      const response = await new Request(this.webex).request(URL);
       this.webex.logger.log('getListOfAuxCodes api called successfully.');
 
-      return Promise.resolve(response);
+      return Promise.resolve(response?.body);
     } catch (error) {
       return Promise.reject(new Error(`Error while calling getListOfAuxCodes API, ${error}`));
-    }
-  }
-
-  /**
-   * Common method to make GET Requests.
-   * @param {string} URL The URL of the Request.
-   * @returns {Promise<any>} A promise that eventually resolves to an individual API response.
-   */
-
-  public async makeGETRequest(URL: string): Promise<any> {
-    try {
-      const response = await this.webex.request({
-        method: HTTP_METHODS.GET,
-        uri: URL,
-      });
-
-      return response;
-    } catch (error) {
-      this.webex.logger.error(`Error while making GET Request, ${JSON.stringify(error)}`);
-      throw new Error(error);
     }
   }
 }
