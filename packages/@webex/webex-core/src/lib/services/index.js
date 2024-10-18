@@ -10,8 +10,11 @@ import ServiceInterceptor from './interceptors/service';
 
 registerInternalPlugin('services', Services, {
   interceptors: {
-    ServiceInterceptor: ServiceInterceptor.create,
-    ServerErrorInterceptor: ServerErrorInterceptor.create,
+    // ServiceInterceptor: ServiceInterceptor.create,
+    // ServerErrorInterceptor: ServerErrorInterceptor.create,
+    // RS_TODO change
+    ServiceInterceptor: undefined,
+    ServerErrorInterceptor: undefined,
   },
 });
 

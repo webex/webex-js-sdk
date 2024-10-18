@@ -22,8 +22,13 @@ export default function request(options) {
   options.download = new EventEmitter();
   options.upload = new EventEmitter();
 
+  console.log('@@@ SENDING REQUEST');
+
   return intercept(options, options.interceptors, 'Request')
     .then((...args) => _request(options, ...args))
+    .catch((err) => {
+      console.log('@@@ error:', err);
+    })
     .then((...args) =>
       intercept(options, options.interceptors.slice().reverse(), 'Response', ...args)
     );

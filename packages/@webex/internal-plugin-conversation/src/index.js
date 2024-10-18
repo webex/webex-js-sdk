@@ -244,6 +244,9 @@ registerInternalPlugin('conversation', Conversation, {
       {
         name: 'normalizeConversation',
         fn(ctx, conversation) {
+          if (typeof conversation.activities !== 'object' || conversation.activities === null) {
+            conversation.activities = {};
+          }
           conversation.activities = conversation.activities || {};
           conversation.activities.items = conversation.activities.items || [];
           conversation.participants = conversation.participants || {};
@@ -315,9 +318,9 @@ registerInternalPlugin('conversation', Conversation, {
           });
         },
       },
-    ]
-      .concat(decryptionTransforms)
-      .concat(encryptionTransforms),
+    ],
+    // .concat(decryptionTransforms)
+    // .concat(encryptionTransforms),
   },
   config,
 });

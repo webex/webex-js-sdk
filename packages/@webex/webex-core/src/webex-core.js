@@ -42,7 +42,7 @@ import WebexInternalCore from './webex-internal-core';
 // Interceptor.create exists because new was really hard to call on an array of
 // constructors)
 const interceptors = {
-  WebexTrackingIdInterceptor: WebexTrackingIdInterceptor.create,
+  WebexTrackingIdInterceptor: undefined,
   RequestEventInterceptor: RequestEventInterceptor.create,
   RateLimitInterceptor: RateLimitInterceptor.create,
   /* eslint-disable no-extra-parens */
@@ -55,21 +55,23 @@ const interceptors = {
       ? ResponseLoggerInterceptor.create
       : undefined,
   /* eslint-enable no-extra-parens */
-  RequestTimingInterceptor: RequestTimingInterceptor.create,
+  RequestTimingInterceptor: undefined,
   ServiceInterceptor: undefined,
   UserAgentInterceptor: UserAgentInterceptor.create,
   WebexUserAgentInterceptor: WebexUserAgentInterceptor.create,
-  AuthInterceptor: AuthInterceptor.create,
+  // RS_TODO change
+  AuthInterceptor: undefined,
+  // AuthInterceptor: AuthInterceptor.create,
   KmsDryErrorInterceptor: undefined,
   PayloadTransformerInterceptor: PayloadTransformerInterceptor.create,
   ConversationInterceptor: undefined,
-  RedirectInterceptor: RedirectInterceptor.create,
+  RedirectInterceptor: undefined,
   HttpStatusInterceptor() {
     return HttpStatusInterceptor.create({
       error: WebexHttpError,
     });
   },
-  NetworkTimingInterceptor: NetworkTimingInterceptor.create,
+  NetworkTimingInterceptor: undefined,
   EmbargoInterceptor: EmbargoInterceptor.create,
   DefaultOptionsInterceptor: DefaultOptionsInterceptor.create,
   HostMapInterceptor: HostMapInterceptor.create,
