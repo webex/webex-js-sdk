@@ -1,0 +1,145 @@
+/* Import the Inter font */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+/* Define CSS variables for easy theming */
+:root {
+  --primary-color: #1e3a8a; /* Dark blue color */
+  --secondary-color: #3b82f6; /* Lighter blue color */
+  --background-color: #f4f4f4;
+  --text-color: #333; /* Darker text color for better readability */
+  --button-hover-color: #2563eb; /* Slightly darker blue for button hover */
+  --input-background-color: #fff;
+  --input-text-color: #1e3a8a;
+  --form-background-color: #f9fafb; /* Light background for form */
+  --font-family: 'Inter', Arial, sans-serif;
+  --transition-speed: 0.3s;
+}
+
+/* Reset some default styles */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: var(--font-family);
+  background-color: var(--background-color);
+  color: var(--text-color);
+  line-height: 1.6;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  transition: background-color var(--transition-speed);
+}
+
+h1 {
+  color: #fff; /* Change the color of the configuration string to white */
+  text-align: center;
+  margin-top: 20px;
+  font-size: 2.5rem;
+  transition: color var(--transition-speed);
+}
+
+/* Advanced styling for headers */
+header {
+  background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+  color: #fff;
+  padding: 20px 0;
+  text-align: center;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+header h1 {
+  margin: 0;
+  font-size: 3rem;
+  font-weight: 700;
+}
+
+/* Flexbox layout for main content */
+main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+/* Form styling */
+form {
+  background-color: var(--form-background-color);
+  padding: 30px;
+  border-radius: 10px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  max-width: 500px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px; /* Space between form items */
+}
+
+form div {
+  display: flex;
+  flex-direction: column;
+}
+
+form label {
+  margin-bottom: 5px;
+  font-weight: bold;
+  color: var(--primary-color);
+}
+
+form input {
+  padding: 10px;
+  border: 1px solid var(--primary-color);
+  border-radius: 5px;
+  font-size: 1rem;
+  background-color: var(--input-background-color);
+  color: var(--input-text-color);
+}
+
+form button {
+  background-color: var(--secondary-color);
+  color: #fff;
+  border: none;
+  padding: 15px;
+  font-size: 1rem;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color var(--transition-speed), transform var(--transition-speed);
+}
+
+form button:hover {
+  background-color: var(--button-hover-color);
+  transform: scale(1.05);
+}
+
+/* Footer styling */
+footer {
+  background-color: var(--primary-color);
+  color: #fff;
+  text-align: center;
+  padding: 10px 0;
+  box-shadow: 0 -4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  h1 {
+    font-size: 2rem;
+  }
+
+  header h1 {
+    font-size: 2.5rem;
+  }
+
+  button {
+    padding: 8px 16px;
+    font-size: 0.9rem;
+  }
+
+  form {
+    padding: 20px;
+  }
+}
