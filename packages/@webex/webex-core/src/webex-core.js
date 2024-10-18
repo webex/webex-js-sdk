@@ -204,7 +204,6 @@ const WebexCore = AmpState.extend({
       type: 'any',
     },
     sessionId: {
-      setOnce: true,
       type: 'string',
     },
   },

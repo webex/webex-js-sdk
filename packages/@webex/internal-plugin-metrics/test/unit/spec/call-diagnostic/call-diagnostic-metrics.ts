@@ -1,7 +1,9 @@
 import sinon from 'sinon';
+import bowser from 'bowser';
 import {assert} from '@webex/test-helper-chai';
 import {WebexHttpError} from '@webex/webex-core';
 import {BrowserDetection} from '@webex/common';
+import window from 'global/window';
 import {
   CallDiagnosticLatencies,
   CallDiagnosticMetrics,
@@ -30,7 +32,6 @@ describe('internal-plugin-metrics', () => {
     const fakeMeeting = {
       id: '1',
       correlationId: 'correlationId',
-      sessionCorrelationId: undefined,
       callStateForMetrics: {},
       environment: 'meeting_evn',
       locusUrl: 'locus/url',
@@ -41,9 +42,6 @@ describe('internal-plugin-metrics', () => {
       },
       meetingInfo: {},
       getCurUserType: () => 'host',
-      statsAnalyzer: {
-        getLocalIpAddress: () => '192.168.1.90',
-      },
     };
 
     const fakeMeeting2 = {
@@ -53,9 +51,17 @@ describe('internal-plugin-metrics', () => {
       callStateForMetrics: {loginType: 'fakeLoginType'},
     };
 
+    const fakeMeeting3 = {
+      ...fakeMeeting,
+      id: '3',
+      correlationId: 'correlationId3',
+      sessionCorrelationId: 'sessionCorrelationId3',
+    }
+
     const fakeMeetings = {
       1: fakeMeeting,
       2: fakeMeeting2,
+      3: fakeMeeting3,
     };
 
     let webex;
@@ -87,8 +93,19 @@ describe('internal-plugin-metrics', () => {
               clientName: 'Cantina',
             },
           },
+          getBasicMeetingInformation: (id) => fakeMeetings[id],
           meetingCollection: {
-            get: (id) => fakeMeetings[id],
+            get: (meetingId) => {
+              return {
+                statsAnalyzer: {
+                  getLocalIpAddress: () => {
+                    if (meetingId) {
+                      return '192.168.1.90';
+                    }
+                  },
+                }
+              }
+            },
           },
           geoHintInfo: {
             clientAddress: '1.3.4.5',
@@ -355,7 +372,6 @@ describe('internal-plugin-metrics', () => {
 
         assert.deepEqual(res, {
           correlationId: 'correlationId',
-          sessionCorrelationId: undefined,
           deviceId: 'deviceUrl',
           locusId: 'url',
           locusStartTime: 'lastActive',
@@ -368,7 +384,37 @@ describe('internal-plugin-metrics', () => {
         });
       });
 
-      it('should build identifiers correctly', () => {
+      [undefined, null, '', false, 0].forEach((sessionCorrelationId) => {
+        it(`should build identifiers correctly and not add session correlation id if it is falsy: ${sessionCorrelationId}`, () => {
+          cd.device = {
+            ...cd.device,
+            config: {installationId: 'installationId'},
+          };
+
+          const res = cd.getIdentifiers({
+            mediaConnections: [
+              {mediaAgentAlias: 'mediaAgentAlias', mediaAgentGroupId: 'mediaAgentGroupId'},
+            ],
+            meeting: {...fakeMeeting, sessionCorrelationId},
+            sessionCorrelationId: sessionCorrelationId as any,
+          });
+
+          assert.deepEqual(res, {
+            correlationId: 'correlationId',
+            deviceId: 'deviceUrl',
+            locusId: 'url',
+            locusStartTime: 'lastActive',
+            locusUrl: 'locus/url',
+            machineId: 'installationId',
+            mediaAgentAlias: 'mediaAgentAlias',
+            mediaAgentGroupId: 'mediaAgentGroupId',
+            orgId: 'orgId',
+            userId: 'userId',
+          });
+        });
+      });
+
+      it('should build identifiers correctly with sessionCorrelationID as a param', () => {
         cd.device = {
           ...cd.device,
           config: {installationId: 'installationId'},
@@ -379,6 +425,35 @@ describe('internal-plugin-metrics', () => {
             {mediaAgentAlias: 'mediaAgentAlias', mediaAgentGroupId: 'mediaAgentGroupId'},
           ],
           meeting: fakeMeeting,
+          sessionCorrelationId: 'sessionCorrelationId',
+        });
+
+        assert.deepEqual(res, {
+          correlationId: 'correlationId',
+          sessionCorrelationId: 'sessionCorrelationId',
+          deviceId: 'deviceUrl',
+          locusId: 'url',
+          locusStartTime: 'lastActive',
+          locusUrl: 'locus/url',
+          machineId: 'installationId',
+          mediaAgentAlias: 'mediaAgentAlias',
+          mediaAgentGroupId: 'mediaAgentGroupId',
+          orgId: 'orgId',
+          userId: 'userId',
+        });
+      });
+
+      it('should build identifiers correctly with sessionCorrelationID as a param and a meeting with session correlation id, and the param should take precedence', () => {
+        cd.device = {
+          ...cd.device,
+          config: {installationId: 'installationId'},
+        };
+
+        const res = cd.getIdentifiers({
+          mediaConnections: [
+            {mediaAgentAlias: 'mediaAgentAlias', mediaAgentGroupId: 'mediaAgentGroupId'},
+          ],
+          meeting: {...fakeMeeting, sessionCorrelationId: 'sessionCorrelationId1'},
           sessionCorrelationId: 'sessionCorrelationId',
         });
 
@@ -450,7 +525,6 @@ describe('internal-plugin-metrics', () => {
 
         assert.deepEqual(res, {
           correlationId: 'correlationId',
-          sessionCorrelationId: undefined,
           webexConferenceIdStr: 'webexConferenceIdStr1',
           globalMeetingId: 'globalMeetingId1',
           deviceId: 'deviceUrl',
@@ -484,7 +558,6 @@ describe('internal-plugin-metrics', () => {
 
         assert.deepEqual(res, {
           correlationId: 'correlationId',
-          sessionCorrelationId: undefined,
           webexConferenceIdStr: 'webexConferenceIdStr1',
           globalMeetingId: 'globalMeetingId1',
           deviceId: 'deviceUrl',
@@ -543,7 +616,6 @@ describe('internal-plugin-metrics', () => {
 
         assert.deepEqual(res, {
           correlationId: 'correlationId',
-          sessionCorrelationId: 'unknown',
           webexConferenceIdStr: 'webexConferenceIdStr1',
           deviceId: 'deviceUrl',
           locusUrl: 'locus-url',
@@ -560,7 +632,6 @@ describe('internal-plugin-metrics', () => {
 
         assert.deepEqual(res, {
           correlationId: 'correlationId',
-          sessionCorrelationId: 'unknown',
           globalMeetingId: 'globalMeetingId1',
           deviceId: 'deviceUrl',
           locusUrl: 'locus-url',
@@ -576,7 +647,6 @@ describe('internal-plugin-metrics', () => {
 
         assert.deepEqual(res, {
           correlationId: 'correlationId',
-          sessionCorrelationId: 'unknown',
           deviceId: 'deviceUrl',
           locusUrl: 'locus-url',
           orgId: 'orgId',
@@ -621,7 +691,6 @@ describe('internal-plugin-metrics', () => {
 
         assert.deepEqual(res, {
           correlationId: 'correlationId',
-          sessionCorrelationId: 'unknown',
           locusUrl: 'locus-url',
           deviceId: 'deviceUrl',
           orgId: 'orgId',
@@ -695,12 +764,14 @@ describe('internal-plugin-metrics', () => {
           options,
         });
 
+        assert.called(getIdentifiersSpy);
         assert.calledWith(getIdentifiersSpy, {
           meeting: fakeMeeting,
           mediaConnections: [{mediaAgentAlias: 'alias', mediaAgentGroupId: '1'}],
           webexConferenceIdStr: undefined,
           sessionCorrelationId: undefined,
           globalMeetingId: undefined,
+          sessionCorrelationId: undefined,
         });
         assert.notCalled(generateClientEventErrorPayloadSpy);
         assert.calledWith(
@@ -712,7 +783,6 @@ describe('internal-plugin-metrics', () => {
             },
             identifiers: {
               correlationId: 'correlationId',
-              sessionCorrelationId: undefined,
               deviceId: 'deviceUrl',
               locusId: 'url',
               locusStartTime: 'lastActive',
@@ -738,7 +808,6 @@ describe('internal-plugin-metrics', () => {
             },
             identifiers: {
               correlationId: 'correlationId',
-              sessionCorrelationId: undefined,
               deviceId: 'deviceUrl',
               locusId: 'url',
               locusStartTime: 'lastActive',
@@ -775,7 +844,142 @@ describe('internal-plugin-metrics', () => {
               },
               identifiers: {
                 correlationId: 'correlationId',
-                sessionCorrelationId: undefined,
+                deviceId: 'deviceUrl',
+                locusId: 'url',
+                locusStartTime: 'lastActive',
+                locusUrl: 'locus/url',
+                mediaAgentAlias: 'alias',
+                mediaAgentGroupId: '1',
+                orgId: 'orgId',
+                userId: 'userId',
+              },
+              loginType: 'login-ci',
+              name: 'client.alert.displayed',
+              userType: 'host',
+              isConvergedArchitectureEnabled: undefined,
+              webexSubServiceType: undefined,
+            },
+            eventId: 'my-fake-id',
+            origin: {
+              origin: 'fake-origin',
+            },
+            originTime: {
+              sent: 'not_defined_yet',
+              triggered: now.toISOString(),
+            },
+            senderCountryCode: 'UK',
+            version: 1,
+          },
+        });
+
+        const webexLoggerLogCalls = webex.logger.log.getCalls();
+        assert.deepEqual(webexLoggerLogCalls[1].args, [
+          'call-diagnostic-events -> ',
+          'CallDiagnosticMetrics: @submitClientEvent. Submit Client Event CA event.',
+          `name: client.alert.displayed`,
+        ]);
+      });
+
+      it('should submit client event successfully with meetingId which has a sessionCorrelationId', () => {
+        const prepareDiagnosticEventSpy = sinon.spy(cd, 'prepareDiagnosticEvent');
+        const submitToCallDiagnosticsSpy = sinon.spy(cd, 'submitToCallDiagnostics');
+        const generateClientEventErrorPayloadSpy = sinon.spy(cd, 'generateClientEventErrorPayload');
+        const getIdentifiersSpy = sinon.spy(cd, 'getIdentifiers');
+        const getSubServiceTypeSpy = sinon.spy(cd, 'getSubServiceType');
+        sinon.stub(cd, 'getOrigin').returns({origin: 'fake-origin'});
+        const validatorSpy = sinon.spy(cd, 'validator');
+        const options = {
+          meetingId: fakeMeeting3.id,
+          mediaConnections: [{mediaAgentAlias: 'alias', mediaAgentGroupId: '1'}],
+        };
+
+        cd.submitClientEvent({
+          name: 'client.alert.displayed',
+          options,
+        });
+
+        assert.called(getIdentifiersSpy);
+        assert.calledWith(getIdentifiersSpy, {
+          meeting: {...fakeMeeting3, sessionCorrelationId: 'sessionCorrelationId3'},
+          mediaConnections: [{mediaAgentAlias: 'alias', mediaAgentGroupId: '1'}],
+          webexConferenceIdStr: undefined,
+          globalMeetingId: undefined,
+          sessionCorrelationId: undefined,
+        });
+        assert.notCalled(generateClientEventErrorPayloadSpy);
+        assert.calledWith(
+          prepareDiagnosticEventSpy,
+          {
+            canProceed: true,
+            eventData: {
+              webClientDomain: 'whatever',
+            },
+            identifiers: {
+              correlationId: 'correlationId3',
+              sessionCorrelationId: 'sessionCorrelationId3',
+              deviceId: 'deviceUrl',
+              locusId: 'url',
+              locusStartTime: 'lastActive',
+              locusUrl: 'locus/url',
+              mediaAgentAlias: 'alias',
+              mediaAgentGroupId: '1',
+              orgId: 'orgId',
+              userId: 'userId',
+            },
+            loginType: 'login-ci',
+            name: 'client.alert.displayed',
+            userType: 'host',
+            isConvergedArchitectureEnabled: undefined,
+            webexSubServiceType: undefined,
+          },
+          options
+        );
+        assert.calledWith(submitToCallDiagnosticsSpy, {
+          event: {
+            canProceed: true,
+            eventData: {
+              webClientDomain: 'whatever',
+            },
+            identifiers: {
+              correlationId: 'correlationId3',
+              sessionCorrelationId: 'sessionCorrelationId3',
+              deviceId: 'deviceUrl',
+              locusId: 'url',
+              locusStartTime: 'lastActive',
+              locusUrl: 'locus/url',
+              mediaAgentAlias: 'alias',
+              mediaAgentGroupId: '1',
+              orgId: 'orgId',
+              userId: 'userId',
+            },
+            loginType: 'login-ci',
+            name: 'client.alert.displayed',
+            userType: 'host',
+            isConvergedArchitectureEnabled: undefined,
+            webexSubServiceType: undefined,
+          },
+          eventId: 'my-fake-id',
+          origin: {
+            origin: 'fake-origin',
+          },
+          originTime: {
+            sent: 'not_defined_yet',
+            triggered: now.toISOString(),
+          },
+          senderCountryCode: 'UK',
+          version: 1,
+        });
+        assert.calledWith(validatorSpy, {
+          type: 'ce',
+          event: {
+            event: {
+              canProceed: true,
+              eventData: {
+                webClientDomain: 'whatever',
+              },
+              identifiers: {
+                correlationId: 'correlationId3',
+                sessionCorrelationId: 'sessionCorrelationId3',
                 deviceId: 'deviceUrl',
                 locusId: 'url',
                 locusStartTime: 'lastActive',
@@ -819,6 +1023,9 @@ describe('internal-plugin-metrics', () => {
         const getIdentifiersSpy = sinon.spy(cd, 'getIdentifiers');
         const getSubServiceTypeSpy = sinon.spy(cd, 'getSubServiceType');
         const validatorSpy = sinon.spy(cd, 'validator');
+        sinon.stub(window.navigator, 'userAgent').get(() => userAgent);
+        sinon.stub(bowser, 'getParser').returns(userAgent);
+
         const options = {
           meetingId: fakeMeeting.id,
           mediaConnections: [{mediaAgentAlias: 'alias', mediaAgentGroupId: '1'}],
@@ -847,7 +1054,7 @@ describe('internal-plugin-metrics', () => {
         assert.deepEqual(webexLoggerLogCalls[2].args, [
           'call-diagnostic-events -> ',
           'CallDiagnosticMetrics: @createClientEventObjectInMeeting => collected browser data',
-          '{"error":"unable to access window.navigator.userAgent"}',
+          `${JSON.stringify(userAgent)}`,
         ]);
 
         assert.deepEqual(webexLoggerLogCalls[3].args, [
@@ -1052,7 +1259,6 @@ describe('internal-plugin-metrics', () => {
             },
             identifiers: {
               correlationId: 'correlationId2',
-              sessionCorrelationId: undefined,
               deviceId: 'deviceUrl',
               locusId: 'url',
               locusStartTime: 'lastActive',
@@ -1161,7 +1367,6 @@ describe('internal-plugin-metrics', () => {
             },
             identifiers: {
               correlationId: 'correlationId',
-              sessionCorrelationId: undefined,
               webexConferenceIdStr: 'webexConferenceIdStr1',
               globalMeetingId: 'globalMeetingId1',
               deviceId: 'deviceUrl',
@@ -1240,7 +1445,6 @@ describe('internal-plugin-metrics', () => {
             },
             identifiers: {
               correlationId: 'correlationId',
-              sessionCorrelationId: undefined,
               deviceId: 'deviceUrl',
               locusId: 'url',
               locusStartTime: 'lastActive',
@@ -1257,6 +1461,9 @@ describe('internal-plugin-metrics', () => {
                 name: 'other',
                 category: 'other',
                 errorCode: 9999,
+                errorData: {
+                  errorName: 'Error'
+                },
                 serviceErrorCode: 9999,
                 errorDescription: 'UnknownError',
                 rawErrorMessage: 'bad times',
@@ -1290,7 +1497,7 @@ describe('internal-plugin-metrics', () => {
         assert.deepEqual(webexLoggerLogCalls[2].args, [
           'call-diagnostic-events -> ',
           'CallDiagnosticMetrics: @prepareClientEvent. Generated errors:',
-          `generatedError: {"fatal":true,"shownToUser":false,"name":"other","category":"other","errorCode":9999,"serviceErrorCode":9999,"rawErrorMessage":"bad times","errorDescription":"UnknownError"}`,
+          `generatedError: {"fatal":true,"shownToUser":false,"name":"other","category":"other","errorCode":9999,"errorData":{"errorName":"Error"},"serviceErrorCode":9999,"rawErrorMessage":"bad times","errorDescription":"UnknownError"}`,
         ]);
       });
 
@@ -1316,7 +1523,6 @@ describe('internal-plugin-metrics', () => {
             },
             identifiers: {
               correlationId: 'correlationId',
-              sessionCorrelationId: 'unknown',
               deviceId: 'deviceUrl',
               locusUrl: 'locus-url',
               orgId: 'orgId',
@@ -1329,6 +1535,9 @@ describe('internal-plugin-metrics', () => {
                 name: 'other',
                 category: 'other',
                 errorCode: 9999,
+                errorData: {
+                  errorName: 'Error'
+                },
                 serviceErrorCode: 9999,
                 errorDescription: 'UnknownError',
                 rawErrorMessage: 'bad times',
@@ -1360,7 +1569,7 @@ describe('internal-plugin-metrics', () => {
         assert.deepEqual(webexLoggerLogCalls[2].args, [
           'call-diagnostic-events -> ',
           'CallDiagnosticMetrics: @prepareClientEvent. Generated errors:',
-          `generatedError: {"fatal":true,"shownToUser":false,"name":"other","category":"other","errorCode":9999,"serviceErrorCode":9999,"rawErrorMessage":"bad times","errorDescription":"UnknownError"}`,
+          `generatedError: {"fatal":true,"shownToUser":false,"name":"other","category":"other","errorCode":9999,"errorData":{"errorName":"Error"},"serviceErrorCode":9999,"rawErrorMessage":"bad times","errorDescription":"UnknownError"}`,
         ]);
       });
 
@@ -1390,7 +1599,6 @@ describe('internal-plugin-metrics', () => {
             },
             identifiers: {
               correlationId: 'correlationId',
-              sessionCorrelationId: 'unknown',
               deviceId: 'deviceUrl',
               locusUrl: 'locus-url',
               orgId: 'orgId',
@@ -1470,7 +1678,6 @@ describe('internal-plugin-metrics', () => {
             },
             identifiers: {
               correlationId: 'correlationId',
-              sessionCorrelationId: undefined,
               deviceId: 'deviceUrl',
               locusId: 'url',
               locusStartTime: 'lastActive',
@@ -1516,7 +1723,8 @@ describe('internal-plugin-metrics', () => {
       });
 
       it('should send behavioral event if meetingId provided but meeting is undefined', () => {
-        webex.meetings.meetingCollection.get = sinon.stub().returns(undefined);
+        webex.meetings.getBasicMeetingInformation = sinon.stub().returns(undefined);
+
         cd.submitClientEvent({name: 'client.alert.displayed', options: {meetingId: 'meetingId'}});
         assert.calledWith(
           webex.internal.metrics.submitClientMetrics,
@@ -1603,7 +1811,6 @@ describe('internal-plugin-metrics', () => {
             canProceed: true,
             identifiers: {
               correlationId: 'correlationId',
-              sessionCorrelationId: undefined,
               webexConferenceIdStr: 'webexConferenceIdStr1',
               globalMeetingId: 'globalMeetingId1',
               userId: 'userId',
@@ -1643,7 +1850,6 @@ describe('internal-plugin-metrics', () => {
               canProceed: true,
               identifiers: {
                 correlationId: 'correlationId',
-                sessionCorrelationId: undefined,
                 webexConferenceIdStr: 'webexConferenceIdStr1',
                 globalMeetingId: 'globalMeetingId1',
                 userId: 'userId',
@@ -1689,7 +1895,6 @@ describe('internal-plugin-metrics', () => {
               locusUrl: 'locus/url',
               locusId: 'url',
               locusStartTime: 'lastActive',
-              sessionCorrelationId: undefined,
             },
             eventData: {webClientDomain: 'whatever'},
             intervals: [{}],
@@ -1723,7 +1928,7 @@ describe('internal-plugin-metrics', () => {
       });
 
       it('should send behavioral event if meeting is undefined', () => {
-        webex.meetings.meetingCollection.get = sinon.stub().returns(undefined);
+        webex.meetings.getBasicMeetingInformation = sinon.stub().returns(undefined);
         cd.submitMQE({
           name: 'client.mediaquality.event',
           payload: {
@@ -2045,6 +2250,9 @@ describe('internal-plugin-metrics', () => {
           shownToUser: true,
           serviceErrorCode: 9999,
           errorCode: 9999,
+          errorData: {
+            errorName: 'Error'
+          },
           rawErrorMessage: 'bad times',
         });
       });
@@ -2185,6 +2393,40 @@ describe('internal-plugin-metrics', () => {
           serviceErrorCode: 2423021,
           errorCode: 12001,
           rawErrorMessage: 'bad times',
+        });
+      });
+
+      it('should generate event error payload correctly for wdm error 4404002', () => {
+        const res = cd.generateClientEventErrorPayload({
+          body: {errorCode: 4404002},
+          message: 'Operation denied due to region restriction',
+        });
+        assert.deepEqual(res, {
+          category: 'expected',
+          errorDescription: 'WdmRestrictedRegion',
+          fatal: true,
+          name: 'other',
+          shownToUser: false,
+          serviceErrorCode: 4404002,
+          errorCode: 13000,
+          rawErrorMessage: 'Operation denied due to region restriction',
+        });
+      });
+
+      it('should generate event error payload correctly for wdm error 4404003', () => {
+        const res = cd.generateClientEventErrorPayload({
+          body: {errorCode: 4404003},
+          message: 'Operation denied due to region restriction',
+        });
+        assert.deepEqual(res, {
+          category: 'expected',
+          errorDescription: 'WdmRestrictedRegion',
+          fatal: true,
+          name: 'other',
+          shownToUser: false,
+          serviceErrorCode: 4404003,
+          errorCode: 13000,
+          rawErrorMessage: 'Operation denied due to region restriction',
         });
       });
 
@@ -2443,7 +2685,6 @@ describe('internal-plugin-metrics', () => {
                       locusUrl: 'locus/url',
                       orgId: 'orgId',
                       userId: 'userId',
-                      sessionCorrelationId: undefined,
                     },
                     loginType: 'login-ci',
                     name: 'client.exit.app',
@@ -2551,11 +2792,11 @@ describe('internal-plugin-metrics', () => {
       // The method is called in beforeEach itself. We are just testing it here
       it('sets the received deviceInfo to call-diagnostics', () => {
         const webexLoggerLogCalls = webex.logger.log.getCalls();
-        const device = { userId: 'userId', url: 'deviceUrl', orgId: 'orgId' };
+        const device = {userId: 'userId', url: 'deviceUrl', orgId: 'orgId'};
 
         assert.deepEqual(webexLoggerLogCalls[0].args, [
           'CallDiagnosticMetrics: @setDeviceInfo called',
-          device
+          device,
         ]);
 
         assert.deepEqual(cd.device, device);

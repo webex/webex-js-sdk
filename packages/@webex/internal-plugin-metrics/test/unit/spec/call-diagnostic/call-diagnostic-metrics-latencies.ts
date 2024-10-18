@@ -12,12 +12,10 @@ describe('internal-plugin-metrics', () => {
       sinon.useFakeTimers(now.getTime());
       const webex = {
         meetings: {
-          meetingCollection: {
-            get: (id: string) => {
-              if (id === 'meeting-id') {
-                return {id: 'meeting-id', allowMediaInLobby: true};
-              }
-            },
+          getBasicMeetingInformation: (id: string) => {
+            if (id === 'meeting-id') {
+              return {id: 'meeting-id', allowMediaInLobby: true};
+            }
           },
         },
       };

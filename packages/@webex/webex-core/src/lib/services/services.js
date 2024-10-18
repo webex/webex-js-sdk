@@ -1022,9 +1022,10 @@ const Services = WebexPlugin.extend({
           // Validate if the token is authorized.
           if (credentials.canAuthorize) {
             // Attempt to collect the postauth catalog.
-            return this.updateServices().catch(() =>
-              this.logger.warn('services: cannot retrieve postauth catalog')
-            );
+            return this.updateServices().catch(() => {
+              this.initFailed = true;
+              this.logger.warn('services: cannot retrieve postauth catalog');
+            });
           }
 
           // Return a resolved promise for consistent return value.

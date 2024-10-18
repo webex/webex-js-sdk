@@ -119,6 +119,7 @@ import {
   SCIM_USER_FILTER,
   WEBEX_API_PROD,
   WEBEX_API_BTS,
+  BW_XSI_ENDPOINT_VERSION_WITH_SLASH,
 } from './constants';
 import {Model, WebexSDK} from '../SDKConnector/types';
 import SDKConnector from '../SDKConnector';
@@ -1110,8 +1111,13 @@ export async function getXsiActionEndpoint(
 
         let xsiEndpoint = response[DEVICES][0][SETTINGS][BW_XSI_URL];
 
-        if (response[DEVICES][0][SETTINGS][BW_XSI_URL].endsWith(BW_XSI_ENDPOINT_VERSION)) {
-          xsiEndpoint = response[DEVICES][0][SETTINGS][BW_XSI_URL].slice(0, -5);
+        const xsiUrl = response[DEVICES][0][SETTINGS][BW_XSI_URL];
+
+        // Check if it ends with specific version and slice accordingly
+        if (xsiUrl.endsWith(BW_XSI_ENDPOINT_VERSION)) {
+          xsiEndpoint = xsiUrl.slice(0, -5); // Remove 'v2.0'
+        } else if (xsiUrl.endsWith(BW_XSI_ENDPOINT_VERSION_WITH_SLASH)) {
+          xsiEndpoint = xsiUrl.slice(0, -6); // Remove 'v2.0/'
         }
 
         return xsiEndpoint;
@@ -1434,7 +1440,10 @@ function isValidServiceDomain(serviceData: ServiceData): boolean {
   const {domain} = serviceData;
 
   if (!domain) {
-    return serviceData.indicator === ServiceIndicator.CALLING;
+    return (
+      serviceData.indicator === ServiceIndicator.CALLING ||
+      serviceData.indicator === ServiceIndicator.GUEST_CALLING
+    );
   }
 
   return regexp.test(domain);
@@ -1448,10 +1457,11 @@ function isValidServiceDomain(serviceData: ServiceData): boolean {
  * @param serviceData - Input service data to be validated.
  */
 export function validateServiceData(serviceData: ServiceData) {
+  const allowedValues = Object.values(ServiceIndicator);
+  const formattedValues = allowedValues.join(', ').replace(/,([^,]*)$/, ' and$1');
+
   if (!isValidServiceIndicator(serviceData.indicator)) {
-    throw new Error(
-      `Invalid service indicator, Allowed values are: ${Object.values(ServiceIndicator)}`
-    );
+    throw new Error(`Invalid service indicator, Allowed values are: ${formattedValues}`);
   }
 
   if (!isValidServiceDomain(serviceData)) {

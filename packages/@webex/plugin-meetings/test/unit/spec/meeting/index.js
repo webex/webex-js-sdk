@@ -5,7 +5,6 @@ import 'jsdom-global/register';
 import {cloneDeep, forEach, isEqual, isUndefined} from 'lodash';
 import sinon from 'sinon';
 import * as InternalMediaCoreModule from '@webex/internal-media-core';
-import * as RtcMetricsModule from '@webex/plugin-meetings/src/rtcMetrics';
 import * as RemoteMediaManagerModule from '@webex/plugin-meetings/src/multistream/remoteMediaManager';
 import StateMachine from 'javascript-state-machine';
 import uuid from 'uuid';
@@ -2487,8 +2486,8 @@ describe('plugin-meetings', () => {
         });
 
         it('should create rtcMetrics and pass them to Media.createMediaConnection()', async () => {
-          const fakeRtcMetrics = {id: 'fake rtc metrics object'};
-          const rtcMetricsCtor = sinon.stub(RtcMetricsModule, 'default').returns(fakeRtcMetrics);
+          const setIntervalOriginal = window.setInterval;
+          window.setInterval = sinon.stub().returns(1);
 
           // setup the minimum mocks required for multistream connection
           fakeMediaConnection.createSendSlot = sinon.stub().returns({
@@ -2509,8 +2508,6 @@ describe('plugin-meetings', () => {
             mediaSettings: {},
           });
 
-          assert.calledOnceWithExactly(rtcMetricsCtor, webex, meeting.id, meeting.correlationId);
-
           // check that rtcMetrics was passed to Media.createMediaConnection
           assert.calledOnce(Media.createMediaConnection);
           assert.calledWith(
@@ -2518,10 +2515,10 @@ describe('plugin-meetings', () => {
             true,
             meeting.getMediaConnectionDebugId(),
             meeting.id,
-            sinon.match({
-              rtcMetrics: fakeRtcMetrics,
-            })
+            sinon.match.hasNested('rtcMetrics.webex', webex)
           );
+
+          window.setInterval = setIntervalOriginal;
         });
 
         it('should pass the turn server info to the peer connection', async () => {

@@ -10,6 +10,7 @@ import {
   ClientEventLeaveReason,
   CallDiagnosticUtils,
   CALL_DIAGNOSTIC_CONFIG,
+  RtcMetrics,
 } from '@webex/internal-plugin-metrics';
 import {ClientEvent as RawClientEvent} from '@webex/event-dictionary-ts';
 
@@ -155,7 +156,6 @@ import ControlsOptionsManager from '../controls-options-manager';
 import PermissionError from '../common/errors/permission';
 import {LocusMediaRequest} from './locusMediaRequest';
 import {ConnectionStateHandler, ConnectionStateEvent} from './connectionStateHandler';
-import RtcMetrics from '../rtcMetrics';
 
 // default callback so we don't call an undefined function, but in practice it should never be used
 const DEFAULT_ICE_PHASE_CALLBACK = () => 'JOIN_MEETING_FINAL';
