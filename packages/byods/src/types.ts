@@ -1,4 +1,4 @@
-import {TokenStorageAdapter} from 'token-storage-adapter/types';
+import {TokenStorageAdapter} from './token-storage-adapter/types';
 import {LOGGER} from './Logger/types';
 
 export interface LoggerConfig {
@@ -24,7 +24,7 @@ export interface SDKConfig {
   /**
    * The token storage adapter passed by the client
    */
-  tokenStorageAdapter: TokenStorageAdapter;
+  tokenStorageAdapter?: TokenStorageAdapter;
 
   /**
    * The Logger Config

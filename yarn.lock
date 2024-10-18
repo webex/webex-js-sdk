@@ -1653,7 +1653,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@babel/plugin-transform-private-methods@npm:^7.23.3":
+"@babel/plugin-transform-private-methods@npm:7.23.3, @babel/plugin-transform-private-methods@npm:^7.23.3":
   version: 7.23.3
   resolution: "@babel/plugin-transform-private-methods@npm:7.23.3"
   dependencies:
@@ -7740,6 +7740,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@webex/byods@workspace:packages/byods"
   dependencies:
+    "@babel/plugin-transform-private-methods": 7.23.3
     "@babel/preset-typescript": 7.16.7
     "@commitlint/cli": 15.0.0
     "@commitlint/config-conventional": 15.0.0
