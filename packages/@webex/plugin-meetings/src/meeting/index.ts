@@ -6376,7 +6376,7 @@ export default class Meeting extends StatelessWebexPlugin {
   private async createMediaConnection(turnServerInfo, bundlePolicy?: BundlePolicy) {
     this.rtcMetrics = this.isMultistream
       ? // @ts-ignore
-        new RtcMetrics(this.webex, this.id, this.correlationId)
+        new RtcMetrics(this.webex, {meetingId: this.id}, this.correlationId)
       : undefined;
 
     const mc = Media.createMediaConnection(
