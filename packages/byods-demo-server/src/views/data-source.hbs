@@ -22,7 +22,7 @@
               <p><strong>Created By:</strong> {{this.createdBy}}</p>
               <p><strong>Created At:</strong> {{this.createdAt}}</p>
               <div class="card-buttons">
-                <button class="edit-button" onclick="editDataSource('{{this.id}}')">Edit</button>
+                <button class="edit-button" onclick="editDataSource('{{this.id}}', '{{this.schemaId}}')">Edit</button>
                 <button class="delete-button" onclick="deleteDataSource('{{this.id}}')">Delete</button>
                 <button class="refresh-button" onclick="refreshJWSToken('{{this.id}}')">Refresh Token</button>
               </div>
@@ -42,8 +42,8 @@
         <form id="editForm">
           <h2 id="formTitle">Edit Data Source</h2>
           <input type="hidden" id="editDataSourceId" name="id">
-          <label for="schemaId">Schema ID:</label>
-          <input type="text" id="editSchemaId" name="schemaId" required>
+          <label id="schemaIdLabel" for="schemaId">Schema ID:</label>
+          <input type="text" id="schemaId" name="schemaId">
           <label for="url">URL:</label>
           <input type="text" id="editUrl" name="url" required>
           <label for="audience">Audience:</label>
@@ -63,31 +63,26 @@
     <script>
       let isEdit = true;
       let currentId = null;
+      let currentSchemaId = null;
 
       function openAddForm() {
         isEdit = false;
         document.getElementById('formTitle').textContent = 'Add Data Source';
         document.getElementById('editForm').reset();
+        document.getElementById('schemaId').style.display = 'block'; // Show schema ID field
+        document.getElementById('schemaIdLabel').style.display = 'block'; // Show schema ID label
         document.getElementById('editDataSourceModal').style.display = 'block';
       }
 
-      function editDataSource(id) {
+      function editDataSource(id, schemaId) {
         isEdit = true;
         currentId = id;
+        currentSchemaId = schemaId;
         document.getElementById('formTitle').textContent = 'Update Data Source';
         document.getElementById('editForm').reset();
+        document.getElementById('schemaId').style.display = 'none'; // Hide schema ID field
+        document.getElementById('schemaIdLabel').style.display = 'none'; // Hide schema ID label
         document.getElementById('editDataSourceModal').style.display = 'block';
-        const dataSource = dataSources.find(ds => ds.id === id);
-        if (dataSource) {
-          document.getElementById('editDataSourceId').value = dataSource.id;
-          document.getElementById('editSchemaId').value = dataSource.schemaId;
-          document.getElementById('editUrl').value = dataSource.url;
-          document.getElementById('editAudience').value = dataSource.audience;
-          document.getElementById('editSubject').value = dataSource.subject;
-          document.getElementById('editNonce').value = dataSource.nonce;
-          document.getElementById('editTokenLifetimeMinutes').value = dataSource.tokenLifetimeMinutes;
-          document.getElementById('editDataSourceModal').style.display = 'block';
-        }
       }
 
       function closeEditForm() {
@@ -96,15 +91,18 @@
 
       document.getElementById('editForm').addEventListener('submit', function(event) {
         event.preventDefault();
+        console.error('Form submit event triggered');
         const id = document.getElementById('editDataSourceId').value;
+        const schemaId = isEdit ? currentSchemaId : document.getElementById('schemaId').value;
         const dataSourcePayload = {
-          schemaId: document.getElementById('editSchemaId').value,
+          schemaId,
           url: document.getElementById('editUrl').value,
           audience: document.getElementById('editAudience').value,
           subject: document.getElementById('editSubject').value,
           nonce: document.getElementById('editNonce').value,
           tokenLifetimeMinutes: document.getElementById('editTokenLifetimeMinutes').value,
         };
+        console.log('Submitting data:', dataSourcePayload); // Debugging log
         const endpoint = isEdit ? `/api/data-source/update` : `/api/data-source/add`;
         fetch(endpoint, {
           method: 'POST',
@@ -113,7 +111,6 @@
           },
           body: JSON.stringify(isEdit ? { id: currentId, ...dataSourcePayload } : dataSourcePayload)
         })
-          .then(response => response.json())
           .then(data => {
             if (data.error) {
               throw new Error(data.error);
@@ -130,7 +127,6 @@
         fetch(`/api/data-source/delete/${id}`, {
           method: 'DELETE'
         })
-          .then(response => response.json())
           .then(data => {
             if (data.error) {
               throw new Error(data.error);

@@ -131,7 +131,7 @@ app.post('/api/data-source/add', async (req: Request, res: Response) => {
 app.post('/api/data-source/update', async (req: Request, res: Response) => {
   try {
     const {id, schemaId, url, audience, subject, nonce, tokenLifetimeMinutes} = req.body;
-    const dataSourcePayload = {schemaId, url, audience, subject, nonce, tokenLifetimeMinutes};
+    const dataSourcePayload = {schemaId, tokenLifetimeMinutes, url, subject, audience, nonce};
     const response = await baseClient.dataSource.update(id, dataSourcePayload);
     res.status(201).json({message: 'Data updated successfully', data: response.data});
   } catch (error) {

@@ -2,13 +2,8 @@
   "name": "byods-demo-server",
   "version": "0.0.0",
   "scripts": {
-    "build": "npx ts-node src/index.ts",
-    "serve": "node dist/server.js",
     "dev": "NODE_ENV=development BYODS_ENVIRONMENT=integration npx ts-node ./src",
-    "dev:hot": "nodemon --exec \"npm run dev\" --watch ./src -e ts",
-    "start": "NODE_ENV=production node -r ./preload.js ./dist",
-    "test": "NODE_ENV=test npx ts-node ./spec",
-    "test:hot": "nodemon --exec \"npm run test\" --watch ./src --watch ./spec -e ts"
+    "dev:hot": "nodemon --exec \"npm run dev\" --watch ./src -e ts"
   },
   "engines": {
     "node": ">=16.0.0"
