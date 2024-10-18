@@ -34,7 +34,7 @@ const Presence = WebexPlugin.extend({
   },
 
   /**
-   * Initialize the presence worker for client
+   * Initialize the presence plugin
    * @returns {undefined}
    */
   initialize() {
@@ -43,6 +43,20 @@ const Presence = WebexPlugin.extend({
         this.worker.initialize(this.webex);
       }
     });
+  },
+
+  /**
+   * Initializes the presence worker.
+   * @returns {undefined}
+   */
+  initializeWorker() {
+    if (this.webex.ready) {
+      this.worker.initialize(this.webex);
+    } else {
+      this.webex.once('ready', () => {
+        this.worker.initialize(this.webex);
+      });
+    }
   },
 
   /**

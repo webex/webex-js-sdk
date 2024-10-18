@@ -75,7 +75,9 @@ export class Registration implements IRegistration {
   private backupMobiusUris: string[];
   private registerRetry = false;
   private reconnectPending = false;
+  private jwe?: string;
   private isCCFlow = false;
+  private failoverImmediately = false;
 
   /**
    */
@@ -84,8 +86,10 @@ export class Registration implements IRegistration {
     serviceData: ServiceData,
     mutex: Mutex,
     lineEmitter: LineEmitterCallback,
-    logLevel: LOGGER
+    logLevel: LOGGER,
+    jwe?: string
   ) {
+    this.jwe = jwe;
     this.sdkConnector = SDKConnector;
     this.serviceData = serviceData;
     this.isCCFlow = serviceData.indicator === ServiceIndicator.CONTACT_CENTER;
@@ -175,7 +179,7 @@ export class Registration implements IRegistration {
     const deviceInfo = {
       userId: this.userId,
       clientDeviceUri: this.webex.internal.device.url,
-      serviceData: this.serviceData,
+      serviceData: this.jwe ? {...this.serviceData, jwe: this.jwe} : this.serviceData,
     };
 
     return <WebexRequestPayload>this.webex.request({
@@ -275,7 +279,7 @@ export class Registration implements IRegistration {
 
     let abort;
 
-    if (interval > BASE_REG_RETRY_TIMER_VAL_IN_SEC) {
+    if (interval > BASE_REG_RETRY_TIMER_VAL_IN_SEC && !this.failoverImmediately) {
       const scheduledTime = Math.floor(Date.now() / 1000);
 
       setTimeout(async () => {
@@ -294,6 +298,7 @@ export class Registration implements IRegistration {
       );
     } else if (this.backupMobiusUris.length) {
       log.log('Failing over to backup servers.', loggerContext);
+      this.failoverImmediately = false;
       abort = await this.attemptRegistrationWithServers(
         this.startFailoverTimer.name,
         this.backupMobiusUris
@@ -596,6 +601,10 @@ export class Registration implements IRegistration {
   ): Promise<boolean> {
     let abort = false;
 
+    if (this.failoverImmediately) {
+      return abort;
+    }
+
     if (this.isDeviceRegistered()) {
       log.log(`[${caller}] : Device already registered with : ${this.activeMobiusUrl}`, {
         file: REGISTRATION_FILE,
@@ -734,6 +743,7 @@ export class Registration implements IRegistration {
             );
 
             if (abort || keepAliveRetryCount >= RETRY_COUNT_THRESHOLD) {
+              this.failoverImmediately = this.isCCFlow;
               this.setStatus(RegistrationStatus.INACTIVE);
               this.clearKeepaliveTimer();
               this.clearFailbackTimer();
@@ -860,5 +870,6 @@ export const createRegistration = (
   serviceData: ServiceData,
   mutex: Mutex,
   lineEmitter: LineEmitterCallback,
-  logLevel: LOGGER
-): IRegistration => new Registration(webex, serviceData, mutex, lineEmitter, logLevel);
+  logLevel: LOGGER,
+  jwe?: string
+): IRegistration => new Registration(webex, serviceData, mutex, lineEmitter, logLevel, jwe);

@@ -147,12 +147,12 @@ describe('Call Tests', () => {
     const call = createCall(
       activeUrl,
       webex,
-      dest,
       CallDirection.OUTBOUND,
       deviceId,
       mockLineId,
       deleteCallFromCollection,
-      defaultServiceIndicator
+      defaultServiceIndicator,
+      dest
     );
 
     expect(call).toBeTruthy();
@@ -171,7 +171,7 @@ describe('Call Tests', () => {
 
     const callManager = getCallManager(webex, defaultServiceIndicator);
 
-    const call = callManager.createCall(dest, CallDirection.OUTBOUND, deviceId, mockLineId);
+    const call = callManager.createCall(CallDirection.OUTBOUND, deviceId, mockLineId, dest);
 
     const realMediaConnection = call.mediaConnection;
     // Set the mock mediaConnection object
@@ -220,7 +220,7 @@ describe('Call Tests', () => {
 
     const localAudioStream = mockStream as unknown as InternalMediaCoreModule.LocalMicrophoneStream;
 
-    const call = callManager.createCall(dest, CallDirection.OUTBOUND, deviceId, mockLineId);
+    const call = callManager.createCall(CallDirection.OUTBOUND, deviceId, mockLineId, dest);
 
     expect(call).toBeTruthy();
     /* After creation , call manager should have 1 record */
@@ -265,7 +265,7 @@ describe('Call Tests', () => {
       },
     };
 
-    const call = callManager.createCall(dest, CallDirection.INBOUND, deviceId, mockLineId);
+    const call = callManager.createCall(CallDirection.INBOUND, deviceId, mockLineId, dest);
 
     const response = await call['postMedia']({});
 
@@ -273,7 +273,7 @@ describe('Call Tests', () => {
   });
 
   it('check whether callerId midcall event is serviced or not', async () => {
-    const call = callManager.createCall(dest, CallDirection.OUTBOUND, deviceId, mockLineId);
+    const call = callManager.createCall(CallDirection.OUTBOUND, deviceId, mockLineId, dest);
 
     call.handleMidCallEvent(dummyMidCallEvent);
     await waitForMsecs(50);
@@ -283,7 +283,7 @@ describe('Call Tests', () => {
   });
 
   it('check whether call midcall event is serviced or not', async () => {
-    const call = callManager.createCall(dest, CallDirection.OUTBOUND, deviceId, mockLineId);
+    const call = callManager.createCall(CallDirection.OUTBOUND, deviceId, mockLineId, dest);
 
     dummyMidCallEvent.eventType = 'callState';
 
@@ -300,7 +300,7 @@ describe('Call Tests', () => {
   });
 
   it('check call stats for active call', async () => {
-    const call = callManager.createCall(dest, CallDirection.OUTBOUND, deviceId, mockLineId);
+    const call = callManager.createCall(CallDirection.OUTBOUND, deviceId, mockLineId, dest);
 
     let callRtpStats;
 
@@ -330,12 +330,12 @@ describe('Call Tests', () => {
     const call = createCall(
       activeUrl,
       webex,
-      dest,
       CallDirection.OUTBOUND,
       deviceId,
       mockLineId,
       deleteCallFromCollection,
-      defaultServiceIndicator
+      defaultServiceIndicator,
+      dest
     );
 
     const bnrMetricSpy = jest.spyOn(call['metricManager'], 'submitBNRMetric');
@@ -384,12 +384,12 @@ describe('Call Tests', () => {
     const call = createCall(
       activeUrl,
       webex,
-      dest,
       CallDirection.OUTBOUND,
       deviceId,
       mockLineId,
       deleteCallFromCollection,
-      defaultServiceIndicator
+      defaultServiceIndicator,
+      dest
     );
     /** Cannot answer in idle state */
 
@@ -440,12 +440,12 @@ describe('Call Tests', () => {
     const call = createCall(
       activeUrl,
       webex,
-      dest,
       CallDirection.OUTBOUND,
       deviceId,
       mockLineId,
       deleteCallFromCollection,
-      defaultServiceIndicator
+      defaultServiceIndicator,
+      dest
     );
 
     call.dial(localAudioStream);
@@ -554,12 +554,12 @@ describe('Call Tests', () => {
     const call = createCall(
       activeUrl,
       webex,
-      dest,
       CallDirection.OUTBOUND,
       deviceId,
       mockLineId,
       deleteCallFromCollection,
-      defaultServiceIndicator
+      defaultServiceIndicator,
+      dest
     );
 
     call.answer(localAudioStream);
@@ -593,12 +593,12 @@ describe('Call Tests', () => {
     const call = createCall(
       activeUrl,
       webex,
-      dest,
       CallDirection.OUTBOUND,
       deviceId,
       mockLineId,
       deleteCallFromCollection,
-      defaultServiceIndicator
+      defaultServiceIndicator,
+      dest
     );
 
     call.dial(localAudioStream);
@@ -632,7 +632,7 @@ describe('Call Tests', () => {
     const onStream1Spy = jest.spyOn(localAudioStream, 'on');
     const offStream1Spy = jest.spyOn(localAudioStream, 'off');
 
-    const call = callManager.createCall(dest, CallDirection.OUTBOUND, deviceId, mockLineId);
+    const call = callManager.createCall(CallDirection.OUTBOUND, deviceId, mockLineId, dest);
 
     call.dial(localAudioStream);
 
@@ -695,7 +695,7 @@ describe('Call Tests', () => {
 
     const localAudioStream = mockStream as unknown as InternalMediaCoreModule.LocalMicrophoneStream;
 
-    const call = callManager.createCall(dest, CallDirection.OUTBOUND, deviceId, mockLineId);
+    const call = callManager.createCall(CallDirection.OUTBOUND, deviceId, mockLineId, dest);
 
     call.dial(localAudioStream);
 
@@ -717,6 +717,56 @@ describe('Call Tests', () => {
       `Did not find a local track while updating media for call ${call.getCorrelationId()}. Will not update media`,
       {file: 'call', method: 'updateMedia'}
     );
+  });
+
+  describe('Guest Calling Flow Tests', () => {
+    const dummyEvent = {
+      type: 'E_SEND_CALL_SETUP',
+      data: undefined as any,
+    };
+
+    let call: Call;
+
+    it('outgoing call without guest calling must have callee', async () => {
+      call = new Call(
+        activeUrl,
+        webex,
+        CallDirection.OUTBOUND,
+        deviceId,
+        mockLineId,
+        () => {
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          const dummy = 10;
+        },
+        defaultServiceIndicator,
+        dest
+      );
+      call['callStateMachine'].state.value = 'S_IDLE';
+      const requestSpy = jest.spyOn(webex, 'request');
+      call.sendCallStateMachineEvt(dummyEvent as CallEvent);
+      const requestArgs = requestSpy.mock.calls[0][0];
+      expect('callee' in requestArgs.body).toBe(true);
+    });
+
+    it('outgoing call for guest calling must not have callee', async () => {
+      call = new Call(
+        activeUrl,
+        webex,
+        CallDirection.OUTBOUND,
+        deviceId,
+        mockLineId,
+        () => {
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          const dummy = 10;
+        },
+        defaultServiceIndicator
+      );
+      call['callStateMachine'].state.value = 'S_IDLE';
+      const requestSpy = jest.spyOn(webex, 'request');
+      call.sendCallStateMachineEvt(dummyEvent as CallEvent);
+      const requestArgs = requestSpy.mock.calls[0][0];
+      expect('callee' in requestArgs.body).toBe(false);
+    });
   });
 });
 
@@ -743,7 +793,6 @@ describe('State Machine handler tests', () => {
     call = new Call(
       activeUrl,
       webex,
-      dest,
       CallDirection.OUTBOUND,
       deviceId,
       mockLineId,
@@ -751,7 +800,8 @@ describe('State Machine handler tests', () => {
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const dummy = 10;
       },
-      defaultServiceIndicator
+      defaultServiceIndicator,
+      dest
     );
     jest.clearAllTimers();
     jest.useFakeTimers();
@@ -2084,7 +2134,6 @@ describe('Supplementary Services tests', () => {
     call = new Call(
       activeUrl,
       webex,
-      dest,
       CallDirection.OUTBOUND,
       deviceId,
       mockLineId,
@@ -2092,7 +2141,8 @@ describe('Supplementary Services tests', () => {
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const dummy = 10;
       },
-      defaultServiceIndicator
+      defaultServiceIndicator,
+      dest
     );
     call['connected'] = true;
     call['earlyMedia'] = false;
@@ -2705,7 +2755,6 @@ describe('Supplementary Services tests', () => {
       secondCall = new Call(
         activeUrl,
         webex,
-        transfereeDest,
         CallDirection.OUTBOUND,
         deviceId,
         mockLineId,
@@ -2713,7 +2762,8 @@ describe('Supplementary Services tests', () => {
           // eslint-disable-next-line @typescript-eslint/no-unused-vars
           const dummy = 10;
         },
-        defaultServiceIndicator
+        defaultServiceIndicator,
+        transfereeDest
       );
       secondCall['connected'] = true;
       secondCall['earlyMedia'] = false;
