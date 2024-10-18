@@ -101,7 +101,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
   private webex: WebexSDK;
 
-  private destination: CallDetails;
+  private destination?: CallDetails;
 
   private direction: CallDirection;
 
@@ -199,12 +199,12 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
   constructor(
     activeUrl: string,
     webex: WebexSDK,
-    destination: CallDetails,
     direction: CallDirection,
     deviceId: string,
     lineId: string,
     deleteCb: DeleteRecordCallBack,
-    indicator: ServiceIndicator
+    indicator: ServiceIndicator,
+    destination?: CallDetails
   ) {
     super();
     this.destination = destination;
@@ -2156,6 +2156,17 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    * @param roapMessage
    */
   private post = async (roapMessage: RoapMessage): Promise<MobiusCallResponse> => {
+    const basePayload = {
+      device: {
+        deviceId: this.deviceId,
+        correlationId: this.correlationId,
+      },
+      localMedia: {
+        roap: roapMessage,
+        mediaId: uuid(),
+      },
+    };
+
     return this.webex.request({
       uri: `${this.mobiusUrl}${DEVICES_ENDPOINT_RESOURCE}/${this.deviceId}/${CALL_ENDPOINT_RESOURCE}`,
       method: HTTP_METHODS.POST,
@@ -2164,20 +2175,15 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         [CISCO_DEVICE_URL]: this.webex.internal.device.url,
         [SPARK_USER_AGENT]: CALLING_USER_AGENT,
       },
-      body: {
-        device: {
-          deviceId: this.deviceId,
-          correlationId: this.correlationId,
-        },
-        callee: {
-          type: this.destination.type,
-          address: this.destination.address,
-        },
-        localMedia: {
-          roap: roapMessage,
-          mediaId: uuid(),
-        },
-      },
+      body: this.destination
+        ? {
+            ...basePayload,
+            callee: {
+              type: this.destination.type,
+              address: this.destination.address,
+            },
+          }
+        : basePayload,
     });
   };
 
@@ -2901,21 +2907,21 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 /**
  * @param activeUrl
  * @param webex -.
- * @param dest -.
  * @param dir -.
  * @param deviceId -.
  * @param lineId -.
  * @param serverCb
  * @param deleteCb
  * @param indicator - Service Indicator.
+ * @param dest -.
  */
 export const createCall = (
   activeUrl: string,
   webex: WebexSDK,
-  dest: CallDetails,
   dir: CallDirection,
   deviceId: string,
   lineId: string,
   deleteCb: DeleteRecordCallBack,
-  indicator: ServiceIndicator
-): ICall => new Call(activeUrl, webex, dest, dir, deviceId, lineId, deleteCb, indicator);
+  indicator: ServiceIndicator,
+  dest?: CallDetails
+): ICall => new Call(activeUrl, webex, dir, deviceId, lineId, deleteCb, indicator, dest);

@@ -36,6 +36,12 @@ describe('Line Tests', () => {
   const backupMobiusUris = jest.fn(() => mobiusUris.backup);
   const userId = webex.internal.device.userId;
   const clientDeviceUri = webex.internal.device.url;
+  const mockJwe = 'mockJwe';
+  const guestServiceData = {
+    indicator: ServiceIndicator.GUEST_CALLING,
+    domain: '',
+    guestName: 'testUser',
+  };
 
   const handleErrorSpy = jest.spyOn(utils, 'handleRegistrationErrors');
 
@@ -80,7 +86,8 @@ describe('Line Tests', () => {
         defaultServiceData,
         expect.any(Mutex),
         expect.anything(),
-        LOGGER.INFO
+        LOGGER.INFO,
+        undefined
       );
       expect(line.getStatus()).toEqual(RegistrationStatus.IDLE);
       await line.register();
@@ -101,6 +108,62 @@ describe('Line Tests', () => {
       expect(line.getActiveMobiusUrl()).toEqual(primaryUrl);
       expect(line.getLoggingLevel()).toEqual(LOGGER.INFO);
       expect(line.getDeviceId()).toEqual(mockRegistrationBody.device.deviceId);
+
+      webex.request.mockClear();
+
+      jest.advanceTimersByTime(30 * 1000);
+      await Promise.resolve();
+
+      expect(webex.request).toBeCalledOnceWith({
+        ...getMockRequestTemplate(),
+        uri: `${mockRegistrationBody.device.uri}/status`,
+        method: 'POST',
+      });
+      jest.useRealTimers();
+    });
+
+    it('verify successful Registration cases and keepalive for a guest user', async () => {
+      createRegistrationSpy.mockClear();
+      const guestLine = new Line(
+        userId,
+        clientDeviceUri,
+        mutex,
+        primaryMobiusUris(),
+        backupMobiusUris(),
+        LOGGER.INFO,
+        guestServiceData,
+        mockJwe
+      );
+      jest.useFakeTimers();
+      webex.request.mockReturnValue(registrationPayload);
+
+      expect(createRegistrationSpy).toBeCalledOnceWith(
+        webex,
+        guestServiceData,
+        expect.any(Mutex),
+        expect.anything(),
+        LOGGER.INFO,
+        mockJwe
+      );
+      expect(guestLine.getStatus()).toEqual(RegistrationStatus.IDLE);
+      await guestLine.register();
+
+      expect(webex.request).toBeCalledOnceWith({
+        ...getMockRequestTemplate(),
+        body: {
+          userId,
+          clientDeviceUri,
+          serviceData: {...guestServiceData, jwe: mockJwe},
+        },
+        uri: `${primaryUrl}device`,
+        method: 'POST',
+      });
+      expect(handleErrorSpy).not.toBeCalled();
+
+      expect(guestLine.getStatus()).toEqual(RegistrationStatus.ACTIVE);
+      expect(guestLine.getActiveMobiusUrl()).toEqual(primaryUrl);
+      expect(guestLine.getLoggingLevel()).toEqual(LOGGER.INFO);
+      expect(guestLine.getDeviceId()).toEqual(mockRegistrationBody.device.deviceId);
 
       webex.request.mockClear();
 
@@ -180,12 +243,10 @@ describe('Line Tests', () => {
       const createCallSpy = jest.spyOn(line.callManager, 'createCall');
       const call = line.makeCall({address: '5003', type: CallType.URI});
 
-      expect(createCallSpy).toBeCalledOnceWith(
-        {address: 'tel:5003', type: 'uri'},
-        CallDirection.OUTBOUND,
-        undefined,
-        line.lineId
-      );
+      expect(createCallSpy).toBeCalledOnceWith(CallDirection.OUTBOUND, undefined, line.lineId, {
+        address: 'tel:5003',
+        type: 'uri',
+      });
       expect(call).toBeTruthy();
       expect(line.getCall(call ? call.getCorrelationId() : '')).toBe(call);
       expect(call ? call.direction : undefined).toStrictEqual(CallDirection.OUTBOUND);
@@ -196,12 +257,10 @@ describe('Line Tests', () => {
       const createCallSpy = jest.spyOn(line.callManager, 'createCall');
       const call = line.makeCall({address: '*25', type: CallType.URI});
 
-      expect(createCallSpy).toBeCalledOnceWith(
-        {address: 'tel:*25', type: 'uri'},
-        CallDirection.OUTBOUND,
-        undefined,
-        line.lineId
-      );
+      expect(createCallSpy).toBeCalledOnceWith(CallDirection.OUTBOUND, undefined, line.lineId, {
+        address: 'tel:*25',
+        type: 'uri',
+      });
       expect(call).toBeTruthy();
       expect(call ? call.direction : undefined).toStrictEqual(CallDirection.OUTBOUND);
       call?.end();
@@ -211,12 +270,10 @@ describe('Line Tests', () => {
       const createCallSpy = jest.spyOn(line.callManager, 'createCall');
       const call = line.makeCall({address: '+91 123 456 7890', type: CallType.URI});
 
-      expect(createCallSpy).toBeCalledOnceWith(
-        {address: 'tel:+911234567890', type: 'uri'},
-        CallDirection.OUTBOUND,
-        undefined,
-        line.lineId
-      );
+      expect(createCallSpy).toBeCalledOnceWith(CallDirection.OUTBOUND, undefined, line.lineId, {
+        address: 'tel:+911234567890',
+        type: 'uri',
+      });
       expect(call).toBeTruthy();
       expect(call ? call.direction : undefined).toStrictEqual(CallDirection.OUTBOUND);
       expect(call ? call.destination.address : undefined).toStrictEqual('tel:+911234567890');
@@ -227,12 +284,10 @@ describe('Line Tests', () => {
       const createCallSpy = jest.spyOn(line.callManager, 'createCall');
       const call = line.makeCall({address: '123-456-7890', type: CallType.URI});
 
-      expect(createCallSpy).toBeCalledOnceWith(
-        {address: 'tel:1234567890', type: 'uri'},
-        CallDirection.OUTBOUND,
-        undefined,
-        line.lineId
-      );
+      expect(createCallSpy).toBeCalledOnceWith(CallDirection.OUTBOUND, undefined, line.lineId, {
+        address: 'tel:1234567890',
+        type: 'uri',
+      });
       expect(call).toBeTruthy();
       expect(call ? call.direction : undefined).toStrictEqual(CallDirection.OUTBOUND);
       expect(call ? call.destination.address : undefined).toStrictEqual('tel:1234567890');
@@ -262,8 +317,6 @@ describe('Line Tests', () => {
 
     it('attempt to create call with incorrect number format 2', (done) => {
       expect.assertions(4);
-      // There may be other listeners , which may create race
-      line.removeAllListeners(LINE_EVENTS.ERROR);
       const createCallSpy = jest.spyOn(line.callManager, 'createCall');
 
       line.on(LINE_EVENTS.ERROR, (error) => {
@@ -281,6 +334,26 @@ describe('Line Tests', () => {
       } catch (error) {
         done(error);
       }
+    });
+
+    it('attempt to create call with guest calling service indicator', () => {
+      expect.assertions(2);
+      const createCallSpy = jest.spyOn(line.callManager, 'createCall');
+
+      // Mocking the serviceData to have GUEST_CALLING indicator
+      line = new Line(
+        userId,
+        clientDeviceUri,
+        mutex,
+        primaryMobiusUris(),
+        backupMobiusUris(),
+        LOGGER.INFO,
+        {indicator: ServiceIndicator.GUEST_CALLING}
+      );
+      const call = line.makeCall();
+
+      expect(call).toBeTruthy();
+      expect(createCallSpy).toBeCalledWith(CallDirection.OUTBOUND, undefined, expect.any(String));
     });
   });
 });

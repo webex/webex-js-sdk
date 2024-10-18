@@ -42,9 +42,6 @@ describe('internal-plugin-metrics', () => {
       },
       meetingInfo: {},
       getCurUserType: () => 'host',
-      statsAnalyzer: {
-        getLocalIpAddress: () => '192.168.1.90',
-      },
     };
 
     const fakeMeeting2 = {
@@ -96,8 +93,19 @@ describe('internal-plugin-metrics', () => {
               clientName: 'Cantina',
             },
           },
+          getBasicMeetingInformation: (id) => fakeMeetings[id],
           meetingCollection: {
-            get: (id) => fakeMeetings[id],
+            get: (meetingId) => {
+              return {
+                statsAnalyzer: {
+                  getLocalIpAddress: () => {
+                    if (meetingId) {
+                      return '192.168.1.90';
+                    }
+                  },
+                }
+              }
+            },
           },
           geoHintInfo: {
             clientAddress: '1.3.4.5',
@@ -761,6 +769,7 @@ describe('internal-plugin-metrics', () => {
           meeting: fakeMeeting,
           mediaConnections: [{mediaAgentAlias: 'alias', mediaAgentGroupId: '1'}],
           webexConferenceIdStr: undefined,
+          sessionCorrelationId: undefined,
           globalMeetingId: undefined,
           sessionCorrelationId: undefined,
         });
@@ -1452,6 +1461,9 @@ describe('internal-plugin-metrics', () => {
                 name: 'other',
                 category: 'other',
                 errorCode: 9999,
+                errorData: {
+                  errorName: 'Error'
+                },
                 serviceErrorCode: 9999,
                 errorDescription: 'UnknownError',
                 rawErrorMessage: 'bad times',
@@ -1485,7 +1497,7 @@ describe('internal-plugin-metrics', () => {
         assert.deepEqual(webexLoggerLogCalls[2].args, [
           'call-diagnostic-events -> ',
           'CallDiagnosticMetrics: @prepareClientEvent. Generated errors:',
-          `generatedError: {"fatal":true,"shownToUser":false,"name":"other","category":"other","errorCode":9999,"serviceErrorCode":9999,"rawErrorMessage":"bad times","errorDescription":"UnknownError"}`,
+          `generatedError: {"fatal":true,"shownToUser":false,"name":"other","category":"other","errorCode":9999,"errorData":{"errorName":"Error"},"serviceErrorCode":9999,"rawErrorMessage":"bad times","errorDescription":"UnknownError"}`,
         ]);
       });
 
@@ -1523,6 +1535,9 @@ describe('internal-plugin-metrics', () => {
                 name: 'other',
                 category: 'other',
                 errorCode: 9999,
+                errorData: {
+                  errorName: 'Error'
+                },
                 serviceErrorCode: 9999,
                 errorDescription: 'UnknownError',
                 rawErrorMessage: 'bad times',
@@ -1554,7 +1569,7 @@ describe('internal-plugin-metrics', () => {
         assert.deepEqual(webexLoggerLogCalls[2].args, [
           'call-diagnostic-events -> ',
           'CallDiagnosticMetrics: @prepareClientEvent. Generated errors:',
-          `generatedError: {"fatal":true,"shownToUser":false,"name":"other","category":"other","errorCode":9999,"serviceErrorCode":9999,"rawErrorMessage":"bad times","errorDescription":"UnknownError"}`,
+          `generatedError: {"fatal":true,"shownToUser":false,"name":"other","category":"other","errorCode":9999,"errorData":{"errorName":"Error"},"serviceErrorCode":9999,"rawErrorMessage":"bad times","errorDescription":"UnknownError"}`,
         ]);
       });
 
@@ -1708,7 +1723,8 @@ describe('internal-plugin-metrics', () => {
       });
 
       it('should send behavioral event if meetingId provided but meeting is undefined', () => {
-        webex.meetings.meetingCollection.get = sinon.stub().returns(undefined);
+        webex.meetings.getBasicMeetingInformation = sinon.stub().returns(undefined);
+
         cd.submitClientEvent({name: 'client.alert.displayed', options: {meetingId: 'meetingId'}});
         assert.calledWith(
           webex.internal.metrics.submitClientMetrics,
@@ -1912,7 +1928,7 @@ describe('internal-plugin-metrics', () => {
       });
 
       it('should send behavioral event if meeting is undefined', () => {
-        webex.meetings.meetingCollection.get = sinon.stub().returns(undefined);
+        webex.meetings.getBasicMeetingInformation = sinon.stub().returns(undefined);
         cd.submitMQE({
           name: 'client.mediaquality.event',
           payload: {
@@ -2234,6 +2250,9 @@ describe('internal-plugin-metrics', () => {
           shownToUser: true,
           serviceErrorCode: 9999,
           errorCode: 9999,
+          errorData: {
+            errorName: 'Error'
+          },
           rawErrorMessage: 'bad times',
         });
       });

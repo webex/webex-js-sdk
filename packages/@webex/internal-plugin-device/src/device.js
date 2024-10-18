@@ -7,6 +7,7 @@ import METRICS from './metrics';
 import {FEATURE_COLLECTION_NAMES, DEVICE_EVENT_REGISTRATION_SUCCESS} from './constants';
 import FeaturesModel from './features/features-model';
 import IpNetworkDetector from './ipNetworkDetector';
+import {CatalogDetails} from './types';
 
 /**
  * Determine if the plugin should be initialized based on cached storage.
@@ -363,15 +364,16 @@ const Device = WebexPlugin.extend({
 
   // Registration method members
 
-  /* eslint-disable require-jsdoc */
   /**
    * Refresh the current registered device if able.
    *
+   * @param {DeviceRegistrationOptions} options - The options for refresh.
+   * @param {CatalogDetails} options.includeDetails - The details to include in the refresh/register request.
    * @returns {Promise<void, Error>}
    */
   @oneFlight
   @waitForValue('@')
-  refresh() {
+  refresh(deviceRegistrationOptions = {}) {
     this.logger.info('device: refreshing');
 
     // Validate that the device can be registered.
@@ -380,7 +382,7 @@ const Device = WebexPlugin.extend({
       if (!this.registered) {
         this.logger.info('device: device not registered, registering');
 
-        return this.register();
+        return this.register(deviceRegistrationOptions);
       }
 
       // Merge body configurations, overriding defaults.
@@ -407,13 +409,15 @@ const Device = WebexPlugin.extend({
         ...(this.etag ? {'If-None-Match': this.etag} : {}),
       };
 
+      const {includeDetails = CatalogDetails.all} = deviceRegistrationOptions;
+
       return this.request({
         method: 'PUT',
         uri: this.url,
         body,
         headers,
         qs: {
-          includeUpstreamServices: `all${
+          includeUpstreamServices: `${includeDetails}${
             this.config.energyForecast && this.energyForecastConfig ? ',energyforecast' : ''
           }`,
         },
@@ -428,7 +432,7 @@ const Device = WebexPlugin.extend({
 
             this.clear();
 
-            return this.register();
+            return this.register(deviceRegistrationOptions);
           }
 
           return Promise.reject(reason);
@@ -441,11 +445,13 @@ const Device = WebexPlugin.extend({
    * registration utilizes the services plugin to send the request to the
    * **WDM** service.
    *
+   * @param {Object} options - The options for registration.
+   * @param {CatalogDetails} options.includeDetails - The details to include in the refresh/register request.
    * @returns {Promise<void, Error>}
    */
   @oneFlight
   @waitForValue('@')
-  register() {
+  register(deviceRegistrationOptions = {}) {
     this.logger.info('device: registering');
 
     this.webex.internal.newMetrics.callDiagnosticMetrics.setDeviceInfo(this);
@@ -456,7 +462,7 @@ const Device = WebexPlugin.extend({
       if (this.registered) {
         this.logger.info('device: device already registered, refreshing');
 
-        return this.refresh();
+        return this.refresh(deviceRegistrationOptions);
       }
 
       // Merge body configurations, overriding defaults.
@@ -479,6 +485,8 @@ const Device = WebexPlugin.extend({
         name: 'internal.register.device.request',
       });
 
+      const {includeDetails = CatalogDetails.all} = deviceRegistrationOptions;
+
       // This will be replaced by a `create()` method.
       return this.request({
         method: 'POST',
@@ -487,7 +495,7 @@ const Device = WebexPlugin.extend({
         body,
         headers,
         qs: {
-          includeUpstreamServices: `all${
+          includeUpstreamServices: `${includeDetails}${
             this.config.energyForecast && this.energyForecastConfig ? ',energyforecast' : ''
           }`,
         },

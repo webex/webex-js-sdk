@@ -414,10 +414,10 @@ export interface ICallManager extends Eventing<CallEventTypes> {
    * @param lineId - The identifier of the line to which the call belongs.
    */
   createCall(
-    destination: CallDetails,
     direction: CallDirection,
     deviceId: string,
-    lineId: string
+    lineId: string,
+    destination?: CallDetails
   ): ICall;
 
   /**
