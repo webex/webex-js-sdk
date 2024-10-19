@@ -30,7 +30,8 @@ export default class AgentConfigService {
   public async getUserUsingCI(ciUserId: string, orgId: string): Promise<UserResponse> {
     try {
       const URL = `${this.wccAPIURL}organization/${orgId}/user/by-ci-user-id/${ciUserId}`;
-      const response = await request.request(URL);
+      const response = await new Request(this.webex).request(URL, HTTP_METHODS.GET);
+
       this.webex.logger.log('getUserUsingCI api called successfully.');
 
       return Promise.resolve(response?.body);
@@ -52,7 +53,8 @@ export default class AgentConfigService {
   ): Promise<DesktopProfileResponse> {
     try {
       const URL = `${this.wccAPIURL}organization/${orgId}/agent-profile/${desktopProfileId}`;
-      const response = await new Request(this.webex, URL, HTTP_METHODS.GET).request();
+      const response = await new Request(this.webex).request(URL, HTTP_METHODS.GET);
+
       this.webex.logger.log('retrieveDesktopProfileById api called successfully.');
 
       return Promise.resolve(response?.body);
@@ -81,8 +83,14 @@ export default class AgentConfigService {
     attributes?: string[]
   ): Promise<ListTeamsResponse> {
     try {
-      const URL = `${this.wccAPIURL}organization/${orgId}/team?page=${page}&pageSize=${pageSize}&filter=id=in=${filter}&attributes=${attributes}`;
-      const response = await new Request(this.webex, URL, HTTP_METHODS.GET).request();
+      let URL = '';
+      if (filter && filter.length > 0)
+        URL = `${this.wccAPIURL}organization/${orgId}/team?page=${page}&pageSize=${pageSize}&filter=id=in=${filter}&attributes=${attributes}`;
+      else
+        URL = `${this.wccAPIURL}organization/${orgId}/team?page=${page}&pageSize=${pageSize}&attributes=${attributes}`;
+
+      const response = await new Request(this.webex).request(URL, HTTP_METHODS.GET);
+
       this.webex.logger.log('getListOfTeams api called successfully.');
 
       return Promise.resolve(response?.body);
@@ -109,9 +117,14 @@ export default class AgentConfigService {
     attributes?: string[]
   ): Promise<ListAuxCodesResponse> {
     try {
-      const URL = `${this.wccAPIURL}organization/${orgId}/v2/auxiliary-code?page=${page}&pageSize=${pageSize}&filter=id=in=${filter}&attributes=${attributes}`;
+      let URL = '';
+      if (filter && filter.length > 0)
+        URL = `${this.wccAPIURL}organization/${orgId}/team?page=${page}&pageSize=${pageSize}&filter=id=in=${filter}&attributes=${attributes}`;
+      else
+        URL = `${this.wccAPIURL}organization/${orgId}/team?page=${page}&pageSize=${pageSize}&attributes=${attributes}`;
 
-      const response = await new Request(this.webex).request(URL);
+      const response = await new Request(this.webex).request(URL, HTTP_METHODS.GET);
+
       this.webex.logger.log('getListOfAuxCodes api called successfully.');
 
       return Promise.resolve(response?.body);

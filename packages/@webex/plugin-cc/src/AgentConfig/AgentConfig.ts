@@ -48,16 +48,16 @@ export default class AgentConfig {
         await agentConfigService.getDesktopProfileById(orgId, user?.agentProfileId);
       this.agentProfile.loginVoiceOptions = agentDesktopProfile?.loginVoiceOptions;
 
-      const teamListsFilter = user?.teamIds;
+      const teamListFilter = user?.teamIds;
 
-      const auxCodesFilter = [];
+      const auxCodeFilter = [];
 
       if (
         agentDesktopProfile?.accessWrapUpCode !== 'ALL' &&
         agentDesktopProfile?.accessIdleCode !== 'ALL'
       ) {
-        auxCodesFilter.push(agentDesktopProfile?.wrapUpCodes);
-        auxCodesFilter.push(agentDesktopProfile?.idleCodes);
+        auxCodeFilter.push(agentDesktopProfile?.wrapUpCodes);
+        auxCodeFilter.push(agentDesktopProfile?.idleCodes);
       }
 
       // Call the below two APIs parallel to optimise the Performance.
@@ -68,58 +68,42 @@ export default class AgentConfig {
             orgId,
             DEFAULT_PAGE,
             DEFAULT_PAGE_SIZE,
-            teamListsFilter,
+            teamListFilter,
             DEFAULT_ATTRIBUTES
           ),
           agentConfigService.getListOfAuxCodes(
             orgId,
             DEFAULT_PAGE,
             DEFAULT_PAGE_SIZE,
-            auxCodesFilter,
+            auxCodeFilter,
             DEFAULT_ATTRIBUTES
           ),
         ]);
 
-      // for (const team of teamsList.body) {
-      //   this.agentProfile.teams.push({
-      //     id: team?.id,
-      //   });
-      // }
+      this.agentProfile.teams.push(teamsList);
 
-      // auxCodeListData = [1, 2, 4, 5];
-      // 92 - idleCodes = [1,2,3]; [1,2]
-      // 94 - wrapCodes = [4,5,6]; [4,5]
+      this.agentProfile.wrapUpCodes = auxCodesList.data.filter(
+        (auxCode) => auxCode.workTypeCode === 'WRAP_UP_CODE'
+      );
+      this.agentProfile.idleCodes = auxCodesList.data.filter(
+        (auxCode) => auxCode.workTypeCode === 'IDLE_CODE'
+      );
 
-      // this.agentProfile.idleCodes = auxCodesList.data.filter()
-      // this.agentProfile.wrapCodes = '';
-
-      // let wraupcodes = codes.filter(worktypecode == 'Wrapup-code')
-      // let idleCodes = codes.filter(worktypecode == 'idle-code')
-
-      // filter the idleCode and wrapCodes based on accessIdleCodes and accessWrapUpCodes
-
-      // if (
-      //   agentDesktopProfile?.accessIdleCode === 'ALL' &&
-      //   agentDesktopProfile?.accessWrapUpCode !== 'ALL'
-      // ) {
-      //   this.agentProfile.wrapUpCodes = this.agentProfile.wrapUpCodes.filter(
-      //     agentDesktopProfile?.wrapUpCodes
-      //     // in this case it should have only [4,5]
-
-      //     // agentDesktopProfile?.wrapUpCodes = [4,5]
-      //   );
-      // } else if (
-      //   agentDesktopProfile?.accessIdleCode !== 'ALL' &&
-      //   agentDesktopProfile?.accessWrapUpCode === 'ALL'
-      // ) {
-      //   this.agentProfile.idleCodes = this.agentProfile.idleCodes.filter()
-      //     agentDesktopProfile?.idleCodes
-      //     // in this case it should have only [1,2]
-
-      //     // agentDesktopProfile?.idleCodes = [4,5]
-      //   );
-
-      // }
+      if (
+        agentDesktopProfile?.accessIdleCode === 'ALL' &&
+        agentDesktopProfile?.accessWrapUpCode !== 'ALL'
+      ) {
+        this.agentProfile.wrapUpCodes = this.agentProfile.wrapUpCodes.filter(
+          (auxCode) => auxCode.workTypeCode === 'WRAP_UP_CODE'
+        );
+      } else if (
+        agentDesktopProfile?.accessIdleCode !== 'ALL' &&
+        agentDesktopProfile?.accessWrapUpCode === 'ALL'
+      ) {
+        this.agentProfile.idleCodes = this.agentProfile.wrapUpCodes.filter(
+          (auxCode) => auxCode.workTypeCode === 'IDLE_CODE'
+        );
+      }
 
       return Promise.resolve(this.agentProfile);
     } catch (error) {

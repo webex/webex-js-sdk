@@ -128,26 +128,24 @@ export interface ListTeamsRequest {
 }
 
 /**
- * Represents the response from ListTeamsResponse.
+ * Represents the response from ListTeams.
  *
  * @public
  */
 export interface ListTeamsResponse {
-  body: {
-    /**
-     * ID of the team.
-     */
-    id: string;
+  /**
+   * ID of the team.
+   */
+  id: string;
 
-    /**
-     *  Name of the Team.
-     */
-    name: string;
-  }[];
+  /**
+   *  Name of the Team.
+   */
+  name: string;
 }
 
 /**
- * Represents the request to ListAuxCodesRequest.
+ * Represents the request to ListAuxCodes.
  *
  * @public
  */
@@ -181,7 +179,8 @@ export interface ListAuxCodesRequest {
 }
 
 /**
- * Represents interface used by ListAuxCodesResponse.
+ * Represents AuxCode.
+ * @public
  */
 
 export interface AuxCode {
@@ -214,6 +213,12 @@ export interface AuxCode {
    * Name for the Auxiliary Code.
    */
   name: string;
+
+  /**
+   * Indicates the work type associated with this code..
+   */
+
+  workTypeCode: string;
 }
 
 /**

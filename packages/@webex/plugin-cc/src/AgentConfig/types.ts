@@ -1,4 +1,4 @@
-import {AuxCode, ListAuxCodesResponse, ListTeamsResponse} from '../AgentConfigService/types';
+import {AuxCode, ListTeamsResponse} from '../AgentConfigService/types';
 import {WebexSDK} from '../types';
 
 /**
@@ -41,7 +41,14 @@ export interface IAgentConfig {
 
   loginVoiceOptions: string[];
 
-  idleCodes: AuxCode;
+  /**
+   * Represents the Idle codes list that the agents can select in Agent Desktop.t.
+   */
 
-  wrapUpCodes: AuxCode;
+  idleCodes: AuxCode[];
+
+  /**
+   * Represents the wrap-up codes list that the agents can select when they wrap up a contact.
+   */
+  wrapUpCodes: AuxCode[];
 }
