@@ -303,6 +303,10 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       identifiers.sessionCorrelationId = sessionCorrelationId;
     }
 
+    if (sessionCorrelationId) {
+      identifiers.sessionCorrelationId = sessionCorrelationId;
+    }
+
     if (correlationId) {
       identifiers.correlationId = correlationId;
     }

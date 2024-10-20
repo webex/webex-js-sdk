@@ -1,11 +1,12 @@
 /* eslint no-shadow: ["error", { "allow": ["eventType"] }] */
-import {cloneDeep, union} from 'lodash';
+import {cloneDeep} from 'lodash';
 import '@webex/internal-plugin-mercury';
 import '@webex/internal-plugin-conversation';
 import '@webex/internal-plugin-metrics';
 // @ts-ignore
 import {WebexPlugin} from '@webex/webex-core';
 import {setLogger} from '@webex/internal-media-core';
+import {DeviceRegistrationOptions} from '@webex/internal-plugin-device';
 
 import * as mediaHelpersModule from '@webex/media-helpers';
 
@@ -143,7 +144,14 @@ export type BasicMeetingInformation = {
   environment: string;
   id: string;
   locusUrl: string;
-  locusInfo: any; // it's only a very small subset of the locus info, see what's populated in the destroy() method
+  locusInfo: {
+    // it's only a very small subset of the locus info, to avoid using much memory
+    url: string;
+    fullState: {
+      lastActive: string;
+      sessionId: string;
+    };
+  };
   meetingInfo: any;
   sessionCorrelationId: string;
 };
@@ -758,11 +766,12 @@ export default class Meetings extends WebexPlugin {
    * Explicitly sets up the meetings plugin by registering
    * the device, connecting to mercury, and listening for locus events.
    *
+   * @param {DeviceRegistrationOptions} [deviceRegistrationOptions] - The options for registering the device (optional)
    * @returns {Promise}
    * @public
    * @memberof Meetings
    */
-  public register() {
+  public register(deviceRegistrationOptions?: DeviceRegistrationOptions): Promise<any> {
     // @ts-ignore
     if (!this.webex.canAuthorize) {
       LoggerProxy.logger.error(
@@ -788,7 +797,7 @@ export default class Meetings extends WebexPlugin {
       }),
       // @ts-ignore
       this.webex.internal.device
-        .register()
+        .register(deviceRegistrationOptions)
         // @ts-ignore
         .then(() =>
           LoggerProxy.logger.info(
@@ -1014,35 +1023,45 @@ export default class Meetings extends WebexPlugin {
    * @memberof Meetings
    */
   fetchUserPreferredWebexSite() {
-    return this.request.getMeetingPreferences().then((res) => {
-      if (res) {
-        const preferredWebexSite = MeetingsUtil.parseDefaultSiteFromMeetingPreferences(res);
-        this.preferredWebexSite = preferredWebexSite;
-        // @ts-ignore
-        this.webex.internal.services._getCatalog().addAllowedDomains([preferredWebexSite]);
-      }
+    // @ts-ignore
+    return this.webex.people._getMe().then((me) => {
+      const isGuestUser = me.type === 'appuser';
+      if (!isGuestUser) {
+        return this.request.getMeetingPreferences().then((res) => {
+          if (res) {
+            const preferredWebexSite = MeetingsUtil.parseDefaultSiteFromMeetingPreferences(res);
+            this.preferredWebexSite = preferredWebexSite;
+            // @ts-ignore
+            this.webex.internal.services._getCatalog().addAllowedDomains([preferredWebexSite]);
+          }
 
-      // fall back to getting the preferred site from the user information
-      if (!this.preferredWebexSite) {
-        // @ts-ignore
-        return this.webex.internal.user
-          .get()
-          .then((user) => {
-            const preferredWebexSite =
-              user?.userPreferences?.userPreferencesItems?.preferredWebExSite;
-            if (preferredWebexSite) {
-              this.preferredWebexSite = preferredWebexSite;
-              // @ts-ignore
-              this.webex.internal.services._getCatalog().addAllowedDomains([preferredWebexSite]);
-            } else {
-              throw new Error('site not found');
-            }
-          })
-          .catch(() => {
-            LoggerProxy.logger.error(
-              'Failed to fetch preferred site from user - no site will be set'
-            );
-          });
+          // fall back to getting the preferred site from the user information
+          if (!this.preferredWebexSite) {
+            // @ts-ignore
+            return this.webex.internal.user
+              .get()
+              .then((user) => {
+                const preferredWebexSite =
+                  user?.userPreferences?.userPreferencesItems?.preferredWebExSite;
+                if (preferredWebexSite) {
+                  this.preferredWebexSite = preferredWebexSite;
+                  // @ts-ignore
+                  this.webex.internal.services
+                    ._getCatalog()
+                    .addAllowedDomains([preferredWebexSite]);
+                } else {
+                  throw new Error('site not found');
+                }
+              })
+              .catch(() => {
+                LoggerProxy.logger.error(
+                  'Failed to fetch preferred site from user - no site will be set'
+                );
+              });
+          }
+
+          return Promise.resolve();
+        });
       }
 
       return Promise.resolve();
@@ -1055,7 +1074,6 @@ export default class Meetings extends WebexPlugin {
    * @public
    * @memberof Meetings
    */
-
   getPersonalMeetingRoom() {
     return this.personalMeetingRoom;
   }
@@ -1092,7 +1110,6 @@ export default class Meetings extends WebexPlugin {
       meetingInfo: cloneDeep(meeting.meetingInfo),
       locusInfo: {
         // locusInfo can be quite big, so keep just the minimal info
-        sequence: meeting.locusInfo?.sequence,
         url: meeting.locusInfo?.url,
         fullState: {
           lastActive: meeting.locusInfo?.fullState?.lastActive,

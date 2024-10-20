@@ -188,7 +188,7 @@ async function handleServiceSelect(e) {
   const value = e.target.value;
   tokenElm.value = '';
 
-  if (value === 'guestCalling') {
+  if (value === 'guestcalling') {
     guestContainerElm.classList.remove('hidden');
   } else {
     guestContainerElm.classList.add('hidden');
@@ -248,7 +248,7 @@ async function initCalling(e) {
     level: 'info'
   }
 
-  const {region, country} = credentialsFormElm.elements;
+  const {region, country, guestName} = credentialsFormElm.elements;
 
   const serviceData = {indicator: 'calling', domain: ''};
 
@@ -258,6 +258,10 @@ async function initCalling(e) {
 
   if (serviceDomain.value) {
     serviceData.domain = serviceDomain.value;
+  }
+
+  if (guestName && serviceData.indicator === 'guestcalling') {
+    serviceData.guestName = guestName.value
   }
 
   const callingClientConfig = {
@@ -565,10 +569,15 @@ function createCall(e) {
   console.log(destination.value);
   makeCallBtn.disabled = true;
   outboundEndElm.disabled = false
-  call = line.makeCall({
-    type: 'uri',
-    address: destination.value,
-  });
+  if (serviceIndicator.value !== 'guestcalling') {
+    call = line.makeCall({
+      type: 'uri',
+      address: destination.value,
+    });
+  }
+  else {
+    call = line.makeCall();
+  }
 
   call.on('caller_id', (CallerIdEmitter) => {
     callDetailsElm.innerText = `Name: ${CallerIdEmitter.callerId.name}, Number: ${CallerIdEmitter.callerId.num}, Avatar: ${CallerIdEmitter.callerId.avatarSrc} , UserId: ${CallerIdEmitter.callerId.id}`;
