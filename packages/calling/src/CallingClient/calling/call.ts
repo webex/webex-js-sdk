@@ -79,6 +79,7 @@ import {
   MobiusCallData,
   MobiusCallResponse,
   MobiusCallState,
+  MUTE_TYPE,
   PatchResponse,
   RoapScenario,
   SSResponse,
@@ -2809,14 +2810,37 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
   /**
    * Mutes/Unmutes the call.
    *
-   * @param localAudioTrack -.
+   * @param localAudioStream - The local audio stream to mute or unmute.
+   * @param muteType - Identifies if mute was triggered by system or user.
+   *
+   * @example
+   * ```javascript
+   * call.mute(localAudioStream, 'system_mute')
+   * ```
    */
-  public mute = (localAudioStream: LocalMicrophoneStream): void => {
-    if (localAudioStream) {
+  public mute = (localAudioStream: LocalMicrophoneStream, muteType?: MUTE_TYPE): void => {
+    if (!localAudioStream) {
+      log.warn(`Did not find a local stream while muting the call ${this.getCorrelationId()}.`, {
+        file: CALL_FILE,
+        method: 'mute',
+      });
+
+      return;
+    }
+    if (muteType === MUTE_TYPE.SYSTEM) {
+      if (!localAudioStream.userMuted) {
+        this.muted = localAudioStream.systemMuted;
+      } else {
+        log.info(`Call is muted by the user already - ${this.getCorrelationId()}.`, {
+          file: CALL_FILE,
+          method: 'mute',
+        });
+      }
+    } else if (!localAudioStream.systemMuted) {
       localAudioStream.setUserMuted(!this.muted);
       this.muted = !this.muted;
     } else {
-      log.warn(`Did not find a local stream while muting the call ${this.getCorrelationId()}.`, {
+      log.info(`Call is muted on the system - ${this.getCorrelationId()}.`, {
         file: CALL_FILE,
         method: 'mute',
       });

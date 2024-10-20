@@ -451,12 +451,11 @@ function endSecondCall() {
 }
 
 function muteUnmute() {
-  muteElm.value = muteElm.value === 'Mute' ? 'Unmute' : 'Mute';
   if (callTransferObj){
-    callTransferObj.mute(localAudioStream)
+    callTransferObj.mute(localAudioStream, 'user_mute');
   }
   else {
-    call.mute(localAudioStream);
+    call.mute(localAudioStream, 'user_mute');
   }
 }
 
@@ -618,6 +617,17 @@ function createCall(e) {
   call.on('remote_media', (track) => {
     document.getElementById('remote-audio').srcObject = new MediaStream([track]);
   });
+
+  localAudioStream.on('system-mute-state-change', (systemMuted) => {
+    call.mute(localAudioStream, 'system_mute');
+    if (!localAudioStream.userMuted) {
+      muteElm.value = systemMuted && muteElm.value === 'Mute' ? 'Unmute' : 'Mute';
+    }
+  });
+
+  localAudioStream.on('user-mute-state-change', (userMuted) => {
+    muteElm.value = userMuted && muteElm.value === 'Mute' ? 'Unmute' : 'Mute';
+  }); 
 
   call.dial(localAudioStream);
 }
@@ -802,6 +812,16 @@ function answer() {
 
     call.on('remote_media', (track) => {
       document.getElementById('remote-audio').srcObject = new MediaStream([track]);
+    });
+
+    localAudioStream.on('system-mute-state-change', (muted) => {
+      muteElm.value = muteElm.value === 'Mute' ? 'Unmute' : 'Mute';
+      console.log('system mute received');
+    });
+
+    localAudioStream.on('user-mute-state-change', (muted) => {
+      muteElm.value = muteElm.value === 'Mute' ? 'Unmute' : 'Mute';
+      console.log('user mute received');
     });
 
     call.answer(localAudioStream);
