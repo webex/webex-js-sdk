@@ -97,6 +97,23 @@ export interface DataSourceRequest {
   tokenLifetimeMinutes: number;
 }
 
+/**
+ * Represents the request to update a data source.
+ *
+ * @public
+ */
+export interface DataSourceUpdateRequest extends DataSourceRequest {
+  /**
+   * The status of the data source request. Either "active" or "disabled".
+   */
+  status: string;
+
+  /**
+   * The error message associated with the data source update request. It is optional for "active" but required for "disabled".
+   */
+  errorMessage?: string;
+}
+
 export interface Cancellable {
   cancel: () => void;
 }

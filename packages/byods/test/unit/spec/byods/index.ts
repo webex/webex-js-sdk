@@ -25,6 +25,7 @@ describe('BYODS Tests', () => {
     clientId: 'your-client-id',
     clientSecret: 'your-client-secret',
     tokenStorageAdapter: new InMemoryTokenStorageAdapter(),
+    logger: { level: LOGGER.ERROR },
   };
 
   const sdk = new BYODS(mockSDKConfig);
