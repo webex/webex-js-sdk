@@ -4,6 +4,7 @@
 import {LOGGER, createClient} from "@webex/calling";
 
 export default class WebexCCSDK {
+  line: any;
   webex: any;
   callingClient: any;
   callingClientConfig: any;
@@ -18,6 +19,7 @@ export default class WebexCCSDK {
   wrapUpReason='';
   buddyAgentId='';
   destType=''
+
   constructor(webex: any) {
     this.webex = webex;
     this.callingClientConfig = {
@@ -26,23 +28,24 @@ export default class WebexCCSDK {
       },
       serviceData: {
         indicator: 'contactcenter',
-        domain: 'test.example.com'
+        domain: 'rtw.prod-us1.rtmsprod.net'
       }
     }
-    // this.callingClient = callingClient;
   }
 
   private async registerWebCallingLine() {
     this.callingClient = await createClient(this.webex, this.callingClientConfig);
-    const line: any = Object.values(this.callingClient.getLines())[0];
-    line.register();
-    line.on('registered', (deviceInfo: any) => {
+    this.line = Object.values(this.callingClient.getLines())[0];
+
+    this.line.on('registered', (deviceInfo: any) => {
       console.log(`WxCC-SDK: Desktop registered successfully, mobiusDeviceId: ${deviceInfo.mobiusDeviceId}`);
       // Emit the final register success event from CC SDK from here for Desktop Login
     });
+
+    this.line.register();
   
     // Start listening for incoming calls
-    line.on('line:incoming_call', (callObj: any) => {
+    this.line.on('line:incoming_call', (callObj: any) => {
       this.call = callObj;
       const incomingCallEvent = new CustomEvent('line:incoming_call', {
         detail: {
@@ -60,13 +63,13 @@ export default class WebexCCSDK {
     });
   }
 
-  private handleAgentEvents = (payload: any) => {
+  private handleAgentEvents = async (payload: any) => {
     console.log('WxCC-SDK: Event Data: ', payload);
     switch (payload.data.type) {
       case 'AgentStationLoginSuccess': {
         console.log('WxCC-SDK: Station Login Success');
         if(payload.data.deviceType === 'BROWSER') {
-          this.registerWebCallingLine();
+         
         } else {
            // Emit the final register success event from CC SDK from here for EXtension/DN Login
         }
@@ -347,6 +350,19 @@ export default class WebexCCSDK {
         body,
       });
       console.log('login  response.statusCode:  ', response.statusCode);
+      if (agentDeviceType === 'BROWSER') {
+        console.log('WDM registration: ', this.webex.internal.device.registered);
+        if (this.webex.internal.device.registered && this.webex.internal.mercury.connected) {
+          await this.registerWebCallingLine();
+        } else {
+          this.webex.internal.device
+          .register()
+          .then(async () => {
+            await this.registerWebCallingLine();
+          });
+    
+        }
+      }
 
       return response.statusCode; // Note: `statusCode` is typically used in webex.request
     } catch (error: any) {
