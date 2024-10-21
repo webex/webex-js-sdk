@@ -12,13 +12,8 @@ import fs from 'fs';
 // **** Core Setup **** //
 const app = express();
 
-let sdk = new BYODS.BYODS({
-  clientId: 'your-client-id',
-  clientSecret: 'your-client-secret',
-  tokenStorageAdapter: undefined,
-  logger: {level: BYODS.LOGGER.INFO},
-});
-let baseClient = sdk.getClientForOrg('temp');
+let sdk: BYODS.BYODS;
+let baseClient: BYODS.BaseClient;
 
 // **** Helper Functions **** //
 // Function to render Handlebars templates
