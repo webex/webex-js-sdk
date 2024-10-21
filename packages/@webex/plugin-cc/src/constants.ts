@@ -3,7 +3,4 @@ export const WCC_API_GATEWAY = 'wcc-api-gateway';
 export const EVENT = 'event';
 export const READY = 'ready';
 export const SUBSCRIBE_API = 'v1/notification/subscribe';
-export const REGISTER_TIMEOUT = 20000;
-export enum CC_EVENTS {
-  WELCOME = 'Welcome',
-}
+export const WEBSOCKET_EVENT_TIMEOUT = 10000;

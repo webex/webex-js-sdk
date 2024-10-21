@@ -1,4 +1,5 @@
 import Mercury from '@webex/internal-plugin-mercury';
+import {HTTP_METHODS} from './types';
 
 export const webSocketConfig = {
   /**
@@ -107,7 +108,7 @@ class WebSocket extends Mercury {
     body: object;
   }): Promise<void> {
     return this.request({
-      method: 'POST',
+      method: HTTP_METHODS.POST,
       url: datachannelUrl,
       body,
     })

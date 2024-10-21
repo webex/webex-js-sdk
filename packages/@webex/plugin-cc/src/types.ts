@@ -1,7 +1,7 @@
 type Enum<T extends Record<string, unknown>> = T[keyof T];
 
 // Define the HTTP_METHODS object
-const HTTP_METHODS = {
+export const HTTP_METHODS = {
   GET: 'GET',
   POST: 'POST',
   PATCH: 'PATCH',
@@ -10,10 +10,10 @@ const HTTP_METHODS = {
 } as const;
 
 // Derive the type using the utility type
-type HTTP_METHODS_TYPE = Enum<typeof HTTP_METHODS>;
+export type HTTP_METHODS = Enum<typeof HTTP_METHODS>;
 
 type WebexRequestPayload = {
-  method?: HTTP_METHODS_TYPE;
+  method?: HTTP_METHODS;
   uri?: string;
   addAuthHeader?: boolean;
   headers?: {
@@ -128,3 +128,11 @@ export interface IContactCenter {
    */
   register(): Promise<string>;
 }
+
+// Define the CC_EVENTS object
+export const CC_EVENTS = {
+  WELCOME: 'Welcome',
+} as const;
+
+// Derive the type using the utility type
+export type CC_EVENTS = Enum<typeof CC_EVENTS>;
