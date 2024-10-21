@@ -2,7 +2,7 @@ import MockWebex from '@webex/test-helper-mock-webex';
 import { assert } from '@webex/test-helper-chai';
 import sinon from 'sinon';
 import Mercury from '@webex/internal-plugin-mercury';
-import WebSocket, { webSocketConfig } from '../../../src/WebSocket';
+import WebSocket from '../../../src/WebSocket/WebSocket';
 
 describe('plugin-cc WebSocket tests', () => {
 const datachannelUrl = 'datachannelUrl';

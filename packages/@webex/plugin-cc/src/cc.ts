@@ -2,7 +2,8 @@
 import {WebexPlugin} from '@webex/webex-core';
 import {CCPluginConfig, IContactCenter, WebexSDK, CC_EVENTS, WebSocketEvent} from './types';
 import {EVENT, READY, WEBSOCKET_EVENT_TIMEOUT, SUBSCRIBE_API, WCC_API_GATEWAY} from './constants';
-import WebSocket from './WebSocket';
+import IWebSocket from './WebSocket/IWebSocket';
+import WebSocket from './WebSocket/WebSocket';
 
 const REGISTER_EVENT = 'register';
 
@@ -11,7 +12,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   $config: CCPluginConfig;
   $webex: WebexSDK;
   wccApiUrl: string;
-  webSocket: WebSocket;
+  webSocket: IWebSocket;
   ciUserId: string;
   eventHandlers: Map<
     string,
@@ -59,7 +60,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * @returns Promise<void>
    */
   public unRegister(): Promise<void> {
-    return this.webSocket.disconnect().then(() => {
+    return this.webSocket.disconnectWebSocket().then(() => {
       this.webSocket.off(EVENT, this.processEvent);
     });
   }

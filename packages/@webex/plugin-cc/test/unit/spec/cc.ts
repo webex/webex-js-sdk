@@ -1,7 +1,7 @@
 import { assert } from '@webex/test-helper-chai';
 import sinon from 'sinon';
 import MockWebex from '@webex/test-helper-mock-webex';
-import WebSocket from '../../../src/WebSocket';
+import WebSocket from '../../../src/WebSocket/WebSocket';
 import { EVENT, READY, WCC_API_GATEWAY } from '../../../src/constants';
 import { CC_EVENTS } from '../../../src/types';
 import ContactCenter from '../../../src/cc';
@@ -83,12 +83,12 @@ describe('webex.cc', () => {
 
   describe('#unRegister', () => {
     it('should disconnect the WebSocket and remove event listeners', async () => {
-      webSocketMock.disconnect.resolves();
+      webSocketMock.disconnectWebSocket.resolves();
       webSocketMock.off = sinon.stub();
 
       await webex.cc.unRegister();
 
-      sinon.assert.calledOnce(webSocketMock.disconnect);
+      sinon.assert.calledOnce(webSocketMock.disconnectWebSocket);
       sinon.assert.calledOnce(webSocketMock.off);
       sinon.assert.calledWith(webSocketMock.off, EVENT, webex.cc.processEvent);
     });
