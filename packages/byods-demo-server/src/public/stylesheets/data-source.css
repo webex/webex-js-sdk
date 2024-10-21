@@ -5,18 +5,18 @@ body {
   background-color: #f4f4f4;
 }
 
-h1 {
+h1, h2 {
   color: #333;
   text-align: center;
   margin-top: 20px;
+}
+
+h1 {
   font-size: 2.5em;
   font-weight: 700;
 }
 
 h2 {
-  color: #333;
-  text-align: center;
-  margin-top: 10px;
   font-size: 1.5em;
   font-weight: 600;
   overflow: hidden;
@@ -98,26 +98,44 @@ h2 {
 
 .card-buttons {
   display: flex;
-  justify-content: center;
-  gap: 5px;
+  flex-direction: column;
+  gap: 10px;
   margin-top: 10px;
 }
 
-.edit-button,
-.delete-button,
-.refresh-button {
-  padding: 8px 15px;
+.icon-buttons-row {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+.icon-button,
+.refresh-button,
+.verify-button {
+  padding: 8px;
   border: none;
   border-radius: 5px;
   font-size: 0.9em;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: #fff;
+}
+
+.icon-button {
+  width: 40px;
+  height: 40px;
+}
+
+.icon-button i {
+  font-size: 1em;
 }
 
 .edit-button {
   background-color: #007bff;
-  color: #fff;
 }
 
 .edit-button:hover {
@@ -126,7 +144,6 @@ h2 {
 
 .delete-button {
   background-color: #dc3545;
-  color: #fff;
 }
 
 .delete-button:hover {
@@ -135,11 +152,18 @@ h2 {
 
 .refresh-button {
   background-color: #28a745;
-  color: #fff;
 }
 
 .refresh-button:hover {
   background-color: #218838;
+}
+
+.verify-button {
+  background-color: #ff9800;
+}
+
+.verify-button:hover {
+  background-color: #e68900;
 }
 
 /* Plus Button */

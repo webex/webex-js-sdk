@@ -160,7 +160,18 @@ app.post('/api/data-source/refresh-token/:id', async (req: Request, res: Respons
   try {
     const {id} = req.params;
     await baseClient.dataSource.scheduleJWSTokenRefresh(id, 60, () => 'test');
-    res.status(201).json({message: 'JWS token refreshed successfully'});
+    res.status(201).json({message: 'JWS token refreshed scheduled successfully'});
+  } catch (error) {
+    res.status(400).json({error: error.message});
+  }
+});
+
+// JWS Token verification
+app.post('/api/data-source/verify-jws-token', async (req: Request, res: Response) => {
+  try {
+    const {jws} = req.body;
+    const response = await sdk.verifyJWSToken(jws);
+    res.status(200).json({message: 'JWS token verified successfully', data: response});
   } catch (error) {
     res.status(400).json({error: error.message});
   }
