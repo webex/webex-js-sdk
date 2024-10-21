@@ -16,8 +16,8 @@ export default class AgentConfig {
   wccAPIURL: string;
 
   constructor(ciUserId: string, webex: WebexSDK, wccAPIURL: string) {
-    this.webex = webex;
     this.ciUserId = ciUserId;
+    this.webex = webex;
     this.wccAPIURL = wccAPIURL;
   }
 

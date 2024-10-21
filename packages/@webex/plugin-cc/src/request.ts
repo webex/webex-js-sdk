@@ -15,7 +15,7 @@ export default class Request {
    * @example
    * Create an instance of a class Request by passing webex object and call the request method.
    * const request = Request(webexObject);
-   * const response = await request.request('apiURL', '');
+   * const response = await request.request('apiURL', 'GET', {id: '123', name: 'test'});
    * console.log(response);
    */
 

@@ -122,7 +122,7 @@ export interface ListTeamsRequest {
   filter: string[];
 
   /**
-   * Specify the attributes to be returned. Supported attributes are id, name, active and workTypeCode.
+   * Specify the attributes to be returned.
    */
   attributes: string[];
 }
@@ -173,7 +173,7 @@ export interface ListAuxCodesRequest {
   filter: string[];
 
   /**
-   * Specify the attributes to be returned. Supported attributes are id, name, active and workTypeCode.
+   * Specify the attributes to be returned.
    */
   attributes: string[];
 }

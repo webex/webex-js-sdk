@@ -65,7 +65,7 @@ export default class AgentConfigService {
    * @param {number} page Index of the page of results to be fetched.
    * @param {number} pageSize Number of items to be displayed on a page.
    * @param {Array<String>} filter Filter which can be applied to the elements to be fetched.
-   * @param {Array<String>} attributes Specify the attributes to be returned. Supported attributes are id, name, active and workTypeCode.
+   * @param {Array<String>} attributes Specify the attributes to be returned.
    * @returns {Promise<ListTeamsResponse>} A promise that eventually resolves to an API response.
    */
 
@@ -97,7 +97,7 @@ export default class AgentConfigService {
    * @param {number} page (Optional) Index of the page of results to be fetched.
    * @param {number} pageSize (Optional) Number of items to be displayed on a page.
    * @param {Array<String>} filter (Optional) Filter which can be applied to the elements to be fetched.
-   * @param {Array<String>} attributes (Optional) Specify the attributes to be returned. Supported attributes are id, name, active and workTypeCode.
+   * @param {Array<String>} attributes (Optional) Specify the attributes to be returned.
    * @returns {Promise<ListAuxCodesResponse>} A promise that eventually resolves to an API response.
    */
 
