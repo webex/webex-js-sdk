@@ -1,23 +1,5 @@
 /**
- * Represents the request to UserRequest.
- *
- * @public
- */
-
-export interface UserRequest {
-  /**
-   * Org id of the User
-   */
-  orgId: string;
-
-  /**
-   * CI user id of the User
-   */
-  ciUserId: string;
-}
-
-/**
- * Represents the response from UserResponse.
+ * Represents the response from getUserUsingCI method.
  *
  * @public
  */
@@ -40,25 +22,7 @@ export interface UserResponse {
 }
 
 /**
- * Represents the request to DesktopProfileRequest.
- *
- * @public
- */
-
-export interface DesktopProfileRequest {
-  /**
-   * ID of the Organization containing the Desktop Profile to be retrieved.
-   */
-  orgId: string;
-
-  /**
-   * ID of the Desktop Profile to be retrieved.
-   */
-  desktopProfileId: string;
-}
-
-/**
- * Represents the response from DesktopProfileResponse.
+ * Represents the response from getDesktopProfileById method.
  *
  * @public
  */
@@ -95,40 +59,7 @@ export interface DesktopProfileResponse {
 }
 
 /**
- * Represents the request to ListTeamsRequest.
- *
- * @public
- */
-
-export interface ListTeamsRequest {
-  /**
-   * Represents Organization ID to be used for this operation..
-   */
-  orgId: string;
-
-  /**
-   * Represents Index of the page of results to be fetched.
-   */
-  page?: number;
-
-  /**
-   * Represents Number of items to be displayed on a page.
-   */
-  pageSize?: number;
-
-  /**
-   * Represents filter which can be applied to the elements to be fetched.
-   */
-  filter: string[];
-
-  /**
-   * Specify the attributes to be returned.
-   */
-  attributes: string[];
-}
-
-/**
- * Represents the response from ListTeams.
+ * Represents the response from getListOfTeams method.
  *
  * @public
  */
@@ -142,40 +73,6 @@ export interface ListTeamsResponse {
    *  Name of the Team.
    */
   name: string;
-}
-
-/**
- * Represents the request to ListAuxCodes.
- *
- * @public
- */
-
-export interface ListAuxCodesRequest {
-  /**
-   * Represents Organization ID to be used for this operation.
-   */
-
-  ordId: string;
-
-  /**
-   * Represents Index of the page of results to be fetched.
-   */
-  page?: number;
-
-  /**
-   * Represents Number of items to be displayed on a page.
-   */
-  pageSize?: number;
-
-  /**
-   * Represents filter which can be applied to the elements to be fetched.
-   */
-  filter: string[];
-
-  /**
-   * Specify the attributes to be returned.
-   */
-  attributes: string[];
 }
 
 /**
@@ -222,7 +119,7 @@ export interface AuxCode {
 }
 
 /**
- * Represents the response from ListAuxCodesResponse.
+ * Represents the response from getListOfAuxCodes method.
  *
  * @public
  */

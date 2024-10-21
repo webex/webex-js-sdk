@@ -1,4 +1,4 @@
-import {IAgentConfig} from './types';
+import {IAgentConfig, WORK_TYPE_CODE} from './types';
 import AgentConfigService from '../AgentConfigService/AgentConfigService';
 import {
   DesktopProfileResponse,
@@ -45,19 +45,19 @@ export default class AgentConfig {
       const user: UserResponse = await agentConfigService.getUserUsingCI();
 
       const agentDesktopProfile: DesktopProfileResponse =
-        await agentConfigService.getDesktopProfileById(user?.agentProfileId);
-      this.agentProfile.loginVoiceOptions = agentDesktopProfile?.loginVoiceOptions;
+        await agentConfigService.getDesktopProfileById(user.agentProfileId);
+      this.agentProfile.loginVoiceOptions = agentDesktopProfile.loginVoiceOptions;
 
-      const teamListFilter = user?.teamIds;
+      const teamListFilter = user.teamIds;
 
       const auxCodeFilter = [];
 
       if (
-        agentDesktopProfile?.accessWrapUpCode !== 'ALL' &&
-        agentDesktopProfile?.accessIdleCode !== 'ALL'
+        agentDesktopProfile.accessWrapUpCode !== 'ALL' &&
+        agentDesktopProfile.accessIdleCode !== 'ALL'
       ) {
-        auxCodeFilter.push(agentDesktopProfile?.wrapUpCodes);
-        auxCodeFilter.push(agentDesktopProfile?.idleCodes);
+        auxCodeFilter.push(agentDesktopProfile.wrapUpCodes);
+        auxCodeFilter.push(agentDesktopProfile.idleCodes);
       }
 
       // Call the below two APIs parallel to optimise the Performance.
@@ -81,25 +81,25 @@ export default class AgentConfig {
       this.agentProfile.teams.push(teamsList);
 
       this.agentProfile.wrapUpCodes = auxCodesList.data.filter(
-        (auxCode) => auxCode.workTypeCode === 'WRAP_UP_CODE'
+        (auxCode) => auxCode.workTypeCode === WORK_TYPE_CODE.WRAP_UP_CODE
       );
       this.agentProfile.idleCodes = auxCodesList.data.filter(
-        (auxCode) => auxCode.workTypeCode === 'IDLE_CODE'
+        (auxCode) => auxCode.workTypeCode === WORK_TYPE_CODE.IDLE_CODE
       );
 
       if (
-        agentDesktopProfile?.accessIdleCode === 'ALL' &&
-        agentDesktopProfile?.accessWrapUpCode !== 'ALL'
+        agentDesktopProfile.accessIdleCode === 'ALL' &&
+        agentDesktopProfile.accessWrapUpCode !== 'ALL'
       ) {
         this.agentProfile.wrapUpCodes = this.agentProfile.wrapUpCodes.filter(
-          (auxCode) => auxCode.workTypeCode === 'WRAP_UP_CODE'
+          (auxCode) => auxCode.workTypeCode === WORK_TYPE_CODE.WRAP_UP_CODE
         );
       } else if (
-        agentDesktopProfile?.accessIdleCode !== 'ALL' &&
-        agentDesktopProfile?.accessWrapUpCode === 'ALL'
+        agentDesktopProfile.accessIdleCode !== 'ALL' &&
+        agentDesktopProfile.accessWrapUpCode === 'ALL'
       ) {
         this.agentProfile.idleCodes = this.agentProfile.wrapUpCodes.filter(
-          (auxCode) => auxCode.workTypeCode === 'IDLE_CODE'
+          (auxCode) => auxCode.workTypeCode === WORK_TYPE_CODE.IDLE_CODE
         );
       }
 

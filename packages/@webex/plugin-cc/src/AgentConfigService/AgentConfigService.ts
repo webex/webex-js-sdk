@@ -34,7 +34,7 @@ export default class AgentConfigService {
 
       this.webex.logger.log('getUserUsingCI api called successfully.');
 
-      return Promise.resolve(response?.body);
+      return Promise.resolve(response.body);
     } catch (error) {
       return Promise.reject(new Error(`Error while calling getUserUsingCI API, ${error}`));
     }
@@ -52,7 +52,7 @@ export default class AgentConfigService {
       const response = await this.requestInstance.request(URL, HTTP_METHODS.GET);
       this.webex.logger.log('retrieveDesktopProfileById api called successfully.');
 
-      return Promise.resolve(response?.body);
+      return Promise.resolve(response.body);
     } catch (error) {
       return Promise.reject(
         new Error(`Error while calling retrieveDesktopProfileById API, ${error}`)
@@ -62,18 +62,18 @@ export default class AgentConfigService {
 
   /**
    * Method to get List of Teams.
-   * @param {number} page Index of the page of results to be fetched.
-   * @param {number} pageSize Number of items to be displayed on a page.
-   * @param {Array<String>} filter Filter which can be applied to the elements to be fetched.
-   * @param {Array<String>} attributes Specify the attributes to be returned.
+   * @param {number} page Index of the page of results to be fetched. Defaults to 0.
+   * @param {number} pageSize Number of items to be displayed on a page. Defaults to 10.
+   * @param {Array<String>} filter Filter that can be applied to the elements to be fetched. Defaults to [].
+   * @param {Array<String>} attributes Specify the attributes to be returned. Defaults to ['id'].
    * @returns {Promise<ListTeamsResponse>} A promise that eventually resolves to an API response.
    */
 
   public async getListOfTeams(
-    page?: number,
-    pageSize?: number,
-    filter?: string[],
-    attributes?: string[]
+    page: number,
+    pageSize: number,
+    filter: string[],
+    attributes: string[]
   ): Promise<ListTeamsResponse> {
     try {
       let URL = '';
@@ -86,7 +86,7 @@ export default class AgentConfigService {
 
       this.webex.logger.log('getListOfTeams api called successfully.');
 
-      return Promise.resolve(response?.body);
+      return Promise.resolve(response.body);
     } catch (error) {
       return Promise.reject(new Error(`Error while calling getListOfTeams API, ${error}`));
     }
@@ -94,18 +94,18 @@ export default class AgentConfigService {
 
   /**
    * Method to get List of AuxCodes.
-   * @param {number} page (Optional) Index of the page of results to be fetched.
-   * @param {number} pageSize (Optional) Number of items to be displayed on a page.
-   * @param {Array<String>} filter (Optional) Filter which can be applied to the elements to be fetched.
-   * @param {Array<String>} attributes (Optional) Specify the attributes to be returned.
+   * @param {number} page Index of the page of results to be fetched. Defaults to 0.
+   * @param {number} pageSize Number of items to be displayed on a page. Defaults to 10.
+   * @param {Array<String>} filter Filter that can be applied to the elements to be fetched. Defaults to [].
+   * @param {Array<String>} attributes Specify the attributes to be returned. Defaults to ['id'].
    * @returns {Promise<ListAuxCodesResponse>} A promise that eventually resolves to an API response.
    */
 
   public async getListOfAuxCodes(
-    page?: number,
-    pageSize?: number,
-    filter?: string[],
-    attributes?: string[]
+    page: number,
+    pageSize: number,
+    filter: string[],
+    attributes: string[]
   ): Promise<ListAuxCodesResponse> {
     try {
       let URL = '';
@@ -118,7 +118,7 @@ export default class AgentConfigService {
 
       this.webex.logger.log('getListOfAuxCodes api called successfully.');
 
-      return Promise.resolve(response?.body);
+      return Promise.resolve(response.body);
     } catch (error) {
       return Promise.reject(new Error(`Error while calling getListOfAuxCodes API, ${error}`));
     }

@@ -1,6 +1,17 @@
 import {AuxCode, ListTeamsResponse} from '../AgentConfigService/types';
 import {WebexSDK} from '../types';
 
+type Enum<T extends Record<string, unknown>> = T[keyof T];
+
+// Define the  object
+export const WORK_TYPE_CODE = {
+  WRAP_UP_CODE: 'WRAP_UP_CODE',
+  IDLE_CODE: 'IDLE_CODE',
+} as const;
+
+// Derive the type using the utility type
+type WORK_TYPE_CODE = Enum<typeof WORK_TYPE_CODE>;
+
 /**
  * Represents the request to a AgentConfig
  *
