@@ -2,7 +2,7 @@ import {decodeJwt, JWTPayload} from 'jose';
 import {ERROR_TYPE} from '../Errors/types';
 import ExtendedError from '../Errors/catalog/ExtendedError';
 import {LoggerConfig} from '../types';
-import {DataSourceRequest, DataSourceResponse, Cancellable} from './types';
+import {DataSourceRequest, DataSourceResponse, DataSourceUpdateRequest, Cancellable} from './types';
 import {DATASOURCE_ENDPOINT} from './constants';
 import {HttpClient, ApiResponse} from '../http-client/types';
 import {BYODS_DATA_SOURCE_CLIENT_MODULE, DEFAULT_LOGGER_CONFIG} from '../constants';
@@ -76,7 +76,7 @@ export default class DataSourceClient {
    */
   public async update(
     id: string,
-    dataSourcePayload: DataSourceRequest
+    dataSourcePayload: DataSourceUpdateRequest
   ): Promise<ApiResponse<DataSourceResponse>> {
     return this.httpClient.put<DataSourceResponse>(
       `${DATASOURCE_ENDPOINT}/${id}`,
@@ -201,13 +201,14 @@ export default class DataSourceClient {
             throw new Error('jwsTokenPayload or jwsToken is undefined.');
           }
 
-          const payloadForDataSourceUpdateMethod: DataSourceRequest = {
+          const payloadForDataSourceUpdateMethod: DataSourceUpdateRequest = {
             schemaId: getMethodResponse?.data?.schemaId,
             tokenLifetimeMinutes,
             url: jwsTokenPayload['com.cisco.datasource.url'] as string,
             subject: jwsTokenPayload.sub as string,
             audience: jwsTokenPayload.aud as string,
             nonce: nonceGenerator ? nonceGenerator() : crypto.randomUUID(),
+            status: getMethodResponse?.data?.status,
           };
 
           await this.update(dataSourceId, payloadForDataSourceUpdateMethod);

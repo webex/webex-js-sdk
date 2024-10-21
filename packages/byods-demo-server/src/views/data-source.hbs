@@ -13,36 +13,43 @@
     <div class="main-container">
       <div class="data-container">
         <div id="dataSourcesList" class="data-sources-list">
-          {{#each dataSources}}
-            <div class="data-source-card" data-jws-token="{{this.jwsToken}}">
-              <h3 class="data-source-subject">Data Sources</h3>
-              <p><strong>ID:</strong> {{this.id}}</p>
-              <p><strong>Schema:</strong> {{this.schemaId}}</p>
-              <p><strong>Application ID:</strong> <span class="application-id">{{this.applicationId}}</span></p>
-              <p><strong>Status:</strong> <span class="status {{this.status}}">{{this.status}}</span></p>
-              <p><strong>Created By:</strong> {{this.createdBy}}</p>
-              <p><strong>Created At:</strong> {{this.createdAt}}</p>
-              <div class="card-buttons">
-                <button class="refresh-button" onclick="refreshJWSToken('{{this.id}}')">Schedule JWS Refresh</button>
-                <button class="verify-button" onclick="verifyJWSToken('{{this.jwsToken}}')">Verify JWS Token</button>
-                <div class="icon-buttons-row">
-                  <button class="icon-button edit-button" 
-                          data-id="{{this.id}}" 
-                          data-schema-id="{{this.schemaId}}" 
-                          data-url="{{this.url}}" 
-                          data-nonce="{{this.nonce}}" 
-                          data-token-lifetime-minutes="{{this.tokenLifetimeMinutes}}" 
-                          data-jws="{{this.jwsToken}}"
-                          onclick="editDataSource(this)">
-                    <i class="fas fa-edit"></i>
-                  </button>
-                  <button class="icon-button delete-button" onclick="deleteDataSource('{{this.id}}')">
-                    <i class="fas fa-trash-alt"></i>
-                  </button>
+          {{#if dataSources.length}}
+            {{#each dataSources}}
+              <div class="data-source-card" data-jws-token="{{this.jwsToken}}" data-schema-id="{{this.schemaId}}" data-created-by-id="{{this.createdBy}}">
+                <h3 class="data-source-subject">Data Sources</h3>
+                <p><strong>ID:</strong> {{this.id}}</p>
+                <p><strong>Schema:</strong> {{this.schemaId}}<span class="schema-name"></span></p>
+                <p><strong>Application ID:</strong> <span class="application-id">{{this.applicationId}}</span></p>
+                <p><strong>Status:</strong> <span class="status {{this.status}}">{{this.status}}</span></p>
+                <p><strong>Created By:</strong> <span class="created-by"></span></p>
+                <p><strong>Created At:</strong> <span class="created-at">{{this.createdAt}}</span></p>
+                <div class="card-buttons">
+                  <button class="refresh-button" onclick="refreshJWSToken('{{this.id}}')">Schedule JWS Refresh</button>
+                  <button class="verify-button" onclick="verifyJWSToken('{{this.jwsToken}}')">Verify JWS Token</button>
+                  <div class="icon-buttons-row">
+                    <button class="icon-button edit-button" 
+                            data-id="{{this.id}}" 
+                            data-schema-id="{{this.schemaId}}" 
+                            data-url="{{this.url}}" 
+                            data-nonce="{{this.nonce}}" 
+                            data-token-lifetime-minutes="{{this.tokenLifetimeMinutes}}" 
+                            data-status="{{this.status}}"
+                            data-jws="{{this.jwsToken}}"
+                            onclick="editDataSource(this)">
+                      <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="icon-button delete-button" onclick="deleteDataSource('{{this.id}}')">
+                      <i class="fas fa-trash-alt"></i>
+                    </button>
+                  </div>
                 </div>
               </div>
+            {{/each}}
+          {{else}}
+            <div class="no-data-sources">
+              <p>This organization has no data sources available, click the '+' button at the bottom to add a new one.</p>
             </div>
-          {{/each}}
+          {{/if}}
         </div>
       </div>
     </div>
@@ -69,6 +76,13 @@
           <input type="text" id="editNonce" name="nonce" required>
           <label for="tokenLifetimeMinutes">Token Lifetime (Minutes):</label>
           <input type="number" id="editTokenLifetimeMinutes" name="tokenLifetimeMinutes" required>
+          <label id="statusLabel" for="status">Status:</label>
+          <select id="editStatus" name="status" required onchange="toggleErrorMessageField()">
+            <option value="active">Active</option>
+            <option value="disabled">Disabled</option>
+          </select>
+          <label id="errorMessageLabel" for="errorMessage" style="display: none;">Error Message:</label>
+          <input type="text" id="errorMessage" name="errorMessage" style="display: none;">
           <button type="submit" class="form-button">Save</button>
           <button type="button" class="form-button cancel-button" onclick="closeEditForm()">Cancel</button>
         </form>
@@ -101,12 +115,27 @@
         return JSON.parse(atob(jwsToken.split('.')[1]));
       }
 
+      function formatDate(dateString) {
+        const date = new Date(dateString);
+        return date.toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+      }
+
       function openAddForm() {
         isEdit = false;
         setFormTitle('Add Data Source');
         resetForm();
         showElement('schemaId');
         showElement('schemaIdLabel');
+        hideElement('statusLabel'); // Hide status label for add form
+        hideElement('editStatus'); // Hide status field for add form
+        hideElement('errorMessageLabel'); // Hide error message label for add form
+        hideElement('errorMessage'); // Hide error message field for add form
         showModal('editDataSourceModal');
       }
 
@@ -127,14 +156,19 @@
         resetForm();
         hideElement('schemaId');
         hideElement('schemaIdLabel');
+        showElement('statusLabel'); // Show status label for edit form
+        showElement('editStatus'); // Show status field for edit form
         setFormValues({
           id: currentId,
           url: button.getAttribute('data-url'),
           audience: payload.aud,
           subject: payload.sub,
           nonce: button.getAttribute('data-nonce'),
-          tokenLifetimeMinutes: button.getAttribute('data-token-lifetime-minutes')
+          tokenLifetimeMinutes: button.getAttribute('data-token-lifetime-minutes'),
+          status: button.getAttribute('data-status'),
+          errorMessage: button.getAttribute('data-status') === 'disabled' ? button.getAttribute('data-error-message') : ''
         });
+        toggleErrorMessageField(); // Ensure error message field visibility is correct
         showModal('editDataSourceModal');
       }
 
@@ -161,6 +195,20 @@
         document.getElementById('editSubject').value = values.subject;
         document.getElementById('editNonce').value = values.nonce;
         document.getElementById('editTokenLifetimeMinutes').value = values.tokenLifetimeMinutes;
+        document.getElementById('editStatus').value = values.status;
+        document.getElementById('errorMessage').value = values.errorMessage || '';
+      }
+
+      function toggleErrorMessageField() {
+        const status = document.getElementById('editStatus').value;
+        if (status === 'disabled') {
+          showElement('errorMessageLabel');
+          showElement('errorMessage');
+        } else {
+          hideElement('errorMessageLabel');
+          hideElement('errorMessage');
+          document.getElementById('errorMessage').value = '';
+        }
       }
 
       function showModal(modalId) {
@@ -183,6 +231,8 @@
             subject: document.getElementById('editSubject').value,
             nonce: document.getElementById('editNonce').value,
             tokenLifetimeMinutes: document.getElementById('editTokenLifetimeMinutes').value,
+            status: isEdit ? document.getElementById('editStatus').value : undefined, // Include status only for edit
+            errorMessage: isEdit && document.getElementById('editStatus').value === 'disabled' ? document.getElementById('errorMessage').value : undefined // Include errorMessage only if status is disabled
           };
           const endpoint = isEdit ? `/api/data-source/update` : `/api/data-source/add`;
           submitForm(endpoint, isEdit ? { id, ...dataSourcePayload } : dataSourcePayload);

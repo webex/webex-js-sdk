@@ -182,12 +182,22 @@ h2 {
   cursor: pointer;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
   transition: all 0.3s ease;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
 .add-button:hover {
+  width: 120px;
+  border-radius: 25px;
   background-color: #0056b3;
-  transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+}
+
+.add-button:hover::before {
+  content: 'Add';
+  margin-left: 10px;
+  font-size: 0.9em;
+  font-weight: 600;
 }
 
 /* Modal */
@@ -271,4 +281,28 @@ form input {
 
 .cancel-button:hover {
   background: linear-gradient(135deg, #d32f2f, #ff4b4b);
+}
+
+/* Status Label */
+#statusLabel {
+  margin-top: 10px;
+  font-weight: 600;
+  color: #333;
+}
+
+/* Status Dropdown */
+#editStatus {
+  padding: 10px;
+  margin-top: 5px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  font-size: 1em;
+  background-color: #fff;
+  color: #333;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+#editStatus:focus {
+  border-color: #007bff;
+  box-shadow: 0 0 5px rgba(0, 123, 255, 0.5);
 }
