@@ -73,7 +73,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     switch (event.type) {
       case CC_EVENTS.WELCOME:
         this.ciUserId = event.data.agentId;
-        this.handleEvent(REGISTER_EVENT, `Success: CI User ID is ${this.ciUserId}`);
+        this.handleEvent(REGISTER_EVENT, `Success: CI User ID is ${this.ciUserId}`); // TODO: Will send AgentPRofile object as part of Parv's PR
         break;
     }
   };

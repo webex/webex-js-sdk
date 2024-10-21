@@ -216,14 +216,14 @@ export default class Socket extends EventEmitter {
       const {
         authorizationRequired = true,
         acknowledgementRequired = true,
-        ...restOptions
+        ...remainingOptions
       } = options;
 
       this.authorizationRequired = authorizationRequired;
       this.acknowledgementRequired = acknowledgementRequired;
 
-      // Assign the rest of the options to the instance
-      Object.keys(restOptions).forEach((key) => {
+      // Assign the remaining options to the instance
+      Object.keys(remainingOptions).forEach((key) => {
         Reflect.defineProperty(this, key, {
           enumerable: false,
           value: options[key],
@@ -263,6 +263,7 @@ export default class Socket extends EventEmitter {
 
       socket.onopen = () => {
         this.logger.info(`socket,${this._domain}: connected`);
+        // Added the "authorizationRequired" condition to bypass the "_authorize" in case of the contact center context, in which case it is configured as false.
         if (this.authorizationRequired) {
           this._authorize()
             .then(() => {
@@ -327,10 +328,12 @@ export default class Socket extends EventEmitter {
       // modified and we don't actually care about anything but the data property
       const processedEvent = {data};
 
+      // Added the "acknowledgementRequired" condition to bypass the "_acknowledge" in case of the contact center context, in which case it is configured as false.
       if (this.acknowledgementRequired) {
         this._acknowledge(processedEvent);
       }
       if (data.type === 'pong' || data.type === 'ping') {
+        // added above ping condition to handle pong messages of contact center where type is 'ping' instead of 'pong'
         this.emit('pong', {...processedEvent, type: 'pong'});
       } else {
         this.emit('message', processedEvent);
