@@ -10,6 +10,7 @@ export default class BusinessMetrics extends GenericMetrics {
   /**
    * unfortunately, the pinot team does not allow changes to the schema of wbxapp_callend_metrics
    * so we have to shim this layer specifically for this
+   * https://confluence-eng-gpk2.cisco.com/conf/display/WAP/Table+wbxapp_callend_metrics
    * @param {EventPayload} payload payload of the metric
    * @returns {Promise<any>}
    */
@@ -18,7 +19,7 @@ export default class BusinessMetrics extends GenericMetrics {
       type: ['business'],
       eventPayload: {
         key: 'callEnd',
-        client_timestamp: Date.now(),
+        client_timestamp: new Date().toISOString(),
         appType: 'Web Client',
         value: {
           ...payload,
@@ -38,6 +39,7 @@ export default class BusinessMetrics extends GenericMetrics {
    * all event payload keys are converted into a hex string value
    * unfortunately, the pinot team does not allow changes to the schema of business_metrics
    * so we have to shim this layer specifically for this
+   * https://confluence-eng-gpk2.cisco.com/conf/display/WAP/Table%3A+business_metrics
    * @param {string} name of the metric
    * @param {EventPayload} payload payload of the metric
    * @returns {Promise<any>}
@@ -47,7 +49,7 @@ export default class BusinessMetrics extends GenericMetrics {
       type: ['business'],
       eventPayload: {
         key: name,
-        client_timestamp: Date.now(),
+        client_timestamp: new Date().toISOString(),
         appType: 'Web Client',
         value: {
           ...this.getContext(),
@@ -63,6 +65,7 @@ export default class BusinessMetrics extends GenericMetrics {
   /**
    * Submit a buisness metric to our metrics endpoint, going to the default business_ucf table
    * all event payload keys are converted into a hex string value
+   * https://confluence-eng-gpk2.cisco.com/conf/display/WAP/Business+metrics++-%3E+ROMA
    * @param {string} name of the metric
    * @param {EventPayload} user payload of the metric
    * @returns {Promise<any>}
@@ -73,7 +76,7 @@ export default class BusinessMetrics extends GenericMetrics {
       eventPayload: {
         key: name,
         appType: 'Web Client',
-        client_timestamp: Date.now(),
+        client_timestamp: new Date().toISOString(),
         context: this.getContext(),
         browserDetails: this.getBrowserDetails(),
         value: payload,
@@ -86,6 +89,7 @@ export default class BusinessMetrics extends GenericMetrics {
   /**
    * Submit a buisness metric to our metrics endpoint.
    * routes to the correct table with the correct schema payload by table
+   * https://confluence-eng-gpk2.cisco.com/conf/display/WAP/Business+metrics++-%3E+ROMA
    * @param {string} name of the metric, ignored if going to wbxapp_callend_metrics
    * @param {EventPayload} payload user payload of the metric
    * @param {Table} table optional - to submit the metric to and adapt the sent schema

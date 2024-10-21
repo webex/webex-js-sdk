@@ -450,7 +450,8 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
       this.primaryMobiusUris,
       this.backupMobiusUris,
       this.getLoggingLevel(),
-      this.sdkConfig?.serviceData
+      this.sdkConfig?.serviceData,
+      this.sdkConfig?.jwe
     );
 
     this.lineDict[line.lineId] = line;

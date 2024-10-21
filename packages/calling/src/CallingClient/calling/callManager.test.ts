@@ -176,7 +176,7 @@ describe('Call Manager Tests with respect to calls', () => {
     });
 
     expect(callManager).toBeTruthy();
-    const call = await callManager.createCall(dest, CallDirection.OUTBOUND, deviceId, mockLineId);
+    const call = await callManager.createCall(CallDirection.OUTBOUND, deviceId, mockLineId, dest);
 
     call.setCallId('8a67806f-fc4d-446b-a131-31e71ea5b020');
 
@@ -245,7 +245,7 @@ describe('Call Manager Tests with respect to calls', () => {
     webex.request.mockReturnValueOnce(successResponseBody);
 
     /* lets add a call to disconnect it later */
-    await callManager.createCall(dest, CallDirection.OUTBOUND, deviceId, mockLineId);
+    await callManager.createCall(CallDirection.OUTBOUND, deviceId, mockLineId, dest);
 
     expect(Object.keys(callManager.getActiveCalls()).length).toBe(1);
     /* clear the last added call */
@@ -389,7 +389,7 @@ describe('Coverage for Events listener', () => {
   beforeEach(() => {
     callManager = getCallManager(webex, defaultServiceIndicator);
     callManager.removeAllListeners(LINE_EVENT_KEYS.INCOMING_CALL);
-    call = callManager.createCall(dest, CallDirection.OUTBOUND, deviceId, mockLineId);
+    call = callManager.createCall(CallDirection.OUTBOUND, deviceId, mockLineId, dest);
     call.setCallId(dummyCallId);
     setupEvent.data.correlationId = call.getCorrelationId();
   });

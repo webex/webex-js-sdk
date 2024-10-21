@@ -20,6 +20,7 @@ import {
   CallRtpStats,
   SSResponse,
   TransferType,
+  MUTE_TYPE,
 } from './types';
 import {mediaConnection, getTestUtilsWebex, flushPromises} from '../../common/testUtil';
 import {getCallManager} from './callManager';
@@ -147,12 +148,12 @@ describe('Call Tests', () => {
     const call = createCall(
       activeUrl,
       webex,
-      dest,
       CallDirection.OUTBOUND,
       deviceId,
       mockLineId,
       deleteCallFromCollection,
-      defaultServiceIndicator
+      defaultServiceIndicator,
+      dest
     );
 
     expect(call).toBeTruthy();
@@ -171,7 +172,7 @@ describe('Call Tests', () => {
 
     const callManager = getCallManager(webex, defaultServiceIndicator);
 
-    const call = callManager.createCall(dest, CallDirection.OUTBOUND, deviceId, mockLineId);
+    const call = callManager.createCall(CallDirection.OUTBOUND, deviceId, mockLineId, dest);
 
     const realMediaConnection = call.mediaConnection;
     // Set the mock mediaConnection object
@@ -220,7 +221,7 @@ describe('Call Tests', () => {
 
     const localAudioStream = mockStream as unknown as InternalMediaCoreModule.LocalMicrophoneStream;
 
-    const call = callManager.createCall(dest, CallDirection.OUTBOUND, deviceId, mockLineId);
+    const call = callManager.createCall(CallDirection.OUTBOUND, deviceId, mockLineId, dest);
 
     expect(call).toBeTruthy();
     /* After creation , call manager should have 1 record */
@@ -265,7 +266,7 @@ describe('Call Tests', () => {
       },
     };
 
-    const call = callManager.createCall(dest, CallDirection.INBOUND, deviceId, mockLineId);
+    const call = callManager.createCall(CallDirection.INBOUND, deviceId, mockLineId, dest);
 
     const response = await call['postMedia']({});
 
@@ -273,7 +274,7 @@ describe('Call Tests', () => {
   });
 
   it('check whether callerId midcall event is serviced or not', async () => {
-    const call = callManager.createCall(dest, CallDirection.OUTBOUND, deviceId, mockLineId);
+    const call = callManager.createCall(CallDirection.OUTBOUND, deviceId, mockLineId, dest);
 
     call.handleMidCallEvent(dummyMidCallEvent);
     await waitForMsecs(50);
@@ -283,7 +284,7 @@ describe('Call Tests', () => {
   });
 
   it('check whether call midcall event is serviced or not', async () => {
-    const call = callManager.createCall(dest, CallDirection.OUTBOUND, deviceId, mockLineId);
+    const call = callManager.createCall(CallDirection.OUTBOUND, deviceId, mockLineId, dest);
 
     dummyMidCallEvent.eventType = 'callState';
 
@@ -300,7 +301,7 @@ describe('Call Tests', () => {
   });
 
   it('check call stats for active call', async () => {
-    const call = callManager.createCall(dest, CallDirection.OUTBOUND, deviceId, mockLineId);
+    const call = callManager.createCall(CallDirection.OUTBOUND, deviceId, mockLineId, dest);
 
     let callRtpStats;
 
@@ -330,12 +331,12 @@ describe('Call Tests', () => {
     const call = createCall(
       activeUrl,
       webex,
-      dest,
       CallDirection.OUTBOUND,
       deviceId,
       mockLineId,
       deleteCallFromCollection,
-      defaultServiceIndicator
+      defaultServiceIndicator,
+      dest
     );
 
     const bnrMetricSpy = jest.spyOn(call['metricManager'], 'submitBNRMetric');
@@ -346,7 +347,10 @@ describe('Call Tests', () => {
     expect(mockInternalMediaCoreModule.RoapMediaConnection).toBeCalledOnceWith(
       roapMediaConnectionConfig,
       roapMediaConnectionOptions,
-      expect.any(String)
+      expect.any(String),
+      expect.any(Function),
+      expect.any(Function),
+      expect.any(Function)
     );
     expect(call['mediaStateMachine'].state.value).toBe('S_SEND_ROAP_OFFER');
 
@@ -384,12 +388,12 @@ describe('Call Tests', () => {
     const call = createCall(
       activeUrl,
       webex,
-      dest,
       CallDirection.OUTBOUND,
       deviceId,
       mockLineId,
       deleteCallFromCollection,
-      defaultServiceIndicator
+      defaultServiceIndicator,
+      dest
     );
     /** Cannot answer in idle state */
 
@@ -400,7 +404,10 @@ describe('Call Tests', () => {
     expect(mockInternalMediaCoreModule.RoapMediaConnection).toBeCalledOnceWith(
       roapMediaConnectionConfig,
       roapMediaConnectionOptions,
-      expect.any(String)
+      expect.any(String),
+      expect.any(Function),
+      expect.any(Function),
+      expect.any(Function)
     );
     expect(call['callStateMachine'].state.value).toBe('S_IDLE');
     expect(warnSpy).toBeCalledOnceWith(`Call cannot be answered because the state is : S_IDLE`, {
@@ -440,12 +447,12 @@ describe('Call Tests', () => {
     const call = createCall(
       activeUrl,
       webex,
-      dest,
       CallDirection.OUTBOUND,
       deviceId,
       mockLineId,
       deleteCallFromCollection,
-      defaultServiceIndicator
+      defaultServiceIndicator,
+      dest
     );
 
     call.dial(localAudioStream);
@@ -454,7 +461,10 @@ describe('Call Tests', () => {
     expect(mockInternalMediaCoreModule.RoapMediaConnection).toBeCalledOnceWith(
       roapMediaConnectionConfig,
       roapMediaConnectionOptions,
-      expect.any(String)
+      expect.any(String),
+      expect.any(Function),
+      expect.any(Function),
+      expect.any(Function)
     );
     expect(call['mediaStateMachine'].state.value).toBe('S_SEND_ROAP_OFFER');
 
@@ -554,12 +564,12 @@ describe('Call Tests', () => {
     const call = createCall(
       activeUrl,
       webex,
-      dest,
       CallDirection.OUTBOUND,
       deviceId,
       mockLineId,
       deleteCallFromCollection,
-      defaultServiceIndicator
+      defaultServiceIndicator,
+      dest
     );
 
     call.answer(localAudioStream);
@@ -593,12 +603,12 @@ describe('Call Tests', () => {
     const call = createCall(
       activeUrl,
       webex,
-      dest,
       CallDirection.OUTBOUND,
       deviceId,
       mockLineId,
       deleteCallFromCollection,
-      defaultServiceIndicator
+      defaultServiceIndicator,
+      dest
     );
 
     call.dial(localAudioStream);
@@ -632,7 +642,7 @@ describe('Call Tests', () => {
     const onStream1Spy = jest.spyOn(localAudioStream, 'on');
     const offStream1Spy = jest.spyOn(localAudioStream, 'off');
 
-    const call = callManager.createCall(dest, CallDirection.OUTBOUND, deviceId, mockLineId);
+    const call = callManager.createCall(CallDirection.OUTBOUND, deviceId, mockLineId, dest);
 
     call.dial(localAudioStream);
 
@@ -695,7 +705,7 @@ describe('Call Tests', () => {
 
     const localAudioStream = mockStream as unknown as InternalMediaCoreModule.LocalMicrophoneStream;
 
-    const call = callManager.createCall(dest, CallDirection.OUTBOUND, deviceId, mockLineId);
+    const call = callManager.createCall(CallDirection.OUTBOUND, deviceId, mockLineId, dest);
 
     call.dial(localAudioStream);
 
@@ -717,6 +727,139 @@ describe('Call Tests', () => {
       `Did not find a local track while updating media for call ${call.getCorrelationId()}. Will not update media`,
       {file: 'call', method: 'updateMedia'}
     );
+  });
+
+  it('test system mute and user mute different scnearios', async () => {
+    const logSpy = jest.spyOn(log, 'info');
+    webex.request.mockReturnValue({
+      statusCode: 200,
+      body: {
+        device: {
+          deviceId: '8a67806f-fc4d-446b-a131-31e71ea5b010',
+          correlationId: '8a67806f-fc4d-446b-a131-31e71ea5b011',
+        },
+        callId: '8a67806f-fc4d-446b-a131-31e71ea5b020',
+      },
+    });
+
+    const callManager = getCallManager(webex, defaultServiceIndicator);
+
+    const mockStream = {
+      on: jest.fn(),
+      setUserMuted: jest.fn(),
+      systemMuted: false,
+      userMuted: false,
+    };
+
+    const localAudioStream = mockStream as unknown as InternalMediaCoreModule.LocalMicrophoneStream;
+
+    const call = callManager.createCall(dest, CallDirection.OUTBOUND, deviceId, mockLineId);
+
+    expect(call).toBeTruthy();
+    /* System mute is being triggered, mute state within call object should update to true */
+    mockStream.systemMuted = true;
+    call.mute(localAudioStream, MUTE_TYPE.SYSTEM);
+    expect(call.isMuted()).toEqual(true);
+
+    /* User mute is triggered, but no change will happen to the call object mute state since it is system muted */
+    logSpy.mockClear();
+    call.mute(localAudioStream, MUTE_TYPE.USER);
+    expect(call.isMuted()).toEqual(true);
+    expect(mockStream.setUserMuted).not.toBeCalledOnceWith(true);
+    expect(logSpy).toBeCalledOnceWith(`Call is muted on the system - ${call.getCorrelationId()}.`, {
+      file: 'call',
+      method: 'mute',
+    });
+
+    /* System mute is being triggered, mute state within call object should update to false */
+    mockStream.systemMuted = false;
+    call.mute(localAudioStream, MUTE_TYPE.SYSTEM);
+    expect(call.isMuted()).toEqual(false);
+
+    /* User mute can be triggered now updating call object mute state as well */
+    call.mute(localAudioStream, MUTE_TYPE.USER);
+    expect(call.isMuted()).toEqual(true);
+    expect(mockStream.setUserMuted).toBeCalledOnceWith(true);
+    mockStream.userMuted = true;
+
+    /* System mute being triggered now won't update the mute state within call object but will block the user unmute */
+    logSpy.mockClear();
+    mockStream.systemMuted = true;
+    call.mute(localAudioStream, MUTE_TYPE.SYSTEM);
+    expect(call.isMuted()).toEqual(true);
+    expect(logSpy).toBeCalledOnceWith(
+      `Call is muted by the user already - ${call.getCorrelationId()}.`,
+      {
+        file: 'call',
+        method: 'mute',
+      }
+    );
+
+    /* User mute now won't be able to update mute state back to false as system mute is also set */
+    call.mute(localAudioStream, MUTE_TYPE.USER);
+    expect(call.isMuted()).toEqual(true);
+    expect(mockStream.setUserMuted).not.toBeCalledOnceWith(false);
+
+    /* Revert the system mute but call mute state remains same */
+    mockStream.systemMuted = false;
+    call.mute(localAudioStream, MUTE_TYPE.SYSTEM);
+    expect(call.isMuted()).toEqual(true);
+
+    /* User mute will be able update the mute state now */
+    mockStream.setUserMuted.mockClear();
+    call.mute(localAudioStream, MUTE_TYPE.USER);
+    expect(call.isMuted()).toEqual(false);
+    expect(mockStream.setUserMuted).toBeCalledOnceWith(false);
+  });
+
+  describe('Guest Calling Flow Tests', () => {
+    const dummyEvent = {
+      type: 'E_SEND_CALL_SETUP',
+      data: undefined as any,
+    };
+
+    let call: Call;
+
+    it('outgoing call without guest calling must have callee', async () => {
+      call = new Call(
+        activeUrl,
+        webex,
+        CallDirection.OUTBOUND,
+        deviceId,
+        mockLineId,
+        () => {
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          const dummy = 10;
+        },
+        defaultServiceIndicator,
+        dest
+      );
+      call['callStateMachine'].state.value = 'S_IDLE';
+      const requestSpy = jest.spyOn(webex, 'request');
+      call.sendCallStateMachineEvt(dummyEvent as CallEvent);
+      const requestArgs = requestSpy.mock.calls[0][0];
+      expect('callee' in requestArgs.body).toBe(true);
+    });
+
+    it('outgoing call for guest calling must not have callee', async () => {
+      call = new Call(
+        activeUrl,
+        webex,
+        CallDirection.OUTBOUND,
+        deviceId,
+        mockLineId,
+        () => {
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          const dummy = 10;
+        },
+        defaultServiceIndicator
+      );
+      call['callStateMachine'].state.value = 'S_IDLE';
+      const requestSpy = jest.spyOn(webex, 'request');
+      call.sendCallStateMachineEvt(dummyEvent as CallEvent);
+      const requestArgs = requestSpy.mock.calls[0][0];
+      expect('callee' in requestArgs.body).toBe(false);
+    });
   });
 });
 
@@ -743,7 +886,6 @@ describe('State Machine handler tests', () => {
     call = new Call(
       activeUrl,
       webex,
-      dest,
       CallDirection.OUTBOUND,
       deviceId,
       mockLineId,
@@ -751,7 +893,8 @@ describe('State Machine handler tests', () => {
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const dummy = 10;
       },
-      defaultServiceIndicator
+      defaultServiceIndicator,
+      dest
     );
     jest.clearAllTimers();
     jest.useFakeTimers();
@@ -2084,7 +2227,6 @@ describe('Supplementary Services tests', () => {
     call = new Call(
       activeUrl,
       webex,
-      dest,
       CallDirection.OUTBOUND,
       deviceId,
       mockLineId,
@@ -2092,7 +2234,8 @@ describe('Supplementary Services tests', () => {
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const dummy = 10;
       },
-      defaultServiceIndicator
+      defaultServiceIndicator,
+      dest
     );
     call['connected'] = true;
     call['earlyMedia'] = false;
@@ -2705,7 +2848,6 @@ describe('Supplementary Services tests', () => {
       secondCall = new Call(
         activeUrl,
         webex,
-        transfereeDest,
         CallDirection.OUTBOUND,
         deviceId,
         mockLineId,
@@ -2713,7 +2855,8 @@ describe('Supplementary Services tests', () => {
           // eslint-disable-next-line @typescript-eslint/no-unused-vars
           const dummy = 10;
         },
-        defaultServiceIndicator
+        defaultServiceIndicator,
+        transfereeDest
       );
       secondCall['connected'] = true;
       secondCall['earlyMedia'] = false;
