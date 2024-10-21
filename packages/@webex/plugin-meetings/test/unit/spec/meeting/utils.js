@@ -378,24 +378,36 @@ describe('plugin-meetings', () => {
     });
 
     describe('joinMeeting', () => {
-      it('#Should call `meetingRequest.joinMeeting', async () => {
-        const meeting = {
+      const joinMeetingResponse = {
+        body: {
+          mediaConnections: [],
+          locus: {
+            url: 'differentLocusUrl',
+            self: {
+              id: 'selfId',
+            },
+          },
+        },
+        headers: {
+          trackingid: 'trackingId',
+        },
+      };
+      let meeting;
+
+      beforeEach(() => {
+        meeting = {
           meetingJoinUrl: 'meetingJoinUrl',
           locusUrl: 'locusUrl',
           meetingRequest: {
             joinMeeting: sinon.stub().returns(
-              Promise.resolve({
-                body: {mediaConnections: 'mediaConnections'},
-                headers: {
-                  trackingid: 'trackingId',
-                },
-              })
-            ),
+              Promise.resolve(joinMeetingResponse)),
           },
           getWebexObject: sinon.stub().returns(webex),
+          setLocus: sinon.stub(),
         };
+      });
 
-        const parseLocusJoinSpy = sinon.stub(MeetingUtil, 'parseLocusJoin');
+      it('#Should call `meetingRequest.joinMeeting', async () => {
         await MeetingUtil.joinMeeting(meeting, {
           reachability: 'reachability',
           roapMessage: 'roapMessage',
@@ -408,6 +420,10 @@ describe('plugin-meetings', () => {
         assert.equal(parameter.preferTranscoding, true);
         assert.equal(parameter.reachability, 'reachability');
         assert.equal(parameter.roapMessage, 'roapMessage');
+
+        assert.calledOnce(meeting.setLocus)
+        const setLocusParameter = meeting.setLocus.getCall(0).args[0];
+        assert.deepEqual(setLocusParameter, MeetingUtil.parseLocusJoin(joinMeetingResponse))
 
         assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
           name: 'client.locus.join.request',
@@ -424,21 +440,12 @@ describe('plugin-meetings', () => {
           },
           options: {
             meetingId: meeting.id,
-            mediaConnections: 'mediaConnections',
+            mediaConnections: [],
           },
         });
-        parseLocusJoinSpy.restore();
       });
 
       it('#Should call meetingRequest.joinMeeting with breakoutsSupported=true when passed in as true', async () => {
-        const meeting = {
-          meetingRequest: {
-            joinMeeting: sinon.stub().returns(Promise.resolve({body: {}, headers: {}})),
-          },
-          getWebexObject: sinon.stub().returns(webex),
-        };
-
-        const parseLocusJoinSpy = sinon.stub(MeetingUtil, 'parseLocusJoin');
         await MeetingUtil.joinMeeting(meeting, {
           breakoutsSupported: true,
         });
@@ -447,18 +454,9 @@ describe('plugin-meetings', () => {
         const parameter = meeting.meetingRequest.joinMeeting.getCall(0).args[0];
 
         assert.equal(parameter.breakoutsSupported, true);
-        parseLocusJoinSpy.restore();
       });
 
       it('#Should call meetingRequest.joinMeeting with liveAnnotationSupported=true when passed in as true', async () => {
-        const meeting = {
-          meetingRequest: {
-            joinMeeting: sinon.stub().returns(Promise.resolve({body: {}, headers: {}})),
-          },
-          getWebexObject: sinon.stub().returns(webex),
-        };
-
-        const parseLocusJoinSpy = sinon.stub(MeetingUtil, 'parseLocusJoin');
         await MeetingUtil.joinMeeting(meeting, {
           liveAnnotationSupported: true,
         });
@@ -467,18 +465,9 @@ describe('plugin-meetings', () => {
         const parameter = meeting.meetingRequest.joinMeeting.getCall(0).args[0];
 
         assert.equal(parameter.liveAnnotationSupported, true);
-        parseLocusJoinSpy.restore();
       });
 
       it('#Should call meetingRequest.joinMeeting with locale=en_UK, deviceCapabilities=["TEST"] when they are passed in as those values', async () => {
-        const meeting = {
-          meetingRequest: {
-            joinMeeting: sinon.stub().returns(Promise.resolve({body: {}, headers: {}})),
-          },
-          getWebexObject: sinon.stub().returns(webex),
-        };
-
-        const parseLocusJoinSpy = sinon.stub(MeetingUtil, 'parseLocusJoin');
         await MeetingUtil.joinMeeting(meeting, {
           locale: 'en_UK',
           deviceCapabilities: ['TEST'],
@@ -489,21 +478,10 @@ describe('plugin-meetings', () => {
 
         assert.equal(parameter.locale, 'en_UK');
         assert.deepEqual(parameter.deviceCapabilities, ['TEST']);
-        parseLocusJoinSpy.restore();
       });
 
       it('#Should call meetingRequest.joinMeeting with preferTranscoding=false when multistream is enabled', async () => {
-        const meeting = {
-          isMultistream: true,
-          meetingJoinUrl: 'meetingJoinUrl',
-          locusUrl: 'locusUrl',
-          meetingRequest: {
-            joinMeeting: sinon.stub().returns(Promise.resolve({body: {}, headers: {}})),
-          },
-          getWebexObject: sinon.stub().returns(webex),
-        };
-
-        const parseLocusJoinSpy = sinon.stub(MeetingUtil, 'parseLocusJoin');
+        meeting.isMultistream = true;
         await MeetingUtil.joinMeeting(meeting, {});
 
         assert.calledOnce(meeting.meetingRequest.joinMeeting);
@@ -511,40 +489,22 @@ describe('plugin-meetings', () => {
 
         assert.equal(parameter.inviteeAddress, 'meetingJoinUrl');
         assert.equal(parameter.preferTranscoding, false);
-        parseLocusJoinSpy.restore();
       });
 
       it('#Should fallback sipUrl if meetingJoinUrl does not exists', async () => {
-        const meeting = {
-          sipUri: 'sipUri',
-          locusUrl: 'locusUrl',
-          meetingRequest: {
-            joinMeeting: sinon.stub().returns(Promise.resolve({body: {}, headers: {}})),
-          },
-          getWebexObject: sinon.stub().returns(webex),
-        };
-
-        const parseLocusJoinSpy = sinon.stub(MeetingUtil, 'parseLocusJoin');
+        meeting.meetingJoinUrl = undefined;
+        meeting.sipUri = 'sipUri';
         await MeetingUtil.joinMeeting(meeting, {});
 
         assert.calledOnce(meeting.meetingRequest.joinMeeting);
         const parameter = meeting.meetingRequest.joinMeeting.getCall(0).args[0];
 
         assert.equal(parameter.inviteeAddress, 'sipUri');
-        parseLocusJoinSpy.restore();
       });
 
       it('#Should fallback to meetingNumber if meetingJoinUrl/sipUrl  does not exists', async () => {
-        const meeting = {
-          meetingNumber: 'meetingNumber',
-          locusUrl: 'locusUrl',
-          meetingRequest: {
-            joinMeeting: sinon.stub().returns(Promise.resolve({body: {}, headers: {}})),
-          },
-          getWebexObject: sinon.stub().returns(webex),
-        };
-
-        const parseLocusJoinSpy = sinon.stub(MeetingUtil, 'parseLocusJoin');
+        meeting.meetingJoinUrl = undefined;
+        meeting.meetingNumber = 'meetingNumber';
         await MeetingUtil.joinMeeting(meeting, {});
 
         assert.calledOnce(meeting.meetingRequest.joinMeeting);
@@ -552,28 +512,18 @@ describe('plugin-meetings', () => {
 
         assert.isUndefined(parameter.inviteeAddress);
         assert.equal(parameter.meetingNumber, 'meetingNumber');
-        parseLocusJoinSpy.restore();
       });
 
       it('should pass in the locusClusterUrl from meetingInfo', async () => {
-        const meeting = {
-          meetingInfo: {
-            locusClusterUrl: 'locusClusterUrl',
-          },
-          meetingRequest: {
-            joinMeeting: sinon.stub().returns(Promise.resolve({body: {}, headers: {}})),
-          },
-          getWebexObject: sinon.stub().returns(webex),
+        meeting.meetingInfo = {
+          locusClusterUrl: 'locusClusterUrl',
         };
-
-        const parseLocusJoinSpy = sinon.stub(MeetingUtil, 'parseLocusJoin');
         await MeetingUtil.joinMeeting(meeting, {});
 
         assert.calledOnce(meeting.meetingRequest.joinMeeting);
         const parameter = meeting.meetingRequest.joinMeeting.getCall(0).args[0];
 
         assert.equal(parameter.locusClusterUrl, 'locusClusterUrl');
-        parseLocusJoinSpy.restore();
       });
     });
 
