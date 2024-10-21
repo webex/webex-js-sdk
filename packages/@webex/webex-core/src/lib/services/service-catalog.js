@@ -245,26 +245,50 @@ const ServiceCatalog = AmpState.extend({
       ...this.serviceGroups.override,
     ];
 
-    return serviceUrls.find((serviceUrl) => {
-      // Check to see if the URL we are checking starts with the default URL
-      if (url.startsWith(serviceUrl.defaultUrl)) {
-        return true;
-      }
+    let inputHostname;
+    try {
+      const inputUrl = new URL(url);
+      inputHostname = inputUrl.hostname;
+    } catch (error) {
+      // If URL parsing fails, return false
+      return false;
+    }
 
-      // If not, we check to see if the alternate URLs match
-      // These are made by swapping the host of the default URL
-      // with that of an alternate host
-      for (const host of serviceUrl.hosts) {
-        const alternateUrl = new URL(serviceUrl.defaultUrl);
-        alternateUrl.host = host.host;
+    return (
+      serviceUrls.find((serviceUrl) => {
+        let defaultServiceUrl;
+        try {
+          defaultServiceUrl = new URL(serviceUrl.defaultUrl);
+        } catch (error) {
+          // If URL parsing fails for the default URL, skip this service URL
+          return false;
+        }
 
-        if (url.startsWith(alternateUrl.toString())) {
+        const defaultHostname = defaultServiceUrl.hostname;
+
+        // Check if the hostname matches the default URL's hostname
+        if (inputHostname === defaultHostname) {
           return true;
         }
-      }
 
-      return false;
-    });
+        // Check alternate hostnames
+        for (const host of serviceUrl.hosts) {
+          try {
+            const alternateUrl = new URL(serviceUrl.defaultUrl);
+            alternateUrl.hostname = host.host;
+
+            if (inputHostname === alternateUrl.hostname) {
+              return true;
+            }
+          } catch (error) {
+            // If URL parsing fails for the alternate URL, skip this host
+            // Just let the loop proceed to the next iteration
+          }
+        }
+
+        return false;
+      }) || false
+    ); // If no matching service URL is found, return false
   },
 
   /**

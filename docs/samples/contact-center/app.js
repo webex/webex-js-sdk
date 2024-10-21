@@ -104,7 +104,7 @@ function initWebex(e) {
 credentialsFormElm.addEventListener('submit', initWebex);
 
 function register() {
-    webex.cc.register(true).then((data) => {
+    webex.cc.register().then((data) => {
         console.log('Event subscription successful: ', data);
     }).catch(() => {
         console.log('Event subscription failed');

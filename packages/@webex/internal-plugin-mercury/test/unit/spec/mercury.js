@@ -713,6 +713,21 @@ describe('plugin-mercury', () => {
           return res;
         });
       });
+
+      it('_onmessage without eventType', () => {
+        sinon.spy(mercury, '_getEventHandlers');
+        sinon.spy(mercury, '_emit');
+        const event = {data: {data: {eventType: undefined, mydata: 'some data'}}};
+        mercury.logger.error.restore();
+        sinon.stub(mercury.logger, 'error');
+        return Promise.resolve(mercury._onmessage(event)).then(() => {
+          assert.calledWith(mercury._getEventHandlers, undefined);
+          assert.calledWith(mercury._emit, 'event', event.data);
+          assert.notCalled(mercury.logger.error);
+          mercury._emit.restore();
+          mercury._getEventHandlers.restore();
+        });
+      });
     });
 
     describe('#_applyOverrides()', () => {

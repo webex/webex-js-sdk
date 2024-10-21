@@ -139,6 +139,7 @@ describe('plugin-mercury', () => {
         ));
 
       it('accepts a logLevelToken option', () => {
+        const acknowledgeSpy = sinon.spy(socket, '_acknowledge');
         const promise = socket.open('ws://example.com', {
           forceCloseDelay: mockoptions.forceCloseDelay,
           pingInterval: mockoptions.pingInterval,
@@ -147,6 +148,7 @@ describe('plugin-mercury', () => {
           token: 'mocktoken',
           trackingId: 'mocktrackingid',
           logLevelToken: 'mocklogleveltoken',
+          acknowledgementRequired: true,
         });
 
         mockWebSocket.readyState = 1;
@@ -162,8 +164,82 @@ describe('plugin-mercury', () => {
         });
 
         return promise.then(() => {
+          assert.called(acknowledgeSpy);
           assert.equal(socket.logLevelToken, 'mocklogleveltoken');
         });
+      });
+
+      it('accepts acknowledgementRequired option as false and skip acknowledge', () => {
+        const acknowledgeSpy = sinon.spy(socket, '_acknowledge');
+        const promise = socket.open('ws://example.com', {
+          forceCloseDelay: mockoptions.forceCloseDelay,
+          pingInterval: mockoptions.pingInterval,
+          pongTimeout: mockoptions.pongTimeout,
+          logger: console,
+          token: 'mocktoken',
+          trackingId: 'mocktrackingid',
+          logLevelToken: 'mocklogleveltoken',
+          acknowledgementRequired: false,
+        });
+
+        mockWebSocket.readyState = 1;
+        mockWebSocket.emit('open');
+
+        mockWebSocket.emit('message', {
+          data: JSON.stringify({
+            id: uuid.v4(),
+            data: {
+              eventType: 'mercury.buffer_state',
+            },
+          }),
+        });
+
+        return promise.then(() => {
+          assert.notCalled(acknowledgeSpy);
+          assert.equal(socket.logLevelToken, 'mocklogleveltoken');
+        });
+      });
+
+      it('accepts authorizationRequired option as false and skip authorize', () => {
+        const s = new Socket();
+        const authorizeSpy = sinon.spy(socket, '_authorize');
+        socket.open('ws://example.com', {
+          forceCloseDelay: mockoptions.forceCloseDelay,
+          pingInterval: mockoptions.pingInterval,
+          pongTimeout: mockoptions.pongTimeout,
+          logger: console,
+          token: 'mocktoken',
+          trackingId: 'mocktrackingid',
+          logLevelToken: 'mocklogleveltoken',
+          authorizationRequired: false,
+        });
+
+          mockWebSocket.readyState = 1;
+          mockWebSocket.emit('open');
+
+          assert.notCalled(authorizeSpy);
+          assert.called(socket._ping);
+        });
+
+      it('accepts authorizationRequired option as true and calles authorize', () => {
+        const s = new Socket();
+        const authorizeSpy = sinon.spy(socket, '_authorize');
+        socket.open('ws://example.com', {
+          forceCloseDelay: mockoptions.forceCloseDelay,
+          pingInterval: mockoptions.pingInterval,
+          pongTimeout: mockoptions.pongTimeout,
+          logger: console,
+          token: 'mocktoken',
+          trackingId: 'mocktrackingid',
+          logLevelToken: 'mocklogleveltoken',
+          authorizationRequired: true,
+        });
+
+          mockWebSocket.readyState = 1;
+          mockWebSocket.emit('open');
+
+          assert.called(authorizeSpy);
+          assert.called(socket._ping);
       });
     });
 

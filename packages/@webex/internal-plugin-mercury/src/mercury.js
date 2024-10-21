@@ -217,6 +217,8 @@ const Mercury = WebexPlugin.extend({
           token: token.toString(),
           trackingId: `${this.webex.sessionId}_${Date.now()}`,
           logger: this.logger,
+          authorizationRequired: this.config.authorizationRequired ?? true,
+          acknowledgementRequired: this.config.acknowledgementRequired ?? true,
         };
 
         // if the consumer has supplied request options use them
@@ -399,8 +401,11 @@ const Mercury = WebexPlugin.extend({
   },
 
   _getEventHandlers(eventType) {
-    const [namespace, name] = eventType.split('.');
     const handlers = [];
+    if (!eventType) {
+      return handlers;
+    }
+    const [namespace, name] = eventType.split('.');
 
     if (!this.webex[namespace] && !this.webex.internal[namespace]) {
       return handlers;
@@ -511,13 +516,15 @@ const Mercury = WebexPlugin.extend({
       )
       .then(() => {
         this._emit('event', event.data);
-        const [namespace] = data.eventType.split('.');
+        if (data.eventType) {
+          const [namespace] = data.eventType.split('.');
 
-        if (namespace === data.eventType) {
-          this._emit(`event:${namespace}`, envelope);
-        } else {
-          this._emit(`event:${namespace}`, envelope);
-          this._emit(`event:${data.eventType}`, envelope);
+          if (namespace === data.eventType) {
+            this._emit(`event:${namespace}`, envelope);
+          } else {
+            this._emit(`event:${namespace}`, envelope);
+            this._emit(`event:${data.eventType}`, envelope);
+          }
         }
       })
       .catch((reason) => {
