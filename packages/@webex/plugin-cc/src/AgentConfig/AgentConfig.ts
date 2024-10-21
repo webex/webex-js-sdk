@@ -42,10 +42,10 @@ export default class AgentConfig {
         this.wccAPIURL
       );
 
-      const user: UserResponse = await agentConfigService.getUserUsingCI(this.ciUserId, orgId);
+      const user: UserResponse = await agentConfigService.getUserUsingCI();
 
       const agentDesktopProfile: DesktopProfileResponse =
-        await agentConfigService.getDesktopProfileById(orgId, user?.agentProfileId);
+        await agentConfigService.getDesktopProfileById(user?.agentProfileId);
       this.agentProfile.loginVoiceOptions = agentDesktopProfile?.loginVoiceOptions;
 
       const teamListFilter = user?.teamIds;
@@ -65,14 +65,12 @@ export default class AgentConfig {
       const [teamsList, auxCodesList]: [ListTeamsResponse, ListAuxCodesResponse] =
         await Promise.all([
           agentConfigService.getListOfTeams(
-            orgId,
             DEFAULT_PAGE,
             DEFAULT_PAGE_SIZE,
             teamListFilter,
             DEFAULT_ATTRIBUTES
           ),
           agentConfigService.getListOfAuxCodes(
-            orgId,
             DEFAULT_PAGE,
             DEFAULT_PAGE_SIZE,
             auxCodeFilter,
