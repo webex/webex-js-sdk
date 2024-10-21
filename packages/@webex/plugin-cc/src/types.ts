@@ -136,3 +136,10 @@ export const CC_EVENTS = {
 
 // Derive the type using the utility type
 export type CC_EVENTS = Enum<typeof CC_EVENTS>;
+
+export interface WebSocketEvent {
+  type: CC_EVENTS;
+  data: {
+    agentId: string;
+  };
+}

@@ -1,6 +1,6 @@
 /* eslint-disable no-console */
 import {WebexPlugin} from '@webex/webex-core';
-import {CCPluginConfig, IContactCenter, WebexSDK, CC_EVENTS} from './types';
+import {CCPluginConfig, IContactCenter, WebexSDK, CC_EVENTS, WebSocketEvent} from './types';
 import {EVENT, READY, WEBSOCKET_EVENT_TIMEOUT, SUBSCRIBE_API, WCC_API_GATEWAY} from './constants';
 import WebSocket from './WebSocket';
 
@@ -32,6 +32,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     });
   }
 
+  /**
+   * This is used for making the CC SDK ready by setting up the cc mercury connection.
+   * @param success
+   */
   public register(): Promise<string> {
     this.wccApiUrl = this.$webex.internal.services.get(WCC_API_GATEWAY);
 
@@ -51,17 +55,28 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     });
   }
 
-  private listenForWebSocketEvents() {
-    this.webSocket.on(EVENT, (event: any) => {
-      console.log('Event received:', event);
-      switch (event.type) {
-        case CC_EVENTS.WELCOME:
-          this.ciUserId = event.data.agentId;
-          this.handleEvent(REGISTER_EVENT, `Success: CI User ID is ${this.ciUserId}`);
-          break;
-      }
+  /**
+   * This is used for unregistering the CC SDK by disconnecting the cc mercury connection.
+   * @returns Promise<void>
+   */
+  public unRegister(): Promise<void> {
+    return this.webSocket.disconnect().then(() => {
+      this.webSocket.off(EVENT, this.processEvent);
     });
   }
+
+  private listenForWebSocketEvents() {
+    this.webSocket.on(EVENT, this.processEvent);
+  }
+
+  private processEvent = (event: WebSocketEvent): void => {
+    switch (event.type) {
+      case CC_EVENTS.WELCOME:
+        this.ciUserId = event.data.agentId;
+        this.handleEvent(REGISTER_EVENT, `Success: CI User ID is ${this.ciUserId}`);
+        break;
+    }
+  };
 
   private async establishConnection(): Promise<void> {
     const datachannelUrl = `${this.wccApiUrl}${SUBSCRIBE_API}`;
@@ -79,9 +94,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         body: connectionConfig,
       });
     } catch (error) {
-      console.error('Error in establishConnection:', error);
-      // Handle the error appropriately, e.g., by rethrowing it, logging it,
-      // showing a user-friendly message, or performing a recovery action.
+      this.$webex.logger.error(`Error in establishConnection: ${error}`);
       throw error;
     }
   }
