@@ -9,7 +9,6 @@ import MockWebex from '@webex/test-helper-mock-webex';
 import sinon from 'sinon';
 import FakeTimers from '@sinonjs/fake-timers';
 import {NewMetrics} from '@webex/internal-plugin-metrics';
-import {uniqueId} from 'lodash';
 
 const flushPromises = () => new Promise(setImmediate);
 
@@ -66,6 +65,7 @@ describe('internal-plugin-metrics', () => {
 
         // matching because the request includes a symbol key: value pair and sinon cannot handle to compare it..
         assert.match(webexRequestArgs, {
+          //@ts-ignore
           body: {
             metrics: [
               {

@@ -4,7 +4,10 @@
 import {LOGGER, createClient} from "@webex/calling";
 
 export default class WebexCCSDK {
+<<<<<<< HEAD
   line: any;
+=======
+>>>>>>> 5a329950dbe167b54fdcb2c6ed224d3e8d4cd581
   webex: any;
   callingClient: any;
   callingClientConfig: any;
@@ -19,7 +22,6 @@ export default class WebexCCSDK {
   wrapUpReason='';
   buddyAgentId='';
   destType=''
-
   constructor(webex: any) {
     this.webex = webex;
     this.callingClientConfig = {
