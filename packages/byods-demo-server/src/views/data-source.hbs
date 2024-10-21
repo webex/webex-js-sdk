@@ -21,7 +21,7 @@
                 <p><strong>Schema:</strong> {{this.schemaId}}<span class="schema-name"></span></p>
                 <p><strong>Application ID:</strong> <span class="application-id">{{this.applicationId}}</span></p>
                 <p><strong>Status:</strong> <span class="status {{this.status}}">{{this.status}}</span></p>
-                <p><strong>Created By:</strong> <span class="created-by"></span></p>
+                <p><strong>Created By:</strong> {{this.createdBy}} <span class="created-by"></span></p>
                 <p><strong>Created At:</strong> <span class="created-at">{{this.createdAt}}</span></p>
                 <div class="card-buttons">
                   <button class="refresh-button" onclick="refreshJWSToken('{{this.id}}')">Schedule JWS Refresh</button>
