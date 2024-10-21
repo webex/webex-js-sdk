@@ -139,8 +139,6 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
     this.registerCallsClearedListener();
   }
 
-  // async calls required to run after constructor
-
   /**
    * Initializes the `CallingClient` by performing the following steps:
    *
@@ -167,8 +165,6 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
   private async detectNetworkChange() {
     let retry = false;
 
-    // this is a temporary logic to get registration obj
-    // it will change once we have proper lineId and multiple lines as well
     const line = Object.values(this.lineDict)[0];
 
     setInterval(async () => {
