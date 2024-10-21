@@ -49,7 +49,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           // Connection established successfully and wait for Welocme Event till timeout
         })
         .catch((error) => {
-          console.error('Error in register:', error);
           reject(error); // Reject the promise with the caught error
         });
     });
