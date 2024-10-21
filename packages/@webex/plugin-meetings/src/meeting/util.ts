@@ -173,6 +173,7 @@ const MeetingUtil = {
 
   cleanUp: (meeting) => {
     meeting.getWebexObject().internal.device.meetingEnded();
+    meeting.stopPeriodicLogUpload();
 
     meeting.breakouts.cleanUp();
     meeting.simultaneousInterpretation.cleanUp();

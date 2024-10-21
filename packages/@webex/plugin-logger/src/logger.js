@@ -253,6 +253,20 @@ const Logger = WebexPlugin.extend({
   },
 
   /**
+   * Clears the log buffers
+   *
+   * @instance
+   * @memberof Logger
+   * @public
+   * @returns {undefined}
+   */
+  clearBuffers() {
+    this.clientBuffer = [];
+    this.sdkBuffer = [];
+    this.buffer = [];
+  },
+
+  /**
    * Format logs (for upload)
    *
    * If separate client, SDK buffers is configured, merge the buffers, if configured
