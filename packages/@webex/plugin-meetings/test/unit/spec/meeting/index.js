@@ -3788,15 +3788,16 @@ describe('plugin-meetings', () => {
             // that's being tested in these tests)
             meeting.webex.meetings.registered = true;
             meeting.webex.internal.device.config = {};
-            sinon.stub(MeetingUtil, 'joinMeeting').callsFake(async (meeting) => {
-              const result = {
-                id: 'fake locus from mocked join request',
-                locusUrl: 'fake locus url',
-                mediaId: 'fake media id',
-              };
-              meeting.setLocus(result)
-              return result;
-            });
+            sinon.stub(MeetingUtil, 'parseLocusJoin').returns({
+              id: 'fake locus from mocked join request',
+              locusUrl: 'fake locus url',
+              mediaId: 'fake media id',
+            })
+            sinon.stub(meeting.meetingRequest, 'joinMeeting').resolves({
+              headers: {
+                trackingid: 'fake tracking id',
+              }
+            })
             await meeting.join({enableMultistream: isMultistream});
           });
 

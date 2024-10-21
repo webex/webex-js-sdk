@@ -492,7 +492,7 @@ describe('plugin-meetings', () => {
       });
 
       it('#Should fallback sipUrl if meetingJoinUrl does not exists', async () => {
-        delete meeting.meetingJoinUrl;
+        meeting.meetingJoinUrl = undefined;
         meeting.sipUri = 'sipUri';
         await MeetingUtil.joinMeeting(meeting, {});
 
@@ -503,7 +503,7 @@ describe('plugin-meetings', () => {
       });
 
       it('#Should fallback to meetingNumber if meetingJoinUrl/sipUrl  does not exists', async () => {
-        delete meeting.meetingJoinUrl;
+        meeting.meetingJoinUrl = undefined;
         meeting.meetingNumber = 'meetingNumber';
         await MeetingUtil.joinMeeting(meeting, {});
 

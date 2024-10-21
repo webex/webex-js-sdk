@@ -318,7 +318,6 @@ const MeetingUtil = {
     return MeetingUtil.joinMeeting(meeting, options).catch((err) => {
       // joining a claimed PMR that is not my own, scenario B
       if (MeetingUtil.isPinOrGuest(err)) {
-        // @ts-ignore
         webex.internal.newMetrics.submitClientEvent({
           name: 'client.pin.prompt',
           options: {
