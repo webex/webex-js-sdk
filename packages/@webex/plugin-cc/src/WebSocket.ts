@@ -135,12 +135,16 @@ class WebSocket extends Mercury {
     datachannelUrl: string;
     body: object;
   }): Promise<void> {
-    return this.subscribeNotifications({datachannelUrl, body}).then(() => {
-      if (!datachannelUrl) return undefined;
-      this.datachannelUrl = datachannelUrl;
+    return this.subscribeNotifications({datachannelUrl, body})
+      .then(() => {
+        if (!datachannelUrl) return undefined;
+        this.datachannelUrl = datachannelUrl;
 
-      return this.connect(this.webSocketUrl);
-    });
+        return this.connect(this.webSocketUrl);
+      })
+      .catch((error) => {
+        throw error;
+      });
   }
 
   /**

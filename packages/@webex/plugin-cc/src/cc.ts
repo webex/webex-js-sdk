@@ -32,7 +32,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     });
   }
 
-  public async register(): Promise<string> {
+  public register(): Promise<string> {
     this.wccApiUrl = this.$webex.internal.services.get(WCC_API_GATEWAY);
 
     this.listenForWebSocketEvents();
@@ -40,7 +40,14 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     return new Promise((resolve, reject) => {
       this.addEventHandler(REGISTER_EVENT, resolve, reject);
 
-      this.establishConnection(); // Establish the connection after setting up the event listener
+      this.establishConnection()
+        .then(() => {
+          // Connection established successfully and wait for Welocme Event till timeout
+        })
+        .catch((error) => {
+          console.error('Error in register:', error);
+          reject(error); // Reject the promise with the caught error
+        });
     });
   }
 
@@ -66,10 +73,17 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       allowMultiLogin: this.$config?.allowMultiLogin ?? true,
     };
 
-    await this.webSocket.subscribeAndConnect({
-      datachannelUrl,
-      body: connectionConfig,
-    });
+    try {
+      await this.webSocket.subscribeAndConnect({
+        datachannelUrl,
+        body: connectionConfig,
+      });
+    } catch (error) {
+      console.error('Error in establishConnection:', error);
+      // Handle the error appropriately, e.g., by rethrowing it, logging it,
+      // showing a user-friendly message, or performing a recovery action.
+      throw error;
+    }
   }
 
   private handleEvent(eventName: string, successMessage: string) {
