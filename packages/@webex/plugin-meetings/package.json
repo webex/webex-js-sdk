@@ -90,5 +90,6 @@
   },
   "//": [
     "TODO: upgrade jwt-decode when moving to node 18"
-  ]
+  ],
+  "version": "3.3.1-next.43"
 }

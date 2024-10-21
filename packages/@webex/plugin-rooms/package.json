@@ -51,5 +51,6 @@
     "test": "yarn test:style && yarn test:unit && yarn test:integration && yarn test:browser",
     "test:browser:broken": "webex-legacy-tools test --integration --runner karma",
     "test:style": "eslint ./src/**/*.*"
-  }
+  },
+  "version": "3.3.1-next.13"
 }
