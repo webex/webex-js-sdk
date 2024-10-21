@@ -61,6 +61,8 @@ class Package {
 
     const inputPath = path.join(this.data.packageRoot, source);
 
+    console.log('sreenara package.build', inputPath);
+
     const javascriptFileCollector = javascript
       ? Package.getFiles({ location: inputPath, pattern: CONSTANTS.PATTERNS.JAVASCRIPT, targets: undefined })
       : Promise.resolve([]);
@@ -72,6 +74,8 @@ class Package {
     return Promise.all([javascriptFileCollector, typescriptFileCollector])
       .then(([javascriptFiles, typescriptFiles]) => {
         const sourceFiles = [...javascriptFiles, ...typescriptFiles];
+
+        console.log('sreenara package.build', sourceFiles);
 
         const files = sourceFiles.map((file) => new PackageFile({
           directory: source,
@@ -97,24 +101,43 @@ class Package {
    * @param config - Test configuration Object.
    * @returns - Promise resolving to this Package instance.
    */
-  public test(config: TestConfig): Promise<this> {
+  public async test(config: TestConfig): Promise<this> {
     const testDirectory = path.join(this.data.packageRoot, CONSTANTS.TEST_DIRECTORIES.ROOT);
 
-    const unitTestFileCollector = config.unit
-      ? Package.getFiles({
+    console.log(
+      'sreenara test config, pattern, location',
+      config,
+      CONSTANTS.PATTERNS.TEST,
+      path.join(testDirectory, CONSTANTS.TEST_DIRECTORIES.UNIT),
+    );
+    let unitTestFileCollector = config.unit
+      ? await Package.getFiles({
         location: path.join(testDirectory, CONSTANTS.TEST_DIRECTORIES.UNIT),
         pattern: CONSTANTS.PATTERNS.TEST,
         targets: config.targets,
       })
       : Promise.resolve([]);
 
-    const integrationTestFileCollector = config.integration
-      ? Package.getFiles({
+    console.log('sreenara unitTestFileCollector before changes', unitTestFileCollector);
+    unitTestFileCollector = (unitTestFileCollector as unknown as string[]).map((filename) => {
+      const newFile = filename.replace(/\\/g, '/');
+      console.log('new filename', newFile);
+      return newFile;
+    });
+    console.log('sreenara unitTestFileCollector after changes', unitTestFileCollector);
+    let integrationTestFileCollector = config.integration
+      ? await Package.getFiles({
         location: path.join(testDirectory, CONSTANTS.TEST_DIRECTORIES.INTEGRATION),
         pattern: CONSTANTS.PATTERNS.TEST,
         targets: config.targets,
       })
       : Promise.resolve([]);
+
+    integrationTestFileCollector = (integrationTestFileCollector as unknown as string[]).map((filename) => {
+      const newFile = filename.replace(/\\/g, '/');
+      console.log('new filename', newFile);
+      return newFile;
+    });
 
     return Promise.all([unitTestFileCollector, integrationTestFileCollector])
       .then(async ([unitFiles, integrationFiles]) => {
@@ -159,13 +182,16 @@ class Package {
    */
   protected static getFiles({ location, pattern, targets }:
   { location: string, pattern: string, targets: string | undefined }): Promise<Array<string>> {
+    console.log('sreenara package.getFiles()', location, pattern, targets);
     let target;
     if (!targets) {
-      target = path.join(location, pattern);
+      // target = path.posix.join(location, pattern);
+      target = path.join(location, pattern).replace(/\\/g, '/');
     } else {
-      target = path.join(location, targets);
+      target = path.join(location, targets).replace(/\\/g, '/');
     }
 
+    console.log('sreenara package.getFiles() target', target);
     return glob.glob(target);
   }
 
