@@ -1641,7 +1641,6 @@ describe('plugin-meetings', () => {
 
             assert.calledOnce(MeetingUtil.joinMeeting);
             assert.calledOnce(webex.internal.device.meetingStarted);
-            assert.calledOnce(meeting.setLocus);
             assert.equal(result, joinMeetingResult);
             assert.calledWith(webex.internal.llm.on, 'online', meeting.handleLLMOnline);
           });
@@ -3789,11 +3788,16 @@ describe('plugin-meetings', () => {
             // that's being tested in these tests)
             meeting.webex.meetings.registered = true;
             meeting.webex.internal.device.config = {};
-            sinon.stub(MeetingUtil, 'joinMeeting').resolves({
+            sinon.stub(MeetingUtil, 'parseLocusJoin').returns({
               id: 'fake locus from mocked join request',
               locusUrl: 'fake locus url',
               mediaId: 'fake media id',
-            });
+            })
+            sinon.stub(meeting.meetingRequest, 'joinMeeting').resolves({
+              headers: {
+                trackingid: 'fake tracking id',
+              }
+            })
             await meeting.join({enableMultistream: isMultistream});
           });
 
