@@ -967,7 +967,11 @@ const Services = WebexPlugin.extend({
           name: key,
           defaultUrl: services.discovery[key],
         }));
-
+        // TODO: need to make it available in the catalog.
+        formattedDiscoveryServices.push({
+          name: 'wscc',
+          defaultUrl: 'wss://api.wxcc-us1.cisco.com/v1/',
+        });
         // Inject formatted discovery services into services catalog.
         catalog.updateServiceUrls('discovery', formattedDiscoveryServices);
       }
