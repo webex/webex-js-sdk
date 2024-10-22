@@ -5,21 +5,21 @@ import {
   ListTeamsResponse,
   UserResponse,
 } from './types';
-import Request from '../request';
+import HttpRequest from '../HttpRequest';
 
 export default class AgentConfigService {
-  ciUserId: string;
+  agentId: string;
   orgId: string;
   webex: WebexSDK;
   wccAPIURL: string;
-  requestInstance: Request;
+  requestInstance: HttpRequest;
 
-  constructor(ciUserId: string, orgId: string, webex: WebexSDK, wccAPIURL: string) {
-    this.ciUserId = ciUserId;
+  constructor(agentId: string, orgId: string, webex: WebexSDK, wccAPIURL: string) {
+    this.agentId = agentId;
     this.orgId = orgId;
     this.webex = webex;
     this.wccAPIURL = wccAPIURL;
-    this.requestInstance = new Request(this.webex);
+    this.requestInstance = new HttpRequest(this.webex);
   }
 
   /**
@@ -29,7 +29,7 @@ export default class AgentConfigService {
 
   public async getUserUsingCI(): Promise<UserResponse> {
     try {
-      const URL = `${this.wccAPIURL}organization/${this.orgId}/user/by-ci-user-id/${this.ciUserId}`;
+      const URL = `${this.wccAPIURL}organization/${this.orgId}/user/by-ci-user-id/${this.agentId}`;
       const response = await this.requestInstance.request(URL, HTTP_METHODS.GET);
 
       this.webex.logger.log('getUserUsingCI api called successfully.');

@@ -34,13 +34,13 @@ export interface DesktopProfileResponse {
   loginVoiceOptions: string[];
 
   /**
-   * Specify the wrap-up codes that the agents can select when they wrap up a contact.
+   * Specify the wrap-up codes that the agents can select when they wrap up a contact. It can take one of these values: ALL - To make all wrap-up codes available. SPECIFIC - To make specific codes available.
    */
 
   accessWrapUpCode: string;
 
   /**
-   * Specify the Idle codes that the agents can select in Agent Desktop.
+   * Specify the Idle codes that the agents can select in Agent Desktop. It can take one of these values: ALL - To make all wrap-up codes available. SPECIFIC - To make specific codes available.
    */
 
   accessIdleCode: string;

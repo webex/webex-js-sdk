@@ -21,7 +21,7 @@ export interface AgentConfigRequest {
   /**
    * CI user id of the User.
    */
-  ciUserId: string;
+  agentId: string;
 
   /**
    * Represents object of WebexSDK.

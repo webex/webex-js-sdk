@@ -27,7 +27,7 @@ describe('AgentConfig', () => {
   });
 
   it('should get agent profile successfully', async () => {
-    const agentConfig = new AgentConfig('ciUserId123', webexMock, 'wccAPIURL123');
+    const agentConfig = new AgentConfig('agentId123', webexMock, 'wccAPIURL123');
     
     const userResponse = { agentProfileId: 'profileId123', teamIds: ['team1', 'team2'] };
     const desktopProfileResponse = { 
@@ -60,7 +60,7 @@ describe('AgentConfig', () => {
   });
 
   it('should handle errors gracefully', async () => {
-    const agentConfig = new AgentConfig('ciUserId123', webexMock, 'wccAPIURL123');
+    const agentConfig = new AgentConfig('agentId123', webexMock, 'wccAPIURL123');
 
     agentConfigServiceMock.getUserUsingCI.mockRejectedValue(new Error('Test Error'));
 

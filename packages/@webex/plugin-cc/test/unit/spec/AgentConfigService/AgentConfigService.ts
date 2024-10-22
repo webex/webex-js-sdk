@@ -34,7 +34,7 @@ describe('AgentConfigService', () => {
   });
 
   it('should get user using CI successfully', async () => {
-    const ciUserId = 'ciUserId123';
+    const agentId = 'agentId123';
     const orgId = 'orgId123';
     const userResponse = {
       agentProfileId: 'profileId123',
@@ -44,11 +44,11 @@ describe('AgentConfigService', () => {
 
     requestMock.request.mockResolvedValue({ body: userResponse });
 
-    const service = new AgentConfigService(ciUserId, orgId, webexMock, wccAPIURL);
+    const service = new AgentConfigService(agentId, orgId, webexMock, wccAPIURL);
     const result = await service.getUserUsingCI();
 
     expect(requestMock.request).toHaveBeenCalledWith(
-      `${wccAPIURL}organization/${orgId}/user/by-ci-user-id/${ciUserId}`,
+      `${wccAPIURL}organization/${orgId}/user/by-ci-user-id/${agentId}`,
       HTTP_METHODS.GET
     );
     expect(result).toEqual(userResponse);
@@ -56,12 +56,12 @@ describe('AgentConfigService', () => {
   });
 
   it('should handle error in getUserUsingCI', async () => {
-    const ciUserId = 'ciUserId123';
+    const agentId = 'agentId123';
     const orgId = 'orgId123';
 
     requestMock.request.mockRejectedValue(new Error('Test Error'));
 
-    const service = new AgentConfigService(ciUserId, orgId, webexMock, wccAPIURL);
+    const service = new AgentConfigService(agentId, orgId, webexMock, wccAPIURL);
 
     await expect(service.getUserUsingCI()).rejects.toThrow('Error while calling getUserUsingCI API, Error: Test Error');
   });
@@ -79,7 +79,7 @@ describe('AgentConfigService', () => {
 
     requestMock.request.mockResolvedValue({ body: desktopProfileResponse });
 
-    const service = new AgentConfigService('ciUserId123', orgId, webexMock, wccAPIURL);
+    const service = new AgentConfigService('agentId123', orgId, webexMock, wccAPIURL);
     const result = await service.getDesktopProfileById(desktopProfileId);
 
     expect(requestMock.request).toHaveBeenCalledWith(
@@ -96,7 +96,7 @@ describe('AgentConfigService', () => {
 
     requestMock.request.mockRejectedValue(new Error('Test Error'));
 
-    const service = new AgentConfigService('ciUserId123', orgId, webexMock, wccAPIURL);
+    const service = new AgentConfigService('agentId123', orgId, webexMock, wccAPIURL);
 
     await expect(service.getDesktopProfileById(desktopProfileId)).rejects.toThrow('Error while calling retrieveDesktopProfileById API, Error: Test Error');
   });
@@ -111,7 +111,7 @@ describe('AgentConfigService', () => {
 
     requestMock.request.mockResolvedValue({ body: listTeamsResponse });
 
-    const service = new AgentConfigService('ciUserId123', orgId, webexMock, wccAPIURL);
+    const service = new AgentConfigService('agentId123', orgId, webexMock, wccAPIURL);
     const result = await service.getListOfTeams(page, pageSize, filter, attributes);
 
     expect(requestMock.request).toHaveBeenCalledWith(
@@ -131,7 +131,7 @@ describe('AgentConfigService', () => {
 
     requestMock.request.mockRejectedValue(new Error('Test Error'));
 
-    const service = new AgentConfigService('ciUserId123', orgId, webexMock, wccAPIURL);
+    const service = new AgentConfigService('agentId123', orgId, webexMock, wccAPIURL);
 
     await expect(service.getListOfTeams(page, pageSize, filter, attributes)).rejects.toThrow('Error while calling getListOfTeams API, Error: Test Error');
   });
@@ -149,7 +149,7 @@ describe('AgentConfigService', () => {
 
     requestMock.request.mockResolvedValue({ body: listAuxCodesResponse });
 
-    const service = new AgentConfigService('ciUserId123', orgId, webexMock, wccAPIURL);
+    const service = new AgentConfigService('agentId123', orgId, webexMock, wccAPIURL);
     const result = await service.getListOfAuxCodes(page, pageSize, filter, attributes);
 
     expect(requestMock.request).toHaveBeenCalledWith(
@@ -169,7 +169,7 @@ describe('AgentConfigService', () => {
 
     requestMock.request.mockRejectedValue(new Error('Test Error'));
 
-    const service = new AgentConfigService('ciUserId123', orgId, webexMock, wccAPIURL);
+    const service = new AgentConfigService('agentId123', orgId, webexMock, wccAPIURL);
 
     await expect(service.getListOfAuxCodes(page, pageSize, filter, attributes)).rejects.toThrow('Error while calling getListOfAuxCodes API, Error: Test Error');
   });

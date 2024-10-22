@@ -10,13 +10,13 @@ import {WebexSDK} from '../types';
 import {DEFAULT_ATTRIBUTES, DEFAULT_PAGE, DEFAULT_PAGE_SIZE} from './constants';
 
 export default class AgentConfig {
-  ciUserId: string;
+  agentId: string;
   agentProfile: IAgentConfig;
   webex: WebexSDK;
   wccAPIURL: string;
 
-  constructor(ciUserId: string, webex: WebexSDK, wccAPIURL: string) {
-    this.ciUserId = ciUserId;
+  constructor(agentId: string, webex: WebexSDK, wccAPIURL: string) {
+    this.agentId = agentId;
     this.webex = webex;
     this.wccAPIURL = wccAPIURL;
   }
@@ -26,29 +26,28 @@ export default class AgentConfig {
    * @returns {Promise<AgentProfileResponse>} A promise that eventually resolves to an API response and return configuration of an Agent.
    * @example
    * Create an AgentProfile class instance and invoke the getAgentProfile method.
-   * const agentProfile = new AgentProfile('ciUserId', 'webexObject', 'contactCenterApiUrl');
-   * const agentProfileResponse = agentProfile.getAgentProfile();
-   * console.log(JSON.stringify(agentProfileResponse));
+   * const agentProfile = new AgentProfile('agentId', 'webexObject', 'contactCenterApiUrl');
+   * const agentProfileResponse = await agentProfile.getAgentProfile();
    */
 
   public async getAgentProfile(): Promise<IAgentConfig> {
     try {
-      const orgId = await this.webex.credentials.getOrgId();
+      const orgId: string = await this.webex.credentials.getOrgId();
 
       const agentConfigService = new AgentConfigService(
-        this.ciUserId,
+        this.agentId,
         orgId,
         this.webex,
         this.wccAPIURL
       );
 
-      const user: UserResponse = await agentConfigService.getUserUsingCI();
+      const agent: UserResponse = await agentConfigService.getUserUsingCI();
 
       const agentDesktopProfile: DesktopProfileResponse =
-        await agentConfigService.getDesktopProfileById(user.agentProfileId);
+        await agentConfigService.getDesktopProfileById(agent.agentProfileId);
       this.agentProfile.loginVoiceOptions = agentDesktopProfile.loginVoiceOptions;
 
-      const teamListFilter = user.teamIds;
+      const teamListFilter = agent.teamIds;
 
       const auxCodeFilter = [];
 
