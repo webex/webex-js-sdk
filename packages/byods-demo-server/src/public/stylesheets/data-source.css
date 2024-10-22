@@ -306,3 +306,40 @@ form input {
   border-color: #007bff;
   box-shadow: 0 0 5px rgba(0, 123, 255, 0.5);
 }
+
+/* JWS Verification Section */
+.jws-verification-section {
+  margin-top: 20px;
+  padding: 20px;
+  background-color: #fff;
+  border-radius: 10px;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+  text-align: center;
+}
+
+.jws-verification-section label {
+  font-weight: 600;
+  color: #333;
+}
+
+.jws-verification-section input {
+  padding: 10px;
+  margin-top: 5px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  font-size: 1em;
+  width: 80%;
+  max-width: 400px;
+}
+
+.jws-verification-section .verify-button {
+  margin-top: 10px;
+  background-color: #ff9800;
+  padding: 12px 24px;
+  font-size: 1.1em;
+  display: inline-block;
+}
+
+.jws-verification-section .verify-button:hover {
+  background-color: #e68900;
+}

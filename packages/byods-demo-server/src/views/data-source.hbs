@@ -24,8 +24,7 @@
                 <p><strong>Created By:</strong> {{this.createdBy}} <span class="created-by"></span></p>
                 <p><strong>Created At:</strong> <span class="created-at">{{this.createdAt}}</span></p>
                 <div class="card-buttons">
-                  <button class="refresh-button" onclick="refreshJWSToken('{{this.id}}')">Schedule JWS Refresh</button>
-                  <button class="verify-button" onclick="verifyJWSToken('{{this.jwsToken}}')">Verify JWS Token</button>
+                  <button class="refresh-button" onclick="scheduleRefreshWithDelay('{{this.id}}')">Schedule JWS Refresh</button>
                   <div class="icon-buttons-row">
                     <button class="icon-button edit-button" 
                             data-id="{{this.id}}" 
@@ -56,6 +55,14 @@
 
     <!-- Plus Button for Adding New Data Source -->
     <button id="addDataSourceButton" class="add-button" onclick="openAddForm()">+</button>
+
+    <!-- JWS Verification Section -->
+    <div class="jws-verification-section">
+      <h2>Verify JWS Token</h2>
+      <label for="jwsTokenInput">JWS Token:</label>
+      <input type="text" id="jwsTokenInput" placeholder="Paste JWS token here" />
+      <button class="verify-button" onclick="verifyTokenWithDelay()">Verify JWS Token</button>
+    </div>
 
     <!-- Edit/Add Data Source Modal -->
     <div id="editDataSourceModal" class="modal">
@@ -277,6 +284,19 @@
           });
       }
 
+      function scheduleRefreshWithDelay(id) {
+        setTimeout(() => {
+          refreshJWSToken(id);
+        }, 2000); // 2-second delay
+      }
+
+      function verifyTokenWithDelay() {
+        const jwsToken = document.getElementById('jwsTokenInput').value;
+        setTimeout(() => {
+          verifyJWSToken(jwsToken);
+        }, 2000); // 2-second delay
+      }
+
       function refreshJWSToken(id) {
         fetch(`/api/data-source/refresh-token/${id}`, {
           method: 'POST'
@@ -286,11 +306,11 @@
             if (data.error) {
               throw new Error(data.error);
             }
-            alert(`JWS token for data source with ID: ${id} refreshed successfully`);
+            alert(`JWS token refresh for data source with ID: ${id} scheduled successfully`);
             location.reload();
           })
           .catch(error => {
-            alert(`Error refreshing JWS token for data source with ID: ${id}: ${error.message}`);
+            alert(`Error for scheduling refresh of JWS token for data source with ID: ${id}: ${error.message}`);
           });
       }
 
@@ -315,7 +335,7 @@
             if (data.error) {
               throw new Error(data.error);
             }
-            alert(`JWS token verified successfully for subject: ${payload.sub}`);
+            alert(`JWS token verified successfully`);
           })
           .catch(error => {
             alert(`Error verifying JWS token: ${error.message}`);
