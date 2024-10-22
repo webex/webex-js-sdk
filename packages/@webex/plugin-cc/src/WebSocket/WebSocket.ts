@@ -101,7 +101,6 @@ class WebSocket extends (Mercury as any) implements IWebSocket {
   }): Promise<void> {
     return this.subscribeNotifications({datachannelUrl, body})
       .then(() => {
-        if (!datachannelUrl) return undefined;
         this.datachannelUrl = datachannelUrl;
 
         this.connect(this.webSocketUrl);
