@@ -393,10 +393,11 @@ export class MuteState {
    *
    * @public
    * @memberof MuteState
+   * @param {Boolean} [unmuteAllowed] whether the user is allowed to unmute self
    * @param {Object} [meeting] the meeting object
    * @returns {undefined}
    */
-  public handleServerLocalUnmuteRequired(meeting?: any) {
+  public handleServerLocalUnmuteRequired(unmuteAllowed: boolean, meeting?: any) {
     if (!this.state.client.enabled) {
       LoggerProxy.logger.warn(
         `Meeting:muteState#handleServerLocalUnmuteRequired --> ${this.type}: localAudioUnmuteRequired received while ${this.type} is disabled -> local unmute will not result in ${this.type} being sent`
@@ -409,6 +410,9 @@ export class MuteState {
 
     // todo: I'm seeing "you can now unmute yourself " popup  when this happens - but same thing happens on web.w.c so we can ignore for now
     this.state.server.remoteMute = false;
+    this.state.server.unmuteAllowed = unmuteAllowed;
+
+    this.applyUnmuteAllowedToStream(meeting);
 
     // change user mute state to false, but keep localMute true if overall mute state is still true
     this.muteLocalStream(meeting, false, 'localUnmuteRequired');
