@@ -143,3 +143,10 @@ export interface WebSocketEvent {
     agentId: string;
   };
 }
+
+export interface SubsribeRequest {
+  force: boolean;
+  isKeepAliveEnabled: boolean;
+  clientType: string;
+  allowMultiLogin: boolean;
+}

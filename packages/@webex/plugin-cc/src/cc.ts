@@ -1,6 +1,13 @@
 /* eslint-disable no-console */
 import {WebexPlugin} from '@webex/webex-core';
-import {CCPluginConfig, IContactCenter, WebexSDK, CC_EVENTS, WebSocketEvent} from './types';
+import {
+  CCPluginConfig,
+  IContactCenter,
+  WebexSDK,
+  CC_EVENTS,
+  WebSocketEvent,
+  SubsribeRequest,
+} from './types';
 import {EVENT, READY, WEBSOCKET_EVENT_TIMEOUT, SUBSCRIBE_API, WCC_API_GATEWAY} from './constants';
 import IWebSocket from './WebSocket/IWebSocket';
 import WebSocket from './WebSocket/WebSocket';
@@ -36,9 +43,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
   /**
    * This is used for making the CC SDK ready by setting up the cc mercury connection.
-   * @param success
    */
-  public register(): Promise<string> {
+  public async register(): Promise<string> {
     this.wccApiUrl = this.$webex.internal.services.get(WCC_API_GATEWAY);
 
     this.listenForWebSocketEvents();
@@ -53,7 +59,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         reject
       );
 
-      this.establishConnection();
+      this.establishConnection(reject);
     });
   }
 
@@ -81,20 +87,26 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     }
   };
 
-  private async establishConnection(): Promise<void> {
+  private async establishConnection(reject: (error: any) => void) {
     const datachannelUrl = `${this.wccApiUrl}${SUBSCRIBE_API}`;
 
-    const connectionConfig = {
+    const connectionConfig: SubsribeRequest = {
       force: this.$config?.force ?? true,
       isKeepAliveEnabled: this.$config?.isKeepAliveEnabled ?? false,
       clientType: this.$config?.clientType ?? 'WxCCSDK',
       allowMultiLogin: this.$config?.allowMultiLogin ?? true,
     };
 
-    this.webSocket.subscribeAndConnect({
-      datachannelUrl,
-      body: connectionConfig,
-    });
+    try {
+      await this.webSocket.subscribeAndConnect({
+        datachannelUrl,
+        body: connectionConfig,
+      });
+      this.$webex.logger.info('Successfully connected and subscribed.');
+    } catch (error) {
+      this.$webex.logger.info(`Error connecting and subscribing: ${error}`);
+      reject(error);
+    }
   }
 
   private handleEvent(eventName: string, result: any) {
