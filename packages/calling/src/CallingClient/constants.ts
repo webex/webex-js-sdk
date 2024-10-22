@@ -42,7 +42,6 @@ export const DUMMY_METRICS = {
   },
 };
 export const DUMMY_MOBIUS_URL = 'https://mobius.aintgen-a-1.int.infra.webex.com/api/v1';
-export const FETCH_NAME = /^[a-zA-Z ]+/;
 export const IP_ENDPOINT = 'myip';
 export const INITIAL_SEQ_NUMBER = 1;
 export const MEDIA_ENDPOINT_RESOURCE = 'media';
@@ -57,7 +56,7 @@ export const REGISTER_RETRY_TIMEOUT = 10000;
 export const SUPPLEMENTARY_SERVICES_TIMEOUT = 10000;
 export const API_V1 = '/api/v1';
 export const URL_ENDPOINT = '/calling/web/';
-export const VALID_PHONE = /[\d\s()*#+.-]+/;
+export const VALID_PHONE_REGEX = /[\d\s()*#+.-]+/;
 export const WEB_AGENT = '(web)';
 export const WEBEX = 'webex';
 export const WEBEX_WEB_CLIENT = 'webex-web-client';
