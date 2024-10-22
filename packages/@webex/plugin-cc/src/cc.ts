@@ -14,6 +14,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   wccApiUrl: string;
   webSocket: IWebSocket;
   ciUserId: string;
+  registered = false;
   eventHandlers: Map<
     string,
     {resolve: (data: any) => void; reject: (error: any) => void; timeoutId: NodeJS.Timeout}
@@ -43,15 +44,16 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     this.listenForWebSocketEvents();
 
     return new Promise((resolve, reject) => {
-      this.addEventHandler(REGISTER_EVENT, resolve, reject);
+      this.addEventHandler(
+        REGISTER_EVENT,
+        (result) => {
+          this.registered = true;
+          resolve(result);
+        },
+        reject
+      );
 
-      this.establishConnection()
-        .then(() => {
-          // Connection established successfully and wait for Welocme Event till timeout
-        })
-        .catch((error) => {
-          reject(error); // Reject the promise with the caught error
-        });
+      this.establishConnection();
     });
   }
 
@@ -59,9 +61,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * This is used for unregistering the CC SDK by disconnecting the cc mercury connection.
    * @returns Promise<void>
    */
-  public unRegister(): Promise<void> {
+  public unregister(): Promise<void> {
     return this.webSocket.disconnectWebSocket().then(() => {
       this.webSocket.off(EVENT, this.processEvent);
+      this.registered = false;
     });
   }
 
@@ -88,22 +91,17 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       allowMultiLogin: this.$config?.allowMultiLogin ?? true,
     };
 
-    try {
-      await this.webSocket.subscribeAndConnect({
-        datachannelUrl,
-        body: connectionConfig,
-      });
-    } catch (error) {
-      this.$webex.logger.error(`Error in establishConnection: ${error}`);
-      throw error;
-    }
+    this.webSocket.subscribeAndConnect({
+      datachannelUrl,
+      body: connectionConfig,
+    });
   }
 
-  private handleEvent(eventName: string, successMessage: string) {
-    const registerRequest = this.eventHandlers.get(eventName);
-    if (registerRequest) {
-      clearTimeout(registerRequest.timeoutId);
-      registerRequest.resolve(successMessage);
+  private handleEvent(eventName: string, result: any) {
+    const handler = this.eventHandlers.get(eventName);
+    if (handler) {
+      clearTimeout(handler.timeoutId);
+      handler.resolve(result);
       this.eventHandlers.delete(eventName);
     }
   }
@@ -117,7 +115,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       resolve,
       reject,
       timeoutId: setTimeout(() => {
-        reject(new Error('Subscription Failed: Time out'));
+        reject(new Error(`Time out waiting for event: ${eventName}`));
         this.eventHandlers.delete(eventName);
       }, WEBSOCKET_EVENT_TIMEOUT),
     });

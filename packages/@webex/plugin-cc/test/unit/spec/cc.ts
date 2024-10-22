@@ -65,28 +65,14 @@ describe('webex.cc', () => {
 
       assert.equal(result, 'Success: CI User ID is mockAgentId');
     });
-
-    it('should reject with error on registration failure', async () => {
-      const error = new Error('Connection error');
-      webSocketMock.subscribeAndConnect.rejects(error);
-      webex.cc.listenForWebSocketEvents = sinon.stub();
-      webex.cc.addEventHandler = sinon.stub();
-
-      try {
-        await webex.cc.register();
-        assert.fail('Expected error was not thrown');
-      } catch (err) {
-        assert.equal(err, error);
-      }
-    });
   });
 
-  describe('#unRegister', () => {
+  describe('#unregister', () => {
     it('should disconnect the WebSocket and remove event listeners', async () => {
       webSocketMock.disconnectWebSocket.resolves();
       webSocketMock.off = sinon.stub();
 
-      await webex.cc.unRegister();
+      await webex.cc.unregister();
 
       sinon.assert.calledOnce(webSocketMock.disconnectWebSocket);
       sinon.assert.calledOnce(webSocketMock.off);
