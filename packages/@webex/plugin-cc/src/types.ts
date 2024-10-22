@@ -144,9 +144,11 @@ export interface WebSocketEvent {
   };
 }
 
-export interface SubsribeRequest {
+export interface SubscribeRequest {
   force: boolean;
   isKeepAliveEnabled: boolean;
   clientType: string;
   allowMultiLogin: boolean;
 }
+
+export type EventResult = string; // TODO: Will send AgentPRofile object as part of Parv's PR and new types add as and when required

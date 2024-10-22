@@ -6,16 +6,17 @@ import {
   WebexSDK,
   CC_EVENTS,
   WebSocketEvent,
-  SubsribeRequest,
+  SubscribeRequest,
+  EventResult,
 } from './types';
 import {EVENT, READY, WEBSOCKET_EVENT_TIMEOUT, SUBSCRIBE_API, WCC_API_GATEWAY} from './constants';
-import IWebSocket from './WebSocket/IWebSocket';
+import IWebSocket from './WebSocket/types';
 import WebSocket from './WebSocket/WebSocket';
 
 const REGISTER_EVENT = 'register';
 
 export default class ContactCenter extends WebexPlugin implements IContactCenter {
-  namespace = 'ContactCenter';
+  namespace = 'cc';
   $config: CCPluginConfig;
   $webex: WebexSDK;
   wccApiUrl: string;
@@ -29,12 +30,13 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
   constructor(...args) {
     super(...args);
-    // @ts-ignore
-    this.$config = this.config;
+
     // @ts-ignore
     this.$webex = this.webex;
 
     this.$webex.once(READY, () => {
+      // @ts-ignore
+      this.$config = this.config;
       this.webSocket = new WebSocket({
         parent: this.$webex,
       });
@@ -84,17 +86,19 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         this.ciUserId = event.data.agentId;
         this.handleEvent(REGISTER_EVENT, `Success: CI User ID is ${this.ciUserId}`); // TODO: Will send AgentPRofile object as part of Parv's PR
         break;
+      default:
+        this.$webex.logger.info(`Unknown event: ${event.type}`);
     }
   };
 
   private async establishConnection(reject: (error: any) => void) {
     const datachannelUrl = `${this.wccApiUrl}${SUBSCRIBE_API}`;
 
-    const connectionConfig: SubsribeRequest = {
-      force: this.$config?.force ?? true,
-      isKeepAliveEnabled: this.$config?.isKeepAliveEnabled ?? false,
-      clientType: this.$config?.clientType ?? 'WxCCSDK',
-      allowMultiLogin: this.$config?.allowMultiLogin ?? true,
+    const connectionConfig: SubscribeRequest = {
+      force: this.$config.force,
+      isKeepAliveEnabled: this.$config.isKeepAliveEnabled,
+      clientType: this.$config.clientType,
+      allowMultiLogin: this.$config?.allowMultiLogin,
     };
 
     try {
@@ -109,7 +113,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     }
   }
 
-  private handleEvent(eventName: string, result: any) {
+  private handleEvent(eventName: string, result: EventResult) {
     const handler = this.eventHandlers.get(eventName);
     if (handler) {
       clearTimeout(handler.timeoutId);
@@ -120,8 +124,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
   private addEventHandler(
     eventName: string,
-    resolve: (data: any) => void,
-    reject: (error: any) => void
+    resolve: (data: EventResult) => void,
+    reject: (error: Error) => void
   ) {
     this.eventHandlers.set(eventName, {
       resolve,

@@ -1,7 +1,7 @@
 import Mercury from '@webex/internal-plugin-mercury';
-import {HTTP_METHODS, SubsribeRequest, WebSocketEvent} from '../types';
+import {HTTP_METHODS, SubscribeRequest, WebSocketEvent} from '../types';
 import webSocketConfig from './config';
-import IWebSocket from './IWebSocket';
+import IWebSocket from './types';
 
 class WebSocket extends (Mercury as any) implements IWebSocket {
   /**
@@ -69,7 +69,7 @@ class WebSocket extends (Mercury as any) implements IWebSocket {
     body,
   }: {
     datachannelUrl: string;
-    body: SubsribeRequest;
+    body: SubscribeRequest;
   }): Promise<void> {
     return this.request({
       method: HTTP_METHODS.POST,
@@ -89,7 +89,7 @@ class WebSocket extends (Mercury as any) implements IWebSocket {
    * Subscribe and connect to the websocket
    * @param {object} params
    * @param {string} params.datachannelUrl
-   * @param {object} params.body
+   * @param {SubscribeRequest} params.body
    * @returns {Promise<void>}
    */
   subscribeAndConnect({
@@ -97,7 +97,7 @@ class WebSocket extends (Mercury as any) implements IWebSocket {
     body,
   }: {
     datachannelUrl: string;
-    body: object;
+    body: SubscribeRequest;
   }): Promise<void> {
     return this.subscribeNotifications({datachannelUrl, body})
       .then(() => {
