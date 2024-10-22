@@ -34,6 +34,9 @@ describe('webex.cc', () => {
     webSocketMock.on.callsFake((event, callback) => {
       eventEmitter.on(event, callback);
     });
+
+    global.WEBSOCKET_EVENT_TIMEOUT = 100; // Set to a smaller value for tests
+
   });
 
   afterEach(() => {
@@ -41,7 +44,40 @@ describe('webex.cc', () => {
   });
 
   describe('#register', () => {
-    it('should resolve with success message on successful registration', async () => {
+
+    it('should resolve with success message on successful registration even if $config is undefined', async () => {
+      webex.$config = undefined;
+      const promise = webex.cc.register();
+
+      // Emit the welcome event to simulate the WebSocket message
+      eventEmitter.emit(EVENT, {
+        type: CC_EVENTS.WELCOME,
+        data: { agentId: 'mockAgentId' },
+      });
+
+      const result = await promise;
+
+      sinon.assert.calledOnce(webSocketMock.subscribeAndConnect);
+      sinon.assert.calledWith(webSocketMock.subscribeAndConnect, {
+        datachannelUrl: 'https://api.example.com/v1/notification/subscribe',
+        body: {
+          force: true,
+          isKeepAliveEnabled: false,
+          clientType: 'WebexCCSDK',
+          allowMultiLogin: true,
+        },
+      });
+
+      assert.equal(result, 'Success: CI User ID is mockAgentId');
+    });
+
+    it('should resolve with success message on successful registration with $config has values', async () => {
+      webex.cc.$config = {
+        force: true,
+        isKeepAliveEnabled: false,
+        clientType: 'WebexCCSDK',
+        allowMultiLogin: true,
+      };
       const promise = webex.cc.register();
 
       // Emit the welcome event to simulate the WebSocket message
@@ -217,7 +253,7 @@ describe('webex.cc', () => {
           allowMultiLogin: true,
         },
       });
-    }, 10000);
+    }, 1000);
 
     it('should log error and throw if connection fails', async () => {
       const error = new Error('Connection error');
@@ -234,6 +270,6 @@ describe('webex.cc', () => {
         sinon.assert.calledOnce(webex.logger.info);
         sinon.assert.calledWith(webex.logger.info, `Error connecting and subscribing: ${error}`);
       }
-    }, 10000);
+    }, 1000);
   });
 });
