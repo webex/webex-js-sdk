@@ -95,10 +95,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     const datachannelUrl = `${this.wccApiUrl}${SUBSCRIBE_API}`;
 
     const connectionConfig: SubscribeRequest = {
-      force: this.$config.force,
-      isKeepAliveEnabled: this.$config.isKeepAliveEnabled,
-      clientType: this.$config.clientType,
-      allowMultiLogin: this.$config?.allowMultiLogin,
+      force: this.$config?.force ?? true,
+      isKeepAliveEnabled: this.$config?.isKeepAliveEnabled ?? false,
+      clientType: this.$config?.clientType ?? 'WebexCCSDK',
+      allowMultiLogin: this.$config?.allowMultiLogin ?? true,
     };
 
     try {

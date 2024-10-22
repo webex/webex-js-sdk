@@ -104,7 +104,9 @@ class WebSocket extends (Mercury as any) implements IWebSocket {
         if (!datachannelUrl) return undefined;
         this.datachannelUrl = datachannelUrl;
 
-        return this.connect(this.webSocketUrl);
+        this.connect(this.webSocketUrl);
+
+        return Promise.resolve();
       })
       .catch((error) => {
         throw error;

@@ -58,7 +58,7 @@ describe('webex.cc', () => {
         body: {
           force: true,
           isKeepAliveEnabled: false,
-          clientType: 'WxCCSDK',
+          clientType: 'WebexCCSDK',
           allowMultiLogin: true,
         },
       });
@@ -213,7 +213,7 @@ describe('webex.cc', () => {
         body: {
           force: true,
           isKeepAliveEnabled: false,
-          clientType: 'WxCCSDK',
+          clientType: 'WebexCCSDK',
           allowMultiLogin: true,
         },
       });

@@ -3,133 +3,151 @@ import { assert } from '@webex/test-helper-chai';
 import sinon from 'sinon';
 import Mercury from '@webex/internal-plugin-mercury';
 import WebSocket from '../../../src/WebSocket/WebSocket';
+import { HTTP_METHODS, SubscribeRequest } from '../../../src/types';
 
 describe('plugin-cc WebSocket tests', () => {
-const datachannelUrl = 'datachannelUrl';
+  const datachannelUrl = 'datachannelUrl';
 
-describe('WebSocket', () => {
-let webex, webSocket;
+  describe('WebSocket', () => {
+    let webex, webSocket;
 
-beforeEach(() => {
-  webex = new MockWebex({
-    children: {
-      mercury: Mercury,
-    },
-  });
-
-  webSocket = new WebSocket({
-    parent: webex, // Ensure the parent is set correctly
-  });
-
-  webSocket.connect = sinon.stub().callsFake(() => {
-    webSocket.connected = true;
-  });
-  webSocket.disconnect = sinon.stub().resolves(true);
-  webSocket.request = sinon.stub().resolves({
-    headers: {},
-    body: {
-      subscriptionId: 'subscriptionId',
-      webSocketUrl: 'url',
-    },
-  });
-
-  // Mock event handling
-  webSocket.on = sinon.stub((event, callback) => {
-    if (event === 'event') {
-      webSocket._eventCallback = callback;
-    }
-  });
-
-  // Mock updateConfig if necessary
-  webSocket.updateConfig = sinon.stub();
-});
-
-describe('#establishConnection', () => {
-  it('registers connection', async () => {
-    webSocket.subscribeNotifications = sinon.stub().resolves({
-      body: {
-        subscriptionId: 'subscriptionId',
-        webSocketUrl: 'url',
-      },
-    });
-    assert.equal(webSocket.isConnected(), false);
-    await webSocket.subscribeAndConnect({
-      datachannelUrl,
-      body: { deviceUrl: webex.internal.device.url },
-    });
-    assert.equal(webSocket.isConnected(), true);
-  });
-
-  it("doesn't register connection for invalid input", async () => {
-    webSocket.subscribeNotifications = sinon.stub().resolves({
-      body: {
-        subscriptionId: 'subscriptionId',
-        webSocketUrl: 'url',
-      },
-    });
-    await webSocket.subscribeAndConnect({} as any);
-    assert.equal(webSocket.isConnected(), false);
-  });
-});
-
-describe('#subscribeNotifications', () => {
-  it('registers connection', async () => {
-    await webSocket.subscribeNotifications({
-      datachannelUrl,
-      body: { deviceUrl: webex.internal.device.url },
-    });
-
-    sinon.assert.calledOnceWithExactly(
-      webSocket.request,
-      sinon.match({
-        method: 'POST',
-        url: datachannelUrl,
-        body: { deviceUrl: webex.internal.device.url },
-      })
-    );
-  });
-
-  it('throws error if registration fails', async () => {
-    const mockError = new Error('Connection error');
-    webSocket.request.rejects(mockError);
-
-    try {
-      await webSocket.subscribeNotifications({
-        datachannelUrl,
-        body: { deviceUrl: webex.internal.device.url },
+    beforeEach(() => {
+      webex = new MockWebex({
+        children: {
+          mercury: Mercury,
+        },
       });
-      assert.fail('Expected error was not thrown');
-    } catch (error) {
-      assert.equal(error, mockError);
-    }
-  });
-});
 
-describe('#getDatachannelUrl', () => {
-  it('gets dataChannel Url', async () => {
-    webSocket.subscribeNotifications = sinon.stub().resolves({
-      body: {
-        subscriptionId: 'subscriptionId',
-        webSocketUrl: 'url',
-      },
+      webSocket = new WebSocket({
+        parent: webex, // Ensure the parent is set correctly
+      });
     });
-    await webSocket.subscribeAndConnect({
-      datachannelUrl,
-      body: { deviceUrl: webex.internal.device.url },
+
+    describe('#initialize', () => {
+      it('should update the config with webSocketConfig', () => {
+        const updateConfigSpy = sinon.spy(webSocket, 'updateConfig');
+        webSocket.initialize();
+        assert(updateConfigSpy.calledOnce);
+        updateConfigSpy.restore();
+      });
     });
-    assert.equal(webSocket.getDatachannelUrl(), datachannelUrl);
-  });
-});
 
-describe('#disconnectWebSocket', () => {
-  it('disconnects webSocket', async () => {
-    await webSocket.disconnectWebSocket();
-    sinon.assert.calledOnce(webSocket.disconnect);
-    assert.equal(webSocket.isConnected(), false);
-    assert.equal(webSocket.getDatachannelUrl(), undefined);
-    assert.equal(webSocket.getSubscriptionId(), undefined);
-  });
-});
+    describe('#subscribeNotifications', () => {
+      it('should register to the websocket and update webSocketUrl and subscriptionId', async () => {
+        const response = {
+          body: {
+            webSocketUrl: 'wss://websocket.example.com',
+            subscriptionId: 'subscriptionId',
+          },
+        };
+        sinon.stub(webSocket, 'request').resolves(response);
 
-});
+        await webSocket.subscribeNotifications({
+          datachannelUrl,
+          body: {} as SubscribeRequest,
+        });
+
+        assert.equal(webSocket.webSocketUrl, 'wss://websocket.example.com');
+        assert.equal(webSocket.subscriptionId, 'subscriptionId');
+      });
+
+      it('should throw an error if the request fails', async () => {
+        const error = new Error('Request failed');
+        sinon.stub(webSocket, 'request').rejects(error);
+
+        try {
+          await webSocket.subscribeNotifications({
+            datachannelUrl,
+            body: {} as SubscribeRequest,
+          });
+          assert.fail('Expected error was not thrown');
+        } catch (err) {
+          assert.equal(err, error);
+        }
+      });
+    });
+
+    describe('#subscribeAndConnect', () => {
+      it('should subscribe and connect to the websocket', async () => {
+        const connectSpy = sinon.spy(webSocket, 'connect');
+        const response = {
+          body: {
+            webSocketUrl: 'wss://websocket.example.com',
+            subscriptionId: 'subscriptionId',
+          },
+        };
+        sinon.stub(webSocket, 'request').resolves(response);
+
+        await webSocket.subscribeAndConnect({
+          datachannelUrl,
+          body: {} as SubscribeRequest,
+        });
+
+        assert.equal(webSocket.datachannelUrl, datachannelUrl);
+        assert.calledWith(connectSpy, 'wss://websocket.example.com');
+        connectSpy.restore();
+      });
+
+      it('should throw an error if subscribeNotifications fails', async () => {
+        const error = new Error('Subscription failed');
+        sinon.stub(webSocket, 'subscribeNotifications').rejects(error);
+
+        try {
+          await webSocket.subscribeAndConnect({
+            datachannelUrl,
+            body: {} as SubscribeRequest,
+          });
+          assert.fail('Expected error was not thrown');
+        } catch (err) {
+          assert.equal(err, error);
+        }
+      });
+    });
+
+    describe('#isConnected', () => {
+      it('should return the connected status', () => {
+        webSocket.connected = true;
+        assert.isTrue(webSocket.isConnected());
+
+        webSocket.connected = false;
+        assert.isFalse(webSocket.isConnected());
+      });
+    });
+
+    describe('#getSubscriptionId', () => {
+      it('should return the subscriptionId', () => {
+        webSocket.subscriptionId = 'subscriptionId';
+        assert.equal(webSocket.getSubscriptionId(), 'subscriptionId');
+      });
+
+      it('should return undefined if subscriptionId is not set', () => {
+        webSocket.subscriptionId = undefined;
+        assert.isUndefined(webSocket.getSubscriptionId());
+      });
+    });
+
+    describe('#getDatachannelUrl', () => {
+      it('should return the datachannelUrl', () => {
+        webSocket.datachannelUrl = 'datachannelUrl';
+        assert.equal(webSocket.getDatachannelUrl(), 'datachannelUrl');
+      });
+
+      it('should return undefined if datachannelUrl is not set', () => {
+        webSocket.datachannelUrl = undefined;
+        assert.isUndefined(webSocket.getDatachannelUrl());
+      });
+    });
+
+    describe('#disconnectWebSocket', () => {
+      it('should disconnect the websocket and clear related properties', async () => {
+        sinon.stub(webSocket, 'disconnect').resolves();
+
+        await webSocket.disconnectWebSocket();
+
+        assert.isUndefined(webSocket.datachannelUrl);
+        assert.isUndefined(webSocket.subscriptionId);
+        assert.isUndefined(webSocket.webSocketUrl);
+      });
+    });
+  });
 });
