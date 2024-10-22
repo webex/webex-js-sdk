@@ -245,50 +245,66 @@ const ServiceCatalog = AmpState.extend({
       ...this.serviceGroups.override,
     ];
 
-    let inputHostname;
+    let inputUrl;
     try {
-      const inputUrl = new URL(url);
-      inputHostname = inputUrl.hostname;
+      inputUrl = new URL(url);
     } catch (error) {
       // If URL parsing fails, return false
       return false;
     }
 
-    return (
-      serviceUrls.find((serviceUrl) => {
-        let defaultServiceUrl;
+    let exactMatch = null;
+    let anyMatch = null;
+
+    for (const serviceUrl of serviceUrls) {
+      let defaultServiceUrl;
+      try {
+        defaultServiceUrl = new URL(serviceUrl.defaultUrl);
+      } catch (error) {
+        // If URL parsing fails for the default URL, skip this service URL
+
+        // eslint-disable-next-line no-continue
+        continue;
+      }
+
+      const defaultHostname = defaultServiceUrl.hostname;
+
+      // Check if the hostname matches the default URL's hostname
+      if (inputUrl.hostname === defaultHostname) {
+        if (inputUrl.protocol === defaultServiceUrl.protocol) {
+          exactMatch = serviceUrl;
+          break;
+        } else {
+          anyMatch = serviceUrl;
+        }
+      }
+
+      // Check alternate hostnames
+      for (const host of serviceUrl.hosts) {
         try {
-          defaultServiceUrl = new URL(serviceUrl.defaultUrl);
-        } catch (error) {
-          // If URL parsing fails for the default URL, skip this service URL
-          return false;
-        }
+          const alternateUrl = new URL(serviceUrl.defaultUrl);
+          alternateUrl.hostname = host.host;
 
-        const defaultHostname = defaultServiceUrl.hostname;
-
-        // Check if the hostname matches the default URL's hostname
-        if (inputHostname === defaultHostname) {
-          return true;
-        }
-
-        // Check alternate hostnames
-        for (const host of serviceUrl.hosts) {
-          try {
-            const alternateUrl = new URL(serviceUrl.defaultUrl);
-            alternateUrl.hostname = host.host;
-
-            if (inputHostname === alternateUrl.hostname) {
-              return true;
+          if (inputUrl.hostname === alternateUrl.hostname) {
+            if (inputUrl.protocol === alternateUrl.protocol) {
+              exactMatch = serviceUrl;
+              break;
+            } else {
+              anyMatch = serviceUrl;
             }
-          } catch (error) {
-            // If URL parsing fails for the alternate URL, skip this host
-            // Just let the loop proceed to the next iteration
           }
+        } catch (error) {
+          // If URL parsing fails for the alternate URL, skip this host
+          // Just let the loop proceed to the next iteration
         }
+      }
 
-        return false;
-      }) || false
-    ); // If no matching service URL is found, return false
+      if (exactMatch) {
+        break;
+      }
+    }
+
+    return exactMatch || anyMatch || false;
   },
 
   /**
