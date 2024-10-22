@@ -124,9 +124,14 @@ export interface IContactCenter {
   wccApiUrl: string;
   /**
    * This will be public API used for making the CC SDK ready by setting up the cc mercury connection.
-   * @param success
    */
   register(): Promise<string>;
+
+  /**
+   * This will be public API used for unregistering the CC SDK by disconnecting the cc mercury connection
+   * @returns Promise<void>
+   */
+  unregister(): Promise<void>;
 }
 
 // Define the CC_EVENTS object
