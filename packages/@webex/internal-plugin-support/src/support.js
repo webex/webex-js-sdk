@@ -107,6 +107,8 @@ const Support = WebexPlugin.extend({
         return this.webex.upload(options);
       })
       .then((body) => {
+        this.webex.logger.clearBuffers();
+
         if (userId && !body.userId) {
           body.userId = userId;
         }
