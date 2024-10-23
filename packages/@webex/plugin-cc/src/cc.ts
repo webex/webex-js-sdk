@@ -91,7 +91,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     }
   };
 
-  private async establishConnection(reject: (error: any) => void) {
+  private async establishConnection(reject: (error: Error) => void) {
     const datachannelUrl = `${this.wccApiUrl}${SUBSCRIBE_API}`;
 
     const connectionConfig: SubscribeRequest = {

@@ -1,5 +1,4 @@
 import { assert } from '@webex/test-helper-chai';
-import sinon from 'sinon';
 import MockWebex from '@webex/test-helper-mock-webex';
 import WebSocket from '../../../src/WebSocket/WebSocket';
 import { EVENT, READY, WCC_API_GATEWAY, WEBSOCKET_EVENT_TIMEOUT } from '../../../src/constants';
@@ -22,16 +21,22 @@ describe('webex.cc', () => {
     webex.internal = {
       ...webex.internal,
       services: {
-        get: sinon.stub().returns('https://api.example.com/'),
+        get: jest.fn().mockReturnValue('https://api.example.com/'),
       },
     };
 
-    webSocketMock = sinon.createStubInstance(WebSocket);
+    // Manually mock the necessary methods
+    webSocketMock = {
+      on: jest.fn(),
+      subscribeAndConnect: jest.fn(),
+      disconnectWebSocket: jest.fn(),
+      off: jest.fn(),
+    };
     webex.cc.webSocket = webSocketMock;
-
+    
     // Mock event emitter
     eventEmitter = new (require('events')).EventEmitter();
-    webSocketMock.on.callsFake((event, callback) => {
+    webSocketMock.on.mockImplementation((event, callback) => {
       eventEmitter.on(event, callback);
     });
 
@@ -40,7 +45,7 @@ describe('webex.cc', () => {
   });
 
   afterEach(() => {
-    sinon.restore();
+    jest.resetAllMocks();
   });
 
   describe('#register', () => {
@@ -56,9 +61,8 @@ describe('webex.cc', () => {
       });
 
       const result = await promise;
-
-      sinon.assert.calledOnce(webSocketMock.subscribeAndConnect);
-      sinon.assert.calledWith(webSocketMock.subscribeAndConnect, {
+      expect(webSocketMock.subscribeAndConnect).toHaveBeenCalled();
+      expect(webSocketMock.subscribeAndConnect).toHaveBeenCalledWith({
         datachannelUrl: 'https://api.example.com/v1/notification/subscribe',
         body: {
           force: true,
@@ -87,9 +91,8 @@ describe('webex.cc', () => {
       });
 
       const result = await promise;
-
-      sinon.assert.calledOnce(webSocketMock.subscribeAndConnect);
-      sinon.assert.calledWith(webSocketMock.subscribeAndConnect, {
+      expect(webSocketMock.subscribeAndConnect).toHaveBeenCalled();
+      expect(webSocketMock.subscribeAndConnect).toHaveBeenCalledWith({
         datachannelUrl: 'https://api.example.com/v1/notification/subscribe',
         body: {
           force: true,
@@ -104,7 +107,7 @@ describe('webex.cc', () => {
 
     it('should reject with error on registration failure', async () => {
       const error = new Error('Connection error');
-      webSocketMock.subscribeAndConnect.rejects(error);
+      webSocketMock.subscribeAndConnect.mockRejectedValue(error);
 
       try {
         await webex.cc.register();
@@ -117,33 +120,33 @@ describe('webex.cc', () => {
 
   describe('#unregister', () => {
     it('should disconnect the WebSocket and remove event listeners', async () => {
-      webSocketMock.disconnectWebSocket.resolves();
-      webSocketMock.off = sinon.stub();
+      webSocketMock.disconnectWebSocket.mockResolvedValue();
+      webSocketMock.off = jest.fn();
 
       await webex.cc.unregister();
 
-      sinon.assert.calledOnce(webSocketMock.disconnectWebSocket);
-      sinon.assert.calledOnce(webSocketMock.off);
-      sinon.assert.calledWith(webSocketMock.off, EVENT, webex.cc.processEvent);
+      expect(webSocketMock.disconnectWebSocket).toHaveBeenCalled();
+      expect(webSocketMock.off).toHaveBeenCalled();
+      expect(webSocketMock.off).toHaveBeenCalledWith(EVENT, webex.cc.processEvent);
     });
   });
 
   describe('#listenForWebSocketEvents', () => {
     it('should set up event listener for WebSocket events', () => {
-      webSocketMock.on = sinon.stub();
+      webSocketMock.on = jest.fn();
 
       webex.cc.listenForWebSocketEvents();
-
-      sinon.assert.calledOnce(webSocketMock.on);
-      sinon.assert.calledWith(webSocketMock.on, EVENT, webex.cc.processEvent);
+      
+      expect(webSocketMock.on).toHaveBeenCalled();
+      expect(webSocketMock.on).toHaveBeenCalledWith(EVENT, webex.cc.processEvent);
     });
   });
 
   describe('#processEvent', () => {
     it('should handle WELCOME event and resolve the register promise', () => {
-      const resolveStub = sinon.stub();
-      const rejectStub = sinon.stub();
-      webex.cc.addEventHandler('register', resolveStub, rejectStub);
+      const resolveMock = jest.fn();
+      const rejectMock = jest.fn();
+      webex.cc.addEventHandler('register', resolveMock, rejectMock);
 
       webex.cc.processEvent({
         type: CC_EVENTS.WELCOME,
@@ -151,100 +154,108 @@ describe('webex.cc', () => {
       });
 
       assert.equal(webex.cc.ciUserId, 'mockAgentId');
-      sinon.assert.calledOnce(resolveStub);
-      sinon.assert.calledWith(resolveStub, 'Success: CI User ID is mockAgentId');
+
+      expect(resolveMock).toHaveBeenCalled();
+      expect(resolveMock).toHaveBeenCalledWith('Success: CI User ID is mockAgentId');
     });
 
     it('should handle unknown event type gracefully and log info statement', () => {
-      const resolveStub = sinon.stub();
-      const rejectStub = sinon.stub();
-      webex.logger.info = sinon.stub();
+      const resolveMock = jest.fn();
+      const rejectMock = jest.fn();
+      webex.logger.info = jest.fn();
     
-      webex.cc.addEventHandler('register', resolveStub, rejectStub);
+      webex.cc.addEventHandler('register', resolveMock, rejectMock);
     
       webex.cc.processEvent({
         type: 'UNKNOWN_EVENT',
         data: {},
       });
     
-      sinon.assert.notCalled(resolveStub);
-      sinon.assert.notCalled(rejectStub);
-      sinon.assert.calledOnce(webex.logger.info);
-      sinon.assert.calledWith(webex.logger.info, 'Unknown event: UNKNOWN_EVENT');
-    
+      expect(resolveMock).not.toHaveBeenCalled();
+      expect(rejectMock).not.toHaveBeenCalled();
+      expect(webex.logger.info).toHaveBeenCalled();
+      expect(webex.logger.info).toHaveBeenCalledWith('Unknown event: UNKNOWN_EVENT');
     });
   });
 
   describe('#handleEvent', () => {
     it('should resolve the event handler promise and clear timeout', () => {
-      const resolveStub = sinon.stub();
-      const rejectStub = sinon.stub();
+      const resolveMock = jest.fn();
+      const rejectMock = jest.fn();
       const timeoutId = setTimeout(() => {}, 1000);
-      webex.cc.eventHandlers.set('register', { resolve: resolveStub, reject: rejectStub, timeoutId });
+      webex.cc.eventHandlers.set('register', { resolve: resolveMock, reject: rejectMock, timeoutId });
 
       webex.cc.handleEvent('register', 'Success message');
 
-      sinon.assert.calledOnce(resolveStub);
-      sinon.assert.calledWith(resolveStub, 'Success message');
+      expect(resolveMock).toHaveBeenCalled();
+      expect(resolveMock).toHaveBeenCalledWith('Success message');
       assert.isFalse(webex.cc.eventHandlers.has('register'));
     });
 
     it('should do nothing if event handler is not found', () => {
-      const resolveStub = sinon.stub();
-      const rejectStub = sinon.stub();
+      const resolveMock = jest.fn();
+      const rejectMock = jest.fn();
 
       webex.cc.handleEvent('nonexistent', 'Success message');
 
-      sinon.assert.notCalled(resolveStub);
-      sinon.assert.notCalled(rejectStub);
+      expect(resolveMock).not.toHaveBeenCalled();
+      expect(rejectMock).not.toHaveBeenCalled();
     });
   });
 
   describe('#addEventHandler', () => {
     it('should add an event handler with timeout', () => {
-      const resolveStub = sinon.stub();
-      const rejectStub = sinon.stub();
-
-      webex.cc.addEventHandler('register', resolveStub, rejectStub);
-
+      jest.useFakeTimers();
+    
+      const resolveMock = jest.fn();
+      const rejectMock = jest.fn();
+    
+      webex.cc.addEventHandler('register', resolveMock, rejectMock);
+    
       const eventHandler = webex.cc.eventHandlers.get('register');
-      assert.isDefined(eventHandler);
-      assert.equal(eventHandler.resolve, resolveStub);
-      assert.equal(eventHandler.reject, rejectStub);
-      assert.isDefined(eventHandler.timeoutId);
-
-      // Trigger timeout
-      sinon.assert.notCalled(rejectStub);
+      expect(eventHandler).toBeDefined();
+      expect(eventHandler.resolve).toBe(resolveMock);
+      expect(eventHandler.reject).toBe(rejectMock);
+      expect(eventHandler.timeoutId).toBeDefined();
+    
+      expect(resolveMock).not.toHaveBeenCalled();
+    
+      // Fast-forward until all timers have been executed
+      jest.runAllTimers();
+    
+      expect(rejectMock).toHaveBeenCalled();
       clearTimeout(eventHandler.timeoutId);
+    
+      jest.useRealTimers();
     });
-
+  
     it('should reject the promise if the event times out', (done) => {
-      const resolveStub = sinon.stub();
-      const rejectStub = sinon.stub().callsFake((error) => {
-        assert.equal(error.message, 'Time out waiting for event: register');
+      const resolveMock = jest.fn();
+      const rejectMock = jest.fn().mockImplementation((error) => {
+        expect(error.message).toBe('Time out waiting for event: register');
         done();
       });
-
-      webex.cc.addEventHandler('register', resolveStub, rejectStub);
-
+  
+      webex.cc.addEventHandler('register', resolveMock, rejectMock);
+  
       const eventHandler = webex.cc.eventHandlers.get('register');
-      assert.isDefined(eventHandler);
-
+      expect(eventHandler).toBeDefined();
+  
       // Simulate timeout
       setTimeout(() => {
-        sinon.assert.calledOnce(rejectStub);
-      },  WEBSOCKET_EVENT_TIMEOUT + 100);
+        expect(rejectMock).toHaveBeenCalled();
+      }, WEBSOCKET_EVENT_TIMEOUT + 100);
     }, WEBSOCKET_EVENT_TIMEOUT + 200);
   });
 
   describe('#establishConnection', () => {
     it('should establish WebSocket connection with correct parameters', async () => {
-      webSocketMock.subscribeAndConnect.resolves();
+      webSocketMock.subscribeAndConnect.mockResolvedValue();
 
       webex.cc.register();
 
-      sinon.assert.calledOnce(webSocketMock.subscribeAndConnect);
-      sinon.assert.calledWith(webSocketMock.subscribeAndConnect, {
+      expect(webSocketMock.subscribeAndConnect).toHaveBeenCalled();
+      expect(webSocketMock.subscribeAndConnect).toHaveBeenCalledWith({
         datachannelUrl: 'https://api.example.com/v1/notification/subscribe',
         body: {
           force: true,
@@ -257,8 +268,8 @@ describe('webex.cc', () => {
 
     it('should log error and throw if connection fails', async () => {
       const error = new Error('Connection error');
-      webSocketMock.subscribeAndConnect.rejects(error);
-      webex.logger.info = sinon.stub();
+      webSocketMock.subscribeAndConnect.mockRejectedValue(error);
+      webex.logger.info = jest.fn();
 
       try {
         await webex.cc.establishConnection((err) => {
@@ -267,8 +278,8 @@ describe('webex.cc', () => {
         assert.fail('Expected error was not thrown');
       } catch (err) {
         assert.equal(err, error);
-        sinon.assert.calledOnce(webex.logger.info);
-        sinon.assert.calledWith(webex.logger.info, `Error connecting and subscribing: ${error}`);
+        expect(webex.logger.info).toHaveBeenCalled();
+        expect(webex.logger.info).toHaveBeenCalledWith(`Error connecting and subscribing: ${error}`);
       }
     }, 1000);
   });

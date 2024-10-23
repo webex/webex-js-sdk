@@ -1,6 +1,5 @@
 import MockWebex from '@webex/test-helper-mock-webex';
 import { assert } from '@webex/test-helper-chai';
-import sinon from 'sinon';
 import Mercury from '@webex/internal-plugin-mercury';
 import WebSocket from '../../../src/WebSocket/WebSocket';
 import { HTTP_METHODS, SubscribeRequest } from '../../../src/types';
@@ -23,15 +22,6 @@ describe('plugin-cc WebSocket tests', () => {
       });
     });
 
-    describe('#initialize', () => {
-      it('should update the config with webSocketConfig', () => {
-        const updateConfigSpy = sinon.spy(webSocket, 'updateConfig');
-        webSocket.initialize();
-        assert(updateConfigSpy.calledOnce);
-        updateConfigSpy.restore();
-      });
-    });
-
     describe('#subscribeNotifications', () => {
       it('should register to the websocket and update webSocketUrl and subscriptionId', async () => {
         const response = {
@@ -40,7 +30,8 @@ describe('plugin-cc WebSocket tests', () => {
             subscriptionId: 'subscriptionId',
           },
         };
-        sinon.stub(webSocket, 'request').resolves(response);
+
+        jest.spyOn(webSocket, 'request').mockResolvedValue(response);
 
         await webSocket.subscribeNotifications({
           datachannelUrl,
@@ -53,8 +44,7 @@ describe('plugin-cc WebSocket tests', () => {
 
       it('should throw an error if the request fails', async () => {
         const error = new Error('Request failed');
-        sinon.stub(webSocket, 'request').rejects(error);
-
+        jest.spyOn(webSocket, 'request').mockRejectedValue(error);
         try {
           await webSocket.subscribeNotifications({
             datachannelUrl,
@@ -69,28 +59,27 @@ describe('plugin-cc WebSocket tests', () => {
 
     describe('#subscribeAndConnect', () => {
       it('should subscribe and connect to the websocket', async () => {
-        const connectSpy = sinon.spy(webSocket, 'connect');
+        const connectSpy = jest.spyOn(webSocket, 'connect');
         const response = {
           body: {
             webSocketUrl: 'wss://websocket.example.com',
             subscriptionId: 'subscriptionId',
           },
         };
-        sinon.stub(webSocket, 'request').resolves(response);
-
+        jest.spyOn(webSocket, 'request').mockResolvedValue(response);
         await webSocket.subscribeAndConnect({
           datachannelUrl,
           body: {} as SubscribeRequest,
         });
 
-        assert.equal(webSocket.datachannelUrl, datachannelUrl);
-        assert.calledWith(connectSpy, 'wss://websocket.example.com');
-        connectSpy.restore();
+        expect(webSocket.datachannelUrl).toBe(datachannelUrl);
+        expect(connectSpy).toHaveBeenCalledWith('wss://websocket.example.com');
+        connectSpy.mockRestore();
       });
 
       it('should throw an error if subscribeNotifications fails', async () => {
         const error = new Error('Subscription failed');
-        sinon.stub(webSocket, 'subscribeNotifications').rejects(error);
+        jest.spyOn(webSocket, 'subscribeNotifications').mockRejectedValue(error);
 
         try {
           await webSocket.subscribeAndConnect({
@@ -99,8 +88,26 @@ describe('plugin-cc WebSocket tests', () => {
           });
           assert.fail('Expected error was not thrown');
         } catch (err) {
-          assert.equal(err, error);
+          expect(err).toBe(error);
         }
+      });
+
+      it('should return undefined if datachannelUrl is not provided', async () => {
+        const response = {
+          body: {
+            webSocketUrl: 'wss://websocket.example.com',
+            subscriptionId: 'subscriptionId',
+          },
+        };
+        jest.spyOn(webSocket, 'request').mockResolvedValue(response);
+
+        const result = await webSocket.subscribeAndConnect({
+          datachannelUrl: undefined,
+          body: {} as SubscribeRequest,
+        });
+
+        expect(result).toBeUndefined();
+        expect(webSocket.datachannelUrl).toBeUndefined();
       });
     });
 
@@ -140,13 +147,48 @@ describe('plugin-cc WebSocket tests', () => {
 
     describe('#disconnectWebSocket', () => {
       it('should disconnect the websocket and clear related properties', async () => {
-        sinon.stub(webSocket, 'disconnect').resolves();
+        webSocket.disconnect = jest.fn();
 
+        webSocket.disconnect.mockResolvedValue();
         await webSocket.disconnectWebSocket();
 
         assert.isUndefined(webSocket.datachannelUrl);
         assert.isUndefined(webSocket.subscriptionId);
         assert.isUndefined(webSocket.webSocketUrl);
+      });
+
+      it('should throw an error if disconnect fails', async () => {
+        const error = new Error('Disconnect failed');
+        webSocket.disconnect = jest.fn().mockRejectedValue(error);
+
+        try {
+          await webSocket.disconnectWebSocket();
+          assert.fail('Expected error was not thrown');
+        } catch (err) {
+          expect(err).toBe(error);
+        }
+      });
+    });
+
+    describe('#on and #off', () => {
+      it('should add and remove event listeners', () => {
+        const event = 'message';
+        const callback = jest.fn();
+      
+        // Add the event listener
+        webSocket.on(event, callback);
+      
+        // Emit the event and check if the callback is called
+        webSocket.emit(event, 'test data');
+        expect(callback).toHaveBeenCalledWith('test data');
+      
+        // Remove the event listener
+        webSocket.off(event, callback);
+      
+        // Emit the event again and check if the callback is not called
+        callback.mockClear(); // Clear the mock call history
+        webSocket.emit(event, 'test data');
+        expect(callback).not.toHaveBeenCalled();
       });
     });
   });

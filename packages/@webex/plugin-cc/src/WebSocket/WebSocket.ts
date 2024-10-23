@@ -28,6 +28,8 @@ class WebSocket extends (Mercury as any) implements IWebSocket {
    */
   private datachannelUrl: string;
 
+  config = webSocketConfig; // overriding the config of Mercury with CC config
+
   constructor(options = {}) {
     super(options);
     Mercury.prototype.initialize(this, options);
@@ -39,21 +41,6 @@ class WebSocket extends (Mercury as any) implements IWebSocket {
 
   off(event: string, callback: (event: WebSocketEvent) => void): void {
     super.off(event, callback);
-  }
-
-  /**
-   * Updates the Mercury config
-   * @private
-   * @type {string}
-   */
-  private updateConfig(config: Record<string, any>): void {
-    Object.keys(config).forEach((key) => {
-      this.config[key] = config[key];
-    });
-  }
-
-  initialize(): void {
-    this.updateConfig(webSocketConfig);
   }
 
   // TODO: this will be moved to a separate file in request module/file
