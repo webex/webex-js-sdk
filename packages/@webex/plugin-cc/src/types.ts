@@ -128,3 +128,11 @@ export interface IContactCenter {
    */
   register(success: boolean): Promise<string>;
 }
+
+export interface IHttpResponse {
+  body: any;
+  statusCode: number;
+  method: string;
+  headers: Headers;
+  url: string;
+}

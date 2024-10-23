@@ -1,6 +1,6 @@
 // This file can include common request to the API. Request method can be updated in the future based on needs.
 
-import {HTTP_METHODS, WebexSDK} from './types';
+import {HTTP_METHODS, IHttpResponse, WebexSDK} from './types';
 
 export default class HttpRequest {
   webex: WebexSDK;
@@ -11,14 +11,14 @@ export default class HttpRequest {
 
   /**
    * Common method to make HTTP Requests.
-   * @returns {Promise<any>} A promise that eventually resolves to an API response.
+   * @returns {Promise<IHttpResponse>} Returns the response of the API.
    * @example
    * Create an instance of a class HttpRequest by passing webex object and call the request method.
    * const httpRequest = HttpRequest(webexObject);
    * const response = await httpRequest.request('apiURL', 'GET', {id: '123', name: 'test'});
    */
 
-  public async request(URL: string, method: string, body: object = {}): Promise<any> {
+  public async request(URL: string, method: string, body: object = {}): Promise<IHttpResponse> {
     try {
       let response;
       switch (method) {
@@ -42,9 +42,9 @@ export default class HttpRequest {
         }
       }
 
-      return Promise.resolve(response);
+      return response;
     } catch (error) {
-      throw new Error(`Error while making request: ${error}`);
+      throw new Error(`Error while making http request: ${error}`);
     }
   }
 }
