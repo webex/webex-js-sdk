@@ -55,7 +55,6 @@ export interface WebexSDK {
   canAuthorize: boolean;
   credentials: {
     getUserToken: () => Promise<string>;
-    getOrgId: () => Promise<string>;
   };
   ready: boolean;
   request: <T>(payload: WebexRequestPayload) => Promise<T>;

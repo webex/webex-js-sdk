@@ -19,7 +19,7 @@ type WORK_TYPE_CODE = Enum<typeof WORK_TYPE_CODE>;
  */
 export interface AgentConfigRequest {
   /**
-   * CI user id of the User.
+   * Represents id of agent.
    */
   agentId: string;
 
@@ -30,7 +30,7 @@ export interface AgentConfigRequest {
   webex: WebexSDK;
 
   /**
-   * Org id of the User.
+   * Org id of the agent.
    */
   orgId: string;
 }
