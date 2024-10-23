@@ -37,6 +37,9 @@ export default class HttpRequest {
           });
           break;
         }
+        default: {
+          throw new Error(`Unsupported HTTP method: ${method}`);
+        }
       }
 
       return Promise.resolve(response);

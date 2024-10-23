@@ -1,69 +1,96 @@
-import AgentConfig from '../../../../src/AgentConfig/AgentConfig';
+import {IAgentConfig} from '../../../../src/AgentConfig/types';
 import AgentConfigService from '../../../../src/AgentConfigService/AgentConfigService';
+import { WebexSDK } from '../../../../src/types';
+import { WORK_TYPE_CODE } from '../../../../src/AgentConfig/types';
+import AgentConfig from '../../../../src/AgentConfig/AgentConfig';
+import {
+  DesktopProfileResponse,
+  ListAuxCodesResponse,
+  ListTeamsResponse,
+  AgentResponse,
+} from '../../../../src/AgentConfigService/types';
 
-// Mocking dependencies.
-jest.mock('../AgentConfigService/AgentConfigService');
-jest.mock('../WebexSDK');
+// Mocking the WebexSDK instance
+const mockWebex: WebexSDK = {
+  internal: {
+    device: {
+      orgId: 'testOrgId',
+    },
+  },
+};
+
+// Mock data
+const mockAgentResponse: AgentResponse = {
+  firstName: 'John',
+  lastName: 'Doe',
+  agentProfileId: 'profile123',
+  email: 'john.doe@example.com',
+  teamIds: ['team1', 'team2'],
+};
+
+const mockDesktopProfileResponse: DesktopProfileResponse = {
+  loginVoiceOptions: ['option1', 'option2'],
+  accessWrapUpCode: 'ALL',
+  accessIdleCode: 'ALL',
+  wrapUpCodes: [],
+  idleCodes: [],
+};
+
+const mockTeamsListResponse: ListTeamsResponse = {
+  data: [{ id: 'team1', name: 'Team 1' }],
+};
+
+const mockAuxCodesResponse: ListAuxCodesResponse = {
+  data: [
+    { id: 'aux1', workTypeCode: WORK_TYPE_CODE.WRAP_UP_CODE },
+    { id: 'aux2', workTypeCode: WORK_TYPE_CODE.IDLE_CODE },
+  ],
+};
 
 describe('AgentConfig', () => {
-  let webexMock;
-  let agentConfigServiceMock;
+  let agentConfig: AgentConfig;
+  let getUserUsingCIMock: jest.SpyInstance;
+  let getDesktopProfileByIdMock: jest.SpyInstance;
+  let getListOfTeamsMock: jest.SpyInstance;
+  let getListOfAuxCodesMock: jest.SpyInstance;
 
   beforeEach(() => {
-    webexMock = {
-      credentials: {
-        getOrgId: jest.fn().mockResolvedValue('orgId123')
-      }
-    };
+    jest.clearAllMocks();
+    agentConfig = new AgentConfig('agent123', mockWebex, 'http://api.url');
 
-    agentConfigServiceMock = {
-      getUserUsingCI: jest.fn(),
-      getDesktopProfileById: jest.fn(),
-      getListOfTeams: jest.fn(),
-      getListOfAuxCodes: jest.fn()
-    };
-
-    AgentConfigService.mockImplementation(() => agentConfigServiceMock);
+    // Mocking methods of AgentConfigService
+    getUserUsingCIMock = jest.spyOn(AgentConfigService.prototype, 'getUserUsingCI').mockResolvedValue(mockAgentResponse);
+    getDesktopProfileByIdMock = jest.spyOn(AgentConfigService.prototype, 'getDesktopProfileById').mockResolvedValue(mockDesktopProfileResponse);
+    getListOfTeamsMock = jest.spyOn(AgentConfigService.prototype, 'getListOfTeams').mockResolvedValue(mockTeamsListResponse);
+    getListOfAuxCodesMock = jest.spyOn(AgentConfigService.prototype, 'getListOfAuxCodes').mockResolvedValue(mockAuxCodesResponse);
   });
 
-  it('should get agent profile successfully', async () => {
-    const agentConfig = new AgentConfig('agentId123', webexMock, 'wccAPIURL123');
-    
-    const agentResponse = { agentProfileId: 'profileId123', teamIds: ['team1', 'team2'] };
-    const desktopProfileResponse = { 
+  it('should fetch agent profile successfully', async () => {
+    const expectedProfile: IAgentConfig = {
+      agentId: 'agent123',
+      agentFirstName: 'John',
+      agentLastName: 'Doe',
+      agentProfileId: 'profile123',
+      agentMailId: 'john.doe@example.com',
+      teams: [mockTeamsListResponse],
       loginVoiceOptions: ['option1', 'option2'],
-      accessWrapUpCode: 'ALL',
-      accessIdleCode: 'ALL',
-      wrapUpCodes: [],
-      idleCodes: []
-    };
-    const teamsListResponse = { data: ['team1', 'team2'] };
-    const auxCodesListResponse = { data: [
-      { workTypeCode: 'WRAP_UP_CODE', code: 'wrap1' },
-      { workTypeCode: 'IDLE_CODE', code: 'idle1' }
-    ] };
-
-    agentConfigServiceMock.getUserUsingCI.mockResolvedValue(agentResponse);
-    agentConfigServiceMock.getDesktopProfileById.mockResolvedValue(desktopProfileResponse);
-    agentConfigServiceMock.getListOfTeams.mockResolvedValue(teamsListResponse);
-    agentConfigServiceMock.getListOfAuxCodes.mockResolvedValue(auxCodesListResponse);
-
-    const expectedProfile = {
-      teams: [teamsListResponse],
-      loginVoiceOptions: ['option1', 'option2'],
-      idleCodes: [{ workTypeCode: 'IDLE_CODE', code: 'idle1' }],
-      wrapUpCodes: [{ workTypeCode: 'WRAP_UP_CODE', code: 'wrap1' }]
+      wrapUpCodes: [{ id: 'aux1', workTypeCode: WORK_TYPE_CODE.WRAP_UP_CODE }],
+      idleCodes: [{ id: 'aux2', workTypeCode: WORK_TYPE_CODE.IDLE_CODE }],
     };
 
     const result = await agentConfig.getAgentProfile();
     expect(result).toEqual(expectedProfile);
+    expect(getUserUsingCIMock).toHaveBeenCalledTimes(1);
+    expect(getDesktopProfileByIdMock).toHaveBeenCalledTimes(1);
+    expect(getListOfTeamsMock).toHaveBeenCalledTimes(1);
+    expect(getListOfAuxCodesMock).toHaveBeenCalledTimes(1);
   });
 
-  it('should handle errors gracefully', async () => {
-    const agentConfig = new AgentConfig('agentId123', webexMock, 'wccAPIURL123');
+  it('should handle errors when fetching agent profile', async () => {
+    getUserUsingCIMock.mockRejectedValue(new Error('Network error'));
 
-    agentConfigServiceMock.getUserUsingCI.mockRejectedValue(new Error('Test Error'));
-
-    await expect(agentConfig.getAgentProfile()).rejects.toThrow('Error while fetching agent profile, Error: Test Error');
+    await expect(agentConfig.getAgentProfile()).rejects.toThrow(
+      'Error while fetching agent profile, Error: Network error'
+    );
   });
 });
