@@ -8,6 +8,7 @@ import morgan from 'morgan';
 import cookieParser from 'cookie-parser';
 import handlebars from 'handlebars';
 import fs from 'fs';
+import {v4 as uuidv4} from 'uuid';
 
 // **** Core Setup **** //
 const app = express();
@@ -36,7 +37,7 @@ function renderTemplate(res: Response, templateName: string, data: any) {
 // Basic middleware
 app.use(express.json());
 app.use(express.urlencoded({extended: true}));
-app.use(cookieParser('your-cookie-secret'));
+app.use(cookieParser(''));
 
 // Show routes called in console during development
 if (process.env.NODE_ENV === 'development') {
@@ -62,20 +63,20 @@ app.get('/', (req: Request, res: Response) => {
 
 // Render the config page
 app.get('/config', (req: Request, res: Response) => {
-  renderTemplate(res, 'config', {title: 'Configuration'});
+  renderTemplate(res, 'config', {});
 });
 
 // **** Configuration **** //
 // Handle config form submission
 app.post('/config', (req: Request, res: Response) => {
   const {clientId, clientSecret} = req.body;
-  const mockSDKConfig = {
+  const config = {
     clientId,
     clientSecret,
-    tokenStorageAdapter: undefined,
-    logger: {level: BYODS.LOGGER.INFO},
+    tokenStorageAdapter: new BYODS.InMemoryTokenStorageAdapter(),
+    logger: {level: BYODS.LOGGER.LOG},
   };
-  sdk = new BYODS.BYODS(mockSDKConfig);
+  sdk = new BYODS.BYODS(config);
   res.redirect('/orgs');
 });
 
@@ -157,7 +158,7 @@ app.delete('/api/data-source/delete/:id', async (req: Request, res: Response) =>
   try {
     const {id} = req.params;
     const response = await baseClient.dataSource.delete(id);
-    res.status(201).json({message: 'Data deleted successfully', data: response.data});
+    res.status(204).json({message: 'Data deleted successfully', data: response.data});
   } catch (error) {
     res.status(400).json({error: error.message});
   }
@@ -167,7 +168,7 @@ app.delete('/api/data-source/delete/:id', async (req: Request, res: Response) =>
 app.get('/api/token/list', async (req: Request, res: Response) => {
   try {
     const tokens = await sdk.tokenManager.listTokens();
-    res.status(201).json(tokens);
+    res.status(200).json(tokens);
   } catch (error) {
     res.status(400).json({error: error.message});
   }
@@ -178,8 +179,9 @@ app.get('/api/token/list', async (req: Request, res: Response) => {
 app.post('/api/data-source/refresh-token/:id', async (req: Request, res: Response) => {
   try {
     const {id} = req.params;
-    await baseClient.dataSource.scheduleJWSTokenRefresh(id, 60, () => 'test');
-    res.status(201).json({message: 'JWS token refreshed scheduled successfully'});
+    const {tokenLifetimeMinutes} = req.body;
+    await baseClient.dataSource.scheduleJWSTokenRefresh(id, tokenLifetimeMinutes, () => uuidv4()); // Use UUID for nonce
+    res.status(200).json({message: 'JWS token refresh scheduled successfully'});
   } catch (error) {
     res.status(400).json({error: error.message});
   }

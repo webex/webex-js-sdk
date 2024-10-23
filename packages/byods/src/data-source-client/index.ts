@@ -171,7 +171,7 @@ export default class DataSourceClient {
    * @param {string} dataSourceId The id of the data source
    * @param {number} tokenLifetimeMinutes The refresh interval in minutes for the data source. Defaults to 60 mins. Should be <= 1440 & >=1.
    * @param {string} nonceGenerator Accepts an nonceGenerator that will generate nonce for the data source request.
-   * @returns {Promise<NodeJS.Timeout>} A promise that resolves to the API response containing NodeJS.Timer.
+   * @returns {Promise<NodeJS.Timeout>} A promise that resolves to the API response containing NodeJS.Timeout.
    */
   private async startAutoRefresh(
     dataSourceId: string,

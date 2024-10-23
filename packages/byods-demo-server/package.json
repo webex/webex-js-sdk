@@ -6,7 +6,7 @@
     "dev:hot": "nodemon --exec \"npm run dev\" --watch ./src -e ts"
   },
   "engines": {
-    "node": ">=16.0.0"
+    "node": ">=20.x"
   },
   "dependencies": {
     "@webex/byods": "workspace:*",

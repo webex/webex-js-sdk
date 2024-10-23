@@ -24,7 +24,7 @@
                 <p><strong>Created By:</strong> {{this.createdBy}} <span class="created-by"></span></p>
                 <p><strong>Created At:</strong> <span class="created-at">{{this.createdAt}}</span></p>
                 <div class="card-buttons">
-                  <button class="refresh-button" onclick="scheduleRefreshWithDelay('{{this.id}}')">Schedule JWS Refresh</button>
+                  <button class="refresh-button" onclick="scheduleRefreshWithDelay('{{this.id}}', '{{this.tokenLifetimeMinutes}}')">Schedule JWS Refresh</button>
                   <div class="icon-buttons-row">
                     <button class="icon-button edit-button" 
                             data-id="{{this.id}}" 
@@ -284,9 +284,9 @@
           });
       }
 
-      function scheduleRefreshWithDelay(id) {
+      function scheduleRefreshWithDelay(id, tokenLifetimeMinutes) {
         setTimeout(() => {
-          refreshJWSToken(id);
+          refreshJWSToken(id, tokenLifetimeMinutes);
         }, 2000); // 2-second delay
       }
 
@@ -297,9 +297,13 @@
         }, 2000); // 2-second delay
       }
 
-      function refreshJWSToken(id) {
+      function refreshJWSToken(id, tokenLifetimeMinutes) {
         fetch(`/api/data-source/refresh-token/${id}`, {
-          method: 'POST'
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ tokenLifetimeMinutes })
         })
           .then(response => response.json())
           .then(data => {

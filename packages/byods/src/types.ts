@@ -23,13 +23,15 @@ export interface SDKConfig {
 
   /**
    * The token storage adapter passed by the client
+   * By default, this will be of type `InMemoryTokenStorageAdapter`
    */
   tokenStorageAdapter?: TokenStorageAdapter;
 
   /**
    * The Logger Config
+   * By default, this will be of type `LOGGER.ERROR`
    */
-  logger: LoggerConfig;
+  logger?: LoggerConfig;
 }
 
 /**
