@@ -1,191 +1,194 @@
-
-import {expect} from 'chai';
-import sinon from 'sinon';
-import AgentConfigService from '../../../../src/AgentConfigService/AgentConfigService';
+import { WebexSDK } from '../../../../src/types';
 import HttpRequest from '../../../../src/HttpRequest';
-import {WebexSDK, HTTP_METHODS} from '../../../../src/types';
-import {
-AgentResponse,
-DesktopProfileResponse,
-ListAuxCodesResponse,
-ListTeamsResponse,
-} from '../../../../src/AgentConfigService/types';
+import AgentConfigService from '../../../../src/AgentConfigService/AgentConfigService';
+
+jest.mock('../../../../src/HttpRequest', () => {
+  return jest.fn().mockImplementation(() => {
+    return {
+      request: jest.fn(),
+    };
+  });
+});
 
 describe('AgentConfigService', () => {
-let agentConfigService: AgentConfigService;
-let requestInstanceStub: sinon.SinonStubbedInstance<HttpRequest>;
-const agentId = 'test-agent-id';
-const orgId = 'test-org-id';
-const wccAPIURL = 'https://api.example.com/';
-const webex = {
-  logger: {
-    log: sinon.stub(),
-  },
-} as unknown as WebexSDK;
+  let agentConfigService: AgentConfigService;
+  let mockHttpRequest: jest.Mocked<HttpRequest>;
+  const mockWebexSDK: WebexSDK = {
+    logger: {
+      log: jest.fn(),
+    },
+  } as unknown as WebexSDK;
+  const mockWccAPIURL = 'https://api.example.com/';
+  const mockAgentId = 'agent123';
+  const mockOrgId = 'org123';
 
-beforeEach(() => {
-  requestInstanceStub = sinon.createStubInstance(HttpRequest);
-  agentConfigService = new AgentConfigService(agentId, orgId, webex, wccAPIURL);
-  agentConfigService.requestInstance = requestInstanceStub;
-});
-
-describe('getUserUsingCI', () => {
-  it('should return agent response on success', async () => {
-    const expectedResponse: AgentResponse = {
-      firstName: 'John',
-      lastName: 'Doe',
-      agentProfileId: 'profile-id',
-      email: 'john.doe@example.com',
-      teamIds: ['team1', 'team2'],
-    };
-    requestInstanceStub.request.resolves({statusCode: 200, body: expectedResponse});
-
-    const response = await agentConfigService.getUserUsingCI();
-
-    expect(response).to.deep.equal(expectedResponse);
-    expect(webex.logger.log.calledWith('getUserUsingCI api success.')).to.be.true;
+  beforeEach(() => {
+    mockHttpRequest = new HttpRequest(mockWebexSDK) as jest.Mocked<HttpRequest>;
+    agentConfigService = new AgentConfigService(mockAgentId, mockOrgId, mockWebexSDK, mockWccAPIURL);
+    agentConfigService.requestInstance = mockHttpRequest;
   });
 
-  it('should throw an error if API call fails', async () => {
-    requestInstanceStub.request.resolves({statusCode: 500, body: {}});
-
-    try {
-      await agentConfigService.getUserUsingCI();
-    } catch (error) {
-      expect(error.message).to.include('getUserUsingCI api failed');
-    }
+  afterEach(() => {
+    jest.clearAllMocks();
   });
 
-  it('should throw an error if request throws an exception', async () => {
-    requestInstanceStub.request.rejects(new Error('Network error'));
+  describe('getUserUsingCI', () => {
+    it('should return AgentResponse on success', async () => {
+      const mockResponse = {
+        statusCode: 200,
+        body: {
+          firstName: 'John',
+          lastName: 'Doe',
+          agentProfileId: 'profile123',
+          email: 'john.doe@example.com',
+          teamIds: ['team1', 'team2'],
+        },
+      };
+      mockHttpRequest.request.mockResolvedValue(mockResponse);
 
-    try {
-      await agentConfigService.getUserUsingCI();
-    } catch (error) {
-      expect(error.message).to.include('getUserUsingCI api failed');
-    }
-  });
-});
+      const result = await agentConfigService.getUserUsingCI();
 
-describe('getDesktopProfileById', () => {
-  const desktopProfileId = 'desktop-profile-id';
+      expect(result).toEqual(mockResponse.body);
+      expect(mockWebexSDK.logger.log).toHaveBeenCalledWith('getUserUsingCI api success.');
+    });
 
-  it('should return desktop profile response on success', async () => {
-    const expectedResponse: DesktopProfileResponse = {
-      loginVoiceOptions: ['option1', 'option2'],
-      accessWrapUpCode: 'ALL',
-      accessIdleCode: 'SPECIFIC',
-      wrapUpCodes: ['code1', 'code2'],
-      idleCodes: ['code3', 'code4'],
-    };
-    requestInstanceStub.request.resolves({statusCode: 200, body: expectedResponse});
+    it('should throw an error if the API call fails', async () => {
+      const mockError = new Error('API call failed');
+      mockHttpRequest.request.mockRejectedValue(mockError);
 
-    const response = await agentConfigService.getDesktopProfileById(desktopProfileId);
+      await expect(agentConfigService.getUserUsingCI()).rejects.toThrow('getUserUsingCI api failed. Error: Error: API call failed');
+    });
 
-    expect(response).to.deep.equal(expectedResponse);
-    expect(webex.logger.log.calledWith('getDesktopProfileById api success.')).to.be.true;
-  });
+    it('should throw an error if the status code is not 200', async () => {
+      const mockResponse = {
+        statusCode: 500,
+        body: {},
+      };
+      mockHttpRequest.request.mockResolvedValue(mockResponse);
 
-  it('should throw an error if API call fails', async () => {
-    requestInstanceStub.request.resolves({statusCode: 500, body: {}});
-
-    try {
-      await agentConfigService.getDesktopProfileById(desktopProfileId);
-    } catch (error) {
-      expect(error.message).to.include('getDesktopProfileById api failed');
-    }
+      await expect(agentConfigService.getUserUsingCI()).rejects.toThrow('getUserUsingCI api failed. Error: [object Object]');
+    });
   });
 
-  it('should throw an error if request throws an exception', async () => {
-    requestInstanceStub.request.rejects(new Error('Network error'));
+  describe('getDesktopProfileById', () => {
+    const desktopProfileId = 'profile123';
 
-    try {
-      await agentConfigService.getDesktopProfileById(desktopProfileId);
-    } catch (error) {
-      expect(error.message).to.include('getDesktopProfileById api failed');
-    }
-  });
-});
+    it('should return DesktopProfileResponse on success', async () => {
+      const mockResponse = {
+        statusCode: 200,
+        body: {
+          loginVoiceOptions: ['option1', 'option2'],
+          accessWrapUpCode: 'ALL',
+          accessIdleCode: 'SPECIFIC',
+          wrapUpCodes: ['code1', 'code2'],
+          idleCodes: ['idle1', 'idle2'],
+        },
+      };
+      mockHttpRequest.request.mockResolvedValue(mockResponse);
 
-describe('getListOfTeams', () => {
-  const page = 0;
-  const pageSize = 10;
-  const filter: string[] = [];
-  const attributes: string[] = ['id'];
+      const result = await agentConfigService.getDesktopProfileById(desktopProfileId);
 
-  it('should return list of teams response on success', async () => {
-    const expectedResponse: ListTeamsResponse[] = [
-      {id: 'team1', name: 'Team 1'},
-      {id: 'team2', name: 'Team 2'},
-    ];
-    requestInstanceStub.request.resolves({statusCode: 200, body: expectedResponse});
+      expect(result).toEqual(mockResponse.body);
+      expect(mockWebexSDK.logger.log).toHaveBeenCalledWith('getDesktopProfileById api success.');
+    });
 
-    const response = await agentConfigService.getListOfTeams(page, pageSize, filter, attributes);
+    it('should throw an error if the API call fails', async () => {
+      const mockError = new Error('API call failed');
+      mockHttpRequest.request.mockRejectedValue(mockError);
 
-    expect(response).to.deep.equal(expectedResponse);
-    expect(webex.logger.log.calledWith('getListOfTeams api success.')).to.be.true;
-  });
+      await expect(agentConfigService.getDesktopProfileById(desktopProfileId)).rejects.toThrow('getDesktopProfileById api failed. Error: Error: API call failed');
+    });
 
-  it('should throw an error if API call fails', async () => {
-    requestInstanceStub.request.resolves({statusCode: 500, body: {}});
+    it('should throw an error if the status code is not 200', async () => {
+      const mockResponse = {
+        statusCode: 500,
+        body: {},
+      };
+      mockHttpRequest.request.mockResolvedValue(mockResponse);
 
-    try {
-      await agentConfigService.getListOfTeams(page, pageSize, filter, attributes);
-    } catch (error) {
-      expect(error.message).to.include('getListOfTeams api failed');
-    }
-  });
-
-  it('should throw an error if request throws an exception', async () => {
-    requestInstanceStub.request.rejects(new Error('Network error'));
-
-    try {
-      await agentConfigService.getListOfTeams(page, pageSize, filter, attributes);
-    } catch (error) {
-      expect(error.message).to.include('getListOfTeams api failed');
-    }
-  });
-});
-
-describe('getListOfAuxCodes', () => {
-  const page = 0;
-  const pageSize = 10;
-  const filter: string[] = [];
-  const attributes: string[] = ['id'];
-
-  it('should return list of aux codes response on success', async () => {
-    const expectedResponse: ListAuxCodesResponse = {
-      data: [
-        {id: 'aux1', active: true, defaultCode: false, isSystemCode: false, description: 'desc1', name: 'Aux 1', workTypeCode: 'type1'},
-        {id: 'aux2', active: false, defaultCode: true, isSystemCode: true, description: 'desc2', name: 'Aux 2', workTypeCode: 'type2'},
-      ],
-    };
-    requestInstanceStub.request.resolves({statusCode: 200, body: expectedResponse});
-
-    const response = await agentConfigService.getListOfAuxCodes(page, pageSize, filter, attributes);
-
-    expect(response).to.deep.equal(expectedResponse);
-    expect(webex.logger.log.calledWith('getListOfAuxCodes api success.')).to.be.true;
+      await expect(agentConfigService.getDesktopProfileById(desktopProfileId)).rejects.toThrow('getDesktopProfileById api failed. Error: [object Object]');
+    });
   });
 
-  it('should throw an error if API call fails', async () => {
-    requestInstanceStub.request.resolves({statusCode: 500, body: {}});
+  describe('getListOfTeams', () => {
+    const page = 0;
+    const pageSize = 10;
+    const filter: string[] = [];
+    const attributes: string[] = ['id'];
 
-    try {
-      await agentConfigService.getListOfAuxCodes(page, pageSize, filter, attributes);
-    } catch (error) {
-      expect(error.message).to.include('getListOfAuxCodes api failed');
-    }
+    it('should return ListTeamsResponse on success', async () => {
+      const mockResponse = {
+        statusCode: 200,
+        body: [
+          { id: 'team1', name: 'Team 1' },
+          { id: 'team2', name: 'Team 2' },
+        ],
+      };
+      mockHttpRequest.request.mockResolvedValue(mockResponse);
+
+      const result = await agentConfigService.getListOfTeams(page, pageSize, filter, attributes);
+
+      expect(result).toEqual(mockResponse.body);
+      expect(mockWebexSDK.logger.log).toHaveBeenCalledWith('getListOfTeams api success.');
+    });
+
+    it('should throw an error if the API call fails', async () => {
+      const mockError = new Error('API call failed');
+      mockHttpRequest.request.mockRejectedValue(mockError);
+
+      await expect(agentConfigService.getListOfTeams(page, pageSize, filter, attributes)).rejects.toThrow('getListOfTeams api failed. Error: Error: API call failed');
+    });
+
+    it('should throw an error if the status code is not 200', async () => {
+      const mockResponse = {
+        statusCode: 500,
+        body: {},
+      };
+      mockHttpRequest.request.mockResolvedValue(mockResponse);
+
+      await expect(agentConfigService.getListOfTeams(page, pageSize, filter, attributes)).rejects.toThrow('getListOfTeams api failed. Error: [object Object]');
+    });
   });
 
-  it('should throw an error if request throws an exception', async () => {
-    requestInstanceStub.request.rejects(new Error('Network error'));
+  describe('getListOfAuxCodes', () => {
+    const page = 0;
+    const pageSize = 10;
+    const filter: string[] = [];
+    const attributes: string[] = ['id'];
 
-    try {
-      await agentConfigService.getListOfAuxCodes(page, pageSize, filter, attributes);
-    } catch (error) {
-      expect(error.message).to.include('getListOfAuxCodes api failed');
-    }
+    it('should return ListAuxCodesResponse on success', async () => {
+      const mockResponse = {
+        statusCode: 200,
+        body: {
+          data: [
+            { id: 'aux1', active: true, defaultCode: false, isSystemCode: false, description: 'Aux 1', name: 'Aux 1', workTypeCode: 'work1' },
+            { id: 'aux2', active: true, defaultCode: false, isSystemCode: false, description: 'Aux 2', name: 'Aux 2', workTypeCode: 'work2' },
+          ],
+        },
+      };
+      mockHttpRequest.request.mockResolvedValue(mockResponse);
+
+      const result = await agentConfigService.getListOfAuxCodes(page, pageSize, filter, attributes);
+
+      expect(result).toEqual(mockResponse.body);
+      expect(mockWebexSDK.logger.log).toHaveBeenCalledWith('getListOfAuxCodes api success.');
+    });
+
+    it('should throw an error if the API call fails', async () => {
+      const mockError = new Error('API call failed');
+      mockHttpRequest.request.mockRejectedValue(mockError);
+
+      await expect(agentConfigService.getListOfAuxCodes(page, pageSize, filter, attributes)).rejects.toThrow('getListOfAuxCodes api failed. Error: Error: API call failed');
+    });
+
+    it('should throw an error if the status code is not 200', async () => {
+      const mockResponse = {
+        statusCode: 500,
+        body: {},
+      };
+      mockHttpRequest.request.mockResolvedValue(mockResponse);
+
+      await expect(agentConfigService.getListOfAuxCodes(page, pageSize, filter, attributes)).rejects.toThrow('getListOfAuxCodes api failed. Error: [object Object]');
+    });
   });
-});
 });

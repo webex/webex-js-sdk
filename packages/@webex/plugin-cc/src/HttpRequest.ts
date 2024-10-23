@@ -11,7 +11,7 @@ export default class HttpRequest {
 
   /**
    * Common method to make HTTP Requests.
-   * @returns {Promise<IHttpResponse>} Returns the response of the API.
+   * @returns {Promise<IHttpResponse>} Returns the response from the API.
    * @example
    * Create an instance of a class HttpRequest by passing webex object and call the request method.
    * const httpRequest = HttpRequest(webexObject);
@@ -44,7 +44,7 @@ export default class HttpRequest {
 
       return response;
     } catch (error) {
-      throw new Error(`Error while making http request: ${error}`);
+      throw new Error(`Error while making request: ${error}`);
     }
   }
 }
