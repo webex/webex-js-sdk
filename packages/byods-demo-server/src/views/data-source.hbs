@@ -24,7 +24,8 @@
                 <p><strong>Created By:</strong> {{this.createdBy}} <span class="created-by"></span></p>
                 <p><strong>Created At:</strong> <span class="created-at">{{this.createdAt}}</span></p>
                 <div class="card-buttons">
-                  <button class="refresh-button" onclick="scheduleRefreshWithDelay('{{this.id}}', '{{this.tokenLifetimeMinutes}}')">Schedule JWS Refresh</button>
+                  <input type="number" class="token-lifetime-input" placeholder="Token Lifetime (For Refresh)" />
+                  <button class="refresh-button" onclick="scheduleRefreshWithDelay('{{this.id}}', this.previousElementSibling.value)">Schedule JWS Refresh</button>
                   <div class="icon-buttons-row">
                     <button class="icon-button edit-button" 
                             data-id="{{this.id}}" 
@@ -339,7 +340,7 @@
             if (data.error) {
               throw new Error(data.error);
             }
-            alert(`JWS token verified successfully`);
+            alert(`JWS token verified successfully for subject: ${payload.sub}`);
           })
           .catch(error => {
             alert(`Error verifying JWS token: ${error.message}`);

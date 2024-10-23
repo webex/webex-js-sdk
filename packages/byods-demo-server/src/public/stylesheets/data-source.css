@@ -343,3 +343,19 @@ form input {
 .jws-verification-section .verify-button:hover {
   background-color: #e68900;
 }
+
+/* Token Lifetime Input */
+.token-lifetime-input {
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  font-size: 0.9em;
+  width: 100%;
+  box-sizing: border-box;
+  margin-bottom: 10px;
+}
+
+.token-lifetime-input:focus {
+  border-color: #007bff;
+  box-shadow: 0 0 5px rgba(0, 123, 255, 0.5);
+}
