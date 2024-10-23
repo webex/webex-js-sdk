@@ -8298,6 +8298,31 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@webex/internal-plugin-usersub@workspace:packages/@webex/internal-plugin-usersub":
+  version: 0.0.0-use.local
+  resolution: "@webex/internal-plugin-usersub@workspace:packages/@webex/internal-plugin-usersub"
+  dependencies:
+    "@babel/core": ^7.17.10
+    "@webex/babel-config-legacy": "workspace:*"
+    "@webex/common": "workspace:*"
+    "@webex/common-timers": "workspace:*"
+    "@webex/eslint-config-legacy": "workspace:*"
+    "@webex/internal-plugin-device": "workspace:*"
+    "@webex/jest-config-legacy": "workspace:*"
+    "@webex/legacy-tools": "workspace:*"
+    "@webex/test-helper-chai": "workspace:*"
+    "@webex/test-helper-mocha": "workspace:*"
+    "@webex/test-helper-mock-webex": "workspace:*"
+    "@webex/test-helper-test-users": "workspace:*"
+    "@webex/webex-core": "workspace:*"
+    eslint: ^8.24.0
+    lodash: ^4.17.21
+    prettier: ^2.7.1
+    sinon: ^9.2.4
+    uuid: ^3.3.2
+  languageName: unknown
+  linkType: soft
+
 "@webex/internal-plugin-voicea@workspace:*, @webex/internal-plugin-voicea@workspace:packages/@webex/internal-plugin-voicea":
   version: 0.0.0-use.local
   resolution: "@webex/internal-plugin-voicea@workspace:packages/@webex/internal-plugin-voicea"
