@@ -3,7 +3,7 @@ import {
   DesktopProfileResponse,
   ListAuxCodesResponse,
   ListTeamsResponse,
-  UserResponse,
+  AgentResponse,
 } from './types';
 import HttpRequest from '../HttpRequest';
 
@@ -23,20 +23,24 @@ export default class AgentConfigService {
   }
 
   /**
-   * Method to get User using CI.
-   * @returns {Promise<UserResponse>} A promise that eventually resolves to an API response.
+   * Method to get Agent using CI.
+   * @returns {Promise<AgentResponse>} A promise that eventually resolves to an API response.
    */
 
-  public async getUserUsingCI(): Promise<UserResponse> {
+  public async getUserUsingCI(): Promise<AgentResponse> {
     try {
       const URL = `${this.wccAPIURL}organization/${this.orgId}/user/by-ci-user-id/${this.agentId}`;
       const response = await this.requestInstance.request(URL, HTTP_METHODS.GET);
 
-      this.webex.logger.log('getUserUsingCI api called successfully.');
+      if (response.statusCode !== 200) {
+        throw new Error(`getUserUsingCI api failed. Error: ${response}`);
+      }
+
+      this.webex.logger.log('getUserUsingCI api success.');
 
       return Promise.resolve(response.body);
     } catch (error) {
-      return Promise.reject(new Error(`Error while calling getUserUsingCI API, ${error}`));
+      return Promise.reject(new Error(`getUserUsingCI api failed. Error: ${error}`));
     }
   }
 
@@ -50,13 +54,16 @@ export default class AgentConfigService {
     try {
       const URL = `${this.wccAPIURL}organization/${this.orgId}/agent-profile/${desktopProfileId}`;
       const response = await this.requestInstance.request(URL, HTTP_METHODS.GET);
-      this.webex.logger.log('retrieveDesktopProfileById api called successfully.');
+
+      if (response.statusCode !== 200) {
+        throw new Error(`getDesktopProfileById api failed. Error: ${response}`);
+      }
+
+      this.webex.logger.log('getDesktopProfileById api success.');
 
       return Promise.resolve(response.body);
     } catch (error) {
-      return Promise.reject(
-        new Error(`Error while calling retrieveDesktopProfileById API, ${error}`)
-      );
+      return Promise.reject(new Error(`getDesktopProfileById api failed. Error: ${error}`));
     }
   }
 
@@ -81,14 +88,17 @@ export default class AgentConfigService {
         URL = `${this.wccAPIURL}organization/${this.orgId}/team?page=${page}&pageSize=${pageSize}&filter=id=in=${filter}&attributes=${attributes}`;
       else
         URL = `${this.wccAPIURL}organization/${this.orgId}/team?page=${page}&pageSize=${pageSize}&attributes=${attributes}`;
-
       const response = await this.requestInstance.request(URL, HTTP_METHODS.GET);
 
-      this.webex.logger.log('getListOfTeams api called successfully.');
+      if (response.statusCode !== 200) {
+        throw new Error(`getListOfTeams api failed. Error: ${response}`);
+      }
+
+      this.webex.logger.log('getListOfTeams api success.');
 
       return Promise.resolve(response.body);
     } catch (error) {
-      return Promise.reject(new Error(`Error while calling getListOfTeams API, ${error}`));
+      return Promise.reject(new Error(`getListOfTeams api failed. Error: ${error}`));
     }
   }
 
@@ -116,11 +126,15 @@ export default class AgentConfigService {
 
       const response = await this.requestInstance.request(URL, HTTP_METHODS.GET);
 
-      this.webex.logger.log('getListOfAuxCodes api called successfully.');
+      if (response.statusCode !== 200) {
+        throw new Error(`getListOfAuxCodes api failed. Error: ${response}`);
+      }
+
+      this.webex.logger.log('getListOfAuxCodes api success.');
 
       return Promise.resolve(response.body);
     } catch (error) {
-      return Promise.reject(new Error(`Error while calling getListOfAuxCodes API, ${error}`));
+      return Promise.reject(new Error(`getListOfAuxCodes api failed. Error: ${error}`));
     }
   }
 }

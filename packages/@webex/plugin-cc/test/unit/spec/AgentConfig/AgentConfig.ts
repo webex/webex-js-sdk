@@ -29,7 +29,7 @@ describe('AgentConfig', () => {
   it('should get agent profile successfully', async () => {
     const agentConfig = new AgentConfig('agentId123', webexMock, 'wccAPIURL123');
     
-    const userResponse = { agentProfileId: 'profileId123', teamIds: ['team1', 'team2'] };
+    const agentResponse = { agentProfileId: 'profileId123', teamIds: ['team1', 'team2'] };
     const desktopProfileResponse = { 
       loginVoiceOptions: ['option1', 'option2'],
       accessWrapUpCode: 'ALL',
@@ -43,7 +43,7 @@ describe('AgentConfig', () => {
       { workTypeCode: 'IDLE_CODE', code: 'idle1' }
     ] };
 
-    agentConfigServiceMock.getUserUsingCI.mockResolvedValue(userResponse);
+    agentConfigServiceMock.getUserUsingCI.mockResolvedValue(agentResponse);
     agentConfigServiceMock.getDesktopProfileById.mockResolvedValue(desktopProfileResponse);
     agentConfigServiceMock.getListOfTeams.mockResolvedValue(teamsListResponse);
     agentConfigServiceMock.getListOfAuxCodes.mockResolvedValue(auxCodesListResponse);

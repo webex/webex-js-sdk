@@ -4,7 +4,7 @@ import {
   DesktopProfileResponse,
   ListAuxCodesResponse,
   ListTeamsResponse,
-  UserResponse,
+  AgentResponse,
 } from '../AgentConfigService/types';
 import {WebexSDK} from '../types';
 import {DEFAULT_ATTRIBUTES, DEFAULT_PAGE, DEFAULT_PAGE_SIZE} from './constants';
@@ -25,14 +25,14 @@ export default class AgentConfig {
    * Method to get Agent Profile.
    * @returns {Promise<AgentProfileResponse>} A promise that eventually resolves to an API response and return configuration of an Agent.
    * @example
-   * Create an AgentProfile class instance and invoke the getAgentProfile method.
-   * const agentProfile = new AgentProfile('agentId', 'webexObject', 'contactCenterApiUrl');
-   * const agentProfileResponse = await agentProfile.getAgentProfile();
+   * Create AgentConfig class instance and invoke getAgentProfile method.
+   * const agentConfig = new AgentConfig('agentId', 'webexObject', 'contactCenterApiUrl');
+   * const agentConfigResponse = await agentConfig.getAgentProfile();
    */
 
   public async getAgentProfile(): Promise<IAgentConfig> {
     try {
-      const orgId: string = await this.webex.credentials.getOrgId();
+      const orgId: string = this.webex.internal.device.orgId;
 
       const agentConfigService = new AgentConfigService(
         this.agentId,
@@ -41,10 +41,16 @@ export default class AgentConfig {
         this.wccAPIURL
       );
 
-      const agent: UserResponse = await agentConfigService.getUserUsingCI();
+      const agent: AgentResponse = await agentConfigService.getUserUsingCI();
+      this.agentProfile.agentId = this.agentId;
+      this.agentProfile.agentFirstName = agent.firstName;
+      this.agentProfile.agentLastName = agent.lastName;
+      this.agentProfile.agentProfileId = agent.agentProfileId;
+      this.agentProfile.agentMailId = agent.email;
 
       const agentDesktopProfile: DesktopProfileResponse =
         await agentConfigService.getDesktopProfileById(agent.agentProfileId);
+
       this.agentProfile.loginVoiceOptions = agentDesktopProfile.loginVoiceOptions;
 
       const teamListFilter = agent.teamIds;

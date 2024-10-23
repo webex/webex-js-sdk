@@ -42,6 +42,33 @@ export interface AgentConfigRequest {
  */
 export interface IAgentConfig {
   /**
+   * The id of the agent.
+   */
+
+  agentId: string;
+
+  /**
+   * The first name of the agent.
+   */
+  agentFirstName: string;
+
+  /**
+   * The last name of the agent.
+   */
+  agentLastName: string;
+
+  /**
+   * Identifier for a Desktop Profile.
+   */
+  agentProfileId: string;
+
+  /**
+   * The email address of the agent.
+   */
+
+  agentMailId: string;
+
+  /**
    * Represents list of teams of an agent.
    */
   teams: ListTeamsResponse[];

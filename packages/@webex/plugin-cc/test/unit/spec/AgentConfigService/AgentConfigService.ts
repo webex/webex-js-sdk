@@ -36,13 +36,13 @@ describe('AgentConfigService', () => {
   it('should get user using CI successfully', async () => {
     const agentId = 'agentId123';
     const orgId = 'orgId123';
-    const userResponse = {
+    const agentResponse = {
       agentProfileId: 'profileId123',
       teamIds: ['team1', 'team2'],
       userProfileId: 'userProfileId123',
     };
 
-    requestMock.request.mockResolvedValue({ body: userResponse });
+    requestMock.request.mockResolvedValue({ body: agentResponse });
 
     const service = new AgentConfigService(agentId, orgId, webexMock, wccAPIURL);
     const result = await service.getUserUsingCI();
@@ -51,7 +51,7 @@ describe('AgentConfigService', () => {
       `${wccAPIURL}organization/${orgId}/user/by-ci-user-id/${agentId}`,
       HTTP_METHODS.GET
     );
-    expect(result).toEqual(userResponse);
+    expect(result).toEqual(agentResponse);
     expect(webexMock.logger.log).toHaveBeenCalledWith('getUserUsingCI api called successfully.');
   });
 

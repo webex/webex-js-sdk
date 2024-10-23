@@ -4,21 +4,32 @@
  * @public
  */
 
-export interface UserResponse {
+export interface AgentResponse {
+  /**
+   * The first name of the agent.
+   */
+  firstName: string;
+
+  /**
+   * The last name of the agent.
+   */
+  lastName: string;
+
   /**
    * Identifier for a Desktop Profile.
    */
   agentProfileId: string;
 
   /**
-   * This Specify the teams id which got assigned to the user.
+   * The email address of the agent.
    */
-  teamIds: string[];
+
+  email: string;
 
   /**
-   * Identifier for an user profile which a Contact Center administrator has configured.
+   * This Specify the teams id which got assigned to the agent.
    */
-  userProfileId: string;
+  teamIds: string[];
 }
 
 /**
