@@ -21,7 +21,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
   async register(success: boolean): Promise<string> {
     this.wccApiUrl = this.$webex.internal.services.get(WCC_API_GATEWAY);
-    const agentId = '01bb0021-6ede-49d4-a47d-fd5af9752665';
+    const agentId = 'ciUserId';
     const agentConfig = new AgentConfig(agentId, this.$webex, this.wccApiUrl);
     this.agentConfig = await agentConfig.getAgentProfile();
     this.$webex.logger.log(
