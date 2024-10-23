@@ -9,7 +9,7 @@
 // error conditions that would provoke those paths are otherwise prevented and
 // reported.
 
-import {defaults, isArray, pick} from 'lodash';
+import {defaults, isArray, pick, omit} from 'lodash';
 import qs from 'qs';
 
 import xhr from '../lib/xhr';
@@ -20,6 +20,35 @@ import detect from '../lib/detect';
  * @param {Object} options
  * @returns {Promise}
  */
+
+// eslint-disable-next-line require-jsdoc
+function doPostMessage(options) {
+  return new Promise((resolve, reject) => {
+    let timeOut;
+    const messageHandler = (message) => {
+      // RS_TODO might need to scope this based on message type or something
+      console.log('@@@ HANDLING POST MESSAGE');
+
+      const response = message?.data?.payload;
+      if (response) {
+        window.removeEventListener('message', messageHandler);
+        resolve(response);
+        clearTimeout(timeOut);
+      }
+    };
+
+    timeOut = setTimeout(() => {
+      window.removeEventListener('message', messageHandler);
+      reject(new Error('response from post message did not respond in time'));
+    }, 30000);
+
+    window.addEventListener('message', messageHandler);
+    // RS_TODO: switch this to targetOrigin
+    window.parent.postMessage(omit(options, ['xhr']), '*');
+  });
+}
+
+// eslint-disable-next-line require-jsdoc
 export default function _request(options) {
   return new Promise((resolve) => {
     const params = pick(
@@ -49,46 +78,48 @@ export default function _request(options) {
       `start http ${options.method ? options.method : 'request'} to ${options.uri}`
     );
 
-    const x = xhr(params, (error, response) => {
-      /* istanbul ignore next */
-      if (error) {
-        options.logger.warn(
-          `XHR error for ${options.method || 'request'} to ${options.uri} :`,
-          error
-        );
-      }
+    const x = doPostMessage(params)
+      .then((response) => {
+        // if (error) {
+        //   options.logger.warn(
+        //     `XHR error for ${options.method || 'request'} to ${options.uri} :`,
+        //     error
+        //   );
+        // }
 
-      /* istanbul ignore else */
-      if (response) {
-        if (response.statusCode >= 400) {
-          options.logger.warn(
-            `http ${options.method ? options.method : 'request'} to ${options.uri} result: ${
-              response.statusCode
-            }`
-          );
-        } else {
-          options.logger.debug(
-            `http ${options.method ? options.method : 'request'} to ${options.uri} result: ${
-              response.statusCode
-            }`
-          );
+        /* istanbul ignore else */
+        if (response) {
+          if (response.statusCode >= 400) {
+            options.logger.warn(
+              `http ${options.method ? options.method : 'request'} to ${options.uri} result: ${
+                response.statusCode
+              }`
+            );
+          } else {
+            options.logger.debug(
+              `http ${options.method ? options.method : 'request'} to ${options.uri} result: ${
+                response.statusCode
+              }`
+            );
+          }
+          response.options = options;
+          processResponseJson(response, params);
+          resolve(response);
         }
-        response.options = options;
-        processResponseJson(response, params);
-        resolve(response);
-      } else {
-        resolve({
-          statusCode: 0,
-          options,
-          headers: options.headers,
-          method: options.method,
-          url: options.uri,
-          body: error,
-        });
-      }
-    });
-
-    x.onprogress = options.download.emit.bind(options.download, 'progress');
+        // else {
+        //   resolve({
+        //     statusCode: 0,
+        //     options,
+        //     headers: options.headers,
+        //     method: options.method,
+        //     url: options.uri,
+        //     body: error,
+        //   });
+        // }
+      })
+      .catch((error) => {
+        console.error('@@@ error', error);
+      });
   }).catch((error) => {
     options.logger.warn(error);
 

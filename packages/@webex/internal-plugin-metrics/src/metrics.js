@@ -116,15 +116,7 @@ const Metrics = WebexPlugin.extend({
    * @returns {Object} HttpResponse object
    */
   submitClientMetrics(eventName, props = {}, preLoginId) {
-    const payload = this.getClientMetricsPayload(eventName, props);
-
-    if (preLoginId) {
-      this.clientMetricsPreloginBatcher.savePreLoginId(preLoginId);
-
-      return this.clientMetricsPreloginBatcher.request(payload);
-    }
-
-    return this.clientMetricsBatcher.request(payload);
+    return Promise.resolve();
   },
 
   /**
