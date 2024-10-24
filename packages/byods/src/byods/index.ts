@@ -14,6 +14,7 @@ import TokenManager from '../token-manager';
 import log from '../Logger';
 import {ERROR_TYPE} from '../Errors/types';
 import ExtendedError from '../Errors/catalog/ExtendedError';
+import {InMemoryTokenStorageAdapter} from '../token-storage-adapter';
 
 /**
  * The BYoDS SDK.
@@ -44,11 +45,11 @@ export default class BYODS {
   constructor({
     clientId,
     clientSecret,
-    tokenStorageAdapter,
+    tokenStorageAdapter = new InMemoryTokenStorageAdapter(),
     logger = DEFAULT_LOGGER_CONFIG,
   }: SDKConfig) {
     this.config = {clientId, clientSecret, tokenStorageAdapter, logger};
-    log.setLogger(this.config.logger.level, BYODS_MODULE);
+    log.setLogger(this.config.logger?.level || 'info', BYODS_MODULE);
 
     /**
      * The environment variable `process.env.BYODS_ENVIRONMENT` determines the environment in which the SDK operates.

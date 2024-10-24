@@ -258,7 +258,7 @@ describe('DataSourceClient', () => {
       const nonceGenerator = jest.fn().mockReturnValue('uniqueNonce');
       const timer = setInterval(() => {}, 1000);
   
-      jest.spyOn(global, 'setInterval').mockReturnValue(timer as unknown as NodeJS.Timer);
+      jest.spyOn(global, 'setInterval').mockReturnValue(timer as unknown as NodeJS.Timeout);
       const clearIntervalSpy = jest.spyOn(global, 'clearInterval');
       jest.spyOn(dataSourceClient as any, 'startAutoRefresh').mockResolvedValue(timer);
   

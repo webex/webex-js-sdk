@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <title>{{title}}</title>
+    <link rel="stylesheet" type="text/css" href="/stylesheets/data-source.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+  </head>
+  <body>
+    <h1>Data Sources</h1>
+    <h2>Organisation: {{orgId}}</h2>
+    <div class="main-container">
+      <div class="data-container">
+        <div id="dataSourcesList" class="data-sources-list">
+          {{#if dataSources.length}}
+            {{#each dataSources}}
+              <div class="data-source-card" data-jws-token="{{this.jwsToken}}" data-schema-id="{{this.schemaId}}" data-created-by-id="{{this.createdBy}}">
+                <h3 class="data-source-subject">Data Sources</h3>
+                <p><strong>ID:</strong> {{this.id}}</p>
+                <p><strong>Schema:</strong> {{this.schemaId}}<span class="schema-name"></span></p>
+                <p><strong>Application ID:</strong> <span class="application-id">{{this.applicationId}}</span></p>
+                <p><strong>Status:</strong> <span class="status {{this.status}}">{{this.status}}</span></p>
+                <p><strong>Created By:</strong> {{this.createdBy}} <span class="created-by"></span></p>
+                <p><strong>Created At:</strong> <span class="created-at">{{this.createdAt}}</span></p>
+                <div class="card-buttons">
+                  <input type="number" class="token-lifetime-input" placeholder="Token Lifetime (For Refresh)" />
+                  <button class="refresh-button" onclick="scheduleRefreshWithDelay('{{this.id}}', this.previousElementSibling.value)">Schedule JWS Refresh</button>
+                  <div class="icon-buttons-row">
+                    <button class="icon-button edit-button" 
+                            data-id="{{this.id}}" 
+                            data-schema-id="{{this.schemaId}}" 
+                            data-url="{{this.url}}" 
+                            data-nonce="{{this.nonce}}" 
+                            data-token-lifetime-minutes="{{this.tokenLifetimeMinutes}}" 
+                            data-status="{{this.status}}"
+                            data-jws="{{this.jwsToken}}"
+                            onclick="editDataSource(this)">
+                      <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="icon-button delete-button" onclick="deleteDataSource('{{this.id}}')">
+                      <i class="fas fa-trash-alt"></i>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            {{/each}}
+          {{else}}
+            <div class="no-data-sources">
+              <p>This organization has no data sources available, click the '+' button at the bottom to add a new one.</p>
+            </div>
+          {{/if}}
+        </div>
+      </div>
+    </div>
+
+    <!-- Plus Button for Adding New Data Source -->
+    <button id="addDataSourceButton" class="add-button" onclick="openAddForm()">+</button>
+
+    <!-- JWS Verification Section -->
+    <div class="jws-verification-section">
+      <h2>Verify JWS Token</h2>
+      <label for="jwsTokenInput">JWS Token:</label>
+      <input type="text" id="jwsTokenInput" placeholder="Paste JWS token here" />
+      <button class="verify-button" onclick="verifyTokenWithDelay()">Verify JWS Token</button>
+    </div>
+
+    <!-- Edit/Add Data Source Modal -->
+    <div id="editDataSourceModal" class="modal">
+      <div class="modal-content">
+        <span class="close" onclick="closeEditForm()">&times;</span>
+        <form id="editForm">
+          <h2 id="formTitle">Edit Data Source</h2>
+          <input type="hidden" id="editDataSourceId" name="id">
+          <label id="schemaIdLabel" for="schemaId">Schema ID:</label>
+          <input type="text" id="schemaId" name="schemaId">
+          <label for="url">URL:</label>
+          <input type="text" id="editUrl" name="url" required>
+          <label for="audience">Audience:</label>
+          <input type="text" id="editAudience" name="audience" required>
+          <label for="subject">Subject:</label>
+          <input type="text" id="editSubject" name="subject" required>
+          <label for="nonce">Nonce:</label>
+          <input type="text" id="editNonce" name="nonce" required>
+          <label for="tokenLifetimeMinutes">Token Lifetime (Minutes):</label>
+          <input type="number" id="editTokenLifetimeMinutes" name="tokenLifetimeMinutes" required>
+          <label id="statusLabel" for="status">Status:</label>
+          <select id="editStatus" name="status" required onchange="toggleErrorMessageField()">
+            <option value="active">Active</option>
+            <option value="disabled">Disabled</option>
+          </select>
+          <label id="errorMessageLabel" for="errorMessage" style="display: none;">Error Message:</label>
+          <input type="text" id="errorMessage" name="errorMessage" style="display: none;">
+          <button type="submit" class="form-button">Save</button>
+          <button type="button" class="form-button cancel-button" onclick="closeEditForm()">Cancel</button>
+        </form>
+      </div>
+    </div>
+
+    <script>
+      document.addEventListener('DOMContentLoaded', () => {
+        initializeDataSourceCards();
+        setupFormSubmission();
+        setupModalClose();
+      });
+
+      function initializeDataSourceCards() {
+        const dataSourceCards = document.querySelectorAll('.data-source-card');
+        dataSourceCards.forEach(card => {
+          const jwsToken = card.getAttribute('data-jws-token');
+          if (jwsToken) {
+            try {
+              const payload = decodeJWSToken(jwsToken);
+              card.querySelector('.data-source-subject').textContent = payload.sub;
+            } catch (error) {
+              console.error('Error decoding JWS token:', error);
+            }
+          }
+        });
+      }
+
+      function decodeJWSToken(jwsToken) {
+        return JSON.parse(atob(jwsToken.split('.')[1]));
+      }
+
+      function formatDate(dateString) {
+        const date = new Date(dateString);
+        return date.toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+      }
+
+      function openAddForm() {
+        isEdit = false;
+        setFormTitle('Add Data Source');
+        resetForm();
+        showElement('schemaId');
+        showElement('schemaIdLabel');
+        hideElement('statusLabel'); // Hide status label for add form
+        hideElement('editStatus'); // Hide status field for add form
+        hideElement('errorMessageLabel'); // Hide error message label for add form
+        hideElement('errorMessage'); // Hide error message field for add form
+        showModal('editDataSourceModal');
+      }
+
+      function editDataSource(button) {
+        isEdit = true;
+        currentId = button.getAttribute('data-id');
+        currentSchemaId = button.getAttribute('data-schema-id');
+        const jwsToken = button.getAttribute('data-jws');
+        let payload;
+        try {
+          payload = decodeJWSToken(jwsToken);
+        } catch (error) {
+          console.error('Error decoding JWS token:', error);
+          alert('Invalid JWS token');
+          return;
+        }
+        setFormTitle('Update Data Source');
+        resetForm();
+        hideElement('schemaId');
+        hideElement('schemaIdLabel');
+        showElement('statusLabel'); // Show status label for edit form
+        showElement('editStatus'); // Show status field for edit form
+        setFormValues({
+          id: currentId,
+          url: button.getAttribute('data-url'),
+          audience: payload.aud,
+          subject: payload.sub,
+          nonce: button.getAttribute('data-nonce'),
+          tokenLifetimeMinutes: button.getAttribute('data-token-lifetime-minutes'),
+          status: button.getAttribute('data-status'),
+          errorMessage: button.getAttribute('data-status') === 'disabled' ? button.getAttribute('data-error-message') : ''
+        });
+        toggleErrorMessageField(); // Ensure error message field visibility is correct
+        showModal('editDataSourceModal');
+      }
+
+      function setFormTitle(title) {
+        document.getElementById('formTitle').textContent = title;
+      }
+
+      function resetForm() {
+        document.getElementById('editForm').reset();
+      }
+
+      function showElement(elementId) {
+        document.getElementById(elementId).style.display = 'block';
+      }
+
+      function hideElement(elementId) {
+        document.getElementById(elementId).style.display = 'none';
+      }
+
+      function setFormValues(values) {
+        document.getElementById('editDataSourceId').value = values.id;
+        document.getElementById('editUrl').value = values.url;
+        document.getElementById('editAudience').value = values.audience;
+        document.getElementById('editSubject').value = values.subject;
+        document.getElementById('editNonce').value = values.nonce;
+        document.getElementById('editTokenLifetimeMinutes').value = values.tokenLifetimeMinutes;
+        document.getElementById('editStatus').value = values.status;
+        document.getElementById('errorMessage').value = values.errorMessage || '';
+      }
+
+      function toggleErrorMessageField() {
+        const status = document.getElementById('editStatus').value;
+        if (status === 'disabled') {
+          showElement('errorMessageLabel');
+          showElement('errorMessage');
+        } else {
+          hideElement('errorMessageLabel');
+          hideElement('errorMessage');
+          document.getElementById('errorMessage').value = '';
+        }
+      }
+
+      function showModal(modalId) {
+        document.getElementById(modalId).style.display = 'block';
+      }
+
+      function closeEditForm() {
+        hideElement('editDataSourceModal');
+      }
+
+      function setupFormSubmission() {
+        document.getElementById('editForm').addEventListener('submit', function(event) {
+          event.preventDefault();
+          const id = document.getElementById('editDataSourceId').value;
+          const schemaId = isEdit ? currentSchemaId : document.getElementById('schemaId').value;
+          const dataSourcePayload = {
+            schemaId,
+            url: document.getElementById('editUrl').value,
+            audience: document.getElementById('editAudience').value,
+            subject: document.getElementById('editSubject').value,
+            nonce: document.getElementById('editNonce').value,
+            tokenLifetimeMinutes: document.getElementById('editTokenLifetimeMinutes').value,
+            status: isEdit ? document.getElementById('editStatus').value : undefined, // Include status only for edit
+            errorMessage: isEdit && document.getElementById('editStatus').value === 'disabled' ? document.getElementById('errorMessage').value : undefined // Include errorMessage only if status is disabled
+          };
+          const endpoint = isEdit ? `/api/data-source/update` : `/api/data-source/add`;
+          submitForm(endpoint, isEdit ? { id, ...dataSourcePayload } : dataSourcePayload);
+        });
+      }
+
+      function submitForm(endpoint, payload) {
+        fetch(endpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(payload)
+        })
+          .then(response => response.json())
+          .then(data => {
+            if (data.error) {
+              throw new Error(data.error);
+            }
+            alert(`Data source ${isEdit ? 'updated' : 'added'} successfully`);
+            location.reload();
+          })
+          .catch(error => {
+            alert(`Error ${isEdit ? 'updating' : 'adding'} data source: ${error.message}`);
+          });
+      }
+
+      function deleteDataSource(id) {
+        fetch(`/api/data-source/delete/${id}`, {
+          method: 'DELETE'
+        })
+          .then(data => {
+            if (data.error) {
+              throw new Error(data.error);
+            }
+            alert(`Data source with ID: ${id} deleted successfully`);
+            location.reload();
+          })
+          .catch(error => {
+            alert(`Error deleting data source with ID: ${id}: ${error.message}`);
+          });
+      }
+
+      function scheduleRefreshWithDelay(id, tokenLifetimeMinutes) {
+        setTimeout(() => {
+          refreshJWSToken(id, tokenLifetimeMinutes);
+        }, 2000); // 2-second delay
+      }
+
+      function verifyTokenWithDelay() {
+        const jwsToken = document.getElementById('jwsTokenInput').value;
+        setTimeout(() => {
+          verifyJWSToken(jwsToken);
+        }, 2000); // 2-second delay
+      }
+
+      function refreshJWSToken(id, tokenLifetimeMinutes) {
+        fetch(`/api/data-source/refresh-token/${id}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ tokenLifetimeMinutes })
+        })
+          .then(response => response.json())
+          .then(data => {
+            if (data.error) {
+              throw new Error(data.error);
+            }
+            alert(`JWS token refresh for data source with ID: ${id} scheduled successfully`);
+            location.reload();
+          })
+          .catch(error => {
+            alert(`Error for scheduling refresh of JWS token for data source with ID: ${id}: ${error.message}`);
+          });
+      }
+
+      function verifyJWSToken(jwsToken) {
+        let payload;
+        try {
+          payload = decodeJWSToken(jwsToken);
+        } catch (error) {
+          console.error('Error decoding JWS token:', error);
+          alert('Invalid JWS token');
+          return;
+        }
+        fetch(`/api/data-source/verify-jws-token`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ jws: jwsToken })
+        })
+          .then(response => response.json())
+          .then(data => {
+            if (data.error) {
+              throw new Error(data.error);
+            }
+            alert(`JWS token verified successfully for subject: ${payload.sub}`);
+          })
+          .catch(error => {
+            alert(`Error verifying JWS token: ${error.message}`);
+          });
+      }
+
+      function setupModalClose() {
+        window.onclick = function(event) {
+          const modal = document.getElementById('editDataSourceModal');
+          if (event.target === modal) {
+            closeEditForm();
+          }
+        }
+      }
+    </script>
+  </body>
+</html>
