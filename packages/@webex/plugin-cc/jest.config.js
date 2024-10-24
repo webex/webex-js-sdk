@@ -7,8 +7,7 @@ const jestConfig = {
   testResultsProcessor: 'jest-junit',
   // Clear mocks in between tests by default
   clearMocks: true,
-  // TODO: Set this to true once we have the source code and their corresponding test files added
-  collectCoverage: false,
+  collectCoverage: true,
   coverageThreshold: {
     global: {
       lines: 85,
