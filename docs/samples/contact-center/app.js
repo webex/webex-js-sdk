@@ -108,7 +108,7 @@ credentialsFormElm.addEventListener('submit', initWebex);
 
 
 function register() {
-    webex.cc.register(true).then((data) => {
+    webex.cc.register().then((data) => {
         console.log('Event subscription successful: ', data);
         const agentProfile = webex.cc.getAgentProfileData();
         teamsDropdown.innerHTML = ''; // Clear previously selected option on teamsDropdown

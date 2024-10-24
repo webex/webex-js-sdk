@@ -218,7 +218,8 @@ describe('plugin-mercury', () => {
           mockWebSocket.emit('open');
 
           assert.notCalled(authorizeSpy);
-      });
+          assert.called(socket._ping);
+        });
 
       it('accepts authorizationRequired option as true and calles authorize', () => {
         const s = new Socket();
@@ -238,6 +239,7 @@ describe('plugin-mercury', () => {
           mockWebSocket.emit('open');
 
           assert.called(authorizeSpy);
+          assert.called(socket._ping);
       });
     });
 

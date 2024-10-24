@@ -208,48 +208,108 @@ describe('webex-core', () => {
         hosts: [{host: 'example1.com'}, {host: 'example2.com'}],
       };
 
-      it.each([
-        'discovery',
-        'preauth',
-        'signin',
-        'postauth',
-        'override'
-      ])('matches a default url correctly', (serviceGroup) => {
-        const url = 'https://example.com/resource/id';
-
-
-        const exampleService = {
-          defaultUrl: 'https://example.com/resource',
-          hosts: [{host: 'example1.com'}, {host: 'example2.com'}],
-        };
-
-        catalog.serviceGroups[serviceGroup].push(otherService, exampleService);
-
-        const service = catalog.findServiceUrlFromUrl(url);
-
-        assert.equal(service, exampleService);
+      it('should return false if the URL is invalid', () => {
+        const result = catalog.findServiceUrlFromUrl('invalid-url');
+        assert.isFalse(result);
       });
 
-      it.each([
-        'discovery',
-        'preauth',
-        'signin',
-        'postauth',
-        'override'
-      ])('matches an alternate host url', (serviceGroup) => {
-        const url = 'https://example2.com/resource/id';
-
-        const exampleService = {
-          defaultUrl: 'https://example.com/resource',
-          hosts: [{host: 'example1.com'}, {host: 'example2.com'}],
+      it('should return the service URL object if found in the service groups', () => {
+        catalog.serviceGroups = {
+          discovery: [{defaultUrl: 'https://discovery.example.com', hosts: []}],
+          preauth: [{defaultUrl: 'https://preauth.example.com', hosts: []}],
+          signin: [{defaultUrl: 'https://signin.example.com', hosts: []}],
+          postauth: [{defaultUrl: 'https://postauth.example.com', hosts: []}],
+          override: [{defaultUrl: 'https://override.example.com', hosts: []}],
         };
 
-        catalog.serviceGroups[serviceGroup].push(otherService, exampleService);
-
-        const service = catalog.findServiceUrlFromUrl(url);
-
-        assert.equal(service, exampleService);
+        const result = catalog.findServiceUrlFromUrl('https://signin.example.com/resource');
+        assert.deepEqual(result, {defaultUrl: 'https://signin.example.com', hosts: []});
       });
+
+      it('should return false if the service URL is not found in the service groups', () => {
+        catalog.serviceGroups = {
+          discovery: [{defaultUrl: 'https://discovery.example.com', hosts: []}],
+          preauth: [{defaultUrl: 'https://preauth.example.com', hosts: []}],
+          signin: [{defaultUrl: 'https://signin.example.com', hosts: []}],
+          postauth: [{defaultUrl: 'https://postauth.example.com', hosts: []}],
+          override: [{defaultUrl: 'https://override.example.com', hosts: []}],
+        };
+
+        const result = catalog.findServiceUrlFromUrl('https://unknown.example.com/resource');
+        assert.isFalse(result);
+      });
+
+      it('should handle alternate hostnames correctly', () => {
+        catalog.serviceGroups = {
+          discovery: [{defaultUrl: 'https://discovery.example.com', hosts: [{host: 'alt.discovery.example.com'}]}],
+          preauth: [{defaultUrl: 'https://preauth.example.com', hosts: [{host: 'alt.preauth.example.com'}]}],
+          signin: [{defaultUrl: 'https://signin.example.com', hosts: [{host: 'alt.signin.example.com'}]}],
+          postauth: [{defaultUrl: 'https://postauth.example.com', hosts: [{host: 'alt.postauth.example.com'}]}],
+          override: [{defaultUrl: 'https://override.example.com', hosts: [{host: 'alt.override.example.com'}]}],
+        };
+
+        const result = catalog.findServiceUrlFromUrl('https://alt.signin.example.com/resource');
+        assert.deepEqual(result, {defaultUrl: 'https://signin.example.com', hosts: [{host: 'alt.signin.example.com'}]});
+      });
+
+      it('should skip service URLs with invalid default URLs', () => {
+        catalog.serviceGroups = {
+          discovery: [{defaultUrl: 'invalid-url', hosts: []}],
+          preauth: [{defaultUrl: 'https://preauth.example.com', hosts: []}],
+          signin: [{defaultUrl: 'https://signin.example.com', hosts: []}],
+          postauth: [{defaultUrl: 'https://postauth.example.com', hosts: []}],
+          override: [{defaultUrl: 'https://override.example.com', hosts: []}],
+        };
+
+        const result = catalog.findServiceUrlFromUrl('https://signin.example.com/resource');
+        assert.deepEqual(result, {defaultUrl: 'https://signin.example.com', hosts: []});
+      });
+
+      it('should skip alternate hostnames with invalid URLs', () => {
+        catalog.serviceGroups = {
+          discovery: [{defaultUrl: 'https://discovery.example.com', hosts: [{host: 'invalid-url'}]}],
+          preauth: [{defaultUrl: 'https://preauth.example.com', hosts: []}],
+          signin: [{defaultUrl: 'https://signin.example.com', hosts: []}],
+          postauth: [{defaultUrl: 'https://postauth.example.com', hosts: []}],
+          override: [{defaultUrl: 'https://override.example.com', hosts: []}],
+        };
+
+        const result = catalog.findServiceUrlFromUrl('https://signin.example.com/resource');
+        assert.deepEqual(result, {defaultUrl: 'https://signin.example.com', hosts: []});
+      });
+
+      it('should return the service URL object if found with a different protocol', () => {
+        catalog.serviceGroups = {
+          discovery: [{defaultUrl: 'https://discovery.example.com', hosts: []}],
+          preauth: [{defaultUrl: 'https://preauth.example.com', hosts: []}],
+          signin: [{defaultUrl: 'https://signin.example.com', hosts: []}],
+          postauth: [{defaultUrl: 'https://postauth.example.com', hosts: []}],
+          override: [{defaultUrl: 'https://override.example.com', hosts: []}],
+        };
+
+        const result = catalog.findServiceUrlFromUrl('wss://signin.example.com/resource');
+        assert.deepEqual(result, {defaultUrl: 'https://signin.example.com', hosts: []});
+      });
+      
+      it('should return the exact protocol service URL object if both protocols are present', () => {
+        catalog.serviceGroups = {
+          discovery: [{defaultUrl: 'https://discovery.example.com', hosts: []}],
+          preauth: [{defaultUrl: 'https://preauth.example.com', hosts: []}],
+          signin: [
+            {defaultUrl: 'https://signin.example.com', hosts: []},
+            {defaultUrl: 'wss://signin.example.com', hosts: []},
+          ],
+          postauth: [{defaultUrl: 'https://postauth.example.com', hosts: []}],
+          override: [{defaultUrl: 'https://override.example.com', hosts: []}],
+        };
+
+        const resultHttps = catalog.findServiceUrlFromUrl('https://signin.example.com/resource');
+        const resultWss = catalog.findServiceUrlFromUrl('wss://signin.example.com/resource');
+
+        assert.deepEqual(resultHttps, {defaultUrl: 'https://signin.example.com', hosts: []});
+        assert.deepEqual(resultWss, {defaultUrl: 'wss://signin.example.com', hosts: []});
+      });
+      
     });
   });
 });

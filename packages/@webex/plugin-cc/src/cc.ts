@@ -1,100 +1,155 @@
 import {WebexPlugin} from '@webex/webex-core';
-import {CCPluginConfig, IContactCenter, WebexSDK} from './types';
-import AgentProfile from './AgentProfile/AgentProfile';
-import {AgentProfileResponse} from './AgentProfile/types';
-import AgentLogin from './AgentLogin/AgentLogin';
-import {CC_EVENTS, REGISTER_TIMEOUT, SUBSCRIBE_API, WCC_API_GATEWAY} from './constants';
-import CCMercury from './CCMercury';
+import AgentConfig from './AgentConfig/AgentConfig';
+import {IAgentConfig} from './AgentConfig/types';
+import {
+  CCPluginConfig,
+  IContactCenter,
+  WebexSDK,
+  CC_EVENTS,
+  WebSocketEvent,
+  SubscribeRequest,
+  EventResult,
+} from './types';
+import {
+  EVENT,
+  READY,
+  WEBSOCKET_EVENT_TIMEOUT,
+  SUBSCRIBE_API,
+  WCC_API_GATEWAY,
+  CC_FILE,
+} from './constants';
+import IWebSocket from './WebSocket/types';
+import WebSocket from './WebSocket/WebSocket';
+
+const REGISTER_EVENT = 'register';
 
 export default class ContactCenter extends WebexPlugin implements IContactCenter {
-  namespace = 'ContactCenter';
+  namespace = 'cc';
   $config: CCPluginConfig;
   $webex: WebexSDK;
   wccApiUrl: string;
-  agentProfile: AgentProfileResponse;
-  ccMercury: typeof CCMercury;
+  agentConfig: IAgentConfig;
+  webSocket: IWebSocket;
   ciUserId: string;
+  registered = false;
+  eventHandlers: Map<
+    string,
+    {resolve: (data: any) => void; reject: (error: any) => void; timeoutId: NodeJS.Timeout}
+  > = new Map();
 
   constructor(...args) {
     super(...args);
-    // @ts-ignore
-    this.$config = this.config;
+
     // @ts-ignore
     this.$webex = this.webex;
-    // this.wccApiUrl = this.$webex.internal.services.get(WCC_API_GATEWAY);
-    this.ccMercury = new CCMercury(
-      {},
-      {
+
+    this.$webex.once(READY, () => {
+      // @ts-ignore
+      this.$config = this.config;
+      this.webSocket = new WebSocket({
         parent: this.$webex,
-      }
-    );
-  }
-
-  async register(): Promise<string> {
-    this.$webex.logger.log(`ContactCenter: Registering ${this.$config}`);
-    const wccApiUrl = this.$webex.internal.services.get(WCC_API_GATEWAY);
-    this.ccMercury.registerAndConnect(`${wccApiUrl}${SUBSCRIBE_API}`, {
-      force: this.$config?.force || true,
-      isKeepAliveEnabled: this.$config?.isKeepAliveEnabled || false,
-      clientType: this.$config?.clientType || 'WxCCSDK',
-      allowMultiLogin: this.$config?.allowMultiLogin || true,
-    });
-
-    return new Promise((resolve, reject) => {
-      const timeoutDuration = REGISTER_TIMEOUT; // Define your timeout duration here (e.g., 10 seconds)
-
-      const timeout = setTimeout(() => {
-        reject(new Error('Subscription Failed: Time out'));
-      }, timeoutDuration);
-
-      this.ccMercury.on('event', async (event) => {
-        if (event.type === CC_EVENTS.Welcome) {
-          this.ciUserId = event.data.agentId;
-          const agentProfile = new AgentProfile(this.ciUserId, this.$webex, this.wccApiUrl);
-          this.agentProfile = await agentProfile.getAgentProfile();
-          this.$webex.logger.log(`agent profile is: ${JSON.stringify(this.agentProfile)}`);
-          clearTimeout(timeout); // Clear the timeout if the Welcome event occurs
-          resolve(`Success: agentProfile is ${this.agentProfile}`); // TODO: resolve with AgentProfile after Parv's PR
-        }
       });
     });
   }
 
-  getAgentProfileData() {
-    return this.agentProfile;
+  /**
+   * This is used for making the CC SDK ready by setting up the cc mercury connection.
+   */
+  public async register(): Promise<string> {
+    this.wccApiUrl = this.$webex.internal.services.get(WCC_API_GATEWAY);
+    this.listenForWebSocketEvents();
+
+    return new Promise((resolve, reject) => {
+      this.addEventHandler(
+        REGISTER_EVENT,
+        (result) => {
+          this.registered = true;
+          resolve(result);
+        },
+        reject
+      );
+
+      this.establishConnection(reject);
+    });
   }
 
-  async doAgentLogin(teamId: string, agentDeviceType: string, deviceId: string) {
+  /**
+   * This is used for unregistering the CC SDK by disconnecting the cc mercury connection.
+   * @returns Promise<void>
+   */
+  public unregister(): Promise<void> {
+    return this.webSocket.disconnectWebSocket().then(() => {
+      this.webSocket.off(EVENT, this.processEvent);
+      this.registered = false;
+    });
+  }
+
+  private listenForWebSocketEvents() {
+    this.webSocket.on(EVENT, this.processEvent);
+  }
+
+  private processEvent = async (event: WebSocketEvent): Promise<void> => {
+    switch (event.type) {
+      case CC_EVENTS.WELCOME: {
+        const agentId = event.data.agentId;
+        const agentConfig = new AgentConfig(agentId, this.$webex, this.wccApiUrl);
+        this.agentConfig = await agentConfig.getAgentProfile();
+        this.$webex.logger.log(
+          `agent config is: ${JSON.stringify(this.agentConfig)} file: ${CC_FILE} method: ${
+            this.register.name
+          }`
+        );
+        this.handleEvent(REGISTER_EVENT, `Success: Agent Profile is ${this.agentConfig}`);
+        break;
+      }
+      default:
+        this.$webex.logger.info(`Unknown event: ${event.type}`);
+    }
+  };
+
+  private async establishConnection(reject: (error: Error) => void) {
+    const datachannelUrl = `${this.wccApiUrl}${SUBSCRIBE_API}`;
+
+    const connectionConfig: SubscribeRequest = {
+      force: this.$config?.force ?? true,
+      isKeepAliveEnabled: this.$config?.isKeepAliveEnabled ?? false,
+      clientType: this.$config?.clientType ?? 'WebexCCSDK',
+      allowMultiLogin: this.$config?.allowMultiLogin ?? true,
+    };
+
     try {
-      const agentLogin = new AgentLogin(this.$webex, this.wccApiUrl);
-      const agentLoginResponse = await agentLogin.loginAgentWithSelectedTeam(
-        teamId,
-        agentDeviceType,
-        deviceId
-      );
-      this.$webex.logger.log(`agentLoginAPIResponse is, ${JSON.stringify(agentLoginResponse)}`);
-      this.AgentLoginEvent();
+      await this.webSocket.subscribeAndConnect({
+        datachannelUrl,
+        body: connectionConfig,
+      });
+      this.$webex.logger.info('Successfully connected and subscribed.');
     } catch (error) {
-      Promise.reject(new Error('Error While Logging Agent', error));
+      this.$webex.logger.info(`Error connecting and subscribing: ${error}`);
+      reject(error);
     }
   }
 
-  AgentLoginEvent(): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const timeoutDuration = REGISTER_TIMEOUT; // Define your timeout duration here (e.g., 10 seconds)
+  private handleEvent(eventName: string, result: EventResult) {
+    const handler = this.eventHandlers.get(eventName);
+    if (handler) {
+      clearTimeout(handler.timeoutId);
+      handler.resolve(result);
+      this.eventHandlers.delete(eventName);
+    }
+  }
 
-      const timeout = setTimeout(() => {
-        reject(new Error('Timeout: Agent Login  did not occur within the expected time frame'));
-      }, timeoutDuration);
-
-      this.ccMercury.on('event', (event) => {
-        if (event.type === 'AgentStationLoginSuccess') {
-          clearTimeout(timeout); // Clear the timeout if the Agent Login Successful.
-          resolve(`Success: Agent Login Successful. ${event?.data}`);
-        } else {
-          reject(new Error(`Failure: Agent Login Failure!`));
-        }
-      });
+  private addEventHandler(
+    eventName: string,
+    resolve: (data: EventResult) => void,
+    reject: (error: Error) => void
+  ) {
+    this.eventHandlers.set(eventName, {
+      resolve,
+      reject,
+      timeoutId: setTimeout(() => {
+        reject(new Error(`Time out waiting for event: ${eventName}`));
+        this.eventHandlers.delete(eventName);
+      }, WEBSOCKET_EVENT_TIMEOUT),
     });
   }
 }
