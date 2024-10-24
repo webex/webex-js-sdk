@@ -22,6 +22,9 @@ const tokenElm = document.querySelector('#access-token');
 const saveElm = document.querySelector('#access-token-save');
 const authStatusElm = document.querySelector('#access-token-status');
 const registerBtn = document.querySelector('#webexcc-register');
+const teamsDropdown = document.querySelector('#teamsDropdown');
+const agentLogin = document.querySelector('#AgentLogin');
+const agentLoginButton = document.querySelector('#loginAgent');
 
 
 // Store and Grab `access-token` from localstorage
@@ -103,12 +106,48 @@ function initWebex(e) {
 
 credentialsFormElm.addEventListener('submit', initWebex);
 
+
 function register() {
     webex.cc.register().then((data) => {
         console.log('Event subscription successful: ', data);
-    }).catch(() => {
-        console.log('Event subscription failed');
+        const agentProfile = webex.cc.getAgentProfileData();
+        teamsDropdown.innerHTML = ''; // Clear previously selected option on teamsDropdown
+        const listTeams = agentProfile.teamsList;
+        listTeams.forEach((team) => {
+          if(team.teamType === "AGENT") {
+            const option = document.createElement('option');
+            option.value = team.id;
+            option.text = team.name;
+            teamsDropdown.add(option);
+          }
+        });
+        const loginVoiceOptions = agentProfile.agentDesktopProfile.loginVoiceOptions;
+        agentLogin.innerHTML = '' // Clear previously selected option on agentLogin.
+        if(loginVoiceOptions.length > 0) agentLoginButton.disabled = false;
+        loginVoiceOptions.forEach((voiceOptions)=> {
+          const option = document.createElement('option');
+          option.text = voiceOptions;
+          option.value = voiceOptions;
+          agentLogin.add(option);
+        });
+    }).catch((error) => {
+        console.log('Event subscription failed', error);
     })
+}
+
+async function handleAgentLogin(e) {
+  const value = e.target.value;
+  if (value === 'Desktop') {
+    agentDeviceType = 'BROWSER';
+    deviceId = 'webrtc-6b310dff-569e-4ac7-b064-70f834ea56d8'
+  } else {
+    agentDeviceType = 'EXTENSION';
+    deviceId = '1001'
+  }
+}
+
+function doAgentLogin() {
+  webex.cc.doAgentLogin(teamsDropdown.value, agentDeviceType, deviceId);
 }
 
 const allCollapsibleElements = document.querySelectorAll('.collapsible');

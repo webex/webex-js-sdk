@@ -1,5 +1,6 @@
-/* eslint-disable no-console */
 import {WebexPlugin} from '@webex/webex-core';
+import AgentConfig from './AgentConfig/AgentConfig';
+import {IAgentConfig} from './AgentConfig/types';
 import {
   CCPluginConfig,
   IContactCenter,
@@ -9,7 +10,14 @@ import {
   SubscribeRequest,
   EventResult,
 } from './types';
-import {EVENT, READY, WEBSOCKET_EVENT_TIMEOUT, SUBSCRIBE_API, WCC_API_GATEWAY} from './constants';
+import {
+  EVENT,
+  READY,
+  WEBSOCKET_EVENT_TIMEOUT,
+  SUBSCRIBE_API,
+  WCC_API_GATEWAY,
+  CC_FILE,
+} from './constants';
 import IWebSocket from './WebSocket/types';
 import WebSocket from './WebSocket/WebSocket';
 
@@ -20,6 +28,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   $config: CCPluginConfig;
   $webex: WebexSDK;
   wccApiUrl: string;
+  agentConfig: IAgentConfig;
   webSocket: IWebSocket;
   ciUserId: string;
   registered = false;
@@ -48,7 +57,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    */
   public async register(): Promise<string> {
     this.wccApiUrl = this.$webex.internal.services.get(WCC_API_GATEWAY);
-
     this.listenForWebSocketEvents();
 
     return new Promise((resolve, reject) => {
@@ -80,12 +88,20 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     this.webSocket.on(EVENT, this.processEvent);
   }
 
-  private processEvent = (event: WebSocketEvent): void => {
+  private processEvent = async (event: WebSocketEvent): Promise<void> => {
     switch (event.type) {
-      case CC_EVENTS.WELCOME:
-        this.ciUserId = event.data.agentId;
-        this.handleEvent(REGISTER_EVENT, `Success: CI User ID is ${this.ciUserId}`); // TODO: Will send AgentPRofile object as part of Parv's PR
+      case CC_EVENTS.WELCOME: {
+        const agentId = event.data.agentId;
+        const agentConfig = new AgentConfig(agentId, this.$webex, this.wccApiUrl);
+        this.agentConfig = await agentConfig.getAgentProfile();
+        this.$webex.logger.log(
+          `agent config is: ${JSON.stringify(this.agentConfig)} file: ${CC_FILE} method: ${
+            this.register.name
+          }`
+        );
+        this.handleEvent(REGISTER_EVENT, `Success: Agent Profile is ${this.agentConfig}`);
         break;
+      }
       default:
         this.$webex.logger.info(`Unknown event: ${event.type}`);
     }
