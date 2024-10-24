@@ -114,14 +114,14 @@ describe('CallerId tests', () => {
     const dummyCallerId = {
       'x-broadworks-remote-party-info':
         'userId="nkjwuovmbo@64941297.int10.bcld.webex.com";userDn="tel:+12142865888;ext=5888;country-code=1";externalId=69fde5ad-fb8b-4a1b-9998-b0999e95719b',
-      'p-asserted-identity': '"Bob Marley" <sip:5888@10.155.4.7;user=phone>',
+      'p-asserted-identity': '"John O\'Connor - ( Guest )" <sip:5888@10.155.4.7;user=phone>',
       from: '"Alice" <sip:5889@64941297.int10.bcld.webex.com>;tag=1932136170-1654008881246',
     };
 
     const output = callerId.fetchCallerDetails(dummyCallerId);
 
     /* PAI should be preferred */
-    expect(output.name).toStrictEqual('Bob Marley');
+    expect(output.name).toStrictEqual("John O'Connor - ( Guest )");
     expect(output.num).toStrictEqual('5888');
     await waitForMsecs(50);
 
@@ -132,12 +132,11 @@ describe('CallerId tests', () => {
     expect(callerId['callerInfo'].num).toStrictEqual('5008');
   });
 
-  it(' When PA-ID ,From header is present along with x-broad-works , but name in PAI is of wrong format', async () => {
+  it(' When PA-ID ,From header is present along with x-broad-works , but name in PAI is missing', async () => {
     const dummyCallerId = {
       'x-broadworks-remote-party-info':
         'userId="nkjwuovmbo@64941297.int10.bcld.webex.com";userDn="tel:+12142865888;ext=5888;country-code=1";externalId=69fde5ad-fb8b-4a1b-9998-b0999e95719b',
-      'p-asserted-identity':
-        '"69fde5ad-fb8b-4a1b-9998-b0999e95719b" <sip:5888@10.155.4.7;user=phone>',
+      'p-asserted-identity': '<sip:5888@10.155.4.7;user=phone>',
       from: '"Alice" <sip:5889@64941297.int10.bcld.webex.com>;tag=1932136170-1654008881246',
     };
 
@@ -156,12 +155,11 @@ describe('CallerId tests', () => {
     expect(callerId['callerInfo'].num).toStrictEqual('5008');
   });
 
-  it(' When PA-ID ,From header is present along with x-broad-works , but name in PAI is of wrong format', async () => {
+  it(' When PA-ID ,From header is present along with x-broad-works , but name, number in PAI is missing', async () => {
     const dummyCallerId = {
       'x-broadworks-remote-party-info':
         'userId="nkjwuovmbo@64941297.int10.bcld.webex.com";userDn="tel:+12142865888;ext=5888;country-code=1";externalId=69fde5ad-fb8b-4a1b-9998-b0999e95719b',
-      'p-asserted-identity':
-        '"69fde5ad-fb8b-4a1b-9998-b0999e95719b" <sip:69fde5ad-fb8b-4a1b-9998-b0999e95719b@10.155.4.7;user=phone>',
+      'p-asserted-identity': '<sip:69fde5ad-fb8b-4a1b-9998-b0999e95719b@10.155.4.7;user=phone>',
       from: '"Alice" <sip:5889@64941297.int10.bcld.webex.com>;tag=1932136170-1654008881246',
     };
 
