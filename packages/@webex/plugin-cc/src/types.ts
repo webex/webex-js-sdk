@@ -134,6 +134,14 @@ export interface IContactCenter {
   unregister(): Promise<void>;
 }
 
+export interface IHttpResponse {
+  body: any;
+  statusCode: number;
+  method: string;
+  headers: Headers;
+  url: string;
+}
+
 // Define the CC_EVENTS object
 export const CC_EVENTS = {
   WELCOME: 'Welcome',
