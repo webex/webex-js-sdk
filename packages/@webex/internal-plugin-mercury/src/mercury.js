@@ -84,17 +84,13 @@ const Mercury = WebexPlugin.extend({
 
     this.connecting = true;
 
-    if (this.config.deviceRegistrationRequired ?? true) {
-      return Promise.resolve(
-        this.webex.internal.device.registered || this.webex.internal.device.register()
-      ).then(() => {
-        this.logger.info(`${this.namespace}: connecting`);
+    return Promise.resolve(
+      this.webex.internal.device.registered || this.webex.internal.device.register()
+    ).then(() => {
+      this.logger.info(`${this.namespace}: connecting`);
 
-        return this._connectWithBackoff(webSocketUrl);
-      });
-    }
-
-    return this._connectWithBackoff(webSocketUrl);
+      return this._connectWithBackoff(webSocketUrl);
+    });
   },
 
   logout() {
