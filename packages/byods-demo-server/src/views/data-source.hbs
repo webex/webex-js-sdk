@@ -272,7 +272,6 @@
         fetch(`/api/data-source/delete/${id}`, {
           method: 'DELETE'
         })
-          .then(response => response.json())
           .then(data => {
             if (data.error) {
               throw new Error(data.error);
