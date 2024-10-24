@@ -16,6 +16,7 @@ import {
   LoggerInterface,
   UpdateMissedCallsResponse,
   UCMLinesResponse,
+  DeleteCallHistoryRecordsResponse,
 } from './types';
 import log from '../Logger';
 import {serviceErrorCodeHandler, getVgActionEndpoint, getCallingBackEnd} from '../common/Utils';
@@ -35,6 +36,8 @@ import {
   PEOPLE,
   LINES,
   ORG_ID,
+  DELETE_CALL_HISTORY_RECORDS_ENDPOINT,
+  SET_DELETE_CALL_RECORDS_SUCCESS_MESSAGE,
 } from './constants';
 import {STATUS_CODE, SUCCESS_MESSAGE, USER_SESSIONS} from '../common/constants';
 import {
@@ -47,6 +50,7 @@ import {
   CallSessionViewedEvent,
   SanitizedEndTimeAndSessionId,
   UCMLinesApiResponse,
+  CallSessionDeletedEvent,
 } from '../Events/types';
 import {Eventing} from '../Events/impl';
 /**
@@ -293,6 +297,63 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
     }
   }
 
+  /**
+   * Function to delete the call history records using sessionId and endTime.
+   * @param deleteSessionIds - An array of objects containing endTime and sessionId of the call history records
+   * @returns {Promise} Resolves to an object of type  {@link DeleteCallHistoryRecordsResponse}.Response details with success or error status.
+   */
+  public async deleteCallHistoryRecords(
+    deleteSessionIds: EndTimeSessionId[]
+  ): Promise<DeleteCallHistoryRecordsResponse> {
+    const loggerContext = {
+      file: CALL_HISTORY_FILE,
+      method: 'deleteCallHistoryRecords',
+    };
+    // Convert endTime to milliseconds for each sessionId
+    const santizedSessionIds: SanitizedEndTimeAndSessionId[] = deleteSessionIds.map((session) => ({
+      ...session,
+      endTime: new Date(session.endTime).getTime(),
+    }));
+    const deleteRequestBody = {
+      deleteSessionIds: santizedSessionIds,
+    };
+    try {
+      const deleteCallHistoryRecordContentUrl = `${this.janusUrl}/${HISTORY}/${USER_SESSIONS}/${DELETE_CALL_HISTORY_RECORDS_ENDPOINT}`;
+      // Make a POST request to delete call history records
+      const response = await fetch(deleteCallHistoryRecordContentUrl, {
+        method: HTTP_METHODS.POST,
+        headers: {
+          [CONTENT_TYPE]: APPLICATION_JSON,
+          Authorization: await this.webex.credentials.getUserToken(),
+        },
+        body: JSON.stringify(deleteRequestBody),
+      });
+      if (!response.ok) {
+        throw new Error(`${response.status}`);
+      }
+
+      const data: DeleteCallHistoryRecordsResponse = await response.json();
+      log.info(`Call history records are succesfully deleted by the user`, loggerContext);
+      const responseDetails: DeleteCallHistoryRecordsResponse = {
+        statusCode: data.statusCode as number,
+        data: {
+          deleteStatusMessage: SET_DELETE_CALL_RECORDS_SUCCESS_MESSAGE,
+        },
+        message: SUCCESS_MESSAGE,
+      };
+
+      return responseDetails;
+    } catch (err: unknown) {
+      // Catch the 401 error from try block, return the error object to user
+      const errorInfo = {
+        statusCode: err instanceof Error ? Number(err.message) : '',
+      } as WebexRequestPayload;
+      const errorStatus = serviceErrorCodeHandler(errorInfo, loggerContext);
+
+      return errorStatus;
+    }
+  }
+
   handleSessionEvents = async (event?: CallSessionEvent) => {
     if (event && event.data.userSessions.userSessions) {
       this.emit(COMMON_EVENT_KEYS.CALL_HISTORY_USER_SESSION_INFO, event as CallSessionEvent);
@@ -304,6 +365,15 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
       this.emit(
         COMMON_EVENT_KEYS.CALL_HISTORY_USER_VIEWED_SESSIONS,
         event as CallSessionViewedEvent
+      );
+    }
+  };
+
+  handleUserSessionsDeletedEvents = async (event?: CallSessionDeletedEvent) => {
+    if (event && event.data.deletedSessions) {
+      this.emit(
+        COMMON_EVENT_KEYS.CALL_HISTORY_USER_SESSIONS_DELETED,
+        event as CallSessionDeletedEvent
       );
     }
   };
@@ -323,6 +393,10 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
     this.sdkConnector.registerListener<CallSessionViewedEvent>(
       MOBIUS_EVENT_KEYS.CALL_SESSION_EVENT_VIEWED,
       this.handleUserReadSessionEvents
+    );
+    this.sdkConnector.registerListener<CallSessionDeletedEvent>(
+      MOBIUS_EVENT_KEYS.CALL_SESSION_EVENT_DELETED,
+      this.handleUserSessionsDeletedEvents
     );
   }
 }

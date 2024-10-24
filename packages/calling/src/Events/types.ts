@@ -10,6 +10,7 @@ export enum COMMON_EVENT_KEYS {
   CB_VOICEMESSAGE_CONTENT_GET = 'call_back_voicemail_content_get',
   CALL_HISTORY_USER_SESSION_INFO = 'callHistory:user_recent_sessions',
   CALL_HISTORY_USER_VIEWED_SESSIONS = 'callHistory:user_viewed_sessions',
+  CALL_HISTORY_USER_SESSIONS_DELETED = 'callHistory:user_sessions_deleted',
 }
 
 export enum LINE_EVENT_KEYS {
@@ -160,6 +161,7 @@ export enum MOBIUS_EVENT_KEYS {
   CALL_SESSION_EVENT_INCLUSIVE = 'event:janus.user_recent_sessions',
   CALL_SESSION_EVENT_LEGACY = 'event:janus.user_sessions',
   CALL_SESSION_EVENT_VIEWED = 'event:janus.user_viewed_sessions',
+  CALL_SESSION_EVENT_DELETED = 'event:janus.user_sessions_deleted',
 }
 
 export type CallSessionData = {
@@ -235,6 +237,7 @@ export type CallingClientEventTypes = {
 export type CallHistoryEventTypes = {
   [COMMON_EVENT_KEYS.CALL_HISTORY_USER_SESSION_INFO]: (event: CallSessionEvent) => void;
   [COMMON_EVENT_KEYS.CALL_HISTORY_USER_VIEWED_SESSIONS]: (event: CallSessionViewedEvent) => void;
+  [COMMON_EVENT_KEYS.CALL_HISTORY_USER_SESSIONS_DELETED]: (event: CallSessionDeletedEvent) => void;
 };
 /* External Eventing End */
 
@@ -367,6 +370,18 @@ export type CallSessionViewedData = {
 export type CallSessionViewedEvent = {
   id: string;
   data: CallSessionViewedData;
+  timestamp: number;
+  trackingId: string;
+};
+
+export type CallSessionDeletedData = {
+  deletedSessions: string[];
+  eventType: MOBIUS_EVENT_KEYS.CALL_SESSION_EVENT_DELETED;
+};
+
+export type CallSessionDeletedEvent = {
+  id: string;
+  data: CallSessionDeletedData;
   timestamp: number;
   trackingId: string;
 };
