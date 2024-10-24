@@ -20,9 +20,13 @@ import {
   MOCK_LINES_API_CALL_RESPONSE_WITH_NO_LINEDATA,
   MOCK_CALL_HISTORY_WITH_UCM_LINE_NUMBER,
   MOCK_CALL_HISTORY_WITHOUT_UCM_LINE_NUMBER,
+  MOCK_SESSION_EVENT_DELETED,
+  MOCK_DELETE_CALL_HISTORY_RECORDS_RESPONSE,
+  janusMarkAsDeletedUrl,
 } from './callHistoryFixtures';
 import {
   COMMON_EVENT_KEYS,
+  CallSessionDeletedEvent,
   CallSessionEvent,
   CallSessionViewedEvent,
   MOBIUS_EVENT_KEYS,
@@ -146,6 +150,23 @@ describe('Call history tests', () => {
         const callSessionCallback = mockOn.mock.calls[2][1];
 
         callSessionCallback(MOCK_SESSION_EVENT_VIEWED);
+      });
+    });
+
+    it('verify the user sessions deleted event for deleting the call history records', async () => {
+      await new Promise<void>((resolve) => {
+        callHistory.on(
+          COMMON_EVENT_KEYS.CALL_HISTORY_USER_SESSIONS_DELETED,
+          (event: CallSessionDeletedEvent) => {
+            expect(event.data).toEqual(MOCK_SESSION_EVENT_DELETED.data);
+            resolve();
+          }
+        );
+
+        expect(mockOn.mock.calls[3][0]).toEqual(MOBIUS_EVENT_KEYS.CALL_SESSION_EVENT_DELETED);
+        const callSessionCallback = mockOn.mock.calls[3][1];
+
+        callSessionCallback(MOCK_SESSION_EVENT_DELETED);
       });
     });
   });
@@ -358,6 +379,108 @@ describe('Call history tests', () => {
       webex.request.mockResolvedValue(callHistoryPayload);
       await callHistory.getCallHistoryData(7, 10, SORT.DEFAULT, SORT_BY.DEFAULT);
       expect(fetchUCMLinesDataSpy).not.toHaveBeenCalled(); // Check that fetchUCMLinesData was not called
+    });
+  });
+
+  describe('Delete call history records test', () => {
+    const methodDetails = {
+      file: CALL_HISTORY_FILE,
+      method: 'deleteCallHistoryRecords',
+    };
+    afterEach(() => {
+      jest.clearAllMocks();
+    });
+    beforeEach(async () => {
+      serviceErrorCodeHandlerSpy = jest.spyOn(utils, 'serviceErrorCodeHandler');
+      global.fetch = jest.fn(() =>
+        Promise.resolve({
+          status: 200,
+          ok: true,
+          json: () => Promise.resolve(MOCK_DELETE_CALL_HISTORY_RECORDS_RESPONSE),
+        })
+      ) as jest.Mock;
+    });
+
+    it('successfully deletes the call history records', async () => {
+      const deleteSessionIds = [{endTime: '1234568', sessionId: '123'}];
+      const response = await callHistory.deleteCallHistoryRecords(deleteSessionIds);
+      const convertedEndTimeSessionIds = deleteSessionIds.map((session) => ({
+        ...session,
+        endTime: new Date(session.endTime).getTime(),
+      }));
+      expect(response.statusCode).toEqual(200);
+      expect(response).toEqual(MOCK_DELETE_CALL_HISTORY_RECORDS_RESPONSE);
+      expect(global.fetch).toBeCalledOnceWith(janusMarkAsDeletedUrl, {
+        method: HTTP_METHODS.POST,
+        headers: {
+          [CONTENT_TYPE]: APPLICATION_JSON,
+          Authorization: await webex.credentials.getUserToken(),
+        },
+        body: JSON.stringify({deleteSessionIds: convertedEndTimeSessionIds}),
+      });
+    });
+
+    it('Error: deleteCallHistoryRecords throw 400 error', async () => {
+      const deleteSessionIds = [];
+      global.fetch = jest.fn(() =>
+        Promise.resolve({
+          status: 400,
+          ok: false,
+        })
+      ) as jest.Mock;
+      const response = await callHistory.deleteCallHistoryRecords(deleteSessionIds);
+      const convertedEndTimeSessionIds = deleteSessionIds.map((session) => ({
+        ...session,
+        endTime: new Date(session.endTime).getTime(),
+      }));
+      expect(response).toStrictEqual(ERROR_DETAILS_400);
+      expect(response.statusCode).toBe(400);
+      expect(global.fetch).toBeCalledOnceWith(janusMarkAsDeletedUrl, {
+        method: HTTP_METHODS.POST,
+        headers: {
+          [CONTENT_TYPE]: APPLICATION_JSON,
+          Authorization: await webex.credentials.getUserToken(),
+        },
+        body: JSON.stringify({deleteSessionIds: convertedEndTimeSessionIds}),
+      });
+      expect(serviceErrorCodeHandlerSpy).toBeCalledOnceWith(
+        {
+          statusCode: 400,
+        },
+        methodDetails
+      );
+    });
+
+    it('Error: deleteCallHistoryRecords throw 401 error', async () => {
+      const deleteSessionIds = [];
+      global.fetch = jest.fn(() =>
+        Promise.resolve({
+          status: 401,
+          ok: false,
+        })
+      ) as jest.Mock;
+
+      const response = await callHistory.deleteCallHistoryRecords(deleteSessionIds);
+      const convertedEndTimeSessionIds = deleteSessionIds.map((session) => ({
+        ...session,
+        endTime: new Date(session.endTime).getTime(),
+      }));
+      expect(response).toStrictEqual(ERROR_DETAILS_401);
+      expect(response.statusCode).toBe(401);
+      expect(global.fetch).toBeCalledOnceWith(janusMarkAsDeletedUrl, {
+        method: HTTP_METHODS.POST,
+        headers: {
+          [CONTENT_TYPE]: APPLICATION_JSON,
+          Authorization: await webex.credentials.getUserToken(),
+        },
+        body: JSON.stringify({deleteSessionIds: convertedEndTimeSessionIds}),
+      });
+      expect(serviceErrorCodeHandlerSpy).toBeCalledOnceWith(
+        {
+          statusCode: 401,
+        },
+        methodDetails
+      );
     });
   });
 });

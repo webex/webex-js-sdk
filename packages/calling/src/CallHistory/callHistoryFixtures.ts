@@ -4,8 +4,13 @@ import {
   CallSessionEvent,
   SessionType,
   CallSessionViewedEvent,
+  CallSessionDeletedEvent,
 } from '../Events/types';
-import {UCMLinesResponse, UpdateMissedCallsResponse} from './types';
+import {
+  DeleteCallHistoryRecordsResponse,
+  UCMLinesResponse,
+  UpdateMissedCallsResponse,
+} from './types';
 
 export const sortedCallHistory = {
   body: {
@@ -609,6 +614,16 @@ export const MOCK_SESSION_EVENT_VIEWED: CallSessionViewedEvent = {
   trackingId: 'tracking-id',
 };
 
+export const MOCK_SESSION_EVENT_DELETED: CallSessionDeletedEvent = {
+  id: 'id',
+  data: {
+    deletedSessions: ['123-456-789-99999-993939'],
+    eventType: MOBIUS_EVENT_KEYS.CALL_SESSION_EVENT_DELETED,
+  },
+  timestamp: 12345,
+  trackingId: 'tracking-id',
+};
+
 export const MOCK_UPDATE_MISSED_CALL_RESPONSE: UpdateMissedCallsResponse = {
   statusCode: 200,
   data: {
@@ -616,8 +631,20 @@ export const MOCK_UPDATE_MISSED_CALL_RESPONSE: UpdateMissedCallsResponse = {
   },
   message: 'SUCCESS',
 };
+
+export const MOCK_DELETE_CALL_HISTORY_RECORDS_RESPONSE: DeleteCallHistoryRecordsResponse = {
+  statusCode: 200,
+  data: {
+    deleteStatusMessage: 'Call history records are deleted by the user.',
+  },
+  message: 'SUCCESS',
+};
+
 export const janusSetReadStateUrl =
   'https://janus-intb.ciscospark.com/janus/api/v1/history/userSessions/setReadState';
+
+export const janusMarkAsDeletedUrl =
+  'https://janus-intb.ciscospark.com/janus/api/v1/history/userSessions/markAsDeleted';
 
 export const ERROR_DETAILS_401 = {
   statusCode: 401,
@@ -626,6 +653,7 @@ export const ERROR_DETAILS_401 = {
   },
   message: 'FAILURE',
 };
+
 export const ERROR_DETAILS_400 = {
   statusCode: 400,
   data: {
