@@ -89,21 +89,25 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   }
 
   private processEvent = async (event: WebSocketEvent): Promise<void> => {
-    switch (event.type) {
-      case CC_EVENTS.WELCOME: {
-        const agentId = event.data.agentId;
-        const agentConfig = new AgentConfig(agentId, this.$webex, this.wccApiUrl);
-        this.agentConfig = await agentConfig.getAgentProfile();
-        this.$webex.logger.log(
-          `agent config is: ${JSON.stringify(this.agentConfig)} file: ${CC_FILE} method: ${
-            this.register.name
-          }`
-        );
-        this.handleEvent(REGISTER_EVENT, `Success: Agent Profile is ${this.agentConfig}`);
-        break;
+    try {
+      switch (event.type) {
+        case CC_EVENTS.WELCOME: {
+          const agentId = event.data.agentId;
+          const agentConfig = new AgentConfig(agentId, this.$webex, this.wccApiUrl);
+          this.agentConfig = await agentConfig.getAgentProfile();
+          this.$webex.logger.log(
+            `agent config is: ${JSON.stringify(this.agentConfig)} file: ${CC_FILE} method: ${
+              this.register.name
+            }`
+          );
+          this.handleEvent(REGISTER_EVENT, `Success: Agent Profile is ${this.agentConfig}`);
+          break;
+        }
+        default:
+          this.$webex.logger.info(`Unknown event: ${event.type}`);
       }
-      default:
-        this.$webex.logger.info(`Unknown event: ${event.type}`);
+    } catch (error) {
+      this.$webex.logger.error(`Error in processing event: ${error}`);
     }
   };
 

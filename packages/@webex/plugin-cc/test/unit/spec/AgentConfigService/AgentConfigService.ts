@@ -116,7 +116,7 @@ describe('AgentConfigService', () => {
     const filter: string[] = [];
     const attributes: string[] = ['id'];
 
-    it('should return ListTeamsResponse on success', async () => {
+    it('should return team on success', async () => {
       const mockResponse = {
         statusCode: 200,
         body: [

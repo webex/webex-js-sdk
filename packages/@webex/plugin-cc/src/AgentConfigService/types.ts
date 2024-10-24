@@ -74,7 +74,7 @@ export interface DesktopProfileResponse {
  *
  * @public
  */
-export interface ListTeamsResponse {
+export interface Team {
   /**
    * ID of the team.
    */

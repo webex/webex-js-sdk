@@ -6,7 +6,7 @@ import AgentConfig from '../../../../src/AgentConfig/AgentConfig';
 import {
   DesktopProfileResponse,
   ListAuxCodesResponse,
-  ListTeamsResponse,
+  Team,
   AgentResponse,
 } from '../../../../src/AgentConfigService/types';
 
@@ -36,7 +36,7 @@ const mockDesktopProfileResponse: DesktopProfileResponse = {
   idleCodes: [],
 };
 
-const mockTeamsListResponse: ListTeamsResponse = {
+const mockTeamsListResponse: Team = {
   data: [{ id: 'team1', name: 'Team 1' }],
 };
 

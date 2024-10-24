@@ -1,10 +1,5 @@
 import {WebexSDK, HTTP_METHODS} from '../types';
-import {
-  DesktopProfileResponse,
-  ListAuxCodesResponse,
-  ListTeamsResponse,
-  AgentResponse,
-} from './types';
+import {DesktopProfileResponse, ListAuxCodesResponse, Team, AgentResponse} from './types';
 import HttpRequest from '../HttpRequest';
 
 export default class AgentConfigService {
@@ -73,7 +68,7 @@ export default class AgentConfigService {
    * @param {number} pageSize Number of items to be displayed on a page. Defaults to 10.
    * @param {Array<String>} filter Filter that can be applied to the elements to be fetched. Defaults to [].
    * @param {Array<String>} attributes Specify the attributes to be returned. Defaults to ['id'].
-   * @returns {Promise<ListTeamsResponse>} A promise that eventually resolves to an API response.
+   * @returns {Promise<Team>} A promise that eventually resolves to an API response.
    */
 
   public async getListOfTeams(
@@ -81,7 +76,7 @@ export default class AgentConfigService {
     pageSize: number,
     filter: string[],
     attributes: string[]
-  ): Promise<ListTeamsResponse> {
+  ): Promise<Team> {
     try {
       let URL = '';
       if (filter && filter.length > 0)

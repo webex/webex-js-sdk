@@ -1,9 +1,10 @@
+/* eslint-disable no-console */
 import {IAgentConfig, WORK_TYPE_CODE} from './types';
 import AgentConfigService from '../AgentConfigService/AgentConfigService';
 import {
   DesktopProfileResponse,
   ListAuxCodesResponse,
-  ListTeamsResponse,
+  Team,
   AgentResponse,
   AuxCode,
 } from '../AgentConfigService/types';
@@ -13,7 +14,7 @@ import {DEFAULT_ATTRIBUTES, DEFAULT_PAGE, DEFAULT_PAGE_SIZE} from './constants';
 export default class AgentConfig {
   agentId: string;
   agentProfile: IAgentConfig = {
-    teams: [] as ListTeamsResponse[],
+    teams: [] as Team[],
     idleCodes: [] as AuxCode[],
     wrapUpCodes: [] as AuxCode[],
   } as IAgentConfig;
@@ -71,23 +72,27 @@ export default class AgentConfig {
         auxCodeFilter.push(agentDesktopProfile.idleCodes);
       }
 
+      console.log('AUX CODE FILTER', auxCodeFilter);
+
       // Call the below two APIs parallel to optimise the Performance.
 
-      const [teamsList, auxCodesList]: [ListTeamsResponse, ListAuxCodesResponse] =
-        await Promise.all([
-          agentConfigService.getListOfTeams(
-            DEFAULT_PAGE,
-            DEFAULT_PAGE_SIZE,
-            teamListFilter,
-            DEFAULT_ATTRIBUTES
-          ),
-          agentConfigService.getListOfAuxCodes(
-            DEFAULT_PAGE,
-            DEFAULT_PAGE_SIZE,
-            auxCodeFilter,
-            DEFAULT_ATTRIBUTES
-          ),
-        ]);
+      const [teamsList, auxCodesList]: [Team, ListAuxCodesResponse] = await Promise.all([
+        agentConfigService.getListOfTeams(
+          DEFAULT_PAGE,
+          DEFAULT_PAGE_SIZE,
+          teamListFilter,
+          DEFAULT_ATTRIBUTES
+        ),
+        agentConfigService.getListOfAuxCodes(
+          DEFAULT_PAGE,
+          DEFAULT_PAGE_SIZE,
+          auxCodeFilter,
+          DEFAULT_ATTRIBUTES
+        ),
+      ]);
+      console.log('teamsList', teamsList);
+      console.log('auxCodesList', auxCodesList);
+      console.log('agentProfile is', this.agentProfile);
 
       this.agentProfile.teams.push(teamsList);
 
@@ -97,6 +102,8 @@ export default class AgentConfig {
       this.agentProfile.idleCodes = auxCodesList.data.filter(
         (auxCode) => auxCode.workTypeCode === WORK_TYPE_CODE.IDLE_CODE
       );
+
+      console.log('agentProfile is -----', this.agentProfile);
 
       if (
         agentDesktopProfile.accessIdleCode === 'ALL' &&
@@ -113,6 +120,8 @@ export default class AgentConfig {
           (auxCode) => auxCode.workTypeCode === WORK_TYPE_CODE.IDLE_CODE
         );
       }
+
+      console.log('final agentProfile is -----', this.agentProfile);
 
       return Promise.resolve(this.agentProfile);
     } catch (error) {

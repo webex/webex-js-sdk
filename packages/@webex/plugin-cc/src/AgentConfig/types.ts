@@ -1,4 +1,4 @@
-import {AuxCode, ListTeamsResponse} from '../AgentConfigService/types';
+import {AuxCode, Team} from '../AgentConfigService/types';
 import {WebexSDK} from '../types';
 
 type Enum<T extends Record<string, unknown>> = T[keyof T];
@@ -71,7 +71,7 @@ export interface IAgentConfig {
   /**
    * Represents list of teams of an agent.
    */
-  teams: ListTeamsResponse[];
+  teams: Team[];
 
   /**
    * Represents the voice options of an agent.
