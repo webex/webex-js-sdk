@@ -127,11 +127,10 @@ export class CallerId implements ICallerId {
    * @param paid - Entire sip uri. Can be PA-Id or From header.
    * @returns -  a collection of name and number.
    * @example
-   * // Example 1
    * const paid1 = '"John O' Connor - (Guest)" <sip:1234567890@domain>';
    * const result1 = parseSipUri(paid1);
-   * // result1.name = "John O' Connor - (Guest)"
-   * // result1.num = "1234567890"
+   * result1.name = "John O' Connor - (Guest)"
+   * result1.num = "1234567890"
    */
   private parseSipUri(paid: string): DisplayInformation {
     const result = {} as DisplayInformation;
