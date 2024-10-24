@@ -26,6 +26,7 @@ const packages = [
   '@webex/internal-plugin-support',
   '@webex/internal-plugin-team',
   '@webex/internal-plugin-user',
+  '@webex/internal-plugin-usersub',
   '@webex/internal-plugin-voicea',
   '@webex/internal-plugin-wdm',
   '@webex/jsdoctrinetest',
