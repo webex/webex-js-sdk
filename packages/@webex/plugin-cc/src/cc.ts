@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 import {WebexPlugin} from '@webex/webex-core';
 import AgentConfig from './AgentConfig/AgentConfig';
 import {IAgentConfig} from './AgentConfig/types';
