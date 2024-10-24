@@ -5,13 +5,19 @@ import {
   ListAuxCodesResponse,
   ListTeamsResponse,
   AgentResponse,
+  AuxCode,
 } from '../AgentConfigService/types';
 import {WebexSDK} from '../types';
 import {DEFAULT_ATTRIBUTES, DEFAULT_PAGE, DEFAULT_PAGE_SIZE} from './constants';
 
 export default class AgentConfig {
   agentId: string;
-  agentProfile: IAgentConfig;
+  agentProfile: IAgentConfig = {
+    teams: [] as ListTeamsResponse[],
+    idleCodes: [] as AuxCode[],
+    wrapUpCodes: [] as AuxCode[],
+  } as IAgentConfig;
+
   webex: WebexSDK;
   wccAPIURL: string;
 
@@ -23,7 +29,7 @@ export default class AgentConfig {
 
   /**
    * Method to get Agent Profile.
-   * @returns {Promise<AgentProfileResponse>} A promise that eventually resolves to an API response and return configuration of an Agent.
+   * @returns {Promise<IAgentConfig>} A promise that eventually resolves to an API response and return configuration of an Agent.
    * @example
    * Create AgentConfig class instance and invoke getAgentProfile method.
    * const agentConfig = new AgentConfig('agentId', 'webexObject', 'contactCenterApiUrl');
