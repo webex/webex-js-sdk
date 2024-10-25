@@ -1,3 +1,5 @@
+import {IAgentProfile} from './AgentConfig/types';
+
 type Enum<T extends Record<string, unknown>> = T[keyof T];
 
 // Define the HTTP_METHODS object
@@ -125,7 +127,7 @@ export interface IContactCenter {
   /**
    * This will be public API used for making the CC SDK ready by setting up the cc mercury connection.
    */
-  register(): Promise<string>;
+  register(): Promise<IAgentProfile>;
 
   /**
    * This will be public API used for unregistering the CC SDK by disconnecting the cc mercury connection
@@ -164,4 +166,4 @@ export interface SubscribeRequest {
   allowMultiLogin: boolean;
 }
 
-export type EventResult = string; // TODO: Will send AgentPRofile object as part of Parv's PR and new types add as and when required
+export type EventResult = IAgentProfile;

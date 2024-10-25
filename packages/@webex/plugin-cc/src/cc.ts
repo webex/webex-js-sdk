@@ -1,6 +1,6 @@
 import {WebexPlugin} from '@webex/webex-core';
 import AgentConfig from './AgentConfig/AgentConfig';
-import {IAgentConfig} from './AgentConfig/types';
+import {IAgentProfile} from './AgentConfig/types';
 import {
   CCPluginConfig,
   IContactCenter,
@@ -28,7 +28,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   $config: CCPluginConfig;
   $webex: WebexSDK;
   wccApiUrl: string;
-  agentConfig: IAgentConfig;
+  agentProfile: IAgentProfile;
   webSocket: IWebSocket;
   ciUserId: string;
   registered = false;
@@ -55,7 +55,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   /**
    * This is used for making the CC SDK ready by setting up the cc mercury connection.
    */
-  public async register(): Promise<string> {
+  public async register(): Promise<IAgentProfile> {
     this.wccApiUrl = this.$webex.internal.services.get(WCC_API_GATEWAY);
     this.listenForWebSocketEvents();
 
@@ -93,15 +93,12 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       switch (event.type) {
         case CC_EVENTS.WELCOME: {
           const agentId = event.data.agentId;
-          const agentConfig = new AgentConfig(agentId, this.$webex, this.wccApiUrl);
-          this.agentConfig = await agentConfig.getAgentProfile();
+          const agentProfile = new AgentConfig(agentId, this.$webex, this.wccApiUrl);
+          this.agentProfile = await agentProfile.getAgentProfile();
           this.$webex.logger.log(
-            `Agent config fetch successfully. file: ${CC_FILE} method: ${this.register.name}`
+            `Agent config fetch successfully. file: ${CC_FILE} method: ${this.processEvent.name}`
           );
-          this.handleEvent(
-            REGISTER_EVENT,
-            `Success: Agent Profile is ${JSON.stringify(this.agentConfig)}`
-          );
+          this.handleEvent(REGISTER_EVENT, this.agentProfile);
           break;
         }
         default:

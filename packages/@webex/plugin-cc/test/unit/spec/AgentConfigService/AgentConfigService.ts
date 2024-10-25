@@ -1,194 +1,280 @@
-import { WebexSDK } from '../../../../src/types';
-import HttpRequest from '../../../../src/HttpRequest';
+import { IAgentProfile } from '../../../../src/AgentConfig/types';
 import AgentConfigService from '../../../../src/AgentConfigService/AgentConfigService';
+import { WebexSDK } from '../../../../src/types';
+import { WORK_TYPE_CODE } from '../../../../src/AgentConfig/types';
+import AgentConfig from '../../../../src/AgentConfig/AgentConfig';
+import {
+  DesktopProfileResponse,
+  ListAuxCodesResponse,
+  Team,
+  AgentResponse,
+} from '../../../../src/AgentConfigService/types';
 
-jest.mock('../../../../src/HttpRequest', () => {
-  return jest.fn().mockImplementation(() => {
-    return {
-      request: jest.fn(),
-    };
-  });
-});
-
-describe('AgentConfigService', () => {
-  let agentConfigService: AgentConfigService;
-  let mockHttpRequest: jest.Mocked<HttpRequest>;
-  const mockWebexSDK: WebexSDK = {
-    logger: {
-      log: jest.fn(),
+// Mocking the WebexSDK instance
+const mockWebex: WebexSDK = {
+  internal: {
+    device: {
+      orgId: 'testOrgId',
     },
-  } as unknown as WebexSDK;
-  const mockWccAPIURL = 'https://api.example.com/';
-  const mockAgentId = 'agent123';
-  const mockOrgId = 'org123';
+  },
+};
+
+// Mock data
+const mockAgentResponse: AgentResponse = {
+  firstName: 'John',
+  lastName: 'Doe',
+  agentProfileId: 'profile123',
+  email: 'john.doe@example.com',
+  teamIds: ['team1', 'team2'],
+};
+
+const mockDesktopProfileResponse: DesktopProfileResponse = {
+  loginVoiceOptions: ['option1', 'option2'],
+  accessWrapUpCode: 'ALL',
+  accessIdleCode: 'ALL',
+  wrapUpCodes: [],
+  idleCodes: [],
+};
+
+const mockTeamsListResponse: Team = {
+  data: [{ id: 'team1', name: 'Team 1' }],
+};
+
+const mockAuxCodesResponse: ListAuxCodesResponse = {
+  data: [
+    { id: 'aux1', workTypeCode: WORK_TYPE_CODE.WRAP_UP_CODE },
+    { id: 'aux2', workTypeCode: WORK_TYPE_CODE.IDLE_CODE },
+  ],
+};
+
+describe('AgentConfig', () => {
+  let agentConfig: AgentConfig;
+  let getUserUsingCISpy: jest.SpyInstance;
+  let getDesktopProfileByIdSpy: jest.SpyInstance;
+  let getListOfTeamsSpy: jest.SpyInstance;
+  let getListOfAuxCodesSpy: jest.SpyInstance;
 
   beforeEach(() => {
-    mockHttpRequest = new HttpRequest(mockWebexSDK) as jest.Mocked<HttpRequest>;
-    agentConfigService = new AgentConfigService(mockAgentId, mockOrgId, mockWebexSDK, mockWccAPIURL);
-    agentConfigService.requestInstance = mockHttpRequest;
-  });
-
-  afterEach(() => {
     jest.clearAllMocks();
+    agentConfig = new AgentConfig('agent123', mockWebex, 'http://api.url');
+
+    // Mocking methods of AgentConfigService
+    getUserUsingCISpy = jest.spyOn(AgentConfigService.prototype, 'getUserUsingCI').mockResolvedValue(mockAgentResponse);
+    getDesktopProfileByIdSpy = jest.spyOn(AgentConfigService.prototype, 'getDesktopProfileById').mockResolvedValue(mockDesktopProfileResponse);
+    getListOfTeamsSpy = jest.spyOn(AgentConfigService.prototype, 'getListOfTeams').mockResolvedValue(mockTeamsListResponse);
+    getListOfAuxCodesSpy = jest.spyOn(AgentConfigService.prototype, 'getListOfAuxCodes').mockResolvedValue(mockAuxCodesResponse);
   });
 
-  describe('getUserUsingCI', () => {
-    it('should return AgentResponse on success', async () => {
-      const mockResponse = {
-        statusCode: 200,
-        body: {
-          firstName: 'John',
-          lastName: 'Doe',
-          agentProfileId: 'profile123',
-          email: 'john.doe@example.com',
-          teamIds: ['team1', 'team2'],
-        },
-      };
-      mockHttpRequest.request.mockResolvedValue(mockResponse);
+  it('should fetch agent profile successfully', async () => {
+    const expectedProfile: IAgentProfile = {
+      agentId: 'agent123',
+      agentFirstName: 'John',
+      agentLastName: 'Doe',
+      agentProfileId: 'profile123',
+      agentMailId: 'john.doe@example.com',
+      teams: [mockTeamsListResponse],
+      loginVoiceOptions: ['option1', 'option2'],
+      wrapUpCodes: [{ id: 'aux1', workTypeCode: WORK_TYPE_CODE.WRAP_UP_CODE }],
+      idleCodes: [{ id: 'aux2', workTypeCode: WORK_TYPE_CODE.IDLE_CODE }],
+    };
 
-      const result = await agentConfigService.getUserUsingCI();
-
-      expect(result).toEqual(mockResponse.body);
-      expect(mockWebexSDK.logger.log).toHaveBeenCalledWith('getUserUsingCI api success.');
-    });
-
-    it('should throw an error if the API call fails', async () => {
-      const mockError = new Error('API call failed');
-      mockHttpRequest.request.mockRejectedValue(mockError);
-
-      await expect(agentConfigService.getUserUsingCI()).rejects.toThrow('getUserUsingCI api failed. Error: Error: API call failed');
-    });
-
-    it('should throw an error if the status code is not 200', async () => {
-      const mockResponse = {
-        statusCode: 500,
-        body: {},
-      };
-      mockHttpRequest.request.mockResolvedValue(mockResponse);
-
-      await expect(agentConfigService.getUserUsingCI()).rejects.toThrow('getUserUsingCI api failed. Error: [object Object]');
-    });
+    const result = await agentConfig.getAgentProfile();
+    expect(result).toEqual(expectedProfile);
+    expect(getUserUsingCISpy).toHaveBeenCalledTimes(1);
+    expect(getDesktopProfileByIdSpy).toHaveBeenCalledTimes(1);
+    expect(getListOfTeamsSpy).toHaveBeenCalledTimes(1);
+    expect(getListOfAuxCodesSpy).toHaveBeenCalledTimes(1);
   });
 
-  describe('getDesktopProfileById', () => {
-    const desktopProfileId = 'profile123';
+  it('should handle errors when fetching agent profile', async () => {
+    getUserUsingCISpy.mockRejectedValue(new Error('Network error'));
 
-    it('should return DesktopProfileResponse on success', async () => {
-      const mockResponse = {
-        statusCode: 200,
-        body: {
-          loginVoiceOptions: ['option1', 'option2'],
-          accessWrapUpCode: 'ALL',
-          accessIdleCode: 'SPECIFIC',
-          wrapUpCodes: ['code1', 'code2'],
-          idleCodes: ['idle1', 'idle2'],
-        },
-      };
-      mockHttpRequest.request.mockResolvedValue(mockResponse);
-
-      const result = await agentConfigService.getDesktopProfileById(desktopProfileId);
-
-      expect(result).toEqual(mockResponse.body);
-      expect(mockWebexSDK.logger.log).toHaveBeenCalledWith('getDesktopProfileById api success.');
-    });
-
-    it('should throw an error if the API call fails', async () => {
-      const mockError = new Error('API call failed');
-      mockHttpRequest.request.mockRejectedValue(mockError);
-
-      await expect(agentConfigService.getDesktopProfileById(desktopProfileId)).rejects.toThrow('getDesktopProfileById api failed. Error: Error: API call failed');
-    });
-
-    it('should throw an error if the status code is not 200', async () => {
-      const mockResponse = {
-        statusCode: 500,
-        body: {},
-      };
-      mockHttpRequest.request.mockResolvedValue(mockResponse);
-
-      await expect(agentConfigService.getDesktopProfileById(desktopProfileId)).rejects.toThrow('getDesktopProfileById api failed. Error: [object Object]');
-    });
+    await expect(agentConfig.getAgentProfile()).rejects.toThrow(
+      'Error while fetching agent profile, Error: Network error'
+    );
   });
 
-  describe('getListOfTeams', () => {
-    const page = 0;
-    const pageSize = 10;
-    const filter: string[] = [];
-    const attributes: string[] = ['id'];
+  it('should handle errors when fetching desktop profile', async () => {
+    getDesktopProfileByIdSpy.mockRejectedValue(new Error('API error'));
 
-    it('should return team on success', async () => {
-      const mockResponse = {
-        statusCode: 200,
-        body: [
-          { id: 'team1', name: 'Team 1' },
-          { id: 'team2', name: 'Team 2' },
-        ],
-      };
-      mockHttpRequest.request.mockResolvedValue(mockResponse);
-
-      const result = await agentConfigService.getListOfTeams(page, pageSize, filter, attributes);
-
-      expect(result).toEqual(mockResponse.body);
-      expect(mockWebexSDK.logger.log).toHaveBeenCalledWith('getListOfTeams api success.');
-    });
-
-    it('should throw an error if the API call fails', async () => {
-      const mockError = new Error('API call failed');
-      mockHttpRequest.request.mockRejectedValue(mockError);
-
-      await expect(agentConfigService.getListOfTeams(page, pageSize, filter, attributes)).rejects.toThrow('getListOfTeams api failed. Error: Error: API call failed');
-    });
-
-    it('should throw an error if the status code is not 200', async () => {
-      const mockResponse = {
-        statusCode: 500,
-        body: {},
-      };
-      mockHttpRequest.request.mockResolvedValue(mockResponse);
-
-      await expect(agentConfigService.getListOfTeams(page, pageSize, filter, attributes)).rejects.toThrow('getListOfTeams api failed. Error: [object Object]');
-    });
+    await expect(agentConfig.getAgentProfile()).rejects.toThrow(
+      'Error while fetching agent profile, Error: API error'
+    );
   });
 
-  describe('getListOfAuxCodes', () => {
-    const page = 0;
-    const pageSize = 10;
-    const filter: string[] = [];
-    const attributes: string[] = ['id'];
+  it('should handle errors when fetching list of teams', async () => {
+    getListOfTeamsSpy.mockRejectedValue(new Error('API error'));
 
-    it('should return ListAuxCodesResponse on success', async () => {
-      const mockResponse = {
-        statusCode: 200,
-        body: {
-          data: [
-            { id: 'aux1', active: true, defaultCode: false, isSystemCode: false, description: 'Aux 1', name: 'Aux 1', workTypeCode: 'work1' },
-            { id: 'aux2', active: true, defaultCode: false, isSystemCode: false, description: 'Aux 2', name: 'Aux 2', workTypeCode: 'work2' },
-          ],
-        },
-      };
-      mockHttpRequest.request.mockResolvedValue(mockResponse);
+    await expect(agentConfig.getAgentProfile()).rejects.toThrow(
+      'Error while fetching agent profile, Error: API error'
+    );
+  });
 
-      const result = await agentConfigService.getListOfAuxCodes(page, pageSize, filter, attributes);
+  it('should handle errors when fetching list of aux codes', async () => {
+    getListOfAuxCodesSpy.mockRejectedValue(new Error('API error'));
 
-      expect(result).toEqual(mockResponse.body);
-      expect(mockWebexSDK.logger.log).toHaveBeenCalledWith('getListOfAuxCodes api success.');
-    });
+    await expect(agentConfig.getAgentProfile()).rejects.toThrow(
+      'Error while fetching agent profile, Error: API error'
+    );
+  });
 
-    it('should throw an error if the API call fails', async () => {
-      const mockError = new Error('API call failed');
-      mockHttpRequest.request.mockRejectedValue(mockError);
+  it('should handle both accessIdleCode and accessWrapUpCode as ALL', async () => {
+    const allDesktopProfileResponse: DesktopProfileResponse = {
+      loginVoiceOptions: ['option1', 'option2'],
+      accessWrapUpCode: 'ALL',
+      accessIdleCode: 'ALL',
+      wrapUpCodes: [],
+      idleCodes: [],
+    };
 
-      await expect(agentConfigService.getListOfAuxCodes(page, pageSize, filter, attributes)).rejects.toThrow('getListOfAuxCodes api failed. Error: Error: API call failed');
-    });
+    getDesktopProfileByIdSpy.mockResolvedValue(allDesktopProfileResponse);
 
-    it('should throw an error if the status code is not 200', async () => {
-      const mockResponse = {
-        statusCode: 500,
-        body: {},
-      };
-      mockHttpRequest.request.mockResolvedValue(mockResponse);
+    const allAuxCodesResponse: ListAuxCodesResponse = {
+      data: [
+        { id: 'aux1', workTypeCode: WORK_TYPE_CODE.WRAP_UP_CODE },
+        { id: 'aux2', workTypeCode: WORK_TYPE_CODE.IDLE_CODE },
+      ],
+    };
 
-      await expect(agentConfigService.getListOfAuxCodes(page, pageSize, filter, attributes)).rejects.toThrow('getListOfAuxCodes api failed. Error: [object Object]');
-    });
+    getListOfAuxCodesSpy.mockResolvedValue(allAuxCodesResponse);
+
+    const expectedProfile: IAgentProfile = {
+      agentId: 'agent123',
+      agentFirstName: 'John',
+      agentLastName: 'Doe',
+      agentProfileId: 'profile123',
+      agentMailId: 'john.doe@example.com',
+      teams: [mockTeamsListResponse],
+      loginVoiceOptions: ['option1', 'option2'],
+      wrapUpCodes: [{ id: 'aux1', workTypeCode: WORK_TYPE_CODE.WRAP_UP_CODE }],
+      idleCodes: [{ id: 'aux2', workTypeCode: WORK_TYPE_CODE.IDLE_CODE }],
+    };
+
+    const result = await agentConfig.getAgentProfile();
+    expect(result).toEqual(expectedProfile);
+    expect(getUserUsingCISpy).toHaveBeenCalledTimes(1);
+    expect(getDesktopProfileByIdSpy).toHaveBeenCalledTimes(1);
+    expect(getListOfTeamsSpy).toHaveBeenCalledTimes(1);
+    expect(getListOfAuxCodesSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('should handle specific accessIdleCode and accessWrapUpCode', async () => {
+    const specificDesktopProfileResponse: DesktopProfileResponse = {
+      loginVoiceOptions: ['option1', 'option2'],
+      accessWrapUpCode: 'SPECIFIC',
+      accessIdleCode: 'SPECIFIC',
+      wrapUpCodes: ['aux1'],
+      idleCodes: ['aux2'],
+    };
+
+    getDesktopProfileByIdSpy.mockResolvedValue(specificDesktopProfileResponse);
+
+    const specificAuxCodesResponse: ListAuxCodesResponse = {
+      data: [
+        { id: 'aux1', workTypeCode: WORK_TYPE_CODE.WRAP_UP_CODE },
+        { id: 'aux2', workTypeCode: WORK_TYPE_CODE.IDLE_CODE },
+      ],
+    };
+
+    getListOfAuxCodesSpy.mockResolvedValue(specificAuxCodesResponse);
+
+    const expectedProfile: IAgentProfile = {
+      agentId: 'agent123',
+      agentFirstName: 'John',
+      agentLastName: 'Doe',
+      agentProfileId: 'profile123',
+      agentMailId: 'john.doe@example.com',
+      teams: [mockTeamsListResponse],
+      loginVoiceOptions: ['option1', 'option2'],
+      wrapUpCodes: [{ id: 'aux1', workTypeCode: WORK_TYPE_CODE.WRAP_UP_CODE }],
+      idleCodes: [{ id: 'aux2', workTypeCode: WORK_TYPE_CODE.IDLE_CODE }],
+    };
+
+    const result = await agentConfig.getAgentProfile();
+    expect(result).toEqual(expectedProfile);
+    expect(getUserUsingCISpy).toHaveBeenCalledTimes(1);
+    expect(getDesktopProfileByIdSpy).toHaveBeenCalledTimes(1);
+    expect(getListOfTeamsSpy).toHaveBeenCalledTimes(1);
+    expect(getListOfAuxCodesSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('should handle accessIdleCode as ALL and accessWrapUpCode as SPECIFIC', async () => {
+    const mixedDesktopProfileResponse: DesktopProfileResponse = {
+      loginVoiceOptions: ['option1', 'option2'],
+      accessWrapUpCode: 'SPECIFIC',
+      accessIdleCode: 'ALL',
+      wrapUpCodes: ['aux1'],
+      idleCodes: [],
+    };
+
+    getDesktopProfileByIdSpy.mockResolvedValue(mixedDesktopProfileResponse);
+
+    const mixedAuxCodesResponse: ListAuxCodesResponse = {
+      data: [
+        { id: 'aux1', workTypeCode: WORK_TYPE_CODE.WRAP_UP_CODE },
+        { id: 'aux2', workTypeCode: WORK_TYPE_CODE.IDLE_CODE },
+      ],
+    };
+
+    getListOfAuxCodesSpy.mockResolvedValue(mixedAuxCodesResponse);
+
+    const expectedProfile: IAgentProfile = {
+      agentId: 'agent123',
+      agentFirstName: 'John',
+      agentLastName: 'Doe',
+      agentProfileId: 'profile123',
+      agentMailId: 'john.doe@example.com',
+      teams: [mockTeamsListResponse],
+      loginVoiceOptions: ['option1', 'option2'],
+      wrapUpCodes: [{ id: 'aux1', workTypeCode: WORK_TYPE_CODE.WRAP_UP_CODE }],
+      idleCodes: [{ id: 'aux2', workTypeCode: WORK_TYPE_CODE.IDLE_CODE }],
+    };
+
+    const result = await agentConfig.getAgentProfile();
+    expect(result).toEqual(expectedProfile);
+    expect(getUserUsingCISpy).toHaveBeenCalledTimes(1);
+    expect(getDesktopProfileByIdSpy).toHaveBeenCalledTimes(1);
+    expect(getListOfTeamsSpy).toHaveBeenCalledTimes(1);
+    expect(getListOfAuxCodesSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('should handle accessIdleCode as SPECIFIC and accessWrapUpCode as ALL', async () => {
+    const mixedDesktopProfileResponse: DesktopProfileResponse = {
+      loginVoiceOptions: ['option1', 'option2'],
+      accessWrapUpCode: 'ALL',
+      accessIdleCode: 'SPECIFIC',
+      wrapUpCodes: [],
+      idleCodes: ['aux2'],
+    };
+
+    getDesktopProfileByIdSpy.mockResolvedValue(mixedDesktopProfileResponse);
+
+    const mixedAuxCodesResponse: ListAuxCodesResponse = {
+      data: [
+        { id: 'aux1', workTypeCode: WORK_TYPE_CODE.WRAP_UP_CODE },
+        { id: 'aux2', workTypeCode: WORK_TYPE_CODE.IDLE_CODE },
+      ],
+    };
+
+    getListOfAuxCodesSpy.mockResolvedValue(mixedAuxCodesResponse);
+
+    const expectedProfile: IAgentProfile = {
+      agentId: 'agent123',
+      agentFirstName: 'John',
+      agentLastName: 'Doe',
+      agentProfileId: 'profile123',
+      agentMailId: 'john.doe@example.com',
+      teams: [mockTeamsListResponse],
+      loginVoiceOptions: ['option1', 'option2'],
+      wrapUpCodes: [{ id: 'aux1', workTypeCode: WORK_TYPE_CODE.WRAP_UP_CODE }],
+      idleCodes: [{ id: 'aux2', workTypeCode: WORK_TYPE_CODE.IDLE_CODE }],
+    };
+
+    const result = await agentConfig.getAgentProfile();
+    expect(result).toEqual(expectedProfile);
+    expect(getUserUsingCISpy).toHaveBeenCalledTimes(1);
+    expect(getDesktopProfileByIdSpy).toHaveBeenCalledTimes(1);
+    expect(getListOfTeamsSpy).toHaveBeenCalledTimes(1);
+    expect(getListOfAuxCodesSpy).toHaveBeenCalledTimes(1);
   });
 });

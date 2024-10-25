@@ -1,4 +1,4 @@
-import {IAgentConfig} from '../../../../src/AgentConfig/types';
+import {IAgentProfile} from '../../../../src/AgentConfig/types';
 import AgentConfigService from '../../../../src/AgentConfigService/AgentConfigService';
 import { WebexSDK } from '../../../../src/types';
 import { WORK_TYPE_CODE } from '../../../../src/AgentConfig/types';
@@ -66,7 +66,7 @@ describe('AgentConfig', () => {
   });
 
   it('should fetch agent profile successfully', async () => {
-    const expectedProfile: IAgentConfig = {
+    const expectedProfile: IAgentProfile = {
       agentId: 'agent123',
       agentFirstName: 'John',
       agentLastName: 'Doe',

@@ -1,4 +1,4 @@
-import {IAgentConfig, WORK_TYPE_CODE} from './types';
+import {IAgentProfile, WORK_TYPE_CODE} from './types';
 import AgentConfigService from '../AgentConfigService/AgentConfigService';
 import {Team, AuxCode} from '../AgentConfigService/types';
 import {WebexSDK} from '../types';
@@ -6,11 +6,11 @@ import {DEFAULT_ATTRIBUTES, DEFAULT_PAGE, DEFAULT_PAGE_SIZE} from './constants';
 
 export default class AgentConfig {
   agentId: string;
-  agentProfile: IAgentConfig = {
+  agentProfile: IAgentProfile = {
     teams: [] as Team[],
     idleCodes: [] as AuxCode[],
     wrapUpCodes: [] as AuxCode[],
-  } as IAgentConfig;
+  } as IAgentProfile;
 
   webex: WebexSDK;
   wccAPIURL: string;
@@ -23,14 +23,14 @@ export default class AgentConfig {
 
   /**
    * Method to get Agent Profile.
-   * @returns {Promise<IAgentConfig>} A promise that eventually resolves to an API response and return configuration of an Agent.
+   * @returns {Promise<IAgentProfile>} A promise that eventually resolves to an API response and return configuration of an Agent.
    * @example
    * Create AgentConfig class instance and invoke getAgentProfile method.
    * const agentConfig = new AgentConfig('agentId', 'webexObject', 'contactCenterApiUrl');
    * const agentConfigResponse = await agentConfig.getAgentProfile();
    */
 
-  public async getAgentProfile(): Promise<IAgentConfig> {
+  public async getAgentProfile(): Promise<IAgentProfile> {
     try {
       const orgId = this.webex.internal.device.orgId;
 

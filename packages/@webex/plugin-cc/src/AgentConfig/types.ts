@@ -40,7 +40,7 @@ export interface AgentConfigRequest {
  *
  * @public
  */
-export interface IAgentConfig {
+export interface IAgentProfile {
   /**
    * The id of the agent.
    */
