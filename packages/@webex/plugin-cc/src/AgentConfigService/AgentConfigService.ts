@@ -7,14 +7,14 @@ export default class AgentConfigService {
   orgId: string;
   webex: WebexSDK;
   wccAPIURL: string;
-  requestInstance: HttpRequest;
+  httpReq: HttpRequest;
 
   constructor(agentId: string, orgId: string, webex: WebexSDK, wccAPIURL: string) {
     this.agentId = agentId;
     this.orgId = orgId;
     this.webex = webex;
     this.wccAPIURL = wccAPIURL;
-    this.requestInstance = new HttpRequest(this.webex);
+    this.httpReq = new HttpRequest(this.webex);
   }
 
   /**
@@ -25,10 +25,10 @@ export default class AgentConfigService {
   public async getUserUsingCI(): Promise<AgentResponse> {
     try {
       const URL = `${this.wccAPIURL}organization/${this.orgId}/user/by-ci-user-id/${this.agentId}`;
-      const response = await this.requestInstance.request(URL, HTTP_METHODS.GET);
+      const response = await this.httpReq.request(URL, HTTP_METHODS.GET);
 
       if (response.statusCode !== 200) {
-        throw new Error(`getUserUsingCI api failed. Error: ${response}`);
+        Promise.reject(response);
       }
 
       this.webex.logger.log('getUserUsingCI api success.');
@@ -48,10 +48,10 @@ export default class AgentConfigService {
   public async getDesktopProfileById(desktopProfileId: string): Promise<DesktopProfileResponse> {
     try {
       const URL = `${this.wccAPIURL}organization/${this.orgId}/agent-profile/${desktopProfileId}`;
-      const response = await this.requestInstance.request(URL, HTTP_METHODS.GET);
+      const response = await this.httpReq.request(URL, HTTP_METHODS.GET);
 
       if (response.statusCode !== 200) {
-        throw new Error(`getDesktopProfileById api failed. Error: ${response}`);
+        Promise.reject(response);
       }
 
       this.webex.logger.log('getDesktopProfileById api success.');
@@ -83,10 +83,10 @@ export default class AgentConfigService {
         URL = `${this.wccAPIURL}organization/${this.orgId}/team?page=${page}&pageSize=${pageSize}&filter=id=in=${filter}&attributes=${attributes}`;
       else
         URL = `${this.wccAPIURL}organization/${this.orgId}/team?page=${page}&pageSize=${pageSize}&attributes=${attributes}`;
-      const response = await this.requestInstance.request(URL, HTTP_METHODS.GET);
+      const response = await this.httpReq.request(URL, HTTP_METHODS.GET);
 
       if (response.statusCode !== 200) {
-        throw new Error(`getListOfTeams api failed. Error: ${response}`);
+        Promise.reject(response);
       }
 
       this.webex.logger.log('getListOfTeams api success.');
@@ -115,14 +115,14 @@ export default class AgentConfigService {
     try {
       let URL = '';
       if (filter && filter.length > 0)
-        URL = `${this.wccAPIURL}organization/${this.orgId}/team?page=${page}&pageSize=${pageSize}&filter=id=in=${filter}&attributes=${attributes}`;
+        URL = `${this.wccAPIURL}organization/${this.orgId}/v2/auxiliary-code?page=${page}&pageSize=${pageSize}&filter=id=in=${filter}&attributes=${attributes}`;
       else
-        URL = `${this.wccAPIURL}organization/${this.orgId}/team?page=${page}&pageSize=${pageSize}&attributes=${attributes}`;
+        URL = `${this.wccAPIURL}organization/${this.orgId}/v2/auxiliary-code?page=${page}&pageSize=${pageSize}&attributes=${attributes}`;
 
-      const response = await this.requestInstance.request(URL, HTTP_METHODS.GET);
+      const response = await this.httpReq.request(URL, HTTP_METHODS.GET);
 
       if (response.statusCode !== 200) {
-        throw new Error(`getListOfAuxCodes api failed. Error: ${response}`);
+        Promise.reject(response);
       }
 
       this.webex.logger.log('getListOfAuxCodes api success.');

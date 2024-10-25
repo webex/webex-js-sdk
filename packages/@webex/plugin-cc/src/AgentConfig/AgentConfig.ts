@@ -1,13 +1,7 @@
 /* eslint-disable no-console */
 import {IAgentConfig, WORK_TYPE_CODE} from './types';
 import AgentConfigService from '../AgentConfigService/AgentConfigService';
-import {
-  DesktopProfileResponse,
-  ListAuxCodesResponse,
-  Team,
-  AgentResponse,
-  AuxCode,
-} from '../AgentConfigService/types';
+import {Team, AuxCode} from '../AgentConfigService/types';
 import {WebexSDK} from '../types';
 import {DEFAULT_ATTRIBUTES, DEFAULT_PAGE, DEFAULT_PAGE_SIZE} from './constants';
 
@@ -39,7 +33,7 @@ export default class AgentConfig {
 
   public async getAgentProfile(): Promise<IAgentConfig> {
     try {
-      const orgId: string = this.webex.internal.device.orgId;
+      const orgId = this.webex.internal.device.orgId;
 
       const agentConfigService = new AgentConfigService(
         this.agentId,
@@ -48,15 +42,20 @@ export default class AgentConfig {
         this.wccAPIURL
       );
 
-      const agent: AgentResponse = await agentConfigService.getUserUsingCI();
-      this.agentProfile.agentId = this.agentId;
-      this.agentProfile.agentFirstName = agent.firstName;
-      this.agentProfile.agentLastName = agent.lastName;
-      this.agentProfile.agentProfileId = agent.agentProfileId;
-      this.agentProfile.agentMailId = agent.email;
+      const agent = await agentConfigService.getUserUsingCI();
+      const {firstName, lastName, agentProfileId, email} = agent;
+      this.agentProfile = {
+        ...this.agentProfile,
+        agentId: this.agentId,
+        agentFirstName: firstName,
+        agentLastName: lastName,
+        agentProfileId,
+        agentMailId: email,
+      };
 
-      const agentDesktopProfile: DesktopProfileResponse =
-        await agentConfigService.getDesktopProfileById(agent.agentProfileId);
+      const agentDesktopProfile = await agentConfigService.getDesktopProfileById(
+        agent.agentProfileId
+      );
 
       this.agentProfile.loginVoiceOptions = agentDesktopProfile.loginVoiceOptions;
 
@@ -76,7 +75,7 @@ export default class AgentConfig {
 
       // Call the below two APIs parallel to optimise the Performance.
 
-      const [teamsList, auxCodesList]: [Team, ListAuxCodesResponse] = await Promise.all([
+      const [teamsList, auxCodesList] = await Promise.all([
         agentConfigService.getListOfTeams(
           DEFAULT_PAGE,
           DEFAULT_PAGE_SIZE,
@@ -116,7 +115,7 @@ export default class AgentConfig {
         agentDesktopProfile.accessIdleCode !== 'ALL' &&
         agentDesktopProfile.accessWrapUpCode === 'ALL'
       ) {
-        this.agentProfile.idleCodes = this.agentProfile.wrapUpCodes.filter(
+        this.agentProfile.idleCodes = this.agentProfile.idleCodes.filter(
           (auxCode) => auxCode.workTypeCode === WORK_TYPE_CODE.IDLE_CODE
         );
       }
@@ -125,7 +124,7 @@ export default class AgentConfig {
 
       return Promise.resolve(this.agentProfile);
     } catch (error) {
-      return Promise.reject(new Error(`Error while fetching agent profile, ${error}`));
+      return Promise.reject(new Error(`Fetching Agent Profile failed: ${error.message}`));
     }
   }
 }

@@ -49,20 +49,20 @@ const mockAuxCodesResponse: ListAuxCodesResponse = {
 
 describe('AgentConfig', () => {
   let agentConfig: AgentConfig;
-  let getUserUsingCIMock: jest.SpyInstance;
-  let getDesktopProfileByIdMock: jest.SpyInstance;
-  let getListOfTeamsMock: jest.SpyInstance;
-  let getListOfAuxCodesMock: jest.SpyInstance;
+  let getUserUsingCISpy: jest.SpyInstance;
+  let getDesktopProfileByIdSpy: jest.SpyInstance;
+  let getListOfTeamsSpy: jest.SpyInstance;
+  let getListOfAuxCodesSpy: jest.SpyInstance;
 
   beforeEach(() => {
     jest.clearAllMocks();
     agentConfig = new AgentConfig('agent123', mockWebex, 'http://api.url');
 
     // Mocking methods of AgentConfigService
-    getUserUsingCIMock = jest.spyOn(AgentConfigService.prototype, 'getUserUsingCI').mockResolvedValue(mockAgentResponse);
-    getDesktopProfileByIdMock = jest.spyOn(AgentConfigService.prototype, 'getDesktopProfileById').mockResolvedValue(mockDesktopProfileResponse);
-    getListOfTeamsMock = jest.spyOn(AgentConfigService.prototype, 'getListOfTeams').mockResolvedValue(mockTeamsListResponse);
-    getListOfAuxCodesMock = jest.spyOn(AgentConfigService.prototype, 'getListOfAuxCodes').mockResolvedValue(mockAuxCodesResponse);
+    getUserUsingCISpy = jest.spyOn(AgentConfigService.prototype, 'getUserUsingCI').mockResolvedValue(mockAgentResponse);
+    getDesktopProfileByIdSpy = jest.spyOn(AgentConfigService.prototype, 'getDesktopProfileById').mockResolvedValue(mockDesktopProfileResponse);
+    getListOfTeamsSpy= jest.spyOn(AgentConfigService.prototype, 'getListOfTeams').mockResolvedValue(mockTeamsListResponse);
+    getListOfAuxCodesSpy = jest.spyOn(AgentConfigService.prototype, 'getListOfAuxCodes').mockResolvedValue(mockAuxCodesResponse);
   });
 
   it('should fetch agent profile successfully', async () => {
@@ -80,14 +80,14 @@ describe('AgentConfig', () => {
 
     const result = await agentConfig.getAgentProfile();
     expect(result).toEqual(expectedProfile);
-    expect(getUserUsingCIMock).toHaveBeenCalledTimes(1);
-    expect(getDesktopProfileByIdMock).toHaveBeenCalledTimes(1);
-    expect(getListOfTeamsMock).toHaveBeenCalledTimes(1);
-    expect(getListOfAuxCodesMock).toHaveBeenCalledTimes(1);
+    expect(getUserUsingCISpy).toHaveBeenCalledOnceWith;
+    expect(getDesktopProfileByIdSpy).toHaveBeenCalledOnceWith;
+    expect(getListOfTeamsSpy).toHaveBeenCalledOnceWith;
+    expect(getListOfAuxCodesSpy).toHaveBeenCalledOnceWith;
   });
 
   it('should handle errors when fetching agent profile', async () => {
-    getUserUsingCIMock.mockRejectedValue(new Error('Network error'));
+    getUserUsingCISpy.mockRejectedValue(new Error('Network error'));
 
     await expect(agentConfig.getAgentProfile()).rejects.toThrow(
       'Error while fetching agent profile, Error: Network error'
