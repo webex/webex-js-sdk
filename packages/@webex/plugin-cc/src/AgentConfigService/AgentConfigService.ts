@@ -78,11 +78,12 @@ export default class AgentConfigService {
     attributes: string[]
   ): Promise<Team> {
     try {
-      let URL = '';
-      if (filter && filter.length > 0)
-        URL = `${this.wccAPIURL}organization/${this.orgId}/team?page=${page}&pageSize=${pageSize}&filter=id=in=${filter}&attributes=${attributes}`;
-      else
-        URL = `${this.wccAPIURL}organization/${this.orgId}/team?page=${page}&pageSize=${pageSize}&attributes=${attributes}`;
+      const URL = `${this.wccAPIURL}organization/${
+        this.orgId
+      }/team?page=${page}&pageSize=${pageSize}${
+        filter && filter.length > 0 ? `&filter=id=in=${filter}` : ''
+      }&attributes=${attributes}`;
+
       const response = await this.httpReq.request(URL, HTTP_METHODS.GET);
 
       if (response.statusCode !== 200) {
@@ -113,11 +114,11 @@ export default class AgentConfigService {
     attributes: string[]
   ): Promise<ListAuxCodesResponse> {
     try {
-      let URL = '';
-      if (filter && filter.length > 0)
-        URL = `${this.wccAPIURL}organization/${this.orgId}/v2/auxiliary-code?page=${page}&pageSize=${pageSize}&filter=id=in=${filter}&attributes=${attributes}`;
-      else
-        URL = `${this.wccAPIURL}organization/${this.orgId}/v2/auxiliary-code?page=${page}&pageSize=${pageSize}&attributes=${attributes}`;
+      const URL = `${this.wccAPIURL}organization/${
+        this.orgId
+      }/v2/auxiliary-code?page=${page}&pageSize=${pageSize}${
+        filter && filter.length > 0 ? `&filter=id=in=${filter}` : ''
+      }&attributes=${attributes}`;
 
       const response = await this.httpReq.request(URL, HTTP_METHODS.GET);
 
