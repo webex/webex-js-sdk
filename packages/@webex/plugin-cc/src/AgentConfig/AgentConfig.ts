@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 import {IAgentConfig, WORK_TYPE_CODE} from './types';
 import AgentConfigService from '../AgentConfigService/AgentConfigService';
 import {Team, AuxCode} from '../AgentConfigService/types';
@@ -87,7 +88,14 @@ export default class AgentConfig {
         ),
       ]);
 
-      this.agentProfile.teams.push(teamsList);
+      const teams = Array.isArray(teamsList)
+        ? teamsList.map((team: Team) => ({
+            id: team.id,
+            name: team.name,
+          }))
+        : [];
+
+      this.agentProfile.teams.push(...teams);
 
       this.agentProfile.wrapUpCodes = auxCodesList.data.filter(
         (auxCode) => auxCode.workTypeCode === WORK_TYPE_CODE.WRAP_UP_CODE

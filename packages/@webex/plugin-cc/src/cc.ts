@@ -98,7 +98,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           this.$webex.logger.log(
             `Agent config fetch successfully. file: ${CC_FILE} method: ${this.register.name}`
           );
-          this.handleEvent(REGISTER_EVENT, `Success: Agent Profile is ${this.agentConfig}`);
+          this.handleEvent(
+            REGISTER_EVENT,
+            `Success: Agent Profile is ${JSON.stringify(this.agentConfig)}`
+          );
           break;
         }
         default:
