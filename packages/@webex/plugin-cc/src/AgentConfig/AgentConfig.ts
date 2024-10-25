@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 import {IAgentConfig, WORK_TYPE_CODE} from './types';
 import AgentConfigService from '../AgentConfigService/AgentConfigService';
 import {Team, AuxCode} from '../AgentConfigService/types';
