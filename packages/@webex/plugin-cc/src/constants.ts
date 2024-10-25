@@ -3,5 +3,7 @@ export const WCC_API_GATEWAY = 'wcc-api-gateway';
 export const EVENT = 'event';
 export const READY = 'ready';
 export const SUBSCRIBE_API = 'v1/notification/subscribe';
+export const LOGIN_API = 'v1/agents/login';
+export const AGENT = 'agent';
 export const CC_FILE = 'cc';
 export const WEBSOCKET_EVENT_TIMEOUT = 20000;

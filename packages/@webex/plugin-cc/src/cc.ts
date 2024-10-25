@@ -21,6 +21,7 @@ import {
 } from './constants';
 import IWebSocket from './WebSocket/types';
 import WebSocket from './WebSocket/WebSocket';
+import Agent from './Agent/Agent';
 
 const REGISTER_EVENT = 'register';
 
@@ -33,6 +34,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   webSocket: IWebSocket;
   ciUserId: string;
   registered = false;
+  agent: Agent;
   eventHandlers: Map<
     string,
     {resolve: (data: any) => void; reject: (error: any) => void; timeoutId: NodeJS.Timeout}
@@ -58,6 +60,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    */
   public async register(): Promise<IAgentProfile> {
     this.wccApiUrl = this.$webex.internal.services.get(WCC_API_GATEWAY);
+    this.agent = new Agent(this.$webex, this.wccApiUrl);
+
     this.listenForWebSocketEvents();
 
     return new Promise((resolve, reject) => {
