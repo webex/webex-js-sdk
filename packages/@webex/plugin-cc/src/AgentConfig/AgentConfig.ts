@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 import {IAgentConfig, WORK_TYPE_CODE} from './types';
 import AgentConfigService from '../AgentConfigService/AgentConfigService';
 import {Team, AuxCode} from '../AgentConfigService/types';
@@ -71,8 +70,6 @@ export default class AgentConfig {
         auxCodeFilter.push(agentDesktopProfile.idleCodes);
       }
 
-      console.log('AUX CODE FILTER', auxCodeFilter);
-
       // Call the below two APIs parallel to optimise the Performance.
 
       const [teamsList, auxCodesList] = await Promise.all([
@@ -89,9 +86,6 @@ export default class AgentConfig {
           DEFAULT_ATTRIBUTES
         ),
       ]);
-      console.log('teamsList', teamsList);
-      console.log('auxCodesList', auxCodesList);
-      console.log('agentProfile is', this.agentProfile);
 
       this.agentProfile.teams.push(teamsList);
 
@@ -101,8 +95,6 @@ export default class AgentConfig {
       this.agentProfile.idleCodes = auxCodesList.data.filter(
         (auxCode) => auxCode.workTypeCode === WORK_TYPE_CODE.IDLE_CODE
       );
-
-      console.log('agentProfile is -----', this.agentProfile);
 
       if (
         agentDesktopProfile.accessIdleCode === 'ALL' &&
@@ -119,8 +111,6 @@ export default class AgentConfig {
           (auxCode) => auxCode.workTypeCode === WORK_TYPE_CODE.IDLE_CODE
         );
       }
-
-      console.log('final agentProfile is -----', this.agentProfile);
 
       return Promise.resolve(this.agentProfile);
     } catch (error) {
