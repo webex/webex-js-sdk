@@ -48,14 +48,9 @@ export interface IAgentProfile {
   agentId: string;
 
   /**
-   * The first name of the agent.
+   * The name of the agent.
    */
-  agentFirstName: string;
-
-  /**
-   * The last name of the agent.
-   */
-  agentLastName: string;
+  name: string;
 
   /**
    * Identifier for a Desktop Profile.

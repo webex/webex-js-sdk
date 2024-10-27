@@ -46,8 +46,7 @@ export default class AgentConfig {
       this.agentProfile = {
         ...this.agentProfile,
         agentId: this.agentId,
-        agentFirstName: firstName,
-        agentLastName: lastName,
+        name: `${firstName} ${lastName}`,
         agentProfileId,
         agentMailId: email,
       };
