@@ -31,7 +31,7 @@ describe('AgentConfigService', () => {
           lastName: 'Doe',
           agentProfileId: 'profile123',
           email: 'john.doe@example.com',
-          teamIds: ['team1', 'team2'],
+          teamIds: ['123', '456'],
         },
       };
       (mockWebexSDK.request as jest.Mock).mockResolvedValue(mockResponse);

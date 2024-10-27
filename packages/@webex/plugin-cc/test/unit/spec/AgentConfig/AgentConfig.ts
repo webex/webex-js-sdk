@@ -34,9 +34,7 @@ const mockDesktopProfileResponse: DesktopProfileResponse = {
   idleCodes: [],
 };
 
-const mockTeamsListResponse: Team = {
-  data: [{ id: 'team1', name: 'Team 1' }],
-};
+const mockTeamsListResponse: Team = [{ id: '123', name: 'Team 1' }];
 
 const mockAuxCodesResponse: ListAuxCodesResponse = {
   data: [
@@ -65,28 +63,29 @@ describe('AgentConfig', () => {
   it('should fetch agent profile successfully', async () => {
     const expectedProfile: IAgentProfile = {
       agentId: 'agent123',
-      name: 'John',
+      name: 'John Doe',
       agentProfileId: 'profile123',
       agentMailId: 'john.doe@example.com',
-      teams: [mockTeamsListResponse],
+      teams: mockTeamsListResponse.id,
       loginVoiceOptions: ['option1', 'option2'],
       wrapUpCodes: [{ id: 'aux1', workTypeCode: WORK_TYPE_CODE.WRAP_UP_CODE }],
       idleCodes: [{ id: 'aux2', workTypeCode: WORK_TYPE_CODE.IDLE_CODE }],
     };
 
+    expect(getUserUsingCISpy).toHaveBeenCalledOnceWith;
+    expect(getDesktopProfileByIdSpy).toHaveBeenCalledOnceWith;
+    expect(getListOfTeamsSpy).toHaveBeenCalledOnceWith;
+    expect(getListOfAuxCodesSpy).toHaveBeenCalledOnceWith;
+
     const result = await agentConfig.getAgentProfile();
     expect(result).toEqual(expectedProfile);
-    expect(getUserUsingCISpy).toHaveBeenCalledTimes(1);
-    expect(getDesktopProfileByIdSpy).toHaveBeenCalledTimes(1);
-    expect(getListOfTeamsSpy).toHaveBeenCalledTimes(1);
-    expect(getListOfAuxCodesSpy).toHaveBeenCalledTimes(1);
   });
 
   it('should handle errors when fetching agent profile', async () => {
     getUserUsingCISpy.mockRejectedValue(new Error('Network error'));
 
     await expect(agentConfig.getAgentProfile()).rejects.toThrow(
-      'Error while fetching agent profile, Error: Network error'
+      'Fetching Agent Profile failed: Network error'
     );
   });
 
@@ -94,7 +93,7 @@ describe('AgentConfig', () => {
     getDesktopProfileByIdSpy.mockRejectedValue(new Error('API error'));
 
     await expect(agentConfig.getAgentProfile()).rejects.toThrow(
-      'Error while fetching agent profile, Error: API error'
+      'Fetching Agent Profile failed: API error'
     );
   });
 
@@ -102,7 +101,7 @@ describe('AgentConfig', () => {
     getListOfTeamsSpy.mockRejectedValue(new Error('API error'));
 
     await expect(agentConfig.getAgentProfile()).rejects.toThrow(
-      'Error while fetching agent profile, Error: API error'
+      'Fetching Agent Profile failed: API error'
     );
   });
 
@@ -110,7 +109,7 @@ describe('AgentConfig', () => {
     getListOfAuxCodesSpy.mockRejectedValue(new Error('API error'));
 
     await expect(agentConfig.getAgentProfile()).rejects.toThrow(
-      'Error while fetching agent profile, Error: API error'
+      'Fetching Agent Profile failed: API error'
     );
   });
 
@@ -136,7 +135,7 @@ describe('AgentConfig', () => {
 
     const expectedProfile: IAgentProfile = {
       agentId: 'agent123',
-      name: 'John',
+      name: 'John Doe',
       agentProfileId: 'profile123',
       agentMailId: 'john.doe@example.com',
       teams: [mockTeamsListResponse],
@@ -145,15 +144,16 @@ describe('AgentConfig', () => {
       idleCodes: [{ id: 'aux2', workTypeCode: WORK_TYPE_CODE.IDLE_CODE }],
     };
 
+    expect(getUserUsingCISpy).toHaveBeenCalledOnceWith;
+    expect(getDesktopProfileByIdSpy).toHaveBeenCalledOnceWith;
+    expect(getListOfTeamsSpy).toHaveBeenCalledOnceWith;
+    expect(getListOfAuxCodesSpy).toHaveBeenCalledOnceWith;
+
     const result = await agentConfig.getAgentProfile();
     expect(result).toEqual(expectedProfile);
-    expect(getUserUsingCISpy).toHaveBeenCalledTimes(1);
-    expect(getDesktopProfileByIdSpy).toHaveBeenCalledTimes(1);
-    expect(getListOfTeamsSpy).toHaveBeenCalledTimes(1);
-    expect(getListOfAuxCodesSpy).toHaveBeenCalledTimes(1);
   });
 
-  it('should handle specific accessIdleCode and accessWrapUpCode', async () => {
+  it('should handle SPECIFIC accessIdleCode and accessWrapUpCode', async () => {
     const specificDesktopProfileResponse: DesktopProfileResponse = {
       loginVoiceOptions: ['option1', 'option2'],
       accessWrapUpCode: 'SPECIFIC',
@@ -175,7 +175,7 @@ describe('AgentConfig', () => {
 
     const expectedProfile: IAgentProfile = {
       agentId: 'agent123',
-      name: 'John',
+      name: 'John Doe',
       agentProfileId: 'profile123',
       agentMailId: 'john.doe@example.com',
       teams: [mockTeamsListResponse],
@@ -184,12 +184,13 @@ describe('AgentConfig', () => {
       idleCodes: [{ id: 'aux2', workTypeCode: WORK_TYPE_CODE.IDLE_CODE }],
     };
 
+    expect(getUserUsingCISpy).toHaveBeenCalledOnceWith;
+    expect(getDesktopProfileByIdSpy).toHaveBeenCalledOnceWith;
+    expect(getListOfTeamsSpy).toHaveBeenCalledOnceWith;
+    expect(getListOfAuxCodesSpy).toHaveBeenCalledOnceWith;
+
     const result = await agentConfig.getAgentProfile();
     expect(result).toEqual(expectedProfile);
-    expect(getUserUsingCISpy).toHaveBeenCalledTimes(1);
-    expect(getDesktopProfileByIdSpy).toHaveBeenCalledTimes(1);
-    expect(getListOfTeamsSpy).toHaveBeenCalledTimes(1);
-    expect(getListOfAuxCodesSpy).toHaveBeenCalledTimes(1);
   });
 
   it('should handle accessIdleCode as ALL and accessWrapUpCode as SPECIFIC', async () => {
@@ -214,7 +215,7 @@ describe('AgentConfig', () => {
 
     const expectedProfile: IAgentProfile = {
       agentId: 'agent123',
-      name: 'John',
+      name: 'John Doe',
       agentProfileId: 'profile123',
       agentMailId: 'john.doe@example.com',
       teams: [mockTeamsListResponse],
@@ -223,12 +224,13 @@ describe('AgentConfig', () => {
       idleCodes: [{ id: 'aux2', workTypeCode: WORK_TYPE_CODE.IDLE_CODE }],
     };
 
+    expect(getUserUsingCISpy).toHaveBeenCalledOnceWith;
+    expect(getDesktopProfileByIdSpy).toHaveBeenCalledOnceWith;
+    expect(getListOfTeamsSpy).toHaveBeenCalledOnceWith;
+    expect(getListOfAuxCodesSpy).toHaveBeenCalledOnceWith;
+
     const result = await agentConfig.getAgentProfile();
     expect(result).toEqual(expectedProfile);
-    expect(getUserUsingCISpy).toHaveBeenCalledTimes(1);
-    expect(getDesktopProfileByIdSpy).toHaveBeenCalledTimes(1);
-    expect(getListOfTeamsSpy).toHaveBeenCalledTimes(1);
-    expect(getListOfAuxCodesSpy).toHaveBeenCalledTimes(1);
   });
 
   it('should handle accessIdleCode as SPECIFIC and accessWrapUpCode as ALL', async () => {
@@ -253,7 +255,7 @@ describe('AgentConfig', () => {
 
     const expectedProfile: IAgentProfile = {
       agentId: 'agent123',
-      name: 'John',
+      name: 'John Doe',
       agentProfileId: 'profile123',
       agentMailId: 'john.doe@example.com',
       teams: [mockTeamsListResponse],
@@ -262,11 +264,12 @@ describe('AgentConfig', () => {
       idleCodes: [{ id: 'aux2', workTypeCode: WORK_TYPE_CODE.IDLE_CODE }],
     };
 
+    expect(getUserUsingCISpy).toHaveBeenCalledOnceWith
+    expect(getDesktopProfileByIdSpy).toHaveBeenCalledOnceWith;
+    expect(getListOfTeamsSpy).toHaveBeenCalledOnceWith;
+    expect(getListOfAuxCodesSpy).toHaveBeenCalledOnceWith;
+
     const result = await agentConfig.getAgentProfile();
     expect(result).toEqual(expectedProfile);
-    expect(getUserUsingCISpy).toHaveBeenCalledTimes(1);
-    expect(getDesktopProfileByIdSpy).toHaveBeenCalledTimes(1);
-    expect(getListOfTeamsSpy).toHaveBeenCalledTimes(1);
-    expect(getListOfAuxCodesSpy).toHaveBeenCalledTimes(1);
   });
 });
