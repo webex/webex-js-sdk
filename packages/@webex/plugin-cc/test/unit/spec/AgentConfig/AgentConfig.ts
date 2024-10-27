@@ -65,8 +65,7 @@ describe('AgentConfig', () => {
   it('should fetch agent profile successfully', async () => {
     const expectedProfile: IAgentProfile = {
       agentId: 'agent123',
-      agentFirstName: 'John',
-      agentLastName: 'Doe',
+      name: 'John',
       agentProfileId: 'profile123',
       agentMailId: 'john.doe@example.com',
       teams: [mockTeamsListResponse],
@@ -137,8 +136,7 @@ describe('AgentConfig', () => {
 
     const expectedProfile: IAgentProfile = {
       agentId: 'agent123',
-      agentFirstName: 'John',
-      agentLastName: 'Doe',
+      name: 'John',
       agentProfileId: 'profile123',
       agentMailId: 'john.doe@example.com',
       teams: [mockTeamsListResponse],
@@ -177,8 +175,7 @@ describe('AgentConfig', () => {
 
     const expectedProfile: IAgentProfile = {
       agentId: 'agent123',
-      agentFirstName: 'John',
-      agentLastName: 'Doe',
+      name: 'John',
       agentProfileId: 'profile123',
       agentMailId: 'john.doe@example.com',
       teams: [mockTeamsListResponse],
@@ -217,8 +214,7 @@ describe('AgentConfig', () => {
 
     const expectedProfile: IAgentProfile = {
       agentId: 'agent123',
-      agentFirstName: 'John',
-      agentLastName: 'Doe',
+      name: 'John',
       agentProfileId: 'profile123',
       agentMailId: 'john.doe@example.com',
       teams: [mockTeamsListResponse],
@@ -257,8 +253,7 @@ describe('AgentConfig', () => {
 
     const expectedProfile: IAgentProfile = {
       agentId: 'agent123',
-      agentFirstName: 'John',
-      agentLastName: 'Doe',
+      name: 'John',
       agentProfileId: 'profile123',
       agentMailId: 'john.doe@example.com',
       teams: [mockTeamsListResponse],
