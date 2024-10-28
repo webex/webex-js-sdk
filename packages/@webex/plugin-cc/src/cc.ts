@@ -14,7 +14,7 @@ import {READY, CC_FILE} from './constants';
 import Agent from './features/Agent';
 import AsyncRequestHandler from './services/AsyncRequestHandler';
 import WebRTCCalling from './WebRTCCalling';
-import {StationLoginSuccess} from './services/types';
+import {LogoutSuccess, StationLoginSuccess} from './services/types';
 
 export default class ContactCenter extends WebexPlugin implements IContactCenter {
   namespace = 'cc';
@@ -131,7 +131,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * @returns Promise<any>
    * @throws Error
    */
-  public async stationLogout(options: {logoutReason: string}): Promise<any> {
+  public async stationLogout(options: {logoutReason: string}): Promise<LogoutSuccess> {
     try {
       const response = await this.agent.stationLogout(options);
 

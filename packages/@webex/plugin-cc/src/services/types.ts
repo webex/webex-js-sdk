@@ -228,11 +228,15 @@ export interface StationLoginSuccess {
   type: 'AgentStationLoginSuccess';
 }
 
-export interface AgentLoginFailure {
+export interface LogoutSuccess {
+  eventType: 'AgentDesktopMessage';
   agentId: string;
-  orgId: string;
-  reason: string;
-  reasonCode: number;
   trackingId: string;
-  type: string;
+  agentSessionId: string;
+  orgId: string;
+  status: string;
+  subStatus: string;
+  loggedOutBy?: string;
+  roles?: string[];
+  type: 'AgentLogoutSuccess';
 }

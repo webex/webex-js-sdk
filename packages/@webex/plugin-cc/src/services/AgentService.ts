@@ -1,7 +1,7 @@
 import {STATION_LOGIN_TYPE, WebexSDK, HTTP_METHODS} from '../types';
 import {AGENT, LOGIN_API, LOGOUT_API, WCC_API_GATEWAY, WEB_RTC_PREFIX} from './constants';
 import AsyncRequestHandler from './AsyncRequestHandler';
-import {StationLoginSuccess} from './types';
+import {LogoutSuccess, StationLoginSuccess} from './types';
 import {POST_AUTH} from '../constants';
 
 export default class AgentService {
@@ -61,7 +61,7 @@ export default class AgentService {
     }
   }
 
-  public async stationLogout(options: {logoutReason: string}): Promise<any> {
+  public async stationLogout(options: {logoutReason: string}): Promise<LogoutSuccess> {
     try {
       const {logoutReason} = options;
       const payload = {

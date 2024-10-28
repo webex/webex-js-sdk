@@ -1,7 +1,7 @@
 import {STATION_LOGIN_TYPE, WebexSDK} from '../types';
 import AsyncRequestHandler from '../services/AsyncRequestHandler';
 import AgentService from '../services/AgentService';
-import {StationLoginSuccess} from '../services/types';
+import {LogoutSuccess, StationLoginSuccess} from '../services/types';
 
 export default class Agent {
   private webex: WebexSDK;
@@ -37,7 +37,7 @@ export default class Agent {
     }
   }
 
-  public async stationLogout(options: {logoutReason: string}): Promise<any> {
+  public async stationLogout(options: {logoutReason: string}): Promise<LogoutSuccess> {
     const {logoutReason} = options;
 
     try {
