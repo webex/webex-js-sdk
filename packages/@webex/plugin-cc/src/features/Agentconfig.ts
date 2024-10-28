@@ -3,6 +3,7 @@ import {IAgentProfile, WORK_TYPE_CODE} from './types';
 import {WebexSDK} from '../types';
 import {AuxCode, Team} from '../services/types';
 import AgentConfigService from '../services/AgentConfigService';
+import HttpRequest from '../services/HttpRequest';
 
 export default class AgentConfig {
   agentId: string;
@@ -13,10 +14,12 @@ export default class AgentConfig {
   } as IAgentProfile;
 
   webex: WebexSDK;
+  httpRequest: HttpRequest;
 
-  constructor(agentId: string, webex: WebexSDK) {
+  constructor(agentId: string, webex: WebexSDK, httpRequest: HttpRequest) {
     this.agentId = agentId;
     this.webex = webex;
+    this.httpRequest = httpRequest;
   }
 
   /**
@@ -30,7 +33,7 @@ export default class AgentConfig {
 
   public async getAgentProfile(): Promise<IAgentProfile> {
     try {
-      const agentConfigService = new AgentConfigService(this.agentId, this.webex);
+      const agentConfigService = new AgentConfigService(this.agentId, this.webex, this.httpRequest);
 
       const agent = await agentConfigService.getUserUsingCI();
       const {firstName, lastName, agentProfileId, email} = agent;

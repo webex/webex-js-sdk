@@ -12,7 +12,7 @@ import {
 } from './types';
 import {READY, CC_FILE} from './constants';
 import Agent from './features/Agent';
-import AsyncRequestHandler from './services/AsyncRequestHandler';
+import HttpRequest from './services/HttpRequest';
 import WebRTCCalling from './WebRTCCalling';
 import {LogoutSuccess, StationLoginSuccess} from './services/types';
 
@@ -22,7 +22,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   private $webex: WebexSDK;
   private agentConfig: IAgentProfile;
   private registered = false;
-  private asyncRequestHandler: AsyncRequestHandler;
+  private httpRequest: HttpRequest;
   private agent: Agent;
   private webRTCCalling: WebRTCCalling;
 
@@ -39,11 +39,11 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       /**
        * This is used for handling the async requests by sending webex.request and wait for corresponding websocket event.
        */
-      this.asyncRequestHandler = new AsyncRequestHandler({
+      this.httpRequest = new HttpRequest({
         webex: this.$webex,
       });
 
-      this.agent = new Agent(this.$webex, this.asyncRequestHandler);
+      this.agent = new Agent(this.$webex, this.httpRequest);
     });
   }
 
@@ -75,12 +75,12 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     };
 
     try {
-      const welcomeData: WelcomeEvent = await this.asyncRequestHandler.subscribeNotifications({
+      const welcomeData: WelcomeEvent = await this.httpRequest.subscribeNotifications({
         body: connectionConfig,
       });
 
       const agentId = welcomeData.agentId;
-      const agentConfig = new AgentConfig(agentId, this.$webex);
+      const agentConfig = new AgentConfig(agentId, this.$webex, this.httpRequest);
       this.agentConfig = await agentConfig.getAgentProfile();
       this.$webex.logger.log(
         `agent config is: ${JSON.stringify(this.agentConfig)} file: ${CC_FILE} method: ${
@@ -99,7 +99,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   /**
    * This is used for agent login.
    * @param options
-   * @returns Promise<any>
+   * @returns Promise<StationLoginSuccess>
    * @throws Error
    */
   public async stationLogin(options: {
@@ -128,7 +128,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   /**
    * This is used for agent logout.
    * @param options
-   * @returns Promise<any>
+   * @returns Promise<LogoutSuccess>
    * @throws Error
    */
   public async stationLogout(options: {logoutReason: string}): Promise<LogoutSuccess> {

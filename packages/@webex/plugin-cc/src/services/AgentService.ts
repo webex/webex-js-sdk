@@ -1,16 +1,16 @@
 import {STATION_LOGIN_TYPE, WebexSDK, HTTP_METHODS} from '../types';
 import {AGENT, LOGIN_API, LOGOUT_API, WCC_API_GATEWAY, WEB_RTC_PREFIX} from './constants';
-import AsyncRequestHandler from './AsyncRequestHandler';
+import HttpRequest from './HttpRequest';
 import {LogoutSuccess, StationLoginSuccess} from './types';
 import {POST_AUTH} from '../constants';
 
 export default class AgentService {
   private webex: WebexSDK;
-  private asyncRequestHandler: AsyncRequestHandler;
+  private httpRequest: HttpRequest;
 
-  constructor(webex: WebexSDK, asyncRequestHandler: AsyncRequestHandler) {
+  constructor(webex: WebexSDK, httpRequest: HttpRequest) {
     this.webex = webex;
-    this.asyncRequestHandler = asyncRequestHandler;
+    this.httpRequest = httpRequest;
   }
 
   private getDeviceId(loginOption: string, dialNumber: string, agentId: string): string {
@@ -44,7 +44,7 @@ export default class AgentService {
         deviceId: this.getDeviceId(loginOption, dialNumber, agentId),
       };
 
-      const data = await this.asyncRequestHandler.sendRequestWithEvent({
+      const data = await this.httpRequest.sendRequestWithEvent({
         url: `${wccAPIURL}${LOGIN_API}`,
         method: HTTP_METHODS.POST,
         payload,
@@ -69,7 +69,7 @@ export default class AgentService {
       };
       await this.webex.internal.services.waitForCatalog(POST_AUTH);
       const wccAPIURL = this.webex.internal.services.get(WCC_API_GATEWAY);
-      const data = await this.asyncRequestHandler.sendRequestWithEvent({
+      const data = await this.httpRequest.sendRequestWithEvent({
         url: `${wccAPIURL}${LOGOUT_API}`,
         method: HTTP_METHODS.PUT,
         payload,

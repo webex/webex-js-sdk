@@ -8,7 +8,7 @@ import { IAgentProfile } from 'packages/@webex/plugin-cc/src/features/types';
 
 describe('webex.cc', () => {
   let webex;
-  let asyncRequestHandlerMock;
+  let httpRequestMock;
   let webRTCCallingMock;
 
   beforeEach(() => {
@@ -27,14 +27,14 @@ describe('webex.cc', () => {
     };
 
     // Manually mock the necessary methods
-    asyncRequestHandlerMock = {
+    httpRequestMock = {
       
     };
 
     webRTCCallingMock = {
     }
 
-    webex.cc.asyncRequestHandler = asyncRequestHandlerMock;
+    webex.cc.httpRequest = httpRequestMock;
     webex.cc.webRTCCallingMock = webRTCCallingMock
 
   });

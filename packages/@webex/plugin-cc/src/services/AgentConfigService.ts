@@ -1,7 +1,7 @@
 import {WebexSDK, HTTP_METHODS} from '../types';
 import {DesktopProfileResponse, ListAuxCodesResponse, Team, AgentResponse} from './types';
-import HttpRequest from './HttpRequest';
 import {WCC_API_GATEWAY} from './constants';
+import HttpRequest from './HttpRequest';
 
 export default class AgentConfigService {
   agentId: string;
@@ -10,12 +10,12 @@ export default class AgentConfigService {
   wccAPIURL: string;
   httpReq: HttpRequest;
 
-  constructor(agentId: string, webex: WebexSDK) {
+  constructor(agentId: string, webex: WebexSDK, httpRequest: HttpRequest) {
     this.agentId = agentId;
     this.webex = webex;
     this.orgId = this.webex.internal.device.orgId;
     this.wccAPIURL = this.webex.internal.services.get(WCC_API_GATEWAY);
-    this.httpReq = new HttpRequest(this.webex);
+    this.httpReq = httpRequest;
   }
 
   /**

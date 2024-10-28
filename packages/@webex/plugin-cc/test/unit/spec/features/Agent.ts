@@ -1,5 +1,5 @@
 import { STATION_LOGIN_TYPE, WebexSDK } from '../../../../src/types';
-import AsyncRequestHandler from '../../../../src/services/AsyncRequestHandler';
+import httpRequest from '../../../../src/services/httpRequest';
 import AgentService from '../../../../src/services/AgentService';
 import Agent from '../../../../src/features/Agent';
 
@@ -7,7 +7,7 @@ jest.mock('../../../../src/services/AgentService');
 
 describe('Agent', () => {
   let webex: WebexSDK;
-  let asyncRequestHandler: AsyncRequestHandler;
+  let httpRequest: httpRequest;
   let agent: Agent;
   let agentServiceMock: jest.Mocked<AgentService>;
 
@@ -23,9 +23,9 @@ describe('Agent', () => {
       },
     } as unknown as WebexSDK;
 
-    asyncRequestHandler = {} as AsyncRequestHandler;
-    agentServiceMock = new AgentService(webex, asyncRequestHandler) as jest.Mocked<AgentService>;
-    agent = new Agent(webex, asyncRequestHandler);
+    httpRequest = {} as httpRequest;
+    agentServiceMock = new AgentService(webex, httpRequest) as jest.Mocked<AgentService>;
+    agent = new Agent(webex, httpRequest);
     agent['agentService'] = agentServiceMock; // Replace the agentService with the mocked instance
   });
 

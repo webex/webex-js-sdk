@@ -1,17 +1,17 @@
 import {STATION_LOGIN_TYPE, WebexSDK} from '../types';
-import AsyncRequestHandler from '../services/AsyncRequestHandler';
+import HttpRequest from '../services/HttpRequest';
 import AgentService from '../services/AgentService';
 import {LogoutSuccess, StationLoginSuccess} from '../services/types';
 
 export default class Agent {
   private webex: WebexSDK;
   private agentService: AgentService;
-  private asyncRequestHandler: AsyncRequestHandler;
+  private httpRequest: HttpRequest;
 
-  constructor(webex: WebexSDK, asyncRequestHandler: AsyncRequestHandler) {
+  constructor(webex: WebexSDK, httpRequest: HttpRequest) {
     this.webex = webex;
-    this.asyncRequestHandler = asyncRequestHandler;
-    this.agentService = new AgentService(webex, this.asyncRequestHandler);
+    this.httpRequest = httpRequest;
+    this.agentService = new AgentService(webex, this.httpRequest);
   }
 
   public async stationLogin(options: {
