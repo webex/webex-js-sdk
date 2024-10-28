@@ -82,7 +82,7 @@ export default class AgentService {
     } catch (error) {
       this.webex.logger.error(`Error during station logout: ${error}`);
 
-      return Promise.reject(new Error('Error while performing agent logout', error));
+      return Promise.reject(error);
     }
   }
 }

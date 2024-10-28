@@ -48,7 +48,7 @@ export default class Agent {
 
       return response;
     } catch (error) {
-      return Promise.reject(new Error('Error while performing agent Logout', error.message));
+      return Promise.reject(error);
     }
   }
 }

@@ -27,7 +27,7 @@ export default class WebRTCCalling {
 
     return new Promise<void>((resolve, reject) => {
       const timeout = setTimeout(() => {
-        reject(new Error('Registration timed out'));
+        reject(new Error('Calling SDK Registration timed out'));
       }, TIMEOUT_DURATION);
 
       this.line.on(LINE_EVENTS.REGISTERED, (deviceInfo: any) => {
@@ -35,7 +35,6 @@ export default class WebRTCCalling {
         this.webex.logger.log(
           `WxCC-SDK: Desktop registered successfully, mobiusDeviceId: ${deviceInfo.mobiusDeviceId}`
         );
-        // Emit the final register success event from CC SDK from here for Desktop Login
         resolve();
       });
 

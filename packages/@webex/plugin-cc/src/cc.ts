@@ -121,7 +121,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
       return loginResponse;
     } catch (error) {
-      return Promise.reject(new Error('Error while performing agent login', error));
+      return Promise.reject(error);
     }
   }
 

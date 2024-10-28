@@ -132,7 +132,7 @@ class AsyncRequestHandler {
       });
     } catch (error) {
       this.webex.logger.error(`Error sending service request: ${error}`);
-      throw new Error(`Error while performing service request: ${error.message}`);
+      throw error;
     }
   }
 }
