@@ -3290,6 +3290,20 @@ export default class Meeting extends StatelessWebexPlugin {
       }
     });
 
+    this.locusInfo.on(LOCUSINFO.EVENTS.SELF_MEETING_STEP_AWAY_CHANGED, (payload) => {
+      Trigger.trigger(
+        this,
+        {
+          file: 'meeting/index',
+          function: 'setUpLocusInfoSelfListener',
+        },
+        EVENT_TRIGGERS.MEETING_STEP_AWAY_UPDATE
+      );
+      if (this.mediaProperties.videoStream) {
+        this.setSendStepAway(MediaType.VideoMain, payload.brb.enabled);
+      }
+    });
+
     this.locusInfo.on(LOCUSINFO.EVENTS.SELF_ROLES_CHANGED, (payload) => {
       const isModeratorOrCohost =
         payload.newRoles?.includes(SELF_ROLES.MODERATOR) ||
@@ -3490,6 +3504,28 @@ export default class Meeting extends StatelessWebexPlugin {
     }
 
     return this.members.admitMembers(memberIds, locusUrls);
+  }
+
+  /**
+   * Manages step away updates for the current participant.
+   *
+   * @param {boolean} enabled - Indicates whether the use is stepped away or not.
+   * @returns {Promise<void>} - A promise that resolves when the request is complete.
+   * @throws {Error} - Throws an error if the request fails.
+   */
+  public stepAway(enabled: boolean) {
+    return this.meetingRequest
+      .getStepAway({
+        enabled,
+        locusUrl: this.locusUrl,
+        deviceUrl: this.deviceUrl,
+        selfId: this.selfId,
+      })
+      .catch((error) => {
+        LoggerProxy.logger.error('Meeting:index#stepAway --> Error ', error);
+
+        return Promise.reject(error);
+      });
   }
 
   /**
@@ -8650,6 +8686,23 @@ export default class Meeting extends StatelessWebexPlugin {
     }
     if (this.isMultistream && this.mediaProperties.webrtcMediaConnection) {
       this.sendSlotManager.setNamedMediaGroups(mediaType, groups);
+    }
+  }
+
+  /**
+   * Sets the step away status for the specified media type.
+   *
+   * @param {MediaType} mediaType - The type of media (e.g., VideoMain).
+   * @param {boolean} enabled - Whether the step away status is enabled.
+   * @returns {void}
+   */
+  private setSendStepAway(mediaType: MediaType, enabled: boolean) {
+    if (mediaType !== MediaType.VideoMain) {
+      throw new Error(`cannot set send source state override which media type is ${mediaType}`);
+    }
+
+    if (this.isMultistream && this.mediaProperties.webrtcMediaConnection) {
+      this.sendSlotManager.setSourceStateOverride(mediaType, enabled ? 'away' : null);
     }
   }
 

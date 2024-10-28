@@ -38,7 +38,7 @@ const breakoutsList = document.getElementById('breakouts-list');
 const breakoutTable = document.getElementById('breakout-table');
 const breakoutHostOperation = document.getElementById('breakout-host-operation');
 const getStatsButton = document.getElementById('get-stats');
-const tcpReachabilityConfigElm = document.getElementById('enable-tcp-reachability'); 
+const tcpReachabilityConfigElm = document.getElementById('enable-tcp-reachability');
 const tlsReachabilityConfigElm = document.getElementById('enable-tls-reachability');
 
 const guestName = document.querySelector('#guest-name');
@@ -388,7 +388,7 @@ createMeetingSelectElm.addEventListener('change', (event) => {
   }
   else {
      notes.classList.add('hidden');
-    
+
   }
 });
 
@@ -950,7 +950,7 @@ function cleanUpMedia() {
       elem.srcObject.getTracks().forEach((track) => track.stop());
       // eslint-disable-next-line no-param-reassign
       elem.srcObject = null;
-      
+
       if(elem.id === "local-video") {
         clearVideoResolutionCheckInterval(localVideoResElm, localVideoResolutionInterval);
       }
@@ -1566,7 +1566,7 @@ async function stopStartVideo() {
       console.error(error);
     }
   }
-  
+
 }
 
 async function stopStartAudio() {
@@ -1608,7 +1608,7 @@ async function stopStartAudio() {
       console.error(error);
     }
   }
-  
+
 }
 
 function populateSourceDevices(mediaDevice) {
@@ -3328,6 +3328,26 @@ function toggleBreakout() {
     meeting.breakouts.toggleBreakout(enableBox.checked);
     document.getElementById('createBO').disabled = !enableBox.checked;
   }
+}
+
+function stepAwayTrue() {
+  const meeting = getCurrentMeeting();
+
+  meeting.stepAway(true).then((res) => {
+    console.log(`meeting.stepAway(true) done successfully with result: ${res}`);
+  }).catch((err) => {
+    console.log(`meeting.stepAway(true) done unsuccessfull with err: ${err}`);
+  });
+}
+
+function stepAwayFalse() {
+  const meeting = getCurrentMeeting();
+
+  meeting.stepAway(false).then((res) => {
+    console.log(`meeting.stepAway(false) done successfully with result: ${res}`);
+  }).catch((err) => {
+    console.log(`meeting.stepAway(false) done unsuccessfull with err: ${err}`);
+  });
 }
 
 const createAdmitDiv = () => {

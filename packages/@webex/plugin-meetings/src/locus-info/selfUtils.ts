@@ -66,6 +66,7 @@ SelfUtils.parse = (self: any, deviceId: string) => {
       breakoutSessions: SelfUtils.getBreakoutSessions(self),
       breakout: SelfUtils.getBreakout(self),
       interpretation: SelfUtils.getInterpretation(self),
+      brb: SelfUtils.getStepAway(self),
     };
   }
 
@@ -75,6 +76,7 @@ SelfUtils.parse = (self: any, deviceId: string) => {
 SelfUtils.getBreakoutSessions = (self) => self?.controls?.breakout?.sessions;
 SelfUtils.getBreakout = (self) => self?.controls?.breakout;
 SelfUtils.getInterpretation = (self) => self?.controls?.interpretation;
+SelfUtils.getStepAway = (self) => self?.controls?.brb;
 
 SelfUtils.getLayout = (self) =>
   Array.isArray(self?.controls?.layouts) ? self.controls.layouts[0].type : undefined;
@@ -128,6 +130,7 @@ SelfUtils.getSelves = (oldSelf, newSelf, deviceId) => {
   updates.isSharingBlockedChanged = previous?.isSharingBlocked !== current.isSharingBlocked;
   updates.breakoutsChanged = SelfUtils.breakoutsChanged(previous, current);
   updates.interpretationChanged = SelfUtils.interpretationChanged(previous, current);
+  updates.stepAwayChanged = SelfUtils.stepAwayChanged(previous, current);
 
   return {
     previous,
@@ -158,6 +161,9 @@ SelfUtils.breakoutsChanged = (previous, current) =>
 
 SelfUtils.interpretationChanged = (previous, current) =>
   !isEqual(previous?.interpretation, current?.interpretation) && !!current?.interpretation;
+
+SelfUtils.stepAwayChanged = (previous, current) =>
+  !isEqual(previous?.brb, current?.brb) && !!current?.brb;
 
 SelfUtils.isMediaInactive = (previous, current) => {
   if (
