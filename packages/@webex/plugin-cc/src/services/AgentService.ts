@@ -2,7 +2,6 @@ import {STATION_LOGIN_TYPE, WebexSDK, HTTP_METHODS} from '../types';
 import {AGENT, LOGIN_API, LOGOUT_API, WCC_API_GATEWAY, WEB_RTC_PREFIX} from './constants';
 import HttpRequest from './HttpRequest';
 import {LogoutSuccess, StationLoginSuccess} from './types';
-import {POST_AUTH} from '../constants';
 
 export default class AgentService {
   private webex: WebexSDK;
@@ -30,8 +29,6 @@ export default class AgentService {
     dialNumber: string;
   }): Promise<StationLoginSuccess> {
     try {
-      await this.webex.internal.services.waitForCatalog(POST_AUTH);
-      const wccAPIURL = this.webex.internal.services.get(WCC_API_GATEWAY);
       const {teamId, loginOption, dialNumber} = options;
       const payload = {
         dialNumber,
@@ -43,7 +40,8 @@ export default class AgentService {
       };
 
       const data = await this.httpRequest.sendRequestWithEvent({
-        url: `${wccAPIURL}${LOGIN_API}`,
+        service: WCC_API_GATEWAY,
+        resource: LOGIN_API,
         method: HTTP_METHODS.POST,
         payload,
         eventType: 'StationLogin',
@@ -55,7 +53,7 @@ export default class AgentService {
     } catch (error) {
       this.webex.logger.error(`Error during station login: ${error}`);
 
-      return Promise.reject(new Error('Error while performing agent login', error));
+      return Promise.reject(error);
     }
   }
 
@@ -65,10 +63,9 @@ export default class AgentService {
       const payload = {
         logoutReason,
       };
-      await this.webex.internal.services.waitForCatalog(POST_AUTH);
-      const wccAPIURL = this.webex.internal.services.get(WCC_API_GATEWAY);
       const data = await this.httpRequest.sendRequestWithEvent({
-        url: `${wccAPIURL}${LOGOUT_API}`,
+        service: WCC_API_GATEWAY,
+        resource: LOGOUT_API,
         method: HTTP_METHODS.PUT,
         payload,
         eventType: 'Logout',

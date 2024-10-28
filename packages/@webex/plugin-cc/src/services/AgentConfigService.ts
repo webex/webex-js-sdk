@@ -7,14 +7,12 @@ export default class AgentConfigService {
   agentId: string;
   orgId: string;
   webex: WebexSDK;
-  wccAPIURL: string;
   httpReq: HttpRequest;
 
   constructor(agentId: string, webex: WebexSDK, httpRequest: HttpRequest) {
     this.agentId = agentId;
     this.webex = webex;
     this.orgId = this.webex.internal.device.orgId;
-    this.wccAPIURL = this.webex.internal.services.get(WCC_API_GATEWAY);
     this.httpReq = httpRequest;
   }
 
@@ -25,8 +23,11 @@ export default class AgentConfigService {
 
   public async getUserUsingCI(): Promise<AgentResponse> {
     try {
-      const URL = `${this.wccAPIURL}organization/${this.orgId}/user/by-ci-user-id/${this.agentId}`;
-      const response = await this.httpReq.request(URL, HTTP_METHODS.GET);
+      const response = await this.httpReq.request({
+        service: WCC_API_GATEWAY,
+        resource: `organization/${this.orgId}/user/by-ci-user-id/${this.agentId}`,
+        method: HTTP_METHODS.GET,
+      });
 
       if (response.statusCode !== 200) {
         Promise.reject(response);
@@ -48,8 +49,11 @@ export default class AgentConfigService {
 
   public async getDesktopProfileById(desktopProfileId: string): Promise<DesktopProfileResponse> {
     try {
-      const URL = `${this.wccAPIURL}organization/${this.orgId}/agent-profile/${desktopProfileId}`;
-      const response = await this.httpReq.request(URL, HTTP_METHODS.GET);
+      const response = await this.httpReq.request({
+        service: WCC_API_GATEWAY,
+        resource: `organization/${this.orgId}/agent-profile/${desktopProfileId}`,
+        method: HTTP_METHODS.GET,
+      });
 
       if (response.statusCode !== 200) {
         Promise.reject(response);
@@ -79,13 +83,15 @@ export default class AgentConfigService {
     attributes: string[]
   ): Promise<Team> {
     try {
-      const URL = `${this.wccAPIURL}organization/${
-        this.orgId
-      }/team?page=${page}&pageSize=${pageSize}${
+      const resource = `organization/${this.orgId}/team?page=${page}&pageSize=${pageSize}${
         filter && filter.length > 0 ? `&filter=id=in=${filter}` : ''
       }&attributes=${attributes}`;
 
-      const response = await this.httpReq.request(URL, HTTP_METHODS.GET);
+      const response = await this.httpReq.request({
+        service: WCC_API_GATEWAY,
+        resource,
+        method: HTTP_METHODS.GET,
+      });
 
       if (response.statusCode !== 200) {
         Promise.reject(response);
@@ -115,13 +121,17 @@ export default class AgentConfigService {
     attributes: string[]
   ): Promise<ListAuxCodesResponse> {
     try {
-      const URL = `${this.wccAPIURL}organization/${
+      const resource = `organization/${
         this.orgId
       }/v2/auxiliary-code?page=${page}&pageSize=${pageSize}${
         filter && filter.length > 0 ? `&filter=id=in=${filter}` : ''
       }&attributes=${attributes}`;
 
-      const response = await this.httpReq.request(URL, HTTP_METHODS.GET);
+      const response = await this.httpReq.request({
+        service: WCC_API_GATEWAY,
+        resource,
+        method: HTTP_METHODS.GET,
+      });
 
       if (response.statusCode !== 200) {
         Promise.reject(response);

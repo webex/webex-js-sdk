@@ -15,6 +15,8 @@ export const HTTP_METHODS = {
 export type HTTP_METHODS = Enum<typeof HTTP_METHODS>;
 
 type WebexRequestPayload = {
+  service?: string;
+  resource?: string;
   method?: HTTP_METHODS;
   uri?: string;
   addAuthHeader?: boolean;
@@ -90,8 +92,6 @@ export interface WebexSDK {
         'ucmgmt-gateway': string;
         contactsService: string;
       };
-      waitForCatalog(type: string): Promise<void>;
-      get(name: string, priorityHost?: boolean, serviceGroup?: string): string;
     };
     metrics: {
       submitClientMetrics: (name: string, data: unknown) => void;

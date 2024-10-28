@@ -3,7 +3,6 @@ import {WebexSDK, HTTP_METHODS, SubscribeRequest, WelcomeEvent, IHttpResponse} f
 import IWebSocket from './WebSocket/types';
 import WebSocket from './WebSocket';
 import {CC_EVENTS} from './types';
-import {POST_AUTH} from '../constants';
 
 export type EventHandler = {(data: any): void};
 
@@ -46,13 +45,12 @@ class HttpRequest {
    */
   public async subscribeNotifications(options: {body: SubscribeRequest}): Promise<WelcomeEvent> {
     try {
-      await this.webex.internal.services.waitForCatalog(POST_AUTH);
-      const datachannelUrl = `${this.webex.internal.services.get(WCC_API_GATEWAY)}${SUBSCRIBE_API}`;
       const {body} = options;
       const eventType = CC_EVENTS.WELCOME;
       const subscribeResponse: SubscribeResponse = await this.webex.request({
+        service: WCC_API_GATEWAY,
+        resource: SUBSCRIBE_API,
         method: HTTP_METHODS.POST,
-        uri: datachannelUrl,
         body,
       });
 
@@ -86,7 +84,8 @@ class HttpRequest {
    * If the event type is not received, it rejects the promise
    */
   public async sendRequestWithEvent(options: {
-    url: string;
+    service: string;
+    resource: string;
     method: HTTP_METHODS;
     payload: object;
     eventType: string;
@@ -94,12 +93,13 @@ class HttpRequest {
     failure?: string[];
   }): Promise<any> {
     try {
-      const {url, method, payload, eventType, success, failure} = options;
+      const {service, resource, method, payload, eventType, success, failure} = options;
 
       // Send the service request
       const response = await this.webex.request({
+        service,
+        resource,
         method,
-        uri: url,
         body: payload,
       });
       this.webex.logger.log(`Service request sent successfully: ${response}`);
@@ -135,14 +135,18 @@ class HttpRequest {
     }
   }
 
-  public async request(
-    URL: string,
-    method: HTTP_METHODS,
-    body: object = {}
-  ): Promise<IHttpResponse> {
+  public async request(options: {
+    service: string;
+    resource: string;
+    method: HTTP_METHODS;
+    body?: object;
+  }): Promise<IHttpResponse> {
+    const {service, resource, method, body} = options;
+
     return this.webex.request({
+      service,
+      resource,
       method,
-      uri: URL,
       body,
     });
   }
