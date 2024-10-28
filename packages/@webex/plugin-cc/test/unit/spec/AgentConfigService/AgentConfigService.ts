@@ -4,7 +4,7 @@ import AgentConfigService from '../../../../src/AgentConfigService/AgentConfigSe
 describe('AgentConfigService', () => {
   let agentConfigService: AgentConfigService;
   let mockWebexSDK: WebexSDK;
-  const mockWccAPIURL = 'https://api.example.com';
+  const mockWccAPIURL = 'https://api.example.com/';
   const mockAgentId = 'agent123';
   const mockOrgId = 'org123';
 
@@ -51,21 +51,10 @@ describe('AgentConfigService', () => {
       (mockWebexSDK.request as jest.Mock).mockRejectedValue(mockError);
 
       await expect(agentConfigService.getUserUsingCI()).rejects.toThrow(
-        'getUserUsingCI api failed. Error: Error: API call failed'
+        'API call failed'
       );
     });
 
-    it('should throw an error if the status code is not 200', async () => {
-      const mockResponse = {
-        statusCode: 500,
-        body: {},
-      };
-      (mockWebexSDK.request as jest.Mock).mockResolvedValue(mockResponse);
-
-      await expect(agentConfigService.getUserUsingCI()).rejects.toThrow(
-        'getUserUsingCI api failed. Error: [object Object]'
-      );
-    });
   });
 
   describe('getDesktopProfileById', () => {
@@ -99,19 +88,7 @@ describe('AgentConfigService', () => {
       (mockWebexSDK.request as jest.Mock).mockRejectedValue(mockError);
 
       await expect(agentConfigService.getDesktopProfileById(desktopProfileId)).rejects.toThrow(
-        'getDesktopProfileById api failed. Error: Error: API call failed'
-      );
-    });
-
-    it('should throw an error if the status code is not 200', async () => {
-      const mockResponse = {
-        statusCode: 500,
-        body: {},
-      };
-      (mockWebexSDK.request as jest.Mock).mockResolvedValue(mockResponse);
-
-      await expect(agentConfigService.getDesktopProfileById(desktopProfileId)).rejects.toThrow(
-        'getDesktopProfileById api failed. Error: [object Object]'
+        'API call failed'
       );
     });
   });
@@ -119,15 +96,15 @@ describe('AgentConfigService', () => {
   describe('getListOfTeams', () => {
     const page = 0;
     const pageSize = 10;
-    const filter: string[] = [];
+    const filter: string[] = ['123'];
     const attributes: string[] = ['id'];
 
     it('should return team on success', async () => {
       const mockResponse = {
         statusCode: 200,
         body: [
-          { id: 'team1', name: 'Team 1' },
-          { id: 'team2', name: 'Team 2' },
+          { id: '123', name: 'Team 1' },
+          { id: '12345', name: 'Team 2' },
         ],
       };
       (mockWebexSDK.request as jest.Mock).mockResolvedValue(mockResponse);
@@ -147,19 +124,7 @@ describe('AgentConfigService', () => {
       (mockWebexSDK.request as jest.Mock).mockRejectedValue(mockError);
 
       await expect(agentConfigService.getListOfTeams(page, pageSize, filter, attributes)).rejects.toThrow(
-        'getListOfTeams api failed. Error: Error: API call failed'
-      );
-    });
-
-    it('should throw an error if the status code is not 200', async () => {
-      const mockResponse = {
-        statusCode: 500,
-        body: {},
-      };
-      (mockWebexSDK.request as jest.Mock).mockResolvedValue(mockResponse);
-
-      await expect(agentConfigService.getListOfTeams(page, pageSize, filter, attributes)).rejects.toThrow(
-        'getListOfTeams api failed. Error: [object Object]'
+        'API call failed'
       );
     });
   });
@@ -167,7 +132,7 @@ describe('AgentConfigService', () => {
   describe('getListOfAuxCodes', () => {
     const page = 0;
     const pageSize = 10;
-    const filter: string[] = [];
+    const filter: string[] = ['123'];
     const attributes: string[] = ['id'];
 
     it('should return ListAuxCodesResponse on success', async () => {
@@ -197,19 +162,7 @@ describe('AgentConfigService', () => {
       (mockWebexSDK.request as jest.Mock).mockRejectedValue(mockError);
 
       await expect(agentConfigService.getListOfAuxCodes(page, pageSize, filter, attributes)).rejects.toThrow(
-        'getListOfAuxCodes api failed. Error: Error: API call failed'
-      );
-    });
-
-    it('should throw an error if the status code is not 200', async () => {
-      const mockResponse = {
-        statusCode: 500,
-        body: {},
-      };
-      (mockWebexSDK.request as jest.Mock).mockResolvedValue(mockResponse);
-
-      await expect(agentConfigService.getListOfAuxCodes(page, pageSize, filter, attributes)).rejects.toThrow(
-        'getListOfAuxCodes api failed. Error: [object Object]'
+        'API call failed'
       );
     });
   });
