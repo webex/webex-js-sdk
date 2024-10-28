@@ -13,7 +13,7 @@ export default class AgentService {
     this.httpRequest = httpRequest;
   }
 
-  private getDeviceId(loginOption: string, dialNumber: string, agentId: string): string {
+  private getDeviceId(loginOption: string, dialNumber: string): string {
     if (
       loginOption === STATION_LOGIN_TYPE.EXTENSION ||
       loginOption === STATION_LOGIN_TYPE.AGENT_DN
@@ -21,27 +21,25 @@ export default class AgentService {
       return dialNumber;
     }
 
-    return WEB_RTC_PREFIX + agentId;
+    return WEB_RTC_PREFIX + dialNumber;
   }
 
   public async stationLogin(options: {
     teamId: string;
     loginOption: string;
     dialNumber: string;
-    agentId: string;
   }): Promise<StationLoginSuccess> {
     try {
       await this.webex.internal.services.waitForCatalog(POST_AUTH);
       const wccAPIURL = this.webex.internal.services.get(WCC_API_GATEWAY);
-      const {teamId, loginOption, dialNumber, agentId} = options;
-      const dialString = loginOption === STATION_LOGIN_TYPE.BROWSER ? agentId : dialNumber;
+      const {teamId, loginOption, dialNumber} = options;
       const payload = {
-        dialNumber: dialString,
+        dialNumber,
         teamId,
         isExtension: loginOption === STATION_LOGIN_TYPE.EXTENSION,
         roles: [AGENT],
         deviceType: loginOption,
-        deviceId: this.getDeviceId(loginOption, dialNumber, agentId),
+        deviceId: this.getDeviceId(loginOption, dialNumber),
       };
 
       const data = await this.httpRequest.sendRequestWithEvent({

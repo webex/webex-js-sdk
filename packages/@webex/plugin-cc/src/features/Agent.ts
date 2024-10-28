@@ -18,16 +18,14 @@ export default class Agent {
     teamId: string;
     loginOption: STATION_LOGIN_TYPE;
     dialNumber?: string; // only used when loginOption is AGENT_DN or EXTENSION
-    agentId: string;
   }): Promise<StationLoginSuccess> {
-    const {teamId, loginOption, dialNumber, agentId} = options;
+    const {teamId, loginOption, dialNumber} = options;
 
     try {
       const loginResponse = await this.agentService.stationLogin({
         teamId,
         loginOption,
         dialNumber,
-        agentId,
       });
       this.webex.logger.log('LOGIN API SUCCESS');
 

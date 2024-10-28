@@ -8,7 +8,7 @@ import {
 } from '@webex/calling';
 import {WebexSDK} from './types';
 
-const TIMEOUT_DURATION = 10000; // 10 seconds timeout duration
+const TIMEOUT_DURATION = 20000; // 20 seconds timeout duration
 
 export default class WebRTCCalling {
   private callingClient: ICallingClient;

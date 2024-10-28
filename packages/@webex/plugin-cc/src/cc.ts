@@ -105,21 +105,33 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   public async stationLogin(options: {
     teamId: string;
     loginOption: STATION_LOGIN_TYPE;
-    dialNumber?: string; // only used when loginOption is AGENT_DN or EXTENSION
+    dialNumber?: string;
   }): Promise<StationLoginSuccess> {
     try {
-      const loginResponse = await this.agent.stationLogin({
-        ...options,
-        agentId: this.agentConfig.agentId,
-      });
-      this.$webex.logger.log('LOGIN API SUCCESS');
+      let {dialNumber} = options;
+      let callingSDKRegister: Promise<void> | null = null;
+
       if (options.loginOption === STATION_LOGIN_TYPE.BROWSER) {
-        // if loginOption is BROWSER, then register the webex calling line
         this.webRTCCalling = new WebRTCCalling(this.$webex, this.$config);
-        await this.webRTCCalling.registerWebCallingLine();
+        callingSDKRegister = this.webRTCCalling.registerWebCallingLine();
+        dialNumber = this.agentConfig.agentId; // replacing dialNumber with agentId for BROWSER case
       }
 
-      return loginResponse;
+      const loginPromise = this.agent.stationLogin({
+        ...options,
+        dialNumber: dialNumber || this.agentConfig.agentId,
+      });
+
+      if (callingSDKRegister) {
+        // STATION_LOGIN_TYPE.BROWSER case we have to wait until calling sdk also registered.
+        await Promise.all([callingSDKRegister, loginPromise]);
+      } else {
+        await loginPromise;
+      }
+
+      this.$webex.logger.log('LOGIN API SUCCESS');
+
+      return loginPromise;
     } catch (error) {
       return Promise.reject(error);
     }
