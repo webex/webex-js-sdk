@@ -5,10 +5,10 @@ This is the package for running the BYoDS demo server. Follow the scripts, to ru
 
 ## Available Scripts
 
-### `npm run dev` or `npm run dev:hot` (hot reloading)
+### `yarn dev` or `yarn dev:hot` (hot reloading)
 
 Run the server in development mode.
 
 ## Additional Notes
 
-- If `npm run dev` or `npm run dev:hot` gives you issues with bcrypt on macOS you may need to run: `npm rebuild bcrypt --build-from-source`. 
+- If `yarn dev` or `yarn dev:hot` gives you issues with bcrypt on macOS you may need to run: `yarn rebuild`. 

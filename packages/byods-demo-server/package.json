@@ -1,6 +1,7 @@
 {
   "name": "byods-demo-server",
-  "version": "0.0.0",
+  "version": "0.0.1",
+  "private": true,
   "scripts": {
     "dev": "NODE_ENV=development BYODS_ENVIRONMENT=integration npx ts-node ./src",
     "dev:hot": "nodemon --exec \"npm run dev\" --watch ./src -e ts"

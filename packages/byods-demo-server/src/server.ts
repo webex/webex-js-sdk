@@ -8,7 +8,6 @@ import morgan from 'morgan';
 import cookieParser from 'cookie-parser';
 import handlebars from 'handlebars';
 import fs from 'fs';
-import {v4 as uuidv4} from 'uuid';
 
 // **** Core Setup **** //
 const app = express();
@@ -180,7 +179,9 @@ app.post('/api/data-source/refresh-token/:id', async (req: Request, res: Respons
   try {
     const {id} = req.params;
     const {tokenLifetimeMinutes} = req.body;
-    await baseClient.dataSource.scheduleJWSTokenRefresh(id, tokenLifetimeMinutes, () => uuidv4()); // Use UUID for nonce
+    await baseClient.dataSource.scheduleJWSTokenRefresh(id, tokenLifetimeMinutes, () =>
+      crypto.randomUUID()
+    ); // Use UUID for nonce
     res.status(200).json({message: 'JWS token refresh scheduled successfully'});
   } catch (error) {
     res.status(400).json({error: error.message});
