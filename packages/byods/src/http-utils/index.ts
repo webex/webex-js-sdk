@@ -1,7 +1,6 @@
-import fetch from 'node-fetch';
 import {randomUUID} from 'crypto';
 
-import {ApiResponse} from 'http-client/types';
+import {ApiResponse} from '../http-client/types';
 import {BYODS_PACKAGE_NAME, USER_AGENT} from '../constants';
 
 export interface HttpRequestInit {
@@ -19,6 +18,8 @@ export interface HttpRequestInit {
  * const response = await request('https://webexapis.com/v1/endpoint', { method: 'GET', headers: {} });
  */
 async function request<T>(url: string, options: HttpRequestInit = {}): Promise<ApiResponse<T>> {
+  // TODO: Fix this issue (which is being tracked in node_fetch) https://github.com/node-fetch/node-fetch/issues/1809
+  const fetch = (await import('node-fetch')).default;
   const optionsWithHeaders = {
     ...options,
     headers: {
@@ -32,6 +33,11 @@ async function request<T>(url: string, options: HttpRequestInit = {}): Promise<A
 
   if (!response.ok) {
     throw new Error(`HTTP Error Response: ${response.status} ${response.statusText}`);
+  }
+
+  // Handle 204 No Content responses
+  if (response.status === 204) {
+    return {data: {} as T, status: response.status};
   }
 
   const data = (await response.json()) as T;

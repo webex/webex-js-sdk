@@ -2,7 +2,7 @@ import {decodeJwt, JWTPayload} from 'jose';
 import {ERROR_TYPE} from '../Errors/types';
 import ExtendedError from '../Errors/catalog/ExtendedError';
 import {LoggerConfig} from '../types';
-import {DataSourceRequest, DataSourceResponse, Cancellable} from './types';
+import {DataSourceRequest, DataSourceResponse, DataSourceUpdateRequest, Cancellable} from './types';
 import {DATASOURCE_ENDPOINT} from './constants';
 import {HttpClient, ApiResponse} from '../http-client/types';
 import {BYODS_DATA_SOURCE_CLIENT_MODULE, DEFAULT_LOGGER_CONFIG} from '../constants';
@@ -76,7 +76,7 @@ export default class DataSourceClient {
    */
   public async update(
     id: string,
-    dataSourcePayload: DataSourceRequest
+    dataSourcePayload: DataSourceUpdateRequest
   ): Promise<ApiResponse<DataSourceResponse>> {
     return this.httpClient.put<DataSourceResponse>(
       `${DATASOURCE_ENDPOINT}/${id}`,
@@ -171,13 +171,13 @@ export default class DataSourceClient {
    * @param {string} dataSourceId The id of the data source
    * @param {number} tokenLifetimeMinutes The refresh interval in minutes for the data source. Defaults to 60 mins. Should be <= 1440 & >=1.
    * @param {string} nonceGenerator Accepts an nonceGenerator that will generate nonce for the data source request.
-   * @returns {Promise<NodeJS.Timer>} A promise that resolves to the API response containing NodeJS.Timer.
+   * @returns {Promise<NodeJS.Timeout>} A promise that resolves to the API response containing NodeJS.Timeout.
    */
   private async startAutoRefresh(
     dataSourceId: string,
     tokenLifetimeMinutes: number,
     nonceGenerator?: () => string
-  ): Promise<NodeJS.Timer> {
+  ): Promise<NodeJS.Timeout> {
     try {
       // Generate a random percentage between 5% and 10%
       const randomPercentage = Math.random() * 5 + 5;
@@ -201,13 +201,14 @@ export default class DataSourceClient {
             throw new Error('jwsTokenPayload or jwsToken is undefined.');
           }
 
-          const payloadForDataSourceUpdateMethod: DataSourceRequest = {
+          const payloadForDataSourceUpdateMethod: DataSourceUpdateRequest = {
             schemaId: getMethodResponse?.data?.schemaId,
             tokenLifetimeMinutes,
             url: jwsTokenPayload['com.cisco.datasource.url'] as string,
             subject: jwsTokenPayload.sub as string,
             audience: jwsTokenPayload.aud as string,
             nonce: nonceGenerator ? nonceGenerator() : crypto.randomUUID(),
+            status: getMethodResponse?.data?.status,
           };
 
           await this.update(dataSourceId, payloadForDataSourceUpdateMethod);

@@ -27,7 +27,7 @@ export interface DataSourceResponse {
   /**
    * The status of the data source response. Either "active" or "disabled".
    */
-  status: string;
+  status: 'active' | 'disabled';
 
   /**
    * The JSON Web Signature token associated with the data source response.
@@ -95,6 +95,23 @@ export interface DataSourceRequest {
    * The lifetime of the token in minutes.
    */
   tokenLifetimeMinutes: number;
+}
+
+/**
+ * Represents the request to update a data source.
+ *
+ * @public
+ */
+export interface DataSourceUpdateRequest extends DataSourceRequest {
+  /**
+   * The status of the data source request. Either "active" or "disabled".
+   */
+  status: 'active' | 'disabled';
+
+  /**
+   * The error message associated with the data source update request. It is optional for "active" but required for "disabled".
+   */
+  errorMessage?: string;
 }
 
 export interface Cancellable {

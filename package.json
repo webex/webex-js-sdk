@@ -11,6 +11,7 @@
     "./packages/webex",
     "./packages/calling",
     "./packages/byods",
+    "./packages/byods-demo-server",
     "./packages/config/*",
     "./packages/legacy/*",
     "./packages/tools/*"
