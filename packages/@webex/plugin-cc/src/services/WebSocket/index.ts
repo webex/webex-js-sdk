@@ -1,5 +1,5 @@
 import Mercury from '@webex/internal-plugin-mercury';
-import {HTTP_METHODS, SubscribeRequest, WebSocketEvent} from '../types';
+import {WebSocketEvent} from '../types';
 import webSocketConfig from './config';
 import IWebSocket from './types';
 
@@ -43,35 +43,6 @@ class WebSocket extends (Mercury as any) implements IWebSocket {
     super.off(event, callback);
   }
 
-  // TODO: this will be moved to a separate file in request module/file
-  /**
-   * Register to the websocket
-   * @param {object} params
-   * @param {string} params.datachannelUrl
-   * @param {object} params.body
-   * @returns {Promise<void>}
-   */
-  subscribeNotifications({
-    datachannelUrl,
-    body,
-  }: {
-    datachannelUrl: string;
-    body: SubscribeRequest;
-  }): Promise<void> {
-    return this.request({
-      method: HTTP_METHODS.POST,
-      url: datachannelUrl,
-      body,
-    })
-      .then((res) => {
-        this.webSocketUrl = res.body.webSocketUrl;
-        this.subscriptionId = res.body.subscriptionId;
-      })
-      .catch((error) => {
-        throw error;
-      });
-  }
-
   /**
    * Subscribe and connect to the websocket
    * @param {object} params
@@ -79,24 +50,11 @@ class WebSocket extends (Mercury as any) implements IWebSocket {
    * @param {SubscribeRequest} params.body
    * @returns {Promise<void>}
    */
-  subscribeAndConnect({
-    datachannelUrl,
-    body,
-  }: {
-    datachannelUrl: string;
-    body: SubscribeRequest;
-  }): Promise<void> {
-    return this.subscribeNotifications({datachannelUrl, body})
-      .then(() => {
-        this.datachannelUrl = datachannelUrl;
-
-        this.connect(this.webSocketUrl);
-
-        return Promise.resolve();
-      })
-      .catch((error) => {
-        throw error;
-      });
+  connectWebSocket(options: {webSocketUrl: string; subscriptionId: string}): void {
+    const {webSocketUrl, subscriptionId} = options;
+    this.webSocketUrl = webSocketUrl;
+    this.subscriptionId = subscriptionId;
+    this.connect(webSocketUrl);
   }
 
   /**

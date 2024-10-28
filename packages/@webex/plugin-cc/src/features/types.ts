@@ -1,4 +1,4 @@
-import {AuxCode, Team} from '../AgentConfigService/types';
+import {AuxCode, Team} from '../services/types';
 import {WebexSDK} from '../types';
 
 type Enum<T extends Record<string, unknown>> = T[keyof T];

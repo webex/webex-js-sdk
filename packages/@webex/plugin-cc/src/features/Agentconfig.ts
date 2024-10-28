@@ -1,8 +1,8 @@
-import {IAgentProfile, WORK_TYPE_CODE} from './types';
-import AgentConfigService from '../AgentConfigService/AgentConfigService';
-import {Team, AuxCode} from '../AgentConfigService/types';
-import {WebexSDK} from '../types';
 import {DEFAULT_ATTRIBUTES, DEFAULT_PAGE, DEFAULT_PAGE_SIZE} from './constants';
+import {IAgentProfile, WORK_TYPE_CODE} from './types';
+import {WebexSDK} from '../types';
+import {AuxCode, Team} from '../services/types';
+import AgentConfigService from '../services/AgentConfigService';
 
 export default class AgentConfig {
   agentId: string;
@@ -13,12 +13,10 @@ export default class AgentConfig {
   } as IAgentProfile;
 
   webex: WebexSDK;
-  wccAPIURL: string;
 
-  constructor(agentId: string, webex: WebexSDK, wccAPIURL: string) {
+  constructor(agentId: string, webex: WebexSDK) {
     this.agentId = agentId;
     this.webex = webex;
-    this.wccAPIURL = wccAPIURL;
   }
 
   /**
@@ -32,14 +30,7 @@ export default class AgentConfig {
 
   public async getAgentProfile(): Promise<IAgentProfile> {
     try {
-      const orgId = this.webex.internal.device.orgId;
-
-      const agentConfigService = new AgentConfigService(
-        this.agentId,
-        orgId,
-        this.webex,
-        this.wccAPIURL
-      );
+      const agentConfigService = new AgentConfigService(this.agentId, this.webex);
 
       const agent = await agentConfigService.getUserUsingCI();
       const {firstName, lastName, agentProfileId, email} = agent;

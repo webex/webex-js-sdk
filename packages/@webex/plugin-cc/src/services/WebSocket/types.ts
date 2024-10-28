@@ -1,4 +1,4 @@
-import {SubscribeRequest, WebSocketEvent} from '../types';
+import {WebSocketEvent} from '../types';
 
 // ts doc
 /**
@@ -21,12 +21,10 @@ interface IWebSocket {
   off(event: string, callback: (event: WebSocketEvent) => void): void;
   /**
    * Subscribe and connect to the WebSocket
-   * @param {object} params
-   * @param {string} params.datachannelUrl
-   * @param {object} params.body
-   * @returns {Promise<void>}
+   * @param {object} options
+   * @returns {void}
    */
-  subscribeAndConnect(params: {datachannelUrl: string; body: SubscribeRequest}): Promise<void>;
+  connectWebSocket(options: {webSocketUrl: string; subscriptionId: string}): void;
   /**
    * Check if the WebSocket connection is connected
    * @returns {boolean}

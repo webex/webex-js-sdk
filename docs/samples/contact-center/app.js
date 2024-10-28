@@ -25,8 +25,7 @@ const registerBtn = document.querySelector('#webexcc-register');
 const teamsDropdown = document.querySelector('#teamsDropdown');
 const agentLogin = document.querySelector('#AgentLogin');
 const agentLoginButton = document.querySelector('#loginAgent');
-
-
+const dialNumber = document.querySelector('#dialNumber');
 // Store and Grab `access-token` from localstorage
 if (localStorage.getItem('date') > new Date().getTime()) {
   tokenElm.value = localStorage.getItem('access-token');
@@ -108,21 +107,20 @@ credentialsFormElm.addEventListener('submit', initWebex);
 
 
 function register() {
-    webex.cc.register(true).then((data) => {
-        console.log('Event subscription successful: ', data);
-        const agentProfile = webex.cc.getAgentProfileData();
+    webex.cc.register(true).then((agentProfile) => {
+        console.log('Event subscription successful: ', agentProfile);
         teamsDropdown.innerHTML = ''; // Clear previously selected option on teamsDropdown
-        const listTeams = agentProfile.teamsList;
+        const listTeams = agentProfile.teams;
         listTeams.forEach((team) => {
-          if(team.teamType === "AGENT") {
             const option = document.createElement('option');
             option.value = team.id;
             option.text = team.name;
             teamsDropdown.add(option);
-          }
         });
-        const loginVoiceOptions = agentProfile.agentDesktopProfile.loginVoiceOptions;
-        agentLogin.innerHTML = '' // Clear previously selected option on agentLogin.
+        const loginVoiceOptions = agentProfile.loginVoiceOptions;
+        agentLogin.innerHTML = '<option value="" selected>Choose Agent Login ...</option>'; // Clear previously selected option on agentLogin.
+        dialNumber.value = '';
+        dialNumber.disabled = true;
         if(loginVoiceOptions.length > 0) agentLoginButton.disabled = false;
         loginVoiceOptions.forEach((voiceOptions)=> {
           const option = document.createElement('option');
@@ -137,17 +135,32 @@ function register() {
 
 async function handleAgentLogin(e) {
   const value = e.target.value;
-  if (value === 'Desktop') {
-    agentDeviceType = 'BROWSER';
-    deviceId = 'webrtc-6b310dff-569e-4ac7-b064-70f834ea56d8'
+  agentDeviceType = value
+  if (value === 'AGENT_DN') {
+    dialNumber.disabled = false;
+  } else if (value === 'EXTENSION') {
+    dialNumber.disabled = false;
   } else {
-    agentDeviceType = 'EXTENSION';
-    deviceId = '1001'
+    dialNumber.disabled = true;
   }
 }
 
 function doAgentLogin() {
-  webex.cc.doAgentLogin(teamsDropdown.value, agentDeviceType, deviceId);
+  webex.cc.stationLogin({teamId: teamsDropdown.value, loginOption: agentDeviceType, dialNumber: dialNumber.value}).then((response) => {
+    console.log('Agent Logged in successfully', response);
+  }
+  ).catch((error) => {
+    console.log('Agent Login failed', error);
+  });
+}
+
+function logoutAgent() {
+  webex.cc.stationLogout({logoutReason: 'logout'}).then((response) => {
+    console.log('Agent logged out successfully', response);
+  }
+  ).catch((error) => {
+    console.log('Agent logout failed', error);
+  });
 }
 
 const allCollapsibleElements = document.querySelectorAll('.collapsible');

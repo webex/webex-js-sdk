@@ -1,6 +1,6 @@
 // This file can include common request to the API. Request method can be updated in the future based on needs.
 
-import {HTTP_METHODS, IHttpResponse, WebexSDK} from './types';
+import {HTTP_METHODS, IHttpResponse, WebexSDK} from '../types';
 
 export default class HttpRequest {
   webex: WebexSDK;
