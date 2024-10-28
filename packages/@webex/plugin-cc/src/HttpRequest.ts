@@ -44,7 +44,7 @@ export default class HttpRequest {
 
       return Promise.resolve(response);
     } catch (error) {
-      throw new Error(`Error while making request: ${error}`);
+      return Promise.reject(error);
     }
   }
 }

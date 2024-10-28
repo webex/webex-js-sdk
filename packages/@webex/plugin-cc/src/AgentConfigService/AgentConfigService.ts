@@ -35,7 +35,7 @@ export default class AgentConfigService {
 
       return Promise.resolve(response.body);
     } catch (error) {
-      return Promise.reject(new Error(`getUserUsingCI api failed. Error: ${error}`));
+      return Promise.reject(error);
     }
   }
 
@@ -67,7 +67,7 @@ export default class AgentConfigService {
    * @param {number} page Index of the page of results to be fetched. Defaults to 0.
    * @param {number} pageSize Number of items to be displayed on a page. Defaults to 10.
    * @param {Array<String>} filter Filter that can be applied to the elements to be fetched. Defaults to [].
-   * @param {Array<String>} attributes Specify the attributes to be returned. Defaults to ['id', 'name', 'active'].
+   * @param {Array<String>} attributes Specify the attributes to be returned. Defaults to ['id', 'name'].
    * @returns {Promise<Team>} A promise that eventually resolves to an API response.
    */
 

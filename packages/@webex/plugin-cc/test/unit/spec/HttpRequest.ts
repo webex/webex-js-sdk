@@ -48,7 +48,7 @@ describe('HttpRequest', () => {
       jest.spyOn(webex, 'request').mockRejectedValue(mockError);
 
       await expect(httpRequest.request(URL, HTTP_METHODS.GET)).rejects.toThrow(
-        `Error while making request: ${mockError}`
+        'Request failed'
       );
     });
 
@@ -56,7 +56,7 @@ describe('HttpRequest', () => {
       const unsupportedMethod = 'PUT';
 
       await expect(httpRequest.request(URL, unsupportedMethod)).rejects.toThrow(
-        `Error while making request: Error: Unsupported HTTP method: ${unsupportedMethod}`
+        'Unsupported HTTP method: PUT'
       );
     });
   });
