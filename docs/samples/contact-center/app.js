@@ -157,15 +157,6 @@ function doAgentLogin() {
   });
 }
 
-function logoutAgent() {
-  webex.cc.stationLogout({logoutReason: 'logout'}).then((response) => {
-    console.log('Agent logged out successfully', response);
-  }
-  ).catch((error) => {
-    console.log('Agent logout failed', error);
-  });
-}
-
 const allCollapsibleElements = document.querySelectorAll('.collapsible');
 allCollapsibleElements.forEach((el) => {
   el.addEventListener('click', (event) => {

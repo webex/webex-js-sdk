@@ -1,14 +1,14 @@
-import { IAgentProfile } from '../../../../src/AgentConfig/types';
-import AgentConfigService from '../../../../src/AgentConfigService/AgentConfigService';
+import { IAgentProfile } from '../../../../src/features/types';
+import AgentConfigService from '../../../../src/services/AgentConfigService';
 import { WebexSDK } from '../../../../src/types';
-import { WORK_TYPE_CODE } from '../../../../src/AgentConfig/types';
-import AgentConfig from '../../../../src/AgentConfig/AgentConfig';
+import { WORK_TYPE_CODE } from '../../../../src/features/types';
+import AgentConfig from '../../../../src/features/Agentconfig';
 import {
   DesktopProfileResponse,
   ListAuxCodesResponse,
   Team,
   AgentResponse,
-} from '../../../../src/AgentConfigService/types';
+} from '../../../../src/services/types';
 
 const mockWebex: WebexSDK = {
   internal: {

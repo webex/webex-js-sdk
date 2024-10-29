@@ -1,13 +1,14 @@
-import { STATION_LOGIN_TYPE, WebexSDK } from '../../../../src/types';
-import httpRequest from '../../../../src/services/httpRequest';
+import {STATION_LOGIN_TYPE, WebexSDK} from '../../../../src/types';
+import HttpRequest from '../../../../src/services/HttpRequest';
 import AgentService from '../../../../src/services/AgentService';
 import Agent from '../../../../src/features/Agent';
+import {StationLoginSuccess} from '../../../../src/services/types';
 
 jest.mock('../../../../src/services/AgentService');
 
 describe('Agent', () => {
   let webex: WebexSDK;
-  let httpRequest: httpRequest;
+  let httpRequest: HttpRequest;
   let agent: Agent;
   let agentServiceMock: jest.Mocked<AgentService>;
 
@@ -15,6 +16,7 @@ describe('Agent', () => {
     webex = {
       logger: {
         log: jest.fn(),
+        error: jest.fn(),
       },
       internal: {
         device: {
@@ -23,10 +25,14 @@ describe('Agent', () => {
       },
     } as unknown as WebexSDK;
 
-    httpRequest = {} as httpRequest;
+    httpRequest = {} as HttpRequest;
     agentServiceMock = new AgentService(webex, httpRequest) as jest.Mocked<AgentService>;
     agent = new Agent(webex, httpRequest);
-    agent['agentService'] = agentServiceMock; // Replace the agentService with the mocked instance
+    agent.agentService = agentServiceMock; // Replace the agentService with the mocked instance
+  });
+
+  afterEach(() => {
+    jest.resetAllMocks();
   });
 
   describe('#stationLogin', () => {
@@ -35,15 +41,34 @@ describe('Agent', () => {
         teamId: 'teamId',
         loginOption: STATION_LOGIN_TYPE.AGENT_DN,
         dialNumber: '1234567890',
-        agentId: 'agentId',
       };
 
-      const loginResponse = { success: true };
-      agentServiceMock.stationLogin.mockResolvedValue(loginResponse);
+      const StationLoginSuccess: StationLoginSuccess = {
+        eventType: 'AgentDesktopMessage',
+        agentId: 'agentId',
+        trackingId: 'trackingId',
+        auxCodeId: 'auxCodeId',
+        teamId: 'teamId',
+        agentSessionId: 'agentSessionId',
+        orgId: 'orgId',
+        interactionIds: [],
+        status: 'status',
+        subStatus: 'Available',
+        siteId: 'siteId',
+        lastIdleCodeChangeTimestamp: Date.now(),
+        lastStateChangeTimestamp: Date.now(),
+        profileType: 'profileType',
+        channelsMap: {},
+        dialNumber: '1234567890',
+        roles: [],
+        supervisorSessionId: 'supervisorSessionId',
+        type: 'AgentStationLoginSuccess',
+      };
+      agentServiceMock.stationLogin.mockResolvedValue(StationLoginSuccess);
 
       const result = await agent.stationLogin(options);
 
-      expect(result).toBe(loginResponse);
+      expect(result).toBe(StationLoginSuccess);
       expect(agentServiceMock.stationLogin).toHaveBeenCalledWith(options);
       expect(webex.logger.log).toHaveBeenCalledWith('LOGIN API SUCCESS');
     });
@@ -53,39 +78,16 @@ describe('Agent', () => {
         teamId: 'teamId',
         loginOption: STATION_LOGIN_TYPE.AGENT_DN,
         dialNumber: '1234567890',
-        agentId: 'agentId',
       };
 
       const error = new Error('Login failed');
       agentServiceMock.stationLogin.mockRejectedValue(error);
 
-      await expect(agent.stationLogin(options)).rejects.toThrow('Error while performing agent login');
+      await expect(agent.stationLogin(options)).rejects.toThrow(
+        'Error while performing agent login'
+      );
       expect(agentServiceMock.stationLogin).toHaveBeenCalledWith(options);
-    });
-  });
-
-  describe('#stationLogout', () => {
-    it('should successfully log out the agent', async () => {
-      const options = { logoutReason: 'End of shift' };
-
-      const logoutResponse = { success: true };
-      agentServiceMock.stationLogout.mockResolvedValue(logoutResponse);
-
-      const result = await agent.stationLogout(options);
-
-      expect(result).toBe(logoutResponse);
-      expect(agentServiceMock.stationLogout).toHaveBeenCalledWith(options);
-      expect(webex.logger.log).toHaveBeenCalledWith('Logout API SUCCESS');
-    });
-
-    it('should handle logout error', async () => {
-      const options = { logoutReason: 'End of shift' };
-
-      const error = new Error('Logout failed');
-      agentServiceMock.stationLogout.mockRejectedValue(error);
-
-      await expect(agent.stationLogout(options)).rejects.toThrow('Error while performing agent Logout');
-      expect(agentServiceMock.stationLogout).toHaveBeenCalledWith(options);
+      expect(webex.logger.error).toHaveBeenCalledWith(`Error during agent login: ${error}`);
     });
   });
 });
