@@ -3,6 +3,7 @@ import {WebexSDK, HTTP_METHODS, SubscribeRequest, WelcomeEvent, IHttpResponse} f
 import IWebSocket from './WebSocket/types';
 import WebSocket from './WebSocket';
 import {CC_EVENTS} from './types';
+import {EVENT} from '../constants';
 
 export type EventHandler = {(data: any): void};
 
@@ -29,7 +30,7 @@ class HttpRequest {
     this.eventHandlers = new Map();
 
     // Centralized WebSocket event listener
-    this.webSocket.on('event', (eventData) => {
+    this.webSocket.on(EVENT, (eventData) => {
       this.webex.logger.log(`Received event: ${eventData.type}`);
       const handler = this.eventHandlers.get(eventData.type);
       if (handler) {
@@ -56,7 +57,7 @@ class HttpRequest {
 
       return new Promise((resolve, reject) => {
         const timeoutId = setTimeout(() => {
-          console.error('Timeout waiting for event');
+          this.webex.logger.error('Timeout waiting for event');
           this.eventHandlers.delete(eventType);
           reject(new Error('Timeout waiting for event'));
         }, WEBSOCKET_EVENT_TIMEOUT);
@@ -89,8 +90,8 @@ class HttpRequest {
     method: HTTP_METHODS;
     payload: object;
     eventType: string;
-    success?: string[];
-    failure?: string[];
+    success: string[];
+    failure: string[];
   }): Promise<any> {
     try {
       const {service, resource, method, payload, eventType, success, failure} = options;
@@ -116,9 +117,9 @@ class HttpRequest {
         this.eventHandlers.set(eventType, (data: any) => {
           clearTimeout(timeoutId);
           this.eventHandlers.delete(eventType);
-          if (success?.includes(data.type)) {
+          if (success.includes(data.type)) {
             resolve(data);
-          } else if (failure?.includes(data.type)) {
+          } else if (failure.includes(data.type)) {
             const error = new Error();
             error.name = data.type;
             error.message = data.reason;

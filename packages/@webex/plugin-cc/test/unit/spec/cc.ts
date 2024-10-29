@@ -1,10 +1,7 @@
-/**
- * @jest-environment jsdom
- */
-
+import 'jsdom-global/register';
 import MockWebex from '@webex/test-helper-mock-webex';
 import ContactCenter from '../../../src/cc';
-import { IAgentProfile } from 'packages/@webex/plugin-cc/src/features/types';
+import { IAgentProfile } from '../../../src/features/types';
 
 describe('webex.cc', () => {
   let webex;

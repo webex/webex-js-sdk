@@ -1,7 +1,7 @@
 import {STATION_LOGIN_TYPE, WebexSDK} from '../types';
 import HttpRequest from '../services/HttpRequest';
 import AgentService from '../services/AgentService';
-import {LogoutSuccess, StationLoginSuccess} from '../services/types';
+import {StationLoginSuccess} from '../services/types';
 
 export default class Agent {
   private webex: WebexSDK;
@@ -32,21 +32,6 @@ export default class Agent {
       return loginResponse;
     } catch (error) {
       return Promise.reject(new Error('Error while performing agent login', error));
-    }
-  }
-
-  public async stationLogout(options: {logoutReason: string}): Promise<LogoutSuccess> {
-    const {logoutReason} = options;
-
-    try {
-      const response = await this.agentService.stationLogout({
-        logoutReason,
-      });
-      this.webex.logger.log('Logout API SUCCESS');
-
-      return response;
-    } catch (error) {
-      return Promise.reject(error);
     }
   }
 }

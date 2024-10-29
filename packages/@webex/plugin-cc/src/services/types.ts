@@ -227,16 +227,3 @@ export interface StationLoginSuccess {
   supervisorSessionId?: string;
   type: 'AgentStationLoginSuccess';
 }
-
-export interface LogoutSuccess {
-  eventType: 'AgentDesktopMessage';
-  agentId: string;
-  trackingId: string;
-  agentSessionId: string;
-  orgId: string;
-  status: string;
-  subStatus: string;
-  loggedOutBy?: string;
-  roles?: string[];
-  type: 'AgentLogoutSuccess';
-}
