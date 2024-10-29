@@ -46,6 +46,16 @@ describe('AgentConfigService', () => {
       expect(mockWebexSDK.logger.log).toHaveBeenCalledWith('getUserUsingCI api success.');
     });
 
+    it('should throw an error if the status code is not 200', async () => {
+      const mockResponse = {
+        statusCode: 500,
+        body: {},
+      };
+      (mockWebexSDK.request as jest.Mock).mockResolvedValue(mockResponse);
+
+      await expect(agentConfigService.getUserUsingCI()).rejects.toThrow(`API call failed with ${mockResponse.statusCode}`)
+    });
+
     it('should throw an error if the API call fails', async () => {
       const mockError = new Error('API call failed');
       (mockWebexSDK.request as jest.Mock).mockRejectedValue(mockError);
@@ -83,6 +93,17 @@ describe('AgentConfigService', () => {
       expect(mockWebexSDK.logger.log).toHaveBeenCalledWith('getDesktopProfileById api success.');
     });
 
+    it('should throw an error if the status code is not 200', async () => {
+      const mockResponse = {
+        statusCode: 500,
+        body: {},
+      };
+      (mockWebexSDK.request as jest.Mock).mockResolvedValue(mockResponse);
+
+      await expect(agentConfigService.getDesktopProfileById(desktopProfileId)).rejects.toThrow(`API call failed with ${mockResponse.statusCode}`)
+    });
+
+
     it('should throw an error if the API call fails', async () => {
       const mockError = new Error('API call failed');
       (mockWebexSDK.request as jest.Mock).mockRejectedValue(mockError);
@@ -118,6 +139,17 @@ describe('AgentConfigService', () => {
       expect(result).toEqual(mockResponse.body);
       expect(mockWebexSDK.logger.log).toHaveBeenCalledWith('getListOfTeams api success.');
     });
+
+    it('should throw an error if the status code is not 200', async () => {
+      const mockResponse = {
+        statusCode: 500,
+        body: {},
+      };
+      (mockWebexSDK.request as jest.Mock).mockResolvedValue(mockResponse);
+
+      await expect(agentConfigService.getListOfTeams(page, pageSize, filter, attributes)).rejects.toThrow(`API call failed with ${mockResponse.statusCode}`)
+    });
+
 
     it('should throw an error if the API call fails', async () => {
       const mockError = new Error('API call failed');
@@ -155,6 +187,16 @@ describe('AgentConfigService', () => {
       });
       expect(result).toEqual(mockResponse.body);
       expect(mockWebexSDK.logger.log).toHaveBeenCalledWith('getListOfAuxCodes api success.');
+    });
+
+    it('should throw an error if the status code is not 200', async () => {
+      const mockResponse = {
+        statusCode: 500,
+        body: {},
+      };
+      (mockWebexSDK.request as jest.Mock).mockResolvedValue(mockResponse);
+
+      await expect(agentConfigService.getListOfAuxCodes(page, pageSize, filter, attributes)).rejects.toThrow(`API call failed with ${mockResponse.statusCode}`)
     });
 
     it('should throw an error if the API call fails', async () => {

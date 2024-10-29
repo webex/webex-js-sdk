@@ -28,7 +28,7 @@ export default class AgentConfigService {
       const response = await this.httpReq.request(URL, HTTP_METHODS.GET);
 
       if (response.statusCode !== 200) {
-        Promise.reject(response);
+        throw new Error(`API call failed with ${response.statusCode}`);
       }
 
       this.webex.logger.log('getUserUsingCI api success.');
@@ -51,14 +51,14 @@ export default class AgentConfigService {
       const response = await this.httpReq.request(URL, HTTP_METHODS.GET);
 
       if (response.statusCode !== 200) {
-        Promise.reject(response);
+        throw new Error(`API call failed with ${response.statusCode}`);
       }
 
       this.webex.logger.log('getDesktopProfileById api success.');
 
       return Promise.resolve(response.body);
     } catch (error) {
-      return Promise.reject(new Error(`getDesktopProfileById api failed. Error: ${error}`));
+      return Promise.reject(error);
     }
   }
 
@@ -87,14 +87,14 @@ export default class AgentConfigService {
       const response = await this.httpReq.request(URL, HTTP_METHODS.GET);
 
       if (response.statusCode !== 200) {
-        Promise.reject(response);
+        throw new Error(`API call failed with ${response.statusCode}`);
       }
 
       this.webex.logger.log('getListOfTeams api success.');
 
       return Promise.resolve(response.body);
     } catch (error) {
-      return Promise.reject(new Error(`getListOfTeams api failed. Error: ${error}`));
+      return Promise.reject(error);
     }
   }
 
@@ -123,14 +123,14 @@ export default class AgentConfigService {
       const response = await this.httpReq.request(URL, HTTP_METHODS.GET);
 
       if (response.statusCode !== 200) {
-        Promise.reject(response);
+        throw new Error(`API call failed with ${response.statusCode}`);
       }
 
       this.webex.logger.log('getListOfAuxCodes api success.');
 
       return Promise.resolve(response.body);
     } catch (error) {
-      return Promise.reject(new Error(`getListOfAuxCodes api failed. Error: ${error}`));
+      return Promise.reject(error);
     }
   }
 }
