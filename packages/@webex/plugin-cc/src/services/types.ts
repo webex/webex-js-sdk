@@ -227,3 +227,12 @@ export interface StationLoginSuccess {
   supervisorSessionId?: string;
   type: 'AgentStationLoginSuccess';
 }
+
+export type SubscribeResponse = {
+  statusCode: number;
+  body: {
+    webSocketUrl?: string;
+    subscriptionId?: string;
+  };
+  message: string | null;
+};

@@ -2,19 +2,10 @@ import {SUBSCRIBE_API, WCC_API_GATEWAY, WEBSOCKET_EVENT_TIMEOUT} from './constan
 import {WebexSDK, HTTP_METHODS, SubscribeRequest, WelcomeEvent, IHttpResponse} from '../types';
 import IWebSocket from './WebSocket/types';
 import WebSocket from './WebSocket';
-import {CC_EVENTS} from './types';
+import {CC_EVENTS, SubscribeResponse} from './types';
 import {EVENT} from '../constants';
 
 export type EventHandler = {(data: any): void};
-
-export type SubscribeResponse = {
-  statusCode: number;
-  body: {
-    webSocketUrl?: string;
-    subscriptionId?: string;
-  };
-  message: string | null;
-};
 
 class HttpRequest {
   private webSocket: IWebSocket;
