@@ -44,7 +44,7 @@ interface IWebSocket {
    * Get data channel URL for the connection
    * @returns {string} data channel Url
    */
-  getDatachannelUrl(): string | undefined;
+  getWebSocketUrl(): string | undefined;
 }
 
 export default IWebSocket;

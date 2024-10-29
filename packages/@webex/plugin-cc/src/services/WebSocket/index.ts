@@ -20,14 +20,6 @@ class WebSocket extends (Mercury as any) implements IWebSocket {
    */
   private subscriptionId: string;
 
-  /**
-   * @instance
-   * @memberof WebSocket
-   * @private
-   * @type {string}
-   */
-  private datachannelUrl: string;
-
   config = webSocketConfig; // overriding the config of Mercury with CC config
 
   constructor(options = {}) {
@@ -77,8 +69,8 @@ class WebSocket extends (Mercury as any) implements IWebSocket {
    * Get data channel URL for the connection
    * @returns {string} data channel Url
    */
-  getDatachannelUrl(): string | undefined {
-    return this.datachannelUrl;
+  getWebSocketUrl(): string | undefined {
+    return this.webSocketUrl;
   }
 
   /**
@@ -87,7 +79,6 @@ class WebSocket extends (Mercury as any) implements IWebSocket {
    */
   disconnectWebSocket(): Promise<void> {
     return this.disconnect().then(() => {
-      this.datachannelUrl = undefined;
       this.subscriptionId = undefined;
       this.webSocketUrl = undefined;
     });
