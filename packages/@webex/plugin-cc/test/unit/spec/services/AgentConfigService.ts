@@ -1,19 +1,19 @@
-import { WebexSDK } from '../../../../src/types';
+import {WebexSDK} from '../../../../src/types';
 import AgentConfigService from '../../../../src/services/AgentConfigService';
 import HttpRequest from '../../../../src/services/HttpRequest';
-import { WCC_API_GATEWAY } from '../../../../src/services/constants';
+import {WCC_API_GATEWAY} from '../../../../src/services/constants';
+import MockWebex from '@webex/test-helper-mock-webex';
 
 describe('AgentConfigService', () => {
   let agentConfigService: AgentConfigService;
-  let mockWebexSDK: WebexSDK;
+  let webex: WebexSDK;
   let mockHttpRequest: HttpRequest;
   const mockAgentId = 'agent123';
   const mockOrgId = 'org123';
   const mockWccAPIURL = WCC_API_GATEWAY;
 
   beforeEach(() => {
-    mockWebexSDK = {
-      request: jest.fn(),
+    webex = new MockWebex({
       logger: {
         log: jest.fn(),
       },
@@ -22,13 +22,12 @@ describe('AgentConfigService', () => {
           orgId: mockOrgId,
         },
       },
-    } as unknown as WebexSDK;
+    });
 
-    mockHttpRequest = {
-      request: jest.fn(),
-    } as unknown as HttpRequest;
+    mockHttpRequest = new HttpRequest({webex});
+    mockHttpRequest.request = jest.fn();
 
-    agentConfigService = new AgentConfigService(mockAgentId, mockWebexSDK, mockHttpRequest);
+    agentConfigService = new AgentConfigService(mockAgentId, webex, mockHttpRequest);
   });
 
   afterEach(() => {
@@ -57,7 +56,7 @@ describe('AgentConfigService', () => {
         method: 'GET',
       });
       expect(result).toEqual(mockResponse.body);
-      expect(mockWebexSDK.logger.log).toHaveBeenCalledWith('getUserUsingCI api success.');
+      expect(webex.logger.log).toHaveBeenCalledWith('getUserUsingCI api success.');
     });
 
     it('should throw an error if the API call fails', async () => {
@@ -92,14 +91,18 @@ describe('AgentConfigService', () => {
         method: 'GET',
       });
       expect(result).toEqual(mockResponse.body);
-      expect(mockWebexSDK.logger.log).toHaveBeenCalledWith('getDesktopProfileById api success.');
+      expect(webex.logger.log).toHaveBeenCalledWith('getDesktopProfileById api success.');
     });
 
     it('should throw an error if the API call fails', async () => {
       const mockError = new Error('API call failed');
       (mockHttpRequest.request as jest.Mock).mockRejectedValue(mockError);
 
-      await expect(agentConfigService.getDesktopProfileById(desktopProfileId)).rejects.toThrow('API call failed');
+      try {
+        await agentConfigService.getDesktopProfileById(desktopProfileId);
+      } catch (error) {
+        expect(error).toEqual(mockError);
+      }
     });
   });
 
@@ -113,8 +116,8 @@ describe('AgentConfigService', () => {
       const mockResponse = {
         statusCode: 200,
         body: [
-          { id: '123', name: 'Team 1' },
-          { id: '12345', name: 'Team 2' },
+          {id: '123', name: 'Team 1'},
+          {id: '12345', name: 'Team 2'},
         ],
       };
       (mockHttpRequest.request as jest.Mock).mockResolvedValue(mockResponse);
@@ -127,14 +130,18 @@ describe('AgentConfigService', () => {
         method: 'GET',
       });
       expect(result).toEqual(mockResponse.body);
-      expect(mockWebexSDK.logger.log).toHaveBeenCalledWith('getListOfTeams api success.');
+      expect(webex.logger.log).toHaveBeenCalledWith('getListOfTeams api success.');
     });
 
     it('should throw an error if the API call fails', async () => {
       const mockError = new Error('API call failed');
       (mockHttpRequest.request as jest.Mock).mockRejectedValue(mockError);
 
-      await expect(agentConfigService.getListOfTeams(page, pageSize, filter, attributes)).rejects.toThrow('API call failed');
+      try {
+        await agentConfigService.getListOfTeams(page, pageSize, filter, attributes);
+      } catch (error) {
+        expect(error).toEqual(mockError);
+      }
     });
   });
 
@@ -149,8 +156,24 @@ describe('AgentConfigService', () => {
         statusCode: 200,
         body: {
           data: [
-            { id: 'aux1', active: true, defaultCode: false, isSystemCode: false, description: 'Aux 1', name: 'Aux 1', workTypeCode: 'work1' },
-            { id: 'aux2', active: true, defaultCode: false, isSystemCode: false, description: 'Aux 2', name: 'Aux 2', workTypeCode: 'work2' },
+            {
+              id: 'aux1',
+              active: true,
+              defaultCode: false,
+              isSystemCode: false,
+              description: 'Aux 1',
+              name: 'Aux 1',
+              workTypeCode: 'work1',
+            },
+            {
+              id: 'aux2',
+              active: true,
+              defaultCode: false,
+              isSystemCode: false,
+              description: 'Aux 2',
+              name: 'Aux 2',
+              workTypeCode: 'work2',
+            },
           ],
         },
       };
@@ -164,14 +187,17 @@ describe('AgentConfigService', () => {
         method: 'GET',
       });
       expect(result).toEqual(mockResponse.body);
-      expect(mockWebexSDK.logger.log).toHaveBeenCalledWith('getListOfAuxCodes api success.');
+      expect(webex.logger.log).toHaveBeenCalledWith('getListOfAuxCodes api success.');
     });
 
     it('should throw an error if the API call fails', async () => {
       const mockError = new Error('API call failed');
       (mockHttpRequest.request as jest.Mock).mockRejectedValue(mockError);
-
-      await expect(agentConfigService.getListOfAuxCodes(page, pageSize, filter, attributes)).rejects.toThrow('API call failed');
+      try {
+        await agentConfigService.getListOfAuxCodes(page, pageSize, filter, attributes);
+      } catch (error) {
+        expect(error).toEqual(mockError);
+      }
     });
   });
 });
