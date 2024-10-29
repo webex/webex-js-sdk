@@ -17,12 +17,9 @@ describe('AgentConfigService', () => {
       logger: {
         log: jest.fn(),
       },
-      internal: {
-        device: {
-          orgId: mockOrgId,
-        },
-      },
     });
+
+    webex.internal.device.orgId = mockOrgId;
 
     mockHttpRequest = new HttpRequest({webex});
     mockHttpRequest.request = jest.fn();
