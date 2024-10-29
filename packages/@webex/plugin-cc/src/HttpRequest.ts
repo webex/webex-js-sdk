@@ -15,7 +15,7 @@ export default class HttpRequest {
    * @example
    * Create an instance of a class HttpRequest by passing webex object and call the request method.
    * const httpRequest = HttpRequest(webexObject);
-   * const response = await httpRequest.request('apiURL', 'GET', {id: '123', name: 'test'});
+   * const response = await httpRequest.request('apiURL', 'GET', {});
    */
 
   public async request(URL: string, method: string, body: object = {}): Promise<IHttpResponse> {
