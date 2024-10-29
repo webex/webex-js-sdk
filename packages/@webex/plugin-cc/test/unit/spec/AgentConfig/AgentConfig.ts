@@ -62,6 +62,8 @@ describe('AgentConfig', () => {
   });
 
   it('should fetch agent profile successfully', async () => {
+    const desktopProfileId = 'test123';
+
     const expectedProfile: IAgentProfile = {
       agentId: 'agent123',
       agentName: 'John Doe',
@@ -73,14 +75,14 @@ describe('AgentConfig', () => {
       idleCodes: [{id: 'aux1', active: true, defaultCode: true, isSystemCode: true, description: 'test', name: 'testName', workTypeCode: WORK_TYPE_CODE.IDLE_CODE}]
     };
 
-    
+
 
     const result = await agentConfig.getAgentProfile();
 
-    expect(getUserUsingCISpy).toHaveBeenCalledOnceWith();
-    expect(getDesktopProfileByIdSpy).toHaveBeenCalledOnceWith();
-    expect(getListOfTeamsSpy).toHaveBeenCalledOnceWith();
-    expect(getListOfAuxCodesSpy).toHaveBeenCalledOnceWith();
+    expect(getUserUsingCISpy).toHaveBeenCalledTimes(1);
+    expect(getDesktopProfileByIdSpy).toHaveBeenCalledTimes(1);
+    expect(getListOfTeamsSpy).toHaveBeenCalledTimes(1);
+    expect(getListOfAuxCodesSpy).toHaveBeenCalledTimes(1);
 
     expect(result).toEqual(expectedProfile);
   });
@@ -150,11 +152,11 @@ describe('AgentConfig', () => {
 
     const result = await agentConfig.getAgentProfile();
 
-    expect(getUserUsingCISpy).toHaveBeenCalledOnceWith;
-    expect(getDesktopProfileByIdSpy).toHaveBeenCalledOnceWith;
-    expect(getListOfTeamsSpy).toHaveBeenCalledOnceWith;
-    expect(getListOfAuxCodesSpy).toHaveBeenCalledOnceWith;
-
+    expect(getUserUsingCISpy).toHaveBeenCalledTimes(1);
+    expect(getDesktopProfileByIdSpy).toHaveBeenCalledTimes(1);
+    expect(getListOfTeamsSpy).toHaveBeenCalledTimes(1);
+    expect(getListOfAuxCodesSpy).toHaveBeenCalledTimes(1);
+    
     expect(result).toEqual(expectedProfile);
   });
 
@@ -191,10 +193,10 @@ describe('AgentConfig', () => {
 
     const result = await agentConfig.getAgentProfile();
 
-    expect(getUserUsingCISpy).toHaveBeenCalledOnceWith;
-    expect(getDesktopProfileByIdSpy).toHaveBeenCalledOnceWith;
-    expect(getListOfTeamsSpy).toHaveBeenCalledOnceWith;
-    expect(getListOfAuxCodesSpy).toHaveBeenCalledOnceWith;
+    expect(getUserUsingCISpy).toHaveBeenCalledTimes(1);
+    expect(getDesktopProfileByIdSpy).toHaveBeenCalledTimes(1);
+    expect(getListOfTeamsSpy).toHaveBeenCalledTimes(1);
+    expect(getListOfAuxCodesSpy).toHaveBeenCalledTimes(1);
 
     
     expect(result).toEqual(expectedProfile);
@@ -233,10 +235,10 @@ describe('AgentConfig', () => {
 
     const result = await agentConfig.getAgentProfile();
 
-    expect(getUserUsingCISpy).toHaveBeenCalledOnceWith;
-    expect(getDesktopProfileByIdSpy).toHaveBeenCalledOnceWith;
-    expect(getListOfTeamsSpy).toHaveBeenCalledOnceWith;
-    expect(getListOfAuxCodesSpy).toHaveBeenCalledOnceWith;
+    expect(getUserUsingCISpy).toHaveBeenCalledTimes(1);
+    expect(getDesktopProfileByIdSpy).toHaveBeenCalledTimes(1);
+    expect(getListOfTeamsSpy).toHaveBeenCalledTimes(1);
+    expect(getListOfAuxCodesSpy).toHaveBeenCalledTimes(1);
 
     
     expect(result).toEqual(expectedProfile);
@@ -275,10 +277,10 @@ describe('AgentConfig', () => {
 
     const result = await agentConfig.getAgentProfile();
 
-    expect(getUserUsingCISpy).toHaveBeenCalledOnceWith
-    expect(getDesktopProfileByIdSpy).toHaveBeenCalledOnceWith;
-    expect(getListOfTeamsSpy).toHaveBeenCalledOnceWith;
-    expect(getListOfAuxCodesSpy).toHaveBeenCalledOnceWith;
+    expect(getUserUsingCISpy).toHaveBeenCalledTimes(1);
+    expect(getDesktopProfileByIdSpy).toHaveBeenCalledTimes(1);
+    expect(getListOfTeamsSpy).toHaveBeenCalledTimes(1);
+    expect(getListOfAuxCodesSpy).toHaveBeenCalledTimes(1);
 
     expect(result).toEqual(expectedProfile);
   });
