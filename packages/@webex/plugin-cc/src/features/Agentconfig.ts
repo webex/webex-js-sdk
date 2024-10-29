@@ -1,8 +1,8 @@
-import {DEFAULT_ATTRIBUTES, DEFAULT_PAGE, DEFAULT_PAGE_SIZE} from './constants';
 import {IAgentProfile, WORK_TYPE_CODE} from './types';
-import {WebexSDK} from '../types';
-import {AuxCode, Team} from '../services/types';
 import AgentConfigService from '../services/AgentConfigService';
+import {Team, AuxCode} from '../services/types';
+import {WebexSDK} from '../types';
+import {DEFAULT_ATTRIBUTES, DEFAULT_PAGE, DEFAULT_PAGE_SIZE} from './constants';
 import HttpRequest from '../services/HttpRequest';
 
 export default class AgentConfig {

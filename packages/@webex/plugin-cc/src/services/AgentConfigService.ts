@@ -1,7 +1,7 @@
 import {WebexSDK, HTTP_METHODS} from '../types';
 import {DesktopProfileResponse, ListAuxCodesResponse, Team, AgentResponse} from './types';
-import {WCC_API_GATEWAY} from './constants';
 import HttpRequest from './HttpRequest';
+import {WCC_API_GATEWAY} from './constants';
 
 export default class AgentConfigService {
   agentId: string;
@@ -30,7 +30,7 @@ export default class AgentConfigService {
       });
 
       if (response.statusCode !== 200) {
-        Promise.reject(response);
+        throw new Error(`API call failed with ${response.statusCode}`);
       }
 
       this.webex.logger.log('getUserUsingCI api success.');
@@ -56,14 +56,14 @@ export default class AgentConfigService {
       });
 
       if (response.statusCode !== 200) {
-        Promise.reject(response);
+        throw new Error(`API call failed with ${response.statusCode}`);
       }
 
       this.webex.logger.log('getDesktopProfileById api success.');
 
       return Promise.resolve(response.body);
     } catch (error) {
-      return Promise.reject(new Error(`getDesktopProfileById api failed. Error: ${error}`));
+      return Promise.reject(error);
     }
   }
 
@@ -94,14 +94,14 @@ export default class AgentConfigService {
       });
 
       if (response.statusCode !== 200) {
-        Promise.reject(response);
+        throw new Error(`API call failed with ${response.statusCode}`);
       }
 
       this.webex.logger.log('getListOfTeams api success.');
 
       return Promise.resolve(response.body);
     } catch (error) {
-      return Promise.reject(new Error(`getListOfTeams api failed. Error: ${error}`));
+      return Promise.reject(error);
     }
   }
 
@@ -134,14 +134,14 @@ export default class AgentConfigService {
       });
 
       if (response.statusCode !== 200) {
-        Promise.reject(response);
+        throw new Error(`API call failed with ${response.statusCode}`);
       }
 
       this.webex.logger.log('getListOfAuxCodes api success.');
 
       return Promise.resolve(response.body);
     } catch (error) {
-      return Promise.reject(new Error(`getListOfAuxCodes api failed. Error: ${error}`));
+      return Promise.reject(error);
     }
   }
 }
