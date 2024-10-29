@@ -64,7 +64,7 @@ describe('AgentConfig', () => {
   it('should fetch agent profile successfully', async () => {
     const expectedProfile: IAgentProfile = {
       agentId: 'agent123',
-      name: 'John Doe',
+      agentName: 'John Doe',
       agentProfileId: 'profile123',
       agentMailId: 'john.doe@example.com',
       teams: mockTeamsListResponse,
@@ -73,12 +73,15 @@ describe('AgentConfig', () => {
       idleCodes: [{id: 'aux1', active: true, defaultCode: true, isSystemCode: true, description: 'test', name: 'testName', workTypeCode: WORK_TYPE_CODE.IDLE_CODE}]
     };
 
-    expect(getUserUsingCISpy).toHaveBeenCalledOnceWith;
-    expect(getDesktopProfileByIdSpy).toHaveBeenCalledOnceWith;
-    expect(getListOfTeamsSpy).toHaveBeenCalledOnceWith;
-    expect(getListOfAuxCodesSpy).toHaveBeenCalledOnceWith;
+    
 
     const result = await agentConfig.getAgentProfile();
+
+    expect(getUserUsingCISpy).toHaveBeenCalledOnceWith();
+    expect(getDesktopProfileByIdSpy).toHaveBeenCalledOnceWith();
+    expect(getListOfTeamsSpy).toHaveBeenCalledOnceWith();
+    expect(getListOfAuxCodesSpy).toHaveBeenCalledOnceWith();
+
     expect(result).toEqual(expectedProfile);
   });
 
@@ -136,7 +139,7 @@ describe('AgentConfig', () => {
 
     const expectedProfile: IAgentProfile = {
       agentId: 'agent123',
-      name: 'John Doe',
+      agentName: 'John Doe',
       agentProfileId: 'profile123',
       agentMailId: 'john.doe@example.com',
       teams: mockTeamsListResponse,
@@ -145,12 +148,13 @@ describe('AgentConfig', () => {
       idleCodes: [{id: 'aux1', active: true, defaultCode: true, isSystemCode: true, description: 'test', name: 'testName', workTypeCode: WORK_TYPE_CODE.IDLE_CODE}]
     };
 
+    const result = await agentConfig.getAgentProfile();
+
     expect(getUserUsingCISpy).toHaveBeenCalledOnceWith;
     expect(getDesktopProfileByIdSpy).toHaveBeenCalledOnceWith;
     expect(getListOfTeamsSpy).toHaveBeenCalledOnceWith;
     expect(getListOfAuxCodesSpy).toHaveBeenCalledOnceWith;
 
-    const result = await agentConfig.getAgentProfile();
     expect(result).toEqual(expectedProfile);
   });
 
@@ -176,7 +180,7 @@ describe('AgentConfig', () => {
 
     const expectedProfile: IAgentProfile = {
       agentId: 'agent123',
-      name: 'John Doe',
+      agentName: 'John Doe',
       agentProfileId: 'profile123',
       agentMailId: 'john.doe@example.com',
       teams: mockTeamsListResponse,
@@ -185,12 +189,14 @@ describe('AgentConfig', () => {
       idleCodes: [{id: 'aux1', active: true, defaultCode: true, isSystemCode: true, description: 'test', name: 'testName', workTypeCode: WORK_TYPE_CODE.IDLE_CODE}]
     };
 
+    const result = await agentConfig.getAgentProfile();
+
     expect(getUserUsingCISpy).toHaveBeenCalledOnceWith;
     expect(getDesktopProfileByIdSpy).toHaveBeenCalledOnceWith;
     expect(getListOfTeamsSpy).toHaveBeenCalledOnceWith;
     expect(getListOfAuxCodesSpy).toHaveBeenCalledOnceWith;
 
-    const result = await agentConfig.getAgentProfile();
+    
     expect(result).toEqual(expectedProfile);
   });
 
@@ -216,7 +222,7 @@ describe('AgentConfig', () => {
 
     const expectedProfile: IAgentProfile = {
       agentId: 'agent123',
-      name: 'John Doe',
+      agentName: 'John Doe',
       agentProfileId: 'profile123',
       agentMailId: 'john.doe@example.com',
       teams: mockTeamsListResponse,
@@ -225,12 +231,14 @@ describe('AgentConfig', () => {
       idleCodes: [{id: 'aux1', active: true, defaultCode: true, isSystemCode: true, description: 'test', name: 'testName', workTypeCode: WORK_TYPE_CODE.IDLE_CODE}]
     };
 
+    const result = await agentConfig.getAgentProfile();
+
     expect(getUserUsingCISpy).toHaveBeenCalledOnceWith;
     expect(getDesktopProfileByIdSpy).toHaveBeenCalledOnceWith;
     expect(getListOfTeamsSpy).toHaveBeenCalledOnceWith;
     expect(getListOfAuxCodesSpy).toHaveBeenCalledOnceWith;
 
-    const result = await agentConfig.getAgentProfile();
+    
     expect(result).toEqual(expectedProfile);
   });
 
@@ -256,7 +264,7 @@ describe('AgentConfig', () => {
 
     const expectedProfile: IAgentProfile = {
       agentId: 'agent123',
-      name: 'John Doe',
+      agentName: 'John Doe',
       agentProfileId: 'profile123',
       agentMailId: 'john.doe@example.com',
       teams: mockTeamsListResponse,
@@ -265,12 +273,13 @@ describe('AgentConfig', () => {
       idleCodes: [{id: 'aux1', active: true, defaultCode: true, isSystemCode: true, description: 'test', name: 'testName', workTypeCode: WORK_TYPE_CODE.IDLE_CODE}]
     };
 
+    const result = await agentConfig.getAgentProfile();
+
     expect(getUserUsingCISpy).toHaveBeenCalledOnceWith
     expect(getDesktopProfileByIdSpy).toHaveBeenCalledOnceWith;
     expect(getListOfTeamsSpy).toHaveBeenCalledOnceWith;
     expect(getListOfAuxCodesSpy).toHaveBeenCalledOnceWith;
 
-    const result = await agentConfig.getAgentProfile();
     expect(result).toEqual(expectedProfile);
   });
 });
