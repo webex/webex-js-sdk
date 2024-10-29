@@ -26,6 +26,8 @@ const teamsDropdown = document.querySelector('#teamsDropdown');
 const agentLogin = document.querySelector('#AgentLogin');
 const agentLoginButton = document.querySelector('#loginAgent');
 const dialNumber = document.querySelector('#dialNumber');
+const registerStatus = document.querySelector('#ws-connection-status');
+
 // Store and Grab `access-token` from localstorage
 if (localStorage.getItem('date') > new Date().getTime()) {
   tokenElm.value = localStorage.getItem('access-token');
@@ -96,7 +98,7 @@ function initWebex(e) {
     console.log('Authentication#initWebex() :: Webex Ready');
 
     authStatusElm.innerText = 'Saved access token!';
-
+    registerStatus.innerHTML = 'Not Registered';
     registerBtn.disabled = false;
   });
 
@@ -108,6 +110,7 @@ credentialsFormElm.addEventListener('submit', initWebex);
 
 function register() {
     webex.cc.register(true).then((agentProfile) => {
+        registerStatus.innerHTML = 'Registered';
         console.log('Event subscription successful: ', agentProfile);
         teamsDropdown.innerHTML = ''; // Clear previously selected option on teamsDropdown
         const listTeams = agentProfile.teams;
