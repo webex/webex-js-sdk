@@ -5,6 +5,7 @@ import WebSocket from '../../../../src/services/WebSocket';
 describe('plugin-cc WebSocket tests', () => {
   const subscriptionId = 'webSocketUrl';
   const webSocketUrl = 'wss://websocket.example.com';
+
   describe('WebSocket', () => {
     let webex, webSocket;
 
@@ -17,12 +18,22 @@ describe('plugin-cc WebSocket tests', () => {
           log: jest.fn(),
           error: jest.fn(),
           info: jest.fn(),
+          warn: jest.fn(),
         },
       });
 
       webSocket = new WebSocket({
         parent: webex, // Ensure the parent is set correctly
       });
+      webSocket.connect = jest.fn();
+      webSocket.disconnect = jest.fn();
+    });
+
+    afterEach(async () => {
+      if (webSocket.isConnected()) {
+        await webSocket.disconnectWebSocket();
+      }
+      jest.clearAllMocks();
     });
 
     describe('#connectWebSocket', () => {
@@ -71,7 +82,7 @@ describe('plugin-cc WebSocket tests', () => {
       });
     });
 
-    describe('#getwebSocketUrl', () => {
+    describe('#getWebSocketUrl', () => {
       it('should return the webSocketUrl', async () => {
         webSocket.connect = jest.fn();
         const connectSpy = jest.spyOn(webSocket, 'connect');
