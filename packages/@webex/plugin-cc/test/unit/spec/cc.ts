@@ -1,11 +1,11 @@
 import 'jsdom-global/register';
-import { STATION_LOGIN_TYPE, WebexSDK } from '../../../src/types';
+import {STATION_LOGIN_TYPE, WebexSDK} from '../../../src/types';
 import HttpRequest from '../../../src/services/HttpRequest';
 import Agent from '../../../src/features/Agent';
 import WebRTCCalling from '../../../src/WebRTCCalling';
 import ContactCenter from '../../../src/cc';
 import MockWebex from '@webex/test-helper-mock-webex';
-import { StationLoginSuccess } from '../../../src/services/types';
+import {StationLoginSuccess} from '../../../src/services/types';
 
 jest.mock('../../../src/services/AgentConfigService');
 jest.mock('../../../src/services/HttpRequest');
@@ -26,7 +26,7 @@ describe('webex.cc', () => {
       once: jest.fn((event, callback) => callback()),
     }) as unknown as WebexSDK;
 
-    const httpRequest = new HttpRequest({ webex });
+    const httpRequest = new HttpRequest({webex});
     webex.cc.httpRequest = httpRequest;
     webex.cc.agent = new Agent(webex, httpRequest);
   });
@@ -50,7 +50,9 @@ describe('webex.cc', () => {
       const registerWebCallingLineMock = jest.fn().mockResolvedValue({});
       WebRTCCalling.prototype.registerWebCallingLine = registerWebCallingLineMock;
 
-      const stationLoginMock = jest.spyOn(webex.cc.agent, 'stationLogin').mockResolvedValue({} as StationLoginSuccess);
+      const stationLoginMock = jest
+        .spyOn(webex.cc.agent, 'stationLogin')
+        .mockResolvedValue({} as StationLoginSuccess);
 
       const result = await webex.cc.stationLogin(options);
 
@@ -70,7 +72,9 @@ describe('webex.cc', () => {
         dialNumber: '1234567890',
       };
 
-      const stationLoginMock = jest.spyOn(webex.cc.agent, 'stationLogin').mockResolvedValue({} as StationLoginSuccess);
+      const stationLoginMock = jest
+        .spyOn(webex.cc.agent, 'stationLogin')
+        .mockResolvedValue({} as StationLoginSuccess);
 
       const result = await webex.cc.stationLogin(options);
 
