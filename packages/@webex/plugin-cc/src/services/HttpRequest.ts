@@ -99,7 +99,7 @@ class HttpRequest {
       // Listen for the event
       return new Promise((resolve, reject) => {
         const timeoutId = setTimeout(() => {
-          console.error('Timeout waiting for event');
+          this.webex.logger.error('Timeout waiting for event');
           this.eventHandlers.delete(eventType);
           reject(new Error('Timeout waiting for event'));
         }, WEBSOCKET_EVENT_TIMEOUT);

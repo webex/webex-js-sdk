@@ -36,21 +36,21 @@ describe('plugin-cc AgentService tests', () => {
   });
 
   describe('AgentService.getDeviceId', () => {
-    test('should return dialNumber when loginOption is EXTENSION', () => {
+    it('should return dialNumber when loginOption is EXTENSION', () => {
       const loginOption = STATION_LOGIN_TYPE.EXTENSION;
       const dialNumber = '12345';
       const result = agentService['getDeviceId'](loginOption, dialNumber);
       expect(result).toBe(dialNumber);
     });
 
-    test('should return dialNumber when loginOption is AGENT_DN', () => {
+    it('should return dialNumber when loginOption is AGENT_DN', () => {
       const loginOption = STATION_LOGIN_TYPE.AGENT_DN;
       const dialNumber = '12345';
       const result = agentService['getDeviceId'](loginOption, dialNumber);
       expect(result).toBe(dialNumber);
     });
 
-    test('should return WEB_RTC_PREFIX + dialNumber for other loginOptions', () => {
+    it('should return WEB_RTC_PREFIX + dialNumber for other loginOptions', () => {
       const loginOption = 'OTHER_OPTION';
       const dialNumber = '12345';
       const result = agentService['getDeviceId'](loginOption, dialNumber);
@@ -59,7 +59,7 @@ describe('plugin-cc AgentService tests', () => {
   });
 
   describe('AgentService.stationLogin', () => {
-    test('should call sendRequestWithEvent with correct parameters', async () => {
+    it('should call sendRequestWithEvent with correct parameters', async () => {
       const options = {
         teamId: 'team1',
         loginOption: STATION_LOGIN_TYPE.EXTENSION,
@@ -91,7 +91,7 @@ describe('plugin-cc AgentService tests', () => {
       expect(result).toBe('response_data');
     });
 
-    test('should log error and reject the promise on failure', async () => {
+    it('should log error and reject the promise on failure', async () => {
       const options = {
         teamId: 'team1',
         loginOption: STATION_LOGIN_TYPE.EXTENSION,
