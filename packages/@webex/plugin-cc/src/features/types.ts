@@ -50,7 +50,7 @@ export interface IAgentProfile {
   /**
    * The name of the agent.
    */
-  name: string;
+  agentName: string;
 
   /**
    * Identifier for a Desktop Profile.

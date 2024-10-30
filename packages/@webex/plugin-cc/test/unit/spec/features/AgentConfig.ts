@@ -1,7 +1,7 @@
-import { IAgentProfile } from '../../../../src/features/types';
+import {IAgentProfile} from '../../../../src/features/types';
 import AgentConfigService from '../../../../src/services/AgentConfigService';
-import { WebexSDK } from '../../../../src/types';
-import { WORK_TYPE_CODE } from '../../../../src/features/types';
+import {WebexSDK} from '../../../../src/types';
+import {WORK_TYPE_CODE} from '../../../../src/features/types';
 import AgentConfig from '../../../../src/features/Agentconfig';
 import {
   DesktopProfileResponse,
@@ -34,12 +34,28 @@ const mockDesktopProfileResponse: DesktopProfileResponse = {
   idleCodes: [],
 };
 
-const mockTeamsListResponse: Team[] = [{ id: '123', name: 'Team 1' }];
+const mockTeamsListResponse: Team[] = [{id: '123', name: 'Team 1'}];
 
 const mockAuxCodesResponse: ListAuxCodesResponse = {
   data: [
-    { id: 'aux1', active: true, defaultCode: true, isSystemCode: true, description: 'test', name: 'testName', workTypeCode: WORK_TYPE_CODE.WRAP_UP_CODE,},
-    { id: 'aux1', active: true, defaultCode: true, isSystemCode: true, description: 'test', name: 'testName', workTypeCode: WORK_TYPE_CODE.IDLE_CODE,}
+    {
+      id: 'aux1',
+      active: true,
+      defaultCode: true,
+      isSystemCode: true,
+      description: 'test',
+      name: 'testName',
+      workTypeCode: WORK_TYPE_CODE.WRAP_UP_CODE,
+    },
+    {
+      id: 'aux1',
+      active: true,
+      defaultCode: true,
+      isSystemCode: true,
+      description: 'test',
+      name: 'testName',
+      workTypeCode: WORK_TYPE_CODE.IDLE_CODE,
+    },
   ],
 };
 
@@ -54,23 +70,50 @@ describe('AgentConfig', () => {
     jest.clearAllMocks();
     agentConfig = new AgentConfig('agent123', mockWebex, 'http://api.url');
 
-    getUserUsingCISpy = jest.spyOn(AgentConfigService.prototype, 'getUserUsingCI').mockResolvedValue(mockAgentResponse);
-    getDesktopProfileByIdSpy = jest.spyOn(AgentConfigService.prototype, 'getDesktopProfileById').mockResolvedValue(mockDesktopProfileResponse);
-    getListOfAuxCodesSpy = jest.spyOn(AgentConfigService.prototype, 'getListOfAuxCodes').mockResolvedValue(mockAuxCodesResponse);
-    getListOfTeamsSpy = jest.spyOn(AgentConfigService.prototype, 'getListOfTeams').mockResolvedValue(mockTeamsListResponse);
-    
+    getUserUsingCISpy = jest
+      .spyOn(AgentConfigService.prototype, 'getUserUsingCI')
+      .mockResolvedValue(mockAgentResponse);
+    getDesktopProfileByIdSpy = jest
+      .spyOn(AgentConfigService.prototype, 'getDesktopProfileById')
+      .mockResolvedValue(mockDesktopProfileResponse);
+    getListOfAuxCodesSpy = jest
+      .spyOn(AgentConfigService.prototype, 'getListOfAuxCodes')
+      .mockResolvedValue(mockAuxCodesResponse);
+    getListOfTeamsSpy = jest
+      .spyOn(AgentConfigService.prototype, 'getListOfTeams')
+      .mockResolvedValue(mockTeamsListResponse);
   });
 
   it('should fetch agent profile successfully', async () => {
     const expectedProfile: IAgentProfile = {
       agentId: 'agent123',
-      name: 'John Doe',
+      agentName: 'John Doe',
       agentProfileId: 'profile123',
       agentMailId: 'john.doe@example.com',
       teams: mockTeamsListResponse,
       loginVoiceOptions: ['option1', 'option2'],
-      wrapUpCodes: [{id: 'aux1', active: true, defaultCode: true, isSystemCode: true, description: 'test', name: 'testName', workTypeCode: WORK_TYPE_CODE.WRAP_UP_CODE}],
-      idleCodes: [{id: 'aux1', active: true, defaultCode: true, isSystemCode: true, description: 'test', name: 'testName', workTypeCode: WORK_TYPE_CODE.IDLE_CODE}]
+      wrapUpCodes: [
+        {
+          id: 'aux1',
+          active: true,
+          defaultCode: true,
+          isSystemCode: true,
+          description: 'test',
+          name: 'testName',
+          workTypeCode: WORK_TYPE_CODE.WRAP_UP_CODE,
+        },
+      ],
+      idleCodes: [
+        {
+          id: 'aux1',
+          active: true,
+          defaultCode: true,
+          isSystemCode: true,
+          description: 'test',
+          name: 'testName',
+          workTypeCode: WORK_TYPE_CODE.IDLE_CODE,
+        },
+      ],
     };
 
     expect(getUserUsingCISpy).toHaveBeenCalledOnceWith;
@@ -127,8 +170,24 @@ describe('AgentConfig', () => {
 
     const allAuxCodesResponse: ListAuxCodesResponse = {
       data: [
-        { id: 'aux1', active: true, defaultCode: true, isSystemCode: true, description: 'test', name: 'testName', workTypeCode: WORK_TYPE_CODE.WRAP_UP_CODE},
-        { id: 'aux1', active: true, defaultCode: true, isSystemCode: true, description: 'test', name: 'testName', workTypeCode: WORK_TYPE_CODE.IDLE_CODE}
+        {
+          id: 'aux1',
+          active: true,
+          defaultCode: true,
+          isSystemCode: true,
+          description: 'test',
+          name: 'testName',
+          workTypeCode: WORK_TYPE_CODE.WRAP_UP_CODE,
+        },
+        {
+          id: 'aux1',
+          active: true,
+          defaultCode: true,
+          isSystemCode: true,
+          description: 'test',
+          name: 'testName',
+          workTypeCode: WORK_TYPE_CODE.IDLE_CODE,
+        },
       ],
     };
 
@@ -136,13 +195,33 @@ describe('AgentConfig', () => {
 
     const expectedProfile: IAgentProfile = {
       agentId: 'agent123',
-      name: 'John Doe',
+      agentName: 'John Doe',
       agentProfileId: 'profile123',
       agentMailId: 'john.doe@example.com',
       teams: mockTeamsListResponse,
       loginVoiceOptions: ['option1', 'option2'],
-      wrapUpCodes: [{id: 'aux1', active: true, defaultCode: true, isSystemCode: true, description: 'test', name: 'testName', workTypeCode: WORK_TYPE_CODE.WRAP_UP_CODE}],
-      idleCodes: [{id: 'aux1', active: true, defaultCode: true, isSystemCode: true, description: 'test', name: 'testName', workTypeCode: WORK_TYPE_CODE.IDLE_CODE}]
+      wrapUpCodes: [
+        {
+          id: 'aux1',
+          active: true,
+          defaultCode: true,
+          isSystemCode: true,
+          description: 'test',
+          name: 'testName',
+          workTypeCode: WORK_TYPE_CODE.WRAP_UP_CODE,
+        },
+      ],
+      idleCodes: [
+        {
+          id: 'aux1',
+          active: true,
+          defaultCode: true,
+          isSystemCode: true,
+          description: 'test',
+          name: 'testName',
+          workTypeCode: WORK_TYPE_CODE.IDLE_CODE,
+        },
+      ],
     };
 
     expect(getUserUsingCISpy).toHaveBeenCalledOnceWith;
@@ -167,8 +246,24 @@ describe('AgentConfig', () => {
 
     const specificAuxCodesResponse: ListAuxCodesResponse = {
       data: [
-        { id: 'aux1', active: true, defaultCode: true, isSystemCode: true, description: 'test', name: 'testName', workTypeCode: WORK_TYPE_CODE.WRAP_UP_CODE,},
-        { id: 'aux1', active: true, defaultCode: true, isSystemCode: true, description: 'test', name: 'testName', workTypeCode: WORK_TYPE_CODE.IDLE_CODE,}
+        {
+          id: 'aux1',
+          active: true,
+          defaultCode: true,
+          isSystemCode: true,
+          description: 'test',
+          name: 'testName',
+          workTypeCode: WORK_TYPE_CODE.WRAP_UP_CODE,
+        },
+        {
+          id: 'aux1',
+          active: true,
+          defaultCode: true,
+          isSystemCode: true,
+          description: 'test',
+          name: 'testName',
+          workTypeCode: WORK_TYPE_CODE.IDLE_CODE,
+        },
       ],
     };
 
@@ -176,13 +271,33 @@ describe('AgentConfig', () => {
 
     const expectedProfile: IAgentProfile = {
       agentId: 'agent123',
-      name: 'John Doe',
+      agentName: 'John Doe',
       agentProfileId: 'profile123',
       agentMailId: 'john.doe@example.com',
       teams: mockTeamsListResponse,
       loginVoiceOptions: ['option1', 'option2'],
-      wrapUpCodes: [{id: 'aux1', active: true, defaultCode: true, isSystemCode: true, description: 'test', name: 'testName', workTypeCode: WORK_TYPE_CODE.WRAP_UP_CODE}],
-      idleCodes: [{id: 'aux1', active: true, defaultCode: true, isSystemCode: true, description: 'test', name: 'testName', workTypeCode: WORK_TYPE_CODE.IDLE_CODE}]
+      wrapUpCodes: [
+        {
+          id: 'aux1',
+          active: true,
+          defaultCode: true,
+          isSystemCode: true,
+          description: 'test',
+          name: 'testName',
+          workTypeCode: WORK_TYPE_CODE.WRAP_UP_CODE,
+        },
+      ],
+      idleCodes: [
+        {
+          id: 'aux1',
+          active: true,
+          defaultCode: true,
+          isSystemCode: true,
+          description: 'test',
+          name: 'testName',
+          workTypeCode: WORK_TYPE_CODE.IDLE_CODE,
+        },
+      ],
     };
 
     expect(getUserUsingCISpy).toHaveBeenCalledOnceWith;
@@ -207,8 +322,24 @@ describe('AgentConfig', () => {
 
     const mixedAuxCodesResponse: ListAuxCodesResponse = {
       data: [
-        { id: 'aux1', active: true, defaultCode: true, isSystemCode: true, description: 'test', name: 'testName', workTypeCode: WORK_TYPE_CODE.WRAP_UP_CODE,},
-        { id: 'aux1', active: true, defaultCode: true, isSystemCode: true, description: 'test', name: 'testName', workTypeCode: WORK_TYPE_CODE.IDLE_CODE,}
+        {
+          id: 'aux1',
+          active: true,
+          defaultCode: true,
+          isSystemCode: true,
+          description: 'test',
+          name: 'testName',
+          workTypeCode: WORK_TYPE_CODE.WRAP_UP_CODE,
+        },
+        {
+          id: 'aux1',
+          active: true,
+          defaultCode: true,
+          isSystemCode: true,
+          description: 'test',
+          name: 'testName',
+          workTypeCode: WORK_TYPE_CODE.IDLE_CODE,
+        },
       ],
     };
 
@@ -216,13 +347,33 @@ describe('AgentConfig', () => {
 
     const expectedProfile: IAgentProfile = {
       agentId: 'agent123',
-      name: 'John Doe',
+      agentName: 'John Doe',
       agentProfileId: 'profile123',
       agentMailId: 'john.doe@example.com',
       teams: mockTeamsListResponse,
       loginVoiceOptions: ['option1', 'option2'],
-      wrapUpCodes: [{id: 'aux1', active: true, defaultCode: true, isSystemCode: true, description: 'test', name: 'testName', workTypeCode: WORK_TYPE_CODE.WRAP_UP_CODE}],
-      idleCodes: [{id: 'aux1', active: true, defaultCode: true, isSystemCode: true, description: 'test', name: 'testName', workTypeCode: WORK_TYPE_CODE.IDLE_CODE}]
+      wrapUpCodes: [
+        {
+          id: 'aux1',
+          active: true,
+          defaultCode: true,
+          isSystemCode: true,
+          description: 'test',
+          name: 'testName',
+          workTypeCode: WORK_TYPE_CODE.WRAP_UP_CODE,
+        },
+      ],
+      idleCodes: [
+        {
+          id: 'aux1',
+          active: true,
+          defaultCode: true,
+          isSystemCode: true,
+          description: 'test',
+          name: 'testName',
+          workTypeCode: WORK_TYPE_CODE.IDLE_CODE,
+        },
+      ],
     };
 
     expect(getUserUsingCISpy).toHaveBeenCalledOnceWith;
@@ -247,8 +398,24 @@ describe('AgentConfig', () => {
 
     const mixedAuxCodesResponse: ListAuxCodesResponse = {
       data: [
-        { id: 'aux1', active: true, defaultCode: true, isSystemCode: true, description: 'test', name: 'testName', workTypeCode: WORK_TYPE_CODE.WRAP_UP_CODE,},
-        { id: 'aux1', active: true, defaultCode: true, isSystemCode: true, description: 'test', name: 'testName', workTypeCode: WORK_TYPE_CODE.IDLE_CODE,}
+        {
+          id: 'aux1',
+          active: true,
+          defaultCode: true,
+          isSystemCode: true,
+          description: 'test',
+          name: 'testName',
+          workTypeCode: WORK_TYPE_CODE.WRAP_UP_CODE,
+        },
+        {
+          id: 'aux1',
+          active: true,
+          defaultCode: true,
+          isSystemCode: true,
+          description: 'test',
+          name: 'testName',
+          workTypeCode: WORK_TYPE_CODE.IDLE_CODE,
+        },
       ],
     };
 
@@ -256,16 +423,36 @@ describe('AgentConfig', () => {
 
     const expectedProfile: IAgentProfile = {
       agentId: 'agent123',
-      name: 'John Doe',
+      agentName: 'John Doe',
       agentProfileId: 'profile123',
       agentMailId: 'john.doe@example.com',
       teams: mockTeamsListResponse,
       loginVoiceOptions: ['option1', 'option2'],
-      wrapUpCodes: [{id: 'aux1', active: true, defaultCode: true, isSystemCode: true, description: 'test', name: 'testName', workTypeCode: WORK_TYPE_CODE.WRAP_UP_CODE}],
-      idleCodes: [{id: 'aux1', active: true, defaultCode: true, isSystemCode: true, description: 'test', name: 'testName', workTypeCode: WORK_TYPE_CODE.IDLE_CODE}]
+      wrapUpCodes: [
+        {
+          id: 'aux1',
+          active: true,
+          defaultCode: true,
+          isSystemCode: true,
+          description: 'test',
+          name: 'testName',
+          workTypeCode: WORK_TYPE_CODE.WRAP_UP_CODE,
+        },
+      ],
+      idleCodes: [
+        {
+          id: 'aux1',
+          active: true,
+          defaultCode: true,
+          isSystemCode: true,
+          description: 'test',
+          name: 'testName',
+          workTypeCode: WORK_TYPE_CODE.IDLE_CODE,
+        },
+      ],
     };
 
-    expect(getUserUsingCISpy).toHaveBeenCalledOnceWith
+    expect(getUserUsingCISpy).toHaveBeenCalledOnceWith;
     expect(getDesktopProfileByIdSpy).toHaveBeenCalledOnceWith;
     expect(getListOfTeamsSpy).toHaveBeenCalledOnceWith;
     expect(getListOfAuxCodesSpy).toHaveBeenCalledOnceWith;

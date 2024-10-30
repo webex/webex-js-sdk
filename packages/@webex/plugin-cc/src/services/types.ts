@@ -94,76 +94,6 @@ export interface DesktopProfileResponse {
 }
 
 /**
- * Represents the response from getListOfTeams method.
- *
- * @public
- */
-export interface Team {
-  /**
-   * ID of the team.
-   */
-  id: string;
-
-  /**
-   *  Name of the Team.
-   */
-  name: string;
-}
-
-/**
- * Represents AuxCode.
- * @public
- */
-
-export interface AuxCode {
-  /**
-   * ID of the Auxiliary Code.
-   */
-  id: string;
-
-  /**
-   * Indicates whether the auxiliary code is active or not active.
-   */
-  active: boolean;
-
-  /**
-   * Indicates whether this is the default code (true) or not (false).
-   */
-  defaultCode: boolean;
-
-  /**
-   * Indicates whether this is the system default code (true) or not (false).
-   */
-  isSystemCode: boolean;
-
-  /**
-   * A short description indicating the context of the code.
-   */
-  description: string;
-
-  /**
-   * Name for the Auxiliary Code.
-   */
-  name: string;
-
-  /**
-   * Indicates the work type associated with this code..
-   */
-
-  workTypeCode: string;
-}
-
-/**
- * Represents the response from getListOfAuxCodes method.
- *
- * @public
- */
-
-export interface ListAuxCodesResponse {
-  data: AuxCode[];
-}
-
-/**
  * Represents the request to a AgentLogin
  *
  * @public
@@ -236,3 +166,73 @@ export type SubscribeResponse = {
   };
   message: string | null;
 };
+
+/**
+ * Represents the response from getListOfTeams method.
+ *
+ * @public
+ */
+export interface Team {
+  /**
+   * ID of the team.
+   */
+  id: string;
+
+  /**
+   *  Name of the Team.
+   */
+  name: string;
+}
+
+/**
+ * Represents AuxCode.
+ * @public
+ */
+
+export interface AuxCode {
+  /**
+   * ID of the Auxiliary Code.
+   */
+  id: string;
+
+  /**
+   * Indicates whether the auxiliary code is active or not active.
+   */
+  active: boolean;
+
+  /**
+   * Indicates whether this is the default code (true) or not (false).
+   */
+  defaultCode: boolean;
+
+  /**
+   * Indicates whether this is the system default code (true) or not (false).
+   */
+  isSystemCode: boolean;
+
+  /**
+   * A short description indicating the context of the code.
+   */
+  description: string;
+
+  /**
+   * Name for the Auxiliary Code.
+   */
+  name: string;
+
+  /**
+   * Indicates the work type associated with this code..
+   */
+
+  workTypeCode: string;
+}
+
+/**
+ * Represents the response from getListOfAuxCodes method.
+ *
+ * @public
+ */
+
+export interface ListAuxCodesResponse {
+  data: AuxCode[];
+}
