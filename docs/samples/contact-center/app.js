@@ -28,17 +28,17 @@ const agentLoginButton = document.querySelector('#loginAgent');
 const dialNumber = document.querySelector('#dialNumber');
 const registerStatus = document.querySelector('#ws-connection-status');
 
-// Store and Grab `access-token` from localstorage
-if (localStorage.getItem('date') > new Date().getTime()) {
-  tokenElm.value = localStorage.getItem('access-token');
+// Store and Grab `access-token` from sessionStorage
+if (sessionStorage.getItem('date') > new Date().getTime()) {
+  tokenElm.value = sessionStorage.getItem('access-token');
 }
 else {
-  localStorage.removeItem('access-token');
+  sessionStorage.removeItem('access-token');
 }
 
 tokenElm.addEventListener('change', (event) => {
-  localStorage.setItem('access-token', event.target.value);
-  localStorage.setItem('date', new Date().getTime() + (12 * 60 * 60 * 1000));
+  sessionStorage.setItem('access-token', event.target.value);
+  sessionStorage.setItem('date', new Date().getTime() + (12 * 60 * 60 * 1000));
 });
 
 function changeAuthType() {
@@ -185,8 +185,8 @@ if (window.location.hash) {
   const expiresIn = urlParams.get('expires_in');
 
   if (accessToken) {
-    localStorage.setItem('access-token', accessToken);
-    localStorage.setItem('date', new Date().getTime() + parseInt(expiresIn, 10));
+    sessionStorage.setItem('access-token', accessToken);
+    sessionStorage.setItem('date', new Date().getTime() + parseInt(expiresIn, 10));
     tokenElm.value = accessToken;
   }
 }

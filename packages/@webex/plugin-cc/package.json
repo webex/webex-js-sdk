@@ -12,8 +12,8 @@
     "node": ">=20.x"
   },
   "scripts": {
-    "build:src": "webex-legacy-tools build -dest \"./dist\" -src \"./src\" -js -ts && yarn build",
-    "build": "yarn run -T tsc --declaration true --declarationDir ./dist/types",
+    "build:src": "webex-legacy-tools build -dest \"./dist\" -src \"./src\" -js -ts -maps && yarn build",
+    "build": " yarn workspace @webex/calling run build:src && yarn run -T tsc --declaration true --declarationDir ./dist/types",
     "docs": "typedoc --emit none",
     "fix:lint": "eslint 'src/**/*.ts' --fix",
     "fix:prettier": "prettier \"src/**/*.ts\" --write",
