@@ -315,9 +315,9 @@ registerInternalPlugin('conversation', Conversation, {
           });
         },
       },
-    ]
-      .concat(decryptionTransforms)
-      .concat(encryptionTransforms),
+    ],
+    // .concat(decryptionTransforms)
+    // .concat(encryptionTransforms),
   },
   config,
 });

@@ -24,7 +24,9 @@ export default function request(options) {
 
   return intercept(options, options.interceptors, 'Request')
     .then((...args) => _request(options, ...args))
-    .then((...args) =>
-      intercept(options, options.interceptors.slice().reverse(), 'Response', ...args)
-    );
+    .then((...args) => {
+      console.log('XD', ...args);
+
+      return intercept(options, options.interceptors.slice().reverse(), 'Response', ...args);
+    });
 }

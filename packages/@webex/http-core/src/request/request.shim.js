@@ -49,46 +49,51 @@ export default function _request(options) {
       `start http ${options.method ? options.method : 'request'} to ${options.uri}`
     );
 
-    const x = xhr(params, (error, response) => {
-      /* istanbul ignore next */
-      if (error) {
-        options.logger.warn(
-          `XHR error for ${options.method || 'request'} to ${options.uri} :`,
-          error
-        );
-      }
-
-      /* istanbul ignore else */
-      if (response) {
-        if (response.statusCode >= 400) {
+    if (options.iframeRequest) {
+      const result = options.iframeRequest(params);
+      resolve(result);
+    } else {
+      const x = xhr(params, (error, response) => {
+        /* istanbul ignore next */
+        if (error) {
           options.logger.warn(
-            `http ${options.method ? options.method : 'request'} to ${options.uri} result: ${
-              response.statusCode
-            }`
-          );
-        } else {
-          options.logger.debug(
-            `http ${options.method ? options.method : 'request'} to ${options.uri} result: ${
-              response.statusCode
-            }`
+            `XHR error for ${options.method || 'request'} to ${options.uri} :`,
+            error
           );
         }
-        response.options = options;
-        processResponseJson(response, params);
-        resolve(response);
-      } else {
-        resolve({
-          statusCode: 0,
-          options,
-          headers: options.headers,
-          method: options.method,
-          url: options.uri,
-          body: error,
-        });
-      }
-    });
 
-    x.onprogress = options.download.emit.bind(options.download, 'progress');
+        /* istanbul ignore else */
+        if (response) {
+          if (response.statusCode >= 400) {
+            options.logger.warn(
+              `http ${options.method ? options.method : 'request'} to ${options.uri} result: ${
+                response.statusCode
+              }`
+            );
+          } else {
+            options.logger.debug(
+              `http ${options.method ? options.method : 'request'} to ${options.uri} result: ${
+                response.statusCode
+              }`
+            );
+          }
+          response.options = options;
+          processResponseJson(response, params);
+          resolve(response);
+        } else {
+          resolve({
+            statusCode: 0,
+            options,
+            headers: options.headers,
+            method: options.method,
+            url: options.uri,
+            body: error,
+          });
+        }
+      });
+
+      x.onprogress = options.download.emit.bind(options.download, 'progress');
+    }
   }).catch((error) => {
     options.logger.warn(error);
 
