@@ -59,7 +59,7 @@ const interceptors = {
   ServiceInterceptor: undefined,
   UserAgentInterceptor: UserAgentInterceptor.create,
   WebexUserAgentInterceptor: WebexUserAgentInterceptor.create,
-  // AuthInterceptor: AuthInterceptor.create,
+  AuthInterceptor: AuthInterceptor.create,
   KmsDryErrorInterceptor: undefined,
   PayloadTransformerInterceptor: PayloadTransformerInterceptor.create,
   ConversationInterceptor: undefined,
