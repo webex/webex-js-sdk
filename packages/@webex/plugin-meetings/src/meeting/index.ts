@@ -3298,7 +3298,7 @@ export default class Meeting extends StatelessWebexPlugin {
       this.simultaneousInterpretation.updateCanManageInterpreters(
         payload.newRoles?.includes(SELF_ROLES.MODERATOR)
       );
-      this.webinar.updateCanManageWebcast(payload.newRoles?.includes(SELF_ROLES.MODERATOR));
+      this.webinar.updateRoleChanged(payload);
       Trigger.trigger(
         this,
         {
