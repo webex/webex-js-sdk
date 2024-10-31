@@ -760,6 +760,27 @@ describe('plugin-meetings', () => {
         assertBrb(false)
       })
 
+      it('should not trigger SELF_MEETING_STEP_AWAY_CHANGED when step away state changed', () => {
+        const assertBrb = (enabled) => {
+          const selfWithStepAwayChanged = cloneDeep(self);
+          selfWithStepAwayChanged.controls.brb = enabled
+
+          locusInfo.self = selfWithStepAwayChanged
+          locusInfo.emitScoped = sinon.stub();
+          locusInfo.updateSelf(selfWithStepAwayChanged, [])
+
+          assert.neverCalledWith(
+            locusInfo.emitScoped,
+            { file: 'locus-info', function: 'updateSelf' },
+            LOCUSINFO.EVENTS.SELF_MEETING_STEP_AWAY_CHANGED,
+            { brb: enabled }
+          )
+        }
+
+        assertBrb(true)
+        assertBrb(false)
+      })
+
       it('should trigger CONTROLS_MEETING_LAYOUT_UPDATED when the meeting layout controls change', () => {
         const layoutType = 'EXAMPLE TYPE';
 
