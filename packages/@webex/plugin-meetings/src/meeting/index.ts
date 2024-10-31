@@ -7912,18 +7912,21 @@ export default class Meeting extends StatelessWebexPlugin {
    * @param {boolean} mutedEnabled
    * @param {boolean} disallowUnmuteEnabled
    * @param {boolean} muteOnEntryEnabled
+   * @param {array} roles
    * @public
    * @memberof Meeting
    */
   public setMuteAll(
     mutedEnabled: boolean,
     disallowUnmuteEnabled: boolean,
-    muteOnEntryEnabled: boolean
+    muteOnEntryEnabled: boolean,
+    roles: Array<string>
   ) {
     return this.controlsOptionsManager.setMuteAll(
       mutedEnabled,
       disallowUnmuteEnabled,
-      muteOnEntryEnabled
+      muteOnEntryEnabled,
+      roles
     );
   }
 

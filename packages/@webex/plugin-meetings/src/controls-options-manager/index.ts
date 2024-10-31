@@ -177,7 +177,7 @@ export default class ControlsOptionsManager {
    * @memberof ControlsOptionsManager
    * @returns {Promise}
    */
-  private setControls(setting: {[key in Setting]?: boolean}): Promise<any> {
+  private setControls(setting: {[key in Setting]?: any}): Promise<any> {
     LoggerProxy.logger.log(
       `ControlsOptionsManager:index#setControls --> ${JSON.stringify(setting)}`
     );
@@ -216,6 +216,14 @@ export default class ControlsOptionsManager {
             body.audio[camelCase(key)] = value;
           } else {
             body[camelCase(key)] = {[ENABLED]: value};
+          }
+          break;
+
+        case Setting.roles:
+          if (Array.isArray(value)) {
+            body.audio = body.audio
+              ? {...body.audio, [camelCase(key)]: value}
+              : {[camelCase(key)]: value};
           }
           break;
 
@@ -261,18 +269,21 @@ export default class ControlsOptionsManager {
    * @param {boolean} mutedEnabled
    * @param {boolean} disallowUnmuteEnabled
    * @param {boolean} muteOnEntryEnabled
+   * @param {array} roles which should be muted
    * @memberof ControlsOptionsManager
    * @returns {Promise}
    */
   public setMuteAll(
     mutedEnabled: boolean,
     disallowUnmuteEnabled: boolean,
-    muteOnEntryEnabled: boolean
+    muteOnEntryEnabled: boolean,
+    roles: Array<string>
   ): Promise<any> {
     return this.setControls({
       [Setting.muted]: mutedEnabled,
       [Setting.disallowUnmute]: disallowUnmuteEnabled,
       [Setting.muteOnEntry]: muteOnEntryEnabled,
+      [Setting.roles]: roles,
     });
   }
 }
