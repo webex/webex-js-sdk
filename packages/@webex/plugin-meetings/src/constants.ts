@@ -1328,3 +1328,5 @@ export const DESTINATION_TYPE = {
 } as const;
 
 export type DESTINATION_TYPE = Enum<typeof DESTINATION_TYPE>;
+
+export const ICE_CANDIDATES_TIMEOUT = 5000;

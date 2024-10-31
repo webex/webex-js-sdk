@@ -17,7 +17,7 @@ import {
 } from '@webex/media-helpers';
 import {RtcMetrics} from '@webex/internal-plugin-metrics';
 import LoggerProxy from '../common/logs/logger-proxy';
-import {MEDIA_TRACK_CONSTRAINT} from '../constants';
+import {ICE_CANDIDATES_TIMEOUT, MEDIA_TRACK_CONSTRAINT} from '../constants';
 import Config from '../config';
 import StaticConfig from '../common/config';
 import BrowserDetection from '../common/browser-detection';
@@ -210,6 +210,7 @@ Media.createMediaConnection = (
   return new RoapMediaConnection(
     {
       iceServers,
+      iceCandidatesTimeout: ICE_CANDIDATES_TIMEOUT,
       skipInactiveTransceivers: false,
       requireH264: true,
       sdpMunging: {
