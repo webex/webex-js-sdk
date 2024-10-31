@@ -14,6 +14,7 @@ import {intercept} from './utils';
 export default function request(options) {
   if (options.url) {
     options.uri = options.url;
+    options.url = undefined;
     options.url = null;
   }
 
