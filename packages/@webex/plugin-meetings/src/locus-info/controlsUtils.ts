@@ -79,7 +79,11 @@ ControlsUtils.parse = (controls: any) => {
   }
 
   if (controls?.viewTheParticipantList) {
-    parsedControls.viewTheParticipantList = {enabled: controls.viewTheParticipantList.enabled};
+    parsedControls.viewTheParticipantList = {
+      enabled: controls.viewTheParticipantList.enabled,
+      panelistEnabled: controls.viewTheParticipantList.panelistEnabled,
+      attendeeCount: controls.viewTheParticipantList.attendeeCount,
+    };
   }
 
   if (controls?.raiseHand) {
@@ -121,7 +125,11 @@ ControlsUtils.getControls = (oldControls: any, newControls: any) => {
         previous?.reactions?.showDisplayNameWithReactions,
 
       hasViewTheParticipantListChanged:
-        current?.viewTheParticipantList?.enabled !== previous?.viewTheParticipantList?.enabled,
+        current?.viewTheParticipantList?.enabled !== previous?.viewTheParticipantList?.enabled ||
+        current?.viewTheParticipantList?.panelistEnabled !==
+          previous?.viewTheParticipantList?.panelistEnabled ||
+        current?.viewTheParticipantList?.attendeeCount !==
+          previous?.viewTheParticipantList?.attendeeCount,
 
       hasRaiseHandChanged: current?.raiseHand?.enabled !== previous?.raiseHand?.enabled,
 
