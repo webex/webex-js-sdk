@@ -12,14 +12,6 @@ class WebSocket extends (Mercury as any) implements IWebSocket {
    */
   private webSocketUrl: string;
 
-  /**
-   * @instance
-   * @memberof WebSocket
-   * @private
-   * @type {string}
-   */
-  private subscriptionId: string;
-
   config = webSocketConfig; // overriding the config of Mercury with CC config
 
   constructor(options = {}) {
@@ -42,10 +34,9 @@ class WebSocket extends (Mercury as any) implements IWebSocket {
    * @param {SubscribeRequest} params.body
    * @returns {Promise<void>}
    */
-  connectWebSocket(options: {webSocketUrl: string; subscriptionId: string}): void {
-    const {webSocketUrl, subscriptionId} = options;
+  connectWebSocket(options: {webSocketUrl: string}): void {
+    const {webSocketUrl} = options;
     this.webSocketUrl = webSocketUrl;
-    this.subscriptionId = subscriptionId;
     this.connect(webSocketUrl);
   }
 
@@ -55,14 +46,6 @@ class WebSocket extends (Mercury as any) implements IWebSocket {
    */
   isConnected(): boolean {
     return this.connected;
-  }
-
-  /**
-   * Get the subscriptionId for the connection
-   * @returns {string} subscriptionId
-   */
-  getSubscriptionId(): string | undefined {
-    return this.subscriptionId;
   }
 
   /**
@@ -79,7 +62,6 @@ class WebSocket extends (Mercury as any) implements IWebSocket {
    */
   disconnectWebSocket(): Promise<void> {
     return this.disconnect().then(() => {
-      this.subscriptionId = undefined;
       this.webSocketUrl = undefined;
     });
   }

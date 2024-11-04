@@ -2,13 +2,6 @@ import {LoginOption} from '../types';
 
 type Enum<T extends Record<string, unknown>> = T[keyof T];
 
-export type Msg<T = any> = {
-  type: string;
-  orgId: string;
-  trackingId: string;
-  data: T;
-};
-
 // Define the CC_EVENTS object
 export const CC_EVENTS = {
   WELCOME: 'Welcome',

@@ -6,17 +6,18 @@ import {
   LINE_EVENTS,
   CALL_EVENT_KEYS,
 } from '@webex/calling';
+import {CallingClientConfig} from '@webex/calling/dist/types/CallingClient/types';
 import {WebexSDK} from './types';
 
 const TIMEOUT_DURATION = 20000; // 20 seconds timeout duration
 
 export default class WebRTCCalling {
   private callingClient: ICallingClient;
-  private callingClientConfig: any;
+  private callingClientConfig: CallingClientConfig;
   private line: ILine;
   private call: ICall;
   private webex: WebexSDK;
-  constructor(webex: WebexSDK, callingClientConfig: any) {
+  constructor(webex: WebexSDK, callingClientConfig: CallingClientConfig) {
     this.webex = webex;
     this.callingClientConfig = callingClientConfig;
   }

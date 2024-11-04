@@ -24,7 +24,7 @@ interface IWebSocket {
    * @param {object} options
    * @returns {void}
    */
-  connectWebSocket(options: {webSocketUrl: string; subscriptionId: string}): void;
+  connectWebSocket(options: {webSocketUrl: string}): void;
   /**
    * Check if the WebSocket connection is connected
    * @returns {boolean}
@@ -35,11 +35,6 @@ interface IWebSocket {
    * @returns {Promise<void>}
    */
   disconnectWebSocket(): Promise<void>;
-  /**
-   * Get the subscriptionId for the connection
-   * @returns {string} subscriptionId
-   */
-  getSubscriptionId(): string | undefined;
   /**
    * Get data channel URL for the connection
    * @returns {string} data channel Url
