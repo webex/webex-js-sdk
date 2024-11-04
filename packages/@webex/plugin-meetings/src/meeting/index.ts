@@ -2004,6 +2004,7 @@ export default class Meeting extends StatelessWebexPlugin {
     this.setUpLocusInfoSelfListener();
     this.setUpLocusInfoMeetingListener();
     this.setUpLocusServicesListener();
+    this.setUpLocusResourcesListener();
     // members update listeners
     this.setUpLocusFullStateListener();
     this.setUpLocusUrlListener();
@@ -2983,10 +2984,21 @@ export default class Meeting extends StatelessWebexPlugin {
       this.breakouts.breakoutServiceUrlUpdate(payload?.services?.breakout?.url);
       this.annotation.approvalUrlUpdate(payload?.services?.approval?.url);
       this.simultaneousInterpretation.approvalUrlUpdate(payload?.services?.approval?.url);
-      this.webinar.webcastUrlUpdate(payload?.services?.webcast?.url);
-      this.webinar.webinarAttendeesSearchingUrlUpdate(
-        payload?.services?.webinarAttendeesSearching?.url
-      );
+    });
+  }
+
+  /**
+   * Set up the locus info resources link listener
+   * update the locusInfo for webcast instance url
+   * does not currently re-emit the event as it's internal only
+   * payload is unused
+   * @returns {undefined}
+   * @private
+   * @memberof Meeting
+   */
+  private setUpLocusResourcesListener() {
+    this.locusInfo.on(LOCUSINFO.EVENTS.LINKS_RESOURCES, (payload) => {
+      this.webinar.updateWebcastUrl(payload);
     });
   }
 

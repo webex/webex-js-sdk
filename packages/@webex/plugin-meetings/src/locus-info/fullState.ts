@@ -6,6 +6,7 @@ FullState.parse = (fullState) => ({
   type: fullState.type || FULL_STATE.UNKNOWN,
   meetingState: fullState.state,
   locked: fullState.locked,
+  attendeeCount: fullState.attendeeCount,
 });
 
 FullState.getFullState = (oldFullState, newFullState) => {
