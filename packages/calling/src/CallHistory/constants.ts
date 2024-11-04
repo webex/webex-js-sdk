@@ -14,6 +14,8 @@ export const RESPONSE_MESSAGE = 'responseMessage';
 export const SET_READ_STATE_SUCCESS_MESSAGE = 'Missed calls are read by the user.';
 export const SET_DELETE_CALL_RECORDS_SUCCESS_MESSAGE =
   'Call history records are deleted by the user.';
+export const SET_DELETE_CALL_RECORDS_INVALID_DATE_FORMAT_MESSAGE =
+  'The provided date is malformed or invalid';
 export const SUCCESS_MESSAGE = 'SUCCESS';
 export const STATUS_CODE = 'statusCode';
 export const USER_SESSIONS = 'userSessions';

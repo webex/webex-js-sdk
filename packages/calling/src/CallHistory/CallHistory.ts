@@ -38,8 +38,9 @@ import {
   ORG_ID,
   DELETE_CALL_HISTORY_RECORDS_ENDPOINT,
   SET_DELETE_CALL_RECORDS_SUCCESS_MESSAGE,
+  SET_DELETE_CALL_RECORDS_INVALID_DATE_FORMAT_MESSAGE,
 } from './constants';
-import {STATUS_CODE, SUCCESS_MESSAGE, USER_SESSIONS} from '../common/constants';
+import {FAILURE_MESSAGE, STATUS_CODE, SUCCESS_MESSAGE, USER_SESSIONS} from '../common/constants';
 import {
   COMMON_EVENT_KEYS,
   CallHistoryEventTypes,
@@ -309,6 +310,29 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
       file: CALL_HISTORY_FILE,
       method: 'deleteCallHistoryRecords',
     };
+
+    // Collect all sessions with invalid dates (endTime) in an array
+    const invalidSessions = deleteSessionIds.filter((session) =>
+      Number.isNaN(new Date(session.endTime).getTime())
+    );
+
+    if (invalidSessions.length > 0) {
+      // If there are invalid sessions, return an error with details
+      const invalidSessionIds = invalidSessions.map((session) => session.sessionId).join(', ');
+      log.info(
+        `The provided date is malformed or invalid for session IDs: ${invalidSessionIds}`,
+        loggerContext
+      );
+
+      return {
+        statusCode: 400,
+        data: {
+          deleteStatusMessage: SET_DELETE_CALL_RECORDS_INVALID_DATE_FORMAT_MESSAGE,
+        },
+        message: FAILURE_MESSAGE,
+      };
+    }
+
     // Convert endTime to milliseconds for each sessionId
     const santizedSessionIds: SanitizedEndTimeAndSessionId[] = deleteSessionIds.map((session) => ({
       ...session,

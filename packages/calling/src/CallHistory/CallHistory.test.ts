@@ -23,6 +23,7 @@ import {
   MOCK_SESSION_EVENT_DELETED,
   MOCK_DELETE_CALL_HISTORY_RECORDS_RESPONSE,
   janusMarkAsDeletedUrl,
+  MOCK_DELETE_CALL_HISTORY_INVALID_DATE_RESPONSE,
 } from './callHistoryFixtures';
 import {
   COMMON_EVENT_KEYS,
@@ -387,9 +388,11 @@ describe('Call history tests', () => {
       file: CALL_HISTORY_FILE,
       method: 'deleteCallHistoryRecords',
     };
+
     afterEach(() => {
       jest.clearAllMocks();
     });
+
     beforeEach(async () => {
       serviceErrorCodeHandlerSpy = jest.spyOn(utils, 'serviceErrorCodeHandler');
       global.fetch = jest.fn(() =>
@@ -402,7 +405,7 @@ describe('Call history tests', () => {
     });
 
     it('successfully deletes the call history records', async () => {
-      const deleteSessionIds = [{endTime: '1234568', sessionId: '123'}];
+      const deleteSessionIds = [{endTime: '2024-10-22T08:50:48.603Z', sessionId: '123'}];
       const response = await callHistory.deleteCallHistoryRecords(deleteSessionIds);
       const convertedEndTimeSessionIds = deleteSessionIds.map((session) => ({
         ...session,
@@ -481,6 +484,23 @@ describe('Call history tests', () => {
         },
         methodDetails
       );
+    });
+
+    it('handles invalid date formats gracefully', async () => {
+      const deleteSessionIds = [{endTime: 'invalid-date', sessionId: '123'}];
+
+      // Mock the response to be 400 and trigger an error in your function
+      global.fetch = jest.fn(() =>
+        Promise.resolve({
+          status: 400,
+          ok: false,
+        })
+      ) as jest.Mock;
+
+      const response = await callHistory.deleteCallHistoryRecords(deleteSessionIds);
+
+      expect(response.statusCode).toBe(400);
+      expect(response).toEqual(MOCK_DELETE_CALL_HISTORY_INVALID_DATE_RESPONSE);
     });
   });
 });

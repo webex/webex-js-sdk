@@ -640,6 +640,14 @@ export const MOCK_DELETE_CALL_HISTORY_RECORDS_RESPONSE: DeleteCallHistoryRecords
   message: 'SUCCESS',
 };
 
+export const MOCK_DELETE_CALL_HISTORY_INVALID_DATE_RESPONSE: DeleteCallHistoryRecordsResponse = {
+  statusCode: 400,
+  data: {
+    deleteStatusMessage: 'The provided date is malformed or invalid',
+  },
+  message: 'FAILURE',
+};
+
 export const janusSetReadStateUrl =
   'https://janus-intb.ciscospark.com/janus/api/v1/history/userSessions/setReadState';
 
