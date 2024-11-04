@@ -3,7 +3,6 @@ import Mercury from '@webex/internal-plugin-mercury';
 import WebSocket from '../../../../src/services/WebSocket';
 
 describe('plugin-cc WebSocket tests', () => {
-  const subscriptionId = 'webSocketUrl';
   const webSocketUrl = 'wss://websocket.example.com';
 
   describe('WebSocket', () => {
@@ -41,7 +40,6 @@ describe('plugin-cc WebSocket tests', () => {
         const connectSpy = jest.spyOn(webSocket, 'connect');
         await webSocket.connectWebSocket({
           webSocketUrl,
-          subscriptionId,
         });
 
         expect(webSocket.webSocketUrl).toBe(webSocketUrl);
@@ -52,7 +50,6 @@ describe('plugin-cc WebSocket tests', () => {
       it('should return undefined if webSocketUrl is not provided', async () => {
         const result = await webSocket.connectWebSocket({
           webSocketUrl: undefined,
-          subscriptionId: undefined,
         });
 
         expect(result).toBeUndefined();
@@ -70,25 +67,12 @@ describe('plugin-cc WebSocket tests', () => {
       });
     });
 
-    describe('#getSubscriptionId', () => {
-      it('should return the subscriptionId', () => {
-        webSocket.subscriptionId = 'subscriptionId';
-        expect(webSocket.getSubscriptionId()).toBe('subscriptionId');
-      });
-
-      it('should return undefined if subscriptionId is not set', () => {
-        webSocket.subscriptionId = undefined;
-        expect(webSocket.getSubscriptionId()).toBeUndefined();
-      });
-    });
-
     describe('#getWebSocketUrl', () => {
       it('should return the webSocketUrl', async () => {
         webSocket.connect = jest.fn();
         const connectSpy = jest.spyOn(webSocket, 'connect');
         await webSocket.connectWebSocket({
           webSocketUrl,
-          subscriptionId,
         });
         expect(connectSpy).toHaveBeenCalledWith('wss://websocket.example.com');
         expect(webSocket.getWebSocketUrl()).toBe(webSocketUrl);
@@ -97,7 +81,6 @@ describe('plugin-cc WebSocket tests', () => {
       it('should return undefined if webSocketUrl is not set', async () => {
         await webSocket.connectWebSocket({
           undefined,
-          subscriptionId,
         });
         expect(webSocket.getWebSocketUrl()).toBeUndefined();
       });
@@ -110,7 +93,6 @@ describe('plugin-cc WebSocket tests', () => {
         webSocket.disconnect.mockResolvedValue();
         await webSocket.disconnectWebSocket();
 
-        expect(webSocket.subscriptionId).toBeUndefined();
         expect(webSocket.webSocketUrl).toBeUndefined();
       });
 

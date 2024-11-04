@@ -40,7 +40,6 @@ describe('HttpRequest', () => {
       const mockSubscribeResponse = {
         body: {
           webSocketUrl: 'ws://example.com',
-          subscriptionId: 'sub123',
         },
       };
       const mockWelcomeEvent = {
@@ -64,7 +63,6 @@ describe('HttpRequest', () => {
         const mockSubscribeResponse = {
           body: {
             webSocketUrl: 'ws://example.com',
-            subscriptionId: 'sub123',
           },
         };
 

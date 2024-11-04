@@ -1,14 +1,7 @@
 import {WebexPlugin} from '@webex/webex-core';
 import AgentConfig from './features/Agentconfig';
 import {IAgentProfile, StationLoginResponse} from './features/types';
-import {
-  CCPluginConfig,
-  IContactCenter,
-  WebexSDK,
-  SubscribeRequest,
-  WelcomeEvent,
-  LoginOption,
-} from './types';
+import {CCPluginConfig, IContactCenter, WebexSDK, SubscribeRequest, LoginOption} from './types';
 import {READY, CC_FILE} from './constants';
 import HttpRequest from './services/HttpRequest';
 import WebRTCCalling from './WebRTCCalling';
@@ -53,7 +46,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     try {
       return await this.connectWebSocketAndFetchProfile();
     } catch (error) {
-      this.$webex.logger.error(`Error during register: ${error}`);
+      this.$webex.logger.error(`file: ${CC_FILE}: Error during register: ${error}`);
 
       return Promise.reject(new Error('Error while performing register`', error));
     }
@@ -74,22 +67,18 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     };
 
     try {
-      const welcomeData: WelcomeEvent = await this.httpRequest.subscribeNotifications({
+      const welcomeData = await this.httpRequest.subscribeNotifications({
         body: connectionConfig,
       });
 
       const agentId = welcomeData.agentId;
       const agentConfig = new AgentConfig(agentId, this.$webex, this.httpRequest);
       this.agentConfig = await agentConfig.getAgentProfile();
-      this.$webex.logger.log(
-        `agent config is: ${JSON.stringify(this.agentConfig)} file: ${CC_FILE} method: ${
-          this.register.name
-        }`
-      );
+      this.$webex.logger.log(`file: ${CC_FILE}: agent config is fetched successfully`);
 
       return this.agentConfig;
     } catch (error) {
-      this.$webex.logger.error(`Error during register: ${error}`);
+      this.$webex.logger.error(`file: ${CC_FILE}: Error during register: ${error}`);
 
       return Promise.reject(new Error('Error while performing register`', error));
     }
@@ -106,7 +95,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       let callingSDKRegister: Promise<void> | null = null;
 
       if (data.loginOption === LoginOption.BROWSER) {
-        this.webRTCCalling = new WebRTCCalling(this.$webex, this.$config);
+        this.webRTCCalling = new WebRTCCalling(this.$webex, {}); // TODO: add callingClientConfig
         callingSDKRegister = this.webRTCCalling.registerWebCallingLine();
         data.dialNumber = this.agentConfig.agentId; // replacing dialNumber with agentId for BROWSER case
       }
@@ -123,9 +112,9 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         await loginPromise;
       }
 
-      this.$webex.logger.log('LOGIN API SUCCESS');
+      this.$webex.logger.log(`file: ${CC_FILE}: LOGIN API SUCCESS`);
 
-      return loginPromise;
+      return Promise.resolve(loginPromise);
     } catch (error) {
       return Promise.reject(error);
     }

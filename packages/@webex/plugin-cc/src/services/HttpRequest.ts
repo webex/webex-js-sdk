@@ -62,7 +62,6 @@ class HttpRequest {
 
         this.webSocket.connectWebSocket({
           webSocketUrl: subscribeResponse.body.webSocketUrl,
-          subscriptionId: subscribeResponse.body.subscriptionId,
         });
       });
     } catch (error) {
