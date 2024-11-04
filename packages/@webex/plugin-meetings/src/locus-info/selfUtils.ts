@@ -163,7 +163,7 @@ SelfUtils.interpretationChanged = (previous, current) =>
   !isEqual(previous?.interpretation, current?.interpretation) && !!current?.interpretation;
 
 SelfUtils.brbChanged = (previous, current) =>
-  !isEqual(previous?.brb, current?.brb) && !!current?.brb;
+  !isEqual(previous?.brb, current?.brb) && current?.brb !== undefined;
 
 SelfUtils.isMediaInactive = (previous, current) => {
   if (
