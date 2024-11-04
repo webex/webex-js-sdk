@@ -140,6 +140,11 @@ export type WelcomeEvent = {
   agentId: string;
 };
 
+export type WelcomeResponse = {
+  data?: WelcomeEvent;
+  error?: string;
+};
+
 export type SubscribeRequest = {
   force: boolean;
   isKeepAliveEnabled: boolean;

@@ -6,10 +6,20 @@ import WebRTCCalling from '../../../src/WebRTCCalling';
 import ContactCenter from '../../../src/cc';
 import MockWebex from '@webex/test-helper-mock-webex';
 import {StationLoginSuccess} from '../../../src/services/types';
+import {IAgentProfile} from '../../../src/features/types';
+import AgentConfig from '../../../src/features/Agentconfig';
 
 jest.mock('../../../src/services/AgentConfigService');
 jest.mock('../../../src/services/HttpRequest');
 jest.mock('../../../src/WebRTCCalling');
+
+// Mock AgentConfig
+const mockAgentConfig = {
+  getAgentProfile: jest.fn(),
+};
+jest.mock('../../../src/features/Agentconfig', () => {
+  return jest.fn().mockImplementation(() => mockAgentConfig);
+});
 
 describe('webex.cc', () => {
   let webex;
@@ -112,6 +122,54 @@ describe('webex.cc', () => {
       jest.spyOn(webex.cc.agent, 'stationLogin').mockRejectedValue(error);
 
       await expect(webex.cc.stationLogin(options)).rejects.toThrow(error);
+    });
+  });
+
+  describe('register', () => {
+    it('should register successfully and return agent profile', async () => {
+      const mockAgentProfile: IAgentProfile = {
+        agentId: 'agent123',
+        agentMailId: '',
+        agentName: 'John',
+        teams: [],
+        agentProfileId: '',
+        loginVoiceOptions: [],
+        idleCodes: [],
+        wrapUpCodes: [],
+      };
+
+      mockAgentConfig.getAgentProfile.mockResolvedValue(mockAgentProfile);
+
+      webex.cc.httpRequest.subscribeNotifications.mockResolvedValue({
+        data: {agentId: 'agent123'},
+      });
+
+      const result = await webex.cc.register();
+
+      expect(webex.cc.httpRequest.subscribeNotifications).toHaveBeenCalledWith({
+        body: {
+          force: true,
+          isKeepAliveEnabled: false,
+          clientType: 'WebexCCSDK',
+          allowMultiLogin: true,
+        },
+      });
+      expect(mockAgentConfig.getAgentProfile).toHaveBeenCalled();
+      expect(webex.logger.log).toHaveBeenCalledWith(
+        'file: cc: agent config is fetched successfully'
+      );
+      expect(result).toEqual(mockAgentProfile);
+    });
+
+    it('should log error and reject if registration fails', async () => {
+      const mockError = new Error('Registration failed');
+      webex.cc.httpRequest.subscribeNotifications.mockRejectedValue(mockError);
+
+      await expect(webex.cc.register()).rejects.toThrow('Error while performing register');
+
+      expect(webex.logger.error).toHaveBeenCalledWith(
+        `file: cc: Error during register: ${mockError}`
+      );
     });
   });
 });

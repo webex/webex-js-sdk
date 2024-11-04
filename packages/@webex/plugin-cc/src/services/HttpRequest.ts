@@ -1,5 +1,12 @@
 import {SUBSCRIBE_API, WCC_API_GATEWAY, WEBSOCKET_EVENT_TIMEOUT} from './constants';
-import {WebexSDK, HTTP_METHODS, SubscribeRequest, WelcomeEvent, IHttpResponse} from '../types';
+import {
+  WebexSDK,
+  HTTP_METHODS,
+  SubscribeRequest,
+  IHttpResponse,
+  WelcomeResponse,
+  WelcomeEvent,
+} from '../types';
 import IWebSocket from './WebSocket/types';
 import WebSocket from './WebSocket';
 import {CC_EVENTS, SubscribeResponse} from './types';
@@ -35,7 +42,7 @@ class HttpRequest {
    * If the Welcome event is received, it resolves the promise
    * If the Welcome event is not received, it rejects the promise
    */
-  public async subscribeNotifications(options: {body: SubscribeRequest}): Promise<WelcomeEvent> {
+  public async subscribeNotifications(options: {body: SubscribeRequest}): Promise<WelcomeResponse> {
     try {
       const {body} = options;
       const eventType = CC_EVENTS.WELCOME;
@@ -54,10 +61,12 @@ class HttpRequest {
         }, WEBSOCKET_EVENT_TIMEOUT);
 
         // Store the event handler
-        this.eventHandlers.set(eventType, (data: any) => {
+        this.eventHandlers.set(eventType, (data: WelcomeEvent) => {
           clearTimeout(timeoutId);
           this.eventHandlers.delete(eventType);
-          resolve(data);
+          resolve({
+            data,
+          });
         });
 
         this.webSocket.connectWebSocket({

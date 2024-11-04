@@ -54,7 +54,7 @@ describe('HttpRequest', () => {
       }, 100);
 
       const result = await httpRequest.subscribeNotifications({body: {}});
-      expect(result).toEqual(mockWelcomeEvent.data);
+      expect(result).toEqual({data: mockWelcomeEvent.data});
     });
 
     it(
