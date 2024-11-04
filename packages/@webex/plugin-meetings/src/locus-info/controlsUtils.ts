@@ -94,6 +94,10 @@ ControlsUtils.parse = (controls: any) => {
     parsedControls.video = {enabled: controls.video.enabled};
   }
 
+  if (controls?.webcastControl) {
+    parsedControls.webcastControl = {streaming: controls.webcastControl.streaming};
+  }
+
   return parsedControls;
 };
 
@@ -175,6 +179,11 @@ ControlsUtils.getControls = (oldControls: any, newControls: any) => {
       hasVideoEnabledChanged:
         newControls.video?.enabled !== undefined &&
         !isEqual(previous?.videoEnabled, current?.videoEnabled),
+
+      hasWebcastChanged: !isEqual(
+        previous?.webcastControl.streaming,
+        current?.webcastControl.streaming
+      ),
     },
   };
 };

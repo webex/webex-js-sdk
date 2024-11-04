@@ -808,6 +808,7 @@ export default class LocusInfo extends EventsScope {
           hasRaiseHandChanged,
           hasVideoChanged,
           hasInterpretationChanged,
+          hasWebcastChanged,
         },
         current,
       } = ControlsUtils.getControls(this.controls, controls);
@@ -1008,6 +1009,14 @@ export default class LocusInfo extends EventsScope {
             // muted: not part of locus.controls
             unmuteAllowed: videoEnabled,
           }
+        );
+      }
+
+      if (hasWebcastChanged) {
+        this.emitScoped(
+          {file: 'locus-info', function: 'updateControls'},
+          LOCUSINFO.EVENTS.CONTROLS_WEBCAST_CHANGED,
+          {state: current.webcastControl}
         );
       }
 
