@@ -1,5 +1,5 @@
 import 'jsdom-global/register';
-import {STATION_LOGIN_TYPE, WebexSDK} from '../../../src/types';
+import {LoginOption, WebexSDK} from '../../../src/types';
 import HttpRequest from '../../../src/services/HttpRequest';
 import Agent from '../../../src/features/Agent';
 import WebRTCCalling from '../../../src/WebRTCCalling';
@@ -36,10 +36,10 @@ describe('webex.cc', () => {
   });
 
   describe('stationLogin', () => {
-    it('should login successfully with STATION_LOGIN_TYPE.BROWSER', async () => {
+    it('should login successfully with LoginOption.BROWSER', async () => {
       const options = {
         teamId: 'teamId',
-        loginOption: STATION_LOGIN_TYPE.BROWSER,
+        loginOption: LoginOption.BROWSER,
       };
 
       webex.cc.agentConfig = {
@@ -65,10 +65,10 @@ describe('webex.cc', () => {
       expect(webex.logger.log).toHaveBeenCalledWith('LOGIN API SUCCESS');
     });
 
-    it('should login successfully with other STATION_LOGIN_TYPE', async () => {
+    it('should login successfully with other LoginOption', async () => {
       const options = {
         teamId: 'teamId',
-        loginOption: STATION_LOGIN_TYPE.AGENT_DN,
+        loginOption: LoginOption.AGENT_DN,
         dialNumber: '1234567890',
       };
 
@@ -86,7 +86,7 @@ describe('webex.cc', () => {
     it('should handle error during stationLogin', async () => {
       const options = {
         teamId: 'teamId',
-        loginOption: STATION_LOGIN_TYPE.EXTENSION,
+        loginOption: LoginOption.EXTENSION,
         dialNumber: '1234567890',
       };
 
@@ -99,7 +99,7 @@ describe('webex.cc', () => {
     it('should handle error during stationLogin with BROWSER login option', async () => {
       const options = {
         teamId: 'teamId',
-        loginOption: STATION_LOGIN_TYPE.BROWSER,
+        loginOption: LoginOption.BROWSER,
       };
 
       webex.cc.agentConfig = {

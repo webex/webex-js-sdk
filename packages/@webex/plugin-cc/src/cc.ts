@@ -1,19 +1,19 @@
 import {WebexPlugin} from '@webex/webex-core';
 import AgentConfig from './features/Agentconfig';
-import {IAgentProfile} from './features/types';
+import {IAgentProfile, StationLoginResponse} from './features/types';
 import {
   CCPluginConfig,
   IContactCenter,
   WebexSDK,
   SubscribeRequest,
   WelcomeEvent,
-  STATION_LOGIN_TYPE,
+  LoginOption,
 } from './types';
 import {READY, CC_FILE} from './constants';
-import Agent from './features/Agent';
 import HttpRequest from './services/HttpRequest';
 import WebRTCCalling from './WebRTCCalling';
-import {StationLoginSuccess} from './services/types';
+import {AgentLoginRequest} from './services/types';
+import Agent from './features/Agent';
 
 export default class ContactCenter extends WebexPlugin implements IContactCenter {
   namespace = 'cc';
@@ -101,28 +101,23 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * @returns Promise<StationLoginSuccess>
    * @throws Error
    */
-  public async stationLogin(options: {
-    teamId: string;
-    loginOption: STATION_LOGIN_TYPE;
-    dialNumber?: string;
-  }): Promise<StationLoginSuccess> {
+  public async stationLogin(data: AgentLoginRequest): Promise<StationLoginResponse> {
     try {
-      let {dialNumber} = options;
       let callingSDKRegister: Promise<void> | null = null;
 
-      if (options.loginOption === STATION_LOGIN_TYPE.BROWSER) {
+      if (data.loginOption === LoginOption.BROWSER) {
         this.webRTCCalling = new WebRTCCalling(this.$webex, this.$config);
         callingSDKRegister = this.webRTCCalling.registerWebCallingLine();
-        dialNumber = this.agentConfig.agentId; // replacing dialNumber with agentId for BROWSER case
+        data.dialNumber = this.agentConfig.agentId; // replacing dialNumber with agentId for BROWSER case
       }
 
       const loginPromise = this.agent.stationLogin({
-        ...options,
-        dialNumber: dialNumber || this.agentConfig.agentId,
+        ...data,
+        dialNumber: data.dialNumber || this.agentConfig.agentId,
       });
 
       if (callingSDKRegister) {
-        // STATION_LOGIN_TYPE.BROWSER case we have to wait until calling sdk also registered.
+        // LoginOption.BROWSER case we have to wait until calling sdk also registered.
         await Promise.all([callingSDKRegister, loginPromise]);
       } else {
         await loginPromise;

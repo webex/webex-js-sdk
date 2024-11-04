@@ -1,7 +1,7 @@
-import {STATION_LOGIN_TYPE, WebexSDK, HTTP_METHODS} from '../types';
-import {AGENT, LOGIN_API, WCC_API_GATEWAY, WEB_RTC_PREFIX} from './constants';
+import {WebexSDK, HTTP_METHODS} from '../types';
+import {LOGIN_API, WCC_API_GATEWAY} from './constants';
 import HttpRequest from './HttpRequest';
-import {StationLoginSuccess} from './types';
+import {StationLoginSuccess, UserStationLogin} from './types';
 
 export default class AgentService {
   private webex: WebexSDK;
@@ -12,34 +12,18 @@ export default class AgentService {
     this.httpRequest = httpRequest;
   }
 
-  private getDeviceId(loginOption: string, dialNumber: string): string {
-    if (
-      loginOption === STATION_LOGIN_TYPE.EXTENSION ||
-      loginOption === STATION_LOGIN_TYPE.AGENT_DN
-    ) {
-      return dialNumber;
-    }
-
-    return WEB_RTC_PREFIX + dialNumber;
-  }
-
-  public async stationLogin(options: {
-    teamId: string;
-    loginOption: string;
-    dialNumber: string;
-  }): Promise<StationLoginSuccess> {
+  public async stationLogin(data: UserStationLogin): Promise<StationLoginSuccess> {
     try {
-      const {teamId, loginOption, dialNumber} = options;
       const payload = {
-        dialNumber,
-        teamId,
-        isExtension: loginOption === STATION_LOGIN_TYPE.EXTENSION,
-        roles: [AGENT],
-        deviceType: loginOption,
-        deviceId: this.getDeviceId(loginOption, dialNumber),
+        dialNumber: data.dialNumber,
+        teamId: data.teamId,
+        isExtension: data.isExtension,
+        roles: data.roles,
+        deviceType: data.deviceType,
+        deviceId: data.deviceId,
       };
 
-      const data = await this.httpRequest.sendRequestWithEvent({
+      const response = await this.httpRequest.sendRequestWithEvent({
         service: WCC_API_GATEWAY,
         resource: LOGIN_API,
         method: HTTP_METHODS.POST,
@@ -49,7 +33,7 @@ export default class AgentService {
         failure: ['AgentStationLoginFailed'],
       });
 
-      return data;
+      return response;
     } catch (error) {
       this.webex.logger.error(`Error during station login: ${error}`);
 

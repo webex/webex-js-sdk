@@ -1,4 +1,4 @@
-import {AuxCode, Team} from '../services/types';
+import {AuxCode, StationLoginSuccess, Team} from '../services/types';
 import {WebexSDK} from '../types';
 
 type Enum<T extends Record<string, unknown>> = T[keyof T];
@@ -84,4 +84,10 @@ export interface IAgentProfile {
    * Represents the wrap-up codes list that the agents can select when they wrap up a contact.
    */
   wrapUpCodes: AuxCode[];
+}
+
+export interface StationLoginResponse {
+  data?: StationLoginSuccess;
+  error?: string;
+  // TODO: enhance this with more details like status code etc. after copy pasting code from agentx
 }

@@ -1,3 +1,5 @@
+import {LoginOption} from '../types';
+
 type Enum<T extends Record<string, unknown>> = T[keyof T];
 
 export type Msg<T = any> = {
@@ -103,37 +105,35 @@ export interface AgentLoginRequest {
    * A dialNumber field contains the number to dial such as a route point or extension.
    */
 
-  dialNumber: string;
+  dialNumber?: string;
 
   /**
    * The unique ID representing a team of users.
    */
 
-  teamId?: string;
+  teamId: string;
 
   /**
-   * It indicates if the dialNumber field is full number or extension. It is set to false by default.
+   * The loginOption field contains the type of login.
    */
 
+  loginOption: LoginOption;
+}
+
+export interface UserStationLogin {
+  dialNumber?: string | null;
+  dn?: string | null;
+  teamId: string | null;
+  teamName?: string | null;
+  roles?: Array<string>;
+  siteId?: string;
+  usesOtherDN?: boolean;
+  skillProfileId?: string;
+  auxCodeId?: string;
   isExtension?: boolean;
-
-  /**
-   * It represents the current role of the user. The user can either be an agent or a supervisor.
-   */
-
-  roles: string[];
-
-  /**
-   * It represents the way to differentiate type of login request it can either be (AGENT_DN, EXTENSION, BROWSER).
-   */
-
-  deviceType?: string;
-
-  /**
-   * It is equal to dialNumber for AGENT_DN & EXTENSION deviceType and for BROWSER it is populated as webrtc-AgentUUID.
-   */
-
-  deviceId?: string;
+  deviceType?: LoginOption;
+  deviceId: string | null;
+  isEmergencyModalAlreadyDisplayed?: boolean;
 }
 
 export interface StationLoginSuccess {

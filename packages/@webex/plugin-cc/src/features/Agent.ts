@@ -1,7 +1,9 @@
-import {STATION_LOGIN_TYPE, WebexSDK} from '../types';
+import {LoginOption, WebexSDK} from '../types';
 import HttpRequest from '../services/HttpRequest';
 import AgentService from '../services/AgentService';
-import {StationLoginSuccess} from '../services/types';
+import {AgentLoginRequest} from '../services/types';
+import {StationLoginResponse} from './types';
+import {AGENT, WEB_RTC_PREFIX} from '../services/constants';
 
 export default class Agent {
   private webex: WebexSDK;
@@ -14,24 +16,31 @@ export default class Agent {
     this.agentService = new AgentService(webex, this.httpRequest);
   }
 
-  public async stationLogin(options: {
-    teamId: string;
-    loginOption: STATION_LOGIN_TYPE;
-    dialNumber?: string; // only used when loginOption is AGENT_DN or EXTENSION
-  }): Promise<StationLoginSuccess> {
-    const {teamId, loginOption, dialNumber} = options;
+  private getDeviceId(loginOption: string, dialNumber: string): string {
+    if (loginOption === LoginOption.EXTENSION || loginOption === LoginOption.AGENT_DN) {
+      return dialNumber;
+    }
 
+    return WEB_RTC_PREFIX + dialNumber;
+  }
+
+  public async stationLogin(data: AgentLoginRequest): Promise<StationLoginResponse> {
     try {
       const loginResponse = await this.agentService.stationLogin({
-        teamId,
-        loginOption,
-        dialNumber,
+        dialNumber: data.dialNumber,
+        teamId: data.teamId,
+        deviceType: data.loginOption,
+        isExtension: data.loginOption === LoginOption.EXTENSION,
+        deviceId: this.getDeviceId(data.loginOption, data.dialNumber),
+        roles: [AGENT],
       });
       this.webex.logger.log('LOGIN API SUCCESS');
 
-      return loginResponse;
+      return {
+        data: loginResponse,
+      };
     } catch (error) {
-      return Promise.reject(new Error('Error while performing agent login', error));
+      return Promise.reject(error);
     }
   }
 }

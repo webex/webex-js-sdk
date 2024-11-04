@@ -127,14 +127,14 @@ export interface IHttpResponse {
   url: string;
 }
 
-export const STATION_LOGIN_TYPE = {
+export const LoginOption = {
   AGENT_DN: 'AGENT_DN',
   EXTENSION: 'EXTENSION',
   BROWSER: 'BROWSER',
 } as const;
 
 // Derive the type using the utility type
-export type STATION_LOGIN_TYPE = Enum<typeof STATION_LOGIN_TYPE>;
+export type LoginOption = Enum<typeof LoginOption>;
 
 export interface WelcomeEvent {
   agentId: string;

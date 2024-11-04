@@ -1,8 +1,10 @@
-import { STATION_LOGIN_TYPE, WebexSDK } from '../../../../src/types';
+import {LoginOption, WebexSDK} from '../../../../src/types';
 import HttpRequest from '../../../../src/services/HttpRequest';
 import AgentService from '../../../../src/services/AgentService';
 import Agent from '../../../../src/features/Agent';
-import { StationLoginSuccess } from '../../../../src/services/types';
+import {StationLoginSuccess} from '../../../../src/services/types';
+import {AGENT, WEB_RTC_PREFIX} from '../../../../src/services/constants';
+import {StationLoginResponse} from '../../../../src/features/types';
 
 // Mock dependencies
 jest.mock('../../../../src/services/AgentService');
@@ -28,23 +30,69 @@ describe('Agent', () => {
     agent = new Agent(webexMock, httpRequestMock);
   });
 
+  describe('AgentService.getDeviceId', () => {
+    it('should return dialNumber when loginOption is EXTENSION', () => {
+      const loginOption = LoginOption.EXTENSION;
+      const dialNumber = '12345';
+      const result = agent['getDeviceId'](loginOption, dialNumber);
+      expect(result).toBe(dialNumber);
+    });
+
+    it('should return dialNumber when loginOption is AGENT_DN', () => {
+      const loginOption = LoginOption.AGENT_DN;
+      const dialNumber = '12345';
+      const result = agent['getDeviceId'](loginOption, dialNumber);
+      expect(result).toBe(dialNumber);
+    });
+
+    it('should return WEB_RTC_PREFIX + dialNumber for other loginOptions', () => {
+      const loginOption = 'OTHER_OPTION';
+      const dialNumber = '12345';
+      const result = agent['getDeviceId'](loginOption, dialNumber);
+      expect(result).toBe(WEB_RTC_PREFIX + dialNumber);
+    });
+  });
+
   it('should successfully login when stationLogin is called with valid parameters', async () => {
-    const loginResponse = {} as StationLoginSuccess;
+    const loginResponse: StationLoginSuccess = {
+      type: 'AgentStationLoginSuccess',
+      eventType: 'AgentDesktopMessage',
+      agentId: 'agentId123',
+      trackingId: 'trackingId123',
+      auxCodeId: 'auxCodeId123',
+      teamId: 'teamId123',
+      agentSessionId: 'agentSessionId123',
+      orgId: 'orgId123',
+      interactionIds: ['interactionId1', 'interactionId2'],
+      status: 'loggedIn',
+      subStatus: 'Available',
+      siteId: 'siteId123',
+      lastIdleCodeChangeTimestamp: Date.now(),
+      lastStateChangeTimestamp: Date.now(),
+      profileType: 'profileType123',
+      channelsMap: {channel1: ['subChannel1']},
+      dialNumber: '12345',
+      roles: ['role1', 'role2'],
+      supervisorSessionId: 'supervisorSessionId123',
+    };
     agentServiceMock.stationLogin.mockResolvedValue(loginResponse);
 
     const response = await agent.stationLogin({
       teamId: 'team1',
-      loginOption: STATION_LOGIN_TYPE.AGENT_DN,
+      loginOption: LoginOption.AGENT_DN,
       dialNumber: '12345',
     });
 
     expect(agentServiceMock.stationLogin).toHaveBeenCalledWith({
       teamId: 'team1',
-      loginOption: STATION_LOGIN_TYPE.AGENT_DN,
+      deviceType: LoginOption.AGENT_DN,
       dialNumber: '12345',
+      isExtension: false,
+      deviceId: '12345',
+      roles: [AGENT],
     });
     expect(webexMock.logger.log).toHaveBeenCalledWith('LOGIN API SUCCESS');
-    expect(response).toBe(loginResponse);
+    expect(response).toEqual({data: loginResponse});
   });
 
   it('should handle failure when stationLogin is called', async () => {
@@ -54,35 +102,61 @@ describe('Agent', () => {
     await expect(
       agent.stationLogin({
         teamId: 'team1',
-        loginOption: STATION_LOGIN_TYPE.EXTENSION,
+        loginOption: LoginOption.EXTENSION,
         dialNumber: '1001',
       })
-    ).rejects.toThrow('Error while performing agent login');
+    ).rejects.toThrow(error);
 
     expect(agentServiceMock.stationLogin).toHaveBeenCalledWith({
       teamId: 'team1',
-      loginOption: STATION_LOGIN_TYPE.EXTENSION,
+      deviceType: LoginOption.EXTENSION,
       dialNumber: '1001',
+      isExtension: true,
+      deviceId: '1001',
+      roles: [AGENT],
     });
     expect(webexMock.logger.log).not.toHaveBeenCalledWith('LOGIN API SUCCESS');
   });
 
   it('should login with loginOption is BROWSER', async () => {
-    const loginResponse = {} as StationLoginSuccess;
+    const loginResponse: StationLoginSuccess = {
+      type: 'AgentStationLoginSuccess',
+      eventType: 'AgentDesktopMessage',
+      agentId: 'agentId123',
+      trackingId: 'trackingId123',
+      auxCodeId: 'auxCodeId123',
+      teamId: 'teamId123',
+      agentSessionId: 'agentSessionId123',
+      orgId: 'orgId123',
+      interactionIds: ['interactionId1', 'interactionId2'],
+      status: 'loggedIn',
+      subStatus: 'Available',
+      siteId: 'siteId123',
+      lastIdleCodeChangeTimestamp: Date.now(),
+      lastStateChangeTimestamp: Date.now(),
+      profileType: 'profileType123',
+      channelsMap: {channel1: ['subChannel1']},
+      dialNumber: '12345',
+      roles: ['role1', 'role2'],
+      supervisorSessionId: 'supervisorSessionId123',
+    };
     agentServiceMock.stationLogin.mockResolvedValue(loginResponse);
 
     const response = await agent.stationLogin({
       teamId: 'team1',
-      loginOption: STATION_LOGIN_TYPE.BROWSER,
+      loginOption: LoginOption.BROWSER,
       dialNumber: 'agentId',
     });
 
     expect(agentServiceMock.stationLogin).toHaveBeenCalledWith({
       teamId: 'team1',
-      loginOption: STATION_LOGIN_TYPE.BROWSER,
+      deviceType: LoginOption.BROWSER,
       dialNumber: 'agentId',
+      isExtension: false,
+      deviceId: WEB_RTC_PREFIX + 'agentId',
+      roles: [AGENT],
     });
     expect(webexMock.logger.log).toHaveBeenCalledWith('LOGIN API SUCCESS');
-    expect(response).toBe(loginResponse);
+    expect(response).toEqual({data: loginResponse});
   });
 });

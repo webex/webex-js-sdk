@@ -63,7 +63,7 @@ describe('WebRTCCalling', () => {
     it('should reject if registration times out', async () => {
       const promise = webRTCCalling.registerWebCallingLine();
       await expect(promise).rejects.toThrow('Calling SDK Registration timed out');
-    }, 20001); // Increased timeout to 20 seconds
+    }, 20003); // Increased timeout to 20 seconds
 
     it('should handle incoming calls', async () => {
       line = callingClient.getLines().line1 as jest.Mocked<ILine>;
