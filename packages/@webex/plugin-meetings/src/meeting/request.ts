@@ -28,7 +28,7 @@ import {
   ANNOTATION,
   IP_VERSION,
 } from '../constants';
-import {SendReactionOptions, StepAwayOptions, ToggleReactionsOptions} from './request.type';
+import {SendReactionOptions, BrbOptions, ToggleReactionsOptions} from './request.type';
 import MeetingUtil from './util';
 import {AnnotationInfo} from '../annotation/annotation.types';
 
@@ -918,16 +918,16 @@ export default class MeetingRequest extends StatelessWebexPlugin {
   }
 
   /**
-   * Sends a request to set the step away (be right back) status.
+   * Sends a request to set be right back status.
    *
-   * @param {Object} options - The options for the step away request.
-   * @param {boolean} options.enabled - Whether the step away status is enabled.
+   * @param {Object} options - The options for brb request.
+   * @param {boolean} options.enabled - Whether brb status is enabled.
    * @param {string} options.locusUrl - The URL of the locus.
    * @param {string} options.deviceUrl - The URL of the device.
    * @param {string} options.selfId - The ID of the participant.
    * @returns {Promise}
    */
-  getStepAway({enabled, locusUrl, deviceUrl, selfId}: StepAwayOptions) {
+  sendBrb({enabled, locusUrl, deviceUrl, selfId}: BrbOptions) {
     const uri = `${locusUrl}/${PARTICIPANT}/${selfId}/${CONTROLS}`;
 
     return this.locusDeltaRequest({
