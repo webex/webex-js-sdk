@@ -83,6 +83,7 @@ describe('createMediaConnection', () => {
         username: 'turn username',
         password: 'turn password',
       },
+      iceCandidatesTimeout: null,
     });
     assert.calledOnce(roapMediaConnectionConstructorStub);
     assert.calledWith(
@@ -100,6 +101,7 @@ describe('createMediaConnection', () => {
             credential: 'turn password',
           },
         ],
+        iceCandidatesTimeout: null,
         skipInactiveTransceivers: false,
         requireH264: true,
         sdpMunging: {
@@ -306,12 +308,14 @@ describe('createMediaConnection', () => {
         enableRtx: ENABLE_RTX,
         enableExtmap: ENABLE_EXTMAP,
         turnServerInfo,
+        iceCandidatesTimeout: null,
       });
       assert.calledOnce(roapMediaConnectionConstructorStub);
       assert.calledWith(
         roapMediaConnectionConstructorStub,
         {
           iceServers: [],
+          iceCandidatesTimeout: null,
           skipInactiveTransceivers: false,
           requireH264: true,
           sdpMunging: {

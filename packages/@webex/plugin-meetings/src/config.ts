@@ -92,5 +92,6 @@ export default {
     degradationPreferences: {
       maxMacroblocksLimit: 8192,
     },
+    iceCandidatesGatheringTimeout: null,
   },
 };
