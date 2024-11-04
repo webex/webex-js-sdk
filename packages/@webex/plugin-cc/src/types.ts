@@ -136,15 +136,15 @@ export const LoginOption = {
 // Derive the type using the utility type
 export type LoginOption = Enum<typeof LoginOption>;
 
-export interface WelcomeEvent {
+export type WelcomeEvent = {
   agentId: string;
-}
+};
 
-export interface SubscribeRequest {
+export type SubscribeRequest = {
   force: boolean;
   isKeepAliveEnabled: boolean;
   clientType: string;
   allowMultiLogin: boolean;
-}
+};
 
 export type EventResult = IAgentProfile;

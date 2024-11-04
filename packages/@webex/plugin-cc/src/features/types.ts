@@ -86,8 +86,8 @@ export interface IAgentProfile {
   wrapUpCodes: AuxCode[];
 }
 
-export interface StationLoginResponse {
+export type StationLoginResponse = {
   data?: StationLoginSuccess;
   error?: string;
   // TODO: enhance this with more details like status code etc. after copy pasting code from agentx
-}
+};
