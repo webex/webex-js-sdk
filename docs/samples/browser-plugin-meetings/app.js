@@ -3330,23 +3330,23 @@ function toggleBreakout() {
   }
 }
 
-function stepAwayTrue() {
+function beRightBackTrue() {
   const meeting = getCurrentMeeting();
 
-  meeting.stepAway(true).then((res) => {
-    console.log(`meeting.stepAway(true) done successfully with result: ${res}`);
+  meeting.beRightBack(true).then((res) => {
+    console.log(`meeting.beRightBack(true) done successfully with result: ${res}`);
   }).catch((err) => {
-    console.log(`meeting.stepAway(true) done unsuccessfull with err: ${err}`);
+    console.log(`meeting.beRightBack(true) done unsuccessfull with err: ${err}`);
   });
 }
 
-function stepAwayFalse() {
+function beRightBackFalse() {
   const meeting = getCurrentMeeting();
 
-  meeting.stepAway(false).then((res) => {
-    console.log(`meeting.stepAway(false) done successfully with result: ${res}`);
+  meeting.beRightBack(false).then((res) => {
+    console.log(`meeting.beRightBack(false) done successfully with result: ${res}`);
   }).catch((err) => {
-    console.log(`meeting.stepAway(false) done unsuccessfull with err: ${err}`);
+    console.log(`meeting.beRightBack(false) done unsuccessfull with err: ${err}`);
   });
 }
 

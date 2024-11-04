@@ -1333,13 +1333,13 @@ export default class LocusInfo extends EventsScope {
         );
       }
 
-      if (parsedSelves.updates.stepAwayChanged) {
+      if (parsedSelves.updates.brbChanged) {
         this.emitScoped(
           {
             file: 'locus-info',
             function: 'updateSelf',
           },
-          LOCUSINFO.EVENTS.SELF_MEETING_STEP_AWAY_CHANGED,
+          LOCUSINFO.EVENTS.SELF_MEETING_BRB_CHANGED,
           {
             brb: parsedSelves.current.brb,
           }

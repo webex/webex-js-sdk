@@ -12,7 +12,7 @@ export type ToggleReactionsOptions = {
   requestingParticipantId: string;
 };
 
-export type StepAwayOptions = {
+export type BrbOptions = {
   enabled: boolean;
   locusUrl: string;
   deviceUrl: string;
