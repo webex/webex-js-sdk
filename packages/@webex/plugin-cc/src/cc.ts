@@ -1,41 +1,29 @@
 import {WebexPlugin} from '@webex/webex-core';
-import AgentConfig from './AgentConfig/AgentConfig';
-import {IAgentConfig} from './AgentConfig/types';
+import AgentConfig from './features/Agentconfig';
+import {IAgentProfile, StationLoginResponse} from './features/types';
 import {
   CCPluginConfig,
   IContactCenter,
   WebexSDK,
-  CC_EVENTS,
-  WebSocketEvent,
   SubscribeRequest,
-  EventResult,
+  WelcomeEvent,
+  LoginOption,
 } from './types';
-import {
-  EVENT,
-  READY,
-  WEBSOCKET_EVENT_TIMEOUT,
-  SUBSCRIBE_API,
-  WCC_API_GATEWAY,
-  CC_FILE,
-} from './constants';
-import IWebSocket from './WebSocket/types';
-import WebSocket from './WebSocket/WebSocket';
-
-const REGISTER_EVENT = 'register';
+import {READY, CC_FILE} from './constants';
+import HttpRequest from './services/HttpRequest';
+import WebRTCCalling from './WebRTCCalling';
+import {AgentLoginRequest} from './services/types';
+import Agent from './features/Agent';
 
 export default class ContactCenter extends WebexPlugin implements IContactCenter {
   namespace = 'cc';
-  $config: CCPluginConfig;
-  $webex: WebexSDK;
-  wccApiUrl: string;
-  agentConfig: IAgentConfig;
-  webSocket: IWebSocket;
-  ciUserId: string;
-  registered = false;
-  eventHandlers: Map<
-    string,
-    {resolve: (data: any) => void; reject: (error: any) => void; timeoutId: NodeJS.Timeout}
-  > = new Map();
+  private $config: CCPluginConfig;
+  private $webex: WebexSDK;
+  private agentConfig: IAgentProfile;
+  private registered = false;
+  private httpRequest: HttpRequest;
+  private agent: Agent;
+  private webRTCCalling: WebRTCCalling;
 
   constructor(...args) {
     super(...args);
@@ -46,70 +34,38 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     this.$webex.once(READY, () => {
       // @ts-ignore
       this.$config = this.config;
-      this.webSocket = new WebSocket({
-        parent: this.$webex,
+
+      /**
+       * This is used for handling the async requests by sending webex.request and wait for corresponding websocket event.
+       */
+      this.httpRequest = new HttpRequest({
+        webex: this.$webex,
       });
+
+      this.agent = new Agent(this.$webex, this.httpRequest);
     });
   }
 
   /**
    * This is used for making the CC SDK ready by setting up the cc mercury connection.
    */
-  public async register(): Promise<string> {
-    this.wccApiUrl = this.$webex.internal.services.get(WCC_API_GATEWAY);
-    this.listenForWebSocketEvents();
+  public async register(): Promise<IAgentProfile> {
+    try {
+      return await this.connectWebSocketAndFetchProfile();
+    } catch (error) {
+      this.$webex.logger.error(`Error during register: ${error}`);
 
-    return new Promise((resolve, reject) => {
-      this.addEventHandler(
-        REGISTER_EVENT,
-        (result) => {
-          this.registered = true;
-          resolve(result);
-        },
-        reject
-      );
-
-      this.establishConnection(reject);
-    });
+      return Promise.reject(new Error('Error while performing register`', error));
+    }
   }
 
   /**
-   * This is used for unregistering the CC SDK by disconnecting the cc mercury connection.
-   * @returns Promise<void>
+   * This is used for connecting the websocket and fetching the agent profile.
+   * @returns Promise<IAgentProfile>
+   * @throws Error
+   * @private
    */
-  public unregister(): Promise<void> {
-    return this.webSocket.disconnectWebSocket().then(() => {
-      this.webSocket.off(EVENT, this.processEvent);
-      this.registered = false;
-    });
-  }
-
-  private listenForWebSocketEvents() {
-    this.webSocket.on(EVENT, this.processEvent);
-  }
-
-  private processEvent = async (event: WebSocketEvent): Promise<void> => {
-    switch (event.type) {
-      case CC_EVENTS.WELCOME: {
-        const agentId = event.data.agentId;
-        const agentConfig = new AgentConfig(agentId, this.$webex, this.wccApiUrl);
-        this.agentConfig = await agentConfig.getAgentProfile();
-        this.$webex.logger.log(
-          `agent config is: ${JSON.stringify(this.agentConfig)} file: ${CC_FILE} method: ${
-            this.register.name
-          }`
-        );
-        this.handleEvent(REGISTER_EVENT, `Success: Agent Profile is ${this.agentConfig}`);
-        break;
-      }
-      default:
-        this.$webex.logger.info(`Unknown event: ${event.type}`);
-    }
-  };
-
-  private async establishConnection(reject: (error: Error) => void) {
-    const datachannelUrl = `${this.wccApiUrl}${SUBSCRIBE_API}`;
-
+  private async connectWebSocketAndFetchProfile() {
     const connectionConfig: SubscribeRequest = {
       force: this.$config?.force ?? true,
       isKeepAliveEnabled: this.$config?.isKeepAliveEnabled ?? false,
@@ -118,38 +74,60 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     };
 
     try {
-      await this.webSocket.subscribeAndConnect({
-        datachannelUrl,
+      const welcomeData: WelcomeEvent = await this.httpRequest.subscribeNotifications({
         body: connectionConfig,
       });
-      this.$webex.logger.info('Successfully connected and subscribed.');
+
+      const agentId = welcomeData.agentId;
+      const agentConfig = new AgentConfig(agentId, this.$webex, this.httpRequest);
+      this.agentConfig = await agentConfig.getAgentProfile();
+      this.$webex.logger.log(
+        `agent config is: ${JSON.stringify(this.agentConfig)} file: ${CC_FILE} method: ${
+          this.register.name
+        }`
+      );
+
+      return this.agentConfig;
     } catch (error) {
-      this.$webex.logger.info(`Error connecting and subscribing: ${error}`);
-      reject(error);
+      this.$webex.logger.error(`Error during register: ${error}`);
+
+      return Promise.reject(new Error('Error while performing register`', error));
     }
   }
 
-  private handleEvent(eventName: string, result: EventResult) {
-    const handler = this.eventHandlers.get(eventName);
-    if (handler) {
-      clearTimeout(handler.timeoutId);
-      handler.resolve(result);
-      this.eventHandlers.delete(eventName);
-    }
-  }
+  /**
+   * This is used for agent login.
+   * @param options
+   * @returns Promise<StationLoginSuccess>
+   * @throws Error
+   */
+  public async stationLogin(data: AgentLoginRequest): Promise<StationLoginResponse> {
+    try {
+      let callingSDKRegister: Promise<void> | null = null;
 
-  private addEventHandler(
-    eventName: string,
-    resolve: (data: EventResult) => void,
-    reject: (error: Error) => void
-  ) {
-    this.eventHandlers.set(eventName, {
-      resolve,
-      reject,
-      timeoutId: setTimeout(() => {
-        reject(new Error(`Time out waiting for event: ${eventName}`));
-        this.eventHandlers.delete(eventName);
-      }, WEBSOCKET_EVENT_TIMEOUT),
-    });
+      if (data.loginOption === LoginOption.BROWSER) {
+        this.webRTCCalling = new WebRTCCalling(this.$webex, this.$config);
+        callingSDKRegister = this.webRTCCalling.registerWebCallingLine();
+        data.dialNumber = this.agentConfig.agentId; // replacing dialNumber with agentId for BROWSER case
+      }
+
+      const loginPromise = this.agent.stationLogin({
+        ...data,
+        dialNumber: data.dialNumber || this.agentConfig.agentId,
+      });
+
+      if (callingSDKRegister) {
+        // LoginOption.BROWSER case we have to wait until calling sdk also registered.
+        await Promise.all([callingSDKRegister, loginPromise]);
+      } else {
+        await loginPromise;
+      }
+
+      this.$webex.logger.log('LOGIN API SUCCESS');
+
+      return loginPromise;
+    } catch (error) {
+      return Promise.reject(error);
+    }
   }
 }

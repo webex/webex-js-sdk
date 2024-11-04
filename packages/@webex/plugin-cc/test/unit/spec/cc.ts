@@ -1,286 +1,117 @@
-import { assert } from '@webex/test-helper-chai';
-import MockWebex from '@webex/test-helper-mock-webex';
-import WebSocket from '../../../src/WebSocket/WebSocket';
-import { EVENT, READY, WCC_API_GATEWAY, WEBSOCKET_EVENT_TIMEOUT } from '../../../src/constants';
-import { CC_EVENTS } from '../../../src/types';
+import 'jsdom-global/register';
+import {LoginOption, WebexSDK} from '../../../src/types';
+import HttpRequest from '../../../src/services/HttpRequest';
+import Agent from '../../../src/features/Agent';
+import WebRTCCalling from '../../../src/WebRTCCalling';
 import ContactCenter from '../../../src/cc';
+import MockWebex from '@webex/test-helper-mock-webex';
+import {StationLoginSuccess} from '../../../src/services/types';
+
+jest.mock('../../../src/services/AgentConfigService');
+jest.mock('../../../src/services/HttpRequest');
+jest.mock('../../../src/WebRTCCalling');
 
 describe('webex.cc', () => {
   let webex;
-  let webSocketMock;
-  let eventEmitter;
 
   beforeEach(() => {
     webex = new MockWebex({
       children: {
         cc: ContactCenter,
       },
-    });
-
-    // Ensure webex.internal.services is initialized correctly
-    webex.internal = {
-      ...webex.internal,
-      services: {
-        get: jest.fn().mockReturnValue('https://api.example.com/'),
+      logger: {
+        log: jest.fn(),
+        error: jest.fn(),
       },
-    };
+      once: jest.fn((event, callback) => callback()),
+    }) as unknown as WebexSDK;
 
-    // Manually mock the necessary methods
-    webSocketMock = {
-      on: jest.fn(),
-      subscribeAndConnect: jest.fn(),
-      disconnectWebSocket: jest.fn(),
-      off: jest.fn(),
-    };
-    webex.cc.webSocket = webSocketMock;
-    
-    // Mock event emitter
-    eventEmitter = new (require('events')).EventEmitter();
-    webSocketMock.on.mockImplementation((event, callback) => {
-      eventEmitter.on(event, callback);
-    });
-
-    global.WEBSOCKET_EVENT_TIMEOUT = 100; // Set to a smaller value for tests
-
+    const httpRequest = new HttpRequest({webex});
+    webex.cc.httpRequest = httpRequest;
+    webex.cc.agent = new Agent(webex, httpRequest);
   });
 
   afterEach(() => {
-    jest.resetAllMocks();
+    jest.clearAllMocks();
   });
 
-  describe('#register', () => {
-
-    it('should resolve with success message on successful registration even if $config is undefined', async () => {
-      webex.$config = undefined;
-      const promise = webex.cc.register();
-
-      // Emit the welcome event to simulate the WebSocket message
-      eventEmitter.emit(EVENT, {
-        type: CC_EVENTS.WELCOME,
-        data: { agentId: 'mockAgentId' },
-      });
-
-      const result = await promise;
-      expect(webSocketMock.subscribeAndConnect).toHaveBeenCalled();
-      expect(webSocketMock.subscribeAndConnect).toHaveBeenCalledWith({
-        datachannelUrl: 'https://api.example.com/v1/notification/subscribe',
-        body: {
-          force: true,
-          isKeepAliveEnabled: false,
-          clientType: 'WebexCCSDK',
-          allowMultiLogin: true,
-        },
-      });
-
-      assert.equal(result, 'Success: CI User ID is mockAgentId');
-    });
-
-    it('should resolve with success message on successful registration with $config has values', async () => {
-      webex.cc.$config = {
-        force: true,
-        isKeepAliveEnabled: false,
-        clientType: 'WebexCCSDK',
-        allowMultiLogin: true,
+  describe('stationLogin', () => {
+    it('should login successfully with LoginOption.BROWSER', async () => {
+      const options = {
+        teamId: 'teamId',
+        loginOption: LoginOption.BROWSER,
       };
-      const promise = webex.cc.register();
 
-      // Emit the welcome event to simulate the WebSocket message
-      eventEmitter.emit(EVENT, {
-        type: CC_EVENTS.WELCOME,
-        data: { agentId: 'mockAgentId' },
+      webex.cc.agentConfig = {
+        agentId: 'agentId',
+      };
+
+      // Mock the method inside the instance that will be created
+      const registerWebCallingLineMock = jest.fn().mockResolvedValue({});
+      WebRTCCalling.prototype.registerWebCallingLine = registerWebCallingLineMock;
+
+      const stationLoginMock = jest
+        .spyOn(webex.cc.agent, 'stationLogin')
+        .mockResolvedValue({} as StationLoginSuccess);
+
+      const result = await webex.cc.stationLogin(options);
+
+      expect(registerWebCallingLineMock).toHaveBeenCalled();
+      expect(stationLoginMock).toHaveBeenCalledWith({
+        ...options,
+        dialNumber: 'agentId',
       });
-
-      const result = await promise;
-      expect(webSocketMock.subscribeAndConnect).toHaveBeenCalled();
-      expect(webSocketMock.subscribeAndConnect).toHaveBeenCalledWith({
-        datachannelUrl: 'https://api.example.com/v1/notification/subscribe',
-        body: {
-          force: true,
-          isKeepAliveEnabled: false,
-          clientType: 'WebexCCSDK',
-          allowMultiLogin: true,
-        },
-      });
-
-      assert.equal(result, 'Success: CI User ID is mockAgentId');
+      expect(result).toEqual({});
+      expect(webex.logger.log).toHaveBeenCalledWith('LOGIN API SUCCESS');
     });
 
-    it('should reject with error on registration failure', async () => {
-      const error = new Error('Connection error');
-      webSocketMock.subscribeAndConnect.mockRejectedValue(error);
+    it('should login successfully with other LoginOption', async () => {
+      const options = {
+        teamId: 'teamId',
+        loginOption: LoginOption.AGENT_DN,
+        dialNumber: '1234567890',
+      };
 
-      try {
-        await webex.cc.register();
-        assert.fail('Expected error was not thrown');
-      } catch (err) {
-        assert.equal(err, error);
-      }
-    });
-  });
+      const stationLoginMock = jest
+        .spyOn(webex.cc.agent, 'stationLogin')
+        .mockResolvedValue({} as StationLoginSuccess);
 
-  describe('#unregister', () => {
-    it('should disconnect the WebSocket and remove event listeners', async () => {
-      webSocketMock.disconnectWebSocket.mockResolvedValue();
-      webSocketMock.off = jest.fn();
+      const result = await webex.cc.stationLogin(options);
 
-      await webex.cc.unregister();
-
-      expect(webSocketMock.disconnectWebSocket).toHaveBeenCalled();
-      expect(webSocketMock.off).toHaveBeenCalled();
-      expect(webSocketMock.off).toHaveBeenCalledWith(EVENT, webex.cc.processEvent);
-    });
-  });
-
-  describe('#listenForWebSocketEvents', () => {
-    it('should set up event listener for WebSocket events', () => {
-      webSocketMock.on = jest.fn();
-
-      webex.cc.listenForWebSocketEvents();
-      
-      expect(webSocketMock.on).toHaveBeenCalled();
-      expect(webSocketMock.on).toHaveBeenCalledWith(EVENT, webex.cc.processEvent);
-    });
-  });
-
-  describe('#processEvent', () => {
-    it('should handle WELCOME event and resolve the register promise', () => {
-      const resolveMock = jest.fn();
-      const rejectMock = jest.fn();
-      webex.cc.addEventHandler('register', resolveMock, rejectMock);
-
-      webex.cc.processEvent({
-        type: CC_EVENTS.WELCOME,
-        data: { agentId: 'mockAgentId' },
-      });
-
-      assert.equal(webex.cc.ciUserId, 'mockAgentId');
-
-      expect(resolveMock).toHaveBeenCalled();
-      expect(resolveMock).toHaveBeenCalledWith('Success: CI User ID is mockAgentId');
+      expect(stationLoginMock).toHaveBeenCalledWith(options);
+      expect(result).toEqual({});
+      expect(webex.logger.log).toHaveBeenCalledWith('LOGIN API SUCCESS');
     });
 
-    it('should handle unknown event type gracefully and log info statement', () => {
-      const resolveMock = jest.fn();
-      const rejectMock = jest.fn();
-      webex.logger.info = jest.fn();
-    
-      webex.cc.addEventHandler('register', resolveMock, rejectMock);
-    
-      webex.cc.processEvent({
-        type: 'UNKNOWN_EVENT',
-        data: {},
-      });
-    
-      expect(resolveMock).not.toHaveBeenCalled();
-      expect(rejectMock).not.toHaveBeenCalled();
-      expect(webex.logger.info).toHaveBeenCalled();
-      expect(webex.logger.info).toHaveBeenCalledWith('Unknown event: UNKNOWN_EVENT');
-    });
-  });
+    it('should handle error during stationLogin', async () => {
+      const options = {
+        teamId: 'teamId',
+        loginOption: LoginOption.EXTENSION,
+        dialNumber: '1234567890',
+      };
 
-  describe('#handleEvent', () => {
-    it('should resolve the event handler promise and clear timeout', () => {
-      const resolveMock = jest.fn();
-      const rejectMock = jest.fn();
-      const timeoutId = setTimeout(() => {}, 1000);
-      webex.cc.eventHandlers.set('register', { resolve: resolveMock, reject: rejectMock, timeoutId });
+      const error = new Error('Login failed');
+      jest.spyOn(webex.cc.agent, 'stationLogin').mockRejectedValue(error);
 
-      webex.cc.handleEvent('register', 'Success message');
-
-      expect(resolveMock).toHaveBeenCalled();
-      expect(resolveMock).toHaveBeenCalledWith('Success message');
-      assert.isFalse(webex.cc.eventHandlers.has('register'));
+      await expect(webex.cc.stationLogin(options)).rejects.toThrow(error);
     });
 
-    it('should do nothing if event handler is not found', () => {
-      const resolveMock = jest.fn();
-      const rejectMock = jest.fn();
+    it('should handle error during stationLogin with BROWSER login option', async () => {
+      const options = {
+        teamId: 'teamId',
+        loginOption: LoginOption.BROWSER,
+      };
 
-      webex.cc.handleEvent('nonexistent', 'Success message');
+      webex.cc.agentConfig = {
+        agentId: 'agentId',
+      };
 
-      expect(resolveMock).not.toHaveBeenCalled();
-      expect(rejectMock).not.toHaveBeenCalled();
+      const error = new Error('Login failed');
+      const registerWebCallingLineMock = jest.fn().mockRejectedValue(error);
+      WebRTCCalling.prototype.registerWebCallingLine = registerWebCallingLineMock;
+      jest.spyOn(webex.cc.agent, 'stationLogin').mockRejectedValue(error);
+
+      await expect(webex.cc.stationLogin(options)).rejects.toThrow(error);
     });
-  });
-
-  describe('#addEventHandler', () => {
-    it('should add an event handler with timeout', () => {
-      jest.useFakeTimers();
-    
-      const resolveMock = jest.fn();
-      const rejectMock = jest.fn();
-    
-      webex.cc.addEventHandler('register', resolveMock, rejectMock);
-    
-      const eventHandler = webex.cc.eventHandlers.get('register');
-      expect(eventHandler).toBeDefined();
-      expect(eventHandler.resolve).toBe(resolveMock);
-      expect(eventHandler.reject).toBe(rejectMock);
-      expect(eventHandler.timeoutId).toBeDefined();
-    
-      expect(resolveMock).not.toHaveBeenCalled();
-    
-      // Fast-forward until all timers have been executed
-      jest.runAllTimers();
-    
-      expect(rejectMock).toHaveBeenCalled();
-      clearTimeout(eventHandler.timeoutId);
-    
-      jest.useRealTimers();
-    });
-  
-    it('should reject the promise if the event times out', (done) => {
-      const resolveMock = jest.fn();
-      const rejectMock = jest.fn().mockImplementation((error) => {
-        expect(error.message).toBe('Time out waiting for event: register');
-        done();
-      });
-  
-      webex.cc.addEventHandler('register', resolveMock, rejectMock);
-  
-      const eventHandler = webex.cc.eventHandlers.get('register');
-      expect(eventHandler).toBeDefined();
-  
-      // Simulate timeout
-      setTimeout(() => {
-        expect(rejectMock).toHaveBeenCalled();
-      }, WEBSOCKET_EVENT_TIMEOUT + 100);
-    }, WEBSOCKET_EVENT_TIMEOUT + 200);
-  });
-
-  describe('#establishConnection', () => {
-    it('should establish WebSocket connection with correct parameters', async () => {
-      webSocketMock.subscribeAndConnect.mockResolvedValue();
-
-      webex.cc.register();
-
-      expect(webSocketMock.subscribeAndConnect).toHaveBeenCalled();
-      expect(webSocketMock.subscribeAndConnect).toHaveBeenCalledWith({
-        datachannelUrl: 'https://api.example.com/v1/notification/subscribe',
-        body: {
-          force: true,
-          isKeepAliveEnabled: false,
-          clientType: 'WebexCCSDK',
-          allowMultiLogin: true,
-        },
-      });
-    }, 1000);
-
-    it('should log error and throw if connection fails', async () => {
-      const error = new Error('Connection error');
-      webSocketMock.subscribeAndConnect.mockRejectedValue(error);
-      webex.logger.info = jest.fn();
-
-      try {
-        await webex.cc.establishConnection((err) => {
-          throw err;
-        });
-        assert.fail('Expected error was not thrown');
-      } catch (err) {
-        assert.equal(err, error);
-        expect(webex.logger.info).toHaveBeenCalled();
-        expect(webex.logger.info).toHaveBeenCalledWith(`Error connecting and subscribing: ${error}`);
-      }
-    }, 1000);
   });
 });

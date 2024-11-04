@@ -1,4 +1,4 @@
-import {AuxCode, ListTeamsResponse} from '../AgentConfigService/types';
+import {AuxCode, StationLoginSuccess, Team} from '../services/types';
 import {WebexSDK} from '../types';
 
 type Enum<T extends Record<string, unknown>> = T[keyof T];
@@ -40,7 +40,7 @@ export interface AgentConfigRequest {
  *
  * @public
  */
-export interface IAgentConfig {
+export interface IAgentProfile {
   /**
    * The id of the agent.
    */
@@ -48,14 +48,9 @@ export interface IAgentConfig {
   agentId: string;
 
   /**
-   * The first name of the agent.
+   * The name of the agent.
    */
-  agentFirstName: string;
-
-  /**
-   * The last name of the agent.
-   */
-  agentLastName: string;
+  agentName: string;
 
   /**
    * Identifier for a Desktop Profile.
@@ -71,7 +66,7 @@ export interface IAgentConfig {
   /**
    * Represents list of teams of an agent.
    */
-  teams: ListTeamsResponse[];
+  teams: Team[];
 
   /**
    * Represents the voice options of an agent.
@@ -89,4 +84,10 @@ export interface IAgentConfig {
    * Represents the wrap-up codes list that the agents can select when they wrap up a contact.
    */
   wrapUpCodes: AuxCode[];
+}
+
+export interface StationLoginResponse {
+  data?: StationLoginSuccess;
+  error?: string;
+  // TODO: enhance this with more details like status code etc. after copy pasting code from agentx
 }

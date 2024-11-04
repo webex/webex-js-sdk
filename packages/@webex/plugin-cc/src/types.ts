@@ -1,3 +1,5 @@
+import {IAgentProfile} from './features/types';
+
 type Enum<T extends Record<string, unknown>> = T[keyof T];
 
 // Define the HTTP_METHODS object
@@ -13,6 +15,8 @@ export const HTTP_METHODS = {
 export type HTTP_METHODS = Enum<typeof HTTP_METHODS>;
 
 type WebexRequestPayload = {
+  service?: string;
+  resource?: string;
   method?: HTTP_METHODS;
   uri?: string;
   addAuthHeader?: boolean;
@@ -88,7 +92,6 @@ export interface WebexSDK {
         'ucmgmt-gateway': string;
         contactsService: string;
       };
-      get(name: string, priorityHost?: boolean, serviceGroup?: string): string;
     };
     metrics: {
       submitClientMetrics: (name: string, data: unknown) => void;
@@ -111,27 +114,9 @@ export interface WebexSDK {
  */
 export interface IContactCenter {
   /**
-   * @ignore
-   */
-  $config: CCPluginConfig;
-  /**
-   * @ignore
-   */
-  $webex: WebexSDK;
-  /**
-   * WCC API Gateway Url
-   */
-  wccApiUrl: string;
-  /**
    * This will be public API used for making the CC SDK ready by setting up the cc mercury connection.
    */
-  register(): Promise<string>;
-
-  /**
-   * This will be public API used for unregistering the CC SDK by disconnecting the cc mercury connection
-   * @returns Promise<void>
-   */
-  unregister(): Promise<void>;
+  register(): Promise<IAgentProfile>;
 }
 
 export interface IHttpResponse {
@@ -142,19 +127,17 @@ export interface IHttpResponse {
   url: string;
 }
 
-// Define the CC_EVENTS object
-export const CC_EVENTS = {
-  WELCOME: 'Welcome',
+export const LoginOption = {
+  AGENT_DN: 'AGENT_DN',
+  EXTENSION: 'EXTENSION',
+  BROWSER: 'BROWSER',
 } as const;
 
 // Derive the type using the utility type
-export type CC_EVENTS = Enum<typeof CC_EVENTS>;
+export type LoginOption = Enum<typeof LoginOption>;
 
-export interface WebSocketEvent {
-  type: CC_EVENTS;
-  data: {
-    agentId: string;
-  };
+export interface WelcomeEvent {
+  agentId: string;
 }
 
 export interface SubscribeRequest {
@@ -164,4 +147,4 @@ export interface SubscribeRequest {
   allowMultiLogin: boolean;
 }
 
-export type EventResult = string; // TODO: Will send AgentPRofile object as part of Parv's PR and new types add as and when required
+export type EventResult = IAgentProfile;

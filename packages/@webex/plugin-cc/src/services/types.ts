@@ -1,3 +1,29 @@
+import {LoginOption} from '../types';
+
+type Enum<T extends Record<string, unknown>> = T[keyof T];
+
+export type Msg<T = any> = {
+  type: string;
+  orgId: string;
+  trackingId: string;
+  data: T;
+};
+
+// Define the CC_EVENTS object
+export const CC_EVENTS = {
+  WELCOME: 'Welcome',
+} as const;
+
+// Derive the type using the utility type
+export type CC_EVENTS = Enum<typeof CC_EVENTS>;
+
+export interface WebSocketEvent {
+  type: CC_EVENTS;
+  data: {
+    agentId: string;
+  };
+}
+
 /**
  * Represents the response from getUserUsingCI method.
  *
@@ -70,11 +96,83 @@ export interface DesktopProfileResponse {
 }
 
 /**
+ * Represents the request to a AgentLogin
+ *
+ * @public
+ */
+export interface AgentLoginRequest {
+  /**
+   * A dialNumber field contains the number to dial such as a route point or extension.
+   */
+
+  dialNumber?: string;
+
+  /**
+   * The unique ID representing a team of users.
+   */
+
+  teamId: string;
+
+  /**
+   * The loginOption field contains the type of login.
+   */
+
+  loginOption: LoginOption;
+}
+
+export interface UserStationLogin {
+  dialNumber?: string | null;
+  dn?: string | null;
+  teamId: string | null;
+  teamName?: string | null;
+  roles?: Array<string>;
+  siteId?: string;
+  usesOtherDN?: boolean;
+  skillProfileId?: string;
+  auxCodeId?: string;
+  isExtension?: boolean;
+  deviceType?: LoginOption;
+  deviceId: string | null;
+  isEmergencyModalAlreadyDisplayed?: boolean;
+}
+
+export interface StationLoginSuccess {
+  eventType: 'AgentDesktopMessage';
+  agentId: string;
+  trackingId: string;
+  auxCodeId: string;
+  teamId: string;
+  agentSessionId: string;
+  orgId: string;
+  interactionIds: string[];
+  status: string;
+  subStatus: 'Available' | 'Idle';
+  siteId: string;
+  lastIdleCodeChangeTimestamp: number;
+  lastStateChangeTimestamp: number;
+  profileType: string;
+  channelsMap: Record<string, string[]>;
+  dialNumber?: string;
+  roles?: string[];
+  supervisorSessionId?: string;
+  type: 'AgentStationLoginSuccess';
+}
+
+export type SubscribeResponse = {
+  statusCode: number;
+  body: {
+    webSocketUrl?: string;
+    subscriptionId?: string;
+  };
+  message: string | null;
+};
+
+/**
  * Represents the response from getListOfTeams method.
  *
  * @public
  */
-export interface ListTeamsResponse {
+export interface Team {
   /**
    * ID of the team.
    */
