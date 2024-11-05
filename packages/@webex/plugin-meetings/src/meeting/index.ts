@@ -3310,11 +3310,11 @@ export default class Meeting extends StatelessWebexPlugin {
           file: 'meeting/index',
           function: 'setUpLocusInfoSelfListener',
         },
-        EVENT_TRIGGERS.MEETING_BRB_UPDATE
+        EVENT_TRIGGERS.MEETING_BRB_UPDATE,
+        {
+          payload,
+        }
       );
-      if (this.mediaProperties.videoStream) {
-        this.setSendBrb(MediaType.VideoMain, payload.brb.enabled);
-      }
     });
 
     this.locusInfo.on(LOCUSINFO.EVENTS.SELF_ROLES_CHANGED, (payload) => {
@@ -3533,6 +3533,14 @@ export default class Meeting extends StatelessWebexPlugin {
         locusUrl: this.locusUrl,
         deviceUrl: this.deviceUrl,
         selfId: this.selfId,
+      })
+      .then((payload) => {
+        if (this.isMultistream && this.mediaProperties.webrtcMediaConnection) {
+          this.sendSlotManager.setSourceStateOverride(
+            MediaType.VideoMain,
+            payload.brb.enabled ? 'away' : null
+          );
+        }
       })
       .catch((error) => {
         LoggerProxy.logger.error('Meeting:index#beRightBack --> Error ', error);
@@ -8707,23 +8715,6 @@ export default class Meeting extends StatelessWebexPlugin {
     }
     if (this.isMultistream && this.mediaProperties.webrtcMediaConnection) {
       this.sendSlotManager.setNamedMediaGroups(mediaType, groups);
-    }
-  }
-
-  /**
-   * Sets the be right back status for the specified media type.
-   *
-   * @param {MediaType} mediaType - The type of media (e.g., VideoMain).
-   * @param {boolean} enabled - Whether the brb status is enabled.
-   * @returns {void}
-   */
-  private setSendBrb(mediaType: MediaType, enabled: boolean): void {
-    if (mediaType !== MediaType.VideoMain) {
-      throw new Error(`cannot set send source state override which media type is ${mediaType}`);
-    }
-
-    if (this.isMultistream && this.mediaProperties.webrtcMediaConnection) {
-      this.sendSlotManager.setSourceStateOverride(mediaType, enabled ? 'away' : null);
     }
   }
 
