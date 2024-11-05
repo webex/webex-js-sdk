@@ -25,22 +25,16 @@ export default class Agent {
   }
 
   public async stationLogin(data: AgentLoginRequest): Promise<StationLoginResponse> {
-    try {
-      const loginResponse = await this.agentService.stationLogin({
-        dialNumber: data.dialNumber,
-        teamId: data.teamId,
-        deviceType: data.loginOption,
-        isExtension: data.loginOption === LoginOption.EXTENSION,
-        deviceId: this.getDeviceId(data.loginOption, data.dialNumber),
-        roles: [AGENT],
-      });
-      this.webex.logger.log('Station Login Success');
+    const loginResponse = await this.agentService.stationLogin({
+      dialNumber: data.dialNumber,
+      teamId: data.teamId,
+      deviceType: data.loginOption,
+      isExtension: data.loginOption === LoginOption.EXTENSION,
+      deviceId: this.getDeviceId(data.loginOption, data.dialNumber),
+      roles: [AGENT],
+    });
+    this.webex.logger.log('Station Login Success');
 
-      return {
-        data: loginResponse,
-      };
-    } catch (error) {
-      return Promise.reject(error);
-    }
+    return loginResponse;
   }
 }

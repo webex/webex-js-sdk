@@ -37,7 +37,7 @@ export default class AgentService {
     } catch (error) {
       this.webex.logger.error(`Error during station login: ${error}`);
 
-      return Promise.reject(error);
+      throw error;
     }
   }
 }

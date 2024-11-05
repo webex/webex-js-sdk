@@ -141,7 +141,7 @@ describe('webex.cc', () => {
       mockAgentConfig.getAgentProfile.mockResolvedValue(mockAgentProfile);
 
       webex.cc.httpRequest.subscribeNotifications.mockResolvedValue({
-        data: {agentId: 'agent123'},
+        agentId: 'agent123',
       });
 
       const result = await webex.cc.register();

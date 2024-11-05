@@ -1,7 +1,14 @@
 import {WebexPlugin} from '@webex/webex-core';
 import AgentConfig from './features/Agentconfig';
 import {IAgentProfile, StationLoginResponse} from './features/types';
-import {CCPluginConfig, IContactCenter, WebexSDK, SubscribeRequest, LoginOption} from './types';
+import {
+  CCPluginConfig,
+  IContactCenter,
+  WebexSDK,
+  SubscribeRequest,
+  LoginOption,
+  WelcomeEvent,
+} from './types';
 import {READY, CC_FILE} from './constants';
 import HttpRequest from './services/HttpRequest';
 import WebRTCCalling from './WebRTCCalling';
@@ -67,20 +74,25 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     };
 
     try {
-      const welcomeData = await this.httpRequest.subscribeNotifications({
-        body: connectionConfig,
-      });
+      return this.httpRequest
+        .subscribeNotifications({
+          body: connectionConfig,
+        })
+        .then(async (data: WelcomeEvent) => {
+          const agentId = data.agentId;
+          const agentConfig = new AgentConfig(agentId, this.$webex, this.httpRequest);
+          this.agentConfig = await agentConfig.getAgentProfile();
+          this.$webex.logger.log(`file: ${CC_FILE}: agent config is fetched successfully`);
 
-      const agentId = welcomeData.data?.agentId;
-      const agentConfig = new AgentConfig(agentId, this.$webex, this.httpRequest);
-      this.agentConfig = await agentConfig.getAgentProfile();
-      this.$webex.logger.log(`file: ${CC_FILE}: agent config is fetched successfully`);
-
-      return this.agentConfig;
+          return this.agentConfig;
+        })
+        .catch((error) => {
+          throw error;
+        });
     } catch (error) {
       this.$webex.logger.error(`file: ${CC_FILE}: Error during register: ${error}`);
 
-      return Promise.reject(new Error('Error while performing register`', error));
+      throw error;
     }
   }
 
@@ -91,32 +103,28 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * @throws Error
    */
   public async stationLogin(data: AgentLoginRequest): Promise<StationLoginResponse> {
-    try {
-      let callingSDKRegister: Promise<void> | null = null;
+    let callingSDKRegister: Promise<void> | null = null;
 
-      if (data.loginOption === LoginOption.BROWSER) {
-        this.webRTCCalling = new WebRTCCalling(this.$webex, {}); // TODO: add callingClientConfig
-        callingSDKRegister = this.webRTCCalling.registerWebCallingLine();
-        data.dialNumber = this.agentConfig.agentId; // replacing dialNumber with agentId for BROWSER case
-      }
-
-      const loginPromise = this.agent.stationLogin({
-        ...data,
-        dialNumber: data.dialNumber || this.agentConfig.agentId,
-      });
-
-      if (callingSDKRegister) {
-        // LoginOption.BROWSER case we have to wait until calling sdk also registered.
-        await Promise.all([callingSDKRegister, loginPromise]);
-      } else {
-        await loginPromise;
-      }
-
-      this.$webex.logger.log(`file: ${CC_FILE}: Station Login Success`);
-
-      return Promise.resolve(loginPromise);
-    } catch (error) {
-      return Promise.reject(error);
+    if (data.loginOption === LoginOption.BROWSER) {
+      this.webRTCCalling = new WebRTCCalling(this.$webex, {}); // TODO: add callingClientConfig
+      callingSDKRegister = this.webRTCCalling.registerWebCallingLine();
+      data.dialNumber = this.agentConfig.agentId; // replacing dialNumber with agentId for BROWSER case
     }
+
+    const loginPromise = this.agent.stationLogin({
+      ...data,
+      dialNumber: data.dialNumber || this.agentConfig.agentId,
+    });
+
+    if (callingSDKRegister) {
+      // LoginOption.BROWSER case we have to wait until calling sdk also registered.
+      await Promise.all([callingSDKRegister, loginPromise]);
+    } else {
+      await loginPromise;
+    }
+
+    this.$webex.logger.log(`file: ${CC_FILE}: Station Login Success`);
+
+    return loginPromise;
   }
 }

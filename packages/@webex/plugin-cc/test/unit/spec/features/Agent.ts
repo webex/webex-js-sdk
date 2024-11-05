@@ -92,7 +92,7 @@ describe('Agent', () => {
       roles: [AGENT],
     });
     expect(webexMock.logger.log).toHaveBeenCalledWith('Station Login Success');
-    expect(response).toEqual({data: loginResponse});
+    expect(response).toEqual(loginResponse);
   });
 
   it('should handle failure when stationLogin is called', async () => {
@@ -157,6 +157,6 @@ describe('Agent', () => {
       roles: [AGENT],
     });
     expect(webexMock.logger.log).toHaveBeenCalledWith('Station Login Success');
-    expect(response).toEqual({data: loginResponse});
+    expect(response).toEqual(loginResponse);
   });
 });

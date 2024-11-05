@@ -140,10 +140,7 @@ export type WelcomeEvent = {
   agentId: string;
 };
 
-export type WelcomeResponse = {
-  data?: WelcomeEvent;
-  error?: string;
-};
+export type WelcomeResponse = WelcomeEvent | Error;
 
 export type SubscribeRequest = {
   force: boolean;
