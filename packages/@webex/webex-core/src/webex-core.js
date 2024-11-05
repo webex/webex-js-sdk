@@ -384,7 +384,8 @@ const WebexCore = AmpState.extend({
     });
 
     const addInterceptor = (ints, key) => {
-      const interceptor = interceptors[key];
+      const interceptorsObj = this.config.interceptors || interceptors;
+      const interceptor = interceptorsObj[key];
 
       if (!isFunction(interceptor)) {
         return ints;
@@ -397,11 +398,15 @@ const WebexCore = AmpState.extend({
 
     let ints = [];
 
-    ints = preInterceptors.reduce(addInterceptor, ints);
-    ints = Object.keys(interceptors)
-      .filter((key) => !(preInterceptors.includes(key) || postInterceptors.includes(key)))
-      .reduce(addInterceptor, ints);
-    ints = postInterceptors.reduce(addInterceptor, ints);
+    if (this.config.interceptors) {
+      Object.keys(this.config.interceptors).reduce(addInterceptor, ints);
+    } else {
+      ints = preInterceptors.reduce(addInterceptor, ints);
+      ints = Object.keys(interceptors)
+        .filter((key) => !(preInterceptors.includes(key) || postInterceptors.includes(key)))
+        .reduce(addInterceptor, ints);
+      ints = postInterceptors.reduce(addInterceptor, ints);
+    }
 
     this.request = requestDefaults({
       json: true,

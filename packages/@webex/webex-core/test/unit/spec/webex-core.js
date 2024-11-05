@@ -4,7 +4,13 @@
 
 import {assert} from '@webex/test-helper-chai';
 import sinon from 'sinon';
-import WebexCore, {MemoryStoreAdapter, registerPlugin, WebexPlugin} from '@webex/webex-core';
+import WebexCore, {
+  MemoryStoreAdapter,
+  registerPlugin,
+  WebexPlugin,
+  PayloadTransformerInterceptor,
+  RequestTimingInterceptor,
+} from '@webex/webex-core';
 import {set} from 'lodash';
 import {version} from '@webex/webex-core/package';
 // TODO:  fix circular dependency core->metrics->core https://jira-eng-gpk2.cisco.com/jira/browse/SPARK-515520
@@ -167,6 +173,80 @@ describe('Webex', () => {
         assert.isTrue(webex.canAuthorize);
       });
     });
+  });
+
+  describe('initializes with interceptors', () => {
+    [
+      // 4 pre, 4 post, 9 remaining default = 17
+      [
+        'defaults to existing interceptors if undefined',
+        undefined,
+        17,
+        [
+          'RequestTimingInterceptor',
+          'RequestEventInterceptor',
+          'WebexTrackingIdInterceptor',
+          'RateLimitInterceptor',
+          'ServiceInterceptor',
+          'UserAgentInterceptor',
+          'WebexUserAgentInterceptor',
+          'AuthInterceptor',
+          'PayloadTransformerInterceptor',
+          'RedirectInterceptor',
+          'DefaultOptionsInterceptor',
+          'HostMapInterceptor',
+          'ServerErrorInterceptor',
+          'HttpStatusInterceptor',
+          'NetworkTimingInterceptor',
+          'EmbargoInterceptor',
+          'RateLimitInterceptor',
+        ],
+      ],
+      [
+        'only adds PayloadTransformerInterceptor',
+        {interceptors: {PayloadTransformerInterceptor: PayloadTransformerInterceptor.create}},
+        1,
+        ['PayloadTransformerInterceptor'],
+      ],
+      [
+        'adds multiple interceptors',
+        {
+          interceptors: {
+            PayloadTransformerInterceptor: PayloadTransformerInterceptor.create,
+            RequestTimingInterceptor: RequestTimingInterceptor.create,
+          },
+        },
+        2,
+        ['PayloadTransformerInterceptor', 'RequestTimingInterceptor'],
+      ],
+      [
+        'adds no interceptors',
+        {
+          interceptors: [],
+        },
+        0,
+        [],
+      ],
+    ].forEach(
+      ([message, interceptorsConfig, expectedNumberOfInterceptors, expectedInterceptorNames]) => {
+        it(message, async () => {
+          const requestOptions = {method: 'GET', url: 'https://fake-url.webex.com'};
+          const webex = new WebexCore({
+            config: interceptorsConfig,
+          });
+          try {
+            await webex.request(requestOptions);
+          } catch (error) {
+          } finally {
+            assert.equal(requestOptions.interceptors.length, expectedNumberOfInterceptors);
+            assert.deepEqual(
+              requestOptions.interceptors.map((int) => int.constructor.name),
+              expectedInterceptorNames
+            );
+          }
+        });
+      }
+    );
   });
 
   describe('#setConfig()', () => {
