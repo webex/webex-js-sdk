@@ -2635,6 +2635,15 @@ export default class Meeting extends StatelessWebexPlugin {
       );
     });
 
+    this.locusInfo.on(LOCUSINFO.EVENTS.CONTROLS_MEETING_FULL_CHANGED, ({state}) => {
+      Trigger.trigger(
+        this,
+        {file: 'meeting/index', function: 'setupLocusControlsListener'},
+        EVENT_TRIGGERS.MEETING_CONTROLS_MEETING_FULL_UPDATED,
+        {state}
+      );
+    });
+
     this.locusInfo.on(LOCUSINFO.EVENTS.CONTROLS_VIDEO_CHANGED, ({state}) => {
       Trigger.trigger(
         this,

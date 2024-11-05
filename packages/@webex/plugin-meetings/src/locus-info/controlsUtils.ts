@@ -98,6 +98,13 @@ ControlsUtils.parse = (controls: any) => {
     parsedControls.webcastControl = {streaming: controls.webcastControl.streaming};
   }
 
+  if (controls?.meetingFull) {
+    parsedControls.meetingFull = {
+      meetingFull: controls.meetingFull.meetingFull,
+      meetingPanelistFull: controls.meetingFull.meetingPanelistFull,
+    };
+  }
+
   return parsedControls;
 };
 
@@ -184,6 +191,13 @@ ControlsUtils.getControls = (oldControls: any, newControls: any) => {
         previous?.webcastControl?.streaming,
         current?.webcastControl?.streaming
       ),
+
+      hasMeetingFullChanged:
+        !isEqual(previous?.meetingFull?.meetingFull, current?.meetingFull?.meetingFull) ||
+        !isEqual(
+          previous?.meetingFull?.meetingPanelistFull,
+          current?.meetingFull?.meetingPanelistFull
+        ),
     },
   };
 };
