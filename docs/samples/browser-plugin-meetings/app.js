@@ -3330,6 +3330,7 @@ function toggleBreakout() {
   }
 }
 
+// TODO: improve UI for this part, task: https://jira-eng-gpk2.cisco.com/jira/browse/SPARK-574653.
 function beRightBackTrue() {
   const meeting = getCurrentMeeting();
 
