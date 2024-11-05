@@ -14,7 +14,7 @@ import HttpRequest from './services/core/HttpRequest';
 import WebRTCCalling from './WebRTCCalling';
 import {AgentLoginRequest} from './services/config/types';
 import LoggerProxy from './logger-proxy';
-import {services} from './services';
+import {Services} from './services';
 import {AGENT, WEB_RTC_PREFIX} from './services/constants';
 
 export default class ContactCenter extends WebexPlugin implements IContactCenter {
@@ -25,6 +25,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   private registered = false;
   private httpRequest: HttpRequest;
   private webRTCCalling: WebRTCCalling;
+  private services: Services;
 
   constructor(...args) {
     super(...args);
@@ -42,6 +43,9 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       this.httpRequest = HttpRequest.getInstance({
         webex: this.$webex,
       });
+
+      this.services = Services.getInstance();
+
       LoggerProxy.initialize(this.$webex.logger);
     });
   }
@@ -103,39 +107,44 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * @throws Error
    */
   public async stationLogin(data: AgentLoginRequest): Promise<StationLoginResponse> {
-    let callingSDKRegister: Promise<void> | null = null;
+    try {
+      let callingSDKRegister: Promise<void> | null = null;
 
-    if (data.loginOption === LoginOption.BROWSER) {
-      this.webRTCCalling = new WebRTCCalling(this.$webex, {}); // TODO: add callingClientConfig
-      callingSDKRegister = this.webRTCCalling.registerWebCallingLine();
-      data.dialNumber = this.agentConfig.agentId; // replacing dialNumber with agentId for BROWSER case
+      if (data.loginOption === LoginOption.BROWSER) {
+        this.webRTCCalling = new WebRTCCalling(this.$webex, {}); // TODO: add callingClientConfig
+        callingSDKRegister = this.webRTCCalling.registerWebCallingLine();
+        data.dialNumber = this.agentConfig.agentId; // replacing dialNumber with agentId for BROWSER case
+      }
+
+      const loginPromise = this.services.agent.stationLogin({
+        data: {
+          dialNumber: data.dialNumber || this.agentConfig.agentId,
+          teamId: data.teamId,
+          deviceType: data.loginOption,
+          isExtension: data.loginOption === LoginOption.EXTENSION,
+          deviceId: this.getDeviceId(data.loginOption, data.dialNumber),
+          roles: [AGENT],
+          teamName: '',
+          siteId: '',
+          usesOtherDN: false,
+          auxCodeId: '',
+        },
+      });
+
+      if (callingSDKRegister) {
+        // LoginOption.BROWSER case we have to wait until calling sdk also registered.
+        await Promise.all([callingSDKRegister, loginPromise]);
+      } else {
+        await loginPromise;
+      }
+
+      this.$webex.logger.log(`file: ${CC_FILE}: Station Login Success`);
+
+      return loginPromise;
+    } catch (error: any) {
+      this.$webex.logger.log(`file: ${CC_FILE}: Station Login FAILED: ${error.id}`);
+      throw new Error(error.details.data.reason ?? 'Error while performing station login');
     }
-
-    const loginPromise = await services.agent.stationLogin({
-      data: {
-        dialNumber: data.dialNumber || this.agentConfig.agentId,
-        teamId: data.teamId,
-        deviceType: data.loginOption,
-        isExtension: data.loginOption === LoginOption.EXTENSION,
-        deviceId: this.getDeviceId(data.loginOption, data.dialNumber),
-        roles: [AGENT],
-        teamName: '',
-        siteId: '',
-        usesOtherDN: false,
-        auxCodeId: '',
-      },
-    });
-
-    if (callingSDKRegister) {
-      // LoginOption.BROWSER case we have to wait until calling sdk also registered.
-      await Promise.all([callingSDKRegister, loginPromise]);
-    } else {
-      await loginPromise;
-    }
-
-    this.$webex.logger.log(`file: ${CC_FILE}: Station Login Success`);
-
-    return loginPromise;
   }
 
   private getDeviceId(loginOption: string, dialNumber: string): string {

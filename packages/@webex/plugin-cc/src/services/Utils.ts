@@ -1,4 +1,4 @@
-import {Err} from './core/Err';
+import * as Err from './core/Err';
 import {WebexRequestPayload} from '../types';
 import {WCC_API_GATEWAY} from './constants';
 

@@ -22,7 +22,7 @@ class HttpRequest {
   private static instance: HttpRequest;
 
   public static getInstance(options?: {webex: WebexSDK}): HttpRequest {
-    if (!HttpRequest.instance) {
+    if (!HttpRequest.instance && options && options.webex) {
       HttpRequest.instance = new HttpRequest(options);
     }
 

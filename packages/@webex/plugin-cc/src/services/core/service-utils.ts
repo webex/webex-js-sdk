@@ -1,4 +1,4 @@
-import {Err} from './Err';
+import * as Err from './Err';
 import {METHOD_NAME, PING_API_URL} from './config';
 import {WebexRequestPayload} from '../../types';
 

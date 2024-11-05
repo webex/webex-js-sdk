@@ -3,7 +3,7 @@ import {Signal} from './Signal';
 // import {AqmNotifs} from './aqm-notifs';
 // import {http, logger} from './sdk';
 import {Msg} from './GlobalTypes';
-import {Err} from './Err';
+import * as Err from './Err';
 import {HTTP_METHODS, WebexRequestPayload} from '../../types';
 import HttpRequest from './HttpRequest';
 import LoggerProxy from '../../logger-proxy';
@@ -146,7 +146,10 @@ export class AqmReqs {
             clear();
             const notifFail = c.notifFail!;
             if ('errId' in notifFail) {
-              reject(new Err.Details(notifFail.errId, msg as any));
+              LoggerProxy.logger.log(`Routing request failed: ${msg}`);
+              const eerr = new Err.Details(notifFail.errId, msg as any);
+              LoggerProxy.logger.log(`Routing request failed: ${eerr}`);
+              reject(eerr);
             } else {
               reject(notifFail.err(msg as any));
             }

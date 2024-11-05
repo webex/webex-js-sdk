@@ -8,6 +8,7 @@ import MockWebex from '@webex/test-helper-mock-webex';
 import {StationLoginSuccess} from '../../../src/services/types';
 import {IAgentProfile} from '../../../src/features/types';
 import AgentConfig from '../../../src/features/Agentconfig';
+import {WEB_RTC_PREFIX} from '../../../src/services/constants';
 
 jest.mock('../../../src/services/AgentConfigService');
 jest.mock('../../../src/services/HttpRequest');
@@ -43,6 +44,29 @@ describe('webex.cc', () => {
 
   afterEach(() => {
     jest.clearAllMocks();
+  });
+
+  describe('AgentService.getDeviceId', () => {
+    it('should return dialNumber when loginOption is EXTENSION', () => {
+      const loginOption = LoginOption.EXTENSION;
+      const dialNumber = '12345';
+      const result = webex.cc['getDeviceId'](loginOption, dialNumber);
+      expect(result).toBe(dialNumber);
+    });
+
+    it('should return dialNumber when loginOption is AGENT_DN', () => {
+      const loginOption = LoginOption.AGENT_DN;
+      const dialNumber = '12345';
+      const result = webex.cc['getDeviceId'](loginOption, dialNumber);
+      expect(result).toBe(dialNumber);
+    });
+
+    it('should return WEB_RTC_PREFIX + dialNumber for other loginOptions', () => {
+      const loginOption = 'OTHER_OPTION';
+      const dialNumber = '12345';
+      const result = webex.cc['getDeviceId'](loginOption, dialNumber);
+      expect(result).toBe(WEB_RTC_PREFIX + dialNumber);
+    });
   });
 
   describe('stationLogin', () => {

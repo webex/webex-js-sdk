@@ -6,6 +6,7 @@ export class Services {
 
   public readonly agent: ReturnType<typeof routingAgent>;
   // readonly configs: ReturnType<typeof aqmConfigs>;
+  private static instance: Services;
 
   constructor() {
     // this.notifs = new AqmNotifs();
@@ -14,6 +15,13 @@ export class Services {
 
     // this.configs = aqmConfigs(httpRequest);
   }
-}
 
-export const services = new Services();
+  public static getInstance(): Services {
+    if (!this.instance) {
+      this.instance = new Services();
+    }
+
+    return this.instance;
+  }
+}
+export default Services;

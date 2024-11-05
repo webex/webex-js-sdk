@@ -1,4 +1,4 @@
-import {Err} from '../core/Err';
+import * as Err from '../core/Err';
 import {Failure, Msg} from '../core/GlobalTypes';
 import {createErrDetailsObject as err, getRoutingHost} from '../Utils';
 import * as Agent from './types';
