@@ -233,9 +233,10 @@ const Presence = WebexPlugin.extend({
    * Sets the status of the current user
    * @param {string} status - active | inactive | ooo | dnd
    * @param {number} ttl - Time To Live for the event in seconds.
+   * @param {string} label - A label for the event.
    * @returns {Promise}
    */
-  setStatus(status, ttl) {
+  setStatus(status, ttl, label = undefined) {
     if (!status) {
       return Promise.reject(new Error('A status is required'));
     }
@@ -248,7 +249,7 @@ const Presence = WebexPlugin.extend({
         body: {
           subject: this.webex.internal.device.userId,
           eventType: status,
-          label: this.webex.internal.device.userId,
+          label: label !== undefined ? label : this.webex.internal.device.userId,
           ttl,
         },
       })
