@@ -181,8 +181,8 @@ ControlsUtils.getControls = (oldControls: any, newControls: any) => {
         !isEqual(previous?.videoEnabled, current?.videoEnabled),
 
       hasWebcastChanged: !isEqual(
-        previous?.webcastControl.streaming,
-        current?.webcastControl.streaming
+        previous?.webcastControl?.streaming,
+        current?.webcastControl?.streaming
       ),
     },
   };

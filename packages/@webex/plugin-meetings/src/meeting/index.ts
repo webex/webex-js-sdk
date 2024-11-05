@@ -3829,6 +3829,14 @@ export default class Meeting extends StatelessWebexPlugin {
             requiredHints: [DISPLAY_HINTS.DISABLE_VIDEO],
             displayHints: this.userDisplayHints,
           }),
+          canStartWebcast: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.WEBCAST_CONTROL_START],
+            displayHints: this.userDisplayHints,
+          }),
+          canStopWebcast: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.WEBCAST_CONTROL_STOP],
+            displayHints: this.userDisplayHints,
+          }),
           canShareFile:
             (ControlsOptionsUtil.hasHints({
               requiredHints: [DISPLAY_HINTS.SHARE_FILE],
