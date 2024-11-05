@@ -34,7 +34,7 @@ export default class Agent {
         deviceId: this.getDeviceId(data.loginOption, data.dialNumber),
         roles: [AGENT],
       });
-      this.webex.logger.log('LOGIN API SUCCESS');
+      this.webex.logger.log('Station Login Success');
 
       return {
         data: loginResponse,

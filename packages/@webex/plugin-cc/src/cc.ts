@@ -112,7 +112,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         await loginPromise;
       }
 
-      this.$webex.logger.log(`file: ${CC_FILE}: LOGIN API SUCCESS`);
+      this.$webex.logger.log(`file: ${CC_FILE}: Station Login Success`);
 
       return Promise.resolve(loginPromise);
     } catch (error) {

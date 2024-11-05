@@ -91,7 +91,7 @@ describe('Agent', () => {
       deviceId: '12345',
       roles: [AGENT],
     });
-    expect(webexMock.logger.log).toHaveBeenCalledWith('LOGIN API SUCCESS');
+    expect(webexMock.logger.log).toHaveBeenCalledWith('Station Login Success');
     expect(response).toEqual({data: loginResponse});
   });
 
@@ -115,7 +115,7 @@ describe('Agent', () => {
       deviceId: '1001',
       roles: [AGENT],
     });
-    expect(webexMock.logger.log).not.toHaveBeenCalledWith('LOGIN API SUCCESS');
+    expect(webexMock.logger.log).not.toHaveBeenCalledWith('Station Login Success');
   });
 
   it('should login with loginOption is BROWSER', async () => {
@@ -156,7 +156,7 @@ describe('Agent', () => {
       deviceId: WEB_RTC_PREFIX + 'agentId',
       roles: [AGENT],
     });
-    expect(webexMock.logger.log).toHaveBeenCalledWith('LOGIN API SUCCESS');
+    expect(webexMock.logger.log).toHaveBeenCalledWith('Station Login Success');
     expect(response).toEqual({data: loginResponse});
   });
 });

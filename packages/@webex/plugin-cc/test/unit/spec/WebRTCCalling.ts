@@ -42,7 +42,7 @@ describe('WebRTCCalling', () => {
   });
 
   afterEach(() => {
-    jest.clearAllMocks();
+    jest.resetAllMocks();
     jest.useRealTimers();
   });
 
@@ -58,8 +58,10 @@ describe('WebRTCCalling', () => {
         id: 'line1',
       };
 
+      const registeredHandler = jest.fn();
       line.on.mockImplementation((event, handler) => {
         if (event === LINE_EVENTS.REGISTERED) {
+          registeredHandler.mockImplementation(handler);
           handler(deviceInfo);
         }
       });
@@ -85,11 +87,17 @@ describe('WebRTCCalling', () => {
     it('should handle incoming calls', async () => {
       line = callingClient.getLines().line1 as jest.Mocked<ILine>;
       const callObj = {on: jest.fn()} as unknown as jest.Mocked<ICall>;
+
+      const incomingCallHandler = jest.fn();
+      const registeredHandler = jest.fn();
+
       line.on.mockImplementation((event, handler) => {
         if (event === LINE_EVENTS.INCOMING_CALL) {
+          incomingCallHandler.mockImplementation(handler);
           handler(callObj);
         }
         if (event === LINE_EVENTS.REGISTERED) {
+          registeredHandler.mockImplementation(handler);
           handler({
             mobiusDeviceId: 'device123',
             status: 'registered',
@@ -104,6 +112,8 @@ describe('WebRTCCalling', () => {
       await webRTCCalling.registerWebCallingLine();
 
       expect(line.on).toHaveBeenCalledWith(LINE_EVENTS.INCOMING_CALL, expect.any(Function));
+      expect(line.on).toHaveBeenCalledWith(LINE_EVENTS.REGISTERED, expect.any(Function));
+
       const eventListener = jest.fn();
       const loggerSpy = jest.spyOn(webex.logger, 'log').mockClear();
 
@@ -126,8 +136,10 @@ describe('WebRTCCalling', () => {
         },
       };
 
+      const callerIdHandler = jest.fn();
       callObj.on.mockImplementation((event, handler) => {
         if (event === CALL_EVENT_KEYS.CALLER_ID) {
+          callerIdHandler.mockImplementation(handler);
           handler(callerIdEmitter);
         }
       });
@@ -147,9 +159,11 @@ describe('WebRTCCalling', () => {
       line = callingClient.getLines().line1 as jest.Mocked<ILine>;
       webRTCCalling['line'] = line; // Ensure line is set before calling deregister
 
+      const deregisterSpy = jest.spyOn(line, 'deregister');
+
       await webRTCCalling.deregisterWebCallingLine();
 
-      expect(line.deregister).toHaveBeenCalled();
+      expect(deregisterSpy).toHaveBeenCalled();
     });
   });
 });

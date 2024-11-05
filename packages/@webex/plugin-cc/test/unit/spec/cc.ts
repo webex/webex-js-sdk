@@ -72,7 +72,7 @@ describe('webex.cc', () => {
         dialNumber: 'agentId',
       });
       expect(result).toEqual({});
-      expect(webex.logger.log).toHaveBeenCalledWith('file: cc: LOGIN API SUCCESS');
+      expect(webex.logger.log).toHaveBeenCalledWith('file: cc: Station Login Success');
     });
 
     it('should login successfully with other LoginOption', async () => {
@@ -90,7 +90,7 @@ describe('webex.cc', () => {
 
       expect(stationLoginMock).toHaveBeenCalledWith(options);
       expect(result).toEqual({});
-      expect(webex.logger.log).toHaveBeenCalledWith('file: cc: LOGIN API SUCCESS');
+      expect(webex.logger.log).toHaveBeenCalledWith('file: cc: Station Login Success');
     });
 
     it('should handle error during stationLogin', async () => {
