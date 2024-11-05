@@ -1,4 +1,4 @@
-import {SUBSCRIBE_API, WCC_API_GATEWAY, WEBSOCKET_EVENT_TIMEOUT} from './constants';
+import {SUBSCRIBE_API, WCC_API_GATEWAY, WEBSOCKET_EVENT_TIMEOUT} from '../constants';
 import {
   WebexSDK,
   HTTP_METHODS,
@@ -6,11 +6,11 @@ import {
   IHttpResponse,
   WelcomeResponse,
   WelcomeEvent,
-} from '../types';
+} from '../../types';
 import IWebSocket from './WebSocket/types';
 import WebSocket from './WebSocket';
-import {CC_EVENTS, SubscribeResponse} from './types';
-import {EVENT} from '../constants';
+import {CC_EVENTS, SubscribeResponse} from '../config/types';
+import {EVENT} from '../../constants';
 
 export type EventHandler = {(data: any): void};
 
@@ -19,7 +19,17 @@ class HttpRequest {
   private webex: WebexSDK;
   private eventHandlers: Map<string, EventHandler>;
 
-  constructor(options: {webex: WebexSDK}) {
+  private static instance: HttpRequest;
+
+  public static getInstance(options?: {webex: WebexSDK}): HttpRequest {
+    if (!HttpRequest.instance) {
+      HttpRequest.instance = new HttpRequest(options);
+    }
+
+    return HttpRequest.instance;
+  }
+
+  private constructor(options: {webex: WebexSDK}) {
     const {webex} = options;
     this.webex = webex;
     this.webSocket = new WebSocket({
@@ -35,6 +45,10 @@ class HttpRequest {
         handler(eventData.data);
       }
     });
+  }
+
+  public getWebSocket(): IWebSocket {
+    return this.webSocket;
   }
 
   /* This calls subscribeNotifications and establishes a websocket connection

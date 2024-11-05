@@ -1,7 +1,7 @@
-import {WebexSDK, HTTP_METHODS} from '../types';
+import {WebexSDK, HTTP_METHODS} from '../../types';
 import {DesktopProfileResponse, ListAuxCodesResponse, Team, AgentResponse} from './types';
-import HttpRequest from './HttpRequest';
-import {WCC_API_GATEWAY} from './constants';
+import HttpRequest from '../core/HttpRequest';
+import {WCC_API_GATEWAY} from '../constants';
 
 export default class AgentConfigService {
   agentId: string;

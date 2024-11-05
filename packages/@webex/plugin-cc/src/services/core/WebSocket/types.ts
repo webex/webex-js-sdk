@@ -1,4 +1,4 @@
-import {WebSocketEvent} from '../types';
+import {WebSocketEvent} from '../../config/types';
 
 // ts doc
 /**

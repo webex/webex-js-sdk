@@ -10,10 +10,12 @@ import {
   WelcomeEvent,
 } from './types';
 import {READY, CC_FILE} from './constants';
-import HttpRequest from './services/HttpRequest';
+import HttpRequest from './services/core/HttpRequest';
 import WebRTCCalling from './WebRTCCalling';
-import {AgentLoginRequest} from './services/types';
-import Agent from './features/Agent';
+import {AgentLoginRequest} from './services/config/types';
+import LoggerProxy from './logger-proxy';
+import {services} from './services';
+import {AGENT, WEB_RTC_PREFIX} from './services/constants';
 
 export default class ContactCenter extends WebexPlugin implements IContactCenter {
   namespace = 'cc';
@@ -22,7 +24,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   private agentConfig: IAgentProfile;
   private registered = false;
   private httpRequest: HttpRequest;
-  private agent: Agent;
   private webRTCCalling: WebRTCCalling;
 
   constructor(...args) {
@@ -38,11 +39,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       /**
        * This is used for handling the async requests by sending webex.request and wait for corresponding websocket event.
        */
-      this.httpRequest = new HttpRequest({
+      this.httpRequest = HttpRequest.getInstance({
         webex: this.$webex,
       });
-
-      this.agent = new Agent(this.$webex, this.httpRequest);
+      LoggerProxy.initialize(this.$webex.logger);
     });
   }
 
@@ -111,9 +111,19 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       data.dialNumber = this.agentConfig.agentId; // replacing dialNumber with agentId for BROWSER case
     }
 
-    const loginPromise = this.agent.stationLogin({
-      ...data,
-      dialNumber: data.dialNumber || this.agentConfig.agentId,
+    const loginPromise = await services.agent.stationLogin({
+      data: {
+        dialNumber: data.dialNumber || this.agentConfig.agentId,
+        teamId: data.teamId,
+        deviceType: data.loginOption,
+        isExtension: data.loginOption === LoginOption.EXTENSION,
+        deviceId: this.getDeviceId(data.loginOption, data.dialNumber),
+        roles: [AGENT],
+        teamName: '',
+        siteId: '',
+        usesOtherDN: false,
+        auxCodeId: '',
+      },
     });
 
     if (callingSDKRegister) {
@@ -126,5 +136,13 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     this.$webex.logger.log(`file: ${CC_FILE}: Station Login Success`);
 
     return loginPromise;
+  }
+
+  private getDeviceId(loginOption: string, dialNumber: string): string {
+    if (loginOption === LoginOption.EXTENSION || loginOption === LoginOption.AGENT_DN) {
+      return dialNumber;
+    }
+
+    return WEB_RTC_PREFIX + dialNumber;
   }
 }

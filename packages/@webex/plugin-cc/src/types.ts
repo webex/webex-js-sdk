@@ -14,7 +14,7 @@ export const HTTP_METHODS = {
 // Derive the type using the utility type
 export type HTTP_METHODS = Enum<typeof HTTP_METHODS>;
 
-type WebexRequestPayload = {
+export type WebexRequestPayload = {
   service?: string;
   resource?: string;
   method?: HTTP_METHODS;
@@ -53,6 +53,15 @@ export interface CCPluginConfig {
     verboseEvents: boolean;
   };
 }
+
+export type Logger = {
+  log: (payload: string) => void;
+  error: (payload: string) => void;
+  warn: (payload: string) => void;
+  info: (payload: string) => void;
+  trace: (payload: string) => void;
+  debug: (payload: string) => void;
+};
 
 export interface WebexSDK {
   version: string;
@@ -98,14 +107,7 @@ export interface WebexSDK {
     };
   };
   // public plugins
-  logger: {
-    log: (payload: string) => void;
-    error: (payload: string) => void;
-    warn: (payload: string) => void;
-    info: (payload: string) => void;
-    trace: (payload: string) => void;
-    debug: (payload: string) => void;
-  };
+  logger: Logger;
 }
 
 /**

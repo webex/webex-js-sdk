@@ -1,4 +1,4 @@
-import {LoginOption} from '../types';
+import {LoginOption} from '../../types';
 
 type Enum<T extends Record<string, unknown>> = T[keyof T];
 
@@ -127,28 +127,6 @@ export interface UserStationLogin {
   deviceType?: LoginOption;
   deviceId: string | null;
   isEmergencyModalAlreadyDisplayed?: boolean;
-}
-
-export interface StationLoginSuccess {
-  eventType: 'AgentDesktopMessage';
-  agentId: string;
-  trackingId: string;
-  auxCodeId: string;
-  teamId: string;
-  agentSessionId: string;
-  orgId: string;
-  interactionIds: string[];
-  status: string;
-  subStatus: 'Available' | 'Idle';
-  siteId: string;
-  lastIdleCodeChangeTimestamp: number;
-  lastStateChangeTimestamp: number;
-  profileType: string;
-  channelsMap: Record<string, string[]>;
-  dialNumber?: string;
-  roles?: string[];
-  supervisorSessionId?: string;
-  type: 'AgentStationLoginSuccess';
 }
 
 export type SubscribeResponse = {

@@ -1,5 +1,6 @@
-import {AuxCode, StationLoginSuccess, Team} from '../services/types';
+import {AuxCode, Team} from '../services/config/types';
 import {WebexSDK} from '../types';
+import * as Agent from '../services/agent/types';
 
 type Enum<T extends Record<string, unknown>> = T[keyof T];
 
@@ -86,4 +87,4 @@ export interface IAgentProfile {
   wrapUpCodes: AuxCode[];
 }
 
-export type StationLoginResponse = StationLoginSuccess | Error;
+export type StationLoginResponse = Agent.StationLoginSuccess | Error;
