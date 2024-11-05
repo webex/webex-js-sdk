@@ -143,7 +143,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       return loginPromise;
     } catch (error: any) {
       this.$webex.logger.log(`file: ${CC_FILE}: Station Login FAILED: ${error.id}`);
-      throw new Error(error.details.data.reason ?? 'Error while performing station login');
+      throw new Error(error.details?.data?.reason ?? 'Error while performing station login');
     }
   }
 

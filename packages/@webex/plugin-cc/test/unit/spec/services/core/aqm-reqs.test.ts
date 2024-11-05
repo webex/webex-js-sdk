@@ -2,9 +2,7 @@
 import * as config from '../../../../../src/services/core/config';
 import {Service} from '../index';
 import '../workers/mock-keepalive.worker.ts';
-import {AqmNotifs} from './aqm-notifs';
 import {AqmReqs} from '../../../../../src/services/core/aqm-reqs';
-import * as sdk from './sdk';
 jest.mock('./sdk');
 const sdkMock = sdk as jest.Mocked<typeof sdk>;
 const {http: httpMock} = sdkMock;
