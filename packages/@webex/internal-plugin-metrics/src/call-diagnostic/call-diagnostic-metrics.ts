@@ -40,6 +40,7 @@ import {
   ClientEventPayloadError,
   ClientSubServiceType,
   BrowserLaunchMethodType,
+  MeetingJoinPhase,
 } from '../metrics.types';
 import CallDiagnosticEventsBatcher from './call-diagnostic-metrics-batcher';
 import PreLoginMetricsBatcher from '../prelogin-metrics-batcher';
@@ -95,6 +96,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
   private logger: any; // to avoid adding @ts-ignore everywhere
   private hasLoggedBrowserSerial: boolean;
   private device: any;
+  private joinMeetingPhase: MeetingJoinPhase = 'pre-join';
 
   // the default validator before piping an event to the batcher
   // this function can be overridden by the user
@@ -116,6 +118,22 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     this.callDiagnosticEventsBatcher = new CallDiagnosticEventsBatcher({}, {parent: this.webex});
     // @ts-ignore
     this.preLoginMetricsBatcher = new PreLoginMetricsBatcher({}, {parent: this.webex});
+  }
+
+  /**
+   * Getter - Returns current meetingJoinPhase value
+   * @returns {string}
+   */
+  get meetingJoinPhase() {
+    return this.joinMeetingPhase;
+  }
+
+  /**
+   * Setter - sets meetingJoinPhase value
+   * @param {string} correlationId
+   */
+  set meetingJoinPhase(joinMeetingPhase: MeetingJoinPhase) {
+    this.joinMeetingPhase = joinMeetingPhase;
   }
 
   /**

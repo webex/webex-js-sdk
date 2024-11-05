@@ -699,6 +699,22 @@ describe('internal-plugin-metrics', () => {
       });
     });
 
+    describe('#meetingJoinPhase', () => {
+      it('should have a default value', () => {
+        const res = cd.meetingJoinPhase;
+
+        assert.equal(res, 'pre-join');
+      });
+
+      it('should have a getter and setter', () => {
+        cd.meetingJoinPhase = 'join';
+        assert.equal(cd.meetingJoinPhase, 'join');
+
+        cd.meetingJoinPhase = 'in-meeting';
+        assert.equal(cd.meetingJoinPhase, 'in-meeting');
+      });
+    });
+
     it('should prepare diagnostic event successfully', () => {
       const options = {meetingId: fakeMeeting.id};
       const getOriginStub = sinon.stub(cd, 'getOrigin').returns({origin: 'fake-origin'});

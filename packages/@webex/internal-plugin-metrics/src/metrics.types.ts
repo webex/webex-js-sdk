@@ -285,3 +285,5 @@ export interface IMetricsAttributes {
   meetingId?: string;
   callId?: string;
 }
+
+export type MeetingJoinPhase = RawEvent['event']['meetingJoinPhase'];
