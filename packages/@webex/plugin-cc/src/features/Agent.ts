@@ -1,7 +1,7 @@
 import {LoginOption, WebexSDK} from '../types';
 import HttpRequest from '../services/HttpRequest';
 import AgentService from '../services/AgentService';
-import {AgentLoginRequest} from '../services/types';
+import {AgentLogin} from '../services/types';
 import {StationLoginResponse} from './types';
 import {AGENT, WEB_RTC_PREFIX} from '../services/constants';
 
@@ -24,7 +24,7 @@ export default class Agent {
     return WEB_RTC_PREFIX + dialNumber;
   }
 
-  public async stationLogin(data: AgentLoginRequest): Promise<StationLoginResponse> {
+  public async stationLogin(data: AgentLogin): Promise<StationLoginResponse> {
     const loginResponse = await this.agentService.stationLogin({
       dialNumber: data.dialNumber,
       teamId: data.teamId,

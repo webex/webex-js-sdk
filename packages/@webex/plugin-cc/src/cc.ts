@@ -11,8 +11,8 @@ import {
 } from './types';
 import {READY, CC_FILE} from './constants';
 import HttpRequest from './services/HttpRequest';
-import WebRTCCalling from './WebRTCCalling';
-import {AgentLoginRequest} from './services/types';
+import WebCallingService from './WebCallingService';
+import {AgentLogin} from './services/types';
 import Agent from './features/Agent';
 
 export default class ContactCenter extends WebexPlugin implements IContactCenter {
@@ -23,7 +23,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   private registered = false;
   private httpRequest: HttpRequest;
   private agent: Agent;
-  private webRTCCalling: WebRTCCalling;
+  private webCallingService: WebCallingService;
 
   constructor(...args) {
     super(...args);
@@ -51,7 +51,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    */
   public async register(): Promise<IAgentProfile> {
     try {
-      return await this.connectWebSocketAndFetchProfile();
+      return await this.connectWebsocket();
     } catch (error) {
       this.$webex.logger.error(`file: ${CC_FILE}: Error during register: ${error}`);
 
@@ -65,7 +65,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * @throws Error
    * @private
    */
-  private async connectWebSocketAndFetchProfile() {
+  private async connectWebsocket() {
     const connectionConfig: SubscribeRequest = {
       force: this.$config?.force ?? true,
       isKeepAliveEnabled: this.$config?.isKeepAliveEnabled ?? false,
@@ -98,33 +98,24 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
   /**
    * This is used for agent login.
-   * @param options
+   * @param data
    * @returns Promise<StationLoginSuccess>
    * @throws Error
    */
-  public async stationLogin(data: AgentLoginRequest): Promise<StationLoginResponse> {
-    let callingSDKRegister: Promise<void> | null = null;
-
-    if (data.loginOption === LoginOption.BROWSER) {
-      this.webRTCCalling = new WebRTCCalling(this.$webex, {}); // TODO: add callingClientConfig
-      callingSDKRegister = this.webRTCCalling.registerWebCallingLine();
-      data.dialNumber = this.agentConfig.agentId; // replacing dialNumber with agentId for BROWSER case
-    }
-
-    const loginPromise = this.agent.stationLogin({
+  public async stationLogin(data: AgentLogin): Promise<StationLoginResponse> {
+    const loginResponse = this.agent.stationLogin({
       ...data,
       dialNumber: data.dialNumber || this.agentConfig.agentId,
     });
 
-    if (callingSDKRegister) {
-      // LoginOption.BROWSER case we have to wait until calling sdk also registered.
-      await Promise.all([callingSDKRegister, loginPromise]);
-    } else {
-      await loginPromise;
+    if (data.loginOption === LoginOption.BROWSER) {
+      this.webCallingService = new WebCallingService(this.$webex, this.$config.callingClientConfig);
+
+      await this.webCallingService.registerWebCallingLine();
     }
 
-    this.$webex.logger.log(`file: ${CC_FILE}: Station Login Success`);
+    await loginResponse;
 
-    return loginPromise;
+    return loginResponse;
   }
 }

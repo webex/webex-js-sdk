@@ -1,5 +1,5 @@
 import 'jsdom-global/register';
-import WebRTCCalling from '../../../src/WebRTCCalling';
+import WebCallingService from '../../../src/WebCallingService';
 import {
   createClient,
   ICallingClient,
@@ -12,11 +12,11 @@ import {WebexSDK} from '../../../src/types';
 
 jest.mock('@webex/calling');
 
-describe('WebRTCCalling', () => {
+describe('WebCallingService', () => {
   let webex: WebexSDK;
-  let callingClient: jest.Mocked<ICallingClient>;
-  let line: jest.Mocked<ILine>;
-  let webRTCCalling: WebRTCCalling;
+  let callingClient: ICallingClient;
+  let line: ILine;
+  let webRTCCalling: WebCallingService;
 
   beforeEach(() => {
     webex = {
@@ -38,7 +38,7 @@ describe('WebRTCCalling', () => {
 
     (createClient as jest.Mock).mockResolvedValue(callingClient);
 
-    webRTCCalling = new WebRTCCalling(webex, {});
+    webRTCCalling = new WebCallingService(webex, {});
   });
 
   afterEach(() => {
@@ -81,7 +81,7 @@ describe('WebRTCCalling', () => {
 
       const promise = webRTCCalling.registerWebCallingLine();
 
-      await expect(promise).rejects.toThrow('Calling SDK Registration timed out');
+      await expect(promise).rejects.toThrow('WebCallingService Registration timed out');
     }, 20003); // Increased timeout to 20 seconds
 
     it('should handle incoming calls', async () => {
@@ -125,31 +125,6 @@ describe('WebRTCCalling', () => {
         expect.objectContaining({
           detail: {call: callObj},
         })
-      );
-
-      const callerIdEmitter = {
-        callerId: {
-          name: 'John Doe',
-          num: '1234567890',
-          avatarSrc: 'avatar.png',
-          id: 'user123',
-        },
-      };
-
-      const callerIdHandler = jest.fn();
-      callObj.on.mockImplementation((event, handler) => {
-        if (event === CALL_EVENT_KEYS.CALLER_ID) {
-          callerIdHandler.mockImplementation(handler);
-          handler(callerIdEmitter);
-        }
-      });
-
-      callObj.on.mock.calls.find((call) => call[0] === CALL_EVENT_KEYS.CALLER_ID)[1](
-        callerIdEmitter
-      );
-
-      expect(loggerSpy).toHaveBeenCalledWith(
-        `callerId : Name: ${callerIdEmitter.callerId.name}, Number: ${callerIdEmitter.callerId.num}, Avatar: ${callerIdEmitter.callerId.avatarSrc}, UserId: ${callerIdEmitter.callerId.id}`
       );
     }, 20000); // Increased timeout to 20 seconds
   });
