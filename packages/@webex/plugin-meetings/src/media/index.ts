@@ -144,6 +144,7 @@ Media.createMediaConnection = (
       password: string;
     };
     bundlePolicy?: BundlePolicy;
+    iceCandidatesTimeout?: number;
   }
 ) => {
   const {
@@ -154,6 +155,7 @@ Media.createMediaConnection = (
     enableExtmap,
     turnServerInfo,
     bundlePolicy,
+    iceCandidatesTimeout,
   } = options;
 
   const iceServers = [];
@@ -210,6 +212,7 @@ Media.createMediaConnection = (
   return new RoapMediaConnection(
     {
       iceServers,
+      iceCandidatesTimeout,
       skipInactiveTransceivers: false,
       requireH264: true,
       sdpMunging: {

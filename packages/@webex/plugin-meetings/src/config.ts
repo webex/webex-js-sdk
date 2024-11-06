@@ -92,5 +92,7 @@ export default {
     degradationPreferences: {
       maxMacroblocksLimit: 8192,
     },
+    // This only applies to non-multistream meetings
+    iceCandidatesGatheringTimeout: undefined,
   },
 };
