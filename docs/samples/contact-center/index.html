@@ -95,9 +95,6 @@
         <div class="section-content">
           <fieldset>
             <legend>Agent</legend>
-            <p class="note">
-              NOTE: Teams are fetched automatically for the Agent Login.
-            </p>
             <div class="screenshare-section">
               <div style="display: flex; gap: 1rem;">
                 <fieldset style="flex: 0.69;">
@@ -109,7 +106,7 @@
                   <select name="AgentLogin" id="AgentLogin" class="AgentLogin" onchange="handleAgentLogin(event)">
                     <option value="" selected hidden>Choose Agent Login ...</option>
                   </select>
-                  <input id="dialNumber" name="dialNumber" placeholder="Dial Number" value="" type="text">
+                  <input id="dialNumber" name="dialNumber" placeholder="Dial Number/ Extension" value="" type="text">
                   <button id="loginAgent" disabled class="btn btn-primary my-3" onclick="doAgentLogin()">Login With
                     Selected Team</button>
                 </fieldset>

@@ -210,6 +210,7 @@ describe('webex.cc', () => {
         idleCodes: [],
         wrapUpCodes: [],
       };
+      const connectWebsocketSpy = jest.spyOn(webex.cc, 'connectWebsocket');
 
       mockAgentConfig.getAgentProfile.mockResolvedValue(mockAgentProfile);
 
@@ -218,6 +219,8 @@ describe('webex.cc', () => {
       });
 
       const result = await webex.cc.register();
+
+      expect(connectWebsocketSpy).toHaveBeenCalled();
 
       expect(mockHttpRequest.subscribeNotifications).toHaveBeenCalledWith({
         body: {

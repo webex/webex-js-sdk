@@ -12,7 +12,7 @@ jest.mock('../../../../src/services/AgentService');
 describe('Agent', () => {
   let webexMock: WebexSDK;
   let httpRequestMock: HttpRequest;
-  let agentServiceMock: jest.Mocked<AgentService>;
+  let agentServiceMock: AgentService;
   let agent: Agent;
 
   beforeEach(() => {
@@ -23,7 +23,7 @@ describe('Agent', () => {
     } as unknown as WebexSDK;
 
     httpRequestMock = {} as HttpRequest;
-    agentServiceMock = new AgentService(webexMock, httpRequestMock) as jest.Mocked<AgentService>;
+    agentServiceMock = new AgentService(webexMock, httpRequestMock) as AgentService;
 
     (AgentService as jest.Mock).mockImplementation(() => agentServiceMock);
 

@@ -34,7 +34,7 @@ describe('WebCallingService', () => {
           deregister: jest.fn(),
         },
       }),
-    } as unknown as jest.Mocked<ICallingClient>;
+    } as unknown as ICallingClient;
 
     (createClient as jest.Mock).mockResolvedValue(callingClient);
 
@@ -48,7 +48,7 @@ describe('WebCallingService', () => {
 
   describe('registerWebCallingLine', () => {
     it('should register the web calling line successfully', async () => {
-      line = callingClient.getLines().line1 as jest.Mocked<ILine>;
+      line = callingClient.getLines().line1 as ILine;
       const deviceInfo = {
         mobiusDeviceId: 'device123',
         status: 'registered',
@@ -77,7 +77,7 @@ describe('WebCallingService', () => {
     }, 20000); // Increased timeout to 20 seconds
 
     it('should reject if registration times out', async () => {
-      line = callingClient.getLines().line1 as jest.Mocked<ILine>;
+      line = callingClient.getLines().line1 as ILine;
 
       const promise = webRTCCalling.registerWebCallingLine();
 
@@ -85,8 +85,8 @@ describe('WebCallingService', () => {
     }, 20003); // Increased timeout to 20 seconds
 
     it('should handle incoming calls', async () => {
-      line = callingClient.getLines().line1 as jest.Mocked<ILine>;
-      const callObj = {on: jest.fn()} as unknown as jest.Mocked<ICall>;
+      line = callingClient.getLines().line1 as ILine;
+      const callObj = {on: jest.fn()} as unknown as ICall;
 
       const incomingCallHandler = jest.fn();
       const registeredHandler = jest.fn();
@@ -131,7 +131,7 @@ describe('WebCallingService', () => {
 
   describe('deregisterWebCallingLine', () => {
     it('should deregister the web calling line', async () => {
-      line = callingClient.getLines().line1 as jest.Mocked<ILine>;
+      line = callingClient.getLines().line1 as ILine;
       webRTCCalling['line'] = line; // Ensure line is set before calling deregister
 
       const deregisterSpy = jest.spyOn(line, 'deregister');
