@@ -813,8 +813,8 @@ describe('plugin-meetings', () => {
           loginType: 'my-login-type',
         };
 
-        it('should call setCallStateForMetrics on any pre-existing meeting', async () => {
-          const fakeMeeting = {setCallStateForMetrics: sinon.mock()};
+        it('should call updateCallStateForMetrics on any pre-existing meeting', async () => {
+          const fakeMeeting = {updateCallStateForMetrics: sinon.mock()};
           webex.meetings.meetingCollection.getByKey = sinon.stub().returns(fakeMeeting);
           await webex.meetings.create(
             test1,
@@ -828,7 +828,7 @@ describe('plugin-meetings', () => {
             undefined,
             sessionCorrelationId
           );
-          assert.calledOnceWithExactly(fakeMeeting.setCallStateForMetrics, {
+          assert.calledOnceWithExactly(fakeMeeting.updateCallStateForMetrics, {
             ...callStateForMetrics,
             correlationId,
             sessionCorrelationId,
