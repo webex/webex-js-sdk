@@ -8676,7 +8676,7 @@ describe('plugin-meetings', () => {
               TriggerProxy.trigger,
               meeting,
               {file: 'meeting/index', function: 'setUpLocusInfoSelfListener'},
-              EVENT_TRIGGERS.MEETING_BRB_UPDATE,
+              EVENT_TRIGGERS.MEETING_SELF_BRB_UPDATE,
               { payload: { brb: { enabled } } },
             );
           }
