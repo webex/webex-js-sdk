@@ -38,7 +38,7 @@ const breakoutsList = document.getElementById('breakouts-list');
 const breakoutTable = document.getElementById('breakout-table');
 const breakoutHostOperation = document.getElementById('breakout-host-operation');
 const getStatsButton = document.getElementById('get-stats');
-const tcpReachabilityConfigElm = document.getElementById('enable-tcp-reachability'); 
+const tcpReachabilityConfigElm = document.getElementById('enable-tcp-reachability');
 const tlsReachabilityConfigElm = document.getElementById('enable-tls-reachability');
 
 const guestName = document.querySelector('#guest-name');
@@ -388,7 +388,7 @@ createMeetingSelectElm.addEventListener('change', (event) => {
   }
   else {
      notes.classList.add('hidden');
-    
+
   }
 });
 
@@ -950,7 +950,7 @@ function cleanUpMedia() {
       elem.srcObject.getTracks().forEach((track) => track.stop());
       // eslint-disable-next-line no-param-reassign
       elem.srcObject = null;
-      
+
       if(elem.id === "local-video") {
         clearVideoResolutionCheckInterval(localVideoResElm, localVideoResolutionInterval);
       }
@@ -1566,7 +1566,7 @@ async function stopStartVideo() {
       console.error(error);
     }
   }
-  
+
 }
 
 async function stopStartAudio() {
@@ -1608,7 +1608,7 @@ async function stopStartAudio() {
       console.error(error);
     }
   }
-  
+
 }
 
 function populateSourceDevices(mediaDevice) {
@@ -3327,6 +3327,23 @@ function toggleBreakout() {
   if (meeting) {
     meeting.breakouts.toggleBreakout(enableBox.checked);
     document.getElementById('createBO').disabled = !enableBox.checked;
+  }
+}
+
+async function toggleBrb() {
+  const meeting = getCurrentMeeting();
+
+  if (meeting) {
+    const enabled = document.getElementById('brb').checked;
+    try {
+      localMedia.microphoneStream.setUserMuted(enabled);
+      localMedia.cameraStream.setUserMuted(enabled);
+
+      const result = await meeting.beRightBack(enabled)
+      console.log(`meeting.beRightBack(${enabled}): SUCCESS | result: ${result}`)
+    } catch (error) {
+      console.error(`meeting.beRightBack({${enabled}): ERROR`, error)
+    }
   }
 }
 

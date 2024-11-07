@@ -11,3 +11,10 @@ export type ToggleReactionsOptions = {
   locusUrl: string;
   requestingParticipantId: string;
 };
+
+export type BrbOptions = {
+  enabled: boolean;
+  locusUrl: string;
+  deviceUrl: string;
+  selfId: string;
+};

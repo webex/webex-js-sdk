@@ -3290,6 +3290,20 @@ export default class Meeting extends StatelessWebexPlugin {
       }
     });
 
+    this.locusInfo.on(LOCUSINFO.EVENTS.SELF_MEETING_BRB_CHANGED, (payload) => {
+      Trigger.trigger(
+        this,
+        {
+          file: 'meeting/index',
+          function: 'setUpLocusInfoSelfListener',
+        },
+        EVENT_TRIGGERS.MEETING_BRB_UPDATE,
+        {
+          payload,
+        }
+      );
+    });
+
     this.locusInfo.on(LOCUSINFO.EVENTS.SELF_ROLES_CHANGED, (payload) => {
       const isModeratorOrCohost =
         payload.newRoles?.includes(SELF_ROLES.MODERATOR) ||
@@ -3490,6 +3504,33 @@ export default class Meeting extends StatelessWebexPlugin {
     }
 
     return this.members.admitMembers(memberIds, locusUrls);
+  }
+
+  /**
+   * Manages be right back status updates for the current participant.
+   *
+   * @param {boolean} enabled - Indicates whether the use is brb or not.
+   * @returns {Promise<void>} - A promise that resolves when the request is complete.
+   * @throws {Error} - Throws an error if the request fails.
+   */
+  public beRightBack(enabled: boolean) {
+    return this.meetingRequest
+      .sendBrb({
+        enabled,
+        locusUrl: this.locusUrl,
+        deviceUrl: this.deviceUrl,
+        selfId: this.selfId,
+      })
+      .then(() => {
+        if (this.isMultistream && this.mediaProperties.webrtcMediaConnection) {
+          this.sendSlotManager.setSourceStateOverride(MediaType.VideoMain, enabled ? 'away' : null);
+        }
+      })
+      .catch((error) => {
+        LoggerProxy.logger.error('Meeting:index#beRightBack --> Error ', error);
+
+        return Promise.reject(error);
+      });
   }
 
   /**

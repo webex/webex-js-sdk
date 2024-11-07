@@ -738,6 +738,49 @@ describe('plugin-meetings', () => {
     });
 
     describe('#updateSelf', () => {
+      it('should trigger SELF_MEETING_BRB_CHANGED when brb state changed', () => {
+        locusInfo.self = undefined
+
+        const assertBrb = (enabled) => {
+          const selfWithBrbChanged = cloneDeep(self);
+          selfWithBrbChanged.controls.brb = enabled
+
+          locusInfo.emitScoped = sinon.stub();
+          locusInfo.updateSelf(selfWithBrbChanged, [])
+
+          assert.calledWith(
+            locusInfo.emitScoped,
+            { file: 'locus-info', function: 'updateSelf' },
+            LOCUSINFO.EVENTS.SELF_MEETING_BRB_CHANGED,
+            { brb: enabled }
+          )
+        }
+
+        assertBrb(true)
+        assertBrb(false)
+      })
+
+      it('should not trigger SELF_MEETING_BRB_CHANGED when brb state changed', () => {
+        const assertBrb = (enabled) => {
+          const selfWithBrbChanged = cloneDeep(self);
+          selfWithBrbChanged.controls.brb = enabled
+
+          locusInfo.self = selfWithBrbChanged
+          locusInfo.emitScoped = sinon.stub();
+          locusInfo.updateSelf(selfWithBrbChanged, [])
+
+          assert.neverCalledWith(
+            locusInfo.emitScoped,
+            { file: 'locus-info', function: 'updateSelf' },
+            LOCUSINFO.EVENTS.SELF_MEETING_BRB_CHANGED,
+            { brb: enabled }
+          )
+        }
+
+        assertBrb(true)
+        assertBrb(false)
+      })
+
       it('should trigger CONTROLS_MEETING_LAYOUT_UPDATED when the meeting layout controls change', () => {
         const layoutType = 'EXAMPLE TYPE';
 

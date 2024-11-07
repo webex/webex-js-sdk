@@ -32,8 +32,8 @@ import {
   NETWORK_STATUS,
   ONLINE,
   OFFLINE,
-  ROAP_OFFER_ANSWER_EXCHANGE_TIMEOUT,
-} from '@webex/plugin-meetings/src/constants';
+  ROAP_OFFER_ANSWER_EXCHANGE_TIMEOUT, HTTP_VERBS, PARTICIPANT, CONTROLS,
+} from "@webex/plugin-meetings/src/constants";
 import {
   ConnectionState,
   MediaConnectionEventNames,
@@ -8531,6 +8531,33 @@ describe('plugin-meetings', () => {
           });
         });
       });
+
+      describe('#brb', () => {
+        it('send brb request', () => {
+          meeting.meetingRequest.locusDeltaRequest = sinon.stub().resolves();
+          meeting.locusUrl = 'locus url'
+          meeting.deviceUrl = 'device url'
+          meeting.selfId = 'self id'
+
+          const assertBrb = (enabled) => {
+            meeting.beRightBack(enabled)
+            assert.calledWithExactly(meeting.meetingRequest.locusDeltaRequest, {
+              method: HTTP_VERBS.PATCH,
+              uri: `${meeting.locusUrl}/${PARTICIPANT}/${meeting.selfId}/${CONTROLS}`,
+              body: {
+                brb: {
+                  enabled,
+                  deviceUrl: meeting.deviceUrl,
+                }
+              }
+            })
+          }
+
+          assertBrb(true)
+          assertBrb(false)
+        })
+      })
+
       describe('#setUpLocusInfoSelfListener', () => {
         it('listens to the self unadmitted guest event', (done) => {
           meeting.startKeepAlive = sinon.stub();
@@ -8610,6 +8637,30 @@ describe('plugin-meetings', () => {
             {payload}
           );
         });
+
+        it('listens to the brb state changed event', () => {
+          meeting.sendSlotManager.setSourceStateOverride = sinon.stub()
+          meeting.isMultistream = true
+          meeting.mediaProperties.webrtcMediaConnection = true
+
+          const assertBrb = (enabled) => {
+            meeting.locusInfo.emit(
+              { file: 'locus-info', function: 'updateSelf' },
+              LOCUSINFO.EVENTS.SELF_MEETING_BRB_CHANGED,
+              { brb: { enabled } },
+            )
+            assert.calledWithExactly(
+              TriggerProxy.trigger,
+              meeting,
+              {file: 'meeting/index', function: 'setUpLocusInfoSelfListener'},
+              EVENT_TRIGGERS.MEETING_BRB_UPDATE,
+              { payload: { brb: { enabled } } },
+            );
+          }
+
+          assertBrb(true)
+          assertBrb(false)
+        })
 
         it('listens to the interpretation changed event', () => {
           meeting.simultaneousInterpretation.updateSelfInterpretation = sinon.stub();
