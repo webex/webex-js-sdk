@@ -738,20 +738,20 @@ describe('plugin-meetings', () => {
     });
 
     describe('#updateSelf', () => {
-      it('should trigger SELF_MEETING_STEP_AWAY_CHANGED when step away state changed', () => {
+      it('should trigger SELF_MEETING_BRB_CHANGED when brb state changed', () => {
         locusInfo.self = undefined
 
         const assertBrb = (enabled) => {
-          const selfWithStepAwayChanged = cloneDeep(self);
-          selfWithStepAwayChanged.controls.brb = enabled
+          const selfWithBrbChanged = cloneDeep(self);
+          selfWithBrbChanged.controls.brb = enabled
 
           locusInfo.emitScoped = sinon.stub();
-          locusInfo.updateSelf(selfWithStepAwayChanged, [])
+          locusInfo.updateSelf(selfWithBrbChanged, [])
 
           assert.calledWith(
             locusInfo.emitScoped,
             { file: 'locus-info', function: 'updateSelf' },
-            LOCUSINFO.EVENTS.SELF_MEETING_STEP_AWAY_CHANGED,
+            LOCUSINFO.EVENTS.SELF_MEETING_BRB_CHANGED,
             { brb: enabled }
           )
         }
@@ -760,19 +760,19 @@ describe('plugin-meetings', () => {
         assertBrb(false)
       })
 
-      it('should not trigger SELF_MEETING_STEP_AWAY_CHANGED when step away state changed', () => {
+      it('should not trigger SELF_MEETING_BRB_CHANGED when brb state changed', () => {
         const assertBrb = (enabled) => {
-          const selfWithStepAwayChanged = cloneDeep(self);
-          selfWithStepAwayChanged.controls.brb = enabled
+          const selfWithBrbChanged = cloneDeep(self);
+          selfWithBrbChanged.controls.brb = enabled
 
-          locusInfo.self = selfWithStepAwayChanged
+          locusInfo.self = selfWithBrbChanged
           locusInfo.emitScoped = sinon.stub();
-          locusInfo.updateSelf(selfWithStepAwayChanged, [])
+          locusInfo.updateSelf(selfWithBrbChanged, [])
 
           assert.neverCalledWith(
             locusInfo.emitScoped,
             { file: 'locus-info', function: 'updateSelf' },
-            LOCUSINFO.EVENTS.SELF_MEETING_STEP_AWAY_CHANGED,
+            LOCUSINFO.EVENTS.SELF_MEETING_BRB_CHANGED,
             { brb: enabled }
           )
         }

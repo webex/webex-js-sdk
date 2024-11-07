@@ -8532,15 +8532,15 @@ describe('plugin-meetings', () => {
         });
       });
 
-      describe('#stepAway', () => {
-        it('send step away request', () => {
+      describe('#brb', () => {
+        it('send brb request', () => {
           meeting.meetingRequest.locusDeltaRequest = sinon.stub().resolves();
           meeting.locusUrl = 'locus url'
           meeting.deviceUrl = 'device url'
           meeting.selfId = 'self id'
 
-          const assertStepAway = (enabled) => {
-            meeting.stepAway(enabled)
+          const assertBrb = (enabled) => {
+            meeting.beRightBack(enabled)
             assert.calledWithExactly(meeting.meetingRequest.locusDeltaRequest, {
               method: HTTP_VERBS.PATCH,
               uri: `${meeting.locusUrl}/${PARTICIPANT}/${meeting.selfId}/${CONTROLS}`,
@@ -8553,8 +8553,8 @@ describe('plugin-meetings', () => {
             })
           }
 
-          assertStepAway(true)
-          assertStepAway(false)
+          assertBrb(true)
+          assertBrb(false)
         })
       })
 
@@ -8638,7 +8638,7 @@ describe('plugin-meetings', () => {
           );
         });
 
-        it('listens to the away state changed event', () => {
+        it('listens to the brb state changed event', () => {
           meeting.sendSlotManager.setSourceStateOverride = sinon.stub()
           meeting.isMultistream = true
           meeting.mediaProperties.webrtcMediaConnection = true
@@ -8646,18 +8646,15 @@ describe('plugin-meetings', () => {
           const assertBrb = (enabled) => {
             meeting.locusInfo.emit(
               { file: 'locus-info', function: 'updateSelf' },
-              'SELF_MEETING_STEP_AWAY_CHANGED',
+              LOCUSINFO.EVENTS.SELF_MEETING_BRB_CHANGED,
               { brb: { enabled } },
             )
             assert.calledWithExactly(
               TriggerProxy.trigger,
               meeting,
               {file: 'meeting/index', function: 'setUpLocusInfoSelfListener'},
-              EVENT_TRIGGERS.MEETING_STEP_AWAY_UPDATE
-            );
-            assert.calledWithExactly(
-              meeting.sendSlotManager.setSourceStateOverride,
-              MediaType.VideoMain, enabled ? 'away' : null
+              EVENT_TRIGGERS.MEETING_BRB_UPDATE,
+              { payload: { brb: { enabled } } },
             );
           }
 
