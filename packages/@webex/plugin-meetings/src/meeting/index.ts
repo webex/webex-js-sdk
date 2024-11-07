@@ -3525,6 +3525,8 @@ export default class Meeting extends StatelessWebexPlugin {
    * @param {boolean} enabled - Indicates whether the use is brb or not.
    * @returns {Promise<void>} - A promise that resolves when the request is complete.
    * @throws {Error} - Throws an error if the request fails.
+   *
+   * @todo non-multistream support https://jira-eng-gpk2.cisco.com/jira/browse/SPARK-578667
    */
   public beRightBack(enabled: boolean) {
     return this.meetingRequest
