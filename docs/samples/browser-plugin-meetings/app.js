@@ -3330,25 +3330,21 @@ function toggleBreakout() {
   }
 }
 
-// TODO: improve UI for this part, task: https://jira-eng-gpk2.cisco.com/jira/browse/SPARK-574653.
-function beRightBackTrue() {
+async function toggleBrb() {
   const meeting = getCurrentMeeting();
 
-  meeting.beRightBack(true).then((res) => {
-    console.log(`meeting.beRightBack(true) done successfully with result: ${res}`);
-  }).catch((err) => {
-    console.log(`meeting.beRightBack(true) done unsuccessfull with err: ${err}`);
-  });
-}
+  if (meeting) {
+    const enabled = document.getElementById('brb').checked;
+    try {
+      localMedia.microphoneStream.setUserMuted(enabled);
+      localMedia.cameraStream.setUserMuted(enabled);
 
-function beRightBackFalse() {
-  const meeting = getCurrentMeeting();
-
-  meeting.beRightBack(false).then((res) => {
-    console.log(`meeting.beRightBack(false) done successfully with result: ${res}`);
-  }).catch((err) => {
-    console.log(`meeting.beRightBack(false) done unsuccessfull with err: ${err}`);
-  });
+      const result = await meeting.beRightBack(enabled)
+      console.log(`meeting.beRightBack(${enabled}): SUCCESS | result: ${result}`)
+    } catch (error) {
+      console.error(`meeting.beRightBack({${enabled}): ERROR`, error)
+    }
+  }
 }
 
 const createAdmitDiv = () => {
