@@ -77,13 +77,36 @@ describe('plugin-presence', () => {
         };
         sinon.spy(webex, 'request');
 
-        webex.presence.setStatus('dnd');
+        webex.presence.setStatus('active');
 
         assert.calledOnce(webex.request);
 
         const request = webex.request.getCall(0);
 
         assert.equal(request.args[0].body.label, testGuid);
+      });
+
+      it('does not pass a label to the API if the status is DND', () => {
+        const testGuid = 'test-guid';
+
+        webex.internal.device.userId = testGuid;
+
+        webex.request = function (options) {
+          return Promise.resolve({
+            statusCode: 204,
+            body: [],
+            options,
+          });
+        };
+        sinon.spy(webex, 'request');
+
+        webex.presence.setStatus('dnd');
+
+        assert.calledOnce(webex.request);
+
+        const request = webex.request.getCall(0);
+
+        assert.notProperty(request.args[0].body, 'label');
       });
     });
 
