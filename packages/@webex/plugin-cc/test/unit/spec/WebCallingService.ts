@@ -1,13 +1,6 @@
 import 'jsdom-global/register';
 import WebCallingService from '../../../src/WebCallingService';
-import {
-  createClient,
-  ICallingClient,
-  ILine,
-  LINE_EVENTS,
-  CALL_EVENT_KEYS,
-  ICall,
-} from '@webex/calling';
+import {createClient, ICallingClient, ILine, LINE_EVENTS, ICall} from '@webex/calling';
 import {WebexSDK} from '../../../src/types';
 
 jest.mock('@webex/calling');
