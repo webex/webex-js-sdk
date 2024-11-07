@@ -3704,6 +3704,7 @@ describe('plugin-meetings', () => {
                   credential: 'turn password',
                 },
               ],
+              iceCandidatesTimeout: meeting.config.iceCandidatesGatheringTimeout,
               skipInactiveTransceivers: false,
               requireH264: true,
               sdpMunging: {

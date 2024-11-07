@@ -6431,6 +6431,8 @@ export default class Meeting extends StatelessWebexPlugin {
         enableExtmap: this.config.enableExtmap,
         turnServerInfo,
         bundlePolicy,
+        // @ts-ignore - config coming from registerPlugin
+        iceCandidatesTimeout: this.config.iceCandidatesGatheringTimeout,
       }
     );
 
