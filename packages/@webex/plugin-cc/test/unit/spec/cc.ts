@@ -126,7 +126,7 @@ describe('webex.cc', () => {
 
       expect(setAgentStatusMock).toHaveBeenCalledWith(status);
       expect(result).toEqual({ status });
-      expect(webex.logger.log).toHaveBeenCalledWith('SET AGENT STATUS SUCCESS');
+      expect(webex.logger.log).toHaveBeenCalledWith('file: cc: SET AGENT STATUS API SUCCESS');
     });
 
     it.only('should handle error during setAgentStatus when status is Available', async () => {
@@ -148,7 +148,7 @@ describe('webex.cc', () => {
 
       expect(setAgentStatusMock).toHaveBeenCalledWith(status);
       expect(result).toEqual({ status });
-      expect(webex.logger.log).toHaveBeenCalledWith('SET AGENT STATUS SUCCESS');
+      expect(webex.logger.log).toHaveBeenCalledWith('file: cc: SET AGENT STATUS API SUCCESS');
     });
 
     it.only('should handle error during setAgentStatus when status is Meeting', async () => {

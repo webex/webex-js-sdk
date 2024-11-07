@@ -81,7 +81,37 @@ describe('plugin-cc AgentService tests', () => {
 
   describe('AgentService.setAgentStatus', () => {
     it.only('should call sendRequestWithEvent with correct parameters', async () => {
-      const status = 'AVAILABLE';
+      const status = 'Available';
+      const expectedPayload = { status };
+
+      httpRequestMock.sendRequestWithEvent.mockResolvedValue('response_data');
+
+      const result = await agentService.setAgentStatus(status);
+
+      expect(httpRequestMock.sendRequestWithEvent).toHaveBeenCalledWith({
+        service: WCC_API_GATEWAY,
+        resource: STATE_CHANGE_API,
+        method: HTTP_METHODS.PUT,
+        payload: expectedPayload,
+        eventType: 'AgentStateChange',
+        success: ['AgentStateChangeSuccess'],
+        failure: ['AgentStateChangeFailed'],
+      });
+
+      expect(result).toBe('response_data');
+    });
+
+    it.only('should log error and reject the promise on failure', async () => {
+      const status = 'Available';
+      const error = new Error('Network Error');
+      httpRequestMock.sendRequestWithEvent.mockRejectedValue(error);
+
+      await expect(agentService.setAgentStatus(status)).rejects.toThrow('Network Error');
+      expect(webex.logger.error).toHaveBeenCalledWith(`Error during state change: ${error}`);
+    });
+
+    it.only('should call sendRequestWithEvent with correct parameters', async () => {
+      const status = 'Meeting';
       const expectedPayload = { status };
 
       httpRequestMock.sendRequestWithEvent.mockResolvedValue('response_data');
@@ -102,12 +132,12 @@ describe('plugin-cc AgentService tests', () => {
     });
 
     it.only('should log error and reject the promise on failure', async () => {
-      const status = 'AVAILABLE';
+      const status = 'Meeting';
       const error = new Error('Network Error');
       httpRequestMock.sendRequestWithEvent.mockRejectedValue(error);
 
       await expect(agentService.setAgentStatus(status)).rejects.toThrow('Network Error');
-      expect(webex.logger.error).toHaveBeenCalledWith(`Error during set agent status: ${error}`);
+      expect(webex.logger.error).toHaveBeenCalledWith(`Error during state change: ${error}`);
     });
 
     it.only('should handle invalid status', async () => {
