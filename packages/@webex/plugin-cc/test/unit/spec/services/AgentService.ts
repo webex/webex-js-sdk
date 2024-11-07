@@ -80,13 +80,18 @@ describe('plugin-cc AgentService tests', () => {
   });
 
   describe('AgentService.setAgentStatus', () => {
-    it.only('should call sendRequestWithEvent with correct parameters', async () => {
-      const status = 'Available';
-      const expectedPayload = { status };
+    it('should call sendRequestWithEvent with correct parameters', async () => {
+   
+      const expectedPayload = {  
+        state: 'Available',
+        auxCodeId: '0',
+        agentId: '123',
+        lastStateChangeReason: 'Agent is available',
+      };
 
       httpRequestMock.sendRequestWithEvent.mockResolvedValue('response_data');
 
-      const result = await agentService.setAgentStatus(status);
+      const result = await agentService.setAgentStatus(expectedPayload);
 
       expect(httpRequestMock.sendRequestWithEvent).toHaveBeenCalledWith({
         service: WCC_API_GATEWAY,
@@ -101,27 +106,38 @@ describe('plugin-cc AgentService tests', () => {
       expect(result).toBe('response_data');
     });
 
-    it.only('should log error and reject the promise on failure', async () => {
-      const status = 'Available';
+    it('should log error and reject the promise on failure', async () => {
+
+      const expectedPayload = {  
+        state: 'Available',
+        auxCodeId: '0',
+        agentId: '123',
+        lastStateChangeReason: 'Agent is available',
+      };
       const error = new Error('Network Error');
       httpRequestMock.sendRequestWithEvent.mockRejectedValue(error);
 
-      await expect(agentService.setAgentStatus(status)).rejects.toThrow('Network Error');
+      await expect(agentService.setAgentStatus(expectedPayload)).rejects.toThrow('Network Error');
       expect(webex.logger.error).toHaveBeenCalledWith(`Error during state change: ${error}`);
     });
 
-    it.only('should call sendRequestWithEvent with correct parameters', async () => {
-      const status = 'Meeting';
-      const expectedPayload = { status };
+    it('should call sendRequestWithEvent with correct parameters', async () => {
+
+      const expectedPayload = {  
+        state: 'Meeting',
+        auxCodeId: '12345',
+        agentId: '123',
+        lastStateChangeReason: 'Agent is in meeting',
+      };
 
       httpRequestMock.sendRequestWithEvent.mockResolvedValue('response_data');
 
-      const result = await agentService.setAgentStatus(status);
+      const result = await agentService.setAgentStatus(expectedPayload);
 
       expect(httpRequestMock.sendRequestWithEvent).toHaveBeenCalledWith({
         service: WCC_API_GATEWAY,
         resource: STATE_CHANGE_API,
-        method: HTTP_METHODS.POST,
+        method: HTTP_METHODS.PUT,
         payload: expectedPayload,
         eventType: 'SetAgentStatus',
         success: ['AgentStatusSetSuccess'],
@@ -131,21 +147,33 @@ describe('plugin-cc AgentService tests', () => {
       expect(result).toBe('response_data');
     });
 
-    it.only('should log error and reject the promise on failure', async () => {
-      const status = 'Meeting';
+    it('should log error and reject the promise on failure', async () => {
+
+      const expectedPayload = {  
+        state: 'Meeting',
+        auxCodeId: '12345',
+        agentId: '123',
+        lastStateChangeReason: 'Agent is in meeting',
+      };
       const error = new Error('Network Error');
       httpRequestMock.sendRequestWithEvent.mockRejectedValue(error);
 
-      await expect(agentService.setAgentStatus(status)).rejects.toThrow('Network Error');
+      await expect(agentService.setAgentStatus(expectedPayload)).rejects.toThrow('Network Error');
       expect(webex.logger.error).toHaveBeenCalledWith(`Error during state change: ${error}`);
     });
 
-    it.only('should handle invalid status', async () => {
-      const status = 'INVALID_STATUS';
+    it('should handle invalid status', async () => {
+
+      const invalidPayload = {  
+        state: 'Invalid',
+        auxCodeId: '0',
+        agentId: '123',
+        lastStateChangeReason: 'invalid status',
+      };
       const error = new Error('Invalid status');
       httpRequestMock.sendRequestWithEvent.mockRejectedValue(error);
 
-      await expect(agentService.setAgentStatus(status)).rejects.toThrow('Invalid status');
+      await expect(agentService.setAgentStatus(invalidPayload)).rejects.toThrow('Invalid status');
       expect(webex.logger.error).toHaveBeenCalledWith(`Error during set agent status: ${error}`);
     });
   });

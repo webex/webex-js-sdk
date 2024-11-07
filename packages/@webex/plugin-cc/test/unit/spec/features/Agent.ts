@@ -162,7 +162,7 @@ describe('Agent', () => {
   });
 
   describe('setAgentStatus', () => {
-    it.only('should set agent status successfully when status is Available', async () => {
+    it('should set agent status successfully when status is Available', async () => {
       const status = 'Available';
       const setAgentStatusMock = jest
         .spyOn(webex.cc.agent, 'setAgentStatus')
@@ -175,7 +175,7 @@ describe('Agent', () => {
       expect(webex.logger.log).toHaveBeenCalledWith('SET AGENT STATUS SUCCESS');
     });
 
-    it.only('should handle error during setAgentStatus when status is Available', async () => {
+    it('should handle error during setAgentStatus when status is Available', async () => {
       const status = 'Available';
       const error = new Error('Set status failed');
       jest.spyOn(webex.cc.agent, 'setAgentStatus').mockRejectedValue(error);
@@ -184,7 +184,7 @@ describe('Agent', () => {
       expect(webex.logger.error).toHaveBeenCalledWith('SET AGENT STATUS FAILED', error);
     });
 
-    it.only('should set agent status successfully when status is Meeting', async () => {
+    it('should set agent status successfully when status is Meeting', async () => {
       const status = 'Meeting';
       const setAgentStatusMock = jest
         .spyOn(webex.cc.agent, 'setAgentStatus')
@@ -197,7 +197,7 @@ describe('Agent', () => {
       expect(webex.logger.log).toHaveBeenCalledWith('SET AGENT STATUS SUCCESS');
     });
 
-    it.only('should handle error during setAgentStatus when status is Meeting', async () => {
+    it('should handle error during setAgentStatus when status is Meeting', async () => {
       const status = 'Meeting';
       const error = new Error('Set status failed');
       jest.spyOn(webex.cc.agent, 'setAgentStatus').mockRejectedValue(error);
@@ -207,7 +207,7 @@ describe('Agent', () => {
     });
 
 
-    it.only('should handle invalid status', async () => {
+    it('should handle invalid status', async () => {
       const status = 'INVALID_STATUS';
       const error = new Error('Invalid status');
       jest.spyOn(webex.cc.agent, 'setAgentStatus').mockRejectedValue(error);
