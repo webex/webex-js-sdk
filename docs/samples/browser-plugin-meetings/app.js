@@ -3330,24 +3330,21 @@ function toggleBreakout() {
   }
 }
 
-function stepAwayTrue() {
+async function toggleBrb() {
   const meeting = getCurrentMeeting();
 
-  meeting.stepAway(true).then((res) => {
-    console.log(`meeting.stepAway(true) done successfully with result: ${res}`);
-  }).catch((err) => {
-    console.log(`meeting.stepAway(true) done unsuccessfull with err: ${err}`);
-  });
-}
+  if (meeting) {
+    const enabled = document.getElementById('brb').checked;
+    try {
+      localMedia.microphoneStream.setUserMuted(enabled);
+      localMedia.cameraStream.setUserMuted(enabled);
 
-function stepAwayFalse() {
-  const meeting = getCurrentMeeting();
-
-  meeting.stepAway(false).then((res) => {
-    console.log(`meeting.stepAway(false) done successfully with result: ${res}`);
-  }).catch((err) => {
-    console.log(`meeting.stepAway(false) done unsuccessfull with err: ${err}`);
-  });
+      const result = await meeting.beRightBack(enabled)
+      console.log(`meeting.beRightBack(${enabled}): SUCCESS | result: ${result}`)
+    } catch (error) {
+      console.error(`meeting.beRightBack({${enabled}): ERROR`, error)
+    }
+  }
 }
 
 const createAdmitDiv = () => {

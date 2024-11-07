@@ -3290,18 +3290,18 @@ export default class Meeting extends StatelessWebexPlugin {
       }
     });
 
-    this.locusInfo.on(LOCUSINFO.EVENTS.SELF_MEETING_STEP_AWAY_CHANGED, (payload) => {
+    this.locusInfo.on(LOCUSINFO.EVENTS.SELF_MEETING_BRB_CHANGED, (payload) => {
       Trigger.trigger(
         this,
         {
           file: 'meeting/index',
           function: 'setUpLocusInfoSelfListener',
         },
-        EVENT_TRIGGERS.MEETING_STEP_AWAY_UPDATE
+        EVENT_TRIGGERS.MEETING_BRB_UPDATE,
+        {
+          payload,
+        }
       );
-      if (this.mediaProperties.videoStream) {
-        this.setSendStepAway(MediaType.VideoMain, payload.brb.enabled);
-      }
     });
 
     this.locusInfo.on(LOCUSINFO.EVENTS.SELF_ROLES_CHANGED, (payload) => {
@@ -3507,22 +3507,27 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
-   * Manages step away updates for the current participant.
+   * Manages be right back status updates for the current participant.
    *
-   * @param {boolean} enabled - Indicates whether the use is stepped away or not.
+   * @param {boolean} enabled - Indicates whether the use is brb or not.
    * @returns {Promise<void>} - A promise that resolves when the request is complete.
    * @throws {Error} - Throws an error if the request fails.
    */
-  public stepAway(enabled: boolean) {
+  public beRightBack(enabled: boolean) {
     return this.meetingRequest
-      .getStepAway({
+      .sendBrb({
         enabled,
         locusUrl: this.locusUrl,
         deviceUrl: this.deviceUrl,
         selfId: this.selfId,
       })
+      .then(() => {
+        if (this.isMultistream && this.mediaProperties.webrtcMediaConnection) {
+          this.sendSlotManager.setSourceStateOverride(MediaType.VideoMain, enabled ? 'away' : null);
+        }
+      })
       .catch((error) => {
-        LoggerProxy.logger.error('Meeting:index#stepAway --> Error ', error);
+        LoggerProxy.logger.error('Meeting:index#beRightBack --> Error ', error);
 
         return Promise.reject(error);
       });
@@ -8686,23 +8691,6 @@ export default class Meeting extends StatelessWebexPlugin {
     }
     if (this.isMultistream && this.mediaProperties.webrtcMediaConnection) {
       this.sendSlotManager.setNamedMediaGroups(mediaType, groups);
-    }
-  }
-
-  /**
-   * Sets the step away status for the specified media type.
-   *
-   * @param {MediaType} mediaType - The type of media (e.g., VideoMain).
-   * @param {boolean} enabled - Whether the step away status is enabled.
-   * @returns {void}
-   */
-  private setSendStepAway(mediaType: MediaType, enabled: boolean) {
-    if (mediaType !== MediaType.VideoMain) {
-      throw new Error(`cannot set send source state override which media type is ${mediaType}`);
-    }
-
-    if (this.isMultistream && this.mediaProperties.webrtcMediaConnection) {
-      this.sendSlotManager.setSourceStateOverride(mediaType, enabled ? 'away' : null);
     }
   }
 
