@@ -1,6 +1,6 @@
 import {IAgentProfile, WORK_TYPE_CODE} from './types';
 import AgentConfigService from '../services/AgentConfigService';
-import {Team, AuxCode, ListAuxCodesResponse} from '../services/types';
+import {Team, AuxCode} from '../services/types';
 import {WebexSDK} from '../types';
 import {
   AGENT_STATE_AVAILABLE,
