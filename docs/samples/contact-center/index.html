@@ -115,9 +115,11 @@
                 </fieldset>
                 <fieldset>
                   <legend>Agent status</legend>
-                  <select id="statusDropdown" class="form-control w-auto my-3"></select>
-                  <button id="setAgentStatus" class="btn btn-primary my-3 ml-2" onclick="setAgentStatus()">set
-                    sate</button>
+                  <select name= "idleCodesDropdown" id="idleCodesDropdown" class="form-control w-auto my-3" onchange="handleAgentStatus(event)">
+                  <option value="" selected hidden>Select Idle Codes</option>
+                  </select>
+                  <button id="setAgentStatus" disabled class="btn btn-primary my-3 ml-2" onclick="setAgentStatus()">Set Agent
+                    Status</button>
                 </fieldset>
               </div>
             </div>

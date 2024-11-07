@@ -1,11 +1,11 @@
 import {WebexPlugin} from '@webex/webex-core';
 import AgentConfig from './features/Agentconfig';
-import {IAgentProfile, StationLoginResponse} from './features/types';
+import {IAgentProfile, StationLoginResponse, SetStateResponse} from './features/types';
 import {CCPluginConfig, IContactCenter, WebexSDK, SubscribeRequest, LoginOption} from './types';
 import {READY, CC_FILE} from './constants';
 import HttpRequest from './services/HttpRequest';
 import WebRTCCalling from './WebRTCCalling';
-import {AgentLoginRequest} from './services/types';
+import {AgentLoginRequest, StateChange} from './services/types';
 import Agent from './features/Agent';
 
 export default class ContactCenter extends WebexPlugin implements IContactCenter {
@@ -115,6 +115,25 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       this.$webex.logger.log(`file: ${CC_FILE}: LOGIN API SUCCESS`);
 
       return Promise.resolve(loginPromise);
+    } catch (error) {
+      return Promise.reject(error);
+    }
+  }
+
+  /**
+   * This is used for setting agent status.
+   * @param options
+   * @returns Promise<SetStateResponse>
+   * @throws Error
+   */
+
+  public async setAgentStatus(data: StateChange): Promise<SetStateResponse> {
+    try {
+      const agentStatusPromise = await this.agent.setAgentStatus(data);
+
+      this.$webex.logger.log(`file: ${CC_FILE}: SET AGENT STATUS API SUCCESS`);
+
+      return Promise.resolve(agentStatusPromise);
     } catch (error) {
       return Promise.reject(error);
     }

@@ -1,4 +1,4 @@
-import {AuxCode, StationLoginSuccess, Team} from '../services/types';
+import {AuxCode, StateChangeSuccess, StationLoginSuccess, Team} from '../services/types';
 import {WebexSDK} from '../types';
 
 type Enum<T extends Record<string, unknown>> = T[keyof T];
@@ -90,4 +90,14 @@ export interface StationLoginResponse {
   data?: StationLoginSuccess;
   error?: string;
   // TODO: enhance this with more details like status code etc. after copy pasting code from agentx
+}
+
+/**
+ * Represents the response from setAgentStatus.
+ *
+ * @public
+ */
+export interface SetStateResponse {
+  data?: StateChangeSuccess;
+  error?: string;
 }

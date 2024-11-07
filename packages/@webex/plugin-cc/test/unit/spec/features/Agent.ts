@@ -19,6 +19,7 @@ describe('Agent', () => {
     webexMock = {
       logger: {
         log: jest.fn(),
+        error: jest.fn(),
       },
     } as unknown as WebexSDK;
 
@@ -158,5 +159,38 @@ describe('Agent', () => {
     });
     expect(webexMock.logger.log).toHaveBeenCalledWith('LOGIN API SUCCESS');
     expect(response).toEqual({data: loginResponse});
+  });
+
+  describe('setAgentStatus', () => {
+    it.only('should set agent status successfully', async () => {
+      const status = 'AVAILABLE';
+      const setAgentStatusMock = jest
+        .spyOn(agentServiceMock, 'setAgentStatus')
+        .mockResolvedValue({ status });
+
+      const result = await agent.setAgentStatus(status);
+
+      expect(setAgentStatusMock).toHaveBeenCalledWith(status);
+      expect(result).toEqual({ status });
+      expect(webexMock.logger.log).toHaveBeenCalledWith('SET AGENT STATUS SUCCESS');
+    });
+
+    it.only('should handle error during setAgentStatus', async () => {
+      const status = 'AVAILABLE';
+      const error = new Error('Set status failed');
+      jest.spyOn(agentServiceMock, 'setAgentStatus').mockRejectedValue(error);
+
+      await expect(agent.setAgentStatus(status)).rejects.toThrow(error);
+      expect(webexMock.logger.error).toHaveBeenCalledWith('SET AGENT STATUS FAILED', error);
+    });
+
+    it.only('should handle invalid status', async () => {
+      const status = 'INVALID_STATUS';
+      const error = new Error('Invalid status');
+      jest.spyOn(agentServiceMock, 'setAgentStatus').mockRejectedValue(error);
+
+      await expect(agent.setAgentStatus(status)).rejects.toThrow(error);
+      expect(webexMock.logger.error).toHaveBeenCalledWith('SET AGENT STATUS FAILED', error);
+    });
   });
 });

@@ -113,6 +113,13 @@ export interface AgentLoginRequest {
   loginOption: LoginOption;
 }
 
+export interface StateChange {
+  state: string;
+  auxCodeId: string;
+  lastStateChangeReason?: string;
+  agentId?: string;
+}
+
 export interface UserStationLogin {
   dialNumber?: string | null;
   dn?: string | null;
@@ -149,6 +156,24 @@ export interface StationLoginSuccess {
   roles?: string[];
   supervisorSessionId?: string;
   type: 'AgentStationLoginSuccess';
+}
+
+export interface StateChangeSuccess {
+  eventType: 'AgentDesktopMessage';
+  agentId: string;
+  trackingId: string;
+  auxCodeId: string;
+  agentSessionId: string;
+  orgId: string;
+  status: string;
+  subStatus: 'Available' | 'Idle';
+  lastIdleCodeChangeTimestamp: number;
+  lastStateChangeTimestamp: number;
+  type: 'AgentStateChangeSuccess';
+  changedBy: string | null;
+  changedById: string | null;
+  changedByName: string | null;
+  lastStateChangeReason: string;
 }
 
 export type SubscribeResponse = {

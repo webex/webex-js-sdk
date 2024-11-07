@@ -1,7 +1,7 @@
 import {WebexSDK, HTTP_METHODS} from '../types';
-import {LOGIN_API, WCC_API_GATEWAY} from './constants';
+import {LOGIN_API, STATE_CHANGE_API, WCC_API_GATEWAY} from './constants';
 import HttpRequest from './HttpRequest';
-import {StationLoginSuccess, UserStationLogin} from './types';
+import {StateChange, StateChangeSuccess, StationLoginSuccess, UserStationLogin} from './types';
 
 export default class AgentService {
   private webex: WebexSDK;
@@ -36,6 +36,33 @@ export default class AgentService {
       return response;
     } catch (error) {
       this.webex.logger.error(`Error during station login: ${error}`);
+
+      return Promise.reject(error);
+    }
+  }
+
+  public async setAgentStatus(data: StateChange): Promise<StateChangeSuccess> {
+    try {
+      const payload = {
+        state: data.state,
+        auxCodeId: data.auxCodeId,
+        agentId: data.agentId,
+        lastStateChangeReason: data.lastStateChangeReason,
+      };
+
+      const response = await this.httpRequest.sendRequestWithEvent({
+        service: WCC_API_GATEWAY,
+        resource: STATE_CHANGE_API,
+        method: HTTP_METHODS.PUT,
+        payload,
+        eventType: 'AgentStateChange',
+        success: ['AgentStateChangeSuccess'],
+        failure: ['AgentStateChangeFailed'],
+      });
+
+      return response;
+    } catch (error) {
+      this.webex.logger.error(`Error during state change: ${error}`);
 
       return Promise.reject(error);
     }

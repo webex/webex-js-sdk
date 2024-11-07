@@ -42,7 +42,7 @@ export default class AgentConfigService {
   }
 
   /**
-   * Method to get Desktop Profile by passing Org Id.
+   * Method to get Desktop Profile by passing desktopProfileId.
    * @param {string} desktopProfileId ID of the Desktop Profile to be retrieved.
    * @returns {Promise<DesktopProfileResponse>} A promise that eventually resolves to an API response.
    */

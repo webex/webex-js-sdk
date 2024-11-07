@@ -15,6 +15,9 @@ let webex;
 let sdk;
 let agentDeviceType;
 let deviceId;
+let agentStatusId;
+let agentStatus;
+let agentId;
 
 const authTypeElm = document.querySelector('#auth-type');
 const credentialsFormElm = document.querySelector('#credentials');
@@ -27,6 +30,8 @@ const agentLogin = document.querySelector('#AgentLogin');
 const agentLoginButton = document.querySelector('#loginAgent');
 const dialNumber = document.querySelector('#dialNumber');
 const registerStatus = document.querySelector('#ws-connection-status');
+const idleCodesDropdown = document.querySelector('#idleCodesDropdown')
+const setAgentStatusButton = document.querySelector('#setAgentStatus');
 
 // Store and Grab `access-token` from sessionStorage
 if (sessionStorage.getItem('date') > new Date().getTime()) {
@@ -114,6 +119,7 @@ function register() {
         console.log('Event subscription successful: ', agentProfile);
         teamsDropdown.innerHTML = ''; // Clear previously selected option on teamsDropdown
         const listTeams = agentProfile.teams;
+        agentId = agentProfile.agentId;
         listTeams.forEach((team) => {
             const option = document.createElement('option');
             option.value = team.id;
@@ -131,8 +137,22 @@ function register() {
           option.value = voiceOptions;
           agentLogin.add(option);
         });
+
+        const idleCodesList = agentProfile.idleCodes;
+        
+        if(idleCodesList.length > 0) setAgentStatusButton.disabled = false;
+        
+        idleCodesList.forEach((idleCodes) => {
+          if(idleCodes.isSystemCode === false) {
+            const option  = document.createElement('option');
+            option.text = idleCodes.name;
+            option.value = idleCodes.id;
+            idleCodesDropdown.add(option);
+          }
+        });
+
     }).catch((error) => {
-        console.log('Event subscription failed', error);
+        console.error('Event subscription failed', error);
     })
 }
 
@@ -153,7 +173,23 @@ function doAgentLogin() {
     console.log('Agent Logged in successfully', response);
   }
   ).catch((error) => {
-    console.log('Agent Login failed', error);
+    console.error('Agent Login failed', error);
+  });
+}
+
+async function handleAgentStatus(event) {
+  const select = document.getElementById('idleCodesDropdown');
+  auxCodeId = event.target.value;
+  agentStatus = select.options[select.selectedIndex].text;
+}
+
+function setAgentStatus() {
+  let state = "Available";
+  if(agentStatus !== 'Available') state = 'Idle';
+  webex.cc.setAgentStatus({state: state, auxCodeId: auxCodeId, lastStateChangeReason: agentStatus, agentId: agentId}).then((response) => {
+    console.log('Agent status set successfully', response);
+  }).catch(error => {
+    console.error('Agent status set failed', error);
   });
 }
 

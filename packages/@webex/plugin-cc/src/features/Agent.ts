@@ -1,7 +1,7 @@
 import {LoginOption, WebexSDK} from '../types';
 import HttpRequest from '../services/HttpRequest';
 import AgentService from '../services/AgentService';
-import {AgentLoginRequest} from '../services/types';
+import {AgentLoginRequest, StateChange} from '../services/types';
 import {StationLoginResponse} from './types';
 import {AGENT, WEB_RTC_PREFIX} from '../services/constants';
 
@@ -39,6 +39,21 @@ export default class Agent {
       return {
         data: loginResponse,
       };
+    } catch (error) {
+      return Promise.reject(error);
+    }
+  }
+
+  public async setAgentStatus(data: StateChange) {
+    try {
+      const agentStatusResponse = await this.agentService.setAgentStatus({
+        state: data.state,
+        auxCodeId: data.auxCodeId,
+        agentId: data.agentId,
+        lastStateChangeReason: data.lastStateChangeReason,
+      });
+
+      return {data: agentStatusResponse};
     } catch (error) {
       return Promise.reject(error);
     }

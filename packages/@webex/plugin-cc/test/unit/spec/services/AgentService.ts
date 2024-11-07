@@ -6,6 +6,7 @@ import {
   AGENT,
   WCC_API_GATEWAY,
   LOGIN_API,
+  STATE_CHANGE_API,
 } from '../../../../src/services/constants';
 import HttpRequest from '../../../../src/services/HttpRequest';
 import {LoginOption, HTTP_METHODS} from '../../../../src/types';
@@ -75,6 +76,47 @@ describe('plugin-cc AgentService tests', () => {
 
       await expect(agentService.stationLogin(options)).rejects.toThrow('Network Error');
       expect(webex.logger.error).toHaveBeenCalledWith(`Error during station login: ${error}`);
+    });
+  });
+
+  describe('AgentService.setAgentStatus', () => {
+    it.only('should call sendRequestWithEvent with correct parameters', async () => {
+      const status = 'AVAILABLE';
+      const expectedPayload = { status };
+
+      httpRequestMock.sendRequestWithEvent.mockResolvedValue('response_data');
+
+      const result = await agentService.setAgentStatus(status);
+
+      expect(httpRequestMock.sendRequestWithEvent).toHaveBeenCalledWith({
+        service: WCC_API_GATEWAY,
+        resource: STATE_CHANGE_API,
+        method: HTTP_METHODS.POST,
+        payload: expectedPayload,
+        eventType: 'SetAgentStatus',
+        success: ['AgentStatusSetSuccess'],
+        failure: ['AgentStatusSetFailed'],
+      });
+
+      expect(result).toBe('response_data');
+    });
+
+    it.only('should log error and reject the promise on failure', async () => {
+      const status = 'AVAILABLE';
+      const error = new Error('Network Error');
+      httpRequestMock.sendRequestWithEvent.mockRejectedValue(error);
+
+      await expect(agentService.setAgentStatus(status)).rejects.toThrow('Network Error');
+      expect(webex.logger.error).toHaveBeenCalledWith(`Error during set agent status: ${error}`);
+    });
+
+    it.only('should handle invalid status', async () => {
+      const status = 'INVALID_STATUS';
+      const error = new Error('Invalid status');
+      httpRequestMock.sendRequestWithEvent.mockRejectedValue(error);
+
+      await expect(agentService.setAgentStatus(status)).rejects.toThrow('Invalid status');
+      expect(webex.logger.error).toHaveBeenCalledWith(`Error during set agent status: ${error}`);
     });
   });
 });
