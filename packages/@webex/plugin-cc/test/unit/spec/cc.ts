@@ -120,7 +120,7 @@ describe('webex.cc', () => {
 
       const expectedPayload = {  
         state: 'Available',
-        auxCodeId: '12345',
+        auxCodeId: '0',
         agentId: '123',
         lastStateChangeReason: 'Agent is available',
       };
@@ -140,7 +140,7 @@ describe('webex.cc', () => {
 
       const expectedPayload = {  
         state: 'Available',
-        auxCodeId: '12345',
+        auxCodeId: '0',
         agentId: '123',
         lastStateChangeReason: 'Agent is available',
       };
