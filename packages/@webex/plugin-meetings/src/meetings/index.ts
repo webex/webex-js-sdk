@@ -1277,7 +1277,7 @@ export default class Meetings extends WebexPlugin {
               return Promise.resolve(createdMeeting);
             });
           }
-          meeting.setCallStateForMetrics(callStateForMetrics);
+          meeting.updateCallStateForMetrics(callStateForMetrics);
 
           // Return the existing meeting.
           return Promise.resolve(meeting);
