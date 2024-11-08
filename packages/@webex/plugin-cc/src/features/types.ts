@@ -1,5 +1,6 @@
-import {AuxCode, StateChangeSuccess, StationLoginSuccess, Team} from '../services/types';
+import {AuxCode, StateChangeSuccess, Team} from '../services/types';
 import {WebexSDK} from '../types';
+import * as Agent from '../services/agent/types';
 
 type Enum<T extends Record<string, unknown>> = T[keyof T];
 
@@ -86,12 +87,6 @@ export interface IAgentProfile {
   wrapUpCodes: AuxCode[];
 }
 
-export interface StationLoginResponse {
-  data?: StationLoginSuccess;
-  error?: string;
-  // TODO: enhance this with more details like status code etc. after copy pasting code from agentx
-}
-
 /**
  * Represents the response from setAgentStatus.
  *
@@ -101,3 +96,4 @@ export interface SetStateResponse {
   data?: StateChangeSuccess;
   error?: string;
 }
+export type StationLoginResponse = Agent.StationLoginSuccess | Error;

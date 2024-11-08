@@ -1,0 +1,155 @@
+import {Msg} from '../core/GlobalTypes';
+
+export type LogoutSuccess = Msg<{
+  eventType: 'AgentDesktopMessage';
+  agentId: string;
+  trackingId: string;
+  agentSessionId: string;
+  orgId: string;
+  status: string;
+  subStatus: string;
+  loggedOutBy?: string;
+  roles?: string[];
+  type: 'AgentLogoutSuccess';
+}>;
+
+export type ReloginSuccess = Msg<{
+  eventType: 'AgentDesktopMessage';
+  agentId: string;
+  trackingId: string;
+  auxCodeId: string;
+  teamId: string;
+  agentSessionId: string;
+  dn: string;
+  orgId: string;
+  interactionIds: string[];
+  isExtension: boolean;
+  status: 'LoggedIn';
+  subStatus: 'Idle';
+  siteId: string;
+  lastIdleCodeChangeTimestamp: number;
+  lastStateChangeTimestamp: number;
+  lastStateChangeReason?: string;
+  profileType: string;
+  channelsMap: Record<string, string[]>;
+  dialNumber?: string;
+  roles?: string[];
+  deviceType?: DeviceType;
+  deviceId?: string | null;
+  isEmergencyModalAlreadyDisplayed?: boolean;
+  type: 'AgentReloginSuccess';
+}>;
+
+export type StateChangeSuccess = Msg<{
+  eventType: 'AgentDesktopMessage';
+  agentId: string;
+  trackingId: string;
+  auxCodeId: string;
+  agentSessionId: string;
+  orgId: string;
+  status: string;
+  subStatus: 'Available' | 'Idle';
+  lastIdleCodeChangeTimestamp: number;
+  lastStateChangeTimestamp: number;
+  type: 'AgentStateChangeSuccess';
+  changedBy: string | null;
+  changedById: string | null;
+  changedByName: string | null;
+  lastStateChangeReason: string;
+}>;
+
+export type StationLoginSuccess = Msg<{
+  eventType: 'AgentDesktopMessage';
+  agentId: string;
+  trackingId: string;
+  auxCodeId: string;
+  teamId: string;
+  agentSessionId: string;
+  orgId: string;
+  interactionIds: string[];
+  status: string;
+  subStatus: 'Available' | 'Idle';
+  siteId: string;
+  lastIdleCodeChangeTimestamp: number;
+  lastStateChangeTimestamp: number;
+  profileType: string;
+  channelsMap: Record<string, string[]>;
+  dialNumber?: string;
+  roles?: string[];
+  supervisorSessionId?: string;
+  type: 'AgentStationLoginSuccess';
+}>;
+
+export type DNRegistered = Msg<{
+  eventType: 'RoutingMessage';
+  agentId: string;
+  trackingId: string;
+  dn: string;
+  orgId: string;
+  type: 'AgentDNRegistered';
+}>;
+
+export type OutdialAniListSuccess = Msg<{
+  data: Record<string, any>;
+}>;
+
+export type OutdialAni = {
+  id: string;
+  name: string;
+};
+
+export type OutDialAniData = {
+  initialFetchCompleted: boolean;
+  data: OutdialAni[];
+};
+
+// PAYLOAD
+
+export type Logout = {logoutReason?: 'User requested logout' | 'Inactivity Logout'};
+
+export type StateChange = {
+  state: AgentState;
+  auxCodeIdArray: string;
+  lastStateChangeReason?: string;
+  agentId?: string;
+};
+
+export type AgentState = 'Available' | 'Idle' | 'RONA' | string;
+
+export type UserStationLogin = {
+  dialNumber?: string | null;
+  dn?: string | null;
+  teamId: string | null;
+  teamName: string | null;
+  roles?: Array<string>;
+  siteId: string;
+  usesOtherDN: boolean;
+  skillProfileId?: string;
+  auxCodeId: string;
+  isExtension?: boolean;
+  deviceType?: DeviceType;
+  deviceId?: string | null;
+  isEmergencyModalAlreadyDisplayed?: boolean;
+};
+
+export type AddressBooks = {
+  totalRecords?: number;
+  totalPages?: number;
+  page?: number;
+  speedDials: Address[];
+};
+
+export type Address = {
+  desc: string;
+  dn: string;
+  phoneBookName?: string;
+};
+
+export type AddressBooksData = {
+  initialFetchCompleted: boolean;
+  data: Address[];
+  errorObj: any;
+};
+export type LoginOption = 'AGENT_DN' | 'EXTENSION' | 'BROWSER';
+
+export type DeviceType = null | LoginOption | string; // cleanup this while removing FF: wxcc_webrtc.

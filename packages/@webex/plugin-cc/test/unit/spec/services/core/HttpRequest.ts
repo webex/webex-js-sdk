@@ -1,12 +1,12 @@
-import HttpRequest from '../../../../src/services/HttpRequest';
-import {CC_EVENTS, SubscribeResponse} from '../../../../src/services/types';
-import {WEBSOCKET_EVENT_TIMEOUT} from '../../../../src/services/constants';
+import HttpRequest from '../../../../../src/services/core/HttpRequest';
+import {WEBSOCKET_EVENT_TIMEOUT} from '../../../../../src/services/constants';
 import MockWebex from '@webex/test-helper-mock-webex';
-import WebSocket from '../../../../src/services/WebSocket';
+import WebSocket from '../../../../../src/services/core/WebSocket';
 import {EventEmitter} from 'events';
-import {HTTP_METHODS, WebexSDK} from '../../../../src/types';
+import {HTTP_METHODS, WebexSDK} from '../../../../../src/types';
+import {CC_EVENTS} from '../../../../../src/services/config/types';
 
-jest.mock('../../../../src/services/WebSocket');
+jest.mock('../../../../../src/services/core/WebSocket');
 
 const mockWebex = {
   request: jest.fn(),

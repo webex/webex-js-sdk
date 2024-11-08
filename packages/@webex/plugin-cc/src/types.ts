@@ -14,7 +14,7 @@ export const HTTP_METHODS = {
 // Derive the type using the utility type
 export type HTTP_METHODS = Enum<typeof HTTP_METHODS>;
 
-type WebexRequestPayload = {
+export type WebexRequestPayload = {
   service?: string;
   resource?: string;
   method?: HTTP_METHODS;
@@ -53,6 +53,15 @@ export interface CCPluginConfig {
     verboseEvents: boolean;
   };
 }
+
+export type Logger = {
+  log: (payload: string) => void;
+  error: (payload: string) => void;
+  warn: (payload: string) => void;
+  info: (payload: string) => void;
+  trace: (payload: string) => void;
+  debug: (payload: string) => void;
+};
 
 export interface WebexSDK {
   version: string;
@@ -98,14 +107,7 @@ export interface WebexSDK {
     };
   };
   // public plugins
-  logger: {
-    log: (payload: string) => void;
-    error: (payload: string) => void;
-    warn: (payload: string) => void;
-    info: (payload: string) => void;
-    trace: (payload: string) => void;
-    debug: (payload: string) => void;
-  };
+  logger: Logger;
 }
 
 /**
@@ -136,15 +138,17 @@ export const LoginOption = {
 // Derive the type using the utility type
 export type LoginOption = Enum<typeof LoginOption>;
 
-export interface WelcomeEvent {
+export type WelcomeEvent = {
   agentId: string;
-}
+};
 
-export interface SubscribeRequest {
+export type WelcomeResponse = WelcomeEvent | Error;
+
+export type SubscribeRequest = {
   force: boolean;
   isKeepAliveEnabled: boolean;
   clientType: string;
   allowMultiLogin: boolean;
-}
+};
 
 export type EventResult = IAgentProfile;

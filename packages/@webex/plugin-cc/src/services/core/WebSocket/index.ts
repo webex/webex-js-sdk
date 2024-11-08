@@ -1,5 +1,5 @@
 import Mercury from '@webex/internal-plugin-mercury';
-import {WebSocketEvent} from '../types';
+import {WebSocketEvent} from '../../config/types';
 import webSocketConfig from './config';
 import IWebSocket from './types';
 

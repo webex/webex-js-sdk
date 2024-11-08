@@ -1,5 +1,5 @@
 import {IAgentProfile} from '../../../../src/features/types';
-import AgentConfigService from '../../../../src/services/AgentConfigService';
+import AgentConfigService from '../../../../src/services/config';
 import {WebexSDK} from '../../../../src/types';
 import {WORK_TYPE_CODE} from '../../../../src/features/types';
 import AgentConfig from '../../../../src/features/Agentconfig';
@@ -8,7 +8,7 @@ import {
   ListAuxCodesResponse,
   Team,
   AgentResponse,
-} from '../../../../src/services/types';
+} from '../../../../src/services/config/types';
 
 const mockWebex: WebexSDK = {
   internal: {

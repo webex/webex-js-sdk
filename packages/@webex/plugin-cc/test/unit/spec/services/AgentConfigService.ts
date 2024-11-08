@@ -1,6 +1,6 @@
 import {WebexSDK} from '../../../../src/types';
-import AgentConfigService from '../../../../src/services/AgentConfigService';
-import HttpRequest from '../../../../src/services/HttpRequest';
+import AgentConfigService from '../../../../src/services/config';
+import HttpRequest from '../../../../src/services/core/HttpRequest';
 import {WCC_API_GATEWAY} from '../../../../src/services/constants';
 import MockWebex from '@webex/test-helper-mock-webex';
 
@@ -21,7 +21,7 @@ describe('AgentConfigService', () => {
 
     webex.internal.device.orgId = mockOrgId;
 
-    mockHttpRequest = new HttpRequest({webex});
+    mockHttpRequest = HttpRequest.getInstance({webex});
     mockHttpRequest.request = jest.fn();
 
     agentConfigService = new AgentConfigService(mockAgentId, webex, mockHttpRequest);
