@@ -113,6 +113,13 @@ export type AgentLogin = {
   loginOption: LoginOption;
 };
 
+export interface StateChange {
+  state: string;
+  auxCodeId: string;
+  lastStateChangeReason?: string;
+  agentId?: string;
+}
+
 export type UserStationLogin = {
   dialNumber?: string | null;
   dn?: string | null;

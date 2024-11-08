@@ -1,6 +1,6 @@
 import {WebexPlugin} from '@webex/webex-core';
 import AgentConfig from './features/Agentconfig';
-import {IAgentProfile, StationLoginResponse} from './features/types';
+import {IAgentProfile, SetStateResponse, StationLoginResponse} from './features/types';
 import {
   CCPluginConfig,
   IContactCenter,
@@ -16,6 +16,7 @@ import {AgentLogin} from './services/config/types';
 import {AGENT, WEB_RTC_PREFIX} from './services/constants';
 import Services from './services';
 import LoggerProxy from './logger-proxy';
+import {StateChange} from './services/agent/types';
 
 export default class ContactCenter extends WebexPlugin implements IContactCenter {
   namespace = 'cc';
@@ -147,7 +148,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   }
 
   /**
-   * This is used for setting agent status.
+   * This is used for setting agent state.
    * @param options
    * @returns Promise<SetStateResponse>
    * @throws Error
@@ -155,7 +156,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
   public async setAgentStatus(data: StateChange): Promise<SetStateResponse> {
     try {
-      const agentStatusPromise = await this.services.agent.setAgentStatus(data);
+      const agentStatusPromise = await this.services.agent.stateChange({data});
 
       this.$webex.logger.log(`file: ${CC_FILE}: SET AGENT STATUS API SUCCESS`);
 
