@@ -3336,13 +3336,13 @@ async function toggleBrb() {
   if (meeting) {
     const enabled = document.getElementById('brb').checked;
     try {
-      localMedia.microphoneStream.setUserMuted(enabled);
-      localMedia.cameraStream.setUserMuted(enabled);
-
-      const result = await meeting.beRightBack(enabled)
-      console.log(`meeting.beRightBack(${enabled}): SUCCESS | result: ${result}`)
+      const result = await meeting.beRightBack(enabled);
+      console.log(`meeting.beRightBack(${enabled}): SUCCESS | result: ${result}`);
     } catch (error) {
-      console.error(`meeting.beRightBack({${enabled}): ERROR`, error)
+      console.error(`meeting.beRightBack({${enabled}): ERROR`, error);
+    } finally {
+      localMedia?.microphoneStream?.setUserMuted(enabled);
+      localMedia?.cameraStream?.setUserMuted(enabled);
     }
   }
 }
