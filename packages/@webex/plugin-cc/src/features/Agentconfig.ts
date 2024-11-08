@@ -1,7 +1,6 @@
-import {IAgentProfile, WORK_TYPE_CODE} from './types';
+import {WORK_TYPE_CODE} from './types';
 import AgentConfigService from '../services/config';
-import {Team, AuxCode} from '../services/config/types';
-import {WebexSDK} from '../types';
+import {IAgentProfile, Team, AuxCode, WebexSDK} from '../types';
 import {DEFAULT_ATTRIBUTES, DEFAULT_PAGE, DEFAULT_PAGE_SIZE} from './constants';
 import HttpRequest from '../services/core/HttpRequest';
 

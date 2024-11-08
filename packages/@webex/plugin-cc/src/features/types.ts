@@ -1,4 +1,3 @@
-import {AuxCode, Team} from '../services/config/types';
 import * as Agent from '../services/agent/types';
 import {WebexSDK} from '../types';
 
@@ -34,57 +33,6 @@ export type AgentConfigRequest = {
    * Org id of the agent.
    */
   orgId: string;
-};
-
-/**
- * Represents the response from AgentConfig.
- *
- * @public
- */
-export type IAgentProfile = {
-  /**
-   * The id of the agent.
-   */
-
-  agentId: string;
-
-  /**
-   * The name of the agent.
-   */
-  agentName: string;
-
-  /**
-   * Identifier for a Desktop Profile.
-   */
-  agentProfileId: string;
-
-  /**
-   * The email address of the agent.
-   */
-
-  agentMailId: string;
-
-  /**
-   * Represents list of teams of an agent.
-   */
-  teams: Team[];
-
-  /**
-   * Represents the voice options of an agent.
-   */
-
-  loginVoiceOptions: string[];
-
-  /**
-   * Represents the Idle codes list that the agents can select in Agent Desktop.t.
-   */
-
-  idleCodes: AuxCode[];
-
-  /**
-   * Represents the wrap-up codes list that the agents can select when they wrap up a contact.
-   */
-  wrapUpCodes: AuxCode[];
 };
 
 export type StationLoginResponse = Agent.StationLoginSuccess | Error;

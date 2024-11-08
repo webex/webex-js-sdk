@@ -1,6 +1,6 @@
 import {WebexPlugin} from '@webex/webex-core';
 import AgentConfig from './features/Agentconfig';
-import {IAgentProfile, StationLoginResponse} from './features/types';
+import {StationLoginResponse} from './features/types';
 import {
   CCPluginConfig,
   IContactCenter,
@@ -8,6 +8,7 @@ import {
   SubscribeRequest,
   LoginOption,
   WelcomeEvent,
+  IAgentProfile,
 } from './types';
 import {READY, CC_FILE} from './constants';
 import HttpRequest from './services/core/HttpRequest';
