@@ -1013,7 +1013,7 @@ describe('plugin-meetings', () => {
           assert.equal(MeetingUtil.getIpVersion(webex), expectedOutput);
         });
 
-        it(`returns undefined when supportsIpV4=${supportsIpV4} and supportsIpV6=${supportsIpV6} and browser is firefox`, () => {
+        it(`returns ${expectedOutput} when supportsIpV4=${supportsIpV4} and supportsIpV6=${supportsIpV6} for Firefox if config is enabled`, () => {
           sinon
             .stub(webex.internal.device.ipNetworkDetector, 'supportsIpV4')
             .get(() => supportsIpV4);
@@ -1021,6 +1021,21 @@ describe('plugin-meetings', () => {
             .stub(webex.internal.device.ipNetworkDetector, 'supportsIpV6')
             .get(() => supportsIpV6);
 
+          webex.config.meetings.backendIpv6NativeSupport = true;
+          isBrowserStub.callsFake((name) => name === 'firefox');
+
+          assert.equal(MeetingUtil.getIpVersion(webex), expectedOutput);
+        });
+
+        it(`returns undefined when supportsIpV4=${supportsIpV4} and supportsIpV6=${supportsIpV6}, config disabled and browser is firefox`, () => {
+          sinon
+            .stub(webex.internal.device.ipNetworkDetector, 'supportsIpV4')
+            .get(() => supportsIpV4);
+          sinon
+            .stub(webex.internal.device.ipNetworkDetector, 'supportsIpV6')
+            .get(() => supportsIpV6);
+
+          webex.config.meetings.backendIpv6NativeSupport = false;
           isBrowserStub.callsFake((name) => name === 'firefox');
 
           assert.equal(MeetingUtil.getIpVersion(webex), undefined);

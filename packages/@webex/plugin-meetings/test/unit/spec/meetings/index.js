@@ -345,6 +345,22 @@ describe('plugin-meetings', () => {
       });
     });
 
+    describe('#_toggleIpv6BackendNativeSupport', () => {
+      it('should have _toggleIpv6BackendNativeSupport', () => {
+        assert.equal(typeof webex.meetings._toggleIpv6BackendNativeSupport, 'function');
+      });
+
+      describe('success', () => {
+        it('should update meetings config accordingly', () => {
+          webex.meetings._toggleIpv6BackendNativeSupport(true);
+          assert.equal(webex.meetings.config.backendIpv6NativeSupport, true);
+
+          webex.meetings._toggleIpv6BackendNativeSupport(false);
+          assert.equal(webex.meetings.config.backendIpv6NativeSupport, false);
+        });
+      });
+    });
+
     describe('Public API Contracts', () => {
       describe('#register', () => {
         it('emits an event and resolves when register succeeds', async () => {
