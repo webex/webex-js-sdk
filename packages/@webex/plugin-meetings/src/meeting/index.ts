@@ -3537,7 +3537,7 @@ export default class Meeting extends StatelessWebexPlugin {
         selfId: this.selfId,
       })
       .then(() => {
-        if (this.isMultistream && this.mediaProperties.webrtcMediaConnection) {
+        if (this.mediaProperties.webrtcMediaConnection) {
           this.sendSlotManager.setSourceStateOverride(MediaType.VideoMain, enabled ? 'away' : null);
         }
       })

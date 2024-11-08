@@ -8663,7 +8663,6 @@ describe('plugin-meetings', () => {
 
         it('listens to the brb state changed event', () => {
           meeting.sendSlotManager.setSourceStateOverride = sinon.stub()
-          meeting.isMultistream = true
           meeting.mediaProperties.webrtcMediaConnection = true
 
           const assertBrb = (enabled) => {
