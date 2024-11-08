@@ -1,10 +1,21 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import {Signal} from './Signal';
 import {Msg} from './GlobalTypes';
 import * as Err from './Err';
 import {HTTP_METHODS, WebexRequestPayload} from '../../types';
 import HttpRequest from './HttpRequest';
 import LoggerProxy from '../../logger-proxy';
+import {
+  CbRes,
+  Conf,
+  ConfEmpty,
+  EvtConf,
+  EvtRes,
+  Pending,
+  Req,
+  Res,
+  ResEmpty,
+  Timeout,
+} from './types';
 
 export const TIMEOUT_REQ = 20000;
 const TIMEOUT_EVT = TIMEOUT_REQ;
@@ -424,54 +435,3 @@ export class AqmReqs {
     }
   };
 }
-
-type Pending = {
-  check: (msg: Msg) => boolean;
-  handle: (msg: Msg) => void;
-  alternateBind?: string;
-};
-
-type BindType = string | string[] | {[key: string]: BindType};
-interface Bind {
-  type: BindType;
-  data?: any;
-}
-
-type Req<TRes, TErr> = {
-  url: string;
-  host?: string;
-  method?: HTTP_METHODS;
-  err?:
-    | ((errObj: WebexRequestPayload) => Err.Details<'Service.reqs.generic.failure'>)
-    | Err.IdsMessage
-    | ((e: WebexRequestPayload) => Err.Message | Err.Details<Err.IdsDetails>);
-  notifSuccess: {bind: Bind; msg: TRes};
-  notifFail?:
-    | {
-        bind: Bind;
-        errMsg: TErr;
-        err: (e: TErr) => Err.Details<Err.IdsDetails>;
-      }
-    | {
-        bind: Bind;
-        errId: Err.IdsDetails;
-      };
-  data?: any;
-  headers?: Record<string, string>;
-  timeout?: Timeout;
-  notifCancel?: {bind: Bind; msg: TRes};
-};
-
-type Timeout = number | 'disabled';
-
-type Conf<TRes, TErr, TReq> = (p: TReq) => Req<TRes, TErr>;
-type ConfEmpty<TRes, TErr> = () => Req<TRes, TErr>;
-export type Res<TRes, TReq> = (p: TReq, cbRes?: CbRes<TRes>) => Promise<TRes>;
-export type ResEmpty<TRes> = (cbRes?: CbRes<TRes>) => Promise<TRes>;
-type CbRes<TRes> = (res: any) => void | TRes;
-
-// evt
-type EvtConf<T> = {bind: Bind; msg: T};
-type EvtRes<T> = Signal.WithData<T> & {
-  listenOnceAsync: (p?: {resolveIf?: (msg: T) => boolean; timeout?: Timeout}) => Promise<T>;
-};
