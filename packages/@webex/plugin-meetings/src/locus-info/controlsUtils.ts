@@ -105,6 +105,12 @@ ControlsUtils.parse = (controls: any) => {
     };
   }
 
+  if (controls?.practiceSession) {
+    parsedControls.practiceSession = {
+      enabled: controls.practiceSession.enabled,
+    };
+  }
+
   return parsedControls;
 };
 
@@ -198,6 +204,11 @@ ControlsUtils.getControls = (oldControls: any, newControls: any) => {
           previous?.meetingFull?.meetingPanelistFull,
           current?.meetingFull?.meetingPanelistFull
         ),
+
+      hasPracticeSessionEnabledChanged: !isEqual(
+        previous?.practiceSession?.enabled,
+        current?.practiceSession?.enabled
+      ),
     },
   };
 };
