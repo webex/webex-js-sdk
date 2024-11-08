@@ -1,5 +1,11 @@
-import {createClient, ICall, ICallingClient, ILine, LINE_EVENTS} from '@webex/calling';
-import {CallingClientConfig} from '@webex/calling/dist/types/CallingClient/types';
+import {
+  createClient,
+  ICall,
+  ICallingClient,
+  ILine,
+  LINE_EVENTS,
+  CallingClientConfig,
+} from '@webex/calling';
 import {WebexSDK} from './types';
 import {TIMEOUT_DURATION} from './constants';
 
