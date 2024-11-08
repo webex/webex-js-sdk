@@ -3,6 +3,7 @@ import {Signal} from './Signal';
 import {Msg} from './GlobalTypes';
 import * as Err from './Err';
 import {HTTP_METHODS, WebexRequestPayload} from '../../types';
+import {WebSocketManager} from './WebSocket/WebSocketManager';
 import HttpRequest from './HttpRequest';
 import LoggerProxy from '../../logger-proxy';
 
@@ -18,13 +19,13 @@ export class AqmReqs {
   // example consult and cancelCtq(end in new API)  when we cancel consult to ques we need to resolve both consul and cancel ctq promises
   // #CX-14258 : Consult to DN failing if Consult to Queue is cancelled in the first try #2344
   private pendingNotifCancelrequest: Record<string, Pending> = {};
+  private webSocketManager: WebSocketManager;
   private httpRequest: HttpRequest;
-  constructor() {
+
+  constructor(webSocketManager: WebSocketManager) {
     this.httpRequest = HttpRequest.getInstance();
-    this.httpRequest.getWebSocket().on('event', (eventData) => {
-      LoggerProxy.logger.log(`Received event: ${eventData.type}`);
-      this.onMessage(eventData);
-    });
+    this.webSocketManager = webSocketManager;
+    this.webSocketManager.onMessage.listen(this.onMessage);
   }
 
   req<TRes, TErr, TReq>(c: Conf<TRes, TErr, TReq>): Res<TRes, TReq> {
@@ -315,16 +316,16 @@ export class AqmReqs {
   }
 
   // must be lambda
-  private readonly onMessage = (event: any) => {
-    // const event = JSON.parse(msg);
+  private readonly onMessage = (msg: any) => {
+    const event = JSON.parse(msg);
     if (event.type === 'Welcome') {
       LoggerProxy.logger.info(`Welcome message from Notifs Websocket${event}`);
 
       return;
     }
 
-    if (event.keepalive) {
-      LoggerProxy.logger.info(`Keepalive from notifs${event}`);
+    if (event.keepalive === 'true') {
+      LoggerProxy.logger.info(`Keepalive from web socket ${event}`);
 
       return;
     }
