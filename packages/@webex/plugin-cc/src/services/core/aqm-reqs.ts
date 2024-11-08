@@ -1,7 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import {Signal} from './Signal';
-// import {AqmNotifs} from './aqm-notifs';
-// import {http, logger} from './sdk';
 import {Msg} from './GlobalTypes';
 import * as Err from './Err';
 import {HTTP_METHODS, WebexRequestPayload} from '../../types';
@@ -27,7 +25,6 @@ export class AqmReqs {
       LoggerProxy.logger.log(`Received event: ${eventData.type}`);
       this.onMessage(eventData);
     });
-    // this.notifs.onMessage.listen(this.onMessage);
   }
 
   req<TRes, TErr, TReq>(c: Conf<TRes, TErr, TReq>): Res<TRes, TReq> {
@@ -289,7 +286,7 @@ export class AqmReqs {
   }
 
   private isValidCPDFlowValue(event: any) {
-    const isDesktopCpdViewEnabled = false;
+    const isDesktopCpdViewEnabled = false; // TODO: revisit this to get the feature flag value if needed by desktop client
     // event?.data?.interaction:  CAD, CPD values are under the event?.data?.interaction for call events
     // event?.data?.task :CAD, CPD values are under the event?.data?.task for monitoring call events
     // SERVICE.featureflag.isDesktopCpdViewEnabled()
@@ -311,7 +308,8 @@ export class AqmReqs {
   }
 
   private getDecompressedValue(encryptedValue: Buffer) {
-    LoggerProxy.logger.info(`Decompressing the encrypted value${encryptedValue}`);
+    return encryptedValue;
+    // TODO: Revisit this to get the decompressSync method from the compression library if needed by desktop client
     // const decryptedValue: Uint8Array = decompressSync(encryptedValue);
     // return strFromU8(decryptedValue);
   }

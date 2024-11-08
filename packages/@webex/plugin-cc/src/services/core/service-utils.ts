@@ -1,5 +1,4 @@
 import * as Err from './Err';
-import {METHOD_NAME, PING_API_URL} from './config';
 import {WebexRequestPayload} from '../../types';
 
 const getCommonErrorDetails = (errObj: WebexRequestPayload) => {
@@ -30,25 +29,6 @@ export const getCanaryFlagFromSessionStorage = (): boolean => {
   return flag === 'true';
 };
 
-/**
- * Pings an API and checks if API is returning 200 or not
- * In localhost pings GET method and HEAD method otherwise
- * @returns onlineStatus
- */
-export const checkOnlineStatus = async function () {
-  try {
-    const online = await fetch(PING_API_URL, {
-      method: METHOD_NAME,
-      headers: {
-        'cache-control': 'no-cache, no-store, must-revalidate',
-      },
-    });
-
-    return online.status === 200;
-  } catch {
-    return false;
-  }
-};
 export const generateUUID = (): string => {
   // let d = DateTime.utc().toMillis();
   let d = Date.now();

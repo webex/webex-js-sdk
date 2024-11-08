@@ -1,3 +1,4 @@
+import {CallingClientConfig} from '@webex/calling/dist/types/CallingClient/types';
 import {IAgentProfile} from './features/types';
 
 type Enum<T extends Record<string, unknown>> = T[keyof T];
@@ -52,6 +53,7 @@ export interface CCPluginConfig {
     enable: boolean;
     verboseEvents: boolean;
   };
+  callingClientConfig: CallingClientConfig;
 }
 
 export type Logger = {

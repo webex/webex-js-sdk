@@ -1,6 +1,6 @@
-import * as Err from './core/Err';
-import {WebexRequestPayload} from '../types';
-import {WCC_API_GATEWAY} from './constants';
+import * as Err from './Err';
+import {WebexRequestPayload} from '../../types';
+import {WCC_API_GATEWAY} from '../constants';
 
 const getCommonErrorDetails = (errObj: WebexRequestPayload) => {
   return {

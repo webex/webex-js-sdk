@@ -11,11 +11,11 @@ import {
 } from './types';
 import {READY, CC_FILE} from './constants';
 import HttpRequest from './services/core/HttpRequest';
-import WebRTCCalling from './WebRTCCalling';
-import {AgentLoginRequest} from './services/config/types';
-import LoggerProxy from './logger-proxy';
-import {Services} from './services';
+import WebCallingService from './WebCallingService';
+import {AgentLogin} from './services/config/types';
 import {AGENT, WEB_RTC_PREFIX} from './services/constants';
+import Services from './services';
+import LoggerProxy from './logger-proxy';
 
 export default class ContactCenter extends WebexPlugin implements IContactCenter {
   namespace = 'cc';
@@ -24,7 +24,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   private agentConfig: IAgentProfile;
   private registered = false;
   private httpRequest: HttpRequest;
-  private webRTCCalling: WebRTCCalling;
+  private webCallingService: WebCallingService;
   private services: Services;
 
   constructor(...args) {
@@ -46,6 +46,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
       this.services = Services.getInstance();
 
+      this.webCallingService = new WebCallingService(this.$webex, this.$config.callingClientConfig);
+
       LoggerProxy.initialize(this.$webex.logger);
     });
   }
@@ -55,7 +57,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    */
   public async register(): Promise<IAgentProfile> {
     try {
-      return await this.connectWebSocketAndFetchProfile();
+      return await this.connectWebsocket();
     } catch (error) {
       this.$webex.logger.error(`file: ${CC_FILE}: Error during register: ${error}`);
 
@@ -69,7 +71,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * @throws Error
    * @private
    */
-  private async connectWebSocketAndFetchProfile() {
+  private async connectWebsocket() {
     const connectionConfig: SubscribeRequest = {
       force: this.$config?.force ?? true,
       isKeepAliveEnabled: this.$config?.isKeepAliveEnabled ?? false,
@@ -102,21 +104,13 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
   /**
    * This is used for agent login.
-   * @param options
+   * @param data
    * @returns Promise<StationLoginSuccess>
    * @throws Error
    */
-  public async stationLogin(data: AgentLoginRequest): Promise<StationLoginResponse> {
+  public async stationLogin(data: AgentLogin): Promise<StationLoginResponse> {
     try {
-      let callingSDKRegister: Promise<void> | null = null;
-
-      if (data.loginOption === LoginOption.BROWSER) {
-        this.webRTCCalling = new WebRTCCalling(this.$webex, {}); // TODO: add callingClientConfig
-        callingSDKRegister = this.webRTCCalling.registerWebCallingLine();
-        data.dialNumber = this.agentConfig.agentId; // replacing dialNumber with agentId for BROWSER case
-      }
-
-      const loginPromise = this.services.agent.stationLogin({
+      const loginResponse = this.services.agent.stationLogin({
         data: {
           dialNumber: data.dialNumber || this.agentConfig.agentId,
           teamId: data.teamId,
@@ -131,16 +125,13 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         },
       });
 
-      if (callingSDKRegister) {
-        // LoginOption.BROWSER case we have to wait until calling sdk also registered.
-        await Promise.all([callingSDKRegister, loginPromise]);
-      } else {
-        await loginPromise;
+      if (data.loginOption === LoginOption.BROWSER) {
+        await this.webCallingService.registerWebCallingLine();
       }
 
-      this.$webex.logger.log(`file: ${CC_FILE}: Station Login Success`);
+      await loginResponse;
 
-      return loginPromise;
+      return loginResponse;
     } catch (error: any) {
       this.$webex.logger.log(`file: ${CC_FILE}: Station Login FAILED: ${error.id}`);
       throw new Error(error.details?.data?.reason ?? 'Error while performing station login');
@@ -152,7 +143,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       return dialNumber;
     }
 
-    return WEB_RTC_PREFIX + dialNumber;
+    return WEB_RTC_PREFIX + this.agentConfig.agentId;
   }
 
   /**

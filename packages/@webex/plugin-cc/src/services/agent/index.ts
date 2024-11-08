@@ -1,6 +1,6 @@
 import * as Err from '../core/Err';
 import {Failure, Msg} from '../core/GlobalTypes';
-import {createErrDetailsObject as err, getRoutingHost} from '../Utils';
+import {createErrDetailsObject as err, getRoutingHost} from '../core/Utils';
 import * as Agent from './types';
 import {AqmReqs} from '../core/aqm-reqs';
 import {HTTP_METHODS} from '../../types';
