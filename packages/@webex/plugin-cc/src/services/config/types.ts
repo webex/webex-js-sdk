@@ -10,12 +10,12 @@ export const CC_EVENTS = {
 // Derive the type using the utility type
 export type CC_EVENTS = Enum<typeof CC_EVENTS>;
 
-export interface WebSocketEvent {
+export type WebSocketEvent = {
   type: CC_EVENTS;
   data: {
     agentId: string;
   };
-}
+};
 
 /**
  * Represents the response from getUserUsingCI method.
@@ -23,7 +23,7 @@ export interface WebSocketEvent {
  * @public
  */
 
-export interface AgentResponse {
+export type AgentResponse = {
   /**
    * The first name of the agent.
    */
@@ -49,14 +49,14 @@ export interface AgentResponse {
    * This Specify the teams id which got assigned to the agent.
    */
   teamIds: string[];
-}
+};
 
 /**
  * Represents the response from getDesktopProfileById method.
  *
  * @public
  */
-export interface DesktopProfileResponse {
+export type DesktopProfileResponse = {
   /**
    * Represents the voice options of an agent.
    */
@@ -86,14 +86,14 @@ export interface DesktopProfileResponse {
    */
 
   idleCodes: string[];
-}
+};
 
 /**
  * Represents the request to a AgentLogin
  *
  * @public
  */
-export interface AgentLoginRequest {
+export type AgentLogin = {
   /**
    * A dialNumber field contains the number to dial such as a route point or extension.
    */
@@ -111,9 +111,9 @@ export interface AgentLoginRequest {
    */
 
   loginOption: LoginOption;
-}
+};
 
-export interface UserStationLogin {
+export type UserStationLogin = {
   dialNumber?: string | null;
   dn?: string | null;
   teamId: string | null;
@@ -127,7 +127,7 @@ export interface UserStationLogin {
   deviceType?: LoginOption;
   deviceId: string | null;
   isEmergencyModalAlreadyDisplayed?: boolean;
-}
+};
 
 export type SubscribeResponse = {
   statusCode: number;
@@ -143,7 +143,7 @@ export type SubscribeResponse = {
  *
  * @public
  */
-export interface Team {
+export type Team = {
   /**
    * ID of the team.
    */
@@ -153,14 +153,14 @@ export interface Team {
    *  Name of the Team.
    */
   name: string;
-}
+};
 
 /**
  * Represents AuxCode.
  * @public
  */
 
-export interface AuxCode {
+export type AuxCode = {
   /**
    * ID of the Auxiliary Code.
    */
@@ -196,7 +196,7 @@ export interface AuxCode {
    */
 
   workTypeCode: string;
-}
+};
 
 /**
  * Represents the response from getListOfAuxCodes method.
@@ -204,6 +204,6 @@ export interface AuxCode {
  * @public
  */
 
-export interface ListAuxCodesResponse {
+export type ListAuxCodesResponse = {
   data: AuxCode[];
-}
+};

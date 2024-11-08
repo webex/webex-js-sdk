@@ -1,6 +1,6 @@
 import MockWebex from '@webex/test-helper-mock-webex';
 import Mercury from '@webex/internal-plugin-mercury';
-import WebSocket from '../../../../../src/services/core/WebSocket';
+import WebSocket from '../../../../../../src/services/core/WebSocket';
 
 describe('plugin-cc WebSocket tests', () => {
   const webSocketUrl = 'wss://websocket.example.com';

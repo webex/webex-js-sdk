@@ -1,6 +1,6 @@
 import {AuxCode, Team} from '../services/config/types';
-import {WebexSDK} from '../types';
 import * as Agent from '../services/agent/types';
+import {WebexSDK} from '../types';
 
 type Enum<T extends Record<string, unknown>> = T[keyof T];
 
@@ -18,7 +18,7 @@ type WORK_TYPE_CODE = Enum<typeof WORK_TYPE_CODE>;
  *
  * @public
  */
-export interface AgentConfigRequest {
+export type AgentConfigRequest = {
   /**
    * Represents id of agent.
    */
@@ -34,14 +34,14 @@ export interface AgentConfigRequest {
    * Org id of the agent.
    */
   orgId: string;
-}
+};
 
 /**
  * Represents the response from AgentConfig.
  *
  * @public
  */
-export interface IAgentProfile {
+export type IAgentProfile = {
   /**
    * The id of the agent.
    */
@@ -85,6 +85,6 @@ export interface IAgentProfile {
    * Represents the wrap-up codes list that the agents can select when they wrap up a contact.
    */
   wrapUpCodes: AuxCode[];
-}
+};
 
 export type StationLoginResponse = Agent.StationLoginSuccess | Error;

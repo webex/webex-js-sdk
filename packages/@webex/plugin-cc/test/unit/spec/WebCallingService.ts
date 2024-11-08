@@ -1,22 +1,15 @@
 import 'jsdom-global/register';
-import WebRTCCalling from '../../../src/WebRTCCalling';
-import {
-  createClient,
-  ICallingClient,
-  ILine,
-  LINE_EVENTS,
-  CALL_EVENT_KEYS,
-  ICall,
-} from '@webex/calling';
+import WebCallingService from '../../../src/WebCallingService';
+import {createClient, ICallingClient, ILine, LINE_EVENTS, ICall} from '@webex/calling';
 import {WebexSDK} from '../../../src/types';
 
 jest.mock('@webex/calling');
 
-describe('WebRTCCalling', () => {
+describe('WebCallingService', () => {
   let webex: WebexSDK;
-  let callingClient: jest.Mocked<ICallingClient>;
-  let line: jest.Mocked<ILine>;
-  let webRTCCalling: WebRTCCalling;
+  let callingClient: ICallingClient;
+  let line: ILine;
+  let webRTCCalling: WebCallingService;
 
   beforeEach(() => {
     webex = {
@@ -34,11 +27,11 @@ describe('WebRTCCalling', () => {
           deregister: jest.fn(),
         },
       }),
-    } as unknown as jest.Mocked<ICallingClient>;
+    } as unknown as ICallingClient;
 
     (createClient as jest.Mock).mockResolvedValue(callingClient);
 
-    webRTCCalling = new WebRTCCalling(webex, {});
+    webRTCCalling = new WebCallingService(webex, {});
   });
 
   afterEach(() => {
@@ -48,7 +41,7 @@ describe('WebRTCCalling', () => {
 
   describe('registerWebCallingLine', () => {
     it('should register the web calling line successfully', async () => {
-      line = callingClient.getLines().line1 as jest.Mocked<ILine>;
+      line = callingClient.getLines().line1 as ILine;
       const deviceInfo = {
         mobiusDeviceId: 'device123',
         status: 'registered',
@@ -77,16 +70,16 @@ describe('WebRTCCalling', () => {
     }, 20000); // Increased timeout to 20 seconds
 
     it('should reject if registration times out', async () => {
-      line = callingClient.getLines().line1 as jest.Mocked<ILine>;
+      line = callingClient.getLines().line1 as ILine;
 
       const promise = webRTCCalling.registerWebCallingLine();
 
-      await expect(promise).rejects.toThrow('Calling SDK Registration timed out');
+      await expect(promise).rejects.toThrow('WebCallingService Registration timed out');
     }, 20003); // Increased timeout to 20 seconds
 
     it('should handle incoming calls', async () => {
-      line = callingClient.getLines().line1 as jest.Mocked<ILine>;
-      const callObj = {on: jest.fn()} as unknown as jest.Mocked<ICall>;
+      line = callingClient.getLines().line1 as ILine;
+      const callObj = {on: jest.fn()} as unknown as ICall;
 
       const incomingCallHandler = jest.fn();
       const registeredHandler = jest.fn();
@@ -126,37 +119,12 @@ describe('WebRTCCalling', () => {
           detail: {call: callObj},
         })
       );
-
-      const callerIdEmitter = {
-        callerId: {
-          name: 'John Doe',
-          num: '1234567890',
-          avatarSrc: 'avatar.png',
-          id: 'user123',
-        },
-      };
-
-      const callerIdHandler = jest.fn();
-      callObj.on.mockImplementation((event, handler) => {
-        if (event === CALL_EVENT_KEYS.CALLER_ID) {
-          callerIdHandler.mockImplementation(handler);
-          handler(callerIdEmitter);
-        }
-      });
-
-      callObj.on.mock.calls.find((call) => call[0] === CALL_EVENT_KEYS.CALLER_ID)[1](
-        callerIdEmitter
-      );
-
-      expect(loggerSpy).toHaveBeenCalledWith(
-        `callerId : Name: ${callerIdEmitter.callerId.name}, Number: ${callerIdEmitter.callerId.num}, Avatar: ${callerIdEmitter.callerId.avatarSrc}, UserId: ${callerIdEmitter.callerId.id}`
-      );
     }, 20000); // Increased timeout to 20 seconds
   });
 
   describe('deregisterWebCallingLine', () => {
     it('should deregister the web calling line', async () => {
-      line = callingClient.getLines().line1 as jest.Mocked<ILine>;
+      line = callingClient.getLines().line1 as ILine;
       webRTCCalling['line'] = line; // Ensure line is set before calling deregister
 
       const deregisterSpy = jest.spyOn(line, 'deregister');

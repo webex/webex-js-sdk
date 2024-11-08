@@ -1,17 +1,9 @@
-import {
-  createClient,
-  ICall,
-  ICallingClient,
-  ILine,
-  LINE_EVENTS,
-  CALL_EVENT_KEYS,
-  CallerIdDisplay,
-} from '@webex/calling';
+import {createClient, ICall, ICallingClient, ILine, LINE_EVENTS} from '@webex/calling';
 import {CallingClientConfig} from '@webex/calling/dist/types/CallingClient/types';
 import {WebexSDK} from './types';
 import {TIMEOUT_DURATION} from './constants';
 
-export default class WebRTCCalling {
+export default class WebCallingService {
   private callingClient: ICallingClient;
   private callingClientConfig: CallingClientConfig;
   private line: ILine;
@@ -22,13 +14,30 @@ export default class WebRTCCalling {
     this.callingClientConfig = callingClientConfig;
   }
 
-  public async registerWebCallingLine() {
+  public async registerWebCallingLine(): Promise<void> {
     this.callingClient = await createClient(this.webex as any, this.callingClientConfig);
     this.line = Object.values(this.callingClient.getLines())[0];
 
+    this.line.on(LINE_EVENTS.UNREGISTERED, () => {
+      this.webex.logger.log(`WxCC-SDK: Desktop un registered successfully`);
+    });
+
+    // Start listening for incoming calls
+    this.line.on(LINE_EVENTS.INCOMING_CALL, (callObj: ICall) => {
+      this.call = callObj;
+
+      const incomingCallEvent = new CustomEvent(LINE_EVENTS.INCOMING_CALL, {
+        detail: {
+          call: this.call,
+        },
+      });
+
+      window.dispatchEvent(incomingCallEvent);
+    });
+
     return new Promise<void>((resolve, reject) => {
       const timeout = setTimeout(() => {
-        reject(new Error('Calling SDK Registration timed out'));
+        reject(new Error('WebCallingService Registration timed out'));
       }, TIMEOUT_DURATION);
 
       this.line.on(LINE_EVENTS.REGISTERED, (deviceInfo: ILine) => {
@@ -38,31 +47,11 @@ export default class WebRTCCalling {
         );
         resolve();
       });
-
       this.line.register();
-
-      // Start listening for incoming calls
-      this.line.on(LINE_EVENTS.INCOMING_CALL, (callObj: ICall) => {
-        this.call = callObj;
-
-        this.call.on(CALL_EVENT_KEYS.CALLER_ID, (callerId: CallerIdDisplay) => {
-          this.webex.logger.log(
-            `callerId : Name: ${callerId.callerId.name}, Number: ${callerId.callerId.num}, Avatar: ${callerId.callerId.avatarSrc}, UserId: ${callerId.callerId.id}`
-          );
-        });
-
-        const incomingCallEvent = new CustomEvent('line:incoming_call', {
-          detail: {
-            call: this.call,
-          },
-        });
-
-        window.dispatchEvent(incomingCallEvent);
-      });
     });
   }
 
   public async deregisterWebCallingLine() {
-    return this.line.deregister();
+    this.line.deregister();
   }
 }

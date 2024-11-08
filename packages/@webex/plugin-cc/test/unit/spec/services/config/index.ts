@@ -1,7 +1,7 @@
-import {WebexSDK} from '../../../../src/types';
-import AgentConfigService from '../../../../src/services/config';
-import HttpRequest from '../../../../src/services/core/HttpRequest';
-import {WCC_API_GATEWAY} from '../../../../src/services/constants';
+import {WebexSDK} from '../../../../../src/types';
+import AgentConfigService from '../../../../../src/services/config';
+import HttpRequest from '../../../../../src/services/core/HttpRequest';
+import {WCC_API_GATEWAY} from '../../../../../src/services/constants';
 import MockWebex from '@webex/test-helper-mock-webex';
 
 describe('AgentConfigService', () => {

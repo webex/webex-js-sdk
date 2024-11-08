@@ -7,8 +7,8 @@ import {
   WelcomeResponse,
   WelcomeEvent,
 } from '../../types';
-import IWebSocket from './WebSocket/types';
-import WebSocket from './WebSocket';
+import IWebSocket from '../WebSocket/types';
+import WebSocket from '../WebSocket';
 import {CC_EVENTS, SubscribeResponse} from '../config/types';
 import {EVENT} from '../../constants';
 
@@ -18,7 +18,6 @@ class HttpRequest {
   private webSocket: IWebSocket;
   private webex: WebexSDK;
   private eventHandlers: Map<string, EventHandler>;
-
   private static instance: HttpRequest;
 
   public static getInstance(options?: {webex: WebexSDK}): HttpRequest {
