@@ -1,4 +1,3 @@
-import {AuxCode, StateChangeSuccess, Team} from '../services/types';
 import {WebexSDK} from '../types';
 import {AuxCode, Team} from '../services/config/types';
 import * as Agent from '../services/agent/types';
@@ -93,8 +92,9 @@ export type IAgentProfile = {
  *
  * @public
  */
-export interface SetStateResponse {
-  data?: StateChangeSuccess;
+export type SetStateResponse = {
+  data?: Agent.StateChangeSuccess;
   error?: string;
-}
+};
+
 export type StationLoginResponse = Agent.StationLoginSuccess | Error;
