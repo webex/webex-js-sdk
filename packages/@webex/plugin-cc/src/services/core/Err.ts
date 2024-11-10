@@ -1,7 +1,6 @@
 import {WebexRequestPayload} from '../../types';
 import {Failure} from './GlobalTypes';
 
-/* eslint-disable @typescript-eslint/no-namespace */
 export type ErrDetails = {status: number; type: string; trackingId: string};
 
 export type AgentErrorIds =

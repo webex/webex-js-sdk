@@ -1,4 +1,4 @@
-import {Signal} from './Signal';
+import {EventEmitter} from 'events';
 import {Msg} from './GlobalTypes';
 import * as Err from './Err';
 import {HTTP_METHODS, WebexRequestPayload} from '../../types';
@@ -45,27 +45,30 @@ export class AqmReqs {
   }
 
   evt<T>(p: EvtConf<T>): EvtRes<T> {
-    const {send, signal} = Signal.create.withData<T>();
+    const eventEmitter = new EventEmitter();
 
     const k = this.bindPrint(p.bind);
     if (this.pendingEvents[k]) {
       throw new Err.Details('Service.aqm.reqs.PendingEvent', {key: k});
     }
+
     this.pendingEvents[k] = {
       check: (msg: Msg) => this.bindCheck(p.bind, msg),
-      handle: (msg: any) => send(msg),
+      handle: (msg: any) => eventEmitter.emit('data', msg),
     };
 
     // add listenOnceAsync
-    const evt: EvtRes<T> = signal as any;
+    const evt: EvtRes<T> = eventEmitter as any;
     evt.listenOnceAsync = (promise?: {resolveIf?: (msg: T) => boolean; timeout?: Timeout}) => {
       return new Promise<T>((resolve, reject) => {
-        const {stopListen} = signal.listen((msg) => {
+        const listener = (msg: T) => {
           if (promise?.resolveIf ? promise.resolveIf(msg) : true) {
-            stopListen();
+            eventEmitter.removeListener('data', listener);
             resolve(msg);
           }
-        });
+        };
+
+        eventEmitter.on('data', listener);
 
         if (promise?.timeout === 'disabled') {
           return;
@@ -74,8 +77,8 @@ export class AqmReqs {
         const ms =
           promise && promise.timeout && promise.timeout > 0 ? promise.timeout : TIMEOUT_EVT;
         setTimeout(() => {
-          const isStopped = stopListen();
-          if (isStopped) {
+          const removed = eventEmitter.removeListener('data', listener);
+          if (removed) {
             reject(new Err.Details('Service.aqm.reqs.TimeoutEvent', {key: k}));
           }
         }, ms);
