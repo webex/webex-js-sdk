@@ -19,8 +19,6 @@ import {
 
 export const TIMEOUT_REQ = 20000;
 const TIMEOUT_EVT = TIMEOUT_REQ;
-const FC_DESKTOP_VIEW = 'FC-DESKTOP-VIEW';
-const fcDesktopView = 'fcDesktopView';
 
 export class AqmReqs {
   private pendingRequests: Record<string, Pending> = {};
@@ -261,70 +259,6 @@ export class AqmReqs {
     return true;
   }
 
-  private readonly identifyInteractionIsTaskObject = (event: any) => {
-    // This method will return the callProcessingDetails are present inside the interaction object or task object
-    return event?.data?.task?.callProcessingDetails ?? false;
-  };
-
-  private isFlowValuesEncrypted(event: any) {
-    let fcDesktopView1: any;
-    if (this.identifyInteractionIsTaskObject(event)) {
-      fcDesktopView1 = event?.data?.task?.callAssociatedData[FC_DESKTOP_VIEW]?.value;
-    } else {
-      fcDesktopView1 = event?.data?.interaction?.callAssociatedData[FC_DESKTOP_VIEW]?.value;
-    }
-
-    return fcDesktopView1?.includes('pop-over') || fcDesktopView1?.includes('interaction-panel');
-  }
-
-  private isValidCADFlowValue(event: any) {
-    // event?.data?.interaction:  CAD, CPD values are under the event?.data?.interaction for call events
-    // event?.data?.task :CAD, CPD values are under the event?.data?.task for monitoring call events
-    if (this.identifyInteractionIsTaskObject(event)) {
-      return (
-        (event?.data?.task?.callAssociatedData[FC_DESKTOP_VIEW]?.value &&
-          event?.data?.task?.callAssociatedData[FC_DESKTOP_VIEW]?.value !== '') ??
-        false
-      );
-    }
-    // Interaction details are present like event?.data?.interaction
-
-    return (
-      (event?.data?.interaction?.callAssociatedData[FC_DESKTOP_VIEW]?.value &&
-        event?.data?.interaction?.callAssociatedData[FC_DESKTOP_VIEW]?.value !== '') ??
-      false
-    );
-  }
-
-  private isValidCPDFlowValue(event: any) {
-    const isDesktopCpdViewEnabled = false; // TODO: revisit this to get the feature flag value if needed by desktop client
-    // event?.data?.interaction:  CAD, CPD values are under the event?.data?.interaction for call events
-    // event?.data?.task :CAD, CPD values are under the event?.data?.task for monitoring call events
-    // SERVICE.featureflag.isDesktopCpdViewEnabled()
-    if (isDesktopCpdViewEnabled) {
-      if (this.identifyInteractionIsTaskObject(event)) {
-        return (
-          event?.data?.task?.callProcessingDetails[fcDesktopView] &&
-          event?.data?.task?.callProcessingDetails[fcDesktopView] !== ''
-        );
-      }
-
-      return (
-        event?.data?.interaction?.callProcessingDetails[fcDesktopView] &&
-        event?.data?.interaction?.callProcessingDetails[fcDesktopView] !== ''
-      );
-    }
-
-    return false;
-  }
-
-  private getDecompressedValue(encryptedValue: Buffer) {
-    return encryptedValue;
-    // TODO: Revisit this to get the decompressSync method from the compression library if needed by desktop client
-    // const decryptedValue: Uint8Array = decompressSync(encryptedValue);
-    // return strFromU8(decryptedValue);
-  }
-
   // must be lambda
   private readonly onMessage = (event: any) => {
     // const event = JSON.parse(msg);
@@ -338,63 +272,6 @@ export class AqmReqs {
       LoggerProxy.logger.info(`Keepalive from notifs${event}`);
 
       return;
-    }
-
-    if (this.isValidCADFlowValue(event) && !this.isFlowValuesEncrypted(event)) {
-      const isTaskObject = this.identifyInteractionIsTaskObject(event);
-      try {
-        const targetObject = isTaskObject ? event?.data?.task : event?.data?.interaction;
-        const encryptedFcValue = targetObject?.callAssociatedData[FC_DESKTOP_VIEW]?.value;
-        const encryptedValue = Buffer.from(encryptedFcValue, 'base64');
-        // Update the decrypted value to same object
-        targetObject.callAssociatedData[FC_DESKTOP_VIEW].value =
-          this.getDecompressedValue(encryptedValue);
-
-        const interactionId = targetObject?.interactionId;
-        LoggerProxy.logger.info(
-          `${FC_DESKTOP_VIEW} values decrypted successfully for Interaction ID: ${
-            interactionId || ''
-          }`
-        );
-      } catch {
-        const targetObject = isTaskObject ? event?.data?.task : event?.data?.interaction;
-        const interactionId = targetObject?.interactionId;
-        const fcValue = targetObject?.callAssociatedData[FC_DESKTOP_VIEW]?.value || '';
-
-        LoggerProxy.logger.error(
-          `Error on decrypting ${FC_DESKTOP_VIEW} value for Interaction Id: ${interactionId}${fcValue}` ||
-            ''
-        );
-      }
-    } else if (this.isValidCPDFlowValue(event)) {
-      const isTaskObject = this.identifyInteractionIsTaskObject(event);
-      try {
-        // When WXCC_DESKTOP_VIEW_IN_CPD FF is enabled, then values will be fcDesktopView values are always compressed.
-        const targetObject = isTaskObject ? event?.data?.task : event?.data?.interaction;
-        const encryptedFcValue = targetObject?.callProcessingDetails[fcDesktopView];
-        const encryptedValue = Buffer.from(encryptedFcValue, 'base64');
-
-        // Update the decrypted value to same object
-        targetObject.callProcessingDetails[fcDesktopView] =
-          this.getDecompressedValue(encryptedValue);
-
-        const interactionId = targetObject?.interactionId;
-        LoggerProxy.logger.info(
-          `${fcDesktopView} values decrypted successfully for Interaction ID: ${
-            interactionId || ''
-          }`
-        );
-      } catch {
-        const targetObject = isTaskObject ? event?.data?.task : event?.data?.interaction;
-        const interactionId = targetObject?.interactionId;
-        const fcValue = targetObject?.callProcessingDetails[fcDesktopView] || '';
-
-        LoggerProxy.logger.error(
-          `Error on decrypting ${fcDesktopView} value for Interaction Id: ${
-            interactionId || ''
-          }${fcValue}` || ''
-        );
-      }
     }
 
     let isHandled = false;
