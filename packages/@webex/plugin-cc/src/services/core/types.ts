@@ -1,7 +1,7 @@
-import {EventEmitter} from 'events';
 import {HTTP_METHODS, WebexRequestPayload} from '../../types';
 import * as Err from './Err';
 import {Msg} from './GlobalTypes';
+import {Signal} from './Signal';
 
 export type Pending = {
   check: (msg: Msg) => boolean;
@@ -50,6 +50,6 @@ export type CbRes<TRes> = (res: any) => void | TRes;
 
 // evt
 export type EvtConf<T> = {bind: Bind; msg: T};
-export type EvtRes<T> = EventEmitter & {
+export type EvtRes<T> = Signal.WithData<T> & {
   listenOnceAsync: (p?: {resolveIf?: (msg: T) => boolean; timeout?: Timeout}) => Promise<T>;
 };
