@@ -197,11 +197,13 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
   public async setAgentState(data: StateChange): Promise<SetStateResponse> {
     try {
-      const agentStatusPromise = await this.services.agent.stateChange({data});
+      const agentStatusResponse = await this.services.agent.stateChange({
+        data: {...data, agentId: data.agentId || this.agentConfig.agentId},
+      });
 
       this.$webex.logger.log(`file: ${CC_FILE}: SET AGENT STATUS API SUCCESS`);
 
-      return Promise.resolve(agentStatusPromise);
+      return agentStatusResponse;
     } catch (error) {
       throw getErrorDetails(error, 'setAgentState');
     }
