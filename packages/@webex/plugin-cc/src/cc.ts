@@ -20,6 +20,7 @@ import {AGENT, WEB_RTC_PREFIX} from './services/constants';
 import Services from './services';
 import LoggerProxy from './logger-proxy';
 import * as Agent from './services/agent/types';
+import {Failure} from './services/core/GlobalTypes';
 
 export default class ContactCenter extends WebexPlugin implements IContactCenter {
   namespace = 'cc';
@@ -122,6 +123,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           isExtension: data.loginOption === LoginOption.EXTENSION,
           deviceId: this.getDeviceId(data.loginOption, data.dialNumber),
           roles: [AGENT],
+          // TODO: The public API should not have the following properties so filling them with empty values for now. If needed, we can add them in the future.
           teamName: '',
           siteId: '',
           usesOtherDN: false,
@@ -137,8 +139,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
       return loginResponse;
     } catch (error) {
-      this.$webex.logger.log(`file: ${CC_FILE}: Station Login failed: ${error}`);
-      throw new Error(error.details?.data?.reason ?? 'Error while performing station login');
+      throw this.handleError(error, 'stationLogin');
     }
   }
 
@@ -161,19 +162,21 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
       return logoutResponse;
     } catch (error) {
-      this.$webex.logger.error(`file: ${CC_FILE}: Station Logout failed: ${error}`);
-      throw new Error(error.details?.data?.reason ?? 'Error while performing station logout');
+      throw this.handleError(error, 'stationLogout');
     }
   }
 
+  /* This is used for agent relogin.
+   * @returns Promise<StationReLoginResponse>
+   * @throws Error
+   */
   public async stationReLogin(): Promise<StationReLoginResponse> {
     try {
       const reLoginResponse = await this.services.agent.reload();
 
       return reLoginResponse;
     } catch (error) {
-      this.$webex.logger.error(`file: ${CC_FILE}: Station ReLogin failed: ${error}`);
-      throw new Error(error.details?.data?.reason ?? 'Error while performing station relogin');
+      throw this.handleError(error, 'stationReLogin');
     }
   }
 
@@ -183,5 +186,15 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     }
 
     return WEB_RTC_PREFIX + this.agentConfig.agentId;
+  }
+
+  // New method to handle errors
+  private handleError(error: any, methodName: string): never {
+    // TODO: we can enhance this as we need in future
+    const failure = error.details as Failure;
+    this.$webex.logger.error(
+      `file: ${CC_FILE}: ${methodName} failed with trackingId: ${failure?.trackingId}`
+    );
+    throw new Error(failure?.data?.reason ?? `Error while performing ${methodName}`);
   }
 }

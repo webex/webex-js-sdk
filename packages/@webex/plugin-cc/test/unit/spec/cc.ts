@@ -221,11 +221,20 @@ describe('webex.cc', () => {
         dialNumber: '1234567890',
       };
 
-      const error = new Error('Error while performing station login');
+      const error = {
+        details: {
+          trackingId: '1234',
+          data: {
+            reason: 'Error while performing station login',
+          },
+        },
+      };
       jest.spyOn(webex.cc.services.agent, 'stationLogin').mockRejectedValue(error);
 
-      await expect(webex.cc.stationLogin(options)).rejects.toThrow(
-        'Error while performing station login'
+      await expect(webex.cc.stationLogin(options)).rejects.toThrow(error.details.data.reason);
+
+      expect(webex.logger.error).toHaveBeenCalledWith(
+        `file: cc: stationLogin failed with trackingId: ${error.details.trackingId}`
       );
     });
   });
@@ -247,13 +256,22 @@ describe('webex.cc', () => {
 
     it('should handle error during stationLogout', async () => {
       const data = {logoutReason: 'Logout reason'};
-      const error = new Error('Error while performing station logout');
+      const error = {
+        details: {
+          trackingId: '1234',
+          data: {
+            reason: 'Error while performing station logout',
+          },
+        },
+      };
 
       jest.spyOn(webex.cc.services.agent, 'logout').mockRejectedValue(error);
 
-      await expect(webex.cc.stationLogout(data)).rejects.toThrow(error);
+      await expect(webex.cc.stationLogout(data)).rejects.toThrow(error.details.data.reason);
 
-      expect(webex.logger.error).toHaveBeenCalledWith(`file: cc: Station Logout failed: ${error}`);
+      expect(webex.logger.error).toHaveBeenCalledWith(
+        `file: cc: stationLogout failed with trackingId: ${error.details.trackingId}`
+      );
     });
   });
 
@@ -272,13 +290,22 @@ describe('webex.cc', () => {
     });
 
     it('should handle error during relogin', async () => {
-      const error = new Error('Error while performing station relogin');
+      const error = {
+        details: {
+          trackingId: '1234',
+          data: {
+            reason: 'Error while performing station relogin',
+          },
+        },
+      };
 
       jest.spyOn(webex.cc.services.agent, 'reload').mockRejectedValue(error);
 
-      await expect(webex.cc.stationReLogin()).rejects.toThrow(error);
+      await expect(webex.cc.stationReLogin()).rejects.toThrow(error.details.data.reason);
 
-      expect(webex.logger.error).toHaveBeenCalledWith(`file: cc: Station ReLogin failed: ${error}`);
+      expect(webex.logger.error).toHaveBeenCalledWith(
+        `file: cc: stationReLogin failed with trackingId: ${error.details.trackingId}`
+      );
     });
   });
 });
