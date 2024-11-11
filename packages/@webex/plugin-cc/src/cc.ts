@@ -12,7 +12,7 @@ import {
   StationLogoutResponse,
   StationReLoginResponse,
 } from './types';
-import {READY, CC_FILE} from './constants';
+import {READY, CC_FILE, EMPTY_STRING} from './constants';
 import HttpRequest from './services/core/HttpRequest';
 import WebCallingService from './services/WebCallingService';
 import {AGENT, WEB_RTC_PREFIX} from './services/constants';
@@ -123,10 +123,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           deviceId: this.getDeviceId(data.loginOption, data.dialNumber),
           roles: [AGENT],
           // TODO: The public API should not have the following properties so filling them with empty values for now. If needed, we can add them in the future.
-          teamName: '',
-          siteId: '',
+          teamName: EMPTY_STRING,
+          siteId: EMPTY_STRING,
           usesOtherDN: false,
-          auxCodeId: '',
+          auxCodeId: EMPTY_STRING,
         },
       });
 

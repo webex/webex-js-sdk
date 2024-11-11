@@ -4,6 +4,7 @@ import * as Agent from './types';
 import AqmReqs from '../core/aqm-reqs';
 import {HTTP_METHODS} from '../../types';
 import {WCC_API_GATEWAY} from '../constants';
+import {CC_EVENTS} from '../config/types';
 
 /*
  * routingAgent
@@ -20,15 +21,15 @@ export default function routingAgent(routing: AqmReqs) {
       err,
       notifSuccess: {
         bind: {
-          type: 'AgentReloginSuccess',
-          data: {type: 'AgentReloginSuccess'},
+          type: CC_EVENTS.AGENT_RELOGIN_SUCCESS,
+          data: {type: CC_EVENTS.AGENT_RELOGIN_SUCCESS},
         },
         msg: {} as Agent.ReloginSuccess,
       },
       notifFail: {
         bind: {
-          type: 'AgentReloginFailed',
-          data: {type: 'AgentReloginFailed'},
+          type: CC_EVENTS.AGENT_RELOGIN_FAILED,
+          data: {type: CC_EVENTS.AGENT_RELOGIN_FAILED},
         },
         errId: 'Service.aqm.agent.reload',
       },
@@ -40,15 +41,15 @@ export default function routingAgent(routing: AqmReqs) {
       err,
       notifSuccess: {
         bind: {
-          type: 'Logout',
-          data: {type: 'AgentLogoutSuccess'},
+          type: CC_EVENTS.AGENT_LOGOUT,
+          data: {type: CC_EVENTS.AGENT_LOGOUT_SUCCESS},
         },
         msg: {} as Agent.LogoutSuccess,
       },
       notifFail: {
         bind: {
-          type: 'Logout',
-          data: {type: 'AgentLogoutFailed'},
+          type: CC_EVENTS.AGENT_LOGOUT,
+          data: {type: CC_EVENTS.AGENT_LOGOUT_FAILED},
         },
         errId: 'Service.aqm.agent.logout',
       },
@@ -65,15 +66,15 @@ export default function routingAgent(routing: AqmReqs) {
         }),
       notifSuccess: {
         bind: {
-          type: 'StationLogin',
-          data: {type: 'AgentStationLoginSuccess'},
+          type: CC_EVENTS.AGENT_STATION_LOGIN,
+          data: {type: CC_EVENTS.AGENT_STATION_LOGIN_SUCCESS},
         },
         msg: {} as Agent.StationLoginSuccess,
       },
       notifFail: {
         bind: {
-          type: 'StationLogin',
-          data: {type: 'AgentStationLoginFailed'},
+          type: CC_EVENTS.AGENT_STATION_LOGIN,
+          data: {type: CC_EVENTS.AGENT_STATION_LOGIN_FAILED},
         },
         errId: 'Service.aqm.agent.stationLoginFailed',
       },
@@ -86,15 +87,15 @@ export default function routingAgent(routing: AqmReqs) {
       method: HTTP_METHODS.PUT,
       notifSuccess: {
         bind: {
-          type: 'AgentStateChange',
-          data: {type: 'AgentStateChangeSuccess'},
+          type: CC_EVENTS.AGENT_STATE_CHANGE,
+          data: {type: CC_EVENTS.AGENT_STATE_CHANGE_SUCCESS},
         },
         msg: {} as Agent.StateChangeSuccess,
       },
       notifFail: {
         bind: {
-          type: 'AgentStateChange',
-          data: {type: 'AgentStateChangeFailed'},
+          type: CC_EVENTS.AGENT_STATE_CHANGE,
+          data: {type: CC_EVENTS.AGENT_STATE_CHANGE_FAILED},
         },
         errId: 'Service.aqm.agent.stateChange',
       },

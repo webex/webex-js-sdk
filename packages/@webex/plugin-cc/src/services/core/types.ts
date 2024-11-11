@@ -1,4 +1,4 @@
-import {HTTP_METHODS, WebexRequestPayload} from '../../types';
+import {HTTP_METHODS, RequestBody, WebexRequestPayload} from '../../types';
 import * as Err from './Err';
 import {Msg} from './GlobalTypes';
 
@@ -35,7 +35,7 @@ export type Req<TRes, TErr> = {
         bind: Bind;
         errId: Err.IdsDetails;
       };
-  data?: any;
+  data?: RequestBody;
   headers?: Record<string, string>;
   timeout?: Timeout;
   notifCancel?: {bind: Bind; msg: TRes};

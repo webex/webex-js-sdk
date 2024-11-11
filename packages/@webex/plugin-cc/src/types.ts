@@ -290,6 +290,11 @@ export type AgentLogin = {
 
   loginOption: LoginOption;
 };
+export type RequestBody =
+  | SubscribeRequest
+  | Agent.Logout
+  | Agent.UserStationLogin
+  | Agent.StateChange;
 
 export type StationLoginResponse = Agent.StationLoginSuccess | Error;
 export type StationLogoutResponse = Agent.LogoutSuccess | Error;

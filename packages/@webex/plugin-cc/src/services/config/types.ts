@@ -1,10 +1,22 @@
-import {AuxCode} from '../../types';
+import {AuxCode, WelcomeEvent} from '../../types';
+import * as Agent from '../agent/types';
 
 type Enum<T extends Record<string, unknown>> = T[keyof T];
 
 // Define the CC_EVENTS object
 export const CC_EVENTS = {
   WELCOME: 'Welcome',
+  AGENT_RELOGIN_SUCCESS: 'AgentReloginSuccess',
+  AGENT_RELOGIN_FAILED: 'AgentReloginFailed',
+  AGENT_LOGOUT: 'Logout',
+  AGENT_LOGOUT_SUCCESS: 'AgentLogoutSuccess',
+  AGENT_LOGOUT_FAILED: 'AgentLogoutFailed',
+  AGENT_STATION_LOGIN: 'StationLogin',
+  AGENT_STATION_LOGIN_SUCCESS: 'AgentStationLoginSuccess',
+  AGENT_STATION_LOGIN_FAILED: 'AgentStationLoginFailed',
+  AGENT_STATE_CHANGE: 'AgentStateChange',
+  AGENT_STATE_CHANGE_SUCCESS: 'AgentStateChangeSuccess',
+  AGENT_STATE_CHANGE_FAILED: 'AgentStateChangeFailed',
 } as const;
 
 // Derive the type using the utility type
@@ -12,9 +24,12 @@ export type CC_EVENTS = Enum<typeof CC_EVENTS>;
 
 export type WebSocketEvent = {
   type: CC_EVENTS;
-  data: {
-    agentId: string;
-  };
+  data:
+    | WelcomeEvent
+    | Agent.StationLoginSuccess
+    | Agent.LogoutSuccess
+    | Agent.ReloginSuccess
+    | Agent.StateChangeSuccess;
 };
 
 /**

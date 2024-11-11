@@ -6,6 +6,7 @@ import {
   IHttpResponse,
   WelcomeResponse,
   WelcomeEvent,
+  RequestBody,
 } from '../../types';
 import IWebSocket from '../WebSocket/types';
 import WebSocket from '../WebSocket';
@@ -89,7 +90,7 @@ class HttpRequest {
     service: string;
     resource: string;
     method: HTTP_METHODS;
-    body?: object;
+    body?: RequestBody;
   }): Promise<IHttpResponse> {
     const {service, resource, method, body} = options;
 
