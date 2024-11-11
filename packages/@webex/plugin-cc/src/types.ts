@@ -299,3 +299,4 @@ export type RequestBody =
 export type StationLoginResponse = Agent.StationLoginSuccess | Error;
 export type StationLogoutResponse = Agent.LogoutSuccess | Error;
 export type StationReLoginResponse = Agent.ReloginSuccess | Error;
+export type SetStateResponse = Agent.StateChangeSuccess | Error;

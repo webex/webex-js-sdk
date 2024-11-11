@@ -1,5 +1,4 @@
 import {WebexSDK} from '../types';
-import * as Agent from '../services/agent/types';
 
 type Enum<T extends Record<string, unknown>> = T[keyof T];
 
@@ -34,15 +33,3 @@ export type AgentConfigRequest = {
    */
   orgId: string;
 };
-
-/**
- * Represents the response from setAgentStatus.
- *
- * @public
- */
-export type SetStateResponse = {
-  data?: Agent.StateChangeSuccess;
-  error?: string;
-};
-
-export type StationLoginResponse = Agent.StationLoginSuccess | Error;

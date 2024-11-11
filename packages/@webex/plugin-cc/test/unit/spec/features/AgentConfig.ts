@@ -113,6 +113,15 @@ describe('AgentConfig', () => {
           name: 'testName',
           workTypeCode: WORK_TYPE_CODE.IDLE_CODE,
         },
+        {
+          active: true,
+          defaultCode: true,
+          description: 'Agent is available to receive calls',
+          id: '0',
+          isSystemCode: false,
+          name: 'Available',
+          workTypeCode: 'IDLE_CODE',
+        },
       ],
     };
 
@@ -221,6 +230,15 @@ describe('AgentConfig', () => {
           name: 'testName',
           workTypeCode: WORK_TYPE_CODE.IDLE_CODE,
         },
+        {
+          active: true,
+          defaultCode: true,
+          description: 'Agent is available to receive calls',
+          id: '0',
+          isSystemCode: false,
+          name: 'Available',
+          workTypeCode: 'IDLE_CODE',
+        },
       ],
     };
 
@@ -296,6 +314,15 @@ describe('AgentConfig', () => {
           description: 'test',
           name: 'testName',
           workTypeCode: WORK_TYPE_CODE.IDLE_CODE,
+        },
+        {
+          active: true,
+          defaultCode: true,
+          description: 'Agent is available to receive calls',
+          id: '0',
+          isSystemCode: false,
+          name: 'Available',
+          workTypeCode: 'IDLE_CODE',
         },
       ],
     };
@@ -373,6 +400,15 @@ describe('AgentConfig', () => {
           name: 'testName',
           workTypeCode: WORK_TYPE_CODE.IDLE_CODE,
         },
+        {
+          active: true,
+          defaultCode: true,
+          description: 'Agent is available to receive calls',
+          id: '0',
+          isSystemCode: false,
+          name: 'Available',
+          workTypeCode: 'IDLE_CODE',
+        },
       ],
     };
 
@@ -448,6 +484,15 @@ describe('AgentConfig', () => {
           description: 'test',
           name: 'testName',
           workTypeCode: WORK_TYPE_CODE.IDLE_CODE,
+        },
+        {
+          active: true,
+          defaultCode: true,
+          description: 'Agent is available to receive calls',
+          id: '0',
+          isSystemCode: false,
+          name: 'Available',
+          workTypeCode: 'IDLE_CODE',
         },
       ],
     };

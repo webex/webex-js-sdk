@@ -1,7 +1,7 @@
 import {WebexPlugin} from '@webex/webex-core';
 import AgentConfig from './features/Agentconfig';
-import {SetStateResponse} from './features/types';
 import {
+  SetStateResponse,
   CCPluginConfig,
   IContactCenter,
   WebexSDK,
@@ -195,7 +195,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * @throws Error
    */
 
-  public async setAgentStatus(data: StateChange): Promise<SetStateResponse> {
+  public async setAgentState(data: StateChange): Promise<SetStateResponse> {
     try {
       const agentStatusPromise = await this.services.agent.stateChange({data});
 
@@ -203,7 +203,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
       return Promise.resolve(agentStatusPromise);
     } catch (error) {
-      return Promise.reject(error);
+      throw getErrorDetails(error, 'setAgentState');
     }
   }
 }
