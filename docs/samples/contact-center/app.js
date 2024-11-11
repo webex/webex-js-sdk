@@ -99,7 +99,7 @@ function initWebex(e) {
     console.log('Authentication#initWebex() :: Webex Ready');
 
     authStatusElm.innerText = 'Saved access token!';
-    registerStatus.innerHTML = 'Not Registered';
+    registerStatus.innerHTML = 'Not Subscribed';
     registerBtn.disabled = false;
   });
 
@@ -111,7 +111,7 @@ credentialsFormElm.addEventListener('submit', initWebex);
 
 function register() {
     webex.cc.register(true).then((agentProfile) => {
-        registerStatus.innerHTML = 'Registered';
+        registerStatus.innerHTML = 'Subscribed';
         console.log('Event subscription successful: ', agentProfile);
         teamsDropdown.innerHTML = ''; // Clear previously selected option on teamsDropdown
         const listTeams = agentProfile.teams;

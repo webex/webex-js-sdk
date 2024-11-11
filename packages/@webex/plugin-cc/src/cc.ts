@@ -4,7 +4,6 @@ import {
   CCPluginConfig,
   IContactCenter,
   WebexSDK,
-  SubscribeRequest,
   LoginOption,
   WelcomeEvent,
   IAgentProfile,
@@ -15,12 +14,12 @@ import {
 } from './types';
 import {READY, CC_FILE} from './constants';
 import HttpRequest from './services/core/HttpRequest';
-import WebCallingService from './WebCallingService';
+import WebCallingService from './services/WebCallingService';
 import {AGENT, WEB_RTC_PREFIX} from './services/constants';
 import Services from './services';
 import LoggerProxy from './logger-proxy';
-import * as Agent from './services/agent/types';
-import {Failure} from './services/core/GlobalTypes';
+import {Logout} from './services/agent/types';
+import {getErrorDetails} from './services/core/Utils';
 
 export default class ContactCenter extends WebexPlugin implements IContactCenter {
   namespace = 'cc';
@@ -66,7 +65,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     } catch (error) {
       this.$webex.logger.error(`file: ${CC_FILE}: Error during register: ${error}`);
 
-      return Promise.reject(new Error('Error while performing register`', error));
+      throw error;
     }
   }
 
@@ -77,7 +76,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * @private
    */
   private async connectWebsocket() {
-    const connectionConfig: SubscribeRequest = {
+    const connectionConfig = {
       force: this.$config?.force ?? true,
       isKeepAliveEnabled: this.$config?.isKeepAliveEnabled ?? false,
       clientType: this.$config?.clientType ?? 'WebexCCSDK',
@@ -139,7 +138,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
       return loginResponse;
     } catch (error) {
-      throw this.handleError(error, 'stationLogin');
+      throw getErrorDetails(error, 'stationLogin');
     }
   }
 
@@ -148,7 +147,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * @returns Promise<StationLogoutResponse>
    * @throws Error
    */
-  public async stationLogout(data: Agent.Logout): Promise<StationLogoutResponse> {
+  public async stationLogout(data: Logout): Promise<StationLogoutResponse> {
     try {
       const logoutResponse = this.services.agent.logout({
         data,
@@ -162,7 +161,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
       return logoutResponse;
     } catch (error) {
-      throw this.handleError(error, 'stationLogout');
+      throw getErrorDetails(error, 'stationLogout');
     }
   }
 
@@ -176,7 +175,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
       return reLoginResponse;
     } catch (error) {
-      throw this.handleError(error, 'stationReLogin');
+      throw getErrorDetails(error, 'stationReLogin');
     }
   }
 
@@ -186,15 +185,5 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     }
 
     return WEB_RTC_PREFIX + this.agentConfig.agentId;
-  }
-
-  // New method to handle errors
-  private handleError(error: any, methodName: string): never {
-    // TODO: we can enhance this as we need in future
-    const failure = error.details as Failure;
-    this.$webex.logger.error(
-      `file: ${CC_FILE}: ${methodName} failed with trackingId: ${failure?.trackingId}`
-    );
-    throw new Error(failure?.data?.reason ?? `Error while performing ${methodName}`);
   }
 }

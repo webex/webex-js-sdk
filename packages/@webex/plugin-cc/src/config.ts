@@ -16,6 +16,7 @@ export default {
       },
       serviceData: {
         indicator: 'contactcenter',
+        // TODO: This should be dynamic based on the environment
         domain: 'rtw.prod-us1.rtmsprod.net',
       },
     },

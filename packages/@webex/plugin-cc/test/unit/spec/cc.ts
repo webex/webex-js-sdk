@@ -7,6 +7,7 @@ import {IAgentProfile} from '../../../src/types';
 import {AGENT, WEB_RTC_PREFIX} from '../../../src/services/constants';
 import Services from '../../../src/services';
 import config from '../../../src/config';
+import LoggerProxy from '../../../src/logger-proxy';
 
 jest.mock('../../../src/logger-proxy', () => ({
   __esModule: true,
@@ -21,7 +22,7 @@ jest.mock('../../../src/logger-proxy', () => ({
 
 jest.mock('../../../src/services/config');
 jest.mock('../../../src/services/core/HttpRequest');
-jest.mock('../../../src/WebCallingService');
+jest.mock('../../../src/services/WebCallingService');
 jest.mock('../../../src/services');
 
 // Mock AgentConfig
@@ -133,7 +134,7 @@ describe('webex.cc', () => {
     });
 
     it('should log error and reject if registration fails', async () => {
-      const mockError = new Error('Registration failed');
+      const mockError = new Error('Error while performing register');
       mockHttpRequest.subscribeNotifications.mockRejectedValue(mockError);
 
       await expect(webex.cc.register()).rejects.toThrow('Error while performing register');
@@ -233,8 +234,8 @@ describe('webex.cc', () => {
 
       await expect(webex.cc.stationLogin(options)).rejects.toThrow(error.details.data.reason);
 
-      expect(webex.logger.error).toHaveBeenCalledWith(
-        `file: cc: stationLogin failed with trackingId: ${error.details.trackingId}`
+      expect(LoggerProxy.logger.error).toHaveBeenCalledWith(
+        `stationLogin failed with trackingId: ${error.details.trackingId}`
       );
     });
   });
@@ -269,8 +270,8 @@ describe('webex.cc', () => {
 
       await expect(webex.cc.stationLogout(data)).rejects.toThrow(error.details.data.reason);
 
-      expect(webex.logger.error).toHaveBeenCalledWith(
-        `file: cc: stationLogout failed with trackingId: ${error.details.trackingId}`
+      expect(LoggerProxy.logger.error).toHaveBeenCalledWith(
+        `stationLogout failed with trackingId: ${error.details.trackingId}`
       );
     });
   });
@@ -303,8 +304,8 @@ describe('webex.cc', () => {
 
       await expect(webex.cc.stationReLogin()).rejects.toThrow(error.details.data.reason);
 
-      expect(webex.logger.error).toHaveBeenCalledWith(
-        `file: cc: stationReLogin failed with trackingId: ${error.details.trackingId}`
+      expect(LoggerProxy.logger.error).toHaveBeenCalledWith(
+        `stationReLogin failed with trackingId: ${error.details.trackingId}`
       );
     });
   });

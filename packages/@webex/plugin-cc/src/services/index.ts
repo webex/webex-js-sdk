@@ -1,5 +1,5 @@
 import routingAgent from './agent';
-import {AqmReqs} from './core/aqm-reqs';
+import AqmReqs from './core/aqm-reqs';
 
 export default class Services {
   public readonly agent: ReturnType<typeof routingAgent>;

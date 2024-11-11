@@ -9,15 +9,13 @@ export type AgentErrorIds =
   | {'Service.aqm.agent.stateChange': Failure}
   | {'Service.aqm.agent.reload': Failure}
   | {'Service.aqm.agent.logout': Failure}
-  | {'Service.aqm.agent.mockOutdialAniList': Failure}
-  | {'Service.reqs.generic.failure': {trackingId: string}}
-  | 'Service.aqm.agent.fetchAddressBooks';
+  | {'Service.reqs.generic.failure': {trackingId: string}};
 
 export type ReqError =
   | 'Service.aqm.reqs.GenericRequestError'
   | {'Service.aqm.reqs.Pending': {key: string; msg: string}}
   | {'Service.aqm.reqs.PendingEvent': {key: string}}
-  | {'Service.aqm.reqs.Timeout': {key: string; resAxios: WebexRequestPayload}}
+  | {'Service.aqm.reqs.Timeout': {key: string; response: WebexRequestPayload}}
   | {'Service.aqm.reqs.TimeoutEvent': {key: string}};
 
 export interface Ids {

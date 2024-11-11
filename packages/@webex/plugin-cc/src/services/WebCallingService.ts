@@ -6,8 +6,8 @@ import {
   LINE_EVENTS,
   CallingClientConfig,
 } from '@webex/calling';
-import {WebexSDK} from './types';
-import {TIMEOUT_DURATION} from './constants';
+import {WebexSDK} from '../types';
+import {TIMEOUT_DURATION} from '../constants';
 
 export default class WebCallingService {
   private callingClient: ICallingClient;
