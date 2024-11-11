@@ -1,15 +1,12 @@
 import 'jsdom-global/register';
-import {LoginOption, WebexSDK} from '../../../src/types';
-import HttpRequest from '../../../src/services/core/HttpRequest';
-import WebCallingService from '../../../src/WebCallingService';
+import {LoginOption, StationLogoutResponse, WebexSDK} from '../../../src/types';
 import ContactCenter from '../../../src/cc';
 import MockWebex from '@webex/test-helper-mock-webex';
 import {StationLoginSuccess} from '../../../src/services/agent/types';
-import {IAgentProfile} from '../../../src/features/types';
+import {IAgentProfile} from '../../../src/types';
 import {AGENT, WEB_RTC_PREFIX} from '../../../src/services/constants';
 import Services from '../../../src/services';
 import config from '../../../src/config';
-import {web} from 'webpack';
 
 jest.mock('../../../src/logger-proxy', () => ({
   __esModule: true,
@@ -61,6 +58,7 @@ describe('webex.cc', () => {
     const mockServicesInstance = {
       agent: {
         stationLogin: jest.fn(),
+        logout: jest.fn(),
       },
     };
     (Services.getInstance as jest.Mock).mockReturnValue(mockServicesInstance);
@@ -228,6 +226,33 @@ describe('webex.cc', () => {
       await expect(webex.cc.stationLogin(options)).rejects.toThrow(
         'Error while performing station login'
       );
+    });
+  });
+
+  describe('stationLogout', () => {
+    it('should logout successfully', async () => {
+      const data = {logoutReason: 'Logout reason'};
+      const response = {};
+
+      const stationLogoutMock = jest
+        .spyOn(webex.cc.services.agent, 'logout')
+        .mockResolvedValue({} as StationLogoutResponse);
+
+      const result = await webex.cc.stationLogout(data);
+
+      expect(stationLogoutMock).toHaveBeenCalledWith({data: data});
+      expect(result).toEqual(response);
+    });
+
+    it('should handle error during stationLogout', async () => {
+      const data = {logoutReason: 'Logout reason'};
+      const error = new Error('Error while performing station logout');
+
+      jest.spyOn(webex.cc.services.agent, 'logout').mockRejectedValue(error);
+
+      await expect(webex.cc.stationLogout(data)).rejects.toThrow(error);
+
+      expect(webex.logger.error).toHaveBeenCalledWith(`file: cc: Station Logout failed: ${error}`);
     });
   });
 });

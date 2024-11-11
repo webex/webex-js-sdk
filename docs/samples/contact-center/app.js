@@ -27,6 +27,7 @@ const agentLogin = document.querySelector('#AgentLogin');
 const agentLoginButton = document.querySelector('#loginAgent');
 const dialNumber = document.querySelector('#dialNumber');
 const registerStatus = document.querySelector('#ws-connection-status');
+const logoutAgentElm = document.querySelector('#logoutAgent');
 
 // Store and Grab `access-token` from sessionStorage
 if (sessionStorage.getItem('date') > new Date().getTime()) {
@@ -151,9 +152,24 @@ async function handleAgentLogin(e) {
 function doAgentLogin() {
   webex.cc.stationLogin({teamId: teamsDropdown.value, loginOption: agentDeviceType, dialNumber: dialNumber.value}).then((response) => {
     console.log('Agent Logged in successfully', response);
+    logoutAgentElm.classList.remove('hidden');
   }
   ).catch((error) => {
     console.log('Agent Login failed', error);
+  });
+}
+
+
+function logoutAgent() {
+  webex.cc.stationLogout({logoutReason: 'logout'}).then((response) => {
+    console.log('Agent logged out successfully', response);
+
+    setTimeout(() => {
+      logoutAgentElm.classList.add('hidden');
+    }, 1000);
+  }
+  ).catch((error) => {
+    console.log('Agent logout failed', error);
   });
 }
 

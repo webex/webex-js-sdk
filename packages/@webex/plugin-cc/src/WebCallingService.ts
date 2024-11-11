@@ -58,6 +58,6 @@ export default class WebCallingService {
   }
 
   public async deregisterWebCallingLine() {
-    this.line.deregister();
+    this.line?.deregister();
   }
 }

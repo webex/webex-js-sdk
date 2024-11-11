@@ -1,6 +1,5 @@
 import {WebexPlugin} from '@webex/webex-core';
 import AgentConfig from './features/Agentconfig';
-import {StationLoginResponse} from './features/types';
 import {
   CCPluginConfig,
   IContactCenter,
@@ -9,14 +8,17 @@ import {
   LoginOption,
   WelcomeEvent,
   IAgentProfile,
+  AgentLogin,
+  StationLoginResponse,
+  StationLogoutResponse,
 } from './types';
 import {READY, CC_FILE} from './constants';
 import HttpRequest from './services/core/HttpRequest';
 import WebCallingService from './WebCallingService';
-import {AgentLogin} from './services/config/types';
 import {AGENT, WEB_RTC_PREFIX} from './services/constants';
 import Services from './services';
 import LoggerProxy from './logger-proxy';
+import * as Agent from './services/agent/types';
 
 export default class ContactCenter extends WebexPlugin implements IContactCenter {
   namespace = 'cc';
@@ -106,7 +108,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   /**
    * This is used for agent login.
    * @param data
-   * @returns Promise<StationLoginSuccess>
+   * @returns Promise<StationLoginResponse>
    * @throws Error
    */
   public async stationLogin(data: AgentLogin): Promise<StationLoginResponse> {
@@ -134,11 +136,36 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
       return loginResponse;
     } catch (error) {
-      this.$webex.logger.log(`file: ${CC_FILE}: Station Login FAILED: ${error.id}`);
+      this.$webex.logger.log(`file: ${CC_FILE}: Station Login failed: ${error}`);
       throw new Error(error.details?.data?.reason ?? 'Error while performing station login');
     }
   }
 
+  public async stationLogout(data: Agent.Logout): Promise<StationLogoutResponse> {
+    try {
+      const logoutResponse = this.services.agent.logout({
+        data,
+      });
+
+      await logoutResponse;
+
+      if (this.webCallingService) {
+        this.webCallingService.deregisterWebCallingLine();
+      }
+
+      return logoutResponse;
+    } catch (error) {
+      this.$webex.logger.error(`file: ${CC_FILE}: Station Logout failed: ${error}`);
+      throw new Error(error.details?.data?.reason ?? 'Error while performing station logout');
+    }
+  }
+
+  /**
+   * This is used for agent logout.
+   * @param data
+   * @returns Promise<StationLogoutResponse>
+   * @throws Error
+   */
   private getDeviceId(loginOption: string, dialNumber: string): string {
     if (loginOption === LoginOption.EXTENSION || loginOption === LoginOption.AGENT_DN) {
       return dialNumber;

@@ -1,4 +1,5 @@
 import {CallingClientConfig} from '@webex/calling/dist/types/CallingClient/types';
+import * as Agent from './services/agent/types';
 
 type Enum<T extends Record<string, unknown>> = T[keyof T];
 
@@ -264,3 +265,31 @@ export type IAgentProfile = {
 };
 
 export type EventResult = IAgentProfile;
+
+/**
+ * Represents the request to a AgentLogin
+ *
+ * @public
+ */
+export type AgentLogin = {
+  /**
+   * A dialNumber field contains the number to dial such as a route point or extension.
+   */
+
+  dialNumber?: string;
+
+  /**
+   * The unique ID representing a team of users.
+   */
+
+  teamId: string;
+
+  /**
+   * The loginOption field contains the type of login.
+   */
+
+  loginOption: LoginOption;
+};
+
+export type StationLoginResponse = Agent.StationLoginSuccess | Error;
+export type StationLogoutResponse = Agent.LogoutSuccess | Error;

@@ -1,4 +1,3 @@
-import * as Agent from '../services/agent/types';
 import {WebexSDK} from '../types';
 
 type Enum<T extends Record<string, unknown>> = T[keyof T];
@@ -34,5 +33,3 @@ export type AgentConfigRequest = {
    */
   orgId: string;
 };
-
-export type StationLoginResponse = Agent.StationLoginSuccess | Error;

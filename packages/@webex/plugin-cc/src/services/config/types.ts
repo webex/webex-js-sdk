@@ -1,4 +1,4 @@
-import {AuxCode, LoginOption} from '../../types';
+import {AuxCode} from '../../types';
 
 type Enum<T extends Record<string, unknown>> = T[keyof T];
 
@@ -86,47 +86,6 @@ export type DesktopProfileResponse = {
    */
 
   idleCodes: string[];
-};
-
-/**
- * Represents the request to a AgentLogin
- *
- * @public
- */
-export type AgentLogin = {
-  /**
-   * A dialNumber field contains the number to dial such as a route point or extension.
-   */
-
-  dialNumber?: string;
-
-  /**
-   * The unique ID representing a team of users.
-   */
-
-  teamId: string;
-
-  /**
-   * The loginOption field contains the type of login.
-   */
-
-  loginOption: LoginOption;
-};
-
-export type UserStationLogin = {
-  dialNumber?: string | null;
-  dn?: string | null;
-  teamId: string | null;
-  teamName?: string | null;
-  roles?: Array<string>;
-  siteId?: string;
-  usesOtherDN?: boolean;
-  skillProfileId?: string;
-  auxCodeId?: string;
-  isExtension?: boolean;
-  deviceType?: LoginOption;
-  deviceId: string | null;
-  isEmergencyModalAlreadyDisplayed?: boolean;
 };
 
 export type SubscribeResponse = {
