@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import {AqmReqs} from '../../../../../src/services/core/aqm-reqs';
+import AqmReqs from '../../../../../src/services/core/aqm-reqs';
 import HttpRequest from '../../../../../src/services/core/HttpRequest';
 import LoggerProxy from '../../../../../src/logger-proxy';
 
