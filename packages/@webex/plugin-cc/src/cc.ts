@@ -11,6 +11,7 @@ import {
   AgentLogin,
   StationLoginResponse,
   StationLogoutResponse,
+  StationReLoginResponse,
 } from './types';
 import {READY, CC_FILE} from './constants';
 import HttpRequest from './services/core/HttpRequest';
@@ -141,6 +142,11 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     }
   }
 
+  /** This is used for agent logout.
+   * @param data
+   * @returns Promise<StationLogoutResponse>
+   * @throws Error
+   */
   public async stationLogout(data: Agent.Logout): Promise<StationLogoutResponse> {
     try {
       const logoutResponse = this.services.agent.logout({
@@ -160,12 +166,17 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     }
   }
 
-  /**
-   * This is used for agent logout.
-   * @param data
-   * @returns Promise<StationLogoutResponse>
-   * @throws Error
-   */
+  public async stationReLogin(): Promise<StationReLoginResponse> {
+    try {
+      const reLoginResponse = await this.services.agent.reload();
+
+      return reLoginResponse;
+    } catch (error) {
+      this.$webex.logger.error(`file: ${CC_FILE}: Station ReLogin failed: ${error}`);
+      throw new Error(error.details?.data?.reason ?? 'Error while performing station relogin');
+    }
+  }
+
   private getDeviceId(loginOption: string, dialNumber: string): string {
     if (loginOption === LoginOption.EXTENSION || loginOption === LoginOption.AGENT_DN) {
       return dialNumber;

@@ -153,6 +153,16 @@ function doAgentLogin() {
   webex.cc.stationLogin({teamId: teamsDropdown.value, loginOption: agentDeviceType, dialNumber: dialNumber.value}).then((response) => {
     console.log('Agent Logged in successfully', response);
     logoutAgentElm.classList.remove('hidden');
+    // Re-Login Agent after 5 seconds for testing purpose
+    setTimeout(async () => {
+      try {
+        const response = await webex.cc.stationReLogin();
+
+        console.log('Agent Re-Login successful', response);
+      } catch (error) {
+        console.log('Agent Re-Login failed', error);
+      }
+    }, 5000);
   }
   ).catch((error) => {
     console.log('Agent Login failed', error);

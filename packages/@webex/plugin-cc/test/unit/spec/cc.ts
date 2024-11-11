@@ -59,6 +59,7 @@ describe('webex.cc', () => {
       agent: {
         stationLogin: jest.fn(),
         logout: jest.fn(),
+        reload: jest.fn(),
       },
     };
     (Services.getInstance as jest.Mock).mockReturnValue(mockServicesInstance);
@@ -253,6 +254,31 @@ describe('webex.cc', () => {
       await expect(webex.cc.stationLogout(data)).rejects.toThrow(error);
 
       expect(webex.logger.error).toHaveBeenCalledWith(`file: cc: Station Logout failed: ${error}`);
+    });
+  });
+
+  describe('stationRelogin', () => {
+    it('should relogin successfully', async () => {
+      const response = {};
+
+      const stationLoginMock = jest
+        .spyOn(webex.cc.services.agent, 'reload')
+        .mockResolvedValue({} as StationLoginSuccess);
+
+      const result = await webex.cc.stationReLogin();
+
+      expect(stationLoginMock).toHaveBeenCalled();
+      expect(result).toEqual(response);
+    });
+
+    it('should handle error during relogin', async () => {
+      const error = new Error('Error while performing station relogin');
+
+      jest.spyOn(webex.cc.services.agent, 'reload').mockRejectedValue(error);
+
+      await expect(webex.cc.stationReLogin()).rejects.toThrow(error);
+
+      expect(webex.logger.error).toHaveBeenCalledWith(`file: cc: Station ReLogin failed: ${error}`);
     });
   });
 });
