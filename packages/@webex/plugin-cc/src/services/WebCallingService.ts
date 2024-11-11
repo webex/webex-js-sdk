@@ -1,7 +1,13 @@
-import {createClient, ICall, ICallingClient, ILine, LINE_EVENTS} from '@webex/calling';
-import {CallingClientConfig} from '@webex/calling/dist/types/CallingClient/types';
-import {WebexSDK} from './types';
-import {TIMEOUT_DURATION} from './constants';
+import {
+  createClient,
+  ICall,
+  ICallingClient,
+  ILine,
+  LINE_EVENTS,
+  CallingClientConfig,
+} from '@webex/calling';
+import {WebexSDK} from '../types';
+import {TIMEOUT_DURATION} from '../constants';
 
 export default class WebCallingService {
   private callingClient: ICallingClient;
@@ -52,6 +58,6 @@ export default class WebCallingService {
   }
 
   public async deregisterWebCallingLine() {
-    this.line.deregister();
+    this.line?.deregister();
   }
 }

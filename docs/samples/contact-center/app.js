@@ -32,6 +32,7 @@ const dialNumber = document.querySelector('#dialNumber');
 const registerStatus = document.querySelector('#ws-connection-status');
 const idleCodesDropdown = document.querySelector('#idleCodesDropdown')
 const setAgentStatusButton = document.querySelector('#setAgentStatus');
+const logoutAgentElm = document.querySelector('#logoutAgent');
 
 // Store and Grab `access-token` from sessionStorage
 if (sessionStorage.getItem('date') > new Date().getTime()) {
@@ -103,7 +104,7 @@ function initWebex(e) {
     console.log('Authentication#initWebex() :: Webex Ready');
 
     authStatusElm.innerText = 'Saved access token!';
-    registerStatus.innerHTML = 'Not Registered';
+    registerStatus.innerHTML = 'Not Subscribed';
     registerBtn.disabled = false;
   });
 
@@ -115,7 +116,7 @@ credentialsFormElm.addEventListener('submit', initWebex);
 
 function register() {
     webex.cc.register(true).then((agentProfile) => {
-        registerStatus.innerHTML = 'Registered';
+        registerStatus.innerHTML = 'Subscribed';
         console.log('Event subscription successful: ', agentProfile);
         teamsDropdown.innerHTML = ''; // Clear previously selected option on teamsDropdown
         const listTeams = agentProfile.teams;
@@ -171,6 +172,17 @@ async function handleAgentLogin(e) {
 function doAgentLogin() {
   webex.cc.stationLogin({teamId: teamsDropdown.value, loginOption: agentDeviceType, dialNumber: dialNumber.value}).then((response) => {
     console.log('Agent Logged in successfully', response);
+    logoutAgentElm.classList.remove('hidden');
+    // Re-Login Agent after 5 seconds for testing purpose
+    setTimeout(async () => {
+      try {
+        const response = await webex.cc.stationReLogin();
+
+        console.log('Agent Re-Login successful', response);
+      } catch (error) {
+        console.log('Agent Re-Login failed', error);
+      }
+    }, 5000);
   }
   ).catch((error) => {
     console.error('Agent Login failed', error);
@@ -190,6 +202,20 @@ function setAgentStatus() {
     console.log('Agent status set successfully', response);
   }).catch(error => {
     console.error('Agent status set failed', error);
+  });
+}
+
+
+function logoutAgent() {
+  webex.cc.stationLogout({logoutReason: 'logout'}).then((response) => {
+    console.log('Agent logged out successfully', response);
+
+    setTimeout(() => {
+      logoutAgentElm.classList.add('hidden');
+    }, 1000);
+  }
+  ).catch((error) => {
+    console.log('Agent logout failed', error);
   });
 }
 

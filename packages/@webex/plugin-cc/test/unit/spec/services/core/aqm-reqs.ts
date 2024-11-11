@@ -1,11 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import * as config from '../../../../../src/services/core/config';
-import {AqmReqs} from '../../../../../src/services/core/aqm-reqs';
-import {HTTP_METHODS} from '../../../../../src/types';
+import AqmReqs from '../../../../../src/services/core/aqm-reqs';
 import HttpRequest from '../../../../../src/services/core/HttpRequest';
 import LoggerProxy from '../../../../../src/logger-proxy';
-import * as Err from '../../../../../src/services/core/Err';
-import {Msg} from '../../../../../src/services/core/GlobalTypes';
 
 jest.mock('../../../../../src/services/core/HttpRequest');
 jest.mock('../../../../../src/logger-proxy', () => ({
@@ -14,6 +10,7 @@ jest.mock('../../../../../src/logger-proxy', () => ({
     logger: {
       log: jest.fn(),
       error: jest.fn(),
+      info: jest.fn(),
     },
     initialize: jest.fn(),
   },
@@ -322,5 +319,63 @@ describe('AqmReqs', () => {
       ]);
       expect(p).toBeDefined();
     } catch (e) {}
+  });
+
+  it('should handle onMessage with Welcome event', () => {
+    const mockWebSocket = {
+      on: jest.fn(),
+    };
+
+    httpRequestInstance.getWebSocket = jest.fn().mockReturnValue(mockWebSocket);
+
+    const aqm = new AqmReqs();
+
+    const event = {
+      type: 'Welcome',
+    };
+
+    aqm['onMessage'](event);
+
+    expect(LoggerProxy.logger.info).toHaveBeenCalledWith(
+      'Welcome message from Notifs Websocket[object Object]'
+    );
+  });
+
+  it('should handle onMessage with Keepalive event', () => {
+    const mockWebSocket = {
+      on: jest.fn(),
+    };
+
+    httpRequestInstance.getWebSocket = jest.fn().mockReturnValue(mockWebSocket);
+
+    const aqm = new AqmReqs();
+
+    const event = {
+      keepalive: true,
+    };
+
+    aqm['onMessage'](event);
+
+    expect(LoggerProxy.logger.info).toHaveBeenCalledWith('Keepalive from notifs[object Object]');
+  });
+
+  it('should handle onMessage with missing event handler', () => {
+    const mockWebSocket = {
+      on: jest.fn(),
+    };
+
+    httpRequestInstance.getWebSocket = jest.fn().mockReturnValue(mockWebSocket);
+
+    const aqm = new AqmReqs();
+
+    const event = {
+      type: 'UnknownEvent',
+    };
+
+    aqm['onMessage'](event);
+
+    expect(LoggerProxy.logger.info).toHaveBeenCalledWith(
+      'event=missingEventHandler | [AqmReqs] missing routing message handler[object Object]'
+    );
   });
 });

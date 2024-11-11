@@ -1,5 +1,5 @@
 import {CallingClientConfig} from '@webex/calling/dist/types/CallingClient/types';
-import {IAgentProfile} from './features/types';
+import * as Agent from './services/agent/types';
 
 type Enum<T extends Record<string, unknown>> = T[keyof T];
 
@@ -153,4 +153,149 @@ export type SubscribeRequest = {
   allowMultiLogin: boolean;
 };
 
+/**
+ * Represents the response from getListOfTeams method.
+ *
+ * @public
+ */
+export type Team = {
+  /**
+   * ID of the team.
+   */
+  id: string;
+
+  /**
+   *  Name of the Team.
+   */
+  name: string;
+};
+
+/**
+ * Represents AuxCode.
+ * @public
+ */
+
+export type AuxCode = {
+  /**
+   * ID of the Auxiliary Code.
+   */
+  id: string;
+
+  /**
+   * Indicates whether the auxiliary code is active or not active.
+   */
+  active: boolean;
+
+  /**
+   * Indicates whether this is the default code (true) or not (false).
+   */
+  defaultCode: boolean;
+
+  /**
+   * Indicates whether this is the system default code (true) or not (false).
+   */
+  isSystemCode: boolean;
+
+  /**
+   * A short description indicating the context of the code.
+   */
+  description: string;
+
+  /**
+   * Name for the Auxiliary Code.
+   */
+  name: string;
+
+  /**
+   * Indicates the work type associated with this code..
+   */
+
+  workTypeCode: string;
+};
+
+/**
+ * Represents the response from AgentConfig.
+ *
+ * @public
+ */
+export type IAgentProfile = {
+  /**
+   * The id of the agent.
+   */
+
+  agentId: string;
+
+  /**
+   * The name of the agent.
+   */
+  agentName: string;
+
+  /**
+   * Identifier for a Desktop Profile.
+   */
+  agentProfileId: string;
+
+  /**
+   * The email address of the agent.
+   */
+
+  agentMailId: string;
+
+  /**
+   * Represents list of teams of an agent.
+   */
+  teams: Team[];
+
+  /**
+   * Represents the voice options of an agent.
+   */
+
+  loginVoiceOptions: string[];
+
+  /**
+   * Represents the Idle codes list that the agents can select in Agent Desktop.t.
+   */
+
+  idleCodes: AuxCode[];
+
+  /**
+   * Represents the wrap-up codes list that the agents can select when they wrap up a contact.
+   */
+  wrapUpCodes: AuxCode[];
+};
+
 export type EventResult = IAgentProfile;
+
+/**
+ * Represents the request to a AgentLogin
+ *
+ * @public
+ */
+export type AgentLogin = {
+  /**
+   * A dialNumber field contains the number to dial such as a route point or extension.
+   */
+
+  dialNumber?: string;
+
+  /**
+   * The unique ID representing a team of users.
+   */
+
+  teamId: string;
+
+  /**
+   * The loginOption field contains the type of login.
+   */
+
+  loginOption: LoginOption;
+};
+export type RequestBody =
+  | SubscribeRequest
+  | Agent.Logout
+  | Agent.UserStationLogin
+  | Agent.StateChange;
+
+export type StationLoginResponse = Agent.StationLoginSuccess | Error;
+export type StationLogoutResponse = Agent.LogoutSuccess | Error;
+export type StationReLoginResponse = Agent.ReloginSuccess | Error;

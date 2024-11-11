@@ -1,15 +1,13 @@
 import 'jsdom-global/register';
-import {LoginOption, WebexSDK} from '../../../src/types';
-import HttpRequest from '../../../src/services/core/HttpRequest';
-import WebCallingService from '../../../src/WebCallingService';
+import {LoginOption, StationLogoutResponse, WebexSDK} from '../../../src/types';
 import ContactCenter from '../../../src/cc';
 import MockWebex from '@webex/test-helper-mock-webex';
 import {StationLoginSuccess} from '../../../src/services/agent/types';
-import {IAgentProfile} from '../../../src/features/types';
+import {IAgentProfile} from '../../../src/types';
 import {AGENT, WEB_RTC_PREFIX} from '../../../src/services/constants';
 import Services from '../../../src/services';
 import config from '../../../src/config';
-import {web} from 'webpack';
+import LoggerProxy from '../../../src/logger-proxy';
 
 jest.mock('../../../src/logger-proxy', () => ({
   __esModule: true,
@@ -24,7 +22,7 @@ jest.mock('../../../src/logger-proxy', () => ({
 
 jest.mock('../../../src/services/config');
 jest.mock('../../../src/services/core/HttpRequest');
-jest.mock('../../../src/WebCallingService');
+jest.mock('../../../src/services/WebCallingService');
 jest.mock('../../../src/services');
 
 // Mock AgentConfig
@@ -61,6 +59,8 @@ describe('webex.cc', () => {
     const mockServicesInstance = {
       agent: {
         stationLogin: jest.fn(),
+        logout: jest.fn(),
+        reload: jest.fn(),
       },
     };
     (Services.getInstance as jest.Mock).mockReturnValue(mockServicesInstance);
@@ -134,7 +134,7 @@ describe('webex.cc', () => {
     });
 
     it('should log error and reject if registration fails', async () => {
-      const mockError = new Error('Registration failed');
+      const mockError = new Error('Error while performing register');
       mockHttpRequest.subscribeNotifications.mockRejectedValue(mockError);
 
       await expect(webex.cc.register()).rejects.toThrow('Error while performing register');
@@ -222,11 +222,90 @@ describe('webex.cc', () => {
         dialNumber: '1234567890',
       };
 
-      const error = new Error('Error while performing station login');
+      const error = {
+        details: {
+          trackingId: '1234',
+          data: {
+            reason: 'Error while performing station login',
+          },
+        },
+      };
       jest.spyOn(webex.cc.services.agent, 'stationLogin').mockRejectedValue(error);
 
-      await expect(webex.cc.stationLogin(options)).rejects.toThrow(
-        'Error while performing station login'
+      await expect(webex.cc.stationLogin(options)).rejects.toThrow(error.details.data.reason);
+
+      expect(LoggerProxy.logger.error).toHaveBeenCalledWith(
+        `stationLogin failed with trackingId: ${error.details.trackingId}`
+      );
+    });
+  });
+
+  describe('stationLogout', () => {
+    it('should logout successfully', async () => {
+      const data = {logoutReason: 'Logout reason'};
+      const response = {};
+
+      const stationLogoutMock = jest
+        .spyOn(webex.cc.services.agent, 'logout')
+        .mockResolvedValue({} as StationLogoutResponse);
+
+      const result = await webex.cc.stationLogout(data);
+
+      expect(stationLogoutMock).toHaveBeenCalledWith({data: data});
+      expect(result).toEqual(response);
+    });
+
+    it('should handle error during stationLogout', async () => {
+      const data = {logoutReason: 'Logout reason'};
+      const error = {
+        details: {
+          trackingId: '1234',
+          data: {
+            reason: 'Error while performing station logout',
+          },
+        },
+      };
+
+      jest.spyOn(webex.cc.services.agent, 'logout').mockRejectedValue(error);
+
+      await expect(webex.cc.stationLogout(data)).rejects.toThrow(error.details.data.reason);
+
+      expect(LoggerProxy.logger.error).toHaveBeenCalledWith(
+        `stationLogout failed with trackingId: ${error.details.trackingId}`
+      );
+    });
+  });
+
+  describe('stationRelogin', () => {
+    it('should relogin successfully', async () => {
+      const response = {};
+
+      const stationLoginMock = jest
+        .spyOn(webex.cc.services.agent, 'reload')
+        .mockResolvedValue({} as StationLoginSuccess);
+
+      const result = await webex.cc.stationReLogin();
+
+      expect(stationLoginMock).toHaveBeenCalled();
+      expect(result).toEqual(response);
+    });
+
+    it('should handle error during relogin', async () => {
+      const error = {
+        details: {
+          trackingId: '1234',
+          data: {
+            reason: 'Error while performing station relogin',
+          },
+        },
+      };
+
+      jest.spyOn(webex.cc.services.agent, 'reload').mockRejectedValue(error);
+
+      await expect(webex.cc.stationReLogin()).rejects.toThrow(error.details.data.reason);
+
+      expect(LoggerProxy.logger.error).toHaveBeenCalledWith(
+        `stationReLogin failed with trackingId: ${error.details.trackingId}`
       );
     });
   });

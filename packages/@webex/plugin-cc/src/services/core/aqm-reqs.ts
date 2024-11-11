@@ -1,22 +1,13 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import {Signal} from './Signal';
 import {Msg} from './GlobalTypes';
 import * as Err from './Err';
 import {HTTP_METHODS, WebexRequestPayload} from '../../types';
 import HttpRequest from './HttpRequest';
 import LoggerProxy from '../../logger-proxy';
+import {CbRes, Conf, ConfEmpty, Pending, Req, Res, ResEmpty} from './types';
+import {TIMEOUT_REQ} from './constants';
 
-export const TIMEOUT_REQ = 20000;
-const TIMEOUT_EVT = TIMEOUT_REQ;
-const FC_DESKTOP_VIEW = 'FC-DESKTOP-VIEW';
-const fcDesktopView = 'fcDesktopView';
-
-export class AqmReqs {
+export default class AqmReqs {
   private pendingRequests: Record<string, Pending> = {};
-  private pendingEvents: Record<string, Pending> = {};
-  // pendingNotifCancelrequest is used for handling request cancel events based on another action. When a promise can be resolved using multiple events.
-  // example consult and cancelCtq(end in new API)  when we cancel consult to ques we need to resolve both consul and cancel ctq promises
-  // #CX-14258 : Consult to DN failing if Consult to Queue is cancelled in the first try #2344
   private pendingNotifCancelrequest: Record<string, Pending> = {};
   private httpRequest: HttpRequest;
   constructor() {
@@ -33,47 +24,6 @@ export class AqmReqs {
 
   reqEmpty<TRes, TErr>(c: ConfEmpty<TRes, TErr>): ResEmpty<TRes> {
     return (cbRes?: CbRes<TRes>) => this.makeAPIRequest(c(), cbRes);
-  }
-
-  evt<T>(p: EvtConf<T>): EvtRes<T> {
-    const {send, signal} = Signal.create.withData<T>();
-
-    const k = this.bindPrint(p.bind);
-    if (this.pendingEvents[k]) {
-      throw new Err.Details('Service.aqm.reqs.PendingEvent', {key: k});
-    }
-    this.pendingEvents[k] = {
-      check: (msg: Msg) => this.bindCheck(p.bind, msg),
-      handle: (msg: any) => send(msg),
-    };
-
-    // add listenOnceAsync
-    const evt: EvtRes<T> = signal as any;
-    evt.listenOnceAsync = (promise?: {resolveIf?: (msg: T) => boolean; timeout?: Timeout}) => {
-      return new Promise<T>((resolve, reject) => {
-        const {stopListen} = signal.listen((msg) => {
-          if (promise?.resolveIf ? promise.resolveIf(msg) : true) {
-            stopListen();
-            resolve(msg);
-          }
-        });
-
-        if (promise?.timeout === 'disabled') {
-          return;
-        }
-
-        const ms =
-          promise && promise.timeout && promise.timeout > 0 ? promise.timeout : TIMEOUT_EVT;
-        setTimeout(() => {
-          const isStopped = stopListen();
-          if (isStopped) {
-            reject(new Err.Details('Service.aqm.reqs.TimeoutEvent', {key: k}));
-          }
-        }, ms);
-      });
-    };
-
-    return evt;
   }
 
   private async makeAPIRequest<TRes, TErr>(c: Req<TRes, TErr>, cbRes?: CbRes<TRes>): Promise<TRes> {
@@ -153,7 +103,7 @@ export class AqmReqs {
           },
         };
       }
-      let resAxios: WebexRequestPayload | null = null;
+      let response: WebexRequestPayload | null = null;
       this.httpRequest
         .request({
           service: c.host ?? '',
@@ -164,21 +114,21 @@ export class AqmReqs {
           body: c.data,
         })
         .then((res: any) => {
-          resAxios = res;
+          response = res;
           if (cbRes) {
             cbRes(res);
           }
         })
-        .catch((axiosErr: WebexRequestPayload) => {
+        .catch((error: WebexRequestPayload) => {
           clear();
-          if (axiosErr?.headers) {
-            axiosErr.headers.Authorization = '*';
+          if (error?.headers) {
+            error.headers.Authorization = '*';
           }
-          if (axiosErr?.headers) {
-            axiosErr.headers.Authorization = '*';
+          if (error?.headers) {
+            error.headers.Authorization = '*';
           }
           if (typeof c.err === 'function') {
-            reject(c.err(axiosErr));
+            reject(c.err(error));
           } else if (typeof c.err === 'string') {
             reject(new Err.Message(c.err));
           } else {
@@ -193,14 +143,14 @@ export class AqmReqs {
               return;
             }
             clear();
-            if (resAxios?.headers) {
-              resAxios.headers.Authorization = '*';
+            if (response?.headers) {
+              response.headers.Authorization = '*';
             }
-            LoggerProxy.logger.error(`Routing request timeout${keySuccess}${resAxios!}${c.url}`);
+            LoggerProxy.logger.error(`Routing request timeout${keySuccess}${response!}${c.url}`);
             reject(
               new Err.Details('Service.aqm.reqs.Timeout', {
                 key: keySuccess,
-                resAxios: resAxios!,
+                response: response!,
               })
             );
           },
@@ -250,70 +200,6 @@ export class AqmReqs {
     return true;
   }
 
-  private readonly identifyInteractionIsTaskObject = (event: any) => {
-    // This method will return the callProcessingDetails are present inside the interaction object or task object
-    return event?.data?.task?.callProcessingDetails ?? false;
-  };
-
-  private isFlowValuesEncrypted(event: any) {
-    let fcDesktopView1: any;
-    if (this.identifyInteractionIsTaskObject(event)) {
-      fcDesktopView1 = event?.data?.task?.callAssociatedData[FC_DESKTOP_VIEW]?.value;
-    } else {
-      fcDesktopView1 = event?.data?.interaction?.callAssociatedData[FC_DESKTOP_VIEW]?.value;
-    }
-
-    return fcDesktopView1?.includes('pop-over') || fcDesktopView1?.includes('interaction-panel');
-  }
-
-  private isValidCADFlowValue(event: any) {
-    // event?.data?.interaction:  CAD, CPD values are under the event?.data?.interaction for call events
-    // event?.data?.task :CAD, CPD values are under the event?.data?.task for monitoring call events
-    if (this.identifyInteractionIsTaskObject(event)) {
-      return (
-        (event?.data?.task?.callAssociatedData[FC_DESKTOP_VIEW]?.value &&
-          event?.data?.task?.callAssociatedData[FC_DESKTOP_VIEW]?.value !== '') ??
-        false
-      );
-    }
-    // Interaction details are present like event?.data?.interaction
-
-    return (
-      (event?.data?.interaction?.callAssociatedData[FC_DESKTOP_VIEW]?.value &&
-        event?.data?.interaction?.callAssociatedData[FC_DESKTOP_VIEW]?.value !== '') ??
-      false
-    );
-  }
-
-  private isValidCPDFlowValue(event: any) {
-    const isDesktopCpdViewEnabled = false; // TODO: revisit this to get the feature flag value if needed by desktop client
-    // event?.data?.interaction:  CAD, CPD values are under the event?.data?.interaction for call events
-    // event?.data?.task :CAD, CPD values are under the event?.data?.task for monitoring call events
-    // SERVICE.featureflag.isDesktopCpdViewEnabled()
-    if (isDesktopCpdViewEnabled) {
-      if (this.identifyInteractionIsTaskObject(event)) {
-        return (
-          event?.data?.task?.callProcessingDetails[fcDesktopView] &&
-          event?.data?.task?.callProcessingDetails[fcDesktopView] !== ''
-        );
-      }
-
-      return (
-        event?.data?.interaction?.callProcessingDetails[fcDesktopView] &&
-        event?.data?.interaction?.callProcessingDetails[fcDesktopView] !== ''
-      );
-    }
-
-    return false;
-  }
-
-  private getDecompressedValue(encryptedValue: Buffer) {
-    return encryptedValue;
-    // TODO: Revisit this to get the decompressSync method from the compression library if needed by desktop client
-    // const decryptedValue: Uint8Array = decompressSync(encryptedValue);
-    // return strFromU8(decryptedValue);
-  }
-
   // must be lambda
   private readonly onMessage = (event: any) => {
     // const event = JSON.parse(msg);
@@ -327,63 +213,6 @@ export class AqmReqs {
       LoggerProxy.logger.info(`Keepalive from notifs${event}`);
 
       return;
-    }
-
-    if (this.isValidCADFlowValue(event) && !this.isFlowValuesEncrypted(event)) {
-      const isTaskObject = this.identifyInteractionIsTaskObject(event);
-      try {
-        const targetObject = isTaskObject ? event?.data?.task : event?.data?.interaction;
-        const encryptedFcValue = targetObject?.callAssociatedData[FC_DESKTOP_VIEW]?.value;
-        const encryptedValue = Buffer.from(encryptedFcValue, 'base64');
-        // Update the decrypted value to same object
-        targetObject.callAssociatedData[FC_DESKTOP_VIEW].value =
-          this.getDecompressedValue(encryptedValue);
-
-        const interactionId = targetObject?.interactionId;
-        LoggerProxy.logger.info(
-          `${FC_DESKTOP_VIEW} values decrypted successfully for Interaction ID: ${
-            interactionId || ''
-          }`
-        );
-      } catch {
-        const targetObject = isTaskObject ? event?.data?.task : event?.data?.interaction;
-        const interactionId = targetObject?.interactionId;
-        const fcValue = targetObject?.callAssociatedData[FC_DESKTOP_VIEW]?.value || '';
-
-        LoggerProxy.logger.error(
-          `Error on decrypting ${FC_DESKTOP_VIEW} value for Interaction Id: ${interactionId}${fcValue}` ||
-            ''
-        );
-      }
-    } else if (this.isValidCPDFlowValue(event)) {
-      const isTaskObject = this.identifyInteractionIsTaskObject(event);
-      try {
-        // When WXCC_DESKTOP_VIEW_IN_CPD FF is enabled, then values will be fcDesktopView values are always compressed.
-        const targetObject = isTaskObject ? event?.data?.task : event?.data?.interaction;
-        const encryptedFcValue = targetObject?.callProcessingDetails[fcDesktopView];
-        const encryptedValue = Buffer.from(encryptedFcValue, 'base64');
-
-        // Update the decrypted value to same object
-        targetObject.callProcessingDetails[fcDesktopView] =
-          this.getDecompressedValue(encryptedValue);
-
-        const interactionId = targetObject?.interactionId;
-        LoggerProxy.logger.info(
-          `${fcDesktopView} values decrypted successfully for Interaction ID: ${
-            interactionId || ''
-          }`
-        );
-      } catch {
-        const targetObject = isTaskObject ? event?.data?.task : event?.data?.interaction;
-        const interactionId = targetObject?.interactionId;
-        const fcValue = targetObject?.callProcessingDetails[fcDesktopView] || '';
-
-        LoggerProxy.logger.error(
-          `Error on decrypting ${fcDesktopView} value for Interaction Id: ${
-            interactionId || ''
-          }${fcValue}` || ''
-        );
-      }
     }
 
     let isHandled = false;
@@ -407,15 +236,7 @@ export class AqmReqs {
       }
     }
 
-    const kEvt = Object.keys(this.pendingEvents);
-    for (const thisEvt of kEvt) {
-      const evt = this.pendingEvents[thisEvt];
-      if (evt.check(event)) {
-        evt.handle(event);
-        isHandled = true;
-        break;
-      }
-    }
+    // TODO:  add event emitter for unhandled events to replicate event.listen or .on
 
     if (!isHandled) {
       LoggerProxy.logger.info(
@@ -424,54 +245,3 @@ export class AqmReqs {
     }
   };
 }
-
-type Pending = {
-  check: (msg: Msg) => boolean;
-  handle: (msg: Msg) => void;
-  alternateBind?: string;
-};
-
-type BindType = string | string[] | {[key: string]: BindType};
-interface Bind {
-  type: BindType;
-  data?: any;
-}
-
-type Req<TRes, TErr> = {
-  url: string;
-  host?: string;
-  method?: HTTP_METHODS;
-  err?:
-    | ((errObj: WebexRequestPayload) => Err.Details<'Service.reqs.generic.failure'>)
-    | Err.IdsMessage
-    | ((e: WebexRequestPayload) => Err.Message | Err.Details<Err.IdsDetails>);
-  notifSuccess: {bind: Bind; msg: TRes};
-  notifFail?:
-    | {
-        bind: Bind;
-        errMsg: TErr;
-        err: (e: TErr) => Err.Details<Err.IdsDetails>;
-      }
-    | {
-        bind: Bind;
-        errId: Err.IdsDetails;
-      };
-  data?: any;
-  headers?: Record<string, string>;
-  timeout?: Timeout;
-  notifCancel?: {bind: Bind; msg: TRes};
-};
-
-type Timeout = number | 'disabled';
-
-type Conf<TRes, TErr, TReq> = (p: TReq) => Req<TRes, TErr>;
-type ConfEmpty<TRes, TErr> = () => Req<TRes, TErr>;
-export type Res<TRes, TReq> = (p: TReq, cbRes?: CbRes<TRes>) => Promise<TRes>;
-export type ResEmpty<TRes> = (cbRes?: CbRes<TRes>) => Promise<TRes>;
-type CbRes<TRes> = (res: any) => void | TRes;
-
-// evt
-type EvtConf<T> = {bind: Bind; msg: T};
-type EvtRes<T> = Signal.WithData<T> & {
-  listenOnceAsync: (p?: {resolveIf?: (msg: T) => boolean; timeout?: Timeout}) => Promise<T>;
-};

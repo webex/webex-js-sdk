@@ -1,22 +1,26 @@
 import {WebexPlugin} from '@webex/webex-core';
 import AgentConfig from './features/Agentconfig';
-import {IAgentProfile, SetStateResponse, StationLoginResponse} from './features/types';
+import {SetStateResponse} from './features/types';
 import {
   CCPluginConfig,
   IContactCenter,
   WebexSDK,
-  SubscribeRequest,
   LoginOption,
   WelcomeEvent,
+  IAgentProfile,
+  AgentLogin,
+  StationLoginResponse,
+  StationLogoutResponse,
+  StationReLoginResponse,
 } from './types';
-import {READY, CC_FILE} from './constants';
+import {READY, CC_FILE, EMPTY_STRING} from './constants';
 import HttpRequest from './services/core/HttpRequest';
-import WebCallingService from './WebCallingService';
-import {AgentLogin} from './services/config/types';
+import WebCallingService from './services/WebCallingService';
 import {AGENT, WEB_RTC_PREFIX} from './services/constants';
 import Services from './services';
 import LoggerProxy from './logger-proxy';
-import {StateChange} from './services/agent/types';
+import {StateChange, Logout} from './services/agent/types';
+import {getErrorDetails} from './services/core/Utils';
 
 export default class ContactCenter extends WebexPlugin implements IContactCenter {
   namespace = 'cc';
@@ -62,7 +66,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     } catch (error) {
       this.$webex.logger.error(`file: ${CC_FILE}: Error during register: ${error}`);
 
-      return Promise.reject(new Error('Error while performing register`', error));
+      throw error;
     }
   }
 
@@ -73,7 +77,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * @private
    */
   private async connectWebsocket() {
-    const connectionConfig: SubscribeRequest = {
+    const connectionConfig = {
       force: this.$config?.force ?? true,
       isKeepAliveEnabled: this.$config?.isKeepAliveEnabled ?? false,
       clientType: this.$config?.clientType ?? 'WebexCCSDK',
@@ -106,7 +110,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   /**
    * This is used for agent login.
    * @param data
-   * @returns Promise<StationLoginSuccess>
+   * @returns Promise<StationLoginResponse>
    * @throws Error
    */
   public async stationLogin(data: AgentLogin): Promise<StationLoginResponse> {
@@ -119,10 +123,11 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           isExtension: data.loginOption === LoginOption.EXTENSION,
           deviceId: this.getDeviceId(data.loginOption, data.dialNumber),
           roles: [AGENT],
-          teamName: '',
-          siteId: '',
+          // TODO: The public API should not have the following properties so filling them with empty values for now. If needed, we can add them in the future.
+          teamName: EMPTY_STRING,
+          siteId: EMPTY_STRING,
           usesOtherDN: false,
-          auxCodeId: '',
+          auxCodeId: EMPTY_STRING,
         },
       });
 
@@ -133,9 +138,45 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       await loginResponse;
 
       return loginResponse;
-    } catch (error: any) {
-      this.$webex.logger.log(`file: ${CC_FILE}: Station Login FAILED: ${error.id}`);
-      throw new Error(error.details?.data?.reason ?? 'Error while performing station login');
+    } catch (error) {
+      throw getErrorDetails(error, 'stationLogin');
+    }
+  }
+
+  /** This is used for agent logout.
+   * @param data
+   * @returns Promise<StationLogoutResponse>
+   * @throws Error
+   */
+  public async stationLogout(data: Logout): Promise<StationLogoutResponse> {
+    try {
+      const logoutResponse = this.services.agent.logout({
+        data,
+      });
+
+      await logoutResponse;
+
+      if (this.webCallingService) {
+        this.webCallingService.deregisterWebCallingLine();
+      }
+
+      return logoutResponse;
+    } catch (error) {
+      throw getErrorDetails(error, 'stationLogout');
+    }
+  }
+
+  /* This is used for agent relogin.
+   * @returns Promise<StationReLoginResponse>
+   * @throws Error
+   */
+  public async stationReLogin(): Promise<StationReLoginResponse> {
+    try {
+      const reLoginResponse = await this.services.agent.reload();
+
+      return reLoginResponse;
+    } catch (error) {
+      throw getErrorDetails(error, 'stationReLogin');
     }
   }
 

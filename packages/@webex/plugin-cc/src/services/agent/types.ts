@@ -89,22 +89,6 @@ export type DNRegistered = Msg<{
   type: 'AgentDNRegistered';
 }>;
 
-export type OutdialAniListSuccess = Msg<{
-  data: Record<string, any>;
-}>;
-
-export type OutdialAni = {
-  id: string;
-  name: string;
-};
-
-export type OutDialAniData = {
-  initialFetchCompleted: boolean;
-  data: OutdialAni[];
-};
-
-// PAYLOAD
-
 export type Logout = {logoutReason?: 'User requested logout' | 'Inactivity Logout'};
 
 export type AgentState = 'Available' | 'Idle' | 'RONA' | string;
@@ -132,24 +116,6 @@ export type UserStationLogin = {
   isEmergencyModalAlreadyDisplayed?: boolean;
 };
 
-export type AddressBooks = {
-  totalRecords?: number;
-  totalPages?: number;
-  page?: number;
-  speedDials: Address[];
-};
-
-export type Address = {
-  desc: string;
-  dn: string;
-  phoneBookName?: string;
-};
-
-export type AddressBooksData = {
-  initialFetchCompleted: boolean;
-  data: Address[];
-  errorObj: any;
-};
 export type LoginOption = 'AGENT_DN' | 'EXTENSION' | 'BROWSER';
 
-export type DeviceType = null | LoginOption | string; // cleanup this while removing FF: wxcc_webrtc.
+export type DeviceType = LoginOption | string;
