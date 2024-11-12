@@ -1266,10 +1266,9 @@ export default class Meetings extends WebexPlugin {
                       locusId: createdMeeting.locusId,
                       meetingId: createdMeeting.locusInfo?.info?.webExMeetingId,
                       autoupload: true,
-                    }).then(() => this.destroy(createdMeeting, payload.reason));
-                  } else {
-                    this.destroy(createdMeeting, payload.reason);
+                    });
                   }
+                  this.destroy(createdMeeting, payload.reason);
                 });
 
                 createdMeeting.on(EVENTS.REQUEST_UPLOAD_LOGS, (meetingInstance) => {
@@ -1296,7 +1295,7 @@ export default class Meetings extends WebexPlugin {
               return Promise.resolve(createdMeeting);
             });
           }
-          meeting.setCallStateForMetrics(callStateForMetrics);
+          meeting.updateCallStateForMetrics(callStateForMetrics);
 
           // Return the existing meeting.
           return Promise.resolve(meeting);
