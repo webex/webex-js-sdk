@@ -1269,6 +1269,7 @@ export const MEETING_INFO_FAILURE_REASON = {
   WRONG_PASSWORD: 'WRONG_PASSWORD', // meeting requires password and no password or wrong one was provided
   WRONG_CAPTCHA: 'WRONG_CAPTCHA', // wbxappapi requires a captcha code or a wrong captcha code was provided
   POLICY: 'POLICY', // meeting info request violates some meeting policy
+  WEBINAR_REGISTRATION: 'WEBINAR_REGISTRATION', // webinar need registration
   OTHER: 'OTHER', // any other error (network, etc)
 };
 

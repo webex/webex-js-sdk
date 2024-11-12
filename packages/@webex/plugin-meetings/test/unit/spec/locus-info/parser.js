@@ -55,7 +55,7 @@ describe('locus-info/parser', () => {
       const {extractComparisonState: extract} = LocusDeltaParser;
 
       sinon.stub(Metrics, 'sendBehavioralMetric');
-      
+
       function translate(action) {
         switch (action) {
           case 'ACCEPT_NEW':
@@ -225,7 +225,7 @@ describe('locus-info/parser', () => {
 
     it('processDeltaEvent() should take next item in queue', () => {
       parser.workingCopy = CURRENT_LOCI;
-      
+
       parser.processDeltaEvent();
 
       assert.calledOnce(parser.queue.dequeue);
@@ -251,7 +251,7 @@ describe('locus-info/parser', () => {
 
       assert.equal(lastResult, 'value04');
     });
-    
+
     it('replaces current loci when the locus URL changes and incoming sequence is later, even when baseSequence doesn\'t match', () => {
       const {USE_INCOMING} = LocusDeltaParser.loci;
 
@@ -304,7 +304,7 @@ describe('locus-info/parser', () => {
       it('returns true if there is no working copy', () => {
         const fakeIncomingLocus = { sequence: {rangeStart: 0, rangeEnd: 0, entries: [10]}};
 
-        // sanity check that we initially have no working copy 
+        // sanity check that we initially have no working copy
         assert.isNull(parser.workingCopy);
 
         assert.isTrue(parser.isNewFullLocus(fakeIncomingLocus));

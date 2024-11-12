@@ -128,6 +128,7 @@ import {
   MeetingInfoV2PasswordError,
   MeetingInfoV2CaptchaError,
   MeetingInfoV2PolicyError,
+  MeetingInfoV2WebinarRegistrationError,
 } from '../meeting-info/meeting-info-v2';
 import {CSI, ReceiveSlotManager} from '../multistream/receiveSlotManager';
 import SendSlotManager from '../multistream/sendSlotManager';
@@ -1754,6 +1755,15 @@ export default class Meeting extends StatelessWebexPlugin {
 
       if (err instanceof MeetingInfoV2PolicyError) {
         this.meetingInfoFailureReason = MEETING_INFO_FAILURE_REASON.POLICY;
+        this.meetingInfoFailureCode = err.wbxAppApiCode;
+
+        if (err.meetingInfo) {
+          this.meetingInfo = err.meetingInfo;
+        }
+
+        throw new PermissionError();
+      } else if (err instanceof MeetingInfoV2WebinarRegistrationError) {
+        this.meetingInfoFailureReason = MEETING_INFO_FAILURE_REASON.WEBINAR_REGISTRATION;
         this.meetingInfoFailureCode = err.wbxAppApiCode;
 
         if (err.meetingInfo) {

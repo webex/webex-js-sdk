@@ -97,6 +97,7 @@ import {
   MeetingInfoV2CaptchaError,
   MeetingInfoV2PasswordError,
   MeetingInfoV2PolicyError,
+  MeetingInfoV2WebinarRegistrationError,
 } from '../../../../src/meeting-info/meeting-info-v2';
 import {
   DTLS_HANDSHAKE_FAILED_CLIENT_CODE,
@@ -6249,6 +6250,22 @@ describe('plugin-meetings', () => {
           });
 
           assert.equal(meeting.fetchMeetingInfoTimeoutId, undefined);
+        });
+
+        it('handles meetingInfoProvider webinar need registration error', async () => {
+          meeting.destination = FAKE_DESTINATION;
+          meeting.destinationType = FAKE_TYPE;
+          meeting.attrs.meetingInfoProvider = {
+            fetchMeetingInfo: sinon
+              .stub()
+              .throws(new MeetingInfoV2WebinarRegistrationError(403021, FAKE_MEETING_INFO, 'a message')),
+          };
+
+          await assert.isRejected(meeting.fetchMeetingInfo({sendCAevents: true}), PermissionError);
+
+          assert.deepEqual(meeting.meetingInfo, FAKE_MEETING_INFO);
+          assert.equal(meeting.meetingInfoFailureCode, 403021);
+          assert.equal(meeting.meetingInfoFailureReason, MEETING_INFO_FAILURE_REASON.WEBINAR_REGISTRATION);
         });
       });
 
