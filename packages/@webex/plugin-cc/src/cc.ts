@@ -13,13 +13,16 @@ import {
   StationReLoginResponse,
   BuddyAgentsResponse,
   BuddyAgents,
+  SubscribeRequest,
 } from './types';
 import {READY, CC_FILE, EMPTY_STRING} from './constants';
 import HttpRequest from './services/core/HttpRequest';
 import WebCallingService from './services/WebCallingService';
 import {AGENT, WEB_RTC_PREFIX} from './services/constants';
+import {WebSocketManager} from './services/core/WebSocket/WebSocketManager';
 import Services from './services';
 import LoggerProxy from './logger-proxy';
+import {ConnectionService} from './services/core/WebSocket/connection-service';
 import {Logout} from './services/agent/types';
 import {getErrorDetails} from './services/core/Utils';
 
@@ -28,9 +31,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   private $config: CCPluginConfig;
   private $webex: WebexSDK;
   private agentConfig: IAgentProfile;
-  private registered = false;
   private httpRequest: HttpRequest;
+  private webSocketManager: WebSocketManager;
   private webCallingService: WebCallingService;
+  private connectionService: ConnectionService;
   private services: Services;
 
   constructor(...args) {
@@ -50,7 +54,14 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         webex: this.$webex,
       });
 
-      this.services = Services.getInstance();
+      this.webSocketManager = new WebSocketManager({webex: this.$webex});
+
+      this.connectionService = new ConnectionService(
+        this.webSocketManager,
+        this.getConnectionConfig()
+      );
+
+      this.services = Services.getInstance(this.webSocketManager);
 
       this.webCallingService = new WebCallingService(this.$webex, this.$config.callingClientConfig);
 
@@ -95,17 +106,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * @private
    */
   private async connectWebsocket() {
-    const connectionConfig = {
-      force: this.$config?.force ?? true,
-      isKeepAliveEnabled: this.$config?.isKeepAliveEnabled ?? false,
-      clientType: this.$config?.clientType ?? 'WebexCCSDK',
-      allowMultiLogin: this.$config?.allowMultiLogin ?? true,
-    };
-
     try {
-      return this.httpRequest
-        .subscribeNotifications({
-          body: connectionConfig,
+      return this.webSocketManager
+        .initWebSocket({
+          body: this.getConnectionConfig(),
         })
         .then(async (data: WelcomeEvent) => {
           const agentId = data.agentId;
@@ -135,7 +139,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     try {
       const loginResponse = this.services.agent.stationLogin({
         data: {
-          dialNumber: data.dialNumber || this.agentConfig.agentId,
+          dialNumber:
+            data.loginOption === LoginOption.BROWSER ? this.agentConfig.agentId : data.dialNumber,
           teamId: data.teamId,
           deviceType: data.loginOption,
           isExtension: data.loginOption === LoginOption.EXTENSION,
@@ -204,5 +209,17 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     }
 
     return WEB_RTC_PREFIX + this.agentConfig.agentId;
+  }
+
+  /**
+   * This method returns the connection configuration.
+   */
+  private getConnectionConfig(): SubscribeRequest {
+    return {
+      force: this.$config?.force ?? true,
+      isKeepAliveEnabled: this.$config?.isKeepAliveEnabled ?? false,
+      clientType: this.$config?.clientType ?? 'WebexCCSDK',
+      allowMultiLogin: this.$config?.allowMultiLogin ?? true,
+    };
   }
 }

@@ -1,4 +1,4 @@
-import {CallingClientConfig} from '@webex/calling/dist/types/CallingClient/types';
+import {CallingClientConfig} from '@webex/calling';
 import * as Agent from './services/agent/types';
 
 type Enum<T extends Record<string, unknown>> = T[keyof T];

@@ -15,6 +15,9 @@ import Services from '../../../src/services';
 import config from '../../../src/config';
 import LoggerProxy from '../../../src/logger-proxy';
 
+// Mock the Worker API
+import '../../../__mocks__/workerMock';
+
 jest.mock('../../../src/logger-proxy', () => ({
   __esModule: true,
   default: {
@@ -27,7 +30,8 @@ jest.mock('../../../src/logger-proxy', () => ({
 }));
 
 jest.mock('../../../src/services/config');
-jest.mock('../../../src/services/core/HttpRequest');
+jest.mock('../../../src/services/core/WebSocket/WebSocketManager');
+jest.mock('../../../src/services/core/WebSocket/connection-service');
 jest.mock('../../../src/services/WebCallingService');
 jest.mock('../../../src/services');
 
@@ -39,9 +43,11 @@ jest.mock('../../../src/features/Agentconfig', () => {
   return jest.fn().mockImplementation(() => mockAgentConfig);
 });
 
+global.URL.createObjectURL = jest.fn(() => 'blob:http://localhost:3000/12345');
+
 describe('webex.cc', () => {
   let webex;
-  let mockHttpRequest;
+  let mockWebSocketManager;
 
   beforeEach(() => {
     webex = MockWebex({
@@ -56,10 +62,13 @@ describe('webex.cc', () => {
       once: jest.fn((event, callback) => callback()),
     }) as unknown as WebexSDK;
 
-    mockHttpRequest = {
-      subscribeNotifications: jest.fn(),
+    // Instantiate ContactCenter to ensure it's fully initialized
+    webex.cc = new ContactCenter({ parent: webex });
+
+    mockWebSocketManager = {
+      initWebSocket: jest.fn(),
     };
-    webex.cc.httpRequest = mockHttpRequest;
+    webex.cc.webSocketManager = mockWebSocketManager;
 
     // Mock Services instance
     const mockServicesInstance = {
@@ -118,14 +127,14 @@ describe('webex.cc', () => {
       const connectWebsocketSpy = jest.spyOn(webex.cc, 'connectWebsocket');
 
       mockAgentConfig.getAgentProfile.mockResolvedValue(mockAgentProfile);
-      mockHttpRequest.subscribeNotifications.mockResolvedValue({
+      mockWebSocketManager.initWebSocket.mockResolvedValue({
         agentId: 'agent123',
       });
 
       const result = await webex.cc.register();
 
       expect(connectWebsocketSpy).toHaveBeenCalled();
-      expect(mockHttpRequest.subscribeNotifications).toHaveBeenCalledWith({
+      expect(mockWebSocketManager.initWebSocket).toHaveBeenCalledWith({
         body: {
           force: true,
           isKeepAliveEnabled: false,
@@ -142,7 +151,7 @@ describe('webex.cc', () => {
 
     it('should log error and reject if registration fails', async () => {
       const mockError = new Error('Error while performing register');
-      mockHttpRequest.subscribeNotifications.mockRejectedValue(mockError);
+      mockWebSocketManager.initWebSocket.mockRejectedValue(mockError);
 
       await expect(webex.cc.register()).rejects.toThrow('Error while performing register');
 

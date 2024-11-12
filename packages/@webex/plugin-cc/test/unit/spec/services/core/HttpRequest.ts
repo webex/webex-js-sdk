@@ -1,9 +1,6 @@
 import HttpRequest from '../../../../../src/services/core/HttpRequest';
-import {CC_EVENTS, SubscribeResponse} from '../../../../../src/services/config/types';
-import {WEBSOCKET_EVENT_TIMEOUT} from '../../../../../src/services/constants';
-import {WebexSDK} from '../../../../../src/types';
-
-jest.mock('../../../../../src/services/core/WebSocket');
+import {HTTP_METHODS, WebexSDK} from '../../../../../src/types';
+import {IHttpResponse} from '../../../../../src/types';
 
 const mockWebex = {
   request: jest.fn(),
@@ -16,11 +13,6 @@ const mockWebex = {
 // Cast the request function to a Jest mock function
 const mockRequest = mockWebex.request as jest.Mock;
 
-const mockWebSocket = {
-  on: jest.fn(),
-  connectWebSocket: jest.fn(),
-};
-
 beforeEach(() => {
   jest.clearAllMocks();
 });
@@ -29,47 +21,47 @@ describe('HttpRequest', () => {
   let httpRequest;
   beforeEach(() => {
     httpRequest = HttpRequest.getInstance({webex: mockWebex});
-    httpRequest.webSocket = mockWebSocket;
   });
 
-  describe('subscribeNotifications', () => {
-    it('should resolve the promise when the Welcome event is received', async () => {
-      const mockSubscribeResponse = {
-        body: {
-          webSocketUrl: 'ws://example.com',
-        },
-      };
-      const mockWelcomeEvent = {
-        type: CC_EVENTS.WELCOME,
-        data: {message: 'Welcome'},
+  describe('request', () => {
+    it('should send a request and return the response', async () => {
+      const mockResponse: IHttpResponse = {
+        statusCode: 200,
+        body: { message: 'Success' },
+        method: 'POST',
+        url: 'https://example.com/resource',
       };
 
-      mockRequest.mockResolvedValueOnce(mockSubscribeResponse);
+      mockRequest.mockResolvedValueOnce(mockResponse);
 
-      setTimeout(() => {
-        httpRequest.eventHandlers.get(CC_EVENTS.WELCOME)(mockWelcomeEvent.data);
-      }, 100);
+      const result = await httpRequest.request({
+        service: 'service',
+        resource: 'resource',
+        method: HTTP_METHODS.POST,
+        body: { key: 'value' },
+      });
 
-      const result = await httpRequest.subscribeNotifications({body: {}});
-      expect(result).toEqual(mockWelcomeEvent.data);
+      expect(result).toEqual(mockResponse);
+      expect(mockRequest).toHaveBeenCalledWith({
+        service: 'service',
+        resource: 'resource',
+        method: HTTP_METHODS.POST,
+        body: { key: 'value' },
+      });
     });
 
-    it(
-      'should reject the promise if the Welcome event is not received within timeout',
-      async () => {
-        const mockSubscribeResponse = {
-          body: {
-            webSocketUrl: 'ws://example.com',
-          },
-        };
+    it('should log and throw an error if the request fails', async () => {
+      const mockError = new Error('Request failed');
+      mockRequest.mockRejectedValueOnce(mockError);
 
-        mockRequest.mockResolvedValueOnce(mockSubscribeResponse);
-
-        await expect(httpRequest.subscribeNotifications({body: {}})).rejects.toThrow(
-          'Timeout waiting for event'
-        );
-      },
-      WEBSOCKET_EVENT_TIMEOUT + 1000
-    ); // Increase timeout for this test
+      await expect(
+        httpRequest.request({
+          service: 'service',
+          resource: 'resource',
+          method: HTTP_METHODS.POST,
+          body: { key: 'value' },
+        })
+      ).rejects.toThrow('Request failed');
+    });
   });
 });
