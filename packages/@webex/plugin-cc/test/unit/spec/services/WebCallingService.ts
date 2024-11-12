@@ -1,8 +1,15 @@
 import 'jsdom-global/register';
 import WebCallingService from '../../../../src/services/WebCallingService';
-import {createClient, ICallingClient, ILine, LINE_EVENTS, ICall} from '@webex/calling';
+import {
+  createClient,
+  ICallingClient,
+  ILine,
+  LINE_EVENTS,
+  ICall,
+  CallingClientConfig,
+} from '@webex/calling';
 import {WebexSDK} from '../../../../src/types';
-
+import config from '../../../../src/config';
 jest.mock('@webex/calling');
 
 describe('WebCallingService', () => {
@@ -31,7 +38,10 @@ describe('WebCallingService', () => {
 
     (createClient as jest.Mock).mockResolvedValue(callingClient);
 
-    webRTCCalling = new WebCallingService(webex, {});
+    webRTCCalling = new WebCallingService(
+      webex,
+      config.cc.callingClientConfig as CallingClientConfig
+    );
   });
 
   afterEach(() => {
@@ -61,7 +71,7 @@ describe('WebCallingService', () => {
 
       await expect(webRTCCalling.registerWebCallingLine()).resolves.toBeUndefined();
 
-      expect(createClient).toHaveBeenCalledWith(webex, {});
+      expect(createClient).toHaveBeenCalledWith(webex, config.cc.callingClientConfig);
       expect(line.on).toHaveBeenCalledWith(LINE_EVENTS.REGISTERED, expect.any(Function));
       expect(line.register).toHaveBeenCalled();
       expect(webex.logger.log).toHaveBeenCalledWith(
