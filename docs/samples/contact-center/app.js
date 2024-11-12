@@ -198,7 +198,7 @@ async function handleAgentStatus(event) {
 function setAgentStatus() {
   let state = "Available";
   if(agentStatus !== 'Available') state = 'Idle';
-  webex.cc.setAgentStatus({state: state, auxCodeId: auxCodeId, lastStateChangeReason: agentStatus, agentId: agentId}).then((response) => {
+  webex.cc.setAgentState({state: state, auxCodeIdArray: auxCodeId, lastStateChangeReason: agentStatus, agentId: agentId}).then((response) => {
     console.log('Agent status set successfully', response);
   }).catch(error => {
     console.error('Agent status set failed', error);
