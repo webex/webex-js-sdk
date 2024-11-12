@@ -11,6 +11,8 @@ import {
   StationLoginResponse,
   StationLogoutResponse,
   StationReLoginResponse,
+  BuddyAgentsResponse,
+  BuddyAgents,
   SubscribeRequest,
 } from './types';
 import {READY, CC_FILE, EMPTY_STRING} from './constants';
@@ -77,6 +79,24 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       this.$webex.logger.error(`file: ${CC_FILE}: Error during register: ${error}`);
 
       throw error;
+    }
+  }
+
+  /**
+   * Returns the list of buddy agents in the given state and media according to agent profile settings
+   *
+   * @param {BuddyAgents} data - The data required to fetch buddy agents, including additional agent profile information.
+   * @returns {Promise<BuddyAgentsResponse>} A promise that resolves to the response containing buddy agents information.
+   * @throws Error
+   * @example getBuddyAgents({state: 'Available', mediaType: 'telephony'})
+   */
+  public async getBuddyAgents(data: BuddyAgents): Promise<BuddyAgentsResponse> {
+    try {
+      return await this.services.agent.buddyAgents({
+        data: {agentProfileId: this.agentConfig.agentProfileId, ...data},
+      });
+    } catch (error) {
+      throw getErrorDetails(error, 'getBuddyAgents');
     }
   }
 

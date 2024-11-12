@@ -28,6 +28,7 @@ const agentLoginButton = document.querySelector('#loginAgent');
 const dialNumber = document.querySelector('#dialNumber');
 const registerStatus = document.querySelector('#ws-connection-status');
 const logoutAgentElm = document.querySelector('#logoutAgent');
+const buddyAgentsDropdownElm = document.getElementById('buddyAgentsDropdown');
 
 // Store and Grab `access-token` from sessionStorage
 if (sessionStorage.getItem('date') > new Date().getTime()) {
@@ -181,6 +182,37 @@ function logoutAgent() {
   ).catch((error) => {
     console.log('Agent logout failed', error);
   });
+}
+
+async function fetchBuddyAgents() {
+  try {
+    buddyAgentsDropdownElm.innerHTML = ''; // Clear previous options
+    const buddyAgentsResponse = await webex.cc.getBuddyAgents({mediaType: 'telephony'});
+
+    if (!buddyAgentsResponse || !buddyAgentsResponse.data) {
+      console.error('Failed to fetch buddy agents');
+      buddyAgentsDropdownElm.innerHTML = `<option disabled="true">Failed to fetch buddy agents<option>`;
+      return;
+    }
+
+    if (buddyAgentsResponse.data.agentList.length === 0) {
+      console.log('The fetched buddy agents list was empty');
+      buddyAgentsDropdownElm.innerHTML = `<option disabled="true">No buddy agents available<option>`;
+      return;
+    }
+
+    buddyAgentsResponse.data.agentList.forEach((agent) => {
+      const option = document.createElement('option');
+      option.text = `${agent.agentName} - ${agent.state}`;
+      option.value = agent.agentId;
+      buddyAgentsDropdownElm.add(option);
+    });
+
+  } catch (error) {
+    console.error('Failed to fetch buddy agents', error);
+    buddyAgentsDropdownElm.innerHTML = ''; // Clear previous options
+    buddyAgentsDropdownElm.innerHTML = `<option disabled="true">Failed to fetch buddy agents, ${error}<option>`;
+  }
 }
 
 const allCollapsibleElements = document.querySelectorAll('.collapsible');

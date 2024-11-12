@@ -119,3 +119,29 @@ export type UserStationLogin = {
 export type LoginOption = 'AGENT_DN' | 'EXTENSION' | 'BROWSER';
 
 export type DeviceType = LoginOption | string;
+
+export type BuddyAgents = {
+  agentProfileId: string;
+  mediaType: string;
+  /** Filter for agent state eg : Available | Idle  */
+  state?: string;
+};
+
+export type BuddyDetails = {
+  agentId: string;
+  state: string;
+  teamId: string;
+  dn: string;
+  agentName: string;
+  siteId: string;
+};
+
+export type BuddyAgentsSuccess = Msg<{
+  eventType: string;
+  agentId: string;
+  trackingId: string;
+  agentSessionId: string;
+  orgId: string;
+  type: string;
+  agentList: Array<BuddyDetails>;
+}>;

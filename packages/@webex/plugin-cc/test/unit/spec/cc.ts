@@ -1,5 +1,11 @@
 import 'jsdom-global/register';
-import {LoginOption, StationLogoutResponse, WebexSDK} from '../../../src/types';
+import {
+  BuddyAgents,
+  BuddyAgentsResponse,
+  LoginOption,
+  StationLogoutResponse,
+  WebexSDK,
+} from '../../../src/types';
 import ContactCenter from '../../../src/cc';
 import MockWebex from '@webex/test-helper-mock-webex';
 import {StationLoginSuccess} from '../../../src/services/agent/types';
@@ -44,7 +50,7 @@ describe('webex.cc', () => {
   let mockWebSocketManager;
 
   beforeEach(() => {
-    webex = new MockWebex({
+    webex = MockWebex({
       children: {
         cc: ContactCenter,
       },
@@ -70,6 +76,7 @@ describe('webex.cc', () => {
         stationLogin: jest.fn(),
         logout: jest.fn(),
         reload: jest.fn(),
+        buddyAgents: jest.fn(),
       },
     };
     (Services.getInstance as jest.Mock).mockReturnValue(mockServicesInstance);
@@ -315,6 +322,85 @@ describe('webex.cc', () => {
 
       expect(LoggerProxy.logger.error).toHaveBeenCalledWith(
         `stationReLogin failed with trackingId: ${error.details.trackingId}`
+      );
+    });
+  });
+
+  describe('getBuddyAgents', () => {
+    it('should return buddy agents response when successful', async () => {
+      const data: BuddyAgents = {state: 'Available', mediaType: 'telephony'};
+      webex.cc.agentConfig = {
+        agentId: 'agentId',
+        agentProfileId: 'test-agent-profile-id',
+      };
+
+      const buddyAgentsResponse: BuddyAgentsResponse = {
+        type: 'BuddyAgentsSuccess',
+        orgId: '',
+        trackingId: '1234',
+        data: {
+          eventType: 'BuddyAgents',
+          agentId: 'agentId',
+          trackingId: '1234',
+          orgId: '',
+          type: '',
+          agentSessionId: 'session123',
+          agentList: [
+            {
+              agentId: 'agentId',
+              state: 'Available',
+              teamId: 'teamId',
+              dn: '1234567890',
+              agentName: 'John',
+              siteId: 'siteId',
+            },
+          ],
+        },
+      };
+
+      const buddyAgentsSpy = jest
+        .spyOn(webex.cc.services.agent, 'buddyAgents')
+        .mockResolvedValue(buddyAgentsResponse);
+
+      const result = await webex.cc.getBuddyAgents(data);
+
+      expect(buddyAgentsSpy).toHaveBeenCalledWith({
+        data: {agentProfileId: 'test-agent-profile-id', ...data},
+      });
+
+      expect(result).toEqual(buddyAgentsResponse);
+    });
+
+    it('should handle error', async () => {
+      const data: BuddyAgents = {state: 'Available', mediaType: 'telephony'};
+      webex.cc.agentConfig = {
+        agentId: 'f520d6b5-28ad-4f2f-b83e-781bb64af617',
+        agentProfileId: 'test-agent-profile-id',
+      };
+
+      const error = {
+        details: {
+          data: {
+            agentId: 'f520d6b5-28ad-4f2f-b83e-781bb64af617',
+            eventTime: 1731402794534,
+            eventType: 'AgentDesktopMessage',
+            orgId: 'e7924666-777d-40d4-a504-01aa1e62dd2f',
+            reason: 'AGENT_NOT_FOUND',
+            reasonCode: 1038,
+            trackingId: '5d2ddfaf-9b8a-491f-9c3f-3bb8ba60d595',
+            type: 'BuddyAgentsRetrieveFailed',
+          },
+          orgId: 'e7924666-777d-40d4-a504-01aa1e62dd2f',
+          trackingId: 'notifs_a7727d9e-7651-4c60-90a7-ff3de47b784d',
+          type: 'BuddyAgents',
+        },
+      };
+
+      jest.spyOn(webex.cc.services.agent, 'buddyAgents').mockRejectedValue(error);
+
+      await expect(webex.cc.getBuddyAgents(data)).rejects.toThrow(error.details.data.reason);
+      expect(LoggerProxy.logger.error).toHaveBeenCalledWith(
+        `getBuddyAgents failed with trackingId: ${error.details.trackingId}`
       );
     });
   });
