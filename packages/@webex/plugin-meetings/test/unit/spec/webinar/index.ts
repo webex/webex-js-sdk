@@ -29,21 +29,14 @@ describe('plugin-meetings', () => {
             });
         });
 
-        describe('#webcastUrlUpdate', () => {
-            it('sets the webcast url', () => {
-                webinar.webcastUrlUpdate('newUrl');
+        describe('#updateWebcastUrl', () => {
+            it('sets the webcast instance url', () => {
+                webinar.updateWebcastUrl({resources: {webcastInstance: {url:'newUrl'}}});
 
-                assert.equal(webinar.webcastUrl, 'newUrl');
+                assert.equal(webinar.webcastInstanceUrl, 'newUrl');
             });
         });
 
-        describe('#webinarAttendeesSearchingUrlUpdate', () => {
-            it('sets the webinarAttendeesSearching url', () => {
-                webinar.webinarAttendeesSearchingUrlUpdate('newUrl');
-
-                assert.equal(webinar.webinarAttendeesSearchingUrl, 'newUrl');
-            });
-        });
 
         describe('#updateCanManageWebcast', () => {
           it('update canManageWebcast', () => {

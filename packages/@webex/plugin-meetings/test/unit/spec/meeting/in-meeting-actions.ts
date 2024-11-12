@@ -60,6 +60,10 @@ describe('plugin-meetings', () => {
         canUpdateShareControl: null,
         canEnableViewTheParticipantsList: null,
         canDisableViewTheParticipantsList: null,
+        canEnableViewTheParticipantsListPanelist: null,
+        canDisableViewTheParticipantsListPanelist: null,
+        canEnableShowAttendeeCount: null,
+        canDisableShowAttendeeCount: null,
         canEnableRaiseHand: null,
         canDisableRaiseHand: null,
         canEnableVideo: null,
@@ -79,6 +83,8 @@ describe('plugin-meetings', () => {
         canShareWhiteBoard: null,
         enforceVirtualBackground: null,
         canPollingAndQA: null,
+        canStartWebcast: null,
+        canStopWebcast: null,
         ...expected,
       };
 
@@ -144,6 +150,10 @@ describe('plugin-meetings', () => {
       'canUpdateShareControl',
       'canEnableViewTheParticipantsList',
       'canDisableViewTheParticipantsList',
+      'canEnableViewTheParticipantsListPanelist',
+      'canDisableViewTheParticipantsListPanelist',
+      'canEnableShowAttendeeCount',
+      'canDisableShowAttendeeCount',
       'canEnableRaiseHand',
       'canDisableRaiseHand',
       'canEnableVideo',
@@ -163,6 +173,8 @@ describe('plugin-meetings', () => {
       'canShareWhiteBoard',
       'enforceVirtualBackground',
       'canPollingAndQA',
+      'canStartWebcast',
+      'canStopWebcast',
     ].forEach((key) => {
       it(`get and set for ${key} work as expected`, () => {
         const inMeetingActions = new InMeetingActions();

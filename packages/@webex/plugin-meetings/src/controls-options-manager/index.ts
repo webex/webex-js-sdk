@@ -190,6 +190,7 @@ export default class ControlsOptionsManager {
     Object.entries(setting).forEach(([key, value]) => {
       if (
         !shouldSkipCheckToMergeBody &&
+        value !== undefined &&
         !Util?.[`${value ? CAN_SET : CAN_UNSET}${key}`](this.displayHints)
       ) {
         error = new PermissionError(`${key} [${value}] not allowed, due to moderator property.`);
