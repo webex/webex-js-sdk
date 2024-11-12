@@ -55,4 +55,11 @@ describe('AQM routing agent', () => {
     expect(req).toBeDefined();
     expect(reqSpy).toHaveBeenCalled();
   });
+
+  it('buddyAgents', async () => {
+    const reqSpy = jest.spyOn(fakeAqm, 'req');
+    const req = await agent.buddyAgents({data: {} as any});
+    expect(req).toBeDefined();
+    expect(reqSpy).toHaveBeenCalled();
+  });
 });

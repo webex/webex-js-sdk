@@ -100,5 +100,26 @@ export default function routingAgent(routing: AqmReqs) {
         errId: 'Service.aqm.agent.stateChange',
       },
     })),
+    buddyAgents: routing.req((p: {data: Agent.BuddyAgents}) => ({
+      url: `/v1/agents/buddyList`,
+      host: WCC_API_GATEWAY,
+      data: {...p.data},
+      err,
+      method: HTTP_METHODS.POST,
+      notifSuccess: {
+        bind: {
+          type: CC_EVENTS.AGENT_BUDDY_AGENTS,
+          data: {type: CC_EVENTS.AGENT_BUDDY_AGENTS_SUCCESS},
+        },
+        msg: {} as Agent.BuddyAgentsSuccess,
+      },
+      notifFail: {
+        bind: {
+          type: CC_EVENTS.AGENT_BUDDY_AGENTS,
+          data: {type: CC_EVENTS.AGENT_BUDDY_AGENTS_RETRIEVE_FAILED},
+        },
+        errId: 'Service.aqm.agent.BuddyAgentsRetrieveFailed',
+      },
+    })),
   };
 }
