@@ -358,13 +358,13 @@ describe('webex.cc', () => {
         },
       };
 
-      const buddyAgentsMock = jest
+      const buddyAgentsSpy = jest
         .spyOn(webex.cc.services.agent, 'buddyAgents')
         .mockResolvedValue(buddyAgentsResponse);
 
       const result = await webex.cc.getBuddyAgents(data);
 
-      expect(buddyAgentsMock).toHaveBeenCalledWith({
+      expect(buddyAgentsSpy).toHaveBeenCalledWith({
         data: {agentProfileId: 'test-agent-profile-id', ...data},
       });
 
@@ -402,7 +402,6 @@ describe('webex.cc', () => {
       expect(LoggerProxy.logger.error).toHaveBeenCalledWith(
         `getBuddyAgents failed with trackingId: ${error.details.trackingId}`
       );
-
     });
   });
 });

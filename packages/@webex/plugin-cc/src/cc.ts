@@ -88,6 +88,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * @param {BuddyAgents} data - The data required to fetch buddy agents, including additional agent profile information.
    * @returns {Promise<BuddyAgentsResponse>} A promise that resolves to the response containing buddy agents information.
    * @throws Error
+   * @example getBuddyAgents({state: 'Available', mediaType: 'telephony'})
    */
   public async getBuddyAgents(data: BuddyAgents): Promise<BuddyAgentsResponse> {
     try {
