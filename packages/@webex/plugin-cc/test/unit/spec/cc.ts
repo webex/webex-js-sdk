@@ -112,7 +112,7 @@ describe('webex.cc', () => {
       expect(result).toBe(dialNumber);
     });
 
-    it('should return WEB_RTC_PREFIX + dialNumber for other loginOptions', () => {
+    it('should return prefix + agentId for other loginOptions', () => {
       const loginOption = 'OTHER_OPTION';
       webex.cc.agentConfig = {
         agentId: 'agentId',

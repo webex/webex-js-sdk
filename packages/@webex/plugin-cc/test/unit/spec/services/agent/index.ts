@@ -16,10 +16,6 @@ describe('AQM routing agent', () => {
   beforeEach(() => {
     jest.clearAllMocks();
 
-    const getroutingSpy = jest
-      .spyOn(Utils, 'getRoutingHost')
-      .mockReturnValue('https://mock-routing-host.com');
-
     fakeAqm = new AqmReqs() as jest.Mocked<AqmReqs>;
     fakeAqm.reqEmpty = jest.fn().mockImplementation((fn) => fn);
     fakeAqm.req = jest.fn().mockImplementation((fn) => fn);
