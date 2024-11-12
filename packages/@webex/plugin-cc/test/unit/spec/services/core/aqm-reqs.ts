@@ -55,6 +55,13 @@ describe('AqmReqs', () => {
     httpRequestInstance = new HttpRequest() as jest.Mocked<HttpRequest>;
     mockHttpRequest.getInstance = jest.fn().mockReturnValue(httpRequestInstance);
 
+    const mockWorker = {
+      postMessage: jest.fn(),
+      onmessage: jest.fn(),
+    };
+
+    global.Worker = jest.fn(() => mockWorker) as any;
+
     webSocketManagerInstance = new WebSocketManager({
       webex: {} as any,
     }) as jest.Mocked<WebSocketManager>;
