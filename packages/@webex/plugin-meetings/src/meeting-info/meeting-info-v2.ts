@@ -142,7 +142,7 @@ export class MeetingInfoV2WebinarRegistrationError extends Error {
    */
   constructor(wbxAppApiErrorCode?: number, meetingInfo?: object, message?: string) {
     super(`${message}, code=${wbxAppApiErrorCode}`);
-    this.name = 'MeetingInfoV2AdhocMeetingError';
+    this.name = 'MeetingInfoV2WebinarRegistrationError';
     this.sdkMessage = message;
     this.stack = new Error().stack;
     this.wbxAppApiCode = wbxAppApiErrorCode;
@@ -440,29 +440,15 @@ export default class MeetingInfoV2 {
         }
 
         if (err?.statusCode === 403) {
-          if (WEBINAR_REGISTRATION_ERROR_CODES.includes(err.body?.code)) {
-            this.handleWebinarRegistrationError(err);
+          this.handlePolicyError(err);
+          this.handleWebinarRegistrationError(err);
 
-            Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.WEBINAR_REGISTRATION_ERROR, {
-              reason: err.message,
-              stack: err.stack,
-            });
+          Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.VERIFY_PASSWORD_ERROR, {
+            reason: err.message,
+            stack: err.stack,
+          });
 
-            throw new MeetingInfoV2WebinarRegistrationError(
-              err.body?.code,
-              err.body?.data?.meetingInfo,
-              err.body?.message
-            );
-          } else {
-            this.handlePolicyError(err);
-
-            Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.VERIFY_PASSWORD_ERROR, {
-              reason: err.message,
-              stack: err.stack,
-            });
-
-            throw new MeetingInfoV2PasswordError(err.body?.code, err.body?.data?.meetingInfo);
-          }
+          throw new MeetingInfoV2PasswordError(err.body?.code, err.body?.data?.meetingInfo);
         }
         if (err?.statusCode === 423) {
           Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.VERIFY_CAPTCHA_ERROR, {
