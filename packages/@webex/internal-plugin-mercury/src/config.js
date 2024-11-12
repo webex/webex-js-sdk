@@ -36,5 +36,11 @@ export default {
      * @type {String}
      */
     beforeLogoutOptionsCloseReason: process.env.MERCURY_LOGOUT_REASON || 'done (forced)',
+
+    /**
+     * Maximum number of retries to attempt before giving up
+     * @type {Number}
+     */
+    maxRetries: process.env.MERCURY_MAX_RETRIES || 5,
   },
 };
