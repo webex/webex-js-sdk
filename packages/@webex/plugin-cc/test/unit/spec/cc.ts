@@ -63,7 +63,7 @@ describe('webex.cc', () => {
     }) as unknown as WebexSDK;
 
     // Instantiate ContactCenter to ensure it's fully initialized
-    webex.cc = new ContactCenter({ parent: webex });
+    webex.cc = new ContactCenter({parent: webex});
 
     mockWebSocketManager = {
       initWebSocket: jest.fn(),
@@ -85,6 +85,15 @@ describe('webex.cc', () => {
 
   afterEach(() => {
     jest.clearAllMocks();
+  });
+
+  it('should initialize services and logger proxy on READY event', () => {
+    webex.once('READY', () => {
+      expect(Services.getInstance).toHaveBeenCalled();
+      expect(LoggerProxy.initialize).toHaveBeenCalledWith(webex.logger);
+    });
+
+    webex.emit('READY');
   });
 
   describe('cc.getDeviceId', () => {
@@ -114,6 +123,43 @@ describe('webex.cc', () => {
 
   describe('register', () => {
     it('should register successfully and return agent profile', async () => {
+      const mockAgentProfile: IAgentProfile = {
+        agentId: 'agent123',
+        agentMailId: '',
+        agentName: 'John',
+        teams: [],
+        agentProfileId: '',
+        loginVoiceOptions: [],
+        idleCodes: [],
+        wrapUpCodes: [],
+      };
+      const connectWebsocketSpy = jest.spyOn(webex.cc, 'connectWebsocket');
+
+      mockAgentConfig.getAgentProfile.mockResolvedValue(mockAgentProfile);
+      mockWebSocketManager.initWebSocket.mockResolvedValue({
+        agentId: 'agent123',
+      });
+
+      const result = await webex.cc.register();
+
+      expect(connectWebsocketSpy).toHaveBeenCalled();
+      expect(mockWebSocketManager.initWebSocket).toHaveBeenCalledWith({
+        body: {
+          force: true,
+          isKeepAliveEnabled: false,
+          clientType: 'WebexCCSDK',
+          allowMultiLogin: true,
+        },
+      });
+      expect(mockAgentConfig.getAgentProfile).toHaveBeenCalled();
+      expect(webex.logger.log).toHaveBeenCalledWith(
+        'file: cc: agent config is fetched successfully'
+      );
+      expect(result).toEqual(mockAgentProfile);
+    });
+
+    it('should register successfully when config is undefined and return agent profile', async () => {
+      webex.cc.$config = undefined;
       const mockAgentProfile: IAgentProfile = {
         agentId: 'agent123',
         agentMailId: '',
