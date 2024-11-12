@@ -116,7 +116,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     try {
       const loginResponse = this.services.agent.stationLogin({
         data: {
-          dialNumber: data.dialNumber || this.agentConfig.agentId,
+          dialNumber:
+            data.loginOption === LoginOption.BROWSER ? this.agentConfig.agentId : data.dialNumber,
           teamId: data.teamId,
           deviceType: data.loginOption,
           isExtension: data.loginOption === LoginOption.EXTENSION,
