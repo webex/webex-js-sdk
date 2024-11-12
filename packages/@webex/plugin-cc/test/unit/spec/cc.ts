@@ -8,12 +8,13 @@ import {
 } from '../../../src/types';
 import ContactCenter from '../../../src/cc';
 import MockWebex from '@webex/test-helper-mock-webex';
-import {StationLoginSuccess} from '../../../src/services/agent/types';
-import {IAgentProfile} from '../../../src/types';
-import {AGENT, WEB_RTC_PREFIX} from '../../../src/services/constants';
+import { StationLoginSuccess } from '../../../src/services/agent/types';
+import { IAgentProfile } from '../../../src/types';
+import { AGENT, WEB_RTC_PREFIX } from '../../../src/services/constants';
 import Services from '../../../src/services';
 import config from '../../../src/config';
 import LoggerProxy from '../../../src/logger-proxy';
+import { getErrorDetails, createErrDetailsObject } from '../../../src/services/core/Utils';
 
 // Mock the Worker API
 import '../../../__mocks__/workerMock';
@@ -304,7 +305,7 @@ describe('webex.cc', () => {
 
   describe('stationLogout', () => {
     it('should logout successfully', async () => {
-      const data = {logoutReason: 'Logout reason'};
+      const data = { logoutReason: 'Logout reason' };
       const response = {};
 
       const stationLogoutMock = jest
@@ -313,12 +314,12 @@ describe('webex.cc', () => {
 
       const result = await webex.cc.stationLogout(data);
 
-      expect(stationLogoutMock).toHaveBeenCalledWith({data: data});
+      expect(stationLogoutMock).toHaveBeenCalledWith({ data: data });
       expect(result).toEqual(response);
     });
 
     it('should handle error during stationLogout', async () => {
-      const data = {logoutReason: 'Logout reason'};
+      const data = { logoutReason: 'Logout reason' };
       const error = {
         details: {
           trackingId: '1234',
@@ -371,7 +372,6 @@ describe('webex.cc', () => {
       );
     });
   });
-
   describe('getBuddyAgents', () => {
     it('should return buddy agents response when successful', async () => {
       const data: BuddyAgents = {state: 'Available', mediaType: 'telephony'};

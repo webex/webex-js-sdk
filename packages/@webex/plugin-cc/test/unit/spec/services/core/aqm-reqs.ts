@@ -99,223 +99,225 @@ describe('AqmReqs', () => {
     }
   });
 
-  it('AqmReqs notifcancel', async () => {
-    httpRequestInstance.request.mockResolvedValueOnce(mockHttpRequestResolvedValue);
+  describe('Aqm notifs', () => {
+    it('AqmReqs notifcancel', async () => {
+      httpRequestInstance.request.mockResolvedValueOnce(mockHttpRequestResolvedValue);
 
-    const req = aqm.req(() => ({
-      url: '/url',
-      timeout: 4000,
-      notifSuccess: {
-        bind: {
-          type: 'RoutingMessage',
-          data: {
-            type: 'AgentConsultCreated',
-            interactionId: '6920dda3-337a-48b1-b82d-2333392f9905',
+      const req = aqm.req(() => ({
+        url: '/url',
+        timeout: 4000,
+        notifSuccess: {
+          bind: {
+            type: 'RoutingMessage',
+            data: {
+              type: 'AgentConsultCreated',
+              interactionId: '6920dda3-337a-48b1-b82d-2333392f9905',
+            },
           },
+          msg: {},
         },
-        msg: {},
-      },
-      notifFail: {
-        bind: {
-          type: 'RoutingMessage',
-          data: {type: 'AgentConsultFailed'},
-        },
-        errId: 'Service.aqm.contact.consult',
-      },
-      notifCancel: {
-        bind: {
-          type: 'RoutingMessage',
-          data: {
-            type: 'AgentCtqCancelled',
-            interactionId: '6920dda3-337a-48b1-b82d-2333392f9905',
+        notifFail: {
+          bind: {
+            type: 'RoutingMessage',
+            data: {type: 'AgentConsultFailed'},
           },
+          errId: 'Service.aqm.contact.consult',
         },
-        msg: {},
-      },
-    }));
-
-    try {
-      const p = await Promise.all([
-        req({}),
-        new Promise<void>((resolve) => {
-          setTimeout(() => {
-            webSocketManagerInstance.dispatchEvent(
-              new CustomEvent('message', {
-                detail: JSON.stringify({
-                  type: 'RoutingMessage',
-                  data: {
-                    type: 'AgentCtqCancelled',
-                    interactionId: '6920dda3-337a-48b1-b82d-2333392f9905',
-                  },
-                }),
-              })
-            );
-            resolve();
-          }, 1000);
-        }),
-      ]);
-      expect(p).toBeDefined();
-    } catch (e) {}
-  });
-
-  it('AqmReqs notif success', async () => {
-    httpRequestInstance.request.mockResolvedValueOnce(mockHttpRequestResolvedValue);
-
-    const req = aqm.req(() => ({
-      url: '/url',
-      timeout: 4000,
-      notifSuccess: {
-        bind: {
-          type: 'RoutingMessage',
-          data: {
-            type: 'AgentConsultCreated',
-            interactionId: '6920dda3-337a-48b1-b82d-2333392f9906',
+        notifCancel: {
+          bind: {
+            type: 'RoutingMessage',
+            data: {
+              type: 'AgentCtqCancelled',
+              interactionId: '6920dda3-337a-48b1-b82d-2333392f9905',
+            },
           },
+          msg: {},
         },
-        msg: {},
-      },
-      notifFail: {
-        bind: {
-          type: 'RoutingMessage',
-          data: {type: 'AgentConsultFailed'},
-        },
-        errId: 'Service.aqm.contact.consult',
-      },
-      notifCancel: {
-        bind: {
-          type: 'RoutingMessage',
-          data: {
-            type: 'AgentCtqCancelled',
-            interactionId: '6920dda3-337a-48b1-b82d-2333392f9906',
+      }));
+
+      try {
+        const p = await Promise.all([
+          req({}),
+          new Promise<void>((resolve) => {
+            setTimeout(() => {
+              webSocketManagerInstance.dispatchEvent(
+                new CustomEvent('message', {
+                  detail: JSON.stringify({
+                    type: 'RoutingMessage',
+                    data: {
+                      type: 'AgentCtqCancelled',
+                      interactionId: '6920dda3-337a-48b1-b82d-2333392f9905',
+                    },
+                  }),
+                })
+              );
+              resolve();
+            }, 1000);
+          }),
+        ]);
+        expect(p).toBeDefined();
+      } catch (e) {}
+    });
+
+    it('AqmReqs notif success', async () => {
+      httpRequestInstance.request.mockResolvedValueOnce(mockHttpRequestResolvedValue);
+
+      const req = aqm.req(() => ({
+        url: '/url',
+        timeout: 4000,
+        notifSuccess: {
+          bind: {
+            type: 'RoutingMessage',
+            data: {
+              type: 'AgentConsultCreated',
+              interactionId: '6920dda3-337a-48b1-b82d-2333392f9906',
+            },
           },
+          msg: {},
         },
-        msg: {},
-      },
-    }));
-
-    try {
-      const p = await Promise.all([
-        req({}),
-        new Promise<void>((resolve) => {
-          setTimeout(() => {
-            webSocketManagerInstance.dispatchEvent(
-              new CustomEvent('message', {
-                detail: JSON.stringify({
-                  type: 'RoutingMessage',
-                  data: {
-                    type: 'AgentConsultCreated',
-                    interactionId: '6920dda3-337a-48b1-b82d-2333392f9906',
-                  },
-                }),
-              })
-            );
-            resolve();
-          }, 1000);
-        }),
-      ]);
-      expect(p).toBeDefined();
-    } catch (e) {}
-  });
-
-  it('AqmReqs notif success with async error', async () => {
-    httpRequestInstance.request.mockRejectedValueOnce(new Error('Async error'));
-
-    const req = aqm.req(() => ({
-      url: '/url',
-      timeout: 4000,
-      notifSuccess: {
-        bind: {
-          type: 'RoutingMessage',
-          data: {
-            type: 'AgentConsultCreated',
-            interactionId: '6920dda3-337a-48b1-b82d-2333392f9906',
+        notifFail: {
+          bind: {
+            type: 'RoutingMessage',
+            data: {type: 'AgentConsultFailed'},
           },
+          errId: 'Service.aqm.contact.consult',
         },
-        msg: {},
-      },
-      notifFail: {
-        bind: {
-          type: 'RoutingMessage',
-          data: {type: 'AgentConsultFailed'},
-        },
-        errId: 'Service.aqm.contact.consult',
-      },
-      notifCancel: {
-        bind: {
-          type: 'RoutingMessage',
-          data: {
-            type: 'AgentCtqCancelled',
-            interactionId: '6920dda3-337a-48b1-b82d-2333392f9906',
+        notifCancel: {
+          bind: {
+            type: 'RoutingMessage',
+            data: {
+              type: 'AgentCtqCancelled',
+              interactionId: '6920dda3-337a-48b1-b82d-2333392f9906',
+            },
           },
+          msg: {},
         },
-        msg: {},
-      },
-    }));
+      }));
 
-    try {
-      await req({});
-    } catch (e) {
-      expect(e).toBeDefined();
-    }
-  });
+      try {
+        const p = await Promise.all([
+          req({}),
+          new Promise<void>((resolve) => {
+            setTimeout(() => {
+              webSocketManagerInstance.dispatchEvent(
+                new CustomEvent('message', {
+                  detail: JSON.stringify({
+                    type: 'RoutingMessage',
+                    data: {
+                      type: 'AgentConsultCreated',
+                      interactionId: '6920dda3-337a-48b1-b82d-2333392f9906',
+                    },
+                  }),
+                })
+              );
+              resolve();
+            }, 1000);
+          }),
+        ]);
+        expect(p).toBeDefined();
+      } catch (e) {}
+    });
 
-  it('AqmReqs notif fail', async () => {
-    httpRequestInstance.request.mockResolvedValueOnce(mockHttpRequestResolvedValue);
+    it('AqmReqs notif success with async error', async () => {
+      httpRequestInstance.request.mockRejectedValueOnce(new Error('Async error'));
 
-    const req = aqm.req(() => ({
-      url: '/url',
-      timeout: 4000,
-      notifSuccess: {
-        bind: {
-          type: 'RoutingMessage',
-          data: {
-            type: 'AgentConsultCreated',
-            interactionId: '6920dda3-337a-48b1-b82d-2333392f9907',
+      const req = aqm.req(() => ({
+        url: '/url',
+        timeout: 4000,
+        notifSuccess: {
+          bind: {
+            type: 'RoutingMessage',
+            data: {
+              type: 'AgentConsultCreated',
+              interactionId: '6920dda3-337a-48b1-b82d-2333392f9906',
+            },
           },
+          msg: {},
         },
-        msg: {},
-      },
-      notifFail: {
-        bind: {
-          type: 'RoutingMessage',
-          data: {type: 'AgentConsultFailed'},
-        },
-        errId: 'Service.aqm.contact.consult',
-      },
-      notifCancel: {
-        bind: {
-          type: 'RoutingMessage',
-          data: {
-            type: 'AgentCtqCancelled',
-            interactionId: '6920dda3-337a-48b1-b82d-2333392f9907',
+        notifFail: {
+          bind: {
+            type: 'RoutingMessage',
+            data: {type: 'AgentConsultFailed'},
           },
+          errId: 'Service.aqm.contact.consult',
         },
-        msg: {},
-      },
-    }));
+        notifCancel: {
+          bind: {
+            type: 'RoutingMessage',
+            data: {
+              type: 'AgentCtqCancelled',
+              interactionId: '6920dda3-337a-48b1-b82d-2333392f9906',
+            },
+          },
+          msg: {},
+        },
+      }));
 
-    try {
-      const p = await Promise.all([
-        req({}),
-        new Promise<void>((resolve) => {
-          setTimeout(() => {
-            webSocketManagerInstance.dispatchEvent(
-              new CustomEvent('message', {
-                detail: JSON.stringify({
-                  type: 'RoutingMessage',
-                  data: {
-                    type: 'AgentConsultFailed',
-                    interactionId: '6920dda3-337a-48b1-b82d-2333392f9907',
-                  },
-                }),
-              })
-            );
-            resolve();
-          }, 1000);
-        }),
-      ]);
-      expect(p).toBeDefined();
-    } catch (e) {}
+      try {
+        await req({});
+      } catch (e) {
+        expect(e).toBeDefined();
+      }
+    });
+
+    it('AqmReqs notif fail', async () => {
+      httpRequestInstance.request.mockResolvedValueOnce(mockHttpRequestResolvedValue);
+
+      const req = aqm.req(() => ({
+        url: '/url',
+        timeout: 4000,
+        notifSuccess: {
+          bind: {
+            type: 'RoutingMessage',
+            data: {
+              type: 'AgentConsultCreated',
+              interactionId: '6920dda3-337a-48b1-b82d-2333392f9907',
+            },
+          },
+          msg: {},
+        },
+        notifFail: {
+          bind: {
+            type: 'RoutingMessage',
+            data: {type: 'AgentConsultFailed'},
+          },
+          errId: 'Service.aqm.contact.consult',
+        },
+        notifCancel: {
+          bind: {
+            type: 'RoutingMessage',
+            data: {
+              type: 'AgentCtqCancelled',
+              interactionId: '6920dda3-337a-48b1-b82d-2333392f9907',
+            },
+          },
+          msg: {},
+        },
+      }));
+
+      try {
+        const p = await Promise.all([
+          req({}),
+          new Promise<void>((resolve) => {
+            setTimeout(() => {
+              webSocketManagerInstance.dispatchEvent(
+                new CustomEvent('message', {
+                  detail: JSON.stringify({
+                    type: 'RoutingMessage',
+                    data: {
+                      type: 'AgentConsultFailed',
+                      interactionId: '6920dda3-337a-48b1-b82d-2333392f9907',
+                    },
+                  }),
+                })
+              );
+              resolve();
+            }, 1000);
+          }),
+        ]);
+        expect(p).toBeDefined();
+      } catch (e) {}
+    });
   });
 
   describe('Event tests', () => {
@@ -417,6 +419,25 @@ describe('AqmReqs', () => {
       };
       const result = aqm['bindCheck'](bind, msg);
       expect(result).toBe(true);
+    });
+
+    it('should return false when message value does not match any of the values in the array', () => {
+      const bind = {
+        type: 'RoutingMessage',
+        data: {
+          type: ['AgentConsultCreated', 'AgentConsultFailed'],
+          interactionId: 'intrid',
+        },
+      };
+      const msg = {
+        type: 'RoutingMessage',
+        data: {
+          type: 'AgentConsultConferenced', // This value does not match any value in the bind array
+          interactionId: 'intrid',
+        },
+      };
+      const result = aqm['bindCheck'](bind, msg);
+      expect(result).toBe(false);
     });
 
     it('should handle reqEmpty', async () => {

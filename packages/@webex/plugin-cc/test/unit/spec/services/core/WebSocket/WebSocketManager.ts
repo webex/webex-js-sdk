@@ -46,6 +46,18 @@ class MockCustomEvent<T> extends Event {
 
 global.CustomEvent = MockCustomEvent as any;
 
+// Mock MessageEvent class
+class MockMessageEvent extends Event {
+  data: any;
+
+  constructor(type: string, eventInitDict: { data: any }) {
+    super(type);
+    this.data = eventInitDict.data;
+  }
+}
+
+global.MessageEvent = MockMessageEvent as any;
+
 describe('WebSocketManager', () => {
   let webSocketManager: WebSocketManager;
   let mockWebex: WebexSDK;
@@ -156,7 +168,7 @@ describe('WebSocketManager', () => {
     expect(MockWebSocket.inst.send).toHaveBeenCalledWith(JSON.stringify({ keepalive: 'true' }));
   });
 
-  it('should handle web socket close and webSocketOnCloseHandler', async () => {
+  it('should handle WebSocket close due to network issue', async () => {
     const subscribeResponse = {
       body: {
         webSocketUrl: 'wss://fake-url',
@@ -166,7 +178,6 @@ describe('WebSocketManager', () => {
     (mockWebex.request as jest.Mock).mockResolvedValueOnce(subscribeResponse);
 
     await webSocketManager.initWebSocket({ body: fakeSubscribeRequest });
-    webSocketManager.shouldReconnect = true;
 
     // Mock navigator.onLine to simulate network issue
     Object.defineProperty(global, 'navigator', {
@@ -175,6 +186,8 @@ describe('WebSocketManager', () => {
       },
       configurable: true,
     });
+
+    // Simulate the WebSocket close event
     setTimeout(() => {
       MockWebSocket.inst.onclose({
         wasClean: false,
@@ -193,6 +206,167 @@ describe('WebSocketManager', () => {
     );
     expect(LoggerProxy.logger.error).toHaveBeenCalledWith(
       '[WebSocketStatus] | event=webSocketClose | WebSocket connection closed REASON: network issue'
+    );
+
+    // Restore navigator.onLine to true
+    Object.defineProperty(global, 'navigator', {
+      value: {
+        onLine: true,
+      },
+      configurable: true,
+    });
+  });
+
+  it('should handle WebSocket error event', async () => {
+    const subscribeResponse = {
+      body: {
+        webSocketUrl: 'wss://fake-url',
+      },
+    };
+
+    (mockWebex.request as jest.Mock).mockResolvedValueOnce(subscribeResponse);
+
+    await webSocketManager.initWebSocket({ body: fakeSubscribeRequest });
+
+    const errorEvent = new Event('error');
+    MockWebSocket.inst.onerror(errorEvent);
+
+    expect(LoggerProxy.logger.error).toHaveBeenCalledWith(
+      '[WebSocketStatus] | event=socketConnectionFailed | WebSocket connection failed [object Event]'
+    );
+  });
+
+  it('should handle WebSocket message event with AGENT_MULTI_LOGIN', async () => {
+    const subscribeResponse = {
+      body: {
+        webSocketUrl: 'wss://fake-url',
+      },
+    };
+
+    (mockWebex.request as jest.Mock).mockResolvedValueOnce(subscribeResponse);
+
+    await webSocketManager.initWebSocket({ body: fakeSubscribeRequest });
+
+    const messageEvent = new MessageEvent('message', {
+      data: JSON.stringify({ type: 'AGENT_MULTI_LOGIN' }),
+    });
+    MockWebSocket.inst.onmessage(messageEvent);
+
+    expect(MockWebSocket.inst.close).toHaveBeenCalled();
+    expect(LoggerProxy.logger.error).toHaveBeenCalledWith(
+      '[WebSocketStatus] | event=agentMultiLogin | WebSocket connection closed by agent multiLogin'
+    );
+  });
+
+  it('should handle WebSocket message event with Welcome', async () => {
+    const subscribeResponse = {
+      body: {
+        webSocketUrl: 'wss://fake-url',
+      },
+    };
+
+    (mockWebex.request as jest.Mock).mockResolvedValueOnce(subscribeResponse);
+
+    await webSocketManager.initWebSocket({ body: fakeSubscribeRequest });
+
+    const messageEvent = new MessageEvent('message', {
+      data: JSON.stringify({ type: 'Welcome', data: { someData: 'data' } }),
+    });
+    MockWebSocket.inst.onmessage(messageEvent);
+
+    expect(webSocketManager['isWelcomeReceived']).toBe(true);
+  });
+
+  it('should handle WebSocket close with forceCloseWebSocketOnTimeout', async () => {
+    const subscribeResponse = {
+      body: {
+        webSocketUrl: 'wss://fake-url',
+      },
+    };
+
+    (mockWebex.request as jest.Mock).mockResolvedValueOnce(subscribeResponse);
+
+    await webSocketManager.initWebSocket({ body: fakeSubscribeRequest });
+
+    webSocketManager['forceCloseWebSocketOnTimeout'] = true;
+
+    // Simulate the WebSocket close event
+    setTimeout(() => {
+      MockWebSocket.inst.onclose({
+        wasClean: false,
+        code: 1006,
+        reason: 'timeout',
+        target: MockWebSocket.inst,
+      });
+    }, 1);
+
+    webSocketManager.shouldReconnect = true;
+
+    // Wait for the close event to be handled
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    expect(mockWorker.postMessage).toHaveBeenCalledWith({ type: 'terminate' });
+    expect(LoggerProxy.logger.error).toHaveBeenCalledWith(
+      '[WebSocketStatus] | event=webSocketClose | WebSocket connection closed REASON: WebSocket auto close timed out. Forcefully closed websocket.'
+    );
+  });
+
+  it('should handle WebSocket close without reconnect', async () => {
+    const subscribeResponse = {
+      body: {
+        webSocketUrl: 'wss://fake-url',
+      },
+    };
+
+    (mockWebex.request as jest.Mock).mockResolvedValueOnce(subscribeResponse);
+
+    await webSocketManager.initWebSocket({ body: fakeSubscribeRequest });
+    webSocketManager.shouldReconnect = false;
+    // Simulate the WebSocket close event
+    setTimeout(() => {
+      MockWebSocket.inst.onclose({
+        wasClean: false,
+        code: 1006,
+        reason: 'no reconnect',
+        target: MockWebSocket.inst,
+      });
+    }, 1);
+    
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    expect(mockWorker.postMessage).toHaveBeenCalledWith({ type: 'terminate' });
+    expect(LoggerProxy.logger.error).not.toHaveBeenCalledWith(
+      '[WebSocketStatus] | event=webSocketClose | WebSocket connection closed REASON: no reconnect'
+    );
+  });
+
+  it('should handle WebSocket close with clean close', async () => {
+    const subscribeResponse = {
+      body: {
+        webSocketUrl: 'wss://fake-url',
+      },
+    };
+
+    (mockWebex.request as jest.Mock).mockResolvedValueOnce(subscribeResponse);
+
+    await webSocketManager.initWebSocket({ body: fakeSubscribeRequest });
+
+    // Simulate the WebSocket close event
+    setTimeout(() => {
+      MockWebSocket.inst.onclose({
+        wasClean: true,
+        code: 1000,
+        reason: 'clean close',
+        target: MockWebSocket.inst,
+      });
+    }, 1);
+
+    // Wait for the close event to be handled
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    expect(mockWorker.postMessage).toHaveBeenCalledWith({ type: 'terminate' });
+    expect(LoggerProxy.logger.error).not.toHaveBeenCalledWith(
+      '[WebSocketStatus] | event=webSocketClose | WebSocket connection closed REASON: clean close'
     );
   });
 });
