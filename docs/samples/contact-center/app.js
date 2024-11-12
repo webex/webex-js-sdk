@@ -189,7 +189,13 @@ async function fetchBuddyAgents() {
     buddyAgentsDropdownElm.innerHTML = ''; // Clear previous options
     const buddyAgentsResponse = await webex.cc.getBuddyAgents({mediaType: 'telephony'});
 
-    if (buddyAgentsResponse.data && buddyAgentsResponse.data.agentList.length === 0) {
+    if (!buddyAgentsResponse || !buddyAgentsResponse.data) {
+      console.error('Failed to fetch buddy agents');
+      buddyAgentsDropdownElm.innerHTML = `<option disabled="true">Failed to fetch buddy agents<option>`;
+      return;
+    }
+
+    if (buddyAgentsResponse.data.agentList.length === 0) {
       console.log('The fetched buddy agents list was empty');
       buddyAgentsDropdownElm.innerHTML = `<option disabled="true">No buddy agents available<option>`;
       return;
@@ -203,7 +209,7 @@ async function fetchBuddyAgents() {
     });
 
   } catch (error) {
-    console.log('Failed to fetch buddy agents', error);
+    console.error('Failed to fetch buddy agents', error);
     buddyAgentsDropdownElm.innerHTML = ''; // Clear previous options
     buddyAgentsDropdownElm.innerHTML = `<option disabled="true">Failed to fetch buddy agents, ${error}<option>`;
   }
