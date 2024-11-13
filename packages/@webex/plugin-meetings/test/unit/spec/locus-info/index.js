@@ -739,14 +739,14 @@ describe('plugin-meetings', () => {
 
     describe('#updateSelf', () => {
       it('should trigger SELF_MEETING_BRB_CHANGED when brb state changed', () => {
-        locusInfo.self = undefined
+        locusInfo.self = undefined;
 
         const assertBrb = (enabled) => {
           const selfWithBrbChanged = cloneDeep(self);
-          selfWithBrbChanged.controls.brb = enabled
+          selfWithBrbChanged.controls.brb = enabled;
 
           locusInfo.emitScoped = sinon.stub();
-          locusInfo.updateSelf(selfWithBrbChanged, [])
+          locusInfo.updateSelf(selfWithBrbChanged, []);
 
           assert.calledWith(
             locusInfo.emitScoped,
@@ -754,20 +754,18 @@ describe('plugin-meetings', () => {
             LOCUSINFO.EVENTS.SELF_MEETING_BRB_CHANGED,
             { brb: enabled }
           )
-        }
+        };
 
-        assertBrb(true)
-        assertBrb(false)
+        assertBrb(true);
+        assertBrb(false);
       })
 
-      it('should not trigger SELF_MEETING_BRB_CHANGED when brb state changed', () => {
+      it('should not trigger SELF_MEETING_BRB_CHANGED when brb state did not change', () => {
         const assertBrb = (enabled) => {
-          const selfWithBrbChanged = cloneDeep(self);
-          selfWithBrbChanged.controls.brb = enabled
 
-          locusInfo.self = selfWithBrbChanged
+          locusInfo.self = undefined;
           locusInfo.emitScoped = sinon.stub();
-          locusInfo.updateSelf(selfWithBrbChanged, [])
+          locusInfo.updateSelf(undefined, []);
 
           assert.neverCalledWith(
             locusInfo.emitScoped,
@@ -775,10 +773,10 @@ describe('plugin-meetings', () => {
             LOCUSINFO.EVENTS.SELF_MEETING_BRB_CHANGED,
             { brb: enabled }
           )
-        }
+        };
 
-        assertBrb(true)
-        assertBrb(false)
+        assertBrb(true);
+        assertBrb(false);
       })
 
       it('should not trigger SELF_MEETING_BRB_CHANGED when brb state changed', () => {

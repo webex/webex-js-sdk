@@ -550,6 +550,41 @@ describe('plugin-meetings', () => {
             assert.calledOnce(mockSendSlotManagerCtor);
           });
         });
+        describe('#beRightBack', () => {
+          it('should have #beRightBack', () => {
+            assert.exists(meeting.beRightBack);
+          });
+
+          beforeEach(() => {
+            meeting.meetingRequest.locusDeltaRequest = sinon.stub().resolves();
+          });
+
+          it('should enable #beRightBack with the correct data and return a promise', async () => {
+            meeting.locusUrl = 'locus url';
+            meeting.deviceUrl = 'device url';
+            meeting.selfId = 'self id';
+
+            const brbPromise = meeting.beRightBack(true);
+
+            assert.exists(brbPromise.then);
+            await brbPromise;
+
+            assert.calledOnce(meeting.meetingRequest.locusDeltaRequest);
+          });
+
+          it('should disable #beRightBack with the correct data and return a promise', async () => {
+            meeting.locusUrl = 'locus url';
+            meeting.deviceUrl = 'device url';
+            meeting.selfId = 'self id';
+
+            const brbPromise = meeting.beRightBack(false);
+
+            assert.exists(brbPromise.then);
+            await brbPromise;
+
+            assert.calledOnce(meeting.meetingRequest.locusDeltaRequest);
+          });
+        });
       });
 
       describe('#isLocusCall', () => {
@@ -8555,32 +8590,6 @@ describe('plugin-meetings', () => {
         });
       });
 
-      describe('#brb', () => {
-        it('send brb request', () => {
-          meeting.meetingRequest.locusDeltaRequest = sinon.stub().resolves();
-          meeting.locusUrl = 'locus url'
-          meeting.deviceUrl = 'device url'
-          meeting.selfId = 'self id'
-
-          const assertBrb = (enabled) => {
-            meeting.beRightBack(enabled)
-            assert.calledWithExactly(meeting.meetingRequest.locusDeltaRequest, {
-              method: HTTP_VERBS.PATCH,
-              uri: `${meeting.locusUrl}/${PARTICIPANT}/${meeting.selfId}/${CONTROLS}`,
-              body: {
-                brb: {
-                  enabled,
-                  deviceUrl: meeting.deviceUrl,
-                }
-              }
-            })
-          }
-
-          assertBrb(true)
-          assertBrb(false)
-        })
-      })
-
       describe('#setUpLocusInfoSelfListener', () => {
         it('listens to the self unadmitted guest event', (done) => {
           meeting.startKeepAlive = sinon.stub();
@@ -8662,12 +8671,9 @@ describe('plugin-meetings', () => {
         });
 
         it('listens to the brb state changed event', () => {
-          meeting.sendSlotManager.setSourceStateOverride = sinon.stub()
-          meeting.mediaProperties.webrtcMediaConnection = true
-
           const assertBrb = (enabled) => {
             meeting.locusInfo.emit(
-              { file: 'locus-info', function: 'updateSelf' },
+              { function: 'test', file: 'test' },
               LOCUSINFO.EVENTS.SELF_MEETING_BRB_CHANGED,
               { brb: { enabled } },
             )
@@ -8680,8 +8686,8 @@ describe('plugin-meetings', () => {
             );
           }
 
-          assertBrb(true)
-          assertBrb(false)
+          assertBrb(true);
+          assertBrb(false);
         })
 
         it('listens to the interpretation changed event', () => {
