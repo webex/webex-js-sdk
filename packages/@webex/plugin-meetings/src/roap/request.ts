@@ -79,7 +79,9 @@ export default class RoapRequest extends StatelessWebexPlugin {
     });
 
     LoggerProxy.logger.info(
-      `Roap:request#sendRoap --> ${locusSelfUrl} \n ${roapMessage.messageType} \n seq:${roapMessage.seq}`
+      `Roap:request#sendRoap --> ${roapMessage.messageType} seq:${roapMessage.seq} ${
+        ipVersion ? `ipver=${ipVersion} ` : ''
+      } ${locusSelfUrl}`
     );
 
     return locusMediaRequest
