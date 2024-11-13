@@ -220,11 +220,9 @@ class Utils {
     if (control.properties.panelistEnabled === true) {
       requiredHints.push(DISPLAY_HINTS.ENABLE_VIEW_THE_PARTICIPANT_LIST_PANELIST);
     }
-    // @ts-ignore
     if (control.properties.panelistEnabled === false) {
       requiredHints.push(DISPLAY_HINTS.DISABLE_VIEW_THE_PARTICIPANT_LIST_PANELIST);
     }
-    // @ts-ignore
     if (control.properties.attendeeCount === true) {
       requiredHints.push(DISPLAY_HINTS.ENABLE_SHOW_ATTENDEE_COUNT);
     }

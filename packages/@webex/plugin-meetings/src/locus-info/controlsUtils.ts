@@ -80,9 +80,9 @@ ControlsUtils.parse = (controls: any) => {
 
   if (controls?.viewTheParticipantList) {
     parsedControls.viewTheParticipantList = {
-      enabled: controls.viewTheParticipantList.enabled,
-      panelistEnabled: controls.viewTheParticipantList.panelistEnabled,
-      attendeeCount: controls.viewTheParticipantList.attendeeCount,
+      enabled: controls.viewTheParticipantList?.enabled ?? false,
+      panelistEnabled: controls.viewTheParticipantList?.panelistEnabled ?? false,
+      attendeeCount: controls.viewTheParticipantList?.attendeeCount ?? 0,
     };
   }
 
@@ -100,8 +100,8 @@ ControlsUtils.parse = (controls: any) => {
 
   if (controls?.meetingFull) {
     parsedControls.meetingFull = {
-      meetingFull: controls.meetingFull.meetingFull,
-      meetingPanelistFull: controls.meetingFull.meetingPanelistFull,
+      meetingFull: controls.meetingFull?.meetingFull ?? false,
+      meetingPanelistFull: controls.meetingFull?.meetingPanelistFull ?? false,
     };
   }
 

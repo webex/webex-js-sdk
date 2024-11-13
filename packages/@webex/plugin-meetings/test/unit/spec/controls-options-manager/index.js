@@ -95,7 +95,7 @@ describe('plugin-meetings', () => {
                       assert.isRejected(result);
                     });
 
-                    it('can set mute on entry when the display hint is available enabled=true', () => {
+                    it('can set disallow unmute when ENABLE_HARD_MUTE display hint is available', () => {
                       manager.setDisplayHints(['ENABLE_HARD_MUTE']);
 
                       const result = manager.setDisallowUnmute(true);
@@ -107,7 +107,7 @@ describe('plugin-meetings', () => {
                       assert.deepEqual(result, request.request.firstCall.returnValue);
                     });
 
-                    it('can set mute on entry when the display hint is available enabled=false', () => {
+                    it('can set allow unmute when DISABLE_HARD_MUTE display hint is available', () => {
                       manager.setDisplayHints(['DISABLE_HARD_MUTE']);
 
                       const result = manager.setDisallowUnmute(false);
