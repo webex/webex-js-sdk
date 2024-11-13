@@ -107,13 +107,6 @@ export type DesktopProfileResponse = {
   idleCodes: string[];
 };
 
-export interface StateChange {
-  state: string;
-  auxCodeId: string;
-  lastStateChangeReason?: string;
-  agentId?: string;
-}
-
 export type SubscribeResponse = {
   statusCode: number;
   body: {
