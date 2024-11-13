@@ -3337,9 +3337,9 @@ async function toggleBrb() {
     const enabled = document.getElementById('brb').checked;
     try {
       const result = await meeting.beRightBack(enabled);
-      console.log(`meeting.beRightBack(${enabled}): SUCCESS | result: ${result}`);
+      console.log(`meeting.beRightBack(${enabled}): success. Result: ${result}`);
     } catch (error) {
-      console.error(`meeting.beRightBack({${enabled}): ERROR`, error);
+      console.error(`meeting.beRightBack({${enabled}): error: `, error);
     } finally {
       localMedia?.microphoneStream?.setUserMuted(enabled);
       localMedia?.cameraStream?.setUserMuted(enabled);

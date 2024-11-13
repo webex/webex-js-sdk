@@ -110,7 +110,7 @@ export default class SendSlotManager {
     }
 
     this.LoggerProxy.logger.info(
-      `SendSlotsManager->setSourceStateOverride#set source state override to ${state}`
+      `SendSlotsManager->setSourceStateOverride#set source state override for ${mediaType} to ${state}`
     );
   }
 

@@ -3522,7 +3522,7 @@ export default class Meeting extends StatelessWebexPlugin {
   /**
    * Manages be right back status updates for the current participant.
    *
-   * @param {boolean} enabled - Indicates whether the use is brb or not.
+   * @param {boolean} enabled - Indicates whether the user enabled brb or not.
    * @returns {Promise<void>} - A promise that resolves when the request is complete.
    * @throws {Error} - Throws an error if the request fails.
    *
