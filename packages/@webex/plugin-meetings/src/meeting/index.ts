@@ -3523,29 +3523,30 @@ export default class Meeting extends StatelessWebexPlugin {
    * Manages be right back status updates for the current participant.
    *
    * @param {boolean} enabled - Indicates whether the user enabled brb or not.
-   * @returns {Promise<void>} - A promise that resolves when the request is complete.
+   * @returns {Promise<void>} resolves when the brb status is updated or does nothing if not in a multistream meeting.
    * @throws {Error} - Throws an error if the request fails.
-   *
-   * @todo non-multistream support https://jira-eng-gpk2.cisco.com/jira/browse/SPARK-578667
    */
-  public beRightBack(enabled: boolean) {
-    return this.meetingRequest
-      .sendBrb({
-        enabled,
-        locusUrl: this.locusUrl,
-        deviceUrl: this.deviceUrl,
-        selfId: this.selfId,
-      })
-      .then(() => {
-        if (this.isMultistream && this.mediaProperties.webrtcMediaConnection) {
+  public beRightBack(enabled: boolean): Promise<void> {
+    // this logic should be applied only to multistream meetings
+    if (this.isMultistream && this.mediaProperties.webrtcMediaConnection) {
+      return this.meetingRequest
+        .sendBrb({
+          enabled,
+          locusUrl: this.locusUrl,
+          deviceUrl: this.deviceUrl,
+          selfId: this.selfId,
+        })
+        .then(() => {
           this.sendSlotManager.setSourceStateOverride(MediaType.VideoMain, enabled ? 'away' : null);
-        }
-      })
-      .catch((error) => {
-        LoggerProxy.logger.error('Meeting:index#beRightBack --> Error ', error);
+        })
+        .catch((error) => {
+          LoggerProxy.logger.error('Meeting:index#beRightBack --> Error ', error);
 
-        return Promise.reject(error);
-      });
+          return Promise.reject(error);
+        });
+    }
+
+    return undefined;
   }
 
   /**
