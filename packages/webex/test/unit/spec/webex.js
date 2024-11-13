@@ -15,6 +15,13 @@ jest.mock('../../../../@webex/plugin-meetings', () => {
 });
 jest.mock('@webex/internal-plugin-calendar');
 
+const mockWorker = {
+  postMessage: jest.fn(),
+  onmessage: jest.fn(),
+};
+
+global.Worker = jest.fn(() => mockWorker);
+
 describe('webex', () => {
   describe('Webex', () => {
     describe('.version', () => {
