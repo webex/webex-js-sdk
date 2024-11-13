@@ -22,6 +22,10 @@ const mockWorker = {
 
 global.Worker = jest.fn(() => mockWorker);
 
+global.URL.createObjectURL = function (blob) {
+  return 'blob:http://localhost:3000/12345';
+};
+
 describe('webex', () => {
   describe('Webex', () => {
     describe('.version', () => {
