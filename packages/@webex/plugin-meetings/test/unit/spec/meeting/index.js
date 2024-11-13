@@ -559,7 +559,7 @@ describe('plugin-meetings', () => {
             meeting.meetingRequest.locusDeltaRequest = sinon.stub().resolves();
           });
 
-          it('should enable #beRightBack with the correct data and return a promise', async () => {
+          it('should enable #beRightBack and return a promise', async () => {
             meeting.locusUrl = 'locus url';
             meeting.deviceUrl = 'device url';
             meeting.selfId = 'self id';
@@ -572,7 +572,7 @@ describe('plugin-meetings', () => {
             assert.calledOnce(meeting.meetingRequest.locusDeltaRequest);
           });
 
-          it('should disable #beRightBack with the correct data and return a promise', async () => {
+          it('should disable #beRightBack and return a promise', async () => {
             meeting.locusUrl = 'locus url';
             meeting.deviceUrl = 'device url';
             meeting.selfId = 'self id';
