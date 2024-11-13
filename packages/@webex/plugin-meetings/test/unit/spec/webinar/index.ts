@@ -49,5 +49,68 @@ describe('plugin-meetings', () => {
             assert.equal(webinar.canManageWebcast, false);
           });
         });
+
+      describe('#updateRoleChanged', () => {
+        it('updates roles when promoted from attendee to panelist', () => {
+          const payload = {
+            oldRoles: ['ATTENDEE'],
+            newRoles: ['PANELIST']
+          };
+
+          const result = webinar.updateRoleChanged(payload);
+
+          assert.equal(webinar.selfIsPanelist, true, 'self should be a panelist');
+          assert.equal(webinar.selfIsAttendee, false, 'self should not be an attendee');
+          assert.equal(webinar.canManageWebcast, false, 'self should not have manage webcast capability');
+          assert.equal(result.isPromoted, true, 'should indicate promotion');
+          assert.equal(result.isDemoted, false, 'should not indicate demotion');
+        });
+
+        it('updates roles when demoted from panelist to attendee', () => {
+          const payload = {
+            oldRoles: ['PANELIST'],
+            newRoles: ['ATTENDEE']
+          };
+
+          const result = webinar.updateRoleChanged(payload);
+
+          assert.equal(webinar.selfIsPanelist, false, 'self should not be a panelist');
+          assert.equal(webinar.selfIsAttendee, true, 'self should be an attendee');
+          assert.equal(webinar.canManageWebcast, false, 'self should not have manage webcast capability');
+          assert.equal(result.isPromoted, false, 'should not indicate promotion');
+          assert.equal(result.isDemoted, true, 'should indicate demotion');
+        });
+
+        it('updates roles when promoted to moderator', () => {
+          const payload = {
+            oldRoles: ['PANELIST'],
+            newRoles: ['MODERATOR']
+          };
+
+          const result = webinar.updateRoleChanged(payload);
+
+          assert.equal(webinar.selfIsPanelist, false, 'self should not be a panelist');
+          assert.equal(webinar.selfIsAttendee, false, 'self should not be an attendee');
+          assert.equal(webinar.canManageWebcast, true, 'self should have manage webcast capability');
+          assert.equal(result.isPromoted, false, 'should not indicate promotion');
+          assert.equal(result.isDemoted, false, 'should not indicate demotion');
+        });
+
+        it('updates roles when unchanged (remains as panelist)', () => {
+          const payload = {
+            oldRoles: ['PANELIST'],
+            newRoles: ['PANELIST']
+          };
+
+          const result = webinar.updateRoleChanged(payload);
+
+          assert.equal(webinar.selfIsPanelist, true, 'self should remain a panelist');
+          assert.equal(webinar.selfIsAttendee, false, 'self should not be an attendee');
+          assert.equal(webinar.canManageWebcast, false, 'self should not have manage webcast capability');
+          assert.equal(result.isPromoted, false, 'should not indicate promotion');
+          assert.equal(result.isDemoted, false, 'should not indicate demotion');
+        });
+      });
+
     })
 })

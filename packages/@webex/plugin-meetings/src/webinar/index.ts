@@ -66,6 +66,8 @@ const Webinar = WebexPlugin.extend({
     this.set('selfIsPanelist', get(payload, 'newRoles', []).includes(SELF_ROLES.PANELIST));
     this.set('selfIsAttendee', get(payload, 'newRoles', []).includes(SELF_ROLES.ATTENDEE));
     this.updateCanManageWebcast(payload.newRoles?.includes(SELF_ROLES.MODERATOR));
+
+    return {isPromoted, isDemoted};
   },
 });
 
