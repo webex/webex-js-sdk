@@ -89,8 +89,12 @@ const MeetingUtil = {
   getIpVersion(webex: any): IP_VERSION | undefined {
     const {supportsIpV4, supportsIpV6} = webex.internal.device.ipNetworkDetector;
 
-    if (BrowserDetection().isBrowser('firefox')) {
-      // our ipv6 solution relies on FQDN ICE candidates, but Firefox doesn't support them,
+    if (
+      !webex.config.meetings.backendIpv6NativeSupport &&
+      BrowserDetection().isBrowser('firefox')
+    ) {
+      // when backend doesn't support native ipv6,
+      // then our NAT64/DNS64 based solution relies on FQDN ICE candidates, but Firefox doesn't support them,
       // see https://bugzilla.mozilla.org/show_bug.cgi?id=1713128
       // so for Firefox we don't want the backend to activate the "ipv6 feature"
       return undefined;
