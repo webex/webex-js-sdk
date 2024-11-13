@@ -95,7 +95,7 @@ export type AgentState = 'Available' | 'Idle' | 'RONA' | string;
 
 export type StateChange = {
   state: AgentState;
-  auxCodeIdArray: string;
+  auxCodeId: string;
   lastStateChangeReason?: string;
   agentId?: string;
 };

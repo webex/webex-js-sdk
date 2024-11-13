@@ -418,9 +418,14 @@ describe('webex.cc', () => {
         auxCodeId: '12345',
         agentId: '123',
         lastStateChangeReason: 'Agent is in meeting',
-        trackingId: '1234',
-        data: {
-          reason: 'missing status',
+      };
+
+      const error = {
+        details: {
+          trackingId: '1234',
+          data: {
+            reason: 'missing status',
+          },
         },
       };
       jest.spyOn(webex.cc.services.agent, 'stateChange').mockRejectedValue(error);

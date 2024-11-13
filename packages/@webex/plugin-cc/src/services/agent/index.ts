@@ -82,7 +82,7 @@ export default function routingAgent(routing: AqmReqs) {
     stateChange: routing.req((p: {data: Agent.StateChange}) => ({
       url: '/v1/agents/session/state',
       host: WCC_API_GATEWAY,
-      data: {...p.data, auxCodeId: p.data.auxCodeIdArray},
+      data: p.data,
       err,
       method: HTTP_METHODS.PUT,
       notifSuccess: {
