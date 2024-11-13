@@ -52,9 +52,11 @@ const Webinar = WebexPlugin.extend({
   },
 
   /**
-   * Update whether self has capability to manage start/stop webcast (only host can manage it)
+   * Updates user roles and manages associated state transitions
    * @param {object} payload
-   * @returns {void}
+   * @param {string[]} payload.oldRoles - Previous roles of the user
+   * @param {string[]} payload.newRoles - New roles of the user
+   * @returns {{isPromoted: boolean, isDemoted: boolean}} Role transition states
    */
   updateRoleChanged(payload) {
     const isPromoted =
@@ -65,7 +67,7 @@ const Webinar = WebexPlugin.extend({
       get(payload, 'newRoles', []).includes(SELF_ROLES.ATTENDEE);
     this.set('selfIsPanelist', get(payload, 'newRoles', []).includes(SELF_ROLES.PANELIST));
     this.set('selfIsAttendee', get(payload, 'newRoles', []).includes(SELF_ROLES.ATTENDEE));
-    this.updateCanManageWebcast(payload.newRoles?.includes(SELF_ROLES.MODERATOR));
+    this.updateCanManageWebcast(get(payload, 'newRoles', []).includes(SELF_ROLES.MODERATOR));
 
     return {isPromoted, isDemoted};
   },

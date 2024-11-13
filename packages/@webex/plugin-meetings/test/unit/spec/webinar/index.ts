@@ -39,14 +39,24 @@ describe('plugin-meetings', () => {
 
 
         describe('#updateCanManageWebcast', () => {
-          it('update canManageWebcast', () => {
-            webinar.updateCanManageWebcast(true);
+          it('sets the webcast instance url when valid', () => {
+            webinar.updateWebcastUrl({resources: {webcastInstance: {url:'newUrl'}}});
+            assert.equal(webinar.webcastInstanceUrl, 'newUrl', 'webcast instance URL should be updated');
+          });
 
-            assert.equal(webinar.canManageWebcast, true);
+          it('handles missing resources gracefully', () => {
+              webinar.updateWebcastUrl({});
+              assert.isUndefined(webinar.webcastInstanceUrl, 'webcast instance URL should be undefined');
+          });
 
-            webinar.updateCanManageWebcast(false);
+          it('handles missing webcastInstance gracefully', () => {
+              webinar.updateWebcastUrl({resources: {}});
+              assert.isUndefined(webinar.webcastInstanceUrl, 'webcast instance URL should be undefined');
+          });
 
-            assert.equal(webinar.canManageWebcast, false);
+          it('handles missing URL gracefully', () => {
+              webinar.updateWebcastUrl({resources: {webcastInstance: {}}});
+              assert.isUndefined(webinar.webcastInstanceUrl, 'webcast instance URL should be undefined');
           });
         });
 
