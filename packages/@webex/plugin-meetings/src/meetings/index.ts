@@ -763,6 +763,25 @@ export default class Meetings extends WebexPlugin {
   }
 
   /**
+   * API to toggle backend ipv6 native support config, needs to be called before webex.meetings.register()
+   *
+   * @param {Boolean} newValue
+   * @private
+   * @memberof Meetings
+   * @returns {undefined}
+   */
+  private _toggleIpv6BackendNativeSupport(newValue: boolean) {
+    if (typeof newValue !== 'boolean') {
+      return;
+    }
+    // @ts-ignore
+    if (this.config.backendIpv6NativeSupport !== newValue) {
+      // @ts-ignore
+      this.config.backendIpv6NativeSupport = newValue;
+    }
+  }
+
+  /**
    * Explicitly sets up the meetings plugin by registering
    * the device, connecting to mercury, and listening for locus events.
    *
