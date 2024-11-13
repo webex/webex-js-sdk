@@ -33,6 +33,7 @@ const registerStatus = document.querySelector('#ws-connection-status');
 const idleCodesDropdown = document.querySelector('#idleCodesDropdown')
 const setAgentStatusButton = document.querySelector('#setAgentStatus');
 const logoutAgentElm = document.querySelector('#logoutAgent');
+const buddyAgentsDropdownElm = document.getElementById('buddyAgentsDropdown');
 
 // Store and Grab `access-token` from sessionStorage
 if (sessionStorage.getItem('date') > new Date().getTime()) {
@@ -173,7 +174,7 @@ function doAgentLogin() {
   webex.cc.stationLogin({teamId: teamsDropdown.value, loginOption: agentDeviceType, dialNumber: dialNumber.value}).then((response) => {
     console.log('Agent Logged in successfully', response);
     logoutAgentElm.classList.remove('hidden');
-    // Re-Login Agent after 5 seconds for testing purpose
+    // Re-Login Agent after 15 seconds for testing purpose
     setTimeout(async () => {
       try {
         const response = await webex.cc.stationReLogin();
@@ -182,10 +183,13 @@ function doAgentLogin() {
       } catch (error) {
         console.log('Agent Re-Login failed', error);
       }
-    }, 5000);
+    }, 15000);
   }
   ).catch((error) => {
-    console.error('Agent Login failed', error);
+    if (error.message === 'AGENT_SESSION_ALREADY_EXISTS') {
+      logoutAgentElm.classList.remove('hidden');
+    }
+    console.log('Agent Login failed', error);
   });
 }
 
@@ -217,6 +221,37 @@ function logoutAgent() {
   ).catch((error) => {
     console.log('Agent logout failed', error);
   });
+}
+
+async function fetchBuddyAgents() {
+  try {
+    buddyAgentsDropdownElm.innerHTML = ''; // Clear previous options
+    const buddyAgentsResponse = await webex.cc.getBuddyAgents({mediaType: 'telephony'});
+
+    if (!buddyAgentsResponse || !buddyAgentsResponse.data) {
+      console.error('Failed to fetch buddy agents');
+      buddyAgentsDropdownElm.innerHTML = `<option disabled="true">Failed to fetch buddy agents<option>`;
+      return;
+    }
+
+    if (buddyAgentsResponse.data.agentList.length === 0) {
+      console.log('The fetched buddy agents list was empty');
+      buddyAgentsDropdownElm.innerHTML = `<option disabled="true">No buddy agents available<option>`;
+      return;
+    }
+
+    buddyAgentsResponse.data.agentList.forEach((agent) => {
+      const option = document.createElement('option');
+      option.text = `${agent.agentName} - ${agent.state}`;
+      option.value = agent.agentId;
+      buddyAgentsDropdownElm.add(option);
+    });
+
+  } catch (error) {
+    console.error('Failed to fetch buddy agents', error);
+    buddyAgentsDropdownElm.innerHTML = ''; // Clear previous options
+    buddyAgentsDropdownElm.innerHTML = `<option disabled="true">Failed to fetch buddy agents, ${error}<option>`;
+  }
 }
 
 const allCollapsibleElements = document.querySelectorAll('.collapsible');

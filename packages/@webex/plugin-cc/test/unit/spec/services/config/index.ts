@@ -62,6 +62,19 @@ describe('AgentConfigService', () => {
 
       await expect(agentConfigService.getUserUsingCI()).rejects.toThrow('API call failed');
     });
+
+    it('should throw an error if the getUserUsingCI call fails with other than 200', async () => {
+      const mockResponse = {
+        statusCode: 400,
+      };
+      (mockHttpRequest.request as jest.Mock).mockResolvedValue(mockResponse);
+
+      try {
+        await agentConfigService.getUserUsingCI();
+      } catch (error) {
+        expect(error).toEqual(new Error(`API call failed with ${mockResponse.statusCode}`));
+      }
+    });
   });
 
   describe('getDesktopProfileById', () => {
@@ -101,6 +114,19 @@ describe('AgentConfigService', () => {
         expect(error).toEqual(mockError);
       }
     });
+
+    it('should throw an error if the getDesktopProfileById call fails with other than 200', async () => {
+      const mockResponse = {
+        statusCode: 400,
+      };
+      (mockHttpRequest.request as jest.Mock).mockResolvedValue(mockResponse);
+
+      try {
+        await agentConfigService.getDesktopProfileById(desktopProfileId);
+      } catch (error) {
+        expect(error).toEqual(new Error(`API call failed with ${mockResponse.statusCode}`));
+      }
+    });
   });
 
   describe('getListOfTeams', () => {
@@ -138,6 +164,19 @@ describe('AgentConfigService', () => {
         await agentConfigService.getListOfTeams(page, pageSize, filter, attributes);
       } catch (error) {
         expect(error).toEqual(mockError);
+      }
+    });
+
+    it('should throw an error if the getListOfTeams call fails with other than 200', async () => {
+      const mockResponse = {
+        statusCode: 400,
+      };
+      (mockHttpRequest.request as jest.Mock).mockResolvedValue(mockResponse);
+
+      try {
+        await agentConfigService.getListOfTeams(page, pageSize, filter, attributes);
+      } catch (error) {
+        expect(error).toEqual(new Error(`API call failed with ${mockResponse.statusCode}`));
       }
     });
   });
@@ -194,6 +233,19 @@ describe('AgentConfigService', () => {
         await agentConfigService.getListOfAuxCodes(page, pageSize, filter, attributes);
       } catch (error) {
         expect(error).toEqual(mockError);
+      }
+    });
+
+    it('should throw an error if the getListOfAuxCodes call fails with other than 200', async () => {
+      const mockResponse = {
+        statusCode: 400,
+      };
+      (mockHttpRequest.request as jest.Mock).mockResolvedValue(mockResponse);
+
+      try {
+        await agentConfigService.getListOfAuxCodes(page, pageSize, filter, attributes);
+      } catch (error) {
+        expect(error).toEqual(new Error(`API call failed with ${mockResponse.statusCode}`));
       }
     });
   });

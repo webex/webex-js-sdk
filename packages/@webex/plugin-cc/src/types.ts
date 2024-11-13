@@ -1,4 +1,4 @@
-import {CallingClientConfig} from '@webex/calling/dist/types/CallingClient/types';
+import {CallingClientConfig} from '@webex/calling';
 import * as Agent from './services/agent/types';
 
 type Enum<T extends Record<string, unknown>> = T[keyof T];
@@ -294,9 +294,28 @@ export type RequestBody =
   | SubscribeRequest
   | Agent.Logout
   | Agent.UserStationLogin
-  | Agent.StateChange;
+  | Agent.StateChange
+  | Agent.BuddyAgents;
+
+/**
+ * Represents the options to fetch buddy agents for the logged in agent.
+ * @public
+ */
+export type BuddyAgents = {
+  /**
+   * The media type for the request. The supported values are telephony, chat, social and email.
+   */
+  mediaType: 'telephony' | 'chat' | 'social' | 'email';
+  /**
+   * It represents the current state of the returned agents which can be either Available or Idle.
+   * If state is omitted, the API will return a list of both available and idle agents.
+   * This is useful for consult scenarios, since consulting an idle agent is also supported.
+   */
+  state?: 'Available' | 'Idle';
+};
 
 export type StationLoginResponse = Agent.StationLoginSuccess | Error;
 export type StationLogoutResponse = Agent.LogoutSuccess | Error;
 export type StationReLoginResponse = Agent.ReloginSuccess | Error;
 export type SetStateResponse = Agent.StateChangeSuccess | Error;
+export type BuddyAgentsResponse = Agent.BuddyAgentsSuccess | Error;

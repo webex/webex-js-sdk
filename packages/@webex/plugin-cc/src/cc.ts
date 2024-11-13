@@ -12,14 +12,19 @@ import {
   StationLoginResponse,
   StationLogoutResponse,
   StationReLoginResponse,
+  BuddyAgentsResponse,
+  BuddyAgents,
+  SubscribeRequest,
 } from './types';
 import {READY, CC_FILE, EMPTY_STRING} from './constants';
 import HttpRequest from './services/core/HttpRequest';
 import WebCallingService from './services/WebCallingService';
 import {AGENT, WEB_RTC_PREFIX} from './services/constants';
+import {WebSocketManager} from './services/core/WebSocket/WebSocketManager';
 import Services from './services';
 import LoggerProxy from './logger-proxy';
 import {StateChange, Logout} from './services/agent/types';
+import {ConnectionService} from './services/core/WebSocket/connection-service';
 import {getErrorDetails} from './services/core/Utils';
 
 export default class ContactCenter extends WebexPlugin implements IContactCenter {
@@ -27,9 +32,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   private $config: CCPluginConfig;
   private $webex: WebexSDK;
   private agentConfig: IAgentProfile;
-  private registered = false;
   private httpRequest: HttpRequest;
+  private webSocketManager: WebSocketManager;
   private webCallingService: WebCallingService;
+  private connectionService: ConnectionService;
   private services: Services;
 
   constructor(...args) {
@@ -49,7 +55,14 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         webex: this.$webex,
       });
 
-      this.services = Services.getInstance();
+      this.webSocketManager = new WebSocketManager({webex: this.$webex});
+
+      this.connectionService = new ConnectionService(
+        this.webSocketManager,
+        this.getConnectionConfig()
+      );
+
+      this.services = Services.getInstance(this.webSocketManager);
 
       this.webCallingService = new WebCallingService(this.$webex, this.$config.callingClientConfig);
 
@@ -71,23 +84,34 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   }
 
   /**
+   * Returns the list of buddy agents in the given state and media according to agent profile settings
+   *
+   * @param {BuddyAgents} data - The data required to fetch buddy agents, including additional agent profile information.
+   * @returns {Promise<BuddyAgentsResponse>} A promise that resolves to the response containing buddy agents information.
+   * @throws Error
+   * @example getBuddyAgents({state: 'Available', mediaType: 'telephony'})
+   */
+  public async getBuddyAgents(data: BuddyAgents): Promise<BuddyAgentsResponse> {
+    try {
+      return await this.services.agent.buddyAgents({
+        data: {agentProfileId: this.agentConfig.agentProfileId, ...data},
+      });
+    } catch (error) {
+      throw getErrorDetails(error, 'getBuddyAgents');
+    }
+  }
+
+  /**
    * This is used for connecting the websocket and fetching the agent profile.
    * @returns Promise<IAgentProfile>
    * @throws Error
    * @private
    */
   private async connectWebsocket() {
-    const connectionConfig = {
-      force: this.$config?.force ?? true,
-      isKeepAliveEnabled: this.$config?.isKeepAliveEnabled ?? false,
-      clientType: this.$config?.clientType ?? 'WebexCCSDK',
-      allowMultiLogin: this.$config?.allowMultiLogin ?? true,
-    };
-
     try {
-      return this.httpRequest
-        .subscribeNotifications({
-          body: connectionConfig,
+      return this.webSocketManager
+        .initWebSocket({
+          body: this.getConnectionConfig(),
         })
         .then(async (data: WelcomeEvent) => {
           const agentId = data.agentId;
@@ -117,7 +141,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     try {
       const loginResponse = this.services.agent.stationLogin({
         data: {
-          dialNumber: data.dialNumber || this.agentConfig.agentId,
+          dialNumber:
+            data.loginOption === LoginOption.BROWSER ? this.agentConfig.agentId : data.dialNumber,
           teamId: data.teamId,
           deviceType: data.loginOption,
           isExtension: data.loginOption === LoginOption.EXTENSION,
@@ -207,5 +232,17 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     } catch (error) {
       throw getErrorDetails(error, 'setAgentState');
     }
+  }
+
+  /**
+   * This method returns the connection configuration.
+   */
+  private getConnectionConfig(): SubscribeRequest {
+    return {
+      force: this.$config?.force ?? true,
+      isKeepAliveEnabled: this.$config?.isKeepAliveEnabled ?? false,
+      clientType: this.$config?.clientType ?? 'WebexCCSDK',
+      allowMultiLogin: this.$config?.allowMultiLogin ?? true,
+    };
   }
 }

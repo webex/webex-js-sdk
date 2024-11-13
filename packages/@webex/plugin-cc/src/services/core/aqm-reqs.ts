@@ -1,6 +1,7 @@
 import {Msg} from './GlobalTypes';
 import * as Err from './Err';
 import {HTTP_METHODS, WebexRequestPayload} from '../../types';
+import {WebSocketManager} from './WebSocket/WebSocketManager';
 import HttpRequest from './HttpRequest';
 import LoggerProxy from '../../logger-proxy';
 import {CbRes, Conf, ConfEmpty, Pending, Req, Res, ResEmpty} from './types';
@@ -9,13 +10,13 @@ import {TIMEOUT_REQ} from './constants';
 export default class AqmReqs {
   private pendingRequests: Record<string, Pending> = {};
   private pendingNotifCancelrequest: Record<string, Pending> = {};
+  private webSocketManager: WebSocketManager;
   private httpRequest: HttpRequest;
-  constructor() {
+
+  constructor(webSocketManager: WebSocketManager) {
     this.httpRequest = HttpRequest.getInstance();
-    this.httpRequest.getWebSocket().on('event', (eventData) => {
-      LoggerProxy.logger.log(`Received event: ${eventData.type}`);
-      this.onMessage(eventData);
-    });
+    this.webSocketManager = webSocketManager;
+    this.webSocketManager.addEventListener('message', this.onMessage);
   }
 
   req<TRes, TErr, TReq>(c: Conf<TRes, TErr, TReq>): Res<TRes, TReq> {
@@ -201,16 +202,16 @@ export default class AqmReqs {
   }
 
   // must be lambda
-  private readonly onMessage = (event: any) => {
-    // const event = JSON.parse(msg);
+  private readonly onMessage = (msg: any) => {
+    const event = JSON.parse(msg.detail);
     if (event.type === 'Welcome') {
-      LoggerProxy.logger.info(`Welcome message from Notifs Websocket${event}`);
+      LoggerProxy.logger.info(`Welcome message from Notifs Websocket`);
 
       return;
     }
 
-    if (event.keepalive) {
-      LoggerProxy.logger.info(`Keepalive from notifs${event}`);
+    if (event.keepalive === 'true') {
+      LoggerProxy.logger.info(`Keepalive from web socket`);
 
       return;
     }
@@ -240,7 +241,7 @@ export default class AqmReqs {
 
     if (!isHandled) {
       LoggerProxy.logger.info(
-        `event=missingEventHandler | [AqmReqs] missing routing message handler${event}`
+        `event=missingEventHandler | [AqmReqs] missing routing message handler`
       );
     }
   };

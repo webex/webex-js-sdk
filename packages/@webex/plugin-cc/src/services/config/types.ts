@@ -17,6 +17,9 @@ export const CC_EVENTS = {
   AGENT_STATE_CHANGE: 'AgentStateChange',
   AGENT_STATE_CHANGE_SUCCESS: 'AgentStateChangeSuccess',
   AGENT_STATE_CHANGE_FAILED: 'AgentStateChangeFailed',
+  AGENT_BUDDY_AGENTS: 'BuddyAgents',
+  AGENT_BUDDY_AGENTS_SUCCESS: 'BuddyAgents',
+  AGENT_BUDDY_AGENTS_RETRIEVE_FAILED: 'BuddyAgentsRetrieveFailed',
 } as const;
 
 // Derive the type using the utility type
@@ -29,7 +32,8 @@ export type WebSocketEvent = {
     | Agent.StationLoginSuccess
     | Agent.LogoutSuccess
     | Agent.ReloginSuccess
-    | Agent.StateChangeSuccess;
+    | Agent.StateChangeSuccess
+    | Agent.BuddyAgentsSuccess;
 };
 
 /**

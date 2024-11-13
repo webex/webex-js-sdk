@@ -9,7 +9,8 @@ export type AgentErrorIds =
   | {'Service.aqm.agent.stateChange': Failure}
   | {'Service.aqm.agent.reload': Failure}
   | {'Service.aqm.agent.logout': Failure}
-  | {'Service.reqs.generic.failure': {trackingId: string}};
+  | {'Service.reqs.generic.failure': {trackingId: string}}
+  | {'Service.aqm.agent.BuddyAgentsRetrieveFailed': Failure};
 
 export type ReqError =
   | 'Service.aqm.reqs.GenericRequestError'
