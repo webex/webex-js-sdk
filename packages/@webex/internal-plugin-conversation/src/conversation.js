@@ -81,17 +81,13 @@ const Conversation = WebexPlugin.extend({
   namespace: 'Conversation',
   initialize() {
     this.listenToOnce(this.webex, 'ready', () => {
-      this.addEncryptionDecryptionTransforms();
+      if (Array.isArray(this.webex.config.payloadTransformer?.transforms)) {
+        this.webex.config.payloadTransformer.transforms =
+          this.webex.config.payloadTransformer.transforms
+            .concat(this.config.includeDecryptionTransforms ? decryptionTransforms : [])
+            .concat(this.config.includeEncryptionTransforms ? encryptionTransforms : []);
+      }
     });
-  },
-
-  addEncryptionDecryptionTransforms() {
-    this.logger.error('@@@:this.config', this.config);
-    this.webex.logger.error('@@@:this.config', this.config);
-    this.webex.config.payloadTransformer.transforms =
-      this.webex.config.payloadTransformer.transforms
-        .concat(this.config.includeDecryptionTransforms ? decryptionTransforms : [])
-        .concat(this.config.includeEncryptionTransforms ? encryptionTransforms : []);
   },
 
   /**

@@ -36,23 +36,6 @@ describe('plugin-conversation', () => {
       webex.internal.services.getServiceUrlFromClusterId = sinon.stub().returns(convoUrl);
     });
 
-    describe('#initialize', () => {
-      it('adds relevant handlers when webex is ready', () => {
-        const addEncryptionDecryptionTransformsStub = sinon.stub(
-          webex.internal.conversation,
-          'addEncryptionDecryptionTransforms'
-        );
-
-        assert.notCalled(addEncryptionDecryptionTransformsStub);
-
-        // Initialize should have already run, so there should be an event handler already
-        webex.trigger('ready');
-
-        assert.calledOnce(addEncryptionDecryptionTransformsStub);
-        assert.calledWith(addEncryptionDecryptionTransformsStub);
-      });
-    });
-
     describe('addReaction()', () => {
       it('should add recipients to the payload if provided', () => {
         const {conversation} = webex.internal;
@@ -967,9 +950,10 @@ describe('plugin-conversation', () => {
       async ({includeDecryptionTransforms, includeEncryptionTransforms, expectedTransforms}) => {
         setup({includeDecryptionTransforms, includeEncryptionTransforms});
         webex.trigger('ready');
-        expect(
-          checkTransforms(webex.config.payloadTransformer.transforms, expectedTransforms)
-        ).toEqual(true);
+        assert.isTrue(
+          checkTransforms(webex.config.payloadTransformer.transforms, expectedTransforms),
+          'transforms should match expected configuration'
+        );
       }
     );
   });
