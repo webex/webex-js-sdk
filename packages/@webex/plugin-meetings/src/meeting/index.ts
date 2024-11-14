@@ -8735,15 +8735,19 @@ export default class Meeting extends StatelessWebexPlugin {
       return;
     }
 
-    if (
-      streams?.microphone?.readyState === 'ended' ||
-      streams?.camera?.readyState === 'ended' ||
-      streams?.screenShare?.audio?.readyState === 'ended' ||
-      streams?.screenShare?.video?.readyState === 'ended'
-    ) {
-      throw new Error(
-        `Attempted to publish stream with ended readyState, correlationId=${this.correlationId}`
-      );
+    const streamChecks = [
+      {stream: streams?.microphone, name: 'microphone'},
+      {stream: streams?.camera, name: 'camera'},
+      {stream: streams?.screenShare?.audio, name: 'screenShare audio'},
+      {stream: streams?.screenShare?.video, name: 'screenShare video'},
+    ];
+
+    for (const {stream, name} of streamChecks) {
+      if (stream?.readyState === 'ended') {
+        throw new Error(
+          `Attempted to publish ${name} stream with ended readyState, correlationId=${this.correlationId}`
+        );
+      }
     }
 
     let floorRequestNeeded = false;
