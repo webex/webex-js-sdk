@@ -3636,7 +3636,6 @@ describe('plugin-meetings', () => {
 
       describe(`#beRightBack`, () => {
         const fakeMultistreamRoapMediaConnection = {
-          createReceiveSlot: sinon.stub().resolves({on: sinon.stub()}),
           createSendSlot: sinon.stub().returns({
             setSourceStateOverride: sinon.stub().resolves(),
             clearSourceStateOverride: sinon.stub().resolves(),
