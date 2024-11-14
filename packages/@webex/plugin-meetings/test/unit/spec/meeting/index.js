@@ -550,41 +550,6 @@ describe('plugin-meetings', () => {
             assert.calledOnce(mockSendSlotManagerCtor);
           });
         });
-        describe('#beRightBack', () => {
-          it('should have #beRightBack', () => {
-            assert.exists(meeting.beRightBack);
-          });
-
-          beforeEach(() => {
-            meeting.meetingRequest.locusDeltaRequest = sinon.stub().resolves();
-          });
-
-          it('should enable #beRightBack and return a promise', async () => {
-            meeting.locusUrl = 'locus url';
-            meeting.deviceUrl = 'device url';
-            meeting.selfId = 'self id';
-
-            const brbPromise = meeting.beRightBack(true);
-
-            assert.exists(brbPromise.then);
-            await brbPromise;
-
-            assert.calledOnce(meeting.meetingRequest.locusDeltaRequest);
-          });
-
-          it('should disable #beRightBack and return a promise', async () => {
-            meeting.locusUrl = 'locus url';
-            meeting.deviceUrl = 'device url';
-            meeting.selfId = 'self id';
-
-            const brbPromise = meeting.beRightBack(false);
-
-            assert.exists(brbPromise.then);
-            await brbPromise;
-
-            assert.calledOnce(meeting.meetingRequest.locusDeltaRequest);
-          });
-        });
       });
 
       describe('#isLocusCall', () => {
@@ -4798,6 +4763,45 @@ describe('plugin-meetings', () => {
               assert.notCalled(fakeRoapMediaConnection.update);
             })
           );
+
+          describe(`#beRightBack (${isMultistream ? 'multistream' : 'transcoded'})`, () => {
+            it('should have #beRightBack', () => {
+              assert.exists(meeting.beRightBack);
+            });
+
+            it(`should ${isMultistream ? 'enable #beRightBack and return a promise' : 'ignore #beRightBack'}`, async () => {
+              meeting.locusUrl = 'locus url';
+              meeting.deviceUrl = 'device url';
+              meeting.selfId = 'self id';
+
+              const brbPromise = meeting.beRightBack(true);
+
+              assert.exists(brbPromise.then);
+              await brbPromise;
+              if (meeting.isMultistream) {
+                assert.calledOnce(locusMediaRequestStub);
+              } else {
+                assert.notCalled(locusMediaRequestStub);
+            }
+            })
+
+            it(`should ${isMultistream ? 'disable #beRightBack and return a promise' : 'ignore #beRightBack'}`, async () => {
+              meeting.locusUrl = 'locus url';
+              meeting.deviceUrl = 'device url';
+              meeting.selfId = 'self id';
+
+              const brbPromise = meeting.beRightBack(false);
+
+              assert.exists(brbPromise.then);
+              await brbPromise;
+
+              if (meeting.isMultistream) {
+                assert.calledOnce(locusMediaRequestStub);
+              } else {
+                assert.notCalled(locusMediaRequestStub);
+              }
+            });
+          });
 
           [
             {mute: true, title: 'system muting a track before confluence is created'},
