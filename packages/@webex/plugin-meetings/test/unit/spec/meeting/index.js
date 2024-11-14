@@ -3663,7 +3663,7 @@ describe('plugin-meetings', () => {
           assert.exists(meeting.beRightBack);
         });
 
-        describe('when multistream meeting', () => {
+        describe('when in a multistream meeting', () => {
 
           beforeEach(() => {
             meeting.isMultistream = true;
@@ -3686,7 +3686,7 @@ describe('plugin-meetings', () => {
           })
         });
 
-        describe('when transcoded meeting', () => {
+        describe('when in a transcoded meeting', () => {
 
           beforeEach(() => {
             meeting.isMultistream = false;
