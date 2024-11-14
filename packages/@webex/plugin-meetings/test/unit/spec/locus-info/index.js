@@ -795,8 +795,8 @@ describe('plugin-meetings', () => {
           )
         }
 
-        assertBrb(true)
-        assertBrb(false)
+        assertBrb(true);
+        assertBrb(false);
       })
 
       it('should trigger CONTROLS_MEETING_LAYOUT_UPDATED when the meeting layout controls change', () => {
