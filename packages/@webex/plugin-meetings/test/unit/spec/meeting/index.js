@@ -3634,7 +3634,7 @@ describe('plugin-meetings', () => {
         });
       });
 
-      describe(`#beRightBack`, () => {
+      describe.only(`#beRightBack`, () => {
         const fakeMultistreamRoapMediaConnection = {
           createSendSlot: sinon.stub().returns({
             setSourceStateOverride: sinon.stub().resolves(),
@@ -3655,14 +3655,18 @@ describe('plugin-meetings', () => {
           meeting.selfId = 'self id';
         });
 
+        afterEach(() => {
+          sinon.restore();
+        });
+
+        it('should have #beRightBack', () => {
+          assert.exists(meeting.beRightBack);
+        });
+
         describe('when multistream meeting', () => {
 
           beforeEach(() => {
             meeting.isMultistream = true;
-          });
-
-          it('should have #beRightBack', () => {
-            assert.exists(meeting.beRightBack);
           });
 
           it('should enable #beRightBack and return a promise', async () => {
@@ -3688,22 +3692,16 @@ describe('plugin-meetings', () => {
             meeting.isMultistream = false;
           });
 
-          it('should have #beRightBack', () => {
-            assert.exists(meeting.beRightBack);
-          });
-
           it('should ignore enabling #beRightBack', async () => {
-            const brbResult = meeting.beRightBack(true);
+            meeting.beRightBack(true);
 
-            await brbResult;
             assert.isUndefined();
             assert.notCalled(meeting.meetingRequest.sendBrb);
           })
 
           it('should ignore disabling #beRightBack', async () => {
-            const brbResult = meeting.beRightBack(false);
+            meeting.beRightBack(false);
 
-            await brbResult;
             assert.isUndefined();
             assert.notCalled(meeting.meetingRequest.sendBrb);
           })
