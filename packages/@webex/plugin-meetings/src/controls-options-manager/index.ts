@@ -177,7 +177,12 @@ export default class ControlsOptionsManager {
    * @memberof ControlsOptionsManager
    * @returns {Promise}
    */
-  private setControls(setting: {[key in Setting]?: any}): Promise<any> {
+  private setControls(setting: {
+    [Setting.muted]?: boolean;
+    [Setting.disallowUnmute]?: boolean;
+    [Setting.muteOnEntry]?: boolean;
+    [Setting.roles]?: Array<string>;
+  }): Promise<any> {
     LoggerProxy.logger.log(
       `ControlsOptionsManager:index#setControls --> ${JSON.stringify(setting)}`
     );

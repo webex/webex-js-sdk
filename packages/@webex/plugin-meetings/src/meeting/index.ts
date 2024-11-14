@@ -3017,8 +3017,7 @@ export default class Meeting extends StatelessWebexPlugin {
   /**
    * Set up the locus info resources link listener
    * update the locusInfo for webcast instance url
-   * does not currently re-emit the event as it's internal only
-   * payload is unused
+   * @param {Object} payload - The event payload
    * @returns {undefined}
    * @private
    * @memberof Meeting
