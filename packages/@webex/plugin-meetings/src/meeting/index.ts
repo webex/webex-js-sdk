@@ -3530,19 +3530,21 @@ export default class Meeting extends StatelessWebexPlugin {
   public async beRightBack(enabled: boolean): Promise<void> {
     // this logic should be applied only to multistream meetings
     if (this.isMultistream && this.mediaProperties.webrtcMediaConnection) {
-      try {
-        await this.meetingRequest.sendBrb({
+      return this.meetingRequest
+        .sendBrb({
           enabled,
           locusUrl: this.locusUrl,
           deviceUrl: this.deviceUrl,
           selfId: this.selfId,
-        });
-        this.sendSlotManager.setSourceStateOverride(MediaType.VideoMain, enabled ? 'away' : null);
-      } catch (error) {
-        LoggerProxy.logger.error('Meeting:index#beRightBack --> Error ', error);
+        })
+        .then(() => {
+          this.sendSlotManager.setSourceStateOverride(MediaType.VideoMain, enabled ? 'away' : null);
+        })
+        .catch((error) => {
+          LoggerProxy.logger.error('Meeting:index#beRightBack --> Error ', error);
 
-        return Promise.reject(error);
-      }
+          return Promise.reject(error);
+        });
     }
     LoggerProxy.logger.error('Meeting:index#beRightBack --> Not a multistream meeting');
   }
