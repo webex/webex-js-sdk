@@ -14,6 +14,7 @@ import {
 
 import {RoleAssignmentOptions, RoleAssignmentRequest, ServerRoleShape} from './types';
 
+// @ts-ignore
 const MembersUtil = {
   /**
    * @param {Object} invitee with emailAddress, email or phoneNumber
@@ -166,9 +167,10 @@ const MembersUtil = {
     locusUrl,
   }),
 
-  generateLowerAllHandsMemberOptions: (requestingParticipantId, locusUrl) => ({
+  generateLowerAllHandsMemberOptions: (requestingParticipantId, locusUrl, roles) => ({
     requestingParticipantId,
     locusUrl,
+    ...(roles !== undefined && {roles}),
   }),
 
   /**
@@ -253,6 +255,7 @@ const MembersUtil = {
     const body = {
       hand: {
         raised: false,
+        ...(options.roles !== undefined && {roles: options.roles}),
       },
       requestingParticipantId: options.requestingParticipantId,
     };
