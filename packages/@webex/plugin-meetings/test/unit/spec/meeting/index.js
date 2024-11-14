@@ -3634,6 +3634,83 @@ describe('plugin-meetings', () => {
         });
       });
 
+      describe(`#beRightBack`, () => {
+        const fakeMultistreamRoapMediaConnection = {
+          createReceiveSlot: sinon.stub().resolves({on: sinon.stub()}),
+          createSendSlot: sinon.stub().returns({
+            setSourceStateOverride: sinon.stub().resolves(),
+            clearSourceStateOverride: sinon.stub().resolves(),
+          }),
+        };
+
+        beforeEach(() => {
+          meeting.meetingRequest.sendBrb = sinon.stub().resolves({body: 'test'});
+          meeting.mediaProperties.webrtcMediaConnection = {createSendSlot: sinon.stub()};
+          meeting.sendSlotManager.createSlot(
+            fakeMultistreamRoapMediaConnection,
+            MediaType.VideoMain
+          );
+
+          meeting.locusUrl = 'locus url';
+          meeting.deviceUrl = 'device url';
+          meeting.selfId = 'self id';
+        });
+
+        describe('when multistream meeting', () => {
+
+          beforeEach(() => {
+            meeting.isMultistream = true;
+          });
+
+          it('should have #beRightBack', () => {
+            assert.exists(meeting.beRightBack);
+          });
+
+          it('should enable #beRightBack and return a promise', async () => {
+            const brbResult = meeting.beRightBack(true);
+
+            await brbResult;
+            assert.exists(brbResult.then);
+            assert.calledOnce(meeting.meetingRequest.sendBrb);
+          })
+
+          it('should disable #beRightBack and return a promise', async () => {
+            const brbResult = meeting.beRightBack(false);
+
+            await brbResult;
+            assert.exists(brbResult.then);
+            assert.calledOnce(meeting.meetingRequest.sendBrb);
+          })
+        });
+
+        describe('when transcoded meeting', () => {
+
+          beforeEach(() => {
+            meeting.isMultistream = false;
+          });
+
+          it('should have #beRightBack', () => {
+            assert.exists(meeting.beRightBack);
+          });
+
+          it('should ignore enabling #beRightBack', async () => {
+            const brbResult = meeting.beRightBack(true);
+
+            await brbResult;
+            assert.isUndefined();
+            assert.notCalled(meeting.meetingRequest.sendBrb);
+          })
+
+          it('should ignore disabling #beRightBack', async () => {
+            const brbResult = meeting.beRightBack(false);
+
+            await brbResult;
+            assert.isUndefined();
+            assert.notCalled(meeting.meetingRequest.sendBrb);
+          })
+        });
+      });
+
       /* This set of tests are like semi-integration tests, they use real MuteState, Media, LocusMediaRequest and Roap classes.
          They mock the @webex/internal-media-core and sending of /media http requests to Locus.
          Their main purpose is to test that we send the right http requests to Locus and make right calls
@@ -4721,6 +4798,7 @@ describe('plugin-meetings', () => {
             });
           });
 
+
           [
             {mute: true, title: 'user muting a track before confluence is created'},
             {mute: false, title: 'user unmuting a track before confluence is created'},
@@ -4763,45 +4841,6 @@ describe('plugin-meetings', () => {
               assert.notCalled(fakeRoapMediaConnection.update);
             })
           );
-
-          describe(`#beRightBack (${isMultistream ? 'multistream' : 'transcoded'})`, () => {
-            it('should have #beRightBack', () => {
-              assert.exists(meeting.beRightBack);
-            });
-
-            it(`should ${isMultistream ? 'enable #beRightBack and return a promise' : 'ignore #beRightBack'}`, async () => {
-              meeting.locusUrl = 'locus url';
-              meeting.deviceUrl = 'device url';
-              meeting.selfId = 'self id';
-
-              const brbPromise = meeting.beRightBack(true);
-
-              assert.exists(brbPromise.then);
-              await brbPromise;
-              if (meeting.isMultistream) {
-                assert.calledOnce(locusMediaRequestStub);
-              } else {
-                assert.notCalled(locusMediaRequestStub);
-            }
-            })
-
-            it(`should ${isMultistream ? 'disable #beRightBack and return a promise' : 'ignore #beRightBack'}`, async () => {
-              meeting.locusUrl = 'locus url';
-              meeting.deviceUrl = 'device url';
-              meeting.selfId = 'self id';
-
-              const brbPromise = meeting.beRightBack(false);
-
-              assert.exists(brbPromise.then);
-              await brbPromise;
-
-              if (meeting.isMultistream) {
-                assert.calledOnce(locusMediaRequestStub);
-              } else {
-                assert.notCalled(locusMediaRequestStub);
-              }
-            });
-          });
 
           [
             {mute: true, title: 'system muting a track before confluence is created'},

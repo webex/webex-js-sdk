@@ -3546,7 +3546,7 @@ export default class Meeting extends StatelessWebexPlugin {
         });
     }
 
-    return Promise.resolve();
+    return undefined;
   }
 
   /**
