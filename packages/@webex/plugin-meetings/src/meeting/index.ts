@@ -3526,10 +3526,20 @@ export default class Meeting extends StatelessWebexPlugin {
    * @returns {Promise<void>} resolves when the brb status is updated or does nothing if not in a multistream meeting.
    * @throws {Error} - Throws an error if the request fails.
    */
-  // eslint-disable-next-line consistent-return
   public async beRightBack(enabled: boolean): Promise<void> {
     // this logic should be applied only to multistream meetings
+    if (!this.isMultistream) {
+      LoggerProxy.logger.error('Meeting:index#beRightBack --> Not a multistream meeting');
+    }
+    if (!this.mediaProperties.webrtcMediaConnection) {
+      LoggerProxy.logger.error(
+        'Meeting:index#beRightBack --> WebRTC media connection is not defined'
+      );
+
+      return;
+    }
     if (this.isMultistream && this.mediaProperties.webrtcMediaConnection) {
+      // eslint-disable-next-line consistent-return
       return this.meetingRequest
         .sendBrb({
           enabled,
@@ -3546,7 +3556,6 @@ export default class Meeting extends StatelessWebexPlugin {
           return Promise.reject(error);
         });
     }
-    LoggerProxy.logger.error('Meeting:index#beRightBack --> Not a multistream meeting');
   }
 
   /**

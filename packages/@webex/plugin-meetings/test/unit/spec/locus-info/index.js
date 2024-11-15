@@ -761,21 +761,21 @@ describe('plugin-meetings', () => {
       })
 
       it('should not trigger SELF_MEETING_BRB_CHANGED when brb state did not change', () => {
-        const assertBrbUnchanged = (initialBrb, updatedBrb) => {
-          locusInfo.self = { brb: initialBrb };
+        const assertBrbUnchanged = (brbChange) => {
+          locusInfo.self = { brb: brbChange };
           locusInfo.emitScoped = sinon.stub();
-          locusInfo.updateSelf({ brb: updatedBrb }, []);
+          locusInfo.updateSelf({ brb: brbChange }, []);
 
           assert.neverCalledWith(
             locusInfo.emitScoped,
             { file: 'locus-info', function: 'updateSelf' },
             LOCUSINFO.EVENTS.SELF_MEETING_BRB_CHANGED,
-            { brb: updatedBrb }
+            { brb: brbChange }
           );
         };
 
-        assertBrbUnchanged(true, true); // BRB state unchanged and remains true
-        assertBrbUnchanged(false, false); // BRB state unchanged and remains false
+        assertBrbUnchanged(true);
+        assertBrbUnchanged(false);
       });
 
       it('should not trigger SELF_MEETING_BRB_CHANGED when brb state changed', () => {
