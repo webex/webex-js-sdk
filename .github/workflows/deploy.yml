@@ -250,7 +250,7 @@ jobs:
         run: yarn build:local
 
       - name: Build Docs
-        run: yarn run build:docs
+        run: yarn run build:docs --exclude '@webex/plugin-cc'
 
       - name: Set Git Identity
         run: |
