@@ -3539,6 +3539,7 @@ export default class Meeting extends StatelessWebexPlugin {
       return;
     }
     if (this.isMultistream && this.mediaProperties.webrtcMediaConnection) {
+      // eslint-disable-next-line consistent-return
       return this.meetingRequest
         .sendBrb({
           enabled,
