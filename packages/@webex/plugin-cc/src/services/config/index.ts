@@ -32,6 +32,12 @@ export default class AgentConfigService {
     this.orgId = orgId;
   }
 
+  /**
+   * Method to get Agent Configuration.
+   * @param {string} agentId ID of the agent for which the configuration is to be fetched.
+   * @returns {Promise<Profile>} A promise that eventually resolves to an API response.
+   * @throws {Error} If the API call fails.
+   */
   public async getAgentConfig(agentId: string): Promise<Profile> {
     try {
       // Start all asynchronous calls at once
@@ -197,6 +203,14 @@ export default class AgentConfigService {
     }
   }
 
+  /**
+   * Method to get All Teams.
+   * @param {number} pageSize Number of items to be displayed on a page. Defaults to 10.
+   * @param {Array<String>} filter Filter that can be applied to the elements to be fetched. Defaults to [].
+   * @param {Array<String>} attributes Specify the attributes to be returned. Defaults to ['id', 'name'].
+   * @returns {Promise<TeamList>} A promise that eventually resolves to an API response.
+   * @throws {Error} If the API call fails.
+   */
   public async getAllTeams(
     pageSize: number,
     filter: string[],
@@ -269,6 +283,14 @@ export default class AgentConfigService {
     }
   }
 
+  /**
+   * Method to get All AuxCodes.
+   * @param {number} pageSize Number of items to be displayed on a page. Defaults to 10.
+   * @param {Array<String>} filter Filter that can be applied to the elements to be fetched. Defaults to [].
+   * @param {Array<String>} attributes Specify the attributes to be returned. Defaults to ['id', 'name', 'active'].
+   * @returns {Promise<AuxCode>} A promise that eventually resolves to an API response.
+   * @throws {Error} If the API call fails.
+   */
   public async getAllAuxCodes(
     pageSize: number,
     filter: string[],
@@ -304,6 +326,11 @@ export default class AgentConfigService {
     }
   }
 
+  /**
+   * Method to get Organization Info.
+   * @returns {Promise<OrgInfo>} A promise that eventually resolves to an API response.
+   * @throws {Error} If the API call fails.
+   */
   public async getOrgInfo(): Promise<OrgInfo> {
     try {
       const response = await this.httpReq.request({
@@ -325,6 +352,11 @@ export default class AgentConfigService {
     }
   }
 
+  /**
+   * Method to get Organization Settings.
+   * @returns {Promise<OrgSettings>} A promise that eventually resolves to an API response.
+   * @throws {Error} If the API call fails.
+   */
   public async getOrganizationSetting(): Promise<OrgSettings> {
     try {
       const response = await this.httpReq.request({
@@ -346,6 +378,11 @@ export default class AgentConfigService {
     }
   }
 
+  /**
+   * Method to get Tenant Data.
+   * @returns {Promise<TenantData>} A promise that eventually resolves to an API response.
+   * @throws {Error} If the API call fails.
+   */
   public async getTenantData(): Promise<TenantData> {
     try {
       const response = await this.httpReq.request({
@@ -367,6 +404,11 @@ export default class AgentConfigService {
     }
   }
 
+  /**
+   * Method to get URL Mapping.
+   * @returns {Promise<URLMapping[]>} A promise that eventually resolves to an API response.
+   * @throws {Error} If the API call fails.
+   */
   public async getURLMapping(): Promise<URLMapping[]> {
     try {
       const response = await this.httpReq.request({
@@ -388,6 +430,11 @@ export default class AgentConfigService {
     }
   }
 
+  /**
+   * Method to get Dial Plan Data.
+   * @returns {Promise<DialPlanEntity[]>} A promise that eventually resolves to an API response.
+   * @throws {Error} If the API call fails.
+   */
   public async getDialPlanData(): Promise<DialPlanEntity[]> {
     try {
       const response = await this.httpReq.request({

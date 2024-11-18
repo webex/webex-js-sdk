@@ -43,7 +43,6 @@ export type WebSocketEvent = {
 /**
  * Represents the response from getUserUsingCI method.
  *
- * @public
  */
 
 export type AgentResponse = {
@@ -110,7 +109,6 @@ export type AgentResponse = {
 /**
  * Represents the response from getDesktopProfileById method.
  *
- * @public
  */
 export type DesktopProfileResponse = {
   /**
@@ -254,12 +252,6 @@ export type ListTeamsResponse = {
   };
 };
 
-/**
- * Represents the response from getListOfAuxCodes method.
- *
- * @public
- */
-
 export type OrgInfo = {
   tenantId: string;
   timezone: string;
@@ -396,6 +388,10 @@ export type URLMappings = {
   acqueonConsoleUrl: string;
 };
 
+/**
+ * Represents the Agent Profile/configuration.
+ *  @public
+ */
 export type Profile = {
   microsoftConfig?: {
     showUserDetailsMS?: boolean;
