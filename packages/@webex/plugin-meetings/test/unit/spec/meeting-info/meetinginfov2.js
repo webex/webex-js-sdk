@@ -18,6 +18,7 @@ import MeetingInfo, {
   MeetingInfoV2CaptchaError,
   MeetingInfoV2AdhocMeetingError,
   MeetingInfoV2PolicyError,
+  MeetingInfoV2WebinarRegistrationError,
 } from '@webex/plugin-meetings/src/meeting-info/meeting-info-v2';
 import MeetingInfoUtil from '@webex/plugin-meetings/src/meeting-info/utilv2';
 import Metrics from '@webex/plugin-meetings/src/metrics';
@@ -881,6 +882,42 @@ describe('plugin-meetings', () => {
               assert.calledWith(
                 Metrics.sendBehavioralMetric,
                 BEHAVIORAL_METRICS.MEETING_INFO_POLICY_ERROR,
+                {code: errorCode}
+              );
+
+            }
+          });
+        }
+      );
+
+      forEach(
+        [
+          {errorCode: 403021},
+          {errorCode: 403022},
+          {errorCode: 403024},
+        ],
+        ({errorCode}) => {
+          it(`should throw a MeetingInfoV2WebinarRegistrationError for error code ${errorCode}`, async () => {
+            const message = 'a message';
+            const meetingInfoData = {meetingInfo: {registrationUrl: 'registrationUrl'}};
+
+            webex.request = sinon.stub().rejects({
+              statusCode: 403,
+              body: {message, code: errorCode, data: {meetingInfo: meetingInfoData}},
+            });
+            try {
+              await meetingInfo.createAdhocSpaceMeeting(conversationUrl, installedOrgID);
+              assert.fail('createAdhocSpaceMeeting should have thrown, but has not done that');
+            } catch (err) {
+              assert.instanceOf(err, MeetingInfoV2WebinarRegistrationError);
+              assert.deepEqual(err.message, `${message}, code=${errorCode}`);
+              assert.equal(err.wbxAppApiCode, errorCode);
+              assert.deepEqual(err.meetingInfo, meetingInfoData);
+
+              assert(Metrics.sendBehavioralMetric.calledOnce);
+              assert.calledWith(
+                Metrics.sendBehavioralMetric,
+                BEHAVIORAL_METRICS.WEBINAR_REGISTRATION_ERROR,
                 {code: errorCode}
               );
 
