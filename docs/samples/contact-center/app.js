@@ -145,7 +145,7 @@ function register() {
         if(idleCodesList.length > 0) setAgentStatusButton.disabled = false;
         
         idleCodesList.forEach((idleCodes) => {
-          if(idleCodes.isSystemCode === false) {
+          if(idleCodes.isSystem === false) {
             const option  = document.createElement('option');
             option.text = idleCodes.name;
             option.value = idleCodes.id;

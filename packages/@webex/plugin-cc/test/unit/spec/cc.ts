@@ -9,7 +9,6 @@ import {
 import ContactCenter from '../../../src/cc';
 import MockWebex from '@webex/test-helper-mock-webex';
 import {StationLoginSuccess} from '../../../src/services/agent/types';
-import {IAgentProfile} from '../../../src/types';
 import {AGENT, WEB_RTC_PREFIX} from '../../../src/services/constants';
 import Services from '../../../src/services';
 import config from '../../../src/config';
@@ -17,6 +16,7 @@ import LoggerProxy from '../../../src/logger-proxy';
 
 // Mock the Worker API
 import '../../../__mocks__/workerMock';
+import {Profile} from '../../../src/services/config/types';
 
 jest.mock('../../../src/logger-proxy', () => ({
   __esModule: true,
@@ -34,14 +34,6 @@ jest.mock('../../../src/services/core/WebSocket/WebSocketManager');
 jest.mock('../../../src/services/core/WebSocket/connection-service');
 jest.mock('../../../src/services/WebCallingService');
 jest.mock('../../../src/services');
-
-// Mock AgentConfig
-const mockAgentConfig = {
-  getAgentProfile: jest.fn(),
-};
-jest.mock('../../../src/features/Agentconfig', () => {
-  return jest.fn().mockImplementation(() => mockAgentConfig);
-});
 
 global.URL.createObjectURL = jest.fn(() => 'blob:http://localhost:3000/12345');
 
@@ -78,6 +70,9 @@ describe('webex.cc', () => {
         reload: jest.fn(),
         stateChange: jest.fn(),
         buddyAgents: jest.fn(),
+      },
+      config: {
+        getAgentConfig: jest.fn(),
       },
     };
     (Services.getInstance as jest.Mock).mockReturnValue(mockServicesInstance);
@@ -124,19 +119,61 @@ describe('webex.cc', () => {
 
   describe('register', () => {
     it('should register successfully and return agent profile', async () => {
-      const mockAgentProfile: IAgentProfile = {
+      const mockAgentProfile: Profile = {
         agentId: 'agent123',
         agentMailId: '',
         agentName: 'John',
         teams: [],
-        agentProfileId: '',
+        agentProfileID: '',
         loginVoiceOptions: [],
         idleCodes: [],
-        wrapUpCodes: [],
+        wrapupCodes: [],
+        defaultDn: '',
+        forceDefaultDn: false,
+        forceDefaultDnForAgent: false,
+        regexUS: '',
+        regexOther: '',
+        dialPlan: {
+          type: '',
+          dialPlanEntity: [],
+        },
+        skillProfileId: '',
+        siteId: '',
+        enterpriseId: '',
+        privacyShieldVisible: '',
+        defaultWrapupCode: '',
+        wrapUpData: {
+          wrapUpProps: {
+            autoWrapup: undefined,
+            autoWrapupInterval: undefined,
+            lastAgentRoute: undefined,
+            wrapUpReasonList: [],
+            wrapUpCodesList: undefined,
+            idleCodesAccess: undefined,
+            interactionId: undefined,
+            allowCancelAutoWrapup: undefined,
+          },
+        },
+        isOutboundEnabledForTenant: false,
+        isOutboundEnabledForAgent: false,
+        isAdhocDialingEnabled: false,
+        isAgentAvailableAfterOutdial: false,
+        isCampaignManagementEnabled: false,
+        outDialEp: '',
+        isEndCallEnabled: false,
+        isEndConsultEnabled: false,
+        agentDbId: '',
+        allowConsultToQueue: false,
+        agentPersonalStatsEnabled: false,
+        preferredSupervisorTeamId: '',
+        isTimeoutDesktopInactivityEnabled: false,
+        webRtcEnabled: false,
+        lostConnectionRecoveryTimeout: 0,
       };
       const connectWebsocketSpy = jest.spyOn(webex.cc, 'connectWebsocket');
-
-      mockAgentConfig.getAgentProfile.mockResolvedValue(mockAgentProfile);
+      const configSpy = jest
+        .spyOn(webex.cc.services.config, 'getAgentConfig')
+        .mockResolvedValue(mockAgentProfile);
       mockWebSocketManager.initWebSocket.mockResolvedValue({
         agentId: 'agent123',
       });
@@ -152,7 +189,7 @@ describe('webex.cc', () => {
           allowMultiLogin: true,
         },
       });
-      expect(mockAgentConfig.getAgentProfile).toHaveBeenCalled();
+      expect(configSpy).toHaveBeenCalled();
       expect(webex.logger.log).toHaveBeenCalledWith(
         'file: cc: agent config is fetched successfully'
       );
@@ -161,19 +198,63 @@ describe('webex.cc', () => {
 
     it('should register successfully when config is undefined and return agent profile', async () => {
       webex.cc.$config = undefined;
-      const mockAgentProfile: IAgentProfile = {
+      const mockAgentProfile: Profile = {
         agentId: 'agent123',
         agentMailId: '',
         agentName: 'John',
         teams: [],
-        agentProfileId: '',
         loginVoiceOptions: [],
         idleCodes: [],
-        wrapUpCodes: [],
+        wrapupCodes: [],
+        defaultDn: '',
+        forceDefaultDn: false,
+        forceDefaultDnForAgent: false,
+        regexUS: '',
+        regexOther: '',
+        agentProfileID: '',
+        dialPlan: {
+          type: '',
+          dialPlanEntity: [],
+        },
+        skillProfileId: '',
+        siteId: '',
+        enterpriseId: '',
+        privacyShieldVisible: '',
+        defaultWrapupCode: '',
+        wrapUpData: {
+          wrapUpProps: {
+            autoWrapup: undefined,
+            autoWrapupInterval: undefined,
+            lastAgentRoute: undefined,
+            wrapUpReasonList: [],
+            wrapUpCodesList: undefined,
+            idleCodesAccess: undefined,
+            interactionId: undefined,
+            allowCancelAutoWrapup: undefined,
+          },
+        },
+        isOutboundEnabledForTenant: false,
+        isOutboundEnabledForAgent: false,
+        isAdhocDialingEnabled: false,
+        isAgentAvailableAfterOutdial: false,
+        isCampaignManagementEnabled: false,
+        outDialEp: '',
+        isEndCallEnabled: false,
+        isEndConsultEnabled: false,
+        agentDbId: '',
+        allowConsultToQueue: false,
+        agentPersonalStatsEnabled: false,
+        preferredSupervisorTeamId: '',
+        isTimeoutDesktopInactivityEnabled: false,
+        webRtcEnabled: false,
+        lostConnectionRecoveryTimeout: 0,
       };
       const connectWebsocketSpy = jest.spyOn(webex.cc, 'connectWebsocket');
 
-      mockAgentConfig.getAgentProfile.mockResolvedValue(mockAgentProfile);
+      const configSpy = jest
+        .spyOn(webex.cc.services.config, 'getAgentConfig')
+        .mockResolvedValue(mockAgentProfile);
+
       mockWebSocketManager.initWebSocket.mockResolvedValue({
         agentId: 'agent123',
       });
@@ -189,7 +270,7 @@ describe('webex.cc', () => {
           allowMultiLogin: true,
         },
       });
-      expect(mockAgentConfig.getAgentProfile).toHaveBeenCalled();
+      expect(configSpy).toHaveBeenCalled();
       expect(webex.logger.log).toHaveBeenCalledWith(
         'file: cc: agent config is fetched successfully'
       );
@@ -469,7 +550,7 @@ describe('webex.cc', () => {
       const data: BuddyAgents = {state: 'Available', mediaType: 'telephony'};
       webex.cc.agentConfig = {
         agentId: 'agentId',
-        agentProfileId: 'test-agent-profile-id',
+        agentProfileID: 'test-agent-profile-id',
       };
 
       const buddyAgentsResponse: BuddyAgentsResponse = {
@@ -513,7 +594,7 @@ describe('webex.cc', () => {
       const data: BuddyAgents = {state: 'Available', mediaType: 'telephony'};
       webex.cc.agentConfig = {
         agentId: 'f520d6b5-28ad-4f2f-b83e-781bb64af617',
-        agentProfileId: 'test-agent-profile-id',
+        agentProfileID: 'test-agent-profile-id',
       };
 
       const error = {

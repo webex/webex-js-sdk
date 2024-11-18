@@ -1,5 +1,6 @@
 import {CallingClientConfig} from '@webex/calling';
 import * as Agent from './services/agent/types';
+import {Profile} from './services/config/types';
 
 type Enum<T extends Record<string, unknown>> = T[keyof T];
 
@@ -70,6 +71,7 @@ export interface WebexSDK {
   canAuthorize: boolean;
   credentials: {
     getUserToken: () => Promise<string>;
+    getOrgId: () => string;
   };
   ready: boolean;
   request: <T>(payload: WebexRequestPayload) => Promise<T>;
@@ -120,7 +122,7 @@ export interface IContactCenter {
   /**
    * This will be public API used for making the CC SDK ready by setting up the cc mercury connection.
    */
-  register(): Promise<IAgentProfile>;
+  register(): Promise<Profile>;
 }
 
 export interface IHttpResponse {
@@ -139,12 +141,6 @@ export const LoginOption = {
 
 // Derive the type using the utility type
 export type LoginOption = Enum<typeof LoginOption>;
-
-export type WelcomeEvent = {
-  agentId: string;
-};
-
-export type WelcomeResponse = WelcomeEvent | Error;
 
 export type SubscribeRequest = {
   force: boolean;
@@ -168,103 +164,12 @@ export type Team = {
    *  Name of the Team.
    */
   name: string;
+
+  /**
+   *  desktopLayoutId of the Team.
+   */
+  desktopLayoutId?: string;
 };
-
-/**
- * Represents AuxCode.
- * @public
- */
-
-export type AuxCode = {
-  /**
-   * ID of the Auxiliary Code.
-   */
-  id: string;
-
-  /**
-   * Indicates whether the auxiliary code is active or not active.
-   */
-  active: boolean;
-
-  /**
-   * Indicates whether this is the default code (true) or not (false).
-   */
-  defaultCode: boolean;
-
-  /**
-   * Indicates whether this is the system default code (true) or not (false).
-   */
-  isSystemCode: boolean;
-
-  /**
-   * A short description indicating the context of the code.
-   */
-  description: string;
-
-  /**
-   * Name for the Auxiliary Code.
-   */
-  name: string;
-
-  /**
-   * Indicates the work type associated with this code..
-   */
-
-  workTypeCode: string;
-};
-
-/**
- * Represents the response from AgentConfig.
- *
- * @public
- */
-export type IAgentProfile = {
-  /**
-   * The id of the agent.
-   */
-
-  agentId: string;
-
-  /**
-   * The name of the agent.
-   */
-  agentName: string;
-
-  /**
-   * Identifier for a Desktop Profile.
-   */
-  agentProfileId: string;
-
-  /**
-   * The email address of the agent.
-   */
-
-  agentMailId: string;
-
-  /**
-   * Represents list of teams of an agent.
-   */
-  teams: Team[];
-
-  /**
-   * Represents the voice options of an agent.
-   */
-
-  loginVoiceOptions: string[];
-
-  /**
-   * Represents the Idle codes list that the agents can select in Agent Desktop.t.
-   */
-
-  idleCodes: AuxCode[];
-
-  /**
-   * Represents the wrap-up codes list that the agents can select when they wrap up a contact.
-   */
-  wrapUpCodes: AuxCode[];
-};
-
-export type EventResult = IAgentProfile;
 
 /**
  * Represents the request to a AgentLogin

@@ -1,7 +1,7 @@
 import {Msg} from '../core/GlobalTypes';
 
 export type LogoutSuccess = Msg<{
-  eventType: 'AgentDesktopMessage';
+  eventType: string;
   agentId: string;
   trackingId: string;
   agentSessionId: string;
@@ -10,11 +10,11 @@ export type LogoutSuccess = Msg<{
   subStatus: string;
   loggedOutBy?: string;
   roles?: string[];
-  type: 'AgentLogoutSuccess';
+  type: string;
 }>;
 
 export type ReloginSuccess = Msg<{
-  eventType: 'AgentDesktopMessage';
+  eventType: string;
   agentId: string;
   trackingId: string;
   auxCodeId: string;
@@ -37,11 +37,11 @@ export type ReloginSuccess = Msg<{
   deviceType?: DeviceType;
   deviceId?: string | null;
   isEmergencyModalAlreadyDisplayed?: boolean;
-  type: 'AgentReloginSuccess';
+  type: string;
 }>;
 
 export type StateChangeSuccess = Msg<{
-  eventType: 'AgentDesktopMessage';
+  eventType: string;
   agentId: string;
   trackingId: string;
   auxCodeId: string;
@@ -51,7 +51,7 @@ export type StateChangeSuccess = Msg<{
   subStatus: 'Available' | 'Idle';
   lastIdleCodeChangeTimestamp: number;
   lastStateChangeTimestamp: number;
-  type: 'AgentStateChangeSuccess';
+  type: string;
   changedBy: string | null;
   changedById: string | null;
   changedByName: string | null;
@@ -59,7 +59,7 @@ export type StateChangeSuccess = Msg<{
 }>;
 
 export type StationLoginSuccess = Msg<{
-  eventType: 'AgentDesktopMessage';
+  eventType: string;
   agentId: string;
   trackingId: string;
   auxCodeId: string;
@@ -77,16 +77,16 @@ export type StationLoginSuccess = Msg<{
   dialNumber?: string;
   roles?: string[];
   supervisorSessionId?: string;
-  type: 'AgentStationLoginSuccess';
+  type: string;
 }>;
 
 export type DNRegistered = Msg<{
-  eventType: 'RoutingMessage';
+  eventType: string;
   agentId: string;
   trackingId: string;
   dn: string;
   orgId: string;
-  type: 'AgentDNRegistered';
+  type: string;
 }>;
 
 export type Logout = {logoutReason?: 'User requested logout' | 'Inactivity Logout'};

@@ -1,13 +1,10 @@
 import {WebexPlugin} from '@webex/webex-core';
-import AgentConfig from './features/Agentconfig';
 import {
   SetStateResponse,
   CCPluginConfig,
   IContactCenter,
   WebexSDK,
   LoginOption,
-  WelcomeEvent,
-  IAgentProfile,
   AgentLogin,
   StationLoginResponse,
   StationLogoutResponse,
@@ -26,12 +23,13 @@ import LoggerProxy from './logger-proxy';
 import {StateChange, Logout} from './services/agent/types';
 import {ConnectionService} from './services/core/WebSocket/connection-service';
 import {getErrorDetails} from './services/core/Utils';
+import {Profile, WelcomeEvent} from './services/config/types';
 
 export default class ContactCenter extends WebexPlugin implements IContactCenter {
   namespace = 'cc';
   private $config: CCPluginConfig;
   private $webex: WebexSDK;
-  private agentConfig: IAgentProfile;
+  private agentConfig: Profile;
   private httpRequest: HttpRequest;
   private webSocketManager: WebSocketManager;
   private webCallingService: WebCallingService;
@@ -62,7 +60,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         this.getConnectionConfig()
       );
 
-      this.services = Services.getInstance(this.webSocketManager);
+      this.services = Services.getInstance({
+        webSocketManager: this.webSocketManager,
+        webex: this.$webex,
+      });
 
       this.webCallingService = new WebCallingService(this.$webex, this.$config.callingClientConfig);
 
@@ -73,7 +74,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   /**
    * This is used for making the CC SDK ready by setting up the cc mercury connection.
    */
-  public async register(): Promise<IAgentProfile> {
+  public async register(): Promise<Profile> {
     try {
       return await this.connectWebsocket();
     } catch (error) {
@@ -94,7 +95,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   public async getBuddyAgents(data: BuddyAgents): Promise<BuddyAgentsResponse> {
     try {
       return await this.services.agent.buddyAgents({
-        data: {agentProfileId: this.agentConfig.agentProfileId, ...data},
+        data: {agentProfileId: this.agentConfig.agentProfileID, ...data},
       });
     } catch (error) {
       throw getErrorDetails(error, 'getBuddyAgents');
@@ -115,8 +116,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         })
         .then(async (data: WelcomeEvent) => {
           const agentId = data.agentId;
-          const agentConfig = new AgentConfig(agentId, this.$webex, this.httpRequest);
-          this.agentConfig = await agentConfig.getAgentProfile();
+          this.agentConfig = await this.services.config.getAgentConfig(agentId);
           this.$webex.logger.log(`file: ${CC_FILE}: agent config is fetched successfully`);
 
           return this.agentConfig;
