@@ -8,7 +8,7 @@ import CaptchaError from './common/errors/captcha-error';
 import IntentToJoinError from './common/errors/intent-to-join';
 import PasswordError from './common/errors/password-error';
 import PermissionError from './common/errors/permission';
-import JoinStatusError from './common/errors/join-status-error';
+import WebinarRegistrationError from './common/errors/webinar-registration-error';
 import {
   ReclaimHostEmptyWrongKeyError,
   ReclaimHostIsHostAlreadyError,
@@ -69,7 +69,7 @@ export {
   ReclaimHostEmptyWrongKeyError,
   Meeting,
   MeetingInfoUtil,
-  JoinStatusError,
+  WebinarRegistrationError,
 };
 
 export {RemoteMedia} from './multistream/remoteMedia';

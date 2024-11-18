@@ -91,7 +91,7 @@ import ParameterError from '../../../../src/common/errors/parameter';
 import PasswordError from '../../../../src/common/errors/password-error';
 import CaptchaError from '../../../../src/common/errors/captcha-error';
 import PermissionError   from '../../../../src/common/errors/permission';
-import JoinStatusError   from '../../../../src/common/errors/join-status-error';
+import WebinarRegistrationError   from '../../../../src/common/errors/webinar-registration-error';
 import IntentToJoinError from '../../../../src/common/errors/intent-to-join';
 import testUtils from '../../../utils/testUtils';
 import {
@@ -6266,7 +6266,7 @@ describe('plugin-meetings', () => {
               .throws(new MeetingInfoV2WebinarRegistrationError(403021, FAKE_MEETING_INFO, 'a message')),
           };
 
-          await assert.isRejected(meeting.fetchMeetingInfo({sendCAevents: true}), JoinStatusError);
+          await assert.isRejected(meeting.fetchMeetingInfo({sendCAevents: true}), WebinarRegistrationError);
 
           assert.deepEqual(meeting.meetingInfo, FAKE_MEETING_INFO);
           assert.equal(meeting.meetingInfoFailureCode, 403021);
