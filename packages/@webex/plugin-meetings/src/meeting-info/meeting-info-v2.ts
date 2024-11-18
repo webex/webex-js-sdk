@@ -142,7 +142,7 @@ export class MeetingInfoV2WebinarRegistrationError extends Error {
    */
   constructor(wbxAppApiErrorCode?: number, meetingInfo?: object, message?: string) {
     super(`${message}, code=${wbxAppApiErrorCode}`);
-    this.name = 'MeetingInfoV2AdhocMeetingError';
+    this.name = 'MeetingInfoV2WebinarRegistrationError';
     this.sdkMessage = message;
     this.stack = new Error().stack;
     this.wbxAppApiCode = wbxAppApiErrorCode;

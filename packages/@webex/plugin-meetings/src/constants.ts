@@ -524,6 +524,11 @@ export const ERROR_DICTIONARY = {
       'Reconnection was not started, because there is one already in progress or reconnections are disabled in config.',
     CODE: 15,
   },
+  JoinStatusError: {
+    NAME: 'JoinStatusError',
+    MESSAGE: 'There was an error back from call meetinginfo api.',
+    CODE: 16,
+  },
 };
 
 export const FLOOR_ACTION = {
