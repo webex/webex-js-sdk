@@ -4,9 +4,9 @@ import {ERROR_DICTIONARY} from '../../constants';
  * Extended Error object for join flow call meetinginfo api error
  */
 export default class JoinStatusError extends Error {
-  code: any;
+  code: string;
   error: any;
-  sdkMessage: any;
+  sdkMessage: string;
 
   /**
    * @constructor
