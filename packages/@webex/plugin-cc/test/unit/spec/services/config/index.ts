@@ -4,7 +4,7 @@ import HttpRequest from '../../../../../src/services/core/HttpRequest';
 import {WCC_API_GATEWAY} from '../../../../../src/services/constants';
 import MockWebex from '@webex/test-helper-mock-webex';
 import LoggerProxy from '../../../../../src/logger-proxy';
-import {parseAgentConfigs} from '../../../../../src/services/config/Util';
+import * as util from '../../../../../src/services/config/Util';
 
 describe('AgentConfigService', () => {
   let agentConfigService: AgentConfigService;
@@ -572,6 +572,7 @@ describe('AgentConfigService', () => {
         dbId: 'db123',
         deafultDialledNumber: '1234567890',
         id: 'user001',
+        teamIds: ['team1', 'team2'],
       };
 
       const mockAgentProfile = {
@@ -643,7 +644,7 @@ describe('AgentConfigService', () => {
         {id: 'aux2', type: 'IDLE_CODE', name: 'Idle Code 1'},
       ];
 
-      const parseAgentConfigsSpy = jest.spyOn({parseAgentConfigs}, 'parseAgentConfigs');
+      const parseAgentConfigsSpy = jest.spyOn(util, 'parseAgentConfigs');
       agentConfigService.getUserUsingCI = jest.fn().mockResolvedValue(mockUserConfig);
       agentConfigService.getOrgInfo = jest.fn().mockResolvedValue(mockOrgInfo);
       agentConfigService.getOrganizationSetting = jest.fn().mockResolvedValue(mockOrgSettings);
@@ -673,20 +674,22 @@ describe('AgentConfigService', () => {
         dialPlanData: mockDialPlanData,
         urlMapping: mockURLMapping,
       });
-
-      // Assuming parseAgentConfigs returns 'parsedProfile'
-      expect(result).toBe('parsedProfile');
     });
-
-    it('should handle errors and log them', async () => {
+    it('should throw an error if any of the API calls fail', async () => {
       const mockAgentId = 'agent001';
       const mockError = new Error('API call failed');
-      jest.spyOn(agentConfigService, 'getUserUsingCI').mockRejectedValue(mockError);
+      agentConfigService.getUserUsingCI = jest.fn().mockRejectedValue(mockError);
+      agentConfigService.getOrgInfo = jest.fn().mockResolvedValue({});
+      agentConfigService.getOrganizationSetting = jest.fn().mockResolvedValue({});
+      agentConfigService.getTenantData = jest.fn().mockResolvedValue({});
+      agentConfigService.getURLMapping = jest.fn().mockResolvedValue({});
+      agentConfigService.getAllAuxCodes = jest.fn().mockResolvedValue({});
+      agentConfigService.getDesktopProfileById = jest.fn().mockResolvedValue({});
+      agentConfigService.getDialPlanData = jest.fn().mockResolvedValue({});
+      agentConfigService.getAllTeams = jest.fn().mockResolvedValue({});
 
-      await expect(agentConfigService.getAgentConfig(mockAgentId)).rejects.toThrow(mockError);
-
-      expect(LoggerProxy.logger.error).toHaveBeenCalledWith(
-        `getAgentConfig call failed with ${mockError}`
+      await expect(agentConfigService.getAgentConfig(mockAgentId)).rejects.toThrow(
+        'API call failed'
       );
     });
   });

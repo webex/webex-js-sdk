@@ -11,7 +11,6 @@ import {
   OrgSettings,
   Profile,
   Team,
-  TeamList,
   TenantData,
   URLMapping,
   WRAP_UP_CODE,
@@ -82,22 +81,6 @@ const getFilterAuxCodes = (
   return filteredAuxCodes;
 };
 
-export const getFilteredTeams = (teamData: Array<TeamList>, userId: string): Array<Team> => {
-  const filteredTeams: Array<Team> = [];
-  teamData.forEach((team) => {
-    if (team.userIds && team.userIds.includes(userId)) {
-      const teamInfo = {
-        teamId: team.dbId ?? team.id,
-        teamName: team.name,
-        desktopLayoutId: team.desktopLayoutId,
-      };
-      filteredTeams.push(teamInfo);
-    }
-  });
-
-  return filteredTeams;
-};
-
 function getPreferredSupervisorTeamId(userData: AgentResponse) {
   return userData.preferredSupervisorTeamId ? userData.preferredSupervisorTeamId : '';
 }
@@ -105,6 +88,7 @@ function getPreferredSupervisorTeamId(userData: AgentResponse) {
 function getDefaultWrapUpCode(wrapUpReasonList: Entity[]) {
   return wrapUpReasonList?.find((c: Entity) => c.isDefault);
 }
+
 export function parseAgentConfigs(profileData: {
   userData: AgentResponse;
   teamData: Team[];
