@@ -811,6 +811,7 @@ export default class LocusInfo extends EventsScope {
           hasWebcastChanged,
           hasMeetingFullChanged,
           hasPracticeSessionEnabledChanged,
+          hasStageViewChanged,
         },
         current,
       } = ControlsUtils.getControls(this.controls, controls);
@@ -1035,6 +1036,14 @@ export default class LocusInfo extends EventsScope {
           {file: 'locus-info', function: 'updateControls'},
           LOCUSINFO.EVENTS.CONTROLS_PRACTICE_SESSION_STATUS_UPDATED,
           {state: current.practiceSession}
+        );
+      }
+
+      if (hasStageViewChanged) {
+        this.emitScoped(
+          {file: 'locus-info', function: 'updateControls'},
+          LOCUSINFO.EVENTS.CONTROLS_STAGE_VIEW_UPDATED,
+          {state: current.videoLayout}
         );
       }
 

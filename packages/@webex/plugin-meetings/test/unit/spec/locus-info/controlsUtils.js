@@ -132,6 +132,17 @@ describe('plugin-meetings', () => {
         assert.equal(parsedControls.practiceSession.enabled, newControls.practiceSession.enabled);
       });
 
+      it('should parse the videoLayout control', () => {
+        const newControls = {videoLayout: {overrideDefault: true, lockAttendeeViewOnStageOnly:false, stageParameters: {}}};
+
+        const parsedControls = ControlsUtils.parse(newControls);
+
+        assert.equal(parsedControls.videoLayout.overrideDefault, newControls.videoLayout.overrideDefault);
+        assert.equal(parsedControls.videoLayout.lockAttendeeViewOnStageOnly, newControls.videoLayout.lockAttendeeViewOnStageOnly);
+        assert.equal(parsedControls.videoLayout.stageParameters, newControls.videoLayout.stageParameters);
+
+      });
+
       describe('videoEnabled', () => {
         it('returns expected', () => {
           const result = ControlsUtils.parse({video: {enabled: true}});

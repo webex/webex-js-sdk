@@ -209,6 +209,8 @@ ControlsUtils.getControls = (oldControls: any, newControls: any) => {
         previous?.practiceSession?.enabled,
         current?.practiceSession?.enabled
       ),
+
+      hasStageViewChanged: !isEqual(previous?.videoLayout, current?.videoLayout),
     },
   };
 };

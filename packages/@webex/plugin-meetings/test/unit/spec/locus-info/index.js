@@ -101,6 +101,7 @@ describe('plugin-meetings', () => {
           },
           entryExitTone: {enabled: true, mode: 'foo'},
           video: {enabled: true},
+          videoLayout: {overrideDefault: true, lockAttendeeViewOnStageOnly:false, stageParameters: {}},
           webcastControl: {streaming: false},
           practiceSession: {enabled: true},
         };
@@ -204,6 +205,19 @@ describe('plugin-meetings', () => {
           {file: 'locus-info', function: 'updateControls'},
           LOCUSINFO.EVENTS.CONTROLS_VIDEO_CHANGED,
           {state: newControls.video}
+        );
+      });
+
+      it('should trigger the CONTROLS_STAGE_VIEW_UPDATED event when necessary', () => {
+        locusInfo.controls = {};
+        locusInfo.emitScoped = sinon.stub();
+        locusInfo.updateControls(newControls);
+
+        assert.calledWith(
+          locusInfo.emitScoped,
+          {file: 'locus-info', function: 'updateControls'},
+          LOCUSINFO.EVENTS.CONTROLS_STAGE_VIEW_UPDATED,
+          {state: newControls.videoLayout}
         );
       });
 
