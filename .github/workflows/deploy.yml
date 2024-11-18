@@ -209,6 +209,7 @@ jobs:
     name: Publish - Documentation
     needs: [publish-npm,generate-package-matrix]
     runs-on: ubuntu-latest
+    if: github.ref != 'refs/heads/wxcc'
 
     steps:
       - name: Documentation Deploy Steps
