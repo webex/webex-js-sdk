@@ -10,6 +10,12 @@ const getCommonErrorDetails = (errObj: WebexRequestPayload) => {
   };
 };
 
+export const getErrorReason = (error: any): string => {
+  const failure = error.details as Failure;
+
+  return failure?.data?.reason ?? 'Unknown error';
+};
+
 export const getErrorDetails = (error: any, methodName: string) => {
   const failure = error.details as Failure;
   LoggerProxy.logger.error(`${methodName} failed with trackingId: ${failure?.trackingId}`);

@@ -565,5 +565,31 @@ describe('AqmReqs', () => {
       const result = await promise;
       expect(result).toEqual(eventData);
     });
+
+    it('should handle AgentReloginSuccess event and emit agentWssDisconnect', () => {
+      const stateChangeData = {
+        state: 'Available',
+        auxCodeId: 'some-aux-code-id',
+        lastStateChangeReason: 'agent-wss-disconnect',
+        agentId: 'some-agent-id',
+      };
+  
+      const eventBusEmitSpy = jest.spyOn(aqm['eventBus'], 'emit');
+  
+      webSocketManagerInstance.dispatchEvent(
+        new CustomEvent('message', {
+          detail: JSON.stringify({
+            type: 'AgentReloginSuccess',
+            data: {
+              lastStateChangeReason: 'agent-wss-disconnect',
+              auxCodeId: 'some-aux-code-id',
+              agentId: 'some-agent-id',
+            },
+          }),
+        })
+      );
+  
+      expect(eventBusEmitSpy).toHaveBeenCalledWith('agentWssDisconnect', stateChangeData);
+    });
   });
 });

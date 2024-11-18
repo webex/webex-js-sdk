@@ -1,6 +1,5 @@
 import {ConnectionService} from '../../../../../../src/services/core/WebSocket/connection-service';
 import {WebSocketManager} from '../../../../../../src/services/core/WebSocket/WebSocketManager';
-import {SubscribeRequest} from '../../../../../../src/types';
 import LoggerProxy from '../../../../../../src/logger-proxy';
 import {CONNECTIVITY_CHECK_INTERVAL} from '../../../../../../src/services/core/constants';
 
@@ -32,12 +31,7 @@ global.CustomEvent = MockCustomEvent as any;
 describe('ConnectionService', () => {
   let connectionService: ConnectionService;
   let mockWebSocketManager: jest.Mocked<WebSocketManager>;
-  const mockSubscribeRequest: SubscribeRequest = {
-    force: true,
-    isKeepAliveEnabled: false,
-    clientType: 'WebexCCSDK',
-    allowMultiLogin: true,
-  };
+  let mockOnReRegister: jest.Mock;
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -51,7 +45,12 @@ describe('ConnectionService', () => {
     // Mock the addEventListener method
     mockWebSocketManager.addEventListener = jest.fn();
 
-    connectionService = new ConnectionService(mockWebSocketManager, mockSubscribeRequest);
+    mockOnReRegister = jest.fn().mockResolvedValue({});
+
+    connectionService = new ConnectionService({
+      webSocketManager: mockWebSocketManager,
+      onReRegister: mockOnReRegister,
+    });
   });
 
   afterEach(() => {
@@ -110,7 +109,7 @@ describe('ConnectionService', () => {
     expect(LoggerProxy.logger.info).toHaveBeenCalledWith(
       'event=socketConnectionRetry | Trying to reconnect to notifs socket'
     );
-    expect(mockWebSocketManager.initWebSocket).toHaveBeenCalledWith({body: mockSubscribeRequest});
+    expect(mockOnReRegister).toHaveBeenCalled();
   });
 
   it('should handle ping message without keepalive and not update connection data', () => {
@@ -152,7 +151,7 @@ describe('ConnectionService', () => {
       expect(LoggerProxy.logger.info).toHaveBeenCalledWith(
         'event=socketConnectionRetry | Trying to reconnect to notifs socket'
       );
-      expect(mockWebSocketManager.initWebSocket).toHaveBeenCalledWith({body: mockSubscribeRequest});
+      expect(mockOnReRegister).toHaveBeenCalled();
     });
 
     it('should handle onSocketClose and start reconnect interval', () => {

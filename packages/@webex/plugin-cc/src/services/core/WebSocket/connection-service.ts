@@ -1,22 +1,11 @@
 import {WebSocketManager} from './WebSocketManager';
-import {SubscribeRequest} from '../../../types';
 import LoggerProxy from '../../../logger-proxy';
+import {ConnectionServiceOptions, ConnectionLostDetails, ConnectionProp} from './types';
 import {
   LOST_CONNECTION_RECOVERY_TIMEOUT,
   WS_DISCONNECT_ALLOWED,
   CONNECTIVITY_CHECK_INTERVAL,
 } from '../constants';
-
-type ConnectionLostDetails = {
-  isConnectionLost: boolean;
-  isRestoreFailed: boolean;
-  isSocketReconnected: boolean;
-  isKeepAlive: boolean;
-};
-
-type ConnectionProp = {
-  lostConnectionRecoveryTimeout: number;
-};
 
 export class ConnectionService extends EventTarget {
   private connectionProp: ConnectionProp = {
@@ -32,12 +21,12 @@ export class ConnectionService extends EventTarget {
   private isKeepAlive: boolean;
   private reconnectInterval: ReturnType<typeof setInterval>;
   private webSocketManager: WebSocketManager;
-  private subscribeRequest: SubscribeRequest;
+  private onReRegister: () => Promise<void>;
 
-  constructor(webSocketManager: WebSocketManager, subscribeRequest: SubscribeRequest) {
+  constructor(options: ConnectionServiceOptions) {
     super();
-    this.webSocketManager = webSocketManager;
-    this.subscribeRequest = subscribeRequest;
+    this.webSocketManager = options.webSocketManager;
+    this.onReRegister = options.onReRegister;
 
     this.isConnectionLost = false;
     this.isRestoreFailed = false;
@@ -126,7 +115,7 @@ export class ConnectionService extends EventTarget {
     LoggerProxy.logger.info(`event=socketConnectionRetry | Trying to reconnect to notifs socket`);
     const onlineStatus = navigator.onLine;
     if (onlineStatus) {
-      await this.webSocketManager.initWebSocket({body: this.subscribeRequest});
+      await this.onReRegister();
       await this.clearTimerOnRestoreFailed();
       this.isSocketReconnected = true;
     } else {

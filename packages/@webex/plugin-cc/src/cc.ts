@@ -25,7 +25,8 @@ import Services from './services';
 import LoggerProxy from './logger-proxy';
 import {StateChange, Logout} from './services/agent/types';
 import {ConnectionService} from './services/core/WebSocket/connection-service';
-import {getErrorDetails} from './services/core/Utils';
+import {getErrorDetails, getErrorReason} from './services/core/Utils';
+import {EventBus} from './services/core/EventBus';
 
 export default class ContactCenter extends WebexPlugin implements IContactCenter {
   namespace = 'cc';
@@ -37,6 +38,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   private webCallingService: WebCallingService;
   private connectionService: ConnectionService;
   private services: Services;
+  private eventBus: EventBus;
 
   constructor(...args) {
     super(...args);
@@ -57,14 +59,17 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
       this.webSocketManager = new WebSocketManager({webex: this.$webex});
 
-      this.connectionService = new ConnectionService(
-        this.webSocketManager,
-        this.getConnectionConfig()
-      );
+      this.connectionService = new ConnectionService({
+        webSocketManager: this.webSocketManager,
+        onReRegister: this.register.bind(this),
+      });
 
       this.services = Services.getInstance(this.webSocketManager);
 
       this.webCallingService = new WebCallingService(this.$webex, this.$config.callingClientConfig);
+
+      this.eventBus = EventBus.getInstance();
+      this.eventBus.on('agentWssDisconnect', this.handleAgentWssDisconnect.bind(this));
 
       LoggerProxy.initialize(this.$webex.logger);
     });
@@ -118,6 +123,9 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           const agentConfig = new AgentConfig(agentId, this.$webex, this.httpRequest);
           this.agentConfig = await agentConfig.getAgentProfile();
           this.$webex.logger.log(`file: ${CC_FILE}: agent config is fetched successfully`);
+          // TODO: We need to emit an event when it is successful
+          /* eslint-disable consistent-return */
+          await this.defaultReLogin();
 
           return this.agentConfig;
         })
@@ -244,5 +252,36 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       clientType: this.$config?.clientType ?? 'WebexCCSDK',
       allowMultiLogin: this.$config?.allowMultiLogin ?? true,
     };
+  }
+
+  /**
+   * Called when we finish registration to silently handle the errors
+   */
+  private async defaultReLogin(): Promise<StationReLoginResponse | void> {
+    try {
+      const reLoginResponse = await this.services.agent.reload();
+
+      return reLoginResponse;
+    } catch (error) {
+      if (getErrorReason(error) === 'AGENT_NOT_FOUND') {
+        this.$webex.logger.info('Agent not found during re-login, handling silently');
+
+        return;
+      }
+      throw getErrorDetails(error, 'defaultReLogin');
+    }
+  }
+
+  /**
+   * Handle the custom event and call setAgentState for disconnect event
+   */
+  private async handleAgentWssDisconnect(event: CustomEvent) {
+    try {
+      const stateChangeData: StateChange = event.detail;
+      await this.setAgentState(stateChangeData);
+      this.$webex.logger.info('Agent state changed successfully');
+    } catch (error) {
+      this.$webex.logger.error(`Error changing agent state: ${error}`);
+    }
   }
 }
