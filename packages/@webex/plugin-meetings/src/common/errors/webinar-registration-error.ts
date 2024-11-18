@@ -4,7 +4,7 @@ import {ERROR_DICTIONARY} from '../../constants';
  * Error occurred while the webinar required registration
  */
 export default class WebinarRegistrationError extends Error {
-  code: string;
+  code: number;
   error: any;
   sdkMessage: string;
 
