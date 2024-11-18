@@ -6062,6 +6062,8 @@ export default class Meeting extends StatelessWebexPlugin {
           // so reset the timer as it's not needed anymore, we want to reconnect immediately
           this.reconnectionManager.resetReconnectionTimer();
 
+          this.cleanUpBeforeReconnection();
+
           this.reconnect({networkDisconnect: true});
 
           this.uploadLogs({
@@ -6936,6 +6938,16 @@ export default class Meeting extends StatelessWebexPlugin {
       this.sendSlotManager.reset();
 
       this.mediaProperties.unsetPeerConnection();
+    }
+  }
+
+  private async cleanUpBeforeReconnection(): Promise<void> {
+    // when media fails, we want to upload a webrtc dump to see whats going on
+    // this function is async, but returns once the stats have been gathered
+    await this.forceSendStatsReport({callFrom: 'cleanUpBeforeReconnection'});
+
+    if (this.statsAnalyzer) {
+      await this.statsAnalyzer.stopAnalyzer();
     }
   }
 

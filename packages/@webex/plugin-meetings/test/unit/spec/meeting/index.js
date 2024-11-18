@@ -375,7 +375,10 @@ describe('plugin-meetings', () => {
             }
           );
           assert.equal(newMeeting.correlationId, newMeeting.id);
-          assert.deepEqual(newMeeting.callStateForMetrics, {correlationId: newMeeting.id, sessionCorrelationId: ''});
+          assert.deepEqual(newMeeting.callStateForMetrics, {
+            correlationId: newMeeting.id,
+            sessionCorrelationId: '',
+          });
         });
 
         it('correlationId can be provided in callStateForMetrics', () => {
@@ -3793,12 +3796,12 @@ describe('plugin-meetings', () => {
               id: 'fake locus from mocked join request',
               locusUrl: 'fake locus url',
               mediaId: 'fake media id',
-            })
+            });
             sinon.stub(meeting.meetingRequest, 'joinMeeting').resolves({
               headers: {
                 trackingid: 'fake tracking id',
-              }
-            })
+              },
+            });
             await meeting.join({enableMultistream: isMultistream});
           });
 
@@ -3991,7 +3994,10 @@ describe('plugin-meetings', () => {
                         assert.notCalled(
                           meeting.sendSlotManager.getSlot(MediaType.AudioMain).publishStream
                         );
-                        assert.throws(meeting.publishStreams(localStreams), `Attempted to publish microphone stream with ended readyState, correlationId=${meeting.correlationId}`);
+                        assert.throws(
+                          meeting.publishStreams(localStreams),
+                          `Attempted to publish microphone stream with ended readyState, correlationId=${meeting.correlationId}`
+                        );
                       } else {
                         assert.calledOnceWithExactly(
                           meeting.sendSlotManager.getSlot(MediaType.AudioMain).publishStream,
@@ -4004,7 +4010,10 @@ describe('plugin-meetings', () => {
                         assert.notCalled(
                           meeting.sendSlotManager.getSlot(MediaType.VideoMain).publishStream
                         );
-                        assert.throws(meeting.publishStreams(localStreams), `Attempted to publish camera stream with ended readyState, correlationId=${meeting.correlationId}`);
+                        assert.throws(
+                          meeting.publishStreams(localStreams),
+                          `Attempted to publish camera stream with ended readyState, correlationId=${meeting.correlationId}`
+                        );
                       } else {
                         assert.calledOnceWithExactly(
                           meeting.sendSlotManager.getSlot(MediaType.VideoMain).publishStream,
@@ -4017,7 +4026,10 @@ describe('plugin-meetings', () => {
                         assert.notCalled(
                           meeting.sendSlotManager.getSlot(MediaType.AudioSlides).publishStream
                         );
-                        assert.throws(meeting.publishStreams(localStreams), `Attempted to publish screenShare audio stream with ended readyState, correlationId=${meeting.correlationId}`);
+                        assert.throws(
+                          meeting.publishStreams(localStreams),
+                          `Attempted to publish screenShare audio stream with ended readyState, correlationId=${meeting.correlationId}`
+                        );
                       } else {
                         assert.calledOnceWithExactly(
                           meeting.sendSlotManager.getSlot(MediaType.AudioSlides).publishStream,
@@ -4030,7 +4042,10 @@ describe('plugin-meetings', () => {
                         assert.notCalled(
                           meeting.sendSlotManager.getSlot(MediaType.VideoSlides).publishStream
                         );
-                        assert.throws(meeting.publishStreams(localStreams), `Attempted to publish screenShare video stream with ended readyState, correlationId=${meeting.correlationId}`);
+                        assert.throws(
+                          meeting.publishStreams(localStreams),
+                          `Attempted to publish screenShare video stream with ended readyState, correlationId=${meeting.correlationId}`
+                        );
                       } else {
                         assert.calledOnceWithExactly(
                           meeting.sendSlotManager.getSlot(MediaType.VideoSlides).publishStream,
@@ -4325,14 +4340,14 @@ describe('plugin-meetings', () => {
             const handleDeviceLoggingSpy = sinon.spy(Meeting, 'handleDeviceLogging');
             await meeting.addMedia({audioEnabled: false});
             //calling handleDeviceLogging with audioEnaled as true adn videoEnabled as false
-            assert.calledWith(handleDeviceLoggingSpy,false,true);
+            assert.calledWith(handleDeviceLoggingSpy, false, true);
           });
 
           it('addMedia() works correctly when video is disabled with no streams to publish', async () => {
             const handleDeviceLoggingSpy = sinon.spy(Meeting, 'handleDeviceLogging');
             await meeting.addMedia({videoEnabled: false});
             //calling handleDeviceLogging audioEnabled as true videoEnabled as false
-            assert.calledWith(handleDeviceLoggingSpy,true,false);
+            assert.calledWith(handleDeviceLoggingSpy, true, false);
           });
 
           it('addMedia() works correctly when video is disabled with no streams to publish', async () => {
@@ -4401,12 +4416,11 @@ describe('plugin-meetings', () => {
             assert.calledTwice(locusMediaRequestStub);
           });
 
-
           it('addMedia() works correctly when both shareAudio and shareVideo is disabled with no streams publish', async () => {
             const handleDeviceLoggingSpy = sinon.spy(Meeting, 'handleDeviceLogging');
             await meeting.addMedia({shareAudioEnabled: false, shareVideoEnabled: false});
             //calling handleDeviceLogging with audioEnabled true and videoEnabled as true
-            assert.calledWith(handleDeviceLoggingSpy,true,true);
+            assert.calledWith(handleDeviceLoggingSpy, true, true);
           });
 
           describe('publishStreams()/unpublishStreams() calls', () => {
@@ -6967,7 +6981,10 @@ describe('plugin-meetings', () => {
           assert.deepEqual(meeting.callStateForMetrics, {correlationId, sessionCorrelationId: ''});
           meeting.setCorrelationId(uuid1);
           assert.equal(meeting.correlationId, uuid1);
-          assert.deepEqual(meeting.callStateForMetrics, {correlationId: uuid1, sessionCorrelationId: ''});
+          assert.deepEqual(meeting.callStateForMetrics, {
+            correlationId: uuid1,
+            sessionCorrelationId: '',
+          });
         });
       });
 
@@ -7639,11 +7656,11 @@ describe('plugin-meetings', () => {
           id: 'stream',
           getTracks: () => [{id: 'track', addEventListener: sinon.stub()}],
         };
-        const simulateConnectionStateChange = (newState) => {
+        const simulateConnectionStateChange = async (newState) => {
           meeting.mediaProperties.webrtcMediaConnection.getConnectionState = sinon
             .stub()
             .returns(newState);
-          eventListeners[MediaConnectionEventNames.PEER_CONNECTION_STATE_CHANGED]();
+          await eventListeners[MediaConnectionEventNames.PEER_CONNECTION_STATE_CHANGED]();
         };
 
         beforeEach(() => {
@@ -7899,7 +7916,7 @@ describe('plugin-meetings', () => {
             meeting.reconnectionManager = new ReconnectionManager(meeting);
             meeting.reconnectionManager.iceReconnected = sinon.stub().returns(undefined);
             meeting.setNetworkStatus = sinon.stub().returns(undefined);
-            meeting.statsAnalyzer = {startAnalyzer: sinon.stub()};
+            meeting.statsAnalyzer = {startAnalyzer: sinon.stub(), stopAnalyzer: sinon.stub()};
             meeting.mediaProperties.webrtcMediaConnection = {
               // mock the on() method and store all the listeners
               on: sinon.stub().callsFake((event, listener) => {
@@ -7974,10 +7991,10 @@ describe('plugin-meetings', () => {
         });
 
         describe('CONNECTION_STATE_CHANGED event when state = "Failed"', () => {
-          const mockFailedEvent = () => {
+          const mockFailedEvent = async () => {
             meeting.setupMediaConnectionListeners();
 
-            simulateConnectionStateChange(ConnectionState.Failed);
+            await simulateConnectionStateChange(ConnectionState.Failed);
           };
 
           const checkBehavioralMetricSent = (hasMediaConnectionConnectedAtLeastOnce = false) => {
@@ -8006,6 +8023,15 @@ describe('plugin-meetings', () => {
 
             assert.notCalled(webex.internal.newMetrics.submitClientEvent);
             checkBehavioralMetricSent(true);
+          });
+
+          it('stop stats analyzer during reconnection ', async () => {
+            meeting.hasMediaConnectionConnectedAtLeastOnce = true;
+            meeting.statsAnalyzer.stopAnalyzer = sinon.stub().resolves();
+
+            await mockFailedEvent();
+
+            assert.calledOnce(meeting.statsAnalyzer.stopAnalyzer);
           });
         });
 
