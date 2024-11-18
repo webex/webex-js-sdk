@@ -90,13 +90,15 @@ import WebExMeetingsErrors from '../../../../src/common/errors/webex-meetings-er
 import ParameterError from '../../../../src/common/errors/parameter';
 import PasswordError from '../../../../src/common/errors/password-error';
 import CaptchaError from '../../../../src/common/errors/captcha-error';
-import PermissionError from '../../../../src/common/errors/permission';
+import PermissionError   from '../../../../src/common/errors/permission';
+import WebinarRegistrationError   from '../../../../src/common/errors/webinar-registration-error';
 import IntentToJoinError from '../../../../src/common/errors/intent-to-join';
 import testUtils from '../../../utils/testUtils';
 import {
   MeetingInfoV2CaptchaError,
   MeetingInfoV2PasswordError,
   MeetingInfoV2PolicyError,
+  MeetingInfoV2WebinarRegistrationError,
 } from '../../../../src/meeting-info/meeting-info-v2';
 import {
   DTLS_HANDSHAKE_FAILED_CLIENT_CODE,
@@ -3991,6 +3993,7 @@ describe('plugin-meetings', () => {
                         assert.notCalled(
                           meeting.sendSlotManager.getSlot(MediaType.AudioMain).publishStream
                         );
+                        assert.throws(meeting.publishStreams(localStreams), `Attempted to publish microphone stream with ended readyState, correlationId=${meeting.correlationId}`);
                       } else {
                         assert.calledOnceWithExactly(
                           meeting.sendSlotManager.getSlot(MediaType.AudioMain).publishStream,
@@ -4003,6 +4006,7 @@ describe('plugin-meetings', () => {
                         assert.notCalled(
                           meeting.sendSlotManager.getSlot(MediaType.VideoMain).publishStream
                         );
+                        assert.throws(meeting.publishStreams(localStreams), `Attempted to publish camera stream with ended readyState, correlationId=${meeting.correlationId}`);
                       } else {
                         assert.calledOnceWithExactly(
                           meeting.sendSlotManager.getSlot(MediaType.VideoMain).publishStream,
@@ -4015,6 +4019,7 @@ describe('plugin-meetings', () => {
                         assert.notCalled(
                           meeting.sendSlotManager.getSlot(MediaType.AudioSlides).publishStream
                         );
+                        assert.throws(meeting.publishStreams(localStreams), `Attempted to publish screenShare audio stream with ended readyState, correlationId=${meeting.correlationId}`);
                       } else {
                         assert.calledOnceWithExactly(
                           meeting.sendSlotManager.getSlot(MediaType.AudioSlides).publishStream,
@@ -4027,6 +4032,7 @@ describe('plugin-meetings', () => {
                         assert.notCalled(
                           meeting.sendSlotManager.getSlot(MediaType.VideoSlides).publishStream
                         );
+                        assert.throws(meeting.publishStreams(localStreams), `Attempted to publish screenShare video stream with ended readyState, correlationId=${meeting.correlationId}`);
                       } else {
                         assert.calledOnceWithExactly(
                           meeting.sendSlotManager.getSlot(MediaType.VideoSlides).publishStream,
@@ -6249,6 +6255,22 @@ describe('plugin-meetings', () => {
           });
 
           assert.equal(meeting.fetchMeetingInfoTimeoutId, undefined);
+        });
+
+        it('handles meetingInfoProvider webinar need registration error', async () => {
+          meeting.destination = FAKE_DESTINATION;
+          meeting.destinationType = FAKE_TYPE;
+          meeting.attrs.meetingInfoProvider = {
+            fetchMeetingInfo: sinon
+              .stub()
+              .throws(new MeetingInfoV2WebinarRegistrationError(403021, FAKE_MEETING_INFO, 'a message')),
+          };
+
+          await assert.isRejected(meeting.fetchMeetingInfo({sendCAevents: true}), WebinarRegistrationError);
+
+          assert.deepEqual(meeting.meetingInfo, FAKE_MEETING_INFO);
+          assert.equal(meeting.meetingInfoFailureCode, 403021);
+          assert.equal(meeting.meetingInfoFailureReason, MEETING_INFO_FAILURE_REASON.WEBINAR_REGISTRATION);
         });
       });
 

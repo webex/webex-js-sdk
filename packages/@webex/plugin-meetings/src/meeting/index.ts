@@ -128,6 +128,7 @@ import {
   MeetingInfoV2PasswordError,
   MeetingInfoV2CaptchaError,
   MeetingInfoV2PolicyError,
+  MeetingInfoV2WebinarRegistrationError,
 } from '../meeting-info/meeting-info-v2';
 import {CSI, ReceiveSlotManager} from '../multistream/receiveSlotManager';
 import SendSlotManager from '../multistream/sendSlotManager';
@@ -156,6 +157,7 @@ import ControlsOptionsManager from '../controls-options-manager';
 import PermissionError from '../common/errors/permission';
 import {LocusMediaRequest} from './locusMediaRequest';
 import {ConnectionStateHandler, ConnectionStateEvent} from './connectionStateHandler';
+import WebinarRegistrationError from '../common/errors/webinar-registration-error';
 
 // default callback so we don't call an undefined function, but in practice it should never be used
 const DEFAULT_ICE_PHASE_CALLBACK = () => 'JOIN_MEETING_FINAL';
@@ -1759,8 +1761,16 @@ export default class Meeting extends StatelessWebexPlugin {
         if (err.meetingInfo) {
           this.meetingInfo = err.meetingInfo;
         }
-
         throw new PermissionError();
+      } else if (err instanceof MeetingInfoV2WebinarRegistrationError) {
+        this.meetingInfoFailureReason = MEETING_INFO_FAILURE_REASON.WEBINAR_REGISTRATION;
+        this.meetingInfoFailureCode = err.wbxAppApiCode;
+
+        if (err.meetingInfo) {
+          this.meetingInfo = err.meetingInfo;
+        }
+
+        throw new WebinarRegistrationError();
       } else if (err instanceof MeetingInfoV2PasswordError) {
         LoggerProxy.logger.info(
           // @ts-ignore
@@ -8735,15 +8745,19 @@ export default class Meeting extends StatelessWebexPlugin {
       return;
     }
 
-    if (
-      streams?.microphone?.readyState === 'ended' ||
-      streams?.camera?.readyState === 'ended' ||
-      streams?.screenShare?.audio?.readyState === 'ended' ||
-      streams?.screenShare?.video?.readyState === 'ended'
-    ) {
-      throw new Error(
-        `Attempted to publish stream with ended readyState, correlationId=${this.correlationId}`
-      );
+    const streamChecks = [
+      {stream: streams?.microphone, name: 'microphone'},
+      {stream: streams?.camera, name: 'camera'},
+      {stream: streams?.screenShare?.audio, name: 'screenShare audio'},
+      {stream: streams?.screenShare?.video, name: 'screenShare video'},
+    ];
+
+    for (const {stream, name} of streamChecks) {
+      if (stream?.readyState === 'ended') {
+        throw new Error(
+          `Attempted to publish ${name} stream with ended readyState, correlationId=${this.correlationId}`
+        );
+      }
     }
 
     let floorRequestNeeded = false;

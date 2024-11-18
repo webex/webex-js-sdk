@@ -1807,6 +1807,35 @@ describe('plugin-meetings', () => {
         assert.calledWith(locusInfo.applyLocusDeltaData, action, parsedLoci, fakeMeeting);
       });
 
+      it('catches errors thrown by onDeltaAction and is able to process next Locus delta', () => {
+        const fakeLocusDelta = {
+          sequence: {
+            rangeStart: 0,
+            rangeEnd: 0,
+          },
+        };
+        locusInfo.locusParser.workingCopy = {
+          sequence: {
+            rangeStart: 0,
+            rangeEnd: 0,
+          },
+        };
+        const testMeeting = {locusInfo: {onDeltaLocus: sinon.stub()}};
+
+        locusParser.onDeltaAction = sandbox
+          .stub()
+          .onCall(0)
+          .callsFake(() => {
+            throw new Error('fake error');
+          });
+
+        // simulate first locus delta coming - it will trigger an error thrown by onDeltaAction
+        locusInfo.handleLocusDelta(fakeLocusDelta, testMeeting);
+
+        // simulate a second locus delta coming - it should be processed without errors
+        locusInfo.handleLocusDelta(fakeLocusDelta, testMeeting);
+      });
+
       it('applyLocusDeltaData handles USE_INCOMING action correctly', () => {
         const {USE_INCOMING} = LocusDeltaParser.loci;
         const meeting = {
