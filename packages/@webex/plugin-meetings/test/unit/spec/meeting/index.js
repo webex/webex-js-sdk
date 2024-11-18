@@ -3992,6 +3992,7 @@ describe('plugin-meetings', () => {
                         assert.notCalled(
                           meeting.sendSlotManager.getSlot(MediaType.AudioMain).publishStream
                         );
+                        assert.throws(meeting.publishStreams(localStreams), `Attempted to publish microphone stream with ended readyState, correlationId=${meeting.correlationId}`);
                       } else {
                         assert.calledOnceWithExactly(
                           meeting.sendSlotManager.getSlot(MediaType.AudioMain).publishStream,
@@ -4004,6 +4005,7 @@ describe('plugin-meetings', () => {
                         assert.notCalled(
                           meeting.sendSlotManager.getSlot(MediaType.VideoMain).publishStream
                         );
+                        assert.throws(meeting.publishStreams(localStreams), `Attempted to publish camera stream with ended readyState, correlationId=${meeting.correlationId}`);
                       } else {
                         assert.calledOnceWithExactly(
                           meeting.sendSlotManager.getSlot(MediaType.VideoMain).publishStream,
@@ -4016,6 +4018,7 @@ describe('plugin-meetings', () => {
                         assert.notCalled(
                           meeting.sendSlotManager.getSlot(MediaType.AudioSlides).publishStream
                         );
+                        assert.throws(meeting.publishStreams(localStreams), `Attempted to publish screenShare audio stream with ended readyState, correlationId=${meeting.correlationId}`);
                       } else {
                         assert.calledOnceWithExactly(
                           meeting.sendSlotManager.getSlot(MediaType.AudioSlides).publishStream,
@@ -4028,6 +4031,7 @@ describe('plugin-meetings', () => {
                         assert.notCalled(
                           meeting.sendSlotManager.getSlot(MediaType.VideoSlides).publishStream
                         );
+                        assert.throws(meeting.publishStreams(localStreams), `Attempted to publish screenShare video stream with ended readyState, correlationId=${meeting.correlationId}`);
                       } else {
                         assert.calledOnceWithExactly(
                           meeting.sendSlotManager.getSlot(MediaType.VideoSlides).publishStream,
