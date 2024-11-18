@@ -706,10 +706,13 @@ describe('plugin-mercury', () => {
         sinon.stub(mercury.logger, 'error');
 
         return Promise.resolve(mercury._emit('break', event)).then((res) => {
-          assert.calledWith(mercury.logger.error, 'Mercury: error occurred in event handler', {
+          assert.calledWith(
+            mercury.logger.error,
+            'Mercury: error occurred in event handler:',
             error,
-            arguments: ['break', event],
-          });
+            ' with args: ',
+            ['break', event]
+          );
           return res;
         });
       });
