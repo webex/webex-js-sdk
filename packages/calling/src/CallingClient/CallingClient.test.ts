@@ -218,7 +218,7 @@ describe('CallingClient Tests', () => {
 
     /**
      * Input sdk config to callingClient with serviceData carrying valid value for indicator
-     * 'contactcenter', and a valid domain type string for domain field in it.
+     * 'contactcenter' , and a valid domain type string for domain field in it.
      *
      * Execution should proceed properly and createRegistration should be called with same serviceData.
      *

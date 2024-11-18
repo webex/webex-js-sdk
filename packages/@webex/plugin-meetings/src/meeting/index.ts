@@ -2767,6 +2767,9 @@ export default class Meeting extends StatelessWebexPlugin {
         newShareStatus = SHARE_STATUS.NO_SHARE;
       }
 
+      LoggerProxy.logger.info(
+        `Meeting:index#setUpLocusInfoMediaInactiveListener --> this.shareStatus=${this.shareStatus} newShareStatus=${newShareStatus}`
+      );
       if (newShareStatus !== this.shareStatus) {
         const oldShareStatus = this.shareStatus;
 
@@ -8247,6 +8250,9 @@ export default class Meeting extends StatelessWebexPlugin {
    * @returns {undefined}
    */
   private handleShareAudioStreamEnded = async () => {
+    LoggerProxy.logger.info(
+      `Meeting:index#handleShareAudioStreamEnded --> audio share stream ended`
+    );
     // current share audio stream has ended, but there might be an active
     // share video stream. we only leave from wireless share if share has
     // completely ended, which means no share audio or video streams active
@@ -8289,6 +8295,9 @@ export default class Meeting extends StatelessWebexPlugin {
    * @returns {undefined}
    */
   private handleShareVideoStreamEnded = async () => {
+    LoggerProxy.logger.info(
+      `Meeting:index#handleShareVideoStreamEnded --> video share stream ended`
+    );
     // current share video stream has ended, but there might be an active
     // share audio stream. we only leave from wireless share if share has
     // completely ended, which means no share audio or video streams active
@@ -8777,6 +8786,9 @@ export default class Meeting extends StatelessWebexPlugin {
    * @returns {Promise}
    */
   async publishStreams(streams: LocalStreams): Promise<void> {
+    LoggerProxy.logger.info(
+      `Meeting:index#publishStreams --> called with: ${JSON.stringify(streams)}`
+    );
     this.checkMediaConnection();
     if (
       !streams.microphone &&
@@ -8788,15 +8800,19 @@ export default class Meeting extends StatelessWebexPlugin {
       return;
     }
 
-    if (
-      streams?.microphone?.readyState === 'ended' ||
-      streams?.camera?.readyState === 'ended' ||
-      streams?.screenShare?.audio?.readyState === 'ended' ||
-      streams?.screenShare?.video?.readyState === 'ended'
-    ) {
-      throw new Error(
-        `Attempted to publish stream with ended readyState, correlationId=${this.correlationId}`
-      );
+    const streamChecks = [
+      {stream: streams?.microphone, name: 'microphone'},
+      {stream: streams?.camera, name: 'camera'},
+      {stream: streams?.screenShare?.audio, name: 'screenShare audio'},
+      {stream: streams?.screenShare?.video, name: 'screenShare video'},
+    ];
+
+    for (const {stream, name} of streamChecks) {
+      if (stream?.readyState === 'ended') {
+        throw new Error(
+          `Attempted to publish ${name} stream with ended readyState, correlationId=${this.correlationId}`
+        );
+      }
     }
 
     let floorRequestNeeded = false;
@@ -8858,6 +8874,9 @@ export default class Meeting extends StatelessWebexPlugin {
    * @returns {Promise}
    */
   async unpublishStreams(streams: LocalStream[]): Promise<void> {
+    LoggerProxy.logger.info(
+      `Meeting:index#unpublishStreams --> called with: ${JSON.stringify(streams)}`
+    );
     this.checkMediaConnection();
 
     const promises = [];
