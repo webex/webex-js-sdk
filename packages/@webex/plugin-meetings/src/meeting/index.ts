@@ -3882,6 +3882,18 @@ export default class Meeting extends StatelessWebexPlugin {
             requiredHints: [DISPLAY_HINTS.WEBCAST_CONTROL_STOP],
             displayHints: this.userDisplayHints,
           }),
+          canShowStageView: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.STAGE_VIEW_ACTIVE],
+            displayHints: this.userDisplayHints,
+          }),
+          canEnableStageView: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.ENABLE_STAGE_VIEW],
+            displayHints: this.userDisplayHints,
+          }),
+          canDisableStageView: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.DISABLE_STAGE_VIEW],
+            displayHints: this.userDisplayHints,
+          }),
           canShareFile:
             (ControlsOptionsUtil.hasHints({
               requiredHints: [DISPLAY_HINTS.SHARE_FILE],

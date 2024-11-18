@@ -3,6 +3,7 @@
  */
 
 import {MEETINGS} from '../constants';
+import ControlsOptionsUtil from '../controls-options-manager/util';
 
 /**
  * IInMeetingActions
@@ -89,6 +90,9 @@ interface IInMeetingActions {
   canPollingAndQA?: boolean;
   canStartWebcast?: boolean;
   canStopWebcast?: boolean;
+  canShowStageView?: boolean;
+  canEnableStageView?: boolean;
+  canDisableStageView?: boolean;
 }
 
 /**
@@ -256,6 +260,12 @@ export default class InMeetingActions implements IInMeetingActions {
   canStartWebcast = null;
 
   canStopWebcast = null;
+
+  canShowStageView = null;
+
+  canEnableStageView = null;
+
+  canDisableStageView = null;
   /**
    * Returns all meeting action options
    * @returns {Object}
@@ -341,6 +351,9 @@ export default class InMeetingActions implements IInMeetingActions {
     canPollingAndQA: this.canPollingAndQA,
     canStartWebcast: this.canStartWebcast,
     canStopWebcast: this.canStopWebcast,
+    canShowStageView: this.canShowStageView,
+    canEnableStageView: this.canEnableStageView,
+    canDisableStageView: this.canDisableStageView,
   });
 
   /**

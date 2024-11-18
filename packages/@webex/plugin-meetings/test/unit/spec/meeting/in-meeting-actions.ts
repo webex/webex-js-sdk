@@ -85,6 +85,9 @@ describe('plugin-meetings', () => {
         canPollingAndQA: null,
         canStartWebcast: null,
         canStopWebcast: null,
+        canShowStageView: null,
+        canEnableStageView: null,
+        canDisableStageView: null,
         ...expected,
       };
 
@@ -175,6 +178,9 @@ describe('plugin-meetings', () => {
       'canPollingAndQA',
       'canStartWebcast',
       'canStopWebcast',
+      'canShowStageView',
+      'canEnableStageView',
+      'canDisableStageView',
     ].forEach((key) => {
       it(`get and set for ${key} work as expected`, () => {
         const inMeetingActions = new InMeetingActions();
