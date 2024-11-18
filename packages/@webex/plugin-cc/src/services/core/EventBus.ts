@@ -1,4 +1,6 @@
-export class EventBus extends EventTarget {
+import {EventEmitter} from 'events';
+
+export class EventBus extends EventEmitter {
   private static instance: EventBus;
 
   public static getInstance(): EventBus {
@@ -9,15 +11,15 @@ export class EventBus extends EventTarget {
     return EventBus.instance;
   }
 
-  public emit(event: string, detail?: any): void {
-    this.dispatchEvent(new CustomEvent(event, {detail}));
+  public emit(event: string, detail?: any): boolean {
+    return super.emit(event, detail);
   }
 
-  public on(event: string, listener: (event: CustomEvent) => void): void {
-    this.addEventListener(event, listener as EventListener);
+  public on(event: string, listener: (event: any) => void): this {
+    return super.on(event, listener);
   }
 
-  public off(event: string, listener: (event: CustomEvent) => void): void {
-    this.removeEventListener(event, listener as EventListener);
+  public off(event: string, listener: (event: any) => void): this {
+    return super.off(event, listener);
   }
 }

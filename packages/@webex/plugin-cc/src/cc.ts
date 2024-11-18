@@ -64,7 +64,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         onReRegister: this.register.bind(this),
       });
 
-      this.services = Services.getInstance(this.webSocketManager);
+      this.services = Services.getInstance();
 
       this.webCallingService = new WebCallingService(this.$webex, this.$config.callingClientConfig);
 
@@ -275,9 +275,9 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   /**
    * Handle the custom event and call setAgentState for disconnect event
    */
-  private async handleAgentWssDisconnect(event: CustomEvent) {
+  private async handleAgentWssDisconnect(msg: StateChange) {
     try {
-      const stateChangeData: StateChange = event.detail;
+      const stateChangeData: StateChange = msg;
       await this.setAgentState(stateChangeData);
       this.$webex.logger.info('Agent state changed successfully');
     } catch (error) {

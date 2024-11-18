@@ -1,7 +1,6 @@
 import {Msg} from './GlobalTypes';
 import * as Err from './Err';
 import {HTTP_METHODS, WebexRequestPayload} from '../../types';
-import {WebSocketManager} from './WebSocket/WebSocketManager';
 import HttpRequest from './HttpRequest';
 import LoggerProxy from '../../logger-proxy';
 import {CbRes, Conf, ConfEmpty, Pending, Req, Res, ResEmpty} from './types';
@@ -13,15 +12,13 @@ import {EventBus} from './EventBus';
 export default class AqmReqs {
   private pendingRequests: Record<string, Pending> = {};
   private pendingNotifCancelrequest: Record<string, Pending> = {};
-  private webSocketManager: WebSocketManager;
   private httpRequest: HttpRequest;
   private eventBus: EventBus;
 
-  constructor(webSocketManager: WebSocketManager) {
+  constructor() {
     this.httpRequest = HttpRequest.getInstance();
-    this.webSocketManager = webSocketManager;
-    this.webSocketManager.addEventListener('message', this.onMessage);
     this.eventBus = EventBus.getInstance();
+    this.eventBus.on('message', this.onMessage.bind(this));
   }
 
   req<TRes, TErr, TReq>(c: Conf<TRes, TErr, TReq>): Res<TRes, TReq> {
@@ -208,7 +205,7 @@ export default class AqmReqs {
 
   // must be lambda
   private readonly onMessage = (msg: any) => {
-    const event = JSON.parse(msg.detail);
+    const event = JSON.parse(msg);
     if (event.type === 'Welcome') {
       LoggerProxy.logger.info(`Welcome message from Notifs Websocket`);
 

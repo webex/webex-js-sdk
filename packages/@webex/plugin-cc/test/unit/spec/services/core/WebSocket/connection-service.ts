@@ -1,7 +1,8 @@
-import {ConnectionService} from '../../../../../../src/services/core/WebSocket/connection-service';
-import {WebSocketManager} from '../../../../../../src/services/core/WebSocket/WebSocketManager';
+import { ConnectionService } from '../../../../../../src/services/core/WebSocket/connection-service';
+import { WebSocketManager } from '../../../../../../src/services/core/WebSocket/WebSocketManager';
 import LoggerProxy from '../../../../../../src/logger-proxy';
-import {CONNECTIVITY_CHECK_INTERVAL} from '../../../../../../src/services/core/constants';
+import { CONNECTIVITY_CHECK_INTERVAL } from '../../../../../../src/services/core/constants';
+import { EventBus } from '../../../../../../src/services/core/EventBus';
 
 jest.mock('../../../../../../src/services/core/WebSocket/WebSocketManager');
 jest.mock('../../../../../../src/logger-proxy', () => ({
@@ -20,7 +21,7 @@ jest.mock('../../../../../../src/logger-proxy', () => ({
 class MockCustomEvent<T> extends Event {
   detail: T;
 
-  constructor(event: string, params: {detail: T}) {
+  constructor(event: string, params: { detail: T }) {
     super(event);
     this.detail = params.detail;
   }
@@ -32,6 +33,7 @@ describe('ConnectionService', () => {
   let connectionService: ConnectionService;
   let mockWebSocketManager: jest.Mocked<WebSocketManager>;
   let mockOnReRegister: jest.Mock;
+  let eventBusInstance: EventBus;
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -43,7 +45,7 @@ describe('ConnectionService', () => {
     mockWebSocketManager.initWebSocket = jest.fn().mockResolvedValue({});
 
     // Mock the addEventListener method
-    mockWebSocketManager.addEventListener = jest.fn();
+    eventBusInstance = EventBus.getInstance();
 
     mockOnReRegister = jest.fn().mockResolvedValue({});
 
@@ -56,6 +58,7 @@ describe('ConnectionService', () => {
   afterEach(() => {
     jest.useRealTimers();
     jest.clearAllTimers();
+    eventBusInstance.removeAllListeners();
   });
 
   it('should initialize ConnectionService', () => {
@@ -63,15 +66,13 @@ describe('ConnectionService', () => {
   });
 
   it('should set connection properties', () => {
-    const newProps = {lostConnectionRecoveryTimeout: 30000};
+    const newProps = { lostConnectionRecoveryTimeout: 30000 };
     connectionService.setConnectionProp(newProps);
     expect(connectionService['connectionProp']).toEqual(newProps);
   });
 
   it('should handle ping message and update connection data', () => {
-    const pingMessage = new CustomEvent<string>('message', {
-      detail: JSON.stringify({keepalive: 'true'}),
-    });
+    const pingMessage = JSON.stringify({ keepalive: 'true' });
     connectionService['onPing'](pingMessage);
     expect(connectionService['isKeepAlive']).toBe(true);
     expect(connectionService['isConnectionLost']).toBe(false);
@@ -113,9 +114,7 @@ describe('ConnectionService', () => {
   });
 
   it('should handle ping message without keepalive and not update connection data', () => {
-    const pingMessage = new CustomEvent<string>('message', {
-      detail: JSON.stringify({ someOtherProperty: 'value' }),
-    });
+    const pingMessage = JSON.stringify({ someOtherProperty: 'value' });
     connectionService['onPing'](pingMessage);
     expect(connectionService['isKeepAlive']).toBe(false);
     expect(connectionService['isConnectionLost']).toBe(false);

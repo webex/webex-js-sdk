@@ -1,6 +1,7 @@
 import {WebSocketManager} from './WebSocketManager';
 import LoggerProxy from '../../../logger-proxy';
 import {ConnectionServiceOptions, ConnectionLostDetails, ConnectionProp} from './types';
+import {EventBus} from '../EventBus';
 import {
   LOST_CONNECTION_RECOVERY_TIMEOUT,
   WS_DISCONNECT_ALLOWED,
@@ -21,6 +22,7 @@ export class ConnectionService extends EventTarget {
   private isKeepAlive: boolean;
   private reconnectInterval: ReturnType<typeof setInterval>;
   private webSocketManager: WebSocketManager;
+  private eventBus: EventBus;
   private onReRegister: () => Promise<void>;
 
   constructor(options: ConnectionServiceOptions) {
@@ -32,9 +34,10 @@ export class ConnectionService extends EventTarget {
     this.isRestoreFailed = false;
     this.isSocketReconnected = false;
     this.isKeepAlive = false;
+    this.eventBus = EventBus.getInstance();
 
-    this.webSocketManager.addEventListener('message', this.onPing);
-    this.webSocketManager.addEventListener('socketClose', this.onSocketClose);
+    this.eventBus.on('message', this.onPing.bind(this));
+    this.eventBus.on('socketClose', this.onSocketClose.bind(this));
   }
 
   private dispatchConnectionEvent(socketReconnected = false): void {
@@ -78,9 +81,8 @@ export class ConnectionService extends EventTarget {
     this.connectionProp = prop;
   }
 
-  private onPing = (event: Event): void => {
-    const msg = (event as CustomEvent<string>).detail;
-    const parsedEvent = JSON.parse(msg);
+  private onPing = (event: any): void => {
+    const parsedEvent = JSON.parse(event);
     if (this.reconnectingTimer) {
       clearTimeout(this.reconnectingTimer);
     }

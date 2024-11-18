@@ -4,8 +4,9 @@ import {SubscribeResponse} from '../../config/types';
 import LoggerProxy from '../../../logger-proxy';
 import workerScript from './keepalive.worker';
 import {KEEPALIVE_WORKER_INTERVAL, CLOSE_SOCKET_TIMEOUT} from '../constants';
+import {EventBus} from '../EventBus';
 
-export class WebSocketManager extends EventTarget {
+export class WebSocketManager {
   private websocket: WebSocket;
   shouldReconnect: boolean;
   isSocketClosed: boolean;
@@ -19,9 +20,9 @@ export class WebSocketManager extends EventTarget {
     | null = null;
 
   private keepaliveWorker: Worker;
+  private eventBus: EventBus;
 
   constructor(options: {webex: WebexSDK}) {
-    super();
     const {webex} = options;
     this.webex = webex;
     this.shouldReconnect = true;
@@ -33,6 +34,7 @@ export class WebSocketManager extends EventTarget {
 
     const workerScriptBlob = new Blob([workerScript], {type: 'application/javascript'});
     this.keepaliveWorker = new Worker(URL.createObjectURL(workerScriptBlob));
+    this.eventBus = EventBus.getInstance();
   }
 
   async initWebSocket(options: {body: SubscribeRequest}): Promise<WelcomeResponse> {
@@ -124,7 +126,7 @@ export class WebSocketManager extends EventTarget {
       };
 
       this.websocket.onmessage = (e: MessageEvent) => {
-        this.dispatchEvent(new CustomEvent('message', {detail: e.data}));
+        this.eventBus.emit('message', e.data);
         const eventData = JSON.parse(e.data);
 
         if (eventData.type === 'Welcome') {
@@ -150,7 +152,7 @@ export class WebSocketManager extends EventTarget {
     this.isSocketClosed = true;
     this.keepaliveWorker.postMessage({type: 'terminate'});
     if (this.shouldReconnect) {
-      this.dispatchEvent(new Event('socketClose'));
+      this.eventBus.emit('socketClose');
       let issueReason;
       if (this.forceCloseWebSocketOnTimeout) {
         issueReason = 'WebSocket auto close timed out. Forcefully closed websocket.';

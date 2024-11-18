@@ -14,6 +14,7 @@ import {AGENT, WEB_RTC_PREFIX} from '../../../src/services/constants';
 import Services from '../../../src/services';
 import config from '../../../src/config';
 import LoggerProxy from '../../../src/logger-proxy';
+import {EventBus} from '../../../src/services/core/EventBus';
 
 // Mock the Worker API
 import '../../../__mocks__/workerMock';
@@ -48,6 +49,7 @@ global.URL.createObjectURL = jest.fn(() => 'blob:http://localhost:3000/12345');
 describe('webex.cc', () => {
   let webex;
   let mockWebSocketManager;
+  let eventBusInstance: EventBus;
 
   beforeEach(() => {
     webex = MockWebex({
@@ -62,6 +64,7 @@ describe('webex.cc', () => {
       once: jest.fn((event, callback) => callback()),
     }) as unknown as WebexSDK;
 
+    eventBusInstance = EventBus.getInstance();
     // Instantiate ContactCenter to ensure it's fully initialized
     webex.cc = new ContactCenter({parent: webex});
 
@@ -86,6 +89,7 @@ describe('webex.cc', () => {
 
   afterEach(() => {
     jest.clearAllMocks();
+    eventBusInstance.removeAllListeners();
   });
 
   it('should initialize services and logger proxy on READY event', () => {
