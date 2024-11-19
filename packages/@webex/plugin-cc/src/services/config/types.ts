@@ -359,14 +359,14 @@ export type WrapUpReason = {
 
 export type WrapupData = {
   wrapUpProps: {
-    autoWrapup: boolean | undefined;
-    autoWrapupInterval: number | undefined;
-    lastAgentRoute: boolean | undefined;
+    autoWrapup?: boolean;
+    autoWrapupInterval?: number;
+    lastAgentRoute?: boolean;
     wrapUpReasonList: Array<WrapUpReason>;
     wrapUpCodesList?: Array<string>;
     idleCodesAccess?: 'ALL' | 'SPECIFIC';
     interactionId?: string;
-    allowCancelAutoWrapup: boolean | undefined;
+    allowCancelAutoWrapup?: boolean;
   };
 };
 

@@ -22,51 +22,47 @@ import {
   DEFAULT_PAGE,
   DEFAULT_PAGE_SIZE,
   DEFAULT_TEAM_ATTRIBUTES,
+  endPointMap,
 } from './constants';
 
 export default class AgentConfigService {
   private httpReq: HttpRequest;
-  private orgId: string;
-  constructor(orgId: string) {
+  constructor() {
     this.httpReq = HttpRequest.getInstance();
-    this.orgId = orgId;
   }
 
-  /**
-   * Method to get Agent Configuration.
-   * @param {string} agentId ID of the agent for which the configuration is to be fetched.
-   * @returns {Promise<Profile>} A promise that eventually resolves to an API response.
-   * @throws {Error} If the API call fails.
-   */
-  public async getAgentConfig(agentId: string): Promise<Profile> {
+  public async getAgentConfig(orgId: string, agentId: string): Promise<Profile> {
     try {
-      // Start all asynchronous calls at once
-      const userConfigPromise = this.getUserUsingCI(agentId);
-      const orgInfoPromise = this.getOrgInfo();
-      const orgSettingsPromise = this.getOrganizationSetting();
-      const tenantDataPromise = this.getTenantData();
-      const urlMappingPromise = this.getURLMapping();
+      const userConfigPromise = this.getUserUsingCI(orgId, agentId);
+      const orgInfoPromise = this.getOrgInfo(orgId);
+      const orgSettingsPromise = this.getOrganizationSetting(orgId);
+      const tenantDataPromise = this.getTenantData(orgId);
+      const urlMappingPromise = this.getURLMapping(orgId);
       const auxCodesPromise = this.getAllAuxCodes(
+        orgId,
         DEFAULT_PAGE_SIZE,
         [],
         DEFAULT_AUXCODE_ATTRIBUTES
       );
 
-      // Wait for user configuration data to determine additional data fetching
       const userConfigData = await userConfigPromise;
       LoggerProxy.logger.info('Fetched user data');
 
-      const agentProfilePromise = this.getDesktopProfileById(userConfigData.agentProfileId);
+      const agentProfilePromise = this.getDesktopProfileById(orgId, userConfigData.agentProfileId);
 
       const userDialPlanPromise = agentProfilePromise.then((agentProfileConfigData) =>
-        agentProfileConfigData.dialPlanEnabled ? this.getDialPlanData() : []
+        agentProfileConfigData.dialPlanEnabled ? this.getDialPlanData(orgId) : []
       );
 
       const userTeamPromise = userConfigData.teamIds
-        ? this.getAllTeams(DEFAULT_PAGE_SIZE, userConfigData.teamIds, DEFAULT_TEAM_ATTRIBUTES)
+        ? this.getAllTeams(
+            orgId,
+            DEFAULT_PAGE_SIZE,
+            userConfigData.teamIds,
+            DEFAULT_TEAM_ATTRIBUTES
+          )
         : Promise.resolve([]);
 
-      // Await all promises that can be run in parallel
       const [
         agentProfileConfigData,
         userDialPlanData,
@@ -111,16 +107,12 @@ export default class AgentConfigService {
     }
   }
 
-  /**
-   * Method to get Agent using CI.
-   * @returns {Promise<AgentResponse>} A promise that eventually resolves to an API response.
-   */
-
-  public async getUserUsingCI(agentId: string): Promise<AgentResponse> {
+  public async getUserUsingCI(orgId: string, agentId: string): Promise<AgentResponse> {
     try {
+      const resource = endPointMap.userByCI(orgId, agentId);
       const response = await this.httpReq.request({
         service: WCC_API_GATEWAY,
-        resource: `organization/${this.orgId}/user/by-ci-user-id/${agentId}`,
+        resource,
         method: HTTP_METHODS.GET,
       });
 
@@ -137,17 +129,15 @@ export default class AgentConfigService {
     }
   }
 
-  /**
-   * Method to get Desktop Profile by passing desktopProfileId.
-   * @param {string} desktopProfileId ID of the Desktop Profile to be retrieved.
-   * @returns {Promise<DesktopProfileResponse>} A promise that eventually resolves to an API response.
-   */
-
-  public async getDesktopProfileById(desktopProfileId: string): Promise<DesktopProfileResponse> {
+  public async getDesktopProfileById(
+    orgId: string,
+    desktopProfileId: string
+  ): Promise<DesktopProfileResponse> {
     try {
+      const resource = endPointMap.desktopProfile(orgId, desktopProfileId);
       const response = await this.httpReq.request({
         service: WCC_API_GATEWAY,
-        resource: `organization/${this.orgId}/agent-profile/${desktopProfileId}`,
+        resource,
         method: HTTP_METHODS.GET,
       });
 
@@ -164,26 +154,15 @@ export default class AgentConfigService {
     }
   }
 
-  /**
-   * Method to get List of Teams.
-   * @param {number} page Index of the page of results to be fetched. Defaults to 0.
-   * @param {number} pageSize Number of items to be displayed on a page. Defaults to 10.
-   * @param {Array<String>} filter Filter that can be applied to the elements to be fetched. Defaults to [].
-   * @param {Array<String>} attributes Specify the attributes to be returned. Defaults to ['id', 'name'].
-   * @returns {Promise<Team>} A promise that eventually resolves to an API response.
-   */
-
   public async getListOfTeams(
+    orgId: string,
     page: number,
     pageSize: number,
     filter: string[],
     attributes: string[]
   ): Promise<ListTeamsResponse> {
     try {
-      const resource = `organization/${this.orgId}/v2/team?page=${page}&pageSize=${pageSize}${
-        filter && filter.length > 0 ? `&filter=id=in=${filter}` : ''
-      }&attributes=${attributes}`;
-
+      const resource = endPointMap.listTeams(orgId, page, pageSize, filter, attributes);
       const response = await this.httpReq.request({
         service: WCC_API_GATEWAY,
         resource,
@@ -203,15 +182,8 @@ export default class AgentConfigService {
     }
   }
 
-  /**
-   * Method to get All Teams.
-   * @param {number} pageSize Number of items to be displayed on a page. Defaults to 10.
-   * @param {Array<String>} filter Filter that can be applied to the elements to be fetched. Defaults to [].
-   * @param {Array<String>} attributes Specify the attributes to be returned. Defaults to ['id', 'name'].
-   * @returns {Promise<TeamList>} A promise that eventually resolves to an API response.
-   * @throws {Error} If the API call fails.
-   */
   public async getAllTeams(
+    orgId: string,
     pageSize: number,
     filter: string[],
     attributes: string[]
@@ -219,18 +191,15 @@ export default class AgentConfigService {
     try {
       let allTeams: TeamList[] = [];
       let page = DEFAULT_PAGE;
-      const firstResponse = await this.getListOfTeams(page, pageSize, filter, attributes);
+      const firstResponse = await this.getListOfTeams(orgId, page, pageSize, filter, attributes);
       const totalPages = firstResponse.meta.totalPages;
       allTeams = allTeams.concat(firstResponse.data);
-      // Create an array of promises for each page request
       const requests = [];
       for (page = DEFAULT_PAGE + 1; page < totalPages; page += 1) {
-        requests.push(this.getListOfTeams(page, pageSize, filter, attributes));
+        requests.push(this.getListOfTeams(orgId, page, pageSize, filter, attributes));
       }
-      // Await all requests in parallel
       const responses = await Promise.all(requests);
 
-      // Process the responses
       for (const response of responses) {
         allTeams = allTeams.concat(response.data);
       }
@@ -242,28 +211,15 @@ export default class AgentConfigService {
     }
   }
 
-  /**
-   * Method to get List of AuxCodes.
-   * @param {number} page Index of the page of results to be fetched. Defaults to 0.
-   * @param {number} pageSize Number of items to be displayed on a page. Defaults to 10.
-   * @param {Array<String>} filter Filter that can be applied to the elements to be fetched. Defaults to [].
-   * @param {Array<String>} attributes Specify the attributes to be returned. Defaults to ['id', 'name', 'active'].
-   * @returns {Promise<ListAuxCodesResponse>} A promise that eventually resolves to an API response.
-   */
-
   public async getListOfAuxCodes(
+    orgId: string,
     page: number,
     pageSize: number,
     filter: string[],
     attributes: string[]
   ): Promise<ListAuxCodesResponse> {
     try {
-      const resource = `organization/${
-        this.orgId
-      }/v2/auxiliary-code?page=${page}&pageSize=${pageSize}${
-        filter && filter.length > 0 ? `&filter=id=in=${filter}` : ''
-      }&attributes=${attributes}`;
-
+      const resource = endPointMap.listAuxCodes(orgId, page, pageSize, filter, attributes);
       const response = await this.httpReq.request({
         service: WCC_API_GATEWAY,
         resource,
@@ -283,15 +239,8 @@ export default class AgentConfigService {
     }
   }
 
-  /**
-   * Method to get All AuxCodes.
-   * @param {number} pageSize Number of items to be displayed on a page. Defaults to 10.
-   * @param {Array<String>} filter Filter that can be applied to the elements to be fetched. Defaults to [].
-   * @param {Array<String>} attributes Specify the attributes to be returned. Defaults to ['id', 'name', 'active'].
-   * @returns {Promise<AuxCode>} A promise that eventually resolves to an API response.
-   * @throws {Error} If the API call fails.
-   */
   public async getAllAuxCodes(
+    orgId: string,
     pageSize: number,
     filter: string[],
     attributes: string[]
@@ -300,21 +249,17 @@ export default class AgentConfigService {
       let allAuxCodes: AuxCode[] = [];
       let page = DEFAULT_PAGE;
 
-      // Fetch the first page to determine the total number of pages
-      const firstResponse = await this.getListOfAuxCodes(page, pageSize, filter, attributes);
+      const firstResponse = await this.getListOfAuxCodes(orgId, page, pageSize, filter, attributes);
       allAuxCodes = allAuxCodes.concat(firstResponse.data);
       const totalPages = firstResponse.meta.totalPages;
 
-      // Create an array of promises for the remaining page requests
       const promises: Promise<ListAuxCodesResponse>[] = [];
       for (page = DEFAULT_PAGE + 1; page < totalPages; page += 1) {
-        promises.push(this.getListOfAuxCodes(page, pageSize, filter, attributes));
+        promises.push(this.getListOfAuxCodes(orgId, page, pageSize, filter, attributes));
       }
 
-      // Await all remaining requests in parallel
       const responses = await Promise.all(promises);
 
-      // Process the responses
       responses.forEach((response) => {
         allAuxCodes = allAuxCodes.concat(response.data);
       });
@@ -326,16 +271,12 @@ export default class AgentConfigService {
     }
   }
 
-  /**
-   * Method to get Organization Info.
-   * @returns {Promise<OrgInfo>} A promise that eventually resolves to an API response.
-   * @throws {Error} If the API call fails.
-   */
-  public async getOrgInfo(): Promise<OrgInfo> {
+  public async getOrgInfo(orgId: string): Promise<OrgInfo> {
     try {
+      const resource = endPointMap.orgInfo(orgId);
       const response = await this.httpReq.request({
         service: WCC_API_GATEWAY,
-        resource: `organization/${this.orgId}`,
+        resource,
         method: HTTP_METHODS.GET,
       });
 
@@ -352,16 +293,12 @@ export default class AgentConfigService {
     }
   }
 
-  /**
-   * Method to get Organization Settings.
-   * @returns {Promise<OrgSettings>} A promise that eventually resolves to an API response.
-   * @throws {Error} If the API call fails.
-   */
-  public async getOrganizationSetting(): Promise<OrgSettings> {
+  public async getOrganizationSetting(orgId: string): Promise<OrgSettings> {
     try {
+      const resource = endPointMap.orgSettings(orgId);
       const response = await this.httpReq.request({
         service: WCC_API_GATEWAY,
-        resource: `/organization/${this.orgId}/v2/organization-setting?agentView=true`,
+        resource,
         method: HTTP_METHODS.GET,
       });
 
@@ -378,16 +315,12 @@ export default class AgentConfigService {
     }
   }
 
-  /**
-   * Method to get Tenant Data.
-   * @returns {Promise<TenantData>} A promise that eventually resolves to an API response.
-   * @throws {Error} If the API call fails.
-   */
-  public async getTenantData(): Promise<TenantData> {
+  public async getTenantData(orgId: string): Promise<TenantData> {
     try {
+      const resource = endPointMap.tenantData(orgId);
       const response = await this.httpReq.request({
         service: WCC_API_GATEWAY,
-        resource: `organization/${this.orgId}/v2/tenant-configuration?agentView=true`,
+        resource,
         method: HTTP_METHODS.GET,
       });
 
@@ -404,16 +337,12 @@ export default class AgentConfigService {
     }
   }
 
-  /**
-   * Method to get URL Mapping.
-   * @returns {Promise<URLMapping[]>} A promise that eventually resolves to an API response.
-   * @throws {Error} If the API call fails.
-   */
-  public async getURLMapping(): Promise<URLMapping[]> {
+  public async getURLMapping(orgId: string): Promise<URLMapping[]> {
     try {
+      const resource = endPointMap.urlMapping(orgId);
       const response = await this.httpReq.request({
         service: WCC_API_GATEWAY,
-        resource: `/organization/${this.orgId}/v2/org-url-mapping?sort=name,ASC`,
+        resource,
         method: HTTP_METHODS.GET,
       });
 
@@ -430,16 +359,12 @@ export default class AgentConfigService {
     }
   }
 
-  /**
-   * Method to get Dial Plan Data.
-   * @returns {Promise<DialPlanEntity[]>} A promise that eventually resolves to an API response.
-   * @throws {Error} If the API call fails.
-   */
-  public async getDialPlanData(): Promise<DialPlanEntity[]> {
+  public async getDialPlanData(orgId: string): Promise<DialPlanEntity[]> {
     try {
+      const resource = endPointMap.dialPlan(orgId);
       const response = await this.httpReq.request({
         service: WCC_API_GATEWAY,
-        resource: `/organization/${this.orgId}/dial-plan?agentView=true`,
+        resource,
         method: HTTP_METHODS.GET,
       });
 

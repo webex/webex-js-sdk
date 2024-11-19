@@ -50,6 +50,9 @@ describe('webex.cc', () => {
         log: jest.fn(),
         error: jest.fn(),
       },
+      credentials: {
+        getOrgId: jest.fn(() => 'mockOrgId'),
+      },
       config: config,
       once: jest.fn((event, callback) => callback()),
     }) as unknown as WebexSDK;

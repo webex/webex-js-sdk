@@ -27,7 +27,7 @@ describe('AgentConfigService', () => {
     mockHttpRequest = HttpRequest.getInstance({webex});
     mockHttpRequest.request = jest.fn();
 
-    agentConfigService = new AgentConfigService(mockOrgId);
+    agentConfigService = new AgentConfigService();
   });
 
   afterEach(() => {
@@ -48,7 +48,7 @@ describe('AgentConfigService', () => {
       };
       (mockHttpRequest.request as jest.Mock).mockResolvedValue(mockResponse);
 
-      const result = await agentConfigService.getUserUsingCI(mockAgentId);
+      const result = await agentConfigService.getUserUsingCI(mockOrgId, mockAgentId);
 
       expect(mockHttpRequest.request).toHaveBeenCalledWith({
         service: mockWccAPIURL,
@@ -63,7 +63,7 @@ describe('AgentConfigService', () => {
       const mockError = new Error('API call failed');
       (mockHttpRequest.request as jest.Mock).mockRejectedValue(mockError);
 
-      await expect(agentConfigService.getUserUsingCI(mockAgentId)).rejects.toThrow(
+      await expect(agentConfigService.getUserUsingCI(mockOrgId, mockAgentId)).rejects.toThrow(
         'API call failed'
       );
     });
@@ -75,7 +75,7 @@ describe('AgentConfigService', () => {
       (mockHttpRequest.request as jest.Mock).mockResolvedValue(mockResponse);
 
       try {
-        await agentConfigService.getUserUsingCI(mockAgentId);
+        await agentConfigService.getUserUsingCI(mockOrgId, mockAgentId);
       } catch (error) {
         expect(error).toEqual(new Error(`API call failed with ${mockResponse.statusCode}`));
       }
@@ -98,7 +98,7 @@ describe('AgentConfigService', () => {
       };
       (mockHttpRequest.request as jest.Mock).mockResolvedValue(mockResponse);
 
-      const result = await agentConfigService.getDesktopProfileById(desktopProfileId);
+      const result = await agentConfigService.getDesktopProfileById(mockOrgId, desktopProfileId);
 
       expect(mockHttpRequest.request).toHaveBeenCalledWith({
         service: mockWccAPIURL,
@@ -114,7 +114,7 @@ describe('AgentConfigService', () => {
       (mockHttpRequest.request as jest.Mock).mockRejectedValue(mockError);
 
       try {
-        await agentConfigService.getDesktopProfileById(desktopProfileId);
+        await agentConfigService.getDesktopProfileById(mockOrgId, desktopProfileId);
       } catch (error) {
         expect(error).toEqual(mockError);
       }
@@ -127,7 +127,7 @@ describe('AgentConfigService', () => {
       (mockHttpRequest.request as jest.Mock).mockResolvedValue(mockResponse);
 
       try {
-        await agentConfigService.getDesktopProfileById(desktopProfileId);
+        await agentConfigService.getDesktopProfileById(mockOrgId, desktopProfileId);
       } catch (error) {
         expect(error).toEqual(new Error(`API call failed with ${mockResponse.statusCode}`));
       }
@@ -150,7 +150,13 @@ describe('AgentConfigService', () => {
       };
       (mockHttpRequest.request as jest.Mock).mockResolvedValue(mockResponse);
 
-      const result = await agentConfigService.getListOfTeams(page, pageSize, filter, attributes);
+      const result = await agentConfigService.getListOfTeams(
+        mockOrgId,
+        page,
+        pageSize,
+        filter,
+        attributes
+      );
 
       expect(mockHttpRequest.request).toHaveBeenCalledWith({
         service: mockWccAPIURL,
@@ -166,7 +172,7 @@ describe('AgentConfigService', () => {
       (mockHttpRequest.request as jest.Mock).mockRejectedValue(mockError);
 
       try {
-        await agentConfigService.getListOfTeams(page, pageSize, filter, attributes);
+        await agentConfigService.getListOfTeams(mockOrgId, page, pageSize, filter, attributes);
       } catch (error) {
         expect(error).toEqual(mockError);
       }
@@ -179,7 +185,7 @@ describe('AgentConfigService', () => {
       (mockHttpRequest.request as jest.Mock).mockResolvedValue(mockResponse);
 
       try {
-        await agentConfigService.getListOfTeams(page, pageSize, filter, attributes);
+        await agentConfigService.getListOfTeams(mockOrgId, page, pageSize, filter, attributes);
       } catch (error) {
         expect(error).toEqual(new Error(`API call failed with ${mockResponse.statusCode}`));
       }
@@ -220,7 +226,13 @@ describe('AgentConfigService', () => {
       };
       (mockHttpRequest.request as jest.Mock).mockResolvedValue(mockResponse);
 
-      const result = await agentConfigService.getListOfAuxCodes(page, pageSize, filter, attributes);
+      const result = await agentConfigService.getListOfAuxCodes(
+        mockOrgId,
+        page,
+        pageSize,
+        filter,
+        attributes
+      );
 
       expect(mockHttpRequest.request).toHaveBeenCalledWith({
         service: mockWccAPIURL,
@@ -235,7 +247,7 @@ describe('AgentConfigService', () => {
       const mockError = new Error('API call failed');
       (mockHttpRequest.request as jest.Mock).mockRejectedValue(mockError);
       try {
-        await agentConfigService.getListOfAuxCodes(page, pageSize, filter, attributes);
+        await agentConfigService.getListOfAuxCodes(mockOrgId, page, pageSize, filter, attributes);
       } catch (error) {
         expect(error).toEqual(mockError);
       }
@@ -248,7 +260,7 @@ describe('AgentConfigService', () => {
       (mockHttpRequest.request as jest.Mock).mockResolvedValue(mockResponse);
 
       try {
-        await agentConfigService.getListOfAuxCodes(page, pageSize, filter, attributes);
+        await agentConfigService.getListOfAuxCodes(mockOrgId, page, pageSize, filter, attributes);
       } catch (error) {
         expect(error).toEqual(new Error(`API call failed with ${mockResponse.statusCode}`));
       }
@@ -270,7 +282,7 @@ describe('AgentConfigService', () => {
       };
       mockHttpRequest.request.mockResolvedValue(mockResponse);
 
-      const result = await agentConfigService.getOrgInfo();
+      const result = await agentConfigService.getOrgInfo(mockOrgId);
       expect(result).toEqual(mockResponse.body);
       expect(LoggerProxy.logger.log).toHaveBeenCalledWith('getOrgInfo api success.');
     });
@@ -279,7 +291,9 @@ describe('AgentConfigService', () => {
       const mockError = {statusCode: 500};
       mockHttpRequest.request.mockResolvedValue(mockError);
 
-      await expect(agentConfigService.getOrgInfo()).rejects.toThrow('API call failed with 500');
+      await expect(agentConfigService.getOrgInfo(mockOrgId)).rejects.toThrow(
+        'API call failed with 500'
+      );
       expect(LoggerProxy.logger.error).toHaveBeenCalledWith(
         expect.stringContaining('getOrgInfo API call failed with')
       );
@@ -289,7 +303,7 @@ describe('AgentConfigService', () => {
       const networkError = new Error('Network Error');
       mockHttpRequest.request.mockRejectedValue(networkError);
 
-      await expect(agentConfigService.getOrgInfo()).rejects.toThrow('Network Error');
+      await expect(agentConfigService.getOrgInfo(mockOrgId)).rejects.toThrow('Network Error');
       expect(LoggerProxy.logger.error).toHaveBeenCalledWith(
         expect.stringContaining('getOrgInfo API call failed with')
       );
@@ -299,7 +313,7 @@ describe('AgentConfigService', () => {
       const timeoutError = new Error('Timeout Error');
       mockHttpRequest.request.mockRejectedValue(timeoutError);
 
-      await expect(agentConfigService.getOrgInfo()).rejects.toThrow('Timeout Error');
+      await expect(agentConfigService.getOrgInfo(mockOrgId)).rejects.toThrow('Timeout Error');
       expect(LoggerProxy.logger.error).toHaveBeenCalledWith(
         expect.stringContaining('getOrgInfo API call failed with')
       );
@@ -320,7 +334,7 @@ describe('AgentConfigService', () => {
       const mockError = {statusCode: 500};
       mockHttpRequest.request.mockResolvedValue(mockError);
 
-      await expect(agentConfigService.getOrganizationSetting()).rejects.toThrow(
+      await expect(agentConfigService.getOrganizationSetting(mockOrgId)).rejects.toThrow(
         'API call failed with 500'
       );
       expect(LoggerProxy.logger.error).toHaveBeenCalledWith(
@@ -332,7 +346,9 @@ describe('AgentConfigService', () => {
       const networkError = new Error('Network Error');
       mockHttpRequest.request.mockRejectedValue(networkError);
 
-      await expect(agentConfigService.getOrganizationSetting()).rejects.toThrow('Network Error');
+      await expect(agentConfigService.getOrganizationSetting(mockOrgId)).rejects.toThrow(
+        'Network Error'
+      );
       expect(LoggerProxy.logger.error).toHaveBeenCalledWith(
         expect.stringContaining('getOrganizationSetting API call failed with')
       );
@@ -342,7 +358,9 @@ describe('AgentConfigService', () => {
       const timeoutError = new Error('Timeout Error');
       mockHttpRequest.request.mockRejectedValue(timeoutError);
 
-      await expect(agentConfigService.getOrganizationSetting()).rejects.toThrow('Timeout Error');
+      await expect(agentConfigService.getOrganizationSetting(mockOrgId)).rejects.toThrow(
+        'Timeout Error'
+      );
       expect(LoggerProxy.logger.error).toHaveBeenCalledWith(
         expect.stringContaining('getOrganizationSetting API call failed with')
       );
@@ -354,7 +372,7 @@ describe('AgentConfigService', () => {
       const mockResponse = {statusCode: 200, body: {data: [{}]}}; // Adjust data accordingly
       mockHttpRequest.request.mockResolvedValue(mockResponse);
 
-      const result = await agentConfigService.getTenantData();
+      const result = await agentConfigService.getTenantData(mockOrgId);
       expect(result).toEqual(mockResponse.body.data[0]);
       expect(LoggerProxy.logger.log).toHaveBeenCalledWith('getTenantData api success.');
     });
@@ -363,7 +381,9 @@ describe('AgentConfigService', () => {
       const mockError = {statusCode: 500};
       mockHttpRequest.request.mockResolvedValue(mockError);
 
-      await expect(agentConfigService.getTenantData()).rejects.toThrow('API call failed with 500');
+      await expect(agentConfigService.getTenantData(mockOrgId)).rejects.toThrow(
+        'API call failed with 500'
+      );
       expect(LoggerProxy.logger.error).toHaveBeenCalledWith(
         expect.stringContaining('getTenantData API call failed with')
       );
@@ -373,7 +393,7 @@ describe('AgentConfigService', () => {
       const networkError = new Error('Network Error');
       mockHttpRequest.request.mockRejectedValue(networkError);
 
-      await expect(agentConfigService.getTenantData()).rejects.toThrow('Network Error');
+      await expect(agentConfigService.getTenantData(mockOrgId)).rejects.toThrow('Network Error');
       expect(LoggerProxy.logger.error).toHaveBeenCalledWith(
         expect.stringContaining('getTenantData API call failed with')
       );
@@ -385,7 +405,7 @@ describe('AgentConfigService', () => {
       const mockResponse = {statusCode: 200, body: {data: {}}}; // Adjust data accordingly
       mockHttpRequest.request.mockResolvedValue(mockResponse);
 
-      const result = await agentConfigService.getURLMapping();
+      const result = await agentConfigService.getURLMapping(mockOrgId);
       expect(result).toEqual(mockResponse.body.data);
       expect(LoggerProxy.logger.log).toHaveBeenCalledWith('getURLMapping api success.');
     });
@@ -394,7 +414,9 @@ describe('AgentConfigService', () => {
       const mockError = {statusCode: 500};
       mockHttpRequest.request.mockResolvedValue(mockError);
 
-      await expect(agentConfigService.getURLMapping()).rejects.toThrow('API call failed with 500');
+      await expect(agentConfigService.getURLMapping(mockOrgId)).rejects.toThrow(
+        'API call failed with 500'
+      );
       expect(LoggerProxy.logger.error).toHaveBeenCalledWith(
         expect.stringContaining('getURLMapping API call failed with')
       );
@@ -404,7 +426,7 @@ describe('AgentConfigService', () => {
       const networkError = new Error('Network Error');
       mockHttpRequest.request.mockRejectedValue(networkError);
 
-      await expect(agentConfigService.getURLMapping()).rejects.toThrow('Network Error');
+      await expect(agentConfigService.getURLMapping(mockOrgId)).rejects.toThrow('Network Error');
       expect(LoggerProxy.logger.error).toHaveBeenCalledWith(
         expect.stringContaining('getURLMapping API call failed with')
       );
@@ -416,7 +438,7 @@ describe('AgentConfigService', () => {
       const mockResponse = {statusCode: 200, body: {data: {}}}; // Adjust data accordingly
       mockHttpRequest.request.mockResolvedValue(mockResponse);
 
-      const result = await agentConfigService.getDialPlanData();
+      const result = await agentConfigService.getDialPlanData(mockOrgId);
       expect(result).toEqual(mockResponse.body);
       expect(LoggerProxy.logger.log).toHaveBeenCalledWith('getDialPlanData api success.');
     });
@@ -425,7 +447,7 @@ describe('AgentConfigService', () => {
       const mockError = {statusCode: 500};
       mockHttpRequest.request.mockResolvedValue(mockError);
 
-      await expect(agentConfigService.getDialPlanData()).rejects.toThrow(
+      await expect(agentConfigService.getDialPlanData(mockOrgId)).rejects.toThrow(
         'API call failed with 500'
       );
       expect(LoggerProxy.logger.error).toHaveBeenCalledWith(
@@ -437,7 +459,7 @@ describe('AgentConfigService', () => {
       const networkError = new Error('Network Error');
       mockHttpRequest.request.mockRejectedValue(networkError);
 
-      await expect(agentConfigService.getDialPlanData()).rejects.toThrow('Network Error');
+      await expect(agentConfigService.getDialPlanData(mockOrgId)).rejects.toThrow('Network Error');
       expect(LoggerProxy.logger.error).toHaveBeenCalledWith(
         expect.stringContaining('getDialPlanData API call failed with')
       );
@@ -467,7 +489,7 @@ describe('AgentConfigService', () => {
         .mockResolvedValueOnce(mockResponseFirst)
         .mockResolvedValue(mockResponseOther);
 
-      const result = await agentConfigService.getAllTeams(pageSize, filter, attributes);
+      const result = await agentConfigService.getAllTeams(mockOrgId, pageSize, filter, attributes);
       expect(result).toEqual([
         ...mockResponseFirst.body.data,
         ...mockResponseOther.body.data,
@@ -490,9 +512,9 @@ describe('AgentConfigService', () => {
       const mockError = {statusCode: 500};
       (mockHttpRequest.request as jest.Mock).mockResolvedValue(mockError);
 
-      await expect(agentConfigService.getAllTeams(pageSize, filter, attributes)).rejects.toThrow(
-        'API call failed with 500'
-      );
+      await expect(
+        agentConfigService.getAllTeams(mockOrgId, pageSize, filter, attributes)
+      ).rejects.toThrow('API call failed with 500');
       expect(LoggerProxy.logger.error).toHaveBeenCalledWith(
         expect.stringContaining('getListOfTeams API call failed with')
       );
@@ -522,7 +544,12 @@ describe('AgentConfigService', () => {
         .mockResolvedValueOnce(mockResponseFirst)
         .mockResolvedValue(mockResponseOther);
 
-      const result = await agentConfigService.getAllAuxCodes(pageSize, filter, attributes);
+      const result = await agentConfigService.getAllAuxCodes(
+        mockOrgId,
+        pageSize,
+        filter,
+        attributes
+      );
       expect(result).toEqual([
         ...mockResponseFirst.body.data,
         ...mockResponseOther.body.data,
@@ -545,9 +572,9 @@ describe('AgentConfigService', () => {
       const mockError = {statusCode: 500};
       (mockHttpRequest.request as jest.Mock).mockResolvedValue(mockError);
 
-      await expect(agentConfigService.getAllAuxCodes(pageSize, filter, attributes)).rejects.toThrow(
-        'API call failed with 500'
-      );
+      await expect(
+        agentConfigService.getAllAuxCodes(mockOrgId, pageSize, filter, attributes)
+      ).rejects.toThrow('API call failed with 500');
       expect(LoggerProxy.logger.error).toHaveBeenCalledWith(
         expect.stringContaining('getListOfAuxCodes API call failed with')
       );
@@ -649,7 +676,7 @@ describe('AgentConfigService', () => {
       agentConfigService.getDialPlanData = jest.fn().mockResolvedValue(mockDialPlanData);
       agentConfigService.getAllTeams = jest.fn().mockResolvedValue(mockTeamData);
 
-      const result = await agentConfigService.getAgentConfig(mockAgentId);
+      const result = await agentConfigService.getAgentConfig(mockOrgId, mockAgentId);
 
       expect(LoggerProxy.logger.info).toHaveBeenCalledWith('Fetched user data');
       expect(LoggerProxy.logger.info).toHaveBeenCalledWith('Fetched all required data');
@@ -768,7 +795,7 @@ describe('AgentConfigService', () => {
       agentConfigService.getDialPlanData = jest.fn().mockResolvedValue(mockDialPlanData);
       agentConfigService.getAllTeams = jest.fn().mockResolvedValue(mockTeamData);
 
-      const result = await agentConfigService.getAgentConfig(mockAgentId);
+      const result = await agentConfigService.getAgentConfig(mockOrgId, mockAgentId);
 
       expect(LoggerProxy.logger.info).toHaveBeenCalledWith('Fetched user data');
       expect(LoggerProxy.logger.info).toHaveBeenCalledWith('Fetched all required data');
@@ -804,7 +831,7 @@ describe('AgentConfigService', () => {
       agentConfigService.getDialPlanData = jest.fn().mockResolvedValue({});
       agentConfigService.getAllTeams = jest.fn().mockResolvedValue({});
 
-      await expect(agentConfigService.getAgentConfig(mockAgentId)).rejects.toThrow(
+      await expect(agentConfigService.getAgentConfig(mockOrgId, mockAgentId)).rejects.toThrow(
         'API call failed'
       );
     });

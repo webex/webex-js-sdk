@@ -116,7 +116,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         })
         .then(async (data: WelcomeEvent) => {
           const agentId = data.agentId;
-          this.agentConfig = await this.services.config.getAgentConfig(agentId);
+          const orgId = this.$webex.credentials.getOrgId();
+          this.agentConfig = await this.services.config.getAgentConfig(orgId, agentId);
           this.$webex.logger.log(`file: ${CC_FILE}: agent config is fetched successfully`);
 
           return this.agentConfig;
