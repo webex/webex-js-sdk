@@ -1,8 +1,8 @@
-import { ConnectionService } from '../../../../../../src/services/core/WebSocket/connection-service';
-import { WebSocketManager } from '../../../../../../src/services/core/WebSocket/WebSocketManager';
+import {ConnectionService} from '../../../../../../src/services/core/WebSocket/connection-service';
+import {WebSocketManager} from '../../../../../../src/services/core/WebSocket/WebSocketManager';
+import {SubscribeRequest} from '../../../../../../src/types';
 import LoggerProxy from '../../../../../../src/logger-proxy';
-import { CONNECTIVITY_CHECK_INTERVAL } from '../../../../../../src/services/core/constants';
-import { EventBus } from '../../../../../../src/services/core/EventBus';
+import {CONNECTIVITY_CHECK_INTERVAL} from '../../../../../../src/services/core/constants';
 
 jest.mock('../../../../../../src/services/core/WebSocket/WebSocketManager');
 jest.mock('../../../../../../src/logger-proxy', () => ({
@@ -21,7 +21,7 @@ jest.mock('../../../../../../src/logger-proxy', () => ({
 class MockCustomEvent<T> extends Event {
   detail: T;
 
-  constructor(event: string, params: { detail: T }) {
+  constructor(event: string, params: {detail: T}) {
     super(event);
     this.detail = params.detail;
   }
@@ -32,8 +32,12 @@ global.CustomEvent = MockCustomEvent as any;
 describe('ConnectionService', () => {
   let connectionService: ConnectionService;
   let mockWebSocketManager: jest.Mocked<WebSocketManager>;
-  let mockOnReRegister: jest.Mock;
-  let eventBusInstance: EventBus;
+  const mockSubscribeRequest: SubscribeRequest = {
+    force: true,
+    isKeepAliveEnabled: false,
+    clientType: 'WebexCCSDK',
+    allowMultiLogin: true,
+  };
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -44,35 +48,30 @@ describe('ConnectionService', () => {
     }) as jest.Mocked<WebSocketManager>;
     mockWebSocketManager.initWebSocket = jest.fn().mockResolvedValue({});
 
-    // Mock the addEventListener method
-    eventBusInstance = EventBus.getInstance();
-
-    mockOnReRegister = jest.fn().mockResolvedValue({});
-
     connectionService = new ConnectionService({
       webSocketManager: mockWebSocketManager,
-      onReRegister: mockOnReRegister,
+      subscribeRequest: mockSubscribeRequest,
     });
   });
 
   afterEach(() => {
     jest.useRealTimers();
     jest.clearAllTimers();
-    eventBusInstance.removeAllListeners();
   });
 
   it('should initialize ConnectionService', () => {
     expect(connectionService).toBeDefined();
+    expect(connectionService['subscribeRequest']).toEqual(mockSubscribeRequest);
   });
 
   it('should set connection properties', () => {
-    const newProps = { lostConnectionRecoveryTimeout: 30000 };
+    const newProps = {lostConnectionRecoveryTimeout: 30000};
     connectionService.setConnectionProp(newProps);
     expect(connectionService['connectionProp']).toEqual(newProps);
   });
 
   it('should handle ping message and update connection data', () => {
-    const pingMessage = JSON.stringify({ keepalive: 'true' });
+    const pingMessage = JSON.stringify({keepalive: 'true'});
     connectionService['onPing'](pingMessage);
     expect(connectionService['isKeepAlive']).toBe(true);
     expect(connectionService['isConnectionLost']).toBe(false);
@@ -110,16 +109,33 @@ describe('ConnectionService', () => {
     expect(LoggerProxy.logger.info).toHaveBeenCalledWith(
       'event=socketConnectionRetry | Trying to reconnect to notifs socket'
     );
-    expect(mockOnReRegister).toHaveBeenCalled();
+    expect(mockWebSocketManager.initWebSocket).toHaveBeenCalledWith({body: mockSubscribeRequest});
   });
 
-  it('should handle ping message without keepalive and not update connection data', () => {
-    const pingMessage = JSON.stringify({ someOtherProperty: 'value' });
-    connectionService['onPing'](pingMessage);
-    expect(connectionService['isKeepAlive']).toBe(false);
-    expect(connectionService['isConnectionLost']).toBe(false);
-    expect(connectionService['isRestoreFailed']).toBe(false);
-    expect(connectionService['isSocketReconnected']).toBe(false);
+  describe('ConnectionService onPing', () => {
+    it('should handle ping message without keepalive and not update connection data', () => {
+      const pingMessage = JSON.stringify({someOtherProperty: 'value'});
+      connectionService['onPing'](pingMessage);
+      expect(connectionService['isKeepAlive']).toBe(false);
+      expect(connectionService['isConnectionLost']).toBe(false);
+      expect(connectionService['isRestoreFailed']).toBe(false);
+      expect(connectionService['isSocketReconnected']).toBe(false);
+    });
+
+    it('should clear reconnectingTimer and restoreTimer on ping message', () => {
+      jest.useFakeTimers('modern');
+      const reconnectingTimer = setTimeout(() => {}, 1000);
+      const restoreTimer = setTimeout(() => {}, 1000);
+      connectionService['reconnectingTimer'] = reconnectingTimer;
+      connectionService['restoreTimer'] = restoreTimer;
+      const clearTimeoutSpy = jest.spyOn(global, 'clearTimeout');
+      const pingMessage = JSON.stringify({keepalive: 'true'});
+      connectionService['onPing'](pingMessage);
+
+      expect(clearTimeoutSpy).toHaveBeenCalledTimes(2);
+      expect(clearTimeoutSpy).toHaveBeenCalledWith(reconnectingTimer);
+      expect(clearTimeoutSpy).toHaveBeenCalledWith(restoreTimer);
+    });
   });
 
   describe('ConnectionService Reconnect', () => {
@@ -150,7 +166,6 @@ describe('ConnectionService', () => {
       expect(LoggerProxy.logger.info).toHaveBeenCalledWith(
         'event=socketConnectionRetry | Trying to reconnect to notifs socket'
       );
-      expect(mockOnReRegister).toHaveBeenCalled();
     });
 
     it('should handle onSocketClose and start reconnect interval', () => {

@@ -1,14 +1,15 @@
+import {EventEmitter} from 'events';
 import {WebSocketManager} from './WebSocketManager';
 import LoggerProxy from '../../../logger-proxy';
 import {ConnectionServiceOptions, ConnectionLostDetails, ConnectionProp} from './types';
-import {EventBus} from '../EventBus';
 import {
   LOST_CONNECTION_RECOVERY_TIMEOUT,
   WS_DISCONNECT_ALLOWED,
   CONNECTIVITY_CHECK_INTERVAL,
 } from '../constants';
+import {SubscribeRequest} from '../../../types';
 
-export class ConnectionService extends EventTarget {
+export class ConnectionService extends EventEmitter {
   private connectionProp: ConnectionProp = {
     lostConnectionRecoveryTimeout: LOST_CONNECTION_RECOVERY_TIMEOUT,
   };
@@ -22,35 +23,35 @@ export class ConnectionService extends EventTarget {
   private isKeepAlive: boolean;
   private reconnectInterval: ReturnType<typeof setInterval>;
   private webSocketManager: WebSocketManager;
-  private eventBus: EventBus;
-  private onReRegister: () => Promise<void>;
+  private subscribeRequest: SubscribeRequest;
 
   constructor(options: ConnectionServiceOptions) {
     super();
     this.webSocketManager = options.webSocketManager;
-    this.onReRegister = options.onReRegister;
+    this.subscribeRequest = options.subscribeRequest;
 
     this.isConnectionLost = false;
     this.isRestoreFailed = false;
     this.isSocketReconnected = false;
     this.isKeepAlive = false;
-    this.eventBus = EventBus.getInstance();
 
-    this.eventBus.on('message', this.onPing.bind(this));
-    this.eventBus.on('socketClose', this.onSocketClose.bind(this));
+    this.setupEventListeners();
+  }
+
+  private setupEventListeners() {
+    this.webSocketManager.on('message', this.onPing.bind(this));
+    this.webSocketManager.on('socketClose', this.onSocketClose.bind(this));
   }
 
   private dispatchConnectionEvent(socketReconnected = false): void {
-    const event = new CustomEvent<ConnectionLostDetails>('connectionLost', {
-      detail: {
-        isConnectionLost: this.isConnectionLost,
-        isRestoreFailed: this.isRestoreFailed,
-        isSocketReconnected:
-          !this.webSocketManager.isSocketClosed && (socketReconnected || this.isSocketReconnected),
-        isKeepAlive: this.isKeepAlive,
-      },
-    });
-    this.dispatchEvent(event);
+    const event: ConnectionLostDetails = {
+      isConnectionLost: this.isConnectionLost,
+      isRestoreFailed: this.isRestoreFailed,
+      isSocketReconnected:
+        !this.webSocketManager.isSocketClosed && (socketReconnected || this.isSocketReconnected),
+      isKeepAlive: this.isKeepAlive,
+    };
+    this.emit('connectionLost', event);
   }
 
   private handleConnectionLost = (): void => {
@@ -90,19 +91,15 @@ export class ConnectionService extends EventTarget {
       clearTimeout(this.restoreTimer);
     }
     this.isKeepAlive = parsedEvent.keepalive === 'true';
-    const shouldUpdateConnectionData =
-      this.isKeepAlive || (this.isConnectionLost && !this.isRestoreFailed);
-    const shouldDispatchEvent =
-      this.isKeepAlive || (this.isConnectionLost && !this.isRestoreFailed);
-    const shouldDispatchEventWithReconnect = this.isSocketReconnected && this.isKeepAlive;
 
-    if (shouldUpdateConnectionData) {
+    if (
+      ((this.isConnectionLost && !this.isRestoreFailed) || this.isKeepAlive) &&
+      !this.isSocketReconnected
+    ) {
       this.updateConnectionData();
-    }
-
-    if (shouldDispatchEvent) {
       this.dispatchConnectionEvent();
-    } else if (shouldDispatchEventWithReconnect) {
+    } else if (this.isSocketReconnected && this.isKeepAlive) {
+      this.updateConnectionData();
       this.dispatchConnectionEvent(true);
     }
 
@@ -117,7 +114,7 @@ export class ConnectionService extends EventTarget {
     LoggerProxy.logger.info(`event=socketConnectionRetry | Trying to reconnect to notifs socket`);
     const onlineStatus = navigator.onLine;
     if (onlineStatus) {
-      await this.onReRegister();
+      await this.webSocketManager.initWebSocket({body: this.subscribeRequest});
       await this.clearTimerOnRestoreFailed();
       this.isSocketReconnected = true;
     } else {

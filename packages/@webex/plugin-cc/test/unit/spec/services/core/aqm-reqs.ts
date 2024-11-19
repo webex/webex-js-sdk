@@ -3,7 +3,6 @@ import HttpRequest from '../../../../../src/services/core/HttpRequest';
 import { WebSocketManager } from '../../../../../src/services/core/WebSocket/WebSocketManager';
 import LoggerProxy from '../../../../../src/logger-proxy';
 import { IHttpResponse } from '../../../../../src/types';
-import { EventBus } from '../../../../../src/services/core/EventBus';
 
 jest.mock('../../../../../src/services/core/HttpRequest');
 jest.mock('../../../../../src/logger-proxy', () => ({
@@ -41,7 +40,6 @@ const mockWebSocketManager = WebSocketManager as jest.MockedClass<typeof WebSock
 describe('AqmReqs', () => {
   let httpRequestInstance: jest.Mocked<HttpRequest>;
   let webSocketManagerInstance: jest.Mocked<WebSocketManager>;
-  let eventBusInstance: EventBus;
   const mockHttpRequestResolvedValue: IHttpResponse = {
     status: 202,
     data: { webSocketUrl: 'fake-url' },
@@ -67,14 +65,25 @@ describe('AqmReqs', () => {
       webex: {} as any,
     }) as jest.Mocked<WebSocketManager>;
 
-    eventBusInstance = EventBus.getInstance();
+    // Mock the on method to handle event listeners
+    const eventListeners: { [key: string]: Function[] } = {};
+    webSocketManagerInstance.on = jest.fn((event: string, listener: Function) => {
+      if (!eventListeners[event]) {
+        eventListeners[event] = [];
+      }
+      eventListeners[event].push(listener);
+    });
+  
+    // Mock the emit method to directly call the registered listeners
+    webSocketManagerInstance.emit = (event: string, ...args: any[]) => {
+      if (eventListeners[event]) {
+        eventListeners[event].forEach((listener) => listener(...args));
+      }
+    };
+
 
     aqm = new AqmReqs(webSocketManagerInstance);
     mockWebSocketManager.mockImplementation(() => webSocketManagerInstance);
-  });
-
-  afterEach(() => {
-    eventBusInstance.removeAllListeners();
   });
 
   it('AqmReqs should be defined', async () => {
@@ -147,7 +156,7 @@ describe('AqmReqs', () => {
           req({}),
           new Promise<void>((resolve) => {
             setTimeout(() => {
-              eventBusInstance.emit(
+              webSocketManagerInstance.emit(
                 'message',
                 JSON.stringify({
                   type: 'RoutingMessage',
@@ -205,7 +214,7 @@ describe('AqmReqs', () => {
           req({}),
           new Promise<void>((resolve) => {
             setTimeout(() => {
-              eventBusInstance.emit(
+              webSocketManagerInstance.emit(
                 'message',
                 JSON.stringify({
                   type: 'RoutingMessage',
@@ -305,7 +314,7 @@ describe('AqmReqs', () => {
           req({}),
           new Promise<void>((resolve) => {
             setTimeout(() => {
-              eventBusInstance.emit(
+              webSocketManagerInstance.emit(
                 'message',
                 JSON.stringify({
                   type: 'RoutingMessage',
@@ -354,7 +363,7 @@ describe('AqmReqs', () => {
       }
     
       // Welcome event
-      eventBusInstance.emit(
+      webSocketManagerInstance.emit(
         'message',
         JSON.stringify({
           type: 'Welcome',
@@ -365,7 +374,7 @@ describe('AqmReqs', () => {
       expect(LoggerProxy.logger.info).toHaveBeenCalledWith('Welcome message from Notifs Websocket');
     
       // Keep-alive events
-      eventBusInstance.emit(
+      webSocketManagerInstance.emit(
         'message',
         JSON.stringify({
           keepalive: 'true',
@@ -376,7 +385,7 @@ describe('AqmReqs', () => {
       expect(LoggerProxy.logger.info).toHaveBeenCalledWith('Keepalive from web socket');
     
       // Unhandled event
-      eventBusInstance.emit(
+      webSocketManagerInstance.emit(
         'message',
         JSON.stringify({
           type: 'UnhandledMessage',
@@ -495,7 +504,7 @@ describe('AqmReqs', () => {
     
       const promise = aqm['createPromise'](conf);
       global.setTimeout(() => {
-        eventBusInstance.emit(
+        webSocketManagerInstance.emit(
           'message',
           JSON.stringify({
             type: 'RoutingMessage',
@@ -548,7 +557,7 @@ describe('AqmReqs', () => {
         },
       };
       global.setTimeout(() => {
-        eventBusInstance.emit(
+        webSocketManagerInstance.emit(
           'message',
           JSON.stringify(eventData)
         );
@@ -556,30 +565,6 @@ describe('AqmReqs', () => {
     
       const result = await promise;
       expect(result).toEqual(eventData);
-    });
-
-    it('should handle AgentReloginSuccess event and emit agentWssDisconnect', () => {
-      const stateChangeData = {
-        state: 'Available',
-        auxCodeId: 'some-aux-code-id',
-        lastStateChangeReason: 'agent-wss-disconnect',
-        agentId: 'some-agent-id',
-      };
-    
-      const eventBusEmitSpy = jest.spyOn(aqm['eventBus'], 'emit');
-    
-      eventBusInstance.emit(
-        'message',
-        JSON.stringify({
-          type: 'AgentReloginSuccess',
-          data: {
-            lastStateChangeReason: 'agent-wss-disconnect',
-            auxCodeId: 'some-aux-code-id',
-            agentId: 'some-agent-id',
-          },
-        })
-      );
-      expect(eventBusEmitSpy).toHaveBeenCalledWith('agentWssDisconnect', stateChangeData);
     });
   });
 });

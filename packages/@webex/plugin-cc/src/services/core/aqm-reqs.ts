@@ -5,20 +5,18 @@ import HttpRequest from './HttpRequest';
 import LoggerProxy from '../../logger-proxy';
 import {CbRes, Conf, ConfEmpty, Pending, Req, Res, ResEmpty} from './types';
 import {TIMEOUT_REQ} from './constants';
-import {StateChange} from '../agent/types';
-import {AGENT_STATE_AVAILABLE} from '../../features/constants';
-import {EventBus} from './EventBus';
+import {WebSocketManager} from './WebSocket/WebSocketManager';
 
 export default class AqmReqs {
   private pendingRequests: Record<string, Pending> = {};
   private pendingNotifCancelrequest: Record<string, Pending> = {};
   private httpRequest: HttpRequest;
-  private eventBus: EventBus;
+  private webSocketManager: WebSocketManager;
 
-  constructor() {
+  constructor(webSocketManager: WebSocketManager) {
     this.httpRequest = HttpRequest.getInstance();
-    this.eventBus = EventBus.getInstance();
-    this.eventBus.on('message', this.onMessage.bind(this));
+    this.webSocketManager = webSocketManager;
+    this.webSocketManager.on('message', this.onMessage.bind(this));
   }
 
   req<TRes, TErr, TReq>(c: Conf<TRes, TErr, TReq>): Res<TRes, TReq> {
@@ -218,20 +216,10 @@ export default class AqmReqs {
       return;
     }
 
-    if (
-      event.type === 'AgentReloginSuccess' &&
-      event.data.lastStateChangeReason === 'agent-wss-disconnect'
-    ) {
-      LoggerProxy.logger.info(
-        'event=requestAutoStateChange | Requesting state change to available on socket reconnect'
-      );
-      const stateChangeData: StateChange = {
-        state: AGENT_STATE_AVAILABLE,
-        auxCodeId: event.data.auxCodeId,
-        lastStateChangeReason: event.data.lastStateChangeReason,
-        agentId: event.data.agentId,
-      };
-      this.eventBus.emit('agentWssDisconnect', stateChangeData);
+    if (event.type === 'AgentReloginFailed') {
+      LoggerProxy.logger.info('Silently handling the agent relogin fail');
+
+      return;
     }
 
     let isHandled = false;

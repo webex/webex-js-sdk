@@ -1,12 +1,13 @@
+import EventEmitter from 'events';
 import {WebexSDK, SubscribeRequest, HTTP_METHODS, WelcomeResponse} from '../../../types';
 import {SUBSCRIBE_API, WCC_API_GATEWAY} from '../../constants';
+import {ConnectionLostDetails} from './types';
 import {SubscribeResponse} from '../../config/types';
 import LoggerProxy from '../../../logger-proxy';
 import workerScript from './keepalive.worker';
 import {KEEPALIVE_WORKER_INTERVAL, CLOSE_SOCKET_TIMEOUT} from '../constants';
-import {EventBus} from '../EventBus';
 
-export class WebSocketManager {
+export class WebSocketManager extends EventEmitter {
   private websocket: WebSocket;
   shouldReconnect: boolean;
   isSocketClosed: boolean;
@@ -20,9 +21,9 @@ export class WebSocketManager {
     | null = null;
 
   private keepaliveWorker: Worker;
-  private eventBus: EventBus;
 
   constructor(options: {webex: WebexSDK}) {
+    super();
     const {webex} = options;
     this.webex = webex;
     this.shouldReconnect = true;
@@ -34,7 +35,6 @@ export class WebSocketManager {
 
     const workerScriptBlob = new Blob([workerScript], {type: 'application/javascript'});
     this.keepaliveWorker = new Worker(URL.createObjectURL(workerScriptBlob));
-    this.eventBus = EventBus.getInstance();
   }
 
   async initWebSocket(options: {body: SubscribeRequest}): Promise<WelcomeResponse> {
@@ -59,6 +59,10 @@ export class WebSocketManager {
         `[WebSocketStatus] | event=webSocketClose | WebSocket connection closed manually REASON: ${reason}`
       );
     }
+  }
+
+  handleConnectionLost(event: ConnectionLostDetails) {
+    this.isConnectionLost = event.isConnectionLost;
   }
 
   private async register(connectionConfig: SubscribeRequest) {
@@ -126,7 +130,7 @@ export class WebSocketManager {
       };
 
       this.websocket.onmessage = (e: MessageEvent) => {
-        this.eventBus.emit('message', e.data);
+        this.emit('message', e.data);
         const eventData = JSON.parse(e.data);
 
         if (eventData.type === 'Welcome') {
@@ -152,7 +156,7 @@ export class WebSocketManager {
     this.isSocketClosed = true;
     this.keepaliveWorker.postMessage({type: 'terminate'});
     if (this.shouldReconnect) {
-      this.eventBus.emit('socketClose');
+      this.emit('socketClose');
       let issueReason;
       if (this.forceCloseWebSocketOnTimeout) {
         issueReason = 'WebSocket auto close timed out. Forcefully closed websocket.';

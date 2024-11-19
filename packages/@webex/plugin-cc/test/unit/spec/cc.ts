@@ -9,12 +9,12 @@ import {
 import ContactCenter from '../../../src/cc';
 import MockWebex from '@webex/test-helper-mock-webex';
 import {StationLoginSuccess} from '../../../src/services/agent/types';
+import {SetStateResponse} from '../../../src/types';
 import {IAgentProfile} from '../../../src/types';
 import {AGENT, WEB_RTC_PREFIX} from '../../../src/services/constants';
 import Services from '../../../src/services';
 import config from '../../../src/config';
 import LoggerProxy from '../../../src/logger-proxy';
-import {EventBus} from '../../../src/services/core/EventBus';
 
 // Mock the Worker API
 import '../../../__mocks__/workerMock';
@@ -49,7 +49,6 @@ global.URL.createObjectURL = jest.fn(() => 'blob:http://localhost:3000/12345');
 describe('webex.cc', () => {
   let webex;
   let mockWebSocketManager;
-  let eventBusInstance: EventBus;
 
   beforeEach(() => {
     webex = MockWebex({
@@ -59,12 +58,12 @@ describe('webex.cc', () => {
       logger: {
         log: jest.fn(),
         error: jest.fn(),
+        info: jest.fn(),
       },
       config: config,
       once: jest.fn((event, callback) => callback()),
     }) as unknown as WebexSDK;
 
-    eventBusInstance = EventBus.getInstance();
     // Instantiate ContactCenter to ensure it's fully initialized
     webex.cc = new ContactCenter({parent: webex});
 
@@ -89,7 +88,6 @@ describe('webex.cc', () => {
 
   afterEach(() => {
     jest.clearAllMocks();
-    eventBusInstance.removeAllListeners();
   });
 
   it('should initialize services and logger proxy on READY event', () => {
@@ -139,6 +137,12 @@ describe('webex.cc', () => {
         wrapUpCodes: [],
       };
       const connectWebsocketSpy = jest.spyOn(webex.cc, 'connectWebsocket');
+      const reloadSpy = jest.spyOn(webex.cc.services.agent, 'reload').mockResolvedValue({
+        data: {
+          auxCodeId: 'auxCodeId',
+          agentId: 'agentId',
+        },
+      });
 
       mockAgentConfig.getAgentProfile.mockResolvedValue(mockAgentProfile);
       mockWebSocketManager.initWebSocket.mockResolvedValue({
@@ -160,6 +164,7 @@ describe('webex.cc', () => {
       expect(webex.logger.log).toHaveBeenCalledWith(
         'file: cc: agent config is fetched successfully'
       );
+      expect(reloadSpy).toHaveBeenCalled();
       expect(result).toEqual(mockAgentProfile);
     });
 
@@ -176,6 +181,12 @@ describe('webex.cc', () => {
         wrapUpCodes: [],
       };
       const connectWebsocketSpy = jest.spyOn(webex.cc, 'connectWebsocket');
+      const reloadSpy = jest.spyOn(webex.cc.services.agent, 'reload').mockResolvedValue({
+        data: {
+          auxCodeId: 'auxCodeId',
+          agentId: 'agentId',
+        },
+      });
 
       mockAgentConfig.getAgentProfile.mockResolvedValue(mockAgentProfile);
       mockWebSocketManager.initWebSocket.mockResolvedValue({
@@ -197,6 +208,7 @@ describe('webex.cc', () => {
       expect(webex.logger.log).toHaveBeenCalledWith(
         'file: cc: agent config is fetched successfully'
       );
+      expect(reloadSpy).toHaveBeenCalled();
       expect(result).toEqual(mockAgentProfile);
     });
 
@@ -544,6 +556,48 @@ describe('webex.cc', () => {
       expect(LoggerProxy.logger.error).toHaveBeenCalledWith(
         `getBuddyAgents failed with trackingId: ${error.details.trackingId}`
       );
+    });
+  });
+  
+  describe('silentRelogin', () => {
+    it('should perform silent relogin and set agent state to available', async () => {
+      const mockReLoginResponse = {
+        data: {
+          auxCodeId: 'auxCodeId',
+          agentId: 'agentId',
+          lastStateChangeReason: 'agent-wss-disconnect',
+        },
+      };
+  
+      const setAgentStateSpy = jest.spyOn(webex.cc, 'setAgentState').mockResolvedValue({} as SetStateResponse);
+      jest.spyOn(webex.cc.services.agent, 'reload').mockResolvedValue(mockReLoginResponse);
+  
+      await webex.cc['silentRelogin']();
+  
+      expect(webex.logger.info).toHaveBeenCalledWith(
+        'event=requestAutoStateChange | Requesting state change to available on socket reconnect'
+      );
+      expect(setAgentStateSpy).toHaveBeenCalledWith({
+        state: 'Available',
+        auxCodeId: 'auxCodeId',
+        lastStateChangeReason: 'agent-wss-disconnect',
+        agentId: 'agentId',
+      });
+    });
+  
+    it('should handle AGENT_NOT_FOUND error silently', async () => {
+      const error = {
+        details: {
+          trackingId: '1234',
+          data: {
+            reason: 'AGENT_NOT_FOUND',
+          },
+        },
+      };
+  
+      jest.spyOn(webex.cc.services.agent, 'reload').mockRejectedValue(error);
+      await webex.cc['silentRelogin']();
+      expect(webex.logger.info).toHaveBeenCalledWith('Agent not found during re-login, handling silently');
     });
   });
 });

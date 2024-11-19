@@ -1,8 +1,9 @@
+import {SubscribeRequest} from '../../../types';
 import {WebSocketManager} from './WebSocketManager';
 
 export type ConnectionServiceOptions = {
   webSocketManager: WebSocketManager;
-  onReRegister: () => Promise<void>;
+  subscribeRequest: SubscribeRequest;
 };
 
 export type ConnectionLostDetails = {

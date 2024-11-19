@@ -26,7 +26,8 @@ import LoggerProxy from './logger-proxy';
 import {StateChange, Logout} from './services/agent/types';
 import {ConnectionService} from './services/core/WebSocket/connection-service';
 import {getErrorDetails, getErrorReason} from './services/core/Utils';
-import {EventBus} from './services/core/EventBus';
+import {AGENT_STATE_AVAILABLE} from './features/constants';
+import {ConnectionLostDetails} from './services/core/WebSocket/types';
 
 export default class ContactCenter extends WebexPlugin implements IContactCenter {
   namespace = 'cc';
@@ -38,7 +39,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   private webCallingService: WebCallingService;
   private connectionService: ConnectionService;
   private services: Services;
-  private eventBus: EventBus;
 
   constructor(...args) {
     super(...args);
@@ -61,16 +61,14 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
       this.connectionService = new ConnectionService({
         webSocketManager: this.webSocketManager,
-        onReRegister: this.register.bind(this),
+        subscribeRequest: this.getConnectionConfig(),
       });
 
-      this.services = Services.getInstance();
+      this.services = Services.getInstance(this.webSocketManager);
 
       this.webCallingService = new WebCallingService(this.$webex, this.$config.callingClientConfig);
 
-      this.eventBus = EventBus.getInstance();
-      this.eventBus.on('agentWssDisconnect', this.handleAgentWssDisconnect.bind(this));
-
+      this.setupEventListeners();
       LoggerProxy.initialize(this.$webex.logger);
     });
   }
@@ -123,9 +121,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           const agentConfig = new AgentConfig(agentId, this.$webex, this.httpRequest);
           this.agentConfig = await agentConfig.getAgentProfile();
           this.$webex.logger.log(`file: ${CC_FILE}: agent config is fetched successfully`);
-          // TODO: We need to emit an event when it is successful
-          /* eslint-disable consistent-return */
-          await this.defaultReLogin();
+          // TODO: Check for config if it supports this auto silent relogin (https://jira-eng-gpk2.cisco.com/jira/browse/SPARK-574666)
+          await this.silentRelogin();
 
           return this.agentConfig;
         })
@@ -243,6 +240,13 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   }
 
   /**
+   * For setting up the Event Emitter listeners and handlers
+   */
+  private setupEventListeners() {
+    this.connectionService.on('connectionLost', this.handleConnectionLost.bind(this));
+  }
+
+  /**
    * This method returns the connection configuration.
    */
   private getConnectionConfig(): SubscribeRequest {
@@ -255,33 +259,52 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   }
 
   /**
+   * Called when we reconnection has been completed
+   */
+  private async handleConnectionLost(msg: ConnectionLostDetails): Promise<void> {
+    this.webSocketManager.handleConnectionLost(msg);
+
+    if (msg.isConnectionLost) {
+      // TODO: Emit an event saying connection is lost
+      this.$webex.logger.info('event=handleConnectionLost | Connection lost');
+    } else if (msg.isSocketReconnected) {
+      // TODO: Emit an event saying connection is re-estabilished
+      this.$webex.logger.info(
+        'event=handleConnectionReconnect | Connection reconnected attempting to request silent relogin'
+      );
+      // TODO: Add a check here for config (if it has property to auto silent relogin) (https://jira-eng-gpk2.cisco.com/jira/browse/SPARK-574666)
+      await this.silentRelogin();
+    }
+  }
+
+  /**
    * Called when we finish registration to silently handle the errors
    */
-  private async defaultReLogin(): Promise<StationReLoginResponse | void> {
+  private async silentRelogin(): Promise<void> {
     try {
       const reLoginResponse = await this.services.agent.reload();
+      const {auxCodeId, agentId, lastStateChangeReason} = reLoginResponse.data;
 
-      return reLoginResponse;
+      if (lastStateChangeReason === 'agent-wss-disconnect') {
+        this.$webex.logger.info(
+          'event=requestAutoStateChange | Requesting state change to available on socket reconnect'
+        );
+        const stateChangeData: StateChange = {
+          state: AGENT_STATE_AVAILABLE,
+          auxCodeId,
+          lastStateChangeReason,
+          agentId,
+        };
+        await this.setAgentState(stateChangeData);
+      }
+      // TODO: Update login state of config here (https://jira-eng-gpk2.cisco.com/jira/browse/SPARK-574666)
     } catch (error) {
       if (getErrorReason(error) === 'AGENT_NOT_FOUND') {
         this.$webex.logger.info('Agent not found during re-login, handling silently');
 
         return;
       }
-      throw getErrorDetails(error, 'defaultReLogin');
-    }
-  }
-
-  /**
-   * Handle the custom event and call setAgentState for disconnect event
-   */
-  private async handleAgentWssDisconnect(msg: StateChange) {
-    try {
-      const stateChangeData: StateChange = msg;
-      await this.setAgentState(stateChangeData);
-      this.$webex.logger.info('Agent state changed successfully');
-    } catch (error) {
-      this.$webex.logger.error(`Error changing agent state: ${error}`);
+      throw getErrorDetails(error, 'silentReLogin');
     }
   }
 }
