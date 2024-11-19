@@ -1,4 +1,3 @@
-import {WebexSDK} from '../types';
 import routingAgent from './agent';
 import AgentConfigService from './config';
 import AqmReqs from './core/aqm-reqs';
@@ -9,17 +8,14 @@ export default class Services {
   public readonly config: AgentConfigService;
   private static instance: Services;
 
-  constructor(options: {webSocketManager: WebSocketManager; webex: WebexSDK}) {
+  constructor(options: {webSocketManager: WebSocketManager}) {
     const {webSocketManager} = options;
     const aqmReq = new AqmReqs(webSocketManager);
     this.config = new AgentConfigService();
     this.agent = routingAgent(aqmReq);
   }
 
-  public static getInstance(options: {
-    webSocketManager: WebSocketManager;
-    webex: WebexSDK;
-  }): Services {
+  public static getInstance(options: {webSocketManager: WebSocketManager}): Services {
     if (!this.instance) {
       this.instance = new Services(options);
     }

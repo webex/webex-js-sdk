@@ -62,7 +62,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
       this.services = Services.getInstance({
         webSocketManager: this.webSocketManager,
-        webex: this.$webex,
       });
 
       this.webCallingService = new WebCallingService(this.$webex, this.$config.callingClientConfig);

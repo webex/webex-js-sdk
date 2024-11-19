@@ -146,17 +146,64 @@ export type DesktopProfileResponse = {
    */
   dialPlanEnabled: boolean;
 
+  /**
+   * Specify the agentDNValidation of the agent.
+   */
   lastAgentRouting: boolean;
+
+  /**
+   * Specify the autoWrapUp allowed.
+   */
   autoWrapUp: boolean;
+
+  /**
+   * Specify the autoAnswer allowed.
+   */
   autoAnswer: boolean;
+
+  /**
+   * Specify the autoWrapAfterSeconds of the agent.
+   */
   autoWrapAfterSeconds: number;
+
+  /**
+   * Specify the agentAvailableAfterOutdial of the agent.
+   */
   agentAvailableAfterOutdial: boolean;
+
+  /**
+   * Specify the allowAutoWrapUpExtension of the agent.
+   */
   allowAutoWrapUpExtension: boolean;
+
+  /**
+   * Specify the outdialEnabled of the agent.
+   */
   outdialEnabled: boolean;
+
+  /**
+   * Specify the outdialEntryPointId of the agent.
+   */
   outdialEntryPointId: string;
+
+  /**
+   * Specify the outdialANIId of the agent.
+   */
   outdialANIId: string;
+
+  /**
+   * Specify the consultToQueue allowed.
+   */
   consultToQueue: boolean;
+
+  /**
+   * Specify the addressBookId of the agent.
+   */
   addressBookId: string;
+
+  /**
+   * Specify the viewableStatistics of the agent.
+   */
   viewableStatistics: {
     id: string;
     agentStats: boolean;
@@ -166,13 +213,45 @@ export type DesktopProfileResponse = {
     accessTeamStats: string;
     teams: string[];
   };
+
+  /**
+   * Specify the agentDNValidation of the agent.
+   */
   agentDNValidation: string;
+
+  /**
+   * Specify the dialPlans of the agent.
+   */
   dialPlans: string[];
+
+  /**
+   * Specify the timeoutDesktopInactivityCustomEnabled enabled or not.
+   */
   timeoutDesktopInactivityCustomEnabled: boolean;
+
+  /**
+   * Specify the timeoutDesktopInactivityMins.
+   */
   timeoutDesktopInactivityMins: number;
+
+  /**
+   * Specify the showUserDetailsMS enabled or not.
+   */
   showUserDetailsMS: boolean;
+
+  /**
+   * Specify the stateSynchronizationMS enabled or not.
+   */
   stateSynchronizationMS: boolean;
+
+  /**
+   * Specify the showUserDetailsWebex enabled or not.
+   */
   showUserDetailsWebex: boolean;
+
+  /**
+   * Specify the stateSynchronizationWebex enabled or not.
+   */
   stateSynchronizationWebex: boolean;
 };
 
@@ -219,7 +298,6 @@ export type AuxCode = {
   /**
    * Indicates the work type associated with this code..
    */
-
   workTypeCode: string;
 };
 

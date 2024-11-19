@@ -25,6 +25,9 @@ import {
   endPointMap,
 } from './constants';
 
+/*
+The AgentConfigService class provides methods to fetch agent configuration data.
+*/
 export default class AgentConfigService {
   private httpReq: HttpRequest;
   constructor() {

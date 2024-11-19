@@ -16,12 +16,23 @@ import {
   WRAP_UP_CODE,
 } from './types';
 
+/**
+ * Get the URL mapping for the given name
+ * @param {Array<URLMapping>} urlMappings
+ * @param {string} name
+ * @returns {string}
+ */
 const getUrlMapping = (urlMappings: Array<URLMapping>, name: string) => {
   const mappedUrl = urlMappings.find((mapping) => mapping.name === name)?.url;
 
   return mappedUrl || '';
 };
 
+/**
+ * Get the MSFT and Webex configuration
+ * @param {DesktopProfileResponse} agentProfileData
+ * @returns {Object}
+ */
 const getMsftConfig = (agentProfileData: DesktopProfileResponse) => {
   return {
     showUserDetailsMS: agentProfileData.showUserDetailsMS ?? false,
@@ -29,6 +40,11 @@ const getMsftConfig = (agentProfileData: DesktopProfileResponse) => {
   };
 };
 
+/**
+ * Get the Webex configuration
+ * @param {DesktopProfileResponse} agentProfileData
+ * @returns {Object}
+ */
 const getWebexConfig = (agentProfileData: DesktopProfileResponse) => {
   return {
     showUserDetailsWebex: agentProfileData.showUserDetailsWebex ?? false,
@@ -36,10 +52,21 @@ const getWebexConfig = (agentProfileData: DesktopProfileResponse) => {
   };
 };
 
+/**
+ * Get the default agent DN
+ * @param {string} agentDNValidation
+ * @returns {boolean}
+ */
 const getDefaultAgentDN = (agentDNValidation: string) => {
   return agentDNValidation === 'PROVISIONED_VALUE';
 };
 
+/**
+ * Get the filtered dialplan entries
+ * @param {Array<DialPlanEntity>} dialPlanData
+ * @param {Array<string>} profileDialPlans
+ * @returns {Array<Entity>}
+ */
 const getFilteredDialplanEntries = (dialPlanData: DialPlanEntity[], profileDialPlans: string[]) => {
   const dialPlanEntries = [];
   dialPlanData.forEach((dailPlan: DialPlanEntity) => {
@@ -57,6 +84,13 @@ const getFilteredDialplanEntries = (dialPlanData: DialPlanEntity[], profileDialP
   return dialPlanEntries;
 };
 
+/**
+ * Get the filtered aux codes
+ * @param {Array<AuxCode>} auxCodes
+ * @param {AuxCodeType} type
+ * @param {Array<string>} specificCodes
+ * @returns {Array<Entity>}
+ */
 const getFilterAuxCodes = (
   auxCodes: Array<AuxCode>,
   type: AuxCodeType,
@@ -81,15 +115,30 @@ const getFilterAuxCodes = (
   return filteredAuxCodes;
 };
 
+/**
+ * Get the preferred supervisor team ID
+ * @param {AgentResponse} userData
+ * @returns {string}
+ */
 function getPreferredSupervisorTeamId(userData: AgentResponse) {
   return userData.preferredSupervisorTeamId ? userData.preferredSupervisorTeamId : '';
 }
 
+/**
+ * Get the default wrapup code
+ * @param {Array<Entity>} wrapUpReasonList
+ * @returns {Entity}
+ */
 function getDefaultWrapUpCode(wrapUpReasonList: Entity[]) {
   return wrapUpReasonList?.find((c: Entity) => c.isDefault);
 }
 
-export function parseAgentConfigs(profileData: {
+/**
+ * Parse the agent configurations
+ * @param {Object} profileData
+ * @returns {Profile}
+ */
+function parseAgentConfigs(profileData: {
   userData: AgentResponse;
   teamData: Team[];
   tenantData: TenantData;
@@ -217,3 +266,5 @@ export function parseAgentConfigs(profileData: {
 
   return finalData;
 }
+
+export {parseAgentConfigs};
