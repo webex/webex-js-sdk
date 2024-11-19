@@ -25,6 +25,8 @@ import {
 } from 'lodash';
 import {readExifData} from '@webex/helper-image';
 import uuid from 'uuid';
+import {transforms as encryptionTransforms} from './encryption-transforms';
+import {transforms as decryptionTransforms} from './decryption-transforms';
 
 import {InvalidUserCreation} from './convo-error';
 import ShareActivity from './share-activity';
@@ -77,6 +79,16 @@ const getConvoLimit = (options = {}) => {
 
 const Conversation = WebexPlugin.extend({
   namespace: 'Conversation',
+  initialize() {
+    this.listenToOnce(this.webex, 'ready', () => {
+      if (Array.isArray(this.webex.config.payloadTransformer?.transforms)) {
+        this.webex.config.payloadTransformer.transforms =
+          this.webex.config.payloadTransformer.transforms
+            .concat(this.config.includeDecryptionTransforms ? decryptionTransforms : [])
+            .concat(this.config.includeEncryptionTransforms ? encryptionTransforms : []);
+      }
+    });
+  },
 
   /**
    * @param {String} cluster the cluster containing the id
