@@ -569,7 +569,7 @@ describe('AgentConfigService', () => {
         agentProfileId: 'profile123',
         siteId: 'site789',
         dbId: 'db123',
-        deafultDialledNumber: '1234567890',
+        defaultDialledNumber: '1234567890',
         id: 'user001',
         teamIds: ['team1', 'team2'],
         preferredSupervisorTeamId: 'team1',
@@ -683,7 +683,7 @@ describe('AgentConfigService', () => {
         skillProfileId: 'skillProfile456',
         siteId: 'site789',
         dbId: 'db123',
-        deafultDialledNumber: '1234567890',
+        defaultDialledNumber: '1234567890',
         id: 'user001',
         teamIds: ['team1', 'team2'],
       };

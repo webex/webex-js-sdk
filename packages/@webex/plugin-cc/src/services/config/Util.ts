@@ -144,7 +144,7 @@ export function parseAgentConfigs(profileData: {
 
   const finalData = {
     teams: teamData,
-    defaultDn: userData.deafultDialledNumber,
+    defaultDn: userData.defaultDialledNumber,
     forceDefaultDn: tenantData.forceDefaultDn,
     forceDefaultDnForAgent: getDefaultAgentDN(agentProfileData.agentDNValidation),
     regexUS: tenantData.dnDefaultRegex,

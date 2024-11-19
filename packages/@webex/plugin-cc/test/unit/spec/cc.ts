@@ -140,7 +140,7 @@ describe('webex.cc', () => {
         skillProfileId: '',
         siteId: '',
         enterpriseId: '',
-        privacyShieldVisible: '',
+        privacyShieldVisible: true,
         defaultWrapupCode: '',
         wrapUpData: {
           wrapUpProps: {
@@ -219,7 +219,7 @@ describe('webex.cc', () => {
         skillProfileId: '',
         siteId: '',
         enterpriseId: '',
-        privacyShieldVisible: '',
+        privacyShieldVisible: false,
         defaultWrapupCode: '',
         wrapUpData: {
           wrapUpProps: {

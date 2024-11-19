@@ -98,7 +98,7 @@ export type AgentResponse = {
   /**
    * The default dialled number of the agent.
    */
-  deafultDialledNumber?: string;
+  defaultDialledNumber?: string;
 
   /**
    * This Specify the team id which got assigned to the agent.
@@ -415,7 +415,7 @@ export type Profile = {
   skillProfileId: string;
   siteId: string;
   enterpriseId: string;
-  privacyShieldVisible: string | boolean;
+  privacyShieldVisible: boolean;
   idleCodes: Entity[];
   idleCodesList?: Array<string>;
   idleCodesAccess?: 'ALL' | 'SPECIFIC';
