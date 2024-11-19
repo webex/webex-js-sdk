@@ -567,6 +567,119 @@ describe('AgentConfigService', () => {
         lastName: 'Doe',
         email: 'john.doe@example.com',
         agentProfileId: 'profile123',
+        siteId: 'site789',
+        dbId: 'db123',
+        deafultDialledNumber: '1234567890',
+        id: 'user001',
+        teamIds: ['team1', 'team2'],
+        preferredSupervisorTeamId: 'team1',
+      };
+
+      const mockAgentProfile = {
+        timeoutDesktopInactivityCustomEnabled: true,
+        timeoutDesktopInactivityMins: 10,
+        accessWrapUpCode: 'SPECIFIC',
+        wrapUpCodes: ['aux1'],
+        accessIdleCode: 'SPECIFIC',
+        idleCodes: ['aux2'],
+        autoWrapUp: true,
+        autoWrapAfterSeconds: 30,
+        lastAgentRouting: true,
+        allowAutoWrapUpExtension: false,
+        outdialEnabled: true,
+        dialPlanEnabled: false,
+        agentAvailableAfterOutdial: true,
+        outdialEntryPointId: 'entryPoint123',
+        consultToQueue: true,
+        addressBookId: 'addressBook123',
+        outdialANIId: 'ani123',
+        dialPlans: ['plan1', 'plan2'],
+        agentDNValidation: 'validation123',
+      };
+
+      const mockDialPlanData = [];
+
+      const mockTeamData = [
+        {id: 'team1', name: 'Support Team'},
+        {id: 'team2', name: 'Sales Team'},
+      ];
+
+      const mockOrgInfo = {
+        tenantId: 'tenant123',
+        timezone: 'GMT',
+      };
+
+      const mockOrgSettings = {
+        campaignManagerEnabled: true,
+        webRtcEnabled: true,
+        maskSensitiveData: false,
+      };
+
+      const mockTenantData = {
+        timeoutDesktopInactivityEnabled: false,
+        timeoutDesktopInactivityMins: 15,
+        forceDefaultDn: true,
+        dnDefaultRegex: 'regexUS',
+        dnOtherRegex: 'regexOther',
+        privacyShieldVisible: true,
+        outdialEnabled: true,
+        endCallEnabled: true,
+        endConsultEnabled: true,
+        callVariablesSuppressed: false,
+      };
+
+      const mockURLMapping = [
+        {key: 'ACQUEON_API_URL', url: 'https://api.example.com'},
+        {key: 'ACQUEON_CONSOLE_URL', url: 'https://console.example.com'},
+      ];
+
+      const mockAuxCodes = [
+        {id: 'aux1', type: 'WRAP_UP_CODE', name: 'Wrap Up Code 1', isDefault: true},
+        {id: 'aux2', type: 'IDLE_CODE', name: 'Idle Code 1', isDefault: true},
+      ];
+
+      const parseAgentConfigsSpy = jest.spyOn(util, 'parseAgentConfigs');
+      agentConfigService.getUserUsingCI = jest.fn().mockResolvedValue(mockUserConfig);
+      agentConfigService.getOrgInfo = jest.fn().mockResolvedValue(mockOrgInfo);
+      agentConfigService.getOrganizationSetting = jest.fn().mockResolvedValue(mockOrgSettings);
+      agentConfigService.getTenantData = jest.fn().mockResolvedValue(mockTenantData);
+      agentConfigService.getURLMapping = jest.fn().mockResolvedValue(mockURLMapping);
+      agentConfigService.getAllAuxCodes = jest.fn().mockResolvedValue(mockAuxCodes);
+      agentConfigService.getDesktopProfileById = jest.fn().mockResolvedValue(mockAgentProfile);
+      agentConfigService.getDialPlanData = jest.fn().mockResolvedValue(mockDialPlanData);
+      agentConfigService.getAllTeams = jest.fn().mockResolvedValue(mockTeamData);
+
+      const result = await agentConfigService.getAgentConfig(mockAgentId);
+
+      expect(LoggerProxy.logger.info).toHaveBeenCalledWith('Fetched user data');
+      expect(LoggerProxy.logger.info).toHaveBeenCalledWith('Fetched all required data');
+      expect(LoggerProxy.logger.info).toHaveBeenCalledWith('Parsing completed for agent-config');
+      expect(LoggerProxy.logger.info).toHaveBeenCalledWith(
+        'Fetched configuration data successfully'
+      );
+      expect(parseAgentConfigsSpy).toHaveBeenCalledTimes(1);
+
+      expect(parseAgentConfigsSpy).toHaveBeenCalledWith({
+        userData: mockUserConfig,
+        teamData: mockTeamData,
+        tenantData: mockTenantData,
+        orgInfoData: mockOrgInfo,
+        auxCodes: mockAuxCodes,
+        orgSettingsData: mockOrgSettings,
+        agentProfileData: mockAgentProfile,
+        dialPlanData: mockDialPlanData,
+        urlMapping: mockURLMapping,
+      });
+    });
+
+    it('should fetch and parse agent configuration with different values and conditions successfully', async () => {
+      const mockAgentId = 'agent001';
+      const mockUserConfig = {
+        ciUserId: 'agent001',
+        firstName: 'John',
+        lastName: 'Doe',
+        email: 'john.doe@example.com',
+        agentProfileId: 'profile123',
         skillProfileId: 'skillProfile456',
         siteId: 'site789',
         dbId: 'db123',
@@ -595,7 +708,7 @@ describe('AgentConfigService', () => {
         addressBookId: 'addressBook123',
         outdialANIId: 'ani123',
         loginVoiceOptions: ['option1', 'option2'],
-        dialPlans: ['plan1', 'plan2'],
+        dialPlans: ['dialPlan1', 'dialPlan2'],
         agentDNValidation: 'validation123',
       };
 
@@ -617,7 +730,7 @@ describe('AgentConfigService', () => {
       const mockOrgSettings = {
         campaignManagerEnabled: true,
         webRtcEnabled: true,
-        maskSensitiveData: false,
+        maskSensitiveData: true,
       };
 
       const mockTenantData = {
@@ -663,6 +776,8 @@ describe('AgentConfigService', () => {
       expect(LoggerProxy.logger.info).toHaveBeenCalledWith(
         'Fetched configuration data successfully'
       );
+      expect(parseAgentConfigsSpy).toHaveBeenCalledTimes(1);
+
       expect(parseAgentConfigsSpy).toHaveBeenCalledWith({
         userData: mockUserConfig,
         teamData: mockTeamData,
@@ -675,6 +790,7 @@ describe('AgentConfigService', () => {
         urlMapping: mockURLMapping,
       });
     });
+
     it('should throw an error if any of the API calls fail', async () => {
       const mockAgentId = 'agent001';
       const mockError = new Error('API call failed');
