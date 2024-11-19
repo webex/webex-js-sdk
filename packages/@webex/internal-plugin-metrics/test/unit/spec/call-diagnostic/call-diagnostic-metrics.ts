@@ -56,7 +56,7 @@ describe('internal-plugin-metrics', () => {
       id: '3',
       correlationId: 'correlationId3',
       sessionCorrelationId: 'sessionCorrelationId3',
-    }
+    };
 
     const fakeMeetings = {
       1: fakeMeeting,
@@ -103,8 +103,8 @@ describe('internal-plugin-metrics', () => {
                       return '192.168.1.90';
                     }
                   },
-                }
-              }
+                },
+              };
             },
           },
           geoHintInfo: {
@@ -1075,7 +1075,7 @@ describe('internal-plugin-metrics', () => {
           correlationId: 'correlationId',
           webexConferenceIdStr: 'webexConferenceIdStr1',
           globalMeetingId: 'globalMeetingId1',
-          sessionCorrelationId: 'sessionCorrelationId1'
+          sessionCorrelationId: 'sessionCorrelationId1',
         };
 
         cd.submitClientEvent({
@@ -1169,7 +1169,7 @@ describe('internal-plugin-metrics', () => {
           webexConferenceIdStr: 'webexConferenceIdStr1',
           globalMeetingId: 'globalMeetingId1',
           preLoginId: 'myPreLoginId',
-          sessionCorrelationId: 'sessionCorrelationId1'
+          sessionCorrelationId: 'sessionCorrelationId1',
         };
 
         cd.submitClientEvent({
@@ -1182,7 +1182,7 @@ describe('internal-plugin-metrics', () => {
           webexConferenceIdStr: 'webexConferenceIdStr1',
           globalMeetingId: 'globalMeetingId1',
           preLoginId: 'myPreLoginId',
-          sessionCorrelationId: 'sessionCorrelationId1'
+          sessionCorrelationId: 'sessionCorrelationId1',
         });
 
         assert.notCalled(generateClientEventErrorPayloadSpy);
@@ -1293,7 +1293,7 @@ describe('internal-plugin-metrics', () => {
         const options = {
           meetingId: fakeMeeting2.id,
           mediaConnections: [{mediaAgentAlias: 'alias', mediaAgentGroupId: '1'}],
-          sessionCorrelationId: 'sessionCorrelationId1'
+          sessionCorrelationId: 'sessionCorrelationId1',
         };
 
         cd.submitClientEvent({
@@ -1462,7 +1462,7 @@ describe('internal-plugin-metrics', () => {
                 category: 'other',
                 errorCode: 9999,
                 errorData: {
-                  errorName: 'Error'
+                  errorName: 'Error',
                 },
                 serviceErrorCode: 9999,
                 errorDescription: 'UnknownError',
@@ -1536,7 +1536,7 @@ describe('internal-plugin-metrics', () => {
                 category: 'other',
                 errorCode: 9999,
                 errorData: {
-                  errorName: 'Error'
+                  errorName: 'Error',
                 },
                 serviceErrorCode: 9999,
                 errorDescription: 'UnknownError',
@@ -1785,7 +1785,7 @@ describe('internal-plugin-metrics', () => {
           meetingId: fakeMeeting.id,
           webexConferenceIdStr: 'webexConferenceIdStr1',
           globalMeetingId: 'globalMeetingId1',
-          sessionCorrelationId: 'sessionCorrelationId1'
+          sessionCorrelationId: 'sessionCorrelationId1',
         };
 
         cd.submitMQE({
@@ -2251,7 +2251,7 @@ describe('internal-plugin-metrics', () => {
           serviceErrorCode: 9999,
           errorCode: 9999,
           errorData: {
-            errorName: 'Error'
+            errorName: 'Error',
           },
           rawErrorMessage: 'bad times',
         });
@@ -2756,6 +2756,25 @@ describe('internal-plugin-metrics', () => {
             `name: client.exit.app`,
           ]);
         });
+      });
+
+      it('includes expected joinFlowVersion', async () => {
+        const options = {
+          meetingId: fakeMeeting.id,
+          preLoginId: 'myPreLoginId',
+          joinFlowVersion: 'NewFTE',
+        };
+
+        const triggered = new Date();
+        const fetchOptions = await cd.buildClientEventFetchRequestOptions({
+          name: 'client.exit.app',
+          payload: {trigger: 'user-interaction', canProceed: false},
+          options,
+        });
+
+        expect(fetchOptions.body.metrics[0].eventPayload.event.joinFlowVersion).toBe(
+          options.joinFlowVersion
+        );
       });
     });
 
