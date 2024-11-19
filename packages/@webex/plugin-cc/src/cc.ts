@@ -20,12 +20,10 @@ import {READY, CC_FILE, EMPTY_STRING} from './constants';
 import HttpRequest from './services/core/HttpRequest';
 import WebCallingService from './services/WebCallingService';
 import {AGENT, WEB_RTC_PREFIX} from './services/constants';
-import {WebSocketManager} from './services/core/WebSocket/WebSocketManager';
 import Services from './services';
 import LoggerProxy from './logger-proxy';
 import {StateChange, Logout} from './services/agent/types';
-import {ConnectionService} from './services/core/WebSocket/connection-service';
-import {getErrorDetails, getErrorReason} from './services/core/Utils';
+import {getErrorDetails} from './services/core/Utils';
 import {AGENT_STATE_AVAILABLE} from './features/constants';
 import {ConnectionLostDetails} from './services/core/WebSocket/types';
 
@@ -35,9 +33,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   private $webex: WebexSDK;
   private agentConfig: IAgentProfile;
   private httpRequest: HttpRequest;
-  private webSocketManager: WebSocketManager;
   private webCallingService: WebCallingService;
-  private connectionService: ConnectionService;
   private services: Services;
 
   constructor(...args) {
@@ -57,18 +53,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         webex: this.$webex,
       });
 
-      this.webSocketManager = new WebSocketManager({webex: this.$webex});
-
-      this.connectionService = new ConnectionService({
-        webSocketManager: this.webSocketManager,
-        subscribeRequest: this.getConnectionConfig(),
-      });
-
-      this.services = Services.getInstance(this.webSocketManager);
+      this.services = Services.getInstance(this.$webex, this.getConnectionConfig());
 
       this.webCallingService = new WebCallingService(this.$webex, this.$config.callingClientConfig);
 
-      this.setupEventListeners();
       LoggerProxy.initialize(this.$webex.logger);
     });
   }
@@ -78,6 +66,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    */
   public async register(): Promise<IAgentProfile> {
     try {
+      this.setupEventListeners();
+
       return await this.connectWebsocket();
     } catch (error) {
       this.$webex.logger.error(`file: ${CC_FILE}: Error during register: ${error}`);
@@ -100,7 +90,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         data: {agentProfileId: this.agentConfig.agentProfileId, ...data},
       });
     } catch (error) {
-      throw getErrorDetails(error, 'getBuddyAgents');
+      const {error: detailedError} = getErrorDetails(error, 'getBuddyAgents');
+      throw detailedError;
     }
   }
 
@@ -112,7 +103,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    */
   private async connectWebsocket() {
     try {
-      return this.webSocketManager
+      return this.services.webSocketManager
         .initWebSocket({
           body: this.getConnectionConfig(),
         })
@@ -121,8 +112,9 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           const agentConfig = new AgentConfig(agentId, this.$webex, this.httpRequest);
           this.agentConfig = await agentConfig.getAgentProfile();
           this.$webex.logger.log(`file: ${CC_FILE}: agent config is fetched successfully`);
-          // TODO: Check for config if it supports this auto silent relogin (https://jira-eng-gpk2.cisco.com/jira/browse/SPARK-574666)
-          await this.silentRelogin();
+          if (this.$config && this.$config.allowAutomatedRelogin) {
+            await this.silentRelogin();
+          }
 
           return this.agentConfig;
         })
@@ -169,7 +161,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
       return loginResponse;
     } catch (error) {
-      throw getErrorDetails(error, 'stationLogin');
+      const {error: detailedError} = getErrorDetails(error, 'stationLogin');
+      throw detailedError;
     }
   }
 
@@ -192,7 +185,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
       return logoutResponse;
     } catch (error) {
-      throw getErrorDetails(error, 'stationLogout');
+      const {error: detailedError} = getErrorDetails(error, 'stationLogout');
+      throw detailedError;
     }
   }
 
@@ -206,7 +200,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
       return reLoginResponse;
     } catch (error) {
-      throw getErrorDetails(error, 'stationReLogin');
+      const {error: detailedError} = getErrorDetails(error, 'stationReLogin');
+      throw detailedError;
     }
   }
 
@@ -235,7 +230,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
       return agentStatusResponse;
     } catch (error) {
-      throw getErrorDetails(error, 'setAgentState');
+      const {error: detailedError} = getErrorDetails(error, 'setAgentState');
+      throw detailedError;
     }
   }
 
@@ -243,7 +239,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * For setting up the Event Emitter listeners and handlers
    */
   private setupEventListeners() {
-    this.connectionService.on('connectionLost', this.handleConnectionLost.bind(this));
+    this.services.connectionService.on('connectionLost', this.handleConnectionLost.bind(this));
   }
 
   /**
@@ -262,7 +258,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * Called when we reconnection has been completed
    */
   private async handleConnectionLost(msg: ConnectionLostDetails): Promise<void> {
-    this.webSocketManager.handleConnectionLost(msg);
+    this.services.webSocketManager.handleConnectionLost(msg);
 
     if (msg.isConnectionLost) {
       // TODO: Emit an event saying connection is lost
@@ -272,8 +268,9 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       this.$webex.logger.info(
         'event=handleConnectionReconnect | Connection reconnected attempting to request silent relogin'
       );
-      // TODO: Add a check here for config (if it has property to auto silent relogin) (https://jira-eng-gpk2.cisco.com/jira/browse/SPARK-574666)
-      await this.silentRelogin();
+      if (this.$config && this.$config.allowAutomatedRelogin) {
+        await this.silentRelogin();
+      }
     }
   }
 
@@ -299,12 +296,13 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       }
       // TODO: Update login state of config here (https://jira-eng-gpk2.cisco.com/jira/browse/SPARK-574666)
     } catch (error) {
-      if (getErrorReason(error) === 'AGENT_NOT_FOUND') {
+      const {reason, error: detailedError} = getErrorDetails(error, 'silentReLogin');
+      if (reason === 'AGENT_NOT_FOUND') {
         this.$webex.logger.info('Agent not found during re-login, handling silently');
 
         return;
       }
-      throw getErrorDetails(error, 'silentReLogin');
+      throw detailedError;
     }
   }
 }

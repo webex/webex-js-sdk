@@ -42,6 +42,7 @@ type ServiceHost = {
 
 export interface CCPluginConfig {
   allowMultiLogin: boolean;
+  allowAutomatedRelogin: boolean;
   clientType: string;
   isKeepAliveEnabled: boolean;
   force: boolean;

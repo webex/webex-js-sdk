@@ -70,7 +70,6 @@ describe('webex.cc', () => {
     mockWebSocketManager = {
       initWebSocket: jest.fn(),
     };
-    webex.cc.webSocketManager = mockWebSocketManager;
 
     // Mock Services instance
     const mockServicesInstance = {
@@ -80,6 +79,10 @@ describe('webex.cc', () => {
         reload: jest.fn(),
         stateChange: jest.fn(),
         buddyAgents: jest.fn(),
+      },
+      webSocketManager: mockWebSocketManager,
+      connectionService: {
+        on: jest.fn(),
       },
     };
     (Services.getInstance as jest.Mock).mockReturnValue(mockServicesInstance);
@@ -168,7 +171,7 @@ describe('webex.cc', () => {
       expect(result).toEqual(mockAgentProfile);
     });
 
-    it('should register successfully when config is undefined and return agent profile', async () => {
+    it('should not register when config is undefined', async () => {
       webex.cc.$config = undefined;
       const mockAgentProfile: IAgentProfile = {
         agentId: 'agent123',
@@ -208,7 +211,7 @@ describe('webex.cc', () => {
       expect(webex.logger.log).toHaveBeenCalledWith(
         'file: cc: agent config is fetched successfully'
       );
-      expect(reloadSpy).toHaveBeenCalled();
+      expect(reloadSpy).not.toHaveBeenCalled();
       expect(result).toEqual(mockAgentProfile);
     });
 
