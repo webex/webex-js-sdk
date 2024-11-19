@@ -2772,9 +2772,9 @@ describe('internal-plugin-metrics', () => {
           options,
         });
 
-        expect(fetchOptions.body.metrics[0].eventPayload.event.joinFlowVersion).toBe(
-          options.joinFlowVersion
-        );
+        assert
+          .equal(fetchOptions.body.metrics[0].eventPayload.event.joinFlowVersion)
+          .toBe(options.joinFlowVersion);
       });
     });
 
