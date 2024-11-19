@@ -7,7 +7,7 @@ import {RemoteMedia, RemoteMediaEvents} from '@webex/plugin-meetings/src/multist
 import {ReceiveSlotEvents} from '@webex/plugin-meetings/src/multistream/receiveSlot';
 import sinon from 'sinon';
 import {assert} from '@webex/test-helper-chai';
-import { forEach } from 'lodash';
+import {forEach} from 'lodash';
 
 describe('RemoteMedia', () => {
   let remoteMedia;
@@ -227,11 +227,25 @@ describe('RemoteMedia', () => {
   });
 
   describe('setSizeHint()', () => {
-
     it('works if the receive slot is undefined', () => {
       remoteMedia.receiveSlot = undefined;
       remoteMedia.setSizeHint(100, 100);
     });
+
+    forEach(
+      [
+        {width: 0, height: 0},
+        {width: 135, height: 0},
+        {width: 0, height: 240},
+      ],
+      ({width, height}) => {
+        it(`skip updating the max fs when applied ${width}:${height}`, () => {
+          remoteMedia.setSizeHint(width, height);
+
+          assert.notCalled(fakeReceiveSlot.setMaxFs);
+        });
+      }
+    );
 
     forEach(
       [

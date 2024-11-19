@@ -33,5 +33,15 @@ export default {
      */
     keepEncryptedProperties: false,
     decryptionFailureMessage: 'This message cannot be decrypted',
+
+    /**
+     * config value to perform decryption on inbound conversations and activities
+     */
+    includeDecryptionTransforms: true,
+
+    /**
+     * config value to perform decryption on outbound conversations and activities
+     */
+    includeEncryptionTransforms: true,
   },
 };

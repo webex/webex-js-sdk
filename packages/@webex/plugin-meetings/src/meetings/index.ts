@@ -56,6 +56,7 @@ import MeetingCollection from './collection';
 import {MEETING_KEY, INoiseReductionEffect, IVirtualBackgroundEffect} from './meetings.types';
 import MeetingsUtil from './util';
 import PermissionError from '../common/errors/permission';
+import WebinarRegistrationError from '../common/errors/webinar-registration-error';
 import {SpaceIDDeprecatedError} from '../common/errors/webex-errors';
 import NoMeetingInfoError from '../common/errors/no-meeting-info';
 
@@ -1397,7 +1398,8 @@ export default class Meetings extends WebexPlugin {
       if (
         !(err instanceof CaptchaError) &&
         !(err instanceof PasswordError) &&
-        !(err instanceof PermissionError)
+        !(err instanceof PermissionError) &&
+        !(err instanceof WebinarRegistrationError)
       ) {
         LoggerProxy.logger.info(
           `Meetings:index#createMeeting --> Info Unable to fetch meeting info for ${destination}.`

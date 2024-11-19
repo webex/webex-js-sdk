@@ -524,6 +524,11 @@ export const ERROR_DICTIONARY = {
       'Reconnection was not started, because there is one already in progress or reconnections are disabled in config.',
     CODE: 15,
   },
+  WebinarRegistrationError: {
+    NAME: 'WebinarRegistrationError',
+    MESSAGE: 'An error occurred while the webinar required registration.',
+    CODE: 16,
+  },
 };
 
 export const FLOOR_ACTION = {
@@ -1269,6 +1274,7 @@ export const MEETING_INFO_FAILURE_REASON = {
   WRONG_PASSWORD: 'WRONG_PASSWORD', // meeting requires password and no password or wrong one was provided
   WRONG_CAPTCHA: 'WRONG_CAPTCHA', // wbxappapi requires a captcha code or a wrong captcha code was provided
   POLICY: 'POLICY', // meeting info request violates some meeting policy
+  WEBINAR_REGISTRATION: 'WEBINAR_REGISTRATION', // webinar need registration
   OTHER: 'OTHER', // any other error (network, etc)
 };
 
