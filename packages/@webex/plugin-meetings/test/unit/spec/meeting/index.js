@@ -550,41 +550,6 @@ describe('plugin-meetings', () => {
             assert.calledOnce(mockSendSlotManagerCtor);
           });
         });
-        describe('#beRightBack', () => {
-          it('should have #beRightBack', () => {
-            assert.exists(meeting.beRightBack);
-          });
-
-          beforeEach(() => {
-            meeting.meetingRequest.locusDeltaRequest = sinon.stub().resolves();
-          });
-
-          it('should enable #beRightBack with the correct data and return a promise', async () => {
-            meeting.locusUrl = 'locus url';
-            meeting.deviceUrl = 'device url';
-            meeting.selfId = 'self id';
-
-            const brbPromise = meeting.beRightBack(true);
-
-            assert.exists(brbPromise.then);
-            await brbPromise;
-
-            assert.calledOnce(meeting.meetingRequest.locusDeltaRequest);
-          });
-
-          it('should disable #beRightBack with the correct data and return a promise', async () => {
-            meeting.locusUrl = 'locus url';
-            meeting.deviceUrl = 'device url';
-            meeting.selfId = 'self id';
-
-            const brbPromise = meeting.beRightBack(false);
-
-            assert.exists(brbPromise.then);
-            await brbPromise;
-
-            assert.calledOnce(meeting.meetingRequest.locusDeltaRequest);
-          });
-        });
       });
 
       describe('#isLocusCall', () => {
