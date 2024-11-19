@@ -448,7 +448,7 @@ describe('plugin-mercury', () => {
             assert.calledWith(
               Socket.prototype.open,
               sinon.match(/ws:\/\/providedurl.com/),
-              sinon.match.any
+              sinon.match.has('clientTimestamp', clock.now + 2) // 2 for 2 ticks
             );
           });
         });

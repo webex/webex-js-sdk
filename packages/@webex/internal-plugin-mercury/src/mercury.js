@@ -211,6 +211,7 @@ const Mercury = WebexPlugin.extend({
         attemptWSUrl = webSocketUrl;
 
         let options = {
+          clientTimestamp: Date.now(),
           forceCloseDelay: this.config.forceCloseDelay,
           pingInterval: this.config.pingInterval,
           pongTimeout: this.config.pongTimeout,
