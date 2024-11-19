@@ -62,7 +62,7 @@ describe('WebCallingService', () => {
       };
 
       const registeredHandler = jest.fn();
-      line.on.mockImplementation((event, handler) => {
+      const lineOnSpy = jest.spyOn(line, 'on').mockImplementation((event, handler) => {
         if (event === LINE_EVENTS.REGISTERED) {
           registeredHandler.mockImplementation(handler);
           handler(deviceInfo);
@@ -72,7 +72,7 @@ describe('WebCallingService', () => {
       await expect(webRTCCalling.registerWebCallingLine()).resolves.toBeUndefined();
 
       expect(createClient).toHaveBeenCalledWith(webex, config.cc.callingClientConfig);
-      expect(line.on).toHaveBeenCalledWith(LINE_EVENTS.REGISTERED, expect.any(Function));
+      expect(lineOnSpy).toHaveBeenCalledWith(LINE_EVENTS.REGISTERED, expect.any(Function));
       expect(line.register).toHaveBeenCalled();
       expect(webex.logger.log).toHaveBeenCalledWith(
         `WxCC-SDK: Desktop registered successfully, mobiusDeviceId: ${deviceInfo.mobiusDeviceId}`
@@ -94,7 +94,7 @@ describe('WebCallingService', () => {
       const incomingCallHandler = jest.fn();
       const registeredHandler = jest.fn();
 
-      line.on.mockImplementation((event, handler) => {
+      const lineOnSpy = jest.spyOn(line, 'on').mockImplementation((event, handler) => {
         if (event === LINE_EVENTS.INCOMING_CALL) {
           incomingCallHandler.mockImplementation(handler);
           handler(callObj);
@@ -114,8 +114,8 @@ describe('WebCallingService', () => {
 
       await webRTCCalling.registerWebCallingLine();
 
-      expect(line.on).toHaveBeenCalledWith(LINE_EVENTS.INCOMING_CALL, expect.any(Function));
-      expect(line.on).toHaveBeenCalledWith(LINE_EVENTS.REGISTERED, expect.any(Function));
+      expect(lineOnSpy).toHaveBeenCalledWith(LINE_EVENTS.INCOMING_CALL, expect.any(Function));
+      expect(lineOnSpy).toHaveBeenCalledWith(LINE_EVENTS.REGISTERED, expect.any(Function));
 
       const eventListener = jest.fn();
       const loggerSpy = jest.spyOn(webex.logger, 'log').mockClear();
