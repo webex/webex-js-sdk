@@ -3,6 +3,7 @@ import routingAgent from './agent';
 import AgentConfigService from './config';
 import AqmReqs from './core/aqm-reqs';
 import {WebSocketManager} from './core/WebSocket/WebSocketManager';
+import LoggerProxy from '../logger-proxy';
 
 export default class Services {
   public readonly agent: ReturnType<typeof routingAgent>;
@@ -12,7 +13,12 @@ export default class Services {
   constructor(options: {webSocketManager: WebSocketManager; webex: WebexSDK}) {
     const {webSocketManager, webex} = options;
     const aqmReq = new AqmReqs(webSocketManager);
-    const orgId = webex.credentials.getOrgId();
+    let orgId = '';
+    try {
+      orgId = webex.credentials.getOrgId();
+    } catch (error) {
+      LoggerProxy.logger.error('Services->constructor: Error in getting orgId');
+    }
     this.config = new AgentConfigService(orgId);
     this.agent = routingAgent(aqmReq);
   }
