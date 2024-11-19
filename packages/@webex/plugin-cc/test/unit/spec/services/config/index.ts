@@ -599,7 +599,6 @@ describe('AgentConfigService', () => {
         defaultDialledNumber: '1234567890',
         id: 'user001',
         teamIds: ['team1', 'team2'],
-        preferredSupervisorTeamId: 'team1',
       };
 
       const mockAgentProfile = {

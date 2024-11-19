@@ -42,18 +42,18 @@ export type WebSocketEvent = {
 
 /**
  * Represents the response from getUserUsingCI method.
- *
  */
-
 export type AgentResponse = {
   /**
-   * id of the agent.
+   * ID of the agent.
    */
   id: string;
+
   /**
-   * The user id of the agent.
+   * The ciUserId of the agent.
    */
   ciUserId: string;
+
   /**
    * The first name of the agent.
    */
@@ -72,137 +72,125 @@ export type AgentResponse = {
   /**
    * The email address of the agent.
    */
-
   email: string;
 
   /**
-   * This Specify the teams id which got assigned to the agent.
+   * Team IDs assigned to the agent.
    */
   teamIds: string[];
 
   /**
-   * skillProfileId of the agent.
+   * Skill profile ID of the agent.
    */
   skillProfileId: string;
 
   /**
-   * siteId of the agent.
+   * Site ID of the agent.
    */
   siteId: string;
 
   /**
-   * dbId of the agent.
+   * Database ID of the agent.
    */
   dbId?: string;
 
   /**
-   * The default dialled number of the agent.
+   * The default dialed number of the agent.
    */
   defaultDialledNumber?: string;
-
-  /**
-   * This Specify the team id which got assigned to the agent.
-   */
-  preferredSupervisorTeamId?: string;
 };
 
 /**
  * Represents the response from getDesktopProfileById method.
- *
  */
 export type DesktopProfileResponse = {
   /**
    * Represents the voice options of an agent.
    */
-
   loginVoiceOptions: LoginOption[];
 
   /**
-   * Specify the wrap-up codes that the agents can select when they wrap up a contact. It can take one of these values: ALL - To make all wrap-up codes available. SPECIFIC - To make specific codes available.
+   * Wrap-up codes that the agents can select when they wrap up a contact. It can take one of these values: ALL - To make all wrap-up codes available. SPECIFIC - To make specific codes available.
    */
-
   accessWrapUpCode: string;
 
   /**
-   * Specify the Idle codes that the agents can select in Agent Desktop. It can take one of these values: ALL - To make all wrap-up codes available. SPECIFIC - To make specific codes available.
+   * Idle codes that the agents can select in Agent Desktop. It can take one of these values: ALL - To make all idle codes available. SPECIFIC - To make specific codes available.
    */
-
   accessIdleCode: string;
 
   /**
-   * Specify the wrap-up codes list that the agents can select when they wrap up a contact.
+   * Wrap-up codes list that the agents can select when they wrap up a contact.
    */
-
   wrapUpCodes: string[];
 
   /**
-   * Specify the Idle codes list that the agents can select in Agent Desktop.
+   * Idle codes list that the agents can select in Agent Desktop.
    */
-
   idleCodes: string[];
 
   /**
-   * Specify dialPlanEnabled of the agent.
+   * Dial plan enabled for the agent.
    */
   dialPlanEnabled: boolean;
 
   /**
-   * Specify the agentDNValidation of the agent.
+   * Last agent routing enabled for the agent.
    */
   lastAgentRouting: boolean;
 
   /**
-   * Specify the autoWrapUp allowed.
+   * Auto wrap-up allowed.
    */
   autoWrapUp: boolean;
 
   /**
-   * Specify the autoAnswer allowed.
+   * Auto answer allowed.
    */
   autoAnswer: boolean;
 
   /**
-   * Specify the autoWrapAfterSeconds of the agent.
+   * Auto wrap-up after seconds.
    */
   autoWrapAfterSeconds: number;
 
   /**
-   * Specify the agentAvailableAfterOutdial of the agent.
+   * Agent available after outdial.
    */
   agentAvailableAfterOutdial: boolean;
 
   /**
-   * Specify the allowAutoWrapUpExtension of the agent.
+   * Allow auto wrap-up extension.
    */
   allowAutoWrapUpExtension: boolean;
 
   /**
-   * Specify the outdialEnabled of the agent.
+   * Outdial enabled for the agent.
    */
   outdialEnabled: boolean;
 
   /**
-   * Specify the outdialEntryPointId of the agent.
+   * Outdial entry point ID of the agent.
    */
   outdialEntryPointId: string;
 
   /**
-   * Specify the outdialANIId of the agent.
+   * Outdial ANI ID of the agent.
    */
   outdialANIId: string;
 
   /**
-   * Specify the consultToQueue allowed.
+   * Consult to queue allowed.
    */
   consultToQueue: boolean;
 
   /**
-   * Specify the addressBookId of the agent.
+   * Address book ID of the agent.
    */
   addressBookId: string;
 
   /**
-   * Specify the viewableStatistics of the agent.
+   * Viewable statistics of the agent.
    */
   viewableStatistics: {
     id: string;
@@ -215,42 +203,42 @@ export type DesktopProfileResponse = {
   };
 
   /**
-   * Specify the agentDNValidation of the agent.
+   * Agent DN validation of the agent.
    */
   agentDNValidation: string;
 
   /**
-   * Specify the dialPlans of the agent.
+   * Dial plans of the agent.
    */
   dialPlans: string[];
 
   /**
-   * Specify the timeoutDesktopInactivityCustomEnabled enabled or not.
+   * Timeout desktop inactivity custom enabled.
    */
   timeoutDesktopInactivityCustomEnabled: boolean;
 
   /**
-   * Specify the timeoutDesktopInactivityMins.
+   * Timeout desktop inactivity minutes.
    */
   timeoutDesktopInactivityMins: number;
 
   /**
-   * Specify the showUserDetailsMS enabled or not.
+   * Show user details in Microsoft enabled or not.
    */
   showUserDetailsMS: boolean;
 
   /**
-   * Specify the stateSynchronizationMS enabled or not.
+   * State synchronization in Microsoft enabled or not.
    */
   stateSynchronizationMS: boolean;
 
   /**
-   * Specify the showUserDetailsWebex enabled or not.
+   * Show user details in Webex enabled or not.
    */
   showUserDetailsWebex: boolean;
 
   /**
-   * Specify the stateSynchronizationWebex enabled or not.
+   * State synchronization in Webex enabled or not.
    */
   stateSynchronizationWebex: boolean;
 };
@@ -271,7 +259,7 @@ export type AuxCode = {
   id: string;
 
   /**
-   * Indicates whether the auxiliary code is active or not active.
+   * Indicates whether the auxiliary code is active or not.
    */
   active: boolean;
 
@@ -291,12 +279,12 @@ export type AuxCode = {
   description: string;
 
   /**
-   * Name for the Auxiliary Code.
+   * Name of the Auxiliary Code.
    */
   name: string;
 
   /**
-   * Indicates the work type associated with this code..
+   * Indicates the work type associated with this code.
    */
   workTypeCode: string;
 };
@@ -468,7 +456,7 @@ export type URLMappings = {
 
 /**
  * Represents the Agent Profile/configuration.
- *  @public
+ * @public
  */
 export type Profile = {
   microsoftConfig?: {
@@ -529,7 +517,6 @@ export type Profile = {
   isAgentStateChangeEnabled?: boolean;
   isSignOutAgentsEnabled?: boolean;
   urlMappings?: URLMappings;
-  preferredSupervisorTeamId: string;
   isTimeoutDesktopInactivityEnabled: boolean;
   timeoutDesktopInactivityMins?: number;
   isAnalyzerEnabled?: boolean;

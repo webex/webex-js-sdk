@@ -116,15 +116,6 @@ const getFilterAuxCodes = (
 };
 
 /**
- * Get the preferred supervisor team ID
- * @param {AgentResponse} userData
- * @returns {string}
- */
-function getPreferredSupervisorTeamId(userData: AgentResponse) {
-  return userData.preferredSupervisorTeamId ? userData.preferredSupervisorTeamId : '';
-}
-
-/**
  * Get the default wrapup code
  * @param {Array<Entity>} wrapUpReasonList
  * @returns {Entity}
@@ -167,8 +158,6 @@ function parseAgentConfigs(profileData: {
   const inactivityTimeoutTimer = agentProfileData.timeoutDesktopInactivityCustomEnabled
     ? agentProfileData.timeoutDesktopInactivityMins
     : tenantDataTimeout;
-
-  const preferredSupervisorTeamId = getPreferredSupervisorTeamId(userData);
 
   const wrapupCodes = getFilterAuxCodes(
     auxCodes,
@@ -250,7 +239,6 @@ function parseAgentConfigs(profileData: {
       acqueonApiUrl: getUrlMapping(urlMapping, 'ACQUEON_API_URL'),
       acqueonConsoleUrl: getUrlMapping(urlMapping, 'ACQUEON_CONSOLE_URL'),
     },
-    preferredSupervisorTeamId,
     isTimeoutDesktopInactivityEnabled: tenantData.timeoutDesktopInactivityEnabled,
     timeoutDesktopInactivityMins: inactivityTimeoutTimer,
     loginVoiceOptions: agentProfileData.loginVoiceOptions ?? [],
