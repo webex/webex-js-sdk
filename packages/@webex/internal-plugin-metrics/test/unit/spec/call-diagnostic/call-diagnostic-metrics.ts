@@ -771,7 +771,6 @@ describe('internal-plugin-metrics', () => {
           webexConferenceIdStr: undefined,
           sessionCorrelationId: undefined,
           globalMeetingId: undefined,
-          sessionCorrelationId: undefined,
         });
         assert.notCalled(generateClientEventErrorPayloadSpy);
         assert.calledWith(
@@ -2758,9 +2757,31 @@ describe('internal-plugin-metrics', () => {
         });
       });
 
-      it('includes expected joinFlowVersion', async () => {
+      it('includes expected joinFlowVersion when in-meeting', async () => {
+        // meetingId means in-meeting
         const options = {
           meetingId: fakeMeeting.id,
+          preLoginId: 'myPreLoginId',
+          joinFlowVersion: 'NewFTE',
+        };
+
+        const triggered = new Date();
+        const fetchOptions = await cd.buildClientEventFetchRequestOptions({
+          name: 'client.exit.app',
+          payload: {trigger: 'user-interaction', canProceed: false},
+          options,
+        });
+
+        assert.equal(
+          fetchOptions.body.metrics[0].eventPayload.event.joinFlowVersion,
+          options.joinFlowVersion
+        );
+      });
+
+      it('includes expected joinFlowVersion during prejoin', async () => {
+        // correlationId and no meeting id means prejoin
+        const options = {
+          correlationId: 'myCorrelationId',
           preLoginId: 'myPreLoginId',
           joinFlowVersion: 'NewFTE',
         };
