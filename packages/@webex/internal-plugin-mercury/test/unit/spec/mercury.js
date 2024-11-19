@@ -435,6 +435,8 @@ describe('plugin-mercury', () => {
 
       describe('when webSocketUrl is provided', () => {
         it('connects to Mercury with provided url', () => {
+          const clientTimestamp = Date.now();
+          sinon.useFakeTimers(clientTimestamp);
           const webSocketUrl = 'ws://providedurl.com';
           const promise = mercury.connect(webSocketUrl);
 
@@ -448,7 +450,7 @@ describe('plugin-mercury', () => {
             assert.calledWith(
               Socket.prototype.open,
               sinon.match(/ws:\/\/providedurl.com/),
-              sinon.match.has('clientTimestamp', clock.now + 2) // 2 for 2 ticks
+              sinon.match.has('clientTimestamp', clientTimestamp + 1) // process.nextTick(() => mockWebSocket.open()); the mock websocket has a clock.tick of 1
             );
           });
         });
