@@ -218,8 +218,6 @@ export default class AqmReqs {
 
     if (event.type === 'AgentReloginFailed') {
       LoggerProxy.logger.info('Silently handling the agent relogin fail');
-
-      return;
     }
 
     let isHandled = false;
