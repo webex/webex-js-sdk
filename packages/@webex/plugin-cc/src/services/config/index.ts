@@ -34,6 +34,12 @@ export default class AgentConfigService {
     this.httpReq = HttpRequest.getInstance();
   }
 
+  /**
+   * Fetches the agent configuration data for the given orgId and agentId.
+   * @param {string} orgId
+   * @param {string} agentId
+   *  @returns {Promise<Profile>}
+   */
   public async getAgentConfig(orgId: string, agentId: string): Promise<Profile> {
     try {
       const userConfigPromise = this.getUserUsingCI(orgId, agentId);
@@ -110,6 +116,12 @@ export default class AgentConfigService {
     }
   }
 
+  /**
+   * Fetches the agent configuration data for the given orgId and agentId.
+   * @param {string} orgId
+   * @param {string} agentId
+   * @returns {Promise<AgentResponse>}
+   */
   public async getUserUsingCI(orgId: string, agentId: string): Promise<AgentResponse> {
     try {
       const resource = endPointMap.userByCI(orgId, agentId);
@@ -132,6 +144,12 @@ export default class AgentConfigService {
     }
   }
 
+  /**
+   * Fetches the desktop profile data for the given orgId and desktopProfileId.
+   * @param {string} orgId
+   * @param {string} desktopProfileId
+   * @returns {Promise<DesktopProfileResponse>}
+   */
   public async getDesktopProfileById(
     orgId: string,
     desktopProfileId: string
@@ -157,6 +175,15 @@ export default class AgentConfigService {
     }
   }
 
+  /**
+   * fetches the list of teams for the given orgId.
+   * @param {string} orgId
+   *  @param {number} page
+   * @param {number} pageSize
+   * @param {string[]} filter
+   * @param {string[]} attributes
+   * @returns {Promise<ListTeamsResponse>}
+   */
   public async getListOfTeams(
     orgId: string,
     page: number,
@@ -185,6 +212,14 @@ export default class AgentConfigService {
     }
   }
 
+  /**
+   * Fetches all teams from all pages for the given orgId
+   * @param {string} orgId
+   * @param {number} pageSize
+   * @param {string[]} filter
+   * @param {string[]} attributes
+   * @returns {Promise<TeamList[]>}
+   */
   public async getAllTeams(
     orgId: string,
     pageSize: number,
@@ -214,6 +249,15 @@ export default class AgentConfigService {
     }
   }
 
+  /**
+   *   fetches the list of aux codes for the given orgId.
+   * @param {string} orgId
+   * @param {number} page
+   * @param {number} pageSize
+   * @param {string[]} filter
+   * @param {string[]} attributes
+   * @returns {Promise<ListAuxCodesResponse
+   */
   public async getListOfAuxCodes(
     orgId: string,
     page: number,
@@ -242,6 +286,14 @@ export default class AgentConfigService {
     }
   }
 
+  /**
+   * Fetches all aux codes from all pages for the given orgId
+   * @param {string} orgId
+   * @param {number} pageSize
+   * @param {string[]} filter
+   * @param {string[]} attributes
+   * @returns {Promise<AuxCode[]>}
+   */
   public async getAllAuxCodes(
     orgId: string,
     pageSize: number,
@@ -274,6 +326,11 @@ export default class AgentConfigService {
     }
   }
 
+  /**
+   * Fetches the organization info for the given orgId.
+   * @param {string} orgId
+   * @returns {Promise<OrgInfo>}
+   */
   public async getOrgInfo(orgId: string): Promise<OrgInfo> {
     try {
       const resource = endPointMap.orgInfo(orgId);
@@ -296,6 +353,11 @@ export default class AgentConfigService {
     }
   }
 
+  /**
+   * Fetches the organization settings for the given orgId.
+   * @param {string} orgId
+   * @returns {Promise<OrgSettings>}
+   */
   public async getOrganizationSetting(orgId: string): Promise<OrgSettings> {
     try {
       const resource = endPointMap.orgSettings(orgId);
@@ -318,6 +380,11 @@ export default class AgentConfigService {
     }
   }
 
+  /**
+   * Fetches the tenant data for the given orgId.
+   * @param {string} orgId
+   * @returns {Promise<TenantData>}
+   */
   public async getTenantData(orgId: string): Promise<TenantData> {
     try {
       const resource = endPointMap.tenantData(orgId);
@@ -340,6 +407,11 @@ export default class AgentConfigService {
     }
   }
 
+  /**
+   * Fetches the URL mapping data for the given orgId.
+   * @param {string} orgId
+   * @returns {Promise<URLMapping[]>}
+   */
   public async getURLMapping(orgId: string): Promise<URLMapping[]> {
     try {
       const resource = endPointMap.urlMapping(orgId);
@@ -362,6 +434,11 @@ export default class AgentConfigService {
     }
   }
 
+  /**
+   * Fetches the dial plan data for the given orgId.
+   * @param {string} orgId
+   * @returns {Promise<DialPlanEntity[]>}
+   */
   public async getDialPlanData(orgId: string): Promise<DialPlanEntity[]> {
     try {
       const resource = endPointMap.dialPlan(orgId);
