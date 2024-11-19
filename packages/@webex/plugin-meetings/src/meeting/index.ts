@@ -128,6 +128,7 @@ import {
   MeetingInfoV2PasswordError,
   MeetingInfoV2CaptchaError,
   MeetingInfoV2PolicyError,
+  MeetingInfoV2WebinarRegistrationError,
 } from '../meeting-info/meeting-info-v2';
 import {CSI, ReceiveSlotManager} from '../multistream/receiveSlotManager';
 import SendSlotManager from '../multistream/sendSlotManager';
@@ -156,6 +157,7 @@ import ControlsOptionsManager from '../controls-options-manager';
 import PermissionError from '../common/errors/permission';
 import {LocusMediaRequest} from './locusMediaRequest';
 import {ConnectionStateHandler, ConnectionStateEvent} from './connectionStateHandler';
+import WebinarRegistrationError from '../common/errors/webinar-registration-error';
 
 // default callback so we don't call an undefined function, but in practice it should never be used
 const DEFAULT_ICE_PHASE_CALLBACK = () => 'JOIN_MEETING_FINAL';
@@ -1759,8 +1761,16 @@ export default class Meeting extends StatelessWebexPlugin {
         if (err.meetingInfo) {
           this.meetingInfo = err.meetingInfo;
         }
-
         throw new PermissionError();
+      } else if (err instanceof MeetingInfoV2WebinarRegistrationError) {
+        this.meetingInfoFailureReason = MEETING_INFO_FAILURE_REASON.WEBINAR_REGISTRATION;
+        this.meetingInfoFailureCode = err.wbxAppApiCode;
+
+        if (err.meetingInfo) {
+          this.meetingInfo = err.meetingInfo;
+        }
+
+        throw new WebinarRegistrationError();
       } else if (err instanceof MeetingInfoV2PasswordError) {
         LoggerProxy.logger.info(
           // @ts-ignore
