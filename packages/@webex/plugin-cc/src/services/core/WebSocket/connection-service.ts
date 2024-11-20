@@ -51,6 +51,7 @@ export class ConnectionService extends EventEmitter {
         !this.webSocketManager.isSocketClosed && (socketReconnected || this.isSocketReconnected),
       isKeepAlive: this.isKeepAlive,
     };
+    this.webSocketManager.handleConnectionLost(event);
     this.emit('connectionLost', event);
   }
 

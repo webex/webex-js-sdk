@@ -258,8 +258,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * Called when we reconnection has been completed
    */
   private async handleConnectionLost(msg: ConnectionLostDetails): Promise<void> {
-    this.services.webSocketManager.handleConnectionLost(msg);
-
     if (msg.isConnectionLost) {
       // TODO: Emit an event saying connection is lost
       this.$webex.logger.info('event=handleConnectionLost | Connection lost');
