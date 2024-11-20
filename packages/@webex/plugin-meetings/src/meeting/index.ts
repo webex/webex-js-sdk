@@ -7040,7 +7040,7 @@ export default class Meeting extends StatelessWebexPlugin {
       shareAudioEnabled = true,
       shareVideoEnabled = true,
       remoteMediaManagerConfig,
-      bundlePolicy,
+      bundlePolicy = 'max-bundle',
     } = options;
 
     this.allowMediaInLobby = options?.allowMediaInLobby;

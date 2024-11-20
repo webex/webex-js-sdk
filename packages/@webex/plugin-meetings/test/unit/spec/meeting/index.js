@@ -3442,47 +3442,60 @@ describe('plugin-meetings', () => {
           });
         });
 
-        it('should pass bundlePolicy to createMediaConnection', async () => {
+        describe('bundlePolicy', () => {
           const FAKE_TURN_URL = 'turns:webex.com:3478';
           const FAKE_TURN_USER = 'some-turn-username';
           const FAKE_TURN_PASSWORD = 'some-password';
 
-          meeting.meetingState = 'ACTIVE';
-          Media.createMediaConnection.resetHistory();
+          beforeEach(() => {
+            meeting.meetingState = 'ACTIVE';
+            Media.createMediaConnection.resetHistory();
 
-          meeting.roap.doTurnDiscovery = sinon.stub().resolves({
-            turnServerInfo: {
-              url: FAKE_TURN_URL,
-              username: FAKE_TURN_USER,
-              password: FAKE_TURN_PASSWORD,
-            },
-            turnDiscoverySkippedReason: undefined,
-          });
-          const media = meeting.addMedia({
-            mediaSettings: {},
-            bundlePolicy: 'bundlePolicy-value',
-          });
-
-          assert.exists(media);
-          await media;
-          assert.calledOnce(meeting.roap.doTurnDiscovery);
-          assert.calledWith(meeting.roap.doTurnDiscovery, meeting, false);
-          assert.calledOnce(Media.createMediaConnection);
-          assert.calledWith(
-            Media.createMediaConnection,
-            false,
-            meeting.getMediaConnectionDebugId(),
-            meeting.id,
-            sinon.match({
+            meeting.roap.doTurnDiscovery = sinon.stub().resolves({
               turnServerInfo: {
                 url: FAKE_TURN_URL,
                 username: FAKE_TURN_USER,
                 password: FAKE_TURN_PASSWORD,
               },
-              bundlePolicy: 'bundlePolicy-value',
-            })
-          );
-          assert.calledOnce(fakeMediaConnection.initiateOffer);
+              turnDiscoverySkippedReason: undefined,
+            });
+          });
+
+          const runCheck = async (bundlePolicy, expectedValue) => {
+            const media = meeting.addMedia({
+              mediaSettings: {},
+              bundlePolicy,
+            });
+
+            assert.exists(media);
+            await media;
+            assert.calledOnce(meeting.roap.doTurnDiscovery);
+            assert.calledWith(meeting.roap.doTurnDiscovery, meeting, false);
+            assert.calledOnce(Media.createMediaConnection);
+            assert.calledWith(
+              Media.createMediaConnection,
+              false,
+              meeting.getMediaConnectionDebugId(),
+              meeting.id,
+              sinon.match({
+                turnServerInfo: {
+                  url: FAKE_TURN_URL,
+                  username: FAKE_TURN_USER,
+                  password: FAKE_TURN_PASSWORD,
+                },
+                bundlePolicy: expectedValue,
+              })
+            );
+            assert.calledOnce(fakeMediaConnection.initiateOffer);
+          };
+
+          it('should pass bundlePolicy to createMediaConnection', async () => {
+            await runCheck('max-compat', 'max-compat');
+          });
+
+          it('should pass max-bundle to createMediaConnection if bundlePolicy is not provided', async () => {
+            await runCheck(undefined, 'max-bundle');
+          });
         });
 
         it('succeeds even if getDevices() throws', async () => {
