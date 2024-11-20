@@ -1,7 +1,7 @@
 import {Msg} from '../core/GlobalTypes';
 
 export type LogoutSuccess = Msg<{
-  eventType: string;
+  eventType: 'AgentDesktopMessage';
   agentId: string;
   trackingId: string;
   agentSessionId: string;
@@ -10,11 +10,11 @@ export type LogoutSuccess = Msg<{
   subStatus: string;
   loggedOutBy?: string;
   roles?: string[];
-  type: string;
+  type: 'AgentLogoutSuccess';
 }>;
 
 export type ReloginSuccess = Msg<{
-  eventType: string;
+  eventType: 'AgentDesktopMessage';
   agentId: string;
   trackingId: string;
   auxCodeId: string;
@@ -37,11 +37,11 @@ export type ReloginSuccess = Msg<{
   deviceType?: DeviceType;
   deviceId?: string | null;
   isEmergencyModalAlreadyDisplayed?: boolean;
-  type: string;
+  type: 'AgentReloginSuccess';
 }>;
 
 export type StateChangeSuccess = Msg<{
-  eventType: string;
+  eventType: 'AgentDesktopMessage';
   agentId: string;
   trackingId: string;
   auxCodeId: string;
@@ -51,7 +51,7 @@ export type StateChangeSuccess = Msg<{
   subStatus: 'Available' | 'Idle';
   lastIdleCodeChangeTimestamp: number;
   lastStateChangeTimestamp: number;
-  type: string;
+  type: 'AgentStateChangeSuccess';
   changedBy: string | null;
   changedById: string | null;
   changedByName: string | null;
@@ -59,7 +59,7 @@ export type StateChangeSuccess = Msg<{
 }>;
 
 export type StationLoginSuccess = Msg<{
-  eventType: string;
+  eventType: 'AgentDesktopMessage';
   agentId: string;
   trackingId: string;
   auxCodeId: string;
@@ -77,16 +77,7 @@ export type StationLoginSuccess = Msg<{
   dialNumber?: string;
   roles?: string[];
   supervisorSessionId?: string;
-  type: string;
-}>;
-
-export type DNRegistered = Msg<{
-  eventType: string;
-  agentId: string;
-  trackingId: string;
-  dn: string;
-  orgId: string;
-  type: string;
+  type: 'AgentStationLoginSuccess';
 }>;
 
 export type Logout = {logoutReason?: 'User requested logout' | 'Inactivity Logout'};
@@ -137,11 +128,11 @@ export type BuddyDetails = {
 };
 
 export type BuddyAgentsSuccess = Msg<{
-  eventType: string;
+  eventType: 'AgentDesktopMessage';
   agentId: string;
   trackingId: string;
   agentSessionId: string;
   orgId: string;
-  type: string;
+  type: 'BuddyAgents';
   agentList: Array<BuddyDetails>;
 }>;
