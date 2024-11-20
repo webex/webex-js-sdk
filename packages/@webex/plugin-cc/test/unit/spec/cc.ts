@@ -19,6 +19,7 @@ import LoggerProxy from '../../../src/logger-proxy';
 // Mock the Worker API
 import '../../../__mocks__/workerMock';
 import {Profile} from '../../../src/services/config/types';
+import mock from 'webdriverio/build/commands/browser/mock';
 
 jest.mock('../../../src/logger-proxy', () => ({
   __esModule: true,
@@ -42,6 +43,7 @@ global.URL.createObjectURL = jest.fn(() => 'blob:http://localhost:3000/12345');
 describe('webex.cc', () => {
   let webex;
   let mockWebSocketManager;
+  let mockAgentConfig;
 
   beforeEach(() => {
     webex = MockWebex({
@@ -652,6 +654,13 @@ describe('webex.cc', () => {
           lastStateChangeReason: 'agent-wss-disconnect',
         },
       };
+
+      // Mock the agentConfig
+      webex.cc.agentConfig = {
+        agentId: 'agentId',
+        agentProfileID: 'test-agent-profile-id',
+        isAgentLoggedIn: false,
+      } as Profile;
   
       const setAgentStateSpy = jest.spyOn(webex.cc, 'setAgentState').mockResolvedValue({} as SetStateResponse);
       jest.spyOn(webex.cc.services.agent, 'reload').mockResolvedValue(mockReLoginResponse);
@@ -667,6 +676,7 @@ describe('webex.cc', () => {
         lastStateChangeReason: 'agent-wss-disconnect',
         agentId: 'agentId',
       });
+      expect(webex.cc.agentConfig.isAgentLoggedIn).toBe(true);
     });
   
     it('should handle AGENT_NOT_FOUND error silently', async () => {

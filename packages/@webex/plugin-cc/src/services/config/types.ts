@@ -528,4 +528,5 @@ export type Profile = {
   isRecordingManagementEnabled?: boolean;
   lostConnectionRecoveryTimeout: number;
   maskSensitiveData?: boolean;
+  isAgentLoggedIn?: boolean;
 };

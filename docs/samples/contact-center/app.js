@@ -140,6 +140,10 @@ function register() {
           agentLogin.add(option);
         });
 
+        if (agentProfile.isAgentLoggedIn) {
+          logoutAgentElm.classList.remove('hidden');
+        }
+
         const idleCodesList = agentProfile.idleCodes;
         
         if(idleCodesList.length > 0) setAgentStatusButton.disabled = false;
@@ -176,9 +180,6 @@ function doAgentLogin() {
     logoutAgentElm.classList.remove('hidden');
   }
   ).catch((error) => {
-    if (error.message === 'AGENT_SESSION_ALREADY_EXISTS') {
-      logoutAgentElm.classList.remove('hidden');
-    }
     console.log('Agent Login failed', error);
   });
 }

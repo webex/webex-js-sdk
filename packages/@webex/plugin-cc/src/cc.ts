@@ -17,6 +17,7 @@ import {READY, CC_FILE, EMPTY_STRING} from './constants';
 import WebCallingService from './services/WebCallingService';
 import {AGENT, WEB_RTC_PREFIX} from './services/constants';
 import Services from './services';
+import HttpRequest from './services/core/HttpRequest';
 import LoggerProxy from './logger-proxy';
 import {StateChange, Logout} from './services/agent/types';
 import {getErrorDetails} from './services/core/Utils';
@@ -31,6 +32,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   private agentConfig: Profile;
   private webCallingService: WebCallingService;
   private services: Services;
+  private httpRequest: HttpRequest;
 
   constructor(...args) {
     super(...args);
@@ -41,6 +43,13 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     this.$webex.once(READY, () => {
       // @ts-ignore
       this.$config = this.config;
+
+      /**
+       * This is used for handling the async requests by sending webex.request and wait for corresponding websocket event.
+       */
+      this.httpRequest = HttpRequest.getInstance({
+        webex: this.$webex,
+      });
 
       this.services = Services.getInstance({
         webex: this.$webex,
@@ -284,7 +293,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         };
         await this.setAgentState(stateChangeData);
       }
-      // TODO: Update login state of config here (https://jira-eng-gpk2.cisco.com/jira/browse/SPARK-574666)
+      // Updating isAgentLoggedIn as true to indicate to the end user
+      this.agentConfig.isAgentLoggedIn = true;
     } catch (error) {
       const {reason, error: detailedError} = getErrorDetails(error, 'silentReLogin');
       if (reason === 'AGENT_NOT_FOUND') {
