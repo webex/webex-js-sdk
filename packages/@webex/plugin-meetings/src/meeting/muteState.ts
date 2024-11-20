@@ -32,6 +32,7 @@ export class MuteState {
     };
     server: {localMute: boolean; remoteMute: boolean; unmuteAllowed: boolean};
     syncToServerInProgress: boolean;
+    isRemoteUnmutePendingLocusDtoUpdate: boolean; // true if we've sent a remote unmute request to Locus and haven't received a Locus DTO confirming it happened, yet
   };
 
   type: any;
@@ -62,6 +63,7 @@ export class MuteState {
         unmuteAllowed: type === AUDIO ? meeting.unmuteAllowed : meeting.unmuteVideoAllowed ?? true,
       },
       syncToServerInProgress: false,
+      isRemoteUnmutePendingLocusDtoUpdate: false,
     };
   }
 
@@ -327,6 +329,13 @@ export class MuteState {
       `Meeting:muteState#sendRemoteMuteRequestToServer --> ${this.type}: sending remote mute:${remoteMute} to server`
     );
 
+    this.state.isRemoteUnmutePendingLocusDtoUpdate = true;
+
+    setTimeout(() => {
+      console.log('marcin: resetting isRemoteUnmutePendingLocusDtoUpdate after timeout');
+      this.state.isRemoteUnmutePendingLocusDtoUpdate = false;
+    }, 10 * 1000);
+
     return meeting.members
       .muteMember(meeting.members.selfId, remoteMute, this.type === AUDIO)
       .then(() => {
@@ -337,6 +346,8 @@ export class MuteState {
         this.state.server.remoteMute = remoteMute;
       })
       .catch((remoteUpdateError) => {
+        this.state.isRemoteUnmutePendingLocusDtoUpdate = false;
+
         LoggerProxy.logger.warn(
           `Meeting:muteState#sendRemoteMuteRequestToServer --> ${this.type}: failed to apply remote mute ${remoteMute} to server: ${remoteUpdateError}`
         );
@@ -357,6 +368,23 @@ export class MuteState {
     } else {
       meeting.mediaProperties.videoStream?.setUnmuteAllowed(this.state.server.unmuteAllowed);
     }
+  }
+
+  public shouldIgnoreRemoteMuteUpdate(remoteMute: boolean, isModifiedBySelf: boolean) {
+    console.log(
+      `marcin: shouldIgnoreRemoteMuteUpdate: flag=${this.state.isRemoteUnmutePendingLocusDtoUpdate} remoteMute=${remoteMute}, isModifiedBySelf=${isModifiedBySelf}`
+    );
+    if (this.state.isRemoteUnmutePendingLocusDtoUpdate && isModifiedBySelf && !remoteMute) {
+      console.log('marcin: FIX: ignoring remote mute update');
+
+      this.state.isRemoteUnmutePendingLocusDtoUpdate = false;
+
+      return true;
+    }
+
+    console.log('marcin: FIX: NOT ignoring remote mute update');
+
+    return false;
   }
 
   /**

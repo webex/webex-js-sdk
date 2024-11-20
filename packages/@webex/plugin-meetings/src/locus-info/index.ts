@@ -1406,7 +1406,7 @@ export default class LocusInfo extends EventsScope {
           }
         );
       }
-      if (parsedSelves.updates.isMutedByOthersChanged) {
+      if (parsedSelves.updates.isMutedByOthersChanged.changed) {
         this.emitScoped(
           {
             file: 'locus-info',
@@ -1416,6 +1416,7 @@ export default class LocusInfo extends EventsScope {
           {
             muted: parsedSelves.current.remoteMuted,
             unmuteAllowed: parsedSelves.current.unmuteAllowed,
+            isModifiedBySelf: parsedSelves.updates.isMutedByOthersChanged.isModifiedBySelf,
           }
         );
       }

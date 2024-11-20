@@ -3144,26 +3144,34 @@ export default class Meeting extends StatelessWebexPlugin {
 
     this.locusInfo.on(LOCUSINFO.EVENTS.SELF_REMOTE_MUTE_STATUS_UPDATED, (payload) => {
       if (payload) {
-        if (this.audio) {
-          this.audio.handleServerRemoteMuteUpdate(this, payload.muted, payload.unmuteAllowed);
-        }
-        // with "mute on entry" server will send us remote mute even if we don't have media configured,
-        // so if being muted by others, always send the notification,
-        // but if being unmuted, only send it if we are also locally unmuted
-        if (payload.muted || !this.audio?.isMuted()) {
-          Trigger.trigger(
-            this,
-            {
-              file: 'meeting/index',
-              function: 'setUpLocusInfoSelfListener',
-            },
-            payload.muted
-              ? EVENT_TRIGGERS.MEETING_SELF_MUTED_BY_OTHERS
-              : EVENT_TRIGGERS.MEETING_SELF_UNMUTED_BY_OTHERS,
-            {
-              payload,
-            }
-          );
+        const ignore = this.audio
+          ? this.audio.shouldIgnoreRemoteMuteUpdate(payload.muted, payload.isModifiedBySelf)
+          : false;
+
+        if (!ignore) {
+          if (this.audio) {
+            this.audio.handleServerRemoteMuteUpdate(this, payload.muted, payload.unmuteAllowed);
+          }
+          // with "mute on entry" server will send us remote mute even if we don't have media configured,
+          // so if being muted by others, always send the notification,
+          // but if being unmuted, only send it if we are also locally unmuted
+          if (payload.muted || !this.audio?.isMuted()) {
+            Trigger.trigger(
+              this,
+              {
+                file: 'meeting/index',
+                function: 'setUpLocusInfoSelfListener',
+              },
+              payload.muted
+                ? EVENT_TRIGGERS.MEETING_SELF_MUTED_BY_OTHERS
+                : EVENT_TRIGGERS.MEETING_SELF_UNMUTED_BY_OTHERS,
+              {
+                payload,
+              }
+            );
+          }
+        } else {
+          console.log(`marcin: ignoring remote mute update payload.muted=${payload.muted}`);
         }
       }
     });

@@ -419,25 +419,27 @@ SelfUtils.mutedByOthersChanged = (oldSelf, changedSelf) => {
     throw new ParameterError('New self must be defined to determine if self was muted by others.');
   }
 
+  const isModifiedBySelf = changedSelf.selfIdentity === changedSelf.modifiedBy;
+
   if (!oldSelf || oldSelf.remoteMuted === null) {
     if (changedSelf.remoteMuted) {
-      return true; // this happens when mute on-entry is enabled
+      return {changed: false, isModifiedBySelf}; // this happens when mute on-entry is enabled
     }
 
     // we don't want to be sending the 'meeting:self:unmutedByOthers' notification on meeting join
-    return false;
+    return {changed: false, isModifiedBySelf};
   }
-
-  // there is no need to trigger user update if no one muted user
-  if (changedSelf.selfIdentity === changedSelf.modifiedBy) {
-    return false;
-  }
-
-  return (
-    changedSelf.remoteMuted !== null &&
-    (oldSelf.remoteMuted !== changedSelf.remoteMuted ||
-      (changedSelf.remoteMuted && oldSelf.unmuteAllowed !== changedSelf.unmuteAllowed))
+  console.log(
+    `marcin: mutedByOthersChanged: old.remoteMuted=${oldSelf.remoteMuted} new.remoteMuted=${changedSelf.remoteMuted} selfId=${changedSelf.selfIdentity} modifiedBy=${changedSelf.modifiedBy}`
   );
+
+  return {
+    changed:
+      changedSelf.remoteMuted !== null &&
+      (oldSelf.remoteMuted !== changedSelf.remoteMuted ||
+        (changedSelf.remoteMuted && oldSelf.unmuteAllowed !== changedSelf.unmuteAllowed)),
+    isModifiedBySelf,
+  };
 };
 
 SelfUtils.localAudioUnmuteRequestedByServer = (oldSelf: any = {}, changedSelf: any) => {
