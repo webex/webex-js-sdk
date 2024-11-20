@@ -80,15 +80,6 @@ export type StationLoginSuccess = Msg<{
   type: 'AgentStationLoginSuccess';
 }>;
 
-export type DNRegistered = Msg<{
-  eventType: 'RoutingMessage';
-  agentId: string;
-  trackingId: string;
-  dn: string;
-  orgId: string;
-  type: 'AgentDNRegistered';
-}>;
-
 export type Logout = {logoutReason?: 'User requested logout' | 'Inactivity Logout'};
 
 export type AgentState = 'Available' | 'Idle' | 'RONA' | string;
@@ -137,11 +128,11 @@ export type BuddyDetails = {
 };
 
 export type BuddyAgentsSuccess = Msg<{
-  eventType: string;
+  eventType: 'AgentDesktopMessage';
   agentId: string;
   trackingId: string;
   agentSessionId: string;
   orgId: string;
-  type: string;
+  type: 'BuddyAgents';
   agentList: Array<BuddyDetails>;
 }>;
