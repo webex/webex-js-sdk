@@ -718,8 +718,9 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       webexSubServiceType: this.getSubServiceType(meeting),
     };
 
-    if (options.joinFlowVersion) {
-      clientEventObject.joinFlowVersion = options.joinFlowVersion;
+    const joinFlowVersion = options.joinFlowVersion ?? meeting.callStateForMetrics?.joinFlowVersion;
+    if (joinFlowVersion) {
+      clientEventObject.joinFlowVersion = joinFlowVersion;
     }
 
     return clientEventObject;
