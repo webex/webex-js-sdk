@@ -14,7 +14,6 @@ import {
   SubscribeRequest,
 } from './types';
 import {READY, CC_FILE, EMPTY_STRING} from './constants';
-import HttpRequest from './services/core/HttpRequest';
 import WebCallingService from './services/WebCallingService';
 import {AGENT, WEB_RTC_PREFIX} from './services/constants';
 import Services from './services';
@@ -30,7 +29,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   private $config: CCPluginConfig;
   private $webex: WebexSDK;
   private agentConfig: Profile;
-  private httpRequest: HttpRequest;
   private webCallingService: WebCallingService;
   private services: Services;
 
@@ -44,14 +42,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       // @ts-ignore
       this.$config = this.config;
 
-      /**
-       * This is used for handling the async requests by sending webex.request and wait for corresponding websocket event.
-       */
-      this.httpRequest = HttpRequest.getInstance({
+      this.services = Services.getInstance({
         webex: this.$webex,
+        connectionConfig: this.getConnectionConfig(),
       });
-
-      this.services = Services.getInstance(this.$webex, this.getConnectionConfig());
 
       this.webCallingService = new WebCallingService(this.$webex, this.$config.callingClientConfig);
 

@@ -12,20 +12,24 @@ export default class Services {
   public readonly connectionService: ConnectionService;
   private static instance: Services;
 
-  constructor(webex: WebexSDK, subscribeRequest: SubscribeRequest) {
+  constructor(options: {webex: WebexSDK; connectionConfig: SubscribeRequest}) {
+    const {webex, connectionConfig} = options;
     this.webSocketManager = new WebSocketManager({webex});
     const aqmReq = new AqmReqs(this.webSocketManager);
     this.config = new AgentConfigService();
     this.agent = routingAgent(aqmReq);
     this.connectionService = new ConnectionService({
       webSocketManager: this.webSocketManager,
-      subscribeRequest,
+      subscribeRequest: connectionConfig,
     });
   }
 
-  public static getInstance(webex: WebexSDK, subscribeRequest: SubscribeRequest): Services {
+  public static getInstance(options: {
+    webex: WebexSDK;
+    connectionConfig: SubscribeRequest;
+  }): Services {
     if (!this.instance) {
-      this.instance = new Services(webex, subscribeRequest);
+      this.instance = new Services(options);
     }
 
     return this.instance;
