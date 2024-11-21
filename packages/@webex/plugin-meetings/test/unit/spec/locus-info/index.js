@@ -750,27 +750,36 @@ describe('plugin-meetings', () => {
 
           assert.calledWith(
             locusInfo.emitScoped,
-            { file: 'locus-info', function: 'updateSelf' },
+            {file: 'locus-info', function: 'updateSelf'},
             LOCUSINFO.EVENTS.SELF_MEETING_BRB_CHANGED,
-            { brb: enabled }
-          )
+            {brb: enabled}
+          );
         };
 
         assertBrb(true);
         assertBrb(false);
-      })
+      });
 
       it('should not trigger SELF_MEETING_BRB_CHANGED when brb state did not change', () => {
-        const assertBrbUnchanged = (brbChange) => {
-          locusInfo.self = { brb: brbChange };
+        const assertBrbUnchanged = (value) => {
+          locusInfo.self = undefined;
+
+          const selfWithBrbChanged = cloneDeep(self);
+          selfWithBrbChanged.controls.brb = value;
+          locusInfo.self = selfWithBrbChanged;
+
           locusInfo.emitScoped = sinon.stub();
-          locusInfo.updateSelf({ brb: brbChange }, []);
+
+          const newSelf = cloneDeep(self);
+          newSelf.controls.brb = value;
+
+          locusInfo.updateSelf(newSelf, []);
 
           assert.neverCalledWith(
             locusInfo.emitScoped,
-            { file: 'locus-info', function: 'updateSelf' },
+            {file: 'locus-info', function: 'updateSelf'},
             LOCUSINFO.EVENTS.SELF_MEETING_BRB_CHANGED,
-            { brb: brbChange }
+            {brb: value}
           );
         };
 
@@ -778,26 +787,25 @@ describe('plugin-meetings', () => {
         assertBrbUnchanged(false);
       });
 
-      it('should not trigger SELF_MEETING_BRB_CHANGED when brb state changed', () => {
-        const assertBrb = (enabled) => {
-          const selfWithBrbChanged = cloneDeep(self);
-          selfWithBrbChanged.controls.brb = enabled
+      it('should not trigger SELF_MEETING_BRB_CHANGED when brb state changed to undefined', () => {
+        const selfWithBrbChanged = cloneDeep(self);
+        selfWithBrbChanged.controls.brb = false;
+        locusInfo.self = selfWithBrbChanged;
 
-          locusInfo.self = selfWithBrbChanged
-          locusInfo.emitScoped = sinon.stub();
-          locusInfo.updateSelf(selfWithBrbChanged, [])
+        locusInfo.emitScoped = sinon.stub();
 
-          assert.neverCalledWith(
-            locusInfo.emitScoped,
-            { file: 'locus-info', function: 'updateSelf' },
-            LOCUSINFO.EVENTS.SELF_MEETING_BRB_CHANGED,
-            { brb: enabled }
-          )
-        }
+        const newSelf = cloneDeep(self);
+        newSelf.controls.brb = undefined;
 
-        assertBrb(true);
-        assertBrb(false);
-      })
+        locusInfo.updateSelf(newSelf, []);
+
+        assert.neverCalledWith(
+          locusInfo.emitScoped,
+          {file: 'locus-info', function: 'updateSelf'},
+          LOCUSINFO.EVENTS.SELF_MEETING_BRB_CHANGED,
+          {brb: undefined}
+        );
+      });
 
       it('should trigger CONTROLS_MEETING_LAYOUT_UPDATED when the meeting layout controls change', () => {
         const layoutType = 'EXAMPLE TYPE';

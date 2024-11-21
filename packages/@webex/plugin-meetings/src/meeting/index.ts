@@ -3526,32 +3526,40 @@ export default class Meeting extends StatelessWebexPlugin {
    * @returns {Promise<void>} resolves when the brb status is updated or does nothing if not in a multistream meeting.
    * @throws {Error} - Throws an error if the request fails.
    */
-  // eslint-disable-next-line consistent-return
   public async beRightBack(enabled: boolean): Promise<void> {
-    // this logic should be applied only to multistream meetings
     if (!this.isMultistream) {
-      LoggerProxy.logger.error('Meeting:index#beRightBack --> Not a multistream meeting');
-    } else if (!this.mediaProperties.webrtcMediaConnection) {
-      LoggerProxy.logger.error(
-        'Meeting:index#beRightBack --> WebRTC media connection is not defined'
-      );
-    } else {
-      return this.meetingRequest
-        .sendBrb({
-          enabled,
-          locusUrl: this.locusUrl,
-          deviceUrl: this.deviceUrl,
-          selfId: this.selfId,
-        })
-        .then(() => {
-          this.sendSlotManager.setSourceStateOverride(MediaType.VideoMain, enabled ? 'away' : null);
-        })
-        .catch((error) => {
-          LoggerProxy.logger.error('Meeting:index#beRightBack --> Error ', error);
+      const errorMessage = 'Meeting:index#beRightBack --> Not a multistream meeting';
+      const error = new Error(errorMessage);
+      LoggerProxy.logger.error(error);
 
-          return Promise.reject(error);
-        });
+      return Promise.reject(error);
     }
+
+    if (!this.mediaProperties.webrtcMediaConnection) {
+      const errorMessage = 'Meeting:index#beRightBack --> WebRTC media connection is not defined';
+      const error = new Error(errorMessage);
+
+      LoggerProxy.logger.error(error);
+
+      return Promise.reject(error);
+    }
+
+    // this logic should be applied only to multistream meetings
+    return this.meetingRequest
+      .sendBrb({
+        enabled,
+        locusUrl: this.locusUrl,
+        deviceUrl: this.deviceUrl,
+        selfId: this.selfId,
+      })
+      .then(() => {
+        this.sendSlotManager.setSourceStateOverride(MediaType.VideoMain, enabled ? 'away' : null);
+      })
+      .catch((error) => {
+        LoggerProxy.logger.error('Meeting:index#beRightBack --> Error ', error);
+
+        return Promise.reject(error);
+      });
   }
 
   /**

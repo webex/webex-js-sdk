@@ -3695,14 +3695,14 @@ describe('plugin-meetings', () => {
           it('should ignore enabling #beRightBack', async () => {
             meeting.beRightBack(true);
 
-            assert.isUndefined();
+            assert.isRejected((Promise.reject()));
             assert.notCalled(meeting.meetingRequest.sendBrb);
           })
 
           it('should ignore disabling #beRightBack', async () => {
             meeting.beRightBack(false);
 
-            assert.isUndefined();
+            assert.isRejected((Promise.reject()));
             assert.notCalled(meeting.meetingRequest.sendBrb);
           })
         });
