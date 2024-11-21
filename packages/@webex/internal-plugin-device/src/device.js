@@ -1,5 +1,5 @@
 // Internal Dependencies
-import {deprecated, oneFlight} from '@webex/common';
+import {deprecated, oneFlight, applyDecorators} from '@webex/common';
 import {persist, waitForValue, WebexPlugin} from '@webex/webex-core';
 import {safeSetTimeout} from '@webex/common-timers';
 import {orderBy} from 'lodash';
@@ -369,12 +369,10 @@ const Device = WebexPlugin.extend({
   /**
    * Refresh the current registered device if able.
    *
-   * @param {DeviceRegistrationOptions} options - The options for refresh.
+   * @param {DeviceRegistrationOptions} deviceRegistrationOptions - The options for refresh.
    * @param {CatalogDetails} options.includeDetails - The details to include in the refresh/register request.
    * @returns {Promise<void, Error>}
    */
-  @oneFlight
-  @waitForValue('@')
   refresh(deviceRegistrationOptions = {}) {
     this.logger.info('device: refreshing');
 
@@ -501,8 +499,9 @@ const Device = WebexPlugin.extend({
 
   /**
    * Registers and when fails deletes devices
+   * @param {DeviceRegistrationOptions} deviceRegistrationOptions - The options for registration.
+   * @returns {Promise<void, Error>}
    */
-  @waitForValue('@')
   register(deviceRegistrationOptions = {}) {
     this.logger.info('device: registering');
 
@@ -528,6 +527,11 @@ const Device = WebexPlugin.extend({
     });
   },
 
+  /**
+   * Merges the default and custom body configurations for the registration request.
+   *
+   * @returns {Object} The merged body for the registration request.
+   */
   _getBody() {
     return {
       ...(this.config.defaults.body ? this.config.defaults.body : {}),
@@ -540,12 +544,10 @@ const Device = WebexPlugin.extend({
    * registration utilizes the services plugin to send the request to the
    * **WDM** service.
    *
-   * @param {Object} options - The options for registration.
+   * @param {Object} deviceRegistrationOptions - The options for registration.
    * @param {CatalogDetails} options.includeDetails - The details to include in the refresh/register request.
    * @returns {Promise<void, Error>}
    */
-  @oneFlight
-  @waitForValue('@')
   _registerInternal(deviceRegistrationOptions = {}) {
     this.logger.info('device: making registration request');
 
@@ -622,8 +624,6 @@ const Device = WebexPlugin.extend({
    *
    * @returns {Promise<void, Error>}
    */
-  @oneFlight
-  @waitForValue('@')
   unregister() {
     this.logger.info('device: unregistering');
 
@@ -926,7 +926,6 @@ const Device = WebexPlugin.extend({
    * @param {string} url - The url to mark as failed.
    * @returns {Promise<string>} - The next priority url.
    */
-  @deprecated('device#markUrlFailedAndGetNew(): Use services#markFailedUrl()')
   markUrlFailedAndGetNew(url) {
     return Promise.resolve(this.webex.internal.services.markFailedUrl(url));
   },
@@ -941,7 +940,6 @@ const Device = WebexPlugin.extend({
    * @param {Array<any>} args - An array of items to be mapped as properties.
    * @returns {void}
    */
-  @persist('@', decider)
   initialize(...args) {
     // Prototype the extended class in order to preserve the parent member.
     Reflect.apply(WebexPlugin.prototype.initialize, this, args);
@@ -987,6 +985,17 @@ const Device = WebexPlugin.extend({
     });
   },
   /* eslint-enable require-jsdoc */
+});
+
+applyDecorators(Device, {
+  register: [waitForValue('@')],
+  _registerInternal: [waitForValue('@'), oneFlight],
+  refresh: [waitForValue('@'), oneFlight],
+  unregister: [waitForValue('@'), oneFlight],
+  markUrlFailedAndGetNew: [
+    deprecated('device#markUrlFailedAndGetNew(): Use services#markFailedUrl()'),
+  ],
+  initialize: [persist('@', decider)],
 });
 
 export default Device;

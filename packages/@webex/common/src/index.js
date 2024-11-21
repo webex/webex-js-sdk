@@ -21,6 +21,7 @@ export {default as whileInFlight} from './while-in-flight';
 export {default as Exception} from './exception';
 export {default as deprecated} from './deprecated';
 export {default as inBrowser} from './in-browser';
+export {default as applyDecorators} from './apply-decorators';
 export {
   deviceType,
   hydraTypes,
