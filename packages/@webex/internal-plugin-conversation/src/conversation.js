@@ -68,7 +68,7 @@ const getConvoLimit = (options = {}) => {
   let limit;
 
   if (options.conversationsLimit) {
-    const value = options.conversationsLimit >= 0 ? options.conversationsLimit : 0;
+    const value = Math.max(options.conversationsLimit, 0);
     limit = {
       value,
       name: 'conversationsLimit',
