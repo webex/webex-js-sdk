@@ -154,10 +154,10 @@ export default class Reachability extends EventsScope {
     try {
       this.lastTrigger = trigger;
 
-      // kick off ip version detection. For now we don't await it, as we're doing it
-      // to gather the timings and send them with our reachability metrics
+      // kick off ip version detection. We don't await it, as we don't want to waste time
+      // and if it fails, that's ok we can still carry on
       // @ts-ignore
-      this.webex.internal.device.ipNetworkDetector.detect();
+      this.webex.internal.device.ipNetworkDetector.detect(true);
 
       const {clusters, joinCookie} = await this.getClusters();
 

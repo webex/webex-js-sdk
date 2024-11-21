@@ -1234,7 +1234,7 @@ describe('gatherReachability', () => {
     assert.equal(receivedEvents['done'], 1);
 
     // and that ip network detection was started
-    assert.calledOnceWithExactly(webex.internal.device.ipNetworkDetector.detect);
+    assert.calledOnceWithExactly(webex.internal.device.ipNetworkDetector.detect, true);
 
     // finally, check the metrics - they should contain values from ipNetworkDetector
     assert.calledWith(Metrics.sendBehavioralMetric, 'js_sdk_reachability_completed', {

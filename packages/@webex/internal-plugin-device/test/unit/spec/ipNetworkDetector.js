@@ -3,6 +3,8 @@ import sinon from 'sinon';
 import IpNetworkDetector from '@webex/internal-plugin-device/src/ipNetworkDetector';
 import MockWebex from '@webex/test-helper-mock-webex';
 
+const flushPromises = () => new Promise(setImmediate);
+
 describe('plugin-device', () => {
   describe('IpNetworkDetector', () => {
     let webex;
@@ -326,7 +328,7 @@ describe('plugin-device', () => {
         });
 
         // now call detect() again
-        const promise2 = ipNetworkDetector.detect();
+        const promise2 = ipNetworkDetector.detect(true);
 
         // everything should have been reset
         assert.equal(ipNetworkDetector.supportsIpV4, undefined);
@@ -339,6 +341,87 @@ describe('plugin-device', () => {
         simulateEndOfCandidateGathering(10);
         await promise2;
       });
+
+      it('queues another detect() call if one is already in progress', async () => {
+        const promise = ipNetworkDetector.detect();
+
+        simulateCandidate(50, '192.168.0.1');
+
+        await flushPromises();
+
+        assert.calledOnce(fakePeerConnection.createDataChannel);
+        assert.calledOnce(fakePeerConnection.createOffer);
+        assert.calledOnce(fakePeerConnection.setLocalDescription);
+
+        // now call detect() again
+        ipNetworkDetector.detect(true);
+
+        // simulate the end of the detection -> another one should be started
+        simulateEndOfCandidateGathering(10);
+
+        await promise;
+
+        assert.calledTwice(fakePeerConnection.createDataChannel);
+        assert.calledTwice(fakePeerConnection.createOffer);
+        assert.calledTwice(fakePeerConnection.setLocalDescription);
+
+        simulateCandidate(50, '2a02:c7c:a0d0:8a00:db9b:d4de:d1f7:4c49');
+        simulateEndOfCandidateGathering(10);
+
+        // results should reflect the last run detection
+        checkResults({
+          supportsIpV4: false,
+          supportsIpV6: true,
+          timings: {
+            totalTime: 60,
+            ipv4: -1,
+            ipv6: 50,
+            mdns: -1,
+          },
+        });
+
+        await flushPromises();
+
+        // no more detections should be started
+        assert.calledTwice(fakePeerConnection.createDataChannel);
+      });
+
+      it.each`
+        force    | state        | receivedOnlyMDnsCandidates | expectedToRunDetection
+        ${true}  | ${'initial'} | ${false}                   | ${true}
+        ${true}  | ${'idle'}    | ${false}                   | ${true}
+        ${true}  | ${'initial'} | ${true}                    | ${true}
+        ${true}  | ${'idle'}    | ${true}                    | ${true}
+        ${false} | ${'initial'} | ${false}                   | ${true}
+        ${false} | ${'initial'} | ${true}                    | ${true}
+        ${false} | ${'idle'}    | ${true}                    | ${true}
+        ${false} | ${'idle'}    | ${false}                   | ${false}
+      `(
+        'force=$force, state=$state, receivedOnlyMDnsCandidates=$receivedOnlyMDnsCandidates => expectedToRunDetection=$expectedToRunDetection',
+        async ({force, state, receivedOnlyMDnsCandidates, expectedToRunDetection}) => {
+          ipNetworkDetector.state = state;
+          sinon
+            .stub(ipNetworkDetector, 'receivedOnlyMDnsCandidates')
+            .returns(receivedOnlyMDnsCandidates);
+
+          const result = ipNetworkDetector.detect(force);
+
+          if (expectedToRunDetection) {
+            simulateEndOfCandidateGathering(10);
+          }
+          await result;
+
+          if (expectedToRunDetection) {
+            assert.calledOnce(fakePeerConnection.createDataChannel);
+            assert.calledOnce(fakePeerConnection.createOffer);
+            assert.calledOnce(fakePeerConnection.setLocalDescription);
+          } else {
+            assert.notCalled(fakePeerConnection.createDataChannel);
+            assert.notCalled(fakePeerConnection.createOffer);
+            assert.notCalled(fakePeerConnection.setLocalDescription);
+          }
+        }
+      );
 
       it('rejects if one of RTCPeerConnection operations fails', async () => {
         const fakeError = new Error('fake error');
