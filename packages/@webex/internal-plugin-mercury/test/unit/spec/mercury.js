@@ -435,8 +435,6 @@ describe('plugin-mercury', () => {
 
       describe('when webSocketUrl is provided', () => {
         it('connects to Mercury with provided url', () => {
-          const clientTimestamp = Date.now();
-          sinon.useFakeTimers(clientTimestamp);
           const webSocketUrl = 'ws://providedurl.com';
           const promise = mercury.connect(webSocketUrl);
 
@@ -449,8 +447,8 @@ describe('plugin-mercury', () => {
             assert.isFalse(mercury.connecting, 'Mercury is not connecting');
             assert.calledWith(
               Socket.prototype.open,
-              sinon.match(/ws:\/\/providedurl.com/),
-              sinon.match.has('clientTimestamp', clientTimestamp + 1) // process.nextTick(() => mockWebSocket.open()); the mock websocket has a clock.tick of 1
+              sinon.match(/ws:\/\/providedurl.com.*clientTimestamp[=]\d+/),
+              sinon.match.any
             );
           });
         });
@@ -785,16 +783,16 @@ describe('plugin-mercury', () => {
       it('uses provided webSocketUrl', () =>
         webex.internal.mercury
           ._prepareUrl('ws://provided.com')
-          .then((wsUrl) => assert.match(wsUrl, /provided.com/)));
+          .then((wsUrl) => assert.match(wsUrl, /.*provided.com.*/)));
       it('requests text-mode WebSockets', () =>
         webex.internal.mercury
           ._prepareUrl()
-          .then((wsUrl) => assert.match(wsUrl, /outboundWireFormat=text/)));
+          .then((wsUrl) => assert.match(wsUrl, /.*outboundWireFormat=text.*/)));
 
       it('requests the buffer state message', () =>
         webex.internal.mercury
           ._prepareUrl()
-          .then((wsUrl) => assert.match(wsUrl, /bufferStates=true/)));
+          .then((wsUrl) => assert.match(wsUrl, /.*bufferStates=true.*/)));
 
       it('does not add conditional properties', () =>
         webex.internal.mercury._prepareUrl().then((wsUrl) => {
