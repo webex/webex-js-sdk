@@ -3104,7 +3104,7 @@ export default class Meeting extends StatelessWebexPlugin {
   private setUpLocusInfoSelfListener() {
     this.locusInfo.on(LOCUSINFO.EVENTS.LOCAL_UNMUTE_REQUIRED, (payload) => {
       if (this.audio) {
-        this.audio.handleServerLocalUnmuteRequired(this);
+        this.audio.handleServerLocalUnmuteRequired(this, payload.unmuteAllowed);
         Trigger.trigger(
           this,
           {
