@@ -718,6 +718,10 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       webexSubServiceType: this.getSubServiceType(meeting),
     };
 
+    if (options.joinFlowVersion) {
+      clientEventObject.joinFlowVersion = options.joinFlowVersion;
+    }
+
     return clientEventObject;
   }
 
@@ -760,6 +764,10 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       },
       loginType: this.getCurLoginType(),
     };
+
+    if (options.joinFlowVersion) {
+      clientEventObject.joinFlowVersion = options.joinFlowVersion;
+    }
 
     return clientEventObject;
   }

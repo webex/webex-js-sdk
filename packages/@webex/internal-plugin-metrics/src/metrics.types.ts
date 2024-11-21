@@ -110,6 +110,8 @@ export type MetricEventVerb =
   | 'warn'
   | 'exit';
 
+export type MetricEventJoinFlowVersion = 'Other' | 'NewFTE';
+
 export type SubmitClientEventOptions = {
   meetingId?: string;
   mediaConnections?: any[];
@@ -123,6 +125,7 @@ export type SubmitClientEventOptions = {
   browserLaunchMethod?: BrowserLaunchMethodType;
   webexConferenceIdStr?: string;
   globalMeetingId?: string;
+  joinFlowVersion?: MetricEventJoinFlowVersion;
 };
 
 export type SubmitMQEOptions = {

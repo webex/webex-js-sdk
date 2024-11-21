@@ -12200,6 +12200,43 @@ describe('plugin-meetings', () => {
           await testEmit(false);
         });
       });
+
+      describe('LOCAL_UNMUTE_REQUIRED locus event', () => {
+        const testEmit = async (unmuteAllowed) => {
+          meeting.audio = {
+            handleServerLocalUnmuteRequired: sinon.stub(),
+          }
+          await meeting.locusInfo.emitScoped(
+            {},
+            LOCUSINFO.EVENTS.LOCAL_UNMUTE_REQUIRED,
+            {
+              unmuteAllowed,
+            }
+          );
+
+          assert.calledWith(
+            TriggerProxy.trigger,
+            sinon.match.instanceOf(Meeting),
+            {
+              file: 'meeting/index',
+              function: 'setUpLocusInfoSelfListener',
+            },
+            EVENT_TRIGGERS.MEETING_SELF_UNMUTED_BY_OTHERS,
+            {
+              payload: {
+                unmuteAllowed,
+              },
+            }
+          );
+          assert.calledOnceWithExactly(meeting.audio.handleServerLocalUnmuteRequired, meeting, unmuteAllowed)
+        };
+
+        [true, false].forEach((unmuteAllowed) => {
+          it(`emits the expected event and calls handleServerLocalUnmuteRequired() when unmuteAllowed=${unmuteAllowed}`, async () => {
+            await testEmit(unmuteAllowed);
+          });
+        });
+      });
     });
   });
 
