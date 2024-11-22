@@ -3530,6 +3530,7 @@ export default class Meeting extends StatelessWebexPlugin {
     if (!this.isMultistream) {
       const errorMessage = 'Meeting:index#beRightBack --> Not a multistream meeting';
       const error = new Error(errorMessage);
+
       LoggerProxy.logger.error(error);
 
       return Promise.reject(error);
