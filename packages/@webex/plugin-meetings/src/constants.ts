@@ -356,7 +356,7 @@ export const EVENT_TRIGGERS = {
     'meeting:controls:view-the-participants-list:updated',
   MEETING_CONTROLS_RAISE_HAND_UPDATED: 'meeting:controls:raise-hand:updated',
   MEETING_CONTROLS_VIDEO_UPDATED: 'meeting:controls:video:updated',
-  MEETING_CONTROLS_STAGE_VIEW_UPDATED: 'MEETING_CONTROLS_STAGE_VIEW_UPDATED',
+  MEETING_CONTROLS_STAGE_VIEW_UPDATED: 'meeting:controls:stage-view:updated',
   MEETING_CONTROLS_WEBCAST_UPDATED: 'meeting:controls:webcast:updated',
   MEETING_CONTROLS_MEETING_FULL_UPDATED: 'meeting:controls:meeting-full:updated',
   MEETING_CONTROLS_PRACTICE_SESSION_STATUS_UPDATED:

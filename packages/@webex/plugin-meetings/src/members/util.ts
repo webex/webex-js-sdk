@@ -14,7 +14,6 @@ import {
 
 import {RoleAssignmentOptions, RoleAssignmentRequest, ServerRoleShape} from './types';
 
-// @ts-ignore
 const MembersUtil = {
   /**
    * @param {Object} invitee with emailAddress, email or phoneNumber
