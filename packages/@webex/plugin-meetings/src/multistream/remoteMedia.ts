@@ -107,10 +107,15 @@ export class RemoteMedia extends EventsScope {
    * to restrict the requested resolution to this size
    * @param width width of the video element
    * @param height height of the video element
+   * @note width/height of 0 will be ignored
    */
   public setSizeHint(width, height) {
     // only base on height for now
     let fs: number;
+
+    if (width === 0 || height === 0) {
+      return;
+    }
 
     if (height < 135) {
       fs = 60;
