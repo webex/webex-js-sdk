@@ -225,7 +225,7 @@ describe('plugin-meetings', () => {
     });
 
     describe('#assignRolesMember', () => {
-      it('sends a PATCH to the locus endpoint', async () => {
+      it('sends a assignRolesMember PATCH to the locus endpoint', async () => {
         const locusUrl = url1;
         const memberId = 'test1';
         const roles = [
@@ -255,7 +255,7 @@ describe('plugin-meetings', () => {
     });
 
     describe('#raiseHand', () => {
-      it('sends a PATCH to the locus endpoint', async () => {
+      it('sends a raiseOrLowerHandMember PATCH to the locus endpoint', async () => {
         const locusUrl = url1;
         const memberId = 'test1';
 
@@ -319,7 +319,7 @@ describe('plugin-meetings', () => {
         assert.strictEqual(result, requestResponse);
       });
 
-      it('sends a PATCH to the locus endpoint', async () => {
+      it('sends a lowerAllHandsMember PATCH to the locus endpoint', async () => {
         const locusUrl = url1;
         const memberId = 'test1';
 
@@ -343,6 +343,40 @@ describe('plugin-meetings', () => {
           body: {
             hand: {
               raised: false,
+            },
+            requestingParticipantId: memberId,
+          },
+        });
+      });
+
+      it('sends a lowerAllHandsMember PATCH to the locus endpoint with roles', async () => {
+        const locusUrl = url1;
+        const memberId = 'test1';
+        const roles = ['attendee'];
+
+        const options = {
+          requestingParticipantId: memberId,
+          locusUrl,
+          roles,
+        };
+
+        const getRequestParamsSpy = sandbox.spy(membersUtil, 'getLowerAllHandsMemberRequestParams');
+
+        await membersRequest.lowerAllHandsMember(options);
+
+        assert.calledOnceWithExactly(getRequestParamsSpy, {
+          requestingParticipantId: memberId,
+          locusUrl: url1,
+          roles: ['attendee'],
+        });
+
+        checkRequest({
+          method: 'PATCH',
+          uri: `${locusUrl}/controls`,
+          body: {
+            hand: {
+              raised: false,
+              roles: ['attendee'],
             },
             requestingParticipantId: memberId,
           },

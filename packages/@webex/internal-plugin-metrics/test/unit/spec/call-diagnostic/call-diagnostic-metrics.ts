@@ -48,7 +48,7 @@ describe('internal-plugin-metrics', () => {
       ...fakeMeeting,
       id: '2',
       correlationId: 'correlationId2',
-      callStateForMetrics: {loginType: 'fakeLoginType'},
+      callStateForMetrics: {loginType: 'fakeLoginType', joinFlowVersion: 'Other'},
     };
 
     const fakeMeeting3 = {
@@ -1270,6 +1270,7 @@ describe('internal-plugin-metrics', () => {
             loginType: 'fakeLoginType',
             name: 'client.alert.displayed',
             userType: 'host',
+            joinFlowVersion: 'Other',
             isConvergedArchitectureEnabled: undefined,
             webexSubServiceType: undefined,
           },
@@ -1321,6 +1322,7 @@ describe('internal-plugin-metrics', () => {
             loginType: 'fakeLoginType',
             name: 'client.alert.displayed',
             userType: 'host',
+            joinFlowVersion: 'Other',
             isConvergedArchitectureEnabled: undefined,
             webexSubServiceType: undefined,
           },
@@ -2757,11 +2759,10 @@ describe('internal-plugin-metrics', () => {
         });
       });
 
-      it('includes expected joinFlowVersion when in-meeting', async () => {
+      it('includes expected joinFlowVersion from options when in-meeting', async () => {
         // meetingId means in-meeting
         const options = {
           meetingId: fakeMeeting.id,
-          preLoginId: 'myPreLoginId',
           joinFlowVersion: 'NewFTE',
         };
 
@@ -2778,7 +2779,43 @@ describe('internal-plugin-metrics', () => {
         );
       });
 
-      it('includes expected joinFlowVersion during prejoin', async () => {
+      it('includes expected joinFlowVersion from meeting callStateForMetrics when in-meeting', async () => {
+        // meetingId means in-meeting
+        const options = {
+          meetingId: fakeMeeting2.id,
+        };
+
+        const triggered = new Date();
+        const fetchOptions = await cd.buildClientEventFetchRequestOptions({
+          name: 'client.exit.app',
+          payload: {trigger: 'user-interaction', canProceed: false},
+          options,
+        });
+
+        assert.equal(fetchOptions.body.metrics[0].eventPayload.event.joinFlowVersion, 'Other');
+      });
+
+      it('prioritizes joinFlowVersion from options over meeting callStateForMetrics', async () => {
+        // meetingId means in-meeting
+        const options = {
+          meetingId: fakeMeeting2.id,
+          joinFlowVersion: 'NewFTE',
+        };
+
+        const triggered = new Date();
+        const fetchOptions = await cd.buildClientEventFetchRequestOptions({
+          name: 'client.exit.app',
+          payload: {trigger: 'user-interaction', canProceed: false},
+          options,
+        });
+
+        assert.equal(
+          fetchOptions.body.metrics[0].eventPayload.event.joinFlowVersion,
+          options.joinFlowVersion
+        );
+      });
+
+      it('includes expected joinFlowVersion from options during prejoin', async () => {
         // correlationId and no meeting id means prejoin
         const options = {
           correlationId: 'myCorrelationId',

@@ -8898,6 +8898,78 @@ describe('plugin-meetings', () => {
           );
         });
 
+        it('listens to MEETING_CONTROLS_WEBCAST_UPDATED', async () => {
+          const state = {example: 'value'};
+
+          await meeting.locusInfo.emitScoped(
+            {function: 'test', file: 'test'},
+            LOCUSINFO.EVENTS.CONTROLS_WEBCAST_CHANGED,
+            {state}
+          );
+
+          assert.calledWith(
+            TriggerProxy.trigger,
+            meeting,
+            {file: 'meeting/index', function: 'setupLocusControlsListener'},
+            EVENT_TRIGGERS.MEETING_CONTROLS_WEBCAST_UPDATED,
+            {state}
+          );
+        });
+
+        it('listens to MEETING_CONTROLS_MEETING_FULL_UPDATED', async () => {
+          const state = {example: 'value'};
+
+          await meeting.locusInfo.emitScoped(
+            {function: 'test', file: 'test'},
+            LOCUSINFO.EVENTS.CONTROLS_MEETING_FULL_CHANGED,
+            {state}
+          );
+
+          assert.calledWith(
+            TriggerProxy.trigger,
+            meeting,
+            {file: 'meeting/index', function: 'setupLocusControlsListener'},
+            EVENT_TRIGGERS.MEETING_CONTROLS_MEETING_FULL_UPDATED,
+            {state}
+          );
+        });
+
+        it('listens to MEETING_CONTROLS_PRACTICE_SESSION_STATUS_UPDATED', async () => {
+          const state = {example: 'value'};
+
+          await meeting.locusInfo.emitScoped(
+            {function: 'test', file: 'test'},
+            LOCUSINFO.EVENTS.CONTROLS_PRACTICE_SESSION_STATUS_UPDATED,
+            {state}
+          );
+
+          assert.calledWith(
+            TriggerProxy.trigger,
+            meeting,
+            {file: 'meeting/index', function: 'setupLocusControlsListener'},
+            EVENT_TRIGGERS.MEETING_CONTROLS_PRACTICE_SESSION_STATUS_UPDATED,
+            {state}
+          );
+        });
+
+        it('listens to MEETING_CONTROLS_STAGE_VIEW_UPDATED', async () => {
+          const state = {example: 'value'};
+
+          await meeting.locusInfo.emitScoped(
+            {function: 'test', file: 'test'},
+            LOCUSINFO.EVENTS.CONTROLS_STAGE_VIEW_UPDATED,
+            {state}
+          );
+
+          assert.calledWith(
+            TriggerProxy.trigger,
+            meeting,
+            {file: 'meeting/index', function: 'setupLocusControlsListener'},
+            EVENT_TRIGGERS.MEETING_CONTROLS_STAGE_VIEW_UPDATED,
+            {state}
+          );
+        });
+
         it('listens to MEETING_CONTROLS_VIDEO_UPDATED', async () => {
           const state = {example: 'value'};
 
@@ -9011,12 +9083,6 @@ describe('plugin-meetings', () => {
               approval: {
                 url: 'url',
               },
-              webcast: {
-                url: 'url',
-              },
-              webinarAttendeesSearching: {
-                url: 'url',
-              },
             },
           };
 
@@ -9029,10 +9095,6 @@ describe('plugin-meetings', () => {
           };
           meeting.simultaneousInterpretation = {
             approvalUrlUpdate: sinon.stub().returns(undefined),
-          };
-          meeting.webinar = {
-            webcastUrlUpdate: sinon.stub().returns(undefined),
-            webinarAttendeesSearchingUrlUpdate: sinon.stub().returns(undefined),
           };
 
           meeting.locusInfo.emit(
@@ -9053,15 +9115,37 @@ describe('plugin-meetings', () => {
             meeting.simultaneousInterpretation.approvalUrlUpdate,
             newLocusServices.services.approval.url
           );
-          assert.calledWith(
-            meeting.webinar.webcastUrlUpdate,
-            newLocusServices.services.webcast.url
-          );
-          assert.calledWith(
-            meeting.webinar.webinarAttendeesSearchingUrlUpdate,
-            newLocusServices.services.webinarAttendeesSearching.url
-          );
           assert.calledOnce(meeting.recordingController.setSessionId);
+          done();
+        });
+      });
+
+      describe('#setUpLocusResourcesListener', () => {
+        it('listens to the locus resources update event', (done) => {
+          const newLocusResources = {
+            resources: {
+              webcastInstance: {
+                url: 'url',
+              },
+
+            },
+          };
+
+          meeting.webinar = {
+            updateWebcastUrl: sinon.stub().returns(undefined),
+          };
+
+          meeting.locusInfo.emit(
+            {function: 'test', file: 'test'},
+            'LINKS_RESOURCES',
+            newLocusResources
+          );
+
+          assert.calledWith(
+            meeting.webinar.updateWebcastUrl,
+            newLocusResources
+          );
+
           done();
         });
       });

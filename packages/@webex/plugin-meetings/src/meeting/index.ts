@@ -2014,6 +2014,7 @@ export default class Meeting extends StatelessWebexPlugin {
     this.setUpLocusInfoSelfListener();
     this.setUpLocusInfoMeetingListener();
     this.setUpLocusServicesListener();
+    this.setUpLocusResourcesListener();
     // members update listeners
     this.setUpLocusFullStateListener();
     this.setUpLocusUrlListener();
@@ -2635,6 +2636,42 @@ export default class Meeting extends StatelessWebexPlugin {
       );
     });
 
+    this.locusInfo.on(LOCUSINFO.EVENTS.CONTROLS_WEBCAST_CHANGED, ({state}) => {
+      Trigger.trigger(
+        this,
+        {file: 'meeting/index', function: 'setupLocusControlsListener'},
+        EVENT_TRIGGERS.MEETING_CONTROLS_WEBCAST_UPDATED,
+        {state}
+      );
+    });
+
+    this.locusInfo.on(LOCUSINFO.EVENTS.CONTROLS_MEETING_FULL_CHANGED, ({state}) => {
+      Trigger.trigger(
+        this,
+        {file: 'meeting/index', function: 'setupLocusControlsListener'},
+        EVENT_TRIGGERS.MEETING_CONTROLS_MEETING_FULL_UPDATED,
+        {state}
+      );
+    });
+
+    this.locusInfo.on(LOCUSINFO.EVENTS.CONTROLS_PRACTICE_SESSION_STATUS_UPDATED, ({state}) => {
+      Trigger.trigger(
+        this,
+        {file: 'meeting/index', function: 'setupLocusControlsListener'},
+        EVENT_TRIGGERS.MEETING_CONTROLS_PRACTICE_SESSION_STATUS_UPDATED,
+        {state}
+      );
+    });
+
+    this.locusInfo.on(LOCUSINFO.EVENTS.CONTROLS_STAGE_VIEW_UPDATED, ({state}) => {
+      Trigger.trigger(
+        this,
+        {file: 'meeting/index', function: 'setupLocusControlsListener'},
+        EVENT_TRIGGERS.MEETING_CONTROLS_STAGE_VIEW_UPDATED,
+        {state}
+      );
+    });
+
     this.locusInfo.on(LOCUSINFO.EVENTS.CONTROLS_VIDEO_CHANGED, ({state}) => {
       Trigger.trigger(
         this,
@@ -2996,10 +3033,20 @@ export default class Meeting extends StatelessWebexPlugin {
       this.breakouts.breakoutServiceUrlUpdate(payload?.services?.breakout?.url);
       this.annotation.approvalUrlUpdate(payload?.services?.approval?.url);
       this.simultaneousInterpretation.approvalUrlUpdate(payload?.services?.approval?.url);
-      this.webinar.webcastUrlUpdate(payload?.services?.webcast?.url);
-      this.webinar.webinarAttendeesSearchingUrlUpdate(
-        payload?.services?.webinarAttendeesSearching?.url
-      );
+    });
+  }
+
+  /**
+   * Set up the locus info resources link listener
+   * update the locusInfo for webcast instance url
+   * @param {Object} payload - The event payload
+   * @returns {undefined}
+   * @private
+   * @memberof Meeting
+   */
+  private setUpLocusResourcesListener() {
+    this.locusInfo.on(LOCUSINFO.EVENTS.LINKS_RESOURCES, (payload) => {
+      this.webinar.updateWebcastUrl(payload);
     });
   }
 
@@ -3311,7 +3358,7 @@ export default class Meeting extends StatelessWebexPlugin {
       this.simultaneousInterpretation.updateCanManageInterpreters(
         payload.newRoles?.includes(SELF_ROLES.MODERATOR)
       );
-      this.webinar.updateCanManageWebcast(payload.newRoles?.includes(SELF_ROLES.MODERATOR));
+      this.webinar.updateRoleChanged(payload);
       Trigger.trigger(
         this,
         {
@@ -3805,6 +3852,22 @@ export default class Meeting extends StatelessWebexPlugin {
             requiredHints: [DISPLAY_HINTS.DISABLE_VIEW_THE_PARTICIPANT_LIST],
             displayHints: this.userDisplayHints,
           }),
+          canEnableViewTheParticipantsListPanelist: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.ENABLE_VIEW_THE_PARTICIPANT_LIST_PANELIST],
+            displayHints: this.userDisplayHints,
+          }),
+          canDisableViewTheParticipantsListPanelist: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.DISABLE_VIEW_THE_PARTICIPANT_LIST_PANELIST],
+            displayHints: this.userDisplayHints,
+          }),
+          canEnableShowAttendeeCount: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.ENABLE_SHOW_ATTENDEE_COUNT],
+            displayHints: this.userDisplayHints,
+          }),
+          canDisableShowAttendeeCount: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.DISABLE_SHOW_ATTENDEE_COUNT],
+            displayHints: this.userDisplayHints,
+          }),
           canEnableRaiseHand: ControlsOptionsUtil.hasHints({
             requiredHints: [DISPLAY_HINTS.ENABLE_RAISE_HAND],
             displayHints: this.userDisplayHints,
@@ -3819,6 +3882,26 @@ export default class Meeting extends StatelessWebexPlugin {
           }),
           canDisableVideo: ControlsOptionsUtil.hasHints({
             requiredHints: [DISPLAY_HINTS.DISABLE_VIDEO],
+            displayHints: this.userDisplayHints,
+          }),
+          canStartWebcast: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.WEBCAST_CONTROL_START],
+            displayHints: this.userDisplayHints,
+          }),
+          canStopWebcast: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.WEBCAST_CONTROL_STOP],
+            displayHints: this.userDisplayHints,
+          }),
+          canShowStageView: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.STAGE_VIEW_ACTIVE],
+            displayHints: this.userDisplayHints,
+          }),
+          canEnableStageView: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.ENABLE_STAGE_VIEW],
+            displayHints: this.userDisplayHints,
+          }),
+          canDisableStageView: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.DISABLE_STAGE_VIEW],
             displayHints: this.userDisplayHints,
           }),
           canShareFile:
@@ -7927,18 +8010,21 @@ export default class Meeting extends StatelessWebexPlugin {
    * @param {boolean} mutedEnabled
    * @param {boolean} disallowUnmuteEnabled
    * @param {boolean} muteOnEntryEnabled
+   * @param {array} roles
    * @public
    * @memberof Meeting
    */
   public setMuteAll(
     mutedEnabled: boolean,
     disallowUnmuteEnabled: boolean,
-    muteOnEntryEnabled: boolean
+    muteOnEntryEnabled: boolean,
+    roles: Array<string>
   ) {
     return this.controlsOptionsManager.setMuteAll(
       mutedEnabled,
       disallowUnmuteEnabled,
-      muteOnEntryEnabled
+      muteOnEntryEnabled,
+      roles
     );
   }
 

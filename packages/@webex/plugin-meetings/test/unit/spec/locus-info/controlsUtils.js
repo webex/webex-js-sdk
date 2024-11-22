@@ -82,11 +82,13 @@ describe('plugin-meetings', () => {
       });
 
       it('should parse the viewTheParticipantList control', () => {
-        const newControls = {viewTheParticipantList: {enabled: true}};
+        const newControls = {viewTheParticipantList: {enabled: true, panelistEnabled: true, attendeeCount: false}};
 
         const parsedControls = ControlsUtils.parse(newControls);
 
         assert.equal(parsedControls.viewTheParticipantList.enabled, newControls.viewTheParticipantList.enabled);
+        assert.equal(parsedControls.viewTheParticipantList.panelistEnabled, newControls.viewTheParticipantList.panelistEnabled);
+        assert.equal(parsedControls.viewTheParticipantList.attendeeCount, newControls.viewTheParticipantList.attendeeCount);
       });
 
       it('should parse the raiseHand control', () => {
@@ -103,6 +105,42 @@ describe('plugin-meetings', () => {
         const parsedControls = ControlsUtils.parse(newControls);
 
         assert.equal(parsedControls.video.enabled, newControls.video.enabled);
+      });
+
+      it('should parse the webcast control', () => {
+        const newControls = {webcastControl: {streaming: true}};
+
+        const parsedControls = ControlsUtils.parse(newControls);
+
+        assert.equal(parsedControls.webcastControl.streaming, newControls.webcastControl.streaming);
+      });
+
+      it('should parse the meeting full control', () => {
+        const newControls = {meetingFull: {meetingFull: true, meetingPanelistFull: false}};
+
+        const parsedControls = ControlsUtils.parse(newControls);
+
+        assert.equal(parsedControls.meetingFull.meetingFull, newControls.meetingFull.meetingFull);
+        assert.equal(parsedControls.meetingFull.meetingPanelistFull, newControls.meetingFull.meetingPanelistFull);
+      });
+
+      it('should parse the practiceSession control', () => {
+        const newControls = {practiceSession: {enabled: true}};
+
+        const parsedControls = ControlsUtils.parse(newControls);
+
+        assert.equal(parsedControls.practiceSession.enabled, newControls.practiceSession.enabled);
+      });
+
+      it('should parse the videoLayout control', () => {
+        const newControls = {videoLayout: {overrideDefault: true, lockAttendeeViewOnStageOnly:false, stageParameters: {}}};
+
+        const parsedControls = ControlsUtils.parse(newControls);
+
+        assert.equal(parsedControls.videoLayout.overrideDefault, newControls.videoLayout.overrideDefault);
+        assert.equal(parsedControls.videoLayout.lockAttendeeViewOnStageOnly, newControls.videoLayout.lockAttendeeViewOnStageOnly);
+        assert.equal(parsedControls.videoLayout.stageParameters, newControls.videoLayout.stageParameters);
+
       });
 
       describe('videoEnabled', () => {
@@ -170,11 +208,21 @@ describe('plugin-meetings', () => {
       });
 
       it('returns hasViewTheParticipantListChanged = true when changed', () => {
-        const newControls = {viewTheParticipantList: {enabled: true}};
+        const oldControls = {viewTheParticipantList: {enabled: true, panelistEnabled: true, attendeeCount: false}};
 
-        const {updates} = ControlsUtils.getControls(defaultControls, newControls);
+        let result = ControlsUtils.getControls(oldControls, {viewTheParticipantList: {enabled: false, panelistEnabled: true, attendeeCount: false}});
 
-        assert.equal(updates.hasViewTheParticipantListChanged, true);
+        assert.equal(result.updates.hasViewTheParticipantListChanged, true);
+
+        result = ControlsUtils.getControls(oldControls, {viewTheParticipantList: {enabled: true, panelistEnabled: false, attendeeCount: false}});
+
+        assert.equal(result.updates.hasViewTheParticipantListChanged, true);
+        result = ControlsUtils.getControls(oldControls, {viewTheParticipantList: {enabled: true, panelistEnabled: true, attendeeCount: true}});
+
+        assert.equal(result.updates.hasViewTheParticipantListChanged, true);
+        result = ControlsUtils.getControls(oldControls, {viewTheParticipantList: {enabled: true, panelistEnabled: true, attendeeCount: false}});
+
+        assert.equal(result.updates.hasViewTheParticipantListChanged, false);
       });
 
       it('returns hasRaiseHandChanged = true when changed', () => {
@@ -191,6 +239,34 @@ describe('plugin-meetings', () => {
         const {updates} = ControlsUtils.getControls(defaultControls, newControls);
 
         assert.equal(updates.hasVideoChanged, true);
+      });
+
+      it('returns hasWebcastChanged = true when changed', () => {
+        const newControls = {webcastControl: {streaming: true}};
+
+        const {updates} = ControlsUtils.getControls(defaultControls, newControls);
+
+        assert.equal(updates.hasWebcastChanged, true);
+      });
+
+      it('returns hasMeetingFullChanged = true when changed', () => {
+        const newControls = {meetingFull: {meetingFull: true, meetingPanelistFull: false}};
+
+        let result = ControlsUtils.getControls(defaultControls, newControls);
+
+        assert.equal(result.updates.hasMeetingFullChanged, true);
+
+        result = ControlsUtils.getControls(newControls, {meetingFull: {meetingFull: true, meetingPanelistFull: true}});
+
+        assert.equal(result.updates.hasMeetingFullChanged, true);
+      });
+
+      it('returns hasPracticeSessionEnabledChanged = true when changed', () => {
+        const newControls = {practiceSession: {enabled: true}};
+
+        const {updates} = ControlsUtils.getControls(defaultControls, newControls);
+
+        assert.equal(updates.hasPracticeSessionEnabledChanged, true);
       });
 
       it('returns hasEntryExitToneChanged = true when mode changed', () => {

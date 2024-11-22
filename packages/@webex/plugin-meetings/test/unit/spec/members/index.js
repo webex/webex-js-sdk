@@ -660,17 +660,20 @@ describe('plugin-meetings', () => {
         resultPromise,
         spies,
         expectedRequestingMemberId,
-        expectedLocusUrl
+        expectedLocusUrl,
+        expectedRoles,
       ) => {
         await assert.isFulfilled(resultPromise);
         assert.calledOnceWithExactly(
           spies.generateLowerAllHandsMemberOptions,
           expectedRequestingMemberId,
-          expectedLocusUrl
+          expectedLocusUrl,
+          expectedRoles,
         );
         assert.calledOnceWithExactly(spies.lowerAllHandsMember, {
           requestingParticipantId: expectedRequestingMemberId,
           locusUrl: expectedLocusUrl,
+          ...(expectedRoles !== undefined && { roles: expectedRoles })
         });
         assert.strictEqual(resultPromise, spies.lowerAllHandsMember.getCall(0).returnValue);
       };
@@ -706,6 +709,26 @@ describe('plugin-meetings', () => {
         const resultPromise = members.lowerAllHands(requestingMemberId);
 
         await checkValid(resultPromise, spies, requestingMemberId, url1);
+      });
+
+      it('should make the correct request when called with valid requestingMemberId and roles', async () => {
+        const requestingMemberId = 'test-member-id';
+        const roles = ['panelist', 'attendee'];
+        const { members, spies } = setup('test-locus-url');
+
+        const resultPromise = members.lowerAllHands(requestingMemberId, roles);
+
+        await checkValid(resultPromise, spies, requestingMemberId, 'test-locus-url', roles);
+      });
+
+      it('should handle an empty roles array correctly', async () => {
+        const requestingMemberId = 'test-member-id';
+        const roles = [];
+        const { members, spies } = setup('test-locus-url');
+
+        const resultPromise = members.lowerAllHands(requestingMemberId, roles);
+
+        await checkValid(resultPromise, spies, requestingMemberId, 'test-locus-url', roles);
       });
     });
 
