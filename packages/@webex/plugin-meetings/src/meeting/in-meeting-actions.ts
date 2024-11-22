@@ -3,6 +3,7 @@
  */
 
 import {MEETINGS} from '../constants';
+import ControlsOptionsUtil from '../controls-options-manager/util';
 
 /**
  * IInMeetingActions
@@ -64,6 +65,10 @@ interface IInMeetingActions {
   canUpdateShareControl?: boolean;
   canEnableViewTheParticipantsList?: boolean;
   canDisableViewTheParticipantsList?: boolean;
+  canEnableViewTheParticipantsListPanelist?: boolean;
+  canDisableViewTheParticipantsListPanelist?: boolean;
+  canEnableShowAttendeeCount?: boolean;
+  canDisableShowAttendeeCount?: boolean;
   canEnableRaiseHand?: boolean;
   canDisableRaiseHand?: boolean;
   canEnableVideo?: boolean;
@@ -83,6 +88,11 @@ interface IInMeetingActions {
   canShareWhiteBoard?: boolean;
   enforceVirtualBackground?: boolean;
   canPollingAndQA?: boolean;
+  canStartWebcast?: boolean;
+  canStopWebcast?: boolean;
+  canShowStageView?: boolean;
+  canEnableStageView?: boolean;
+  canDisableStageView?: boolean;
 }
 
 /**
@@ -201,6 +211,14 @@ export default class InMeetingActions implements IInMeetingActions {
 
   canDisableViewTheParticipantsList = null;
 
+  canEnableViewTheParticipantsListPanelist = null;
+
+  canDisableViewTheParticipantsListPanelist = null;
+
+  canEnableShowAttendeeCount = null;
+
+  canDisableShowAttendeeCount = null;
+
   canEnableRaiseHand = null;
 
   canDisableRaiseHand = null;
@@ -238,6 +256,16 @@ export default class InMeetingActions implements IInMeetingActions {
   canShareWhiteBoard = null;
 
   canPollingAndQA = null;
+
+  canStartWebcast = null;
+
+  canStopWebcast = null;
+
+  canShowStageView = null;
+
+  canEnableStageView = null;
+
+  canDisableStageView = null;
   /**
    * Returns all meeting action options
    * @returns {Object}
@@ -298,6 +326,10 @@ export default class InMeetingActions implements IInMeetingActions {
     canUpdateShareControl: this.canUpdateShareControl,
     canEnableViewTheParticipantsList: this.canEnableViewTheParticipantsList,
     canDisableViewTheParticipantsList: this.canDisableViewTheParticipantsList,
+    canEnableViewTheParticipantsListPanelist: this.canEnableViewTheParticipantsListPanelist,
+    canDisableViewTheParticipantsListPanelist: this.canDisableViewTheParticipantsListPanelist,
+    canEnableShowAttendeeCount: this.canEnableShowAttendeeCount,
+    canDisableShowAttendeeCount: this.canDisableShowAttendeeCount,
     canEnableRaiseHand: this.canEnableRaiseHand,
     canDisableRaiseHand: this.canDisableRaiseHand,
     canEnableVideo: this.canEnableVideo,
@@ -317,6 +349,11 @@ export default class InMeetingActions implements IInMeetingActions {
     supportHDV: this.supportHDV,
     canShareWhiteBoard: this.canShareWhiteBoard,
     canPollingAndQA: this.canPollingAndQA,
+    canStartWebcast: this.canStartWebcast,
+    canStopWebcast: this.canStopWebcast,
+    canShowStageView: this.canShowStageView,
+    canEnableStageView: this.canEnableStageView,
+    canDisableStageView: this.canDisableStageView,
   });
 
   /**

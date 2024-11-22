@@ -348,6 +348,50 @@ describe('plugin-meetings', () => {
           });
         });
 
+        it('should call hasHints() with proper hints when `panelistEnabled` is true, attendeeCount is false', () => {
+          ControlsOptionsUtil.canUpdateViewTheParticipantsList({properties: {enabled: true, panelistEnabled: true, attendeeCount: false}}, []);
+
+          assert.calledWith(ControlsOptionsUtil.hasHints, {
+            requiredHints: [DISPLAY_HINTS.ENABLE_VIEW_THE_PARTICIPANT_LIST,
+              DISPLAY_HINTS.ENABLE_VIEW_THE_PARTICIPANT_LIST_PANELIST,
+              DISPLAY_HINTS.DISABLE_SHOW_ATTENDEE_COUNT],
+            displayHints: [],
+          });
+        });
+
+        it('should call hasHints() with proper hints when `panelistEnabled` is true, attendeeCount is true', () => {
+          ControlsOptionsUtil.canUpdateViewTheParticipantsList({properties: {enabled: true, panelistEnabled: true, attendeeCount: true}}, []);
+
+          assert.calledWith(ControlsOptionsUtil.hasHints, {
+            requiredHints: [DISPLAY_HINTS.ENABLE_VIEW_THE_PARTICIPANT_LIST,
+            DISPLAY_HINTS.ENABLE_VIEW_THE_PARTICIPANT_LIST_PANELIST,
+            DISPLAY_HINTS.ENABLE_SHOW_ATTENDEE_COUNT],
+            displayHints: [],
+          });
+        });
+
+        it('should call hasHints() with proper hints when `panelistEnabled` is false, attendeeCount is false', () => {
+          ControlsOptionsUtil.canUpdateViewTheParticipantsList({properties: {enabled: true, panelistEnabled: false, attendeeCount: false}}, []);
+
+          assert.calledWith(ControlsOptionsUtil.hasHints, {
+            requiredHints: [DISPLAY_HINTS.ENABLE_VIEW_THE_PARTICIPANT_LIST,
+              DISPLAY_HINTS.DISABLE_VIEW_THE_PARTICIPANT_LIST_PANELIST,
+              DISPLAY_HINTS.DISABLE_SHOW_ATTENDEE_COUNT],
+            displayHints: [],
+          });
+        });
+
+        it('should call hasHints() with proper hints when `panelistEnabled` is false, attendeeCount is true', () => {
+          ControlsOptionsUtil.canUpdateViewTheParticipantsList({properties: {enabled: true, panelistEnabled: false, attendeeCount: true}}, []);
+
+          assert.calledWith(ControlsOptionsUtil.hasHints, {
+            requiredHints: [DISPLAY_HINTS.ENABLE_VIEW_THE_PARTICIPANT_LIST,
+              DISPLAY_HINTS.DISABLE_VIEW_THE_PARTICIPANT_LIST_PANELIST,
+              DISPLAY_HINTS.ENABLE_SHOW_ATTENDEE_COUNT],
+            displayHints: [],
+          });
+        });
+
         it('should return the resolution of hasHints()', () => {
           const expected = 'example-return-value';
           ControlsOptionsUtil.hasHints.returns(expected);

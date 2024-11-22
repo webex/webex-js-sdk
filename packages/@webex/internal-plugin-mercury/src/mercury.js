@@ -185,6 +185,8 @@ const Mercury = WebexPlugin.extend({
           webSocketUrl.query.multipleConnections = true;
         }
 
+        webSocketUrl.query.clientTimestamp = Date.now();
+
         return url.format(webSocketUrl);
       });
   },

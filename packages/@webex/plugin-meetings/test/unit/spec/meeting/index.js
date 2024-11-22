@@ -3442,47 +3442,60 @@ describe('plugin-meetings', () => {
           });
         });
 
-        it('should pass bundlePolicy to createMediaConnection', async () => {
+        describe('bundlePolicy', () => {
           const FAKE_TURN_URL = 'turns:webex.com:3478';
           const FAKE_TURN_USER = 'some-turn-username';
           const FAKE_TURN_PASSWORD = 'some-password';
 
-          meeting.meetingState = 'ACTIVE';
-          Media.createMediaConnection.resetHistory();
+          beforeEach(() => {
+            meeting.meetingState = 'ACTIVE';
+            Media.createMediaConnection.resetHistory();
 
-          meeting.roap.doTurnDiscovery = sinon.stub().resolves({
-            turnServerInfo: {
-              url: FAKE_TURN_URL,
-              username: FAKE_TURN_USER,
-              password: FAKE_TURN_PASSWORD,
-            },
-            turnDiscoverySkippedReason: undefined,
-          });
-          const media = meeting.addMedia({
-            mediaSettings: {},
-            bundlePolicy: 'bundlePolicy-value',
-          });
-
-          assert.exists(media);
-          await media;
-          assert.calledOnce(meeting.roap.doTurnDiscovery);
-          assert.calledWith(meeting.roap.doTurnDiscovery, meeting, false);
-          assert.calledOnce(Media.createMediaConnection);
-          assert.calledWith(
-            Media.createMediaConnection,
-            false,
-            meeting.getMediaConnectionDebugId(),
-            meeting.id,
-            sinon.match({
+            meeting.roap.doTurnDiscovery = sinon.stub().resolves({
               turnServerInfo: {
                 url: FAKE_TURN_URL,
                 username: FAKE_TURN_USER,
                 password: FAKE_TURN_PASSWORD,
               },
-              bundlePolicy: 'bundlePolicy-value',
-            })
-          );
-          assert.calledOnce(fakeMediaConnection.initiateOffer);
+              turnDiscoverySkippedReason: undefined,
+            });
+          });
+
+          const runCheck = async (bundlePolicy, expectedValue) => {
+            const media = meeting.addMedia({
+              mediaSettings: {},
+              bundlePolicy,
+            });
+
+            assert.exists(media);
+            await media;
+            assert.calledOnce(meeting.roap.doTurnDiscovery);
+            assert.calledWith(meeting.roap.doTurnDiscovery, meeting, false);
+            assert.calledOnce(Media.createMediaConnection);
+            assert.calledWith(
+              Media.createMediaConnection,
+              false,
+              meeting.getMediaConnectionDebugId(),
+              meeting.id,
+              sinon.match({
+                turnServerInfo: {
+                  url: FAKE_TURN_URL,
+                  username: FAKE_TURN_USER,
+                  password: FAKE_TURN_PASSWORD,
+                },
+                bundlePolicy: expectedValue,
+              })
+            );
+            assert.calledOnce(fakeMediaConnection.initiateOffer);
+          };
+
+          it('should pass bundlePolicy to createMediaConnection', async () => {
+            await runCheck('max-compat', 'max-compat');
+          });
+
+          it('should pass max-bundle to createMediaConnection if bundlePolicy is not provided', async () => {
+            await runCheck(undefined, 'max-bundle');
+          });
         });
 
         it('succeeds even if getDevices() throws', async () => {
@@ -8885,6 +8898,78 @@ describe('plugin-meetings', () => {
           );
         });
 
+        it('listens to MEETING_CONTROLS_WEBCAST_UPDATED', async () => {
+          const state = {example: 'value'};
+
+          await meeting.locusInfo.emitScoped(
+            {function: 'test', file: 'test'},
+            LOCUSINFO.EVENTS.CONTROLS_WEBCAST_CHANGED,
+            {state}
+          );
+
+          assert.calledWith(
+            TriggerProxy.trigger,
+            meeting,
+            {file: 'meeting/index', function: 'setupLocusControlsListener'},
+            EVENT_TRIGGERS.MEETING_CONTROLS_WEBCAST_UPDATED,
+            {state}
+          );
+        });
+
+        it('listens to MEETING_CONTROLS_MEETING_FULL_UPDATED', async () => {
+          const state = {example: 'value'};
+
+          await meeting.locusInfo.emitScoped(
+            {function: 'test', file: 'test'},
+            LOCUSINFO.EVENTS.CONTROLS_MEETING_FULL_CHANGED,
+            {state}
+          );
+
+          assert.calledWith(
+            TriggerProxy.trigger,
+            meeting,
+            {file: 'meeting/index', function: 'setupLocusControlsListener'},
+            EVENT_TRIGGERS.MEETING_CONTROLS_MEETING_FULL_UPDATED,
+            {state}
+          );
+        });
+
+        it('listens to MEETING_CONTROLS_PRACTICE_SESSION_STATUS_UPDATED', async () => {
+          const state = {example: 'value'};
+
+          await meeting.locusInfo.emitScoped(
+            {function: 'test', file: 'test'},
+            LOCUSINFO.EVENTS.CONTROLS_PRACTICE_SESSION_STATUS_UPDATED,
+            {state}
+          );
+
+          assert.calledWith(
+            TriggerProxy.trigger,
+            meeting,
+            {file: 'meeting/index', function: 'setupLocusControlsListener'},
+            EVENT_TRIGGERS.MEETING_CONTROLS_PRACTICE_SESSION_STATUS_UPDATED,
+            {state}
+          );
+        });
+
+        it('listens to MEETING_CONTROLS_STAGE_VIEW_UPDATED', async () => {
+          const state = {example: 'value'};
+
+          await meeting.locusInfo.emitScoped(
+            {function: 'test', file: 'test'},
+            LOCUSINFO.EVENTS.CONTROLS_STAGE_VIEW_UPDATED,
+            {state}
+          );
+
+          assert.calledWith(
+            TriggerProxy.trigger,
+            meeting,
+            {file: 'meeting/index', function: 'setupLocusControlsListener'},
+            EVENT_TRIGGERS.MEETING_CONTROLS_STAGE_VIEW_UPDATED,
+            {state}
+          );
+        });
+
         it('listens to MEETING_CONTROLS_VIDEO_UPDATED', async () => {
           const state = {example: 'value'};
 
@@ -8998,12 +9083,6 @@ describe('plugin-meetings', () => {
               approval: {
                 url: 'url',
               },
-              webcast: {
-                url: 'url',
-              },
-              webinarAttendeesSearching: {
-                url: 'url',
-              },
             },
           };
 
@@ -9016,10 +9095,6 @@ describe('plugin-meetings', () => {
           };
           meeting.simultaneousInterpretation = {
             approvalUrlUpdate: sinon.stub().returns(undefined),
-          };
-          meeting.webinar = {
-            webcastUrlUpdate: sinon.stub().returns(undefined),
-            webinarAttendeesSearchingUrlUpdate: sinon.stub().returns(undefined),
           };
 
           meeting.locusInfo.emit(
@@ -9040,15 +9115,37 @@ describe('plugin-meetings', () => {
             meeting.simultaneousInterpretation.approvalUrlUpdate,
             newLocusServices.services.approval.url
           );
-          assert.calledWith(
-            meeting.webinar.webcastUrlUpdate,
-            newLocusServices.services.webcast.url
-          );
-          assert.calledWith(
-            meeting.webinar.webinarAttendeesSearchingUrlUpdate,
-            newLocusServices.services.webinarAttendeesSearching.url
-          );
           assert.calledOnce(meeting.recordingController.setSessionId);
+          done();
+        });
+      });
+
+      describe('#setUpLocusResourcesListener', () => {
+        it('listens to the locus resources update event', (done) => {
+          const newLocusResources = {
+            resources: {
+              webcastInstance: {
+                url: 'url',
+              },
+
+            },
+          };
+
+          meeting.webinar = {
+            updateWebcastUrl: sinon.stub().returns(undefined),
+          };
+
+          meeting.locusInfo.emit(
+            {function: 'test', file: 'test'},
+            'LINKS_RESOURCES',
+            newLocusResources
+          );
+
+          assert.calledWith(
+            meeting.webinar.updateWebcastUrl,
+            newLocusResources
+          );
+
           done();
         });
       });

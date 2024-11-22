@@ -2,7 +2,8 @@
  * Copyright (c) 2015-2023 Cisco Systems, Inc. See LICENSE file.
  */
 import {WebexPlugin} from '@webex/webex-core';
-import {MEETINGS} from '../constants';
+import {get} from 'lodash';
+import {MEETINGS, SELF_ROLES} from '../constants';
 
 import WebinarCollection from './collection';
 
@@ -17,14 +18,15 @@ const Webinar = WebexPlugin.extend({
 
   props: {
     locusUrl: 'string', // appears current webinar's locus url
-    webcastUrl: 'string', // current webinar's webcast url
-    webinarAttendeesSearchingUrl: 'string', // current webinarAttendeesSearching url
+    webcastInstanceUrl: 'string', // current webinar's webcast instance url
     canManageWebcast: 'boolean', // appears the ability to manage webcast
+    selfIsPanelist: 'boolean', // self is panelist
+    selfIsAttendee: 'boolean', // self is attendee
   },
 
   /**
    * Update the current locus url of the webinar
-   * @param {string} locusUrl // locus url
+   * @param {string} locusUrl
    * @returns {void}
    */
   locusUrlUpdate(locusUrl) {
@@ -32,21 +34,12 @@ const Webinar = WebexPlugin.extend({
   },
 
   /**
-   * Update the current webcast url of the meeting
-   * @param {string} webcastUrl // webcast url
+   * Update the current webcast instance url of the meeting
+   * @param {object} payload
    * @returns {void}
    */
-  webcastUrlUpdate(webcastUrl) {
-    this.set('webcastUrl', webcastUrl);
-  },
-
-  /**
-   * Update the current webinarAttendeesSearching url of the meeting
-   * @param {string} webinarAttendeesSearchingUrl // webinarAttendeesSearching url
-   * @returns {void}
-   */
-  webinarAttendeesSearchingUrlUpdate(webinarAttendeesSearchingUrl) {
-    this.set('webinarAttendeesSearchingUrl', webinarAttendeesSearchingUrl);
+  updateWebcastUrl(payload) {
+    this.set('webcastInstanceUrl', get(payload, 'resources.webcastInstance.url'));
   },
 
   /**
@@ -56,6 +49,27 @@ const Webinar = WebexPlugin.extend({
    */
   updateCanManageWebcast(canManageWebcast) {
     this.set('canManageWebcast', canManageWebcast);
+  },
+
+  /**
+   * Updates user roles and manages associated state transitions
+   * @param {object} payload
+   * @param {string[]} payload.oldRoles - Previous roles of the user
+   * @param {string[]} payload.newRoles - New roles of the user
+   * @returns {{isPromoted: boolean, isDemoted: boolean}} Role transition states
+   */
+  updateRoleChanged(payload) {
+    const isPromoted =
+      get(payload, 'oldRoles', []).includes(SELF_ROLES.ATTENDEE) &&
+      get(payload, 'newRoles', []).includes(SELF_ROLES.PANELIST);
+    const isDemoted =
+      get(payload, 'oldRoles', []).includes(SELF_ROLES.PANELIST) &&
+      get(payload, 'newRoles', []).includes(SELF_ROLES.ATTENDEE);
+    this.set('selfIsPanelist', get(payload, 'newRoles', []).includes(SELF_ROLES.PANELIST));
+    this.set('selfIsAttendee', get(payload, 'newRoles', []).includes(SELF_ROLES.ATTENDEE));
+    this.updateCanManageWebcast(get(payload, 'newRoles', []).includes(SELF_ROLES.MODERATOR));
+
+    return {isPromoted, isDemoted};
   },
 });
 

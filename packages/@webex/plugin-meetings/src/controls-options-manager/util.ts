@@ -217,6 +217,18 @@ class Utils {
     if (control.properties.enabled === false) {
       requiredHints.push(DISPLAY_HINTS.DISABLE_VIEW_THE_PARTICIPANT_LIST);
     }
+    if (control.properties.panelistEnabled === true) {
+      requiredHints.push(DISPLAY_HINTS.ENABLE_VIEW_THE_PARTICIPANT_LIST_PANELIST);
+    }
+    if (control.properties.panelistEnabled === false) {
+      requiredHints.push(DISPLAY_HINTS.DISABLE_VIEW_THE_PARTICIPANT_LIST_PANELIST);
+    }
+    if (control.properties.attendeeCount === true) {
+      requiredHints.push(DISPLAY_HINTS.ENABLE_SHOW_ATTENDEE_COUNT);
+    }
+    if (control.properties.attendeeCount === false) {
+      requiredHints.push(DISPLAY_HINTS.DISABLE_SHOW_ATTENDEE_COUNT);
+    }
 
     return Utils.hasHints({requiredHints, displayHints});
   }

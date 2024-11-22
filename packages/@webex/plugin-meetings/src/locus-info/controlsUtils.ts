@@ -79,7 +79,11 @@ ControlsUtils.parse = (controls: any) => {
   }
 
   if (controls?.viewTheParticipantList) {
-    parsedControls.viewTheParticipantList = {enabled: controls.viewTheParticipantList.enabled};
+    parsedControls.viewTheParticipantList = {
+      enabled: controls.viewTheParticipantList?.enabled ?? false,
+      panelistEnabled: controls.viewTheParticipantList?.panelistEnabled ?? false,
+      attendeeCount: controls.viewTheParticipantList?.attendeeCount ?? 0,
+    };
   }
 
   if (controls?.raiseHand) {
@@ -88,6 +92,23 @@ ControlsUtils.parse = (controls: any) => {
 
   if (controls?.video) {
     parsedControls.video = {enabled: controls.video.enabled};
+  }
+
+  if (controls?.webcastControl) {
+    parsedControls.webcastControl = {streaming: controls.webcastControl.streaming};
+  }
+
+  if (controls?.meetingFull) {
+    parsedControls.meetingFull = {
+      meetingFull: controls.meetingFull?.meetingFull ?? false,
+      meetingPanelistFull: controls.meetingFull?.meetingPanelistFull ?? false,
+    };
+  }
+
+  if (controls?.practiceSession) {
+    parsedControls.practiceSession = {
+      enabled: controls.practiceSession.enabled,
+    };
   }
 
   return parsedControls;
@@ -121,7 +142,11 @@ ControlsUtils.getControls = (oldControls: any, newControls: any) => {
         previous?.reactions?.showDisplayNameWithReactions,
 
       hasViewTheParticipantListChanged:
-        current?.viewTheParticipantList?.enabled !== previous?.viewTheParticipantList?.enabled,
+        current?.viewTheParticipantList?.enabled !== previous?.viewTheParticipantList?.enabled ||
+        current?.viewTheParticipantList?.panelistEnabled !==
+          previous?.viewTheParticipantList?.panelistEnabled ||
+        current?.viewTheParticipantList?.attendeeCount !==
+          previous?.viewTheParticipantList?.attendeeCount,
 
       hasRaiseHandChanged: current?.raiseHand?.enabled !== previous?.raiseHand?.enabled,
 
@@ -167,6 +192,25 @@ ControlsUtils.getControls = (oldControls: any, newControls: any) => {
       hasVideoEnabledChanged:
         newControls.video?.enabled !== undefined &&
         !isEqual(previous?.videoEnabled, current?.videoEnabled),
+
+      hasWebcastChanged: !isEqual(
+        previous?.webcastControl?.streaming,
+        current?.webcastControl?.streaming
+      ),
+
+      hasMeetingFullChanged:
+        !isEqual(previous?.meetingFull?.meetingFull, current?.meetingFull?.meetingFull) ||
+        !isEqual(
+          previous?.meetingFull?.meetingPanelistFull,
+          current?.meetingFull?.meetingPanelistFull
+        ),
+
+      hasPracticeSessionEnabledChanged: !isEqual(
+        previous?.practiceSession?.enabled,
+        current?.practiceSession?.enabled
+      ),
+
+      hasStageViewChanged: !isEqual(previous?.videoLayout, current?.videoLayout),
     },
   };
 };
