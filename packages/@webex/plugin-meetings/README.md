@@ -857,7 +857,8 @@ meeting.members.raiseOrLowerHand(memberId);
 
 // You can lower all hands in a meeting
 // use a memberId string to indicate who is requesting lowering all hands
-meeting.members.lowerAllHands(requestingMemberId);
+// (optional) use a roles array to indicate who should have their hands lowered, default to all roles
+meeting.members.lowerAllHands(requestingMemberId, roles);
 
 // You can transfer the host role to another member in the meeting, this is proxied by meeting.transfer
 // use a memberId string and a moderator boolean to transfer or not, default to true

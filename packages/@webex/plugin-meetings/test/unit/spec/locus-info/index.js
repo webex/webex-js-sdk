@@ -81,7 +81,7 @@ describe('plugin-meetings', () => {
         newControls = {
           disallowUnmute: {enabled: true},
           lock: {},
-          meetingFull: {},
+          meetingFull: {meetingFull: false, meetingPanelistFull: true},
           muteOnEntry: {enabled: true},
           raiseHand: {enabled: true},
           reactions: {enabled: true, showDisplayNameWithReactions: true},
@@ -95,12 +95,15 @@ describe('plugin-meetings', () => {
           },
           shareControl: {control: 'example-value'},
           transcribe: {},
-          viewTheParticipantList: {enabled: true},
+          viewTheParticipantList: {enabled: true, panelistEnabled: true, attendeeCount: false},
           meetingContainer: {
             meetingContainerUrl: 'http://new-url.com',
           },
           entryExitTone: {enabled: true, mode: 'foo'},
           video: {enabled: true},
+          videoLayout: {overrideDefault: true, lockAttendeeViewOnStageOnly:false, stageParameters: {}},
+          webcastControl: {streaming: false},
+          practiceSession: {enabled: true},
         };
       });
 
@@ -202,6 +205,58 @@ describe('plugin-meetings', () => {
           {file: 'locus-info', function: 'updateControls'},
           LOCUSINFO.EVENTS.CONTROLS_VIDEO_CHANGED,
           {state: newControls.video}
+        );
+      });
+
+      it('should trigger the CONTROLS_STAGE_VIEW_UPDATED event when necessary', () => {
+        locusInfo.controls = {};
+        locusInfo.emitScoped = sinon.stub();
+        locusInfo.updateControls(newControls);
+
+        assert.calledWith(
+          locusInfo.emitScoped,
+          {file: 'locus-info', function: 'updateControls'},
+          LOCUSINFO.EVENTS.CONTROLS_STAGE_VIEW_UPDATED,
+          {state: newControls.videoLayout}
+        );
+      });
+
+      it('should trigger the CONTROLS_WEBCAST_CHANGED event when necessary', () => {
+        locusInfo.controls = {};
+        locusInfo.emitScoped = sinon.stub();
+        locusInfo.updateControls(newControls);
+
+        assert.calledWith(
+          locusInfo.emitScoped,
+          {file: 'locus-info', function: 'updateControls'},
+          LOCUSINFO.EVENTS.CONTROLS_WEBCAST_CHANGED,
+          {state: newControls.webcastControl}
+        );
+      });
+
+      it('should trigger the CONTROLS_MEETING_FULL_CHANGED event when necessary', () => {
+        locusInfo.controls = {};
+        locusInfo.emitScoped = sinon.stub();
+        locusInfo.updateControls(newControls);
+
+        assert.calledWith(
+          locusInfo.emitScoped,
+          {file: 'locus-info', function: 'updateControls'},
+          LOCUSINFO.EVENTS.CONTROLS_MEETING_FULL_CHANGED,
+          {state: newControls.meetingFull}
+        );
+      });
+
+      it('should trigger the CONTROLS_PRACTICE_SESSION_STATUS_UPDATED event when necessary', () => {
+        locusInfo.controls = {};
+        locusInfo.emitScoped = sinon.stub();
+        locusInfo.updateControls(newControls);
+
+        assert.calledWith(
+          locusInfo.emitScoped,
+          {file: 'locus-info', function: 'updateControls'},
+          LOCUSINFO.EVENTS.CONTROLS_PRACTICE_SESSION_STATUS_UPDATED,
+          {state: newControls.practiceSession}
         );
       });
 
@@ -1729,6 +1784,7 @@ describe('plugin-meetings', () => {
         locusInfo.updateMemberShip = sinon.stub();
         locusInfo.updateIdentifiers = sinon.stub();
         locusInfo.updateEmbeddedApps = sinon.stub();
+        locusInfo.updateResources = sinon.stub();
         locusInfo.compareAndUpdate = sinon.stub();
 
         locusInfo.updateLocusInfo(newLocus);
@@ -1750,6 +1806,7 @@ describe('plugin-meetings', () => {
         assert.notCalled(locusInfo.updateMemberShip);
         assert.notCalled(locusInfo.updateIdentifiers);
         assert.notCalled(locusInfo.updateEmbeddedApps);
+        assert.notCalled(locusInfo.updateResources);
         assert.notCalled(locusInfo.compareAndUpdate);
       });
 

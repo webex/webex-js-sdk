@@ -151,7 +151,7 @@ describe('plugin-meetings', () => {
       meeting.mediaProperties.audioStream.setServerMuted = sinon.stub().callsFake((muted) => {
         meeting.mediaProperties.audioStream.userMuted = muted;
       });
-      audio.handleServerLocalUnmuteRequired(meeting);
+      audio.handleServerLocalUnmuteRequired(meeting, true);
 
       await testUtils.flushPromises();
 
@@ -161,6 +161,8 @@ describe('plugin-meetings', () => {
         false,
         'localUnmuteRequired'
       );
+      // and unmuteAllowed was updated
+      assert.calledWith(meeting.mediaProperties.audioStream.setUnmuteAllowed, true);
 
       // and local unmute was sent to server
       assert.calledOnce(MeetingUtil.remoteUpdateAudioVideo);
@@ -184,7 +186,7 @@ describe('plugin-meetings', () => {
       meeting.mediaProperties.audioStream.setServerMuted = sinon.stub().callsFake((muted) => {
         meeting.mediaProperties.audioStream.userMuted = muted;
       });
-      audio.handleServerLocalUnmuteRequired(meeting);
+      audio.handleServerLocalUnmuteRequired(meeting, true);
 
       await testUtils.flushPromises();
 
@@ -215,7 +217,7 @@ describe('plugin-meetings', () => {
       meeting.mediaProperties.videoStream.setServerMuted = sinon.stub().callsFake((muted) => {
         meeting.mediaProperties.videoStream.userMuted = muted;
       });
-      video.handleServerLocalUnmuteRequired(meeting);
+      video.handleServerLocalUnmuteRequired(meeting, true);
 
       await testUtils.flushPromises();
 
@@ -225,6 +227,8 @@ describe('plugin-meetings', () => {
         false,
         'localUnmuteRequired'
       );
+      // and unmuteAllowed was updated
+      assert.calledWith(meeting.mediaProperties.videoStream.setUnmuteAllowed, true);
 
       // and local unmute was sent to server
       assert.calledOnce(MeetingUtil.remoteUpdateAudioVideo);
@@ -248,7 +252,7 @@ describe('plugin-meetings', () => {
       meeting.mediaProperties.videoStream.setServerMuted = sinon.stub().callsFake((muted) => {
         meeting.mediaProperties.videoStream.userMuted = muted;
       });
-      video.handleServerLocalUnmuteRequired(meeting);
+      video.handleServerLocalUnmuteRequired(meeting, true);
 
       await testUtils.flushPromises();
 
