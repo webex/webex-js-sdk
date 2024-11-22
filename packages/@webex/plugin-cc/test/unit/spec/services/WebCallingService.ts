@@ -10,7 +10,19 @@ import {
 } from '@webex/calling';
 import {WebexSDK} from '../../../../src/types';
 import config from '../../../../src/config';
+import LoggerProxy from '../../../../src/logger-proxy';
+import {WEB_CALLING_SERVICE_FILE} from '../../../../src/constants';
 jest.mock('@webex/calling');
+
+jest.mock('../../../../src/logger-proxy', () => ({
+  __esModule: true,
+  default: {
+    log: jest.fn(),
+    error: jest.fn(),
+    info: jest.fn(),
+    initialize: jest.fn(),
+  },
+}));
 
 describe('WebCallingService', () => {
   let webex: WebexSDK;
@@ -74,8 +86,9 @@ describe('WebCallingService', () => {
       expect(createClient).toHaveBeenCalledWith(webex, config.cc.callingClientConfig);
       expect(lineOnSpy).toHaveBeenCalledWith(LINE_EVENTS.REGISTERED, expect.any(Function));
       expect(line.register).toHaveBeenCalled();
-      expect(webex.logger.log).toHaveBeenCalledWith(
-        `WxCC-SDK: Desktop registered successfully, mobiusDeviceId: ${deviceInfo.mobiusDeviceId}`
+      expect(LoggerProxy.log).toHaveBeenCalledWith(
+        `WxCC-SDK: Desktop registered successfully, mobiusDeviceId: ${deviceInfo.mobiusDeviceId}`,
+        {"method": "registerWebCallingLine", "module": WEB_CALLING_SERVICE_FILE}
       );
     }, 20000); // Increased timeout to 20 seconds
 

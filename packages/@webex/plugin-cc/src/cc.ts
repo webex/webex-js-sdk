@@ -71,7 +71,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
       return await this.connectWebsocket();
     } catch (error) {
-      this.$webex.logger.error(`file: ${CC_FILE}: Error during register: ${error}`);
+      LoggerProxy.error(`Error during register: ${error}`, {
+        module: CC_FILE,
+        method: this.register.name,
+      });
 
       throw error;
     }
@@ -91,7 +94,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         data: {agentProfileId: this.agentConfig.agentProfileID, ...data},
       });
     } catch (error) {
-      const {error: detailedError} = getErrorDetails(error, 'getBuddyAgents');
+      const {error: detailedError} = getErrorDetails(error, 'getBuddyAgents', CC_FILE);
       throw detailedError;
     }
   }
@@ -112,7 +115,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           const agentId = data.agentId;
           const orgId = this.$webex.credentials.getOrgId();
           this.agentConfig = await this.services.config.getAgentConfig(orgId, agentId);
-          this.$webex.logger.log(`file: ${CC_FILE}: agent config is fetched successfully`);
+          LoggerProxy.log(`agent config is fetched successfully`, {
+            module: CC_FILE,
+            method: this.connectWebsocket.name,
+          });
           if (this.$config && this.$config.allowAutomatedRelogin) {
             await this.silentRelogin();
           }
@@ -123,7 +129,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           throw error;
         });
     } catch (error) {
-      this.$webex.logger.error(`file: ${CC_FILE}: Error during register: ${error}`);
+      LoggerProxy.error(`Error during register: ${error}`, {
+        module: CC_FILE,
+        method: this.connectWebsocket.name,
+      });
 
       throw error;
     }
@@ -162,7 +171,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
       return loginResponse;
     } catch (error) {
-      const {error: detailedError} = getErrorDetails(error, 'stationLogin');
+      const {error: detailedError} = getErrorDetails(error, 'stationLogin', CC_FILE);
       throw detailedError;
     }
   }
@@ -186,7 +195,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
       return logoutResponse;
     } catch (error) {
-      const {error: detailedError} = getErrorDetails(error, 'stationLogout');
+      const {error: detailedError} = getErrorDetails(error, 'stationLogout', CC_FILE);
       throw detailedError;
     }
   }
@@ -201,7 +210,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
       return reLoginResponse;
     } catch (error) {
-      const {error: detailedError} = getErrorDetails(error, 'stationReLogin');
+      const {error: detailedError} = getErrorDetails(error, 'stationReLogin', CC_FILE);
       throw detailedError;
     }
   }
@@ -227,11 +236,14 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         data: {...data, agentId: data.agentId || this.agentConfig.agentId},
       });
 
-      this.$webex.logger.log(`file: ${CC_FILE}: SET AGENT STATUS API SUCCESS`);
+      LoggerProxy.log(`SET AGENT STATUS API SUCCESS`, {
+        module: CC_FILE,
+        method: this.setAgentState.name,
+      });
 
       return agentStatusResponse;
     } catch (error) {
-      const {error: detailedError} = getErrorDetails(error, 'setAgentState');
+      const {error: detailedError} = getErrorDetails(error, 'setAgentState', CC_FILE);
       throw detailedError;
     }
   }
@@ -261,11 +273,15 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   private async handleConnectionLost(msg: ConnectionLostDetails): Promise<void> {
     if (msg.isConnectionLost) {
       // TODO: Emit an event saying connection is lost
-      this.$webex.logger.info('event=handleConnectionLost | Connection lost');
+      LoggerProxy.info('event=handleConnectionLost | Connection lost', {
+        module: CC_FILE,
+        method: this.handleConnectionLost.name,
+      });
     } else if (msg.isSocketReconnected) {
       // TODO: Emit an event saying connection is re-estabilished
-      this.$webex.logger.info(
-        'event=handleConnectionReconnect | Connection reconnected attempting to request silent relogin'
+      LoggerProxy.info(
+        'event=handleConnectionReconnect | Connection reconnected attempting to request silent relogin',
+        {module: CC_FILE, method: this.handleConnectionLost.name}
       );
       if (this.$config && this.$config.allowAutomatedRelogin) {
         await this.silentRelogin();
@@ -282,8 +298,9 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       const {auxCodeId, agentId, lastStateChangeReason} = reLoginResponse.data;
 
       if (lastStateChangeReason === 'agent-wss-disconnect') {
-        this.$webex.logger.info(
-          'event=requestAutoStateChange | Requesting state change to available on socket reconnect'
+        LoggerProxy.info(
+          'event=requestAutoStateChange | Requesting state change to available on socket reconnect',
+          {module: CC_FILE, method: this.silentRelogin.name}
         );
         const stateChangeData: StateChange = {
           state: AGENT_STATE_AVAILABLE,
@@ -296,9 +313,12 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       // Updating isAgentLoggedIn as true to indicate to the end user
       this.agentConfig.isAgentLoggedIn = true;
     } catch (error) {
-      const {reason, error: detailedError} = getErrorDetails(error, 'silentReLogin');
+      const {reason, error: detailedError} = getErrorDetails(error, 'silentReLogin', CC_FILE);
       if (reason === 'AGENT_NOT_FOUND') {
-        this.$webex.logger.info('Agent not found during re-login, handling silently');
+        LoggerProxy.info('Agent not found during re-login, handling silently', {
+          module: CC_FILE,
+          method: this.silentRelogin.name,
+        });
 
         return;
       }

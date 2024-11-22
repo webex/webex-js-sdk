@@ -16,6 +16,7 @@ import {
 } from './types';
 import HttpRequest from '../core/HttpRequest';
 import {WCC_API_GATEWAY} from '../constants';
+import {CONFIG_FILE_NAME} from '../../constants';
 import {parseAgentConfigs} from './Util';
 import {
   DEFAULT_AUXCODE_ATTRIBUTES,
@@ -55,7 +56,7 @@ export default class AgentConfigService {
       );
 
       const userConfigData = await userConfigPromise;
-      LoggerProxy.logger.info('Fetched user data');
+      LoggerProxy.info('Fetched user data', {module: CONFIG_FILE_NAME, method: 'getAgentConfig'});
 
       const agentProfilePromise = this.getDesktopProfileById(orgId, userConfigData.agentProfileId);
 
@@ -92,7 +93,10 @@ export default class AgentConfigService {
         auxCodesPromise,
       ]);
 
-      LoggerProxy.logger.info('Fetched all required data');
+      LoggerProxy.info('Fetched all required data', {
+        module: CONFIG_FILE_NAME,
+        method: 'getAgentConfig',
+      });
 
       const response = parseAgentConfigs({
         userData: userConfigData,
@@ -106,12 +110,22 @@ export default class AgentConfigService {
         urlMapping: urlMappingData,
       });
 
-      LoggerProxy.logger.info('Parsing completed for agent-config');
-      LoggerProxy.logger.info('Fetched configuration data successfully');
+      // replace CONFIG_FILE_NAME with CONFIG_FILE_NAME
+      LoggerProxy.info('Parsing completed for agent-config', {
+        module: CONFIG_FILE_NAME,
+        method: 'getAgentConfig',
+      });
+      LoggerProxy.info('Fetched configuration data successfully', {
+        module: CONFIG_FILE_NAME,
+        method: 'getAgentConfig',
+      });
 
       return response;
     } catch (error) {
-      LoggerProxy.logger.error(`getAgentConfig call failed with ${error}`);
+      LoggerProxy.error(`getAgentConfig call failed with ${error}`, {
+        module: CONFIG_FILE_NAME,
+        method: 'getAgentConfig',
+      });
       throw error;
     }
   }
@@ -135,11 +149,17 @@ export default class AgentConfigService {
         throw new Error(`API call failed with ${response.statusCode}`);
       }
 
-      LoggerProxy.logger.log('getUserUsingCI api success.');
+      LoggerProxy.log('getUserUsingCI api success.', {
+        module: CONFIG_FILE_NAME,
+        method: 'getUserUsingCI',
+      });
 
       return Promise.resolve(response.body);
     } catch (error) {
-      LoggerProxy.logger.error(`getUserUsingCI API call failed with ${error}`);
+      LoggerProxy.error(`getUserUsingCI API call failed with ${error}`, {
+        module: CONFIG_FILE_NAME,
+        method: 'getUserUsingCI',
+      });
       throw error;
     }
   }
@@ -166,11 +186,17 @@ export default class AgentConfigService {
         throw new Error(`API call failed with ${response.statusCode}`);
       }
 
-      LoggerProxy.logger.log('getDesktopProfileById api success.');
+      LoggerProxy.log('getDesktopProfileById api success.', {
+        module: CONFIG_FILE_NAME,
+        method: 'getDesktopProfileById',
+      });
 
       return Promise.resolve(response.body);
     } catch (error) {
-      LoggerProxy.logger.error(`getDesktopProfileById API call failed with ${error}`);
+      LoggerProxy.error(`getDesktopProfileById API call failed with ${error}`, {
+        module: CONFIG_FILE_NAME,
+        method: 'getDesktopProfileById',
+      });
       throw error;
     }
   }
@@ -203,11 +229,17 @@ export default class AgentConfigService {
         throw new Error(`API call failed with ${response.statusCode}`);
       }
 
-      LoggerProxy.logger.log('getListOfTeams api success.');
+      LoggerProxy.log('getListOfTeams api success.', {
+        module: CONFIG_FILE_NAME,
+        method: 'getListOfTeams',
+      });
 
       return Promise.resolve(response.body);
     } catch (error) {
-      LoggerProxy.logger.error(`getListOfTeams API call failed with ${error}`);
+      LoggerProxy.error(`getListOfTeams API call failed with ${error}`, {
+        module: CONFIG_FILE_NAME,
+        method: 'getListOfTeams',
+      });
       throw error;
     }
   }
@@ -244,7 +276,10 @@ export default class AgentConfigService {
 
       return allTeams;
     } catch (error) {
-      LoggerProxy.logger.error(`getAllTeams API call failed with ${error}`);
+      LoggerProxy.error(`getAllTeams API call failed with ${error}`, {
+        module: CONFIG_FILE_NAME,
+        method: 'getAllTeams',
+      });
       throw error;
     }
   }
@@ -256,7 +291,7 @@ export default class AgentConfigService {
    * @param {number} pageSize
    * @param {string[]} filter
    * @param {string[]} attributes
-   * @returns {Promise<ListAuxCodesResponse
+   * @returns {Promise<ListAuxCodesResponse>}
    */
   public async getListOfAuxCodes(
     orgId: string,
@@ -277,11 +312,17 @@ export default class AgentConfigService {
         throw new Error(`API call failed with ${response.statusCode}`);
       }
 
-      LoggerProxy.logger.log('getListOfAuxCodes api success.');
+      LoggerProxy.log('getListOfAuxCodes api success.', {
+        module: CONFIG_FILE_NAME,
+        method: 'getListOfAuxCodes',
+      });
 
       return Promise.resolve(response.body);
     } catch (error) {
-      LoggerProxy.logger.error(`getListOfAuxCodes API call failed with ${error}`);
+      LoggerProxy.error(`getListOfAuxCodes API call failed with ${error}`, {
+        module: CONFIG_FILE_NAME,
+        method: 'getListOfAuxCodes',
+      });
       throw error;
     }
   }
@@ -321,7 +362,10 @@ export default class AgentConfigService {
 
       return allAuxCodes;
     } catch (error) {
-      LoggerProxy.logger.error(`getAllAuxCodes API call failed with ${error}`);
+      LoggerProxy.error(`getAllAuxCodes API call failed with ${error}`, {
+        module: CONFIG_FILE_NAME,
+        method: 'getAllAuxCodes',
+      });
       throw error;
     }
   }
@@ -344,11 +388,14 @@ export default class AgentConfigService {
         throw new Error(`API call failed with ${response.statusCode}`);
       }
 
-      LoggerProxy.logger.log('getOrgInfo api success.');
+      LoggerProxy.log('getOrgInfo api success.', {module: CONFIG_FILE_NAME, method: 'getOrgInfo'});
 
       return Promise.resolve(response.body);
     } catch (error) {
-      LoggerProxy.logger.error(`getOrgInfo API call failed with ${error}`);
+      LoggerProxy.error(`getOrgInfo API call failed with ${error}`, {
+        module: CONFIG_FILE_NAME,
+        method: 'getOrgInfo',
+      });
       throw error;
     }
   }
@@ -371,11 +418,17 @@ export default class AgentConfigService {
         throw new Error(`API call failed with ${response.statusCode}`);
       }
 
-      LoggerProxy.logger.log('getOrganizationSetting api success.');
+      LoggerProxy.log('getOrganizationSetting api success.', {
+        module: CONFIG_FILE_NAME,
+        method: 'getOrganizationSetting',
+      });
 
       return Promise.resolve(response.body.data[0]);
     } catch (error) {
-      LoggerProxy.logger.error(`getOrganizationSetting API call failed with ${error}`);
+      LoggerProxy.error(`getOrganizationSetting API call failed with ${error}`, {
+        module: CONFIG_FILE_NAME,
+        method: 'getOrganizationSetting',
+      });
       throw error;
     }
   }
@@ -398,11 +451,17 @@ export default class AgentConfigService {
         throw new Error(`API call failed with ${response.statusCode}`);
       }
 
-      LoggerProxy.logger.log('getTenantData api success.');
+      LoggerProxy.log('getTenantData api success.', {
+        module: CONFIG_FILE_NAME,
+        method: 'getTenantData',
+      });
 
       return Promise.resolve(response.body.data[0]);
     } catch (error) {
-      LoggerProxy.logger.error(`getTenantData API call failed with ${error}`);
+      LoggerProxy.error(`getTenantData API call failed with ${error}`, {
+        module: CONFIG_FILE_NAME,
+        method: 'getTenantData',
+      });
       throw error;
     }
   }
@@ -425,11 +484,17 @@ export default class AgentConfigService {
         throw new Error(`API call failed with ${response.statusCode}`);
       }
 
-      LoggerProxy.logger.log('getURLMapping api success.');
+      LoggerProxy.log('getURLMapping api success.', {
+        module: CONFIG_FILE_NAME,
+        method: 'getURLMapping',
+      });
 
       return Promise.resolve(response.body.data);
     } catch (error) {
-      LoggerProxy.logger.error(`getURLMapping API call failed with ${error}`);
+      LoggerProxy.error(`getURLMapping API call failed with ${error}`, {
+        module: CONFIG_FILE_NAME,
+        method: 'getURLMapping',
+      });
       throw error;
     }
   }
@@ -452,11 +517,17 @@ export default class AgentConfigService {
         throw new Error(`API call failed with ${response.statusCode}`);
       }
 
-      LoggerProxy.logger.log('getDialPlanData api success.');
+      LoggerProxy.log('getDialPlanData api success.', {
+        module: CONFIG_FILE_NAME,
+        method: 'getDialPlanData',
+      });
 
       return Promise.resolve(response.body);
     } catch (error) {
-      LoggerProxy.logger.error(`getDialPlanData API call failed with ${error}`);
+      LoggerProxy.error(`getDialPlanData API call failed with ${error}`, {
+        module: CONFIG_FILE_NAME,
+        method: 'getDialPlanData',
+      });
       throw error;
     }
   }

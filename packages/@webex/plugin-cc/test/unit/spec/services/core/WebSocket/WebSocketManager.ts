@@ -2,17 +2,16 @@
 import { WebSocketManager } from '../../../../../../src/services/core/WebSocket/WebSocketManager';
 import { WebexSDK, SubscribeRequest } from '../../../../../../src/types';
 import { SUBSCRIBE_API, WCC_API_GATEWAY } from '../../../../../../src/services/constants';
+import { WEB_SOCKET_MANAGER_FILE } from '../../../../../../src/constants';
 import LoggerProxy from '../../../../../../src/logger-proxy';
 
 jest.mock('../../../../../../src/services/core/HttpRequest');
 jest.mock('../../../../../../src/logger-proxy', () => ({
   __esModule: true,
   default: {
-    logger: {
-      log: jest.fn(),
-      error: jest.fn(),
-      info: jest.fn(),
-    },
+    log: jest.fn(),
+    error: jest.fn(),
+    info: jest.fn(),
     initialize: jest.fn(),
   },
 }));
@@ -201,11 +200,13 @@ describe('WebSocketManager', () => {
     await new Promise((resolve) => setTimeout(resolve, 10));
 
     expect(mockWorker.postMessage).toHaveBeenCalledWith({ type: 'terminate' });
-    expect(LoggerProxy.logger.info).toHaveBeenCalledWith(
-      '[WebSocketStatus] | desktop online status is false'
+    expect(LoggerProxy.info).toHaveBeenCalledWith(
+      '[WebSocketStatus] | desktop online status is false',
+      { module: WEB_SOCKET_MANAGER_FILE, method: 'webSocketOnCloseHandler' }
     );
-    expect(LoggerProxy.logger.error).toHaveBeenCalledWith(
-      '[WebSocketStatus] | event=webSocketClose | WebSocket connection closed REASON: network issue'
+    expect(LoggerProxy.error).toHaveBeenCalledWith(
+      '[WebSocketStatus] | event=webSocketClose | WebSocket connection closed REASON: network issue',
+      { module: WEB_SOCKET_MANAGER_FILE, method: 'webSocketOnCloseHandler' }
     );
 
     // Restore navigator.onLine to true
@@ -231,8 +232,9 @@ describe('WebSocketManager', () => {
     const errorEvent = new Event('error');
     MockWebSocket.inst.onerror(errorEvent);
 
-    expect(LoggerProxy.logger.error).toHaveBeenCalledWith(
-      '[WebSocketStatus] | event=socketConnectionFailed | WebSocket connection failed [object Event]'
+    expect(LoggerProxy.error).toHaveBeenCalledWith(
+      '[WebSocketStatus] | event=socketConnectionFailed | WebSocket connection failed [object Event]',
+      { module: WEB_SOCKET_MANAGER_FILE, method: 'connect' }
     );
   });
 
@@ -253,8 +255,9 @@ describe('WebSocketManager', () => {
     MockWebSocket.inst.onmessage(messageEvent);
 
     expect(MockWebSocket.inst.close).toHaveBeenCalled();
-    expect(LoggerProxy.logger.error).toHaveBeenCalledWith(
-      '[WebSocketStatus] | event=agentMultiLogin | WebSocket connection closed by agent multiLogin'
+    expect(LoggerProxy.error).toHaveBeenCalledWith(
+      '[WebSocketStatus] | event=agentMultiLogin | WebSocket connection closed by agent multiLogin',
+      { module: WEB_SOCKET_MANAGER_FILE, method: 'connect' }
     );
   });
 
@@ -306,8 +309,9 @@ describe('WebSocketManager', () => {
     await new Promise((resolve) => setTimeout(resolve, 10));
 
     expect(mockWorker.postMessage).toHaveBeenCalledWith({ type: 'terminate' });
-    expect(LoggerProxy.logger.error).toHaveBeenCalledWith(
-      '[WebSocketStatus] | event=webSocketClose | WebSocket connection closed REASON: WebSocket auto close timed out. Forcefully closed websocket.'
+    expect(LoggerProxy.error).toHaveBeenCalledWith(
+      '[WebSocketStatus] | event=webSocketClose | WebSocket connection closed REASON: WebSocket auto close timed out. Forcefully closed websocket.',
+      { module: WEB_SOCKET_MANAGER_FILE, method: 'webSocketOnCloseHandler' }
     );
   });
 
@@ -335,8 +339,9 @@ describe('WebSocketManager', () => {
     await new Promise((resolve) => setTimeout(resolve, 10));
 
     expect(mockWorker.postMessage).toHaveBeenCalledWith({ type: 'terminate' });
-    expect(LoggerProxy.logger.error).not.toHaveBeenCalledWith(
-      '[WebSocketStatus] | event=webSocketClose | WebSocket connection closed REASON: no reconnect'
+    expect(LoggerProxy.error).not.toHaveBeenCalledWith(
+      '[WebSocketStatus] | event=webSocketClose | WebSocket connection closed REASON: no reconnect',
+      { module: WEB_SOCKET_MANAGER_FILE, method: 'webSocketOnCloseHandler' }
     );
   });
 
@@ -365,8 +370,9 @@ describe('WebSocketManager', () => {
     await new Promise((resolve) => setTimeout(resolve, 10));
 
     expect(mockWorker.postMessage).toHaveBeenCalledWith({ type: 'terminate' });
-    expect(LoggerProxy.logger.error).not.toHaveBeenCalledWith(
-      '[WebSocketStatus] | event=webSocketClose | WebSocket connection closed REASON: clean close'
+    expect(LoggerProxy.error).not.toHaveBeenCalledWith(
+      '[WebSocketStatus] | event=webSocketClose | WebSocket connection closed REASON: clean close',
+      { module: WEB_SOCKET_MANAGER_FILE, method: 'webSocketOnCloseHandler' }
     );
   });
 });

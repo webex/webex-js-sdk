@@ -7,7 +7,8 @@ import {
   CallingClientConfig,
 } from '@webex/calling';
 import {WebexSDK} from '../types';
-import {TIMEOUT_DURATION} from '../constants';
+import {TIMEOUT_DURATION, WEB_CALLING_SERVICE_FILE} from '../constants';
+import LoggerProxy from '../logger-proxy';
 
 export default class WebCallingService {
   private callingClient: ICallingClient;
@@ -25,7 +26,10 @@ export default class WebCallingService {
     this.line = Object.values(this.callingClient.getLines())[0];
 
     this.line.on(LINE_EVENTS.UNREGISTERED, () => {
-      this.webex.logger.log(`WxCC-SDK: Desktop un registered successfully`);
+      LoggerProxy.log(`WxCC-SDK: Desktop un registered successfully`, {
+        module: WEB_CALLING_SERVICE_FILE,
+        method: this.registerWebCallingLine.name,
+      });
     });
 
     // Start listening for incoming calls
@@ -48,8 +52,9 @@ export default class WebCallingService {
 
       this.line.on(LINE_EVENTS.REGISTERED, (deviceInfo: ILine) => {
         clearTimeout(timeout);
-        this.webex.logger.log(
-          `WxCC-SDK: Desktop registered successfully, mobiusDeviceId: ${deviceInfo.mobiusDeviceId}`
+        LoggerProxy.log(
+          `WxCC-SDK: Desktop registered successfully, mobiusDeviceId: ${deviceInfo.mobiusDeviceId}`,
+          {module: WEB_CALLING_SERVICE_FILE, method: this.registerWebCallingLine.name}
         );
         resolve();
       });

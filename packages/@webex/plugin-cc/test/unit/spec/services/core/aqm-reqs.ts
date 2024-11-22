@@ -3,16 +3,15 @@ import HttpRequest from '../../../../../src/services/core/HttpRequest';
 import { WebSocketManager } from '../../../../../src/services/core/WebSocket/WebSocketManager';
 import LoggerProxy from '../../../../../src/logger-proxy';
 import { IHttpResponse } from '../../../../../src/types';
+import {AQM_REQS_FILE} from '../../../../../src/constants';
 
 jest.mock('../../../../../src/services/core/HttpRequest');
 jest.mock('../../../../../src/logger-proxy', () => ({
   __esModule: true,
   default: {
-    logger: {
-      log: jest.fn(),
+    log: jest.fn(),
       error: jest.fn(),
       info: jest.fn(),
-    },
     initialize: jest.fn(),
   },
 }));
@@ -371,7 +370,7 @@ describe('AqmReqs', () => {
         })
       );
     
-      expect(LoggerProxy.logger.info).toHaveBeenCalledWith('Welcome message from Notifs Websocket');
+      expect(LoggerProxy.info).toHaveBeenCalledWith("Welcome message from Notifs Websocket", {"method": "onMessage", "module": AQM_REQS_FILE});
     
       // Keep-alive events
       webSocketManagerInstance.emit(
@@ -382,7 +381,7 @@ describe('AqmReqs', () => {
         })
       );
     
-      expect(LoggerProxy.logger.info).toHaveBeenCalledWith('Keepalive from web socket');
+      expect(LoggerProxy.info).toHaveBeenCalledWith('Keepalive from web socket', {"method": "onMessage", "module": AQM_REQS_FILE});
     
       // Unhandled event
       webSocketManagerInstance.emit(
@@ -393,8 +392,8 @@ describe('AqmReqs', () => {
         })
       );
     
-      expect(LoggerProxy.logger.info).toHaveBeenCalledWith(
-        'event=missingEventHandler | [AqmReqs] missing routing message handler'
+      expect(LoggerProxy.info).toHaveBeenCalledWith(
+        'event=missingEventHandler | [AqmReqs] missing routing message handler', {"method": "onMessage", "module": AQM_REQS_FILE}
       );
     });
 

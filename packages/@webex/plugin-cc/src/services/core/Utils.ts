@@ -10,13 +10,13 @@ const getCommonErrorDetails = (errObj: WebexRequestPayload) => {
   };
 };
 
-export const getErrorDetails = (error: any, methodName: string) => {
+export const getErrorDetails = (error: any, methodName: string, moduleName: string) => {
   const failure = error.details as Failure;
   const reason = failure?.data?.reason ?? `Error while performing ${methodName}`;
-  // We don't want to log silentReLogin errors
-  if (methodName !== 'silentReLogin') {
-    LoggerProxy.logger.error(`${methodName} failed with trackingId: ${failure?.trackingId}`);
-  }
+  LoggerProxy.error(`${methodName} failed with trackingId: ${failure?.trackingId}`, {
+    module: moduleName,
+    method: methodName,
+  });
 
   return {
     error: new Error(reason ?? `Error while performing ${methodName}`),

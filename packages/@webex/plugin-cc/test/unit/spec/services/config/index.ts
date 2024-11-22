@@ -2,9 +2,20 @@ import {WebexSDK} from '../../../../../src/types';
 import AgentConfigService from '../../../../../src/services/config';
 import HttpRequest from '../../../../../src/services/core/HttpRequest';
 import {WCC_API_GATEWAY} from '../../../../../src/services/constants';
+import {CONFIG_FILE_NAME} from '../../../../../src/constants';
 import MockWebex from '@webex/test-helper-mock-webex';
 import LoggerProxy from '../../../../../src/logger-proxy';
 import * as util from '../../../../../src/services/config/Util';
+
+jest.mock('../../../../../src/logger-proxy', () => ({
+  __esModule: true,
+  default: {
+    log: jest.fn(),
+    error: jest.fn(),
+    info: jest.fn(),
+    initialize: jest.fn(),
+  },
+}));
 
 describe('AgentConfigService', () => {
   let agentConfigService: AgentConfigService;
@@ -23,7 +34,6 @@ describe('AgentConfigService', () => {
       },
     });
 
-    LoggerProxy.logger = webex.logger;
     mockHttpRequest = HttpRequest.getInstance({webex});
     mockHttpRequest.request = jest.fn();
 
@@ -56,7 +66,10 @@ describe('AgentConfigService', () => {
         method: 'GET',
       });
       expect(result).toEqual(mockResponse.body);
-      expect(LoggerProxy.logger.log).toHaveBeenCalledWith('getUserUsingCI api success.');
+      expect(LoggerProxy.log).toHaveBeenCalledWith('getUserUsingCI api success.', {
+        module: CONFIG_FILE_NAME,
+        method: 'getUserUsingCI',
+      });
     });
 
     it('should throw an error if the API call fails', async () => {
@@ -106,7 +119,10 @@ describe('AgentConfigService', () => {
         method: 'GET',
       });
       expect(result).toEqual(mockResponse.body);
-      expect(LoggerProxy.logger.log).toHaveBeenCalledWith('getDesktopProfileById api success.');
+      expect(LoggerProxy.log).toHaveBeenCalledWith('getDesktopProfileById api success.', {
+        module: CONFIG_FILE_NAME,
+        method: 'getDesktopProfileById',
+      });
     });
 
     it('should throw an error if the API call fails', async () => {
@@ -164,7 +180,10 @@ describe('AgentConfigService', () => {
         method: 'GET',
       });
       expect(result).toEqual(mockResponse.body);
-      expect(LoggerProxy.logger.log).toHaveBeenCalledWith('getListOfTeams api success.');
+      expect(LoggerProxy.log).toHaveBeenCalledWith('getListOfTeams api success.', {
+        module: CONFIG_FILE_NAME,
+        method: 'getListOfTeams',
+      });
     });
 
     it('should throw an error if the API call fails', async () => {
@@ -240,7 +259,10 @@ describe('AgentConfigService', () => {
         method: 'GET',
       });
       expect(result).toEqual(mockResponse.body);
-      expect(LoggerProxy.logger.log).toHaveBeenCalledWith('getListOfAuxCodes api success.');
+      expect(LoggerProxy.log).toHaveBeenCalledWith('getListOfAuxCodes api success.', {
+        module: CONFIG_FILE_NAME,
+        method: 'getListOfAuxCodes',
+      });
     });
 
     it('should throw an error if the API call fails', async () => {
@@ -284,7 +306,10 @@ describe('AgentConfigService', () => {
 
       const result = await agentConfigService.getOrgInfo(mockOrgId);
       expect(result).toEqual(mockResponse.body);
-      expect(LoggerProxy.logger.log).toHaveBeenCalledWith('getOrgInfo api success.');
+      expect(LoggerProxy.log).toHaveBeenCalledWith('getOrgInfo api success.', {
+        module: CONFIG_FILE_NAME,
+        method: 'getOrgInfo',
+      });
     });
 
     it('should throw an error if API call returns non-200 status code', async () => {
@@ -294,8 +319,9 @@ describe('AgentConfigService', () => {
       await expect(agentConfigService.getOrgInfo(mockOrgId)).rejects.toThrow(
         'API call failed with 500'
       );
-      expect(LoggerProxy.logger.error).toHaveBeenCalledWith(
-        expect.stringContaining('getOrgInfo API call failed with')
+      expect(LoggerProxy.error).toHaveBeenCalledWith(
+        'getOrgInfo API call failed with Error: API call failed with 500',
+        {module: CONFIG_FILE_NAME, method: 'getOrgInfo'}
       );
     });
 
@@ -304,8 +330,9 @@ describe('AgentConfigService', () => {
       mockHttpRequest.request.mockRejectedValue(networkError);
 
       await expect(agentConfigService.getOrgInfo(mockOrgId)).rejects.toThrow('Network Error');
-      expect(LoggerProxy.logger.error).toHaveBeenCalledWith(
-        expect.stringContaining('getOrgInfo API call failed with')
+      expect(LoggerProxy.error).toHaveBeenCalledWith(
+        'getOrgInfo API call failed with Error: Network Error',
+        {module: CONFIG_FILE_NAME, method: 'getOrgInfo'}
       );
     });
 
@@ -314,8 +341,9 @@ describe('AgentConfigService', () => {
       mockHttpRequest.request.mockRejectedValue(timeoutError);
 
       await expect(agentConfigService.getOrgInfo(mockOrgId)).rejects.toThrow('Timeout Error');
-      expect(LoggerProxy.logger.error).toHaveBeenCalledWith(
-        expect.stringContaining('getOrgInfo API call failed with')
+      expect(LoggerProxy.error).toHaveBeenCalledWith(
+        'getOrgInfo API call failed with Error: Timeout Error',
+        {module: CONFIG_FILE_NAME, method: 'getOrgInfo'}
       );
     });
   });
@@ -327,7 +355,10 @@ describe('AgentConfigService', () => {
 
       const result = await agentConfigService.getOrganizationSetting();
       expect(result).toEqual(mockResponse.body.data[0]);
-      expect(LoggerProxy.logger.log).toHaveBeenCalledWith('getOrganizationSetting api success.');
+      expect(LoggerProxy.log).toHaveBeenCalledWith('getOrganizationSetting api success.', {
+        module: CONFIG_FILE_NAME,
+        method: 'getOrganizationSetting',
+      });
     });
 
     it('should throw an error if API call returns non-200 status code', async () => {
@@ -337,8 +368,9 @@ describe('AgentConfigService', () => {
       await expect(agentConfigService.getOrganizationSetting(mockOrgId)).rejects.toThrow(
         'API call failed with 500'
       );
-      expect(LoggerProxy.logger.error).toHaveBeenCalledWith(
-        expect.stringContaining('getOrganizationSetting API call failed with')
+      expect(LoggerProxy.error).toHaveBeenCalledWith(
+        'getOrganizationSetting API call failed with Error: API call failed with 500',
+        {module: CONFIG_FILE_NAME, method: 'getOrganizationSetting'}
       );
     });
 
@@ -349,8 +381,9 @@ describe('AgentConfigService', () => {
       await expect(agentConfigService.getOrganizationSetting(mockOrgId)).rejects.toThrow(
         'Network Error'
       );
-      expect(LoggerProxy.logger.error).toHaveBeenCalledWith(
-        expect.stringContaining('getOrganizationSetting API call failed with')
+      expect(LoggerProxy.error).toHaveBeenCalledWith(
+        'getOrganizationSetting API call failed with Error: Network Error',
+        {module: CONFIG_FILE_NAME, method: 'getOrganizationSetting'}
       );
     });
 
@@ -361,8 +394,9 @@ describe('AgentConfigService', () => {
       await expect(agentConfigService.getOrganizationSetting(mockOrgId)).rejects.toThrow(
         'Timeout Error'
       );
-      expect(LoggerProxy.logger.error).toHaveBeenCalledWith(
-        expect.stringContaining('getOrganizationSetting API call failed with')
+      expect(LoggerProxy.error).toHaveBeenCalledWith(
+        'getOrganizationSetting API call failed with Error: Timeout Error',
+        {module: CONFIG_FILE_NAME, method: 'getOrganizationSetting'}
       );
     });
   });
@@ -374,7 +408,10 @@ describe('AgentConfigService', () => {
 
       const result = await agentConfigService.getTenantData(mockOrgId);
       expect(result).toEqual(mockResponse.body.data[0]);
-      expect(LoggerProxy.logger.log).toHaveBeenCalledWith('getTenantData api success.');
+      expect(LoggerProxy.log).toHaveBeenCalledWith('getTenantData api success.', {
+        module: CONFIG_FILE_NAME,
+        method: 'getTenantData',
+      });
     });
 
     it('should throw an error if API call returns non-200 status code', async () => {
@@ -384,8 +421,9 @@ describe('AgentConfigService', () => {
       await expect(agentConfigService.getTenantData(mockOrgId)).rejects.toThrow(
         'API call failed with 500'
       );
-      expect(LoggerProxy.logger.error).toHaveBeenCalledWith(
-        expect.stringContaining('getTenantData API call failed with')
+      expect(LoggerProxy.error).toHaveBeenCalledWith(
+        'getTenantData API call failed with Error: API call failed with 500',
+        {module: CONFIG_FILE_NAME, method: 'getTenantData'}
       );
     });
 
@@ -394,8 +432,9 @@ describe('AgentConfigService', () => {
       mockHttpRequest.request.mockRejectedValue(networkError);
 
       await expect(agentConfigService.getTenantData(mockOrgId)).rejects.toThrow('Network Error');
-      expect(LoggerProxy.logger.error).toHaveBeenCalledWith(
-        expect.stringContaining('getTenantData API call failed with')
+      expect(LoggerProxy.error).toHaveBeenCalledWith(
+        'getTenantData API call failed with Error: Network Error',
+        {module: CONFIG_FILE_NAME, method: 'getTenantData'}
       );
     });
   });
@@ -407,7 +446,10 @@ describe('AgentConfigService', () => {
 
       const result = await agentConfigService.getURLMapping(mockOrgId);
       expect(result).toEqual(mockResponse.body.data);
-      expect(LoggerProxy.logger.log).toHaveBeenCalledWith('getURLMapping api success.');
+      expect(LoggerProxy.log).toHaveBeenCalledWith('getURLMapping api success.', {
+        module: CONFIG_FILE_NAME,
+        method: 'getURLMapping',
+      });
     });
 
     it('should throw an error if API call returns non-200 status code', async () => {
@@ -417,8 +459,9 @@ describe('AgentConfigService', () => {
       await expect(agentConfigService.getURLMapping(mockOrgId)).rejects.toThrow(
         'API call failed with 500'
       );
-      expect(LoggerProxy.logger.error).toHaveBeenCalledWith(
-        expect.stringContaining('getURLMapping API call failed with')
+      expect(LoggerProxy.error).toHaveBeenCalledWith(
+        'getURLMapping API call failed with Error: API call failed with 500',
+        {module: CONFIG_FILE_NAME, method: 'getURLMapping'}
       );
     });
 
@@ -427,8 +470,9 @@ describe('AgentConfigService', () => {
       mockHttpRequest.request.mockRejectedValue(networkError);
 
       await expect(agentConfigService.getURLMapping(mockOrgId)).rejects.toThrow('Network Error');
-      expect(LoggerProxy.logger.error).toHaveBeenCalledWith(
-        expect.stringContaining('getURLMapping API call failed with')
+      expect(LoggerProxy.error).toHaveBeenCalledWith(
+        'getURLMapping API call failed with Error: Network Error',
+        {module: CONFIG_FILE_NAME, method: 'getURLMapping'}
       );
     });
   });
@@ -440,7 +484,10 @@ describe('AgentConfigService', () => {
 
       const result = await agentConfigService.getDialPlanData(mockOrgId);
       expect(result).toEqual(mockResponse.body);
-      expect(LoggerProxy.logger.log).toHaveBeenCalledWith('getDialPlanData api success.');
+      expect(LoggerProxy.log).toHaveBeenCalledWith('getDialPlanData api success.', {
+        module: CONFIG_FILE_NAME,
+        method: 'getDialPlanData',
+      });
     });
 
     it('should throw an error if API call returns non-200 status code', async () => {
@@ -450,8 +497,9 @@ describe('AgentConfigService', () => {
       await expect(agentConfigService.getDialPlanData(mockOrgId)).rejects.toThrow(
         'API call failed with 500'
       );
-      expect(LoggerProxy.logger.error).toHaveBeenCalledWith(
-        expect.stringContaining('getDialPlanData API call failed with')
+      expect(LoggerProxy.error).toHaveBeenCalledWith(
+        'getDialPlanData API call failed with Error: API call failed with 500',
+        {module: CONFIG_FILE_NAME, method: 'getDialPlanData'}
       );
     });
 
@@ -460,8 +508,9 @@ describe('AgentConfigService', () => {
       mockHttpRequest.request.mockRejectedValue(networkError);
 
       await expect(agentConfigService.getDialPlanData(mockOrgId)).rejects.toThrow('Network Error');
-      expect(LoggerProxy.logger.error).toHaveBeenCalledWith(
-        expect.stringContaining('getDialPlanData API call failed with')
+      expect(LoggerProxy.error).toHaveBeenCalledWith(
+        'getDialPlanData API call failed with Error: Network Error',
+        {module: CONFIG_FILE_NAME, method: 'getDialPlanData'}
       );
     });
   });
@@ -496,12 +545,21 @@ describe('AgentConfigService', () => {
         ...mockResponseOther.body.data,
       ]);
 
-      expect(LoggerProxy.logger.log).toHaveBeenCalledTimes(3);
+      expect(LoggerProxy.log).toHaveBeenCalledTimes(3);
 
       // Verify that each call was made with the expected message
-      expect(LoggerProxy.logger.log).toHaveBeenNthCalledWith(1, 'getListOfTeams api success.');
-      expect(LoggerProxy.logger.log).toHaveBeenNthCalledWith(2, 'getListOfTeams api success.');
-      expect(LoggerProxy.logger.log).toHaveBeenNthCalledWith(3, 'getListOfTeams api success.');
+      expect(LoggerProxy.log).toHaveBeenNthCalledWith(1, 'getListOfTeams api success.', {
+        module: CONFIG_FILE_NAME,
+        method: 'getListOfTeams',
+      });
+      expect(LoggerProxy.log).toHaveBeenNthCalledWith(2, 'getListOfTeams api success.', {
+        module: CONFIG_FILE_NAME,
+        method: 'getListOfTeams',
+      });
+      expect(LoggerProxy.log).toHaveBeenNthCalledWith(3, 'getListOfTeams api success.', {
+        module: CONFIG_FILE_NAME,
+        method: 'getListOfTeams',
+      });
     });
 
     it('should throw an error if API call returns non-200 status code', async () => {
@@ -515,8 +573,9 @@ describe('AgentConfigService', () => {
       await expect(
         agentConfigService.getAllTeams(mockOrgId, pageSize, filter, attributes)
       ).rejects.toThrow('API call failed with 500');
-      expect(LoggerProxy.logger.error).toHaveBeenCalledWith(
-        expect.stringContaining('getListOfTeams API call failed with')
+      expect(LoggerProxy.error).toHaveBeenCalledWith(
+        'getListOfTeams API call failed with Error: API call failed with 500',
+        {module: CONFIG_FILE_NAME, method: 'getListOfTeams'}
       );
     });
   });
@@ -556,12 +615,21 @@ describe('AgentConfigService', () => {
         ...mockResponseOther.body.data,
       ]);
 
-      expect(LoggerProxy.logger.log).toHaveBeenCalledTimes(3);
+      expect(LoggerProxy.log).toHaveBeenCalledTimes(3);
 
       // Verify that each call was made with the expected message
-      expect(LoggerProxy.logger.log).toHaveBeenNthCalledWith(1, 'getListOfAuxCodes api success.');
-      expect(LoggerProxy.logger.log).toHaveBeenNthCalledWith(2, 'getListOfAuxCodes api success.');
-      expect(LoggerProxy.logger.log).toHaveBeenNthCalledWith(3, 'getListOfAuxCodes api success.');
+      expect(LoggerProxy.log).toHaveBeenNthCalledWith(1, 'getListOfAuxCodes api success.', {
+        module: CONFIG_FILE_NAME,
+        method: 'getListOfAuxCodes',
+      });
+      expect(LoggerProxy.log).toHaveBeenNthCalledWith(2, 'getListOfAuxCodes api success.', {
+        module: CONFIG_FILE_NAME,
+        method: 'getListOfAuxCodes',
+      });
+      expect(LoggerProxy.log).toHaveBeenNthCalledWith(3, 'getListOfAuxCodes api success.', {
+        module: CONFIG_FILE_NAME,
+        method: 'getListOfAuxCodes',
+      });
     });
 
     it('should throw an error if API call returns non-200 status code', async () => {
@@ -575,8 +643,12 @@ describe('AgentConfigService', () => {
       await expect(
         agentConfigService.getAllAuxCodes(mockOrgId, pageSize, filter, attributes)
       ).rejects.toThrow('API call failed with 500');
-      expect(LoggerProxy.logger.error).toHaveBeenCalledWith(
-        expect.stringContaining('getListOfAuxCodes API call failed with')
+      expect(LoggerProxy.error).toHaveBeenCalledWith(
+        'getListOfAuxCodes API call failed with Error: API call failed with 500',
+        {
+          module: CONFIG_FILE_NAME,
+          method: 'getListOfAuxCodes',
+        }
       );
     });
   });
@@ -677,12 +749,22 @@ describe('AgentConfigService', () => {
 
       const result = await agentConfigService.getAgentConfig(mockOrgId, mockAgentId);
 
-      expect(LoggerProxy.logger.info).toHaveBeenCalledWith('Fetched user data');
-      expect(LoggerProxy.logger.info).toHaveBeenCalledWith('Fetched all required data');
-      expect(LoggerProxy.logger.info).toHaveBeenCalledWith('Parsing completed for agent-config');
-      expect(LoggerProxy.logger.info).toHaveBeenCalledWith(
-        'Fetched configuration data successfully'
-      );
+      expect(LoggerProxy.info).toHaveBeenCalledWith('Fetched user data', {
+        module: CONFIG_FILE_NAME,
+        method: 'getAgentConfig',
+      });
+      expect(LoggerProxy.info).toHaveBeenCalledWith('Fetched all required data', {
+        module: CONFIG_FILE_NAME,
+        method: 'getAgentConfig',
+      });
+      expect(LoggerProxy.info).toHaveBeenCalledWith('Parsing completed for agent-config', {
+        module: CONFIG_FILE_NAME,
+        method: 'getAgentConfig',
+      });
+      expect(LoggerProxy.info).toHaveBeenCalledWith('Fetched configuration data successfully', {
+        module: CONFIG_FILE_NAME,
+        method: 'getAgentConfig',
+      });
       expect(parseAgentConfigsSpy).toHaveBeenCalledTimes(1);
 
       expect(parseAgentConfigsSpy).toHaveBeenCalledWith({
@@ -796,12 +878,22 @@ describe('AgentConfigService', () => {
 
       const result = await agentConfigService.getAgentConfig(mockOrgId, mockAgentId);
 
-      expect(LoggerProxy.logger.info).toHaveBeenCalledWith('Fetched user data');
-      expect(LoggerProxy.logger.info).toHaveBeenCalledWith('Fetched all required data');
-      expect(LoggerProxy.logger.info).toHaveBeenCalledWith('Parsing completed for agent-config');
-      expect(LoggerProxy.logger.info).toHaveBeenCalledWith(
-        'Fetched configuration data successfully'
-      );
+      expect(LoggerProxy.info).toHaveBeenCalledWith('Fetched user data', {
+        module: CONFIG_FILE_NAME,
+        method: 'getAgentConfig',
+      });
+      expect(LoggerProxy.info).toHaveBeenCalledWith('Fetched all required data', {
+        module: CONFIG_FILE_NAME,
+        method: 'getAgentConfig',
+      });
+      expect(LoggerProxy.info).toHaveBeenCalledWith('Parsing completed for agent-config', {
+        module: CONFIG_FILE_NAME,
+        method: 'getAgentConfig',
+      });
+      expect(LoggerProxy.info).toHaveBeenCalledWith('Fetched configuration data successfully', {
+        module: CONFIG_FILE_NAME,
+        method: 'getAgentConfig',
+      });
       expect(parseAgentConfigsSpy).toHaveBeenCalledTimes(1);
 
       expect(parseAgentConfigsSpy).toHaveBeenCalledWith({
