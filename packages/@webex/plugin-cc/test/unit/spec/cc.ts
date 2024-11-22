@@ -10,7 +10,6 @@ import ContactCenter from '../../../src/cc';
 import MockWebex from '@webex/test-helper-mock-webex';
 import {StationLoginSuccess} from '../../../src/services/agent/types';
 import {SetStateResponse} from '../../../src/types';
-import {IAgentProfile} from '../../../src/types';
 import {AGENT, WEB_RTC_PREFIX} from '../../../src/services/constants';
 import Services from '../../../src/services';
 import config from '../../../src/config';
@@ -20,7 +19,6 @@ import {CC_FILE} from '../../../src/constants';
 // Mock the Worker API
 import '../../../__mocks__/workerMock';
 import {Profile} from '../../../src/services/config/types';
-import {Logger} from '@webex/calling';
 
 jest.mock('../../../src/logger-proxy', () => ({
   __esModule: true,

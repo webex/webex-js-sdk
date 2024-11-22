@@ -101,7 +101,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
   /**
    * This is used for connecting the websocket and fetching the agent profile.
-   * @returns Promise<IAgentProfile>
+   * @returns Promise<Profile>
    * @throws Error
    * @private
    */
