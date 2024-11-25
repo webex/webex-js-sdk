@@ -7695,11 +7695,11 @@ describe('plugin-meetings', () => {
           id: 'stream',
           getTracks: () => [{id: 'track', addEventListener: sinon.stub()}],
         };
-        const simulateConnectionStateChange = (newState) => {
+        const simulateConnectionStateChange = async (newState) => {
           meeting.mediaProperties.webrtcMediaConnection.getConnectionState = sinon
             .stub()
             .returns(newState);
-          eventListeners[MediaConnectionEventNames.PEER_CONNECTION_STATE_CHANGED]();
+          await eventListeners[MediaConnectionEventNames.PEER_CONNECTION_STATE_CHANGED]();
         };
 
         beforeEach(() => {
@@ -7961,7 +7961,7 @@ describe('plugin-meetings', () => {
             meeting.reconnectionManager = new ReconnectionManager(meeting);
             meeting.reconnectionManager.iceReconnected = sinon.stub().returns(undefined);
             meeting.setNetworkStatus = sinon.stub().returns(undefined);
-            meeting.statsAnalyzer = {startAnalyzer: sinon.stub()};
+            meeting.statsAnalyzer = {startAnalyzer: sinon.stub(), stopAnalyzer: sinon.stub()};
             meeting.mediaProperties.webrtcMediaConnection = {
               // mock the on() method and store all the listeners
               on: sinon.stub().callsFake((event, listener) => {
@@ -8036,10 +8036,10 @@ describe('plugin-meetings', () => {
         });
 
         describe('CONNECTION_STATE_CHANGED event when state = "Failed"', () => {
-          const mockFailedEvent = () => {
+          const mockFailedEvent = async () => {
             meeting.setupMediaConnectionListeners();
 
-            simulateConnectionStateChange(ConnectionState.Failed);
+            await simulateConnectionStateChange(ConnectionState.Failed);
           };
 
           const checkBehavioralMetricSent = (hasMediaConnectionConnectedAtLeastOnce = false) => {
@@ -8068,6 +8068,22 @@ describe('plugin-meetings', () => {
 
             assert.notCalled(webex.internal.newMetrics.submitClientEvent);
             checkBehavioralMetricSent(true);
+          });
+
+          it('stop stats analyzer during reconnection ', async () => {
+            meeting.hasMediaConnectionConnectedAtLeastOnce = true;
+            meeting.statsAnalyzer.stopAnalyzer = sinon.stub().resolves();
+            meeting.reconnectionManager = {
+              reconnect: sinon.stub().resolves(),
+              resetReconnectionTimer: () => {}
+            };
+            meeting.currentMediaStatus = {
+              video: true
+            };
+
+            await mockFailedEvent();
+
+            assert.calledOnce(meeting.statsAnalyzer.stopAnalyzer);
           });
         });
 
