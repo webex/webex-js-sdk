@@ -47,6 +47,7 @@ import {
   type MeetingTranscriptPayload,
 } from '@webex/internal-plugin-voicea';
 
+import {IceCandidateEvent} from '@webex/internal-media-core/dist/types/MediaConnection/eventTypes';
 import {processNewCaptions} from './voicea-meeting';
 
 import {
@@ -6320,8 +6321,8 @@ export default class Meeting extends StatelessWebexPlugin {
     this.iceCandidatesCount = 0;
     this.mediaProperties.webrtcMediaConnection.on(
       MediaConnectionEventNames.ICE_CANDIDATE,
-      (event) => {
-        if (event.candidate) {
+      (event: IceCandidateEvent) => {
+        if (event.candidate && event.candidate.candidate && event.candidate.candidate.length > 0) {
           this.iceCandidatesCount += 1;
         }
       }
