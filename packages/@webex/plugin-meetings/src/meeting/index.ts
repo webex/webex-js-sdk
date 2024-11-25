@@ -7035,12 +7035,19 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   private async cleanUpBeforeReconnection(): Promise<void> {
-    // when media fails, we want to upload a webrtc dump to see whats going on
-    // this function is async, but returns once the stats have been gathered
-    await this.forceSendStatsReport({callFrom: 'cleanUpBeforeReconnection'});
+    try {
+      // when media fails, we want to upload a webrtc dump to see whats going on
+      // this function is async, but returns once the stats have been gathered
+      await this.forceSendStatsReport({callFrom: 'cleanUpBeforeReconnection'});
 
-    if (this.statsAnalyzer) {
-      await this.statsAnalyzer.stopAnalyzer();
+      if (this.statsAnalyzer) {
+        await this.statsAnalyzer.stopAnalyzer();
+      }
+    } catch (error) {
+      LoggerProxy.logger.error(
+        'Meeting:index#cleanUpBeforeReconnection --> Error during cleanup: ',
+        error
+      );
     }
   }
 
