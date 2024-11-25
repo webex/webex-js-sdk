@@ -649,7 +649,6 @@ describe('plugin-meetings', () => {
         });
 
         const fakeRoapMessage = {id: 'fake TURN discovery message'};
-        const fakeReachabilityResults = {id: 'fake reachability'};
         const fakeTurnServerInfo = {id: 'fake turn info'};
         const fakeJoinResult = {id: 'join result'};
 
@@ -666,8 +665,6 @@ describe('plugin-meetings', () => {
           addMediaInternalStub = sinon
             .stub(meeting, 'addMediaInternal')
             .returns(Promise.resolve(test4));
-
-          webex.meetings.reachability.getReachabilityResults.resolves(fakeReachabilityResults);
 
           generateTurnDiscoveryRequestMessageStub = sinon
             .stub(meeting.roap, 'generateTurnDiscoveryRequestMessage')
@@ -688,7 +685,6 @@ describe('plugin-meetings', () => {
           assert.calledOnceWithExactly(meeting.join, {
             ...joinOptions,
             roapMessage: fakeRoapMessage,
-            reachability: fakeReachabilityResults,
           });
           assert.calledOnceWithExactly(generateTurnDiscoveryRequestMessageStub, meeting, true);
           assert.calledOnceWithExactly(
@@ -725,7 +721,6 @@ describe('plugin-meetings', () => {
           assert.calledOnceWithExactly(meeting.join, {
             ...joinOptions,
             roapMessage: undefined,
-            reachability: fakeReachabilityResults,
           });
           assert.calledOnceWithExactly(generateTurnDiscoveryRequestMessageStub, meeting, true);
           assert.notCalled(handleTurnDiscoveryHttpResponseStub);
@@ -757,7 +752,6 @@ describe('plugin-meetings', () => {
           assert.calledOnceWithExactly(meeting.join, {
             ...joinOptions,
             roapMessage: fakeRoapMessage,
-            reachability: fakeReachabilityResults,
           });
           assert.calledOnceWithExactly(generateTurnDiscoveryRequestMessageStub, meeting, true);
           assert.calledOnceWithExactly(
@@ -3692,6 +3686,8 @@ describe('plugin-meetings', () => {
             meeting.setMercuryListener = sinon.stub();
             meeting.locusInfo.onFullLocus = sinon.stub();
             meeting.webex.meetings.geoHintInfo = {regionCode: 'EU', countryCode: 'UK'};
+            meeting.webex.meetings.reachability.getReachabilityReportToAttachToRoap = sinon.stub().resolves({id: 'fake reachability'});
+            meeting.webex.meetings.reachability.getClientMediaPreferences = sinon.stub().resolves({id: 'fake clientMediaPreferences'});
             meeting.roap.doTurnDiscovery = sinon.stub().resolves({
               turnServerInfo: {
                 url: 'turns:turn-server-url:443?transport=tcp',
@@ -3877,6 +3873,9 @@ describe('plugin-meetings', () => {
           const checkSdpOfferSent = ({audioMuted, videoMuted}) => {
             const {sdp, seq, tieBreaker} = roapOfferMessage;
 
+            assert.calledWith(meeting.webex.meetings.reachability.getClientMediaPreferences, meeting.isMultistream, 0);
+            assert.calledWith(meeting.webex.meetings.reachability.getReachabilityReportToAttachToRoap);
+
             assert.calledWith(locusMediaRequestStub, {
               method: 'PUT',
               uri: `${meeting.selfUrl}/media`,
@@ -3890,14 +3889,12 @@ describe('plugin-meetings', () => {
                 correlationId: meeting.correlationId,
                 localMedias: [
                   {
-                    localSdp: `{"audioMuted":${audioMuted},"videoMuted":${videoMuted},"roapMessage":{"messageType":"OFFER","sdps":["${sdp}"],"version":"2","seq":"${seq}","tieBreaker":"${tieBreaker}","headers":["includeAnswerInHttpResponse","noOkInTransaction"]}}`,
+                    localSdp: `{"audioMuted":${audioMuted},"videoMuted":${videoMuted},"roapMessage":{"messageType":"OFFER","sdps":["${sdp}"],"version":"2","seq":"${seq}","tieBreaker":"${tieBreaker}","headers":["includeAnswerInHttpResponse","noOkInTransaction"]},"reachability":{"id":"fake reachability"}}`,
                     mediaId: 'fake media id',
                   },
                 ],
                 clientMediaPreferences: {
-                  preferTranscoding: !meeting.isMultistream,
-                  joinCookie: undefined,
-                  ipver: 0,
+                  id: 'fake clientMediaPreferences',
                 },
               },
             });
@@ -3918,13 +3915,11 @@ describe('plugin-meetings', () => {
                 },
                 correlationId: meeting.correlationId,
                 clientMediaPreferences: {
-                  preferTranscoding: !meeting.isMultistream,
-                  ipver: undefined,
-                  joinCookie: undefined,
+                  id: 'fake clientMediaPreferences',
                 },
                 localMedias: [
                   {
-                    localSdp: `{"audioMuted":${audioMuted},"videoMuted":${videoMuted},"roapMessage":{"messageType":"OK","version":"2","seq":"${seq}"}}`,
+                    localSdp: `{"audioMuted":${audioMuted},"videoMuted":${videoMuted},"roapMessage":{"messageType":"OK","version":"2","seq":"${seq}"},"reachability":{"id":"fake reachability"}}`,
                     mediaId: 'fake media id',
                   },
                 ],
@@ -3950,10 +3945,6 @@ describe('plugin-meetings', () => {
                     mediaId: 'fake media id',
                   },
                 ],
-                clientMediaPreferences: {
-                  preferTranscoding: !meeting.isMultistream,
-                  ipver: undefined,
-                },
                 respOnlySdp: true,
                 usingResource: null,
               },

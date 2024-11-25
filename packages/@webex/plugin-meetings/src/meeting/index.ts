@@ -4771,8 +4771,6 @@ export default class Meeting extends StatelessWebexPlugin {
       if (!joinResponse) {
         // This is the 1st attempt or a retry after join request failed -> we need to do a join with TURN discovery
 
-        // @ts-ignore
-        joinOptions.reachability = await this.webex.meetings.reachability.getReachabilityResults();
         const turnDiscoveryRequest = await this.roap.generateTurnDiscoveryRequestMessage(
           this,
           true
