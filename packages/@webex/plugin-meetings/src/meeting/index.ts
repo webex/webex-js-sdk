@@ -4904,6 +4904,8 @@ export default class Meeting extends StatelessWebexPlugin {
       );
     }
 
+    this.cleanUpBeforeReconnection();
+
     return this.reconnectionManager
       .reconnect(options, async () => {
         await this.waitForRemoteSDPAnswer();
@@ -7029,6 +7031,23 @@ export default class Meeting extends StatelessWebexPlugin {
       this.sendSlotManager.reset();
 
       this.mediaProperties.unsetPeerConnection();
+    }
+  }
+
+  private async cleanUpBeforeReconnection(): Promise<void> {
+    try {
+      // when media fails, we want to upload a webrtc dump to see whats going on
+      // this function is async, but returns once the stats have been gathered
+      await this.forceSendStatsReport({callFrom: 'cleanUpBeforeReconnection'});
+
+      if (this.statsAnalyzer) {
+        await this.statsAnalyzer.stopAnalyzer();
+      }
+    } catch (error) {
+      LoggerProxy.logger.error(
+        'Meeting:index#cleanUpBeforeReconnection --> Error during cleanup: ',
+        error
+      );
     }
   }
 
