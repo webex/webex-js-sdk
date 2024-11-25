@@ -26,7 +26,7 @@ export default class WebCallingService {
     this.line = Object.values(this.callingClient.getLines())[0];
 
     this.line.on(LINE_EVENTS.UNREGISTERED, () => {
-      LoggerProxy.log(`WxCC-SDK: Desktop un registered successfully`, {
+      LoggerProxy.log(`WxCC-SDK: Desktop unregistered successfully`, {
         module: WEB_CALLING_SERVICE_FILE,
         method: this.registerWebCallingLine.name,
       });
