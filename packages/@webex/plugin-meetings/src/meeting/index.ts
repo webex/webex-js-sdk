@@ -4904,6 +4904,8 @@ export default class Meeting extends StatelessWebexPlugin {
       );
     }
 
+    this.cleanUpBeforeReconnection();
+
     return this.reconnectionManager
       .reconnect(options, async () => {
         await this.waitForRemoteSDPAnswer();
@@ -6154,8 +6156,6 @@ export default class Meeting extends StatelessWebexPlugin {
           // we know the media connection failed and browser will not attempt to recover it any more
           // so reset the timer as it's not needed anymore, we want to reconnect immediately
           this.reconnectionManager.resetReconnectionTimer();
-
-          this.cleanUpBeforeReconnection();
 
           this.reconnect({networkDisconnect: true});
 
