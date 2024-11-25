@@ -8059,6 +8059,13 @@ describe('plugin-meetings', () => {
           it('stop stats analyzer during reconnection ', async () => {
             meeting.hasMediaConnectionConnectedAtLeastOnce = true;
             meeting.statsAnalyzer.stopAnalyzer = sinon.stub().resolves();
+            meeting.reconnectionManager = {
+              reconnect: sinon.stub().resolves(),
+              resetReconnectionTimer: () => {}
+            };
+            meeting.currentMediaStatus = {
+              video: true
+            };
 
             await mockFailedEvent();
 
