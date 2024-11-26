@@ -334,14 +334,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     switch (deviceType) {
       case LoginOption.BROWSER:
         await this.webCallingService.registerWebCallingLine();
-        this.agentConfig.deviceType = LoginOption.BROWSER;
         break;
-      case LoginOption.AGENT_DN:
-        this.agentConfig.deviceType = LoginOption.AGENT_DN;
-        this.agentConfig.defaultDn = dn;
-        break;
-      case LoginOption.EXTENSION:
-        this.agentConfig.deviceType = LoginOption.EXTENSION;
+      case (LoginOption.AGENT_DN, LoginOption.EXTENSION):
         this.agentConfig.defaultDn = dn;
         break;
       default:
@@ -351,5 +345,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         });
         throw new Error(`Unsupported device type: ${deviceType}`);
     }
+    this.agentConfig.deviceType = deviceType as LoginOption;
   }
 }
