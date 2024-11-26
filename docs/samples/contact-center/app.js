@@ -208,6 +208,7 @@ function logoutAgent() {
 
     setTimeout(() => {
       logoutAgentElm.classList.add('hidden');
+      agentLogin.selectedIndex = 0;
     }, 1000);
   }
   ).catch((error) => {
