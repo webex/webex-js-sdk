@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Presence Kitchen Sink</title>
+  <link rel="stylesheet" href="./style.css" />
+</head>
+
+<body>
+  <main class="container">
+    <div style="display: flex; justify-content: center;">
+      <article id="docs-content" class="docs">
+
+        <!-- ############################## ############################## ############################## -->
+        <section>
+          <h2>Webex - encryption</h2>
+          <p>Use this kitchen sink to interact with the Webex encryption service</p>
+        </section>
+
+        <!-- ############################## ############################## ############################## -->
+        <!-- meeting / authentication -->
+        <section id="authentication">
+          <h2 class="collapsible">Authentication</h2>
+          <div class="section-content">
+            <p class="note"><strong>Note:</strong> Get an access token from our developer portal: <a
+                href="https://developer.webex.com/docs/api/getting-started"
+                target="_blank">https://developer.webex.com/docs/api/getting-started</a>.</p>
+            <p class="note"><strong>Note:</strong> Webex JS SDK must be initialized using a valid token.</p>
+
+            <!-- meeting / authentication-credentials -->
+            <form id="credentials">
+                <fieldset>
+                  <legend>Credentials</legend>
+                  <div class="u-mv">
+                    <p class="note">Initializes webex object and registers Webex JS SDK as a device.</p>
+                    <button id="enableProduction" type="button" class="btn-code" onclick=changeEnv()>In Production</button><span class="text-color"> ( Click to change the environment )</span>
+                    <input id="access-token" name="accessToken" placeholder="Access Token" value="" type="text" style="margin: 1rem 0 0.5rem 0;" required>
+                  </div>
+
+                  <button id="access-token-save" class="btn-code" type="submit">Initialize Webex</button>
+                  <pre id="access-token-status">Not initialized</pre>
+                </fieldset>
+              </form>
+          </div>
+        </section>
+
+        <!-- presence-management -->
+        <section id="presenceActions">
+          <h2 class="collapsible">Encryption Actions</h2>
+          <div class="section-content">
+            <fieldset>
+              <legend>Decrypt files</legend>
+              <div class="u-mv">
+                File URL: <input id="encrypted-file-url" value="https://files-api-a.wbx2.com/v1/spaces/32ee69e8-f614-4b1b-a9f9-e472ab338e15/contents/ff44c732-91da-4d20-8979-aee71a0194e4/versions/2b59d407e4a64e6c8d71ec5eb4886832/bytes?keyUri=kms%3A%2F%2Fcisco.com%2Fkeys%2F3a0be121-c8e6-4ddb-b8a5-912c05b22c40&JWE=eyJlbmMiOiJBMjU2R0NNIiwiYWxnIjoiZGlyIn0..JnhlKeq14qXPLsKi.qDnQZFIyB7UCh1VxF53h42pWfQ1jnP6ZcwixnM9zFW9z4xMaKr3a-pLH_OEZNUOHM7A-qsoJHVvnACWNDNXfwPnKAMDERaS-9GsA3_mGqiT-CqgAWXrnkMSe1I3NHd3Q80RZ2zQ6TwxG9XrKUMgDvOWWp3oAc2UPJUDPJY04mAmK4LLXGrSJLENSuyf6IoofrBCtQMJGIw_vkwoA_9_uq0gK9JqSh-tjO-N7RBi51DyGmJko0Yr7Hb_QQgm2tv0eBVvQal0pIRJEPWmFTxu61XBvd2giOuRxDshG_Kmdf8MbngIdiLUcOfhosaNSFcVRzZYs_ZH4W0973QJCFw4-QFMOlL2rRztBQebgTTuxFPC6JouXth150y88BBBq-gbDzM__BAYITIsaR4v0YkPoAckF-9qvM4S2fqJOCKslCzf7u5yxEs9p8eVP1roVofM.dp2VT2zAPY1OUD-r-pOpGQ" type="string" style="display: block; margin-bottom: 0.5rem;">
+                <button type="button" id="decrypt-my-file-btn" onclick="decryptFile()" class="btn-code">
+                  <div>Download and decrypt my file: <span id="decrypt-file-result"></span> </div>
+                </button>
+            </fieldset>
+          </div>
+        </section>
+
+      </article>
+    </div>
+  </main>
+  <script src="../webex.min.js"></script>
+  <script src="app.js"></script>
+</body>
+
+</html>
