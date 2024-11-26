@@ -188,7 +188,9 @@ const Encryption = WebexPlugin.extend({
       return Promise.reject(new Error('Cannot encrypt `scr` without first setting `loc`'));
     }
 
-    return this.getKey(key, options).then((k) => scr.toJWE(k.jwk));
+    return this.getKey(key, options).then((k) =>
+      SCR.fromJSON(scr).then((encScr) => encScr.toJWE(k.jwk))
+    );
   },
 
   /**
