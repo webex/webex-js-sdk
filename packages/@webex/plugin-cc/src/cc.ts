@@ -295,7 +295,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   private async silentRelogin(): Promise<void> {
     try {
       const reLoginResponse = await this.services.agent.reload();
-      const {auxCodeId, agentId, lastStateChangeReason} = reLoginResponse.data;
+      const {auxCodeId, agentId, lastStateChangeReason, deviceType, dn} = reLoginResponse.data;
 
       if (lastStateChangeReason === 'agent-wss-disconnect') {
         LoggerProxy.info(
@@ -310,7 +310,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         };
         await this.setAgentState(stateChangeData);
       }
-      // Updating isAgentLoggedIn as true to indicate to the end user
+
+      await this.handleDeviceType(deviceType, dn);
       this.agentConfig.isAgentLoggedIn = true;
     } catch (error) {
       const {reason, error: detailedError} = getErrorDetails(error, 'silentReLogin', CC_FILE);
@@ -323,6 +324,32 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         return;
       }
       throw detailedError;
+    }
+  }
+
+  /**
+   * Handles the device type specific logic
+   */
+  private async handleDeviceType(deviceType: string, dn: string): Promise<void> {
+    switch (deviceType) {
+      case LoginOption.BROWSER:
+        await this.webCallingService.registerWebCallingLine();
+        this.agentConfig.deviceType = LoginOption.BROWSER;
+        break;
+      case LoginOption.AGENT_DN:
+        this.agentConfig.deviceType = LoginOption.AGENT_DN;
+        this.agentConfig.defaultDn = dn;
+        break;
+      case LoginOption.EXTENSION:
+        this.agentConfig.deviceType = LoginOption.EXTENSION;
+        this.agentConfig.defaultDn = dn;
+        break;
+      default:
+        LoggerProxy.error(`Unsupported device type: ${deviceType}`, {
+          module: CC_FILE,
+          method: this.handleDeviceType.name,
+        });
+        throw new Error(`Unsupported device type: ${deviceType}`);
     }
   }
 }

@@ -183,6 +183,8 @@ describe('webex.cc', () => {
         data: {
           auxCodeId: 'auxCodeId',
           agentId: 'agentId',
+          deviceType: LoginOption.EXTENSION,
+          dn: '12345',
         },
       });
       const configSpy = jest
@@ -667,6 +669,8 @@ describe('webex.cc', () => {
           auxCodeId: 'auxCodeId',
           agentId: 'agentId',
           lastStateChangeReason: 'agent-wss-disconnect',
+          deviceType: LoginOption.BROWSER,
+          dn: '12345',
         },
       };
 
@@ -695,6 +699,7 @@ describe('webex.cc', () => {
         agentId: 'agentId',
       });
       expect(webex.cc.agentConfig.isAgentLoggedIn).toBe(true);
+      expect(webex.cc.agentConfig.deviceType).toBe(LoginOption.BROWSER);
     });
 
     it('should handle AGENT_NOT_FOUND error silently', async () => {
@@ -713,6 +718,39 @@ describe('webex.cc', () => {
         'Agent not found during re-login, handling silently',
         {module: CC_FILE, method: 'silentRelogin'}
       );
+    });
+  
+    it('should handle errors during silent relogin', async () => {
+      const error = new Error('Error while performing silentReLogin');
+      jest.spyOn(webex.cc.services.agent, 'reload').mockRejectedValue(error);
+  
+      await expect(webex.cc['silentRelogin']()).rejects.toThrow(error);
+    });
+  
+    it('should update agentConfig with deviceType during silent relogin', async () => {
+      const mockReLoginResponse = {
+        data: {
+          auxCodeId: 'auxCodeId',
+          agentId: 'agentId',
+          lastStateChangeReason: 'agent-wss-disconnect',
+          deviceType: LoginOption.EXTENSION,
+          dn: '12345',
+        },
+      };
+  
+      // Mock the agentConfig
+      webex.cc.agentConfig = {
+        agentId: 'agentId',
+        agentProfileID: 'test-agent-profile-id',
+        isAgentLoggedIn: false,
+      } as Profile;
+  
+      jest.spyOn(webex.cc.services.agent, 'reload').mockResolvedValue(mockReLoginResponse);
+  
+      await webex.cc['silentRelogin']();
+  
+      expect(webex.cc.agentConfig.deviceType).toBe(LoginOption.EXTENSION);
+      expect(webex.cc.agentConfig.defaultDn).toBe('12345');
     });
   });
 });

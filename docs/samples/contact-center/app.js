@@ -130,14 +130,15 @@ function register() {
         });
         const loginVoiceOptions = agentProfile.loginVoiceOptions;
         agentLogin.innerHTML = '<option value="" selected>Choose Agent Login ...</option>'; // Clear previously selected option on agentLogin.
-        dialNumber.value = '';
-        dialNumber.disabled = true;
+        dialNumber.value = agentProfile.defaultDn ? agentProfile.defaultDn : '';
+        dialNumber.disabled = agentProfile.defaultDn ? false : true;
         if(loginVoiceOptions.length > 0) agentLoginButton.disabled = false;
         loginVoiceOptions.forEach((voiceOptions)=> {
           const option = document.createElement('option');
           option.text = voiceOptions;
           option.value = voiceOptions;
           agentLogin.add(option);
+          option.selected = agentProfile.isAgentLoggedIn && voiceOptions === agentProfile.deviceType;
         });
 
         if (agentProfile.isAgentLoggedIn) {
