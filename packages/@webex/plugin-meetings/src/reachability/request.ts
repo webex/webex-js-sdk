@@ -46,6 +46,7 @@ class ReachabilityRequest {
               JCSupport: 1,
               ipver: ipVersion,
             },
+            timeout: this.webex.config.meetings.reachabilityGetClusterTimeout,
           }),
         'internal.get.cluster.time'
       )

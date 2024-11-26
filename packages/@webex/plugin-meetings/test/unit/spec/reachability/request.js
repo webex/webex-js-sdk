@@ -57,18 +57,23 @@ describe('plugin-meetings/reachability', () => {
         }
       }));
 
+      webex.config.meetings.reachabilityGetClusterTimeout = 3000;
+
       const res = await reachabilityRequest.getClusters(IP_VERSION.only_ipv4);
       const requestParams = webex.request.getCall(0).args[0];
 
-      assert.equal(requestParams.method, 'GET');
-      assert.equal(requestParams.resource, `clusters`);
-      assert.equal(requestParams.api, 'calliopeDiscovery');
-      assert.equal(requestParams.shouldRefreshAccessToken, false);
-
-      assert.deepEqual(requestParams.qs, {
-        JCSupport: 1,
-        ipver: 4,
+      assert.deepEqual(requestParams, {
+        method: 'GET',
+        resource: `clusters`,
+        api: 'calliopeDiscovery',
+        shouldRefreshAccessToken: false,
+        qs: {
+          JCSupport: 1,
+          ipver: 4,
+        },
+        timeout: 3000,
       });
+
       assert.deepEqual(res.clusters.clusterId, {udp: "testUDP", isVideoMesh: true})
       assert.deepEqual(res.joinCookie, {anycastEntryPoint: "aws-eu-west-1"})
       assert.calledOnceWithExactly(webex.internal.newMetrics.callDiagnosticLatencies.measureLatency, sinon.match.func, 'internal.get.cluster.time');

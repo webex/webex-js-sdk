@@ -95,5 +95,6 @@ export default {
     // This only applies to non-multistream meetings
     iceCandidatesGatheringTimeout: undefined,
     backendIpv6NativeSupport: false,
+    reachabilityGetClusterTimeout: 5000,
   },
 };
