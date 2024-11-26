@@ -93,6 +93,10 @@ interface IInMeetingActions {
   canShowStageView?: boolean;
   canEnableStageView?: boolean;
   canDisableStageView?: boolean;
+  IsPracticeSessionOn?: boolean;
+  IsPracticeSessionOff?: boolean;
+  canStartPracticeSession?: boolean;
+  canStopPracticeSession?: boolean;
 }
 
 /**
@@ -266,6 +270,15 @@ export default class InMeetingActions implements IInMeetingActions {
   canEnableStageView = null;
 
   canDisableStageView = null;
+
+  IsPracticeSessionOn = null;
+
+  IsPracticeSessionOff = null;
+
+  canStartPracticeSession = null;
+
+  canStopPracticeSession = null;
+
   /**
    * Returns all meeting action options
    * @returns {Object}
@@ -354,6 +367,10 @@ export default class InMeetingActions implements IInMeetingActions {
     canShowStageView: this.canShowStageView,
     canEnableStageView: this.canEnableStageView,
     canDisableStageView: this.canDisableStageView,
+    IsPracticeSessionOn: this.IsPracticeSessionOn,
+    IsPracticeSessionOff: this.IsPracticeSessionOff,
+    canStartPracticeSession: this.canStartPracticeSession,
+    canStopPracticeSession: this.canStopPracticeSession,
   });
 
   /**

@@ -88,6 +88,11 @@ describe('plugin-meetings', () => {
         canShowStageView: null,
         canEnableStageView: null,
         canDisableStageView: null,
+        IsPracticeSessionOn : null,
+        IsPracticeSessionOff : null,
+        canStartPracticeSession: null,
+        canStopPracticeSession: null,
+
         ...expected,
       };
 
@@ -181,7 +186,12 @@ describe('plugin-meetings', () => {
       'canShowStageView',
       'canEnableStageView',
       'canDisableStageView',
-    ].forEach((key) => {
+      'IsPracticeSessionOn',
+      'IsPracticeSessionOff',
+      'canStartPracticeSession',
+      'canStopPracticeSession',
+
+  ].forEach((key) => {
       it(`get and set for ${key} work as expected`, () => {
         const inMeetingActions = new InMeetingActions();
 
