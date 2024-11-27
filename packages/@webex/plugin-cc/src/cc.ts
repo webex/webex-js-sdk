@@ -311,7 +311,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         await this.setAgentState(stateChangeData);
       }
 
-      await this.handleDeviceType(deviceType, dn);
+      await this.handleDeviceType(deviceType as LoginOption, dn);
       this.agentConfig.isAgentLoggedIn = true;
     } catch (error) {
       const {reason, error: detailedError} = getErrorDetails(error, 'silentReLogin', CC_FILE);
@@ -330,7 +330,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   /**
    * Handles the device type specific logic
    */
-  private async handleDeviceType(deviceType: string, dn: string): Promise<void> {
+  private async handleDeviceType(deviceType: LoginOption, dn: string): Promise<void> {
     switch (deviceType) {
       case LoginOption.BROWSER:
         await this.webCallingService.registerWebCallingLine();
@@ -345,6 +345,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         });
         throw new Error(`Unsupported device type: ${deviceType}`);
     }
-    this.agentConfig.deviceType = deviceType as LoginOption;
+    this.agentConfig.deviceType = deviceType;
   }
 }
