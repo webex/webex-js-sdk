@@ -727,7 +727,7 @@ describe('webex.cc', () => {
       await expect(webex.cc['silentRelogin']()).rejects.toThrow(error);
     });
   
-    it('should update agentConfig with deviceType during silent relogin', async () => {
+    it('should update agentConfig with deviceType during silent relogin for EXTENSION', async () => {
       const mockReLoginResponse = {
         data: {
           auxCodeId: 'auxCodeId',
@@ -751,6 +751,33 @@ describe('webex.cc', () => {
   
       expect(webex.cc.agentConfig.deviceType).toBe(LoginOption.EXTENSION);
       expect(webex.cc.agentConfig.defaultDn).toBe('12345');
+    });
+
+    it('should update agentConfig with deviceType during silent relogin for AGENT_DN', async () => {
+      const mockReLoginResponse = {
+        data: {
+          auxCodeId: 'auxCodeId',
+          agentId: 'agentId',
+          lastStateChangeReason: 'agent-wss-disconnect',
+          deviceType: LoginOption.AGENT_DN,
+          dn: '67890',
+          subStatus: 'subStatusValue',
+        },
+      };
+  
+      // Mock the agentConfig
+      webex.cc.agentConfig = {
+        agentId: 'agentId',
+        agentProfileID: 'test-agent-profile-id',
+        isAgentLoggedIn: false,
+      } as Profile;
+  
+      jest.spyOn(webex.cc.services.agent, 'reload').mockResolvedValue(mockReLoginResponse);
+  
+      await webex.cc['silentRelogin']();
+  
+      expect(webex.cc.agentConfig.deviceType).toBe(LoginOption.AGENT_DN);
+      expect(webex.cc.agentConfig.defaultDn).toBe('67890');
     });
   });
 });

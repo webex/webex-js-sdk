@@ -335,7 +335,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       case LoginOption.BROWSER:
         await this.webCallingService.registerWebCallingLine();
         break;
-      case (LoginOption.AGENT_DN, LoginOption.EXTENSION):
+      case LoginOption.AGENT_DN:
+      case LoginOption.EXTENSION:
         this.agentConfig.defaultDn = dn;
         break;
       default:
