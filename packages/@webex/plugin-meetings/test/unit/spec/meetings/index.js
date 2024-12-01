@@ -2088,7 +2088,7 @@ describe('plugin-meetings', () => {
           assert.equal(webex.meetings.preferredWebexSite, '');
           assert.calledOnceWithExactly(
             loggerProxySpy,
-            'Failed to retrieve user information. No site will be set'
+            'Failed to retrieve user information. No preferredWebexSite will be set'
           );
         });
 
