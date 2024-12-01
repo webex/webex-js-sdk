@@ -1089,7 +1089,7 @@ export default class Meetings extends WebexPlugin {
         return Promise.resolve();
       })
       .catch(() => {
-        LoggerProxy.logger.error('Failed to retrieve user information. No site will be set');
+        LoggerProxy.logger.error('Failed to retrieve user information. No preferredWebexSite will be set');
       });
   }
 
