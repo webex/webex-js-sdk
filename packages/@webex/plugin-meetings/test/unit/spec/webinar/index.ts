@@ -122,37 +122,20 @@ describe('plugin-meetings', () => {
         });
       });
 
-      describe('#startPracticeSession', () => {
-        it('sends a PATCH request to enable the practice session', async () => {
-          const enabled = true;
-
-          const result = await webinar.startPracticeSession(enabled);
-
-          assert.calledOnce(webex.request);
-          assert.calledWith(webex.request, {
-            method: 'PATCH',
-            uri: `${webinar.locusUrl}/controls`,
-            body: {
-              practiceSession: { enabled },
-            },
+      describe("#setPracticeSessionState", () => {
+        [true, false].forEach((enabled) => {
+          it(`sends a PATCH request to ${enabled ? "enable" : "disable"} the practice session`, async () => {
+            const result = await webinar.setPracticeSessionState(enabled);
+            assert.calledOnce(webex.request);
+            assert.calledWith(webex.request, {
+              method: "PATCH",
+              uri: `${webinar.locusUrl}/controls`,
+              body: {
+                practiceSession: { enabled }
+              }
+            });
+            assert.equal(result, "REQUEST_RETURN_VALUE", "should return the resolved value from the request");
           });
-          assert.equal(result, 'REQUEST_RETURN_VALUE', 'should return the resolved value from the request');
-        });
-
-        it('sends a PATCH request to disable the practice session', async () => {
-          const enabled = false;
-
-          const result = await webinar.startPracticeSession(enabled);
-
-          assert.calledOnce(webex.request);
-          assert.calledWith(webex.request, {
-            method: 'PATCH',
-            uri: `${webinar.locusUrl}/controls`,
-            body: {
-              practiceSession: { enabled },
-            },
-          });
-          assert.equal(result, 'REQUEST_RETURN_VALUE', 'should return the resolved value from the request');
         });
 
         it('handles API call failures gracefully', async () => {
@@ -160,15 +143,28 @@ describe('plugin-meetings', () => {
           const errorLogger = sinon.stub(LoggerProxy.logger, 'error');
 
           try {
-            await webinar.startPracticeSession(true);
-            assert.fail('startPracticeSession should throw an error');
+            await webinar.setPracticeSessionState(true);
+            assert.fail('setPracticeSessionState should throw an error');
           } catch (error) {
             assert.equal(error.message, 'API_ERROR', 'should throw the correct error');
             assert.calledOnce(errorLogger);
-            assert.calledWith(errorLogger, 'Meeting:webinar#startPracticeSession failed', sinon.match.instanceOf(Error));
+            assert.calledWith(errorLogger, 'Meeting:webinar#setPracticeSessionState failed', sinon.match.instanceOf(Error));
           }
 
           errorLogger.restore();
+        });
+      });
+
+      describe('#updatePracticeSessionStatus', () => {
+        it('sets PS state true', () => {
+          webinar.updatePracticeSessionStatus({enabled: true});
+
+          assert.equal(webinar.practiceSessionEnabled, true);
+        });
+        it('sets PS state true', () => {
+          webinar.updatePracticeSessionStatus({enabled: false});
+
+          assert.equal(webinar.practiceSessionEnabled, false);
         });
       });
 

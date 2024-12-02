@@ -88,8 +88,8 @@ describe('plugin-meetings', () => {
         canShowStageView: null,
         canEnableStageView: null,
         canDisableStageView: null,
-        IsPracticeSessionOn : null,
-        IsPracticeSessionOff : null,
+        isPracticeSessionOn : null,
+        isPracticeSessionOff : null,
         canStartPracticeSession: null,
         canStopPracticeSession: null,
 
@@ -186,8 +186,8 @@ describe('plugin-meetings', () => {
       'canShowStageView',
       'canEnableStageView',
       'canDisableStageView',
-      'IsPracticeSessionOn',
-      'IsPracticeSessionOff',
+      'isPracticeSessionOn',
+      'isPracticeSessionOff',
       'canStartPracticeSession',
       'canStopPracticeSession',
 

@@ -76,11 +76,11 @@ const Webinar = WebexPlugin.extend({
   },
 
   /**
-   * start practice session for webinar
+   * start or stop practice session for webinar
    * @param {boolean} enabled
    * @returns {Promise}
    */
-  startPracticeSession(enabled) {
+  setPracticeSessionState(enabled) {
     return this.request({
       method: HTTP_VERBS.PATCH,
       uri: `${this.locusUrl}/controls`,
@@ -90,7 +90,7 @@ const Webinar = WebexPlugin.extend({
         },
       },
     }).catch((error) => {
-      LoggerProxy.logger.error('Meeting:webinar#startPracticeSession failed', error);
+      LoggerProxy.logger.error('Meeting:webinar#setPracticeSessionState failed', error);
       throw error;
     });
   },

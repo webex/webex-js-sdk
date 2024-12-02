@@ -3905,11 +3905,11 @@ export default class Meeting extends StatelessWebexPlugin {
             requiredHints: [DISPLAY_HINTS.DISABLE_STAGE_VIEW],
             displayHints: this.userDisplayHints,
           }),
-          IsPracticeSessionOn: ControlsOptionsUtil.hasHints({
+          isPracticeSessionOn: ControlsOptionsUtil.hasHints({
             requiredHints: [DISPLAY_HINTS.PRACTICE_SESSION_ON],
             displayHints: this.userDisplayHints,
           }),
-          IsPracticeSessionOff: ControlsOptionsUtil.hasHints({
+          isPracticeSessionOff: ControlsOptionsUtil.hasHints({
             requiredHints: [DISPLAY_HINTS.PRACTICE_SESSION_OFF],
             displayHints: this.userDisplayHints,
           }),
