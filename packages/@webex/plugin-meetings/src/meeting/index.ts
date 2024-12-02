@@ -2655,6 +2655,7 @@ export default class Meeting extends StatelessWebexPlugin {
     });
 
     this.locusInfo.on(LOCUSINFO.EVENTS.CONTROLS_PRACTICE_SESSION_STATUS_UPDATED, ({state}) => {
+      this.webinar.updatePracticeSessionStatus(state);
       Trigger.trigger(
         this,
         {file: 'meeting/index', function: 'setupLocusControlsListener'},

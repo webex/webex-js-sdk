@@ -23,6 +23,7 @@ const Webinar = WebexPlugin.extend({
     canManageWebcast: 'boolean', // appears the ability to manage webcast
     selfIsPanelist: 'boolean', // self is panelist
     selfIsAttendee: 'boolean', // self is attendee
+    practiceSessionEnabled: 'boolean', // practice session enabled
   },
 
   /**
@@ -92,6 +93,15 @@ const Webinar = WebexPlugin.extend({
       LoggerProxy.logger.error('Meeting:webinar#startPracticeSession failed', error);
       throw error;
     });
+  },
+
+  /**
+   * update practice session status
+   * @param {object} payload
+   * @returns {void}
+   */
+  updatePracticeSessionStatus(payload) {
+    this.set('practiceSessionEnabled', payload.enabled);
   },
 });
 
