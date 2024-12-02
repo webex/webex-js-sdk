@@ -5,6 +5,7 @@ import LoggerProxy from '../common/logs/logger-proxy';
 import {IP_VERSION, REACHABILITY} from '../constants';
 import {LocusMediaRequest} from '../meeting/locusMediaRequest';
 import MeetingUtil from '../meeting/util';
+import {ClientMediaPreferences} from '../reachability/reachability.types';
 
 /**
  * @class RoapRequest
@@ -41,17 +42,28 @@ export default class RoapRequest extends StatelessWebexPlugin {
       return Promise.reject(new Error('sendRoap called when locusMediaRequest is undefined'));
     }
 
-    const reachability =
-      // @ts-ignore
-      await this.webex.meetings.reachability.getReachabilityReportToAttachToRoap();
+    let reachability;
+    let clientMediaPreferences: ClientMediaPreferences = {
+      // bare minimum fallback value that should allow us to join;
+      joinCookie: undefined,
+      ipver: IP_VERSION.unknown,
+      preferTranscoding: !isMultistream,
+    };
 
-    const clientMediaPreferences =
-      // @ts-ignore
-      await this.webex.meetings.reachability.getClientMediaPreferences(
-        isMultistream,
+    try {
+      clientMediaPreferences =
         // @ts-ignore
-        MeetingUtil.getIpVersion(this.webex)
-      );
+        await this.webex.meetings.reachability.getClientMediaPreferences(
+          isMultistream,
+          // @ts-ignore
+          MeetingUtil.getIpVersion(this.webex)
+        );
+      reachability =
+        // @ts-ignore
+        await this.webex.meetings.reachability.getReachabilityReportToAttachToRoap();
+    } catch (error) {
+      LoggerProxy.logger.error('Roap:request#sendRoap --> reachability error:', error);
+    }
 
     LoggerProxy.logger.info(
       `Roap:request#sendRoap --> ${roapMessage.messageType} seq:${roapMessage.seq} ${

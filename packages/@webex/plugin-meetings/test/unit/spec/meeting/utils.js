@@ -473,6 +473,29 @@ describe('plugin-meetings', () => {
         });
       });
 
+      it('should handle failed reachability report retrieval', async () => {
+        webex.meetings.reachability.getReachabilityReportToAttachToRoap.rejects(
+          new Error('fake error')
+        );
+        await MeetingUtil.joinMeeting(meeting, {});
+        // Verify meeting join still proceeds
+        assert.calledOnce(meeting.meetingRequest.joinMeeting);
+      });
+
+      it('should handle failed clientMediaPreferences retrieval', async () => {
+        webex.meetings.reachability.getClientMediaPreferences.rejects(new Error('fake error'));
+        meeting.isMultistream = true;
+        await MeetingUtil.joinMeeting(meeting, {});
+        // Verify meeting join still proceeds
+        assert.calledOnce(meeting.meetingRequest.joinMeeting);
+        const parameter = meeting.meetingRequest.joinMeeting.getCall(0).args[0];
+        assert.deepEqual(parameter.clientMediaPreferences, {
+          preferTranscoding: false,
+          ipver: 0,
+          joinCookie: undefined,
+        });
+      });
+
       it('#Should call meetingRequest.joinMeeting with breakoutsSupported=true when passed in as true', async () => {
         await MeetingUtil.joinMeeting(meeting, {
           breakoutsSupported: true,

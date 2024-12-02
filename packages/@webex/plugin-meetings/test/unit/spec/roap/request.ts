@@ -82,11 +82,13 @@ describe('plugin-meetings/roap', () => {
     );
   });
 
+  afterEach(() => {
+    sinon.restore();
+  })
+
   describe('sendRoap', () => {
     it('includes clientMediaPreferences and reachability in the request correctly', async () => {
       const locusMediaRequest = {send: sinon.stub().resolves({body: {locus: {}}})};
-
-      const ipVersion = IP_VERSION.unknown;
 
       const FAKE_REACHABILITY_REPORT = {
         id: 'fake reachability report',
@@ -122,6 +124,37 @@ describe('plugin-meetings/roap', () => {
           seq: 'seq',
         },
         reachability: FAKE_REACHABILITY_REPORT,
+      });
+    });
+
+    it('includes default clientMediaPreferences if calls to reachability fail', async () => {
+      const locusMediaRequest = {send: sinon.stub().resolves({body: {locus: {}}})};
+
+      webex.meetings.reachability.getClientMediaPreferences.rejects(new Error('fake error'));
+
+      await roapRequest.sendRoap({
+        locusSelfUrl: locusUrl,
+        mediaId: 'mediaId',
+        roapMessage: {
+          seq: 'seq',
+        },
+        meetingId: 'meeting-id',
+        isMultistream: true,
+        locusMediaRequest,
+      });
+
+      assert.calledOnce(webex.meetings.reachability.getClientMediaPreferences);
+
+      const requestParams = locusMediaRequest.send.getCall(0).args[0];
+      assert.deepEqual(requestParams, {
+        type: 'RoapMessage',
+        selfUrl: locusUrl,
+        clientMediaPreferences: {ipver: 0, joinCookie: undefined, preferTranscoding: false},
+        mediaId: 'mediaId',
+        roapMessage: {
+          seq: 'seq',
+        },
+        reachability: undefined,
       });
     });
   });

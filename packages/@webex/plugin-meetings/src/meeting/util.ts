@@ -127,11 +127,26 @@ const MeetingUtil = {
       options: {meetingId: meeting.id},
     });
 
-    const reachability = await webex.meetings.reachability.getReachabilityReportToAttachToRoap();
-    const clientMediaPreferences = await webex.meetings.reachability.getClientMediaPreferences(
-      meeting.isMultistream,
-      MeetingUtil.getIpVersion(webex)
-    );
+    let reachability;
+    let clientMediaPreferences = {
+      // bare minimum fallback value that should allow us to join
+      ipver: IP_VERSION.unknown,
+      joinCookie: undefined,
+      preferTranscoding: !meeting.isMultistream,
+    };
+
+    try {
+      clientMediaPreferences = await webex.meetings.reachability.getClientMediaPreferences(
+        meeting.isMultistream,
+        MeetingUtil.getIpVersion(webex)
+      );
+      reachability = await webex.meetings.reachability.getReachabilityReportToAttachToRoap();
+    } catch (e) {
+      LoggerProxy.logger.error(
+        'Meeting:util#joinMeeting --> Error getting reachability or clientMediaPreferences:',
+        e
+      );
+    }
 
     // eslint-disable-next-line no-warning-comments
     // TODO: check if the meeting is in JOINING state
