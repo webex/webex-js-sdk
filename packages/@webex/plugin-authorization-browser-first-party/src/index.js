@@ -14,5 +14,5 @@ registerPlugin('authorization', Authorization, {
   proxies,
 });
 
-export {default} from './authorization';
+export {default, Events} from './authorization';
 export {default as config} from './config';

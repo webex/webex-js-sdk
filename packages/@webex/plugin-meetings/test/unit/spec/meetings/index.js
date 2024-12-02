@@ -2077,6 +2077,21 @@ describe('plugin-meetings', () => {
           ]);
         });
 
+        it('should handle failure to get user information if scopes are insufficient', async () => {
+          loggerProxySpy = sinon.spy(LoggerProxy.logger, 'error');
+          Object.assign(webex.people, {
+            _getMe: sinon.stub().returns(Promise.reject()),
+          });
+
+          await webex.meetings.fetchUserPreferredWebexSite();
+
+          assert.equal(webex.meetings.preferredWebexSite, '');
+          assert.calledOnceWithExactly(
+            loggerProxySpy,
+            'Failed to retrieve user information. No preferredWebexSite will be set'
+          );
+        });
+
         const setup = ({me = { type: 'validuser'}, user} = {}) => {
           loggerProxySpy = sinon.spy(LoggerProxy.logger, 'error');
           assert.deepEqual(webex.internal.services._getCatalog().getAllowedDomains(), []);
@@ -2093,7 +2108,7 @@ describe('plugin-meetings', () => {
 
           Object.assign(webex.people, {
             _getMe: sinon.stub().returns(Promise.resolve(me)),
-        });
+          });
         };
 
         it('should not call request.getMeetingPreferences if user is a guest', async () => {
