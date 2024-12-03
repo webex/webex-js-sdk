@@ -7,7 +7,7 @@ import {CbRes, Conf, ConfEmpty, Pending, Req, Res, ResEmpty} from './types';
 import {TIMEOUT_REQ} from './constants';
 import {AQM_REQS_FILE} from '../../constants';
 import HttpRequest from './HttpRequest';
-import {WebSocketManager} from './websocket/WebSocketManager';
+import {WebSocketManager} from './WebSocket/WebSocketManager';
 
 export default class AqmReqs {
   private pendingRequests: Record<string, Pending> = {};

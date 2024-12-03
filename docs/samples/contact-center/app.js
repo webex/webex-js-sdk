@@ -21,6 +21,7 @@ let agentId;
 let taskControl;
 let task;
 let taskId;
+let agentAuxCodeId;
 
 const authTypeElm = document.querySelector('#auth-type');
 const credentialsFormElm = document.querySelector('#credentials');
@@ -42,6 +43,10 @@ const incomingDetailsElm = document.querySelector('#incoming-call');
 const answerElm = document.querySelector('#answer');
 const declineElm = document.querySelector('#decline');
 const callControlListener = document.querySelector('#callcontrolsection');
+const holdElm = document.querySelector('#hold');
+const resumeElm = document.querySelector('#resume');
+const endElm = document.querySelector('#end');
+const wrapupElm = document.querySelector('#wrapup');
 
 // Store and Grab `access-token` from sessionStorage
 if (sessionStorage.getItem('date') > new Date().getTime()) {
@@ -143,6 +148,7 @@ function register() {
         teamsDropdown.innerHTML = ''; // Clear previously selected option on teamsDropdown
         const listTeams = agentProfile.teams;
         agentId = agentProfile.agentId;
+        agentAuxCodeId = agentProfile.defaultWrapupCode;
         listTeams.forEach((team) => {
             const option = document.createElement('option');
             option.value = team.id;
@@ -293,6 +299,10 @@ incomingCallListener.addEventListener('task:incoming', (event) => {
 function answer() {
   answerElm.disabled = true;
   declineElm.disabled = true;
+  holdElm.disabled = false;
+  resumeElm.disabled = true;
+  endElm.disabled = false;
+  wrapupElm.disabled = true;
   task.accept(taskId);
   incomingDetailsElm.innerText = 'Call Accepted';
 }
@@ -358,6 +368,54 @@ function expandAll() {
 
   allArrowElements.forEach((el) => {
     el.classList.replace('fa-angle-up', 'fa-angle-down');
+  });
+}
+
+function holdCall() {
+  holdElm.disabled = true;
+  webex.cc.taskManager.task.hold(taskId).then(() => {
+    console.info('Call held successfully');
+    resumeElm.disabled = false;
+  }).catch((error) => {
+    console.error('Failed to hold the call', error);
+    holdElm.disabled = false;
+  });
+}
+
+function resumeCall() {
+  resumeElm.disabled = true;
+  webex.cc.taskManager.task.resume(taskId).then(() => {
+    console.info('Call resumed successfully');
+    holdElm.disabled = false;
+  }).catch((error) => {
+    console.error('Failed to resume the call', error);
+    resumeElm.disabled = false;
+  });
+}
+
+function endCall() {
+  endElm.disabled = true;
+  webex.cc.taskManager.task.end(taskId).then((agent) => {
+    console.log('Call ended successfully');
+    holdElm.disabled = true;
+    resumeElm.disabled = true;
+    wrapupElm.disabled = false;
+  }).catch((error) => {
+    console.error('Failed to end the call', error);
+    endElm.disabled = false;
+  });
+}
+
+function wrapupCall() {
+  wrapupElm.disabled = true;
+  webex.cc.taskManager.task.wrapup(taskId, {wrapUpReason: 'Sale', auxCodeId: agentAuxCodeId}).then((wrapup) => {
+    console.info('Call wrapped up successfully');
+    holdElm.disabled = true;
+    resumeElm.disabled = true;
+    endElm.disabled = true;
+  }).catch((error) => {
+    console.error('Failed to wrap up the call', error);
+    wrapupElm.disabled = false;
   });
 }
 

@@ -330,5 +330,44 @@ export interface ITask {
    * ```
    */
   decline(taskId: TaskId): Promise<TaskResponse>;
-  // TODO: Add the remianing public methods
+  /**
+   * This is used to hold the task.
+   * @param taskId
+   * @returns Promise<TaskResponse>
+   * @example
+   * ```
+   * task.hold(taskId);
+   * ```
+   */
+  hold(taskId: string): Promise<TaskResponse>;
+  /**
+   * This is used to resume the task.
+   * @param taskId
+   * @returns Promise<TaskResponse>
+   * @example
+   * ```
+   * task.resume(taskId);
+   * ```
+   */
+  resume(taskId: string): Promise<TaskResponse>;
+  /**
+   * This is used to end the task.
+   * @param taskId
+   * @returns Promise<TaskResponse>
+   * @example
+   * ```
+   * task.end(taskId);
+   * ```
+   */
+  end(taskId: string): Promise<TaskResponse>;
+  /**
+   * This is used to wrap up the task.
+   * @param taskId
+   * @returns Promise<TaskResponse>
+   * @example
+   * ```
+   * task.wrapup(taskId, data);
+   * ```
+   */
+  wrapup(taskId: string, wrapupPayload: WrapupPayLoad): Promise<TaskResponse>;
 }

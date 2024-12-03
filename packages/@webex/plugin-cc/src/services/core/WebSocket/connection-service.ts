@@ -53,7 +53,7 @@ export class ConnectionService extends EventEmitter {
       isKeepAlive: this.isKeepAlive,
     };
     this.webSocketManager.handleConnectionLost(event);
-    LoggerProxy.log(`Dispatching connection lost event`, {
+    LoggerProxy.log(`Dispatching connection event`, {
       module: CONNECTION_SERVICE_FILE,
       method: this.dispatchConnectionEvent.name,
     });
