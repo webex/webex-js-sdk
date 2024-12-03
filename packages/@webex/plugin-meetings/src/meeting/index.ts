@@ -3249,6 +3249,9 @@ export default class Meeting extends StatelessWebexPlugin {
           options: {meetingId: this.id},
         });
       }
+      Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.GUEST_ENTERED_LOBBY, {
+        correlation_id: this.correlationId,
+      });
       this.updateLLMConnection();
     });
     this.locusInfo.on(LOCUSINFO.EVENTS.SELF_ADMITTED_GUEST, async (payload) => {
@@ -3271,6 +3274,9 @@ export default class Meeting extends StatelessWebexPlugin {
         this.webex.internal.newMetrics.submitClientEvent({
           name: 'client.lobby.exited',
           options: {meetingId: this.id},
+        });
+        Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.GUEST_EXITED_LOBBY, {
+          correlation_id: this.correlationId,
         });
       }
       this.rtcMetrics?.sendNextMetrics();
