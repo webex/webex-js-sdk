@@ -13,10 +13,12 @@ const getCommonErrorDetails = (errObj: WebexRequestPayload) => {
 export const getErrorDetails = (error: any, methodName: string, moduleName: string) => {
   const failure = error.details as Failure;
   const reason = failure?.data?.reason ?? `Error while performing ${methodName}`;
-  LoggerProxy.error(`${methodName} failed with trackingId: ${failure?.trackingId}`, {
-    module: moduleName,
-    method: methodName,
-  });
+  if (!(reason === 'AGENT_NOT_FOUND' && methodName === 'silentReLogin')) {
+    LoggerProxy.error(`${methodName} failed with trackingId: ${failure?.trackingId}`, {
+      module: moduleName,
+      method: methodName,
+    });
+  }
 
   return {
     error: new Error(reason ?? `Error while performing ${methodName}`),
