@@ -22,6 +22,7 @@ import {
   ReachabilityResults,
   ReachabilityResultsForBackend,
   TransportResultForBackend,
+  GetClustersTrigger,
 } from './reachability.types';
 import {
   ClientMediaIpsUpdatedEventData,
@@ -96,7 +97,7 @@ export default class Reachability extends EventsScope {
    * @returns {Promise<{clusters: ClusterList, joinCookie: any}>}
    */
   async getClusters(
-    trigger: string,
+    trigger: GetClustersTrigger,
     previousReport?: any,
     isRetry = false
   ): Promise<{

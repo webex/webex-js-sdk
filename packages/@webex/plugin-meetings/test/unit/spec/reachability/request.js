@@ -90,7 +90,7 @@ describe('plugin-meetings/reachability', () => {
     });
 
     it('sends a POST request with the correct params when trigger is other than "startup"', async () => {
-      const res = await reachabilityRequest.getClusters('other trigger', IP_VERSION.only_ipv4, previousReport);
+      const res = await reachabilityRequest.getClusters('early-call/no-min-reached', IP_VERSION.only_ipv4, previousReport);
       const requestParams = webex.request.getCall(0).args[0];
 
       assert.deepEqual(requestParams, {
@@ -106,7 +106,7 @@ describe('plugin-meetings/reachability', () => {
             'early-call-min-clusters': true,
           },
           'previous-report': previousReport,
-          trigger: 'other trigger',
+          trigger: 'early-call/no-min-reached',
         },
       });
 

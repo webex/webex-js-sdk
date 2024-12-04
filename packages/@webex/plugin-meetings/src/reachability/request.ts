@@ -1,5 +1,6 @@
 import LoggerProxy from '../common/logs/logger-proxy';
 import {HTTP_VERBS, RESOURCE, API, IP_VERSION} from '../constants';
+import {GetClustersTrigger} from './reachability.types';
 
 export interface ClusterNode {
   isVideoMesh: boolean;
@@ -36,7 +37,7 @@ class ReachabilityRequest {
    * @returns {Promise}
    */
   getClusters = (
-    trigger,
+    trigger: GetClustersTrigger,
     ipVersion?: IP_VERSION,
     previousReport?: any
   ): Promise<{

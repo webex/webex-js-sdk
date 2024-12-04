@@ -80,3 +80,6 @@ export interface ClientMediaPreferences {
   preferTranscoding: boolean;
   reachability?: ReachabilityReportV1; // only present when using Orpheus API version 1
 }
+
+/* Orpheus API supports more triggers, but we don't use them yet */
+export type GetClustersTrigger = 'startup' | 'early-call/no-min-reached';
