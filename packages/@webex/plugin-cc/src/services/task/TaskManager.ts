@@ -1,6 +1,6 @@
 import EventEmitter from 'events';
 import {ICall, LINE_EVENTS} from '@webex/calling';
-import {WebSocketManager} from '../core/WebSocket/WebSocketManager';
+import {WebSocketManager} from '../core/websocket/WebSocketManager';
 import routingContact from './contact';
 import WebCallingService from '../WebCallingService';
 import {ITask, TASK_EVENTS, TaskId} from './types';
