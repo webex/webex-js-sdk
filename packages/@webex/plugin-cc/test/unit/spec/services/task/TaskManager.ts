@@ -72,8 +72,8 @@ describe('TaskManager', () => {
     webSocketManagerMock.emit('message', JSON.stringify(payload));
 
     expect(Task).toHaveBeenCalledWith(contactMock, webCallingServiceMock , payload.data);
-    expect(taskIncomingSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_INCOMING, taskManager.task);
-    expect(taskManager.getTask(payload.data.interactionId)).toBe(taskManager.task);
+    expect(taskIncomingSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_INCOMING, taskManager.currentTask);
+    expect(taskManager.getTask(payload.data.interactionId)).toBe(taskManager.currentTask);
     expect(taskManager.getAllTasks()).toHaveProperty(payload.data.interactionId);
 
     const assignedPayload = {
@@ -97,12 +97,31 @@ describe('TaskManager', () => {
 
     webSocketManagerMock.emit('message', JSON.stringify(assignedPayload));
 
-    expect(taskAssignedSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_ASSIGNED, taskManager.task);
+    expect(taskAssignedSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_ASSIGNED, taskManager.currentTask);
   });
 
   it('should return task by ID', () => {
     const taskId = 'task123';
-    const mockTask = jest.fn();
+    const mockTask = {
+      accept: jest.fn(),
+      decline: jest.fn(),
+      updateTaskData: jest.fn(),
+      data: {
+        type: CC_EVENTS.AGENT_CONTACT_ASSIGNED,
+        agentId: "723a8ffb-a26e-496d-b14a-ff44fb83b64f",
+        eventTime: 1733211616959,
+        eventType: "RoutingMessage",
+        interaction: {},
+        interactionId: taskId,
+        orgId: "6ecef209-9a34-4ed1-a07a-7ddd1dbe925a",
+        trackingId: "575c0ec2-618c-42af-a61c-53aeb0a221ee",
+        mediaResourceId: '0ae913a4-c857-4705-8d49-76dd3dde75e4',
+        destAgentId: 'ebeb893b-ba67-4f36-8418-95c7492b28c2',
+        owner: '723a8ffb-a26e-496d-b14a-ff44fb83b64f',
+        queueMgr: 'aqm'
+      }
+    };
+
     taskManager.taskCollection[taskId] = mockTask;
 
     expect(taskManager.getTask(taskId)).toBe(mockTask);
@@ -111,8 +130,45 @@ describe('TaskManager', () => {
   it('should return all tasks', () => {
     const taskId1 = 'task123';
     const taskId2 = 'task456';
-    const mockTask1 = jest.fn();
-    const mockTask2 = jest.fn();
+    const mockTask1 = {
+      accept: jest.fn(),
+      decline: jest.fn(),
+      updateTaskData: jest.fn(),
+      data: {
+        type: CC_EVENTS.AGENT_CONTACT_RESERVED,
+        agentId: "723a8ffb-a26e-496d-b14a-ff44fb83b64f",
+        eventTime: 1733211616959,
+        eventType: "RoutingMessage",
+        interaction: {},
+        interactionId: taskId1,
+        orgId: "6ecef209-9a34-4ed1-a07a-7ddd1dbe925a",
+        trackingId: "575c0ec2-618c-42af-a61c-53aeb0a221ee",
+        mediaResourceId: '0ae913a4-c857-4705-8d49-76dd3dde75e4',
+        destAgentId: 'ebeb893b-ba67-4f36-8418-95c7492b28c2',
+        owner: '723a8ffb-a26e-496d-b14a-ff44fb83b64f',
+        queueMgr: 'aqm'
+      }
+    };
+
+    const mockTask2 = {
+      accept: jest.fn(),
+      decline: jest.fn(),
+      updateTaskData: jest.fn(),
+      data: {
+        type: CC_EVENTS.AGENT_CONTACT_ASSIGNED,
+        agentId: "723a8ffb-a26e-496d-b14a-ff44fb83b64f",
+        eventTime: 1733211616959,
+        eventType: "RoutingMessage",
+        interaction: {},
+        interactionId: taskId2,
+        orgId: "6ecef209-9a34-4ed1-a07a-7ddd1dbe925a",
+        trackingId: "575c0ec2-618c-42af-a61c-53aeb0a221ee",
+        mediaResourceId: '0ae913a4-c857-4705-8d49-76dd3dde75e4',
+        destAgentId: 'ebeb893b-ba67-4f36-8418-95c7492b28c2',
+        owner: '723a8ffb-a26e-496d-b14a-ff44fb83b64f',
+        queueMgr: 'aqm'
+      }
+    };
 
     taskManager.taskCollection[taskId1] = mockTask1;
     taskManager.taskCollection[taskId2] = mockTask2;

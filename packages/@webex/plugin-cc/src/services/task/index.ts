@@ -49,13 +49,11 @@ export default class Task extends EventEmitter implements ITask {
   /**
    * This is used for incoming task accept by agent.
    *
-   * @param taskId - Unique Id to identify each task
-   *
    * @returns Promise<TaskResponse>
    * @throws Error
    * @example
    * ```typescript
-   * task.accept(taskId).then(()=>{}).catch(()=>{})
+   * task.accept().then(()=>{}).catch(()=>{})
    * ```
    */
   public async accept(): Promise<TaskResponse> {
@@ -68,13 +66,13 @@ export default class Task extends EventEmitter implements ITask {
         const localStream = await navigator.mediaDevices.getUserMedia(constraints);
         const audioTrack = localStream.getAudioTracks()[0];
         this.localAudioStream = new LocalMicrophoneStream(new MediaStream([audioTrack]));
-        this.webCallingService.answerCall(this.localAudioStream, this.data.taskId);
+        this.webCallingService.answerCall(this.localAudioStream, this.data.interactionId);
 
         return Promise.resolve(); // TODO: Update this with sending the task object received in AgentContactAssigned
       }
 
       // TODO: Invoke the accept API from services layer. This is going to be used in Outbound Dialer scenario
-      return this.contact.accept({interactionId: this.data.taskId});
+      return this.contact.accept({interactionId: this.data.interactionId});
     } catch (error) {
       const {error: detailedError} = getErrorDetails(error, 'accept', CC_FILE);
       throw detailedError;
@@ -84,18 +82,16 @@ export default class Task extends EventEmitter implements ITask {
   /**
    * This is used for the incoming task decline by agent.
    *
-   * @param taskId - Unique Id to identify each task
-   *
    * @returns Promise<TaskResponse>
    * @throws Error
    * @example
    * ```typescript
-   * task.decline(taskId).then(()=>{}).catch(()=>{})
+   * task.decline().then(()=>{}).catch(()=>{})
    * ```
    */
   public async decline(): Promise<TaskResponse> {
     try {
-      this.webCallingService.declineCall(this.data.taskId);
+      this.webCallingService.declineCall(this.data.interactionId);
       this.unregisterWebCallListeners();
 
       return Promise.resolve();

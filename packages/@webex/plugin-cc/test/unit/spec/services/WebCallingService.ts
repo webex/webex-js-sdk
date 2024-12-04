@@ -58,6 +58,8 @@ describe('WebCallingService', () => {
     );
 
     mockCall = {
+      on: jest.fn(),
+      off: jest.fn(),
       answer: jest.fn(),
       mute: jest.fn(),
       isMuted: jest.fn().mockReturnValue(true),
