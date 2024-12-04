@@ -35,16 +35,11 @@ describe('plugin-meetings/reachability', () => {
   });
 
   describe('#getClusters', () => {
+    let previousReport;
 
     beforeEach(() => {
       sinon.spy(webex.internal.newMetrics.callDiagnosticLatencies, 'measureLatency');
-    });
 
-    afterEach(() => {
-      sinon.restore();
-    });
-
-    it('sends a GET request with the correct params', async () => {
       webex.request = sinon.mock().returns(Promise.resolve({
         body: {
           clusterClasses: {
@@ -59,24 +54,65 @@ describe('plugin-meetings/reachability', () => {
 
       webex.config.meetings.reachabilityGetClusterTimeout = 3000;
 
-      const res = await reachabilityRequest.getClusters(IP_VERSION.only_ipv4);
+      previousReport = {
+        id: 'fake previous report',
+      }
+    });
+
+    afterEach(() => {
+      sinon.restore();
+    });
+
+    it('sends a POST request with the correct params when trigger is "startup"', async () => {
+      const res = await reachabilityRequest.getClusters('startup', IP_VERSION.only_ipv4, previousReport);
       const requestParams = webex.request.getCall(0).args[0];
 
       assert.deepEqual(requestParams, {
-        method: 'GET',
+        method: 'POST',
         resource: `clusters`,
         api: 'calliopeDiscovery',
         shouldRefreshAccessToken: false,
-        qs: {
-          JCSupport: 1,
-          ipver: 4,
-        },
         timeout: 3000,
+        body: {
+          ipver: IP_VERSION.only_ipv4,
+          'supported-options': {
+            'report-version': 1,
+            'early-call-min-clusters': true,
+          },
+          'previous-report': previousReport,
+          trigger: 'startup',
+        },
       });
 
       assert.deepEqual(res.clusters.clusterId, {udp: "testUDP", isVideoMesh: true})
       assert.deepEqual(res.joinCookie, {anycastEntryPoint: "aws-eu-west-1"})
       assert.calledOnceWithExactly(webex.internal.newMetrics.callDiagnosticLatencies.measureLatency, sinon.match.func, 'internal.get.cluster.time');
+    });
+
+    it('sends a POST request with the correct params when trigger is other than "startup"', async () => {
+      const res = await reachabilityRequest.getClusters('early-call/no-min-reached', IP_VERSION.only_ipv4, previousReport);
+      const requestParams = webex.request.getCall(0).args[0];
+
+      assert.deepEqual(requestParams, {
+        method: 'POST',
+        resource: `clusters`,
+        api: 'calliopeDiscovery',
+        shouldRefreshAccessToken: false,
+        timeout: 3000,
+        body: {
+          ipver: IP_VERSION.only_ipv4,
+          'supported-options': {
+            'report-version': 1,
+            'early-call-min-clusters': true,
+          },
+          'previous-report': previousReport,
+          trigger: 'early-call/no-min-reached',
+        },
+      });
+
+      assert.deepEqual(res.clusters.clusterId, {udp: "testUDP", isVideoMesh: true})
+      assert.deepEqual(res.joinCookie, {anycastEntryPoint: "aws-eu-west-1"})
+      assert.notCalled(webex.internal.newMetrics.callDiagnosticLatencies.measureLatency);
     });
   });
 });
