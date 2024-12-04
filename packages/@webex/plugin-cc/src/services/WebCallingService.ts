@@ -7,6 +7,7 @@ import {
   LINE_EVENTS,
   CallingClientConfig,
   LocalMicrophoneStream,
+  CALL_EVENT_KEYS,
 } from '@webex/calling';
 import {LoginOption, WebexSDK} from '../types';
 import {TIMEOUT_DURATION, WEB_CALLING_SERVICE_FILE} from '../constants';
@@ -23,6 +24,20 @@ export default class WebCallingService extends EventEmitter {
     super();
     this.webex = webex;
     this.callingClientConfig = callingClientConfig;
+  }
+
+  private handleMediaEvent = (track: MediaStreamTrack) => {
+    this.emit(CALL_EVENT_KEYS.REMOTE_MEDIA, track);
+  };
+
+  private registerCallListeners() {
+    // TODO: Add remaining call listeners here
+    this.call.on(CALL_EVENT_KEYS.REMOTE_MEDIA, this.handleMediaEvent);
+  }
+
+  public unregisterCallListeners() {
+    // TODO: Once we handle disconnect or call end, switch off the call listeners
+    this.call.off(CALL_EVENT_KEYS.REMOTE_MEDIA, this.handleMediaEvent);
   }
 
   public async registerWebCallingLine(loginOption: LoginOption): Promise<void> {
@@ -69,6 +84,7 @@ export default class WebCallingService extends EventEmitter {
       try {
         this.webex.logger.info(`[WebRtc]: Call answered: ${taskId}`);
         this.call.answer(localAudioStream);
+        this.registerCallListeners();
       } catch (error) {
         this.webex.logger.error(`[WebRtc]: Failed to answer call for ${taskId}. Error: ${error}`);
         // Optionally, throw the error to allow the invoker to handle it
@@ -101,6 +117,7 @@ export default class WebCallingService extends EventEmitter {
       try {
         this.webex.logger.info(`[WebRtc]: Call end requested: ${taskId}`);
         this.call.end();
+        this.unregisterCallListeners();
       } catch (error) {
         this.webex.logger.error(`[WebRtc]: Failed to end call: ${taskId}. Error: ${error}`);
         // Optionally, throw the error to allow the invoker to handle it

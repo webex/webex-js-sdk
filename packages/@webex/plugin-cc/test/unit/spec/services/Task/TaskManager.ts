@@ -5,13 +5,13 @@ import { LINE_EVENTS } from '@webex/calling';
 import { CC_EVENTS } from '../../../../../src/services/config/types';
 import TaskManager from '../../../../../src/services/task/TaskManager';
 import * as contact from '../../../../../src/services/task/contact'
-import { TaskData } from '../../../../../src/services/task/types';
 import Task from '../../../../../src/services/task';
+import { TASK_EVENTS } from '../../../../../src/services/task/types';
 
 jest.mock('./../../../../../src/services/task', () => {
   return jest.fn().mockImplementation(() => {
     return {
-      // Optionally mock methods or properties on the Task instance here
+        updateTaskData: jest.fn(),
     };
   });
 });
@@ -42,52 +42,62 @@ describe('TaskManager', () => {
     expect(webSocketManagerMock.listenerCount('message')).toBe(1);
   });
 
-  it('should handle incoming call event and emit TASK_INCOMING', () => {
-    const callMock = jest.fn();
-
-    taskManager.on('task:incoming', (task) => {
-      expect(task).toBe(taskManager.task);
-    });
-
-    webCallingServiceMock.emit(LINE_EVENTS.INCOMING_CALL, callMock);
-
-    expect(taskManager.call).toBe(callMock);
-    if (taskManager.task) {
-      expect(taskManager.emit).toHaveBeenCalledWith('taskIncoming', taskManager.task);
-    }
-  });
-
-  it('should handle WebSocket message and manage tasks', () => {
-    const interactionId = '12345';
+  it('should handle WebSocket message for AGENT_CONTACT_RESERVED and emit task:incoming', () => {
     const payload = {
       data: {
         type: CC_EVENTS.AGENT_CONTACT_RESERVED,
-        
+        agentId: "723a8ffb-a26e-496d-b14a-ff44fb83b64f",
+        eventTime: 1733211616959,
+        eventType: "RoutingMessage",
+        interaction: {},
+        interactionId: "0ae913a4-c857-4705-8d49-76dd3dde75e4",
+        orgId: "6ecef209-9a34-4ed1-a07a-7ddd1dbe925a",
+        trackingId: "575c0ec2-618c-42af-a61c-53aeb0a221ee",
+        mediaResourceId: '0ae913a4-c857-4705-8d49-76dd3dde75e4',
+        destAgentId: 'ebeb893b-ba67-4f36-8418-95c7492b28c2',
+        owner: '723a8ffb-a26e-496d-b14a-ff44fb83b64f',
+        queueMgr: 'aqm',
       },
     };
 
-    const mockData: TaskData = {
-      "agentId": "723a8ffb-a26e-496d-b14a-ff44fb83b64f",
-      "eventTime": 1733211616959,
-      "eventType": "RoutingMessage",
-      "interaction": expect.any(Object),
-      "interactionId": "0ae913a4-c857-4705-8d49-76dd3dde75e4",
-      "orgId": "6ecef209-9a34-4ed1-a07a-7ddd1dbe925a",
-      "trackingId": "575c0ec2-618c-42af-a61c-53aeb0a221ee",
-      "type": "AgentContactReserved",
-      mediaResourceId: '0ae913a4-c857-4705-8d49-76dd3dde75e4',
-      destAgentId: 'ebeb893b-ba67-4f36-8418-95c7492b28c2',
-      consultMediaResourceId: '',
-      owner: '723a8ffb-a26e-496d-b14a-ff44fb83b64f',
-      queueMgr: '',
-      isConferencing: false
-    }
+    taskManager.call = {
+      answer: jest.fn(),
+      mute: jest.fn(),
+      isMuted: jest.fn().mockReturnValue(true),
+      end: jest.fn()
+    };
 
-    webSocketManagerMock.emit('message', JSON.stringify(mockData));
+    const taskIncomingSpy = jest.spyOn(taskManager, 'emit');
+
+    webSocketManagerMock.emit('message', JSON.stringify(payload));
 
     expect(Task).toHaveBeenCalledWith(contactMock, webCallingServiceMock , payload.data);
-    expect(taskManager.getTask(interactionId)).toBe(taskManager.task);
-    expect(taskManager.getAllTasks()).toHaveProperty(interactionId);
+    expect(taskIncomingSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_INCOMING, taskManager.task);
+    expect(taskManager.getTask(payload.data.interactionId)).toBe(taskManager.task);
+    expect(taskManager.getAllTasks()).toHaveProperty(payload.data.interactionId);
+
+    const assignedPayload = {
+      data: {
+        type: CC_EVENTS.AGENT_CONTACT_ASSIGNED,
+        agentId: "723a8ffb-a26e-496d-b14a-ff44fb83b64f",
+        eventTime: 1733211616959,
+        eventType: "RoutingMessage",
+        interaction: {},
+        interactionId: "0ae913a4-c857-4705-8d49-76dd3dde75e4",
+        orgId: "6ecef209-9a34-4ed1-a07a-7ddd1dbe925a",
+        trackingId: "575c0ec2-618c-42af-a61c-53aeb0a221ee",
+        mediaResourceId: '0ae913a4-c857-4705-8d49-76dd3dde75e4',
+        destAgentId: 'ebeb893b-ba67-4f36-8418-95c7492b28c2',
+        owner: '723a8ffb-a26e-496d-b14a-ff44fb83b64f',
+        queueMgr: 'aqm',
+      },
+    };
+
+    const taskAssignedSpy = jest.spyOn(taskManager, 'emit');
+
+    webSocketManagerMock.emit('message', JSON.stringify(assignedPayload));
+
+    expect(taskAssignedSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_ASSIGNED, taskManager.task);
   });
 
   it('should return task by ID', () => {

@@ -15,7 +15,7 @@ export default class TaskManager extends EventEmitter {
   private webCallingService: WebCallingService;
   private webSocketManager: WebSocketManager;
   private static taskManager;
-  public task: ITask;
+  public currentTask: ITask;
 
   /**
    * @param contact - Routing Contact layer. Talks to AQMReq layer to convert events to promises
@@ -36,13 +36,20 @@ export default class TaskManager extends EventEmitter {
     this.registerIncomingCallEvent();
   }
 
+  private handleIncomingWebCall = (call: ICall) => {
+    if (this.currentTask) {
+      this.emit(TASK_EVENTS.TASK_INCOMING, this.currentTask);
+      // this.currentTask.webCallMap[this.currentTask.data.interactionId] = call.getCallId();
+    }
+    this.call = call;
+  };
+
   private registerIncomingCallEvent() {
-    this.webCallingService.on(LINE_EVENTS.INCOMING_CALL, (call) => {
-      if (this.task) {
-        this.emit(TASK_EVENTS.TASK_INCOMING, this.task);
-      }
-      this.call = call;
-    });
+    this.webCallingService.on(LINE_EVENTS.INCOMING_CALL, this.handleIncomingWebCall);
+  }
+
+  public unregisterIncomingCallEvent() {
+    this.webCallingService.off(LINE_EVENTS.INCOMING_CALL, this.handleIncomingWebCall);
   }
 
   private registerTaskListeners() {
@@ -51,18 +58,26 @@ export default class TaskManager extends EventEmitter {
       if (payload.data) {
         switch (payload.data.type) {
           case CC_EVENTS.AGENT_CONTACT_RESERVED:
-            this.task = new Task(this.contact, this.webCallingService, payload.data);
+            this.currentTask = new Task(this.contact, this.webCallingService, payload.data);
 
-            this.taskCollection[payload.data.interactionId] = this.task;
+            this.taskCollection[payload.data.interactionId] = this.currentTask;
             if (this.webCallingService.loginOption !== LoginOption.BROWSER) {
-              this.emit(TASK_EVENTS.TASK_INCOMING, this.task);
+              this.emit(TASK_EVENTS.TASK_INCOMING, this.currentTask);
             } else if (this.call) {
-              this.emit(TASK_EVENTS.TASK_INCOMING, this.task);
+              this.emit(TASK_EVENTS.TASK_INCOMING, this.currentTask);
+              // this.currentTask.webCallMap[this.currentTask.data.interactionId] = this.call.getCallId();
             }
             break;
           case CC_EVENTS.AGENT_CONTACT_ASSIGNED:
-            this.task = this.task.updateTaskData(payload.data);
-            this.emit(TASK_EVENTS.TASK_ASSIGNED, this.task);
+            this.currentTask = this.currentTask.updateTaskData(payload.data);
+            this.emit(TASK_EVENTS.TASK_ASSIGNED, this.currentTask);
+            break;
+          case CC_EVENTS.CONTACT_ENDED:
+            this.emit(TASK_EVENTS.TASK_UNASSIGNED, this.currentTask);
+            if (this.webCallingService.loginOption === LoginOption.BROWSER) {
+              this.currentTask.unregisterWebCallListeners();
+              this.webCallingService.unregisterCallListeners();
+            }
             break;
           default:
             break;
@@ -86,7 +101,9 @@ export default class TaskManager extends EventEmitter {
   };
 
   /**
-   * webSocketManager - WebSocketManager
+   * @param contact - Routing Contact layer. Talks to AQMReq layer to convert events to promises
+   * @param webCallingService - Webrtc Service Layer
+   * @param webSocketManager - Websocket Manager to maintain websocket connection and keepalives
    */
   public static getTaskManager = (
     contact: ReturnType<typeof routingContact>,

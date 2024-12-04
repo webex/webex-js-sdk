@@ -113,6 +113,7 @@ describe('webex.cc', () => {
       getTask: jest.fn(),
       getActiveTasks: jest.fn(),
       on: jest.fn(),
+      off: jest.fn(),
       emit: jest.fn()
     }
 
