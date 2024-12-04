@@ -1,3 +1,4 @@
+import {CallId} from '@webex/calling/dist/types/common/types';
 import {Msg} from '../core/GlobalTypes';
 
 export type TaskId = string;
@@ -25,6 +26,7 @@ type MEDIA_CHANNEL =
 export const TASK_EVENTS = {
   TASK_INCOMING: 'task:incoming',
   TASK_ASSIGNED: 'task:assigned',
+  TASK_MEDIA: 'task:media',
   TASK_UNASSIGNED: 'task:unassigned',
   TASK_HOLD: 'task:hold',
   TASK_UNHOLD: 'task:unhold',
@@ -139,6 +141,9 @@ type Interaction = {
   >;
 };
 
+/**
+ *
+ */
 export type TaskData = {
   mediaResourceId: string;
   eventType: string;
@@ -307,26 +312,32 @@ export interface ITask {
    */
   data: TaskData;
   /**
+   * Map of task with call
+   */
+  webCallMap: Record<TaskId, CallId>;
+  /**
+   * Switch off the call listeners
+   */
+  unregisterWebCallListeners(): void;
+  /**
    * Used to update the task the data received on each event
    */
   updateTaskData(newData: TaskData): ITask;
   /**
    * Answers/accepts the incoming task
    *
-   * @param taskId - Unique Task Identifier
    * @example
    * ```
-   * task.accept(taskId);
+   * task.accept();
    * ```
    */
-  accept(taskId: TaskId): Promise<TaskResponse>;
+  accept(): Promise<TaskResponse>;
   /**
    * Decline the incoming task for Browser Login
    *
-   * @param taskId - Unique Task Identifier
    * @example
    * ```
-   * task.decline(taskId);
+   * task.decline();
    * ```
    */
   decline(taskId: TaskId): Promise<TaskResponse>;

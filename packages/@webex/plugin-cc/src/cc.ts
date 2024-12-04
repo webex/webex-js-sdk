@@ -74,13 +74,15 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     });
   }
 
+  private handleIncomingTask = (task: ITask) => {
+    this.eventEmitter.emit(TASK_EVENTS.TASK_INCOMING, task);
+  };
+
   /**
    * An Incoming Call listener.
    */
   private incomingTaskListener() {
-    this.taskManager.on(TASK_EVENTS.TASK_INCOMING, (task: ITask) => {
-      this.eventEmitter.emit(TASK_EVENTS.TASK_INCOMING, task);
-    });
+    this.taskManager.on(TASK_EVENTS.TASK_INCOMING, this.handleIncomingTask);
   }
 
   /**
@@ -213,6 +215,9 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       if (this.webCallingService) {
         this.webCallingService.deregisterWebCallingLine();
       }
+
+      this.taskManager.unregisterIncomingCallEvent();
+      this.taskManager.off(TASK_EVENTS.TASK_INCOMING, this.handleIncomingTask);
 
       return logoutResponse;
     } catch (error) {

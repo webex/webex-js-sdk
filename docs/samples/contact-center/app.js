@@ -79,10 +79,13 @@ const taskEvents = new CustomEvent('task:incoming', {
 });
 
 // TODO: Activate the call control buttons once the call is accepted and refctor this
-function registerListeners(task) {
+function registerTaskListeners(task) {
   task.on('task:assigned', (task) => {
-    console.log('Call has been accepted');
+    console.log('Call has been accepted for task: ', task.data.interactionId);
   }) 
+  task.on('task:media', (track) => {
+    document.getElementById('remote-audio').srcObject = new MediaStream([track]);
+  })
 }
 
 function generateWebexConfig({credentials}) {
@@ -286,8 +289,9 @@ incomingCallListener.addEventListener('task:incoming', (event) => {
   taskId = event.detail.task.data.interactionId;
   task = event.detail.task;
   const callerDisplay = event.detail.task.data.interaction.callAssociatedDetails.ani;
+  registerTaskListeners(task);
   
-  if (event.detail.task.webCallingService.loginOption === 'BROWSER') {
+  if (task.webCallingService.loginOption === 'BROWSER') {
     answerElm.disabled = false;
     declineElm.disabled = false;
 
