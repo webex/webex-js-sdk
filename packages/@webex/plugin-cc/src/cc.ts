@@ -337,9 +337,9 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     } catch (error) {
       const {reason, error: detailedError} = getErrorDetails(error, 'silentReLogin', CC_FILE);
       if (reason === 'AGENT_NOT_FOUND') {
-        LoggerProxy.info('Agent not found during re-login, handling silently', {
+        LoggerProxy.log('Agent not found during re-login, handling silently', {
           module: CC_FILE,
-          method: this.silentRelogin.name,
+          method: 'silentRelogin',
         });
 
         return;

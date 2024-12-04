@@ -2,8 +2,8 @@ import routingAgent from './agent';
 import routingContact from './task/contact';
 import AgentConfigService from './config';
 import AqmReqs from './core/aqm-reqs';
-import {WebSocketManager} from './core/websocket/WebSocketManager';
-import {ConnectionService} from './core/websocket/connection-service';
+import {WebSocketManager} from './core/WebSocket/WebSocketManager';
+import {ConnectionService} from './core/WebSocket/connection-service';
 import {WebexSDK, SubscribeRequest} from '../types';
 
 export default class Services {

@@ -748,7 +748,7 @@ describe('webex.cc', () => {
 
       jest.spyOn(webex.cc.services.agent, 'reload').mockRejectedValue(error);
       await webex.cc['silentRelogin']();
-      expect(LoggerProxy.info).toHaveBeenCalledWith(
+      expect(LoggerProxy.log).toHaveBeenCalledWith(
         'Agent not found during re-login, handling silently',
         {module: CC_FILE, method: 'silentRelogin'}
       );

@@ -373,7 +373,7 @@ function expandAll() {
 
 function holdCall() {
   holdElm.disabled = true;
-  webex.cc.taskManager.task.hold(taskId).then(() => {
+  task.hold(taskId).then(() => {
     console.info('Call held successfully');
     resumeElm.disabled = false;
   }).catch((error) => {
@@ -384,7 +384,7 @@ function holdCall() {
 
 function resumeCall() {
   resumeElm.disabled = true;
-  webex.cc.taskManager.task.resume(taskId).then(() => {
+  task.resume(taskId).then(() => {
     console.info('Call resumed successfully');
     holdElm.disabled = false;
   }).catch((error) => {
@@ -395,7 +395,7 @@ function resumeCall() {
 
 function endCall() {
   endElm.disabled = true;
-  webex.cc.taskManager.task.end(taskId).then((agent) => {
+  task.end(taskId).then(() => {
     console.log('Call ended successfully');
     holdElm.disabled = true;
     resumeElm.disabled = true;
@@ -408,7 +408,7 @@ function endCall() {
 
 function wrapupCall() {
   wrapupElm.disabled = true;
-  webex.cc.taskManager.task.wrapup(taskId, {wrapUpReason: 'Sale', auxCodeId: agentAuxCodeId}).then((wrapup) => {
+  task.wrapup(taskId, {wrapUpReason: 'Sale', auxCodeId: agentAuxCodeId}).then(() => {
     console.info('Call wrapped up successfully');
     holdElm.disabled = true;
     resumeElm.disabled = true;
