@@ -6321,7 +6321,7 @@ export default class Meeting extends StatelessWebexPlugin {
     this.mediaProperties.webrtcMediaConnection.on(
       MediaConnectionEventNames.ICE_CANDIDATE,
       (event) => {
-        if (event.candidate) {
+        if (event.candidate && event.candidate.candidate && event.candidate.candidate.length > 0) {
           this.iceCandidatesCount += 1;
         }
       }

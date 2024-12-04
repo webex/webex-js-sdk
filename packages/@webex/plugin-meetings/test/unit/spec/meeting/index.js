@@ -90,8 +90,8 @@ import WebExMeetingsErrors from '../../../../src/common/errors/webex-meetings-er
 import ParameterError from '../../../../src/common/errors/parameter';
 import PasswordError from '../../../../src/common/errors/password-error';
 import CaptchaError from '../../../../src/common/errors/captcha-error';
-import PermissionError   from '../../../../src/common/errors/permission';
-import WebinarRegistrationError   from '../../../../src/common/errors/webinar-registration-error';
+import PermissionError from '../../../../src/common/errors/permission';
+import WebinarRegistrationError from '../../../../src/common/errors/webinar-registration-error';
 import IntentToJoinError from '../../../../src/common/errors/intent-to-join';
 import testUtils from '../../../utils/testUtils';
 import {
@@ -6281,14 +6281,22 @@ describe('plugin-meetings', () => {
           meeting.attrs.meetingInfoProvider = {
             fetchMeetingInfo: sinon
               .stub()
-              .throws(new MeetingInfoV2WebinarRegistrationError(403021, FAKE_MEETING_INFO, 'a message')),
+              .throws(
+                new MeetingInfoV2WebinarRegistrationError(403021, FAKE_MEETING_INFO, 'a message')
+              ),
           };
 
-          await assert.isRejected(meeting.fetchMeetingInfo({sendCAevents: true}), WebinarRegistrationError);
+          await assert.isRejected(
+            meeting.fetchMeetingInfo({sendCAevents: true}),
+            WebinarRegistrationError
+          );
 
           assert.deepEqual(meeting.meetingInfo, FAKE_MEETING_INFO);
           assert.equal(meeting.meetingInfoFailureCode, 403021);
-          assert.equal(meeting.meetingInfoFailureReason, MEETING_INFO_FAILURE_REASON.WEBINAR_REGISTRATION);
+          assert.equal(
+            meeting.meetingInfoFailureReason,
+            MEETING_INFO_FAILURE_REASON.WEBINAR_REGISTRATION
+          );
         });
       });
 
@@ -7752,9 +7760,15 @@ describe('plugin-meetings', () => {
           });
 
           it('should collect ice candidates', () => {
-            eventListeners[MediaConnectionEventNames.ICE_CANDIDATE]({candidate: 'candidate'});
+            eventListeners[MediaConnectionEventNames.ICE_CANDIDATE]({candidate: {candidate: 'candidate'}});
 
             assert.equal(meeting.iceCandidatesCount, 1);
+          });
+
+          it('should not collect empty ice candidates', () => {
+            eventListeners[MediaConnectionEventNames.ICE_CANDIDATE]({candidate: {candidate: ''}});
+
+            assert.equal(meeting.iceCandidatesCount, 0);
           });
 
           it('should not collect null ice candidates', () => {
@@ -9151,7 +9165,6 @@ describe('plugin-meetings', () => {
               webcastInstance: {
                 url: 'url',
               },
-
             },
           };
 
@@ -9165,10 +9178,7 @@ describe('plugin-meetings', () => {
             newLocusResources
           );
 
-          assert.calledWith(
-            meeting.webinar.updateWebcastUrl,
-            newLocusResources
-          );
+          assert.calledWith(meeting.webinar.updateWebcastUrl, newLocusResources);
 
           done();
         });
@@ -12326,14 +12336,10 @@ describe('plugin-meetings', () => {
         const testEmit = async (unmuteAllowed) => {
           meeting.audio = {
             handleServerLocalUnmuteRequired: sinon.stub(),
-          }
-          await meeting.locusInfo.emitScoped(
-            {},
-            LOCUSINFO.EVENTS.LOCAL_UNMUTE_REQUIRED,
-            {
-              unmuteAllowed,
-            }
-          );
+          };
+          await meeting.locusInfo.emitScoped({}, LOCUSINFO.EVENTS.LOCAL_UNMUTE_REQUIRED, {
+            unmuteAllowed,
+          });
 
           assert.calledWith(
             TriggerProxy.trigger,
@@ -12349,7 +12355,11 @@ describe('plugin-meetings', () => {
               },
             }
           );
-          assert.calledOnceWithExactly(meeting.audio.handleServerLocalUnmuteRequired, meeting, unmuteAllowed)
+          assert.calledOnceWithExactly(
+            meeting.audio.handleServerLocalUnmuteRequired,
+            meeting,
+            unmuteAllowed
+          );
         };
 
         [true, false].forEach((unmuteAllowed) => {
