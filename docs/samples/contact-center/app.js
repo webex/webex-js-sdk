@@ -1,15 +1,3 @@
-/* eslint-disable no-underscore-dangle */
-/* eslint-env browser */
-
-/* global Webex */
-
-/* eslint-disable require-jsdoc */
-/* eslint-disable no-unused-vars */
-/* eslint-disable no-console */
-/* eslint-disable no-global-assign */
-/* eslint-disable no-multi-assign */
-/* eslint-disable max-len */
-
 // Globals
 let webex;
 let sdk;
@@ -21,7 +9,7 @@ let agentId;
 let taskControl;
 let task;
 let taskId;
-let agentAuxCodeId;
+let wrapupCodes = []; // Add this to store wrapup codes
 
 const authTypeElm = document.querySelector('#auth-type');
 const credentialsFormElm = document.querySelector('#credentials');
@@ -47,6 +35,7 @@ const holdElm = document.querySelector('#hold');
 const resumeElm = document.querySelector('#resume');
 const endElm = document.querySelector('#end');
 const wrapupElm = document.querySelector('#wrapup');
+const wrapupCodesDropdownElm = document.querySelector('#wrapupCodesDropdown');
 
 // Store and Grab `access-token` from sessionStorage
 if (sessionStorage.getItem('date') > new Date().getTime()) {
@@ -148,7 +137,8 @@ function register() {
         teamsDropdown.innerHTML = ''; // Clear previously selected option on teamsDropdown
         const listTeams = agentProfile.teams;
         agentId = agentProfile.agentId;
-        agentAuxCodeId = agentProfile.defaultWrapupCode;
+        wrapupCodes = agentProfile.wrapupCodes;
+        populateWrapupCodesDropdown();
         listTeams.forEach((team) => {
             const option = document.createElement('option');
             option.value = team.id;
@@ -169,6 +159,7 @@ function register() {
         });
 
         if (agentProfile.isAgentLoggedIn) {
+          loginAgentElm.disabled = true;
           logoutAgentElm.classList.remove('hidden');
         }
 
@@ -193,6 +184,16 @@ function register() {
       
       incomingCallListener.dispatchEvent(taskEvents);
     }) 
+}
+
+function populateWrapupCodesDropdown() {
+  wrapupCodesDropdownElm.innerHTML = ''; // Clear previous options
+  wrapupCodes.forEach((code) => {
+    const option = document.createElement('option');
+    option.text = code.name;
+    option.value = code.id;
+    wrapupCodesDropdownElm.add(option);
+  });
 }
 
 async function handleAgentLogin(e) {
@@ -302,7 +303,6 @@ function answer() {
   holdElm.disabled = false;
   resumeElm.disabled = true;
   endElm.disabled = false;
-  wrapupElm.disabled = true;
   task.accept(taskId);
   incomingDetailsElm.innerText = 'Call Accepted';
 }
@@ -400,6 +400,7 @@ function endCall() {
     holdElm.disabled = true;
     resumeElm.disabled = true;
     wrapupElm.disabled = false;
+    wrapupCodesDropdownElm.disabled = false;
   }).catch((error) => {
     console.error('Failed to end the call', error);
     endElm.disabled = false;
@@ -408,14 +409,16 @@ function endCall() {
 
 function wrapupCall() {
   wrapupElm.disabled = true;
-  task.wrapup(taskId, {wrapUpReason: 'Sale', auxCodeId: agentAuxCodeId}).then(() => {
+  const wrapupReason = wrapupCodesDropdownElm.options[wrapupCodesDropdownElm.selectedIndex].text;
+  const auxCodeId = wrapupCodesDropdownElm.options[wrapupCodesDropdownElm.selectedIndex].value;
+  task.wrapup(taskId, {wrapUpReason: wrapupReason, auxCodeId: auxCodeId}).then(() => {
     console.info('Call wrapped up successfully');
     holdElm.disabled = true;
     resumeElm.disabled = true;
     endElm.disabled = true;
+    wrapupCodesDropdownElm.disabled = true;
   }).catch((error) => {
     console.error('Failed to wrap up the call', error);
     wrapupElm.disabled = false;
   });
 }
-

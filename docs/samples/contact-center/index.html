@@ -149,7 +149,13 @@
                 <button onclick="holdCall()" id="hold" class="btn--yellow" disabled>Hold</button>
                 <button onclick="resumeCall()" id="resume" class="btn--blue" disabled>Resume</button>
                 <button onclick="endCall()" id="end" class="btn--red" disabled>End</button>
-                <button onclick="wrapupCall()" id="wrapup" class="btn--green" disabled>Wrapup</button>
+                <fieldset>
+                  <legend>Call Wrapup</legend>
+                  <button onclick="wrapupCall()" id="wrapup" class="btn--green" disabled>Wrapup</button>
+                  <select id="wrapupCodesDropdown" disabled>
+                    <option value="" selected hidden>Select Wrapup Code</option>
+                  </select>
+                </fieldset>
               </div>
             </fieldset>
           </div>
