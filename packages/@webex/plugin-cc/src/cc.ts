@@ -23,7 +23,7 @@ import {StateChange, Logout} from './services/agent/types';
 import {getErrorDetails} from './services/core/Utils';
 import {Profile, WelcomeEvent} from './services/config/types';
 import {AGENT_STATE_AVAILABLE} from './services/config/constants';
-import {ConnectionLostDetails} from './services/core/WebSocket/types';
+import {ConnectionLostDetails} from './services/core/websocket/types';
 import TaskManager from './services/task/TaskManager';
 import WebCallingService from './services/WebCallingService';
 import {ITask, TASK_EVENTS} from './services/task/types';
