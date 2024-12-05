@@ -161,7 +161,7 @@ describe('Roap', () => {
           roapMessage: expectedRoapMessage,
           locusSelfUrl: meeting.selfUrl,
           mediaId: meeting.mediaId,
-          meetingId: meeting.id,
+          isMultistream: meeting.isMultistream,
           locusMediaRequest: meeting.locusMediaRequest,
         })
       );

@@ -2,8 +2,9 @@
 import {defer} from 'lodash';
 import {Defer} from '@webex/common';
 import {WebexPlugin} from '@webex/webex-core';
-import {MEDIA, HTTP_VERBS, ROAP, IP_VERSION} from '../constants';
+import {MEDIA, HTTP_VERBS, ROAP} from '../constants';
 import LoggerProxy from '../common/logs/logger-proxy';
+import {ClientMediaPreferences} from '../reachability/reachability.types';
 
 export type MediaRequestType = 'RoapMessage' | 'LocalMute';
 export type RequestResult = any;
@@ -14,9 +15,8 @@ export type RoapRequest = {
   mediaId: string;
   roapMessage: any;
   reachability: any;
+  clientMediaPreferences: ClientMediaPreferences;
   sequence?: any;
-  joinCookie: any; // any, because this is opaque to the client, we pass whatever object we got from one backend component (Orpheus) to the other (Locus)
-  ipVersion?: IP_VERSION;
 };
 
 export type LocalMuteRequest = {
@@ -202,10 +202,6 @@ export class LocusMediaRequest extends WebexPlugin {
     const body: any = {
       device: this.config.device,
       correlationId: this.config.correlationId,
-      clientMediaPreferences: {
-        preferTranscoding: this.config.preferTranscoding,
-        ipver: request.type === 'RoapMessage' ? request.ipVersion : undefined,
-      },
     };
 
     const localMedias: any = {
@@ -223,7 +219,7 @@ export class LocusMediaRequest extends WebexPlugin {
       case 'RoapMessage':
         localMedias.roapMessage = request.roapMessage;
         localMedias.reachability = request.reachability;
-        body.clientMediaPreferences.joinCookie = request.joinCookie;
+        body.clientMediaPreferences = request.clientMediaPreferences;
 
         // @ts-ignore
         this.webex.internal.newMetrics.submitClientEvent({
