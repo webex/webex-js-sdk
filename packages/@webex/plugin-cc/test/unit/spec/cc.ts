@@ -20,6 +20,7 @@ import {CC_FILE} from '../../../src/constants';
 import '../../../__mocks__/workerMock';
 import {Profile} from '../../../src/services/config/types';
 import TaskManager from '../../../src/services/task/TaskManager';
+import { TASK_EVENTS } from '../../../src/services/task/types';
 
 
 jest.mock('../../../src/logger-proxy', () => ({
@@ -41,8 +42,10 @@ global.URL.createObjectURL = jest.fn(() => 'blob:http://localhost:3000/12345');
 
 describe('webex.cc', () => {
   let webex;
-  let mockWebSocketManager;
   let mockContact;
+  let mockTaskManager;
+  let mockWebSocketManager;
+
 
   beforeEach(() => {
     webex = MockWebex({
@@ -101,7 +104,7 @@ describe('webex.cc', () => {
       contact: mockContact
     };
 
-    const mockTaskManager = {
+    mockTaskManager = {
       contact: mockContact,
       call: undefined,
       taskCollection: {},
@@ -114,7 +117,8 @@ describe('webex.cc', () => {
       getActiveTasks: jest.fn(),
       on: jest.fn(),
       off: jest.fn(),
-      emit: jest.fn()
+      emit: jest.fn(),
+      unregisterIncomingCallEvent: jest.fn()
     }
 
     jest.spyOn(Services, 'getInstance').mockReturnValue(mockServicesInstance);
@@ -128,12 +132,21 @@ describe('webex.cc', () => {
   });
 
   it('should initialize services and logger proxy on READY event', () => {
+    const mockTask = {};
+    const onSpy = jest.spyOn(mockTaskManager, 'on');
+    const emitSpy = jest.spyOn(webex.cc.eventEmitter, 'emit');
+    const incomingCallCb = onSpy.mock.calls[0][1];
     webex.once('READY', () => {
       expect(Services.getInstance).toHaveBeenCalled();
       expect(LoggerProxy.initialize).toHaveBeenCalledWith(webex.logger);
     });
 
     webex.emit('READY');
+    expect(onSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_INCOMING, incomingCallCb);
+    
+    incomingCallCb(mockTask);
+
+    expect(emitSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_INCOMING, mockTask);
   });
 
   describe('cc.getDeviceId', () => {
@@ -458,6 +471,8 @@ describe('webex.cc', () => {
       const result = await webex.cc.stationLogout(data);
 
       expect(stationLogoutMock).toHaveBeenCalledWith({data: data});
+      expect(mockTaskManager.unregisterIncomingCallEvent).toHaveBeenCalledWith();
+      expect(mockTaskManager.off).toHaveBeenCalledWith(TASK_EVENTS.TASK_INCOMING, expect.any(Function));
       expect(result).toEqual(response);
     });
 

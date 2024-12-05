@@ -7,6 +7,7 @@ import * as Utils from '../../../../../src/services/core/Utils';
 import { CC_EVENTS } from '../../../../../src/services/config/types';
 import config from '../../../../../src/config';
 import WebCallingService from '../../../../../src/services/WebCallingService';
+import { TASK_EVENTS } from '../../../../../src/services/task/types';
 
 jest.mock('@webex/calling');
 
@@ -94,7 +95,14 @@ describe('Task', () => {
   });
 
   it('test the on spy', async () => {
-    expect(onSpy).toHaveBeenCalledWith(CALL_EVENT_KEYS.REMOTE_MEDIA, onSpy.mock.calls[0][1]);
+    const taskEmitSpy = jest.spyOn(task, 'emit');
+    const remoteMediaCb = onSpy.mock.calls[0][1];
+    
+    expect(onSpy).toHaveBeenCalledWith(CALL_EVENT_KEYS.REMOTE_MEDIA, remoteMediaCb);
+
+    remoteMediaCb(mockTrack)
+
+    expect(taskEmitSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_MEDIA, mockTrack);
   });
 
   it('test updating the task data', async () => {

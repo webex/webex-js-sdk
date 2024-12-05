@@ -142,7 +142,7 @@ type Interaction = {
 };
 
 /**
- *
+ * Task payload type
  */
 export type TaskData = {
   mediaResourceId: string;
@@ -248,19 +248,31 @@ export type VTeamSuccess = Msg<{
   agentSessionId: string;
 }>;
 
+/**
+ * Parameters to be passed for pause recording task
+ */
 export type HoldResumePayload = {
   mediaResourceId: string;
 };
 
+/**
+ * Parameters to be passed for resume recording task
+ */
 export type ResumeRecordingPayload = {
   autoResumed: boolean;
 };
 
+/**
+ * Parameters to be passed for transfer task
+ */
 export type TransferPayLoad = {
   to: string;
   destinationType: DestinationType;
 };
 
+/**
+ * Parameters to be passed for consult task
+ */
 export type ConsultPayload = {
   to: string | undefined;
   destinationType: string;
@@ -282,6 +294,9 @@ export type declinePayload = {
   mediaResourceId: string;
 };
 
+/**
+ * Parameters to be passed for wrapup task
+ */
 export type WrapupPayLoad = {
   wrapUpReason: string;
   auxCodeId: string;
@@ -304,8 +319,14 @@ export type ContactCleanupData = {
   };
 };
 
+/**
+ * Response type for the task public methods
+ */
 export type TaskResponse = AgentContact | Error | void;
 
+/**
+ * Represents an interface for managing task related operations.
+ */
 export interface ITask {
   /**
    * Event data received in the CC events
