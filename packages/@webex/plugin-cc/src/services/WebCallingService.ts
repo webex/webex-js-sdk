@@ -82,25 +82,25 @@ export default class WebCallingService extends EventEmitter {
   public answerCall(localAudioStream: LocalMicrophoneStream, taskId: string) {
     if (this.call) {
       try {
-        this.webex.logger.info(`[WebRtc]: Call answered: ${taskId}`);
+        this.webex.logger.info(`Call answered: ${taskId}`);
         this.call.answer(localAudioStream);
         this.registerCallListeners();
       } catch (error) {
-        this.webex.logger.error(`[WebRtc]: Failed to answer call for ${taskId}. Error: ${error}`);
+        this.webex.logger.error(`Failed to answer call for ${taskId}. Error: ${error}`);
         // Optionally, throw the error to allow the invoker to handle it
         throw error;
       }
     } else {
-      this.webex.logger.log(`[WebRtc]: Cannot answer a non WebRtc Call: ${taskId}`);
+      this.webex.logger.log(`Cannot answer a non WebRtc Call: ${taskId}`);
     }
   }
 
   public muteCall(localAudioStream: LocalMicrophoneStream) {
     if (this.call) {
-      this.webex.logger.info('[WebRtc]: Call mute|unmute requesting!');
+      this.webex.logger.info('Call mute|unmute requesting!');
       this.call.mute(localAudioStream);
     } else {
-      this.webex.logger.log(`[WebRtc]: Cannot mute a non WebRtc Call`);
+      this.webex.logger.log(`Cannot mute a non WebRtc Call`);
     }
   }
 
@@ -115,16 +115,16 @@ export default class WebCallingService extends EventEmitter {
   public declineCall(taskId: string) {
     if (this.call) {
       try {
-        this.webex.logger.info(`[WebRtc]: Call end requested: ${taskId}`);
+        this.webex.logger.info(`Call end requested: ${taskId}`);
         this.call.end();
         this.unregisterCallListeners();
       } catch (error) {
-        this.webex.logger.error(`[WebRtc]: Failed to end call: ${taskId}. Error: ${error}`);
+        this.webex.logger.error(`Failed to end call: ${taskId}. Error: ${error}`);
         // Optionally, throw the error to allow the invoker to handle it
         throw error;
       }
     } else {
-      this.webex.logger.log(`[WebRtc]: Cannot end a non WebRtc Call: ${taskId}`);
+      this.webex.logger.log(`Cannot end a non WebRtc Call: ${taskId}`);
     }
   }
 }

@@ -177,7 +177,7 @@ describe('WebCallingService', () => {
     it('should answer the call and log info when call exists', () => {
       webRTCCalling.answerCall(localAudioStream, 'task-id');
 
-      expect(webex.logger.info).toHaveBeenCalledWith('[WebRtc]: Call answered: task-id');
+      expect(webex.logger.info).toHaveBeenCalledWith('Call answered: task-id');
       expect(mockCall.answer).toHaveBeenCalledWith(localAudioStream);
     });
 
@@ -186,14 +186,14 @@ describe('WebCallingService', () => {
       mockCall.answer.mockImplementation(() => { throw error; });
 
       expect(() => webRTCCalling.answerCall(localAudioStream, 'task-id')).toThrow(error);
-      expect(webex.logger.error).toHaveBeenCalledWith(`[WebRtc]: Failed to answer call for task-id. Error: ${error}`);
+      expect(webex.logger.error).toHaveBeenCalledWith(`Failed to answer call for task-id. Error: ${error}`);
     });
 
     it('should log when there is no call to answer', () => {
       webRTCCalling.call = null;
       webRTCCalling.answerCall(localAudioStream, 'task-id');
 
-      expect(webex.logger.log).toHaveBeenCalledWith('[WebRtc]: Cannot answer a non WebRtc Call: task-id');
+      expect(webex.logger.log).toHaveBeenCalledWith('Cannot answer a non WebRtc Call: task-id');
     });
   });
 
@@ -209,7 +209,7 @@ describe('WebCallingService', () => {
     it('should mute the call and log info when call exists', () => {
       webRTCCalling.muteCall(localAudioStream);
 
-      expect(webex.logger.info).toHaveBeenCalledWith('[WebRtc]: Call mute|unmute requesting!');
+      expect(webex.logger.info).toHaveBeenCalledWith('Call mute|unmute requesting!');
       expect(mockCall.mute).toHaveBeenCalledWith(localAudioStream);
     });
 
@@ -217,7 +217,7 @@ describe('WebCallingService', () => {
       webRTCCalling.call = null;
       webRTCCalling.muteCall(localAudioStream);
 
-      expect(webex.logger.log).toHaveBeenCalledWith('[WebRtc]: Cannot mute a non WebRtc Call');
+      expect(webex.logger.log).toHaveBeenCalledWith('Cannot mute a non WebRtc Call');
     });
   });
 
@@ -225,7 +225,7 @@ describe('WebCallingService', () => {
     it('should end the call and log info when call exists', () => {
       webRTCCalling.declineCall('task-id');
 
-      expect(webex.logger.info).toHaveBeenCalledWith('[WebRtc]: Call end requested: task-id');
+      expect(webex.logger.info).toHaveBeenCalledWith('Call end requested: task-id');
       expect(mockCall.end).toHaveBeenCalled();
     });
 
@@ -234,14 +234,14 @@ describe('WebCallingService', () => {
       mockCall.end.mockImplementation(() => { throw error; });
 
       expect(() => webRTCCalling.declineCall('task-id')).toThrow(error);
-      expect(webex.logger.error).toHaveBeenCalledWith(`[WebRtc]: Failed to end call: task-id. Error: ${error}`);
+      expect(webex.logger.error).toHaveBeenCalledWith(`Failed to end call: task-id. Error: ${error}`);
     });
 
     it('should log when there is no call to end', () => {
       webRTCCalling.call = null;
       webRTCCalling.declineCall('task-id');
 
-      expect(webex.logger.log).toHaveBeenCalledWith('[WebRtc]: Cannot end a non WebRtc Call: task-id');
+      expect(webex.logger.log).toHaveBeenCalledWith('Cannot end a non WebRtc Call: task-id');
     });
   });
 });

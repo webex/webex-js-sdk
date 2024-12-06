@@ -42,7 +42,7 @@ export const TASK_EVENTS = {
 
 export type TASK_EVENTS = Enum<typeof TASK_EVENTS>;
 
-type Interaction = {
+export type Interaction = {
   isFcManaged: boolean;
   isTerminated: boolean;
   mediaType: MEDIA_CHANNEL;
