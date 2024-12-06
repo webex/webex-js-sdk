@@ -368,38 +368,55 @@ export interface ITask {
    * @returns Promise<TaskResponse>
    * @example
    * ```
-   * task.hold(taskId);
+   * task.hold();
    * ```
    */
-  hold(taskId: string): Promise<TaskResponse>;
+  hold(): Promise<TaskResponse>;
   /**
    * This is used to resume the task.
-   * @param taskId
    * @returns Promise<TaskResponse>
    * @example
    * ```
-   * task.resume(taskId);
+   * task.resume();
    * ```
    */
-  resume(taskId: string): Promise<TaskResponse>;
+  resume(): Promise<TaskResponse>;
   /**
    * This is used to end the task.
-   * @param taskId
    * @returns Promise<TaskResponse>
    * @example
    * ```
-   * task.end(taskId);
+   * task.end();
    * ```
    */
-  end(taskId: string): Promise<TaskResponse>;
+  end(): Promise<TaskResponse>;
   /**
    * This is used to wrap up the task.
-   * @param taskId
+   * @param wrapupPayload
    * @returns Promise<TaskResponse>
    * @example
    * ```
-   * task.wrapup(taskId, data);
+   * task.wrapup(data);
    * ```
    */
-  wrapup(taskId: string, wrapupPayload: WrapupPayLoad): Promise<TaskResponse>;
+  wrapup(wrapupPayload: WrapupPayLoad): Promise<TaskResponse>;
+  /**
+   * This is used to pause the call recording.
+   * @returns Promise<TaskResponse>
+   * @example
+   * ```
+   * task.wrapup();
+   * ```
+   */
+  pauseRecording(): Promise<TaskResponse>;
+  /**
+   * This is used to resume the call recording.
+   * @param resumeRecordingPayload
+   * @returns Promise<TaskResponse>
+   * @example
+   * ```
+   * task.resumeRecording();
+   * ```
+   */
+  resumeRecording(resumeRecordingPayload: ResumeRecordingPayload): Promise<TaskResponse>;
 }

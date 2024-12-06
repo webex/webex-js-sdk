@@ -31,11 +31,12 @@ const incomingDetailsElm = document.querySelector('#incoming-call');
 const answerElm = document.querySelector('#answer');
 const declineElm = document.querySelector('#decline');
 const callControlListener = document.querySelector('#callcontrolsection');
-const holdElm = document.querySelector('#hold');
-const resumeElm = document.querySelector('#resume');
+const holdResumeElm = document.querySelector('#hold-resume');
+const pauseResumeRecordingElm = document.querySelector('#pause-resume-recording');
 const endElm = document.querySelector('#end');
 const wrapupElm = document.querySelector('#wrapup');
 const wrapupCodesDropdownElm = document.querySelector('#wrapupCodesDropdown');
+const autoResumeCheckboxElm = document.querySelector('#auto-resume-checkbox'); // Add this
 
 // Store and Grab `access-token` from sessionStorage
 if (sessionStorage.getItem('date') > new Date().getTime()) {
@@ -81,11 +82,15 @@ const taskEvents = new CustomEvent('task:incoming', {
 // TODO: Activate the call control buttons once the call is accepted and refctor this
 function registerTaskListeners(task) {
   task.on('task:assigned', (task) => {
-    console.log('Call has been accepted for task: ', task.data.interactionId);
-  }) 
+    console.info('Call has been accepted for task: ', task.data.interactionId);
+  });
   task.on('task:media', (track) => {
     document.getElementById('remote-audio').srcObject = new MediaStream([track]);
-  })
+  });
+  task.on('task:end', (task) => {
+    // Need to add check here to enable wrapup if the end button is not pressed
+    console.info('Call ended');
+  });
 }
 
 function generateWebexConfig({credentials}) {
@@ -304,8 +309,10 @@ incomingCallListener.addEventListener('task:incoming', (event) => {
 function answer() {
   answerElm.disabled = true;
   declineElm.disabled = true;
-  holdElm.disabled = false;
-  resumeElm.disabled = true;
+  holdResumeElm.disabled = false;
+  holdResumeElm.innerText = 'Hold';
+  pauseResumeRecordingElm.disabled = false;
+  pauseResumeRecordingElm.innerText = 'Pause Recording';
   endElm.disabled = false;
   task.accept(taskId);
   incomingDetailsElm.innerText = 'Call Accepted';
@@ -375,34 +382,63 @@ function expandAll() {
   });
 }
 
-function holdCall() {
-  holdElm.disabled = true;
-  task.hold(taskId).then(() => {
-    console.info('Call held successfully');
-    resumeElm.disabled = false;
-  }).catch((error) => {
-    console.error('Failed to hold the call', error);
-    holdElm.disabled = false;
-  });
+function holdResumeCall() {
+  if (holdResumeElm.innerText === 'Hold') {
+    holdResumeElm.disabled = true;
+    task.hold().then(() => {
+      console.info('Call held successfully');
+      holdResumeElm.innerText = 'Resume';
+      holdResumeElm.disabled = false;
+    }).catch((error) => {
+      console.error('Failed to hold the call', error);
+      holdResumeElm.disabled = false;
+    });
+  } else {
+    holdResumeElm.disabled = true;
+    task.resume().then(() => {
+      console.info('Call resumed successfully');
+      holdResumeElm.innerText = 'Hold';
+      holdResumeElm.disabled = false;
+    }).catch((error) => {
+      console.error('Failed to resume the call', error);
+      holdResumeElm.disabled = false;
+    });
+  }
 }
 
-function resumeCall() {
-  resumeElm.disabled = true;
-  task.resume(taskId).then(() => {
-    console.info('Call resumed successfully');
-    holdElm.disabled = false;
-  }).catch((error) => {
-    console.error('Failed to resume the call', error);
-    resumeElm.disabled = false;
-  });
+function togglePauseResumeRecording() {
+  const autoResumed = autoResumeCheckboxElm.checked;
+  if (pauseResumeRecordingElm.innerText === 'Pause Recording') {
+    pauseResumeRecordingElm.disabled = true;
+    task.pauseRecording().then(() => {
+      console.info('Recording paused successfully');
+      pauseResumeRecordingElm.innerText = 'Resume Recording';
+      pauseResumeRecordingElm.disabled = false;
+      autoResumeCheckboxElm.disabled = false;
+    }).catch((error) => {
+      console.error('Failed to pause recording', error);
+      pauseResumeRecordingElm.disabled = false;
+    });
+  } else {
+    pauseResumeRecordingElm.disabled = true;
+    task.resumeRecording({ autoResumed: autoResumed }).then(() => {
+      console.info('Recording resumed successfully');
+      pauseResumeRecordingElm.innerText = 'Pause Recording';
+      pauseResumeRecordingElm.disabled = false;
+      autoResumeCheckboxElm.disabled = true;
+    }).catch((error) => {
+      console.error('Failed to resume recording', error);
+      pauseResumeRecordingElm.disabled = false;
+    });
+  }
 }
 
 function endCall() {
   endElm.disabled = true;
-  task.end(taskId).then(() => {
+  task.end().then(() => {
     console.log('Call ended successfully');
-    holdElm.disabled = true;
-    resumeElm.disabled = true;
+    holdResumeElm.disabled = true;
+    pauseResumeRecordingElm.disabled = true;
     wrapupElm.disabled = false;
     wrapupCodesDropdownElm.disabled = false;
   }).catch((error) => {
@@ -415,10 +451,9 @@ function wrapupCall() {
   wrapupElm.disabled = true;
   const wrapupReason = wrapupCodesDropdownElm.options[wrapupCodesDropdownElm.selectedIndex].text;
   const auxCodeId = wrapupCodesDropdownElm.options[wrapupCodesDropdownElm.selectedIndex].value;
-  task.wrapup(taskId, {wrapUpReason: wrapupReason, auxCodeId: auxCodeId}).then(() => {
+  task.wrapup({wrapUpReason: wrapupReason, auxCodeId: auxCodeId}).then(() => {
     console.info('Call wrapped up successfully');
-    holdElm.disabled = true;
-    resumeElm.disabled = true;
+    holdResumeElm.disabled = true;
     endElm.disabled = true;
     wrapupCodesDropdownElm.disabled = true;
   }).catch((error) => {

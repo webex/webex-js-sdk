@@ -150,8 +150,7 @@
             <fieldset>
               <legend>Call Controls</legend>
               <div class="u-mv">
-                <button onclick="holdCall()" id="hold" class="btn--yellow" disabled>Hold</button>
-                <button onclick="resumeCall()" id="resume" class="btn--blue" disabled>Resume</button>
+                <button onclick="holdResumeCall()" id="hold-resume" class="btn--yellow" disabled>Hold</button>
                 <button onclick="endCall()" id="end" class="btn--red" disabled>End</button>
                 <fieldset>
                   <legend>Call Wrapup</legend>
@@ -159,6 +158,15 @@
                   <select id="wrapupCodesDropdown" disabled>
                     <option value="" selected hidden>Select Wrapup Code</option>
                   </select>
+                </fieldset>
+                <fieldset>
+                  <legend>Recording Controls</legend>
+                  <div class="u-mv">
+                    <button onclick="togglePauseResumeRecording()" id="pause-resume-recording" class="btn--blue" disabled>Pause Recording</button>
+                    <label for="auto-resume-checkbox" style="margin-left: 10px;">
+                      <input type="checkbox" id="auto-resume-checkbox" disabled> Auto Resume
+                    </label>
+                  </div>
                 </fieldset>
               </div>
             </fieldset>

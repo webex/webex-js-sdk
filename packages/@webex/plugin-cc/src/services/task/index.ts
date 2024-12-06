@@ -5,7 +5,15 @@ import {getErrorDetails} from '../core/Utils';
 import {LoginOption} from '../../types';
 import {CC_FILE} from '../../constants';
 import routingContact from './contact';
-import {ITask, TaskResponse, TaskData, TaskId, TASK_EVENTS, WrapupPayLoad} from './types';
+import {
+  ITask,
+  TaskResponse,
+  TaskData,
+  TaskId,
+  TASK_EVENTS,
+  WrapupPayLoad,
+  ResumeRecordingPayload,
+} from './types';
 import WebCallingService from '../WebCallingService';
 
 export default class Task extends EventEmitter implements ITask {
@@ -103,7 +111,6 @@ export default class Task extends EventEmitter implements ITask {
 
   /**
    * This is used to hold the task.
-   * @param taskId
    * @returns Promise<TaskResponse>
    * @throws Error
    * @example
@@ -111,10 +118,10 @@ export default class Task extends EventEmitter implements ITask {
    * task.hold(taskId).then(()=>{}).catch(()=>{})
    * ```
    * */
-  public async hold(taskId: string): Promise<TaskResponse> {
+  public async hold(): Promise<TaskResponse> {
     try {
       return this.contact.hold({
-        interactionId: taskId,
+        interactionId: this.data.interactionId,
         data: {mediaResourceId: this.data.mediaResourceId},
       });
     } catch (error) {
@@ -125,7 +132,6 @@ export default class Task extends EventEmitter implements ITask {
 
   /**
    * This is used to resume the task.
-   * @param taskId
    * @returns Promise<TaskResponse>
    * @throws Error
    * @example
@@ -133,10 +139,10 @@ export default class Task extends EventEmitter implements ITask {
    * task.resume(taskId).then(()=>{}).catch(()=>{})
    * ```
    */
-  public async resume(taskId: string): Promise<TaskResponse> {
+  public async resume(): Promise<TaskResponse> {
     try {
       return this.contact.unHold({
-        interactionId: taskId,
+        interactionId: this.data.interactionId,
         data: {mediaResourceId: this.data.mediaResourceId},
       });
     } catch (error) {
@@ -147,7 +153,6 @@ export default class Task extends EventEmitter implements ITask {
 
   /**
    * This is used to end the task.
-   * @param taskId - Unique Id to identify each task
    * @returns Promise<TaskResponse>
    * @throws Error
    * @example
@@ -155,9 +160,9 @@ export default class Task extends EventEmitter implements ITask {
    * task.end(taskId).then(()=>{}).catch(()=>{})
    *  ```
    */
-  public async end(taskId: string): Promise<TaskResponse> {
+  public async end(): Promise<TaskResponse> {
     try {
-      return this.contact.end({interactionId: taskId});
+      return this.contact.end({interactionId: this.data.interactionId});
     } catch (error) {
       const {error: detailedError} = getErrorDetails(error, 'end', CC_FILE);
       throw detailedError;
@@ -166,7 +171,6 @@ export default class Task extends EventEmitter implements ITask {
 
   /**
    * This is used to wrap up the task.
-   * @param taskId - Unique Id to identify each task
    * @param data - WrapupPayLoad
    * @returns Promise<TaskResponse>
    * @throws Error
@@ -175,18 +179,60 @@ export default class Task extends EventEmitter implements ITask {
    * task.wrapup(taskId, data).then(()=>{}).catch(()=>{})
    * ```
    */
-  public async wrapup(taskId: string, wrapupPayload: WrapupPayLoad): Promise<TaskResponse> {
+  public async wrapup(wrapupPayload: WrapupPayLoad): Promise<TaskResponse> {
     try {
       if (!this.data) {
         throw new Error('No task data available');
       }
 
-      return this.contact.wrapup({interactionId: taskId, data: wrapupPayload});
+      return this.contact.wrapup({interactionId: this.data.interactionId, data: wrapupPayload});
     } catch (error) {
       const {error: detailedError} = getErrorDetails(error, 'wrapup', CC_FILE);
       throw detailedError;
     }
   }
 
-  // TODO: recording pause/resume, consult and transfer public methods to be implemented here
+  /**
+   * This is used to pause the call recording
+   * @returns Promise<TaskResponse>
+   * @throws Error
+   * @example
+   * ```typescript
+   * task.pauseRecording().then(()=>{}).catch(()=>{});
+   * ```
+   */
+  public async pauseRecording(): Promise<TaskResponse> {
+    try {
+      return this.contact.pauseRecording({interactionId: this.data.interactionId});
+    } catch (error) {
+      const {error: detailedError} = getErrorDetails(error, 'pauseRecording', CC_FILE);
+      throw detailedError;
+    }
+  }
+
+  /**
+   * This is used to pause the call recording
+   * @param resumeRecordingPayload
+   * @returns Promise<TaskResponse>
+   * @throws Error
+   * @example
+   * ```typescript
+   * task.resumeRecording(resumeRecordingPayload).then(()=>{}).catch(()=>{});
+   * ```
+   */
+  public async resumeRecording(
+    resumeRecordingPayload: ResumeRecordingPayload
+  ): Promise<TaskResponse> {
+    try {
+      return this.contact.resumeRecording({
+        interactionId: this.data.interactionId,
+        data: resumeRecordingPayload,
+      });
+    } catch (error) {
+      const {error: detailedError} = getErrorDetails(error, 'resumeRecording', CC_FILE);
+      throw detailedError;
+    }
+  }
+
+  // TODO: consult and transfer public methods to be implemented here
 }

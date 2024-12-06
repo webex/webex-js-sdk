@@ -79,6 +79,10 @@ export default class TaskManager extends EventEmitter {
               this.webCallingService.unregisterCallListeners();
             }
             break;
+          case CC_EVENTS.AGENT_WRAPUP:
+            this.currentTask = this.currentTask.updateTaskData(payload.data);
+            this.emit(TASK_EVENTS.TASK_END, this.currentTask);
+            break;
           default:
             break;
         }
