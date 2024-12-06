@@ -34,12 +34,19 @@ describe('LocusMediaRequest.send()', () => {
       'wjfkm.wjfkm.*': {udp:{reachable: true}, tcp:{reachable:false}},
       '1eb65fdf-9643-417f-9974-ad72cae0e10f.59268c12-7a04-4b23-a1a1-4c74be03019a.*': {udp:{reachable: false}, tcp:{reachable:true}},
     },
-    joinCookie: {
-      anycastEntryPoint: 'aws-eu-west-1',
-      clientIpAddress: 'some ip',
-      timeShot: '2023-05-23T08:03:49Z',
-    },
-    ipVersion: IP_VERSION.only_ipv4,
+    clientMediaPreferences: {
+      preferTranscoding: false,
+      joinCookie: {
+        anycastEntryPoint: 'aws-eu-west-1',
+        clientIpAddress: 'some ip',
+        timeShot: '2023-05-23T08:03:49Z',
+      },
+      ipver: IP_VERSION.only_ipv4,
+      reachability: {
+        version: '1',
+        result: 'some fake reachability result',
+      }
+    }
   };
 
   const createExpectedRoapBody = (expectedMessageType, expectedMute:{audioMuted: boolean, videoMuted: boolean}) => {
@@ -53,12 +60,16 @@ describe('LocusMediaRequest.send()', () => {
         }
       ],
       clientMediaPreferences: {
-        preferTranscoding: true,
+        preferTranscoding: false,
         ipver: 4,
         joinCookie: {
           anycastEntryPoint: 'aws-eu-west-1',
           clientIpAddress: 'some ip',
           timeShot: '2023-05-23T08:03:49Z'
+        },
+        reachability: {
+          version: '1',
+          result: 'some fake reachability result',
         }
       }
     };
@@ -87,10 +98,6 @@ describe('LocusMediaRequest.send()', () => {
           localSdp: `{"audioMuted":${expectedMute.audioMuted},"videoMuted":${expectedMute.videoMuted}}`,
         },
       ],
-      clientMediaPreferences: {
-        preferTranscoding: true,
-        ipver: undefined,
-      },
     };
 
     if (sequence) {

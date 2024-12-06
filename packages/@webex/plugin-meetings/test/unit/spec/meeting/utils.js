@@ -22,6 +22,12 @@ describe('plugin-meetings', () => {
           meetings: Meetings,
         },
       });
+
+      webex.meetings.reachability = {
+        getReachabilityReportToAttachToRoap: sinon.stub().resolves({}),
+        getClientMediaPreferences: sinon.stub().resolves({}),
+      };  
+
       const logger = {
         info: sandbox.stub(),
         log: sandbox.stub(),
@@ -39,6 +45,7 @@ describe('plugin-meetings', () => {
       meeting.cleanupLocalStreams = sinon.stub().returns(Promise.resolve());
       meeting.closeRemoteStreams = sinon.stub().returns(Promise.resolve());
       meeting.closePeerConnections = sinon.stub().returns(Promise.resolve());
+      meeting.stopPeriodicLogUpload = sinon.stub();
 
       meeting.unsetRemoteStreams = sinon.stub();
       meeting.unsetPeerConnections = sinon.stub();
@@ -64,6 +71,7 @@ describe('plugin-meetings', () => {
         assert.calledOnce(meeting.cleanupLocalStreams);
         assert.calledOnce(meeting.closeRemoteStreams);
         assert.calledOnce(meeting.closePeerConnections);
+        assert.calledOnce(meeting.stopPeriodicLogUpload);
 
         assert.calledOnce(meeting.unsetRemoteStreams);
         assert.calledOnce(meeting.unsetPeerConnections);
@@ -408,17 +416,39 @@ describe('plugin-meetings', () => {
       });
 
       it('#Should call `meetingRequest.joinMeeting', async () => {
+        meeting.isMultistream = true;
+
+        const FAKE_REACHABILITY_REPORT = {
+          id: 'fake reachability report',
+        };
+        const FAKE_CLIENT_MEDIA_PREFERENCES = {
+          id: 'fake client media preferences',
+        };
+  
+        webex.meetings.reachability.getReachabilityReportToAttachToRoap.resolves(FAKE_REACHABILITY_REPORT);
+        webex.meetings.reachability.getClientMediaPreferences.resolves(FAKE_CLIENT_MEDIA_PREFERENCES);
+        
+        sinon
+          .stub(webex.internal.device.ipNetworkDetector, 'supportsIpV4')
+          .get(() => true);
+        sinon
+          .stub(webex.internal.device.ipNetworkDetector, 'supportsIpV6')
+          .get(() => true);
+          
         await MeetingUtil.joinMeeting(meeting, {
           reachability: 'reachability',
           roapMessage: 'roapMessage',
         });
 
+        assert.calledOnceWithExactly(webex.meetings.reachability.getReachabilityReportToAttachToRoap);
+        assert.calledOnceWithExactly(webex.meetings.reachability.getClientMediaPreferences, meeting.isMultistream, IP_VERSION.ipv4_and_ipv6);
+
         assert.calledOnce(meeting.meetingRequest.joinMeeting);
         const parameter = meeting.meetingRequest.joinMeeting.getCall(0).args[0];
 
         assert.equal(parameter.inviteeAddress, 'meetingJoinUrl');
-        assert.equal(parameter.preferTranscoding, true);
-        assert.equal(parameter.reachability, 'reachability');
+        assert.equal(parameter.reachability, FAKE_REACHABILITY_REPORT);
+        assert.equal(parameter.clientMediaPreferences, FAKE_CLIENT_MEDIA_PREFERENCES);
         assert.equal(parameter.roapMessage, 'roapMessage');
 
         assert.calledOnce(meeting.setLocus)
@@ -442,6 +472,29 @@ describe('plugin-meetings', () => {
             meetingId: meeting.id,
             mediaConnections: [],
           },
+        });
+      });
+
+      it('should handle failed reachability report retrieval', async () => {
+        webex.meetings.reachability.getReachabilityReportToAttachToRoap.rejects(
+          new Error('fake error')
+        );
+        await MeetingUtil.joinMeeting(meeting, {});
+        // Verify meeting join still proceeds
+        assert.calledOnce(meeting.meetingRequest.joinMeeting);
+      });
+
+      it('should handle failed clientMediaPreferences retrieval', async () => {
+        webex.meetings.reachability.getClientMediaPreferences.rejects(new Error('fake error'));
+        meeting.isMultistream = true;
+        await MeetingUtil.joinMeeting(meeting, {});
+        // Verify meeting join still proceeds
+        assert.calledOnce(meeting.meetingRequest.joinMeeting);
+        const parameter = meeting.meetingRequest.joinMeeting.getCall(0).args[0];
+        assert.deepEqual(parameter.clientMediaPreferences, {
+          preferTranscoding: false,
+          ipver: 0,
+          joinCookie: undefined,
         });
       });
 
@@ -478,17 +531,6 @@ describe('plugin-meetings', () => {
 
         assert.equal(parameter.locale, 'en_UK');
         assert.deepEqual(parameter.deviceCapabilities, ['TEST']);
-      });
-
-      it('#Should call meetingRequest.joinMeeting with preferTranscoding=false when multistream is enabled', async () => {
-        meeting.isMultistream = true;
-        await MeetingUtil.joinMeeting(meeting, {});
-
-        assert.calledOnce(meeting.meetingRequest.joinMeeting);
-        const parameter = meeting.meetingRequest.joinMeeting.getCall(0).args[0];
-
-        assert.equal(parameter.inviteeAddress, 'meetingJoinUrl');
-        assert.equal(parameter.preferTranscoding, false);
       });
 
       it('#Should fallback sipUrl if meetingJoinUrl does not exists', async () => {

@@ -95,5 +95,7 @@ export default {
     // This only applies to non-multistream meetings
     iceCandidatesGatheringTimeout: undefined,
     backendIpv6NativeSupport: false,
+    reachabilityGetClusterTimeout: 5000,
+    logUploadIntervalMultiplicationFactor: 0, // if set to 0 or undefined, logs won't be uploaded periodically
   },
 };

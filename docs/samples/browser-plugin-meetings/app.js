@@ -375,7 +375,7 @@ function collectMeetings() {
 
 createMeetingSelectElm.addEventListener('change', (event) => {
   if (event.target.value === 'CONVERSATION_URL') {
-    createMeetingActionElm.innerText = 'Create Adhoc Meeting';
+    createMeetingActionElm.innerText = 'Create Adhoc Meeting using conversation URL (INTERNAL-USE ONLY)';
   }
   else {
     createMeetingActionElm.innerText = 'Create Meeting';

@@ -90,8 +90,8 @@ import WebExMeetingsErrors from '../../../../src/common/errors/webex-meetings-er
 import ParameterError from '../../../../src/common/errors/parameter';
 import PasswordError from '../../../../src/common/errors/password-error';
 import CaptchaError from '../../../../src/common/errors/captcha-error';
-import PermissionError   from '../../../../src/common/errors/permission';
-import WebinarRegistrationError   from '../../../../src/common/errors/webinar-registration-error';
+import PermissionError from '../../../../src/common/errors/permission';
+import WebinarRegistrationError from '../../../../src/common/errors/webinar-registration-error';
 import IntentToJoinError from '../../../../src/common/errors/intent-to-join';
 import testUtils from '../../../utils/testUtils';
 import {
@@ -377,7 +377,10 @@ describe('plugin-meetings', () => {
             }
           );
           assert.equal(newMeeting.correlationId, newMeeting.id);
-          assert.deepEqual(newMeeting.callStateForMetrics, {correlationId: newMeeting.id, sessionCorrelationId: ''});
+          assert.deepEqual(newMeeting.callStateForMetrics, {
+            correlationId: newMeeting.id,
+            sessionCorrelationId: '',
+          });
         });
 
         it('correlationId can be provided in callStateForMetrics', () => {
@@ -646,7 +649,6 @@ describe('plugin-meetings', () => {
         });
 
         const fakeRoapMessage = {id: 'fake TURN discovery message'};
-        const fakeReachabilityResults = {id: 'fake reachability'};
         const fakeTurnServerInfo = {id: 'fake turn info'};
         const fakeJoinResult = {id: 'join result'};
 
@@ -663,8 +665,6 @@ describe('plugin-meetings', () => {
           addMediaInternalStub = sinon
             .stub(meeting, 'addMediaInternal')
             .returns(Promise.resolve(test4));
-
-          webex.meetings.reachability.getReachabilityResults.resolves(fakeReachabilityResults);
 
           generateTurnDiscoveryRequestMessageStub = sinon
             .stub(meeting.roap, 'generateTurnDiscoveryRequestMessage')
@@ -685,7 +685,6 @@ describe('plugin-meetings', () => {
           assert.calledOnceWithExactly(meeting.join, {
             ...joinOptions,
             roapMessage: fakeRoapMessage,
-            reachability: fakeReachabilityResults,
           });
           assert.calledOnceWithExactly(generateTurnDiscoveryRequestMessageStub, meeting, true);
           assert.calledOnceWithExactly(
@@ -722,7 +721,6 @@ describe('plugin-meetings', () => {
           assert.calledOnceWithExactly(meeting.join, {
             ...joinOptions,
             roapMessage: undefined,
-            reachability: fakeReachabilityResults,
           });
           assert.calledOnceWithExactly(generateTurnDiscoveryRequestMessageStub, meeting, true);
           assert.notCalled(handleTurnDiscoveryHttpResponseStub);
@@ -754,7 +752,6 @@ describe('plugin-meetings', () => {
           assert.calledOnceWithExactly(meeting.join, {
             ...joinOptions,
             roapMessage: fakeRoapMessage,
-            reachability: fakeReachabilityResults,
           });
           assert.calledOnceWithExactly(generateTurnDiscoveryRequestMessageStub, meeting, true);
           assert.calledOnceWithExactly(
@@ -2468,6 +2465,63 @@ describe('plugin-meetings', () => {
           checkWorking();
         });
 
+        it('should upload logs periodically', async () => {
+          const clock = sinon.useFakeTimers();
+
+          meeting.roap.doTurnDiscovery = sinon
+            .stub()
+            .resolves({turnServerInfo: undefined, turnDiscoverySkippedReason: undefined});
+
+          let logUploadCounter = 0;
+
+          TriggerProxy.trigger.callsFake((meetingObject, options, event) => {
+            if (
+              meetingObject === meeting &&
+              options.file === 'meeting/index' &&
+              options.function === 'uploadLogs' &&
+              event === 'REQUEST_UPLOAD_LOGS'
+            ) {
+              logUploadCounter += 1;
+            }
+          });
+
+          meeting.config.logUploadIntervalMultiplicationFactor = 1;
+          meeting.meetingState = 'ACTIVE';
+
+          await meeting.addMedia({
+            mediaSettings: {},
+          });
+
+          const checkLogCounter = (delay, expectedCounter) => {
+            // first check that the counter is not increased just before the delay
+            clock.tick(delay - 50);
+            assert.equal(logUploadCounter, expectedCounter - 1);
+
+            // and now check that it has reached expected value after the delay
+            clock.tick(50);
+            assert.equal(logUploadCounter, expectedCounter);
+          };
+
+          checkLogCounter(100, 1);
+          checkLogCounter(1000, 2);
+          checkLogCounter(15000, 3);
+          checkLogCounter(15000, 4);
+          checkLogCounter(30000, 5);
+          checkLogCounter(30000, 6);
+          checkLogCounter(30000, 7);
+          checkLogCounter(60000, 8);
+          checkLogCounter(60000, 9);
+          checkLogCounter(60000, 10);
+
+          // simulate media connection being removed -> no more log uploads should happen
+          meeting.mediaProperties.webrtcMediaConnection = undefined;
+
+          clock.tick(60000);
+          assert.equal(logUploadCounter, 11);
+
+          clock.restore();
+        });
+
         it('should attach the media and return promise when in the lobby if allowMediaInLobby is set', async () => {
           meeting.roap.doTurnDiscovery = sinon
             .stub()
@@ -3689,6 +3743,8 @@ describe('plugin-meetings', () => {
             meeting.setMercuryListener = sinon.stub();
             meeting.locusInfo.onFullLocus = sinon.stub();
             meeting.webex.meetings.geoHintInfo = {regionCode: 'EU', countryCode: 'UK'};
+            meeting.webex.meetings.reachability.getReachabilityReportToAttachToRoap = sinon.stub().resolves({id: 'fake reachability'});
+            meeting.webex.meetings.reachability.getClientMediaPreferences = sinon.stub().resolves({id: 'fake clientMediaPreferences'});
             meeting.roap.doTurnDiscovery = sinon.stub().resolves({
               turnServerInfo: {
                 url: 'turns:turn-server-url:443?transport=tcp',
@@ -3808,12 +3864,12 @@ describe('plugin-meetings', () => {
               id: 'fake locus from mocked join request',
               locusUrl: 'fake locus url',
               mediaId: 'fake media id',
-            })
+            });
             sinon.stub(meeting.meetingRequest, 'joinMeeting').resolves({
               headers: {
                 trackingid: 'fake tracking id',
-              }
-            })
+              },
+            });
             await meeting.join({enableMultistream: isMultistream});
           });
 
@@ -3874,6 +3930,9 @@ describe('plugin-meetings', () => {
           const checkSdpOfferSent = ({audioMuted, videoMuted}) => {
             const {sdp, seq, tieBreaker} = roapOfferMessage;
 
+            assert.calledWith(meeting.webex.meetings.reachability.getClientMediaPreferences, meeting.isMultistream, 0);
+            assert.calledWith(meeting.webex.meetings.reachability.getReachabilityReportToAttachToRoap);
+
             assert.calledWith(locusMediaRequestStub, {
               method: 'PUT',
               uri: `${meeting.selfUrl}/media`,
@@ -3887,14 +3946,12 @@ describe('plugin-meetings', () => {
                 correlationId: meeting.correlationId,
                 localMedias: [
                   {
-                    localSdp: `{"audioMuted":${audioMuted},"videoMuted":${videoMuted},"roapMessage":{"messageType":"OFFER","sdps":["${sdp}"],"version":"2","seq":"${seq}","tieBreaker":"${tieBreaker}","headers":["includeAnswerInHttpResponse","noOkInTransaction"]}}`,
+                    localSdp: `{"audioMuted":${audioMuted},"videoMuted":${videoMuted},"roapMessage":{"messageType":"OFFER","sdps":["${sdp}"],"version":"2","seq":"${seq}","tieBreaker":"${tieBreaker}","headers":["includeAnswerInHttpResponse","noOkInTransaction"]},"reachability":{"id":"fake reachability"}}`,
                     mediaId: 'fake media id',
                   },
                 ],
                 clientMediaPreferences: {
-                  preferTranscoding: !meeting.isMultistream,
-                  joinCookie: undefined,
-                  ipver: 0,
+                  id: 'fake clientMediaPreferences',
                 },
               },
             });
@@ -3915,13 +3972,11 @@ describe('plugin-meetings', () => {
                 },
                 correlationId: meeting.correlationId,
                 clientMediaPreferences: {
-                  preferTranscoding: !meeting.isMultistream,
-                  ipver: undefined,
-                  joinCookie: undefined,
+                  id: 'fake clientMediaPreferences',
                 },
                 localMedias: [
                   {
-                    localSdp: `{"audioMuted":${audioMuted},"videoMuted":${videoMuted},"roapMessage":{"messageType":"OK","version":"2","seq":"${seq}"}}`,
+                    localSdp: `{"audioMuted":${audioMuted},"videoMuted":${videoMuted},"roapMessage":{"messageType":"OK","version":"2","seq":"${seq}"},"reachability":{"id":"fake reachability"}}`,
                     mediaId: 'fake media id',
                   },
                 ],
@@ -3947,10 +4002,6 @@ describe('plugin-meetings', () => {
                     mediaId: 'fake media id',
                   },
                 ],
-                clientMediaPreferences: {
-                  preferTranscoding: !meeting.isMultistream,
-                  ipver: undefined,
-                },
                 respOnlySdp: true,
                 usingResource: null,
               },
@@ -4006,7 +4057,10 @@ describe('plugin-meetings', () => {
                         assert.notCalled(
                           meeting.sendSlotManager.getSlot(MediaType.AudioMain).publishStream
                         );
-                        assert.throws(meeting.publishStreams(localStreams), `Attempted to publish microphone stream with ended readyState, correlationId=${meeting.correlationId}`);
+                        assert.throws(
+                          meeting.publishStreams(localStreams),
+                          `Attempted to publish microphone stream with ended readyState, correlationId=${meeting.correlationId}`
+                        );
                       } else {
                         assert.calledOnceWithExactly(
                           meeting.sendSlotManager.getSlot(MediaType.AudioMain).publishStream,
@@ -4019,7 +4073,10 @@ describe('plugin-meetings', () => {
                         assert.notCalled(
                           meeting.sendSlotManager.getSlot(MediaType.VideoMain).publishStream
                         );
-                        assert.throws(meeting.publishStreams(localStreams), `Attempted to publish camera stream with ended readyState, correlationId=${meeting.correlationId}`);
+                        assert.throws(
+                          meeting.publishStreams(localStreams),
+                          `Attempted to publish camera stream with ended readyState, correlationId=${meeting.correlationId}`
+                        );
                       } else {
                         assert.calledOnceWithExactly(
                           meeting.sendSlotManager.getSlot(MediaType.VideoMain).publishStream,
@@ -4032,7 +4089,10 @@ describe('plugin-meetings', () => {
                         assert.notCalled(
                           meeting.sendSlotManager.getSlot(MediaType.AudioSlides).publishStream
                         );
-                        assert.throws(meeting.publishStreams(localStreams), `Attempted to publish screenShare audio stream with ended readyState, correlationId=${meeting.correlationId}`);
+                        assert.throws(
+                          meeting.publishStreams(localStreams),
+                          `Attempted to publish screenShare audio stream with ended readyState, correlationId=${meeting.correlationId}`
+                        );
                       } else {
                         assert.calledOnceWithExactly(
                           meeting.sendSlotManager.getSlot(MediaType.AudioSlides).publishStream,
@@ -4045,7 +4105,10 @@ describe('plugin-meetings', () => {
                         assert.notCalled(
                           meeting.sendSlotManager.getSlot(MediaType.VideoSlides).publishStream
                         );
-                        assert.throws(meeting.publishStreams(localStreams), `Attempted to publish screenShare video stream with ended readyState, correlationId=${meeting.correlationId}`);
+                        assert.throws(
+                          meeting.publishStreams(localStreams),
+                          `Attempted to publish screenShare video stream with ended readyState, correlationId=${meeting.correlationId}`
+                        );
                       } else {
                         assert.calledOnceWithExactly(
                           meeting.sendSlotManager.getSlot(MediaType.VideoSlides).publishStream,
@@ -4340,14 +4403,14 @@ describe('plugin-meetings', () => {
             const handleDeviceLoggingSpy = sinon.spy(Meeting, 'handleDeviceLogging');
             await meeting.addMedia({audioEnabled: false});
             //calling handleDeviceLogging with audioEnaled as true adn videoEnabled as false
-            assert.calledWith(handleDeviceLoggingSpy,false,true);
+            assert.calledWith(handleDeviceLoggingSpy, false, true);
           });
 
           it('addMedia() works correctly when video is disabled with no streams to publish', async () => {
             const handleDeviceLoggingSpy = sinon.spy(Meeting, 'handleDeviceLogging');
             await meeting.addMedia({videoEnabled: false});
             //calling handleDeviceLogging audioEnabled as true videoEnabled as false
-            assert.calledWith(handleDeviceLoggingSpy,true,false);
+            assert.calledWith(handleDeviceLoggingSpy, true, false);
           });
 
           it('addMedia() works correctly when video is disabled with no streams to publish', async () => {
@@ -4416,12 +4479,11 @@ describe('plugin-meetings', () => {
             assert.calledTwice(locusMediaRequestStub);
           });
 
-
           it('addMedia() works correctly when both shareAudio and shareVideo is disabled with no streams publish', async () => {
             const handleDeviceLoggingSpy = sinon.spy(Meeting, 'handleDeviceLogging');
             await meeting.addMedia({shareAudioEnabled: false, shareVideoEnabled: false});
             //calling handleDeviceLogging with audioEnabled true and videoEnabled as true
-            assert.calledWith(handleDeviceLoggingSpy,true,true);
+            assert.calledWith(handleDeviceLoggingSpy, true, true);
           });
 
           describe('publishStreams()/unpublishStreams() calls', () => {
@@ -6276,14 +6338,22 @@ describe('plugin-meetings', () => {
           meeting.attrs.meetingInfoProvider = {
             fetchMeetingInfo: sinon
               .stub()
-              .throws(new MeetingInfoV2WebinarRegistrationError(403021, FAKE_MEETING_INFO, 'a message')),
+              .throws(
+                new MeetingInfoV2WebinarRegistrationError(403021, FAKE_MEETING_INFO, 'a message')
+              ),
           };
 
-          await assert.isRejected(meeting.fetchMeetingInfo({sendCAevents: true}), WebinarRegistrationError);
+          await assert.isRejected(
+            meeting.fetchMeetingInfo({sendCAevents: true}),
+            WebinarRegistrationError
+          );
 
           assert.deepEqual(meeting.meetingInfo, FAKE_MEETING_INFO);
           assert.equal(meeting.meetingInfoFailureCode, 403021);
-          assert.equal(meeting.meetingInfoFailureReason, MEETING_INFO_FAILURE_REASON.WEBINAR_REGISTRATION);
+          assert.equal(
+            meeting.meetingInfoFailureReason,
+            MEETING_INFO_FAILURE_REASON.WEBINAR_REGISTRATION
+          );
         });
       });
 
@@ -6998,7 +7068,10 @@ describe('plugin-meetings', () => {
           assert.deepEqual(meeting.callStateForMetrics, {correlationId, sessionCorrelationId: ''});
           meeting.setCorrelationId(uuid1);
           assert.equal(meeting.correlationId, uuid1);
-          assert.deepEqual(meeting.callStateForMetrics, {correlationId: uuid1, sessionCorrelationId: ''});
+          assert.deepEqual(meeting.callStateForMetrics, {
+            correlationId: uuid1,
+            sessionCorrelationId: '',
+          });
         });
       });
 
@@ -7670,11 +7743,11 @@ describe('plugin-meetings', () => {
           id: 'stream',
           getTracks: () => [{id: 'track', addEventListener: sinon.stub()}],
         };
-        const simulateConnectionStateChange = (newState) => {
+        const simulateConnectionStateChange = async (newState) => {
           meeting.mediaProperties.webrtcMediaConnection.getConnectionState = sinon
             .stub()
             .returns(newState);
-          eventListeners[MediaConnectionEventNames.PEER_CONNECTION_STATE_CHANGED]();
+          await eventListeners[MediaConnectionEventNames.PEER_CONNECTION_STATE_CHANGED]();
         };
 
         beforeEach(() => {
@@ -7744,9 +7817,15 @@ describe('plugin-meetings', () => {
           });
 
           it('should collect ice candidates', () => {
-            eventListeners[MediaConnectionEventNames.ICE_CANDIDATE]({candidate: 'candidate'});
+            eventListeners[MediaConnectionEventNames.ICE_CANDIDATE]({candidate: {candidate: 'candidate'}});
 
             assert.equal(meeting.iceCandidatesCount, 1);
+          });
+
+          it('should not collect empty ice candidates', () => {
+            eventListeners[MediaConnectionEventNames.ICE_CANDIDATE]({candidate: {candidate: ''}});
+
+            assert.equal(meeting.iceCandidatesCount, 0);
           });
 
           it('should not collect null ice candidates', () => {
@@ -7930,7 +8009,7 @@ describe('plugin-meetings', () => {
             meeting.reconnectionManager = new ReconnectionManager(meeting);
             meeting.reconnectionManager.iceReconnected = sinon.stub().returns(undefined);
             meeting.setNetworkStatus = sinon.stub().returns(undefined);
-            meeting.statsAnalyzer = {startAnalyzer: sinon.stub()};
+            meeting.statsAnalyzer = {startAnalyzer: sinon.stub(), stopAnalyzer: sinon.stub()};
             meeting.mediaProperties.webrtcMediaConnection = {
               // mock the on() method and store all the listeners
               on: sinon.stub().callsFake((event, listener) => {
@@ -8005,10 +8084,10 @@ describe('plugin-meetings', () => {
         });
 
         describe('CONNECTION_STATE_CHANGED event when state = "Failed"', () => {
-          const mockFailedEvent = () => {
+          const mockFailedEvent = async () => {
             meeting.setupMediaConnectionListeners();
 
-            simulateConnectionStateChange(ConnectionState.Failed);
+            await simulateConnectionStateChange(ConnectionState.Failed);
           };
 
           const checkBehavioralMetricSent = (hasMediaConnectionConnectedAtLeastOnce = false) => {
@@ -8037,6 +8116,22 @@ describe('plugin-meetings', () => {
 
             assert.notCalled(webex.internal.newMetrics.submitClientEvent);
             checkBehavioralMetricSent(true);
+          });
+
+          it('stop stats analyzer during reconnection ', async () => {
+            meeting.hasMediaConnectionConnectedAtLeastOnce = true;
+            meeting.statsAnalyzer.stopAnalyzer = sinon.stub().resolves();
+            meeting.reconnectionManager = {
+              reconnect: sinon.stub().resolves(),
+              resetReconnectionTimer: () => {}
+            };
+            meeting.currentMediaStatus = {
+              video: true
+            };
+
+            await mockFailedEvent();
+
+            assert.calledOnce(meeting.statsAnalyzer.stopAnalyzer);
           });
         });
 
@@ -8582,6 +8677,13 @@ describe('plugin-meetings', () => {
             {payload: test1}
           );
           assert.calledOnce(meeting.updateLLMConnection);
+          assert.calledOnceWithExactly(
+            Metrics.sendBehavioralMetric,
+            BEHAVIORAL_METRICS.GUEST_ENTERED_LOBBY,
+            {
+              correlation_id: meeting.correlationId,
+            }
+          );
           done();
         });
         it('listens to the self admitted guest event', (done) => {
@@ -8603,6 +8705,13 @@ describe('plugin-meetings', () => {
           assert.calledOnce(meeting.updateLLMConnection);
           assert.calledOnceWithExactly(meeting.rtcMetrics.sendNextMetrics);
 
+          assert.calledOnceWithExactly(
+            Metrics.sendBehavioralMetric,
+            BEHAVIORAL_METRICS.GUEST_EXITED_LOBBY,
+            {
+              correlation_id: meeting.correlationId,
+            }
+          );
           done();
         });
 
@@ -9127,7 +9236,6 @@ describe('plugin-meetings', () => {
               webcastInstance: {
                 url: 'url',
               },
-
             },
           };
 
@@ -9141,10 +9249,7 @@ describe('plugin-meetings', () => {
             newLocusResources
           );
 
-          assert.calledWith(
-            meeting.webinar.updateWebcastUrl,
-            newLocusResources
-          );
+          assert.calledWith(meeting.webinar.updateWebcastUrl, newLocusResources);
 
           done();
         });
@@ -12302,14 +12407,10 @@ describe('plugin-meetings', () => {
         const testEmit = async (unmuteAllowed) => {
           meeting.audio = {
             handleServerLocalUnmuteRequired: sinon.stub(),
-          }
-          await meeting.locusInfo.emitScoped(
-            {},
-            LOCUSINFO.EVENTS.LOCAL_UNMUTE_REQUIRED,
-            {
-              unmuteAllowed,
-            }
-          );
+          };
+          await meeting.locusInfo.emitScoped({}, LOCUSINFO.EVENTS.LOCAL_UNMUTE_REQUIRED, {
+            unmuteAllowed,
+          });
 
           assert.calledWith(
             TriggerProxy.trigger,
@@ -12325,7 +12426,11 @@ describe('plugin-meetings', () => {
               },
             }
           );
-          assert.calledOnceWithExactly(meeting.audio.handleServerLocalUnmuteRequired, meeting, unmuteAllowed)
+          assert.calledOnceWithExactly(
+            meeting.audio.handleServerLocalUnmuteRequired,
+            meeting,
+            unmuteAllowed
+          );
         };
 
         [true, false].forEach((unmuteAllowed) => {

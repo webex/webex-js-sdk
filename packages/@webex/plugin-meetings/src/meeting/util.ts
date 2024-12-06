@@ -115,7 +115,7 @@ const MeetingUtil = {
     return IP_VERSION.unknown;
   },
 
-  joinMeeting: (meeting, options) => {
+  joinMeeting: async (meeting, options) => {
     if (!meeting) {
       return Promise.reject(new ParameterError('You need a meeting object.'));
     }
@@ -126,6 +126,27 @@ const MeetingUtil = {
       name: 'client.locus.join.request',
       options: {meetingId: meeting.id},
     });
+
+    let reachability;
+    let clientMediaPreferences = {
+      // bare minimum fallback value that should allow us to join
+      ipver: IP_VERSION.unknown,
+      joinCookie: undefined,
+      preferTranscoding: !meeting.isMultistream,
+    };
+
+    try {
+      clientMediaPreferences = await webex.meetings.reachability.getClientMediaPreferences(
+        meeting.isMultistream,
+        MeetingUtil.getIpVersion(webex)
+      );
+      reachability = await webex.meetings.reachability.getReachabilityReportToAttachToRoap();
+    } catch (e) {
+      LoggerProxy.logger.error(
+        'Meeting:util#joinMeeting --> Error getting reachability or clientMediaPreferences:',
+        e
+      );
+    }
 
     // eslint-disable-next-line no-warning-comments
     // TODO: check if the meeting is in JOINING state
@@ -138,20 +159,19 @@ const MeetingUtil = {
         locusUrl: meeting.locusUrl,
         locusClusterUrl: meeting.meetingInfo?.locusClusterUrl,
         correlationId: meeting.correlationId,
-        reachability: options.reachability,
+        reachability,
         roapMessage: options.roapMessage,
         permissionToken: meeting.permissionToken,
         resourceId: options.resourceId || null,
         moderator: options.moderator,
         pin: options.pin,
         moveToResource: options.moveToResource,
-        preferTranscoding: !meeting.isMultistream,
         asResourceOccupant: options.asResourceOccupant,
         breakoutsSupported: options.breakoutsSupported,
         locale: options.locale,
         deviceCapabilities: options.deviceCapabilities,
         liveAnnotationSupported: options.liveAnnotationSupported,
-        ipVersion: MeetingUtil.getIpVersion(meeting.getWebexObject()),
+        clientMediaPreferences,
       })
       .then((res) => {
         const parsed = MeetingUtil.parseLocusJoin(res);
@@ -177,6 +197,7 @@ const MeetingUtil = {
 
   cleanUp: (meeting) => {
     meeting.getWebexObject().internal.device.meetingEnded();
+    meeting.stopPeriodicLogUpload();
 
     meeting.breakouts.cleanUp();
     meeting.simultaneousInterpretation.cleanUp();

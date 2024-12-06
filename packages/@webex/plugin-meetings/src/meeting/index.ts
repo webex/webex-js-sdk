@@ -5,6 +5,7 @@ import jwtDecode from 'jwt-decode';
 import {StatelessWebexPlugin} from '@webex/webex-core';
 // @ts-ignore - Types not available for @webex/common
 import {Defer} from '@webex/common';
+import {safeSetTimeout, safeSetInterval} from '@webex/common-timers';
 import {
   ClientEvent,
   ClientEventLeaveReason,
@@ -702,6 +703,8 @@ export default class Meeting extends StatelessWebexPlugin {
   private iceCandidateErrors: Map<string, number>;
   private iceCandidatesCount: number;
   private rtcMetrics?: RtcMetrics;
+  private uploadLogsTimer?: ReturnType<typeof setTimeout>;
+  private logUploadIntervalIndex: number;
 
   /**
    * @param {Object} attrs
@@ -770,6 +773,8 @@ export default class Meeting extends StatelessWebexPlugin {
       );
       this.callStateForMetrics.correlationId = this.id;
     }
+    this.logUploadIntervalIndex = 0;
+
     /**
      * @instance
      * @type {String}
@@ -3249,6 +3254,9 @@ export default class Meeting extends StatelessWebexPlugin {
           options: {meetingId: this.id},
         });
       }
+      Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.GUEST_ENTERED_LOBBY, {
+        correlation_id: this.correlationId,
+      });
       this.updateLLMConnection();
     });
     this.locusInfo.on(LOCUSINFO.EVENTS.SELF_ADMITTED_GUEST, async (payload) => {
@@ -3271,6 +3279,9 @@ export default class Meeting extends StatelessWebexPlugin {
         this.webex.internal.newMetrics.submitClientEvent({
           name: 'client.lobby.exited',
           options: {meetingId: this.id},
+        });
+        Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.GUEST_EXITED_LOBBY, {
+          correlation_id: this.correlationId,
         });
       }
       this.rtcMetrics?.sendNextMetrics();
@@ -4061,6 +4072,65 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
+   * sets the timer for periodic log upload
+   * @returns {void}
+   */
+  private setLogUploadTimer() {
+    // start with short timeouts and increase them later on so in case users have very long multi-hour meetings we don't get too fragmented logs
+    const LOG_UPLOAD_INTERVALS = [0.1, 1, 15, 15, 30, 30, 30, 60];
+
+    const delay =
+      1000 *
+      // @ts-ignore - config coming from registerPlugin
+      this.config.logUploadIntervalMultiplicationFactor *
+      LOG_UPLOAD_INTERVALS[this.logUploadIntervalIndex];
+
+    if (this.logUploadIntervalIndex < LOG_UPLOAD_INTERVALS.length - 1) {
+      this.logUploadIntervalIndex += 1;
+    }
+
+    this.uploadLogsTimer = safeSetTimeout(() => {
+      this.uploadLogsTimer = undefined;
+
+      this.uploadLogs();
+
+      // just as an extra precaution, to avoid uploading logs forever in case something goes wrong
+      // and the page remains opened, we stop it if there is no media connection
+      if (!this.mediaProperties.webrtcMediaConnection) {
+        return;
+      }
+
+      this.setLogUploadTimer();
+    }, delay);
+  }
+
+  /**
+   * Starts a periodic upload of logs
+   *
+   * @returns {undefined}
+   */
+  public startPeriodicLogUpload() {
+    // @ts-ignore - config coming from registerPlugin
+    if (this.config.logUploadIntervalMultiplicationFactor && !this.uploadLogsTimer) {
+      this.logUploadIntervalIndex = 0;
+
+      this.setLogUploadTimer();
+    }
+  }
+
+  /**
+   * Stops the periodic upload of logs
+   *
+   * @returns {undefined}
+   */
+  public stopPeriodicLogUpload() {
+    if (this.uploadLogsTimer) {
+      clearTimeout(this.uploadLogsTimer);
+      this.uploadLogsTimer = undefined;
+    }
+  }
+
+  /**
    * Removes remote audio, video and share streams from class instance's mediaProperties
    * @returns {undefined}
    */
@@ -4771,8 +4841,6 @@ export default class Meeting extends StatelessWebexPlugin {
       if (!joinResponse) {
         // This is the 1st attempt or a retry after join request failed -> we need to do a join with TURN discovery
 
-        // @ts-ignore
-        joinOptions.reachability = await this.webex.meetings.reachability.getReachabilityResults();
         const turnDiscoveryRequest = await this.roap.generateTurnDiscoveryRequestMessage(
           this,
           true
@@ -4903,6 +4971,8 @@ export default class Meeting extends StatelessWebexPlugin {
         new ParameterError('Cannot reconnect, Media has not established to reconnect')
       );
     }
+
+    this.cleanUpBeforeReconnection();
 
     return this.reconnectionManager
       .reconnect(options, async () => {
@@ -6321,7 +6391,7 @@ export default class Meeting extends StatelessWebexPlugin {
     this.mediaProperties.webrtcMediaConnection.on(
       MediaConnectionEventNames.ICE_CANDIDATE,
       (event) => {
-        if (event.candidate) {
+        if (event.candidate && event.candidate.candidate && event.candidate.candidate.length > 0) {
           this.iceCandidatesCount += 1;
         }
       }
@@ -7032,6 +7102,23 @@ export default class Meeting extends StatelessWebexPlugin {
     }
   }
 
+  private async cleanUpBeforeReconnection(): Promise<void> {
+    try {
+      // when media fails, we want to upload a webrtc dump to see whats going on
+      // this function is async, but returns once the stats have been gathered
+      await this.forceSendStatsReport({callFrom: 'cleanUpBeforeReconnection'});
+
+      if (this.statsAnalyzer) {
+        await this.statsAnalyzer.stopAnalyzer();
+      }
+    } catch (error) {
+      LoggerProxy.logger.error(
+        'Meeting:index#cleanUpBeforeReconnection --> Error during cleanup: ',
+        error
+      );
+    }
+  }
+
   /**
    * Creates an instance of LocusMediaRequest for this meeting - it is needed for doing any calls
    * to Locus /media API (these are used for sending Roap messages and updating audio/video mute status).
@@ -7228,6 +7315,7 @@ export default class Meeting extends StatelessWebexPlugin {
 
       // We can log ReceiveSlot SSRCs only after the SDP exchange, so doing it here:
       this.remoteMediaManager?.logAllReceiveSlots();
+      this.startPeriodicLogUpload();
     } catch (error) {
       LoggerProxy.logger.error(`${LOG_HEADER} failed to establish media connection: `, error);
 
