@@ -100,6 +100,7 @@ function initOauth() {
   ];
 
   const additionalScopes = [
+    "spark:kms", // to avoid token downscope to only spark:kms error on SDK init
   ];
 
   const requestedScopes = Array.from(
