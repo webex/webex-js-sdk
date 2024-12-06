@@ -7,7 +7,7 @@ import * as Utils from '../../../../../src/services/core/Utils';
 import { CC_EVENTS } from '../../../../../src/services/config/types';
 import config from '../../../../../src/config';
 import WebCallingService from '../../../../../src/services/WebCallingService';
-import { TASK_EVENTS } from '../../../../../src/services/task/types';
+import { TASK_EVENTS, TaskResponse, AgentContact } from '../../../../../src/services/task/types';
 
 jest.mock('@webex/calling');
 
@@ -189,10 +189,14 @@ describe('Task', () => {
     expect(getErrorDetailsSpy).toHaveBeenCalledWith(error, 'decline', CC_FILE);
   }); 
 
-  it('should hold the task', async () => {
-    await task.hold();
-
+  it('should hold the task and return the expected response', async () => {
+    const expectedResponse: TaskResponse = { data: { interactionId: taskId } } as AgentContact;
+    contactMock.hold.mockResolvedValue(expectedResponse);
+  
+    const response = await task.hold();
+  
     expect(contactMock.hold).toHaveBeenCalledWith({ interactionId: taskId, data: { mediaResourceId: taskDataMock.mediaResourceId } });
+    expect(response).toEqual(expectedResponse);
   });
 
   it('should handle errors in hold method', async () => {
@@ -210,10 +214,14 @@ describe('Task', () => {
     expect(getErrorDetailsSpy).toHaveBeenCalledWith(error, 'hold', CC_FILE);
   });
 
-  it('should resume the task', async () => {
-    await task.resume();
-
+  it('should resume the task and return the expected response', async () => {
+    const expectedResponse: TaskResponse = { data: { interactionId: taskId } } as AgentContact;
+    contactMock.unHold.mockResolvedValue(expectedResponse);
+  
+    const response = await task.resume();
+  
     expect(contactMock.unHold).toHaveBeenCalledWith({ interactionId: taskId, data: { mediaResourceId: taskDataMock.mediaResourceId } });
+    expect(response).toEqual(expectedResponse);
   });
 
   it('should handle errors in resume method', async () => {
@@ -231,10 +239,14 @@ describe('Task', () => {
     expect(getErrorDetailsSpy).toHaveBeenCalledWith(error, 'resume', CC_FILE);
   });
 
-  it('should end the task', async () => {
-    await task.end();
-
+  it('should end the task and return the expected response', async () => {
+    const expectedResponse: TaskResponse = { data: { interactionId: taskId } } as AgentContact;
+    contactMock.end.mockResolvedValue(expectedResponse);
+  
+    const response = await task.end();
+  
     expect(contactMock.end).toHaveBeenCalledWith({ interactionId: taskId });
+    expect(response).toEqual(expectedResponse);
   });
 
   it('should handle errors in end method', async () => {
@@ -252,15 +264,18 @@ describe('Task', () => {
     expect(getErrorDetailsSpy).toHaveBeenCalledWith(error, 'end', CC_FILE);
   });
 
-  it('should wrap up the task', async () => {
+  it('should wrap up the task and return the expected response', async () => {
+    const expectedResponse: TaskResponse = { data: { interactionId: taskId } } as AgentContact;
     const wrapupPayload = {
       wrapUpReason: 'Customer request',
       auxCodeId: 'auxCodeId123'
     };
-
-    await task.wrapup(wrapupPayload);
-
+    contactMock.wrapup.mockResolvedValue(expectedResponse);
+  
+    const response = await task.wrapup(wrapupPayload);
+  
     expect(contactMock.wrapup).toHaveBeenCalledWith({ interactionId: taskId, data: wrapupPayload });
+    expect(response).toEqual(expectedResponse);
   });
 
   it('should handle errors in wrapup method', async () => {
