@@ -1,4 +1,5 @@
 import {CallId} from '@webex/calling/dist/types/common/types';
+import EventEmitter from 'events';
 import {Msg} from '../core/GlobalTypes';
 
 export type TaskId = string;
@@ -327,7 +328,7 @@ export type TaskResponse = AgentContact | Error | void;
 /**
  * Represents an interface for managing task related operations.
  */
-export interface ITask {
+export interface ITask extends EventEmitter {
   /**
    * Event data received in the CC events
    */

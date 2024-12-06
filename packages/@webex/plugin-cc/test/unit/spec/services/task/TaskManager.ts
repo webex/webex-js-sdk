@@ -13,7 +13,8 @@ import config from '../../../../../src/config';
 jest.mock('./../../../../../src/services/task', () => {
   return jest.fn().mockImplementation(() => {
     return {
-        updateTaskData: jest.fn(),
+        updateTaskData: jest.fn().mockReturnThis(),
+        emit: jest.fn()
     };
   });
 });
@@ -147,11 +148,11 @@ describe('TaskManager', () => {
       },
     };
 
-    const taskAssignedSpy = jest.spyOn(taskManager, 'emit');
+    const currentTaskAssignedSpy = jest.spyOn(taskManager.currentTask, 'emit');
 
     webSocketManagerMock.emit('message', JSON.stringify(assignedPayload));
 
-    expect(taskAssignedSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_ASSIGNED, taskManager.currentTask);
+    expect(currentTaskAssignedSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_ASSIGNED, taskManager.currentTask);
   });
 
   it('should handle WebSocket message for AGENT_CONTACT_RESERVED and emit task:incoming for extension case', () => {

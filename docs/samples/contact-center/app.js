@@ -79,17 +79,31 @@ const taskEvents = new CustomEvent('task:incoming', {
   },
 });
 
-// TODO: Activate the call control buttons once the call is accepted and refctor this
+function updateButtonsPostEndCall() {
+  holdResumeElm.disabled = true;
+  endElm.disabled = true;
+  pauseResumeRecordingElm.disabled = true;
+  wrapupElm.disabled = false;
+  wrapupCodesDropdownElm.disabled = false;
+}
+
 function registerTaskListeners(task) {
   task.on('task:assigned', (task) => {
     console.info('Call has been accepted for task: ', task.data.interactionId);
+    holdResumeElm.disabled = false;
+    holdResumeElm.innerText = 'Hold';
+    pauseResumeRecordingElm.disabled = false;
+    pauseResumeRecordingElm.innerText = 'Pause Recording';
+    endElm.disabled = false;
   });
   task.on('task:media', (track) => {
     document.getElementById('remote-audio').srcObject = new MediaStream([track]);
   });
   task.on('task:end', (task) => {
-    // Need to add check here to enable wrapup if the end button is not pressed
-    console.info('Call ended');
+    if (!endElm.disabled) {
+      console.info('Call ended successfully by the external user');
+      updateButtonsPostEndCall();
+    }
   });
 }
 
@@ -309,11 +323,6 @@ incomingCallListener.addEventListener('task:incoming', (event) => {
 function answer() {
   answerElm.disabled = true;
   declineElm.disabled = true;
-  holdResumeElm.disabled = false;
-  holdResumeElm.innerText = 'Hold';
-  pauseResumeRecordingElm.disabled = false;
-  pauseResumeRecordingElm.innerText = 'Pause Recording';
-  endElm.disabled = false;
   task.accept(taskId);
   incomingDetailsElm.innerText = 'Call Accepted';
 }
@@ -436,11 +445,8 @@ function togglePauseResumeRecording() {
 function endCall() {
   endElm.disabled = true;
   task.end().then(() => {
-    console.log('Call ended successfully');
-    holdResumeElm.disabled = true;
-    pauseResumeRecordingElm.disabled = true;
-    wrapupElm.disabled = false;
-    wrapupCodesDropdownElm.disabled = false;
+    console.log('Call ended successfully by agent');
+    updateButtonsPostEndCall();
   }).catch((error) => {
     console.error('Failed to end the call', error);
     endElm.disabled = false;

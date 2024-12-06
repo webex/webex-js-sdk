@@ -70,7 +70,7 @@ export default class TaskManager extends EventEmitter {
             break;
           case CC_EVENTS.AGENT_CONTACT_ASSIGNED:
             this.currentTask = this.currentTask.updateTaskData(payload.data);
-            this.emit(TASK_EVENTS.TASK_ASSIGNED, this.currentTask);
+            this.currentTask.emit(TASK_EVENTS.TASK_ASSIGNED, this.currentTask);
             break;
           case CC_EVENTS.CONTACT_ENDED:
             this.emit(TASK_EVENTS.TASK_UNASSIGNED, this.currentTask);
@@ -81,7 +81,7 @@ export default class TaskManager extends EventEmitter {
             break;
           case CC_EVENTS.AGENT_WRAPUP:
             this.currentTask = this.currentTask.updateTaskData(payload.data);
-            this.emit(TASK_EVENTS.TASK_END, this.currentTask);
+            this.currentTask.emit(TASK_EVENTS.TASK_END, this.currentTask);
             break;
           default:
             break;

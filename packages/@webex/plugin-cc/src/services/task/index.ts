@@ -120,6 +120,10 @@ export default class Task extends EventEmitter implements ITask {
    * */
   public async hold(): Promise<TaskResponse> {
     try {
+      if (!this.data.mediaResourceId || this.data.mediaResourceId.length === 0) {
+        throw new Error('MediaResourceId is required');
+      }
+
       return this.contact.hold({
         interactionId: this.data.interactionId,
         data: {mediaResourceId: this.data.mediaResourceId},
@@ -141,6 +145,10 @@ export default class Task extends EventEmitter implements ITask {
    */
   public async resume(): Promise<TaskResponse> {
     try {
+      if (!this.data.mediaResourceId || this.data.mediaResourceId.length === 0) {
+        throw new Error('MediaResourceId is required');
+      }
+
       return this.contact.unHold({
         interactionId: this.data.interactionId,
         data: {mediaResourceId: this.data.mediaResourceId},
@@ -183,6 +191,12 @@ export default class Task extends EventEmitter implements ITask {
     try {
       if (!this.data) {
         throw new Error('No task data available');
+      }
+      if (!wrapupPayload.auxCodeId || wrapupPayload.auxCodeId.length === 0) {
+        throw new Error('AuxCodeId is required');
+      }
+      if (!wrapupPayload.wrapUpReason || wrapupPayload.wrapUpReason.length === 0) {
+        throw new Error('WrapUpReason is required');
       }
 
       return this.contact.wrapup({interactionId: this.data.interactionId, data: wrapupPayload});
