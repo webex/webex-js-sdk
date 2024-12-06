@@ -293,4 +293,74 @@ describe('TaskManager', () => {
     taskManager.unregisterIncomingCallEvent();
     expect(webCallingServiceOffSpy).toHaveBeenCalledWith(LINE_EVENTS.INCOMING_CALL, webCallingServiceOffSpy.mock.calls[0][1]);
   });
+
+  it('should emit TASK_END event on AGENT_WRAPUP event', () => {
+    // Need to setup the task with current task
+    const firstPayload = {
+      data: {
+        type: CC_EVENTS.AGENT_CONTACT_RESERVED,
+        agentId: "723a8ffb-a26e-496d-b14a-ff44fb83b64f",
+        eventTime: 1733211616959,
+        eventType: "RoutingMessage",
+        interaction: {},
+        interactionId: "0ae913a4-c857-4705-8d49-76dd3dde75e4",
+        orgId: "6ecef209-9a34-4ed1-a07a-7ddd1dbe925a",
+        trackingId: "575c0ec2-618c-42af-a61c-53aeb0a221ee",
+        mediaResourceId: '0ae913a4-c857-4705-8d49-76dd3dde75e4',
+        destAgentId: 'ebeb893b-ba67-4f36-8418-95c7492b28c2',
+        owner: '723a8ffb-a26e-496d-b14a-ff44fb83b64f',
+        queueMgr: 'aqm',
+      },
+    };
+    webSocketManagerMock.emit('message', JSON.stringify(firstPayload));
+
+    const wrapupPayload = {
+      data: {
+        type: CC_EVENTS.AGENT_WRAPUP,
+        agentId: "723a8ffb-a26e-496d-b14a-ff44fb83b64f",
+        eventTime: 1733211616959,
+        eventType: "RoutingMessage",
+        interaction: {},
+        interactionId: taskId,
+        orgId: "6ecef209-9a34-4ed1-a07a-7ddd1dbe925a",
+        trackingId: "575c0ec2-618c-42af-a61c-53aeb0a221ee",
+        mediaResourceId: '0ae913a4-c857-4705-8d49-76dd3dde75e4',
+        destAgentId: 'ebeb893b-ba67-4f36-8418-95c7492b28c2',
+        owner: '723a8ffb-a26e-496d-b14a-ff44fb83b64f',
+        queueMgr: 'aqm',
+      },
+    };
+  
+    const taskEmitSpy = jest.spyOn(taskManager.currentTask, 'emit');
+  
+    webSocketManagerMock.emit('message', JSON.stringify(wrapupPayload));
+  
+    expect(taskManager.currentTask.updateTaskData).toHaveBeenCalledWith(wrapupPayload.data);
+    expect(taskEmitSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_END, taskManager.currentTask);
+  });
+
+  it('should remove currentTask from taskCollection on AGENT_WRAPPEDUP event', () => {
+    const payload = {
+      data: {
+        type: CC_EVENTS.AGENT_WRAPPEDUP,
+        agentId: "723a8ffb-a26e-496d-b14a-ff44fb83b64f",
+        eventTime: 1733211616959,
+        eventType: "RoutingMessage",
+        interaction: {},
+        interactionId: taskId,
+        orgId: "6ecef209-9a34-4ed1-a07a-7ddd1dbe925a",
+        trackingId: "575c0ec2-618c-42af-a61c-53aeb0a221ee",
+        mediaResourceId: '0ae913a4-c857-4705-8d49-76dd3dde75e4',
+        destAgentId: 'ebeb893b-ba67-4f36-8418-95c7492b28c2',
+        owner: '723a8ffb-a26e-496d-b14a-ff44fb83b64f',
+        queueMgr: 'aqm',
+      },
+    };
+  
+    taskManager.taskCollection[taskId] = taskManager.currentTask;
+  
+    webSocketManagerMock.emit('message', JSON.stringify(payload));
+  
+    expect(taskManager.getTask(taskId)).toBeUndefined();
+  });
 });

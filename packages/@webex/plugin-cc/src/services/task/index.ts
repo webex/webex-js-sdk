@@ -115,15 +115,11 @@ export default class Task extends EventEmitter implements ITask {
    * @throws Error
    * @example
    * ```typescript
-   * task.hold(taskId).then(()=>{}).catch(()=>{})
+   * task.hold().then(()=>{}).catch(()=>{})
    * ```
    * */
   public async hold(): Promise<TaskResponse> {
     try {
-      if (!this.data.mediaResourceId || this.data.mediaResourceId.length === 0) {
-        throw new Error('MediaResourceId is required');
-      }
-
       return this.contact.hold({
         interactionId: this.data.interactionId,
         data: {mediaResourceId: this.data.mediaResourceId},
@@ -140,15 +136,11 @@ export default class Task extends EventEmitter implements ITask {
    * @throws Error
    * @example
    * ```typescript
-   * task.resume(taskId).then(()=>{}).catch(()=>{})
+   * task.resume().then(()=>{}).catch(()=>{})
    * ```
    */
   public async resume(): Promise<TaskResponse> {
     try {
-      if (!this.data.mediaResourceId || this.data.mediaResourceId.length === 0) {
-        throw new Error('MediaResourceId is required');
-      }
-
       return this.contact.unHold({
         interactionId: this.data.interactionId,
         data: {mediaResourceId: this.data.mediaResourceId},
@@ -165,7 +157,7 @@ export default class Task extends EventEmitter implements ITask {
    * @throws Error
    * @example
    * ```typescript
-   * task.end(taskId).then(()=>{}).catch(()=>{})
+   * task.end().then(()=>{}).catch(()=>{})
    *  ```
    */
   public async end(): Promise<TaskResponse> {
@@ -179,12 +171,12 @@ export default class Task extends EventEmitter implements ITask {
 
   /**
    * This is used to wrap up the task.
-   * @param data - WrapupPayLoad
+   * @param wrapupPayload - WrapupPayLoad
    * @returns Promise<TaskResponse>
    * @throws Error
    * @example
    * ```typescript
-   * task.wrapup(taskId, data).then(()=>{}).catch(()=>{})
+   * task.wrapup(wrapupPayload).then(()=>{}).catch(()=>{})
    * ```
    */
   public async wrapup(wrapupPayload: WrapupPayLoad): Promise<TaskResponse> {

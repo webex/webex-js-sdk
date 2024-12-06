@@ -214,11 +214,6 @@ describe('Task', () => {
     expect(getErrorDetailsSpy).toHaveBeenCalledWith(error, 'hold', CC_FILE);
   });
 
-  it('should throw an error if mediaResourceId is missing in hold method', async () => {
-    task.data.mediaResourceId = '';
-    await expect(task.hold()).rejects.toThrow();
-  });
-
   it('should resume the task and return the expected response', async () => {
     const expectedResponse: TaskResponse = { data: { interactionId: taskId } } as AgentContact;
     contactMock.unHold.mockResolvedValue(expectedResponse);
@@ -242,11 +237,6 @@ describe('Task', () => {
 
     await expect(task.resume()).rejects.toThrow(error.details.data.reason);
     expect(getErrorDetailsSpy).toHaveBeenCalledWith(error, 'resume', CC_FILE);
-  });
-
-  it('should throw an error if mediaResourceId is missing in hold method', async () => {
-    task.data.mediaResourceId = '';
-    await expect(task.resume()).rejects.toThrow();
   });
 
   it('should end the task and return the expected response', async () => {

@@ -87,7 +87,6 @@ export default class TaskManager extends EventEmitter {
             break;
           case CC_EVENTS.AGENT_WRAPPEDUP:
             this.removeCurrentTaskFromCollection();
-            this.currentTask.emit(TASK_EVENTS.TASK_WRAPUP, this.currentTask);
             break;
           default:
             break;
