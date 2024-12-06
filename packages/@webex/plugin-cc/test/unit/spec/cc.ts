@@ -132,21 +132,12 @@ describe('webex.cc', () => {
   });
 
   it('should initialize services and logger proxy on READY event', () => {
-    const mockTask = {};
-    const onSpy = jest.spyOn(mockTaskManager, 'on');
-    const emitSpy = jest.spyOn(webex.cc.eventEmitter, 'emit');
-    const incomingCallCb = onSpy.mock.calls[0][1];
     webex.once('READY', () => {
       expect(Services.getInstance).toHaveBeenCalled();
       expect(LoggerProxy.initialize).toHaveBeenCalledWith(webex.logger);
     });
 
     webex.emit('READY');
-    expect(onSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_INCOMING, incomingCallCb);
-    
-    incomingCallCb(mockTask);
-
-    expect(emitSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_INCOMING, mockTask);
   });
 
   describe('cc.getDeviceId', () => {
@@ -365,6 +356,7 @@ describe('webex.cc', () => {
 
   describe('stationLogin', () => {
     it('should login successfully with LoginOption.BROWSER', async () => {
+      const mockTask = {};
       const options = {
         teamId: 'teamId',
         loginOption: LoginOption.BROWSER,
@@ -401,6 +393,16 @@ describe('webex.cc', () => {
         },
       });
       expect(result).toEqual({});
+       
+      const onSpy = jest.spyOn(mockTaskManager, 'on');
+      const emitSpy = jest.spyOn(webex.cc.eventEmitter, 'emit');
+      const incomingCallCb = onSpy.mock.calls[0][1];
+      
+      expect(onSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_INCOMING, incomingCallCb);
+      
+      incomingCallCb(mockTask);
+  
+      expect(emitSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_INCOMING, mockTask);
     });
 
     it('should login successfully with other LoginOption', async () => {
