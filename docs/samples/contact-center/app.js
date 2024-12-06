@@ -305,8 +305,9 @@ async function fetchBuddyAgents() {
 }
 
 incomingCallListener.addEventListener('task:incoming', (event) => {
-  taskId = event.detail.task.data.interactionId;
   task = event.detail.task;
+  taskId = event.detail.task.data.interactionId;
+  
   const callerDisplay = event.detail.task.data.interaction.callAssociatedDetails.ani;
   registerTaskListeners(task);
   

@@ -69,7 +69,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         this.services.webSocketManager
       );
 
-      this.incomingTaskListener();
       LoggerProxy.initialize(this.$webex.logger);
     });
   }
@@ -187,8 +186,12 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       });
 
       if (data.loginOption === LoginOption.BROWSER) {
-        await this.webCallingService.registerWebCallingLine(data.loginOption);
+        await this.webCallingService.registerWebCallingLine();
       }
+
+      this.webCallingService.setLoginOption(data.loginOption);
+      this.incomingTaskListener();
+      this.taskManager.registerIncomingCallEvent();
 
       await loginResponse;
 
@@ -359,7 +362,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   private async handleDeviceType(deviceType: LoginOption, dn: string): Promise<void> {
     switch (deviceType) {
       case LoginOption.BROWSER:
-        await this.webCallingService.registerWebCallingLine(deviceType);
+        await this.webCallingService.registerWebCallingLine();
         break;
       case LoginOption.AGENT_DN:
       case LoginOption.EXTENSION:

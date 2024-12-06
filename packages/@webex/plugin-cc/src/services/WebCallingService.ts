@@ -26,6 +26,10 @@ export default class WebCallingService extends EventEmitter {
     this.callingClientConfig = callingClientConfig;
   }
 
+  public setLoginOption(loginOption: LoginOption) {
+    this.loginOption = loginOption;
+  }
+
   private handleMediaEvent = (track: MediaStreamTrack) => {
     this.emit(CALL_EVENT_KEYS.REMOTE_MEDIA, track);
   };
@@ -40,8 +44,7 @@ export default class WebCallingService extends EventEmitter {
     this.call.off(CALL_EVENT_KEYS.REMOTE_MEDIA, this.handleMediaEvent);
   }
 
-  public async registerWebCallingLine(loginOption: LoginOption): Promise<void> {
-    this.loginOption = loginOption;
+  public async registerWebCallingLine(): Promise<void> {
     this.callingClient = await createClient(this.webex as any, this.callingClientConfig);
     this.line = Object.values(this.callingClient.getLines())[0];
 

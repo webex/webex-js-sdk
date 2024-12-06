@@ -46,7 +46,7 @@ export default class TaskManager extends EventEmitter {
     this.call = call;
   };
 
-  private registerIncomingCallEvent() {
+  public registerIncomingCallEvent() {
     this.webCallingService.on(LINE_EVENTS.INCOMING_CALL, this.handleIncomingWebCall);
   }
 
