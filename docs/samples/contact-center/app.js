@@ -24,6 +24,8 @@ const credentialsFormElm = document.querySelector('#credentials');
 const tokenElm = document.querySelector('#access-token');
 const saveElm = document.querySelector('#access-token-save');
 const authStatusElm = document.querySelector('#access-token-status');
+const oauthFormElm = document.querySelector('#oauth');
+const oauthStatusElm = document.querySelector('#oauth-status');
 const registerBtn = document.querySelector('#webexcc-register');
 const teamsDropdown = document.querySelector('#teamsDropdown');
 const agentLogin = document.querySelector('#AgentLogin');
@@ -54,6 +56,11 @@ function changeAuthType() {
       toggleDisplay('credentials', true);
       toggleDisplay('oauth', false);
       break;
+    case 'oauth':
+      initOauth();
+      toggleDisplay('credentials', false);
+      toggleDisplay('oauth', true);
+      break;
     default:
       break;
   }
@@ -70,6 +77,64 @@ function toggleDisplay(elementId, status) {
   }
 }
 
+function initOauth() {
+  let redirectUri = `${window.location.protocol}//${window.location.host}`;
+
+  if (window.location.pathname) {
+    redirectUri += window.location.pathname;
+  }
+
+  // Reference: https://developer.webex-cx.com/documentation/integrations
+  const ccMandatoryScopes = [
+    "cjp:config_read",
+    "cjp:config_write",
+    "cjp:config",
+    "cjp:user",
+  ];
+
+  const webRTCCallingScopes = [
+    "spark:webrtc_calling",
+    "spark:calls_read",
+    "spark:calls_write",
+    "spark:xsi"
+  ];
+
+  const additionalScopes = [
+  ];
+
+  const requestedScopes = Array.from(
+    new Set(
+        ccMandatoryScopes
+        .concat(webRTCCallingScopes)
+        .concat(additionalScopes))
+      ).join(' ');
+
+  webex = window.webex = Webex.init({
+    config: generateWebexConfig({
+      credentials: {
+        client_id: 'C70599433db154842e919ad9e18273d835945ff198251c82204b236b157b3a213',
+        client_secret: '575ba9f5034f8a28dfef2770870c50bfc6e0b2b749f14e6a14845a1a47622f87',
+        redirect_uri: redirectUri,
+        scope: requestedScopes,
+      }
+    })
+  });
+
+  localStorage.setItem('OAuth', true);
+
+  webex.once('ready', () => {
+    oauthFormElm.addEventListener('submit', (event) => {
+      event.preventDefault();
+      // initiate the login sequence if not authenticated.
+      webex.authorization.initiateLogin();
+    });
+
+    if (webex.canAuthorize) {
+      oauthStatusElm.innerText = 'Authenticated';
+    }
+  });
+}
+
 function generateWebexConfig({credentials}) {
   return {
     appName: 'sdk-samples',
@@ -83,6 +148,13 @@ function generateWebexConfig({credentials}) {
   };
 }
 
+// SPARK-499535
+if(localStorage.getItem('OAuth')) {
+  setTimeout(() => {
+    initOauth();
+    localStorage.removeItem('OAuth');
+  }, 500);
+}
 
 function initWebex(e) {
   e.preventDefault();
@@ -146,9 +218,9 @@ function register() {
         }
 
         const idleCodesList = agentProfile.idleCodes;
-        
+
         if(idleCodesList.length > 0) setAgentStatusButton.disabled = false;
-        
+
         idleCodesList.forEach((idleCodes) => {
           if(idleCodes.isSystem === false) {
             const option  = document.createElement('option');
