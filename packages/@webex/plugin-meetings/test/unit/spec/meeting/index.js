@@ -8677,6 +8677,13 @@ describe('plugin-meetings', () => {
             {payload: test1}
           );
           assert.calledOnce(meeting.updateLLMConnection);
+          assert.calledOnceWithExactly(
+            Metrics.sendBehavioralMetric,
+            BEHAVIORAL_METRICS.GUEST_ENTERED_LOBBY,
+            {
+              correlation_id: meeting.correlationId,
+            }
+          );
           done();
         });
         it('listens to the self admitted guest event', (done) => {
@@ -8698,6 +8705,13 @@ describe('plugin-meetings', () => {
           assert.calledOnce(meeting.updateLLMConnection);
           assert.calledOnceWithExactly(meeting.rtcMetrics.sendNextMetrics);
 
+          assert.calledOnceWithExactly(
+            Metrics.sendBehavioralMetric,
+            BEHAVIORAL_METRICS.GUEST_EXITED_LOBBY,
+            {
+              correlation_id: meeting.correlationId,
+            }
+          );
           done();
         });
 
