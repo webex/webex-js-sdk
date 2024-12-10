@@ -1153,10 +1153,8 @@ function setTranscriptEvents() {
     });
 
     meeting.on('meeting:caption-received', (payload) => {
-
       let currentRead = 0;
       for (i=currentRead; i< payload.captions.length ; i++) {
-
         if(payload.captions[i].isFinal === true) {
           currentRead = currentRead +1 ;
           getSentimentScore(payload.captions[i].text);
@@ -1178,20 +1176,23 @@ function setTranscriptEvents() {
 
 function getSentimentScore(transcriptText) {
   let xhr = new XMLHttpRequest();
+  let scores = [];
 
   xhr.open("POST", "http://localhost:8080/analyze-sentiment");
 
   xhr.setRequestHeader("Content-Type", "application/json");
 
-  console.log('Transcript Sent:', transcriptText);
+  console.log('Playtime: Transcript Sent:', transcriptText);
 
   xhr.send(JSON.stringify({ transcript: transcriptText }));
 
   xhr.onload = function() {
     if (xhr.status >= 200 && xhr.status < 300) {
       const response = JSON.parse(this.responseText);
-      console.log('Playtime: Response received :: ', response);
-      console.log('Score:', response[0].score);
+      console.log(`Playtime: Score: ${response[0].score} Label: ${response[0].label}`);
+      let value = getShowScore(response[0].label, response[0].score);
+      updateNeedle(value);
+      updateLinearBar(updateCommulativeScore(scores,value));
     } else {
       console.error('Error in request:', xhr.status, xhr.statusText);
     }
@@ -1201,6 +1202,76 @@ function getSentimentScore(transcriptText) {
     console.error('Request failed');
   };
 }
+
+function getShowScore(label, confidence) {
+  let showScore = 0;
+  if ( label === 'negative') {
+    showScore = 40 - (40 * confidence)
+  } else if (label === 'neutral') {
+    showScore = 40 + ( 25 * confidence);
+  } else {
+    showScore = 65 + ( 35 * confidence);
+  }
+  return showScore;
+}
+
+function updateNeedle(value) {
+  const needle = document.getElementById("needle");
+  const angle = -135 + (value * 2.7); //  angle (-135deg to 135deg)
+  // console.log('Playtime: Needle  Angle:', angle);
+  needle.style.transform = `rotate(${angle}deg)`;
+}
+
+function updateCommulativeScore(scores, value) {
+  scores.push(value);
+  const total = scores.reduce((acc, value) => acc + value, 0);
+  const commulativeScore =  total / scores.length;
+  console.log('Playtime: Cummulative Score :', commulativeScore);
+  return commulativeScore;
+}
+
+
+function updateLinearBar(value) {
+  let redWidth = 0;
+  let redYellowBlendWidth = 0;
+  let yellowWidth = 0;
+  let yellowGreenbLENDwidth = 0;
+  let greenWidth = 0;
+  
+  // Calculate widths based on the value
+  if (value <= 35) {
+    redWidth = value;
+  } else if (value <= 45) {
+    redWidth = 35;
+    redYellowBlendWidth = value - 35;
+  } else if (value <= 60) {
+    redWidth = 35;
+    redYellowBlendWidth = 10;
+    yellowWidth = value - 45;
+  } else if (value <=70 ) {
+    // Red section fixed at 35
+    redWidth = 35;
+    redYellowBlendWidth = 10;
+    yellowWidth = 15;
+    yellowGreenbLENDwidth=10;
+  } else {
+    redWidth = 35;
+    redYellowBlendWidth = 10;
+    yellowWidth = 15;
+    yellowGreenbLENDwidth=10;
+    greenWidth= value - 70;
+  }
+
+  // console.log(`Red: ${redWidth}, Red-Yellow Blend: ${redYellowBlendWidth}, Yellow: ${yellowWidth}, yellowGreenbLENDwidth: ${yellowGreenbLENDwidth}, greenWidth: ${greenWidth}`);
+
+    // Set the width of each section dynamically with animation
+    document.getElementById('red').style.width = `${redWidth}%`;
+    document.getElementById('redYellowBlendWidth').style.width = `${redYellowBlendWidth}%`;
+    document.getElementById('yellow').style.width = `${yellowWidth}%`;
+    document.getElementById('yellowGreenbLENDwidth').style.width = `${yellowGreenbLENDwidth}%`;
+    document.getElementById('green').style.width = `${greenWidth}%`;
+}
+
 
 
 function pauseRecording() {
