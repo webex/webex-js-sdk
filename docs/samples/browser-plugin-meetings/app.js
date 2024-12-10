@@ -1153,10 +1153,15 @@ function setTranscriptEvents() {
     });
 
     meeting.on('meeting:caption-received', (payload) => {
-      generalTranscriptionContent.innerHTML = `\n${JSON.stringify(payload,null,4)}`;
-      voiceaTranscriptionFormattedDisplay.innerHTML = transcriptTemplate({
-        data: payload.captions,
-      });
+
+      let currentRead = 0;
+      for (i=currentRead; i< payload.captions.length ; i++) {
+
+        if(payload.captions[i].isFinal === true) {
+          currentRead = currentRead +1 ;
+          getSentimentScore(payload.captions[i].text);
+        }
+      }
       voiceaTranscriptionFormattedDisplay.scrollTop = voiceaTranscriptionFormattedDisplay.scrollHeight;
     });
 
@@ -1169,6 +1174,34 @@ function setTranscriptEvents() {
     console.log('MeetingControls#startRecording() :: no valid meeting object!');
   }
 }
+
+
+function getSentimentScore(transcriptText) {
+  let xhr = new XMLHttpRequest();
+
+  xhr.open("POST", "http://localhost:8080/analyze-sentiment");
+
+  xhr.setRequestHeader("Content-Type", "application/json");
+
+  console.log('Transcript Sent:', transcriptText);
+
+  xhr.send(JSON.stringify({ transcript: transcriptText }));
+
+  xhr.onload = function() {
+    if (xhr.status >= 200 && xhr.status < 300) {
+      const response = JSON.parse(this.responseText);
+      console.log('Playtime: Response received :: ', response);
+      console.log('Score:', response[0].score);
+    } else {
+      console.error('Error in request:', xhr.status, xhr.statusText);
+    }
+  };
+
+  xhr.onerror = function() {
+    console.error('Request failed');
+  };
+}
+
 
 function pauseRecording() {
   const meeting = getCurrentMeeting();

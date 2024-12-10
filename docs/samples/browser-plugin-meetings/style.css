@@ -446,3 +446,96 @@ legend {
   border-radius:5px;
   padding: 0 2px;
 }
+
+.sentiment {
+  display: flex;
+  /* justify-content: space-between; */
+  gap: 150px; 
+  align-items: center;
+  height: 31rem;
+}
+
+.box-sentiment {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  margin-bottom: 50px;
+  margin-left: 70px;
+  /* background-color: #982e2e; */
+}
+
+
+.progress-container {
+  display: flex;
+  justify-content: left;
+  text-align: center;
+  align-items: center;
+  flex-direction: column;
+  margin-bottom: 77px;
+  margin-left: 40px;
+  /* background-color: #c0d646; */
+}
+
+#speedometer {
+  width: 25rem;
+  height: 19rem;
+  background-image: url("speedometer1.png");
+  background-size: 100%, 100%;
+  background-repeat: no-repeat;
+  position: relative;
+}
+
+#needle {
+  width: 5px;
+  height: 90px;
+  border: 1.5px solid white;
+  border-radius: 5px;
+  background-color: red;
+  position: absolute;
+  top: 20%;
+  left: 50%;
+  z-index: 111;
+  transform-origin: bottom;
+  transform: rotate(-135deg);
+  transition: 1s;
+}
+
+.progress-bar {
+  width: 21rem;
+  height: 5rem;
+  border: 2px solid black;
+  border-radius: 10px;
+  display: flex;
+  overflow: hidden;
+  position: relative;
+}
+
+.red, .yellow, .green, .redYellowBlendWidth, .yellowGreenbLENDwidth {
+  height: 100%;
+  transition: width 0.5s ease;
+  position: left;
+  top: 0;
+  bottom: 0;
+}
+
+.red {
+  background-color: red;
+}
+
+.yellow {
+  background-color: yellow;
+}
+
+.green {
+  background-color: green;
+}
+
+.redYellowBlendWidth {
+  /* background-color: rgb(215, 146, 43); */
+  background: linear-gradient(to right, red, yellow);
+}
+
+.yellowGreenbLENDwidth {
+  background: linear-gradient(to right, yellow, green);
+}

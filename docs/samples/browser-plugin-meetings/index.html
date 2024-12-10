@@ -684,7 +684,7 @@
   <div class="box">
     <section class="section-box">
       <h2 class="collapsible">
-        Participants, Breakout Sessions, and Events published
+        Participants
         <i class="arrow fa fa-angle-down" aria-hidden="true"></i>
       </h2>
       <div class="section-content collapsed">
@@ -700,7 +700,7 @@
           </fieldset>
         </div>
         <!-- meetings / breakout sessions -->
-        <div>
+        <!-- <div>
           <fieldset>
             <legend>Breakout Sessions</legend>
             <input type="checkbox" id="enable-breakout" onclick="toggleBreakout()">
@@ -711,16 +711,16 @@
               <div id="breakout-table"></div>
             </div>
           </fieldset>
-        </div>
+        </div> -->
         <!-- meetings / events published -->
-        <div>
+        <!-- <div>
           <fieldset>
             <legend>Events Published</legend>
             <div id="events-list">
             </div>
           </fieldset>
         </div>
-      </div>
+      </div> -->
     </section>
   </div>
 
@@ -787,9 +787,9 @@
         <i class="arrow fa fa-angle-down" aria-hidden="true"></i>
       </h2>
 
-      <div class="section-content collapsed">
+      <!-- <div class="section-content collapsed"> -->
         <!-- meeting-controls / move-to-device -->
-        <div>
+        <!-- <div>
           <fieldset id="meetingsMoveToDevice">
             <legend>Move to Device</legend>
             <p class="note">NOTE: You must be paired with a device.</p>
@@ -801,7 +801,7 @@
                 class="btn-code meeting-dependent">meeting.moveFrom()</button>
             </div>
           </fieldset>
-        </div>
+        </div> -->
 
         <!-- meeting-controls / recording -->
         <div>
@@ -826,9 +826,9 @@
           </fieldset>
         </div>
 
-        <div>
+        <!-- <div> -->
           <!-- meeting-controls / locking -->
-          <fieldset id="meetingControlsLocking">
+          <!-- <fieldset id="meetingControlsLocking">
             <legend>Locking</legend>
             <div>
               <p class="note">NOTE: You must be a meeting <u>moderator</u> to lock a meeting.</p>
@@ -841,7 +841,7 @@
               <label id="gc-lock-status"></label>
             </div>
           </fieldset>
-        </div>
+        </div> -->
 
         <div>
           <!-- meeting-controls / transcription -->
@@ -863,8 +863,36 @@
         </div>
 
         <div>
+          <!-- meeting-controls / Sentiment Analyser -->
+          <fieldset id="sentiment-analyser">
+            <legend>Sentiment Analyser</legend>
+            <div class="sentiment">
+              <!-- Speedometer Section -->
+              <div class="box-sentiment">
+                  <h1>Current Sentiment</h1>
+                  <div id="speedometer">
+                      <div id="needle"></div>
+                  </div>
+              </div>
+      
+              <!-- Linear Bar Section -->
+              <div class="progress-container">
+                  <h1>Overall Sentiment</h1>
+                  <div class="progress-bar" id="progressBar">
+                      <div class="red" id="red"></div>
+                      <div class="redYellowBlendWidth" id="redYellowBlendWidth"></div>
+                      <div class="yellow" id="yellow"></div>
+                      <div class="yellowGreenbLENDwidth" id="yellowGreenbLENDwidth"></div>
+                      <div class="green" id="green"></div>
+                  </div>
+              </div>
+          </div>
+          </fieldset>
+        </div>
+
+        <!-- <div> -->
           <!-- meeting-controls / tones -->
-          <fieldset id="meetingControlsTones">
+          <!-- <fieldset id="meetingControlsTones">
             <legend>Tones</legend>
             <div>
               <p class="note">NOTE: Supports all DTMF tones.</p>
@@ -876,8 +904,8 @@
               </div>
             </div>
           </fieldset>
-        </div>
-      </div>
+        </div> -->
+      <!-- </div> -->
     </section>
   </div>
   <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
