@@ -230,8 +230,8 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
     this.earlyMedia = false;
     this.callerInfo = {} as DisplayInformation;
     this.localRoapMessage = {} as RoapMessage;
-
-    this.mobiusUrl = "https://mobius.za-wcrtm1.p1.prod.infra.webex.com/api/v1/calling/web/";
+    
+    this.mobiusUrl = activeUrl;
     this.receivedRoapOKSeq = 0;
     this.mediaNegotiationCompleted = false;
 
