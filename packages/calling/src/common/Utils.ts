@@ -86,6 +86,7 @@ import {
   UTILS_FILE,
 } from '../CallingClient/constants';
 import {
+  DeleteCallHistoryRecordsResponse,
   JanusResponseEvent,
   UCMLinesResponse,
   UpdateMissedCallsResponse,
@@ -697,6 +698,7 @@ export async function serviceErrorCodeHandler(
   | ContactResponse
   | UpdateMissedCallsResponse
   | UCMLinesResponse
+  | DeleteCallHistoryRecordsResponse
 > {
   const errorCode = Number(err.statusCode);
   const failureMessage = 'FAILURE';

@@ -101,7 +101,7 @@ describe('plugin-meetings', () => {
       });
     });
     describe('#generateLowerAllHandsMemberOptions', () => {
-      it('returns the correct options', () => {
+      it('returns the correct options without roles', () => {
         const requestingParticipantId = 'test';
         const locusUrl = 'urlTest1';
 
@@ -110,6 +110,20 @@ describe('plugin-meetings', () => {
           {
             requestingParticipantId,
             locusUrl,
+          }
+        );
+      });
+      it('returns the correct options with roles', () => {
+        const requestingParticipantId = 'test';
+        const locusUrl = 'urlTest1';
+        const roles = ['panelist'];
+
+        assert.deepEqual(
+          MembersUtil.generateLowerAllHandsMemberOptions(requestingParticipantId, locusUrl, roles),
+          {
+            requestingParticipantId,
+            locusUrl,
+            roles,
           }
         );
       });

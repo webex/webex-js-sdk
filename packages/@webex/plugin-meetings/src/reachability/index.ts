@@ -9,63 +9,30 @@ import {Defer} from '@webex/common';
 import LoggerProxy from '../common/logs/logger-proxy';
 import MeetingUtil from '../meeting/util';
 
-import {REACHABILITY} from '../constants';
+import {IP_VERSION, REACHABILITY} from '../constants';
 
 import ReachabilityRequest, {ClusterList} from './request';
 import {
+  ClusterReachabilityResult,
+  TransportResult,
+  ClientMediaPreferences,
+  ReachabilityMetrics,
+  ReachabilityReportV0,
+  ReachabilityReportV1,
+  ReachabilityResults,
+  ReachabilityResultsForBackend,
+  TransportResultForBackend,
+  GetClustersTrigger,
+} from './reachability.types';
+import {
   ClientMediaIpsUpdatedEventData,
   ClusterReachability,
-  ClusterReachabilityResult,
   Events,
   ResultEventData,
-  TransportResult,
 } from './clusterReachability';
 import EventsScope from '../common/events/events-scope';
 import BEHAVIORAL_METRICS from '../metrics/constants';
 import Metrics from '../metrics';
-
-export type ReachabilityMetrics = {
-  reachability_public_udp_success: number;
-  reachability_public_udp_failed: number;
-  reachability_public_tcp_success: number;
-  reachability_public_tcp_failed: number;
-  reachability_public_xtls_success: number;
-  reachability_public_xtls_failed: number;
-  reachability_vmn_udp_success: number;
-  reachability_vmn_udp_failed: number;
-  reachability_vmn_tcp_success: number;
-  reachability_vmn_tcp_failed: number;
-  reachability_vmn_xtls_success: number;
-  reachability_vmn_xtls_failed: number;
-};
-
-/**
- * This is the type that matches what backend expects us to send to them. It is a bit weird, because
- * it uses strings instead of booleans and numbers, but that's what they require.
- */
-export type TransportResultForBackend = {
-  reachable?: 'true' | 'false';
-  latencyInMilliseconds?: string;
-  clientMediaIPs?: string[];
-  untested?: 'true';
-};
-
-export type ReachabilityResultForBackend = {
-  udp: TransportResultForBackend;
-  tcp: TransportResultForBackend;
-  xtls: TransportResultForBackend;
-};
-
-// this is the type that is required by the backend when we send them reachability results
-export type ReachabilityResultsForBackend = Record<string, ReachabilityResultForBackend>;
-
-// this is the type used by Reachability class internally and stored in local storage
-export type ReachabilityResults = Record<
-  string,
-  ClusterReachabilityResult & {
-    isVideoMesh?: boolean;
-  }
->;
 
 // timeouts in seconds
 const DEFAULT_TIMEOUT = 3;
@@ -84,6 +51,9 @@ export default class Reachability extends EventsScope {
     [key: string]: ClusterReachability;
   };
 
+  minRequiredClusters?: number;
+  orpheusApiVersion?: number;
+
   reachabilityDefer?: Defer;
 
   vmnTimer?: ReturnType<typeof setTimeout>;
@@ -92,6 +62,8 @@ export default class Reachability extends EventsScope {
 
   expectedResultsCount = {videoMesh: {udp: 0}, public: {udp: 0, tcp: 0, xtls: 0}};
   resultsCount = {videoMesh: {udp: 0}, public: {udp: 0, tcp: 0, xtls: 0}};
+  startTime = undefined;
+  totalDuration = undefined;
 
   protected lastTrigger?: string;
 
@@ -118,14 +90,35 @@ export default class Reachability extends EventsScope {
 
   /**
    * Fetches the list of media clusters from the backend
+   * @param {string} trigger - explains the reason for starting reachability, used by Orpheus
+   * @param {Object} previousReport - last reachability report
    * @param {boolean} isRetry
    * @private
    * @returns {Promise<{clusters: ClusterList, joinCookie: any}>}
    */
-  async getClusters(isRetry = false): Promise<{clusters: ClusterList; joinCookie: any}> {
+  async getClusters(
+    trigger: GetClustersTrigger,
+    previousReport?: any,
+    isRetry = false
+  ): Promise<{
+    clusters: ClusterList;
+    joinCookie: any;
+  }> {
     try {
-      const {clusters, joinCookie} = await this.reachabilityRequest.getClusters(
-        MeetingUtil.getIpVersion(this.webex)
+      const {clusters, joinCookie, discoveryOptions} = await this.reachabilityRequest.getClusters(
+        trigger,
+        MeetingUtil.getIpVersion(this.webex),
+        previousReport
+      );
+
+      this.minRequiredClusters = discoveryOptions?.['early-call-min-clusters'];
+      this.orpheusApiVersion = discoveryOptions?.['report-version'];
+
+      // @ts-ignore
+      await this.webex.boundedStorage.put(
+        this.namespace,
+        REACHABILITY.localStorageJoinCookie,
+        JSON.stringify(joinCookie)
       );
 
       return {clusters, joinCookie};
@@ -138,7 +131,7 @@ export default class Reachability extends EventsScope {
         `Reachability:index#getClusters --> Failed with error: ${error}, retrying...`
       );
 
-      return this.getClusters(true);
+      return this.getClusters(trigger, previousReport, true);
     }
   }
 
@@ -154,19 +147,12 @@ export default class Reachability extends EventsScope {
     try {
       this.lastTrigger = trigger;
 
-      // kick off ip version detection. For now we don't await it, as we're doing it
-      // to gather the timings and send them with our reachability metrics
+      // kick off ip version detection. We don't await it, as we don't want to waste time
+      // and if it fails, that's ok we can still carry on
       // @ts-ignore
-      this.webex.internal.device.ipNetworkDetector.detect();
+      this.webex.internal.device.ipNetworkDetector.detect(true);
 
-      const {clusters, joinCookie} = await this.getClusters();
-
-      // @ts-ignore
-      await this.webex.boundedStorage.put(
-        this.namespace,
-        REACHABILITY.localStorageJoinCookie,
-        JSON.stringify(joinCookie)
-      );
+      const {clusters} = await this.getClusters('startup');
 
       this.reachabilityDefer = new Defer();
 
@@ -178,6 +164,98 @@ export default class Reachability extends EventsScope {
       LoggerProxy.logger.error(`Reachability:index#gatherReachability --> Error:`, error);
 
       return {};
+    }
+  }
+
+  /**
+   * Gets the last join cookie we got from Orpheus
+   *
+   * @returns {Promise<Object>} join cookie
+   */
+  async getJoinCookie() {
+    // @ts-ignore
+    const joinCookieRaw = await this.webex.boundedStorage
+      .get(REACHABILITY.namespace, REACHABILITY.localStorageJoinCookie)
+      .catch(() => {});
+
+    let joinCookie;
+
+    if (joinCookieRaw) {
+      try {
+        joinCookie = JSON.parse(joinCookieRaw);
+      } catch (e) {
+        LoggerProxy.logger.error(
+          `MeetingRequest#constructor --> Error in parsing join cookie data: ${e}`
+        );
+      }
+    }
+
+    return joinCookie;
+  }
+
+  /**
+   * Returns the reachability report that needs to be attached to the ROAP messages
+   * that we send to the backend.
+   *
+   * @returns {Promise<Object>}
+   */
+  async getReachabilityReport(): Promise<
+    | {
+        joinCookie: any;
+        reachability?: ReachabilityReportV1;
+      }
+    | {
+        reachability: ReachabilityReportV0;
+      }
+  > {
+    const reachabilityResult = await this.getReachabilityResults();
+    const joinCookie = await this.getJoinCookie();
+
+    // Orpheus API version 0
+    if (!this.orpheusApiVersion) {
+      return {
+        reachability: reachabilityResult,
+      };
+    }
+
+    // Orpheus API version 1
+    return {
+      reachability: {
+        version: 1,
+        result: {
+          usedDiscoveryOptions: {
+            'early-call-min-clusters': this.minRequiredClusters,
+          },
+          metrics: {
+            'total-duration-ms': this.totalDuration,
+          },
+          tests: reachabilityResult,
+        },
+      },
+      joinCookie,
+    };
+  }
+
+  /**
+   * This method is called when we don't succeed in reaching the minimum number of clusters
+   * required by Orpheus. It sends the results to Orpheus and gets a new list that it tries to reach again.
+   * @returns {Promise<ReachabilityResults>} reachability results
+   * @public
+   * @memberof Reachability
+   */
+  public async gatherReachabilityFallback(): Promise<void> {
+    try {
+      const reachabilityReport = await this.getReachabilityReport();
+
+      const {clusters} = await this.getClusters('early-call/no-min-reached', reachabilityReport);
+
+      // stop all previous reachability checks that might still be going on in the background
+      this.abortCurrentChecks();
+
+      // Perform Reachability Check
+      await this.performReachabilityChecks(clusters);
+    } catch (error) {
+      LoggerProxy.logger.error(`Reachability:index#gatherReachabilityFallback --> Error:`, error);
     }
   }
 
@@ -304,7 +382,7 @@ export default class Reachability extends EventsScope {
     } catch (e) {
       // empty storage, that's ok
       LoggerProxy.logger.warn(
-        'Roap:request#attachReachabilityData --> Error parsing reachability data: ',
+        'Reachability:index#getReachabilityResults --> Error parsing reachability data: ',
         e
       );
     }
@@ -336,7 +414,7 @@ export default class Reachability extends EventsScope {
         );
       } catch (e) {
         LoggerProxy.logger.error(
-          `Roap:request#attachReachabilityData --> Error in parsing reachability data: ${e}`
+          `Reachability:index#isAnyPublicClusterReachable --> Error in parsing reachability data: ${e}`
         );
       }
     }
@@ -393,7 +471,7 @@ export default class Reachability extends EventsScope {
         );
       } catch (e) {
         LoggerProxy.logger.error(
-          `Roap:request#attachReachabilityData --> Error in parsing reachability data: ${e}`
+          `Reachability:index#isWebexMediaBackendUnreachable --> Error in parsing reachability data: ${e}`
         );
       }
     }
@@ -425,6 +503,30 @@ export default class Reachability extends EventsScope {
     });
 
     return unreachableList;
+  }
+
+  /**
+   * Gets the number of reachable clusters from last run reachability check
+   * @returns {number} reachable clusters count
+   * @private
+   * @memberof Reachability
+   */
+  private getNumberOfReachableClusters(): number {
+    let count = 0;
+
+    Object.entries(this.clusterReachability).forEach(([key, clusterReachability]) => {
+      const result = clusterReachability.getResult();
+
+      if (
+        result.udp.result === 'reachable' ||
+        result.tcp.result === 'reachable' ||
+        result.xtls.result === 'reachable'
+      ) {
+        count += 1;
+      }
+    });
+
+    return count;
   }
 
   /**
@@ -465,18 +567,27 @@ export default class Reachability extends EventsScope {
 
   /**
    * Resolves the promise returned by gatherReachability() method
+   * @param {boolean} checkMinRequiredClusters - if true, it will check if we have reached the minimum required clusters and do a fallback if needed
    * @returns {void}
    */
-  private resolveReachabilityPromise() {
-    if (this.vmnTimer) {
-      clearTimeout(this.vmnTimer);
-    }
-    if (this.publicCloudTimer) {
-      clearTimeout(this.publicCloudTimer);
-    }
+  private resolveReachabilityPromise(checkMinRequiredClusters = true) {
+    this.totalDuration = performance.now() - this.startTime;
+
+    this.clearTimer('vmnTimer');
+    this.clearTimer('publicCloudTimer');
 
     this.logUnreachableClusters();
     this.reachabilityDefer?.resolve();
+
+    if (checkMinRequiredClusters) {
+      const numReachableClusters = this.getNumberOfReachableClusters();
+      if (this.minRequiredClusters && numReachableClusters < this.minRequiredClusters) {
+        LoggerProxy.logger.log(
+          `Reachability:index#resolveReachabilityPromise --> minRequiredClusters not reached (${numReachableClusters} < ${this.minRequiredClusters}), doing reachability fallback`
+        );
+        this.gatherReachabilityFallback();
+      }
+    }
   }
 
   /**
@@ -591,6 +702,8 @@ export default class Reachability extends EventsScope {
         `Reachability:index#startTimers --> Reachability checks timed out (${DEFAULT_TIMEOUT}s)`
       );
 
+      // check against minimum required clusters, do a new call if we don't have enough
+
       // resolve the promise, so that the client won't be blocked waiting on meetings.register() for too long
       this.resolveReachabilityPromise();
     }, DEFAULT_TIMEOUT * 1000);
@@ -647,6 +760,32 @@ export default class Reachability extends EventsScope {
   }
 
   /**
+   * Clears the timer
+   *
+   * @param {string} timer name of the timer to clear
+   * @returns {void}
+   */
+  private clearTimer(timer: string) {
+    if (this[timer]) {
+      clearTimeout(this[timer]);
+      this[timer] = undefined;
+    }
+  }
+
+  /**
+   * Aborts current checks that are in progress
+   *
+   * @returns {void}
+   */
+  private abortCurrentChecks() {
+    this.clearTimer('vmnTimer');
+    this.clearTimer('publicCloudTimer');
+    this.clearTimer('overallTimer');
+
+    this.abortClusterReachability();
+  }
+
+  /**
    * Performs reachability checks for all clusters
    * @param {ClusterList} clusterList
    * @returns {Promise<void>} promise that's resolved as soon as the checks are started
@@ -656,9 +795,7 @@ export default class Reachability extends EventsScope {
 
     this.clusterReachability = {};
 
-    if (!clusterList || !Object.keys(clusterList).length) {
-      return;
-    }
+    this.startTime = performance.now();
 
     LoggerProxy.logger.log(
       `Reachability:index#performReachabilityChecks --> doing UDP${
@@ -671,7 +808,6 @@ export default class Reachability extends EventsScope {
     );
 
     this.resetResultCounters();
-    this.startTimers();
 
     // sanitize the urls in the clusterList
     Object.keys(clusterList).forEach((key) => {
@@ -721,6 +857,24 @@ export default class Reachability extends EventsScope {
     // save the initialized results (in case we don't get any "resultReady" events at all)
     await this.storeResults(results);
 
+    if (!clusterList || !Object.keys(clusterList).length) {
+      // nothing to do, finish immediately
+      this.resolveReachabilityPromise(false);
+
+      this.emit(
+        {
+          file: 'reachability',
+          function: 'performReachabilityChecks',
+        },
+        'reachability:done',
+        {}
+      );
+
+      return;
+    }
+
+    this.startTimers();
+
     // now start the reachability on all the clusters
     Object.keys(clusterList).forEach((key) => {
       const cluster = clusterList[key];
@@ -753,8 +907,7 @@ export default class Reachability extends EventsScope {
         await this.storeResults(results);
 
         if (areAllResultsReady) {
-          clearTimeout(this.overallTimer);
-          this.overallTimer = undefined;
+          this.clearTimer('overallTimer');
           this.emit(
             {
               file: 'reachability',
@@ -784,5 +937,60 @@ export default class Reachability extends EventsScope {
 
       this.clusterReachability[key].start(); // not awaiting on purpose
     });
+  }
+
+  /**
+   * Returns the clientMediaPreferences object that needs to be sent to the backend
+   * when joining a meeting
+   *
+   * @param {boolean} isMultistream
+   * @param {IP_VERSION} ipver
+   * @returns {Object}
+   */
+  async getClientMediaPreferences(
+    isMultistream: boolean,
+    ipver?: IP_VERSION
+  ): Promise<ClientMediaPreferences> {
+    // if 0 or undefined, we assume version 0 and don't send any reachability in clientMediaPreferences
+    if (!this.orpheusApiVersion) {
+      return {
+        ipver,
+        joinCookie: await this.getJoinCookie(),
+        preferTranscoding: !isMultistream,
+      };
+    }
+
+    // must be version 1
+
+    // for version 1, the reachability report goes into clientMediaPreferences (and it contains joinCookie)
+    const reachabilityReport = (await this.getReachabilityReport()) as {
+      joinCookie: any;
+      reachability?: ReachabilityReportV1;
+    };
+
+    return {
+      ipver,
+      preferTranscoding: !isMultistream,
+      ...reachabilityReport,
+    };
+  }
+
+  /**
+   * Returns the reachability report that needs to be attached to the ROAP messages
+   * that we send to the backend.
+   * It may return undefined, if reachability is not needed to be attached to ROAP messages (that's the case for v1 or Orpheus API)
+   *
+   * @returns {Promise<ReachabilityReportV0>} object that needs to be attached to Roap messages
+   */
+  async getReachabilityReportToAttachToRoap(): Promise<ReachabilityReportV0 | undefined> {
+    // version 0
+    if (!this.orpheusApiVersion) {
+      return this.getReachabilityResults();
+    }
+
+    // version 1
+
+    // for version 1 we don't attach anything to Roap messages, reachability report is sent inside clientMediaPreferences
+    return undefined;
   }
 }

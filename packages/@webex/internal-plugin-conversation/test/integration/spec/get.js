@@ -363,6 +363,15 @@ describe('plugin-conversation', function () {
             assert.include(map(conversations, 'url'), conversation2.url);
           }));
 
+      it('retrieves no conversations', () =>
+        webex.internal.conversation
+          .list({
+            conversationsLimit: -100,
+          })
+          .then((conversations) => {
+            assert.lengthOf(conversations, 0);
+          }));
+
       it('retrieves a paginated set of conversations', () =>
         webex.internal.conversation
           .paginate({

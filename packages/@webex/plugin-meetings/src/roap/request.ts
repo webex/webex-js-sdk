@@ -4,44 +4,13 @@ import {StatelessWebexPlugin} from '@webex/webex-core';
 import LoggerProxy from '../common/logs/logger-proxy';
 import {IP_VERSION, REACHABILITY} from '../constants';
 import {LocusMediaRequest} from '../meeting/locusMediaRequest';
+import MeetingUtil from '../meeting/util';
+import {ClientMediaPreferences} from '../reachability/reachability.types';
 
 /**
  * @class RoapRequest
  */
 export default class RoapRequest extends StatelessWebexPlugin {
-  /**
-   * Returns reachability data.
-   * @param {Object} localSdp
-   * @returns {Object}
-   */
-  async attachReachabilityData(localSdp) {
-    let joinCookie;
-
-    // @ts-ignore
-    const reachabilityResult = await this.webex.meetings.reachability.getReachabilityResults();
-
-    if (reachabilityResult && Object.keys(reachabilityResult).length) {
-      localSdp.reachability = reachabilityResult;
-    }
-
-    // @ts-ignore
-    const joinCookieRaw = await this.webex.boundedStorage
-      .get(REACHABILITY.namespace, REACHABILITY.localStorageJoinCookie)
-      .catch(() => {});
-
-    if (joinCookieRaw) {
-      try {
-        joinCookie = JSON.parse(joinCookieRaw);
-      } catch (e) {
-        LoggerProxy.logger.error(
-          `MeetingRequest#constructor --> Error in parsing join cookie data: ${e}`
-        );
-      }
-    }
-
-    return {localSdp, joinCookie};
-  }
-
   /**
    * Sends a ROAP message
    * @param {Object} options
@@ -50,18 +19,16 @@ export default class RoapRequest extends StatelessWebexPlugin {
    * @param {String} options.mediaId
    * @param {String} options.correlationId
    * @param {String} options.meetingId
-   * @param {IP_VERSION} options.ipVersion only required for offers
    * @returns {Promise} returns the response/failure of the request
    */
   async sendRoap(options: {
     roapMessage: any;
     locusSelfUrl: string;
     mediaId: string;
-    meetingId: string;
-    ipVersion?: IP_VERSION;
+    isMultistream: boolean;
     locusMediaRequest?: LocusMediaRequest;
   }) {
-    const {roapMessage, locusSelfUrl, mediaId, locusMediaRequest, ipVersion} = options;
+    const {roapMessage, locusSelfUrl, isMultistream, mediaId, locusMediaRequest} = options;
 
     if (!mediaId) {
       LoggerProxy.logger.info('Roap:request#sendRoap --> sending empty mediaID');
@@ -74,23 +41,44 @@ export default class RoapRequest extends StatelessWebexPlugin {
 
       return Promise.reject(new Error('sendRoap called when locusMediaRequest is undefined'));
     }
-    const {localSdp: localSdpWithReachabilityData, joinCookie} = await this.attachReachabilityData({
-      roapMessage,
-    });
+
+    let reachability;
+    let clientMediaPreferences: ClientMediaPreferences = {
+      // bare minimum fallback value that should allow us to join;
+      joinCookie: undefined,
+      ipver: IP_VERSION.unknown,
+      preferTranscoding: !isMultistream,
+    };
+
+    try {
+      clientMediaPreferences =
+        // @ts-ignore
+        await this.webex.meetings.reachability.getClientMediaPreferences(
+          isMultistream,
+          // @ts-ignore
+          MeetingUtil.getIpVersion(this.webex)
+        );
+      reachability =
+        // @ts-ignore
+        await this.webex.meetings.reachability.getReachabilityReportToAttachToRoap();
+    } catch (error) {
+      LoggerProxy.logger.error('Roap:request#sendRoap --> reachability error:', error);
+    }
 
     LoggerProxy.logger.info(
-      `Roap:request#sendRoap --> ${locusSelfUrl} \n ${roapMessage.messageType} \n seq:${roapMessage.seq}`
+      `Roap:request#sendRoap --> ${roapMessage.messageType} seq:${roapMessage.seq} ${
+        clientMediaPreferences?.ipver ? `ipver=${clientMediaPreferences?.ipver} ` : ''
+      } ${locusSelfUrl}`
     );
 
     return locusMediaRequest
       .send({
         type: 'RoapMessage',
         selfUrl: locusSelfUrl,
-        joinCookie,
         mediaId,
         roapMessage,
-        reachability: localSdpWithReachabilityData.reachability,
-        ipVersion,
+        reachability,
+        clientMediaPreferences,
       })
       .then((res) => {
         // always it will be the first mediaConnection Object

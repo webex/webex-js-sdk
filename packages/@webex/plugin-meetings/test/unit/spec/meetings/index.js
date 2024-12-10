@@ -345,6 +345,22 @@ describe('plugin-meetings', () => {
       });
     });
 
+    describe('#_toggleIpv6BackendNativeSupport', () => {
+      it('should have _toggleIpv6BackendNativeSupport', () => {
+        assert.equal(typeof webex.meetings._toggleIpv6BackendNativeSupport, 'function');
+      });
+
+      describe('success', () => {
+        it('should update meetings config accordingly', () => {
+          webex.meetings._toggleIpv6BackendNativeSupport(true);
+          assert.equal(webex.meetings.config.backendIpv6NativeSupport, true);
+
+          webex.meetings._toggleIpv6BackendNativeSupport(false);
+          assert.equal(webex.meetings.config.backendIpv6NativeSupport, false);
+        });
+      });
+    });
+
     describe('Public API Contracts', () => {
       describe('#register', () => {
         it('emits an event and resolves when register succeeds', async () => {
@@ -813,8 +829,8 @@ describe('plugin-meetings', () => {
           loginType: 'my-login-type',
         };
 
-        it('should call setCallStateForMetrics on any pre-existing meeting', async () => {
-          const fakeMeeting = {setCallStateForMetrics: sinon.mock()};
+        it('should call updateCallStateForMetrics on any pre-existing meeting', async () => {
+          const fakeMeeting = {updateCallStateForMetrics: sinon.mock()};
           webex.meetings.meetingCollection.getByKey = sinon.stub().returns(fakeMeeting);
           await webex.meetings.create(
             test1,
@@ -828,7 +844,7 @@ describe('plugin-meetings', () => {
             undefined,
             sessionCorrelationId
           );
-          assert.calledOnceWithExactly(fakeMeeting.setCallStateForMetrics, {
+          assert.calledOnceWithExactly(fakeMeeting.updateCallStateForMetrics, {
             ...callStateForMetrics,
             correlationId,
             sessionCorrelationId,
@@ -2061,6 +2077,21 @@ describe('plugin-meetings', () => {
           ]);
         });
 
+        it('should handle failure to get user information if scopes are insufficient', async () => {
+          loggerProxySpy = sinon.spy(LoggerProxy.logger, 'error');
+          Object.assign(webex.people, {
+            _getMe: sinon.stub().returns(Promise.reject()),
+          });
+
+          await webex.meetings.fetchUserPreferredWebexSite();
+
+          assert.equal(webex.meetings.preferredWebexSite, '');
+          assert.calledOnceWithExactly(
+            loggerProxySpy,
+            'Failed to retrieve user information. No preferredWebexSite will be set'
+          );
+        });
+
         const setup = ({me = { type: 'validuser'}, user} = {}) => {
           loggerProxySpy = sinon.spy(LoggerProxy.logger, 'error');
           assert.deepEqual(webex.internal.services._getCatalog().getAllowedDomains(), []);
@@ -2077,7 +2108,7 @@ describe('plugin-meetings', () => {
 
           Object.assign(webex.people, {
             _getMe: sinon.stub().returns(Promise.resolve(me)),
-        });
+          });
         };
 
         it('should not call request.getMeetingPreferences if user is a guest', async () => {

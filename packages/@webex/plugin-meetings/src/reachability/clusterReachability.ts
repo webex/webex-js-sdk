@@ -6,20 +6,7 @@ import {convertStunUrlToTurn, convertStunUrlToTurnTls} from './util';
 import EventsScope from '../common/events/events-scope';
 
 import {CONNECTION_STATE, Enum, ICE_GATHERING_STATE} from '../constants';
-
-// result for a specific transport protocol (like udp or tcp)
-export type TransportResult = {
-  result: 'reachable' | 'unreachable' | 'untested';
-  latencyInMilliseconds?: number; // amount of time it took to get the first ICE candidate
-  clientMediaIPs?: string[];
-};
-
-// reachability result for a specific media cluster
-export type ClusterReachabilityResult = {
-  udp: TransportResult;
-  tcp: TransportResult;
-  xtls: TransportResult;
-};
+import {ClusterReachabilityResult} from './reachability.types';
 
 // data for the Events.resultReady event
 export type ResultEventData = {

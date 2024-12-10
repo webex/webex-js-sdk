@@ -48,7 +48,7 @@ describe('internal-plugin-metrics', () => {
       ...fakeMeeting,
       id: '2',
       correlationId: 'correlationId2',
-      callStateForMetrics: {loginType: 'fakeLoginType'},
+      callStateForMetrics: {loginType: 'fakeLoginType', joinFlowVersion: 'Other'},
     };
 
     const fakeMeeting3 = {
@@ -56,7 +56,7 @@ describe('internal-plugin-metrics', () => {
       id: '3',
       correlationId: 'correlationId3',
       sessionCorrelationId: 'sessionCorrelationId3',
-    }
+    };
 
     const fakeMeetings = {
       1: fakeMeeting,
@@ -103,8 +103,8 @@ describe('internal-plugin-metrics', () => {
                       return '192.168.1.90';
                     }
                   },
-                }
-              }
+                },
+              };
             },
           },
           geoHintInfo: {
@@ -771,7 +771,6 @@ describe('internal-plugin-metrics', () => {
           webexConferenceIdStr: undefined,
           sessionCorrelationId: undefined,
           globalMeetingId: undefined,
-          sessionCorrelationId: undefined,
         });
         assert.notCalled(generateClientEventErrorPayloadSpy);
         assert.calledWith(
@@ -1075,7 +1074,7 @@ describe('internal-plugin-metrics', () => {
           correlationId: 'correlationId',
           webexConferenceIdStr: 'webexConferenceIdStr1',
           globalMeetingId: 'globalMeetingId1',
-          sessionCorrelationId: 'sessionCorrelationId1'
+          sessionCorrelationId: 'sessionCorrelationId1',
         };
 
         cd.submitClientEvent({
@@ -1169,7 +1168,7 @@ describe('internal-plugin-metrics', () => {
           webexConferenceIdStr: 'webexConferenceIdStr1',
           globalMeetingId: 'globalMeetingId1',
           preLoginId: 'myPreLoginId',
-          sessionCorrelationId: 'sessionCorrelationId1'
+          sessionCorrelationId: 'sessionCorrelationId1',
         };
 
         cd.submitClientEvent({
@@ -1182,7 +1181,7 @@ describe('internal-plugin-metrics', () => {
           webexConferenceIdStr: 'webexConferenceIdStr1',
           globalMeetingId: 'globalMeetingId1',
           preLoginId: 'myPreLoginId',
-          sessionCorrelationId: 'sessionCorrelationId1'
+          sessionCorrelationId: 'sessionCorrelationId1',
         });
 
         assert.notCalled(generateClientEventErrorPayloadSpy);
@@ -1271,6 +1270,7 @@ describe('internal-plugin-metrics', () => {
             loginType: 'fakeLoginType',
             name: 'client.alert.displayed',
             userType: 'host',
+            joinFlowVersion: 'Other',
             isConvergedArchitectureEnabled: undefined,
             webexSubServiceType: undefined,
           },
@@ -1293,7 +1293,7 @@ describe('internal-plugin-metrics', () => {
         const options = {
           meetingId: fakeMeeting2.id,
           mediaConnections: [{mediaAgentAlias: 'alias', mediaAgentGroupId: '1'}],
-          sessionCorrelationId: 'sessionCorrelationId1'
+          sessionCorrelationId: 'sessionCorrelationId1',
         };
 
         cd.submitClientEvent({
@@ -1322,6 +1322,7 @@ describe('internal-plugin-metrics', () => {
             loginType: 'fakeLoginType',
             name: 'client.alert.displayed',
             userType: 'host',
+            joinFlowVersion: 'Other',
             isConvergedArchitectureEnabled: undefined,
             webexSubServiceType: undefined,
           },
@@ -1462,7 +1463,7 @@ describe('internal-plugin-metrics', () => {
                 category: 'other',
                 errorCode: 9999,
                 errorData: {
-                  errorName: 'Error'
+                  errorName: 'Error',
                 },
                 serviceErrorCode: 9999,
                 errorDescription: 'UnknownError',
@@ -1536,7 +1537,7 @@ describe('internal-plugin-metrics', () => {
                 category: 'other',
                 errorCode: 9999,
                 errorData: {
-                  errorName: 'Error'
+                  errorName: 'Error',
                 },
                 serviceErrorCode: 9999,
                 errorDescription: 'UnknownError',
@@ -1785,7 +1786,7 @@ describe('internal-plugin-metrics', () => {
           meetingId: fakeMeeting.id,
           webexConferenceIdStr: 'webexConferenceIdStr1',
           globalMeetingId: 'globalMeetingId1',
-          sessionCorrelationId: 'sessionCorrelationId1'
+          sessionCorrelationId: 'sessionCorrelationId1',
         };
 
         cd.submitMQE({
@@ -2251,7 +2252,7 @@ describe('internal-plugin-metrics', () => {
           serviceErrorCode: 9999,
           errorCode: 9999,
           errorData: {
-            errorName: 'Error'
+            errorName: 'Error',
           },
           rawErrorMessage: 'bad times',
         });
@@ -2756,6 +2757,83 @@ describe('internal-plugin-metrics', () => {
             `name: client.exit.app`,
           ]);
         });
+      });
+
+      it('includes expected joinFlowVersion from options when in-meeting', async () => {
+        // meetingId means in-meeting
+        const options = {
+          meetingId: fakeMeeting.id,
+          joinFlowVersion: 'NewFTE',
+        };
+
+        const triggered = new Date();
+        const fetchOptions = await cd.buildClientEventFetchRequestOptions({
+          name: 'client.exit.app',
+          payload: {trigger: 'user-interaction', canProceed: false},
+          options,
+        });
+
+        assert.equal(
+          fetchOptions.body.metrics[0].eventPayload.event.joinFlowVersion,
+          options.joinFlowVersion
+        );
+      });
+
+      it('includes expected joinFlowVersion from meeting callStateForMetrics when in-meeting', async () => {
+        // meetingId means in-meeting
+        const options = {
+          meetingId: fakeMeeting2.id,
+        };
+
+        const triggered = new Date();
+        const fetchOptions = await cd.buildClientEventFetchRequestOptions({
+          name: 'client.exit.app',
+          payload: {trigger: 'user-interaction', canProceed: false},
+          options,
+        });
+
+        assert.equal(fetchOptions.body.metrics[0].eventPayload.event.joinFlowVersion, 'Other');
+      });
+
+      it('prioritizes joinFlowVersion from options over meeting callStateForMetrics', async () => {
+        // meetingId means in-meeting
+        const options = {
+          meetingId: fakeMeeting2.id,
+          joinFlowVersion: 'NewFTE',
+        };
+
+        const triggered = new Date();
+        const fetchOptions = await cd.buildClientEventFetchRequestOptions({
+          name: 'client.exit.app',
+          payload: {trigger: 'user-interaction', canProceed: false},
+          options,
+        });
+
+        assert.equal(
+          fetchOptions.body.metrics[0].eventPayload.event.joinFlowVersion,
+          options.joinFlowVersion
+        );
+      });
+
+      it('includes expected joinFlowVersion from options during prejoin', async () => {
+        // correlationId and no meeting id means prejoin
+        const options = {
+          correlationId: 'myCorrelationId',
+          preLoginId: 'myPreLoginId',
+          joinFlowVersion: 'NewFTE',
+        };
+
+        const triggered = new Date();
+        const fetchOptions = await cd.buildClientEventFetchRequestOptions({
+          name: 'client.exit.app',
+          payload: {trigger: 'user-interaction', canProceed: false},
+          options,
+        });
+
+        assert.equal(
+          fetchOptions.body.metrics[0].eventPayload.event.joinFlowVersion,
+          options.joinFlowVersion
+        );
       });
     });
 

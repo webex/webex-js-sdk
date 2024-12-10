@@ -353,15 +353,17 @@ export class ContactsClient implements IContacts {
 
       const {contacts, groups} = responseBody;
 
-      contacts.map(async (contact) => {
-        if (contact.contactType === ContactType.CUSTOM) {
-          const decryptedContact = await this.decryptContact(contact);
+      await Promise.all(
+        contacts.map(async (contact) => {
+          if (contact.contactType === ContactType.CUSTOM) {
+            const decryptedContact = await this.decryptContact(contact);
 
-          contactList.push(decryptedContact);
-        } else if (contact.contactType === ContactType.CLOUD && contact.contactId) {
-          cloudContactsMap[contact.contactId] = contact;
-        }
-      });
+            contactList.push(decryptedContact);
+          } else if (contact.contactType === ContactType.CLOUD && contact.contactId) {
+            cloudContactsMap[contact.contactId] = contact;
+          }
+        })
+      );
 
       // Resolve cloud contacts
       if (Object.keys(cloudContactsMap).length) {

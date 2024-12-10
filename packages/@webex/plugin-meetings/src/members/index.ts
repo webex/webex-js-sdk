@@ -915,11 +915,12 @@ export default class Members extends StatelessWebexPlugin {
   /**
    * Lower all hands of members in a meeting
    * @param {String} requestingMemberId - id of the participant which requested the lower all hands
+   * @param {array} roles which should be lowered
    * @returns {Promise}
    * @public
    * @memberof Members
    */
-  public lowerAllHands(requestingMemberId: string) {
+  public lowerAllHands(requestingMemberId: string, roles: Array<string>) {
     if (!this.locusUrl) {
       return Promise.reject(
         new ParameterError(
@@ -936,7 +937,8 @@ export default class Members extends StatelessWebexPlugin {
     }
     const options = MembersUtil.generateLowerAllHandsMemberOptions(
       requestingMemberId,
-      this.locusUrl
+      this.locusUrl,
+      roles
     );
 
     return this.membersRequest.lowerAllHandsMember(options);

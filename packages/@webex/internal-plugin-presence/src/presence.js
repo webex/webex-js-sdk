@@ -248,7 +248,7 @@ const Presence = WebexPlugin.extend({
         body: {
           subject: this.webex.internal.device.userId,
           eventType: status,
-          label: this.webex.internal.device.userId,
+          ...(status !== 'dnd' && {label: this.webex.internal.device.userId}),
           ttl,
         },
       })

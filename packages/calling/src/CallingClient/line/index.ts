@@ -11,7 +11,7 @@ import {
   ServiceIndicator,
 } from '../../common/types';
 import {ILine, LINE_EVENTS} from './types';
-import {LINE_FILE, VALID_PHONE} from '../constants';
+import {LINE_FILE, VALID_PHONE_REGEX} from '../constants';
 import log from '../../Logger';
 import {IRegistration} from '../registration/types';
 import {createRegistration} from '../registration';
@@ -234,7 +234,7 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
     let call;
 
     if (dest) {
-      const match = dest.address.match(VALID_PHONE);
+      const match = dest.address.match(VALID_PHONE_REGEX);
 
       if (match && match[0].length === dest.address.length) {
         const sanitizedNumber = dest.address

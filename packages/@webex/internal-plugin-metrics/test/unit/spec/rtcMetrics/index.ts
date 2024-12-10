@@ -27,7 +27,7 @@ describe('RtcMetrics', () => {
     clock = sinon.useFakeTimers();
     window.setInterval = setInterval;
     webex = new MockWebex();
-    metrics = new RtcMetrics(webex, 'mock-meeting-id', 'mock-correlation-id');
+    metrics = new RtcMetrics(webex, {meetingId: 'mock-meeting-id'}, 'mock-correlation-id');
     anonymizeIpSpy = sandbox.spy(metrics, 'anonymizeIp');
   });
 
@@ -151,5 +151,46 @@ describe('RtcMetrics', () => {
     // and another stats-report should trigger another upload of the metrics
     metrics.addMetrics({ name: 'stats-report', payload: [STATS_WITH_IP] });
     assert.callCount(webex.request, 3);
+  });
+
+  describe('RtcMetrics - callId', () => {
+    let metrics: RtcMetrics;
+    let webex: MockWebex;
+    let clock;
+    let sandbox;
+  
+    beforeEach(() => {
+      clock = sinon.useFakeTimers();
+      window.setInterval = setInterval;
+      webex = new MockWebex();
+      metrics = new RtcMetrics(webex, {callId: 'mock-call-id'}, 'mock-correlation-id');
+      sandbox = sinon.createSandbox();
+    });
+  
+    afterEach(() => {
+      sandbox.restore();
+    });
+  
+    it('sendMetrics should send a webex request with callId', () => {
+      assert.notCalled(webex.request);
+  
+      metrics.addMetrics(FAKE_METRICS_ITEM);
+      (metrics as any).sendMetrics();
+  
+      assert.callCount(webex.request, 1);
+      assert.calledWithMatch(webex.request, sinon.match.has('headers', {
+        type: 'webrtcMedia',
+        appId: RTC_METRICS.APP_ID,
+      }));
+      assert.calledWithMatch(webex.request, sinon.match.hasNested('body.metrics[0].data[0].payload', FAKE_METRICS_ITEM.payload));
+      assert.calledWithMatch(webex.request, sinon.match.hasNested('body.metrics[0].callId', 'mock-call-id'));
+      assert.calledWithMatch(webex.request, sinon.match.hasNested('body.metrics[0].correlationId', 'mock-correlation-id'));
+    });
+
+    it('should update the callId correctly', () => {
+      const newCallId = 'new-call-id';
+      metrics.updateCallId(newCallId);
+      assert.strictEqual(metrics.callId, newCallId);
+    });
   });
 });

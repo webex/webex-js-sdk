@@ -23,8 +23,17 @@ export default function request(options) {
   options.upload = new EventEmitter();
 
   return intercept(options, options.interceptors, 'Request')
-    .then((...args) => _request(options, ...args))
-    .then((...args) =>
-      intercept(options, options.interceptors.slice().reverse(), 'Response', ...args)
-    );
+    .then((...args) => {
+      // if provided own request function, use that instead
+      // there are use cases where developer may want to provide whatever request promise they wish
+      // for example, may even use window.postMessages for parent iframe uses cases
+      if (options.request) {
+        return options.request(options, ...args);
+      }
+
+      return _request(options, ...args);
+    })
+    .then((...args) => {
+      return intercept(options, options.interceptors.slice().reverse(), 'Response', ...args);
+    });
 }
