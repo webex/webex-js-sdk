@@ -487,14 +487,14 @@ legend {
 }
 
 #needle {
-  width: 5px;
-  height: 90px;
+  width: 3.3px;
+  height: 80px;
   border: 1.5px solid white;
   border-radius: 5px;
   background-color: red;
   position: absolute;
-  top: 20%;
-  left: 50%;
+  top: 28%;
+  left: 48%;
   z-index: 111;
   transform-origin: bottom;
   transform: rotate(-135deg);

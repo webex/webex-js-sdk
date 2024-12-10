@@ -1154,12 +1154,17 @@ function setTranscriptEvents() {
 
     meeting.on('meeting:caption-received', (payload) => {
       let currentRead = 0;
+
       for (i=currentRead; i< payload.captions.length ; i++) {
-        if(payload.captions[i].isFinal === true) {
-          currentRead = currentRead +1 ;
+        let isSpeakerHost = payload.captions[i].speaker.speakerId === meeting.hostId;
+
+        currentRead = currentRead +1; 
+        
+        if(payload.captions[i].isFinal === true && isSpeakerHost !== true ) {
           getSentimentScore(payload.captions[i].text);
         }
       }
+
       voiceaTranscriptionFormattedDisplay.scrollTop = voiceaTranscriptionFormattedDisplay.scrollHeight;
     });
 
@@ -1189,9 +1194,13 @@ function getSentimentScore(transcriptText) {
   xhr.onload = function() {
     if (xhr.status >= 200 && xhr.status < 300) {
       const response = JSON.parse(this.responseText);
+
       console.log(`Playtime: Score: ${response[0].score} Label: ${response[0].label}`);
+
       let value = getShowScore(response[0].label, response[0].score);
+
       updateNeedle(value);
+
       updateLinearBar(updateCommulativeScore(scores,value));
     } else {
       console.error('Error in request:', xhr.status, xhr.statusText);
@@ -1218,7 +1227,6 @@ function getShowScore(label, confidence) {
 function updateNeedle(value) {
   const needle = document.getElementById("needle");
   const angle = -135 + (value * 2.7); //  angle (-135deg to 135deg)
-  // console.log('Playtime: Needle  Angle:', angle);
   needle.style.transform = `rotate(${angle}deg)`;
 }
 
@@ -1226,7 +1234,6 @@ function updateCommulativeScore(scores, value) {
   scores.push(value);
   const total = scores.reduce((acc, value) => acc + value, 0);
   const commulativeScore =  total / scores.length;
-  console.log('Playtime: Cummulative Score :', commulativeScore);
   return commulativeScore;
 }
 
@@ -1261,8 +1268,6 @@ function updateLinearBar(value) {
     yellowGreenbLENDwidth=10;
     greenWidth= value - 70;
   }
-
-  // console.log(`Red: ${redWidth}, Red-Yellow Blend: ${redYellowBlendWidth}, Yellow: ${yellowWidth}, yellowGreenbLENDwidth: ${yellowGreenbLENDwidth}, greenWidth: ${greenWidth}`);
 
     // Set the width of each section dynamically with animation
     document.getElementById('red').style.width = `${redWidth}%`;
