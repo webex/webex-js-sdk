@@ -357,11 +357,14 @@ export class ClusterReachability extends EventsScope {
 
       this.startTimestamp = performance.now();
 
+      // Set up the state change listeners before triggering the ICE gathering
+      const gatherIceCandidatePromise = this.gatherIceCandidates();
+
       // not awaiting the next call on purpose, because we're not sending the offer anywhere and there won't be any answer
       // we just need to make this call to trigger the ICE gathering process
       this.pc.setLocalDescription(offer);
 
-      await this.gatherIceCandidates();
+      await gatherIceCandidatePromise;
     } catch (error) {
       LoggerProxy.logger.warn(`Reachability:ClusterReachability#start --> Error: `, error);
     }
