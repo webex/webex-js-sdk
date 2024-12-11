@@ -41,7 +41,6 @@ export default class TaskManager extends EventEmitter {
   private handleIncomingWebCall = (call: ICall) => {
     if (this.currentTask) {
       this.emit(TASK_EVENTS.TASK_INCOMING, this.currentTask);
-      // this.currentTask.webCallMap[this.currentTask.data.interactionId] = call.getCallId();
     }
     this.call = call;
   };
@@ -67,7 +66,6 @@ export default class TaskManager extends EventEmitter {
               this.emit(TASK_EVENTS.TASK_INCOMING, this.currentTask);
             } else if (this.call) {
               this.emit(TASK_EVENTS.TASK_INCOMING, this.currentTask);
-              // this.currentTask.webCallMap[this.currentTask.data.interactionId] = this.call.getCallId();
             }
             break;
           case CC_EVENTS.AGENT_CONTACT_ASSIGNED:
@@ -106,14 +104,14 @@ export default class TaskManager extends EventEmitter {
   }
 
   /**
-   * @param taskId - string.
+   * @param taskId - Unique identifier for each task
    */
   public getTask = (taskId: string) => {
     return this.taskCollection[taskId];
   };
 
   /**
-   *
+   * @param taskId - Unique identifier for each task
    */
   public getAllTasks = (): Record<TaskId, ITask> => {
     return this.taskCollection;
