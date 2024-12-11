@@ -74,7 +74,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   }
 
   private handleIncomingTask = (task: ITask) => {
-    this.eventEmitter.emit(TASK_EVENTS.TASK_INCOMING, task);
+    // @ts-ignore
+    this.trigger(TASK_EVENTS.TASK_INCOMING, task);
   };
 
   /**

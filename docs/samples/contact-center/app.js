@@ -201,7 +201,7 @@ function register() {
         console.error('Event subscription failed', error);
     })
 
-    webex.cc.eventEmitter.on('task:incoming', (task) => {
+    webex.cc.on('task:incoming', (task) => {
       taskEvents.detail.task = task;
       
       incomingCallListener.dispatchEvent(taskEvents);
