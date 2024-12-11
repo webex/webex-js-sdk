@@ -209,7 +209,7 @@ describe('WebCallingService', () => {
     it('should mute the call and log info when call exists', () => {
       webRTCCalling.muteCall(localAudioStream);
 
-      expect(webex.logger.info).toHaveBeenCalledWith('Call mute|unmute requesting!');
+      expect(webex.logger.info).toHaveBeenCalledWith('Call mute or unmute requested!');
       expect(mockCall.mute).toHaveBeenCalledWith(localAudioStream);
     });
 

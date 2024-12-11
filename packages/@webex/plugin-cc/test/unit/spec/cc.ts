@@ -395,7 +395,7 @@ describe('webex.cc', () => {
       expect(result).toEqual({});
        
       const onSpy = jest.spyOn(mockTaskManager, 'on');
-      const emitSpy = jest.spyOn(webex.cc.eventEmitter, 'emit');
+      const emitSpy = jest.spyOn(webex.cc, 'trigger');
       const incomingCallCb = onSpy.mock.calls[0][1];
       
       expect(onSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_INCOMING, incomingCallCb);
