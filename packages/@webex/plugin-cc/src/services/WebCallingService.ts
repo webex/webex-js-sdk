@@ -100,7 +100,7 @@ export default class WebCallingService extends EventEmitter {
 
   public muteCall(localAudioStream: LocalMicrophoneStream) {
     if (this.call) {
-      this.webex.logger.info('Call mute|unmute requesting!');
+      this.webex.logger.info('Call mute or unmute requested!');
       this.call.mute(localAudioStream);
     } else {
       this.webex.logger.log(`Cannot mute a non WebRtc Call`);

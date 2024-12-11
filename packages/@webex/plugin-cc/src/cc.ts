@@ -190,10 +190,11 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       }
 
       this.webCallingService.setLoginOption(data.loginOption);
-      this.incomingTaskListener();
-      this.taskManager.registerIncomingCallEvent();
 
       await loginResponse;
+
+      this.incomingTaskListener();
+      this.taskManager.registerIncomingCallEvent();
 
       return loginResponse;
     } catch (error) {
