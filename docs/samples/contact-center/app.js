@@ -205,7 +205,7 @@ function register() {
       taskEvents.detail.task = task;
       
       incomingCallListener.dispatchEvent(taskEvents);
-    }) 
+    })
 }
 
 function populateWrapupCodesDropdown() {
