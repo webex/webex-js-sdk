@@ -186,7 +186,6 @@ function generateWebexConfig({credentials}) {
   };
 }
 
-// SPARK-499535
 if(localStorage.getItem('OAuth')) {
   setTimeout(() => {
     initOauth();
