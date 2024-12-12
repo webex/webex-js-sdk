@@ -5,7 +5,15 @@ import {getErrorDetails} from '../core/Utils';
 import {LoginOption} from '../../types';
 import {CC_FILE} from '../../constants';
 import routingContact from './contact';
-import {ITask, TaskResponse, TaskData, TaskId, TASK_EVENTS} from './types';
+import {
+  ITask,
+  TaskResponse,
+  TaskData,
+  TaskId,
+  TASK_EVENTS,
+  WrapupPayLoad,
+  ResumeRecordingPayload,
+} from './types';
 import WebCallingService from '../WebCallingService';
 
 export default class Task extends EventEmitter implements ITask {
