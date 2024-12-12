@@ -53,9 +53,9 @@ export class ConnectionService extends EventEmitter {
       isKeepAlive: this.isKeepAlive,
     };
     this.webSocketManager.handleConnectionLost(event);
-    LoggerProxy.log(`Dispatching connection lost event`, {
+    LoggerProxy.log(`Dispatching connection event`, {
       module: CONNECTION_SERVICE_FILE,
-      method: this.dispatchConnectionEvent.name,
+      method: 'dispatchConnectionEvent',
     });
     this.emit('connectionLost', event);
   }
@@ -119,7 +119,7 @@ export class ConnectionService extends EventEmitter {
   private handleSocketClose = async (): Promise<void> => {
     LoggerProxy.info(`event=socketConnectionRetry | Trying to reconnect to websocket`, {
       module: CONNECTION_SERVICE_FILE,
-      method: this.handleSocketClose.name,
+      method: 'handleSocketClose',
     });
     const onlineStatus = navigator.onLine;
     if (onlineStatus) {

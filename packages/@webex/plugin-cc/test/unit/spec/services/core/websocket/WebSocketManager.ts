@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { WebSocketManager } from '../../../../../../src/services/core/WebSocket/WebSocketManager';
-import { WebexSDK, SubscribeRequest } from '../../../../../../src/types';
-import { SUBSCRIBE_API, WCC_API_GATEWAY } from '../../../../../../src/services/constants';
-import { WEB_SOCKET_MANAGER_FILE } from '../../../../../../src/constants';
+import {WebSocketManager} from '../../../../../../src/services/core/websocket/WebSocketManager';
+import {WebexSDK, SubscribeRequest} from '../../../../../../src/types';
+import {SUBSCRIBE_API, WCC_API_GATEWAY} from '../../../../../../src/services/constants';
+import {WEB_SOCKET_MANAGER_FILE} from '../../../../../../src/constants';
 import LoggerProxy from '../../../../../../src/logger-proxy';
 
 jest.mock('../../../../../../src/services/core/HttpRequest');

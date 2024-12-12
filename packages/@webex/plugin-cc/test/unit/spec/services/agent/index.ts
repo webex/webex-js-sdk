@@ -1,6 +1,5 @@
 import routingAgent from '../../../../../src/services/agent';
 import AqmReqs from '../../../../../src/services/core/aqm-reqs';
-import * as Utils from '../../../../../src/services/core/Utils';
 
 jest.mock('../../../../../src/services/core/Utils', () => ({
   createErrDetailsObject: jest.fn(),

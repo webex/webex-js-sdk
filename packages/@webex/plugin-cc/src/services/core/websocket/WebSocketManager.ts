@@ -2,7 +2,7 @@ import EventEmitter from 'events';
 import {WebexSDK, SubscribeRequest, HTTP_METHODS} from '../../../types';
 import {SUBSCRIBE_API, WCC_API_GATEWAY} from '../../constants';
 import {ConnectionLostDetails} from './types';
-import {SubscribeResponse, WelcomeResponse} from '../../config/types';
+import {CC_EVENTS, SubscribeResponse, WelcomeResponse} from '../../config/types';
 import LoggerProxy from '../../../logger-proxy';
 import workerScript from './keepalive.worker';
 import {KEEPALIVE_WORKER_INTERVAL, CLOSE_SOCKET_TIMEOUT} from '../constants';
@@ -142,7 +142,7 @@ export class WebSocketManager extends EventEmitter {
         this.emit('message', e.data);
         const eventData = JSON.parse(e.data);
 
-        if (eventData.type === 'Welcome') {
+        if (eventData.type === CC_EVENTS.WELCOME) {
           this.isWelcomeReceived = true;
           if (this.welcomePromiseResolve) {
             this.welcomePromiseResolve(eventData.data as WelcomeResponse);

@@ -1,5 +1,6 @@
 import {CallingClientConfig} from '@webex/calling';
 import * as Agent from './services/agent/types';
+import * as Contact from './services/task/types';
 import {Profile} from './services/config/types';
 
 type Enum<T extends Record<string, unknown>> = T[keyof T];
@@ -217,7 +218,13 @@ export type RequestBody =
   | Agent.Logout
   | Agent.UserStationLogin
   | Agent.StateChange
-  | Agent.BuddyAgents;
+  | Agent.BuddyAgents
+  | Contact.HoldResumePayload
+  | Contact.ResumeRecordingPayload
+  | Contact.ConsultPayload
+  | Contact.TransferPayLoad
+  | Contact.cancelCtq
+  | Contact.WrapupPayLoad;
 
 /**
  * Represents the options to fetch buddy agents for the logged in agent.

@@ -1,11 +1,11 @@
-import {ConnectionService} from '../../../../../../src/services/core/WebSocket/connection-service';
-import {WebSocketManager} from '../../../../../../src/services/core/WebSocket/WebSocketManager';
+import {ConnectionService} from '../../../../../../src/services/core/websocket/connection-service';
+import {WebSocketManager} from '../../../../../../src/services/core/websocket/WebSocketManager';
 import {SubscribeRequest} from '../../../../../../src/types';
 import LoggerProxy from '../../../../../../src/logger-proxy';
 import {CONNECTIVITY_CHECK_INTERVAL} from '../../../../../../src/services/core/constants';
 import { CONNECTION_SERVICE_FILE } from '../../../../../../src/constants';
 
-jest.mock('../../../../../../src/services/core/WebSocket/WebSocketManager');
+jest.mock('../../../../../../src/services/core/websocket/WebSocketManager');
 jest.mock('../../../../../../src/logger-proxy', () => ({
   __esModule: true,
   default: {

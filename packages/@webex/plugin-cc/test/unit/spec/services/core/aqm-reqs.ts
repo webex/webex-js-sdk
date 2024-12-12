@@ -1,9 +1,10 @@
 import AqmReqs from '../../../../../src/services/core/aqm-reqs';
 import HttpRequest from '../../../../../src/services/core/HttpRequest';
-import { WebSocketManager } from '../../../../../src/services/core/WebSocket/WebSocketManager';
+
 import LoggerProxy from '../../../../../src/logger-proxy';
-import { IHttpResponse } from '../../../../../src/types';
+import {IHttpResponse} from '../../../../../src/types';
 import {AQM_REQS_FILE} from '../../../../../src/constants';
+import {WebSocketManager} from '../../../../../src/services/core/websocket/WebSocketManager';
 
 jest.mock('../../../../../src/services/core/HttpRequest');
 jest.mock('../../../../../src/logger-proxy', () => ({
@@ -15,7 +16,7 @@ jest.mock('../../../../../src/logger-proxy', () => ({
     initialize: jest.fn(),
   },
 }));
-jest.mock('../../../../../src/services/core/WebSocket/WebSocketManager');
+jest.mock('../../../../../src/services/core/websocket/WebSocketManager');
 
 // Mock CustomEvent class
 class MockCustomEvent<T> extends Event {

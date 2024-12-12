@@ -117,9 +117,8 @@
                     <option value="" selected hidden>Choose Agent Login ...</option>
                   </select>
                   <input id="dialNumber" name="dialNumber" placeholder="Dial Number" value="" type="text">
-                  <button id="loginAgent" disabled class="btn btn-primary my-3" onclick="doAgentLogin()">Login With
-                    Selected Team</button>
-                  <button id="logoutAgent" class="btn btn-primary my-3 ml-2 hidden" onclick="logoutAgent()">Logout Agent</button>
+                  <button id="loginAgent" disabled class="btn btn-primary my-3" onclick="doAgentLogin()">Login</button>
+                  <button id="logoutAgent" class="btn btn-primary my-3 ml-2 hidden" onclick="logoutAgent()">Logout</button>
                 </fieldset>
                 <fieldset>
                   <legend>Agent status</legend>
@@ -138,6 +137,47 @@
             </div>
           </fieldset>
         </div>
+         <!-- calling / incoming -->
+         <div id="incomingsection">
+          <fieldset>
+            <legend>Incoming Call</legend>
+            <div class="u-mv">
+              <pre id="incoming-call"> No Incoming Calls</pre>
+              <button onclick="answer()" disabled="" id="answer" class="btn--green">Answer</button>
+              <button onclick="decline()" disabled="" id="decline" class="btn--red">Decline</button>
+            </div>
+          </fieldset>
+          <fieldset>
+            <legend>Remote Audio</legend>
+            <audio id="remote-audio" autoplay></audio>
+          </fieldset>
+        </div>
+          <!-- Agent Call Controls -->
+          <div id="callcontrolsection">
+            <fieldset>
+              <legend>Call Controls</legend>
+              <div class="u-mv">
+                <button onclick="holdResumeCall()" id="hold-resume" class="btn--yellow" disabled>Hold</button>
+                <button onclick="endCall()" id="end" class="btn--red" disabled>End</button>
+                <fieldset>
+                  <legend>Call Wrapup</legend>
+                  <button onclick="wrapupCall()" id="wrapup" class="btn--green" disabled>Wrapup</button>
+                  <select id="wrapupCodesDropdown" disabled>
+                    <option value="" selected hidden>Select Wrapup Code</option>
+                  </select>
+                </fieldset>
+                <fieldset>
+                  <legend>Recording Controls</legend>
+                  <div class="u-mv">
+                    <button onclick="togglePauseResumeRecording()" id="pause-resume-recording" class="btn--blue" disabled>Pause Recording</button>
+                    <label for="auto-resume-checkbox" style="margin-left: 10px;">
+                      <input type="checkbox" id="auto-resume-checkbox" disabled> Auto Resume
+                    </label>
+                  </div>
+                </fieldset>
+              </div>
+            </fieldset>
+          </div>
       </section>
     </div>
   </div>

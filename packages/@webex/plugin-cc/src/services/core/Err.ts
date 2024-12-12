@@ -12,6 +12,28 @@ export type AgentErrorIds =
   | {'Service.reqs.generic.failure': {trackingId: string}}
   | {'Service.aqm.agent.BuddyAgentsRetrieveFailed': Failure};
 
+export type vteamType = 'inboundqueue' | 'inboundentrypoint' | string;
+
+export type TaskErrorIds =
+  | {'Service.aqm.task.accept': Failure}
+  | {'Service.aqm.task.end': Failure}
+  | {'Service.aqm.task.wrapup': Failure}
+  | {'Service.aqm.task.AgentVteamTransferFailed': Failure}
+  | {'Service.aqm.task.AgentBlindTransferFailedEvent': Failure}
+  | {'Service.aqm.task.AgentConsultTransferFailed': Failure}
+  | {'Service.aqm.task.consult': Failure}
+  | {'Service.aqm.err.trackingId': {trackingId: string}}
+  | {'Service.aqm.task.consultAccept': Failure}
+  | {'Service.aqm.task.consultConference': Failure}
+  | {'Service.aqm.task.consultEnd': Failure}
+  | {'Service.aqm.task.cancelCtq': Failure}
+  | {'Service.aqm.task.hold': Failure}
+  | {'Service.aqm.task.unHold': Failure}
+  | {'Service.aqm.task.VteamListFailed': Failure}
+  | {'Service.aqm.task.pauseRecording': Failure}
+  | {'Service.aqm.task.resumeRecording': Failure}
+  | {'Service.reqs.generic.failure': {trackingId: string}};
+
 export type ReqError =
   | 'Service.aqm.reqs.GenericRequestError'
   | {'Service.aqm.reqs.Pending': {key: string; msg: string}}
@@ -22,6 +44,7 @@ export type ReqError =
 export interface Ids {
   'Service.aqm.agent': AgentErrorIds;
   'Service.aqm.reqs': ReqError;
+  'Service.aqm.task': TaskErrorIds;
 }
 
 export type IdsGlobal =

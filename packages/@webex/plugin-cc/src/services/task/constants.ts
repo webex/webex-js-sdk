@@ -1,0 +1,15 @@
+export const TASK_MESSAGE_TYPE = 'RoutingMessage';
+export const TASK_API = '/v1/tasks/';
+export const HOLD = '/hold';
+export const UNHOLD = '/unhold';
+export const CONSULT = '/consult';
+export const CONSULT_ACCEPT = '/consult/accept';
+export const CONSULT_END = '/consult/end';
+export const TRANSFER = '/transfer';
+export const CONSULT_TRANSFER = '/consult/transfer';
+export const PAUSE = '/record/pause';
+export const RESUME = 'record/resume';
+export const WRAPUP = '/wrapup';
+export const END = '/end';
+export const TASK_MANAGER_FILE = 'taskManager';
+export const TASK_FILE = 'task';

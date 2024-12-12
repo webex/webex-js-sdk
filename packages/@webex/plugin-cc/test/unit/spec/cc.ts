@@ -19,6 +19,9 @@ import {CC_FILE} from '../../../src/constants';
 // Mock the Worker API
 import '../../../__mocks__/workerMock';
 import {Profile} from '../../../src/services/config/types';
+import TaskManager from '../../../src/services/task/TaskManager';
+import { TASK_EVENTS } from '../../../src/services/task/types';
+
 
 jest.mock('../../../src/logger-proxy', () => ({
   __esModule: true,
@@ -31,17 +34,18 @@ jest.mock('../../../src/logger-proxy', () => ({
 }));
 
 jest.mock('../../../src/services/config');
-jest.mock('../../../src/services/core/WebSocket/WebSocketManager');
-jest.mock('../../../src/services/core/WebSocket/connection-service');
+jest.mock('../../../src/services/core/websocket/WebSocketManager');
+jest.mock('../../../src/services/core/websocket/connection-service');
 jest.mock('../../../src/services/WebCallingService');
-jest.mock('../../../src/services');
 
 global.URL.createObjectURL = jest.fn(() => 'blob:http://localhost:3000/12345');
 
 describe('webex.cc', () => {
   let webex;
+  let mockContact;
+  let mockTaskManager;
   let mockWebSocketManager;
-  let mockAgentConfig;
+
 
   beforeEach(() => {
     webex = MockWebex({
@@ -60,11 +64,25 @@ describe('webex.cc', () => {
       once: jest.fn((event, callback) => callback()),
     }) as unknown as WebexSDK;
 
-    // Instantiate ContactCenter to ensure it's fully initialized
-    webex.cc = new ContactCenter({parent: webex});
-
     mockWebSocketManager = {
       initWebSocket: jest.fn(),
+    };
+
+    mockContact = {
+      accept: jest.fn(),
+      hold: jest.fn(),
+      unHold: jest.fn(),
+      pauseRecording: jest.fn(),
+      resumeRecording: jest.fn(),
+      consult: jest.fn(),
+      consultAccept: jest.fn(),
+      blindTransfer: jest.fn(),
+      vteamTransfer: jest.fn(),
+      consultTransfer: jest.fn(),
+      end: jest.fn(),
+      wrapup: jest.fn(),
+      cancelTask: jest.fn(),
+      cancelCtq: jest.fn()
     };
 
     // Mock Services instance
@@ -83,9 +101,30 @@ describe('webex.cc', () => {
       connectionService: {
         on: jest.fn(),
       },
+      contact: mockContact
     };
-    (Services.getInstance as jest.Mock).mockReturnValue(mockServicesInstance);
-    webex.cc.services = mockServicesInstance;
+
+    mockTaskManager = {
+      contact: mockContact,
+      call: undefined,
+      taskCollection: {},
+      webCallingService: undefined,
+      webSocketManager: mockWebSocketManager,
+      task: undefined,
+      registerIncomingCallEvent: jest.fn(),
+      registerTaskListeners: jest.fn(),
+      getTask: jest.fn(),
+      getActiveTasks: jest.fn(),
+      on: jest.fn(),
+      off: jest.fn(),
+      emit: jest.fn(),
+      unregisterIncomingCallEvent: jest.fn()
+    }
+
+    jest.spyOn(Services, 'getInstance').mockReturnValue(mockServicesInstance);
+    jest.spyOn(TaskManager, 'getTaskManager').mockReturnValue(mockTaskManager);
+    // Instantiate ContactCenter to ensure it's fully initialized
+    webex.cc = new ContactCenter({parent: webex});
   });
 
   afterEach(() => {
@@ -317,6 +356,7 @@ describe('webex.cc', () => {
 
   describe('stationLogin', () => {
     it('should login successfully with LoginOption.BROWSER', async () => {
+      const mockTask = {};
       const options = {
         teamId: 'teamId',
         loginOption: LoginOption.BROWSER,
@@ -353,6 +393,16 @@ describe('webex.cc', () => {
         },
       });
       expect(result).toEqual({});
+       
+      const onSpy = jest.spyOn(mockTaskManager, 'on');
+      const emitSpy = jest.spyOn(webex.cc, 'trigger');
+      const incomingCallCb = onSpy.mock.calls[0][1];
+      
+      expect(onSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_INCOMING, incomingCallCb);
+      
+      incomingCallCb(mockTask);
+  
+      expect(emitSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_INCOMING, mockTask);
     });
 
     it('should login successfully with other LoginOption', async () => {
@@ -423,6 +473,8 @@ describe('webex.cc', () => {
       const result = await webex.cc.stationLogout(data);
 
       expect(stationLogoutMock).toHaveBeenCalledWith({data: data});
+      expect(mockTaskManager.unregisterIncomingCallEvent).toHaveBeenCalledWith();
+      expect(mockTaskManager.off).toHaveBeenCalledWith(TASK_EVENTS.TASK_INCOMING, expect.any(Function));
       expect(result).toEqual(response);
     });
 
@@ -714,7 +766,7 @@ describe('webex.cc', () => {
 
       jest.spyOn(webex.cc.services.agent, 'reload').mockRejectedValue(error);
       await webex.cc['silentRelogin']();
-      expect(LoggerProxy.info).toHaveBeenCalledWith(
+      expect(LoggerProxy.log).toHaveBeenCalledWith(
         'Agent not found during re-login, handling silently',
         {module: CC_FILE, method: 'silentRelogin'}
       );

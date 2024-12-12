@@ -1,12 +1,13 @@
 import {Msg} from './GlobalTypes';
 import * as Err from './Err';
 import {HTTP_METHODS, WebexRequestPayload} from '../../types';
-import HttpRequest from './HttpRequest';
+
 import LoggerProxy from '../../logger-proxy';
 import {CbRes, Conf, ConfEmpty, Pending, Req, Res, ResEmpty} from './types';
 import {TIMEOUT_REQ} from './constants';
 import {AQM_REQS_FILE} from '../../constants';
-import {WebSocketManager} from './WebSocket/WebSocketManager';
+import HttpRequest from './HttpRequest';
+import {WebSocketManager} from './websocket/WebSocketManager';
 
 export default class AqmReqs {
   private pendingRequests: Record<string, Pending> = {};
@@ -97,12 +98,12 @@ export default class AqmReqs {
             if ('errId' in notifFail) {
               LoggerProxy.log(`Routing request failed: ${msg}`, {
                 module: AQM_REQS_FILE,
-                method: this.createPromise.name,
+                method: 'createPromise',
               });
               const eerr = new Err.Details(notifFail.errId, msg as any);
               LoggerProxy.log(`Routing request failed: ${eerr}`, {
                 module: AQM_REQS_FILE,
-                method: this.createPromise.name,
+                method: 'createPromise',
               });
               reject(eerr);
             } else {
