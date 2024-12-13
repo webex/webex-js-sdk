@@ -257,7 +257,6 @@ function register() {
         }
 
         const idleCodesList = agentProfile.idleCodes;
-
         if(idleCodesList.length > 0) {
            setAgentStatusButton.disabled = false;
         }
