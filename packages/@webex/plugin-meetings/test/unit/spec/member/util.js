@@ -5,13 +5,13 @@ import {_SEND_RECEIVE_, _RECEIVE_ONLY_} from '../../../../src/constants';
 
 describe('plugin-meetings', () => {
   describe('isHandRaised', () => {
-    it('throws error when there is no participant', () => {
+    it('throws an error when there is no participant', () => {
       assert.throws(() => {
         MemberUtil.isHandRaised();
       }, 'Raise hand could not be processed, participant is undefined.');
     });
 
-    it('returns false when controls is not there', () => {
+    it('returns false when controls are not present', () => {
       const participant = {};
 
       assert.isFalse(MemberUtil.isHandRaised(participant));
@@ -51,7 +51,7 @@ describe('plugin-meetings', () => {
   });
 
   describe('MemberUtil.canReclaimHost', () => {
-    it('throws error when there is no participant', () => {
+    it('throws an error when there is no participant', () => {
       assert.throws(() => {
         MemberUtil.canReclaimHost();
       }, 'canReclaimHostRole could not be processed, participant is undefined.');
@@ -386,7 +386,7 @@ describe('plugin-meetings', () => {
       assert.isFalse(MemberUtil.isBrb(participant));
     });
 
-    it('returns false when controls is not present', () => {
+    it('returns false when controls are not present', () => {
       const participant = {};
 
       assert.isFalse(MemberUtil.isBrb(participant));
@@ -400,7 +400,7 @@ describe('plugin-meetings', () => {
   });
 
   describe('MemberUtil.isBreakoutsSupported', () => {
-    it('throws error when there is no participant', () => {
+    it('throws an error when there is no participant', () => {
       assert.throws(() => {
         MemberUtil.isBreakoutsSupported();
       }, 'Breakout support could not be processed, participant is undefined.');
@@ -424,7 +424,7 @@ describe('plugin-meetings', () => {
   });
 
   describe('MemberUtil.isLiveAnnotationSupported', () => {
-    it('throws error when there is no participant', () => {
+    it('throws an error when there is no participant', () => {
       assert.throws(() => {
         MemberUtil.isLiveAnnotationSupported();
       }, 'LiveAnnotation support could not be processed, participant is undefined.');
@@ -448,7 +448,7 @@ describe('plugin-meetings', () => {
   });
 
   describe('MemberUtil.isInterpretationSupported', () => {
-    it('throws error when there is no participant', () => {
+    it('throws an error when there is no participant', () => {
       assert.throws(() => {
         MemberUtil.isInterpretationSupported();
       }, 'Interpretation support could not be processed, participant is undefined.');
@@ -479,7 +479,7 @@ describe('plugin-meetings', () => {
   };
 
   describe('MemberUtil.isAudioMuted', () => {
-    it('throws error when there is no participant', () => {
+    it('throws an error when there is no participant', () => {
       assert.throws(() => {
         MemberUtil.isAudioMuted();
       }, 'Audio could not be processed, participant is undefined.');
@@ -522,7 +522,7 @@ describe('plugin-meetings', () => {
   });
 
   describe('MemberUtil.isVideoMuted', () => {
-    it('throws error when there is no participant', () => {
+    it('throws an error when there is no participant', () => {
       assert.throws(() => {
         MemberUtil.isVideoMuted();
       }, 'Video could not be processed, participant is undefined.');
@@ -566,7 +566,7 @@ describe('plugin-meetings', () => {
 });
 
 describe('extractMediaStatus', () => {
-  it('throws error when there is no participant', () => {
+  it('throws an error when there is no participant', () => {
     assert.throws(() => {
       MemberUtil.extractMediaStatus()
     }, 'Media status could not be extracted, participant is undefined.');

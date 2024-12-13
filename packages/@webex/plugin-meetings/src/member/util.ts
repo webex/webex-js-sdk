@@ -30,7 +30,7 @@ import ParameterError from '../common/errors/parameter';
 const MemberUtil: any = {};
 
 /**
- * @param {Object} participant the locus participant
+ * @param {Object} participant - The locus participant object.
  * @returns {Boolean}
  */
 MemberUtil.canReclaimHost = (participant) => {
@@ -44,7 +44,7 @@ MemberUtil.canReclaimHost = (participant) => {
 };
 
 /**
- * @param {Object} participant the locus participant
+ * @param {Object} participant - The locus participant object.
  * @returns {[ServerRoleShape]}
  */
 MemberUtil.getControlsRoles = (participant: ParticipantWithRoles): Array<ServerRoleShape> =>
@@ -53,10 +53,10 @@ MemberUtil.getControlsRoles = (participant: ParticipantWithRoles): Array<ServerR
 /**
  * Checks if the participant has the brb status enabled.
  *
- * @param {ParticipantWithBrb} participant - the locus participant
+ * @param {ParticipantWithBrb} participant - The locus participant object.
  * @returns {boolean} - True if the participant has brb enabled, false otherwise.
  */
-MemberUtil.isBrb = (participant: ParticipantWithBrb): boolean => {
+MemberUtil.isBrb = (participant?: ParticipantWithBrb): boolean => {
   if (!participant) {
     throw new ParameterError('isBrb could not be processed, participant is undefined.');
   }
@@ -65,7 +65,7 @@ MemberUtil.isBrb = (participant: ParticipantWithBrb): boolean => {
 };
 
 /**
- * @param {Object} participant the locus participant
+ * @param {Object} participant - The locus participant object.
  * @param {ServerRoles} controlRole the search role
  * @returns {Boolean}
  */
@@ -75,28 +75,28 @@ MemberUtil.hasRole = (participant: any, controlRole: ServerRoles): boolean =>
   );
 
 /**
- * @param {Object} participant the locus participant
+ * @param {Object} participant - The locus participant object.
  * @returns {Boolean}
  */
 MemberUtil.hasCohost = (participant: ParticipantWithRoles): boolean =>
   MemberUtil.hasRole(participant, ServerRoles.Cohost) || false;
 
 /**
- * @param {Object} participant the locus participant
+ * @param {Object} participant - The locus participant object.
  * @returns {Boolean}
  */
 MemberUtil.hasModerator = (participant: ParticipantWithRoles): boolean =>
   MemberUtil.hasRole(participant, ServerRoles.Moderator) || false;
 
 /**
- * @param {Object} participant the locus participant
+ * @param {Object} participant - The locus participant object.
  * @returns {Boolean}
  */
 MemberUtil.hasPresenter = (participant: ParticipantWithRoles): boolean =>
   MemberUtil.hasRole(participant, ServerRoles.Presenter) || false;
 
 /**
- * @param {Object} participant the locus participant
+ * @param {Object} participant - The locus participant object.
  * @returns {IExternalRoles}
  */
 MemberUtil.extractControlRoles = (participant: ParticipantWithRoles): IExternalRoles => {
@@ -110,7 +110,7 @@ MemberUtil.extractControlRoles = (participant: ParticipantWithRoles): IExternalR
 };
 
 /**
- * @param {Object} participant the locus participant
+ * @param {Object} participant - The locus participant object.
  * @returns {Boolean}
  */
 MemberUtil.isUser = (participant: any) => participant && participant.type === _USER_;
@@ -118,13 +118,13 @@ MemberUtil.isUser = (participant: any) => participant && participant.type === _U
 MemberUtil.isModerator = (participant) => participant && participant.moderator;
 
 /**
- * @param {Object} participant the locus participant
+ * @param {Object} participant - The locus participant object.
  * @returns {Boolean}
  */
 MemberUtil.isGuest = (participant: any) => participant && participant.guest;
 
 /**
- * @param {Object} participant the locus participant
+ * @param {Object} participant - The locus participant object.
  * @returns {Boolean}
  */
 MemberUtil.isDevice = (participant: any) => participant && participant.type === _RESOURCE_ROOM_;
@@ -135,7 +135,7 @@ MemberUtil.isModeratorAssignmentProhibited = (participant) =>
 /**
  * checks to see if the participant id is the same as the passed id
  * there are multiple ids that can be used
- * @param {Object} participant the locus participant
+ * @param {Object} participant - The locus participant object.
  * @param {String} id
  * @returns {Boolean}
  */
@@ -145,7 +145,7 @@ MemberUtil.isSame = (participant: any, id: string) =>
 /**
  * checks to see if the participant id is the same as the passed id for associated devices
  * there are multiple ids that can be used
- * @param {Object} participant the locus participant
+ * @param {Object} participant - The locus participant object.
  * @param {String} id
  * @returns {Boolean}
  */
@@ -157,7 +157,7 @@ MemberUtil.isAssociatedSame = (participant: any, id: string) =>
   );
 
 /**
- * @param {Object} participant the locus participant
+ * @param {Object} participant - The locus participant object.
  * @param {Boolean} isGuest
  * @param {String} status
  * @returns {Boolean}
@@ -176,7 +176,7 @@ MemberUtil.isNotAdmitted = (participant: any, isGuest: boolean, status: string):
     !status === _IN_MEETING_);
 
 /**
- * @param {Object} participant the locus participant
+ * @param {Object} participant - The locus participant object.
  * @returns {Boolean}
  */
 MemberUtil.isAudioMuted = (participant: any) => {
@@ -188,7 +188,7 @@ MemberUtil.isAudioMuted = (participant: any) => {
 };
 
 /**
- * @param {Object} participant the locus participant
+ * @param {Object} participant - The locus participant object.
  * @returns {Boolean}
  */
 MemberUtil.isVideoMuted = (participant: any): boolean => {
@@ -200,7 +200,7 @@ MemberUtil.isVideoMuted = (participant: any): boolean => {
 };
 
 /**
- * @param {Object} participant the locus participant
+ * @param {Object} participant - The locus participant object.
  * @returns {Boolean}
  */
 MemberUtil.isHandRaised = (participant: any) => {
@@ -212,7 +212,7 @@ MemberUtil.isHandRaised = (participant: any) => {
 };
 
 /**
- * @param {Object} participant the locus participant
+ * @param {Object} participant - The locus participant object.
  * @returns {Boolean}
  */
 MemberUtil.isBreakoutsSupported = (participant) => {
@@ -224,7 +224,7 @@ MemberUtil.isBreakoutsSupported = (participant) => {
 };
 
 /**
- * @param {Object} participant the locus participant
+ * @param {Object} participant - The locus participant object.
  * @returns {Boolean}
  */
 MemberUtil.isInterpretationSupported = (participant) => {
@@ -238,7 +238,7 @@ MemberUtil.isInterpretationSupported = (participant) => {
 };
 
 /**
- * @param {Object} participant the locus participant
+ * @param {Object} participant - The locus participant object.
  * @returns {Boolean}
  */
 MemberUtil.isLiveAnnotationSupported = (participant) => {
@@ -294,7 +294,7 @@ MemberUtil.getRecordingMember = (controls: any) => {
 };
 
 /**
- * @param {Object} participant the locus participant
+ * @param {Object} participant - The locus participant object.
  * @returns {Boolean}
  */
 MemberUtil.isRecording = (participant: any) => {
@@ -340,7 +340,7 @@ MemberUtil.isMutable = (isSelf, isDevice, isInMeeting, isMuted, type) => {
 };
 
 /**
- * @param {Object} participant the locus participant
+ * @param {Object} participant - The locus participant object.
  * @returns {String}
  */
 MemberUtil.extractStatus = (participant: any) => {
@@ -370,7 +370,7 @@ MemberUtil.extractStatus = (participant: any) => {
 };
 
 /**
- * @param {Object} participant the locus participant
+ * @param {Object} participant - The locus participant object.
  * @returns {String}
  */
 MemberUtil.extractId = (participant: any) => {
@@ -383,7 +383,7 @@ MemberUtil.extractId = (participant: any) => {
 
 /**
  * extracts the media status from nested participant object
- * @param {Object} participant the locus participant
+ * @param {Object} participant - The locus participant object.
  * @returns {Object}
  */
 MemberUtil.extractMediaStatus = (participant: any): IMediaStatus => {
@@ -398,7 +398,7 @@ MemberUtil.extractMediaStatus = (participant: any): IMediaStatus => {
 };
 
 /**
- * @param {Object} participant the locus participant
+ * @param {Object} participant - The locus participant object.
  * @returns {String}
  */
 MemberUtil.extractName = (participant: any) => {
