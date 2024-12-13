@@ -352,6 +352,53 @@ describe('plugin-meetings', () => {
     });
   });
 
+  describe('MemberUtil.isBrb', () => {
+    it('returns true when brb is enabled', () => {
+      const participant = {
+        controls: {
+          brb: {
+            enabled: true,
+          },
+        },
+      };
+
+      assert.isTrue(MemberUtil.isBrb(participant));
+    });
+
+    it('returns false when brb is disabled', () => {
+      const participant = {
+        controls: {
+          brb: {
+            enabled: false,
+          },
+        },
+      };
+
+      assert.isFalse(MemberUtil.isBrb(participant));
+    });
+
+
+    it('returns false when brb is not present', () => {
+      const participant = {
+        controls: {},
+      };
+
+      assert.isFalse(MemberUtil.isBrb(participant));
+    });
+
+    it('returns false when controls is not present', () => {
+      const participant = {};
+
+      assert.isFalse(MemberUtil.isBrb(participant));
+    });
+
+    it('throws error when participant is undefined', () => {
+      assert.throws(() => {
+        MemberUtil.isBrb(undefined);
+      }, 'isBrb could not be processed, participant is undefined.');
+    });
+  });
+
   describe('MemberUtil.isBreakoutsSupported', () => {
     it('throws error when there is no participant', () => {
       assert.throws(() => {
@@ -529,7 +576,7 @@ describe('extractMediaStatus', () => {
     const participant = {
       status: {}
     };
-    
+
     const mediaStatus = MemberUtil.extractMediaStatus(participant)
 
     assert.deepEqual(mediaStatus, {audio: undefined, video: undefined});
@@ -542,7 +589,7 @@ describe('extractMediaStatus', () => {
         videoStatus: 'SENDRECV'
       }
     };
-    
+
     const mediaStatus = MemberUtil.extractMediaStatus(participant)
 
     assert.deepEqual(mediaStatus, {audio: 'RECVONLY', video: 'SENDRECV'});

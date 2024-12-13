@@ -4,6 +4,7 @@ import {
   ServerRoles,
   ServerRoleShape,
   IMediaStatus,
+  ParticipantWithBrb,
 } from './types';
 import {
   _USER_,
@@ -48,6 +49,20 @@ MemberUtil.canReclaimHost = (participant) => {
  */
 MemberUtil.getControlsRoles = (participant: ParticipantWithRoles): Array<ServerRoleShape> =>
   participant?.controls?.role?.roles;
+
+/**
+ * Checks if the participant has the brb status enabled.
+ *
+ * @param {ParticipantWithBrb} participant - the locus participant
+ * @returns {boolean} - True if the participant has brb enabled, false otherwise.
+ */
+MemberUtil.isBrb = (participant: ParticipantWithBrb): boolean => {
+  if (!participant) {
+    throw new ParameterError('isBrb could not be processed, participant is undefined.');
+  }
+
+  return participant.controls?.brb?.enabled || false;
+};
 
 /**
  * @param {Object} participant the locus participant
