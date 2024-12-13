@@ -117,7 +117,6 @@ function initOauth() {
     config: generateWebexConfig({
       credentials: {
         client_id: 'C70599433db154842e919ad9e18273d835945ff198251c82204b236b157b3a213',
-        client_secret: '575ba9f5034f8a28dfef2770870c50bfc6e0b2b749f14e6a14845a1a47622f87',
         redirect_uri: redirectUri,
         scope: requestedScopes,
       }
