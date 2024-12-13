@@ -135,6 +135,7 @@ const Support = WebexPlugin.extend({
       'surveySessionId',
       'productAreaTag',
       'issueTypeTag',
+      'issueDescTag',
       'locussessionid',
       'autoupload',
     ]

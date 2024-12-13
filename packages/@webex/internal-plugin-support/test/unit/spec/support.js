@@ -151,6 +151,14 @@ describe('plugin-support', () => {
 
       assert.equal(found?.value, autoupload);
     });
+
+    it('sends issuedesctag if specified in metadata', () => {
+      const issueDescTag = 'issueDescTag';
+      const result = webex.internal.support._constructFileMetadata({issueDescTag});
+      const found = result.find((attr) => attr.key === 'issueDescTag');
+
+      assert.equal(found?.value, issueDescTag);
+    });
   });
 
   describe('#submitLogs()', () => {
