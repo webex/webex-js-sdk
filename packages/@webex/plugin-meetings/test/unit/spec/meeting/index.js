@@ -9044,6 +9044,8 @@ describe('plugin-meetings', () => {
         });
 
         it('listens to MEETING_CONTROLS_PRACTICE_SESSION_STATUS_UPDATED', async () => {
+          meeting.webinar.updatePracticeSessionStatus = sinon.stub();
+
           const state = {example: 'value'};
 
           await meeting.locusInfo.emitScoped(
@@ -9052,6 +9054,7 @@ describe('plugin-meetings', () => {
             {state}
           );
 
+          assert.calledOnceWithExactly( meeting.webinar.updatePracticeSessionStatus, state);
           assert.calledWith(
             TriggerProxy.trigger,
             meeting,

@@ -122,5 +122,52 @@ describe('plugin-meetings', () => {
         });
       });
 
+      describe("#setPracticeSessionState", () => {
+        [true, false].forEach((enabled) => {
+          it(`sends a PATCH request to ${enabled ? "enable" : "disable"} the practice session`, async () => {
+            const result = await webinar.setPracticeSessionState(enabled);
+            assert.calledOnce(webex.request);
+            assert.calledWith(webex.request, {
+              method: "PATCH",
+              uri: `${webinar.locusUrl}/controls`,
+              body: {
+                practiceSession: { enabled }
+              }
+            });
+            assert.equal(result, "REQUEST_RETURN_VALUE", "should return the resolved value from the request");
+          });
+        });
+
+        it('handles API call failures gracefully', async () => {
+          webex.request.rejects(new Error('API_ERROR'));
+          const errorLogger = sinon.stub(LoggerProxy.logger, 'error');
+
+          try {
+            await webinar.setPracticeSessionState(true);
+            assert.fail('setPracticeSessionState should throw an error');
+          } catch (error) {
+            assert.equal(error.message, 'API_ERROR', 'should throw the correct error');
+            assert.calledOnce(errorLogger);
+            assert.calledWith(errorLogger, 'Meeting:webinar#setPracticeSessionState failed', sinon.match.instanceOf(Error));
+          }
+
+          errorLogger.restore();
+        });
+      });
+
+      describe('#updatePracticeSessionStatus', () => {
+        it('sets PS state true', () => {
+          webinar.updatePracticeSessionStatus({enabled: true});
+
+          assert.equal(webinar.practiceSessionEnabled, true);
+        });
+        it('sets PS state true', () => {
+          webinar.updatePracticeSessionStatus({enabled: false});
+
+          assert.equal(webinar.practiceSessionEnabled, false);
+        });
+      });
+
+
     })
 })

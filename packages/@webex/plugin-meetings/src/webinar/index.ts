@@ -3,9 +3,10 @@
  */
 import {WebexPlugin} from '@webex/webex-core';
 import {get} from 'lodash';
-import {MEETINGS, SELF_ROLES} from '../constants';
+import {HTTP_VERBS, MEETINGS, SELF_ROLES} from '../constants';
 
 import WebinarCollection from './collection';
+import LoggerProxy from '../common/logs/logger-proxy';
 
 /**
  * @class Webinar
@@ -22,6 +23,7 @@ const Webinar = WebexPlugin.extend({
     canManageWebcast: 'boolean', // appears the ability to manage webcast
     selfIsPanelist: 'boolean', // self is panelist
     selfIsAttendee: 'boolean', // self is attendee
+    practiceSessionEnabled: 'boolean', // practice session enabled
   },
 
   /**
@@ -59,17 +61,47 @@ const Webinar = WebexPlugin.extend({
    * @returns {{isPromoted: boolean, isDemoted: boolean}} Role transition states
    */
   updateRoleChanged(payload) {
+    const oldRoles = get(payload, 'oldRoles', []);
+    const newRoles = get(payload, 'newRoles', []);
+
     const isPromoted =
-      get(payload, 'oldRoles', []).includes(SELF_ROLES.ATTENDEE) &&
-      get(payload, 'newRoles', []).includes(SELF_ROLES.PANELIST);
+      oldRoles.includes(SELF_ROLES.ATTENDEE) && newRoles.includes(SELF_ROLES.PANELIST);
     const isDemoted =
-      get(payload, 'oldRoles', []).includes(SELF_ROLES.PANELIST) &&
-      get(payload, 'newRoles', []).includes(SELF_ROLES.ATTENDEE);
-    this.set('selfIsPanelist', get(payload, 'newRoles', []).includes(SELF_ROLES.PANELIST));
-    this.set('selfIsAttendee', get(payload, 'newRoles', []).includes(SELF_ROLES.ATTENDEE));
-    this.updateCanManageWebcast(get(payload, 'newRoles', []).includes(SELF_ROLES.MODERATOR));
+      oldRoles.includes(SELF_ROLES.PANELIST) && newRoles.includes(SELF_ROLES.ATTENDEE);
+    this.set('selfIsPanelist', newRoles.includes(SELF_ROLES.PANELIST));
+    this.set('selfIsAttendee', newRoles.includes(SELF_ROLES.ATTENDEE));
+    this.updateCanManageWebcast(newRoles.includes(SELF_ROLES.MODERATOR));
 
     return {isPromoted, isDemoted};
+  },
+
+  /**
+   * start or stop practice session for webinar
+   * @param {boolean} enabled
+   * @returns {Promise}
+   */
+  setPracticeSessionState(enabled) {
+    return this.request({
+      method: HTTP_VERBS.PATCH,
+      uri: `${this.locusUrl}/controls`,
+      body: {
+        practiceSession: {
+          enabled,
+        },
+      },
+    }).catch((error) => {
+      LoggerProxy.logger.error('Meeting:webinar#setPracticeSessionState failed', error);
+      throw error;
+    });
+  },
+
+  /**
+   * update practice session status
+   * @param {object} payload
+   * @returns {void}
+   */
+  updatePracticeSessionStatus(payload) {
+    this.set('practiceSessionEnabled', payload.enabled);
   },
 });
 

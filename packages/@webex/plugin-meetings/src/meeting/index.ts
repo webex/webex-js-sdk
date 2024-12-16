@@ -2660,6 +2660,7 @@ export default class Meeting extends StatelessWebexPlugin {
     });
 
     this.locusInfo.on(LOCUSINFO.EVENTS.CONTROLS_PRACTICE_SESSION_STATUS_UPDATED, ({state}) => {
+      this.webinar.updatePracticeSessionStatus(state);
       Trigger.trigger(
         this,
         {file: 'meeting/index', function: 'setupLocusControlsListener'},
@@ -3516,6 +3517,7 @@ export default class Meeting extends StatelessWebexPlugin {
       emailAddress: string;
       email: string;
       phoneNumber: string;
+      roles: Array<string>;
     },
     alertIfActive = true
   ) {
@@ -3772,6 +3774,10 @@ export default class Meeting extends StatelessWebexPlugin {
             this.userDisplayHints,
             this.selfUserPolicies
           ),
+          isPremiseRecordingEnabled: RecordingUtil.isPremiseRecordingEnabled(
+            this.userDisplayHints,
+            this.selfUserPolicies
+          ),
           canRaiseHand: MeetingUtil.canUserRaiseHand(this.userDisplayHints),
           canLowerAllHands: MeetingUtil.canUserLowerAllHands(this.userDisplayHints),
           canLowerSomeoneElsesHand: MeetingUtil.canUserLowerSomeoneElsesHand(this.userDisplayHints),
@@ -3913,6 +3919,22 @@ export default class Meeting extends StatelessWebexPlugin {
           }),
           canDisableStageView: ControlsOptionsUtil.hasHints({
             requiredHints: [DISPLAY_HINTS.DISABLE_STAGE_VIEW],
+            displayHints: this.userDisplayHints,
+          }),
+          isPracticeSessionOn: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.PRACTICE_SESSION_ON],
+            displayHints: this.userDisplayHints,
+          }),
+          isPracticeSessionOff: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.PRACTICE_SESSION_OFF],
+            displayHints: this.userDisplayHints,
+          }),
+          canStartPracticeSession: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.SHOW_PRACTICE_SESSION_START],
+            displayHints: this.userDisplayHints,
+          }),
+          canStopPracticeSession: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.SHOW_PRACTICE_SESSION_STOP],
             displayHints: this.userDisplayHints,
           }),
           canShareFile:
