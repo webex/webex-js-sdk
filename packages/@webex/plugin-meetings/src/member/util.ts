@@ -56,13 +56,8 @@ MemberUtil.getControlsRoles = (participant: ParticipantWithRoles): Array<ServerR
  * @param {ParticipantWithBrb} participant - The locus participant object.
  * @returns {boolean} - True if the participant has brb enabled, false otherwise.
  */
-MemberUtil.isBrb = (participant?: ParticipantWithBrb): boolean => {
-  if (!participant) {
-    throw new ParameterError('isBrb could not be processed, participant is undefined.');
-  }
-
-  return participant.controls?.brb?.enabled || false;
-};
+MemberUtil.isBrb = (participant: ParticipantWithBrb): boolean =>
+  participant.controls?.brb?.enabled || false;
 
 /**
  * @param {Object} participant - The locus participant object.

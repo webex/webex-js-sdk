@@ -3340,7 +3340,7 @@ async function toggleBrb() {
 
   if (meeting) {
     const brbButton = document.getElementById('brb-btn');
-    const isBrbEnabled = brbButton.innerText === 'Apply away';
+    const isBrbEnabled = brbButton.innerText === 'Step away';
 
     try {
       const result = await meeting.beRightBack(isBrbEnabled);
@@ -3793,7 +3793,7 @@ function createMembersTable(members) {
 
 
     if (isUserSelf(member) && member.isInMeeting) {
-      td6.appendChild(createButton(member.isBrb ? 'Remove away' : 'Apply away', toggleBrb, {id: 'brb-btn'}));
+      td6.appendChild(createButton(member.isBrb ? 'Back to meeting' : 'Step away', toggleBrb, {id: 'brb-btn'}));
     } else {
       td6.appendChild(createLabel(member.id, member.isBrb ? 'YES' : 'NO'));
     }

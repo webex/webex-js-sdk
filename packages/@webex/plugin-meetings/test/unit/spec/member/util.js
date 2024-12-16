@@ -391,12 +391,6 @@ describe('plugin-meetings', () => {
 
       assert.isFalse(MemberUtil.isBrb(participant));
     });
-
-    it('throws error when participant is undefined', () => {
-      assert.throws(() => {
-        MemberUtil.isBrb(undefined);
-      }, 'isBrb could not be processed, participant is undefined.');
-    });
   });
 
   describe('MemberUtil.isBreakoutsSupported', () => {
