@@ -2661,6 +2661,9 @@ export default class Meeting extends StatelessWebexPlugin {
 
     this.locusInfo.on(LOCUSINFO.EVENTS.CONTROLS_PRACTICE_SESSION_STATUS_UPDATED, ({state}) => {
       this.webinar.updatePracticeSessionStatus(state);
+      if (this.webinar.selfIsPanelist) {
+        this.updateLLMConnection();
+      }
       Trigger.trigger(
         this,
         {file: 'meeting/index', function: 'setupLocusControlsListener'},
@@ -5566,9 +5569,14 @@ export default class Meeting extends StatelessWebexPlugin {
    */
   async updateLLMConnection() {
     // @ts-ignore - Fix type
-    const {url, info: {datachannelUrl} = {}} = this.locusInfo;
+    const {url, info: {datachannelUrl, practiceSessionDataChannelUrl} = {}} = this.locusInfo;
 
     const isJoined = this.isJoined();
+
+    const dataChannelUrl =
+      this.webinar.selfIsPanelist && this.webinar.practiceSessionEnabled
+        ? practiceSessionDataChannelUrl
+        : datachannelUrl;
 
     // @ts-ignore - Fix type
     if (this.webex.internal.llm.isConnected()) {
@@ -5576,7 +5584,7 @@ export default class Meeting extends StatelessWebexPlugin {
         // @ts-ignore - Fix type
         url === this.webex.internal.llm.getLocusUrl() &&
         // @ts-ignore - Fix type
-        datachannelUrl === this.webex.internal.llm.getDatachannelUrl() &&
+        dataChannelUrl === this.webex.internal.llm.getDatachannelUrl() &&
         isJoined
       ) {
         return undefined;
@@ -5593,7 +5601,7 @@ export default class Meeting extends StatelessWebexPlugin {
 
     // @ts-ignore - Fix type
     return this.webex.internal.llm
-      .registerAndConnect(url, datachannelUrl)
+      .registerAndConnect(url, dataChannelUrl)
       .then((registerAndConnectResult) => {
         // @ts-ignore - Fix type
         this.webex.internal.llm.off('event:relay.event', this.processRelayEvent);
