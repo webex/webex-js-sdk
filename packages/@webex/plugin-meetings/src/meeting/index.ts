@@ -5569,13 +5569,13 @@ export default class Meeting extends StatelessWebexPlugin {
    */
   async updateLLMConnection() {
     // @ts-ignore - Fix type
-    const {url, info: {datachannelUrl, practiceSessionDataChannelUrl} = {}} = this.locusInfo;
+    const {url, info: {datachannelUrl, practiceSessionDatachannelUrl} = {}} = this.locusInfo;
 
     const isJoined = this.isJoined();
 
     const dataChannelUrl =
       this.webinar.selfIsPanelist && this.webinar.practiceSessionEnabled
-        ? practiceSessionDataChannelUrl
+        ? practiceSessionDatachannelUrl
         : datachannelUrl;
 
     // @ts-ignore - Fix type
