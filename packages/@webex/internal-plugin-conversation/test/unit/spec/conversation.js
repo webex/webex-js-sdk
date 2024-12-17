@@ -41,49 +41,27 @@ describe('plugin-conversation', () => {
         const {conversation} = webex.internal;
         const recipientId = 'example-recipient-id';
         const expected = {items: [{id: recipientId, objectType: 'person'}]};
+        conversation.config.includeEncryptionTransforms = true;
         conversation.sendReaction = sinon.stub().returns(Promise.resolve());
         conversation.createReactionHmac = sinon.stub().returns(Promise.resolve('hmac'));
 
         return conversation.addReaction({}, 'example-display-name', {}, recipientId).then(() => {
+          assert.called(conversation.createReactionHmac);
           assert.deepEqual(conversation.sendReaction.args[0][1].recipients, expected);
         });
       });
-    });
 
-    describe('deleteReaction()', () => {
-      it('should add recipients to the payload if provided', () => {
+      it('will not call createReactionHmac if config prohibits', () => {
         const {conversation} = webex.internal;
         const recipientId = 'example-recipient-id';
         const expected = {items: [{id: recipientId, objectType: 'person'}]};
+        conversation.config.includeEncryptionTransforms = false;
         conversation.sendReaction = sinon.stub().returns(Promise.resolve());
-
-        return conversation.deleteReaction({}, 'example-reaction-id', recipientId).then(() => {
-          assert.deepEqual(conversation.sendReaction.args[0][1].recipients, expected);
-        });
-      });
-    });
-
-    describe('prepare()', () => {
-      it('should ammend activity recipients to the returned object', () => {
-        const {conversation} = webex.internal;
-        const activity = {recipients: 'example-recipients'};
-
-        return conversation.prepare(activity).then((results) => {
-          assert.deepEqual(results.recipients, activity.recipients);
-        });
-      });
-    });
-
-    describe('addReaction()', () => {
-      it('should add recipients to the payload if provided', () => {
-        const {conversation} = webex.internal;
-        const recipientId = 'example-recipient-id';
-        const expected = {items: [{id: recipientId, objectType: 'person'}]};
-        conversation.sendReaction = sinon.stub().returns(Promise.resolve());
-        conversation.createReactionHmac = sinon.stub().returns(Promise.resolve('hmac'));
+        conversation.createReactionHmac = sinon.stub();
 
         return conversation.addReaction({}, 'example-display-name', {}, recipientId).then(() => {
           assert.deepEqual(conversation.sendReaction.args[0][1].recipients, expected);
+          assert.notCalled(conversation.createReactionHmac);
         });
       });
     });

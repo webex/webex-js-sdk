@@ -340,33 +340,36 @@ const Conversation = WebexPlugin.extend({
    * @param {String} recipientId,
    * @returns {Promise<Activity>}
    */
-  addReaction(conversation, displayName, activity, recipientId) {
-    return this.createReactionHmac(displayName, activity).then((hmac) => {
-      const addReactionPayload = {
-        actor: {objectType: 'person', id: this.webex.internal.device.userId},
-        target: {
-          id: conversation.id,
-          objectType: 'conversation',
-        },
-        verb: 'add',
-        objectType: 'activity',
-        parent: {
-          type: 'reaction',
-          id: activity.id,
-        },
-        object: {
-          objectType: 'reaction2',
-          displayName,
-          hmac,
-        },
-      };
+  async addReaction(conversation, displayName, activity, recipientId) {
+    let hmac;
+    if (this.config.includeEncryptionTransforms) {
+      hmac = await this.createReactionHmac(displayName, activity);
+    }
 
-      if (recipientId) {
-        addReactionPayload.recipients = {items: [{id: recipientId, objectType: 'person'}]};
-      }
+    const addReactionPayload = {
+      actor: {objectType: 'person', id: this.webex.internal.device.userId},
+      target: {
+        id: conversation.id,
+        objectType: 'conversation',
+      },
+      verb: 'add',
+      objectType: 'activity',
+      parent: {
+        type: 'reaction',
+        id: activity.id,
+      },
+      object: {
+        objectType: 'reaction2',
+        displayName,
+        hmac,
+      },
+    };
 
-      return this.sendReaction(conversation, addReactionPayload);
-    });
+    if (recipientId) {
+      addReactionPayload.recipients = {items: [{id: recipientId, objectType: 'person'}]};
+    }
+
+    return this.sendReaction(conversation, addReactionPayload);
   },
 
   /**
