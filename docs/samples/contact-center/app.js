@@ -205,7 +205,13 @@ function register() {
       taskEvents.detail.task = task;
       
       incomingCallListener.dispatchEvent(taskEvents);
-    })
+    });
+
+    webex.cc.on('AgentStateChange', (data) => {
+      if(data.type = 'AgentStateChangeSuccess') {
+        idleCodesDropdown.value = data.auxCodeId.trim() !== '' ? data.auxCodeId : 0;
+      }
+    });
 }
 
 function populateWrapupCodesDropdown() {
@@ -242,9 +248,8 @@ function doAgentLogin() {
 }
 
 async function handleAgentStatus(event) {
-  const select = document.getElementById('idleCodesDropdown');
   auxCodeId = event.target.value;
-  agentStatus = select.options[select.selectedIndex].text;
+  agentStatus = idleCodesDropdown.options[idleCodesDropdown.selectedIndex].text;
 }
 
 function setAgentStatus() {
