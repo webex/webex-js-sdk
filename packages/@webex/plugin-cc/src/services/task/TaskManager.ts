@@ -72,16 +72,20 @@ export default class TaskManager extends EventEmitter {
             this.currentTask = this.currentTask.updateTaskData(payload.data);
             this.currentTask.emit(TASK_EVENTS.TASK_ASSIGNED, this.currentTask);
             break;
+          case CC_EVENTS.AGENT_CONTACT_OFFER_RONA:
           case CC_EVENTS.CONTACT_ENDED:
-            this.emit(TASK_EVENTS.TASK_UNASSIGNED, this.currentTask);
-            if (this.webCallingService.loginOption === LoginOption.BROWSER) {
-              this.currentTask.unregisterWebCallListeners();
-              this.webCallingService.unregisterCallListeners();
+            if (this.currentTask.data.interaction.state === 'new') {
+              this.currentTask.emit(TASK_EVENTS.TASK_END, {wrapupRequired: false});
+              if (this.webCallingService.loginOption === LoginOption.BROWSER) {
+                this.currentTask.unregisterWebCallListeners();
+                this.webCallingService.unregisterCallListeners();
+              }
+              this.removeCurrentTaskFromCollection();
             }
             break;
           case CC_EVENTS.AGENT_WRAPUP:
             this.currentTask = this.currentTask.updateTaskData(payload.data);
-            this.currentTask.emit(TASK_EVENTS.TASK_END, this.currentTask);
+            this.currentTask.emit(TASK_EVENTS.TASK_END, {wrapupRequired: true});
             break;
           case CC_EVENTS.AGENT_WRAPPEDUP:
             this.removeCurrentTaskFromCollection();

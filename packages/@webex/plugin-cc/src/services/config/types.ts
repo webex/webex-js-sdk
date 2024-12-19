@@ -23,6 +23,7 @@ export const CC_EVENTS = {
   AGENT_OFFER_CONTACT: 'AgentOfferContact',
   AGENT_CONTACT_ASSIGNED: 'AgentContactAssigned',
   AGENT_CONTACT_ASSIGN_FAILED: 'AgentContactAssignFailed',
+  AGENT_CONTACT_OFFER_RONA: 'AgentOfferContactRona',
   AGENT_CONTACT_HELD: 'AgentContactHeld',
   AGENT_CONTACT_HOLD_FAILED: 'AgentContactHoldFailed',
   AGENT_CONTACT_UNHELD: 'AgentContactUnheld',
