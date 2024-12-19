@@ -168,6 +168,7 @@ function registerTaskListeners(task) {
     if (!wrapupData.wrapupRequired) {
       answerElm.disabled = true;
       declineElm.disabled = true;
+      console.log('Call ended without call being answered');
     }
     incomingDetailsElm.innerText = '';
     if (!endElm.disabled) {
