@@ -2505,21 +2505,17 @@ describe('plugin-meetings', () => {
           };
 
           checkLogCounter(0.1, 1);
-          checkLogCounter(1, 2);
-          checkLogCounter(15, 3);
-          checkLogCounter(15, 4);
-          checkLogCounter(30, 5);
-          checkLogCounter(30, 6);
-          checkLogCounter(30, 7);
-          checkLogCounter(60, 8);
-          checkLogCounter(60, 9);
+          checkLogCounter(15, 2);
+          checkLogCounter(30, 3);
+          checkLogCounter(60, 4);
+          checkLogCounter(60, 5);
 
           // simulate media connection being removed -> 1 more upload should happen, but nothing more afterwards
           meeting.mediaProperties.webrtcMediaConnection = undefined;
-          checkLogCounter(60, 10);
+          checkLogCounter(60, 6);
 
           clock.tick(120*1000*60);
-          assert.equal(logUploadCounter, 10);
+          assert.equal(logUploadCounter, 6);
 
           clock.restore();
         });
