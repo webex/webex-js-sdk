@@ -278,9 +278,10 @@ function register() {
       incomingCallListener.dispatchEvent(taskEvents);
     });
 
-    webex.cc.on('AgentStateChange', (data) => {
-      if(data.type = 'AgentStateChangeSuccess') {
-        idleCodesDropdown.value = data.auxCodeId.trim() !== '' ? data.auxCodeId : 0;
+    webex.cc.on('agent:stateChange', (data) => {
+      if (data && typeof data === 'object' && data.type === 'AgentStateChangeSuccess') {
+        const DEFAULT_CODE = '0'; // Default code when no aux code is present
+        idleCodesDropdown.value = data.auxCodeId?.trim() !== '' ? data.auxCodeId : DEFAULT_CODE;
       }
     });
 }

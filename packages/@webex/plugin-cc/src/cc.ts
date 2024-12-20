@@ -14,7 +14,7 @@ import {
   BuddyAgents,
   SubscribeRequest,
 } from './types';
-import {READY, CC_FILE, EMPTY_STRING} from './constants';
+import {READY, CC_FILE, EMPTY_STRING, AGENT_STATE_CHANGE} from './constants';
 import {AGENT, WEB_RTC_PREFIX} from './services/constants';
 import Services from './services';
 import HttpRequest from './services/core/HttpRequest';
@@ -223,6 +223,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
       this.taskManager.unregisterIncomingCallEvent();
       this.taskManager.off(TASK_EVENTS.TASK_INCOMING, this.handleIncomingTask);
+      this.services.webSocketManager.off('message', this.handleWebSocketMessage);
 
       return logoutResponse;
     } catch (error) {
@@ -279,19 +280,21 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     }
   }
 
+  private handleWebSocketMessage = (event: string) => {
+    const eventData = JSON.parse(event);
+
+    if (eventData.type === CC_EVENTS.AGENT_STATE_CHANGE) {
+      // @ts-ignore
+      this.emit(AGENT_STATE_CHANGE, eventData.data);
+    }
+  };
+
   /**
    * For setting up the Event Emitter listeners and handlers
    */
   private setupEventListeners() {
     this.services.connectionService.on('connectionLost', this.handleConnectionLost.bind(this));
-    this.services.webSocketManager.on('message', (event) => {
-      const eventData = JSON.parse(event);
-
-      if (eventData.type === CC_EVENTS.AGENT_STATE_CHANGE) {
-        // @ts-ignore
-        this.emit(CC_EVENTS.AGENT_STATE_CHANGE, eventData.data);
-      }
-    });
+    this.services.webSocketManager.on('message', this.handleWebSocketMessage);
   }
 
   /**

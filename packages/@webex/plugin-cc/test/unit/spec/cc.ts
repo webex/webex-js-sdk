@@ -15,7 +15,7 @@ import Services from '../../../src/services';
 import config from '../../../src/config';
 import {CC_EVENTS} from '../../../src/services/config/types';
 import LoggerProxy from '../../../src/logger-proxy';
-import {CC_FILE} from '../../../src/constants';
+import {CC_FILE, AGENT_STATE_CHANGE} from '../../../src/constants';
 
 // Mock the Worker API
 import '../../../__mocks__/workerMock';
@@ -68,6 +68,7 @@ describe('webex.cc', () => {
     mockWebSocketManager = {
       initWebSocket: jest.fn(),
       on: jest.fn(),
+      off: jest.fn(),
     };
 
     mockContact = {
@@ -479,6 +480,7 @@ describe('webex.cc', () => {
       expect(stationLogoutMock).toHaveBeenCalledWith({data: data});
       expect(mockTaskManager.unregisterIncomingCallEvent).toHaveBeenCalledWith();
       expect(mockTaskManager.off).toHaveBeenCalledWith(TASK_EVENTS.TASK_INCOMING, expect.any(Function));
+      expect(mockWebSocketManager.off).toHaveBeenCalledWith('message', expect.any(Function));
       expect(result).toEqual(response);
     });
 
@@ -872,7 +874,7 @@ describe('webex.cc', () => {
       messageCallback(JSON.stringify(eventData));
 
       expect(cCEmitSpy).toHaveBeenCalledWith(
-        CC_EVENTS.AGENT_STATE_CHANGE,
+        AGENT_STATE_CHANGE,
         eventData.data
       );
     });
