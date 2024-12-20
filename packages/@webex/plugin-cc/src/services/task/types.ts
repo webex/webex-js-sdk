@@ -362,10 +362,9 @@ export interface ITask extends EventEmitter {
    * task.decline();
    * ```
    */
-  decline(taskId: TaskId): Promise<TaskResponse>;
+  decline(): Promise<TaskResponse>;
   /**
    * This is used to hold the task.
-   * @param taskId
    * @returns Promise<TaskResponse>
    * @example
    * ```

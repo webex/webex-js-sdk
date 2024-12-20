@@ -10,6 +10,7 @@ import {
   END,
   HOLD,
   PAUSE,
+  RESUME,
   TASK_API,
   TASK_MESSAGE_TYPE,
   TRANSFER,
@@ -121,7 +122,7 @@ export default function routingContact(aqm: AqmReqs) {
      */
     resumeRecording: aqm.req(
       (p: {interactionId: string; data: Contact.ResumeRecordingPayload}) => ({
-        url: `${TASK_API}${p.interactionId}/record/resume`,
+        url: `${TASK_API}${p.interactionId}${RESUME}`,
         data: p.data,
         host: WCC_API_GATEWAY,
         err,

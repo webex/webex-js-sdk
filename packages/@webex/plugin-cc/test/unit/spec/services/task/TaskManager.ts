@@ -10,15 +10,6 @@ import { TASK_EVENTS } from '../../../../../src/services/task/types';
 import WebCallingService from '../../../../../src/services/WebCallingService';
 import config from '../../../../../src/config';
 
-jest.mock('./../../../../../src/services/task', () => {
-  return jest.fn().mockImplementation(() => {
-    return {
-        updateTaskData: jest.fn().mockReturnThis(),
-        emit: jest.fn()
-    };
-  });
-});
-
 describe('TaskManager', () => {
   let mockCall;
   let webSocketManagerMock;
@@ -76,13 +67,6 @@ describe('TaskManager', () => {
     onSpy = jest.spyOn(webCallingService, 'on');
 
     taskManager = new TaskManager(contactMock, webCallingService, webSocketManagerMock);
-    taskManager.currentTask = {
-      accept: jest.fn(),
-      decline: jest.fn(),
-      updateTaskData: jest.fn(),
-      unregisterWebCallListeners: jest.fn(),
-      data: taskDataMock
-    }
     taskManager.call = mockCall;
   });
 
@@ -91,6 +75,7 @@ describe('TaskManager', () => {
   });
 
   it('should initialize TaskManager and register listeners', () => {
+    webSocketManagerMock.emit('message', JSON.stringify({data: taskDataMock}));
     const incomingCallCb = onSpy.mock.calls[0][1];
     const taskEmitSpy = jest.spyOn(taskManager, 'emit');
 
@@ -126,7 +111,6 @@ describe('TaskManager', () => {
 
     webSocketManagerMock.emit('message', JSON.stringify(payload));
 
-    expect(Task).toHaveBeenCalledWith(contactMock, webCallingService , payload.data);
     expect(taskIncomingSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_INCOMING, taskManager.currentTask);
     expect(taskManager.getTask(payload.data.interactionId)).toBe(taskManager.currentTask);
     expect(taskManager.getAllTasks()).toHaveProperty(payload.data.interactionId);
@@ -178,7 +162,6 @@ describe('TaskManager', () => {
 
     webSocketManagerMock.emit('message', JSON.stringify(payload));
 
-    expect(Task).toHaveBeenCalledWith(contactMock, webCallingService , payload.data);
     expect(taskIncomingSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_INCOMING, taskManager.currentTask);
     expect(taskManager.getTask(payload.data.interactionId)).toBe(taskManager.currentTask);
     expect(taskManager.getAllTasks()).toHaveProperty(payload.data.interactionId);
@@ -264,7 +247,10 @@ describe('TaskManager', () => {
   });
 
   it('test call listeners being switched off on call end', () => {
-    const taskEmitSpy = jest.spyOn(taskManager, 'emit');
+    webSocketManagerMock.emit('message', JSON.stringify({data: taskDataMock}));
+
+    const taskEmitSpy = jest.spyOn(taskManager.currentTask, 'emit');
+    const webCallListenerSpy = jest.spyOn(taskManager.currentTask, 'unregisterWebCallListeners');
     const webCallingServiceOffSpy = jest.spyOn(webCallingService, 'off');
     const callOffSpy = jest.spyOn(mockCall, 'off');
     const payload = {
@@ -273,7 +259,7 @@ describe('TaskManager', () => {
         agentId: "723a8ffb-a26e-496d-b14a-ff44fb83b64f",
         eventTime: 1733211616959,
         eventType: "RoutingMessage",
-        interaction: {},
+        interaction: {"state": "new"},
         interactionId: taskId,
         orgId: "6ecef209-9a34-4ed1-a07a-7ddd1dbe925a",
         trackingId: "575c0ec2-618c-42af-a61c-53aeb0a221ee",
@@ -284,14 +270,15 @@ describe('TaskManager', () => {
       },
     };
 
+    taskManager.currentTask.data = payload.data;
     webSocketManagerMock.emit('message', JSON.stringify(payload));
 
-    expect(taskEmitSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_UNASSIGNED, taskManager.currentTask);
-    expect(taskManager.currentTask.unregisterWebCallListeners).toHaveBeenCalledWith();
+    expect(taskEmitSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_END, {wrapupRequired: false});
+    expect(webCallListenerSpy).toHaveBeenCalledWith();
     expect(callOffSpy).toHaveBeenCalledWith(CALL_EVENT_KEYS.REMOTE_MEDIA, callOffSpy.mock.calls[0][1]);
 
     taskManager.unregisterIncomingCallEvent();
-    expect(webCallingServiceOffSpy).toHaveBeenCalledWith(LINE_EVENTS.INCOMING_CALL, webCallingServiceOffSpy.mock.calls[0][1]);
+    expect(webCallingServiceOffSpy).toHaveBeenCalledWith(LINE_EVENTS.INCOMING_CALL, webCallingServiceOffSpy.mock.calls[1][1]);
   });
 
   it('should emit TASK_END event on AGENT_WRAPUP event', () => {
@@ -332,11 +319,12 @@ describe('TaskManager', () => {
     };
   
     const taskEmitSpy = jest.spyOn(taskManager.currentTask, 'emit');
+    const updateTaskDataSpy = jest.spyOn(taskManager.currentTask, 'updateTaskData');
   
     webSocketManagerMock.emit('message', JSON.stringify(wrapupPayload));
   
-    expect(taskManager.currentTask.updateTaskData).toHaveBeenCalledWith(wrapupPayload.data);
-    expect(taskEmitSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_END, taskManager.currentTask);
+    expect(updateTaskDataSpy).toHaveBeenCalledWith(wrapupPayload.data);
+    expect(taskEmitSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_END, {wrapupRequired: true});
   });
 
   it('should remove currentTask from taskCollection on AGENT_WRAPPEDUP event', () => {
