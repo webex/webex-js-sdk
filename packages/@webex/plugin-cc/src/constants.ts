@@ -11,3 +11,4 @@ export const CONNECTION_SERVICE_FILE = 'connection-service';
 export const WEB_SOCKET_MANAGER_FILE = 'WebSocketManager';
 export const AQM_REQS_FILE = 'aqm-reqs';
 export const TASK_MANAGER_FILE = 'TaskManager';
+export const AGENT_STATE_CHANGE = 'agent:stateChange';

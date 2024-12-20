@@ -282,7 +282,14 @@ function register() {
       taskEvents.detail.task = task;
 
       incomingCallListener.dispatchEvent(taskEvents);
-    })
+    });
+
+    webex.cc.on('agent:stateChange', (data) => {
+      if (data && typeof data === 'object' && data.type === 'AgentStateChangeSuccess') {
+        const DEFAULT_CODE = '0'; // Default code when no aux code is present
+        idleCodesDropdown.value = data.auxCodeId?.trim() !== '' ? data.auxCodeId : DEFAULT_CODE;
+      }
+    });
 }
 
 function populateWrapupCodesDropdown() {
@@ -319,9 +326,8 @@ function doAgentLogin() {
 }
 
 async function handleAgentStatus(event) {
-  const select = document.getElementById('idleCodesDropdown');
   auxCodeId = event.target.value;
-  agentStatus = select.options[select.selectedIndex].text;
+  agentStatus = idleCodesDropdown.options[idleCodesDropdown.selectedIndex].text;
 }
 
 function setAgentStatus() {

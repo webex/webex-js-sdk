@@ -13,8 +13,9 @@ import {SetStateResponse} from '../../../src/types';
 import {AGENT, WEB_RTC_PREFIX} from '../../../src/services/constants';
 import Services from '../../../src/services';
 import config from '../../../src/config';
+import {CC_EVENTS} from '../../../src/services/config/types';
 import LoggerProxy from '../../../src/logger-proxy';
-import {CC_FILE} from '../../../src/constants';
+import {CC_FILE, AGENT_STATE_CHANGE} from '../../../src/constants';
 
 // Mock the Worker API
 import '../../../__mocks__/workerMock';
@@ -66,6 +67,8 @@ describe('webex.cc', () => {
 
     mockWebSocketManager = {
       initWebSocket: jest.fn(),
+      on: jest.fn(),
+      off: jest.fn(),
     };
 
     mockContact = {
@@ -218,6 +221,7 @@ describe('webex.cc', () => {
         lostConnectionRecoveryTimeout: 0,
       };
       const connectWebsocketSpy = jest.spyOn(webex.cc, 'connectWebsocket');
+      const setupEventListenersSpy = jest.spyOn(webex.cc, 'setupEventListeners');
       const reloadSpy = jest.spyOn(webex.cc.services.agent, 'reload').mockResolvedValue({
         data: {
           auxCodeId: 'auxCodeId',
@@ -236,6 +240,7 @@ describe('webex.cc', () => {
       const result = await webex.cc.register();
 
       expect(connectWebsocketSpy).toHaveBeenCalled();
+      expect(setupEventListenersSpy).toHaveBeenCalled();
       expect(mockWebSocketManager.initWebSocket).toHaveBeenCalledWith({
         body: {
           force: true,
@@ -475,6 +480,7 @@ describe('webex.cc', () => {
       expect(stationLogoutMock).toHaveBeenCalledWith({data: data});
       expect(mockTaskManager.unregisterIncomingCallEvent).toHaveBeenCalledWith();
       expect(mockTaskManager.off).toHaveBeenCalledWith(TASK_EVENTS.TASK_INCOMING, expect.any(Function));
+      expect(mockWebSocketManager.off).toHaveBeenCalledWith('message', expect.any(Function));
       expect(result).toEqual(response);
     });
 
@@ -830,6 +836,47 @@ describe('webex.cc', () => {
   
       expect(webex.cc.agentConfig.deviceType).toBe(LoginOption.AGENT_DN);
       expect(webex.cc.agentConfig.defaultDn).toBe('67890');
+    });
+  });
+
+  describe('setupEventListeners()', () => {
+    let connectionServiceOnSpy, cCEmitSpy;
+
+    beforeEach(() => {
+      connectionServiceOnSpy = jest.spyOn(webex.cc.services.connectionService, 'on');
+      cCEmitSpy = jest.spyOn(webex.cc, 'emit');
+    });
+
+    it('should set up connectionLost and message event listener', () => {
+      webex.cc.setupEventListeners();
+
+      expect(connectionServiceOnSpy).toHaveBeenCalledWith(
+        'connectionLost',
+        expect.any(Function)
+      );
+
+      expect(mockWebSocketManager.on).toHaveBeenCalledWith(
+        'message',
+        expect.any(Function)
+      );
+    });
+
+    it('should emit AGENT_STATE_CHANGE when message event is received', () => {
+      webex.cc.setupEventListeners();
+
+      const messageCallback = mockWebSocketManager.on.mock.calls[0][1];
+      const eventData = {
+        type: CC_EVENTS.AGENT_STATE_CHANGE,
+        data: { some: 'data' },
+      };
+
+      // Simulate receiving a message event
+      messageCallback(JSON.stringify(eventData));
+
+      expect(cCEmitSpy).toHaveBeenCalledWith(
+        AGENT_STATE_CHANGE,
+        eventData.data
+      );
     });
   });
 });
