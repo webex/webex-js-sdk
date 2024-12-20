@@ -16,6 +16,8 @@ const credentialsFormElm = document.querySelector('#credentials');
 const tokenElm = document.querySelector('#access-token');
 const saveElm = document.querySelector('#access-token-save');
 const authStatusElm = document.querySelector('#access-token-status');
+const oauthFormElm = document.querySelector('#oauth');
+const oauthStatusElm = document.querySelector('#oauth-status');
 const registerBtn = document.querySelector('#webexcc-register');
 const teamsDropdown = document.querySelector('#teamsDropdown');
 const agentLogin = document.querySelector('#AgentLogin');
@@ -57,6 +59,11 @@ function changeAuthType() {
       toggleDisplay('credentials', true);
       toggleDisplay('oauth', false);
       break;
+    case 'oauth':
+      initOauth();
+      toggleDisplay('credentials', false);
+      toggleDisplay('oauth', true);
+      break;
     default:
       break;
   }
@@ -71,6 +78,64 @@ function toggleDisplay(elementId, status) {
   else {
     element.classList.add('hidden');
   }
+}
+
+function initOauth() {
+  let redirectUri = `${window.location.protocol}//${window.location.host}`;
+
+  if (window.location.pathname) {
+    redirectUri += window.location.pathname;
+  }
+
+  // Reference: https://developer.webex-cx.com/documentation/integrations
+  const ccMandatoryScopes = [
+    "cjp:config_read",
+    "cjp:config_write",
+    "cjp:config",
+    "cjp:user",
+  ];
+
+  const webRTCCallingScopes = [
+    "spark:webrtc_calling",
+    "spark:calls_read",
+    "spark:calls_write",
+    "spark:xsi"
+  ];
+
+  const additionalScopes = [
+    "spark:kms", // to avoid token downscope to only spark:kms error on SDK init
+  ];
+
+  const requestedScopes = Array.from(
+    new Set(
+        ccMandatoryScopes
+        .concat(webRTCCallingScopes)
+        .concat(additionalScopes))
+      ).join(' ');
+
+  webex = window.webex = Webex.init({
+    config: generateWebexConfig({
+      credentials: {
+        client_id: 'C70599433db154842e919ad9e18273d835945ff198251c82204b236b157b3a213',
+        redirect_uri: redirectUri,
+        scope: requestedScopes,
+      }
+    })
+  });
+
+  localStorage.setItem('OAuth', true);
+
+  webex.once('ready', () => {
+    oauthFormElm.addEventListener('submit', (event) => {
+      event.preventDefault();
+      // initiate the login sequence if not authenticated.
+      webex.authorization.initiateLogin();
+    });
+
+    if (webex.canAuthorize) {
+      oauthStatusElm.innerText = 'Authenticated';
+    }
+  });
 }
 
 const taskEvents = new CustomEvent('task:incoming', {
@@ -120,6 +185,12 @@ function generateWebexConfig({credentials}) {
   };
 }
 
+if(localStorage.getItem('OAuth')) {
+  setTimeout(() => {
+    initOauth();
+    localStorage.removeItem('OAuth');
+  }, 500);
+}
 
 function initWebex(e) {
   e.preventDefault();
@@ -186,9 +257,9 @@ function register() {
         }
 
         const idleCodesList = agentProfile.idleCodes;
-        
-        if(idleCodesList.length > 0) setAgentStatusButton.disabled = false;
-        
+        if(idleCodesList.length > 0) {
+           setAgentStatusButton.disabled = false;
+        }
         idleCodesList.forEach((idleCodes) => {
           if(idleCodes.isSystem === false) {
             const option  = document.createElement('option');
@@ -203,7 +274,7 @@ function register() {
 
     webex.cc.on('task:incoming', (task) => {
       taskEvents.detail.task = task;
-      
+
       incomingCallListener.dispatchEvent(taskEvents);
     });
 
@@ -312,10 +383,10 @@ async function fetchBuddyAgents() {
 incomingCallListener.addEventListener('task:incoming', (event) => {
   task = event.detail.task;
   taskId = event.detail.task.data.interactionId;
-  
+
   const callerDisplay = event.detail.task.data.interaction.callAssociatedDetails.ani;
   registerTaskListeners(task);
-  
+
   if (task.webCallingService.loginOption === 'BROWSER') {
     answerElm.disabled = false;
     declineElm.disabled = false;
