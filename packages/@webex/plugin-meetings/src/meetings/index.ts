@@ -155,6 +155,9 @@ export type BasicMeetingInformation = {
   };
   meetingInfo: any;
   sessionCorrelationId: string;
+  roles: string[];
+  getCurUserType: () => string | null;
+  callStateForMetrics: CallStateForMetrics;
 };
 
 /**
@@ -1143,6 +1146,9 @@ export default class Meetings extends WebexPlugin {
           sessionId: meeting.locusInfo?.fullState?.sessionId,
         },
       },
+      roles: meeting.roles,
+      callStateForMetrics: meeting.callStateForMetrics,
+      getCurUserType: meeting.getCurUserType,
     });
     this.meetingCollection.delete(meeting.id);
     Trigger.trigger(
