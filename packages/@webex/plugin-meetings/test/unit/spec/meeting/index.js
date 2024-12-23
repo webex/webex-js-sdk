@@ -2492,9 +2492,11 @@ describe('plugin-meetings', () => {
             mediaSettings: {},
           });
 
-          const checkLogCounter = (delay, expectedCounter) => {
+          const checkLogCounter = (delayInMinutes, expectedCounter) => {
+            const delayInMilliseconds = delayInMinutes * 60 * 1000;
+
             // first check that the counter is not increased just before the delay
-            clock.tick(delay - 50);
+            clock.tick(delayInMilliseconds - 50);
             assert.equal(logUploadCounter, expectedCounter - 1);
 
             // and now check that it has reached expected value after the delay
@@ -2502,22 +2504,18 @@ describe('plugin-meetings', () => {
             assert.equal(logUploadCounter, expectedCounter);
           };
 
-          checkLogCounter(100, 1);
-          checkLogCounter(1000, 2);
-          checkLogCounter(15000, 3);
-          checkLogCounter(15000, 4);
-          checkLogCounter(30000, 5);
-          checkLogCounter(30000, 6);
-          checkLogCounter(30000, 7);
-          checkLogCounter(60000, 8);
-          checkLogCounter(60000, 9);
-          checkLogCounter(60000, 10);
+          checkLogCounter(0.1, 1);
+          checkLogCounter(15, 2);
+          checkLogCounter(30, 3);
+          checkLogCounter(60, 4);
+          checkLogCounter(60, 5);
 
-          // simulate media connection being removed -> no more log uploads should happen
+          // simulate media connection being removed -> 1 more upload should happen, but nothing more afterwards
           meeting.mediaProperties.webrtcMediaConnection = undefined;
+          checkLogCounter(60, 6);
 
-          clock.tick(60000);
-          assert.equal(logUploadCounter, 11);
+          clock.tick(120*1000*60);
+          assert.equal(logUploadCounter, 6);
 
           clock.restore();
         });

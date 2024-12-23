@@ -4102,10 +4102,11 @@ export default class Meeting extends StatelessWebexPlugin {
    */
   private setLogUploadTimer() {
     // start with short timeouts and increase them later on so in case users have very long multi-hour meetings we don't get too fragmented logs
-    const LOG_UPLOAD_INTERVALS = [0.1, 1, 15, 15, 30, 30, 30, 60];
+    const LOG_UPLOAD_INTERVALS = [0.1, 15, 30, 60]; // in minutes
 
     const delay =
       1000 *
+      60 *
       // @ts-ignore - config coming from registerPlugin
       this.config.logUploadIntervalMultiplicationFactor *
       LOG_UPLOAD_INTERVALS[this.logUploadIntervalIndex];

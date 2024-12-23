@@ -131,9 +131,9 @@ describe('plugin-meetings', () => {
         logger,
         people: {
           _getMe: sinon.stub().resolves({
-            type: 'validuser', 
+            type: 'validuser',
           }),
-        }
+        },
       });
 
       startReachabilityStub = sinon.stub(webex.meetings, 'startReachability').resolves();
@@ -1985,6 +1985,8 @@ describe('plugin-meetings', () => {
             const meetingIds = {
               meetingId: meeting.id,
               correlationId: meeting.correlationId,
+              roles: meeting.roles,
+              callStateForMetrics: meeting.callStateForMetrics,
             };
 
             webex.meetings.destroy(meeting, test1);
@@ -2021,6 +2023,8 @@ describe('plugin-meetings', () => {
 
             assert.equal(deletedMeetingInfo.id, meetingIds.meetingId);
             assert.equal(deletedMeetingInfo.correlationId, meetingIds.correlationId);
+            assert.equal(deletedMeetingInfo.roles, meetingIds.roles);
+            assert.equal(deletedMeetingInfo.callStateForMetrics, meetingIds.callStateForMetrics);
           });
         });
 
@@ -2092,7 +2096,7 @@ describe('plugin-meetings', () => {
           );
         });
 
-        const setup = ({me = { type: 'validuser'}, user} = {}) => {
+        const setup = ({me = {type: 'validuser'}, user} = {}) => {
           loggerProxySpy = sinon.spy(LoggerProxy.logger, 'error');
           assert.deepEqual(webex.internal.services._getCatalog().getAllowedDomains(), []);
 
@@ -2113,9 +2117,9 @@ describe('plugin-meetings', () => {
 
         it('should not call request.getMeetingPreferences if user is a guest', async () => {
           setup({me: {type: 'appuser'}});
-      
+
           await webex.meetings.fetchUserPreferredWebexSite();
-      
+
           assert.equal(webex.meetings.preferredWebexSite, '');
           assert.deepEqual(webex.internal.services._getCatalog().getAllowedDomains(), []);
           assert.notCalled(webex.internal.services.getMeetingPreferences);
