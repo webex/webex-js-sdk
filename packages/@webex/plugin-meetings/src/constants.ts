@@ -383,6 +383,13 @@ export const EVENT_TYPES = {
   ERROR: 'error',
 };
 
+export const HEADERS = {
+  CONTENT_TYPE: 'Content-Type',
+  CONTENT_TYPE_VALUE: {
+    APPLICATION_JSON: 'application/json',
+  },
+};
+
 // Handles the reason when meeting gets destroyed
 // host removed you from the meeting
 // You are the host and you left the meeting
