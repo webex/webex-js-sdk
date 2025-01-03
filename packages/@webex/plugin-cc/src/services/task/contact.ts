@@ -6,6 +6,7 @@ import {TIMEOUT_REQ} from '../core/constants';
 import {
   CONSULT,
   CONSULT_ACCEPT,
+  CONSULT_END,
   CONSULT_TRANSFER,
   END,
   HOLD,
@@ -18,7 +19,7 @@ import {
   WRAPUP,
 } from './constants';
 import * as Contact from './types';
-import {DESTINATION_TYPE} from './types';
+import {CONSULT_DESTINATION_TYPE} from './types';
 
 export default function routingContact(aqm: AqmReqs) {
   return {
@@ -150,7 +151,9 @@ export default function routingContact(aqm: AqmReqs) {
       url: `${TASK_API}${p.interactionId}${CONSULT}`,
       data: p.data,
       timeout:
-        p.data && p.data.destinationType === DESTINATION_TYPE.QUEUE ? 'disabled' : TIMEOUT_REQ,
+        p.data && p.data.destinationType === CONSULT_DESTINATION_TYPE.QUEUE
+          ? 'disabled'
+          : TIMEOUT_REQ,
       host: WCC_API_GATEWAY,
       err,
       notifSuccess: {
@@ -165,7 +168,7 @@ export default function routingContact(aqm: AqmReqs) {
           type: TASK_MESSAGE_TYPE,
           data: {
             type:
-              p.data && p.data.destinationType === DESTINATION_TYPE.QUEUE
+              p.data && p.data.destinationType === CONSULT_DESTINATION_TYPE.QUEUE
                 ? CC_EVENTS.AGENT_CTQ_FAILED
                 : CC_EVENTS.AGENT_CONSULT_FAILED,
           },
@@ -180,6 +183,48 @@ export default function routingContact(aqm: AqmReqs) {
         msg: {} as Contact.AgentContact,
       },
     })),
+
+    /*
+     * Consult End
+     */
+    consultEnd: aqm.req((p: {interactionId: string; data: Contact.ConsultEndPayload}) => {
+      // Setting false value for optional attribute
+      const {isConsult, isSecondaryEpDnAgent = false, queueId} = p.data;
+
+      return {
+        url: `${TASK_API}${p.interactionId}${CONSULT_END}`,
+        host: WCC_API_GATEWAY,
+        data: queueId
+          ? {
+              queueId,
+            }
+          : {},
+        err,
+        notifSuccess: {
+          bind: {
+            type: 'RoutingMessage',
+            data: {
+              type: (() => {
+                if (queueId) return 'AgentCtqCancelled';
+                if (isSecondaryEpDnAgent) return 'ContactEnded';
+                if (isConsult) return 'AgentConsultEnded';
+
+                return 'AgentConsultConferenceEnded';
+              })(),
+              interactionId: p.interactionId,
+            },
+          },
+          msg: {} as Contact.AgentContact,
+        },
+        notifFail: {
+          bind: {
+            type: 'RoutingMessage',
+            data: {type: p.data.queueId ? 'AgentCtqCancelFailed' : 'AgentConsultEndFailed'},
+          },
+          errId: p.data.queueId ? 'Service.aqm.task.cancelCtq' : 'Service.aqm.task.consultEnd',
+        },
+      };
+    }),
 
     /*
      * Consult Accept contact

@@ -29,9 +29,12 @@ export const CC_EVENTS = {
   AGENT_CONTACT_UNHELD: 'AgentContactUnheld',
   AGENT_CONTACT_UNHOLD_FAILED: 'AgentContactUnHoldFailed',
   AGENT_CONSULT_CREATED: 'AgentConsultCreated',
+  AGENT_OFFER_CONSULT: 'AgentOfferConsult', // Received when current agent is offered a consult by another agent
   AGENT_CONSULTING: 'AgentConsulting',
   AGENT_CONSULT_FAILED: 'AgentConsultFailed',
-  AGENT_CTQ_FAILED: 'AgentCtqFailed',
+  AGENT_CTQ_FAILED: 'AgentCtqFailed', // Maybe fired when something fails while trying to do consult to a queue
+  AGENT_CTQ_CANCELLED: 'AgentCtqCancelled', // No AgentConsultEnded after this. Received when waiting for available agent for consult on a queue and user invokes consult end with same queueId
+  AGENT_CTQ_CANCEL_FAILED: 'AgentCtqCancelFailed', // Maybe fired when something fails while consult end API with queueId is invoked
   AGENT_CONSULT_ENDED: 'AgentConsultEnded',
   AGENT_BLIND_TRANSFERRED: 'AgentBlindTransferred',
   AGENT_BLIND_TRANSFER_FAILED: 'AgentBlindTransferFailed',
