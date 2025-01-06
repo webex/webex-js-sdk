@@ -104,6 +104,7 @@ export const _ON_HOLD_LOBBY_ = 'ON_HOLD_LOBBY';
 export const _MEETING_LINK_ = 'MEETING_LINK';
 export const _MEETING_UUID_ = 'MEETING_UUID';
 export const _MEETING_ = 'MEETING';
+export const _SPACE_SHARE_ = 'SPACE_SHARE';
 export const _MEETING_CENTER_ = 'MEETING_CENTER';
 export const _MEETING_ID_ = 'MEETING_ID';
 
