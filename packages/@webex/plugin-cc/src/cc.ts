@@ -38,6 +38,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   private services: Services;
   private httpRequest: HttpRequest;
   private taskManager: TaskManager;
+  public LoggerProxy = LoggerProxy;
 
   constructor(...args) {
     super(...args);
