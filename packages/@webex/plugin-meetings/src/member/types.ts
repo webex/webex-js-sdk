@@ -24,7 +24,7 @@ export type ParticipantWithRoles = {
 };
 
 export type ParticipantWithBrb = {
-  controls?: {
+  controls: {
     brb?: {
       enabled: boolean;
     };
