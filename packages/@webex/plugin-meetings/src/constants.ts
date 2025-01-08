@@ -325,6 +325,7 @@ export const EVENT_TRIGGERS = {
   MEETING_RECONNECTION_FAILURE: 'meeting:reconnectionFailure',
   MEETING_UNLOCKED: 'meeting:unlocked',
   MEETING_LOCKED: 'meeting:locked',
+  MEETING_RESOURCE_LINKS_UPDATE: 'meeting:resourceLinks:update',
   MEETING_INFO_AVAILABLE: 'meeting:meetingInfoAvailable',
   MEETING_INFO_UPDATED: 'meeting:meetingInfoUpdated',
   MEETING_LOG_UPLOAD_SUCCESS: 'meeting:logUpload:success',

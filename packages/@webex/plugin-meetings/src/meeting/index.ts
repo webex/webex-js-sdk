@@ -3055,7 +3055,20 @@ export default class Meeting extends StatelessWebexPlugin {
    */
   private setUpLocusResourcesListener() {
     this.locusInfo.on(LOCUSINFO.EVENTS.LINKS_RESOURCES, (payload) => {
-      this.webinar.updateWebcastUrl(payload);
+      if (payload) {
+        this.webinar.updateWebcastUrl(payload);
+        Trigger.trigger(
+          this,
+          {
+            file: 'meeting/index',
+            function: 'setUpLocusInfoMeetingInfoListener',
+          },
+          EVENT_TRIGGERS.MEETING_RESOURCE_LINKS_UPDATE,
+          {
+            payload,
+          }
+        );
+      }
     });
   }
 
