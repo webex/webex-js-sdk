@@ -194,6 +194,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
       await loginResponse;
 
+      this.services.webSocketManager.on('message', this.handleWebSocketMessage);
       this.incomingTaskListener();
       this.taskManager.registerIncomingCallEvent();
 
@@ -294,7 +295,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    */
   private setupEventListeners() {
     this.services.connectionService.on('connectionLost', this.handleConnectionLost.bind(this));
-    this.services.webSocketManager.on('message', this.handleWebSocketMessage);
   }
 
   /**
@@ -355,6 +355,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
       await this.handleDeviceType(deviceType as LoginOption, dn);
       this.agentConfig.isAgentLoggedIn = true;
+      this.services.webSocketManager.on('message', this.handleWebSocketMessage);
     } catch (error) {
       const {reason, error: detailedError} = getErrorDetails(error, 'silentReLogin', CC_FILE);
       if (reason === 'AGENT_NOT_FOUND') {

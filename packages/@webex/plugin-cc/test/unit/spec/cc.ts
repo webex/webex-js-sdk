@@ -401,6 +401,7 @@ describe('webex.cc', () => {
        
       const onSpy = jest.spyOn(mockTaskManager, 'on');
       const emitSpy = jest.spyOn(webex.cc, 'trigger');
+      const ccEmitSpy = jest.spyOn(webex.cc, 'emit');
       const incomingCallCb = onSpy.mock.calls[0][1];
       
       expect(onSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_INCOMING, incomingCallCb);
@@ -408,6 +409,20 @@ describe('webex.cc', () => {
       incomingCallCb(mockTask);
   
       expect(emitSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_INCOMING, mockTask);
+       // Verify message event listener
+      const messageCallback = mockWebSocketManager.on.mock.calls.find(call => call[0] === 'message')[1];
+      const eventData = {
+        type: CC_EVENTS.AGENT_STATE_CHANGE,
+        data: { some: 'data' },
+      };
+
+      // Simulate receiving a message event
+      messageCallback(JSON.stringify(eventData));
+
+      expect(ccEmitSpy).toHaveBeenCalledWith(
+        AGENT_STATE_CHANGE,
+        eventData.data
+      );
     });
 
     it('should login successfully with other LoginOption', async () => {
@@ -853,29 +868,6 @@ describe('webex.cc', () => {
       expect(connectionServiceOnSpy).toHaveBeenCalledWith(
         'connectionLost',
         expect.any(Function)
-      );
-
-      expect(mockWebSocketManager.on).toHaveBeenCalledWith(
-        'message',
-        expect.any(Function)
-      );
-    });
-
-    it('should emit AGENT_STATE_CHANGE when message event is received', () => {
-      webex.cc.setupEventListeners();
-
-      const messageCallback = mockWebSocketManager.on.mock.calls[0][1];
-      const eventData = {
-        type: CC_EVENTS.AGENT_STATE_CHANGE,
-        data: { some: 'data' },
-      };
-
-      // Simulate receiving a message event
-      messageCallback(JSON.stringify(eventData));
-
-      expect(cCEmitSpy).toHaveBeenCalledWith(
-        AGENT_STATE_CHANGE,
-        eventData.data
       );
     });
   });
