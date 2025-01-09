@@ -1705,6 +1705,12 @@ describe('plugin-meetings', () => {
             sinon.assert.called(setCorrelationIdSpy);
             assert.equal(meeting.correlationId, '123');
           });
+
+          it('should not send client.call.initiated if told not to', async () => {
+            await meeting.join({sendCallInitiated: false});
+
+            sinon.assert.notCalled(webex.internal.newMetrics.submitClientEvent);
+          });
         });
 
         describe('failure', () => {
@@ -2514,7 +2520,7 @@ describe('plugin-meetings', () => {
           meeting.mediaProperties.webrtcMediaConnection = undefined;
           checkLogCounter(60, 6);
 
-          clock.tick(120*1000*60);
+          clock.tick(120 * 1000 * 60);
           assert.equal(logUploadCounter, 6);
 
           clock.restore();
@@ -3741,8 +3747,12 @@ describe('plugin-meetings', () => {
             meeting.setMercuryListener = sinon.stub();
             meeting.locusInfo.onFullLocus = sinon.stub();
             meeting.webex.meetings.geoHintInfo = {regionCode: 'EU', countryCode: 'UK'};
-            meeting.webex.meetings.reachability.getReachabilityReportToAttachToRoap = sinon.stub().resolves({id: 'fake reachability'});
-            meeting.webex.meetings.reachability.getClientMediaPreferences = sinon.stub().resolves({id: 'fake clientMediaPreferences'});
+            meeting.webex.meetings.reachability.getReachabilityReportToAttachToRoap = sinon
+              .stub()
+              .resolves({id: 'fake reachability'});
+            meeting.webex.meetings.reachability.getClientMediaPreferences = sinon
+              .stub()
+              .resolves({id: 'fake clientMediaPreferences'});
             meeting.roap.doTurnDiscovery = sinon.stub().resolves({
               turnServerInfo: {
                 url: 'turns:turn-server-url:443?transport=tcp',
@@ -3928,8 +3938,14 @@ describe('plugin-meetings', () => {
           const checkSdpOfferSent = ({audioMuted, videoMuted}) => {
             const {sdp, seq, tieBreaker} = roapOfferMessage;
 
-            assert.calledWith(meeting.webex.meetings.reachability.getClientMediaPreferences, meeting.isMultistream, 0);
-            assert.calledWith(meeting.webex.meetings.reachability.getReachabilityReportToAttachToRoap);
+            assert.calledWith(
+              meeting.webex.meetings.reachability.getClientMediaPreferences,
+              meeting.isMultistream,
+              0
+            );
+            assert.calledWith(
+              meeting.webex.meetings.reachability.getReachabilityReportToAttachToRoap
+            );
 
             assert.calledWith(locusMediaRequestStub, {
               method: 'PUT',
@@ -7860,7 +7876,9 @@ describe('plugin-meetings', () => {
           });
 
           it('should collect ice candidates', () => {
-            eventListeners[MediaConnectionEventNames.ICE_CANDIDATE]({candidate: {candidate: 'candidate'}});
+            eventListeners[MediaConnectionEventNames.ICE_CANDIDATE]({
+              candidate: {candidate: 'candidate'},
+            });
 
             assert.equal(meeting.iceCandidatesCount, 1);
           });
@@ -8166,10 +8184,10 @@ describe('plugin-meetings', () => {
             meeting.statsAnalyzer.stopAnalyzer = sinon.stub().resolves();
             meeting.reconnectionManager = {
               reconnect: sinon.stub().resolves(),
-              resetReconnectionTimer: () => {}
+              resetReconnectionTimer: () => {},
             };
             meeting.currentMediaStatus = {
-              video: true
+              video: true,
             };
 
             await mockFailedEvent();
@@ -9097,7 +9115,7 @@ describe('plugin-meetings', () => {
             {state}
           );
 
-          assert.calledOnceWithExactly( meeting.webinar.updatePracticeSessionStatus, state);
+          assert.calledOnceWithExactly(meeting.webinar.updatePracticeSessionStatus, state);
           assert.calledWith(
             TriggerProxy.trigger,
             meeting,

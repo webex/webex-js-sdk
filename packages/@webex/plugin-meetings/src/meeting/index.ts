@@ -5381,16 +5381,19 @@ export default class Meeting extends StatelessWebexPlugin {
       this.meetingFiniteStateMachine.reset();
     }
 
-    // @ts-ignore
-    this.webex.internal.newMetrics.submitClientEvent({
-      name: 'client.call.initiated',
-      payload: {
-        trigger: this.callStateForMetrics.joinTrigger || 'user-interaction',
-        isRoapCallEnabled: true,
-        pstnAudioType: options?.pstnAudioType,
-      },
-      options: {meetingId: this.id},
-    });
+    // send client.call.initiated unless told not to
+    if (options.sendCallInitiated !== false) {
+      // @ts-ignore
+      this.webex.internal.newMetrics.submitClientEvent({
+        name: 'client.call.initiated',
+        payload: {
+          trigger: this.callStateForMetrics.joinTrigger || 'user-interaction',
+          isRoapCallEnabled: true,
+          pstnAudioType: options?.pstnAudioType,
+        },
+        options: {meetingId: this.id},
+      });
+    }
 
     LoggerProxy.logger.log('Meeting:index#join --> Joining a meeting');
 
