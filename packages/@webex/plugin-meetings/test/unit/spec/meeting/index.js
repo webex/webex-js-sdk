@@ -91,14 +91,14 @@ import ParameterError from '../../../../src/common/errors/parameter';
 import PasswordError from '../../../../src/common/errors/password-error';
 import CaptchaError from '../../../../src/common/errors/captcha-error';
 import PermissionError from '../../../../src/common/errors/permission';
-import WebinarRegistrationError from '../../../../src/common/errors/webinar-registration-error';
+import JoinWebinarError from '../../../../src/common/errors/join-webinar-error';
 import IntentToJoinError from '../../../../src/common/errors/intent-to-join';
 import testUtils from '../../../utils/testUtils';
 import {
   MeetingInfoV2CaptchaError,
   MeetingInfoV2PasswordError,
   MeetingInfoV2PolicyError,
-  MeetingInfoV2WebinarRegistrationError,
+  MeetingInfoV2JoinWebinarError,
 } from '../../../../src/meeting-info/meeting-info-v2';
 import {
   DTLS_HANDSHAKE_FAILED_CLIENT_CODE,
@@ -2492,9 +2492,11 @@ describe('plugin-meetings', () => {
             mediaSettings: {},
           });
 
-          const checkLogCounter = (delay, expectedCounter) => {
+          const checkLogCounter = (delayInMinutes, expectedCounter) => {
+            const delayInMilliseconds = delayInMinutes * 60 * 1000;
+
             // first check that the counter is not increased just before the delay
-            clock.tick(delay - 50);
+            clock.tick(delayInMilliseconds - 50);
             assert.equal(logUploadCounter, expectedCounter - 1);
 
             // and now check that it has reached expected value after the delay
@@ -2502,22 +2504,18 @@ describe('plugin-meetings', () => {
             assert.equal(logUploadCounter, expectedCounter);
           };
 
-          checkLogCounter(100, 1);
-          checkLogCounter(1000, 2);
-          checkLogCounter(15000, 3);
-          checkLogCounter(15000, 4);
-          checkLogCounter(30000, 5);
-          checkLogCounter(30000, 6);
-          checkLogCounter(30000, 7);
-          checkLogCounter(60000, 8);
-          checkLogCounter(60000, 9);
-          checkLogCounter(60000, 10);
+          checkLogCounter(0.1, 1);
+          checkLogCounter(15, 2);
+          checkLogCounter(30, 3);
+          checkLogCounter(60, 4);
+          checkLogCounter(60, 5);
 
-          // simulate media connection being removed -> no more log uploads should happen
+          // simulate media connection being removed -> 1 more upload should happen, but nothing more afterwards
           meeting.mediaProperties.webrtcMediaConnection = undefined;
+          checkLogCounter(60, 6);
 
-          clock.tick(60000);
-          assert.equal(logUploadCounter, 11);
+          clock.tick(120*1000*60);
+          assert.equal(logUploadCounter, 6);
 
           clock.restore();
         });
@@ -6332,27 +6330,72 @@ describe('plugin-meetings', () => {
           assert.equal(meeting.fetchMeetingInfoTimeoutId, undefined);
         });
 
-        it('handles meetingInfoProvider webinar need registration error', async () => {
+        it('handles MeetingInfoV2JoinWebinarError webinar need registration', async () => {
           meeting.destination = FAKE_DESTINATION;
           meeting.destinationType = FAKE_TYPE;
           meeting.attrs.meetingInfoProvider = {
             fetchMeetingInfo: sinon
               .stub()
               .throws(
-                new MeetingInfoV2WebinarRegistrationError(403021, FAKE_MEETING_INFO, 'a message')
+                new MeetingInfoV2JoinWebinarError(403021, FAKE_MEETING_INFO, 'a message')
               ),
           };
 
           await assert.isRejected(
             meeting.fetchMeetingInfo({sendCAevents: true}),
-            WebinarRegistrationError
+            JoinWebinarError
           );
 
           assert.deepEqual(meeting.meetingInfo, FAKE_MEETING_INFO);
-          assert.equal(meeting.meetingInfoFailureCode, 403021);
           assert.equal(
             meeting.meetingInfoFailureReason,
             MEETING_INFO_FAILURE_REASON.WEBINAR_REGISTRATION
+          );
+        });
+
+        it('handles MeetingInfoV2JoinWebinarError webinar need join with webcast', async () => {
+          meeting.destination = FAKE_DESTINATION;
+          meeting.destinationType = FAKE_TYPE;
+          meeting.attrs.meetingInfoProvider = {
+            fetchMeetingInfo: sinon
+              .stub()
+              .throws(
+                new MeetingInfoV2JoinWebinarError(403026, FAKE_MEETING_INFO, 'a message')
+              ),
+          };
+
+          await assert.isRejected(
+            meeting.fetchMeetingInfo({sendCAevents: true}),
+            JoinWebinarError
+          );
+
+          assert.deepEqual(meeting.meetingInfo, FAKE_MEETING_INFO);
+          assert.equal(
+            meeting.meetingInfoFailureReason,
+            MEETING_INFO_FAILURE_REASON.NEED_JOIN_WITH_WEBCAST
+          );
+        });
+
+        it('handles MeetingInfoV2JoinWebinarError webinar need registrationId', async () => {
+          meeting.destination = FAKE_DESTINATION;
+          meeting.destinationType = FAKE_TYPE;
+          meeting.attrs.meetingInfoProvider = {
+            fetchMeetingInfo: sinon
+              .stub()
+              .throws(
+                new MeetingInfoV2JoinWebinarError(403037, FAKE_MEETING_INFO, 'a message')
+              ),
+          };
+
+          await assert.isRejected(
+            meeting.fetchMeetingInfo({sendCAevents: true}),
+            JoinWebinarError
+          );
+
+          assert.deepEqual(meeting.meetingInfo, FAKE_MEETING_INFO);
+          assert.equal(
+            meeting.meetingInfoFailureReason,
+            MEETING_INFO_FAILURE_REASON.WEBINAR_NEED_REGISTRATIONID
           );
         });
       });

@@ -56,7 +56,7 @@ import MeetingCollection from './collection';
 import {MEETING_KEY, INoiseReductionEffect, IVirtualBackgroundEffect} from './meetings.types';
 import MeetingsUtil from './util';
 import PermissionError from '../common/errors/permission';
-import WebinarRegistrationError from '../common/errors/webinar-registration-error';
+import JoinWebinarError from '../common/errors/join-webinar-error';
 import {SpaceIDDeprecatedError} from '../common/errors/webex-errors';
 import NoMeetingInfoError from '../common/errors/no-meeting-info';
 
@@ -155,6 +155,9 @@ export type BasicMeetingInformation = {
   };
   meetingInfo: any;
   sessionCorrelationId: string;
+  roles: string[];
+  getCurUserType: () => string | null;
+  callStateForMetrics: CallStateForMetrics;
 };
 
 /**
@@ -1143,6 +1146,9 @@ export default class Meetings extends WebexPlugin {
           sessionId: meeting.locusInfo?.fullState?.sessionId,
         },
       },
+      roles: meeting.roles,
+      callStateForMetrics: meeting.callStateForMetrics,
+      getCurUserType: meeting.getCurUserType,
     });
     this.meetingCollection.delete(meeting.id);
     Trigger.trigger(
@@ -1406,7 +1412,7 @@ export default class Meetings extends WebexPlugin {
         !(err instanceof CaptchaError) &&
         !(err instanceof PasswordError) &&
         !(err instanceof PermissionError) &&
-        !(err instanceof WebinarRegistrationError)
+        !(err instanceof JoinWebinarError)
       ) {
         LoggerProxy.logger.info(
           `Meetings:index#createMeeting --> Info Unable to fetch meeting info for ${destination}.`
