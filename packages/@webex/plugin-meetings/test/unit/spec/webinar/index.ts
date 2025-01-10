@@ -333,7 +333,7 @@ describe('plugin-meetings', () => {
               'Content-Type': 'application/json'
             },
             body: {
-              layout
+              ...layout
             }
           });
           assert.equal(result, "REQUEST_RETURN_VALUE", "should return the resolved value from the request");

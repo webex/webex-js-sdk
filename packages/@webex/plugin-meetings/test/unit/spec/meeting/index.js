@@ -91,14 +91,14 @@ import ParameterError from '../../../../src/common/errors/parameter';
 import PasswordError from '../../../../src/common/errors/password-error';
 import CaptchaError from '../../../../src/common/errors/captcha-error';
 import PermissionError from '../../../../src/common/errors/permission';
-import WebinarRegistrationError from '../../../../src/common/errors/webinar-registration-error';
+import JoinWebinarError from '../../../../src/common/errors/join-webinar-error';
 import IntentToJoinError from '../../../../src/common/errors/intent-to-join';
 import testUtils from '../../../utils/testUtils';
 import {
   MeetingInfoV2CaptchaError,
   MeetingInfoV2PasswordError,
   MeetingInfoV2PolicyError,
-  MeetingInfoV2WebinarRegistrationError,
+  MeetingInfoV2JoinWebinarError,
 } from '../../../../src/meeting-info/meeting-info-v2';
 import {
   DTLS_HANDSHAKE_FAILED_CLIENT_CODE,
@@ -6330,27 +6330,72 @@ describe('plugin-meetings', () => {
           assert.equal(meeting.fetchMeetingInfoTimeoutId, undefined);
         });
 
-        it('handles meetingInfoProvider webinar need registration error', async () => {
+        it('handles MeetingInfoV2JoinWebinarError webinar need registration', async () => {
           meeting.destination = FAKE_DESTINATION;
           meeting.destinationType = FAKE_TYPE;
           meeting.attrs.meetingInfoProvider = {
             fetchMeetingInfo: sinon
               .stub()
               .throws(
-                new MeetingInfoV2WebinarRegistrationError(403021, FAKE_MEETING_INFO, 'a message')
+                new MeetingInfoV2JoinWebinarError(403021, FAKE_MEETING_INFO, 'a message')
               ),
           };
 
           await assert.isRejected(
             meeting.fetchMeetingInfo({sendCAevents: true}),
-            WebinarRegistrationError
+            JoinWebinarError
           );
 
           assert.deepEqual(meeting.meetingInfo, FAKE_MEETING_INFO);
-          assert.equal(meeting.meetingInfoFailureCode, 403021);
           assert.equal(
             meeting.meetingInfoFailureReason,
             MEETING_INFO_FAILURE_REASON.WEBINAR_REGISTRATION
+          );
+        });
+
+        it('handles MeetingInfoV2JoinWebinarError webinar need join with webcast', async () => {
+          meeting.destination = FAKE_DESTINATION;
+          meeting.destinationType = FAKE_TYPE;
+          meeting.attrs.meetingInfoProvider = {
+            fetchMeetingInfo: sinon
+              .stub()
+              .throws(
+                new MeetingInfoV2JoinWebinarError(403026, FAKE_MEETING_INFO, 'a message')
+              ),
+          };
+
+          await assert.isRejected(
+            meeting.fetchMeetingInfo({sendCAevents: true}),
+            JoinWebinarError
+          );
+
+          assert.deepEqual(meeting.meetingInfo, FAKE_MEETING_INFO);
+          assert.equal(
+            meeting.meetingInfoFailureReason,
+            MEETING_INFO_FAILURE_REASON.NEED_JOIN_WITH_WEBCAST
+          );
+        });
+
+        it('handles MeetingInfoV2JoinWebinarError webinar need registrationId', async () => {
+          meeting.destination = FAKE_DESTINATION;
+          meeting.destinationType = FAKE_TYPE;
+          meeting.attrs.meetingInfoProvider = {
+            fetchMeetingInfo: sinon
+              .stub()
+              .throws(
+                new MeetingInfoV2JoinWebinarError(403037, FAKE_MEETING_INFO, 'a message')
+              ),
+          };
+
+          await assert.isRejected(
+            meeting.fetchMeetingInfo({sendCAevents: true}),
+            JoinWebinarError
+          );
+
+          assert.deepEqual(meeting.meetingInfo, FAKE_MEETING_INFO);
+          assert.equal(
+            meeting.meetingInfoFailureReason,
+            MEETING_INFO_FAILURE_REASON.WEBINAR_NEED_REGISTRATIONID
           );
         });
       });

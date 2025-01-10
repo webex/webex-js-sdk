@@ -122,6 +122,8 @@ import {
   MEETING_PERMISSION_TOKEN_REFRESH_REASON,
   ROAP_OFFER_ANSWER_EXCHANGE_TIMEOUT,
   NAMED_MEDIA_GROUP_TYPE_AUDIO,
+  WEBINAR_ERROR_WEBCAST,
+  WEBINAR_ERROR_REGISTRATIONID,
 } from '../constants';
 import BEHAVIORAL_METRICS from '../metrics/constants';
 import ParameterError from '../common/errors/parameter';
@@ -129,7 +131,7 @@ import {
   MeetingInfoV2PasswordError,
   MeetingInfoV2CaptchaError,
   MeetingInfoV2PolicyError,
-  MeetingInfoV2WebinarRegistrationError,
+  MeetingInfoV2JoinWebinarError,
 } from '../meeting-info/meeting-info-v2';
 import {CSI, ReceiveSlotManager} from '../multistream/receiveSlotManager';
 import SendSlotManager from '../multistream/sendSlotManager';
@@ -158,7 +160,7 @@ import ControlsOptionsManager from '../controls-options-manager';
 import PermissionError from '../common/errors/permission';
 import {LocusMediaRequest} from './locusMediaRequest';
 import {ConnectionStateHandler, ConnectionStateEvent} from './connectionStateHandler';
-import WebinarRegistrationError from '../common/errors/webinar-registration-error';
+import JoinWebinarError from '../common/errors/join-webinar-error';
 
 // default callback so we don't call an undefined function, but in practice it should never be used
 const DEFAULT_ICE_PHASE_CALLBACK = () => 'JOIN_MEETING_FINAL';
@@ -1767,15 +1769,20 @@ export default class Meeting extends StatelessWebexPlugin {
           this.meetingInfo = err.meetingInfo;
         }
         throw new PermissionError();
-      } else if (err instanceof MeetingInfoV2WebinarRegistrationError) {
+      } else if (err instanceof MeetingInfoV2JoinWebinarError) {
         this.meetingInfoFailureReason = MEETING_INFO_FAILURE_REASON.WEBINAR_REGISTRATION;
+        if (WEBINAR_ERROR_WEBCAST.includes(err.wbxAppApiCode)) {
+          this.meetingInfoFailureReason = MEETING_INFO_FAILURE_REASON.NEED_JOIN_WITH_WEBCAST;
+        } else if (WEBINAR_ERROR_REGISTRATIONID.includes(err.wbxAppApiCode)) {
+          this.meetingInfoFailureReason = MEETING_INFO_FAILURE_REASON.WEBINAR_NEED_REGISTRATIONID;
+        }
         this.meetingInfoFailureCode = err.wbxAppApiCode;
 
         if (err.meetingInfo) {
           this.meetingInfo = err.meetingInfo;
         }
 
-        throw new WebinarRegistrationError();
+        throw new JoinWebinarError();
       } else if (err instanceof MeetingInfoV2PasswordError) {
         LoggerProxy.logger.info(
           // @ts-ignore
