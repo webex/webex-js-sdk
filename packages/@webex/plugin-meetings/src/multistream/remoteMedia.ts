@@ -58,7 +58,7 @@ export function getMaxFs(paneSize: RemoteVideoResolution): number {
       LoggerProxy.logger.warn(
         `RemoteMedia#getMaxFs --> unsupported paneSize: ${paneSize}, using "medium" instead`
       );
-      maxFs = 3600;
+      maxFs = MAX_FS_VALUES['720p'];
   }
 
   return maxFs;
@@ -128,12 +128,13 @@ export class RemoteMedia extends EventsScope {
     // we switch to the next resolution level when the height is 10% more than the current resolution height
     // except for 1080p - we switch to it immediately when the height is more than 720p
     const threshold = 1.1;
+    const getThresholdHeight = (h: number) => Math.round(h * threshold);
 
-    if (height < Math.round(90 * threshold)) {
+    if (height < getThresholdHeight(90)) {
       fs = MAX_FS_VALUES['90p'];
-    } else if (height < Math.round(180 * threshold)) {
+    } else if (height < getThresholdHeight(180)) {
       fs = MAX_FS_VALUES['180p'];
-    } else if (height < Math.round(360 * threshold)) {
+    } else if (height < getThresholdHeight(360)) {
       fs = MAX_FS_VALUES['360p'];
     } else if (height <= 720) {
       fs = MAX_FS_VALUES['720p'];
