@@ -262,5 +262,100 @@ describe('plugin-meetings', () => {
         testParams(false);
       });
     });
+
+    describe('#getAddMemberBody', () => {
+      it('returns the correct body with email address and roles', () => {
+        const options = {
+          invitee: {
+            emailAddress: 'test@example.com',
+            roles: ['role1', 'role2'],
+          },
+          alertIfActive: true,
+        };
+
+        assert.deepEqual(MembersUtil.getAddMemberBody(options), {
+          invitees: [
+            {
+              address: 'test@example.com',
+              roles: ['role1', 'role2'],
+            },
+          ],
+          alertIfActive: true,
+        });
+      });
+
+      it('returns the correct body with phone number and no roles', () => {
+        const options = {
+          invitee: {
+            phoneNumber: '1234567890',
+          },
+          alertIfActive: false,
+        };
+
+        assert.deepEqual(MembersUtil.getAddMemberBody(options), {
+          invitees: [
+            {
+              address: '1234567890',
+            },
+          ],
+          alertIfActive: false,
+        });
+      });
+
+      it('returns the correct body with fallback to email', () => {
+        const options = {
+          invitee: {
+            email: 'fallback@example.com',
+          },
+          alertIfActive: true,
+        };
+
+        assert.deepEqual(MembersUtil.getAddMemberBody(options), {
+          invitees: [
+            {
+              address: 'fallback@example.com',
+            },
+          ],
+          alertIfActive: true,
+        });
+      });
+
+      it('handles missing `alertIfActive` gracefully', () => {
+        const options = {
+          invitee: {
+            emailAddress: 'test@example.com',
+            roles: ['role1'],
+          },
+        };
+
+        assert.deepEqual(MembersUtil.getAddMemberBody(options), {
+          invitees: [
+            {
+              address: 'test@example.com',
+              roles: ['role1'],
+            },
+          ],
+          alertIfActive: undefined,
+        });
+      });
+
+      it('ignores roles if not provided', () => {
+        const options = {
+          invitee: {
+            emailAddress: 'test@example.com',
+          },
+          alertIfActive: false,
+        };
+
+        assert.deepEqual(MembersUtil.getAddMemberBody(options), {
+          invitees: [
+            {
+              address: 'test@example.com',
+            },
+          ],
+          alertIfActive: false,
+        });
+      });
+    });
   });
 });

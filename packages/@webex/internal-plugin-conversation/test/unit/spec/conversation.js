@@ -37,67 +37,78 @@ describe('plugin-conversation', () => {
     });
 
     describe('addReaction()', () => {
-      it('should add recipients to the payload if provided', () => {
-        const {conversation} = webex.internal;
-        const recipientId = 'example-recipient-id';
-        const expected = {items: [{id: recipientId, objectType: 'person'}]};
+      let conversation;
+      let recipientId;
+      let expectedRecipients;
+      let actorId;
+
+      beforeEach(() => {
+        conversation = webex.internal.conversation;
+        recipientId = 'example-recipient-id';
+        actorId = 'actorId-123';
+        expectedRecipients = {items: [{id: recipientId, objectType: 'person'}]};
         conversation.sendReaction = sinon.stub().returns(Promise.resolve());
         conversation.createReactionHmac = sinon.stub().returns(Promise.resolve('hmac'));
+      });
+      it('should add recipients to the payload if provided', async () => {
+        conversation.config.includeEncryptionTransforms = true;
 
-        return conversation.addReaction({}, 'example-display-name', {}, recipientId).then(() => {
-          assert.deepEqual(conversation.sendReaction.args[0][1].recipients, expected);
-        });
+        await conversation.addReaction({}, 'example-display-name', {}, actorId, recipientId);
+        assert.called(conversation.createReactionHmac);
+        assert.deepEqual(conversation.sendReaction.args[0][1].recipients, expectedRecipients);
+      });
+
+      it('will not call createReactionHmac if config prohibits', async () => {
+        conversation.config.includeEncryptionTransforms = false;
+
+        await conversation.addReaction({}, 'example-display-name', {}, actorId, recipientId);
+        assert.deepEqual(conversation.sendReaction.args[0][1].recipients, expectedRecipients);
+        assert.notCalled(conversation.createReactionHmac);
+      });
+
+      it('should use actorId if provided', async () => {
+        await conversation.addReaction({}, 'example-display-name', {}, actorId, recipientId);
+        assert.equal(conversation.sendReaction.args[0][1].actor.id, actorId);
+      });
+
+      it('should use fallback device.userId if no actorId provided', async () => {
+        const defaultUserId = 'fallback-id';
+        webex.internal.device.userId = defaultUserId;
+        await conversation.addReaction({}, 'example-display-name', {}, undefined, recipientId);
+        assert.equal(conversation.sendReaction.args[0][1].actor.id, defaultUserId);
       });
     });
 
     describe('deleteReaction()', () => {
-      it('should add recipients to the payload if provided', () => {
-        const {conversation} = webex.internal;
-        const recipientId = 'example-recipient-id';
-        const expected = {items: [{id: recipientId, objectType: 'person'}]};
-        conversation.sendReaction = sinon.stub().returns(Promise.resolve());
+      let conversation;
+      let recipientId;
+      let expectedRecipients;
+      let actorId;
 
-        return conversation.deleteReaction({}, 'example-reaction-id', recipientId).then(() => {
-          assert.deepEqual(conversation.sendReaction.args[0][1].recipients, expected);
-        });
-      });
-    });
-
-    describe('prepare()', () => {
-      it('should ammend activity recipients to the returned object', () => {
-        const {conversation} = webex.internal;
-        const activity = {recipients: 'example-recipients'};
-
-        return conversation.prepare(activity).then((results) => {
-          assert.deepEqual(results.recipients, activity.recipients);
-        });
-      });
-    });
-
-    describe('addReaction()', () => {
-      it('should add recipients to the payload if provided', () => {
-        const {conversation} = webex.internal;
-        const recipientId = 'example-recipient-id';
-        const expected = {items: [{id: recipientId, objectType: 'person'}]};
+      beforeEach(() => {
+        conversation = webex.internal.conversation;
+        recipientId = 'example-recipient-id';
+        actorId = 'actorId-123';
+        expectedRecipients = {items: [{id: recipientId, objectType: 'person'}]};
         conversation.sendReaction = sinon.stub().returns(Promise.resolve());
         conversation.createReactionHmac = sinon.stub().returns(Promise.resolve('hmac'));
-
-        return conversation.addReaction({}, 'example-display-name', {}, recipientId).then(() => {
-          assert.deepEqual(conversation.sendReaction.args[0][1].recipients, expected);
-        });
       });
-    });
 
-    describe('deleteReaction()', () => {
-      it('should add recipients to the payload if provided', () => {
-        const {conversation} = webex.internal;
-        const recipientId = 'example-recipient-id';
-        const expected = {items: [{id: recipientId, objectType: 'person'}]};
-        conversation.sendReaction = sinon.stub().returns(Promise.resolve());
+      it('should add recipients to the payload if provided', async () => {
+        await conversation.deleteReaction({}, 'example-reaction-id', actorId, recipientId);
+        assert.deepEqual(conversation.sendReaction.args[0][1].recipients, expectedRecipients);
+      });
 
-        return conversation.deleteReaction({}, 'example-reaction-id', recipientId).then(() => {
-          assert.deepEqual(conversation.sendReaction.args[0][1].recipients, expected);
-        });
+      it('should use actorId if provided', async () => {
+        await conversation.deleteReaction({}, 'example-reaction-id', actorId, recipientId);
+        assert.equal(conversation.sendReaction.args[0][1].actor.id, actorId);
+      });
+
+      it('should use fallback device.userId if no actorId provided', async () => {
+        const defaultUserId = 'fallback-id';
+        webex.internal.device.userId = defaultUserId;
+        await conversation.deleteReaction({}, 'example-reaction-id', undefined, recipientId);
+        assert.equal(conversation.sendReaction.args[0][1].actor.id, defaultUserId);
       });
     });
 

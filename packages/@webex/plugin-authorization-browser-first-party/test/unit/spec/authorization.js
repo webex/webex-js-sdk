@@ -599,6 +599,7 @@ describe('plugin-authorization-browser-first-party', () => {
 
         webex.request.onFirstCall().resolves({statusCode: 200, body: {access_token: 'token'}});
         const emitSpy = sinon.spy(webex.authorization.eventEmitter, 'emit');
+        const credentialsSetSpy = sinon.spy(webex.credentials, 'set');
         sinon.spy(webex.authorization, 'cancelQRCodePolling');
 
         webex.authorization._startQRCodePolling(options);
@@ -617,6 +618,7 @@ describe('plugin-authorization-browser-first-party', () => {
         );
 
         assert.calledOnce(webex.authorization.cancelQRCodePolling);
+        assert.calledOnce(credentialsSetSpy);
         assert.calledTwice(emitSpy);
         assert.equal(emitSpy.getCall(0).args[1].eventType, 'authorizationSuccess');
         assert.equal(emitSpy.getCall(1).args[1].eventType, 'pollingCanceled');
@@ -708,7 +710,8 @@ describe('plugin-authorization-browser-first-party', () => {
         webex.request.onSecondCall().resolves({statusCode: 200, body: {access_token: 'token'}});
         sinon.spy(webex.authorization, 'cancelQRCodePolling');
         const emitSpy = sinon.spy(webex.authorization.eventEmitter, 'emit');
-
+        const credentialsSetSpy = sinon.spy(webex.credentials, 'set');
+        
         webex.authorization._startQRCodePolling(options);
         await clock.tickAsync(4000);
 
@@ -720,6 +723,7 @@ describe('plugin-authorization-browser-first-party', () => {
 
         assert.calledTwice(webex.request);
         assert.calledOnce(webex.authorization.cancelQRCodePolling);
+        assert.calledOnce(credentialsSetSpy);
         assert.calledTwice(emitSpy);
         assert.equal(emitSpy.getCall(0).args[1].eventType, 'authorizationSuccess');
         assert.equal(emitSpy.getCall(1).args[1].eventType, 'pollingCanceled');

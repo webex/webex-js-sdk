@@ -198,6 +198,8 @@ export const RETRY_TIMEOUT = 3000;
 
 export const ICE_AND_DTLS_CONNECTION_TIMEOUT = 20000;
 export const ROAP_OFFER_ANSWER_EXCHANGE_TIMEOUT = 35000;
+export const WEBINAR_ERROR_WEBCAST = [403026];
+export const WEBINAR_ERROR_REGISTRATIONID = [403037, 403137];
 
 // ******************** REGEX **********************
 // Please alphabetize
@@ -383,6 +385,13 @@ export const EVENT_TYPES = {
   ERROR: 'error',
 };
 
+export const HEADERS = {
+  CONTENT_TYPE: 'Content-Type',
+  CONTENT_TYPE_VALUE: {
+    APPLICATION_JSON: 'application/json',
+  },
+};
+
 // Handles the reason when meeting gets destroyed
 // host removed you from the meeting
 // You are the host and you left the meeting
@@ -529,9 +538,9 @@ export const ERROR_DICTIONARY = {
       'Reconnection was not started, because there is one already in progress or reconnections are disabled in config.',
     CODE: 15,
   },
-  WebinarRegistrationError: {
-    NAME: 'WebinarRegistrationError',
-    MESSAGE: 'An error occurred while the webinar required registration.',
+  JoinWebinarError: {
+    NAME: 'JoinWebinarError',
+    MESSAGE: 'An error occurred while the join webinar.',
     CODE: 16,
   },
 };
@@ -904,6 +913,10 @@ export const DISPLAY_HINTS = {
   RECORDING_CONTROL_PAUSE: 'RECORDING_CONTROL_PAUSE',
   RECORDING_CONTROL_STOP: 'RECORDING_CONTROL_STOP',
   RECORDING_CONTROL_RESUME: 'RECORDING_CONTROL_RESUME',
+  PREMISE_RECORDING_CONTROL_START: 'PREMISE_RECORDING_CONTROL_START',
+  PREMISE_RECORDING_CONTROL_PAUSE: 'PREMISE_RECORDING_CONTROL_PAUSE',
+  PREMISE_RECORDING_CONTROL_STOP: 'PREMISE_RECORDING_CONTROL_STOP',
+  PREMISE_RECORDING_CONTROL_RESUME: 'PREMISE_RECORDING_CONTROL_RESUME',
   LOCK_CONTROL_UNLOCK: 'LOCK_CONTROL_UNLOCK',
   LOCK_CONTROL_LOCK: 'LOCK_CONTROL_LOCK',
   LOCK_STATUS_LOCKED: 'LOCK_STATUS_LOCKED',
@@ -988,6 +1001,12 @@ export const DISPLAY_HINTS = {
   STAGE_VIEW_INACTIVE: 'STAGE_VIEW_INACTIVE',
   ENABLE_STAGE_VIEW: 'ENABLE_STAGE_VIEW',
   DISABLE_STAGE_VIEW: 'DISABLE_STAGE_VIEW',
+
+  // Practice Session
+  PRACTICE_SESSION_ON: 'PRACTICE_SESSION_ON',
+  PRACTICE_SESSION_OFF: 'PRACTICE_SESSION_OFF',
+  SHOW_PRACTICE_SESSION_START: 'SHOW_PRACTICE_SESSION_START',
+  SHOW_PRACTICE_SESSION_STOP: 'SHOW_PRACTICE_SESSION_STOP',
 };
 
 export const INTERSTITIAL_DISPLAY_HINTS = [DISPLAY_HINTS.VOIP_IS_ENABLED];
@@ -1300,6 +1319,8 @@ export const MEETING_INFO_FAILURE_REASON = {
   WRONG_CAPTCHA: 'WRONG_CAPTCHA', // wbxappapi requires a captcha code or a wrong captcha code was provided
   POLICY: 'POLICY', // meeting info request violates some meeting policy
   WEBINAR_REGISTRATION: 'WEBINAR_REGISTRATION', // webinar need registration
+  NEED_JOIN_WITH_WEBCAST: 'NEED_JOIN_WITH_WEBCAST', // webinar need using webcast join
+  WEBINAR_NEED_REGISTRATIONID: 'WEBINAR_NEED_REGISTRATIONID', // webinar need registrationID
   OTHER: 'OTHER', // any other error (network, etc)
 };
 

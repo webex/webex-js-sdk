@@ -434,6 +434,7 @@ const Authorization = WebexPlugin.extend({
             eventType: 'authorizationSuccess',
             data: res.body,
           });
+          this.webex.credentials.set({supertoken: res.body});
           this.cancelQRCodePolling();
         })
         .catch((res) => {

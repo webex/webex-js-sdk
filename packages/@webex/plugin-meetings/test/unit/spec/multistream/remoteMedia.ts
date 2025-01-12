@@ -249,14 +249,18 @@ describe('RemoteMedia', () => {
 
     forEach(
       [
-        {height: 134, fs: 60},
-        {height: 135, fs: 240},
-        {height: 269, fs: 240},
-        {height: 270, fs: 920},
-        {height: 539, fs: 920},
-        {height: 540, fs: 3600},
+        {height: 90, fs: 60}, // 90p
+        {height: 98, fs: 60},
+        {height: 99, fs: 240}, // 180p
+        {height: 180, fs: 240},
+        {height: 197, fs: 240},
+        {height: 198, fs: 920}, // 360p
+        {height: 360, fs: 920},
+        {height: 395, fs: 920},
+        {height: 396, fs: 3600}, // 720p
         {height: 720, fs: 3600},
-        {height: 721, fs: 8192},
+        {height: 721, fs: 8192}, // 1080p
+        {height: 1080, fs: 8192},
       ],
       ({height, fs}) => {
         it(`sets the max fs to ${fs} correctly when height is ${height}`, () => {

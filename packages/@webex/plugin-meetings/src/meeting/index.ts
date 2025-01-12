@@ -122,6 +122,8 @@ import {
   MEETING_PERMISSION_TOKEN_REFRESH_REASON,
   ROAP_OFFER_ANSWER_EXCHANGE_TIMEOUT,
   NAMED_MEDIA_GROUP_TYPE_AUDIO,
+  WEBINAR_ERROR_WEBCAST,
+  WEBINAR_ERROR_REGISTRATIONID,
 } from '../constants';
 import BEHAVIORAL_METRICS from '../metrics/constants';
 import ParameterError from '../common/errors/parameter';
@@ -129,7 +131,7 @@ import {
   MeetingInfoV2PasswordError,
   MeetingInfoV2CaptchaError,
   MeetingInfoV2PolicyError,
-  MeetingInfoV2WebinarRegistrationError,
+  MeetingInfoV2JoinWebinarError,
 } from '../meeting-info/meeting-info-v2';
 import {CSI, ReceiveSlotManager} from '../multistream/receiveSlotManager';
 import SendSlotManager from '../multistream/sendSlotManager';
@@ -158,7 +160,7 @@ import ControlsOptionsManager from '../controls-options-manager';
 import PermissionError from '../common/errors/permission';
 import {LocusMediaRequest} from './locusMediaRequest';
 import {ConnectionStateHandler, ConnectionStateEvent} from './connectionStateHandler';
-import WebinarRegistrationError from '../common/errors/webinar-registration-error';
+import JoinWebinarError from '../common/errors/join-webinar-error';
 
 // default callback so we don't call an undefined function, but in practice it should never be used
 const DEFAULT_ICE_PHASE_CALLBACK = () => 'JOIN_MEETING_FINAL';
@@ -1767,15 +1769,20 @@ export default class Meeting extends StatelessWebexPlugin {
           this.meetingInfo = err.meetingInfo;
         }
         throw new PermissionError();
-      } else if (err instanceof MeetingInfoV2WebinarRegistrationError) {
+      } else if (err instanceof MeetingInfoV2JoinWebinarError) {
         this.meetingInfoFailureReason = MEETING_INFO_FAILURE_REASON.WEBINAR_REGISTRATION;
+        if (WEBINAR_ERROR_WEBCAST.includes(err.wbxAppApiCode)) {
+          this.meetingInfoFailureReason = MEETING_INFO_FAILURE_REASON.NEED_JOIN_WITH_WEBCAST;
+        } else if (WEBINAR_ERROR_REGISTRATIONID.includes(err.wbxAppApiCode)) {
+          this.meetingInfoFailureReason = MEETING_INFO_FAILURE_REASON.WEBINAR_NEED_REGISTRATIONID;
+        }
         this.meetingInfoFailureCode = err.wbxAppApiCode;
 
         if (err.meetingInfo) {
           this.meetingInfo = err.meetingInfo;
         }
 
-        throw new WebinarRegistrationError();
+        throw new JoinWebinarError();
       } else if (err instanceof MeetingInfoV2PasswordError) {
         LoggerProxy.logger.info(
           // @ts-ignore
@@ -2660,6 +2667,7 @@ export default class Meeting extends StatelessWebexPlugin {
     });
 
     this.locusInfo.on(LOCUSINFO.EVENTS.CONTROLS_PRACTICE_SESSION_STATUS_UPDATED, ({state}) => {
+      this.webinar.updatePracticeSessionStatus(state);
       Trigger.trigger(
         this,
         {file: 'meeting/index', function: 'setupLocusControlsListener'},
@@ -3516,6 +3524,7 @@ export default class Meeting extends StatelessWebexPlugin {
       emailAddress: string;
       email: string;
       phoneNumber: string;
+      roles: Array<string>;
     },
     alertIfActive = true
   ) {
@@ -3772,6 +3781,10 @@ export default class Meeting extends StatelessWebexPlugin {
             this.userDisplayHints,
             this.selfUserPolicies
           ),
+          isPremiseRecordingEnabled: RecordingUtil.isPremiseRecordingEnabled(
+            this.userDisplayHints,
+            this.selfUserPolicies
+          ),
           canRaiseHand: MeetingUtil.canUserRaiseHand(this.userDisplayHints),
           canLowerAllHands: MeetingUtil.canUserLowerAllHands(this.userDisplayHints),
           canLowerSomeoneElsesHand: MeetingUtil.canUserLowerSomeoneElsesHand(this.userDisplayHints),
@@ -3913,6 +3926,22 @@ export default class Meeting extends StatelessWebexPlugin {
           }),
           canDisableStageView: ControlsOptionsUtil.hasHints({
             requiredHints: [DISPLAY_HINTS.DISABLE_STAGE_VIEW],
+            displayHints: this.userDisplayHints,
+          }),
+          isPracticeSessionOn: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.PRACTICE_SESSION_ON],
+            displayHints: this.userDisplayHints,
+          }),
+          isPracticeSessionOff: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.PRACTICE_SESSION_OFF],
+            displayHints: this.userDisplayHints,
+          }),
+          canStartPracticeSession: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.SHOW_PRACTICE_SESSION_START],
+            displayHints: this.userDisplayHints,
+          }),
+          canStopPracticeSession: ControlsOptionsUtil.hasHints({
+            requiredHints: [DISPLAY_HINTS.SHOW_PRACTICE_SESSION_STOP],
             displayHints: this.userDisplayHints,
           }),
           canShareFile:
@@ -4077,10 +4106,11 @@ export default class Meeting extends StatelessWebexPlugin {
    */
   private setLogUploadTimer() {
     // start with short timeouts and increase them later on so in case users have very long multi-hour meetings we don't get too fragmented logs
-    const LOG_UPLOAD_INTERVALS = [0.1, 1, 15, 15, 30, 30, 30, 60];
+    const LOG_UPLOAD_INTERVALS = [0.1, 15, 30, 60]; // in minutes
 
     const delay =
       1000 *
+      60 *
       // @ts-ignore - config coming from registerPlugin
       this.config.logUploadIntervalMultiplicationFactor *
       LOG_UPLOAD_INTERVALS[this.logUploadIntervalIndex];
@@ -5351,16 +5381,19 @@ export default class Meeting extends StatelessWebexPlugin {
       this.meetingFiniteStateMachine.reset();
     }
 
-    // @ts-ignore
-    this.webex.internal.newMetrics.submitClientEvent({
-      name: 'client.call.initiated',
-      payload: {
-        trigger: this.callStateForMetrics.joinTrigger || 'user-interaction',
-        isRoapCallEnabled: true,
-        pstnAudioType: options?.pstnAudioType,
-      },
-      options: {meetingId: this.id},
-    });
+    // send client.call.initiated unless told not to
+    if (options.sendCallInitiated !== false) {
+      // @ts-ignore
+      this.webex.internal.newMetrics.submitClientEvent({
+        name: 'client.call.initiated',
+        payload: {
+          trigger: this.callStateForMetrics.joinTrigger || 'user-interaction',
+          isRoapCallEnabled: true,
+          pstnAudioType: options?.pstnAudioType,
+        },
+        options: {meetingId: this.id},
+      });
+    }
 
     LoggerProxy.logger.log('Meeting:index#join --> Joining a meeting');
 

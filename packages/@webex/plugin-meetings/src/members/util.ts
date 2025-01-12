@@ -46,6 +46,7 @@ const MembersUtil = {
       {
         address:
           options.invitee.emailAddress || options.invitee.email || options.invitee.phoneNumber,
+        ...(options.invitee.roles ? {roles: options.invitee.roles} : {}),
       },
     ],
     alertIfActive: options.alertIfActive,

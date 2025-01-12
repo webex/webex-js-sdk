@@ -33,6 +33,7 @@ describe('plugin-meetings', () => {
         canStartManualCaption: null,
         canStopManualCaption: null,
         isManualCaptionActive: null,
+        isPremiseRecordingEnabled: null,
         isSaveTranscriptsEnabled: null,
         isWebexAssistantActive: null,
         canViewCaptionPanel: null,
@@ -88,6 +89,11 @@ describe('plugin-meetings', () => {
         canShowStageView: null,
         canEnableStageView: null,
         canDisableStageView: null,
+        isPracticeSessionOn : null,
+        isPracticeSessionOff : null,
+        canStartPracticeSession: null,
+        canStopPracticeSession: null,
+
         ...expected,
       };
 
@@ -126,6 +132,7 @@ describe('plugin-meetings', () => {
       'canStartManualCaption',
       'canStopManualCaption',
       'isManualCaptionActive',
+      'isPremiseRecordingEnabled',
       'isSaveTranscriptsEnabled',
       'isWebexAssistantActive',
       'canViewCaptionPanel',
@@ -181,7 +188,12 @@ describe('plugin-meetings', () => {
       'canShowStageView',
       'canEnableStageView',
       'canDisableStageView',
-    ].forEach((key) => {
+      'isPracticeSessionOn',
+      'isPracticeSessionOff',
+      'canStartPracticeSession',
+      'canStopPracticeSession',
+
+  ].forEach((key) => {
       it(`get and set for ${key} work as expected`, () => {
         const inMeetingActions = new InMeetingActions();
 
