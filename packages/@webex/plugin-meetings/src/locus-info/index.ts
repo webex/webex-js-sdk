@@ -1288,11 +1288,8 @@ export default class LocusInfo extends EventsScope {
    * @memberof LocusInfo
    * emits internal event locus_info_update_media_shares
    */
-  updateMediaShares(mediaShares: object, forceUpdate: boolean) {
-    if (
-      (mediaShares && !isEqual(this.mediaShares, mediaShares)) ||
-      (forceUpdate && this.mediaShares)
-    ) {
+  updateMediaShares(mediaShares: object, forceUpdate = false) {
+    if (mediaShares && (!isEqual(this.mediaShares, mediaShares) || forceUpdate)) {
       const parsedMediaShares = MediaSharesUtils.getMediaShares(this.mediaShares, mediaShares);
 
       this.updateMeeting(parsedMediaShares.current);
