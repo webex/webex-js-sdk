@@ -2668,9 +2668,6 @@ export default class Meeting extends StatelessWebexPlugin {
 
     this.locusInfo.on(LOCUSINFO.EVENTS.CONTROLS_PRACTICE_SESSION_STATUS_UPDATED, ({state}) => {
       this.webinar.updatePracticeSessionStatus(state);
-      if (this.webinar.selfIsPanelist) {
-        this.updateLLMConnection();
-      }
       Trigger.trigger(
         this,
         {file: 'meeting/index', function: 'setupLocusControlsListener'},
@@ -2744,6 +2741,7 @@ export default class Meeting extends StatelessWebexPlugin {
       this.triggerAnnotationInfoEvent(contentShare, previousContentShare);
 
       if (
+        !payload.forceUpdate &&
         contentShare.beneficiaryId === previousContentShare?.beneficiaryId &&
         contentShare.disposition === previousContentShare?.disposition &&
         contentShare.deviceUrlSharing === previousContentShare.deviceUrlSharing &&
@@ -2805,6 +2803,11 @@ export default class Meeting extends StatelessWebexPlugin {
       LoggerProxy.logger.info(
         `Meeting:index#setUpLocusInfoMediaInactiveListener --> this.shareStatus=${this.shareStatus} newShareStatus=${newShareStatus}`
       );
+
+      if (newShareStatus === SHARE_STATUS.WHITEBOARD_SHARE_ACTIVE && this.webinar.selfIsAttendee) {
+        // webinar attendees should receive whiteboard streaming instead of native mode
+        newShareStatus = SHARE_STATUS.REMOTE_SHARE_ACTIVE;
+      }
       if (newShareStatus !== this.shareStatus) {
         const oldShareStatus = this.shareStatus;
 
@@ -3393,9 +3396,20 @@ export default class Meeting extends StatelessWebexPlugin {
       this.simultaneousInterpretation.updateCanManageInterpreters(
         payload.newRoles?.includes(SELF_ROLES.MODERATOR)
       );
-      const {isPromoted, isDemoted} = this.webinar.updateRoleChanged(payload);
-      if (isPromoted || isDemoted) {
+      const {isPromoted} = this.webinar.updateRoleChanged(payload);
+
+      if (this.webinar.practiceSessionEnabled) {
+        // may need change data channel in practice session
         this.updateLLMConnection();
+      }
+      if (
+        (this.webinar.selfIsAttendee &&
+          this.shareStatus === SHARE_STATUS.WHITEBOARD_SHARE_ACTIVE) ||
+        isPromoted
+      ) {
+        // attendees in webinar should subscribe streaming for whiteboard sharing
+        // while panelist still need subscribe native mode so trigger update here
+        this.locusInfo.updateMediaShares(this.locusInfo.mediaShares, true);
       }
 
       Trigger.trigger(
@@ -5602,6 +5616,7 @@ export default class Meeting extends StatelessWebexPlugin {
 
     const isJoined = this.isJoined();
 
+    // webinar panelist should use new data channel in practice session
     const dataChannelUrl =
       this.webinar.selfIsPanelist && this.webinar.practiceSessionEnabled
         ? practiceSessionDatachannelUrl
