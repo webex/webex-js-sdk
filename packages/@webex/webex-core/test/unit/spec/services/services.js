@@ -288,6 +288,25 @@ describe('webex-core', () => {
       });
     });
 
+    describe('#updateCatalog', () => {
+      it('updates the catalog', async () => {
+        const serviceGroup = 'postauth';
+        const hostmap = {hostmap: 'hostmap'};
+
+        services._formatReceivedHostmap = sinon.stub().returns({some: 'hostmap'});
+
+        catalog.updateServiceUrls = sinon.stub().returns(Promise.resolve({some: 'value'}));
+
+        const result = await services.updateCatalog(serviceGroup, hostmap);
+
+        assert.calledWith(services._formatReceivedHostmap, hostmap);
+
+        assert.calledWith(catalog.updateServiceUrls, serviceGroup, {some: 'hostmap'});
+
+        assert.deepEqual(result, {some: 'value'});
+      });
+    });
+
     describe('#_fetchNewServiceHostmap()', () => {
 
       beforeEach(() => {
