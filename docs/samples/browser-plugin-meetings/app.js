@@ -18,8 +18,8 @@ let audioReceiveSlot;
 let videoReceiveSlot;
 let isMultistream = false;
 let isBrb = false;
-let audioBrb = undefined;
-let videoBrb = undefined;
+let localMediaMicMuted = undefined;
+let localMediaCameraMuted = undefined;
 let currentActiveSpeakersMemberIds = [];
 
 const authTypeElm = document.querySelector('#auth-type');
@@ -3354,8 +3354,8 @@ async function toggleBrb({unmuteOnlyAudio = false, unmuteOnlyVideo = false}) {
       isBrb = enableBrb;
 
       if (enableBrb) {
-        videoBrb = localMedia.cameraStream.userMuted;
-        audioBrb = localMedia.microphoneStream.userMuted;
+        localMediaCameraMuted = localMedia.cameraStream.userMuted;
+        localMediaMicMuted = localMedia.microphoneStream.userMuted;
 
         await stopScreenShare();
 
@@ -3365,19 +3365,19 @@ async function toggleBrb({unmuteOnlyAudio = false, unmuteOnlyVideo = false}) {
 
         if (unmuteOnlyAudio) {
           localMedia.microphoneStream.setUserMuted(false);
-          videoBrb = undefined;
-          audioBrb = undefined;
+          localMediaCameraMuted = undefined;
+          localMediaMicMuted = undefined;
         }
 
         if (unmuteOnlyVideo) {
           localMedia.cameraStream.setUserMuted(false);
-          videoBrb = undefined;
-          audioBrb = undefined;
+          localMediaCameraMuted = undefined;
+          localMediaMicMuted = undefined;
         }
 
-        if (videoBrb !== undefined && audioBrb !== undefined) {
-          localMedia.cameraStream.setUserMuted(videoBrb);
-          localMedia.microphoneStream.setUserMuted(audioBrb);
+        if (localMediaCameraMuted !== undefined && localMediaMicMuted !== undefined) {
+          localMedia.cameraStream.setUserMuted(localMediaCameraMuted);
+          localMedia.microphoneStream.setUserMuted(localMediaMicMuted);
         }
       }
 
