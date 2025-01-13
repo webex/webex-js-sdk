@@ -17,7 +17,7 @@ export default {
       },
       serviceData: {
         indicator: 'contactcenter',
-        // TODO: This should be dynamic based on the environment
+        // This is now being read dynamically based on the environment in WebCallingService registerWebCallingLine method
         domain: 'rtw.prod-us1.rtmsprod.net',
       },
     },

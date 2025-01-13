@@ -63,6 +63,13 @@ export default class WebCallingService extends EventEmitter {
   }
 
   public async registerWebCallingLine(): Promise<void> {
+    /** overriding RTMS URL with u2c catalogue wcc-calling-rtms service */
+    await this.webex.internal.services.waitForCatalog('postauth');
+    const rtmsURL = this.webex.internal.services.get('wcc-calling-rtms');
+    if (rtmsURL) {
+      this.callingClientConfig.serviceData.domain = rtmsURL;
+    }
+
     this.callingClient = await createClient(this.webex as any, this.callingClientConfig);
     this.line = Object.values(this.callingClient.getLines())[0];
 

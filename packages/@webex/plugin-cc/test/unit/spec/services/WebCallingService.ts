@@ -37,7 +37,13 @@ describe('WebCallingService', () => {
       logger: {
         log: jest.fn(),
         error: jest.fn(),
-        info: jest.fn()
+        info: jest.fn(),
+      },
+      internal: {
+        services: {
+          waitForCatalog: jest.fn().mockResolvedValue(undefined),
+          get: jest.fn().mockReturnValue('rtw.prod-us1.rtmsprod.net'),
+        },
       },
     } as unknown as WebexSDK;
 
@@ -103,7 +109,39 @@ describe('WebCallingService', () => {
       expect(line.register).toHaveBeenCalled();
       expect(LoggerProxy.log).toHaveBeenCalledWith(
         `WxCC-SDK: Desktop registered successfully, mobiusDeviceId: ${deviceInfo.mobiusDeviceId}`,
-        {"method": "registerWebCallingLine", "module": WEB_CALLING_SERVICE_FILE}
+        {method: 'registerWebCallingLine', module: WEB_CALLING_SERVICE_FILE}
+      );
+    }, 20000); // Increased timeout to 20 seconds
+
+    it('should register WebCallingLine with custom rtms url', async () => {
+      webex.internal.services.get = jest.fn().mockReturnValue('rtw.prod-us2.rtmsprod.net');
+
+      line = callingClient.getLines().line1 as ILine;
+      const deviceInfo = {
+        mobiusDeviceId: 'device123',
+        status: 'registered',
+        setError: jest.fn(),
+        getError: jest.fn(),
+        type: 'line',
+        id: 'line1',
+      };
+
+      const registeredHandler = jest.fn();
+      const lineOnSpy = jest.spyOn(line, 'on').mockImplementation((event, handler) => {
+        if (event === LINE_EVENTS.REGISTERED) {
+          registeredHandler.mockImplementation(handler);
+          handler(deviceInfo);
+        }
+      });
+      expect(config.cc.callingClientConfig.serviceData.domain).toBe('rtw.prod-us1.rtmsprod.net');
+      await expect(webRTCCalling.registerWebCallingLine()).resolves.toBeUndefined();
+      expect(config.cc.callingClientConfig.serviceData.domain).toBe('rtw.prod-us2.rtmsprod.net');
+      expect(createClient).toHaveBeenCalledWith(webex, config.cc.callingClientConfig);
+      expect(lineOnSpy).toHaveBeenCalledWith(LINE_EVENTS.REGISTERED, expect.any(Function));
+      expect(line.register).toHaveBeenCalled();
+      expect(LoggerProxy.log).toHaveBeenCalledWith(
+        `WxCC-SDK: Desktop registered successfully, mobiusDeviceId: ${deviceInfo.mobiusDeviceId}`,
+        {method: 'registerWebCallingLine', module: WEB_CALLING_SERVICE_FILE}
       );
     }, 20000); // Increased timeout to 20 seconds
 
@@ -171,7 +209,7 @@ describe('WebCallingService', () => {
     const mockStream = {
       outputStream: {
         getAudioTracks: jest.fn().mockReturnValue(['']),
-      }
+      },
     };
 
     const localAudioStream = mockStream as unknown as LocalMicrophoneStream;
@@ -185,10 +223,14 @@ describe('WebCallingService', () => {
 
     it('should log error and throw when call.answer fails', () => {
       const error = new Error('Failed to answer');
-      mockCall.answer.mockImplementation(() => { throw error; });
+      mockCall.answer.mockImplementation(() => {
+        throw error;
+      });
 
       expect(() => webRTCCalling.answerCall(localAudioStream, 'task-id')).toThrow(error);
-      expect(webex.logger.error).toHaveBeenCalledWith(`Failed to answer call for task-id. Error: ${error}`);
+      expect(webex.logger.error).toHaveBeenCalledWith(
+        `Failed to answer call for task-id. Error: ${error}`
+      );
     });
 
     it('should log when there is no call to answer', () => {
@@ -203,7 +245,7 @@ describe('WebCallingService', () => {
     const mockStream = {
       outputStream: {
         getAudioTracks: jest.fn().mockReturnValue(['']),
-      }
+      },
     };
 
     const localAudioStream = mockStream as unknown as LocalMicrophoneStream;
@@ -233,10 +275,14 @@ describe('WebCallingService', () => {
 
     it('should log error and throw when call.end fails', () => {
       const error = new Error('Failed to end call');
-      mockCall.end.mockImplementation(() => { throw error; });
+      mockCall.end.mockImplementation(() => {
+        throw error;
+      });
 
       expect(() => webRTCCalling.declineCall('task-id')).toThrow(error);
-      expect(webex.logger.error).toHaveBeenCalledWith(`Failed to end call: task-id. Error: ${error}`);
+      expect(webex.logger.error).toHaveBeenCalledWith(
+        `Failed to end call: task-id. Error: ${error}`
+      );
     });
 
     it('should log when there is no call to end', () => {

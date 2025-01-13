@@ -111,6 +111,8 @@ export interface WebexSDK {
     };
     presence: unknown;
     services: {
+      get: (service: string) => string;
+      waitForCatalog: (service: string) => Promise<void>;
       _hostCatalog: Record<string, ServiceHost[]>;
       _serviceUrls: {
         mobius: string;
