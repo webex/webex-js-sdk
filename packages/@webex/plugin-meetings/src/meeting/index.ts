@@ -850,7 +850,7 @@ export default class Meeting extends StatelessWebexPlugin {
      * @memberof Meeting
      */
     // @ts-ignore
-    this.webinar = new Webinar({}, {parent: this.webex});
+    this.webinar = new Webinar({meetingId: this.id}, {parent: this.webex});
     /**
      * helper class for managing receive slots (for multistream media connections)
      */
@@ -3396,21 +3396,7 @@ export default class Meeting extends StatelessWebexPlugin {
       this.simultaneousInterpretation.updateCanManageInterpreters(
         payload.newRoles?.includes(SELF_ROLES.MODERATOR)
       );
-      const {isPromoted} = this.webinar.updateRoleChanged(payload);
-
-      if (this.webinar.practiceSessionEnabled) {
-        // may need change data channel in practice session
-        this.updateLLMConnection();
-      }
-      if (
-        (this.webinar.selfIsAttendee &&
-          this.shareStatus === SHARE_STATUS.WHITEBOARD_SHARE_ACTIVE) ||
-        isPromoted
-      ) {
-        // attendees in webinar should subscribe streaming for whiteboard sharing
-        // while panelist still need subscribe native mode so trigger update here
-        this.locusInfo.updateMediaShares(this.locusInfo.mediaShares, true);
-      }
+      this.webinar.updateRoleChanged(payload);
 
       Trigger.trigger(
         this,

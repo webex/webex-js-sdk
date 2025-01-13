@@ -4,7 +4,7 @@
 import {WebexPlugin, config} from '@webex/webex-core';
 import uuid from 'uuid';
 import {get} from 'lodash';
-import {HEADERS, HTTP_VERBS, MEETINGS, SELF_ROLES} from '../constants';
+import {_ID_, HEADERS, HTTP_VERBS, MEETINGS, SELF_ROLES, SHARE_STATUS} from '../constants';
 
 import WebinarCollection from './collection';
 import LoggerProxy from '../common/logs/logger-proxy';
@@ -25,6 +25,7 @@ const Webinar = WebexPlugin.extend({
     selfIsPanelist: 'boolean', // self is panelist
     selfIsAttendee: 'boolean', // self is attendee
     practiceSessionEnabled: 'boolean', // practice session enabled
+    meetingId: 'string',
   },
 
   /**
@@ -72,6 +73,21 @@ const Webinar = WebexPlugin.extend({
     this.set('selfIsPanelist', newRoles.includes(SELF_ROLES.PANELIST));
     this.set('selfIsAttendee', newRoles.includes(SELF_ROLES.ATTENDEE));
     this.updateCanManageWebcast(newRoles.includes(SELF_ROLES.MODERATOR));
+
+    const meeting = this.webex.meetings.getMeetingByType(_ID_, this.meetingId);
+
+    if (this.practiceSessionEnabled) {
+      // may need change data channel in practice session
+      meeting?.updateLLMConnection();
+    }
+    if (
+      (this.selfIsAttendee && meeting?.shareStatus === SHARE_STATUS.WHITEBOARD_SHARE_ACTIVE) ||
+      isPromoted
+    ) {
+      // attendees in webinar should subscribe streaming for whiteboard sharing
+      // while panelist still need subscribe native mode so trigger update here
+      meeting?.locusInfo.updateMediaShares(meeting?.locusInfo.mediaShares, true);
+    }
 
     return {isPromoted, isDemoted};
   },
