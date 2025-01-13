@@ -17,6 +17,9 @@ let receiveTranscriptionOption;
 let audioReceiveSlot;
 let videoReceiveSlot;
 let isMultistream = false;
+let isBrb = false;
+let audioBrb = undefined;
+let videoBrb = undefined;
 let currentActiveSpeakersMemberIds = [];
 
 const authTypeElm = document.querySelector('#auth-type');
@@ -1769,7 +1772,10 @@ function toggleSendAudio() {
     localMedia.microphoneStream.setUserMuted(newMuteValue);
 
     console.log(`MeetingControls#toggleSendAudio() :: Successfully ${newMuteValue ? 'muted': 'unmuted'} audio!`);
-    return;
+
+    if (isBrb) {
+      toggleBrb({unmuteOnlyAudio: true});
+    }
   }
 }
 
@@ -1787,7 +1793,9 @@ function toggleSendVideo() {
 
     console.log(`MeetingControls#toggleSendVideo() :: Successfully ${newMuteValue ? 'muted': 'unmuted'} video!`);
 
-    return;
+    if (isBrb) {
+      toggleBrb({unmuteOnlyVideo: true});
+    }
   }
 }
 
@@ -1877,24 +1885,6 @@ async function unpublishScreenShare() {
   }
   catch (error) {
     console.log('MeetingControls#unpublishScreenShare() :: Error unpublishing share stream!');
-    console.error(error);
-  }
-}
-
-async function stopScreenShare() {
-  console.log('MeetingControls#stopScreenShare()');
-  try {
-    if (localMedia.screenShare.audio) {
-      localMedia.screenShare.audio?.stop();
-    }
-    if (localMedia.screenShare.video) {
-      localMedia.screenShare.video?.stop();
-    }
-
-    console.log('MeetingControls#stopScreenShare() :: Successfully stopped sharing!');
-  }
-  catch (error) {
-    console.log('MeetingControls#stopScreenShare() :: Error stopping screen share!');
     console.error(error);
   }
 }
@@ -3335,7 +3325,25 @@ function toggleBreakout() {
   }
 }
 
-async function toggleBrb() {
+async function stopScreenShare() {
+  console.log('MeetingControls#stopScreenShare()');
+  try {
+    if (localMedia.screenShare.audio) {
+      localMedia.screenShare.audio?.stop();
+    }
+    if (localMedia.screenShare.video) {
+      localMedia.screenShare.video?.stop();
+    }
+
+    console.log('MeetingControls#stopScreenShare() :: Successfully stopped sharing!');
+  }
+  catch (error) {
+    console.log('MeetingControls#stopScreenShare() :: Error stopping screen share!');
+    console.error(error);
+  }
+}
+
+async function toggleBrb({unmuteOnlyAudio = false, unmuteOnlyVideo = false}) {
   const meeting = getCurrentMeeting();
 
   if (meeting) {
@@ -3343,13 +3351,41 @@ async function toggleBrb() {
     const enableBrb = brbButton.innerText === 'Step away';
 
     try {
+      isBrb = enableBrb;
+
+      if (enableBrb) {
+        videoBrb = localMedia.cameraStream.userMuted;
+        audioBrb = localMedia.microphoneStream.userMuted;
+
+        await stopScreenShare();
+
+        localMedia.cameraStream.setUserMuted(true);
+        localMedia.microphoneStream.setUserMuted(true);
+      } else {
+
+        if (unmuteOnlyAudio) {
+          localMedia.microphoneStream.setUserMuted(false);
+          videoBrb = undefined;
+          audioBrb = undefined;
+        }
+
+        if (unmuteOnlyVideo) {
+          localMedia.cameraStream.setUserMuted(false);
+          videoBrb = undefined;
+          audioBrb = undefined;
+        }
+
+        if (videoBrb !== undefined && audioBrb !== undefined) {
+          localMedia.cameraStream.setUserMuted(videoBrb);
+          localMedia.microphoneStream.setUserMuted(audioBrb);
+        }
+      }
+
       const result = await meeting.beRightBack(enableBrb);
+
       console.log(`meeting.beRightBack(${enableBrb}): success. Result: ${result}`);
     } catch (error) {
       console.error(`meeting.beRightBack({${enableBrb}): error: `, error);
-    } finally {
-      localMedia?.microphoneStream?.setUserMuted(enableBrb);
-      localMedia?.cameraStream?.setUserMuted(enableBrb);
     }
   }
 }
