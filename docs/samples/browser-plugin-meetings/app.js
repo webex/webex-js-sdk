@@ -860,6 +860,7 @@ const loadCameraBtn = document.querySelector('#ts-load-camera');
 const toggleVbgBtn = document.querySelector('#ts-enable-VBG');
 const loadMicrophoneBtn = document.querySelector('#ts-load-mic');
 const toggleBNRBtn = document.querySelector('#ts-enable-BNR');
+const startShareBtn = document.querySelector('#ts-start-screenshare');
 const publishShareBtn = document.querySelector('#ts-publish-screenshare');
 const unpublishShareBtn = document.querySelector('#ts-unpublish-screenshare');
 const stopShareBtn = document.querySelector('#ts-stop-screenshare');
@@ -3357,12 +3358,16 @@ async function toggleBrb({unmuteOnlyAudio = false, unmuteOnlyVideo = false}) {
         localMediaCameraMuted = localMedia.cameraStream.userMuted;
         localMediaMicMuted = localMedia.microphoneStream.userMuted;
 
+        // stop sharing and disable buttons to use it in brb
         await stopScreenShare();
+        publishShareBtn.disabled = true;
+        unpublishShareBtn.disabled = true;
+        startShareBtn.disabled = true;
 
         localMedia.cameraStream.setUserMuted(true);
         localMedia.microphoneStream.setUserMuted(true);
-      } else {
 
+      } else {
         if (unmuteOnlyAudio) {
           localMedia.microphoneStream.setUserMuted(false);
           localMediaCameraMuted = undefined;
@@ -3379,6 +3384,11 @@ async function toggleBrb({unmuteOnlyAudio = false, unmuteOnlyVideo = false}) {
           localMedia.cameraStream.setUserMuted(localMediaCameraMuted);
           localMedia.microphoneStream.setUserMuted(localMediaMicMuted);
         }
+
+        // restore user sharing buttons
+        publishShareBtn.disabled = false;
+        unpublishShareBtn.disabled = false;
+        startShareBtn.disabled = false;
       }
 
       const result = await meeting.beRightBack(enableBrb);
