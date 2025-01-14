@@ -16,11 +16,12 @@ let receiveTranscriptionOption;
 
 let audioReceiveSlot;
 let videoReceiveSlot;
+let currentActiveSpeakersMemberIds = [];
 let isMultistream = false;
 let isBrb = false;
+// cached state for local microphone and camera muted state
 let localMediaMicMuted = undefined;
 let localMediaCameraMuted = undefined;
-let currentActiveSpeakersMemberIds = [];
 
 const authTypeElm = document.querySelector('#auth-type');
 const credentialsFormElm = document.querySelector('#credentials');
@@ -869,6 +870,7 @@ const stopVideoButton = document.querySelector('#ts-stop-video');
 const stopAudioButton = document.querySelector('#ts-stop-audio');
 const muteVideoMessage = document.querySelector('#ts-mute-video-message');
 const muteAudioMessage = document.querySelector('#ts-mute-audio-message');
+const brbShareMessage = document.querySelector('#ts-brb-share-message');
 const modeBtn = document.getElementById('mode-type');
 
 /**
@@ -1764,6 +1766,10 @@ function handleMuteAudioMessage() {
   muteAudioMessage.innerHTML = localMedia.microphoneStream.systemMuted ? "Warning: microphone may be muted by the system" : "";
 }
 
+function handleBrbShareMessage(showMessage) {
+  brbShareMessage.innerHTML = showMessage ? "Warning: Cannot share while Step away" : "";
+}
+
 function toggleSendAudio() {
   console.log('MeetingControls#toggleSendAudio()');
 
@@ -1775,7 +1781,7 @@ function toggleSendAudio() {
     console.log(`MeetingControls#toggleSendAudio() :: Successfully ${newMuteValue ? 'muted': 'unmuted'} audio!`);
 
     if (isBrb) {
-      toggleBrb({unmuteOnlyAudio: true});
+      toggleBrb({unmuteAudio: true});
     }
   }
 }
@@ -1795,7 +1801,7 @@ function toggleSendVideo() {
     console.log(`MeetingControls#toggleSendVideo() :: Successfully ${newMuteValue ? 'muted': 'unmuted'} video!`);
 
     if (isBrb) {
-      toggleBrb({unmuteOnlyVideo: true});
+      toggleBrb({unmuteVideo: true});
     }
   }
 }
@@ -3344,7 +3350,7 @@ async function stopScreenShare() {
   }
 }
 
-async function toggleBrb({unmuteOnlyAudio = false, unmuteOnlyVideo = false}) {
+async function toggleBrb({unmuteAudio = false, unmuteVideo = false}) {
   const meeting = getCurrentMeeting();
 
   if (meeting) {
@@ -3363,18 +3369,18 @@ async function toggleBrb({unmuteOnlyAudio = false, unmuteOnlyVideo = false}) {
         publishShareBtn.disabled = true;
         unpublishShareBtn.disabled = true;
         startShareBtn.disabled = true;
+        handleBrbShareMessage(true);
 
         localMedia.cameraStream.setUserMuted(true);
         localMedia.microphoneStream.setUserMuted(true);
-
       } else {
-        if (unmuteOnlyAudio) {
+        if (unmuteAudio) {
           localMedia.microphoneStream.setUserMuted(false);
           localMediaCameraMuted = undefined;
           localMediaMicMuted = undefined;
         }
 
-        if (unmuteOnlyVideo) {
+        if (unmuteVideo) {
           localMedia.cameraStream.setUserMuted(false);
           localMediaCameraMuted = undefined;
           localMediaMicMuted = undefined;
@@ -3389,6 +3395,7 @@ async function toggleBrb({unmuteOnlyAudio = false, unmuteOnlyVideo = false}) {
         publishShareBtn.disabled = false;
         unpublishShareBtn.disabled = false;
         startShareBtn.disabled = false;
+        handleBrbShareMessage(false);
       }
 
       const result = await meeting.beRightBack(enableBrb);
