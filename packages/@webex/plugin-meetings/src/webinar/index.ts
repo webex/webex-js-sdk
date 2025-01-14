@@ -85,11 +85,19 @@ const Webinar = WebexPlugin.extend({
       isPromoted
     ) {
       // attendees in webinar should subscribe streaming for whiteboard sharing
-      // while panelist still need subscribe native mode so trigger update here
-      meeting?.locusInfo.updateMediaShares(meeting?.locusInfo.mediaShares, true);
+      // while panelist still need subscribe native mode so trigger force update here
+      meeting?.locusInfo?.updateMediaShares(meeting?.locusInfo?.mediaShares, true);
     }
 
     return {isPromoted, isDemoted};
+  },
+
+  /**
+   * should join practice session data channel or not
+   * @returns {boolean}
+   */
+  isJoinPracticeSessionDataChannel() {
+    return this.selfIsPanelist && this.practiceSessionEnabled;
   },
 
   /**
