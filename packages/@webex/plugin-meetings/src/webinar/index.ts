@@ -69,19 +69,26 @@ const Webinar = WebexPlugin.extend({
     const isPromoted =
       oldRoles.includes(SELF_ROLES.ATTENDEE) && newRoles.includes(SELF_ROLES.PANELIST);
     const isDemoted =
-      oldRoles.includes(SELF_ROLES.PANELIST) && newRoles.includes(SELF_ROLES.ATTENDEE);
+      (oldRoles.includes(SELF_ROLES.PANELIST) && newRoles.includes(SELF_ROLES.ATTENDEE)) ||
+      (!oldRoles.includes(SELF_ROLES.ATTENDEE) && newRoles.includes(SELF_ROLES.ATTENDEE)); // for attendee just join meeting case
     this.set('selfIsPanelist', newRoles.includes(SELF_ROLES.PANELIST));
     this.set('selfIsAttendee', newRoles.includes(SELF_ROLES.ATTENDEE));
     this.updateCanManageWebcast(newRoles.includes(SELF_ROLES.MODERATOR));
+    this.updateStatusByRole({isPromoted, isDemoted});
 
+    return {isPromoted, isDemoted};
+  },
+
+  /**
+   * should join practice session data channel or not
+   * @param {Object} {isPromoted: boolean, isDemoted: boolean}} Role transition states
+   * @returns {void}
+   */
+  updateStatusByRole({isPromoted, isDemoted}) {
     const meeting = this.webex.meetings.getMeetingByType(_ID_, this.meetingId);
 
-    if (this.practiceSessionEnabled) {
-      // may need change data channel in practice session
-      meeting?.updateLLMConnection();
-    }
     if (
-      (this.selfIsAttendee && meeting?.shareStatus === SHARE_STATUS.WHITEBOARD_SHARE_ACTIVE) ||
+      (isDemoted && meeting?.shareStatus === SHARE_STATUS.WHITEBOARD_SHARE_ACTIVE) ||
       isPromoted
     ) {
       // attendees in webinar should subscribe streaming for whiteboard sharing
@@ -89,7 +96,10 @@ const Webinar = WebexPlugin.extend({
       meeting?.locusInfo?.updateMediaShares(meeting?.locusInfo?.mediaShares, true);
     }
 
-    return {isPromoted, isDemoted};
+    if (this.practiceSessionEnabled) {
+      // may need change data channel in practice session
+      meeting?.updateLLMConnection();
+    }
   },
 
   /**
