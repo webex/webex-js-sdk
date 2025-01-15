@@ -103,6 +103,21 @@ describe('plugin-meetings', () => {
           assert.equal(result.isDemoted, true, 'should indicate demotion');
         });
 
+        it('updates roles when attendee just join meeting', () => {
+          const payload = {
+            oldRoles: [''],
+            newRoles: ['ATTENDEE']
+          };
+
+          const result = webinar.updateRoleChanged(payload);
+
+          assert.equal(webinar.selfIsPanelist, false, 'self should not be a panelist');
+          assert.equal(webinar.selfIsAttendee, true, 'self should be an attendee');
+          assert.equal(webinar.canManageWebcast, false, 'self should not have manage webcast capability');
+          assert.equal(result.isPromoted, false, 'should not indicate promotion');
+          assert.equal(result.isDemoted, true, 'should indicate demotion');
+        });
+
         it('updates roles when promoted to moderator', () => {
           const payload = {
             oldRoles: ['PANELIST'],

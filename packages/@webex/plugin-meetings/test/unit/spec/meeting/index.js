@@ -10735,6 +10735,7 @@ describe('plugin-meetings', () => {
           meeting.webex.internal.llm.on = sinon.stub();
           meeting.webex.internal.llm.off = sinon.stub();
           meeting.processRelayEvent = sinon.stub();
+          meeting.webinar.isJoinPracticeSessionDataChannel = sinon.stub().returns(false);
         });
 
         it('does not connect if the call is not joined yet', async () => {
@@ -10866,6 +10867,19 @@ describe('plugin-meetings', () => {
             meeting.processRelayEvent
           );
         });
+
+
+        it('connect ps data channel if ps started in webinar', async () => {
+          meeting.joinedWith = {state: 'JOINED'};
+          meeting.locusInfo = {url: 'a url', info: {datachannelUrl: 'a datachannel url', practiceSessionDatachannelUrl: 'a ps datachannel url'}};
+          meeting.webinar.isJoinPracticeSessionDataChannel = sinon.stub().returns(true);
+          await meeting.updateLLMConnection();
+
+          assert.notCalled(webex.internal.llm.disconnectLLM);
+          assert.calledWith(webex.internal.llm.registerAndConnect, 'a url', 'a ps datachannel url');
+
+        });
+
       });
 
       describe('#setLocus', () => {

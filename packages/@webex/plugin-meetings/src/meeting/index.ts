@@ -5606,9 +5606,10 @@ export default class Meeting extends StatelessWebexPlugin {
     const isJoined = this.isJoined();
 
     // webinar panelist should use new data channel in practice session
-    const dataChannelUrl = this.webinar.isJoinPracticeSessionDataChannel()
-      ? practiceSessionDatachannelUrl
-      : datachannelUrl;
+    const dataChannelUrl =
+      this.webinar.isJoinPracticeSessionDataChannel() && practiceSessionDatachannelUrl
+        ? practiceSessionDatachannelUrl
+        : datachannelUrl;
 
     // @ts-ignore - Fix type
     if (this.webex.internal.llm.isConnected()) {
