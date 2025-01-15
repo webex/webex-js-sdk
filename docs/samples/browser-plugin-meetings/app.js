@@ -870,6 +870,7 @@ const stopVideoButton = document.querySelector('#ts-stop-video');
 const stopAudioButton = document.querySelector('#ts-stop-audio');
 const muteVideoMessage = document.querySelector('#ts-mute-video-message');
 const muteAudioMessage = document.querySelector('#ts-mute-audio-message');
+const defaultShareMessage = document.querySelector('#ts-default-share-message');
 const brbShareMessage = document.querySelector('#ts-brb-share-message');
 const modeBtn = document.getElementById('mode-type');
 
@@ -1767,7 +1768,8 @@ function handleMuteAudioMessage() {
 }
 
 function handleBrbShareMessage(showMessage) {
-  brbShareMessage.innerHTML = showMessage ? "Warning: Cannot share while Step away" : "";
+  brbShareMessage.hidden = !showMessage;
+  defaultShareMessage.hidden = showMessage;
 }
 
 function toggleSendAudio() {
