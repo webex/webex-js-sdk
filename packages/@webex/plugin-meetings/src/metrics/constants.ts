@@ -70,7 +70,7 @@ const BEHAVIORAL_METRICS = {
   ROAP_HTTP_RESPONSE_MISSING: 'js_sdk_roap_http_response_missing',
   TURN_DISCOVERY_REQUIRES_OK: 'js_sdk_turn_discovery_requires_ok',
   REACHABILITY_COMPLETED: 'js_sdk_reachability_completed',
-  WEBINAR_REGISTRATION_ERROR: 'js_sdk_webinar_registration_error',
+  JOIN_WEBINAR_ERROR: 'js_sdk_join_webinar_error',
   GUEST_ENTERED_LOBBY: 'js_sdk_guest_entered_lobby',
   GUEST_EXITED_LOBBY: 'js_sdk_guest_exited_lobby',
 };
