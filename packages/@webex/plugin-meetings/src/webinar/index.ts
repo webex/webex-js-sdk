@@ -196,12 +196,10 @@ const Webinar = WebexPlugin.extend({
         [HEADERS.CONTENT_TYPE]: HEADERS.CONTENT_TYPE_VALUE.APPLICATION_JSON,
       },
       body: {
-        layout: {
-          videoLayout: layout.videoLayout,
-          contentLayout: layout.contentLayout,
-          syncStageLayout: layout.syncStageLayout,
-          syncStageInMeeting: layout.syncStageInMeeting,
-        },
+        videoLayout: layout.videoLayout,
+        contentLayout: layout.contentLayout,
+        syncStageLayout: layout.syncStageLayout,
+        syncStageInMeeting: layout.syncStageInMeeting,
       },
     }).catch((error) => {
       LoggerProxy.logger.error('Meeting:webinar#updateWebcastLayout failed', error);

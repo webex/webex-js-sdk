@@ -111,6 +111,7 @@ export type MetricEventVerb =
   | 'exit';
 
 export type MetricEventJoinFlowVersion = 'Other' | 'NewFTE';
+export type MetricEventMeetingJoinPhase = 'pre-join' | 'join' | 'in-meeting';
 
 export type SubmitClientEventOptions = {
   meetingId?: string;
@@ -126,6 +127,7 @@ export type SubmitClientEventOptions = {
   webexConferenceIdStr?: string;
   globalMeetingId?: string;
   joinFlowVersion?: MetricEventJoinFlowVersion;
+  meetingJoinPhase?: MetricEventMeetingJoinPhase;
 };
 
 export type SubmitMQEOptions = {

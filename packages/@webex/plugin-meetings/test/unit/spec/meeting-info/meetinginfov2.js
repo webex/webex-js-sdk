@@ -18,7 +18,7 @@ import MeetingInfo, {
   MeetingInfoV2CaptchaError,
   MeetingInfoV2AdhocMeetingError,
   MeetingInfoV2PolicyError,
-  MeetingInfoV2WebinarRegistrationError,
+  MeetingInfoV2JoinWebinarError,
 } from '@webex/plugin-meetings/src/meeting-info/meeting-info-v2';
 import MeetingInfoUtil from '@webex/plugin-meetings/src/meeting-info/utilv2';
 import Metrics from '@webex/plugin-meetings/src/metrics';
@@ -895,9 +895,14 @@ describe('plugin-meetings', () => {
           {errorCode: 403021},
           {errorCode: 403022},
           {errorCode: 403024},
+          {errorCode: 403137},
+          {errorCode: 423007},
+          {errorCode: 403026},
+          {errorCode: 403037},
+          {errorCode: 403137},
         ],
         ({errorCode}) => {
-          it(`should throw a MeetingInfoV2WebinarRegistrationError for error code ${errorCode}`, async () => {
+          it(`should throw a MeetingInfoV2JoinWebinarError for error code ${errorCode}`, async () => {
             const message = 'a message';
             const meetingInfoData = {meetingInfo: {registrationUrl: 'registrationUrl'}};
 
@@ -909,7 +914,7 @@ describe('plugin-meetings', () => {
               await meetingInfo.createAdhocSpaceMeeting(conversationUrl, installedOrgID);
               assert.fail('createAdhocSpaceMeeting should have thrown, but has not done that');
             } catch (err) {
-              assert.instanceOf(err, MeetingInfoV2WebinarRegistrationError);
+              assert.instanceOf(err, MeetingInfoV2JoinWebinarError);
               assert.deepEqual(err.message, `${message}, code=${errorCode}`);
               assert.equal(err.wbxAppApiCode, errorCode);
               assert.deepEqual(err.meetingInfo, meetingInfoData);
@@ -917,7 +922,7 @@ describe('plugin-meetings', () => {
               assert(Metrics.sendBehavioralMetric.calledOnce);
               assert.calledWith(
                 Metrics.sendBehavioralMetric,
-                BEHAVIORAL_METRICS.WEBINAR_REGISTRATION_ERROR,
+                BEHAVIORAL_METRICS.JOIN_WEBINAR_ERROR,
                 {code: errorCode}
               );
 
