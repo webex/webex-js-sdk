@@ -2789,6 +2789,10 @@ export default class Meeting extends StatelessWebexPlugin {
       else if (whiteboardShare.disposition === FLOOR_ACTION.GRANTED) {
         // WHITEBOARD - sharing whiteboard
         newShareStatus = SHARE_STATUS.WHITEBOARD_SHARE_ACTIVE;
+        if (this.webinar.selfIsAttendee) {
+          // Webinar attendee should receive whiteboard as remote share
+          newShareStatus = SHARE_STATUS.REMOTE_SHARE_ACTIVE;
+        }
       }
       // or if content share is either released or null and whiteboard share is either released or null, no one is sharing
       else if (
@@ -2804,10 +2808,6 @@ export default class Meeting extends StatelessWebexPlugin {
         `Meeting:index#setUpLocusInfoMediaInactiveListener --> this.shareStatus=${this.shareStatus} newShareStatus=${newShareStatus}`
       );
 
-      if (newShareStatus === SHARE_STATUS.WHITEBOARD_SHARE_ACTIVE && this.webinar.selfIsAttendee) {
-        // webinar attendees should receive whiteboard streaming instead of native mode
-        newShareStatus = SHARE_STATUS.REMOTE_SHARE_ACTIVE;
-      }
       if (newShareStatus !== this.shareStatus) {
         const oldShareStatus = this.shareStatus;
 

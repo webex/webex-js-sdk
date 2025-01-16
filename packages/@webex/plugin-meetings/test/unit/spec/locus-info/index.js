@@ -9,6 +9,7 @@ import LocusInfo from '@webex/plugin-meetings/src/locus-info';
 import SelfUtils from '@webex/plugin-meetings/src/locus-info/selfUtils';
 import InfoUtils from '@webex/plugin-meetings/src/locus-info/infoUtils';
 import EmbeddedAppsUtils from '@webex/plugin-meetings/src/locus-info/embeddedAppsUtils';
+import MediaSharesUtils from '@webex/plugin-meetings/src/locus-info//mediaSharesUtils';
 import LocusDeltaParser from '@webex/plugin-meetings/src/locus-info/parser';
 import Metrics from '@webex/plugin-meetings/src/metrics';
 
@@ -1634,6 +1635,134 @@ describe('plugin-meetings', () => {
 
         // since self is not passed to updateMeetingInfo, MEETING_INFO_UPDATED should be triggered with isIntializing: true
         checkMeetingInfoUpdatedCalledForRoles(true, {isInitializing: true});
+      });
+    });
+
+    describe('#updateMediaShares', () => {
+      let getMediaSharesSpy;
+
+      beforeEach(() => {
+        // Spy on MediaSharesUtils.getMediaShares
+        getMediaSharesSpy = sinon.stub(MediaSharesUtils, 'getMediaShares');
+
+        // Stub the emitScoped method to monitor its calls
+        sinon.stub(locusInfo, 'emitScoped');
+      });
+
+      afterEach(() => {
+        getMediaSharesSpy.restore();
+        locusInfo.emitScoped.restore();
+      });
+
+      it('should update media shares and emit LOCUS_INFO_UPDATE_MEDIA_SHARES when mediaShares change', () => {
+        const initialMediaShares = { audio: true, video: false };
+        const newMediaShares = { audio: false, video: true };
+
+        locusInfo.mediaShares = initialMediaShares;
+        locusInfo.parsedLocus = { mediaShares: null };
+
+        const parsedMediaShares = {
+          current: newMediaShares,
+          previous: initialMediaShares,
+        };
+
+        // Stub MediaSharesUtils.getMediaShares to return the expected parsedMediaShares
+        getMediaSharesSpy.returns(parsedMediaShares);
+
+        // Call the function
+        locusInfo.updateMediaShares(newMediaShares);
+
+        // Assert that MediaSharesUtils.getMediaShares was called with correct arguments
+        assert.calledWith(getMediaSharesSpy, initialMediaShares, newMediaShares);
+
+        // Assert that updateMeeting was called with the parsed current media shares
+        assert.deepEqual(locusInfo.parsedLocus.mediaShares, newMediaShares);
+        assert.deepEqual(locusInfo.mediaShares, newMediaShares);
+
+        // Assert that emitScoped was called with the correct event
+        assert.calledWith(
+          locusInfo.emitScoped,
+          {
+            file: 'locus-info',
+            function: 'updateMediaShares',
+          },
+          EVENTS.LOCUS_INFO_UPDATE_MEDIA_SHARES,
+          {
+            current: newMediaShares,
+            previous: initialMediaShares,
+            forceUpdate: false,
+          }
+        );
+      });
+
+      it('should force update media shares and emit LOCUS_INFO_UPDATE_MEDIA_SHARES even if shares are the same', () => {
+        const initialMediaShares = { audio: true, video: false };
+        locusInfo.mediaShares = initialMediaShares;
+        locusInfo.parsedLocus = { mediaShares: null };
+
+        const parsedMediaShares = {
+          current: initialMediaShares,
+          previous: initialMediaShares,
+        };
+
+        getMediaSharesSpy.returns(parsedMediaShares);
+
+        // Call the function with forceUpdate = true
+        locusInfo.updateMediaShares(initialMediaShares, true);
+
+        // Assert that MediaSharesUtils.getMediaShares was called
+        assert.calledWith(getMediaSharesSpy, initialMediaShares, initialMediaShares);
+
+        // Assert that emitScoped was called with the correct event
+        assert.calledWith(
+          locusInfo.emitScoped,
+          {
+            file: 'locus-info',
+            function: 'updateMediaShares',
+          },
+          EVENTS.LOCUS_INFO_UPDATE_MEDIA_SHARES,
+          {
+            current: initialMediaShares,
+            previous: initialMediaShares,
+            forceUpdate: true,
+          }
+        );
+      });
+
+      it('should not emit LOCUS_INFO_UPDATE_MEDIA_SHARES if mediaShares do not change and forceUpdate is false', () => {
+        const initialMediaShares = { audio: true, video: false };
+        locusInfo.mediaShares = initialMediaShares;
+
+        // Call the function with the same mediaShares and forceUpdate = false
+        locusInfo.updateMediaShares(initialMediaShares);
+
+        // Assert that MediaSharesUtils.getMediaShares was not called
+        assert.notCalled(getMediaSharesSpy);
+
+        // Assert that emitScoped was not called
+        assert.notCalled(locusInfo.emitScoped);
+      });
+
+      it('should update internal state correctly when mediaShares are updated', () => {
+        const initialMediaShares = { audio: true, video: false };
+        const newMediaShares = { audio: false, video: true };
+
+        locusInfo.mediaShares = initialMediaShares;
+        locusInfo.parsedLocus = { mediaShares: null };
+
+        const parsedMediaShares = {
+          current: newMediaShares,
+          previous: initialMediaShares,
+        };
+
+        getMediaSharesSpy.returns(parsedMediaShares);
+
+        // Call the function
+        locusInfo.updateMediaShares(newMediaShares);
+
+        // Assert that the internal state was updated correctly
+        assert.deepEqual(locusInfo.parsedLocus.mediaShares, newMediaShares);
+        assert.deepEqual(locusInfo.mediaShares, newMediaShares);
       });
     });
 
