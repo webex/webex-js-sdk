@@ -496,15 +496,6 @@ const MeetingUtil = {
     }
   },
 
-  handleDeviceLogging: (devices = []) => {
-    const LOG_HEADER = 'MeetingUtil#handleDeviceLogging -->';
-
-    devices.forEach((device) => {
-      LoggerProxy.logger.log(LOG_HEADER, `deviceId = ${device.deviceId}`);
-      LoggerProxy.logger.log(LOG_HEADER, 'settings', JSON.stringify(device));
-    });
-  },
-
   endMeetingForAll: (meeting) => {
     if (meeting.meetingState === FULL_STATE.INACTIVE) {
       return Promise.reject(new MeetingNotActiveError());

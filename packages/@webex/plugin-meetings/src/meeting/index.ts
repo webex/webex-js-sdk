@@ -31,7 +31,6 @@ import {
 } from '@webex/internal-media-core';
 
 import {
-  getDevices,
   LocalStream,
   LocalCameraStream,
   LocalDisplayStream,
@@ -6779,32 +6778,6 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
-   * Handles device logging
-   *
-   * @private
-   * @static
-   * @param {boolean} isAudioEnabled
-   * @param {boolean} isVideoEnabled
-   * @returns {Promise<void>}
-   */
-
-  private static async handleDeviceLogging(isAudioEnabled, isVideoEnabled): Promise<void> {
-    try {
-      let devices = [];
-      if (isVideoEnabled && isAudioEnabled) {
-        devices = await getDevices();
-      } else if (isVideoEnabled) {
-        devices = await getDevices(Media.DeviceKind.VIDEO_INPUT);
-      } else if (isAudioEnabled) {
-        devices = await getDevices(Media.DeviceKind.AUDIO_INPUT);
-      }
-      MeetingUtil.handleDeviceLogging(devices);
-    } catch {
-      // getDevices may fail if we don't have browser permissions, that's ok, we still can have a media connection
-    }
-  }
-
-  /**
    * Returns a promise. This promise is created once the local sdp offer has been successfully created and is resolved
    * once the remote sdp answer has been received.
    *
@@ -7305,12 +7278,6 @@ export default class Meeting extends StatelessWebexPlugin {
         forceTurnDiscovery,
         turnServerInfo
       );
-
-      if (audioEnabled || videoEnabled) {
-        await Meeting.handleDeviceLogging(audioEnabled, videoEnabled);
-      } else {
-        LoggerProxy.logger.info(`${LOG_HEADER} device logging not required`);
-      }
 
       if (this.mediaProperties.hasLocalShareStream()) {
         await this.enqueueScreenShareFloorRequest();
