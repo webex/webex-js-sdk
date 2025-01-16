@@ -283,6 +283,18 @@ describe('internal-plugin-metrics', () => {
         cdl.saveTimestamp({key: 'internal.client.meetinginfo.response', value: 20});
         assert.deepEqual(saveFirstTimestamp.callCount, 1);
       });
+
+      it('calls saveFirstTimestamp for remote SDP received', () => {
+        const saveFirstTimestamp = sinon.stub(cdl, 'saveFirstTimestampOnly');
+        cdl.saveTimestamp({key: 'client.media-engine.remote-sdp-received', value: 10});
+        assert.deepEqual(saveFirstTimestamp.callCount, 1);
+      });
+
+      it('clears timestamp for remote SDP received when local SDP generated', () => {
+        cdl.saveTimestamp({key: 'client.media-engine.remote-sdp-received', value: 10});
+        cdl.saveTimestamp({key: 'client.media-engine.local-sdp-generated', value: 20});
+        assert.isUndefined(cdl.latencyTimestamps.get('client.media-engine.remote-sdp-received'));
+      });
     });
 
     it('calculates getShowInterstitialTime correctly', () => {
