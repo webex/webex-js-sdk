@@ -11071,6 +11071,7 @@ describe('plugin-meetings', () => {
           beforeEach(() => {
             meeting.selfId = '9528d952-e4de-46cf-8157-fd4823b98377';
             meeting.deviceUrl = 'my-web-url';
+            meeting.locusInfo.info = {isWebinar: false};
           });
 
           const USER_IDS = {
@@ -11493,6 +11494,7 @@ describe('plugin-meetings', () => {
             it('Scenario #1: Whiteboard sharing as a webinar attendee', () => {
               // Set the webinar attendee flag
               meeting.webinar = { selfIsAttendee: true };
+              meeting.locusInfo.info.isWebinar = true;
 
               // Step 1: Start sharing whiteboard A
               const data1 = generateData(
