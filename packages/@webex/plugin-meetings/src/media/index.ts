@@ -196,6 +196,7 @@ Media.createMediaConnection = (
       });
     }
   }
+  console.log('iceServers:', iceServers);
 
   if (isMultistream) {
     const config: MultistreamConnectionConfig = {
