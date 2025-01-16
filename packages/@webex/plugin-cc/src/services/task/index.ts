@@ -272,7 +272,7 @@ export default class Task extends EventEmitter implements ITask {
    * ```typescript
    * const consultPayload = {
    *   destination: 'myBuddyAgentId',
-   *   destinationType: CONSULT_DESTINATION_TYPE.AGENT,
+   *   destinationType: DESTINATION_TYPE.AGENT,
    * }
    * task.consult(consultPayload).then(()=>{}).catch(()=>{});
    * ```

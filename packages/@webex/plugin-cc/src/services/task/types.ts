@@ -10,19 +10,10 @@ export const DESTINATION_TYPE = {
   QUEUE: 'queue',
   DIALNUMBER: 'dialNumber',
   AGENT: 'agent',
+  ENTRYPOINT: 'entryPoint',
 };
 
 export type DestinationType = Enum<typeof DESTINATION_TYPE>;
-
-export const CONSULT_DESTINATION_TYPE = {
-  // Reference: https://developer.webex-cx.com/documentation/tasks/v1/consult-task
-  AGENT: 'agent',
-  QUEUE: 'queue',
-  ENTRYPOINT: 'entryPoint',
-  DIALNUMBER: 'dialNumber',
-};
-
-export type ConsultDestinationType = Enum<typeof CONSULT_DESTINATION_TYPE>;
 
 type MEDIA_CHANNEL =
   | 'email'
@@ -287,7 +278,7 @@ export type TransferPayLoad = {
  */
 export type ConsultPayload = {
   to: string | undefined;
-  destinationType: ConsultDestinationType;
+  destinationType: DestinationType;
   holdParticipants?: boolean; // This value is assumed to be always true irrespective of the value passed in the API
 };
 

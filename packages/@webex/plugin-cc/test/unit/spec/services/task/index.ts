@@ -13,7 +13,7 @@ import {
   AgentContact,
   ConsultEndPayload,
   TaskData,
-  CONSULT_DESTINATION_TYPE,
+  DESTINATION_TYPE,
 } from '../../../../../src/services/task/types';
 
 jest.mock('@webex/calling');
@@ -385,7 +385,7 @@ describe('Task', () => {
   it('should initiate a consult call and return the expected response', async () => {
     const consultPayload = {
       destination: '1234',
-      destinationType: CONSULT_DESTINATION_TYPE.AGENT,
+      destinationType: DESTINATION_TYPE.AGENT,
     };
     const expectedResponse: TaskResponse = {data: {interactionId: taskId}} as AgentContact;
     contactMock.consult.mockResolvedValue(expectedResponse);
@@ -411,7 +411,7 @@ describe('Task', () => {
 
     const consultPayload = {
       destination: '1234',
-      destinationType: CONSULT_DESTINATION_TYPE.AGENT,
+      destinationType: DESTINATION_TYPE.AGENT,
     };
 
     await expect(task.consult(consultPayload)).rejects.toThrow(error.details.data.reason);

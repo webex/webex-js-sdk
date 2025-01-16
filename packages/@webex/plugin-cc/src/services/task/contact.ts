@@ -19,7 +19,7 @@ import {
   WRAPUP,
 } from './constants';
 import * as Contact from './types';
-import {CONSULT_DESTINATION_TYPE} from './types';
+import {DESTINATION_TYPE} from './types';
 
 export default function routingContact(aqm: AqmReqs) {
   return {
@@ -151,9 +151,7 @@ export default function routingContact(aqm: AqmReqs) {
       url: `${TASK_API}${p.interactionId}${CONSULT}`,
       data: p.data,
       timeout:
-        p.data && p.data.destinationType === CONSULT_DESTINATION_TYPE.QUEUE
-          ? 'disabled'
-          : TIMEOUT_REQ,
+        p.data && p.data.destinationType === DESTINATION_TYPE.QUEUE ? 'disabled' : TIMEOUT_REQ,
       host: WCC_API_GATEWAY,
       err,
       notifSuccess: {
@@ -168,7 +166,7 @@ export default function routingContact(aqm: AqmReqs) {
           type: TASK_MESSAGE_TYPE,
           data: {
             type:
-              p.data && p.data.destinationType === CONSULT_DESTINATION_TYPE.QUEUE
+              p.data && p.data.destinationType === DESTINATION_TYPE.QUEUE
                 ? CC_EVENTS.AGENT_CTQ_FAILED
                 : CC_EVENTS.AGENT_CONSULT_FAILED,
           },
@@ -205,11 +203,11 @@ export default function routingContact(aqm: AqmReqs) {
             type: 'RoutingMessage',
             data: {
               type: (() => {
-                if (queueId) return 'AgentCtqCancelled';
-                if (isSecondaryEpDnAgent) return 'ContactEnded';
-                if (isConsult) return 'AgentConsultEnded';
+                if (queueId) return CC_EVENTS.AGENT_CTQ_CANCELLED;
+                if (isSecondaryEpDnAgent) return CC_EVENTS.CONTACT_ENDED;
+                if (isConsult) return CC_EVENTS.AGENT_CONSULT_ENDED;
 
-                return 'AgentConsultConferenceEnded';
+                return CC_EVENTS.AGENT_CONSULT_CONFERENCE_ENDED;
               })(),
               interactionId: p.interactionId,
             },
@@ -219,7 +217,11 @@ export default function routingContact(aqm: AqmReqs) {
         notifFail: {
           bind: {
             type: 'RoutingMessage',
-            data: {type: p.data.queueId ? 'AgentCtqCancelFailed' : 'AgentConsultEndFailed'},
+            data: {
+              type: p.data.queueId
+                ? CC_EVENTS.AGENT_CTQ_CANCEL_FAILED
+                : CC_EVENTS.AGENT_CONSULT_END_FAILED,
+            },
           },
           errId: p.data.queueId ? 'Service.aqm.task.cancelCtq' : 'Service.aqm.task.consultEnd',
         },
