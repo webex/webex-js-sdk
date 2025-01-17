@@ -160,8 +160,13 @@ function updateButtonsPostEndCall() {
   holdResumeElm.disabled = true;
   endElm.disabled = true;
   pauseResumeRecordingElm.disabled = true;
-  wrapupElm.disabled = false;
-  wrapupCodesDropdownElm.disabled = false;
+  if(task) {
+    wrapupElm.disabled = false;
+    wrapupCodesDropdownElm.disabled = false;
+  } else {
+    wrapupElm.disabled = true;
+    wrapupCodesDropdownElm.disabled = true;
+  }
   hideEndConsultButton();
   showConsultButton()
   consultTabBtn.disabled = true;
@@ -209,7 +214,7 @@ async function onConsultTypeSelectionChanged(){
     // Add a refresh button to refresh the buddy agents list
     const refreshButton = document.createElement('button');
     refreshButton.id = 'refresh-buddy-agents-for-consult';
-    refreshButton.innerText = 'Refresh agent list';
+    refreshButton.innerHTML = 'Refresh agent list <i class="fa fa-refresh"></i>';
     refreshButton.onclick = refreshBuddyAgentsForConsult;
     consultDestinationHolderElm.appendChild(refreshButton);
   } else {
@@ -219,7 +224,7 @@ async function onConsultTypeSelectionChanged(){
     consultDestinationInput.placeholder = 'Enter Destination';
 
     // Remove the refresh button if it exists
-    const refreshButton = consultDestinationHolderElm.getElementById('refresh-buddy-agents-for-consult');
+    const refreshButton = document.getElementById('refresh-buddy-agents-for-consult');
     if(refreshButton) {
       refreshButton.remove();
     }
@@ -351,7 +356,7 @@ function registerTaskListeners(task) {
 
     answerElm.disabled = true;
     declineElm.disabled = true;
-    if(task.isConsulting) {
+    if(task.data.isConsulted) {
       updateButtonsPostEndCall();
       incomingDetailsElm.innerText = '';
       task = undefined;
