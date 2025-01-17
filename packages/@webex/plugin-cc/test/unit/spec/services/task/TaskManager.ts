@@ -79,7 +79,6 @@ describe('TaskManager', () => {
       accept: jest.fn(),
       decline: jest.fn(),
       updateTaskData: jest.fn(),
-      // unregisterWebCallListeners: jest.fn(),
       data: taskDataMock
     }
     taskManager.call = mockCall;
@@ -125,11 +124,6 @@ describe('TaskManager', () => {
     const taskIncomingSpy = jest.spyOn(taskManager, 'emit');
 
     webSocketManagerMock.emit('message', JSON.stringify(payload));
-
-    expect(taskIncomingSpy).toHaveBeenCalledWith(
-      TASK_EVENTS.TASK_INCOMING,
-      taskManager.currentTask
-    );
 
     expect(taskIncomingSpy).toHaveBeenCalledWith(
       TASK_EVENTS.TASK_INCOMING,
@@ -276,12 +270,10 @@ describe('TaskManager', () => {
   });
 
   it('test call listeners being switched off on call end', () => {
-    // webSocketManagerMock.emit('message', JSON.stringify({data: taskDataMock}));
     webSocketManagerMock.emit('message', JSON.stringify(initalPayload));
 
     const taskEmitSpy = jest.spyOn(taskManager.currentTask, 'emit');
     const webCallListenerSpy = jest.spyOn(taskManager.currentTask, 'unregisterWebCallListeners');
-    // const offSpy = jest.spyOn(webCallingService, 'off');
     const callOffSpy = jest.spyOn(mockCall, 'off');
     const payload = {
       data: {
@@ -309,6 +301,7 @@ describe('TaskManager', () => {
 
     taskManager.unregisterIncomingCallEvent();
     expect(offSpy.mock.calls.length).toBe(2); // 1 for incoming call and 1 for remote media
+    expect(offSpy).toHaveBeenCalledWith(CALL_EVENT_KEYS.REMOTE_MEDIA, offSpy.mock.calls[0][1]);
     expect(offSpy).toHaveBeenCalledWith(LINE_EVENTS.INCOMING_CALL, offSpy.mock.calls[1][1]);
   });
 
