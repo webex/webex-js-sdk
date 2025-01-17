@@ -46,6 +46,10 @@ const consultDestinationHolderElm = document.querySelector('#consult-destination
 let consultDestinationInput = document.querySelector('#consult-destination');
 const initateConsultBtn = document.querySelector('#initate-consult');
 const endConsultBtn = document.querySelector('#end-consult');
+const consultTabBtn = document.querySelector('#consult');
+const initiateConsultControlsElm = document.querySelector('#initiate-consult-controls');
+const initiateConsultDialog = document.querySelector('#initiate-consult-dialog');
+
 
 
 // Store and Grab `access-token` from sessionStorage
@@ -158,15 +162,33 @@ function updateButtonsPostEndCall() {
   pauseResumeRecordingElm.disabled = true;
   wrapupElm.disabled = false;
   wrapupCodesDropdownElm.disabled = false;
-  disableConsultControls();
-  isConsultOptionsShown = true;
-  toggleConsultOptions();
+  hideEndConsultButton();
+  showConsultButton()
+  consultTabBtn.disabled = true;
 }
 
-function toggleConsultOptions() {
-  // toggle display of consult options
-  isConsultOptionsShown = !isConsultOptionsShown;
-  consultOptionsElm.style.display = isConsultOptionsShown? 'block' : 'none';
+function showInitiateConsultDialog() {
+  initiateConsultDialog.showModal();
+}
+
+function closeConsultDialog() {
+  initiateConsultDialog.close();
+}
+
+function showConsultButton() {
+  consultTabBtn.style.display = 'inline-block';
+}
+
+function hideConsultButton() {
+  consultTabBtn.style.display = 'none';
+}
+
+function showEndConsultButton() {
+  endConsultBtn.style.display = 'inline-block';
+}
+
+function hideEndConsultButton() {
+  endConsultBtn.style.display = 'none';
 }
 
 async function onConsultTypeSelectionChanged(){
@@ -177,13 +199,30 @@ async function onConsultTypeSelectionChanged(){
     consultDestinationInput = document.createElement('select');
     consultDestinationInput.id = 'consultDestination';
 
-    const agentNodeList = await fetchBuddyAgentsNodeList();
-    agentNodeList.forEach( n => { consultDestinationInput.appendChild(n) });
+    async function refreshBuddyAgentsForConsult() {
+      consultDestinationInput.innerHTML = '';
+      const agentNodeList = await fetchBuddyAgentsNodeList();
+      agentNodeList.forEach( n => { consultDestinationInput.appendChild(n) });
+    }
+
+    await refreshBuddyAgentsForConsult();
+    // Add a refresh button to refresh the buddy agents list
+    const refreshButton = document.createElement('button');
+    refreshButton.id = 'refresh-buddy-agents-for-consult';
+    refreshButton.innerText = 'Refresh agent list';
+    refreshButton.onclick = refreshBuddyAgentsForConsult;
+    consultDestinationHolderElm.appendChild(refreshButton);
   } else {
     // Make consultDestinationInput into a text input
     consultDestinationInput = document.createElement('input');
     consultDestinationInput.id = 'consultDestination';
     consultDestinationInput.placeholder = 'Enter Destination';
+
+    // Remove the refresh button if it exists
+    const refreshButton = consultDestinationHolderElm.getElementById('refresh-buddy-agents-for-consult');
+    if(refreshButton) {
+      refreshButton.remove();
+    }
   }
 
   consultDestinationHolderElm.appendChild(consultDestinationInput);
@@ -201,6 +240,8 @@ async function initiateConsult() {
     return;
   }
 
+  closeConsultDialog();
+
   const consultPayload = {
     to: destination,
     destinationType: destinationType,
@@ -209,8 +250,8 @@ async function initiateConsult() {
   try {
     await task.consult(consultPayload);
     console.log('Consult initiated successfully');
-    disableConsultControls();
-    endConsultBtn.style.display = 'inline-block'; // Show the end consult button
+    hideConsultButton();
+    showEndConsultButton();
   } catch (error) {
     console.error('Failed to initiate consult', error);
     alert('Failed to initiate consult');
@@ -229,8 +270,8 @@ async function endConsult() {
   try {
     await task.endConsult(consultEndPayload);
     console.log('Consult ended successfully');
-    endConsultBtn.style.display = 'none'; // Hide the end consult button
-    enableConsultControls();
+    hideEndConsultButton();
+    showConsultButton();
   } catch (error) {
     console.error('Failed to end consult', error);
     alert('Failed to end consult');
@@ -239,12 +280,12 @@ async function endConsult() {
 
 // Enable consult button after task is accepted
 function enableConsultControls() {
-  document.getElementById('consult').disabled = false;
+  consultTabBtn.disabled = false;
 }
 
 // Disable consult button after task is accepted
 function disableConsultControls() {
-  document.getElementById('consult').disabled = true;
+  consultTabBtn.disabled = true;
 }
 
 // Register task listeners
@@ -286,29 +327,28 @@ function registerTaskListeners(task) {
 
   task.on('task:consultAccepted', (task) => {
     // When we accept an incoming consult
-    toggleConsultOptions();
-    endConsultBtn.style.display = 'inline-block'; // Show the end consult button
-    initateConsultBtn.disabled = true; // Show the end consult button
+    hideConsultButton();
+    showEndConsultButton();
   });
 
   task.on('task:consultQueueFailed', (task) => {
     // When trying to consult queue fails
     console.error(`Received task:consultQueueFailed for task: ${task.interactionId}`);
-    enableConsultControls();
-    toggleConsultOptions();
+    hideEndConsultButton();
+    showConsultButton();
   });
 
   task.on('task:consultQueueCancelled', (task) => {
     // When we manually cancel consult to queue before it is accepted by other agent
     console.log(`Received task:consultQueueCancelled for task: ${task.interactionId}`);
-    enableConsultControls();
-    toggleConsultOptions();
+    hideEndConsultButton();
+    showConsultButton();
   });
 
   task.on('task:consultEnd', (task) => {
-    // Hide 'end consult' button
-    endConsultBtn.style.display = 'none'; // Hide the end consult button
-    // If isConsulting is true, then clear the task same as task:end
+    hideEndConsultButton();
+    showConsultButton();
+
     answerElm.disabled = true;
     declineElm.disabled = true;
     if(task.isConsulting) {
