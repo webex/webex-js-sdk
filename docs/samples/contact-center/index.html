@@ -131,7 +131,7 @@
               </div>
               <fieldset id="buddyAgentsBox">
                 <legend>Buddy Agents</legend>
-                <button id="fetchBuddyAgents" class="btn btn-primary my-3" onclick="fetchBuddyAgents()">Get Buddy Agents</button>
+                <button id="fetchBuddyAgents" class="btn btn-primary my-3" onclick="renderBuddyAgents()">Get Buddy Agents</button>
                 <select id="buddyAgentsDropdown" class="form-control w-auto my-3"></select>
               </fieldset>
             </div>
@@ -158,7 +158,28 @@
               <legend>Call Controls</legend>
               <div class="u-mv">
                 <button onclick="holdResumeCall()" id="hold-resume" class="btn--yellow" disabled>Hold</button>
+                <button onclick="showInitiateConsultDialog()" id="consult" class="btn--blue" disabled>Consult</button>
+                <button onclick="endConsult()" id="end-consult" class="btn--red" style="display: none;">End Consult</button>
                 <button onclick="endCall()" id="end" class="btn--red" disabled>End</button>
+                <dialog id="initiate-consult-dialog">
+                  <header>Consult</header>
+                  <fieldset id="consult-options">
+                    <legend>Consult Options</legend>
+                    <div id="initiate-consult-controls">
+                      <select id="consult-destination-type" onchange="onConsultTypeSelectionChanged()">
+                        <option value="queue" selected>Queue</option>
+                        <option value="agent">Agent</option>
+                        <option value="dialNumber">Dial Number</option>
+                        <option value="entryPoint">Entry Point</option>
+                      </select>
+                      <div id="consult-destination-holder">
+                        <input id="consult-destination" placeholder="Enter destination" value="" type="text" />
+                      </div>
+                      <button id="initate-consult" onclick="initiateConsult()" class="btn--green">Initiate Consult</button>
+                      <button onclick="closeConsultDialog()" id="close-consult-dialog" class="btn--red">Cancel</button>
+                    </div>
+                  </fieldset>
+                </dialog>
                 <fieldset>
                   <legend>Call Wrapup</legend>
                   <button onclick="wrapupCall()" id="wrapup" class="btn--green" disabled>Wrapup</button>

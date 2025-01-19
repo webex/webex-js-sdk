@@ -222,6 +222,7 @@ export type RequestBody =
   | Contact.HoldResumePayload
   | Contact.ResumeRecordingPayload
   | Contact.ConsultPayload
+  | Contact.ConsultEndAPIPayload // API Payload accepts only QueueId wheres SDK API allows more params
   | Contact.TransferPayLoad
   | Contact.cancelCtq
   | Contact.WrapupPayLoad;
