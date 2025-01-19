@@ -244,4 +244,35 @@ describe('WebCallingService', () => {
       expect(webex.logger.log).toHaveBeenCalledWith('Cannot end a non WebRtc Call: task-id');
     });
   });
+
+  describe('mapCallToTask', () => {
+    it('should map a call ID to a task ID', () => {
+      const callId = 'call-id-123';
+      const taskId = 'task-id-456';
+
+      webRTCCalling.mapCallToTask(callId, taskId);
+
+      expect(webRTCCalling.getTaskIdForCall(callId)).toBe(taskId);
+    });
+  });
+
+  describe('getTaskIdForCall', () => {
+    it('should return the task ID for a given call ID', () => {
+      const callId = 'call-id-123';
+      const taskId = 'task-id-456';
+
+      webRTCCalling.mapCallToTask(callId, taskId);
+
+      const result = webRTCCalling.getTaskIdForCall(callId);
+
+      expect(result).toBe(taskId);
+    });
+
+    it('should return undefined if the call ID is not mapped', () => {
+      const callId = 'call-id-123';
+      const result = webRTCCalling.getTaskIdForCall(callId);
+
+      expect(result).toBeUndefined();
+    });
+  });
 });

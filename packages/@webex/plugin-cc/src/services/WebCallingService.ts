@@ -20,10 +20,13 @@ export default class WebCallingService extends EventEmitter {
   private call: ICall;
   private webex: WebexSDK;
   public loginOption: LoginOption;
+  private callTaskMap: Map<string, string>;
+
   constructor(webex: WebexSDK, callingClientConfig: CallingClientConfig) {
     super();
     this.webex = webex;
     this.callingClientConfig = callingClientConfig;
+    this.callTaskMap = new Map();
   }
 
   public setLoginOption(loginOption: LoginOption) {
@@ -129,5 +132,13 @@ export default class WebCallingService extends EventEmitter {
     } else {
       this.webex.logger.log(`Cannot end a non WebRtc Call: ${taskId}`);
     }
+  }
+
+  public mapCallToTask(callId: string, taskId: string) {
+    this.callTaskMap.set(callId, taskId);
+  }
+
+  public getTaskIdForCall(callId: string): string | undefined {
+    return this.callTaskMap.get(callId);
   }
 }

@@ -182,6 +182,40 @@
     </div>
   </div>
 
+  <!-- Popup for setting agent state -->
+  <div id="agentStatePopup" class="modal hidden">
+    <div class="modal-content">
+      <h2>Set the state of the agent</h2>
+      <select id="agentStateSelect" class="form-control w-auto my-3"></select>
+      <button id="setAgentState" class="btn btn-primary my-3">Set State</button>
+    </div>
+  </div>
+
+  <style>
+    .modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.5);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+  
+    .modal-content {
+      background-color: white;
+      padding: 20px;
+      border-radius: 5px;
+      text-align: center;
+    }
+  
+    .hidden {
+      display: none;
+    }
+  </style>
+
   <script src="../webex.min.js"></script>
   <script src="../contact-center.min.js"></script>
   <script src="app.js"></script>

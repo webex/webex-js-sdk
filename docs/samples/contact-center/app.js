@@ -38,7 +38,10 @@ const pauseResumeRecordingElm = document.querySelector('#pause-resume-recording'
 const endElm = document.querySelector('#end');
 const wrapupElm = document.querySelector('#wrapup');
 const wrapupCodesDropdownElm = document.querySelector('#wrapupCodesDropdown');
-const autoResumeCheckboxElm = document.querySelector('#auto-resume-checkbox'); // Add this
+const autoResumeCheckboxElm = document.querySelector('#auto-resume-checkbox');
+const agentStateSelect = document.querySelector('#agentStateSelect');
+const popup = document.querySelector('#agentStatePopup');
+const setAgentStateButton = document.getElementById('setAgentState');
 
 // Store and Grab `access-token` from sessionStorage
 if (sessionStorage.getItem('date') > new Date().getTime()) {
@@ -51,6 +54,13 @@ else {
 tokenElm.addEventListener('change', (event) => {
   sessionStorage.setItem('access-token', event.target.value);
   sessionStorage.setItem('date', new Date().getTime() + (12 * 60 * 60 * 1000));
+});
+
+setAgentStateButton.addEventListener('click', () => {
+  agentStatus = agentStateSelect.options[agentStateSelect.selectedIndex].text;
+  auxCodeId = agentStateSelect.options[agentStateSelect.selectedIndex].value;
+  setAgentStatus();
+  popup.classList.add('hidden');
 });
 
 function changeAuthType() {
@@ -175,6 +185,9 @@ function registerTaskListeners(task) {
       console.info('Call ended successfully by the external user');
       updateButtonsPostEndCall();
     }
+  });
+  task.on('task:declined', () => {
+    showAgentStatePopup();
   });
 }
 
@@ -354,6 +367,19 @@ function logoutAgent() {
   ).catch((error) => {
     console.log('Agent logout failed', error);
   });
+}
+
+function showAgentStatePopup() {
+  agentStateSelect.innerHTML = '';
+
+  for (let i = 0; i < idleCodesDropdown.options.length; i++) {
+    const option = document.createElement('option');
+    option.value = idleCodesDropdown.options[i].value;
+    option.text = idleCodesDropdown.options[i].text;
+    agentStateSelect.add(option);
+  }
+
+  popup.classList.remove('hidden');
 }
 
 async function fetchBuddyAgents() {
