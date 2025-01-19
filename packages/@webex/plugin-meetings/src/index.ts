@@ -27,7 +27,6 @@ registerPlugin('meetings', Meetings, {
 });
 
 export {
-  getDevices,
   LocalStream,
   LocalDisplayStream,
   LocalSystemAudioStream,

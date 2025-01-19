@@ -165,21 +165,6 @@ describe('plugin-meetings', () => {
           assert(LoggerProxy.logger.log.called, 'log called');
         });
       });
-
-      describe('#handleDeviceLogging', () => {
-        it('should not log if called without devices', () => {
-          MeetingUtil.handleDeviceLogging();
-          assert(!LoggerProxy.logger.log.called, 'log not called');
-        });
-
-        it('should log device settings', () => {
-          const mockDevices = [{deviceId: 'device-1'}, {deviceId: 'device-2'}];
-
-          assert(MeetingUtil.handleDeviceLogging, 'is defined');
-          MeetingUtil.handleDeviceLogging(mockDevices);
-          assert(LoggerProxy.logger.log.called, 'log called');
-        });
-      });
     });
 
     describe('addSequence', () => {

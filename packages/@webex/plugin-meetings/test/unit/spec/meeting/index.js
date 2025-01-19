@@ -3556,14 +3556,6 @@ describe('plugin-meetings', () => {
           });
         });
 
-        it('succeeds even if getDevices() throws', async () => {
-          meeting.meetingState = 'ACTIVE';
-
-          sinon.stub(InternalMediaCoreModule, 'getDevices').rejects(new Error('fake error'));
-
-          await meeting.addMedia();
-        });
-
         describe('CA ice failures checks', () => {
           [
             {
@@ -4190,7 +4182,6 @@ describe('plugin-meetings', () => {
           });
 
           it('addMedia() works correctly when media is enabled with streams to publish', async () => {
-            const handleDeviceLoggingSpy = sinon.spy(Meeting, 'handleDeviceLogging');
             await meeting.addMedia({localStreams: {microphone: fakeMicrophoneStream}});
             await simulateRoapOffer();
             await simulateRoapOk();
@@ -4221,12 +4212,9 @@ describe('plugin-meetings', () => {
 
             // and that these were the only /media requests that were sent
             assert.calledTwice(locusMediaRequestStub);
-
-            assert.calledOnce(handleDeviceLoggingSpy);
           });
 
           it('addMedia() works correctly when media is enabled with streams to publish and stream is user muted', async () => {
-            const handleDeviceLoggingSpy = sinon.spy(Meeting, 'handleDeviceLogging');
             fakeMicrophoneStream.userMuted = true;
 
             await meeting.addMedia({localStreams: {microphone: fakeMicrophoneStream}});
@@ -4258,7 +4246,6 @@ describe('plugin-meetings', () => {
 
             // and that these were the only /media requests that were sent
             assert.calledTwice(locusMediaRequestStub);
-            assert.calledOnce(handleDeviceLoggingSpy);
           });
 
           it('addMedia() works correctly when media is enabled with tracks to publish and track is ended', async () => {
@@ -4330,7 +4317,6 @@ describe('plugin-meetings', () => {
           });
 
           it('addMedia() works correctly when media is disabled with streams to publish', async () => {
-            const handleDeviceLoggingSpy = sinon.spy(Meeting, 'handleDeviceLogging');
             await meeting.addMedia({
               localStreams: {microphone: fakeMicrophoneStream},
               audioEnabled: false,
@@ -4364,20 +4350,6 @@ describe('plugin-meetings', () => {
 
             // and that these were the only /media requests that were sent
             assert.calledTwice(locusMediaRequestStub);
-            assert.calledOnce(handleDeviceLoggingSpy);
-          });
-
-          it('handleDeviceLogging not called when media is disabled', async () => {
-            const handleDeviceLoggingSpy = sinon.spy(Meeting, 'handleDeviceLogging');
-            await meeting.addMedia({
-              localStreams: {microphone: fakeMicrophoneStream},
-              audioEnabled: false,
-              videoEnabled: false,
-            });
-            await simulateRoapOffer();
-            await simulateRoapOk();
-
-            assert.notCalled(handleDeviceLoggingSpy);
           });
 
           it('addMedia() works correctly when media is disabled with no streams to publish', async () => {
@@ -4411,20 +4383,6 @@ describe('plugin-meetings', () => {
 
             // and that these were the only /media requests that were sent
             assert.calledTwice(locusMediaRequestStub);
-          });
-
-          it('addMedia() works correctly when media is disabled with no streams to publish', async () => {
-            const handleDeviceLoggingSpy = sinon.spy(Meeting, 'handleDeviceLogging');
-            await meeting.addMedia({audioEnabled: false});
-            //calling handleDeviceLogging with audioEnaled as true adn videoEnabled as false
-            assert.calledWith(handleDeviceLoggingSpy, false, true);
-          });
-
-          it('addMedia() works correctly when video is disabled with no streams to publish', async () => {
-            const handleDeviceLoggingSpy = sinon.spy(Meeting, 'handleDeviceLogging');
-            await meeting.addMedia({videoEnabled: false});
-            //calling handleDeviceLogging audioEnabled as true videoEnabled as false
-            assert.calledWith(handleDeviceLoggingSpy, true, false);
           });
 
           it('addMedia() works correctly when video is disabled with no streams to publish', async () => {
@@ -4491,13 +4449,6 @@ describe('plugin-meetings', () => {
 
             // and that these were the only /media requests that were sent
             assert.calledTwice(locusMediaRequestStub);
-          });
-
-          it('addMedia() works correctly when both shareAudio and shareVideo is disabled with no streams publish', async () => {
-            const handleDeviceLoggingSpy = sinon.spy(Meeting, 'handleDeviceLogging');
-            await meeting.addMedia({shareAudioEnabled: false, shareVideoEnabled: false});
-            //calling handleDeviceLogging with audioEnabled true and videoEnabled as true
-            assert.calledWith(handleDeviceLoggingSpy, true, true);
           });
 
           describe('publishStreams()/unpublishStreams() calls', () => {
