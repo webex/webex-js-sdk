@@ -568,19 +568,6 @@ function showAgentStatePopup() {
   popup.classList.remove('hidden');
 }
 
-function showAgentStatePopup() {
-  agentStateSelect.innerHTML = '';
-  
-  for (let i = 0; i < idleCodesDropdown.options.length; i++) {
-    const option = document.createElement('option');
-    option.value = idleCodesDropdown.options[i].value;
-    option.text = idleCodesDropdown.options[i].text;
-    agentStateSelect.add(option);
-  }
-
-  popup.classList.remove('hidden');
-}
-
 async function renderBuddyAgents() {
   buddyAgentsDropdownElm.innerHTML = ''; // Clear previous options
   const buddyAgentsDropdownNodes = await fetchBuddyAgentsNodeList();
