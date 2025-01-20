@@ -16,8 +16,12 @@ let receiveTranscriptionOption;
 
 let audioReceiveSlot;
 let videoReceiveSlot;
-let isMultistream = false;
 let currentActiveSpeakersMemberIds = [];
+let isMultistream = false;
+let isBrb = false;
+// cached state for local microphone and camera muted state
+let localMediaMicMuted = undefined;
+let localMediaCameraMuted = undefined;
 
 const authTypeElm = document.querySelector('#auth-type');
 const credentialsFormElm = document.querySelector('#credentials');
@@ -857,6 +861,7 @@ const loadCameraBtn = document.querySelector('#ts-load-camera');
 const toggleVbgBtn = document.querySelector('#ts-enable-VBG');
 const loadMicrophoneBtn = document.querySelector('#ts-load-mic');
 const toggleBNRBtn = document.querySelector('#ts-enable-BNR');
+const startShareBtn = document.querySelector('#ts-start-screenshare');
 const publishShareBtn = document.querySelector('#ts-publish-screenshare');
 const unpublishShareBtn = document.querySelector('#ts-unpublish-screenshare');
 const stopShareBtn = document.querySelector('#ts-stop-screenshare');
@@ -865,6 +870,8 @@ const stopVideoButton = document.querySelector('#ts-stop-video');
 const stopAudioButton = document.querySelector('#ts-stop-audio');
 const muteVideoMessage = document.querySelector('#ts-mute-video-message');
 const muteAudioMessage = document.querySelector('#ts-mute-audio-message');
+const defaultShareMessage = document.querySelector('#ts-default-share-message');
+const brbShareMessage = document.querySelector('#ts-brb-share-message');
 const modeBtn = document.getElementById('mode-type');
 
 /**
@@ -1760,6 +1767,11 @@ function handleMuteAudioMessage() {
   muteAudioMessage.innerHTML = localMedia.microphoneStream.systemMuted ? "Warning: microphone may be muted by the system" : "";
 }
 
+function handleBrbShareMessage(showMessage) {
+  brbShareMessage.hidden = !showMessage;
+  defaultShareMessage.hidden = showMessage;
+}
+
 function toggleSendAudio() {
   console.log('MeetingControls#toggleSendAudio()');
 
@@ -1769,7 +1781,10 @@ function toggleSendAudio() {
     localMedia.microphoneStream.setUserMuted(newMuteValue);
 
     console.log(`MeetingControls#toggleSendAudio() :: Successfully ${newMuteValue ? 'muted': 'unmuted'} audio!`);
-    return;
+
+    if (isBrb) {
+      toggleBrb({unmuteAudio: true});
+    }
   }
 }
 
@@ -1787,7 +1802,9 @@ function toggleSendVideo() {
 
     console.log(`MeetingControls#toggleSendVideo() :: Successfully ${newMuteValue ? 'muted': 'unmuted'} video!`);
 
-    return;
+    if (isBrb) {
+      toggleBrb({unmuteVideo: true});
+    }
   }
 }
 
@@ -1877,24 +1894,6 @@ async function unpublishScreenShare() {
   }
   catch (error) {
     console.log('MeetingControls#unpublishScreenShare() :: Error unpublishing share stream!');
-    console.error(error);
-  }
-}
-
-async function stopScreenShare() {
-  console.log('MeetingControls#stopScreenShare()');
-  try {
-    if (localMedia.screenShare.audio) {
-      localMedia.screenShare.audio?.stop();
-    }
-    if (localMedia.screenShare.video) {
-      localMedia.screenShare.video?.stop();
-    }
-
-    console.log('MeetingControls#stopScreenShare() :: Successfully stopped sharing!');
-  }
-  catch (error) {
-    console.log('MeetingControls#stopScreenShare() :: Error stopping screen share!');
     console.error(error);
   }
 }
@@ -3335,7 +3334,25 @@ function toggleBreakout() {
   }
 }
 
-async function toggleBrb() {
+async function stopScreenShare() {
+  console.log('MeetingControls#stopScreenShare()');
+  try {
+    if (localMedia.screenShare.audio) {
+      localMedia.screenShare.audio?.stop();
+    }
+    if (localMedia.screenShare.video) {
+      localMedia.screenShare.video?.stop();
+    }
+
+    console.log('MeetingControls#stopScreenShare() :: Successfully stopped sharing!');
+  }
+  catch (error) {
+    console.log('MeetingControls#stopScreenShare() :: Error stopping screen share!');
+    console.error(error);
+  }
+}
+
+async function toggleBrb({unmuteAudio = false, unmuteVideo = false}) {
   const meeting = getCurrentMeeting();
 
   if (meeting) {
@@ -3343,13 +3360,51 @@ async function toggleBrb() {
     const enableBrb = brbButton.innerText === 'Step away';
 
     try {
+      isBrb = enableBrb;
+
+      if (enableBrb) {
+        localMediaCameraMuted = localMedia.cameraStream.userMuted;
+        localMediaMicMuted = localMedia.microphoneStream.userMuted;
+
+        // stop sharing and disable buttons to use it in brb
+        await stopScreenShare();
+        publishShareBtn.disabled = true;
+        unpublishShareBtn.disabled = true;
+        startShareBtn.disabled = true;
+        handleBrbShareMessage(true);
+
+        localMedia.cameraStream.setUserMuted(true);
+        localMedia.microphoneStream.setUserMuted(true);
+      } else {
+        if (unmuteAudio) {
+          localMedia.microphoneStream.setUserMuted(false);
+          localMediaCameraMuted = undefined;
+          localMediaMicMuted = undefined;
+        }
+
+        if (unmuteVideo) {
+          localMedia.cameraStream.setUserMuted(false);
+          localMediaCameraMuted = undefined;
+          localMediaMicMuted = undefined;
+        }
+
+        if (localMediaCameraMuted !== undefined && localMediaMicMuted !== undefined) {
+          localMedia.cameraStream.setUserMuted(localMediaCameraMuted);
+          localMedia.microphoneStream.setUserMuted(localMediaMicMuted);
+        }
+
+        // restore user sharing buttons
+        publishShareBtn.disabled = false;
+        unpublishShareBtn.disabled = false;
+        startShareBtn.disabled = false;
+        handleBrbShareMessage(false);
+      }
+
       const result = await meeting.beRightBack(enableBrb);
+
       console.log(`meeting.beRightBack(${enableBrb}): success. Result: ${result}`);
     } catch (error) {
       console.error(`meeting.beRightBack({${enableBrb}): error: `, error);
-    } finally {
-      localMedia?.microphoneStream?.setUserMuted(enableBrb);
-      localMedia?.cameraStream?.setUserMuted(enableBrb);
     }
   }
 }
