@@ -2759,11 +2759,12 @@ describe('internal-plugin-metrics', () => {
         });
       });
 
-      it('includes expected joinFlowVersion from options when in-meeting', async () => {
+      it('includes expected joinFlowVersion and meetingJoinPhase from options when in-meeting', async () => {
         // meetingId means in-meeting
         const options = {
           meetingId: fakeMeeting.id,
           joinFlowVersion: 'NewFTE',
+          meetingJoinPhase: 'join',
         };
 
         const triggered = new Date();
@@ -2776,6 +2777,11 @@ describe('internal-plugin-metrics', () => {
         assert.equal(
           fetchOptions.body.metrics[0].eventPayload.event.joinFlowVersion,
           options.joinFlowVersion
+        );
+
+        assert.equal(
+          fetchOptions.body.metrics[0].eventPayload.event.meetingJoinPhase,
+          options.meetingJoinPhase
         );
       });
 
@@ -2815,12 +2821,13 @@ describe('internal-plugin-metrics', () => {
         );
       });
 
-      it('includes expected joinFlowVersion from options during prejoin', async () => {
+      it('includes expected joinFlowVersion and meetingJoinPhase from options during prejoin', async () => {
         // correlationId and no meeting id means prejoin
         const options = {
           correlationId: 'myCorrelationId',
           preLoginId: 'myPreLoginId',
           joinFlowVersion: 'NewFTE',
+          meetingJoinPhase: 'pre-join',
         };
 
         const triggered = new Date();
@@ -2833,6 +2840,11 @@ describe('internal-plugin-metrics', () => {
         assert.equal(
           fetchOptions.body.metrics[0].eventPayload.event.joinFlowVersion,
           options.joinFlowVersion
+        );
+
+        assert.equal(
+          fetchOptions.body.metrics[0].eventPayload.event.meetingJoinPhase,
+          options.meetingJoinPhase
         );
       });
     });

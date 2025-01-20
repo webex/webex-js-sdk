@@ -26,7 +26,7 @@ describe('plugin-meetings', () => {
       webex.meetings.reachability = {
         getReachabilityReportToAttachToRoap: sinon.stub().resolves({}),
         getClientMediaPreferences: sinon.stub().resolves({}),
-      };  
+      };
 
       const logger = {
         info: sandbox.stub(),
@@ -162,21 +162,6 @@ describe('plugin-meetings', () => {
         it('should log videoStream settings', () => {
           assert(MeetingUtil.handleVideoLogging, 'method is defined');
           MeetingUtil.handleVideoLogging(mockStream);
-          assert(LoggerProxy.logger.log.called, 'log called');
-        });
-      });
-
-      describe('#handleDeviceLogging', () => {
-        it('should not log if called without devices', () => {
-          MeetingUtil.handleDeviceLogging();
-          assert(!LoggerProxy.logger.log.called, 'log not called');
-        });
-
-        it('should log device settings', () => {
-          const mockDevices = [{deviceId: 'device-1'}, {deviceId: 'device-2'}];
-
-          assert(MeetingUtil.handleDeviceLogging, 'is defined');
-          MeetingUtil.handleDeviceLogging(mockDevices);
           assert(LoggerProxy.logger.log.called, 'log called');
         });
       });
@@ -424,17 +409,17 @@ describe('plugin-meetings', () => {
         const FAKE_CLIENT_MEDIA_PREFERENCES = {
           id: 'fake client media preferences',
         };
-  
+
         webex.meetings.reachability.getReachabilityReportToAttachToRoap.resolves(FAKE_REACHABILITY_REPORT);
         webex.meetings.reachability.getClientMediaPreferences.resolves(FAKE_CLIENT_MEDIA_PREFERENCES);
-        
+
         sinon
           .stub(webex.internal.device.ipNetworkDetector, 'supportsIpV4')
           .get(() => true);
         sinon
           .stub(webex.internal.device.ipNetworkDetector, 'supportsIpV6')
           .get(() => true);
-          
+
         await MeetingUtil.joinMeeting(meeting, {
           reachability: 'reachability',
           roapMessage: 'roapMessage',
@@ -772,6 +757,13 @@ describe('plugin-meetings', () => {
       it('works as expected', () => {
         assert.deepEqual(MeetingUtil.canManageBreakout(['BREAKOUT_MANAGEMENT']), true);
         assert.deepEqual(MeetingUtil.canManageBreakout([]), false);
+      });
+    });
+
+    describe('canStartBreakout', () => {
+      it('works as expected', () => {
+        assert.deepEqual(MeetingUtil.canStartBreakout(['DISABLE_BREAKOUT_START']), false);
+        assert.deepEqual(MeetingUtil.canStartBreakout([]), true);
       });
     });
 

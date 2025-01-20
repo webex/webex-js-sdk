@@ -198,6 +198,8 @@ export const RETRY_TIMEOUT = 3000;
 
 export const ICE_AND_DTLS_CONNECTION_TIMEOUT = 20000;
 export const ROAP_OFFER_ANSWER_EXCHANGE_TIMEOUT = 35000;
+export const WEBINAR_ERROR_WEBCAST = [403026];
+export const WEBINAR_ERROR_REGISTRATIONID = [403037, 403137];
 
 // ******************** REGEX **********************
 // Please alphabetize
@@ -326,6 +328,7 @@ export const EVENT_TRIGGERS = {
   MEETING_RECONNECTION_FAILURE: 'meeting:reconnectionFailure',
   MEETING_UNLOCKED: 'meeting:unlocked',
   MEETING_LOCKED: 'meeting:locked',
+  MEETING_RESOURCE_LINKS_UPDATE: 'meeting:resourceLinks:update',
   MEETING_INFO_AVAILABLE: 'meeting:meetingInfoAvailable',
   MEETING_INFO_UPDATED: 'meeting:meetingInfoUpdated',
   MEETING_LOG_UPLOAD_SUCCESS: 'meeting:logUpload:success',
@@ -382,6 +385,13 @@ export const EVENT_TYPES = {
   REMOTE_SHARE: 'remoteShare',
   REMOTE_SHARE_AUDIO: 'remoteShareAudio',
   ERROR: 'error',
+};
+
+export const HEADERS = {
+  CONTENT_TYPE: 'Content-Type',
+  CONTENT_TYPE_VALUE: {
+    APPLICATION_JSON: 'application/json',
+  },
 };
 
 // Handles the reason when meeting gets destroyed
@@ -530,9 +540,9 @@ export const ERROR_DICTIONARY = {
       'Reconnection was not started, because there is one already in progress or reconnections are disabled in config.',
     CODE: 15,
   },
-  WebinarRegistrationError: {
-    NAME: 'WebinarRegistrationError',
-    MESSAGE: 'An error occurred while the webinar required registration.',
+  JoinWebinarError: {
+    NAME: 'JoinWebinarError',
+    MESSAGE: 'An error occurred while the join webinar.',
     CODE: 16,
   },
 };
@@ -956,6 +966,7 @@ export const DISPLAY_HINTS = {
   DISABLE_ASK_FOR_HELP: 'DISABLE_ASK_FOR_HELP',
   DISABLE_BREAKOUT_PREASSIGNMENTS: 'DISABLE_BREAKOUT_PREASSIGNMENTS',
   DISABLE_LOBBY_TO_BREAKOUT: 'DISABLE_LOBBY_TO_BREAKOUT',
+  DISABLE_BREAKOUT_START: 'DISABLE_BREAKOUT_START',
 
   // participants list
   DISABLE_VIEW_THE_PARTICIPANT_LIST: 'DISABLE_VIEW_THE_PARTICIPANT_LIST',
@@ -1312,6 +1323,8 @@ export const MEETING_INFO_FAILURE_REASON = {
   WRONG_CAPTCHA: 'WRONG_CAPTCHA', // wbxappapi requires a captcha code or a wrong captcha code was provided
   POLICY: 'POLICY', // meeting info request violates some meeting policy
   WEBINAR_REGISTRATION: 'WEBINAR_REGISTRATION', // webinar need registration
+  NEED_JOIN_WITH_WEBCAST: 'NEED_JOIN_WITH_WEBCAST', // webinar need using webcast join
+  WEBINAR_NEED_REGISTRATIONID: 'WEBINAR_NEED_REGISTRATIONID', // webinar need registrationID
   OTHER: 'OTHER', // any other error (network, etc)
 };
 
