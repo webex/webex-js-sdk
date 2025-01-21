@@ -14,7 +14,7 @@ import {
   BuddyAgents,
   SubscribeRequest,
 } from './types';
-import {READY, CC_FILE, EMPTY_STRING, AGENT_STATE_CHANGE} from './constants';
+import {READY, CC_FILE, EMPTY_STRING, AGENT_STATE_CHANGE, AGENT_MULTI_LOGIN} from './constants';
 import {AGENT, WEB_RTC_PREFIX} from './services/constants';
 import Services from './services';
 import HttpRequest from './services/core/HttpRequest';
@@ -289,6 +289,11 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       // @ts-ignore
       this.emit(AGENT_STATE_CHANGE, eventData.data);
     }
+
+    if (eventData.type === CC_EVENTS.AGENT_MULTI_LOGIN) {
+      // @ts-ignore
+      this.emit(AGENT_MULTI_LOGIN, eventData.data);
+    }
   };
 
   /**
@@ -311,7 +316,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   }
 
   /**
-   * Called when we reconnection has been completed
+   * Called when the reconnection has been completed
    */
   private async handleConnectionLost(msg: ConnectionLostDetails): Promise<void> {
     if (msg.isConnectionLost) {

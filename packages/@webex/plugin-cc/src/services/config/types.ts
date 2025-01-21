@@ -14,6 +14,7 @@ export const CC_EVENTS = {
   AGENT_STATION_LOGIN_SUCCESS: 'AgentStationLoginSuccess',
   AGENT_STATION_LOGIN_FAILED: 'AgentStationLoginFailed',
   AGENT_STATE_CHANGE: 'AgentStateChange',
+  AGENT_MULTI_LOGIN: 'AGENT_MULTI_LOGIN',
   AGENT_STATE_CHANGE_SUCCESS: 'AgentStateChangeSuccess',
   AGENT_STATE_CHANGE_FAILED: 'AgentStateChangeFailed',
   AGENT_BUDDY_AGENTS: 'BuddyAgents',
