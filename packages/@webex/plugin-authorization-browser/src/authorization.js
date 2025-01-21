@@ -143,10 +143,36 @@ const Authorization = WebexPlugin.extend({
    * @returns {Promise}
    */
   initiateImplicitGrant(options) {
+
     this.logger.info('authorization: initiating implicit grant flow');
-    this.webex.getWindow().location = this.webex.credentials.buildLoginUrl(
+    const loginUrl = this.webex.credentials.buildLoginUrl(
       Object.assign({response_type: 'token'}, options)
     );
+
+    if (options?.separateWindow) {
+      // Default window settings
+      const defaultWindowSettings = {
+        width: 600,
+        height: 800
+      };
+
+      // Merge user provided settings with defaults
+      const windowSettings = Object.assign(
+        defaultWindowSettings, 
+        typeof options.separateWindow === 'object' ? options.separateWindow : {}
+      );
+      console.error('windowFeatures112232');
+      // Convert settings object to window.open features string
+      const windowFeatures = Object.entries(windowSettings)
+        .map(([key, value]) => `${key}=${value}`)
+        .join(',');
+
+        console.error('windowFeatures', windowFeatures);
+      this.webex.getWindow().open(loginUrl, '_blank', windowFeatures);
+    } else {
+      // Default behavior - open in same window
+      this.webex.getWindow().location = loginUrl;
+    }
 
     return Promise.resolve();
   },
