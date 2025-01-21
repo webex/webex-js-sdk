@@ -15,6 +15,9 @@ import {
   ResumeRecordingPayload,
   ConsultPayload,
   ConsultEndPayload,
+  TransferPayLoad,
+  DESTINATION_TYPE,
+  ConsultTransferPayLoad,
 } from './types';
 import WebCallingService from '../WebCallingService';
 
@@ -319,5 +322,69 @@ export default class Task extends EventEmitter implements ITask {
     }
   }
 
-  // TODO: transfer public methods to be implemented here
+  /**
+   * This is used to blind transfer or vTeam transfer the task
+   * @param transferPayload
+   * @returns Promise<TaskResponse>
+   * @throws Error
+   * @example
+   * ```typescript
+   * const transferPayload = {
+   *  to: 'myQueueId',
+   *  destinationType: 'queue',
+   * }
+   * task.transfer(transferPayload).then(()=>{}).catch(()=>{});
+   * ```
+   */
+  public async transfer(transferPayload: TransferPayLoad): Promise<TaskResponse> {
+    try {
+      let result: TaskResponse;
+      if (transferPayload.destinationType === DESTINATION_TYPE.QUEUE) {
+        result = await this.contact.vteamTransfer({
+          interactionId: this.data.interactionId,
+          data: transferPayload,
+        });
+      } else {
+        result = await this.contact.blindTransfer({
+          interactionId: this.data.interactionId,
+          data: transferPayload,
+        });
+      }
+
+      return result;
+    } catch (error) {
+      const {error: detailedError} = getErrorDetails(error, 'transfer', CC_FILE);
+      throw detailedError;
+    }
+  }
+
+  /**
+   * This is used to consult transfer the task
+   * @param consultTransferPayload
+   * @returns Promise<TaskResponse>
+   * @throws Error
+   * @example
+   * ```typescript
+   * const consultTransferPayload = {
+   * destination: 'anotherAgentId',
+   * destinationType: 'agent',
+   * }
+   * task.consultTransfer(consultTransferPayload).then(()=>{}).catch(()=>{});
+   * ```
+   * */
+  public async consultTransfer(
+    consultTransferPayload: ConsultTransferPayLoad
+  ): Promise<TaskResponse> {
+    try {
+      const result = await this.contact.consultTransfer({
+        interactionId: this.data.interactionId,
+        data: consultTransferPayload,
+      });
+
+      return result;
+    } catch (error) {
+      const {error: detailedError} = getErrorDetails(error, 'consultTransfer', CC_FILE);
+      throw detailedError;
+    }
+  }
 }

@@ -11,6 +11,7 @@ let task;
 let taskId;
 let wrapupCodes = []; // Add this to store wrapup codes
 let isConsultOptionsShown = false;
+let isTransferOptionsShown = false; // Add this variable to track the state of transfer options
 
 const authTypeElm = document.querySelector('#auth-type');
 const credentialsFormElm = document.querySelector('#credentials');
@@ -44,13 +45,15 @@ const consultOptionsElm = document.querySelector('#consult-options');
 const destinationTypeDropdown = document.querySelector('#consult-destination-type');
 const consultDestinationHolderElm = document.querySelector('#consult-destination-holder');
 let consultDestinationInput = document.querySelector('#consult-destination');
-const initateConsultBtn = document.querySelector('#initate-consult');
+let transferDestinationInput = document.querySelector('#transfer-destination');
+const initiateTransferBtn = document.querySelector('#initiate-transfer');
+const initiateConsultBtn = document.querySelector('#initiate-consult');
 const endConsultBtn = document.querySelector('#end-consult');
 const consultTabBtn = document.querySelector('#consult');
 const initiateConsultControlsElm = document.querySelector('#initiate-consult-controls');
 const initiateConsultDialog = document.querySelector('#initiate-consult-dialog');
-
-
+const consultTransferBtn = document.querySelector('#consult-transfer');
+const transferElm = document.getElementById('transfer');
 
 // Store and Grab `access-token` from sessionStorage
 if (sessionStorage.getItem('date') > new Date().getTime()) {
@@ -169,6 +172,7 @@ function updateButtonsPostEndCall() {
   }
   hideEndConsultButton();
   showConsultButton()
+  disableTransferControls();
   consultTabBtn.disabled = true;
 }
 
@@ -194,6 +198,13 @@ function showEndConsultButton() {
 
 function hideEndConsultButton() {
   endConsultBtn.style.display = 'none';
+}
+
+function toggleTransferOptions() {
+  // toggle display of transfer options
+  isTransferOptionsShown = !isTransferOptionsShown;
+  const transferOptionsElm = document.querySelector('#transfer-options');
+  transferOptionsElm.style.display = isTransferOptionsShown ? 'block' : 'none';
 }
 
 async function onConsultTypeSelectionChanged(){
@@ -233,14 +244,34 @@ async function onConsultTypeSelectionChanged(){
   consultDestinationHolderElm.appendChild(consultDestinationInput);
 }
 
+// Function to handle transfer type selection change
+async function onTransferTypeSelectionChanged() {
+  const transferDestinationHolderElm = document.querySelector('#transfer-destination-holder');
+  transferDestinationHolderElm.innerHTML = '';
+
+  if (document.querySelector('#transfer-destination-type').value === 'agent') {
+    // Make transferDestinationInput into a dropdown
+    transferDestinationInput = document.createElement('select');
+    transferDestinationInput.id = 'transfer-destination';
+
+    const agentNodeList = await fetchBuddyAgentsNodeList();
+    agentNodeList.forEach(n => { transferDestinationInput.appendChild(n) });
+  } else {
+    // Make transferDestinationInput into a text input
+    transferDestinationInput = document.createElement('input');
+    transferDestinationInput.id = 'transfer-destination';
+    transferDestinationInput.placeholder = 'Enter Destination';
+  }
+
+  transferDestinationHolderElm.appendChild(transferDestinationInput);
+}
+
 // Function to initiate consult
 async function initiateConsult() {
   const destinationType = destinationTypeDropdown.value;
-  const consultDestination = consultDestinationInput;
+  const consultDestination = consultDestinationInput.value;
 
-  const destination = consultDestination.value;
-
-  if (!destination) {
+  if (!consultDestination) {
     alert('Please enter a destination');
     return;
   }
@@ -248,7 +279,7 @@ async function initiateConsult() {
   closeConsultDialog();
 
   const consultPayload = {
-    to: destination,
+    to: consultDestination,
     destinationType: destinationType,
   };
 
@@ -257,9 +288,62 @@ async function initiateConsult() {
     console.log('Consult initiated successfully');
     hideConsultButton();
     showEndConsultButton();
+    consultTransferBtn.style.display = 'inline-block'; // Show the consult transfer button
+    consultTransferBtn.disabled = false; // Enable the consult transfer button
   } catch (error) {
     console.error('Failed to initiate consult', error);
     alert('Failed to initiate consult');
+  }
+}
+
+// Function to initiate transfer
+async function initiateTransfer() {
+  const destinationType = document.querySelector('#transfer-destination-type').value;
+  const transferDestination = transferDestinationInput.value;
+
+  if (!transferDestination) {
+    alert('Please enter a destination');
+    return;
+  }
+
+  const transferPayload = {
+    to: transferDestination,
+    destinationType: destinationType,
+  };
+
+  try {
+    await task.transfer(transferPayload);
+    console.log('Transfer initiated successfully');
+    disableTransferControls();
+    toggleTransferOptions(); // Hide the transfer options
+  } catch (error) {
+    console.error('Failed to initiate transfer', error);
+    alert('Failed to initiate transfer');
+  }
+}
+
+// Function to initiate consult transfer
+async function initiateConsultTransfer() {
+  const destinationType = destinationTypeDropdown.value;
+  const consultDestination = consultDestinationInput.value;
+
+  if (!consultDestination) {
+    alert('Please enter a destination');
+    return;
+  }
+
+  const consultTransferPayload = {
+    to: consultDestination,
+    destinationType: destinationType,
+  };
+
+  try {
+    await task.consultTransfer(consultTransferPayload);
+    console.log('Consult transfer initiated successfully');
+    consultTransferBtn.disabled = true; // Disable the consult transfer button after initiating consult transfer
+    consultTransferBtn.style.display = 'none'; // Hide the consult transfer button after initiating consult transfer
+  } catch (error) {
+    console.error('Failed to initiate consult transfer', error);
   }
 }
 
@@ -293,6 +377,16 @@ function disableConsultControls() {
   consultTabBtn.disabled = true;
 }
 
+// Enable transfer button after task is accepted
+function enableTransferControls() {
+  transferElm.disabled = false;
+}
+
+// Disable transfer button after task is accepted
+function disableTransferControls() {
+  transferElm.disabled = true;
+}
+
 // Register task listeners
 function registerTaskListeners(task) {
   task.on('task:assigned', (task) => {
@@ -303,6 +397,7 @@ function registerTaskListeners(task) {
     pauseResumeRecordingElm.innerText = 'Pause Recording';
     endElm.disabled = false;
     enableConsultControls(); // Enable consult controls
+    enableTransferControls(); // Enable transfer controls
   });
   task.on('task:media', (track) => {
     document.getElementById('remote-audio').srcObject = new MediaStream([track]);
@@ -334,6 +429,7 @@ function registerTaskListeners(task) {
     // When we accept an incoming consult
     hideConsultButton();
     showEndConsultButton();
+    consultTransferBtn.disabled = true; // Disable the consult transfer button since we are not yet owner of the call
   });
 
   task.on('task:consultQueueFailed', (task) => {
@@ -353,6 +449,8 @@ function registerTaskListeners(task) {
   task.on('task:consultEnd', (task) => {
     hideEndConsultButton();
     showConsultButton();
+    consultTransferBtn.style.display = 'none';
+    consultTransferBtn.disabled = true;
 
     answerElm.disabled = true;
     declineElm.disabled = true;
