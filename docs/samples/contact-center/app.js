@@ -10,6 +10,7 @@ let taskControl;
 let task;
 let taskId;
 let wrapupCodes = []; // Add this to store wrapup codes
+let isConsultOptionsShown = false;
 
 const authTypeElm = document.querySelector('#auth-type');
 const credentialsFormElm = document.querySelector('#credentials');
@@ -39,6 +40,17 @@ const endElm = document.querySelector('#end');
 const wrapupElm = document.querySelector('#wrapup');
 const wrapupCodesDropdownElm = document.querySelector('#wrapupCodesDropdown');
 const autoResumeCheckboxElm = document.querySelector('#auto-resume-checkbox'); // Add this
+const consultOptionsElm = document.querySelector('#consult-options');
+const destinationTypeDropdown = document.querySelector('#consult-destination-type');
+const consultDestinationHolderElm = document.querySelector('#consult-destination-holder');
+let consultDestinationInput = document.querySelector('#consult-destination');
+const initateConsultBtn = document.querySelector('#initate-consult');
+const endConsultBtn = document.querySelector('#end-consult');
+const consultTabBtn = document.querySelector('#consult');
+const initiateConsultControlsElm = document.querySelector('#initiate-consult-controls');
+const initiateConsultDialog = document.querySelector('#initiate-consult-dialog');
+
+
 
 // Store and Grab `access-token` from sessionStorage
 if (sessionStorage.getItem('date') > new Date().getTime()) {
@@ -148,10 +160,140 @@ function updateButtonsPostEndCall() {
   holdResumeElm.disabled = true;
   endElm.disabled = true;
   pauseResumeRecordingElm.disabled = true;
-  wrapupElm.disabled = false;
-  wrapupCodesDropdownElm.disabled = false;
+  if(task) {
+    wrapupElm.disabled = false;
+    wrapupCodesDropdownElm.disabled = false;
+  } else {
+    wrapupElm.disabled = true;
+    wrapupCodesDropdownElm.disabled = true;
+  }
+  hideEndConsultButton();
+  showConsultButton()
+  consultTabBtn.disabled = true;
 }
 
+function showInitiateConsultDialog() {
+  initiateConsultDialog.showModal();
+}
+
+function closeConsultDialog() {
+  initiateConsultDialog.close();
+}
+
+function showConsultButton() {
+  consultTabBtn.style.display = 'inline-block';
+}
+
+function hideConsultButton() {
+  consultTabBtn.style.display = 'none';
+}
+
+function showEndConsultButton() {
+  endConsultBtn.style.display = 'inline-block';
+}
+
+function hideEndConsultButton() {
+  endConsultBtn.style.display = 'none';
+}
+
+async function onConsultTypeSelectionChanged(){
+
+  consultDestinationHolderElm.innerHTML = '';
+  if(destinationTypeDropdown.value === 'agent'){
+    // Make consultDestinationInput into a dropdown
+    consultDestinationInput = document.createElement('select');
+    consultDestinationInput.id = 'consultDestination';
+
+    async function refreshBuddyAgentsForConsult() {
+      consultDestinationInput.innerHTML = '';
+      const agentNodeList = await fetchBuddyAgentsNodeList();
+      agentNodeList.forEach( n => { consultDestinationInput.appendChild(n) });
+    }
+
+    await refreshBuddyAgentsForConsult();
+    // Add a refresh button to refresh the buddy agents list
+    const refreshButton = document.createElement('button');
+    refreshButton.id = 'refresh-buddy-agents-for-consult';
+    refreshButton.innerHTML = 'Refresh agent list <i class="fa fa-refresh"></i>';
+    refreshButton.onclick = refreshBuddyAgentsForConsult;
+    consultDestinationHolderElm.appendChild(refreshButton);
+  } else {
+    // Make consultDestinationInput into a text input
+    consultDestinationInput = document.createElement('input');
+    consultDestinationInput.id = 'consultDestination';
+    consultDestinationInput.placeholder = 'Enter Destination';
+
+    // Remove the refresh button if it exists
+    const refreshButton = document.getElementById('refresh-buddy-agents-for-consult');
+    if(refreshButton) {
+      refreshButton.remove();
+    }
+  }
+
+  consultDestinationHolderElm.appendChild(consultDestinationInput);
+}
+
+// Function to initiate consult
+async function initiateConsult() {
+  const destinationType = destinationTypeDropdown.value;
+  const consultDestination = consultDestinationInput;
+
+  const destination = consultDestination.value;
+
+  if (!destination) {
+    alert('Please enter a destination');
+    return;
+  }
+
+  closeConsultDialog();
+
+  const consultPayload = {
+    to: destination,
+    destinationType: destinationType,
+  };
+
+  try {
+    await task.consult(consultPayload);
+    console.log('Consult initiated successfully');
+    hideConsultButton();
+    showEndConsultButton();
+  } catch (error) {
+    console.error('Failed to initiate consult', error);
+    alert('Failed to initiate consult');
+  }
+}
+
+// Function to end consult
+async function endConsult() {
+  const taskId = task.data.interactionId;
+
+  const consultEndPayload = {
+    isConsult: true,
+    taskId: taskId,
+  };
+
+  try {
+    await task.endConsult(consultEndPayload);
+    console.log('Consult ended successfully');
+    hideEndConsultButton();
+    showConsultButton();
+  } catch (error) {
+    console.error('Failed to end consult', error);
+    alert('Failed to end consult');
+  }
+}
+
+// Enable consult button after task is accepted
+function enableConsultControls() {
+  consultTabBtn.disabled = false;
+}
+
+// Disable consult button after task is accepted
+function disableConsultControls() {
+  consultTabBtn.disabled = true;
+}
+
+// Register task listeners
 function registerTaskListeners(task) {
   task.on('task:assigned', (task) => {
     console.info('Call has been accepted for task: ', task.data.interactionId);
@@ -160,6 +302,7 @@ function registerTaskListeners(task) {
     pauseResumeRecordingElm.disabled = false;
     pauseResumeRecordingElm.innerText = 'Pause Recording';
     endElm.disabled = false;
+    enableConsultControls(); // Enable consult controls
   });
   task.on('task:media', (track) => {
     document.getElementById('remote-audio').srcObject = new MediaStream([track]);
@@ -174,6 +317,49 @@ function registerTaskListeners(task) {
     if (!endElm.disabled) {
       console.info('Call ended successfully by the external user');
       updateButtonsPostEndCall();
+    }
+  });
+
+  task.on('task:hold', (task) => {
+    console.info('Call has been put on hold');
+    holdResumeElm.innerText = 'Resume';
+  });
+
+  // Consult flows
+  task.on('task:consultOfferCreated', (task) => {
+    console.log('Consult offer created');
+  });
+
+  task.on('task:consultAccepted', (task) => {
+    // When we accept an incoming consult
+    hideConsultButton();
+    showEndConsultButton();
+  });
+
+  task.on('task:consultQueueFailed', (task) => {
+    // When trying to consult queue fails
+    console.error(`Received task:consultQueueFailed for task: ${task.interactionId}`);
+    hideEndConsultButton();
+    showConsultButton();
+  });
+
+  task.on('task:consultQueueCancelled', (task) => {
+    // When we manually cancel consult to queue before it is accepted by other agent
+    console.log(`Received task:consultQueueCancelled for task: ${task.interactionId}`);
+    hideEndConsultButton();
+    showConsultButton();
+  });
+
+  task.on('task:consultEnd', (task) => {
+    hideEndConsultButton();
+    showConsultButton();
+
+    answerElm.disabled = true;
+    declineElm.disabled = true;
+    if(task.data.isConsulted) {
+      updateButtonsPostEndCall();
+      incomingDetailsElm.innerText = '';
+      task = undefined;
     }
   });
 }
@@ -356,34 +542,47 @@ function logoutAgent() {
   });
 }
 
-async function fetchBuddyAgents() {
+async function renderBuddyAgents() {
+  buddyAgentsDropdownElm.innerHTML = ''; // Clear previous options
+  const buddyAgentsDropdownNodes = await fetchBuddyAgentsNodeList();
+  buddyAgentsDropdownNodes.forEach( n => { buddyAgentsDropdownElm.appendChild(n) });
+}
+
+async function fetchBuddyAgentsNodeList() {
+  const nodeList = [];
   try {
-    buddyAgentsDropdownElm.innerHTML = ''; // Clear previous options
     const buddyAgentsResponse = await webex.cc.getBuddyAgents({mediaType: 'telephony'});
 
     if (!buddyAgentsResponse || !buddyAgentsResponse.data) {
       console.error('Failed to fetch buddy agents');
-      buddyAgentsDropdownElm.innerHTML = `<option disabled="true">Failed to fetch buddy agents<option>`;
-      return;
+      const buddyAgentsDropdownNode = document.createElement('option');
+      buddyAgentsDropdownNode.disabled = true;
+      buddyAgentsDropdownNode.innerText = 'Failed to fetch buddy agents';
+      return [buddyAgentsDropdownNode];
     }
 
     if (buddyAgentsResponse.data.agentList.length === 0) {
       console.log('The fetched buddy agents list was empty');
-      buddyAgentsDropdownElm.innerHTML = `<option disabled="true">No buddy agents available<option>`;
-      return;
+      const buddyAgentsDropdownNode = document.createElement('option');
+      buddyAgentsDropdownNode.disabled = true;
+      buddyAgentsDropdownNode.innerText = 'No buddy agents available';
+      return [buddyAgentsDropdownNode];
     }
 
     buddyAgentsResponse.data.agentList.forEach((agent) => {
       const option = document.createElement('option');
       option.text = `${agent.agentName} - ${agent.state}`;
       option.value = agent.agentId;
-      buddyAgentsDropdownElm.add(option);
+      nodeList.push(option);
     });
+    return nodeList;
 
   } catch (error) {
     console.error('Failed to fetch buddy agents', error);
-    buddyAgentsDropdownElm.innerHTML = ''; // Clear previous options
-    buddyAgentsDropdownElm.innerHTML = `<option disabled="true">Failed to fetch buddy agents, ${error}<option>`;
+    const buddyAgentsDropdownNode = document.createElement('option');
+    buddyAgentsDropdownNode.disabled = true;
+    buddyAgentsDropdownNode.innerText = `Failed to fetch buddy agents, ${error}`;
+    return [buddyAgentsDropdownNode];
   }
 }
 

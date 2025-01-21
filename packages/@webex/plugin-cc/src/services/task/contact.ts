@@ -6,6 +6,7 @@ import {TIMEOUT_REQ} from '../core/constants';
 import {
   CONSULT,
   CONSULT_ACCEPT,
+  CONSULT_END,
   CONSULT_TRANSFER,
   END,
   HOLD,
@@ -180,6 +181,52 @@ export default function routingContact(aqm: AqmReqs) {
         msg: {} as Contact.AgentContact,
       },
     })),
+
+    /*
+     * Consult End
+     */
+    consultEnd: aqm.req((p: {interactionId: string; data: Contact.ConsultEndPayload}) => {
+      // Setting false value for optional attribute
+      const {isConsult, isSecondaryEpDnAgent = false, queueId} = p.data;
+
+      return {
+        url: `${TASK_API}${p.interactionId}${CONSULT_END}`,
+        host: WCC_API_GATEWAY,
+        data: queueId
+          ? {
+              queueId,
+            }
+          : {},
+        err,
+        notifSuccess: {
+          bind: {
+            type: 'RoutingMessage',
+            data: {
+              type: (() => {
+                if (queueId) return CC_EVENTS.AGENT_CTQ_CANCELLED;
+                if (isSecondaryEpDnAgent) return CC_EVENTS.CONTACT_ENDED;
+                if (isConsult) return CC_EVENTS.AGENT_CONSULT_ENDED;
+
+                return CC_EVENTS.AGENT_CONSULT_CONFERENCE_ENDED;
+              })(),
+              interactionId: p.interactionId,
+            },
+          },
+          msg: {} as Contact.AgentContact,
+        },
+        notifFail: {
+          bind: {
+            type: 'RoutingMessage',
+            data: {
+              type: p.data.queueId
+                ? CC_EVENTS.AGENT_CTQ_CANCEL_FAILED
+                : CC_EVENTS.AGENT_CONSULT_END_FAILED,
+            },
+          },
+          errId: p.data.queueId ? 'Service.aqm.task.cancelCtq' : 'Service.aqm.task.consultEnd',
+        },
+      };
+    }),
 
     /*
      * Consult Accept contact

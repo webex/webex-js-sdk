@@ -10,6 +10,7 @@ export const DESTINATION_TYPE = {
   QUEUE: 'queue',
   DIALNUMBER: 'dialNumber',
   AGENT: 'agent',
+  ENTRYPOINT: 'entryPoint',
 };
 
 export type DestinationType = Enum<typeof DESTINATION_TYPE>;
@@ -31,9 +32,10 @@ export const TASK_EVENTS = {
   TASK_UNASSIGNED: 'task:unassigned',
   TASK_HOLD: 'task:hold',
   TASK_UNHOLD: 'task:unhold',
-  TASK_CONSULT: 'task:consult',
   TASK_CONSULT_END: 'task:consultEnd',
-  TASK_CONSULT_ACCEPT: 'task:consultAccepted',
+  TASK_CONSULT_QUEUE_CANCELLED: 'task:consultQueueCancelled',
+  TASK_CONSULT_QUEUE_FAILED: 'task:consultQueueFailed',
+  TASK_CONSULT_ACCEPTED: 'task:consultAccepted',
   TASK_PAUSE: 'task:pause',
   TASK_RESUME: 'task:resume',
   TASK_END: 'task:end',
@@ -276,8 +278,26 @@ export type TransferPayLoad = {
  */
 export type ConsultPayload = {
   to: string | undefined;
-  destinationType: string;
-  holdParticipants?: boolean;
+  destinationType: DestinationType;
+  holdParticipants?: boolean; // This value is assumed to be always true irrespective of the value passed in the API
+};
+
+/**
+ * Parameters to be passed for consult end task
+ */
+export type ConsultEndPayload = {
+  isConsult: boolean;
+  isSecondaryEpDnAgent?: boolean;
+  queueId?: string; // Dev portal API docs state that it requires queueId, but it's optional in Desktop usage
+  taskId: string;
+};
+
+/**
+ * Parameters to be passed for consult end task
+ * This is the actual payload that is sent to the developer API
+ */
+export type ConsultEndAPIPayload = {
+  queueId?: string;
 };
 
 export type ConsultConferenceData = {

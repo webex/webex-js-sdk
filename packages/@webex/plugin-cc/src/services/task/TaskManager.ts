@@ -60,7 +60,7 @@ export default class TaskManager extends EventEmitter {
         switch (payload.data.type) {
           case CC_EVENTS.AGENT_CONTACT_RESERVED:
             this.currentTask = new Task(this.contact, this.webCallingService, payload.data);
-
+            this.currentTask.data = {...this.currentTask.data, isConsulted: false}; // Ensure isConsulted prop exists
             this.taskCollection[payload.data.interactionId] = this.currentTask;
             if (this.webCallingService.loginOption !== LoginOption.BROWSER) {
               this.emit(TASK_EVENTS.TASK_INCOMING, this.currentTask);
@@ -83,6 +83,61 @@ export default class TaskManager extends EventEmitter {
               this.removeCurrentTaskFromCollection();
             }
             break;
+          case CC_EVENTS.AGENT_CONTACT_HELD:
+            // As soon as the main interaction is held, we need to emit TASK_HOLD
+            this.updateCurrentTaskDataAndEmitEvent(payload.data, TASK_EVENTS.TASK_HOLD);
+            break;
+          case CC_EVENTS.AGENT_CONTACT_UNHELD:
+            // As soon as the main interaction is unheld, we need to emit TASK_RESUME
+            this.updateCurrentTaskDataAndEmitEvent(payload.data, TASK_EVENTS.TASK_RESUME);
+            break;
+          case CC_EVENTS.AGENT_CTQ_CANCEL_FAILED:
+            this.updateCurrentTaskDataAndEmitEvent(
+              payload.data,
+              TASK_EVENTS.TASK_CONSULT_QUEUE_FAILED
+            );
+            break;
+          case CC_EVENTS.AGENT_CONSULT_CREATED:
+            // Received when self agent initiates a consult
+            this.currentTask = this.currentTask.updateTaskData(payload.data);
+            // Do not emit anything since this be received only as a result of an API invocation(handled by a promise)
+            break;
+          case CC_EVENTS.AGENT_OFFER_CONSULT: {
+            // Received when other agent sends us a consult offer
+            this.currentTask = this.currentTask.updateTaskData({
+              ...payload.data,
+              isConsulted: true, // This ensures that the task is marked as us being requested for a consult
+            });
+            break;
+          }
+          case CC_EVENTS.AGENT_CONSULTING:
+            // Received when agent is in an active consult state
+            this.currentTask = this.currentTask.updateTaskData(payload.data);
+            if (this.currentTask.data.isConsulted) {
+              // Fire only if you are the agent who received the consult request
+              this.currentTask.emit(TASK_EVENTS.TASK_CONSULT_ACCEPTED, this.currentTask);
+            }
+            break;
+          case CC_EVENTS.AGENT_CONSULT_FAILED:
+            // This can only be received by the agent who initiated the consult.
+            // We need not emit any event here since this will be result of promise
+            this.currentTask.updateTaskData(payload.data);
+            break;
+          case CC_EVENTS.AGENT_CONSULT_ENDED:
+            this.updateCurrentTaskDataAndEmitEvent(payload.data, TASK_EVENTS.TASK_CONSULT_END);
+            if (this.currentTask.data.isConsulted) {
+              // This will be the end state of the task as soon as we end the consult in case of
+              // us being offered a consult
+              this.removeCurrentTaskFromCollection();
+            }
+            break;
+          case CC_EVENTS.AGENT_CTQ_CANCELLED:
+            // This event is received when the consult using queue is cancelled using API
+            this.updateCurrentTaskDataAndEmitEvent(
+              payload.data,
+              TASK_EVENTS.TASK_CONSULT_QUEUE_CANCELLED
+            );
+            break;
           case CC_EVENTS.AGENT_WRAPUP:
             this.currentTask = this.currentTask.updateTaskData(payload.data);
             this.currentTask.emit(TASK_EVENTS.TASK_END, {wrapupRequired: true});
@@ -95,6 +150,11 @@ export default class TaskManager extends EventEmitter {
         }
       }
     });
+  }
+
+  private updateCurrentTaskDataAndEmitEvent(taskData, event) {
+    this.currentTask = this.currentTask.updateTaskData(taskData);
+    this.currentTask.emit(event, this.currentTask);
   }
 
   private removeCurrentTaskFromCollection() {

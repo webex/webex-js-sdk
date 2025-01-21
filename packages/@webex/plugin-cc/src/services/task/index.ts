@@ -13,6 +13,8 @@ import {
   TASK_EVENTS,
   WrapupPayLoad,
   ResumeRecordingPayload,
+  ConsultPayload,
+  ConsultEndPayload,
 } from './types';
 import WebCallingService from '../WebCallingService';
 
@@ -48,11 +50,23 @@ export default class Task extends EventEmitter implements ITask {
     this.webCallingService.off(CALL_EVENT_KEYS.REMOTE_MEDIA, this.handleRemoteMedia);
   }
 
-  public updateTaskData = (newData: TaskData) => {
-    this.data = newData;
+  public updateTaskData = (updatedData: TaskData, shouldOverwrite = false) => {
+    this.data = shouldOverwrite ? updatedData : this.reconcileData(this.data, updatedData);
 
     return this;
   };
+
+  private reconcileData(oldData: TaskData, newData: TaskData): TaskData {
+    Object.keys(newData).forEach((key) => {
+      if (newData[key] && typeof newData[key] === 'object' && !Array.isArray(newData[key])) {
+        oldData[key] = this.reconcileData({...oldData[key]}, newData[key]);
+      } else {
+        oldData[key] = newData[key];
+      }
+    });
+
+    return oldData;
+  }
 
   /**
    * This is used for incoming task accept by agent.
@@ -141,9 +155,14 @@ export default class Task extends EventEmitter implements ITask {
    */
   public async resume(): Promise<TaskResponse> {
     try {
+      const {mainInteractionId} = this.data.interaction;
+      // In case of consult call, When resume is invoked, we need to pass the mediaResourceId of the main interaction
+      // It's always good to explicitly pass the main mediaResourceId to avoid any confusion
+      const {mediaResourceId} = this.data.interaction.media[mainInteractionId];
+
       return this.contact.unHold({
         interactionId: this.data.interactionId,
-        data: {mediaResourceId: this.data.mediaResourceId},
+        data: {mediaResourceId},
       });
     } catch (error) {
       const {error: detailedError} = getErrorDetails(error, 'resume', CC_FILE);
@@ -209,7 +228,9 @@ export default class Task extends EventEmitter implements ITask {
    */
   public async pauseRecording(): Promise<TaskResponse> {
     try {
-      return this.contact.pauseRecording({interactionId: this.data.interactionId});
+      const result = await this.contact.pauseRecording({interactionId: this.data.interactionId});
+
+      return result;
     } catch (error) {
       const {error: detailedError} = getErrorDetails(error, 'pauseRecording', CC_FILE);
       throw detailedError;
@@ -230,15 +251,73 @@ export default class Task extends EventEmitter implements ITask {
     resumeRecordingPayload: ResumeRecordingPayload
   ): Promise<TaskResponse> {
     try {
-      return this.contact.resumeRecording({
+      const result = await this.contact.resumeRecording({
         interactionId: this.data.interactionId,
         data: resumeRecordingPayload,
       });
+
+      return result;
     } catch (error) {
       const {error: detailedError} = getErrorDetails(error, 'resumeRecording', CC_FILE);
       throw detailedError;
     }
   }
 
-  // TODO: consult and transfer public methods to be implemented here
+  /**
+   * This is used to consult the task
+   * @param consultPayload
+   * @returns Promise<TaskResponse>
+   * @throws Error
+   * @example
+   * ```typescript
+   * const consultPayload = {
+   *   destination: 'myBuddyAgentId',
+   *   destinationType: DESTINATION_TYPE.AGENT,
+   * }
+   * task.consult(consultPayload).then(()=>{}).catch(()=>{});
+   * ```
+   * */
+  public async consult(consultPayload: ConsultPayload): Promise<TaskResponse> {
+    try {
+      const result = await this.contact.consult({
+        interactionId: this.data.interactionId,
+        data: consultPayload,
+      });
+
+      return result;
+    } catch (error) {
+      const {error: detailedError} = getErrorDetails(error, 'consult', CC_FILE);
+      throw detailedError;
+    }
+  }
+
+  /**
+   * This is used to end the consult
+   * @param consultEndPayload
+   * @returns Promise<TaskResponse>
+   * @throws Error
+   * @example
+   * ```typescript
+   * const consultEndPayload = {
+   *  isConsult: true,
+   *  queueId: 'myQueueId',
+   * }
+   * task.endConsult(consultEndPayload).then(()=>{}).catch(()=>{});
+   * ```
+   */
+  public async endConsult(consultEndPayload: ConsultEndPayload): Promise<TaskResponse> {
+    try {
+      const result = await this.contact.consultEnd({
+        interactionId: this.data.interactionId,
+        data: consultEndPayload,
+      });
+
+      return result;
+    } catch (error) {
+      const {error: detailedError} = getErrorDetails(error, 'endConsult', CC_FILE);
+      throw detailedError;
+    }
+  }
+
+  // TODO: transfer public methods to be implemented here
 }

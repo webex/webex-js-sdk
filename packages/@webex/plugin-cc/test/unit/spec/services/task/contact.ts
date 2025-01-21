@@ -95,7 +95,44 @@ describe("Routing contacts", () => {
     const req = contact.consultAccept({} as any);
     expect(req).toBeDefined();
   });
- 
+
+  it("consultEnd", () => {
+    fakeAqm.pendingRequests = {};
+    const req = contact.consultEnd({
+      interactionId: "interactionId",
+      data: {
+        isConsult: true,
+        queueId: "queueId",
+        taskId: "taskId"
+      }
+    });
+    expect(req).toBeDefined();
+  });
+
+  it("consultEnd without QueueId", () => {
+    fakeAqm.pendingRequests = {};
+    const req = contact.consultEnd({
+      interactionId: "interactionId",
+      data: {
+        isConsult: true,
+        taskId: "taskId"
+      }
+    });
+    expect(req).toBeDefined();
+  });
+
+  it("consultEnd without QueueId and isConsult false", () => {
+    fakeAqm.pendingRequests = {};
+    const req = contact.consultEnd({
+      interactionId: "interactionId",
+      data: {
+        isConsult: false,
+        taskId: "taskId"
+      }
+    });
+    expect(req).toBeDefined();
+  });
+
   it("cancelCtq", () => {
     const req = contact.cancelCtq({} as any);
     expect(req).toBeDefined();
