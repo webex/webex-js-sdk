@@ -403,12 +403,10 @@ describe('webex.cc', () => {
       const emitSpy = jest.spyOn(webex.cc, 'trigger');
       const ccEmitSpy = jest.spyOn(webex.cc, 'emit');
       const incomingCallCb = onSpy.mock.calls[0][1];
-      console.log('Parv', onSpy.mock.calls[0][1])
       
       expect(onSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_INCOMING, incomingCallCb);
       
       incomingCallCb(mockTask);
-      console.log('mockTask is', mockTask);
   
       expect(emitSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_INCOMING, mockTask);
        // Verify message event listener
