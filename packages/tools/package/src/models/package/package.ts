@@ -166,7 +166,14 @@ class Package {
       .then((packageInfo) => {
         this.data.packageInfo = packageInfo;
 
-        const tagVersion = packageInfo['dist-tags'][tag];
+        let updatedPackageInfo = packageInfo;
+
+        if (updatedPackageInfo.version.includes('-')) {
+          const [version] = updatedPackageInfo.version.split('-');
+          updatedPackageInfo = { ...updatedPackageInfo, version };
+        }
+
+        const tagVersion = updatedPackageInfo['dist-tags'][tag];
 
         if (tagVersion) {
           this.data.version = Package.parseVersionStringToObject(tagVersion);
@@ -174,7 +181,7 @@ class Package {
           return this;
         }
 
-        this.data.version = Package.parseVersionStringToObject(`${packageInfo.version}-${tag}.0`);
+        this.data.version = Package.parseVersionStringToObject(`${updatedPackageInfo.version}-${tag}.0`);
 
         return this;
       });

@@ -327,6 +327,14 @@ describe('Package', () => {
         },
       };
 
+      const inspectResultsWithTagInVersion = {
+        version: '4.5.6-example-tag.1',
+        'dist-tags': {
+          [exampleTag]: '1.2.3-example-tag.4',
+          [Package.CONSTANTS.STABLE_TAG]: '4.5.6',
+        },
+      };
+
       const spies = {};
 
       beforeEach(() => {
@@ -366,6 +374,18 @@ describe('Package', () => {
               .toHaveBeenCalledWith(inspectResults['dist-tags'][exampleTag]);
           }),
       );
+
+      it('should call "parseVersionStringToObject()" with only version if pre-release tag is in version', async () => {
+        spies.Package = {
+          inspect: jest.spyOn(Package, 'inspect').mockResolvedValue(inspectResultsWithTagInVersion),
+          parseVersionStringToObject: jest.spyOn(Package, 'parseVersionStringToObject').mockReturnValue(exampleVersion),
+        };
+
+        await pack.inspect();
+        expect(spies.Package.parseVersionStringToObject).toHaveBeenCalledTimes(1);
+        expect(spies.Package.parseVersionStringToObject)
+          .toHaveBeenCalledWith(inspectResults['dist-tags'][exampleTag]);
+      });
 
       it(
         'should call "Package.parseVersionStringToObject()" with the new tag version if the tag version was not found',
