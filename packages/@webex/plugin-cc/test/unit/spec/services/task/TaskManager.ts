@@ -67,6 +67,7 @@ describe('TaskManager', () => {
       mute: jest.fn(),
       isMuted: jest.fn().mockReturnValue(true),
       end: jest.fn(),
+      getCallId: jest.fn().mockReturnValue('call-id-123'),
     };
 
     webCallingService.loginOption = LoginOption.BROWSER;
@@ -586,7 +587,7 @@ describe('TaskManager', () => {
   
     webSocketManagerMock.emit('message', JSON.stringify(ronaPayload));
   
-    expect(taskEmitSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_DECLINED);
+    expect(taskEmitSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_REJECTED);
   });
 
   it('should remove currentTask from taskCollection on AGENT_WRAPPEDUP event', () => {

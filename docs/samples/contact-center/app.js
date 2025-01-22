@@ -372,8 +372,14 @@ function registerTaskListeners(task) {
       task = undefined;
     }
   });
-  task.on('task:declined', () => {
-    showAgentStatePopup();
+  task.on('task:rejected', (reason) => {
+    console.info('Adhwaith', reason);
+    if (reason === 'RONA_TIMER_EXPIRED') {
+      answerElm.disabled = true;
+      declineElm.disabled = true;
+      incomingDetailsElm.innerText = 'No incoming calls';
+    }
+    showAgentStatePopup(reason);
   });
 }
 
@@ -555,8 +561,18 @@ function logoutAgent() {
   });
 }
 
-function showAgentStatePopup() {
+function showAgentStatePopup(reason) {
+  const agentStateReasonText = document.getElementById('agentStateReasonText');
   agentStateSelect.innerHTML = '';
+
+  // Set the reason text based on the reason
+  if (reason === 'USER_BUSY') {
+    agentStateReasonText.innerText = 'Agent declined call';
+  } else if (reason === 'RONA_TIMER_EXPIRED') {
+    agentStateReasonText.innerText = 'Agent unavailable';
+  } else {
+    agentStateReasonText.innerText = '';
+  }
 
   for (let i = 0; i < idleCodesDropdown.options.length; i++) {
     const option = document.createElement('option');

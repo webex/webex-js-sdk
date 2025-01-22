@@ -6,6 +6,7 @@ import {
   ILine,
   LINE_EVENTS,
   CallingClientConfig,
+  CALL_EVENT_KEYS,
   LocalMicrophoneStream,
 } from '@webex/calling';
 import {LoginOption, WebexSDK} from '../../../../src/types';
@@ -63,7 +64,8 @@ describe('WebCallingService', () => {
       answer: jest.fn(),
       mute: jest.fn(),
       isMuted: jest.fn().mockReturnValue(true),
-      end: jest.fn()
+      end: jest.fn(),
+      getCallId: jest.fn().mockReturnValue('call-id-123'),
     };
 
     webRTCCalling.call = mockCall;
@@ -273,6 +275,16 @@ describe('WebCallingService', () => {
       const result = webRTCCalling.getTaskIdForCall(callId);
 
       expect(result).toBeUndefined();
+    });
+  });
+
+  describe('cleanUpCall', () => {
+    it('should clean up the call and remove listeners', () => {
+      webRTCCalling.cleanUpCall();
+
+      expect(mockCall.off).toHaveBeenCalledWith(CALL_EVENT_KEYS.REMOTE_MEDIA, expect.any(Function));
+      expect(mockCall.off).toHaveBeenCalledWith(CALL_EVENT_KEYS.DISCONNECT, expect.any(Function));
+      expect(webRTCCalling.call).toBeNull();
     });
   });
 });

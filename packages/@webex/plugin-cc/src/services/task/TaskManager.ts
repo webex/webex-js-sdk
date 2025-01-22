@@ -80,16 +80,13 @@ export default class TaskManager extends EventEmitter {
             this.currentTask.emit(TASK_EVENTS.TASK_ASSIGNED, this.currentTask);
             break;
           case CC_EVENTS.AGENT_CONTACT_OFFER_RONA:
-            this.currentTask.emit(TASK_EVENTS.TASK_DECLINED);
+            this.currentTask.emit(TASK_EVENTS.TASK_REJECTED, payload.data.reason);
+            this.handleEndedTaskCleanup();
             break;
           case CC_EVENTS.CONTACT_ENDED:
             if (this.currentTask.data.interaction.state === 'new') {
               this.currentTask.emit(TASK_EVENTS.TASK_END, {wrapupRequired: false});
-              if (this.webCallingService.loginOption === LoginOption.BROWSER) {
-                this.currentTask.unregisterWebCallListeners();
-                this.webCallingService.unregisterCallListeners();
-              }
-              this.removeCurrentTaskFromCollection();
+              this.handleEndedTaskCleanup();
             }
             break;
           case CC_EVENTS.AGENT_CONTACT_HELD:
@@ -174,6 +171,14 @@ export default class TaskManager extends EventEmitter {
         method: 'removeCurrentTaskFromCollection',
       });
     }
+  }
+
+  private handleEndedTaskCleanup() {
+    if (this.webCallingService.loginOption === LoginOption.BROWSER) {
+      this.currentTask.unregisterWebCallListeners();
+      this.webCallingService.cleanUpCall();
+    }
+    this.removeCurrentTaskFromCollection();
   }
 
   /**
