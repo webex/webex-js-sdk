@@ -159,7 +159,9 @@
               <div class="u-mv">
                 <button onclick="holdResumeCall()" id="hold-resume" class="btn--yellow" disabled>Hold</button>
                 <button onclick="showInitiateConsultDialog()" id="consult" class="btn--blue" disabled>Consult</button>
+                <button onclick="toggleTransferOptions()" id="transfer" class="btn--blue" disabled>Transfer</button>
                 <button onclick="endConsult()" id="end-consult" class="btn--red" style="display: none;">End Consult</button>
+                <button onclick="initiateConsultTransfer()" id="consult-transfer" style="display: none;">Consult Transfer</button>
                 <button onclick="endCall()" id="end" class="btn--red" disabled>End</button>
                 <dialog id="initiate-consult-dialog">
                   <header>Consult</header>
@@ -180,6 +182,18 @@
                     </div>
                   </fieldset>
                 </dialog>
+                <fieldset id="transfer-options" style="display: none;">
+                  <legend>Transfer Options</legend>
+                  <select id="transfer-destination-type" onchange="onTransferTypeSelectionChanged()">
+                    <option value="queue" selected>Queue</option>
+                    <option value="agent">Agent</option>
+                    <option value="dialNumber">Dial Number</option>
+                  </select>
+                  <div id="transfer-destination-holder">
+                    <input id="transfer-destination" placeholder="Enter destination" value="" type="text" />
+                  </div>
+                  <button id="initiate-transfer" onclick="initiateTransfer()" class="btn--green">Initiate Transfer</button>
+                </fieldset>
                 <fieldset>
                   <legend>Call Wrapup</legend>
                   <button onclick="wrapupCall()" id="wrapup" class="btn--green" disabled>Wrapup</button>

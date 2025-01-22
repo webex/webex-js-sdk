@@ -14,6 +14,9 @@ import {
   ConsultEndPayload,
   TaskData,
   DESTINATION_TYPE,
+  CONSULT_TRANSFER_DESTINATION_TYPE,
+  ConsultTransferPayLoad,
+  TransferPayLoad,
 } from '../../../../../src/services/task/types';
 
 jest.mock('@webex/calling');
@@ -50,6 +53,9 @@ describe('Task', () => {
       unHold: jest.fn().mockResolvedValue({}),
       consult: jest.fn().mockResolvedValue({}),
       consultEnd: jest.fn().mockResolvedValue({}),
+      blindTransfer: jest.fn().mockResolvedValue({}),
+      vteamTransfer: jest.fn().mockResolvedValue({}),
+      consultTransfer: jest.fn().mockResolvedValue({}),
       end: jest.fn().mockResolvedValue({}),
       wrapup: jest.fn().mockResolvedValue({}),
       pauseRecording: jest.fn().mockResolvedValue({}),
@@ -455,6 +461,114 @@ describe('Task', () => {
 
     await expect(task.endConsult(consultEndPayload)).rejects.toThrow(error.details.data.reason);
     expect(getErrorDetailsSpy).toHaveBeenCalledWith(error, 'endConsult', CC_FILE);
+  });
+
+  it('should do consult transfer the task to consulted agent and return the expected response', async () => {
+    const consultPayload = {
+      destination: '1234',
+      destinationType: DESTINATION_TYPE.AGENT,
+    };
+    const expectedResponse: TaskResponse = {data: {interactionId: taskId}} as AgentContact;
+    contactMock.consult.mockResolvedValue(expectedResponse);
+
+    const response = await task.consult(consultPayload);
+
+    expect(contactMock.consult).toHaveBeenCalledWith({interactionId: taskId, data: consultPayload});
+    expect(response).toEqual(expectedResponse);
+
+    const consultTransferPayload: ConsultTransferPayLoad = {
+      to: '1234',
+      destinationType: CONSULT_TRANSFER_DESTINATION_TYPE.AGENT,
+    };
+
+    const consultTransferResponse = await task.consultTransfer(consultTransferPayload);
+    expect(contactMock.consultTransfer).toHaveBeenCalledWith({interactionId: taskId, data: consultTransferPayload});
+  });
+
+  it('should handle errors in consult transfer', async () => {
+    const consultPayload = {
+      destination: '1234',
+      destinationType: DESTINATION_TYPE.AGENT,
+    };
+    const expectedResponse: TaskResponse = {data: {interactionId: taskId}} as AgentContact;
+    contactMock.consult.mockResolvedValue(expectedResponse);
+
+    const response = await task.consult(consultPayload);
+
+    expect(contactMock.consult).toHaveBeenCalledWith({interactionId: taskId, data: consultPayload});
+    expect(response).toEqual(expectedResponse);
+
+    const error = {
+      details: {
+        trackingId: '1234',
+        data: {
+          reason: 'Consult Transfer Failed',
+        },
+      },
+    };
+    contactMock.consultTransfer.mockImplementation(() => {
+      throw error;
+    });
+
+    const consultTransferPayload: ConsultTransferPayLoad = {
+      to: '1234',
+      destinationType: CONSULT_TRANSFER_DESTINATION_TYPE.AGENT,
+    };
+
+    await expect(task.consultTransfer(consultTransferPayload)).rejects.toThrow(error.details.data.reason);
+    expect(getErrorDetailsSpy).toHaveBeenCalledWith(error, 'consultTransfer', CC_FILE);
+  });
+
+  it('should do vteamTransfer if destinationType is queue and return the expected response', async () => {
+    const transferPayload: TransferPayLoad = {
+      to: '1234',
+      destinationType: DESTINATION_TYPE.QUEUE,
+    };
+
+    const expectedResponse: TaskResponse = {data: {interactionId: taskId}} as AgentContact;
+    contactMock.vteamTransfer.mockResolvedValue(expectedResponse);
+
+    const response = await task.transfer(transferPayload);
+
+    expect(contactMock.vteamTransfer).toHaveBeenCalledWith({interactionId: taskId, data: transferPayload});
+    expect(response).toEqual(expectedResponse);
+  });
+
+  it('should do blindTransfer if destinationType is anything other than queue and return the expected response', async () => {
+    const transferPayload: TransferPayLoad = {
+      to: '1234',
+      destinationType: DESTINATION_TYPE.AGENT,
+    };
+
+    const expectedResponse: TaskResponse = {data: {interactionId: taskId}} as AgentContact;
+    contactMock.blindTransfer.mockResolvedValue(expectedResponse);
+
+    const response = await task.transfer(transferPayload);
+
+    expect(contactMock.blindTransfer).toHaveBeenCalledWith({interactionId: taskId, data: transferPayload});
+    expect(response).toEqual(expectedResponse);
+  });
+
+  it('should handle errors in transfer method', async () => {
+    const error = {
+      details: {
+        trackingId: '1234',
+        data: {
+          reason: 'Consult Transfer Failed',
+        },
+      },
+    };
+    contactMock.blindTransfer.mockImplementation(() => {
+      throw error;
+    });
+
+    const blindTransferPayload: TransferPayLoad = {
+      to: '1234',
+      destinationType: DESTINATION_TYPE.AGENT,
+    };
+
+    await expect(task.transfer(blindTransferPayload)).rejects.toThrow(error.details.data.reason);
+    expect(getErrorDetailsSpy).toHaveBeenCalledWith(error, 'transfer', CC_FILE);
   });
 
   it('should end the task and return the expected response', async () => {

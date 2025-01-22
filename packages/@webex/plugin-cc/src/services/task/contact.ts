@@ -303,29 +303,31 @@ export default function routingContact(aqm: AqmReqs) {
     /*
      * Consult Transfer contact
      */
-    consultTransfer: aqm.req((p: {interactionId: string; data: Contact.TransferPayLoad}) => ({
-      url: `${TASK_API}${p.interactionId}${CONSULT_TRANSFER}`,
-      data: p.data,
-      host: WCC_API_GATEWAY,
-      err,
-      notifSuccess: {
-        bind: {
-          type: TASK_MESSAGE_TYPE,
-          data: {
-            type: [CC_EVENTS.AGENT_CONSULT_TRANSFERRED, CC_EVENTS.AGENT_CONSULT_TRANSFERRING],
-            interactionId: p.interactionId,
+    consultTransfer: aqm.req(
+      (p: {interactionId: string; data: Contact.ConsultTransferPayLoad}) => ({
+        url: `${TASK_API}${p.interactionId}${CONSULT_TRANSFER}`,
+        data: p.data,
+        host: WCC_API_GATEWAY,
+        err,
+        notifSuccess: {
+          bind: {
+            type: TASK_MESSAGE_TYPE,
+            data: {
+              type: [CC_EVENTS.AGENT_CONSULT_TRANSFERRED, CC_EVENTS.AGENT_CONSULT_TRANSFERRING],
+              interactionId: p.interactionId,
+            },
           },
+          msg: {} as Contact.AgentContact,
         },
-        msg: {} as Contact.AgentContact,
-      },
-      notifFail: {
-        bind: {
-          type: TASK_MESSAGE_TYPE,
-          data: {type: CC_EVENTS.AGENT_CONSULT_TRANSFER_FAILED},
+        notifFail: {
+          bind: {
+            type: TASK_MESSAGE_TYPE,
+            data: {type: CC_EVENTS.AGENT_CONSULT_TRANSFER_FAILED},
+          },
+          errId: 'Service.aqm.task.AgentConsultTransferFailed',
         },
-        errId: 'Service.aqm.task.AgentConsultTransferFailed',
-      },
-    })),
+      })
+    ),
 
     /*
      * End contact
