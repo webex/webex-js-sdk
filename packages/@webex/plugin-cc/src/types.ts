@@ -224,6 +224,7 @@ export type RequestBody =
   | Contact.ConsultPayload
   | Contact.ConsultEndAPIPayload // API Payload accepts only QueueId wheres SDK API allows more params
   | Contact.TransferPayLoad
+  | Contact.ConsultTransferPayLoad
   | Contact.cancelCtq
   | Contact.WrapupPayLoad;
 
