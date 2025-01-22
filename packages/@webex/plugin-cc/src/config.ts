@@ -2,7 +2,7 @@ import {LOGGER} from '@webex/calling';
 
 export default {
   cc: {
-    allowMultiLogin: true,
+    allowMultiLogin: false,
     allowAutomatedRelogin: true,
     clientType: 'WebexCCSDK',
     isKeepAliveEnabled: false,

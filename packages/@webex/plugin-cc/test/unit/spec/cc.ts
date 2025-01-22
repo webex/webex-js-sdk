@@ -15,7 +15,7 @@ import Services from '../../../src/services';
 import config from '../../../src/config';
 import {CC_EVENTS} from '../../../src/services/config/types';
 import LoggerProxy from '../../../src/logger-proxy';
-import {CC_FILE, AGENT_STATE_CHANGE} from '../../../src/constants';
+import {CC_FILE, AGENT_STATE_CHANGE, AGENT_MULTI_LOGIN} from '../../../src/constants';
 
 // Mock the Worker API
 import '../../../__mocks__/workerMock';
@@ -246,7 +246,7 @@ describe('webex.cc', () => {
           force: true,
           isKeepAliveEnabled: false,
           clientType: 'WebexCCSDK',
-          allowMultiLogin: true,
+          allowMultiLogin: false,
         },
       });
       expect(configSpy).toHaveBeenCalled();
@@ -411,18 +411,31 @@ describe('webex.cc', () => {
       expect(emitSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_INCOMING, mockTask);
        // Verify message event listener
       const messageCallback = mockWebSocketManager.on.mock.calls.find(call => call[0] === 'message')[1];
-      const eventData = {
+      const agentStateChangeEventData = {
         type: CC_EVENTS.AGENT_STATE_CHANGE,
         data: { some: 'data' },
       };
 
+      const agentMultiLoginEventData = {
+        type: CC_EVENTS.AGENT_MULTI_LOGIN,
+        data: {some: 'data'},
+      }
+
       // Simulate receiving a message event
-      messageCallback(JSON.stringify(eventData));
+      messageCallback(JSON.stringify(agentStateChangeEventData));
 
       expect(ccEmitSpy).toHaveBeenCalledWith(
         AGENT_STATE_CHANGE,
-        eventData.data
+        agentStateChangeEventData.data
       );
+
+      // Simulate receiving a message event
+      messageCallback(JSON.stringify(agentMultiLoginEventData));
+
+      expect(ccEmitSpy).toHaveBeenCalledWith(
+        AGENT_MULTI_LOGIN,
+        agentMultiLoginEventData.data
+      )
     });
 
     it('should login successfully with other LoginOption', async () => {
@@ -871,4 +884,5 @@ describe('webex.cc', () => {
       );
     });
   });
+
 });
