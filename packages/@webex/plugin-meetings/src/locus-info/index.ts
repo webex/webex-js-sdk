@@ -1283,12 +1283,13 @@ export default class LocusInfo extends EventsScope {
   /**
    * handles when the locus.mediaShares is updated
    * @param {Object} mediaShares the locus.mediaShares property
+   * @param {boolean} forceUpdate force to update the mediaShares
    * @returns {undefined}
    * @memberof LocusInfo
    * emits internal event locus_info_update_media_shares
    */
-  updateMediaShares(mediaShares: object) {
-    if (mediaShares && !isEqual(this.mediaShares, mediaShares)) {
+  updateMediaShares(mediaShares: object, forceUpdate = false) {
+    if (mediaShares && (!isEqual(this.mediaShares, mediaShares) || forceUpdate)) {
       const parsedMediaShares = MediaSharesUtils.getMediaShares(this.mediaShares, mediaShares);
 
       this.updateMeeting(parsedMediaShares.current);
@@ -1303,6 +1304,7 @@ export default class LocusInfo extends EventsScope {
         {
           current: parsedMediaShares.current,
           previous: parsedMediaShares.previous,
+          forceUpdate,
         }
       );
     }
@@ -1390,6 +1392,19 @@ export default class LocusInfo extends EventsScope {
           },
           LOCUSINFO.EVENTS.SELF_MEETING_BREAKOUTS_CHANGED,
           {breakoutSessions: parsedSelves.current.breakoutSessions}
+        );
+      }
+
+      if (parsedSelves.updates.brbChanged) {
+        this.emitScoped(
+          {
+            file: 'locus-info',
+            function: 'updateSelf',
+          },
+          LOCUSINFO.EVENTS.SELF_MEETING_BRB_CHANGED,
+          {
+            brb: parsedSelves.current.brb,
+          }
         );
       }
 

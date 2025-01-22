@@ -31,7 +31,6 @@ import {
 } from '@webex/internal-media-core';
 
 import {
-  getDevices,
   LocalStream,
   LocalCameraStream,
   LocalDisplayStream,
@@ -161,6 +160,7 @@ import PermissionError from '../common/errors/permission';
 import {LocusMediaRequest} from './locusMediaRequest';
 import {ConnectionStateHandler, ConnectionStateEvent} from './connectionStateHandler';
 import JoinWebinarError from '../common/errors/join-webinar-error';
+import Member from '../member';
 
 // default callback so we don't call an undefined function, but in practice it should never be used
 const DEFAULT_ICE_PHASE_CALLBACK = () => 'JOIN_MEETING_FINAL';
@@ -850,7 +850,7 @@ export default class Meeting extends StatelessWebexPlugin {
      * @memberof Meeting
      */
     // @ts-ignore
-    this.webinar = new Webinar({}, {parent: this.webex});
+    this.webinar = new Webinar({meetingId: this.id}, {parent: this.webex});
     /**
      * helper class for managing receive slots (for multistream media connections)
      */
@@ -2741,6 +2741,7 @@ export default class Meeting extends StatelessWebexPlugin {
       this.triggerAnnotationInfoEvent(contentShare, previousContentShare);
 
       if (
+        !payload.forceUpdate &&
         contentShare.beneficiaryId === previousContentShare?.beneficiaryId &&
         contentShare.disposition === previousContentShare?.disposition &&
         contentShare.deviceUrlSharing === previousContentShare.deviceUrlSharing &&
@@ -2787,7 +2788,11 @@ export default class Meeting extends StatelessWebexPlugin {
       // It does not matter who requested to share the whiteboard, everyone gets the same view
       else if (whiteboardShare.disposition === FLOOR_ACTION.GRANTED) {
         // WHITEBOARD - sharing whiteboard
-        newShareStatus = SHARE_STATUS.WHITEBOARD_SHARE_ACTIVE;
+        // Webinar attendee should receive whiteboard as remote share
+        newShareStatus =
+          this.locusInfo?.info?.isWebinar && this.webinar?.selfIsAttendee
+            ? SHARE_STATUS.REMOTE_SHARE_ACTIVE
+            : SHARE_STATUS.WHITEBOARD_SHARE_ACTIVE;
       }
       // or if content share is either released or null and whiteboard share is either released or null, no one is sharing
       else if (
@@ -2802,6 +2807,7 @@ export default class Meeting extends StatelessWebexPlugin {
       LoggerProxy.logger.info(
         `Meeting:index#setUpLocusInfoMediaInactiveListener --> this.shareStatus=${this.shareStatus} newShareStatus=${newShareStatus}`
       );
+
       if (newShareStatus !== this.shareStatus) {
         const oldShareStatus = this.shareStatus;
 
@@ -3059,7 +3065,20 @@ export default class Meeting extends StatelessWebexPlugin {
    */
   private setUpLocusResourcesListener() {
     this.locusInfo.on(LOCUSINFO.EVENTS.LINKS_RESOURCES, (payload) => {
-      this.webinar.updateWebcastUrl(payload);
+      if (payload) {
+        this.webinar.updateWebcastUrl(payload);
+        Trigger.trigger(
+          this,
+          {
+            file: 'meeting/index',
+            function: 'setUpLocusInfoMeetingInfoListener',
+          },
+          EVENT_TRIGGERS.MEETING_RESOURCE_LINKS_UPDATE,
+          {
+            payload,
+          }
+        );
+      }
     });
   }
 
@@ -3369,6 +3388,20 @@ export default class Meeting extends StatelessWebexPlugin {
       }
     });
 
+    this.locusInfo.on(LOCUSINFO.EVENTS.SELF_MEETING_BRB_CHANGED, (payload) => {
+      Trigger.trigger(
+        this,
+        {
+          file: 'meeting/index',
+          function: 'setUpLocusInfoSelfListener',
+        },
+        EVENT_TRIGGERS.MEETING_SELF_BRB_UPDATE,
+        {
+          payload,
+        }
+      );
+    });
+
     this.locusInfo.on(LOCUSINFO.EVENTS.SELF_ROLES_CHANGED, (payload) => {
       const isModeratorOrCohost =
         payload.newRoles?.includes(SELF_ROLES.MODERATOR) ||
@@ -3378,6 +3411,7 @@ export default class Meeting extends StatelessWebexPlugin {
         payload.newRoles?.includes(SELF_ROLES.MODERATOR)
       );
       this.webinar.updateRoleChanged(payload);
+
       Trigger.trigger(
         this,
         {
@@ -3570,6 +3604,50 @@ export default class Meeting extends StatelessWebexPlugin {
     }
 
     return this.members.admitMembers(memberIds, locusUrls);
+  }
+
+  /**
+   * Manages be right back status updates for the current participant.
+   *
+   * @param {boolean} enabled - Indicates whether the user enabled brb or not.
+   * @returns {Promise<void>} resolves when the brb status is updated or does nothing if not in a multistream meeting.
+   * @throws {Error} - Throws an error if the request fails.
+   */
+  public async beRightBack(enabled: boolean): Promise<void> {
+    if (!this.isMultistream) {
+      const errorMessage = 'Meeting:index#beRightBack --> Not a multistream meeting';
+      const error = new Error(errorMessage);
+
+      LoggerProxy.logger.error(error);
+
+      return Promise.reject(error);
+    }
+
+    if (!this.mediaProperties.webrtcMediaConnection) {
+      const errorMessage = 'Meeting:index#beRightBack --> WebRTC media connection is not defined';
+      const error = new Error(errorMessage);
+
+      LoggerProxy.logger.error(error);
+
+      return Promise.reject(error);
+    }
+
+    // this logic should be applied only to multistream meetings
+    return this.meetingRequest
+      .setBrb({
+        enabled,
+        locusUrl: this.locusUrl,
+        deviceUrl: this.deviceUrl,
+        selfId: this.selfId,
+      })
+      .then(() => {
+        this.sendSlotManager.setSourceStateOverride(MediaType.VideoMain, enabled ? 'away' : null);
+      })
+      .catch((error) => {
+        LoggerProxy.logger.error('Meeting:index#beRightBack --> Error ', error);
+
+        return Promise.reject(error);
+      });
   }
 
   /**
@@ -5581,9 +5659,15 @@ export default class Meeting extends StatelessWebexPlugin {
    */
   async updateLLMConnection() {
     // @ts-ignore - Fix type
-    const {url, info: {datachannelUrl} = {}} = this.locusInfo;
+    const {url, info: {datachannelUrl, practiceSessionDatachannelUrl} = {}} = this.locusInfo;
 
     const isJoined = this.isJoined();
+
+    // webinar panelist should use new data channel in practice session
+    const dataChannelUrl =
+      this.webinar.isJoinPracticeSessionDataChannel() && practiceSessionDatachannelUrl
+        ? practiceSessionDatachannelUrl
+        : datachannelUrl;
 
     // @ts-ignore - Fix type
     if (this.webex.internal.llm.isConnected()) {
@@ -5591,7 +5675,7 @@ export default class Meeting extends StatelessWebexPlugin {
         // @ts-ignore - Fix type
         url === this.webex.internal.llm.getLocusUrl() &&
         // @ts-ignore - Fix type
-        datachannelUrl === this.webex.internal.llm.getDatachannelUrl() &&
+        dataChannelUrl === this.webex.internal.llm.getDatachannelUrl() &&
         isJoined
       ) {
         return undefined;
@@ -5608,7 +5692,7 @@ export default class Meeting extends StatelessWebexPlugin {
 
     // @ts-ignore - Fix type
     return this.webex.internal.llm
-      .registerAndConnect(url, datachannelUrl)
+      .registerAndConnect(url, dataChannelUrl)
       .then((registerAndConnectResult) => {
         // @ts-ignore - Fix type
         this.webex.internal.llm.off('event:relay.event', this.processRelayEvent);
@@ -6447,6 +6531,14 @@ export default class Meeting extends StatelessWebexPlugin {
         this.webex.meetings.geoHintInfo?.clientAddress ||
         options.data.intervalMetadata.peerReflexiveIP ||
         MQA_STATS.DEFAULT_IP;
+
+      const {members} = this.getMembers().membersCollection;
+
+      // Count members that are in the meeting
+      options.data.intervalMetadata.meetingUserCount = Object.values(members).filter(
+        (member: Member) => member.isInMeeting
+      ).length;
+
       // @ts-ignore
       this.webex.internal.newMetrics.submitMQE({
         name: 'client.mediaquality.event',
@@ -6775,32 +6867,6 @@ export default class Meeting extends StatelessWebexPlugin {
         NetworkQualityEventNames.NETWORK_QUALITY,
         this.sendNetworkQualityEvent.bind(this)
       );
-    }
-  }
-
-  /**
-   * Handles device logging
-   *
-   * @private
-   * @static
-   * @param {boolean} isAudioEnabled
-   * @param {boolean} isVideoEnabled
-   * @returns {Promise<void>}
-   */
-
-  private static async handleDeviceLogging(isAudioEnabled, isVideoEnabled): Promise<void> {
-    try {
-      let devices = [];
-      if (isVideoEnabled && isAudioEnabled) {
-        devices = await getDevices();
-      } else if (isVideoEnabled) {
-        devices = await getDevices(Media.DeviceKind.VIDEO_INPUT);
-      } else if (isAudioEnabled) {
-        devices = await getDevices(Media.DeviceKind.AUDIO_INPUT);
-      }
-      MeetingUtil.handleDeviceLogging(devices);
-    } catch {
-      // getDevices may fail if we don't have browser permissions, that's ok, we still can have a media connection
     }
   }
 
@@ -7305,12 +7371,6 @@ export default class Meeting extends StatelessWebexPlugin {
         forceTurnDiscovery,
         turnServerInfo
       );
-
-      if (audioEnabled || videoEnabled) {
-        await Meeting.handleDeviceLogging(audioEnabled, videoEnabled);
-      } else {
-        LoggerProxy.logger.info(`${LOG_HEADER} device logging not required`);
-      }
 
       if (this.mediaProperties.hasLocalShareStream()) {
         await this.enqueueScreenShareFloorRequest();

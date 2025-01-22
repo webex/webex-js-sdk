@@ -4,7 +4,7 @@
 import {WebexPlugin, config} from '@webex/webex-core';
 import uuid from 'uuid';
 import {get} from 'lodash';
-import {HEADERS, HTTP_VERBS, MEETINGS, SELF_ROLES} from '../constants';
+import {_ID_, HEADERS, HTTP_VERBS, MEETINGS, SELF_ROLES, SHARE_STATUS} from '../constants';
 
 import WebinarCollection from './collection';
 import LoggerProxy from '../common/logs/logger-proxy';
@@ -25,6 +25,7 @@ const Webinar = WebexPlugin.extend({
     selfIsPanelist: 'boolean', // self is panelist
     selfIsAttendee: 'boolean', // self is attendee
     practiceSessionEnabled: 'boolean', // practice session enabled
+    meetingId: 'string',
   },
 
   /**
@@ -68,12 +69,45 @@ const Webinar = WebexPlugin.extend({
     const isPromoted =
       oldRoles.includes(SELF_ROLES.ATTENDEE) && newRoles.includes(SELF_ROLES.PANELIST);
     const isDemoted =
-      oldRoles.includes(SELF_ROLES.PANELIST) && newRoles.includes(SELF_ROLES.ATTENDEE);
+      (oldRoles.includes(SELF_ROLES.PANELIST) && newRoles.includes(SELF_ROLES.ATTENDEE)) ||
+      (!oldRoles.includes(SELF_ROLES.ATTENDEE) && newRoles.includes(SELF_ROLES.ATTENDEE)); // for attendee just join meeting case
     this.set('selfIsPanelist', newRoles.includes(SELF_ROLES.PANELIST));
     this.set('selfIsAttendee', newRoles.includes(SELF_ROLES.ATTENDEE));
     this.updateCanManageWebcast(newRoles.includes(SELF_ROLES.MODERATOR));
+    this.updateStatusByRole({isPromoted, isDemoted});
 
     return {isPromoted, isDemoted};
+  },
+
+  /**
+   * should join practice session data channel or not
+   * @param {Object} {isPromoted: boolean, isDemoted: boolean}} Role transition states
+   * @returns {void}
+   */
+  updateStatusByRole({isPromoted, isDemoted}) {
+    const meeting = this.webex.meetings.getMeetingByType(_ID_, this.meetingId);
+
+    if (
+      (isDemoted && meeting?.shareStatus === SHARE_STATUS.WHITEBOARD_SHARE_ACTIVE) ||
+      isPromoted
+    ) {
+      // attendees in webinar should subscribe streaming for whiteboard sharing
+      // while panelist still need subscribe native mode so trigger force update here
+      meeting?.locusInfo?.updateMediaShares(meeting?.locusInfo?.mediaShares, true);
+    }
+
+    if (this.practiceSessionEnabled) {
+      // may need change data channel in practice session
+      meeting?.updateLLMConnection();
+    }
+  },
+
+  /**
+   * should join practice session data channel or not
+   * @returns {boolean}
+   */
+  isJoinPracticeSessionDataChannel() {
+    return this.selfIsPanelist && this.practiceSessionEnabled;
   },
 
   /**

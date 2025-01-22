@@ -27,7 +27,7 @@ import {
   _SLIDES_,
   ANNOTATION,
 } from '../constants';
-import {SendReactionOptions, ToggleReactionsOptions} from './request.type';
+import {SendReactionOptions, BrbOptions, ToggleReactionsOptions} from './request.type';
 import MeetingUtil from './util';
 import {AnnotationInfo} from '../annotation/annotation.types';
 import {ClientMediaPreferences} from '../reachability/reachability.types';
@@ -907,6 +907,31 @@ export default class MeetingRequest extends StatelessWebexPlugin {
     return this.request({
       method: HTTP_VERBS.GET,
       uri: locusUrl,
+    });
+  }
+
+  /**
+   * Sends a request to set be right back status.
+   *
+   * @param {Object} options - The options for brb request.
+   * @param {boolean} options.enabled - Whether brb status is enabled.
+   * @param {string} options.locusUrl - The URL of the locus.
+   * @param {string} options.deviceUrl - The URL of the device.
+   * @param {string} options.selfId - The ID of the participant.
+   * @returns {Promise}
+   */
+  setBrb({enabled, locusUrl, deviceUrl, selfId}: BrbOptions) {
+    const uri = `${locusUrl}/${PARTICIPANT}/${selfId}/${CONTROLS}`;
+
+    return this.locusDeltaRequest({
+      method: HTTP_VERBS.PATCH,
+      uri,
+      body: {
+        brb: {
+          enabled,
+          deviceUrl,
+        },
+      },
     });
   }
 }

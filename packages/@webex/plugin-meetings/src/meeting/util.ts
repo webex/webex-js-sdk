@@ -441,6 +441,9 @@ const MeetingUtil = {
     displayHints.includes(DISPLAY_HINTS.LEAVE_END_MEETING),
 
   canManageBreakout: (displayHints) => displayHints.includes(DISPLAY_HINTS.BREAKOUT_MANAGEMENT),
+
+  canStartBreakout: (displayHints) => !displayHints.includes(DISPLAY_HINTS.DISABLE_BREAKOUT_START),
+
   canBroadcastMessageToBreakout: (displayHints, policies = {}) =>
     displayHints.includes(DISPLAY_HINTS.BROADCAST_MESSAGE_TO_BREAKOUT) &&
     !!policies[SELF_POLICY.SUPPORT_BROADCAST_MESSAGE],
@@ -494,15 +497,6 @@ const MeetingUtil = {
       LoggerProxy.logger.log(LOG_HEADER, `deviceId = ${deviceId}`);
       LoggerProxy.logger.log(LOG_HEADER, 'settings =', JSON.stringify(settings));
     }
-  },
-
-  handleDeviceLogging: (devices = []) => {
-    const LOG_HEADER = 'MeetingUtil#handleDeviceLogging -->';
-
-    devices.forEach((device) => {
-      LoggerProxy.logger.log(LOG_HEADER, `deviceId = ${device.deviceId}`);
-      LoggerProxy.logger.log(LOG_HEADER, 'settings', JSON.stringify(device));
-    });
   },
 
   endMeetingForAll: (meeting) => {

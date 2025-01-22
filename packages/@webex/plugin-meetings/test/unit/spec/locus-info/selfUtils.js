@@ -60,6 +60,14 @@ describe('plugin-meetings', () => {
         assert.calledWith(spy, self);
         assert.deepEqual(parsedSelf.layout, self.controls.layouts[0].type);
       });
+
+      it('calls getBrb and returns the resulting brb value', () => {
+        const spy = Sinon.spy(SelfUtils, 'getBrb');
+        const parsedSelf = SelfUtils.parse(self);
+
+        assert.calledWith(spy, self);
+        assert.deepEqual(parsedSelf.brb, self.controls.brb);
+      });
     });
 
     describe('getLayout', () => {
@@ -167,6 +175,37 @@ describe('plugin-meetings', () => {
         };
 
         assert.isFalse(SelfUtils.breakoutsChanged(previous, current));
+      });
+    });
+
+    describe('brbChanged', () => {
+      it('should return true if brb have changed', () => {
+        const current = {
+          brb: {enabled: true}
+        };
+        const previous = {
+          brb: {enabled: false}
+        };
+
+        assert.isTrue(SelfUtils.brbChanged(previous, current));
+      });
+
+      it('should return false if brb have not changed', () => {
+        const current = {
+          brb: {enabled: true}
+        };
+        const previous = {
+          brb: {enabled: true}
+        };
+
+        assert.isFalse(SelfUtils.brbChanged(previous, current));
+      });
+
+      it('should return false if brb in current is undefined', () => {
+        const current = {};
+        const previous = {brb: {enabled: true}};
+
+        assert.isFalse(SelfUtils.brbChanged(previous, current));
       });
     });
 

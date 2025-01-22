@@ -3479,6 +3479,51 @@ describe('plugin-meetings', () => {
             });
           });
 
+          it('counts the number of members that are in the meeting for MEDIA_QUALITY event', async () => {
+            let fakeMembersCollection = {
+              members: {
+                member1: { isInMeeting: true },
+                member2: { isInMeeting: true },
+                member3: { isInMeeting: false },
+              },
+            };
+            sinon.stub(meeting, 'getMembers').returns({ membersCollection: fakeMembersCollection });
+            const fakeData = { intervalMetadata: {}, networkType: 'wifi' };
+
+            statsAnalyzerStub.emit(
+              { file: 'test', function: 'test' },
+              StatsAnalyzerEventNames.MEDIA_QUALITY,
+              { data: fakeData }
+            );
+
+            assert.calledWithMatch(webex.internal.newMetrics.submitMQE, {
+              name: 'client.mediaquality.event',
+              options: {
+                meetingId: meeting.id,
+              },
+              payload: {
+                intervals: [sinon.match.has('intervalMetadata', sinon.match.has('meetingUserCount', 2))],
+              },
+            });
+            fakeMembersCollection.members.member2.isInMeeting = false;
+
+            statsAnalyzerStub.emit(
+              { file: 'test', function: 'test' },
+              StatsAnalyzerEventNames.MEDIA_QUALITY,
+              { data: fakeData }
+            );
+
+            assert.calledWithMatch(webex.internal.newMetrics.submitMQE, {
+              name: 'client.mediaquality.event',
+              options: {
+                meetingId: meeting.id,
+              },
+              payload: {
+                intervals: [sinon.match.has('intervalMetadata', sinon.match.has('meetingUserCount', 1))],
+              },
+            });
+          });
+
           it('calls submitMQE correctly', async () => {
             const fakeData = {intervalMetadata: {bla: 'bla'}, networkType: 'wifi'};
 
@@ -3554,14 +3599,6 @@ describe('plugin-meetings', () => {
           it('should pass max-bundle to createMediaConnection if bundlePolicy is not provided', async () => {
             await runCheck(undefined, 'max-bundle');
           });
-        });
-
-        it('succeeds even if getDevices() throws', async () => {
-          meeting.meetingState = 'ACTIVE';
-
-          sinon.stub(InternalMediaCoreModule, 'getDevices').rejects(new Error('fake error'));
-
-          await meeting.addMedia();
         });
 
         describe('CA ice failures checks', () => {
@@ -3702,6 +3739,93 @@ describe('plugin-meetings', () => {
               assert.isTrue(errorThrown);
             });
           });
+        });
+      });
+
+      describe(`#beRightBack`, () => {
+        const fakeMultistreamRoapMediaConnection = {
+          createSendSlot: sinon.stub().returns({
+            setSourceStateOverride: sinon.stub().resolves(),
+            clearSourceStateOverride: sinon.stub().resolves(),
+          }),
+        };
+
+        beforeEach(() => {
+          meeting.meetingRequest.setBrb = sinon.stub().resolves({body: 'test'});
+          meeting.mediaProperties.webrtcMediaConnection = {createSendSlot: sinon.stub()};
+          meeting.sendSlotManager.createSlot(
+            fakeMultistreamRoapMediaConnection,
+            MediaType.VideoMain
+          );
+
+          meeting.locusUrl = 'locus url';
+          meeting.deviceUrl = 'device url';
+          meeting.selfId = 'self id';
+        });
+
+        afterEach(() => {
+          sinon.restore();
+        });
+
+        it('should have #beRightBack', () => {
+          assert.exists(meeting.beRightBack);
+        });
+
+        describe('when in a multistream meeting', () => {
+
+          beforeEach(() => {
+            meeting.isMultistream = true;
+          });
+
+          it('should enable #beRightBack and return a promise', async () => {
+            const brbResult = meeting.beRightBack(true);
+
+            await brbResult;
+            assert.exists(brbResult.then);
+            assert.calledOnce(meeting.meetingRequest.setBrb);
+          })
+
+          it('should disable #beRightBack and return a promise', async () => {
+            const brbResult = meeting.beRightBack(false);
+
+            await brbResult;
+            assert.exists(brbResult.then);
+            assert.calledOnce(meeting.meetingRequest.setBrb);
+          })
+
+          it('should throw an error and reject the promise if setBrb fails', async () => {
+            const error = new Error('setBrb failed');
+            meeting.meetingRequest.setBrb.rejects(error);
+
+            try {
+              await meeting.beRightBack(true);
+            } catch (err) {
+              assert.instanceOf(err, Error);
+              assert.equal(err.message, 'setBrb failed');
+              assert.isRejected((Promise.reject()));
+            }
+          })
+        });
+
+        describe('when in a transcoded meeting', () => {
+
+          beforeEach(() => {
+            meeting.isMultistream = false;
+          });
+
+          it('should ignore enabling #beRightBack', async () => {
+            meeting.beRightBack(true);
+
+            assert.isRejected((Promise.reject()));
+            assert.notCalled(meeting.meetingRequest.setBrb);
+          })
+
+          it('should ignore disabling #beRightBack', async () => {
+            meeting.beRightBack(false);
+
+            assert.isRejected((Promise.reject()));
+            assert.notCalled(meeting.meetingRequest.setBrb);
+          })
         });
       });
 
@@ -4190,7 +4314,6 @@ describe('plugin-meetings', () => {
           });
 
           it('addMedia() works correctly when media is enabled with streams to publish', async () => {
-            const handleDeviceLoggingSpy = sinon.spy(Meeting, 'handleDeviceLogging');
             await meeting.addMedia({localStreams: {microphone: fakeMicrophoneStream}});
             await simulateRoapOffer();
             await simulateRoapOk();
@@ -4221,12 +4344,9 @@ describe('plugin-meetings', () => {
 
             // and that these were the only /media requests that were sent
             assert.calledTwice(locusMediaRequestStub);
-
-            assert.calledOnce(handleDeviceLoggingSpy);
           });
 
           it('addMedia() works correctly when media is enabled with streams to publish and stream is user muted', async () => {
-            const handleDeviceLoggingSpy = sinon.spy(Meeting, 'handleDeviceLogging');
             fakeMicrophoneStream.userMuted = true;
 
             await meeting.addMedia({localStreams: {microphone: fakeMicrophoneStream}});
@@ -4258,7 +4378,6 @@ describe('plugin-meetings', () => {
 
             // and that these were the only /media requests that were sent
             assert.calledTwice(locusMediaRequestStub);
-            assert.calledOnce(handleDeviceLoggingSpy);
           });
 
           it('addMedia() works correctly when media is enabled with tracks to publish and track is ended', async () => {
@@ -4330,7 +4449,6 @@ describe('plugin-meetings', () => {
           });
 
           it('addMedia() works correctly when media is disabled with streams to publish', async () => {
-            const handleDeviceLoggingSpy = sinon.spy(Meeting, 'handleDeviceLogging');
             await meeting.addMedia({
               localStreams: {microphone: fakeMicrophoneStream},
               audioEnabled: false,
@@ -4364,20 +4482,6 @@ describe('plugin-meetings', () => {
 
             // and that these were the only /media requests that were sent
             assert.calledTwice(locusMediaRequestStub);
-            assert.calledOnce(handleDeviceLoggingSpy);
-          });
-
-          it('handleDeviceLogging not called when media is disabled', async () => {
-            const handleDeviceLoggingSpy = sinon.spy(Meeting, 'handleDeviceLogging');
-            await meeting.addMedia({
-              localStreams: {microphone: fakeMicrophoneStream},
-              audioEnabled: false,
-              videoEnabled: false,
-            });
-            await simulateRoapOffer();
-            await simulateRoapOk();
-
-            assert.notCalled(handleDeviceLoggingSpy);
           });
 
           it('addMedia() works correctly when media is disabled with no streams to publish', async () => {
@@ -4411,20 +4515,6 @@ describe('plugin-meetings', () => {
 
             // and that these were the only /media requests that were sent
             assert.calledTwice(locusMediaRequestStub);
-          });
-
-          it('addMedia() works correctly when media is disabled with no streams to publish', async () => {
-            const handleDeviceLoggingSpy = sinon.spy(Meeting, 'handleDeviceLogging');
-            await meeting.addMedia({audioEnabled: false});
-            //calling handleDeviceLogging with audioEnaled as true adn videoEnabled as false
-            assert.calledWith(handleDeviceLoggingSpy, false, true);
-          });
-
-          it('addMedia() works correctly when video is disabled with no streams to publish', async () => {
-            const handleDeviceLoggingSpy = sinon.spy(Meeting, 'handleDeviceLogging');
-            await meeting.addMedia({videoEnabled: false});
-            //calling handleDeviceLogging audioEnabled as true videoEnabled as false
-            assert.calledWith(handleDeviceLoggingSpy, true, false);
           });
 
           it('addMedia() works correctly when video is disabled with no streams to publish', async () => {
@@ -4491,13 +4581,6 @@ describe('plugin-meetings', () => {
 
             // and that these were the only /media requests that were sent
             assert.calledTwice(locusMediaRequestStub);
-          });
-
-          it('addMedia() works correctly when both shareAudio and shareVideo is disabled with no streams publish', async () => {
-            const handleDeviceLoggingSpy = sinon.spy(Meeting, 'handleDeviceLogging');
-            await meeting.addMedia({shareAudioEnabled: false, shareVideoEnabled: false});
-            //calling handleDeviceLogging with audioEnabled true and videoEnabled as true
-            assert.calledWith(handleDeviceLoggingSpy, true, true);
           });
 
           describe('publishStreams()/unpublishStreams() calls', () => {
@@ -8723,6 +8806,7 @@ describe('plugin-meetings', () => {
           });
         });
       });
+
       describe('#setUpLocusInfoSelfListener', () => {
         it('listens to the self unadmitted guest event', (done) => {
           meeting.startKeepAlive = sinon.stub();
@@ -8816,6 +8900,26 @@ describe('plugin-meetings', () => {
             {payload}
           );
         });
+
+        it('listens to the brb state changed event', () => {
+          const assertBrb = (enabled) => {
+            meeting.locusInfo.emit(
+              { function: 'test', file: 'test' },
+              LOCUSINFO.EVENTS.SELF_MEETING_BRB_CHANGED,
+              { brb: { enabled } },
+            )
+            assert.calledWithExactly(
+              TriggerProxy.trigger,
+              meeting,
+              {file: 'meeting/index', function: 'setUpLocusInfoSelfListener'},
+              EVENT_TRIGGERS.MEETING_SELF_BRB_UPDATE,
+              { payload: { brb: { enabled } } },
+            );
+          }
+
+          assertBrb(true);
+          assertBrb(false);
+        })
 
         it('listens to the interpretation changed event', () => {
           meeting.simultaneousInterpretation.updateSelfInterpretation = sinon.stub();
@@ -10735,6 +10839,7 @@ describe('plugin-meetings', () => {
           meeting.webex.internal.llm.on = sinon.stub();
           meeting.webex.internal.llm.off = sinon.stub();
           meeting.processRelayEvent = sinon.stub();
+          meeting.webinar.isJoinPracticeSessionDataChannel = sinon.stub().returns(false);
         });
 
         it('does not connect if the call is not joined yet', async () => {
@@ -10866,6 +10971,19 @@ describe('plugin-meetings', () => {
             meeting.processRelayEvent
           );
         });
+
+
+        it('connect ps data channel if ps started in webinar', async () => {
+          meeting.joinedWith = {state: 'JOINED'};
+          meeting.locusInfo = {url: 'a url', info: {datachannelUrl: 'a datachannel url', practiceSessionDatachannelUrl: 'a ps datachannel url'}};
+          meeting.webinar.isJoinPracticeSessionDataChannel = sinon.stub().returns(true);
+          await meeting.updateLLMConnection();
+
+          assert.notCalled(webex.internal.llm.disconnectLLM);
+          assert.calledWith(webex.internal.llm.registerAndConnect, 'a url', 'a ps datachannel url');
+
+        });
+
       });
 
       describe('#setLocus', () => {
@@ -11057,6 +11175,7 @@ describe('plugin-meetings', () => {
           beforeEach(() => {
             meeting.selfId = '9528d952-e4de-46cf-8157-fd4823b98377';
             meeting.deviceUrl = 'my-web-url';
+            meeting.locusInfo.info = {isWebinar: false};
           });
 
           const USER_IDS = {
@@ -11282,13 +11401,24 @@ describe('plugin-meetings', () => {
 
                 activeSharingId.whiteboard = beneficiaryId;
 
-                eventTrigger.share.push({
+                eventTrigger.share.push(meeting.webinar.selfIsAttendee ? {
+                  eventName: EVENT_TRIGGERS.MEETING_STARTED_SHARING_REMOTE,
+                  functionName: 'remoteShare',
+                  eventPayload: {
+                    memberId: null,
+                    url,
+                    shareInstanceId,
+                    annotationInfo: undefined,
+                    resourceType: undefined,
+                  },
+                } : {
                   eventName: EVENT_TRIGGERS.MEETING_STARTED_SHARING_WHITEBOARD,
                   functionName: 'startWhiteboardShare',
                   eventPayload: {resourceUrl, memberId: beneficiaryId},
                 });
 
-                shareStatus = SHARE_STATUS.WHITEBOARD_SHARE_ACTIVE;
+                shareStatus = meeting.webinar.selfIsAttendee ? SHARE_STATUS.REMOTE_SHARE_ACTIVE : SHARE_STATUS.WHITEBOARD_SHARE_ACTIVE;
+
               }
 
               if (eventTrigger.member) {
@@ -11320,13 +11450,24 @@ describe('plugin-meetings', () => {
                   newPayload.current.content.disposition = FLOOR_ACTION.ACCEPTED;
                   newPayload.current.content.beneficiaryId = otherBeneficiaryId;
 
-                  eventTrigger.share.push({
+                  eventTrigger.share.push(meeting.webinar.selfIsAttendee ? {
+                    eventName: EVENT_TRIGGERS.MEETING_STARTED_SHARING_REMOTE,
+                    functionName: 'remoteShare',
+                    eventPayload: {
+                      memberId: null,
+                      url,
+                      shareInstanceId,
+                      annotationInfo: undefined,
+                      resourceType: undefined,
+                    },
+                  } : {
                     eventName: EVENT_TRIGGERS.MEETING_STARTED_SHARING_WHITEBOARD,
                     functionName: 'startWhiteboardShare',
                     eventPayload: {resourceUrl, memberId: beneficiaryId},
                   });
 
-                  shareStatus = SHARE_STATUS.WHITEBOARD_SHARE_ACTIVE;
+                  shareStatus = meeting.webinar.selfIsAttendee ? SHARE_STATUS.REMOTE_SHARE_ACTIVE : SHARE_STATUS.WHITEBOARD_SHARE_ACTIVE;
+
                 } else {
                   eventTrigger.share.push({
                     eventName: EVENT_TRIGGERS.MEETING_STOPPED_SHARING_WHITEBOARD,
@@ -11452,6 +11593,38 @@ describe('plugin-meetings', () => {
           it('should have #setUpLocusMediaSharesListener', () => {
             assert.exists(meeting.setUpLocusMediaSharesListener);
           });
+
+          describe('Whiteboard Share - Webinar Attendee', () => {
+            it('Scenario #1: Whiteboard sharing as a webinar attendee', () => {
+              // Set the webinar attendee flag
+              meeting.webinar = { selfIsAttendee: true };
+              meeting.locusInfo.info.isWebinar = true;
+
+              // Step 1: Start sharing whiteboard A
+              const data1 = generateData(
+                blankPayload,              // Initial payload
+                true,                      // isGranting: Granting share
+                false,                     // isContent: Whiteboard (not content)
+                USER_IDS.REMOTE_A,         // Beneficiary ID: Remote user A
+                RESOURCE_URLS.WHITEBOARD_A // Resource URL: Whiteboard A
+              );
+
+              // Step 2: Stop sharing whiteboard A
+              const data2 = generateData(
+                data1.payload,             // Updated payload from Step 1
+                false,                     // isGranting: Stopping share
+                false,                     // isContent: Whiteboard
+                USER_IDS.REMOTE_A          // Beneficiary ID: Remote user A
+              );
+
+              // Validate the payload changes and status updates
+              payloadTestHelper([data1]);
+
+              // Specific assertions for webinar attendee status
+              assert.equal(meeting.shareStatus, SHARE_STATUS.REMOTE_SHARE_ACTIVE);
+            });
+          });
+
 
           describe('Whiteboard A --> Whiteboard B', () => {
             it('Scenario #1: you share both whiteboards', () => {

@@ -304,6 +304,13 @@ export const selfWithInactivity = {
     localRecord: {
       recording: false,
     },
+    brb: {
+      enabled: true,
+      meta: {
+        lastModified: '2024-10-24T14:05:58.526Z',
+        modifiedBy: '70978427-8238-4ffc-9227-8baf4b80b831',
+      },
+    },
     layouts: [
       {
         type: 'activePresence',
