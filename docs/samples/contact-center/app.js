@@ -49,7 +49,7 @@ const endConsultBtn = document.querySelector('#end-consult');
 const consultTabBtn = document.querySelector('#consult');
 const initiateConsultControlsElm = document.querySelector('#initiate-consult-controls');
 const initiateConsultDialog = document.querySelector('#initiate-consult-dialog');
-
+const agentMultiLoginAlert = document.querySelector('#agentMultiLoginAlert');
 
 
 // Store and Grab `access-token` from sessionStorage
@@ -476,6 +476,14 @@ function register() {
         idleCodesDropdown.value = data.auxCodeId?.trim() !== '' ? data.auxCodeId : DEFAULT_CODE;
       }
     });
+
+    webex.cc.on('agent:multiLogin', (data) => {
+      if (data && typeof data === 'object' && data.type === 'AgentMultiLoginCloseSession') {
+        agentMultiLoginAlert.innerHTML = 'Multiple Agent Login Session Detected!';  
+        agentMultiLoginAlert.style.color = 'red';``
+      }
+    });
+    
 }
 
 function populateWrapupCodesDropdown() {
