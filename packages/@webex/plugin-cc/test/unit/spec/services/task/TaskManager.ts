@@ -545,7 +545,7 @@ describe('TaskManager', () => {
     );
   });
 
-  it('should emit TASK_DECLINED event on AGENT_CONTACT_OFFER_RONA event', () => {
+  it('should emit TASK_REJECT event on AGENT_CONTACT_OFFER_RONA event', () => {
     // First, emit AGENT_CONTACT_RESERVED to set up currentTask
     const reservedPayload = {
       data: {
@@ -584,11 +584,13 @@ describe('TaskManager', () => {
       },
     };
   
+    taskManager.taskCollection[taskId] = taskManager.currentTask;
     const taskEmitSpy = jest.spyOn(taskManager.currentTask, 'emit');
   
     webSocketManagerMock.emit('message', JSON.stringify(ronaPayload));
   
-    expect(taskEmitSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_REJECTED, ronaPayload.data.reason);
+    expect(taskEmitSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_REJECT, ronaPayload.data.reason);
+    expect(taskManager.getTask(taskId)).toBeUndefined();
   });
 
   it('should remove currentTask from taskCollection on AGENT_WRAPPEDUP event', () => {

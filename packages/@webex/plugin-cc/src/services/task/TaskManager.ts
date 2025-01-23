@@ -80,13 +80,13 @@ export default class TaskManager extends EventEmitter {
             this.currentTask.emit(TASK_EVENTS.TASK_ASSIGNED, this.currentTask);
             break;
           case CC_EVENTS.AGENT_CONTACT_OFFER_RONA:
-            this.currentTask.emit(TASK_EVENTS.TASK_REJECTED, payload.data.reason);
-            this.handleEndedTaskCleanup();
+            this.currentTask.emit(TASK_EVENTS.TASK_REJECT, payload.data.reason);
+            this.handleTaskCleanup();
             break;
           case CC_EVENTS.CONTACT_ENDED:
             if (this.currentTask.data.interaction.state === 'new') {
               this.currentTask.emit(TASK_EVENTS.TASK_END, {wrapupRequired: false});
-              this.handleEndedTaskCleanup();
+              this.handleTaskCleanup();
             }
             break;
           case CC_EVENTS.AGENT_CONTACT_HELD:
@@ -173,7 +173,7 @@ export default class TaskManager extends EventEmitter {
     }
   }
 
-  private handleEndedTaskCleanup() {
+  private handleTaskCleanup() {
     if (this.webCallingService.loginOption === LoginOption.BROWSER) {
       this.currentTask.unregisterWebCallListeners();
       this.webCallingService.cleanUpCall();

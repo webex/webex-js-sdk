@@ -285,6 +285,7 @@ describe('WebCallingService', () => {
       expect(mockCall.off).toHaveBeenCalledWith(CALL_EVENT_KEYS.REMOTE_MEDIA, expect.any(Function));
       expect(mockCall.off).toHaveBeenCalledWith(CALL_EVENT_KEYS.DISCONNECT, expect.any(Function));
       expect(webRTCCalling.call).toBeNull();
+      expect(webRTCCalling.getTaskIdForCall(mockCall.getCallId())).toBeUndefined();
     });
   });
 });

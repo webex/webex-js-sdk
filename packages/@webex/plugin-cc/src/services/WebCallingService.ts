@@ -40,7 +40,6 @@ export default class WebCallingService extends EventEmitter {
   private handleDisconnectEvent = () => {
     this.call.end();
     this.cleanUpCall();
-    this.emit(CALL_EVENT_KEYS.DISCONNECT);
   };
 
   private registerCallListeners() {
