@@ -120,6 +120,10 @@ class AnnotationChannel extends WebexPlugin implements IAnnotationChannel {
     }
   }
 
+  /**
+   * Remove event listeners
+   * @returns {undefined}
+   */
   public deregisterEvents() {
     if (this.hasSubscribedToEvents) {
       // @ts-ignore
