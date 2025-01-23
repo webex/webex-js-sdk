@@ -124,6 +124,7 @@ class AnnotationChannel extends WebexPlugin implements IAnnotationChannel {
     if (this.hasSubscribedToEvents) {
       // @ts-ignore
       this.webex.internal.llm.off('event:relay.event', this.eventDataProcessor);
+      this.hasSubscribedToEvents = false;
     }
   }
 
