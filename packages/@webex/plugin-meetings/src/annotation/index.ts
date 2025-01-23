@@ -120,6 +120,13 @@ class AnnotationChannel extends WebexPlugin implements IAnnotationChannel {
     }
   }
 
+  public deregisterEvents() {
+    if (this.hasSubscribedToEvents) {
+      // @ts-ignore
+      this.webex.internal.llm.off('event:relay.event', this.eventDataProcessor);
+    }
+  }
+
   /**
    * set locusUrl
    * @param {string} locusUrl
