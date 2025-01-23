@@ -183,13 +183,10 @@ const Authorization = WebexPlugin.extend({
         defaultWindowSettings, 
         typeof options.separateWindow === 'object' ? options.separateWindow : {}
       );
-      console.error('windowFeatures112232');
       // Convert settings object to window.open features string
       const windowFeatures = Object.entries(windowSettings)
         .map(([key, value]) => `${key}=${value}`)
         .join(',');
-
-        console.error('windowFeatures', windowFeatures);
       this.webex.getWindow().open(loginUrl, '_blank', windowFeatures);
     } else {
       // Default behavior - open in same window
