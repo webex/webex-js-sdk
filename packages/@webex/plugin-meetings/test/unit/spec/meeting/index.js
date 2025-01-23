@@ -1238,14 +1238,13 @@ describe('plugin-meetings', () => {
           webex.internal.voicea.off = sinon.stub();
           webex.internal.voicea.listenToEvents = sinon.stub();
           webex.internal.voicea.turnOnCaptions = sinon.stub();
-          webex.internal.voicea.degisterEvents = sinon.stub();
+          webex.internal.voicea.deregisterEvents = sinon.stub();
         });
 
         it('should stop listening to voicea events and also trigger a stop event', () => {
           meeting.stopTranscription();
           assert.equal(webex.internal.voicea.off.callCount, 4);
           assert.equal(meeting.areVoiceaEventsSetup, false);
-          assert.called(webex.internal.voicea.degisterEvents);
           assert.calledWith(
             TriggerProxy.trigger,
             sinon.match.instanceOf(Meeting),
@@ -1266,7 +1265,6 @@ describe('plugin-meetings', () => {
           webex.internal.voicea.off = sinon.stub();
           webex.internal.voicea.setCaptionLanguage = sinon.stub();
           webex.internal.voicea.requestLanguage = sinon.stub();
-          webex.internal.voicea.degisterEvents = sinon.stub();
         });
 
         afterEach(() => {
@@ -1337,7 +1335,6 @@ describe('plugin-meetings', () => {
           meeting.transcription = {languageOptions: {}};
           webex.internal.voicea.on = sinon.stub();
           webex.internal.voicea.off = sinon.stub();
-          webex.internal.voicea.degisterEvents = sinon.stub();
           webex.internal.voicea.setSpokenLanguage = sinon.stub();
           meeting.roles = ['MODERATOR'];
         });
@@ -5059,8 +5056,10 @@ describe('plugin-meetings', () => {
           meeting.logger.error = sinon.stub().returns(true);
           meeting.updateLLMConnection = sinon.stub().returns(Promise.resolve());
           webex.internal.voicea.off = sinon.stub().returns(true);
-          webex.internal.voicea.degisterEvents = sinon.stub();
+          meeting.stopTranscription = sinon.stub();
+          meeting.transcription = {};
 
+          meeting.annotation.deregisterEvents = sinon.stub();
           webex.internal.llm.off = sinon.stub();
 
           // A meeting needs to be joined to leave
@@ -5082,11 +5081,9 @@ describe('plugin-meetings', () => {
           assert.calledOnce(meeting.closePeerConnections);
           assert.calledOnce(meeting.unsetRemoteStreams);
           assert.calledOnce(meeting.unsetPeerConnections);
-          assert.calledWith(
-            webex.internal.llm.off,
-            'event:relay.event',
-            sinon.match.instanceOf(Function)
-          );
+          assert.calledOnce(meeting.stopTranscription);
+          assert.calledOnce(meeting.annotation.deregisterEvents);
+          assert.calledWith(webex.internal.llm.off, 'event:relay.event', meeting.processRelayEvent);
         });
 
         it('should reset call diagnostic latencies correctly', async () => {
@@ -6969,6 +6966,7 @@ describe('plugin-meetings', () => {
           meeting.transcription = {};
           meeting.stopTranscription = sinon.stub();
 
+          meeting.annotation.deregisterEvents = sinon.stub();
           webex.internal.llm.off = sinon.stub();
 
           // A meeting needs to be joined to end
@@ -6991,11 +6989,9 @@ describe('plugin-meetings', () => {
           assert.calledOnce(meeting?.unsetRemoteStreams);
           assert.calledOnce(meeting?.unsetPeerConnections);
           assert.calledOnce(meeting?.stopTranscription);
-          assert.calledWith(
-            webex.internal.llm.off,
-            'event:relay.event',
-            sinon.match.instanceOf(Function)
-          );
+
+          assert.called(meeting.annotation.deregisterEvents);
+          assert.calledWith(webex.internal.llm.off, 'event:relay.event', meeting.processRelayEvent);
         });
       });
 
