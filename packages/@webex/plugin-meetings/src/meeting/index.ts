@@ -5349,6 +5349,9 @@ export default class Meeting extends StatelessWebexPlugin {
         this.voiceaListenerCallbacks[VOICEAEVENTS.NEW_CAPTION]
       );
 
+      // @ts-ignore - fix types
+      this.webex.internal.voicea.degisterEvents();
+
       this.areVoiceaEventsSetup = false;
       this.triggerStopReceivingTranscriptionEvent();
     }
@@ -8699,6 +8702,9 @@ export default class Meeting extends StatelessWebexPlugin {
       this.stopTranscription();
       this.transcription = undefined;
     }
+
+    // @ts-ignore - fix types
+    this.webex.internal.llm.off('event:relay.event', this.processRelayEvent);
   };
 
   /**
