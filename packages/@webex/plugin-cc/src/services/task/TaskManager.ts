@@ -84,10 +84,8 @@ export default class TaskManager extends EventEmitter {
             this.handleTaskCleanup();
             break;
           case CC_EVENTS.CONTACT_ENDED:
-            if (this.currentTask.data.interaction.state === 'new') {
-              this.currentTask.emit(TASK_EVENTS.TASK_END, {wrapupRequired: false});
-              this.handleTaskCleanup();
-            }
+            this.currentTask.emit(TASK_EVENTS.TASK_END, {wrapupRequired: false});
+            this.handleTaskCleanup();
             break;
           case CC_EVENTS.AGENT_CONTACT_HELD:
             // As soon as the main interaction is held, we need to emit TASK_HOLD
