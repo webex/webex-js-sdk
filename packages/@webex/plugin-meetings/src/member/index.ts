@@ -28,6 +28,7 @@ export default class Member {
   isRecording: any;
   isRemovable: any;
   isSelf: any;
+  isBrb: boolean;
   isUser: any;
   isVideoMuted: any;
   roles: IExternalRoles;
@@ -229,6 +230,13 @@ export default class Member {
     this.isRemovable = null;
     /**
      * @instance
+     * @type {Boolean}
+     * @public
+     * @memberof Member
+     */
+    this.isBrb = false;
+    /**
+     * @instance
      * @type {String}
      * @private
      * @memberof Member
@@ -295,6 +303,7 @@ export default class Member {
       this.supportsInterpretation = MemberUtil.isInterpretationSupported(participant);
       this.supportLiveAnnotation = MemberUtil.isLiveAnnotationSupported(participant);
       this.isGuest = MemberUtil.isGuest(participant);
+      this.isBrb = MemberUtil.isBrb(participant);
       this.isUser = MemberUtil.isUser(participant);
       this.isDevice = MemberUtil.isDevice(participant);
       this.isModerator = MemberUtil.isModerator(participant);

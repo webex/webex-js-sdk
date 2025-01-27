@@ -54,7 +54,7 @@ button.btn-code {
 }
 
 .box {
-  max-width: 70rem; 
+  max-width: 70rem;
   margin-inline: auto;
   margin-bottom: 1rem;
 }
@@ -93,7 +93,7 @@ button.btn-code {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
   /* border: 10px solid black */
-} 
+}
 
 .video-section {
   display: flex;

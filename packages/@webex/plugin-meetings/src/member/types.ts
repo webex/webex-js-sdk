@@ -23,6 +23,14 @@ export type ParticipantWithRoles = {
   };
 };
 
+export type ParticipantWithBrb = {
+  controls: {
+    brb?: {
+      enabled: boolean;
+    };
+  };
+};
+
 // values are inherited from locus so don't update these
 export enum MediaStatus {
   RECVONLY = 'RECVONLY', // participant only receiving and not sending
