@@ -888,6 +888,317 @@ describe('plugin-logger', () => {
 
       checkAscending(logs);
     });
+
+    describe('diff vs full logs', () => {
+      let counter;
+      let clock;
+
+      const doSomeLogs = (count) => {
+        // do alternate logs from client and sdk
+        for (let i = 0; i < count; i += 1) {
+          if (webex.config.logger.separateLogBuffers) {
+            webex.logger.client_log(counter);
+            clock.tick(1000);
+          }
+          webex.logger.log(counter);
+          clock.tick(1000);
+
+          counter += 1;
+        }
+      };
+
+      beforeEach(() => {
+        counter = 0;
+        clock = sinon.useFakeTimers();
+      });
+
+      afterEach(() => {
+        clock.restore();
+      });
+
+      it('sends diff logs correctly (with separateLogBuffers)', async () => {
+        webex.config.logger.separateLogBuffers = true;
+        webex.config.logger.clientName = 'someclient';
+
+        doSomeLogs(5);
+
+        const logs1 = webex.logger.formatLogs({diff: true});
+
+        assert.deepEqual(logs1.split('\n'), [
+          ',1970-01-01T00:00:00.000Z,someclient,0',
+          ',1970-01-01T00:00:01.000Z,wx-js-sdk,0',
+          ',1970-01-01T00:00:02.000Z,someclient,1',
+          ',1970-01-01T00:00:03.000Z,wx-js-sdk,1',
+          ',1970-01-01T00:00:04.000Z,someclient,2',
+          ',1970-01-01T00:00:05.000Z,wx-js-sdk,2',
+          ',1970-01-01T00:00:06.000Z,someclient,3',
+          ',1970-01-01T00:00:07.000Z,wx-js-sdk,3',
+          ',1970-01-01T00:00:08.000Z,someclient,4',
+          ',1970-01-01T00:00:09.000Z,wx-js-sdk,4',
+        ]);
+
+        // log more lines
+        doSomeLogs(2);
+
+        const logs2 = webex.logger.formatLogs({diff: true});
+
+        // only the logs added after previous call to formatLogs() should be returned
+        assert.deepEqual(logs2.split('\n'), [
+          ',1970-01-01T00:00:10.000Z,someclient,5',
+          ',1970-01-01T00:00:11.000Z,wx-js-sdk,5',
+          ',1970-01-01T00:00:12.000Z,someclient,6',
+          ',1970-01-01T00:00:13.000Z,wx-js-sdk,6',
+        ]);
+
+        // now ask for full logs - it should contain all 15 logs
+        const fullLogs1 = webex.logger.formatLogs();
+
+        assert.deepEqual(fullLogs1.split('\n'), [
+          ',1970-01-01T00:00:00.000Z,someclient,0',
+          ',1970-01-01T00:00:01.000Z,wx-js-sdk,0',
+          ',1970-01-01T00:00:02.000Z,someclient,1',
+          ',1970-01-01T00:00:03.000Z,wx-js-sdk,1',
+          ',1970-01-01T00:00:04.000Z,someclient,2',
+          ',1970-01-01T00:00:05.000Z,wx-js-sdk,2',
+          ',1970-01-01T00:00:06.000Z,someclient,3',
+          ',1970-01-01T00:00:07.000Z,wx-js-sdk,3',
+          ',1970-01-01T00:00:08.000Z,someclient,4',
+          ',1970-01-01T00:00:09.000Z,wx-js-sdk,4',
+          ',1970-01-01T00:00:10.000Z,someclient,5',
+          ',1970-01-01T00:00:11.000Z,wx-js-sdk,5',
+          ',1970-01-01T00:00:12.000Z,someclient,6',
+          ',1970-01-01T00:00:13.000Z,wx-js-sdk,6',
+        ]);
+
+        // asking for full logs should not affect the next diff
+        const logs3 = webex.logger.formatLogs({diff: true});
+
+        // expect empty logs, because we didn't log anything since previous call to formatLogs with diff=true
+        assert.deepEqual(logs3.split('\n'), ['']);
+
+        // add more logs again
+        doSomeLogs(1);
+
+        const logs4 = webex.logger.formatLogs({diff: true});
+
+        assert.deepEqual(logs4.split('\n'), [
+          ',1970-01-01T00:00:14.000Z,someclient,7',
+          ',1970-01-01T00:00:15.000Z,wx-js-sdk,7',
+        ]);
+
+        // and check that full log contains everything right from the beginning irrespective of any previous calls to formatLogs()
+        const fullLogs2 = webex.logger.formatLogs();
+
+        assert.deepEqual(fullLogs2.split('\n'), [
+          ',1970-01-01T00:00:00.000Z,someclient,0',
+          ',1970-01-01T00:00:01.000Z,wx-js-sdk,0',
+          ',1970-01-01T00:00:02.000Z,someclient,1',
+          ',1970-01-01T00:00:03.000Z,wx-js-sdk,1',
+          ',1970-01-01T00:00:04.000Z,someclient,2',
+          ',1970-01-01T00:00:05.000Z,wx-js-sdk,2',
+          ',1970-01-01T00:00:06.000Z,someclient,3',
+          ',1970-01-01T00:00:07.000Z,wx-js-sdk,3',
+          ',1970-01-01T00:00:08.000Z,someclient,4',
+          ',1970-01-01T00:00:09.000Z,wx-js-sdk,4',
+          ',1970-01-01T00:00:10.000Z,someclient,5',
+          ',1970-01-01T00:00:11.000Z,wx-js-sdk,5',
+          ',1970-01-01T00:00:12.000Z,someclient,6',
+          ',1970-01-01T00:00:13.000Z,wx-js-sdk,6',
+          ',1970-01-01T00:00:14.000Z,someclient,7',
+          ',1970-01-01T00:00:15.000Z,wx-js-sdk,7',
+        ]);
+      });
+
+      it('sends diff logs correctly (without separateLogBuffers)', async () => {
+        webex.config.logger.separateLogBuffers = false;
+
+        doSomeLogs(5);
+
+        const logs1 = webex.logger.formatLogs({diff: true});
+
+        assert.deepEqual(logs1.split('\n'), [
+          ',1970-01-01T00:00:00.000Z,wx-js-sdk,0',
+          ',1970-01-01T00:00:01.000Z,wx-js-sdk,1',
+          ',1970-01-01T00:00:02.000Z,wx-js-sdk,2',
+          ',1970-01-01T00:00:03.000Z,wx-js-sdk,3',
+          ',1970-01-01T00:00:04.000Z,wx-js-sdk,4',
+        ]);
+
+        // log more lines
+        doSomeLogs(2);
+
+        const logs2 = webex.logger.formatLogs({diff: true});
+
+        // only the logs added after previous call to formatLogs() should be returned
+        assert.deepEqual(logs2.split('\n'), [
+          ',1970-01-01T00:00:05.000Z,wx-js-sdk,5',
+          ',1970-01-01T00:00:06.000Z,wx-js-sdk,6',
+        ]);
+
+        // now ask for full logs - it should contain all 7 logs
+        const fullLogs1 = webex.logger.formatLogs();
+
+        assert.deepEqual(fullLogs1.split('\n'), [
+          ',1970-01-01T00:00:00.000Z,wx-js-sdk,0',
+          ',1970-01-01T00:00:01.000Z,wx-js-sdk,1',
+          ',1970-01-01T00:00:02.000Z,wx-js-sdk,2',
+          ',1970-01-01T00:00:03.000Z,wx-js-sdk,3',
+          ',1970-01-01T00:00:04.000Z,wx-js-sdk,4',
+          ',1970-01-01T00:00:05.000Z,wx-js-sdk,5',
+          ',1970-01-01T00:00:06.000Z,wx-js-sdk,6',
+        ]);
+
+        // asking for full logs should not affect the next diff
+        const logs3 = webex.logger.formatLogs({diff: true});
+
+        // expect empty logs, because we didn't log anything since previous call to formatLogs with diff=true
+        assert.deepEqual(logs3.split('\n'), ['']);
+
+        // add more logs again
+        doSomeLogs(1);
+
+        const logs4 = webex.logger.formatLogs({diff: true});
+
+        assert.deepEqual(logs4.split('\n'), [',1970-01-01T00:00:07.000Z,wx-js-sdk,7']);
+
+        // and check that full log contains everything right from the beginning irrespective of any previous calls to formatLogs()
+        const fullLogs2 = webex.logger.formatLogs();
+
+        assert.deepEqual(fullLogs2.split('\n'), [
+          ',1970-01-01T00:00:00.000Z,wx-js-sdk,0',
+          ',1970-01-01T00:00:01.000Z,wx-js-sdk,1',
+          ',1970-01-01T00:00:02.000Z,wx-js-sdk,2',
+          ',1970-01-01T00:00:03.000Z,wx-js-sdk,3',
+          ',1970-01-01T00:00:04.000Z,wx-js-sdk,4',
+          ',1970-01-01T00:00:05.000Z,wx-js-sdk,5',
+          ',1970-01-01T00:00:06.000Z,wx-js-sdk,6',
+          ',1970-01-01T00:00:07.000Z,wx-js-sdk,7',
+        ]);
+      });
+
+      it('works correctly when history limit is reached (with separateLogBuffers)', async () => {
+        webex.config.logger.separateLogBuffers = true;
+        webex.config.logger.clientName = 'someclient';
+        webex.config.logger.historyLength = 5;
+
+        // fill up the history
+        doSomeLogs(5);
+
+        const logsFull1 = webex.logger.formatLogs({diff: false});
+
+        assert.deepEqual(logsFull1.split('\n'), [
+          ',1970-01-01T00:00:00.000Z,someclient,0',
+          ',1970-01-01T00:00:01.000Z,wx-js-sdk,0',
+          ',1970-01-01T00:00:02.000Z,someclient,1',
+          ',1970-01-01T00:00:03.000Z,wx-js-sdk,1',
+          ',1970-01-01T00:00:04.000Z,someclient,2',
+          ',1970-01-01T00:00:05.000Z,wx-js-sdk,2',
+          ',1970-01-01T00:00:06.000Z,someclient,3',
+          ',1970-01-01T00:00:07.000Z,wx-js-sdk,3',
+          ',1970-01-01T00:00:08.000Z,someclient,4',
+          ',1970-01-01T00:00:09.000Z,wx-js-sdk,4',
+        ]);
+
+        // log more lines, this should cause removal of the oldest logs
+        doSomeLogs(2);
+
+        const logsFull2 = webex.logger.formatLogs({diff: false});
+
+        const last5Logs = [
+          ',1970-01-01T00:00:04.000Z,someclient,2',
+          ',1970-01-01T00:00:05.000Z,wx-js-sdk,2',
+          ',1970-01-01T00:00:06.000Z,someclient,3',
+          ',1970-01-01T00:00:07.000Z,wx-js-sdk,3',
+          ',1970-01-01T00:00:08.000Z,someclient,4',
+          ',1970-01-01T00:00:09.000Z,wx-js-sdk,4',
+          ',1970-01-01T00:00:10.000Z,someclient,5',
+          ',1970-01-01T00:00:11.000Z,wx-js-sdk,5',
+          ',1970-01-01T00:00:12.000Z,someclient,6',
+          ',1970-01-01T00:00:13.000Z,wx-js-sdk,6',
+        ];
+        assert.deepEqual(logsFull2.split('\n'), last5Logs);
+
+        // check also the diff logs - they should also have just last 5 logs
+        const logsDiff1 = webex.logger.formatLogs({diff: true});
+        assert.deepEqual(logsDiff1.split('\n'), last5Logs);
+
+        // add more logs again and check full and diff logs
+        doSomeLogs(1);
+
+        const logsFull3 = webex.logger.formatLogs({diff: false});
+
+        assert.deepEqual(logsFull3.split('\n'), [
+          ',1970-01-01T00:00:06.000Z,someclient,3',
+          ',1970-01-01T00:00:07.000Z,wx-js-sdk,3',
+          ',1970-01-01T00:00:08.000Z,someclient,4',
+          ',1970-01-01T00:00:09.000Z,wx-js-sdk,4',
+          ',1970-01-01T00:00:10.000Z,someclient,5',
+          ',1970-01-01T00:00:11.000Z,wx-js-sdk,5',
+          ',1970-01-01T00:00:12.000Z,someclient,6',
+          ',1970-01-01T00:00:13.000Z,wx-js-sdk,6',
+          ',1970-01-01T00:00:14.000Z,someclient,7',
+          ',1970-01-01T00:00:15.000Z,wx-js-sdk,7',
+        ]);
+
+        const logsDiff2 = webex.logger.formatLogs({diff: true});
+        assert.deepEqual(logsDiff2.split('\n'), [
+          ',1970-01-01T00:00:14.000Z,someclient,7',
+          ',1970-01-01T00:00:15.000Z,wx-js-sdk,7',
+        ]);
+      });
+
+      it('works correctly when history limit is reached (without separateLogBuffers)', async () => {
+        webex.config.logger.separateLogBuffers = false;
+        webex.config.logger.historyLength = 5;
+
+        // fill up the history
+        doSomeLogs(5);
+
+        const logsFull1 = webex.logger.formatLogs({diff: false});
+
+        assert.deepEqual(logsFull1.split('\n'), [
+          ',1970-01-01T00:00:00.000Z,wx-js-sdk,0',
+          ',1970-01-01T00:00:01.000Z,wx-js-sdk,1',
+          ',1970-01-01T00:00:02.000Z,wx-js-sdk,2',
+          ',1970-01-01T00:00:03.000Z,wx-js-sdk,3',
+          ',1970-01-01T00:00:04.000Z,wx-js-sdk,4',
+        ]);
+
+        // log more lines, this should cause removal of the oldest logs
+        doSomeLogs(2);
+
+        const logsFull2 = webex.logger.formatLogs({diff: false});
+
+        const last5Logs = [
+          ',1970-01-01T00:00:02.000Z,wx-js-sdk,2',
+          ',1970-01-01T00:00:03.000Z,wx-js-sdk,3',
+          ',1970-01-01T00:00:04.000Z,wx-js-sdk,4',
+          ',1970-01-01T00:00:05.000Z,wx-js-sdk,5',
+          ',1970-01-01T00:00:06.000Z,wx-js-sdk,6',
+        ];
+        assert.deepEqual(logsFull2.split('\n'), last5Logs);
+
+        // check also the diff logs - they should also have just last 5 logs
+        const logsDiff1 = webex.logger.formatLogs({diff: true});
+        assert.deepEqual(logsDiff1.split('\n'), last5Logs);
+
+        // add more logs again and check full and diff logs
+        doSomeLogs(1);
+
+        const logsFull3 = webex.logger.formatLogs({diff: false});
+
+        assert.deepEqual(logsFull3.split('\n'), [
+          ',1970-01-01T00:00:03.000Z,wx-js-sdk,3',
+          ',1970-01-01T00:00:04.000Z,wx-js-sdk,4',
+          ',1970-01-01T00:00:05.000Z,wx-js-sdk,5',
+          ',1970-01-01T00:00:06.000Z,wx-js-sdk,6',
+          ',1970-01-01T00:00:07.000Z,wx-js-sdk,7',
+        ]);
+
+        const logsDiff2 = webex.logger.formatLogs({diff: true});
+        assert.deepEqual(logsDiff2.split('\n'), [',1970-01-01T00:00:07.000Z,wx-js-sdk,7']);
+      });
+    });
   });
 
   describe('#logToBuffer()', () => {
