@@ -377,7 +377,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
    * @returns
    */
   prepareDiagnosticEvent(eventData: Event['event'], options: any) {
-    const {meetingId} = options;
+    const {meetingId, triggeredTime} = options;
     const origin = this.getOrigin(options, meetingId);
 
     const event: Event = {
@@ -385,7 +385,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       version: 1,
       origin,
       originTime: {
-        triggered: new Date().toISOString(),
+        triggered: triggeredTime || new Date().toISOString(),
         // is overridden in prepareRequest batcher
         sent: 'not_defined_yet',
       },
