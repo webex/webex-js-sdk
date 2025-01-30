@@ -82,21 +82,21 @@ describe('plugin-logger', () => {
 
     it('stores the specified message in the log buffer', () => {
       webex.logger.log('test');
-      assert.lengthOf(webex.logger.buffer, 1);
-      assert.match(webex.logger.buffer[0][3], /test/);
+      assert.lengthOf(webex.logger.buffer.buffer, 1);
+      assert.match(webex.logger.buffer.buffer[0][3], /test/);
     });
 
     it('adds the date to the beggining of the buffer entry', () => {
       webex.logger.log('test date');
 
       // Convert string back to date object
-      const logDate = new Date(webex.logger.buffer[0][1]);
+      const logDate = new Date(webex.logger.buffer.buffer[0][1]);
 
       // eslint-disable-next-line no-restricted-globals
-      assert.isTrue(logDate instanceof Date && isNaN(webex.logger.buffer[0][1]));
-      assert.isString(webex.logger.buffer[0][0]);
-      assert.isString(webex.logger.buffer[0][1]);
-      assert.match(webex.logger.buffer[0][3], /test date/);
+      assert.isTrue(logDate instanceof Date && isNaN(webex.logger.buffer.buffer[0][1]));
+      assert.isString(webex.logger.buffer.buffer[0][0]);
+      assert.isString(webex.logger.buffer.buffer[0][1]);
+      assert.match(webex.logger.buffer.buffer[0][3], /test date/);
     });
 
     it('stores the specified message in the client and sdk log buffer', () => {
@@ -104,28 +104,28 @@ describe('plugin-logger', () => {
       webex.config.logger.clientName = 'someclient';
       webex.logger.log('testsdk');
       webex.logger.client_log('testclient');
-      assert.lengthOf(webex.logger.sdkBuffer, 1);
-      assert.isString(webex.logger.sdkBuffer[0][0]);
-      assert.isString(webex.logger.sdkBuffer[0][1]);
-      assert.match(webex.logger.sdkBuffer[0][2], /wx-js-sdk/);
-      assert.match(webex.logger.sdkBuffer[0][3], /testsdk/);
-      assert.lengthOf(webex.logger.clientBuffer, 1);
-      assert.isString(webex.logger.clientBuffer[0][0]);
-      assert.isString(webex.logger.clientBuffer[0][1]);
-      assert.match(webex.logger.clientBuffer[0][2], /someclient/);
-      assert.match(webex.logger.clientBuffer[0][3], /testclient/);
+      assert.lengthOf(webex.logger.sdkBuffer.buffer, 1);
+      assert.isString(webex.logger.sdkBuffer.buffer[0][0]);
+      assert.isString(webex.logger.sdkBuffer.buffer[0][1]);
+      assert.match(webex.logger.sdkBuffer.buffer[0][2], /wx-js-sdk/);
+      assert.match(webex.logger.sdkBuffer.buffer[0][3], /testsdk/);
+      assert.lengthOf(webex.logger.clientBuffer.buffer, 1);
+      assert.isString(webex.logger.clientBuffer.buffer[0][0]);
+      assert.isString(webex.logger.clientBuffer.buffer[0][1]);
+      assert.match(webex.logger.clientBuffer.buffer[0][2], /someclient/);
+      assert.match(webex.logger.clientBuffer.buffer[0][3], /testclient/);
     });
 
     it('prevents the buffer from overflowing', () => {
       webex.config.logger.historyLength = 2;
       webex.logger.log(1);
-      assert.lengthOf(webex.logger.buffer, 1);
+      assert.lengthOf(webex.logger.buffer.buffer, 1);
       webex.logger.log(2);
-      assert.lengthOf(webex.logger.buffer, 2);
+      assert.lengthOf(webex.logger.buffer.buffer, 2);
       webex.logger.log(3);
-      assert.lengthOf(webex.logger.buffer, 2);
-      assert.equal(webex.logger.buffer[0][3], 2);
-      assert.equal(webex.logger.buffer[1][3], 3);
+      assert.lengthOf(webex.logger.buffer.buffer, 2);
+      assert.equal(webex.logger.buffer.buffer[0][3], 2);
+      assert.equal(webex.logger.buffer.buffer[1][3], 3);
     });
 
     it('prevents the client and sdk buffer from overflowing', () => {
@@ -133,20 +133,20 @@ describe('plugin-logger', () => {
       webex.config.logger.separateLogBuffers = true;
       webex.logger.log(1);
       webex.logger.client_log(3);
-      assert.lengthOf(webex.logger.sdkBuffer, 1);
-      assert.lengthOf(webex.logger.clientBuffer, 1);
+      assert.lengthOf(webex.logger.sdkBuffer.buffer, 1);
+      assert.lengthOf(webex.logger.clientBuffer.buffer, 1);
       webex.logger.log(2);
       webex.logger.client_log(2);
-      assert.lengthOf(webex.logger.sdkBuffer, 2);
-      assert.lengthOf(webex.logger.clientBuffer, 2);
+      assert.lengthOf(webex.logger.sdkBuffer.buffer, 2);
+      assert.lengthOf(webex.logger.clientBuffer.buffer, 2);
       webex.logger.log(3);
       webex.logger.client_log(1);
-      assert.lengthOf(webex.logger.sdkBuffer, 2);
-      assert.lengthOf(webex.logger.clientBuffer, 2);
-      assert.equal(webex.logger.sdkBuffer[0][3], 2);
-      assert.equal(webex.logger.sdkBuffer[1][3], 3);
-      assert.equal(webex.logger.sdkBuffer[0][3], 2);
-      assert.equal(webex.logger.clientBuffer[1][3], 1);
+      assert.lengthOf(webex.logger.sdkBuffer.buffer, 2);
+      assert.lengthOf(webex.logger.clientBuffer.buffer, 2);
+      assert.equal(webex.logger.sdkBuffer.buffer[0][3], 2);
+      assert.equal(webex.logger.sdkBuffer.buffer[1][3], 3);
+      assert.equal(webex.logger.sdkBuffer.buffer[0][3], 2);
+      assert.equal(webex.logger.clientBuffer.buffer[1][3], 1);
     });
 
     // Node handles custom errors correctly, so this test is browser specific
@@ -164,7 +164,7 @@ describe('plugin-logger', () => {
       });
 
       webex.logger.log(error);
-      assert.lengthOf(webex.logger.buffer, 1);
+      assert.lengthOf(webex.logger.buffer.buffer, 1);
       assert.match(console.log.args[0][1], /WebexHttpError/);
     });
 
@@ -182,8 +182,8 @@ describe('plugin-logger', () => {
       });
 
       webex.logger.log(error);
-      assert.lengthOf(webex.logger.buffer, 1);
-      assert.match(webex.logger.buffer[0][3], /WebexHttpError/g);
+      assert.lengthOf(webex.logger.buffer.buffer, 1);
+      assert.match(webex.logger.buffer.buffer[0][3], /WebexHttpError/g);
     });
 
     it('formats objects as strings passed to the logger for readability not [Object object]', async () => {
@@ -200,12 +200,12 @@ describe('plugin-logger', () => {
       }
 
       webex.logger.log('foo', 'bar', obj);
-      assert.lengthOf(webex.logger.buffer, 1);
-      assert.lengthOf(webex.logger.buffer[0], 6);
-      assert.deepEqual(webex.logger.buffer[0][2], 'wx-js-sdk');
-      assert.deepEqual(webex.logger.buffer[0][3], 'foo');
-      assert.deepEqual(webex.logger.buffer[0][4], 'bar');
-      assert.deepEqual(webex.logger.buffer[0][5], '{"headers":{"trackingid":"123"},"test":"object","nested":{"test2":"object2"}}');
+      assert.lengthOf(webex.logger.buffer.buffer, 1);
+      assert.lengthOf(webex.logger.buffer.buffer[0], 6);
+      assert.deepEqual(webex.logger.buffer.buffer[0][2], 'wx-js-sdk');
+      assert.deepEqual(webex.logger.buffer.buffer[0][3], 'foo');
+      assert.deepEqual(webex.logger.buffer.buffer[0][4], 'bar');
+      assert.deepEqual(webex.logger.buffer.buffer[0][5], '{"headers":{"trackingid":"123"},"test":"object","nested":{"test2":"object2"}}');
     });
 
     it('formats objects as strings passed to the logger for readability not [Object object] w/ circular reference', async () => {
@@ -224,12 +224,12 @@ describe('plugin-logger', () => {
       obj.selfReference = obj;
 
       webex.logger.log('foo', 'bar', obj);
-      assert.lengthOf(webex.logger.buffer, 1);
-      assert.lengthOf(webex.logger.buffer[0], 6);
-      assert.deepEqual(webex.logger.buffer[0][2], 'wx-js-sdk');
-      assert.deepEqual(webex.logger.buffer[0][3], 'foo');
-      assert.deepEqual(webex.logger.buffer[0][4], 'bar');
-      assert.deepEqual(webex.logger.buffer[0][5], '{"headers":{"trackingid":"123"},"test":"object","nested":{"test2":"object2"}}');
+      assert.lengthOf(webex.logger.buffer.buffer, 1);
+      assert.lengthOf(webex.logger.buffer.buffer[0], 6);
+      assert.deepEqual(webex.logger.buffer.buffer[0][2], 'wx-js-sdk');
+      assert.deepEqual(webex.logger.buffer.buffer[0][3], 'foo');
+      assert.deepEqual(webex.logger.buffer.buffer[0][4], 'bar');
+      assert.deepEqual(webex.logger.buffer.buffer[0][5], '{"headers":{"trackingid":"123"},"test":"object","nested":{"test2":"object2"}}');
     });
 
     it('formats Errors correctly', async () => {
@@ -237,10 +237,10 @@ describe('plugin-logger', () => {
       const err = new Error('fake error for testing')
 
       webex.logger.log('I got this error:', err);
-      assert.lengthOf(webex.logger.buffer, 1);
-      assert.deepEqual(webex.logger.buffer[0][2], 'wx-js-sdk');
-      assert.deepEqual(webex.logger.buffer[0][3], 'I got this error:');
-      assert.deepEqual(webex.logger.buffer[0][4], 'Error: fake error for testing');
+      assert.lengthOf(webex.logger.buffer.buffer, 1);
+      assert.deepEqual(webex.logger.buffer.buffer[0][2], 'wx-js-sdk');
+      assert.deepEqual(webex.logger.buffer.buffer[0][3], 'I got this error:');
+      assert.deepEqual(webex.logger.buffer.buffer[0][4], 'Error: fake error for testing');
 
     });
   });
@@ -1206,7 +1206,7 @@ describe('plugin-logger', () => {
       webex.logger.logToBuffer('sdklog');
       webex.logger.client_logToBuffer('clientlog');
 
-      assert.lengthOf(webex.logger.buffer, 2);
+      assert.lengthOf(webex.logger.buffer.buffer, 2);
 
       logSpies.forEach((logSpy) => {
         assert.notCalled(logSpy);
@@ -1219,8 +1219,8 @@ describe('plugin-logger', () => {
       webex.logger.logToBuffer('sdklog');
       webex.logger.client_logToBuffer('clientlog');
 
-      assert.lengthOf(webex.logger.sdkBuffer, 1);
-      assert.lengthOf(webex.logger.clientBuffer, 1);
+      assert.lengthOf(webex.logger.sdkBuffer.buffer, 1);
+      assert.lengthOf(webex.logger.clientBuffer.buffer, 1);
 
       logSpies.forEach((logSpy) => {
         assert.notCalled(logSpy);
@@ -1229,7 +1229,7 @@ describe('plugin-logger', () => {
   });
   describe('limit', () => {
     function logMessages() {
-      return webex.logger.buffer.map((item) => item[3]);
+      return webex.logger.buffer.buffer.map((item) => item[3]);
     }
 
     it('can be increased in runtime', () => {
@@ -1239,12 +1239,12 @@ describe('plugin-logger', () => {
       }
 
       assert.deepEqual(logMessages(), [5, 6, 7, 8, 9]);
-      assert.lengthOf(webex.logger.buffer, 5);
+      assert.lengthOf(webex.logger.buffer.buffer, 5);
 
       webex.logger.config.historyLength = 10;
       webex.logger.log(10);
       assert.deepEqual(logMessages(), [5, 6, 7, 8, 9, 10]);
-      assert.lengthOf(webex.logger.buffer, 6);
+      assert.lengthOf(webex.logger.buffer.buffer, 6);
     });
 
     it('can be decreased in runtime', () => {
@@ -1253,16 +1253,16 @@ describe('plugin-logger', () => {
       }
 
       assert.deepEqual(logMessages(), [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
-      assert.lengthOf(webex.logger.buffer, 10);
+      assert.lengthOf(webex.logger.buffer.buffer, 10);
 
       webex.logger.config.historyLength = 5;
 
       // Log buffer truncated when the next log added
-      assert.lengthOf(webex.logger.buffer, 10);
+      assert.lengthOf(webex.logger.buffer.buffer, 10);
 
       webex.logger.log(10);
       assert.deepEqual(logMessages(), [6, 7, 8, 9, 10]);
-      assert.lengthOf(webex.logger.buffer, 5);
+      assert.lengthOf(webex.logger.buffer.buffer, 5);
     });
   });
 });
