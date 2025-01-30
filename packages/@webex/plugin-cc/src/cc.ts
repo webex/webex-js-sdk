@@ -362,6 +362,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       // To handle re-registration of event listeners on silent relogin
       this.incomingTaskListener();
       this.taskManager.registerIncomingCallEvent();
+
       await this.handleDeviceType(deviceType as LoginOption, dn);
       this.agentConfig.isAgentLoggedIn = true;
       this.services.webSocketManager.on('message', this.handleWebSocketMessage);
@@ -398,6 +399,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         });
         throw new Error(`Unsupported device type: ${deviceType}`);
     }
+    this.webCallingService.setLoginOption(deviceType);
     this.agentConfig.deviceType = deviceType;
   }
 }
