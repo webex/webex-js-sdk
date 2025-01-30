@@ -345,6 +345,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       const reLoginResponse = await this.services.agent.reload();
       const {auxCodeId, agentId, lastStateChangeReason, deviceType, dn} = reLoginResponse.data;
 
+      // To handle re-registration of event listeners on silent relogin
+      this.incomingTaskListener();
+      this.taskManager.registerIncomingCallEvent();
+
       if (lastStateChangeReason === 'agent-wss-disconnect') {
         LoggerProxy.info(
           'event=requestAutoStateChange | Requesting state change to available on socket reconnect',
@@ -358,10 +362,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         };
         await this.setAgentState(stateChangeData);
       }
-
-      // To handle re-registration of event listeners on silent relogin
-      this.incomingTaskListener();
-      this.taskManager.registerIncomingCallEvent();
 
       await this.handleDeviceType(deviceType as LoginOption, dn);
       this.agentConfig.isAgentLoggedIn = true;
