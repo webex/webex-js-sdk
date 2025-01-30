@@ -154,11 +154,12 @@ describe('internal-plugin-metrics', () => {
           businessMetrics.clientMetricsBatcher.request = request;
           
           assert.equal(requestCalls.length, 0)
-          businessMetrics.submitBusinessEvent({ name: "foobar", payload: {bar:"gee"}, table: 'business_metrics' })
+          businessMetrics.submitBusinessEvent({ name: "foobar", payload: {bar: "gee"}, table: 'business_metrics', metadata: {asdf: 'hjkl'} })
           assert.equal(requestCalls.length, 1)
           assert.deepEqual(requestCalls[0], {
             eventPayload: {
               key: 'foobar',
+              asdf: 'hjkl',
               appType: 'Web Client',
               client_timestamp: requestCalls[0].eventPayload.client_timestamp, // This is to bypass time check, which is checked below.
               value: {
@@ -173,7 +174,6 @@ describe('internal-plugin-metrics', () => {
                 os: getOSNameInternal(),
                 app: {version: 'webex-version'},
                 device: {id: 'deviceId'},
-                locale: 'language',
               }
             },
             type: ['business'],
