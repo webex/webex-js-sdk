@@ -565,4 +565,6 @@ export type Profile = {
   lostConnectionRecoveryTimeout: number;
   maskSensitiveData?: boolean;
   isAgentLoggedIn?: boolean;
+  lastStateAuxCodeId?: string;
+  lastStateChangeTimestamp?: Date;
 };
