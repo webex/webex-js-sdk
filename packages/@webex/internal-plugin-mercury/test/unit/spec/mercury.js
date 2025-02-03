@@ -773,6 +773,41 @@ describe('plugin-mercury', () => {
       });
     });
 
+    describe('#_setTimeOffset', () => {
+      it('sets mercuryTimeOffset based on the difference between wsWriteTimestamp and now', () => {
+        const event = {
+          data: {
+            wsWriteTimestamp: Date.now() - 60000,
+          }          
+        };
+        assert.isUndefined(mercury.mercuryTimeOffset);
+        mercury._setTimeOffset(event);
+        assert.isDefined(mercury.mercuryTimeOffset);
+        assert.isTrue(mercury.mercuryTimeOffset > 0);
+      });
+      it('handles negative offsets', () => {
+        const event = {
+          data: {
+            wsWriteTimestamp: Date.now() + 60000,
+          }          
+        };
+        mercury._setTimeOffset(event);
+        assert.isTrue(mercury.mercuryTimeOffset < 0);
+      });
+      it('handles invalid wsWriteTimestamp', () => {
+        const invalidTimestamps = [null, -1, 'invalid', undefined];
+        invalidTimestamps.forEach(invalidTimestamp => {
+          const event = {
+            data: {
+              wsWriteTimestamp: invalidTimestamp,
+            }          
+          };
+          mercury._setTimeOffset(event);
+          assert.isUndefined(mercury.mercuryTimeOffset);
+        });
+      });
+    });
+    
     describe('#_prepareUrl()', () => {
       beforeEach(() => {
         webex.internal.device.webSocketUrl = 'ws://example.com';
