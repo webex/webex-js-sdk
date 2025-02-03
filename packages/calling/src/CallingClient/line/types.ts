@@ -19,6 +19,7 @@ export enum LINE_EVENTS {
   REGISTERED = 'registered',
   UNREGISTERED = 'unregistered',
   INCOMING_CALL = 'line:incoming_call',
+  KEEPALIVE_FAILED = 'line:keepalive_failed',
 }
 
 /**

@@ -558,9 +558,10 @@ describe('Registration Tests', () => {
 
       expect(reg.getStatus()).toBe(RegistrationStatus.ACTIVE);
       expect(reg.keepaliveTimer).toBe(timer);
-      expect(lineEmitter).nthCalledWith(1, LINE_EVENTS.RECONNECTING);
-      expect(lineEmitter).nthCalledWith(2, LINE_EVENTS.RECONNECTED);
-      expect(lineEmitter).toBeCalledTimes(2);
+      expect(lineEmitter).nthCalledWith(1, LINE_EVENTS.KEEPALIVE_FAILED);
+      expect(lineEmitter).nthCalledWith(2, LINE_EVENTS.RECONNECTING);
+      expect(lineEmitter).nthCalledWith(3, LINE_EVENTS.RECONNECTED);
+      expect(lineEmitter).toBeCalledTimes(3);
     });
 
     it('verify failure keep-alive cases: Restore failure', async () => {
@@ -600,16 +601,24 @@ describe('Registration Tests', () => {
 
       expect(webex.request).toBeCalledTimes(7);
       expect(reg.keepaliveTimer).toBe(undefined);
-      expect(lineEmitter).nthCalledWith(1, LINE_EVENTS.RECONNECTING);
+      expect(lineEmitter).nthCalledWith(1, LINE_EVENTS.KEEPALIVE_FAILED);
+      expect(lineEmitter).nthCalledWith(2, LINE_EVENTS.RECONNECTING);
+      expect(lineEmitter).nthCalledWith(3, LINE_EVENTS.KEEPALIVE_FAILED);
       expect(lineEmitter).nthCalledWith(4, LINE_EVENTS.RECONNECTING);
-      expect(lineEmitter).nthCalledWith(5, LINE_EVENTS.UNREGISTERED);
+      expect(lineEmitter).nthCalledWith(5, LINE_EVENTS.KEEPALIVE_FAILED);
+      expect(lineEmitter).nthCalledWith(6, LINE_EVENTS.RECONNECTING);
+      expect(lineEmitter).nthCalledWith(7, LINE_EVENTS.KEEPALIVE_FAILED);
+      expect(lineEmitter).nthCalledWith(8, LINE_EVENTS.RECONNECTING);
+      expect(lineEmitter).nthCalledWith(9, LINE_EVENTS.KEEPALIVE_FAILED);
+
+      expect(lineEmitter).nthCalledWith(10, LINE_EVENTS.UNREGISTERED);
 
       /** there will be 2 registration attempts */
-      expect(lineEmitter).nthCalledWith(6, LINE_EVENTS.CONNECTING);
-      expect(lineEmitter).nthCalledWith(7, LINE_EVENTS.UNREGISTERED);
-      expect(lineEmitter).nthCalledWith(8, LINE_EVENTS.CONNECTING);
-      expect(lineEmitter).nthCalledWith(9, LINE_EVENTS.UNREGISTERED);
-      expect(lineEmitter).toBeCalledTimes(9);
+      expect(lineEmitter).nthCalledWith(11, LINE_EVENTS.CONNECTING);
+      expect(lineEmitter).nthCalledWith(12, LINE_EVENTS.UNREGISTERED);
+      expect(lineEmitter).nthCalledWith(13, LINE_EVENTS.CONNECTING);
+      expect(lineEmitter).nthCalledWith(14, LINE_EVENTS.UNREGISTERED);
+      expect(lineEmitter).toBeCalledTimes(14);
     });
 
     it('verify failure keep-alive cases: Restore Success', async () => {

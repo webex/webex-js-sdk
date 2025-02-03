@@ -389,6 +389,10 @@ function createDevice() {
     unregisterElm.disabled = false;
   });
 
+  line.on('line:keepalive_failed', () => {
+    console.log('line:keepalive_failed');
+  });
+
   // Start listening for incoming calls
   line.on('line:incoming_call', (callObj) => {
     call = callObj;

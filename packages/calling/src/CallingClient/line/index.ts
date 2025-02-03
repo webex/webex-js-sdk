@@ -196,6 +196,9 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
           this.emit(event, lineError);
         }
         break;
+      case LINE_EVENTS.KEEPALIVE_FAILED:
+        this.emit(event);
+        break;
       default:
         break;
     }

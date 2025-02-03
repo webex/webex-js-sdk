@@ -199,6 +199,7 @@ export type LineEventTypes = {
   [LINE_EVENTS.REGISTERED]: (lineInfo: ILine) => void;
   [LINE_EVENTS.UNREGISTERED]: () => void;
   [LINE_EVENTS.INCOMING_CALL]: (callObj: ICall) => void;
+  [LINE_EVENTS.KEEPALIVE_FAILED]: () => void;
 };
 
 export type CallEventTypes = {

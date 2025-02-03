@@ -724,6 +724,8 @@ export class Registration implements IRegistration {
               logContext
             );
 
+            this.lineEmitter(LINE_EVENTS.KEEPALIVE_FAILED);
+
             const abort = await handleRegistrationErrors(
               error,
               (clientError, finalError) => {
