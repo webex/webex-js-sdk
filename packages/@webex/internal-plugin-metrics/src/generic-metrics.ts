@@ -37,7 +37,7 @@ export default abstract class GenericMetrics extends StatelessWebexPlugin {
   }
 
   /**
-   * Submit a buisness metric to our metrics endpoint.
+   * Submit a business metric to our metrics endpoint.
    * @param {string} kind of metric for logging
    * @param {string} name of the metric
    * @param {object} event
@@ -105,7 +105,7 @@ export default abstract class GenericMetrics extends StatelessWebexPlugin {
   }
 
   /**
-   * Returns true once we have the deviceId we need to submit behavioral/operational/buisness events
+   * Returns true once we have the deviceId we need to submit behavioral/operational/business events
    * @returns {boolean}
    */
   public isReadyToSubmitEvents(): boolean {

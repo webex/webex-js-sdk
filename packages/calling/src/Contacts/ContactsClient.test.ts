@@ -804,4 +804,33 @@ describe('ContactClient Tests', () => {
 
     expect(contact).toEqual(null);
   });
+
+  it('logs error for chunk when scimQuery API call fails in the loop for getContacts', async () => {
+    const mockData = errorCodes[0];
+    const respPayload = {
+      statusCode: mockData.inputStatusCode,
+      body: mockData.payloadData,
+    };
+    webex.request.mockResolvedValueOnce(respPayload).mockRejectedValueOnce({
+      ...respPayload,
+      statusCode: 503,
+      message: FAILURE_MESSAGE,
+      data: mockData.payloadData,
+    });
+
+    mockData.decryptTextList.forEach((text) => {
+      webex.internal.encryption.decryptText.mockResolvedValueOnce(text);
+    });
+
+    jest.spyOn(log, 'warn');
+
+    await contactClient.getContacts();
+
+    expect(webex.request).toBeCalledTimes(2);
+    expect(log.warn).toBeCalledTimes(1);
+    expect(log.warn).toBeCalledWith('Error processing contact chunk 0-50', {
+      file: 'Contacts',
+      method: 'getContacts',
+    });
+  });
 });

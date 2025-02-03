@@ -368,14 +368,33 @@ export class ContactsClient implements IContacts {
       // Resolve cloud contacts
       if (Object.keys(cloudContactsMap).length) {
         const contactIdList = Object.keys(cloudContactsMap);
-        const query = contactIdList.map((item) => `${SCIM_ID_FILTER} "${item}"`).join(OR);
-        const result = await scimQuery(query);
-        const resolvedContacts = this.resolveCloudContacts(
-          cloudContactsMap,
-          result.body as SCIMListResponse
-        );
-        if (resolvedContacts) {
-          resolvedContacts.map((item) => contactList.push(item));
+        const totalContacts = contactIdList.length;
+        const MAX_CONTACTS_PER_QUERY = 50;
+
+        for (let i = 0; i < totalContacts; i += MAX_CONTACTS_PER_QUERY) {
+          try {
+            const contactIdListChunk = contactIdList.slice(i, i + MAX_CONTACTS_PER_QUERY);
+            const query = contactIdListChunk.map((item) => `${SCIM_ID_FILTER} "${item}"`).join(OR);
+            const result = await scimQuery(query);
+
+            const slicedCloudContactsMap = Object.fromEntries(
+              Object.entries(cloudContactsMap).slice(i, i + MAX_CONTACTS_PER_QUERY)
+            );
+
+            const resolvedContacts = this.resolveCloudContacts(
+              slicedCloudContactsMap,
+              result.body as SCIMListResponse
+            );
+
+            if (resolvedContacts) {
+              resolvedContacts.forEach((item) => contactList.push(item));
+            }
+          } catch (error: any) {
+            log.warn(
+              `Error processing contact chunk ${i}-${i + MAX_CONTACTS_PER_QUERY}`,
+              loggerContext
+            );
+          }
         }
       }
 
