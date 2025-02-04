@@ -6,7 +6,6 @@ import config from './config';
 
 registerPlugin('cypher', Cypher, {
   config,
-  interceptors: {},
 });
 
 export default Cypher;

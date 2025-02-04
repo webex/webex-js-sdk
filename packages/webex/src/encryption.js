@@ -15,10 +15,7 @@ if (!global._babelPolyfill) {
 require('@webex/plugin-authorization');
 // explicitly load wdm, since we're relying on preDiscoveryServices and the
 // url interceptor
-require('@webex/common');
-require('@webex/internal-plugin-encryption');
 require('@webex/plugin-encryption');
-require('node-scr');
 
 const merge = require('lodash/merge');
 const WebexCore = require('@webex/webex-core').default;

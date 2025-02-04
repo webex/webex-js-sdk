@@ -1,3 +1,13 @@
-const babelConfigLegacy = require('@webex/babel-config-legacy');
-
-module.exports = babelConfigLegacy;
+module.exports = {
+  "presets": [
+    [
+      "@babel/preset-env",
+      {
+        "targets": {
+          "node": "current"
+        }
+      }
+    ],
+    "@babel/preset-typescript"
+  ],
+}

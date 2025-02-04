@@ -72,11 +72,15 @@ const Encryption = WebexPlugin.extend({
    * @param {Object} options - optional parameters to download a file
    * @returns {promise}
    */
-  download(fileUrl, scr, options) {
+  async download(fileUrl, scr, options) {
     /* istanbul ignore if */
     if (!fileUrl || !scr) {
       return Promise.reject(new Error('`scr` and `fileUrl` are required'));
     }
+
+    const scrJSON = scr.toJSON();
+    scrJSON.loc = '';
+    const newSCR = await SCR.fromJSON(scrJSON);
 
     const shunt = new EventEmitter();
     const promise = this._fetchDownloadUrl(fileUrl, options)
@@ -94,7 +98,7 @@ const Encryption = WebexPlugin.extend({
 
         return ret;
       })
-      .then((res) => this.decryptBinary(scr, res.body));
+      .then((res) => this.decryptBinary(newSCR, res.body));
 
     proxyEvents(shunt, promise);
 
@@ -115,6 +119,10 @@ const Encryption = WebexPlugin.extend({
         'encryption: bypassing webex files because this looks to be a test file on localhost'
       );
 
+      return Promise.resolve(fileUrl);
+    }
+
+    if (options && options.useFileService === false) {
       return Promise.resolve(fileUrl);
     }
 
@@ -188,6 +196,7 @@ const Encryption = WebexPlugin.extend({
       return Promise.reject(new Error('Cannot encrypt `scr` without first setting `loc`'));
     }
 
+    // first we get the scr json, then we create an SCR instance using the key json and then we create a JWE using the key jwk
     return this.getKey(key, options).then((k) =>
       SCR.fromJSON(scr).then((encScr) => encScr.toJWE(k.jwk))
     );

@@ -15,8 +15,10 @@ const tokenElm = document.querySelector('#access-token');
 const saveElm = document.querySelector('#access-token-save');
 const authStatusElm = document.querySelector('#access-token-status');
 const encryptedFileUrlInput = document.querySelector('#encrypted-file-url');
+const decryptedFileNameInput = document.querySelector('#decrypted-file-name');
 const decryptFileBtn = document.querySelector('#decrypt-my-file-btn');
 const decryptFileResult = document.querySelector('#decrypt-file-result');
+const mimeTypeDropdown = document.querySelector('#mime-types');
 
 // Store and Grab `access-token` from localstorage
 if (localStorage.getItem('date') > new Date().getTime()) {
@@ -55,19 +57,6 @@ async function initWebex(e) {
         logger: {
           level: 'debug', // set the desired log level
         },
-        meetings: {
-          reconnection: {
-            enabled: true,
-          },
-          enableRtx: true,
-        },
-        encryption: {
-          kmsInitialTimeout: 8000,
-          kmsMaxTimeout: 40000,
-          batcherMaxCalls: 30,
-          caroots: null,
-        },
-        dss: {},
       },
       credentials: {
         access_token: tokenElm.value
@@ -78,7 +67,7 @@ async function initWebex(e) {
       webexConfig.config.services = {
         discovery: {
           u2c: 'https://u2c-intb.ciscospark.com/u2c/api/v1',
-          hydra: 'https://apialpha.ciscospark.com/v1/',
+          hydra: 'https://hydra-intb.ciscospark.com/v1/',
         },
       };
     }
@@ -101,13 +90,36 @@ async function initWebex(e) {
 
 credentialsFormElm.addEventListener('submit', initWebex);
 
+encryptedFileUrlInput.addEventListener('input', () => {
+  decryptFileResult.innerText = '';
+});
 
 async function decryptFile() {
+    decryptFileResult.innerText = '';
     const fileUrl = encryptedFileUrlInput.value;
-    const file = await webex.cypher.downloadAndDecryptFile(
-      fileUrl
-    );
+    const encryptedFileName = decryptedFileNameInput.value;
+    const mimeType = mimeTypeDropdown.value;
+    try {
 
-    window.open(URL.createObjectURL(file));
-    decryptFileResult.innerText = 'success';
+      const decryptedBuf = await webex.cypher.downloadAndDecryptFile(fileUrl);
+      const file = new File([decryptedBuf], encryptedFileName, {type: mimeType});
+
+      const url = URL.createObjectURL(file);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = file.name || "download"; // Use the original filename if available
+      document.body.appendChild(a);
+
+      // Trigger the download
+      a.click();
+
+      // Cleanup
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      decryptFileResult.innerText = ': success';
+    }
+    catch (error) {
+      console.error('error decrypting file', error);
+      decryptFileResult.innerText = ': error';
+    }
 }
