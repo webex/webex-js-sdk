@@ -1,5 +1,5 @@
 /*!
- * Copyright (c) 2015-2024 Cisco Systems, Inc. See the LICENSE file.
+ * Copyright (c) 2015-2025 Cisco Systems, Inc. See the LICENSE file.
  */
 
 // Note: this file is written using commonjs instead of import/export to
@@ -13,8 +13,6 @@ if (!global._babelPolyfill) {
 }
 
 require('@webex/plugin-authorization');
-// explicitly load wdm, since we're relying on preDiscoveryServices and the
-// url interceptor
 require('@webex/plugin-encryption');
 
 const merge = require('lodash/merge');
