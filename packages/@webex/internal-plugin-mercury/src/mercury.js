@@ -269,7 +269,7 @@ const Mercury = WebexPlugin.extend({
         this.logger.info(
           `${this.namespace}: connection attempt failed`,
           reason,
-          !this.backoffCall?.getNumRetries() ? reason.stack : ''
+          this.backoffCall?.getNumRetries() === 0 ? reason.stack : ''
         );
         // UnknownResponse is produced by IE for any 4XXX; treated it like a bad
         // web socket url and let WDM handle the token checking
