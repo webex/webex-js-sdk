@@ -1,9 +1,10 @@
 import {assert} from '@webex/test-helper-chai';
 import Sinon from 'sinon';
-import {cloneDeep} from 'lodash';
+import {cloneDeep, defaultsDeep} from 'lodash';
 import SelfUtils from '@webex/plugin-meetings/src/locus-info/selfUtils';
 
 import {self} from './selfConstant';
+import {_IDLE_, _WAIT_} from '@webex/plugin-meetings/src/constants';
 
 describe('plugin-meetings', () => {
   describe('selfUtils', () => {
@@ -181,10 +182,10 @@ describe('plugin-meetings', () => {
     describe('brbChanged', () => {
       it('should return true if brb have changed', () => {
         const current = {
-          brb: {enabled: true}
+          brb: {enabled: true},
         };
         const previous = {
-          brb: {enabled: false}
+          brb: {enabled: false},
         };
 
         assert.isTrue(SelfUtils.brbChanged(previous, current));
@@ -192,10 +193,10 @@ describe('plugin-meetings', () => {
 
       it('should return false if brb have not changed', () => {
         const current = {
-          brb: {enabled: true}
+          brb: {enabled: true},
         };
         const previous = {
-          brb: {enabled: true}
+          brb: {enabled: true},
         };
 
         assert.isFalse(SelfUtils.brbChanged(previous, current));
@@ -337,6 +338,56 @@ describe('plugin-meetings', () => {
 
           assert.equal(updates.localAudioUnmuteRequestedByServer, false);
         });
+      });
+
+      describe('updates.isUserUnadmitted', () => {
+        const testIsUserUnadmitted = (previousObjectDelta, currentObjectDelta, expected) => function () {
+          const previous =
+            previousObjectDelta === undefined ? undefined : defaultsDeep(previousObjectDelta, self);
+          const current = defaultsDeep(currentObjectDelta, self);
+
+          const {updates} = SelfUtils.getSelves(previous, current, self.devices[0].url);
+
+          assert.equal(updates.isUserUnadmitted, expected);
+        };
+
+        it(
+          'should return true when previous is undefined and current is in lobby',
+          testIsUserUnadmitted(
+            undefined,
+            {devices: [{intent: {type: _WAIT_}}], state: _IDLE_},
+            true
+          )
+        );
+
+        it(
+          'should return false when previous is undefined and user is not in meeting',
+          testIsUserUnadmitted(undefined, {devices: [], state: _IDLE_}, false)
+        );
+
+        it(
+          'should return false when previous is undefined and current is in meeting',
+          testIsUserUnadmitted(undefined, {}, false)
+        );
+
+        it(
+          'should return false when previous is in lobby and current is in lobby',
+          testIsUserUnadmitted(
+            {devices: [{intent: {type: _WAIT_}}], state: _IDLE_},
+            {devices: [{intent: {type: _WAIT_}}], state: _IDLE_},
+            false
+          )
+        );
+
+        it(
+          'should return false when previous is in lobby and current is in meeting',
+          testIsUserUnadmitted({devices: [{intent: {type: _WAIT_}}], state: _IDLE_}, {}, false)
+        );
+
+        it(
+          'should return true when previous is in meeting and current is in lobby',
+          testIsUserUnadmitted({}, {devices: [{intent: {type: _WAIT_}}], state: _IDLE_}, true)
+        );
       });
     });
 

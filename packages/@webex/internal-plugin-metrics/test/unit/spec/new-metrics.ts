@@ -93,12 +93,14 @@ describe('internal-plugin-metrics', () => {
         name: 'foobar',
         payload: {},
         table: 'test',
+        metadata: { foo: 'bar' },
       });
 
       assert.calledWith(webex.internal.newMetrics.businessMetrics.submitBusinessEvent, {
         name: 'foobar',
         payload: {},
         table: 'test',
+        metadata: { foo: 'bar' },
       });
     });
   

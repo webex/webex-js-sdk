@@ -141,7 +141,7 @@ class Metrics extends WebexPlugin {
   }
 
   /**
-   * @returns true once we have the deviceId we need to submit buisness events
+   * @returns true once we have the deviceId we need to submit business events
    */
   isReadyToSubmitBusinessEvents() {
     this.lazyBuildBusinessMetrics();
@@ -200,17 +200,19 @@ class Metrics extends WebexPlugin {
   }
 
   /**
-   * Buisness event
+   * Business event
    * @param args
    */
   submitBusinessEvent({
     name,
     payload,
     table,
+    metadata,
   }: {
     name: string;
     payload: EventPayload;
     table?: Table;
+    metadata?: EventPayload;
   }) {
     if (!this.isReady) {
       // @ts-ignore
@@ -223,7 +225,7 @@ class Metrics extends WebexPlugin {
 
     this.lazyBuildBusinessMetrics();
 
-    return this.businessMetrics.submitBusinessEvent({name, payload, table});
+    return this.businessMetrics.submitBusinessEvent({name, payload, table, metadata});
   }
 
   /**

@@ -745,6 +745,52 @@ describe('internal-plugin-metrics', () => {
       });
     });
 
+    it('should prepare diagnostic event successfully when triggeredTime is supplied in the options object', () => {
+      const options = {meetingId: fakeMeeting.id, triggeredTime: 'fake-triggered-time'};
+      const getOriginStub = sinon.stub(cd, 'getOrigin').returns({origin: 'fake-origin'});
+      const clearEmptyKeysRecursivelyStub = sinon.stub(
+        CallDiagnosticUtils,
+        'clearEmptyKeysRecursively'
+      );
+
+      const res = cd.prepareDiagnosticEvent(
+        {
+          canProceed: false,
+          identifiers: {
+            correlationId: 'id',
+            webexConferenceIdStr: 'webexConferenceIdStr1',
+            globalMeetingId: 'globalMeetingId1',
+          },
+          name: 'client.alert.displayed',
+        },
+        options
+      );
+
+      assert.calledWith(getOriginStub, options, options.meetingId);
+      assert.calledOnce(clearEmptyKeysRecursivelyStub);
+      assert.deepEqual(res, {
+        event: {
+          canProceed: false,
+          identifiers: {
+            correlationId: 'id',
+            webexConferenceIdStr: 'webexConferenceIdStr1',
+            globalMeetingId: 'globalMeetingId1',
+          },
+          name: 'client.alert.displayed',
+        },
+        eventId: 'my-fake-id',
+        origin: {
+          origin: 'fake-origin',
+        },
+        originTime: {
+          sent: 'not_defined_yet',
+          triggered: 'fake-triggered-time',
+        },
+        senderCountryCode: 'UK',
+        version: 1,
+      });
+    });
+
     describe('#submitClientEvent', () => {
       it('should submit client event successfully with meetingId', () => {
         const prepareDiagnosticEventSpy = sinon.spy(cd, 'prepareDiagnosticEvent');

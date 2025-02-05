@@ -128,6 +128,7 @@ export type SubmitClientEventOptions = {
   globalMeetingId?: string;
   joinFlowVersion?: MetricEventJoinFlowVersion;
   meetingJoinPhase?: MetricEventMeetingJoinPhase;
+  triggeredTime?: string;
 };
 
 export type SubmitMQEOptions = {
