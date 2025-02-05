@@ -772,6 +772,16 @@ describe('webex.cc', () => {
         .mockResolvedValue({} as SetStateResponse);
       jest.spyOn(webex.cc.services.agent, 'reload').mockResolvedValue(mockReLoginResponse);
 
+      const registerWebCallingLineSpy = jest.spyOn(
+        webex.cc.webCallingService,
+        'registerWebCallingLine'
+      );
+      const registerIncomingCallEventSpy = jest.spyOn(
+        webex.cc.taskManager,
+        'registerIncomingCallEvent'
+      );
+      const incomingTaskListenerSpy = jest.spyOn(webex.cc, 'incomingTaskListener');
+      const webSocketManagerOnSpy = jest.spyOn(webex.cc.services.webSocketManager, 'on');
       await webex.cc['silentRelogin']();
 
       expect(LoggerProxy.info).toHaveBeenCalledWith(
@@ -786,6 +796,10 @@ describe('webex.cc', () => {
       });
       expect(webex.cc.agentConfig.isAgentLoggedIn).toBe(true);
       expect(webex.cc.agentConfig.deviceType).toBe(LoginOption.BROWSER);
+      expect(registerWebCallingLineSpy).toHaveBeenCalled();
+      expect(registerIncomingCallEventSpy).toHaveBeenCalled();
+      expect(incomingTaskListenerSpy).toHaveBeenCalled();
+      expect(webSocketManagerOnSpy).toHaveBeenCalledWith('message', expect.any(Function));
     });
 
     it('should handle AGENT_NOT_FOUND error silently', async () => {
@@ -831,6 +845,10 @@ describe('webex.cc', () => {
         isAgentLoggedIn: false,
       } as Profile;
   
+      const registerWebCallingLineSpy = jest.spyOn(
+        webex.cc.webCallingService,
+        'registerWebCallingLine'
+      );
       jest.spyOn(webex.cc.services.agent, 'reload').mockResolvedValue(mockReLoginResponse);
   
       await webex.cc['silentRelogin']();
