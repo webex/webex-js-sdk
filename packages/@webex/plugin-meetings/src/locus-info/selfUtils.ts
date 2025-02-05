@@ -99,7 +99,7 @@ SelfUtils.getSelves = (oldSelf, newSelf, deviceId) => {
   const current = newSelf && SelfUtils.parse(newSelf, deviceId);
   const updates: any = {};
 
-  updates.isUserUnadmitted = SelfUtils.isUserUnadmitted(current);
+  updates.isUserUnadmitted = SelfUtils.isUserUnadmitted(previous, current);
   updates.isUserAdmitted = SelfUtils.isUserAdmitted(previous, current);
   updates.isVideoMutedByOthersChanged = SelfUtils.videoMutedByOthersChanged(previous, current);
   updates.isMutedByOthersChanged = SelfUtils.mutedByOthersChanged(previous, current);
@@ -330,16 +330,23 @@ SelfUtils.isLocusUserAdmitted = (check: any) =>
   check && check.joinedWith?.intent?.type !== _WAIT_ && check.state === _JOINED_;
 
 /**
- * @param {Object} self
+ * @param {Object} oldSelf
+ * @param {Object} changedSelf
  * @returns {Boolean}
  * @throws {Error} when self is undefined
  */
-SelfUtils.isUserUnadmitted = (self: object) => {
-  if (!self) {
-    throw new ParameterError('self must be defined to determine if self is unadmitted as guest.');
+SelfUtils.isUserUnadmitted = (oldSelf: object, changedSelf: object) => {
+  if (!changedSelf) {
+    throw new ParameterError(
+      'changedSelf must be defined to determine if self is unadmitted as guest.'
+    );
   }
 
-  return SelfUtils.isLocusUserUnadmitted(self);
+  if (SelfUtils.isLocusUserUnadmitted(oldSelf)) {
+    return false;
+  }
+
+  return SelfUtils.isLocusUserUnadmitted(changedSelf);
 };
 
 SelfUtils.moderatorChanged = (oldSelf, changedSelf) => {
