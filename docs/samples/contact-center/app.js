@@ -652,15 +652,27 @@ async function handleAgentLogin(e) {
 }
 
 function doAgentLogin() {
-  webex.cc.stationLogin({teamId: teamsDropdown.value, loginOption: agentDeviceType, dialNumber: dialNumber.value}).then((response) => {
+  webex.cc.stationLogin({
+    teamId: teamsDropdown.value,
+    loginOption: agentDeviceType,
+    dialNumber: dialNumber.value
+  }).then((response) => {
     console.log('Agent Logged in successfully', response);
     loginAgentElm.disabled = true;
     logoutAgentElm.classList.remove('hidden');
-  }
-  ).catch((error) => {
+    
+    // Read auxCode and lastStateChangeTimestamp from login response
+    const DEFAULT_CODE = '0'; // Default code when no aux code is present
+    const auxCodeId = response.data.auxCodeId?.trim() !== '' ? response.data.auxCodeId : DEFAULT_CODE;
+    const lastStateChangeTimestamp = response.data.lastStateChangeTimestamp;
+    idleCodesDropdown.selectedIndex = idleCodesDropdown.options[0].value === auxCodeId ? 0 : [...idleCodesDropdown.options].findIndex(option => option.value === auxCodeId);
+    startStateTimer(new Date(lastStateChangeTimestamp));
+    
+  }).catch((error) => {
     console.log('Agent Login failed', error);
   });
 }
+
 
 async function handleAgentStatus(event) {
   auxCodeId = event.target.value;
