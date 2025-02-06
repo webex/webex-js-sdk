@@ -645,4 +645,36 @@ describe('TaskManager', () => {
     expect(taskEmitSpy).not.toHaveBeenCalled();
     expect(taskUpdateTaskDataSpy).not.toHaveBeenCalled();
   });
+
+  // it('should handle AGENT_OFFER_CONTACT event', () => {
+  //   const payload = {
+  //     data: {
+  //       ...initalPayload.data,
+  //       type: CC_EVENTS.AGENT_OFFER_CONTACT,
+  //     },
+  //   };
+
+  //   webSocketManagerMock.emit('message', JSON.stringify(initalPayload));
+  //   const taskUpdateTaskDataSpy = jest.spyOn(taskManager.currentTask, 'updateTaskData');
+  //   const taskEmitSpy = jest.spyOn(taskManager.currentTask, 'emit');
+  //   webSocketManagerMock.emit('message', JSON.stringify(payload));
+  //   expect(taskUpdateTaskDataSpy).toHaveBeenCalledWith(payload.data);
+  //   expect(taskEmitSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_OFFER_CONTACT, taskManager.currentTask);
+  // });
+
+  // it('should handle AGENT_OUTBOUND_FAILED event', () => {
+  //   const payload = {
+  //     data: {
+  //       ...initalPayload.data,
+  //       type: CC_EVENTS.AGENT_OUTBOUND_FAILED,
+  //     },
+  //   };
+
+  //   webSocketManagerMock.emit('message', JSON.stringify(initalPayload));
+  //   const taskUpdateTaskDataSpy = jest.spyOn(taskManager.currentTask, 'updateTaskData');
+  //   const taskEmitSpy = jest.spyOn(taskManager.currentTask, 'emit');
+  //   webSocketManagerMock.emit('message', JSON.stringify(payload));
+  //   expect(taskUpdateTaskDataSpy).toHaveBeenCalledWith(payload.data);
+  //   expect(taskEmitSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_OUTBOUND_FAILED, taskManager.currentTask);
+  // });
 });

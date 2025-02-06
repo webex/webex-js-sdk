@@ -32,6 +32,7 @@ export type TaskErrorIds =
   | {'Service.aqm.task.VteamListFailed': Failure}
   | {'Service.aqm.task.pauseRecording': Failure}
   | {'Service.aqm.task.resumeRecording': Failure}
+  | {'Service.aqm.dialer.startOutdial': Failure}
   | {'Service.reqs.generic.failure': {trackingId: string}};
 
 export type ReqError =

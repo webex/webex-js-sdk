@@ -12,6 +12,7 @@ let taskId;
 let wrapupCodes = []; // Add this to store wrapup codes
 let isConsultOptionsShown = false;
 let isTransferOptionsShown = false; // Add this variable to track the state of transfer options
+let entryPointId = '';
 
 const authTypeElm = document.querySelector('#auth-type');
 const credentialsFormElm = document.querySelector('#credentials');
@@ -378,6 +379,37 @@ async function endConsult() {
   }
 }
 
+// Function to make an outDial call
+async function makeOutDialCall() {
+  const destination = document.getElementById('outBoundDialNumber').value;
+  // const ani = document.getElementById('outBoundDialNumber').value;
+  const dialerPayload = {
+    entryPointId: entryPointId,
+    destination: destination,
+    direction: 'OUTBOUND',
+    attributes: {},
+    mediaType: 'telephony',
+    outboundType: 'OUTDIAL',
+  };
+
+
+  try {
+    console.log('Making an outdial call');
+    console.log('task is:', task);
+    await webex.cc.makeOutDialCall(dialerPayload);
+    console.log('Outdial call initiated successfully');
+  } catch (error) {
+    console.error('Failed to initiate outdial call', error);
+    alert('Failed to initiate outdial call');
+  
+  }
+}
+
+// Function to press a key during an active call
+function pressKey(value) {
+  document.getElementById('outBoundDialNumber').value += value;
+}
+
 // Enable consult button after task is accepted
 function enableConsultControls() {
   consultTabBtn.disabled = false;
@@ -472,13 +504,21 @@ function registerTaskListeners(task) {
     }
   });
   task.on('task:rejected', (reason) => {
-    console.info('Adhwaith', reason);
+    console.info('Task is rejected with reason:', reason);
     if (reason === 'RONA_TIMER_EXPIRED') {
       answerElm.disabled = true;
       declineElm.disabled = true;
       incomingDetailsElm.innerText = 'No incoming calls';
     }
     showAgentStatePopup(reason);
+  });
+
+  task.on('task:agentOfferContact', (task) => { 
+    console.log('Making an outbound Call.', task);
+  });
+  
+  task.on('task:agentOutboundFailed', (reason) => {
+    console.log('Outbound call failed with reason:', reason);
   });
 }
 
@@ -578,6 +618,7 @@ function register() {
             idleCodesDropdown.add(option);
           }
         });
+        entryPointId = agentProfile.outDialEp;
     }).catch((error) => {
         console.error('Event subscription failed', error);
     })

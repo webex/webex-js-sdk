@@ -26,7 +26,9 @@ import {AGENT_STATE_AVAILABLE} from './services/config/constants';
 import {ConnectionLostDetails} from './services/core/websocket/types';
 import TaskManager from './services/task/TaskManager';
 import WebCallingService from './services/WebCallingService';
-import {ITask, TASK_EVENTS} from './services/task/types';
+import {ITask, TASK_EVENTS, DialerPayload} from './services/task/types';
+import aqmDialer from './services/task/dialer';
+import AqmReqs from './services/core/aqm-reqs';
 
 export default class ContactCenter extends WebexPlugin implements IContactCenter {
   namespace = 'cc';
@@ -401,5 +403,16 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     }
     this.webCallingService.setLoginOption(deviceType);
     this.agentConfig.deviceType = deviceType;
+  }
+
+  public async makeOutDialCall(payload: DialerPayload): Promise<void> {
+    try {
+      const aqmReqsInstance = new AqmReqs(this.services.webSocketManager);
+      const dialer = aqmDialer(aqmReqsInstance);
+      await dialer.startOutdial({data: payload});
+    } catch (error) {
+      const {error: detailedError} = getErrorDetails(error, 'makeOutDialCall', CC_FILE);
+      throw detailedError;
+    }
   }
 }

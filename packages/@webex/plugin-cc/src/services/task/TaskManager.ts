@@ -75,6 +75,15 @@ export default class TaskManager extends EventEmitter {
               this.emit(TASK_EVENTS.TASK_INCOMING, this.currentTask);
             }
             break;
+
+          case CC_EVENTS.AGENT_OFFER_CONTACT:
+            this.currentTask.emit(TASK_EVENTS.AGENT_OFFER_CONTACT, this.currentTask);
+            break;
+
+          case CC_EVENTS.AGENT_OUTBOUND_FAILED:
+            this.currentTask.emit(TASK_EVENTS.AGENT_OUTBOUND_FAILED, this.currentTask);
+            break;
+
           case CC_EVENTS.AGENT_CONTACT_ASSIGNED:
             this.currentTask = this.currentTask.updateTaskData(payload.data);
             this.currentTask.emit(TASK_EVENTS.TASK_ASSIGNED, this.currentTask);

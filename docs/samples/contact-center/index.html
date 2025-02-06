@@ -214,6 +214,32 @@
               </div>
             </fieldset>
           </div>
+          <div id="outBoundCallDialer">
+          <fieldset>
+          <legend>Outdial Call</legend>
+          <div class="keypad">
+            <input id="outBoundDialNumber" placeholder="Enter number to dial">
+            <div class="keys">
+              <div class="key" onclick="pressKey('1')">1</div>
+              <div class="key" onclick="pressKey('2')">2</div>
+              <div class="key" onclick="pressKey('3')">3</div>
+              <div class="key" onclick="pressKey('4')">4</div>
+              <div class="key" onclick="pressKey('5')">5</div>
+              <div class="key" onclick="pressKey('6')">6</div>
+              <div class="key" onclick="pressKey('7')">7</div>
+              <div class="key" onclick="pressKey('8')">8</div>
+              <div class="key" onclick="pressKey('9')">9</div>
+              <div class="key" onclick="pressKey('*')">*</div>
+              <div class="key" onclick="pressKey('0')">0</div>
+              <div class="key" onclick="pressKey('#')">#</div>
+            </div>
+            <select id="outdialANI" class="dropdown">
+              <option value="">Select Outdial ANI</option>
+            </select>
+            <button class="call-btn" onclick="makeOutDialCall()"><i class="fa fa-phone"></i></button>
+          </div>
+        </fieldset>
+        </div>
       </section>
     </div>
   </div>

@@ -16,6 +16,10 @@ import config from '../../../src/config';
 import {CC_EVENTS} from '../../../src/services/config/types';
 import LoggerProxy from '../../../src/logger-proxy';
 import {CC_FILE, AGENT_STATE_CHANGE, AGENT_MULTI_LOGIN} from '../../../src/constants';
+import AqmReqs from '../../../src/services/core/aqm-reqs';
+import aqmDialer from '../../../src/services/task/dialer';
+import { getErrorDetails } from '../../../src/services/core/Utils';
+import { DialerPayload } from '../../../src/services/task/types';
 
 // Mock the Worker API
 import '../../../__mocks__/workerMock';
@@ -38,6 +42,10 @@ jest.mock('../../../src/services/config');
 jest.mock('../../../src/services/core/websocket/WebSocketManager');
 jest.mock('../../../src/services/core/websocket/connection-service');
 jest.mock('../../../src/services/WebCallingService');
+jest.mock('../../../src/services/core/aqm-reqs');
+jest.mock('../../../src/services/task/dialer');
+jest.mock('../../../src/services/core/Utils');
+
 
 global.URL.createObjectURL = jest.fn(() => 'blob:http://localhost:3000/12345');
 
@@ -903,4 +911,83 @@ describe('webex.cc', () => {
     });
   });
 
+  // describe('outbound call', () => {
+  //   let contactCenter: ContactCenter;
+  //   let mockWebSocketManager: any;
+  //   let mockServices: any;
+  //   let mockLoggerProxy: any;
+  
+  //   beforeEach(() => {
+  //     mockWebSocketManager = {
+  //       on: jest.fn(),
+  //       off: jest.fn(),
+  //     };
+  
+  //     mockServices = {
+  //       webSocketManager: mockWebSocketManager,
+  //     };
+  
+  //     mockLoggerProxy = {
+  //       error: jest.fn(),
+  //       log: jest.fn(),
+  //     };
+  
+  //     contactCenter = new ContactCenter({
+  //       webex: {},
+  //       config: {},
+  //       services: mockServices,
+  //       logger: mockLoggerProxy,
+  //     });
+  //   });
+  
+  //   describe('makeOutDialCall', () => {
+
+  //     it('should make an outDial call successfully', async () => {
+  //       const payload: DialerPayload = {
+  //         entryPointId: 'entry-point-id',
+  //         destination: 'destination-number',
+  //         direction: 'OUTBOUND',
+  //         attributes: {},
+  //         mediaType: 'telephony',
+  //         outboundType: 'OUTDIAL',
+  //       };
+  
+  //       const mockStartOutdial = jest.fn().mockResolvedValue({});
+  //       (aqmDialer as jest.Mock).mockReturnValue({
+  //         startOutdial: mockStartOutdial,
+  //       });
+  
+  //       await contactCenter.makeOutDialCall(payload);
+  
+  //       expect(aqmDialer).toHaveBeenCalledWith(expect.any(AqmReqs));
+  //       expect(mockStartOutdial).toHaveBeenCalledWith({ data: payload });
+  //     });
+  
+  //     it('should handle errors during outDial call', async () => {
+  //       const payload: DialerPayload = {
+  //         entryPointId: 'entry-point-id',
+  //         destination: 'destination-number',
+  //         direction: 'OUTBOUND',
+  //         attributes: {},
+  //         mediaType: 'telephony',
+  //         outboundType: 'OUTDIAL',
+  //       };
+  
+  //       const mockError = new Error('Test error');
+  //       const mockStartOutdial = jest.fn().mockRejectedValue(mockError);
+  //       (aqmDialer as jest.Mock).mockReturnValue({
+  //         startOutdial: mockStartOutdial,
+  //       });
+  
+  //       const mockGetErrorDetails = jest.fn().mockReturnValue({ error: mockError });
+  //       (getErrorDetails as jest.Mock).mockImplementation(mockGetErrorDetails);
+  
+  //       await expect(contactCenter.makeOutDialCall(payload)).rejects.toThrow(mockError);
+  
+  //       expect(aqmDialer).toHaveBeenCalledWith(expect.any(AqmReqs));
+  //       expect(mockStartOutdial).toHaveBeenCalledWith({ data: payload });
+  //       expect(mockGetErrorDetails).toHaveBeenCalledWith(mockError, 'makeOutDialCall', CC_FILE);
+  //     });
+  //   });
+  // });
 });
