@@ -246,7 +246,7 @@ describe('webex.cc', () => {
           force: true,
           isKeepAliveEnabled: false,
           clientType: 'WebexCCSDK',
-          allowMultiLogin: false,
+          allowMultiLogin: true,
         },
       });
       expect(configSpy).toHaveBeenCalled();
