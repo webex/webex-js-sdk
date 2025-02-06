@@ -665,8 +665,9 @@ function doAgentLogin() {
     const DEFAULT_CODE = '0'; // Default code when no aux code is present
     const auxCodeId = response.data.auxCodeId?.trim() !== '' ? response.data.auxCodeId : DEFAULT_CODE;
     const lastStateChangeTimestamp = response.data.lastStateChangeTimestamp;
-    idleCodesDropdown.selectedIndex = idleCodesDropdown.options[0].value === auxCodeId ? 0 : [...idleCodesDropdown.options].findIndex(option => option.value === auxCodeId);
-    startStateTimer(new Date(lastStateChangeTimestamp));
+    const index = [...idleCodesDropdown.options].findIndex(option => option.value === auxCodeId);
+    idleCodesDropdown.selectedIndex = index !== -1 ? index : 0;
+        startStateTimer(new Date(lastStateChangeTimestamp));
     
   }).catch((error) => {
     console.log('Agent Login failed', error);

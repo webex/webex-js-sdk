@@ -343,10 +343,12 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   private async silentRelogin(): Promise<void> {
     try {
       const reLoginResponse = await this.services.agent.reload();
-      const {agentId, lastStateChangeReason, deviceType, dn, lastIdleCodeChangeTimestamp} =
+      const {agentId, lastStateChangeReason, deviceType, dn, lastStateChangeTimestamp} =
         reLoginResponse.data;
       let {auxCodeId} = reLoginResponse.data;
-      this.agentConfig.lastStateChangeTimestamp = new Date(lastIdleCodeChangeTimestamp);
+      this.agentConfig.lastStateChangeTimestamp = lastStateChangeTimestamp
+        ? new Date(lastStateChangeTimestamp)
+        : new Date();
 
       // To handle re-registration of event listeners on silent relogin
       this.incomingTaskListener();
@@ -368,9 +370,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           const agentStatusResponse = (await this.setAgentState(
             stateChangeData
           )) as StateChangeSuccess;
-          this.agentConfig.lastStateChangeTimestamp = new Date(
-            agentStatusResponse.data.lastStateChangeTimestamp
-          );
+          this.agentConfig.lastStateChangeTimestamp = agentStatusResponse.data
+            .lastStateChangeTimestamp
+            ? new Date(agentStatusResponse.data.lastStateChangeTimestamp)
+            : new Date();
         } catch (error) {
           LoggerProxy.error(
             `event=requestAutoStateChange | Error requesting state change to available on socket reconnect: ${error}`,
@@ -400,7 +403,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * Handles the device type specific logic
    */
   private async handleDeviceType(deviceType: LoginOption, dn: string): Promise<void> {
-    switch (deviceType) {
+    switch (deviceType || LoginOption.EXTENSION) {
       case LoginOption.BROWSER:
         await this.webCallingService.registerWebCallingLine();
         break;
@@ -408,12 +411,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       case LoginOption.EXTENSION:
         this.agentConfig.defaultDn = dn;
         break;
-      default:
-        LoggerProxy.error(`Unsupported device type: ${deviceType}`, {
-          module: CC_FILE,
-          method: this.handleDeviceType.name,
-        });
-        throw new Error(`Unsupported device type: ${deviceType}`);
     }
     this.webCallingService.setLoginOption(deviceType);
     this.agentConfig.deviceType = deviceType;
