@@ -546,8 +546,10 @@ function startStateTimer(startTime) {
     const hours = String(Math.floor(timeDifference / (1000 * 60 * 60))).padStart(2, '0');
     const minutes = String(Math.floor((timeDifference % (1000 * 60 * 60)) / (1000 * 60))).padStart(2, '0');
     const seconds = String(Math.floor((timeDifference % (1000 * 60)) / 1000)).padStart(2, '0');
-
-    timerElm.innerHTML = `${hours}:${minutes}:${seconds}`;
+    if(timerElm)
+    {
+      timerElm.innerHTML = `${hours}:${minutes}:${seconds}`;
+    }
   }, 1000);
 }
 
