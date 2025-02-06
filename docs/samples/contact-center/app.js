@@ -13,6 +13,7 @@ let wrapupCodes = []; // Add this to store wrapup codes
 let isConsultOptionsShown = false;
 let isTransferOptionsShown = false; // Add this variable to track the state of transfer options
 let entryPointId = '';
+let stateTimer;
 
 const authTypeElm = document.querySelector('#auth-type');
 const credentialsFormElm = document.querySelector('#credentials');
@@ -59,6 +60,7 @@ const initiateConsultDialog = document.querySelector('#initiate-consult-dialog')
 const agentMultiLoginAlert = document.querySelector('#agentMultiLoginAlert');
 const consultTransferBtn = document.querySelector('#consult-transfer');
 const transferElm = document.getElementById('transfer');
+const timerElm = document.querySelector('#timerDisplay');
 
 // Store and Grab `access-token` from sessionStorage
 if (sessionStorage.getItem('date') > new Date().getTime()) {
@@ -572,6 +574,25 @@ function initWebex(e) {
 
 credentialsFormElm.addEventListener('submit', initWebex);
 
+function startStateTimer(startTime) {
+  if (stateTimer) {
+    clearInterval(stateTimer);
+  }
+
+  stateTimer = setInterval(() => {
+    const currentTime = new Date().getTime();
+    const timeDifference = currentTime - startTime;
+
+    const hours = String(Math.floor(timeDifference / (1000 * 60 * 60))).padStart(2, '0');
+    const minutes = String(Math.floor((timeDifference % (1000 * 60 * 60)) / (1000 * 60))).padStart(2, '0');
+    const seconds = String(Math.floor((timeDifference % (1000 * 60)) / 1000)).padStart(2, '0');
+    if(timerElm)
+    {
+      timerElm.innerHTML = `${hours}:${minutes}:${seconds}`;
+    }
+  }, 1000);
+}
+
 
 function register() {
     webex.cc.register(true).then((agentProfile) => {
@@ -615,6 +636,11 @@ function register() {
             const option  = document.createElement('option');
             option.text = idleCodes.name;
             option.value = idleCodes.id;
+            if (agentProfile.lastStateAuxCodeId && agentProfile.lastStateAuxCodeId === idleCodes.id)
+            {
+              option.selected = true;
+              startStateTimer(agentProfile.lastStateChangeTimestamp)
+            }
             idleCodesDropdown.add(option);
           }
         });
@@ -633,6 +659,7 @@ function register() {
       if (data && typeof data === 'object' && data.type === 'AgentStateChangeSuccess') {
         const DEFAULT_CODE = '0'; // Default code when no aux code is present
         idleCodesDropdown.value = data.auxCodeId?.trim() !== '' ? data.auxCodeId : DEFAULT_CODE;
+        startStateTimer(data.lastStateChangeTimestamp);
       }
     });
 
@@ -668,15 +695,28 @@ async function handleAgentLogin(e) {
 }
 
 function doAgentLogin() {
-  webex.cc.stationLogin({teamId: teamsDropdown.value, loginOption: agentDeviceType, dialNumber: dialNumber.value}).then((response) => {
+  webex.cc.stationLogin({
+    teamId: teamsDropdown.value,
+    loginOption: agentDeviceType,
+    dialNumber: dialNumber.value
+  }).then((response) => {
     console.log('Agent Logged in successfully', response);
     loginAgentElm.disabled = true;
     logoutAgentElm.classList.remove('hidden');
-  }
-  ).catch((error) => {
+    
+    // Read auxCode and lastStateChangeTimestamp from login response
+    const DEFAULT_CODE = '0'; // Default code when no aux code is present
+    const auxCodeId = response.data.auxCodeId?.trim() !== '' ? response.data.auxCodeId : DEFAULT_CODE;
+    const lastStateChangeTimestamp = response.data.lastStateChangeTimestamp;
+    const index = [...idleCodesDropdown.options].findIndex(option => option.value === auxCodeId);
+    idleCodesDropdown.selectedIndex = index !== -1 ? index : 0;
+        startStateTimer(new Date(lastStateChangeTimestamp));
+    
+  }).catch((error) => {
     console.log('Agent Login failed', error);
   });
 }
+
 
 async function handleAgentStatus(event) {
   auxCodeId = event.target.value;
