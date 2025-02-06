@@ -755,7 +755,7 @@ describe('webex.cc', () => {
           auxCodeId: 'auxCodeId',
           agentId: 'agentId',
           lastStateChangeReason: 'agent-wss-disconnect',
-          lastIdleCodeChangeTimestamp: 1738575135188,
+          lastStateChangeTimestamp: 1738575135188,
           deviceType: LoginOption.BROWSER,
           dn: '12345',
         },
@@ -838,7 +838,7 @@ describe('webex.cc', () => {
           agentId: 'agentId',
           deviceType: LoginOption.EXTENSION,
           dn: '12345',
-          lastIdleCodeChangeTimestamp: 1738575135188,
+          lastStateChangeTimestamp: 1738575135188,
         },
       };
 
