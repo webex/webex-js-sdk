@@ -403,7 +403,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * Handles the device type specific logic
    */
   private async handleDeviceType(deviceType: LoginOption, dn: string): Promise<void> {
-    switch (deviceType || LoginOption.EXTENSION) {
+    switch (deviceType) {
       case LoginOption.BROWSER:
         await this.webCallingService.registerWebCallingLine();
         break;
@@ -411,6 +411,12 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       case LoginOption.EXTENSION:
         this.agentConfig.defaultDn = dn;
         break;
+      default:
+        LoggerProxy.error(`Unsupported device type: ${deviceType}`, {
+          module: CC_FILE,
+          method: this.handleDeviceType.name,
+        });
+        throw new Error(`Unsupported device type: ${deviceType}`);
     }
     this.webCallingService.setLoginOption(deviceType);
     this.agentConfig.deviceType = deviceType;
