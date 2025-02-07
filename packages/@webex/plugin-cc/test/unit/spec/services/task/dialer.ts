@@ -5,6 +5,7 @@ jest.mock('../../../../../src/services/core/Utils', () => ({
 
   createErrDetailsObject: jest.fn(),
   getRoutingHost: jest.fn(),
+
 }));
 
 jest.mock('../../../../../src/services/core/aqm-reqs');
@@ -20,8 +21,8 @@ describe('AQM routing dialer', () => {
     fakeAqm = new AqmReqs() as jest.Mocked<AqmReqs>;
     fakeAqm.reqEmpty = jest.fn().mockImplementation((fn) => fn);
     fakeAqm.req = jest.fn().mockImplementation((fn) => fn);
-  });
 
+  });
 
 describe("Routing outbound dial", () => {
 
@@ -41,7 +42,7 @@ describe("Routing outbound dial", () => {
           .startOutdial({
             data: {
               entryPointId: "1212312",
-              destination: "asdaad",
+              destination: "+142356",
               direction: "OUTBOUND",
               attributes: {},
               mediaType: "telephony",
@@ -56,6 +57,7 @@ describe("Routing outbound dial", () => {
           });
       
         expect(dialer.startOutdial).toHaveBeenCalled();
+        
       });
 });
 });
