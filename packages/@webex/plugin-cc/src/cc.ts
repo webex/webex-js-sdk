@@ -424,6 +424,13 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     this.agentConfig.deviceType = deviceType;
   }
 
+  /**
+   * This is used for making the outdial call.
+   * @param payload
+   * @returns Promise<void>
+   * @throws Error
+   */
+
   public async makeOutDialCall(payload: DialerPayload): Promise<void> {
     try {
       const aqmReqsInstance = new AqmReqs(this.services.webSocketManager);

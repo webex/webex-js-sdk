@@ -16,10 +16,6 @@ import config from '../../../src/config';
 import {CC_EVENTS} from '../../../src/services/config/types';
 import LoggerProxy from '../../../src/logger-proxy';
 import {CC_FILE, AGENT_STATE_CHANGE, AGENT_MULTI_LOGIN} from '../../../src/constants';
-import AqmReqs from '../../../src/services/core/aqm-reqs';
-import aqmDialer from '../../../src/services/task/dialer';
-import { getErrorDetails } from '../../../src/services/core/Utils';
-import { DialerPayload } from '../../../src/services/task/types';
 
 // Mock the Worker API
 import '../../../__mocks__/workerMock';
@@ -42,9 +38,6 @@ jest.mock('../../../src/services/config');
 jest.mock('../../../src/services/core/websocket/WebSocketManager');
 jest.mock('../../../src/services/core/websocket/connection-service');
 jest.mock('../../../src/services/WebCallingService');
-jest.mock('../../../src/services/core/aqm-reqs');
-jest.mock('../../../src/services/task/dialer');
-jest.mock('../../../src/services/core/Utils');
 
 
 global.URL.createObjectURL = jest.fn(() => 'blob:http://localhost:3000/12345');
