@@ -36,7 +36,7 @@ describe("Routing outbound dial", () => {
         };
       
         const dialer = aqmDialer(fakeAqm as any);
-        
+
         dialer
           .startOutdial({
             data: {
@@ -58,5 +58,4 @@ describe("Routing outbound dial", () => {
         expect(dialer.startOutdial).toHaveBeenCalled();
       });
 });
-
 });
