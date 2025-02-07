@@ -55,6 +55,7 @@ export const CC_EVENTS = {
   AGENT_WRAPUP: 'AgentWrapup',
   AGENT_WRAPPEDUP: 'AgentWrappedUp',
   AGENT_WRAPUP_FAILED: 'AgentWrapupFailed',
+  AGENT_CONTACT: 'AgentContact',
 } as const;
 
 export type WelcomeEvent = {

@@ -49,6 +49,7 @@ export const TASK_EVENTS = {
   TASK_END: 'task:end',
   TASK_WRAPUP: 'task:wrapup',
   TASK_REJECT: 'task:rejected',
+  TASK_SYNC: 'task:sync',
 } as const;
 
 export type TASK_EVENTS = Enum<typeof TASK_EVENTS>;

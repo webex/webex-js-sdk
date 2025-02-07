@@ -79,11 +79,17 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     this.trigger(TASK_EVENTS.TASK_INCOMING, task);
   };
 
+  private handleTaskSync = (task: ITask) => {
+    // @ts-ignore
+    this.trigger(TASK_EVENTS.TASK_SYNC, task);
+  };
+
   /**
    * An Incoming Call listener.
    */
   private incomingTaskListener() {
     this.taskManager.on(TASK_EVENTS.TASK_INCOMING, this.handleIncomingTask);
+    this.taskManager.on(TASK_EVENTS.TASK_SYNC, this.handleTaskSync);
   }
 
   /**
@@ -347,7 +353,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
       // To handle re-registration of event listeners on silent relogin
       this.incomingTaskListener();
-      this.taskManager.registerIncomingCallEvent();
 
       if (lastStateChangeReason === 'agent-wss-disconnect') {
         LoggerProxy.info(

@@ -588,6 +588,30 @@ function register() {
       incomingCallListener.dispatchEvent(taskEvents);
     });
 
+    webex.cc.on('task:sync', (currentTask) => {
+      task = currentTask;
+      
+      const {state, isTerminated} = task.data.interaction;
+
+      if (!isTerminated) {
+        holdResumeElm.disabled = false;
+        holdResumeElm.innerText = 'Hold';
+        pauseResumeRecordingElm.disabled = false;
+        pauseResumeRecordingElm.innerText = 'Pause Recording';
+        endElm.disabled = false;
+        enableConsultControls(); // Enable consult controls
+        enableTransferControls(); // Enable transfer controls
+
+        return;
+      }
+
+      if (state === 'connected') {
+        wrapupCodesDropdownElm.disabled = false;
+        wrapupElm.disabled = false;
+      }
+    });
+  
+
     webex.cc.on('agent:stateChange', (data) => {
       if (data && typeof data === 'object' && data.type === 'AgentStateChangeSuccess') {
         const DEFAULT_CODE = '0'; // Default code when no aux code is present
