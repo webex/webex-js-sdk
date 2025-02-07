@@ -396,7 +396,6 @@ async function makeOutDialCall() {
 
   try {
     console.log('Making an outdial call');
-    console.log('task is:', task);
     await webex.cc.makeOutDialCall(dialerPayload);
     console.log('Outdial call initiated successfully');
   } catch (error) {
