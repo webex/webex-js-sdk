@@ -14,8 +14,10 @@ export {
   LocalCameraStream,
   createMicrophoneStream,
   createCameraStream,
+  createCameraAndMicrophoneStreams,
   createDisplayStream,
   createDisplayStreamWithAudio,
+  createDisplayMedia,
   type VideoContentHint,
 } from './webrtc-core';
 
