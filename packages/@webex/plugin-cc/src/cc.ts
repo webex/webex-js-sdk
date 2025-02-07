@@ -19,10 +19,10 @@ import {AGENT, WEB_RTC_PREFIX} from './services/constants';
 import Services from './services';
 import HttpRequest from './services/core/HttpRequest';
 import LoggerProxy from './logger-proxy';
-import {StateChange, Logout} from './services/agent/types';
+import {StateChange, Logout, StateChangeSuccess} from './services/agent/types';
 import {getErrorDetails} from './services/core/Utils';
 import {Profile, WelcomeEvent, CC_EVENTS} from './services/config/types';
-import {AGENT_STATE_AVAILABLE} from './services/config/constants';
+import {AGENT_STATE_AVAILABLE, AGENT_STATE_AVAILABLE_ID} from './services/config/constants';
 import {ConnectionLostDetails} from './services/core/websocket/types';
 import TaskManager from './services/task/TaskManager';
 import WebCallingService from './services/WebCallingService';
@@ -343,7 +343,12 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   private async silentRelogin(): Promise<void> {
     try {
       const reLoginResponse = await this.services.agent.reload();
-      const {auxCodeId, agentId, lastStateChangeReason, deviceType, dn} = reLoginResponse.data;
+      const {agentId, lastStateChangeReason, deviceType, dn, lastStateChangeTimestamp} =
+        reLoginResponse.data;
+      let {auxCodeId} = reLoginResponse.data;
+      this.agentConfig.lastStateChangeTimestamp = lastStateChangeTimestamp
+        ? new Date(lastStateChangeTimestamp)
+        : new Date();
 
       // To handle re-registration of event listeners on silent relogin
       this.incomingTaskListener();
@@ -354,15 +359,29 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           'event=requestAutoStateChange | Requesting state change to available on socket reconnect',
           {module: CC_FILE, method: this.silentRelogin.name}
         );
+        auxCodeId = AGENT_STATE_AVAILABLE_ID;
         const stateChangeData: StateChange = {
           state: AGENT_STATE_AVAILABLE,
           auxCodeId,
           lastStateChangeReason,
           agentId,
         };
-        await this.setAgentState(stateChangeData);
+        try {
+          const agentStatusResponse = (await this.setAgentState(
+            stateChangeData
+          )) as StateChangeSuccess;
+          this.agentConfig.lastStateChangeTimestamp = agentStatusResponse.data
+            .lastStateChangeTimestamp
+            ? new Date(agentStatusResponse.data.lastStateChangeTimestamp)
+            : new Date();
+        } catch (error) {
+          LoggerProxy.error(
+            `event=requestAutoStateChange | Error requesting state change to available on socket reconnect: ${error}`,
+            {module: CC_FILE, method: this.silentRelogin.name}
+          );
+        }
       }
-
+      this.agentConfig.lastStateAuxCodeId = auxCodeId;
       await this.handleDeviceType(deviceType as LoginOption, dn);
       this.agentConfig.isAgentLoggedIn = true;
       this.services.webSocketManager.on('message', this.handleWebSocketMessage);
