@@ -384,7 +384,6 @@ async function endConsult() {
 // Function to make an outDial call
 async function makeOutDialCall() {
   const destination = document.getElementById('outBoundDialNumber').value;
-  // const ani = document.getElementById('outBoundDialNumber').value;
   const dialerPayload = {
     entryPointId: entryPointId,
     destination: destination,
