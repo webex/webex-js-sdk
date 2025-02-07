@@ -114,7 +114,7 @@ describe('WebCallingService', () => {
     }, 20000); // Increased timeout to 20 seconds
 
     it('should register WebCallingLine with custom rtms url', async () => {
-      webex.internal.services.get = jest.fn().mockReturnValue('rtw.prod-us2.rtmsprod.net');
+      webex.internal.services.get = jest.fn().mockReturnValue('sip://rtw.prod-us2.rtmsprod.net');
 
       line = callingClient.getLines().line1 as ILine;
       const deviceInfo = {
