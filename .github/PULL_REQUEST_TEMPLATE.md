@@ -32,7 +32,7 @@ This is for compliance purposes with FedRAMP program.
 - [ ] Tooling change
 - [ ] Internal code refactor
 
-## The following scenarios where tested
+## The following scenarios were tested
 
 < ENUMERATE TESTS PERFORMED, WHETHER MANUAL OR AUTOMATED >
 

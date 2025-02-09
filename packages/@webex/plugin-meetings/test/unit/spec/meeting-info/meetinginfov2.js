@@ -1,19 +1,15 @@
 /*!
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
-
+import 'jsdom-global/register';
 import {assert} from '@webex/test-helper-chai';
 import sinon from 'sinon';
 import MockWebex from '@webex/test-helper-mock-webex';
 import Device from '@webex/internal-plugin-device';
 import Mercury from '@webex/internal-plugin-mercury';
 import {
-  _MEETING_ID_,
-  _PERSONAL_ROOM_,
-  _CONVERSATION_URL_,
-  _SIP_URI_,
+  DESTINATION_TYPE,
   WBXAPPAPI_SERVICE,
-  _LOCUS_ID_,
 } from '@webex/plugin-meetings/src/constants';
 
 import Meetings from '@webex/plugin-meetings/src/meetings';
@@ -22,12 +18,12 @@ import MeetingInfo, {
   MeetingInfoV2CaptchaError,
   MeetingInfoV2AdhocMeetingError,
   MeetingInfoV2PolicyError,
+  MeetingInfoV2JoinWebinarError,
 } from '@webex/plugin-meetings/src/meeting-info/meeting-info-v2';
 import MeetingInfoUtil from '@webex/plugin-meetings/src/meeting-info/utilv2';
 import Metrics from '@webex/plugin-meetings/src/metrics';
 import BEHAVIORAL_METRICS from '@webex/plugin-meetings/src/metrics/constants';
 import {forEach} from 'lodash';
-import { request } from 'express';
 
 describe('plugin-meetings', () => {
   const conversation = {
@@ -108,7 +104,7 @@ describe('plugin-meetings', () => {
         webex.request.resolves(requestResponse);
 
         const result = await meetingInfo.fetchMeetingInfo({
-          type: _MEETING_ID_,
+          type: DESTINATION_TYPE.MEETING_ID,
           destination: '1234323',
         });
 
@@ -135,7 +131,7 @@ describe('plugin-meetings', () => {
         webex.request.resolves(requestResponse);
 
         const result = await meetingInfo.fetchMeetingInfo({
-          type: _PERSONAL_ROOM_,
+          type: DESTINATION_TYPE.PERSONAL_ROOM,
         });
 
         assert.calledWith(webex.request, {
@@ -156,21 +152,21 @@ describe('plugin-meetings', () => {
 
         sinon
           .stub(MeetingInfoUtil, 'getDestinationType')
-          .returns(Promise.resolve({type: _SIP_URI_, destination: 'example@something.webex.com'}));
+          .returns(Promise.resolve({type: DESTINATION_TYPE.SIP_URI, destination: 'example@something.webex.com'}));
         sinon.stub(MeetingInfoUtil, 'getRequestBody').returns(Promise.resolve(body));
         sinon.stub(MeetingInfoUtil, 'getDirectMeetingInfoURI').returns('https://example.com');
         webex.request.resolves(requestResponse);
 
-        const result = await meetingInfo.fetchMeetingInfo('example@something.webex.com', _SIP_URI_);
+        const result = await meetingInfo.fetchMeetingInfo('example@something.webex.com', DESTINATION_TYPE.SIP_URI);
 
         assert.calledWith(MeetingInfoUtil.getDestinationType, {
           destination: 'example@something.webex.com',
-          type: _SIP_URI_,
+          type: DESTINATION_TYPE.SIP_URI,
           webex,
         });
         assert.calledWith(MeetingInfoUtil.getDirectMeetingInfoURI, {
           destination: 'example@something.webex.com',
-          type: _SIP_URI_,
+          type: DESTINATION_TYPE.SIP_URI,
         });
         assert.calledWith(webex.request, {
           method: 'POST',
@@ -189,7 +185,7 @@ describe('plugin-meetings', () => {
 
         webex.request.resolves(requestResponse);
 
-        const result = await meetingInfo.fetchMeetingInfo('1234323', _MEETING_ID_, 'abc', {
+        const result = await meetingInfo.fetchMeetingInfo('1234323', DESTINATION_TYPE.MEETING_ID, 'abc', {
           id: '999',
           code: 'aabbcc11',
         });
@@ -221,7 +217,7 @@ describe('plugin-meetings', () => {
 
         webex.request.resolves(requestResponse);
 
-        const result = await meetingInfo.fetchMeetingInfo('1234323', _MEETING_ID_, null, null, installedOrgID);
+        const result = await meetingInfo.fetchMeetingInfo('1234323', DESTINATION_TYPE.MEETING_ID, null, null, installedOrgID);
 
         assert.calledWith(webex.request, {
           method: 'POST',
@@ -248,7 +244,7 @@ describe('plugin-meetings', () => {
 
         webex.request.resolves(requestResponse);
 
-        const result = await meetingInfo.fetchMeetingInfo('1234323', _MEETING_ID_, null, null, null, locusId);
+        const result = await meetingInfo.fetchMeetingInfo('1234323', DESTINATION_TYPE.MEETING_ID, null, null, null, locusId);
 
         assert.calledWith(webex.request, {
           method: 'POST',
@@ -275,7 +271,7 @@ describe('plugin-meetings', () => {
 
         webex.request.resolves(requestResponse);
 
-        const result = await meetingInfo.fetchMeetingInfo('1234323', _MEETING_ID_, null, null, null, null, extraParams);
+        const result = await meetingInfo.fetchMeetingInfo('1234323', DESTINATION_TYPE.MEETING_ID, null, null, null, null, extraParams);
 
         assert.calledWith(webex.request, {
           method: 'POST',
@@ -298,7 +294,7 @@ describe('plugin-meetings', () => {
 
       it('create adhoc meeting when conversationUrl passed with enableAdhocMeetings toggle', async () => {
         sinon.stub(meetingInfo, 'createAdhocSpaceMeeting').returns(Promise.resolve());
-        await meetingInfo.fetchMeetingInfo('conversationUrl', _CONVERSATION_URL_);
+        await meetingInfo.fetchMeetingInfo('conversationUrl', DESTINATION_TYPE.CONVERSATION_URL);
 
         assert.calledWith(meetingInfo.createAdhocSpaceMeeting, 'conversationUrl');
         assert.notCalled(webex.request);
@@ -312,7 +308,7 @@ describe('plugin-meetings', () => {
 
         await meetingInfo.fetchMeetingInfo(
           'conversationUrl',
-          _CONVERSATION_URL_,
+          DESTINATION_TYPE.CONVERSATION_URL,
           null,
           null,
           installedOrgID
@@ -332,7 +328,7 @@ describe('plugin-meetings', () => {
         webex.config.meetings.experimental.enableAdhocMeetings = false;
         sinon.stub(meetingInfo, 'createAdhocSpaceMeeting').returns(Promise.resolve());
 
-        await meetingInfo.fetchMeetingInfo('conversationUrl', _CONVERSATION_URL_);
+        await meetingInfo.fetchMeetingInfo('conversationUrl', DESTINATION_TYPE.CONVERSATION_URL);
 
         assert.notCalled(meetingInfo.createAdhocSpaceMeeting);
         assert.called(webex.request);
@@ -343,7 +339,7 @@ describe('plugin-meetings', () => {
         sinon.stub(meetingInfo, 'createAdhocSpaceMeeting').returns(Promise.resolve());
         webex.meetings.preferredWebexSite = undefined;
 
-        await meetingInfo.fetchMeetingInfo('conversationUrl', _CONVERSATION_URL_);
+        await meetingInfo.fetchMeetingInfo('conversationUrl', DESTINATION_TYPE.CONVERSATION_URL);
 
         assert.notCalled(meetingInfo.createAdhocSpaceMeeting);
         assert.called(webex.request);
@@ -406,7 +402,7 @@ describe('plugin-meetings', () => {
             try {
               await meetingInfo.fetchMeetingInfo(
                 '1234323',
-                _MEETING_ID_,
+                DESTINATION_TYPE.MEETING_ID,
                 'abc',
                 {
                   id: '999',
@@ -437,7 +433,7 @@ describe('plugin-meetings', () => {
                 assert.deepEqual(submitInternalEventCalls[1].args[0], {
                   name: 'internal.client.meetinginfo.response',
                 });
-                
+
                 assert.deepEqual(submitClientEventCalls[1].args[0], {
                   name: 'client.meetinginfo.response',
                   payload: {
@@ -488,12 +484,12 @@ describe('plugin-meetings', () => {
               requestResponse.body.confIdStr = confIdStr;
             }
             const extraParams = {mtid: 'm9fe0afd8c435e892afcce9ea25b97046', joinTXId: 'TSmrX61wNF'}
-    
+
             webex.request.resolves(requestResponse);
-    
+
             const result = await meetingInfo.fetchMeetingInfo(
               '1234323',
-              _MEETING_ID_,
+              DESTINATION_TYPE.MEETING_ID,
               null,
               null,
               null,
@@ -501,7 +497,7 @@ describe('plugin-meetings', () => {
               extraParams,
               {meetingId, sendCAevents}
             );
-    
+
             assert.calledWith(webex.request, {
               method: 'POST',
               service: WBXAPPAPI_SERVICE,
@@ -519,7 +515,7 @@ describe('plugin-meetings', () => {
               Metrics.sendBehavioralMetric,
               BEHAVIORAL_METRICS.FETCH_MEETING_INFO_V1_SUCCESS
             );
-    
+
             const submitInternalEventCalls = webex.internal.newMetrics.submitInternalEvent.getCalls();
             const submitClientEventCalls = webex.internal.newMetrics.submitClientEvent.getCalls();
 
@@ -533,7 +529,7 @@ describe('plugin-meetings', () => {
                   meetingId,
                 }
               });
-              
+
               assert.deepEqual(submitInternalEventCalls[1].args[0], {
                 name: 'internal.client.meetinginfo.response',
               });
@@ -566,7 +562,7 @@ describe('plugin-meetings', () => {
 
         const result = await meetingInfo.fetchMeetingInfo(
           '1234323',
-          _MEETING_ID_,
+          DESTINATION_TYPE.MEETING_ID,
           null,
           null,
           null,
@@ -595,7 +591,7 @@ describe('plugin-meetings', () => {
 
         const submitInternalEventCalls = webex.internal.newMetrics.submitInternalEvent.getCalls();
         const submitClientEventCalls = webex.internal.newMetrics.submitClientEvent.getCalls();
-        
+
         assert.deepEqual(submitInternalEventCalls[0].args[0], {
           name: 'internal.client.meetinginfo.request',
         });
@@ -605,7 +601,7 @@ describe('plugin-meetings', () => {
             meetingId: 'meetingId',
           }
         });
-        
+
         assert.deepEqual(submitInternalEventCalls[1].args[0], {
           name: 'internal.client.meetinginfo.response',
         });
@@ -633,7 +629,7 @@ describe('plugin-meetings', () => {
           it(`should not send CA metric if meetingId is not provided disregarding if sendCAevents is ${sendCAevents}`, async () => {
             const message = 'a message';
             const meetingInfoData = 'meeting info';
-    
+
             webex.request = sinon.stub().rejects({
               statusCode: 403,
               body: {message, code: 403102, data: {meetingInfo: meetingInfoData}},
@@ -642,7 +638,7 @@ describe('plugin-meetings', () => {
             try {
               await meetingInfo.fetchMeetingInfo(
                 '1234323',
-                _MEETING_ID_,
+                DESTINATION_TYPE.MEETING_ID,
                 'abc',
                 {
                   id: '999',
@@ -670,7 +666,7 @@ describe('plugin-meetings', () => {
           .rejects({statusCode: 403, body: {code: 403000, data: {meetingInfo: FAKE_MEETING_INFO}}});
 
         try {
-          await meetingInfo.fetchMeetingInfo('1234323', _MEETING_ID_, 'abc', {
+          await meetingInfo.fetchMeetingInfo('1234323', DESTINATION_TYPE.MEETING_ID, 'abc', {
             id: '999',
             code: 'aabbcc11',
           });
@@ -697,7 +693,7 @@ describe('plugin-meetings', () => {
             },
           });
           try {
-            await meetingInfo.fetchMeetingInfo('1234323', _MEETING_ID_, 'abc', {
+            await meetingInfo.fetchMeetingInfo('1234323', DESTINATION_TYPE.MEETING_ID, 'abc', {
               id: '999',
               code: 'aabbcc11',
             });
@@ -739,13 +735,13 @@ describe('plugin-meetings', () => {
 
         sinon
           .stub(MeetingInfoUtil, 'getDestinationType')
-          .returns(Promise.resolve({type: _LOCUS_ID_, destination: '123456'}));
+          .returns(Promise.resolve({type: DESTINATION_TYPE.LOCUS_ID, destination: '123456'}));
         sinon.stub(MeetingInfoUtil, 'getRequestBody').returns(Promise.resolve(body));
         webex.request.resolves(requestResponse);
 
         try {
           await meetingInfo.fetchMeetingInfo({
-            type: _LOCUS_ID_,
+            type: DESTINATION_TYPE.LOCUS_ID,
           });
           assert.fail('fetchMeetingInfo should have thrown, but has not done that');
         } catch (err) {
@@ -754,7 +750,7 @@ describe('plugin-meetings', () => {
             BEHAVIORAL_METRICS.FETCH_MEETING_INFO_V1_FAILURE,
             {
               reason: 'Not enough information to fetch meeting info',
-              destinationType: _LOCUS_ID_,
+              destinationType: DESTINATION_TYPE.LOCUS_ID,
               webExMeetingId: undefined,
               sipUri: undefined,
             }
@@ -886,6 +882,47 @@ describe('plugin-meetings', () => {
               assert.calledWith(
                 Metrics.sendBehavioralMetric,
                 BEHAVIORAL_METRICS.MEETING_INFO_POLICY_ERROR,
+                {code: errorCode}
+              );
+
+            }
+          });
+        }
+      );
+
+      forEach(
+        [
+          {errorCode: 403021},
+          {errorCode: 403022},
+          {errorCode: 403024},
+          {errorCode: 403137},
+          {errorCode: 423007},
+          {errorCode: 403026},
+          {errorCode: 403037},
+          {errorCode: 403137},
+        ],
+        ({errorCode}) => {
+          it(`should throw a MeetingInfoV2JoinWebinarError for error code ${errorCode}`, async () => {
+            const message = 'a message';
+            const meetingInfoData = {meetingInfo: {registrationUrl: 'registrationUrl'}};
+
+            webex.request = sinon.stub().rejects({
+              statusCode: 403,
+              body: {message, code: errorCode, data: {meetingInfo: meetingInfoData}},
+            });
+            try {
+              await meetingInfo.createAdhocSpaceMeeting(conversationUrl, installedOrgID);
+              assert.fail('createAdhocSpaceMeeting should have thrown, but has not done that');
+            } catch (err) {
+              assert.instanceOf(err, MeetingInfoV2JoinWebinarError);
+              assert.deepEqual(err.message, `${message}, code=${errorCode}`);
+              assert.equal(err.wbxAppApiCode, errorCode);
+              assert.deepEqual(err.meetingInfo, meetingInfoData);
+
+              assert(Metrics.sendBehavioralMetric.calledOnce);
+              assert.calledWith(
+                Metrics.sendBehavioralMetric,
+                BEHAVIORAL_METRICS.JOIN_WEBINAR_ERROR,
                 {code: errorCode}
               );
 

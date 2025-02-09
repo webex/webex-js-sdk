@@ -20,11 +20,105 @@ export type BrowserLaunchMethodType = NonNullable<
   RawEvent['origin']['clientInfo']
 >['browserLaunchMethod'];
 
+export type MetricEventProduct = 'webex' | 'wxcc_desktop';
+
+export type MetricEventAgent = 'user' | 'browser' | 'system' | 'sdk' | 'redux' | 'service' | 'api';
+
+export type MetricEventVerb =
+  | 'abort'
+  | 'accept'
+  | 'activate'
+  | 'apply'
+  | 'answer'
+  | 'authorize'
+  | 'build'
+  | 'cancel'
+  | 'change'
+  | 'click'
+  | 'close'
+  | 'complete'
+  | 'connect'
+  | 'create'
+  | 'deactivate'
+  | 'decrypt'
+  | 'delete'
+  | 'deliver'
+  | 'destroy'
+  | 'disable'
+  | 'disconnect'
+  | 'dismiss'
+  | 'display'
+  | 'download'
+  | 'edit'
+  | 'enable'
+  | 'encrypt'
+  | 'end'
+  | 'expire'
+  | 'fail'
+  | 'fetch'
+  | 'fire'
+  | 'generate'
+  | 'get'
+  | 'hide'
+  | 'hover'
+  | 'ignore'
+  | 'initialize'
+  | 'initiate'
+  | 'invalidate'
+  | 'join'
+  | 'list'
+  | 'load'
+  | 'login'
+  | 'logout'
+  | 'notify'
+  | 'offer'
+  | 'open'
+  | 'press'
+  | 'receive'
+  | 'refer'
+  | 'refresh'
+  | 'register'
+  | 'release'
+  | 'reload'
+  | 'reject'
+  | 'request'
+  | 'reset'
+  | 'resize'
+  | 'respond'
+  | 'retry'
+  | 'revoke'
+  | 'save'
+  | 'search'
+  | 'select'
+  | 'send'
+  | 'set'
+  | 'sign'
+  | 'start'
+  | 'submit'
+  | 'switch'
+  | 'sync'
+  | 'toggle'
+  | 'transfer'
+  | 'unregister'
+  | 'update'
+  | 'upload'
+  | 'use'
+  | 'validate'
+  | 'view'
+  | 'visit'
+  | 'wait'
+  | 'warn'
+  | 'exit';
+
+export type MetricEventJoinFlowVersion = 'Other' | 'NewFTE';
+export type MetricEventMeetingJoinPhase = 'pre-join' | 'join' | 'in-meeting';
+
 export type SubmitClientEventOptions = {
   meetingId?: string;
   mediaConnections?: any[];
   rawError?: any;
   correlationId?: string;
+  sessionCorrelationId?: string;
   preLoginId?: string;
   environment?: EnvironmentType;
   newEnvironmentType?: NewEnvironmentType;
@@ -32,6 +126,9 @@ export type SubmitClientEventOptions = {
   browserLaunchMethod?: BrowserLaunchMethodType;
   webexConferenceIdStr?: string;
   globalMeetingId?: string;
+  joinFlowVersion?: MetricEventJoinFlowVersion;
+  meetingJoinPhase?: MetricEventMeetingJoinPhase;
+  triggeredTime?: string;
 };
 
 export type SubmitMQEOptions = {
@@ -66,19 +163,47 @@ export interface ClientEvent {
   options?: SubmitClientEventOptions;
 }
 
-export interface BehavioralEvent {
-  // TODO: not implemented
-  name: 'host.meeting.participant.admitted' | 'sdk.media-flow.started';
-  payload?: never;
-  options?: never;
+export interface DeviceContext {
+  app: {version: string};
+  device: {id: string};
+  locale: string;
+  os: {
+    name: string;
+    version: string;
+  };
 }
 
-export interface OperationalEvent {
-  // TODO: not implemented
-  name: never;
-  payload?: never;
-  options?: never;
+export type MetricType = 'behavioral' | 'operational' | 'business';
+
+export type Table = 'wbxapp_callend_metrics' | 'business_metrics' | 'business_ucf' | 'default';
+
+type InternalEventPayload = string | number | boolean;
+export type EventPayload = Record<string, InternalEventPayload>;
+export type BehavioralEventPayload = EventPayload; // for compatibilty, can be remove after wxcc-desktop did change their imports.
+
+export interface BusinessEventPayload {
+  metricName: string;
+  timestamp: number;
+  context: DeviceContext;
+  browserDetails: EventPayload;
+  value: EventPayload;
 }
+
+export interface BusinessEvent {
+  type: string[];
+  eventPayload: BusinessEventPayload;
+}
+
+export interface TaggedEvent {
+  context: DeviceContext;
+  metricName: string;
+  tags: EventPayload;
+  timestamp: number;
+  type: [MetricType];
+}
+
+export type BehavioralEvent = TaggedEvent;
+export type OperationalEvent = TaggedEvent;
 
 export interface FeatureEvent {
   // TODO: not implemented
@@ -104,8 +229,9 @@ export type RecursivePartial<T> = {
 export type MetricEventNames =
   | InternalEvent['name']
   | ClientEvent['name']
-  | BehavioralEvent['name']
-  | OperationalEvent['name']
+  | BehavioralEvent['metricName']
+  | OperationalEvent['metricName']
+  | BusinessEvent['eventPayload']['metricName']
   | FeatureEvent['name']
   | MediaQualityEvent['name'];
 
@@ -137,9 +263,11 @@ export type SubmitInternalEvent = (args: {
 }) => void;
 
 export type SubmitBehavioralEvent = (args: {
-  name: BehavioralEvent['name'];
-  payload?: RecursivePartial<BehavioralEvent['payload']>;
-  options?: any;
+  product: MetricEventProduct;
+  agent: MetricEventAgent;
+  target: string;
+  verb: MetricEventVerb;
+  payload?: EventPayload;
 }) => void;
 
 export type SubmitClientEvent = (args: {
@@ -149,9 +277,8 @@ export type SubmitClientEvent = (args: {
 }) => Promise<any>;
 
 export type SubmitOperationalEvent = (args: {
-  name: OperationalEvent['name'];
-  payload?: RecursivePartial<OperationalEvent['payload']>;
-  options?: any;
+  name: OperationalEvent['metricName'];
+  payload: EventPayload;
 }) => void;
 
 export type SubmitMQE = (args: {
@@ -177,3 +304,19 @@ export type PreComputedLatencies =
   | 'internal.call.init.join.req'
   | 'internal.other.app.api.time'
   | 'internal.api.fetch.intelligence.models';
+
+export interface IdType {
+  meetingId?: string;
+  callId?: string;
+}
+
+export interface IMetricsAttributes {
+  type: string;
+  version: string;
+  userId: string;
+  correlationId: string;
+  connectionId: string;
+  data: any[];
+  meetingId?: string;
+  callId?: string;
+}

@@ -771,7 +771,14 @@ export default class Parser {
         )}, Action: ${lociComparison}`
       );
 
-      this.onDeltaAction(lociComparison, newLoci);
+      try {
+        this.onDeltaAction(lociComparison, newLoci);
+      } catch (error) {
+        LoggerProxy.logger.error(
+          'Locus-info:parser#processDeltaEvent --> Error in onDeltaAction',
+          error
+        );
+      }
     }
 
     this.nextEvent();

@@ -138,7 +138,15 @@ describe('plugin-mercury', () => {
       });
 
       it('connects to Mercury using default url', () => {
+        webex.internal.feature.updateFeature = sinon.stub();
         const promise = mercury.connect();
+        const envelope = {
+          data: {
+            featureToggle: {
+              'feature-name': true
+            }
+          }
+        };
 
         assert.isFalse(mercury.connected, 'Mercury is not connected');
         assert.isTrue(mercury.connecting, 'Mercury is connecting');
@@ -148,6 +156,21 @@ describe('plugin-mercury', () => {
           assert.isTrue(mercury.connected, 'Mercury is connected');
           assert.isFalse(mercury.connecting, 'Mercury is not connecting');
           assert.calledWith(socketOpenStub, sinon.match(/ws:\/\/example.com/), sinon.match.any);
+          mercury._emit('event:featureToggle_update', envelope);
+          assert.calledOnceWithExactly(webex.internal.feature.updateFeature, envelope.data.featureToggle);
+          sinon.restore();
+        });
+      });
+
+      it('connects to Mercury but does not call updateFeature', () => {
+        webex.internal.feature.updateFeature = sinon.stub();
+        const promise = mercury.connect();
+        const envelope = {};
+
+        return promise.then(() => {
+          mercury._emit('event:featureToggle_update', envelope);
+          assert.notCalled(webex.internal.feature.updateFeature);
+          sinon.restore();
         });
       });
 
@@ -424,7 +447,7 @@ describe('plugin-mercury', () => {
             assert.isFalse(mercury.connecting, 'Mercury is not connecting');
             assert.calledWith(
               Socket.prototype.open,
-              sinon.match(/ws:\/\/providedurl.com/),
+              sinon.match(/ws:\/\/providedurl.com.*clientTimestamp[=]\d+/),
               sinon.match.any
             );
           });
@@ -480,6 +503,35 @@ describe('plugin-mercury', () => {
       });
     });
 
+    describe('#logout()', () => {
+      it('calls disconnect', () => {
+        sinon.stub(mercury, 'disconnect');
+        mercury.logout();
+        assert.called(mercury.disconnect);
+      });
+
+      it('uses the config.beforeLogoutOptionsCloseReason to disconnect and will send code 1050 for logout', () => {
+        sinon.stub(mercury, 'disconnect');
+        mercury.config.beforeLogoutOptionsCloseReason = 'done (permanent)';
+        mercury.logout();
+        assert.calledWith(mercury.disconnect, {code: 1050, reason: 'done (permanent)'});
+      });
+
+      it('uses the config.beforeLogoutOptionsCloseReason to disconnect and will send code 1050 for logout if the reason is different than standard', () => {
+        sinon.stub(mercury, 'disconnect');
+        mercury.config.beforeLogoutOptionsCloseReason = 'test';
+        mercury.logout();
+        assert.calledWith(mercury.disconnect, {code: 1050, reason: 'test'});
+      });
+
+      it('uses the config.beforeLogoutOptionsCloseReason to disconnect and will send undefined for logout if the reason is same as standard', () => {
+        sinon.stub(mercury, 'disconnect');
+        mercury.config.beforeLogoutOptionsCloseReason = 'done (forced)';
+        mercury.logout();
+        assert.calledWith(mercury.disconnect, undefined);
+      });
+    });
+
     describe('#disconnect()', () => {
       it('disconnects the WebSocket', () =>
         mercury
@@ -501,6 +553,27 @@ describe('plugin-mercury', () => {
             assert.isFalse(mercury.connecting, 'Mercury is not connecting');
             assert.isUndefined(mercury.mockWebSocket, 'Mercury does not have a mockWebSocket');
           }));
+
+          it('disconnects the WebSocket with code 1050', () =>
+            mercury
+              .connect()
+              .then(() => {
+                assert.isTrue(mercury.connected, 'Mercury is connected');
+                assert.isFalse(mercury.connecting, 'Mercury is not connecting');
+                const promise = mercury.disconnect();
+    
+                mockWebSocket.emit('close', {
+                  code: 1050,
+                  reason: 'done (permanent)',
+                });
+    
+                return promise;
+              })
+              .then(() => {
+                assert.isFalse(mercury.connected, 'Mercury is not connected');
+                assert.isFalse(mercury.connecting, 'Mercury is not connecting');
+                assert.isUndefined(mercury.mockWebSocket, 'Mercury does not have a mockWebSocket');
+              }));
 
       it('stops emitting message events', () => {
         const spy = sinon.spy();
@@ -633,10 +706,13 @@ describe('plugin-mercury', () => {
         sinon.stub(mercury.logger, 'error');
 
         return Promise.resolve(mercury._emit('break', event)).then((res) => {
-          assert.calledWith(mercury.logger.error, 'Mercury: error occurred in event handler', {
+          assert.calledWith(
+            mercury.logger.error,
+            'Mercury: error occurred in event handler:',
             error,
-            arguments: ['break', event],
-          });
+            ' with args: ',
+            ['break', event]
+          );
           return res;
         });
       });
@@ -697,6 +773,41 @@ describe('plugin-mercury', () => {
       });
     });
 
+    describe('#_setTimeOffset', () => {
+      it('sets mercuryTimeOffset based on the difference between wsWriteTimestamp and now', () => {
+        const event = {
+          data: {
+            wsWriteTimestamp: Date.now() - 60000,
+          }          
+        };
+        assert.isUndefined(mercury.mercuryTimeOffset);
+        mercury._setTimeOffset(event);
+        assert.isDefined(mercury.mercuryTimeOffset);
+        assert.isTrue(mercury.mercuryTimeOffset > 0);
+      });
+      it('handles negative offsets', () => {
+        const event = {
+          data: {
+            wsWriteTimestamp: Date.now() + 60000,
+          }          
+        };
+        mercury._setTimeOffset(event);
+        assert.isTrue(mercury.mercuryTimeOffset < 0);
+      });
+      it('handles invalid wsWriteTimestamp', () => {
+        const invalidTimestamps = [null, -1, 'invalid', undefined];
+        invalidTimestamps.forEach(invalidTimestamp => {
+          const event = {
+            data: {
+              wsWriteTimestamp: invalidTimestamp,
+            }          
+          };
+          mercury._setTimeOffset(event);
+          assert.isUndefined(mercury.mercuryTimeOffset);
+        });
+      });
+    });
+    
     describe('#_prepareUrl()', () => {
       beforeEach(() => {
         webex.internal.device.webSocketUrl = 'ws://example.com';
@@ -707,16 +818,16 @@ describe('plugin-mercury', () => {
       it('uses provided webSocketUrl', () =>
         webex.internal.mercury
           ._prepareUrl('ws://provided.com')
-          .then((wsUrl) => assert.match(wsUrl, /provided.com/)));
+          .then((wsUrl) => assert.match(wsUrl, /.*provided.com.*/)));
       it('requests text-mode WebSockets', () =>
         webex.internal.mercury
           ._prepareUrl()
-          .then((wsUrl) => assert.match(wsUrl, /outboundWireFormat=text/)));
+          .then((wsUrl) => assert.match(wsUrl, /.*outboundWireFormat=text.*/)));
 
       it('requests the buffer state message', () =>
         webex.internal.mercury
           ._prepareUrl()
-          .then((wsUrl) => assert.match(wsUrl, /bufferStates=true/)));
+          .then((wsUrl) => assert.match(wsUrl, /.*bufferStates=true.*/)));
 
       it('does not add conditional properties', () =>
         webex.internal.mercury._prepareUrl().then((wsUrl) => {

@@ -38,22 +38,29 @@
                   <button id="enableProduction" type="button" class="btn-code" onclick=changeEnv()>In Production</button><span class="text-color"> ( Click to change the environment )</span>
                   <input id="fedramp" type="checkbox">
                   <input id="access-token" name="accessToken" placeholder="Access Token" value="" type="text" style="margin: 1rem 0 0.5rem 0;" required>
+
+                  <div id="guest-container" class="hidden">
+                    <input id="jwt-token-for-dest" name="jwtToken" placeholder="JWT token for destination" value="" type="text" style="margin: 0.5rem 0 0.5rem 0;">
+                    <input id="guest-name" name="guestName" placeholder="Guest name" value="" type="text" style="margin: 0.5rem 0 0.5rem 0;">
+                    <button type="button" onclick="generateGuestToken()">Generate Guest Token [Prod only]</button>
+                  </div>
                 </div>
 
                 <fieldset>
                   <legend>Advanced Settings</legend>
 
                   <p class="text-color" style="margin-top: 0; padding: 0;">
-                    Following options allow to set the type of registration, service domain (e.g. cisco.webex.com), server region (e.g. east) and the country (e.g. us).
+                    Following options allow to set the type of registration, service domain (only needed for contactcenter - rtw.prod-us1.rtmsprod.net ), server region (e.g. US-EAST) and the country (e.g. US).
                     <br><br>
-                    <strong>Note:</strong> Please update these before <mark>Initialize Calling</mark> if want to use different values.
+                    <strong>Note:</strong> Please set these fields before <mark>Initialize Calling</mark> to customize the registration behavior.
                   </p>
 
                   <div class="u-mv">
-                    <select name="Service Indicator" id="ServiceIndicator" class="ServiceData">
+                    <select name="Service Indicator" id="ServiceIndicator" class="ServiceData" onchange="handleServiceSelect(event)">
                       <option value="" disabled selected hidden>Choose Service ...</option>
                       <option value="calling">calling</option>
                       <option value="contactcenter">contactcenter</option>
+                      <option value="guestcalling">guest calling</option>
                     </select>
                     <input id="ServiceDomain" name="ServiceDomain" placeholder="Service Domain" type="string">
                   </div>
@@ -121,13 +128,8 @@
                 class="btn-code">getMediaStreams()</button>
             </div>
             <div class="u-mv">
-              <!-- TODO: This code will be uncommented and added once the DOM exception bug is resolved  --> 
-              <!-- <button id="bnr-button" type="button" onclick="toggleNoiseReductionEffect()"
-              class="btn-code">Enable BNR</button> -->
-              <button id="sd-add-bnr" type="button" onclick="addNoiseReductionEffect()"
-              class="btn-code">Enable BNR</button>
-              <button id="sd-add-bnr" type="button" onclick="removeNoiseReductionEffect()"
-              class="btn-code">Disable BNR</button>
+              <button id="bnr-button" type="button" onclick="toggleNoiseReductionEffect()" 
+                class="btn-code">Enable BNR</button>
             </div>
           </fieldset>
 

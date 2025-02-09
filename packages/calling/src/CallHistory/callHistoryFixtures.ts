@@ -4,8 +4,13 @@ import {
   CallSessionEvent,
   SessionType,
   CallSessionViewedEvent,
+  CallSessionDeletedEvent,
 } from '../Events/types';
-import {UpdateMissedCallsResponse} from './types';
+import {
+  DeleteCallHistoryRecordsResponse,
+  UCMLinesResponse,
+  UpdateMissedCallsResponse,
+} from './types';
 
 export const sortedCallHistory = {
   body: {
@@ -287,6 +292,200 @@ export const mockCallHistoryBody = {
   },
 };
 
+/**
+ * MOCK_CALL_HISTORY_WITH_UCM_LINE_NUMBER simulates a call history response where the session contains
+ * both cucmDN and ucmLineNumber data. This implies that the cucmDN was successfully matched with the UCM lines data.
+ */
+export const MOCK_CALL_HISTORY_WITH_UCM_LINE_NUMBER = {
+  body: {
+    statusCode: 200,
+    userSessions: [
+      {
+        id: '123456',
+        durationSecs: 438,
+        self: {
+          id: 'fd2e1234',
+          name: 'Mark',
+          cucmDN: '1001',
+          ucmLineNumber: 1,
+          incomingCallProtocols: [],
+          callbackInfo: {
+            callbackAddress: 'test@cisco.com',
+            callbackType: 'EMAIL',
+          },
+          lookUpInfo: {
+            lookupLink: 'https://conv-a.wbx2.com/conversation/api/v1/conversations/98765',
+            type: 'CONVERSATION',
+          },
+        },
+        url: 'https://janus-a.wbx2.com/janus/api/v1/history/userSessions/654321',
+        sessionId: '123456',
+        sessionType: 'SPARK',
+        startTime: '2022-08-22T10:45:21.565Z',
+        endTime: '2022-08-22T10:53:01.624Z',
+        direction: 'OUTGOING',
+        disposition: 'INITIATED',
+        other: {
+          id: '100001',
+          name: 'test',
+          isPrivate: false,
+          callbackAddress: '89998888',
+        },
+        durationSeconds: 438,
+        joinedDurationSeconds: 457,
+        participantCount: 2,
+        links: {
+          locusUrl: 'https://locus-a.wbx2.com/locus/api/v1/loci/786765',
+          conversationUrl: 'https://conv-a.wbx2.com/conversation/api/v1/conversations/55443322',
+          callbackAddress: '01010101',
+        },
+        isDeleted: false,
+        isPMR: false,
+        correlationIds: ['008899'],
+      },
+      {
+        id: '20191817',
+        durationSecs: 438,
+        self: {
+          id: '12131415',
+          name: 'Mark',
+          cucmDN: '1002',
+          ucmLineNumber: 2,
+          incomingCallProtocols: [],
+          callbackInfo: {
+            callbackAddress: 'test@cisco.com',
+            callbackType: 'EMAIL',
+          },
+          lookUpInfo: {
+            lookupLink: 'https://conv-a.wbx2.com/conversation/api/v1/conversations/21314151',
+            type: 'CONVERSATION',
+          },
+        },
+        url: 'https://janus-a.wbx2.com/janus/api/v1/history/userSessions/100101102',
+        sessionId: '20191817',
+        sessionType: 'SPARK',
+        startTime: '2022-08-30T10:45:21.565Z',
+        endTime: '2022-08-30T10:53:01.624Z',
+        direction: 'OUTGOING',
+        disposition: 'INITIATED',
+        other: {
+          id: '301302303',
+          name: 'test',
+          isPrivate: false,
+          callbackAddress: '401402403',
+        },
+        durationSeconds: 438,
+        joinedDurationSeconds: 457,
+        participantCount: 2,
+        links: {
+          locusUrl: 'https://locus-a.wbx2.com/locus/api/v1/loci/501502503',
+          conversationUrl: 'https://conv-a.wbx2.com/conversation/api/v1/conversations/601602603',
+          callbackAddress: '801802803',
+        },
+        isDeleted: false,
+        isPMR: false,
+        correlationIds: ['901902903'],
+      },
+    ],
+  },
+};
+
+/**
+ * MOCK_CALL_HISTORY_WITHOUT_UCM_LINE_NUMBER simulates a call history response where the session contains
+ * cucmDN, but no ucmLineNumber is present. This implies that the cucmDN was not matched with any UCM lines data.
+ */
+export const MOCK_CALL_HISTORY_WITHOUT_UCM_LINE_NUMBER = {
+  body: {
+    statusCode: 200,
+    userSessions: [
+      {
+        id: '123456',
+        durationSecs: 438,
+        self: {
+          id: 'fd2e1234',
+          name: 'Mark',
+          cucmDN: '1001',
+          incomingCallProtocols: [],
+          callbackInfo: {
+            callbackAddress: 'test@cisco.com',
+            callbackType: 'EMAIL',
+          },
+          lookUpInfo: {
+            lookupLink: 'https://conv-a.wbx2.com/conversation/api/v1/conversations/98765',
+            type: 'CONVERSATION',
+          },
+        },
+        url: 'https://janus-a.wbx2.com/janus/api/v1/history/userSessions/654321',
+        sessionId: '123456',
+        sessionType: 'SPARK',
+        startTime: '2022-08-22T10:45:21.565Z',
+        endTime: '2022-08-22T10:53:01.624Z',
+        direction: 'OUTGOING',
+        disposition: 'INITIATED',
+        other: {
+          id: '100001',
+          name: 'test',
+          isPrivate: false,
+          callbackAddress: '89998888',
+        },
+        durationSeconds: 438,
+        joinedDurationSeconds: 457,
+        participantCount: 2,
+        links: {
+          locusUrl: 'https://locus-a.wbx2.com/locus/api/v1/loci/786765',
+          conversationUrl: 'https://conv-a.wbx2.com/conversation/api/v1/conversations/55443322',
+          callbackAddress: '01010101',
+        },
+        isDeleted: false,
+        isPMR: false,
+        correlationIds: ['008899'],
+      },
+      {
+        id: '20191817',
+        durationSecs: 438,
+        self: {
+          id: '12131415',
+          name: 'Mark',
+          cucmDN: '1002',
+          incomingCallProtocols: [],
+          callbackInfo: {
+            callbackAddress: 'test@cisco.com',
+            callbackType: 'EMAIL',
+          },
+          lookUpInfo: {
+            lookupLink: 'https://conv-a.wbx2.com/conversation/api/v1/conversations/21314151',
+            type: 'CONVERSATION',
+          },
+        },
+        url: 'https://janus-a.wbx2.com/janus/api/v1/history/userSessions/100101102',
+        sessionId: '20191817',
+        sessionType: 'SPARK',
+        startTime: '2022-08-30T10:45:21.565Z',
+        endTime: '2022-08-30T10:53:01.624Z',
+        direction: 'OUTGOING',
+        disposition: 'INITIATED',
+        other: {
+          id: '301302303',
+          name: 'test',
+          isPrivate: false,
+          callbackAddress: '401402403',
+        },
+        durationSeconds: 438,
+        joinedDurationSeconds: 457,
+        participantCount: 2,
+        links: {
+          locusUrl: 'https://locus-a.wbx2.com/locus/api/v1/loci/501502503',
+          conversationUrl: 'https://conv-a.wbx2.com/conversation/api/v1/conversations/601602603',
+          callbackAddress: '801802803',
+        },
+        isDeleted: false,
+        isPMR: false,
+        correlationIds: ['901902903'],
+      },
+    ],
+  },
+};
+
 const WEBEX_CALL_SESSION = {
   id: 'd74d19cc-6aa7-f341-6012-aec433cc6f8d',
   durationSecs: 438,
@@ -415,6 +614,16 @@ export const MOCK_SESSION_EVENT_VIEWED: CallSessionViewedEvent = {
   trackingId: 'tracking-id',
 };
 
+export const MOCK_SESSION_EVENT_DELETED: CallSessionDeletedEvent = {
+  id: 'id',
+  data: {
+    deletedSessions: ['123-456-789-99999-993939'],
+    eventType: MOBIUS_EVENT_KEYS.CALL_SESSION_EVENT_DELETED,
+  },
+  timestamp: 12345,
+  trackingId: 'tracking-id',
+};
+
 export const MOCK_UPDATE_MISSED_CALL_RESPONSE: UpdateMissedCallsResponse = {
   statusCode: 200,
   data: {
@@ -422,8 +631,28 @@ export const MOCK_UPDATE_MISSED_CALL_RESPONSE: UpdateMissedCallsResponse = {
   },
   message: 'SUCCESS',
 };
+
+export const MOCK_DELETE_CALL_HISTORY_RECORDS_RESPONSE: DeleteCallHistoryRecordsResponse = {
+  statusCode: 200,
+  data: {
+    deleteStatusMessage: 'Call history records are deleted by the user.',
+  },
+  message: 'SUCCESS',
+};
+
+export const MOCK_DELETE_CALL_HISTORY_INVALID_DATE_RESPONSE: DeleteCallHistoryRecordsResponse = {
+  statusCode: 400,
+  data: {
+    deleteStatusMessage: 'The provided date is malformed or invalid',
+  },
+  message: 'FAILURE',
+};
+
 export const janusSetReadStateUrl =
   'https://janus-intb.ciscospark.com/janus/api/v1/history/userSessions/setReadState';
+
+export const janusMarkAsDeletedUrl =
+  'https://janus-intb.ciscospark.com/janus/api/v1/history/userSessions/markAsDeleted';
 
 export const ERROR_DETAILS_401 = {
   statusCode: 401,
@@ -432,10 +661,51 @@ export const ERROR_DETAILS_401 = {
   },
   message: 'FAILURE',
 };
+
 export const ERROR_DETAILS_400 = {
   statusCode: 400,
   data: {
     error: '400 Bad request',
   },
   message: 'FAILURE',
+};
+
+/*
+ * MOCK_LINES_API_CALL_RESPONSE simulates a successful response from the UCM lines API.
+ */
+export const MOCK_LINES_API_CALL_RESPONSE: UCMLinesResponse = {
+  statusCode: 200,
+  data: {
+    lines: {
+      devices: [
+        {
+          name: 'CSFheliosucm01',
+          model: 503,
+          lines: [
+            {
+              dnorpattern: '+14928000001',
+              index: 1,
+              label: '',
+            },
+            {
+              dnorpattern: '+14928000003',
+              index: 2,
+              label: '',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  message: 'SUCCESS',
+};
+
+/**
+ * MOCK_LINES_API_CALL_RESPONSE_WITH_NO_LINEDATA simulates a successful UCM lines API response
+ * where no line data is present. The `lines` field is empty, indicating no devices or lines available.
+ */
+export const MOCK_LINES_API_CALL_RESPONSE_WITH_NO_LINEDATA: UCMLinesResponse = {
+  statusCode: 200,
+  data: {},
+  message: 'SUCCESS',
 };

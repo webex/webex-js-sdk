@@ -8,6 +8,7 @@ import {
   getSamplePeopleListResponse,
   getSampleRawAndParsedMediaStats,
   getMobiusDiscoveryResponse,
+  getSampleMinimumScimResponse,
 } from './testUtil';
 import {
   CallDirection,
@@ -20,15 +21,7 @@ import {
   RegistrationStatus,
 } from './types';
 import log from '../Logger';
-import {
-  CALL_FILE,
-  DUMMY_METRICS,
-  UTILS_FILE,
-  IDENTITY_ENDPOINT_RESOURCE,
-  SCIM_ENDPOINT_RESOURCE,
-  SCIM_USER_FILTER,
-  REGISTER_UTIL,
-} from '../CallingClient/constants';
+import {CALL_FILE, DUMMY_METRICS, UTILS_FILE, REGISTER_UTIL} from '../CallingClient/constants';
 import {
   CALL_ERROR_CODE,
   ERROR_CODE,
@@ -54,7 +47,13 @@ import {
   getAscVoicemailListJsonWXC,
   getDescVoicemailListJsonWXC,
 } from '../Voicemail/voicemailFixture';
-import {INFER_ID_CONSTANT} from './constants';
+import {
+  IDENTITY_ENDPOINT_RESOURCE,
+  INFER_ID_CONSTANT,
+  SCIM_ENDPOINT_RESOURCE,
+  SCIM_USER_FILTER,
+  WEBEX_API_BTS,
+} from './constants';
 import {CALL_EVENT_KEYS} from '../Events/types';
 
 const mockSubmitRegistrationMetric = jest.fn();
@@ -915,7 +914,7 @@ describe('Voicemail Sorting Tests', () => {
 });
 
 describe('resolveContact tests', () => {
-  const scimUrl = `${webex.internal.services._serviceUrls.identity}/${IDENTITY_ENDPOINT_RESOURCE}/${SCIM_ENDPOINT_RESOURCE}/${webex.internal.device.orgId}/${SCIM_USER_FILTER}`;
+  const scimUrl = `${WEBEX_API_BTS}/${IDENTITY_ENDPOINT_RESOURCE}/${SCIM_ENDPOINT_RESOURCE}/${webex.internal.device.orgId}/${SCIM_USER_FILTER}`;
 
   it('Invalid CallingPartyInfo', () => {
     const callingPartyInfo = {} as CallingPartyInfo;
@@ -1044,6 +1043,29 @@ describe('resolveContact tests', () => {
       expect(displayInfo?.num).toStrictEqual('5008');
       expect(displayInfo?.avatarSrc).toStrictEqual('unknown');
       expect(displayInfo?.id).toStrictEqual(getSampleScimResponse().Resources[0].id);
+
+      const query = scimUrl + encodeURIComponent(`id eq "${callingPartyInfo.userExternalId?.$}"`);
+
+      expect(webexSpy).toBeCalledOnceWith(expect.objectContaining({uri: query}));
+    });
+  });
+
+  it('Resolve with minimal response from SCIM', () => {
+    const callingPartyInfo = {} as CallingPartyInfo;
+    const scimResponse = getSampleMinimumScimResponse();
+
+    // scimResponse.Resources[0].photos = [];
+    const webexSpy = jest.spyOn(webex, 'request').mockResolvedValue({
+      statusCode: 200,
+      body: scimResponse,
+    });
+
+    callingPartyInfo.userExternalId = {$: 'userExternalId'};
+    resolveContact(callingPartyInfo).then((displayInfo) => {
+      expect(displayInfo?.name).toBeUndefined();
+      expect(displayInfo?.num).toBeUndefined();
+      expect(displayInfo?.avatarSrc).toStrictEqual('unknown');
+      expect(displayInfo?.id).toStrictEqual(getSampleMinimumScimResponse().Resources[0].id);
 
       const query = scimUrl + encodeURIComponent(`id eq "${callingPartyInfo.userExternalId?.$}"`);
 
@@ -1349,5 +1371,86 @@ describe('Get endpoint by CALLING_BACKEND tests', () => {
 
   it('verify invalid calling backend wxc for vg endpoint', async () => {
     expect(await getVgActionEndpoint(webex, CALLING_BACKEND.WXC)).toBeInstanceOf(Error);
+  });
+});
+
+describe('Get XSI Action Endpoint tests', () => {
+  const mockWebex: any = {
+    request: jest.fn(),
+    internal: {
+      services: {
+        _serviceUrls: {
+          wdm: 'https://fake-webex-url.com',
+        },
+      },
+    },
+  };
+
+  const loggerContext = {
+    file: 'testFile',
+    method: 'testMethod',
+  };
+
+  it('should return xsiEndpoint for BWRKS backend when URL ends with /v2.0', async () => {
+    const mockResponse = {
+      body: {
+        devices: [
+          {
+            settings: {
+              broadworksXsiActionsUrl: 'https://fake-broadworks-url.com/v2.0',
+            },
+          },
+        ],
+      },
+    };
+
+    mockWebex.request.mockResolvedValue(mockResponse);
+
+    const xsiEndpoint = await getXsiActionEndpoint(mockWebex, loggerContext, CALLING_BACKEND.BWRKS);
+
+    expect(mockWebex.request).toHaveBeenCalledTimes(1);
+    expect(xsiEndpoint).toBe('https://fake-broadworks-url.com');
+  });
+
+  it('should return xsiEndpoint for BWRKS backend when URL ends with /v2.0/', async () => {
+    const mockResponse = {
+      body: {
+        devices: [
+          {
+            settings: {
+              broadworksXsiActionsUrl: 'https://fake-broadworks-url.com/v2.0/',
+            },
+          },
+        ],
+      },
+    };
+
+    mockWebex.request.mockResolvedValue(mockResponse);
+
+    const xsiEndpoint = await getXsiActionEndpoint(mockWebex, loggerContext, CALLING_BACKEND.BWRKS);
+
+    expect(mockWebex.request).toHaveBeenCalledTimes(1);
+    expect(xsiEndpoint).toBe('https://fake-broadworks-url.com');
+  });
+
+  it('should return xsiEndpoint for BWRKS backend when URL does not end with any version', async () => {
+    const mockResponse = {
+      body: {
+        devices: [
+          {
+            settings: {
+              broadworksXsiActionsUrl: 'https://fake-broadworks-url.com',
+            },
+          },
+        ],
+      },
+    };
+
+    mockWebex.request.mockResolvedValue(mockResponse);
+
+    const xsiEndpoint = await getXsiActionEndpoint(mockWebex, loggerContext, CALLING_BACKEND.BWRKS);
+
+    expect(mockWebex.request).toHaveBeenCalledTimes(1);
+    expect(xsiEndpoint).toBe('https://fake-broadworks-url.com');
   });
 });

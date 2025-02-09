@@ -6,15 +6,22 @@
 import {WebexPlugin} from '@webex/webex-core';
 
 import CallDiagnosticMetrics from './call-diagnostic/call-diagnostic-metrics';
+import BehavioralMetrics from './behavioral-metrics';
+import OperationalMetrics from './operational-metrics';
+import BusinessMetrics from './business-metrics';
 import {
   RecursivePartial,
+  MetricEventProduct,
+  MetricEventAgent,
+  MetricEventVerb,
   ClientEvent,
   FeatureEvent,
-  BehavioralEvent,
+  EventPayload,
   OperationalEvent,
   MediaQualityEvent,
   InternalEvent,
   SubmitClientEventOptions,
+  Table,
 } from './metrics.types';
 import CallDiagnosticLatencies from './call-diagnostic/call-diagnostic-metrics-latencies';
 import {setMetricTimings} from './call-diagnostic/call-diagnostic-metrics.util';
@@ -22,6 +29,7 @@ import {generateCommonErrorMetadata} from './utils';
 
 /**
  * Metrics plugin to centralize all types of metrics.
+ * https://confluence-eng-gpk2.cisco.com/conf/pages/viewpage.action?pageId=231011379
  * @class
  */
 class Metrics extends WebexPlugin {
@@ -32,6 +40,10 @@ class Metrics extends WebexPlugin {
   callDiagnosticLatencies: CallDiagnosticLatencies;
   // Helper classes to handle the different types of metrics
   callDiagnosticMetrics: CallDiagnosticMetrics;
+  behavioralMetrics: BehavioralMetrics;
+  operationalMetrics: OperationalMetrics;
+  businessMetrics: BusinessMetrics;
+  isReady = false;
 
   /**
    * Constructor
@@ -56,6 +68,7 @@ class Metrics extends WebexPlugin {
     this.webex.once('ready', () => {
       // @ts-ignore
       this.callDiagnosticMetrics = new CallDiagnosticMetrics({}, {parent: this.webex});
+      this.isReady = true;
     });
   }
 
@@ -80,36 +93,139 @@ class Metrics extends WebexPlugin {
   }
 
   /**
+   * if webex metrics is ready, build behavioral metric backend if not already done.
+   */
+  private lazyBuildBehavioralMetrics() {
+    if (this.isReady && !this.behavioralMetrics) {
+      // @ts-ignore
+      this.behavioralMetrics = new BehavioralMetrics({}, {parent: this.webex});
+    }
+  }
+
+  /**
+   * if webex metrics is ready, build operational metric backend if not already done.
+   */
+  private lazyBuildOperationalMetrics() {
+    if (this.isReady && !this.operationalMetrics) {
+      // @ts-ignore
+      this.operationalMetrics = new OperationalMetrics({}, {parent: this.webex});
+    }
+  }
+
+  /**
+   * if webex metrics is ready, build business metric backend if not already done.
+   */
+  private lazyBuildBusinessMetrics() {
+    if (this.isReady && !this.businessMetrics) {
+      // @ts-ignore
+      this.businessMetrics = new BusinessMetrics({}, {parent: this.webex});
+    }
+  }
+
+  /**
+   * @returns true once we have the deviceId we need to submit behavioral events to Amplitude
+   */
+  isReadyToSubmitBehavioralEvents() {
+    this.lazyBuildBehavioralMetrics();
+
+    return this.behavioralMetrics?.isReadyToSubmitEvents() ?? false;
+  }
+
+  /**
+   * @returns true once we have the deviceId we need to submit operational events
+   */
+  isReadyToSubmitOperationalEvents() {
+    this.lazyBuildOperationalMetrics();
+
+    return this.operationalMetrics?.isReadyToSubmitEvents() ?? false;
+  }
+
+  /**
+   * @returns true once we have the deviceId we need to submit business events
+   */
+  isReadyToSubmitBusinessEvents() {
+    this.lazyBuildBusinessMetrics();
+
+    return this.businessMetrics?.isReadyToSubmitEvents() ?? false;
+  }
+
+  /**
    * Behavioral event
    * @param args
    */
   submitBehavioralEvent({
-    name,
+    product,
+    agent,
+    target,
+    verb,
     payload,
-    options,
   }: {
-    name: BehavioralEvent['name'];
-    payload?: RecursivePartial<BehavioralEvent['payload']>;
-    options?: any;
+    product: MetricEventProduct;
+    agent: MetricEventAgent;
+    target: string;
+    verb: MetricEventVerb;
+    payload?: EventPayload;
   }) {
-    this.callDiagnosticLatencies.saveTimestamp({key: name});
-    throw new Error('Not implemented.');
+    if (!this.isReady) {
+      // @ts-ignore
+      this.webex.logger.log(
+        `NewMetrics: @submitBehavioralEvent. Attempted to submit before webex.ready: ${product}.${agent}.${target}.${verb}`
+      );
+
+      return Promise.resolve();
+    }
+
+    this.lazyBuildBehavioralMetrics();
+
+    return this.behavioralMetrics.submitBehavioralEvent({product, agent, target, verb, payload});
   }
 
   /**
    * Operational event
    * @param args
    */
-  submitOperationalEvent({
+  submitOperationalEvent({name, payload}: {name: string; payload?: EventPayload}) {
+    if (!this.isReady) {
+      // @ts-ignore
+      this.webex.logger.log(
+        `NewMetrics: @submitOperationalEvent. Attempted to submit before webex.ready: ${name}`
+      );
+
+      return Promise.resolve();
+    }
+
+    this.lazyBuildOperationalMetrics();
+
+    return this.operationalMetrics.submitOperationalEvent({name, payload});
+  }
+
+  /**
+   * Business event
+   * @param args
+   */
+  submitBusinessEvent({
     name,
     payload,
-    options,
+    table,
+    metadata,
   }: {
-    name: OperationalEvent['name'];
-    payload?: RecursivePartial<OperationalEvent['payload']>;
-    options?: any;
+    name: string;
+    payload: EventPayload;
+    table?: Table;
+    metadata?: EventPayload;
   }) {
-    throw new Error('Not implemented.');
+    if (!this.isReady) {
+      // @ts-ignore
+      this.webex.logger.log(
+        `NewMetrics: @submitBusinessEvent. Attempted to submit before webex.ready: ${name}`
+      );
+
+      return Promise.resolve();
+    }
+
+    this.lazyBuildBusinessMetrics();
+
+    return this.businessMetrics.submitBusinessEvent({name, payload, table, metadata});
   }
 
   /**

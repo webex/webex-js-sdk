@@ -1,3 +1,4 @@
+import 'jsdom-global/register';
 import EventEmitter from 'events';
 
 import {MediaType} from '@webex/internal-media-core';

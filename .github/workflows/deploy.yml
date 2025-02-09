@@ -199,14 +199,14 @@ jobs:
       - name: Build a webex UMD
         run: yarn run build:script
 
-      - name: Deploy Packages - [DRY RUN]
+      - name: Deploy Packages
         run: yarn workspaces foreach --from '${{ needs.generate-package-matrix.outputs.yarn-recursive }}' --verbose run deploy:npm --access public --tag ${GITHUB_REF##*/}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
   publish-documentation:
     name: Publish - Documentation
-    needs: publish-npm
+    needs: [publish-npm,generate-package-matrix]
     runs-on: ubuntu-latest
 
     steps:
@@ -215,6 +215,8 @@ jobs:
 
       - name: Checkout Project
         uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
 
       - name: Setup Node
         uses: actions/setup-node@v3.7.0
@@ -254,7 +256,15 @@ jobs:
           git config user.email "${GIT_AUTHOR_EMAIL}"
           git config user.name "${GIT_AUTHOR_NAME}"
 
-      - name: Publish Docs Folder
+      - name: Get existing changelog from documentation Branch
+        run: | 
+          git fetch origin documentation
+          git checkout origin/documentation -- docs/changelog/logs
+
+      - name: Update changelog
+        run: yarn package-tools changelog --packages ${{ needs.generate-package-matrix.outputs.node-recursive }} --tag ${GITHUB_REF##*/} --commit ${{ github.event.before }}
+
+      - name: Update Changelog and Publish Docs Folder
         run: |
           # Check if there's anything to commit before committing
           if [ -n "$(git status --porcelain)" ]; then

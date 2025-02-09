@@ -2,6 +2,7 @@ enum Setting {
   disallowUnmute = 'DisallowUnmute',
   muteOnEntry = 'MuteOnEntry',
   muted = 'Muted',
+  roles = 'Roles',
 }
 
 enum Control {

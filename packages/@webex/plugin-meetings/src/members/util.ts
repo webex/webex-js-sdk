@@ -46,6 +46,7 @@ const MembersUtil = {
       {
         address:
           options.invitee.emailAddress || options.invitee.email || options.invitee.phoneNumber,
+        ...(options.invitee.roles ? {roles: options.invitee.roles} : {}),
       },
     ],
     alertIfActive: options.alertIfActive,
@@ -166,9 +167,10 @@ const MembersUtil = {
     locusUrl,
   }),
 
-  generateLowerAllHandsMemberOptions: (requestingParticipantId, locusUrl) => ({
+  generateLowerAllHandsMemberOptions: (requestingParticipantId, locusUrl, roles) => ({
     requestingParticipantId,
     locusUrl,
+    ...(roles !== undefined && {roles}),
   }),
 
   /**
@@ -253,6 +255,7 @@ const MembersUtil = {
     const body = {
       hand: {
         raised: false,
+        ...(options.roles !== undefined && {roles: options.roles}),
       },
       requestingParticipantId: options.requestingParticipantId,
     };

@@ -13,7 +13,7 @@ describe('webex-core', () => {
     let services;
     let catalog;
 
-    beforeAll(() => {
+    beforeEach(() => {
       webex = new MockWebex();
       services = new Services(undefined, {parent: webex});
       catalog = services._getCatalog();
@@ -101,11 +101,7 @@ describe('webex-core', () => {
       const domains = [];
 
       beforeEach(() => {
-        domains.push(
-          'example-a',
-          'example-b',
-          'example-c'
-        );
+        domains.push('example-a', 'example-b', 'example-c');
 
         catalog.setAllowedDomains(domains);
       });
@@ -125,11 +121,7 @@ describe('webex-core', () => {
       const domains = [];
 
       beforeEach(() => {
-        domains.push(
-          'example-a',
-          'example-b',
-          'example-c'
-        );
+        domains.push('example-a', 'example-b', 'example-c');
 
         catalog.setAllowedDomains(domains);
       });
@@ -168,11 +160,7 @@ describe('webex-core', () => {
       const domains = [];
 
       beforeEach(() => {
-        domains.push(
-          'example-a',
-          'example-b',
-          'example-c'
-        );
+        domains.push('example-a', 'example-b', 'example-c');
 
         catalog.setAllowedDomains(domains);
       });
@@ -187,6 +175,80 @@ describe('webex-core', () => {
         catalog.setAllowedDomains(newValues);
 
         assert.notDeepInclude(domains, newValues);
+      });
+    });
+
+    describe('#addAllowedDomains()', () => {
+      const domains = [];
+
+      beforeEach(() => {
+        domains.push('example-a', 'example-b', 'example-c');
+
+        catalog.setAllowedDomains(domains);
+      });
+
+      afterEach(() => {
+        domains.length = 0;
+      });
+
+      it('merge the allowed domain entries with new values', () => {
+        const newValues = ['example-c', 'example-e', 'example-f'];
+
+        catalog.addAllowedDomains(newValues);
+
+        const list = catalog.getAllowedDomains();
+
+        assert.match(['example-a', 'example-b', 'example-c', 'example-e', 'example-f'], list);
+      });
+    });
+
+    describe('findServiceUrlFromUrl()', () => {
+      const otherService = {
+        defaultUrl: 'https://example.com/differentresource',
+        hosts: [{host: 'example1.com'}, {host: 'example2.com'}],
+      };
+
+      it.each([
+        'discovery',
+        'preauth',
+        'signin',
+        'postauth',
+        'override'
+      ])('matches a default url correctly', (serviceGroup) => {
+        const url = 'https://example.com/resource/id';
+
+
+        const exampleService = {
+          defaultUrl: 'https://example.com/resource',
+          hosts: [{host: 'example1.com'}, {host: 'example2.com'}],
+        };
+
+        catalog.serviceGroups[serviceGroup].push(otherService, exampleService);
+
+        const service = catalog.findServiceUrlFromUrl(url);
+
+        assert.equal(service, exampleService);
+      });
+
+      it.each([
+        'discovery',
+        'preauth',
+        'signin',
+        'postauth',
+        'override'
+      ])('matches an alternate host url', (serviceGroup) => {
+        const url = 'https://example2.com/resource/id';
+
+        const exampleService = {
+          defaultUrl: 'https://example.com/resource',
+          hosts: [{host: 'example1.com'}, {host: 'example2.com'}],
+        };
+
+        catalog.serviceGroups[serviceGroup].push(otherService, exampleService);
+
+        const service = catalog.findServiceUrlFromUrl(url);
+
+        assert.equal(service, exampleService);
       });
     });
   });

@@ -83,7 +83,6 @@
     "@webex/plugin-memberships": "workspace:*",
     "@webex/plugin-messages": "workspace:*",
     "@webex/plugin-people": "workspace:*",
-    "@webex/plugin-presence": "workspace:*",
     "@webex/plugin-rooms": "workspace:*",
     "@webex/plugin-team-memberships": "workspace:*",
     "@webex/plugin-teams": "workspace:*",

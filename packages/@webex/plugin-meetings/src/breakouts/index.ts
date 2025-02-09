@@ -148,7 +148,6 @@ const Breakouts = WebexPlugin.extend({
       this.triggerReturnToMainEvent(breakout);
     });
     this.listenToCurrentSessionTypeChange();
-    this.listenToBroadcastMessages();
     this.listenToBreakoutRosters();
     this.listenToBreakoutHelp();
     // @ts-ignore
@@ -161,6 +160,7 @@ const Breakouts = WebexPlugin.extend({
    */
   cleanUp() {
     this.stopListening();
+    this.hasSubscribedToMessage = undefined;
   },
 
   /**
@@ -170,6 +170,7 @@ const Breakouts = WebexPlugin.extend({
    */
   locusUrlUpdate(locusUrl) {
     this.set('locusUrl', locusUrl);
+    this.listenToBroadcastMessages();
     const {isInMainSession, mainLocusUrl} = this;
     if (isInMainSession || !mainLocusUrl) {
       this.set('mainLocusUrl', locusUrl);
@@ -255,6 +256,10 @@ const Breakouts = WebexPlugin.extend({
    * @returns {void}
    */
   listenToBroadcastMessages() {
+    if (!this.webex.internal.llm.isConnected() || this.hasSubscribedToMessage) {
+      return;
+    }
+
     this.listenTo(this.webex.internal.llm, 'event:breakout.message', (event) => {
       const {
         data: {senderUserId, sentTime, message},
@@ -270,6 +275,7 @@ const Breakouts = WebexPlugin.extend({
         sessionId: this.currentBreakoutSession.sessionId,
       });
     });
+    this.hasSubscribedToMessage = true;
   },
 
   /**

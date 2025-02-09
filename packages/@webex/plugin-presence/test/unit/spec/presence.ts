@@ -17,6 +17,7 @@ describe('plugin-presence', () => {
           presence: Presence,
         },
       });
+      webex.config.presence = {};
     });
 
     describe('#get()', () => {
@@ -61,6 +62,67 @@ describe('plugin-presence', () => {
     describe('#setStatus()', () => {
       it('requires a status', () =>
         assert.isRejected(webex.presence.setStatus(), /A status is required/));
+
+      it('passes a label to the API', () => {
+        const testGuid = 'test-guid';
+
+        webex.internal.device.userId = testGuid;
+
+        webex.request = function (options) {
+          return Promise.resolve({
+            statusCode: 204,
+            body: [],
+            options,
+          });
+        };
+        sinon.spy(webex, 'request');
+
+        webex.presence.setStatus('active');
+
+        assert.calledOnce(webex.request);
+
+        const request = webex.request.getCall(0);
+
+        assert.equal(request.args[0].body.label, testGuid);
+      });
+
+      it('does not pass a label to the API if the status is DND', () => {
+        const testGuid = 'test-guid';
+
+        webex.internal.device.userId = testGuid;
+
+        webex.request = function (options) {
+          return Promise.resolve({
+            statusCode: 204,
+            body: [],
+            options,
+          });
+        };
+        sinon.spy(webex, 'request');
+
+        webex.presence.setStatus('dnd');
+
+        assert.calledOnce(webex.request);
+
+        const request = webex.request.getCall(0);
+
+        assert.notProperty(request.args[0].body, 'label');
+      });
+    });
+
+    describe('#initializeWorker()', () => {
+      it('initializes the worker once webex is ready', () => {
+        webex.presence.worker = {initialize: sinon.spy()};
+        webex.presence.config.initializeWorker = false;
+
+        webex.presence.initializeWorker();
+
+        assert.notCalled(webex.presence.worker.initialize);
+
+        webex.trigger('ready');
+
+        assert.calledOnce(webex.presence.worker.initialize);
+      });
     });
   });
 });

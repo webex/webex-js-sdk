@@ -27,7 +27,6 @@ import {
   LineErrorObject,
 } from '../Errors/types';
 import {
-  ALLOWED_SERVICES,
   CALLING_BACKEND,
   CorrelationId,
   DecodeType,
@@ -36,6 +35,7 @@ import {
   IDeviceInfo,
   MobiusServers,
   RegistrationStatus,
+  SCIMListResponse,
   SORT,
   ServiceData,
   ServiceIndicator,
@@ -52,7 +52,6 @@ import {
   CISCO_DEVICE_URL,
   CODEC_ID,
   DUMMY_METRICS,
-  IDENTITY_ENDPOINT_RESOURCE,
   INBOUND_CODEC_MATCH,
   INBOUND_RTP,
   JITTER_BUFFER_DELAY,
@@ -75,8 +74,6 @@ import {
   RTC_ICE_CANDIDATE_PAIR,
   RTP_RX_STAT,
   RTP_TX_STAT,
-  SCIM_ENDPOINT_RESOURCE,
-  SCIM_USER_FILTER,
   SELECTED_CANDIDATE_PAIR_ID,
   SPARK_USER_AGENT,
   TARGET_BIT_RATE,
@@ -88,7 +85,12 @@ import {
   URL_ENDPOINT,
   UTILS_FILE,
 } from '../CallingClient/constants';
-import {JanusResponseEvent, UpdateMissedCallsResponse} from '../CallHistory/types';
+import {
+  DeleteCallHistoryRecordsResponse,
+  JanusResponseEvent,
+  UCMLinesResponse,
+  UpdateMissedCallsResponse,
+} from '../CallHistory/types';
 import {
   VoicemailResponseEvent,
   MessageInfo,
@@ -113,9 +115,14 @@ import {
   NATIVE_WEBEX_TEAMS_CALLING,
   NATIVE_SIP_CALL_TO_UCM,
   BW_XSI_ENDPOINT_VERSION,
+  IDENTITY_ENDPOINT_RESOURCE,
+  SCIM_ENDPOINT_RESOURCE,
+  SCIM_USER_FILTER,
+  WEBEX_API_PROD,
+  WEBEX_API_BTS,
+  BW_XSI_ENDPOINT_VERSION_WITH_SLASH,
 } from './constants';
 import {Model, WebexSDK} from '../SDKConnector/types';
-import {scimResponseBody} from '../CallingClient/calling/CallerId/types';
 import SDKConnector from '../SDKConnector';
 import {CallSettingResponse} from '../CallSettings/types';
 import {ContactResponse} from '../Contacts/types';
@@ -690,6 +697,8 @@ export async function serviceErrorCodeHandler(
   | CallSettingResponse
   | ContactResponse
   | UpdateMissedCallsResponse
+  | UCMLinesResponse
+  | DeleteCallHistoryRecordsResponse
 > {
   const errorCode = Number(err.statusCode);
   const failureMessage = 'FAILURE';
@@ -1104,8 +1113,13 @@ export async function getXsiActionEndpoint(
 
         let xsiEndpoint = response[DEVICES][0][SETTINGS][BW_XSI_URL];
 
-        if (response[DEVICES][0][SETTINGS][BW_XSI_URL].endsWith(BW_XSI_ENDPOINT_VERSION)) {
-          xsiEndpoint = response[DEVICES][0][SETTINGS][BW_XSI_URL].slice(0, -5);
+        const xsiUrl = response[DEVICES][0][SETTINGS][BW_XSI_URL];
+
+        // Check if it ends with specific version and slice accordingly
+        if (xsiUrl.endsWith(BW_XSI_ENDPOINT_VERSION)) {
+          xsiEndpoint = xsiUrl.slice(0, -5); // Remove 'v2.0'
+        } else if (xsiUrl.endsWith(BW_XSI_ENDPOINT_VERSION_WITH_SLASH)) {
+          xsiEndpoint = xsiUrl.slice(0, -6); // Remove 'v2.0/'
         }
 
         return xsiEndpoint;
@@ -1177,7 +1191,7 @@ export function getSortedVoicemailList(
  * @param filter - A filter for the query.
  * @returns - Promise.
  */
-async function scimQuery(filter: string) {
+export async function scimQuery(filter: string) {
   log.info(`Starting resolution for filter:- ${filter}`, {
     file: UTILS_FILE,
     method: 'scimQuery',
@@ -1185,7 +1199,10 @@ async function scimQuery(filter: string) {
   const sdkConnector = SDKConnector;
   const webex = sdkConnector.getWebex();
 
-  const scimUrl = `${webex.internal.services._serviceUrls.identity}/${IDENTITY_ENDPOINT_RESOURCE}/${SCIM_ENDPOINT_RESOURCE}/${webex.internal.device.orgId}/${SCIM_USER_FILTER}`;
+  const isProd = !webex.internal.device.url.includes('-int');
+  const webexHost = isProd ? WEBEX_API_PROD : WEBEX_API_BTS;
+
+  const scimUrl = `${webexHost}/${IDENTITY_ENDPOINT_RESOURCE}/${SCIM_ENDPOINT_RESOURCE}/${webex.internal.device.orgId}/${SCIM_USER_FILTER}`;
   const query = scimUrl + encodeURIComponent(filter);
 
   return <WebexRequestPayload>(<unknown>webex.request({
@@ -1195,7 +1212,6 @@ async function scimQuery(filter: string) {
       [CISCO_DEVICE_URL]: webex.internal.device.url,
       [SPARK_USER_AGENT]: CALLING_USER_AGENT,
     },
-    service: ALLOWED_SERVICES.MOBIUS,
   }));
 }
 
@@ -1211,7 +1227,7 @@ export async function resolveCallerIdDisplay(filter: string) {
   try {
     const response = await scimQuery(filter);
 
-    resolution = response.body as scimResponseBody;
+    resolution = response.body as SCIMListResponse;
 
     log.info(`Number of records found for this user :- ${resolution.totalResults}`, {
       file: UTILS_FILE,
@@ -1236,12 +1252,12 @@ export async function resolveCallerIdDisplay(filter: string) {
 
     /* Pick only the primary number  OR  2nd preference Work */
     const numberObj =
-      scimResource.phoneNumbers.find((num) => num.primary) ||
-      scimResource.phoneNumbers.find((num) => num.type.toLowerCase() === 'work');
+      scimResource.phoneNumbers?.find((num) => num.primary) ||
+      scimResource.phoneNumbers?.find((num) => num.type.toLowerCase() === 'work');
 
     if (numberObj) {
       displayResult.num = <string>numberObj.value;
-    } else if (scimResource.phoneNumbers.length > 0) {
+    } else if (scimResource.phoneNumbers && scimResource.phoneNumbers.length > 0) {
       /* When no primary number exists OR PA-ID/From failed to populate, we take the first number */
       log.info('Failure to resolve caller information. Setting number as caller ID', {
         file: UTILS_FILE,
@@ -1426,7 +1442,10 @@ function isValidServiceDomain(serviceData: ServiceData): boolean {
   const {domain} = serviceData;
 
   if (!domain) {
-    return serviceData.indicator === ServiceIndicator.CALLING;
+    return (
+      serviceData.indicator === ServiceIndicator.CALLING ||
+      serviceData.indicator === ServiceIndicator.GUEST_CALLING
+    );
   }
 
   return regexp.test(domain);
@@ -1440,10 +1459,11 @@ function isValidServiceDomain(serviceData: ServiceData): boolean {
  * @param serviceData - Input service data to be validated.
  */
 export function validateServiceData(serviceData: ServiceData) {
+  const allowedValues = Object.values(ServiceIndicator);
+  const formattedValues = allowedValues.join(', ').replace(/,([^,]*)$/, ' and$1');
+
   if (!isValidServiceIndicator(serviceData.indicator)) {
-    throw new Error(
-      `Invalid service indicator, Allowed values are: ${Object.values(ServiceIndicator)}`
-    );
+    throw new Error(`Invalid service indicator, Allowed values are: ${formattedValues}`);
   }
 
   if (!isValidServiceDomain(serviceData)) {

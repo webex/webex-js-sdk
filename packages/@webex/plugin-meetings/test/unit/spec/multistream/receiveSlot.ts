@@ -1,4 +1,5 @@
 /* eslint-disable require-jsdoc */
+import 'jsdom-global/register';
 import EventEmitter from 'events';
 
 import {MediaType, ReceiveSlotEvents as WcmeReceiveSlotEvents} from '@webex/internal-media-core';

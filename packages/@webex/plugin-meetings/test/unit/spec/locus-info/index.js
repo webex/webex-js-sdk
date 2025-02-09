@@ -9,6 +9,7 @@ import LocusInfo from '@webex/plugin-meetings/src/locus-info';
 import SelfUtils from '@webex/plugin-meetings/src/locus-info/selfUtils';
 import InfoUtils from '@webex/plugin-meetings/src/locus-info/infoUtils';
 import EmbeddedAppsUtils from '@webex/plugin-meetings/src/locus-info/embeddedAppsUtils';
+import MediaSharesUtils from '@webex/plugin-meetings/src/locus-info//mediaSharesUtils';
 import LocusDeltaParser from '@webex/plugin-meetings/src/locus-info/parser';
 import Metrics from '@webex/plugin-meetings/src/metrics';
 
@@ -81,7 +82,7 @@ describe('plugin-meetings', () => {
         newControls = {
           disallowUnmute: {enabled: true},
           lock: {},
-          meetingFull: {},
+          meetingFull: {meetingFull: false, meetingPanelistFull: true},
           muteOnEntry: {enabled: true},
           raiseHand: {enabled: true},
           reactions: {enabled: true, showDisplayNameWithReactions: true},
@@ -95,12 +96,15 @@ describe('plugin-meetings', () => {
           },
           shareControl: {control: 'example-value'},
           transcribe: {},
-          viewTheParticipantList: {enabled: true},
+          viewTheParticipantList: {enabled: true, panelistEnabled: true, attendeeCount: false},
           meetingContainer: {
             meetingContainerUrl: 'http://new-url.com',
           },
           entryExitTone: {enabled: true, mode: 'foo'},
           video: {enabled: true},
+          videoLayout: {overrideDefault: true, lockAttendeeViewOnStageOnly:false, stageParameters: {}},
+          webcastControl: {streaming: false},
+          practiceSession: {enabled: true},
         };
       });
 
@@ -202,6 +206,58 @@ describe('plugin-meetings', () => {
           {file: 'locus-info', function: 'updateControls'},
           LOCUSINFO.EVENTS.CONTROLS_VIDEO_CHANGED,
           {state: newControls.video}
+        );
+      });
+
+      it('should trigger the CONTROLS_STAGE_VIEW_UPDATED event when necessary', () => {
+        locusInfo.controls = {};
+        locusInfo.emitScoped = sinon.stub();
+        locusInfo.updateControls(newControls);
+
+        assert.calledWith(
+          locusInfo.emitScoped,
+          {file: 'locus-info', function: 'updateControls'},
+          LOCUSINFO.EVENTS.CONTROLS_STAGE_VIEW_UPDATED,
+          {state: newControls.videoLayout}
+        );
+      });
+
+      it('should trigger the CONTROLS_WEBCAST_CHANGED event when necessary', () => {
+        locusInfo.controls = {};
+        locusInfo.emitScoped = sinon.stub();
+        locusInfo.updateControls(newControls);
+
+        assert.calledWith(
+          locusInfo.emitScoped,
+          {file: 'locus-info', function: 'updateControls'},
+          LOCUSINFO.EVENTS.CONTROLS_WEBCAST_CHANGED,
+          {state: newControls.webcastControl}
+        );
+      });
+
+      it('should trigger the CONTROLS_MEETING_FULL_CHANGED event when necessary', () => {
+        locusInfo.controls = {};
+        locusInfo.emitScoped = sinon.stub();
+        locusInfo.updateControls(newControls);
+
+        assert.calledWith(
+          locusInfo.emitScoped,
+          {file: 'locus-info', function: 'updateControls'},
+          LOCUSINFO.EVENTS.CONTROLS_MEETING_FULL_CHANGED,
+          {state: newControls.meetingFull}
+        );
+      });
+
+      it('should trigger the CONTROLS_PRACTICE_SESSION_STATUS_UPDATED event when necessary', () => {
+        locusInfo.controls = {};
+        locusInfo.emitScoped = sinon.stub();
+        locusInfo.updateControls(newControls);
+
+        assert.calledWith(
+          locusInfo.emitScoped,
+          {file: 'locus-info', function: 'updateControls'},
+          LOCUSINFO.EVENTS.CONTROLS_PRACTICE_SESSION_STATUS_UPDATED,
+          {state: newControls.practiceSession}
         );
       });
 
@@ -467,6 +523,27 @@ describe('plugin-meetings', () => {
         );
       });
 
+      it('should update the manual caption state', () => {
+        locusInfo.emitScoped = sinon.stub();
+        locusInfo.controls = {
+          manualCaptionControl: {enabled: false},
+        };
+
+        locusInfo.updateControls({manualCaptionControl: { enabled: true, }});
+
+        assert.calledWith(
+          locusInfo.emitScoped,
+          {
+            file: 'locus-info',
+            function: 'updateControls',
+          },
+          LOCUSINFO.EVENTS.CONTROLS_MEETING_MANUAL_CAPTION_UPDATED,
+          {
+            enabled: true,
+          }
+        );
+      });
+
       it('should update the meetingContainerURL from null', () => {
         locusInfo.controls = {
           meetingContainer: {meetingContainerUrl: null},
@@ -717,6 +794,75 @@ describe('plugin-meetings', () => {
     });
 
     describe('#updateSelf', () => {
+      it('should trigger SELF_MEETING_BRB_CHANGED when brb state changed', () => {
+        locusInfo.self = undefined;
+
+        const assertBrb = (enabled) => {
+          const selfWithBrbChanged = cloneDeep(self);
+          selfWithBrbChanged.controls.brb = enabled;
+
+          locusInfo.emitScoped = sinon.stub();
+          locusInfo.updateSelf(selfWithBrbChanged, []);
+
+          assert.calledWith(
+            locusInfo.emitScoped,
+            {file: 'locus-info', function: 'updateSelf'},
+            LOCUSINFO.EVENTS.SELF_MEETING_BRB_CHANGED,
+            {brb: enabled}
+          );
+        };
+
+        assertBrb(true);
+        assertBrb(false);
+      });
+
+      it('should not trigger SELF_MEETING_BRB_CHANGED when brb state did not change', () => {
+        const assertBrbUnchanged = (value) => {
+          locusInfo.self = undefined;
+
+          const selfWithBrbChanged = cloneDeep(self);
+          selfWithBrbChanged.controls.brb = value;
+          locusInfo.self = selfWithBrbChanged;
+
+          locusInfo.emitScoped = sinon.stub();
+
+          const newSelf = cloneDeep(self);
+          newSelf.controls.brb = value;
+
+          locusInfo.updateSelf(newSelf, []);
+
+          assert.neverCalledWith(
+            locusInfo.emitScoped,
+            {file: 'locus-info', function: 'updateSelf'},
+            LOCUSINFO.EVENTS.SELF_MEETING_BRB_CHANGED,
+            {brb: value}
+          );
+        };
+
+        assertBrbUnchanged(true);
+        assertBrbUnchanged(false);
+      });
+
+      it('should not trigger SELF_MEETING_BRB_CHANGED when brb state is undefined', () => {
+        const selfWithBrbChanged = cloneDeep(self);
+        selfWithBrbChanged.controls.brb = false;
+        locusInfo.self = selfWithBrbChanged;
+
+        locusInfo.emitScoped = sinon.stub();
+
+        const newSelf = cloneDeep(self);
+        newSelf.controls.brb = undefined;
+
+        locusInfo.updateSelf(newSelf, []);
+
+        assert.neverCalledWith(
+          locusInfo.emitScoped,
+          {file: 'locus-info', function: 'updateSelf'},
+          LOCUSINFO.EVENTS.SELF_MEETING_BRB_CHANGED,
+          {brb: undefined}
+        );
+      });
+
       it('should trigger CONTROLS_MEETING_LAYOUT_UPDATED when the meeting layout controls change', () => {
         const layoutType = 'EXAMPLE TYPE';
 
@@ -1312,6 +1458,30 @@ describe('plugin-meetings', () => {
           }
         );
       });
+
+      it('should not trigger any events if controls is undefined', () => {
+        locusInfo.self = self;
+        locusInfo.emitScoped = sinon.stub();
+        const newSelf = cloneDeep(self);
+        newSelf.controls = undefined;
+
+        locusInfo.updateSelf(newSelf, []);
+
+        const eventsSet = new Set([
+          LOCUSINFO.EVENTS.CONTROLS_MEETING_LAYOUT_UPDATED,
+          LOCUSINFO.EVENTS.SELF_MEETING_BREAKOUTS_CHANGED,
+          LOCUSINFO.EVENTS.SELF_MEETING_BRB_CHANGED,
+          LOCUSINFO.EVENTS.SELF_MEETING_INTERPRETATION_CHANGED,
+          LOCUSINFO.EVENTS.LOCAL_UNMUTE_REQUIRED,
+          LOCUSINFO.EVENTS.SELF_REMOTE_MUTE_STATUS_UPDATED,
+        ]);
+
+        // check all events that contain logic on controls existence
+        locusInfo.emitScoped.getCalls().forEach((call) => {
+          const eventName = call.args[1];
+          assert.isFalse(eventsSet.has(eventName));
+        });
+      });
     });
 
     describe('#updateMeetingInfo', () => {
@@ -1561,6 +1731,134 @@ describe('plugin-meetings', () => {
       });
     });
 
+    describe('#updateMediaShares', () => {
+      let getMediaSharesSpy;
+
+      beforeEach(() => {
+        // Spy on MediaSharesUtils.getMediaShares
+        getMediaSharesSpy = sinon.stub(MediaSharesUtils, 'getMediaShares');
+
+        // Stub the emitScoped method to monitor its calls
+        sinon.stub(locusInfo, 'emitScoped');
+      });
+
+      afterEach(() => {
+        getMediaSharesSpy.restore();
+        locusInfo.emitScoped.restore();
+      });
+
+      it('should update media shares and emit LOCUS_INFO_UPDATE_MEDIA_SHARES when mediaShares change', () => {
+        const initialMediaShares = { audio: true, video: false };
+        const newMediaShares = { audio: false, video: true };
+
+        locusInfo.mediaShares = initialMediaShares;
+        locusInfo.parsedLocus = { mediaShares: null };
+
+        const parsedMediaShares = {
+          current: newMediaShares,
+          previous: initialMediaShares,
+        };
+
+        // Stub MediaSharesUtils.getMediaShares to return the expected parsedMediaShares
+        getMediaSharesSpy.returns(parsedMediaShares);
+
+        // Call the function
+        locusInfo.updateMediaShares(newMediaShares);
+
+        // Assert that MediaSharesUtils.getMediaShares was called with correct arguments
+        assert.calledWith(getMediaSharesSpy, initialMediaShares, newMediaShares);
+
+        // Assert that updateMeeting was called with the parsed current media shares
+        assert.deepEqual(locusInfo.parsedLocus.mediaShares, newMediaShares);
+        assert.deepEqual(locusInfo.mediaShares, newMediaShares);
+
+        // Assert that emitScoped was called with the correct event
+        assert.calledWith(
+          locusInfo.emitScoped,
+          {
+            file: 'locus-info',
+            function: 'updateMediaShares',
+          },
+          EVENTS.LOCUS_INFO_UPDATE_MEDIA_SHARES,
+          {
+            current: newMediaShares,
+            previous: initialMediaShares,
+            forceUpdate: false,
+          }
+        );
+      });
+
+      it('should force update media shares and emit LOCUS_INFO_UPDATE_MEDIA_SHARES even if shares are the same', () => {
+        const initialMediaShares = { audio: true, video: false };
+        locusInfo.mediaShares = initialMediaShares;
+        locusInfo.parsedLocus = { mediaShares: null };
+
+        const parsedMediaShares = {
+          current: initialMediaShares,
+          previous: initialMediaShares,
+        };
+
+        getMediaSharesSpy.returns(parsedMediaShares);
+
+        // Call the function with forceUpdate = true
+        locusInfo.updateMediaShares(initialMediaShares, true);
+
+        // Assert that MediaSharesUtils.getMediaShares was called
+        assert.calledWith(getMediaSharesSpy, initialMediaShares, initialMediaShares);
+
+        // Assert that emitScoped was called with the correct event
+        assert.calledWith(
+          locusInfo.emitScoped,
+          {
+            file: 'locus-info',
+            function: 'updateMediaShares',
+          },
+          EVENTS.LOCUS_INFO_UPDATE_MEDIA_SHARES,
+          {
+            current: initialMediaShares,
+            previous: initialMediaShares,
+            forceUpdate: true,
+          }
+        );
+      });
+
+      it('should not emit LOCUS_INFO_UPDATE_MEDIA_SHARES if mediaShares do not change and forceUpdate is false', () => {
+        const initialMediaShares = { audio: true, video: false };
+        locusInfo.mediaShares = initialMediaShares;
+
+        // Call the function with the same mediaShares and forceUpdate = false
+        locusInfo.updateMediaShares(initialMediaShares);
+
+        // Assert that MediaSharesUtils.getMediaShares was not called
+        assert.notCalled(getMediaSharesSpy);
+
+        // Assert that emitScoped was not called
+        assert.notCalled(locusInfo.emitScoped);
+      });
+
+      it('should update internal state correctly when mediaShares are updated', () => {
+        const initialMediaShares = { audio: true, video: false };
+        const newMediaShares = { audio: false, video: true };
+
+        locusInfo.mediaShares = initialMediaShares;
+        locusInfo.parsedLocus = { mediaShares: null };
+
+        const parsedMediaShares = {
+          current: newMediaShares,
+          previous: initialMediaShares,
+        };
+
+        getMediaSharesSpy.returns(parsedMediaShares);
+
+        // Call the function
+        locusInfo.updateMediaShares(newMediaShares);
+
+        // Assert that the internal state was updated correctly
+        assert.deepEqual(locusInfo.parsedLocus.mediaShares, newMediaShares);
+        assert.deepEqual(locusInfo.mediaShares, newMediaShares);
+      });
+    });
+
     describe('#updateEmbeddedApps()', () => {
       const newEmbeddedApps = [
         {
@@ -1708,6 +2006,7 @@ describe('plugin-meetings', () => {
         locusInfo.updateMemberShip = sinon.stub();
         locusInfo.updateIdentifiers = sinon.stub();
         locusInfo.updateEmbeddedApps = sinon.stub();
+        locusInfo.updateResources = sinon.stub();
         locusInfo.compareAndUpdate = sinon.stub();
 
         locusInfo.updateLocusInfo(newLocus);
@@ -1729,6 +2028,7 @@ describe('plugin-meetings', () => {
         assert.notCalled(locusInfo.updateMemberShip);
         assert.notCalled(locusInfo.updateIdentifiers);
         assert.notCalled(locusInfo.updateEmbeddedApps);
+        assert.notCalled(locusInfo.updateResources);
         assert.notCalled(locusInfo.compareAndUpdate);
       });
 
@@ -1784,6 +2084,35 @@ describe('plugin-meetings', () => {
         locusParser.onDeltaAction(action, parsedLoci);
 
         assert.calledWith(locusInfo.applyLocusDeltaData, action, parsedLoci, fakeMeeting);
+      });
+
+      it('catches errors thrown by onDeltaAction and is able to process next Locus delta', () => {
+        const fakeLocusDelta = {
+          sequence: {
+            rangeStart: 0,
+            rangeEnd: 0,
+          },
+        };
+        locusInfo.locusParser.workingCopy = {
+          sequence: {
+            rangeStart: 0,
+            rangeEnd: 0,
+          },
+        };
+        const testMeeting = {locusInfo: {onDeltaLocus: sinon.stub()}};
+
+        locusParser.onDeltaAction = sandbox
+          .stub()
+          .onCall(0)
+          .callsFake(() => {
+            throw new Error('fake error');
+          });
+
+        // simulate first locus delta coming - it will trigger an error thrown by onDeltaAction
+        locusInfo.handleLocusDelta(fakeLocusDelta, testMeeting);
+
+        // simulate a second locus delta coming - it should be processed without errors
+        locusInfo.handleLocusDelta(fakeLocusDelta, testMeeting);
       });
 
       it('applyLocusDeltaData handles USE_INCOMING action correctly', () => {

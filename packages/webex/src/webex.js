@@ -14,7 +14,6 @@ require('@webex/plugin-authorization');
 require('@webex/internal-plugin-calendar');
 require('@webex/internal-plugin-device');
 require('@webex/internal-plugin-presence');
-require('@webex/plugin-presence');
 require('@webex/internal-plugin-support');
 require('@webex/internal-plugin-llm');
 require('@webex/plugin-attachment-actions');

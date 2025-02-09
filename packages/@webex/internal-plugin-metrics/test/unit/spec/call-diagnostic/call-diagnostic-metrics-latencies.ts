@@ -12,12 +12,10 @@ describe('internal-plugin-metrics', () => {
       sinon.useFakeTimers(now.getTime());
       const webex = {
         meetings: {
-          meetingCollection: {
-            get: (id: string) => {
-              if (id === 'meeting-id') {
-                return {id: 'meeting-id', allowMediaInLobby: true};
-              }
-            },
+          getBasicMeetingInformation: (id: string) => {
+            if (id === 'meeting-id') {
+              return {id: 'meeting-id', allowMediaInLobby: true};
+            }
           },
         },
       };
@@ -284,6 +282,18 @@ describe('internal-plugin-metrics', () => {
         cdl.saveTimestamp({key: 'client.alert.displayed', value: 15});
         cdl.saveTimestamp({key: 'internal.client.meetinginfo.response', value: 20});
         assert.deepEqual(saveFirstTimestamp.callCount, 1);
+      });
+
+      it('calls saveFirstTimestamp for remote SDP received', () => {
+        const saveFirstTimestamp = sinon.stub(cdl, 'saveFirstTimestampOnly');
+        cdl.saveTimestamp({key: 'client.media-engine.remote-sdp-received', value: 10});
+        assert.deepEqual(saveFirstTimestamp.callCount, 1);
+      });
+
+      it('clears timestamp for remote SDP received when local SDP generated', () => {
+        cdl.saveTimestamp({key: 'client.media-engine.remote-sdp-received', value: 10});
+        cdl.saveTimestamp({key: 'client.media-engine.local-sdp-generated', value: 20});
+        assert.isUndefined(cdl.latencyTimestamps.get('client.media-engine.remote-sdp-received'));
       });
     });
 
@@ -668,7 +678,7 @@ describe('internal-plugin-metrics', () => {
       assert.deepEqual(cdl.getInterstitialToMediaOKJMT(), 10);
     });
 
-    it('calculates getU2CTime correctly', () => {
+    describe('calculates getU2CTime correctly', () => {
       it('returns undefined when no precomputed value available', () => {
         assert.deepEqual(cdl.getU2CTime(), undefined);
       });

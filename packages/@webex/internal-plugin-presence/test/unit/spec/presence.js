@@ -64,6 +64,67 @@ describe.skip('plugin-presence', () => {
     describe('#setStatus()', () => {
       it('requires a status', () =>
         assert.isRejected(webex.internal.presence.setStatus(), /A status is required/));
+
+      it('passes a label to the API', () => {
+        const testGuid = 'test-guid';
+
+        webex.internal.device.userId = testGuid;
+
+        webex.request = function (options) {
+          return Promise.resolve({
+            statusCode: 204,
+            body: [],
+            options,
+          });
+        };
+        sinon.spy(webex, 'request');
+
+        webex.internal.presence.setStatus('active');
+
+        assert.calledOnce(webex.request);
+
+        const request = webex.request.getCall(0);
+
+        assert.equal(request.args[0].body.label, testGuid);
+      });
+
+      it('does not pass a label to the API if the status is DND', () => {
+        const testGuid = 'test-guid';
+
+        webex.internal.device.userId = testGuid;
+
+        webex.request = function (options) {
+          return Promise.resolve({
+            statusCode: 204,
+            body: [],
+            options,
+          });
+        };
+        sinon.spy(webex, 'request');
+
+        webex.internal.presence.setStatus('dnd');
+
+        assert.calledOnce(webex.request);
+
+        const request = webex.request.getCall(0);
+
+        assert.notProperty(request.args[0].body, 'label');
+      });
+    });
+
+    describe('#initializeWorker()', () => {
+      it('initializes the worker once webex is ready', () => {
+        webex.internal.presence.worker = {initialize: sinon.spy()};
+        webex.presence.config.initializeWorker = false;
+
+        webex.internal.presence.initializeWorker();
+
+        assert.notCalled(webex.internal.presence.worker.initialize);
+
+        webex.trigger('ready');
+
+        assert.calledOnce(webex.internal.presence.worker.initialize);
+      });
     });
   });
 });

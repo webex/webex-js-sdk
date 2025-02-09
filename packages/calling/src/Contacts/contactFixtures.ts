@@ -272,42 +272,214 @@ export const mockContactGroupListTwo = [
   },
 ];
 
-export const mockDSSResponse = [
-  {
-    additionalInfo: {
-      created: '2022-08-05T02:51:46.055Z',
-      department: '123029217',
-      extLinkedAccts: [{providerID: 'cisco.webex.com', accountGUID: '500802287', status: 'active'}],
-      firstName: 'Emily',
-      identityManager: {
-        displayName: 'Robert Langdon',
-        managerId: '9d0fce00-95b2-435f-99d1-b6b44759fbdc',
-      },
-      jobTitle: 'Software Engineer',
-      lastName: 'Nagakawa',
-      modified: '2023-03-03T13:37:03.196Z',
-      nickName: 'Emily',
-      userName: 'emikawa2@cisco.com',
-    },
-    displayName: 'Emily Nagakawa',
-    emails: [{value: 'emikawa2@cisco.com'}],
-    entityProviderType: 'CI_USER',
-    identity: '801bb994-343b-4f6b-97ae-d13c91d4b877',
-    orgId: '1eb65fdf-9643-417f-9974-ad72cae0e10f',
-    phoneNumbers: [
-      {type: 'mobile', value: '+1 835 648 8750'},
-      {type: 'work', value: '+1 791 723 8825'},
-    ],
-    photos: [{value: 'avatar-prod-us-east-2.webexcontent.com'}],
-    sipAddresses: [
-      {type: 'cloud-calling', value: 'emikawa2@cisco.call.ciscospark.com', primary: true},
-      {type: 'personal-room', value: 'emikawa2@cisco.webex.com', primary: false},
-      {type: 'enterprise', value: 'emikawa2@cisco.com', primary: true},
-      {type: 'personal-room', value: '25762555827@cisco.webex.com', primary: false},
-    ],
-    type: 'PERSON',
+export const mockContactMinimum = {
+  contactId: 'userId',
+  contactType: 'CLOUD',
+  encryptionKeyUrl: 'kms://cisco.com/keys/dcf18f9d-155e-44ff-ad61-c8a69b7103ab',
+  groups: ['1561977e-3443-4ccf-a591-69686275d7d2'],
+  ownerId: 'ownerId',
+};
+
+export const scimUserMinimum = {
+  schemas: ['urn:ietf:params:scim:schemas:core:2.0:User'],
+  id: 'userId',
+  userName: 'userName',
+  userType: 'user',
+};
+
+const scimUser1 = {
+  schemas: [
+    'urn:ietf:params:scim:schemas:core:2.0:User',
+    'urn:scim:schemas:extension:cisco:webexidentity:2.0:User',
+    'urn:ietf:params:scim:schemas:extension:enterprise:2.0:User',
+  ],
+  id: 'userId',
+  userName: 'johndoe@cisco.com',
+  active: true,
+  name: {
+    familyName: 'Doe',
+    givenName: 'John',
   },
-];
+  displayName: 'John Doe',
+  emails: [
+    {
+      value: 'johndoe@cisco.com',
+      type: 'work',
+      primary: true,
+    },
+  ],
+  userType: 'user',
+  phoneNumbers: [
+    {
+      value: '+91 22 1234 5678',
+      type: 'work',
+    },
+  ],
+  photos: [
+    {
+      value: 'photoUrl',
+      type: 'photo',
+    },
+    {
+      value: 'thumbnailURL',
+      type: 'thumbnail',
+    },
+  ],
+  addresses: [
+    {
+      type: 'work',
+      streetAddress: 'Street',
+      locality: 'BANGALORE',
+      region: 'KARNATAKA',
+      postalCode: '560103',
+      country: 'IN',
+    },
+  ],
+  'urn:ietf:params:scim:schemas:extension:enterprise:2.0:User': {
+    department: '123029016',
+    manager: {
+      value: 'userId',
+      displayName: 'Jane Smith',
+      $ref: 'scimUrl',
+    },
+  },
+  'urn:scim:schemas:extension:cisco:webexidentity:2.0:User': {
+    isTeamsOnJabberEnabled: false,
+    isUCCallOnJabberEnabled: false,
+    licenseID: ['license'],
+    userSettings: ['setting'],
+    userPreferences: ['preferences'],
+    sipAddresses: [
+      {
+        value: 'johndoe@cisco.call.ciscospark.com',
+        type: 'cloud-calling',
+      },
+      {
+        value: 'johndoe@cisco.calls.webex.com',
+        type: 'cloud-calling',
+        primary: true,
+      },
+      {
+        value: 'johndoe@cisco.webex.com',
+        type: 'personal-room',
+      },
+    ],
+    meta: {
+      organizationId: 'orgId',
+    },
+    userNameType: 'email',
+  },
+  meta: {
+    resourceType: 'User',
+    location: 'scimUrl',
+    version: 'W/"16629124099"',
+    created: '2019-12-24T02:01:42.803Z',
+    lastModified: '2024-08-21T14:22:55.987Z',
+  },
+};
+
+const scimUser2NoPhoto = {
+  schemas: [
+    'urn:ietf:params:scim:schemas:core:2.0:User',
+    'urn:scim:schemas:extension:cisco:webexidentity:2.0:User',
+    'urn:ietf:params:scim:schemas:extension:enterprise:2.0:User',
+  ],
+  id: 'userId',
+  userName: 'janedoe@cisco.com',
+  active: true,
+  name: {
+    familyName: 'Doe',
+    givenName: 'Jane',
+  },
+  displayName: 'Jane Doe',
+  emails: [
+    {
+      value: 'janedoe@cisco.com',
+      type: 'work',
+      primary: true,
+    },
+  ],
+  userType: 'user',
+  phoneNumbers: [
+    {
+      value: '+91 22 1234 5678',
+      type: 'work',
+    },
+  ],
+  addresses: [
+    {
+      type: 'work',
+      streetAddress: 'Street',
+      locality: 'BANGALORE',
+      region: 'KARNATAKA',
+      postalCode: '560103',
+      country: 'IN',
+    },
+  ],
+  'urn:ietf:params:scim:schemas:extension:enterprise:2.0:User': {
+    department: '123029016',
+    manager: {
+      value: 'userId',
+      displayName: 'John Smith',
+      $ref: 'scimUrl',
+    },
+  },
+  'urn:scim:schemas:extension:cisco:webexidentity:2.0:User': {
+    isTeamsOnJabberEnabled: false,
+    isUCCallOnJabberEnabled: false,
+    licenseID: ['license'],
+    userSettings: ['setting'],
+    userPreferences: ['preferences'],
+    sipAddresses: [
+      {
+        value: 'janedoe@cisco.call.ciscospark.com',
+        type: 'cloud-calling',
+      },
+      {
+        value: 'janedoe@cisco.calls.webex.com',
+        type: 'cloud-calling',
+        primary: true,
+      },
+      {
+        value: 'janedoe@cisco.webex.com',
+        type: 'personal-room',
+      },
+    ],
+    meta: {
+      organizationId: 'orgId',
+    },
+    userNameType: 'email',
+  },
+  meta: {
+    resourceType: 'User',
+    location: 'scimUrl',
+    version: 'W/"16629124099"',
+    created: '2019-12-24T02:01:42.803Z',
+    lastModified: '2024-08-21T14:22:55.987Z',
+  },
+};
+
+export const mockSCIMListResponse = {
+  statusCode: 200,
+  body: {
+    schemas: ['urn:ietf:params:scim:api:messages:2.0:ListResponse'],
+    totalResults: 2,
+    itemsPerPage: 2,
+    startIndex: 1,
+    Resources: [scimUser1, scimUser2NoPhoto],
+  },
+};
+
+export const mockSCIMMinListResponse = {
+  statusCode: 200,
+  body: {
+    schemas: ['urn:ietf:params:scim:api:messages:2.0:ListResponse'],
+    totalResults: 1,
+    itemsPerPage: 1,
+    startIndex: 1,
+    Resources: [scimUserMinimum],
+  },
+};
 
 export const mockKmsKey = {
   uri: 'kms://kms-cisco.wbx2.com/keys/16095024-612d-4424-ba51-57cad2402e14',

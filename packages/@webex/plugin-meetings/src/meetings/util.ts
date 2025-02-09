@@ -5,10 +5,9 @@ import {
   _INCOMING_,
   _JOINED_,
   _LEFT_,
-  _LOCUS_ID_,
+  DESTINATION_TYPE,
   _MOVED_,
   BREAKOUTS,
-  CORRELATION_ID,
   EVENT_TRIGGERS,
   LOCUS,
   LOCUSEVENT,
@@ -18,6 +17,7 @@ import LoggerProxy from '../common/logs/logger-proxy';
 import Trigger from '../common/events/trigger-proxy';
 import BEHAVIORAL_METRICS from '../metrics/constants';
 import Metrics from '../metrics';
+import {MEETING_KEY} from './meetings.types';
 
 /**
  * Meetings Media Codec Missing Event
@@ -39,14 +39,15 @@ import Metrics from '../metrics';
 
 const MeetingsUtil: any = {};
 
-MeetingsUtil.getMeetingAddedType = (type) => (type === _LOCUS_ID_ ? _INCOMING_ : _CREATED_);
+MeetingsUtil.getMeetingAddedType = (type: DESTINATION_TYPE) =>
+  type === DESTINATION_TYPE.LOCUS_ID ? _INCOMING_ : _CREATED_;
 
 MeetingsUtil.handleRoapMercury = (envelope, meetingCollection) => {
   const {data} = envelope;
   const {eventType} = data;
 
   if (eventType === LOCUSEVENT.MESSAGE_ROAP) {
-    const meeting = meetingCollection.getByKey(CORRELATION_ID, data.correlationId);
+    const meeting = meetingCollection.getByKey(MEETING_KEY.CORRELATION_ID, data.correlationId);
 
     if (meeting) {
       const {seq, messageType, tieBreaker, errorType, errorCause} = data.message;

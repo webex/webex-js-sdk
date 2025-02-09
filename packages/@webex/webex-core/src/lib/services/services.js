@@ -1,7 +1,6 @@
-import Url from 'url';
-
 import sha256 from 'crypto-js/sha256';
 
+import {union, forEach} from 'lodash';
 import WebexPlugin from '../webex-plugin';
 
 import METRICS from './metrics';
@@ -9,6 +8,7 @@ import ServiceCatalog from './service-catalog';
 import ServiceRegistry from './service-registry';
 import ServiceState from './service-state';
 import fedRampServices from './service-fed-ramp';
+import {COMMERCIAL_ALLOWED_DOMAINS} from './constants';
 
 const trailingSlashes = /(?:^\/)|(?:\/$)/;
 
@@ -52,6 +52,7 @@ const Services = WebexPlugin.extend({
 
   props: {
     validateDomains: ['boolean', false, true],
+    initFailed: ['boolean', false, false],
   },
 
   _catalogs: new WeakMap(),
@@ -498,6 +499,20 @@ const Services = WebexPlugin.extend({
   },
 
   /**
+   * Updates a given service group i.e. preauth, signin, postauth with a new hostmap.
+   * @param {string} serviceGroup - preauth, signin, postauth
+   * @param {object} hostMap - The new hostmap to update the service group with.
+   * @returns {Promise<void>}
+   */
+  updateCatalog(serviceGroup, hostMap) {
+    const catalog = this._getCatalog();
+
+    const serviceHostMap = this._formatReceivedHostmap(hostMap);
+
+    return catalog.updateServiceUrls(serviceGroup, serviceHostMap);
+  },
+
+  /**
    * simplified method to update the preauth catalog via email
    *
    * @param {object} query
@@ -675,6 +690,33 @@ const Services = WebexPlugin.extend({
   },
 
   /**
+   * Looks up the hostname in the host catalog
+   * and replaces it with the first host if it finds it
+   * @param {string} uri
+   * @returns {string} uri with the host replaced
+   */
+  replaceHostFromHostmap(uri) {
+    const url = new URL(uri);
+    const hostCatalog = this._hostCatalog;
+
+    if (!hostCatalog) {
+      return uri;
+    }
+
+    const host = hostCatalog[url.host];
+
+    if (host && host[0]) {
+      const newHost = host[0].host;
+
+      url.host = newHost;
+
+      return url.toString();
+    }
+
+    return uri;
+  },
+
+  /**
    * @private
    * Organize a received hostmap from a service
    * catalog endpoint.
@@ -683,59 +725,74 @@ const Services = WebexPlugin.extend({
    */
   _formatReceivedHostmap(serviceHostmap) {
     this._updateHostCatalog(serviceHostmap.hostCatalog);
-    // map the host catalog items to a formatted hostmap
-    const formattedHostmap = Object.keys(serviceHostmap.hostCatalog).reduce((accumulator, key) => {
-      if (serviceHostmap.hostCatalog[key].length === 0) {
-        return accumulator;
+
+    const extractId = (entry) => entry.id.split(':')[3];
+
+    const formattedHostmap = [];
+
+    // for each of the services in the serviceLinks, find the matching host in the catalog
+    Object.keys(serviceHostmap.serviceLinks).forEach((serviceName) => {
+      const serviceUrl = serviceHostmap.serviceLinks[serviceName];
+
+      let host;
+      try {
+        host = new URL(serviceUrl).host;
+      } catch (e) {
+        return;
       }
 
-      const serviceName = serviceHostmap.hostCatalog[key][0].id.split(':')[3];
-      const defaultUrl = serviceHostmap.serviceLinks[serviceName];
+      const matchingCatalogEntry = serviceHostmap.hostCatalog[host];
 
-      let serviceItem = accumulator.find((item) => item.name === serviceName);
+      const formattedHost = {
+        name: serviceName,
+        defaultUrl: serviceUrl,
+        defaultHost: host,
+        hosts: [],
+      };
 
-      if (!serviceItem) {
-        serviceItem = {
-          name: serviceName,
-          defaultUrl,
-          defaultHost: Url.parse(defaultUrl).hostname,
-          hosts: [],
-        };
+      formattedHostmap.push(formattedHost);
 
-        accumulator.push(serviceItem);
+      // If the catalog does not have any hosts we will be unable to find the service ID
+      // so can't search for other hosts
+      if (!matchingCatalogEntry || !matchingCatalogEntry[0]) {
+        return;
       }
 
-      serviceItem.hosts.push(
-        // map the default key as a low priority default for cluster matching
-        {
-          host: key,
-          ttl: -1,
-          priority: 10,
-          id: serviceHostmap.hostCatalog[key][0].id,
-          homeCluster: serviceItem.defaultHost === key,
-        },
-        // map the rest of the hosts in their proper locations
-        ...serviceHostmap.hostCatalog[key].map((host) => ({
-          ...host,
-          homeCluster: serviceItem.defaultHost === key,
-        }))
-      );
+      const serviceId = extractId(matchingCatalogEntry[0]);
 
-      return accumulator;
-    }, []);
+      forEach(matchingCatalogEntry, (entry) => {
+        // The ids for all hosts within a hostCatalog entry should be the same
+        // but for safety, only add host entries that have the same id as the first one
+        if (extractId(entry) === serviceId) {
+          formattedHost.hosts.push({
+            ...entry,
+            homeCluster: true,
+          });
+        }
+      });
 
-    // append service links that do not exist in the host catalog
-    Object.keys(serviceHostmap.serviceLinks).forEach((key) => {
-      const service = formattedHostmap.find((item) => item.name === key);
+      const otherHosts = [];
 
-      if (!service) {
-        formattedHostmap.push({
-          name: key,
-          defaultUrl: serviceHostmap.serviceLinks[key],
-          defaultHost: Url.parse(serviceHostmap.serviceLinks[key]).hostname,
-          hosts: [],
+      // find the services in the host catalog that have the same id
+      // and add them to the otherHosts
+      forEach(serviceHostmap.hostCatalog, (entry) => {
+        // exclude the matching catalog entry as we have already added that
+        if (entry === matchingCatalogEntry) {
+          return;
+        }
+
+        forEach(entry, (entryHost) => {
+          // only add hosts that have the correct id
+          if (extractId(entryHost) === serviceId) {
+            otherHosts.push({
+              ...entryHost,
+              homeCluster: false,
+            });
+          }
         });
-      }
+      });
+
+      formattedHost.hosts.push(...otherHosts);
     });
 
     // update all the service urls in the host catalog
@@ -940,6 +997,11 @@ const Services = WebexPlugin.extend({
         catalog.updateServiceUrls('override', formattedOverrideServices);
       }
 
+      // if not fedramp, append on the commercialAllowedDomains
+      if (!fedramp) {
+        services.allowedDomains = union(services.allowedDomains, COMMERCIAL_ALLOWED_DOMAINS);
+      }
+
       // Check for allowed host domains.
       if (services.allowedDomains) {
         // Store the allowed domains as a property of the catalog.
@@ -974,9 +1036,10 @@ const Services = WebexPlugin.extend({
           // Validate if the token is authorized.
           if (credentials.canAuthorize) {
             // Attempt to collect the postauth catalog.
-            return this.updateServices().catch(() =>
-              this.logger.warn('services: cannot retrieve postauth catalog')
-            );
+            return this.updateServices().catch(() => {
+              this.initFailed = true;
+              this.logger.warn('services: cannot retrieve postauth catalog');
+            });
           }
 
           // Return a resolved promise for consistent return value.
@@ -1010,20 +1073,27 @@ const Services = WebexPlugin.extend({
     // to update the service catalogs
     this.listenToOnce(this.webex, 'ready', () => {
       const {supertoken} = this.webex.credentials;
-
       // Validate if the supertoken exists.
       if (supertoken && supertoken.access_token) {
         this.initServiceCatalogs()
           .then(() => {
             catalog.isReady = true;
           })
-          .catch((error) =>
-            this.logger.error(`services: failed to init initial services, ${error.message}`)
-          );
+          .catch((error) => {
+            this.initFailed = true;
+            this.logger.error(
+              `services: failed to init initial services when credentials available, ${error?.message}`
+            );
+          });
       } else {
         const {email} = this.webex.config;
 
-        this.collectPreauthCatalog(email ? {email} : undefined);
+        this.collectPreauthCatalog(email ? {email} : undefined).catch((error) => {
+          this.initFailed = true;
+          this.logger.error(
+            `services: failed to init initial services when no credentials available, ${error?.message}`
+          );
+        });
       }
     });
   },

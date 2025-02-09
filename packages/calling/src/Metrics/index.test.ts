@@ -15,6 +15,8 @@ describe('CALLING: Metric tests', () => {
   const metricManager = getMetricManager(webex, ServiceIndicator.CALLING);
   const mockDeviceInfo = getMockDeviceInfo();
   const mockSubmitClientMetric = jest.fn();
+  const MOCK_VERSION_NUMBER = '1.0.0';
+  const originalEnv = process.env;
 
   webex.internal.metrics.submitClientMetrics = mockSubmitClientMetric;
 
@@ -25,6 +27,10 @@ describe('CALLING: Metric tests', () => {
 
   beforeEach(() => {
     mockSubmitClientMetric.mockClear();
+    process.env = {
+      ...originalEnv,
+      CALLING_SDK_VERSION: MOCK_VERSION_NUMBER,
+    };
   });
 
   it('initialize metric manager', () => {
@@ -51,7 +57,7 @@ describe('CALLING: Metric tests', () => {
         fields: {
           device_url: mockDeviceInfo.device.clientDeviceUri,
           mobius_url: mockDeviceInfo.device.uri,
-          calling_sdk_version: VERSION,
+          calling_sdk_version: MOCK_VERSION_NUMBER,
         },
         type: METRIC_TYPE.BEHAVIORAL,
       };
@@ -91,7 +97,7 @@ describe('CALLING: Metric tests', () => {
         fields: {
           device_url: mockDeviceInfo.device.clientDeviceUri,
           mobius_url: mockDeviceInfo.device.uri,
-          calling_sdk_version: VERSION,
+          calling_sdk_version: MOCK_VERSION_NUMBER,
           error: clientError.getError().message,
           error_type: clientError.getError().type,
         },
@@ -146,7 +152,7 @@ describe('CALLING: Metric tests', () => {
         fields: {
           device_url: mockDeviceInfo.device.clientDeviceUri,
           mobius_url: mockDeviceInfo.device.uri,
-          calling_sdk_version: VERSION,
+          calling_sdk_version: MOCK_VERSION_NUMBER,
           call_id: mockCallId,
           correlation_id: mockCorrelationId,
         },
@@ -190,7 +196,7 @@ describe('CALLING: Metric tests', () => {
         fields: {
           device_url: mockDeviceInfo.device.clientDeviceUri,
           mobius_url: mockDeviceInfo.device.uri,
-          calling_sdk_version: VERSION,
+          calling_sdk_version: MOCK_VERSION_NUMBER,
           call_id: mockCallId,
           correlation_id: mockCorrelationId,
           error: callError.getCallError().message,
@@ -249,7 +255,7 @@ describe('CALLING: Metric tests', () => {
         fields: {
           device_url: mockDeviceInfo.device.clientDeviceUri,
           mobius_url: mockDeviceInfo.device.uri,
-          calling_sdk_version: VERSION,
+          calling_sdk_version: MOCK_VERSION_NUMBER,
           call_id: mockCallId,
           correlation_id: mockCorrelationId,
           local_media_details: mockSdp,
@@ -297,7 +303,7 @@ describe('CALLING: Metric tests', () => {
         fields: {
           device_url: mockDeviceInfo.device.clientDeviceUri,
           mobius_url: mockDeviceInfo.device.uri,
-          calling_sdk_version: VERSION,
+          calling_sdk_version: MOCK_VERSION_NUMBER,
           call_id: mockCallId,
           correlation_id: mockCorrelationId,
           local_media_details: mockSdp,
@@ -359,7 +365,7 @@ describe('CALLING: Metric tests', () => {
         fields: {
           device_url: mockDeviceInfo.device.clientDeviceUri,
           mobius_url: mockDeviceInfo.device.uri,
-          calling_sdk_version: VERSION,
+          calling_sdk_version: MOCK_VERSION_NUMBER,
           call_id: mockCallId,
           correlation_id: mockCorrelationId,
         },
@@ -385,7 +391,7 @@ describe('CALLING: Metric tests', () => {
         fields: {
           device_url: mockDeviceInfo.device.clientDeviceUri,
           mobius_url: mockDeviceInfo.device.uri,
-          calling_sdk_version: VERSION,
+          calling_sdk_version: MOCK_VERSION_NUMBER,
           call_id: mockCallId,
           correlation_id: mockCorrelationId,
         },
@@ -434,7 +440,7 @@ describe('CALLING: Metric tests', () => {
         },
         fields: {
           device_url: mockDeviceInfo.device.clientDeviceUri,
-          calling_sdk_version: VERSION,
+          calling_sdk_version: MOCK_VERSION_NUMBER,
         },
         type: METRIC_TYPE.BEHAVIORAL,
       };
@@ -475,7 +481,7 @@ describe('CALLING: Metric tests', () => {
         },
         fields: {
           device_url: mockDeviceInfo.device.clientDeviceUri,
-          calling_sdk_version: VERSION,
+          calling_sdk_version: MOCK_VERSION_NUMBER,
         },
         type: METRIC_TYPE.BEHAVIORAL,
       };
@@ -532,6 +538,36 @@ describe('CALLING: Metric tests', () => {
           method: 'submitVoicemailMetric',
         }
       );
+    });
+  });
+
+  describe('Calling_Sdk_Version fallback test', () => {
+    it('submit metric with fallback version', () => {
+      process.env = {};
+      metricManager.setDeviceInfo(mockDeviceInfo);
+      const expectedData = {
+        tags: {
+          device_id: mockDeviceInfo.device.deviceId,
+          service_indicator: ServiceIndicator.CALLING,
+        },
+        fields: {
+          device_url: mockDeviceInfo.device.clientDeviceUri,
+          mobius_url: mockDeviceInfo.device.uri,
+          calling_sdk_version: VERSION,
+          call_id: mockCallId,
+          correlation_id: mockCorrelationId,
+        },
+        type: METRIC_TYPE.BEHAVIORAL,
+      };
+
+      metricManager.submitBNRMetric(
+        METRIC_EVENT.BNR_ENABLED,
+        METRIC_TYPE.BEHAVIORAL,
+        mockCallId,
+        mockCorrelationId
+      );
+
+      expect(mockSubmitClientMetric).toBeCalledOnceWith(METRIC_EVENT.BNR_ENABLED, expectedData);
     });
   });
 });

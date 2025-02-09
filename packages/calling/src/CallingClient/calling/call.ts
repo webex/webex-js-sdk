@@ -1,5 +1,5 @@
 import {
-  Event,
+  MediaConnectionEventNames,
   LocalMicrophoneStream,
   LocalStreamEventNames,
   RoapMediaConnection,
@@ -7,8 +7,14 @@ import {
 import {createMachine, interpret} from 'xstate';
 import {v4 as uuid} from 'uuid';
 import {EffectEvent, TrackEffect} from '@webex/web-media-effects';
+import {RtcMetrics} from '@webex/internal-plugin-metrics';
+import ExtendedError from '../../Errors/catalog/ExtendedError';
 import {ERROR_LAYER, ERROR_TYPE, ErrorContext} from '../../Errors/types';
-import {handleCallErrors, parseMediaQualityStatistics} from '../../common/Utils';
+import {
+  handleCallErrors,
+  parseMediaQualityStatistics,
+  serviceErrorCodeHandler,
+} from '../../common/Utils';
 import {
   ALLOWED_SERVICES,
   CallDetails,
@@ -36,6 +42,7 @@ import {
   DEFAULT_SESSION_TIMER,
   DEVICES_ENDPOINT_RESOURCE,
   HOLD_ENDPOINT,
+  ICE_CANDIDATES_TIMEOUT,
   INITIAL_SEQ_NUMBER,
   MEDIA_ENDPOINT_RESOURCE,
   NOISE_REDUCTION_EFFECT,
@@ -72,6 +79,7 @@ import {
   MobiusCallData,
   MobiusCallResponse,
   MobiusCallState,
+  MUTE_TYPE,
   PatchResponse,
   RoapScenario,
   SSResponse,
@@ -94,7 +102,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
   private webex: WebexSDK;
 
-  private destination: CallDetails;
+  private destination?: CallDetails;
 
   private direction: CallDirection;
 
@@ -157,6 +165,8 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
   private localAudioStream?: LocalMicrophoneStream;
 
+  private rtcMetrics: RtcMetrics;
+
   /**
    * Getter to check if the call is muted or not.
    *
@@ -190,12 +200,12 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
   constructor(
     activeUrl: string,
     webex: WebexSDK,
-    destination: CallDetails,
     direction: CallDirection,
     deviceId: string,
     lineId: string,
     deleteCb: DeleteRecordCallBack,
-    indicator: ServiceIndicator
+    indicator: ServiceIndicator,
+    destination?: CallDetails
   ) {
     super();
     this.destination = destination;
@@ -243,6 +253,8 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
     this.remoteRoapMessage = null;
     this.disconnectReason = {code: DisconnectCode.NORMAL, cause: DisconnectCause.NORMAL};
 
+    this.rtcMetrics = new RtcMetrics(this.webex, {callId: this.callId}, this.correlationId);
+
     const callMachine = createMachine(
       {
         schema: {
@@ -281,6 +293,12 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
           /* CALL SETUP */
           S_RECV_CALL_SETUP: {
+            after: {
+              10000: {
+                target: 'S_CALL_CLEARED',
+                actions: ['triggerTimeout'],
+              },
+            },
             on: {
               E_SEND_CALL_ALERTING: {
                 target: 'S_SEND_CALL_PROGRESS',
@@ -301,6 +319,12 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
             },
           },
           S_SEND_CALL_SETUP: {
+            after: {
+              10000: {
+                target: 'S_CALL_CLEARED',
+                actions: ['triggerTimeout'],
+              },
+            },
             on: {
               E_RECV_CALL_PROGRESS: {
                 target: 'S_RECV_CALL_PROGRESS',
@@ -327,6 +351,12 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
           /* CALL_PROGRESS */
           S_RECV_CALL_PROGRESS: {
+            after: {
+              60000: {
+                target: 'S_CALL_CLEARED',
+                actions: ['triggerTimeout'],
+              },
+            },
             on: {
               E_RECV_CALL_CONNECT: {
                 target: 'S_RECV_CALL_CONNECT',
@@ -352,6 +382,12 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
             },
           },
           S_SEND_CALL_PROGRESS: {
+            after: {
+              60000: {
+                target: 'S_CALL_CLEARED',
+                actions: ['triggerTimeout'],
+              },
+            },
             on: {
               E_SEND_CALL_CONNECT: {
                 target: 'S_SEND_CALL_CONNECT',
@@ -374,6 +410,12 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
           /* CALL_CONNECT */
           S_RECV_CALL_CONNECT: {
+            after: {
+              10000: {
+                target: 'S_CALL_CLEARED',
+                actions: ['triggerTimeout'],
+              },
+            },
             on: {
               E_CALL_ESTABLISHED: {
                 target: 'S_CALL_ESTABLISHED',
@@ -394,6 +436,12 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
             },
           },
           S_SEND_CALL_CONNECT: {
+            after: {
+              10000: {
+                target: 'S_CALL_CLEARED',
+                actions: ['triggerTimeout'],
+              },
+            },
             on: {
               E_CALL_ESTABLISHED: {
                 target: 'S_CALL_ESTABLISHED',
@@ -605,6 +653,10 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
            * @param event
            */
           unknownState: (context, event: CallEvent) => this.handleUnknownState(event),
+          /**
+           *
+           */
+          triggerTimeout: () => this.handleTimeout(),
         },
       }
     );
@@ -1886,6 +1938,33 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
     }
   }
 
+  /**
+   * Media failed, so collect a stats report from webrtc
+   * send a webrtc telemetry dump to the configured server using the internal media core check metrics configured callback
+   * @param {String} callFrom - the function calling this function, optional.
+   * @returns {Promise<void>}
+   */
+  private forceSendStatsReport = async ({callFrom}: {callFrom?: string}) => {
+    const loggerContext = {
+      file: CALL_FILE,
+      method: this.forceSendStatsReport.name,
+    };
+
+    try {
+      await this.mediaConnection.forceRtcMetricsSend();
+      log.info(`Successfully uploaded available webrtc telemetry statistics`, loggerContext);
+      log.info(`callFrom: ${callFrom}`, loggerContext);
+    } catch (error) {
+      const errorInfo = error as WebexRequestPayload;
+      const errorStatus = serviceErrorCodeHandler(errorInfo, loggerContext);
+      const errorLog = new Error(
+        `Failed to upload webrtc telemetry statistics. ${errorStatus}`
+      ) as ExtendedError;
+
+      log.error(errorLog, loggerContext);
+    }
+  };
+
   /* istanbul ignore next */
   /**
    * Initialize Media Connection.
@@ -1899,9 +1978,11 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       {
         skipInactiveTransceivers: true,
         iceServers: [],
+        iceCandidatesTimeout: ICE_CANDIDATES_TIMEOUT,
         sdpMunging: {
           convertPort9to0: true,
           addContentSlides: false,
+          copyClineToSessionLevel: true,
         },
       },
       {
@@ -1912,7 +1993,10 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
           screenShareVideo: 'inactive',
         },
       },
-      debugId || `WebexCallSDK-${this.correlationId}`
+      debugId || `WebexCallSDK-${this.correlationId}`,
+      (data) => this.rtcMetrics.addMetrics(data),
+      () => this.rtcMetrics.closeMetrics(),
+      () => this.rtcMetrics.sendMetricsInQueue()
     );
 
     this.mediaConnection = mediaConnection;
@@ -1956,6 +2040,8 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    */
   public setCallId = (callId: CallId) => {
     this.callId = callId;
+    this.rtcMetrics.updateCallId(callId);
+
     log.info(`Setting callId : ${this.callId} for correlationId: ${this.correlationId}`, {
       file: CALL_FILE,
       method: this.setCallId.name,
@@ -2071,6 +2157,17 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    * @param roapMessage
    */
   private post = async (roapMessage: RoapMessage): Promise<MobiusCallResponse> => {
+    const basePayload = {
+      device: {
+        deviceId: this.deviceId,
+        correlationId: this.correlationId,
+      },
+      localMedia: {
+        roap: roapMessage,
+        mediaId: uuid(),
+      },
+    };
+
     return this.webex.request({
       uri: `${this.mobiusUrl}${DEVICES_ENDPOINT_RESOURCE}/${this.deviceId}/${CALL_ENDPOINT_RESOURCE}`,
       method: HTTP_METHODS.POST,
@@ -2079,20 +2176,15 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         [CISCO_DEVICE_URL]: this.webex.internal.device.url,
         [SPARK_USER_AGENT]: CALLING_USER_AGENT,
       },
-      body: {
-        device: {
-          deviceId: this.deviceId,
-          correlationId: this.correlationId,
-        },
-        callee: {
-          type: this.destination.type,
-          address: this.destination.address,
-        },
-        localMedia: {
-          roap: roapMessage,
-          mediaId: uuid(),
-        },
-      },
+      body: this.destination
+        ? {
+            ...basePayload,
+            callee: {
+              type: this.destination.type,
+              address: this.destination.address,
+            },
+          }
+        : basePayload,
     });
   };
 
@@ -2379,7 +2471,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    */
   private mediaRoapEventsListener() {
     this.mediaConnection.on(
-      Event.ROAP_MESSAGE_TO_SEND,
+      MediaConnectionEventNames.ROAP_MESSAGE_TO_SEND,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       async (event: any) => {
         log.info(
@@ -2392,6 +2484,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
           file: CALL_FILE,
           method: this.mediaRoapEventsListener.name,
         });
+
         switch (event.roapMessage.messageType) {
           case RoapScenario.OK: {
             const mediaOk = {
@@ -2442,7 +2535,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    */
   private mediaTrackListener() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    this.mediaConnection.on(Event.REMOTE_TRACK_ADDED, (e: any) => {
+    this.mediaConnection.on(MediaConnectionEventNames.REMOTE_TRACK_ADDED, (e: any) => {
       if (e.type === MEDIA_CONNECTION_EVENT_KEYS.MEDIA_TYPE_AUDIO) {
         this.emit(CALL_EVENT_KEYS.REMOTE_MEDIA, e.track);
       }
@@ -2467,6 +2560,10 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
     );
   };
 
+  private updateTrack = (audioTrack: MediaStreamTrack) => {
+    this.mediaConnection.updateLocalTracks({audio: audioTrack});
+  };
+
   private registerEffectListener = (addedEffect: TrackEffect) => {
     if (this.localAudioStream) {
       const effect = this.localAudioStream.getEffectByKind(NOISE_REDUCTION_EFFECT);
@@ -2488,13 +2585,12 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       }
 
       this.localAudioStream.off(LocalStreamEventNames.EffectAdded, this.registerEffectListener);
+      this.localAudioStream.off(LocalStreamEventNames.OutputTrackChange, this.updateTrack);
     }
   }
 
   private registerListeners(localAudioStream: LocalMicrophoneStream) {
-    localAudioStream.on(LocalStreamEventNames.OutputTrackChange, (audioTrack: MediaStreamTrack) => {
-      this.mediaConnection.updateLocalTracks({audio: audioTrack});
-    });
+    localAudioStream.on(LocalStreamEventNames.OutputTrackChange, this.updateTrack);
 
     localAudioStream.on(LocalStreamEventNames.EffectAdded, this.registerEffectListener);
 
@@ -2714,16 +2810,40 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
   /**
    * Mutes/Unmutes the call.
    *
-   * @param localAudioTrack -.
+   * @param localAudioStream - The local audio stream to mute or unmute.
+   * @param muteType - Identifies if mute was triggered by system or user.
+   *
+   * @example
+   * ```javascript
+   * call.mute(localAudioStream, 'system_mute')
+   * ```
    */
-  public mute = (localAudioStream: LocalMicrophoneStream): void => {
-    const localAudioTrack = localAudioStream.outputStream.getAudioTracks()[0];
-    if (this.muted) {
-      localAudioTrack.enabled = true;
-      this.muted = false;
+  public mute = (localAudioStream: LocalMicrophoneStream, muteType?: MUTE_TYPE): void => {
+    if (!localAudioStream) {
+      log.warn(`Did not find a local stream while muting the call ${this.getCorrelationId()}.`, {
+        file: CALL_FILE,
+        method: 'mute',
+      });
+
+      return;
+    }
+    if (muteType === MUTE_TYPE.SYSTEM) {
+      if (!localAudioStream.userMuted) {
+        this.muted = localAudioStream.systemMuted;
+      } else {
+        log.info(`Call is muted by the user already - ${this.getCorrelationId()}.`, {
+          file: CALL_FILE,
+          method: 'mute',
+        });
+      }
+    } else if (!localAudioStream.systemMuted) {
+      localAudioStream.setUserMuted(!this.muted);
+      this.muted = !this.muted;
     } else {
-      localAudioTrack.enabled = false;
-      this.muted = true;
+      log.info(`Call is muted on the system - ${this.getCorrelationId()}.`, {
+        file: CALL_FILE,
+        method: 'mute',
+      });
     }
   };
 
@@ -2786,26 +2906,46 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
   getCallRtpStats(): Promise<CallRtpStats> {
     return this.getCallStats();
   }
+
+  /**
+   * Handle timeout for the missed events
+   * @param expectedStates - An array of next expected states
+   * @param errorMessage - Error message to be emitted if the call is not in the expected state in expected time
+   */
+  private async handleTimeout() {
+    log.warn(`Call timed out`, {
+      file: CALL_FILE,
+      method: 'handleTimeout',
+    });
+    this.deleteCb(this.getCorrelationId());
+    this.emit(CALL_EVENT_KEYS.DISCONNECT, this.getCorrelationId());
+    const response = await this.delete();
+
+    log.log(`handleTimeout: Response code: ${response.statusCode}`, {
+      file: CALL_FILE,
+      method: this.handleTimeout.name,
+    });
+  }
 }
 
 /**
  * @param activeUrl
  * @param webex -.
- * @param dest -.
  * @param dir -.
  * @param deviceId -.
  * @param lineId -.
  * @param serverCb
  * @param deleteCb
  * @param indicator - Service Indicator.
+ * @param dest -.
  */
 export const createCall = (
   activeUrl: string,
   webex: WebexSDK,
-  dest: CallDetails,
   dir: CallDirection,
   deviceId: string,
   lineId: string,
   deleteCb: DeleteRecordCallBack,
-  indicator: ServiceIndicator
-): ICall => new Call(activeUrl, webex, dest, dir, deviceId, lineId, deleteCb, indicator);
+  indicator: ServiceIndicator,
+  dest?: CallDetails
+): ICall => new Call(activeUrl, webex, dir, deviceId, lineId, deleteCb, indicator, dest);

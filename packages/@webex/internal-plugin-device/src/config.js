@@ -56,6 +56,12 @@ export default {
      * @type {boolean}
      */
     ephemeralDeviceTTL: 30 * 60,
+
+    /**
+     * energyForcast
+     * @type {boolean}
+     */
+    energyForecast: false,
   },
 
   /**

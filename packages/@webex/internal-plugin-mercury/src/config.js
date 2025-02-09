@@ -30,5 +30,11 @@ export default {
      * @type {[type]}
      */
     forceCloseDelay: process.env.MERCURY_FORCE_CLOSE_DELAY || 2000,
+    /**
+     * When logging out, use default reason which can trigger a reconnect,
+     * or set to something else, like `done (permanent)` to prevent reconnect
+     * @type {String}
+     */
+    beforeLogoutOptionsCloseReason: process.env.MERCURY_LOGOUT_REASON || 'done (forced)',
   },
 };

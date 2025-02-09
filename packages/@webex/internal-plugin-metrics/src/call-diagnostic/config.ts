@@ -16,6 +16,7 @@ export const MISSING_ROAP_ANSWER_CLIENT_CODE = 2007;
 export const DTLS_HANDSHAKE_FAILED_CLIENT_CODE = 2008;
 export const ICE_FAILED_WITH_TURN_TLS_CLIENT_CODE = 2010;
 export const ICE_FAILED_WITHOUT_TURN_TLS_CLIENT_CODE = 2009;
+export const ICE_AND_REACHABILITY_FAILED_CLIENT_CODE = 2011;
 export const WBX_APP_API_URL = 'wbxappapi'; // MeetingInfo WebexAppApi response object normally contains a body.url that includes the string 'wbxappapi'
 
 export const WEBEX_SUB_SERVICE_TYPES: Record<string, ClientSubServiceType> = {
@@ -125,8 +126,10 @@ export const ERROR_DESCRIPTIONS = {
   DTLS_HANDSHAKE_FAILED: 'DTLSHandshakeFailed',
   ICE_FAILED_WITHOUT_TURN_TLS: 'ICEFailedWithoutTURN_TLS',
   ICE_FAILED_WITH_TURN_TLS: 'ICEFailedWithTURN_TLS',
+  ICE_AND_REACHABILITY_FAILED: 'ICEAndReachabilityFailed',
   SDP_OFFER_CREATION_ERROR: 'SdpOfferCreationError',
   SDP_OFFER_CREATION_ERROR_MISSING_CODEC: 'SdpOfferCreationErrorMissingCodec',
+  WDM_RESTRICTED_REGION: 'WdmRestrictedRegion',
 };
 
 export const SERVICE_ERROR_CODES_TO_CLIENT_ERROR_CODES_MAP = {
@@ -286,6 +289,12 @@ export const SERVICE_ERROR_CODES_TO_CLIENT_ERROR_CODES_MAP = {
   100005: 4103, // Depracated because of an issue in the UCF Clients
   // If both email-hash and domain-hash are null or undefined.
   100004: 4103,
+
+  // ---- WDM ----
+  // WDM_BLOCKED_ACCESS_BY_COUNTRY_CODE_BANNED_COUNTRY_ERROR_CODE
+  4404002: 13000,
+  // WDM_BLOCKED_ACCESS_BY_COUNTRY_CODE_RESTRICTED_COUNTRY_ERROR_CODE
+  4404003: 13000,
 };
 
 export const CLIENT_ERROR_CODE_TO_ERROR_PAYLOAD: Record<number, Partial<ClientEventError>> = {
@@ -377,7 +386,7 @@ export const CLIENT_ERROR_CODE_TO_ERROR_PAYLOAD: Record<number, Partial<ClientEv
   },
   [MISSING_ROAP_ANSWER_CLIENT_CODE]: {
     errorDescription: ERROR_DESCRIPTIONS.MISSING_ROAP_ANSWER,
-    category: 'signaling',
+    category: 'media',
     fatal: true,
   },
   [DTLS_HANDSHAKE_FAILED_CLIENT_CODE]: {
@@ -392,7 +401,12 @@ export const CLIENT_ERROR_CODE_TO_ERROR_PAYLOAD: Record<number, Partial<ClientEv
   },
   [ICE_FAILED_WITH_TURN_TLS_CLIENT_CODE]: {
     errorDescription: ERROR_DESCRIPTIONS.ICE_FAILED_WITH_TURN_TLS,
-    category: 'network',
+    category: 'media',
+    fatal: true,
+  },
+  [ICE_AND_REACHABILITY_FAILED_CLIENT_CODE]: {
+    errorDescription: ERROR_DESCRIPTIONS.ICE_AND_REACHABILITY_FAILED,
+    category: 'expected',
     fatal: true,
   },
   2050: {
@@ -677,6 +691,11 @@ export const CLIENT_ERROR_CODE_TO_ERROR_PAYLOAD: Record<number, Partial<ClientEv
   },
   12003: {
     errorDescription: ERROR_DESCRIPTIONS.USER_NOT_INVITED_TO_JOIN,
+    category: 'expected',
+    fatal: true,
+  },
+  13000: {
+    errorDescription: ERROR_DESCRIPTIONS.WDM_RESTRICTED_REGION,
     category: 'expected',
     fatal: true,
   },

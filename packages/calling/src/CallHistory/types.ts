@@ -1,5 +1,10 @@
 import {Eventing} from '../Events/impl';
-import {CallHistoryEventTypes, EndTimeSessionId, UserSession} from '../Events/types';
+import {
+  CallHistoryEventTypes,
+  EndTimeSessionId,
+  UserSession,
+  UCMLinesApiResponse,
+} from '../Events/types';
 import {LOGGER} from '../Logger/types';
 import {SORT, SORT_BY} from '../common/types';
 
@@ -20,6 +25,24 @@ export type UpdateMissedCallsResponse = {
   statusCode: number;
   data: {
     readStatusMessage?: string;
+    error?: string;
+  };
+  message: string | null;
+};
+
+export type UCMLinesResponse = {
+  statusCode: number;
+  data: {
+    lines?: UCMLinesApiResponse;
+    error?: string;
+  };
+  message: string | null;
+};
+
+export type DeleteCallHistoryRecordsResponse = {
+  statusCode: number;
+  data: {
+    deleteStatusMessage?: string;
     error?: string;
   };
   message: string | null;
@@ -62,4 +85,19 @@ export interface ICallHistory extends Eventing<CallHistoryEventTypes> {
    * ```
    */
   updateMissedCalls(endTimeSessionIds: EndTimeSessionId[]): Promise<UpdateMissedCallsResponse>;
+
+  /**
+   * This API `deleteCallHistoryRecords` is utilized to delete the call history records based on the specified parameters.
+   * It accepts the following input parameters:
+   *
+   * @param deleteSessionIds - An array of objects representing the endTime and sessionId of the call history records.
+   *
+   * @example
+   * ```javascript
+   * const deleteCallHistoryRecordsResponse = await callHistory.deleteCallHistoryRecords(deleteSessionIds);
+   * ```
+   */
+  deleteCallHistoryRecords(
+    deleteSessionIds: EndTimeSessionId[]
+  ): Promise<DeleteCallHistoryRecordsResponse>;
 }

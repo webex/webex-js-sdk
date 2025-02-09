@@ -32,6 +32,8 @@ const voicemailSort = 'DESC';
 const credentialsFormElm = document.querySelector('#credentials');
 const fedrampBox = document.getElementById('fedramp');
 const tokenElm = document.querySelector('#access-token');
+const jwtTokenForDestElm = document.querySelector('#jwt-token-for-dest');
+const guestContainerElm = document.querySelector('#guest-container');
 const saveElm = document.querySelector('#access-token-save');
 const authStatusElm = document.querySelector('#access-token-status');
 const registerElm = document.querySelector('#registration-register');
@@ -162,6 +164,38 @@ function changeEnv() {
   enableProduction.innerHTML = enableProd ? 'In Production' : 'In Integration';
 }
 
+// Guest access token via Service App - Logic deployed on the AWS Lambda
+async function fetchGuestAccessTokenLambda() {
+  const response = await fetch('https://pbw56237i55l2vkcpc5dhskhra0bplhr.lambda-url.us-east-2.on.aws');
+  const token = await response.text();
+
+  return token;
+}
+
+async function generateGuestToken() {
+  try {
+    const guestAccessToken = await fetchGuestAccessTokenLambda();
+    console.log('Guest Access Token: ', guestAccessToken);
+
+    tokenElm.value = guestAccessToken;
+  } catch (error) {
+    if (error.code === 401) {
+      // TODO: Refresh the access token and try again with the new token
+    }
+  }    
+}
+
+async function handleServiceSelect(e) {
+  const value = e.target.value;
+  tokenElm.value = '';
+
+  if (value === 'guestcalling') {
+    guestContainerElm.classList.remove('hidden');
+  } else {
+    guestContainerElm.classList.add('hidden');
+  }
+}
+
 async function initCalling(e) {
   e.preventDefault();
   console.log('Authentication#initWebex()');
@@ -223,7 +257,7 @@ async function initCalling(e) {
     level: 'info'
   }
 
-  const {region, country} = credentialsFormElm.elements;
+  const {region, country, guestName} = credentialsFormElm.elements;
 
   const serviceData = {indicator: 'calling', domain: ''};
 
@@ -235,6 +269,10 @@ async function initCalling(e) {
     serviceData.domain = serviceDomain.value;
   }
 
+  if (guestName && serviceData.indicator === 'guestcalling') {
+    serviceData.guestName = guestName.value
+  }
+
   const callingClientConfig = {
     logger: loggerConfig,
     discovery: {
@@ -242,6 +280,7 @@ async function initCalling(e) {
       country: country.value,
     },
     serviceData,
+    jwe: jwtTokenForDestElm.value,
   };
 
   if (callingClientConfig.discovery.country === 'Country') {
@@ -421,12 +460,11 @@ function endSecondCall() {
 }
 
 function muteUnmute() {
-  muteElm.value = muteElm.value === 'Mute' ? 'Unmute' : 'Mute';
   if (callTransferObj){
-    callTransferObj.mute(localAudioStream)
+    callTransferObj.mute(localAudioStream, 'user_mute');
   }
   else {
-    call.mute(localAudioStream);
+    call.mute(localAudioStream, 'user_mute');
   }
 }
 
@@ -465,14 +503,11 @@ function holdResume() {
   }
 }
 
-function deleteDevice() {
-  line.deregister();
-  line.on('unregistered', () => {
-    console.log("unregistered success");
-    registrationStatusElm.innerText = 'Unregistered';
-  })
+async function deleteDevice() {
+  await calling.deregister();
   registerElm.disabled = false;
   unregisterElm.disabled = true;
+  registrationStatusElm.innerText = "Unregistered";
 }
 
 function populateSourceDevices(mediaDevice) {
@@ -543,10 +578,15 @@ function createCall(e) {
   console.log(destination.value);
   makeCallBtn.disabled = true;
   outboundEndElm.disabled = false
-  call = line.makeCall({
-    type: 'uri',
-    address: destination.value,
-  });
+  if (serviceIndicator.value !== 'guestcalling') {
+    call = line.makeCall({
+      type: 'uri',
+      address: destination.value,
+    });
+  }
+  else {
+    call = line.makeCall();
+  }
 
   call.on('caller_id', (CallerIdEmitter) => {
     callDetailsElm.innerText = `Name: ${CallerIdEmitter.callerId.name}, Number: ${CallerIdEmitter.callerId.num}, Avatar: ${CallerIdEmitter.callerId.avatarSrc} , UserId: ${CallerIdEmitter.callerId.id}`;
@@ -586,6 +626,17 @@ function createCall(e) {
   call.on('remote_media', (track) => {
     document.getElementById('remote-audio').srcObject = new MediaStream([track]);
   });
+
+  localAudioStream.on('system-mute-state-change', (systemMuted) => {
+    call.mute(localAudioStream, 'system_mute');
+    if (!localAudioStream.userMuted) {
+      muteElm.value = systemMuted && muteElm.value === 'Mute' ? 'Unmute' : 'Mute';
+    }
+  });
+
+  localAudioStream.on('user-mute-state-change', (userMuted) => {
+    muteElm.value = userMuted && muteElm.value === 'Mute' ? 'Unmute' : 'Mute';
+  }); 
 
   call.dial(localAudioStream);
 }
@@ -677,41 +728,22 @@ async function getMediaStreams() {
   makeCallBtn.disabled = false;
 }
 
-// TODO: This code will be uncommented and added once the DOM exception bug is resolved 
-// async function toggleNoiseReductionEffect() {
-//   effect = await localAudioStream.getEffectByKind('noise-reduction-effect');
-
-//   if (!effect) {
-//     effect = await Calling.createNoiseReductionEffect(tokenElm.value);
-
-//     await localAudioStream.addEffect(effect);
-//   }
-
-//   if (effect.isEnabled) {
-//     await effect.disable();
-//     bnrButton.innerText = 'Enable BNR';
-//   } else {
-//     await effect.enable();
-//     bnrButton.innerText = 'Disable BNR';
-//   }
-// }
-
-async function addNoiseReductionEffect() {
+async function toggleNoiseReductionEffect() {
+  const options =  {authToken: tokenElm.value, env: enableProd ? 'prod': 'int'} 
   effect = await localAudioStream.getEffectByKind('noise-reduction-effect');
 
   if (!effect) {
-    effect = await Calling.createNoiseReductionEffect(tokenElm.value);
+    effect = await Calling.createNoiseReductionEffect(options);
 
     await localAudioStream.addEffect(effect);
   }
 
-  await effect.enable();
-}
-
-async function removeNoiseReductionEffect() {
-  effect = await localAudioStream.getEffectByKind('noise-reduction-effect');
-  if (effect) {
+  if (effect.isEnabled) {
     await effect.disable();
+    bnrButton.innerText = 'Enable BNR';
+  } else {
+    await effect.enable();
+    bnrButton.innerText = 'Disable BNR';
   }
 }
 
@@ -789,6 +821,16 @@ function answer() {
 
     call.on('remote_media', (track) => {
       document.getElementById('remote-audio').srcObject = new MediaStream([track]);
+    });
+
+    localAudioStream.on('system-mute-state-change', (muted) => {
+      muteElm.value = muteElm.value === 'Mute' ? 'Unmute' : 'Mute';
+      console.log('system mute received');
+    });
+
+    localAudioStream.on('user-mute-state-change', (muted) => {
+      muteElm.value = muteElm.value === 'Mute' ? 'Unmute' : 'Mute';
+      console.log('user mute received');
     });
 
     call.answer(localAudioStream);
@@ -1296,6 +1338,10 @@ async function createCustomContact() {
     phoneNumbers: [{
       type: 'work',
       value: formData.get('phone')
+    }],
+    emails: [{
+      type: 'work',
+      value: formData.get('email')
     }],
     contactType: 'CUSTOM',
   };

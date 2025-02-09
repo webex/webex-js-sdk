@@ -268,6 +268,8 @@ function makeWebex(options) {
           get: sinon.stub(),
         },
       },
+      meetingEnded: sinon.stub(),
+      meetingStarted: sinon.stub(),
       registered: true,
       register: sinon.stub().returns(Promise.resolve()),
       ipNetworkDetector: {
@@ -311,6 +313,7 @@ function makeWebex(options) {
         },
         submitToCallDiagnostics: sinon.stub(),
         submitToCallDiagnosticsPreLogin: sinon.stub(),
+        setDeviceInfo: sinon.stub(),
       },
     },
   });

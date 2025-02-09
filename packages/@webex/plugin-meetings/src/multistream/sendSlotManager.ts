@@ -4,6 +4,7 @@ import {
   LocalStream,
   MultistreamRoapMediaConnection,
   NamedMediaGroup,
+  StreamState,
 } from '@webex/internal-media-core';
 
 export default class SendSlotManager {
@@ -80,6 +81,36 @@ export default class SendSlotManager {
 
     this.LoggerProxy.logger.info(
       `SendSlotsManager->setNamedMediaGroups#set named media group ${namedMediaGroups}`
+    );
+  }
+
+  /**
+   * Sets the source state override for the given media type.
+   * @param {MediaType} mediaType - The type of media (must be MediaType.VideoMain to apply source state changes).
+   * @param {StreamState | null} state - The state to set or null to clear the override value.
+   * @returns {void}
+   */
+  public setSourceStateOverride(mediaType: MediaType, state: StreamState | null) {
+    if (mediaType !== MediaType.VideoMain) {
+      throw new Error(
+        `sendSlotManager cannot set source state override which media type is ${mediaType}`
+      );
+    }
+
+    const slot = this.slots.get(mediaType);
+
+    if (!slot) {
+      throw new Error(`Slot for ${mediaType} does not exist`);
+    }
+
+    if (state) {
+      slot.setSourceStateOverride(state);
+    } else {
+      slot.clearSourceStateOverride();
+    }
+
+    this.LoggerProxy.logger.info(
+      `SendSlotsManager->setSourceStateOverride#set source state override for ${mediaType} to ${state}`
     );
   }
 

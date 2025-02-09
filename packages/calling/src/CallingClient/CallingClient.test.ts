@@ -41,6 +41,7 @@ import {
   mockCatalogUSInt,
   mockCatalogUS,
   mockCatalogEUInt,
+  mockUSServiceHosts,
 } from './callingClientFixtures';
 import Line from './line';
 import {filterMobiusUris} from '../common/Utils';
@@ -66,6 +67,40 @@ describe('CallingClient Tests', () => {
       originalProcessNextTick(resolve);
     });
   }
+
+  describe('CallingClient pick Mobius cluster using Service Host Tests', () => {
+    afterAll(() => {
+      callManager.removeAllListeners();
+      webex.internal.services['_serviceUrls']['mobius'] =
+        'https://mobius.aintgen-a-1.int.infra.webex.com/api/v1';
+      webex.internal.services['_hostCatalog'] = mockCatalogUS;
+    });
+
+    it('should set mobiusServiceHost correctly when URL is valid', async () => {
+      webex.internal.services._hostCatalog = mockCatalogEU;
+      webex.internal.services['_serviceUrls']['mobius'] =
+        'https://mobius-eu-central-1.prod.infra.webex.com/api/v1';
+      const urlSpy = jest.spyOn(window, 'URL').mockImplementation((url) => new window.URL(url));
+      const callingClient = await createClient(webex, {logger: {level: LOGGER.INFO}});
+
+      expect(urlSpy).toHaveBeenCalledWith(
+        'https://mobius-eu-central-1.prod.infra.webex.com/api/v1'
+      );
+
+      expect(callingClient['mobiusClusters']).toStrictEqual(mockEUServiceHosts);
+
+      urlSpy.mockRestore();
+    });
+
+    it('should use default mobius service host when Service URL is invalid', async () => {
+      webex.internal.services._hostCatalog = mockCatalogUS;
+      webex.internal.services._serviceUrls.mobius = 'invalid-url';
+
+      const callingClient = await createClient(webex, {logger: {level: LOGGER.INFO}});
+
+      expect(callingClient['mobiusClusters']).toStrictEqual(mockUSServiceHosts);
+    });
+  });
 
   describe('ServiceData tests', () => {
     let callingClient: ICallingClient | undefined;
@@ -119,7 +154,7 @@ describe('CallingClient Tests', () => {
         callingClient = await createClient(webex, {serviceData: serviceDataObj});
       } catch (e) {
         expect(e.message).toEqual(
-          'Invalid service indicator, Allowed values are: calling,contactcenter'
+          'Invalid service indicator, Allowed values are: calling, contactcenter and guestcalling'
         );
       }
       expect.assertions(1);
@@ -183,7 +218,7 @@ describe('CallingClient Tests', () => {
 
     /**
      * Input sdk config to callingClient with serviceData carrying valid value for indicator
-     * 'contactcenter', and a valid domain type string for domain field in it.
+     * 'contactcenter' , and a valid domain type string for domain field in it.
      *
      * Execution should proceed properly and createRegistration should be called with same serviceData.
      *

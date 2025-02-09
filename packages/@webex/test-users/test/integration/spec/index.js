@@ -139,6 +139,7 @@ nodeOnly(describe)('test-users', () => {
       createTestUser({
         machineType: 'LYRA_SPACE',
         type: 'MACHINE',
+        emailAddress,
       }).then((u) => {
         assert.isTestUser(u);
         assert.equal(u.type, 'MACHINE', 'type is MACHINE');

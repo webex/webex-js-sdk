@@ -55,21 +55,20 @@ export class CallManager extends Eventing<CallEventTypes> implements ICallManage
   }
 
   /**
-   * @param destination -.
    * @param direction -.
    * @param deviceId -.
+   * @param destination -.
    */
   public createCall = (
-    destination: CallDetails,
     direction: CallDirection,
     deviceId: string,
-    lineId: string
+    lineId: string,
+    destination?: CallDetails
   ): ICall => {
     log.log('Creating call object', {});
     const newCall = createCall(
       this.activeMobiusUrl,
       this.webex,
-      destination,
       direction,
       deviceId,
       lineId,
@@ -86,7 +85,8 @@ export class CallManager extends Eventing<CallEventTypes> implements ICallManage
           this.emit(CALLING_CLIENT_EVENT_KEYS.ALL_CALLS_CLEARED);
         }
       },
-      this.serviceIndicator
+      this.serviceIndicator,
+      destination
     );
 
     this.callCollection[newCall.getCorrelationId()] = newCall;
@@ -172,10 +172,10 @@ export class CallManager extends Eventing<CallEventTypes> implements ICallManage
            */
           const lineId = this.getLineId(mobiusEvent.data.deviceId);
           newCall = this.createCall(
-            {} as CallDetails,
             CallDirection.INBOUND,
             mobiusEvent.data.deviceId,
-            lineId
+            lineId,
+            {} as CallDetails
           );
           log.log(
             `New incoming call created with correlationId from Call Setup message: ${newCall.getCorrelationId()}`,
@@ -268,10 +268,10 @@ export class CallManager extends Eventing<CallEventTypes> implements ICallManage
 
             const lineId = this.getLineId(mobiusEvent.data.deviceId);
             activeCall = this.createCall(
-              {} as CallDetails,
               CallDirection.INBOUND,
               mobiusEvent.data.deviceId,
-              lineId
+              lineId,
+              {} as CallDetails
             );
             log.log(
               `New incoming call created with correlationId from ROAP Message: ${activeCall.getCorrelationId()}`,

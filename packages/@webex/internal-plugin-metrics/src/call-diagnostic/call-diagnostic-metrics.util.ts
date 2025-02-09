@@ -21,6 +21,7 @@ import {
   MISSING_ROAP_ANSWER_CLIENT_CODE,
   WBX_APP_API_URL,
   ERROR_DESCRIPTIONS,
+  ICE_AND_REACHABILITY_FAILED_CLIENT_CODE,
 } from './config';
 
 const {getOSName, getOSVersion, getBrowserName, getBrowserVersion} = BrowserDetection();
@@ -194,16 +195,22 @@ export const isBrowserMediaErrorName = (errorName: any) => {
 };
 
 /**
+ * @param {Object} webex sdk instance
  * @param webClientDomain
  * @returns
  */
 export const getBuildType = (
+  webex,
   webClientDomain,
   markAsTestEvent = false
 ): Event['origin']['buildType'] => {
   // used temporary to test pre join in production without creating noise data, SPARK-468456
   if (markAsTestEvent) {
     return 'test';
+  }
+
+  if (webex.internal.metrics?.config?.caBuildType) {
+    return webex.internal.metrics.config.caBuildType;
   }
 
   if (
@@ -224,12 +231,19 @@ export const getBuildType = (
  * @returns {Object} prepared item
  */
 export const prepareDiagnosticMetricItem = (webex: any, item: any) => {
+  const buildType = getBuildType(
+    webex,
+    item.eventPayload?.event?.eventData?.webClientDomain,
+    item.eventPayload?.event?.eventData?.markAsTestEvent
+  );
+
+  // Set upgradeChannel to 'gold' if buildType is 'prod', otherwise to the buildType value
+  const upgradeChannel = buildType === 'prod' ? 'gold' : buildType;
+
   const origin: Partial<Event['origin']> = {
-    buildType: exports.getBuildType(
-      item.eventPayload?.event?.eventData?.webClientDomain,
-      item.eventPayload?.event?.eventData?.markAsTestEvent
-    ),
+    buildType,
     networkType: 'unknown',
+    upgradeChannel,
   };
 
   // check event names and append latencies?
@@ -284,6 +298,8 @@ export const prepareDiagnosticMetricItem = (webex: any, item: any) => {
 
     case 'client.media.rx.start':
       joinTimes.localSDPGenRemoteSDPRecv = cdl.getLocalSDPGenRemoteSDPRecv();
+      audioSetupDelay.joinRespRxStart = cdl.getAudioJoinRespRxStart();
+      videoSetupDelay.joinRespRxStart = cdl.getVideoJoinRespRxStart();
       break;
 
     case 'client.media-engine.ready':
@@ -293,10 +309,8 @@ export const prepareDiagnosticMetricItem = (webex: any, item: any) => {
       joinTimes.stayLobbyTime = cdl.getStayLobbyTime();
       break;
 
-    case 'client.mediaquality.event':
-      audioSetupDelay.joinRespRxStart = cdl.getAudioJoinRespRxStart();
+    case 'client.media.tx.start':
       audioSetupDelay.joinRespTxStart = cdl.getAudioJoinRespTxStart();
-      videoSetupDelay.joinRespRxStart = cdl.getVideoJoinRespRxStart();
       videoSetupDelay.joinRespTxStart = cdl.getVideoJoinRespTxStart();
   }
 
@@ -314,7 +328,6 @@ export const prepareDiagnosticMetricItem = (webex: any, item: any) => {
 
   item.eventPayload.origin = Object.assign(origin, item.eventPayload.origin);
 
-  // @ts-ignore
   webex.logger.log(
     `CallDiagnosticLatencies,prepareDiagnosticMetricItem: ${JSON.stringify({
       latencies: Object.fromEntries(cdl.latencyTimestamps),
@@ -370,12 +383,14 @@ export const extractVersionMetadata = (version: string) => {
  */
 export const generateClientErrorCodeForIceFailure = ({
   signalingState,
-  iceConnectionState,
+  iceConnected,
   turnServerUsed,
+  unreachable,
 }: {
   signalingState: RTCPeerConnection['signalingState'];
-  iceConnectionState: RTCPeerConnection['iceConnectionState'];
+  iceConnected: boolean;
   turnServerUsed: boolean;
+  unreachable: boolean;
 }) => {
   let errorCode = ICE_FAILURE_CLIENT_CODE; // default;
 
@@ -383,13 +398,17 @@ export const generateClientErrorCodeForIceFailure = ({
     errorCode = MISSING_ROAP_ANSWER_CLIENT_CODE;
   }
 
-  if (signalingState === 'stable' && iceConnectionState === 'connected') {
+  if (signalingState === 'stable' && iceConnected) {
     errorCode = DTLS_HANDSHAKE_FAILED_CLIENT_CODE;
   }
 
-  if (signalingState !== 'have-local-offer' && iceConnectionState !== 'connected') {
+  if (signalingState !== 'have-local-offer' && !iceConnected) {
     if (turnServerUsed) {
-      errorCode = ICE_FAILED_WITH_TURN_TLS_CLIENT_CODE;
+      if (unreachable) {
+        errorCode = ICE_AND_REACHABILITY_FAILED_CLIENT_CODE;
+      } else {
+        errorCode = ICE_FAILED_WITH_TURN_TLS_CLIENT_CODE;
+      }
     } else {
       errorCode = ICE_FAILED_WITHOUT_TURN_TLS_CLIENT_CODE;
     }

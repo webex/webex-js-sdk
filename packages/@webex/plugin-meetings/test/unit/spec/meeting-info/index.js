@@ -1,7 +1,7 @@
 import {assert} from '@webex/test-helper-chai';
 import sinon from 'sinon';
 import MockWebex from '@webex/test-helper-mock-webex';
-import {_MEETING_ID_} from '@webex/plugin-meetings/src/constants';
+import {DESTINATION_TYPE} from '@webex/plugin-meetings/src/constants';
 
 import MeetingInfo from '@webex/plugin-meetings/src/meeting-info/index';
 import MeetingInfoUtil from '@webex/plugin-meetings/src/meeting-info/util';
@@ -34,7 +34,7 @@ describe('plugin-meetings', () => {
           .resolves({type: 'MEETING_ID', destination: '123456'});
         sinon.stub(MeetingInfoRequest.prototype, 'fetchMeetingInfo').returns(Promise.resolve(confIdStrProp ? bodyConfIdStr : body));
 
-        await meetingInfo.fetchMeetingInfo('1234323', _MEETING_ID_, null, null, null, null, null, {
+        await meetingInfo.fetchMeetingInfo('1234323', DESTINATION_TYPE.MEETING_ID, null, null, null, null, null, {
           meetingId,
           sendCAevents,
         });
@@ -113,7 +113,7 @@ describe('plugin-meetings', () => {
         try {
           await meetingInfo.fetchMeetingInfo(
             '1234323',
-            _MEETING_ID_,
+            DESTINATION_TYPE.MEETING_ID,
             null,
             null,
             null,
@@ -196,7 +196,7 @@ describe('plugin-meetings', () => {
         try {
           await meetingInfo.fetchMeetingInfo(
             '1234323',
-            _MEETING_ID_,
+            DESTINATION_TYPE.MEETING_ID,
             null,
             null,
             null,

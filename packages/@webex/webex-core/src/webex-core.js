@@ -31,6 +31,7 @@ import WebexUserAgentInterceptor from './interceptors/webex-user-agent';
 import RateLimitInterceptor from './interceptors/rate-limit';
 import EmbargoInterceptor from './interceptors/embargo';
 import DefaultOptionsInterceptor from './interceptors/default-options';
+import HostMapInterceptor from './lib/services/interceptors/hostmap';
 import config from './config';
 import {makeWebexStore} from './lib/storage';
 import mixinWebexCorePlugins from './lib/webex-core-plugin-mixin';
@@ -71,6 +72,7 @@ const interceptors = {
   NetworkTimingInterceptor: NetworkTimingInterceptor.create,
   EmbargoInterceptor: EmbargoInterceptor.create,
   DefaultOptionsInterceptor: DefaultOptionsInterceptor.create,
+  HostMapInterceptor: HostMapInterceptor.create,
 };
 
 const preInterceptors = [
@@ -202,7 +204,6 @@ const WebexCore = AmpState.extend({
       type: 'any',
     },
     sessionId: {
-      setOnce: true,
       type: 'string',
     },
   },
@@ -383,7 +384,8 @@ const WebexCore = AmpState.extend({
     });
 
     const addInterceptor = (ints, key) => {
-      const interceptor = interceptors[key];
+      const interceptorsObj = this.config.interceptors || interceptors;
+      const interceptor = interceptorsObj[key];
 
       if (!isFunction(interceptor)) {
         return ints;
@@ -396,11 +398,15 @@ const WebexCore = AmpState.extend({
 
     let ints = [];
 
-    ints = preInterceptors.reduce(addInterceptor, ints);
-    ints = Object.keys(interceptors)
-      .filter((key) => !(preInterceptors.includes(key) || postInterceptors.includes(key)))
-      .reduce(addInterceptor, ints);
-    ints = postInterceptors.reduce(addInterceptor, ints);
+    if (this.config.interceptors) {
+      Object.keys(this.config.interceptors).reduce(addInterceptor, ints);
+    } else {
+      ints = preInterceptors.reduce(addInterceptor, ints);
+      ints = Object.keys(interceptors)
+        .filter((key) => !(preInterceptors.includes(key) || postInterceptors.includes(key)))
+        .reduce(addInterceptor, ints);
+      ints = postInterceptors.reduce(addInterceptor, ints);
+    }
 
     this.request = requestDefaults({
       json: true,

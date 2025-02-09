@@ -7,6 +7,7 @@ import CallDiagnosticLatencies from '../../../../src/call-diagnostic/call-diagno
 import {
   DTLS_HANDSHAKE_FAILED_CLIENT_CODE,
   ICE_FAILED_WITHOUT_TURN_TLS_CLIENT_CODE,
+  ICE_AND_REACHABILITY_FAILED_CLIENT_CODE,
   ICE_FAILED_WITH_TURN_TLS_CLIENT_CODE,
   MISSING_ROAP_ANSWER_CLIENT_CODE,
 } from '../../../../src/call-diagnostic/config';
@@ -234,6 +235,8 @@ describe('internal-plugin-metrics', () => {
   });
 
   describe('getBuildType', () => {
+    const webex = {internal: {metrics: {config: {}}}};
+
     beforeEach(() => {
       process.env.NODE_ENV = 'production';
     });
@@ -245,25 +248,33 @@ describe('internal-plugin-metrics', () => {
       ['https://web.webex.com', true, 'test'],
     ].forEach(([webClientDomain, markAsTestEvent, expected]) => {
       it(`returns expected result for ${webClientDomain}`, () => {
-        assert.deepEqual(getBuildType(webClientDomain, markAsTestEvent as any), expected);
+        assert.deepEqual(getBuildType(webex, webClientDomain, markAsTestEvent as any), expected);
       });
     });
 
     it('returns "test" for NODE_ENV "foo"', () => {
       process.env.NODE_ENV = 'foo';
-      assert.deepEqual(getBuildType('production'), 'test');
+      assert.deepEqual(getBuildType(webex, 'production'), 'test');
     });
 
     it('returns "test" for NODE_ENV "production" and markAsTestEvent = true', () => {
       process.env.NODE_ENV = 'production';
-      assert.deepEqual(getBuildType('my.domain', true), 'test');
+      assert.deepEqual(getBuildType(webex, 'my.domain', true), 'test');
+    });
+
+    it('returns "test" for NODE_ENV "production" when webex.caBuildType = "test"', () => {
+      process.env.NODE_ENV = 'production';
+      assert.deepEqual(
+        getBuildType({internal: {metrics: {config: {caBuildType: 'test'}}}}, 'my.domain'),
+        'test'
+      );
     });
   });
 
   describe('prepareDiagnosticMetricItem', () => {
     let webex: any;
 
-    const check = (eventName: string, expectedEvent: any) => {
+    const check = (eventName: string, expectedEvent: any, expectedUpgradeChannel: string) => {
       const eventPayload = {event: {name: eventName}};
       const item = prepareDiagnosticMetricItem(webex, {
         eventPayload,
@@ -275,6 +286,7 @@ describe('internal-plugin-metrics', () => {
           origin: {
             buildType: 'prod',
             networkType: 'unknown',
+            upgradeChannel: expectedUpgradeChannel
           },
           event: {name: eventName, ...expectedEvent},
         },
@@ -301,17 +313,23 @@ describe('internal-plugin-metrics', () => {
 
     [
       ['client.exit.app', {}],
-      ['client.login.end', {
-        joinTimes: {
-          otherAppApiReqResp: undefined,
-          exchangeCITokenJMT: undefined,
-        }
-      }],
-      ['client.webexapp.launched', {
-        joinTimes: {
-          downloadTime: undefined,
-        }
-      }],
+      [
+        'client.login.end',
+        {
+          joinTimes: {
+            otherAppApiReqResp: undefined,
+            exchangeCITokenJMT: undefined,
+          },
+        },
+      ],
+      [
+        'client.webexapp.launched',
+        {
+          joinTimes: {
+            downloadTime: undefined,
+          },
+        },
+      ],
       [
         'client.interstitial-window.launched',
         {
@@ -368,6 +386,12 @@ describe('internal-plugin-metrics', () => {
           joinTimes: {
             localSDPGenRemoteSDPRecv: undefined,
           },
+          audioSetupDelay: {
+            joinRespRxStart: undefined,
+          },
+          videoSetupDelay: {
+            joinRespRxStart: undefined,
+          },
         },
       ],
       [
@@ -382,38 +406,47 @@ describe('internal-plugin-metrics', () => {
         },
       ],
       [
-        'client.mediaquality.event',
+        'client.media.tx.start',
         {
           audioSetupDelay: {
-            joinRespRxStart: undefined,
             joinRespTxStart: undefined,
           },
           videoSetupDelay: {
-            joinRespRxStart: undefined,
             joinRespTxStart: undefined,
           },
         },
       ],
     ].forEach(([eventName, expectedEvent]) => {
       it(`returns expected result for ${eventName}`, () => {
-        check(eventName as string, expectedEvent);
+        check(eventName as string, expectedEvent, 'gold');
       });
     });
 
-    it('calls getBuildType correctly', () => {
-      const getBuildTypeSpy = sinon.spy(CallDiagnosticUtils, 'getBuildType');
-      const markAsTestEvent = true;
-      const webClientDomain = 'https://web.webex.com';
-
-      // just submit any event
-      prepareDiagnosticMetricItem(webex, {
+    it('sets buildType and upgradeChannel correctly', () => {
+      const item: any = {
         eventPayload: {
-          event: {name: 'client.exit.app', eventData: {markAsTestEvent, webClientDomain}},
+          event: {
+            name: 'client.exit.app',
+            eventData: {
+              markAsTestEvent: true,
+              webClientDomain: 'https://web.webex.com',
+            },
+          },
         },
         type: ['diagnostic-event'],
-      });
+      };
 
-      assert.calledOnceWithExactly(getBuildTypeSpy, webClientDomain, markAsTestEvent);
+      // just submit any event
+      prepareDiagnosticMetricItem(webex, item);
+      assert.deepEqual(item.eventPayload.origin.buildType, 'test');
+      assert.deepEqual(item.eventPayload.origin.upgradeChannel, 'test');
+
+      delete item.eventPayload.origin.buildType;
+      delete item.eventPayload.origin.upgradeChannel;
+      item.eventPayload.event.eventData.markAsTestEvent = false;
+      prepareDiagnosticMetricItem(webex, item);
+      assert.deepEqual(item.eventPayload.origin.buildType, 'prod');
+      assert.deepEqual(item.eventPayload.origin.upgradeChannel, 'gold');
     });
   });
 
@@ -599,35 +632,47 @@ describe('internal-plugin-metrics', () => {
     [
       {
         signalingState: 'have-local-offer',
-        iceConnectionState: 'connected',
+        iceConnected: false,
         turnServerUsed: true,
         errorCode: MISSING_ROAP_ANSWER_CLIENT_CODE,
+        unreachable: false,
       },
       {
         signalingState: 'stable',
-        iceConnectionState: 'connected',
+        iceConnected: true,
         turnServerUsed: true,
         errorCode: DTLS_HANDSHAKE_FAILED_CLIENT_CODE,
+        unreachable: false,
       },
       {
         signalingState: 'stable',
-        iceConnectionState: 'failed',
+        iceConnected: false,
         turnServerUsed: true,
         errorCode: ICE_FAILED_WITH_TURN_TLS_CLIENT_CODE,
+        unreachable: false,
       },
       {
         signalingState: 'stable',
-        iceConnectionState: 'failed',
+        iceConnected: false,
+        turnServerUsed: true,
+        errorCode: ICE_AND_REACHABILITY_FAILED_CLIENT_CODE,
+        unreachable: true,
+      },
+      {
+        signalingState: 'stable',
+        iceConnected: false,
         turnServerUsed: false,
         errorCode: ICE_FAILED_WITHOUT_TURN_TLS_CLIENT_CODE,
+        unreachable: false,
       },
-    ].forEach(({signalingState, iceConnectionState, turnServerUsed, errorCode}: any) => {
+    ].forEach(({signalingState, iceConnected, turnServerUsed, errorCode, unreachable}: any) => {
       it('returns expected result', () => {
         assert.deepEqual(
           generateClientErrorCodeForIceFailure({
             signalingState,
-            iceConnectionState,
+            iceConnected,
             turnServerUsed,
+            unreachable,
           }),
           errorCode
         );

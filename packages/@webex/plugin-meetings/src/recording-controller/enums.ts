@@ -1,8 +1,11 @@
-enum RecordingAction {
+export enum RecordingAction {
   Start = 'Start',
   Stop = 'Stop',
   Pause = 'Pause',
   Resume = 'Resume',
 }
 
-export default RecordingAction;
+export enum RecordingType {
+  Premise = 'premise',
+  Cloud = 'cloud',
+}

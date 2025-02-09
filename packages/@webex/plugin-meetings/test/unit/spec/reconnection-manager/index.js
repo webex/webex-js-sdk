@@ -2,11 +2,14 @@ import 'jsdom-global/register';
 import chai from 'chai';
 import chaiAsPromised from 'chai-as-promised';
 import sinon from 'sinon';
+import {Defer} from '@webex/common';
 import ReconnectionManager from '@webex/plugin-meetings/src/reconnection-manager';
+import ReconnectionNotStartedError from '@webex/plugin-meetings/src/common/errors/reconnection-not-started';
+import TriggerProxy from '@webex/plugin-meetings/src/common/events/trigger-proxy';
+import Metrics from '@webex/plugin-meetings/src/metrics';
 import { RECONNECTION } from '../../../../src/constants';
 import LoggerProxy from '../../../../src/common/logs/logger-proxy';
 import LoggerConfig from '../../../../src/common/logs/logger-config';
-
 const {assert} = chai;
 
 chai.use(chaiAsPromised);
@@ -14,18 +17,15 @@ sinon.assert.expose(chai.assert, {prefix: ''});
 
 describe('plugin-meetings', () => {
   describe('ReconnectionManager.reconnect', () => {
-    const sandbox = sinon.createSandbox();
     let fakeMediaConnection;
     let fakeMeeting;
     let loggerSpy;
 
-    before(() => {
+    beforeEach(() => {
       LoggerConfig.set({ enable: false });
       LoggerProxy.set();
-      loggerSpy = sandbox.spy(LoggerProxy.logger, 'info');
-    });
+      loggerSpy = sinon.spy(LoggerProxy.logger, 'info');
 
-    beforeEach(() => {
       fakeMediaConnection = {
         initiateOffer: sinon.stub().resolves({}),
         reconnect: sinon.stub().resolves({}),
@@ -33,6 +33,7 @@ describe('plugin-meetings', () => {
       fakeMeeting = {
         closePeerConnections: sinon.stub().resolves({}),
         createMediaConnection: sinon.stub().returns(fakeMediaConnection),
+        correlationId: 'correlationId',
         config: {
           reconnection: {
             enabled: true,
@@ -47,6 +48,7 @@ describe('plugin-meetings', () => {
             },
           },
         },
+        locusUrl: 'test/id',
         mediaProperties: {
           unsetPeerConnection: sinon.stub(),
           webrtcMediaConnection: fakeMediaConnection,
@@ -83,11 +85,16 @@ describe('plugin-meetings', () => {
             }
           }
         },
+        trigger: sinon.stub(),
       };
+
+      sinon.stub(TriggerProxy, 'trigger').returns(true);
+      sinon.stub(Metrics, 'sendBehavioralMetric');
     });
 
     afterEach(() => {
-      sandbox.reset();
+      sinon.reset();
+      sinon.restore();
     });
 
     it('calls syncMeetings', async () => {
@@ -223,6 +230,99 @@ describe('plugin-meetings', () => {
         });
       }
     });
+
+    it('sends the right metrics and events when succeeds', async () => {
+      const rm = new ReconnectionManager(fakeMeeting);
+
+      await rm.reconnect();
+
+      assert.calledWith(
+        TriggerProxy.trigger,
+        fakeMeeting,
+        {file: 'reconnection-manager/index', function: 'reconnect'},
+        'meeting:reconnectionSuccess'
+      );
+      assert.calledWithMatch(fakeMeeting.webex.internal.newMetrics.submitClientEvent, {
+        name: 'client.media.recovered',
+        payload: {
+          recoveredBy: 'new',
+        },
+        options: {
+          meetingId: fakeMeeting.id,
+        },
+      });
+      assert.equal(rm.status, RECONNECTION.STATE.DEFAULT_STATUS);
+    });
+
+    it('sends the right metrics and events when fails', async () => {
+      const rm = new ReconnectionManager(fakeMeeting);
+
+      sinon.stub(rm, 'executeReconnection').rejects(new Error('fake error'));
+
+      await assert.isRejected(rm.reconnect());
+
+      assert.calledWith(
+        TriggerProxy.trigger,
+        fakeMeeting,
+        {file: 'reconnection-manager/index', function: 'reconnect'},
+        'meeting:reconnectionFailure'
+      );
+      assert.calledWithMatch(fakeMeeting.webex.internal.newMetrics.submitClientEvent, {
+        name: 'client.call.aborted',
+        payload: {
+          errors: [
+            {
+              category: 'expected',
+              errorCode: 2008,
+              fatal: true,
+              name: 'media-engine',
+              shownToUser: false,
+            },
+          ],
+        },
+        options: {
+          meetingId: fakeMeeting.id,
+        },
+      });
+      assert.calledWith(Metrics.sendBehavioralMetric, 'js_sdk_meeting_reconnect_failures', {
+        correlation_id: fakeMeeting.correlationId,
+        locus_id: 'id',
+        reason: 'fake error',
+        stack: sinon.match.any,
+      });
+      assert.equal(rm.status, RECONNECTION.STATE.DEFAULT_STATUS);
+    });
+
+    it('throws ReconnectionNotStartedError if reconnection is already in progress', async () => {
+      const rm = new ReconnectionManager(fakeMeeting);
+      const defer = new Defer();
+
+      sinon.stub(rm, 'executeReconnection').returns(defer.promise);
+
+      rm.reconnect();
+
+      try {
+        await rm.reconnect();
+
+        fail("rm.reconnect() should have thrown, but it hasn't");
+      } catch (e) {
+        assert.instanceOf(e, ReconnectionNotStartedError);
+      }
+    });
+
+    it('throws ReconnectionNotStartedError if reconnection is disabled in config', async () => {
+      fakeMeeting.config.reconnection.enabled = false;
+
+      const rm = new ReconnectionManager(fakeMeeting);
+
+      try {
+        await rm.reconnect();
+
+        fail("rm.reconnect() should have thrown, but it hasn't");
+      } catch (e) {
+        assert.instanceOf(e, ReconnectionNotStartedError);
+      }
+    });
   });
 
   /**
@@ -316,29 +416,41 @@ describe('plugin-meetings', () => {
 
     describe('waitForIceReconnect()', () => {
       describe('when ice is marked as not disconnected', () => {
+        let clock;
+
         beforeEach(() => {
+          clock = sinon.useFakeTimers();
           reconnectionManager.iceState.disconnected = false;
         });
 
+        afterEach(() => {
+          clock.restore();
+        });
+
         it('should set the disconnected state to true', () => {
-          reconnectionManager.waitForIceReconnect();
-
-          assert.isTrue(reconnectionManager.iceState.disconnected);
-        });
-
-        it('should return a promise that rejects after a duration', (done) => {
-          reconnectionManager.iceState.timeoutDuration = 100;
-
-          assert.isRejected(reconnectionManager.waitForIceReconnect());
-          done();
-        });
-
-        it('should resolve return a resolved promise when triggered', () => {
           const promise = reconnectionManager.waitForIceReconnect();
 
-          reconnectionManager.iceState.resolve();
+          assert.isTrue(reconnectionManager.iceState.disconnected);
 
-          assert.isFulfilled(promise);
+          // we let the timer expire
+          clock.tick(reconnectionManager.iceState.timeoutDuration);
+          assert.isRejected(promise);
+        });
+
+        it('should return a promise that rejects after a duration', async () => {
+          const promise = reconnectionManager.waitForIceReconnect();
+
+          // we let the timer expire
+          clock.tick(reconnectionManager.iceState.timeoutDuration);
+          assert.isRejected(promise);
+        });
+
+        it('should resolve when ICE is reconnected', async () => {
+          const promise = reconnectionManager.waitForIceReconnect();
+
+          reconnectionManager.iceReconnected();
+
+          await promise;
         });
       });
 
@@ -356,30 +468,6 @@ describe('plugin-meetings', () => {
 
           assert.isTrue(reconnectionManager.iceState.disconnected);
         });
-      });
-    });
-
-    describe('setStatus()', () => {
-      beforeEach(() => {
-        reconnectionManager.status = RECONNECTION.STATE.DEFAULT_STATUS;
-      });
-
-      it('should correctly change status to in progress', () => {
-        reconnectionManager.setStatus(RECONNECTION.STATE.IN_PROGRESS);
-
-        assert.equal(reconnectionManager.status, RECONNECTION.STATE.IN_PROGRESS);
-      });
-
-      it('should correctly change status to complete', () => {
-        reconnectionManager.setStatus(RECONNECTION.STATE.COMPLETE);
-
-        assert.equal(reconnectionManager.status, RECONNECTION.STATE.COMPLETE);
-      });
-
-      it('should correctly change status to failure', () => {
-        reconnectionManager.setStatus(RECONNECTION.STATE.FAILURE);
-
-        assert.equal(reconnectionManager.status, RECONNECTION.STATE.FAILURE);
       });
     });
 

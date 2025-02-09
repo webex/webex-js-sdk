@@ -3,7 +3,7 @@
 /* eslint-disable @typescript-eslint/no-shadow */
 import {LOGGER} from '../Logger/types';
 import {getTestUtilsWebex} from '../common/testUtil';
-import {HTTP_METHODS, SORT, SORT_BY, WebexRequestPayload} from '../common/types';
+import {CALLING_BACKEND, HTTP_METHODS, SORT, SORT_BY, WebexRequestPayload} from '../common/types';
 import {CallHistory, createCallHistoryClient} from './CallHistory';
 import {ICallHistory} from './types';
 import {
@@ -16,9 +16,18 @@ import {
   janusSetReadStateUrl,
   ERROR_DETAILS_401,
   ERROR_DETAILS_400,
+  MOCK_LINES_API_CALL_RESPONSE,
+  MOCK_LINES_API_CALL_RESPONSE_WITH_NO_LINEDATA,
+  MOCK_CALL_HISTORY_WITH_UCM_LINE_NUMBER,
+  MOCK_CALL_HISTORY_WITHOUT_UCM_LINE_NUMBER,
+  MOCK_SESSION_EVENT_DELETED,
+  MOCK_DELETE_CALL_HISTORY_RECORDS_RESPONSE,
+  janusMarkAsDeletedUrl,
+  MOCK_DELETE_CALL_HISTORY_INVALID_DATE_RESPONSE,
 } from './callHistoryFixtures';
 import {
   COMMON_EVENT_KEYS,
+  CallSessionDeletedEvent,
   CallSessionEvent,
   CallSessionViewedEvent,
   MOBIUS_EVENT_KEYS,
@@ -144,6 +153,23 @@ describe('Call history tests', () => {
         callSessionCallback(MOCK_SESSION_EVENT_VIEWED);
       });
     });
+
+    it('verify the user sessions deleted event for deleting the call history records', async () => {
+      await new Promise<void>((resolve) => {
+        callHistory.on(
+          COMMON_EVENT_KEYS.CALL_HISTORY_USER_SESSIONS_DELETED,
+          (event: CallSessionDeletedEvent) => {
+            expect(event.data).toEqual(MOCK_SESSION_EVENT_DELETED.data);
+            resolve();
+          }
+        );
+
+        expect(mockOn.mock.calls[3][0]).toEqual(MOBIUS_EVENT_KEYS.CALL_SESSION_EVENT_DELETED);
+        const callSessionCallback = mockOn.mock.calls[3][1];
+
+        callSessionCallback(MOCK_SESSION_EVENT_DELETED);
+      });
+    });
   });
 
   describe('Update missed calls test', () => {
@@ -245,6 +271,236 @@ describe('Call history tests', () => {
         },
         methodDetails
       );
+    });
+  });
+
+  describe('fetchUCMLinesData test', () => {
+    it('verify successful UCM lines API case', async () => {
+      const ucmLinesAPIPayload = <WebexRequestPayload>(<unknown>MOCK_LINES_API_CALL_RESPONSE);
+
+      webex.request.mockResolvedValue(ucmLinesAPIPayload);
+      const response = await callHistory['fetchUCMLinesData']();
+
+      expect(response.statusCode).toBe(200);
+      expect(response.message).toBe('SUCCESS');
+    });
+
+    it('verify bad request failed UCM lines API case', async () => {
+      const failurePayload = {
+        statusCode: 400,
+      };
+      const ucmLinesAPIPayload = <WebexRequestPayload>(<unknown>failurePayload);
+
+      webex.request.mockRejectedValue(ucmLinesAPIPayload);
+      const response = await callHistory['fetchUCMLinesData']();
+
+      expect(response).toStrictEqual(ERROR_DETAILS_400);
+      expect(response.data.error).toEqual(ERROR_DETAILS_400.data.error);
+      expect(response.statusCode).toBe(400);
+      expect(response.message).toBe('FAILURE');
+      expect(serviceErrorCodeHandlerSpy).toHaveBeenCalledWith(
+        {statusCode: 400},
+        {file: 'CallHistory', method: 'fetchLinesData'}
+      );
+    });
+
+    it('should call fetchUCMLinesData when calling backend is UCM and userSessions contain valid cucmDN', async () => {
+      jest.spyOn(utils, 'getCallingBackEnd').mockReturnValue(CALLING_BACKEND.UCM);
+      // Since fetchUCMLinesData is a private method, TypeScript restricts direct access to it.
+      // To bypass this restriction, we are using 'as any' to access and invoke the method for testing purposes.
+      const fetchUCMLinesDataSpy = jest
+        .spyOn(callHistory as any, 'fetchUCMLinesData')
+        .mockResolvedValue(MOCK_LINES_API_CALL_RESPONSE);
+
+      const mockCallHistoryPayload = <WebexRequestPayload>(
+        (<unknown>MOCK_CALL_HISTORY_WITH_UCM_LINE_NUMBER)
+      );
+      webex.request.mockResolvedValue(mockCallHistoryPayload);
+
+      const response = await callHistory.getCallHistoryData(7, 10, SORT.DEFAULT, SORT_BY.DEFAULT);
+
+      expect(fetchUCMLinesDataSpy).toHaveBeenCalledTimes(1);
+
+      expect(response.statusCode).toBe(200);
+      expect(
+        response.data.userSessions && response.data.userSessions[0].self.ucmLineNumber
+      ).toEqual(1);
+    });
+
+    it('should fetchUCMLinesData but not assign ucmLineNumber when UCM backend has no line data', async () => {
+      jest.spyOn(utils, 'getCallingBackEnd').mockReturnValue(CALLING_BACKEND.UCM);
+
+      // Since fetchUCMLinesData is a private method, TypeScript restricts direct access to it.
+      // To bypass this restriction, we are using 'as any' to access and invoke the method for testing purposes.
+      const fetchUCMLinesDataSpy = jest
+        .spyOn(callHistory as any, 'fetchUCMLinesData')
+        .mockResolvedValue(MOCK_LINES_API_CALL_RESPONSE_WITH_NO_LINEDATA);
+
+      const mockCallHistoryPayload = <WebexRequestPayload>(
+        (<unknown>MOCK_CALL_HISTORY_WITHOUT_UCM_LINE_NUMBER)
+      );
+      webex.request.mockResolvedValue(mockCallHistoryPayload);
+
+      const response = await callHistory.getCallHistoryData(7, 10, SORT.DEFAULT, SORT_BY.DEFAULT);
+
+      expect(fetchUCMLinesDataSpy).toHaveBeenCalledTimes(1);
+
+      expect(response.statusCode).toBe(200);
+      expect(response.data.userSessions && response.data.userSessions[0].self.cucmDN).toBeDefined();
+      expect(
+        response.data.userSessions && response.data.userSessions[0].self.ucmLineNumber
+      ).toEqual(undefined);
+    });
+
+    it('should not call fetchUCMLinesData when calling backend is UCM but no valid cucmDN is present', async () => {
+      jest.spyOn(utils, 'getCallingBackEnd').mockReturnValue(CALLING_BACKEND.UCM);
+      // Since fetchUCMLinesData is a private method, TypeScript restricts direct access to it.
+      // To bypass this restriction, we are using 'as any' to access and invoke the method for testing purposes.
+      const fetchUCMLinesDataSpy = jest
+        .spyOn(callHistory as any, 'fetchUCMLinesData')
+        .mockResolvedValue({});
+
+      const callHistoryPayload = <WebexRequestPayload>(<unknown>mockCallHistoryBody);
+      webex.request.mockResolvedValue(callHistoryPayload);
+
+      await callHistory.getCallHistoryData(7, 10, SORT.DEFAULT, SORT_BY.DEFAULT);
+
+      expect(fetchUCMLinesDataSpy).not.toHaveBeenCalled();
+    });
+
+    it('should not call fetchUCMLinesData when calling backend is not UCM', async () => {
+      jest.spyOn(utils, 'getCallingBackEnd').mockReturnValue(CALLING_BACKEND.WXC);
+      // Since fetchUCMLinesData is a private method, TypeScript restricts direct access to it.
+      // To bypass this restriction, we are using 'as any' to access and invoke the method for testing purposes.
+      const fetchUCMLinesDataSpy = jest
+        .spyOn(callHistory as any, 'fetchUCMLinesData')
+        .mockResolvedValue({});
+
+      const callHistoryPayload = <WebexRequestPayload>(<unknown>mockCallHistoryBody);
+      webex.request.mockResolvedValue(callHistoryPayload);
+      await callHistory.getCallHistoryData(7, 10, SORT.DEFAULT, SORT_BY.DEFAULT);
+      expect(fetchUCMLinesDataSpy).not.toHaveBeenCalled(); // Check that fetchUCMLinesData was not called
+    });
+  });
+
+  describe('Delete call history records test', () => {
+    const methodDetails = {
+      file: CALL_HISTORY_FILE,
+      method: 'deleteCallHistoryRecords',
+    };
+
+    afterEach(() => {
+      jest.clearAllMocks();
+    });
+
+    beforeEach(async () => {
+      serviceErrorCodeHandlerSpy = jest.spyOn(utils, 'serviceErrorCodeHandler');
+      global.fetch = jest.fn(() =>
+        Promise.resolve({
+          status: 200,
+          ok: true,
+          json: () => Promise.resolve(MOCK_DELETE_CALL_HISTORY_RECORDS_RESPONSE),
+        })
+      ) as jest.Mock;
+    });
+
+    it('successfully deletes the call history records', async () => {
+      const deleteSessionIds = [{endTime: '2024-10-22T08:50:48.603Z', sessionId: '123'}];
+      const response = await callHistory.deleteCallHistoryRecords(deleteSessionIds);
+      const convertedEndTimeSessionIds = deleteSessionIds.map((session) => ({
+        ...session,
+        endTime: new Date(session.endTime).getTime(),
+      }));
+      expect(response.statusCode).toEqual(200);
+      expect(response).toEqual(MOCK_DELETE_CALL_HISTORY_RECORDS_RESPONSE);
+      expect(global.fetch).toBeCalledOnceWith(janusMarkAsDeletedUrl, {
+        method: HTTP_METHODS.POST,
+        headers: {
+          [CONTENT_TYPE]: APPLICATION_JSON,
+          Authorization: await webex.credentials.getUserToken(),
+        },
+        body: JSON.stringify({deleteSessionIds: convertedEndTimeSessionIds}),
+      });
+    });
+
+    it('Error: deleteCallHistoryRecords throw 400 error', async () => {
+      const deleteSessionIds = [];
+      global.fetch = jest.fn(() =>
+        Promise.resolve({
+          status: 400,
+          ok: false,
+        })
+      ) as jest.Mock;
+      const response = await callHistory.deleteCallHistoryRecords(deleteSessionIds);
+      const convertedEndTimeSessionIds = deleteSessionIds.map((session) => ({
+        ...session,
+        endTime: new Date(session.endTime).getTime(),
+      }));
+      expect(response).toStrictEqual(ERROR_DETAILS_400);
+      expect(response.statusCode).toBe(400);
+      expect(global.fetch).toBeCalledOnceWith(janusMarkAsDeletedUrl, {
+        method: HTTP_METHODS.POST,
+        headers: {
+          [CONTENT_TYPE]: APPLICATION_JSON,
+          Authorization: await webex.credentials.getUserToken(),
+        },
+        body: JSON.stringify({deleteSessionIds: convertedEndTimeSessionIds}),
+      });
+      expect(serviceErrorCodeHandlerSpy).toBeCalledOnceWith(
+        {
+          statusCode: 400,
+        },
+        methodDetails
+      );
+    });
+
+    it('Error: deleteCallHistoryRecords throw 401 error', async () => {
+      const deleteSessionIds = [];
+      global.fetch = jest.fn(() =>
+        Promise.resolve({
+          status: 401,
+          ok: false,
+        })
+      ) as jest.Mock;
+
+      const response = await callHistory.deleteCallHistoryRecords(deleteSessionIds);
+      const convertedEndTimeSessionIds = deleteSessionIds.map((session) => ({
+        ...session,
+        endTime: new Date(session.endTime).getTime(),
+      }));
+      expect(response).toStrictEqual(ERROR_DETAILS_401);
+      expect(response.statusCode).toBe(401);
+      expect(global.fetch).toBeCalledOnceWith(janusMarkAsDeletedUrl, {
+        method: HTTP_METHODS.POST,
+        headers: {
+          [CONTENT_TYPE]: APPLICATION_JSON,
+          Authorization: await webex.credentials.getUserToken(),
+        },
+        body: JSON.stringify({deleteSessionIds: convertedEndTimeSessionIds}),
+      });
+      expect(serviceErrorCodeHandlerSpy).toBeCalledOnceWith(
+        {
+          statusCode: 401,
+        },
+        methodDetails
+      );
+    });
+
+    it('handles invalid date formats gracefully', async () => {
+      const deleteSessionIds = [{endTime: 'invalid-date', sessionId: '123'}];
+
+      // Mock the response to be 400 and trigger an error in your function
+      global.fetch = jest.fn(() =>
+        Promise.resolve({
+          status: 400,
+          ok: false,
+        })
+      ) as jest.Mock;
+
+      const response = await callHistory.deleteCallHistoryRecords(deleteSessionIds);
+
+      expect(response.statusCode).toBe(400);
+      expect(response).toEqual(MOCK_DELETE_CALL_HISTORY_INVALID_DATE_RESPONSE);
     });
   });
 });

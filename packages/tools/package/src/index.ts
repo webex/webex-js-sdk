@@ -5,7 +5,7 @@
  */
 
 export {
-  increment, list, scripts, sync, update,
+  increment, list, scripts, sync, update, changelog,
 } from './commands';
 export { Package } from './models';
 export { Yarn } from './utils';
@@ -29,4 +29,5 @@ export type {
   ScriptsOptions,
   SyncOptions,
   UpdateOptions,
+  ChangelogOptions,
 } from './commands';

@@ -10,7 +10,14 @@ import sinon from 'sinon';
 import {browserOnly, nodeOnly} from '@webex/test-helper-mocha';
 import Logger from '@webex/plugin-logger';
 import MockWebex from '@webex/test-helper-mock-webex';
-import {AuthInterceptor, config, Credentials, WebexHttpError, Token} from '@webex/webex-core';
+import {
+  AuthInterceptor,
+  config,
+  Credentials,
+  WebexHttpError,
+  Token,
+  serviceConstants,
+} from '@webex/webex-core';
 import {cloneDeep, merge} from 'lodash';
 import Metrics from '@webex/internal-plugin-metrics';
 
@@ -122,7 +129,7 @@ describe('webex-core', () => {
               hasService: (service) => Object.keys(services).includes(service),
               hasAllowedDomains: () => true,
               isAllowedDomainUrl: (uri) =>
-                !!config.services.allowedDomains.find((host) => uri.includes(host)),
+                !!serviceConstants.COMMERCIAL_ALLOWED_DOMAINS.find((host) => uri.includes(host)),
               getServiceFromUrl: (uri) => {
                 let targetKey;
 
@@ -249,7 +256,7 @@ describe('webex-core', () => {
             hasService: (service) => Object.keys(services).includes(service),
             hasAllowedDomains: () => true,
             isAllowedDomainUrl: (uri) =>
-              !!config.services.allowedDomains.find((host) => uri.includes(host)),
+              !!serviceConstants.COMMERCIAL_ALLOWED_DOMAINS.find((host) => uri.includes(host)),
             validateDomains: true,
           };
 
@@ -323,7 +330,7 @@ describe('webex-core', () => {
         it('resolves to true with an allowed domain uri', () =>
           interceptor
             .requiresCredentials({
-              uri: `https://${config.services.allowedDomains[0]}/resource`,
+              uri: `https://${serviceConstants.COMMERCIAL_ALLOWED_DOMAINS[0]}/resource`,
             })
             .then((response) => assert.isTrue(response)));
 
@@ -339,7 +346,7 @@ describe('webex-core', () => {
           const {isAllowedDomainUrl} = webex.internal.services;
 
           const result = isAllowedDomainUrl(
-            `https://${config.services.allowedDomains[0]}/resource`
+            `https://${serviceConstants.COMMERCIAL_ALLOWED_DOMAINS[0]}/resource`
           );
 
           assert.equal(result, true);
@@ -350,7 +357,7 @@ describe('webex-core', () => {
 
           return interceptor
             .requiresCredentials({
-              uri: `https://${config.services.allowedDomains[0]}/resource`,
+              uri: `https://${serviceConstants.COMMERCIAL_ALLOWED_DOMAINS[0]}/resource`,
             })
             .then((res) => {
               assert.equal(res, true);
@@ -361,7 +368,9 @@ describe('webex-core', () => {
           webex.internal.services.waitForService = sinon.stub();
           const {waitForService} = webex.internal.services;
 
-          waitForService.resolves(`https://${config.services.allowedDomains[0]}/resource`);
+          waitForService.resolves(
+            `https://${serviceConstants.COMMERCIAL_ALLOWED_DOMAINS[0]}/resource`
+          );
 
           return interceptor
             .requiresCredentials({

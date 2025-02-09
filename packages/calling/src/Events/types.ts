@@ -10,6 +10,7 @@ export enum COMMON_EVENT_KEYS {
   CB_VOICEMESSAGE_CONTENT_GET = 'call_back_voicemail_content_get',
   CALL_HISTORY_USER_SESSION_INFO = 'callHistory:user_recent_sessions',
   CALL_HISTORY_USER_VIEWED_SESSIONS = 'callHistory:user_viewed_sessions',
+  CALL_HISTORY_USER_SESSIONS_DELETED = 'callHistory:user_sessions_deleted',
 }
 
 export enum LINE_EVENT_KEYS {
@@ -79,6 +80,8 @@ export type CallRecordSelf = {
   id: string;
   name?: string;
   phoneNumber?: string;
+  cucmDN?: string;
+  ucmLineNumber?: number;
 };
 
 export type CallRecordListOther = {
@@ -158,6 +161,7 @@ export enum MOBIUS_EVENT_KEYS {
   CALL_SESSION_EVENT_INCLUSIVE = 'event:janus.user_recent_sessions',
   CALL_SESSION_EVENT_LEGACY = 'event:janus.user_sessions',
   CALL_SESSION_EVENT_VIEWED = 'event:janus.user_viewed_sessions',
+  CALL_SESSION_EVENT_DELETED = 'event:janus.user_sessions_deleted',
 }
 
 export type CallSessionData = {
@@ -233,6 +237,7 @@ export type CallingClientEventTypes = {
 export type CallHistoryEventTypes = {
   [COMMON_EVENT_KEYS.CALL_HISTORY_USER_SESSION_INFO]: (event: CallSessionEvent) => void;
   [COMMON_EVENT_KEYS.CALL_HISTORY_USER_VIEWED_SESSIONS]: (event: CallSessionViewedEvent) => void;
+  [COMMON_EVENT_KEYS.CALL_HISTORY_USER_SESSIONS_DELETED]: (event: CallSessionDeletedEvent) => void;
 };
 /* External Eventing End */
 
@@ -242,32 +247,38 @@ enum CALL_STATE {
   REMOTE_HELD = 'remoteheld',
   CONNECTED = 'connected',
 }
+
 type eventType = string;
+
 type callProgressData = {
   alerting: boolean;
   inbandROAP: boolean;
 };
+
 export type CallerIdInfo = {
   'x-broadworks-remote-party-info'?: string;
   'p-asserted-identity'?: string;
   from?: string;
 };
+
 type callId = string;
 type deviceId = string;
 type correlationId = string;
 type callUrl = string;
 type causecode = number;
 type cause = string;
+
 type eventData = {
   callerId: CallerIdInfo;
   callState: CALL_STATE;
 };
+
 type midCallServiceData = {
   eventType: eventType;
   eventData: eventData;
 };
-type midCallService = Array<midCallServiceData>;
 
+type midCallService = Array<midCallServiceData>;
 interface BaseMessage {
   eventType: eventType;
   correlationId: correlationId;
@@ -275,19 +286,18 @@ interface BaseMessage {
   callId: callId;
   callUrl: callUrl;
 }
-
 export interface CallSetupMessage extends BaseMessage {
   callerId: CallerIdInfo;
   trackingId: string;
   alertType: string;
 }
-
 interface CallProgressMessage extends BaseMessage {
   callProgressData: callProgressData;
   callerId: CallerIdInfo;
 }
 
 export const WEBSOCKET_SCOPE = 'mobius';
+
 export enum WEBSOCKET_KEYS {
   CALL_PROGRESS = 'callprogress',
   CALL_CONNECTED = 'callconnected',
@@ -364,11 +374,40 @@ export type CallSessionViewedEvent = {
   trackingId: string;
 };
 
+export type CallSessionDeletedData = {
+  deletedSessions: string[];
+  eventType: MOBIUS_EVENT_KEYS.CALL_SESSION_EVENT_DELETED;
+};
+
+export type CallSessionDeletedEvent = {
+  id: string;
+  data: CallSessionDeletedData;
+  timestamp: number;
+  trackingId: string;
+};
+
 export type EndTimeSessionId = {
   endTime: string;
   sessionId: string;
 };
+
 export type SanitizedEndTimeAndSessionId = {
   endTime: number;
   sessionId: string;
+};
+
+export type UCMLine = {
+  dnorpattern: string;
+  index: number;
+  label: string | null;
+};
+
+export type UCMDevice = {
+  name: string;
+  model: number;
+  lines: UCMLine[];
+};
+
+export type UCMLinesApiResponse = {
+  devices: UCMDevice[];
 };

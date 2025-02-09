@@ -1,7 +1,7 @@
 import lodash from 'lodash';
 import {
   HTTP_VERBS,
-  _CONVERSATION_URL_,
+  DESTINATION_TYPE,
   WBXAPPAPI_SERVICE,
   DEFAULT_MEETING_INFO_REQUEST_BODY,
 } from '../constants';
@@ -18,6 +18,19 @@ const ADHOC_MEETING_DEFAULT_ERROR =
   'Failed starting the adhoc meeting, Please contact support team ';
 const CAPTCHA_ERROR_REQUIRES_PASSWORD_CODES = [423005, 423006];
 const POLICY_ERROR_CODES = [403049, 403104, 403103, 403048, 403102, 403101];
+/**
+ * 403021 - Meeting registration is required
+ * 403022 - Meeting registration is still pending
+ * 403024 - Meeting registration have been rejected
+ * 403137 - Registration ID verified failure
+ * 423007 - Registration ID input too many time,please input captcha code
+ * 403026 - Need to join meeting via webcast
+ * 403037 - Meeting join required registration ID
+ * 403137 - Registration ID verified failure
+ *
+ */
+const JOIN_WEBINAR_ERROR_CODES = [403021, 403022, 403024, 403137, 423007, 403026, 403037, 403137];
+
 /**
  * Error to indicate that wbxappapi requires a password
  */
@@ -125,6 +138,31 @@ export class MeetingInfoV2CaptchaError extends Error {
 }
 
 /**
+ * Error preventing join because of a webinar have some error
+ */
+export class MeetingInfoV2JoinWebinarError extends Error {
+  meetingInfo: any;
+  sdkMessage: any;
+  wbxAppApiCode: any;
+  body: any;
+  /**
+   *
+   * @constructor
+   * @param {Number} [wbxAppApiErrorCode]
+   * @param {Object} [meetingInfo]
+   * @param {String} [message]
+   */
+  constructor(wbxAppApiErrorCode?: number, meetingInfo?: object, message?: string) {
+    super(`${message}, code=${wbxAppApiErrorCode}`);
+    this.name = 'MeetingInfoV2JoinWebinarError';
+    this.sdkMessage = message;
+    this.stack = new Error().stack;
+    this.wbxAppApiCode = wbxAppApiErrorCode;
+    this.meetingInfo = meetingInfo;
+  }
+}
+
+/**
  * @class MeetingInfo
  */
 export default class MeetingInfoV2 {
@@ -170,6 +208,29 @@ export default class MeetingInfoV2 {
       });
 
       throw new MeetingInfoV2PolicyError(
+        err.body?.code,
+        err.body?.data?.meetingInfo,
+        err.body?.message
+      );
+    }
+  };
+
+  /**
+   * Raises a handleJoinWebinarError for join webinar error codes
+   * @param {any} err the error from the request
+   * @returns {void}
+   */
+  handleJoinWebinarError = (err) => {
+    if (!err.body) {
+      return;
+    }
+
+    if (JOIN_WEBINAR_ERROR_CODES.includes(err.body?.code)) {
+      Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.JOIN_WEBINAR_ERROR, {
+        code: err.body?.code,
+      });
+
+      throw new MeetingInfoV2JoinWebinarError(
         err.body?.code,
         err.body?.data?.meetingInfo,
         err.body?.message
@@ -237,6 +298,7 @@ export default class MeetingInfoV2 {
       })
       .catch((err) => {
         this.handlePolicyError(err);
+        this.handleJoinWebinarError(err);
 
         Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.ADHOC_MEETING_FAILURE, {
           reason: err.message,
@@ -249,7 +311,7 @@ export default class MeetingInfoV2 {
   /**
    * Fetches meeting info from the server
    * @param {String} destination one of many different types of destinations to look up info for
-   * @param {String} [type] to match up with the destination value
+   * @param {DESTINATION_TYPE} [type] to match up with the destination value
    * @param {String} password
    * @param {Object} captchaInfo
    * @param {String} captchaInfo.code
@@ -264,7 +326,7 @@ export default class MeetingInfoV2 {
    */
   async fetchMeetingInfo(
     destination: string,
-    type: string = null,
+    type: DESTINATION_TYPE = null,
     password: string = null,
     captchaInfo: {
       code: string;
@@ -284,7 +346,7 @@ export default class MeetingInfoV2 {
     });
 
     if (
-      destinationType.type === _CONVERSATION_URL_ &&
+      destinationType.type === DESTINATION_TYPE.CONVERSATION_URL &&
       this.webex.config.meetings.experimental.enableAdhocMeetings &&
       this.webex.meetings.preferredWebexSite
     ) {
@@ -391,6 +453,7 @@ export default class MeetingInfoV2 {
 
         if (err?.statusCode === 403) {
           this.handlePolicyError(err);
+          this.handleJoinWebinarError(err);
 
           Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.VERIFY_PASSWORD_ERROR, {
             reason: err.message,

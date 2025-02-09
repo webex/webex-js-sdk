@@ -8,15 +8,11 @@ import {
   SUCCESS_MESSAGE,
   UCM_CONNECTOR_FILE,
   VOICEMAIL,
+  WEBEX_API_CONFIG_INT_URL,
+  WEBEX_API_CONFIG_PROD_URL,
 } from '../common/constants';
 import {HTTP_METHODS, WebexRequestPayload} from '../common/types';
-import {
-  CF_ENDPOINT,
-  ORG_ENDPOINT,
-  PEOPLE_ENDPOINT,
-  WEBEX_APIS_INT_URL,
-  WEBEX_APIS_PROD_URL,
-} from './constants';
+import {CF_ENDPOINT, ORG_ENDPOINT, PEOPLE_ENDPOINT} from './constants';
 import {
   CallForwardAlwaysSetting,
   CallForwardingSettingsUCM,
@@ -132,7 +128,9 @@ export class UcmBackendConnector implements IUcmBackendConnector {
       method: this.getCallForwardAlwaysSetting.name,
     };
 
-    const webexApisUrl = this.useProdWebexApis ? WEBEX_APIS_PROD_URL : WEBEX_APIS_INT_URL;
+    const webexApisUrl = this.useProdWebexApis
+      ? WEBEX_API_CONFIG_PROD_URL
+      : WEBEX_API_CONFIG_INT_URL;
 
     try {
       if (directoryNumber) {

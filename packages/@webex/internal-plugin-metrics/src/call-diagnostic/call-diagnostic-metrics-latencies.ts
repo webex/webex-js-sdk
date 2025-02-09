@@ -49,7 +49,7 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
   private getMeeting() {
     if (this.meetingId) {
       // @ts-ignore
-      return this.webex.meetings.meetingCollection.get(this.meetingId);
+      return this.webex.meetings.getBasicMeetingInformation(this.meetingId);
     }
 
     return undefined;
@@ -83,11 +83,16 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
       key === 'client.media.rx.start' ||
       key === 'client.media.tx.start' ||
       key === 'internal.client.meetinginfo.request' ||
-      key === 'internal.client.meetinginfo.response'
+      key === 'internal.client.meetinginfo.response' ||
+      key === 'client.media-engine.remote-sdp-received'
     ) {
       this.saveFirstTimestampOnly(key, value);
     } else {
       this.latencyTimestamps.set(key, value);
+      // new offer/answer so reset the remote SDP timestamp
+      if (key === 'client.media-engine.local-sdp-generated') {
+        this.latencyTimestamps.delete('client.media-engine.remote-sdp-received');
+      }
     }
   }
 

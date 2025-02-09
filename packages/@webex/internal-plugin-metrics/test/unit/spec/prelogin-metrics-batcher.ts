@@ -9,7 +9,6 @@ import MockWebex from '@webex/test-helper-mock-webex';
 import sinon from 'sinon';
 import FakeTimers from '@sinonjs/fake-timers';
 import {NewMetrics} from '@webex/internal-plugin-metrics';
-import {uniqueId} from 'lodash';
 
 const flushPromises = () => new Promise(setImmediate);
 
@@ -66,6 +65,7 @@ describe('internal-plugin-metrics', () => {
 
         // matching because the request includes a symbol key: value pair and sinon cannot handle to compare it..
         assert.match(webexRequestArgs, {
+          //@ts-ignore
           body: {
             metrics: [
               {
@@ -82,6 +82,7 @@ describe('internal-plugin-metrics', () => {
                   origin: {
                     buildType: 'test',
                     networkType: 'unknown',
+                    upgradeChannel: 'test',
                   },
                   originTime: {
                     sent: dateAfterBatcherWait.toISOString(),
@@ -133,16 +134,16 @@ describe('internal-plugin-metrics', () => {
           error = err;
         }
 
-        // This is horrific, but stubbing lodash is proving difficult
-        const expectedBatchId = parseInt(uniqueId()) - 1;
+        const calls = webex.logger.error.getCalls();
 
-        assert.equal(error.message, 'my_error');
-        assert.calledOnceWithExactly(
-          webex.logger.error,
-          'Pre Login Metrics -->',
-          `PreLoginMetricsBatcher: @submitHttpRequest#prelogin-batch-${expectedBatchId}. Request failed:`,
-          `error: formattedError`
+        assert.deepEqual(calls[0].args[0], 'Pre Login Metrics -->');
+        // This is horrific, but stubbing lodash is proving difficult
+        assert.match(
+          calls[0].args[1],
+          /PreLoginMetricsBatcher: @submitHttpRequest#prelogin-batch-\d{0,}\. Request failed:/
         );
+        assert.deepEqual(calls[0].args[2], `error: formattedError`);
+
         assert.lengthOf(
           webex.internal.newMetrics.callDiagnosticMetrics.preLoginMetricsBatcher.queue,
           0
@@ -211,7 +212,7 @@ describe('internal-plugin-metrics', () => {
         // item also gets assigned a delay property but the key is a Symbol and haven't been able to test that..
         assert.deepEqual(calls.args[0].eventPayload, {
           event: 'my.event',
-          origin: {buildType: 'test', networkType: 'unknown'},
+          origin: {buildType: 'test', networkType: 'unknown', upgradeChannel: 'test'},
         });
 
         assert.deepEqual(calls.args[0].type, ['diagnostic-event']);
@@ -225,6 +226,7 @@ describe('internal-plugin-metrics', () => {
           origin: {
             buildType: 'test',
             networkType: 'unknown',
+            upgradeChannel: 'test',
           },
         });
         assert.deepEqual(prepareDiagnosticMetricItemCalls[0].args[1].type, ['diagnostic-event']);

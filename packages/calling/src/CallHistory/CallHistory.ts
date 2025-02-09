@@ -2,15 +2,24 @@
 /* eslint-disable no-underscore-dangle */
 import SDKConnector from '../SDKConnector';
 import {ISDKConnector, WebexSDK} from '../SDKConnector/types';
-import {ALLOWED_SERVICES, HTTP_METHODS, WebexRequestPayload, SORT, SORT_BY} from '../common/types';
+import {
+  ALLOWED_SERVICES,
+  HTTP_METHODS,
+  WebexRequestPayload,
+  SORT,
+  SORT_BY,
+  CALLING_BACKEND,
+} from '../common/types';
 import {
   ICallHistory,
   JanusResponseEvent,
   LoggerInterface,
   UpdateMissedCallsResponse,
+  UCMLinesResponse,
+  DeleteCallHistoryRecordsResponse,
 } from './types';
 import log from '../Logger';
-import {serviceErrorCodeHandler} from '../common/Utils';
+import {serviceErrorCodeHandler, getVgActionEndpoint, getCallingBackEnd} from '../common/Utils';
 import {
   APPLICATION_JSON,
   CALL_HISTORY_FILE,
@@ -21,8 +30,17 @@ import {
   NUMBER_OF_DAYS,
   UPDATE_MISSED_CALLS_ENDPOINT,
   SET_READ_STATE_SUCCESS_MESSAGE,
+  VERSION_1,
+  UNIFIED_COMMUNICATIONS,
+  CONFIG,
+  PEOPLE,
+  LINES,
+  ORG_ID,
+  DELETE_CALL_HISTORY_RECORDS_ENDPOINT,
+  SET_DELETE_CALL_RECORDS_SUCCESS_MESSAGE,
+  SET_DELETE_CALL_RECORDS_INVALID_DATE_FORMAT_MESSAGE,
 } from './constants';
-import {STATUS_CODE, SUCCESS_MESSAGE, USER_SESSIONS} from '../common/constants';
+import {FAILURE_MESSAGE, STATUS_CODE, SUCCESS_MESSAGE, USER_SESSIONS} from '../common/constants';
 import {
   COMMON_EVENT_KEYS,
   CallHistoryEventTypes,
@@ -32,6 +50,8 @@ import {
   EndTimeSessionId,
   CallSessionViewedEvent,
   SanitizedEndTimeAndSessionId,
+  UCMLinesApiResponse,
+  CallSessionDeletedEvent,
 } from '../Events/types';
 import {Eventing} from '../Events/impl';
 /**
@@ -128,6 +148,43 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
           );
         }
       }
+      // Check the calling backend
+      const callingBackend = getCallingBackEnd(this.webex);
+      if (callingBackend === CALLING_BACKEND.UCM) {
+        // Check if userSessions exist and the length is greater than 0
+        if (this.userSessions[USER_SESSIONS] && this.userSessions[USER_SESSIONS].length > 0) {
+          // Check if cucmDN exists and is valid in any of the userSessions
+          const hasCucmDN = this.userSessions[USER_SESSIONS].some(
+            (session: UserSession) => session.self.cucmDN && session.self.cucmDN.length > 0
+          );
+          // If any user session has cucmDN, proceed to fetch line data
+          if (hasCucmDN) {
+            // Fetch the Lines data
+            const ucmLinesResponse = await this.fetchUCMLinesData();
+
+            // Check if the Lines API response was successful
+            if (ucmLinesResponse.statusCode === 200 && ucmLinesResponse.data.lines?.devices) {
+              const ucmLinesData = ucmLinesResponse.data.lines.devices;
+
+              // Iterate over user sessions and match with Lines data
+              this.userSessions[USER_SESSIONS].forEach((session: UserSession) => {
+                const cucmDN = session.self.cucmDN;
+
+                if (cucmDN) {
+                  ucmLinesData.forEach((device) => {
+                    device.lines.forEach((line) => {
+                      if (line.dnorpattern === cucmDN) {
+                        session.self.ucmLineNumber = line.index; // Assign the ucmLineNumber
+                      }
+                    });
+                  });
+                }
+              });
+            }
+          }
+        }
+      }
+
       const responseDetails = {
         statusCode: this.userSessions[STATUS_CODE],
         data: {
@@ -202,6 +259,125 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
     }
   }
 
+  /**
+   * Function to display the UCM Lines API response.
+   * @returns {Promise} Resolves to an object of type  {@link UCMLinesResponse}.Response details with success or error status.
+   */
+  private async fetchUCMLinesData(): Promise<UCMLinesResponse> {
+    const loggerContext = {
+      file: CALL_HISTORY_FILE,
+      method: 'fetchLinesData',
+    };
+    const vgEndpoint = getVgActionEndpoint(this.webex, CALLING_BACKEND.UCM);
+    const userId = this.webex.internal.device.userId;
+    const orgId = this.webex.internal.device.orgId;
+    const linesURIForUCM = `${vgEndpoint}/${VERSION_1}/${UNIFIED_COMMUNICATIONS}/${CONFIG}/${PEOPLE}/${userId}/${LINES}?${ORG_ID}=${orgId}`;
+
+    try {
+      const response = <WebexRequestPayload>await this.webex.request({
+        uri: `${linesURIForUCM}`,
+        method: HTTP_METHODS.GET,
+      });
+
+      const ucmLineDetails: UCMLinesResponse = {
+        statusCode: Number(response.statusCode),
+        data: {
+          lines: response.body as UCMLinesApiResponse,
+        },
+        message: SUCCESS_MESSAGE,
+      };
+
+      log.info(`Line details fetched successfully`, loggerContext);
+
+      return ucmLineDetails;
+    } catch (err: unknown) {
+      const errorInfo = err as WebexRequestPayload;
+      const errorStatus = serviceErrorCodeHandler(errorInfo, loggerContext);
+
+      return errorStatus;
+    }
+  }
+
+  /**
+   * Function to delete the call history records using sessionId and endTime.
+   * @param deleteSessionIds - An array of objects containing endTime and sessionId of the call history records
+   * @returns {Promise} Resolves to an object of type  {@link DeleteCallHistoryRecordsResponse}.Response details with success or error status.
+   */
+  public async deleteCallHistoryRecords(
+    deleteSessionIds: EndTimeSessionId[]
+  ): Promise<DeleteCallHistoryRecordsResponse> {
+    const loggerContext = {
+      file: CALL_HISTORY_FILE,
+      method: 'deleteCallHistoryRecords',
+    };
+
+    // Collect all sessions with invalid dates (endTime) in an array
+    const invalidSessions = deleteSessionIds.filter((session) =>
+      Number.isNaN(new Date(session.endTime).getTime())
+    );
+
+    if (invalidSessions.length > 0) {
+      // If there are invalid sessions, return an error with details
+      const invalidSessionIds = invalidSessions.map((session) => session.sessionId).join(', ');
+      log.info(
+        `The provided date is malformed or invalid for session IDs: ${invalidSessionIds}`,
+        loggerContext
+      );
+
+      return {
+        statusCode: 400,
+        data: {
+          deleteStatusMessage: SET_DELETE_CALL_RECORDS_INVALID_DATE_FORMAT_MESSAGE,
+        },
+        message: FAILURE_MESSAGE,
+      };
+    }
+
+    // Convert endTime to milliseconds for each sessionId
+    const santizedSessionIds: SanitizedEndTimeAndSessionId[] = deleteSessionIds.map((session) => ({
+      ...session,
+      endTime: new Date(session.endTime).getTime(),
+    }));
+    const deleteRequestBody = {
+      deleteSessionIds: santizedSessionIds,
+    };
+    try {
+      const deleteCallHistoryRecordContentUrl = `${this.janusUrl}/${HISTORY}/${USER_SESSIONS}/${DELETE_CALL_HISTORY_RECORDS_ENDPOINT}`;
+      // Make a POST request to delete call history records
+      const response = await fetch(deleteCallHistoryRecordContentUrl, {
+        method: HTTP_METHODS.POST,
+        headers: {
+          [CONTENT_TYPE]: APPLICATION_JSON,
+          Authorization: await this.webex.credentials.getUserToken(),
+        },
+        body: JSON.stringify(deleteRequestBody),
+      });
+      if (!response.ok) {
+        throw new Error(`${response.status}`);
+      }
+
+      const data: DeleteCallHistoryRecordsResponse = await response.json();
+      log.info(`Call history records are succesfully deleted by the user`, loggerContext);
+      const responseDetails: DeleteCallHistoryRecordsResponse = {
+        statusCode: data.statusCode as number,
+        data: {
+          deleteStatusMessage: SET_DELETE_CALL_RECORDS_SUCCESS_MESSAGE,
+        },
+        message: SUCCESS_MESSAGE,
+      };
+
+      return responseDetails;
+    } catch (err: unknown) {
+      // Catch the 401 error from try block, return the error object to user
+      const errorInfo = {
+        statusCode: err instanceof Error ? Number(err.message) : '',
+      } as WebexRequestPayload;
+      const errorStatus = serviceErrorCodeHandler(errorInfo, loggerContext);
+
+      return errorStatus;
+    }
+  }
+
   handleSessionEvents = async (event?: CallSessionEvent) => {
     if (event && event.data.userSessions.userSessions) {
       this.emit(COMMON_EVENT_KEYS.CALL_HISTORY_USER_SESSION_INFO, event as CallSessionEvent);
@@ -213,6 +389,15 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
       this.emit(
         COMMON_EVENT_KEYS.CALL_HISTORY_USER_VIEWED_SESSIONS,
         event as CallSessionViewedEvent
+      );
+    }
+  };
+
+  handleUserSessionsDeletedEvents = async (event?: CallSessionDeletedEvent) => {
+    if (event && event.data.deletedSessions) {
+      this.emit(
+        COMMON_EVENT_KEYS.CALL_HISTORY_USER_SESSIONS_DELETED,
+        event as CallSessionDeletedEvent
       );
     }
   };
@@ -232,6 +417,10 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
     this.sdkConnector.registerListener<CallSessionViewedEvent>(
       MOBIUS_EVENT_KEYS.CALL_SESSION_EVENT_VIEWED,
       this.handleUserReadSessionEvents
+    );
+    this.sdkConnector.registerListener<CallSessionDeletedEvent>(
+      MOBIUS_EVENT_KEYS.CALL_SESSION_EVENT_DELETED,
+      this.handleUserSessionsDeletedEvents
     );
   }
 }
