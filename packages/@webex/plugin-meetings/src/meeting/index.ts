@@ -5301,7 +5301,16 @@ export default class Meeting extends StatelessWebexPlugin {
           (this.config.receiveReactions || options.receiveReactions) &&
           this.isReactionsSupported()
         ) {
-          const {name} = this.members.membersCollection.get(e.data.sender.participantId);
+          const member = this.members.membersCollection.get(e.data.sender.participantId);
+          if (!member) {
+            // @ts-ignore -- fix type
+            LoggerProxy.logger.warn(
+              `Meeting:index#processRelayEvent --> Skipping handling of ${REACTION_RELAY_TYPES.REACTION} for ${this.id}. participantId ${e.data.sender.participantId} does not exist in membersCollection.`
+            );
+            break;
+          }
+
+          const {name} = member;
           const processedReaction: ProcessedReaction = {
             reaction: e.data.reaction,
             sender: {
@@ -5354,6 +5363,9 @@ export default class Meeting extends StatelessWebexPlugin {
         VOICEAEVENTS.NEW_CAPTION,
         this.voiceaListenerCallbacks[VOICEAEVENTS.NEW_CAPTION]
       );
+
+      // @ts-ignore
+      this.webex.internal.voicea.deregisterEvents();
 
       this.areVoiceaEventsSetup = false;
       this.triggerStopReceivingTranscriptionEvent();
@@ -8763,6 +8775,11 @@ export default class Meeting extends StatelessWebexPlugin {
       this.stopTranscription();
       this.transcription = undefined;
     }
+
+    this.annotation.deregisterEvents();
+
+    // @ts-ignore - fix types
+    this.webex.internal.llm.off('event:relay.event', this.processRelayEvent);
   };
 
   /**
