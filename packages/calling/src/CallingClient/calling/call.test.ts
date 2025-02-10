@@ -111,6 +111,7 @@ describe('Call Tests', () => {
       convertPort9to0: true,
       addContentSlides: false,
       copyClineToSessionLevel: true,
+      convertCLineToIPv4: true,
     },
   };
 

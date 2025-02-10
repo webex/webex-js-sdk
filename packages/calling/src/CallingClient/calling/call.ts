@@ -1983,6 +1983,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
           convertPort9to0: true,
           addContentSlides: false,
           copyClineToSessionLevel: true,
+          convertCLineToIPv4: true,
         },
       },
       {
