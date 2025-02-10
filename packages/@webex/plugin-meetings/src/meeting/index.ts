@@ -4628,7 +4628,7 @@ export default class Meeting extends StatelessWebexPlugin {
    * Close the peer connections and remove them from the class.
    * Cleanup any media connection related things.
    *
-   * @param {boolean} resetMuteStates whether to also rese the audio/video mute state information
+   * @param {boolean} resetMuteStates whether to also reset the audio/video mute state information
    * @returns {Promise}
    * @public
    * @memberof Meeting
