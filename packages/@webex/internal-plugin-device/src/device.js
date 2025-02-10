@@ -613,7 +613,7 @@ const Device = WebexPlugin.extend({
     return this.request({
       uri: this.url,
       method: 'DELETE',
-    }).then(() => this.clear());
+    }).finally(() => this.clear());
   },
   /* eslint-enable require-jsdoc */
 

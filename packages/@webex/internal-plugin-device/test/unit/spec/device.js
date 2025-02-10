@@ -419,6 +419,33 @@ describe('plugin-device', () => {
     });
    });
 
+    describe('#unregister()', () => {
+      it('resolves immediately if the device is not registered', async () => {
+        const requestSpy = sinon.spy(device, 'request');
+
+        device.set('registered', false);
+
+        await device.unregister();
+
+        assert.notCalled(requestSpy);
+      });
+
+      it('clears the device in the event of failure', async () => {
+        sinon.stub(device, 'request').rejects(new Error('some error'));
+
+        const clearSpy = sinon.spy(device, 'clear');
+
+        await assert.isRejected(device.unregister());
+
+        assert.calledWith(device.request, {
+          uri: 'https://locus-a.wbx2.com/locus/api/v1/devices/88888888-4444-4444-4444-CCCCCCCCCCCC',
+          method: 'DELETE',
+        });
+
+        assert.calledOnce(clearSpy);
+      });
+    });
+
     describe('#register()', () => {
       const setup = (config = {}) => {
         webex.internal.metrics.submitClientMetrics = sinon.stub();
