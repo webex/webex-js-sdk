@@ -613,7 +613,18 @@ const Device = WebexPlugin.extend({
     return this.request({
       uri: this.url,
       method: 'DELETE',
-    }).finally(() => this.clear());
+    })
+      .then(() => this.clear())
+      .catch((reason) => {
+        if (reason.statusCode === 404) {
+          this.logger.info(
+            'device: 404 when deleting device, device is already deleted, clearing device'
+          );
+
+          this.clear();
+        }
+        throw reason;
+      });
   },
   /* eslint-enable require-jsdoc */
 

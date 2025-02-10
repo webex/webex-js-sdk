@@ -430,8 +430,8 @@ describe('plugin-device', () => {
         assert.notCalled(requestSpy);
       });
 
-      it('clears the device in the event of failure', async () => {
-        sinon.stub(device, 'request').rejects(new Error('some error'));
+      it('clears the device in the event of 404', async () => {
+        sinon.stub(device, 'request').rejects({statusCode: 404});
 
         const clearSpy = sinon.spy(device, 'clear');
 
@@ -443,6 +443,21 @@ describe('plugin-device', () => {
         });
 
         assert.calledOnce(clearSpy);
+      });
+
+      it('does not clear the device in the event of non 404 failure', async () => {
+        sinon.stub(device, 'request').rejects(new Error('some error'));
+
+        const clearSpy = sinon.spy(device, 'clear');
+
+        await assert.isRejected(device.unregister());
+
+        assert.calledWith(device.request, {
+          uri: 'https://locus-a.wbx2.com/locus/api/v1/devices/88888888-4444-4444-4444-CCCCCCCCCCCC',
+          method: 'DELETE',
+        });
+
+        assert.notCalled(clearSpy);
       });
     });
 
