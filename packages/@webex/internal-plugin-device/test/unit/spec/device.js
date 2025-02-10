@@ -450,6 +450,7 @@ describe('plugin-device', () => {
 
       it('calls delete devices when errors with User has excessive device registrations', async () => {
         setup();
+        sinon.stub(device, 'canRegister').callsFake(() => Promise.resolve());
         const deleteDeviceSpy = sinon.stub(device, 'deleteDevices').callsFake(() => Promise.resolve());
         const registerStub = sinon.stub(device, '_registerInternal');
         
@@ -468,6 +469,7 @@ describe('plugin-device', () => {
       it('does not call delete devices when some other error', async () => {
         setup();
 
+        sinon.stub(device, 'canRegister').callsFake(() => Promise.resolve());
         const deleteDeviceSpy = sinon.stub(device, 'deleteDevices').callsFake(() => Promise.resolve());
         const registerStub = sinon.stub(device, '_registerInternal').rejects(new Error('some error'));
 
@@ -643,6 +645,23 @@ describe('plugin-device', () => {
         await device.register({includeDetails: CatalogDetails.websocket});
 
         assert.calledWith(refreshSpy, {includeDetails: CatalogDetails.websocket});
+      });
+
+      it('works when request returns 404 when already registered', async () => {
+        setup();
+        
+        sinon.stub(device, 'canRegister').callsFake(() => Promise.resolve());
+
+        const requestStub = sinon.stub(device, 'request');
+
+        requestStub.onFirstCall().rejects({statusCode: 404});
+        requestStub.onSecondCall().resolves({some: 'data'});
+
+        device.set('registered', true);
+
+        await device.register();
+
+        assert.calledWith(device.processRegistrationSuccess, {some: 'data'});
       });
     });
 
