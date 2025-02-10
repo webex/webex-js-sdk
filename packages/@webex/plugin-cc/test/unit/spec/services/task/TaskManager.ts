@@ -306,6 +306,20 @@ describe('TaskManager', () => {
     expect(offSpy).toHaveBeenCalledWith(LINE_EVENTS.INCOMING_CALL, offSpy.mock.calls[1][1]);
   });
 
+  it('should emit TASK_SYNC event on AGENT_CONTACT event', () => {
+    const payload = {
+      data: {
+        ...initalPayload.data,
+        type: CC_EVENTS.AGENT_CONTACT,
+      },
+    };
+
+    const taskEmitSpy = jest.spyOn(taskManager, 'emit');
+    webSocketManagerMock.emit('message', JSON.stringify(payload));
+
+    expect(taskEmitSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_SYNC, taskManager.currentTask);
+  });
+
   it('should emit TASK_END event on AGENT_WRAPUP event', () => {
     webSocketManagerMock.emit('message', JSON.stringify(initalPayload));
 

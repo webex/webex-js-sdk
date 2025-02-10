@@ -567,6 +567,15 @@ describe('webex.cc', () => {
         {module: CC_FILE, method: 'stationReLogin'}
       );
     });
+
+    it('should trigger TASK_SYNC event with the task', () => {
+      const task = {id: 'task1'};
+      const triggerSpy = jest.spyOn(webex.cc, 'trigger');
+
+      webex.cc['handleTaskSync'](task);
+
+      expect(triggerSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_SYNC, task);
+    });
   });
 
   describe('setAgentStatus', () => {
@@ -776,10 +785,6 @@ describe('webex.cc', () => {
         webex.cc.webCallingService,
         'registerWebCallingLine'
       );
-      const registerIncomingCallEventSpy = jest.spyOn(
-        webex.cc.taskManager,
-        'registerIncomingCallEvent'
-      );
       const incomingTaskListenerSpy = jest.spyOn(webex.cc, 'incomingTaskListener');
       const webSocketManagerOnSpy = jest.spyOn(webex.cc.services.webSocketManager, 'on');
       await webex.cc['silentRelogin']();
@@ -797,9 +802,9 @@ describe('webex.cc', () => {
       expect(webex.cc.agentConfig.isAgentLoggedIn).toBe(true);
       expect(webex.cc.agentConfig.deviceType).toBe(LoginOption.BROWSER);
       expect(registerWebCallingLineSpy).toHaveBeenCalled();
-      expect(registerIncomingCallEventSpy).toHaveBeenCalled();
       expect(incomingTaskListenerSpy).toHaveBeenCalled();
       expect(webSocketManagerOnSpy).toHaveBeenCalledWith('message', expect.any(Function));
+      expect(mockTaskManager.on).toHaveBeenCalledWith(TASK_EVENTS.TASK_SYNC, expect.any(Function));
     });
 
     it('should handle AGENT_NOT_FOUND error silently', async () => {
@@ -902,5 +907,4 @@ describe('webex.cc', () => {
       );
     });
   });
-
 });
