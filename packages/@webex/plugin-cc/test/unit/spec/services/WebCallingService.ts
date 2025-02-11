@@ -5,12 +5,10 @@ import {
   ICallingClient,
   ILine,
   LINE_EVENTS,
-  CallingClientConfig,
   CALL_EVENT_KEYS,
   LocalMicrophoneStream,
 } from '@webex/calling';
-import {LoginOption, WebexSDK} from '../../../../src/types';
-import config from '../../../../src/config';
+import { WebexSDK} from '../../../../src/types';
 import LoggerProxy from '../../../../src/logger-proxy';
 import {WEB_CALLING_SERVICE_FILE} from '../../../../src/constants';
 jest.mock('@webex/calling');
@@ -42,7 +40,7 @@ describe('WebCallingService', () => {
       internal: {
         services: {
           waitForCatalog: jest.fn().mockResolvedValue(undefined),
-          get: jest.fn().mockReturnValue('rtw.prod-us1.rtmsprod.net'),
+          get: jest.fn()
         },
       },
     } as unknown as WebexSDK;
@@ -61,7 +59,6 @@ describe('WebCallingService', () => {
 
     webRTCCalling = new WebCallingService(
       webex,
-      config.cc.callingClientConfig as CallingClientConfig
     );
 
     mockCall = {
@@ -83,7 +80,9 @@ describe('WebCallingService', () => {
   });
 
   describe('registerWebCallingLine', () => {
+
     it('should register the web calling line successfully', async () => {
+      webex.internal.services.get.mockReturnValue(undefined); // this is to test fallback to default rtms domain
       line = callingClient.getLines().line1 as ILine;
       const deviceInfo = {
         mobiusDeviceId: 'device123',
@@ -104,7 +103,15 @@ describe('WebCallingService', () => {
 
       await expect(webRTCCalling.registerWebCallingLine()).resolves.toBeUndefined();
 
-      expect(createClient).toHaveBeenCalledWith(webex, config.cc.callingClientConfig);
+      expect(createClient).toHaveBeenCalledWith(webex, {
+        logger: {
+          level: 'info',
+        },
+        serviceData: {
+          indicator: 'contactcenter',
+          domain: 'rtw.prod-us1.rtmsprod.net',
+        },
+      });
       expect(lineOnSpy).toHaveBeenCalledWith(LINE_EVENTS.REGISTERED, expect.any(Function));
       expect(line.register).toHaveBeenCalled();
       expect(LoggerProxy.log).toHaveBeenCalledWith(
@@ -114,7 +121,7 @@ describe('WebCallingService', () => {
     }, 20000); // Increased timeout to 20 seconds
 
     it('should register WebCallingLine with custom rtms url', async () => {
-      webex.internal.services.get = jest.fn().mockReturnValue('sip://rtw.prod-us2.rtmsprod.net');
+      webex.internal.services.get.mockReturnValue('sip://rtw.prod-us2.rtmsprod.net'); 
 
       line = callingClient.getLines().line1 as ILine;
       const deviceInfo = {
@@ -133,10 +140,16 @@ describe('WebCallingService', () => {
           handler(deviceInfo);
         }
       });
-      expect(config.cc.callingClientConfig.serviceData.domain).toBe('rtw.prod-us1.rtmsprod.net');
       await expect(webRTCCalling.registerWebCallingLine()).resolves.toBeUndefined();
-      expect(config.cc.callingClientConfig.serviceData.domain).toBe('rtw.prod-us2.rtmsprod.net');
-      expect(createClient).toHaveBeenCalledWith(webex, config.cc.callingClientConfig);
+      expect(createClient).toHaveBeenCalledWith(webex, {
+        logger: {
+          level: 'info',
+        },
+        serviceData: {
+          indicator: 'contactcenter',
+          domain: 'rtw.prod-us2.rtmsprod.net',
+        },
+      });
       expect(lineOnSpy).toHaveBeenCalledWith(LINE_EVENTS.REGISTERED, expect.any(Function));
       expect(line.register).toHaveBeenCalled();
       expect(LoggerProxy.log).toHaveBeenCalledWith(
@@ -144,6 +157,45 @@ describe('WebCallingService', () => {
         {method: 'registerWebCallingLine', module: WEB_CALLING_SERVICE_FILE}
       );
     }, 20000); // Increased timeout to 20 seconds
+
+    it('should handle error when invalid rtms url is provided', async () => {
+      webex.internal.services.get.mockReturnValue('invalid-url'); 
+
+      line = callingClient.getLines().line1 as ILine;
+      const deviceInfo = {
+        mobiusDeviceId: 'device123',
+        status: 'registered',
+        setError: jest.fn(),
+        getError: jest.fn(),
+        type: 'line',
+        id: 'line1',
+      };
+
+      const registeredHandler = jest.fn();
+      const lineOnSpy = jest.spyOn(line, 'on').mockImplementation((event, handler) => {
+        if (event === LINE_EVENTS.REGISTERED) {
+          registeredHandler.mockImplementation(handler);
+          handler(deviceInfo);
+        }
+      });
+      await expect(webRTCCalling.registerWebCallingLine()).resolves.toBeUndefined();
+      expect(createClient).toHaveBeenCalledWith(webex, {
+        logger: {
+          level: 'info',
+        },
+        serviceData: {
+          indicator: 'contactcenter',
+          domain: 'rtw.prod-us1.rtmsprod.net',
+        },
+      });
+      expect(lineOnSpy).toHaveBeenCalledWith(LINE_EVENTS.REGISTERED, expect.any(Function));
+      expect(line.register).toHaveBeenCalled();
+      expect(LoggerProxy.error).toHaveBeenCalledWith(
+        `Invalid URL from u2c catalogue: invalid-url so falling back to default domain`,
+        {module: WEB_CALLING_SERVICE_FILE}
+      );
+
+    });
 
     it('should reject if registration times out', async () => {
       line = callingClient.getLines().line1 as ILine;
