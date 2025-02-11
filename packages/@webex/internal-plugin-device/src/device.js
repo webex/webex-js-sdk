@@ -489,16 +489,29 @@ const Device = WebexPlugin.extend({
   /**
    * Registers and when fails deletes devices
    */
-  @oneFlight
   @waitForValue('@')
   register(deviceRegistrationOptions = {}) {
-    return this._registerInternal(deviceRegistrationOptions).catch((error) => {
-      if (error?.body?.message === 'User has excessive device registrations') {
-        return this.deleteDevices().then(() => {
-          return this._registerInternal(deviceRegistrationOptions);
-        });
+    this.logger.info('device: registering');
+
+    this.webex.internal.newMetrics.callDiagnosticMetrics.setDeviceInfo(this);
+
+    // Validate that the device can be registered.
+    return this.canRegister().then(() => {
+      // Validate if the device is already registered and refresh instead.
+      if (this.registered) {
+        this.logger.info('device: device already registered, refreshing');
+
+        return this.refresh(deviceRegistrationOptions);
       }
-      throw error;
+
+      return this._registerInternal(deviceRegistrationOptions).catch((error) => {
+        if (error?.body?.message === 'User has excessive device registrations') {
+          return this.deleteDevices().then(() => {
+            return this._registerInternal(deviceRegistrationOptions);
+          });
+        }
+        throw error;
+      });
     });
   },
 
@@ -521,77 +534,63 @@ const Device = WebexPlugin.extend({
   @oneFlight
   @waitForValue('@')
   _registerInternal(deviceRegistrationOptions = {}) {
-    this.logger.info('device: registering');
+    this.logger.info('device: making registration request');
 
-    this.webex.internal.newMetrics.callDiagnosticMetrics.setDeviceInfo(this);
+    // Merge body configurations, overriding defaults.
+    const body = this._getBody();
 
-    // Validate that the device can be registered.
-    return this.canRegister().then(() => {
-      // Validate if the device is already registered and refresh instead.
-      if (this.registered) {
-        this.logger.info('device: device already registered, refreshing');
+    // Merge header configurations, overriding defaults.
+    const headers = {
+      ...(this.config.defaults.headers ? this.config.defaults.headers : {}),
+      ...(this.config.headers ? this.config.headers : {}),
+    };
 
-        return this.refresh(deviceRegistrationOptions);
-      }
-
-      // Merge body configurations, overriding defaults.
-      const body = this._getBody();
-
-      // Merge header configurations, overriding defaults.
-      const headers = {
-        ...(this.config.defaults.headers ? this.config.defaults.headers : {}),
-        ...(this.config.headers ? this.config.headers : {}),
-      };
-
-      // Append a ttl value if the device is marked as ephemeral
-      if (this.config.ephemeral) {
-        body.ttl = this.config.ephemeralDeviceTTL;
-      }
-      this.webex.internal.newMetrics.submitInternalEvent({
-        name: 'internal.register.device.request',
-      });
-
-      const {includeDetails = CatalogDetails.all} = deviceRegistrationOptions;
-
-      // This will be replaced by a `create()` method.
-      return this.request({
-        method: 'POST',
-        service: 'wdm',
-        resource: 'devices',
-        body,
-        headers,
-        qs: {
-          includeUpstreamServices: `${includeDetails}${
-            this.config.energyForecast && this.energyForecastConfig ? ',energyforecast' : ''
-          }`,
-        },
-      })
-        .catch((error) => {
-          this.webex.internal.newMetrics.submitInternalEvent({
-            name: 'internal.register.device.response',
-          });
-
-          throw error;
-        })
-        .then((response) => {
-          // Do not add any processing of response above this as that will affect timestamp
-          this.webex.internal.newMetrics.submitInternalEvent({
-            name: 'internal.register.device.response',
-          });
-
-          this.webex.internal.metrics.submitClientMetrics(
-            METRICS.JS_SDK_WDM_REGISTRATION_SUCCESSFUL
-          );
-
-          return this.processRegistrationSuccess(response);
-        })
-        .catch((error) => {
-          this.webex.internal.metrics.submitClientMetrics(METRICS.JS_SDK_WDM_REGISTRATION_FAILED, {
-            fields: {error},
-          });
-          throw error;
-        });
+    // Append a ttl value if the device is marked as ephemeral
+    if (this.config.ephemeral) {
+      body.ttl = this.config.ephemeralDeviceTTL;
+    }
+    this.webex.internal.newMetrics.submitInternalEvent({
+      name: 'internal.register.device.request',
     });
+
+    const {includeDetails = CatalogDetails.all} = deviceRegistrationOptions;
+
+    // This will be replaced by a `create()` method.
+    return this.request({
+      method: 'POST',
+      service: 'wdm',
+      resource: 'devices',
+      body,
+      headers,
+      qs: {
+        includeUpstreamServices: `${includeDetails}${
+          this.config.energyForecast && this.energyForecastConfig ? ',energyforecast' : ''
+        }`,
+      },
+    })
+      .catch((error) => {
+        this.webex.internal.newMetrics.submitInternalEvent({
+          name: 'internal.register.device.response',
+        });
+
+        throw error;
+      })
+      .then((response) => {
+        // Do not add any processing of response above this as that will affect timestamp
+        this.webex.internal.newMetrics.submitInternalEvent({
+          name: 'internal.register.device.response',
+        });
+
+        this.webex.internal.metrics.submitClientMetrics(METRICS.JS_SDK_WDM_REGISTRATION_SUCCESSFUL);
+
+        return this.processRegistrationSuccess(response);
+      })
+      .catch((error) => {
+        this.webex.internal.metrics.submitClientMetrics(METRICS.JS_SDK_WDM_REGISTRATION_FAILED, {
+          fields: {error},
+        });
+        throw error;
+      });
   },
   /**
    * Unregister the current registered device if available. Unregistering a
@@ -614,7 +613,18 @@ const Device = WebexPlugin.extend({
     return this.request({
       uri: this.url,
       method: 'DELETE',
-    }).then(() => this.clear());
+    })
+      .then(() => this.clear())
+      .catch((reason) => {
+        if (reason.statusCode === 404) {
+          this.logger.info(
+            'device: 404 when deleting device, device is already deleted, clearing device'
+          );
+
+          this.clear();
+        }
+        throw reason;
+      });
   },
   /* eslint-enable require-jsdoc */
 

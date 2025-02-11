@@ -342,4 +342,11 @@ export class LocusMediaRequest extends WebexPlugin {
   public isConfluenceCreated() {
     return this.confluenceState === 'created';
   }
+
+  /**
+   * This method needs to be called when we downgrade from multistream to transcoded connection.
+   */
+  public downgradeFromMultistreamToTranscoded() {
+    this.config.preferTranscoding = true;
+  }
 }
