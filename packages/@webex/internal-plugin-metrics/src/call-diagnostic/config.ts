@@ -17,6 +17,7 @@ export const DTLS_HANDSHAKE_FAILED_CLIENT_CODE = 2008;
 export const ICE_FAILED_WITH_TURN_TLS_CLIENT_CODE = 2010;
 export const ICE_FAILED_WITHOUT_TURN_TLS_CLIENT_CODE = 2009;
 export const ICE_AND_REACHABILITY_FAILED_CLIENT_CODE = 2011;
+export const MULTISTREAM_NOT_AVAILABLE_CLIENT_CODE = 2012;
 export const WBX_APP_API_URL = 'wbxappapi'; // MeetingInfo WebexAppApi response object normally contains a body.url that includes the string 'wbxappapi'
 
 export const WEBEX_SUB_SERVICE_TYPES: Record<string, ClientSubServiceType> = {
@@ -127,6 +128,7 @@ export const ERROR_DESCRIPTIONS = {
   ICE_FAILED_WITHOUT_TURN_TLS: 'ICEFailedWithoutTURN_TLS',
   ICE_FAILED_WITH_TURN_TLS: 'ICEFailedWithTURN_TLS',
   ICE_AND_REACHABILITY_FAILED: 'ICEAndReachabilityFailed',
+  MULTISTREAM_NOT_AVAILABLE: 'MultistreamNotAvailable',
   SDP_OFFER_CREATION_ERROR: 'SdpOfferCreationError',
   SDP_OFFER_CREATION_ERROR_MISSING_CODEC: 'SdpOfferCreationErrorMissingCodec',
   WDM_RESTRICTED_REGION: 'WdmRestrictedRegion',
@@ -408,6 +410,11 @@ export const CLIENT_ERROR_CODE_TO_ERROR_PAYLOAD: Record<number, Partial<ClientEv
     errorDescription: ERROR_DESCRIPTIONS.ICE_AND_REACHABILITY_FAILED,
     category: 'expected',
     fatal: true,
+  },
+  [MULTISTREAM_NOT_AVAILABLE_CLIENT_CODE]: {
+    errorDescription: ERROR_DESCRIPTIONS.MULTISTREAM_NOT_AVAILABLE,
+    category: 'expected',
+    fatal: false,
   },
   2050: {
     errorDescription: ERROR_DESCRIPTIONS.SDP_OFFER_CREATION_ERROR,

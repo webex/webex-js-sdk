@@ -251,6 +251,53 @@ describe('Roap', () => {
       );
     });
 
+    it('handles the case when there is some other (not an answer) roap message type in the http response', async () => {
+      const roapError = {
+        seq: 1,
+        messageType: 'ERROR',
+        sdps: [],
+        errorType: 'error type',
+        errorCause: 'error cause',
+        headers: ['header1', 'header2'],
+      };
+      const fakeMediaConnections = [
+        {
+          remoteSdp: JSON.stringify({
+            roapMessage: roapError,
+          }),
+        },
+      ];
+
+      sendRoapStub.resolves({
+        mediaConnections: fakeMediaConnections,
+        locus: fakeLocus,
+      });
+
+      const result = await roap.sendRoapMediaRequest({
+        meeting,
+        sdp: 'sdp',
+        reconnect: false,
+        seq: 1,
+        tieBreaker: 4294967294,
+      });
+
+      assert.calledOnce(sendRoapStub);
+      assert.calledOnceWithExactly(meeting.updateMediaConnections, fakeMediaConnections);
+      assert.deepEqual(result, {
+        locus: fakeLocus,
+        roapAnswer: undefined,
+      });
+      assert.calledOnceWithExactly(
+        Metrics.sendBehavioralMetric,
+        BEHAVIORAL_METRICS.ROAP_HTTP_RESPONSE_MISSING,
+        {
+          correlationId: meeting.correlationId,
+          messageType: 'ANSWER',
+          isMultistream: meeting.isMultistream,
+        }
+      );
+    });
+
     describe('does not crash when http response is missing things', () => {
       [
         {mediaConnections: undefined, title: 'mediaConnections are undefined'},
