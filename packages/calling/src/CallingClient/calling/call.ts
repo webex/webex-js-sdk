@@ -1983,7 +1983,6 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
           convertPort9to0: true,
           addContentSlides: false,
           copyClineToSessionLevel: true,
-          convertCLineToIPv4: true,
         },
       },
       {
@@ -2499,6 +2498,39 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
           case RoapScenario.OFFER: {
             // TODO: Remove these after the Media-Core adds the fix
+            event.roapMessage.sdp = event.roapMessage.sdp.replace(
+              /c=IN IP6 [\da-f:.]+/gi,
+              'c=IN IP4 192.1.1.1'
+            );
+
+            // Add IPv4 candidate if none exists
+            // Add IPv4 candidate if none exists
+            if (!event.roapMessage.sdp.match(/a=candidate:.*\sIN\sIP4\s/)) {
+              event.roapMessage.sdp = event.roapMessage.sdp.replace(
+                /(a=candidate:(\d+) (\d+) (\w+) (\d+) ([\da-f:.]+) (\d+) typ (\w+)[^\n]*)/g,
+                (
+                  match: any,
+                  full: any,
+                  foundation: string,
+                  componentId: any,
+                  transport: any,
+                  priority: any,
+                  connectionAddress: string | string[],
+                  port: any,
+                  candidateType: any
+                ) => {
+                  if (connectionAddress.includes(':')) {
+                    // Ensure it's IPv6
+                    const newFoundation = (parseInt(foundation, 10) + 1).toString();
+
+                    return `${full}\na=candidate:${newFoundation} ${componentId} ${transport} ${priority} 192.1.1.1 ${port} typ ${candidateType}`;
+                  }
+
+                  return match;
+                }
+              );
+            }
+
             const sdpVideoPortZero = event.roapMessage.sdp.replace(
               /^m=(video) (?:\d+) /gim,
               'm=$1 0 '
