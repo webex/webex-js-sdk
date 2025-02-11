@@ -88,6 +88,12 @@ const Mercury = WebexPlugin.extend({
 
     this.connecting = true;
 
+    this.logger.info(`${this.namespace}: starting connection attempt`);
+    this.logger.info(
+      `${this.namespace}: debug_mercury_logging stack: `,
+      new Error('debug_mercury_logging').stack
+    );
+
     return Promise.resolve(
       this.webex.internal.device.registered || this.webex.internal.device.register()
     ).then(() => {

@@ -121,6 +121,22 @@ class AnnotationChannel extends WebexPlugin implements IAnnotationChannel {
   }
 
   /**
+   * Remove event listeners
+   * @returns {undefined}
+   */
+  public deregisterEvents() {
+    if (this.hasSubscribedToEvents) {
+      // @ts-ignore
+      this.webex.internal.mercury.off('event:locus.approval_request', this.eventCommandProcessor);
+
+      // @ts-ignore
+      this.webex.internal.llm.off('event:relay.event', this.eventDataProcessor);
+
+      this.hasSubscribedToEvents = false;
+    }
+  }
+
+  /**
    * set locusUrl
    * @param {string} locusUrl
    * @returns {void}
