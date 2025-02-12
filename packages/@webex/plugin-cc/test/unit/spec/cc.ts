@@ -918,7 +918,7 @@ describe('webex.cc', () => {
   });
 
 
-  describe('makeOutDialCall', () => {
+  describe('startOutdial', () => {
 
     it('should make an outDial call successfully', async () => {
 
@@ -936,7 +936,7 @@ describe('webex.cc', () => {
         startOutdial: mockStartOutdial,
       });
 
-      await webex.cc.makeOutDialCall(payload);
+      await webex.cc.startOutdial(payload);
 
       expect(aqmDialer).toHaveBeenCalledWith(expect.any(AqmReqs));
 
@@ -955,7 +955,7 @@ describe('webex.cc', () => {
         outboundType: 'OUTDIAL',
       };
 
-      const mockError = new Error('Error while performing makeOutDialCall');
+      const mockError = new Error('Error while performing startOutdial');
 
       const mockStartOutdial = jest.fn().mockRejectedValue(mockError);
       (aqmDialer as jest.Mock).mockReturnValue({
@@ -963,7 +963,7 @@ describe('webex.cc', () => {
       });
 
 
-      await expect(webex.cc.makeOutDialCall(payload)).rejects.toThrow(mockError);
+      await expect(webex.cc.startOutdial(payload)).rejects.toThrow(mockError);
 
       expect(aqmDialer).toHaveBeenCalledWith(expect.any(AqmReqs));
 

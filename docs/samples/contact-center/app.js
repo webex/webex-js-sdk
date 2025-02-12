@@ -381,9 +381,21 @@ async function endConsult() {
   }
 }
 
-// Function to make an outDial call
-async function makeOutDialCall() {
+// Function to start an outDial call
+async function startOutdial() {
+
   const destination = document.getElementById('outBoundDialNumber').value;
+
+  if (!destination || !destination.trim()) {
+      console.error('Destination number is required');
+      return;
+  }
+
+  if (!entryPointId) {
+      console.error('Entry point ID is not configured');
+      return;
+  }
+
   const dialerPayload = {
     entryPointId: entryPointId,
     destination: destination,
@@ -393,20 +405,22 @@ async function makeOutDialCall() {
     outboundType: 'OUTDIAL',
   };
 
-
   try {
     console.log('Making an outdial call');
-    await webex.cc.makeOutDialCall(dialerPayload);
+    await webex.cc.startOutdial(dialerPayload);
     console.log('Outdial call initiated successfully');
   } catch (error) {
     console.error('Failed to initiate outdial call', error);
-    alert('Failed to initiate outdial call');
-  
   }
 }
 
 // Function to press a key during an active call
 function pressKey(value) {
+    // Allow only digits, #, and *
+    if (!/^[\d#*]$/.test(value)) {
+      console.warn('Invalid keypad input:', value);
+      return;
+    }
   document.getElementById('outBoundDialNumber').value += value;
 }
 

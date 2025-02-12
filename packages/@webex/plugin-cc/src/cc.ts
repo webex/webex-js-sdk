@@ -431,13 +431,13 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * @throws Error
    */
 
-  public async makeOutDialCall(payload: DialerPayload): Promise<void> {
+  public async startOutdial(payload: DialerPayload): Promise<void> {
     try {
       const aqmReqsInstance = new AqmReqs(this.services.webSocketManager);
       const dialer = aqmDialer(aqmReqsInstance);
       await dialer.startOutdial({data: payload});
     } catch (error) {
-      const {error: detailedError} = getErrorDetails(error, 'makeOutDialCall', CC_FILE);
+      const {error: detailedError} = getErrorDetails(error, 'startOutdial', CC_FILE);
       throw detailedError;
     }
   }
