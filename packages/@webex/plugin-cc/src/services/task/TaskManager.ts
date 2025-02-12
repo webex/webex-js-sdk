@@ -65,6 +65,11 @@ export default class TaskManager extends EventEmitter {
       const payload = JSON.parse(event);
       if (payload.data) {
         switch (payload.data.type) {
+          case CC_EVENTS.AGENT_CONTACT:
+            this.currentTask = new Task(this.contact, this.webCallingService, payload.data);
+            this.taskCollection[payload.data.interactionId] = this.currentTask;
+            this.emit(TASK_EVENTS.TASK_HYDRATE, this.currentTask);
+            break;
           case CC_EVENTS.AGENT_CONTACT_RESERVED:
             this.currentTask = new Task(this.contact, this.webCallingService, payload.data);
             this.currentTask.data = {...this.currentTask.data, isConsulted: false}; // Ensure isConsulted prop exists

@@ -64,7 +64,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         connectionConfig: this.getConnectionConfig(),
       });
 
-      this.webCallingService = new WebCallingService(this.$webex, this.$config.callingClientConfig);
+      this.webCallingService = new WebCallingService(this.$webex);
       this.taskManager = TaskManager.getTaskManager(
         this.services.contact,
         this.webCallingService,
@@ -80,11 +80,17 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     this.trigger(TASK_EVENTS.TASK_INCOMING, task);
   };
 
+  private handleTaskHydrate = (task: ITask) => {
+    // @ts-ignore
+    this.trigger(TASK_EVENTS.TASK_HYDRATE, task);
+  };
+
   /**
    * An Incoming Call listener.
    */
   private incomingTaskListener() {
     this.taskManager.on(TASK_EVENTS.TASK_INCOMING, this.handleIncomingTask);
+    this.taskManager.on(TASK_EVENTS.TASK_HYDRATE, this.handleTaskHydrate);
   }
 
   /**
@@ -198,7 +204,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
       this.services.webSocketManager.on('message', this.handleWebSocketMessage);
       this.incomingTaskListener();
-      this.taskManager.registerIncomingCallEvent();
 
       return loginResponse;
     } catch (error) {
@@ -226,6 +231,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
       this.taskManager.unregisterIncomingCallEvent();
       this.taskManager.off(TASK_EVENTS.TASK_INCOMING, this.handleIncomingTask);
+      this.taskManager.off(TASK_EVENTS.TASK_HYDRATE, this.handleTaskHydrate);
       this.services.webSocketManager.off('message', this.handleWebSocketMessage);
 
       return logoutResponse;
@@ -353,7 +359,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
       // To handle re-registration of event listeners on silent relogin
       this.incomingTaskListener();
-      this.taskManager.registerIncomingCallEvent();
 
       if (lastStateChangeReason === 'agent-wss-disconnect') {
         LoggerProxy.info(

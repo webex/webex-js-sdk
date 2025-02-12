@@ -1,4 +1,7 @@
+export const POST_AUTH = 'postauth';
 export const WCC_API_GATEWAY = 'wcc-api-gateway';
+export const WCC_CALLING_RTMS_DOMAIN = 'wcc-calling-rtms-domain';
+export const DEFAULT_RTMS_DOMAIN = 'rtw.prod-us1.rtmsprod.net';
 export const WEBSOCKET_EVENT_TIMEOUT = 20000;
 
 export const AGENT = 'agent';

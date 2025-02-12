@@ -188,6 +188,8 @@ function updateButtonsPostEndCall() {
   showConsultButton()
   disableTransferControls();
   consultTabBtn.disabled = true;
+  incomingDetailsElm.innerText = '';
+  pauseResumeRecordingElm.innerText = 'Pause Recording';
 }
 
 function showInitiateConsultDialog() {
@@ -667,6 +669,10 @@ function register() {
       incomingCallListener.dispatchEvent(taskEvents);
     });
 
+    webex.cc.on('task:hydrate', (currentTask) => {
+      handleTaskHydrate(currentTask);
+    });
+
     webex.cc.on('agent:stateChange', (data) => {
       if (data && typeof data === 'object' && data.type === 'AgentStateChangeSuccess') {
         const DEFAULT_CODE = '0'; // Default code when no aux code is present
@@ -682,6 +688,78 @@ function register() {
       }
     });
     
+}
+
+function handleTaskHydrate(currentTask) {
+  task = currentTask;
+
+  if (!task || !task.data || !task.data.interaction) {
+    console.error('task:hydrate --> No task data found.');
+    alert('task:hydrate --> No task data found.');
+    
+    return;
+  }
+
+  const { data, webCallingService } = task;
+  const { interaction, mediaResourceId, agentId } = data;
+  const {
+    state,
+    isTerminated,
+    media,
+    participants,
+    callAssociatedDetails,
+    callProcessingDetails
+  } = interaction;
+
+  if (isTerminated) {
+    // wrapup
+    if (state === 'wrapUp' && !participants[agentId].isWrappedUp) {
+      wrapupCodesDropdownElm.disabled = false;
+      wrapupElm.disabled = false;
+    }
+
+    return;
+  }
+
+  // answer & decline incoming calls
+  const callerDisplay = callAssociatedDetails?.ani;
+  if (webCallingService.loginOption === 'BROWSER') {
+    answerElm.disabled = false;
+    declineElm.disabled = false;
+
+    incomingDetailsElm.innerText = `Call from ${callerDisplay}`;
+  } else {
+    incomingDetailsElm.innerText = `Call from ${callerDisplay}...please answer on the endpoint where the agent's extension is registered`;
+  }
+
+  // end button
+  const hasParticipants = Object.keys(participants).length > 1;
+  endElm.disabled = !hasParticipants;
+  
+  // hold/resume call
+  const isHold = media && media[mediaResourceId] && media[mediaResourceId].isHold;
+  holdResumeElm.disabled = isTerminated;
+  holdResumeElm.innerText = isHold ? 'Resume' : 'Hold';
+
+  if (callProcessingDetails) {
+    const { pauseResumeEnabled, isPaused } = callProcessingDetails;
+
+    // pause/resume recording
+    pauseResumeRecordingElm.disabled = !pauseResumeEnabled;
+    pauseResumeRecordingElm.innerText = isPaused === 'true' ? 'Resume Recording' : 'Pause Recording';
+  }
+
+  // end consult, consult transfer buttons
+  const { consultMediaResourceId, destAgentId, destinationType } = data;
+  if (consultMediaResourceId && destAgentId && destinationType) {
+    const destination = participants[destAgentId];
+    destinationTypeDropdown.value = destinationType;
+    consultDestinationInput.value = destination.dn; 
+
+    consultTabBtn.style.display = 'none';
+    endConsultBtn.style.display = 'inline-block';
+    consultTransferBtn.style.display = 'inline-block';
+  }
 }
 
 function populateWrapupCodesDropdown() {
