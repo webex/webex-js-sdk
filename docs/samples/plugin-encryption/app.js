@@ -22,70 +22,77 @@ const mimeTypeDropdown = document.querySelector('#mime-types');
 
 // Store and Grab `access-token` from localstorage
 if (localStorage.getItem('date') > new Date().getTime()) {
-    tokenElm.value = localStorage.getItem('access-token');
+  tokenElm.value = localStorage.getItem('access-token');
 } else {
-    localStorage.removeItem('access-token');
+  localStorage.removeItem('access-token');
 }
 
 tokenElm.addEventListener('change', (event) => {
-    localStorage.setItem('access-token', event.target.value);
-    localStorage.setItem('date', new Date().getTime() + 12 * 60 * 60 * 1000);
+  const token = event.target.value;
+  if (!token) {
+    localStorage.removeItem('access-token');
+    localStorage.removeItem('date');
+    return;
+  }
+  localStorage.setItem('access-token', event.target.value);
+  localStorage.setItem('date', new Date().getTime() + 12 * 60 * 60 * 1000);
 });
 
 function changeEnv() {
-    enableProd = !enableProd;
-    enableProduction.innerHTML = enableProd ? 'In Production' : 'In Integration';
+  enableProd = !enableProd;
+  enableProduction.innerHTML = enableProd ? 'In Production' : 'In Integration';
 }
 
 function updateStatus(enabled) {
-    decryptFileBtn.disabled = !enabled;
+  decryptFileResult.innerText = '';
+  decryptFileBtn.disabled = !enabled;
 }
 
-
 async function initWebex(e) {
-    e.preventDefault();
-    console.log('Authentication#initWebex()');
+  e.preventDefault();
+  console.log('Authentication#initWebex()');
 
-    tokenElm.disabled = true;
-    saveElm.disabled = true;
+  tokenElm.disabled = true;
+  saveElm.disabled = true;
 
-    decryptFileBtn.disabled = true;
-    authStatusElm.innerText = 'initializing...';
+  decryptFileBtn.disabled = true;
+  authStatusElm.innerText = 'initializing...';
 
-    const webexConfig = {
-      config: {
-        logger: {
-          level: 'debug', // set the desired log level
-        },
+  const webexConfig = {
+    config: {
+      logger: {
+        level: 'debug', // set the desired log level
       },
-      credentials: {
-        access_token: tokenElm.value
-      }
-    };
-
-    if (!enableProd) {
-      webexConfig.config.services = {
-        discovery: {
-          u2c: 'https://u2c-intb.ciscospark.com/u2c/api/v1',
-          hydra: 'https://hydra-intb.ciscospark.com/v1/',
-        },
-      };
+    },
+    credentials: {
+      access_token: tokenElm.value
     }
+  };
 
-    webex = window.webex = Webex.init(webexConfig);
+  if (!enableProd) {
+    webexConfig.config.services = {
+      discovery: {
+        u2c: 'https://u2c-intb.ciscospark.com/u2c/api/v1',
+        hydra: 'https://hydra-intb.ciscospark.com/v1/',
+      },
+    };
+  }
 
-    webex.once('ready', () => {
-        console.log('Authentication#initWebex() :: Webex Ready');
-        authStatusElm.innerText = 'Webex is ready. Saved access token!';
+  webex = window.webex = Webex.init(webexConfig);
+
+  webex.once('ready', () => {
+    console.log('Authentication#initWebex() :: Webex Ready');
+    authStatusElm.innerText = 'Webex is ready. Saved access token!';
+  });
+
+  webex.messages.listen()
+    .then(() => {
+      updateStatus(true);
+    })
+    .catch((err) => {
+      console.error(`error listening to messages: ${err}`);
     });
-
-    webex.messages.listen()
-        .then(() => {
-          updateStatus(true);
-         })
-        .catch((err) => {
-          console.error(`error listening to messages: ${err}`);
-        });
+  e.stopPropagation();
 }
 
 credentialsFormElm.addEventListener('submit', initWebex);
@@ -95,31 +102,40 @@ encryptedFileUrlInput.addEventListener('input', () => {
 });
 
 async function decryptFile() {
-    decryptFileResult.innerText = '';
-    const fileUrl = encryptedFileUrlInput.value;
-    const encryptedFileName = decryptedFileNameInput.value;
-    const mimeType = mimeTypeDropdown.value;
-    try {
+  decryptFileResult.innerText = '';
+  const fileUrl = encryptedFileUrlInput.value;
+  const encryptedFileName = decryptedFileNameInput.value;
+  const mimeType = mimeTypeDropdown.value;
 
-      const decryptedBuf = await webex.cypher.downloadAndDecryptFile(fileUrl);
-      const file = new File([decryptedBuf], encryptedFileName, {type: mimeType});
+  if (!fileUrl) {
+    decryptFileResult.innerText = ': error - Invalid file URL';
+    return;
+  }
 
-      const url = URL.createObjectURL(file);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = file.name || "download"; // Use the original filename if available
-      document.body.appendChild(a);
+  if (!mimeType) {
+    decryptFileResult.innerText = ': error - Invalid MIME type';
+    return;
+  }
 
-      // Trigger the download
-      a.click();
-
-      // Cleanup
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      decryptFileResult.innerText = ': success';
+  let objectUrl;
+  try {
+    const decryptedBuf = await webex.cypher.downloadAndDecryptFile(fileUrl);
+    const file = new File([decryptedBuf], encryptedFileName, {type: mimeType});
+    objectUrl = URL.createObjectURL(file);
+    const a = document.createElement("a");
+    a.href = objectUrl;
+    a.download = file.name || "download";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    decryptFileResult.innerText = ': success';
+  }
+  catch (error) {
+    console.error('error decrypting file', error);
+    decryptFileResult.innerText = ': error';
+  } finally {
+    if (objectUrl) {
+      URL.revokeObjectURL(objectUrl);
     }
-    catch (error) {
-      console.error('error decrypting file', error);
-      decryptFileResult.innerText = ': error';
-    }
+  }
 }

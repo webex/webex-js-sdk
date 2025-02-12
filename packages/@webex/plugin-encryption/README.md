@@ -26,14 +26,13 @@ This is a plugin for the Cisco Webex JS SDK . Please see our [developer portal](
 
 ## API Docs and Sample App
 
-API Docs: <https://webex.github.io/webex-js-sdk/api/>
-Hosted Sample App: <https://webex.github.io/webex-js-sdk/samples/plugin-encryption/>
-See <https://github.com/webex/webex-js-sdk/tree/master/docs/samples/plugin-encryption> for the sample app code vs the readme
+API Docs: [https://webex.github.io/webex-js-sdk/api/](https://webex.github.io/webex-js-sdk/api/)
+Hosted Sample App: [https://webex.github.io/webex-js-sdk/samples/plugin-encryption/](https://webex.github.io/webex-js-sdk/samples/plugin-encryption/)
+See [https://github.com/webex/webex-js-sdk/tree/master/docs/samples/plugin-encryption](https://github.com/webex/webex-js-sdk/tree/master/docs/samples/plugin-encryption) for the sample app code vs the readme
 
 ## Sample Code
 
 ```typescript
-import { decryptAttachment } from '@webex/plugin-encryption';
 import { Webex } from '@webex/core';
 
 const webex = new Webex({
@@ -43,8 +42,8 @@ const webex = new Webex({
 });
 
 try {
-  const decryptedFile = await webex.encryption.decryptAttachment(attachmentURL);
-  // Do something with the decrypted file
+  const decryptedFileBuf = await webex.cypher.downloadAndDecryptFile(attachmentURL);
+  // Do something with the decrypted file buffer
 } catch (error) {
   // Handle error
 }

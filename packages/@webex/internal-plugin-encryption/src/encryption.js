@@ -78,12 +78,8 @@ const Encryption = WebexPlugin.extend({
       return Promise.reject(new Error('`scr` and `fileUrl` are required'));
     }
 
-    const scrJSON = scr.toJSON();
-    scrJSON.loc = '';
-    const newSCR = await SCR.fromJSON(scrJSON);
-
     const shunt = new EventEmitter();
-    const promise = this._fetchDownloadUrl(fileUrl, options)
+    const promise = this._fetchDownloadUrl(fileUrl, {useFileService: true, ...options})
       .then((uri) => {
         // eslint-disable-next-line no-shadow
         const options = {
@@ -98,7 +94,7 @@ const Encryption = WebexPlugin.extend({
 
         return ret;
       })
-      .then((res) => this.decryptBinary(newSCR, res.body));
+      .then((res) => this.decryptBinary(scr, res.body));
 
     proxyEvents(shunt, promise);
 
@@ -123,6 +119,12 @@ const Encryption = WebexPlugin.extend({
     }
 
     if (options && options.useFileService === false) {
+      if (!fileUrl.startsWith('https://')) {
+        this.logger.error('encryption: direct file URLs must use HTTPS');
+
+        return Promise.reject(new Error('Direct file URLs must use HTTPS'));
+      }
+
       return Promise.resolve(fileUrl);
     }
 
@@ -197,9 +199,21 @@ const Encryption = WebexPlugin.extend({
     }
 
     // first we get the scr json, then we create an SCR instance using the key json and then we create a JWE using the key jwk
-    return this.getKey(key, options).then((k) =>
-      SCR.fromJSON(scr).then((encScr) => encScr.toJWE(k.jwk))
-    );
+    return this.getKey(key, options).then((k) => {
+      if (!k?.jwk) {
+        this.logger.error('encryption: Invalid key or JWK');
+        throw new Error('Invalid key or JWK');
+      }
+
+      return SCR.fromJSON(scr).then((encScr) => {
+        if (!encScr) {
+          this.logger.error('encryption: Failed to create SCR instance');
+          throw new Error('Failed to create SCR instance');
+        }
+
+        return encScr.toJWE(k.jwk);
+      });
+    });
   },
 
   /**

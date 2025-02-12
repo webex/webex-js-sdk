@@ -1,5 +1,5 @@
 import MockWebex from '@webex/test-helper-mock-webex';
-import Cypher from '../../../../src/encryption';
+import Cypher from '../../../../src/cypher';
 
 import Encryption from '@webex/internal-plugin-encryption';
 

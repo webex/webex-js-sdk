@@ -1,6 +1,6 @@
 {
   "name": "@webex/plugin-encryption",
-  "description": "",
+  "description": "Encryption plugin for the Cisco Webex JS SDK",
   "repository": {
     "type": "git",
     "url": "https://github.com/webex/webex-js-sdk.git",
@@ -52,24 +52,6 @@
   },
   "engines": {
     "node": ">=16"
-  },
-  "//": {
-    "dependencies": {
-      "@webex/common": "workspace:*"
-    },
-    "devDependencies": {
-      "@webex/babel-config-legacy": "workspace:*",
-      "@webex/eslint-config-legacy": "workspace:*",
-      "@webex/jest-config-legacy": "workspace:*",
-      "@webex/legacy-tools": "workspace:*",
-      "@webex/plugin-encryption": "workspace:*",
-      "@webex/core": "workspace:*",
-      "@webex/test-helper-chai": "workspace:*",
-      "@webex/test-helper-mocha": "workspace:*",
-      "@webex/test-helper-mock-webex": "workspace:*",
-      "@webex/test-helper-retry": "workspace:*",
-      "@webex/test-helper-test-users": "workspace:*"
-    }
   },
   "devMain": "src/index.js"
 }

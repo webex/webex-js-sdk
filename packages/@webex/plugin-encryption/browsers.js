@@ -1,5 +1,5 @@
 /*!
- * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
+ * Copyright (c) 2015-2025 Cisco Systems, Inc. See LICENSE file.
  */
 
 // eslint-disable-next-line strict
@@ -41,12 +41,6 @@ module.exports = function createBrowsers() {
           ],
         },
       },
-      // sl_firefox_latest_linux: {
-      //   base: 'SauceLabs',
-      //   platform: 'Linux',
-      //   browserName: 'firefox',
-      //   version: 'latest'
-      // }
       sl_safari_latest_macOS_Catalina: {
         base: 'SauceLabs',
         platform: 'macOS 10.15',
@@ -76,11 +70,6 @@ module.exports = function createBrowsers() {
           },
         },
       },
-      // sl_firefox_latest_win7: {
-      //   base: `SauceLabs`,
-      //   platform: `Windows 7`,
-      //   browserName: `firefox`,
-      // }
     };
   }
 
