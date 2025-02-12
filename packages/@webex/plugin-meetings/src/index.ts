@@ -48,6 +48,7 @@ export {
   DisplaySurface,
   PresetCameraConstraints,
   type VideoContentHint,
+  type StreamState,
 } from '@webex/media-helpers';
 
 export default Meetings;
