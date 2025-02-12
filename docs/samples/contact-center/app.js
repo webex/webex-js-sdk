@@ -622,7 +622,7 @@ function handleTaskSync(currentTask) {
   console.log('Task: ', task);
 
   const { data, webCallingService } = task;
-  const { interaction, interactionId, mediaResourceId, agentId  } = data;
+  const { interaction, mediaResourceId, agentId } = data;
   const {
     state,
     isTerminated,
@@ -656,25 +656,30 @@ function handleTaskSync(currentTask) {
   // end button
   const hasParticipants = Object.keys(participants).length > 1;
   endElm.disabled = !hasParticipants;
-
-  // consult, transfer
-  // TODO: Test the consult and transfer features and update the conditions accordingly
-  consultTabBtn.disabled = !hasParticipants; // Enable consult controls
-  transferElm.disabled = !hasParticipants; // Enable transfer controls
   
-  // TODO: consultTransferBtn
-  // console.log('consultState >>>>>>>>', participants[agentId].consultState);
-
   // hold/resume call
   const isHold = media && media[mediaResourceId] && media[mediaResourceId].isHold;
   holdResumeElm.disabled = isTerminated;
   holdResumeElm.innerText = isHold ? 'Resume' : 'Hold';
 
-  // pause/resume recording
   if (callProcessingDetails) {
-    const {pauseResumeEnabled, isPaused} = callProcessingDetails;
+    const { pauseResumeEnabled, isPaused } = callProcessingDetails;
+
+    // pause/resume recording
     pauseResumeRecordingElm.disabled = !pauseResumeEnabled;
     pauseResumeRecordingElm.innerText = isPaused === 'true' ? 'Resume Recording' : 'Pause Recording';
+  }
+
+  // end consult, consult transfer buttons
+  const { consultMediaResourceId, destAgentId, destinationType } = data;
+  if (consultMediaResourceId && destAgentId && destinationType) {
+    const destination = participants[destAgentId];
+    destinationTypeDropdown.value = destinationType;
+    consultDestinationInput.value = destination.dn; 
+
+    consultTabBtn.style.display = 'none';
+    endConsultBtn.style.display = 'inline-block';
+    consultTransferBtn.style.display = 'inline-block';
   }
 }
 
