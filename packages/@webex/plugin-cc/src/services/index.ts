@@ -12,15 +12,16 @@ export default class Services {
   public readonly contact: ReturnType<typeof routingContact>;
   public readonly webSocketManager: WebSocketManager;
   public readonly connectionService: ConnectionService;
+  public readonly aqmReq: AqmReqs;
   private static instance: Services;
 
   constructor(options: {webex: WebexSDK; connectionConfig: SubscribeRequest}) {
     const {webex, connectionConfig} = options;
     this.webSocketManager = new WebSocketManager({webex});
-    const aqmReq = new AqmReqs(this.webSocketManager);
+    this.aqmReq = new AqmReqs(this.webSocketManager);
     this.config = new AgentConfigService();
-    this.agent = routingAgent(aqmReq);
-    this.contact = routingContact(aqmReq);
+    this.agent = routingAgent(this.aqmReq);
+    this.contact = routingContact(this.aqmReq);
     this.connectionService = new ConnectionService({
       webSocketManager: this.webSocketManager,
       subscribeRequest: connectionConfig,
