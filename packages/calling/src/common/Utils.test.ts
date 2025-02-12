@@ -1475,10 +1475,6 @@ describe('modifySdpForIPv4', () => {
 
     const expectedSdp = `v=0\no=- 12345 67890 IN IP6 2001:db8::1\ns=Test Session\nc=IN IP4 192.1.1.1\na=candidate:1 1 UDP 2122260223 2001:db8::1 3478 typ host\na=candidate:2 1 UDP 2122260223 192.1.1.1 3478 typ host generation 0 network-id 1 network-cost 10`;
     const result = modifySdpForIPv4(sdp);
-    // eslint-disable-next-line no-console
-    console.log(result);
-    // eslint-disable-next-line no-console
-    console.log(expectedSdp);
     expect(result).toEqual(expectedSdp);
   });
 
