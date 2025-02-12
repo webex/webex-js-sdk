@@ -12,6 +12,7 @@ import ExtendedError from '../../Errors/catalog/ExtendedError';
 import {ERROR_LAYER, ERROR_TYPE, ErrorContext} from '../../Errors/types';
 import {
   handleCallErrors,
+  modifySdpForIPv4,
   parseMediaQualityStatistics,
   serviceErrorCodeHandler,
 } from '../../common/Utils';
@@ -2498,43 +2499,23 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
           case RoapScenario.OFFER: {
             // TODO: Remove these after the Media-Core adds the fix
-            event.roapMessage.sdp = event.roapMessage.sdp.replace(
-              /c=IN IP6 [\da-f:.]+/gi,
-              'c=IN IP4 192.1.1.1'
-            );
+            // Check if at least one IPv6 "c=" line is present
+            log.info(`before modifying sdp: ${event.roapMessage.sdp}`, {
+              file: CALL_FILE,
+              method: this.mediaRoapEventsListener.name,
+            });
 
-            // Add IPv4 candidate if none exists
-            // Add IPv4 candidate if none exists
-            if (!event.roapMessage.sdp.match(/a=candidate:.*\sIN\sIP4\s/)) {
-              event.roapMessage.sdp = event.roapMessage.sdp.replace(
-                /(a=candidate:(\d+) (\d+) (\w+) (\d+) ([\da-f:.]+) (\d+) typ (\w+)[^\n]*)/g,
-                (
-                  match: any,
-                  full: any,
-                  foundation: string,
-                  componentId: any,
-                  transport: any,
-                  priority: any,
-                  connectionAddress: string | string[],
-                  port: any,
-                  candidateType: any
-                ) => {
-                  if (connectionAddress.includes(':')) {
-                    // Ensure it's IPv6
-                    const newFoundation = (parseInt(foundation, 10) + 1).toString();
-
-                    return `${full}\na=candidate:${newFoundation} ${componentId} ${transport} ${priority} 192.1.1.1 ${port} typ ${candidateType}`;
-                  }
-
-                  return match;
-                }
-              );
-            }
+            event.roapMessage.sdp = modifySdpForIPv4(event.roapMessage.sdp);
 
             const sdpVideoPortZero = event.roapMessage.sdp.replace(
               /^m=(video) (?:\d+) /gim,
               'm=$1 0 '
             );
+
+            log.info(`after modification sdp: ${sdpVideoPortZero}`, {
+              file: CALL_FILE,
+              method: this.mediaRoapEventsListener.name,
+            });
 
             event.roapMessage.sdp = sdpVideoPortZero;
             this.localRoapMessage = event.roapMessage;
