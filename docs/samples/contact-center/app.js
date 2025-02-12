@@ -639,15 +639,13 @@ function register() {
 
 function handleTaskHydrate(currentTask) {
   task = currentTask;
-      
+
   if (!task || !task.data || !task.data.interaction) {
     console.error('task:hydrate --> No task data found.');
     alert('task:hydrate --> No task data found.');
     
     return;
   }
-
-  console.log('Task: ', task);
 
   const { data, webCallingService } = task;
   const { interaction, mediaResourceId, agentId } = data;

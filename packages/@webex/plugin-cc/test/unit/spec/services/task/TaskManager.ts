@@ -308,7 +308,7 @@ describe('TaskManager', () => {
     expect(offSpy).toHaveBeenCalledWith(LINE_EVENTS.INCOMING_CALL, offSpy.mock.calls[1][1]);
   });
 
-  it('should emit TASK_SYNC event on AGENT_CONTACT event', () => {
+  it('should emit TASK_HYDRATE event on AGENT_CONTACT event', () => {
     const payload = {
       data: {
         ...initalPayload.data,

@@ -79,7 +79,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     this.trigger(TASK_EVENTS.TASK_INCOMING, task);
   };
 
-  private handleTaskSync = (task: ITask) => {
+  private handleTaskHydrate = (task: ITask) => {
     // @ts-ignore
     this.trigger(TASK_EVENTS.TASK_HYDRATE, task);
   };
@@ -89,7 +89,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    */
   private incomingTaskListener() {
     this.taskManager.on(TASK_EVENTS.TASK_INCOMING, this.handleIncomingTask);
-    this.taskManager.on(TASK_EVENTS.TASK_HYDRATE, this.handleTaskSync);
+    this.taskManager.on(TASK_EVENTS.TASK_HYDRATE, this.handleTaskHydrate);
   }
 
   /**
@@ -230,7 +230,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
       this.taskManager.unregisterIncomingCallEvent();
       this.taskManager.off(TASK_EVENTS.TASK_INCOMING, this.handleIncomingTask);
-      this.taskManager.off(TASK_EVENTS.TASK_HYDRATE, this.handleTaskSync);
+      this.taskManager.off(TASK_EVENTS.TASK_HYDRATE, this.handleTaskHydrate);
       this.services.webSocketManager.off('message', this.handleWebSocketMessage);
 
       return logoutResponse;

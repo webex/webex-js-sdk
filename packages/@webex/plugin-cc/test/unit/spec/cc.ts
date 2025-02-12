@@ -569,11 +569,11 @@ describe('webex.cc', () => {
       );
     });
 
-    it('should trigger TASK_SYNC event with the task', () => {
+    it('should trigger TASK_HYDRATE event with the task', () => {
       const task = {id: 'task1'};
       const triggerSpy = jest.spyOn(webex.cc, 'trigger');
 
-      webex.cc['handleTaskSync'](task);
+      webex.cc['handleTaskHydrate'](task);
 
       expect(triggerSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_HYDRATE, task);
     });
