@@ -81,7 +81,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
   private handleTaskSync = (task: ITask) => {
     // @ts-ignore
-    this.trigger(TASK_EVENTS.TASK_SYNC, task);
+    this.trigger(TASK_EVENTS.TASK_HYDRATE, task);
   };
 
   /**
@@ -89,7 +89,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    */
   private incomingTaskListener() {
     this.taskManager.on(TASK_EVENTS.TASK_INCOMING, this.handleIncomingTask);
-    this.taskManager.on(TASK_EVENTS.TASK_SYNC, this.handleTaskSync);
+    this.taskManager.on(TASK_EVENTS.TASK_HYDRATE, this.handleTaskSync);
   }
 
   /**
@@ -203,7 +203,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
       this.services.webSocketManager.on('message', this.handleWebSocketMessage);
       this.incomingTaskListener();
-      this.taskManager.registerIncomingCallEvent();
 
       return loginResponse;
     } catch (error) {
@@ -231,6 +230,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
       this.taskManager.unregisterIncomingCallEvent();
       this.taskManager.off(TASK_EVENTS.TASK_INCOMING, this.handleIncomingTask);
+      this.taskManager.off(TASK_EVENTS.TASK_HYDRATE, this.handleTaskSync);
       this.services.webSocketManager.off('message', this.handleWebSocketMessage);
 
       return logoutResponse;

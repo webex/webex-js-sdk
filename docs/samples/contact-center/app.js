@@ -590,8 +590,8 @@ function register() {
       incomingCallListener.dispatchEvent(taskEvents);
     });
 
-    webex.cc.on('task:sync', (currentTask) => {
-      handleTaskSync(currentTask);
+    webex.cc.on('task:hydrate', (currentTask) => {
+      handleTaskHydrate(currentTask);
     });
 
     webex.cc.on('agent:stateChange', (data) => {
@@ -610,11 +610,12 @@ function register() {
     
 }
 
-function handleTaskSync(currentTask) {
+function handleTaskHydrate(currentTask) {
   task = currentTask;
       
-  if (!task || !task.data) {
-    console.error('task:sync --> No task data found.');
+  if (!task || !task.data || !task.data.interaction) {
+    console.error('task:hydrate --> No task data found.');
+    alert('task:hydrate --> No task data found.');
     
     return;
   }

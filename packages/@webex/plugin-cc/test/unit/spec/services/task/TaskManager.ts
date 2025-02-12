@@ -9,8 +9,7 @@ import Task from '../../../../../src/services/task';
 import {TASK_EVENTS} from '../../../../../src/services/task/types';
 import WebCallingService from '../../../../../src/services/WebCallingService';
 import config from '../../../../../src/config';
-import { wrap } from 'module';
-
+import {wrap} from 'module';
 
 describe('TaskManager', () => {
   let mockCall;
@@ -80,8 +79,8 @@ describe('TaskManager', () => {
       accept: jest.fn(),
       decline: jest.fn(),
       updateTaskData: jest.fn(),
-      data: taskDataMock
-    }
+      data: taskDataMock,
+    };
     taskManager.call = mockCall;
   });
 
@@ -281,8 +280,8 @@ describe('TaskManager', () => {
         type: CC_EVENTS.CONTACT_ENDED,
         agentId: '723a8ffb-a26e-496d-b14a-ff44fb83b64f',
         eventTime: 1733211616959,
-        eventType: "RoutingMessage",
-        interaction: {"state": "new"},
+        eventType: 'RoutingMessage',
+        interaction: {state: 'new'},
         interactionId: taskId,
         orgId: '6ecef209-9a34-4ed1-a07a-7ddd1dbe925a',
         trackingId: '575c0ec2-618c-42af-a61c-53aeb0a221ee',
@@ -298,7 +297,10 @@ describe('TaskManager', () => {
 
     expect(taskEmitSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_END, {wrapupRequired: false});
     expect(webCallListenerSpy).toHaveBeenCalledWith();
-    expect(callOffSpy).toHaveBeenCalledWith(CALL_EVENT_KEYS.REMOTE_MEDIA, callOffSpy.mock.calls[0][1]);
+    expect(callOffSpy).toHaveBeenCalledWith(
+      CALL_EVENT_KEYS.REMOTE_MEDIA,
+      callOffSpy.mock.calls[0][1]
+    );
 
     taskManager.unregisterIncomingCallEvent();
     expect(offSpy.mock.calls.length).toBe(2); // 1 for incoming call and 1 for remote media
@@ -317,7 +319,8 @@ describe('TaskManager', () => {
     const taskEmitSpy = jest.spyOn(taskManager, 'emit');
     webSocketManagerMock.emit('message', JSON.stringify(payload));
 
-    expect(taskEmitSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_SYNC, taskManager.currentTask);
+    expect(taskEmitSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_HYDRATE, taskManager.currentTask);
+    expect(taskManager.taskCollection[payload.data.interactionId]).toBe(taskManager.currentTask);
   });
 
   it('should emit TASK_END event on AGENT_WRAPUP event', () => {
@@ -531,7 +534,6 @@ describe('TaskManager', () => {
       },
     };
 
-
     webSocketManagerMock.emit('message', JSON.stringify(initalPayload));
 
     // Always spy on the updated task object after CONTACT_RESERVED is emitted
@@ -564,32 +566,32 @@ describe('TaskManager', () => {
     const reservedPayload = {
       data: {
         type: CC_EVENTS.AGENT_CONTACT_RESERVED,
-        agentId: "723a8ffb-a26e-496d-b14a-ff44fb83b64f",
+        agentId: '723a8ffb-a26e-496d-b14a-ff44fb83b64f',
         eventTime: 1733211616959,
-        eventType: "RoutingMessage",
+        eventType: 'RoutingMessage',
         interaction: {},
         interactionId: taskId,
-        orgId: "6ecef209-9a34-4ed1-a07a-7ddd1dbe925a",
-        trackingId: "575c0ec2-618c-42af-a61c-53aeb0a221ee",
+        orgId: '6ecef209-9a34-4ed1-a07a-7ddd1dbe925a',
+        trackingId: '575c0ec2-618c-42af-a61c-53aeb0a221ee',
         mediaResourceId: '0ae913a4-c857-4705-8d49-76dd3dde75e4',
         destAgentId: 'ebeb893b-ba67-4f36-8418-95c7492b28c2',
         owner: '723a8ffb-a26e-496d-b14a-ff44fb83b64f',
         queueMgr: 'aqm',
       },
     };
-  
+
     webSocketManagerMock.emit('message', JSON.stringify(reservedPayload));
-  
+
     const ronaPayload = {
       data: {
         type: CC_EVENTS.AGENT_CONTACT_OFFER_RONA,
-        agentId: "723a8ffb-a26e-496d-b14a-ff44fb83b64f",
+        agentId: '723a8ffb-a26e-496d-b14a-ff44fb83b64f',
         eventTime: 1733211616959,
-        eventType: "RoutingMessage",
+        eventType: 'RoutingMessage',
         interaction: {},
         interactionId: taskId,
-        orgId: "6ecef209-9a34-4ed1-a07a-7ddd1dbe925a",
-        trackingId: "575c0ec2-618c-42af-a61c-53aeb0a221ee",
+        orgId: '6ecef209-9a34-4ed1-a07a-7ddd1dbe925a',
+        trackingId: '575c0ec2-618c-42af-a61c-53aeb0a221ee',
         mediaResourceId: '0ae913a4-c857-4705-8d49-76dd3dde75e4',
         destAgentId: 'ebeb893b-ba67-4f36-8418-95c7492b28c2',
         owner: '723a8ffb-a26e-496d-b14a-ff44fb83b64f',
@@ -597,12 +599,12 @@ describe('TaskManager', () => {
         reason: 'USER_REJECTED',
       },
     };
-  
+
     taskManager.taskCollection[taskId] = taskManager.currentTask;
     const taskEmitSpy = jest.spyOn(taskManager.currentTask, 'emit');
-  
+
     webSocketManagerMock.emit('message', JSON.stringify(ronaPayload));
-  
+
     expect(taskEmitSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_REJECT, ronaPayload.data.reason);
     expect(taskManager.getTask(taskId)).toBeUndefined();
   });

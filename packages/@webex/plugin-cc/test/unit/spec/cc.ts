@@ -21,8 +21,7 @@ import {CC_FILE, AGENT_STATE_CHANGE, AGENT_MULTI_LOGIN} from '../../../src/const
 import '../../../__mocks__/workerMock';
 import {Profile} from '../../../src/services/config/types';
 import TaskManager from '../../../src/services/task/TaskManager';
-import { TASK_EVENTS } from '../../../src/services/task/types';
-
+import {TASK_EVENTS} from '../../../src/services/task/types';
 
 jest.mock('../../../src/logger-proxy', () => ({
   __esModule: true,
@@ -46,7 +45,6 @@ describe('webex.cc', () => {
   let mockContact;
   let mockTaskManager;
   let mockWebSocketManager;
-
 
   beforeEach(() => {
     webex = MockWebex({
@@ -85,7 +83,7 @@ describe('webex.cc', () => {
       end: jest.fn(),
       wrapup: jest.fn(),
       cancelTask: jest.fn(),
-      cancelCtq: jest.fn()
+      cancelCtq: jest.fn(),
     };
 
     // Mock Services instance
@@ -104,7 +102,7 @@ describe('webex.cc', () => {
       connectionService: {
         on: jest.fn(),
       },
-      contact: mockContact
+      contact: mockContact,
     };
 
     mockTaskManager = {
@@ -121,8 +119,8 @@ describe('webex.cc', () => {
       on: jest.fn(),
       off: jest.fn(),
       emit: jest.fn(),
-      unregisterIncomingCallEvent: jest.fn()
-    }
+      unregisterIncomingCallEvent: jest.fn(),
+    };
 
     jest.spyOn(Services, 'getInstance').mockReturnValue(mockServicesInstance);
     jest.spyOn(TaskManager, 'getTaskManager').mockReturnValue(mockTaskManager);
@@ -338,10 +336,10 @@ describe('webex.cc', () => {
         },
       });
       expect(configSpy).toHaveBeenCalled();
-      expect(LoggerProxy.log).toHaveBeenCalledWith(
-        'agent config is fetched successfully',
-        {module: CC_FILE, method: 'mockConstructor'}
-      );
+      expect(LoggerProxy.log).toHaveBeenCalledWith('agent config is fetched successfully', {
+        module: CC_FILE,
+        method: 'mockConstructor',
+      });
       expect(reloadSpy).not.toHaveBeenCalled();
       expect(result).toEqual(mockAgentProfile);
     });
@@ -398,44 +396,40 @@ describe('webex.cc', () => {
         },
       });
       expect(result).toEqual({});
-       
+
       const onSpy = jest.spyOn(mockTaskManager, 'on');
       const emitSpy = jest.spyOn(webex.cc, 'trigger');
       const ccEmitSpy = jest.spyOn(webex.cc, 'emit');
       const incomingCallCb = onSpy.mock.calls[0][1];
-      
+
       expect(onSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_INCOMING, incomingCallCb);
-      
+
       incomingCallCb(mockTask);
-  
+
       expect(emitSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_INCOMING, mockTask);
-       // Verify message event listener
-      const messageCallback = mockWebSocketManager.on.mock.calls.find(call => call[0] === 'message')[1];
+      // Verify message event listener
+      const messageCallback = mockWebSocketManager.on.mock.calls.find(
+        (call) => call[0] === 'message'
+      )[1];
       const agentStateChangeEventData = {
         type: CC_EVENTS.AGENT_STATE_CHANGE,
-        data: { some: 'data' },
+        data: {some: 'data'},
       };
 
       const agentMultiLoginEventData = {
         type: CC_EVENTS.AGENT_MULTI_LOGIN,
         data: {some: 'data'},
-      }
+      };
 
       // Simulate receiving a message event
       messageCallback(JSON.stringify(agentStateChangeEventData));
 
-      expect(ccEmitSpy).toHaveBeenCalledWith(
-        AGENT_STATE_CHANGE,
-        agentStateChangeEventData.data
-      );
+      expect(ccEmitSpy).toHaveBeenCalledWith(AGENT_STATE_CHANGE, agentStateChangeEventData.data);
 
       // Simulate receiving a message event
       messageCallback(JSON.stringify(agentMultiLoginEventData));
 
-      expect(ccEmitSpy).toHaveBeenCalledWith(
-        AGENT_MULTI_LOGIN,
-        agentMultiLoginEventData.data
-      )
+      expect(ccEmitSpy).toHaveBeenCalledWith(AGENT_MULTI_LOGIN, agentMultiLoginEventData.data);
     });
 
     it('should login successfully with other LoginOption', async () => {
@@ -507,7 +501,14 @@ describe('webex.cc', () => {
 
       expect(stationLogoutMock).toHaveBeenCalledWith({data: data});
       expect(mockTaskManager.unregisterIncomingCallEvent).toHaveBeenCalledWith();
-      expect(mockTaskManager.off).toHaveBeenCalledWith(TASK_EVENTS.TASK_INCOMING, expect.any(Function));
+      expect(mockTaskManager.off).toHaveBeenCalledWith(
+        TASK_EVENTS.TASK_INCOMING,
+        expect.any(Function)
+      );
+      expect(mockTaskManager.off).toHaveBeenCalledWith(
+        TASK_EVENTS.TASK_HYDRATE,
+        expect.any(Function)
+      );
       expect(mockWebSocketManager.off).toHaveBeenCalledWith('message', expect.any(Function));
       expect(result).toEqual(response);
     });
@@ -574,7 +575,7 @@ describe('webex.cc', () => {
 
       webex.cc['handleTaskSync'](task);
 
-      expect(triggerSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_SYNC, task);
+      expect(triggerSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_HYDRATE, task);
     });
   });
 
@@ -804,7 +805,10 @@ describe('webex.cc', () => {
       expect(registerWebCallingLineSpy).toHaveBeenCalled();
       expect(incomingTaskListenerSpy).toHaveBeenCalled();
       expect(webSocketManagerOnSpy).toHaveBeenCalledWith('message', expect.any(Function));
-      expect(mockTaskManager.on).toHaveBeenCalledWith(TASK_EVENTS.TASK_SYNC, expect.any(Function));
+      expect(mockTaskManager.on).toHaveBeenCalledWith(
+        TASK_EVENTS.TASK_HYDRATE,
+        expect.any(Function)
+      );
     });
 
     it('should handle AGENT_NOT_FOUND error silently', async () => {
@@ -824,14 +828,14 @@ describe('webex.cc', () => {
         {module: CC_FILE, method: 'silentRelogin'}
       );
     });
-  
+
     it('should handle errors during silent relogin', async () => {
       const error = new Error('Error while performing silentReLogin');
       jest.spyOn(webex.cc.services.agent, 'reload').mockRejectedValue(error);
-  
+
       await expect(webex.cc['silentRelogin']()).rejects.toThrow(error);
     });
-  
+
     it('should update agentConfig with deviceType during silent relogin for EXTENSION', async () => {
       const mockReLoginResponse = {
         data: {
@@ -842,22 +846,22 @@ describe('webex.cc', () => {
           dn: '12345',
         },
       };
-  
+
       // Mock the agentConfig
       webex.cc.agentConfig = {
         agentId: 'agentId',
         agentProfileID: 'test-agent-profile-id',
         isAgentLoggedIn: false,
       } as Profile;
-  
+
       const registerWebCallingLineSpy = jest.spyOn(
         webex.cc.webCallingService,
         'registerWebCallingLine'
       );
       jest.spyOn(webex.cc.services.agent, 'reload').mockResolvedValue(mockReLoginResponse);
-  
+
       await webex.cc['silentRelogin']();
-  
+
       expect(webex.cc.agentConfig.deviceType).toBe(LoginOption.EXTENSION);
       expect(webex.cc.agentConfig.defaultDn).toBe('12345');
     });
@@ -873,18 +877,18 @@ describe('webex.cc', () => {
           subStatus: 'subStatusValue',
         },
       };
-  
+
       // Mock the agentConfig
       webex.cc.agentConfig = {
         agentId: 'agentId',
         agentProfileID: 'test-agent-profile-id',
         isAgentLoggedIn: false,
       } as Profile;
-  
+
       jest.spyOn(webex.cc.services.agent, 'reload').mockResolvedValue(mockReLoginResponse);
-  
+
       await webex.cc['silentRelogin']();
-  
+
       expect(webex.cc.agentConfig.deviceType).toBe(LoginOption.AGENT_DN);
       expect(webex.cc.agentConfig.defaultDn).toBe('67890');
     });
@@ -901,10 +905,7 @@ describe('webex.cc', () => {
     it('should set up connectionLost and message event listener', () => {
       webex.cc.setupEventListeners();
 
-      expect(connectionServiceOnSpy).toHaveBeenCalledWith(
-        'connectionLost',
-        expect.any(Function)
-      );
+      expect(connectionServiceOnSpy).toHaveBeenCalledWith('connectionLost', expect.any(Function));
     });
   });
 });

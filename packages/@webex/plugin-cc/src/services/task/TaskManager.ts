@@ -68,7 +68,7 @@ export default class TaskManager extends EventEmitter {
           case CC_EVENTS.AGENT_CONTACT:
             this.currentTask = new Task(this.contact, this.webCallingService, payload.data);
             this.taskCollection[payload.data.interactionId] = this.currentTask;
-            this.emit(TASK_EVENTS.TASK_SYNC, this.currentTask);
+            this.emit(TASK_EVENTS.TASK_HYDRATE, this.currentTask);
             break;
           case CC_EVENTS.AGENT_CONTACT_RESERVED:
             this.currentTask = new Task(this.contact, this.webCallingService, payload.data);

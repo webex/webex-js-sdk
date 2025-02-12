@@ -49,7 +49,7 @@ export const TASK_EVENTS = {
   TASK_END: 'task:end',
   TASK_WRAPUP: 'task:wrapup',
   TASK_REJECT: 'task:rejected',
-  TASK_SYNC: 'task:sync',
+  TASK_HYDRATE: 'task:hydrate',
 } as const;
 
 export type TASK_EVENTS = Enum<typeof TASK_EVENTS>;
