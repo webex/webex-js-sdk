@@ -114,6 +114,15 @@ export interface DataSourceUpdateRequest extends DataSourceRequest {
   errorMessage?: string;
 }
 
+/**
+ * Represents the response from a data source list.
+ *
+ * @public
+ */
+export interface DataSourceResponseList<T> {
+  items: T[];
+}
+
 export interface Cancellable {
   cancel: () => void;
 }
