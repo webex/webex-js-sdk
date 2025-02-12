@@ -119,7 +119,7 @@ export interface DataSourceUpdateRequest extends DataSourceRequest {
  *
  * @public
  */
-export interface DataSourceResponseList<T> {
+export interface DataSourceListResponse<T> {
   items: T[];
 }
 

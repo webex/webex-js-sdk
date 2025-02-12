@@ -1,5 +1,5 @@
 import DataSourceClient from '../../../../src/data-source-client';
-import { DataSourceRequest, DataSourceResponse, DataSourceResponseList } from '../../../../src/data-source-client/types';
+import { DataSourceRequest, DataSourceResponse, DataSourceListResponse } from '../../../../src/data-source-client/types';
 import { HttpClient, ApiResponse } from '../../../../src/http-client/types';
 import { decodeJwt } from 'jose';
 import log from '../../../../src/Logger';
@@ -100,7 +100,7 @@ describe('DataSourceClient', () => {
   });
 
   it('should list all data sources', async () => {
-    const response: ApiResponse<DataSourceResponseList<DataSourceResponse>> = {
+    const response: ApiResponse<DataSourceListResponse<DataSourceResponse>> = {
       data: {
         items: [
           {
