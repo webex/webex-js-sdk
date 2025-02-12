@@ -121,13 +121,16 @@
                   <button id="loginAgent" disabled class="btn btn-primary my-3" onclick="doAgentLogin()">Login</button>
                   <button id="logoutAgent" class="btn btn-primary my-3 ml-2 hidden" onclick="logoutAgent()">Logout</button>
                 </fieldset>
-                <fieldset>
+                <fieldset style="display: flex; flex-direction: column; align-items: flex-start; gap: 10px;">
                   <legend>Agent status</legend>
                   <select name= "idleCodesDropdown" id="idleCodesDropdown" class="form-control w-auto my-3" onchange="handleAgentStatus(event)">
                   <option value="" selected hidden>Select Idle Codes</option>
                   </select>
                   <button id="setAgentStatus" disabled class="btn btn-primary my-3 ml-2" onclick="setAgentStatus()">Set Agent
                     Status</button>
+                  <div class="timer-container my-3">
+                  <span id="timerDisplay">00:00:00</span>
+                  </div>
                 </fieldset>
               </div>
               <fieldset id="buddyAgentsBox">
