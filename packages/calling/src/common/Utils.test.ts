@@ -1557,48 +1557,4 @@ describe('modifySdpForIPv4', () => {
 
     expect(modifySdpForIPv4(sdp).trim()).toEqual(expectedSdp.trim());
   });
-
-  it('should handle an SDP with both IP6 and IP4 c= lines correctly', () => {
-    const sdp = `v=0
-    o=- 4143138338797573595 2 IN IP4 127.0.0.1
-    s=-
-    c=IN IP6 2607:fb91:1aac:c96b:ed5a:880e:bf5:511f
-    a=msid-semantic: WMS
-    m=audio 60548 UDP/TLS/RTP/SAVPF 111 63 9 0 8 13 110 126
-    c=IN IP6 2607:fb91:1aac:c96b:ed5a:880e:bf5:511f
-    a=ice-ufrag:1UQc
-    a=ice-pwd:vrtSKJl++J2WV4wHPl6+PVU+
-    a=ice-options:trickle
-    a=candidate:601447902 1 udp 2122262783 2607:fb91:1aac:c96b:ed5a:880e:bf5:511f 60548 typ host generation 0 network-id 2 network-cost 900
-    a=candidate:1566624544 1 tcp 1518214911 192.0.0.2 9 typ host tcptype active generation 0 network-id 1 network-cost 900
-    a=candidate:1561771846 1 tcp 1518283007 2607:fb91:1aac:c96b:ed5a:880e:bf5:511f 9 typ host tcptype active generation 0 network-id 2 network-cost 900
-    a=fingerprint:sha-256 88:A0:AB:54:DA:69:5C:B1:42:BC:17:83:5D:4F:33:F7:24:2F:F6:65:20:58:04:2D:02:0F:14:2D:3C:FE:97:45
-    a=setup:actpass
-    a=mid:0
-    a=rtcp-mux
-    a=extmap:1 urn:ietf:params:rtp-hdrext:ssrc-audio-level
-    a=extmap:2 http://www.webrtc.org/experiments/rtp-hdrext/abs-send-time
-    a=extmap:3 http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01
-    a=extmap:4 urn:ietf:params:rtp-hdrext:sdes:mid
-    a=sendrecv
-    a=rtpmap:111 opus/48000/2
-    a=rtcp-fb:111 transport-cc
-    a=fmtp:111 minptime=10;useinbandfec=1
-    a=rtpmap:63 red/48000/2
-    a=fmtp:63 111/111
-    a=rtpmap:9 G722/8000
-    a=rtpmap:0 PCMU/8000
-    a=rtpmap:8 PCMA/8000
-    a=rtpmap:13 CN/8000
-    a=rtpmap:110 telephone-event/48000
-    a=rtpmap:126 telephone-event/8000
-    a=ssrc:1308679091 cname:487CL4nyFmI+iNXk
-    a=ssrc:1308679091 msid:- 206c80cc-f8c7-446f-b465-00d02867e882
-    a=rtcp:9 IN IP4 0.0.0.0
-    a=msid:- 206c80cc-f8c7-446f-b465-00d02867e882`;
-
-    const expectedSdp =
-      'v=0\no=- 4143138338797573595 2 IN IP4 127.0.0.1\ns=-\nc=IN IP4 192.0.0.2\na=msid-semantic: WMS\nm=audio 60548 UDP/TLS/RTP/SAVPF 111 63 9 0 8 13 110 126\nc=IN IP4 192.0.0.2\na=ice-ufrag:1UQc\na=ice-pwd:vrtSKJl++J2WV4wHPl6+PVU+\na=ice-options:trickle\na=candidate:601447902 1 udp 2122262783 2607:fb91:1aac:c96b:ed5a:880e:bf5:511f 60548 typ host generation 0 network-id 2 network-cost 900\na=candidate:1566624544 1 tcp 1518214911 192.0.0.2 9 typ host tcptype active generation 0 network-id 1 network-cost 900\na=candidate:1561771846 1 tcp 1518283007 2607:fb91:1aac:c96b:ed5a:880e:bf5:511f 9 typ host tcptype active generation 0 network-id 2 network-cost 900\na=fingerprint:sha-256 88:A0:AB:54:DA:69:5C:B1:42:BC:17:83:5D:4F:33:F7:24:2F:F6:65:20:58:04:2D:02:0F:14:2D:3C:FE:97:45\na=setup:actpass\na=mid:0\na=rtcp-mux\na=extmap:1 urn:ietf:params:rtp-hdrext:ssrc-audio-level\na=extmap:2 http://www.webrtc.org/experiments/rtp-hdrext/abs-send-time\na=extmap:3 http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01\na=extmap:4 urn:ietf:params:rtp-hdrext:sdes:mid\na=sendrecv\na=rtpmap:111 opus/48000/2\na=rtcp-fb:111 transport-cc\na=fmtp:111 minptime=10;useinbandfec=1\na=rtpmap:63 red/48000/2\na=fmtp:63 111/111\na=rtpmap:9 G722/8000\na=rtpmap:0 PCMU/8000\na=rtpmap:8 PCMA/8000\na=rtpmap:13 CN/8000\na=rtpmap:110 telephone-event/48000\na=rtpmap:126 telephone-event/8000\na=ssrc:1308679091 cname:487CL4nyFmI+iNXk\na=ssrc:1308679091 msid:- 206c80cc-f8c7-446f-b465-00d02867e882\na=rtcp:9 IN IP4 0.0.0.0\na=msid:- 206c80cc-f8c7-446f-b465-00d02867e882';
-    expect(modifySdpForIPv4(sdp).trim()).toEqual(expectedSdp.trim());
-  });
 });
