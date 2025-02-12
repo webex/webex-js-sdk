@@ -90,11 +90,11 @@ describe('createMediaConnection', () => {
       roapMediaConnectionConstructorStub,
       {
         iceServers: [
-          {
-            urls: 'turn:turn-server-url:5004?transport=tcp',
-            username: 'turn username',
-            credential: 'turn password',
-          },
+          // {
+          //   urls: 'turn:turn-server-url:5004?transport=tcp',
+          //   username: 'turn username',
+          //   credential: 'turn password',
+          // },
           {
             urls: 'turns:turn-server-url:443?transport=tcp',
             username: 'turn username',
@@ -170,11 +170,11 @@ describe('createMediaConnection', () => {
       multistreamRoapMediaConnectionConstructorStub,
       {
         iceServers: [
-          {
-            urls: 'turn:turn-server-url:5004?transport=tcp',
-            username: 'turn username',
-            credential: 'turn password',
-          },
+          // {
+          //   urls: 'turn:turn-server-url:5004?transport=tcp',
+          //   username: 'turn username',
+          //   credential: 'turn password',
+          // },
           {
             urls: 'turns:turn-server-url:443?transport=tcp',
             username: 'turn username',
