@@ -5,27 +5,27 @@ import {
   ICallingClient,
   ILine,
   LINE_EVENTS,
-  CallingClientConfig,
+  ServiceIndicator,
   LocalMicrophoneStream,
   CALL_EVENT_KEYS,
+  LOGGER,
 } from '@webex/calling';
 import {LoginOption, WebexSDK} from '../types';
 import {TIMEOUT_DURATION, WEB_CALLING_SERVICE_FILE} from '../constants';
 import LoggerProxy from '../logger-proxy';
+import {DEFAULT_RTMS_DOMAIN, POST_AUTH, WCC_CALLING_RTMS_DOMAIN} from './constants';
 
 export default class WebCallingService extends EventEmitter {
   private callingClient: ICallingClient;
-  private callingClientConfig: CallingClientConfig;
   private line: ILine;
   private call: ICall | undefined;
   private webex: WebexSDK;
   public loginOption: LoginOption;
   private callTaskMap: Map<string, string>;
 
-  constructor(webex: WebexSDK, callingClientConfig: CallingClientConfig) {
+  constructor(webex: WebexSDK) {
     super();
     this.webex = webex;
-    this.callingClientConfig = callingClientConfig;
     this.callTaskMap = new Map();
   }
 
@@ -62,8 +62,41 @@ export default class WebCallingService extends EventEmitter {
     }
   }
 
+  private async getRTMSDomain() {
+    await this.webex.internal.services.waitForCatalog(POST_AUTH);
+
+    const rtmsURL = this.webex.internal.services.get(WCC_CALLING_RTMS_DOMAIN);
+
+    try {
+      const url = new URL(rtmsURL);
+
+      return url.hostname;
+    } catch (error) {
+      LoggerProxy.error(
+        `Invalid URL from u2c catalogue: ${rtmsURL} so falling back to default domain`,
+        {
+          module: WEB_CALLING_SERVICE_FILE,
+        }
+      );
+
+      return DEFAULT_RTMS_DOMAIN;
+    }
+  }
+
   public async registerWebCallingLine(): Promise<void> {
-    this.callingClient = await createClient(this.webex as any, this.callingClientConfig);
+    const rtmsDomain = await this.getRTMSDomain(); // get the RTMS domain from the u2c catalogue
+
+    const callingClientConfig = {
+      logger: {
+        level: LOGGER.INFO,
+      },
+      serviceData: {
+        indicator: ServiceIndicator.CONTACT_CENTER,
+        domain: rtmsDomain,
+      },
+    };
+
+    this.callingClient = await createClient(this.webex as any, callingClientConfig);
     this.line = Object.values(this.callingClient.getLines())[0];
 
     this.line.on(LINE_EVENTS.UNREGISTERED, () => {

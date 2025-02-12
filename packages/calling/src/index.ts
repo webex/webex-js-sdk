@@ -53,3 +53,4 @@ export {ICall, TransferType} from './CallingClient/calling/types';
 export {LOGGER} from './Logger/types';
 export {LocalMicrophoneStream} from '@webex/media-helpers';
 export {CallingClientConfig} from './CallingClient/types';
+export {ServiceIndicator} from './common/types';

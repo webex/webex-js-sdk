@@ -83,7 +83,41 @@ export enum LOGGING_LEVEL {
   info = 'INFO',
   trace = 'TRACE',
 }
-
+interface IWebexInternal {
+  mercury: {
+    on: Listener;
+    off: ListenerOff;
+    connected: boolean;
+    connecting: boolean;
+  };
+  device: {
+    url: string;
+    userId: string;
+    orgId: string;
+    version: string;
+    callingBehavior: string;
+  };
+  presence: unknown;
+  services: {
+    get: (service: string) => string;
+    waitForCatalog: (service: string) => Promise<void>;
+    _hostCatalog: Record<string, ServiceHost[]>;
+    _serviceUrls: {
+      mobius: string;
+      identity: string;
+      janus: string;
+      wdm: string;
+      broadworksIdpProxy: string;
+      hydra: string;
+      mercuryApi: string;
+      'ucmgmt-gateway': string;
+      contactsService: string;
+    };
+  };
+  metrics: {
+    submitClientMetrics: (name: string, data: unknown) => void;
+  };
+}
 export interface WebexSDK {
   version: string;
   canAuthorize: boolean;
@@ -95,39 +129,7 @@ export interface WebexSDK {
   request: <T>(payload: WebexRequestPayload) => Promise<T>;
   once: (event: string, callBack: () => void) => void;
   // internal plugins
-  internal: {
-    mercury: {
-      on: Listener;
-      off: ListenerOff;
-      connected: boolean;
-      connecting: boolean;
-    };
-    device: {
-      url: string;
-      userId: string;
-      orgId: string;
-      version: string;
-      callingBehavior: string;
-    };
-    presence: unknown;
-    services: {
-      _hostCatalog: Record<string, ServiceHost[]>;
-      _serviceUrls: {
-        mobius: string;
-        identity: string;
-        janus: string;
-        wdm: string;
-        broadworksIdpProxy: string;
-        hydra: string;
-        mercuryApi: string;
-        'ucmgmt-gateway': string;
-        contactsService: string;
-      };
-    };
-    metrics: {
-      submitClientMetrics: (name: string, data: unknown) => void;
-    };
-  };
+  internal: IWebexInternal;
   // public plugins
   logger: Logger;
 }

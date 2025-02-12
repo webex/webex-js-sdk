@@ -63,7 +63,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         connectionConfig: this.getConnectionConfig(),
       });
 
-      this.webCallingService = new WebCallingService(this.$webex, this.$config.callingClientConfig);
+      this.webCallingService = new WebCallingService(this.$webex);
       this.taskManager = TaskManager.getTaskManager(
         this.services.contact,
         this.webCallingService,
