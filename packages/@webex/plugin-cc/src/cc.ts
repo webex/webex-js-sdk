@@ -442,7 +442,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       mediaType: 'telephony',
       outboundType: 'OUTDIAL',
    * }
-   * startOutdial(outDialPayload).then(()=>{}).catch(()=>{});
+   * webex.cc.startOutdial(outDialPayload).then(()=>{}).catch(()=>{});
    * ```
    */
 
