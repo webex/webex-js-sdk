@@ -2524,6 +2524,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
           }
 
           case RoapScenario.ANSWER:
+            event.roapMessage.sdp = modifySdpForIPv4(event.roapMessage.sdp);
             this.localRoapMessage = event.roapMessage;
             this.sendMediaStateMachineEvt({type: 'E_SEND_ROAP_ANSWER', data: event.roapMessage});
             break;
@@ -2533,6 +2534,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
             break;
 
           case RoapScenario.OFFER_RESPONSE:
+            event.roapMessage.sdp = modifySdpForIPv4(event.roapMessage.sdp);
             this.localRoapMessage = event.roapMessage;
             this.sendMediaStateMachineEvt({type: 'E_SEND_ROAP_OFFER', data: event.roapMessage});
             break;
