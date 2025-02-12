@@ -3772,11 +3772,11 @@ describe('plugin-meetings', () => {
             expectedDebugId = `MC-${meeting.id.substring(0, 4)}`;
             expectedMediaConnectionConfig = {
               iceServers: [
-                {
-                  urls: 'turn:turn-server-url:5004?transport=tcp',
-                  username: 'turn user',
-                  credential: 'turn password',
-                },
+                // {
+                //   urls: 'turn:turn-server-url:5004?transport=tcp',
+                //   username: 'turn user',
+                //   credential: 'turn password',
+                // },
                 {
                   urls: 'turns:turn-server-url:443?transport=tcp',
                   username: 'turn user',

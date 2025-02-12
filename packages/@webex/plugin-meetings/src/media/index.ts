@@ -163,17 +163,17 @@ Media.createMediaConnection = (
   // we might not have any TURN server if TURN discovery failed or wasn't done or
   // we might get an empty TURN url if we land on a video mesh node
   if (turnServerInfo?.url) {
-    if (!isBrowser('firefox')) {
-      let bareTurnServer = turnServerInfo.url;
-      bareTurnServer = bareTurnServer.replace('turns:', 'turn:');
-      bareTurnServer = bareTurnServer.replace('443', '5004');
+    // if (!isBrowser('firefox')) {
+    //   let bareTurnServer = turnServerInfo.url;
+    //   bareTurnServer = bareTurnServer.replace('turns:', 'turn:');
+    //   bareTurnServer = bareTurnServer.replace('443', '5004');
 
-      iceServers.push({
-        urls: bareTurnServer,
-        username: turnServerInfo.username || '',
-        credential: turnServerInfo.password || '',
-      });
-    }
+    //   iceServers.push({
+    //     urls: bareTurnServer,
+    //     username: turnServerInfo.username || '',
+    //     credential: turnServerInfo.password || '',
+    //   });
+    // }
 
     // TURN-TLS server
     iceServers.push({
