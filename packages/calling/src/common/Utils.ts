@@ -1532,7 +1532,10 @@ export function modifySdpForIPv4(sdp: string): string {
 
     return sdp;
   } catch (error) {
-    console.error('Error modifying SDP for IPv4:', error);
+    log.warn(`Error modifying SDP for IPv4 compatibility: ${error}`, {
+      file: UTILS_FILE,
+      method: modifySdpForIPv4.name,
+    });
 
     return sdp; // Return original SDP in case of an error
   }
