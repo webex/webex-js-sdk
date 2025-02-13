@@ -16,6 +16,7 @@ import {LOGGING_LEVEL, LogContext, LOGGER, LOG_PREFIX} from './types';
  */
 
 let currentLogLevel = LOGGING_LEVEL.error;
+const logTextArea = document.getElementById('logs') as HTMLTextAreaElement;
 
 /**
  * A wrapper around console which prints to stderr or stdout
@@ -25,6 +26,7 @@ let currentLogLevel = LOGGING_LEVEL.error;
  * @param level -  Log level.
  */
 const writeToConsole = (message: string, level: LOGGER) => {
+  logTextArea.value += `${message}\n`;
   switch (level) {
     case LOGGER.INFO:
     case LOGGER.LOG: {

@@ -88,6 +88,7 @@ const cfaDataElem = document.querySelector('#callforwardalways-data');
 const makeCallBtn = document.querySelector('#create-call-action');
 const muteElm = document.getElementById('mute_button');
 const bnrButton = document.getElementById('bnr-button');
+const logsTextAreaElm = document.getElementById('logs');
 
 let base64;
 let audio64;
@@ -245,7 +246,7 @@ async function initCalling(e) {
   }
 
   const loggerConfig = {
-    level: 'info'
+    level: 'info',
   }
 
   const {region, country, guestName} = credentialsFormElm.elements;
@@ -341,6 +342,12 @@ function getSettings() {
   fetchVoicemailSetting();
   fetchCallWaitingSetting();
   fetchDNDSetting();
+}
+
+function copyLogs()
+{
+  logsTextAreaElm.select();
+  document.execCommand('copy');
 }
 
 function toggleDisplay(elementId, status) {
