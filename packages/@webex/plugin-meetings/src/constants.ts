@@ -545,6 +545,11 @@ export const ERROR_DICTIONARY = {
     MESSAGE: 'An error occurred while the join webinar.',
     CODE: 16,
   },
+  MULTISTREAM_NOT_SUPPORTED: {
+    NAME: 'MultistreamNotSupported',
+    MESSAGE: 'Client asked for multistream backend (Homer), but got something else instead',
+    CODE: 17,
+  },
 };
 
 export const FLOOR_ACTION = {

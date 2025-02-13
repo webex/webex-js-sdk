@@ -413,6 +413,51 @@ describe('live-annotation', () => {
         });
       });
     });
-  });
 
+    describe('#deregisterEvents', () => {
+      let llmOn;
+      let llmOff;
+      let mercuryOn;
+      let mercuryOff;
+
+      beforeEach(() => {
+        llmOn = sinon.spy(webex.internal.llm, 'on');
+        llmOff = sinon.spy(webex.internal.llm, 'off');
+        mercuryOn = sinon.spy(webex.internal.mercury, 'on');
+        mercuryOff = sinon.spy(webex.internal.mercury, 'off');
+      });
+
+      it('cleans up events', () => {
+        annotationService.locusUrlUpdate(locusUrl);
+        assert.calledWith(
+          mercuryOn,
+          'event:locus.approval_request',
+          annotationService.eventCommandProcessor,
+          annotationService
+        );
+        assert.calledWith(
+          llmOn,
+          'event:relay.event',
+          annotationService.eventDataProcessor,
+          annotationService
+        );
+        assert.match(annotationService.hasSubscribedToEvents, true);
+
+        annotationService.deregisterEvents();
+        assert.calledWith(llmOff, 'event:relay.event', annotationService.eventDataProcessor);
+        assert.calledWith(
+          mercuryOff,
+          'event:locus.approval_request',
+          annotationService.eventCommandProcessor
+        );
+        assert.match(annotationService.hasSubscribedToEvents, false);
+      });
+
+      it('does not call llm off if events have not been registered', () => {
+        annotationService.deregisterEvents();
+        assert.notCalled(llmOff);
+        assert.notCalled(mercuryOff);
+      });
+    });
+  });
 });

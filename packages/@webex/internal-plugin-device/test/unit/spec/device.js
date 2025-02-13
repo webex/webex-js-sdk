@@ -419,6 +419,48 @@ describe('plugin-device', () => {
     });
    });
 
+    describe('#unregister()', () => {
+      it('resolves immediately if the device is not registered', async () => {
+        const requestSpy = sinon.spy(device, 'request');
+
+        device.set('registered', false);
+
+        await device.unregister();
+
+        assert.notCalled(requestSpy);
+      });
+
+      it('clears the device in the event of 404', async () => {
+        sinon.stub(device, 'request').rejects({statusCode: 404});
+
+        const clearSpy = sinon.spy(device, 'clear');
+
+        await assert.isRejected(device.unregister());
+
+        assert.calledWith(device.request, {
+          uri: 'https://locus-a.wbx2.com/locus/api/v1/devices/88888888-4444-4444-4444-CCCCCCCCCCCC',
+          method: 'DELETE',
+        });
+
+        assert.calledOnce(clearSpy);
+      });
+
+      it('does not clear the device in the event of non 404 failure', async () => {
+        sinon.stub(device, 'request').rejects(new Error('some error'));
+
+        const clearSpy = sinon.spy(device, 'clear');
+
+        await assert.isRejected(device.unregister());
+
+        assert.calledWith(device.request, {
+          uri: 'https://locus-a.wbx2.com/locus/api/v1/devices/88888888-4444-4444-4444-CCCCCCCCCCCC',
+          method: 'DELETE',
+        });
+
+        assert.notCalled(clearSpy);
+      });
+    });
+
     describe('#register()', () => {
       const setup = (config = {}) => {
         webex.internal.metrics.submitClientMetrics = sinon.stub();
@@ -450,6 +492,7 @@ describe('plugin-device', () => {
 
       it('calls delete devices when errors with User has excessive device registrations', async () => {
         setup();
+        sinon.stub(device, 'canRegister').callsFake(() => Promise.resolve());
         const deleteDeviceSpy = sinon.stub(device, 'deleteDevices').callsFake(() => Promise.resolve());
         const registerStub = sinon.stub(device, '_registerInternal');
         
@@ -468,6 +511,7 @@ describe('plugin-device', () => {
       it('does not call delete devices when some other error', async () => {
         setup();
 
+        sinon.stub(device, 'canRegister').callsFake(() => Promise.resolve());
         const deleteDeviceSpy = sinon.stub(device, 'deleteDevices').callsFake(() => Promise.resolve());
         const registerStub = sinon.stub(device, '_registerInternal').rejects(new Error('some error'));
 
@@ -643,6 +687,23 @@ describe('plugin-device', () => {
         await device.register({includeDetails: CatalogDetails.websocket});
 
         assert.calledWith(refreshSpy, {includeDetails: CatalogDetails.websocket});
+      });
+
+      it('works when request returns 404 when already registered', async () => {
+        setup();
+        
+        sinon.stub(device, 'canRegister').callsFake(() => Promise.resolve());
+
+        const requestStub = sinon.stub(device, 'request');
+
+        requestStub.onFirstCall().rejects({statusCode: 404});
+        requestStub.onSecondCall().resolves({some: 'data'});
+
+        device.set('registered', true);
+
+        await device.register();
+
+        assert.calledWith(device.processRegistrationSuccess, {some: 'data'});
       });
     });
 
