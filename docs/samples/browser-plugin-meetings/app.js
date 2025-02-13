@@ -108,7 +108,7 @@ function generateWebexConfig({credentials}) {
       services: {
         discovery: {
           u2c: 'https://u2c-intb.ciscospark.com/u2c/api/v1',
-          hydra: 'https://apialpha.ciscospark.com/v1/'
+          hydra: 'https://hydra-intb.ciscospark.com/v1/'
         }
       }
     }),

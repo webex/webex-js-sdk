@@ -15,6 +15,7 @@ const State = require('ampersand-state');
 const nonInternalPlugins = [
   'authorization',
   'credentials',
+  'cypher',
   'memberships',
   'messages',
   'logger',

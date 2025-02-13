@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Encryption Kitchen Sink</title>
+  <link rel="stylesheet" href="./style.css" />
+</head>
+
+<body>
+  <main class="container">
+    <div style="display: flex; justify-content: center;">
+      <article id="docs-content" class="docs">
+
+        <!-- ############################## ############################## ############################## -->
+        <section>
+          <h2>Webex - encryption</h2>
+          <p>Use this kitchen sink to interact with the Webex encryption service</p>
+        </section>
+
+        <!-- ############################## ############################## ############################## -->
+        <!-- authentication -->
+        <section id="authentication">
+          <h2 class="collapsible">Authentication</h2>
+          <div class="section-content">
+            <p class="note"><strong>Note:</strong> Get an access token from our developer portal: <a
+                href="https://developer.webex.com/docs/api/getting-started"
+                target="_blank">https://developer.webex.com/docs/api/getting-started</a>.</p>
+            <p class="note"><strong>Note:</strong> Webex JS SDK must be initialized using a valid token.</p>
+
+            <!-- authentication-credentials -->
+            <form id="credentials">
+                <fieldset>
+                  <legend>Credentials</legend>
+                  <div class="u-mv">
+                    <p class="note">Initializes webex object and registers Webex JS SDK as a device.</p>
+                    <button id="enableProduction" type="button" class="btn-code" onclick=changeEnv()>In Production</button><span class="text-color"> ( Click to change the environment )</span>
+                    <input id="access-token" name="accessToken" placeholder="Access Token" value="" type="text" style="margin: 1rem 0 0.5rem 0;" required>
+                  </div>
+
+                  <button id="access-token-save" class="btn-code" type="submit">Initialize Webex</button>
+                  <pre id="access-token-status">Not initialized</pre>
+                </fieldset>
+              </form>
+          </div>
+        </section>
+
+        <section id="encryptionActions">
+          <h2 class="collapsible">Encryption Actions</h2>
+          <div class="section-content">
+            <fieldset>
+              <legend>Decrypt files</legend>
+              <div class="u-mv">
+                <div>
+                  File URL: <input id="encrypted-file-url" value="" type="string" style="margin-bottom: 0.5rem;">
+                </div>
+                <div>
+                  File Name: <input id="decrypted-file-name" value="my-decrypted-file.jpeg" type="string" style="display: inline-block; margin-bottom: 0.5rem;">
+                  <!-- A dropdown with common MIME types -->
+                  File Type: <select name="mime-types" id="mime-types" style="display: inline-block;">
+                    <option value="image/jpeg">image/jpeg</option>
+                    <option value="image/png">image/png</option>
+                    <option value="video/mp4">video/mp4</option>
+                    <option value="audio/mpeg">audio/mpeg</option>
+                    <option value="application/pdf">application/pdf</option>
+                    <option value="text/plain">text/plain</option>
+                    <option value="application/json">application/json</option>
+                    <option value="text/html">text/html</option>
+                    <option value="application/xml">application/xml</option>
+                  </select>
+                </div>
+                <button type="button" id="decrypt-my-file-btn" onclick="decryptFile()" class="btn" style="display: block;">
+                  <div>Download and decrypt my file<span id="decrypt-file-result"></span> </div>
+                </button>
+            </fieldset>
+          </div>
+        </section>
+
+      </article>
+    </div>
+  </main>
+  <script src="../webex.min.js"></script>
+  <script src="app.js"></script>
+</body>
+
+</html>
