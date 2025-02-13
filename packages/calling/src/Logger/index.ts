@@ -1,4 +1,5 @@
 /* eslint-disable valid-jsdoc */
+import {Logger} from '../SDKConnector/types';
 import {REPO_NAME} from '../CallingClient/constants';
 import {IMetaContext} from '../common/types';
 import ExtendedError from '../Errors/catalog/ExtendedError';
@@ -16,7 +17,14 @@ import {LOGGING_LEVEL, LogContext, LOGGER, LOG_PREFIX} from './types';
  */
 
 let currentLogLevel = LOGGING_LEVEL.error;
-const logTextArea = document.getElementById('logs') as HTMLTextAreaElement;
+let webexLogger: Logger = {
+  log: () => {},
+  error: () => {},
+  warn: () => {},
+  info: () => {},
+  trace: () => {},
+  debug: () => {},
+};
 
 /**
  * A wrapper around console which prints to stderr or stdout
@@ -26,25 +34,24 @@ const logTextArea = document.getElementById('logs') as HTMLTextAreaElement;
  * @param level -  Log level.
  */
 const writeToConsole = (message: string, level: LOGGER) => {
-  logTextArea.value += `${message}\n`;
   switch (level) {
     case LOGGER.INFO:
     case LOGGER.LOG: {
       // eslint-disable-next-line no-console
-      console.log(message);
+      webexLogger.log(message);
       break;
     }
     case LOGGER.WARN: {
-      console.warn(message);
+      webexLogger.warn(message);
       break;
     }
     case LOGGER.ERROR: {
-      console.error(message);
+      webexLogger.error(message);
       break;
     }
     case LOGGER.TRACE: {
       // eslint-disable-next-line no-console
-      console.trace(message);
+      webexLogger.trace(message);
       break;
     }
     default: {
@@ -202,6 +209,10 @@ const logError = (error: ExtendedError, context: LogContext) => {
   }
 };
 
+const setWebexLogger = (logger: Logger) => {
+  webexLogger = logger;
+};
+
 export default {
   log: logMessage,
   error: logError,
@@ -210,4 +221,5 @@ export default {
   trace: logTrace,
   setLogger,
   getLogLevel,
+  setWebexLogger,
 };

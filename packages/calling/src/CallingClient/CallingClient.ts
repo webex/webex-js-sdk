@@ -501,6 +501,16 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
 
     return connectCall;
   }
+
+  /**
+   * Uploads logs to the server.
+   * @ignore
+   * @returns {Promise<void>}
+   * @memberof CallingClient
+   */
+  public async uploadLogs(): Promise<void> {
+    return this.webex.internal.support.submitLogs({});
+  }
 }
 
 /**

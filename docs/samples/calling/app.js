@@ -88,7 +88,6 @@ const cfaDataElem = document.querySelector('#callforwardalways-data');
 const makeCallBtn = document.querySelector('#create-call-action');
 const muteElm = document.getElementById('mute_button');
 const bnrButton = document.getElementById('bnr-button');
-const logsTextAreaElm = document.getElementById('logs');
 
 let base64;
 let audio64;
@@ -117,6 +116,11 @@ const getOptionValue = (select) => {
 
   return selected ? selected.value : undefined;
 };
+
+function uploadLogs()
+{
+  callingClient.uploadLogs();
+}
 
 function getMediaSettings() {
   const settings = {};
@@ -342,12 +346,6 @@ function getSettings() {
   fetchVoicemailSetting();
   fetchCallWaitingSetting();
   fetchDNDSetting();
-}
-
-function copyLogs()
-{
-  logsTextAreaElm.select();
-  document.execCommand('copy');
 }
 
 function toggleDisplay(elementId, status) {

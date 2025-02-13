@@ -43,6 +43,15 @@ export type ClientRegionInfo = {
   timezone: string;
 };
 
+export type Logger = {
+  log: (payload: string) => void;
+  error: (payload: string) => void;
+  warn: (payload: string) => void;
+  info: (payload: string) => void;
+  trace: (payload: string) => void;
+  debug: (payload: string) => void;
+};
+
 // TODO: is there a way to import bindings from the Webex JS SDK without having to redefine expected methods and structure?
 // This defines the shape for the webex SDK, if a typing doesn't exist, it should be added here
 export interface WebexSDK {
@@ -85,7 +94,9 @@ export interface WebexSDK {
       };
     };
     presence: unknown;
-    support: unknown;
+    support: {
+      submitLogs: (info: object) => Promise<void>;
+    };
     services: {
       _hostCatalog: Record<string, ServiceHost[]>;
       _serviceUrls: {
@@ -106,14 +117,7 @@ export interface WebexSDK {
     };
   };
   // public plugins
-  logger: {
-    log: (payload: string) => void;
-    error: (payload: string) => void;
-    warn: (payload: string) => void;
-    info: (payload: string) => void;
-    trace: (payload: string) => void;
-    debug: (payload: string) => void;
-  };
+  logger: Logger;
   messages: unknown;
   memberships: unknown;
   people: {
