@@ -969,7 +969,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
     try {
       const response = await this.post(message);
-      log.log(`handleOutgoingCallSetup: Response: ${response}`, {
+      log.log(`handleOutgoingCallSetup: Response: ${JSON.stringify(response)}`, {
         file: CALL_FILE,
         method: this.handleOutgoingCallSetup.name,
       });
