@@ -41,7 +41,9 @@ function initializeWebex(accessToken) {
     webex.once('ready', () => {
       localStorage.setItem('access-token', accessToken);
       localStorage.setItem('date', new Date().getTime() + 60 * 60 * 1000); // 1 hour expiration
-      resolve(webex);
+      webex.messages.listen().then(()=>{
+        resolve(webex);
+      });
     });
   });
 }
@@ -92,9 +94,5 @@ initializeWebex(accessToken).then((webex) => {
 For more information on the Webex JS SDK, please visit the [developer portal](https://developer.webex.com/).
 
 ### License
+This project is licensed under the Cisco General Terms - see the [LICENSE]([https://www.cisco.com/c/en/us/products/end-user-license-agreement.html](https://www.cisco.com/c/dam/en_us/about/doing_business/legal/Cisco_General_Terms.pdf)) for details.
 
-This project is licensed under the Cisco EULA - see the [LICENSE](https://www.cisco.com/c/en/us/products/end-user-license-agreement.html) for details.
-
-```
-
-```
