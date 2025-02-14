@@ -49,8 +49,6 @@ export const TASK_EVENTS = {
   TASK_END: 'task:end',
   TASK_WRAPUP: 'task:wrapup',
   TASK_REJECT: 'task:rejected',
-  AGENT_OFFER_CONTACT: 'task:agentOfferContact',
-  AGENT_OUTBOUND_FAILED: 'task:agentOutboundFailed',
   TASK_HYDRATE: 'task:hydrate',
 } as const;
 

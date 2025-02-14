@@ -26,8 +26,7 @@ import {AGENT_STATE_AVAILABLE, AGENT_STATE_AVAILABLE_ID} from './services/config
 import {ConnectionLostDetails} from './services/core/websocket/types';
 import TaskManager from './services/task/TaskManager';
 import WebCallingService from './services/WebCallingService';
-import {ITask, TASK_EVENTS, DialerPayload} from './services/task/types';
-import aqmDialer from './services/task/dialer';
+import {ITask, TASK_EVENTS, DialerPayload, TaskResponse} from './services/task/types';
 
 export default class ContactCenter extends WebexPlugin implements IContactCenter {
   namespace = 'cc';
@@ -431,8 +430,9 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   /**
    * This is used for making the outdial call.
    * @param outDialPayload
-   * @returns Promise<void>
+   * @returns Promise<TaskResponse>
    * @throws Error
+   * @example
    * ```typescript
    * const outDialPayload = {
    *  entryPointId: entryPointId,
@@ -442,15 +442,15 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       mediaType: 'telephony',
       outboundType: 'OUTDIAL',
    * }
-   * webex.cc.startOutdial(outDialPayload).then(()=>{}).catch(()=>{});
+   * const result = await webex.cc.startOutdial(outDialPayload).then(()=>{}).catch(()=>{});
    * ```
    */
 
-  public async startOutdial(outDialPayload: DialerPayload): Promise<void> {
+  public async startOutdial(outDialPayload: DialerPayload): Promise<TaskResponse> {
     try {
-      const aqmReqsInstance = this.services.aqmReq;
-      const dialer = aqmDialer(aqmReqsInstance);
-      await dialer.startOutdial({data: outDialPayload});
+      const result = await this.services.dialer.startOutdial({data: outDialPayload});
+
+      return result;
     } catch (error) {
       const {error: detailedError} = getErrorDetails(error, 'startOutdial', CC_FILE);
       throw detailedError;

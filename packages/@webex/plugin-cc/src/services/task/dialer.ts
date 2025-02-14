@@ -13,7 +13,6 @@ export default function aqmDialer(aqm: AqmReqs) {
     startOutdial: aqm.req((p: {data: Contact.DialerPayload}) => ({
       url: `${TASK_API}`,
       host: WCC_API_GATEWAY,
-      method: 'POST',
       data: p.data,
       err,
       notifSuccess: {
