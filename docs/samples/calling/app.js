@@ -117,6 +117,11 @@ const getOptionValue = (select) => {
   return selected ? selected.value : undefined;
 };
 
+function uploadLogs()
+{
+  callingClient.uploadLogs();
+}
+
 function getMediaSettings() {
   const settings = {};
 
@@ -245,7 +250,7 @@ async function initCalling(e) {
   }
 
   const loggerConfig = {
-    level: 'info'
+    level: 'info',
   }
 
   const {region, country, guestName} = credentialsFormElm.elements;

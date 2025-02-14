@@ -2,6 +2,7 @@
 /* eslint-disable no-underscore-dangle */
 /* eslint-disable @typescript-eslint/no-shadow */
 import * as platform from 'platform';
+import ExtendedError from 'Errors/catalog/ExtendedError';
 import {restoreRegistrationCallBack} from '../CallingClient/registration/types';
 import {CallingClientErrorEmitterCallback} from '../CallingClient/types';
 import {LogContext} from '../Logger/types';
@@ -1468,5 +1469,16 @@ export function validateServiceData(serviceData: ServiceData) {
 
   if (!isValidServiceDomain(serviceData)) {
     throw new Error('Invalid service domain.');
+  }
+}
+
+export async function uploadLogs(webex: WebexSDK, data = {}) {
+  try {
+    await webex.internal.support.submitLogs(data);
+  } catch (error) {
+    log.error(error as ExtendedError, {
+      file: UTILS_FILE,
+      method: 'uploadLogs',
+    });
   }
 }
