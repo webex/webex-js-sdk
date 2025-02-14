@@ -88,6 +88,12 @@ const Mercury = WebexPlugin.extend({
 
     this.connecting = true;
 
+    this.logger.info(`${this.namespace}: starting connection attempt`);
+    this.logger.info(
+      `${this.namespace}: debug_mercury_logging stack: `,
+      new Error('debug_mercury_logging').stack
+    );
+
     return Promise.resolve(
       this.webex.internal.device.registered || this.webex.internal.device.register()
     ).then(() => {
@@ -266,7 +272,11 @@ const Mercury = WebexPlugin.extend({
         if (reason.code !== 1006 && this.backoffCall && this.backoffCall.getNumRetries() > 0) {
           this._emit('connection_failed', reason, {retries: this.backoffCall.getNumRetries()});
         }
-        this.logger.info(`${this.namespace}: connection attempt failed`, reason);
+        this.logger.info(
+          `${this.namespace}: connection attempt failed`,
+          reason,
+          this.backoffCall?.getNumRetries() === 0 ? reason.stack : ''
+        );
         // UnknownResponse is produced by IE for any 4XXX; treated it like a bad
         // web socket url and let WDM handle the token checking
         if (reason instanceof UnknownResponse) {

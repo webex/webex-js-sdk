@@ -231,14 +231,16 @@ export default class Roap extends StatelessWebexPlugin {
               headers,
             } = remoteSdp.roapMessage;
 
-            roapAnswer = {
-              seq: answerSeq,
-              messageType,
-              sdp: sdps[0],
-              errorType,
-              errorCause,
-              headers,
-            };
+            if (messageType === ROAP.ROAP_TYPES.ANSWER) {
+              roapAnswer = {
+                seq: answerSeq,
+                messageType,
+                sdp: sdps[0],
+                errorType,
+                errorCause,
+                headers,
+              };
+            }
           }
         }
 
