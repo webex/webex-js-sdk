@@ -41,6 +41,7 @@ import {
   getXsiActionEndpoint,
   getVgActionEndpoint,
   filterMobiusUris,
+  uploadLogs,
 } from './Utils';
 import {
   getVoicemailListJsonWXC,
@@ -1452,5 +1453,37 @@ describe('Get XSI Action Endpoint tests', () => {
 
     expect(mockWebex.request).toHaveBeenCalledTimes(1);
     expect(xsiEndpoint).toBe('https://fake-broadworks-url.com');
+  });
+});
+
+describe('uploadLogs tests', () => {
+  const mockWebex: any = {
+    request: jest.fn(),
+    internal: {
+      support: {
+        submitLogs: jest.fn(),
+      },
+    },
+  };
+
+  it('should call submitLogs with the provided data', async () => {
+    const mockData = {someKey: 'someValue'};
+    await uploadLogs(mockWebex, mockData);
+
+    expect(mockWebex.internal.support.submitLogs).toHaveBeenCalledTimes(1);
+    expect(mockWebex.internal.support.submitLogs).toHaveBeenCalledWith(mockData);
+  });
+
+  it('should handle errors when submitLogs fails', async () => {
+    const mockError = new Error('Test error');
+    mockWebex.internal.support.submitLogs.mockRejectedValue(mockError);
+    const logSpy = jest.spyOn(log, 'error');
+
+    await uploadLogs(mockWebex);
+
+    expect(logSpy).toHaveBeenCalledWith(mockError, {
+      file: UTILS_FILE,
+      method: 'uploadLogs',
+    });
   });
 });

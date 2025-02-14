@@ -117,9 +117,13 @@ const getOptionValue = (select) => {
   return selected ? selected.value : undefined;
 };
 
-function uploadLogs()
-{
-  callingClient.uploadLogs();
+async function uploadLogs() {
+    try {
+      await callingClient.uploadLogs();
+      console.log('Logs uploaded successfully');
+    } catch (error) {
+      console.error('Failed to upload logs:', error);
+    }
 }
 
 function getMediaSettings() {

@@ -28,6 +28,7 @@ describe('Coverage tests for logger', () => {
     traceSpy.mockClear();
     warnSpy.mockClear();
     errorSpy.mockClear();
+    infoSpy.mockClear();
   });
 
   const fakePrint = 'Example log statement';

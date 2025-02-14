@@ -201,7 +201,10 @@ const logError = (error: ExtendedError, context: LogContext) => {
 };
 
 const setWebexLogger = (logger: Logger) => {
-  webexLogger = logger;
+  if (logger) {
+    // if logger is not passed, defaults to console
+    webexLogger = logger;
+  }
 };
 
 export default {
