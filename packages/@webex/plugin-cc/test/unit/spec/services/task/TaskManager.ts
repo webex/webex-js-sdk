@@ -423,6 +423,7 @@ describe('TaskManager', () => {
   });
 
   it('handle AGENT_OFFER_CONTACT event', () => {
+
     const payload = {
       data: {
         ...initalPayload.data,
@@ -431,12 +432,16 @@ describe('TaskManager', () => {
     };
 
     webSocketManagerMock.emit('message', JSON.stringify(initalPayload));
+
     const taskUpdateTaskDataSpy = jest.spyOn(taskManager.currentTask, 'updateTaskData');
+
     webSocketManagerMock.emit('message', JSON.stringify(payload));
+
     expect(taskUpdateTaskDataSpy).toHaveBeenCalledWith(payload.data);
   });
 
   it('handle AGENT_OUTBOUND_FAILED event', () => {
+
     const payload = {
       data: {
         ...initalPayload.data,
@@ -445,8 +450,11 @@ describe('TaskManager', () => {
     };
 
     webSocketManagerMock.emit('message', JSON.stringify(initalPayload));
+
     const taskUpdateTaskDataSpy = jest.spyOn(taskManager.currentTask, 'updateTaskData');
+
     webSocketManagerMock.emit('message', JSON.stringify(payload));
+
     expect(taskUpdateTaskDataSpy).toHaveBeenCalledWith(payload.data);
   });
 
