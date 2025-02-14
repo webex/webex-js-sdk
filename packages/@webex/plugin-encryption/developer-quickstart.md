@@ -93,7 +93,7 @@ For more information on the Webex JS SDK, please visit the [developer portal](ht
 
 ### License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the Cisco EULA - see the [LICENSE](https://www.cisco.com/c/en/us/products/end-user-license-agreement.html) for details.
 
 ```
 
