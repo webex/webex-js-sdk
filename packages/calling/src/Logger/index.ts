@@ -17,14 +17,6 @@ import {LOGGING_LEVEL, LogContext, LOGGER, LOG_PREFIX} from './types';
  */
 
 let currentLogLevel = LOGGING_LEVEL.error;
-let webexLogger: Logger = {
-  log: () => {},
-  error: () => {},
-  warn: () => {},
-  info: () => {},
-  trace: () => {},
-  debug: () => {},
-};
 
 let webexLogger: Logger = console; // Default to console logger
 
