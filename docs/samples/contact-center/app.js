@@ -383,18 +383,18 @@ async function endConsult() {
   }
 }
 
-// Function to start an outDial call
+// Function to start an outdial call.
 async function startOutdial() {
 
   const destination = document.getElementById('outBoundDialNumber').value;
 
   if (!destination || !destination.trim()) {
-      console.error('Destination number is required');
+      alert('Destination number is required');
       return;
   }
 
   if (!entryPointId) {
-      console.error('Entry point ID is not configured');
+      alert('Entry point ID is not configured');
       return;
   }
 
@@ -413,13 +413,14 @@ async function startOutdial() {
     console.log('Outdial call initiated successfully');
   } catch (error) {
     console.error('Failed to initiate outdial call', error);
+    alert('Failed to initiate outdial call');
   }
 }
 
 // Function to press a key during an active call
 function pressKey(value) {
-    // Allow only digits, #, and *
-    if (!/^[\d#*]$/.test(value)) {
+    // Allow only digits, #, *, and +
+    if (!/^[\d#*+]$/.test(value)) {
       console.warn('Invalid keypad input:', value);
       return;
     }
@@ -527,14 +528,6 @@ function registerTaskListeners(task) {
       incomingDetailsElm.innerText = 'No incoming calls';
     }
     showAgentStatePopup(reason);
-  });
-
-  task.on('task:agentOfferContact', (task) => { 
-    console.log('Making an outbound Call.', task);
-  });
-  
-  task.on('task:agentOutboundFailed', (reason) => {
-    console.log('Outbound call failed with reason:', reason);
   });
 }
 
