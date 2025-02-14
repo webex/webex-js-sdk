@@ -88,6 +88,7 @@ const cfaDataElem = document.querySelector('#callforwardalways-data');
 const makeCallBtn = document.querySelector('#create-call-action');
 const muteElm = document.getElementById('mute_button');
 const bnrButton = document.getElementById('bnr-button');
+const uploadLogsResultElm = document.getElementById('upload-logs-result');
 
 let base64;
 let audio64;
@@ -121,8 +122,10 @@ async function uploadLogs() {
     try {
       await callingClient.uploadLogs();
       console.log('Logs uploaded successfully');
+      uploadLogsResultElm.innerText = 'Logs uploaded successfully';
     } catch (error) {
       console.error('Failed to upload logs:', error);
+      uploadLogsResultElm.innerText = 'Failed to upload logs';
     }
 }
 
