@@ -44,7 +44,7 @@ export type ClientRegionInfo = {
 };
 
 export type Logger = {
-  log: (payload: string) => void;
+  log: (mess: string) => void;
   error: (payload: string) => void;
   warn: (payload: string) => void;
   info: (payload: string) => void;

@@ -42,6 +42,7 @@ import {
   getVgActionEndpoint,
   filterMobiusUris,
   modifySdpForIPv4,
+  uploadLogs,
 } from './Utils';
 import {
   getVoicemailListJsonWXC,
@@ -1552,5 +1553,37 @@ describe('modifySdpForIPv4', () => {
     const expectedSdp = `v=0\no=- 12345 67890 IN IP6 2001:db8::1\ns=Test Session\nc=IN IP4 192.168.1.3\nc=IN IP4 192.168.1.3\na=candidate:1 1 UDP 2122260223 192.168.1.3 3478 typ host`;
 
     expect(modifySdpForIPv4(sdp).trim()).toEqual(expectedSdp.trim());
+  });
+});
+
+describe('uploadLogs tests', () => {
+  const mockWebex: any = {
+    request: jest.fn(),
+    internal: {
+      support: {
+        submitLogs: jest.fn(),
+      },
+    },
+  };
+
+  it('should call submitLogs with the provided data', async () => {
+    const mockData = {someKey: 'someValue'};
+    await uploadLogs(mockWebex, mockData);
+
+    expect(mockWebex.internal.support.submitLogs).toHaveBeenCalledTimes(1);
+    expect(mockWebex.internal.support.submitLogs).toHaveBeenCalledWith(mockData);
+  });
+
+  it('should handle errors when submitLogs fails', async () => {
+    const mockError = new Error('Test error');
+    mockWebex.internal.support.submitLogs.mockRejectedValue(mockError);
+    const logSpy = jest.spyOn(log, 'error');
+
+    await uploadLogs(mockWebex);
+
+    expect(logSpy).toHaveBeenCalledWith(mockError, {
+      file: UTILS_FILE,
+      method: 'uploadLogs',
+    });
   });
 });

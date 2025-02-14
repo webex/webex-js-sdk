@@ -15,6 +15,7 @@ import {
   modifySdpForIPv4,
   parseMediaQualityStatistics,
   serviceErrorCodeHandler,
+  uploadLogs,
 } from '../../common/Utils';
 import {
   ALLOWED_SERVICES,
@@ -1000,6 +1001,11 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         this.handleOutgoingCallSetup.name,
         CALL_FILE
       );
+
+      uploadLogs(this.webex, {
+        correlationId: this.correlationId,
+        callId: this.callId,
+      });
     }
   }
 
@@ -1069,6 +1075,11 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         this.handleOutgoingCallSetup.name,
         CALL_FILE
       );
+
+      uploadLogs(this.webex, {
+        correlationId: this.correlationId,
+        callId: this.callId,
+      });
     }
   }
 
@@ -1138,6 +1149,11 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         this.handleOutgoingCallSetup.name,
         CALL_FILE
       );
+
+      uploadLogs(this.webex, {
+        correlationId: this.correlationId,
+        callId: this.callId,
+      });
     }
   }
 
@@ -1256,6 +1272,11 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         this.handleOutgoingCallAlerting.name,
         CALL_FILE
       );
+
+      uploadLogs(this.webex, {
+        correlationId: this.correlationId,
+        callId: this.callId,
+      });
     }
   }
 
@@ -1335,6 +1356,11 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         this.handleOutgoingCallConnect.name,
         CALL_FILE
       );
+
+      uploadLogs(this.webex, {
+        correlationId: this.correlationId,
+        callId: this.callId,
+      });
     }
   }
 
@@ -1501,6 +1527,11 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
           this.handleCallEstablished.name,
           CALL_FILE
         );
+
+        uploadLogs(this.webex, {
+          correlationId: this.correlationId,
+          callId: this.callId,
+        });
       }
     }, DEFAULT_SESSION_TIMER);
   }
@@ -1680,6 +1711,11 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
           this.handleRoapEstablished.name,
           CALL_FILE
         );
+
+        uploadLogs(this.webex, {
+          correlationId: this.correlationId,
+          callId: this.callId,
+        });
       }
     } else {
       log.info('Notifying internal-media-core about ROAP OK message', {
@@ -1755,6 +1791,11 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
           this.handleRoapError.name,
           CALL_FILE
         );
+
+        uploadLogs(this.webex, {
+          correlationId: this.correlationId,
+          callId: this.callId,
+        });
       }
     }
 
@@ -1826,6 +1867,11 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         this.handleOutgoingRoapOffer.name,
         CALL_FILE
       );
+
+      uploadLogs(this.webex, {
+        correlationId: this.correlationId,
+        callId: this.callId,
+      });
     }
   }
 
@@ -1874,6 +1920,11 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         this.handleOutgoingRoapAnswer.name,
         CALL_FILE
       );
+
+      uploadLogs(this.webex, {
+        correlationId: this.correlationId,
+        callId: this.callId,
+      });
     }
   }
 
@@ -2362,6 +2413,11 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
           this.completeTransfer.name,
           CALL_FILE
         );
+
+        uploadLogs(this.webex, {
+          correlationId: this.correlationId,
+          callId: this.callId,
+        });
       }
     } else if (transferType === TransferType.CONSULT && transferCallId) {
       /* Consult transfer */
@@ -2407,6 +2463,11 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
           this.completeTransfer.name,
           CALL_FILE
         );
+
+        uploadLogs(this.webex, {
+          correlationId: this.correlationId,
+          callId: this.callId,
+        });
       }
     } else {
       log.warn(

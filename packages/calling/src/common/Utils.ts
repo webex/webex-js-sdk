@@ -2,6 +2,7 @@
 /* eslint-disable no-underscore-dangle */
 /* eslint-disable @typescript-eslint/no-shadow */
 import * as platform from 'platform';
+import ExtendedError from 'Errors/catalog/ExtendedError';
 import {restoreRegistrationCallBack} from '../CallingClient/registration/types';
 import {CallingClientErrorEmitterCallback} from '../CallingClient/types';
 import {LogContext} from '../Logger/types';
@@ -1471,6 +1472,12 @@ export function validateServiceData(serviceData: ServiceData) {
   }
 }
 
+/**
+ * Modifies SDP to replace IPv6 "c=" lines with IPv4.And adds an IPv4 candidate if none exists.
+ *
+ * @param sdp - Session Description Protocol string.
+ * @returns Modified SDP string.
+ */
 export function modifySdpForIPv4(sdp: string): string {
   try {
     // Normalize line endings to avoid issues
@@ -1538,5 +1545,22 @@ export function modifySdpForIPv4(sdp: string): string {
     });
 
     return sdp; // Return original SDP in case of an error
+  }
+}
+
+/**
+ * Uploads logs to backend.
+ *
+ * @param webex - Webex object to get service urls.
+ * @param data - Data to be uploaded.
+ */
+export async function uploadLogs(webex: WebexSDK, data = {}) {
+  try {
+    await webex.internal.support.submitLogs(data);
+  } catch (error) {
+    log.error(error as ExtendedError, {
+      file: UTILS_FILE,
+      method: 'uploadLogs',
+    });
   }
 }
