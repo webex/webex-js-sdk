@@ -85,7 +85,8 @@
   },
   "include": [
     "src/**/*.ts",
-    "jest.global.d.ts"
+    "jest.global.d.ts", 
+    "src/CallingClient/registration/webWorker.ts"
   ],
   "exclude": [
     "./node_modules/**",
