@@ -12,6 +12,7 @@ import ExtendedError from '../../Errors/catalog/ExtendedError';
 import {ERROR_LAYER, ERROR_TYPE, ErrorContext} from '../../Errors/types';
 import {
   handleCallErrors,
+  modifySdpForIPv4,
   parseMediaQualityStatistics,
   serviceErrorCodeHandler,
   uploadLogs,
@@ -969,6 +970,10 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
     try {
       const response = await this.post(message);
+      log.log(`handleOutgoingCallSetup: Response: ${JSON.stringify(response)}`, {
+        file: CALL_FILE,
+        method: this.handleOutgoingCallSetup.name,
+      });
 
       log.log(`handleOutgoingCallSetup: Response code: ${response.statusCode}`, {
         file: CALL_FILE,
@@ -2559,10 +2564,23 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
           case RoapScenario.OFFER: {
             // TODO: Remove these after the Media-Core adds the fix
+            // Check if at least one IPv6 "c=" line is present
+            log.info(`before modifying sdp: ${event.roapMessage.sdp}`, {
+              file: CALL_FILE,
+              method: this.mediaRoapEventsListener.name,
+            });
+
+            event.roapMessage.sdp = modifySdpForIPv4(event.roapMessage.sdp);
+
             const sdpVideoPortZero = event.roapMessage.sdp.replace(
               /^m=(video) (?:\d+) /gim,
               'm=$1 0 '
             );
+
+            log.info(`after modification sdp: ${sdpVideoPortZero}`, {
+              file: CALL_FILE,
+              method: this.mediaRoapEventsListener.name,
+            });
 
             event.roapMessage.sdp = sdpVideoPortZero;
             this.localRoapMessage = event.roapMessage;
@@ -2571,6 +2589,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
           }
 
           case RoapScenario.ANSWER:
+            event.roapMessage.sdp = modifySdpForIPv4(event.roapMessage.sdp);
             this.localRoapMessage = event.roapMessage;
             this.sendMediaStateMachineEvt({type: 'E_SEND_ROAP_ANSWER', data: event.roapMessage});
             break;
@@ -2580,6 +2599,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
             break;
 
           case RoapScenario.OFFER_RESPONSE:
+            event.roapMessage.sdp = modifySdpForIPv4(event.roapMessage.sdp);
             this.localRoapMessage = event.roapMessage;
             this.sendMediaStateMachineEvt({type: 'E_SEND_ROAP_OFFER', data: event.roapMessage});
             break;

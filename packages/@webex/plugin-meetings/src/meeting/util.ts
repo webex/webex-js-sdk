@@ -140,7 +140,11 @@ const MeetingUtil = {
         meeting.isMultistream,
         MeetingUtil.getIpVersion(webex)
       );
-      reachability = await webex.meetings.reachability.getReachabilityReportToAttachToRoap();
+      if (options.roapMessage) {
+        // we only need to attach reachability if we are sending a roap message
+        // sending reachability on its own will cause Locus to reject our join request
+        reachability = await webex.meetings.reachability.getReachabilityReportToAttachToRoap();
+      }
     } catch (e) {
       LoggerProxy.logger.error(
         'Meeting:util#joinMeeting --> Error getting reachability or clientMediaPreferences:',

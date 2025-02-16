@@ -43,6 +43,7 @@ class Calling extends EventEmitter {
       this.webex.once('ready', () => {
         this.log.setWebexLogger(this.webex.logger);
         this.emit('ready');
+        this.log = this.webex.logger;
       });
     }
   }
