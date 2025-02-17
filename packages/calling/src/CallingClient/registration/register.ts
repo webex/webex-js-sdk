@@ -129,22 +129,6 @@ export class Registration implements IRegistration {
   }
 
   /**
-   *  Implementation of sending keepalive.
-   *
-   */
-  private async postKeepAlive(url: string) {
-    return <WebexRequestPayload>this.webex.request({
-      uri: `${url}/status`,
-      method: HTTP_METHODS.POST,
-      headers: {
-        [CISCO_DEVICE_URL]: this.webex.internal.device.url,
-        [SPARK_USER_AGENT]: CALLING_USER_AGENT,
-      },
-      service: ALLOWED_SERVICES.MOBIUS,
-    });
-  }
-
-  /**
    * Implementation of delete device.
    *
    */
@@ -696,74 +680,76 @@ export class Registration implements IRegistration {
    * This method sets up a timer to periodically send keep-alive requests to maintain a connection.
    * It handles retries, error handling, and re-registration attempts based on the response, ensuring continuous connectivity with the server.
    */
-  private startKeepaliveTimer(url: string, interval: number) {
-    let keepAliveRetryCount = 0;
+  private async startKeepaliveTimer(url: string, interval: number) {
     this.clearKeepaliveTimer();
     const RETRY_COUNT_THRESHOLD = this.isCCFlow ? 4 : 5;
 
-    this.webWorker = new Worker(new URL('./webWorker.js', import.meta.url));
-    this.webWorker.postMessage({type: WorkerMessageType.START_KEEPALIVE, interval});
+    await this.mutex.runExclusive(async () => {
+      if (this.isDeviceRegistered()) {
+        const accessToken = await this.webex.credentials.getUserToken();
 
-    this.webWorker.onmessage = async (event: MessageEvent) => {
-      if (event.data.type === WorkerMessageType.SEND_KEEPALIVE) {
-        const logContext = {
-          file: REGISTRATION_FILE,
-          method: this.startKeepaliveTimer.name,
-        };
+        this.webWorker = new Worker(new URL('./webWorker.js', import.meta.url));
 
-        await this.mutex.runExclusive(async () => {
-          if (this.isDeviceRegistered() && keepAliveRetryCount < RETRY_COUNT_THRESHOLD) {
-            try {
-              const res = await this.postKeepAlive(url);
-              log.info(`Sent Keepalive, status: ${res.statusCode}`, logContext);
-              if (keepAliveRetryCount > 0) {
-                this.lineEmitter(LINE_EVENTS.RECONNECTED);
-              }
-              keepAliveRetryCount = 0;
-            } catch (err: unknown) {
-              keepAliveRetryCount += 1;
-              const error = <WebexRequestPayload>err;
+        this.webWorker.postMessage({
+          type: WorkerMessageType.START_KEEPALIVE,
+          accessToken: String(accessToken),
+          deviceUrl: String(this.webex.internal.device.url),
+          interval,
+          retryCountThreshold: RETRY_COUNT_THRESHOLD,
+          url,
+        });
 
-              log.warn(
-                `Keep-alive missed ${keepAliveRetryCount} times. Status -> ${error.statusCode} `,
-                logContext
-              );
+        this.webWorker.onmessage = async (event: MessageEvent) => {
+          const logContext = {
+            file: REGISTRATION_FILE,
+            method: this.startKeepaliveTimer.name,
+          };
+          if (event.data.type === WorkerMessageType.KEEPALIVE_SUCCESS) {
+            log.info(`Sent Keepalive, status: ${event.data.statusCode}`, logContext);
+            this.lineEmitter(LINE_EVENTS.RECONNECTED);
+          }
 
-              const abort = await handleRegistrationErrors(
-                error,
-                (clientError, finalError) => {
-                  if (finalError) {
-                    this.lineEmitter(LINE_EVENTS.ERROR, undefined, clientError);
-                  }
-                  this.metricManager.submitRegistrationMetric(
-                    METRIC_EVENT.REGISTRATION,
-                    REG_ACTION.KEEPALIVE_FAILURE,
-                    METRIC_TYPE.BEHAVIORAL,
-                    clientError
-                  );
-                },
-                {method: this.startKeepaliveTimer.name, file: REGISTRATION_FILE}
-              );
+          if (event.data.type === WorkerMessageType.KEEPALIVE_FAILURE) {
+            const error = <WebexRequestPayload>event.data.err;
+            log.warn(
+              `Keep-alive missed ${event.data.keepAliveRetryCount} times. Status -> ${error.statusCode} `,
+              logContext
+            );
 
-              if (abort || keepAliveRetryCount >= RETRY_COUNT_THRESHOLD) {
-                this.failoverImmediately = this.isCCFlow;
-                this.setStatus(RegistrationStatus.INACTIVE);
-                this.clearKeepaliveTimer();
-                this.clearFailbackTimer();
-                this.lineEmitter(LINE_EVENTS.UNREGISTERED);
-
-                if (!abort) {
-                  /* In case of non-final error, re-attempt registration */
-                  await this.reconnectOnFailure(this.startKeepaliveTimer.name);
+            const abort = await handleRegistrationErrors(
+              error,
+              (clientError, finalError) => {
+                if (finalError) {
+                  this.lineEmitter(LINE_EVENTS.ERROR, undefined, clientError);
                 }
-              } else {
-                this.lineEmitter(LINE_EVENTS.RECONNECTING);
+                this.metricManager.submitRegistrationMetric(
+                  METRIC_EVENT.REGISTRATION,
+                  REG_ACTION.KEEPALIVE_FAILURE,
+                  METRIC_TYPE.BEHAVIORAL,
+                  clientError
+                );
+              },
+              {method: this.startKeepaliveTimer.name, file: REGISTRATION_FILE}
+            );
+
+            if (abort || event.data.keepAliveRetryCount >= RETRY_COUNT_THRESHOLD) {
+              this.failoverImmediately = this.isCCFlow;
+              this.setStatus(RegistrationStatus.INACTIVE);
+              this.clearKeepaliveTimer();
+              this.clearFailbackTimer();
+              this.lineEmitter(LINE_EVENTS.UNREGISTERED);
+
+              if (!abort) {
+                /* In case of non-final error, re-attempt registration */
+                await this.reconnectOnFailure(this.startKeepaliveTimer.name);
               }
+            } else {
+              this.lineEmitter(LINE_EVENTS.RECONNECTING);
             }
           }
-        });
+        };
       }
-    };
+    });
   }
 
   /**
