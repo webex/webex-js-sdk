@@ -32847,6 +32847,7 @@ __metadata:
     webpack: ^5.74.0
     webpack-cli: ^4.8.0
     webpack-dev-server: ^4.3.1
+    worker-loader: ^3.0.8
     yakbak: ^5.0.1
     yargs: ^16.2.0
   dependenciesMeta:
@@ -33306,6 +33307,18 @@ __metadata:
   version: 5.1.0
   resolution: "wordwrapjs@npm:5.1.0"
   checksum: 063c7a5a85b694be1a5fd96f7ae0c0f4d717a087909e5c70cf25edec6eb5df5f2f5561f23e939cf6d7514cf81902610f74f288ef1612a49bf5451de15e0e29db
+  languageName: node
+  linkType: hard
+
+"worker-loader@npm:^3.0.8":
+  version: 3.0.8
+  resolution: "worker-loader@npm:3.0.8"
+  dependencies:
+    loader-utils: ^2.0.0
+    schema-utils: ^3.0.0
+  peerDependencies:
+    webpack: ^4.0.0 || ^5.0.0
+  checksum: 84f4a7eeb2a1d8b9704425837e017c91eedfae67ac89e0b866a2dcf283323c1dcabe0258196278b7d5fd0041392da895c8a0c59ddf3a94f1b2e003df68ddfec3
   languageName: node
   linkType: hard
 

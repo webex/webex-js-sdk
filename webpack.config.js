@@ -97,6 +97,17 @@ module.exports = (env = {NODE_ENV: process.env.NODE_ENV || 'production'}) => ({
           loader: 'babel-loader',
         },
       },
+      {
+        test: /\.worker\.(js|ts)$/,
+        use: [
+          {
+            loader: 'babel-loader', // Compile TypeScript to JavaScript
+          },
+          {
+            loader: 'worker-loader',
+          },
+        ],
+      },
     ],
   },
   ...(env !== 'development' && {
