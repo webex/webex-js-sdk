@@ -4,7 +4,6 @@ import {HTTP_METHODS, WorkerMessageType} from '../../common/types';
 onmessage = (event: MessageEvent) => {
   const {type} = event.data;
   let keepaliveTimer: NodeJS.Timer | undefined;
-  let keepAliveRetryCount = 0;
 
   const postKeepAlive = async (accessToken: string, deviceUrl: string, url: string) => {
     const response = await fetch(`${url}/status`, {
@@ -25,7 +24,13 @@ onmessage = (event: MessageEvent) => {
   };
 
   if (type === WorkerMessageType.START_KEEPALIVE) {
+    let keepAliveRetryCount = 0;
     const {accessToken, deviceUrl, interval, retryCountThreshold, url} = event.data;
+
+    if (keepaliveTimer) {
+      clearInterval(keepaliveTimer);
+      keepaliveTimer = undefined;
+    }
 
     keepaliveTimer = setInterval(async () => {
       if (keepAliveRetryCount < retryCountThreshold) {
@@ -47,6 +52,7 @@ onmessage = (event: MessageEvent) => {
   if (type === WorkerMessageType.CLEAR_KEEPALIVE) {
     if (keepaliveTimer) {
       clearInterval(keepaliveTimer);
+      keepaliveTimer = undefined;
     }
   }
 };

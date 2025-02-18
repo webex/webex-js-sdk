@@ -688,66 +688,68 @@ export class Registration implements IRegistration {
       if (this.isDeviceRegistered()) {
         const accessToken = await this.webex.credentials.getUserToken();
 
-        this.webWorker = new Worker(new URL('./webWorker.js', import.meta.url));
+        if (!this.webWorker) {
+          this.webWorker = new Worker(new URL('./webWorker.js', import.meta.url));
 
-        this.webWorker.postMessage({
-          type: WorkerMessageType.START_KEEPALIVE,
-          accessToken: String(accessToken),
-          deviceUrl: String(this.webex.internal.device.url),
-          interval,
-          retryCountThreshold: RETRY_COUNT_THRESHOLD,
-          url,
-        });
+          this.webWorker.postMessage({
+            type: WorkerMessageType.START_KEEPALIVE,
+            accessToken: String(accessToken),
+            deviceUrl: String(this.webex.internal.device.url),
+            interval,
+            retryCountThreshold: RETRY_COUNT_THRESHOLD,
+            url,
+          });
 
-        this.webWorker.onmessage = async (event: MessageEvent) => {
-          const logContext = {
-            file: REGISTRATION_FILE,
-            method: this.startKeepaliveTimer.name,
-          };
-          if (event.data.type === WorkerMessageType.KEEPALIVE_SUCCESS) {
-            log.info(`Sent Keepalive, status: ${event.data.statusCode}`, logContext);
-            this.lineEmitter(LINE_EVENTS.RECONNECTED);
-          }
-
-          if (event.data.type === WorkerMessageType.KEEPALIVE_FAILURE) {
-            const error = <WebexRequestPayload>event.data.err;
-            log.warn(
-              `Keep-alive missed ${event.data.keepAliveRetryCount} times. Status -> ${error.statusCode} `,
-              logContext
-            );
-
-            const abort = await handleRegistrationErrors(
-              error,
-              (clientError, finalError) => {
-                if (finalError) {
-                  this.lineEmitter(LINE_EVENTS.ERROR, undefined, clientError);
-                }
-                this.metricManager.submitRegistrationMetric(
-                  METRIC_EVENT.REGISTRATION,
-                  REG_ACTION.KEEPALIVE_FAILURE,
-                  METRIC_TYPE.BEHAVIORAL,
-                  clientError
-                );
-              },
-              {method: this.startKeepaliveTimer.name, file: REGISTRATION_FILE}
-            );
-
-            if (abort || event.data.keepAliveRetryCount >= RETRY_COUNT_THRESHOLD) {
-              this.failoverImmediately = this.isCCFlow;
-              this.setStatus(RegistrationStatus.INACTIVE);
-              this.clearKeepaliveTimer();
-              this.clearFailbackTimer();
-              this.lineEmitter(LINE_EVENTS.UNREGISTERED);
-
-              if (!abort) {
-                /* In case of non-final error, re-attempt registration */
-                await this.reconnectOnFailure(this.startKeepaliveTimer.name);
-              }
-            } else {
-              this.lineEmitter(LINE_EVENTS.RECONNECTING);
+          this.webWorker.onmessage = async (event: MessageEvent) => {
+            const logContext = {
+              file: REGISTRATION_FILE,
+              method: this.startKeepaliveTimer.name,
+            };
+            if (event.data.type === WorkerMessageType.KEEPALIVE_SUCCESS) {
+              log.info(`Sent Keepalive, status: ${event.data.statusCode}`, logContext);
+              this.lineEmitter(LINE_EVENTS.RECONNECTED);
             }
-          }
-        };
+
+            if (event.data.type === WorkerMessageType.KEEPALIVE_FAILURE) {
+              const error = <WebexRequestPayload>event.data.err;
+              log.warn(
+                `Keep-alive missed ${event.data.keepAliveRetryCount} times. Status -> ${error.statusCode} `,
+                logContext
+              );
+
+              const abort = await handleRegistrationErrors(
+                error,
+                (clientError, finalError) => {
+                  if (finalError) {
+                    this.lineEmitter(LINE_EVENTS.ERROR, undefined, clientError);
+                  }
+                  this.metricManager.submitRegistrationMetric(
+                    METRIC_EVENT.REGISTRATION,
+                    REG_ACTION.KEEPALIVE_FAILURE,
+                    METRIC_TYPE.BEHAVIORAL,
+                    clientError
+                  );
+                },
+                {method: this.startKeepaliveTimer.name, file: REGISTRATION_FILE}
+              );
+
+              if (abort || event.data.keepAliveRetryCount >= RETRY_COUNT_THRESHOLD) {
+                this.failoverImmediately = this.isCCFlow;
+                this.setStatus(RegistrationStatus.INACTIVE);
+                this.clearKeepaliveTimer();
+                this.clearFailbackTimer();
+                this.lineEmitter(LINE_EVENTS.UNREGISTERED);
+
+                if (!abort) {
+                  /* In case of non-final error, re-attempt registration */
+                  await this.reconnectOnFailure(this.startKeepaliveTimer.name);
+                }
+              } else {
+                this.lineEmitter(LINE_EVENTS.RECONNECTING);
+              }
+            }
+          };
+        }
       }
     });
   }
