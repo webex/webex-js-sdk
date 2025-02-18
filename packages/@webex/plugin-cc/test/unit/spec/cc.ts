@@ -15,6 +15,7 @@ import Services from '../../../src/services';
 import config from '../../../src/config';
 import {CC_EVENTS} from '../../../src/services/config/types';
 import LoggerProxy from '../../../src/logger-proxy';
+import * as Utils from '../../../src/services/core/Utils';
 import {CC_FILE, AGENT_STATE_CHANGE, AGENT_MULTI_LOGIN} from '../../../src/constants';
 
 // Mock the Worker API
@@ -45,6 +46,7 @@ describe('webex.cc', () => {
   let mockContact;
   let mockTaskManager;
   let mockWebSocketManager;
+  let getErrorDetailsSpy;
 
   beforeEach(() => {
     webex = MockWebex({
@@ -131,6 +133,7 @@ describe('webex.cc', () => {
     jest.spyOn(TaskManager, 'getTaskManager').mockReturnValue(mockTaskManager);
     // Instantiate ContactCenter to ensure it's fully initialized
     webex.cc = new ContactCenter({parent: webex});
+    getErrorDetailsSpy = jest.spyOn(Utils, 'getErrorDetails');
   });
 
   afterEach(() => {
@@ -965,6 +968,8 @@ describe('webex.cc', () => {
         `startOutdial failed with trackingId: ${error.details.trackingId}`,
         {module: CC_FILE, method: 'startOutdial'}
       );
+
+      expect(getErrorDetailsSpy).toHaveBeenCalledWith(error, 'startOutdial', CC_FILE);
     });
   });
 });
