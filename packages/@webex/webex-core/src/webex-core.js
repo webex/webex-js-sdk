@@ -41,6 +41,7 @@ import WebexInternalCore from './webex-internal-core';
 // TODO replace the Interceptor.create with Reflect.construct (
 // Interceptor.create exists because new was really hard to call on an array of
 // constructors)
+
 const interceptors = {
   WebexTrackingIdInterceptor: WebexTrackingIdInterceptor.create,
   RequestEventInterceptor: RequestEventInterceptor.create,
