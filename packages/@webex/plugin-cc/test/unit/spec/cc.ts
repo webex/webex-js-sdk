@@ -926,14 +926,23 @@ describe('webex.cc', () => {
     it('should make outdial call successfully.', async () => {
       
       const response = {};
+      const dialerPayload = {
+        entryPointId: '12345',
+        destination: '1234567890', 
+        direction: 'OUTBOUND',
+        attributes: {},
+        mediaType: 'telephony',
+        outboundType: 'OUTDIAL'
+      };
 
       const startOutdialMock = jest
         .spyOn(webex.cc.services.dialer, 'startOutdial')
         .mockResolvedValue({} as AgentContact);
 
-      const result = await webex.cc.startOutdial();
+      const result = await webex.cc.startOutdial(dialerPayload);
 
-      expect(startOutdialMock).toHaveBeenCalled();
+      expect(startOutdialMock).toHaveBeenCalledWith({data: dialerPayload});
+
       expect(result).toEqual(response);
     });
 

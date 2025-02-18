@@ -440,22 +440,29 @@ describe('TaskManager', () => {
     expect(taskUpdateTaskDataSpy).toHaveBeenCalledWith(payload.data);
   });
 
-  it('handle AGENT_OUTBOUND_FAILED event', () => {
-
+  it('should remove currentTask from taskCollection on AGENT_OUTBOUND_FAILED event', () => {
     const payload = {
       data: {
-        ...initalPayload.data,
         type: CC_EVENTS.AGENT_OUTBOUND_FAILED,
+        agentId: '723a8ffb-a26e-496d-b14a-ff44fb83b64f',
+        eventTime: 1733211616959,
+        eventType: 'RoutingMessage',
+        interaction: {},
+        interactionId: taskId,
+        orgId: '6ecef209-9a34-4ed1-a07a-7ddd1dbe925a',
+        trackingId: '575c0ec2-618c-42af-a61c-53aeb0a221ee',
+        mediaResourceId: '0ae913a4-c857-4705-8d49-76dd3dde75e4',
+        destAgentId: 'ebeb893b-ba67-4f36-8418-95c7492b28c2',
+        owner: '723a8ffb-a26e-496d-b14a-ff44fb83b64f',
+        queueMgr: 'aqm',
       },
     };
 
-    webSocketManagerMock.emit('message', JSON.stringify(initalPayload));
-
-    const taskUpdateTaskDataSpy = jest.spyOn(taskManager.currentTask, 'updateTaskData');
+    taskManager.taskCollection[taskId] = taskManager.currentTask;
 
     webSocketManagerMock.emit('message', JSON.stringify(payload));
 
-    expect(taskUpdateTaskDataSpy).toHaveBeenCalledWith(payload.data);
+    expect(taskManager.getTask(taskId)).toBeUndefined();
   });
 
   it('handle AGENT_OFFER_CONSULT event', () => {

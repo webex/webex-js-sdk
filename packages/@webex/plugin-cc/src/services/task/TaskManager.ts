@@ -80,7 +80,6 @@ export default class TaskManager extends EventEmitter {
               this.emit(TASK_EVENTS.TASK_INCOMING, this.currentTask);
             }
             break;
-
           case CC_EVENTS.AGENT_OFFER_CONTACT:
             // We don't have to emit any event here since this will be result of promise.
             this.currentTask = this.currentTask.updateTaskData(payload.data);
@@ -89,16 +88,16 @@ export default class TaskManager extends EventEmitter {
               method: 'registerTaskListeners',
             });
             break;
-
           case CC_EVENTS.AGENT_OUTBOUND_FAILED:
             // We don't have to emit any event here since this will be result of promise.
-            this.currentTask = this.currentTask.updateTaskData(payload.data);
+            if (this.currentTask.data) {
+              this.removeCurrentTaskFromCollection();
+            }
             LoggerProxy.log('Agent outbound failed', {
               module: TASK_MANAGER_FILE,
               method: 'registerTaskListeners',
             });
             break;
-
           case CC_EVENTS.AGENT_CONTACT_ASSIGNED:
             this.currentTask = this.currentTask.updateTaskData(payload.data);
             this.currentTask.emit(TASK_EVENTS.TASK_ASSIGNED, this.currentTask);
