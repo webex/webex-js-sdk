@@ -1,6 +1,6 @@
 import {WebexPlugin} from '@webex/webex-core';
 
-import {FileDownloadOptions, IEncryption} from './cypher.types';
+import {FileDownloadOptions, IEncryption} from './types';
 import {CYPHER} from './constants';
 import {WebexSDK} from '../types';
 
@@ -51,11 +51,11 @@ class Cypher extends WebexPlugin implements IEncryption {
             this.registered = true;
           })
           .catch((error) => {
-            this.$webex.logger.warn(`Error occurred during mercury.connect() ${error}`);
+            this.$webex.logger.error(`Error occurred during mercury.connect() ${error}`);
           });
       })
       .catch((error) => {
-        this.$webex.logger.warn(`Error occurred during device.register() ${error}`);
+        this.$webex.logger.error(`Error occurred during device.register() ${error}`);
       });
   }
 
@@ -82,7 +82,7 @@ class Cypher extends WebexPlugin implements IEncryption {
         this.registered = false;
       })
       .catch((error) => {
-        this.$webex.logger.warn(
+        this.$webex.logger.error(
           `Error occurred during mercury.disconnect() or device.deregister() ${error}`
         );
       });
