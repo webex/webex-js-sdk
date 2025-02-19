@@ -32,8 +32,6 @@ describe('Cypher', () => {
     webex.internal.encryption.download = jest.fn();
     webex.internal.device.register = jest.fn(() => Promise.resolve());
     webex.internal.device.unregister = jest.fn(() => Promise.resolve());
-    webex.internal.mercury.connect = jest.fn(() => Promise.resolve());
-    webex.internal.mercury.disconnect = jest.fn(() => Promise.resolve());
   });
 
   afterEach(() => {
@@ -95,7 +93,6 @@ describe('Cypher', () => {
       await cypher.register();
 
       expect(webex.internal.device.register).toHaveBeenCalled();
-      expect(webex.internal.mercury.connect).toHaveBeenCalled();
     });
 
     it('should log already registered message if device is already registered', async () => {
@@ -112,33 +109,15 @@ describe('Cypher', () => {
 
       expect(webex.logger.error).toHaveBeenCalledWith('Error occurred during device.register() Error: Device registration failed');
     });
-
-    it('should log an error if Mercury connection fails', async () => {
-      webex.internal.mercury.connect.mockRejectedValue(new Error('Mercury connection failed'));
-
-      await cypher.register();
-
-      expect(webex.logger.error).toHaveBeenCalledWith('Error occurred during mercury.connect() Error: Mercury connection failed');
-    });
   });
 
   describe('deregister', () => {
-    it('should deregister the device and disconnect from Mercury', async () => {
+    it('should deregister the device from WDM', async () => {
       cypher.registered = true;
 
       await cypher.deregister();
 
-      expect(webex.internal.mercury.disconnect).toHaveBeenCalled();
       expect(webex.internal.device.unregister).toHaveBeenCalled();
-    });
-
-    it('should log an error if Mercury disconnection fails', async () => {
-      cypher.registered = true;
-      webex.internal.mercury.disconnect.mockRejectedValue(new Error('Mercury disconnection failed'));
-
-      await cypher.deregister();
-
-      expect(webex.logger.error).toHaveBeenCalledWith('Error occurred during mercury.disconnect() or device.deregister() Error: Mercury disconnection failed');
     });
 
     it('should log an error if device deregistration fails', async () => {
@@ -147,7 +126,7 @@ describe('Cypher', () => {
 
       await cypher.deregister();
 
-      expect(webex.logger.error).toHaveBeenCalledWith('Error occurred during mercury.disconnect() or device.deregister() Error: Device deregistration failed');
+      expect(webex.logger.error).toHaveBeenCalledWith('Error occurred during device.deregister() Error: Device deregistration failed');
     });
 
     it('should not deregister if device is not registered', async () => {

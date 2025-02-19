@@ -29,7 +29,7 @@ class Cypher extends WebexPlugin implements IEncryption {
   }
 
   /**
-   * Registers the device and connects to Mercury.
+   * Registers the device to WDM. This is required for metrics and other services.
    * @returns {Promise<void>}
    */
   async register() {
@@ -43,16 +43,7 @@ class Cypher extends WebexPlugin implements IEncryption {
       .register()
       .then(() => {
         this.$webex.logger.info('Authentication: webex.internal.device.register successful');
-
-        return this.$webex.internal.mercury
-          .connect()
-          .then(() => {
-            this.$webex.logger.info('Authentication: webex.internal.mercury.connect successful');
-            this.registered = true;
-          })
-          .catch((error) => {
-            this.$webex.logger.error(`Error occurred during mercury.connect() ${error}`);
-          });
+        this.registered = true;
       })
       .catch((error) => {
         this.$webex.logger.error(`Error occurred during device.register() ${error}`);
@@ -60,7 +51,7 @@ class Cypher extends WebexPlugin implements IEncryption {
   }
 
   /**
-   * Deregisters the device and disconnects from Mercury.
+   * Deregisters the device.
    * @returns {Promise<void>}
    */
   async deregister() {
@@ -70,21 +61,14 @@ class Cypher extends WebexPlugin implements IEncryption {
       return Promise.resolve();
     }
 
-    return this.$webex.internal.mercury
-      .disconnect()
-      .then(() => {
-        this.$webex.logger.info('Authentication: webex.internal.mercury.disconnect successful');
-
-        return this.$webex.internal.device.unregister();
-      })
+    return this.$webex.internal.device
+      .unregister()
       .then(() => {
         this.$webex.logger.info('Authentication: webex.internal.device.deregister successful');
         this.registered = false;
       })
       .catch((error) => {
-        this.$webex.logger.error(
-          `Error occurred during mercury.disconnect() or device.deregister() ${error}`
-        );
+        this.$webex.logger.error(`Error occurred during device.deregister() ${error}`);
       });
   }
 
