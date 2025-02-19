@@ -83,15 +83,15 @@ async function initWebex(e) {
   webex.once('ready', () => {
     console.log('Authentication#initWebex() :: Webex Ready');
     authStatusElm.innerText = 'Webex is ready. Saved access token!';
-  });
 
-  webex.messages.listen()
-    .then(() => {
+    webex.cypher.register().then(() => {
+      console.log('Authentication#initWebex() :: Webex Registered');
       updateStatus(true);
-    })
-    .catch((err) => {
-      console.error(`error listening to messages: ${err}`);
+    }).catch((err) => {
+      console.error(`error registering webex: ${err}`);
+      authStatusElm.innerText = 'Error registering Webex. Check access token!';
     });
+  });
   e.stopPropagation();
 }
 

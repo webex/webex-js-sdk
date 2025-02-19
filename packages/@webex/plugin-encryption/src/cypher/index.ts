@@ -11,6 +11,7 @@ import {WebexSDK} from '../types';
 class Cypher extends WebexPlugin implements IEncryption {
   readonly namespace = CYPHER;
   private readonly $webex: WebexSDK;
+  registered = false;
 
   /**
    * Constructs an instance of the class.
@@ -25,6 +26,66 @@ class Cypher extends WebexPlugin implements IEncryption {
     super(...args);
     // @ts-ignore
     this.$webex = this.webex;
+  }
+
+  /**
+   * Registers the device and connects to Mercury.
+   * @returns {Promise<void>}
+   */
+  async register() {
+    if (this.registered) {
+      this.$webex.logger.info('Authentication: webex.internal.device.register already done');
+
+      return Promise.resolve();
+    }
+
+    return this.$webex.internal.device
+      .register()
+      .then(() => {
+        this.$webex.logger.info('Authentication: webex.internal.device.register successful');
+
+        return this.$webex.internal.mercury
+          .connect()
+          .then(() => {
+            this.$webex.logger.info('Authentication: webex.internal.mercury.connect successful');
+            this.registered = true;
+          })
+          .catch((error) => {
+            this.$webex.logger.warn(`Error occurred during mercury.connect() ${error}`);
+          });
+      })
+      .catch((error) => {
+        this.$webex.logger.warn(`Error occurred during device.register() ${error}`);
+      });
+  }
+
+  /**
+   * Deregisters the device and disconnects from Mercury.
+   * @returns {Promise<void>}
+   */
+  async deregister() {
+    if (!this.registered) {
+      this.$webex.logger.info('Authentication: webex.internal.device.deregister already done');
+
+      return Promise.resolve();
+    }
+
+    return this.$webex.internal.mercury
+      .disconnect()
+      .then(() => {
+        this.$webex.logger.info('Authentication: webex.internal.mercury.disconnect successful');
+
+        return this.$webex.internal.device.unregister();
+      })
+      .then(() => {
+        this.$webex.logger.info('Authentication: webex.internal.device.deregister successful');
+        this.registered = false;
+      })
+      .catch((error) => {
+        this.$webex.logger.warn(
+          `Error occurred during mercury.disconnect() or device.deregister() ${error}`
+        );
+      });
   }
 
   /**

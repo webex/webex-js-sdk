@@ -19,7 +19,7 @@ This project demonstrates how to interact with the Webex encryption service usin
 
 #### Authentication
 
-1. Navigate to https://localhost:8000/samples/plugin-encryption/
+1. Navigate to <https://localhost:8000/samples/plugin-encryption>
 2. Get an access token from either the developer portal or from the agent desktop
 3. Make sure to select the environment to be integration or production
 4. Enter your access token in the "Access Token" field.
@@ -33,15 +33,15 @@ The Webex SDK is initialized using the access token provided by the user. The in
 function initializeWebex(accessToken) {
   const webex = Webex.init({
     credentials: {
-      access_token: accessToken
-    }
+      access_token: accessToken,
+    },
   });
 
   return new Promise((resolve) => {
     webex.once('ready', () => {
       localStorage.setItem('access-token', accessToken);
       localStorage.setItem('date', new Date().getTime() + 60 * 60 * 1000); // 1 hour expiration
-      webex.messages.listen().then(()=>{
+      webex.cypher.register().then(() => {
         resolve(webex);
       });
     });
@@ -56,11 +56,8 @@ To decrypt a file, provide the encrypted file URL, the desired file name, and th
 ```typescript
 async function decryptFile(webex, encryptedFileUrl, decryptedFileName, mimeType) {
   try {
-    const file = await webex.cypher.downloadAndDecryptFile({
-      url: encryptedFileUrl,
-      mimeType: mimeType
-    });
-
+    const decryptedFileBuf = await webex.cypher.downloadAndDecryptFile(encryptedFileUrl);
+    const file = new File([decryptedFileBuf], decryptedFileName, { type: mimeType });
     const url = window.URL.createObjectURL(file);
     const a = document.createElement('a');
     a.style.display = 'none';
@@ -94,5 +91,5 @@ initializeWebex(accessToken).then((webex) => {
 For more information on the Webex JS SDK, please visit the [developer portal](https://developer.webex.com/).
 
 ### License
-This project is licensed under the Cisco General Terms - see the [LICENSE]([https://www.cisco.com/c/en/us/products/end-user-license-agreement.html](https://www.cisco.com/c/dam/en_us/about/doing_business/legal/Cisco_General_Terms.pdf)) for details.
 
+This project is licensed under the Cisco General Terms - see the [LICENSE]([https://www.cisco.com/c/en/us/products/end-user-license-agreement.html](https://www.cisco.com/c/dam/en_us/about/doing_business/legal/Cisco_General_Terms.pdf)) for details.

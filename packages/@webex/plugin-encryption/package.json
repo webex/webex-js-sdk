@@ -28,10 +28,8 @@
     ]
   },
   "dependencies": {
-    "@webex/common": "workspace:*",
     "@webex/internal-plugin-encryption": "workspace:*",
-    "@webex/webex-core": "workspace:*",
-    "node-scr": "^0.3.0"
+    "@webex/webex-core": "workspace:*"
   },
   "devDependencies": {
     "@babel/preset-typescript": "7.22.11",

@@ -28,7 +28,7 @@ This is a plugin for the Cisco Webex JS SDK . Please see our [developer portal](
 
 API Docs: [https://webex.github.io/webex-js-sdk/api/](https://webex.github.io/webex-js-sdk/api/)
 Hosted Sample App: [https://webex.github.io/webex-js-sdk/samples/plugin-encryption/](https://webex.github.io/webex-js-sdk/samples/plugin-encryption/)
-See [https://github.com/webex/webex-js-sdk/tree/master/docs/samples/plugin-encryption](https://github.com/webex/webex-js-sdk/tree/master/docs/samples/plugin-encryption) for the sample app code vs the readme
+See [https://github.com/webex/webex-js-sdk/tree/next/docs/samples/plugin-encryption](https://github.com/webex/webex-js-sdk/tree/next/docs/samples/plugin-encryption) for the sample app code vs the readme
 
 ## Sample Code
 
@@ -41,12 +41,18 @@ const webex = new Webex({
   }
 });
 
-try {
-  const decryptedFileBuf = await webex.cypher.downloadAndDecryptFile(attachmentURL);
-  // Do something with the decrypted file buffer
-} catch (error) {
-  // Handle error
-}
+webex.once('ready', () => {
+  webex.cypher.register().then(() => {
+    try {
+      const decryptedFileBuf = await webex.cypher.downloadAndDecryptFile(attachmentURL);
+      // Do something with the decrypted file buffer
+    } catch (error) {
+      // Handle error
+    }
+  }).catch((err) => {
+    // Handle error
+  });
+});
 ```
 
 #### Development
@@ -63,8 +69,10 @@ This package is maintained by [Cisco Webex for Developers](https://developer.web
 
 ## Contribute
 
-Pull requests welcome. Please see [CONTRIBUTING.md](https://github.com/webex/webex-js-sdk/blob/master/CONTRIBUTING.md) for more details.
+Pull requests welcome. Please see [CONTRIBUTING.md](https://github.com/webex/webex-js-sdk/blob/next/CONTRIBUTING.md) for more details.
 
 ## License
+
+This project is licensed under the Cisco General Terms - see the [LICENSE]([https://www.cisco.com/c/en/us/products/end-user-license-agreement.html](https://www.cisco.com/c/dam/en_us/about/doing_business/legal/Cisco_General_Terms.pdf)) for details.
 
 © 2016-2025 Cisco and/or its affiliates. All Rights Reserved.

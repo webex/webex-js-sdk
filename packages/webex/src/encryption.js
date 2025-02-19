@@ -13,6 +13,7 @@ if (!global._babelPolyfill) {
 }
 
 require('@webex/plugin-authorization');
+require('@webex/internal-plugin-encryption'); // required
 require('@webex/plugin-encryption');
 
 const merge = require('lodash/merge');
