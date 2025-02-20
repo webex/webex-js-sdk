@@ -3391,7 +3391,7 @@ export default class Meeting extends StatelessWebexPlugin {
     });
 
     this.locusInfo.on(LOCUSINFO.EVENTS.SELF_MEETING_BRB_CHANGED, (payload) => {
-      this.brbState.handleServerBrbUpdate(payload.brb);
+      this.brbState.handleServerBrbUpdate(payload?.brb?.enabled);
       Trigger.trigger(
         this,
         {
