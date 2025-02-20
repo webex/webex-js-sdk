@@ -180,7 +180,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
         !meetingInfo?.pmr &&
         meetingInfo?.isConvergedWebinarWebcast
       ) {
-        return WEBEX_SUB_SERVICE_TYPES.WEBINAR;
+        return WEBEX_SUB_SERVICE_TYPES.WEBCAST;
       }
     }
 
