@@ -3,7 +3,13 @@
 /* eslint-disable @typescript-eslint/no-shadow */
 import * as Media from '@webex/internal-media-core';
 import {Mutex} from 'async-mutex';
-import {filterMobiusUris, handleCallingClientErrors, validateServiceData} from '../common/Utils';
+import {v4 as uuid} from 'uuid';
+import {
+  filterMobiusUris,
+  handleCallingClientErrors,
+  uploadLogs,
+  validateServiceData,
+} from '../common/Utils';
 import {LOGGER, LogContext} from '../Logger/types';
 import SDKConnector from '../SDKConnector';
 import {ClientRegionInfo, ISDKConnector, ServiceHost, WebexSDK} from '../SDKConnector/types';
@@ -500,6 +506,19 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
     });
 
     return connectCall;
+  }
+
+  /**
+   * uploads logs to backend for trouble shooting
+   * @param data
+   */
+  public async uploadLogs(data: {feedbackId?: string} = {}) {
+    if (!data.feedbackId) {
+      // spread the data object to avoid mutation
+      data = {...data, feedbackId: uuid()};
+    }
+
+    return uploadLogs(this.webex, data);
   }
 }
 
