@@ -2672,8 +2672,19 @@ describe('internal-plugin-metrics', () => {
           webexScheduled: true,
           pmr: false,
           enableEvent: true,
+          isConvergedWebinar: true,
         };
         assert.deepEqual(cd.getSubServiceType(fakeMeeting), 'Webinar');
+      });
+
+      it('returns subServicetype as Webcast when meeting is Webinar and enable webcast', () => {
+        fakeMeeting.meetingInfo = {
+          webexScheduled: true,
+          pmr: false,
+          enableEvent: true,
+          isConvergedWebinarWebcast: true,
+        };
+        assert.deepEqual(cd.getSubServiceType(fakeMeeting), 'Webcast');
       });
 
       it('returns subServicetype as undefined when correct parameters are not found', () => {
