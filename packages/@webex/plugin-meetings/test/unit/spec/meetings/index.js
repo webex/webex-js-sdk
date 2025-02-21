@@ -37,6 +37,7 @@ import {
   LOCUSINFO,
   EVENT_TRIGGERS,
   DESTINATION_TYPE,
+  INITIAL_REGISTRATION_STATUS,
 } from '../../../../src/constants';
 import CaptchaError from '@webex/plugin-meetings/src/common/errors/captcha-error';
 import {forEach} from 'lodash';
@@ -420,6 +421,100 @@ describe('plugin-meetings', () => {
             includeDetails: CatalogDetails.features,
           });
         });
+
+        it('updates registration status as expected', async () => {
+          const clock = sinon.useFakeTimers();
+
+          const delay = (secs) => () =>
+            new Promise((resolve) => {
+              setTimeout(resolve, secs * 1000);
+            });
+
+          let i = 1;
+          sinon.stub(webex.meetings, 'fetchUserPreferredWebexSite').callsFake(delay(i++));
+          MeetingsUtil.checkH264Support.callsFake(delay(i++));
+          webex.meetings.startReachability.callsFake(delay(i++));
+          webex.internal.device.register.callsFake(delay(i++));
+          sinon.stub(webex.meetings, 'getGeoHint').callsFake(delay(i++));
+          webex.internal.mercury.connect.callsFake(delay(i++));
+
+          webex.canAuthorize = true;
+          webex.meetings.registered = false;
+
+          const registerPromise = webex.meetings.register({
+            includeDetails: CatalogDetails.features,
+          });
+
+          await clock.tick(1000);
+          await webex.meetings.fetchUserPreferredWebexSite;
+          assert.deepEqual(webex.meetings.registrationStatus, {
+            fetchWebexSite: true,
+            getGeoHint: false,
+            startReachability: false,
+            deviceRegister: false,
+            mercuryConnect: false,
+            checkH264Support: false,
+          });
+
+          await clock.tick(1000);
+          await MeetingsUtil.checkH264Support;
+          assert.deepEqual(webex.meetings.registrationStatus, {
+            fetchWebexSite: true,
+            getGeoHint: false,
+            startReachability: false,
+            deviceRegister: false,
+            mercuryConnect: false,
+            checkH264Support: true,
+          });
+
+          await clock.tick(1000);
+          await webex.meetings.startReachability;
+          assert.deepEqual(webex.meetings.registrationStatus, {
+            fetchWebexSite: true,
+            getGeoHint: false,
+            startReachability: true,
+            deviceRegister: false,
+            mercuryConnect: false,
+            checkH264Support: true,
+          });
+
+          await clock.tick(1000);
+          await webex.internal.device.register;
+          assert.deepEqual(webex.meetings.registrationStatus, {
+            fetchWebexSite: true,
+            getGeoHint: false,
+            startReachability: true,
+            deviceRegister: true,
+            mercuryConnect: false,
+            checkH264Support: true,
+          });
+
+          await clock.tick(1000);
+          await webex.meetings.getGeoHint;
+          assert.deepEqual(webex.meetings.registrationStatus, {
+            fetchWebexSite: true,
+            getGeoHint: true,
+            startReachability: true,
+            deviceRegister: true,
+            mercuryConnect: false,
+            checkH264Support: true,
+          });
+
+          await clock.tick(1000);
+          await webex.internal.mercury.connect;
+          assert.deepEqual(webex.meetings.registrationStatus, {
+            fetchWebexSite: true,
+            getGeoHint: true,
+            startReachability: true,
+            deviceRegister: true,
+            mercuryConnect: true,
+            checkH264Support: true,
+          });
+
+          await registerPromise;
+
+          clock.restore();
+        });
       });
 
       describe('#unregister', () => {
@@ -452,12 +547,21 @@ describe('plugin-meetings', () => {
           assert.isRejected(webex.meetings.unregister());
         });
 
-        it('resolves immediately if already registered', (done) => {
+        it('resolves immediately if not registered', (done) => {
           webex.meetings.registered = false;
           webex.meetings.unregister().then(() => {
-            assert.notCalled(webex.internal.device.register);
-            assert.notCalled(webex.internal.mercury.connect);
+            assert.notCalled(webex.internal.device.unregister);
+            assert.notCalled(webex.internal.mercury.disconnect);
             assert.isFalse(webex.meetings.registered);
+            done();
+          });
+        });
+
+        it('resets registration status', (done) => {
+          webex.meetings.registered = true;
+          webex.meetings.registrationStatus = {foo: 'bar'};
+          webex.meetings.unregister().then(() => {
+            assert.deepEqual(webex.meetings.registrationStatus, INITIAL_REGISTRATION_STATUS);
             done();
           });
         });

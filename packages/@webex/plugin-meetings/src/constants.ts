@@ -1389,3 +1389,12 @@ export const DESTINATION_TYPE = {
 } as const;
 
 export type DESTINATION_TYPE = Enum<typeof DESTINATION_TYPE>;
+
+export const INITIAL_REGISTRATION_STATUS = {
+  fetchWebexSite: false,
+  getGeoHint: false,
+  startReachability: false,
+  deviceRegister: false,
+  mercuryConnect: false,
+  checkH264Support: false,
+};
