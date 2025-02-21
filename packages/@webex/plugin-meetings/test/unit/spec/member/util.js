@@ -385,6 +385,12 @@ describe('plugin-meetings', () => {
 
       assert.isFalse(MemberUtil.isBrb(participant));
     });
+
+    it('returns false when controls is not present', () => {
+      const participant = {};
+
+      assert.isFalse(MemberUtil.isBrb(participant));
+    });
   });
 
   describe('MemberUtil.isBreakoutsSupported', () => {

@@ -90,7 +90,8 @@ MeetingsUtil.getMediaServer = (sdp) => {
       .find((line) => line.startsWith('o='))
       .split(' ')
       .shift()
-      .replace('o=', '');
+      .replace('o=', '')
+      .toLowerCase();
   } catch {
     mediaServer = undefined;
   }

@@ -14,9 +14,12 @@ export {
   LocalCameraStream,
   createMicrophoneStream,
   createCameraStream,
+  createCameraAndMicrophoneStreams,
   createDisplayStream,
   createDisplayStreamWithAudio,
+  createDisplayMedia,
   type VideoContentHint,
+  type StreamState,
 } from './webrtc-core';
 
 export {NoiseReductionEffect, VirtualBackgroundEffect} from '@webex/web-media-effects';

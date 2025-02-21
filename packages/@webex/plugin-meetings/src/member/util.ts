@@ -57,7 +57,7 @@ MemberUtil.getControlsRoles = (participant: ParticipantWithRoles): Array<ServerR
  * @returns {boolean} - True if the participant has brb enabled, false otherwise.
  */
 MemberUtil.isBrb = (participant: ParticipantWithBrb): boolean =>
-  participant.controls.brb?.enabled || false;
+  participant.controls?.brb?.enabled || false;
 
 /**
  * @param {Object} participant - The locus participant object.

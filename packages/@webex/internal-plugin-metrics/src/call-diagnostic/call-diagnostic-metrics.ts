@@ -165,8 +165,22 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
         return WEBEX_SUB_SERVICE_TYPES.SCHEDULED_MEETING;
       }
       // if Scheduled, Webinar, not pmr - then Webinar
-      if (meetingInfo?.webexScheduled && meetingInfo?.enableEvent && !meetingInfo?.pmr) {
+      if (
+        meetingInfo?.webexScheduled &&
+        meetingInfo?.enableEvent &&
+        !meetingInfo?.pmr &&
+        meetingInfo?.isConvergedWebinar
+      ) {
         return WEBEX_SUB_SERVICE_TYPES.WEBINAR;
+      }
+      // if Scheduled, Webinar enable webcast - then webcast
+      if (
+        meetingInfo?.webexScheduled &&
+        meetingInfo?.enableEvent &&
+        !meetingInfo?.pmr &&
+        meetingInfo?.isConvergedWebinarWebcast
+      ) {
+        return WEBEX_SUB_SERVICE_TYPES.WEBCAST;
       }
     }
 
@@ -377,7 +391,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
    * @returns
    */
   prepareDiagnosticEvent(eventData: Event['event'], options: any) {
-    const {meetingId} = options;
+    const {meetingId, triggeredTime} = options;
     const origin = this.getOrigin(options, meetingId);
 
     const event: Event = {
@@ -385,7 +399,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       version: 1,
       origin,
       originTime: {
-        triggered: new Date().toISOString(),
+        triggered: triggeredTime || new Date().toISOString(),
         // is overridden in prepareRequest batcher
         sent: 'not_defined_yet',
       },
