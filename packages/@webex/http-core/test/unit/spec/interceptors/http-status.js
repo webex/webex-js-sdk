@@ -41,7 +41,7 @@ describe('http-core', () => {
             },
           };
 
-          assert.isRejected(interceptor.onResponse({}, response));
+          return assert.isRejected(interceptor.onResponse({}, response));
         });
       });
     });

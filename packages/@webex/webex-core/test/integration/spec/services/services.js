@@ -1025,25 +1025,25 @@ describe('webex-core', () => {
         });
 
         describe('when using the name parameter property', () => {
-          it('should return a rejected promise', () => {
+          it('should return a rejected promise', async () => {
             const submitMetrics = sinon.stub(webex.internal.metrics, 'submitClientMetrics');
             const waitForService = services.waitForService({name, timeout});
 
             assert.called(submitMetrics);
-            assert.isRejected(waitForService);
+            await assert.isRejected(waitForService);
             assert.isTrue(catalog.isReady);
           });
         });
 
         describe('when using the name and url parameter properties', () => {
-          it('should return a rejected promise', () => {
+          it('should return a rejected promise', async () => {
             const waitForService = services.waitForService({
               name,
               url,
               timeout,
             });
 
-            assert.isRejected(waitForService);
+            await assert.isRejected(waitForService);
             assert.isTrue(catalog.isReady);
           });
         });

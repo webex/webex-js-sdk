@@ -155,7 +155,7 @@ describe('plugin-meetings', () => {
       it('should throw a rejection if there is no locus url', async () => {
         const members = createMembers({url: false});
 
-        assert.isRejected(members.addMember({email: 'test@cisco.com'}));
+        await assert.isRejected(members.addMember({email: 'test@cisco.com'}));
       });
     });
 
@@ -285,13 +285,13 @@ describe('plugin-meetings', () => {
       it('should throw a rejection when calling sendDialPadKey with no tones', async () => {
         const members = createMembers({url: url1});
 
-        assert.isRejected(members.sendDialPadKey());
+        await assert.isRejected(members.sendDialPadKey());
       });
 
       it('should throw a rejection when calling sendDialPadKey with no member is found', async () => {
         const members = createMembers({url: url1});
 
-        assert.isRejected(members.sendDialPadKey('1', '1234'));
+        await assert.isRejected(members.sendDialPadKey('1', '1234'));
       });
 
       it('should call genderateSendDTMFOptions with proper options on Members util if we the member is valid', async () => {
@@ -338,7 +338,7 @@ describe('plugin-meetings', () => {
       it('should throw a rejection if there is no locus url', async () => {
         const members = createMembers({url: false});
 
-        assert.isRejected(members.cancelPhoneInvite({phoneNumber: '+18578675309'}));
+        await assert.isRejected(members.cancelPhoneInvite({phoneNumber: '+18578675309'}));
       });
     });
 

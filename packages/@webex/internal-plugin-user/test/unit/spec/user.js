@@ -24,7 +24,7 @@ describe('plugin-user', () => {
 
     describe('#activate()', () => {
       it('requires a `verificationToken` or a confirmationCode + user id', () => {
-        assert.isRejected(
+        return assert.isRejected(
           userService.activate(),
           /either options.verificationToken is required or both options.confirmationCode and options.id are required/
         );

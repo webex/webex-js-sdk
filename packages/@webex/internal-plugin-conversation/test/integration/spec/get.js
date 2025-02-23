@@ -125,7 +125,7 @@ describe('plugin-conversation', function () {
               },
             };
 
-            assert.isRejected(webex.internal.conversation.download(item));
+            return assert.isRejected(webex.internal.conversation.download(item));
           }));
 
       it('downloads and decrypts an encrypted file', () =>

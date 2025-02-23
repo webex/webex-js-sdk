@@ -206,7 +206,7 @@ describe('plugin-device', () => {
           it('returns an error', () => {
             const promise = interceptor.onRequest(options);
 
-            assert.isRejected(promise);
+            return assert.isRejected(promise);
           });
         });
       });

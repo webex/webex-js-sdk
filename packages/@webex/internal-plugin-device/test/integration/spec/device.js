@@ -103,7 +103,7 @@ describe('plugin-device', () => {
           });
 
           it('should return a rejected promise', () => {
-            assert.isRejected(device.canRegister());
+            return assert.isRejected(device.canRegister());
           });
         });
       });
@@ -121,7 +121,7 @@ describe('plugin-device', () => {
         });
 
         it('should return a rejected promise', () => {
-          assert.isRejected(device.canRegister());
+          return assert.isRejected(device.canRegister());
         });
       });
     });

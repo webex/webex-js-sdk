@@ -22,7 +22,7 @@ describe('plugin-presence', () => {
 
     describe('#get()', () => {
       it('requires a person id parameter', () => {
-        assert.isRejected(webex.presence.get(), /A person id is required/);
+        return assert.isRejected(webex.presence.get(), /A person id is required/);
       });
     });
 

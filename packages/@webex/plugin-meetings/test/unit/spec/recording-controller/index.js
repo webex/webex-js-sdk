@@ -51,7 +51,7 @@ describe('plugin-meetings', () => {
 
             assert.notCalled(request.request);
 
-            assert.isRejected(result);
+            return assert.isRejected(result);
           });
 
           it('rejects when correct display hint is present but the policy is false', () => {
@@ -61,7 +61,7 @@ describe('plugin-meetings', () => {
 
             assert.notCalled(request.request);
 
-            assert.isRejected(result);
+            return assert.isRejected(result);
           });
 
           it('can start recording when the correct display hint is present', () => {
@@ -85,7 +85,7 @@ describe('plugin-meetings', () => {
 
             assert.notCalled(request.request);
 
-            assert.isRejected(result);
+            return assert.isRejected(result);
           });
 
           it('rejects when correct display hint is present but the policy is false', () => {
@@ -95,7 +95,7 @@ describe('plugin-meetings', () => {
 
             assert.notCalled(request.request);
 
-            assert.isRejected(result);
+            return assert.isRejected(result);
           });
 
           it('can stop recording when the correct display hint is present', () => {
@@ -119,7 +119,7 @@ describe('plugin-meetings', () => {
 
             assert.notCalled(request.request);
 
-            assert.isRejected(result);
+            return assert.isRejected(result);
           });
 
           it('rejects when correct display hint is present but the policy is false', () => {
@@ -131,7 +131,7 @@ describe('plugin-meetings', () => {
 
             assert.notCalled(request.request);
 
-            assert.isRejected(result);
+            return assert.isRejected(result);
           });
 
           it('can pause recording when the correct display hint is present', () => {
@@ -155,7 +155,7 @@ describe('plugin-meetings', () => {
 
             assert.notCalled(request.request);
 
-            assert.isRejected(result);
+            return assert.isRejected(result);
           });
 
           it('rejects when correct display hint is present but the policy is false', () => {
@@ -167,7 +167,7 @@ describe('plugin-meetings', () => {
 
             assert.notCalled(request.request);
 
-            assert.isRejected(result);
+            return assert.isRejected(result);
           });
 
 
@@ -211,7 +211,7 @@ describe('plugin-meetings', () => {
 
             assert.notCalled(request.request);
 
-            assert.isRejected(result);
+            return assert.isRejected(result);
           });
 
           it('can start recording when the correct display hint is present', () => {
@@ -249,7 +249,7 @@ describe('plugin-meetings', () => {
 
             assert.notCalled(request.request);
 
-            assert.isRejected(result);
+            return assert.isRejected(result);
           });
 
           it('can stop recording when the correct display hint is present', () => {
@@ -287,7 +287,7 @@ describe('plugin-meetings', () => {
 
             assert.notCalled(request.request);
 
-            assert.isRejected(result);
+            return assert.isRejected(result);
           });
 
           it('can pause recording when the correct display hint is present', () => {
@@ -325,7 +325,7 @@ describe('plugin-meetings', () => {
 
             assert.notCalled(request.request);
 
-            assert.isRejected(result);
+            return assert.isRejected(result);
           });
 
           it('can resume recording when the correct display hint is present', () => {

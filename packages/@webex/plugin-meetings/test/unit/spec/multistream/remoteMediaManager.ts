@@ -1823,9 +1823,9 @@ describe('RemoteMediaManager', () => {
   });
 
   describe('addMemberVideoPane()', () => {
-    it('fails if there is no current layout', () => {
+    it('fails if there is no current layout', async () => {
       // we haven't called start() so there is no layout set, yet
-      assert.isRejected(
+      await assert.isRejected(
         remoteMediaManager.addMemberVideoPane({id: 'newPane', size: 'best', csi: 54321})
       );
     });
@@ -1834,7 +1834,7 @@ describe('RemoteMediaManager', () => {
       await remoteMediaManager.start();
       await remoteMediaManager.setLayout('Stage');
 
-      assert.isRejected(
+      await assert.isRejected(
         remoteMediaManager.addMemberVideoPane({id: 'stage-3', size: 'best', csi: 54321})
       );
     });
@@ -1886,9 +1886,9 @@ describe('RemoteMediaManager', () => {
   });
 
   describe('removeMemberVideoPane()', () => {
-    it('fails if there is no current layout', () => {
+    it('fails if there is no current layout', async () => {
       // we haven't called start() so there is no layout set, yet
-      assert.isRejected(remoteMediaManager.removeMemberVideoPane('newPane'));
+      await assert.isRejected(remoteMediaManager.removeMemberVideoPane('newPane'));
     });
 
     it('does nothing when called for a pane not in the current layout', async () => {

@@ -45,7 +45,7 @@ describe('ReceiveSlotManager', () => {
   it('rejects if there is no media connection', async () => {
     createSlotCallbackStub.rejects(new Error('Webrtc media connection is missing'));
 
-    assert.isRejected(
+    await assert.isRejected(
       receiveSlotManager.allocateSlot(MediaType.VideoMain),
       'Webrtc media connection is missing'
     );

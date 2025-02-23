@@ -149,10 +149,10 @@ describe('webex-core', () => {
             waitForService.rejects();
           });
 
-          it('should return a rejected promise', () => {
+          it('should return a rejected promise', async () => {
             const promise = interceptor.onRequest(options);
 
-            assert.isRejected(promise);
+            await assert.isRejected(promise);
           });
         });
       });

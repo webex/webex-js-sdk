@@ -65,7 +65,7 @@ describe('webex-core', () => {
           });
         });
 
-        it('does not redirect on reaching max redirects', () => {
+        it('does not redirect on reaching max redirects', async () => {
           const response = {
             statusCode: 404,
             headers: {},
@@ -78,7 +78,7 @@ describe('webex-core', () => {
             },
           };
 
-          assert.isRejected(interceptor.onResponse({$redirectCount: 5}, response));
+          await assert.isRejected(interceptor.onResponse({$redirectCount: 5}, response));
         });
 
         it('returns when locus redirect is not encountered', () => {

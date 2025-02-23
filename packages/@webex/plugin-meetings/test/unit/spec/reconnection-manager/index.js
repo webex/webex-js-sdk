@@ -427,14 +427,14 @@ describe('plugin-meetings', () => {
           clock.restore();
         });
 
-        it('should set the disconnected state to true', () => {
+        it('should set the disconnected state to true', async () => {
           const promise = reconnectionManager.waitForIceReconnect();
 
           assert.isTrue(reconnectionManager.iceState.disconnected);
 
           // we let the timer expire
           clock.tick(reconnectionManager.iceState.timeoutDuration);
-          assert.isRejected(promise);
+          await assert.isRejected(promise);
         });
 
         it('should return a promise that rejects after a duration', async () => {
@@ -442,7 +442,7 @@ describe('plugin-meetings', () => {
 
           // we let the timer expire
           clock.tick(reconnectionManager.iceState.timeoutDuration);
-          assert.isRejected(promise);
+          await assert.isRejected(promise);
         });
 
         it('should resolve when ICE is reconnected', async () => {
