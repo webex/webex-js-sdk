@@ -856,9 +856,12 @@ export default class Meetings extends WebexPlugin {
               );
             }),
         'deviceRegister'
-      ).then(
-        // @ts-ignore
-        this.executeRegistrationStep(() => this.webex.internal.mercury.connect(), 'mercuryConnect')
+      ).then(() =>
+        this.executeRegistrationStep(
+          // @ts-ignore
+          () => this.webex.internal.mercury.connect(),
+          'mercuryConnect'
+        )
       ),
       this.executeRegistrationStep(
         () => Promise.resolve(MeetingsUtil.checkH264Support.call(this)),

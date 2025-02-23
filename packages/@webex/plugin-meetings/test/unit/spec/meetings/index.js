@@ -376,21 +376,21 @@ describe('plugin-meetings', () => {
           assert.isTrue(webex.meetings.registered);
         });
 
-        it('rejects when SDK canAuthorize is false', () => {
+        it('rejects when SDK canAuthorize is false', async () => {
           webex.canAuthorize = false;
-          assert.isRejected(webex.meetings.register());
+          await assert.isRejected(webex.meetings.register());
         });
 
-        it('rejects when device.register fails', () => {
+        it('rejects when device.register fails', async () => {
           webex.canAuthorize = true;
           webex.internal.device.register = sinon.stub().returns(Promise.reject());
-          assert.isRejected(webex.meetings.register());
+          await assert.isRejected(webex.meetings.register());
         });
 
-        it('rejects when mercury.connect fails', () => {
+        it('rejects when mercury.connect fails', async () => {
           webex.canAuthorize = true;
           webex.internal.mercury.connect = sinon.stub().returns(Promise.reject());
-          assert.isRejected(webex.meetings.register());
+          await assert.isRejected(webex.meetings.register());
         });
 
         it('resolves immediately if already registered', async () => {
@@ -500,7 +500,7 @@ describe('plugin-meetings', () => {
             checkH264Support: true,
           });
 
-          await clock.tick(1000);
+          await clock.tick(6000);
           await webex.internal.mercury.connect;
           assert.deepEqual(webex.meetings.registrationStatus, {
             fetchWebexSite: true,
@@ -535,16 +535,16 @@ describe('plugin-meetings', () => {
           });
         });
 
-        it('rejects when device.unregister fails', () => {
+        it('rejects when device.unregister fails', async () => {
           webex.meetings.registered = true;
           webex.internal.device.unregister = sinon.stub().returns(Promise.reject());
-          assert.isRejected(webex.meetings.unregister());
+          await assert.isRejected(webex.meetings.unregister());
         });
 
-        it('rejects when mercury.disconnect fails', () => {
+        it('rejects when mercury.disconnect fails', async () => {
           webex.meetings.registered = true;
           webex.internal.mercury.disconnect = sinon.stub().returns(Promise.reject());
-          assert.isRejected(webex.meetings.unregister());
+          await assert.isRejected(webex.meetings.unregister());
         });
 
         it('resolves immediately if not registered', (done) => {
