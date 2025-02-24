@@ -36,6 +36,9 @@ export const HOST = 'host';
 
 export const JOIN = 'join';
 
+export const JOIN_LINK = 'j.php';
+export const JOIN_LINK_MTID = 'MTID';
+
 export const LEAVE = 'leave';
 export const LIVE = 'live';
 export const LOCAL = 'local';

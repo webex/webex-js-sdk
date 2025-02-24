@@ -3,6 +3,7 @@ import url from 'url';
 // @ts-ignore
 import {deconstructHydraId} from '@webex/common';
 
+import {parse} from 'path';
 import {
   DESTINATION_TYPE,
   _PEOPLE_,
@@ -19,6 +20,8 @@ import {
   UUID_REG,
   VALID_EMAIL_ADDRESS,
   DEFAULT_MEETING_INFO_REQUEST_BODY,
+  JOIN_LINK,
+  JOIN_LINK_MTID,
 } from '../constants';
 import ParameterError from '../common/errors/parameter';
 import LoggerProxy from '../common/logs/logger-proxy';
@@ -70,7 +73,9 @@ export default class MeetingInfoUtil {
           parsedUrl.pathname.includes(`/${MEET_M}`) ||
           parsedUrl.pathname.includes(`/${MEET_CISCO}`) ||
           parsedUrl.pathname.includes(`/${MEET_CO}`) ||
-          parsedUrl.pathname.includes(`/${JOIN}`));
+          parsedUrl.pathname.includes(`/${JOIN}`) ||
+          (parsedUrl.pathname.includes(`/${JOIN_LINK}`) &&
+            parsedUrl.search.includes(JOIN_LINK_MTID)));
     }
 
     return hostNameBool && pathNameBool;
