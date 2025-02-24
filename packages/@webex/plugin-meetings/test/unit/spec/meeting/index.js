@@ -9178,6 +9178,7 @@ describe('plugin-meetings', () => {
 
         it('listens to the brb state changed event', () => {
           const assertBrb = (enabled) => {
+            meeting.brbState = createBrbState(meeting, false);
             meeting.locusInfo.emit(
               { function: 'test', file: 'test' },
               LOCUSINFO.EVENTS.SELF_MEETING_BRB_CHANGED,
