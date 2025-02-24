@@ -56,19 +56,19 @@ export class BrbState {
    *
    * @param {boolean} enabled
    * @param {SendSlotManager} sendSlotManager
-   * @returns {void}
+   * @returns {Promise}
    */
   public enable(enabled: boolean, sendSlotManager: SendSlotManager) {
     this.state.client.enabled = enabled;
 
-    this.applyClientStateToServer(sendSlotManager);
+    return this.applyClientStateToServer(sendSlotManager);
   }
 
   /**
    * Updates the server local and remote brb values so that they match the current client desired state.
    *
    * @param {SendSlotManager} sendSlotManager
-   * @returns {void}
+   * @returns {Promise}
    */
   private applyClientStateToServer(sendSlotManager: SendSlotManager) {
     if (this.state.syncToServerInProgress) {
@@ -76,7 +76,7 @@ export class BrbState {
         `Meeting:brbState#applyClientStateToServer: request to server in progress, we need to wait for it to complete`
       );
 
-      return;
+      return Promise.resolve();
     }
 
     const remoteBrbRequiresSync = this.state.client.enabled !== this.state.server.enabled;
@@ -90,12 +90,12 @@ export class BrbState {
         `Meeting:brbState#applyClientStateToServer: client state already matching server state, nothing to do`
       );
 
-      return;
+      return Promise.resolve();
     }
 
     this.state.syncToServerInProgress = true;
 
-    this.sendLocalBrbStateToServer(sendSlotManager)
+    return this.sendLocalBrbStateToServer(sendSlotManager)
       .then(() => {
         this.state.syncToServerInProgress = false;
         LoggerProxy.logger.info(

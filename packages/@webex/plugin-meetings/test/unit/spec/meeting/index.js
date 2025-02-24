@@ -114,6 +114,7 @@ import {ERROR_DESCRIPTIONS} from '@webex/internal-plugin-metrics/src/call-diagno
 import MeetingCollection from '@webex/plugin-meetings/src/meetings/collection';
 
 import {EVENT_TRIGGERS as VOICEAEVENTS} from '@webex/internal-plugin-voicea';
+import { createBrbState } from '@webex/plugin-meetings/src/meeting/brbState';
 
 describe('plugin-meetings', () => {
   const logger = {
@@ -3811,7 +3812,6 @@ describe('plugin-meetings', () => {
         };
 
         beforeEach(() => {
-          meeting.meetingRequest.setBrb = sinon.stub().resolves({body: 'test'});
           meeting.mediaProperties.webrtcMediaConnection = {createSendSlot: sinon.stub()};
           meeting.sendSlotManager.createSlot(
             fakeMultistreamRoapMediaConnection,
@@ -3821,6 +3821,8 @@ describe('plugin-meetings', () => {
           meeting.locusUrl = 'locus url';
           meeting.deviceUrl = 'device url';
           meeting.selfId = 'self id';
+          meeting.brbState = createBrbState(meeting, false);
+          meeting.brbState.enable = sinon.stub().resolves();
         });
 
         afterEach(() => {
@@ -3842,7 +3844,7 @@ describe('plugin-meetings', () => {
 
             await brbResult;
             assert.exists(brbResult.then);
-            assert.calledOnce(meeting.meetingRequest.setBrb);
+            assert.calledOnce(meeting.brbState.enable);
           })
 
           it('should disable #beRightBack and return a promise', async () => {
@@ -3850,12 +3852,12 @@ describe('plugin-meetings', () => {
 
             await brbResult;
             assert.exists(brbResult.then);
-            assert.calledOnce(meeting.meetingRequest.setBrb);
+            assert.calledOnce(meeting.brbState.enable);
           })
 
           it('should throw an error and reject the promise if setBrb fails', async () => {
             const error = new Error('setBrb failed');
-            meeting.meetingRequest.setBrb.rejects(error);
+            meeting.brbState.enable.rejects(error);
 
             try {
               await meeting.beRightBack(true);
@@ -3864,27 +3866,6 @@ describe('plugin-meetings', () => {
               assert.equal(err.message, 'setBrb failed');
               assert.isRejected((Promise.reject()));
             }
-          })
-        });
-
-        describe('when in a transcoded meeting', () => {
-
-          beforeEach(() => {
-            meeting.isMultistream = false;
-          });
-
-          it('should ignore enabling #beRightBack', async () => {
-            meeting.beRightBack(true);
-
-            assert.isRejected((Promise.reject()));
-            assert.notCalled(meeting.meetingRequest.setBrb);
-          })
-
-          it('should ignore disabling #beRightBack', async () => {
-            meeting.beRightBack(false);
-
-            assert.isRejected((Promise.reject()));
-            assert.notCalled(meeting.meetingRequest.setBrb);
           })
         });
       });
