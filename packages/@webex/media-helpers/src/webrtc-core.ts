@@ -4,6 +4,8 @@
 import {
   AudioDeviceConstraints,
   createCameraStream as wcmeCreateCameraStream,
+  createCameraAndMicrophoneStreams as wcmeCreateCameraAndMicrophoneStreams,
+  createDisplayMedia as wcmeCreateDisplayMedia,
   createDisplayStream as wcmeCreateDisplayStream,
   createDisplayStreamWithAudio as wcmeCreateDisplayStreamWithAudio,
   createMicrophoneStream as wcmeCreateMicrophoneStream,
@@ -11,6 +13,7 @@ import {
   LocalSystemAudioStream,
   LocalMicrophoneStream as WcmeLocalMicrophoneStream,
   LocalCameraStream as WcmeLocalCameraStream,
+  VideoContentHint,
   VideoDeviceConstraints,
 } from '@webex/internal-media-core';
 import {AddEvents, TypedEvent, WithEventsDummyType} from '@webex/ts-events';
@@ -25,6 +28,7 @@ export {
   RemoteStream,
   RemoteStreamEventNames,
   type VideoContentHint,
+  type StreamState,
 } from '@webex/internal-media-core';
 
 export type ServerMuteReason =
@@ -138,17 +142,6 @@ class _LocalCameraStream extends WcmeLocalCameraStream {
   }
 }
 
-export const createMicrophoneStream = (constraints?: AudioDeviceConstraints) =>
-  wcmeCreateMicrophoneStream(LocalMicrophoneStream, constraints);
-
-export const createCameraStream = (constraints?: VideoDeviceConstraints) =>
-  wcmeCreateCameraStream(LocalCameraStream, constraints);
-
-export const createDisplayStream = () => wcmeCreateDisplayStream(LocalDisplayStream);
-
-export const createDisplayStreamWithAudio = () =>
-  wcmeCreateDisplayStreamWithAudio(LocalDisplayStream, LocalSystemAudioStream);
-
 export const LocalMicrophoneStream = AddEvents<
   typeof _LocalMicrophoneStream,
   LocalMicrophoneStreamEvents
@@ -162,3 +155,43 @@ export const LocalCameraStream = AddEvents<typeof _LocalCameraStream, LocalCamer
 );
 
 export type LocalCameraStream = _LocalCameraStream & WithEventsDummyType<LocalCameraStreamEvents>;
+
+export const createMicrophoneStream = (constraints?: AudioDeviceConstraints) =>
+  wcmeCreateMicrophoneStream(LocalMicrophoneStream, constraints);
+
+export const createCameraStream = (constraints?: VideoDeviceConstraints) =>
+  wcmeCreateCameraStream(LocalCameraStream, constraints);
+
+export const createCameraAndMicrophoneStreams = (constraints?: {
+  video?: VideoDeviceConstraints;
+  audio?: AudioDeviceConstraints;
+}) => wcmeCreateCameraAndMicrophoneStreams(LocalCameraStream, LocalMicrophoneStream, constraints);
+
+export const createDisplayStream = (videoContentHint?: VideoContentHint) =>
+  wcmeCreateDisplayStream(LocalDisplayStream, videoContentHint);
+
+export const createDisplayStreamWithAudio = (videoContentHint?: VideoContentHint) =>
+  wcmeCreateDisplayStreamWithAudio(LocalDisplayStream, LocalSystemAudioStream, videoContentHint);
+
+export const createDisplayMedia = (
+  options: {
+    video: {
+      constraints?: VideoDeviceConstraints;
+      videoContentHint?: VideoContentHint;
+      preferCurrentTab?: boolean;
+      selfBrowserSurface?: 'include' | 'exclude';
+      surfaceSwitching?: 'include' | 'exclude';
+      monitorTypeSurfaces?: 'include' | 'exclude';
+    };
+    audio?: {
+      constraints?: AudioDeviceConstraints;
+      systemAudio?: 'include' | 'exclude';
+    };
+  } = {video: {}}
+) =>
+  wcmeCreateDisplayMedia({
+    video: {displayStreamConstructor: LocalDisplayStream, ...options?.video},
+    audio: options?.audio
+      ? {systemAudioStreamConstructor: LocalSystemAudioStream, ...options.audio}
+      : undefined,
+  });
