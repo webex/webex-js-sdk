@@ -3,7 +3,6 @@ import url from 'url';
 // @ts-ignore
 import {deconstructHydraId} from '@webex/common';
 
-import {parse} from 'path';
 import {
   DESTINATION_TYPE,
   _PEOPLE_,
