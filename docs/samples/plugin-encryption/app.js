@@ -13,6 +13,8 @@ let subscribedUserIds = [];
 const credentialsFormElm = document.querySelector('#credentials');
 const tokenElm = document.querySelector('#access-token');
 const saveElm = document.querySelector('#access-token-save');
+const registerBtn = document.querySelector('#register-btn');
+const deregisterBtn = document.querySelector('#deregister-btn');
 const authStatusElm = document.querySelector('#access-token-status');
 const encryptedFileUrlInput = document.querySelector('#encrypted-file-url');
 const decryptedFileNameInput = document.querySelector('#decrypted-file-name');
@@ -83,15 +85,8 @@ async function initWebex(e) {
   webex.once('ready', () => {
     console.log('Authentication#initWebex() :: Webex Ready');
     authStatusElm.innerText = 'Webex is ready. Saved access token!';
+    registerBtn.disabled = false;
   });
-
-  webex.messages.listen()
-    .then(() => {
-      updateStatus(true);
-    })
-    .catch((err) => {
-      console.error(`error listening to messages: ${err}`);
-    });
   e.stopPropagation();
 }
 
@@ -100,6 +95,33 @@ credentialsFormElm.addEventListener('submit', initWebex);
 encryptedFileUrlInput.addEventListener('input', () => {
   decryptFileResult.innerText = '';
 });
+
+
+async function register(){
+  webex.cypher.register().then(() => {
+    console.log('Authentication#initWebex() :: Webex Registered');
+    authStatusElm.innerText = 'Webex is ready and registered!';
+    updateStatus(true);
+    registerBtn.disabled = true;
+    deregisterBtn.disabled = false;
+  }).catch((err) => {
+    console.error(`error registering webex: ${err}`);
+    authStatusElm.innerText = 'Error registering Webex. Check access token!';
+  });
+}
+
+async function deregister(){
+  webex.cypher.deregister().then(() => {
+    console.log('Authentication#initWebex() :: Webex Deregistered');
+    authStatusElm.innerText = 'Webex is ready, but not registered!';
+    updateStatus(false);
+    registerBtn.disabled = false;
+    deregisterBtn.disabled = true;
+  }).catch((err) => {
+    console.error(`error deregistering webex: ${err}`);
+    authStatusElm.innerText = 'Error deregistering Webex. Check access token!';
+  });
+}
 
 async function decryptFile() {
   decryptFileResult.innerText = '';

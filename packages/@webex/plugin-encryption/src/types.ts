@@ -10,6 +10,25 @@ export type Logger = {
   debug: (payload: string) => void;
 };
 
+interface IWebexInternal {
+  mercury: {
+    connect: () => Promise<void>;
+    disconnect: () => Promise<void>;
+  };
+  device: {
+    register: () => Promise<void>;
+    unregister: () => Promise<void>;
+  };
+  encryption: {
+    decryptScr: (keyUri: string, jwe: string) => Promise<string>;
+    download: (
+      fileUri: string,
+      scr: string,
+      options: {useFileService: boolean}
+    ) => Promise<ArrayBuffer>;
+  };
+}
+
 export interface WebexSDK {
   version: string;
   canAuthorize: boolean;
@@ -20,16 +39,7 @@ export interface WebexSDK {
   ready: boolean;
   once: (event: string, callBack: () => void) => void;
   // internal plugins
-  internal: {
-    encryption: {
-      decryptScr: (keyUri: string, JWE: string) => Promise<string>;
-      download: (
-        fileUri: string,
-        scr: string,
-        options: {useFileService: boolean}
-      ) => Promise<ArrayBuffer>;
-    };
-  };
+  internal: IWebexInternal;
   // public plugins
   logger: Logger;
 }

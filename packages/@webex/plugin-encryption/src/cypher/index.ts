@@ -1,6 +1,6 @@
 import {WebexPlugin} from '@webex/webex-core';
 
-import {FileDownloadOptions, IEncryption} from './cypher.types';
+import {FileDownloadOptions, IEncryption} from './types';
 import {CYPHER} from './constants';
 import {WebexSDK} from '../types';
 
@@ -11,6 +11,7 @@ import {WebexSDK} from '../types';
 class Cypher extends WebexPlugin implements IEncryption {
   readonly namespace = CYPHER;
   private readonly $webex: WebexSDK;
+  registered = false;
 
   /**
    * Constructs an instance of the class.
@@ -25,6 +26,50 @@ class Cypher extends WebexPlugin implements IEncryption {
     super(...args);
     // @ts-ignore
     this.$webex = this.webex;
+  }
+
+  /**
+   * Registers the device to WDM. This is required for metrics and other services.
+   * @returns {Promise<void>}
+   */
+  async register() {
+    if (this.registered) {
+      this.$webex.logger.info('Cypher: webex.internal.device.register already done');
+
+      return Promise.resolve();
+    }
+
+    return this.$webex.internal.device
+      .register()
+      .then(() => {
+        this.$webex.logger.info('Cypher: webex.internal.device.register successful');
+        this.registered = true;
+      })
+      .catch((error) => {
+        this.$webex.logger.error(`Error occurred during device.register() ${error}`);
+      });
+  }
+
+  /**
+   * Deregisters the device.
+   * @returns {Promise<void>}
+   */
+  async deregister() {
+    if (!this.registered) {
+      this.$webex.logger.info('Cypher: webex.internal.device.deregister already done');
+
+      return Promise.resolve();
+    }
+
+    return this.$webex.internal.device
+      .unregister()
+      .then(() => {
+        this.$webex.logger.info('Cypher: webex.internal.device.deregister successful');
+        this.registered = false;
+      })
+      .catch((error) => {
+        this.$webex.logger.error(`Error occurred during device.deregister() ${error}`);
+      });
   }
 
   /**
