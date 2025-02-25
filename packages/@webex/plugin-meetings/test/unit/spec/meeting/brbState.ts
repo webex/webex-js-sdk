@@ -78,7 +78,7 @@ describe('plugin-meetings', () => {
       assert.isTrue(meeting.meetingRequest.setBrb.notCalled);
     });
 
-    it("won't sent request twice when in progress", async () => {
+    it("won't send request twice when in progress", async () => {
       brbState.state.syncToServerInProgress = true;
       brbState.enable(true, meeting.sendSlotManager);
       await testUtils.flushPromises();
