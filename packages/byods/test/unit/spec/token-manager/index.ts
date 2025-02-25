@@ -3,7 +3,7 @@ import {TokenResponse} from '../../../../src/types';
 import {httpUtils} from '../../../../src/http-utils';
 import log from '../../../../src/Logger';
 import {LOGGER} from '../../../../src/Logger/types';
-import {BYODS_TOKEN_MANAGER_MODULE} from '../../../../src/constants';;
+import {BYODS_TOKEN_MANAGER_MODULE} from '../../../../src/constants';
 
 describe('TokenManager', () => {
   const clientId = 'test-client-id';
@@ -206,7 +206,7 @@ describe('TokenManager', () => {
       token_type: 'Bearer',
       refresh_token_expires_in: 7200,
     };
-  
+
     const refreshedTokenResponse: TokenResponse = {
       access_token: 'new-access-token',
       refresh_token: 'new-refresh-token',
@@ -218,7 +218,7 @@ describe('TokenManager', () => {
 
     httpUtils.post = jest.fn().mockResolvedValueOnce({data: refreshedTokenResponse, status: 200});
     jest.spyOn(httpUtils, 'post');
-  
+
     const serviceAppAuthorization = await tokenManager.getOrgServiceAppAuthorization(orgId);
     expect(httpUtils.post).toHaveBeenCalledWith(`${baseUrl}/access_token`, {
       headers: {
@@ -231,8 +231,54 @@ describe('TokenManager', () => {
         refresh_token: 'valid-refresh-token',
       }).toString(),
     });
-  
+
     expect(serviceAppAuthorization.serviceAppToken.accessToken).toBe('new-access-token');
     expect(serviceAppAuthorization.serviceAppToken.refreshToken).toBe('new-refresh-token');
+  });
+
+  it('should obtain a token from using getServiceAppTokenUsingPAT', async () => {
+    const mockPAT = 'some-personal-access-token';
+
+    const tokenResponse: TokenResponse = {
+      access_token: 'new-access-token',
+      refresh_token: 'new-refresh-token',
+      expires_in: 3600,
+      token_type: 'Bearer',
+      refresh_token_expires_in: 7200,
+    };
+    const mockPost = jest.spyOn(httpUtils, 'post');
+    mockPost.mockResolvedValueOnce({data: tokenResponse, status: 200});
+
+    await tokenManager.getServiceAppTokenUsingPAT(orgId, mockPAT);
+
+    expect(mockPost).toHaveBeenCalledWith(`${baseUrl}/access_token`, {
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${mockPAT}`,
+      },
+      body: JSON.stringify({
+        targetOrgId: orgId,
+        clientId,
+        clientSecret,
+      }),
+    });
+
+    const tokens = await tokenManager.listTokens();
+    expect(tokens.length).toBe(1);
+    expect(tokens[0].serviceAppToken.accessToken).toBe('new-access-token');
+    expect(tokens[0].serviceAppToken.refreshToken).toBe('new-refresh-token');
+  });
+
+  it('should handle error when getServiceAppTokenUsingPAT request fails', async () => {
+    const mockPAT = 'some-personal-access-token';
+    const mockPost = jest.spyOn(httpUtils, 'post');
+    mockPost.mockRejectedValueOnce(new Error('Network error'));
+
+    await expect(tokenManager.getServiceAppTokenUsingPAT(orgId, mockPAT)).rejects.toThrow(
+      'Network error'
+    );
+
+    const tokens = await tokenManager.listTokens();
+    expect(tokens).toEqual([]);
   });
 });

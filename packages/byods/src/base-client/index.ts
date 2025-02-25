@@ -195,7 +195,6 @@ export default class BaseClient {
       );
       token = refreshedAuthorization.serviceAppToken.accessToken;
     }
-    // TODO: Handle refresh token expiration
 
     return token;
   }
