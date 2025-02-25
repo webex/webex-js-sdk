@@ -99,7 +99,7 @@ describe('Cypher', () => {
       cypher.registered = true;
 
       await cypher.register();
-      expect(webex.logger.info).toHaveBeenCalledWith('Authentication: webex.internal.device.register already done');
+      expect(webex.logger.info).toHaveBeenCalledWith('Cypher: webex.internal.device.register already done');
     });
 
     it('should log an error if device registration fails', async () => {
@@ -132,7 +132,7 @@ describe('Cypher', () => {
     it('should not deregister if device is not registered', async () => {
       await cypher.deregister();
 
-      expect(webex.logger.info).toHaveBeenCalledWith('Authentication: webex.internal.device.deregister already done');
+      expect(webex.logger.info).toHaveBeenCalledWith('Cypher: webex.internal.device.deregister already done');
     });
   });
 });
