@@ -10,8 +10,10 @@ import {
   LocalSystemAudioStream,
   createCameraStream,
   createMicrophoneStream,
+  createCameraAndMicrophoneStreams,
   createDisplayStream,
   createDisplayStreamWithAudio,
+  createDisplayMedia,
 } from '@webex/media-helpers';
 import * as InternalMediaCoreModule from '@webex/internal-media-core';
 
@@ -115,36 +117,139 @@ describe('media-helpers', () => {
             await checkSetServerMuted(false, false, false);
           });
         });
-
-        describe('#wcmeCreateMicrophoneStream, #wcmeCreateCameraStream', () => {
-          it('checks creating tracks', async () => {
-            const constraints = {deviceId: 'abc'};
-
-            const spy = sinon.stub(InternalMediaCoreModule, spyFn).returns('something');
-            const result = await createFn(constraints);
-
-            assert.equal(result, 'something');
-            assert.calledOnceWithExactly(spy, className, constraints);
-          });
-        });
       })
     );
 
-    describe('createDisplayStream', () => {
-      it('checks createDisplayStream', async () => {
-        const spy = sinon.stub(InternalMediaCoreModule, 'createDisplayStream').returns('something');
-        const result = await createDisplayStream();
-        assert.equal(result, 'something');
-        assert.calledOnceWithExactly(spy, LocalDisplayStream);
+    const functionsToTest = [
+      {
+        title: 'createCameraStream',
+        createFn: createCameraStream,
+        spyFn: 'createCameraStream',
+        classConstructors: [LocalCameraStream],
+        additionalOptions: {fake: 'constraints'},
+      },
+      {
+        title: 'createMicrophoneStream',
+        createFn: createMicrophoneStream,
+        spyFn: 'createMicrophoneStream',
+        classConstructors: [LocalMicrophoneStream],
+        additionalOptions: {fake: 'constraints'},
+      },
+      {
+        title: 'createCameraAndMicrophoneStreams',
+        createFn: createCameraAndMicrophoneStreams,
+        spyFn: 'createCameraAndMicrophoneStreams',
+        classConstructors: [LocalCameraStream, LocalMicrophoneStream],
+        additionalOptions: {video: {fake: 'constraints'}, audio: {fake: 'constraints'}},
+      },
+      {
+        title: 'createDisplayStream',
+        createFn: createDisplayStream,
+        spyFn: 'createDisplayStream',
+        classConstructors: [LocalDisplayStream],
+        additionalOptions: 'motion',
+      },
+      {
+        title: 'createDisplayStreamWithAudio',
+        createFn: createDisplayStreamWithAudio,
+        spyFn: 'createDisplayStreamWithAudio',
+        classConstructors: [LocalDisplayStream, LocalSystemAudioStream],
+        additionalOptions: 'motion',
+      },
+    ];
+    functionsToTest.forEach(({title, createFn, spyFn, classConstructors, additionalOptions}) => {
+      describe(title, () => {
+        let wcmeCreateStreamSpy;
+        beforeEach(() => {
+          sinon.restore();
+          wcmeCreateStreamSpy = sinon.stub(InternalMediaCoreModule, spyFn);
+        });
+
+        it('can be called without additional options', async () => {
+          await createFn();
+          assert.calledOnceWithExactly(wcmeCreateStreamSpy, ...classConstructors, undefined);
+        });
+
+        it('can be called with additional options', async () => {
+          await createFn(additionalOptions);
+          assert.calledOnceWithExactly(
+            wcmeCreateStreamSpy,
+            ...classConstructors,
+            additionalOptions
+          );
+        });
       });
     });
 
-    describe('createDisplayStreamWithAudio', () => {
-      it('checks createDisplayStreamWithAudio', async () => {
-        const spy = sinon.stub(InternalMediaCoreModule, 'createDisplayStreamWithAudio').returns('something');
-        const result = await createDisplayStreamWithAudio();
-        assert.equal(result, 'something');
-        assert.calledOnceWithExactly(spy, LocalDisplayStream, LocalSystemAudioStream);
+    describe('createDisplayMedia', () => {
+      let wcmeCreateDisplayMediaSpy;
+      beforeEach(() => {
+        sinon.restore();
+        wcmeCreateDisplayMediaSpy = sinon.stub(InternalMediaCoreModule, 'createDisplayMedia');
+      });
+
+      it('can be called with no options', async () => {
+        await createDisplayMedia();
+        assert.calledOnceWithExactly(wcmeCreateDisplayMediaSpy, {
+          video: {displayStreamConstructor: LocalDisplayStream},
+          audio: undefined,
+        });
+      });
+
+      it('can be called with just video', async () => {
+        await createDisplayMedia({video: {}});
+        assert.calledOnceWithExactly(wcmeCreateDisplayMediaSpy, {
+          video: {displayStreamConstructor: LocalDisplayStream},
+          audio: undefined,
+        });
+      });
+
+      it('can be called with additional video options', async () => {
+        const options = {
+          video: {
+            constraints: {fake: 'constraints'},
+            videoContentHint: 'motion',
+            preferCurrentTab: true,
+            selfBrowserSurface: 'include',
+            surfaceSwitching: 'include',
+            monitorTypeSurfaces: 'exclude',
+          },
+        };
+        await createDisplayMedia(options);
+        assert.calledOnceWithExactly(wcmeCreateDisplayMediaSpy, {
+          video: {displayStreamConstructor: LocalDisplayStream, ...options.video},
+          audio: undefined,
+        });
+      });
+
+      it('can be called with just video and audio', async () => {
+        await createDisplayMedia({video: {}, audio: {}});
+        assert.calledOnceWithExactly(wcmeCreateDisplayMediaSpy, {
+          video: {displayStreamConstructor: LocalDisplayStream},
+          audio: {systemAudioStreamConstructor: LocalSystemAudioStream},
+        });
+      });
+
+      it('can be called with additional video and audio options', async () => {
+        const options = {
+          video: {
+            constraints: {fake: 'constraints'},
+            videoContentHint: 'motion',
+            preferCurrentTab: true,
+            selfBrowserSurface: 'include',
+            surfaceSwitching: 'include',
+            monitorTypeSurfaces: 'exclude',
+          },
+          audio: {
+            constraints: {fake: 'constraints'},
+            systemAudio: 'exclude',
+          },
+        };
+        await createDisplayMedia(options);
+        assert.calledOnceWithExactly(wcmeCreateDisplayMediaSpy, {
+          video: {displayStreamConstructor: LocalDisplayStream, ...options.video},
+          audio: {systemAudioStreamConstructor: LocalSystemAudioStream, ...options.audio},
+        });
       });
     });
   });
