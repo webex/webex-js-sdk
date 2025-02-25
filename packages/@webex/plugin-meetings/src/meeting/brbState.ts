@@ -14,12 +14,10 @@ export const createBrbState = (meeting: Meeting, enabled: boolean) => {
   return brbState;
 };
 
-/** The purpose of this class is to manage the local and remote brb state and make sure that the server state always matches
-   the last requested state by the client.
-
-   This class is exported only for unit tests. It should never be instantiated directly with new BrbState(), instead createBrbState() should be called
-*/
-export class BrbState {
+/** The purpose of this class is to manage the local and remote brb state
+ * and make sure that the server state always matches the last requested state by the client.
+ */
+class BrbState {
   state: {
     client: {
       enabled: boolean;
@@ -179,25 +177,5 @@ export class BrbState {
    */
   public isEnabled(): boolean {
     return this.state.client.enabled || this.state.server.enabled;
-  }
-
-  /**
-   * Returns true if the user has remotely brb enabled
-   *
-   * @public
-   * @returns {Boolean}
-   */
-  public isEnabledRemotely() {
-    return this.state.server.enabled;
-  }
-
-  /**
-   * Returns true if the user has locally brb enabled
-   *
-   * @public
-   * @returns {Boolean}
-   */
-  public isEnabledLocally() {
-    return this.state.client.enabled;
   }
 }
