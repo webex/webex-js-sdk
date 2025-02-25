@@ -100,14 +100,6 @@ class Package {
   public test(config: TestConfig): Promise<this> {
     const testDirectory = path.join(this.data.packageRoot, CONSTANTS.TEST_DIRECTORIES.ROOT);
 
-    const unitTestFileCollectorInSrc = config.unit
-      ? Package.getFiles({
-        location: path.join(this.data.packageRoot, CONSTANTS.TEST_DIRECTORIES.SRC),
-        pattern: CONSTANTS.PATTERNS.BYODS,
-        targets: config.targets,
-      })
-      : Promise.resolve([]);
-
     const unitTestFileCollector = config.unit
       ? Package.getFiles({
         location: path.join(testDirectory, CONSTANTS.TEST_DIRECTORIES.UNIT),
@@ -124,10 +116,10 @@ class Package {
       })
       : Promise.resolve([]);
 
-    return Promise.all([unitTestFileCollector, integrationTestFileCollector, unitTestFileCollectorInSrc])
-      .then(async ([unitFiles, integrationFiles, srcUnitFiles]) => {
+    return Promise.all([unitTestFileCollector, integrationTestFileCollector])
+      .then(async ([unitFiles, integrationFiles]) => {
         if (config.runner === 'jest') {
-          const testFiles = [...unitFiles, ...srcUnitFiles];
+          const testFiles = [...unitFiles];
 
           if (testFiles.length > 0) {
             await Jest.test({ files: testFiles });
