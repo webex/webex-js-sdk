@@ -57,7 +57,7 @@ export default class BYODS {
      * It can be set to either 'production' or 'integration'. If not set, it defaults to 'production'.
      */
     const parsedEnv = process.env.BYODS_ENVIRONMENT || 'production';
-    let jwksUrl = PRODUCTION_BASE_URL;
+    let jwksUrl = PRODUCTION_JWKS_URL;
 
     switch (parsedEnv) {
       case 'production':

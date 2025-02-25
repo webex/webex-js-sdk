@@ -80,4 +80,26 @@ describe('InMemoryTokenStorageAdapter', () => {
     const tokens = await tokenStorage.listTokens();
     expect(tokens.length).toEqual(0);
   });
+
+  test('should handle concurrent token operations', async () => {
+    const operations = Array(10).fill(null).map((_, index) => ({
+      orgId: `org-${index}`,
+      token: {
+        orgId: `org-${index}`,
+        serviceAppToken: {
+          accessToken: `access-token-${index}`,
+          refreshToken: `refresh-token-${index}`,
+          expiresAt: new Date('2025-02-15T11:00:00Z'),
+          refreshAccessTokenExpiresAt: new Date('2025-02-15T12:00:00Z'),
+        },
+      },
+    }));
+    await Promise.all([
+      ...operations.map(({orgId, token}) => tokenStorage.setToken(orgId, token)),
+      ...operations.map(({orgId}) => tokenStorage.getToken(orgId).catch(() => null)),
+      tokenStorage.listTokens(),
+    ]);
+    const finalTokens = await tokenStorage.listTokens();
+    expect(finalTokens.length).toBe(operations.length);
+  });
 });

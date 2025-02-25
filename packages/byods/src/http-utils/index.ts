@@ -7,6 +7,7 @@ export interface HttpRequestInit {
   body?: string | null;
   headers?: Record<string, string>;
   method?: string;
+  timeout?: number;
 }
 
 /**
@@ -20,8 +21,14 @@ export interface HttpRequestInit {
 async function request<T>(url: string, options: HttpRequestInit = {}): Promise<ApiResponse<T>> {
   // TODO: Fix this issue (which is being tracked in node_fetch) https://github.com/node-fetch/node-fetch/issues/1809
   const fetch = (await import('node-fetch')).default;
+  const controller = new AbortController();
+  const timeout = options.timeout || 30000; // Default 30s timeout
+
+  const timeoutId = setTimeout(() => controller.abort(), timeout);
+
   const optionsWithHeaders = {
     ...options,
+    signal: controller.signal,
     headers: {
       Trackingid: `${BYODS_PACKAGE_NAME}_${randomUUID()}`,
       'User-Agent': USER_AGENT,
@@ -29,20 +36,24 @@ async function request<T>(url: string, options: HttpRequestInit = {}): Promise<A
     },
   };
 
-  const response = await fetch(url, optionsWithHeaders);
+  try {
+    const response = await fetch(url, optionsWithHeaders);
 
-  if (!response.ok) {
-    throw new Error(`HTTP Error Response: ${response.status} ${response.statusText}`);
+    if (!response.ok) {
+      throw new Error(`HTTP Error Response: ${response.status} ${response.statusText}`);
+    }
+
+    // Handle 204 No Content responses
+    if (response.status === 204) {
+      return {data: {} as T, status: response.status};
+    }
+
+    const data = (await response.json()) as T;
+
+    return {data, status: response.status};
+  } finally {
+    clearTimeout(timeoutId);
   }
-
-  // Handle 204 No Content responses
-  if (response.status === 204) {
-    return {data: {} as T, status: response.status};
-  }
-
-  const data = (await response.json()) as T;
-
-  return {data, status: response.status};
 }
 
 /**

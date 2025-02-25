@@ -5,6 +5,8 @@ import {HttpClient, ApiResponse} from '../http-client/types';
 import {httpUtils, HttpRequestInit} from '../http-utils';
 import {BYODS_BASE_CLIENT_MODULE, DEFAULT_LOGGER_CONFIG} from '../constants';
 import log from '../Logger';
+import ExtendedError from '../Errors/catalog/ExtendedError';
+import {ERROR_TYPE} from '../Errors/types';
 
 export default class BaseClient {
   private baseUrl: string;
@@ -58,9 +60,9 @@ export default class BaseClient {
     return httpUtils.request<T>(url, {
       ...options,
       headers: {
-        Authorization: `Bearer ${token}`,
         ...this.headers,
         ...options.headers,
+        Authorization: `Bearer ${token}`,
       },
     });
   }
@@ -183,19 +185,27 @@ export default class BaseClient {
   }
 
   private async getToken(): Promise<string> {
-    const serviceAppAuthorization = await this.tokenManager.getOrgServiceAppAuthorization(
-      this.orgId
-    );
-    let token = serviceAppAuthorization.serviceAppToken.accessToken;
-
-    if (new Date() >= new Date(serviceAppAuthorization.serviceAppToken.expiresAt)) {
-      await this.tokenManager.refreshServiceAppAccessToken(this.orgId, this.headers);
-      const refreshedAuthorization = await this.tokenManager.getOrgServiceAppAuthorization(
+    try {
+      const serviceAppAuthorization = await this.tokenManager.getOrgServiceAppAuthorization(
         this.orgId
       );
-      token = refreshedAuthorization.serviceAppToken.accessToken;
-    }
+      let token = serviceAppAuthorization.serviceAppToken.accessToken;
 
-    return token;
+      if (new Date() >= new Date(serviceAppAuthorization.serviceAppToken.expiresAt)) {
+        await this.tokenManager.refreshServiceAppAccessToken(this.orgId, this.headers);
+        const refreshedAuthorization = await this.tokenManager.getOrgServiceAppAuthorization(
+          this.orgId
+        );
+        token = refreshedAuthorization.serviceAppToken.accessToken;
+      }
+
+      return token;
+    } catch (error) {
+      log.error(new ExtendedError('Error obtaining token', ERROR_TYPE.TOKEN_ERROR), {
+        file: BYODS_BASE_CLIENT_MODULE,
+        method: 'getToken',
+      });
+      throw new Error('Failed to obtain token');
+    }
   }
 }

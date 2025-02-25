@@ -32,6 +32,7 @@ describe('HttpUtils Tests', () => {
         'User-Agent': `mocked-user-agent`,
       },
       method: 'GET',
+      signal: expect.any(AbortSignal),
     });
   });
 

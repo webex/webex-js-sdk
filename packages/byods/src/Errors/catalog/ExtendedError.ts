@@ -14,6 +14,7 @@ export default class ExtendedError extends Error {
    */
   constructor(msg: ErrorMessage, type: ERROR_TYPE) {
     super(msg);
-    this.type = type || ERROR_TYPE.DEFAULT;
+    this.type = type ?? ERROR_TYPE.DEFAULT;
+    Object.setPrototypeOf(this, ExtendedError.prototype);
   }
 }
