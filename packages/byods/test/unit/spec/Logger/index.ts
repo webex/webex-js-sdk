@@ -41,6 +41,14 @@ describe('Coverage tests for logger', () => {
     expect(logLevel).toEqual(LOGGER.ERROR);
     log.setLogger(LOGGER.TRACE, "test");
     expect(log.getLogLevel()).toEqual(LOGGER.TRACE);
+    log.setLogger(LOGGER.WARN, "test");
+    expect(log.getLogLevel()).toEqual(LOGGER.WARN);
+    log.setLogger(LOGGER.LOG, "test");
+    expect(log.getLogLevel()).toEqual(LOGGER.LOG);
+    log.setLogger(LOGGER.INFO, "test");
+    expect(log.getLogLevel()).toEqual(LOGGER.INFO);
+    log.setLogger(LOGGER.INFO, "test");
+    expect(log.getLogLevel()).toEqual(LOGGER.INFO);
   });
 
   it('Set the log level to  Info and verify levels below info are executed or not', () => {

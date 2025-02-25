@@ -41,7 +41,7 @@ describe('BaseClient Tests', () => {
     const baseClient: BaseClient = new BaseClient(
       PRODUCTION_BASE_URL,
       {},
-      new TokenManager('clientId', 'clientSecret'),
+      new TokenManager(mockClientId, mockClientSecret),
       'orgId'
     );
     expect(log.setLogger).toHaveBeenCalledWith(LOGGER.ERROR, BYODS_BASE_CLIENT_MODULE);

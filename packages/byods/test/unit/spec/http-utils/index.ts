@@ -11,6 +11,38 @@ describe('HttpUtils Tests', () => {
     (fetch as jest.Mock).mockClear();
   });
 
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('should throw an error for non-OK HTTP response', async () => {
+    const mockResponse = {
+      ok: false,
+      status: 500,
+      statusText: 'Internal Server Error',
+    } as unknown as Response;
+
+    (fetch as jest.MockedFunction<typeof fetch>).mockResolvedValue(mockResponse);
+
+    await expect(httpUtils.request('/test-endpoint', {method: 'GET', headers: {}})).rejects.toThrow(
+      'HTTP Error Response: 500 Internal Server Error'
+    );
+  });
+
+  it('should handle 204 no content', async () => {
+    const mockResponse = {
+      ok: true,
+      status: 204,
+    } as unknown as Response;
+
+    (fetch as jest.MockedFunction<typeof fetch>).mockResolvedValue(mockResponse);
+
+    const response = await httpUtils.request('/test-endpoint', {method: 'GET', headers: {}});
+    expect(response).toEqual(
+      {data: {}, status: 204}
+    );
+  });
+
   it('should make an HTTP request', async () => {
     jest.spyOn(crypto, 'randomUUID').mockReturnValue('f0f9aa89-3083-4055-9cc5-d8284a815436');
     (CONSTANT as any).USER_AGENT = 'mocked-user-agent';

@@ -2,7 +2,7 @@ import config from '@webex/jest-config-legacy';
 
 const jestConfig = {
   rootDir: './',
-  setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
+  setupFilesAfterEnv: ['<rootDir>/jest.setup.js', '<rootDir>/jest-preload.js'],
   testEnvironment: 'node',
   testMatch: ['<rootDir>/test/unit/spec/**/*.ts'],
   transformIgnorePatterns: [],

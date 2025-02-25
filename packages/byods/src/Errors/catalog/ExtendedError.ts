@@ -12,9 +12,9 @@ export default class ExtendedError extends Error {
    * @param msg - The error message.
    * @param type - The type of the error.
    */
-  constructor(msg: ErrorMessage, type: ERROR_TYPE) {
+  constructor(msg: ErrorMessage, type: ERROR_TYPE = ERROR_TYPE.DEFAULT) {
     super(msg);
-    this.type = type ?? ERROR_TYPE.DEFAULT;
+    this.type = type;
     Object.setPrototypeOf(this, ExtendedError.prototype);
   }
 }
