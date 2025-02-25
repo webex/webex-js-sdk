@@ -24,6 +24,7 @@ export const WEBEX_SUB_SERVICE_TYPES: Record<string, ClientSubServiceType> = {
   PMR: 'PMR',
   SCHEDULED_MEETING: 'ScheduledMeeting',
   WEBINAR: 'Webinar',
+  WEBCAST: 'Webcast',
 };
 
 // Found in https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getUserMedia

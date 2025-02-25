@@ -3890,6 +3890,7 @@ export default class Meeting extends StatelessWebexPlugin {
             this.userDisplayHints
           ),
           canManageBreakout: MeetingUtil.canManageBreakout(this.userDisplayHints),
+          canStartBreakout: MeetingUtil.canStartBreakout(this.userDisplayHints),
           canBroadcastMessageToBreakout: MeetingUtil.canBroadcastMessageToBreakout(
             this.userDisplayHints,
             this.selfUserPolicies

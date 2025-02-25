@@ -1,4 +1,5 @@
 /* eslint-disable valid-jsdoc */
+import {Logger} from '../SDKConnector/types';
 import {REPO_NAME} from '../CallingClient/constants';
 import {IMetaContext} from '../common/types';
 import ExtendedError from '../Errors/catalog/ExtendedError';
@@ -17,6 +18,8 @@ import {LOGGING_LEVEL, LogContext, LOGGER, LOG_PREFIX} from './types';
 
 let currentLogLevel = LOGGING_LEVEL.error;
 
+let webexLogger: Logger = console; // Default to console logger
+
 /**
  * A wrapper around console which prints to stderr or stdout
  * based on the level defined.
@@ -24,25 +27,25 @@ let currentLogLevel = LOGGING_LEVEL.error;
  * @param message - Log Message to print.
  * @param level -  Log level.
  */
-const writeToConsole = (message: string, level: LOGGER) => {
+const writeToLogger = (message: string, level: LOGGER) => {
   switch (level) {
     case LOGGER.INFO:
+      webexLogger.info(message);
+      break;
     case LOGGER.LOG: {
-      // eslint-disable-next-line no-console
-      console.log(message);
+      webexLogger.log(message);
       break;
     }
     case LOGGER.WARN: {
-      console.warn(message);
+      webexLogger.warn(message);
       break;
     }
     case LOGGER.ERROR: {
-      console.error(message);
+      webexLogger.error(message);
       break;
     }
     case LOGGER.TRACE: {
-      // eslint-disable-next-line no-console
-      console.trace(message);
+      webexLogger.trace(message);
       break;
     }
     default: {
@@ -95,7 +98,7 @@ const setLogger = (level: string, module: string) => {
 
   const message = `Logger initialized for module: ${module} with level: ${currentLogLevel}`;
 
-  writeToConsole(
+  writeToLogger(
     `${format({file: 'logger.ts', method: 'setLogger'}, '')}  - ${LOG_PREFIX.MESSAGE}:${message}`,
     LOGGER.INFO
   );
@@ -142,7 +145,7 @@ const getLogLevel = (): LOGGER => {
  */
 const logMessage = (message: string, context: LogContext) => {
   if (currentLogLevel >= LOGGING_LEVEL.log) {
-    writeToConsole(`${format(context, '[LOG]')} - ${LOG_PREFIX.MESSAGE}:${message}`, LOGGER.LOG);
+    writeToLogger(`${format(context, '[LOG]')} - ${LOG_PREFIX.MESSAGE}:${message}`, LOGGER.LOG);
   }
 };
 
@@ -154,7 +157,7 @@ const logMessage = (message: string, context: LogContext) => {
  */
 const logInfo = (message: string, context: LogContext) => {
   if (currentLogLevel >= LOGGING_LEVEL.info) {
-    writeToConsole(`${format(context, '[INFO]')} - ${LOG_PREFIX.MESSAGE}:${message}`, LOGGER.INFO);
+    writeToLogger(`${format(context, '[INFO]')} - ${LOG_PREFIX.MESSAGE}:${message}`, LOGGER.INFO);
   }
 };
 
@@ -166,7 +169,7 @@ const logInfo = (message: string, context: LogContext) => {
  */
 const logWarn = (message: string, context: LogContext) => {
   if (currentLogLevel >= LOGGING_LEVEL.warn) {
-    writeToConsole(`${format(context, '[WARN]')} - ${LOG_PREFIX.MESSAGE}:${message}`, LOGGER.WARN);
+    writeToLogger(`${format(context, '[WARN]')} - ${LOG_PREFIX.MESSAGE}:${message}`, LOGGER.WARN);
   }
 };
 
@@ -178,10 +181,7 @@ const logWarn = (message: string, context: LogContext) => {
  */
 const logTrace = (message: string, context: LogContext) => {
   if (currentLogLevel >= LOGGING_LEVEL.trace) {
-    writeToConsole(
-      `${format(context, '[TRACE]')} - ${LOG_PREFIX.MESSAGE}:${message}`,
-      LOGGER.TRACE
-    );
+    writeToLogger(`${format(context, '[TRACE]')} - ${LOG_PREFIX.MESSAGE}:${message}`, LOGGER.TRACE);
   }
 };
 
@@ -193,10 +193,17 @@ const logTrace = (message: string, context: LogContext) => {
  */
 const logError = (error: ExtendedError, context: LogContext) => {
   if (currentLogLevel >= LOGGING_LEVEL.error) {
-    writeToConsole(
+    writeToLogger(
       `${format(context, '[ERROR]')} - !${LOG_PREFIX.ERROR}!${LOG_PREFIX.MESSAGE}:${error.message}`,
       LOGGER.ERROR
     );
+  }
+};
+
+const setWebexLogger = (logger: Logger) => {
+  if (logger) {
+    // if logger is not passed, defaults to console
+    webexLogger = logger;
   }
 };
 
@@ -208,4 +215,5 @@ export default {
   trace: logTrace,
   setLogger,
   getLogLevel,
+  setWebexLogger,
 };

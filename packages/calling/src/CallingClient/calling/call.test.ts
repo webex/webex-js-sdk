@@ -2835,6 +2835,7 @@ describe('Supplementary Services tests', () => {
 
     /* A spy on handleCallErrors to check whether it is being invoked or not depending on tests */
     const handleErrorSpy = jest.spyOn(Utils, 'handleCallErrors');
+    const uploadLogsSpy = jest.spyOn(Utils, 'uploadLogs');
     const transferLoggingContext = {
       file: 'call',
       method: 'completeTransfer',
@@ -2866,7 +2867,7 @@ describe('Supplementary Services tests', () => {
     });
 
     it('Handle successful consult transfer case ', async () => {
-      expect.assertions(9);
+      expect.assertions(10);
       const responsePayload = <SSResponse>(<unknown>{
         statusCode: 200,
         body: mockResponseBody,
@@ -2904,6 +2905,7 @@ describe('Supplementary Services tests', () => {
       expect(call['callStateMachine'].state.value).toStrictEqual('S_RECV_CALL_DISCONNECT');
       expect(secondCall['callStateMachine'].state.value).toStrictEqual('S_RECV_CALL_DISCONNECT');
       expect(handleErrorSpy).not.toBeCalled();
+      expect(uploadLogsSpy).not.toBeCalled();
       expect(infoSpy).toHaveBeenCalledWith(
         `Initiating Consult transfer between : ${call.getCallId()} and ${secondCall.getCallId()}`,
         transferLoggingContext
@@ -2915,7 +2917,7 @@ describe('Supplementary Services tests', () => {
     });
 
     it('Handle successful blind transfer case ', async () => {
-      expect.assertions(7);
+      expect.assertions(8);
       const responsePayload = <SSResponse>(<unknown>{
         statusCode: 200,
         body: mockResponseBody,
@@ -2948,6 +2950,7 @@ describe('Supplementary Services tests', () => {
       /* We should return back to S_RECV_CALL_DISCONNECT state */
       expect(call['callStateMachine'].state.value).toStrictEqual('S_RECV_CALL_DISCONNECT');
       expect(handleErrorSpy).not.toBeCalled();
+      expect(uploadLogsSpy).not.toBeCalled();
       expect(infoSpy).toHaveBeenCalledWith(
         `Initiating Blind transfer with : ${transfereeNumber}`,
         transferLoggingContext
@@ -2985,6 +2988,10 @@ describe('Supplementary Services tests', () => {
         'completeTransfer',
         'call'
       );
+      expect(uploadLogsSpy).toHaveBeenCalledWith(webex, {
+        correlationId: call.getCorrelationId(),
+        callId: call.getCallId(),
+      });
       /* check whether error event is being emitted by sdk */
       expect(emitSpy).toBeCalledOnceWith(CALL_EVENT_KEYS.TRANSFER_ERROR, expect.any(CallError));
       expect(warnSpy).toHaveBeenCalledWith(
@@ -3031,6 +3038,10 @@ describe('Supplementary Services tests', () => {
         'completeTransfer',
         'call'
       );
+      expect(uploadLogsSpy).toHaveBeenCalledWith(webex, {
+        correlationId: call.getCorrelationId(),
+        callId: call.getCallId(),
+      });
       /* check whether error event is being emitted by sdk */
       expect(emitSpy).toHaveBeenCalledWith(CALL_EVENT_KEYS.TRANSFER_ERROR, expect.any(CallError));
       expect(warnSpy).toHaveBeenCalledWith(
@@ -3057,6 +3068,7 @@ describe('Supplementary Services tests', () => {
       expect(call['callStateMachine'].state.value).toStrictEqual('S_CALL_ESTABLISHED');
       expect(secondCall['callStateMachine'].state.value).toStrictEqual('S_CALL_ESTABLISHED');
       expect(handleErrorSpy).not.toBeCalled();
+      expect(uploadLogsSpy).not.toBeCalled();
       expect(requestSpy).not.toBeCalled();
       expect(warnSpy).toBeCalledOnceWith(
         `Invalid information received, transfer failed for correlationId: ${call.getCorrelationId()}`,
@@ -3074,6 +3086,7 @@ describe('Supplementary Services tests', () => {
       expect(call['callStateMachine'].state.value).toStrictEqual('S_CALL_ESTABLISHED');
       expect(secondCall['callStateMachine'].state.value).toStrictEqual('S_CALL_ESTABLISHED');
       expect(handleErrorSpy).not.toBeCalled();
+      expect(uploadLogsSpy).not.toBeCalled();
       expect(requestSpy).not.toBeCalled();
       expect(warnSpy).toBeCalledOnceWith(
         `Invalid information received, transfer failed for correlationId: ${call.getCorrelationId()}`,

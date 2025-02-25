@@ -2,6 +2,7 @@
 /* eslint-disable no-underscore-dangle */
 /* eslint-disable @typescript-eslint/no-shadow */
 import * as platform from 'platform';
+import ExtendedError from 'Errors/catalog/ExtendedError';
 import {restoreRegistrationCallBack} from '../CallingClient/registration/types';
 import {CallingClientErrorEmitterCallback} from '../CallingClient/types';
 import {LogContext} from '../Logger/types';
@@ -1468,5 +1469,98 @@ export function validateServiceData(serviceData: ServiceData) {
 
   if (!isValidServiceDomain(serviceData)) {
     throw new Error('Invalid service domain.');
+  }
+}
+
+/**
+ * Modifies SDP to replace IPv6 "c=" lines with IPv4.And adds an IPv4 candidate if none exists.
+ *
+ * @param sdp - Session Description Protocol string.
+ * @returns Modified SDP string.
+ */
+export function modifySdpForIPv4(sdp: string): string {
+  try {
+    // Normalize line endings to avoid issues
+    sdp = sdp.replace(/\r\n|\r/g, '\n');
+
+    // Ensure consistent spacing without removing intentional indentation
+    sdp = sdp.replace(/^[ \t]+/gm, '');
+
+    // Check if at least one IPv6 "c=" line is present
+    const ipv6CLineMatches = sdp.match(/c=IN IP6 [\da-f:.]+/gi) || [];
+    const hasIPv6CLine = ipv6CLineMatches.length > 0;
+
+    if (hasIPv6CLine) {
+      log.info('Modifying SDP for IPv4 compatibility', {
+        file: UTILS_FILE,
+        method: modifySdpForIPv4.name,
+      });
+
+      // Extract an existing IPv4 candidate's IP, if available
+      const ipv4CandidateMatch = sdp.match(/a=candidate:\d+ \d+ \w+ \d+ ([\d.]+) \d+ typ \w+/);
+      const ipv4Address = ipv4CandidateMatch?.[1] || '192.1.1.1'; // Default fallback
+
+      // Replace all IPv6 "c=" lines with IPv4 using the extracted IP (or default)
+      sdp = sdp.replace(/c=IN IP6 [\da-f:.]+/gi, `c=IN IP4 ${ipv4Address}`);
+
+      // Ensure newline separation between candidate lines
+      if (!ipv4CandidateMatch) {
+        let ipv4CandidateAdded = false;
+
+        sdp = sdp.replace(
+          /(a=candidate:(\d+) (\d+) (\w+) (\d+) ([\da-f:.]+) (\d+) typ (\w+)[^\n]*)/g,
+          (
+            match: string,
+            full: string,
+            foundation: string,
+            componentId: string,
+            transport: string, // Supports both UDP and TCP
+            priority: string,
+            connectionAddress: string,
+            port: string,
+            candidateType: string
+          ) => {
+            if (!ipv4CandidateAdded && connectionAddress.includes(':')) {
+              // Ensure it's IPv6 and only add once
+              ipv4CandidateAdded = true;
+              const newFoundation = (parseInt(foundation, 10) + 1).toString();
+
+              return (
+                `${full}\n` +
+                `a=candidate:${newFoundation} ${componentId} ${transport} ${priority} ${ipv4Address} ${port} typ ${candidateType} generation 0 network-id 1 network-cost 10`
+              );
+            }
+
+            return match;
+          }
+        );
+      }
+    }
+
+    return sdp;
+  } catch (error) {
+    log.warn(`Error modifying SDP for IPv4 compatibility: ${error}`, {
+      file: UTILS_FILE,
+      method: modifySdpForIPv4.name,
+    });
+
+    return sdp; // Return original SDP in case of an error
+  }
+}
+
+/**
+ * Uploads logs to backend.
+ *
+ * @param webex - Webex object to get service urls.
+ * @param data - Data to be uploaded.
+ */
+export async function uploadLogs(webex: WebexSDK, data = {}) {
+  try {
+    await webex.internal.support.submitLogs(data);
+  } catch (error) {
+    log.error(error as ExtendedError, {
+      file: UTILS_FILE,
+      method: 'uploadLogs',
+    });
   }
 }

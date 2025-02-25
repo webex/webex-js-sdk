@@ -165,8 +165,22 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
         return WEBEX_SUB_SERVICE_TYPES.SCHEDULED_MEETING;
       }
       // if Scheduled, Webinar, not pmr - then Webinar
-      if (meetingInfo?.webexScheduled && meetingInfo?.enableEvent && !meetingInfo?.pmr) {
+      if (
+        meetingInfo?.webexScheduled &&
+        meetingInfo?.enableEvent &&
+        !meetingInfo?.pmr &&
+        meetingInfo?.isConvergedWebinar
+      ) {
         return WEBEX_SUB_SERVICE_TYPES.WEBINAR;
+      }
+      // if Scheduled, Webinar enable webcast - then webcast
+      if (
+        meetingInfo?.webexScheduled &&
+        meetingInfo?.enableEvent &&
+        !meetingInfo?.pmr &&
+        meetingInfo?.isConvergedWebinarWebcast
+      ) {
+        return WEBEX_SUB_SERVICE_TYPES.WEBCAST;
       }
     }
 
