@@ -20,7 +20,7 @@ interface IWebexInternal {
     unregister: () => Promise<void>;
   };
   encryption: {
-    decryptScr: (keyUri: string, JWE: string) => Promise<string>;
+    decryptScr: (keyUri: string, jwe: string) => Promise<string>;
     download: (
       fileUri: string,
       scr: string,

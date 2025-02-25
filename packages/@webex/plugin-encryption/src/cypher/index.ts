@@ -34,7 +34,7 @@ class Cypher extends WebexPlugin implements IEncryption {
    */
   async register() {
     if (this.registered) {
-      this.$webex.logger.info('Authentication: webex.internal.device.register already done');
+      this.$webex.logger.info('Cypher: webex.internal.device.register already done');
 
       return Promise.resolve();
     }
@@ -42,7 +42,7 @@ class Cypher extends WebexPlugin implements IEncryption {
     return this.$webex.internal.device
       .register()
       .then(() => {
-        this.$webex.logger.info('Authentication: webex.internal.device.register successful');
+        this.$webex.logger.info('Cypher: webex.internal.device.register successful');
         this.registered = true;
       })
       .catch((error) => {
@@ -56,7 +56,7 @@ class Cypher extends WebexPlugin implements IEncryption {
    */
   async deregister() {
     if (!this.registered) {
-      this.$webex.logger.info('Authentication: webex.internal.device.deregister already done');
+      this.$webex.logger.info('Cypher: webex.internal.device.deregister already done');
 
       return Promise.resolve();
     }
@@ -64,7 +64,7 @@ class Cypher extends WebexPlugin implements IEncryption {
     return this.$webex.internal.device
       .unregister()
       .then(() => {
-        this.$webex.logger.info('Authentication: webex.internal.device.deregister successful');
+        this.$webex.logger.info('Cypher: webex.internal.device.deregister successful');
         this.registered = false;
       })
       .catch((error) => {
