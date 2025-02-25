@@ -7,7 +7,7 @@ import DataSourceClient from '../../../../src/data-source-client';
 import { jwtVerify, createRemoteJWKSet } from 'jose';
 import log from '../../../../src/Logger';
 import {LOGGER} from '../../../../src/Logger/types';
-import {BYODS_MODULE} from '../../../../src/constants';
+import {BYODS_MODULE, INTEGRATION_BASE_URL, INTEGRATION_JWKS_URL, PRODUCTION_BASE_URL, PRODUCTION_JWKS_URL} from '../../../../src/constants';
 
 jest.mock('node-fetch', () => jest.fn());
 
@@ -21,9 +21,20 @@ describe('BYODS Tests', () => {
     log.setLogger = jest.fn();
   });
 
+  beforeEach(() => {
+    jest.resetModules(); // Clears the cache to ensure process.env changes are picked up
+  });
+
+  afterEach(() => {
+    delete process.env.BYODS_ENVIRONMENT; // Clean up the environment variable
+  });
+
+  const clientId = 'test-client-id';
+  const clientSecret = 'test-client-secret';
+
   const mockSDKConfig: SDKConfig = {
-    clientId: 'your-client-id',
-    clientSecret: 'your-client-secret',
+    clientId,
+    clientSecret,
     tokenStorageAdapter: new InMemoryTokenStorageAdapter(),
     logger: { level: LOGGER.ERROR },
   };
@@ -89,4 +100,31 @@ describe('BYODS Tests', () => {
     expect(jwtVerify).toHaveBeenCalledWith(jws, sdk.jwks);
     expect(result).toEqual({ isValid: false, error: `Invalid token` });
   });
+
+  it('should default to production environment if BYODS_ENVIRONMENT is not set', () => {
+    const config: SDKConfig = {clientId, clientSecret};
+    const sdk = new BYODS(config);
+
+    expect(sdk['env']).toBe('production');
+    expect(sdk['baseUrl']).toBe(PRODUCTION_BASE_URL);
+  });
+
+  it('should use integration environment if BYODS_ENVIRONMENT is set to integration', () => {
+    process.env.BYODS_ENVIRONMENT = 'integration';
+    const config: SDKConfig = {clientId, clientSecret};
+    const sdk = new BYODS(config);
+
+    expect(sdk['env']).toBe('integration');
+    expect(sdk['baseUrl']).toBe(INTEGRATION_BASE_URL);
+  });
+
+  it('should default to production environment if BYODS_ENVIRONMENT is set to an invalid value', () => {
+    process.env.BYODS_ENVIRONMENT = 'invalid-env';
+    const config: SDKConfig = {clientId, clientSecret};
+    const sdk = new BYODS(config);
+
+    expect(sdk['env']).toBe('production');
+    expect(sdk['baseUrl']).toBe(PRODUCTION_BASE_URL);
+  });
+
 });
