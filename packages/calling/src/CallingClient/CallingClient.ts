@@ -529,7 +529,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
       data = {...data, feedbackId: uuid()};
     }
 
-    return uploadLogs(this.webex, data);
+    return uploadLogs(data);
   }
 }
 
