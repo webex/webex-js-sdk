@@ -19,7 +19,6 @@ import {
   UUID_REG,
   VALID_EMAIL_ADDRESS,
   DEFAULT_MEETING_INFO_REQUEST_BODY,
-  JOIN_LINK,
   JOIN_LINK_MTID,
 } from '../constants';
 import ParameterError from '../common/errors/parameter';
@@ -73,8 +72,7 @@ export default class MeetingInfoUtil {
           parsedUrl.pathname.includes(`/${MEET_CISCO}`) ||
           parsedUrl.pathname.includes(`/${MEET_CO}`) ||
           parsedUrl.pathname.includes(`/${JOIN}`) ||
-          (parsedUrl.pathname.includes(`/${JOIN_LINK}`) &&
-            parsedUrl.search.includes(JOIN_LINK_MTID)));
+          parsedUrl.search.includes(JOIN_LINK_MTID));
     }
 
     return hostNameBool && pathNameBool;
