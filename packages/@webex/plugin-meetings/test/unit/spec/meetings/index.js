@@ -268,6 +268,33 @@ describe('plugin-meetings', () => {
       });
     });
 
+    describe('#_setLogUploadIntervalMultiplicationFactor', () => {
+      it('should have _setLogUploadIntervalMultiplicationFactor', () => {
+        assert.equal(typeof webex.meetings._setLogUploadIntervalMultiplicationFactor, 'function');
+      });
+
+      describe('success', () => {
+        it('should update the config', () => {
+          const someValue = 1.23;
+
+          webex.meetings._setLogUploadIntervalMultiplicationFactor(someValue);
+          assert.equal(webex.meetings.config.logUploadIntervalMultiplicationFactor, someValue);
+        });
+      });
+
+      describe('failure', () => {
+        it('should not accept non-number input', () => {
+          const logUploadIntervalMultiplicationFactor = webex.meetings.config.logUploadIntervalMultiplicationFactor;
+
+          webex.meetings._setLogUploadIntervalMultiplicationFactor('test');
+          assert.equal(
+            webex.meetings.config.logUploadIntervalMultiplicationFactor,
+            logUploadIntervalMultiplicationFactor
+          );
+        });
+      });
+    });
+
     describe('#_toggleUnifiedMeetings', () => {
       it('should have toggleUnifiedMeetings', () => {
         assert.equal(typeof webex.meetings._toggleUnifiedMeetings, 'function');

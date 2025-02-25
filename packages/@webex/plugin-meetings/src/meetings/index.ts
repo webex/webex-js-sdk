@@ -700,6 +700,20 @@ export default class Meetings extends WebexPlugin {
   }
 
   /**
+   * API to change log upload interval. Setting the factor to 0 will disable periodic log uploads.
+   *
+   * @param {number} factor new factor value
+   * @returns {void}
+   */
+  private _setLogUploadIntervalMultiplicationFactor(factor: number) {
+    if (typeof factor !== 'number') {
+      return;
+    }
+    // @ts-ignore
+    this.config.logUploadIntervalMultiplicationFactor = factor;
+  }
+
+  /**
    * API to toggle unified meetings
    * @param {Boolean} changeState
    * @private
