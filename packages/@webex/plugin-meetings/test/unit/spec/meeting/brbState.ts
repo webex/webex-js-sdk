@@ -62,7 +62,7 @@ describe('plugin-meetings', () => {
       assert.isFalse(brbState.state.server.enabled);
     });
 
-    it("won't be able to send local brb state to server if it is not a multistream meeting", async () => {
+    it('cannot send local brb state to server if it is not a multistream meeting', async () => {
       meeting.isMultistream = false;
       brbState.enable(true, meeting.sendSlotManager);
       brbState.handleServerBrbUpdate(true);
@@ -71,7 +71,7 @@ describe('plugin-meetings', () => {
       assert.isTrue(meeting.meetingRequest.setBrb.notCalled);
     });
 
-    it("won't be able to send local brb state to server if webrtc media connection is not defined", async () => {
+    it('cannot send local brb state to server if webrtc media connection is not defined', async () => {
       meeting.mediaProperties.webrtcMediaConnection = undefined;
       brbState.enable(true, meeting.sendSlotManager);
       brbState.handleServerBrbUpdate(true);
@@ -80,7 +80,7 @@ describe('plugin-meetings', () => {
       assert.isTrue(meeting.meetingRequest.setBrb.notCalled);
     });
 
-    it("won't send request twice when in progress", async () => {
+    it('does not send request twice when in progress', async () => {
       brbState.state.syncToServerInProgress = true;
       brbState.enable(true, meeting.sendSlotManager);
       await testUtils.flushPromises();
@@ -88,7 +88,7 @@ describe('plugin-meetings', () => {
       assert.isTrue(meeting.meetingRequest.setBrb.notCalled);
     });
 
-    it('will sync with server when client state does not match server state', async () => {
+    it('syncs with server when client state does not match server state', async () => {
       brbState.enable(true, meeting.sendSlotManager);
       brbState.handleServerBrbUpdate(true);
       await testUtils.flushPromises();
@@ -96,7 +96,7 @@ describe('plugin-meetings', () => {
       assert.isTrue(meeting.meetingRequest.setBrb.calledOnce);
     });
 
-    it('will set source state override when client state does not match server state', async () => {
+    it('sets source state override when client state does not match server state', async () => {
       brbState.enable(true, meeting.sendSlotManager);
       brbState.handleServerBrbUpdate(true);
       await testUtils.flushPromises();
@@ -104,7 +104,7 @@ describe('plugin-meetings', () => {
       assert.isTrue(meeting.sendSlotManager.setSourceStateOverride.calledOnce);
     });
 
-    it('will handle server update', async () => {
+    it('handles server update', async () => {
       brbState.handleServerBrbUpdate(true);
       await testUtils.flushPromises();
 
