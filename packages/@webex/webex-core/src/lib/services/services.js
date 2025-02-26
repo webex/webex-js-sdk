@@ -423,6 +423,8 @@ const Services = WebexPlugin.extend({
    * @returns {object} - The region info object.
    */
   fetchClientRegionInfo() {
+    this.logger.info('inconsequential changes');
+
     return this.request({
       uri: 'https://ds.ciscospark.com/v1/region',
       addAuthHeader: false,
