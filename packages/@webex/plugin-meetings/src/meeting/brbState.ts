@@ -3,7 +3,6 @@ import LoggerProxy from '../common/logs/logger-proxy';
 import type Meeting from '.';
 import SendSlotManager from '../multistream/sendSlotManager';
 
-// eslint-disable-next-line import/prefer-default-export
 export const createBrbState = (meeting: Meeting, enabled: boolean) => {
   LoggerProxy.logger.info(
     `Meeting:brbState#createBrbState: creating BrbState for meeting id ${meeting?.id}`
@@ -17,7 +16,7 @@ export const createBrbState = (meeting: Meeting, enabled: boolean) => {
 /** The purpose of this class is to manage the local and remote brb state
  * and make sure that the server state always matches the last requested state by the client.
  */
-class BrbState {
+export class BrbState {
   state: {
     client: {
       enabled: boolean;
@@ -159,23 +158,13 @@ class BrbState {
   /**
    * This method should be called whenever the server brb state is changed
    *
-   * @param {Boolean} [brbEnabled] true if user has brb enabled, false otherwise
+   * @param {Boolean} [enabled] true if user has brb enabled, false otherwise
    * @returns {undefined}
    */
-  public handleServerBrbUpdate(brbEnabled?: boolean) {
+  public handleServerBrbUpdate(enabled?: boolean) {
     LoggerProxy.logger.info(
-      `Meeting:brbState#handleServerBrbUpdate: updating server brb to (${brbEnabled})`
+      `Meeting:brbState#handleServerBrbUpdate: updating server brb to (${enabled})`
     );
-    this.state.server.enabled = !!brbEnabled;
-  }
-
-  /**
-   * Returns true if the user has locally or remotely brb enabled.
-   *
-   * @public
-   * @returns {Boolean}
-   */
-  public isEnabled(): boolean {
-    return this.state.client.enabled || this.state.server.enabled;
+    this.state.server.enabled = !!enabled;
   }
 }

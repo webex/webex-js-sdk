@@ -35,13 +35,13 @@ describe('plugin-meetings', () => {
       brbState = createBrbState(meeting, true);
       await testUtils.flushPromises();
 
-      assert.isTrue(brbState.isEnabled());
+      assert.isTrue(brbState.state.client.enabled);
 
       // now check the opposite case
       brbState = createBrbState(meeting, false);
       await testUtils.flushPromises();
 
-      assert.isFalse(brbState.isEnabled());
+      assert.isFalse(brbState.state.client.enabled);
     });
 
     it('can be enabled', async () => {
@@ -49,7 +49,8 @@ describe('plugin-meetings', () => {
       brbState.handleServerBrbUpdate(true);
       await testUtils.flushPromises();
 
-      assert.isTrue(brbState.isEnabled());
+      assert.isTrue(brbState.state.client.enabled);
+      assert.isTrue(brbState.state.server.enabled);
     });
 
     it('can be disabled', async () => {
@@ -57,7 +58,8 @@ describe('plugin-meetings', () => {
       brbState.handleServerBrbUpdate(false);
       await testUtils.flushPromises();
 
-      assert.isFalse(brbState.isEnabled());
+      assert.isFalse(brbState.state.client.enabled);
+      assert.isFalse(brbState.state.server.enabled);
     });
 
     it("won't be able to send local brb state to server if it is not a multistream meeting", async () => {
@@ -106,7 +108,7 @@ describe('plugin-meetings', () => {
       brbState.handleServerBrbUpdate(true);
       await testUtils.flushPromises();
 
-      assert.isTrue(brbState.isEnabled());
+      assert.isTrue(brbState.state.server.enabled);
     });
   });
 });
