@@ -248,6 +248,16 @@ describe('webex-core', () => {
     });
 
     describe('#fetchClientRegionInfo', () => {
+      beforeEach(() => {
+        services.webex.config = {
+          services: {
+            discovery: {
+              sqdiscovery: 'https://test.ciscospark.com/v1/region',
+            },
+          }
+        };
+      });
+
       it('successfully resolves with undefined if fetch request failed', () => {
         webex.request = sinon.stub().returns(Promise.reject());
 
@@ -258,13 +268,6 @@ describe('webex-core', () => {
 
       it('successfully resolves with true if fetch request succeeds', () => {
         webex.request = sinon.stub().returns(Promise.resolve({body: true}));
-        services.webex.config = {
-          services: {
-            discovery: {
-              sqdiscovery: 'https://test.ciscospark.com/v1/region',
-            },
-          }
-        };
 
         return services.fetchClientRegionInfo().then((r) => {
           assert.equal(r, true);
