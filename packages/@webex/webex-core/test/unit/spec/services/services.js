@@ -255,6 +255,27 @@ describe('webex-core', () => {
           assert.isUndefined(r);
         });
       });
+
+      it('successfully resolves with true if fetch request succeeds', () => {
+        webex.request = sinon.stub().returns(Promise.resolve({body: true}));
+        services.webex.config = {
+          services: {
+            discovery: {
+              sqdiscovery: 'https://test.ciscospark.com/v1/region',
+            },
+          }
+        };
+
+        return services.fetchClientRegionInfo().then((r) => {
+          assert.equal(r, true);
+          assert.calledWith(webex.request, {
+            uri: 'https://test.ciscospark.com/v1/region',
+            addAuthHeader: false,
+            headers: { 'spark-user-agent': null },
+            timeout: 5000
+          });
+        });
+      });
     });
 
     describe('#getMeetingPreferences', () => {
