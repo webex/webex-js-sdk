@@ -62,7 +62,7 @@ describe('plugin-meetings', () => {
       assert.isFalse(brbState.state.server.enabled);
     });
 
-    it('cannot send local brb state to server if it is not a multistream meeting', async () => {
+    it('does not send local brb state to server if it is not a multistream meeting', async () => {
       meeting.isMultistream = false;
       brbState.enable(true, meeting.sendSlotManager);
       brbState.handleServerBrbUpdate(true);
@@ -71,7 +71,7 @@ describe('plugin-meetings', () => {
       assert.isTrue(meeting.meetingRequest.setBrb.notCalled);
     });
 
-    it('cannot send local brb state to server if webrtc media connection is not defined', async () => {
+    it('does not send local brb state to server if webrtc media connection is not defined', async () => {
       meeting.mediaProperties.webrtcMediaConnection = undefined;
       brbState.enable(true, meeting.sendSlotManager);
       brbState.handleServerBrbUpdate(true);

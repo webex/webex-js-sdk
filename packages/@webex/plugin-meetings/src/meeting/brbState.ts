@@ -118,8 +118,7 @@ export class BrbState {
     const {enabled} = this.state.client;
 
     if (!this.meeting.isMultistream) {
-      const errorMessage =
-        'Meeting:brbState#sendLocalBrbStateToServer --> Not a multistream meeting';
+      const errorMessage = 'Meeting:brbState#sendLocalBrbStateToServer: Not a multistream meeting';
       const error = new Error(errorMessage);
 
       LoggerProxy.logger.error(error);
@@ -129,7 +128,7 @@ export class BrbState {
 
     if (!this.meeting.mediaProperties.webrtcMediaConnection) {
       const errorMessage =
-        'Meeting:brbState#sendLocalBrbStateToServer --> WebRTC media connection is not defined';
+        'Meeting:brbState#sendLocalBrbStateToServer: WebRTC media connection is not defined';
       const error = new Error(errorMessage);
 
       LoggerProxy.logger.error(error);
@@ -149,7 +148,7 @@ export class BrbState {
         sendSlotManager.setSourceStateOverride(MediaType.VideoMain, enabled ? 'away' : null);
       })
       .catch((error) => {
-        LoggerProxy.logger.error('Meeting:brbState#sendLocalBrbStateToServer --> Error ', error);
+        LoggerProxy.logger.error('Meeting:brbState#sendLocalBrbStateToServer: Error ', error);
 
         return Promise.reject(error);
       });
