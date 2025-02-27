@@ -8573,6 +8573,8 @@ export default class Meeting extends StatelessWebexPlugin {
       correlationId: this.correlationId,
       muted,
       encoderImplementation: this.statsAnalyzer?.shareVideoEncoderImplementation,
+      displaySurface: this.mediaProperties?.shareVideoStream?.getSettings().displaySurface,
+      isMultistream: this.isMultistream,
     });
   };
 
