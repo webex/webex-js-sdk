@@ -10,6 +10,7 @@ import {
   _SIP_BRIDGE_,
   MEETING_STATE,
   _MEETING_,
+  _SPACE_SHARE_,
   LOCUSINFO,
   LOCUS,
   _LEFT_,
@@ -489,7 +490,8 @@ export default class LocusInfo extends EventsScope {
   isMeetingActive() {
     if (
       this.parsedLocus.fullState.type === _CALL_ ||
-      this.parsedLocus.fullState.type === _SIP_BRIDGE_
+      this.parsedLocus.fullState.type === _SIP_BRIDGE_ ||
+      this.parsedLocus.fullState.type === _SPACE_SHARE_
     ) {
       // @ts-ignore
       const partner = this.getLocusPartner(this.participants, this.self);
