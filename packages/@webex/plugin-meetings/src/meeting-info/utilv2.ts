@@ -72,7 +72,7 @@ export default class MeetingInfoUtil {
           parsedUrl.pathname.includes(`/${MEET_CISCO}`) ||
           parsedUrl.pathname.includes(`/${MEET_CO}`) ||
           parsedUrl.pathname.includes(`/${JOIN}`) ||
-          parsedUrl.search.includes(JOIN_LINK_MTID));
+          (parsedUrl.search && parsedUrl.search.includes(JOIN_LINK_MTID)));
     }
 
     return hostNameBool && pathNameBool;
