@@ -1556,8 +1556,7 @@ export function modifySdpForIPv4(sdp: string): string {
  */
 export async function uploadLogs(data = {}) {
   try {
-    const sdkConnector = SDKConnector;
-    const webex = sdkConnector.getWebex();
+    const webex = SDKConnector.getWebex();
     await webex.internal.support.submitLogs(data);
   } catch (error) {
     log.error(error as ExtendedError, {
