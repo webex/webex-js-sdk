@@ -469,6 +469,17 @@ describe('plugin-meetings', () => {
         assert.calledOnce(meeting.meetingRequest.joinMeeting);
       });
 
+      it('should not attach reachability if there is no roap message', async () => {
+        await MeetingUtil.joinMeeting(meeting, {});
+
+        assert.notCalled(webex.meetings.reachability.getReachabilityReportToAttachToRoap);
+        assert.calledOnce(meeting.meetingRequest.joinMeeting);
+
+        const parameter = meeting.meetingRequest.joinMeeting.getCall(0).args[0];
+        assert.isUndefined(parameter.reachability);
+        assert.isUndefined(parameter.roapMessage);
+      });
+
       it('should handle failed clientMediaPreferences retrieval', async () => {
         webex.meetings.reachability.getClientMediaPreferences.rejects(new Error('fake error'));
         meeting.isMultistream = true;

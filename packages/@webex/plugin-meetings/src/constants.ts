@@ -36,6 +36,8 @@ export const HOST = 'host';
 
 export const JOIN = 'join';
 
+export const JOIN_LINK_MTID = 'MTID';
+
 export const LEAVE = 'leave';
 export const LIVE = 'live';
 export const LOCAL = 'local';
@@ -104,6 +106,7 @@ export const _ON_HOLD_LOBBY_ = 'ON_HOLD_LOBBY';
 export const _MEETING_LINK_ = 'MEETING_LINK';
 export const _MEETING_UUID_ = 'MEETING_UUID';
 export const _MEETING_ = 'MEETING';
+export const _SPACE_SHARE_ = 'SPACE_SHARE';
 export const _MEETING_CENTER_ = 'MEETING_CENTER';
 export const _MEETING_ID_ = 'MEETING_ID';
 
@@ -1389,3 +1392,12 @@ export const DESTINATION_TYPE = {
 } as const;
 
 export type DESTINATION_TYPE = Enum<typeof DESTINATION_TYPE>;
+
+export const INITIAL_REGISTRATION_STATUS = {
+  fetchWebexSite: false,
+  getGeoHint: false,
+  startReachability: false,
+  deviceRegister: false,
+  mercuryConnect: false,
+  checkH264Support: false,
+};

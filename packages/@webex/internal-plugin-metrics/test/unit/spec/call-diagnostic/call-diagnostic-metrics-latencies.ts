@@ -437,6 +437,15 @@ describe('internal-plugin-metrics', () => {
       assert.deepEqual(cdl.getClickToInterstitial(), 5);
     });
 
+    it('calculates getClickToInterstitial without join button timestamp when it is 0', () => {
+      cdl.saveLatency('internal.click.to.interstitial', 0);
+      cdl.saveTimestamp({
+        key: 'internal.client.meeting.interstitial-window.showed',
+        value: 20,
+      });
+      assert.deepEqual(cdl.getClickToInterstitial(), 0);
+    });
+
     it('calculates getInterstitialToJoinOK correctly', () => {
       cdl.saveTimestamp({
         key: 'internal.client.interstitial-window.click.joinbutton',
@@ -447,6 +456,18 @@ describe('internal-plugin-metrics', () => {
         value: 20,
       });
       assert.deepEqual(cdl.getInterstitialToJoinOK(), 10);
+    });
+
+    it('calculates getInterstitialToJoinOK correctly when one value is not a number', () => {
+      cdl.saveTimestamp({
+        key: 'internal.client.interstitial-window.click.joinbutton',
+        value: 'ten' as unknown as number,
+      });
+      cdl.saveTimestamp({
+        key: 'client.locus.join.response',
+        value: 20,
+      });
+      assert.deepEqual(cdl.getInterstitialToJoinOK(), undefined);
     });
 
     it('calculates getCallInitMediaEngineReady correctly', () => {
@@ -480,6 +501,58 @@ describe('internal-plugin-metrics', () => {
       });
       assert.deepEqual(cdl.getTotalJMT(), 45);
     });
+
+    it('calculates getTotalJMT correctly when clickToInterstitial is 0', () => {
+        cdl.saveLatency('internal.click.to.interstitial', 0);
+        cdl.saveTimestamp({
+          key: 'internal.client.interstitial-window.click.joinbutton',
+          value: 20,
+        });
+        cdl.saveTimestamp({
+          key: 'client.locus.join.response',
+          value: 40,
+        });
+        assert.deepEqual(cdl.getTotalJMT(), 20);
+      });
+
+      it('calculates getTotalJMT correctly when interstitialToJoinOk is 0', () => {
+        cdl.saveTimestamp({
+          key: 'internal.client.interstitial-window.click.joinbutton',
+          value: 40,
+        });
+        cdl.saveLatency('internal.click.to.interstitial', 12);
+        cdl.saveTimestamp({
+          key: 'client.locus.join.response',
+          value: 40,
+        });
+        assert.deepEqual(cdl.getTotalJMT(), 12);
+      });
+
+      it('calculates getTotalJMT correctly when both clickToInterstitial and interstitialToJoinOk are 0', () => {
+        cdl.saveTimestamp({
+          key: 'internal.client.interstitial-window.click.joinbutton',
+          value: 40,
+        });
+        cdl.saveLatency('internal.click.to.interstitial', 0);
+        cdl.saveTimestamp({
+          key: 'client.locus.join.response',
+          value: 40,
+        });
+        assert.deepEqual(cdl.getTotalJMT(), 0);
+      });
+
+      it('calculates getTotalJMT correctly when both clickToInterstitial is not a number', () => {
+        cdl.saveTimestamp({
+          key: 'internal.client.interstitial-window.click.joinbutton',
+          value: 40,
+        });
+        cdl.saveLatency('internal.click.to.interstitial', 'eleven' as unknown as number);
+        cdl.saveTimestamp({
+          key: 'client.locus.join.response',
+          value: 40,
+        });
+        assert.deepEqual(cdl.getTotalJMT(), undefined);
+      });
 
     it('calculates getTotalMediaJMT correctly', () => {
       cdl.saveTimestamp({
