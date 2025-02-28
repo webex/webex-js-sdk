@@ -59,6 +59,7 @@ describe('internal-plugin-metrics', () => {
       webex.internal.newMetrics.callDiagnosticLatencies.saveTimestamp = sinon.stub();
       webex.internal.newMetrics.callDiagnosticLatencies.clearTimestamps = sinon.stub();
       webex.internal.newMetrics.callDiagnosticMetrics.submitClientEvent = sinon.stub();
+      webex.internal.newMetrics.callDiagnosticMetrics.submitDelayedClientEvents = sinon.stub();
       webex.internal.newMetrics.callDiagnosticMetrics.submitMQE = sinon.stub();
       webex.internal.newMetrics.callDiagnosticMetrics.clientMetricsAliasUser = sinon.stub();
       webex.internal.newMetrics.callDiagnosticMetrics.buildClientEventFetchRequestOptions =
@@ -120,6 +121,7 @@ describe('internal-plugin-metrics', () => {
         name: 'client.alert.displayed',
         payload: undefined,
         options: {meetingId: '123'},
+        delaySubmitEvent: false,
       });
     });
 
@@ -256,6 +258,30 @@ describe('internal-plugin-metrics', () => {
         sinon.assert.calledWith(webex.setTimingsAndFetch, expected);
 
         sinon.restore();
+      });
+    });
+
+    describe('#setDelaySubmitClientEvents', () => {
+      it('sets delaySubmitClientEvents correctly', () => {
+        sinon.assert.match(webex.internal.newMetrics.delaySubmitClientEvents, false);
+
+        webex.internal.newMetrics.setDelaySubmitClientEvents(true);
+
+        sinon.assert.match(webex.internal.newMetrics.delaySubmitClientEvents, true);
+
+        webex.internal.newMetrics.setDelaySubmitClientEvents(false);
+
+        sinon.assert.match(webex.internal.newMetrics.delaySubmitClientEvents, false);
+      });
+    });
+
+    describe('#submitDelayedClientEvents', () => {
+      it('calls submitDelayedClientEvents correctly', () => {
+        webex.internal.newMetrics.submitDelayedClientEvents();
+
+        sinon.assert.calledOnce(webex.internal.newMetrics.callDiagnosticMetrics.submitDelayedClientEvents);
+        sinon.assert.calledWith(webex.internal.newMetrics.callDiagnosticMetrics.submitDelayedClientEvents);
+
       });
     });
   });

@@ -46,6 +46,11 @@ class Metrics extends WebexPlugin {
   isReady = false;
 
   /**
+   * Whether or not to delay the submission of client events.
+   */
+  delaySubmitClientEvents = false;
+
+  /**
    * Constructor
    * @param args
    * @constructor
@@ -290,7 +295,12 @@ class Metrics extends WebexPlugin {
       options: {meetingId: options?.meetingId},
     });
 
-    return this.callDiagnosticMetrics.submitClientEvent({name, payload, options});
+    return this.callDiagnosticMetrics.submitClientEvent({
+      name,
+      payload,
+      options,
+      delaySubmitEvent: this.delaySubmitClientEvents,
+    });
   }
 
   /**
@@ -388,6 +398,22 @@ class Metrics extends WebexPlugin {
    */
   public isServiceErrorExpected(serviceErrorCode: number): boolean {
     return this.callDiagnosticMetrics.isServiceErrorExpected(serviceErrorCode);
+  }
+
+  /**
+   * Sets the value of delaySubmitClientEvents. If true, client events will be delayed until submitDelayedClientEvents is called.
+   *
+   * @param {boolean} shouldDelay - A boolean value indicating whether to delay the submission of client events.
+   */
+  public setDelaySubmitClientEvents(shouldDelay: boolean) {
+    this.delaySubmitClientEvents = shouldDelay;
+  }
+
+  /**
+   * Submits all delayed client events.
+   */
+  public submitDelayedClientEvents() {
+    return this.callDiagnosticMetrics.submitDelayedClientEvents();
   }
 }
 
