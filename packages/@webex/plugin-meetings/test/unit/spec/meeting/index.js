@@ -206,6 +206,7 @@ describe('plugin-meetings', () => {
   let membersSpy;
   let meetingRequestSpy;
   let correlationId;
+  let isoLocalClientMeetingJoinTime;
 
   beforeEach(() => {
     webex = new MockWebex({
@@ -1675,10 +1676,6 @@ describe('plugin-meetings', () => {
         describe('successful', () => {
           beforeEach(() => {
             sandbox.stub(MeetingUtil, 'joinMeeting').returns(Promise.resolve(joinMeetingResult));
-          });
-
-          afterEach(() => {
-            assert.exists(meeting.isoLocalClientMeetingJoinTime);
           });
 
           it('should join the meeting and return promise', async () => {
@@ -7497,6 +7494,25 @@ describe('plugin-meetings', () => {
             correlationId: uuid1,
             sessionCorrelationId: '',
           });
+        });
+      });
+
+      describe('#setIsoLocalClientMeetingJoinTime', () => {
+        it('should set the isoLocalClientMeetingJoinTime once and only once when passed in', () => {
+          assert.equal(meeting.isoLocalClientMeetingJoinTime, isoLocalClientMeetingJoinTime);
+          meeting.isoLocalClientMeetingJoinTime = 'test';
+          assert.equal(meeting.isoLocalClientMeetingJoinTime, 'test');
+          meeting.isoLocalClientMeetingJoinTime = 'test2';
+          assert.equal(meeting.isoLocalClientMeetingJoinTime, 'test');
+        });
+
+        it('should set the isoLocalClientMeetingJoin time once and only once when not passed in', () => {
+          assert.equal(meeting.isoLocalClientMeetingJoinTime, isoLocalClientMeetingJoinTime);
+          meeting.isoLocalClientMeetingJoinTime = undefined;
+          const time = meeting.isoLocalClientMeetingJoinTime;
+          assert.equal(meeting.isoLocalClientMeetingJoinTime, time);
+          meeting.isoLocalClientMeetingJoinTime = 'test2';
+          assert.equal(meeting.isoLocalClientMeetingJoinTime, time);
         });
       });
 
