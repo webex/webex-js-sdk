@@ -262,26 +262,21 @@ describe('internal-plugin-metrics', () => {
     });
 
     describe('#setDelaySubmitClientEvents', () => {
-      it('sets delaySubmitClientEvents correctly', () => {
+      it('sets delaySubmitClientEvents correctly and calls submitDelayedClientEvents when set to false', () => {
         sinon.assert.match(webex.internal.newMetrics.delaySubmitClientEvents, false);
 
         webex.internal.newMetrics.setDelaySubmitClientEvents(true);
+
+        assert.notCalled(webex.internal.newMetrics.callDiagnosticMetrics.submitDelayedClientEvents);
 
         sinon.assert.match(webex.internal.newMetrics.delaySubmitClientEvents, true);
 
         webex.internal.newMetrics.setDelaySubmitClientEvents(false);
 
+        assert.calledOnce(webex.internal.newMetrics.callDiagnosticMetrics.submitDelayedClientEvents);
+        assert.calledWith(webex.internal.newMetrics.callDiagnosticMetrics.submitDelayedClientEvents);
+
         sinon.assert.match(webex.internal.newMetrics.delaySubmitClientEvents, false);
-      });
-    });
-
-    describe('#submitDelayedClientEvents', () => {
-      it('calls submitDelayedClientEvents correctly', () => {
-        webex.internal.newMetrics.submitDelayedClientEvents();
-
-        sinon.assert.calledOnce(webex.internal.newMetrics.callDiagnosticMetrics.submitDelayedClientEvents);
-        sinon.assert.calledWith(webex.internal.newMetrics.callDiagnosticMetrics.submitDelayedClientEvents);
-
       });
     });
   });

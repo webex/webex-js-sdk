@@ -139,7 +139,6 @@ describe('internal-plugin-metrics', () => {
 
     afterEach(() => {
       sinon.restore();
-      (global as any).window.webClientPreload = undefined;
     });
 
     describe('#validator', () => {
@@ -1406,9 +1405,7 @@ describe('internal-plugin-metrics', () => {
         const generateClientEventErrorPayloadSpy = sinon.spy(cd, 'generateClientEventErrorPayload');
         sinon.stub(cd, 'getOrigin').returns({origin: 'fake-origin'});
 
-        (global as any).window.webClientPreload = {
-          isEnabled: true,
-        }
+        webex.meetings.config.metrics.webClientPreload = true;
 
         const options = {
           correlationId: 'correlationId',

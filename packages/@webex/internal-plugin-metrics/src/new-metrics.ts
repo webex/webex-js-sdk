@@ -401,19 +401,19 @@ class Metrics extends WebexPlugin {
   }
 
   /**
-   * Sets the value of delaySubmitClientEvents. If true, client events will be delayed until submitDelayedClientEvents is called.
+   * Sets the value of delaySubmitClientEvents. If set to true, client events will be delayed until submitDelayedClientEvents is called. If
+   * set to false, delayed client events will be submitted.
    *
    * @param {boolean} shouldDelay - A boolean value indicating whether to delay the submission of client events.
    */
   public setDelaySubmitClientEvents(shouldDelay: boolean) {
     this.delaySubmitClientEvents = shouldDelay;
-  }
 
-  /**
-   * Submits all delayed client events.
-   */
-  public submitDelayedClientEvents() {
-    return this.callDiagnosticMetrics.submitDelayedClientEvents();
+    if (!shouldDelay) {
+      return this.callDiagnosticMetrics.submitDelayedClientEvents();
+    }
+
+    return Promise.resolve();
   }
 }
 

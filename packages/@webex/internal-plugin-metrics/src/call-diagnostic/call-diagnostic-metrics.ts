@@ -732,7 +732,8 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
         meetingId,
       }),
       webexSubServiceType: this.getSubServiceType(meeting),
-      webClientPreload: (window as any).webClientPreload?.isEnabled,
+      // @ts-ignore
+      webClientPreload: this.webex.meetings?.config?.metrics?.webClientPreload,
     };
 
     const joinFlowVersion = options.joinFlowVersion ?? meeting.callStateForMetrics?.joinFlowVersion;
@@ -785,7 +786,8 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
         webClientDomain: window.location.hostname,
       },
       loginType: this.getCurLoginType(),
-      webClientPreload: (window as any).webClientPreload?.isEnabled,
+      // @ts-ignore
+      webClientPreload: this.webex.meetings?.config?.metrics?.webClientPreload,
     };
 
     if (options.joinFlowVersion) {
