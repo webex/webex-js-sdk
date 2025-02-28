@@ -12,6 +12,7 @@ enum Control {
   shareControl = 'shareControl',
   video = 'video',
   viewTheParticipantList = 'viewTheParticipantList',
+  viewTheParticipantListForWebinar = 'viewTheParticipantListForWebinar',
 }
 
 export {Control, Setting};

@@ -301,6 +301,10 @@ class Utils {
         );
         break;
 
+      case Control.viewTheParticipantListForWebinar:
+        determinant = true;
+        break;
+
       default:
         determinant = false;
     }
