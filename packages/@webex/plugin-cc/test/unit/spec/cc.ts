@@ -774,6 +774,7 @@ describe('webex.cc', () => {
           agentId: 'agentId',
           lastStateChangeReason: 'agent-wss-disconnect',
           lastStateChangeTimestamp: 1738575135188,
+          lastIdleCodeChangeTimestamp: 1738575135189,
           deviceType: LoginOption.BROWSER,
           dn: '12345',
         },
@@ -788,7 +789,7 @@ describe('webex.cc', () => {
 
       const date = new Date();
       const setAgentStateSpy = jest.spyOn(webex.cc, 'setAgentState').mockResolvedValue({
-        data: {lastStateChangeTimestamp: date.getTime()},
+        data: {lastStateChangeTimestamp: 1234, lastIdleCodeChangeTimestamp: 12345},
       } as unknown as SetStateResponse);
       jest.spyOn(webex.cc.services.agent, 'reload').mockResolvedValue(mockReLoginResponse);
 
@@ -812,7 +813,8 @@ describe('webex.cc', () => {
       });
       expect(webex.cc.agentConfig.isAgentLoggedIn).toBe(true);
       expect(webex.cc.agentConfig.lastStateAuxCodeId).toBe('0');
-      expect(webex.cc.agentConfig.lastStateChangeTimestamp).toStrictEqual(date); // it should be updated with the new timestamp of setAgentState response
+      expect(webex.cc.agentConfig.lastStateChangeTimestamp).toStrictEqual(1234); // it should be updated with the new timestamp of setAgentState response
+      expect(webex.cc.agentConfig.lastIdleCodeChangeTimestamp).toStrictEqual(12345);
       expect(webex.cc.agentConfig.deviceType).toBe(LoginOption.BROWSER);
       expect(registerWebCallingLineSpy).toHaveBeenCalled();
       expect(incomingTaskListenerSpy).toHaveBeenCalled();
@@ -856,6 +858,7 @@ describe('webex.cc', () => {
           deviceType: LoginOption.EXTENSION,
           dn: '12345',
           lastStateChangeTimestamp: 1738575135188,
+          lastIdleCodeChangeTimestamp: 1738575135189,
         },
       };
 
@@ -877,7 +880,8 @@ describe('webex.cc', () => {
       expect(webex.cc.agentConfig.deviceType).toBe(LoginOption.EXTENSION);
       expect(webex.cc.agentConfig.defaultDn).toBe('12345');
       expect(webex.cc.agentConfig.lastStateAuxCodeId).toBe('auxCodeId');
-      expect(webex.cc.agentConfig.lastStateChangeTimestamp).toStrictEqual(new Date(1738575135188));
+      expect(webex.cc.agentConfig.lastStateChangeTimestamp).toStrictEqual(1738575135188);
+      expect(webex.cc.agentConfig.lastIdleCodeChangeTimestamp).toStrictEqual(1738575135189);
     });
 
     it('should update agentConfig with deviceType during silent relogin for AGENT_DN', async () => {

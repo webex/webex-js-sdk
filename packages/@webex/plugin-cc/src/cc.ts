@@ -349,12 +349,17 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   private async silentRelogin(): Promise<void> {
     try {
       const reLoginResponse = await this.services.agent.reload();
-      const {agentId, lastStateChangeReason, deviceType, dn, lastStateChangeTimestamp} =
-        reLoginResponse.data;
+      const {
+        agentId,
+        lastStateChangeReason,
+        deviceType,
+        dn,
+        lastStateChangeTimestamp,
+        lastIdleCodeChangeTimestamp,
+      } = reLoginResponse.data;
       let {auxCodeId} = reLoginResponse.data;
-      this.agentConfig.lastStateChangeTimestamp = lastStateChangeTimestamp
-        ? new Date(lastStateChangeTimestamp)
-        : new Date();
+      this.agentConfig.lastStateChangeTimestamp = lastStateChangeTimestamp;
+      this.agentConfig.lastIdleCodeChangeTimestamp = lastIdleCodeChangeTimestamp;
 
       // To handle re-registration of event listeners on silent relogin
       this.incomingTaskListener();
@@ -375,10 +380,11 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           const agentStatusResponse = (await this.setAgentState(
             stateChangeData
           )) as StateChangeSuccess;
-          this.agentConfig.lastStateChangeTimestamp = agentStatusResponse.data
-            .lastStateChangeTimestamp
-            ? new Date(agentStatusResponse.data.lastStateChangeTimestamp)
-            : new Date();
+          this.agentConfig.lastStateChangeTimestamp =
+            agentStatusResponse.data.lastStateChangeTimestamp;
+
+          this.agentConfig.lastIdleCodeChangeTimestamp =
+            agentStatusResponse.data.lastIdleCodeChangeTimestamp;
         } catch (error) {
           LoggerProxy.error(
             `event=requestAutoStateChange | Error requesting state change to available on socket reconnect: ${error}`,

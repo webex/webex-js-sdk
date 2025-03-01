@@ -568,5 +568,6 @@ export type Profile = {
   maskSensitiveData?: boolean;
   isAgentLoggedIn?: boolean;
   lastStateAuxCodeId?: string;
-  lastStateChangeTimestamp?: Date;
+  lastStateChangeTimestamp?: number;
+  lastIdleCodeChangeTimestamp?: number;
 };
