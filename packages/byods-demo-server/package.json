@@ -6,9 +6,6 @@
     "dev": "NODE_ENV=development BYODS_ENVIRONMENT=integration npx ts-node ./src",
     "dev:hot": "nodemon --exec \"npm run dev\" --watch ./src -e ts"
   },
-  "engines": {
-    "node": ">=20.x"
-  },
   "dependencies": {
     "@webex/byods": "workspace:*",
     "cookie-parser": "^1.4.7",

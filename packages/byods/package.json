@@ -13,9 +13,6 @@
     "url": "https://github.com/webex/webex-js-sdk.git",
     "directory": "packages/byods"
   },
-  "engines": {
-    "node": ">=20.x"
-  },
   "scripts": {
     "build:docs": "typedoc --out ../../docs/byods",
     "build:src": "webex-legacy-tools build -dest \"./dist\" -src \"./src\" -js -ts && yarn build",
