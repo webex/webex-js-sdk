@@ -248,11 +248,35 @@ describe('webex-core', () => {
     });
 
     describe('#fetchClientRegionInfo', () => {
+      beforeEach(() => {
+        services.webex.config = {
+          services: {
+            discovery: {
+              sqdiscovery: 'https://test.ciscospark.com/v1/region',
+            },
+          }
+        };
+      });
+
       it('successfully resolves with undefined if fetch request failed', () => {
         webex.request = sinon.stub().returns(Promise.reject());
 
         return services.fetchClientRegionInfo().then((r) => {
           assert.isUndefined(r);
+        });
+      });
+
+      it('successfully resolves with true if fetch request succeeds', () => {
+        webex.request = sinon.stub().returns(Promise.resolve({body: true}));
+
+        return services.fetchClientRegionInfo().then((r) => {
+          assert.equal(r, true);
+          assert.calledWith(webex.request, {
+            uri: 'https://test.ciscospark.com/v1/region',
+            addAuthHeader: false,
+            headers: { 'spark-user-agent': null },
+            timeout: 5000
+          });
         });
       });
     });

@@ -33,6 +33,11 @@ export default {
       hydra: process.env.HYDRA_SERVICE_URL || 'https://api.ciscospark.com/v1',
 
       /**
+       * load balanced region info url
+       */
+      sqdiscovery: process.env.SQDISCOVERY_SERVICE_URL || 'https://ds.ciscospark.com/v1/region',
+
+      /**
        * The u2c discovery url
        *
        * @type {string}
