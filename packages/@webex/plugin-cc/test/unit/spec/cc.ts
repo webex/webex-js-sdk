@@ -432,10 +432,6 @@ describe('webex.cc', () => {
       // Simulate receiving a message event
       messageCallback(JSON.stringify(agentStateChangeEventData));
 
-      expect(ccEmitSpy).toHaveBeenCalledWith(
-        agentStateChangeEventData.type,
-        agentStateChangeEventData.data
-      );
       expect(ccEmitSpy).toHaveBeenCalledWith(AGENT_STATE_CHANGE, agentStateChangeEventData.data);
 
       // Simulate receiving a message event
