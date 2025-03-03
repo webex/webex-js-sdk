@@ -3392,7 +3392,7 @@ export default class Meeting extends StatelessWebexPlugin {
     });
 
     this.locusInfo.on(LOCUSINFO.EVENTS.SELF_MEETING_BRB_CHANGED, (payload) => {
-      this.brbState.handleServerBrbUpdate(payload?.brb?.enabled);
+      this.brbState?.handleServerBrbUpdate(payload?.brb?.enabled);
       Trigger.trigger(
         this,
         {
@@ -3618,6 +3618,24 @@ export default class Meeting extends StatelessWebexPlugin {
    * @throws {Error} - Throws an error if the request fails.
    */
   public async beRightBack(enabled: boolean): Promise<void> {
+    if (!this.isMultistream) {
+      const errorMessage = 'Meeting:index#beRightBack --> Not a multistream meeting';
+      const error = new Error(errorMessage);
+
+      LoggerProxy.logger.error(error);
+
+      return Promise.reject(error);
+    }
+
+    if (!this.mediaProperties.webrtcMediaConnection) {
+      const errorMessage = 'Meeting:index#beRightBack --> WebRTC media connection is not defined';
+      const error = new Error(errorMessage);
+
+      LoggerProxy.logger.error(error);
+
+      return Promise.reject(error);
+    }
+
     return this.brbState.enable(enabled, this.sendSlotManager);
   }
 
