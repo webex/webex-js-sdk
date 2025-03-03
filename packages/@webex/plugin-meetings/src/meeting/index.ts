@@ -4647,6 +4647,7 @@ export default class Meeting extends StatelessWebexPlugin {
 
       this.receiveSlotManager.reset();
       this.mediaProperties.webrtcMediaConnection.close();
+      this.mediaProperties.unsetPeerConnection();
       this.sendSlotManager.reset();
       this.setNetworkStatus(undefined);
     }
