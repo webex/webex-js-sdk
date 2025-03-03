@@ -423,8 +423,10 @@ const Services = WebexPlugin.extend({
    * @returns {object} - The region info object.
    */
   fetchClientRegionInfo() {
+    const {services} = this.webex.config;
+
     return this.request({
-      uri: 'https://ds.ciscospark.com/v1/region',
+      uri: services.discovery.sqdiscovery,
       addAuthHeader: false,
       headers: {
         'spark-user-agent': null,
