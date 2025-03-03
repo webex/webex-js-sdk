@@ -116,7 +116,7 @@ import MeetingCollection from '@webex/plugin-meetings/src/meetings/collection';
 import {EVENT_TRIGGERS as VOICEAEVENTS} from '@webex/internal-plugin-voicea';
 import JoinMeetingError                 from '../../../../src/common/errors/join-meeting';
 
-describe.only('plugin-meetings', () => {
+describe('plugin-meetings', () => {
   const logger = {
     info: () => {},
     log: () => {},

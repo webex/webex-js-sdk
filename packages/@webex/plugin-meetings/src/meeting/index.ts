@@ -1792,6 +1792,7 @@ export default class Meeting extends StatelessWebexPlugin {
           `Meeting:index#fetchMeetingInfo --> Info Unable to fetch meeting info for ${this.destination} - password required (code=${err?.body?.code}).`
         );
 
+        // Handle the case where user hasn't reached Join Before Host (JBH) time (error code 403003)
         if (JOIN_ERROR_REASN_FOR_END_USER.includes(err.wbxAppApiCode)) {
           this.meetingInfoFailureReason = MEETING_INFO_FAILURE_REASON.NOT_REACH_JBH;
           this.meetingInfoFailureCode = err.wbxAppApiCode;
