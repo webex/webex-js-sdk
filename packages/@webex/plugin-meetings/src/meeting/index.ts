@@ -1793,7 +1793,7 @@ export default class Meeting extends StatelessWebexPlugin {
         );
 
         if (JOIN_ERROR_REASN_FOR_END_USER.includes(err.wbxAppApiCode)) {
-          this.meetingInfoFailureReason = MEETING_INFO_FAILURE_REASON.JOIN_ERROR_REASN_FOR_END_USER;
+          this.meetingInfoFailureReason = MEETING_INFO_FAILURE_REASON.NOT_REACH_JBH;
           this.meetingInfoFailureCode = err.wbxAppApiCode;
 
           if (err.meetingInfo) {

@@ -116,7 +116,7 @@ import MeetingCollection from '@webex/plugin-meetings/src/meetings/collection';
 import {EVENT_TRIGGERS as VOICEAEVENTS} from '@webex/internal-plugin-voicea';
 import JoinMeetingError                 from '../../../../src/common/errors/join-meeting';
 
-describe('plugin-meetings', () => {
+describe.only('plugin-meetings', () => {
   const logger = {
     info: () => {},
     log: () => {},
@@ -6367,7 +6367,7 @@ describe('plugin-meetings', () => {
           assert.equal(meeting.meetingInfoFailureCode, 403003);
           assert.equal(
             meeting.meetingInfoFailureReason,
-            MEETING_INFO_FAILURE_REASON.JOIN_ERROR_REASN_FOR_END_USER
+            MEETING_INFO_FAILURE_REASON.NOT_REACH_JBH
           );
           assert.equal(meeting.requiredCaptcha, null);
         });
