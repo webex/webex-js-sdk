@@ -5,6 +5,7 @@ import AqmReqs from '../core/aqm-reqs';
 import {HTTP_METHODS} from '../../types';
 import {WCC_API_GATEWAY} from '../constants';
 import {CC_EVENTS} from '../config/types';
+import MetricsManager from '../../MetricsManager';
 
 /*
  * routingAgent
@@ -12,7 +13,7 @@ import {CC_EVENTS} from '../config/types';
  * @category Routing Service
  */
 
-export default function routingAgent(routing: AqmReqs) {
+export default function routingAgent(routing: AqmReqs, metricsManager: MetricsManager) {
   return {
     reload: routing.reqEmpty(() => ({
       host: WCC_API_GATEWAY,
@@ -58,12 +59,19 @@ export default function routingAgent(routing: AqmReqs) {
       url: '/v1/agents/login',
       host: WCC_API_GATEWAY,
       data: p.data,
-      err: /* istanbul ignore next */ (e: any) =>
-        new Err.Details('Service.aqm.agent.stationLogin', {
+      err: /* istanbul ignore next */ (e: any) => {
+        metricsManager.trackBehavioralMetric('agent-login', {
+          ...p.data,
+          isSuccess: false,
+          roles: Array.isArray(p.data.roles) ? p.data.roles.join(',') : '',
+        });
+
+        return new Err.Details('Service.aqm.agent.stationLogin', {
           status: e.response?.status ?? 0,
           type: e.response?.data?.errorType,
           trackingId: e.response?.headers?.trackingid?.split('_')[1],
-        }),
+        });
+      },
       notifSuccess: {
         bind: {
           type: CC_EVENTS.AGENT_STATION_LOGIN,
@@ -77,6 +85,14 @@ export default function routingAgent(routing: AqmReqs) {
           data: {type: CC_EVENTS.AGENT_STATION_LOGIN_FAILED},
         },
         errId: 'Service.aqm.agent.stationLoginFailed',
+        err(e) {
+          metricsManager.trackBehavioralMetric('agent-login', {
+            ...p.data,
+            isSuccess: false,
+            roles: Array.isArray(p.data.roles) ? p.data.roles.join(',') : '',
+            error: JSON.stringify(e),
+          });
+        },
       },
     })),
     stateChange: routing.req((p: {data: Agent.StateChange}) => ({

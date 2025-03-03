@@ -37,6 +37,7 @@ import {ConnectionLostDetails} from './services/core/websocket/types';
 import TaskManager from './services/task/TaskManager';
 import WebCallingService from './services/WebCallingService';
 import {ITask, TASK_EVENTS, TaskResponse, DialerPayload} from './services/task/types';
+import MetricsManager from './MetricsManager';
 
 export default class ContactCenter extends WebexPlugin implements IContactCenter {
   namespace = 'cc';
@@ -48,6 +49,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   private services: Services;
   private httpRequest: HttpRequest;
   private taskManager: TaskManager;
+  private metricsManager: MetricsManager;
   public LoggerProxy = LoggerProxy;
 
   constructor(...args) {
@@ -76,6 +78,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       this.services.webSocketManager.on('message', this.handleWebSocketMessage);
 
       this.webCallingService = new WebCallingService(this.$webex);
+      this.metricsManager = MetricsManager.getInstance({webex: this.$webex});
       this.taskManager = TaskManager.getTaskManager(
         this.services.contact,
         this.webCallingService,
@@ -217,6 +220,13 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       // TODO: https://jira-eng-gpk2.cisco.com/jira/browse/SPARK-626777 Implement the de-register method and close the listener there
       // this.services.webSocketManager.on('message', this.handleWebSocketMessage);
       // this.incomingTaskListener();
+      this.metricsManager.trackBehavioralMetric('agent-login', {
+        agentId: this.agentConfig.agentId,
+        agentProfileId: this.agentConfig.agentProfileID,
+      });
+
+      this.services.webSocketManager.on('message', this.handleWebSocketMessage);
+      this.incomingTaskListener();
 
       return loginResponse;
     } catch (error) {

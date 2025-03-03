@@ -1,3 +1,4 @@
+import MetricsManager from 'packages/@webex/plugin-cc/src/MetricsManager';
 import routingAgent from '../../../../../src/services/agent';
 import AqmReqs from '../../../../../src/services/core/aqm-reqs';
 
@@ -10,6 +11,7 @@ jest.mock('../../../../../src/services/core/aqm-reqs');
 
 describe('AQM routing agent', () => {
   let fakeAqm: jest.Mocked<AqmReqs>;
+  let fakeMetricsManager: jest.Mocked<MetricsManager>;
   let agent: ReturnType<typeof routingAgent>;
 
   beforeEach(() => {
@@ -18,8 +20,10 @@ describe('AQM routing agent', () => {
     fakeAqm = new AqmReqs() as jest.Mocked<AqmReqs>;
     fakeAqm.reqEmpty = jest.fn().mockImplementation((fn) => fn);
     fakeAqm.req = jest.fn().mockImplementation((fn) => fn);
+    fakeMetricsManager.trackBehavioralMetric = jest.fn();
+    fakeMetricsManager.trackOperationalMetric = jest.fn();
 
-    agent = routingAgent(fakeAqm);
+    agent = routingAgent(fakeAqm, fakeMetricsManager);
   });
 
   it('logout', async () => {

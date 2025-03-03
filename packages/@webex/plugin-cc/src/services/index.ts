@@ -1,3 +1,4 @@
+import Metrics from '@webex/internal-plugin-metrics';
 import routingAgent from './agent';
 import routingContact from './task/contact';
 import AgentConfigService from './config';
@@ -21,7 +22,7 @@ export default class Services {
     this.webSocketManager = new WebSocketManager({webex});
     const aqmReq = new AqmReqs(this.webSocketManager);
     this.config = new AgentConfigService();
-    this.agent = routingAgent(aqmReq);
+    this.agent = routingAgent(aqmReq, Metrics.getInstance({webex}));
     this.contact = routingContact(aqmReq);
     this.dialer = aqmDialer(aqmReq);
     this.connectionService = new ConnectionService({

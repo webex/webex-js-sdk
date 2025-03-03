@@ -1,4 +1,5 @@
 import {CallingClientConfig} from '@webex/calling';
+import {SubmitBehavioralEvent, SubmitOperationalEvent} from '@webex/internal-plugin-metrics';
 import * as Agent from './services/agent/types';
 import * as Contact from './services/task/types';
 import {Profile} from './services/config/types';
@@ -114,8 +115,9 @@ interface IWebexInternal {
       contactsService: string;
     };
   };
-  metrics: {
-    submitClientMetrics: (name: string, data: unknown) => void;
+  newMetrics: {
+    submitBehavioralEvent: SubmitBehavioralEvent;
+    submitOperationalEvent: SubmitOperationalEvent;
   };
 }
 export interface WebexSDK {
