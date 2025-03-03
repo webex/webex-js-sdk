@@ -22,7 +22,7 @@ import {CC_FILE, AGENT_STATE_CHANGE, AGENT_MULTI_LOGIN} from '../../../src/const
 import '../../../__mocks__/workerMock';
 import {Profile} from '../../../src/services/config/types';
 import TaskManager from '../../../src/services/task/TaskManager';
-import { AgentContact, TASK_EVENTS } from '../../../src/services/task/types';
+import {AgentContact, TASK_EVENTS} from '../../../src/services/task/types';
 
 jest.mock('../../../src/logger-proxy', () => ({
   __esModule: true,
@@ -109,7 +109,6 @@ describe('webex.cc', () => {
       dialer: {
         startOutdial: jest.fn(),
       },
-
     };
 
     mockTaskManager = {
@@ -414,6 +413,7 @@ describe('webex.cc', () => {
 
       incomingCallCb(mockTask);
 
+      expect(emitSpy).toHaveBeenCalledTimes(1);
       expect(emitSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_INCOMING, mockTask);
       // Verify message event listener
       const messageCallback = mockWebSocketManager.on.mock.calls.find(
@@ -432,6 +432,10 @@ describe('webex.cc', () => {
       // Simulate receiving a message event
       messageCallback(JSON.stringify(agentStateChangeEventData));
 
+      expect(ccEmitSpy).toHaveBeenCalledWith(
+        agentStateChangeEventData.type,
+        agentStateChangeEventData.data
+      );
       expect(ccEmitSpy).toHaveBeenCalledWith(AGENT_STATE_CHANGE, agentStateChangeEventData.data);
 
       // Simulate receiving a message event
@@ -927,19 +931,16 @@ describe('webex.cc', () => {
     });
   });
 
-
   describe('startOutdial', () => {
-
     it('should make outdial call successfully.', async () => {
-      
       const response = {};
       const dialerPayload = {
         entryPointId: '12345',
-        destination: '1234567890', 
+        destination: '1234567890',
         direction: 'OUTBOUND',
         attributes: {},
         mediaType: 'telephony',
-        outboundType: 'OUTDIAL'
+        outboundType: 'OUTDIAL',
       };
 
       const startOutdialMock = jest
@@ -954,7 +955,6 @@ describe('webex.cc', () => {
     });
 
     it('should handle error during startOutdial', async () => {
-
       const error = {
         details: {
           trackingId: '1234',

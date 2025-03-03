@@ -21,7 +21,7 @@ import HttpRequest from './services/core/HttpRequest';
 import LoggerProxy from './logger-proxy';
 import {StateChange, Logout, StateChangeSuccess} from './services/agent/types';
 import {getErrorDetails} from './services/core/Utils';
-import {Profile, WelcomeEvent, CC_EVENTS} from './services/config/types';
+import {Profile, WelcomeEvent, CC_EVENTS, CC_AGENT_EVENTS} from './services/config/types';
 import {AGENT_STATE_AVAILABLE, AGENT_STATE_AVAILABLE_ID} from './services/config/constants';
 import {ConnectionLostDetails} from './services/core/websocket/types';
 import TaskManager from './services/task/TaskManager';
@@ -290,6 +290,11 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
   private handleWebSocketMessage = (event: string) => {
     const eventData = JSON.parse(event);
+    // Re-emit the events related to agent
+    if (Object.values(CC_AGENT_EVENTS).includes(eventData.data?.type)) {
+      // @ts-ignore
+      this.emit(eventData.data.type, eventData.data);
+    }
 
     if (eventData.type === CC_EVENTS.AGENT_STATE_CHANGE) {
       // @ts-ignore
