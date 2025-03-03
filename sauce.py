@@ -15,6 +15,7 @@ PROD_ENV_VARS = {
   'IDBROKER_BASE_URL': 'https://idbroker.webex.com',
   'IDENTITY_BASE_URL': 'https://identity.webex.com',
   'U2C_SERVICE_URL': 'https://u2c.wbx2.com/u2c/api/v1',
+  'SQDISCOVERY_SERVICE_URL': 'https://ds.ciscospark.com/v1/region',
   'WDM_SERVICE_URL': 'https://wdm-a.wbx2.com/wdm/api/v1',
   # Logging
   'ENABLE_VERBOSE_NETWORK_LOGGING': 'true',
@@ -32,6 +33,7 @@ INT_ENV_VARS = {
   'IDBROKER_BASE_URL': 'https://idbrokerbts.webex.com',
   'IDENTITY_BASE_URL': 'https://identitybts.webex.com',
   'U2C_SERVICE_URL': 'https://u2c-intb.ciscospark.com/u2c/api/v1',
+  'SQDISCOVERY_SERVICE_URL': 'https://ds.ciscospark.com/v1/region',
   'WDM_SERVICE_URL': 'https://wdm-intb.ciscospark.com/wdm/api/v1',
   'WHISTLER_API_SERVICE_URL': 'https://whistler.allnint.ciscospark.com/api/v1',
   # Logging
