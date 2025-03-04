@@ -2,5 +2,19 @@
   "extends": "../../tsconfig.json",
   "include": [
       "src"
-  ]
+  ],
+  "typedocOptions": {
+    "entryPoints": [
+      "./src/index.ts"
+    ],
+    "sort": [
+      "source-order"
+    ],
+    "name": "BYoDS SDK (@webex/byods)",
+    "disableSources": "true",
+    "entryPointStrategy": "expand",
+    "excludeExternals": "true",
+    "excludePrivate": "true",
+    "hideGenerator": "true",
+  },
 }
