@@ -1,5 +1,5 @@
 import DataSourceClient from '../../../../src/data-source-client';
-import { DataSourceRequest, DataSourceResponse } from '../../../../src/data-source-client/types';
+import { DataSourceRequest, DataSourceResponse, ListResponse } from '../../../../src/data-source-client/types';
 import { HttpClient, ApiResponse } from '../../../../src/http-client/types';
 import { decodeJwt } from 'jose';
 import log from '../../../../src/Logger';
@@ -100,19 +100,21 @@ describe('DataSourceClient', () => {
   });
 
   it('should list all data sources', async () => {
-    const response: ApiResponse<DataSourceResponse[]> = {
-      data: [
-        {
-          id: '123',
-          schemaId: 'myschemaid',
-          orgId: 'org123',
-          applicationId: 'app123',
-          status: 'active',
-          jwsToken: 'someJwsToken',
-          createdBy: 'someUser',
-          createdAt: '2024-01-01T00:00:00Z',
-        },
-      ],
+    const response: ApiResponse<ListResponse<DataSourceResponse>> = {
+      data: {
+        items: [
+          {
+            id: '123',
+            schemaId: 'myschemaid',
+            orgId: 'org123',
+            applicationId: 'app123',
+            status: 'active',
+            jwsToken: 'someJwsToken',
+            createdBy: 'someUser',
+            createdAt: '2024-01-01T00:00:00Z',
+          },
+        ],
+      },
       status: 200,
     };
     httpClient.get.mockResolvedValue(response);
@@ -120,7 +122,10 @@ describe('DataSourceClient', () => {
     const result = await dataSourceClient.list();
 
     expect(httpClient.get).toHaveBeenCalledWith('/dataSources');
-    expect(result).toEqual(response);
+    expect(result).toEqual({
+      ...response,
+      data: response.data.items,
+    });
   });
 
   it('should update a data source by ID', async () => {

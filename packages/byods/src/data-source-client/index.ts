@@ -2,7 +2,13 @@ import {decodeJwt, JWTPayload} from 'jose';
 import {ERROR_TYPE} from '../Errors/types';
 import ExtendedError from '../Errors/catalog/ExtendedError';
 import {LoggerConfig} from '../types';
-import {DataSourceRequest, DataSourceResponse, DataSourceUpdateRequest, Cancellable} from './types';
+import {
+  DataSourceRequest,
+  DataSourceResponse,
+  DataSourceUpdateRequest,
+  Cancellable,
+  ListResponse,
+} from './types';
 import {DATASOURCE_ENDPOINT} from './constants';
 import {HttpClient, ApiResponse} from '../http-client/types';
 import {BYODS_DATA_SOURCE_CLIENT_MODULE, DEFAULT_LOGGER_CONFIG} from '../constants';
@@ -61,7 +67,12 @@ export default class DataSourceClient {
    * const response = await client.list();
    */
   public async list(): Promise<ApiResponse<DataSourceResponse[]>> {
-    return this.httpClient.get<DataSourceResponse[]>(DATASOURCE_ENDPOINT);
+    return this.httpClient
+      .get<ListResponse<DataSourceResponse>>(DATASOURCE_ENDPOINT)
+      .then((response) => ({
+        ...response,
+        data: response.data.items,
+      }));
   }
 
   /**
