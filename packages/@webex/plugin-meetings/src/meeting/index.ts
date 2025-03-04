@@ -163,7 +163,6 @@ import {ConnectionStateHandler, ConnectionStateEvent} from './connectionStateHan
 import JoinWebinarError from '../common/errors/join-webinar-error';
 import Member from '../member';
 import MultistreamNotSupportedError from '../common/errors/multistream-not-supported-error';
-import JoinMeetingError from '../common/errors/join-meeting';
 
 // default callback so we don't call an undefined function, but in practice it should never be used
 const DEFAULT_ICE_PHASE_CALLBACK = () => 'JOIN_MEETING_FINAL';

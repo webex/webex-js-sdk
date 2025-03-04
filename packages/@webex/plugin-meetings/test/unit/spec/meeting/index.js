@@ -114,7 +114,6 @@ import {ERROR_DESCRIPTIONS} from '@webex/internal-plugin-metrics/src/call-diagno
 import MeetingCollection from '@webex/plugin-meetings/src/meetings/collection';
 
 import {EVENT_TRIGGERS as VOICEAEVENTS} from '@webex/internal-plugin-voicea';
-import JoinMeetingError                 from '../../../../src/common/errors/join-meeting';
 
 describe('plugin-meetings', () => {
   const logger = {
@@ -6349,7 +6348,7 @@ describe('plugin-meetings', () => {
               .throws(new MeetingInfoV2PasswordError(403003, FAKE_MEETING_INFO)),
           };
 
-          await assert.isRejected(meeting.fetchMeetingInfo({sendCAevents: true}), JoinMeetingError);
+          await assert.isRejected(meeting.fetchMeetingInfo({sendCAevents: true}), JoinWebinarError);
 
           assert.calledWith(
             meeting.attrs.meetingInfoProvider.fetchMeetingInfo,
