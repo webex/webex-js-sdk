@@ -1334,7 +1334,7 @@ export const MEETING_INFO_FAILURE_REASON = {
   WEBINAR_REGISTRATION: 'WEBINAR_REGISTRATION', // webinar need registration
   NEED_JOIN_WITH_WEBCAST: 'NEED_JOIN_WITH_WEBCAST', // webinar need using webcast join
   WEBINAR_NEED_REGISTRATIONID: 'WEBINAR_NEED_REGISTRATIONID', // webinar need registrationID
-  NOT_REACH_JBH: 'NOT_REACH_JBH', // Meeting is not allow to access since not reach JBH time
+  NOT_REACH_JBH: 'NOT_REACH_JBH', // Meeting is not allow to access since not reach JBH (join before host) time
   OTHER: 'OTHER', // any other error (network, etc)
 };
 
