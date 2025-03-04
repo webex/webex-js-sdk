@@ -105,7 +105,7 @@ describe('TaskManager', () => {
     expect(taskEmitSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_INCOMING, taskManager.currentTask);
   });
 
-  it('should remit task related events', () => {
+  it('should re-emit task related events', () => {
     const dummyPayload = {
       data: {
         type: CC_TASK_EVENTS.AGENT_CONSULTING,
@@ -123,7 +123,7 @@ describe('TaskManager', () => {
     expect(taskEmitSpy).toHaveBeenCalledWith(dummyPayload.data.type, dummyPayload.data);
   });
 
-  it('should not remit agent related events', () => {
+  it('should not re-emit agent related events', () => {
     const dummyPayload = {
       data: {
         type: CC_AGENT_EVENTS.AGENT_BUDDY_AGENTS,
