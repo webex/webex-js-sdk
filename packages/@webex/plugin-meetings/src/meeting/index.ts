@@ -1801,7 +1801,7 @@ export default class Meeting extends StatelessWebexPlugin {
             this.meetingInfo = err.meetingInfo;
           }
 
-          throw new JoinMeetingError();
+          throw new JoinWebinarError();
         }
 
         // when wbxappapi requires password it still populates partial meeting info in the response
