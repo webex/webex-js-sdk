@@ -1326,13 +1326,6 @@ export const PASSWORD_STATUS = {
   VERIFIED: 'VERIFIED', // client has already provided the password and it has been verified, client can proceed to call join()
 };
 
-export const REGISTRATIONID_STATUS = {
-  NOT_REQUIRED: 'NOT_REQUIRED', // password is not required to join the meeting
-  REQUIRED: 'REQUIRED', // client needs to provide the password by calling verifyPassword() before calling join()
-  UNKNOWN: 'UNKNOWN', // we are waiting for information from the backend if password is required or not
-  VERIFIED: 'VERIFIED', // client has already provided the password and it has been verified, client can proceed to call join()
-};
-
 export const MEETING_INFO_FAILURE_REASON = {
   NONE: 'NONE', // meeting info was retrieved succesfully
   WRONG_PASSWORD: 'WRONG_PASSWORD', // meeting requires password and no password or wrong one was provided
