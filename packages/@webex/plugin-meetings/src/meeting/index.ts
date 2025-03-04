@@ -123,7 +123,7 @@ import {
   NAMED_MEDIA_GROUP_TYPE_AUDIO,
   WEBINAR_ERROR_WEBCAST,
   WEBINAR_ERROR_REGISTRATIONID,
-  JOIN_ERROR_REASN_FOR_END_USER,
+  JOIN_ERROR_REASON_FOR_END_USER,
 } from '../constants';
 import BEHAVIORAL_METRICS from '../metrics/constants';
 import ParameterError from '../common/errors/parameter';
@@ -1793,7 +1793,7 @@ export default class Meeting extends StatelessWebexPlugin {
         );
 
         // Handle the case where user hasn't reached Join Before Host (JBH) time (error code 403003)
-        if (JOIN_ERROR_REASN_FOR_END_USER.includes(err.wbxAppApiCode)) {
+        if (JOIN_ERROR_REASON_FOR_END_USER.includes(err.wbxAppApiCode)) {
           this.meetingInfoFailureReason = MEETING_INFO_FAILURE_REASON.NOT_REACH_JBH;
           this.meetingInfoFailureCode = err.wbxAppApiCode;
 

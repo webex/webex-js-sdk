@@ -203,7 +203,7 @@ export const ICE_AND_DTLS_CONNECTION_TIMEOUT = 20000;
 export const ROAP_OFFER_ANSWER_EXCHANGE_TIMEOUT = 35000;
 export const WEBINAR_ERROR_WEBCAST = [403026];
 export const WEBINAR_ERROR_REGISTRATIONID = [403037, 403137];
-export const JOIN_ERROR_REASN_FOR_END_USER = [403003];
+export const JOIN_ERROR_REASON_FOR_END_USER = [403003];
 
 // ******************** REGEX **********************
 // Please alphabetize
@@ -1320,6 +1320,13 @@ export const PSTN_STATUS = {
 };
 
 export const PASSWORD_STATUS = {
+  NOT_REQUIRED: 'NOT_REQUIRED', // password is not required to join the meeting
+  REQUIRED: 'REQUIRED', // client needs to provide the password by calling verifyPassword() before calling join()
+  UNKNOWN: 'UNKNOWN', // we are waiting for information from the backend if password is required or not
+  VERIFIED: 'VERIFIED', // client has already provided the password and it has been verified, client can proceed to call join()
+};
+
+export const REGISTRATIONID_STATUS = {
   NOT_REQUIRED: 'NOT_REQUIRED', // password is not required to join the meeting
   REQUIRED: 'REQUIRED', // client needs to provide the password by calling verifyPassword() before calling join()
   UNKNOWN: 'UNKNOWN', // we are waiting for information from the backend if password is required or not
