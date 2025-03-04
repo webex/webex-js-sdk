@@ -7,7 +7,7 @@ import {
   DataSourceResponse,
   DataSourceUpdateRequest,
   Cancellable,
-  DataSourceListResponse,
+  ListResponse,
 } from './types';
 import {DATASOURCE_ENDPOINT} from './constants';
 import {HttpClient, ApiResponse} from '../http-client/types';
@@ -68,7 +68,7 @@ export default class DataSourceClient {
    */
   public async list(): Promise<ApiResponse<DataSourceResponse[]>> {
     return this.httpClient
-      .get<DataSourceListResponse<DataSourceResponse>>(DATASOURCE_ENDPOINT)
+      .get<ListResponse<DataSourceResponse>>(DATASOURCE_ENDPOINT)
       .then((response) => ({
         ...response,
         data: response.data.items,

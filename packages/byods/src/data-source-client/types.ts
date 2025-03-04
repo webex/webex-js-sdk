@@ -115,11 +115,11 @@ export interface DataSourceUpdateRequest extends DataSourceRequest {
 }
 
 /**
- * Represents the response from a data source list.
+ * Represents the response from a list.
  *
  * @public
  */
-export interface DataSourceListResponse<T> {
+export interface ListResponse<T> {
   items: T[];
 }
 
