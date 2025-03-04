@@ -3,8 +3,9 @@
   "version": "0.0.1",
   "private": true,
   "scripts": {
-    "dev": "NODE_ENV=development BYODS_ENVIRONMENT=production npx ts-node ./src",
-    "dev:hot": "nodemon --exec \"npm run dev\" --watch ./src -e ts"
+    "dev:integration": "NODE_ENV=development BYODS_ENVIRONMENT=integration npx ts-node ./src",
+    "dev:production": "NODE_ENV=development BYODS_ENVIRONMENT=production npx ts-node ./src",
+    "dev:hot": "nodemon --exec \"npm run dev:production\" --watch ./src -e ts"
   },
   "engines": {
     "node": ">=20.x"
