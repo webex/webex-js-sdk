@@ -31,7 +31,7 @@ import HttpRequest from './services/core/HttpRequest';
 import LoggerProxy from './logger-proxy';
 import {StateChange, Logout, StateChangeSuccess} from './services/agent/types';
 import {getErrorDetails} from './services/core/Utils';
-import {Profile, WelcomeEvent, CC_EVENTS} from './services/config/types';
+import {Profile, WelcomeEvent, CC_EVENTS, CC_AGENT_EVENTS} from './services/config/types';
 import {AGENT_STATE_AVAILABLE, AGENT_STATE_AVAILABLE_ID} from './services/config/constants';
 import {ConnectionLostDetails} from './services/core/websocket/types';
 import TaskManager from './services/task/TaskManager';
@@ -72,6 +72,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         webex: this.$webex,
         connectionConfig: this.getConnectionConfig(),
       });
+      // TODO: https://jira-eng-gpk2.cisco.com/jira/browse/SPARK-626777 Implement the de-register method and close the listener there
+      this.services.webSocketManager.on('message', this.handleWebSocketMessage);
 
       this.webCallingService = new WebCallingService(this.$webex);
       this.taskManager = TaskManager.getTaskManager(
@@ -79,6 +81,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         this.webCallingService,
         this.services.webSocketManager
       );
+      this.incomingTaskListener();
 
       LoggerProxy.initialize(this.$webex.logger);
     });
@@ -212,8 +215,9 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
       await loginResponse;
 
-      this.services.webSocketManager.on('message', this.handleWebSocketMessage);
-      this.incomingTaskListener();
+      // TODO: https://jira-eng-gpk2.cisco.com/jira/browse/SPARK-626777 Implement the de-register method and close the listener there
+      // this.services.webSocketManager.on('message', this.handleWebSocketMessage);
+      // this.incomingTaskListener();
 
       return loginResponse;
     } catch (error) {
@@ -239,10 +243,11 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         this.webCallingService.deregisterWebCallingLine();
       }
 
-      this.taskManager.unregisterIncomingCallEvent();
-      this.taskManager.off(TASK_EVENTS.TASK_INCOMING, this.handleIncomingTask);
-      this.taskManager.off(TASK_EVENTS.TASK_HYDRATE, this.handleTaskHydrate);
-      this.services.webSocketManager.off('message', this.handleWebSocketMessage);
+      // TODO: https://jira-eng-gpk2.cisco.com/jira/browse/SPARK-626777 Implement the de-register method and close the listener there
+      // this.services.webSocketManager.off('message', this.handleWebSocketMessage);
+      // this.taskManager.unregisterIncomingCallEvent();
+      // this.taskManager.off(TASK_EVENTS.TASK_INCOMING, this.handleIncomingTask);
+      // this.taskManager.off(TASK_EVENTS.TASK_HYDRATE, this.handleTaskHydrate);
 
       return logoutResponse;
     } catch (error) {
@@ -301,6 +306,11 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
   private handleWebSocketMessage = (event: string) => {
     const eventData = JSON.parse(event);
+    // Re-emit the events related to agent
+    if (Object.values(CC_AGENT_EVENTS).includes(eventData.data?.type)) {
+      // @ts-ignore
+      this.emit(eventData.data.type, eventData.data);
+    }
 
     if (eventData.type === CC_EVENTS.AGENT_STATE_CHANGE) {
       // @ts-ignore
@@ -360,15 +370,21 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   private async silentRelogin(): Promise<void> {
     try {
       const reLoginResponse = await this.services.agent.reload();
-      const {agentId, lastStateChangeReason, deviceType, dn, lastStateChangeTimestamp} =
-        reLoginResponse.data;
+      const {
+        agentId,
+        lastStateChangeReason,
+        deviceType,
+        dn,
+        lastStateChangeTimestamp,
+        lastIdleCodeChangeTimestamp,
+      } = reLoginResponse.data;
       let {auxCodeId} = reLoginResponse.data;
-      this.agentConfig.lastStateChangeTimestamp = lastStateChangeTimestamp
-        ? new Date(lastStateChangeTimestamp)
-        : new Date();
+      this.agentConfig.lastStateChangeTimestamp = lastStateChangeTimestamp;
+      this.agentConfig.lastIdleCodeChangeTimestamp = lastIdleCodeChangeTimestamp;
 
       // To handle re-registration of event listeners on silent relogin
-      this.incomingTaskListener();
+      // TODO: https://jira-eng-gpk2.cisco.com/jira/browse/SPARK-626777 Implement the de-register method and close the listener there
+      // this.incomingTaskListener();
 
       if (lastStateChangeReason === 'agent-wss-disconnect') {
         LoggerProxy.info(
@@ -386,10 +402,11 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           const agentStatusResponse = (await this.setAgentState(
             stateChangeData
           )) as StateChangeSuccess;
-          this.agentConfig.lastStateChangeTimestamp = agentStatusResponse.data
-            .lastStateChangeTimestamp
-            ? new Date(agentStatusResponse.data.lastStateChangeTimestamp)
-            : new Date();
+          this.agentConfig.lastStateChangeTimestamp =
+            agentStatusResponse.data.lastStateChangeTimestamp;
+
+          this.agentConfig.lastIdleCodeChangeTimestamp =
+            agentStatusResponse.data.lastIdleCodeChangeTimestamp;
         } catch (error) {
           LoggerProxy.error(
             `event=requestAutoStateChange | Error requesting state change to available on socket reconnect: ${error}`,
@@ -400,6 +417,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       this.agentConfig.lastStateAuxCodeId = auxCodeId;
       await this.handleDeviceType(deviceType as LoginOption, dn);
       this.agentConfig.isAgentLoggedIn = true;
+      // TODO: https://jira-eng-gpk2.cisco.com/jira/browse/SPARK-626777 Implement the de-register method and close the listener there
       this.services.webSocketManager.on('message', this.handleWebSocketMessage);
     } catch (error) {
       const {reason, error: detailedError} = getErrorDetails(error, 'silentReLogin', CC_FILE);

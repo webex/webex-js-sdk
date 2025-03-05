@@ -22,7 +22,7 @@ import {CC_FILE, AGENT_STATE_CHANGE, AGENT_MULTI_LOGIN} from '../../../src/const
 import '../../../__mocks__/workerMock';
 import {Profile} from '../../../src/services/config/types';
 import TaskManager from '../../../src/services/task/TaskManager';
-import { AgentContact, TASK_EVENTS } from '../../../src/services/task/types';
+import {AgentContact, TASK_EVENTS} from '../../../src/services/task/types';
 
 jest.mock('../../../src/logger-proxy', () => ({
   __esModule: true,
@@ -109,7 +109,6 @@ describe('webex.cc', () => {
       dialer: {
         startOutdial: jest.fn(),
       },
-
     };
 
     mockTaskManager = {
@@ -255,6 +254,18 @@ describe('webex.cc', () => {
           allowMultiLogin: false,
         },
       });
+
+      // TODO: https://jira-eng-gpk2.cisco.com/jira/browse/SPARK-626777 Implement the de-register method and close the listener there
+      expect(mockTaskManager.on).toHaveBeenCalledWith(
+        TASK_EVENTS.TASK_INCOMING,
+        expect.any(Function)
+      );
+      expect(mockTaskManager.on).toHaveBeenCalledWith(
+        TASK_EVENTS.TASK_HYDRATE,
+        expect.any(Function)
+      );
+      expect(mockWebSocketManager.on).toHaveBeenCalledWith('message', expect.any(Function));
+
       expect(configSpy).toHaveBeenCalled();
       expect(LoggerProxy.log).toHaveBeenCalledWith('agent config is fetched successfully', {
         module: CC_FILE,
@@ -414,6 +425,7 @@ describe('webex.cc', () => {
 
       incomingCallCb(mockTask);
 
+      expect(emitSpy).toHaveBeenCalledTimes(1);
       expect(emitSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_INCOMING, mockTask);
       // Verify message event listener
       const messageCallback = mockWebSocketManager.on.mock.calls.find(
@@ -508,16 +520,17 @@ describe('webex.cc', () => {
       const result = await webex.cc.stationLogout(data);
 
       expect(stationLogoutMock).toHaveBeenCalledWith({data: data});
-      expect(mockTaskManager.unregisterIncomingCallEvent).toHaveBeenCalledWith();
-      expect(mockTaskManager.off).toHaveBeenCalledWith(
-        TASK_EVENTS.TASK_INCOMING,
-        expect.any(Function)
-      );
-      expect(mockTaskManager.off).toHaveBeenCalledWith(
-        TASK_EVENTS.TASK_HYDRATE,
-        expect.any(Function)
-      );
-      expect(mockWebSocketManager.off).toHaveBeenCalledWith('message', expect.any(Function));
+      // TODO: https://jira-eng-gpk2.cisco.com/jira/browse/SPARK-626777 Implement the de-register method and close the listener there
+      // expect(mockTaskManager.unregisterIncomingCallEvent).toHaveBeenCalledWith();
+      // expect(mockTaskManager.off).toHaveBeenCalledWith(
+      //   TASK_EVENTS.TASK_INCOMING,
+      //   expect.any(Function)
+      // );
+      // expect(mockTaskManager.off).toHaveBeenCalledWith(
+      //   TASK_EVENTS.TASK_HYDRATE,
+      //   expect.any(Function)
+      // );
+      // expect(mockWebSocketManager.off).toHaveBeenCalledWith('message', expect.any(Function));
       expect(result).toEqual(response);
     });
 
@@ -774,6 +787,7 @@ describe('webex.cc', () => {
           agentId: 'agentId',
           lastStateChangeReason: 'agent-wss-disconnect',
           lastStateChangeTimestamp: 1738575135188,
+          lastIdleCodeChangeTimestamp: 1738575135189,
           deviceType: LoginOption.BROWSER,
           dn: '12345',
         },
@@ -788,7 +802,7 @@ describe('webex.cc', () => {
 
       const date = new Date();
       const setAgentStateSpy = jest.spyOn(webex.cc, 'setAgentState').mockResolvedValue({
-        data: {lastStateChangeTimestamp: date.getTime()},
+        data: {lastStateChangeTimestamp: 1234, lastIdleCodeChangeTimestamp: 12345},
       } as unknown as SetStateResponse);
       jest.spyOn(webex.cc.services.agent, 'reload').mockResolvedValue(mockReLoginResponse);
 
@@ -812,15 +826,17 @@ describe('webex.cc', () => {
       });
       expect(webex.cc.agentConfig.isAgentLoggedIn).toBe(true);
       expect(webex.cc.agentConfig.lastStateAuxCodeId).toBe('0');
-      expect(webex.cc.agentConfig.lastStateChangeTimestamp).toStrictEqual(date); // it should be updated with the new timestamp of setAgentState response
+      expect(webex.cc.agentConfig.lastStateChangeTimestamp).toStrictEqual(1234); // it should be updated with the new timestamp of setAgentState response
+      expect(webex.cc.agentConfig.lastIdleCodeChangeTimestamp).toStrictEqual(12345);
       expect(webex.cc.agentConfig.deviceType).toBe(LoginOption.BROWSER);
       expect(registerWebCallingLineSpy).toHaveBeenCalled();
-      expect(incomingTaskListenerSpy).toHaveBeenCalled();
-      expect(webSocketManagerOnSpy).toHaveBeenCalledWith('message', expect.any(Function));
-      expect(mockTaskManager.on).toHaveBeenCalledWith(
-        TASK_EVENTS.TASK_HYDRATE,
-        expect.any(Function)
-      );
+      // TODO: https://jira-eng-gpk2.cisco.com/jira/browse/SPARK-626777 Implement the de-register method and close the listener there
+      // expect(incomingTaskListenerSpy).toHaveBeenCalled();
+      // expect(webSocketManagerOnSpy).toHaveBeenCalledWith('message', expect.any(Function));
+      // expect(mockTaskManager.on).toHaveBeenCalledWith(
+      //   TASK_EVENTS.TASK_HYDRATE,
+      //   expect.any(Function)
+      // );
     });
 
     it('should handle AGENT_NOT_FOUND error silently', async () => {
@@ -856,6 +872,7 @@ describe('webex.cc', () => {
           deviceType: LoginOption.EXTENSION,
           dn: '12345',
           lastStateChangeTimestamp: 1738575135188,
+          lastIdleCodeChangeTimestamp: 1738575135189,
         },
       };
 
@@ -877,7 +894,8 @@ describe('webex.cc', () => {
       expect(webex.cc.agentConfig.deviceType).toBe(LoginOption.EXTENSION);
       expect(webex.cc.agentConfig.defaultDn).toBe('12345');
       expect(webex.cc.agentConfig.lastStateAuxCodeId).toBe('auxCodeId');
-      expect(webex.cc.agentConfig.lastStateChangeTimestamp).toStrictEqual(new Date(1738575135188));
+      expect(webex.cc.agentConfig.lastStateChangeTimestamp).toStrictEqual(1738575135188);
+      expect(webex.cc.agentConfig.lastIdleCodeChangeTimestamp).toStrictEqual(1738575135189);
     });
 
     it('should update agentConfig with deviceType during silent relogin for AGENT_DN', async () => {
@@ -923,19 +941,16 @@ describe('webex.cc', () => {
     });
   });
 
-
   describe('startOutdial', () => {
-
     it('should make outdial call successfully.', async () => {
-      
       const response = {};
       const dialerPayload = {
         entryPointId: '12345',
-        destination: '1234567890', 
+        destination: '1234567890',
         direction: 'OUTBOUND',
         attributes: {},
         mediaType: 'telephony',
-        outboundType: 'OUTDIAL'
+        outboundType: 'OUTDIAL',
       };
 
       const startOutdialMock = jest
@@ -950,7 +965,6 @@ describe('webex.cc', () => {
     });
 
     it('should handle error during startOutdial', async () => {
-
       const error = {
         details: {
           trackingId: '1234',

@@ -5,7 +5,7 @@ import routingContact from './contact';
 import WebCallingService from '../WebCallingService';
 import {ITask, TASK_EVENTS, TaskId} from './types';
 import {TASK_MANAGER_FILE} from '../../constants';
-import {CC_EVENTS} from '../config/types';
+import {CC_EVENTS, CC_TASK_EVENTS} from '../config/types';
 import {LoginOption} from '../../types';
 import LoggerProxy from '../../logger-proxy';
 import Task from '.';
@@ -63,7 +63,13 @@ export default class TaskManager extends EventEmitter {
   private registerTaskListeners() {
     this.webSocketManager.on('message', (event) => {
       const payload = JSON.parse(event);
-      if (payload.data) {
+      // Re-emit the task events to the task object
+      if (payload.data?.type) {
+        if (Object.values(CC_TASK_EVENTS).includes(payload.data.type)) {
+          if (this.currentTask) {
+            this.currentTask.emit(payload.data.type, payload.data);
+          }
+        }
         switch (payload.data.type) {
           case CC_EVENTS.AGENT_CONTACT:
             this.currentTask = new Task(this.contact, this.webCallingService, payload.data);

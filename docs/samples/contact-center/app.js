@@ -581,21 +581,38 @@ function initWebex(e) {
 
 credentialsFormElm.addEventListener('submit', initWebex);
 
-function startStateTimer(startTime) {
+function startStateTimer(lastStateChangeTimestamp, lastIdleCodeChangeTimestamp) {
+
+  if (lastStateChangeTimestamp === null) {
+    return;
+  }
+  
   if (stateTimer) {
     clearInterval(stateTimer);
   }
 
   stateTimer = setInterval(() => {
     const currentTime = new Date().getTime();
-    const timeDifference = currentTime - startTime;
+    const stateTimeDifference = currentTime - new Date(lastStateChangeTimestamp).getTime();
+    const idleCodeChangeTimeDifference = lastIdleCodeChangeTimestamp ? currentTime - new Date(lastIdleCodeChangeTimestamp).getTime() : null;
 
-    const hours = String(Math.floor(timeDifference / (1000 * 60 * 60))).padStart(2, '0');
-    const minutes = String(Math.floor((timeDifference % (1000 * 60 * 60)) / (1000 * 60))).padStart(2, '0');
-    const seconds = String(Math.floor((timeDifference % (1000 * 60)) / 1000)).padStart(2, '0');
-    if(timerElm)
-    {
-      timerElm.innerHTML = `${hours}:${minutes}:${seconds}`;
+    const stateHours = String(Math.floor(stateTimeDifference / (1000 * 60 * 60))).padStart(2, '0');
+    const stateMinutes = String(Math.floor((stateTimeDifference % (1000 * 60 * 60)) / (1000 * 60))).padStart(2, '0');
+    const stateSeconds = String(Math.floor((stateTimeDifference % (1000 * 60)) / 1000)).padStart(2, '0');
+
+    let timerDisplay = `${stateHours}:${stateMinutes}:${stateSeconds}`;
+
+    if (idleCodeChangeTimeDifference !== null && lastStateChangeTimestamp !== lastIdleCodeChangeTimestamp) {
+      console.log('Idle code change time difference: ', lastStateChangeTimestamp, " ",lastIdleCodeChangeTimestamp);
+      const idleCodeChangeHours = String(Math.floor(idleCodeChangeTimeDifference / (1000 * 60 * 60))).padStart(2, '0');
+      const idleCodeChangeMinutes = String(Math.floor((idleCodeChangeTimeDifference % (1000 * 60 * 60)) / (1000 * 60))).padStart(2, '0');
+      const idleCodeChangeSeconds = String(Math.floor((idleCodeChangeTimeDifference % (1000 * 60)) / 1000)).padStart(2, '0');
+
+      timerDisplay = `${idleCodeChangeHours}:${idleCodeChangeMinutes}:${idleCodeChangeSeconds}`+ " / " + timerDisplay;
+    }
+
+    if (timerElm) {
+      timerElm.innerHTML = timerDisplay;
     }
   }, 1000);
 }
@@ -646,7 +663,7 @@ function register() {
             if (agentProfile.lastStateAuxCodeId && agentProfile.lastStateAuxCodeId === idleCodes.id)
             {
               option.selected = true;
-              startStateTimer(agentProfile.lastStateChangeTimestamp)
+              startStateTimer(agentProfile.lastStateChangeTimestamp, agentProfile.lastIdleCodeChangeTimestamp);
             }
             idleCodesDropdown.add(option);
           }
@@ -670,7 +687,7 @@ function register() {
       if (data && typeof data === 'object' && data.type === 'AgentStateChangeSuccess') {
         const DEFAULT_CODE = '0'; // Default code when no aux code is present
         idleCodesDropdown.value = data.auxCodeId?.trim() !== '' ? data.auxCodeId : DEFAULT_CODE;
-        startStateTimer(data.lastStateChangeTimestamp);
+        startStateTimer(data.lastStateChangeTimestamp, data.lastIdleCodeChangeTimestamp);
       }
     });
 
@@ -791,9 +808,10 @@ function doAgentLogin() {
     const DEFAULT_CODE = '0'; // Default code when no aux code is present
     const auxCodeId = response.data.auxCodeId?.trim() !== '' ? response.data.auxCodeId : DEFAULT_CODE;
     const lastStateChangeTimestamp = response.data.lastStateChangeTimestamp;
+    const lastIdleCodeChangeTimestamp = response.data.lastIdleCodeChangeTimestamp;
     const index = [...idleCodesDropdown.options].findIndex(option => option.value === auxCodeId);
     idleCodesDropdown.selectedIndex = index !== -1 ? index : 0;
-        startStateTimer(new Date(lastStateChangeTimestamp));
+    startStateTimer(lastStateChangeTimestamp, lastIdleCodeChangeTimestamp);
     
   }).catch((error) => {
     console.log('Agent Login failed', error);
