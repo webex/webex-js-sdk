@@ -7,3 +7,23 @@ global.console = {
   error: jest.fn(),
   trace: jest.fn(),
 };
+
+global.Worker = class {
+  onmessage = jest.fn();
+
+  onerror = jest.fn();
+
+  postMessage() {}
+
+  terminate() {}
+};
+
+jest.mock('./src/common/webWorkerUtils', () => {
+  return {
+    getWorkerURL: (relativePath) => {
+      const fallbackUrl = 'http://test.url/mockWebWorker.ts';
+
+      return new URL(relativePath, fallbackUrl);
+    },
+  };
+});

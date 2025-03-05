@@ -1,7 +1,8 @@
+/* eslint-env worker */
 import {v4 as uuid} from 'uuid';
 import {HTTP_METHODS, WorkerMessageType} from '../../common/types';
 
-onmessage = (event: MessageEvent) => {
+export const messageHandler = (event: MessageEvent) => {
   const {type} = event.data;
   let keepaliveTimer: NodeJS.Timer | undefined;
 
@@ -56,3 +57,5 @@ onmessage = (event: MessageEvent) => {
     }
   }
 };
+
+globalThis.onmessage = messageHandler;
