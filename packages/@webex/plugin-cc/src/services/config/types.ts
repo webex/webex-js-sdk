@@ -39,6 +39,8 @@ export const CC_TASK_EVENTS = {
   AGENT_WRAPUP_FAILED: 'AgentWrapupFailed',
   AGENT_OUTBOUND_FAILED: 'AgentOutboundFailed',
   AGENT_CONTACT: 'AgentContact',
+  AGENT_OFFER_CONTACT: 'AgentOfferContact',
+  AGENT_CONTACT_ASSIGNED: 'AgentContactAssigned',
 } as const;
 
 // Define the CC_AGENT_EVENTS object
@@ -62,8 +64,6 @@ export const CC_AGENT_EVENTS = {
   AGENT_BUDDY_AGENTS_SUCCESS: 'BuddyAgents',
   AGENT_BUDDY_AGENTS_RETRIEVE_FAILED: 'BuddyAgentsRetrieveFailed',
   AGENT_CONTACT_RESERVED: 'AgentContactReserved',
-  AGENT_OFFER_CONTACT: 'AgentOfferContact',
-  AGENT_CONTACT_ASSIGNED: 'AgentContactAssigned',
 } as const;
 
 // Define the CC_EVENTS object

@@ -62,6 +62,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         webex: this.$webex,
         connectionConfig: this.getConnectionConfig(),
       });
+      // TODO: https://jira-eng-gpk2.cisco.com/jira/browse/SPARK-626777 Implement the de-register method and close the listener there
+      this.services.webSocketManager.on('message', this.handleWebSocketMessage);
 
       this.webCallingService = new WebCallingService(this.$webex);
       this.taskManager = TaskManager.getTaskManager(
@@ -69,6 +71,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         this.webCallingService,
         this.services.webSocketManager
       );
+      this.incomingTaskListener();
 
       LoggerProxy.initialize(this.$webex.logger);
     });
@@ -201,8 +204,9 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
       await loginResponse;
 
-      this.services.webSocketManager.on('message', this.handleWebSocketMessage);
-      this.incomingTaskListener();
+      // TODO: https://jira-eng-gpk2.cisco.com/jira/browse/SPARK-626777 Implement the de-register method and close the listener there
+      // this.services.webSocketManager.on('message', this.handleWebSocketMessage);
+      // this.incomingTaskListener();
 
       return loginResponse;
     } catch (error) {
@@ -228,10 +232,11 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         this.webCallingService.deregisterWebCallingLine();
       }
 
-      this.taskManager.unregisterIncomingCallEvent();
-      this.taskManager.off(TASK_EVENTS.TASK_INCOMING, this.handleIncomingTask);
-      this.taskManager.off(TASK_EVENTS.TASK_HYDRATE, this.handleTaskHydrate);
-      this.services.webSocketManager.off('message', this.handleWebSocketMessage);
+      // TODO: https://jira-eng-gpk2.cisco.com/jira/browse/SPARK-626777 Implement the de-register method and close the listener there
+      // this.services.webSocketManager.off('message', this.handleWebSocketMessage);
+      // this.taskManager.unregisterIncomingCallEvent();
+      // this.taskManager.off(TASK_EVENTS.TASK_INCOMING, this.handleIncomingTask);
+      // this.taskManager.off(TASK_EVENTS.TASK_HYDRATE, this.handleTaskHydrate);
 
       return logoutResponse;
     } catch (error) {
@@ -367,7 +372,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       this.agentConfig.lastIdleCodeChangeTimestamp = lastIdleCodeChangeTimestamp;
 
       // To handle re-registration of event listeners on silent relogin
-      this.incomingTaskListener();
+      // TODO: https://jira-eng-gpk2.cisco.com/jira/browse/SPARK-626777 Implement the de-register method and close the listener there
+      // this.incomingTaskListener();
 
       if (lastStateChangeReason === 'agent-wss-disconnect') {
         LoggerProxy.info(
@@ -400,6 +406,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       this.agentConfig.lastStateAuxCodeId = auxCodeId;
       await this.handleDeviceType(deviceType as LoginOption, dn);
       this.agentConfig.isAgentLoggedIn = true;
+      // TODO: https://jira-eng-gpk2.cisco.com/jira/browse/SPARK-626777 Implement the de-register method and close the listener there
       this.services.webSocketManager.on('message', this.handleWebSocketMessage);
     } catch (error) {
       const {reason, error: detailedError} = getErrorDetails(error, 'silentReLogin', CC_FILE);

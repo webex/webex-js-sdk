@@ -254,6 +254,18 @@ describe('webex.cc', () => {
           allowMultiLogin: false,
         },
       });
+
+      // TODO: https://jira-eng-gpk2.cisco.com/jira/browse/SPARK-626777 Implement the de-register method and close the listener there
+      expect(mockTaskManager.on).toHaveBeenCalledWith(
+        TASK_EVENTS.TASK_INCOMING,
+        expect.any(Function)
+      );
+      expect(mockTaskManager.on).toHaveBeenCalledWith(
+        TASK_EVENTS.TASK_HYDRATE,
+        expect.any(Function)
+      );
+      expect(mockWebSocketManager.on).toHaveBeenCalledWith('message', expect.any(Function));
+
       expect(configSpy).toHaveBeenCalled();
       expect(LoggerProxy.log).toHaveBeenCalledWith('agent config is fetched successfully', {
         module: CC_FILE,
@@ -508,16 +520,17 @@ describe('webex.cc', () => {
       const result = await webex.cc.stationLogout(data);
 
       expect(stationLogoutMock).toHaveBeenCalledWith({data: data});
-      expect(mockTaskManager.unregisterIncomingCallEvent).toHaveBeenCalledWith();
-      expect(mockTaskManager.off).toHaveBeenCalledWith(
-        TASK_EVENTS.TASK_INCOMING,
-        expect.any(Function)
-      );
-      expect(mockTaskManager.off).toHaveBeenCalledWith(
-        TASK_EVENTS.TASK_HYDRATE,
-        expect.any(Function)
-      );
-      expect(mockWebSocketManager.off).toHaveBeenCalledWith('message', expect.any(Function));
+      // TODO: https://jira-eng-gpk2.cisco.com/jira/browse/SPARK-626777 Implement the de-register method and close the listener there
+      // expect(mockTaskManager.unregisterIncomingCallEvent).toHaveBeenCalledWith();
+      // expect(mockTaskManager.off).toHaveBeenCalledWith(
+      //   TASK_EVENTS.TASK_INCOMING,
+      //   expect.any(Function)
+      // );
+      // expect(mockTaskManager.off).toHaveBeenCalledWith(
+      //   TASK_EVENTS.TASK_HYDRATE,
+      //   expect.any(Function)
+      // );
+      // expect(mockWebSocketManager.off).toHaveBeenCalledWith('message', expect.any(Function));
       expect(result).toEqual(response);
     });
 
@@ -817,12 +830,13 @@ describe('webex.cc', () => {
       expect(webex.cc.agentConfig.lastIdleCodeChangeTimestamp).toStrictEqual(12345);
       expect(webex.cc.agentConfig.deviceType).toBe(LoginOption.BROWSER);
       expect(registerWebCallingLineSpy).toHaveBeenCalled();
-      expect(incomingTaskListenerSpy).toHaveBeenCalled();
-      expect(webSocketManagerOnSpy).toHaveBeenCalledWith('message', expect.any(Function));
-      expect(mockTaskManager.on).toHaveBeenCalledWith(
-        TASK_EVENTS.TASK_HYDRATE,
-        expect.any(Function)
-      );
+      // TODO: https://jira-eng-gpk2.cisco.com/jira/browse/SPARK-626777 Implement the de-register method and close the listener there
+      // expect(incomingTaskListenerSpy).toHaveBeenCalled();
+      // expect(webSocketManagerOnSpy).toHaveBeenCalledWith('message', expect.any(Function));
+      // expect(mockTaskManager.on).toHaveBeenCalledWith(
+      //   TASK_EVENTS.TASK_HYDRATE,
+      //   expect.any(Function)
+      // );
     });
 
     it('should handle AGENT_NOT_FOUND error silently', async () => {
