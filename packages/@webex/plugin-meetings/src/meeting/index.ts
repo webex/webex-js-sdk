@@ -1800,7 +1800,7 @@ export default class Meeting extends StatelessWebexPlugin {
           this.meetingInfoFailureReason = MEETING_INFO_FAILURE_REASON.NOT_REACH_JBH;
         }
 
-        throw new JoinForbiddenError();
+        throw new JoinForbiddenError(this.meetingInfoFailureReason, err.wbxAppApiCode, err);
       } else if (err instanceof MeetingInfoV2PasswordError) {
         LoggerProxy.logger.info(
           // @ts-ignore
