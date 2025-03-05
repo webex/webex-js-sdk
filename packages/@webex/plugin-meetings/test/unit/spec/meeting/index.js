@@ -99,7 +99,7 @@ import {
   MeetingInfoV2CaptchaError,
   MeetingInfoV2PasswordError,
   MeetingInfoV2PolicyError,
-  MeetingInfoV2JoinWebinarError,
+  MeetingInfoV2JoinWebinarError, MeetingInfoV2JoinForbiddenError,
 } from '../../../../src/meeting-info/meeting-info-v2';
 import {
   DTLS_HANDSHAKE_FAILED_CLIENT_CODE,
@@ -114,6 +114,7 @@ import {ERROR_DESCRIPTIONS} from '@webex/internal-plugin-metrics/src/call-diagno
 import MeetingCollection from '@webex/plugin-meetings/src/meetings/collection';
 
 import {EVENT_TRIGGERS as VOICEAEVENTS} from '@webex/internal-plugin-voicea';
+import JoinForbiddenError               from '../../../../src/common/errors/join-forbidden-error';
 
 describe('plugin-meetings', () => {
   const logger = {
@@ -6345,10 +6346,10 @@ describe('plugin-meetings', () => {
           meeting.attrs.meetingInfoProvider = {
             fetchMeetingInfo: sinon
               .stub()
-              .throws(new MeetingInfoV2PasswordError(403003, FAKE_MEETING_INFO)),
+              .throws(new MeetingInfoV2JoinForbiddenError(403003, FAKE_MEETING_INFO)),
           };
 
-          await assert.isRejected(meeting.fetchMeetingInfo({sendCAevents: true}), JoinWebinarError);
+          await assert.isRejected(meeting.fetchMeetingInfo({sendCAevents: true}), JoinForbiddenError);
 
           assert.calledWith(
             meeting.attrs.meetingInfoProvider.fetchMeetingInfo,

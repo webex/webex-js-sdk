@@ -123,7 +123,7 @@ import {
   NAMED_MEDIA_GROUP_TYPE_AUDIO,
   WEBINAR_ERROR_WEBCAST,
   WEBINAR_ERROR_REGISTRATIONID,
-  JOIN_ERROR_REASON_FOR_END_USER,
+  JOIN_BEFORE_HOST,
 } from '../constants';
 import BEHAVIORAL_METRICS from '../metrics/constants';
 import ParameterError from '../common/errors/parameter';
@@ -132,6 +132,7 @@ import {
   MeetingInfoV2CaptchaError,
   MeetingInfoV2PolicyError,
   MeetingInfoV2JoinWebinarError,
+  MeetingInfoV2JoinForbiddenError,
 } from '../meeting-info/meeting-info-v2';
 import {CSI, ReceiveSlotManager} from '../multistream/receiveSlotManager';
 import SendSlotManager from '../multistream/sendSlotManager';
@@ -163,6 +164,7 @@ import {ConnectionStateHandler, ConnectionStateEvent} from './connectionStateHan
 import JoinWebinarError from '../common/errors/join-webinar-error';
 import Member from '../member';
 import MultistreamNotSupportedError from '../common/errors/multistream-not-supported-error';
+import JoinForbiddenError from '../common/errors/join-forbidden-error';
 
 // default callback so we don't call an undefined function, but in practice it should never be used
 const DEFAULT_ICE_PHASE_CALLBACK = () => 'JOIN_MEETING_FINAL';
@@ -1785,23 +1787,25 @@ export default class Meeting extends StatelessWebexPlugin {
         }
 
         throw new JoinWebinarError();
+      } else if (err instanceof MeetingInfoV2JoinForbiddenError) {
+        this.meetingInfoFailureReason = MEETING_INFO_FAILURE_REASON.JOIN_FORBIDDEN;
+        this.meetingInfoFailureCode = err.wbxAppApiCode;
+
+        if (err.meetingInfo) {
+          this.meetingInfo = err.meetingInfo;
+        }
+
+        // Handle the case where user hasn't reached Join Before Host (JBH) time (error code 403003)
+        if (JOIN_BEFORE_HOST === err.wbxAppApiCode) {
+          this.meetingInfoFailureReason = MEETING_INFO_FAILURE_REASON.NOT_REACH_JBH;
+        }
+
+        throw new JoinForbiddenError();
       } else if (err instanceof MeetingInfoV2PasswordError) {
         LoggerProxy.logger.info(
           // @ts-ignore
           `Meeting:index#fetchMeetingInfo --> Info Unable to fetch meeting info for ${this.destination} - password required (code=${err?.body?.code}).`
         );
-
-        // Handle the case where user hasn't reached Join Before Host (JBH) time (error code 403003)
-        if (JOIN_ERROR_REASON_FOR_END_USER.includes(err.wbxAppApiCode)) {
-          this.meetingInfoFailureReason = MEETING_INFO_FAILURE_REASON.NOT_REACH_JBH;
-          this.meetingInfoFailureCode = err.wbxAppApiCode;
-
-          if (err.meetingInfo) {
-            this.meetingInfo = err.meetingInfo;
-          }
-
-          throw new JoinWebinarError();
-        }
 
         // when wbxappapi requires password it still populates partial meeting info in the response
         if (err.meetingInfo) {
