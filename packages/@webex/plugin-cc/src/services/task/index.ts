@@ -105,7 +105,7 @@ export default class Task extends EventEmitter implements ITask {
   }
 
   /**
-   * This is used for the incoming task decline by agent.
+   * This is used for the placiing the call to mute by agent or unmute it.
    *
    * @throws Error
    * @example

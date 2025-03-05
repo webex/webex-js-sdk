@@ -718,15 +718,16 @@ describe('Task', () => {
   });
 
 
-  // it('should mute call for Desktop login mode', async () => {
-  //   const muteCallSpy = jest.spyOn(webCallingService, 'muteCall');
+  it ('should mute call for Desktop login mode', async () => {
+    task.localAudioStream = mockStream;
+    const muteCallSpy = jest.spyOn(webCallingService, 'muteCall');
 
-  //   await task.mute();
+    await task.mute();
 
-  //   expect(muteCallSpy).toHaveBeenCalledWith();
-  // });
+    expect(muteCallSpy).toHaveBeenCalledWith(mockStream);
+  });
 
-  it('should handle errors in mute method', async () => {
+  it ('should handle errors in mute method', async () => {
     const error = {
       details: {
         trackingId: '1234',
