@@ -716,4 +716,30 @@ describe('Task', () => {
     await expect(task.resumeRecording(resumePayload)).rejects.toThrow(error.details.data.reason);
     expect(getErrorDetailsSpy).toHaveBeenCalledWith(error, 'resumeRecording', CC_FILE);
   });
+
+
+  // it('should mute call for Desktop login mode', async () => {
+  //   const muteCallSpy = jest.spyOn(webCallingService, 'muteCall');
+
+  //   await task.mute();
+
+  //   expect(muteCallSpy).toHaveBeenCalledWith();
+  // });
+
+  it('should handle errors in mute method', async () => {
+    const error = {
+      details: {
+        trackingId: '1234',
+        data: {
+          reason: 'Mute Failed',
+        },
+      },
+    };
+
+    jest.spyOn(webCallingService, 'muteCall').mockImplementation(() => {
+      throw error;
+    });
+    await expect(task.mute()).rejects.toThrow(new Error(error.details.data.reason));
+    expect(getErrorDetailsSpy).toHaveBeenCalledWith(error, 'mute', CC_FILE);
+  });
 });

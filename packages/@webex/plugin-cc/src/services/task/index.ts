@@ -113,7 +113,7 @@ export default class Task extends EventEmitter implements ITask {
    * task.mute().then(()=>{}).catch(()=>{})
    * ```
    */
-  public mute() {
+  public async mute() {
     try {
       this.webCallingService.muteCall(this.localAudioStream);
 
