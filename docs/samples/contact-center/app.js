@@ -38,6 +38,7 @@ const answerElm = document.querySelector('#answer');
 const declineElm = document.querySelector('#decline');
 const callControlListener = document.querySelector('#callcontrolsection');
 const holdResumeElm = document.querySelector('#hold-resume');
+const muteElm = document.querySelector('#mute-unmute');
 const pauseResumeRecordingElm = document.querySelector('#pause-resume-recording');
 const endElm = document.querySelector('#end');
 const wrapupElm = document.querySelector('#wrapup');
@@ -175,6 +176,7 @@ const taskEvents = new CustomEvent('task:incoming', {
 
 function updateButtonsPostEndCall() {
   holdResumeElm.disabled = true;
+  muteElm.disabled = true;
   endElm.disabled = true;
   pauseResumeRecordingElm.disabled = true;
   if(task) {
@@ -452,6 +454,7 @@ function registerTaskListeners(task) {
   task.on('task:assigned', (task) => {
     console.info('Call has been accepted for task: ', task.data.interactionId);
     holdResumeElm.disabled = false;
+    muteElm.disabled = false;
     holdResumeElm.innerText = 'Hold';
     pauseResumeRecordingElm.disabled = false;
     pauseResumeRecordingElm.innerText = 'Pause Recording';
@@ -1027,6 +1030,17 @@ function holdResumeCall() {
       holdResumeElm.disabled = false;
     });
   }
+}
+
+function muteUnmute() {
+  if (muteElm.innerText === 'Mute') {
+    muteElm.innerText = 'Unmute';
+    console.info('Call is muted');
+  } else {
+    muteElm.innerText = 'Mute';
+    console.info('Call is unmuted');
+  }
+  task.mute();
 }
 
 function togglePauseResumeRecording() {

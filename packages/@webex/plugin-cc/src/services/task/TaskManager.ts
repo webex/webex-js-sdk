@@ -107,7 +107,7 @@ export default class TaskManager extends EventEmitter {
             this.handleTaskCleanup();
             break;
           case CC_EVENTS.CONTACT_ENDED:
-            this.currentTask.emit(TASK_EVENTS.TASK_END, {wrapupRequired: false});
+            this.currentTask.emit(TASK_EVENTS.TASK_END);
             this.handleTaskCleanup();
             break;
           case CC_EVENTS.AGENT_CONTACT_HELD:
@@ -167,7 +167,6 @@ export default class TaskManager extends EventEmitter {
             break;
           case CC_EVENTS.AGENT_WRAPUP:
             this.currentTask = this.currentTask.updateTaskData(payload.data);
-            this.currentTask.emit(TASK_EVENTS.TASK_END, {wrapupRequired: true});
             break;
           case CC_EVENTS.AGENT_WRAPPEDUP:
             this.removeCurrentTaskFromCollection();

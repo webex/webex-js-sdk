@@ -107,6 +107,26 @@ export default class Task extends EventEmitter implements ITask {
   /**
    * This is used for the incoming task decline by agent.
    *
+   * @throws Error
+   * @example
+   * ```typescript
+   * task.mute().then(()=>{}).catch(()=>{})
+   * ```
+   */
+  public mute() {
+    try {
+      this.webCallingService.muteCall(this.localAudioStream);
+
+      return Promise.resolve();
+    } catch (error) {
+      const {error: detailedError} = getErrorDetails(error, 'mute', CC_FILE);
+      throw detailedError;
+    }
+  }
+
+  /**
+   * This is used for the incoming task decline by agent.
+   *
    * @returns Promise<TaskResponse>
    * @throws Error
    * @example
