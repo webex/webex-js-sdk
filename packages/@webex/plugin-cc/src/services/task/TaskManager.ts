@@ -64,7 +64,7 @@ export default class TaskManager extends EventEmitter {
     this.webSocketManager.on('message', (event) => {
       const payload = JSON.parse(event);
       // Re-emit the task events to the task object
-      if (payload?.data?.type) {
+      if (payload.data?.type) {
         if (Object.values(CC_TASK_EVENTS).includes(payload.data.type)) {
           if (this.currentTask) {
             this.currentTask.emit(payload.data.type, payload.data);
