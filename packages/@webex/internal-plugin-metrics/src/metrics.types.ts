@@ -320,3 +320,9 @@ export interface IMetricsAttributes {
   meetingId?: string;
   callId?: string;
 }
+
+export interface DelayedClientEvent {
+  name: ClientEvent['name'];
+  payload?: RecursivePartial<ClientEvent['payload']>;
+  options?: SubmitClientEventOptions;
+}
