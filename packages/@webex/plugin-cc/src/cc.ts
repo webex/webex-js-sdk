@@ -14,7 +14,17 @@ import {
   BuddyAgents,
   SubscribeRequest,
 } from './types';
-import {READY, CC_FILE, EMPTY_STRING, AGENT_STATE_CHANGE, AGENT_MULTI_LOGIN} from './constants';
+import {
+  READY,
+  CC_FILE,
+  EMPTY_STRING,
+  AGENT_STATE_CHANGE,
+  AGENT_MULTI_LOGIN,
+  OUTDIAL_DIRECTION,
+  ATTRIBUTES,
+  OUTDIAL_MEDIA_TYPE,
+  OutboundType,
+} from './constants';
 import {AGENT, WEB_RTC_PREFIX} from './services/constants';
 import Services from './services';
 import HttpRequest from './services/core/HttpRequest';
@@ -96,6 +106,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * This is used for making the CC SDK ready by setting up the cc mercury connection.
    */
   public async register(): Promise<Profile> {
+    alert('inside the register function');
     try {
       this.setupEventListeners();
 
@@ -435,12 +446,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * @example
    * ```typescript
    * const outDialPayload = {
-   *  entryPointId: entryPointId,
       destination: destination,
-      direction: 'OUTBOUND',
-      attributes: {},
-      mediaType: 'telephony',
-      outboundType: 'OUTDIAL',
    * }
    * const result = await webex.cc.startOutdial(outDialPayload).then(()=>{}).catch(()=>{});
    * ```
@@ -448,6 +454,16 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
   public async startOutdial(outDialPayload: DialerPayload): Promise<TaskResponse> {
     try {
+      // Contruct the outdial payload
+      outDialPayload = {
+        ...outDialPayload,
+        entryPointId: this.agentConfig.outDialEp,
+        direction: OUTDIAL_DIRECTION,
+        attributes: ATTRIBUTES,
+        mediaType: OUTDIAL_MEDIA_TYPE,
+        outboundType: OutboundType.OUTDIAL,
+      };
+
       const result = await this.services.dialer.startOutdial({data: outDialPayload});
 
       return result;

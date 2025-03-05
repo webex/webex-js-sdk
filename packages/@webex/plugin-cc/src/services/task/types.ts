@@ -353,12 +353,38 @@ export type WrapupPayLoad = {
  * Parameters to be passed for outbound dialer task
  */
 export type DialerPayload = {
+  /**
+   * An entryPointId for respective task.
+   */
   entryPointId: string;
+  /**
+   * A valid customer DN, on which the response is expected, maximum length 36 characters.
+   */
   destination: string;
+
+  /**
+   * The direction of the call.
+   */
   direction: string;
+
+  /**
+   * The contact center number that will be used while making a call to the customer.
+   */
   origin?: string;
+
+  /**
+   * This is a schema free data tuple to pass-on specific data, depending on the outboundType. Supports a maximum of 30 tuples.
+   */
   attributes: {[key: string]: string};
+
+  /**
+   * The media type for the request.
+   */
   mediaType: string;
+
+  /**
+   * The outbound type for the task. .
+   */
   outboundType: string;
 };
 
