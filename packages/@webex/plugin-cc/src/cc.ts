@@ -472,7 +472,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
   public async startOutdial(outDialPayload: DialerPayload): Promise<TaskResponse> {
     try {
-      // Contruct the outdial payload
+      // Construct the outdial payload
       outDialPayload = {
         ...outDialPayload,
         entryPointId: this.agentConfig.outDialEp,
