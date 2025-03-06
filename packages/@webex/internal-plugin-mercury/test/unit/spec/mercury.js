@@ -506,7 +506,7 @@ describe('plugin-mercury', () => {
     });
 
     describe('#logout()', () => {
-      it.only('calls disconnect and logs', () => {
+      it('calls disconnect and logs', () => {
         sinon.stub(mercury.logger, 'info');
         sinon.stub(mercury, 'disconnect');
         mercury.logout();
