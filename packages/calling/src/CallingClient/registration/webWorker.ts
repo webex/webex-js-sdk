@@ -58,4 +58,5 @@ export const messageHandler = (event: MessageEvent) => {
   }
 };
 
-globalThis.onmessage = messageHandler;
+// eslint-disable-next-line no-restricted-globals
+self.onmessage = messageHandler;
