@@ -7,6 +7,7 @@ export default class JoinForbiddenError extends Error {
   code: number;
   error: any;
   sdkMessage: string;
+  wbxAppApiCode: number;
 
   /**
    * @constructor
