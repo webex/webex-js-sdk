@@ -40,6 +40,7 @@ import {
   ClientEventPayloadError,
   ClientSubServiceType,
   BrowserLaunchMethodType,
+  DelayedClientEvent,
 } from '../metrics.types';
 import CallDiagnosticEventsBatcher from './call-diagnostic-metrics-batcher';
 import PreLoginMetricsBatcher from '../prelogin-metrics-batcher';
@@ -95,6 +96,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
   private logger: any; // to avoid adding @ts-ignore everywhere
   private hasLoggedBrowserSerial: boolean;
   private device: any;
+  private delayedClientEvents: DelayedClientEvent[] = [];
 
   // the default validator before piping an event to the batcher
   // this function can be overridden by the user
@@ -730,6 +732,8 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
         meetingId,
       }),
       webexSubServiceType: this.getSubServiceType(meeting),
+      // @ts-ignore
+      webClientPreload: this.webex.meetings?.config?.metrics?.webClientPreload,
     };
 
     const joinFlowVersion = options.joinFlowVersion ?? meeting.callStateForMetrics?.joinFlowVersion;
@@ -782,6 +786,8 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
         webClientDomain: window.location.hostname,
       },
       loginType: this.getCurLoginType(),
+      // @ts-ignore
+      webClientPreload: this.webex.meetings?.config?.metrics?.webClientPreload,
     };
 
     if (options.joinFlowVersion) {
@@ -856,17 +862,36 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
    * @param arg.event - event key
    * @param arg.payload - additional payload to be merged with default payload
    * @param arg.options - payload
+   * @param arg.delaySubmitEvent - a boolean value indicating whether to delay the submission of client events.
    * @throws
    */
   public submitClientEvent({
     name,
     payload,
     options,
+    delaySubmitEvent,
   }: {
     name: ClientEvent['name'];
     payload?: ClientEventPayload;
     options?: SubmitClientEventOptions;
+    delaySubmitEvent?: boolean;
   }) {
+    if (delaySubmitEvent) {
+      // Preserve the time when the event was triggered if delaying the submission to Call Diagnostics
+      const delayedOptions = {
+        ...options,
+        triggeredTime: new Date().toISOString(),
+      };
+
+      this.delayedClientEvents.push({
+        name,
+        payload,
+        options: delayedOptions,
+      });
+
+      return Promise.resolve();
+    }
+
     this.logger.log(
       CALL_DIAGNOSTIC_LOG_IDENTIFIER,
       'CallDiagnosticMetrics: @submitClientEvent. Submit Client Event CA event.',
@@ -881,6 +906,28 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     this.validator({type: 'ce', event: diagnosticEvent});
 
     return this.submitToCallDiagnostics(diagnosticEvent);
+  }
+
+  /**
+   * Submit Delayed Client Event CA events. Clears delayedClientEvents array after submission.
+   */
+  public submitDelayedClientEvents() {
+    this.logger.log(
+      CALL_DIAGNOSTIC_LOG_IDENTIFIER,
+      'CallDiagnosticMetrics: @submitDelayedClientEvents. Submitting delayed client events.'
+    );
+
+    if (this.delayedClientEvents.length === 0) {
+      return Promise.resolve();
+    }
+
+    const promises = this.delayedClientEvents.map((delayedSubmitClientEventParams) => {
+      return this.submitClientEvent(delayedSubmitClientEventParams);
+    });
+
+    this.delayedClientEvents = [];
+
+    return Promise.all(promises);
   }
 
   /**

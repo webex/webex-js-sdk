@@ -1002,7 +1002,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         CALL_FILE
       );
 
-      uploadLogs(this.webex, {
+      uploadLogs({
         correlationId: this.correlationId,
         callId: this.callId,
       });
@@ -1076,7 +1076,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         CALL_FILE
       );
 
-      uploadLogs(this.webex, {
+      uploadLogs({
         correlationId: this.correlationId,
         callId: this.callId,
       });
@@ -1150,7 +1150,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         CALL_FILE
       );
 
-      uploadLogs(this.webex, {
+      uploadLogs({
         correlationId: this.correlationId,
         callId: this.callId,
       });
@@ -1273,7 +1273,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         CALL_FILE
       );
 
-      uploadLogs(this.webex, {
+      uploadLogs({
         correlationId: this.correlationId,
         callId: this.callId,
       });
@@ -1357,7 +1357,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         CALL_FILE
       );
 
-      uploadLogs(this.webex, {
+      uploadLogs({
         correlationId: this.correlationId,
         callId: this.callId,
       });
@@ -1528,7 +1528,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
           CALL_FILE
         );
 
-        uploadLogs(this.webex, {
+        uploadLogs({
           correlationId: this.correlationId,
           callId: this.callId,
         });
@@ -1712,7 +1712,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
           CALL_FILE
         );
 
-        uploadLogs(this.webex, {
+        uploadLogs({
           correlationId: this.correlationId,
           callId: this.callId,
         });
@@ -1792,7 +1792,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
           CALL_FILE
         );
 
-        uploadLogs(this.webex, {
+        uploadLogs({
           correlationId: this.correlationId,
           callId: this.callId,
         });
@@ -1868,7 +1868,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         CALL_FILE
       );
 
-      uploadLogs(this.webex, {
+      uploadLogs({
         correlationId: this.correlationId,
         callId: this.callId,
       });
@@ -1921,7 +1921,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         CALL_FILE
       );
 
-      uploadLogs(this.webex, {
+      uploadLogs({
         correlationId: this.correlationId,
         callId: this.callId,
       });
@@ -2414,7 +2414,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
           CALL_FILE
         );
 
-        uploadLogs(this.webex, {
+        uploadLogs({
           correlationId: this.correlationId,
           callId: this.callId,
         });
@@ -2464,7 +2464,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
           CALL_FILE
         );
 
-        uploadLogs(this.webex, {
+        uploadLogs({
           correlationId: this.correlationId,
           callId: this.callId,
         });
