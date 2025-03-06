@@ -2988,7 +2988,7 @@ describe('Supplementary Services tests', () => {
         'completeTransfer',
         'call'
       );
-      expect(uploadLogsSpy).toHaveBeenCalledWith(webex, {
+      expect(uploadLogsSpy).toHaveBeenCalledWith({
         correlationId: call.getCorrelationId(),
         callId: call.getCallId(),
       });
@@ -3038,7 +3038,7 @@ describe('Supplementary Services tests', () => {
         'completeTransfer',
         'call'
       );
-      expect(uploadLogsSpy).toHaveBeenCalledWith(webex, {
+      expect(uploadLogsSpy).toHaveBeenCalledWith({
         correlationId: call.getCorrelationId(),
         callId: call.getCallId(),
       });
