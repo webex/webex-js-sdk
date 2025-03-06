@@ -12,7 +12,6 @@ let taskId;
 let wrapupCodes = []; // Add this to store wrapup codes
 let isConsultOptionsShown = false;
 let isTransferOptionsShown = false; // Add this variable to track the state of transfer options
-let entryPointId = '';
 let stateTimer;
 
 const authTypeElm = document.querySelector('#auth-type');
@@ -393,18 +392,8 @@ async function startOutdial() {
       return;
   }
 
-  if (!entryPointId) {
-      alert('Entry point ID is not configured');
-      return;
-  }
-
   const dialerPayload = {
-    entryPointId: entryPointId,
     destination: destination,
-    direction: 'OUTBOUND',
-    attributes: {},
-    mediaType: 'telephony',
-    outboundType: 'OUTDIAL',
   };
 
   try {
@@ -668,7 +657,6 @@ function register() {
             idleCodesDropdown.add(option);
           }
         });
-        entryPointId = agentProfile.outDialEp;
     }).catch((error) => {
         console.error('Event subscription failed', error);
     })
