@@ -473,7 +473,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     try {
       // Construct the outdial payload
       outDialPayload = {
-        ...outDialPayload,
+        destination: outDialPayload.destination,
         entryPointId: this.agentConfig.outDialEp,
         direction: OUTDIAL_DIRECTION,
         attributes: ATTRIBUTES,

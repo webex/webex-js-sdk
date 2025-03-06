@@ -16,7 +16,7 @@ import config from '../../../src/config';
 import {CC_EVENTS} from '../../../src/services/config/types';
 import LoggerProxy from '../../../src/logger-proxy';
 import * as Utils from '../../../src/services/core/Utils';
-import {CC_FILE, AGENT_STATE_CHANGE, AGENT_MULTI_LOGIN} from '../../../src/constants';
+import {CC_FILE, AGENT_STATE_CHANGE, AGENT_MULTI_LOGIN, OUTDIAL_DIRECTION, OutboundType, ATTRIBUTES, OUTDIAL_MEDIA_TYPE} from '../../../src/constants';
 
 // Mock the Worker API
 import '../../../__mocks__/workerMock';
@@ -943,31 +943,63 @@ describe('webex.cc', () => {
 
 
   describe('startOutdial', () => {
-
     it('should make outdial call successfully.', async () => {
-      
-      const response = {};
-      const dialerPayload = {
-        entryPointId: '12345',
-        destination: '1234567890', 
-        direction: 'OUTBOUND',
-        attributes: {},
-        mediaType: 'telephony',
-        outboundType: 'OUTDIAL'
+
+      // Setup outDialEp.
+      webex.cc.agentConfig = {
+        outDialEp: 'test-entry-point',
       };
+
+      // Initial Payload with just destination numnber.
+      const inputPayload = {
+        destination: '1234567890',
+      };
+
+      // Construct Payload for startOutdial.
+      const newPayload = {
+        entryPointId: 'test-entry-point',
+        destination: inputPayload.destination, 
+        direction: OUTDIAL_DIRECTION,
+        attributes: ATTRIBUTES,
+        mediaType: OUTDIAL_MEDIA_TYPE,
+        outboundType: OutboundType.OUTDIAL,
+      };
+
+      const mockResponse = {} as AgentContact;
 
       const startOutdialMock = jest
         .spyOn(webex.cc.services.dialer, 'startOutdial')
-        .mockResolvedValue({} as AgentContact);
+        .mockResolvedValue(mockResponse);
 
-      const result = await webex.cc.startOutdial(dialerPayload);
+      const result = await webex.cc.startOutdial(newPayload);
 
-      expect(startOutdialMock).toHaveBeenCalledWith({data: dialerPayload});
+      expect(startOutdialMock).toHaveBeenCalledWith({data: newPayload});
 
-      expect(result).toEqual(response);
+      expect(result).toEqual(mockResponse);
     });
 
     it('should handle error during startOutdial', async () => {
+
+      // Setup outDialEp.
+      webex.cc.agentConfig = {
+        outDialEp: 'test-entry-point',
+      };
+
+      // Initial Payload with just destination numnber.
+      const inputPayload = {
+        destination: '1234567890',
+      }
+
+      // Construct Expected Payload for startOutdial.
+      const newPayload = {
+        entryPointId: 'test-entry-point',
+        destination: inputPayload.destination, 
+        direction: OUTDIAL_DIRECTION,
+        attributes: ATTRIBUTES,
+        mediaType: OUTDIAL_MEDIA_TYPE,
+        outboundType: OutboundType.OUTDIAL,
+      };
+
       const error = {
         details: {
           trackingId: '1234',
@@ -979,7 +1011,7 @@ describe('webex.cc', () => {
 
       jest.spyOn(webex.cc.services.dialer, 'startOutdial').mockRejectedValue(error);
 
-      await expect(webex.cc.startOutdial()).rejects.toThrow(error.details.data.reason);
+      await expect(webex.cc.startOutdial(newPayload)).rejects.toThrow(error.details.data.reason);
 
       expect(LoggerProxy.error).toHaveBeenCalledWith(
         `startOutdial failed with trackingId: ${error.details.trackingId}`,
