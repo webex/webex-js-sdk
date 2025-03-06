@@ -109,7 +109,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * This is used for making the CC SDK ready by setting up the cc mercury connection.
    */
   public async register(): Promise<Profile> {
-    alert('inside the register function');
     try {
       this.setupEventListeners();
 

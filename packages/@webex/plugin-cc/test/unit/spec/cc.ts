@@ -22,7 +22,7 @@ import {CC_FILE, AGENT_STATE_CHANGE, AGENT_MULTI_LOGIN} from '../../../src/const
 import '../../../__mocks__/workerMock';
 import {Profile} from '../../../src/services/config/types';
 import TaskManager from '../../../src/services/task/TaskManager';
-import {AgentContact, TASK_EVENTS} from '../../../src/services/task/types';
+import { AgentContact, TASK_EVENTS } from '../../../src/services/task/types';
 
 jest.mock('../../../src/logger-proxy', () => ({
   __esModule: true,
@@ -941,16 +941,19 @@ describe('webex.cc', () => {
     });
   });
 
+
   describe('startOutdial', () => {
+
     it('should make outdial call successfully.', async () => {
+      
       const response = {};
       const dialerPayload = {
         entryPointId: '12345',
-        destination: '1234567890',
+        destination: '1234567890', 
         direction: 'OUTBOUND',
         attributes: {},
         mediaType: 'telephony',
-        outboundType: 'OUTDIAL',
+        outboundType: 'OUTDIAL'
       };
 
       const startOutdialMock = jest
