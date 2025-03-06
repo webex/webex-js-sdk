@@ -21,6 +21,6 @@ export default class JoinForbiddenError extends Error {
     this.error = error;
     this.stack = error ? error.stack : new Error().stack;
     this.code = ERROR_DICTIONARY.JoinForbiddenError.CODE;
-    this.wbxAppApiCode = error.wbxAppApiCode;
+    this.wbxAppApiCode = error?.wbxAppApiCode;
   }
 }
