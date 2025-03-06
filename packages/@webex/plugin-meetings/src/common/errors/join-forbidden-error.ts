@@ -11,20 +11,15 @@ export default class JoinForbiddenError extends Error {
   /**
    * @constructor
    * @param {String} [message]
-   * @param {String} [wbxAppApiCode]
    * @param {Object} [error]
    */
-  constructor(
-    message: string = ERROR_DICTIONARY.JoinForbiddenError.MESSAGE,
-    wbxAppApiCode = null,
-    error: any = null
-  ) {
+  constructor(message: string = ERROR_DICTIONARY.JoinForbiddenError.MESSAGE, error: any = null) {
     super(message);
     this.name = ERROR_DICTIONARY.JoinForbiddenError.NAME;
     this.sdkMessage = message;
     this.error = error;
     this.stack = error ? error.stack : new Error().stack;
     this.code = ERROR_DICTIONARY.JoinForbiddenError.CODE;
-    this.wbxAppApiCode = wbxAppApiCode;
+    this.wbxAppApiCode = error.wbxAppApiCode;
   }
 }
