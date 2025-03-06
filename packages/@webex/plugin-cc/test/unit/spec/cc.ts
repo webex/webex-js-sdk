@@ -941,10 +941,8 @@ describe('webex.cc', () => {
     });
   });
 
-
   describe('startOutdial', () => {
     it('should make outdial call successfully.', async () => {
-
       // Setup outDialEp.
       webex.cc.agentConfig = {
         outDialEp: 'test-entry-point',
@@ -979,7 +977,6 @@ describe('webex.cc', () => {
     });
 
     it('should handle error during startOutdial', async () => {
-
       // Setup outDialEp.
       webex.cc.agentConfig = {
         outDialEp: 'test-entry-point',
@@ -1017,7 +1014,6 @@ describe('webex.cc', () => {
         `startOutdial failed with trackingId: ${error.details.trackingId}`,
         {module: CC_FILE, method: 'startOutdial'}
       );
-
       expect(getErrorDetailsSpy).toHaveBeenCalledWith(error, 'startOutdial', CC_FILE);
     });
   });
