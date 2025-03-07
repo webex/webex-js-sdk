@@ -2,9 +2,10 @@
 import {v4 as uuid} from 'uuid';
 import {HTTP_METHODS, WorkerMessageType} from '../../common/types';
 
+let keepaliveTimer: NodeJS.Timer | undefined;
+
 export const messageHandler = (event: MessageEvent) => {
   const {type} = event.data;
-  let keepaliveTimer: NodeJS.Timer | undefined;
 
   const postKeepAlive = async (accessToken: string, deviceUrl: string, url: string) => {
     const response = await fetch(`${url}/status`, {

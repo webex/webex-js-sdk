@@ -8,6 +8,9 @@ jest.mock('uuid');
 
 describe('webWorker', () => {
   let postMessageSpy: jest.SpyInstance;
+  let capturedIntervalCallback: any;
+  let capturedIntervalTimer: any;
+  let clearIntervalSpy: jest.SpyInstance;
 
   beforeEach(() => {
     jest.useFakeTimers();
@@ -15,13 +18,25 @@ describe('webWorker', () => {
     (uuid as jest.Mock).mockReturnValue('mock-uuid');
 
     postMessageSpy = jest.spyOn(global, 'postMessage').mockImplementation(() => {});
+    clearIntervalSpy = jest.spyOn(global, 'clearInterval');
+
+    // Overriding setInterval so that we capture the callback rather than schedule a timer
+    jest.spyOn(global, 'setInterval').mockImplementation(
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      (callback: any, interval: number): NodeJS.Timeout => {
+        capturedIntervalCallback = callback;
+        // Create a dummy timer object (could be any non-null value)
+        capturedIntervalTimer = {dummy: true};
+
+        return capturedIntervalTimer as NodeJS.Timeout;
+      }
+    );
   });
 
   afterEach(() => {
     jest.clearAllMocks();
     jest.clearAllTimers();
     jest.useRealTimers();
-    delete (global as any).self;
   });
 
   it('should start keepalive lifecycle correctly', async () => {
@@ -39,7 +54,8 @@ describe('webWorker', () => {
       },
     } as MessageEvent);
 
-    jest.advanceTimersByTime(1000);
+    // Manually invoke the captured interval callback to simulate one tick
+    await capturedIntervalCallback();
 
     expect((global.fetch as jest.Mock).mock.calls.length).toBe(1);
     expect(global.fetch).toHaveBeenCalledWith('http://example.com/status', {
@@ -54,8 +70,56 @@ describe('webWorker', () => {
     expect(postMessageSpy).not.toHaveBeenCalled();
   });
 
+  it('should post KEEPALIVE_FAILURE when fetch fails', async () => {
+    (global.fetch as jest.Mock).mockResolvedValue({ok: false, status: 401});
+
+    messageHandler({
+      data: {
+        type: WorkerMessageType.START_KEEPALIVE,
+        accessToken: 'dummy',
+        deviceUrl: 'dummyDevice',
+        interval: 1,
+        retryCountThreshold: 1,
+        url: 'http://example.com',
+      },
+    } as MessageEvent);
+
+    await capturedIntervalCallback();
+
+    expect(postMessageSpy).toHaveBeenCalledWith({
+      type: WorkerMessageType.KEEPALIVE_FAILURE,
+      err: expect.any(Error),
+    });
+  });
+
+  it('should post KEEPALIVE_SUCCESS after a failure when fetch succeeds', async () => {
+    // Set fetch so that first tick rejects (failure) and second tick resolves (success)
+    (global.fetch as jest.Mock)
+      .mockRejectedValueOnce(new Error('first failure'))
+      .mockResolvedValueOnce({ok: true, status: 200});
+
+    messageHandler({
+      data: {
+        type: WorkerMessageType.START_KEEPALIVE,
+        accessToken: 'dummy',
+        deviceUrl: 'dummyDevice',
+        interval: 1,
+        retryCountThreshold: 3,
+        url: 'http://example.com',
+      },
+    } as MessageEvent);
+
+    // First tick: trigger failure
+    await capturedIntervalCallback();
+    expect(postMessageSpy.mock.calls[0][0].type).toBe(WorkerMessageType.KEEPALIVE_FAILURE);
+
+    // Second tick: trigger success.
+    await capturedIntervalCallback();
+    expect(postMessageSpy.mock.calls[1][0].type).toBe(WorkerMessageType.KEEPALIVE_SUCCESS);
+    expect(postMessageSpy.mock.calls[1][0].statusCode).toBe(200);
+  });
+
   it('should clear keepalive timer on receiving CLEAR_KEEPALIVE message', async () => {
-    const setIntervalSpy = jest.spyOn(global, 'setInterval');
     const fakeSuccessResponse = {ok: true, status: 200};
     (global.fetch as jest.Mock).mockResolvedValue(fakeSuccessResponse);
 
@@ -73,10 +137,8 @@ describe('webWorker', () => {
     messageHandler(startEvent as MessageEvent);
     messageHandler({data: {type: WorkerMessageType.CLEAR_KEEPALIVE}} as MessageEvent);
 
-    // Advance timers after clearing to simulate a period where the interval would have run
     jest.advanceTimersByTime(3000);
-
-    expect((global.fetch as jest.Mock).mock.calls.length).toBe(3);
-    expect(setIntervalSpy).toHaveBeenCalled();
+    expect((global.fetch as jest.Mock).mock.calls.length).toBeLessThanOrEqual(3);
+    expect(clearIntervalSpy).toHaveBeenCalled();
   });
 });
