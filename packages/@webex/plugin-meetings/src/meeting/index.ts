@@ -651,6 +651,7 @@ export default class Meeting extends StatelessWebexPlugin {
   turnServerUsed: boolean;
   areVoiceaEventsSetup = false;
   isMoveToInProgress = false;
+  registrationIdStatus: string;
 
   voiceaListenerCallbacks: object = {
     [VOICEAEVENTS.VOICEA_ANNOUNCEMENT]: (payload: Transcription['languageOptions']) => {
