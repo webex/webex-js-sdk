@@ -2,7 +2,7 @@ import 'jsdom-global/register';
 import EventEmitter from 'events';
 import {LoginOption, WebexSDK} from '../../../../../src/types';
 import {CALL_EVENT_KEYS, CallingClientConfig, LINE_EVENTS} from '@webex/calling';
-import {CC_EVENTS} from '../../../../../src/services/config/types';
+import {CC_AGENT_EVENTS, CC_EVENTS} from '../../../../../src/services/config/types';
 import TaskManager from '../../../../../src/services/task/TaskManager';
 import * as contact from '../../../../../src/services/task/contact';
 import Task from '../../../../../src/services/task';
@@ -10,6 +10,7 @@ import {TASK_EVENTS} from '../../../../../src/services/task/types';
 import WebCallingService from '../../../../../src/services/WebCallingService';
 import config from '../../../../../src/config';
 import {wrap} from 'module';
+import {CC_TASK_EVENTS} from '../../../../../src/services/config/types';
 
 describe('TaskManager', () => {
   let mockCall;
@@ -76,6 +77,7 @@ describe('TaskManager', () => {
 
     taskManager = new TaskManager(contactMock, webCallingService, webSocketManagerMock);
     taskManager.currentTask = {
+      emit: jest.fn(),
       accept: jest.fn(),
       decline: jest.fn(),
       updateTaskData: jest.fn(),
@@ -101,6 +103,42 @@ describe('TaskManager', () => {
     incomingCallCb(mockCall);
 
     expect(taskEmitSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_INCOMING, taskManager.currentTask);
+  });
+
+  it('should re-emit task related events', () => {
+    const dummyPayload = {
+      data: {
+        type: CC_TASK_EVENTS.AGENT_CONSULTING,
+      },
+    };
+    webSocketManagerMock.emit('message', JSON.stringify({data: taskDataMock}));
+    const taskEmitSpy = jest.spyOn(taskManager.currentTask, 'emit');
+
+    expect(taskManager).toBeInstanceOf(TaskManager);
+    expect(webCallingService.listenerCount(LINE_EVENTS.INCOMING_CALL)).toBe(1);
+    expect(webSocketManagerMock.listenerCount('message')).toBe(1);
+
+    webSocketManagerMock.emit('message', JSON.stringify(dummyPayload));
+
+    expect(taskEmitSpy).toHaveBeenCalledWith(dummyPayload.data.type, dummyPayload.data);
+  });
+
+  it('should not re-emit agent related events', () => {
+    const dummyPayload = {
+      data: {
+        type: CC_AGENT_EVENTS.AGENT_BUDDY_AGENTS,
+      },
+    };
+    webSocketManagerMock.emit('message', JSON.stringify({data: taskDataMock}));
+    const taskEmitSpy = jest.spyOn(taskManager.currentTask, 'emit');
+    taskManager.currentTask = mockCall as Task;
+    expect(taskManager).toBeInstanceOf(TaskManager);
+    expect(webCallingService.listenerCount(LINE_EVENTS.INCOMING_CALL)).toBe(1);
+    expect(webSocketManagerMock.listenerCount('message')).toBe(1);
+
+    webSocketManagerMock.emit('message', JSON.stringify(dummyPayload));
+
+    expect(taskEmitSpy).not.toHaveBeenCalledWith(dummyPayload.data.type, dummyPayload.data);
   });
 
   it('should handle WebSocket message for AGENT_CONTACT_RESERVED and emit task:incoming for browser case', () => {
@@ -421,11 +459,10 @@ describe('TaskManager', () => {
   });
 
   it('handle AGENT_OFFER_CONTACT event', () => {
-
     const payload = {
       data: {
         ...initalPayload.data,
-        type: CC_EVENTS.AGENT_OFFER_CONTACT
+        type: CC_EVENTS.AGENT_OFFER_CONTACT,
       },
     };
 
@@ -703,4 +740,3 @@ describe('TaskManager', () => {
     expect(taskUpdateTaskDataSpy).not.toHaveBeenCalled();
   });
 });
-  

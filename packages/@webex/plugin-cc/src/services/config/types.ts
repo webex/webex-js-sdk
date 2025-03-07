@@ -2,27 +2,9 @@ import * as Agent from '../agent/types';
 
 type Enum<T extends Record<string, unknown>> = T[keyof T];
 
-// Define the CC_EVENTS object
-export const CC_EVENTS = {
-  WELCOME: 'Welcome',
-  AGENT_RELOGIN_SUCCESS: 'AgentReloginSuccess',
-  AGENT_RELOGIN_FAILED: 'AgentReloginFailed',
-  AGENT_LOGOUT: 'Logout',
-  AGENT_LOGOUT_SUCCESS: 'AgentLogoutSuccess',
-  AGENT_LOGOUT_FAILED: 'AgentLogoutFailed',
-  AGENT_STATION_LOGIN: 'StationLogin',
-  AGENT_STATION_LOGIN_SUCCESS: 'AgentStationLoginSuccess',
-  AGENT_STATION_LOGIN_FAILED: 'AgentStationLoginFailed',
-  AGENT_STATE_CHANGE: 'AgentStateChange',
-  AGENT_MULTI_LOGIN: 'AGENT_MULTI_LOGIN',
-  AGENT_STATE_CHANGE_SUCCESS: 'AgentStateChangeSuccess',
-  AGENT_STATE_CHANGE_FAILED: 'AgentStateChangeFailed',
-  AGENT_BUDDY_AGENTS: 'BuddyAgents',
-  AGENT_BUDDY_AGENTS_SUCCESS: 'BuddyAgents',
-  AGENT_BUDDY_AGENTS_RETRIEVE_FAILED: 'BuddyAgentsRetrieveFailed',
-  AGENT_CONTACT_RESERVED: 'AgentContactReserved',
-  AGENT_OFFER_CONTACT: 'AgentOfferContact',
-  AGENT_CONTACT_ASSIGNED: 'AgentContactAssigned',
+// Define the CC_TASK_EVENTS object
+// These events are emitted on the task object
+export const CC_TASK_EVENTS = {
   AGENT_CONTACT_ASSIGN_FAILED: 'AgentContactAssignFailed',
   AGENT_CONTACT_OFFER_RONA: 'AgentOfferContactRona',
   AGENT_CONTACT_HELD: 'AgentContactHeld',
@@ -57,6 +39,37 @@ export const CC_EVENTS = {
   AGENT_WRAPUP_FAILED: 'AgentWrapupFailed',
   AGENT_OUTBOUND_FAILED: 'AgentOutboundFailed',
   AGENT_CONTACT: 'AgentContact',
+  AGENT_OFFER_CONTACT: 'AgentOfferContact',
+  AGENT_CONTACT_ASSIGNED: 'AgentContactAssigned',
+} as const;
+
+// Define the CC_AGENT_EVENTS object
+// These events are emitted on the cc object
+export const CC_AGENT_EVENTS = {
+  WELCOME: 'Welcome',
+  AGENT_RELOGIN_SUCCESS: 'AgentReloginSuccess',
+  AGENT_RELOGIN_FAILED: 'AgentReloginFailed',
+  AGENT_DN_REGISTERED: 'AgentDNRegistered',
+  AGENT_LOGOUT: 'Logout',
+  AGENT_LOGOUT_SUCCESS: 'AgentLogoutSuccess',
+  AGENT_LOGOUT_FAILED: 'AgentLogoutFailed',
+  AGENT_STATION_LOGIN: 'StationLogin',
+  AGENT_STATION_LOGIN_SUCCESS: 'AgentStationLoginSuccess',
+  AGENT_STATION_LOGIN_FAILED: 'AgentStationLoginFailed',
+  AGENT_STATE_CHANGE: 'AgentStateChange',
+  AGENT_MULTI_LOGIN: 'AGENT_MULTI_LOGIN',
+  AGENT_STATE_CHANGE_SUCCESS: 'AgentStateChangeSuccess',
+  AGENT_STATE_CHANGE_FAILED: 'AgentStateChangeFailed',
+  AGENT_BUDDY_AGENTS: 'BuddyAgents',
+  AGENT_BUDDY_AGENTS_SUCCESS: 'BuddyAgents',
+  AGENT_BUDDY_AGENTS_RETRIEVE_FAILED: 'BuddyAgentsRetrieveFailed',
+  AGENT_CONTACT_RESERVED: 'AgentContactReserved',
+} as const;
+
+// Define the CC_EVENTS object
+export const CC_EVENTS = {
+  ...CC_AGENT_EVENTS,
+  ...CC_TASK_EVENTS,
 } as const;
 
 export type WelcomeEvent = {
