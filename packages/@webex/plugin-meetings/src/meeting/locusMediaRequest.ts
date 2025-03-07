@@ -304,18 +304,12 @@ export class LocusMediaRequest extends WebexPlugin {
       });
 
     if (request.type === 'RoapMessage') {
-      const progressLogger = (direction: string, progressEvent: ProgressEvent) => {
-        LoggerProxy.logger.info(
-          `${request.type}: ${direction} Progress, Timestamp: ${progressEvent.timeStamp}, Progress: ${progressEvent.loaded}/${progressEvent.total}`
-        );
-      };
-
       const setupProgressListener = (direction: string, eventEmitter: EventEmitter) => {
-        const shunt = new EventEmitter();
-        transferEvents('progress', eventEmitter, shunt);
-        shunt.on('progress', (progressEvent: ProgressEvent) =>
-          progressLogger(direction, progressEvent)
-        );
+        eventEmitter.on('progress', (progressEvent: ProgressEvent) => {
+          LoggerProxy.logger.info(
+            `${request.type}: ${direction} Progress, Timestamp: ${progressEvent.timeStamp}, Progress: ${progressEvent.loaded}/${progressEvent.total}`
+          );
+        });
       };
 
       setupProgressListener('Upload', options.upload);
