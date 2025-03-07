@@ -143,9 +143,9 @@ describe('plugin-mercury', () => {
         const envelope = {
           data: {
             featureToggle: {
-              'feature-name': true
-            }
-          }
+              'feature-name': true,
+            },
+          },
         };
 
         assert.isFalse(mercury.connected, 'Mercury is not connected');
@@ -157,7 +157,10 @@ describe('plugin-mercury', () => {
           assert.isFalse(mercury.connecting, 'Mercury is not connecting');
           assert.calledWith(socketOpenStub, sinon.match(/ws:\/\/example.com/), sinon.match.any);
           mercury._emit('event:featureToggle_update', envelope);
-          assert.calledOnceWithExactly(webex.internal.feature.updateFeature, envelope.data.featureToggle);
+          assert.calledOnceWithExactly(
+            webex.internal.feature.updateFeature,
+            envelope.data.featureToggle
+          );
           sinon.restore();
         });
       });
@@ -175,7 +178,6 @@ describe('plugin-mercury', () => {
       });
 
       describe('when `maxRetries` is set', () => {
-
         const check = () => {
           socketOpenStub.restore();
           socketOpenStub = sinon.stub(Socket.prototype, 'open');
@@ -209,7 +211,7 @@ describe('plugin-mercury', () => {
             .then(() => {
               assert.calledThrice(Socket.prototype.open);
             });
-        }
+        };
 
         // skipping due to apparent bug with lolex in all browsers but Chrome.
         // if initial retries is zero and mercury has never connected max retries is used
@@ -504,10 +506,19 @@ describe('plugin-mercury', () => {
     });
 
     describe('#logout()', () => {
-      it('calls disconnect', () => {
+      it('calls disconnect and logs', () => {
+        sinon.stub(mercury.logger, 'info');
         sinon.stub(mercury, 'disconnect');
         mercury.logout();
         assert.called(mercury.disconnect);
+        assert.calledTwice(mercury.logger.info);
+
+        assert.calledWith(mercury.logger.info.getCall(0), 'Mercury: logout() called');
+        assert.isTrue(
+          mercury.logger.info
+            .getCall(1)
+            .args[0].startsWith('Mercury: debug_mercury_logging stack: ')
+        );
       });
 
       it('uses the config.beforeLogoutOptionsCloseReason to disconnect and will send code 1050 for logout', () => {
@@ -554,26 +565,26 @@ describe('plugin-mercury', () => {
             assert.isUndefined(mercury.mockWebSocket, 'Mercury does not have a mockWebSocket');
           }));
 
-          it('disconnects the WebSocket with code 1050', () =>
-            mercury
-              .connect()
-              .then(() => {
-                assert.isTrue(mercury.connected, 'Mercury is connected');
-                assert.isFalse(mercury.connecting, 'Mercury is not connecting');
-                const promise = mercury.disconnect();
-    
-                mockWebSocket.emit('close', {
-                  code: 1050,
-                  reason: 'done (permanent)',
-                });
-    
-                return promise;
-              })
-              .then(() => {
-                assert.isFalse(mercury.connected, 'Mercury is not connected');
-                assert.isFalse(mercury.connecting, 'Mercury is not connecting');
-                assert.isUndefined(mercury.mockWebSocket, 'Mercury does not have a mockWebSocket');
-              }));
+      it('disconnects the WebSocket with code 1050', () =>
+        mercury
+          .connect()
+          .then(() => {
+            assert.isTrue(mercury.connected, 'Mercury is connected');
+            assert.isFalse(mercury.connecting, 'Mercury is not connecting');
+            const promise = mercury.disconnect();
+
+            mockWebSocket.emit('close', {
+              code: 1050,
+              reason: 'done (permanent)',
+            });
+
+            return promise;
+          })
+          .then(() => {
+            assert.isFalse(mercury.connected, 'Mercury is not connected');
+            assert.isFalse(mercury.connecting, 'Mercury is not connecting');
+            assert.isUndefined(mercury.mockWebSocket, 'Mercury does not have a mockWebSocket');
+          }));
 
       it('stops emitting message events', () => {
         const spy = sinon.spy();
@@ -687,7 +698,7 @@ describe('plugin-mercury', () => {
             return assert.isRejected(promise).then((error) => {
               const lastError = mercury.getLastError();
 
-              assert.equal(error.message, "Mercury Connection Aborted");
+              assert.equal(error.message, 'Mercury Connection Aborted');
               assert.isDefined(lastError);
               assert.equal(lastError, realError);
             });
@@ -778,7 +789,7 @@ describe('plugin-mercury', () => {
         const event = {
           data: {
             wsWriteTimestamp: Date.now() - 60000,
-          }          
+          },
         };
         assert.isUndefined(mercury.mercuryTimeOffset);
         mercury._setTimeOffset(event);
@@ -789,25 +800,25 @@ describe('plugin-mercury', () => {
         const event = {
           data: {
             wsWriteTimestamp: Date.now() + 60000,
-          }          
+          },
         };
         mercury._setTimeOffset(event);
         assert.isTrue(mercury.mercuryTimeOffset < 0);
       });
       it('handles invalid wsWriteTimestamp', () => {
         const invalidTimestamps = [null, -1, 'invalid', undefined];
-        invalidTimestamps.forEach(invalidTimestamp => {
+        invalidTimestamps.forEach((invalidTimestamp) => {
           const event = {
             data: {
               wsWriteTimestamp: invalidTimestamp,
-            }          
+            },
           };
           mercury._setTimeOffset(event);
           assert.isUndefined(mercury.mercuryTimeOffset);
         });
       });
     });
-    
+
     describe('#_prepareUrl()', () => {
       beforeEach(() => {
         webex.internal.device.webSocketUrl = 'ws://example.com';
