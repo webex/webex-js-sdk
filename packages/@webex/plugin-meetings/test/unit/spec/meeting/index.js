@@ -116,6 +116,7 @@ import MeetingCollection from '@webex/plugin-meetings/src/meetings/collection';
 
 import {EVENT_TRIGGERS as VOICEAEVENTS} from '@webex/internal-plugin-voicea';
 import JoinForbiddenError from '../../../../src/common/errors/join-forbidden-error';
+import { EventEmitter } from 'stream';
 
 describe('plugin-meetings', () => {
   const logger = {
@@ -208,6 +209,7 @@ describe('plugin-meetings', () => {
   let membersSpy;
   let meetingRequestSpy;
   let correlationId;
+  let uploadEvent;
 
   beforeEach(() => {
     webex = new MockWebex({
@@ -276,6 +278,8 @@ describe('plugin-meetings', () => {
     test4 = `test4-${uuid.v4()}`;
     testDestination = `testDestination-${uuid.v4()}`;
     correlationId = uuid.v4();
+    uploadEvent = new EventEmitter();
+    uploadEvent.addListener('progress', () => {})
 
     meeting = new Meeting(
       {
@@ -4057,7 +4061,7 @@ describe('plugin-meetings', () => {
 
             locusMediaRequestStub = sinon
               .stub(WebexPlugin.prototype, 'request')
-              .resolves({body: {locus: {fullState: {}}}});
+              .resolves({body: {locus: {fullState: {}}}, upload: sinon.match.instanceOf(EventEmitter), download: sinon.match.instanceOf(EventEmitter)});
 
             // setup some things and mocks so that the call to join() works
             // (we need to call join() because it creates the LocusMediaRequest instance
@@ -4166,8 +4170,8 @@ describe('plugin-meetings', () => {
                   id: 'fake clientMediaPreferences',
                 },
               },
-              upload: sinon.stub(),
-              download: sinon.stub(),
+              upload: sinon.match.instanceOf(EventEmitter),
+              download: sinon.match.instanceOf(EventEmitter),
             });
           };
 
@@ -4195,8 +4199,8 @@ describe('plugin-meetings', () => {
                   },
                 ],
               },
-              upload: sinon.stub(),
-              download: sinon.stub(),
+              upload: sinon.match.instanceOf(EventEmitter),
+              download: sinon.match.instanceOf(EventEmitter),
             });
           };
 
@@ -4221,8 +4225,8 @@ describe('plugin-meetings', () => {
                 respOnlySdp: true,
                 usingResource: null,
               },
-              upload: sinon.stub(),
-              download: sinon.stub(),
+              upload: sinon.match.instanceOf(EventEmitter),
+              download: sinon.match.instanceOf(EventEmitter),
             });
           };
 

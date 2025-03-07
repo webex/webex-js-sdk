@@ -2,7 +2,7 @@ import 'jsdom-global/register';
 import sinon from 'sinon';
 import {assert} from '@webex/test-helper-chai';
 import {cloneDeep} from 'lodash';
-
+import {EventEmitter} from 'events';
 import MockWebex from '@webex/test-helper-mock-webex';
 import Meetings from '@webex/plugin-meetings';
 import {
@@ -198,8 +198,8 @@ describe('LocusMediaRequest.send()', () => {
       method: 'PUT',
       uri: 'fakeMeetingSelfUrl/media',
       body: createExpectedRoapBody('OFFER', {audioMuted: true, videoMuted: true}),
-      upload: sinon.stub(),
-      download: sinon.stub(),
+      upload: sinon.match.instanceOf(EventEmitter),
+      download: sinon.match.instanceOf(EventEmitter),
     });
 
     checkMetrics();
@@ -229,8 +229,8 @@ describe('LocusMediaRequest.send()', () => {
       method: 'PUT',
       uri: 'fakeMeetingSelfUrl/media',
       body: createExpectedLocalMuteBody({audioMuted: false, videoMuted: false}),
-      upload: sinon.stub(),
-      download: sinon.stub(),
+      upload: sinon.match.instanceOf(EventEmitter),
+      download: sinon.match.instanceOf(EventEmitter),
     });
 
     checkMetrics(false);
@@ -249,8 +249,8 @@ describe('LocusMediaRequest.send()', () => {
       method: 'PUT',
       uri: 'fakeMeetingSelfUrl/media',
       body: createExpectedLocalMuteBody({audioMuted: false, videoMuted: false}, sequence),
-      upload: sinon.stub(),
-      download: sinon.stub(),
+      upload: sinon.match.instanceOf(EventEmitter),
+      download: sinon.match.instanceOf(EventEmitter),
     });
   });
 
@@ -279,8 +279,8 @@ describe('LocusMediaRequest.send()', () => {
       method: 'PUT',
       uri: 'fakeMeetingSelfUrl/media',
       body: createExpectedLocalMuteBody({audioMuted: false, videoMuted: true}),
-      upload: sinon.stub(),
-      download: sinon.stub(),
+      upload: sinon.match.instanceOf(EventEmitter),
+      download: sinon.match.instanceOf(EventEmitter),
     });
 
     checkMetrics(false);
@@ -300,8 +300,8 @@ describe('LocusMediaRequest.send()', () => {
       method: 'PUT',
       uri: 'fakeMeetingSelfUrl/media',
       body: createExpectedLocalMuteBody({audioMuted: true, videoMuted: false}),
-      upload: sinon.stub(),
-      download: sinon.stub(),
+      upload: sinon.match.instanceOf(EventEmitter),
+      download: sinon.match.instanceOf(EventEmitter),
     });
 
     checkMetrics(false);
@@ -321,8 +321,8 @@ describe('LocusMediaRequest.send()', () => {
       method: 'PUT',
       uri: 'fakeMeetingSelfUrl/media',
       body: createExpectedRoapBody('OFFER', {audioMuted: true, videoMuted: false}),
-      upload: sinon.stub(),
-      download: sinon.stub(),
+      upload: sinon.match.instanceOf(EventEmitter),
+      download: sinon.match.instanceOf(EventEmitter),
     });
 
     checkMetrics();
@@ -369,6 +369,8 @@ describe('LocusMediaRequest.send()', () => {
         method: 'PUT',
         uri: 'fakeMeetingSelfUrl/media',
         body: createExpectedRoapBody('OFFER', {audioMuted: true, videoMuted: true}),
+        upload: sinon.match.instanceOf(EventEmitter),
+        download: sinon.match.instanceOf(EventEmitter),
       });
 
       webexRequestStub.resetHistory();
@@ -391,6 +393,8 @@ describe('LocusMediaRequest.send()', () => {
         method: 'PUT',
         uri: 'fakeMeetingSelfUrl/media',
         body: createExpectedRoapBody('OK', {audioMuted: true, videoMuted: true}),
+        upload: sinon.match.instanceOf(EventEmitter),
+        download: sinon.match.instanceOf(EventEmitter),
       });
 
       // promise returned by the first call to send OFFER should be resolved by now
@@ -413,8 +417,8 @@ describe('LocusMediaRequest.send()', () => {
         method: 'PUT',
         uri: 'fakeMeetingSelfUrl/media',
         body: createExpectedRoapBody('OFFER', {audioMuted: false, videoMuted: false}),
-        upload: sinon.stub(),
-        download: sinon.stub(),
+        upload: sinon.match.instanceOf(EventEmitter),
+        download: sinon.match.instanceOf(EventEmitter),
       });
 
       webexRequestStub.resetHistory();
@@ -439,8 +443,8 @@ describe('LocusMediaRequest.send()', () => {
         method: 'PUT',
         uri: 'fakeMeetingSelfUrl/media',
         body: createExpectedRoapBody('OK', {audioMuted: false, videoMuted: true}),
-        upload: sinon.stub(),
-        download: sinon.stub(),
+        upload: sinon.match.instanceOf(EventEmitter),
+        download: sinon.match.instanceOf(EventEmitter),
       });
 
       // promise returned by the first call to send OFFER should be resolved by now
@@ -478,8 +482,8 @@ describe('LocusMediaRequest.send()', () => {
           method: 'PUT',
           uri: 'fakeMeetingSelfUrl/media',
           body: createExpectedRoapBody('OFFER', {audioMuted: true, videoMuted: true}),
-          upload: sinon.stub(),
-          download: sinon.stub(),
+          upload: sinon.match.instanceOf(EventEmitter),
+          download: sinon.match.instanceOf(EventEmitter),
         });
         assert.equal(result, undefined); // sendLocalMute shouldn't resolve yet, as the request should be queued
         assert.equal(locusMediaRequest.isConfluenceCreated(), false);
@@ -496,8 +500,8 @@ describe('LocusMediaRequest.send()', () => {
           method: 'PUT',
           uri: 'fakeMeetingSelfUrl/media',
           body: createExpectedLocalMuteBody({audioMuted: false, videoMuted: true}),
-          upload: sinon.stub(),
-          download: sinon.stub(),
+          upload: sinon.match.instanceOf(EventEmitter),
+          download: sinon.match.instanceOf(EventEmitter),
         });
 
         // check also the result once Locus replies to local mute
@@ -532,8 +536,8 @@ describe('LocusMediaRequest.send()', () => {
         method: 'PUT',
         uri: 'fakeMeetingSelfUrl/media',
         body: createExpectedLocalMuteBody({audioMuted: false, videoMuted: true}),
-        upload: sinon.stub(),
-        download: sinon.stub(),
+        upload: sinon.match.instanceOf(EventEmitter),
+        download: sinon.match.instanceOf(EventEmitter),
       });
     });
   });
