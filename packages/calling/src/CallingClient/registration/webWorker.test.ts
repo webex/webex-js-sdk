@@ -7,12 +7,10 @@ import {WorkerMessageType} from '../../common/types';
 jest.mock('uuid');
 
 describe('webWorker', () => {
-  let originalFetch: typeof fetch;
   let postMessageSpy: jest.SpyInstance;
 
   beforeEach(() => {
     jest.useFakeTimers();
-    originalFetch = global.fetch;
     global.fetch = jest.fn();
     (uuid as jest.Mock).mockReturnValue('mock-uuid');
 
@@ -23,7 +21,6 @@ describe('webWorker', () => {
     jest.clearAllMocks();
     jest.clearAllTimers();
     jest.useRealTimers();
-    global.fetch = originalFetch;
     delete (global as any).self;
   });
 
@@ -80,7 +77,7 @@ describe('webWorker', () => {
     jest.advanceTimersByTime(3000);
 
     // If the timer was cleared, fetch should not be invoked repeatedly.
-    expect((global.fetch as jest.Mock).mock.calls.length).toBe(3);
+    expect((global.fetch as jest.Mock).mock.calls.length).toBe(1);
     expect(setIntervalSpy).toHaveBeenCalled();
   });
 });
