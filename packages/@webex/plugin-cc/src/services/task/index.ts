@@ -105,17 +105,17 @@ export default class Task extends EventEmitter implements ITask {
   }
 
   /**
-   * This is used for the placiing the call to mute by agent or unmute it.
+   * This is used for the placing the call in mute or unmute by the agent.
    *
    * @throws Error
    * @example
    * ```typescript
-   * task.mute().then(()=>{}).catch(()=>{})
+   * task.toggleMute().then(()=>{}).catch(()=>{})
    * ```
    */
-  public async mute() {
+  public async toggleMute() {
     try {
-      this.webCallingService.muteCall(this.localAudioStream);
+      this.webCallingService.muteUnmuteCall(this.localAudioStream);
 
       return Promise.resolve();
     } catch (error) {

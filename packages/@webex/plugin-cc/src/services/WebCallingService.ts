@@ -149,7 +149,7 @@ export default class WebCallingService extends EventEmitter {
     }
   }
 
-  public muteCall(localAudioStream: LocalMicrophoneStream) {
+  public muteUnmuteCall(localAudioStream: LocalMicrophoneStream) {
     if (this.call) {
       this.webex.logger.info('Call mute or unmute requested!');
       this.call.mute(localAudioStream);

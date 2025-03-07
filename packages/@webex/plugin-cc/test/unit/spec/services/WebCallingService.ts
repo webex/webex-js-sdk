@@ -293,7 +293,7 @@ describe('WebCallingService', () => {
     });
   });
 
-  describe('muteCall', () => {
+  describe('muteUnmuteCall', () => {
     const mockStream = {
       outputStream: {
         getAudioTracks: jest.fn().mockReturnValue(['']),
@@ -303,7 +303,7 @@ describe('WebCallingService', () => {
     const localAudioStream = mockStream as unknown as LocalMicrophoneStream;
 
     it('should mute the call and log info when call exists', () => {
-      webRTCCalling.muteCall(localAudioStream);
+      webRTCCalling.muteUnmuteCall(localAudioStream);
 
       expect(webex.logger.info).toHaveBeenCalledWith('Call mute or unmute requested!');
       expect(mockCall.mute).toHaveBeenCalledWith(localAudioStream);
@@ -311,7 +311,7 @@ describe('WebCallingService', () => {
 
     it('should log when there is no call to mute', () => {
       webRTCCalling.call = null;
-      webRTCCalling.muteCall(localAudioStream);
+      webRTCCalling.muteUnmuteCall(localAudioStream);
 
       expect(webex.logger.log).toHaveBeenCalledWith('Cannot mute a non WebRtc Call');
     });

@@ -720,9 +720,9 @@ describe('Task', () => {
 
   it ('should mute call for Desktop login mode', async () => {
     task.localAudioStream = mockStream;
-    const muteCallSpy = jest.spyOn(webCallingService, 'muteCall');
+    const muteCallSpy = jest.spyOn(webCallingService, 'muteUnmuteCall');
 
-    await task.mute();
+    await task.toggleMute();
 
     expect(muteCallSpy).toHaveBeenCalledWith(mockStream);
   });
@@ -737,10 +737,10 @@ describe('Task', () => {
       },
     };
 
-    jest.spyOn(webCallingService, 'muteCall').mockImplementation(() => {
+    jest.spyOn(webCallingService, 'muteUnmuteCall').mockImplementation(() => {
       throw error;
     });
-    await expect(task.mute()).rejects.toThrow(new Error(error.details.data.reason));
+    await expect(task.toggleMute()).rejects.toThrow(new Error(error.details.data.reason));
     expect(getErrorDetailsSpy).toHaveBeenCalledWith(error, 'mute', CC_FILE);
   });
 });

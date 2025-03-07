@@ -1040,7 +1040,7 @@ function muteUnmute() {
     muteElm.innerText = 'Mute';
     console.info('Call is unmuted');
   }
-  task.mute();
+  task.toggleMute();
 }
 
 function togglePauseResumeRecording() {
