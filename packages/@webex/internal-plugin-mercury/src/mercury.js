@@ -104,6 +104,12 @@ const Mercury = WebexPlugin.extend({
   },
 
   logout() {
+    this.logger.info(`${this.namespace}: logout() called`);
+    this.logger.info(
+      `${this.namespace}: debug_mercury_logging stack: `,
+      new Error('debug_mercury_logging').stack
+    );
+
     return this.disconnect(
       this.config.beforeLogoutOptionsCloseReason &&
         !normalReconnectReasons.includes(this.config.beforeLogoutOptionsCloseReason)
