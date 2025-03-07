@@ -1348,6 +1348,16 @@ export default class Meeting extends StatelessWebexPlugin {
     this.passwordStatus = PASSWORD_STATUS.UNKNOWN;
 
     /**
+     * registrationId status. If it's REGISTRATIONID_STATUS.REQUIRED then verifyRegistrationId() needs to be called
+     * with the correct registrationId before calling join()
+     * @instance
+     * @type {REGISTRATIONID_STATUS}
+     * @public
+     * @memberof Meeting
+     */
+    this.registrationIdStatus = REGISTRATIONID_STATUS.UNKNOWN;
+
+    /**
      * Information about required captcha. If null, then no captcha is required. status. If it's PASSWORD_STATUS.REQUIRED then verifyPassword() needs to be called
      * with the correct password before calling join()
      * @instance
