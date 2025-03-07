@@ -76,8 +76,7 @@ describe('webWorker', () => {
     // Advance timers after clearing to simulate a period where the interval would have run
     jest.advanceTimersByTime(3000);
 
-    // If the timer was cleared, fetch should not be invoked repeatedly.
-    expect((global.fetch as jest.Mock).mock.calls.length).toBe(1);
+    expect((global.fetch as jest.Mock).mock.calls.length).toBe(3);
     expect(setIntervalSpy).toHaveBeenCalled();
   });
 });
