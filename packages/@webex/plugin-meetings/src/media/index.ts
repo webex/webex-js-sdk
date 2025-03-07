@@ -15,12 +15,12 @@ import {
   LocalSystemAudioStream,
   LocalMicrophoneStream,
 } from '@webex/media-helpers';
+import {RtcMetrics} from '@webex/internal-plugin-metrics';
 import LoggerProxy from '../common/logs/logger-proxy';
 import {MEDIA_TRACK_CONSTRAINT} from '../constants';
 import Config from '../config';
 import StaticConfig from '../common/config';
 import BrowserDetection from '../common/browser-detection';
-import RtcMetrics from '../rtcMetrics';
 
 const {isBrowser} = BrowserDetection();
 
@@ -144,6 +144,7 @@ Media.createMediaConnection = (
       password: string;
     };
     bundlePolicy?: BundlePolicy;
+    iceCandidatesTimeout?: number;
   }
 ) => {
   const {
@@ -154,6 +155,7 @@ Media.createMediaConnection = (
     enableExtmap,
     turnServerInfo,
     bundlePolicy,
+    iceCandidatesTimeout,
   } = options;
 
   const iceServers = [];
@@ -210,6 +212,7 @@ Media.createMediaConnection = (
   return new RoapMediaConnection(
     {
       iceServers,
+      iceCandidatesTimeout,
       skipInactiveTransceivers: false,
       requireH264: true,
       sdpMunging: {

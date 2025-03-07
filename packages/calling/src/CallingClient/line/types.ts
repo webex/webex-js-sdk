@@ -160,7 +160,7 @@ export interface ILine extends Eventing<LineEventTypes> {
    * const callObj: ICall = line.makeCall(callDetails);
    * ```
    */
-  makeCall(dest: CallDetails): ICall | undefined;
+  makeCall(dest?: CallDetails): ICall | undefined;
 
   /**
    * Retrieves a call object based on the provided correlation identifier.

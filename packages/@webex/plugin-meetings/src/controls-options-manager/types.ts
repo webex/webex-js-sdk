@@ -36,6 +36,8 @@ export interface VideoProperties {
 
 export interface ViewTheParticipantListProperties {
   enabled?: boolean;
+  panelistEnabled?: boolean;
+  attendeeCount?: boolean;
 }
 
 export type Properties =

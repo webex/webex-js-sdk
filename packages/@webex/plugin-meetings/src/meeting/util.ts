@@ -89,8 +89,12 @@ const MeetingUtil = {
   getIpVersion(webex: any): IP_VERSION | undefined {
     const {supportsIpV4, supportsIpV6} = webex.internal.device.ipNetworkDetector;
 
-    if (BrowserDetection().isBrowser('firefox')) {
-      // our ipv6 solution relies on FQDN ICE candidates, but Firefox doesn't support them,
+    if (
+      !webex.config.meetings.backendIpv6NativeSupport &&
+      BrowserDetection().isBrowser('firefox')
+    ) {
+      // when backend doesn't support native ipv6,
+      // then our NAT64/DNS64 based solution relies on FQDN ICE candidates, but Firefox doesn't support them,
       // see https://bugzilla.mozilla.org/show_bug.cgi?id=1713128
       // so for Firefox we don't want the backend to activate the "ipv6 feature"
       return undefined;
@@ -111,7 +115,7 @@ const MeetingUtil = {
     return IP_VERSION.unknown;
   },
 
-  joinMeeting: (meeting, options) => {
+  joinMeeting: async (meeting, options) => {
     if (!meeting) {
       return Promise.reject(new ParameterError('You need a meeting object.'));
     }
@@ -122,6 +126,31 @@ const MeetingUtil = {
       name: 'client.locus.join.request',
       options: {meetingId: meeting.id},
     });
+
+    let reachability;
+    let clientMediaPreferences = {
+      // bare minimum fallback value that should allow us to join
+      ipver: IP_VERSION.unknown,
+      joinCookie: undefined,
+      preferTranscoding: !meeting.isMultistream,
+    };
+
+    try {
+      clientMediaPreferences = await webex.meetings.reachability.getClientMediaPreferences(
+        meeting.isMultistream,
+        MeetingUtil.getIpVersion(webex)
+      );
+      if (options.roapMessage) {
+        // we only need to attach reachability if we are sending a roap message
+        // sending reachability on its own will cause Locus to reject our join request
+        reachability = await webex.meetings.reachability.getReachabilityReportToAttachToRoap();
+      }
+    } catch (e) {
+      LoggerProxy.logger.error(
+        'Meeting:util#joinMeeting --> Error getting reachability or clientMediaPreferences:',
+        e
+      );
+    }
 
     // eslint-disable-next-line no-warning-comments
     // TODO: check if the meeting is in JOINING state
@@ -134,23 +163,24 @@ const MeetingUtil = {
         locusUrl: meeting.locusUrl,
         locusClusterUrl: meeting.meetingInfo?.locusClusterUrl,
         correlationId: meeting.correlationId,
-        reachability: options.reachability,
+        reachability,
         roapMessage: options.roapMessage,
         permissionToken: meeting.permissionToken,
         resourceId: options.resourceId || null,
         moderator: options.moderator,
         pin: options.pin,
         moveToResource: options.moveToResource,
-        preferTranscoding: !meeting.isMultistream,
         asResourceOccupant: options.asResourceOccupant,
         breakoutsSupported: options.breakoutsSupported,
         locale: options.locale,
         deviceCapabilities: options.deviceCapabilities,
         liveAnnotationSupported: options.liveAnnotationSupported,
-        ipVersion: MeetingUtil.getIpVersion(meeting.getWebexObject()),
+        clientMediaPreferences,
       })
       .then((res) => {
-        // @ts-ignore
+        const parsed = MeetingUtil.parseLocusJoin(res);
+        meeting.setLocus(parsed);
+
         webex.internal.newMetrics.submitClientEvent({
           name: 'client.locus.join.response',
           payload: {
@@ -161,16 +191,17 @@ const MeetingUtil = {
           },
           options: {
             meetingId: meeting.id,
-            mediaConnections: res.body.mediaConnections,
+            mediaConnections: parsed.mediaConnections,
           },
         });
 
-        return MeetingUtil.parseLocusJoin(res);
+        return parsed;
       });
   },
 
   cleanUp: (meeting) => {
     meeting.getWebexObject().internal.device.meetingEnded();
+    meeting.stopPeriodicLogUpload();
 
     meeting.breakouts.cleanUp();
     meeting.simultaneousInterpretation.cleanUp();
@@ -313,34 +344,24 @@ const MeetingUtil = {
     }
 
     // normal join meeting, scenario A, D
-    return MeetingUtil.joinMeeting(meeting, options)
-      .then((response) => {
-        meeting.setLocus(response);
+    return MeetingUtil.joinMeeting(meeting, options).catch((err) => {
+      // joining a claimed PMR that is not my own, scenario B
+      if (MeetingUtil.isPinOrGuest(err)) {
+        webex.internal.newMetrics.submitClientEvent({
+          name: 'client.pin.prompt',
+          options: {
+            meetingId: meeting.id,
+          },
+        });
 
-        return Promise.resolve(response);
-      })
-      .catch((err) => {
-        // joining a claimed PMR that is not my own, scenario B
-        if (MeetingUtil.isPinOrGuest(err)) {
-          // @ts-ignore
-          webex.internal.newMetrics.submitClientEvent({
-            name: 'client.pin.prompt',
-            options: {
-              meetingId: meeting.id,
-            },
-          });
+        // request host pin or non host for unclaimed PMR, start of Scenario C
+        // see https://sqbu-github.cisco.com/WebExSquared/locus/wiki/Locus-Lobby-and--IVR-Feature
+        return Promise.reject(new IntentToJoinError('Error Joining Meeting', err));
+      }
+      LoggerProxy.logger.error('Meeting:util#joinMeetingOptions --> Error joining the call, ', err);
 
-          // request host pin or non host for unclaimed PMR, start of Scenario C
-          // see https://sqbu-github.cisco.com/WebExSquared/locus/wiki/Locus-Lobby-and--IVR-Feature
-          return Promise.reject(new IntentToJoinError('Error Joining Meeting', err));
-        }
-        LoggerProxy.logger.error(
-          'Meeting:util#joinMeetingOptions --> Error joining the call, ',
-          err
-        );
-
-        return Promise.reject(new JoinMeetingError(options, 'Error Joining Meeting', err));
-      });
+      return Promise.reject(new JoinMeetingError(options, 'Error Joining Meeting', err));
+    });
   },
 
   /**
@@ -424,6 +445,9 @@ const MeetingUtil = {
     displayHints.includes(DISPLAY_HINTS.LEAVE_END_MEETING),
 
   canManageBreakout: (displayHints) => displayHints.includes(DISPLAY_HINTS.BREAKOUT_MANAGEMENT),
+
+  canStartBreakout: (displayHints) => !displayHints.includes(DISPLAY_HINTS.DISABLE_BREAKOUT_START),
+
   canBroadcastMessageToBreakout: (displayHints, policies = {}) =>
     displayHints.includes(DISPLAY_HINTS.BROADCAST_MESSAGE_TO_BREAKOUT) &&
     !!policies[SELF_POLICY.SUPPORT_BROADCAST_MESSAGE],
@@ -477,15 +501,6 @@ const MeetingUtil = {
       LoggerProxy.logger.log(LOG_HEADER, `deviceId = ${deviceId}`);
       LoggerProxy.logger.log(LOG_HEADER, 'settings =', JSON.stringify(settings));
     }
-  },
-
-  handleDeviceLogging: (devices = []) => {
-    const LOG_HEADER = 'MeetingUtil#handleDeviceLogging -->';
-
-    devices.forEach((device) => {
-      LoggerProxy.logger.log(LOG_HEADER, `deviceId = ${device.deviceId}`);
-      LoggerProxy.logger.log(LOG_HEADER, 'settings', JSON.stringify(device));
-    });
   },
 
   endMeetingForAll: (meeting) => {

@@ -1234,7 +1234,7 @@ describe('gatherReachability', () => {
     assert.equal(receivedEvents['done'], 1);
 
     // and that ip network detection was started
-    assert.calledOnceWithExactly(webex.internal.device.ipNetworkDetector.detect);
+    assert.calledOnceWithExactly(webex.internal.device.ipNetworkDetector.detect, true);
 
     // finally, check the metrics - they should contain values from ipNetworkDetector
     assert.calledWith(Metrics.sendBehavioralMetric, 'js_sdk_reachability_completed', {
@@ -1664,6 +1664,270 @@ describe('gatherReachability', () => {
 
     assert.neverCalledWith(clusterReachabilityCtorStub);
   });
+
+  describe('fallback mechanism and multiple calls to getClusters', () => {
+    let receivedEvents;
+
+    const mockGetClustersEmptyResult = {
+      discoveryOptions: {
+        ['early-call-min-clusters']: 0,
+        ['report-version']: 1,
+      },
+      clusters: {}, // empty cluster list
+      joinCookie: {id: 'cookie'},
+    };
+
+    beforeEach(() => {
+      webex.config.meetings.experimental = {
+        enableTcpReachability: true,
+        enableTlsReachability: true,
+      };
+
+      receivedEvents = {
+        done: 0,
+      };
+    });
+
+    it('keeps retrying if minimum required clusters are not reached', async () => {
+      const reachability = new Reachability(webex);
+
+      reachability.on('reachability:done', () => {
+        receivedEvents.done += 1;
+      });
+
+      const mockGetClustersResult1 = {
+        discoveryOptions: {
+          ['early-call-min-clusters']: 2,
+          ['report-version']: 1,
+        },
+        clusters: {
+          clusterA0: {
+            udp: ['udp-urlA'],
+            tcp: ['tcp-urlA'],
+            xtls: ['xtls-urlA'],
+            isVideoMesh: false,
+          },
+          clusterB0: {
+            udp: ['udp-urlB'],
+            tcp: ['tcp-urlB'],
+            xtls: ['xtls-urlB'],
+            isVideoMesh: false,
+          },
+        },
+        joinCookie: {id: 'cookie1'},
+      };
+      const mockGetClustersResult2 = {
+        discoveryOptions: {
+          ['early-call-min-clusters']: 2,
+          ['report-version']: 1,
+        },
+        clusters: {
+          clusterA1: {
+            udp: ['udp-urlA'],
+            tcp: ['tcp-urlA'],
+            xtls: ['xtls-urlA'],
+            isVideoMesh: false,
+          },
+          clusterB1: {
+            udp: ['udp-urlB'],
+            tcp: ['tcp-urlB'],
+            xtls: ['xtls-urlB'],
+            isVideoMesh: false,
+          },
+        },
+        joinCookie: {id: 'cookie2'},
+      };
+      const mockGetClustersResult3 = {
+        discoveryOptions: {
+          ['early-call-min-clusters']: 1,
+          ['report-version']: 1,
+        },
+        clusters: {
+          clusterA2: {
+            udp: ['udp-urlA'],
+            tcp: ['tcp-urlA'],
+            xtls: ['xtls-urlA'],
+            isVideoMesh: false,
+          },
+          clusterB2: {
+            udp: ['udp-urlB'],
+            tcp: ['tcp-urlB'],
+            xtls: ['xtls-urlB'],
+            isVideoMesh: false,
+          },
+        },
+        joinCookie: {id: 'cookie3'},
+      };
+
+      reachability.reachabilityRequest.getClusters = sinon.stub();
+      reachability.reachabilityRequest.getClusters.onCall(0).returns(mockGetClustersResult1);
+      reachability.reachabilityRequest.getClusters.onCall(1).returns(mockGetClustersResult2);
+
+      reachability.reachabilityRequest.getClusters.onCall(2).returns(mockGetClustersResult3);
+
+      const resultPromise = reachability.gatherReachability('test');
+
+      await testUtils.flushPromises();
+
+      // trigger some mock result events from ClusterReachability instances,
+      // but only from 1 cluster, so not enough to reach the minimum required
+      mockClusterReachabilityInstances['clusterA0'].emitFakeResult('udp', {
+        result: 'reachable',
+        clientMediaIPs: ['1.2.3.4'],
+        latencyInMilliseconds: 11,
+      });
+
+      clock.tick(3000);
+      await resultPromise;
+      await testUtils.flushPromises();
+
+      // because the minimum was not reached, another call to getClusters should be made
+      assert.calledTwice(reachability.reachabilityRequest.getClusters);
+
+      // simulate no results this time
+
+      // check that while the 2nd attempt is in progress, the join cookie is already available from the 2nd call to getClusters
+      const clientMediaPreferences = await reachability.getClientMediaPreferences(
+        true,
+        IP_VERSION.unknown
+      );
+
+      assert.deepEqual(clientMediaPreferences.joinCookie, mockGetClustersResult2.joinCookie);
+
+      clock.tick(3000);
+      await testUtils.flushPromises();
+
+      assert.calledThrice(reachability.reachabilityRequest.getClusters);
+
+      await testUtils.flushPromises();
+
+      // this time 1 result will be enough to reach the minimum
+      mockClusterReachabilityInstances['clusterA2'].emitFakeResult('udp', {
+        result: 'reachable',
+        clientMediaIPs: ['1.2.3.4'],
+        latencyInMilliseconds: 11,
+      });
+      clock.tick(3000);
+
+      // the reachability results should include only results from the last attempt
+      await checkResults(
+        {
+          clusterA2: {
+            udp: {result: 'reachable', clientMediaIPs: ['1.2.3.4'], latencyInMilliseconds: 11},
+            tcp: {result: 'unreachable'},
+            xtls: {result: 'unreachable'},
+            isVideoMesh: false,
+          },
+          clusterB2: {
+            udp: {result: 'unreachable'},
+            tcp: {result: 'unreachable'},
+            xtls: {result: 'unreachable'},
+            isVideoMesh: false,
+          },
+        },
+        mockGetClustersResult3.joinCookie
+      );
+
+      // wait some more time to make sure that there are no timers that fire from one of the previous checks
+      clock.tick(20000);
+
+      // as the first 2 attempts failed and didn't reach the overall timeout, there should be only 1 done event emitted
+      assert.equal(receivedEvents.done, 1);
+    });
+
+    it('handles getClusters() returning empty list on 1st call', async () => {
+      const reachability = new Reachability(webex);
+
+      reachability.on('reachability:done', () => {
+        receivedEvents.done += 1;
+      });
+
+      reachability.reachabilityRequest.getClusters = sinon
+        .stub()
+        .resolves(mockGetClustersEmptyResult);
+
+      const resultPromise = reachability.gatherReachability('test');
+
+      await testUtils.flushPromises();
+
+      clock.tick(3000);
+      await resultPromise;
+      await testUtils.flushPromises();
+
+      assert.calledOnce(reachability.reachabilityRequest.getClusters);
+      reachability.reachabilityRequest.getClusters.resetHistory();
+
+      assert.equal(receivedEvents.done, 1);
+      await checkResults({}, mockGetClustersEmptyResult.joinCookie);
+
+      // because we didn't actually test anything (we got empty cluster list from getClusters()), we should
+      // not say that webex backend is unreachable
+      assert.equal(await reachability.isWebexMediaBackendUnreachable(), false);
+
+      // wait to check that there are no other things happening
+      clock.tick(20000);
+      await testUtils.flushPromises();
+
+      assert.notCalled(reachability.reachabilityRequest.getClusters);
+      assert.equal(receivedEvents.done, 1);
+    });
+
+    it('handles getClusters() returning empty list on 2nd call', async () => {
+      const reachability = new Reachability(webex);
+
+      reachability.on('reachability:done', () => {
+        receivedEvents.done += 1;
+      });
+
+      const mockGetClustersResult1 = {
+        discoveryOptions: {
+          ['early-call-min-clusters']: 2,
+          ['report-version']: 1,
+        },
+        clusters: {
+          clusterA0: {
+            udp: ['udp-urlA'],
+            tcp: ['tcp-urlA'],
+            xtls: ['xtls-urlA'],
+            isVideoMesh: false,
+          },
+          clusterB0: {
+            udp: ['udp-urlB'],
+            tcp: ['tcp-urlB'],
+            xtls: ['xtls-urlB'],
+            isVideoMesh: false,
+          },
+        },
+        joinCookie: {id: 'cookie1'},
+      };
+
+      reachability.reachabilityRequest.getClusters = sinon.stub();
+      reachability.reachabilityRequest.getClusters.onCall(0).returns(mockGetClustersResult1);
+      reachability.reachabilityRequest.getClusters.onCall(1).returns(mockGetClustersEmptyResult);
+
+      const resultPromise = reachability.gatherReachability('test');
+
+      await testUtils.flushPromises();
+
+      clock.tick(3000);
+      await resultPromise;
+      await testUtils.flushPromises();
+
+      // because the minimum was not reached, another call to getClusters should be made
+      assert.calledTwice(reachability.reachabilityRequest.getClusters);
+
+      // the reachability results should include only results from the last attempt
+      await checkResults({}, mockGetClustersEmptyResult.joinCookie);
+
+      // as the first 2 attempts failed and didn't reach the overall timeout, there should be only 1 done event emitted
+      assert.equal(receivedEvents.done, 1);
+      // because we didn't actually test anything (we got empty cluster list from getClusters()), we should
+      // not say that webex backend is unreachable
+      assert.equal(await reachability.isWebexMediaBackendUnreachable(), false);
+    });
+  });
+
+  
 });
 
 describe('getReachabilityResults', () => {

@@ -36,6 +36,8 @@ export const HOST = 'host';
 
 export const JOIN = 'join';
 
+export const JOIN_LINK_MTID = 'MTID';
+
 export const LEAVE = 'leave';
 export const LIVE = 'live';
 export const LOCAL = 'local';
@@ -104,6 +106,7 @@ export const _ON_HOLD_LOBBY_ = 'ON_HOLD_LOBBY';
 export const _MEETING_LINK_ = 'MEETING_LINK';
 export const _MEETING_UUID_ = 'MEETING_UUID';
 export const _MEETING_ = 'MEETING';
+export const _SPACE_SHARE_ = 'SPACE_SHARE';
 export const _MEETING_CENTER_ = 'MEETING_CENTER';
 export const _MEETING_ID_ = 'MEETING_ID';
 
@@ -198,6 +201,9 @@ export const RETRY_TIMEOUT = 3000;
 
 export const ICE_AND_DTLS_CONNECTION_TIMEOUT = 20000;
 export const ROAP_OFFER_ANSWER_EXCHANGE_TIMEOUT = 35000;
+export const WEBINAR_ERROR_WEBCAST = [403026];
+export const WEBINAR_ERROR_REGISTRATIONID = [403037, 403137];
+export const JOIN_BEFORE_HOST = 403003;
 
 // ******************** REGEX **********************
 // Please alphabetize
@@ -303,6 +309,7 @@ export const EVENT_TRIGGERS = {
   MEETING_SELF_CANNOT_VIEW_PARTICIPANT_LIST: 'meeting:self:cannotViewParticipantList',
   MEETING_SELF_IS_SHARING_BLOCKED: 'meeting:self:isSharingBlocked',
   MEETING_SELF_ROLES_CHANGED: 'meeting:self:rolesChanged',
+  MEETING_SELF_BRB_UPDATE: 'meeting:self:brbUpdate',
   MEETING_CONTROLS_LAYOUT_UPDATE: 'meeting:layout:update',
   MEETING_ENTRY_EXIT_TONE_UPDATE: 'meeting:entryExitTone:update',
   MEETING_BREAKOUTS_UPDATE: 'meeting:breakouts:update',
@@ -325,6 +332,7 @@ export const EVENT_TRIGGERS = {
   MEETING_RECONNECTION_FAILURE: 'meeting:reconnectionFailure',
   MEETING_UNLOCKED: 'meeting:unlocked',
   MEETING_LOCKED: 'meeting:locked',
+  MEETING_RESOURCE_LINKS_UPDATE: 'meeting:resourceLinks:update',
   MEETING_INFO_AVAILABLE: 'meeting:meetingInfoAvailable',
   MEETING_INFO_UPDATED: 'meeting:meetingInfoUpdated',
   MEETING_LOG_UPLOAD_SUCCESS: 'meeting:logUpload:success',
@@ -356,6 +364,11 @@ export const EVENT_TRIGGERS = {
     'meeting:controls:view-the-participants-list:updated',
   MEETING_CONTROLS_RAISE_HAND_UPDATED: 'meeting:controls:raise-hand:updated',
   MEETING_CONTROLS_VIDEO_UPDATED: 'meeting:controls:video:updated',
+  MEETING_CONTROLS_STAGE_VIEW_UPDATED: 'meeting:controls:stage-view:updated',
+  MEETING_CONTROLS_WEBCAST_UPDATED: 'meeting:controls:webcast:updated',
+  MEETING_CONTROLS_MEETING_FULL_UPDATED: 'meeting:controls:meeting-full:updated',
+  MEETING_CONTROLS_PRACTICE_SESSION_STATUS_UPDATED:
+    'meeting:controls:practice-session-status:updated',
   // Locus URL changed
   MEETING_LOCUS_URL_UPDATE: 'meeting:locus:locusUrl:update',
   MEETING_STREAM_PUBLISH_STATE_CHANGED: 'meeting:streamPublishStateChanged',
@@ -376,6 +389,13 @@ export const EVENT_TYPES = {
   REMOTE_SHARE: 'remoteShare',
   REMOTE_SHARE_AUDIO: 'remoteShareAudio',
   ERROR: 'error',
+};
+
+export const HEADERS = {
+  CONTENT_TYPE: 'Content-Type',
+  CONTENT_TYPE_VALUE: {
+    APPLICATION_JSON: 'application/json',
+  },
 };
 
 // Handles the reason when meeting gets destroyed
@@ -524,6 +544,21 @@ export const ERROR_DICTIONARY = {
       'Reconnection was not started, because there is one already in progress or reconnections are disabled in config.',
     CODE: 15,
   },
+  JoinWebinarError: {
+    NAME: 'JoinWebinarError',
+    MESSAGE: 'An error occurred while the join webinar.',
+    CODE: 16,
+  },
+  MULTISTREAM_NOT_SUPPORTED: {
+    NAME: 'MultistreamNotSupported',
+    MESSAGE: 'Client asked for multistream backend (Homer), but got something else instead',
+    CODE: 17,
+  },
+  JoinForbiddenError: {
+    NAME: 'JoinForbiddenError',
+    MESSAGE: 'Meeting join forbidden.',
+    CODE: 18,
+  },
 };
 
 export const FLOOR_ACTION = {
@@ -671,7 +706,11 @@ export const LOCUSINFO = {
     CONTROLS_REACTIONS_CHANGED: 'CONTROLS_REACTIONS_CHANGED',
     CONTROLS_VIEW_THE_PARTICIPANTS_LIST_CHANGED: 'CONTROLS_VIEW_THE_PARTICIPANTS_LIST_CHANGED',
     CONTROLS_RAISE_HAND_CHANGED: 'CONTROLS_RAISE_HAND_CHANGED',
+    CONTROLS_WEBCAST_CHANGED: 'CONTROLS_WEBCAST_CHANGED',
+    CONTROLS_MEETING_FULL_CHANGED: 'CONTROLS_MEETING_FULL_CHANGED',
+    CONTROLS_PRACTICE_SESSION_STATUS_UPDATED: 'CONTROLS_PRACTICE_SESSION_STATUS_UPDATED',
     CONTROLS_VIDEO_CHANGED: 'CONTROLS_VIDEO_CHANGED',
+    CONTROLS_STAGE_VIEW_UPDATED: 'CONTROLS_STAGE_VIEW_UPDATED',
     SELF_UNADMITTED_GUEST: 'SELF_UNADMITTED_GUEST',
     SELF_ADMITTED_GUEST: 'SELF_ADMITTED_GUEST',
     SELF_REMOTE_VIDEO_MUTE_STATUS_UPDATED: 'SELF_REMOTE_VIDEO_MUTE_STATUS_UPDATED',
@@ -695,8 +734,10 @@ export const LOCUSINFO = {
     SELF_IS_SHARING_BLOCKED_CHANGE: 'SELF_IS_SHARING_BLOCKED_CHANGE',
     SELF_MEETING_BREAKOUTS_CHANGED: 'SELF_MEETING_BREAKOUTS_CHANGED',
     SELF_MEETING_INTERPRETATION_CHANGED: 'SELF_MEETING_INTERPRETATION_CHANGED',
+    SELF_MEETING_BRB_CHANGED: 'SELF_MEETING_BRB_CHANGED',
     MEDIA_INACTIVITY: 'MEDIA_INACTIVITY',
     LINKS_SERVICES: 'LINKS_SERVICES',
+    LINKS_RESOURCES: 'LINKS_RESOURCES',
   },
 };
 
@@ -879,6 +920,7 @@ export enum SELF_POLICY {
   SUPPORT_HDV = 'supportHDV',
   SUPPORT_PARTICIPANT_LIST = 'supportParticipantList',
   SUPPORT_VOIP = 'supportVoIP',
+  SUPPORT_POLLING_AND_QA = 'supportPollingAndQA',
 }
 
 export const DISPLAY_HINTS = {
@@ -888,6 +930,10 @@ export const DISPLAY_HINTS = {
   RECORDING_CONTROL_PAUSE: 'RECORDING_CONTROL_PAUSE',
   RECORDING_CONTROL_STOP: 'RECORDING_CONTROL_STOP',
   RECORDING_CONTROL_RESUME: 'RECORDING_CONTROL_RESUME',
+  PREMISE_RECORDING_CONTROL_START: 'PREMISE_RECORDING_CONTROL_START',
+  PREMISE_RECORDING_CONTROL_PAUSE: 'PREMISE_RECORDING_CONTROL_PAUSE',
+  PREMISE_RECORDING_CONTROL_STOP: 'PREMISE_RECORDING_CONTROL_STOP',
+  PREMISE_RECORDING_CONTROL_RESUME: 'PREMISE_RECORDING_CONTROL_RESUME',
   LOCK_CONTROL_UNLOCK: 'LOCK_CONTROL_UNLOCK',
   LOCK_CONTROL_LOCK: 'LOCK_CONTROL_LOCK',
   LOCK_STATUS_LOCKED: 'LOCK_STATUS_LOCKED',
@@ -934,10 +980,16 @@ export const DISPLAY_HINTS = {
   DISABLE_ASK_FOR_HELP: 'DISABLE_ASK_FOR_HELP',
   DISABLE_BREAKOUT_PREASSIGNMENTS: 'DISABLE_BREAKOUT_PREASSIGNMENTS',
   DISABLE_LOBBY_TO_BREAKOUT: 'DISABLE_LOBBY_TO_BREAKOUT',
+  DISABLE_BREAKOUT_START: 'DISABLE_BREAKOUT_START',
 
   // participants list
   DISABLE_VIEW_THE_PARTICIPANT_LIST: 'DISABLE_VIEW_THE_PARTICIPANT_LIST',
   ENABLE_VIEW_THE_PARTICIPANT_LIST: 'ENABLE_VIEW_THE_PARTICIPANT_LIST',
+  // for webinar participants list
+  DISABLE_VIEW_THE_PARTICIPANT_LIST_PANELIST: 'DISABLE_VIEW_THE_PARTICIPANT_LIST_PANELIST',
+  ENABLE_VIEW_THE_PARTICIPANT_LIST_PANELIST: 'ENABLE_VIEW_THE_PARTICIPANT_LIST_PANELIST',
+  DISABLE_SHOW_ATTENDEE_COUNT: 'DISABLE_SHOW_ATTENDEE_COUNT',
+  ENABLE_SHOW_ATTENDEE_COUNT: 'ENABLE_SHOW_ATTENDEE_COUNT',
 
   // raise hand
   DISABLE_RAISE_HAND: 'DISABLE_RAISE_HAND',
@@ -957,6 +1009,22 @@ export const DISPLAY_HINTS = {
 
   // Voip (audio/video)
   VOIP_IS_ENABLED: 'VOIP_IS_ENABLED',
+
+  // Webcast
+  WEBCAST_CONTROL_START: 'WEBCAST_CONTROL_START',
+  WEBCAST_CONTROL_STOP: 'WEBCAST_CONTROL_STOP',
+
+  // Stage View
+  STAGE_VIEW_ACTIVE: 'STAGE_VIEW_ACTIVE',
+  STAGE_VIEW_INACTIVE: 'STAGE_VIEW_INACTIVE',
+  ENABLE_STAGE_VIEW: 'ENABLE_STAGE_VIEW',
+  DISABLE_STAGE_VIEW: 'DISABLE_STAGE_VIEW',
+
+  // Practice Session
+  PRACTICE_SESSION_ON: 'PRACTICE_SESSION_ON',
+  PRACTICE_SESSION_OFF: 'PRACTICE_SESSION_OFF',
+  SHOW_PRACTICE_SESSION_START: 'SHOW_PRACTICE_SESSION_START',
+  SHOW_PRACTICE_SESSION_STOP: 'SHOW_PRACTICE_SESSION_STOP',
 };
 
 export const INTERSTITIAL_DISPLAY_HINTS = [DISPLAY_HINTS.VOIP_IS_ENABLED];
@@ -1268,6 +1336,11 @@ export const MEETING_INFO_FAILURE_REASON = {
   WRONG_PASSWORD: 'WRONG_PASSWORD', // meeting requires password and no password or wrong one was provided
   WRONG_CAPTCHA: 'WRONG_CAPTCHA', // wbxappapi requires a captcha code or a wrong captcha code was provided
   POLICY: 'POLICY', // meeting info request violates some meeting policy
+  WEBINAR_REGISTRATION: 'WEBINAR_REGISTRATION', // webinar need registration
+  NEED_JOIN_WITH_WEBCAST: 'NEED_JOIN_WITH_WEBCAST', // webinar need using webcast join
+  WEBINAR_NEED_REGISTRATIONID: 'WEBINAR_NEED_REGISTRATIONID', // webinar need registrationID
+  NOT_REACH_JBH: 'NOT_REACH_JBH', // Meeting is not allow to access since not reach JBH (join before host) time
+  JOIN_FORBIDDEN: 'JOIN_FORBIDDEN', // meeting is not allow join
   OTHER: 'OTHER', // any other error (network, etc)
 };
 
@@ -1327,3 +1400,12 @@ export const DESTINATION_TYPE = {
 } as const;
 
 export type DESTINATION_TYPE = Enum<typeof DESTINATION_TYPE>;
+
+export const INITIAL_REGISTRATION_STATUS = {
+  fetchWebexSite: false,
+  getGeoHint: false,
+  startReachability: false,
+  deviceRegister: false,
+  mercuryConnect: false,
+  checkH264Support: false,
+};

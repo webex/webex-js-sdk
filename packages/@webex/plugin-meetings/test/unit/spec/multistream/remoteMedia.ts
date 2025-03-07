@@ -7,7 +7,7 @@ import {RemoteMedia, RemoteMediaEvents} from '@webex/plugin-meetings/src/multist
 import {ReceiveSlotEvents} from '@webex/plugin-meetings/src/multistream/receiveSlot';
 import sinon from 'sinon';
 import {assert} from '@webex/test-helper-chai';
-import { forEach } from 'lodash';
+import {forEach} from 'lodash';
 
 describe('RemoteMedia', () => {
   let remoteMedia;
@@ -227,7 +227,6 @@ describe('RemoteMedia', () => {
   });
 
   describe('setSizeHint()', () => {
-
     it('works if the receive slot is undefined', () => {
       remoteMedia.receiveSlot = undefined;
       remoteMedia.setSizeHint(100, 100);
@@ -235,14 +234,33 @@ describe('RemoteMedia', () => {
 
     forEach(
       [
-        {height: 134, fs: 60},
-        {height: 135, fs: 240},
-        {height: 269, fs: 240},
-        {height: 270, fs: 920},
-        {height: 539, fs: 920},
-        {height: 540, fs: 3600},
+        {width: 0, height: 0},
+        {width: 135, height: 0},
+        {width: 0, height: 240},
+      ],
+      ({width, height}) => {
+        it(`skip updating the max fs when applied ${width}:${height}`, () => {
+          remoteMedia.setSizeHint(width, height);
+
+          assert.notCalled(fakeReceiveSlot.setMaxFs);
+        });
+      }
+    );
+
+    forEach(
+      [
+        {height: 90, fs: 60}, // 90p
+        {height: 98, fs: 60},
+        {height: 99, fs: 240}, // 180p
+        {height: 180, fs: 240},
+        {height: 197, fs: 240},
+        {height: 198, fs: 920}, // 360p
+        {height: 360, fs: 920},
+        {height: 395, fs: 920},
+        {height: 396, fs: 3600}, // 720p
         {height: 720, fs: 3600},
-        {height: 721, fs: 8192},
+        {height: 721, fs: 8192}, // 1080p
+        {height: 1080, fs: 8192},
       ],
       ({height, fs}) => {
         it(`sets the max fs to ${fs} correctly when height is ${height}`, () => {

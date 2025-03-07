@@ -5,6 +5,8 @@ import EventEmitter from 'events';
 require('@webex/internal-plugin-device');
 require('@webex/internal-plugin-mercury');
 require('@webex/internal-plugin-encryption');
+require('@webex/plugin-logger');
+require('@webex/internal-plugin-support');
 
 const merge = require('lodash/merge');
 const WebexCore = require('@webex/webex-core').default;
@@ -32,13 +34,16 @@ class Calling extends EventEmitter {
 
     if (webex) {
       this.webex = webex;
+      this.log.setWebexLogger(this.webex.logger);
     } else {
       webexConfig.config = merge({}, config, webexConfig.config);
 
       this.webex = new Webex(webexConfig);
 
       this.webex.once('ready', () => {
+        this.log.setWebexLogger(this.webex.logger);
         this.emit('ready');
+        this.log = this.webex.logger;
       });
     }
   }

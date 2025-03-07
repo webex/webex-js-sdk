@@ -9,6 +9,7 @@ import {FeatureCollection, FeatureModel, FeaturesModel} from './features/index';
 import DeviceUrlInterceptor from './interceptors/device-url';
 import * as constants from './constants';
 import config from './config';
+import {CatalogDetails, DeviceRegistrationOptions} from './types';
 
 registerInternalPlugin('device', Device, {
   config,
@@ -26,4 +27,14 @@ registerInternalPlugin('device', Device, {
 });
 
 export {default} from './device';
-export {config, constants, DeviceUrlInterceptor, FeatureCollection, FeatureModel, FeaturesModel};
+
+export {
+  config,
+  constants,
+  CatalogDetails,
+  DeviceRegistrationOptions,
+  DeviceUrlInterceptor,
+  FeatureCollection,
+  FeatureModel,
+  FeaturesModel,
+};

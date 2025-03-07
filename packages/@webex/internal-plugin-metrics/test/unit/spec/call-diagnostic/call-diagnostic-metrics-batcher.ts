@@ -441,7 +441,7 @@ describe('plugin-metrics', () => {
         // item also gets assigned a delay property but the key is a Symbol and haven't been able to test that..
         assert.deepEqual(calls.args[0].eventPayload, {
           event: 'my.event',
-          origin: {buildType: 'test', networkType: 'unknown'},
+          origin: {buildType: 'test', networkType: 'unknown', upgradeChannel: 'test'},
         });
 
         assert.deepEqual(calls.args[0].type, ['diagnostic-event']);
@@ -455,6 +455,7 @@ describe('plugin-metrics', () => {
           origin: {
             buildType: 'test',
             networkType: 'unknown',
+            upgradeChannel: 'test',
           },
         });
         assert.deepEqual(prepareDiagnosticMetricItemCalls[0].args[1].type, ['diagnostic-event']);

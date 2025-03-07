@@ -48,6 +48,20 @@
     </header>
     <main>
       <div class="container">
+        <div class="col-md-12">
+          <div class="alert-info" role="alert">
+            <p class="note">&#9432; Note</p>
+            <ul>
+              <li>This page contains changelog from <a href='https://localhost:8000/changelog/?stable_version=3.3.1&package=webex&version=3.3.1-next.33'>v3.3.1-next.33</a> and the changelog prior to that is available <a target="_blank" href="https://github.com/webex/webex-js-sdk/wiki/Changelog">here</a>.</li>
+              <li>
+                To read the Changelog for V2 SDKs, please check <a target="_blank" href="https://github.com/webex/webex-js-sdk/blob/master/CHANGELOG.md">here</a>.<br/>
+                (<p class="warning">Warning: </p>Please be reminded that the V2 SDK is EoL by 2025. Read more about it <a target="_blank" href="https://github.com/orgs/webex/discussions/3822">here</a>.)
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div class="container">
         <div class="col-md-6">
           <div class="search-container">
               <form id="search-form" method="GET">
@@ -108,9 +122,11 @@
         </div>
       </div> 
       <div class="container">
-        <div class="results-container" id="search-results">
-            
-        </div>            
+        <div class="col-md-12">
+          <div class="results-container" id="search-results">
+
+          </div>
+        </div>
       </div>
       <div id="scrollTop">^</div>
     </main>

@@ -1,11 +1,12 @@
 /* eslint no-shadow: ["error", { "allow": ["eventType"] }] */
-import {union} from 'lodash';
+import {cloneDeep, clone} from 'lodash';
 import '@webex/internal-plugin-mercury';
 import '@webex/internal-plugin-conversation';
 import '@webex/internal-plugin-metrics';
 // @ts-ignore
 import {WebexPlugin} from '@webex/webex-core';
 import {setLogger} from '@webex/internal-media-core';
+import {DeviceRegistrationOptions} from '@webex/internal-plugin-device';
 
 import * as mediaHelpersModule from '@webex/media-helpers';
 
@@ -41,6 +42,7 @@ import {
   _ON_HOLD_LOBBY_,
   _WAIT_,
   DESTINATION_TYPE,
+  INITIAL_REGISTRATION_STATUS,
 } from '../constants';
 import BEHAVIORAL_METRICS from '../metrics/constants';
 import MeetingInfo from '../meeting-info';
@@ -52,11 +54,18 @@ import Request from './request';
 import PasswordError from '../common/errors/password-error';
 import CaptchaError from '../common/errors/captcha-error';
 import MeetingCollection from './collection';
-import {MEETING_KEY, INoiseReductionEffect, IVirtualBackgroundEffect} from './meetings.types';
+import {
+  MEETING_KEY,
+  INoiseReductionEffect,
+  IVirtualBackgroundEffect,
+  MeetingRegistrationStatus,
+} from './meetings.types';
 import MeetingsUtil from './util';
 import PermissionError from '../common/errors/permission';
+import JoinWebinarError from '../common/errors/join-webinar-error';
 import {SpaceIDDeprecatedError} from '../common/errors/webex-errors';
 import NoMeetingInfoError from '../common/errors/no-meeting-info';
+import JoinForbiddenError from '../common/errors/join-forbidden-error';
 
 let mediaLogger;
 
@@ -134,6 +143,31 @@ class MediaLogger {
  */
 
 /**
+ * Object containing only the most basic information about a meeting.
+ * This is the information that is kept even after the meeting is deleted from the MeetingCollection
+ */
+export type BasicMeetingInformation = {
+  allowMediaInLobby: boolean;
+  correlationId: string;
+  environment: string;
+  id: string;
+  locusUrl: string;
+  locusInfo: {
+    // it's only a very small subset of the locus info, to avoid using much memory
+    url: string;
+    fullState: {
+      lastActive: string;
+      sessionId: string;
+    };
+  };
+  meetingInfo: any;
+  sessionCorrelationId: string;
+  roles: string[];
+  getCurUserType: () => string | null;
+  callStateForMetrics: CallStateForMetrics;
+};
+
+/**
  * Maintain a cache of meetings and sync with services.
  * @class
  */
@@ -141,6 +175,7 @@ export default class Meetings extends WebexPlugin {
   loggerRequest: any;
   media: any;
   meetingCollection: any;
+  deletedMeetings: Map<string, BasicMeetingInformation>;
   personalMeetingRoom: any;
   preferredWebexSite: any;
   reachability: Reachability;
@@ -151,6 +186,7 @@ export default class Meetings extends WebexPlugin {
   mediaHelpers: any;
   breakoutLocusForHandleLater: any;
   namespace = MEETINGS;
+  registrationStatus: MeetingRegistrationStatus;
 
   /**
    * Initializes the Meetings Plugin
@@ -191,6 +227,8 @@ export default class Meetings extends WebexPlugin {
     // @ts-ignore
     this.loggerRequest = new LoggerRequest({webex: this.webex});
     this.meetingCollection = new MeetingCollection();
+    this.deletedMeetings = new Map();
+
     /**
      * The PersonalMeetingRoom object to interact with server
      * @instance
@@ -663,6 +701,20 @@ export default class Meetings extends WebexPlugin {
   }
 
   /**
+   * API to change log upload interval. Setting the factor to 0 will disable periodic log uploads.
+   *
+   * @param {number} factor new factor value
+   * @returns {void}
+   */
+  private _setLogUploadIntervalMultiplicationFactor(factor: number) {
+    if (typeof factor !== 'number') {
+      return;
+    }
+    // @ts-ignore
+    this.config.logUploadIntervalMultiplicationFactor = factor;
+  }
+
+  /**
    * API to toggle unified meetings
    * @param {Boolean} changeState
    * @private
@@ -737,14 +789,48 @@ export default class Meetings extends WebexPlugin {
   }
 
   /**
+   * API to toggle backend ipv6 native support config, needs to be called before webex.meetings.register()
+   *
+   * @param {Boolean} newValue
+   * @private
+   * @memberof Meetings
+   * @returns {undefined}
+   */
+  private _toggleIpv6BackendNativeSupport(newValue: boolean) {
+    if (typeof newValue !== 'boolean') {
+      return;
+    }
+    // @ts-ignore
+    if (this.config.backendIpv6NativeSupport !== newValue) {
+      // @ts-ignore
+      this.config.backendIpv6NativeSupport = newValue;
+    }
+  }
+
+  /**
+   * Executes a registration step and updates the registration status.
+   * @param {Function} step - The registration step to execute.
+   * @param {string} stepName - The name of the registration step.
+   * @returns {Promise} A promise that resolves when the step is completed.
+   */
+  executeRegistrationStep(step: () => Promise<any>, stepName: string) {
+    return step().then(() => {
+      this.registrationStatus[stepName] = true;
+    });
+  }
+
+  /**
    * Explicitly sets up the meetings plugin by registering
    * the device, connecting to mercury, and listening for locus events.
    *
+   * @param {DeviceRegistrationOptions} [deviceRegistrationOptions] - The options for registering the device (optional)
    * @returns {Promise}
    * @public
    * @memberof Meetings
    */
-  public register() {
+  public register(deviceRegistrationOptions?: DeviceRegistrationOptions): Promise<any> {
+    this.registrationStatus = clone(INITIAL_REGISTRATION_STATUS);
+
     // @ts-ignore
     if (!this.webex.canAuthorize) {
       LoggerProxy.logger.error(
@@ -763,24 +849,39 @@ export default class Meetings extends WebexPlugin {
     }
 
     return Promise.all([
-      this.fetchUserPreferredWebexSite(),
-      this.getGeoHint(),
-      this.startReachability('registration').catch((error) => {
-        LoggerProxy.logger.error(`Meetings:index#register --> GDM error, ${error.message}`);
-      }),
-      // @ts-ignore
-      this.webex.internal.device
-        .register()
-        // @ts-ignore
-        .then(() =>
-          LoggerProxy.logger.info(
+      this.executeRegistrationStep(() => this.fetchUserPreferredWebexSite(), 'fetchWebexSite'),
+      this.executeRegistrationStep(() => this.getGeoHint(), 'getGeoHint'),
+      this.executeRegistrationStep(
+        () =>
+          this.startReachability('registration').catch((error) => {
+            LoggerProxy.logger.error(`Meetings:index#register --> GDM error, ${error.message}`);
+          }),
+        'startReachability'
+      ),
+      this.executeRegistrationStep(
+        () =>
+          // @ts-ignore
+          this.webex.internal.device
+            .register(deviceRegistrationOptions)
             // @ts-ignore
-            `Meetings:index#register --> INFO, Device registered ${this.webex.internal.device.url}`
-          )
+            .then(() => {
+              LoggerProxy.logger.info(
+                // @ts-ignore
+                `Meetings:index#register --> INFO, Device registered ${this.webex.internal.device.url}`
+              );
+            }),
+        'deviceRegister'
+      ).then(() =>
+        this.executeRegistrationStep(
+          // @ts-ignore
+          () => this.webex.internal.mercury.connect(),
+          'mercuryConnect'
         )
-        // @ts-ignore
-        .then(() => this.webex.internal.mercury.connect()),
-      MeetingsUtil.checkH264Support.call(this),
+      ),
+      this.executeRegistrationStep(
+        () => Promise.resolve(MeetingsUtil.checkH264Support.call(this)),
+        'checkH264Support'
+      ),
     ])
       .then(() => {
         this.listenForEvents();
@@ -844,6 +945,7 @@ export default class Meetings extends WebexPlugin {
             EVENT_TRIGGERS.MEETINGS_UNREGISTERED
           );
           this.registered = false;
+          this.registrationStatus = clone(INITIAL_REGISTRATION_STATUS);
         })
     );
   }
@@ -996,39 +1098,56 @@ export default class Meetings extends WebexPlugin {
    * @memberof Meetings
    */
   fetchUserPreferredWebexSite() {
-    return this.request.getMeetingPreferences().then((res) => {
-      if (res) {
-        const preferredWebexSite = MeetingsUtil.parseDefaultSiteFromMeetingPreferences(res);
-        this.preferredWebexSite = preferredWebexSite;
-        // @ts-ignore
-        this.webex.internal.services._getCatalog().addAllowedDomains([preferredWebexSite]);
-      }
-
-      // fall back to getting the preferred site from the user information
-      if (!this.preferredWebexSite) {
-        // @ts-ignore
-        return this.webex.internal.user
-          .get()
-          .then((user) => {
-            const preferredWebexSite =
-              user?.userPreferences?.userPreferencesItems?.preferredWebExSite;
-            if (preferredWebexSite) {
+    // @ts-ignore
+    return this.webex.people
+      ._getMe()
+      .then((me) => {
+        const isGuestUser = me.type === 'appuser';
+        if (!isGuestUser) {
+          return this.request.getMeetingPreferences().then((res) => {
+            if (res) {
+              const preferredWebexSite = MeetingsUtil.parseDefaultSiteFromMeetingPreferences(res);
               this.preferredWebexSite = preferredWebexSite;
               // @ts-ignore
               this.webex.internal.services._getCatalog().addAllowedDomains([preferredWebexSite]);
-            } else {
-              throw new Error('site not found');
             }
-          })
-          .catch(() => {
-            LoggerProxy.logger.error(
-              'Failed to fetch preferred site from user - no site will be set'
-            );
-          });
-      }
 
-      return Promise.resolve();
-    });
+            // fall back to getting the preferred site from the user information
+            if (!this.preferredWebexSite) {
+              // @ts-ignore
+              return this.webex.internal.user
+                .get()
+                .then((user) => {
+                  const preferredWebexSite =
+                    user?.userPreferences?.userPreferencesItems?.preferredWebExSite;
+                  if (preferredWebexSite) {
+                    this.preferredWebexSite = preferredWebexSite;
+                    // @ts-ignore
+                    this.webex.internal.services
+                      ._getCatalog()
+                      .addAllowedDomains([preferredWebexSite]);
+                  } else {
+                    throw new Error('site not found');
+                  }
+                })
+                .catch(() => {
+                  LoggerProxy.logger.error(
+                    'Failed to fetch preferred site from user - no site will be set'
+                  );
+                });
+            }
+
+            return Promise.resolve();
+          });
+        }
+
+        return Promise.resolve();
+      })
+      .catch(() => {
+        LoggerProxy.logger.error(
+          'Failed to retrieve user information. No preferredWebexSite will be set'
+        );
+      });
   }
 
   /**
@@ -1037,9 +1156,19 @@ export default class Meetings extends WebexPlugin {
    * @public
    * @memberof Meetings
    */
-
   getPersonalMeetingRoom() {
     return this.personalMeetingRoom;
+  }
+
+  /**
+   * Returns basic information about a meeting that exists or
+   * used to exist in the MeetingCollection
+   *
+   * @param {string} meetingId
+   * @returns {BasicMeetingInformation|undefined}
+   */
+  public getBasicMeetingInformation(meetingId: string): BasicMeetingInformation {
+    return this.meetingCollection.get(meetingId) || this.deletedMeetings.get(meetingId);
   }
 
   /**
@@ -1052,6 +1181,27 @@ export default class Meetings extends WebexPlugin {
    */
   private destroy(meeting: Meeting, reason: object) {
     MeetingUtil.cleanUp(meeting);
+    // keep some basic info about the deleted meeting forever
+    this.deletedMeetings.set(meeting.id, {
+      id: meeting.id,
+      allowMediaInLobby: meeting.allowMediaInLobby,
+      correlationId: meeting.correlationId,
+      sessionCorrelationId: meeting.sessionCorrelationId,
+      environment: meeting.environment,
+      locusUrl: meeting.locusUrl,
+      meetingInfo: cloneDeep(meeting.meetingInfo),
+      locusInfo: {
+        // locusInfo can be quite big, so keep just the minimal info
+        url: meeting.locusInfo?.url,
+        fullState: {
+          lastActive: meeting.locusInfo?.fullState?.lastActive,
+          sessionId: meeting.locusInfo?.fullState?.sessionId,
+        },
+      },
+      roles: meeting.roles,
+      callStateForMetrics: meeting.callStateForMetrics,
+      getCurUserType: meeting.getCurUserType,
+    });
     this.meetingCollection.delete(meeting.id);
     Trigger.trigger(
       this,
@@ -1081,6 +1231,7 @@ export default class Meetings extends WebexPlugin {
    * @param {CallStateForMetrics} callStateForMetrics - information about call state for metrics
    * @param {Object} [meetingInfo] - Pre-fetched complete meeting info
    * @param {String} [meetingLookupUrl] - meeting info prefetch url
+   * @param {string} sessionCorrelationId - the optional specified sessionCorrelationId (callStateForMetrics.sessionCorrelationId) can be provided instead
    * @returns {Promise<Meeting>} A new Meeting.
    * @public
    * @memberof Meetings
@@ -1094,7 +1245,8 @@ export default class Meetings extends WebexPlugin {
     failOnMissingMeetingInfo = false,
     callStateForMetrics: CallStateForMetrics = undefined,
     meetingInfo = undefined,
-    meetingLookupUrl = undefined
+    meetingLookupUrl = undefined,
+    sessionCorrelationId: string = undefined
   ) {
     // Validate meeting information based on the provided destination and
     // type. This must be performed prior to determining if the meeting is
@@ -1103,6 +1255,10 @@ export default class Meetings extends WebexPlugin {
 
     if (correlationId) {
       callStateForMetrics = {...(callStateForMetrics || {}), correlationId};
+    }
+
+    if (sessionCorrelationId) {
+      callStateForMetrics = {...(callStateForMetrics || {}), sessionCorrelationId};
     }
 
     return (
@@ -1176,10 +1332,9 @@ export default class Meetings extends WebexPlugin {
                       locusId: createdMeeting.locusId,
                       meetingId: createdMeeting.locusInfo?.info?.webExMeetingId,
                       autoupload: true,
-                    }).then(() => this.destroy(createdMeeting, payload.reason));
-                  } else {
-                    this.destroy(createdMeeting, payload.reason);
+                    });
                   }
+                  this.destroy(createdMeeting, payload.reason);
                 });
 
                 createdMeeting.on(EVENTS.REQUEST_UPLOAD_LOGS, (meetingInstance) => {
@@ -1206,7 +1361,7 @@ export default class Meetings extends WebexPlugin {
               return Promise.resolve(createdMeeting);
             });
           }
-          meeting.setCallStateForMetrics(callStateForMetrics);
+          meeting.updateCallStateForMetrics(callStateForMetrics);
 
           // Return the existing meeting.
           return Promise.resolve(meeting);
@@ -1308,7 +1463,9 @@ export default class Meetings extends WebexPlugin {
       if (
         !(err instanceof CaptchaError) &&
         !(err instanceof PasswordError) &&
-        !(err instanceof PermissionError)
+        !(err instanceof PermissionError) &&
+        !(err instanceof JoinWebinarError) &&
+        !(err instanceof JoinForbiddenError)
       ) {
         LoggerProxy.logger.info(
           `Meetings:index#createMeeting --> Info Unable to fetch meeting info for ${destination}.`

@@ -345,5 +345,22 @@ describe('plugin-meetings', () => {
         );
       });
     });
+
+    describe('#isMeetingLink', () => {
+      it('should return true for valid join meeting link with MTID', () => {
+        const result = MeetingInfoUtil.isMeetingLink('https://cisco.webex.com/cisco/j.php?MTID=m9fe0afd8c435e892afcce9ea25b97046');
+        expect(result).to.be.true;
+      });
+
+      it('should return true for valid join meeting link without cisco domain', () => {
+        const result = MeetingInfoUtil.isMeetingLink('https://test.webex.com/test/j.php?MTID=m9fe0afd8c435e892afcce9ea25b97046');
+        expect(result).to.be.true;
+      });
+
+      it('should return false for an invalid meeting link', () => {
+        const result = MeetingInfoUtil.isMeetingLink('https://test.webex.com/test/j.php?MiD=m9fe0afd8c435e892afcce9ea25b97046');
+        expect(result).to.be.false;
+      });
+    });
   });
 });

@@ -26,11 +26,11 @@ import {
   SEND_DTMF_ENDPOINT,
   _SLIDES_,
   ANNOTATION,
-  IP_VERSION,
 } from '../constants';
-import {SendReactionOptions, ToggleReactionsOptions} from './request.type';
+import {SendReactionOptions, BrbOptions, ToggleReactionsOptions} from './request.type';
 import MeetingUtil from './util';
 import {AnnotationInfo} from '../annotation/annotation.types';
+import {ClientMediaPreferences} from '../reachability/reachability.types';
 
 /**
  * @class MeetingRequest
@@ -128,8 +128,8 @@ export default class MeetingRequest extends StatelessWebexPlugin {
     locale?: string;
     deviceCapabilities?: Array<string>;
     liveAnnotationSupported: boolean;
-    ipVersion?: IP_VERSION;
     alias?: string;
+    clientMediaPreferences: ClientMediaPreferences;
   }) {
     const {
       asResourceOccupant,
@@ -147,20 +147,17 @@ export default class MeetingRequest extends StatelessWebexPlugin {
       moveToResource,
       roapMessage,
       reachability,
-      preferTranscoding,
       breakoutsSupported,
       locale,
       deviceCapabilities = [],
       liveAnnotationSupported,
-      ipVersion,
+      clientMediaPreferences,
       alias,
     } = options;
 
     LoggerProxy.logger.info('Meeting:request#joinMeeting --> Joining a meeting', correlationId);
 
     let url = '';
-
-    const joinCookie = await this.getJoinCookie();
 
     const body: any = {
       asResourceOccupant,
@@ -176,11 +173,7 @@ export default class MeetingRequest extends StatelessWebexPlugin {
       allowMultiDevice: true,
       ensureConversation: ensureConversation || false,
       supportsNativeLobby: 1,
-      clientMediaPreferences: {
-        preferTranscoding: preferTranscoding ?? true,
-        joinCookie,
-        ipver: ipVersion,
-      },
+      clientMediaPreferences,
     };
 
     if (alias) {
@@ -914,6 +907,31 @@ export default class MeetingRequest extends StatelessWebexPlugin {
     return this.request({
       method: HTTP_VERBS.GET,
       uri: locusUrl,
+    });
+  }
+
+  /**
+   * Sends a request to set be right back status.
+   *
+   * @param {Object} options - The options for brb request.
+   * @param {boolean} options.enabled - Whether brb status is enabled.
+   * @param {string} options.locusUrl - The URL of the locus.
+   * @param {string} options.deviceUrl - The URL of the device.
+   * @param {string} options.selfId - The ID of the participant.
+   * @returns {Promise}
+   */
+  setBrb({enabled, locusUrl, deviceUrl, selfId}: BrbOptions) {
+    const uri = `${locusUrl}/${PARTICIPANT}/${selfId}/${CONTROLS}`;
+
+    return this.locusDeltaRequest({
+      method: HTTP_VERBS.PATCH,
+      uri,
+      body: {
+        brb: {
+          enabled,
+          deviceUrl,
+        },
+      },
     });
   }
 }

@@ -2,11 +2,13 @@
 import {deprecated, oneFlight} from '@webex/common';
 import {persist, waitForValue, WebexPlugin} from '@webex/webex-core';
 import {safeSetTimeout} from '@webex/common-timers';
+import {orderBy} from 'lodash';
 
 import METRICS from './metrics';
 import {FEATURE_COLLECTION_NAMES, DEVICE_EVENT_REGISTRATION_SUCCESS} from './constants';
 import FeaturesModel from './features/features-model';
 import IpNetworkDetector from './ipNetworkDetector';
+import {CatalogDetails} from './types';
 
 /**
  * Determine if the plugin should be initialized based on cached storage.
@@ -363,15 +365,16 @@ const Device = WebexPlugin.extend({
 
   // Registration method members
 
-  /* eslint-disable require-jsdoc */
   /**
    * Refresh the current registered device if able.
    *
+   * @param {DeviceRegistrationOptions} options - The options for refresh.
+   * @param {CatalogDetails} options.includeDetails - The details to include in the refresh/register request.
    * @returns {Promise<void, Error>}
    */
   @oneFlight
   @waitForValue('@')
-  refresh() {
+  refresh(deviceRegistrationOptions = {}) {
     this.logger.info('device: refreshing');
 
     // Validate that the device can be registered.
@@ -380,7 +383,7 @@ const Device = WebexPlugin.extend({
       if (!this.registered) {
         this.logger.info('device: device not registered, registering');
 
-        return this.register();
+        return this.register(deviceRegistrationOptions);
       }
 
       // Merge body configurations, overriding defaults.
@@ -407,13 +410,15 @@ const Device = WebexPlugin.extend({
         ...(this.etag ? {'If-None-Match': this.etag} : {}),
       };
 
+      const {includeDetails = CatalogDetails.all} = deviceRegistrationOptions;
+
       return this.request({
         method: 'PUT',
         uri: this.url,
         body,
         headers,
         qs: {
-          includeUpstreamServices: `all${
+          includeUpstreamServices: `${includeDetails}${
             this.config.energyForecast && this.energyForecastConfig ? ',energyforecast' : ''
           }`,
         },
@@ -428,24 +433,64 @@ const Device = WebexPlugin.extend({
 
             this.clear();
 
-            return this.register();
+            return this.register(deviceRegistrationOptions);
           }
 
           return Promise.reject(reason);
         });
     });
   },
-
   /**
-   * Register or refresh a device depending on the current device state. Device
-   * registration utilizes the services plugin to send the request to the
-   * **WDM** service.
-   *
+   * Fetches the web devices and deletes the third of them which are not recent devices in use
    * @returns {Promise<void, Error>}
    */
-  @oneFlight
+  deleteDevices() {
+    // Fetch devices with a GET request
+    return this.request({
+      method: 'GET',
+      service: 'wdm',
+      resource: 'devices',
+    })
+      .then((response) => {
+        const {devices} = response.body;
+
+        const {deviceType} = this._getBody();
+
+        // Filter devices of type deviceType
+        const webDevices = devices.filter((item) => item.deviceType === deviceType);
+
+        const sortedDevices = orderBy(webDevices, [(item) => new Date(item.modificationTime)]);
+
+        // If there are more than two devices, delete the last third
+        if (sortedDevices.length > 2) {
+          const totalItems = sortedDevices.length;
+          const countToDelete = Math.ceil(totalItems / 3);
+          const urlsToDelete = sortedDevices.slice(0, countToDelete).map((item) => item.url);
+
+          return Promise.race(
+            urlsToDelete.map((url) => {
+              return this.request({
+                uri: url,
+                method: 'DELETE',
+              });
+            })
+          );
+        }
+
+        return Promise.resolve();
+      })
+      .catch((error) => {
+        this.logger.error('Failed to retrieve devices:', error);
+
+        return Promise.reject(error);
+      });
+  },
+
+  /**
+   * Registers and when fails deletes devices
+   */
   @waitForValue('@')
-  register() {
+  register(deviceRegistrationOptions = {}) {
     this.logger.info('device: registering');
 
     this.webex.internal.newMetrics.callDiagnosticMetrics.setDeviceInfo(this);
@@ -456,70 +501,97 @@ const Device = WebexPlugin.extend({
       if (this.registered) {
         this.logger.info('device: device already registered, refreshing');
 
-        return this.refresh();
+        return this.refresh(deviceRegistrationOptions);
       }
 
-      // Merge body configurations, overriding defaults.
-      const body = {
-        ...(this.config.defaults.body ? this.config.defaults.body : {}),
-        ...(this.config.body ? this.config.body : {}),
-      };
-
-      // Merge header configurations, overriding defaults.
-      const headers = {
-        ...(this.config.defaults.headers ? this.config.defaults.headers : {}),
-        ...(this.config.headers ? this.config.headers : {}),
-      };
-
-      // Append a ttl value if the device is marked as ephemeral
-      if (this.config.ephemeral) {
-        body.ttl = this.config.ephemeralDeviceTTL;
-      }
-      this.webex.internal.newMetrics.submitInternalEvent({
-        name: 'internal.register.device.request',
+      return this._registerInternal(deviceRegistrationOptions).catch((error) => {
+        if (error?.body?.message === 'User has excessive device registrations') {
+          return this.deleteDevices().then(() => {
+            return this._registerInternal(deviceRegistrationOptions);
+          });
+        }
+        throw error;
       });
-
-      // This will be replaced by a `create()` method.
-      return this.request({
-        method: 'POST',
-        service: 'wdm',
-        resource: 'devices',
-        body,
-        headers,
-        qs: {
-          includeUpstreamServices: `all${
-            this.config.energyForecast && this.energyForecastConfig ? ',energyforecast' : ''
-          }`,
-        },
-      })
-        .catch((error) => {
-          this.webex.internal.newMetrics.submitInternalEvent({
-            name: 'internal.register.device.response',
-          });
-
-          throw error;
-        })
-        .then((response) => {
-          // Do not add any processing of response above this as that will affect timestamp
-          this.webex.internal.newMetrics.submitInternalEvent({
-            name: 'internal.register.device.response',
-          });
-
-          this.webex.internal.metrics.submitClientMetrics(
-            METRICS.JS_SDK_WDM_REGISTRATION_SUCCESSFUL
-          );
-
-          return this.processRegistrationSuccess(response);
-        })
-        .catch((error) => {
-          this.webex.internal.metrics.submitClientMetrics(METRICS.JS_SDK_WDM_REGISTRATION_FAILED, {
-            fields: {error},
-          });
-          throw error;
-        });
     });
   },
 
+  _getBody() {
+    return {
+      ...(this.config.defaults.body ? this.config.defaults.body : {}),
+      ...(this.config.body ? this.config.body : {}),
+    };
+  },
+
+  /**
+   * Register or refresh a device depending on the current device state. Device
+   * registration utilizes the services plugin to send the request to the
+   * **WDM** service.
+   *
+   * @param {Object} options - The options for registration.
+   * @param {CatalogDetails} options.includeDetails - The details to include in the refresh/register request.
+   * @returns {Promise<void, Error>}
+   */
+  @oneFlight
+  @waitForValue('@')
+  _registerInternal(deviceRegistrationOptions = {}) {
+    this.logger.info('device: making registration request');
+
+    // Merge body configurations, overriding defaults.
+    const body = this._getBody();
+
+    // Merge header configurations, overriding defaults.
+    const headers = {
+      ...(this.config.defaults.headers ? this.config.defaults.headers : {}),
+      ...(this.config.headers ? this.config.headers : {}),
+    };
+
+    // Append a ttl value if the device is marked as ephemeral
+    if (this.config.ephemeral) {
+      body.ttl = this.config.ephemeralDeviceTTL;
+    }
+    this.webex.internal.newMetrics.submitInternalEvent({
+      name: 'internal.register.device.request',
+    });
+
+    const {includeDetails = CatalogDetails.all} = deviceRegistrationOptions;
+
+    // This will be replaced by a `create()` method.
+    return this.request({
+      method: 'POST',
+      service: 'wdm',
+      resource: 'devices',
+      body,
+      headers,
+      qs: {
+        includeUpstreamServices: `${includeDetails}${
+          this.config.energyForecast && this.energyForecastConfig ? ',energyforecast' : ''
+        }`,
+      },
+    })
+      .catch((error) => {
+        this.webex.internal.newMetrics.submitInternalEvent({
+          name: 'internal.register.device.response',
+        });
+
+        throw error;
+      })
+      .then((response) => {
+        // Do not add any processing of response above this as that will affect timestamp
+        this.webex.internal.newMetrics.submitInternalEvent({
+          name: 'internal.register.device.response',
+        });
+
+        this.webex.internal.metrics.submitClientMetrics(METRICS.JS_SDK_WDM_REGISTRATION_SUCCESSFUL);
+
+        return this.processRegistrationSuccess(response);
+      })
+      .catch((error) => {
+        this.webex.internal.metrics.submitClientMetrics(METRICS.JS_SDK_WDM_REGISTRATION_FAILED, {
+          fields: {error},
+        });
+        throw error;
+      });
+  },
   /**
    * Unregister the current registered device if available. Unregistering a
    * device utilizes the services plugin to send the request to the **WDM**
@@ -541,7 +613,18 @@ const Device = WebexPlugin.extend({
     return this.request({
       uri: this.url,
       method: 'DELETE',
-    }).then(() => this.clear());
+    })
+      .then(() => this.clear())
+      .catch((reason) => {
+        if (reason.statusCode === 404) {
+          this.logger.info(
+            'device: 404 when deleting device, device is already deleted, clearing device'
+          );
+
+          this.clear();
+        }
+        throw reason;
+      });
   },
   /* eslint-enable require-jsdoc */
 

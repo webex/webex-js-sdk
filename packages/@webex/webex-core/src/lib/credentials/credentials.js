@@ -203,7 +203,9 @@ const Credentials = WebexPlugin.extend({
 
     // Validate that the provided token has the proper amount of sections.
     if (fields.length !== 3) {
-      throw new Error('the provided token is not a valid format');
+      throw new Error(
+        `the provided token is not a valid format, token has ${fields.length} sections`
+      );
     }
 
     // Return the token section that contains the OrgId.

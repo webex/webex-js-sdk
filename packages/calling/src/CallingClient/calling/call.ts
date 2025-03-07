@@ -7,8 +7,16 @@ import {
 import {createMachine, interpret} from 'xstate';
 import {v4 as uuid} from 'uuid';
 import {EffectEvent, TrackEffect} from '@webex/web-media-effects';
+import {RtcMetrics} from '@webex/internal-plugin-metrics';
+import ExtendedError from '../../Errors/catalog/ExtendedError';
 import {ERROR_LAYER, ERROR_TYPE, ErrorContext} from '../../Errors/types';
-import {handleCallErrors, parseMediaQualityStatistics} from '../../common/Utils';
+import {
+  handleCallErrors,
+  modifySdpForIPv4,
+  parseMediaQualityStatistics,
+  serviceErrorCodeHandler,
+  uploadLogs,
+} from '../../common/Utils';
 import {
   ALLOWED_SERVICES,
   CallDetails,
@@ -73,6 +81,7 @@ import {
   MobiusCallData,
   MobiusCallResponse,
   MobiusCallState,
+  MUTE_TYPE,
   PatchResponse,
   RoapScenario,
   SSResponse,
@@ -95,7 +104,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
   private webex: WebexSDK;
 
-  private destination: CallDetails;
+  private destination?: CallDetails;
 
   private direction: CallDirection;
 
@@ -158,6 +167,8 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
   private localAudioStream?: LocalMicrophoneStream;
 
+  private rtcMetrics: RtcMetrics;
+
   /**
    * Getter to check if the call is muted or not.
    *
@@ -191,12 +202,12 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
   constructor(
     activeUrl: string,
     webex: WebexSDK,
-    destination: CallDetails,
     direction: CallDirection,
     deviceId: string,
     lineId: string,
     deleteCb: DeleteRecordCallBack,
-    indicator: ServiceIndicator
+    indicator: ServiceIndicator,
+    destination?: CallDetails
   ) {
     super();
     this.destination = destination;
@@ -243,6 +254,8 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
     });
     this.remoteRoapMessage = null;
     this.disconnectReason = {code: DisconnectCode.NORMAL, cause: DisconnectCause.NORMAL};
+
+    this.rtcMetrics = new RtcMetrics(this.webex, {callId: this.callId}, this.correlationId);
 
     const callMachine = createMachine(
       {
@@ -957,6 +970,10 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
     try {
       const response = await this.post(message);
+      log.log(`handleOutgoingCallSetup: Response: ${JSON.stringify(response)}`, {
+        file: CALL_FILE,
+        method: this.handleOutgoingCallSetup.name,
+      });
 
       log.log(`handleOutgoingCallSetup: Response code: ${response.statusCode}`, {
         file: CALL_FILE,
@@ -984,6 +1001,11 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         this.handleOutgoingCallSetup.name,
         CALL_FILE
       );
+
+      uploadLogs({
+        correlationId: this.correlationId,
+        callId: this.callId,
+      });
     }
   }
 
@@ -1053,6 +1075,11 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         this.handleOutgoingCallSetup.name,
         CALL_FILE
       );
+
+      uploadLogs({
+        correlationId: this.correlationId,
+        callId: this.callId,
+      });
     }
   }
 
@@ -1122,6 +1149,11 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         this.handleOutgoingCallSetup.name,
         CALL_FILE
       );
+
+      uploadLogs({
+        correlationId: this.correlationId,
+        callId: this.callId,
+      });
     }
   }
 
@@ -1240,6 +1272,11 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         this.handleOutgoingCallAlerting.name,
         CALL_FILE
       );
+
+      uploadLogs({
+        correlationId: this.correlationId,
+        callId: this.callId,
+      });
     }
   }
 
@@ -1319,6 +1356,11 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         this.handleOutgoingCallConnect.name,
         CALL_FILE
       );
+
+      uploadLogs({
+        correlationId: this.correlationId,
+        callId: this.callId,
+      });
     }
   }
 
@@ -1485,6 +1527,11 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
           this.handleCallEstablished.name,
           CALL_FILE
         );
+
+        uploadLogs({
+          correlationId: this.correlationId,
+          callId: this.callId,
+        });
       }
     }, DEFAULT_SESSION_TIMER);
   }
@@ -1664,6 +1711,11 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
           this.handleRoapEstablished.name,
           CALL_FILE
         );
+
+        uploadLogs({
+          correlationId: this.correlationId,
+          callId: this.callId,
+        });
       }
     } else {
       log.info('Notifying internal-media-core about ROAP OK message', {
@@ -1739,6 +1791,11 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
           this.handleRoapError.name,
           CALL_FILE
         );
+
+        uploadLogs({
+          correlationId: this.correlationId,
+          callId: this.callId,
+        });
       }
     }
 
@@ -1810,6 +1867,11 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         this.handleOutgoingRoapOffer.name,
         CALL_FILE
       );
+
+      uploadLogs({
+        correlationId: this.correlationId,
+        callId: this.callId,
+      });
     }
   }
 
@@ -1858,6 +1920,11 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         this.handleOutgoingRoapAnswer.name,
         CALL_FILE
       );
+
+      uploadLogs({
+        correlationId: this.correlationId,
+        callId: this.callId,
+      });
     }
   }
 
@@ -1927,6 +1994,33 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
     }
   }
 
+  /**
+   * Media failed, so collect a stats report from webrtc
+   * send a webrtc telemetry dump to the configured server using the internal media core check metrics configured callback
+   * @param {String} callFrom - the function calling this function, optional.
+   * @returns {Promise<void>}
+   */
+  private forceSendStatsReport = async ({callFrom}: {callFrom?: string}) => {
+    const loggerContext = {
+      file: CALL_FILE,
+      method: this.forceSendStatsReport.name,
+    };
+
+    try {
+      await this.mediaConnection.forceRtcMetricsSend();
+      log.info(`Successfully uploaded available webrtc telemetry statistics`, loggerContext);
+      log.info(`callFrom: ${callFrom}`, loggerContext);
+    } catch (error) {
+      const errorInfo = error as WebexRequestPayload;
+      const errorStatus = serviceErrorCodeHandler(errorInfo, loggerContext);
+      const errorLog = new Error(
+        `Failed to upload webrtc telemetry statistics. ${errorStatus}`
+      ) as ExtendedError;
+
+      log.error(errorLog, loggerContext);
+    }
+  };
+
   /* istanbul ignore next */
   /**
    * Initialize Media Connection.
@@ -1955,7 +2049,10 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
           screenShareVideo: 'inactive',
         },
       },
-      debugId || `WebexCallSDK-${this.correlationId}`
+      debugId || `WebexCallSDK-${this.correlationId}`,
+      (data) => this.rtcMetrics.addMetrics(data),
+      () => this.rtcMetrics.closeMetrics(),
+      () => this.rtcMetrics.sendMetricsInQueue()
     );
 
     this.mediaConnection = mediaConnection;
@@ -1999,6 +2096,8 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    */
   public setCallId = (callId: CallId) => {
     this.callId = callId;
+    this.rtcMetrics.updateCallId(callId);
+
     log.info(`Setting callId : ${this.callId} for correlationId: ${this.correlationId}`, {
       file: CALL_FILE,
       method: this.setCallId.name,
@@ -2114,6 +2213,17 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    * @param roapMessage
    */
   private post = async (roapMessage: RoapMessage): Promise<MobiusCallResponse> => {
+    const basePayload = {
+      device: {
+        deviceId: this.deviceId,
+        correlationId: this.correlationId,
+      },
+      localMedia: {
+        roap: roapMessage,
+        mediaId: uuid(),
+      },
+    };
+
     return this.webex.request({
       uri: `${this.mobiusUrl}${DEVICES_ENDPOINT_RESOURCE}/${this.deviceId}/${CALL_ENDPOINT_RESOURCE}`,
       method: HTTP_METHODS.POST,
@@ -2122,20 +2232,15 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         [CISCO_DEVICE_URL]: this.webex.internal.device.url,
         [SPARK_USER_AGENT]: CALLING_USER_AGENT,
       },
-      body: {
-        device: {
-          deviceId: this.deviceId,
-          correlationId: this.correlationId,
-        },
-        callee: {
-          type: this.destination.type,
-          address: this.destination.address,
-        },
-        localMedia: {
-          roap: roapMessage,
-          mediaId: uuid(),
-        },
-      },
+      body: this.destination
+        ? {
+            ...basePayload,
+            callee: {
+              type: this.destination.type,
+              address: this.destination.address,
+            },
+          }
+        : basePayload,
     });
   };
 
@@ -2308,6 +2413,11 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
           this.completeTransfer.name,
           CALL_FILE
         );
+
+        uploadLogs({
+          correlationId: this.correlationId,
+          callId: this.callId,
+        });
       }
     } else if (transferType === TransferType.CONSULT && transferCallId) {
       /* Consult transfer */
@@ -2353,6 +2463,11 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
           this.completeTransfer.name,
           CALL_FILE
         );
+
+        uploadLogs({
+          correlationId: this.correlationId,
+          callId: this.callId,
+        });
       }
     } else {
       log.warn(
@@ -2449,10 +2564,23 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
           case RoapScenario.OFFER: {
             // TODO: Remove these after the Media-Core adds the fix
+            // Check if at least one IPv6 "c=" line is present
+            log.info(`before modifying sdp: ${event.roapMessage.sdp}`, {
+              file: CALL_FILE,
+              method: this.mediaRoapEventsListener.name,
+            });
+
+            event.roapMessage.sdp = modifySdpForIPv4(event.roapMessage.sdp);
+
             const sdpVideoPortZero = event.roapMessage.sdp.replace(
               /^m=(video) (?:\d+) /gim,
               'm=$1 0 '
             );
+
+            log.info(`after modification sdp: ${sdpVideoPortZero}`, {
+              file: CALL_FILE,
+              method: this.mediaRoapEventsListener.name,
+            });
 
             event.roapMessage.sdp = sdpVideoPortZero;
             this.localRoapMessage = event.roapMessage;
@@ -2461,6 +2589,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
           }
 
           case RoapScenario.ANSWER:
+            event.roapMessage.sdp = modifySdpForIPv4(event.roapMessage.sdp);
             this.localRoapMessage = event.roapMessage;
             this.sendMediaStateMachineEvt({type: 'E_SEND_ROAP_ANSWER', data: event.roapMessage});
             break;
@@ -2470,6 +2599,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
             break;
 
           case RoapScenario.OFFER_RESPONSE:
+            event.roapMessage.sdp = modifySdpForIPv4(event.roapMessage.sdp);
             this.localRoapMessage = event.roapMessage;
             this.sendMediaStateMachineEvt({type: 'E_SEND_ROAP_OFFER', data: event.roapMessage});
             break;
@@ -2761,14 +2891,37 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
   /**
    * Mutes/Unmutes the call.
    *
-   * @param localAudioTrack -.
+   * @param localAudioStream - The local audio stream to mute or unmute.
+   * @param muteType - Identifies if mute was triggered by system or user.
+   *
+   * @example
+   * ```javascript
+   * call.mute(localAudioStream, 'system_mute')
+   * ```
    */
-  public mute = (localAudioStream: LocalMicrophoneStream): void => {
-    if (localAudioStream) {
+  public mute = (localAudioStream: LocalMicrophoneStream, muteType?: MUTE_TYPE): void => {
+    if (!localAudioStream) {
+      log.warn(`Did not find a local stream while muting the call ${this.getCorrelationId()}.`, {
+        file: CALL_FILE,
+        method: 'mute',
+      });
+
+      return;
+    }
+    if (muteType === MUTE_TYPE.SYSTEM) {
+      if (!localAudioStream.userMuted) {
+        this.muted = localAudioStream.systemMuted;
+      } else {
+        log.info(`Call is muted by the user already - ${this.getCorrelationId()}.`, {
+          file: CALL_FILE,
+          method: 'mute',
+        });
+      }
+    } else if (!localAudioStream.systemMuted) {
       localAudioStream.setUserMuted(!this.muted);
       this.muted = !this.muted;
     } else {
-      log.warn(`Did not find a local stream while muting the call ${this.getCorrelationId()}.`, {
+      log.info(`Call is muted on the system - ${this.getCorrelationId()}.`, {
         file: CALL_FILE,
         method: 'mute',
       });
@@ -2859,21 +3012,21 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 /**
  * @param activeUrl
  * @param webex -.
- * @param dest -.
  * @param dir -.
  * @param deviceId -.
  * @param lineId -.
  * @param serverCb
  * @param deleteCb
  * @param indicator - Service Indicator.
+ * @param dest -.
  */
 export const createCall = (
   activeUrl: string,
   webex: WebexSDK,
-  dest: CallDetails,
   dir: CallDirection,
   deviceId: string,
   lineId: string,
   deleteCb: DeleteRecordCallBack,
-  indicator: ServiceIndicator
-): ICall => new Call(activeUrl, webex, dest, dir, deviceId, lineId, deleteCb, indicator);
+  indicator: ServiceIndicator,
+  dest?: CallDetails
+): ICall => new Call(activeUrl, webex, dir, deviceId, lineId, deleteCb, indicator, dest);

@@ -423,8 +423,10 @@ const Services = WebexPlugin.extend({
    * @returns {object} - The region info object.
    */
   fetchClientRegionInfo() {
+    const {services} = this.webex.config;
+
     return this.request({
-      uri: 'https://ds.ciscospark.com/v1/region',
+      uri: services.discovery.sqdiscovery,
       addAuthHeader: false,
       headers: {
         'spark-user-agent': null,
@@ -496,6 +498,20 @@ const Services = WebexPlugin.extend({
         // On failure, reject with error from **License**.
         .catch((error) => Promise.reject(error))
     );
+  },
+
+  /**
+   * Updates a given service group i.e. preauth, signin, postauth with a new hostmap.
+   * @param {string} serviceGroup - preauth, signin, postauth
+   * @param {object} hostMap - The new hostmap to update the service group with.
+   * @returns {Promise<void>}
+   */
+  updateCatalog(serviceGroup, hostMap) {
+    const catalog = this._getCatalog();
+
+    const serviceHostMap = this._formatReceivedHostmap(hostMap);
+
+    return catalog.updateServiceUrls(serviceGroup, serviceHostMap);
   },
 
   /**
@@ -1022,9 +1038,10 @@ const Services = WebexPlugin.extend({
           // Validate if the token is authorized.
           if (credentials.canAuthorize) {
             // Attempt to collect the postauth catalog.
-            return this.updateServices().catch(() =>
-              this.logger.warn('services: cannot retrieve postauth catalog')
-            );
+            return this.updateServices().catch(() => {
+              this.initFailed = true;
+              this.logger.warn('services: cannot retrieve postauth catalog');
+            });
           }
 
           // Return a resolved promise for consistent return value.
