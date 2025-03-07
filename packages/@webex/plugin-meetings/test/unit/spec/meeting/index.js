@@ -99,7 +99,7 @@ import {
   MeetingInfoV2CaptchaError,
   MeetingInfoV2PasswordError,
   MeetingInfoV2PolicyError,
-  MeetingInfoV2JoinWebinarError,
+  MeetingInfoV2JoinWebinarError, MeetingInfoV2JoinForbiddenError,
 } from '../../../../src/meeting-info/meeting-info-v2';
 import {
   DTLS_HANDSHAKE_FAILED_CLIENT_CODE,
@@ -114,6 +114,7 @@ import {ERROR_DESCRIPTIONS} from '@webex/internal-plugin-metrics/src/call-diagno
 import MeetingCollection from '@webex/plugin-meetings/src/meetings/collection';
 
 import {EVENT_TRIGGERS as VOICEAEVENTS} from '@webex/internal-plugin-voicea';
+import JoinForbiddenError               from '../../../../src/common/errors/join-forbidden-error';
 
 describe('plugin-meetings', () => {
   const logger = {
@@ -6336,6 +6337,38 @@ describe('plugin-meetings', () => {
           assert.equal(meeting.passwordStatus, PASSWORD_STATUS.REQUIRED);
         });
 
+        it('handles meetingInfoProvider not reach JBH', async () => {
+          meeting.destination = FAKE_DESTINATION;
+          meeting.destinationType = FAKE_TYPE;
+          meeting.attrs.meetingInfoProvider = {
+            fetchMeetingInfo: sinon
+              .stub()
+              .throws(new MeetingInfoV2JoinForbiddenError(403003, FAKE_MEETING_INFO)),
+          };
+
+          await assert.isRejected(meeting.fetchMeetingInfo({sendCAevents: true}), JoinForbiddenError);
+
+          assert.calledWith(
+            meeting.attrs.meetingInfoProvider.fetchMeetingInfo,
+            FAKE_DESTINATION,
+            FAKE_TYPE,
+            null,
+            null,
+            undefined,
+            'locus-id',
+            {},
+            {meetingId: meeting.id, sendCAevents: true}
+          );
+
+          assert.deepEqual(meeting.meetingInfo, FAKE_MEETING_INFO);
+          assert.equal(meeting.meetingInfoFailureCode, 403003);
+          assert.equal(
+            meeting.meetingInfoFailureReason,
+            MEETING_INFO_FAILURE_REASON.NOT_REACH_JBH
+          );
+          assert.equal(meeting.requiredCaptcha, null);
+        });
+
         it('handles meetingInfoProvider policy error', async () => {
           meeting.destination = FAKE_DESTINATION;
           meeting.destinationType = FAKE_TYPE;
@@ -10012,7 +10045,8 @@ describe('plugin-meetings', () => {
       describe('#closePeerConnections', () => {
         it('should close the webrtc media connection, and return a promise', async () => {
           const setNetworkStatusSpy = sinon.spy(meeting, 'setNetworkStatus');
-          meeting.mediaProperties.webrtcMediaConnection = {close: sinon.stub()};
+          const fakeWebrtcMediaConnection = {close: sinon.stub()};
+          meeting.mediaProperties.webrtcMediaConnection = fakeWebrtcMediaConnection;
 
           meeting.audio = {id: 'fakeAudioMuteState'};
           meeting.video = {id: 'fakeVideoMuteState'};
@@ -10021,15 +10055,17 @@ describe('plugin-meetings', () => {
 
           assert.exists(pcs.then);
           await pcs;
-          assert.calledOnce(meeting.mediaProperties.webrtcMediaConnection.close);
+          assert.calledOnce(fakeWebrtcMediaConnection.close);
           assert.calledOnceWithExactly(setNetworkStatusSpy, undefined);
           assert.equal(meeting.audio, null);
           assert.equal(meeting.video, null);
+          assert.equal(meeting.mediaProperties.webrtcMediaConnection, null);
         });
 
         it('should close the webrtc media connection, but keep audio and video props unchanged if called with resetMuteStates=false', async () => {
           const setNetworkStatusSpy = sinon.spy(meeting, 'setNetworkStatus');
-          meeting.mediaProperties.webrtcMediaConnection = {close: sinon.stub()};
+          const fakeWebrtcMediaConnection = {close: sinon.stub()};
+          meeting.mediaProperties.webrtcMediaConnection = fakeWebrtcMediaConnection;
 
           const fakeAudio = {id: 'fakeAudioMuteState'};
           const fakeVideo = {id: 'fakeVideoMuteState'};
@@ -10039,10 +10075,11 @@ describe('plugin-meetings', () => {
 
           await meeting.closePeerConnections(false);
 
-          assert.calledOnce(meeting.mediaProperties.webrtcMediaConnection.close);
+          assert.calledOnce(fakeWebrtcMediaConnection.close);
           assert.calledOnceWithExactly(setNetworkStatusSpy, undefined);
           assert.equal(meeting.audio, fakeAudio);
           assert.equal(meeting.video, fakeVideo);
+          assert.equal(meeting.mediaProperties.webrtcMediaConnection, null);
         });
       });
 

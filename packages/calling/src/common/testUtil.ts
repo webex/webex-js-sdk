@@ -61,7 +61,9 @@ export function getTestUtilsWebex() {
         },
       },
       presence: jest.fn(),
-      support: jest.fn(),
+      support: {
+        submitLogs: jest.fn(),
+      },
       services: {
         _hostCatalog: {},
         _serviceUrls: {

@@ -57,13 +57,14 @@ import {
   WEBEX_API_BTS,
 } from './constants';
 import {CALL_EVENT_KEYS} from '../Events/types';
+import SDKConnector from '../SDKConnector';
 
 const mockSubmitRegistrationMetric = jest.fn();
 const mockEmitterCb = jest.fn();
 const mockRestoreCb = jest.fn();
 
 const webex = getTestUtilsWebex();
-
+SDKConnector.setWebex(webex);
 webex.internal.metrics.submitClientMetrics = mockSubmitRegistrationMetric;
 
 describe('Mobius service discovery tests', () => {
@@ -1557,29 +1558,20 @@ describe('modifySdpForIPv4', () => {
 });
 
 describe('uploadLogs tests', () => {
-  const mockWebex: any = {
-    request: jest.fn(),
-    internal: {
-      support: {
-        submitLogs: jest.fn(),
-      },
-    },
-  };
-
   it('should call submitLogs with the provided data', async () => {
     const mockData = {someKey: 'someValue'};
-    await uploadLogs(mockWebex, mockData);
+    await uploadLogs(mockData);
 
-    expect(mockWebex.internal.support.submitLogs).toHaveBeenCalledTimes(1);
-    expect(mockWebex.internal.support.submitLogs).toHaveBeenCalledWith(mockData);
+    expect(SDKConnector.getWebex().internal.support.submitLogs).toHaveBeenCalledTimes(1);
+    expect(SDKConnector.getWebex().internal.support.submitLogs).toHaveBeenCalledWith(mockData);
   });
 
   it('should handle errors when submitLogs fails', async () => {
     const mockError = new Error('Test error');
-    mockWebex.internal.support.submitLogs.mockRejectedValue(mockError);
+    SDKConnector.getWebex().internal.support.submitLogs.mockRejectedValue(mockError);
     const logSpy = jest.spyOn(log, 'error');
 
-    await uploadLogs(mockWebex);
+    await uploadLogs({});
 
     expect(logSpy).toHaveBeenCalledWith(mockError, {
       file: UTILS_FILE,
