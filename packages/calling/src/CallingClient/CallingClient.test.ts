@@ -10,7 +10,7 @@ import {CallType, RegistrationStatus, ServiceIndicator, WebexRequestPayload} fro
 /* eslint-disable dot-notation */
 import {CALLING_CLIENT_EVENT_KEYS, CallSessionEvent, MOBIUS_EVENT_KEYS} from '../Events/types';
 import log from '../Logger';
-import {createClient} from './CallingClient'; // TODO: Fix Test
+import {createClient} from './CallingClient';
 import {ICallingClient} from './types';
 import * as utils from '../common/Utils';
 import {getCallManager} from './calling/callManager';
