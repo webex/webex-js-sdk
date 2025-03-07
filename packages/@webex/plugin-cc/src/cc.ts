@@ -36,7 +36,7 @@ import {AGENT_STATE_AVAILABLE, AGENT_STATE_AVAILABLE_ID} from './services/config
 import {ConnectionLostDetails} from './services/core/websocket/types';
 import TaskManager from './services/task/TaskManager';
 import WebCallingService from './services/WebCallingService';
-import {ITask, TASK_EVENTS, TaskResponse} from './services/task/types';
+import {ITask, TASK_EVENTS, TaskResponse, DialerPayload} from './services/task/types';
 
 export default class ContactCenter extends WebexPlugin implements IContactCenter {
   namespace = 'cc';
@@ -470,14 +470,14 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   public async startOutdial(destination: string): Promise<TaskResponse> {
     try {
       // Construct the outdial payload.
-      const outDialPayload = {
+      const outDialPayload: DialerPayload = {
         destination,
         entryPointId: this.agentConfig.outDialEp,
         direction: OUTDIAL_DIRECTION,
         attributes: ATTRIBUTES,
         mediaType: OUTDIAL_MEDIA_TYPE,
         outboundType: OUTBOUND_TYPE,
-      } as const;
+      };
 
       const result = await this.services.dialer.startOutdial({data: outDialPayload});
 
