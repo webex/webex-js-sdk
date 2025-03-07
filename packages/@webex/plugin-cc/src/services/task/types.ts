@@ -375,12 +375,12 @@ export type DialerPayload = {
   /**
    * The media type for the request.
    */
-  mediaType: 'telephony';
+  mediaType: 'telephony' | 'chat' | 'social' | 'email';
 
   /**
-   * The outbound type for the task. .
+   * The outbound type for the task.
    */
-  outboundType: 'OUTDIAL';
+  outboundType: 'OUTDIAL' | 'CALLBACK' | 'EXECUTE_FLOW';
 };
 
 export type ContactCleanupData = {
