@@ -1640,12 +1640,10 @@ export default class Meeting extends StatelessWebexPlugin {
    * @param {string | undefined} isoLocalClientMeetingJoinTime
    */
   set isoLocalClientMeetingJoinTime(isoLocalClientMeetingJoinTime: string | undefined) {
-    if (!this.#isoLocalClientMeetingJoinTime) {
-      if (!isoLocalClientMeetingJoinTime) {
-        this.#isoLocalClientMeetingJoinTime = new Date().toISOString();
-      } else {
-        this.#isoLocalClientMeetingJoinTime = isoLocalClientMeetingJoinTime;
-      }
+    if (!isoLocalClientMeetingJoinTime) {
+      this.#isoLocalClientMeetingJoinTime = new Date().toISOString();
+    } else {
+      this.#isoLocalClientMeetingJoinTime = isoLocalClientMeetingJoinTime;
     }
   }
 

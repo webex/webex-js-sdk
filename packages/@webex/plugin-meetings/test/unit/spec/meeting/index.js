@@ -7498,12 +7498,12 @@ describe('plugin-meetings', () => {
       });
 
       describe('#setIsoLocalClientMeetingJoinTime', () => {
-        it('should set the isoLocalClientMeetingJoinTime once and only once when passed in', () => {
+        it('should set the isoLocalClientMeetingJoinTime when passed in', () => {
           assert.equal(meeting.isoLocalClientMeetingJoinTime, isoLocalClientMeetingJoinTime);
           meeting.isoLocalClientMeetingJoinTime = 'test';
           assert.equal(meeting.isoLocalClientMeetingJoinTime, 'test');
           meeting.isoLocalClientMeetingJoinTime = 'test2';
-          assert.equal(meeting.isoLocalClientMeetingJoinTime, 'test');
+          assert.equal(meeting.isoLocalClientMeetingJoinTime, 'test2');
         });
 
         it('should set the isoLocalClientMeetingJoin time once and only once when not passed in', () => {
@@ -7512,7 +7512,7 @@ describe('plugin-meetings', () => {
           const time = meeting.isoLocalClientMeetingJoinTime;
           assert.equal(meeting.isoLocalClientMeetingJoinTime, time);
           meeting.isoLocalClientMeetingJoinTime = 'test2';
-          assert.equal(meeting.isoLocalClientMeetingJoinTime, time);
+          assert.equal(meeting.isoLocalClientMeetingJoinTime, 'test2');
         });
       });
 
