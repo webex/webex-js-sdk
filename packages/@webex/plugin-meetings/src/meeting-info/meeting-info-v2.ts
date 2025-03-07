@@ -368,7 +368,6 @@ export default class MeetingInfoV2 {
    * @param {String} destination one of many different types of destinations to look up info for
    * @param {DESTINATION_TYPE} [type] to match up with the destination value
    * @param {String} password
-   * @param {String} registrationId
    * @param {Object} captchaInfo
    * @param {String} captchaInfo.code
    * @param {String} captchaInfo.id
@@ -376,6 +375,7 @@ export default class MeetingInfoV2 {
    * @param {String} locusId
    * @param {Object} extraParams
    * @param {Object} options
+   * @param {String} registrationId
    * @returns {Promise} returns a meeting info object
    * @public
    * @memberof MeetingInfo
@@ -384,7 +384,6 @@ export default class MeetingInfoV2 {
     destination: string,
     type: DESTINATION_TYPE = null,
     password: string = null,
-    registrationId: string = null,
     captchaInfo: {
       code: string;
       id: string;
@@ -392,7 +391,8 @@ export default class MeetingInfoV2 {
     installedOrgID = null,
     locusId = null,
     extraParams: object = {},
-    options: {meetingId?: string; sendCAevents?: boolean} = {}
+    options: {meetingId?: string; sendCAevents?: boolean} = {},
+    registrationId: string = null
   ) {
     const {meetingId, sendCAevents} = options;
 

@@ -1744,10 +1744,10 @@ export default class Meeting extends StatelessWebexPlugin {
     destination,
     destinationType,
     password = null,
-    registrationId = null,
     captchaCode = null,
     extraParams = {},
     sendCAevents = false,
+    registrationId = null,
   }): Promise<void> {
     try {
       const captchaInfo = captchaCode
@@ -1758,13 +1758,13 @@ export default class Meeting extends StatelessWebexPlugin {
         destination,
         destinationType,
         password,
-        registrationId,
         captchaInfo,
         // @ts-ignore - config coming from registerPlugin
         this.config.installedOrgID,
         this.locusId,
         extraParams,
-        {meetingId: this.id, sendCAevents}
+        {meetingId: this.id, sendCAevents},
+        registrationId
       );
 
       this.parseMeetingInfo(info?.body, this.destination, info?.errors);
@@ -1997,6 +1997,16 @@ export default class Meeting extends StatelessWebexPlugin {
       });
   }
 
+  /**
+   * Checks if the supplied registrationId is correct. It returns a promise with information whether the
+   * password and captcha code were correct or not.
+   * @param {String} registrationId - can be undefined if only captcha was required
+   * @param {String} captchaCode - can be undefined if captcha was not required by the server
+   * @param {Boolean} sendCAevents - whether Call Analyzer events should be sent when fetching meeting information
+   * @public
+   * @memberof Meeting
+   * @returns {Promise<{isRegistrationIdValid: boolean, requiredCaptcha: boolean, failureReason: MEETING_INFO_FAILURE_REASON}>}
+   */
   public verifyRegistrationId(registrationId: string, captchaCode: string, sendCAevents = false) {
     return this.fetchMeetingInfo({
       registrationId,
