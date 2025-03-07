@@ -17,6 +17,4 @@ export const AGENT_MULTI_LOGIN = 'agent:multiLogin';
 export const OUTDIAL_DIRECTION = 'OUTBOUND';
 export const ATTRIBUTES = {};
 export const OUTDIAL_MEDIA_TYPE = 'telephony';
-export enum OutboundType {
-  OUTDIAL = 'OUTDIAL',
-}
+export const OUTBOUND_TYPE = 'OUTDIAL';

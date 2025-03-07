@@ -365,12 +365,7 @@ export type DialerPayload = {
   /**
    * The direction of the call.
    */
-  direction: string;
-
-  /**
-   * The contact center number that will be used while making a call to the customer.
-   */
-  origin?: string;
+  direction: 'OUTBOUND';
 
   /**
    * This is a schema free data tuple to pass-on specific data, depending on the outboundType. Supports a maximum of 30 tuples.
@@ -380,12 +375,12 @@ export type DialerPayload = {
   /**
    * The media type for the request.
    */
-  mediaType: string;
+  mediaType: 'telephony';
 
   /**
    * The outbound type for the task. .
    */
-  outboundType: string;
+  outboundType: 'OUTDIAL';
 };
 
 export type ContactCleanupData = {
