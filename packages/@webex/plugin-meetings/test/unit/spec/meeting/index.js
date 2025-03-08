@@ -13263,7 +13263,7 @@ describe('plugin-meetings', () => {
 
   describe('#roapMessageReceived', () => {
     it('calls roapMessageReceived on the webrtc media connection', () => {
-      const fakeMessage = {messageType: 'fake', sdp: 'fake sdp'};
+      const fakeMessage = {messageType: 'ANSWER', sdp: 'fake sdp'};
 
       const getMediaServer = sinon.stub(MeetingsUtil, 'getMediaServer').returns('homer');
 
@@ -13300,6 +13300,27 @@ describe('plugin-meetings', () => {
       }
 
       assert.notCalled(meeting.mediaProperties.webrtcMediaConnection.roapMessageReceived);
+    });
+
+    it('does not call getMediaServer for a roap message other than ANSWER', async () => {
+      const fakeMessage = {messageType: 'ERROR', sdp: 'fake sdp'};
+
+      meeting.isMultistream = true;
+      meeting.mediaProperties.webrtcMediaConnection = {
+        roapMessageReceived: sinon.stub(),
+      };
+      meeting.mediaProperties.webrtcMediaConnection.mediaServer = 'linus';
+
+      const getMediaServerStub = sinon.stub(MeetingsUtil, 'getMediaServer').returns('something');
+
+      meeting.roapMessageReceived(fakeMessage);
+
+      assert.calledOnceWithExactly(
+        meeting.mediaProperties.webrtcMediaConnection.roapMessageReceived,
+        fakeMessage
+      );
+      assert.notCalled(getMediaServerStub);
+      assert.equal(meeting.mediaProperties.webrtcMediaConnection.mediaServer, 'linus'); // check that it hasn't been overwritten
     });
   });
 
