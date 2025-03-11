@@ -398,18 +398,9 @@ async function startOutdial() {
       return;
   }
 
-  const dialerPayload = {
-    entryPointId: entryPointId,
-    destination: destination,
-    direction: 'OUTBOUND',
-    attributes: {},
-    mediaType: 'telephony',
-    outboundType: 'OUTDIAL',
-  };
-
   try {
     console.log('Making an outdial call');
-    await webex.cc.startOutdial(dialerPayload);
+    await webex.cc.startOutdial(destination);
     console.log('Outdial call initiated successfully');
   } catch (error) {
     console.error('Failed to initiate outdial call', error);
