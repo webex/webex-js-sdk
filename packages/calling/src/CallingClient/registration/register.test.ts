@@ -780,5 +780,46 @@ describe('Registration Tests', () => {
       expect(reg.isReconnectPending()).toBe(false);
       expect(reg.webWorker).toBeDefined();
     });
+
+    it('should emit LINE_EVENTS.ERROR when keepalive fails with a final error', async () => {
+      await beforeEachSetupForKeepalive();
+      expect(reg.webWorker).toBeDefined();
+      lineEmitter.mockClear();
+
+      jest
+        .spyOn(utils, 'handleRegistrationErrors')
+        .mockImplementationOnce(async (error, callback) => {
+          const clientError = createLineError(
+            'User is unauthorized due to an expired token. Sign out, then sign back in.',
+            {},
+            ERROR_TYPE.TOKEN_ERROR,
+            RegistrationStatus.INACTIVE
+          );
+          callback(clientError, true);
+
+          return true;
+        });
+
+      reg.webWorker.onmessage({
+        data: {
+          type: WorkerMessageType.KEEPALIVE_FAILURE,
+          err: {
+            statusCode: 401,
+            message: 'Unauthorized',
+          },
+          keepAliveRetryCount: 1,
+        },
+      } as MessageEvent);
+
+      await flushPromises();
+      expect(lineEmitter).toHaveBeenNthCalledWith(
+        1,
+        LINE_EVENTS.ERROR,
+        undefined,
+        new Error('User is unauthorized due to an expired token. Sign out, then sign back in.')
+      );
+      expect(reg.getStatus()).toBe(RegistrationStatus.INACTIVE);
+      expect(reg.webWorker).toBeUndefined();
+    });
   });
 });
