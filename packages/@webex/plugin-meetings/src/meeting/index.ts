@@ -6099,9 +6099,12 @@ export default class Meeting extends StatelessWebexPlugin {
    * @returns {undefined}
    */
   public roapMessageReceived = (roapMessage: RoapMessage) => {
-    const mediaServer = MeetingsUtil.getMediaServer(roapMessage.sdp);
+    const mediaServer =
+      roapMessage.messageType === 'ANSWER'
+        ? MeetingsUtil.getMediaServer(roapMessage.sdp)
+        : undefined;
 
-    if (this.isMultistream && mediaServer !== 'homer') {
+    if (this.isMultistream && mediaServer && mediaServer !== 'homer') {
       throw new MultistreamNotSupportedError(
         `Client asked for multistream backend (Homer), but got ${mediaServer} instead`
       );
