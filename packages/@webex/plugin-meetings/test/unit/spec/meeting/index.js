@@ -9215,10 +9215,7 @@ describe('plugin-meetings', () => {
           meeting.locusInfo.emit({function: 'test', file: 'test'}, 'SELF_ROLES_CHANGED', payload);
 
           assert.calledOnceWithExactly(meeting.breakouts.updateCanManageBreakouts, true);
-          assert.calledOnceWithExactly(
-            meeting.simultaneousInterpretation.updateCanManageInterpreters,
-            true
-          );
+          assert.notCalled(meeting.simultaneousInterpretation.updateCanManageInterpreters);
           assert.calledWith(
             TriggerProxy.trigger,
             meeting,
