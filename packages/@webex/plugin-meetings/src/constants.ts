@@ -203,6 +203,7 @@ export const ICE_AND_DTLS_CONNECTION_TIMEOUT = 20000;
 export const ROAP_OFFER_ANSWER_EXCHANGE_TIMEOUT = 35000;
 export const WEBINAR_ERROR_WEBCAST = [403026];
 export const WEBINAR_ERROR_REGISTRATIONID = [403037, 403137];
+export const JOIN_BEFORE_HOST = 403003;
 
 // ******************** REGEX **********************
 // Please alphabetize
@@ -552,6 +553,11 @@ export const ERROR_DICTIONARY = {
     NAME: 'MultistreamNotSupported',
     MESSAGE: 'Client asked for multistream backend (Homer), but got something else instead',
     CODE: 17,
+  },
+  JoinForbiddenError: {
+    NAME: 'JoinForbiddenError',
+    MESSAGE: 'Meeting join forbidden.',
+    CODE: 18,
   },
 };
 
@@ -1333,6 +1339,8 @@ export const MEETING_INFO_FAILURE_REASON = {
   WEBINAR_REGISTRATION: 'WEBINAR_REGISTRATION', // webinar need registration
   NEED_JOIN_WITH_WEBCAST: 'NEED_JOIN_WITH_WEBCAST', // webinar need using webcast join
   WEBINAR_NEED_REGISTRATIONID: 'WEBINAR_NEED_REGISTRATIONID', // webinar need registrationID
+  NOT_REACH_JBH: 'NOT_REACH_JBH', // Meeting is not allow to access since not reach JBH (join before host) time
+  JOIN_FORBIDDEN: 'JOIN_FORBIDDEN', // meeting is not allow join
   OTHER: 'OTHER', // any other error (network, etc)
 };
 

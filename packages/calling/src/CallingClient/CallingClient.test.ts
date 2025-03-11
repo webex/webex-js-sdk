@@ -1,4 +1,5 @@
 import {Mutex} from 'async-mutex';
+import * as Media from '@webex/internal-media-core';
 import {LOGGER} from '../Logger/types';
 import {
   getTestUtilsWebex,
@@ -53,6 +54,7 @@ describe('CallingClient Tests', () => {
   // Common initializers
 
   const handleErrorSpy = jest.spyOn(utils, 'handleCallingClientErrors');
+  const setLoggerSpy = jest.spyOn(Media, 'setLogger');
   const webex = getTestUtilsWebex();
   webex.internal.services['_hostCatalog'] = mockCatalogUS;
   const defaultServiceIndicator = ServiceIndicator.CALLING;
@@ -97,7 +99,7 @@ describe('CallingClient Tests', () => {
       webex.internal.services._serviceUrls.mobius = 'invalid-url';
 
       const callingClient = await createClient(webex, {logger: {level: LOGGER.INFO}});
-
+      expect(setLoggerSpy).toHaveBeenCalledTimes(1);
       expect(callingClient['mobiusClusters']).toStrictEqual(mockUSServiceHosts);
     });
   });

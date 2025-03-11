@@ -99,7 +99,7 @@ import {
   MeetingInfoV2CaptchaError,
   MeetingInfoV2PasswordError,
   MeetingInfoV2PolicyError,
-  MeetingInfoV2JoinWebinarError,
+  MeetingInfoV2JoinWebinarError, MeetingInfoV2JoinForbiddenError,
 } from '../../../../src/meeting-info/meeting-info-v2';
 import {
   DTLS_HANDSHAKE_FAILED_CLIENT_CODE,
@@ -115,6 +115,7 @@ import MeetingCollection from '@webex/plugin-meetings/src/meetings/collection';
 
 import {EVENT_TRIGGERS as VOICEAEVENTS} from '@webex/internal-plugin-voicea';
 import { createBrbState } from '@webex/plugin-meetings/src/meeting/brbState';
+import JoinForbiddenError               from '../../../../src/common/errors/join-forbidden-error';
 
 describe('plugin-meetings', () => {
   const logger = {
@@ -6318,6 +6319,38 @@ describe('plugin-meetings', () => {
           );
           assert.equal(meeting.requiredCaptcha, null);
           assert.equal(meeting.passwordStatus, PASSWORD_STATUS.REQUIRED);
+        });
+
+        it('handles meetingInfoProvider not reach JBH', async () => {
+          meeting.destination = FAKE_DESTINATION;
+          meeting.destinationType = FAKE_TYPE;
+          meeting.attrs.meetingInfoProvider = {
+            fetchMeetingInfo: sinon
+              .stub()
+              .throws(new MeetingInfoV2JoinForbiddenError(403003, FAKE_MEETING_INFO)),
+          };
+
+          await assert.isRejected(meeting.fetchMeetingInfo({sendCAevents: true}), JoinForbiddenError);
+
+          assert.calledWith(
+            meeting.attrs.meetingInfoProvider.fetchMeetingInfo,
+            FAKE_DESTINATION,
+            FAKE_TYPE,
+            null,
+            null,
+            undefined,
+            'locus-id',
+            {},
+            {meetingId: meeting.id, sendCAevents: true}
+          );
+
+          assert.deepEqual(meeting.meetingInfo, FAKE_MEETING_INFO);
+          assert.equal(meeting.meetingInfoFailureCode, 403003);
+          assert.equal(
+            meeting.meetingInfoFailureReason,
+            MEETING_INFO_FAILURE_REASON.NOT_REACH_JBH
+          );
+          assert.equal(meeting.requiredCaptcha, null);
         });
 
         it('handles meetingInfoProvider policy error', async () => {
@@ -13209,7 +13242,7 @@ describe('plugin-meetings', () => {
 
   describe('#roapMessageReceived', () => {
     it('calls roapMessageReceived on the webrtc media connection', () => {
-      const fakeMessage = {messageType: 'fake', sdp: 'fake sdp'};
+      const fakeMessage = {messageType: 'ANSWER', sdp: 'fake sdp'};
 
       const getMediaServer = sinon.stub(MeetingsUtil, 'getMediaServer').returns('homer');
 
@@ -13246,6 +13279,27 @@ describe('plugin-meetings', () => {
       }
 
       assert.notCalled(meeting.mediaProperties.webrtcMediaConnection.roapMessageReceived);
+    });
+
+    it('does not call getMediaServer for a roap message other than ANSWER', async () => {
+      const fakeMessage = {messageType: 'ERROR', sdp: 'fake sdp'};
+
+      meeting.isMultistream = true;
+      meeting.mediaProperties.webrtcMediaConnection = {
+        roapMessageReceived: sinon.stub(),
+      };
+      meeting.mediaProperties.webrtcMediaConnection.mediaServer = 'linus';
+
+      const getMediaServerStub = sinon.stub(MeetingsUtil, 'getMediaServer').returns('something');
+
+      meeting.roapMessageReceived(fakeMessage);
+
+      assert.calledOnceWithExactly(
+        meeting.mediaProperties.webrtcMediaConnection.roapMessageReceived,
+        fakeMessage
+      );
+      assert.notCalled(getMediaServerStub);
+      assert.equal(meeting.mediaProperties.webrtcMediaConnection.mediaServer, 'linus'); // check that it hasn't been overwritten
     });
   });
 });
