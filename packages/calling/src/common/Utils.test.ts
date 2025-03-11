@@ -41,6 +41,8 @@ import {
   getXsiActionEndpoint,
   getVgActionEndpoint,
   filterMobiusUris,
+  modifySdpForIPv4,
+  uploadLogs,
 } from './Utils';
 import {
   getVoicemailListJsonWXC,
@@ -55,13 +57,14 @@ import {
   WEBEX_API_BTS,
 } from './constants';
 import {CALL_EVENT_KEYS} from '../Events/types';
+import SDKConnector from '../SDKConnector';
 
 const mockSubmitRegistrationMetric = jest.fn();
 const mockEmitterCb = jest.fn();
 const mockRestoreCb = jest.fn();
 
 const webex = getTestUtilsWebex();
-
+SDKConnector.setWebex(webex);
 webex.internal.metrics.submitClientMetrics = mockSubmitRegistrationMetric;
 
 describe('Mobius service discovery tests', () => {
@@ -1371,5 +1374,208 @@ describe('Get endpoint by CALLING_BACKEND tests', () => {
 
   it('verify invalid calling backend wxc for vg endpoint', async () => {
     expect(await getVgActionEndpoint(webex, CALLING_BACKEND.WXC)).toBeInstanceOf(Error);
+  });
+});
+
+describe('Get XSI Action Endpoint tests', () => {
+  const mockWebex: any = {
+    request: jest.fn(),
+    internal: {
+      services: {
+        _serviceUrls: {
+          wdm: 'https://fake-webex-url.com',
+        },
+      },
+    },
+  };
+
+  const loggerContext = {
+    file: 'testFile',
+    method: 'testMethod',
+  };
+
+  it('should return xsiEndpoint for BWRKS backend when URL ends with /v2.0', async () => {
+    const mockResponse = {
+      body: {
+        devices: [
+          {
+            settings: {
+              broadworksXsiActionsUrl: 'https://fake-broadworks-url.com/v2.0',
+            },
+          },
+        ],
+      },
+    };
+
+    mockWebex.request.mockResolvedValue(mockResponse);
+
+    const xsiEndpoint = await getXsiActionEndpoint(mockWebex, loggerContext, CALLING_BACKEND.BWRKS);
+
+    expect(mockWebex.request).toHaveBeenCalledTimes(1);
+    expect(xsiEndpoint).toBe('https://fake-broadworks-url.com');
+  });
+
+  it('should return xsiEndpoint for BWRKS backend when URL ends with /v2.0/', async () => {
+    const mockResponse = {
+      body: {
+        devices: [
+          {
+            settings: {
+              broadworksXsiActionsUrl: 'https://fake-broadworks-url.com/v2.0/',
+            },
+          },
+        ],
+      },
+    };
+
+    mockWebex.request.mockResolvedValue(mockResponse);
+
+    const xsiEndpoint = await getXsiActionEndpoint(mockWebex, loggerContext, CALLING_BACKEND.BWRKS);
+
+    expect(mockWebex.request).toHaveBeenCalledTimes(1);
+    expect(xsiEndpoint).toBe('https://fake-broadworks-url.com');
+  });
+
+  it('should return xsiEndpoint for BWRKS backend when URL does not end with any version', async () => {
+    const mockResponse = {
+      body: {
+        devices: [
+          {
+            settings: {
+              broadworksXsiActionsUrl: 'https://fake-broadworks-url.com',
+            },
+          },
+        ],
+      },
+    };
+
+    mockWebex.request.mockResolvedValue(mockResponse);
+
+    const xsiEndpoint = await getXsiActionEndpoint(mockWebex, loggerContext, CALLING_BACKEND.BWRKS);
+
+    expect(mockWebex.request).toHaveBeenCalledTimes(1);
+    expect(xsiEndpoint).toBe('https://fake-broadworks-url.com');
+  });
+});
+
+describe('modifySdpForIPv4', () => {
+  it('should return original SDP if input is empty', () => {
+    expect(modifySdpForIPv4('')).toBe('');
+  });
+
+  it('should return original SDP if there is no IPv6 c= line', () => {
+    const sdp = `v=0\no=- 12345 67890 IN IP4 192.168.1.1\n\ns=Test Session`;
+    expect(modifySdpForIPv4(sdp)).toEqual(sdp);
+  });
+
+  it('should replace IPv6 c= line with default IPv4 if no IPv4 candidate exists', () => {
+    const sdp = `v=0
+    o=- 12345 67890 IN IP6 2001:db8::1
+    s=Test Session
+    c=IN IP6 2001:db8::1
+    a=candidate:1 1 UDP 2122260223 2001:db8::1 3478 typ host`;
+
+    const expectedSdp = `v=0\no=- 12345 67890 IN IP6 2001:db8::1\ns=Test Session\nc=IN IP4 192.1.1.1\na=candidate:1 1 UDP 2122260223 2001:db8::1 3478 typ host\na=candidate:2 1 UDP 2122260223 192.1.1.1 3478 typ host generation 0 network-id 1 network-cost 10`;
+    const result = modifySdpForIPv4(sdp);
+    expect(result).toEqual(expectedSdp);
+  });
+
+  it('should replace IPv6 c= line with an existing IPv4 candidate address', () => {
+    const sdp = `v=0
+    o=- 12345 67890 IN IP6 2001:db8::1
+    s=Test Session
+    c=IN IP6 2001:db8::1
+    a=candidate:1 1 UDP 2122260223 192.168.1.2 3478 typ host`;
+
+    const expectedSdp = `v=0\no=- 12345 67890 IN IP6 2001:db8::1\ns=Test Session\nc=IN IP4 192.168.1.2\na=candidate:1 1 UDP 2122260223 192.168.1.2 3478 typ host`;
+
+    expect(modifySdpForIPv4(sdp).trim()).toEqual(expectedSdp.trim());
+  });
+
+  it('should correctly handle both UDP and TCP candidates by adding only one IPv4 candidate UDP first', () => {
+    const sdp = `v=0
+    o=- 12345 67890 IN IP6 2001:db8::1
+    s=Test Session
+    c=IN IP6 2001:db8::1
+    a=candidate:1 1 UDP 2122260223 2001:db8::1 3478 typ host
+    a=candidate:2 1 TCP 2122260223 2001:db8::2 3479 typ host`;
+
+    const expectedSdp = `v=0\no=- 12345 67890 IN IP6 2001:db8::1\ns=Test Session\nc=IN IP4 192.1.1.1\na=candidate:1 1 UDP 2122260223 2001:db8::1 3478 typ host\na=candidate:2 1 UDP 2122260223 192.1.1.1 3478 typ host generation 0 network-id 1 network-cost 10\na=candidate:2 1 TCP 2122260223 2001:db8::2 3479 typ host\n`;
+
+    expect(modifySdpForIPv4(sdp).trim()).toEqual(expectedSdp.trim());
+  });
+
+  it('should correctly handle both UDP and TCP candidates by adding only one IPv4 candidate TCP first', () => {
+    const sdp = `v=0
+    o=- 12345 67890 IN IP6 2001:db8::1
+    s=Test Session
+    c=IN IP6 2001:db8::1
+    a=candidate:1 1 TCP 2122260223 2001:db8::2 3479 typ host
+    a=candidate:1 1 UDP 2122260223 2001:db8::1 3478 typ host`;
+
+    const expectedSdp = `v=0\no=- 12345 67890 IN IP6 2001:db8::1\ns=Test Session\nc=IN IP4 192.1.1.1\na=candidate:1 1 TCP 2122260223 2001:db8::2 3479 typ host\na=candidate:2 1 TCP 2122260223 192.1.1.1 3479 typ host generation 0 network-id 1 network-cost 10\na=candidate:1 1 UDP 2122260223 2001:db8::1 3478 typ host`;
+
+    expect(modifySdpForIPv4(sdp).trim()).toEqual(expectedSdp.trim());
+  });
+
+  it('should replace all IPv6 c= line if multiple exist', () => {
+    const sdp = `v=0
+    o=- 12345 67890 IN IP6 2001:db8::1
+    s=Test Session
+    c=IN IP6 2001:db8::1
+    c=IN IP6 2001:db8::2
+    a=candidate:1 1 UDP 2122260223 2001:db8::1 3478 typ host`;
+
+    const expectedSdp = `v=0\no=- 12345 67890 IN IP6 2001:db8::1\ns=Test Session\nc=IN IP4 192.1.1.1\nc=IN IP4 192.1.1.1\na=candidate:1 1 UDP 2122260223 2001:db8::1 3478 typ host\na=candidate:2 1 UDP 2122260223 192.1.1.1 3478 typ host generation 0 network-id 1 network-cost 10`;
+
+    expect(modifySdpForIPv4(sdp).trim()).toEqual(expectedSdp.trim());
+  });
+
+  it('should not modify SDP if IPv6 c= line is absent and IPv4 candidate already exists', () => {
+    const sdp = `v=0\no=- 12345 67890 IN IP4 192.168.1.1\ns=Test Session\nc=IN IP4 192.168.1.1\na=candidate:1 1 UDP 2122260223 192.168.1.1 3478 typ host`;
+
+    expect(modifySdpForIPv4(sdp).trim()).toEqual(sdp.trim());
+  });
+
+  it('should handle malformed SDP gracefully and return unmodified input', () => {
+    const malformedSdp = `random text without proper format`;
+
+    expect(modifySdpForIPv4(malformedSdp).trim()).toEqual(malformedSdp.trim());
+  });
+
+  it('should handle an SDP with both IP6 and IP4 c= lines correctly', () => {
+    const sdp = `v=0
+    o=- 12345 67890 IN IP6 2001:db8::1
+    s=Test Session
+    c=IN IP6 2001:db8::1
+    c=IN IP4 192.168.1.3
+    a=candidate:1 1 UDP 2122260223 192.168.1.3 3478 typ host`;
+
+    const expectedSdp = `v=0\no=- 12345 67890 IN IP6 2001:db8::1\ns=Test Session\nc=IN IP4 192.168.1.3\nc=IN IP4 192.168.1.3\na=candidate:1 1 UDP 2122260223 192.168.1.3 3478 typ host`;
+
+    expect(modifySdpForIPv4(sdp).trim()).toEqual(expectedSdp.trim());
+  });
+});
+
+describe('uploadLogs tests', () => {
+  it('should call submitLogs with the provided data', async () => {
+    const mockData = {someKey: 'someValue'};
+    await uploadLogs(mockData);
+
+    expect(SDKConnector.getWebex().internal.support.submitLogs).toHaveBeenCalledTimes(1);
+    expect(SDKConnector.getWebex().internal.support.submitLogs).toHaveBeenCalledWith(mockData);
+  });
+
+  it('should handle errors when submitLogs fails', async () => {
+    const mockError = new Error('Test error');
+    SDKConnector.getWebex().internal.support.submitLogs.mockRejectedValue(mockError);
+    const logSpy = jest.spyOn(log, 'error');
+
+    await uploadLogs({});
+
+    expect(logSpy).toHaveBeenCalledWith(mockError, {
+      file: UTILS_FILE,
+      method: 'uploadLogs',
+    });
   });
 });

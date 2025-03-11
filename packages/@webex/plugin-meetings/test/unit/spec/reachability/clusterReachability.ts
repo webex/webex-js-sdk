@@ -15,6 +15,7 @@ describe('ClusterReachability', () => {
   let previousRTCPeerConnection;
   let clusterReachability;
   let fakePeerConnection;
+  let gatherIceCandidatesSpy;
 
   const emittedEvents: Record<Events, (ResultEventData | ClientMediaIpsUpdatedEventData)[]> = {
     [Events.resultReady]: [],
@@ -43,6 +44,8 @@ describe('ClusterReachability', () => {
       tcp: ['stun:tcp1.webex.com', 'stun:tcp2.webex.com:5004'],
       xtls: ['stun:xtls1.webex.com', 'stun:xtls2.webex.com:443'],
     });
+
+    gatherIceCandidatesSpy = sinon.spy(clusterReachability, 'gatherIceCandidates');
 
     resetEmittedEvents();
 
@@ -150,6 +153,10 @@ describe('ClusterReachability', () => {
       // check that the right webrtc APIs are called
       assert.calledOnceWithExactly(fakePeerConnection.createOffer, {offerToReceiveAudio: true});
       assert.calledOnce(fakePeerConnection.setLocalDescription);
+
+      // Make sure that gatherIceCandidates is called before setLocalDescription
+      // as setLocalDescription triggers the ICE gathering process
+      assert.isTrue(gatherIceCandidatesSpy.calledBefore(fakePeerConnection.setLocalDescription));
 
       clusterReachability.abort();
       await promise;

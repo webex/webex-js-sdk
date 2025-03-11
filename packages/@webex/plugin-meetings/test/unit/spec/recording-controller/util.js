@@ -1,5 +1,5 @@
 import RecordingUtil from '@webex/plugin-meetings/src/recording-controller/util';
-import RecordingAction from '@webex/plugin-meetings/src/recording-controller/enums';
+import { RecordingAction } from '@webex/plugin-meetings/src/recording-controller/enums';
 import {SELF_POLICY} from '@webex/plugin-meetings/src/constants';
 
 import {assert} from 'chai';
@@ -22,6 +22,15 @@ describe('plugin-meetings', () => {
       describe('canUserStart', () => {
         it('can start recording when the correct display hint is present', () => {
           locusInfo.parsedLocus.info.userDisplayHints.push('RECORDING_CONTROL_START');
+
+          assert.equal(
+            RecordingUtil.canUserStart(locusInfo.parsedLocus.info.userDisplayHints),
+            true
+          );
+        });
+
+        it('can start premise recording when the correct display hint is present', () => {
+          locusInfo.parsedLocus.info.userDisplayHints.push('PREMISE_RECORDING_CONTROL_START');
 
           assert.equal(
             RecordingUtil.canUserStart(locusInfo.parsedLocus.info.userDisplayHints),
@@ -69,6 +78,15 @@ describe('plugin-meetings', () => {
           );
         });
 
+        it('can pause premise recording when the correct display hint is present', () => {
+          locusInfo.parsedLocus.info.userDisplayHints.push('PREMISE_RECORDING_CONTROL_PAUSE');
+
+          assert.equal(
+            RecordingUtil.canUserPause(locusInfo.parsedLocus.info.userDisplayHints),
+            true
+          );
+        });
+
         it('can pause recording when the correct display hint is present and the policy is true', () => {
           locusInfo.parsedLocus.info.userDisplayHints.push('RECORDING_CONTROL_PAUSE');
 
@@ -109,6 +127,15 @@ describe('plugin-meetings', () => {
           );
         });
 
+        it('can stop premise recording when the correct display hint is present', () => {
+          locusInfo.parsedLocus.info.userDisplayHints.push('PREMISE_RECORDING_CONTROL_STOP');
+
+          assert.equal(
+            RecordingUtil.canUserStop(locusInfo.parsedLocus.info.userDisplayHints),
+            true
+          );
+        });
+
         it('can stop recording when the correct display hint is present and the policy is true', () => {
           locusInfo.parsedLocus.info.userDisplayHints.push('RECORDING_CONTROL_STOP', {
             [SELF_POLICY.SUPPORT_NETWORK_BASED_RECORD]: true,
@@ -142,7 +169,7 @@ describe('plugin-meetings', () => {
       });
 
       describe('canUserResume', () => {
-        it('can start recording when the correct display hint is present', () => {
+        it('can resume recording when the correct display hint is present', () => {
           locusInfo.parsedLocus.info.userDisplayHints.push('RECORDING_CONTROL_RESUME');
 
           assert.equal(
@@ -151,7 +178,16 @@ describe('plugin-meetings', () => {
           );
         });
 
-        it('can start recording when the correct display hint is present and the policy is true', () => {
+        it('can resume premise recording when the correct display hint is present', () => {
+          locusInfo.parsedLocus.info.userDisplayHints.push('PREMISE_RECORDING_CONTROL_RESUME');
+
+          assert.equal(
+            RecordingUtil.canUserResume(locusInfo.parsedLocus.info.userDisplayHints),
+            true
+          );
+        });
+
+        it('can resume recording when the correct display hint is present and the policy is true', () => {
           locusInfo.parsedLocus.info.userDisplayHints.push('RECORDING_CONTROL_RESUME');
 
           assert.equal(

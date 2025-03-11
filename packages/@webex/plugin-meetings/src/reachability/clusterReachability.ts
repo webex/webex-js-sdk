@@ -6,20 +6,7 @@ import {convertStunUrlToTurn, convertStunUrlToTurnTls} from './util';
 import EventsScope from '../common/events/events-scope';
 
 import {CONNECTION_STATE, Enum, ICE_GATHERING_STATE} from '../constants';
-
-// result for a specific transport protocol (like udp or tcp)
-export type TransportResult = {
-  result: 'reachable' | 'unreachable' | 'untested';
-  latencyInMilliseconds?: number; // amount of time it took to get the first ICE candidate
-  clientMediaIPs?: string[];
-};
-
-// reachability result for a specific media cluster
-export type ClusterReachabilityResult = {
-  udp: TransportResult;
-  tcp: TransportResult;
-  xtls: TransportResult;
-};
+import {ClusterReachabilityResult} from './reachability.types';
 
 // data for the Events.resultReady event
 export type ResultEventData = {
@@ -370,11 +357,14 @@ export class ClusterReachability extends EventsScope {
 
       this.startTimestamp = performance.now();
 
+      // Set up the state change listeners before triggering the ICE gathering
+      const gatherIceCandidatePromise = this.gatherIceCandidates();
+
       // not awaiting the next call on purpose, because we're not sending the offer anywhere and there won't be any answer
       // we just need to make this call to trigger the ICE gathering process
       this.pc.setLocalDescription(offer);
 
-      await this.gatherIceCandidates();
+      await gatherIceCandidatePromise;
     } catch (error) {
       LoggerProxy.logger.warn(`Reachability:ClusterReachability#start --> Error: `, error);
     }

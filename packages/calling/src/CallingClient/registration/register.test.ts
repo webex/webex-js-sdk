@@ -732,7 +732,7 @@ describe('Registration Tests', () => {
       expect(reg.getStatus()).toBe(RegistrationStatus.INACTIVE);
       expect(reg.keepaliveTimer).not.toBe(timer);
 
-      webex.request.mockRejectedValueOnce(failurePayload).mockResolvedValue(successPayload);
+      webex.request.mockResolvedValue(successPayload);
 
       jest.advanceTimersByTime(REG_TRY_BACKUP_TIMER_VAL_FOR_CC_IN_SEC * SEC_TO_MSEC_MFACTOR);
       await flushPromises();

@@ -216,7 +216,6 @@
                   <span id="ts-mute-audio-message" class="webex-warning"></span>
                 </div>
               </div>
-
             </div>
           </fieldset>
         </form>
@@ -737,10 +736,11 @@
         <form id="streams">
           <fieldset>
             <legend>Local Screenshare</legend>
-            <p class="note">
+            <p class="note" id="ts-default-share-message">
               NOTE: Start screenshare without a meeting and join meeting with a screenshare.
               If started after joining a meeting then click Publish in meeting also.
             </p>
+            <p class="note" id="ts-brb-share-message" hidden>NOTE: Share is disabled while you have stepped away from the meeting</p>
             <div class="screenshare-section">
               <div style="display: flex; gap: 1rem;">
                 <fieldset style="flex: 0.69;">

@@ -62,7 +62,8 @@
   },
   "dependencies": {
     "@webex/common": "workspace:*",
-    "@webex/internal-media-core": "2.11.1",
+    "@webex/event-dictionary-ts": "^1.0.1643",
+    "@webex/internal-media-core": "2.14.2",
     "@webex/internal-plugin-conversation": "workspace:*",
     "@webex/internal-plugin-device": "workspace:*",
     "@webex/internal-plugin-llm": "workspace:*",

@@ -19,6 +19,14 @@ export type RemoteVideoResolution =
   | 'large' // 1080p or less
   | 'best'; // highest possible resolution
 
+const MAX_FS_VALUES = {
+  '90p': 60,
+  '180p': 240,
+  '360p': 920,
+  '720p': 3600,
+  '1080p': 8192,
+};
+
 /**
  * Converts pane size into h264 maxFs
  * @param {PaneSize} paneSize
@@ -29,28 +37,28 @@ export function getMaxFs(paneSize: RemoteVideoResolution): number {
 
   switch (paneSize) {
     case 'thumbnail':
-      maxFs = 60;
+      maxFs = MAX_FS_VALUES['90p'];
       break;
     case 'very small':
-      maxFs = 240;
+      maxFs = MAX_FS_VALUES['180p'];
       break;
     case 'small':
-      maxFs = 920;
+      maxFs = MAX_FS_VALUES['360p'];
       break;
     case 'medium':
-      maxFs = 3600;
+      maxFs = MAX_FS_VALUES['720p'];
       break;
     case 'large':
-      maxFs = 8192;
+      maxFs = MAX_FS_VALUES['1080p'];
       break;
     case 'best':
-      maxFs = 8192; // for now 'best' is 1080p, so same as 'large'
+      maxFs = MAX_FS_VALUES['1080p']; // for now 'best' is 1080p, so same as 'large'
       break;
     default:
       LoggerProxy.logger.warn(
         `RemoteMedia#getMaxFs --> unsupported paneSize: ${paneSize}, using "medium" instead`
       );
-      maxFs = 3600;
+      maxFs = MAX_FS_VALUES['720p'];
   }
 
   return maxFs;
@@ -107,21 +115,31 @@ export class RemoteMedia extends EventsScope {
    * to restrict the requested resolution to this size
    * @param width width of the video element
    * @param height height of the video element
+   * @note width/height of 0 will be ignored
    */
   public setSizeHint(width, height) {
     // only base on height for now
     let fs: number;
 
-    if (height < 135) {
-      fs = 60;
-    } else if (height < 270) {
-      fs = 240;
-    } else if (height < 540) {
-      fs = 920;
+    if (width === 0 || height === 0) {
+      return;
+    }
+
+    // we switch to the next resolution level when the height is 10% more than the current resolution height
+    // except for 1080p - we switch to it immediately when the height is more than 720p
+    const threshold = 1.1;
+    const getThresholdHeight = (h: number) => Math.round(h * threshold);
+
+    if (height < getThresholdHeight(90)) {
+      fs = MAX_FS_VALUES['90p'];
+    } else if (height < getThresholdHeight(180)) {
+      fs = MAX_FS_VALUES['180p'];
+    } else if (height < getThresholdHeight(360)) {
+      fs = MAX_FS_VALUES['360p'];
     } else if (height <= 720) {
-      fs = 3600;
+      fs = MAX_FS_VALUES['720p'];
     } else {
-      fs = 8192;
+      fs = MAX_FS_VALUES['1080p'];
     }
 
     this.receiveSlot?.setMaxFs(fs);

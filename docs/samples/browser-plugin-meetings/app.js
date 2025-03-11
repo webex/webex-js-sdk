@@ -16,8 +16,12 @@ let receiveTranscriptionOption;
 
 let audioReceiveSlot;
 let videoReceiveSlot;
-let isMultistream = false;
 let currentActiveSpeakersMemberIds = [];
+let isMultistream = false;
+let isBrb = false;
+// cached state for local microphone and camera muted state
+let localMediaMicMuted = undefined;
+let localMediaCameraMuted = undefined;
 
 const authTypeElm = document.querySelector('#auth-type');
 const credentialsFormElm = document.querySelector('#credentials');
@@ -38,7 +42,7 @@ const breakoutsList = document.getElementById('breakouts-list');
 const breakoutTable = document.getElementById('breakout-table');
 const breakoutHostOperation = document.getElementById('breakout-host-operation');
 const getStatsButton = document.getElementById('get-stats');
-const tcpReachabilityConfigElm = document.getElementById('enable-tcp-reachability'); 
+const tcpReachabilityConfigElm = document.getElementById('enable-tcp-reachability');
 const tlsReachabilityConfigElm = document.getElementById('enable-tls-reachability');
 
 const guestName = document.querySelector('#guest-name');
@@ -375,7 +379,7 @@ function collectMeetings() {
 
 createMeetingSelectElm.addEventListener('change', (event) => {
   if (event.target.value === 'CONVERSATION_URL') {
-    createMeetingActionElm.innerText = 'Create Adhoc Meeting';
+    createMeetingActionElm.innerText = 'Create Adhoc Meeting using conversation URL (INTERNAL-USE ONLY)';
   }
   else {
     createMeetingActionElm.innerText = 'Create Meeting';
@@ -388,7 +392,7 @@ createMeetingSelectElm.addEventListener('change', (event) => {
   }
   else {
      notes.classList.add('hidden');
-    
+
   }
 });
 
@@ -857,6 +861,7 @@ const loadCameraBtn = document.querySelector('#ts-load-camera');
 const toggleVbgBtn = document.querySelector('#ts-enable-VBG');
 const loadMicrophoneBtn = document.querySelector('#ts-load-mic');
 const toggleBNRBtn = document.querySelector('#ts-enable-BNR');
+const startShareBtn = document.querySelector('#ts-start-screenshare');
 const publishShareBtn = document.querySelector('#ts-publish-screenshare');
 const unpublishShareBtn = document.querySelector('#ts-unpublish-screenshare');
 const stopShareBtn = document.querySelector('#ts-stop-screenshare');
@@ -865,6 +870,8 @@ const stopVideoButton = document.querySelector('#ts-stop-video');
 const stopAudioButton = document.querySelector('#ts-stop-audio');
 const muteVideoMessage = document.querySelector('#ts-mute-video-message');
 const muteAudioMessage = document.querySelector('#ts-mute-audio-message');
+const defaultShareMessage = document.querySelector('#ts-default-share-message');
+const brbShareMessage = document.querySelector('#ts-brb-share-message');
 const modeBtn = document.getElementById('mode-type');
 
 /**
@@ -950,7 +957,7 @@ function cleanUpMedia() {
       elem.srcObject.getTracks().forEach((track) => track.stop());
       // eslint-disable-next-line no-param-reassign
       elem.srcObject = null;
-      
+
       if(elem.id === "local-video") {
         clearVideoResolutionCheckInterval(localVideoResElm, localVideoResolutionInterval);
       }
@@ -1566,7 +1573,7 @@ async function stopStartVideo() {
       console.error(error);
     }
   }
-  
+
 }
 
 async function stopStartAudio() {
@@ -1608,7 +1615,7 @@ async function stopStartAudio() {
       console.error(error);
     }
   }
-  
+
 }
 
 function populateSourceDevices(mediaDevice) {
@@ -1760,6 +1767,11 @@ function handleMuteAudioMessage() {
   muteAudioMessage.innerHTML = localMedia.microphoneStream.systemMuted ? "Warning: microphone may be muted by the system" : "";
 }
 
+function handleBrbShareMessage(showMessage) {
+  brbShareMessage.hidden = !showMessage;
+  defaultShareMessage.hidden = showMessage;
+}
+
 function toggleSendAudio() {
   console.log('MeetingControls#toggleSendAudio()');
 
@@ -1769,7 +1781,10 @@ function toggleSendAudio() {
     localMedia.microphoneStream.setUserMuted(newMuteValue);
 
     console.log(`MeetingControls#toggleSendAudio() :: Successfully ${newMuteValue ? 'muted': 'unmuted'} audio!`);
-    return;
+
+    if (isBrb) {
+      toggleBrb({unmuteAudio: true});
+    }
   }
 }
 
@@ -1787,7 +1802,9 @@ function toggleSendVideo() {
 
     console.log(`MeetingControls#toggleSendVideo() :: Successfully ${newMuteValue ? 'muted': 'unmuted'} video!`);
 
-    return;
+    if (isBrb) {
+      toggleBrb({unmuteVideo: true});
+    }
   }
 }
 
@@ -1877,24 +1894,6 @@ async function unpublishScreenShare() {
   }
   catch (error) {
     console.log('MeetingControls#unpublishScreenShare() :: Error unpublishing share stream!');
-    console.error(error);
-  }
-}
-
-async function stopScreenShare() {
-  console.log('MeetingControls#stopScreenShare()');
-  try {
-    if (localMedia.screenShare.audio) {
-      localMedia.screenShare.audio?.stop();
-    }
-    if (localMedia.screenShare.video) {
-      localMedia.screenShare.video?.stop();
-    }
-
-    console.log('MeetingControls#stopScreenShare() :: Successfully stopped sharing!');
-  }
-  catch (error) {
-    console.log('MeetingControls#stopScreenShare() :: Error stopping screen share!');
     console.error(error);
   }
 }
@@ -3052,6 +3051,11 @@ function moveFromDevice() {
   });
 }
 
+function isMemberSelf(member) {
+  const meeting = getCurrentMeeting();
+  return meeting.selfId === member.id
+}
+
 function claimPersonalMeetingRoom() {
   console.log('DevicesControls#claimPersonalMeetingRoom()');
 
@@ -3094,7 +3098,7 @@ participantTable.addEventListener('click', (event) => {
     }
     const muteButton = document.getElementById('mute-participant-btn')
     if (selectedParticipant.isAudioMuted) {
-      muteButton.innerText = meeting.selfId === selectedParticipant.id ? 'Unmute' : 'Request to unmute';
+      muteButton.innerText = isMemberSelf(selectedParticipant) ? 'Unmute' : 'Request to unmute';
     } else {
       muteButton.innerText = 'Mute';
     }
@@ -3327,6 +3331,81 @@ function toggleBreakout() {
   if (meeting) {
     meeting.breakouts.toggleBreakout(enableBox.checked);
     document.getElementById('createBO').disabled = !enableBox.checked;
+  }
+}
+
+async function stopScreenShare() {
+  console.log('MeetingControls#stopScreenShare()');
+  try {
+    if (localMedia.screenShare.audio) {
+      localMedia.screenShare.audio?.stop();
+    }
+    if (localMedia.screenShare.video) {
+      localMedia.screenShare.video?.stop();
+    }
+
+    console.log('MeetingControls#stopScreenShare() :: Successfully stopped sharing!');
+  }
+  catch (error) {
+    console.log('MeetingControls#stopScreenShare() :: Error stopping screen share!');
+    console.error(error);
+  }
+}
+
+async function toggleBrb({unmuteAudio = false, unmuteVideo = false}) {
+  const meeting = getCurrentMeeting();
+
+  if (meeting) {
+    const brbButton = document.getElementById('brb-btn');
+    const enableBrb = brbButton.innerText === 'Step away';
+
+    try {
+      isBrb = enableBrb;
+
+      if (enableBrb) {
+        localMediaCameraMuted = localMedia.cameraStream.userMuted;
+        localMediaMicMuted = localMedia.microphoneStream.userMuted;
+
+        // stop sharing and disable buttons to use it in brb
+        await stopScreenShare();
+        publishShareBtn.disabled = true;
+        unpublishShareBtn.disabled = true;
+        startShareBtn.disabled = true;
+        handleBrbShareMessage(true);
+
+        localMedia.cameraStream.setUserMuted(true);
+        localMedia.microphoneStream.setUserMuted(true);
+      } else {
+        if (unmuteAudio) {
+          localMedia.microphoneStream.setUserMuted(false);
+          localMediaCameraMuted = undefined;
+          localMediaMicMuted = undefined;
+        }
+
+        if (unmuteVideo) {
+          localMedia.cameraStream.setUserMuted(false);
+          localMediaCameraMuted = undefined;
+          localMediaMicMuted = undefined;
+        }
+
+        if (localMediaCameraMuted !== undefined && localMediaMicMuted !== undefined) {
+          localMedia.cameraStream.setUserMuted(localMediaCameraMuted);
+          localMedia.microphoneStream.setUserMuted(localMediaMicMuted);
+        }
+
+        // restore user sharing buttons
+        publishShareBtn.disabled = false;
+        unpublishShareBtn.disabled = false;
+        startShareBtn.disabled = false;
+        handleBrbShareMessage(false);
+      }
+
+      const result = await meeting.beRightBack(enableBrb);
+
+      console.log(`meeting.beRightBack(${enableBrb}): success. Result: ${result}`);
+    } catch (error) {
+      console.error(`meeting.beRightBack({${enableBrb}): error: `, error);
+    }
   }
 }
 
@@ -3712,18 +3791,21 @@ function createMembersTable(members) {
     const th3 = document.createElement('th');
     const th4 = document.createElement('th');
     const th5 = document.createElement('th');
+    const th6 = document.createElement('th');
 
     th1.innerText = 'NAME';
     th2.innerText = 'VIDEO';
     th3.innerText = 'AUDIO';
     th4.innerText = 'STATUS';
     th5.innerText = 'SUPPORTS BREAKOUTS';
+    th6.innerText = 'AWAY';
 
     tr.appendChild(th1);
     tr.appendChild(th2);
     tr.appendChild(th3);
     tr.appendChild(th4);
     tr.appendChild(th5);
+    tr.appendChild(th6);
 
     return tr;
   }
@@ -3735,6 +3817,7 @@ function createMembersTable(members) {
     const td3 = document.createElement('td');
     const td4 = document.createElement('td');
     const td5 = document.createElement('td');
+    const td6 = document.createElement('td');
     const label1 = createLabel(member.id);
     const label2 = createLabel(member.id, member.isVideoMuted ? 'NO' : 'YES');
     const label3 = createLabel(member.id, member.isAudioMuted ? 'NO' : 'YES');
@@ -3763,11 +3846,19 @@ function createMembersTable(members) {
 
     td5.appendChild(label5);
 
+
+    if (isMemberSelf(member) && member.isInMeeting) {
+      td6.appendChild(createButton(member.isBrb ? 'Back to meeting' : 'Step away', toggleBrb, {id: 'brb-btn'}));
+    } else {
+      td6.appendChild(createLabel(member.id, member.isBrb ? 'YES' : 'NO'));
+    }
+
     tr.appendChild(td1);
     tr.appendChild(td2);
     tr.appendChild(td3);
     tr.appendChild(td4);
     tr.appendChild(td5);
+    tr.appendChild(td6);
 
     return tr;
   }
@@ -3778,7 +3869,7 @@ function createMembersTable(members) {
 
   thead.appendChild(createHeadRow());
 
-  Object.entries(members).forEach(([key, value]) => {
+  Object.entries(members).forEach(([_, value]) => {
     if (value.status !== 'NOT_IN_MEETING') {
       const row = createRow(value);
 

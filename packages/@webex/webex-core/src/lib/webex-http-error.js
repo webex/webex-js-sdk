@@ -22,6 +22,15 @@ export default class WebexHttpError extends HttpError {
       value: res.options,
     });
 
+    Reflect.defineProperty(this, 'body', {
+      enumerable: false,
+      value: res.body,
+    });
+
+    if (this.body && this.body.errorCode) {
+      message += `\nerrorCode : ${this.body.errorCode}`;
+    }
+
     if (this.options.url) {
       message += `\n${this.options.method} ${this.options.url}`;
     } else if (this.options.uri) {

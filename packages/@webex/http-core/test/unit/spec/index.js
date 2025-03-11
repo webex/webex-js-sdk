@@ -1,7 +1,6 @@
 import {assert} from '@webex/test-helper-chai';
 import sinon from 'sinon';
 
-import * as utils from '@webex/http-core/src/request/utils';
 import WebexTrackingIdInterceptor from '@webex/webex-core/src/interceptors/webex-tracking-id';
 import UserAgentInterceptor from '@webex/webex-core/src/interceptors/webex-user-agent';
 import {protoprepareFetchOptions, setTimingsAndFetch} from '@webex/http-core/src/index';

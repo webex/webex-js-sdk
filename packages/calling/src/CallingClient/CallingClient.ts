@@ -3,7 +3,13 @@
 /* eslint-disable @typescript-eslint/no-shadow */
 import * as Media from '@webex/internal-media-core';
 import {Mutex} from 'async-mutex';
-import {filterMobiusUris, handleCallingClientErrors, validateServiceData} from '../common/Utils';
+import {v4 as uuid} from 'uuid';
+import {
+  filterMobiusUris,
+  handleCallingClientErrors,
+  uploadLogs,
+  validateServiceData,
+} from '../common/Utils';
 import {LOGGER, LogContext} from '../Logger/types';
 import SDKConnector from '../SDKConnector';
 import {ClientRegionInfo, ISDKConnector, ServiceHost, WebexSDK} from '../SDKConnector/types';
@@ -113,6 +119,17 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
     this.metricManager = getMetricManager(this.webex, serviceData.indicator);
 
     this.mediaEngine = Media;
+
+    const adaptedLogger: Media.Logger = {
+      log: (...args) => webex.logger.log(args.join(' : ')),
+      error: (...args) => webex.logger.error(args.join(' : ')),
+      warn: (...args) => webex.logger.warn(args.join(' : ')),
+      info: (...args) => webex.logger.info(args.join(' : ')),
+      trace: (...args) => webex.logger.trace(args.join(' : ')),
+      debug: (...args) => webex.logger.debug(args.join(' : ')),
+    };
+
+    this.mediaEngine.setLogger(adaptedLogger);
 
     this.primaryMobiusUris = [];
     this.backupMobiusUris = [];
@@ -454,7 +471,8 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
       this.primaryMobiusUris,
       this.backupMobiusUris,
       this.getLoggingLevel(),
-      this.sdkConfig?.serviceData
+      this.sdkConfig?.serviceData,
+      this.sdkConfig?.jwe
     );
 
     this.lineDict[line.lineId] = line;
@@ -499,6 +517,19 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
     });
 
     return connectCall;
+  }
+
+  /**
+   * uploads logs to backend for trouble shooting
+   * @param data
+   */
+  public async uploadLogs(data: {feedbackId?: string} = {}) {
+    if (!data.feedbackId) {
+      // spread the data object to avoid mutation
+      data = {...data, feedbackId: uuid()};
+    }
+
+    return uploadLogs(data);
   }
 }
 

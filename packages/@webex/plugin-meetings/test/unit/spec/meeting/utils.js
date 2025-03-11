@@ -22,6 +22,12 @@ describe('plugin-meetings', () => {
           meetings: Meetings,
         },
       });
+
+      webex.meetings.reachability = {
+        getReachabilityReportToAttachToRoap: sinon.stub().resolves({}),
+        getClientMediaPreferences: sinon.stub().resolves({}),
+      };
+
       const logger = {
         info: sandbox.stub(),
         log: sandbox.stub(),
@@ -39,6 +45,7 @@ describe('plugin-meetings', () => {
       meeting.cleanupLocalStreams = sinon.stub().returns(Promise.resolve());
       meeting.closeRemoteStreams = sinon.stub().returns(Promise.resolve());
       meeting.closePeerConnections = sinon.stub().returns(Promise.resolve());
+      meeting.stopPeriodicLogUpload = sinon.stub();
 
       meeting.unsetRemoteStreams = sinon.stub();
       meeting.unsetPeerConnections = sinon.stub();
@@ -64,6 +71,7 @@ describe('plugin-meetings', () => {
         assert.calledOnce(meeting.cleanupLocalStreams);
         assert.calledOnce(meeting.closeRemoteStreams);
         assert.calledOnce(meeting.closePeerConnections);
+        assert.calledOnce(meeting.stopPeriodicLogUpload);
 
         assert.calledOnce(meeting.unsetRemoteStreams);
         assert.calledOnce(meeting.unsetPeerConnections);
@@ -154,21 +162,6 @@ describe('plugin-meetings', () => {
         it('should log videoStream settings', () => {
           assert(MeetingUtil.handleVideoLogging, 'method is defined');
           MeetingUtil.handleVideoLogging(mockStream);
-          assert(LoggerProxy.logger.log.called, 'log called');
-        });
-      });
-
-      describe('#handleDeviceLogging', () => {
-        it('should not log if called without devices', () => {
-          MeetingUtil.handleDeviceLogging();
-          assert(!LoggerProxy.logger.log.called, 'log not called');
-        });
-
-        it('should log device settings', () => {
-          const mockDevices = [{deviceId: 'device-1'}, {deviceId: 'device-2'}];
-
-          assert(MeetingUtil.handleDeviceLogging, 'is defined');
-          MeetingUtil.handleDeviceLogging(mockDevices);
           assert(LoggerProxy.logger.log.called, 'log called');
         });
       });
@@ -378,36 +371,74 @@ describe('plugin-meetings', () => {
     });
 
     describe('joinMeeting', () => {
-      it('#Should call `meetingRequest.joinMeeting', async () => {
-        const meeting = {
+      const joinMeetingResponse = {
+        body: {
+          mediaConnections: [],
+          locus: {
+            url: 'differentLocusUrl',
+            self: {
+              id: 'selfId',
+            },
+          },
+        },
+        headers: {
+          trackingid: 'trackingId',
+        },
+      };
+      let meeting;
+
+      beforeEach(() => {
+        meeting = {
           meetingJoinUrl: 'meetingJoinUrl',
           locusUrl: 'locusUrl',
           meetingRequest: {
             joinMeeting: sinon.stub().returns(
-              Promise.resolve({
-                body: {mediaConnections: 'mediaConnections'},
-                headers: {
-                  trackingid: 'trackingId',
-                },
-              })
-            ),
+              Promise.resolve(joinMeetingResponse)),
           },
           getWebexObject: sinon.stub().returns(webex),
+          setLocus: sinon.stub(),
+        };
+      });
+
+      it('#Should call `meetingRequest.joinMeeting', async () => {
+        meeting.isMultistream = true;
+
+        const FAKE_REACHABILITY_REPORT = {
+          id: 'fake reachability report',
+        };
+        const FAKE_CLIENT_MEDIA_PREFERENCES = {
+          id: 'fake client media preferences',
         };
 
-        const parseLocusJoinSpy = sinon.stub(MeetingUtil, 'parseLocusJoin');
+        webex.meetings.reachability.getReachabilityReportToAttachToRoap.resolves(FAKE_REACHABILITY_REPORT);
+        webex.meetings.reachability.getClientMediaPreferences.resolves(FAKE_CLIENT_MEDIA_PREFERENCES);
+
+        sinon
+          .stub(webex.internal.device.ipNetworkDetector, 'supportsIpV4')
+          .get(() => true);
+        sinon
+          .stub(webex.internal.device.ipNetworkDetector, 'supportsIpV6')
+          .get(() => true);
+
         await MeetingUtil.joinMeeting(meeting, {
           reachability: 'reachability',
           roapMessage: 'roapMessage',
         });
 
+        assert.calledOnceWithExactly(webex.meetings.reachability.getReachabilityReportToAttachToRoap);
+        assert.calledOnceWithExactly(webex.meetings.reachability.getClientMediaPreferences, meeting.isMultistream, IP_VERSION.ipv4_and_ipv6);
+
         assert.calledOnce(meeting.meetingRequest.joinMeeting);
         const parameter = meeting.meetingRequest.joinMeeting.getCall(0).args[0];
 
         assert.equal(parameter.inviteeAddress, 'meetingJoinUrl');
-        assert.equal(parameter.preferTranscoding, true);
-        assert.equal(parameter.reachability, 'reachability');
+        assert.equal(parameter.reachability, FAKE_REACHABILITY_REPORT);
+        assert.equal(parameter.clientMediaPreferences, FAKE_CLIENT_MEDIA_PREFERENCES);
         assert.equal(parameter.roapMessage, 'roapMessage');
+
+        assert.calledOnce(meeting.setLocus)
+        const setLocusParameter = meeting.setLocus.getCall(0).args[0];
+        assert.deepEqual(setLocusParameter, MeetingUtil.parseLocusJoin(joinMeetingResponse))
 
         assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
           name: 'client.locus.join.request',
@@ -424,21 +455,46 @@ describe('plugin-meetings', () => {
           },
           options: {
             meetingId: meeting.id,
-            mediaConnections: 'mediaConnections',
+            mediaConnections: [],
           },
         });
-        parseLocusJoinSpy.restore();
+      });
+
+      it('should handle failed reachability report retrieval', async () => {
+        webex.meetings.reachability.getReachabilityReportToAttachToRoap.rejects(
+          new Error('fake error')
+        );
+        await MeetingUtil.joinMeeting(meeting, {});
+        // Verify meeting join still proceeds
+        assert.calledOnce(meeting.meetingRequest.joinMeeting);
+      });
+
+      it('should not attach reachability if there is no roap message', async () => {
+        await MeetingUtil.joinMeeting(meeting, {});
+
+        assert.notCalled(webex.meetings.reachability.getReachabilityReportToAttachToRoap);
+        assert.calledOnce(meeting.meetingRequest.joinMeeting);
+
+        const parameter = meeting.meetingRequest.joinMeeting.getCall(0).args[0];
+        assert.isUndefined(parameter.reachability);
+        assert.isUndefined(parameter.roapMessage);
+      });
+
+      it('should handle failed clientMediaPreferences retrieval', async () => {
+        webex.meetings.reachability.getClientMediaPreferences.rejects(new Error('fake error'));
+        meeting.isMultistream = true;
+        await MeetingUtil.joinMeeting(meeting, {});
+        // Verify meeting join still proceeds
+        assert.calledOnce(meeting.meetingRequest.joinMeeting);
+        const parameter = meeting.meetingRequest.joinMeeting.getCall(0).args[0];
+        assert.deepEqual(parameter.clientMediaPreferences, {
+          preferTranscoding: false,
+          ipver: 0,
+          joinCookie: undefined,
+        });
       });
 
       it('#Should call meetingRequest.joinMeeting with breakoutsSupported=true when passed in as true', async () => {
-        const meeting = {
-          meetingRequest: {
-            joinMeeting: sinon.stub().returns(Promise.resolve({body: {}, headers: {}})),
-          },
-          getWebexObject: sinon.stub().returns(webex),
-        };
-
-        const parseLocusJoinSpy = sinon.stub(MeetingUtil, 'parseLocusJoin');
         await MeetingUtil.joinMeeting(meeting, {
           breakoutsSupported: true,
         });
@@ -447,18 +503,9 @@ describe('plugin-meetings', () => {
         const parameter = meeting.meetingRequest.joinMeeting.getCall(0).args[0];
 
         assert.equal(parameter.breakoutsSupported, true);
-        parseLocusJoinSpy.restore();
       });
 
       it('#Should call meetingRequest.joinMeeting with liveAnnotationSupported=true when passed in as true', async () => {
-        const meeting = {
-          meetingRequest: {
-            joinMeeting: sinon.stub().returns(Promise.resolve({body: {}, headers: {}})),
-          },
-          getWebexObject: sinon.stub().returns(webex),
-        };
-
-        const parseLocusJoinSpy = sinon.stub(MeetingUtil, 'parseLocusJoin');
         await MeetingUtil.joinMeeting(meeting, {
           liveAnnotationSupported: true,
         });
@@ -467,18 +514,9 @@ describe('plugin-meetings', () => {
         const parameter = meeting.meetingRequest.joinMeeting.getCall(0).args[0];
 
         assert.equal(parameter.liveAnnotationSupported, true);
-        parseLocusJoinSpy.restore();
       });
 
       it('#Should call meetingRequest.joinMeeting with locale=en_UK, deviceCapabilities=["TEST"] when they are passed in as those values', async () => {
-        const meeting = {
-          meetingRequest: {
-            joinMeeting: sinon.stub().returns(Promise.resolve({body: {}, headers: {}})),
-          },
-          getWebexObject: sinon.stub().returns(webex),
-        };
-
-        const parseLocusJoinSpy = sinon.stub(MeetingUtil, 'parseLocusJoin');
         await MeetingUtil.joinMeeting(meeting, {
           locale: 'en_UK',
           deviceCapabilities: ['TEST'],
@@ -489,62 +527,22 @@ describe('plugin-meetings', () => {
 
         assert.equal(parameter.locale, 'en_UK');
         assert.deepEqual(parameter.deviceCapabilities, ['TEST']);
-        parseLocusJoinSpy.restore();
-      });
-
-      it('#Should call meetingRequest.joinMeeting with preferTranscoding=false when multistream is enabled', async () => {
-        const meeting = {
-          isMultistream: true,
-          meetingJoinUrl: 'meetingJoinUrl',
-          locusUrl: 'locusUrl',
-          meetingRequest: {
-            joinMeeting: sinon.stub().returns(Promise.resolve({body: {}, headers: {}})),
-          },
-          getWebexObject: sinon.stub().returns(webex),
-        };
-
-        const parseLocusJoinSpy = sinon.stub(MeetingUtil, 'parseLocusJoin');
-        await MeetingUtil.joinMeeting(meeting, {});
-
-        assert.calledOnce(meeting.meetingRequest.joinMeeting);
-        const parameter = meeting.meetingRequest.joinMeeting.getCall(0).args[0];
-
-        assert.equal(parameter.inviteeAddress, 'meetingJoinUrl');
-        assert.equal(parameter.preferTranscoding, false);
-        parseLocusJoinSpy.restore();
       });
 
       it('#Should fallback sipUrl if meetingJoinUrl does not exists', async () => {
-        const meeting = {
-          sipUri: 'sipUri',
-          locusUrl: 'locusUrl',
-          meetingRequest: {
-            joinMeeting: sinon.stub().returns(Promise.resolve({body: {}, headers: {}})),
-          },
-          getWebexObject: sinon.stub().returns(webex),
-        };
-
-        const parseLocusJoinSpy = sinon.stub(MeetingUtil, 'parseLocusJoin');
+        meeting.meetingJoinUrl = undefined;
+        meeting.sipUri = 'sipUri';
         await MeetingUtil.joinMeeting(meeting, {});
 
         assert.calledOnce(meeting.meetingRequest.joinMeeting);
         const parameter = meeting.meetingRequest.joinMeeting.getCall(0).args[0];
 
         assert.equal(parameter.inviteeAddress, 'sipUri');
-        parseLocusJoinSpy.restore();
       });
 
       it('#Should fallback to meetingNumber if meetingJoinUrl/sipUrl  does not exists', async () => {
-        const meeting = {
-          meetingNumber: 'meetingNumber',
-          locusUrl: 'locusUrl',
-          meetingRequest: {
-            joinMeeting: sinon.stub().returns(Promise.resolve({body: {}, headers: {}})),
-          },
-          getWebexObject: sinon.stub().returns(webex),
-        };
-
-        const parseLocusJoinSpy = sinon.stub(MeetingUtil, 'parseLocusJoin');
+        meeting.meetingJoinUrl = undefined;
+        meeting.meetingNumber = 'meetingNumber';
         await MeetingUtil.joinMeeting(meeting, {});
 
         assert.calledOnce(meeting.meetingRequest.joinMeeting);
@@ -552,28 +550,18 @@ describe('plugin-meetings', () => {
 
         assert.isUndefined(parameter.inviteeAddress);
         assert.equal(parameter.meetingNumber, 'meetingNumber');
-        parseLocusJoinSpy.restore();
       });
 
       it('should pass in the locusClusterUrl from meetingInfo', async () => {
-        const meeting = {
-          meetingInfo: {
-            locusClusterUrl: 'locusClusterUrl',
-          },
-          meetingRequest: {
-            joinMeeting: sinon.stub().returns(Promise.resolve({body: {}, headers: {}})),
-          },
-          getWebexObject: sinon.stub().returns(webex),
+        meeting.meetingInfo = {
+          locusClusterUrl: 'locusClusterUrl',
         };
-
-        const parseLocusJoinSpy = sinon.stub(MeetingUtil, 'parseLocusJoin');
         await MeetingUtil.joinMeeting(meeting, {});
 
         assert.calledOnce(meeting.meetingRequest.joinMeeting);
         const parameter = meeting.meetingRequest.joinMeeting.getCall(0).args[0];
 
         assert.equal(parameter.locusClusterUrl, 'locusClusterUrl');
-        parseLocusJoinSpy.restore();
       });
     });
 
@@ -780,6 +768,13 @@ describe('plugin-meetings', () => {
       it('works as expected', () => {
         assert.deepEqual(MeetingUtil.canManageBreakout(['BREAKOUT_MANAGEMENT']), true);
         assert.deepEqual(MeetingUtil.canManageBreakout([]), false);
+      });
+    });
+
+    describe('canStartBreakout', () => {
+      it('works as expected', () => {
+        assert.deepEqual(MeetingUtil.canStartBreakout(['DISABLE_BREAKOUT_START']), false);
+        assert.deepEqual(MeetingUtil.canStartBreakout([]), true);
       });
     });
 
@@ -1063,7 +1058,7 @@ describe('plugin-meetings', () => {
           assert.equal(MeetingUtil.getIpVersion(webex), expectedOutput);
         });
 
-        it(`returns undefined when supportsIpV4=${supportsIpV4} and supportsIpV6=${supportsIpV6} and browser is firefox`, () => {
+        it(`returns ${expectedOutput} when supportsIpV4=${supportsIpV4} and supportsIpV6=${supportsIpV6} for Firefox if config is enabled`, () => {
           sinon
             .stub(webex.internal.device.ipNetworkDetector, 'supportsIpV4')
             .get(() => supportsIpV4);
@@ -1071,6 +1066,21 @@ describe('plugin-meetings', () => {
             .stub(webex.internal.device.ipNetworkDetector, 'supportsIpV6')
             .get(() => supportsIpV6);
 
+          webex.config.meetings.backendIpv6NativeSupport = true;
+          isBrowserStub.callsFake((name) => name === 'firefox');
+
+          assert.equal(MeetingUtil.getIpVersion(webex), expectedOutput);
+        });
+
+        it(`returns undefined when supportsIpV4=${supportsIpV4} and supportsIpV6=${supportsIpV6}, config disabled and browser is firefox`, () => {
+          sinon
+            .stub(webex.internal.device.ipNetworkDetector, 'supportsIpV4')
+            .get(() => supportsIpV4);
+          sinon
+            .stub(webex.internal.device.ipNetworkDetector, 'supportsIpV6')
+            .get(() => supportsIpV6);
+
+          webex.config.meetings.backendIpv6NativeSupport = false;
           isBrowserStub.callsFake((name) => name === 'firefox');
 
           assert.equal(MeetingUtil.getIpVersion(webex), undefined);

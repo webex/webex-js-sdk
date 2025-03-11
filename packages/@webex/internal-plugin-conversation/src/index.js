@@ -12,8 +12,6 @@ import {capitalize, get, has} from 'lodash';
 
 import Conversation from './conversation';
 import config from './config';
-import {transforms as encryptionTransforms} from './encryption-transforms';
-import {transforms as decryptionTransforms} from './decryption-transforms';
 
 registerInternalPlugin('conversation', Conversation, {
   payloadTransformer: {
@@ -315,9 +313,7 @@ registerInternalPlugin('conversation', Conversation, {
           });
         },
       },
-    ]
-      .concat(decryptionTransforms)
-      .concat(encryptionTransforms),
+    ],
   },
   config,
 });

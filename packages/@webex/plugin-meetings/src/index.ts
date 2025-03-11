@@ -8,6 +8,7 @@ import CaptchaError from './common/errors/captcha-error';
 import IntentToJoinError from './common/errors/intent-to-join';
 import PasswordError from './common/errors/password-error';
 import PermissionError from './common/errors/permission';
+import JoinWebinarError from './common/errors/join-webinar-error';
 import {
   ReclaimHostEmptyWrongKeyError,
   ReclaimHostIsHostAlreadyError,
@@ -26,7 +27,6 @@ registerPlugin('meetings', Meetings, {
 });
 
 export {
-  getDevices,
   LocalStream,
   LocalDisplayStream,
   LocalSystemAudioStream,
@@ -40,12 +40,15 @@ export {
   LocalCameraStream,
   createMicrophoneStream,
   createCameraStream,
+  createCameraAndMicrophoneStreams,
   createDisplayStream,
   createDisplayStreamWithAudio,
+  createDisplayMedia,
   FacingMode,
   DisplaySurface,
   PresetCameraConstraints,
   type VideoContentHint,
+  type StreamState,
 } from '@webex/media-helpers';
 
 export default Meetings;
@@ -68,6 +71,7 @@ export {
   ReclaimHostEmptyWrongKeyError,
   Meeting,
   MeetingInfoUtil,
+  JoinWebinarError,
 };
 
 export {RemoteMedia} from './multistream/remoteMedia';

@@ -11,9 +11,6 @@ describe('internal-plugin-metrics', () => {
       newMetrics: NewMetrics,
     },
     meetings: {
-      meetingCollection: {
-        get: sinon.stub(),
-      },
     },
     request: sinon.stub().resolves({}),
     logger: {
@@ -62,6 +59,7 @@ describe('internal-plugin-metrics', () => {
       webex.internal.newMetrics.callDiagnosticLatencies.saveTimestamp = sinon.stub();
       webex.internal.newMetrics.callDiagnosticLatencies.clearTimestamps = sinon.stub();
       webex.internal.newMetrics.callDiagnosticMetrics.submitClientEvent = sinon.stub();
+      webex.internal.newMetrics.callDiagnosticMetrics.submitDelayedClientEvents = sinon.stub();
       webex.internal.newMetrics.callDiagnosticMetrics.submitMQE = sinon.stub();
       webex.internal.newMetrics.callDiagnosticMetrics.clientMetricsAliasUser = sinon.stub();
       webex.internal.newMetrics.callDiagnosticMetrics.buildClientEventFetchRequestOptions =
@@ -86,6 +84,26 @@ describe('internal-plugin-metrics', () => {
       webex.internal.newMetrics.isReadyToSubmitBusinessEvents();
       assert.isDefined(webex.internal.newMetrics.businessMetrics);
     })
+
+    it('passes the table through to the business metrics', () => {
+      assert.isUndefined(webex.internal.newMetrics.businessMetrics)
+      webex.internal.newMetrics.isReadyToSubmitBusinessEvents();
+      assert.isDefined(webex.internal.newMetrics.businessMetrics);
+      webex.internal.newMetrics.businessMetrics.submitBusinessEvent = sinon.stub();
+      webex.internal.newMetrics.submitBusinessEvent({
+        name: 'foobar',
+        payload: {},
+        table: 'test',
+        metadata: { foo: 'bar' },
+      });
+
+      assert.calledWith(webex.internal.newMetrics.businessMetrics.submitBusinessEvent, {
+        name: 'foobar',
+        payload: {},
+        table: 'test',
+        metadata: { foo: 'bar' },
+      });
+    });
   
     it('submits Client Event successfully', () => {
       webex.internal.newMetrics.submitClientEvent({
@@ -103,6 +121,7 @@ describe('internal-plugin-metrics', () => {
         name: 'client.alert.displayed',
         payload: undefined,
         options: {meetingId: '123'},
+        delaySubmitEvent: false,
       });
     });
 
@@ -239,6 +258,25 @@ describe('internal-plugin-metrics', () => {
         sinon.assert.calledWith(webex.setTimingsAndFetch, expected);
 
         sinon.restore();
+      });
+    });
+
+    describe('#setDelaySubmitClientEvents', () => {
+      it('sets delaySubmitClientEvents correctly and calls submitDelayedClientEvents when set to false', () => {
+        sinon.assert.match(webex.internal.newMetrics.delaySubmitClientEvents, false);
+
+        webex.internal.newMetrics.setDelaySubmitClientEvents(true);
+
+        assert.notCalled(webex.internal.newMetrics.callDiagnosticMetrics.submitDelayedClientEvents);
+
+        sinon.assert.match(webex.internal.newMetrics.delaySubmitClientEvents, true);
+
+        webex.internal.newMetrics.setDelaySubmitClientEvents(false);
+
+        assert.calledOnce(webex.internal.newMetrics.callDiagnosticMetrics.submitDelayedClientEvents);
+        assert.calledWith(webex.internal.newMetrics.callDiagnosticMetrics.submitDelayedClientEvents);
+
+        sinon.assert.match(webex.internal.newMetrics.delaySubmitClientEvents, false);
       });
     });
   });

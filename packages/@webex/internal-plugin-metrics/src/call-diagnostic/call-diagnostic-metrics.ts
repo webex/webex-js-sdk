@@ -40,6 +40,7 @@ import {
   ClientEventPayloadError,
   ClientSubServiceType,
   BrowserLaunchMethodType,
+  DelayedClientEvent,
 } from '../metrics.types';
 import CallDiagnosticEventsBatcher from './call-diagnostic-metrics-batcher';
 import PreLoginMetricsBatcher from '../prelogin-metrics-batcher';
@@ -95,6 +96,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
   private logger: any; // to avoid adding @ts-ignore everywhere
   private hasLoggedBrowserSerial: boolean;
   private device: any;
+  private delayedClientEvents: DelayedClientEvent[] = [];
 
   // the default validator before piping an event to the batcher
   // this function can be overridden by the user
@@ -139,7 +141,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
   getIsConvergedArchitectureEnabled({meetingId}: {meetingId?: string}): boolean {
     if (meetingId) {
       // @ts-ignore
-      const meeting = this.webex.meetings.meetingCollection.get(meetingId);
+      const meeting = this.webex.meetings.getBasicMeetingInformation(meetingId);
 
       return meeting?.meetingInfo?.enableConvergedArchitecture;
     }
@@ -165,8 +167,22 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
         return WEBEX_SUB_SERVICE_TYPES.SCHEDULED_MEETING;
       }
       // if Scheduled, Webinar, not pmr - then Webinar
-      if (meetingInfo?.webexScheduled && meetingInfo?.enableEvent && !meetingInfo?.pmr) {
+      if (
+        meetingInfo?.webexScheduled &&
+        meetingInfo?.enableEvent &&
+        !meetingInfo?.pmr &&
+        meetingInfo?.isConvergedWebinar
+      ) {
         return WEBEX_SUB_SERVICE_TYPES.WEBINAR;
+      }
+      // if Scheduled, Webinar enable webcast - then webcast
+      if (
+        meetingInfo?.webexScheduled &&
+        meetingInfo?.enableEvent &&
+        !meetingInfo?.pmr &&
+        meetingInfo?.isConvergedWebinarWebcast
+      ) {
+        return WEBEX_SUB_SERVICE_TYPES.WEBCAST;
       }
     }
 
@@ -245,7 +261,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
 
       if (meetingId) {
         // @ts-ignore
-        const meeting = this.webex.meetings.meetingCollection.get(meetingId);
+        const meeting = this.webex.meetings.getBasicMeetingInformation(meetingId);
         if (meeting?.environment) {
           origin.environment = meeting.environment;
         }
@@ -289,11 +305,18 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       sessionCorrelationId,
     } = options;
     const identifiers: Event['event']['identifiers'] = {
-      correlationId: 'unknown',
+      correlationId: 'unknown', // concerned with setting this to unknown. This will fail diagnostic events parsing because it's not a uuid pattern
     };
 
     if (meeting) {
       identifiers.correlationId = meeting.correlationId;
+      if (meeting.sessionCorrelationId) {
+        identifiers.sessionCorrelationId = meeting.sessionCorrelationId;
+      }
+    }
+
+    if (sessionCorrelationId) {
+      identifiers.sessionCorrelationId = sessionCorrelationId;
     }
 
     if (sessionCorrelationId) {
@@ -303,6 +326,8 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     if (correlationId) {
       identifiers.correlationId = correlationId;
     }
+
+    // TODO: should we use patterns.uuid to validate correlationId and session correlation id? they will fail the diagnostic events validation pipeline if improperly formatted
 
     if (this.device) {
       const {device} = this;
@@ -368,7 +393,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
    * @returns
    */
   prepareDiagnosticEvent(eventData: Event['event'], options: any) {
-    const {meetingId} = options;
+    const {meetingId, triggeredTime} = options;
     const origin = this.getOrigin(options, meetingId);
 
     const event: Event = {
@@ -376,7 +401,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       version: 1,
       origin,
       originTime: {
-        triggered: new Date().toISOString(),
+        triggered: triggeredTime || new Date().toISOString(),
         // is overridden in prepareRequest batcher
         sent: 'not_defined_yet',
       },
@@ -425,7 +450,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     // events that will most likely happen in join phase
     if (meetingId) {
       // @ts-ignore
-      const meeting = this.webex.meetings.meetingCollection.get(meetingId);
+      const meeting = this.webex.meetings.getBasicMeetingInformation(meetingId);
 
       if (!meeting) {
         console.warn(
@@ -626,10 +651,11 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       });
     }
 
-    // otherwise return unkown error
+    // otherwise return unkown error but passing serviceErrorCode and serviceErrorName so that we know the issue
     return this.getErrorPayloadForClientErrorCode({
       clientErrorCode: UNKNOWN_ERROR,
-      serviceErrorCode: UNKNOWN_ERROR,
+      serviceErrorCode: serviceErrorCode || UNKNOWN_ERROR,
+      serviceErrorName: rawError?.name,
       payloadOverrides: rawError.payloadOverrides,
       rawErrorMessage,
       httpStatusCode,
@@ -661,7 +687,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     } = options;
 
     // @ts-ignore
-    const meeting = this.webex.meetings.meetingCollection.get(meetingId);
+    const meeting = this.webex.meetings.getBasicMeetingInformation(meetingId);
 
     if (!meeting) {
       console.warn(
@@ -706,7 +732,18 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
         meetingId,
       }),
       webexSubServiceType: this.getSubServiceType(meeting),
+      // @ts-ignore
+      webClientPreload: this.webex.meetings?.config?.metrics?.webClientPreload,
     };
+
+    const joinFlowVersion = options.joinFlowVersion ?? meeting.callStateForMetrics?.joinFlowVersion;
+    if (joinFlowVersion) {
+      clientEventObject.joinFlowVersion = joinFlowVersion;
+    }
+
+    if (options.meetingJoinPhase) {
+      clientEventObject.meetingJoinPhase = options.meetingJoinPhase;
+    }
 
     return clientEventObject;
   }
@@ -749,7 +786,17 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
         webClientDomain: window.location.hostname,
       },
       loginType: this.getCurLoginType(),
+      // @ts-ignore
+      webClientPreload: this.webex.meetings?.config?.metrics?.webClientPreload,
     };
+
+    if (options.joinFlowVersion) {
+      clientEventObject.joinFlowVersion = options.joinFlowVersion;
+    }
+
+    if (options.meetingJoinPhase) {
+      clientEventObject.meetingJoinPhase = options.meetingJoinPhase;
+    }
 
     return clientEventObject;
   }
@@ -815,17 +862,36 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
    * @param arg.event - event key
    * @param arg.payload - additional payload to be merged with default payload
    * @param arg.options - payload
+   * @param arg.delaySubmitEvent - a boolean value indicating whether to delay the submission of client events.
    * @throws
    */
   public submitClientEvent({
     name,
     payload,
     options,
+    delaySubmitEvent,
   }: {
     name: ClientEvent['name'];
     payload?: ClientEventPayload;
     options?: SubmitClientEventOptions;
+    delaySubmitEvent?: boolean;
   }) {
+    if (delaySubmitEvent) {
+      // Preserve the time when the event was triggered if delaying the submission to Call Diagnostics
+      const delayedOptions = {
+        ...options,
+        triggeredTime: new Date().toISOString(),
+      };
+
+      this.delayedClientEvents.push({
+        name,
+        payload,
+        options: delayedOptions,
+      });
+
+      return Promise.resolve();
+    }
+
     this.logger.log(
       CALL_DIAGNOSTIC_LOG_IDENTIFIER,
       'CallDiagnosticMetrics: @submitClientEvent. Submit Client Event CA event.',
@@ -840,6 +906,28 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     this.validator({type: 'ce', event: diagnosticEvent});
 
     return this.submitToCallDiagnostics(diagnosticEvent);
+  }
+
+  /**
+   * Submit Delayed Client Event CA events. Clears delayedClientEvents array after submission.
+   */
+  public submitDelayedClientEvents() {
+    this.logger.log(
+      CALL_DIAGNOSTIC_LOG_IDENTIFIER,
+      'CallDiagnosticMetrics: @submitDelayedClientEvents. Submitting delayed client events.'
+    );
+
+    if (this.delayedClientEvents.length === 0) {
+      return Promise.resolve();
+    }
+
+    const promises = this.delayedClientEvents.map((delayedSubmitClientEventParams) => {
+      return this.submitClientEvent(delayedSubmitClientEventParams);
+    });
+
+    this.delayedClientEvents = [];
+
+    return Promise.all(promises);
   }
 
   /**

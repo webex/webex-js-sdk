@@ -25,6 +25,8 @@ import {
 } from 'lodash';
 import {readExifData} from '@webex/helper-image';
 import uuid from 'uuid';
+import {transforms as encryptionTransforms} from './encryption-transforms';
+import {transforms as decryptionTransforms} from './decryption-transforms';
 
 import {InvalidUserCreation} from './convo-error';
 import ShareActivity from './share-activity';
@@ -66,8 +68,9 @@ const getConvoLimit = (options = {}) => {
   let limit;
 
   if (options.conversationsLimit) {
+    const value = Math.max(options.conversationsLimit, 0);
     limit = {
-      value: options.conversationsLimit,
+      value,
       name: 'conversationsLimit',
     };
   }
@@ -77,6 +80,16 @@ const getConvoLimit = (options = {}) => {
 
 const Conversation = WebexPlugin.extend({
   namespace: 'Conversation',
+  initialize() {
+    this.listenToOnce(this.webex, 'ready', () => {
+      if (Array.isArray(this.webex.config.payloadTransformer?.transforms)) {
+        this.webex.config.payloadTransformer.transforms =
+          this.webex.config.payloadTransformer.transforms
+            .concat(this.config.includeDecryptionTransforms ? decryptionTransforms : [])
+            .concat(this.config.includeEncryptionTransforms ? encryptionTransforms : []);
+      }
+    });
+  },
 
   /**
    * @param {String} cluster the cluster containing the id
@@ -290,15 +303,16 @@ const Conversation = WebexPlugin.extend({
   },
 
   /**
-   * delete a reaction
-   * @param {Object} conversation
-   * @param {Object} reactionId,
-   * @param {String} recipientId,
+   * create a reaction
+   * @param {Object} conversation the conversation in which the reaction will be added
+   * @param {Object} reactionId reaction activity to be deleted
+   * @param {Object} actorId id of person object who is reacting
+   * @param {String} recipientId used when reacting to direct IMC messages
    * @returns {Promise<Activity>}
    */
-  deleteReaction(conversation, reactionId, recipientId) {
+  deleteReaction(conversation, reactionId, actorId, recipientId) {
     const deleteReactionPayload = {
-      actor: {objectType: 'person', id: this.webex.internal.device.userId},
+      actor: {objectType: 'person', id: actorId ?? this.webex.internal.device.userId},
       object: {
         id: reactionId,
         objectType: 'activity',
@@ -321,39 +335,43 @@ const Conversation = WebexPlugin.extend({
 
   /**
    * create a reaction
-   * @param {Object} conversation
+   * @param {Object} conversation the conversation in which the reaction will be added
    * @param {Object} displayName must be 'celebrate', 'heart', 'thumbsup', 'smiley', 'haha', 'confused', 'sad'
-   * @param {Object} activity activity object from convo we are reacting to
-   * @param {String} recipientId,
+   * @param {Object} parentActivity activity object from that we are reacting to
+   * @param {Object} actorId id of person object who is reacting
+   * @param {String} recipientId used when reacting to direct IMC messages
    * @returns {Promise<Activity>}
    */
-  addReaction(conversation, displayName, activity, recipientId) {
-    return this.createReactionHmac(displayName, activity).then((hmac) => {
-      const addReactionPayload = {
-        actor: {objectType: 'person', id: this.webex.internal.device.userId},
-        target: {
-          id: conversation.id,
-          objectType: 'conversation',
-        },
-        verb: 'add',
-        objectType: 'activity',
-        parent: {
-          type: 'reaction',
-          id: activity.id,
-        },
-        object: {
-          objectType: 'reaction2',
-          displayName,
-          hmac,
-        },
-      };
+  async addReaction(conversation, displayName, parentActivity, actorId, recipientId) {
+    let hmac;
+    if (this.config.includeEncryptionTransforms) {
+      hmac = await this.createReactionHmac(displayName, parentActivity);
+    }
 
-      if (recipientId) {
-        addReactionPayload.recipients = {items: [{id: recipientId, objectType: 'person'}]};
-      }
+    const addReactionPayload = {
+      actor: {objectType: 'person', id: actorId ?? this.webex.internal.device.userId},
+      target: {
+        id: conversation.id,
+        objectType: 'conversation',
+      },
+      verb: 'add',
+      objectType: 'activity',
+      parent: {
+        type: 'reaction',
+        id: parentActivity.id,
+      },
+      object: {
+        objectType: 'reaction2',
+        displayName,
+        hmac,
+      },
+    };
 
-      return this.sendReaction(conversation, addReactionPayload);
-    });
+    if (recipientId) {
+      addReactionPayload.recipients = {items: [{id: recipientId, objectType: 'person'}]};
+    }
+
+    return this.sendReaction(conversation, addReactionPayload);
   },
 
   /**

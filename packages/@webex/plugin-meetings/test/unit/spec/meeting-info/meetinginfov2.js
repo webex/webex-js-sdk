@@ -18,6 +18,8 @@ import MeetingInfo, {
   MeetingInfoV2CaptchaError,
   MeetingInfoV2AdhocMeetingError,
   MeetingInfoV2PolicyError,
+  MeetingInfoV2JoinWebinarError,
+  MeetingInfoV2JoinForbiddenError,
 } from '@webex/plugin-meetings/src/meeting-info/meeting-info-v2';
 import MeetingInfoUtil from '@webex/plugin-meetings/src/meeting-info/utilv2';
 import Metrics from '@webex/plugin-meetings/src/metrics';
@@ -881,6 +883,83 @@ describe('plugin-meetings', () => {
               assert.calledWith(
                 Metrics.sendBehavioralMetric,
                 BEHAVIORAL_METRICS.MEETING_INFO_POLICY_ERROR,
+                {code: errorCode}
+              );
+
+            }
+          });
+        }
+      );
+
+      forEach(
+        [
+          {errorCode: 403021},
+          {errorCode: 403022},
+          {errorCode: 403024},
+          {errorCode: 403137},
+          {errorCode: 423007},
+          {errorCode: 403026},
+          {errorCode: 403037},
+          {errorCode: 403137},
+        ],
+        ({errorCode}) => {
+          it(`should throw a MeetingInfoV2JoinWebinarError for error code ${errorCode}`, async () => {
+            const message = 'a message';
+            const meetingInfoData = {meetingInfo: {registrationUrl: 'registrationUrl'}};
+
+            webex.request = sinon.stub().rejects({
+              statusCode: 403,
+              body: {message, code: errorCode, data: {meetingInfo: meetingInfoData}},
+            });
+            try {
+              await meetingInfo.createAdhocSpaceMeeting(conversationUrl, installedOrgID);
+              assert.fail('createAdhocSpaceMeeting should have thrown, but has not done that');
+            } catch (err) {
+              assert.instanceOf(err, MeetingInfoV2JoinWebinarError);
+              assert.deepEqual(err.message, `${message}, code=${errorCode}`);
+              assert.equal(err.wbxAppApiCode, errorCode);
+              assert.deepEqual(err.meetingInfo, meetingInfoData);
+
+              assert(Metrics.sendBehavioralMetric.calledOnce);
+              assert.calledWith(
+                Metrics.sendBehavioralMetric,
+                BEHAVIORAL_METRICS.JOIN_WEBINAR_ERROR,
+                {code: errorCode}
+              );
+
+            }
+          });
+        }
+      );
+
+      forEach(
+        [
+          {errorCode: 403003},
+        ],
+        ({errorCode}) => {
+          it(`should throw a MeetingInfoV2JoinForbiddenError for error code ${errorCode}`, async () => {
+            const message = 'a message';
+            const meetingInfoData = 'meeting info';
+
+            webex.request = sinon.stub().rejects({
+              statusCode: 403,
+              body: {message, code: errorCode, data: {meetingInfo: meetingInfoData}},
+            });
+            try {
+              await meetingInfo.fetchMeetingInfo('1234323', DESTINATION_TYPE.MEETING_ID, 'abc', {
+                id: '999',
+                code: 'aabbcc11',
+              });
+            } catch (err) {
+              assert.instanceOf(err, MeetingInfoV2JoinForbiddenError);
+              assert.deepEqual(err.message, `${message}, code=${errorCode}`);
+              assert.equal(err.wbxAppApiCode, errorCode);
+              assert.deepEqual(err.meetingInfo, meetingInfoData);
+
+              assert(Metrics.sendBehavioralMetric.calledOnce);
+              assert.calledWith(
+                Metrics.sendBehavioralMetric,
+                BEHAVIORAL_METRICS.JOIN_FORBIDDEN_ERROR,
                 {code: errorCode}
               );
 

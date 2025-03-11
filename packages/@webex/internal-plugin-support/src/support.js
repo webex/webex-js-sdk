@@ -38,8 +38,22 @@ const Support = WebexPlugin.extend({
       .then((res) => res.body.url);
   },
 
-  submitLogs(metadata, logs) {
+  /**
+   * Sends logs to the backend
+   *
+   * @param {Object} metadata metadata about the logs
+   * @param {Array} logs logs to send, if undefined, SDK's logs will be sent
+   * @param {Object} options additional options
+   * @param {string} options.type 'full' or 'diff', if not specified then the config.incrementalLogs value is used to determine the type,
+   *                               this option only applies if logs parameter is undefined
+   *                               'diff' means that only the logs since the last log upload will be sent
+   *                               'full' means that all the logs from internal buffers will be sent
+   * @returns {Promise}
+   */
+  submitLogs(metadata, logs, options = {}) {
     const metadataArray = this._constructFileMetadata(metadata);
+
+    const {type} = options;
 
     // this is really testing that Ampersand is fully ready.  once it's ready, these exist
     if (
@@ -48,7 +62,9 @@ const Support = WebexPlugin.extend({
       this.webex.logger.clientBuffer &&
       this.webex.logger.buffer
     ) {
-      logs = this.webex.logger.formatLogs();
+      const diff = type !== undefined ? type === 'diff' : this.config.incrementalLogs;
+
+      logs = this.webex.logger.formatLogs({diff});
     }
 
     let filename;
@@ -77,7 +93,7 @@ const Support = WebexPlugin.extend({
           resource: 'logs/meta',
         };
 
-        const options = defaults(initalOpts, {
+        const uploadOptions = defaults(initalOpts, {
           file: logs,
           shouldAttemptReauth: false,
           headers,
@@ -104,7 +120,7 @@ const Support = WebexPlugin.extend({
           },
         });
 
-        return this.webex.upload(options);
+        return this.webex.upload(uploadOptions);
       })
       .then((body) => {
         if (userId && !body.userId) {
@@ -131,6 +147,7 @@ const Support = WebexPlugin.extend({
       'surveySessionId',
       'productAreaTag',
       'issueTypeTag',
+      'issueDescTag',
       'locussessionid',
       'autoupload',
     ]

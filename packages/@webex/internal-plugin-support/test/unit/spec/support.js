@@ -3,7 +3,7 @@
  */
 
 /* eslint-disable no-underscore-dangle */
-
+import sinon from 'sinon';
 import Support from '@webex/internal-plugin-support';
 import {assert} from '@webex/test-helper-chai';
 import MockWebex from '@webex/test-helper-mock-webex';
@@ -151,12 +151,73 @@ describe('plugin-support', () => {
 
       assert.equal(found?.value, autoupload);
     });
+
+    it('sends issuedesctag if specified in metadata', () => {
+      const issueDescTag = 'issueDescTag';
+      const result = webex.internal.support._constructFileMetadata({issueDescTag});
+      const found = result.find((attr) => attr.key === 'issueDescTag');
+
+      assert.equal(found?.value, issueDescTag);
+    });
   });
 
   describe('#submitLogs()', () => {
+    beforeEach(() => {
+      webex.logger = {
+        formatLogs: sinon.stub().returns(['fake logs']),
+        sdkBuffer: [],
+        clientBuffer: [],
+        buffer: [],
+      };
+      webex.upload = sinon.stub().returns(Promise.resolve({}));
+    });
+
     it('calls getUserToken', () => {
       webex.internal.support.submitLogs({});
       assert.calledOnce(webex.credentials.getUserToken);
+    });
+
+    [
+      {type: undefined, incrementalLogsConfig: true, expectedDiff: true},
+      {type: undefined, incrementalLogsConfig: false, expectedDiff: false},
+
+      {type: 'full', incrementalLogsConfig: true, expectedDiff: false}, // the sendFullLog param overrides the config
+      {type: 'full', incrementalLogsConfig: false, expectedDiff: false},
+
+      {type: 'diff', incrementalLogsConfig: true, expectedDiff: true},
+      {type: 'diff', incrementalLogsConfig: false, expectedDiff: true}, // the sendFullLog param overrides the config
+    ].forEach(({type, incrementalLogsConfig, expectedDiff}) => {
+      it(`submits ${
+        expectedDiff ? 'incremental' : 'full'
+      } logs if called with options.type=${type} and config.incrementalLogs=${incrementalLogsConfig}`, async () => {
+        webex.internal.support.config.incrementalLogs = incrementalLogsConfig;
+        if (type !== undefined) {
+          await webex.internal.support.submitLogs({}, undefined, {type});
+        } else {
+          await webex.internal.support.submitLogs({});
+        }
+
+        assert.calledOnceWithExactly(webex.logger.formatLogs, {diff: expectedDiff});
+        assert.calledOnce(webex.upload);
+
+        const uploadArgs = webex.upload.args[0];
+
+        assert.deepEqual(uploadArgs[0].file, ['fake logs']);
+      });
+
+      it('submits provided logs', async () => {
+        webex.internal.support.config.incrementalLogs = incrementalLogsConfig;
+        const testLogs = ['test logs'];
+
+        await webex.internal.support.submitLogs({}, testLogs);
+
+        assert.notCalled(webex.logger.formatLogs);
+        assert.calledOnce(webex.upload);
+
+        const uploadArgs = webex.upload.args[0];
+
+        assert.deepEqual(uploadArgs[0].file, ['test logs']);
+      });
     });
   });
 });

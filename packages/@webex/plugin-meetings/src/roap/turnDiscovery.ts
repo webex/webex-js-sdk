@@ -408,10 +408,8 @@ export default class TurnDiscovery {
         locusSelfUrl: meeting.selfUrl,
         // @ts-ignore - Fix missing type
         mediaId: isReconnecting ? '' : meeting.mediaId,
-        meetingId: meeting.id,
+        isMultistream: meeting.isMultistream,
         locusMediaRequest: meeting.locusMediaRequest,
-        // @ts-ignore - because of meeting.webex
-        ipVersion: MeetingUtil.getIpVersion(meeting.webex),
       })
       .then(async (response) => {
         const {mediaConnections} = response;
@@ -451,7 +449,7 @@ export default class TurnDiscovery {
       locusSelfUrl: meeting.selfUrl,
       // @ts-ignore - fix type
       mediaId: meeting.mediaId,
-      meetingId: meeting.id,
+      isMultistream: meeting.isMultistream,
       locusMediaRequest: meeting.locusMediaRequest,
     });
   }

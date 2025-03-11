@@ -1,4 +1,5 @@
 import {Mutex} from 'async-mutex';
+import * as Media from '@webex/internal-media-core';
 import {LOGGER} from '../Logger/types';
 import {
   getTestUtilsWebex,
@@ -53,6 +54,7 @@ describe('CallingClient Tests', () => {
   // Common initializers
 
   const handleErrorSpy = jest.spyOn(utils, 'handleCallingClientErrors');
+  const setLoggerSpy = jest.spyOn(Media, 'setLogger');
   const webex = getTestUtilsWebex();
   webex.internal.services['_hostCatalog'] = mockCatalogUS;
   const defaultServiceIndicator = ServiceIndicator.CALLING;
@@ -97,7 +99,7 @@ describe('CallingClient Tests', () => {
       webex.internal.services._serviceUrls.mobius = 'invalid-url';
 
       const callingClient = await createClient(webex, {logger: {level: LOGGER.INFO}});
-
+      expect(setLoggerSpy).toHaveBeenCalledTimes(1);
       expect(callingClient['mobiusClusters']).toStrictEqual(mockUSServiceHosts);
     });
   });
@@ -154,7 +156,7 @@ describe('CallingClient Tests', () => {
         callingClient = await createClient(webex, {serviceData: serviceDataObj});
       } catch (e) {
         expect(e.message).toEqual(
-          'Invalid service indicator, Allowed values are: calling,contactcenter'
+          'Invalid service indicator, Allowed values are: calling, contactcenter and guestcalling'
         );
       }
       expect.assertions(1);
@@ -218,7 +220,7 @@ describe('CallingClient Tests', () => {
 
     /**
      * Input sdk config to callingClient with serviceData carrying valid value for indicator
-     * 'contactcenter', and a valid domain type string for domain field in it.
+     * 'contactcenter' , and a valid domain type string for domain field in it.
      *
      * Execution should proceed properly and createRegistration should be called with same serviceData.
      *
