@@ -1,12 +1,17 @@
 /* eslint-disable @typescript-eslint/no-shadow */
 import {Mutex} from 'async-mutex';
-// import {createRegistration} from './register'; //TODO: Fis tests
+import {createRegistration} from './register';
 import {
   getMobiusDiscoveryResponse,
   getMockRequestTemplate,
   getTestUtilsWebex,
 } from '../../common/testUtil';
-import {RegistrationStatus, ServiceIndicator, WebexRequestPayload} from '../../common/types';
+import {
+  RegistrationStatus,
+  ServiceIndicator,
+  WebexRequestPayload,
+  WorkerMessageType,
+} from '../../common/types';
 import * as utils from '../../common/Utils';
 import log from '../../Logger';
 import {LOGGER} from '../../Logger/types';
@@ -14,12 +19,10 @@ import {URL, mockDeleteResponse, mockPostResponse} from './registerFixtures';
 import {filterMobiusUris} from '../../common';
 import {ERROR_TYPE} from '../../Errors/types';
 import {
-  CALLS_CLEARED_HANDLER_UTIL,
   DEFAULT_REHOMING_INTERVAL_MAX,
   DEFAULT_REHOMING_INTERVAL_MIN,
   FAILBACK_429_RETRY_UTIL,
   FAILBACK_UTIL,
-  KEEPALIVE_UTIL,
   MINUTES_TO_SEC_MFACTOR,
   REGISTRATION_FILE,
   REG_TRY_BACKUP_TIMER_VAL_FOR_CC_IN_SEC,
@@ -40,7 +43,7 @@ const logSpy = jest.spyOn(log, 'info');
 const warnSpy = jest.spyOn(log, 'warn');
 const handleErrorSpy = jest.spyOn(utils, 'handleRegistrationErrors');
 
-describe.skip('Registration Tests', () => {
+describe('Registration Tests', () => {
   const originalProcessNextTick = process.nextTick;
   function flushPromises() {
     return new Promise((resolve) => {
@@ -305,7 +308,6 @@ describe.skip('Registration Tests', () => {
   describe('Registration failback tests', () => {
     beforeEach(async () => {
       /* keep keepalive as active so that it wont interfere with the failback tests */
-      jest.spyOn(reg, 'postKeepAlive').mockResolvedValue(successPayload);
       jest.useFakeTimers();
       postRegistrationSpy
         .mockRejectedValueOnce(failurePayload)
@@ -486,27 +488,19 @@ describe.skip('Registration Tests', () => {
 
   // Keep-alive related test cases
   describe('Keep-alive Tests', () => {
-    const logObj = {
-      file: REGISTRATION_FILE,
-      method: 'startKeepaliveTimer',
-    };
-    const mockKeepAliveBody = {device: mockPostResponse.device};
-
     const beforeEachSetupForKeepalive = async () => {
       postRegistrationSpy.mockResolvedValueOnce(successPayload);
       jest.useFakeTimers();
       await reg.triggerRegistration();
       expect(reg.getStatus()).toBe(RegistrationStatus.ACTIVE);
+      expect(reg.webWorker).toBeDefined();
     };
 
     afterEach(() => {
       jest.clearAllTimers();
       jest.clearAllMocks();
 
-      if (reg.keepaliveTimer) {
-        clearInterval(reg.keepaliveTimer);
-        reg.keepaliveTimer = undefined;
-      }
+      reg.clearKeepaliveTimer();
       reg.reconnectPending = false;
       const calls = Object.values(reg.callManager.getActiveCalls()) as ICall[];
 
@@ -516,185 +510,180 @@ describe.skip('Registration Tests', () => {
     });
 
     it('verify successful keep-alive cases', async () => {
+      const postMessageSpy = jest.spyOn(Worker.prototype, 'postMessage');
+
       await beforeEachSetupForKeepalive();
-      const keepAlivePayload = <WebexRequestPayload>(<unknown>{
-        statusCode: 200,
-        body: mockKeepAliveBody,
-      });
 
-      webex.request.mockReturnValue(keepAlivePayload);
+      expect(reg.webWorker).toBeDefined();
+      expect(postMessageSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'START_KEEPALIVE',
+          accessToken: expect.any(String),
+          deviceUrl: expect.any(String),
+          interval: expect.any(Number),
+          retryCountThreshold: expect.any(Number),
+          url: expect.any(String),
+        })
+      );
 
-      const funcSpy = jest.spyOn(reg, 'postKeepAlive');
+      reg.webWorker.onmessage({
+        data: {type: 'KEEPALIVE_SUCCESS', statusCode: 200},
+      } as MessageEvent);
 
-      jest.advanceTimersByTime(2 * mockPostResponse.keepaliveInterval * SEC_TO_MSEC_MFACTOR);
-      await flushPromises();
-      expect(funcSpy).toBeCalledTimes(2); // should be called 2 times: first try and after the interval.
-      expect(logSpy).lastCalledWith('Sent Keepalive, status: 200', logObj);
+      expect(lineEmitter).toBeCalledWith(LINE_EVENTS.RECONNECTED);
     });
 
     it('verify failure keep-alive cases: Retry Success', async () => {
       await beforeEachSetupForKeepalive();
-      const failurePayload = <WebexRequestPayload>(<unknown>{
-        statusCode: 503,
-        body: mockKeepAliveBody,
-      });
-      const successPayload = {
-        statusCode: 200,
-        body: mockKeepAliveBody,
-      };
 
-      const timer = reg.keepaliveTimer;
-
+      const worker = reg.webWorker;
       lineEmitter.mockClear();
-      webex.request.mockRejectedValueOnce(failurePayload).mockResolvedValue(successPayload);
 
-      jest.advanceTimersByTime(2 * mockPostResponse.keepaliveInterval * SEC_TO_MSEC_MFACTOR);
-      await flushPromises();
+      worker.onmessage({
+        data: {type: 'KEEPALIVE_FAILURE', err: {statusCode: 503}, keepAliveRetryCount: 1},
+      } as MessageEvent);
 
-      expect(handleErrorSpy).toBeCalledOnceWith(failurePayload, expect.anything(), {
-        method: 'startKeepaliveTimer',
-        file: REGISTRATION_FILE,
-      });
+      worker.onmessage({
+        data: {type: 'KEEPALIVE_SUCCESS', statusCode: 200},
+      } as MessageEvent);
 
-      expect(reg.getStatus()).toBe(RegistrationStatus.ACTIVE);
-      expect(reg.keepaliveTimer).toBe(timer);
-      expect(lineEmitter).nthCalledWith(1, LINE_EVENTS.RECONNECTING);
-      expect(lineEmitter).nthCalledWith(2, LINE_EVENTS.RECONNECTED);
-      expect(lineEmitter).toBeCalledTimes(2);
+      expect(lineEmitter).toHaveBeenCalledWith(LINE_EVENTS.RECONNECTED);
     });
 
     it('verify failure keep-alive cases: Restore failure', async () => {
+      // Run any necessary setup for keepalive
       await beforeEachSetupForKeepalive();
-      const restoreSpy = jest.spyOn(reg, 'restorePreviousRegistration');
-      const restartRegSpy = jest.spyOn(reg, 'restartRegistration');
       const reconnectSpy = jest.spyOn(reg, 'reconnectOnFailure');
 
-      const failurePayload = <WebexRequestPayload>(<unknown>{
-        statusCode: 503,
-        body: mockKeepAliveBody,
-      });
-
-      const clearIntervalSpy = jest.spyOn(global, 'clearInterval');
-
+      // Clear previous event emissions
       lineEmitter.mockClear();
 
-      webex.request.mockRejectedValue(failurePayload);
-
+      // Assume registration is active
       expect(reg.getStatus()).toEqual(RegistrationStatus.ACTIVE);
 
-      const timer = reg.keepaliveTimer;
+      // Use fake timers to trigger keepalive initialization
+      jest.useFakeTimers();
+      jest.advanceTimersByTime(mockPostResponse.keepaliveInterval * SEC_TO_MSEC_MFACTOR);
 
-      jest.advanceTimersByTime(5 * mockPostResponse.keepaliveInterval * SEC_TO_MSEC_MFACTOR);
+      // Simulate the worker sending a KEEPALIVE_FAILURE message with retry count at threshold.
+      const RETRY_COUNT_THRESHOLD = reg.isCCFlow ? 4 : 5;
+      const failureEvent = {
+        data: {
+          type: WorkerMessageType.KEEPALIVE_FAILURE,
+          err: {statusCode: 503},
+          keepAliveRetryCount: RETRY_COUNT_THRESHOLD,
+        },
+      };
+
+      reg.webWorker.onmessage(failureEvent);
       await flushPromises();
 
-      expect(clearIntervalSpy).toBeCalledOnceWith(timer);
-
-      // sendKeepAlive tries to retry 5 times before accepting failure
-      // later 2 attempts to register with primary server
-      expect(handleErrorSpy).toBeCalledTimes(7);
       expect(reg.getStatus()).toEqual(RegistrationStatus.INACTIVE);
-      expect(reg.reconnectPending).toStrictEqual(false);
-      expect(reconnectSpy).toBeCalledOnceWith(KEEPALIVE_UTIL);
-      expect(restoreSpy).toBeCalledOnceWith(KEEPALIVE_UTIL);
-      expect(restartRegSpy).toBeCalledOnceWith(KEEPALIVE_UTIL);
+      expect(lineEmitter).toHaveBeenCalledWith(LINE_EVENTS.UNREGISTERED);
+      expect(reconnectSpy).toBeCalledOnceWith('startKeepaliveTimer');
 
-      expect(webex.request).toBeCalledTimes(7);
-      expect(reg.keepaliveTimer).toBe(undefined);
-      expect(lineEmitter).nthCalledWith(1, LINE_EVENTS.RECONNECTING);
-      expect(lineEmitter).nthCalledWith(4, LINE_EVENTS.RECONNECTING);
-      expect(lineEmitter).nthCalledWith(5, LINE_EVENTS.UNREGISTERED);
-
-      /** there will be 2 registration attempts */
-      expect(lineEmitter).nthCalledWith(6, LINE_EVENTS.CONNECTING);
-      expect(lineEmitter).nthCalledWith(7, LINE_EVENTS.UNREGISTERED);
-      expect(lineEmitter).nthCalledWith(8, LINE_EVENTS.CONNECTING);
-      expect(lineEmitter).nthCalledWith(9, LINE_EVENTS.UNREGISTERED);
-      expect(lineEmitter).toBeCalledTimes(9);
+      jest.useRealTimers();
     });
 
     it('verify failure keep-alive cases: Restore Success', async () => {
       await beforeEachSetupForKeepalive();
-      const restoreSpy = jest.spyOn(reg, 'restorePreviousRegistration');
-      const restartRegSpy = jest.spyOn(reg, 'restartRegistration');
+      expect(reg.webWorker).toBeDefined();
+
       const reconnectSpy = jest.spyOn(reg, 'reconnectOnFailure');
+      const url = 'https://mobius-dfw.webex.com/api/v1/calling/web/';
 
-      const failurePayload = <WebexRequestPayload>(<unknown>{
-        statusCode: 503,
-        body: mockKeepAliveBody,
-      });
-      const successPayload = <WebexRequestPayload>(<unknown>{
-        statusCode: 200,
-        body: mockKeepAliveBody,
-      });
+      reg.webWorker.onmessage({
+        data: {
+          type: WorkerMessageType.KEEPALIVE_FAILURE,
+          err: {statusCode: 503},
+          keepAliveRetryCount: 5,
+        },
+      } as MessageEvent);
 
-      const clearIntervalSpy = jest.spyOn(global, 'clearInterval');
-
-      webex.request
-        .mockRejectedValueOnce(failurePayload)
-        .mockRejectedValueOnce(failurePayload)
-        .mockRejectedValueOnce(failurePayload)
-        .mockRejectedValueOnce(failurePayload)
-        .mockRejectedValueOnce(failurePayload)
-        .mockResolvedValue(successPayload);
-
-      /* successful registration */
-      // webex.request.mockResolvedValue(successPayload);
-
-      expect(reg.getStatus()).toEqual(RegistrationStatus.ACTIVE);
-
-      const url = 'https://mobius.asydm-m-1.prod.infra.webex.com/api/v1';
-
-      /* set active Url and expect the registration to restore to this url */
-      reg.setActiveMobiusUrl(url);
-
-      const timer = reg.keepaliveTimer;
-
-      jest.advanceTimersByTime(5 * mockPostResponse.keepaliveInterval * SEC_TO_MSEC_MFACTOR);
+      jest.advanceTimersByTime(1000);
       await flushPromises();
 
-      expect(clearIntervalSpy).toBeCalledOnceWith(timer);
-      expect(handleErrorSpy).toBeCalledTimes(5);
+      expect(reg.webWorker).toBeUndefined();
+      expect(reconnectSpy).toBeCalledOnceWith(reg.startKeepaliveTimer.name);
+
+      webex.request.mockResolvedValueOnce(successPayload);
+      await reg.triggerRegistration();
+      await flushPromises();
+      expect(reg.webWorker).toBeDefined();
+
+      reg.webWorker.onmessage({
+        data: {type: WorkerMessageType.KEEPALIVE_SUCCESS, statusCode: 200},
+      } as MessageEvent);
+
+      // Advance timers and flush any remaining promises.
+      jest.advanceTimersByTime(1000);
+      await flushPromises();
+
       expect(reg.getStatus()).toEqual(RegistrationStatus.ACTIVE);
-      expect(reconnectSpy).toBeCalledOnceWith(KEEPALIVE_UTIL);
-      expect(restoreSpy).toBeCalledOnceWith(KEEPALIVE_UTIL);
-      expect(restartRegSpy).not.toBeCalled();
+      // reconnectSpy should have been called only once.
+      expect(reconnectSpy).toBeCalledTimes(1);
+      expect(restoreSpy).toBeCalledOnceWith(reg.startKeepaliveTimer.name);
+      expect(restartSpy).toBeCalledOnceWith(reg.startKeepaliveTimer.name);
+      // Active Mobius URL should remain unchanged.
       expect(reg.getActiveMobiusUrl()).toStrictEqual(url);
-      expect(reg.reconnectPending).toStrictEqual(false);
-      expect(reg.keepaliveTimer).toBeTruthy();
-      expect(reg.keepaliveTimer).not.toBe(timer);
     });
 
     it('verify failure followed by recovery of keepalive', async () => {
       await beforeEachSetupForKeepalive();
-      const failurePayload = <WebexRequestPayload>(<unknown>{
-        statusCode: 503,
-        body: mockKeepAliveBody,
-      });
-      const successPayload = <WebexRequestPayload>(<unknown>{
-        statusCode: 200,
-        body: mockKeepAliveBody,
-      });
-
-      const clearIntervalSpy = jest.spyOn(global, 'clearInterval');
+      expect(reg.getStatus()).toBe(RegistrationStatus.ACTIVE);
+      expect(reg.webWorker).toBeDefined();
 
       webex.request
         .mockRejectedValueOnce(failurePayload)
         .mockRejectedValueOnce(failurePayload)
         .mockResolvedValue(successPayload);
 
-      expect(reg.getStatus()).toBe(RegistrationStatus.ACTIVE);
-
-      const timer = reg.keepaliveTimer;
-
-      // sendKeepAlive tries to retry 3 times and receiving success on third time
-      jest.advanceTimersByTime(3 * mockPostResponse.keepaliveInterval * SEC_TO_MSEC_MFACTOR);
+      reg.webWorker.onmessage({
+        data: {
+          type: WorkerMessageType.KEEPALIVE_FAILURE,
+          err: failurePayload,
+          keepAliveRetryCount: reg.isCCFlow ? 4 : 5,
+        },
+      } as MessageEvent);
       await flushPromises();
 
-      expect(webex.request).toBeCalledTimes(3);
-      expect(reg.getStatus()).toBe(RegistrationStatus.ACTIVE);
-      expect(handleErrorSpy).toBeCalledTimes(2);
-      expect(clearIntervalSpy).not.toBeCalled();
-      expect(reg.keepaliveTimer).toBe(timer);
+      expect(reg.webWorker).toBeUndefined();
+      expect(handleErrorSpy).toBeCalledTimes(3);
+
+      await reg.triggerRegistration();
+      await flushPromises();
+      expect(reg.webWorker).toBeDefined();
+
+      reg.webWorker.onmessage({
+        data: {type: WorkerMessageType.KEEPALIVE_SUCCESS, statusCode: 200},
+      } as MessageEvent);
+      await flushPromises();
+
+      // In a complete failure‐then-recovery scenario, we expect another failure event to have been handled.
+      // For that, simulate a second failure event on the new worker.
+      reg.webWorker.onmessage({
+        data: {
+          type: WorkerMessageType.KEEPALIVE_FAILURE,
+          err: failurePayload,
+          keepAliveRetryCount: reg.isCCFlow ? 4 : 5,
+        },
+      } as MessageEvent);
+      await flushPromises();
+
+      expect(handleErrorSpy).toBeCalledTimes(4);
+
+      // And then re-register successfully:
+      await reg.triggerRegistration();
+      await flushPromises();
+      expect(reg.webWorker).toBeDefined();
+
+      reg.webWorker.onmessage({
+        data: {type: WorkerMessageType.KEEPALIVE_SUCCESS, statusCode: 200},
+      } as MessageEvent);
+      await flushPromises();
+
+      expect(reg.getStatus()).toEqual(RegistrationStatus.ACTIVE);
+      expect(reg.webWorker).toBeDefined();
     });
 
     it('cc: verify failover to backup server after 4 keep alive failure with primary server', async () => {
@@ -702,160 +691,135 @@ describe.skip('Registration Tests', () => {
       setupRegistration({...MockServiceData, indicator: ServiceIndicator.CONTACT_CENTER});
       await beforeEachSetupForKeepalive();
 
-      const failurePayload = <WebexRequestPayload>(<unknown>{
-        statusCode: 503,
-        body: mockKeepAliveBody,
-      });
-      const successPayload = <WebexRequestPayload>(<unknown>{
-        statusCode: 200,
-        body: mockKeepAliveBody,
-      });
+      webex.request.mockResolvedValueOnce(successPayload);
+      await reg.triggerRegistration();
 
-      const clearIntervalSpy = jest.spyOn(global, 'clearInterval');
+      expect(reg.getStatus()).toEqual(RegistrationStatus.ACTIVE);
+      expect(reg.webWorker).toBeDefined();
 
-      jest
-        .spyOn(reg, 'postKeepAlive')
-        .mockRejectedValueOnce(failurePayload)
-        .mockRejectedValueOnce(failurePayload)
-        .mockRejectedValueOnce(failurePayload)
-        .mockRejectedValueOnce(failurePayload)
-        .mockResolvedValue(successPayload);
+      // Spy on clearKeepaliveTimer and simulate reconnectOnFailure behavior
+      const clearKeepaliveSpy = jest.spyOn(reg, 'clearKeepaliveTimer');
+      const reconnectSpy = jest.spyOn(reg, 'reconnectOnFailure');
 
-      expect(reg.getStatus()).toBe(RegistrationStatus.ACTIVE);
+      // Simulate a KEEPALIVE_FAILURE message from the worker with a retry count equal to threshold (4 for CC)
+      reg.webWorker.onmessage({
+        data: {
+          type: WorkerMessageType.KEEPALIVE_FAILURE,
+          err: {statusCode: 503},
+          keepAliveRetryCount: 4,
+        },
+      } as MessageEvent);
 
-      const timer = reg.keepaliveTimer;
-
-      jest.advanceTimersByTime(5 * mockPostResponse.keepaliveInterval * SEC_TO_MSEC_MFACTOR);
+      // Wait for any asynchronous actions to complete
       await flushPromises();
 
-      expect(clearIntervalSpy).toBeCalledOnceWith(timer);
-      expect(reg.getStatus()).toBe(RegistrationStatus.INACTIVE);
-      expect(reg.keepaliveTimer).not.toBe(timer);
+      // Verify that the keepalive timer was cleared and reconnectOnFailure was triggered
+      expect(clearKeepaliveSpy).toHaveBeenCalled();
+      expect(reconnectSpy).toHaveBeenCalledWith(reg.startKeepaliveTimer.name);
 
-      webex.request.mockResolvedValue(successPayload);
-
-      jest.advanceTimersByTime(REG_TRY_BACKUP_TIMER_VAL_FOR_CC_IN_SEC * SEC_TO_MSEC_MFACTOR);
-      await flushPromises();
-
-      /* Active Url must match with the backup url as per the test */
+      // Verify that the active Mobius URL has been updated to the backup server and registration is active
       expect(reg.getActiveMobiusUrl()).toEqual(mobiusUris.backup[0]);
-      expect(reg.getStatus()).toBe(RegistrationStatus.ACTIVE);
+      expect(reg.getStatus()).toEqual(RegistrationStatus.ACTIVE);
     });
 
     it('verify final error for keep-alive', async () => {
       await beforeEachSetupForKeepalive();
-      const restoreSpy = jest.spyOn(reg, 'restorePreviousRegistration');
-      const restartRegSpy = jest.spyOn(reg, 'restartRegistration');
+      const threshold = reg.isCCFlow ? 4 : 5;
       const reconnectSpy = jest.spyOn(reg, 'reconnectOnFailure');
-      const failurePayload = <WebexRequestPayload>(<unknown>{
-        statusCode: 404,
-        body: mockKeepAliveBody,
-      });
+      jest.spyOn(utils, 'handleRegistrationErrors').mockResolvedValue(true);
 
-      const clearIntervalSpy = jest.spyOn(global, 'clearInterval');
-
-      webex.request.mockRejectedValue(failurePayload);
-
-      expect(reg.getStatus()).toBe(RegistrationStatus.ACTIVE);
-
-      /* send one keepalive */
-      jest.advanceTimersByTime(mockPostResponse.keepaliveInterval * SEC_TO_MSEC_MFACTOR);
+      reg.webWorker.onmessage({
+        data: {
+          type: WorkerMessageType.KEEPALIVE_FAILURE,
+          err: {statusCode: 404},
+          keepAliveRetryCount: threshold,
+        },
+      } as MessageEvent);
       await flushPromises();
 
-      expect(clearIntervalSpy).toBeCalledTimes(1);
-      expect(reg.getStatus()).toBe(RegistrationStatus.INACTIVE);
-      expect(reconnectSpy).not.toBeCalled();
-      expect(restoreSpy).not.toBeCalled();
-      expect(restartRegSpy).not.toBeCalled();
-      expect(reg.reconnectPending).toStrictEqual(false);
-      expect(webex.request).toBeCalledOnceWith({
-        headers: mockResponse.headers,
-        uri: `${mockKeepAliveBody.device.uri}/status`,
-        method: 'POST',
-        service: mockResponse.service,
-      });
-      expect(reg.keepaliveTimer).toBe(undefined);
-      expect(handleErrorSpy).toBeCalledOnceWith(failurePayload, expect.anything(), {
-        file: REGISTRATION_FILE,
-        method: KEEPALIVE_UTIL,
-      });
+      expect(reg.getStatus()).toEqual(RegistrationStatus.INACTIVE);
+      expect(lineEmitter).toHaveBeenCalledWith(LINE_EVENTS.UNREGISTERED);
+      expect(reconnectSpy).not.toHaveBeenCalled();
     });
 
     it('verify failure keep-alive case with active call present: Restore Success after call ends', async () => {
       await beforeEachSetupForKeepalive();
-      const restoreSpy = jest.spyOn(reg, 'restorePreviousRegistration');
-      const restartRegSpy = jest.spyOn(reg, 'restartRegistration');
-      const reconnectSpy = jest.spyOn(reg, 'reconnectOnFailure');
-      const failurePayload = <WebexRequestPayload>(<unknown>{
-        statusCode: 503,
-        body: mockKeepAliveBody,
-      });
+      // Simulate an active call.
+      reg.callManager.createCall();
+      expect(Object.keys(reg.callManager.getActiveCalls()).length).toBeGreaterThan(0);
+      const clearTimerSpy = jest.spyOn(reg, 'clearKeepaliveTimer');
 
-      const successPayload = <WebexRequestPayload>(<unknown>{
-        statusCode: 200,
-        body: mockKeepAliveBody,
-      });
+      const threshold = reg.isCCFlow ? 4 : 5;
 
-      const clearIntervalSpy = jest.spyOn(global, 'clearInterval');
-
-      webex.request
-        .mockRejectedValueOnce(failurePayload)
-        .mockRejectedValueOnce(failurePayload)
-        .mockRejectedValueOnce(failurePayload)
-        .mockRejectedValueOnce(failurePayload)
-        .mockRejectedValueOnce(failurePayload)
-        .mockResolvedValue(successPayload);
-
-      // jest.spyOn(callingClient['registration'], 'createDevice').mockResolvedValue(successPayload);
-
-      const url = 'https://mobius.asydm-m-1.prod.infra.webex.com/api/v1';
-
-      reg.setActiveMobiusUrl(url);
-
-      expect(reg.reconnectPending).toStrictEqual(false);
-
-      const timer = reg.keepaliveTimer;
-
-      /* add a call to the callManager */
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const call = reg.callManager.createCall();
-
-      expect(Object.keys(reg.callManager.getActiveCalls()).length).toBe(1);
-
-      /* send one keepalive */
-      jest.advanceTimersByTime(5 * mockPostResponse.keepaliveInterval * SEC_TO_MSEC_MFACTOR);
+      // Simulate a KEEPALIVE_FAILURE event with a 503 error at threshold.
+      const failureEvent = {
+        data: {
+          type: WorkerMessageType.KEEPALIVE_FAILURE,
+          err: {statusCode: 503},
+          keepAliveRetryCount: threshold,
+        },
+      } as MessageEvent;
+      reg.webWorker.onmessage(failureEvent);
       await flushPromises();
 
-      expect(clearIntervalSpy).toBeCalledOnceWith(timer);
-      expect(handleErrorSpy).toBeCalledTimes(5);
-      expect(reg.keepaliveTimer).toStrictEqual(undefined);
-      expect(reg.failbackTimer).toStrictEqual(undefined);
-      expect(reg.getStatus()).toBe(RegistrationStatus.INACTIVE);
-      expect(lineEmitter).lastCalledWith(LINE_EVENTS.UNREGISTERED);
-      expect(reconnectSpy).toBeCalledOnceWith(KEEPALIVE_UTIL);
-      expect(restoreSpy).not.toBeCalled();
-      expect(restartRegSpy).not.toBeCalled();
-      expect(reg.reconnectPending).toStrictEqual(true);
-      expect(logSpy).toBeCalledWith(
-        'Active call(s) present, deferred reconnect till call cleanup.',
-        {file: REGISTRATION_FILE, method: expect.any(String)}
-      );
+      // At this point, clearKeepaliveTimer was called so the worker is terminated.
+      expect(clearTimerSpy).toHaveBeenCalled();
+      expect(reg.getStatus()).toEqual(RegistrationStatus.INACTIVE);
+      expect(reg.webWorker).toBeUndefined();
 
-      reconnectSpy.mockClear();
-
-      /* simulate call disconnect and Calling client will trigger reconnect upon receiving disconnect event from CallManager */
+      // Now simulate call cleanup.
       reg.callManager.callCollection = {};
-      await reg.reconnectOnFailure(CALLS_CLEARED_HANDLER_UTIL);
-      expect(Object.keys(reg.callManager.getActiveCalls()).length).toBe(0);
+      webex.request.mockResolvedValueOnce(successPayload);
 
-      expect(reg.getStatus()).toBe(RegistrationStatus.ACTIVE);
-      expect(reconnectSpy).toBeCalledOnceWith(CALLS_CLEARED_HANDLER_UTIL);
-      expect(restoreSpy).toBeCalledOnceWith(CALLS_CLEARED_HANDLER_UTIL);
-      expect(restartRegSpy).not.toBeCalled();
-      expect(reg.reconnectPending).toStrictEqual(false);
-      expect(reg.getActiveMobiusUrl()).toStrictEqual(url);
-      expect(reg.keepaliveTimer).toBeTruthy();
-      expect(reg.keepaliveTimer).not.toBe(timer);
+      // Call reconnectOnFailure manually. With no active calls, this should trigger re-registration.
+      await reg.reconnectOnFailure('activeCallEnded');
+      await flushPromises();
+
+      // After re-registration, registration status becomes ACTIVE and a new worker is created.
+      expect(reg.getStatus()).toEqual(RegistrationStatus.ACTIVE);
+      expect(reg.isReconnectPending()).toBe(false);
+      expect(reg.webWorker).toBeDefined();
+    });
+
+    it('should emit LINE_EVENTS.ERROR when keepalive fails with a final error', async () => {
+      await beforeEachSetupForKeepalive();
+      expect(reg.webWorker).toBeDefined();
+      lineEmitter.mockClear();
+
+      jest
+        .spyOn(utils, 'handleRegistrationErrors')
+        .mockImplementationOnce(async (error, callback) => {
+          const clientError = createLineError(
+            'User is unauthorized due to an expired token. Sign out, then sign back in.',
+            {},
+            ERROR_TYPE.TOKEN_ERROR,
+            RegistrationStatus.INACTIVE
+          );
+          callback(clientError, true);
+
+          return true;
+        });
+
+      reg.webWorker.onmessage({
+        data: {
+          type: WorkerMessageType.KEEPALIVE_FAILURE,
+          err: {
+            statusCode: 401,
+            message: 'Unauthorized',
+          },
+          keepAliveRetryCount: 1,
+        },
+      } as MessageEvent);
+
+      await flushPromises();
+      expect(lineEmitter).toHaveBeenNthCalledWith(
+        1,
+        LINE_EVENTS.ERROR,
+        undefined,
+        new Error('User is unauthorized due to an expired token. Sign out, then sign back in.')
+      );
+      expect(reg.getStatus()).toBe(RegistrationStatus.INACTIVE);
+      expect(reg.webWorker).toBeUndefined();
     });
   });
 });
