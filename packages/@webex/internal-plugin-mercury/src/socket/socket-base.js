@@ -145,8 +145,8 @@ export default class Socket extends EventEmitter {
           this.logger.info(`socket,${this._domain}: no close event received, forcing closure`);
           resolve(
             this.onclose(
-              options.code === 1050
-                ? {code: 1050, reason: options.reason}
+              options.code === 1050 || options.code === 4000
+                ? {code: options.code, reason: options.reason}
                 : {
                     code: 1000,
                     reason: 'Done (forced)',
