@@ -6708,6 +6708,9 @@ export default class Meeting extends StatelessWebexPlugin {
         new RtcMetrics(this.webex, {meetingId: this.id}, this.correlationId)
       : undefined;
 
+    // ongoing reachability checks slow down new media connections especially on Firefox, so we stop them
+    this.getWebexObject().meetings.reachability.stopReachability();
+
     const mc = Media.createMediaConnection(
       this.isMultistream,
       this.getMediaConnectionDebugId(),

@@ -247,6 +247,7 @@ describe('plugin-meetings', () => {
       isAnyPublicClusterReachable: sinon.stub().resolves(true),
       getReachabilityResults: sinon.stub().resolves(undefined),
       getReachabilityMetrics: sinon.stub().resolves({}),
+      stopReachability: sinon.stub(),
     };
     webex.internal.llm.on = sinon.stub();
     webex.internal.newMetrics.callDiagnosticLatencies = new CallDiagnosticLatencies(
@@ -2096,6 +2097,7 @@ describe('plugin-meetings', () => {
               someReachabilityMetric1: 'some value1',
               someReachabilityMetric2: 'some value2',
             }),
+            stopReachability: sinon.stub(),
           };
 
           const forceRtcMetricsSend = sinon.stub().resolves();
@@ -2515,6 +2517,7 @@ describe('plugin-meetings', () => {
           assert.calledOnce(meeting.setMercuryListener);
           assert.calledOnce(fakeMediaConnection.initiateOffer);
           assert.equal(meeting.allowMediaInLobby, allowMediaInLobby);
+          assert.calledOnce(webex.meetings.reachability.stopReachability);
         };
 
         it('should attach the media and return promise', async () => {
@@ -2710,6 +2713,7 @@ describe('plugin-meetings', () => {
           webex.meetings.reachability = {
             isWebexMediaBackendUnreachable: sinon.stub().resolves(false),
             getReachabilityMetrics: sinon.stub().resolves(),
+            stopReachability: sinon.stub(),
           };
           const MOCK_CLIENT_ERROR_CODE = 2004;
           const generateClientErrorCodeForIceFailureStub = sinon
@@ -2918,6 +2922,7 @@ describe('plugin-meetings', () => {
               .onCall(2)
               .resolves(false),
             getReachabilityMetrics: sinon.stub().resolves({}),
+            stopReachability: sinon.stub(),
           };
           const getErrorPayloadForClientErrorCodeStub =
             (webex.internal.newMetrics.callDiagnosticMetrics.getErrorPayloadForClientErrorCode =
@@ -3212,6 +3217,7 @@ describe('plugin-meetings', () => {
               someReachabilityMetric1: 'some value1',
               someReachabilityMetric2: 'some value2',
             }),
+            stopReachability: sinon.stub(),
           };
           meeting.iceCandidatesCount = 3;
           meeting.iceCandidateErrors.set('701_error', 3);
@@ -3716,6 +3722,7 @@ describe('plugin-meetings', () => {
 
               webex.meetings.reachability = {
                 isWebexMediaBackendUnreachable: sinon.stub().resolves(unreachable || false),
+                stopReachability: sinon.stub(),
               };
 
               const generateClientErrorCodeForIceFailureStub = sinon

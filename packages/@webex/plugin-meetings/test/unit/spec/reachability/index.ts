@@ -1050,6 +1050,7 @@ describe('gatherReachability', () => {
 
         // the metrics related to ipver and trigger are not tested in these tests and are all the same, so setting them up here
         const expectedMetricsFull = {
+          aborted: false,
           ...expectedMetrics,
           ipver_firstIpV4: -1,
           ipver_firstIpV6: -1,
@@ -1238,6 +1239,7 @@ describe('gatherReachability', () => {
 
     // finally, check the metrics - they should contain values from ipNetworkDetector
     assert.calledWith(Metrics.sendBehavioralMetric, 'js_sdk_reachability_completed', {
+      aborted: false,
       vmn_udp_min: -1,
       vmn_udp_max: -1,
       vmn_udp_average: -1,
@@ -1622,14 +1624,14 @@ describe('gatherReachability', () => {
     const reachability = new Reachability(webex);
 
     let getClustersCallCount = 0;
-    
+
     reachability.reachabilityRequest.getClusters = sinon.stub().callsFake(() => {
       getClustersCallCount++;
 
       if (getClustersCallCount == 1) {
         throw new Error('fake error');
       }
-      
+
       return getClustersResult;
     });
 
@@ -1637,7 +1639,7 @@ describe('gatherReachability', () => {
 
     await simulateTimeout();
     await promise;
-    
+
     assert.equal(getClustersCallCount, 2);
 
     assert.calledOnce(clusterReachabilityCtorStub);
@@ -1647,7 +1649,7 @@ describe('gatherReachability', () => {
     const reachability = new Reachability(webex);
 
     let getClustersCallCount = 0;
-    
+
     reachability.reachabilityRequest.getClusters = sinon.stub().callsFake(() => {
       getClustersCallCount++;
 
@@ -1657,9 +1659,9 @@ describe('gatherReachability', () => {
     const promise = reachability.gatherReachability('test');
 
     await simulateTimeout();
-    
+
     await promise;
-    
+
     assert.equal(getClustersCallCount, 2);
 
     assert.neverCalledWith(clusterReachabilityCtorStub);
@@ -1927,7 +1929,86 @@ describe('gatherReachability', () => {
     });
   });
 
-  
+  describe('stopReachability', () => {
+    let reachability;
+    let receivedEvents;
+    let sendMetricSpy;
+
+    beforeEach(() => {
+      reachability = new Reachability(webex);
+
+      receivedEvents = {};
+
+      sendMetricSpy = sinon.stub(reachability, 'sendMetric').resolves();
+    });
+
+    const setListener = (event) => {
+      reachability.on(event, () => {
+        receivedEvents[event] = receivedEvents[event] + 1 || 1;
+      });
+    };
+    it('works as expected', async () => {
+      setListener('reachability:stopped');
+      setListener('reachability:done');
+      setListener('reachability:firstResultAvailable');
+
+      const mockGetClustersResult = {
+        clusters: {
+          clusterA: {
+            udp: ['udp-urlA'],
+            tcp: ['tcp-urlA'],
+            xtls: ['xtls-urlA'],
+            isVideoMesh: false,
+          },
+          clusterB: {
+            udp: ['udp-urlB'],
+            tcp: ['tcp-urlB'],
+            xtls: ['xtls-urlB'],
+            isVideoMesh: false,
+          },
+        },
+        joinCookie: {id: 'id'},
+      };
+
+      reachability.reachabilityRequest.getClusters = sinon.stub().returns(mockGetClustersResult);
+
+      const gatherReachabilityFallbackSpy = sinon.spy(reachability, 'gatherReachabilityFallback');
+
+      const resultPromise = reachability.gatherReachability('test');
+
+      await testUtils.flushPromises();
+
+      reachability.stopReachability();
+
+      await resultPromise;
+
+      // simulate a lot of time passing to check that all timers were stopped and nothing else happens
+      clock.tick(99000);
+
+      assert.calledOnceWithExactly(mockClusterReachabilityInstances['clusterA'].abort);
+      assert.calledOnceWithExactly(mockClusterReachabilityInstances['clusterB'].abort);
+
+      assert.calledOnceWithExactly(sendMetricSpy, true);
+
+      assert.equal(receivedEvents['reachability:stopped'], 1);
+      assert.equal(receivedEvents['reachability:done'], undefined);
+      assert.equal(receivedEvents['reachability:firstResultAvailable'], undefined);
+
+      assert.notCalled(gatherReachabilityFallbackSpy);
+    });
+
+    it('does nothing if called without reachability being started', async () => {
+      const reachability = new Reachability(webex);
+
+      reachability.stopReachability();
+
+      assert.notCalled(sendMetricSpy);
+
+      assert.equal(receivedEvents['reachability:stopped'], undefined);
+      assert.equal(receivedEvents['reachability:done'], undefined);
+      assert.equal(receivedEvents['reachability:firstResultAvailable'], undefined);
+    });
+  });
 });
 
 describe('getReachabilityResults', () => {
@@ -2489,19 +2570,18 @@ describe('getStatistics', () => {
 describe('sendMetric', () => {
   let webex;
   let reachability;
+  let getStatisticsStub;
 
   beforeEach(() => {
     webex = new MockWebex();
     reachability = new TestReachability(webex);
 
     sinon.stub(Metrics, 'sendBehavioralMetric');
-  });
 
-  it('works as expected', async () => {
     // setup stub for getStatistics to return values that show what parameters it was called with,
     // this way we can verify that the correct results of calls to getStatistics are placed
     // in correct data fields when sendBehavioralMetric() is called
-    const getStatisticsStub = sinon
+    getStatisticsStub = sinon
       .stub(reachability, 'getStatistics')
       .callsFake((results, protocol, isVideoMesh) => {
         return {result: 'fake', protocol, isVideoMesh};
@@ -2522,7 +2602,13 @@ describe('sendMetric', () => {
         isVideoMesh: false,
       },
     });
+  });
 
+  afterEach(() => {
+    sinon.restore();
+  });
+
+  it('works as expected', async () => {
     await reachability.sendMetric();
 
     // each call to getStatistics should be made with all the results from all fake clusterReachability:
@@ -2546,6 +2632,30 @@ describe('sendMetric', () => {
     assert.alwaysCalledWith(getStatisticsStub, expectedResults, sinon.match.any, sinon.match.any);
 
     assert.calledWith(Metrics.sendBehavioralMetric, 'js_sdk_reachability_completed', {
+      aborted: false,
+      vmn_udp_result: 'fake',
+      vmn_udp_protocol: 'udp',
+      vmn_udp_isVideoMesh: true,
+
+      public_udp_result: 'fake',
+      public_udp_protocol: 'udp',
+      public_udp_isVideoMesh: false,
+
+      public_tcp_result: 'fake',
+      public_tcp_protocol: 'tcp',
+      public_tcp_isVideoMesh: false,
+
+      public_xtls_result: 'fake',
+      public_xtls_protocol: 'xtls',
+      public_xtls_isVideoMesh: false,
+    });
+  });
+
+  it('sends metric with "aborted:true" if called with aborted=true arg', async () => {
+    await reachability.sendMetric(true);
+
+    assert.calledWith(Metrics.sendBehavioralMetric, 'js_sdk_reachability_completed', {
+      aborted: true,
       vmn_udp_result: 'fake',
       vmn_udp_protocol: 'udp',
       vmn_udp_isVideoMesh: true,
