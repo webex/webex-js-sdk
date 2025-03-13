@@ -521,18 +521,18 @@ describe('plugin-mercury', () => {
         );
       });
 
-      it('uses the config.beforeLogoutOptionsCloseReason to disconnect and will send code 1050 for logout', () => {
+      it('uses the config.beforeLogoutOptionsCloseReason to disconnect and will send code 3050 for logout', () => {
         sinon.stub(mercury, 'disconnect');
         mercury.config.beforeLogoutOptionsCloseReason = 'done (permanent)';
         mercury.logout();
-        assert.calledWith(mercury.disconnect, {code: 1050, reason: 'done (permanent)'});
+        assert.calledWith(mercury.disconnect, {code: 3050, reason: 'done (permanent)'});
       });
 
-      it('uses the config.beforeLogoutOptionsCloseReason to disconnect and will send code 1050 for logout if the reason is different than standard', () => {
+      it('uses the config.beforeLogoutOptionsCloseReason to disconnect and will send code 3050 for logout if the reason is different than standard', () => {
         sinon.stub(mercury, 'disconnect');
         mercury.config.beforeLogoutOptionsCloseReason = 'test';
         mercury.logout();
-        assert.calledWith(mercury.disconnect, {code: 1050, reason: 'test'});
+        assert.calledWith(mercury.disconnect, {code: 3050, reason: 'test'});
       });
 
       it('uses the config.beforeLogoutOptionsCloseReason to disconnect and will send undefined for logout if the reason is same as standard', () => {
@@ -565,7 +565,7 @@ describe('plugin-mercury', () => {
             assert.isUndefined(mercury.mockWebSocket, 'Mercury does not have a mockWebSocket');
           }));
 
-      it('disconnects the WebSocket with code 1050', () =>
+      it('disconnects the WebSocket with code 3050', () =>
         mercury
           .connect()
           .then(() => {
@@ -574,7 +574,7 @@ describe('plugin-mercury', () => {
             const promise = mercury.disconnect();
 
             mockWebSocket.emit('close', {
-              code: 1050,
+              code: 3050,
               reason: 'done (permanent)',
             });
 
