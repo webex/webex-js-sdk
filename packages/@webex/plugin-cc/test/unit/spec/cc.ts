@@ -23,6 +23,7 @@ import '../../../__mocks__/workerMock';
 import {Profile} from '../../../src/services/config/types';
 import TaskManager from '../../../src/services/task/TaskManager';
 import { AgentContact, TASK_EVENTS } from '../../../src/services/task/types';
+import MetricsManager from '../../../src/metrics/MetricsManager';
 
 jest.mock('../../../src/logger-proxy', () => ({
   __esModule: true,
@@ -45,6 +46,7 @@ describe('webex.cc', () => {
   let webex;
   let mockContact;
   let mockTaskManager;
+  let mockMetricsManager;
   let mockWebSocketManager;
   let getErrorDetailsSpy;
 
@@ -128,6 +130,11 @@ describe('webex.cc', () => {
       unregisterIncomingCallEvent: jest.fn(),
     };
 
+    mockMetricsManager = {
+      trackEvent: jest.fn(),
+    };
+
+    jest.spyOn(MetricsManager, 'getInstance').mockReturnValue(mockMetricsManager);
     jest.spyOn(Services, 'getInstance').mockReturnValue(mockServicesInstance);
     jest.spyOn(TaskManager, 'getTaskManager').mockReturnValue(mockTaskManager);
     // Instantiate ContactCenter to ensure it's fully initialized
@@ -953,7 +960,7 @@ describe('webex.cc', () => {
 
       // Construct Payload for startOutdial.
       const newPayload = {
-        destination, 
+        destination,
         entryPointId: 'test-entry-point',
         direction: OUTDIAL_DIRECTION,
         attributes: ATTRIBUTES,
