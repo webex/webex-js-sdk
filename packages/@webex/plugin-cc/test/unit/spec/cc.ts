@@ -132,6 +132,7 @@ describe('webex.cc', () => {
 
     mockMetricsManager = {
       trackEvent: jest.fn(),
+      timeEvent: jest.fn(),
     };
 
     jest.spyOn(MetricsManager, 'getInstance').mockReturnValue(mockMetricsManager);
@@ -400,9 +401,26 @@ describe('webex.cc', () => {
         'registerWebCallingLine'
       );
 
+
+      const mockData = {
+        data: {
+          loginOption: LoginOption.BROWSER,
+          agentId: 'agentId',
+          teamId: 'teamId',
+          siteId: 'siteId',
+          roles: [AGENT],
+          trackingId: '1234',
+          eventType: 'DESKTOP_MESSAGE',
+        },
+        trackingId: '1234',
+        orgId: 'orgId',
+        type: 'StationLoginSuccess',
+        eventType: 'STATION_LOGIN',
+      }
+
       const stationLoginMock = jest
         .spyOn(webex.cc.services.agent, 'stationLogin')
-        .mockResolvedValue({} as StationLoginSuccess);
+        .mockResolvedValue(mockData as unknown as StationLoginSuccess);
 
       const result = await webex.cc.stationLogin(options);
 
@@ -421,7 +439,7 @@ describe('webex.cc', () => {
           auxCodeId: '',
         },
       });
-      expect(result).toEqual({});
+      expect(result).toEqual(mockData);
 
       const onSpy = jest.spyOn(mockTaskManager, 'on');
       const emitSpy = jest.spyOn(webex.cc, 'trigger');
@@ -466,9 +484,25 @@ describe('webex.cc', () => {
         dialNumber: '1234567890',
       };
 
+      const mockData = {
+        data: {
+          loginOption: LoginOption.AGENT_DN,
+          agentId: 'agentId',
+          teamId: 'teamId',
+          siteId: 'siteId',
+          roles: [AGENT],
+          trackingId: '1234',
+          eventType: 'DESKTOP_MESSAGE',
+        },
+        trackingId: '1234',
+        orgId: 'orgId',
+        type: 'StationLoginSuccess',
+        eventType: 'STATION_LOGIN',
+      }
+
       const stationLoginMock = jest
         .spyOn(webex.cc.services.agent, 'stationLogin')
-        .mockResolvedValue({} as StationLoginSuccess);
+        .mockResolvedValue(mockData as unknown as StationLoginSuccess);
 
       const result = await webex.cc.stationLogin(options);
 
@@ -486,7 +520,7 @@ describe('webex.cc', () => {
           auxCodeId: '',
         },
       });
-      expect(result).toEqual({});
+      expect(result).toEqual(mockData);
     });
 
     it('should handle error during stationLogin', async () => {
@@ -500,7 +534,7 @@ describe('webex.cc', () => {
         details: {
           trackingId: '1234',
           data: {
-            reason: 'Error while performing station login',
+            reason: 'Error while performing stationLogin',
           },
         },
       };

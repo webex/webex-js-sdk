@@ -238,6 +238,10 @@ export default class MetricsManager {
 
   // Make the class a singleton
   public static getInstance(options: {webex: WebexSDK}): MetricsManager {
+    if (!options || !options.webex) {
+      LoggerProxy.error('WebexSDK instance is required to create a MetricsManager instance');
+      throw new Error('WebexSDK instance is required to create a MetricsManager instance');
+    }
     if (!MetricsManager.instance) {
       MetricsManager.instance = new MetricsManager(options);
     }

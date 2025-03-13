@@ -219,13 +219,11 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
       const resp = await loginResponse;
 
-      // TODO: https://jira-eng-gpk2.cisco.com/jira/browse/SPARK-626777 Implement the de-register method and close the listener there
-      // this.services.webSocketManager.on('message', this.handleWebSocketMessage);
-      // this.incomingTaskListener();
       this.metricsManager.trackEvent(
         METRICS.EVENT_NAMES.STATION_LOGIN,
         {
           isSuccess: true,
+          loginType: data.loginOption,
           agentId: resp.data.agentId,
           teamId: resp.data.teamId,
           siteId: resp.data.siteId,
@@ -239,8 +237,9 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         ['behavioral', 'business', 'operational']
       );
 
-      this.services.webSocketManager.on('message', this.handleWebSocketMessage);
-      this.incomingTaskListener();
+      // TODO: https://jira-eng-gpk2.cisco.com/jira/browse/SPARK-626777 Implement the de-register method and close the listener there
+      // this.services.webSocketManager.on('message', this.handleWebSocketMessage);
+      // this.incomingTaskListener();
 
       return resp;
     } catch (error) {
