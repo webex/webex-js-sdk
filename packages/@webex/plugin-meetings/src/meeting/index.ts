@@ -3428,10 +3428,9 @@ export default class Meeting extends StatelessWebexPlugin {
         payload.newRoles?.includes(SELF_ROLES.MODERATOR) ||
         payload.newRoles?.includes(SELF_ROLES.COHOST);
       this.breakouts.updateCanManageBreakouts(isModeratorOrCohost);
-      // TODO: Followup Jira: https://jira-eng-gpk2.cisco.com/jira/browse/SPARK-633240
-      // this.simultaneousInterpretation.updateCanManageInterpreters(
-      //   payload.newRoles?.includes(SELF_ROLES.MODERATOR)
-      // );
+      this.simultaneousInterpretation.updateCanManageInterpreters(
+        payload.newRoles?.includes(SELF_ROLES.MODERATOR)
+      );
       this.webinar.updateRoleChanged(payload);
 
       Trigger.trigger(
