@@ -163,6 +163,7 @@ import {LocusMediaRequest} from './locusMediaRequest';
 import {ConnectionStateHandler, ConnectionStateEvent} from './connectionStateHandler';
 import JoinWebinarError from '../common/errors/join-webinar-error';
 import Member from '../member';
+import {BrbState, createBrbState} from './brbState';
 import MultistreamNotSupportedError from '../common/errors/multistream-not-supported-error';
 import JoinForbiddenError from '../common/errors/join-forbidden-error';
 
@@ -649,6 +650,7 @@ export default class Meeting extends StatelessWebexPlugin {
   turnServerUsed: boolean;
   areVoiceaEventsSetup = false;
   isMoveToInProgress = false;
+  brbState: BrbState;
 
   voiceaListenerCallbacks: object = {
     [VOICEAEVENTS.VOICEA_ANNOUNCEMENT]: (payload: Transcription['languageOptions']) => {
@@ -3407,6 +3409,7 @@ export default class Meeting extends StatelessWebexPlugin {
     });
 
     this.locusInfo.on(LOCUSINFO.EVENTS.SELF_MEETING_BRB_CHANGED, (payload) => {
+      this.brbState?.handleServerBrbUpdate(payload?.brb?.enabled);
       Trigger.trigger(
         this,
         {
@@ -3650,22 +3653,7 @@ export default class Meeting extends StatelessWebexPlugin {
       return Promise.reject(error);
     }
 
-    // this logic should be applied only to multistream meetings
-    return this.meetingRequest
-      .setBrb({
-        enabled,
-        locusUrl: this.locusUrl,
-        deviceUrl: this.deviceUrl,
-        selfId: this.selfId,
-      })
-      .then(() => {
-        this.sendSlotManager.setSourceStateOverride(MediaType.VideoMain, enabled ? 'away' : null);
-      })
-      .catch((error) => {
-        LoggerProxy.logger.error('Meeting:index#beRightBack --> Error ', error);
-
-        return Promise.reject(error);
-      });
+    return this.brbState.enable(enabled, this.sendSlotManager);
   }
 
   /**
@@ -6719,6 +6707,9 @@ export default class Meeting extends StatelessWebexPlugin {
         new RtcMetrics(this.webex, {meetingId: this.id}, this.correlationId)
       : undefined;
 
+    // ongoing reachability checks slow down new media connections especially on Firefox, so we stop them
+    this.getWebexObject().meetings.reachability.stopReachability();
+
     const mc = Media.createMediaConnection(
       this.isMultistream,
       this.getMediaConnectionDebugId(),
@@ -7435,6 +7426,7 @@ export default class Meeting extends StatelessWebexPlugin {
 
     this.audio = createMuteState(AUDIO, this, audioEnabled);
     this.video = createMuteState(VIDEO, this, videoEnabled);
+    this.brbState = createBrbState(this, false);
 
     try {
       await this.setUpLocalStreamReferences(localStreams);

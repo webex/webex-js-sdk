@@ -450,6 +450,16 @@ describe('plugin-meetings', () => {
       assert.equal(SelfUtils.mutedByOthersChanged(null, {remoteMuted: true}), true);
     });
 
+    it('should return false when selfIdentity and modifiedBy are the same', function () {
+      assert.equal(
+        SelfUtils.mutedByOthersChanged(
+          {remoteMuted: false},
+          {remoteMuted: true, selfIdentity: 'user1', modifiedBy: 'user1'}
+        ),
+        false
+      );
+    });
+
     it('should return true when remoteMuted values are different', function () {
       assert.equal(
         SelfUtils.mutedByOthersChanged(

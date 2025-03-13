@@ -114,6 +114,7 @@ import {ERROR_DESCRIPTIONS} from '@webex/internal-plugin-metrics/src/call-diagno
 import MeetingCollection from '@webex/plugin-meetings/src/meetings/collection';
 
 import {EVENT_TRIGGERS as VOICEAEVENTS} from '@webex/internal-plugin-voicea';
+import { createBrbState } from '@webex/plugin-meetings/src/meeting/brbState';
 import JoinForbiddenError               from '../../../../src/common/errors/join-forbidden-error';
 
 describe('plugin-meetings', () => {
@@ -246,6 +247,7 @@ describe('plugin-meetings', () => {
       isAnyPublicClusterReachable: sinon.stub().resolves(true),
       getReachabilityResults: sinon.stub().resolves(undefined),
       getReachabilityMetrics: sinon.stub().resolves({}),
+      stopReachability: sinon.stub(),
     };
     webex.internal.llm.on = sinon.stub();
     webex.internal.newMetrics.callDiagnosticLatencies = new CallDiagnosticLatencies(
@@ -2095,6 +2097,7 @@ describe('plugin-meetings', () => {
               someReachabilityMetric1: 'some value1',
               someReachabilityMetric2: 'some value2',
             }),
+            stopReachability: sinon.stub(),
           };
 
           const forceRtcMetricsSend = sinon.stub().resolves();
@@ -2514,6 +2517,7 @@ describe('plugin-meetings', () => {
           assert.calledOnce(meeting.setMercuryListener);
           assert.calledOnce(fakeMediaConnection.initiateOffer);
           assert.equal(meeting.allowMediaInLobby, allowMediaInLobby);
+          assert.calledOnce(webex.meetings.reachability.stopReachability);
         };
 
         it('should attach the media and return promise', async () => {
@@ -2709,6 +2713,7 @@ describe('plugin-meetings', () => {
           webex.meetings.reachability = {
             isWebexMediaBackendUnreachable: sinon.stub().resolves(false),
             getReachabilityMetrics: sinon.stub().resolves(),
+            stopReachability: sinon.stub(),
           };
           const MOCK_CLIENT_ERROR_CODE = 2004;
           const generateClientErrorCodeForIceFailureStub = sinon
@@ -2917,6 +2922,7 @@ describe('plugin-meetings', () => {
               .onCall(2)
               .resolves(false),
             getReachabilityMetrics: sinon.stub().resolves({}),
+            stopReachability: sinon.stub(),
           };
           const getErrorPayloadForClientErrorCodeStub =
             (webex.internal.newMetrics.callDiagnosticMetrics.getErrorPayloadForClientErrorCode =
@@ -3211,6 +3217,7 @@ describe('plugin-meetings', () => {
               someReachabilityMetric1: 'some value1',
               someReachabilityMetric2: 'some value2',
             }),
+            stopReachability: sinon.stub(),
           };
           meeting.iceCandidatesCount = 3;
           meeting.iceCandidateErrors.set('701_error', 3);
@@ -3715,6 +3722,7 @@ describe('plugin-meetings', () => {
 
               webex.meetings.reachability = {
                 isWebexMediaBackendUnreachable: sinon.stub().resolves(unreachable || false),
+                stopReachability: sinon.stub(),
               };
 
               const generateClientErrorCodeForIceFailureStub = sinon
@@ -3812,7 +3820,6 @@ describe('plugin-meetings', () => {
         };
 
         beforeEach(() => {
-          meeting.meetingRequest.setBrb = sinon.stub().resolves({body: 'test'});
           meeting.mediaProperties.webrtcMediaConnection = {createSendSlot: sinon.stub()};
           meeting.sendSlotManager.createSlot(
             fakeMultistreamRoapMediaConnection,
@@ -3822,6 +3829,8 @@ describe('plugin-meetings', () => {
           meeting.locusUrl = 'locus url';
           meeting.deviceUrl = 'device url';
           meeting.selfId = 'self id';
+          meeting.brbState = createBrbState(meeting, false);
+          meeting.brbState.enable = sinon.stub().resolves();
         });
 
         afterEach(() => {
@@ -3843,7 +3852,7 @@ describe('plugin-meetings', () => {
 
             await brbResult;
             assert.exists(brbResult.then);
-            assert.calledOnce(meeting.meetingRequest.setBrb);
+            assert.calledOnce(meeting.brbState.enable);
           })
 
           it('should disable #beRightBack and return a promise', async () => {
@@ -3851,12 +3860,12 @@ describe('plugin-meetings', () => {
 
             await brbResult;
             assert.exists(brbResult.then);
-            assert.calledOnce(meeting.meetingRequest.setBrb);
+            assert.calledOnce(meeting.brbState.enable);
           })
 
           it('should throw an error and reject the promise if setBrb fails', async () => {
             const error = new Error('setBrb failed');
-            meeting.meetingRequest.setBrb.rejects(error);
+            meeting.brbState.enable.rejects(error);
 
             try {
               await meeting.beRightBack(true);
@@ -3865,27 +3874,6 @@ describe('plugin-meetings', () => {
               assert.equal(err.message, 'setBrb failed');
               assert.isRejected((Promise.reject()));
             }
-          })
-        });
-
-        describe('when in a transcoded meeting', () => {
-
-          beforeEach(() => {
-            meeting.isMultistream = false;
-          });
-
-          it('should ignore enabling #beRightBack', async () => {
-            meeting.beRightBack(true);
-
-            assert.isRejected((Promise.reject()));
-            assert.notCalled(meeting.meetingRequest.setBrb);
-          })
-
-          it('should ignore disabling #beRightBack', async () => {
-            meeting.beRightBack(false);
-
-            assert.isRejected((Promise.reject()));
-            assert.notCalled(meeting.meetingRequest.setBrb);
           })
         });
       });
@@ -9230,6 +9218,7 @@ describe('plugin-meetings', () => {
 
         it('listens to the brb state changed event', () => {
           const assertBrb = (enabled) => {
+            meeting.brbState = createBrbState(meeting, false);
             meeting.locusInfo.emit(
               { function: 'test', file: 'test' },
               LOCUSINFO.EVENTS.SELF_MEETING_BRB_CHANGED,
