@@ -593,7 +593,46 @@ describe('plugin-mercury', () => {
             assert.called(spy);
             assert.calledWith(spy, {
               code: 1000,
-              reason: 'Done (forced)',
+              reason: 'test',
+            });
+          });
+        });
+      });
+
+      it('signals closure if no close frame is received within the specified window, and uses default options as 1000 if the code is not 3050', () => {
+        const socket = new Socket();
+        const promise = socket.open('ws://example.com', mockoptions);
+
+        mockWebSocket.readyState = 1;
+        mockWebSocket.emit('open');
+        mockWebSocket.emit('message', {
+          data: JSON.stringify({
+            id: uuid.v4(),
+            data: {
+              eventType: 'mercury.buffer_state',
+            },
+          }),
+        });
+
+        return promise.then(() => {
+          const spy = sinon.spy();
+
+          socket.on('close', spy);
+          mockWebSocket.close = () =>
+            new Promise(() => {
+              /* eslint no-inline-comments: [0] */
+            });
+          mockWebSocket.removeAllListeners('close');
+
+          const promise = socket.close({code: 1000});
+
+          clock.tick(mockoptions.forceCloseDelay);
+
+          return promise.then(() => {
+            assert.called(spy);
+            assert.calledWith(spy, {
+              code: 1000,
+              reason: 'Done (unknown)',
             });
           });
         });
