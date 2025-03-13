@@ -113,7 +113,7 @@ const Mercury = WebexPlugin.extend({
     return this.disconnect(
       this.config.beforeLogoutOptionsCloseReason &&
         !normalReconnectReasons.includes(this.config.beforeLogoutOptionsCloseReason)
-        ? {code: 1050, reason: this.config.beforeLogoutOptionsCloseReason}
+        ? {code: 3050, reason: this.config.beforeLogoutOptionsCloseReason}
         : undefined
     );
   },
@@ -480,7 +480,7 @@ const Mercury = WebexPlugin.extend({
           // if (code == 1011 && reason !== ping error) metric: unexpected disconnect
           break;
         case 1000:
-        case 1050: // 1050 indicates logout form of closure, default to old behavior, use config reason defined by consumer to proceed with the permanent block
+        case 3050: // 3050 indicates logout form of closure, default to old behavior, use config reason defined by consumer to proceed with the permanent block
           if (normalReconnectReasons.includes(reason)) {
             this.logger.info(`${this.namespace}: socket disconnected; reconnecting`);
             this._emit('offline.transient', event);
