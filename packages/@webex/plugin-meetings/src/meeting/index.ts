@@ -1854,7 +1854,7 @@ export default class Meeting extends StatelessWebexPlugin {
           this.meetingInfoFailureReason = MEETING_INFO_FAILURE_REASON.WRONG_CAPTCHA;
         } else if (err.isRegistrationIdRequired) {
           this.meetingInfoFailureReason = MEETING_INFO_FAILURE_REASON.WRONG_REGISTRATIONID;
-        } else if (err.isPasswordRequired) {
+        } else {
           this.meetingInfoFailureReason = MEETING_INFO_FAILURE_REASON.WRONG_PASSWORD;
         }
 
@@ -2010,7 +2010,7 @@ export default class Meeting extends StatelessWebexPlugin {
 
   /**
    * Checks if the supplied registrationId is correct. It returns a promise with information whether the
-   * password and captcha code were correct or not.
+   * registrationId and captcha code were correct or not.
    * @param {String} registrationId - can be undefined if only captcha was required
    * @param {String} captchaCode - can be undefined if captcha was not required by the server
    * @param {Boolean} sendCAevents - whether Call Analyzer events should be sent when fetching meeting information
