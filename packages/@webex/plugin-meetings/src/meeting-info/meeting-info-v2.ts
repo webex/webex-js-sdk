@@ -18,6 +18,7 @@ const ADHOC_MEETING_DEFAULT_ERROR =
   'Failed starting the adhoc meeting, Please contact support team ';
 const CAPTCHA_ERROR_REQUIRES_PASSWORD_CODES = [423005, 423006];
 const POLICY_ERROR_CODES = [403049, 403104, 403103, 403048, 403102, 403101];
+const JOIN_FORBIDDEN_CODES = [403003];
 /**
  * 403021 - Meeting registration is required
  * 403022 - Meeting registration is still pending
@@ -163,6 +164,31 @@ export class MeetingInfoV2JoinWebinarError extends Error {
 }
 
 /**
+ * Error preventing join because of a forbidden error
+ */
+export class MeetingInfoV2JoinForbiddenError extends Error {
+  meetingInfo: any;
+  sdkMessage: any;
+  wbxAppApiCode: any;
+  body: any;
+  /**
+   *
+   * @constructor
+   * @param {Number} [wbxAppApiErrorCode]
+   * @param {Object} [meetingInfo]
+   * @param {String} [message]
+   */
+  constructor(wbxAppApiErrorCode?: number, meetingInfo?: object, message?: string) {
+    super(`${message}, code=${wbxAppApiErrorCode}`);
+    this.name = 'MeetingInfoV2JoinForbiddenError';
+    this.sdkMessage = message;
+    this.stack = new Error().stack;
+    this.wbxAppApiCode = wbxAppApiErrorCode;
+    this.meetingInfo = meetingInfo;
+  }
+}
+
+/**
  * @class MeetingInfo
  */
 export default class MeetingInfoV2 {
@@ -239,6 +265,29 @@ export default class MeetingInfoV2 {
   };
 
   /**
+   * Raises a handleForbiddenError for join meeting forbidden error
+   * @param {any} err the error from the request
+   * @returns {void}
+   */
+  handleForbiddenError = (err) => {
+    if (!err.body) {
+      return;
+    }
+
+    if (JOIN_FORBIDDEN_CODES.includes(err.body?.code)) {
+      Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.JOIN_FORBIDDEN_ERROR, {
+        code: err.body?.code,
+      });
+
+      throw new MeetingInfoV2JoinForbiddenError(
+        err.body?.code,
+        err.body?.data?.meetingInfo,
+        err.body?.message
+      );
+    }
+  };
+
+  /**
    * Creates adhoc space meetings for a space by fetching the conversation infomation
    * @param {String} conversationUrl conversationUrl to start adhoc meeting on
    * @param {String} installedOrgID org ID of user's machine
@@ -299,6 +348,7 @@ export default class MeetingInfoV2 {
       .catch((err) => {
         this.handlePolicyError(err);
         this.handleJoinWebinarError(err);
+        this.handleForbiddenError(err);
 
         Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.ADHOC_MEETING_FAILURE, {
           reason: err.message,
@@ -454,6 +504,7 @@ export default class MeetingInfoV2 {
         if (err?.statusCode === 403) {
           this.handlePolicyError(err);
           this.handleJoinWebinarError(err);
+          this.handleForbiddenError(err);
 
           Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.VERIFY_PASSWORD_ERROR, {
             reason: err.message,

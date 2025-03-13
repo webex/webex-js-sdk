@@ -32,6 +32,7 @@ The following environment variables are used by this plugin:
 
 - `HYDRA_SERVICE_URL` - Stores the public hydra api url for managing Webex resources.
 - `U2C_SERVICE_URL` - Stores the service catalog collecting url, typically the **U2C** service.
+- `SQDISCOVERY_SERVICE_URL` - Stores the URL for client region information, such as country code and timezone
 
 ### Configuration
 
@@ -43,7 +44,8 @@ const webex = new Webex({
     services: {
       // Services that are available before catalog retrieval.
       discovery: {
-        hydra: 'https://api.ciscospark.com/v1'
+        hydra: 'https://api.ciscospark.com/v1',
+        sqdiscovery: 'https://ds.ciscospark.com/v1/region'
       },
 
       // Services that have a persistant host, typically for testing.
@@ -65,6 +67,7 @@ The default configuration includes the following service urls:
 
 - `U2C_SERVICE_URL` [ **U2C** ] - `https://u2c.wbx2.com/u2c/api/v1`
 - `HYDRA_SERVICE_URL` [ **Hydra** ] - `https://api.ciscospark.com/v1`
+- `SQDISCOVERY_SERVICE_URL` [ **SQDISCOVERY** ] - `https://ds.ciscospark.com/v1/region`
 
 ## Maintainers
 

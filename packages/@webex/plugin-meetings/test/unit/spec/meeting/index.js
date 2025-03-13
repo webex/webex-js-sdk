@@ -99,7 +99,7 @@ import {
   MeetingInfoV2CaptchaError,
   MeetingInfoV2PasswordError,
   MeetingInfoV2PolicyError,
-  MeetingInfoV2JoinWebinarError,
+  MeetingInfoV2JoinWebinarError, MeetingInfoV2JoinForbiddenError,
 } from '../../../../src/meeting-info/meeting-info-v2';
 import {
   DTLS_HANDSHAKE_FAILED_CLIENT_CODE,
@@ -114,6 +114,8 @@ import {ERROR_DESCRIPTIONS} from '@webex/internal-plugin-metrics/src/call-diagno
 import MeetingCollection from '@webex/plugin-meetings/src/meetings/collection';
 
 import {EVENT_TRIGGERS as VOICEAEVENTS} from '@webex/internal-plugin-voicea';
+import { createBrbState } from '@webex/plugin-meetings/src/meeting/brbState';
+import JoinForbiddenError               from '../../../../src/common/errors/join-forbidden-error';
 
 describe('plugin-meetings', () => {
   const logger = {
@@ -245,6 +247,7 @@ describe('plugin-meetings', () => {
       isAnyPublicClusterReachable: sinon.stub().resolves(true),
       getReachabilityResults: sinon.stub().resolves(undefined),
       getReachabilityMetrics: sinon.stub().resolves({}),
+      stopReachability: sinon.stub(),
     };
     webex.internal.llm.on = sinon.stub();
     webex.internal.newMetrics.callDiagnosticLatencies = new CallDiagnosticLatencies(
@@ -2094,6 +2097,7 @@ describe('plugin-meetings', () => {
               someReachabilityMetric1: 'some value1',
               someReachabilityMetric2: 'some value2',
             }),
+            stopReachability: sinon.stub(),
           };
 
           const forceRtcMetricsSend = sinon.stub().resolves();
@@ -2513,6 +2517,7 @@ describe('plugin-meetings', () => {
           assert.calledOnce(meeting.setMercuryListener);
           assert.calledOnce(fakeMediaConnection.initiateOffer);
           assert.equal(meeting.allowMediaInLobby, allowMediaInLobby);
+          assert.calledOnce(webex.meetings.reachability.stopReachability);
         };
 
         it('should attach the media and return promise', async () => {
@@ -2708,6 +2713,7 @@ describe('plugin-meetings', () => {
           webex.meetings.reachability = {
             isWebexMediaBackendUnreachable: sinon.stub().resolves(false),
             getReachabilityMetrics: sinon.stub().resolves(),
+            stopReachability: sinon.stub(),
           };
           const MOCK_CLIENT_ERROR_CODE = 2004;
           const generateClientErrorCodeForIceFailureStub = sinon
@@ -2916,6 +2922,7 @@ describe('plugin-meetings', () => {
               .onCall(2)
               .resolves(false),
             getReachabilityMetrics: sinon.stub().resolves({}),
+            stopReachability: sinon.stub(),
           };
           const getErrorPayloadForClientErrorCodeStub =
             (webex.internal.newMetrics.callDiagnosticMetrics.getErrorPayloadForClientErrorCode =
@@ -3210,6 +3217,7 @@ describe('plugin-meetings', () => {
               someReachabilityMetric1: 'some value1',
               someReachabilityMetric2: 'some value2',
             }),
+            stopReachability: sinon.stub(),
           };
           meeting.iceCandidatesCount = 3;
           meeting.iceCandidateErrors.set('701_error', 3);
@@ -3714,6 +3722,7 @@ describe('plugin-meetings', () => {
 
               webex.meetings.reachability = {
                 isWebexMediaBackendUnreachable: sinon.stub().resolves(unreachable || false),
+                stopReachability: sinon.stub(),
               };
 
               const generateClientErrorCodeForIceFailureStub = sinon
@@ -3811,7 +3820,6 @@ describe('plugin-meetings', () => {
         };
 
         beforeEach(() => {
-          meeting.meetingRequest.setBrb = sinon.stub().resolves({body: 'test'});
           meeting.mediaProperties.webrtcMediaConnection = {createSendSlot: sinon.stub()};
           meeting.sendSlotManager.createSlot(
             fakeMultistreamRoapMediaConnection,
@@ -3821,6 +3829,8 @@ describe('plugin-meetings', () => {
           meeting.locusUrl = 'locus url';
           meeting.deviceUrl = 'device url';
           meeting.selfId = 'self id';
+          meeting.brbState = createBrbState(meeting, false);
+          meeting.brbState.enable = sinon.stub().resolves();
         });
 
         afterEach(() => {
@@ -3842,7 +3852,7 @@ describe('plugin-meetings', () => {
 
             await brbResult;
             assert.exists(brbResult.then);
-            assert.calledOnce(meeting.meetingRequest.setBrb);
+            assert.calledOnce(meeting.brbState.enable);
           })
 
           it('should disable #beRightBack and return a promise', async () => {
@@ -3850,12 +3860,12 @@ describe('plugin-meetings', () => {
 
             await brbResult;
             assert.exists(brbResult.then);
-            assert.calledOnce(meeting.meetingRequest.setBrb);
+            assert.calledOnce(meeting.brbState.enable);
           })
 
           it('should throw an error and reject the promise if setBrb fails', async () => {
             const error = new Error('setBrb failed');
-            meeting.meetingRequest.setBrb.rejects(error);
+            meeting.brbState.enable.rejects(error);
 
             try {
               await meeting.beRightBack(true);
@@ -3864,27 +3874,6 @@ describe('plugin-meetings', () => {
               assert.equal(err.message, 'setBrb failed');
               assert.isRejected((Promise.reject()));
             }
-          })
-        });
-
-        describe('when in a transcoded meeting', () => {
-
-          beforeEach(() => {
-            meeting.isMultistream = false;
-          });
-
-          it('should ignore enabling #beRightBack', async () => {
-            meeting.beRightBack(true);
-
-            assert.isRejected((Promise.reject()));
-            assert.notCalled(meeting.meetingRequest.setBrb);
-          })
-
-          it('should ignore disabling #beRightBack', async () => {
-            meeting.beRightBack(false);
-
-            assert.isRejected((Promise.reject()));
-            assert.notCalled(meeting.meetingRequest.setBrb);
           })
         });
       });
@@ -6337,6 +6326,38 @@ describe('plugin-meetings', () => {
           );
           assert.equal(meeting.requiredCaptcha, null);
           assert.equal(meeting.passwordStatus, PASSWORD_STATUS.REQUIRED);
+        });
+
+        it('handles meetingInfoProvider not reach JBH', async () => {
+          meeting.destination = FAKE_DESTINATION;
+          meeting.destinationType = FAKE_TYPE;
+          meeting.attrs.meetingInfoProvider = {
+            fetchMeetingInfo: sinon
+              .stub()
+              .throws(new MeetingInfoV2JoinForbiddenError(403003, FAKE_MEETING_INFO)),
+          };
+
+          await assert.isRejected(meeting.fetchMeetingInfo({sendCAevents: true}), JoinForbiddenError);
+
+          assert.calledWith(
+            meeting.attrs.meetingInfoProvider.fetchMeetingInfo,
+            FAKE_DESTINATION,
+            FAKE_TYPE,
+            null,
+            null,
+            undefined,
+            'locus-id',
+            {},
+            {meetingId: meeting.id, sendCAevents: true}
+          );
+
+          assert.deepEqual(meeting.meetingInfo, FAKE_MEETING_INFO);
+          assert.equal(meeting.meetingInfoFailureCode, 403003);
+          assert.equal(
+            meeting.meetingInfoFailureReason,
+            MEETING_INFO_FAILURE_REASON.NOT_REACH_JBH
+          );
+          assert.equal(meeting.requiredCaptcha, null);
         });
 
         it('handles meetingInfoProvider policy error', async () => {
@@ -9197,6 +9218,7 @@ describe('plugin-meetings', () => {
 
         it('listens to the brb state changed event', () => {
           const assertBrb = (enabled) => {
+            meeting.brbState = createBrbState(meeting, false);
             meeting.locusInfo.emit(
               { function: 'test', file: 'test' },
               LOCUSINFO.EVENTS.SELF_MEETING_BRB_CHANGED,
@@ -9996,7 +10018,8 @@ describe('plugin-meetings', () => {
       describe('#closePeerConnections', () => {
         it('should close the webrtc media connection, and return a promise', async () => {
           const setNetworkStatusSpy = sinon.spy(meeting, 'setNetworkStatus');
-          meeting.mediaProperties.webrtcMediaConnection = {close: sinon.stub()};
+          const fakeWebrtcMediaConnection = {close: sinon.stub()};
+          meeting.mediaProperties.webrtcMediaConnection = fakeWebrtcMediaConnection;
 
           meeting.audio = {id: 'fakeAudioMuteState'};
           meeting.video = {id: 'fakeVideoMuteState'};
@@ -10005,15 +10028,17 @@ describe('plugin-meetings', () => {
 
           assert.exists(pcs.then);
           await pcs;
-          assert.calledOnce(meeting.mediaProperties.webrtcMediaConnection.close);
+          assert.calledOnce(fakeWebrtcMediaConnection.close);
           assert.calledOnceWithExactly(setNetworkStatusSpy, undefined);
           assert.equal(meeting.audio, null);
           assert.equal(meeting.video, null);
+          assert.equal(meeting.mediaProperties.webrtcMediaConnection, null);
         });
 
         it('should close the webrtc media connection, but keep audio and video props unchanged if called with resetMuteStates=false', async () => {
           const setNetworkStatusSpy = sinon.spy(meeting, 'setNetworkStatus');
-          meeting.mediaProperties.webrtcMediaConnection = {close: sinon.stub()};
+          const fakeWebrtcMediaConnection = {close: sinon.stub()};
+          meeting.mediaProperties.webrtcMediaConnection = fakeWebrtcMediaConnection;
 
           const fakeAudio = {id: 'fakeAudioMuteState'};
           const fakeVideo = {id: 'fakeVideoMuteState'};
@@ -10023,10 +10048,11 @@ describe('plugin-meetings', () => {
 
           await meeting.closePeerConnections(false);
 
-          assert.calledOnce(meeting.mediaProperties.webrtcMediaConnection.close);
+          assert.calledOnce(fakeWebrtcMediaConnection.close);
           assert.calledOnceWithExactly(setNetworkStatusSpy, undefined);
           assert.equal(meeting.audio, fakeAudio);
           assert.equal(meeting.video, fakeVideo);
+          assert.equal(meeting.mediaProperties.webrtcMediaConnection, null);
         });
       });
 
@@ -13223,7 +13249,7 @@ describe('plugin-meetings', () => {
 
   describe('#roapMessageReceived', () => {
     it('calls roapMessageReceived on the webrtc media connection', () => {
-      const fakeMessage = {messageType: 'fake', sdp: 'fake sdp'};
+      const fakeMessage = {messageType: 'ANSWER', sdp: 'fake sdp'};
 
       const getMediaServer = sinon.stub(MeetingsUtil, 'getMediaServer').returns('homer');
 
@@ -13260,6 +13286,27 @@ describe('plugin-meetings', () => {
       }
 
       assert.notCalled(meeting.mediaProperties.webrtcMediaConnection.roapMessageReceived);
+    });
+
+    it('does not call getMediaServer for a roap message other than ANSWER', async () => {
+      const fakeMessage = {messageType: 'ERROR', sdp: 'fake sdp'};
+
+      meeting.isMultistream = true;
+      meeting.mediaProperties.webrtcMediaConnection = {
+        roapMessageReceived: sinon.stub(),
+      };
+      meeting.mediaProperties.webrtcMediaConnection.mediaServer = 'linus';
+
+      const getMediaServerStub = sinon.stub(MeetingsUtil, 'getMediaServer').returns('something');
+
+      meeting.roapMessageReceived(fakeMessage);
+
+      assert.calledOnceWithExactly(
+        meeting.mediaProperties.webrtcMediaConnection.roapMessageReceived,
+        fakeMessage
+      );
+      assert.notCalled(getMediaServerStub);
+      assert.equal(meeting.mediaProperties.webrtcMediaConnection.mediaServer, 'linus'); // check that it hasn't been overwritten
     });
   });
 });

@@ -65,6 +65,7 @@ import PermissionError from '../common/errors/permission';
 import JoinWebinarError from '../common/errors/join-webinar-error';
 import {SpaceIDDeprecatedError} from '../common/errors/webex-errors';
 import NoMeetingInfoError from '../common/errors/no-meeting-info';
+import JoinForbiddenError from '../common/errors/join-forbidden-error';
 
 let mediaLogger;
 
@@ -697,6 +698,20 @@ export default class Meetings extends WebexPlugin {
       // @ts-ignore
       Metrics.initialSetup(this.webex);
     });
+  }
+
+  /**
+   * API to change log upload interval. Setting the factor to 0 will disable periodic log uploads.
+   *
+   * @param {number} factor new factor value
+   * @returns {void}
+   */
+  private _setLogUploadIntervalMultiplicationFactor(factor: number) {
+    if (typeof factor !== 'number') {
+      return;
+    }
+    // @ts-ignore
+    this.config.logUploadIntervalMultiplicationFactor = factor;
   }
 
   /**
@@ -1449,7 +1464,8 @@ export default class Meetings extends WebexPlugin {
         !(err instanceof CaptchaError) &&
         !(err instanceof PasswordError) &&
         !(err instanceof PermissionError) &&
-        !(err instanceof JoinWebinarError)
+        !(err instanceof JoinWebinarError) &&
+        !(err instanceof JoinForbiddenError)
       ) {
         LoggerProxy.logger.info(
           `Meetings:index#createMeeting --> Info Unable to fetch meeting info for ${destination}.`

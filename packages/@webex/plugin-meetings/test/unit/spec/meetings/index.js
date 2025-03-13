@@ -43,6 +43,7 @@ import CaptchaError from '@webex/plugin-meetings/src/common/errors/captcha-error
 import {forEach} from 'lodash';
 import PasswordError from '@webex/plugin-meetings/src/common/errors/password-error';
 import PermissionError from '@webex/plugin-meetings/src/common/errors/permission';
+import JoinForbiddenError from '@webex/plugin-meetings/src/common/errors/join-forbidden-error';
 import {NoiseReductionEffect, VirtualBackgroundEffect} from '@webex/media-helpers';
 import NoMeetingInfoError from '../../../../src/common/errors/no-meeting-info';
 
@@ -265,6 +266,33 @@ describe('plugin-meetings', () => {
 
         assert.calledOnceWithExactly(gatherReachabilitySpy, trigger);
         assert.equal(result, fakeResult);
+      });
+    });
+
+    describe('#_setLogUploadIntervalMultiplicationFactor', () => {
+      it('should have _setLogUploadIntervalMultiplicationFactor', () => {
+        assert.equal(typeof webex.meetings._setLogUploadIntervalMultiplicationFactor, 'function');
+      });
+
+      describe('success', () => {
+        it('should update the config', () => {
+          const someValue = 1.23;
+
+          webex.meetings._setLogUploadIntervalMultiplicationFactor(someValue);
+          assert.equal(webex.meetings.config.logUploadIntervalMultiplicationFactor, someValue);
+        });
+      });
+
+      describe('failure', () => {
+        it('should not accept non-number input', () => {
+          const logUploadIntervalMultiplicationFactor = webex.meetings.config.logUploadIntervalMultiplicationFactor;
+
+          webex.meetings._setLogUploadIntervalMultiplicationFactor('test');
+          assert.equal(
+            webex.meetings.config.logUploadIntervalMultiplicationFactor,
+            logUploadIntervalMultiplicationFactor
+          );
+        });
       });
     });
 
@@ -2024,6 +2052,11 @@ describe('plugin-meetings', () => {
                 error: new PermissionError(),
                 debugLogMessage:
                   'Meetings:index#createMeeting --> Debug PermissionError: Not allowed to execute the function, some properties on server, or local client state do not allow you to complete this action. fetching /meetingInfo for creation.',
+              },
+              {
+                error: new JoinForbiddenError(),
+                debugLogMessage:
+                  'Meetings:index#createMeeting --> Debug JoinForbiddenError: Meeting join forbidden. fetching /meetingInfo for creation.',
               },
               {
                 error: new Error(),
