@@ -122,9 +122,9 @@ import {
   ROAP_OFFER_ANSWER_EXCHANGE_TIMEOUT,
   NAMED_MEDIA_GROUP_TYPE_AUDIO,
   WEBINAR_ERROR_WEBCAST,
-  WEBINAR_ERROR_REGISTRATIONID,
+  WEBINAR_ERROR_REGISTRATION_ID,
   JOIN_BEFORE_HOST,
-  REGISTRATIONID_STATUS,
+  REGISTRATION_ID_STATUS,
 } from '../constants';
 import BEHAVIORAL_METRICS from '../metrics/constants';
 import ParameterError from '../common/errors/parameter';
@@ -1352,11 +1352,11 @@ export default class Meeting extends StatelessWebexPlugin {
      * registrationId status. If it's REGISTRATIONID_STATUS.REQUIRED then verifyRegistrationId() needs to be called
      * with the correct registrationId before calling join()
      * @instance
-     * @type {REGISTRATIONID_STATUS}
+     * @type {REGISTRATION_ID_STATUS}
      * @public
      * @memberof Meeting
      */
-    this.registrationIdStatus = REGISTRATIONID_STATUS.UNKNOWN;
+    this.registrationIdStatus = REGISTRATION_ID_STATUS.UNKNOWN;
 
     /**
      * Information about required captcha. If null, then no captcha is required. status. If it's PASSWORD_STATUS.REQUIRED then verifyPassword() needs to be called
@@ -1670,6 +1670,15 @@ export default class Meeting extends StatelessWebexPlugin {
       this.passwordStatus = PASSWORD_STATUS.NOT_REQUIRED;
     }
 
+    if (
+      this.registrationIdStatus === REGISTRATION_ID_STATUS.REQUIRED ||
+      this.registrationIdStatus === REGISTRATION_ID_STATUS.VERIFIED
+    ) {
+      this.registrationIdStatus = REGISTRATION_ID_STATUS.VERIFIED;
+    } else {
+      this.registrationIdStatus = REGISTRATION_ID_STATUS.NOT_REQUIRED;
+    }
+
     Trigger.trigger(
       this,
       {
@@ -1797,8 +1806,8 @@ export default class Meeting extends StatelessWebexPlugin {
         this.meetingInfoFailureReason = MEETING_INFO_FAILURE_REASON.WEBINAR_REGISTRATION;
         if (WEBINAR_ERROR_WEBCAST.includes(err.wbxAppApiCode)) {
           this.meetingInfoFailureReason = MEETING_INFO_FAILURE_REASON.NEED_JOIN_WITH_WEBCAST;
-        } else if (WEBINAR_ERROR_REGISTRATIONID.includes(err.wbxAppApiCode)) {
-          this.meetingInfoFailureReason = MEETING_INFO_FAILURE_REASON.WEBINAR_NEED_REGISTRATIONID;
+        } else if (WEBINAR_ERROR_REGISTRATION_ID.includes(err.wbxAppApiCode)) {
+          this.meetingInfoFailureReason = MEETING_INFO_FAILURE_REASON.WEBINAR_NEED_REGISTRATION_ID;
         }
         this.meetingInfoFailureCode = err.wbxAppApiCode;
 
@@ -1853,7 +1862,7 @@ export default class Meeting extends StatelessWebexPlugin {
         if (this.requiredCaptcha) {
           this.meetingInfoFailureReason = MEETING_INFO_FAILURE_REASON.WRONG_CAPTCHA;
         } else if (err.isRegistrationIdRequired) {
-          this.meetingInfoFailureReason = MEETING_INFO_FAILURE_REASON.WRONG_REGISTRATIONID;
+          this.meetingInfoFailureReason = MEETING_INFO_FAILURE_REASON.WRONG_REGISTRATION_ID;
         } else {
           this.meetingInfoFailureReason = MEETING_INFO_FAILURE_REASON.WRONG_PASSWORD;
         }
@@ -1865,7 +1874,7 @@ export default class Meeting extends StatelessWebexPlugin {
         }
 
         if (err.isRegistrationIdRequired) {
-          this.registrationIdStatus = REGISTRATIONID_STATUS.REQUIRED;
+          this.registrationIdStatus = REGISTRATION_ID_STATUS.REQUIRED;
         }
 
         this.requiredCaptcha = err.captchaInfo;
@@ -2011,8 +2020,8 @@ export default class Meeting extends StatelessWebexPlugin {
   /**
    * Checks if the supplied registrationId is correct. It returns a promise with information whether the
    * registrationId and captcha code were correct or not.
-   * @param {String} registrationId - can be undefined if only captcha was required
-   * @param {String} captchaCode - can be undefined if captcha was not required by the server
+   * @param {String | undefined} registrationId - can be undefined if only captcha was required
+   * @param {String | undefined} captchaCode - can be undefined if captcha was not required by the server
    * @param {Boolean} sendCAevents - whether Call Analyzer events should be sent when fetching meeting information
    * @public
    * @memberof Meeting
@@ -2025,7 +2034,7 @@ export default class Meeting extends StatelessWebexPlugin {
       sendCAevents,
     })
       .then(() => {
-        Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.VERIFY_REGISTRATIONID_SUCCESS);
+        Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.VERIFY_REGISTRATION_ID_SUCCESS);
 
         return {
           isRegistrationIdValid: true,
@@ -2034,13 +2043,15 @@ export default class Meeting extends StatelessWebexPlugin {
         };
       })
       .catch((error) => {
+        Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.VERIFY_REGISTRATION_ID_ERROR);
+
         if (error instanceof JoinWebinarError || error instanceof CaptchaError) {
           return {
-            isRegistrationIdValid: this.registrationIdStatus === REGISTRATIONID_STATUS.VERIFIED,
+            isRegistrationIdValid: this.registrationIdStatus === REGISTRATION_ID_STATUS.VERIFIED,
             requiredCaptcha: this.requiredCaptcha,
             failureReason:
               error instanceof JoinWebinarError
-                ? MEETING_INFO_FAILURE_REASON.WRONG_REGISTRATIONID
+                ? MEETING_INFO_FAILURE_REASON.WRONG_REGISTRATION_ID
                 : this.meetingInfoFailureReason,
           };
         }

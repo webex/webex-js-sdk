@@ -6804,7 +6804,7 @@ describe('plugin-meetings', () => {
           assert.deepEqual(meeting.meetingInfo, FAKE_MEETING_INFO);
           assert.equal(
             meeting.meetingInfoFailureReason,
-            MEETING_INFO_FAILURE_REASON.WEBINAR_NEED_REGISTRATIONID
+            MEETING_INFO_FAILURE_REASON.WEBINAR_NEED_REGISTRATION_ID
           );
         });
       });
@@ -13312,7 +13312,7 @@ describe('plugin-meetings', () => {
       assert(Metrics.sendBehavioralMetric.calledOnce);
       assert.calledWith(
         Metrics.sendBehavioralMetric,
-        BEHAVIORAL_METRICS.VERIFY_REGISTRATIONID_SUCCESS
+        BEHAVIORAL_METRICS.VERIFY_REGISTRATION_ID_SUCCESS
       );
       assert.equal(result.isRegistrationIdValid, true);
       assert.equal(result.requiredCaptcha, null);
@@ -13333,7 +13333,7 @@ describe('plugin-meetings', () => {
 
       assert.equal(result.isRegistrationIdValid, false);
       assert.equal(result.requiredCaptcha, null);
-      assert.equal(result.failureReason, MEETING_INFO_FAILURE_REASON.WRONG_REGISTRATIONID);
+      assert.equal(result.failureReason, MEETING_INFO_FAILURE_REASON.WRONG_REGISTRATION_ID);
     });
     it('handles CaptchaError returned by fetchMeetingInfo', async () => {
       const FAKE_CAPTCHA = {captchaId: 'some catcha id...'};

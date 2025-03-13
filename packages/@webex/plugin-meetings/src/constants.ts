@@ -202,7 +202,7 @@ export const RETRY_TIMEOUT = 3000;
 export const ICE_AND_DTLS_CONNECTION_TIMEOUT = 20000;
 export const ROAP_OFFER_ANSWER_EXCHANGE_TIMEOUT = 35000;
 export const WEBINAR_ERROR_WEBCAST = [403026];
-export const WEBINAR_ERROR_REGISTRATIONID = [403037, 403137];
+export const WEBINAR_ERROR_REGISTRATION_ID = [403037, 403137];
 export const JOIN_BEFORE_HOST = 403003;
 
 // ******************** REGEX **********************
@@ -1331,7 +1331,7 @@ export const PASSWORD_STATUS = {
   VERIFIED: 'VERIFIED', // client has already provided the password and it has been verified, client can proceed to call join()
 };
 
-export const REGISTRATIONID_STATUS = {
+export const REGISTRATION_ID_STATUS = {
   NOT_REQUIRED: 'NOT_REQUIRED', // registrationId is not required to join the meeting
   REQUIRED: 'REQUIRED', // client needs to provide the registrationId by calling verifyRegistrationId() before calling join()
   UNKNOWN: 'UNKNOWN', // we are waiting for information from the backend if registrationId is required or not
@@ -1342,7 +1342,7 @@ export const MEETING_INFO_FAILURE_REASON = {
   NONE: 'NONE', // meeting info was retrieved succesfully
   WRONG_PASSWORD: 'WRONG_PASSWORD', // meeting requires password and no password or wrong one was provided
   WRONG_CAPTCHA: 'WRONG_CAPTCHA', // wbxappapi requires a captcha code or a wrong captcha code was provided
-  WRONG_REGISTRATIONID: 'WRONG_REGISTRATIONID', // meeting requires registrationId and no registrationId or wrong one was provided
+  WRONG_REGISTRATION_ID: 'WRONG_REGISTRATION_ID', // meeting requires registrationId and no registrationId or wrong one was provided
   POLICY: 'POLICY', // meeting info request violates some meeting policy
   WEBINAR_REGISTRATION: 'WEBINAR_REGISTRATION', // webinar need registration
   NEED_JOIN_WITH_WEBCAST: 'NEED_JOIN_WITH_WEBCAST', // webinar need using webcast join
