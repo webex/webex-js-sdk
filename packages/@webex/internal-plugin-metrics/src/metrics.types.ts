@@ -20,7 +20,7 @@ export type BrowserLaunchMethodType = NonNullable<
   RawEvent['origin']['clientInfo']
 >['browserLaunchMethod'];
 
-export type MetricEventProduct = 'webex' | 'wxcc_desktop';
+export type MetricEventProduct = 'webex' | 'wxcc_desktop' | 'wxcc_crm';
 
 export type MetricEventAgent = 'user' | 'browser' | 'system' | 'sdk' | 'redux' | 'service' | 'api';
 
@@ -319,4 +319,10 @@ export interface IMetricsAttributes {
   data: any[];
   meetingId?: string;
   callId?: string;
+}
+
+export interface DelayedClientEvent {
+  name: ClientEvent['name'];
+  payload?: RecursivePartial<ClientEvent['payload']>;
+  options?: SubmitClientEventOptions;
 }

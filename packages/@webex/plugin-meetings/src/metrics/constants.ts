@@ -73,6 +73,7 @@ const BEHAVIORAL_METRICS = {
   JOIN_WEBINAR_ERROR: 'js_sdk_join_webinar_error',
   GUEST_ENTERED_LOBBY: 'js_sdk_guest_entered_lobby',
   GUEST_EXITED_LOBBY: 'js_sdk_guest_exited_lobby',
+  JOIN_FORBIDDEN_ERROR: 'js_sdk_join_forbidden_error',
 };
 
 export {BEHAVIORAL_METRICS as default};

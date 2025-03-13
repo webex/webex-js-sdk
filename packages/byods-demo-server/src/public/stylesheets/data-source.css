@@ -1,0 +1,361 @@
+body {
+  font-family: 'Poppins', sans-serif;
+  margin: 0;
+  padding: 0;
+  background-color: #f4f4f4;
+}
+
+h1, h2 {
+  color: #333;
+  text-align: center;
+  margin-top: 20px;
+}
+
+h1 {
+  font-size: 2.5em;
+  font-weight: 700;
+}
+
+h2 {
+  font-size: 1.5em;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.main-container {
+  display: flex;
+  justify-content: center;
+  width: 80%;
+  margin: 20px auto;
+}
+
+.data-container {
+  width: 100%;
+  padding: 20px;
+  background-color: #fff;
+  border-radius: 10px;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+}
+
+.data-sources-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  justify-content: center;
+}
+
+.data-source-card {
+  background-color: #fff;
+  border: 1px solid #ccc;
+  border-radius: 10px;
+  padding: 20px;
+  width: 250px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.data-source-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+}
+
+.data-source-card h3 {
+  margin: 0 0 10px 0;
+  font-size: 1.2em;
+  color: #333;
+  text-align: center;
+}
+
+.data-source-card p {
+  margin: 5px 0;
+  font-size: 0.9em;
+  color: #666;
+}
+
+.application-id {
+  word-break: break-all;
+}
+
+.status {
+  padding: 5px 10px;
+  border-radius: 5px;
+  color: #fff;
+  font-weight: 600;
+}
+
+.status.active {
+  background-color: #28a745;
+}
+
+.status.disabled {
+  background-color: #dc3545;
+}
+
+.card-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.icon-buttons-row {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+.icon-button,
+.refresh-button,
+.verify-button {
+  padding: 8px;
+  border: none;
+  border-radius: 5px;
+  font-size: 0.9em;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: #fff;
+}
+
+.icon-button {
+  width: 40px;
+  height: 40px;
+}
+
+.icon-button i {
+  font-size: 1em;
+}
+
+.edit-button {
+  background-color: #007bff;
+}
+
+.edit-button:hover {
+  background-color: #0056b3;
+}
+
+.delete-button {
+  background-color: #dc3545;
+}
+
+.delete-button:hover {
+  background-color: #a71d2a;
+}
+
+.refresh-button {
+  background-color: #28a745;
+}
+
+.refresh-button:hover {
+  background-color: #218838;
+}
+
+.verify-button {
+  background-color: #ff9800;
+}
+
+.verify-button:hover {
+  background-color: #e68900;
+}
+
+/* Plus Button */
+.add-button {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  width: 50px;
+  height: 50px;
+  background-color: #007bff;
+  color: #fff;
+  border: none;
+  border-radius: 50%;
+  font-size: 1.5em;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  transition: all 0.3s ease;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.add-button:hover {
+  width: 120px;
+  border-radius: 25px;
+  background-color: #0056b3;
+}
+
+.add-button:hover::before {
+  content: 'Add';
+  margin-left: 10px;
+  font-size: 0.9em;
+  font-weight: 600;
+}
+
+/* Modal */
+.modal {
+  display: none;
+  position: fixed;
+  z-index: 1;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  background-color: rgba(0, 0, 0, 0.4);
+}
+
+.modal-content {
+  background-color: #fff;
+  margin: 10% auto;
+  padding: 20px;
+  border: 1px solid #888;
+  width: 80%;
+  max-width: 500px;
+  border-radius: 10px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+}
+
+.close {
+  color: #aaa;
+  float: right;
+  font-size: 28px;
+  font-weight: bold;
+}
+
+.close:hover,
+.close:focus {
+  color: #000;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+form {
+  display: flex;
+  flex-direction: column;
+}
+
+form label {
+  margin-top: 10px;
+  font-weight: 600;
+}
+
+form input {
+  padding: 10px;
+  margin-top: 5px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  font-size: 1em;
+}
+
+.form-button {
+  padding: 10px;
+  margin-top: 20px;
+  background: linear-gradient(135deg, #007bff, #0056b3);
+  color: #fff;
+  border: none;
+  border-radius: 5px;
+  font-size: 1em;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.form-button:hover {
+  background: linear-gradient(135deg, #0056b3, #007bff);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.cancel-button {
+  background: linear-gradient(135deg, #ff4b4b, #d32f2f);
+}
+
+.cancel-button:hover {
+  background: linear-gradient(135deg, #d32f2f, #ff4b4b);
+}
+
+/* Status Label */
+#statusLabel {
+  margin-top: 10px;
+  font-weight: 600;
+  color: #333;
+}
+
+/* Status Dropdown */
+#editStatus {
+  padding: 10px;
+  margin-top: 5px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  font-size: 1em;
+  background-color: #fff;
+  color: #333;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+#editStatus:focus {
+  border-color: #007bff;
+  box-shadow: 0 0 5px rgba(0, 123, 255, 0.5);
+}
+
+/* JWS Verification Section */
+.jws-verification-section {
+  margin-top: 20px;
+  padding: 20px;
+  background-color: #fff;
+  border-radius: 10px;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+  text-align: center;
+}
+
+.jws-verification-section label {
+  font-weight: 600;
+  color: #333;
+}
+
+.jws-verification-section input {
+  padding: 10px;
+  margin-top: 5px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  font-size: 1em;
+  width: 80%;
+  max-width: 400px;
+}
+
+.jws-verification-section .verify-button {
+  margin-top: 10px;
+  background-color: #ff9800;
+  padding: 12px 24px;
+  font-size: 1.1em;
+  display: inline-block;
+}
+
+.jws-verification-section .verify-button:hover {
+  background-color: #e68900;
+}
+
+/* Token Lifetime Input */
+.token-lifetime-input {
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  font-size: 0.9em;
+  width: 100%;
+  box-sizing: border-box;
+  margin-bottom: 10px;
+}
+
+.token-lifetime-input:focus {
+  border-color: #007bff;
+  box-shadow: 0 0 5px rgba(0, 123, 255, 0.5);
+}
