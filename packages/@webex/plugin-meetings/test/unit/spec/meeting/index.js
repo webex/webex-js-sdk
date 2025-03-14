@@ -115,6 +115,7 @@ import {ERROR_DESCRIPTIONS} from '@webex/internal-plugin-metrics/src/call-diagno
 import MeetingCollection from '@webex/plugin-meetings/src/meetings/collection';
 
 import {EVENT_TRIGGERS as VOICEAEVENTS} from '@webex/internal-plugin-voicea';
+import { createBrbState } from '@webex/plugin-meetings/src/meeting/brbState';
 import JoinForbiddenError from '../../../../src/common/errors/join-forbidden-error';
 import { EventEmitter } from 'stream';
 
@@ -3866,7 +3867,7 @@ describe('plugin-meetings', () => {
 
             await brbResult;
             assert.exists(brbResult.then);
-            assert.calledOnce(meeting.meetingRequest.setBrb);
+            assert.calledOnce(meeting.brbState.enable);
           });
 
           it('should disable #beRightBack and return a promise', async () => {
@@ -3874,7 +3875,7 @@ describe('plugin-meetings', () => {
 
             await brbResult;
             assert.exists(brbResult.then);
-            assert.calledOnce(meeting.meetingRequest.setBrb);
+            assert.calledOnce(meeting.brbState.enable);
           });
 
           it('should throw an error and reject the promise if setBrb fails', async () => {
@@ -3886,28 +3887,8 @@ describe('plugin-meetings', () => {
             } catch (err) {
               assert.instanceOf(err, Error);
               assert.equal(err.message, 'setBrb failed');
-              assert.isRejected(Promise.reject());
+              assert.isRejected((Promise.reject()));
             }
-          });
-        });
-
-        describe('when in a transcoded meeting', () => {
-          beforeEach(() => {
-            meeting.isMultistream = false;
-          });
-
-          it('should ignore enabling #beRightBack', async () => {
-            meeting.beRightBack(true);
-
-            assert.isRejected(Promise.reject());
-            assert.notCalled(meeting.meetingRequest.setBrb);
-          });
-
-          it('should ignore disabling #beRightBack', async () => {
-            meeting.beRightBack(false);
-
-            assert.isRejected(Promise.reject());
-            assert.notCalled(meeting.meetingRequest.setBrb);
           });
         });
       });
