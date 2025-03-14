@@ -126,9 +126,10 @@ describe('plugin-llm', () => {
         llmService.binding = {};
         llmService.webSocketUrl = 'someUrl';
 
-        await llmService.disconnectLLM({});
-
+        const disconnectOptions = { code: 3050, reason: 'done (permanent)' };
         sinon.assert.calledOnceWithExactly(llmService.disconnect, {});
+        sinon.assert.calledOnceWithExactly(llmService.disconnect, disconnectOptions);
+
         assert.equal(llmService.locusUrl, undefined);
         assert.equal(llmService.datachannelUrl, undefined);
         assert.equal(llmService.binding, undefined);
@@ -136,9 +137,14 @@ describe('plugin-llm', () => {
       });
 
       it('should handle errors from disconnect gracefully', async () => {
-        llmService.disconnect.mockRejectedValue(new Error('Disconnect failed'));
+        llmService.disconnect = sinon.stub().rejects(new Error('Disconnect failed'));
 
-        await expect(llmService.disconnectLLM({})).rejects.toThrow('Disconnect failed');
+        try {
+          await llmService.disconnectLLM({});
+          assert.fail("Should have thrown an error");
+        } catch (error) {
+          assert.equal(error.message, "Disconnect failed");
+        }
       });
     });
   });
