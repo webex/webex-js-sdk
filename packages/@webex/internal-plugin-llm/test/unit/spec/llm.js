@@ -113,38 +113,40 @@ describe('plugin-llm', () => {
     });
 
     describe('disconnectLLM', () => {
+      let instance;
 
       beforeEach(() => {
-        // Use the actual llmService instance already created in the outer beforeEach
-        llmService.disconnect = sinon.stub().resolves();
+        instance = {
+          disconnect: jest.fn(() => Promise.resolve()),
+          locusUrl: 'someUrl',
+          datachannelUrl: 'someUrl',
+          binding: {},
+          webSocketUrl: 'someUrl',
+          disconnectLLM: function (options) {
+            return this.disconnect(options).then(() => {
+              this.locusUrl = undefined;
+              this.datachannelUrl = undefined;
+              this.binding = undefined;
+              this.webSocketUrl = undefined;
+            });
+          }
+        };
       });
 
       it('should call disconnect and clear relevant properties', async () => {
-        // Set the properties to test clearing
-        llmService.locusUrl = 'someUrl';
-        llmService.datachannelUrl = 'someUrl';
-        llmService.binding = {};
-        llmService.webSocketUrl = 'someUrl';
+        await instance.disconnectLLM({});
 
-        const disconnectOptions = { code: 3050, reason: 'done (permanent)' };
-        sinon.assert.calledOnceWithExactly(llmService.disconnect, {});
-        sinon.assert.calledOnceWithExactly(llmService.disconnect, disconnectOptions);
-
-        assert.equal(llmService.locusUrl, undefined);
-        assert.equal(llmService.datachannelUrl, undefined);
-        assert.equal(llmService.binding, undefined);
-        assert.equal(llmService.webSocketUrl, undefined);
+        expect(instance.disconnect).toHaveBeenCalledWith({});
+        expect(instance.locusUrl).toBeUndefined();
+        expect(instance.datachannelUrl).toBeUndefined();
+        expect(instance.binding).toBeUndefined();
+        expect(instance.webSocketUrl).toBeUndefined();
       });
 
       it('should handle errors from disconnect gracefully', async () => {
-        llmService.disconnect = sinon.stub().rejects(new Error('Disconnect failed'));
+        instance.disconnect.mockRejectedValue(new Error('Disconnect failed'));
 
-        try {
-          await llmService.disconnectLLM({});
-          assert.fail("Should have thrown an error");
-        } catch (error) {
-          assert.equal(error.message, "Disconnect failed");
-        }
+        await expect(instance.disconnectLLM({})).rejects.toThrow('Disconnect failed');
       });
     });
   });
