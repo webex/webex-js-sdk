@@ -192,6 +192,15 @@ describe('plugin-meetings', () => {
         assert.equal(res.meetingUUID, 'xsddsdsdsdssdsdsdsdsd');
       });
 
+      it('for registrationId', () => {
+        const res = MeetingInfoUtil.getRequestBody({
+          type: DESTINATION_TYPE.MEETING_UUID,
+          registrationId: 'registrationId',
+        });
+
+        assert.equal(res.registrationId, 'registrationId');
+      });
+
       it('for DESTINATION_TYPE.LOCUS_ID', () => {
         const res = MeetingInfoUtil.getRequestBody({
           type: DESTINATION_TYPE.LOCUS_ID,
