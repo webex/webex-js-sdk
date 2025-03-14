@@ -122,10 +122,14 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
    * @returns {Promise<void>}
    */
   public disconnectLLM = (options: object): Promise<void> =>
-    this.disconnect(options).then(() => {
-      this.locusUrl = undefined;
-      this.datachannelUrl = undefined;
-      this.binding = undefined;
-      this.webSocketUrl = undefined;
-    });
+    this.disconnect(options)
+      .then(() => {
+        this.locusUrl = undefined;
+        this.datachannelUrl = undefined;
+        this.binding = undefined;
+        this.webSocketUrl = undefined;
+      })
+      .catch((error) => {
+        throw error;
+      });
 }

@@ -113,40 +113,32 @@ describe('plugin-llm', () => {
     });
 
     describe('disconnectLLM', () => {
-      let instance;
 
       beforeEach(() => {
-        instance = {
-          disconnect: jest.fn(() => Promise.resolve()),
-          locusUrl: 'someUrl',
-          datachannelUrl: 'someUrl',
-          binding: {},
-          webSocketUrl: 'someUrl',
-          disconnectLLM: function (options) {
-            return this.disconnect(options).then(() => {
-              this.locusUrl = undefined;
-              this.datachannelUrl = undefined;
-              this.binding = undefined;
-              this.webSocketUrl = undefined;
-            });
-          }
-        };
+        // Use the actual llmService instance already created in the outer beforeEach
+        llmService.disconnect = sinon.stub().resolves();
       });
 
       it('should call disconnect and clear relevant properties', async () => {
-        await instance.disconnectLLM({});
+        // Set the properties to test clearing
+        llmService.locusUrl = 'someUrl';
+        llmService.datachannelUrl = 'someUrl';
+        llmService.binding = {};
+        llmService.webSocketUrl = 'someUrl';
 
-        expect(instance.disconnect).toHaveBeenCalledWith({});
-        expect(instance.locusUrl).toBeUndefined();
-        expect(instance.datachannelUrl).toBeUndefined();
-        expect(instance.binding).toBeUndefined();
-        expect(instance.webSocketUrl).toBeUndefined();
+        await llmService.disconnectLLM({});
+
+        sinon.assert.calledOnceWithExactly(llmService.disconnect, {});
+        assert.equal(llmService.locusUrl, undefined);
+        assert.equal(llmService.datachannelUrl, undefined);
+        assert.equal(llmService.binding, undefined);
+        assert.equal(llmService.webSocketUrl, undefined);
       });
 
       it('should handle errors from disconnect gracefully', async () => {
-        instance.disconnect.mockRejectedValue(new Error('Disconnect failed'));
+        llmService.disconnect.mockRejectedValue(new Error('Disconnect failed'));
 
-        await expect(instance.disconnectLLM({})).rejects.toThrow('Disconnect failed');
+        await expect(llmService.disconnectLLM({})).rejects.toThrow('Disconnect failed');
       });
     });
   });
