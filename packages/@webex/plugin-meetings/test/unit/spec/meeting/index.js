@@ -11248,7 +11248,10 @@ describe('plugin-meetings', () => {
 
           const result = await meeting.updateLLMConnection();
 
-          assert.calledWith(webex.internal.llm.disconnectLLM);
+          assert.calledWith(webex.internal.llm.disconnectLLM, {
+            code: 3050,
+            reason: 'done (permanent)',
+          });
           assert.calledWith(
             webex.internal.llm.registerAndConnect,
             'a different url',
@@ -11278,7 +11281,10 @@ describe('plugin-meetings', () => {
 
           const result = await meeting.updateLLMConnection();
 
-          assert.calledWith(webex.internal.llm.disconnectLLM);
+          assert.calledWith(webex.internal.llm.disconnectLLM, {
+            code: 3050,
+            reason: 'done (permanent)',
+          });
           assert.calledWith(
             webex.internal.llm.registerAndConnect,
             'a url',
@@ -11307,7 +11313,7 @@ describe('plugin-meetings', () => {
 
           const result = await meeting.updateLLMConnection();
 
-          assert.calledWith(webex.internal.llm.disconnectLLM);
+          assert.calledWith(webex.internal.llm.disconnectLLM, undefined);
           assert.notCalled(webex.internal.llm.registerAndConnect);
           assert.equal(result, undefined);
           assert.calledOnceWithExactly(
