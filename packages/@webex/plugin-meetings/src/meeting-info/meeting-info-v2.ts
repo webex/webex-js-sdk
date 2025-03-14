@@ -17,7 +17,7 @@ const CAPTCHA_ERROR_DEFAULT_MESSAGE =
 const ADHOC_MEETING_DEFAULT_ERROR =
   'Failed starting the adhoc meeting, Please contact support team ';
 const CAPTCHA_ERROR_REQUIRES_PASSWORD_CODES = [423005, 423006];
-const CAPTCHA_ERROR_REQUIRES_REGISTRATIONID_CODES = [423007];
+const CAPTCHA_ERROR_REQUIRES_REGISTRATION_ID_CODES = [423007];
 
 const POLICY_ERROR_CODES = [403049, 403104, 403103, 403048, 403102, 403101];
 const JOIN_FORBIDDEN_CODES = [403003];
@@ -138,7 +138,7 @@ export class MeetingInfoV2CaptchaError extends Error {
     this.wbxAppApiCode = wbxAppApiErrorCode;
     this.isPasswordRequired = CAPTCHA_ERROR_REQUIRES_PASSWORD_CODES.includes(wbxAppApiErrorCode);
     this.isRegistrationIdRequired =
-      CAPTCHA_ERROR_REQUIRES_REGISTRATIONID_CODES.includes(wbxAppApiErrorCode);
+      CAPTCHA_ERROR_REQUIRES_REGISTRATION_ID_CODES.includes(wbxAppApiErrorCode);
     this.captchaInfo = captchaInfo;
   }
 }
