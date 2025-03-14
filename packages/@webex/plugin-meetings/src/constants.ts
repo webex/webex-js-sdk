@@ -1346,7 +1346,7 @@ export const MEETING_INFO_FAILURE_REASON = {
   POLICY: 'POLICY', // meeting info request violates some meeting policy
   WEBINAR_REGISTRATION: 'WEBINAR_REGISTRATION', // webinar need registration
   NEED_JOIN_WITH_WEBCAST: 'NEED_JOIN_WITH_WEBCAST', // webinar need using webcast join
-  WEBINAR_NEED_REGISTRATIONID: 'WEBINAR_NEED_REGISTRATIONID', // webinar need registrationID
+  WEBINAR_NEED_REGISTRATION_ID: 'WEBINAR_NEED_REGISTRATION_ID', // webinar need registrationID
   NOT_REACH_JBH: 'NOT_REACH_JBH', // Meeting is not allow to access since not reach JBH (join before host) time
   JOIN_FORBIDDEN: 'JOIN_FORBIDDEN', // meeting is not allow join
   OTHER: 'OTHER', // any other error (network, etc)
