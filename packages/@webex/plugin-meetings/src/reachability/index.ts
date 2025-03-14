@@ -260,6 +260,32 @@ export default class Reachability extends EventsScope {
   }
 
   /**
+   * Stops all reachability checks that are in progress
+   * @public
+   * @memberof Reachability
+   * @returns {void}
+   */
+  public stopReachability() {
+    // overallTimer is always there only if there is reachability in progress
+    if (this.overallTimer) {
+      LoggerProxy.logger.log(
+        'Reachability:index#stopReachability --> stopping reachability checks'
+      );
+      this.abortCurrentChecks();
+      this.emit(
+        {
+          file: 'reachability',
+          function: 'stopReachability',
+        },
+        'reachability:stopped',
+        {}
+      );
+      this.sendMetric(true);
+      this.resolveReachabilityPromise();
+    }
+  }
+
+  /**
    * Returns statistics about last reachability results. The returned value is an object
    * with a flat list of properties so that it can be easily sent with metrics
    *
@@ -637,9 +663,10 @@ export default class Reachability extends EventsScope {
   /**
    * Sends a metric with all the statistics about how long reachability took
    *
+   * @param {boolean} aborted true if the reachability checks were aborted
    * @returns {void}
    */
-  protected async sendMetric() {
+  protected async sendMetric(aborted = false) {
     const results = [];
 
     Object.values(this.clusterReachability).forEach((clusterReachability) => {
@@ -650,6 +677,7 @@ export default class Reachability extends EventsScope {
     });
 
     const stats = {
+      aborted,
       vmn: {
         udp: this.getStatistics(results, 'udp', true),
       },

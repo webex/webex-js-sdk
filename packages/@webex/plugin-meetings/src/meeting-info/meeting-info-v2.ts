@@ -17,6 +17,8 @@ const CAPTCHA_ERROR_DEFAULT_MESSAGE =
 const ADHOC_MEETING_DEFAULT_ERROR =
   'Failed starting the adhoc meeting, Please contact support team ';
 const CAPTCHA_ERROR_REQUIRES_PASSWORD_CODES = [423005, 423006];
+const CAPTCHA_ERROR_REQUIRES_REGISTRATION_ID_CODES = [423007];
+
 const POLICY_ERROR_CODES = [403049, 403104, 403103, 403048, 403102, 403101];
 const JOIN_FORBIDDEN_CODES = [403003];
 /**
@@ -113,6 +115,7 @@ export class MeetingInfoV2PolicyError extends Error {
 export class MeetingInfoV2CaptchaError extends Error {
   captchaInfo: any;
   isPasswordRequired: any;
+  isRegistrationIdRequired: any;
   sdkMessage: any;
   wbxAppApiCode: any;
   body: any;
@@ -134,6 +137,8 @@ export class MeetingInfoV2CaptchaError extends Error {
     this.stack = new Error().stack;
     this.wbxAppApiCode = wbxAppApiErrorCode;
     this.isPasswordRequired = CAPTCHA_ERROR_REQUIRES_PASSWORD_CODES.includes(wbxAppApiErrorCode);
+    this.isRegistrationIdRequired =
+      CAPTCHA_ERROR_REQUIRES_REGISTRATION_ID_CODES.includes(wbxAppApiErrorCode);
     this.captchaInfo = captchaInfo;
   }
 }
@@ -370,6 +375,7 @@ export default class MeetingInfoV2 {
    * @param {String} locusId
    * @param {Object} extraParams
    * @param {Object} options
+   * @param {String} registrationId
    * @returns {Promise} returns a meeting info object
    * @public
    * @memberof MeetingInfo
@@ -385,7 +391,8 @@ export default class MeetingInfoV2 {
     installedOrgID = null,
     locusId = null,
     extraParams: object = {},
-    options: {meetingId?: string; sendCAevents?: boolean} = {}
+    options: {meetingId?: string; sendCAevents?: boolean} = {},
+    registrationId: string = null
   ) {
     const {meetingId, sendCAevents} = options;
 
@@ -410,6 +417,7 @@ export default class MeetingInfoV2 {
       installedOrgID,
       locusId,
       extraParams,
+      registrationId,
     });
 
     // If the body only contains the default properties, we don't have enough to
