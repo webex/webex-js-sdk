@@ -7,6 +7,13 @@ import {CatalogDetails} from '@webex/internal-plugin-device';
 
 import dto from './wdm-dto';
 
+const waitForAsync = () =>
+  new Promise((resolve) =>
+    setImmediate(() => {
+      return resolve();
+    })
+  );
+
 describe('plugin-device', () => {
   describe('Device', () => {
     let webex;
@@ -355,6 +362,69 @@ describe('plugin-device', () => {
 
         assert.calledWith(registerSpy, {includeDetails: CatalogDetails.websocket});
       });
+
+      it('does not process refresh if log out between start and end of request', async () => {
+        setup();
+
+        let resolve;
+
+        const requestFn = () => {
+          return new Promise((r) => {
+            resolve = r;
+          });
+        };
+
+        device.request.restore();
+
+        sinon.stub(device, 'request').callsFake(requestFn);
+
+        const resultPromise = device.refresh();
+
+        await waitForAsync();
+
+        device.clear();
+
+        resolve({
+          body: {
+            exampleKey: 'example response value',
+          },
+        });
+
+        await resultPromise;
+
+        assert.notCalled(device.processRegistrationSuccess);
+      });
+
+      it('processes refresh if refresh id does not change', async () => {
+        setup();
+
+        let resolve;
+
+        const requestFn = () => {
+          return new Promise((r) => {
+            resolve = r;
+          });
+        };
+
+        device.request.restore();
+
+        sinon.stub(device, 'request').callsFake(requestFn);
+
+        const resultPromise = device.refresh();
+
+        await waitForAsync();
+
+        resolve({
+          body: {
+            exampleKey: 'example response value',
+          },
+        });
+
+        await resultPromise;
+
+        assert.calledOnce(device.processRegistrationSuccess);
+      });
+
     });
 
     describe('deleteDevices()', () => {
@@ -539,6 +609,67 @@ describe('plugin-device', () => {
           name: 'internal.register.device.response',
         });
       });
+
+      it('does not process registration if log out between start and end of request', async () => {
+        setup();
+        sinon.stub(device, 'canRegister').callsFake(() => Promise.resolve());
+
+        let resolve;
+
+        const requestFn = () => {
+          return new Promise((r) => {
+            resolve = r;
+          });
+        };
+
+        sinon.stub(device, 'request').callsFake(requestFn);
+
+        const resultPromise = device.register();
+
+        await waitForAsync();
+
+        device.clear();
+
+        resolve({
+          body: {
+            exampleKey: 'example response value',
+          }
+        });
+
+        await resultPromise;
+
+        assert.notCalled(device.processRegistrationSuccess);
+      });
+
+      it('calls process registration if request id matches', async () => {
+        setup();
+        sinon.stub(device, 'canRegister').callsFake(() => Promise.resolve());
+
+        let resolve;
+
+        const requestFn = () => {
+          return new Promise((r) => {
+            resolve = r;
+          });
+        };
+
+        sinon.stub(device, 'request').callsFake(requestFn);
+
+        const resultPromise = device.register();
+
+        await waitForAsync();
+
+        resolve({
+          body: {
+            exampleKey: 'example response value',
+          },
+        });
+
+        await resultPromise;
+
+        assert.calledOnce(device.processRegistrationSuccess);
+      });
+
 
       it('checks that submitInternalEvent gets called with internal.register.device.response on success', async () => {
         setup();

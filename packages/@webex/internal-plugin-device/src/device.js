@@ -3,6 +3,7 @@ import {deprecated, oneFlight} from '@webex/common';
 import {persist, waitForValue, WebexPlugin} from '@webex/webex-core';
 import {safeSetTimeout} from '@webex/common-timers';
 import {orderBy} from 'lodash';
+import uuid from 'uuid';
 
 import METRICS from './metrics';
 import {FEATURE_COLLECTION_NAMES, DEVICE_EVENT_REGISTRATION_SUCCESS} from './constants';
@@ -412,6 +413,9 @@ const Device = WebexPlugin.extend({
 
       const {includeDetails = CatalogDetails.all} = deviceRegistrationOptions;
 
+      const requestId = uuid.v4();
+      this.set('refresh-request-id', requestId);
+
       return this.request({
         method: 'PUT',
         uri: this.url,
@@ -423,7 +427,16 @@ const Device = WebexPlugin.extend({
           }`,
         },
       })
-        .then((response) => this.processRegistrationSuccess(response))
+        .then((response) => {
+          // If we've signed out in the mean time, the request ID will have changed
+          if (this.get('refresh-request-id') !== requestId) {
+            this.logger.info('device: refresh request ID mismatch, ignoring response');
+
+            return Promise.resolve();
+          }
+
+          return this.processRegistrationSuccess(response);
+        })
         .catch((reason) => {
           // Handle a 404 error, which indicates that the device is no longer
           // valid and needs to be registered as a new device.
@@ -555,6 +568,9 @@ const Device = WebexPlugin.extend({
 
     const {includeDetails = CatalogDetails.all} = deviceRegistrationOptions;
 
+    const requestId = uuid.v4();
+    this.set('register-request-id', requestId);
+
     // This will be replaced by a `create()` method.
     return this.request({
       method: 'POST',
@@ -576,6 +592,13 @@ const Device = WebexPlugin.extend({
         throw error;
       })
       .then((response) => {
+        // If we've signed out in the mean time, the request ID will have changed
+        if (this.get('register-request-id') !== requestId) {
+          this.logger.info('device: register request ID mismatch, ignoring response');
+
+          return Promise.resolve();
+        }
+
         // Do not add any processing of response above this as that will affect timestamp
         this.webex.internal.newMetrics.submitInternalEvent({
           name: 'internal.register.device.response',
