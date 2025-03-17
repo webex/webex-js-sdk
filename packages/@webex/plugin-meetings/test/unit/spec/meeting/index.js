@@ -6792,7 +6792,7 @@ describe('plugin-meetings', () => {
           assert.deepEqual(meeting.meetingInfo, FAKE_MEETING_INFO);
           assert.equal(
             meeting.meetingInfoFailureReason,
-            MEETING_INFO_FAILURE_REASON.WEBINAR_NEED_REGISTRATIONID
+            MEETING_INFO_FAILURE_REASON.WEBINAR_NEED_REGISTRATION_ID
           );
         });
       });
@@ -6852,7 +6852,8 @@ describe('plugin-meetings', () => {
             'fake-installed-org-id',
             'locus-id',
             {extraParam1: 'value1', permissionToken: FAKE_PERMISSION_TOKEN},
-            {meetingId: meeting.id, sendCAevents: true}
+            {meetingId: meeting.id, sendCAevents: true},
+            null
           );
           assert.deepEqual(meeting.meetingInfo, {
             ...FAKE_MEETING_INFO,
@@ -6897,7 +6898,8 @@ describe('plugin-meetings', () => {
             'fake-installed-org-id',
             'locus-id',
             {extraParam1: 'value1', permissionToken: FAKE_PERMISSION_TOKEN},
-            {meetingId: meeting.id, sendCAevents: true}
+            {meetingId: meeting.id, sendCAevents: true},
+            null
           );
           assert.deepEqual(meeting.meetingInfo, {
             ...FAKE_MEETING_INFO,
@@ -6951,7 +6953,8 @@ describe('plugin-meetings', () => {
               extraParam1: 'value1',
               permissionToken: FAKE_PERMISSION_TOKEN,
             },
-            {meetingId: meeting.id, sendCAevents: true}
+            {meetingId: meeting.id, sendCAevents: true},
+            null
           );
           assert.deepEqual(meeting.meetingInfo, {
             ...FAKE_MEETING_INFO,
@@ -13307,6 +13310,55 @@ describe('plugin-meetings', () => {
       );
       assert.notCalled(getMediaServerStub);
       assert.equal(meeting.mediaProperties.webrtcMediaConnection.mediaServer, 'linus'); // check that it hasn't been overwritten
+    });
+  });
+
+  describe('#verifyRegistrationId', () => {
+    it('calls fetchMeetingInfo() with the passed registrationId and captcha code', async () => {
+      // simulate successful case
+      meeting.fetchMeetingInfo = sinon.stub().resolves();
+      const result = await meeting.verifyRegistrationId('registrationId', 'captcha id');
+
+      assert(Metrics.sendBehavioralMetric.calledOnce);
+      assert.calledWith(
+        Metrics.sendBehavioralMetric,
+        BEHAVIORAL_METRICS.VERIFY_REGISTRATION_ID_SUCCESS
+      );
+      assert.equal(result.isRegistrationIdValid, true);
+      assert.equal(result.requiredCaptcha, null);
+      assert.equal(result.failureReason, MEETING_INFO_FAILURE_REASON.NONE);
+      assert.calledWith(meeting.fetchMeetingInfo, {
+        registrationId: 'registrationId',
+        captchaCode: 'captcha id',
+        sendCAevents: false,
+      });
+    });
+    it('handles registrationIdError returned by fetchMeetingInfo', async () => {
+      meeting.fetchMeetingInfo = sinon.stub().callsFake(() => {
+        meeting.meetingInfoFailureReason = MEETING_INFO_FAILURE_REASON.WRONG_REGISTRATIONID;
+
+        return Promise.reject(new JoinWebinarError());
+      });
+      const result = await meeting.verifyRegistrationId('registrationId', 'captcha id');
+
+      assert.equal(result.isRegistrationIdValid, false);
+      assert.equal(result.requiredCaptcha, null);
+      assert.equal(result.failureReason, MEETING_INFO_FAILURE_REASON.WRONG_REGISTRATION_ID);
+    });
+    it('handles CaptchaError returned by fetchMeetingInfo', async () => {
+      const FAKE_CAPTCHA = {captchaId: 'some catcha id...'};
+
+      meeting.fetchMeetingInfo = sinon.stub().callsFake(() => {
+        meeting.meetingInfoFailureReason = MEETING_INFO_FAILURE_REASON.WRONG_CAPTCHA;
+        meeting.requiredCaptcha = FAKE_CAPTCHA;
+
+        return Promise.reject(new CaptchaError());
+      });
+      const result = await meeting.verifyRegistrationId('registrationId', 'captcha id');
+
+      assert.equal(result.isRegistrationIdValid, false);
+      assert.deepEqual(result.requiredCaptcha, FAKE_CAPTCHA);
+      assert.equal(result.failureReason, MEETING_INFO_FAILURE_REASON.WRONG_CAPTCHA);
     });
   });
 });

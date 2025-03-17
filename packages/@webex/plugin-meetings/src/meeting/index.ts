@@ -122,8 +122,9 @@ import {
   ROAP_OFFER_ANSWER_EXCHANGE_TIMEOUT,
   NAMED_MEDIA_GROUP_TYPE_AUDIO,
   WEBINAR_ERROR_WEBCAST,
-  WEBINAR_ERROR_REGISTRATIONID,
+  WEBINAR_ERROR_REGISTRATION_ID,
   JOIN_BEFORE_HOST,
+  REGISTRATION_ID_STATUS,
 } from '../constants';
 import BEHAVIORAL_METRICS from '../metrics/constants';
 import ParameterError from '../common/errors/parameter';
@@ -256,6 +257,7 @@ export enum ScreenShareFloorStatus {
 
 type FetchMeetingInfoParams = {
   password?: string;
+  registrationId?: string;
   captchaCode?: string;
   extraParams?: Record<string, any>;
   sendCAevents?: boolean;
@@ -650,6 +652,7 @@ export default class Meeting extends StatelessWebexPlugin {
   turnServerUsed: boolean;
   areVoiceaEventsSetup = false;
   isMoveToInProgress = false;
+  registrationIdStatus: string;
   brbState: BrbState;
 
   voiceaListenerCallbacks: object = {
@@ -1348,6 +1351,16 @@ export default class Meeting extends StatelessWebexPlugin {
     this.passwordStatus = PASSWORD_STATUS.UNKNOWN;
 
     /**
+     * registrationId status. If it's REGISTRATIONID_STATUS.REQUIRED then verifyRegistrationId() needs to be called
+     * with the correct registrationId before calling join()
+     * @instance
+     * @type {REGISTRATION_ID_STATUS}
+     * @public
+     * @memberof Meeting
+     */
+    this.registrationIdStatus = REGISTRATION_ID_STATUS.UNKNOWN;
+
+    /**
      * Information about required captcha. If null, then no captcha is required. status. If it's PASSWORD_STATUS.REQUIRED then verifyPassword() needs to be called
      * with the correct password before calling join()
      * @instance
@@ -1659,6 +1672,15 @@ export default class Meeting extends StatelessWebexPlugin {
       this.passwordStatus = PASSWORD_STATUS.NOT_REQUIRED;
     }
 
+    if (
+      this.registrationIdStatus === REGISTRATION_ID_STATUS.REQUIRED ||
+      this.registrationIdStatus === REGISTRATION_ID_STATUS.VERIFIED
+    ) {
+      this.registrationIdStatus = REGISTRATION_ID_STATUS.VERIFIED;
+    } else {
+      this.registrationIdStatus = REGISTRATION_ID_STATUS.NOT_REQUIRED;
+    }
+
     Trigger.trigger(
       this,
       {
@@ -1702,7 +1724,12 @@ export default class Meeting extends StatelessWebexPlugin {
    * @private
    */
   private prepForFetchMeetingInfo(
-    {password = null, captchaCode = null, extraParams = {}}: FetchMeetingInfoParams,
+    {
+      password = null,
+      registrationId = null,
+      captchaCode = null,
+      extraParams = {},
+    }: FetchMeetingInfoParams,
     caller: string
   ): Promise<void> {
     // when fetch meeting info is called directly by the client, we want to clear out the random timer for sdk to do it
@@ -1742,6 +1769,7 @@ export default class Meeting extends StatelessWebexPlugin {
     captchaCode = null,
     extraParams = {},
     sendCAevents = false,
+    registrationId = null,
   }): Promise<void> {
     try {
       const captchaInfo = captchaCode
@@ -1757,7 +1785,8 @@ export default class Meeting extends StatelessWebexPlugin {
         this.config.installedOrgID,
         this.locusId,
         extraParams,
-        {meetingId: this.id, sendCAevents}
+        {meetingId: this.id, sendCAevents},
+        registrationId
       );
 
       this.parseMeetingInfo(info?.body, this.destination, info?.errors);
@@ -1779,14 +1808,15 @@ export default class Meeting extends StatelessWebexPlugin {
         this.meetingInfoFailureReason = MEETING_INFO_FAILURE_REASON.WEBINAR_REGISTRATION;
         if (WEBINAR_ERROR_WEBCAST.includes(err.wbxAppApiCode)) {
           this.meetingInfoFailureReason = MEETING_INFO_FAILURE_REASON.NEED_JOIN_WITH_WEBCAST;
-        } else if (WEBINAR_ERROR_REGISTRATIONID.includes(err.wbxAppApiCode)) {
-          this.meetingInfoFailureReason = MEETING_INFO_FAILURE_REASON.WEBINAR_NEED_REGISTRATIONID;
+        } else if (WEBINAR_ERROR_REGISTRATION_ID.includes(err.wbxAppApiCode)) {
+          this.meetingInfoFailureReason = MEETING_INFO_FAILURE_REASON.WEBINAR_NEED_REGISTRATION_ID;
         }
         this.meetingInfoFailureCode = err.wbxAppApiCode;
 
         if (err.meetingInfo) {
           this.meetingInfo = err.meetingInfo;
         }
+        this.requiredCaptcha = null;
 
         throw new JoinWebinarError();
       } else if (err instanceof MeetingInfoV2JoinForbiddenError) {
@@ -1831,14 +1861,22 @@ export default class Meeting extends StatelessWebexPlugin {
           `Meeting:index#fetchMeetingInfo --> Info Unable to fetch meeting info for ${this.destination} - captcha required (code=${err?.body?.code}).`
         );
 
-        this.meetingInfoFailureReason = this.requiredCaptcha
-          ? MEETING_INFO_FAILURE_REASON.WRONG_CAPTCHA
-          : MEETING_INFO_FAILURE_REASON.WRONG_PASSWORD;
+        if (this.requiredCaptcha) {
+          this.meetingInfoFailureReason = MEETING_INFO_FAILURE_REASON.WRONG_CAPTCHA;
+        } else if (err.isRegistrationIdRequired) {
+          this.meetingInfoFailureReason = MEETING_INFO_FAILURE_REASON.WRONG_REGISTRATION_ID;
+        } else {
+          this.meetingInfoFailureReason = MEETING_INFO_FAILURE_REASON.WRONG_PASSWORD;
+        }
 
         this.meetingInfoFailureCode = err.wbxAppApiCode;
 
         if (err.isPasswordRequired) {
           this.passwordStatus = PASSWORD_STATUS.REQUIRED;
+        }
+
+        if (err.isRegistrationIdRequired) {
+          this.registrationIdStatus = REGISTRATION_ID_STATUS.REQUIRED;
         }
 
         this.requiredCaptcha = err.captchaInfo;
@@ -1975,6 +2013,48 @@ export default class Meeting extends StatelessWebexPlugin {
             isPasswordValid: this.passwordStatus === PASSWORD_STATUS.VERIFIED,
             requiredCaptcha: this.requiredCaptcha,
             failureReason: this.meetingInfoFailureReason,
+          };
+        }
+        throw error;
+      });
+  }
+
+  /**
+   * Checks if the supplied registrationId is correct. It returns a promise with information whether the
+   * registrationId and captcha code were correct or not.
+   * @param {String | undefined} registrationId - can be undefined if only captcha was required
+   * @param {String | undefined} captchaCode - can be undefined if captcha was not required by the server
+   * @param {Boolean} sendCAevents - whether Call Analyzer events should be sent when fetching meeting information
+   * @public
+   * @memberof Meeting
+   * @returns {Promise<{isRegistrationIdValid: boolean, requiredCaptcha: boolean, failureReason: MEETING_INFO_FAILURE_REASON}>}
+   */
+  public verifyRegistrationId(registrationId: string, captchaCode: string, sendCAevents = false) {
+    return this.fetchMeetingInfo({
+      registrationId,
+      captchaCode,
+      sendCAevents,
+    })
+      .then(() => {
+        Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.VERIFY_REGISTRATION_ID_SUCCESS);
+
+        return {
+          isRegistrationIdValid: true,
+          requiredCaptcha: null,
+          failureReason: MEETING_INFO_FAILURE_REASON.NONE,
+        };
+      })
+      .catch((error) => {
+        Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.VERIFY_REGISTRATION_ID_ERROR);
+
+        if (error instanceof JoinWebinarError || error instanceof CaptchaError) {
+          return {
+            isRegistrationIdValid: this.registrationIdStatus === REGISTRATION_ID_STATUS.VERIFIED,
+            requiredCaptcha: this.requiredCaptcha,
+            failureReason:
+              error instanceof JoinWebinarError
+                ? MEETING_INFO_FAILURE_REASON.WRONG_REGISTRATION_ID
+                : this.meetingInfoFailureReason,
           };
         }
         throw error;
@@ -3351,6 +3431,10 @@ export default class Meeting extends StatelessWebexPlugin {
     // The second on is if the audio is muted, we need to tell the statsAnalyzer when
     // the audio is muted or the user is not willing to send media
     this.locusInfo.on(LOCUSINFO.EVENTS.MEDIA_STATUS_CHANGE, (status) => {
+      LoggerProxy.logger.info(
+        'Meeting:index#setUpLocusInfoSelfListener --> MEDIA_STATUS_CHANGE received, processing...'
+      );
+
       if (this.statsAnalyzer) {
         this.statsAnalyzer.updateMediaStatus({
           actual: status,
@@ -3364,6 +3448,10 @@ export default class Meeting extends StatelessWebexPlugin {
             receiveShare: this.mediaProperties.mediaDirection?.receiveShare,
           },
         });
+      } else {
+        LoggerProxy.logger.warn(
+          'Meeting:index#setUpLocusInfoSelfListener --> MEDIA_STATUS_CHANGE, statsAnalyzer is not available.'
+        );
       }
     });
 
@@ -7462,6 +7550,9 @@ export default class Meeting extends StatelessWebexPlugin {
           throw error;
         }
       }
+
+      LoggerProxy.logger.info(`${LOG_HEADER} media connected, finalizing...`);
+
       if (this.mediaProperties.hasLocalShareStream()) {
         await this.enqueueScreenShareFloorRequest();
       }
