@@ -26,7 +26,7 @@ export const endPointMap = {
     attributes: string[]
   ) =>
     `organization/${orgId}/v2/team?page=${page}&pageSize=${pageSize}${
-      filter && filter.length > 0 ? `&filter=id=in=${filter}` : ''
+      filter && filter.length > 0 ? `&filter=id=in=(${filter})` : ''
     }&attributes=${attributes}`,
   listAuxCodes: (
     orgId: string,
@@ -36,7 +36,7 @@ export const endPointMap = {
     attributes: string[]
   ) =>
     `organization/${orgId}/v2/auxiliary-code?page=${page}&pageSize=${pageSize}${
-      filter && filter.length > 0 ? `&filter=id=in=${filter}` : ''
+      filter && filter.length > 0 ? `&filter=id=in=(${filter})` : ''
     }&attributes=${attributes}`,
   orgInfo: (orgId: string) => `organization/${orgId}`,
   orgSettings: (orgId: string) => `organization/${orgId}/v2/organization-setting?agentView=true`,
