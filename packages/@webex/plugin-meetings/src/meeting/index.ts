@@ -3431,6 +3431,10 @@ export default class Meeting extends StatelessWebexPlugin {
     // The second on is if the audio is muted, we need to tell the statsAnalyzer when
     // the audio is muted or the user is not willing to send media
     this.locusInfo.on(LOCUSINFO.EVENTS.MEDIA_STATUS_CHANGE, (status) => {
+      LoggerProxy.logger.info(
+        'Meeting:index#setUpLocusInfoSelfListener --> MEDIA_STATUS_CHANGE received, processing...'
+      );
+
       if (this.statsAnalyzer) {
         this.statsAnalyzer.updateMediaStatus({
           actual: status,
@@ -3444,6 +3448,10 @@ export default class Meeting extends StatelessWebexPlugin {
             receiveShare: this.mediaProperties.mediaDirection?.receiveShare,
           },
         });
+      } else {
+        LoggerProxy.logger.warn(
+          'Meeting:index#setUpLocusInfoSelfListener --> MEDIA_STATUS_CHANGE, statsAnalyzer is not available.'
+        );
       }
     });
 
@@ -7542,6 +7550,9 @@ export default class Meeting extends StatelessWebexPlugin {
           throw error;
         }
       }
+
+      LoggerProxy.logger.info(`${LOG_HEADER} media connected, finalizing...`);
+
       if (this.mediaProperties.hasLocalShareStream()) {
         await this.enqueueScreenShareFloorRequest();
       }
