@@ -456,12 +456,10 @@ function registerTaskListeners(task) {
   task.on('task:media', (track) => {
     document.getElementById('remote-audio').srcObject = new MediaStream([track]);
   });
-  task.on('task:end', (wrapupData) => {
-    if (!wrapupData.wrapupRequired) {
-      answerElm.disabled = true;
-      declineElm.disabled = true;
-      console.log('Call ended without call being answered');
-    }
+  task.on('task:end', () => {
+    console.log('Call ended without call being answered');
+    answerElm.disabled = true;
+    declineElm.disabled = true;
     incomingDetailsElm.innerText = '';
     if (!endElm.disabled) {
       console.info('Call ended successfully by the external user');
