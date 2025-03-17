@@ -458,6 +458,8 @@ function registerTaskListeners(task) {
   });
   task.on('task:end', () => {
     console.log('Call ended without call being answered');
+    answerElm.disabled = true;
+    declineElm.disabled = true;
     incomingDetailsElm.innerText = '';
     if (!endElm.disabled) {
       console.info('Call ended successfully by the external user');
