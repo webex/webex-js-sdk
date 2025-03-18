@@ -5794,7 +5794,14 @@ export default class Meeting extends StatelessWebexPlugin {
         return undefined;
       }
       // @ts-ignore - Fix type
-      await this.webex.internal.llm.disconnectLLM();
+      await this.webex.internal.llm.disconnectLLM(
+        isJoined
+          ? {
+              code: 3050,
+              reason: 'done (permanent)',
+            }
+          : undefined
+      );
       // @ts-ignore - Fix type
       this.webex.internal.llm.off('event:relay.event', this.processRelayEvent);
     }
