@@ -9937,7 +9937,7 @@ describe('plugin-meetings', () => {
       });
 
       describe('#userNameInput', () => {
-        it('should set the email input', () => {
+        it('should set the user name input', () => {
           assert.notOk(meeting.userNameInput);
           meeting.userNameInput = 'current';
           assert.equal(meeting.callStateForMetrics.userNameInput, 'current');
