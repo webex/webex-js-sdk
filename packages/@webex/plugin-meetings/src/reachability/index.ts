@@ -23,11 +23,13 @@ import {
   ReachabilityResultsForBackend,
   TransportResultForBackend,
   GetClustersTrigger,
+  NatType,
 } from './reachability.types';
 import {
   ClientMediaIpsUpdatedEventData,
   ClusterReachability,
   Events,
+  NatTypeUpdatedEventData,
   ResultEventData,
 } from './clusterReachability';
 import EventsScope from '../common/events/events-scope';
@@ -305,6 +307,7 @@ export default class Reachability extends EventsScope {
       reachability_vmn_tcp_failed: 0,
       reachability_vmn_xtls_success: 0,
       reachability_vmn_xtls_failed: 0,
+      natType: NatType.Unknown,
     };
 
     const updateStats = (clusterType: 'public' | 'vmn', result: ClusterReachabilityResult) => {
@@ -319,6 +322,9 @@ export default class Reachability extends EventsScope {
       if (result.xtls && result.xtls.result !== 'untested') {
         const outcome = result.xtls.result === 'reachable' ? 'success' : 'failed';
         stats[`reachability_${clusterType}_xtls_${outcome}`] += 1;
+      }
+      if (result.natType && result.natType !== NatType.Unknown) {
+        stats.natType = result.natType;
       }
     };
 
@@ -864,6 +870,7 @@ export default class Reachability extends EventsScope {
         udp: {result: cluster.udp.length > 0 ? 'unreachable' : 'untested'},
         tcp: {result: cluster.tcp.length > 0 ? 'unreachable' : 'untested'},
         xtls: {result: cluster.xtls.length > 0 ? 'unreachable' : 'untested'},
+        natType: NatType.Unknown,
         isVideoMesh: cluster.isVideoMesh,
       };
 
@@ -931,6 +938,8 @@ export default class Reachability extends EventsScope {
         results[key][protocol].result = result;
         results[key][protocol].clientMediaIPs = clientMediaIPs;
         results[key][protocol].latencyInMilliseconds = latencyInMilliseconds;
+        // results[key].natType = data.natType;
+        // results[key]
 
         await this.storeResults(results);
 
@@ -958,6 +967,15 @@ export default class Reachability extends EventsScope {
         Events.clientMediaIpsUpdated,
         async (data: ClientMediaIpsUpdatedEventData) => {
           results[key][data.protocol].clientMediaIPs = data.clientMediaIPs;
+
+          await this.storeResults(results);
+        }
+      );
+
+      this.clusterReachability[key].on(
+        Events.natTypeUpdated,
+        async (data: NatTypeUpdatedEventData) => {
+          results[key].natType = data.natType;
 
           await this.storeResults(results);
         }
