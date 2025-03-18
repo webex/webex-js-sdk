@@ -18,6 +18,7 @@
     "./calling": "./dist/calling.js",
     ".": "./dist/index.js",
     "./meetings": "./dist/meetings.js",
+    "./contact-center": "./dist/contact-center.js",
     "./package": "./package.json"
   },
   "devMain": "src/index.js",
@@ -77,6 +78,7 @@
     "@webex/internal-plugin-voicea": "workspace:*",
     "@webex/plugin-attachment-actions": "workspace:*",
     "@webex/plugin-authorization": "workspace:*",
+    "@webex/plugin-cc": "workspace:*",
     "@webex/plugin-device-manager": "workspace:*",
     "@webex/plugin-logger": "workspace:*",
     "@webex/plugin-meetings": "workspace:*",
