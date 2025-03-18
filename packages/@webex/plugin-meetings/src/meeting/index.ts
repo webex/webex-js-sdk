@@ -1650,7 +1650,8 @@ export default class Meeting extends StatelessWebexPlugin {
    * @returns {string}
    */
   get emailInput() {
-    return this.callStateForMetrics?.userNameInput;
+-    return this.callStateForMetrics?.userNameInput;
++    return this.callStateForMetrics?.emailInput;
   }
 
   /**
