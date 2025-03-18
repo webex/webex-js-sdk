@@ -938,8 +938,6 @@ export default class Reachability extends EventsScope {
         results[key][protocol].result = result;
         results[key][protocol].clientMediaIPs = clientMediaIPs;
         results[key][protocol].latencyInMilliseconds = latencyInMilliseconds;
-        // results[key].natType = data.natType;
-        // results[key]
 
         await this.storeResults(results);
 
