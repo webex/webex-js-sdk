@@ -318,6 +318,11 @@ describe('plugin-meetings', () => {
 
           assert.equal(webinar.practiceSessionEnabled, false);
         });
+        it('sets PS state when payload is undefined', () => {
+          webinar.updatePracticeSessionStatus(undefined);
+
+          assert.equal(webinar.practiceSessionEnabled, false);
+        });
       });
 
       describe("#startWebcast", () => {
