@@ -9932,7 +9932,7 @@ describe('plugin-meetings', () => {
         it('should set the email input', () => {
           assert.notOk(meeting.emailInput);
           meeting.emailInput = 'current';
-          assert.equal(meeting.callStateForMetrics.emailInput, 'current');
+          assert.equal(meeting.emailInput, 'current');
         });
       });
 
@@ -9940,7 +9940,7 @@ describe('plugin-meetings', () => {
         it('should set the user name input', () => {
           assert.notOk(meeting.userNameInput);
           meeting.userNameInput = 'current';
-          assert.equal(meeting.callStateForMetrics.userNameInput, 'current');
+          assert.equal(meeting.userNameInput, 'current');
         });
       });
 
