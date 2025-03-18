@@ -306,8 +306,6 @@ export class ClusterReachability extends EventsScope {
   private determineNatType(candidate: RTCIceCandidate) {
     this.srflxIceCandidates.push(candidate);
 
-    // console.log('')
-
     if (this.srflxIceCandidates.length > 1) {
       const portsFound: {[key: string]: Set<number>} = {};
 
@@ -322,6 +320,8 @@ export class ClusterReachability extends EventsScope {
       Object.entries(portsFound).forEach(([, ports]) => {
         if (ports.size > 1) {
           // Found candidates with the same address and relatedPort, but different ports
+          this.result.natType = NatType.SymmetricNat;
+
           this.emit(
             {
               file: 'clusterReachability',
