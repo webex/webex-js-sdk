@@ -457,7 +457,6 @@ function registerTaskListeners(task) {
     document.getElementById('remote-audio').srcObject = new MediaStream([track]);
   });
   task.on('task:end', () => {
-    console.log('Call ended without call being answered');
     answerElm.disabled = true;
     declineElm.disabled = true;
     incomingDetailsElm.innerText = '';
