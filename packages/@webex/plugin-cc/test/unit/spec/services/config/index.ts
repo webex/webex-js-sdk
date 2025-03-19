@@ -176,7 +176,7 @@ describe('AgentConfigService', () => {
 
       expect(mockHttpRequest.request).toHaveBeenCalledWith({
         service: mockWccAPIURL,
-        resource: `organization/${mockOrgId}/v2/team?page=${page}&pageSize=${pageSize}&filter=id=in=${filter}&attributes=${attributes}`,
+        resource: `organization/${mockOrgId}/v2/team?page=${page}&pageSize=${pageSize}&filter=id=in=(${filter})&attributes=${attributes}`,
         method: 'GET',
       });
       expect(result).toEqual(mockResponse.body);
@@ -255,7 +255,7 @@ describe('AgentConfigService', () => {
 
       expect(mockHttpRequest.request).toHaveBeenCalledWith({
         service: mockWccAPIURL,
-        resource: `organization/${mockOrgId}/v2/auxiliary-code?page=${page}&pageSize=${pageSize}&filter=id=in=${filter}&attributes=${attributes}`,
+        resource: `organization/${mockOrgId}/v2/auxiliary-code?page=${page}&pageSize=${pageSize}&filter=id=in=(${filter})&attributes=${attributes}`,
         method: 'GET',
       });
       expect(result).toEqual(mockResponse.body);

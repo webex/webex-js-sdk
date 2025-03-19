@@ -9928,6 +9928,22 @@ describe('plugin-meetings', () => {
         });
       });
 
+      describe('#emailInput', () => {
+        it('should set the email input', () => {
+          assert.notOk(meeting.emailInput);
+          meeting.emailInput = 'current';
+          assert.equal(meeting.emailInput, 'current');
+        });
+      });
+
+      describe('#userNameInput', () => {
+        it('should set the user name input', () => {
+          assert.notOk(meeting.userNameInput);
+          meeting.userNameInput = 'current';
+          assert.equal(meeting.userNameInput, 'current');
+        });
+      });
+
       describe('#setPermissionTokenPayload', () => {
         let now;
         let clock;
