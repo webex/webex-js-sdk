@@ -24,7 +24,7 @@ export type MetricsType = 'behavioral' | 'operational' | 'business';
 
 export default class MetricsManager {
   private webex: WebexSDK;
-  private readonly runningEvents: Map<string, number> = new Map<string, number>();
+  private readonly runningEvents: Record<string, number> = {};
   private pendingBehavioralEvents: BehavioralEvent[] = [];
   private pendingOperationalEvents: GenericEvent[] = [];
   private pendingBusinessEvents: GenericEvent[] = [];
@@ -117,18 +117,20 @@ export default class MetricsManager {
 
   private addDurationIfTimed(name: string, options?: EventPayload): EventPayload {
     const durationKey = 'duration_ms';
-    const startTime = this.runningEvents.get(name);
-    this.runningEvents.delete(name);
-    if (startTime && options) {
-      options[durationKey] = Date.now() - startTime;
+    if (name in this.runningEvents) {
+      const startTime = this.runningEvents[name];
+      delete this.runningEvents[name];
+      if (startTime && options) {
+        options[durationKey] = Date.now() - startTime;
 
-      return options;
-    }
-    if (startTime) {
-      const payload: EventPayload = {};
-      payload[durationKey] = Date.now() - startTime;
+        return options;
+      }
+      if (startTime) {
+        const payload: EventPayload = {};
+        payload[durationKey] = Date.now() - startTime;
 
-      return payload;
+        return payload;
+      }
     }
     if (options) {
       return options;
@@ -233,7 +235,7 @@ export default class MetricsManager {
       return;
     }
 
-    this.runningEvents.set(_name, Date.now());
+    this.runningEvents[_name] = Date.now();
   }
 
   // Make the class a singleton
