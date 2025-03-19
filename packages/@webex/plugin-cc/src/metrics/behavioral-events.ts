@@ -15,7 +15,7 @@ export type BehavioralEventTaxonomy = {
 };
 
 export function getEventTaxonomy(name: METRIC_EVENT_NAMES): BehavioralEventTaxonomy | undefined {
-  // Adding new metrics? Please add them to the wiki: https://confluence-eng-gpk2.cisco.com/conf/x/e_-_JQ
+  // Adding new metrics? Please add them to the Cypher CC metrics wiki
   // Also need to get them allowed in the metrics service by requesting in Ask metrics-A
 
   const product: MetricEventProduct = PRODUCT_NAME;
