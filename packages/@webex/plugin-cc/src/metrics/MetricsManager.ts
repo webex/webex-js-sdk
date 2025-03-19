@@ -1,8 +1,14 @@
-import {EventPayload} from '@webex/internal-plugin-metrics/src/metrics.types';
+import {
+  EventPayload,
+  MetricEventAgent,
+  MetricEventProduct,
+  MetricEventVerb,
+} from '@webex/internal-plugin-metrics/src/metrics.types';
 
 import {WebexSDK} from '../types';
 import {BehavioralEventTaxonomy, getEventTaxonomy} from './behavioral-events';
 import LoggerProxy from '../logger-proxy';
+import {METRIC_EVENT_NAMES} from './constants';
 
 type MemoryInfo = {
   jsHeapSizeLimit: number;
@@ -33,6 +39,7 @@ export default class MetricsManager {
 
   // eslint-disable-next-line no-use-before-define
   private static instance: MetricsManager;
+  private metricsDisabled = false;
 
   private constructor({webex}: {webex: WebexSDK}) {
     this.webex = webex;
@@ -72,11 +79,11 @@ export default class MetricsManager {
       const eventsToSubmit = [...this.pendingBehavioralEvents];
       this.pendingBehavioralEvents = [];
       eventsToSubmit.forEach((event) => {
-        this.webex?.internal?.newMetrics?.submitBehavioralEvent({
-          product: event.taxonomy.product,
-          agent: event.taxonomy.agent,
+        this.webex.internal.newMetrics.submitBehavioralEvent({
+          product: event.taxonomy.product as MetricEventProduct,
+          agent: event.taxonomy.agent as MetricEventAgent,
           target: event.taxonomy.target,
-          verb: event.taxonomy.verb,
+          verb: event.taxonomy.verb as MetricEventVerb,
           payload: event.payload,
         });
       });
@@ -91,7 +98,7 @@ export default class MetricsManager {
       const eventsToSubmit = [...this.pendingOperationalEvents];
       this.pendingOperationalEvents = [];
       eventsToSubmit.forEach((event) => {
-        this.webex?.internal?.newMetrics?.submitOperationalEvent({
+        this.webex.internal.newMetrics.submitOperationalEvent({
           name: event.name,
           payload: event.payload,
         });
@@ -107,7 +114,7 @@ export default class MetricsManager {
       const eventsToSubmit = [...this.pendingBusinessEvents];
       this.pendingBusinessEvents = [];
       eventsToSubmit.forEach((event) => {
-        this.webex?.internal?.newMetrics?.submitBusinessEvent({
+        this.webex.internal.newMetrics.submitBusinessEvent({
           name: event.name,
           payload: event.payload,
         });
@@ -139,11 +146,15 @@ export default class MetricsManager {
     return {};
   }
 
+  static spacesToUnderscore(str: string): string {
+    return str.replace(/ /g, '_');
+  }
+
   private static preparePayload(options: EventPayload): EventPayload {
     const payload: EventPayload = {};
 
     for (const [key, value] of Object.entries(options)) {
-      payload[key.replace(/ /g, '_')] = value; // Replace spaces with underscores
+      payload[MetricsManager.spacesToUnderscore(key)] = value; // Replace spaces with underscores
     }
 
     if (typeof window === 'undefined') {
@@ -163,49 +174,64 @@ export default class MetricsManager {
   }
 
   private isMetricsDisabled(): boolean {
-    // TODO: Need to return true if in development mode to avoid sending metrics to the server
-    return false;
+    // TODO: SPARK-637285 Need to return true if in development mode to avoid sending metrics to the server
+    return this.metricsDisabled;
   }
 
-  public trackBehavioralEvent(name: string, options?: EventPayload) {
+  public setMetricsDisabled(disabled: boolean) {
+    this.metricsDisabled = disabled;
+    if (disabled) {
+      this.clearPendingEvents();
+    }
+  }
+
+  private clearPendingEvents() {
+    this.pendingBehavioralEvents = [];
+    this.pendingOperationalEvents = [];
+    this.pendingBusinessEvents = [];
+  }
+
+  public trackBehavioralEvent(name: METRIC_EVENT_NAMES, options?: EventPayload) {
     if (this.isMetricsDisabled()) {
       return;
     }
 
     const taxonomy = getEventTaxonomy(name);
-    if (taxonomy === undefined) {
-      LoggerProxy.error(`[MetricsManager] Behavioral event is not in the taxonomy: ${name}`);
 
-      return;
-    }
     const payload = MetricsManager.preparePayload(this.addDurationIfTimed(name, options));
 
     this.pendingBehavioralEvents.push({taxonomy, payload});
     this.submitPendingBehavioralEvents();
   }
 
-  public trackOperationalEvent(name: string, options?: EventPayload) {
+  public trackOperationalEvent(name: METRIC_EVENT_NAMES, options?: EventPayload) {
     if (this.isMetricsDisabled()) {
       return;
     }
 
     const payload = this.addDurationIfTimed(name, options);
-    this.pendingOperationalEvents.push({name, payload: MetricsManager.preparePayload(payload)});
+    this.pendingOperationalEvents.push({
+      name: MetricsManager.spacesToUnderscore(name).toUpperCase(),
+      payload: MetricsManager.preparePayload(payload),
+    });
     this.submitPendingOperationalEvents();
   }
 
-  public trackBusinessEvent(name: string, options?: EventPayload) {
+  public trackBusinessEvent(name: METRIC_EVENT_NAMES, options?: EventPayload) {
     if (this.isMetricsDisabled()) {
       return;
     }
 
     const payload = this.addDurationIfTimed(name, options);
-    this.pendingBusinessEvents.push({name, payload: MetricsManager.preparePayload(payload)});
+    this.pendingBusinessEvents.push({
+      name: MetricsManager.spacesToUnderscore(name).toUpperCase(),
+      payload: MetricsManager.preparePayload(payload),
+    });
     this.submitPendingBusinessEvents();
   }
 
   public trackEvent(
-    name: string,
+    name: METRIC_EVENT_NAMES,
     payload?: EventPayload,
     metricServices: MetricsType[] = ['behavioral']
   ) {
@@ -249,5 +275,9 @@ export default class MetricsManager {
     }
 
     return MetricsManager.instance;
+  }
+
+  public static resetInstance() {
+    MetricsManager.instance = undefined;
   }
 }

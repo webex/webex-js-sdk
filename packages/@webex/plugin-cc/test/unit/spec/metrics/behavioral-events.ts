@@ -54,6 +54,8 @@ describe('metrics/behavioral-events', () => {
         verb: 'complete',
       });
 
+      expect(getEventTaxonomy('' as METRIC_EVENT_NAMES)).toEqual(undefined);
+
     });
   });
 });

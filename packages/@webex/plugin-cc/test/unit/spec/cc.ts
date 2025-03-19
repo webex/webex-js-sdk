@@ -147,13 +147,13 @@ describe('webex.cc', () => {
     jest.clearAllMocks();
   });
 
-  it('should initialize services and logger proxy on READY event', () => {
-    webex.once('READY', () => {
+  it('should initialize services and logger proxy on ready event', () => {
+    webex.once('ready', () => {
       expect(Services.getInstance).toHaveBeenCalled();
       expect(LoggerProxy.initialize).toHaveBeenCalledWith(webex.logger);
     });
 
-    webex.emit('READY');
+    webex.emit('ready');
   });
 
   describe('cc.getDeviceId', () => {

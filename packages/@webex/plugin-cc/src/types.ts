@@ -3,7 +3,7 @@ import {
   SubmitBehavioralEvent,
   SubmitOperationalEvent,
   SubmitBusinessEvent,
-} from '@webex/internal-plugin-metrics';
+} from '@webex/internal-plugin-metrics/src/metrics.types';
 import * as Agent from './services/agent/types';
 import * as Contact from './services/task/types';
 import {Profile} from './services/config/types';
