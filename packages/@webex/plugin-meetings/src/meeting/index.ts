@@ -241,6 +241,8 @@ export type CallStateForMetrics = {
   sessionCorrelationId?: string;
   joinTrigger?: string;
   loginType?: string;
+  userNameInput?: string;
+  emailInput?: string;
 };
 
 export const MEDIA_UPDATE_TYPE = {
@@ -1625,6 +1627,38 @@ export default class Meeting extends StatelessWebexPlugin {
    */
   set correlationId(correlationId: string) {
     this.callStateForMetrics.correlationId = correlationId;
+  }
+
+  /**
+   * Getter - Returns callStateForMetrics.userNameInput
+   * @returns {string}
+   */
+  get userNameInput() {
+    return this.callStateForMetrics?.userNameInput;
+  }
+
+  /**
+   * Setter - sets callStateForMetrics.userNameInput
+   * @param {string} userNameInput
+   */
+  set userNameInput(userNameInput: string) {
+    this.callStateForMetrics.userNameInput = userNameInput;
+  }
+
+  /**
+   * Getter - Returns callStateForMetrics.emailInput
+   * @returns {string}
+   */
+  get emailInput() {
+    return this.callStateForMetrics?.emailInput;
+  }
+
+  /**
+   * Setter - sets callStateForMetrics.emailInput
+   * @param {string} emailInput
+   */
+  set emailInput(emailInput: string) {
+    this.callStateForMetrics.emailInput = emailInput;
   }
 
   /**

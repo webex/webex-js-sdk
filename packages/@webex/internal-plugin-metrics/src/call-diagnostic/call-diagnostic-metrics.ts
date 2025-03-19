@@ -731,6 +731,8 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       isConvergedArchitectureEnabled: this.getIsConvergedArchitectureEnabled({
         meetingId,
       }),
+      ...(meeting.userNameInput && {userNameInput: meeting.userNameInput}),
+      ...(meeting.emailInput && {emailInput: meeting.emailInput}),
       webexSubServiceType: this.getSubServiceType(meeting),
       // @ts-ignore
       webClientPreload: this.webex.meetings?.config?.metrics?.webClientPreload,
@@ -796,6 +798,14 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
 
     if (options.meetingJoinPhase) {
       clientEventObject.meetingJoinPhase = options.meetingJoinPhase;
+    }
+
+    if (options.userNameInput) {
+      clientEventObject.userNameInput = options.userNameInput;
+    }
+
+    if (options.emailInput) {
+      clientEventObject.emailInput = options.emailInput;
     }
 
     return clientEventObject;
