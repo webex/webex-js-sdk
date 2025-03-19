@@ -13,7 +13,7 @@ export async function getCommits(prevCommit: string) {
   // First, replace all `"` with `\"` ensuring we dont replace any `escape"`
   let sanitizedResult = result.replace(/(?<!\\)(?<!escape)"/g, '\\"');
 
-  // Then, replace `escape"` with `"` ensuring
+  // Then, replace `escape"` with `"`
   sanitizedResult = sanitizedResult.replace(/escape"/g, '"');
 
   return `{${sanitizedResult
