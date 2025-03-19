@@ -1,6 +1,7 @@
 /*!
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
+import 'jsdom-global/register';
 
 import {assert} from '@webex/test-helper-chai';
 import Webex from 'webex';
@@ -13,6 +14,17 @@ jest.mock('../../../../@webex/plugin-meetings', () => {
   };
 });
 jest.mock('@webex/internal-plugin-calendar');
+
+const mockWorker = {
+  postMessage: jest.fn(),
+  onmessage: jest.fn(),
+};
+
+global.Worker = jest.fn(() => mockWorker);
+
+global.URL.createObjectURL = function (blob) {
+  return 'blob:http://localhost:3000/12345';
+};
 
 describe('webex', () => {
   describe('Webex', () => {
