@@ -5,9 +5,19 @@ import { Executor } from '@webex/cli-tools';
  * @param scriptPath - Path to the script which we want to run.
  * @returns - Promise that resolves once the script is run and returns the output.
  */
-export async function getCommits(prevCommit:string) {
-  const result = await Executor.execute(`git log --pretty=format:'"%H":"%s",' ${prevCommit}..HEAD`) as string;
-  // Remove trailing comma and wrap the input in curly braces
-  // Replace all occurrences of ":" with "\":\"" and add quotes around keys
-  return `{${result.trim().replace(/,\s*$/, '').replace(/"([^"]+)":/g, '"$1":')}}`;
+export async function getCommits(prevCommit: string) {
+  const result = (await Executor.execute(
+    `git log --pretty=format:'escape"%Hescape":escape"%sescape",' ${prevCommit}..HEAD`,
+  )) as string;
+
+  // First, replace all `"` with `\"` ensuring we dont replace any `escape"`
+  let sanitizedResult = result.replace(/(?<!\\)(?<!escape)"/g, '\\"');
+
+  // Then, replace `escape"` with `"`
+  sanitizedResult = sanitizedResult.replace(/escape"/g, '"');
+
+  return `{${sanitizedResult
+    .trim()
+    .replace(/,\s*$/, '')
+    .replace(/"([^"]+)":/g, '"$1":')}}`;
 }

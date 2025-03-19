@@ -8,7 +8,9 @@ describe('changelogExecutor', () => {
     const executorSpy = jest.spyOn(Executor, 'execute').mockResolvedValue('{ mockCommit: \'mockCommitMessage\' }');
     changelogExecutor.getCommits(mockCommit);
     expect(getCommitsSpy).toHaveBeenCalledWith(mockCommit);
-    // eslint-disable-next-line no-useless-escape
-    expect(executorSpy).toHaveBeenCalledWith(`git log --pretty=format:'\"%H\":\"%s\",' ${mockCommit}..HEAD`);
+    expect(executorSpy).toHaveBeenCalledWith(
+      // eslint-disable-next-line no-useless-escape
+      `git log --pretty=format:'escape\"%Hescape\":escape\"%sescape\",' ${mockCommit}..HEAD`,
+    );
   });
 });
