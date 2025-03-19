@@ -38,7 +38,7 @@ import TaskManager from './services/task/TaskManager';
 import WebCallingService from './services/WebCallingService';
 import {ITask, TASK_EVENTS, TaskResponse, DialerPayload} from './services/task/types';
 import MetricsManager from './metrics/MetricsManager';
-import METRICS from './metrics/constants';
+import {METRIC_EVENT_NAMES} from './metrics/constants';
 
 export default class ContactCenter extends WebexPlugin implements IContactCenter {
   namespace = 'cc';
@@ -193,7 +193,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    */
   public async stationLogin(data: AgentLogin): Promise<StationLoginResponse> {
     try {
-      this.metricsManager.timeEvent(METRICS.EVENT_NAMES.STATION_LOGIN);
+      this.metricsManager.timeEvent(METRIC_EVENT_NAMES.STATION_LOGIN);
       const loginResponse = this.services.agent.stationLogin({
         data: {
           dialNumber:
@@ -220,7 +220,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       const resp = await loginResponse;
 
       this.metricsManager.trackEvent(
-        METRICS.EVENT_NAMES.STATION_LOGIN,
+        METRIC_EVENT_NAMES.STATION_LOGIN,
         {
           isSuccess: true,
           loginType: data.loginOption,

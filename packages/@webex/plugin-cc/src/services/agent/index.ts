@@ -6,7 +6,7 @@ import {HTTP_METHODS} from '../../types';
 import {WCC_API_GATEWAY} from '../constants';
 import {CC_EVENTS} from '../config/types';
 import MetricsManager from '../../metrics/MetricsManager';
-import METRICS from '../../metrics/constants';
+import {METRIC_EVENT_NAMES} from '../../metrics/constants';
 
 /*
  * routingAgent
@@ -62,7 +62,7 @@ export default function routingAgent(routing: AqmReqs, metricsManager: MetricsMa
       data: p.data,
       err: /* istanbul ignore next */ (e: any) => {
         metricsManager.trackEvent(
-          METRICS.EVENT_NAMES.STATION_LOGIN,
+          METRIC_EVENT_NAMES.STATION_LOGIN,
           {
             ...p.data,
             isSuccess: false,

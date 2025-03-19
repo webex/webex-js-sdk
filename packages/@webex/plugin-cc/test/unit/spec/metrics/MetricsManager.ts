@@ -1,6 +1,6 @@
 import {PRODUCT_NAME} from '../../../../src/constants';
 import MetricsManager from '../../../../src/metrics/MetricsManager';
-import METRICS from '../../../../src/metrics/constants';
+import {METRIC_EVENT_NAMES} from '../../../../src/metrics/constants';
 import {WebexSDK} from '../../../../src/types';
 import {EventPayload} from '@webex/internal-plugin-metrics/src/metrics.types';
 
@@ -32,7 +32,7 @@ describe('MetricsManager', () => {
   describe('trackEvent', () => {
 
     it('should submit a behavioral, operational and business event when newMetrics is available', () => {
-      const eventName = METRICS.EVENT_NAMES.STATION_LOGIN;
+      const eventName = METRIC_EVENT_NAMES.STATION_LOGIN;
       const data: EventPayload = {key: 'value'};
 
       metricsManager.trackEvent(eventName, data, ['behavioral', 'operational', 'business']);
@@ -50,18 +50,18 @@ describe('MetricsManager', () => {
       });
 
       expect(webex.internal.newMetrics.submitOperationalEvent).toHaveBeenCalledWith({
-        name: METRICS.EVENT_NAMES.STATION_LOGIN,
+        name: METRIC_EVENT_NAMES.STATION_LOGIN,
         payload: data,
       });
 
       expect(webex.internal.newMetrics.submitBusinessEvent).toHaveBeenCalledWith({
-        name: METRICS.EVENT_NAMES.STATION_LOGIN,
+        name: METRIC_EVENT_NAMES.STATION_LOGIN,
         payload: data,
       });
     });
 
     it('should not submit a behavioral, operational and business event if array is invalid', () => {
-      const eventName = METRICS.EVENT_NAMES.STATION_LOGIN;
+      const eventName = METRIC_EVENT_NAMES.STATION_LOGIN;
       const data: EventPayload = {key: 'value'};
 
       metricsManager.trackEvent(eventName, data, ['nonexistent']);
@@ -91,7 +91,7 @@ describe('MetricsManager', () => {
 
   describe('timeEvent', () => {
     it('should add a start time to the event payload', () => {
-      const eventName = METRICS.EVENT_NAMES.STATION_LOGIN;
+      const eventName = METRIC_EVENT_NAMES.STATION_LOGIN;
       const data: EventPayload = {key: 'value'};
 
       metricsManager.timeEvent(eventName);
