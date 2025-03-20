@@ -17,4 +17,4 @@ Webex.init = function init(attrs = {}) {
   return new Webex(attrs);
 };
 
-module.exports = Webex;
+export default Webex;
