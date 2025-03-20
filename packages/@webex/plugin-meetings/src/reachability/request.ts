@@ -67,6 +67,9 @@ class ReachabilityRequest {
               'early-call-min-clusters': true,
             },
             'previous-report': previousReport,
+            'client-environment': {
+              'components': { [this.webex.config.support.appType]: this.webex.config.support.appVersion}
+            },
             trigger,
           },
           timeout: this.webex.config.meetings.reachabilityGetClusterTimeout,
