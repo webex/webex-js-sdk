@@ -113,13 +113,26 @@ const Authorization = WebexPlugin.extend({
     return ret;
   },
 
-  /**
-   * Kicks off an oauth flow
-   * @instance
-   * @memberof AuthorizationBrowser
-   * @param {Object} options
-   * @returns {Promise}
-   */
+/**
+ * Initiates the OAuth flow for user authentication.
+ * This function determines the type of OAuth flow to use based on the client type configuration.
+ * If the client is configured as "confidential", it will initiate the Authorization Code Grant flow;
+ * otherwise, it will initiate the Implicit Grant flow.
+ *
+ * @instance
+ * @memberof AuthorizationBrowser
+ * @param {Object} options - The options to configure the OAuth flow.
+ * @param {Object} [options.state] - An optional state object that can be used to include additional
+ * information such as security tokens. A CSRF token will be automatically generated and added to
+ * this state object.
+ * @param {boolean|Object} [options.separateWindow] - Determines if the login should open in a separate window.
+ * This can be a boolean or an object specifying window features:
+ *   - If `true`, a new window with default dimensions is opened.
+ *   - If an object, custom window features can be specified (e.g., `{width: 800, height: 600}`).
+ * @returns {Promise<void>} - A promise that resolves when the appropriate OAuth flow has been initiated.
+ * The promise does not necessarily indicate the completion of the login process.
+ * @throws {Error} - Throws an error if there are issues initiating the OAuth flow.
+ */
   initiateLogin(options = {}) {
     options.state = options.state || {};
     options.state.csrf_token = this._generateSecurityToken();
@@ -134,19 +147,51 @@ const Authorization = WebexPlugin.extend({
   },
 
   @whileInFlight('isAuthorizing')
-  /**
-   * Kicks off the Authorization Code grant flow. Typically called via
-   * {@link AuthorizationBrowser#initiateLogin}
-   * @instance
-   * @memberof AuthorizationBrowser
-   * @param {Object} options
-   * @returns {Promise}
-   */
+/**
+ * Initiates the Implicit Grant flow for authorization.
+ * This function constructs the login URL and either opens it in a new
+ * window or in the current window based on the provided options.
+ * Typically called via {@link AuthorizationBrowser#initiateLogin}.
+ *
+ * @instance
+ * @memberof AuthorizationBrowser
+ * @param {Object} options - The options to configure the login flow.
+ * @param {Object} [options.separateWindow] - Determines if the login should open in a separate window.
+ * This can be a boolean or an object specifying window features:
+ *   - If `true`, a new window with default dimensions is opened.
+ *   - If an object, custom window features can be specified (e.g., `{width: 800, height: 600}`).
+ * @returns {Promise<void>} - A promise that resolves immediately after initiating the login flow.
+ * This promise does not indicate the completion of the login process.
+ * @throws {Error} - Throws an error if the login URL cannot be constructed or if window opening fails.
+ */
   initiateImplicitGrant(options) {
+
     this.logger.info('authorization: initiating implicit grant flow');
-    this.webex.getWindow().location = this.webex.credentials.buildLoginUrl(
+    const loginUrl = this.webex.credentials.buildLoginUrl(
       Object.assign({response_type: 'token'}, options)
     );
+
+    if (options?.separateWindow) {
+      // Default window settings
+      const defaultWindowSettings = {
+        width: 600,
+        height: 800
+      };
+
+      // Merge user provided settings with defaults
+      const windowSettings = Object.assign(
+        defaultWindowSettings, 
+        typeof options.separateWindow === 'object' ? options.separateWindow : {}
+      );
+      // Convert settings object to window.open features string
+      const windowFeatures = Object.entries(windowSettings)
+        .map(([key, value]) => `${key}=${value}`)
+        .join(',');
+      this.webex.getWindow().open(loginUrl, '_blank', windowFeatures);
+    } else {
+      // Default behavior - open in same window
+      this.webex.getWindow().location = loginUrl;
+    }
 
     return Promise.resolve();
   },
