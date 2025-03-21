@@ -441,6 +441,19 @@ describe('plugin-meetings', () => {
           assert.isTrue(webex.meetings.registered);
         });
 
+        it('resolves even if startReachability() rejects', async () => {
+          webex.canAuthorize = true;
+          webex.meetings.registered = false;
+          webex.meetings.startReachability = sinon.stub().rejects(new Error('fake error'));
+
+          await webex.meetings.register();
+          assert.calledOnceWithExactly(webex.internal.device.register, undefined);
+          assert.called(webex.internal.services.getMeetingPreferences);
+          assert.called(webex.internal.services.fetchClientRegionInfo);
+          assert.called(webex.internal.mercury.connect);
+          assert.isTrue(webex.meetings.registered);
+        });
+
         it('passes on the device registration options', async () => {
           webex.canAuthorize = true;
           webex.meetings.registered = false;
