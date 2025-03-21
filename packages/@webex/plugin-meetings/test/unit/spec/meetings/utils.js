@@ -290,4 +290,14 @@ describe('plugin-meetings', () => {
       assert.equal(MeetingsUtil.isValidBreakoutLocus(newLocus), true);
     });
   });
+
+  describe('#getMediaServer', () => {
+    it('returns the contents of o-line lower cased', () => {
+      const sdp1 = 'v=0\r\no=homer 0 1 IN IP4 23.89.67.81\r\ns=-\r\nc=IN IP4 23.89.67.81\r\nb=TIAS:128000\r\nt=0 0\r\na=ice-lite\r\n'
+      assert.equal(MeetingsUtil.getMediaServer(sdp1), 'homer');
+
+      const sdp2 = 'v=0\r\no=HOMER 0 1 IN IP4 23.89.67.81\r\ns=-\r\nc=IN IP4 23.89.67.81\r\nb=TIAS:128000\r\nt=0 0\r\na=ice-lite\r\n'
+      assert.equal(MeetingsUtil.getMediaServer(sdp2), 'homer');
+    });
+  })
 });

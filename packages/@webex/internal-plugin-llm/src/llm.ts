@@ -118,10 +118,11 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
 
   /**
    * Disconnects websocket connection
+   * @param {{code: number, reason: string}} options - The disconnect option object with code and reason
    * @returns {Promise<void>}
    */
-  public disconnectLLM = (): Promise<void> =>
-    this.disconnect().then(() => {
+  public disconnectLLM = (options: object): Promise<void> =>
+    this.disconnect(options).then(() => {
       this.locusUrl = undefined;
       this.datachannelUrl = undefined;
       this.binding = undefined;

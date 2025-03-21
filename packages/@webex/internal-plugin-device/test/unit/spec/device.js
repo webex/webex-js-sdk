@@ -7,6 +7,13 @@ import {CatalogDetails} from '@webex/internal-plugin-device';
 
 import dto from './wdm-dto';
 
+const waitForAsync = () =>
+  new Promise((resolve) =>
+    setImmediate(() => {
+      return resolve();
+    })
+  );
+
 describe('plugin-device', () => {
   describe('Device', () => {
     let webex;
@@ -355,6 +362,69 @@ describe('plugin-device', () => {
 
         assert.calledWith(registerSpy, {includeDetails: CatalogDetails.websocket});
       });
+
+      it('does not process refresh if log out between start and end of request', async () => {
+        setup();
+
+        let resolve;
+
+        const requestFn = () => {
+          return new Promise((r) => {
+            resolve = r;
+          });
+        };
+
+        device.request.restore();
+
+        sinon.stub(device, 'request').callsFake(requestFn);
+
+        const resultPromise = device.refresh();
+
+        await waitForAsync();
+
+        device.clear();
+
+        resolve({
+          body: {
+            exampleKey: 'example response value',
+          },
+        });
+
+        await resultPromise;
+
+        assert.notCalled(device.processRegistrationSuccess);
+      });
+
+      it('processes refresh if refresh id does not change', async () => {
+        setup();
+
+        let resolve;
+
+        const requestFn = () => {
+          return new Promise((r) => {
+            resolve = r;
+          });
+        };
+
+        device.request.restore();
+
+        sinon.stub(device, 'request').callsFake(requestFn);
+
+        const resultPromise = device.refresh();
+
+        await waitForAsync();
+
+        resolve({
+          body: {
+            exampleKey: 'example response value',
+          },
+        });
+
+        await resultPromise;
+
+        assert.calledOnce(device.processRegistrationSuccess);
+      });
+
     });
 
     describe('deleteDevices()', () => {
@@ -419,6 +489,48 @@ describe('plugin-device', () => {
     });
    });
 
+    describe('#unregister()', () => {
+      it('resolves immediately if the device is not registered', async () => {
+        const requestSpy = sinon.spy(device, 'request');
+
+        device.set('registered', false);
+
+        await device.unregister();
+
+        assert.notCalled(requestSpy);
+      });
+
+      it('clears the device in the event of 404', async () => {
+        sinon.stub(device, 'request').rejects({statusCode: 404});
+
+        const clearSpy = sinon.spy(device, 'clear');
+
+        await assert.isRejected(device.unregister());
+
+        assert.calledWith(device.request, {
+          uri: 'https://locus-a.wbx2.com/locus/api/v1/devices/88888888-4444-4444-4444-CCCCCCCCCCCC',
+          method: 'DELETE',
+        });
+
+        assert.calledOnce(clearSpy);
+      });
+
+      it('does not clear the device in the event of non 404 failure', async () => {
+        sinon.stub(device, 'request').rejects(new Error('some error'));
+
+        const clearSpy = sinon.spy(device, 'clear');
+
+        await assert.isRejected(device.unregister());
+
+        assert.calledWith(device.request, {
+          uri: 'https://locus-a.wbx2.com/locus/api/v1/devices/88888888-4444-4444-4444-CCCCCCCCCCCC',
+          method: 'DELETE',
+        });
+
+        assert.notCalled(clearSpy);
+      });
+    });
+
     describe('#register()', () => {
       const setup = (config = {}) => {
         webex.internal.metrics.submitClientMetrics = sinon.stub();
@@ -450,6 +562,7 @@ describe('plugin-device', () => {
 
       it('calls delete devices when errors with User has excessive device registrations', async () => {
         setup();
+        sinon.stub(device, 'canRegister').callsFake(() => Promise.resolve());
         const deleteDeviceSpy = sinon.stub(device, 'deleteDevices').callsFake(() => Promise.resolve());
         const registerStub = sinon.stub(device, '_registerInternal');
         
@@ -468,6 +581,7 @@ describe('plugin-device', () => {
       it('does not call delete devices when some other error', async () => {
         setup();
 
+        sinon.stub(device, 'canRegister').callsFake(() => Promise.resolve());
         const deleteDeviceSpy = sinon.stub(device, 'deleteDevices').callsFake(() => Promise.resolve());
         const registerStub = sinon.stub(device, '_registerInternal').rejects(new Error('some error'));
 
@@ -495,6 +609,67 @@ describe('plugin-device', () => {
           name: 'internal.register.device.response',
         });
       });
+
+      it('does not process registration if log out between start and end of request', async () => {
+        setup();
+        sinon.stub(device, 'canRegister').callsFake(() => Promise.resolve());
+
+        let resolve;
+
+        const requestFn = () => {
+          return new Promise((r) => {
+            resolve = r;
+          });
+        };
+
+        sinon.stub(device, 'request').callsFake(requestFn);
+
+        const resultPromise = device.register();
+
+        await waitForAsync();
+
+        device.clear();
+
+        resolve({
+          body: {
+            exampleKey: 'example response value',
+          }
+        });
+
+        await resultPromise;
+
+        assert.notCalled(device.processRegistrationSuccess);
+      });
+
+      it('calls process registration if request id matches', async () => {
+        setup();
+        sinon.stub(device, 'canRegister').callsFake(() => Promise.resolve());
+
+        let resolve;
+
+        const requestFn = () => {
+          return new Promise((r) => {
+            resolve = r;
+          });
+        };
+
+        sinon.stub(device, 'request').callsFake(requestFn);
+
+        const resultPromise = device.register();
+
+        await waitForAsync();
+
+        resolve({
+          body: {
+            exampleKey: 'example response value',
+          },
+        });
+
+        await resultPromise;
+
+        assert.calledOnce(device.processRegistrationSuccess);
+      });
+
 
       it('checks that submitInternalEvent gets called with internal.register.device.response on success', async () => {
         setup();
@@ -643,6 +818,23 @@ describe('plugin-device', () => {
         await device.register({includeDetails: CatalogDetails.websocket});
 
         assert.calledWith(refreshSpy, {includeDetails: CatalogDetails.websocket});
+      });
+
+      it('works when request returns 404 when already registered', async () => {
+        setup();
+        
+        sinon.stub(device, 'canRegister').callsFake(() => Promise.resolve());
+
+        const requestStub = sinon.stub(device, 'request');
+
+        requestStub.onFirstCall().rejects({statusCode: 404});
+        requestStub.onSecondCall().resolves({some: 'data'});
+
+        device.set('registered', true);
+
+        await device.register();
+
+        assert.calledWith(device.processRegistrationSuccess, {some: 'data'});
       });
     });
 

@@ -47,6 +47,20 @@
       "name": "Test all packages",
       "autoAttachChildProcesses": true,
       "runtimeArgs": ["./tooling/index.js", "test", "${input:flags}"]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Launch BYODS Demo Server",
+      "cwd": "${workspaceFolder}/packages/byods-demo-server",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen",
+      "autoAttachChildProcesses": true,
+      "skipFiles": [
+        "<node_internals>/**"
+      ]
     }
   ],
   "inputs": [

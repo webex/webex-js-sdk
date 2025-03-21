@@ -6,33 +6,37 @@ const canUserStart = (
   displayHints: Array<string>,
   userPolicies: Record<SELF_POLICY, boolean>
 ): boolean =>
-  (displayHints.includes(DISPLAY_HINTS.RECORDING_CONTROL_START) ||
-    displayHints.includes(DISPLAY_HINTS.PREMISE_RECORDING_CONTROL_START)) &&
-  MeetingUtil.selfSupportsFeature(SELF_POLICY.SUPPORT_NETWORK_BASED_RECORD, userPolicies);
+  (displayHints.includes(DISPLAY_HINTS.RECORDING_CONTROL_START) &&
+    MeetingUtil.selfSupportsFeature(SELF_POLICY.SUPPORT_NETWORK_BASED_RECORD, userPolicies)) ||
+  (displayHints.includes(DISPLAY_HINTS.PREMISE_RECORDING_CONTROL_START) &&
+    MeetingUtil.selfSupportsFeature(SELF_POLICY.SUPPORT_PREMISE_RECORD, userPolicies));
 
 const canUserPause = (
   displayHints: Array<string>,
   userPolicies: Record<SELF_POLICY, boolean>
 ): boolean =>
-  (displayHints.includes(DISPLAY_HINTS.RECORDING_CONTROL_PAUSE) ||
-    displayHints.includes(DISPLAY_HINTS.PREMISE_RECORDING_CONTROL_PAUSE)) &&
-  MeetingUtil.selfSupportsFeature(SELF_POLICY.SUPPORT_NETWORK_BASED_RECORD, userPolicies);
+  (displayHints.includes(DISPLAY_HINTS.RECORDING_CONTROL_PAUSE) &&
+    MeetingUtil.selfSupportsFeature(SELF_POLICY.SUPPORT_NETWORK_BASED_RECORD, userPolicies)) ||
+  (displayHints.includes(DISPLAY_HINTS.PREMISE_RECORDING_CONTROL_PAUSE) &&
+    MeetingUtil.selfSupportsFeature(SELF_POLICY.SUPPORT_PREMISE_RECORD, userPolicies));
 
 const canUserResume = (
   displayHints: Array<string>,
   userPolicies: Record<SELF_POLICY, boolean>
 ): boolean =>
-  (displayHints.includes(DISPLAY_HINTS.RECORDING_CONTROL_RESUME) ||
-    displayHints.includes(DISPLAY_HINTS.PREMISE_RECORDING_CONTROL_RESUME)) &&
-  MeetingUtil.selfSupportsFeature(SELF_POLICY.SUPPORT_NETWORK_BASED_RECORD, userPolicies);
+  (displayHints.includes(DISPLAY_HINTS.RECORDING_CONTROL_RESUME) &&
+    MeetingUtil.selfSupportsFeature(SELF_POLICY.SUPPORT_NETWORK_BASED_RECORD, userPolicies)) ||
+  (displayHints.includes(DISPLAY_HINTS.PREMISE_RECORDING_CONTROL_RESUME) &&
+    MeetingUtil.selfSupportsFeature(SELF_POLICY.SUPPORT_PREMISE_RECORD, userPolicies));
 
 const canUserStop = (
   displayHints: Array<string>,
   userPolicies: Record<SELF_POLICY, boolean>
 ): boolean =>
-  (displayHints.includes(DISPLAY_HINTS.RECORDING_CONTROL_STOP) ||
-    displayHints.includes(DISPLAY_HINTS.PREMISE_RECORDING_CONTROL_STOP)) &&
-  MeetingUtil.selfSupportsFeature(SELF_POLICY.SUPPORT_NETWORK_BASED_RECORD, userPolicies);
+  (displayHints.includes(DISPLAY_HINTS.RECORDING_CONTROL_STOP) &&
+    MeetingUtil.selfSupportsFeature(SELF_POLICY.SUPPORT_NETWORK_BASED_RECORD, userPolicies)) ||
+  (displayHints.includes(DISPLAY_HINTS.PREMISE_RECORDING_CONTROL_STOP) &&
+    MeetingUtil.selfSupportsFeature(SELF_POLICY.SUPPORT_PREMISE_RECORD, userPolicies));
 
 const isPremiseRecordingEnabled = (
   displayHints: Array<string>,
@@ -42,7 +46,7 @@ const isPremiseRecordingEnabled = (
     displayHints.includes(DISPLAY_HINTS.PREMISE_RECORDING_CONTROL_PAUSE) ||
     displayHints.includes(DISPLAY_HINTS.PREMISE_RECORDING_CONTROL_STOP) ||
     displayHints.includes(DISPLAY_HINTS.PREMISE_RECORDING_CONTROL_RESUME)) &&
-  MeetingUtil.selfSupportsFeature(SELF_POLICY.SUPPORT_NETWORK_BASED_RECORD, userPolicies);
+  MeetingUtil.selfSupportsFeature(SELF_POLICY.SUPPORT_PREMISE_RECORD, userPolicies);
 
 const extractLocusId = (url: string) => {
   return url?.split('/').pop();
