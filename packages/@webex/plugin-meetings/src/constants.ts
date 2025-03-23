@@ -904,6 +904,7 @@ export enum SELF_POLICY {
   ENFORCE_VIRTUAL_BACKGROUND = 'enforceVirtualBackground',
   SUPPORT_LOCAL_RECORD = 'supportLocalRecord',
   SUPPORT_NETWORK_BASED_RECORD = 'supportNetworkBasedRecord',
+  SUPPORT_PREMISE_RECORD = 'supportPremiseRecord',
   SUPPORT_REALTIME_CLOSE_CAPTION = 'supportRealtimeCloseCaption',
   SUPPORT_CHAT = 'supportChat',
   SUPPORT_DESKTOP_SHARE_REMOTE = 'supportDesktopShareRemote',
