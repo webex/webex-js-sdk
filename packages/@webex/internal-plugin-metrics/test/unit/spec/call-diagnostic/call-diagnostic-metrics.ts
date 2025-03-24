@@ -3011,33 +3011,30 @@ describe('internal-plugin-metrics', () => {
         assert.deepEqual(cd.getSubServiceType(fakeMeeting), 'ScheduledMeeting');
       });
 
-      it('returns subServicetype as Webinar when meeting is Webinar', () => {
+      it('returns subServicetype as Webinar when meeting is non-converged Webinar', () => {
         fakeMeeting.meetingInfo = {
           webexScheduled: true,
           pmr: false,
           enableEvent: true,
-          isConvergedWebinar: false,
           enableConvergedArchitecture: false,
         };
         assert.deepEqual(cd.getSubServiceType(fakeMeeting), 'Webinar');
       });
 
-      it('returns subServicetype as Webinar when meeting is Webinar', () => {
+      it('returns subServicetype as Webinar when meeting is converged Webinar', () => {
         fakeMeeting.meetingInfo = {
-          webexScheduled: true,
-          pmr: false,
           enableEvent: true,
           isConvergedWebinar: true,
-          enableConvergedArchitecture: false,
+          isConvergedWebinarWebcast: false,
+          enableConvergedArchitecture: true,
         };
         assert.deepEqual(cd.getSubServiceType(fakeMeeting), 'Webinar');
       });
 
-      it('returns subServicetype as Webcast when meeting is Webinar and enable webcast', () => {
+      it('returns subServicetype as Webcast when meeting is converged Webinar and enable webcast', () => {
         fakeMeeting.meetingInfo = {
-          webexScheduled: true,
-          pmr: false,
           enableEvent: true,
+          isConvergedWebinar: false,
           isConvergedWebinarWebcast: true,
           enableConvergedArchitecture: true,
         };
