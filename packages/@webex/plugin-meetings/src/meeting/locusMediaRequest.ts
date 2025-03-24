@@ -1,6 +1,7 @@
 /* eslint-disable valid-jsdoc */
 import {defer} from 'lodash';
-import {Defer} from '@webex/common';
+import {Defer, transferEvents} from '@webex/common';
+import {EventEmitter} from 'events';
 import {WebexPlugin} from '@webex/webex-core';
 import {MEDIA, HTTP_VERBS, ROAP} from '../constants';
 import LoggerProxy from '../common/logs/logger-proxy';
@@ -250,12 +251,19 @@ export class LocusMediaRequest extends WebexPlugin {
       this.confluenceState = 'creation in progress';
     }
 
-    // @ts-ignore
-    return this.request({
+    const upload = new EventEmitter();
+    const download = new EventEmitter();
+
+    const options = {
       method: HTTP_VERBS.PUT,
       uri,
       body,
-    })
+      upload,
+      download,
+    };
+
+    // @ts-ignore
+    const promise = this.request(options)
       .then((result) => {
         if (isRequestAffectingConfluenceState(request)) {
           this.confluenceState = 'created';
@@ -294,6 +302,21 @@ export class LocusMediaRequest extends WebexPlugin {
 
         throw e;
       });
+
+    if (request.type === 'RoapMessage') {
+      const setupProgressListener = (direction: string, eventEmitter: EventEmitter) => {
+        eventEmitter.on('progress', (progressEvent: ProgressEvent) => {
+          LoggerProxy.logger.info(
+            `${request.type}: ${direction} Progress, Timestamp: ${progressEvent.timeStamp}, Progress: ${progressEvent.loaded}/${progressEvent.total}`
+          );
+        });
+      };
+
+      setupProgressListener('Upload', options.upload);
+      setupProgressListener('Download', options.download);
+    }
+
+    return promise;
   }
 
   /**

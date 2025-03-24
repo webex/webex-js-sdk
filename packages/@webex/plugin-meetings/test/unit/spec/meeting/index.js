@@ -93,13 +93,14 @@ import CaptchaError from '../../../../src/common/errors/captcha-error';
 import PermissionError from '../../../../src/common/errors/permission';
 import JoinWebinarError from '../../../../src/common/errors/join-webinar-error';
 import IntentToJoinError from '../../../../src/common/errors/intent-to-join';
-import MultistreamNotSupportedError from '../../../../src/common/errors/multistream-not-supported-error';;
+import MultistreamNotSupportedError from '../../../../src/common/errors/multistream-not-supported-error';
 import testUtils from '../../../utils/testUtils';
 import {
   MeetingInfoV2CaptchaError,
   MeetingInfoV2PasswordError,
   MeetingInfoV2PolicyError,
-  MeetingInfoV2JoinWebinarError, MeetingInfoV2JoinForbiddenError,
+  MeetingInfoV2JoinWebinarError,
+  MeetingInfoV2JoinForbiddenError,
 } from '../../../../src/meeting-info/meeting-info-v2';
 import {
   DTLS_HANDSHAKE_FAILED_CLIENT_CODE,
@@ -115,7 +116,8 @@ import MeetingCollection from '@webex/plugin-meetings/src/meetings/collection';
 
 import {EVENT_TRIGGERS as VOICEAEVENTS} from '@webex/internal-plugin-voicea';
 import { createBrbState } from '@webex/plugin-meetings/src/meeting/brbState';
-import JoinForbiddenError               from '../../../../src/common/errors/join-forbidden-error';
+import JoinForbiddenError from '../../../../src/common/errors/join-forbidden-error';
+import { EventEmitter } from 'stream';
 
 describe('plugin-meetings', () => {
   const logger = {
@@ -209,6 +211,7 @@ describe('plugin-meetings', () => {
   let meetingRequestSpy;
   let correlationId;
   let isoLocalClientMeetingJoinTime;
+  let uploadEvent;
 
   beforeEach(() => {
     webex = new MockWebex({
@@ -278,6 +281,8 @@ describe('plugin-meetings', () => {
     test4 = `test4-${uuid.v4()}`;
     testDestination = `testDestination-${uuid.v4()}`;
     correlationId = uuid.v4();
+    uploadEvent = new EventEmitter();
+    uploadEvent.addListener('progress', () => {})
 
     meeting = new Meeting(
       {
@@ -668,7 +673,7 @@ describe('plugin-meetings', () => {
         beforeEach(() => {
           meeting.join = sinon.stub().callsFake((joinOptions) => {
             meeting.isMultistream = joinOptions.enableMultistream;
-            return Promise.resolve(fakeJoinResult)
+            return Promise.resolve(fakeJoinResult);
           });
           addMediaInternalStub = sinon
             .stub(meeting, 'addMediaInternal')
@@ -1071,7 +1076,11 @@ describe('plugin-meetings', () => {
             mediaOptions,
           });
 
-          assert.deepEqual(result, {join: fakeJoinResult, media: undefined, multistreamEnabled: false});
+          assert.deepEqual(result, {
+            join: fakeJoinResult,
+            media: undefined,
+            multistreamEnabled: false,
+          });
 
           assert.calledOnce(meeting.join);
 
@@ -1175,7 +1184,10 @@ describe('plugin-meetings', () => {
               type: addMediaError.name,
             }
           );
-          assert.calledOnceWithExactly(meeting.leave, {resourceId: undefined, reason: 'joinWithMedia failure'})
+          assert.calledOnceWithExactly(meeting.leave, {
+            resourceId: undefined,
+            reason: 'joinWithMedia failure',
+          });
         });
       });
 
@@ -3547,18 +3559,18 @@ describe('plugin-meetings', () => {
           it('counts the number of members that are in the meeting for MEDIA_QUALITY event', async () => {
             let fakeMembersCollection = {
               members: {
-                member1: { isInMeeting: true },
-                member2: { isInMeeting: true },
-                member3: { isInMeeting: false },
+                member1: {isInMeeting: true},
+                member2: {isInMeeting: true},
+                member3: {isInMeeting: false},
               },
             };
-            sinon.stub(meeting, 'getMembers').returns({ membersCollection: fakeMembersCollection });
-            const fakeData = { intervalMetadata: {}, networkType: 'wifi' };
+            sinon.stub(meeting, 'getMembers').returns({membersCollection: fakeMembersCollection});
+            const fakeData = {intervalMetadata: {}, networkType: 'wifi'};
 
             statsAnalyzerStub.emit(
-              { file: 'test', function: 'test' },
+              {file: 'test', function: 'test'},
               StatsAnalyzerEventNames.MEDIA_QUALITY,
-              { data: fakeData }
+              {data: fakeData}
             );
 
             assert.calledWithMatch(webex.internal.newMetrics.submitMQE, {
@@ -3567,15 +3579,17 @@ describe('plugin-meetings', () => {
                 meetingId: meeting.id,
               },
               payload: {
-                intervals: [sinon.match.has('intervalMetadata', sinon.match.has('meetingUserCount', 2))],
+                intervals: [
+                  sinon.match.has('intervalMetadata', sinon.match.has('meetingUserCount', 2)),
+                ],
               },
             });
             fakeMembersCollection.members.member2.isInMeeting = false;
 
             statsAnalyzerStub.emit(
-              { file: 'test', function: 'test' },
+              {file: 'test', function: 'test'},
               StatsAnalyzerEventNames.MEDIA_QUALITY,
-              { data: fakeData }
+              {data: fakeData}
             );
 
             assert.calledWithMatch(webex.internal.newMetrics.submitMQE, {
@@ -3584,7 +3598,9 @@ describe('plugin-meetings', () => {
                 meetingId: meeting.id,
               },
               payload: {
-                intervals: [sinon.match.has('intervalMetadata', sinon.match.has('meetingUserCount', 1))],
+                intervals: [
+                  sinon.match.has('intervalMetadata', sinon.match.has('meetingUserCount', 1)),
+                ],
               },
             });
           });
@@ -3839,7 +3855,6 @@ describe('plugin-meetings', () => {
         });
 
         describe('when in a multistream meeting', () => {
-
           beforeEach(() => {
             meeting.isMultistream = true;
           });
@@ -3850,7 +3865,7 @@ describe('plugin-meetings', () => {
             await brbResult;
             assert.exists(brbResult.then);
             assert.calledOnce(meeting.brbState.enable);
-          })
+          });
 
           it('should disable #beRightBack and return a promise', async () => {
             const brbResult = meeting.beRightBack(false);
@@ -3858,7 +3873,7 @@ describe('plugin-meetings', () => {
             await brbResult;
             assert.exists(brbResult.then);
             assert.calledOnce(meeting.brbState.enable);
-          })
+          });
 
           it('should throw an error and reject the promise if setBrb fails', async () => {
             const error = new Error('setBrb failed');
@@ -3871,7 +3886,7 @@ describe('plugin-meetings', () => {
               assert.equal(err.message, 'setBrb failed');
               assert.isRejected((Promise.reject()));
             }
-          })
+          });
         });
       });
 
@@ -4003,7 +4018,7 @@ describe('plugin-meetings', () => {
               initiateOffer: sinon.stub().resolves({}),
               update: sinon.stub().resolves({}),
               on: sinon.stub(),
-              roapMessageReceived: sinon.stub()
+              roapMessageReceived: sinon.stub(),
             };
 
             fakeMultistreamRoapMediaConnection = {
@@ -4032,7 +4047,7 @@ describe('plugin-meetings', () => {
 
             locusMediaRequestStub = sinon
               .stub(WebexPlugin.prototype, 'request')
-              .resolves({body: {locus: {fullState: {}}}});
+              .resolves({body: {locus: {fullState: {}}}, upload: sinon.match.instanceOf(EventEmitter), download: sinon.match.instanceOf(EventEmitter)});
 
             // setup some things and mocks so that the call to join() works
             // (we need to call join() because it creates the LocusMediaRequest instance
@@ -4141,6 +4156,8 @@ describe('plugin-meetings', () => {
                   id: 'fake clientMediaPreferences',
                 },
               },
+              upload: sinon.match.instanceOf(EventEmitter),
+              download: sinon.match.instanceOf(EventEmitter),
             });
           };
 
@@ -4168,6 +4185,8 @@ describe('plugin-meetings', () => {
                   },
                 ],
               },
+              upload: sinon.match.instanceOf(EventEmitter),
+              download: sinon.match.instanceOf(EventEmitter),
             });
           };
 
@@ -4192,6 +4211,8 @@ describe('plugin-meetings', () => {
                 respOnlySdp: true,
                 usingResource: null,
               },
+              upload: sinon.match.instanceOf(EventEmitter),
+              download: sinon.match.instanceOf(EventEmitter),
             });
           };
 
@@ -6334,7 +6355,10 @@ describe('plugin-meetings', () => {
               .throws(new MeetingInfoV2JoinForbiddenError(403003, FAKE_MEETING_INFO)),
           };
 
-          await assert.isRejected(meeting.fetchMeetingInfo({sendCAevents: true}), JoinForbiddenError);
+          await assert.isRejected(
+            meeting.fetchMeetingInfo({sendCAevents: true}),
+            JoinForbiddenError
+          );
 
           assert.calledWith(
             meeting.attrs.meetingInfoProvider.fetchMeetingInfo,
@@ -6350,10 +6374,7 @@ describe('plugin-meetings', () => {
 
           assert.deepEqual(meeting.meetingInfo, FAKE_MEETING_INFO);
           assert.equal(meeting.meetingInfoFailureCode, 403003);
-          assert.equal(
-            meeting.meetingInfoFailureReason,
-            MEETING_INFO_FAILURE_REASON.NOT_REACH_JBH
-          );
+          assert.equal(meeting.meetingInfoFailureReason, MEETING_INFO_FAILURE_REASON.NOT_REACH_JBH);
           assert.equal(meeting.requiredCaptcha, null);
         });
 
@@ -6730,15 +6751,10 @@ describe('plugin-meetings', () => {
           meeting.attrs.meetingInfoProvider = {
             fetchMeetingInfo: sinon
               .stub()
-              .throws(
-                new MeetingInfoV2JoinWebinarError(403021, FAKE_MEETING_INFO, 'a message')
-              ),
+              .throws(new MeetingInfoV2JoinWebinarError(403021, FAKE_MEETING_INFO, 'a message')),
           };
 
-          await assert.isRejected(
-            meeting.fetchMeetingInfo({sendCAevents: true}),
-            JoinWebinarError
-          );
+          await assert.isRejected(meeting.fetchMeetingInfo({sendCAevents: true}), JoinWebinarError);
 
           assert.deepEqual(meeting.meetingInfo, FAKE_MEETING_INFO);
           assert.equal(
@@ -6753,15 +6769,10 @@ describe('plugin-meetings', () => {
           meeting.attrs.meetingInfoProvider = {
             fetchMeetingInfo: sinon
               .stub()
-              .throws(
-                new MeetingInfoV2JoinWebinarError(403026, FAKE_MEETING_INFO, 'a message')
-              ),
+              .throws(new MeetingInfoV2JoinWebinarError(403026, FAKE_MEETING_INFO, 'a message')),
           };
 
-          await assert.isRejected(
-            meeting.fetchMeetingInfo({sendCAevents: true}),
-            JoinWebinarError
-          );
+          await assert.isRejected(meeting.fetchMeetingInfo({sendCAevents: true}), JoinWebinarError);
 
           assert.deepEqual(meeting.meetingInfo, FAKE_MEETING_INFO);
           assert.equal(
@@ -6776,20 +6787,15 @@ describe('plugin-meetings', () => {
           meeting.attrs.meetingInfoProvider = {
             fetchMeetingInfo: sinon
               .stub()
-              .throws(
-                new MeetingInfoV2JoinWebinarError(403037, FAKE_MEETING_INFO, 'a message')
-              ),
+              .throws(new MeetingInfoV2JoinWebinarError(403037, FAKE_MEETING_INFO, 'a message')),
           };
 
-          await assert.isRejected(
-            meeting.fetchMeetingInfo({sendCAevents: true}),
-            JoinWebinarError
-          );
+          await assert.isRejected(meeting.fetchMeetingInfo({sendCAevents: true}), JoinWebinarError);
 
           assert.deepEqual(meeting.meetingInfo, FAKE_MEETING_INFO);
           assert.equal(
             meeting.meetingInfoFailureReason,
-            MEETING_INFO_FAILURE_REASON.WEBINAR_NEED_REGISTRATIONID
+            MEETING_INFO_FAILURE_REASON.WEBINAR_NEED_REGISTRATION_ID
           );
         });
       });
@@ -6849,7 +6855,8 @@ describe('plugin-meetings', () => {
             'fake-installed-org-id',
             'locus-id',
             {extraParam1: 'value1', permissionToken: FAKE_PERMISSION_TOKEN},
-            {meetingId: meeting.id, sendCAevents: true}
+            {meetingId: meeting.id, sendCAevents: true},
+            null
           );
           assert.deepEqual(meeting.meetingInfo, {
             ...FAKE_MEETING_INFO,
@@ -6894,7 +6901,8 @@ describe('plugin-meetings', () => {
             'fake-installed-org-id',
             'locus-id',
             {extraParam1: 'value1', permissionToken: FAKE_PERMISSION_TOKEN},
-            {meetingId: meeting.id, sendCAevents: true}
+            {meetingId: meeting.id, sendCAevents: true},
+            null
           );
           assert.deepEqual(meeting.meetingInfo, {
             ...FAKE_MEETING_INFO,
@@ -6948,7 +6956,8 @@ describe('plugin-meetings', () => {
               extraParam1: 'value1',
               permissionToken: FAKE_PERMISSION_TOKEN,
             },
-            {meetingId: meeting.id, sendCAevents: true}
+            {meetingId: meeting.id, sendCAevents: true},
+            null
           );
           assert.deepEqual(meeting.meetingInfo, {
             ...FAKE_MEETING_INFO,
@@ -9236,22 +9245,22 @@ describe('plugin-meetings', () => {
           const assertBrb = (enabled) => {
             meeting.brbState = createBrbState(meeting, false);
             meeting.locusInfo.emit(
-              { function: 'test', file: 'test' },
+              {function: 'test', file: 'test'},
               LOCUSINFO.EVENTS.SELF_MEETING_BRB_CHANGED,
-              { brb: { enabled } },
-            )
+              {brb: {enabled}}
+            );
             assert.calledWithExactly(
               TriggerProxy.trigger,
               meeting,
               {file: 'meeting/index', function: 'setUpLocusInfoSelfListener'},
               EVENT_TRIGGERS.MEETING_SELF_BRB_UPDATE,
-              { payload: { brb: { enabled } } },
+              {payload: {brb: {enabled}}}
             );
-          }
+          };
 
           assertBrb(true);
           assertBrb(false);
-        })
+        });
 
         it('listens to the interpretation changed event', () => {
           meeting.simultaneousInterpretation.updateSelfInterpretation = sinon.stub();
@@ -9932,6 +9941,22 @@ describe('plugin-meetings', () => {
           assert.notOk(meeting.sipUri);
           meeting.setSipUri(test1);
           assert.equal(meeting.sipUri, test1);
+        });
+      });
+
+      describe('#emailInput', () => {
+        it('should set the email input', () => {
+          assert.notOk(meeting.emailInput);
+          meeting.emailInput = 'current';
+          assert.equal(meeting.emailInput, 'current');
+        });
+      });
+
+      describe('#userNameInput', () => {
+        it('should set the user name input', () => {
+          assert.notOk(meeting.userNameInput);
+          meeting.userNameInput = 'current';
+          assert.equal(meeting.userNameInput, 'current');
         });
       });
 
@@ -11264,7 +11289,10 @@ describe('plugin-meetings', () => {
 
           const result = await meeting.updateLLMConnection();
 
-          assert.calledWith(webex.internal.llm.disconnectLLM);
+          assert.calledWith(webex.internal.llm.disconnectLLM, {
+            code: 3050,
+            reason: 'done (permanent)',
+          });
           assert.calledWith(
             webex.internal.llm.registerAndConnect,
             'a different url',
@@ -11294,7 +11322,10 @@ describe('plugin-meetings', () => {
 
           const result = await meeting.updateLLMConnection();
 
-          assert.calledWith(webex.internal.llm.disconnectLLM);
+          assert.calledWith(webex.internal.llm.disconnectLLM, {
+            code: 3050,
+            reason: 'done (permanent)',
+          });
           assert.calledWith(
             webex.internal.llm.registerAndConnect,
             'a url',
@@ -11323,7 +11354,7 @@ describe('plugin-meetings', () => {
 
           const result = await meeting.updateLLMConnection();
 
-          assert.calledWith(webex.internal.llm.disconnectLLM);
+          assert.calledWith(webex.internal.llm.disconnectLLM, undefined);
           assert.notCalled(webex.internal.llm.registerAndConnect);
           assert.equal(result, undefined);
           assert.calledOnceWithExactly(
@@ -11333,18 +11364,21 @@ describe('plugin-meetings', () => {
           );
         });
 
-
         it('connect ps data channel if ps started in webinar', async () => {
           meeting.joinedWith = {state: 'JOINED'};
-          meeting.locusInfo = {url: 'a url', info: {datachannelUrl: 'a datachannel url', practiceSessionDatachannelUrl: 'a ps datachannel url'}};
+          meeting.locusInfo = {
+            url: 'a url',
+            info: {
+              datachannelUrl: 'a datachannel url',
+              practiceSessionDatachannelUrl: 'a ps datachannel url',
+            },
+          };
           meeting.webinar.isJoinPracticeSessionDataChannel = sinon.stub().returns(true);
           await meeting.updateLLMConnection();
 
           assert.notCalled(webex.internal.llm.disconnectLLM);
           assert.calledWith(webex.internal.llm.registerAndConnect, 'a url', 'a ps datachannel url');
-
         });
-
       });
 
       describe('#setLocus', () => {
@@ -11762,24 +11796,29 @@ describe('plugin-meetings', () => {
 
                 activeSharingId.whiteboard = beneficiaryId;
 
-                eventTrigger.share.push(meeting.webinar.selfIsAttendee ? {
-                  eventName: EVENT_TRIGGERS.MEETING_STARTED_SHARING_REMOTE,
-                  functionName: 'remoteShare',
-                  eventPayload: {
-                    memberId: null,
-                    url,
-                    shareInstanceId,
-                    annotationInfo: undefined,
-                    resourceType: undefined,
-                  },
-                } : {
-                  eventName: EVENT_TRIGGERS.MEETING_STARTED_SHARING_WHITEBOARD,
-                  functionName: 'startWhiteboardShare',
-                  eventPayload: {resourceUrl, memberId: beneficiaryId},
-                });
+                eventTrigger.share.push(
+                  meeting.webinar.selfIsAttendee
+                    ? {
+                        eventName: EVENT_TRIGGERS.MEETING_STARTED_SHARING_REMOTE,
+                        functionName: 'remoteShare',
+                        eventPayload: {
+                          memberId: null,
+                          url,
+                          shareInstanceId,
+                          annotationInfo: undefined,
+                          resourceType: undefined,
+                        },
+                      }
+                    : {
+                        eventName: EVENT_TRIGGERS.MEETING_STARTED_SHARING_WHITEBOARD,
+                        functionName: 'startWhiteboardShare',
+                        eventPayload: {resourceUrl, memberId: beneficiaryId},
+                      }
+                );
 
-                shareStatus = meeting.webinar.selfIsAttendee ? SHARE_STATUS.REMOTE_SHARE_ACTIVE : SHARE_STATUS.WHITEBOARD_SHARE_ACTIVE;
-
+                shareStatus = meeting.webinar.selfIsAttendee
+                  ? SHARE_STATUS.REMOTE_SHARE_ACTIVE
+                  : SHARE_STATUS.WHITEBOARD_SHARE_ACTIVE;
               }
 
               if (eventTrigger.member) {
@@ -11811,24 +11850,29 @@ describe('plugin-meetings', () => {
                   newPayload.current.content.disposition = FLOOR_ACTION.ACCEPTED;
                   newPayload.current.content.beneficiaryId = otherBeneficiaryId;
 
-                  eventTrigger.share.push(meeting.webinar.selfIsAttendee ? {
-                    eventName: EVENT_TRIGGERS.MEETING_STARTED_SHARING_REMOTE,
-                    functionName: 'remoteShare',
-                    eventPayload: {
-                      memberId: null,
-                      url,
-                      shareInstanceId,
-                      annotationInfo: undefined,
-                      resourceType: undefined,
-                    },
-                  } : {
-                    eventName: EVENT_TRIGGERS.MEETING_STARTED_SHARING_WHITEBOARD,
-                    functionName: 'startWhiteboardShare',
-                    eventPayload: {resourceUrl, memberId: beneficiaryId},
-                  });
+                  eventTrigger.share.push(
+                    meeting.webinar.selfIsAttendee
+                      ? {
+                          eventName: EVENT_TRIGGERS.MEETING_STARTED_SHARING_REMOTE,
+                          functionName: 'remoteShare',
+                          eventPayload: {
+                            memberId: null,
+                            url,
+                            shareInstanceId,
+                            annotationInfo: undefined,
+                            resourceType: undefined,
+                          },
+                        }
+                      : {
+                          eventName: EVENT_TRIGGERS.MEETING_STARTED_SHARING_WHITEBOARD,
+                          functionName: 'startWhiteboardShare',
+                          eventPayload: {resourceUrl, memberId: beneficiaryId},
+                        }
+                  );
 
-                  shareStatus = meeting.webinar.selfIsAttendee ? SHARE_STATUS.REMOTE_SHARE_ACTIVE : SHARE_STATUS.WHITEBOARD_SHARE_ACTIVE;
-
+                  shareStatus = meeting.webinar.selfIsAttendee
+                    ? SHARE_STATUS.REMOTE_SHARE_ACTIVE
+                    : SHARE_STATUS.WHITEBOARD_SHARE_ACTIVE;
                 } else {
                   eventTrigger.share.push({
                     eventName: EVENT_TRIGGERS.MEETING_STOPPED_SHARING_WHITEBOARD,
@@ -11958,24 +12002,24 @@ describe('plugin-meetings', () => {
           describe('Whiteboard Share - Webinar Attendee', () => {
             it('Scenario #1: Whiteboard sharing as a webinar attendee', () => {
               // Set the webinar attendee flag
-              meeting.webinar = { selfIsAttendee: true };
+              meeting.webinar = {selfIsAttendee: true};
               meeting.locusInfo.info.isWebinar = true;
 
               // Step 1: Start sharing whiteboard A
               const data1 = generateData(
-                blankPayload,              // Initial payload
-                true,                      // isGranting: Granting share
-                false,                     // isContent: Whiteboard (not content)
-                USER_IDS.REMOTE_A,         // Beneficiary ID: Remote user A
+                blankPayload, // Initial payload
+                true, // isGranting: Granting share
+                false, // isContent: Whiteboard (not content)
+                USER_IDS.REMOTE_A, // Beneficiary ID: Remote user A
                 RESOURCE_URLS.WHITEBOARD_A // Resource URL: Whiteboard A
               );
 
               // Step 2: Stop sharing whiteboard A
               const data2 = generateData(
-                data1.payload,             // Updated payload from Step 1
-                false,                     // isGranting: Stopping share
-                false,                     // isContent: Whiteboard
-                USER_IDS.REMOTE_A          // Beneficiary ID: Remote user A
+                data1.payload, // Updated payload from Step 1
+                false, // isGranting: Stopping share
+                false, // isContent: Whiteboard
+                USER_IDS.REMOTE_A // Beneficiary ID: Remote user A
               );
 
               // Validate the payload changes and status updates
@@ -11985,7 +12029,6 @@ describe('plugin-meetings', () => {
               assert.equal(meeting.shareStatus, SHARE_STATUS.REMOTE_SHARE_ACTIVE);
             });
           });
-
 
           describe('Whiteboard A --> Whiteboard B', () => {
             it('Scenario #1: you share both whiteboards', () => {
@@ -13297,7 +13340,7 @@ describe('plugin-meetings', () => {
         await meeting.roapMessageReceived(fakeMessage);
 
         assert.fail('Expected MultistreamNotSupportedError to be thrown');
-      } catch(e) {
+      } catch (e) {
         assert.isTrue(e instanceof MultistreamNotSupportedError);
       }
 
@@ -13323,6 +13366,55 @@ describe('plugin-meetings', () => {
       );
       assert.notCalled(getMediaServerStub);
       assert.equal(meeting.mediaProperties.webrtcMediaConnection.mediaServer, 'linus'); // check that it hasn't been overwritten
+    });
+  });
+
+  describe('#verifyRegistrationId', () => {
+    it('calls fetchMeetingInfo() with the passed registrationId and captcha code', async () => {
+      // simulate successful case
+      meeting.fetchMeetingInfo = sinon.stub().resolves();
+      const result = await meeting.verifyRegistrationId('registrationId', 'captcha id');
+
+      assert(Metrics.sendBehavioralMetric.calledOnce);
+      assert.calledWith(
+        Metrics.sendBehavioralMetric,
+        BEHAVIORAL_METRICS.VERIFY_REGISTRATION_ID_SUCCESS
+      );
+      assert.equal(result.isRegistrationIdValid, true);
+      assert.equal(result.requiredCaptcha, null);
+      assert.equal(result.failureReason, MEETING_INFO_FAILURE_REASON.NONE);
+      assert.calledWith(meeting.fetchMeetingInfo, {
+        registrationId: 'registrationId',
+        captchaCode: 'captcha id',
+        sendCAevents: false,
+      });
+    });
+    it('handles registrationIdError returned by fetchMeetingInfo', async () => {
+      meeting.fetchMeetingInfo = sinon.stub().callsFake(() => {
+        meeting.meetingInfoFailureReason = MEETING_INFO_FAILURE_REASON.WRONG_REGISTRATIONID;
+
+        return Promise.reject(new JoinWebinarError());
+      });
+      const result = await meeting.verifyRegistrationId('registrationId', 'captcha id');
+
+      assert.equal(result.isRegistrationIdValid, false);
+      assert.equal(result.requiredCaptcha, null);
+      assert.equal(result.failureReason, MEETING_INFO_FAILURE_REASON.WRONG_REGISTRATION_ID);
+    });
+    it('handles CaptchaError returned by fetchMeetingInfo', async () => {
+      const FAKE_CAPTCHA = {captchaId: 'some catcha id...'};
+
+      meeting.fetchMeetingInfo = sinon.stub().callsFake(() => {
+        meeting.meetingInfoFailureReason = MEETING_INFO_FAILURE_REASON.WRONG_CAPTCHA;
+        meeting.requiredCaptcha = FAKE_CAPTCHA;
+
+        return Promise.reject(new CaptchaError());
+      });
+      const result = await meeting.verifyRegistrationId('registrationId', 'captcha id');
+
+      assert.equal(result.isRegistrationIdValid, false);
+      assert.deepEqual(result.requiredCaptcha, FAKE_CAPTCHA);
+      assert.equal(result.failureReason, MEETING_INFO_FAILURE_REASON.WRONG_CAPTCHA);
     });
   });
 });
