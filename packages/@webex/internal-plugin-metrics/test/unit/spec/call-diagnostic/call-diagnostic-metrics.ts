@@ -3016,7 +3016,19 @@ describe('internal-plugin-metrics', () => {
           webexScheduled: true,
           pmr: false,
           enableEvent: true,
+          isConvergedWebinar: false,
+          enableConvergedArchitecture: false,
+        };
+        assert.deepEqual(cd.getSubServiceType(fakeMeeting), 'Webinar');
+      });
+
+      it('returns subServicetype as Webinar when meeting is Webinar', () => {
+        fakeMeeting.meetingInfo = {
+          webexScheduled: true,
+          pmr: false,
+          enableEvent: true,
           isConvergedWebinar: true,
+          enableConvergedArchitecture: false,
         };
         assert.deepEqual(cd.getSubServiceType(fakeMeeting), 'Webinar');
       });
@@ -3027,6 +3039,7 @@ describe('internal-plugin-metrics', () => {
           pmr: false,
           enableEvent: true,
           isConvergedWebinarWebcast: true,
+          enableConvergedArchitecture: true,
         };
         assert.deepEqual(cd.getSubServiceType(fakeMeeting), 'Webcast');
       });
