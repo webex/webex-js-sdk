@@ -795,16 +795,17 @@ describe('plugin-voicea', () => {
         voiceaService.listenToEvents();
       });
 
-      it('processes interim manual transcription', async () => {
+      it('processes interim manual transcription from aibridge', async () => {
         voiceaService.on(EVENT_TRIGGERS.NEW_MANUAL_CAPTION, triggerSpy);
+
         const transcriptPayload = {
           id: "747d711d-3414-fd69-7081-e842649f2d28",
           transcripts: [
             {
-              "text": "Good",
+              text: "Good",
             }
           ],
-          type: "manual_caption_interim_results",
+          type: "manual_caption_interim_result",
         };
 
         // eslint-disable-next-line no-underscore-dangle
@@ -813,15 +814,17 @@ describe('plugin-voicea', () => {
           data: {relayType: 'aibridge.manual_transcription', transcriptPayload},
         });
 
-        assert.calledOnceWithExactly(functionSpy, transcriptPayload);
+        assert.calledOnceWithExactly(functionSpy, {...transcriptPayload, sender: 'ws', data_source: 'aibridge.manual_transcription'});
         assert.calledOnceWithExactly(triggerSpy, {
           isFinal: false,
           transcriptId: '747d711d-3414-fd69-7081-e842649f2d28',
           transcripts: transcriptPayload.transcripts,
+          sender: 'ws',
+          source: 'aibridge.manual_transcription'
         });
       });
 
-      it('processes final manual transcription', async () => {
+      it('processes final manual transcription from aibridge', async () => {
         voiceaService.on(EVENT_TRIGGERS.NEW_MANUAL_CAPTION, triggerSpy);
 
         const transcriptPayload = {
@@ -842,11 +845,73 @@ describe('plugin-voicea', () => {
           data: {relayType: 'aibridge.manual_transcription', transcriptPayload},
         });
 
-        assert.calledOnceWithExactly(functionSpy, transcriptPayload);
+        assert.calledOnceWithExactly(functionSpy, {...transcriptPayload, sender: 'ws', data_source: 'aibridge.manual_transcription'});
         assert.calledOnceWithExactly(triggerSpy, {
           isFinal: true,
           transcriptId: '8d226d31-044a-8d11-cc39-cedbde183154',
           transcripts: transcriptPayload.transcripts,
+          sender: 'ws',
+          source: 'aibridge.manual_transcription'
+        });
+      });
+
+      it('processes interim manual transcription from captioner', async () => {
+        voiceaService.on(EVENT_TRIGGERS.NEW_MANUAL_CAPTION, triggerSpy);
+
+        const transcriptPayload = {
+          id: "747d711d-3414-fd69-7081-e842649f2d28",
+          transcripts: [
+            {
+              text: "Good",
+            }
+          ],
+          type: "manual_caption_interim_result",
+        };
+
+        // eslint-disable-next-line no-underscore-dangle
+        await voiceaService.webex.internal.llm._emit('event:relay.event', {
+          headers: {from: '654321'},
+          data: {relayType: 'client.manual_transcription', transcriptPayload},
+        });
+
+        assert.calledOnceWithExactly(functionSpy, {...transcriptPayload, sender: '654321', data_source: 'client.manual_transcription'});
+        assert.calledOnceWithExactly(triggerSpy, {
+          isFinal: false,
+          transcriptId: '747d711d-3414-fd69-7081-e842649f2d28',
+          transcripts: transcriptPayload.transcripts,
+          sender: '654321',
+          source: 'client.manual_transcription'
+        });
+      });
+
+      it('processes final manual transcription from captioner', async () => {
+        voiceaService.on(EVENT_TRIGGERS.NEW_MANUAL_CAPTION, triggerSpy);
+
+        const transcriptPayload = {
+          id: "8d226d31-044a-8d11-cc39-cedbde183154",
+          transcripts: [
+            {
+              text: "Good Morning",
+              start_millis: 10420,
+              end_millis: 11380,
+            }
+          ],
+          type: "manual_caption_final_result",
+        };
+
+        // eslint-disable-next-line no-underscore-dangle
+        await voiceaService.webex.internal.llm._emit('event:relay.event', {
+          headers: {from: '654321'},
+          data: {relayType: 'client.manual_transcription', transcriptPayload},
+        });
+
+        assert.calledOnceWithExactly(functionSpy, {...transcriptPayload, sender: '654321', data_source: 'client.manual_transcription'});
+        assert.calledOnceWithExactly(triggerSpy, {
+          isFinal: true,
+          transcriptId: '8d226d31-044a-8d11-cc39-cedbde183154',
+          transcripts: transcriptPayload.transcripts,
+          sender: '654321',
+          source: 'client.manual_transcription'
         });
       });
     });
