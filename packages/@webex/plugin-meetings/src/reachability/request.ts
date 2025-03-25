@@ -68,7 +68,9 @@ class ReachabilityRequest {
             },
             'previous-report': previousReport,
             'client-environment': {
-              'components': { [this.webex.config.support.appType]: this.webex.config.support.appVersion}
+              components: {
+                [this.webex.config.support.appType]: this.webex.config.support.appVersion,
+              },
             },
             trigger,
           },

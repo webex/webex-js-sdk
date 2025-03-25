@@ -79,9 +79,11 @@ describe('plugin-meetings/reachability', () => {
             'report-version': 1,
             'early-call-min-clusters': true,
           },
-          "componenets": [{
-            "NetworkChecker": "43.3.0.1",
-          }],
+          'client-environment': {
+            'components': {
+              'NetworkChecker': '43.3.0.1',
+            },
+          },
           'previous-report': previousReport,
           trigger: 'startup',
         },
@@ -107,6 +109,11 @@ describe('plugin-meetings/reachability', () => {
           'supported-options': {
             'report-version': 1,
             'early-call-min-clusters': true,
+          },
+          'client-environment': {
+            'components': {
+              'NetworkChecker': '43.3.0.1',
+            },
           },
           'previous-report': previousReport,
           trigger: 'early-call/no-min-reached',
