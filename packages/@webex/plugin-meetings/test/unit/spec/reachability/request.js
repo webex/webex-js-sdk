@@ -78,6 +78,9 @@ describe('plugin-meetings/reachability', () => {
           'supported-options': {
             'report-version': 1,
             'early-call-min-clusters': true,
+            "componenets": {
+              "NetworkChecker": ["43.3.0.1"],
+            }
           },
           'previous-report': previousReport,
           trigger: 'startup',
