@@ -16,6 +16,10 @@ export type ClientLaunchMethodType = NonNullable<
   RawEvent['origin']['clientInfo']
 >['clientLaunchMethod'];
 
+export type ClientUserNameInput = NonNullable<RawClientEvent['userNameInput']>;
+
+export type ClientEmailInput = NonNullable<RawClientEvent['emailInput']>;
+
 export type BrowserLaunchMethodType = NonNullable<
   RawEvent['origin']['clientInfo']
 >['browserLaunchMethod'];
@@ -129,6 +133,8 @@ export type SubmitClientEventOptions = {
   joinFlowVersion?: MetricEventJoinFlowVersion;
   meetingJoinPhase?: MetricEventMeetingJoinPhase;
   triggeredTime?: string;
+  emailInput?: ClientEmailInput;
+  userNameInput?: ClientUserNameInput;
 };
 
 export type SubmitMQEOptions = {

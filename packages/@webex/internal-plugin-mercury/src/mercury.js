@@ -277,8 +277,8 @@ const Mercury = WebexPlugin.extend({
         // may end up suppressing metrics during outages, but we might not care
         // (especially since many of our outages happen in a way that client
         // metrics can't be trusted).
-        if (reason.code !== 1006 && this.backoffCall && this.backoffCall.getNumRetries() > 0) {
-          this._emit('connection_failed', reason, {retries: this.backoffCall.getNumRetries()});
+        if (reason.code !== 1006 && this.backoffCall && this.backoffCall?.getNumRetries() > 0) {
+          this._emit('connection_failed', reason, {retries: this.backoffCall?.getNumRetries()});
         }
         this.logger.info(
           `${this.namespace}: connection attempt failed`,

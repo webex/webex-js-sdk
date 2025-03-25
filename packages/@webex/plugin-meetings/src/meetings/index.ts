@@ -854,7 +854,7 @@ export default class Meetings extends WebexPlugin {
       this.executeRegistrationStep(
         () =>
           this.startReachability('registration').catch((error) => {
-            LoggerProxy.logger.error(`Meetings:index#register --> GDM error, ${error.message}`);
+            LoggerProxy.logger.warn(`Meetings:index#register --> startReachability failed:`, error);
           }),
         'startReachability'
       ),

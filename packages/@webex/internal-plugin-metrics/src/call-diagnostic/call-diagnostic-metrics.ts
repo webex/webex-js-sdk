@@ -166,23 +166,17 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       if (meetingInfo?.webexScheduled && !meetingInfo?.enableEvent && !meetingInfo?.pmr) {
         return WEBEX_SUB_SERVICE_TYPES.SCHEDULED_MEETING;
       }
-      // if Scheduled, Webinar, not pmr - then Webinar
-      if (
-        meetingInfo?.webexScheduled &&
-        meetingInfo?.enableEvent &&
-        !meetingInfo?.pmr &&
-        meetingInfo?.isConvergedWebinar
-      ) {
-        return WEBEX_SUB_SERVICE_TYPES.WEBINAR;
+
+      // if ConvergedArchitecture enable and isConvergedWebinarWebcast -- then webcast
+      if (meetingInfo?.enableConvergedArchitecture && meetingInfo?.enableEvent) {
+        return meetingInfo?.isConvergedWebinarWebcast
+          ? WEBEX_SUB_SERVICE_TYPES.WEBCAST
+          : WEBEX_SUB_SERVICE_TYPES.WEBINAR;
       }
-      // if Scheduled, Webinar enable webcast - then webcast
-      if (
-        meetingInfo?.webexScheduled &&
-        meetingInfo?.enableEvent &&
-        !meetingInfo?.pmr &&
-        meetingInfo?.isConvergedWebinarWebcast
-      ) {
-        return WEBEX_SUB_SERVICE_TYPES.WEBCAST;
+
+      // if Scheduled, enable event, not pmr - then Webinar
+      if (meetingInfo?.webexScheduled && meetingInfo?.enableEvent && !meetingInfo?.pmr) {
+        return WEBEX_SUB_SERVICE_TYPES.WEBINAR;
       }
     }
 
@@ -731,6 +725,8 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       isConvergedArchitectureEnabled: this.getIsConvergedArchitectureEnabled({
         meetingId,
       }),
+      ...(meeting.userNameInput && {userNameInput: meeting.userNameInput}),
+      ...(meeting.emailInput && {emailInput: meeting.emailInput}),
       webexSubServiceType: this.getSubServiceType(meeting),
       // @ts-ignore
       webClientPreload: this.webex.meetings?.config?.metrics?.webClientPreload,
@@ -796,6 +792,14 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
 
     if (options.meetingJoinPhase) {
       clientEventObject.meetingJoinPhase = options.meetingJoinPhase;
+    }
+
+    if (options.userNameInput) {
+      clientEventObject.userNameInput = options.userNameInput;
+    }
+
+    if (options.emailInput) {
+      clientEventObject.emailInput = options.emailInput;
     }
 
     return clientEventObject;
