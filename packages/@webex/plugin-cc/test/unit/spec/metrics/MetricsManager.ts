@@ -84,6 +84,7 @@ describe('MetricsManagerImplementation', () => {
       expect(webex.internal.newMetrics.submitOperationalEvent).toHaveBeenCalledTimes(0);
       expect(webex.internal.newMetrics.submitBusinessEvent).toHaveBeenCalledTimes(0);
     });
+
     it('should not submit a behavioral event if metricsDisabled is true', () => {
       const eventName = METRIC_EVENT_NAMES.STATION_LOGIN;
       const data: EventPayload = {key: 'value'};
@@ -93,6 +94,7 @@ describe('MetricsManagerImplementation', () => {
 
       expect(webex.internal.newMetrics.submitBehavioralEvent).toHaveBeenCalledTimes(0);
     });
+
     it('should not submit a operational event if metricsDisabled is true', () => {
       const eventName = METRIC_EVENT_NAMES.STATION_LOGIN;
       const data: EventPayload = {key: 'value'};
@@ -102,6 +104,7 @@ describe('MetricsManagerImplementation', () => {
 
       expect(webex.internal.newMetrics.submitOperationalEvent).toHaveBeenCalledTimes(0);
     });
+
     it('should not submit a business event if metricsDisabled is true', () => {
       const eventName = METRIC_EVENT_NAMES.STATION_LOGIN;
       const data: EventPayload = {key: 'value'};

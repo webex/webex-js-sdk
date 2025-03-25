@@ -10,12 +10,6 @@ import {BehavioralEventTaxonomy, getEventTaxonomy} from './behavioral-events';
 import LoggerProxy from '../logger-proxy';
 import {METRIC_EVENT_NAMES} from './constants';
 
-type MemoryInfo = {
-  jsHeapSizeLimit: number;
-  totalJSHeapSize: number;
-  usedJSHeapSize: number;
-};
-
 type BehavioralEvent = {
   taxonomy: BehavioralEventTaxonomy;
   payload: EventPayload;
@@ -77,7 +71,7 @@ export default class MetricsManager {
     }
     if (this.readyToSubmitEvents) {
       const eventsToSubmit = [...this.pendingBehavioralEvents];
-      this.pendingBehavioralEvents = [];
+      this.pendingBehavioralEvents.length = 0;
       eventsToSubmit.forEach((event) => {
         this.webex.internal.newMetrics.submitBehavioralEvent({
           product: event.taxonomy.product as MetricEventProduct,
@@ -96,7 +90,7 @@ export default class MetricsManager {
     }
     if (this.readyToSubmitEvents) {
       const eventsToSubmit = [...this.pendingOperationalEvents];
-      this.pendingOperationalEvents = [];
+      this.pendingOperationalEvents.length = 0;
       eventsToSubmit.forEach((event) => {
         this.webex.internal.newMetrics.submitOperationalEvent({
           name: event.name,
@@ -112,7 +106,7 @@ export default class MetricsManager {
     }
     if (this.readyToSubmitEvents) {
       const eventsToSubmit = [...this.pendingBusinessEvents];
-      this.pendingBusinessEvents = [];
+      this.pendingBusinessEvents.length = 0;
       eventsToSubmit.forEach((event) => {
         this.webex.internal.newMetrics.submitBusinessEvent({
           name: event.name,
@@ -163,12 +157,6 @@ export default class MetricsManager {
 
     const payloadWithCommonMetadata = {...payload};
     payloadWithCommonMetadata.tabHidden = document.hidden;
-    if (window.performance && 'memory' in window.performance) {
-      const memory = window.performance.memory as MemoryInfo;
-      payloadWithCommonMetadata.mem_js_heap_size_limit = memory.jsHeapSizeLimit;
-      payloadWithCommonMetadata.mem_total_js_heap_size = memory.totalJSHeapSize;
-      payloadWithCommonMetadata.mem_used_js_heap_size = memory.usedJSHeapSize;
-    }
 
     return payloadWithCommonMetadata;
   }
@@ -186,9 +174,9 @@ export default class MetricsManager {
   }
 
   private clearPendingEvents() {
-    this.pendingBehavioralEvents = [];
-    this.pendingOperationalEvents = [];
-    this.pendingBusinessEvents = [];
+    this.pendingBehavioralEvents.length = 0;
+    this.pendingOperationalEvents.length = 0;
+    this.pendingBusinessEvents.length = 0;
   }
 
   public trackBehavioralEvent(name: METRIC_EVENT_NAMES, options?: EventPayload) {
