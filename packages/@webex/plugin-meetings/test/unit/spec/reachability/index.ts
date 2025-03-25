@@ -538,6 +538,14 @@ describe('gatherReachability', () => {
     assert.equal(storedResultForJoinCookie, JSON.stringify(expectedJoinCookie));
   };
 
+  it('rejects if reachability is disabled in config', async () => {
+    webex.config.meetings.enableReachabilityChecks = false;
+
+    const reachability = new Reachability(webex);
+
+    await assert.isRejected(reachability.gatherReachability('test'), 'enableReachabilityChecks is disabled in config');
+  });
+
   [
     // ========================================================================
     {
