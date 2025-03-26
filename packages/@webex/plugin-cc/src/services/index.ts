@@ -6,7 +6,6 @@ import {WebSocketManager} from './core/websocket/WebSocketManager';
 import {ConnectionService} from './core/websocket/connection-service';
 import {WebexSDK, SubscribeRequest} from '../types';
 import aqmDialer from './task/dialer';
-import MetricsManager from '../metrics/MetricsManager';
 
 export default class Services {
   public readonly agent: ReturnType<typeof routingAgent>;
@@ -22,7 +21,7 @@ export default class Services {
     this.webSocketManager = new WebSocketManager({webex});
     const aqmReq = new AqmReqs(this.webSocketManager);
     this.config = new AgentConfigService();
-    this.agent = routingAgent(aqmReq, MetricsManager.getInstance({webex}));
+    this.agent = routingAgent(aqmReq);
     this.contact = routingContact(aqmReq);
     this.dialer = aqmDialer(aqmReq);
     this.connectionService = new ConnectionService({

@@ -25,7 +25,7 @@ describe('AQM routing agent', () => {
     } as unknown as jest.Mocked<MetricsManager>;
     fakeMetricsManager.trackEvent = jest.fn();
 
-    agent = routingAgent(fakeAqm, fakeMetricsManager);
+    agent = routingAgent(fakeAqm);
   });
 
   it('logout', async () => {

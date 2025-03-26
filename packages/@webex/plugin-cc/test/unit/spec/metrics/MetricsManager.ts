@@ -265,7 +265,6 @@ describe('MetricsManagerInstantiation', () => {
   beforeEach(() => {
     MetricsManager.resetInstance();
     webexMock = {
-      ready: true,
       once: jest.fn(),
       internal: {
         newMetrics: {
@@ -274,6 +273,7 @@ describe('MetricsManagerInstantiation', () => {
           submitBusinessEvent: jest.fn(),
         },
       },
+      ready: false,
     } as unknown as WebexSDK;
   });
 
@@ -317,14 +317,24 @@ describe('MetricsManagerInstantiation', () => {
     webexMock.ready = true;
   });
 
-  it('should throw an error if webex instance is not provided', () => {
-    const loggerErrorSpy = jest.spyOn(LoggerProxy, 'error');
+  it('should store metrics in queue when instantiated without webex and later emit metrics when webex is provided', () => {
 
-    expect(() => MetricsManager.getInstance({webex: null as unknown as WebexSDK})).toThrow(
-      'WebexSDK instance is required to create a MetricsManager instance'
+    const instance = MetricsManager.getInstance();
+    expect(instance).toBeDefined();
+    expect(instance['pendingBehavioralEvents'].length).toBe(0);
+    instance.trackEvent(METRIC_EVENT_NAMES.STATION_LOGIN, {key: 'value'}, ['behavioral']);
+    expect(instance['pendingBehavioralEvents'].length).toBe(1);
+
+    const setReadyToSubmitEventsSpy = jest.spyOn(
+      MetricsManager.prototype as any,
+      'setReadyToSubmitEvents'
     );
-    expect(loggerErrorSpy).toHaveBeenCalledWith(
-      'WebexSDK instance is required to create a MetricsManager instance'
-    );
+
+    MetricsManager.getInstance({webex: webexMock});
+    expect(webexMock.once).toHaveBeenCalledWith('ready', expect.any(Function));
+    const readyCallback = (webexMock.once as jest.Mock).mock.calls[0][1];
+    readyCallback();
+
+    expect(setReadyToSubmitEventsSpy).toHaveBeenCalled();
   });
 });

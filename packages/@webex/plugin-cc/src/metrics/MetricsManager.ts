@@ -35,16 +35,8 @@ export default class MetricsManager {
   private static instance: MetricsManager;
   private metricsDisabled = false;
 
-  private constructor({webex}: {webex: WebexSDK}) {
-    this.webex = webex;
-
-    if (this.webex.ready) {
-      this.setReadyToSubmitEvents();
-    }
-    this.webex.once('ready', () => {
-      this.setReadyToSubmitEvents();
-    });
-  }
+  // eslint-disable-next-line no-useless-constructor
+  private constructor() {}
 
   private setReadyToSubmitEvents() {
     this.readyToSubmitEvents = true;
@@ -252,14 +244,24 @@ export default class MetricsManager {
     this.runningEvents[_name] = Date.now();
   }
 
-  // Make the class a singleton
-  public static getInstance(options: {webex: WebexSDK}): MetricsManager {
-    if (!options || !options.webex) {
-      LoggerProxy.error('WebexSDK instance is required to create a MetricsManager instance');
-      throw new Error('WebexSDK instance is required to create a MetricsManager instance');
+  private setWebex(webex: WebexSDK) {
+    this.webex = webex;
+    if (this.webex.ready) {
+      this.setReadyToSubmitEvents();
     }
+    this.webex.once('ready', () => {
+      this.setReadyToSubmitEvents();
+    });
+  }
+
+  // Make the class a singleton
+  public static getInstance(options?: {webex: WebexSDK}): MetricsManager {
     if (!MetricsManager.instance) {
-      MetricsManager.instance = new MetricsManager(options);
+      MetricsManager.instance = new MetricsManager();
+    }
+
+    if (!MetricsManager.instance.webex && options && options.webex) {
+      MetricsManager.instance.setWebex(options.webex);
     }
 
     return MetricsManager.instance;

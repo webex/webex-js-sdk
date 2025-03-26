@@ -14,7 +14,9 @@ import {METRIC_EVENT_NAMES} from '../../metrics/constants';
  * @category Routing Service
  */
 
-export default function routingAgent(routing: AqmReqs, metricsManager: MetricsManager) {
+export default function routingAgent(routing: AqmReqs) {
+  const metricsManager = MetricsManager.getInstance();
+
   return {
     reload: routing.reqEmpty(() => ({
       host: WCC_API_GATEWAY,
