@@ -139,6 +139,7 @@ describe('plugin-mercury', () => {
         ));
 
       it('accepts a logLevelToken option', () => {
+        const acknowledgeSpy = sinon.spy(socket, '_acknowledge');
         const promise = socket.open('ws://example.com', {
           forceCloseDelay: mockoptions.forceCloseDelay,
           pingInterval: mockoptions.pingInterval,
@@ -147,6 +148,7 @@ describe('plugin-mercury', () => {
           token: 'mocktoken',
           trackingId: 'mocktrackingid',
           logLevelToken: 'mocklogleveltoken',
+          acknowledgementRequired: true,
         });
 
         mockWebSocket.readyState = 1;
@@ -162,8 +164,82 @@ describe('plugin-mercury', () => {
         });
 
         return promise.then(() => {
+          assert.called(acknowledgeSpy);
           assert.equal(socket.logLevelToken, 'mocklogleveltoken');
         });
+      });
+
+      it('accepts acknowledgementRequired option as false and skip acknowledge', () => {
+        const acknowledgeSpy = sinon.spy(socket, '_acknowledge');
+        const promise = socket.open('ws://example.com', {
+          forceCloseDelay: mockoptions.forceCloseDelay,
+          pingInterval: mockoptions.pingInterval,
+          pongTimeout: mockoptions.pongTimeout,
+          logger: console,
+          token: 'mocktoken',
+          trackingId: 'mocktrackingid',
+          logLevelToken: 'mocklogleveltoken',
+          acknowledgementRequired: false,
+        });
+
+        mockWebSocket.readyState = 1;
+        mockWebSocket.emit('open');
+
+        mockWebSocket.emit('message', {
+          data: JSON.stringify({
+            id: uuid.v4(),
+            data: {
+              eventType: 'mercury.buffer_state',
+            },
+          }),
+        });
+
+        return promise.then(() => {
+          assert.notCalled(acknowledgeSpy);
+          assert.equal(socket.logLevelToken, 'mocklogleveltoken');
+        });
+      });
+
+      it('accepts authorizationRequired option as false and skip authorize', () => {
+        const s = new Socket();
+        const authorizeSpy = sinon.spy(socket, '_authorize');
+        socket.open('ws://example.com', {
+          forceCloseDelay: mockoptions.forceCloseDelay,
+          pingInterval: mockoptions.pingInterval,
+          pongTimeout: mockoptions.pongTimeout,
+          logger: console,
+          token: 'mocktoken',
+          trackingId: 'mocktrackingid',
+          logLevelToken: 'mocklogleveltoken',
+          authorizationRequired: false,
+        });
+
+          mockWebSocket.readyState = 1;
+          mockWebSocket.emit('open');
+
+          assert.notCalled(authorizeSpy);
+          assert.called(socket._ping);
+        });
+
+      it('accepts authorizationRequired option as true and calles authorize', () => {
+        const s = new Socket();
+        const authorizeSpy = sinon.spy(socket, '_authorize');
+        socket.open('ws://example.com', {
+          forceCloseDelay: mockoptions.forceCloseDelay,
+          pingInterval: mockoptions.pingInterval,
+          pongTimeout: mockoptions.pongTimeout,
+          logger: console,
+          token: 'mocktoken',
+          trackingId: 'mocktrackingid',
+          logLevelToken: 'mocklogleveltoken',
+          authorizationRequired: true,
+        });
+
+          mockWebSocket.readyState = 1;
+          mockWebSocket.emit('open');
+
+          assert.called(authorizeSpy);
+          assert.called(socket._ping);
       });
     });
 
@@ -452,7 +528,7 @@ describe('plugin-mercury', () => {
         Promise.all([
           assert.isRejected(
             socket.close({code: 1001}),
-            /`options.code` must be 1000 or 1050 or between 3000 and 4999 \(inclusive\)/
+            /`options.code` must be 1000 or between 3000 and 4999 \(inclusive\)/
           ),
           socket.close({code: 1000}),
         ]));
@@ -468,10 +544,10 @@ describe('plugin-mercury', () => {
       it('accepts the logout reason', () =>
             socket
               .close({
-                code: 1050,
+                code: 3050,
                 reason: 'done (permanent)',
               })
-              .then(() => assert.calledWith(mockWebSocket.close, 1050, 'done (permanent)')));
+              .then(() => assert.calledWith(mockWebSocket.close, 3050, 'done (permanent)')));
 
       it('can safely be called called multiple times', () => {
         const p1 = socket.close();
@@ -521,7 +597,7 @@ describe('plugin-mercury', () => {
         });
       });
 
-      it('signals closure if no close frame is received within the specified window, but uses the initial options as 1050 if specified by options call', () => {
+      it('signals closure if no close frame is received within the specified window, but uses the initial options as 3050 if specified by options call', () => {
         const socket = new Socket();
         const promise = socket.open('ws://example.com', mockoptions);
 
@@ -546,21 +622,21 @@ describe('plugin-mercury', () => {
             });
           mockWebSocket.removeAllListeners('close');
 
-          const promise = socket.close({code: 1050, reason: 'done (permanent)'});
+          const promise = socket.close({code: 3050, reason: 'done (permanent)'});
 
           clock.tick(mockoptions.forceCloseDelay);
 
           return promise.then(() => {
             assert.called(spy);
             assert.calledWith(spy, {
-              code: 1050,
+              code: 3050,
               reason: 'done (permanent)',
             });
           });
         });
       });
 
-      it('signals closure if no close frame is received within the specified window, and uses default options as 1000 if the code is not 1050', () => {
+      it('signals closure if no close frame is received within the specified window, and uses default options as 1000 if the code is not 3050', () => {
         const socket = new Socket();
         const promise = socket.open('ws://example.com', mockoptions);
 
@@ -593,7 +669,46 @@ describe('plugin-mercury', () => {
             assert.called(spy);
             assert.calledWith(spy, {
               code: 1000,
-              reason: 'Done (forced)',
+              reason: 'test',
+            });
+          });
+        });
+      });
+
+      it('signals closure if no close frame is received within the specified window, and uses default options as 1000 if the code is not 3050', () => {
+        const socket = new Socket();
+        const promise = socket.open('ws://example.com', mockoptions);
+
+        mockWebSocket.readyState = 1;
+        mockWebSocket.emit('open');
+        mockWebSocket.emit('message', {
+          data: JSON.stringify({
+            id: uuid.v4(),
+            data: {
+              eventType: 'mercury.buffer_state',
+            },
+          }),
+        });
+
+        return promise.then(() => {
+          const spy = sinon.spy();
+
+          socket.on('close', spy);
+          mockWebSocket.close = () =>
+            new Promise(() => {
+              /* eslint no-inline-comments: [0] */
+            });
+          mockWebSocket.removeAllListeners('close');
+
+          const promise = socket.close({code: 1000});
+
+          clock.tick(mockoptions.forceCloseDelay);
+
+          return promise.then(() => {
+            assert.called(spy);
+            assert.calledWith(spy, {
+              code: 1000,
+              reason: 'Done (unknown)',
             });
           });
         });
@@ -705,9 +820,9 @@ describe('plugin-mercury', () => {
         );
       });
 
-      describe('when it receives close code 1050', () => {
-        it(`emits code 1050 for code 1050`, () => {
-          const code = 1050;
+      describe('when it receives close code 3050', () => {
+        it(`emits code 3050 for code 3050`, () => {
+          const code = 3050;
           const reason = 'done (permanent)';
           const spy = sinon.spy();
 

@@ -153,8 +153,23 @@ function initOauth() {
   webex.once('ready', () => {
     oauthFormElm.addEventListener('submit', (event) => {
       event.preventDefault();
+      const isIframe = window !== window.parent;
+
+      if (isIframe) {
+        webex.authorization.initiateLogin({  separateWindow: {
+          width: 800,
+          height: 600,
+          // You can also add other window features
+          menubar: 'no',
+          toolbar: 'no',
+          location: 'yes'
+        } });
+      } else {
+        webex.authorization.initiateLogin();
+      }
+
       // initiate the login sequence if not authenticated.
-      webex.authorization.initiateLogin();
+     
     });
 
     if (webex.canAuthorize) {

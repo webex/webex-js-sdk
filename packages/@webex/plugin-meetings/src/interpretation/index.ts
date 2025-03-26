@@ -35,13 +35,13 @@ const SimultaneousInterpretation = WebexPlugin.extend({
   derived: {
     shouldQuerySupportLanguages: {
       cache: false,
-      deps: ['canManageInterpreters', 'hostSIEnabled'],
+      deps: ['canManageInterpreters', 'hostSIEnabled', 'locusUrl'],
       /**
        * Returns should query support languages or not
        * @returns {boolean}
        */
       fn() {
-        return !!(this.canManageInterpreters && this.hostSIEnabled);
+        return !!(this.canManageInterpreters && this.hostSIEnabled && this.locusUrl);
       },
     },
   },
@@ -51,7 +51,7 @@ const SimultaneousInterpretation = WebexPlugin.extend({
    */
   initialize() {
     this.listenTo(this, 'change:shouldQuerySupportLanguages', () => {
-      if (this.canManageInterpreters && !this.supportLanguages) {
+      if (this.shouldQuerySupportLanguages && !this.supportLanguages) {
         this.querySupportLanguages();
       }
     });

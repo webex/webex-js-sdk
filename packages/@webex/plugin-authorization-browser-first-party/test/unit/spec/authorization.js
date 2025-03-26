@@ -428,18 +428,77 @@ describe('plugin-authorization-browser-first-party', () => {
 
     describe('#initiateAuthorizationCodeGrant()', () => {
       it('redirects to the login page with response_type=code', () => {
-        const webex = makeWebex(undefined, undefined, {
-          credentials: {
-            clientType: 'confidential',
-          },
-        });
+      const webex = makeWebex(undefined, undefined, {
+        credentials: {
+        clientType: 'confidential',
+        },
+      });
 
-        sinon.spy(webex.authorization, 'initiateAuthorizationCodeGrant');
+      sinon.spy(webex.authorization, 'initiateAuthorizationCodeGrant');
 
-        return webex.authorization.initiateLogin().then(() => {
-          assert.called(webex.authorization.initiateAuthorizationCodeGrant);
-          assert.include(webex.getWindow().location, 'response_type=code');
-        });
+      return webex.authorization.initiateLogin().then(() => {
+        assert.called(webex.authorization.initiateAuthorizationCodeGrant);
+        assert.include(webex.getWindow().location, 'response_type=code');
+      });
+      });
+
+      it('redirects to the login page in the same window by default', () => {
+      const webex = makeWebex();
+
+      return webex.authorization.initiateAuthorizationCodeGrant().then(() => {
+        assert.isDefined(webex.getWindow().location);
+        assert.isUndefined(webex.getWindow().open);
+      });
+      });
+
+      it('opens login page in a new window when separateWindow is true', () => {
+      const webex = makeWebex();
+      webex.getWindow().open = sinon.spy();
+
+      return webex.authorization.initiateAuthorizationCodeGrant({ separateWindow: true }).then(() => {
+        assert.called(webex.getWindow().open);
+        const openCall = webex.getWindow().open.getCall(0);
+        assert.equal(openCall.args[1], '_blank');
+        assert.equal(openCall.args[2], 'width=600,height=800');
+      });
+      });
+
+      it('opens login page in a new window with custom dimensions', () => {
+      const webex = makeWebex();
+      webex.getWindow().open = sinon.spy();
+
+      const customWindow = {
+        width: 800,
+        height: 600,
+        menubar: 'no',
+        toolbar: 'no'
+      };
+
+      return webex.authorization.initiateAuthorizationCodeGrant({ 
+        separateWindow: customWindow 
+      }).then(() => {
+        assert.called(webex.getWindow().open);
+        const openCall = webex.getWindow().open.getCall(0);
+        assert.equal(openCall.args[1], '_blank');
+        assert.equal(
+        openCall.args[2], 
+        'width=800,height=600,menubar=no,toolbar=no'
+        );
+      });
+      });
+
+      it('preserves other options when using separateWindow', () => {
+      const webex = makeWebex();
+      webex.getWindow().open = sinon.spy();
+
+      return webex.authorization.initiateAuthorizationCodeGrant({ 
+        separateWindow: true,
+        state: {}
+      }).then(() => {
+        assert.called(webex.getWindow().open);
+        const url = webex.getWindow().open.getCall(0).args[0];
+        assert.include(url, "https://idbrokerbts.webex.com/idb/oauth2/v1/authorize?response_type=code&separateWindow=true&client_id=fake&redirect_uri=http%3A%2F%2Fexample.com&scope=scope%3Aone");
+      });
       });
     });
 

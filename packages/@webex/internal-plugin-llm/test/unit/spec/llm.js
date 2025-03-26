@@ -111,5 +111,43 @@ describe('plugin-llm', () => {
         assert.equal(llmService.getBinding(), undefined);
       });
     });
+
+    describe('disconnectLLM', () => {
+      let instance;
+
+      beforeEach(() => {
+        instance = {
+          disconnect: jest.fn(() => Promise.resolve()),
+          locusUrl: 'someUrl',
+          datachannelUrl: 'someUrl',
+          binding: {},
+          webSocketUrl: 'someUrl',
+          disconnectLLM: function (options) {
+            return this.disconnect(options).then(() => {
+              this.locusUrl = undefined;
+              this.datachannelUrl = undefined;
+              this.binding = undefined;
+              this.webSocketUrl = undefined;
+            });
+          }
+        };
+      });
+
+      it('should call disconnect and clear relevant properties', async () => {
+        await instance.disconnectLLM({});
+
+        expect(instance.disconnect).toHaveBeenCalledWith({});
+        expect(instance.locusUrl).toBeUndefined();
+        expect(instance.datachannelUrl).toBeUndefined();
+        expect(instance.binding).toBeUndefined();
+        expect(instance.webSocketUrl).toBeUndefined();
+      });
+
+      it('should handle errors from disconnect gracefully', async () => {
+        instance.disconnect.mockRejectedValue(new Error('Disconnect failed'));
+
+        await expect(instance.disconnectLLM({})).rejects.toThrow('Disconnect failed');
+      });
+    });
   });
 });

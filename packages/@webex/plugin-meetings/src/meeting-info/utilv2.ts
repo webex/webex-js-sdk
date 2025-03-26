@@ -228,8 +228,16 @@ export default class MeetingInfoUtil {
    * @returns {Object} returns an object with {resource, method}
    */
   static getRequestBody(options: {type: DESTINATION_TYPE; destination: object} | any) {
-    const {type, destination, password, captchaInfo, installedOrgID, locusId, extraParams} =
-      options;
+    const {
+      type,
+      destination,
+      password,
+      captchaInfo,
+      installedOrgID,
+      locusId,
+      extraParams,
+      registrationId,
+    } = options;
     const body: any = {
       ...DEFAULT_MEETING_INFO_REQUEST_BODY,
       ...extraParams,
@@ -269,6 +277,10 @@ export default class MeetingInfoUtil {
 
     if (password) {
       body.password = password;
+    }
+
+    if (registrationId) {
+      body.registrationId = registrationId;
     }
 
     if (captchaInfo) {

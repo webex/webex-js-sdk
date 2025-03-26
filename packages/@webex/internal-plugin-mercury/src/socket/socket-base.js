@@ -122,18 +122,14 @@ export default class Socket extends EventEmitter {
       }
 
       options = options || {};
-      if (
-        options.code &&
-        options.code !== 1000 &&
-        options.code !== 1050 &&
-        (options.code < 3000 || options.code > 4999)
-      ) {
-        reject(
-          new Error('`options.code` must be 1000 or 1050 or between 3000 and 4999 (inclusive)')
-        );
+      if (options.code && options.code !== 1000 && (options.code < 3000 || options.code > 4999)) {
+        reject(new Error('`options.code` must be 1000 or between 3000 and 4999 (inclusive)'));
 
         return;
       }
+
+      const originalCode = options.code;
+      const originalReason = options.reason;
 
       options = defaults(options, {
         code: 1000,
@@ -145,8 +141,8 @@ export default class Socket extends EventEmitter {
           this.logger.info(`socket,${this._domain}: no close event received, forcing closure`);
           resolve(
             this.onclose(
-              options.code === 1050
-                ? {code: 1050, reason: options.reason}
+              originalCode
+                ? {code: originalCode, reason: originalReason || 'Done (unknown)'}
                 : {
                     code: 1000,
                     reason: 'Done (forced)',
@@ -179,6 +175,8 @@ export default class Socket extends EventEmitter {
    * @param {string} options.token (required)
    * @param {string} options.trackingId (required)
    * @param {Logger} options.logger (required)
+   * @param {boolean} options.authorizationRequired
+   * @param {boolean} options.acknowledgementRequired
    * @param {string} options.logLevelToken
    * @returns {Promise}
    */
@@ -210,7 +208,18 @@ export default class Socket extends EventEmitter {
         options
       );
 
-      Object.keys(options).forEach((key) => {
+      // Destructure and set default values for authorizationRequired and acknowledgementRequired
+      const {
+        authorizationRequired = true,
+        acknowledgementRequired = true,
+        ...remainingOptions
+      } = options;
+
+      this.authorizationRequired = authorizationRequired;
+      this.acknowledgementRequired = acknowledgementRequired;
+
+      // Assign the remaining options to the instance
+      Object.keys(remainingOptions).forEach((key) => {
         Reflect.defineProperty(this, key, {
           enumerable: false,
           value: options[key],
@@ -250,13 +259,18 @@ export default class Socket extends EventEmitter {
 
       socket.onopen = () => {
         this.logger.info(`socket,${this._domain}: connected`);
-        this._authorize()
-          .then(() => {
-            this.logger.info(`socket,${this._domain}: authorized`);
-            socket.onclose = this.onclose;
-            resolve();
-          })
-          .catch(reject);
+        // Added the "authorizationRequired" condition to bypass the "_authorize" in case of the contact center context, in which case it is configured as false.
+        if (this.authorizationRequired) {
+          this._authorize()
+            .then(() => {
+              this.logger.info(`socket,${this._domain}: authorized`);
+              socket.onclose = this.onclose;
+              resolve();
+            })
+            .catch(reject);
+        } else {
+          this._ping();
+        }
       };
 
       socket.onerror = (event) => {
@@ -310,9 +324,13 @@ export default class Socket extends EventEmitter {
       // modified and we don't actually care about anything but the data property
       const processedEvent = {data};
 
-      this._acknowledge(processedEvent);
-      if (data.type === 'pong') {
-        this.emit('pong', processedEvent);
+      // Added the "acknowledgementRequired" condition to bypass the "_acknowledge" in case of the contact center context, in which case it is configured as false.
+      if (this.acknowledgementRequired) {
+        this._acknowledge(processedEvent);
+      }
+      if (data.type === 'pong' || data.type === 'ping') {
+        // added above ping condition to handle pong messages of contact center where type is 'ping' instead of 'pong'
+        this.emit('pong', {...processedEvent, type: 'pong'});
       } else {
         this.emit('message', processedEvent);
       }

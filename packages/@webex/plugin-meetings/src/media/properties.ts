@@ -287,24 +287,45 @@ export default class MediaProperties {
     selectedCandidatePairChanges: number;
     numTransports: number;
   }> {
-    const allStatsReports = [];
-
     try {
-      const statsResult = await this.webrtcMediaConnection.getStats();
-      statsResult.forEach((report) => allStatsReports.push(report));
+      const allStatsReports = [];
+
+      await new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          reject(new Error('timed out'));
+        }, 1000);
+
+        this.webrtcMediaConnection
+          .getStats()
+          .then((statsResult) => {
+            clearTimeout(timeout);
+            statsResult.forEach((report) => allStatsReports.push(report));
+            resolve(allStatsReports);
+          })
+          .catch((error) => {
+            clearTimeout(timeout);
+            reject(error);
+          });
+      });
+
+      const connectionType = this.getConnectionType(allStatsReports);
+      const {selectedCandidatePairChanges, numTransports} = this.getTransportInfo(allStatsReports);
+
+      return {
+        connectionType,
+        selectedCandidatePairChanges,
+        numTransports,
+      };
     } catch (error) {
       LoggerProxy.logger.warn(
         `Media:properties#getCurrentConnectionInfo --> getStats() failed: ${error}`
       );
+
+      return {
+        connectionType: 'unknown',
+        selectedCandidatePairChanges: -1,
+        numTransports: 0,
+      };
     }
-
-    const connectionType = this.getConnectionType(allStatsReports);
-    const {selectedCandidatePairChanges, numTransports} = this.getTransportInfo(allStatsReports);
-
-    return {
-      connectionType,
-      selectedCandidatePairChanges,
-      numTransports,
-    };
   }
 }

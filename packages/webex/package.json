@@ -19,6 +19,7 @@
     ".": "./dist/index.js",
     "./encryption": "./dist/encryption.js",
     "./meetings": "./dist/meetings.js",
+    "./contact-center": "./dist/contact-center.js",
     "./package": "./package.json"
   },
   "devMain": "src/index.js",
@@ -78,6 +79,7 @@
     "@webex/internal-plugin-voicea": "workspace:*",
     "@webex/plugin-attachment-actions": "workspace:*",
     "@webex/plugin-authorization": "workspace:*",
+    "@webex/plugin-cc": "workspace:*",
     "@webex/plugin-device-manager": "workspace:*",
     "@webex/plugin-encryption": "workspace:*",
     "@webex/plugin-logger": "workspace:*",

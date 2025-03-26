@@ -14,6 +14,7 @@ const State = require('ampersand-state');
 
 const nonInternalPlugins = [
   'authorization',
+  'cc',
   'credentials',
   'cypher',
   'memberships',
@@ -210,6 +211,7 @@ function makeWebex(options) {
             mqaMetricsInterval: 60000,
             autoSendMQA: true,
           },
+          enableReachabilityChecks: true,
         },
       },
       initialize: function initialize(attrs) {

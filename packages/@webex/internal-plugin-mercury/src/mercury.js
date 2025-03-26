@@ -113,7 +113,7 @@ const Mercury = WebexPlugin.extend({
     return this.disconnect(
       this.config.beforeLogoutOptionsCloseReason &&
         !normalReconnectReasons.includes(this.config.beforeLogoutOptionsCloseReason)
-        ? {code: 1050, reason: this.config.beforeLogoutOptionsCloseReason}
+        ? {code: 3050, reason: this.config.beforeLogoutOptionsCloseReason}
         : undefined
     );
   },
@@ -236,6 +236,8 @@ const Mercury = WebexPlugin.extend({
           token: token.toString(),
           trackingId: `${this.webex.sessionId}_${Date.now()}`,
           logger: this.logger,
+          authorizationRequired: this.config.authorizationRequired ?? true,
+          acknowledgementRequired: this.config.acknowledgementRequired ?? true,
         };
 
         // if the consumer has supplied request options use them
@@ -275,8 +277,8 @@ const Mercury = WebexPlugin.extend({
         // may end up suppressing metrics during outages, but we might not care
         // (especially since many of our outages happen in a way that client
         // metrics can't be trusted).
-        if (reason.code !== 1006 && this.backoffCall && this.backoffCall.getNumRetries() > 0) {
-          this._emit('connection_failed', reason, {retries: this.backoffCall.getNumRetries()});
+        if (reason.code !== 1006 && this.backoffCall && this.backoffCall?.getNumRetries() > 0) {
+          this._emit('connection_failed', reason, {retries: this.backoffCall?.getNumRetries()});
         }
         this.logger.info(
           `${this.namespace}: connection attempt failed`,
@@ -424,8 +426,11 @@ const Mercury = WebexPlugin.extend({
   },
 
   _getEventHandlers(eventType) {
-    const [namespace, name] = eventType.split('.');
     const handlers = [];
+    if (!eventType) {
+      return handlers;
+    }
+    const [namespace, name] = eventType.split('.');
 
     if (!this.webex[namespace] && !this.webex.internal[namespace]) {
       return handlers;
@@ -480,7 +485,7 @@ const Mercury = WebexPlugin.extend({
           // if (code == 1011 && reason !== ping error) metric: unexpected disconnect
           break;
         case 1000:
-        case 1050: // 1050 indicates logout form of closure, default to old behavior, use config reason defined by consumer to proceed with the permanent block
+        case 3050: // 3050 indicates logout form of closure, default to old behavior, use config reason defined by consumer to proceed with the permanent block
           if (normalReconnectReasons.includes(reason)) {
             this.logger.info(`${this.namespace}: socket disconnected; reconnecting`);
             this._emit('offline.transient', event);
@@ -537,13 +542,15 @@ const Mercury = WebexPlugin.extend({
       )
       .then(() => {
         this._emit('event', event.data);
-        const [namespace] = data.eventType.split('.');
+        if (data.eventType) {
+          const [namespace] = data.eventType.split('.');
 
-        if (namespace === data.eventType) {
-          this._emit(`event:${namespace}`, envelope);
-        } else {
-          this._emit(`event:${namespace}`, envelope);
-          this._emit(`event:${data.eventType}`, envelope);
+          if (namespace === data.eventType) {
+            this._emit(`event:${namespace}`, envelope);
+          } else {
+            this._emit(`event:${namespace}`, envelope);
+            this._emit(`event:${data.eventType}`, envelope);
+          }
         }
       })
       .catch((reason) => {
