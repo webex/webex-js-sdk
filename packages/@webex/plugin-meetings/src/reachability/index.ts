@@ -143,6 +143,10 @@ export default class Reachability extends EventsScope {
    * @memberof Reachability
    */
   public async gatherReachability(trigger: string): Promise<ReachabilityResults> {
+    // @ts-ignore
+    if (!this.webex.config.meetings.enableReachabilityChecks) {
+      throw new Error('enableReachabilityChecks is disabled in config');
+    }
     // Fetch clusters and measure latency
     try {
       this.lastTrigger = trigger;

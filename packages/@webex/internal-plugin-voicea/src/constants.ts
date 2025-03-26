@@ -22,6 +22,7 @@ export const AIBRIDGE_RELAY_TYPES = {
   },
   MANUAL: {
     TRANSCRIPTION: 'aibridge.manual_transcription',
+    CAPIONER: 'client.manual_transcription',
   },
 };
 
@@ -34,6 +35,7 @@ export const TRANSCRIPTION_TYPE = {
   TRANSCRIPT_INTERIM_RESULTS: 'transcript_interim_results',
   TRANSCRIPT_FINAL_RESULT: 'transcript_final_result',
   MANUAL_CAPTION_INTERIM_RESULTS: 'manual_caption_interim_results',
+  MANUAL_CAPTION_INTERIM_RESULT: 'manual_caption_interim_result',
   MANUAL_CAPTION_FINAL_RESULT: 'manual_caption_final_result',
 };
 
