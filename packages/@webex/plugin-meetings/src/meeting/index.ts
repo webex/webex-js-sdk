@@ -8726,6 +8726,9 @@ export default class Meeting extends StatelessWebexPlugin {
     LoggerProxy.logger.log(
       `Meeting:index#handleShareVideoStreamMuteStateChange --> Share video stream mute state changed to muted ${muted}`
     );
+
+    const shareVideoStreamSettings = this.mediaProperties?.shareVideoStream?.getSettings();
+
     Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.MEETING_SHARE_VIDEO_MUTE_STATE_CHANGE, {
       correlationId: this.correlationId,
       muted,
@@ -8734,8 +8737,9 @@ export default class Meeting extends StatelessWebexPlugin {
       // SDK to TypeScript 5, which may affect other packages, use bracket notation for now, since
       // all we're doing here is adding metrics.
       // eslint-disable-next-line dot-notation
-      displaySurface: this.mediaProperties?.shareVideoStream?.getSettings()['displaySurface'],
+      displaySurface: shareVideoStreamSettings?.['displaySurface'],
       isMultistream: this.isMultistream,
+      frameRate: shareVideoStreamSettings?.frameRate,
     });
   };
 
