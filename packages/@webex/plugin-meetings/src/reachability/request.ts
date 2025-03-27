@@ -34,12 +34,14 @@ class ReachabilityRequest {
    * @param {string} trigger that's passed to Orpheus
    * @param {IP_VERSION} ipVersion information about current ip network we're on
    * @param {Object} previousReport last reachability result
+   * @param {Object} clientEnvironment information about the client environment
    * @returns {Promise}
    */
   getClusters = (
     trigger: GetClustersTrigger,
     ipVersion?: IP_VERSION,
-    previousReport?: any
+    previousReport?: any,
+    clientEnvironment?: any
   ): Promise<{
     clusters: ClusterList;
     joinCookie: any;
@@ -67,11 +69,7 @@ class ReachabilityRequest {
               'early-call-min-clusters': true,
             },
             'previous-report': previousReport,
-            'client-environment': {
-              components: {
-                [this.webex.config.support.appType]: this.webex.config.support.appVersion,
-              },
-            },
+            'client-environment': clientEnvironment,
             trigger,
           },
           timeout: this.webex.config.meetings.reachabilityGetClusterTimeout,

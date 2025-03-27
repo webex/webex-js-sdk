@@ -36,6 +36,7 @@ describe('plugin-meetings/reachability', () => {
 
   describe('#getClusters', () => {
     let previousReport;
+    let clientEnvironment;
 
     beforeEach(() => {
       sinon.spy(webex.internal.newMetrics.callDiagnosticLatencies, 'measureLatency');
@@ -57,6 +58,12 @@ describe('plugin-meetings/reachability', () => {
       previousReport = {
         id: 'fake previous report',
       }
+
+      clientEnvironment = {
+        'components': [{
+              'NetworkChecker': '43.3.0.1',
+            }],
+      };
     });
 
     afterEach(() => {
@@ -64,7 +71,7 @@ describe('plugin-meetings/reachability', () => {
     });
 
     it('sends a POST request with the correct params when trigger is "startup"', async () => {
-      const res = await reachabilityRequest.getClusters('startup', IP_VERSION.only_ipv4, previousReport);
+      const res = await reachabilityRequest.getClusters('startup', IP_VERSION.only_ipv4, previousReport, clientEnvironment);
       const requestParams = webex.request.getCall(0).args[0];
 
       assert.deepEqual(requestParams, {
@@ -79,11 +86,7 @@ describe('plugin-meetings/reachability', () => {
             'report-version': 1,
             'early-call-min-clusters': true,
           },
-          'client-environment': {
-            'components': {
-              'NetworkChecker': '43.3.0.1',
-            },
-          },
+          'client-environment': clientEnvironment,
           'previous-report': previousReport,
           trigger: 'startup',
         },
@@ -95,7 +98,7 @@ describe('plugin-meetings/reachability', () => {
     });
 
     it('sends a POST request with the correct params when trigger is other than "startup"', async () => {
-      const res = await reachabilityRequest.getClusters('early-call/no-min-reached', IP_VERSION.only_ipv4, previousReport);
+      const res = await reachabilityRequest.getClusters('early-call/no-min-reached', IP_VERSION.only_ipv4, previousReport, clientEnvironment);
       const requestParams = webex.request.getCall(0).args[0];
 
       assert.deepEqual(requestParams, {
@@ -110,11 +113,7 @@ describe('plugin-meetings/reachability', () => {
             'report-version': 1,
             'early-call-min-clusters': true,
           },
-          'client-environment': {
-            'components': {
-              'NetworkChecker': '43.3.0.1',
-            },
-          },
+          'client-environment': clientEnvironment,
           'previous-report': previousReport,
           trigger: 'early-call/no-min-reached',
         },
