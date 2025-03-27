@@ -114,6 +114,21 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    */
   public async register(): Promise<Profile> {
     try {
+      this.$webex.internal.mercury
+        .connect()
+        .then(() => {
+          LoggerProxy.info('Authentication: webex.internal.mercury.connect successful', {
+            module: CC_FILE,
+            method: this.register.name,
+          });
+        })
+        .catch((error) => {
+          LoggerProxy.warn(`Error occurred during mercury.connect() ${error}`, {
+            module: CC_FILE,
+            method: this.register.name,
+          });
+        });
+
       this.setupEventListeners();
 
       return await this.connectWebsocket();
