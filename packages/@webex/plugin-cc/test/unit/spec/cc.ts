@@ -24,6 +24,7 @@ import {Profile} from '../../../src/services/config/types';
 import TaskManager from '../../../src/services/task/TaskManager';
 import { AgentContact, TASK_EVENTS } from '../../../src/services/task/types';
 import MetricsManager from '../../../src/metrics/MetricsManager';
+import Mercury from '@webex/internal-plugin-mercury';
 
 jest.mock('../../../src/logger-proxy', () => ({
   __esModule: true,
@@ -54,6 +55,7 @@ describe('webex.cc', () => {
     webex = MockWebex({
       children: {
         cc: ContactCenter,
+        mercury: Mercury,
       },
       logger: {
         log: jest.fn(),
@@ -233,6 +235,7 @@ describe('webex.cc', () => {
         webRtcEnabled: false,
         lostConnectionRecoveryTimeout: 0,
       };
+      const mercuryConnect = jest.spyOn(webex.internal.mercury, 'connect').mockResolvedValue(true);
       const connectWebsocketSpy = jest.spyOn(webex.cc, 'connectWebsocket');
       const setupEventListenersSpy = jest.spyOn(webex.cc, 'setupEventListeners');
       const reloadSpy = jest.spyOn(webex.cc.services.agent, 'reload').mockResolvedValue({
@@ -252,6 +255,7 @@ describe('webex.cc', () => {
 
       const result = await webex.cc.register();
 
+      expect(mercuryConnect).toHaveBeenCalled();
       expect(connectWebsocketSpy).toHaveBeenCalled();
       expect(setupEventListenersSpy).toHaveBeenCalled();
       expect(mockWebSocketManager.initWebSocket).toHaveBeenCalledWith({
@@ -335,6 +339,7 @@ describe('webex.cc', () => {
         webRtcEnabled: false,
         lostConnectionRecoveryTimeout: 0,
       };
+      jest.spyOn(webex.internal.mercury, 'connect').mockResolvedValue(true);
       const connectWebsocketSpy = jest.spyOn(webex.cc, 'connectWebsocket');
       const reloadSpy = jest.spyOn(webex.cc.services.agent, 'reload').mockResolvedValue({
         data: {
@@ -372,6 +377,7 @@ describe('webex.cc', () => {
     });
 
     it('should log error and reject if registration fails', async () => {
+      jest.spyOn(webex.internal.mercury, 'connect').mockResolvedValue(true);
       const mockError = new Error('Error while performing register');
       mockWebSocketManager.initWebSocket.mockRejectedValue(mockError);
 
