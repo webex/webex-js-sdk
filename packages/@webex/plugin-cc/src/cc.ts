@@ -37,6 +37,8 @@ import {ConnectionLostDetails} from './services/core/websocket/types';
 import TaskManager from './services/task/TaskManager';
 import WebCallingService from './services/WebCallingService';
 import {ITask, TASK_EVENTS, TaskResponse, DialerPayload} from './services/task/types';
+import MetricsManager from './metrics/MetricsManager';
+import {METRIC_EVENT_NAMES} from './metrics/constants';
 
 export default class ContactCenter extends WebexPlugin implements IContactCenter {
   namespace = 'cc';
@@ -48,6 +50,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   private services: Services;
   private httpRequest: HttpRequest;
   private taskManager: TaskManager;
+  private metricsManager: MetricsManager;
   public LoggerProxy = LoggerProxy;
 
   constructor(...args) {
@@ -76,6 +79,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       this.services.webSocketManager.on('message', this.handleWebSocketMessage);
 
       this.webCallingService = new WebCallingService(this.$webex);
+      this.metricsManager = MetricsManager.getInstance({webex: this.$webex});
       this.taskManager = TaskManager.getTaskManager(
         this.services.contact,
         this.webCallingService,
@@ -189,6 +193,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    */
   public async stationLogin(data: AgentLogin): Promise<StationLoginResponse> {
     try {
+      this.metricsManager.timeEvent(METRIC_EVENT_NAMES.STATION_LOGIN);
       const loginResponse = this.services.agent.stationLogin({
         data: {
           dialNumber:
@@ -212,13 +217,31 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
       this.webCallingService.setLoginOption(data.loginOption);
 
-      await loginResponse;
+      const resp = await loginResponse;
+
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.STATION_LOGIN,
+        {
+          isSuccess: true,
+          loginType: data.loginOption,
+          agentId: resp.data.agentId,
+          teamId: resp.data.teamId,
+          siteId: resp.data.siteId,
+          roles: resp.data.roles.join(','),
+          trackingId: resp.data.trackingId,
+          notifTrackingId: resp.trackingId,
+          orgId: resp.orgId,
+          dataEventType: resp.data.eventType,
+          eventType: resp.type,
+        },
+        ['behavioral', 'business', 'operational']
+      );
 
       // TODO: https://jira-eng-gpk2.cisco.com/jira/browse/SPARK-626777 Implement the de-register method and close the listener there
       // this.services.webSocketManager.on('message', this.handleWebSocketMessage);
       // this.incomingTaskListener();
 
-      return loginResponse;
+      return resp;
     } catch (error) {
       const {error: detailedError} = getErrorDetails(error, 'stationLogin', CC_FILE);
       throw detailedError;

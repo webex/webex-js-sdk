@@ -1,3 +1,4 @@
+import MetricsManager from '../../../../../src/metrics/MetricsManager';
 import routingAgent from '../../../../../src/services/agent';
 import AqmReqs from '../../../../../src/services/core/aqm-reqs';
 
@@ -10,6 +11,7 @@ jest.mock('../../../../../src/services/core/aqm-reqs');
 
 describe('AQM routing agent', () => {
   let fakeAqm: jest.Mocked<AqmReqs>;
+  let fakeMetricsManager: jest.Mocked<MetricsManager>;
   let agent: ReturnType<typeof routingAgent>;
 
   beforeEach(() => {
@@ -18,6 +20,10 @@ describe('AQM routing agent', () => {
     fakeAqm = new AqmReqs() as jest.Mocked<AqmReqs>;
     fakeAqm.reqEmpty = jest.fn().mockImplementation((fn) => fn);
     fakeAqm.req = jest.fn().mockImplementation((fn) => fn);
+    fakeMetricsManager = {
+      trackEvent: jest.fn()
+    } as unknown as jest.Mocked<MetricsManager>;
+    fakeMetricsManager.trackEvent = jest.fn();
 
     agent = routingAgent(fakeAqm);
   });
