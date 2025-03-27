@@ -108,12 +108,18 @@ export default class TaskManager extends EventEmitter {
             this.currentTask = this.currentTask.updateTaskData(payload.data);
             this.currentTask.emit(TASK_EVENTS.TASK_ASSIGNED, this.currentTask);
             break;
+          case CC_EVENTS.AGENT_CONTACT_UNASSIGNED:
+            this.currentTask.emit(TASK_EVENTS.TASK_END, {wrapupRequired: true});
+            this.handleTaskCleanup();
+            break;
           case CC_EVENTS.AGENT_CONTACT_OFFER_RONA:
             this.currentTask.emit(TASK_EVENTS.TASK_REJECT, payload.data.reason);
             this.handleTaskCleanup();
             break;
           case CC_EVENTS.CONTACT_ENDED:
-            this.currentTask.emit(TASK_EVENTS.TASK_END);
+            this.currentTask.emit(TASK_EVENTS.TASK_END, {
+              wrapupRequired: payload.data.interaction.state !== 'new',
+            });
             this.handleTaskCleanup();
             break;
           case CC_EVENTS.AGENT_CONTACT_HELD:
@@ -149,6 +155,9 @@ export default class TaskManager extends EventEmitter {
             if (this.currentTask.data.isConsulted) {
               // Fire only if you are the agent who received the consult request
               this.currentTask.emit(TASK_EVENTS.TASK_CONSULT_ACCEPTED, this.currentTask);
+            } else {
+              // Fire only if you are the agent who initiated the consult
+              this.currentTask.emit(TASK_EVENTS.TASK_CONSULTING, this.currentTask);
             }
             break;
           case CC_EVENTS.AGENT_CONSULT_FAILED:

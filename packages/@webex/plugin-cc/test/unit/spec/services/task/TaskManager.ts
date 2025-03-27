@@ -333,7 +333,8 @@ describe('TaskManager', () => {
     taskManager.currentTask.data = payload.data;
     webSocketManagerMock.emit('message', JSON.stringify(payload));
 
-    expect(taskEmitSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_END);
+    expect(taskEmitSpy.mock.calls[1][0]).toBe(TASK_EVENTS.TASK_END);
+    expect(taskEmitSpy.mock.calls[1][1]).toEqual({ wrapupRequired: false });
     expect(webCallListenerSpy).toHaveBeenCalledWith();
     expect(callOffSpy).toHaveBeenCalledWith(
       CALL_EVENT_KEYS.REMOTE_MEDIA,
@@ -739,5 +740,42 @@ describe('TaskManager', () => {
     expect(taskEmitSpy).not.toHaveBeenCalled();
     expect(taskUpdateTaskDataSpy).not.toHaveBeenCalled();
   });
+
+  it('should emit TASK_CONSULTING event on AGENT_CONSULTING when isConsulted is false', () => {
+    webSocketManagerMock.emit('message', JSON.stringify(initalPayload));
+    taskManager.currentTask.data.isConsulted = false;
+    const taskEmitSpy = jest.spyOn(taskManager.currentTask, 'emit');
+    const consultingPayload = {
+      data: {
+        ...initalPayload.data,
+        type: CC_EVENTS.AGENT_CONSULTING,
+      },
+    };
+    webSocketManagerMock.emit('message', JSON.stringify(consultingPayload));
+    expect(taskEmitSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_CONSULTING, taskManager.currentTask);
+  });
+
+  it('should emit TASK_END event on AGENT_CONTACT_UNASSIGNED', () => {
+    webSocketManagerMock.emit('message', JSON.stringify(initalPayload));
+    const taskEmitSpy = jest.spyOn(taskManager.currentTask, 'emit');
+    const unassignedPayload = {
+      data: {
+        type: CC_EVENTS.AGENT_CONTACT_UNASSIGNED,
+        agentId: initalPayload.data.agentId,
+        eventTime: initalPayload.data.eventTime,
+        eventType: initalPayload.data.eventType,
+        interaction: {},
+        interactionId: initalPayload.data.interactionId,
+        orgId: initalPayload.data.orgId,
+        trackingId: initalPayload.data.trackingId,
+        mediaResourceId: initalPayload.data.mediaResourceId,
+        destAgentId: initalPayload.data.destAgentId,
+        owner: initalPayload.data.owner,
+        queueMgr: initalPayload.data.queueMgr,
+      },
+    };
+    webSocketManagerMock.emit('message', JSON.stringify(unassignedPayload));
+    expect(taskEmitSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_END, { wrapupRequired: true });
+  });
 });
-  
+
