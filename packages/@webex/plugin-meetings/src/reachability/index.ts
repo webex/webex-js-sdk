@@ -66,6 +66,7 @@ export default class Reachability extends EventsScope {
   resultsCount = {videoMesh: {udp: 0}, public: {udp: 0, tcp: 0, xtls: 0}};
   startTime = undefined;
   totalDuration = undefined;
+  natType = NatType.Unknown;
 
   protected lastTrigger?: string;
 
@@ -311,7 +312,7 @@ export default class Reachability extends EventsScope {
       reachability_vmn_tcp_failed: 0,
       reachability_vmn_xtls_success: 0,
       reachability_vmn_xtls_failed: 0,
-      natType: NatType.Unknown,
+      natType: this.natType,
     };
 
     const updateStats = (clusterType: 'public' | 'vmn', result: ClusterReachabilityResult) => {
@@ -326,9 +327,6 @@ export default class Reachability extends EventsScope {
       if (result.xtls && result.xtls.result !== 'untested') {
         const outcome = result.xtls.result === 'reachable' ? 'success' : 'failed';
         stats[`reachability_${clusterType}_xtls_${outcome}`] += 1;
-      }
-      if (result.natType && result.natType !== NatType.Unknown) {
-        stats.natType = result.natType;
       }
     };
 
@@ -874,7 +872,6 @@ export default class Reachability extends EventsScope {
         udp: {result: cluster.udp.length > 0 ? 'unreachable' : 'untested'},
         tcp: {result: cluster.tcp.length > 0 ? 'unreachable' : 'untested'},
         xtls: {result: cluster.xtls.length > 0 ? 'unreachable' : 'untested'},
-        natType: NatType.Unknown,
         isVideoMesh: cluster.isVideoMesh,
       };
 
@@ -977,9 +974,7 @@ export default class Reachability extends EventsScope {
       this.clusterReachability[key].on(
         Events.natTypeUpdated,
         async (data: NatTypeUpdatedEventData) => {
-          results[key].natType = data.natType;
-
-          await this.storeResults(results);
+          this.natType = data.natType;
         }
       );
 

@@ -17,7 +17,6 @@ export type ClusterReachabilityResult = {
   udp: TransportResult;
   tcp: TransportResult;
   xtls: TransportResult;
-  natType: NatType;
 };
 
 export type ReachabilityMetrics = {
