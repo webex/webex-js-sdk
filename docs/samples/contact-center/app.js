@@ -1046,7 +1046,8 @@ function togglePauseResumeRecording() {
     });
   } else {
     pauseResumeRecordingElm.disabled = true;
-    task.resumeRecording({ autoResumed: autoResumed }).then(() => {
+    const resumeParams = autoResumed ? { autoResumed: autoResumed } : undefined;
+    task.resumeRecording(resumeParams).then(() => {
       console.info('Recording resumed successfully');
       pauseResumeRecordingElm.innerText = 'Pause Recording';
       pauseResumeRecordingElm.disabled = false;
