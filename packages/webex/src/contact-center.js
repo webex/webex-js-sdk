@@ -5,6 +5,7 @@ import config from './config';
 
 require('@webex/plugin-authorization');
 require('@webex/plugin-cc');
+require('@webex/internal-plugin-mercury');
 
 const Webex = WebexCore.extend({
   webex: true,
