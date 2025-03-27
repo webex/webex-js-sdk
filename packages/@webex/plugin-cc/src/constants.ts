@@ -2,6 +2,7 @@ export const EVENT = 'event';
 export const READY = 'ready';
 export const TIMEOUT_DURATION = 20000; // 20 seconds timeout duration for webrtc registration
 export const EMPTY_STRING = '';
+export const PRODUCT_NAME = 'wxcc_sdk';
 // FILE NAMES
 export const LOG_PREFIX = 'PLUGIN_CC';
 export const WEB_CALLING_SERVICE_FILE = 'WebCallingService';
