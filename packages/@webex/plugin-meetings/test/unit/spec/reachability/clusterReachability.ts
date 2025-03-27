@@ -131,7 +131,6 @@ describe('ClusterReachability', () => {
       udp: {result: 'untested'},
       tcp: {result: 'untested'},
       xtls: {result: 'untested'},
-      natType: 'unknown',
     });
 
     // verify that no events were emitted
@@ -225,7 +224,6 @@ describe('ClusterReachability', () => {
         udp: {result: 'reachable', latencyInMilliseconds: 100, clientMediaIPs: ['somePublicIp']},
         tcp: {result: 'reachable', latencyInMilliseconds: 200},
         xtls: {result: 'reachable', latencyInMilliseconds: 300},
-        natType: 'unknown',
       });
     });
 
@@ -244,7 +242,6 @@ describe('ClusterReachability', () => {
         udp: {result: 'unreachable'},
         tcp: {result: 'unreachable'},
         xtls: {result: 'unreachable'},
-        natType: 'unknown',
       });
     });
 
@@ -270,7 +267,6 @@ describe('ClusterReachability', () => {
         udp: {result: 'reachable', latencyInMilliseconds: 100, clientMediaIPs: ['somePublicIp']},
         tcp: {result: 'unreachable'},
         xtls: {result: 'unreachable'},
-        natType: 'unknown',
       });
     });
 
@@ -287,7 +283,6 @@ describe('ClusterReachability', () => {
         udp: {result: 'unreachable'},
         tcp: {result: 'unreachable'},
         xtls: {result: 'unreachable'},
-        natType: 'unknown',
       });
     });
 
@@ -306,7 +301,6 @@ describe('ClusterReachability', () => {
         udp: {result: 'reachable', latencyInMilliseconds: 30, clientMediaIPs: ['somePublicIp1']},
         tcp: {result: 'unreachable'},
         xtls: {result: 'unreachable'},
-        natType: 'unknown',
       });
     });
 
@@ -335,7 +329,6 @@ describe('ClusterReachability', () => {
         },
         tcp: {result: 'unreachable'},
         xtls: {result: 'unreachable'},
-        natType: 'unknown',
       });
     });
 
@@ -360,7 +353,6 @@ describe('ClusterReachability', () => {
         udp: {result: 'unreachable'},
         tcp: {result: 'reachable', latencyInMilliseconds: 10},
         xtls: {result: 'unreachable'},
-        natType: 'unknown',
       });
     });
 
@@ -391,7 +383,6 @@ describe('ClusterReachability', () => {
         udp: {result: 'unreachable'},
         tcp: {result: 'unreachable'},
         xtls: {result: 'reachable', latencyInMilliseconds: 10},
-        natType: 'unknown',
       });
     });
 
@@ -455,7 +446,6 @@ describe('ClusterReachability', () => {
         },
         tcp: {result: 'reachable', latencyInMilliseconds: 40},
         xtls: {result: 'reachable', latencyInMilliseconds: 40},
-        natType: 'unknown',
       });
     });
 
@@ -494,7 +484,6 @@ describe('ClusterReachability', () => {
         },
         tcp: {result: 'reachable', latencyInMilliseconds: 20},
         xtls: {result: 'reachable', latencyInMilliseconds: 20},
-        natType: 'symmetric-nat',
       });
     });
   });
