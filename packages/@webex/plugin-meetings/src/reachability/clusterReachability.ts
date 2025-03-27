@@ -76,7 +76,6 @@ export class ClusterReachability extends EventsScope {
       xtls: {
         result: 'untested',
       },
-      natType: NatType.Unknown,
     };
   }
 
@@ -307,7 +306,7 @@ export class ClusterReachability extends EventsScope {
     this.srflxIceCandidates.push(candidate);
 
     if (this.srflxIceCandidates.length > 1) {
-      const portsFound: {[key: string]: Set<number>} = {};
+      const portsFound: Record<string, Set<number>> = {};
 
       this.srflxIceCandidates.forEach((c) => {
         const key = `${c.address}:${c.relatedPort}`;
@@ -320,8 +319,6 @@ export class ClusterReachability extends EventsScope {
       Object.entries(portsFound).forEach(([, ports]) => {
         if (ports.size > 1) {
           // Found candidates with the same address and relatedPort, but different ports
-          this.result.natType = NatType.SymmetricNat;
-
           this.emit(
             {
               file: 'clusterReachability',
