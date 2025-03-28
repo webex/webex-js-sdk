@@ -225,6 +225,18 @@ function toggleTransferOptions() {
   transferOptionsElm.style.display = isTransferOptionsShown ? 'block' : 'none';
 }
 
+async function getQueueListForTelephonyChannel() {
+  try {
+    let queueList = await webex.cc.getQueues();
+    queueList = queueList.filter(queue => queue.channelType === 'TELEPHONY');
+  
+    return queueList;
+  } catch (error) {
+    console.log('Failed to fetch queue list', error);
+  }
+}
+
+
 async function onConsultTypeSelectionChanged(){
 
   consultDestinationHolderElm.innerHTML = '';
@@ -246,6 +258,21 @@ async function onConsultTypeSelectionChanged(){
     refreshButton.innerHTML = 'Refresh agent list <i class="fa fa-refresh"></i>';
     refreshButton.onclick = refreshBuddyAgentsForConsult;
     consultDestinationHolderElm.appendChild(refreshButton);
+  } else if (destinationTypeDropdown.value === 'queue') {
+    const queueList = await getQueueListForTelephonyChannel();
+
+    if(queueList.length > 0) {
+      // Make consultDestinationInput into a dropdown
+      consultDestinationInput = document.createElement('select');
+      consultDestinationInput.id = 'consultDestination';
+
+      queueList.forEach((queue) => {
+        const option = document.createElement('option');
+        option.text = queue.name;
+        option.value = queue.id;
+        consultDestinationInput.appendChild(option);
+      });
+    }
   } else {
     // Make consultDestinationInput into a text input
     consultDestinationInput = document.createElement('input');
@@ -274,6 +301,20 @@ async function onTransferTypeSelectionChanged() {
 
     const agentNodeList = await fetchBuddyAgentsNodeList();
     agentNodeList.forEach(n => { transferDestinationInput.appendChild(n) });
+  } else if (document.querySelector('#transfer-destination-type').value === 'queue') {
+    const queueList = await getQueueListForTelephonyChannel();
+    if (queueList.length > 0) {
+      // Make transferDestinationInput into a dropdown
+      transferDestinationInput = document.createElement('select');
+      transferDestinationInput.id = 'transfer-destination';
+
+      queueList.forEach((queue) => {
+        const option = document.createElement('option');
+        option.text = queue.name;
+        option.value = queue.id;
+        transferDestinationInput.appendChild(option);
+      });
+    }
   } else {
     // Make transferDestinationInput into a text input
     transferDestinationInput = document.createElement('input');

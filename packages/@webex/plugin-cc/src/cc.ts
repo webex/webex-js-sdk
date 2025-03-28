@@ -487,4 +487,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       throw detailedError;
     }
   }
+
+  public async getQueues() {
+    const orgId = this.$webex.credentials.getOrgId();
+
+    return this.services.config.getQueues(orgId);
+  }
 }

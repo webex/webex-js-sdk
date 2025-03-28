@@ -13,6 +13,7 @@ import {
   Profile,
   ListTeamsResponse,
   AuxCode,
+  ContactServiceQueue,
 } from './types';
 import HttpRequest from '../core/HttpRequest';
 import {WCC_API_GATEWAY} from '../constants';
@@ -527,6 +528,36 @@ export default class AgentConfigService {
       LoggerProxy.error(`getDialPlanData API call failed with ${error}`, {
         module: CONFIG_FILE_NAME,
         method: 'getDialPlanData',
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Fetches the list of queues for the given orgId.
+   * @param {string} orgId
+   * @returns {Promise<ContactServiceQueue[]>}
+   */
+  public async getQueues(orgId: string): Promise<ContactServiceQueue[]> {
+    try {
+      const resource = endPointMap.queueList(orgId);
+      const response = await this.httpReq.request({
+        service: WCC_API_GATEWAY,
+        resource,
+        method: HTTP_METHODS.GET,
+      });
+
+      if (response.statusCode !== 200) {
+        throw new Error(`API call failed with ${response.statusCode}`);
+      }
+
+      LoggerProxy.log('getQueues api success.', {module: CONFIG_FILE_NAME, method: 'getQueues'});
+
+      return Promise.resolve(response.body?.data);
+    } catch (error) {
+      LoggerProxy.error(`getQueues API call failed with ${error}`, {
+        module: CONFIG_FILE_NAME,
+        method: 'getQueues',
       });
       throw error;
     }
