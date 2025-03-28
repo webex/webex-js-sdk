@@ -333,8 +333,10 @@ describe('TaskManager', () => {
     taskManager.currentTask.data = payload.data;
     webSocketManagerMock.emit('message', JSON.stringify(payload));
 
-    expect(taskEmitSpy.mock.calls[1][0]).toBe(TASK_EVENTS.TASK_END);
-    expect(taskEmitSpy.mock.calls[1][1]).toEqual({ wrapupRequired: false });
+    expect(taskEmitSpy).toHaveBeenCalledWith(
+      TASK_EVENTS.TASK_END, 
+      { wrapupRequired: false }
+    );
     expect(webCallListenerSpy).toHaveBeenCalledWith();
     expect(callOffSpy).toHaveBeenCalledWith(
       CALL_EVENT_KEYS.REMOTE_MEDIA,
@@ -345,6 +347,36 @@ describe('TaskManager', () => {
     expect(offSpy.mock.calls.length).toBe(2); // 1 for incoming call and 1 for remote media
     expect(offSpy).toHaveBeenCalledWith(CALL_EVENT_KEYS.REMOTE_MEDIA, offSpy.mock.calls[0][1]);
     expect(offSpy).toHaveBeenCalledWith(LINE_EVENTS.INCOMING_CALL, offSpy.mock.calls[1][1]);
+  });
+
+  it('should emit TASK_END event with wrapupRequired on regular call end', () => {
+    webSocketManagerMock.emit('message', JSON.stringify(initalPayload));
+
+    const taskEmitSpy = jest.spyOn(taskManager.currentTask, 'emit');
+    const payload = {
+      data: {
+        type: CC_EVENTS.CONTACT_ENDED,
+        agentId: '723a8ffb-a26e-496d-b14a-ff44fb83b64f',
+        eventTime: 1733211616959,
+        eventType: 'RoutingMessage',
+        interaction: {state: 'connected'},
+        interactionId: taskId,
+        orgId: '6ecef209-9a34-4ed1-a07a-7ddd1dbe925a',
+        trackingId: '575c0ec2-618c-42af-a61c-53aeb0a221ee',
+        mediaResourceId: '0ae913a4-c857-4705-8d49-76dd3dde75e4',
+        destAgentId: 'ebeb893b-ba67-4f36-8418-95c7492b28c2',
+        owner: '723a8ffb-a26e-496d-b14a-ff44fb83b64f',
+        queueMgr: 'aqm',
+      },
+    };
+
+    taskManager.currentTask.data = payload.data;
+    webSocketManagerMock.emit('message', JSON.stringify(payload));
+
+    expect(taskEmitSpy).toHaveBeenCalledWith(
+      TASK_EVENTS.TASK_END, 
+      { wrapupRequired: true }
+    );
   });
 
   it('should emit TASK_HYDRATE event on AGENT_CONTACT event', () => {
@@ -741,7 +773,7 @@ describe('TaskManager', () => {
     expect(taskUpdateTaskDataSpy).not.toHaveBeenCalled();
   });
 
-  it('should emit TASK_CONSULTING event on AGENT_CONSULTING when isConsulted is false', () => {
+  it('should emit TASK_CONSULTING event when agent is consulting', () => {
     webSocketManagerMock.emit('message', JSON.stringify(initalPayload));
     taskManager.currentTask.data.isConsulted = false;
     const taskEmitSpy = jest.spyOn(taskManager.currentTask, 'emit');
