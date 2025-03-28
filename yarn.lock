@@ -7821,6 +7821,7 @@ __metadata:
     "@typescript-eslint/parser": 5.38.1
     "@web/dev-server": 0.4.5
     "@webex/internal-media-core": 2.14.4
+    "@webex/internal-plugin-metrics": "workspace:*"
     "@webex/media-helpers": "workspace:*"
     async-mutex: 0.4.0
     buffer: 6.0.3
