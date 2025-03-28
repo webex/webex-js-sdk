@@ -217,7 +217,9 @@ async function initCalling(e) {
   authStatusElm.innerText = 'initializing...';
 
   const webexConfig = {
+    fedramp: fedrampBox.checked,
     config: {
+      fedramp: fedrampBox.checked,
       logger: {
         level: 'debug', // set the desired log level
       },
@@ -330,7 +332,9 @@ async function initCalling(e) {
       registerElm.classList.add('btn--green');
       registerElm.disabled = false;
 
+      if(window.callingClient === undefined && calling.callingClient !== undefined) {
       callingClient = window.callingClient = calling.callingClient;
+    }
 
       if (window.contacts === undefined) {
         contacts = window.contacts = calling.contactClient;
@@ -348,7 +352,7 @@ async function initCalling(e) {
         voicemail = window.voicemail = calling.voicemailClient;
       }
 
-      fetchLines();
+      if(callingClient) fetchLines();
     });
   });
 
@@ -398,6 +402,7 @@ function userSession() {
 }
 
 function createDevice() {
+  if (!callingClient) return ;
   line.register();
   userSession();
   line.on('registered', (deviceInfo) => {

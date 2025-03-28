@@ -173,6 +173,9 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
         const response = <WebexRequestPayload>await this.webex.request({
           uri: `${urlXsi}`,
           method: HTTP_METHODS.GET,
+          headers: {
+            Authorization: await this.webex.credentials.getUserToken(),
+          },
         });
 
         const voicemailListResponse = response.body as VoicemailList;
@@ -239,6 +242,9 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
       const response = <WebexRequestPayload>await this.webex.request({
         uri: `${voicemailContentUrl}`,
         method: HTTP_METHODS.GET,
+        headers: {
+          Authorization: await this.webex.credentials.getUserToken(),
+        },
       });
 
       const parser = new DOMParser();
@@ -287,6 +293,9 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
       const response = <WebexRequestPayload>await this.webex.request({
         uri: `${voicemailSummaryUrl}`,
         method: HTTP_METHODS.GET,
+        headers: {
+          Authorization: await this.webex.credentials.getUserToken(),
+        },
       });
 
       const parser = new DOMParser();
@@ -342,6 +351,9 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
       const response = <WebexRequestPayload>await this.webex.request({
         uri: voicemailContentUrl,
         method: HTTP_METHODS.PUT,
+        headers: {
+          Authorization: await this.webex.credentials.getUserToken(),
+        },
       });
 
       const responseDetails: VoicemailResponseEvent = {
@@ -376,6 +388,9 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
       const response = <WebexRequestPayload>await this.webex.request({
         uri: voicemailContentUrl,
         method: HTTP_METHODS.PUT,
+        headers: {
+          Authorization: await this.webex.credentials.getUserToken(),
+        },
       });
 
       const responseDetails: VoicemailResponseEvent = {
@@ -410,6 +425,9 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
       const response = <WebexRequestPayload>await this.webex.request({
         uri: voicemailContentUrl,
         method: HTTP_METHODS.DELETE,
+        headers: {
+          Authorization: await this.webex.credentials.getUserToken(),
+        },
       });
 
       const responseDetails: VoicemailResponseEvent = {
@@ -444,6 +462,9 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
       const response = <WebexRequestPayload>await this.webex.request({
         uri: voicemailContentUrl,
         method: HTTP_METHODS.GET,
+        headers: {
+          Authorization: await this.webex.credentials.getUserToken(),
+        },
       });
 
       const parser = new DOMParser();
