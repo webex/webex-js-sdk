@@ -252,8 +252,7 @@
     "mediatype",
     "codev",
     "MFACTOR",
-    "failback",
-    "HFRS"
+    "failback"
   ],
   "flagWords": [],
   "ignorePaths": [
