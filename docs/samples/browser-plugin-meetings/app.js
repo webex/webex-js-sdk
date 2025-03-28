@@ -3954,10 +3954,46 @@ function answerMeeting() {
   const meeting = getCurrentMeeting();
 
   if (meeting) {
-    meeting.join().then(() => {
-      meeting.acknowledge('ANSWER', false);
+    clearMediaDeviceList();
+
+    const mediaSettings = getMediaSettings()
+
+    getUserMedia({
+      audio: mediaSettings.audioEnabled,
+      video: mediaSettings.videoEnabled
+    }).then(() => {
+      doPreMediaSetup(meeting);
+
+      // we're using the default RemoteMediaManagerConfig
+      const mediaOptions = {
+        localStreams: {
+          microphone: localMedia.microphoneStream,
+          camera: localMedia.cameraStream,
+          screenShare: {
+            audio: localMedia.screenShare?.audio,
+            video: localMedia.screenShare?.video
+          }
+        },
+        ...getMediaSettings()
+      };
+
+      const joinOptions = {
+        isMultistream: false,
+      };
+
+      meeting.joinWithMedia({joinOptions, mediaOptions})
+        .then(() => {
+          doPostMediaSetup(meeting);
+          meeting.acknowledge('ANSWER', false)
+            .then(() => {
+              toggleDisplay('incomingsection', false);
+            });
+        });
     });
-    toggleDisplay('incomingsection', false);
+
+    // meeting.join().then(() => {
+    //   meeting.acknowledge('ANSWER', false);
+    // });
   }
 }
 
