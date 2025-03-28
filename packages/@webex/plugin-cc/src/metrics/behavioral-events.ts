@@ -28,6 +28,34 @@ export function getEventTaxonomy(name: METRIC_EVENT_NAMES): BehavioralEventTaxon
         target: 'station',
         verb: 'login',
       };
+    case METRIC_EVENT_NAMES.STATION_LOGOUT:
+      return {
+        product,
+        agent: 'user',
+        target: 'station',
+        verb: 'logout',
+      };
+    case METRIC_EVENT_NAMES.STATION_RELOGIN:
+      return {
+        product,
+        agent: 'user',
+        target: 'station',
+        verb: 'relogin',
+      };
+    case METRIC_EVENT_NAMES.AGENT_STATE_CHANGE:
+      return {
+        product,
+        agent: 'user',
+        target: 'state',
+        verb: 'change',
+      };
+    case METRIC_EVENT_NAMES.FETCH_BUDDY_AGENTS:
+      return {
+        product,
+        agent: 'user',
+        target: 'buddy_agents',
+        verb: 'fetch',
+      };
     case METRIC_EVENT_NAMES.CALL_COMPLETED:
       return {
         product,
@@ -69,6 +97,13 @@ export function getEventTaxonomy(name: METRIC_EVENT_NAMES): BehavioralEventTaxon
         agent: 'user',
         target: 'task',
         verb: 'complete',
+      };
+    case METRIC_EVENT_NAMES.WEBSOCKET_REGISTER:
+      return {
+        product,
+        agent: 'user',
+        target: 'websocket',
+        verb: 'register',
       };
     default:
       break;

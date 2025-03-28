@@ -114,10 +114,34 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    */
   public async register(): Promise<Profile> {
     try {
+      this.metricsManager.timeEvent(METRIC_EVENT_NAMES.WEBSOCKET_REGISTER);
       this.setupEventListeners();
 
-      return await this.connectWebsocket();
+      const resp = await this.connectWebsocket();
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.WEBSOCKET_REGISTER,
+        {
+          isSuccess: true,
+          agentId: resp.agentId,
+          orgId: resp.orgId,
+          deviceType: resp.deviceType || EMPTY_STRING,
+        },
+        ['operational']
+      );
+
+      return resp;
     } catch (error) {
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.WEBSOCKET_REGISTER,
+        {
+          isSuccess: false,
+          trackingId: error.data.trackingId,
+          notifTrackingId: error.trackingId,
+          orgId: error.orgId,
+          eventType: error.type,
+        },
+        ['operational']
+      );
       LoggerProxy.error(`Error during register: ${error}`, {
         module: CC_FILE,
         method: this.register.name,
@@ -137,10 +161,43 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    */
   public async getBuddyAgents(data: BuddyAgents): Promise<BuddyAgentsResponse> {
     try {
-      return await this.services.agent.buddyAgents({
+      this.metricsManager.timeEvent(METRIC_EVENT_NAMES.GET_BUDDY_AGENTS);
+      const resp = await this.services.agent.buddyAgents({
         data: {agentProfileId: this.agentConfig.agentProfileID, ...data},
       });
+
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.FETCH_BUDDY_AGENTS,
+        {
+          isSuccess: true,
+          agentId: this.agentConfig.agentId,
+          mediaType: data.mediaType,
+          buddyAgentState: data.state,
+          buddyAgentCount: resp.data.agentList.length,
+          trackingId: resp.data.trackingId,
+          notifTrackingId: resp.trackingId,
+          orgId: resp.orgId,
+          eventType: resp.type,
+        },
+        ['operational']
+      );
+
+      return resp;
     } catch (error) {
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.FETCH_BUDDY_AGENTS,
+        {
+          isSuccess: false,
+          agentId: this.agentConfig.agentId,
+          mediaType: data.mediaType,
+          buddyAgentState: data.state,
+          trackingId: error.data.trackingId,
+          notifTrackingId: error.trackingId,
+          orgId: error.orgId,
+          eventType: error.type,
+        },
+        ['operational']
+      );
       const {error: detailedError} = getErrorDetails(error, 'getBuddyAgents', CC_FILE);
       throw detailedError;
     }
@@ -215,8 +272,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         await this.webCallingService.registerWebCallingLine();
       }
 
-      this.webCallingService.setLoginOption(data.loginOption);
-
       const resp = await loginResponse;
 
       this.metricsManager.trackEvent(
@@ -225,13 +280,15 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           isSuccess: true,
           loginType: data.loginOption,
           agentId: resp.data.agentId,
-          teamId: resp.data.teamId,
+          teamId: resp.data.teamId, // TODO: handle multiple teams
           siteId: resp.data.siteId,
-          roles: resp.data.roles.join(','),
+          status: resp.data.status, // 'LoggedIn'
+          type: resp.data.type, // 'AgentStationLoginSuccess'
+          roles: resp.data.roles?.join(',') || EMPTY_STRING,
           trackingId: resp.data.trackingId,
           notifTrackingId: resp.trackingId,
           orgId: resp.orgId,
-          dataEventType: resp.data.eventType,
+          // dataEventType: resp.data.eventType,
           eventType: resp.type,
         },
         ['behavioral', 'business', 'operational']
@@ -243,6 +300,22 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
       return resp;
     } catch (error) {
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.STATION_LOGIN,
+        {
+          isSuccess: false,
+          loginType: data.loginOption,
+          // status: resp.data.status, // 'LoggedIn'
+          // type: resp.data.type, // 'AgentStationLoginSuccess'
+          // roles: resp.data.roles?.join(',') || EMPTY_STRING,
+          // orgId: resp.orgId,
+          // dataEventType: resp.data.eventType,
+          // eventType: resp.type,
+          trackingId: error.data.trackingId,
+          notifTrackingId: error.trackingId,
+        },
+        ['behavioral', 'business', 'operational']
+      );
       const {error: detailedError} = getErrorDetails(error, 'stationLogin', CC_FILE);
       throw detailedError;
     }
@@ -255,11 +328,27 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    */
   public async stationLogout(data: Logout): Promise<StationLogoutResponse> {
     try {
+      this.metricsManager.timeEvent(METRIC_EVENT_NAMES.STATION_LOGOUT);
       const logoutResponse = this.services.agent.logout({
         data,
       });
 
-      await logoutResponse;
+      const resp = await logoutResponse;
+
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.STATION_LOGOUT,
+        {
+          isSuccess: true,
+          logoutReason: data.logoutReason,
+          agentId: this.agentConfig.agentId,
+          status: resp.data.status, // 'LoggedIn'
+          trackingId: resp.data.trackingId,
+          notifTrackingId: resp.trackingId,
+          orgId: resp.orgId,
+          eventType: resp.type,
+        },
+        ['behavioral', 'business', 'operational']
+      );
 
       if (this.webCallingService) {
         this.webCallingService.deregisterWebCallingLine();
@@ -271,8 +360,21 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       // this.taskManager.off(TASK_EVENTS.TASK_INCOMING, this.handleIncomingTask);
       // this.taskManager.off(TASK_EVENTS.TASK_HYDRATE, this.handleTaskHydrate);
 
-      return logoutResponse;
+      return resp;
     } catch (error) {
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.STATION_LOGOUT,
+        {
+          isSuccess: false,
+          logoutReason: data.logoutReason,
+          agentId: this.agentConfig.agentId,
+          trackingId: error.data.trackingId,
+          notifTrackingId: error.trackingId,
+          orgId: error.orgId,
+          eventType: error.type,
+        },
+        ['behavioral', 'business', 'operational']
+      );
       const {error: detailedError} = getErrorDetails(error, 'stationLogout', CC_FILE);
       throw detailedError;
     }
@@ -284,10 +386,36 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    */
   public async stationReLogin(): Promise<StationReLoginResponse> {
     try {
+      this.metricsManager.timeEvent(METRIC_EVENT_NAMES.STATION_RELOGIN);
       const reLoginResponse = await this.services.agent.reload();
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.STATION_RELOGIN,
+        {
+          isSuccess: true,
+          agentId: this.agentConfig.agentId,
+          status: reLoginResponse.data.status, // 'LoggedIn'
+          trackingId: reLoginResponse.data.trackingId,
+          notifTrackingId: reLoginResponse.trackingId,
+          orgId: reLoginResponse.orgId,
+          eventType: reLoginResponse.type,
+        },
+        ['behavioral', 'business', 'operational']
+      );
 
       return reLoginResponse;
     } catch (error) {
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.STATION_RELOGIN,
+        {
+          isSuccess: false,
+          agentId: this.agentConfig.agentId,
+          trackingId: error.data.trackingId,
+          notifTrackingId: error.trackingId,
+          orgId: error.orgId,
+          eventType: error.type,
+        },
+        ['behavioral', 'business', 'operational']
+      );
       const {error: detailedError} = getErrorDetails(error, 'stationReLogin', CC_FILE);
       throw detailedError;
     }
@@ -310,9 +438,26 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
   public async setAgentState(data: StateChange): Promise<SetStateResponse> {
     try {
+      this.metricsManager.timeEvent(METRIC_EVENT_NAMES.AGENT_STATE_CHANGE);
       const agentStatusResponse = await this.services.agent.stateChange({
         data: {...data, agentId: data.agentId || this.agentConfig.agentId},
       });
+
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.AGENT_STATE_CHANGE,
+        {
+          isSuccess: true,
+          agentId: this.agentConfig.agentId,
+          state: data.state,
+          auxCodeId: data.auxCodeId,
+          lastStateChangeReason: data.lastStateChangeReason || EMPTY_STRING,
+          trackingId: agentStatusResponse.data.trackingId,
+          notifTrackingId: agentStatusResponse.trackingId,
+          orgId: agentStatusResponse.orgId,
+          eventType: agentStatusResponse.type,
+        },
+        ['behavioral', 'business', 'operational']
+      );
 
       LoggerProxy.log(`SET AGENT STATUS API SUCCESS`, {
         module: CC_FILE,
@@ -321,6 +466,21 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
       return agentStatusResponse;
     } catch (error) {
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.AGENT_STATE_CHANGE,
+        {
+          isSuccess: false,
+          agentId: this.agentConfig.agentId,
+          state: data.state,
+          auxCodeId: data.auxCodeId,
+          lastStateChangeReason: data.lastStateChangeReason || EMPTY_STRING,
+          trackingId: error.data.trackingId,
+          notifTrackingId: error.trackingId,
+          orgId: error.orgId,
+          eventType: error.type,
+        },
+        ['behavioral', 'business', 'operational']
+      );
       const {error: detailedError} = getErrorDetails(error, 'setAgentState', CC_FILE);
       throw detailedError;
     }
