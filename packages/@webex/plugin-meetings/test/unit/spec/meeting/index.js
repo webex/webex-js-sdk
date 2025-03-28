@@ -12684,7 +12684,7 @@ describe('plugin-meetings', () => {
         });
 
         describe('handleShareVideoStreamMuteStateChange', () => {
-          it('should emit MEETING_SHARE_VIDEO_MUTE_STATE_CHANGE event with correct fields', async () => {
+          it('should emit MEETING_SHARE_VIDEO_MUTE_STATE_CHANGE event with correct fields', () => {
             meeting.isMultistream = true;
             meeting.statsAnalyzer = {shareVideoEncoderImplementation: 'OpenH264'};
             meeting.mediaProperties.shareVideoStream = {
