@@ -304,10 +304,11 @@ async function initiateConsult() {
   try {
     await task.consult(consultPayload);
     console.log('Consult initiated successfully');
+    // Disable the blind transfer button after initiating consult, only enable it once consult is confirmed
+    disableCallControlPostConsult();
+    disableTransferControls();
     hideConsultButton();
     showEndConsultButton();
-    consultTransferBtn.style.display = 'inline-block'; // Show the consult transfer button
-    consultTransferBtn.disabled = false; // Enable the consult transfer button
   } catch (error) {
     console.error('Failed to initiate consult', error);
     alert('Failed to initiate consult');
@@ -440,6 +441,20 @@ function disableTransferControls() {
   transferElm.disabled = true;
 }
 
+// Disable all buttons post consulting
+function disableCallControlPostConsult() {
+  holdResumeElm.disabled = true;
+  pauseResumeRecordingElm.disabled = true;
+  endElm.disabled = true;
+}
+
+// Enable all buttons post consulting
+function enableCallControlPostConsult() {
+  holdResumeElm.disabled = false;
+  pauseResumeRecordingElm.disabled = false;
+  endElm.disabled = false;
+}
+
 // Register task listeners
 function registerTaskListeners(task) {
   task.on('task:assigned', (task) => {
@@ -456,12 +471,15 @@ function registerTaskListeners(task) {
   task.on('task:media', (track) => {
     document.getElementById('remote-audio').srcObject = new MediaStream([track]);
   });
-  task.on('task:end', () => {
-    answerElm.disabled = true;
-    declineElm.disabled = true;
+  task.on('task:end', (wrapupData) => {
     incomingDetailsElm.innerText = '';
-    if (!endElm.disabled) {
-      console.info('Call ended successfully by the external user');
+    if (!wrapupData.wrapupRequired) {
+      answerElm.disabled = true;
+      declineElm.disabled = true;
+      console.log('Call ended without call being answered');
+    }
+    else {
+      console.info('Call ended successfully');
       updateButtonsPostEndCall();
     }
   });
@@ -483,6 +501,12 @@ function registerTaskListeners(task) {
     consultTransferBtn.disabled = true; // Disable the consult transfer button since we are not yet owner of the call
   });
 
+  task.on('task:consulting', (task) => {
+    // When we are consulting with the other agent
+    consultTransferBtn.style.display = 'inline-block'; // Show the consult transfer button
+    consultTransferBtn.disabled = false; // Enable the consult transfer button
+  });
+
   task.on('task:consultQueueFailed', (task) => {
     // When trying to consult queue fails
     console.error(`Received task:consultQueueFailed for task: ${task.interactionId}`);
@@ -500,6 +524,8 @@ function registerTaskListeners(task) {
   task.on('task:consultEnd', (task) => {
     hideEndConsultButton();
     showConsultButton();
+    enableTransferControls();
+    enableCallControlPostConsult();
     consultTransferBtn.style.display = 'none';
     consultTransferBtn.disabled = true;
 
@@ -1076,6 +1102,7 @@ function wrapupCall() {
   const auxCodeId = wrapupCodesDropdownElm.options[wrapupCodesDropdownElm.selectedIndex].value;
   task.wrapup({wrapUpReason: wrapupReason, auxCodeId: auxCodeId}).then(() => {
     console.info('Call wrapped up successfully');
+    holdResumeElm.innerText = 'Hold';
     holdResumeElm.disabled = true;
     endElm.disabled = true;
     wrapupCodesDropdownElm.disabled = true;
