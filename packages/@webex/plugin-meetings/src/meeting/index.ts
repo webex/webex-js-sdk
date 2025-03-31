@@ -1687,6 +1687,19 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
+   * Setter - sets isoLocalClientMeetingJoinTime
+   * This will be set once on meeting join, and not updated again
+   * @param {string | undefined} time in ISO format
+   */
+  set isoLocalClientMeetingJoinTime(time: string | undefined) {
+    if (!time) {
+      this.#isoLocalClientMeetingJoinTime = new Date().toISOString();
+    } else {
+      this.#isoLocalClientMeetingJoinTime = time;
+    }
+  }
+
+  /**
    * Set meeting info and trigger `MEETING_INFO_AVAILABLE` event
    * @param {any} info
    * @param {string} [meetingLookupUrl] Lookup url, defined when the meeting info fetched
@@ -5718,8 +5731,6 @@ export default class Meeting extends StatelessWebexPlugin {
         // @ts-ignore
         this.webex.internal.device.meetingStarted();
 
-        this.#isoLocalClientMeetingJoinTime = new Date().toISOString();
-
         LoggerProxy.logger.log('Meeting:index#join --> Success');
 
         Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.JOIN_SUCCESS, {
@@ -8715,6 +8726,9 @@ export default class Meeting extends StatelessWebexPlugin {
     LoggerProxy.logger.log(
       `Meeting:index#handleShareVideoStreamMuteStateChange --> Share video stream mute state changed to muted ${muted}`
     );
+
+    const shareVideoStreamSettings = this.mediaProperties?.shareVideoStream?.getSettings();
+
     Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.MEETING_SHARE_VIDEO_MUTE_STATE_CHANGE, {
       correlationId: this.correlationId,
       muted,
@@ -8723,8 +8737,9 @@ export default class Meeting extends StatelessWebexPlugin {
       // SDK to TypeScript 5, which may affect other packages, use bracket notation for now, since
       // all we're doing here is adding metrics.
       // eslint-disable-next-line dot-notation
-      displaySurface: this.mediaProperties?.shareVideoStream?.getSettings()['displaySurface'],
+      displaySurface: shareVideoStreamSettings?.['displaySurface'],
       isMultistream: this.isMultistream,
+      frameRate: shareVideoStreamSettings?.frameRate,
     });
   };
 

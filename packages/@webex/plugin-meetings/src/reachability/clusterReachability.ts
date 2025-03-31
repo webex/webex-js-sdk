@@ -6,7 +6,7 @@ import {convertStunUrlToTurn, convertStunUrlToTurnTls} from './util';
 import EventsScope from '../common/events/events-scope';
 
 import {CONNECTION_STATE, Enum, ICE_GATHERING_STATE} from '../constants';
-import {ClusterReachabilityResult} from './reachability.types';
+import {ClusterReachabilityResult, NatType} from './reachability.types';
 
 // data for the Events.resultReady event
 export type ResultEventData = {
@@ -22,9 +22,14 @@ export type ClientMediaIpsUpdatedEventData = {
   clientMediaIPs: string[];
 };
 
+export type NatTypeUpdatedEventData = {
+  natType: NatType;
+};
+
 export const Events = {
   resultReady: 'resultReady', // emitted when a cluster is reached successfully using specific protocol
   clientMediaIpsUpdated: 'clientMediaIpsUpdated', // emitted when more public IPs are found after resultReady was already sent for a given protocol
+  natTypeUpdated: 'natTypeUpdated', // emitted when NAT type is determined
 } as const;
 
 export type Events = Enum<typeof Events>;
@@ -41,6 +46,7 @@ export class ClusterReachability extends EventsScope {
   private pc?: RTCPeerConnection;
   private defer: Defer; // this defer is resolved once reachability checks for this cluster are completed
   private startTimestamp: number;
+  private srflxIceCandidates: RTCIceCandidate[] = [];
   public readonly isVideoMesh: boolean;
   public readonly name;
 
@@ -291,6 +297,44 @@ export class ClusterReachability extends EventsScope {
   }
 
   /**
+   * Determines NAT Type.
+   *
+   * @param {RTCIceCandidate} candidate
+   * @returns {void}
+   */
+  private determineNatType(candidate: RTCIceCandidate) {
+    this.srflxIceCandidates.push(candidate);
+
+    if (this.srflxIceCandidates.length > 1) {
+      const portsFound: Record<string, Set<number>> = {};
+
+      this.srflxIceCandidates.forEach((c) => {
+        const key = `${c.address}:${c.relatedPort}`;
+        if (!portsFound[key]) {
+          portsFound[key] = new Set();
+        }
+        portsFound[key].add(c.port);
+      });
+
+      Object.entries(portsFound).forEach(([, ports]) => {
+        if (ports.size > 1) {
+          // Found candidates with the same address and relatedPort, but different ports
+          this.emit(
+            {
+              file: 'clusterReachability',
+              function: 'determineNatType',
+            },
+            Events.natTypeUpdated,
+            {
+              natType: NatType.SymmetricNat,
+            }
+          );
+        }
+      });
+    }
+  }
+
+  /**
    * Registers a listener for the icecandidate event
    *
    * @returns {void}
@@ -308,6 +352,8 @@ export class ClusterReachability extends EventsScope {
       if (e.candidate) {
         if (e.candidate.type === CANDIDATE_TYPES.SERVER_REFLEXIVE) {
           this.saveResult('udp', latencyInMilliseconds, e.candidate.address);
+
+          this.determineNatType(e.candidate);
         }
 
         if (e.candidate.type === CANDIDATE_TYPES.RELAY) {
