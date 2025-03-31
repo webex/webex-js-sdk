@@ -12682,6 +12682,31 @@ describe('plugin-meetings', () => {
             });
           });
         });
+
+        describe('handleShareVideoStreamMuteStateChange', () => {
+          it('should emit MEETING_SHARE_VIDEO_MUTE_STATE_CHANGE event with correct fields', () => {
+            meeting.isMultistream = true;
+            meeting.statsAnalyzer = {shareVideoEncoderImplementation: 'OpenH264'};
+            meeting.mediaProperties.shareVideoStream = {
+              getSettings: sinon.stub().returns({displaySurface: 'monitor', frameRate: 30}),
+            };
+
+            meeting.handleShareVideoStreamMuteStateChange(true);
+
+            assert.calledOnceWithExactly(
+              Metrics.sendBehavioralMetric,
+              BEHAVIORAL_METRICS.MEETING_SHARE_VIDEO_MUTE_STATE_CHANGE,
+              {
+                correlationId: meeting.correlationId,
+                muted: true,
+                encoderImplementation: 'OpenH264',
+                displaySurface: 'monitor',
+                isMultistream: true,
+                frameRate: 30,
+              }
+            );
+          });
+        });
       });
 
       describe('#startKeepAlive', () => {
