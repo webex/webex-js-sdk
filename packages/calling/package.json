@@ -37,7 +37,7 @@
   },
   "dependencies": {
     "@types/platform": "1.3.4",
-    "@webex/internal-media-core": "2.14.4",
+    "@webex/internal-media-core": "2.14.6",
     "@webex/internal-plugin-metrics": "workspace:*",
     "@webex/media-helpers": "workspace:*",
     "async-mutex": "0.4.0",
