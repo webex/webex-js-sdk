@@ -625,7 +625,7 @@ function register() {
             teamsDropdown.add(option);
         });
         const loginVoiceOptions = agentProfile.loginVoiceOptions;
-        agentLogin.innerHTML = '<option value="" selected>Choose Agent Login ...</option>'; // Clear previously selected option on agentLogin.
+        agentLogin.innerHTML = '<option value="" disabled>Choose Agent Login ...</option>'; // Clear previously selected option on agentLogin.
         dialNumber.value = agentProfile.defaultDn ? agentProfile.defaultDn : '';
         dialNumber.disabled = agentProfile.defaultDn ? false : true;
         if (loginVoiceOptions.length > 0) loginAgentElm.disabled = false;
