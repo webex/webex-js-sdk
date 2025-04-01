@@ -206,8 +206,8 @@ ControlsUtils.getControls = (oldControls: any, newControls: any) => {
         ),
 
       hasPracticeSessionEnabledChanged: !isEqual(
-        previous?.practiceSession?.enabled,
-        current?.practiceSession?.enabled
+        !!previous?.practiceSession?.enabled,
+        !!current?.practiceSession?.enabled
       ),
 
       hasStageViewChanged: !isEqual(previous?.videoLayout, current?.videoLayout),
