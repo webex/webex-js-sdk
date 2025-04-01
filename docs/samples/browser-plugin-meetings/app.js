@@ -3987,7 +3987,7 @@ function answerMeeting() {
       meeting.joinWithMedia({joinOptions, mediaOptions})
         .then(() => {
           doPostMediaSetup(meeting);
-          meeting.acknowledge('ANSWER', false)
+          meeting.acknowledge('INCOMING')
             .then(() => {
               toggleDisplay('incomingsection', false);
               updateMeetingInfoSection(meeting);
