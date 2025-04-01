@@ -169,7 +169,7 @@ function initOauth() {
       }
 
       // initiate the login sequence if not authenticated.
-     
+
     });
 
     if (webex.canAuthorize) {
@@ -822,6 +822,9 @@ function updateMeetingInfoSection(meeting) {
   const subtitleElm = document.getElementById('meeting-info-subtitle');
 
   titleElm.innerText = meeting.destination.info ? meeting.destination?.info?.webExMeetingName : meeting.destination;
+  if (titleElm.innerText === 'undefined') {
+    titleElm.innerText = meeting.destination?.host?.name;
+  }
   subtitleElm.innerText = `${meeting.sipUri} (${meeting.id})`;
 
   meetingsLeaveElm.onclick = () => leaveMeeting(getCurrentMeeting().id);
@@ -3987,13 +3990,10 @@ function answerMeeting() {
           meeting.acknowledge('ANSWER', false)
             .then(() => {
               toggleDisplay('incomingsection', false);
+              updateMeetingInfoSection(meeting);
             });
         });
     });
-
-    // meeting.join().then(() => {
-    //   meeting.acknowledge('ANSWER', false);
-    // });
   }
 }
 
