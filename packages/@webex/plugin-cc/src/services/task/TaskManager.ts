@@ -82,7 +82,7 @@ export default class TaskManager extends EventEmitter {
             this.taskCollection[payload.data.interactionId] = this.currentTask;
             if (this.webCallingService.loginOption !== LoginOption.BROWSER) {
               this.emit(TASK_EVENTS.TASK_INCOMING, this.currentTask);
-            } else if (this.call) {
+            } else {
               this.emit(TASK_EVENTS.TASK_INCOMING, this.currentTask);
             }
             break;

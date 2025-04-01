@@ -83,6 +83,10 @@ export default class Task extends EventEmitter implements ITask {
    */
   public async accept(): Promise<TaskResponse> {
     try {
+      if (this.data.interaction.mediaType !== 'telephony') {
+        return this.contact.accept({interactionId: this.data.interactionId});
+      }
+
       if (this.webCallingService.loginOption === LoginOption.BROWSER) {
         const constraints = {
           audio: true,

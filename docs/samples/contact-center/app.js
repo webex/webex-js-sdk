@@ -14,6 +14,8 @@ let isConsultOptionsShown = false;
 let isTransferOptionsShown = false; // Add this variable to track the state of transfer options
 let entryPointId = '';
 let stateTimer;
+let mediaId = "";
+let taskList = []; // Add this to store the list of tasks
 
 const authTypeElm = document.querySelector('#auth-type');
 const credentialsFormElm = document.querySelector('#credentials');
@@ -62,7 +64,47 @@ const agentMultiLoginAlert = document.querySelector('#agentMultiLoginAlert');
 const consultTransferBtn = document.querySelector('#consult-transfer');
 const transferElm = document.getElementById('transfer');
 const timerElm = document.querySelector('#timerDisplay');
+const chatElm = document.querySelector('#chatWidget');
+var isBundleLoaded = false;
+const handleBundleLoaded = () => {
+  console.log("bundle.js has been loaded.");
+  isBundleLoaded = true;
+  const config = {
+    logger: {
+      info: (data) => {
+        console.log(data);
+      },
+      error: (data) => {
+        console.error(data);
+      },
+      warn: (data) => {
+        console.warn(data);
+      },
+      debug: (data) => {
+        console.debug(data);
+      },
+    },
+    cb: (name, data) => {
+      const event = new CustomEvent(name, {
+        detail: data,
+      });
+      window.dispatchEvent(event);
+      // showNotification('EVENT', name);
+    },
+  };
+  const imiEngageWC = new window.ImiEngageWC(config);
+  imiEngageWC.setParam("data", {
+    jwt: tokenElm.value,
+    lang: "en-US",
+    source: "wxcc",
+  });
 
+};
+
+document.addEventListener(
+  "imi-engage-bundle-load-success",
+  handleBundleLoaded
+);
 // Store and Grab `access-token` from sessionStorage
 if (sessionStorage.getItem('date') > new Date().getTime()) {
   tokenElm.value = sessionStorage.getItem('access-token');
@@ -444,6 +486,7 @@ function disableTransferControls() {
 function registerTaskListeners(task) {
   task.on('task:assigned', (task) => {
     console.info('Call has been accepted for task: ', task.data.interactionId);
+
     holdResumeElm.disabled = false;
     muteElm.disabled = false;
     holdResumeElm.innerText = 'Hold';
@@ -456,9 +499,11 @@ function registerTaskListeners(task) {
   task.on('task:media', (track) => {
     document.getElementById('remote-audio').srcObject = new MediaStream([track]);
   });
-  task.on('task:end', () => {
+  task.on('task:end', (task) => {
     answerElm.disabled = true;
     declineElm.disabled = true;
+    taskList = taskList.filter((t) => t?.data?.interactionId !== task?.data?.interactionId); // Remove the ended task
+    updateTaskList(taskList); // Update the task list UI
     incomingDetailsElm.innerText = '';
     if (!endElm.disabled) {
       console.info('Call ended successfully by the external user');
@@ -565,6 +610,28 @@ function initWebex(e) {
     authStatusElm.innerText = 'Saved access token!';
     registerStatus.innerHTML = 'Not Subscribed';
     registerBtn.disabled = false;
+    // Dynamically add the IMI Engage controller bundle script
+    const imiControllerBundleScript = document.createElement('script');
+    imiControllerBundleScript.id = "imi-controller-bundle";
+    imiControllerBundleScript.setAttribute('dc', 'produs1');
+    imiControllerBundleScript.src = "https://wc.imiengage.io/engage.js";
+    document.head.appendChild(imiControllerBundleScript);
+    // Dynamically add the required script and stylesheets for Momentum UI
+    const momentumScript = document.createElement('script');
+    momentumScript.src = "https://wc.imiengage.io/v0.9.11/momentum/momentum.js";
+    document.head.appendChild(momentumScript);
+
+    const momentumStylesheet = document.createElement('link');
+    momentumStylesheet.rel = "stylesheet";
+    momentumStylesheet.type = "text/css";
+    momentumStylesheet.href = "https://wc.imiengage.io/v0.9.11/momentum/css/momentum-ui.min.css";
+    document.head.appendChild(momentumStylesheet);
+
+    const momentumIconsStylesheet = document.createElement('link');
+    momentumIconsStylesheet.rel = "stylesheet";
+    momentumIconsStylesheet.type = "text/css";
+    momentumIconsStylesheet.href = "https://wc.imiengage.io/v0.9.11/momentum/css/momentum-ui-icons.css";
+    document.head.appendChild(momentumIconsStylesheet);
   });
 
   return false;
@@ -665,7 +732,15 @@ function register() {
     })
 
     webex.cc.on('task:incoming', (task) => {
+      mediaId = task.data.interaction.callAssociatedDetails.mediaResourceId
+      taskList.push(task); // Add the new task to the task list
+      updateTaskList(taskList);
       taskEvents.detail.task = task;
+      if(task.data.interaction.mediaType !== 'telephony')
+      {
+        answerElm.disabled = false;
+        declineElm.disabled = false;
+      }
 
       incomingCallListener.dispatchEvent(taskEvents);
     });
@@ -724,7 +799,29 @@ function handleTaskHydrate(currentTask) {
 
   // answer & decline incoming calls
   const callerDisplay = callAssociatedDetails?.ani;
-  if (webCallingService.loginOption === 'BROWSER') {
+  mediaId = task.data.interaction.callAssociatedDetails.mediaResourceId;
+  if(task.data.interaction.mediaType === 'chat')
+  {
+    answerElm.disabled = false;
+    declineElm.disabled = false;
+
+    incomingDetailsElm.innerText = `Incoming chat from ${callerDisplay}`;
+
+    chatElm.innerHTML = `
+    <imi-engage
+      theme="LIGHT"
+      lang="en-US"
+      conversationid="${mediaId}"
+    ></imi-engage>
+  `;
+  } else if(task.data.interaction.mediaType === 'email')
+  {
+    answerElm.disabled = false;
+    declineElm.disabled = false;
+
+    incomingDetailsElm.innerText = `Incoming email from ${callerDisplay}`;
+  } else if (webCallingService.loginOption === 'BROWSER' ||task.data.interaction.mediaType == 'telephony')
+  {
     answerElm.disabled = false;
     declineElm.disabled = false;
 
@@ -914,8 +1011,19 @@ incomingCallListener.addEventListener('task:incoming', (event) => {
 
   const callerDisplay = event.detail.task.data.interaction.callAssociatedDetails.ani;
   registerTaskListeners(task);
+  if(task.data.interaction.mediaType === 'chat')
+  {
+    answerElm.disabled = false;
+    declineElm.disabled = false;
 
-  if (task.webCallingService.loginOption === 'BROWSER') {
+    incomingDetailsElm.innerText = `Incoming chat from ${callerDisplay}`;
+  } else if(task.data.interaction.mediaType === 'email')
+  {
+    answerElm.disabled = false;
+    declineElm.disabled = false;
+
+    incomingDetailsElm.innerText = `Incoming email from ${callerDisplay}`;
+  } else if (task.webCallingService.loginOption === 'BROWSER') {
     answerElm.disabled = false;
     declineElm.disabled = false;
 
@@ -925,10 +1033,17 @@ incomingCallListener.addEventListener('task:incoming', (event) => {
   }
 });
 
-function answer() {
+ async function answer() {
   answerElm.disabled = true;
   declineElm.disabled = true;
-  task.accept(taskId);
+  await task.accept();
+  chatElm.innerHTML = `
+  <imi-engage
+    theme="LIGHT"
+    lang="en-US"
+    conversationid="${mediaId}"
+  ></imi-engage>
+`;
   incomingDetailsElm.innerText = 'Call Accepted';
 }
 
@@ -1082,4 +1197,98 @@ function wrapupCall() {
     console.error('Failed to wrap up the call', error);
     wrapupElm.disabled = false;
   });
+}
+
+function updateTaskList(newTaskList) {
+  taskList = newTaskList; // Update the global task list
+  renderTaskList(taskList); // Render the updated task list
+}
+
+function acceptTask(task) {
+  const taskId = task?.data?.interactionId;
+  if (!taskId) return;
+
+  task.accept(taskId).then(() => {
+    console.log(`Task ${taskId} accepted successfully`);
+    renderTaskList(taskList); // Refresh the task list
+  }).catch((error) => {
+    console.error(`Error accepting task ${taskId}:`, error);
+  });
+}
+
+function declineTask(task) {
+  const taskId = task?.data?.interactionId;
+  if (!taskId) return;
+
+  task.decline(taskId).then(() => {
+    console.log(`Task ${taskId} declined successfully`);
+    renderTaskList(taskList); // Refresh the task list
+  }).catch((error) => {
+    console.error(`Error declining task ${taskId}:`, error);
+  });
+}
+
+function renderTaskList(taskList) {
+  const taskListContainer = document.getElementById('taskList');
+  taskListContainer.innerHTML = ''; // Clear existing tasks
+
+  if (!taskList || taskList.length === 0) {
+    taskListContainer.innerHTML = '<p>No tasks available</p>';
+    return;
+  }
+
+  taskList.forEach((task) => {
+    const taskId = task?.data?.interactionId;
+    const taskElement = document.createElement('div');
+    taskElement.className = 'task-item';
+    taskElement.innerHTML = `
+      <p>Task ID: ${taskId}</p>
+      <button class="accept-task" data-task-id="${taskId}">Accept</button>
+      <button class="decline-task" data-task-id="${taskId}">Decline</button>
+    `;
+
+    // Add click event listener for the task item
+    taskElement.addEventListener('click', () => {
+      handleTaskClick(task); // Call the function when the task is clicked
+    });
+
+    taskListContainer.appendChild(taskElement);
+  });
+
+  // Add event listeners for accept and decline buttons
+  document.querySelectorAll('.accept-task').forEach((button) => {
+    button.addEventListener('click', (event) => {
+      const taskId = event.target.getAttribute('data-task-id');
+      const task = taskList.find((t) => t?.data?.interactionId === taskId);
+      if (task) acceptTask(task);
+    });
+  });
+
+  document.querySelectorAll('.decline-task').forEach((button) => {
+    button.addEventListener('click', (event) => {
+      const taskId = event.target.getAttribute('data-task-id');
+      const task = taskList.find((t) => t?.data?.interactionId === taskId);
+      if (task) declineTask(task);
+    });
+  });
+}
+
+function handleTaskClick(task) {
+  // Handle the task click event
+  console.log('Task clicked:', task);
+  if (task.data.interaction.mediaType === 'chat') { // TODO: add answered state condition
+    loadChatWidget(task);
+  }
+}
+
+function loadChatWidget(task) {
+  const callerDisplay = task.data.interaction.callAssociatedDetails?.ani;
+  incomingDetailsElm.innerText = `Incoming chat from ${callerDisplay}`;
+  mediaId = task.data.interaction.callAssociatedDetails.mediaResourceId;
+  chatElm.innerHTML = `
+  <imi-engage
+    theme="LIGHT"
+    lang="en-US"
+    conversationid="${mediaId}"
+  ></imi-engage>`;
 }
