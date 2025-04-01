@@ -41,7 +41,7 @@ class ReachabilityRequest {
     trigger: GetClustersTrigger,
     ipVersion?: IP_VERSION,
     previousReport?: any,
-    clientEnvironment?: any
+    clientEnvironment?: {components: Record<string, string>}
   ): Promise<{
     clusters: ClusterList;
     joinCookie: any;
