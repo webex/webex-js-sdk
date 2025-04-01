@@ -210,6 +210,7 @@ describe('plugin-meetings', () => {
   let membersSpy;
   let meetingRequestSpy;
   let correlationId;
+  let isoLocalClientMeetingJoinTime;
   let uploadEvent;
 
   beforeEach(() => {
@@ -1690,10 +1691,6 @@ describe('plugin-meetings', () => {
         describe('successful', () => {
           beforeEach(() => {
             sandbox.stub(MeetingUtil, 'joinMeeting').returns(Promise.resolve(joinMeetingResult));
-          });
-
-          afterEach(() => {
-            assert.exists(meeting.isoLocalClientMeetingJoinTime);
           });
 
           it('should join the meeting and return promise', async () => {
@@ -7527,6 +7524,27 @@ describe('plugin-meetings', () => {
             correlationId: uuid1,
             sessionCorrelationId: '',
           });
+        });
+      });
+
+      describe('#setIsoLocalClientMeetingJoinTime', () => {      
+        it('should fallback to system clock ISO string when given an undefined value', () => {
+          const currentSystemTime = new Date().toISOString();
+          meeting.isoLocalClientMeetingJoinTime = undefined;
+          assert.equal(meeting.isoLocalClientMeetingJoinTime, currentSystemTime);
+        });
+      
+        it('should fallback to system clock ISO string when given an invalid value', () => {
+          const currentSystemTime = new Date().toISOString();
+          meeting.isoLocalClientMeetingJoinTime = 'invalid-date';
+          assert.equal(meeting.isoLocalClientMeetingJoinTime, currentSystemTime);
+        });
+      
+        it('should set the isoLocalClientMeetingJoinTime correctly for a valid date string', () => {
+          const validDateString = 'Tue, 01 Apr 2025 13:00:36 GMT';
+          const expectedISOString = new Date(validDateString).toISOString();
+          meeting.isoLocalClientMeetingJoinTime = validDateString;
+          assert.equal(meeting.isoLocalClientMeetingJoinTime, expectedISOString);
         });
       });
 
