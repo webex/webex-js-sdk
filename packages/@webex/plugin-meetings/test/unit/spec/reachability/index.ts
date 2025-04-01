@@ -2156,6 +2156,7 @@ describe('getReachabilityMetrics', () => {
       reachability_vmn_tcp_failed: 0,
       reachability_vmn_xtls_success: 0,
       reachability_vmn_xtls_failed: 0,
+      natType: 'unknown'
     });
   });
 
@@ -2223,6 +2224,7 @@ describe('getReachabilityMetrics', () => {
         reachability_vmn_tcp_failed: 1,
         reachability_vmn_xtls_success: 0,
         reachability_vmn_xtls_failed: 0,
+        natType: 'unknown'
       }
     );
   });
@@ -2284,6 +2286,7 @@ describe('getReachabilityMetrics', () => {
         reachability_vmn_tcp_failed: 0,
         reachability_vmn_xtls_success: 0,
         reachability_vmn_xtls_failed: 0,
+        natType: 'unknown'
       }
     );
   });
@@ -2345,6 +2348,7 @@ describe('getReachabilityMetrics', () => {
         reachability_vmn_tcp_failed: 3,
         reachability_vmn_xtls_success: 1,
         reachability_vmn_xtls_failed: 1,
+        natType: 'unknown'
       }
     );
   });

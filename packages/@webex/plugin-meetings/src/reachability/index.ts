@@ -23,11 +23,13 @@ import {
   ReachabilityResultsForBackend,
   TransportResultForBackend,
   GetClustersTrigger,
+  NatType,
 } from './reachability.types';
 import {
   ClientMediaIpsUpdatedEventData,
   ClusterReachability,
   Events,
+  NatTypeUpdatedEventData,
   ResultEventData,
 } from './clusterReachability';
 import EventsScope from '../common/events/events-scope';
@@ -64,6 +66,7 @@ export default class Reachability extends EventsScope {
   resultsCount = {videoMesh: {udp: 0}, public: {udp: 0, tcp: 0, xtls: 0}};
   startTime = undefined;
   totalDuration = undefined;
+  natType = NatType.Unknown;
 
   protected lastTrigger?: string;
 
@@ -309,6 +312,7 @@ export default class Reachability extends EventsScope {
       reachability_vmn_tcp_failed: 0,
       reachability_vmn_xtls_success: 0,
       reachability_vmn_xtls_failed: 0,
+      natType: this.natType,
     };
 
     const updateStats = (clusterType: 'public' | 'vmn', result: ClusterReachabilityResult) => {
@@ -964,6 +968,13 @@ export default class Reachability extends EventsScope {
           results[key][data.protocol].clientMediaIPs = data.clientMediaIPs;
 
           await this.storeResults(results);
+        }
+      );
+
+      this.clusterReachability[key].on(
+        Events.natTypeUpdated,
+        async (data: NatTypeUpdatedEventData) => {
+          this.natType = data.natType;
         }
       );
 

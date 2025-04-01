@@ -44,6 +44,7 @@ export const TASK_EVENTS = {
   TASK_CONSULT_QUEUE_CANCELLED: 'task:consultQueueCancelled',
   TASK_CONSULT_QUEUE_FAILED: 'task:consultQueueFailed',
   TASK_CONSULT_ACCEPTED: 'task:consultAccepted',
+  TASK_CONSULTING: 'task:consulting',
   TASK_PAUSE: 'task:pause',
   TASK_RESUME: 'task:resume',
   TASK_END: 'task:end',
