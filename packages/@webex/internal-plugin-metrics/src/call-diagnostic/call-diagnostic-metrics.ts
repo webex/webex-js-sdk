@@ -736,10 +736,6 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     if (joinFlowVersion) {
       clientEventObject.joinFlowVersion = joinFlowVersion;
     }
-    const meetingJoinedTime = meeting.isoLocalClientMeetingJoinTime;
-    if (meetingJoinedTime) {
-      clientEventObject.meetingJoinedTime = meetingJoinedTime;
-    }
 
     if (options.meetingJoinPhase) {
       clientEventObject.meetingJoinPhase = options.meetingJoinPhase;

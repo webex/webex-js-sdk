@@ -460,50 +460,6 @@ describe('plugin-meetings', () => {
         });
       });
 
-
-      it('#Should call `meetingRequest.joinMeeting and handle a date header in the response : isoLocalClientMeetingJoinedTime', async () => {
-        meeting.isMultistream = true;
-
-        const FAKE_REACHABILITY_REPORT = {
-          id: 'fake reachability report',
-        };
-        const FAKE_CLIENT_MEDIA_PREFERENCES = {
-          id: 'fake client media preferences',
-        };
-
-        webex.meetings.reachability.getReachabilityReportToAttachToRoap.resolves(FAKE_REACHABILITY_REPORT);
-        webex.meetings.reachability.getClientMediaPreferences.resolves(FAKE_CLIENT_MEDIA_PREFERENCES);
-
-        sinon
-          .stub(webex.internal.device.ipNetworkDetector, 'supportsIpV4')
-          .get(() => true);
-        sinon
-          .stub(webex.internal.device.ipNetworkDetector, 'supportsIpV6')
-          .get(() => true);
-
-        meeting.meetingRequest.joinMeeting.resolves({
-          headers: {
-            date: 'test'
-          },
-          body: {
-            mediaConnections: [{mediaId: 'test'}],
-            locus: {
-              url: 'test',
-              self: {
-                id: 'test'
-              }
-            }
-          }
-        })
-
-        await MeetingUtil.joinMeeting(meeting, {
-          reachability: 'reachability',
-          roapMessage: 'roapMessage',
-        });
-
-        assert.equal(meeting.isoLocalClientMeetingJoinTime, 'test');
-      });
-
       it('should handle failed reachability report retrieval', async () => {
         webex.meetings.reachability.getReachabilityReportToAttachToRoap.rejects(
           new Error('fake error')
