@@ -339,6 +339,14 @@ const Mercury = WebexPlugin.extend({
       });
   },
 
+  replaceConnection() {
+    this.suppressBufferStateMessage = true;
+
+    return this._connectWithBackoff().finally(() => {
+      this.suppressBufferStateMessage = false;
+    });
+  },
+
   _connectWithBackoff(webSocketUrl) {
     return new Promise((resolve, reject) => {
       // eslint gets confused about whether or not call is actually used
@@ -456,10 +464,12 @@ const Mercury = WebexPlugin.extend({
       const reason = event.reason && event.reason.toLowerCase();
       const socketUrl = this.socket.url;
 
-      this.socket.removeAllListeners();
-      this.unset('socket');
-      this.connected = false;
-      this._emit('offline', event);
+      if (event.code !== 4000 || this.socket.readyState !== 1) {
+        this.socket.removeAllListeners();
+        this.unset('socket');
+        this.connected = false;
+        this._emit('offline', event);
+      }
 
       switch (event.code) {
         case 1003:
@@ -472,7 +482,9 @@ const Mercury = WebexPlugin.extend({
         case 4000:
           // metric: disconnect
           this.logger.info(`${this.namespace}: socket replaced; will not reconnect`);
-          this._emit('offline.replaced', event);
+          if (!this.socket) {
+            this._emit('offline.replaced', event);
+          }
           break;
         case 1001:
         case 1005:
@@ -543,6 +555,10 @@ const Mercury = WebexPlugin.extend({
       .then(() => {
         this._emit('event', event.data);
         if (data.eventType) {
+          if (data.eventType === 'mercury.buffer_state' && this.suppressBufferStateMessage) {
+            return;
+          }
+
           const [namespace] = data.eventType.split('.');
 
           if (namespace === data.eventType) {
