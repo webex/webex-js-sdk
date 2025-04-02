@@ -14,7 +14,6 @@ let isConsultOptionsShown = false;
 let isTransferOptionsShown = false; // Add this variable to track the state of transfer options
 let entryPointId = '';
 let stateTimer;
-let mediaId = "";
 
 const authTypeElm = document.querySelector('#auth-type');
 const credentialsFormElm = document.querySelector('#credentials');
@@ -65,45 +64,7 @@ const transferElm = document.getElementById('transfer');
 const timerElm = document.querySelector('#timerDisplay');
 const chatElm = document.querySelector('#chatWidget');
 var isBundleLoaded = false;
-const handleBundleLoaded = () => {
-  console.log("bundle.js has been loaded.");
-  isBundleLoaded = true;
-  const config = {
-    logger: {
-      info: (data) => {
-        console.log(data);
-      },
-      error: (data) => {
-        console.error(data);
-      },
-      warn: (data) => {
-        console.warn(data);
-      },
-      debug: (data) => {
-        console.debug(data);
-      },
-    },
-    cb: (name, data) => {
-      const event = new CustomEvent(name, {
-        detail: data,
-      });
-      window.dispatchEvent(event);
-      // showNotification('EVENT', name);
-    },
-  };
-  const imiEngageWC = new window.ImiEngageWC(config);
-  imiEngageWC.setParam("data", {
-    jwt: tokenElm.value,
-    lang: "en-US",
-    source: "wxcc",
-  });
 
-};
-
-document.addEventListener(
-  "imi-engage-bundle-load-success",
-  handleBundleLoaded
-);
 // Store and Grab `access-token` from sessionStorage
 if (sessionStorage.getItem('date') > new Date().getTime()) {
   tokenElm.value = sessionStorage.getItem('access-token');
@@ -500,7 +461,6 @@ function enableCallControlPostConsult() {
 function registerTaskListeners(task) {
   task.on('task:assigned', (task) => {
     console.info('Call has been accepted for task: ', task.data.interactionId);
-
     handleCallControls(task); // Enable transfer controls
   });
   task.on('task:media', (track) => {
@@ -509,20 +469,25 @@ function registerTaskListeners(task) {
   task.on('task:end', (wrapupData) => {
     incomingDetailsElm.innerText = '';
     updateTaskList(); // Update the task list UI
-    if (!wrapupData.wrapupRequired) {
-      answerElm.disabled = true;
-      declineElm.disabled = true;
-      console.log('Call ended without call being answered');
-    }
-    else {
-      console.info('Call ended successfully');
-      updateButtonsPostEndCall();
+    //TODO: need to update from the task object for the list of tasks if not active task
+    if (currentTask.data.interactionId === task.data.interactionId) {
+      if (!wrapupData.wrapupRequired) {
+        answerElm.disabled = true;
+        declineElm.disabled = true;
+        console.log('Task ended without call being answered');
+      }
+      else {
+        console.info('Call ended successfully');
+        updateButtonsPostEndCall();
+      }
     }
   });
 
   task.on('task:hold', (task) => {
-    console.info('Call has been put on hold');
-    holdResumeElm.innerText = 'Resume';
+    if (currentTask.data.interactionId === task.data.interactionId) {
+      console.info('Call has been put on hold');
+      holdResumeElm.innerText = 'Resume';
+    }
   });
 
   // Consult flows
@@ -531,74 +496,126 @@ function registerTaskListeners(task) {
   });
 
   task.on('task:consultAccepted', (task) => {
+    if (currentTask.data.interactionId === task.data.interactionId) {
     // When we accept an incoming consult
-    hideConsultButton();
-    showEndConsultButton();
-    consultTransferBtn.disabled = true; // Disable the consult transfer button since we are not yet owner of the call
+      hideConsultButton();
+      showEndConsultButton();
+      consultTransferBtn.disabled = true; // Disable the consult transfer button since we are not yet owner of the call
+    }
   });
 
   task.on('task:consulting', (task) => {
-    // When we are consulting with the other agent
-    consultTransferBtn.style.display = 'inline-block'; // Show the consult transfer button
-    consultTransferBtn.disabled = false; // Enable the consult transfer button
+    if (currentTask.data.interactionId === task.data.interactionId) {
+      // When we are consulting with the other agent
+      consultTransferBtn.style.display = 'inline-block'; // Show the consult transfer button
+      consultTransferBtn.disabled = false; // Enable the consult transfer button
+    }
   });
 
   task.on('task:consultQueueFailed', (task) => {
     // When trying to consult queue fails
-    console.error(`Received task:consultQueueFailed for task: ${task.interactionId}`);
-    hideEndConsultButton();
-    showConsultButton();
+    if (currentTask.data.interactionId === task.data.interactionId) {
+      console.error(`Received task:consultQueueFailed for task: ${task.interactionId}`);
+      hideEndConsultButton();
+      showConsultButton();
+    }
   });
 
   task.on('task:consultQueueCancelled', (task) => {
-    // When we manually cancel consult to queue before it is accepted by other agent
-    console.log(`Received task:consultQueueCancelled for task: ${task.interactionId}`);
-    hideEndConsultButton();
-    showConsultButton();
+    if (currentTask.data.interactionId === task.data.interactionId) {
+      // When we manually cancel consult to queue before it is accepted by other agent
+      console.log(`Received task:consultQueueCancelled for task: ${task.interactionId}`);
+      hideEndConsultButton();
+      showConsultButton();
+    }
   });
 
   task.on('task:consultEnd', (task) => {
-    hideEndConsultButton();
-    showConsultButton();
-    enableTransferControls();
-    enableCallControlPostConsult();
-    consultTransferBtn.style.display = 'none';
-    consultTransferBtn.disabled = true;
+    if (currentTask.data.interactionId === task.data.interactionId) {
+      hideEndConsultButton();
+      showConsultButton();
+      enableTransferControls();
+      enableCallControlPostConsult();
+      consultTransferBtn.style.display = 'none';
+      consultTransferBtn.disabled = true;
 
-    answerElm.disabled = true;
-    declineElm.disabled = true;
-    if(task.data.isConsulted) {
-      updateButtonsPostEndCall();
-      incomingDetailsElm.innerText = '';
-      task = undefined;
-    }
-  });
-  task.on('task:rejected', (reason) => {
-    console.info('Task is rejected with reason:', reason);
-    if (reason === 'RONA_TIMER_EXPIRED') {
       answerElm.disabled = true;
       declineElm.disabled = true;
-      incomingDetailsElm.innerText = 'No incoming calls';
+      if(task.data.isConsulted) {
+        updateButtonsPostEndCall();
+        incomingDetailsElm.innerText = '';
+        task = undefined; // TODO: Check if this is required
+      }
     }
-    showAgentStatePopup(reason);
+  });
+  
+  task.on('task:rejected', (reason) => {
+    if (currentTask.data.interactionId === task.data.interactionId) {
+      console.info('Task is rejected with reason:', reason);
+      if (reason === 'RONA_TIMER_EXPIRED') {
+        answerElm.disabled = true;
+        declineElm.disabled = true;
+        incomingDetailsElm.innerText = 'No incoming calls';
+      }
+      showAgentStatePopup(reason);
+    }
   });
 }
 
 function handleCallControls(task) {
-  holdResumeElm.disabled = false;
-  muteElm.disabled = false;
-  holdResumeElm.innerText = 'Hold';
-  pauseResumeRecordingElm.disabled = false;
-  pauseResumeRecordingElm.innerText = 'Pause Recording';
-  endElm.disabled = false;
-  enableConsultControls(); // Enable consult controls
-  enableTransferControls();
+  const { data, webCallingService } = task;
+  const { interaction, mediaResourceId, agentId } = data;
+  const {
+    state,
+    isTerminated,
+    media,
+    participants,
+    callAssociatedDetails,
+    callProcessingDetails
+  } = interaction;
+
+  if (isTerminated) {
+    // wrapup
+    if (state === 'wrapUp' && !participants[agentId].isWrappedUp) {
+      wrapupCodesDropdownElm.disabled = false;
+      wrapupElm.disabled = false;
+    }
+
+    return;
+  }
+
+  endElm.disabled = !hasParticipants;
   if (task.data.interaction.mediaType === 'chat' || task.data.interaction.mediaType === 'email') {
     holdResumeElm.disabled = true;
     muteElm.disabled = true;
     pauseResumeRecordingElm.disabled = true;
     consultTabBtn.disabled = true;
     endElm.disabled = false;
+  } else if (currentTask.data.interaction.mediaType == 'telephony') {
+    // hold/resume call
+    const isHold = media && media[mediaResourceId] && media[mediaResourceId].isHold;
+    holdResumeElm.disabled = isTerminated;
+    holdResumeElm.innerText = isHold ? 'Resume' : 'Hold';
+
+    if (callProcessingDetails) {
+      const { pauseResumeEnabled, isPaused } = callProcessingDetails;
+
+      // pause/resume recording
+      pauseResumeRecordingElm.disabled = !pauseResumeEnabled;
+      pauseResumeRecordingElm.innerText = isPaused === 'true' ? 'Resume Recording' : 'Pause Recording';
+    }
+
+    // end consult, consult transfer buttons
+    const { consultMediaResourceId, destAgentId, destinationType } = data;
+    if (consultMediaResourceId && destAgentId && destinationType) {
+      const destination = participants[destAgentId];
+      destinationTypeDropdown.value = destinationType;
+      consultDestinationInput.value = destination.dn; 
+
+      consultTabBtn.style.display = 'none';
+      endConsultBtn.style.display = 'inline-block';
+      consultTransferBtn.style.display = 'inline-block';
+    }
   }
 }
 
@@ -646,27 +663,7 @@ function initWebex(e) {
     registerStatus.innerHTML = 'Not Subscribed';
     registerBtn.disabled = false;
     // Dynamically add the IMI Engage controller bundle script
-    const imiControllerBundleScript = document.createElement('script');
-    imiControllerBundleScript.id = "imi-controller-bundle";
-    imiControllerBundleScript.setAttribute('dc', 'produs1');
-    imiControllerBundleScript.src = "https://wc.imiengage.io/engage.js";
-    document.head.appendChild(imiControllerBundleScript);
-    // Dynamically add the required script and stylesheets for Momentum UI
-    const momentumScript = document.createElement('script');
-    momentumScript.src = "https://wc.imiengage.io/v0.9.11/momentum/momentum.js";
-    document.head.appendChild(momentumScript);
-
-    const momentumStylesheet = document.createElement('link');
-    momentumStylesheet.rel = "stylesheet";
-    momentumStylesheet.type = "text/css";
-    momentumStylesheet.href = "https://wc.imiengage.io/v0.9.11/momentum/css/momentum-ui.min.css";
-    document.head.appendChild(momentumStylesheet);
-
-    const momentumIconsStylesheet = document.createElement('link');
-    momentumIconsStylesheet.rel = "stylesheet";
-    momentumIconsStylesheet.type = "text/css";
-    momentumIconsStylesheet.href = "https://wc.imiengage.io/v0.9.11/momentum/css/momentum-ui-icons.css";
-    document.head.appendChild(momentumIconsStylesheet);
+    loadEngageWidget();
   });
 
   return false;
@@ -712,7 +709,7 @@ function startStateTimer(lastStateChangeTimestamp, lastIdleCodeChangeTimestamp) 
 
 
 function register() {
-    webex.cc.register(true).then((agentProfile) => {
+    webex.cc.register().then((agentProfile) => {
         registerStatus.innerHTML = 'Subscribed';
         console.log('Event subscription successful: ', agentProfile);
         teamsDropdown.innerHTML = ''; // Clear previously selected option on teamsDropdown
@@ -762,12 +759,13 @@ function register() {
           }
         });
         entryPointId = agentProfile.outDialEp;
+        updateTaskList();
     }).catch((error) => {
         console.error('Event subscription failed', error);
     })
 
     webex.cc.on('task:incoming', (task) => {
-      mediaId = task.data.interaction.callAssociatedDetails.mediaResourceId
+      currentTask = task;
       updateTaskList();
       taskEvents.detail.task = task;
       if(task.data.interaction.mediaType !== 'telephony')
@@ -810,79 +808,9 @@ function handleTaskHydrate(task) {
     return;
   }
 
-  const { data, webCallingService } = currentTask;
-  const { interaction, mediaResourceId, agentId } = data;
-  const {
-    state,
-    isTerminated,
-    media,
-    participants,
-    callAssociatedDetails,
-    callProcessingDetails
-  } = interaction;
 
-  if (isTerminated) {
-    // wrapup
-    if (state === 'wrapUp' && !participants[agentId].isWrappedUp) {
-      wrapupCodesDropdownElm.disabled = false;
-      wrapupElm.disabled = false;
-    }
-
-    return;
-  }
-
-  // answer & decline incoming calls
-  const callerDisplay = callAssociatedDetails?.ani;
-  mediaId = currentTask.data.interaction.callAssociatedDetails.mediaResourceId;
-  if(currentTask.data.interaction.mediaType === 'chat')
-  {
-    incomingDetailsElm.innerText = `Incoming chat from ${callerDisplay}`;
-
-    chatElm.innerHTML = `
-    <imi-engage
-      theme="LIGHT"
-      lang="en-US"
-      conversationid="${mediaId}"
-    ></imi-engage>
-  `;
-  } else if(currentTask.data.interaction.mediaType === 'email')
-  {
-    incomingDetailsElm.innerText = `Incoming email from ${callerDisplay}`;
-  } else if (webCallingService.loginOption === 'BROWSER')
-  {
-    incomingDetailsElm.innerText = `Call from ${callerDisplay}`;
-  } else {
-    incomingDetailsElm.innerText = `Call from ${callerDisplay}...please answer on the endpoint where the agent's extension is registered`;
-  }
-
-  // end button
-  const hasParticipants = Object.keys(participants).length > 1;
-  endElm.disabled = !hasParticipants;
+  handleTaskClick(currentTask);
   
-  // hold/resume call
-  const isHold = media && media[mediaResourceId] && media[mediaResourceId].isHold;
-  holdResumeElm.disabled = isTerminated;
-  holdResumeElm.innerText = isHold ? 'Resume' : 'Hold';
-
-  if (callProcessingDetails) {
-    const { pauseResumeEnabled, isPaused } = callProcessingDetails;
-
-    // pause/resume recording
-    pauseResumeRecordingElm.disabled = !pauseResumeEnabled;
-    pauseResumeRecordingElm.innerText = isPaused === 'true' ? 'Resume Recording' : 'Pause Recording';
-  }
-
-  // end consult, consult transfer buttons
-  const { consultMediaResourceId, destAgentId, destinationType } = data;
-  if (consultMediaResourceId && destAgentId && destinationType) {
-    const destination = participants[destAgentId];
-    destinationTypeDropdown.value = destinationType;
-    consultDestinationInput.value = destination.dn; 
-
-    consultTabBtn.style.display = 'none';
-    endConsultBtn.style.display = 'inline-block';
-    consultTransferBtn.style.display = 'inline-block';
-  }
 }
 
 function populateWrapupCodesDropdown() {
@@ -1061,21 +989,16 @@ incomingCallListener.addEventListener('task:incoming', (event) => {
  async function answer() {
   answerElm.disabled = true;
   declineElm.disabled = true;
-  await task.accept();
-  chatElm.innerHTML = `
-  <imi-engage
-    theme="LIGHT"
-    lang="en-US"
-    conversationid="${mediaId}"
-  ></imi-engage>
-`;
-  incomingDetailsElm.innerText = 'Call Accepted';
+  await currentTask.accept();
+  handleTaskClick(currentTask);
+  incomingDetailsElm.innerText = 'Task Accepted';
 }
 
 function decline() {
   answerElm.disabled = true;
   declineElm.disabled = true;
   task.decline(taskId);
+  updateTaskList();
   incomingDetailsElm.innerText = 'No incoming calls';
 }
 
@@ -1202,8 +1125,9 @@ function togglePauseResumeRecording() {
 function endCall() {
   endElm.disabled = true;
   currentTask.end().then(() => {
-    console.log('Call ended successfully by agent');
+    console.log('task ended successfully by agent');
     updateButtonsPostEndCall();
+    updateTaskList();
   }).catch((error) => {
     console.error('Failed to end the call', error);
     endElm.disabled = false;
@@ -1220,15 +1144,11 @@ function wrapupCall() {
     holdResumeElm.disabled = true;
     endElm.disabled = true;
     wrapupCodesDropdownElm.disabled = true;
+    updateTaskList();
   }).catch((error) => {
     console.error('Failed to wrap up the call', error);
     wrapupElm.disabled = false;
   });
-}
-
-function updateTaskList() {
-  const taskList = webex.cc.taskManager.getAllTasks(); // Update the global task list
-  renderTaskList(taskList); // Render the updated task list
 }
 
 function acceptTask(task) {
@@ -1237,8 +1157,7 @@ function acceptTask(task) {
 
   task.accept(taskId).then(() => {
     console.log(`Task ${taskId} accepted successfully`);
-    const taskList = webex.cc.taskManager.getAllTasks();
-    renderTaskList(taskList); // Refresh the task list
+    updateTaskList(); // Refresh the task list
   }).catch((error) => {
     console.error(`Error accepting task ${taskId}:`, error);
   });
@@ -1250,11 +1169,79 @@ function declineTask(task) {
 
   task.decline(taskId).then(() => {
     console.log(`Task ${taskId} declined successfully`);
-    const taskList = webex.cc.taskManager.getAllTasks();
-    renderTaskList(taskList); // Refresh the task list
+    updateTaskList(); // Refresh the task list
   }).catch((error) => {
     console.error(`Error declining task ${taskId}:`, error);
   });
+}
+
+const handleBundleLoaded = () => {
+  console.log("bundle.js has been loaded.");
+  isBundleLoaded = true;
+  const config = {
+    logger: {
+      info: (data) => {
+        console.log(data);
+      },
+      error: (data) => {
+        console.error(data);
+      },
+      warn: (data) => {
+        console.warn(data);
+      },
+      debug: (data) => {
+        console.debug(data);
+      },
+    },
+    cb: (name, data) => {
+      const event = new CustomEvent(name, {
+        detail: data,
+      });
+      window.dispatchEvent(event);
+      // showNotification('EVENT', name);
+    },
+  };
+  const imiEngageWC = new window.ImiEngageWC(config);
+  imiEngageWC.setParam("data", {
+    jwt: tokenElm.value,
+    lang: "en-US",
+    source: "wxcc",
+  });
+
+};
+
+document.addEventListener(
+  "imi-engage-bundle-load-success",
+  handleBundleLoaded
+);
+
+function loadEngageWidget() {
+  const imiControllerBundleScript = document.createElement('script');
+  imiControllerBundleScript.id = "imi-controller-bundle";
+  imiControllerBundleScript.setAttribute('dc', 'produs1');
+  imiControllerBundleScript.src = "https://wc.imiengage.io/engage.js";
+  document.head.appendChild(imiControllerBundleScript);
+  // Dynamically add the required script and stylesheets for Momentum UI
+  const momentumScript = document.createElement('script');
+  momentumScript.src = "https://wc.imiengage.io/v0.9.11/momentum/momentum.js";
+  document.head.appendChild(momentumScript);
+
+  const momentumStylesheet = document.createElement('link');
+  momentumStylesheet.rel = "stylesheet";
+  momentumStylesheet.type = "text/css";
+  momentumStylesheet.href = "https://wc.imiengage.io/v0.9.11/momentum/css/momentum-ui.min.css";
+  document.head.appendChild(momentumStylesheet);
+
+  const momentumIconsStylesheet = document.createElement('link');
+  momentumIconsStylesheet.rel = "stylesheet";
+  momentumIconsStylesheet.type = "text/css";
+  momentumIconsStylesheet.href = "https://wc.imiengage.io/v0.9.11/momentum/css/momentum-ui-icons.css";
+  document.head.appendChild(momentumIconsStylesheet);
+}
+
+function updateTaskList() {
+  const taskList = webex.cc.taskManager.getAllTasks(); // Update the global task list
+  renderTaskList(taskList); // Render the updated task list
 }
 
 function renderTaskList(taskList) {
@@ -1280,7 +1267,7 @@ function renderTaskList(taskList) {
 
     taskListContainer.appendChild(taskElement);
   }
-
+  
   // Add event listeners for accept and decline buttons
   document.querySelectorAll('.accept-task').forEach((button) => {
   button.addEventListener('click', (event) => {
@@ -1305,6 +1292,8 @@ function handleTaskClick(task) {
   currentTask = task
   if (task.data.interaction.mediaType === 'chat') { // TODO: add answered state condition
     loadChatWidget(task);
+  } else if (task.data.interaction.mediaType === 'email') {
+    loadEmailWidget(task);
   }
   handleCallControls(task); // Enable/disable transfer controls
 
@@ -1312,12 +1301,28 @@ function handleTaskClick(task) {
 
 function loadChatWidget(task) {
   const callerDisplay = task.data.interaction.callAssociatedDetails?.ani;
-  incomingDetailsElm.innerText = `Incoming chat from ${callerDisplay}`;
-  mediaId = task.data.interaction.callAssociatedDetails.mediaResourceId;
+  incomingDetailsElm.innerText = `chat from ${callerDisplay}`;
+  const mediaId = task.data.interaction.callAssociatedDetails.mediaResourceId;
   chatElm.innerHTML = `
   <imi-engage
     theme="LIGHT"
     lang="en-US"
     conversationid="${mediaId}"
   ></imi-engage>`;
+}
+
+function loadEmailWidget(task) {
+  const callerDisplay = task.data.interaction.callAssociatedDetails?.ani;
+  incomingDetailsElm.innerText = `email from ${callerDisplay}`;
+  const mediaId = task.data.interaction.callAssociatedDetails.mediaResourceId;
+  emailElm.innerHTML = `
+    <imi-email-composer
+  taskId="${mediaId}"
+  orgId="${task.data.orgId}"
+  agentName="${agentId}"
+  agentId="${agentId}"
+  interactionId="${task.data.interactionId}"
+></imi-email-composer>`;
+
+
 }
