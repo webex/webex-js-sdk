@@ -1689,13 +1689,27 @@ export default class Meeting extends StatelessWebexPlugin {
   /**
    * Setter - sets isoLocalClientMeetingJoinTime
    * This will be set once on meeting join, and not updated again
-   * @param {string | undefined} time in ISO format
+   * this will always produce an ISO string
+   * If the iso string is invalid, it will fallback to the current system time
+   * @param {string | undefined} time
    */
   set isoLocalClientMeetingJoinTime(time: string | undefined) {
+    const fallback = new Date().toISOString();
     if (!time) {
-      this.#isoLocalClientMeetingJoinTime = new Date().toISOString();
+      this.#isoLocalClientMeetingJoinTime = fallback;
     } else {
-      this.#isoLocalClientMeetingJoinTime = time;
+      const date = new Date(time);
+
+      // Check if the date is valid
+      if (Number.isNaN(date.getTime())) {
+        LoggerProxy.logger.info(
+          // @ts-ignore
+          `Meeting:index#isoLocalClientMeetingJoinTime --> Invalid date provided: ${time}. Falling back to system clock.`
+        );
+        this.#isoLocalClientMeetingJoinTime = fallback;
+      } else {
+        this.#isoLocalClientMeetingJoinTime = date.toISOString();
+      }
     }
   }
 
@@ -8726,6 +8740,9 @@ export default class Meeting extends StatelessWebexPlugin {
     LoggerProxy.logger.log(
       `Meeting:index#handleShareVideoStreamMuteStateChange --> Share video stream mute state changed to muted ${muted}`
     );
+
+    const shareVideoStreamSettings = this.mediaProperties?.shareVideoStream?.getSettings();
+
     Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.MEETING_SHARE_VIDEO_MUTE_STATE_CHANGE, {
       correlationId: this.correlationId,
       muted,
@@ -8734,8 +8751,9 @@ export default class Meeting extends StatelessWebexPlugin {
       // SDK to TypeScript 5, which may affect other packages, use bracket notation for now, since
       // all we're doing here is adding metrics.
       // eslint-disable-next-line dot-notation
-      displaySurface: this.mediaProperties?.shareVideoStream?.getSettings()['displaySurface'],
+      displaySurface: shareVideoStreamSettings?.['displaySurface'],
       isMultistream: this.isMultistream,
+      frameRate: shareVideoStreamSettings?.frameRate,
     });
   };
 
