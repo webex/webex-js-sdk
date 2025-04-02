@@ -696,6 +696,19 @@ describe('Task', () => {
     });
   });
 
+  it('should resume the recording of the task if the payload is empty', async () => {
+    const resumePayload = {
+      autoResumed: false,
+    };
+
+    await task.resumeRecording();
+
+    expect(contactMock.resumeRecording).toHaveBeenCalledWith({
+      interactionId: taskId,
+      data: resumePayload,
+    });
+  });
+
   it('should handle errors in resumeRecording method', async () => {
     const error = {
       details: {

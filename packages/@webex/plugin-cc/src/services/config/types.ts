@@ -41,6 +41,7 @@ export const CC_TASK_EVENTS = {
   AGENT_CONTACT: 'AgentContact',
   AGENT_OFFER_CONTACT: 'AgentOfferContact',
   AGENT_CONTACT_ASSIGNED: 'AgentContactAssigned',
+  AGENT_CONTACT_UNASSIGNED: 'AgentContactUnassigned',
 } as const;
 
 // Define the CC_AGENT_EVENTS object

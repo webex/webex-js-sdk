@@ -15,6 +15,7 @@ import {
   SubmitClientEvent,
   SubmitInternalEvent,
   SubmitOperationalEvent,
+  SubmitBusinessEvent,
   SubmitMQE,
   PreComputedLatencies,
 } from './metrics.types';
@@ -58,5 +59,6 @@ export type {
   SubmitInternalEvent,
   SubmitMQE,
   SubmitOperationalEvent,
+  SubmitBusinessEvent,
   PreComputedLatencies,
 };
