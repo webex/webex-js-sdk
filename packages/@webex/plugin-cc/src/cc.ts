@@ -114,21 +114,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    */
   public async register(): Promise<Profile> {
     try {
-      this.$webex.internal.mercury
-        .connect()
-        .then(() => {
-          LoggerProxy.info('Authentication: webex.internal.mercury.connect successful', {
-            module: CC_FILE,
-            method: this.register.name,
-          });
-        })
-        .catch((error) => {
-          LoggerProxy.error(`Error occurred during mercury.connect() ${error}`, {
-            module: CC_FILE,
-            method: this.register.name,
-          });
-        });
-
       this.setupEventListeners();
 
       return await this.connectWebsocket();
@@ -177,10 +162,27 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           const agentId = data.agentId;
           const orgId = this.$webex.credentials.getOrgId();
           this.agentConfig = await this.services.config.getAgentConfig(orgId, agentId);
-          LoggerProxy.log(`agent config is fetched successfully`, {
+          LoggerProxy.log(`Agent config is fetched successfully`, {
             module: CC_FILE,
             method: this.connectWebsocket.name,
           });
+
+          if (this.agentConfig.webRtcEnabled) {
+            this.$webex.internal.mercury
+              .connect()
+              .then(() => {
+                LoggerProxy.info('Authentication: webex.internal.mercury.connect successful', {
+                  module: CC_FILE,
+                  method: this.connectWebsocket.name,
+                });
+              })
+              .catch((error) => {
+                LoggerProxy.error(`Error occurred during mercury.connect() ${error}`, {
+                  module: CC_FILE,
+                  method: this.connectWebsocket.name,
+                });
+              });
+          }
           if (this.$config && this.$config.allowAutomatedRelogin) {
             await this.silentRelogin();
           }

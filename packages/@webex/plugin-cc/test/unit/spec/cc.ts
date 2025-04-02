@@ -231,7 +231,7 @@ describe('webex.cc', () => {
       allowConsultToQueue: false,
       agentPersonalStatsEnabled: false,
       isTimeoutDesktopInactivityEnabled: false,
-      webRtcEnabled: false,
+      webRtcEnabled: true,
       lostConnectionRecoveryTimeout: 0,
     };
 
@@ -280,7 +280,7 @@ describe('webex.cc', () => {
       expect(mockWebSocketManager.on).toHaveBeenCalledWith('message', expect.any(Function));
 
       expect(configSpy).toHaveBeenCalled();
-      expect(LoggerProxy.log).toHaveBeenCalledWith('agent config is fetched successfully', {
+      expect(LoggerProxy.log).toHaveBeenCalledWith('Agent config is fetched successfully', {
         module: CC_FILE,
         method: 'mockConstructor',
       });
@@ -319,7 +319,7 @@ describe('webex.cc', () => {
         },
       });
       expect(configSpy).toHaveBeenCalled();
-      expect(LoggerProxy.log).toHaveBeenCalledWith('agent config is fetched successfully', {
+      expect(LoggerProxy.log).toHaveBeenCalledWith('Agent config is fetched successfully', {
         module: CC_FILE,
         method: 'mockConstructor',
       });
@@ -365,7 +365,7 @@ describe('webex.cc', () => {
 
       expect(LoggerProxy.error).toHaveBeenCalledWith(`Error occurred during mercury.connect() ${mockError}`, {
         module: CC_FILE,
-        method: 'register',
+        method: 'mockConstructor',
       });
       expect(connectWebsocketSpy).toHaveBeenCalled();
       expect(setupEventListenersSpy).toHaveBeenCalled();
@@ -390,11 +390,49 @@ describe('webex.cc', () => {
       expect(mockWebSocketManager.on).toHaveBeenCalledWith('message', expect.any(Function));
 
       expect(configSpy).toHaveBeenCalled();
-      expect(LoggerProxy.log).toHaveBeenCalledWith('agent config is fetched successfully', {
+      expect(LoggerProxy.log).toHaveBeenCalledWith('Agent config is fetched successfully', {
         module: CC_FILE,
         method: 'mockConstructor',
       });
       expect(reloadSpy).toHaveBeenCalled();
+      expect(result).toEqual(mockAgentProfile);
+    });
+
+    it('should not attempt for mercury connection when webrtc is disabled', async () => {
+      mockAgentProfile.webRtcEnabled = false;
+      const mercurySpy = jest.spyOn(webex.internal.mercury, 'connect');
+      const connectWebsocketSpy = jest.spyOn(webex.cc, 'connectWebsocket');
+      const setupEventListenersSpy = jest.spyOn(webex.cc, 'setupEventListeners');
+      const reloadSpy = jest.spyOn(webex.cc.services.agent, 'reload').mockResolvedValue({
+        data: {
+          auxCodeId: 'auxCodeId',
+          agentId: 'agentId',
+          deviceType: LoginOption.EXTENSION,
+          dn: '12345',
+        },
+      });
+      const configSpy = jest
+        .spyOn(webex.cc.services.config, 'getAgentConfig')
+        .mockResolvedValue(mockAgentProfile);
+      mockWebSocketManager.initWebSocket.mockResolvedValue({
+        agentId: 'agent123',
+      });
+
+      const result = await webex.cc.register();
+
+      expect(connectWebsocketSpy).toHaveBeenCalled();
+      expect(setupEventListenersSpy).toHaveBeenCalled();
+      expect(mockWebSocketManager.initWebSocket).toHaveBeenCalledWith({
+        body: {
+          force: true,
+          isKeepAliveEnabled: false,
+          clientType: 'WebexCCSDK',
+          allowMultiLogin: false,
+        },
+      });
+
+      expect(configSpy).toHaveBeenCalled();
+      expect(mercurySpy).not.toHaveBeenCalled();
       expect(result).toEqual(mockAgentProfile);
     });
   });
