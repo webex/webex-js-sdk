@@ -7,7 +7,7 @@ let agentStatusId;
 let agentStatus;
 let agentId;
 let taskControl;
-let task;
+let currentTask;
 let taskId;
 let wrapupCodes = []; // Add this to store wrapup codes
 let isConsultOptionsShown = false;
@@ -15,7 +15,6 @@ let isTransferOptionsShown = false; // Add this variable to track the state of t
 let entryPointId = '';
 let stateTimer;
 let mediaId = "";
-let taskList = []; // Add this to store the list of tasks
 
 const authTypeElm = document.querySelector('#auth-type');
 const credentialsFormElm = document.querySelector('#credentials');
@@ -35,7 +34,7 @@ const setAgentStatusButton = document.querySelector('#setAgentStatus');
 const logoutAgentElm = document.querySelector('#logoutAgent');
 const buddyAgentsDropdownElm = document.getElementById('buddyAgentsDropdown');
 const incomingCallListener = document.querySelector('#incomingsection');
-const incomingDetailsElm = document.querySelector('#incoming-call');
+const incomingDetailsElm = document.querySelector('#incoming-task');
 const answerElm = document.querySelector('#answer');
 const declineElm = document.querySelector('#decline');
 const callControlListener = document.querySelector('#callcontrolsection');
@@ -212,7 +211,7 @@ function initOauth() {
 
 const taskEvents = new CustomEvent('task:incoming', {
   detail: {
-    task: task,
+    task: currentTask,
   },
 });
 
@@ -221,7 +220,7 @@ function updateButtonsPostEndCall() {
   muteElm.disabled = true;
   endElm.disabled = true;
   pauseResumeRecordingElm.disabled = true;
-  if(task) {
+  if(currentTask) {
     wrapupElm.disabled = false;
     wrapupCodesDropdownElm.disabled = false;
   } else {
@@ -372,7 +371,7 @@ async function initiateTransfer() {
   };
 
   try {
-    await task.transfer(transferPayload);
+    await currentTask.transfer(transferPayload);
     console.log('Transfer initiated successfully');
     disableTransferControls();
     toggleTransferOptions(); // Hide the transfer options
@@ -398,7 +397,7 @@ async function initiateConsultTransfer() {
   };
 
   try {
-    await task.consultTransfer(consultTransferPayload);
+    await currentTask.consultTransfer(consultTransferPayload);
     console.log('Consult transfer initiated successfully');
     consultTransferBtn.disabled = true; // Disable the consult transfer button after initiating consult transfer
     consultTransferBtn.style.display = 'none'; // Hide the consult transfer button after initiating consult transfer
@@ -409,7 +408,7 @@ async function initiateConsultTransfer() {
 
 // Function to end consult
 async function endConsult() {
-  const taskId = task.data.interactionId;
+  const taskId = currentTask.data.interactionId;
 
   const consultEndPayload = {
     isConsult: true,
@@ -417,7 +416,7 @@ async function endConsult() {
   };
 
   try {
-    await task.endConsult(consultEndPayload);
+    await currentTask.endConsult(consultEndPayload);
     console.log('Consult ended successfully');
     hideEndConsultButton();
     showConsultButton();
@@ -487,14 +486,7 @@ function registerTaskListeners(task) {
   task.on('task:assigned', (task) => {
     console.info('Call has been accepted for task: ', task.data.interactionId);
 
-    holdResumeElm.disabled = false;
-    muteElm.disabled = false;
-    holdResumeElm.innerText = 'Hold';
-    pauseResumeRecordingElm.disabled = false;
-    pauseResumeRecordingElm.innerText = 'Pause Recording';
-    endElm.disabled = false;
-    enableConsultControls(); // Enable consult controls
-    enableTransferControls(); // Enable transfer controls
+    handleCallControls(task); // Enable transfer controls
   });
   task.on('task:media', (track) => {
     document.getElementById('remote-audio').srcObject = new MediaStream([track]);
@@ -502,8 +494,7 @@ function registerTaskListeners(task) {
   task.on('task:end', (task) => {
     answerElm.disabled = true;
     declineElm.disabled = true;
-    taskList = taskList.filter((t) => t?.data?.interactionId !== task?.data?.interactionId); // Remove the ended task
-    updateTaskList(taskList); // Update the task list UI
+    updateTaskList(); // Update the task list UI
     incomingDetailsElm.innerText = '';
     if (!endElm.disabled) {
       console.info('Call ended successfully by the external user');
@@ -565,6 +556,24 @@ function registerTaskListeners(task) {
     }
     showAgentStatePopup(reason);
   });
+}
+
+function handleCallControls(task) {
+  holdResumeElm.disabled = false;
+  muteElm.disabled = false;
+  holdResumeElm.innerText = 'Hold';
+  pauseResumeRecordingElm.disabled = false;
+  pauseResumeRecordingElm.innerText = 'Pause Recording';
+  endElm.disabled = false;
+  enableConsultControls(); // Enable consult controls
+  enableTransferControls();
+  if (task.data.interaction.mediaType === 'chat' || task.data.interaction.mediaType === 'email') {
+    holdResumeElm.disabled = true;
+    muteElm.disabled = true;
+    pauseResumeRecordingElm.disabled = true;
+    consultTabBtn.disabled = true;
+    endElm.disabled = false;
+  }
 }
 
 function generateWebexConfig({credentials}) {
@@ -733,8 +742,7 @@ function register() {
 
     webex.cc.on('task:incoming', (task) => {
       mediaId = task.data.interaction.callAssociatedDetails.mediaResourceId
-      taskList.push(task); // Add the new task to the task list
-      updateTaskList(taskList);
+      updateTaskList();
       taskEvents.detail.task = task;
       if(task.data.interaction.mediaType !== 'telephony')
       {
@@ -766,17 +774,17 @@ function register() {
     
 }
 
-function handleTaskHydrate(currentTask) {
-  task = currentTask;
+function handleTaskHydrate(task) {
+  currentTask = task;
 
-  if (!task || !task.data || !task.data.interaction) {
+  if (!currentTask || !currentTask.data || !currentTask.data.interaction) {
     console.error('task:hydrate --> No task data found.');
     alert('task:hydrate --> No task data found.');
     
     return;
   }
 
-  const { data, webCallingService } = task;
+  const { data, webCallingService } = currentTask;
   const { interaction, mediaResourceId, agentId } = data;
   const {
     state,
@@ -799,12 +807,9 @@ function handleTaskHydrate(currentTask) {
 
   // answer & decline incoming calls
   const callerDisplay = callAssociatedDetails?.ani;
-  mediaId = task.data.interaction.callAssociatedDetails.mediaResourceId;
-  if(task.data.interaction.mediaType === 'chat')
+  mediaId = currentTask.data.interaction.callAssociatedDetails.mediaResourceId;
+  if(currentTask.data.interaction.mediaType === 'chat')
   {
-    answerElm.disabled = false;
-    declineElm.disabled = false;
-
     incomingDetailsElm.innerText = `Incoming chat from ${callerDisplay}`;
 
     chatElm.innerHTML = `
@@ -814,17 +819,11 @@ function handleTaskHydrate(currentTask) {
       conversationid="${mediaId}"
     ></imi-engage>
   `;
-  } else if(task.data.interaction.mediaType === 'email')
+  } else if(currentTask.data.interaction.mediaType === 'email')
   {
-    answerElm.disabled = false;
-    declineElm.disabled = false;
-
     incomingDetailsElm.innerText = `Incoming email from ${callerDisplay}`;
-  } else if (webCallingService.loginOption === 'BROWSER' ||task.data.interaction.mediaType == 'telephony')
+  } else if (webCallingService.loginOption === 'BROWSER')
   {
-    answerElm.disabled = false;
-    declineElm.disabled = false;
-
     incomingDetailsElm.innerText = `Call from ${callerDisplay}`;
   } else {
     incomingDetailsElm.innerText = `Call from ${callerDisplay}...please answer on the endpoint where the agent's extension is registered`;
@@ -1114,7 +1113,7 @@ function expandAll() {
 function holdResumeCall() {
   if (holdResumeElm.innerText === 'Hold') {
     holdResumeElm.disabled = true;
-    task.hold().then(() => {
+    currentTask.hold().then(() => {
       console.info('Call held successfully');
       holdResumeElm.innerText = 'Resume';
       holdResumeElm.disabled = false;
@@ -1124,7 +1123,7 @@ function holdResumeCall() {
     });
   } else {
     holdResumeElm.disabled = true;
-    task.resume().then(() => {
+    currentTask.resume().then(() => {
       console.info('Call resumed successfully');
       holdResumeElm.innerText = 'Hold';
       holdResumeElm.disabled = false;
@@ -1143,14 +1142,14 @@ function muteUnmute() {
     muteElm.innerText = 'Mute';
     console.info('Call is unmuted');
   }
-  task.toggleMute();
+  currentTask.toggleMute();
 }
 
 function togglePauseResumeRecording() {
   const autoResumed = autoResumeCheckboxElm.checked;
   if (pauseResumeRecordingElm.innerText === 'Pause Recording') {
     pauseResumeRecordingElm.disabled = true;
-    task.pauseRecording().then(() => {
+    currentTask.pauseRecording().then(() => {
       console.info('Recording paused successfully');
       pauseResumeRecordingElm.innerText = 'Resume Recording';
       pauseResumeRecordingElm.disabled = false;
@@ -1161,7 +1160,7 @@ function togglePauseResumeRecording() {
     });
   } else {
     pauseResumeRecordingElm.disabled = true;
-    task.resumeRecording({ autoResumed: autoResumed }).then(() => {
+    currentTask.resumeRecording({ autoResumed: autoResumed }).then(() => {
       console.info('Recording resumed successfully');
       pauseResumeRecordingElm.innerText = 'Pause Recording';
       pauseResumeRecordingElm.disabled = false;
@@ -1175,7 +1174,7 @@ function togglePauseResumeRecording() {
 
 function endCall() {
   endElm.disabled = true;
-  task.end().then(() => {
+  currentTask.end().then(() => {
     console.log('Call ended successfully by agent');
     updateButtonsPostEndCall();
   }).catch((error) => {
@@ -1188,7 +1187,7 @@ function wrapupCall() {
   wrapupElm.disabled = true;
   const wrapupReason = wrapupCodesDropdownElm.options[wrapupCodesDropdownElm.selectedIndex].text;
   const auxCodeId = wrapupCodesDropdownElm.options[wrapupCodesDropdownElm.selectedIndex].value;
-  task.wrapup({wrapUpReason: wrapupReason, auxCodeId: auxCodeId}).then(() => {
+  currentTask.wrapup({wrapUpReason: wrapupReason, auxCodeId: auxCodeId}).then(() => {
     console.info('Call wrapped up successfully');
     holdResumeElm.disabled = true;
     endElm.disabled = true;
@@ -1199,8 +1198,8 @@ function wrapupCall() {
   });
 }
 
-function updateTaskList(newTaskList) {
-  taskList = newTaskList; // Update the global task list
+function updateTaskList() {
+  const taskList = webex.cc.taskManager.getAllTasks(); // Update the global task list
   renderTaskList(taskList); // Render the updated task list
 }
 
@@ -1210,6 +1209,7 @@ function acceptTask(task) {
 
   task.accept(taskId).then(() => {
     console.log(`Task ${taskId} accepted successfully`);
+    const taskList = webex.cc.taskManager.getAllTasks();
     renderTaskList(taskList); // Refresh the task list
   }).catch((error) => {
     console.error(`Error accepting task ${taskId}:`, error);
@@ -1222,6 +1222,7 @@ function declineTask(task) {
 
   task.decline(taskId).then(() => {
     console.log(`Task ${taskId} declined successfully`);
+    const taskList = webex.cc.taskManager.getAllTasks();
     renderTaskList(taskList); // Refresh the task list
   }).catch((error) => {
     console.error(`Error declining task ${taskId}:`, error);
@@ -1236,15 +1237,12 @@ function renderTaskList(taskList) {
     taskListContainer.innerHTML = '<p>No tasks available</p>';
     return;
   }
-
-  taskList.forEach((task) => {
-    const taskId = task?.data?.interactionId;
+  for (const [taskId, task] of Object.entries(taskList)) {
     const taskElement = document.createElement('div');
     taskElement.className = 'task-item';
+    const callerDisplay = task.data.interaction.callAssociatedDetails?.ani;
     taskElement.innerHTML = `
-      <p>Task ID: ${taskId}</p>
-      <button class="accept-task" data-task-id="${taskId}">Accept</button>
-      <button class="decline-task" data-task-id="${taskId}">Decline</button>
+      <p>${callerDisplay}</p>
     `;
 
     // Add click event listener for the task item
@@ -1253,15 +1251,15 @@ function renderTaskList(taskList) {
     });
 
     taskListContainer.appendChild(taskElement);
-  });
+  }
 
   // Add event listeners for accept and decline buttons
   document.querySelectorAll('.accept-task').forEach((button) => {
-    button.addEventListener('click', (event) => {
-      const taskId = event.target.getAttribute('data-task-id');
-      const task = taskList.find((t) => t?.data?.interactionId === taskId);
-      if (task) acceptTask(task);
-    });
+  button.addEventListener('click', (event) => {
+    const taskId = event.target.getAttribute('data-task-id');
+    const task = taskList.find((t) => t?.data?.interactionId === taskId);
+    if (task) acceptTask(task);
+  });
   });
 
   document.querySelectorAll('.decline-task').forEach((button) => {
@@ -1276,9 +1274,12 @@ function renderTaskList(taskList) {
 function handleTaskClick(task) {
   // Handle the task click event
   console.log('Task clicked:', task);
+  currentTask = task
   if (task.data.interaction.mediaType === 'chat') { // TODO: add answered state condition
     loadChatWidget(task);
   }
+  handleCallControls(task); // Enable/disable transfer controls
+
 }
 
 function loadChatWidget(task) {
