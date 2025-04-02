@@ -123,7 +123,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           });
         })
         .catch((error) => {
-          LoggerProxy.warn(`Error occurred during mercury.connect() ${error}`, {
+          LoggerProxy.error(`Error occurred during mercury.connect() ${error}`, {
             module: CC_FILE,
             method: this.register.name,
           });

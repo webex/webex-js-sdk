@@ -184,57 +184,58 @@ describe('webex.cc', () => {
   });
 
   describe('register', () => {
+    const mockAgentProfile: Profile = {
+      agentId: 'agent123',
+      agentMailId: '',
+      agentName: 'John',
+      teams: [],
+      agentProfileID: '',
+      loginVoiceOptions: [],
+      idleCodes: [],
+      wrapupCodes: [],
+      defaultDn: '',
+      forceDefaultDn: false,
+      forceDefaultDnForAgent: false,
+      regexUS: '',
+      regexOther: '',
+      dialPlan: {
+        type: '',
+        dialPlanEntity: [],
+      },
+      skillProfileId: '',
+      siteId: '',
+      enterpriseId: '',
+      privacyShieldVisible: true,
+      defaultWrapupCode: '',
+      wrapUpData: {
+        wrapUpProps: {
+          autoWrapup: undefined,
+          autoWrapupInterval: undefined,
+          lastAgentRoute: undefined,
+          wrapUpReasonList: [],
+          wrapUpCodesList: undefined,
+          idleCodesAccess: undefined,
+          interactionId: undefined,
+          allowCancelAutoWrapup: undefined,
+        },
+      },
+      isOutboundEnabledForTenant: false,
+      isOutboundEnabledForAgent: false,
+      isAdhocDialingEnabled: false,
+      isAgentAvailableAfterOutdial: false,
+      isCampaignManagementEnabled: false,
+      outDialEp: '',
+      isEndCallEnabled: false,
+      isEndConsultEnabled: false,
+      agentDbId: '',
+      allowConsultToQueue: false,
+      agentPersonalStatsEnabled: false,
+      isTimeoutDesktopInactivityEnabled: false,
+      webRtcEnabled: false,
+      lostConnectionRecoveryTimeout: 0,
+    };
+
     it('should register successfully and return agent profile', async () => {
-      const mockAgentProfile: Profile = {
-        agentId: 'agent123',
-        agentMailId: '',
-        agentName: 'John',
-        teams: [],
-        agentProfileID: '',
-        loginVoiceOptions: [],
-        idleCodes: [],
-        wrapupCodes: [],
-        defaultDn: '',
-        forceDefaultDn: false,
-        forceDefaultDnForAgent: false,
-        regexUS: '',
-        regexOther: '',
-        dialPlan: {
-          type: '',
-          dialPlanEntity: [],
-        },
-        skillProfileId: '',
-        siteId: '',
-        enterpriseId: '',
-        privacyShieldVisible: true,
-        defaultWrapupCode: '',
-        wrapUpData: {
-          wrapUpProps: {
-            autoWrapup: undefined,
-            autoWrapupInterval: undefined,
-            lastAgentRoute: undefined,
-            wrapUpReasonList: [],
-            wrapUpCodesList: undefined,
-            idleCodesAccess: undefined,
-            interactionId: undefined,
-            allowCancelAutoWrapup: undefined,
-          },
-        },
-        isOutboundEnabledForTenant: false,
-        isOutboundEnabledForAgent: false,
-        isAdhocDialingEnabled: false,
-        isAgentAvailableAfterOutdial: false,
-        isCampaignManagementEnabled: false,
-        outDialEp: '',
-        isEndCallEnabled: false,
-        isEndConsultEnabled: false,
-        agentDbId: '',
-        allowConsultToQueue: false,
-        agentPersonalStatsEnabled: false,
-        isTimeoutDesktopInactivityEnabled: false,
-        webRtcEnabled: false,
-        lostConnectionRecoveryTimeout: 0,
-      };
       const mercuryConnect = jest.spyOn(webex.internal.mercury, 'connect').mockResolvedValue(true);
       const connectWebsocketSpy = jest.spyOn(webex.cc, 'connectWebsocket');
       const setupEventListenersSpy = jest.spyOn(webex.cc, 'setupEventListeners');
@@ -289,56 +290,6 @@ describe('webex.cc', () => {
 
     it('should not register when config is undefined', async () => {
       webex.cc.$config = undefined;
-      const mockAgentProfile: Profile = {
-        agentId: 'agent123',
-        agentMailId: '',
-        agentName: 'John',
-        teams: [],
-        loginVoiceOptions: [],
-        idleCodes: [],
-        wrapupCodes: [],
-        defaultDn: '',
-        forceDefaultDn: false,
-        forceDefaultDnForAgent: false,
-        regexUS: '',
-        regexOther: '',
-        agentProfileID: '',
-        dialPlan: {
-          type: '',
-          dialPlanEntity: [],
-        },
-        skillProfileId: '',
-        siteId: '',
-        enterpriseId: '',
-        privacyShieldVisible: false,
-        defaultWrapupCode: '',
-        wrapUpData: {
-          wrapUpProps: {
-            autoWrapup: undefined,
-            autoWrapupInterval: undefined,
-            lastAgentRoute: undefined,
-            wrapUpReasonList: [],
-            wrapUpCodesList: undefined,
-            idleCodesAccess: undefined,
-            interactionId: undefined,
-            allowCancelAutoWrapup: undefined,
-          },
-        },
-        isOutboundEnabledForTenant: false,
-        isOutboundEnabledForAgent: false,
-        isAdhocDialingEnabled: false,
-        isAgentAvailableAfterOutdial: false,
-        isCampaignManagementEnabled: false,
-        outDialEp: '',
-        isEndCallEnabled: false,
-        isEndConsultEnabled: false,
-        agentDbId: '',
-        allowConsultToQueue: false,
-        agentPersonalStatsEnabled: false,
-        isTimeoutDesktopInactivityEnabled: false,
-        webRtcEnabled: false,
-        lostConnectionRecoveryTimeout: 0,
-      };
       jest.spyOn(webex.internal.mercury, 'connect').mockResolvedValue(true);
       const connectWebsocketSpy = jest.spyOn(webex.cc, 'connectWebsocket');
       const reloadSpy = jest.spyOn(webex.cc.services.agent, 'reload').mockResolvedValue({
@@ -387,6 +338,64 @@ describe('webex.cc', () => {
         module: CC_FILE,
         method: 'register',
       });
+    });
+
+    it('should log error if mercury connect fails but cc.register() should not fail', async () => {
+      const mockError = new Error('Error while performing mercury connect');
+      jest.spyOn(webex.internal.mercury, 'connect').mockRejectedValue(mockError);
+
+      const connectWebsocketSpy = jest.spyOn(webex.cc, 'connectWebsocket');
+      const setupEventListenersSpy = jest.spyOn(webex.cc, 'setupEventListeners');
+      const reloadSpy = jest.spyOn(webex.cc.services.agent, 'reload').mockResolvedValue({
+        data: {
+          auxCodeId: 'auxCodeId',
+          agentId: 'agentId',
+          deviceType: LoginOption.EXTENSION,
+          dn: '12345',
+        },
+      });
+      const configSpy = jest
+        .spyOn(webex.cc.services.config, 'getAgentConfig')
+        .mockResolvedValue(mockAgentProfile);
+      mockWebSocketManager.initWebSocket.mockResolvedValue({
+        agentId: 'agent123',
+      });
+
+      const result = await webex.cc.register();
+
+      expect(LoggerProxy.error).toHaveBeenCalledWith(`Error occurred during mercury.connect() ${mockError}`, {
+        module: CC_FILE,
+        method: 'register',
+      });
+      expect(connectWebsocketSpy).toHaveBeenCalled();
+      expect(setupEventListenersSpy).toHaveBeenCalled();
+      expect(mockWebSocketManager.initWebSocket).toHaveBeenCalledWith({
+        body: {
+          force: true,
+          isKeepAliveEnabled: false,
+          clientType: 'WebexCCSDK',
+          allowMultiLogin: false,
+        },
+      });
+
+
+      expect(mockTaskManager.on).toHaveBeenCalledWith(
+        TASK_EVENTS.TASK_INCOMING,
+        expect.any(Function)
+      );
+      expect(mockTaskManager.on).toHaveBeenCalledWith(
+        TASK_EVENTS.TASK_HYDRATE,
+        expect.any(Function)
+      );
+      expect(mockWebSocketManager.on).toHaveBeenCalledWith('message', expect.any(Function));
+
+      expect(configSpy).toHaveBeenCalled();
+      expect(LoggerProxy.log).toHaveBeenCalledWith('agent config is fetched successfully', {
+        module: CC_FILE,
+        method: 'mockConstructor',
+      });
+      expect(reloadSpy).toHaveBeenCalled();
+      expect(result).toEqual(mockAgentProfile);
     });
   });
 
