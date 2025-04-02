@@ -1,13 +1,13 @@
 /*!
- * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
+ * Copyright (c) 2015-2025 Cisco Systems, Inc. See LICENSE file.
  */
 
 // eslint-disable-next-line import/extensions
 import storageConfig from './config-storage.js';
 
 export default {
-  hydra: process.env.HYDRA_SERVICE_URL || 'https://api.ciscospark.com/v1',
-  hydraServiceUrl: process.env.HYDRA_SERVICE_URL || 'https://api.ciscospark.com/v1',
+  hydra: process.env.HYDRA_SERVICE_URL || 'https://webexapis.com/v1',
+  hydraServiceUrl: process.env.HYDRA_SERVICE_URL || 'https://webexapis.com/v1',
   credentials: {
     clientType: 'confidential',
   },
