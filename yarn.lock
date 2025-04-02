@@ -34230,7 +34230,6 @@ __metadata:
     eslint: ^8.24.0
     lodash: ^4.17.21
     sinon: ^9.2.4
-    webex: "workspace:*"
   languageName: unknown
   linkType: soft
 

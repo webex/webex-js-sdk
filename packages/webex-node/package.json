@@ -3,10 +3,6 @@
     "description": "NodeJS SDK for Cisco Webex",
     "license": "https://github.com/webex/webex-js-sdk/blob/next/LICENSE.md",
     "contributors": [
-        "Kesava Krishnan Madavan <kmadavan@cisco.com>",
-        "Priya Kesari <pkesari@cisco.com>",
-        "Rajesh Kumar <rarajes2@cisco.com>",
-        "Shreyas Sharma <shreysh2@cisco.com>",
         "Sreekanth Narayanan <sreenara@cisco.com>"
     ],
     "main": "dist/index.js",
