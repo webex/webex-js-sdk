@@ -269,6 +269,14 @@ describe('plugin-meetings', () => {
         assert.equal(updates.hasPracticeSessionEnabledChanged, true);
       });
 
+      it('returns hasPracticeSessionEnabledChanged = false when enabled is false and previous state is false', () => {
+        const newControls = {practiceSession: {enabled: false}};
+
+        const {updates} = ControlsUtils.getControls(defaultControls, newControls);
+
+        assert.equal(updates.hasPracticeSessionEnabledChanged, false);
+      });
+
       it('returns hasEntryExitToneChanged = true when mode changed', () => {
         const newControls = {
           entryExitTone: {
