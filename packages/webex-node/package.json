@@ -18,27 +18,15 @@
     "repository": {
         "type": "git",
         "url": "https://github.com/webex/webex-js-sdk.git",
-        "directory": "packages/webex"
+        "directory": "packages/webex-node"
     },
     "engines": {
         "node": ">=16"
     },
-    "browser": {
-        "./dist/config-storage.js": "./dist/config-storage.shim.js",
-        "./src/config-storage.js": "./src/config-storage.shim.js"
-    },
-    "browserify": {
-        "transform": [
-            "babelify",
-            "envify"
-        ]
-    },
     "scripts": {
         "build": "yarn build:src",
         "build:src": "webex-legacy-tools build -dest \"./dist\" -src \"./src\" -js -ts -maps",
-        "test": "yarn test:style && yarn test:unit && yarn test:integration",
-        "test:browser:broken": "webex-legacy-tools test --integration --runner karma",
-        "test:integration": "webex-legacy-tools test --integration --runner mocha",
+        "test": "yarn test:style && yarn test:unit",
         "test:style": "eslint ./src/**/*.*",
         "test:unit": "webex-legacy-tools test --unit --runner jest",
         "deploy:npm": "yarn npm publish"
@@ -48,15 +36,13 @@
         "@webex/eslint-config-legacy": "workspace:*",
         "@webex/jest-config-legacy": "workspace:*",
         "@webex/legacy-tools": "workspace:*",
-        "@webex/plugin-authorization": "workspace:*",
         "@webex/test-helper-chai": "workspace:*",
         "@webex/test-helper-file": "workspace:*",
         "@webex/test-helper-mocha": "workspace:*",
         "@webex/test-helper-mock-webex": "workspace:*",
         "@webex/test-helper-test-users": "workspace:*",
         "eslint": "^8.24.0",
-        "sinon": "^9.2.4",
-        "webex": "workspace:*"
+        "sinon": "^9.2.4"
     },
     "dependencies": {
         "@babel/polyfill": "^7.12.1",
