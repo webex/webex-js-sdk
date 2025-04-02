@@ -966,6 +966,11 @@ describe('AgentConfigService', () => {
         'getQueues API call failed with Error: API call failed',
         {module: CONFIG_FILE_NAME, method: 'getQueues'}
       );
+      expect(mockHttpRequest.request).toHaveBeenCalledWith({
+        service: mockWccAPIURL,
+        resource: `organization/${mockOrgId}/v2/contact-service-queue`,
+        method: 'GET',
+      });
     });
 
     it('should throw an error if the API call returns a non-200 status code', async () => {
@@ -979,6 +984,11 @@ describe('AgentConfigService', () => {
         'getQueues API call failed with Error: API call failed with 500',
         {module: CONFIG_FILE_NAME, method: 'getQueues'}
       );
+      expect(mockHttpRequest.request).toHaveBeenCalledWith({
+        service: mockWccAPIURL,
+        resource: `organization/${mockOrgId}/v2/contact-service-queue`,
+        method: 'GET',
+      });
     });
   });
 });

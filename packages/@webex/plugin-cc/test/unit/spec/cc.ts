@@ -1031,8 +1031,23 @@ describe('webex.cc', () => {
 
       const result = await webex.cc.getQueues();
 
-      expect(webex.cc.services.config.getQueues).toHaveBeenCalled();
+      expect(webex.cc.services.config.getQueues).toHaveBeenCalledWith('mockOrgId');
       expect(result).toEqual(mockQueuesResponse);
+    });
+
+    it('shoule throw an error if orgId is not present', async () => {
+      jest.spyOn(webex.credentials, 'getOrgId').mockResolvedValue(undefined);
+      webex.cc.services.config.getQueues = jest.fn();
+
+      try {
+        await webex.cc.getQueues();
+      } catch (error) {
+        expect(error).toEqual(new Error('Organization ID is not available.'));
+        expect(LoggerProxy.error).toHaveBeenCalledWith('Organization ID is not available.', {
+          module: CC_FILE,
+          method: 'getQueues',
+        });
+      }
     });
   });
 });
