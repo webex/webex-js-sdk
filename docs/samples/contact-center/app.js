@@ -461,7 +461,7 @@ function enableCallControlPostConsult() {
 function registerTaskListeners(task) {
   task.on('task:assigned', (task) => {
     console.info('Call has been accepted for task: ', task.data.interactionId);
-    handleCallControls(task); // Enable transfer controls
+    updateCallControlUI(task); // Enable transfer controls
   });
   task.on('task:media', (track) => {
     document.getElementById('remote-audio').srcObject = new MediaStream([track]);
@@ -497,7 +497,7 @@ function registerTaskListeners(task) {
 
   task.on('task:consultAccepted', (task) => {
     if (currentTask.data.interactionId === task.data.interactionId) {
-    // When we accept an incoming consult
+      // When we accept an incoming consult
       hideConsultButton();
       showEndConsultButton();
       consultTransferBtn.disabled = true; // Disable the consult transfer button since we are not yet owner of the call
@@ -544,7 +544,7 @@ function registerTaskListeners(task) {
       if(task.data.isConsulted) {
         updateButtonsPostEndCall();
         incomingDetailsElm.innerText = '';
-        task = undefined; // TODO: Check if this is required
+        currentTask = undefined; // TODO: Check if this is required
       }
     }
   });
@@ -562,7 +562,7 @@ function registerTaskListeners(task) {
   });
 }
 
-function handleCallControls(task) {
+function updateCallControlUI(task) {
   const { data, webCallingService } = task;
   const { interaction, mediaResourceId, agentId } = data;
   const {
@@ -1295,7 +1295,7 @@ function handleTaskClick(task) {
   } else if (task.data.interaction.mediaType === 'email') {
     loadEmailWidget(task);
   }
-  handleCallControls(task); // Enable/disable transfer controls
+  updateCallControlUI(task); // Enable/disable transfer controls
 }
 
 function loadChatWidget(task) {
