@@ -17,7 +17,6 @@ export default class TaskManager extends EventEmitter {
   private webCallingService: WebCallingService;
   private webSocketManager: WebSocketManager;
   private static taskManager;
-  public currentTask: ITask;
 
   /**
    * @param contact - Routing Contact layer. Talks to AQMReq layer to convert events to promises
@@ -39,15 +38,17 @@ export default class TaskManager extends EventEmitter {
   }
 
   private handleIncomingWebCall = (call: ICall) => {
-    if (this.currentTask) {
-      if (this.currentTask.data.interaction.mediaChannel === 'telephony') {
-        this.webCallingService.mapCallToTask(call.getCallId(), this.currentTask.data.interactionId);
-        LoggerProxy.log('Call mapped to task', {
-          module: TASK_MANAGER_FILE,
-          method: 'handleIncomingWebCall',
-        });
-      }
-      this.emit(TASK_EVENTS.TASK_INCOMING, this.currentTask);
+    const currentTask = Object.values(this.taskCollection).find(
+      (task) => task.data.interaction.mediaChannel === 'telephony'
+    );
+
+    if (currentTask) {
+      this.webCallingService.mapCallToTask(call.getCallId(), currentTask.data.interactionId);
+      LoggerProxy.log('Call mapped to task', {
+        module: TASK_MANAGER_FILE,
+        method: 'handleIncomingWebCall',
+      });
+      this.emit(TASK_EVENTS.TASK_INCOMING, currentTask);
     }
     this.call = call;
   };
@@ -64,45 +65,39 @@ export default class TaskManager extends EventEmitter {
     this.webSocketManager.on('message', (event) => {
       const payload = JSON.parse(event);
       // Re-emit the task events to the task object
+      let task: ITask;
       if (payload.data?.type) {
         if (Object.values(CC_TASK_EVENTS).includes(payload.data.type)) {
-          if (this.currentTask) {
-            if (
-              this.currentTask.data.interactionId !== payload.data.interactionId &&
-              this.getTask(payload.data.interactionId)
-            ) {
-              this.currentTask = this.getTask(payload.data.interactionId);
-            }
-            this.currentTask.emit(payload.data.type, payload.data);
+          task = this.taskCollection[payload.data.interactionId];
+          if (task) {
+            task.emit(payload.data.type, payload.data);
           }
         }
         switch (payload.data.type) {
           case CC_EVENTS.AGENT_CONTACT:
-            this.currentTask = new Task(this.contact, this.webCallingService, payload.data);
-            this.currentTask.data.wrapUpRequired =
-              this.currentTask.data.interaction.participants[
-                this.currentTask.data.agentId
-              ]?.isWrapUp;
-            this.taskCollection[payload.data.interactionId] = this.currentTask;
-            this.emit(TASK_EVENTS.TASK_HYDRATE, this.currentTask);
+            task = new Task(this.contact, this.webCallingService, payload.data);
+            task.data.wrapUpRequired =
+              task.data.interaction.participants[task.data.agentId]?.isWrapUp;
+            this.taskCollection[payload.data.interactionId] = task;
+            this.emit(TASK_EVENTS.TASK_HYDRATE, task);
             break;
           case CC_EVENTS.AGENT_CONTACT_RESERVED:
-            this.currentTask = new Task(this.contact, this.webCallingService, payload.data);
-            this.currentTask.data = {...this.currentTask.data, isConsulted: false}; // Ensure isConsulted prop exists
-            this.taskCollection[payload.data.interactionId] = this.currentTask;
+            task = new Task(this.contact, this.webCallingService, payload.data);
+            task.data = {...task.data, isConsulted: false}; // Ensure isConsulted prop exists
+            this.taskCollection[payload.data.interactionId] = task;
             if (
               this.webCallingService.loginOption !== LoginOption.BROWSER ||
-              this.currentTask.data.interaction.mediaChannel !== 'telephony'
+              task.data.interaction.mediaChannel !== 'telephony'
             ) {
-              this.emit(TASK_EVENTS.TASK_INCOMING, this.currentTask);
+              this.emit(TASK_EVENTS.TASK_INCOMING, task);
             } else if (this.call) {
-              this.emit(TASK_EVENTS.TASK_INCOMING, this.currentTask);
+              this.emit(TASK_EVENTS.TASK_INCOMING, task);
             }
             break;
           case CC_EVENTS.AGENT_OFFER_CONTACT:
             // We don't have to emit any event here since this will be result of promise.
-            this.currentTask = this.currentTask.updateTaskData(payload.data);
-            this.taskCollection[payload.data.interactionId] = this.currentTask;
+            task = task.updateTaskData(payload.data);
+            this.taskCollection[payload.data.interactionId] = task;
             LoggerProxy.log('Agent offer contact', {
               module: TASK_MANAGER_FILE,
               method: 'registerTaskListeners',
@@ -110,8 +105,8 @@ export default class TaskManager extends EventEmitter {
             break;
           case CC_EVENTS.AGENT_OUTBOUND_FAILED:
             // We don't have to emit any event here since this will be result of promise.
-            if (this.currentTask.data) {
-              this.removeCurrentTaskFromCollection();
+            if (task.data) {
+              this.removeCurrentTaskFromCollection(task);
             }
             LoggerProxy.log('Agent outbound failed', {
               module: TASK_MANAGER_FILE,
@@ -119,86 +114,103 @@ export default class TaskManager extends EventEmitter {
             });
             break;
           case CC_EVENTS.AGENT_CONTACT_ASSIGNED:
-            this.currentTask = this.currentTask.updateTaskData(payload.data);
-            this.taskCollection[payload.data.interactionId] = this.currentTask;
-            this.currentTask.emit(TASK_EVENTS.TASK_ASSIGNED, this.currentTask);
+            task = task.updateTaskData(payload.data);
+            this.taskCollection[payload.data.interactionId] = task;
+            task.emit(TASK_EVENTS.TASK_ASSIGNED, task);
             break;
           case CC_EVENTS.AGENT_CONTACT_UNASSIGNED:
-            this.currentTask.data.wrapUpRequired = true;
-            this.taskCollection[payload.data.interactionId] = this.currentTask;
-            this.currentTask.emit(TASK_EVENTS.TASK_END, this.currentTask);
-            this.handleTaskCleanup();
+            task.data = {
+              ...task.data,
+              wrapUpRequired: true,
+            };
+            this.taskCollection[payload.data.interactionId] = task;
+            task.emit(TASK_EVENTS.TASK_END, task);
+            this.handleTaskCleanup(task);
             break;
           case CC_EVENTS.AGENT_CONTACT_OFFER_RONA:
-            this.currentTask.emit(TASK_EVENTS.TASK_REJECT, payload.data.reason);
-            this.handleTaskCleanup();
+            task.emit(TASK_EVENTS.TASK_REJECT, payload.data.reason);
+            this.handleTaskCleanup(task);
             break;
           case CC_EVENTS.CONTACT_ENDED:
-            this.currentTask.data.wrapUpRequired = payload.data.interaction.state !== 'new';
-            this.taskCollection[payload.data.interactionId] = this.currentTask;
-            this.currentTask.emit(TASK_EVENTS.TASK_END, this.currentTask);
-            this.handleTaskCleanup();
+            task.data = {
+              ...task.data,
+              wrapUpRequired: payload.data.interaction.state !== 'new',
+            };
+            this.taskCollection[payload.data.interactionId] = task;
+            task.emit(TASK_EVENTS.TASK_END, task);
+            this.handleTaskCleanup(task);
             break;
           case CC_EVENTS.AGENT_CONTACT_HELD:
             // As soon as the main interaction is held, we need to emit TASK_HOLD
-            this.updateCurrentTaskDataAndEmitEvent(payload.data, TASK_EVENTS.TASK_HOLD);
+            this.updateCurrentTaskDataAndEmitEvent(task, payload.data, TASK_EVENTS.TASK_HOLD);
             break;
           case CC_EVENTS.AGENT_CONTACT_UNHELD:
             // As soon as the main interaction is unheld, we need to emit TASK_RESUME
-            this.updateCurrentTaskDataAndEmitEvent(payload.data, TASK_EVENTS.TASK_RESUME);
+            this.updateCurrentTaskDataAndEmitEvent(task, payload.data, TASK_EVENTS.TASK_RESUME);
             break;
           case CC_EVENTS.AGENT_CTQ_CANCEL_FAILED:
             this.updateCurrentTaskDataAndEmitEvent(
+              task,
               payload.data,
               TASK_EVENTS.TASK_CONSULT_QUEUE_FAILED
             );
             break;
           case CC_EVENTS.AGENT_CONSULT_CREATED:
             // Received when self agent initiates a consult
-            this.currentTask = this.currentTask.updateTaskData(payload.data);
+            task = task.updateTaskData(payload.data);
+            this.taskCollection[payload.data.interactionId] = task;
             // Do not emit anything since this be received only as a result of an API invocation(handled by a promise)
             break;
           case CC_EVENTS.AGENT_OFFER_CONSULT: {
             // Received when other agent sends us a consult offer
-            this.currentTask = this.currentTask.updateTaskData({
+            task = task.updateTaskData({
               ...payload.data,
               isConsulted: true, // This ensures that the task is marked as us being requested for a consult
             });
+            this.taskCollection[payload.data.interactionId] = task;
             break;
           }
           case CC_EVENTS.AGENT_CONSULTING:
             // Received when agent is in an active consult state
-            this.currentTask = this.currentTask.updateTaskData(payload.data);
-            if (this.currentTask.data.isConsulted) {
+            task = task.updateTaskData(payload.data);
+            this.taskCollection[payload.data.interactionId] = task;
+            if (task.data.isConsulted) {
               // Fire only if you are the agent who received the consult request
-              this.currentTask.emit(TASK_EVENTS.TASK_CONSULT_ACCEPTED, this.currentTask);
+              task.emit(TASK_EVENTS.TASK_CONSULT_ACCEPTED, task);
             }
             break;
           case CC_EVENTS.AGENT_CONSULT_FAILED:
             // This can only be received by the agent who initiated the consult.
             // We need not emit any event here since this will be result of promise
-            this.currentTask.updateTaskData(payload.data);
+            task.updateTaskData(payload.data);
+            this.taskCollection[payload.data.interactionId] = task;
             break;
           case CC_EVENTS.AGENT_CONSULT_ENDED:
-            this.updateCurrentTaskDataAndEmitEvent(payload.data, TASK_EVENTS.TASK_CONSULT_END);
-            if (this.currentTask.data.isConsulted) {
+            this.updateCurrentTaskDataAndEmitEvent(
+              task,
+              payload.data,
+              TASK_EVENTS.TASK_CONSULT_END
+            );
+            if (task.data.isConsulted) {
               // This will be the end state of the task as soon as we end the consult in case of
               // us being offered a consult
-              this.removeCurrentTaskFromCollection();
+              this.removeCurrentTaskFromCollection(task);
             }
             break;
           case CC_EVENTS.AGENT_CTQ_CANCELLED:
             // This event is received when the consult using queue is cancelled using API
             this.updateCurrentTaskDataAndEmitEvent(
+              task,
               payload.data,
               TASK_EVENTS.TASK_CONSULT_QUEUE_CANCELLED
             );
             break;
           case CC_EVENTS.AGENT_WRAPUP:
-            this.currentTask = this.currentTask.updateTaskData(payload.data);
+            task = task.updateTaskData(payload.data);
+            this.taskCollection[payload.data.interactionId] = task;
             break;
           case CC_EVENTS.AGENT_WRAPPEDUP:
-            this.removeCurrentTaskFromCollection();
+            this.removeCurrentTaskFromCollection(task);
             break;
           default:
             break;
@@ -207,29 +219,29 @@ export default class TaskManager extends EventEmitter {
     });
   }
 
-  private updateCurrentTaskDataAndEmitEvent(taskData, event) {
-    this.currentTask = this.currentTask.updateTaskData(taskData);
-    this.taskCollection[taskData.interactionId] = this.currentTask;
-    this.currentTask.emit(event, this.currentTask);
+  private updateCurrentTaskDataAndEmitEvent(task, taskData, event) {
+    const currentTask = task.updateTaskData(taskData);
+    this.taskCollection[taskData.interactionId] = currentTask;
+    currentTask.emit(event, currentTask);
   }
 
-  private removeCurrentTaskFromCollection() {
-    if (this.currentTask && this.currentTask.data && this.currentTask.data.interactionId) {
-      delete this.taskCollection[this.currentTask.data.interactionId];
-      LoggerProxy.info(`Task removed from collection: ${this.currentTask.data.interactionId}`, {
+  private removeCurrentTaskFromCollection(task) {
+    if (task && task.data && task.data.interactionId) {
+      delete this.taskCollection[task.data.interactionId];
+      LoggerProxy.info(`Task removed from collection: ${task.data.interactionId}`, {
         module: TASK_MANAGER_FILE,
         method: 'removeCurrentTaskFromCollection',
       });
     }
   }
 
-  private handleTaskCleanup() {
+  private handleTaskCleanup(task) {
     if (this.webCallingService.loginOption === LoginOption.BROWSER) {
-      this.currentTask.unregisterWebCallListeners();
+      task.unregisterWebCallListeners();
       this.webCallingService.cleanUpCall();
     }
-    if (this.currentTask.data.interaction.state === 'new') {
-      this.removeCurrentTaskFromCollection();
+    if (task.data.interaction.state === 'new') {
+      this.removeCurrentTaskFromCollection(task);
     }
   }
 
