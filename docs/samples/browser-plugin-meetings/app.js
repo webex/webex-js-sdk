@@ -169,7 +169,7 @@ function initOauth() {
       }
 
       // initiate the login sequence if not authenticated.
-     
+
     });
 
     if (webex.canAuthorize) {
@@ -822,6 +822,9 @@ function updateMeetingInfoSection(meeting) {
   const subtitleElm = document.getElementById('meeting-info-subtitle');
 
   titleElm.innerText = meeting.destination.info ? meeting.destination?.info?.webExMeetingName : meeting.destination;
+  if (titleElm.innerText === 'undefined') {
+    titleElm.innerText = meeting.destination?.host?.name;
+  }
   subtitleElm.innerText = `${meeting.sipUri} (${meeting.id})`;
 
   meetingsLeaveElm.onclick = () => leaveMeeting(getCurrentMeeting().id);
@@ -3951,14 +3954,62 @@ function toggleDisplay(elementId, status) {
 }
 
 function answerMeeting() {
-  const meeting = getCurrentMeeting();
+  let meeting;
+  webex.meetings.syncMeetings()
+    .then(() => {
+      const meetings = webex.meetings.getAllMeetings();
+      const meetingIds = Object.keys(meetings);
+      for (let i = 0; i < meetingIds.length; i += 1) {
+        if (meetings[meetingIds[i]].destination.info.locusTags[0] === 'ONE_ON_ONE') {
+            meeting = meetings[meetingIds[i]];
+            selectedMeetingId = meetingIds[i];
+            break;
+        }
+      }
 
-  if (meeting) {
-    meeting.join().then(() => {
-      meeting.acknowledge('ANSWER', false);
-    });
-    toggleDisplay('incomingsection', false);
-  }
+      if (meeting) {
+        clearMediaDeviceList();
+
+        const mediaSettings = getMediaSettings()
+
+        getUserMedia({
+          audio: mediaSettings.audioEnabled,
+          video: mediaSettings.videoEnabled
+        }).then(() => {
+          doPreMediaSetup(meeting);
+
+          // we're using the default RemoteMediaManagerConfig
+          const mediaOptions = {
+            localStreams: {
+              microphone: localMedia.microphoneStream,
+              camera: localMedia.cameraStream,
+              screenShare: {
+                audio: localMedia.screenShare?.audio,
+                video: localMedia.screenShare?.video
+              }
+            },
+            ...getMediaSettings()
+          };
+
+          const joinOptions = {
+            isMultistream: false,
+          };
+
+          meeting.joinWithMedia({joinOptions, mediaOptions})
+            .then(() => {
+              doPostMediaSetup(meeting);
+              meeting.acknowledge('INCOMING')
+                .then(() => {
+                  toggleDisplay('incomingsection', false);
+                  updateMeetingInfoSection(meeting);
+                });
+            });
+        });
+      } else {
+        console.log('No meeting found');
+      }
+  })
+  .catch(error => console.log('Error occurred while answering meeting', error));
 }
 
 function rejectMeeting() {
