@@ -39,6 +39,7 @@ import WebCallingService from './services/WebCallingService';
 import {ITask, TASK_EVENTS, TaskResponse, DialerPayload} from './services/task/types';
 import MetricsManager from './metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from './metrics/constants';
+import {Failure} from './services/core/GlobalTypes';
 
 export default class ContactCenter extends WebexPlugin implements IContactCenter {
   namespace = 'cc';
@@ -114,16 +115,17 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    */
   public async register(): Promise<Profile> {
     try {
-      this.metricsManager.timeEvent(METRIC_EVENT_NAMES.WEBSOCKET_REGISTER);
+      this.metricsManager.timeEvent([
+        METRIC_EVENT_NAMES.WEBSOCKET_REGISTER_SUCCESS,
+        METRIC_EVENT_NAMES.WEBSOCKET_REGISTER_FAILED,
+      ]);
       this.setupEventListeners();
 
       const resp = await this.connectWebsocket();
       this.metricsManager.trackEvent(
-        METRIC_EVENT_NAMES.WEBSOCKET_REGISTER,
+        METRIC_EVENT_NAMES.WEBSOCKET_REGISTER_SUCCESS,
         {
-          isSuccess: true,
-          agentId: resp.agentId,
-          orgId: resp.orgId,
+          ...MetricsManager.getCommonTrackingFieldForAQMResponse(resp),
           deviceType: resp.deviceType || EMPTY_STRING,
         },
         ['operational']
@@ -132,13 +134,9 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       return resp;
     } catch (error) {
       this.metricsManager.trackEvent(
-        METRIC_EVENT_NAMES.WEBSOCKET_REGISTER,
+        METRIC_EVENT_NAMES.WEBSOCKET_REGISTER_FAILED,
         {
-          isSuccess: false,
-          trackingId: error.data.trackingId,
-          notifTrackingId: error.trackingId,
           orgId: error.orgId,
-          eventType: error.type,
         },
         ['operational']
       );
@@ -161,40 +159,35 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    */
   public async getBuddyAgents(data: BuddyAgents): Promise<BuddyAgentsResponse> {
     try {
-      this.metricsManager.timeEvent(METRIC_EVENT_NAMES.GET_BUDDY_AGENTS);
+      this.metricsManager.timeEvent([
+        METRIC_EVENT_NAMES.FETCH_BUDDY_AGENTS_SUCCESS,
+        METRIC_EVENT_NAMES.FETCH_BUDDY_AGENTS_FAILED,
+      ]);
       const resp = await this.services.agent.buddyAgents({
         data: {agentProfileId: this.agentConfig.agentProfileID, ...data},
       });
 
       this.metricsManager.trackEvent(
-        METRIC_EVENT_NAMES.FETCH_BUDDY_AGENTS,
+        METRIC_EVENT_NAMES.FETCH_BUDDY_AGENTS_SUCCESS,
         {
-          isSuccess: true,
-          agentId: this.agentConfig.agentId,
+          ...MetricsManager.getCommonTrackingFieldForAQMResponse(resp),
           mediaType: data.mediaType,
           buddyAgentState: data.state,
           buddyAgentCount: resp.data.agentList.length,
-          trackingId: resp.data.trackingId,
-          notifTrackingId: resp.trackingId,
-          orgId: resp.orgId,
-          eventType: resp.type,
         },
         ['operational']
       );
 
       return resp;
     } catch (error) {
+      const failureResp = error.details as Failure;
+
       this.metricsManager.trackEvent(
-        METRIC_EVENT_NAMES.FETCH_BUDDY_AGENTS,
+        METRIC_EVENT_NAMES.FETCH_BUDDY_AGENTS_FAILED,
         {
-          isSuccess: false,
-          agentId: this.agentConfig.agentId,
+          ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(failureResp),
           mediaType: data.mediaType,
           buddyAgentState: data.state,
-          trackingId: error.data.trackingId,
-          notifTrackingId: error.trackingId,
-          orgId: error.orgId,
-          eventType: error.type,
         },
         ['operational']
       );
@@ -250,7 +243,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    */
   public async stationLogin(data: AgentLogin): Promise<StationLoginResponse> {
     try {
-      this.metricsManager.timeEvent(METRIC_EVENT_NAMES.STATION_LOGIN);
+      this.metricsManager.timeEvent([
+        METRIC_EVENT_NAMES.STATION_LOGIN_SUCCESS,
+        METRIC_EVENT_NAMES.STATION_LOGIN_FAILED,
+      ]);
       const loginResponse = this.services.agent.stationLogin({
         data: {
           dialNumber:
@@ -275,21 +271,13 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       const resp = await loginResponse;
 
       this.metricsManager.trackEvent(
-        METRIC_EVENT_NAMES.STATION_LOGIN,
+        METRIC_EVENT_NAMES.STATION_LOGIN_SUCCESS,
         {
-          isSuccess: true,
+          ...MetricsManager.getCommonTrackingFieldForAQMResponse(resp),
           loginType: data.loginOption,
-          agentId: resp.data.agentId,
-          teamId: resp.data.teamId, // TODO: handle multiple teams
-          siteId: resp.data.siteId,
           status: resp.data.status, // 'LoggedIn'
           type: resp.data.type, // 'AgentStationLoginSuccess'
           roles: resp.data.roles?.join(',') || EMPTY_STRING,
-          trackingId: resp.data.trackingId,
-          notifTrackingId: resp.trackingId,
-          orgId: resp.orgId,
-          // dataEventType: resp.data.eventType,
-          eventType: resp.type,
         },
         ['behavioral', 'business', 'operational']
       );
@@ -300,19 +288,12 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
       return resp;
     } catch (error) {
+      const failure = error.details as Failure;
       this.metricsManager.trackEvent(
-        METRIC_EVENT_NAMES.STATION_LOGIN,
+        METRIC_EVENT_NAMES.STATION_LOGIN_FAILED,
         {
-          isSuccess: false,
+          ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(failure),
           loginType: data.loginOption,
-          // status: resp.data.status, // 'LoggedIn'
-          // type: resp.data.type, // 'AgentStationLoginSuccess'
-          // roles: resp.data.roles?.join(',') || EMPTY_STRING,
-          // orgId: resp.orgId,
-          // dataEventType: resp.data.eventType,
-          // eventType: resp.type,
-          trackingId: error.data.trackingId,
-          notifTrackingId: error.trackingId,
         },
         ['behavioral', 'business', 'operational']
       );
@@ -328,7 +309,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    */
   public async stationLogout(data: Logout): Promise<StationLogoutResponse> {
     try {
-      this.metricsManager.timeEvent(METRIC_EVENT_NAMES.STATION_LOGOUT);
+      this.metricsManager.timeEvent([
+        METRIC_EVENT_NAMES.STATION_LOGOUT_SUCCESS,
+        METRIC_EVENT_NAMES.STATION_LOGOUT_FAILED,
+      ]);
       const logoutResponse = this.services.agent.logout({
         data,
       });
@@ -336,16 +320,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       const resp = await logoutResponse;
 
       this.metricsManager.trackEvent(
-        METRIC_EVENT_NAMES.STATION_LOGOUT,
+        METRIC_EVENT_NAMES.STATION_LOGOUT_SUCCESS,
         {
-          isSuccess: true,
+          ...MetricsManager.getCommonTrackingFieldForAQMResponse(resp),
           logoutReason: data.logoutReason,
-          agentId: this.agentConfig.agentId,
-          status: resp.data.status, // 'LoggedIn'
-          trackingId: resp.data.trackingId,
-          notifTrackingId: resp.trackingId,
-          orgId: resp.orgId,
-          eventType: resp.type,
         },
         ['behavioral', 'business', 'operational']
       );
@@ -362,16 +340,12 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
       return resp;
     } catch (error) {
+      const failure = error.details as Failure;
       this.metricsManager.trackEvent(
-        METRIC_EVENT_NAMES.STATION_LOGOUT,
+        METRIC_EVENT_NAMES.STATION_LOGOUT_FAILED,
         {
-          isSuccess: false,
+          ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(failure),
           logoutReason: data.logoutReason,
-          agentId: this.agentConfig.agentId,
-          trackingId: error.data.trackingId,
-          notifTrackingId: error.trackingId,
-          orgId: error.orgId,
-          eventType: error.type,
         },
         ['behavioral', 'business', 'operational']
       );
@@ -386,33 +360,26 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    */
   public async stationReLogin(): Promise<StationReLoginResponse> {
     try {
-      this.metricsManager.timeEvent(METRIC_EVENT_NAMES.STATION_RELOGIN);
+      this.metricsManager.timeEvent([
+        METRIC_EVENT_NAMES.STATION_RELOGIN_SUCCESS,
+        METRIC_EVENT_NAMES.STATION_RELOGIN_FAILED,
+      ]);
       const reLoginResponse = await this.services.agent.reload();
       this.metricsManager.trackEvent(
-        METRIC_EVENT_NAMES.STATION_RELOGIN,
+        METRIC_EVENT_NAMES.STATION_RELOGIN_SUCCESS,
         {
-          isSuccess: true,
-          agentId: this.agentConfig.agentId,
-          status: reLoginResponse.data.status, // 'LoggedIn'
-          trackingId: reLoginResponse.data.trackingId,
-          notifTrackingId: reLoginResponse.trackingId,
-          orgId: reLoginResponse.orgId,
-          eventType: reLoginResponse.type,
+          ...MetricsManager.getCommonTrackingFieldForAQMResponse(reLoginResponse),
         },
         ['behavioral', 'business', 'operational']
       );
 
       return reLoginResponse;
     } catch (error) {
+      const failure = error.details as Failure;
       this.metricsManager.trackEvent(
-        METRIC_EVENT_NAMES.STATION_RELOGIN,
+        METRIC_EVENT_NAMES.STATION_RELOGIN_FAILED,
         {
-          isSuccess: false,
-          agentId: this.agentConfig.agentId,
-          trackingId: error.data.trackingId,
-          notifTrackingId: error.trackingId,
-          orgId: error.orgId,
-          eventType: error.type,
+          ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(failure),
         },
         ['behavioral', 'business', 'operational']
       );
@@ -438,23 +405,21 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
   public async setAgentState(data: StateChange): Promise<SetStateResponse> {
     try {
-      this.metricsManager.timeEvent(METRIC_EVENT_NAMES.AGENT_STATE_CHANGE);
+      this.metricsManager.timeEvent([
+        METRIC_EVENT_NAMES.AGENT_STATE_CHANGE_SUCCESS,
+        METRIC_EVENT_NAMES.AGENT_STATE_CHANGE_FAILED,
+      ]);
       const agentStatusResponse = await this.services.agent.stateChange({
         data: {...data, agentId: data.agentId || this.agentConfig.agentId},
       });
 
       this.metricsManager.trackEvent(
-        METRIC_EVENT_NAMES.AGENT_STATE_CHANGE,
+        METRIC_EVENT_NAMES.AGENT_STATE_CHANGE_SUCCESS,
         {
-          isSuccess: true,
-          agentId: this.agentConfig.agentId,
+          ...MetricsManager.getCommonTrackingFieldForAQMResponse(agentStatusResponse),
           state: data.state,
           auxCodeId: data.auxCodeId,
           lastStateChangeReason: data.lastStateChangeReason || EMPTY_STRING,
-          trackingId: agentStatusResponse.data.trackingId,
-          notifTrackingId: agentStatusResponse.trackingId,
-          orgId: agentStatusResponse.orgId,
-          eventType: agentStatusResponse.type,
         },
         ['behavioral', 'business', 'operational']
       );
@@ -466,18 +431,14 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
       return agentStatusResponse;
     } catch (error) {
+      const failure = error.details as Failure;
       this.metricsManager.trackEvent(
-        METRIC_EVENT_NAMES.AGENT_STATE_CHANGE,
+        METRIC_EVENT_NAMES.AGENT_STATE_CHANGE_FAILED,
         {
-          isSuccess: false,
-          agentId: this.agentConfig.agentId,
+          ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(failure),
           state: data.state,
           auxCodeId: data.auxCodeId,
           lastStateChangeReason: data.lastStateChangeReason || EMPTY_STRING,
-          trackingId: error.data.trackingId,
-          notifTrackingId: error.trackingId,
-          orgId: error.orgId,
-          eventType: error.type,
         },
         ['behavioral', 'business', 'operational']
       );

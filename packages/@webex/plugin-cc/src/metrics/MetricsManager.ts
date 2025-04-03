@@ -9,6 +9,8 @@ import {WebexSDK} from '../types';
 import {BehavioralEventTaxonomy, getEventTaxonomy} from './behavioral-events';
 import LoggerProxy from '../logger-proxy';
 import {METRIC_EVENT_NAMES} from './constants';
+import {Failure} from '../services/core/GlobalTypes';
+import {EMPTY_STRING, PRODUCT_NAME} from '../constants';
 
 type BehavioralEvent = {
   taxonomy: BehavioralEventTaxonomy;
@@ -24,7 +26,7 @@ export type MetricsType = 'behavioral' | 'operational' | 'business';
 
 export default class MetricsManager {
   private webex: WebexSDK;
-  private readonly runningEvents: Record<string, number> = {};
+  private readonly runningEvents: Record<string, {startTime: number; keys: Set<string>}> = {};
   private pendingBehavioralEvents: BehavioralEvent[] = [];
   private pendingOperationalEvents: GenericEvent[] = [];
   private pendingBusinessEvents: GenericEvent[] = [];
@@ -33,7 +35,7 @@ export default class MetricsManager {
 
   // eslint-disable-next-line no-use-before-define
   private static instance: MetricsManager;
-  private metricsDisabled = true;
+  private metricsDisabled = true; // TODO: SPARK-637285
 
   // eslint-disable-next-line no-useless-constructor
   private constructor() {}
@@ -103,33 +105,29 @@ export default class MetricsManager {
         this.webex.internal.newMetrics.submitBusinessEvent({
           name: event.name,
           payload: event.payload,
+          metadata: {
+            appType: PRODUCT_NAME,
+          },
         });
       });
     }
   }
 
-  private addDurationIfTimed(name: string, options?: EventPayload): EventPayload {
+  private addDurationIfTimed(eventName: string, options?: EventPayload): EventPayload {
     const durationKey = 'duration_ms';
-    if (name in this.runningEvents) {
-      const startTime = this.runningEvents[name];
-      delete this.runningEvents[name];
-      if (startTime && options) {
+    for (const [genericKey, timing] of Object.entries(this.runningEvents)) {
+      if (timing.keys.has(eventName)) {
+        const startTime = timing.startTime;
+        // Remove all keys for this operation.
+        delete this.runningEvents[genericKey];
+        options = options || {};
         options[durationKey] = Date.now() - startTime;
 
         return options;
       }
-      if (startTime) {
-        const payload: EventPayload = {};
-        payload[durationKey] = Date.now() - startTime;
-
-        return payload;
-      }
-    }
-    if (options) {
-      return options;
     }
 
-    return {};
+    return options || {};
   }
 
   static spacesToUnderscore(str: string): string {
@@ -236,12 +234,19 @@ export default class MetricsManager {
     }
   }
 
-  public timeEvent(_name: string) {
+  public timeEvent(keys: string | string[]) {
     if (this.isMetricsDisabled()) {
       return;
     }
+    const keyArray = Array.isArray(keys) ? keys : [keys];
+    // Use the first key as the tracking key.
+    if (keyArray.length === 0) {
+      LoggerProxy.error('[MetricsManager] No keys provided for timeEvent');
 
-    this.runningEvents[_name] = Date.now();
+      return;
+    }
+    const genericKey = keyArray[0];
+    this.runningEvents[genericKey] = {startTime: Date.now(), keys: new Set(keyArray)};
   }
 
   private setWebex(webex: WebexSDK) {
@@ -269,5 +274,47 @@ export default class MetricsManager {
 
   public static resetInstance() {
     MetricsManager.instance = undefined;
+  }
+
+  public static getCommonTrackingFieldForAQMResponse(response: any): Record<string, any> {
+    const fields = {
+      agentId: response?.data?.agentId || EMPTY_STRING,
+      teamId: response?.data?.teamId || EMPTY_STRING, // TODO: handle multiple teams
+      siteId: response?.data?.siteId || EMPTY_STRING,
+      orgId: response?.orgId || EMPTY_STRING,
+      eventType: response?.type || EMPTY_STRING,
+      trackingId: response?.data?.trackingId || EMPTY_STRING,
+      notifTrackingId: response?.trackingId || EMPTY_STRING,
+    };
+
+    Object.keys(fields).forEach((key) => {
+      if (fields[key] === '' || fields[key] === undefined || fields[key] === null) {
+        delete fields[key];
+      }
+    });
+
+    return fields;
+  }
+
+  public static getCommonTrackingFieldForAQMResponseFailed(
+    failureResponse: Failure
+  ): Record<string, any> {
+    const fields = {
+      agentId: failureResponse?.data?.agentId || EMPTY_STRING,
+      trackingId: failureResponse?.trackingId || EMPTY_STRING,
+      notifTrackingId: failureResponse?.trackingId || EMPTY_STRING,
+      orgId: failureResponse?.orgId || EMPTY_STRING,
+      failureType: failureResponse?.type || EMPTY_STRING,
+      failureReason: failureResponse?.data?.reason || EMPTY_STRING,
+      reasonCode: failureResponse?.data?.reasonCode || EMPTY_STRING,
+    };
+
+    Object.keys(fields).forEach((key) => {
+      if (fields[key] === '' || fields[key] === undefined || fields[key] === null) {
+        delete fields[key];
+      }
+    });
+
+    return fields;
   }
 }

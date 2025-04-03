@@ -291,6 +291,8 @@ export type SubmitOperationalEvent = (args: {
 export type SubmitBusinessEvent = (args: {
   name: OperationalEvent['metricName'];
   payload: EventPayload;
+  metadata?: EventPayload;
+  table?: Table;
 }) => void;
 
 export type SubmitMQE = (args: {
