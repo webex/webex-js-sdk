@@ -1088,11 +1088,12 @@ describe('webex.cc', () => {
       try {
         await webex.cc.getQueues();
       } catch (error) {
-        expect(error).toEqual(new Error('Organization ID is not available.'));
-        expect(LoggerProxy.error).toHaveBeenCalledWith('Organization ID is not available.', {
+        expect(error).toEqual(new Error('Org ID not found.'));
+        expect(LoggerProxy.error).toHaveBeenCalledWith('Org ID not found.', {
           module: CC_FILE,
           method: 'getQueues',
         });
+        expect(webex.cc.services.config.getQueues).not.toHaveBeenCalled();
       }
     });
   });

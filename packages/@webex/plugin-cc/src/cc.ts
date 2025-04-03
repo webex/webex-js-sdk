@@ -537,7 +537,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * const filter = 'id == "e23ad456-1ebd-1b43-b9d0-34f39c7dcb5e"';
    * const page = 0;
    * const pageSize = 100;
-   * const result = await webex.cc.getQueues(page, pageSize, search, filter);
+   * const result = await webex.cc.getQueues(search, filter, page, pageSize);
    * ```
    */
   public async getQueues(
@@ -549,12 +549,12 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     const orgId = this.$webex.credentials.getOrgId();
 
     if (!orgId) {
-      LoggerProxy.error('Organization ID is not available.', {
+      LoggerProxy.error('Org ID not found.', {
         module: CC_FILE,
         method: this.getQueues.name,
       });
 
-      throw new Error('Organization ID is not available.');
+      throw new Error('Org ID not found.');
     }
 
     return this.services.config.getQueues(orgId, page, pageSize, search, filter);
