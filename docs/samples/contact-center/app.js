@@ -563,14 +563,12 @@ function registerTaskListeners(task) {
 }
 
 function updateCallControlUI(task) {
-  const { data, webCallingService } = task;
-  const { interaction, mediaResourceId, agentId } = data;
+  const { data } = task;
+  const { interaction, mediaResourceId } = data;
   const {
-    state,
     isTerminated,
     media,
     participants,
-    callAssociatedDetails,
     callProcessingDetails
   } = interaction;
   
@@ -596,7 +594,7 @@ function updateCallControlUI(task) {
     muteElm.disabled = true;
     pauseResumeRecordingElm.disabled = true;
     consultTabBtn.disabled = true;
-    endElm.disabled = false;
+    endElm.disabled = true;
     transferElm.disabled = false;
   } else if (currentTask.data.interaction.mediaType == 'telephony') {
     // hold/resume call
@@ -1256,8 +1254,16 @@ function renderTaskList(taskList) {
     const taskElement = document.createElement('div');
     taskElement.className = 'task-item';
     const callerDisplay = task.data.interaction.callAssociatedDetails?.ani;
+    const isTelephony = task.data.interaction.mediaType === 'telephony' && task.webCallingService.loginOption === 'BROWSER';
+
     taskElement.innerHTML = `
-      <p>${callerDisplay}</p>
+        <div class="task-item-content">
+        <p>${callerDisplay}</p>
+        <button class="accept-task" data-task-id="${taskId}">Accept</button>
+        <button class="decline-task" data-task-id="${taskId}">Decline</button>
+        ${isTelephony ? `<button class="decline-task" data-task-id="${taskId}">Decline</button>` : ''}
+        </div>
+        <hr class="task-separator">
     `;
 
     // Add click event listener for the task item
