@@ -1077,10 +1077,10 @@ async function createVoiceMail() {
         true
       );
 
-      const voiceMailList = getVoicemailListResponse.data.voicemailList;
+      const voicemailList = getVoicemailListResponse.data.voicemailList;
 
       console.log('Voice mail list response', getVoicemailListResponse.data.voicemailList);
-      const vmLength = getVoicemailListResponse.data.voicemailList.length;
+      const vmLength = voicemailList.voicemailList.length;
 
       const voicemailTable = document.getElementById('voicemailTable');
 
@@ -1134,7 +1134,7 @@ async function createVoiceMail() {
           tr.appendChild(td);
 
           td = document.createElement('td');
-          const msgId = getVoicemailListResponse.data.voicemailList[index].messageId.$;
+          const msgId = voicemailList[index].messageId.$;
 
           td.innerHTML = `<div>
           <div style="width: 10%; float:left"><input type = 'button' onclick = 'createVoiceMailContentPlay("${msgId}", ${tr.className})' value = 'Play'/></div>
@@ -1162,7 +1162,7 @@ async function createVoiceMail() {
           }
         }
       } else {
-        console.log('Voice mail is empty');
+        console.log('Voicemail is empty');
       } 
 
       voicemailElm.disabled = false;
@@ -1226,7 +1226,7 @@ async function createVoiceMailContentPlay(msgId, rowId) {
 }
 
 async function VMPlay(msgId, rowId) {
-  let content,contentType
+  let content, contentType;
   try {
     const getVoicemailContentResponse = await voicemail.getVoicemailContent(msgId);
 
@@ -1235,8 +1235,8 @@ async function VMPlay(msgId, rowId) {
       console.log(getVoicemailContentResponse.data?.voicemailContent);
       base64 = getVoicemailContentResponse.data?.voicemailContent?.content;
       audio64 = document.getElementById(msgId);
-      contentType =getVoicemailContentResponse?.data?.voicemailContent?.type
-      content =getVoicemailContentResponse?.data?.voicemailContent?.content
+      contentType = getVoicemailContentResponse?.data?.voicemailContent?.type
+      content = getVoicemailContentResponse?.data?.voicemailContent?.content
       audio64.src = `data:${contentType==='WAV'?'audio/wav':contentType};base64,${content}`;
       audio64.play();
 
