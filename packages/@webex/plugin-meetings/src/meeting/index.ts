@@ -6209,6 +6209,11 @@ export default class Meeting extends StatelessWebexPlugin {
       error instanceof Errors.SdpOfferHandlingError ||
       error instanceof Errors.SdpAnswerHandlingError
     ) {
+      if (this.sdpResponseTimer) {
+        clearTimeout(this.sdpResponseTimer);
+
+        this.sdpResponseTimer = undefined;
+      }
       sendBehavioralMetric(BEHAVIORAL_METRICS.PEERCONNECTION_FAILURE, error, this.correlationId);
 
       // @ts-ignore
