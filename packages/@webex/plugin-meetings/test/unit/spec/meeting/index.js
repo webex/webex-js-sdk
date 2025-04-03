@@ -210,6 +210,7 @@ describe('plugin-meetings', () => {
   let membersSpy;
   let meetingRequestSpy;
   let correlationId;
+  let isoLocalClientMeetingJoinTime;
   let uploadEvent;
 
   beforeEach(() => {
@@ -1690,10 +1691,6 @@ describe('plugin-meetings', () => {
         describe('successful', () => {
           beforeEach(() => {
             sandbox.stub(MeetingUtil, 'joinMeeting').returns(Promise.resolve(joinMeetingResult));
-          });
-
-          afterEach(() => {
-            assert.exists(meeting.isoLocalClientMeetingJoinTime);
           });
 
           it('should join the meeting and return promise', async () => {
@@ -7530,6 +7527,27 @@ describe('plugin-meetings', () => {
         });
       });
 
+      describe('#setIsoLocalClientMeetingJoinTime', () => {      
+        it('should fallback to system clock ISO string when given an undefined value', () => {
+          const currentSystemTime = new Date().toISOString();
+          meeting.isoLocalClientMeetingJoinTime = undefined;
+          assert.equal(meeting.isoLocalClientMeetingJoinTime, currentSystemTime);
+        });
+      
+        it('should fallback to system clock ISO string when given an invalid value', () => {
+          const currentSystemTime = new Date().toISOString();
+          meeting.isoLocalClientMeetingJoinTime = 'invalid-date';
+          assert.equal(meeting.isoLocalClientMeetingJoinTime, currentSystemTime);
+        });
+      
+        it('should set the isoLocalClientMeetingJoinTime correctly for a valid date string', () => {
+          const validDateString = 'Tue, 01 Apr 2025 13:00:36 GMT';
+          const expectedISOString = new Date(validDateString).toISOString();
+          meeting.isoLocalClientMeetingJoinTime = validDateString;
+          assert.equal(meeting.isoLocalClientMeetingJoinTime, expectedISOString);
+        });
+      });
+
       describe('#updateCallStateForMetrics', () => {
         it('should update the callState, overriding existing values', () => {
           assert.deepEqual(meeting.callStateForMetrics, {correlationId, sessionCorrelationId: ''});
@@ -12664,6 +12682,31 @@ describe('plugin-meetings', () => {
 
               payloadTestHelper([data1, data2, data3]);
             });
+          });
+        });
+
+        describe('handleShareVideoStreamMuteStateChange', () => {
+          it('should emit MEETING_SHARE_VIDEO_MUTE_STATE_CHANGE event with correct fields', () => {
+            meeting.isMultistream = true;
+            meeting.statsAnalyzer = {shareVideoEncoderImplementation: 'OpenH264'};
+            meeting.mediaProperties.shareVideoStream = {
+              getSettings: sinon.stub().returns({displaySurface: 'monitor', frameRate: 30}),
+            };
+
+            meeting.handleShareVideoStreamMuteStateChange(true);
+
+            assert.calledOnceWithExactly(
+              Metrics.sendBehavioralMetric,
+              BEHAVIORAL_METRICS.MEETING_SHARE_VIDEO_MUTE_STATE_CHANGE,
+              {
+                correlationId: meeting.correlationId,
+                muted: true,
+                encoderImplementation: 'OpenH264',
+                displaySurface: 'monitor',
+                isMultistream: true,
+                frameRate: 30,
+              }
+            );
           });
         });
       });
