@@ -466,12 +466,12 @@ function registerTaskListeners(task) {
   task.on('task:media', (track) => {
     document.getElementById('remote-audio').srcObject = new MediaStream([track]);
   });
-  task.on('task:end', (wrapupData) => {
+  task.on('task:end', (task) => {
     incomingDetailsElm.innerText = '';
     updateTaskList(); // Update the task list UI
     //TODO: need to update from the task object for the list of tasks if not active task
     if (currentTask.data.interactionId === task.data.interactionId) {
-      if (!wrapupData.wrapupRequired) {
+      if (!task.data.wrapUpRequired) {
         answerElm.disabled = true;
         declineElm.disabled = true;
         console.log('Task ended without call being answered');
@@ -573,17 +573,23 @@ function handleCallControls(task) {
     callAssociatedDetails,
     callProcessingDetails
   } = interaction;
+  
 
-  if (isTerminated) {
-    // wrapup
-    if (state === 'wrapUp' && !participants[agentId].isWrappedUp) {
-      wrapupCodesDropdownElm.disabled = false;
-      wrapupElm.disabled = false;
-    }
-
+  if (task.data.wrapUpRequired) {
+    updateButtonsPostEndCall();
     return;
   }
-
+  wrapupElm.disabled = true;
+  wrapupCodesDropdownElm.disabled = true;
+  holdResumeElm.disabled = false;
+  muteElm.disabled = false;
+  holdResumeElm.innerText = 'Hold';
+  pauseResumeRecordingElm.disabled = false;
+  pauseResumeRecordingElm.innerText = 'Pause Recording';
+  endElm.disabled = false;
+  enableConsultControls(); // Enable consult controls
+  enableTransferControls(); // Enable transfer controls
+  const hasParticipants = Object.keys(participants).length > 1;
   endElm.disabled = !hasParticipants;
   if (task.data.interaction.mediaType === 'chat' || task.data.interaction.mediaType === 'email') {
     holdResumeElm.disabled = true;
@@ -591,6 +597,7 @@ function handleCallControls(task) {
     pauseResumeRecordingElm.disabled = true;
     consultTabBtn.disabled = true;
     endElm.disabled = false;
+    transferElm.disabled = false;
   } else if (currentTask.data.interaction.mediaType == 'telephony') {
     // hold/resume call
     const isHold = media && media[mediaResourceId] && media[mediaResourceId].isHold;
@@ -765,15 +772,7 @@ function register() {
     })
 
     webex.cc.on('task:incoming', (task) => {
-      currentTask = task;
-      updateTaskList();
       taskEvents.detail.task = task;
-      if(task.data.interaction.mediaType !== 'telephony')
-      {
-        answerElm.disabled = false;
-        declineElm.disabled = false;
-      }
-
       incomingCallListener.dispatchEvent(taskEvents);
     });
 
@@ -959,24 +958,25 @@ async function fetchBuddyAgentsNodeList() {
 }
 
 incomingCallListener.addEventListener('task:incoming', (event) => {
-  task = event.detail.task;
+  currentTask = event.detail.task;
+  updateTaskList();
   taskId = event.detail.task.data.interactionId;
 
-  const callerDisplay = event.detail.task.data.interaction.callAssociatedDetails.ani;
-  registerTaskListeners(task);
-  if(task.data.interaction.mediaType === 'chat')
+  const callerDisplay = currentTask.data.interaction.callAssociatedDetails.ani;
+  registerTaskListeners(currentTask);
+  if(currentTask.data.interaction.mediaType === 'chat')
   {
     answerElm.disabled = false;
     declineElm.disabled = false;
 
     incomingDetailsElm.innerText = `Incoming chat from ${callerDisplay}`;
-  } else if(task.data.interaction.mediaType === 'email')
+  } else if(currentTask.data.interaction.mediaType === 'email')
   {
     answerElm.disabled = false;
     declineElm.disabled = false;
 
     incomingDetailsElm.innerText = `Incoming email from ${callerDisplay}`;
-  } else if (task.webCallingService.loginOption === 'BROWSER') {
+  } else if (currentTask.webCallingService.loginOption === 'BROWSER') {
     answerElm.disabled = false;
     declineElm.disabled = false;
 
@@ -1296,7 +1296,6 @@ function handleTaskClick(task) {
     loadEmailWidget(task);
   }
   handleCallControls(task); // Enable/disable transfer controls
-
 }
 
 function loadChatWidget(task) {
@@ -1323,6 +1322,4 @@ function loadEmailWidget(task) {
   agentId="${agentId}"
   interactionId="${task.data.interactionId}"
 ></imi-email-composer>`;
-
-
 }

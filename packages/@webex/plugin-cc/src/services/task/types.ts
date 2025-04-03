@@ -191,6 +191,7 @@ export type TaskData = {
   id?: string; // unique id in monitoring offered event
   isWebCallMute?: boolean;
   reservationInteractionId?: string;
+  wrapUpRequired?: boolean;
 };
 
 export type AgentContact = Msg<{

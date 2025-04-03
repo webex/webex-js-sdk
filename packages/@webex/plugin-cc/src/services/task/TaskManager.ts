@@ -67,12 +67,22 @@ export default class TaskManager extends EventEmitter {
       if (payload.data?.type) {
         if (Object.values(CC_TASK_EVENTS).includes(payload.data.type)) {
           if (this.currentTask) {
+            if (
+              this.currentTask.data.interactionId !== payload.data.interactionId &&
+              this.getTask(payload.data.interactionId)
+            ) {
+              this.currentTask = this.getTask(payload.data.interactionId);
+            }
             this.currentTask.emit(payload.data.type, payload.data);
           }
         }
         switch (payload.data.type) {
           case CC_EVENTS.AGENT_CONTACT:
             this.currentTask = new Task(this.contact, this.webCallingService, payload.data);
+            this.currentTask.data.wrapUpRequired =
+              this.currentTask.data.interaction.participants[
+                this.currentTask.data.agentId
+              ]?.isWrapUp;
             this.taskCollection[payload.data.interactionId] = this.currentTask;
             this.emit(TASK_EVENTS.TASK_HYDRATE, this.currentTask);
             break;
@@ -80,7 +90,10 @@ export default class TaskManager extends EventEmitter {
             this.currentTask = new Task(this.contact, this.webCallingService, payload.data);
             this.currentTask.data = {...this.currentTask.data, isConsulted: false}; // Ensure isConsulted prop exists
             this.taskCollection[payload.data.interactionId] = this.currentTask;
-            if (this.webCallingService.loginOption !== LoginOption.BROWSER) {
+            if (
+              this.webCallingService.loginOption !== LoginOption.BROWSER ||
+              this.currentTask.data.interaction.mediaChannel !== 'telephony'
+            ) {
               this.emit(TASK_EVENTS.TASK_INCOMING, this.currentTask);
             } else if (this.call) {
               this.emit(TASK_EVENTS.TASK_INCOMING, this.currentTask);
@@ -89,6 +102,7 @@ export default class TaskManager extends EventEmitter {
           case CC_EVENTS.AGENT_OFFER_CONTACT:
             // We don't have to emit any event here since this will be result of promise.
             this.currentTask = this.currentTask.updateTaskData(payload.data);
+            this.taskCollection[payload.data.interactionId] = this.currentTask;
             LoggerProxy.log('Agent offer contact', {
               module: TASK_MANAGER_FILE,
               method: 'registerTaskListeners',
@@ -106,14 +120,23 @@ export default class TaskManager extends EventEmitter {
             break;
           case CC_EVENTS.AGENT_CONTACT_ASSIGNED:
             this.currentTask = this.currentTask.updateTaskData(payload.data);
+            this.taskCollection[payload.data.interactionId] = this.currentTask;
             this.currentTask.emit(TASK_EVENTS.TASK_ASSIGNED, this.currentTask);
+            break;
+          case CC_EVENTS.AGENT_CONTACT_UNASSIGNED:
+            this.currentTask.data.wrapUpRequired = true;
+            this.taskCollection[payload.data.interactionId] = this.currentTask;
+            this.currentTask.emit(TASK_EVENTS.TASK_END, this.currentTask);
+            this.handleTaskCleanup();
             break;
           case CC_EVENTS.AGENT_CONTACT_OFFER_RONA:
             this.currentTask.emit(TASK_EVENTS.TASK_REJECT, payload.data.reason);
             this.handleTaskCleanup();
             break;
           case CC_EVENTS.CONTACT_ENDED:
-            this.currentTask.emit(TASK_EVENTS.TASK_END);
+            this.currentTask.data.wrapUpRequired = payload.data.interaction.state !== 'new';
+            this.taskCollection[payload.data.interactionId] = this.currentTask;
+            this.currentTask.emit(TASK_EVENTS.TASK_END, this.currentTask);
             this.handleTaskCleanup();
             break;
           case CC_EVENTS.AGENT_CONTACT_HELD:
@@ -186,6 +209,7 @@ export default class TaskManager extends EventEmitter {
 
   private updateCurrentTaskDataAndEmitEvent(taskData, event) {
     this.currentTask = this.currentTask.updateTaskData(taskData);
+    this.taskCollection[taskData.interactionId] = this.currentTask;
     this.currentTask.emit(event, this.currentTask);
   }
 
@@ -204,7 +228,9 @@ export default class TaskManager extends EventEmitter {
       this.currentTask.unregisterWebCallListeners();
       this.webCallingService.cleanUpCall();
     }
-    this.removeCurrentTaskFromCollection();
+    if (this.currentTask.data.interaction.state === 'new') {
+      this.removeCurrentTaskFromCollection();
+    }
   }
 
   /**
