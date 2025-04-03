@@ -1689,13 +1689,27 @@ export default class Meeting extends StatelessWebexPlugin {
   /**
    * Setter - sets isoLocalClientMeetingJoinTime
    * This will be set once on meeting join, and not updated again
-   * @param {string | undefined} time in ISO format
+   * this will always produce an ISO string
+   * If the iso string is invalid, it will fallback to the current system time
+   * @param {string | undefined} time
    */
   set isoLocalClientMeetingJoinTime(time: string | undefined) {
+    const fallback = new Date().toISOString();
     if (!time) {
-      this.#isoLocalClientMeetingJoinTime = new Date().toISOString();
+      this.#isoLocalClientMeetingJoinTime = fallback;
     } else {
-      this.#isoLocalClientMeetingJoinTime = time;
+      const date = new Date(time);
+
+      // Check if the date is valid
+      if (Number.isNaN(date.getTime())) {
+        LoggerProxy.logger.info(
+          // @ts-ignore
+          `Meeting:index#isoLocalClientMeetingJoinTime --> Invalid date provided: ${time}. Falling back to system clock.`
+        );
+        this.#isoLocalClientMeetingJoinTime = fallback;
+      } else {
+        this.#isoLocalClientMeetingJoinTime = date.toISOString();
+      }
     }
   }
 
