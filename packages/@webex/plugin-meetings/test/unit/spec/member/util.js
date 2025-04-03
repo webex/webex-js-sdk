@@ -557,6 +557,30 @@ describe('plugin-meetings', () => {
       testResult(false, undefined, false);
     });
   });
+
+  describe('MemberUtil.isPresenterAssignmentProhibited', () => {
+    it('returns true when isPresenterAssignmentProhibited is true', () => {
+      const participant = {
+        presenterAssignmentNotAllowed: true
+      };
+
+      assert.isTrue(MemberUtil.isPresenterAssignmentProhibited(participant));
+    });
+
+    it('returns false when isPresenterAssignmentProhibited is false', () => {
+      const participant = {
+        presenterAssignmentNotAllowed: false,
+      };
+
+      assert.isFalse(MemberUtil.isBrb(participant));
+    });
+
+    it('returns undefined when isPresenterAssignmentProhibited is undefined', () => {
+      const participant = {};
+
+      assert.isUndefined(MemberUtil.isBrb(participant));
+    });
+  });
 });
 
 describe('extractMediaStatus', () => {
