@@ -1,9 +1,13 @@
 {
   "name": "@webex/test-webex-node",
   "version": "0.0.1",
-  "main": "src/index.js",
+  "main": "dist/index.js",
   "scripts": {
-    "test": "node src/index.js"
+    "build:src": "webex-legacy-tools build -dest \"./dist\" -src \"./src\" -js -ts -maps",
+    "test": "node dist/index.js"
+  },
+  "devDependencies": {
+    "@webex/legacy-tools": "workspace:*"
   },
   "dependencies": {
     "webex-node": "workspace:*"

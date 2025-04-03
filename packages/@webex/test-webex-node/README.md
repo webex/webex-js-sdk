@@ -22,8 +22,12 @@ npm install --save @webex/test-webex-node
 
 The `test-webex-node` package is a test package that allows a developer to consume the `webex-node` package.
 Please look at the `src/index.js` file for more details on how to use it.
+Replace 'INSERT TOKEN HERE' with the access token.
 
-`yarn workspace @webex/test-webex-node test`
+```
+yarn workspace @webex/test-webex-node build:src
+yarn workspace @webex/test-webex-node test
+```
 
 ## Maintainers
 

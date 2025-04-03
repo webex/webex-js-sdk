@@ -9835,6 +9835,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@webex/test-webex-node@workspace:packages/@webex/test-webex-node"
   dependencies:
+    "@webex/legacy-tools": "workspace:*"
     webex-node: "workspace:*"
   languageName: unknown
   linkType: soft
