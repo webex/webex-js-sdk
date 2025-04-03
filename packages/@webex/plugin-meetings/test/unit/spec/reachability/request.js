@@ -60,7 +60,7 @@ describe('plugin-meetings/reachability', () => {
       }
 
       clientEnvironment = {
-        'components': {
+        components: {
               'NetworkChecker': '43.3.0.1',
             },
       };
@@ -122,54 +122,6 @@ describe('plugin-meetings/reachability', () => {
       assert.deepEqual(res.clusters.clusterId, {udp: "testUDP", isVideoMesh: true})
       assert.deepEqual(res.joinCookie, {anycastEntryPoint: "aws-eu-west-1"})
       assert.notCalled(webex.internal.newMetrics.callDiagnosticLatencies.measureLatency);
-    });
-  });
-  describe('#getClusters', () => {
-    let previousReport;
-    let clientEnvironment;
-  
-    beforeEach(() => {
-      sinon.spy(webex.internal.newMetrics.callDiagnosticLatencies, 'measureLatency');
-  
-      webex.request = sinon.mock().returns(Promise.resolve({
-        body: {
-          clusterClasses: {
-            hybridMedia: ["clusterId"]
-          },
-          clusters: {"clusterId": {
-            udp: "testUDP"
-          }},
-          joinCookie: {anycastEntryPoint: "aws-eu-west-1"}
-        }
-      }));
-  
-      webex.config.meetings.reachabilityGetClusterTimeout = 3000;
-  
-      previousReport = {
-        id: 'fake previous report',
-      };
-  
-      clientEnvironment = {
-        'components': {
-          'NetworkChecker': '43.3.0.1',
-        },
-      };
-    });
-  
-    afterEach(() => {
-      sinon.restore();
-    });
-  
-    it('calls getClusters() with clientEnvironment', async () => {
-      const trigger = 'startup';
-      const ipVersion = IP_VERSION.only_ipv4;
-  
-      const res = await reachabilityRequest.getClusters(trigger, ipVersion, previousReport, clientEnvironment);
-  
-      const requestParams = webex.request.getCall(0).args[0];
-  
-      assert.deepEqual(requestParams.body['client-environment'], clientEnvironment);
-      assert.deepEqual(res.clusters.clusterId, {udp: "testUDP", isVideoMesh: true});
     });
   });
 });
