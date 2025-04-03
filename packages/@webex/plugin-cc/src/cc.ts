@@ -38,7 +38,12 @@ import {
   CC_AGENT_EVENTS,
   ContactServiceQueue,
 } from './services/config/types';
-import {AGENT_STATE_AVAILABLE, AGENT_STATE_AVAILABLE_ID} from './services/config/constants';
+import {
+  AGENT_STATE_AVAILABLE,
+  AGENT_STATE_AVAILABLE_ID,
+  DEFAULT_PAGE,
+  DEFAULT_PAGE_SIZE,
+} from './services/config/constants';
 import {ConnectionLostDetails} from './services/core/websocket/types';
 import TaskManager from './services/task/TaskManager';
 import WebCallingService from './services/WebCallingService';
@@ -519,10 +524,28 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
   /**
    * This is used for getting the list of queues.
-   * @returns @returns {Promise<ContactServiceQueue[]>}
+   * @param search - optional
+   * @param filter - optional
+   * @param page - default is 0
+   * @param pageSize - default is 100
+   * @returns Promise<ContactServiceQueue[]>
    * @throws Error
+   *
+   * @example
+   * ```typescript
+   * const search = 'queue';
+   * const filter = 'id == "e23ad456-1ebd-1b43-b9d0-34f39c7dcb5e"';
+   * const page = 0;
+   * const pageSize = 100;
+   * const result = await webex.cc.getQueues(page, pageSize, search, filter);
+   * ```
    */
-  public async getQueues(): Promise<ContactServiceQueue[]> {
+  public async getQueues(
+    search?: string,
+    filter?: string,
+    page = DEFAULT_PAGE,
+    pageSize = DEFAULT_PAGE_SIZE
+  ): Promise<ContactServiceQueue[]> {
     const orgId = this.$webex.credentials.getOrgId();
 
     if (!orgId) {
@@ -534,6 +557,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       throw new Error('Organization ID is not available.');
     }
 
-    return this.services.config.getQueues(orgId);
+    return this.services.config.getQueues(orgId, page, pageSize, search, filter);
   }
 }

@@ -1071,7 +1071,13 @@ describe('webex.cc', () => {
 
       const result = await webex.cc.getQueues();
 
-      expect(webex.cc.services.config.getQueues).toHaveBeenCalledWith('mockOrgId');
+      expect(webex.cc.services.config.getQueues).toHaveBeenCalledWith(
+        'mockOrgId',
+        0,
+        100,
+        undefined,
+        undefined
+      );
       expect(result).toEqual(mockQueuesResponse);
     });
 

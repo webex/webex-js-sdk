@@ -538,9 +538,19 @@ export default class AgentConfigService {
    * @param {string} orgId
    * @returns {Promise<ContactServiceQueue[]>}
    */
-  public async getQueues(orgId: string): Promise<ContactServiceQueue[]> {
+  public async getQueues(
+    orgId: string,
+    page: number,
+    pageSize: number,
+    search?: string,
+    filter?: string
+  ): Promise<ContactServiceQueue[]> {
     try {
-      const resource = endPointMap.queueList(orgId);
+      let queryParams = `page=${page}&pageSize=${pageSize}&desktopProfileFilter=true`;
+      if (search) queryParams += `&search=${search}`;
+      if (filter) queryParams += `&filter=${filter}`;
+
+      const resource = endPointMap.queueList(orgId, queryParams);
       const response = await this.httpReq.request({
         service: WCC_API_GATEWAY,
         resource,
@@ -553,7 +563,7 @@ export default class AgentConfigService {
 
       LoggerProxy.log('getQueues api success.', {module: CONFIG_FILE_NAME, method: 'getQueues'});
 
-      return Promise.resolve(response.body?.data);
+      return response.body?.data;
     } catch (error) {
       LoggerProxy.error(`getQueues API call failed with ${error}`, {
         module: CONFIG_FILE_NAME,
