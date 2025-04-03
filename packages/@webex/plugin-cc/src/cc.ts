@@ -31,7 +31,13 @@ import HttpRequest from './services/core/HttpRequest';
 import LoggerProxy from './logger-proxy';
 import {StateChange, Logout, StateChangeSuccess} from './services/agent/types';
 import {getErrorDetails} from './services/core/Utils';
-import {Profile, WelcomeEvent, CC_EVENTS, CC_AGENT_EVENTS} from './services/config/types';
+import {
+  Profile,
+  WelcomeEvent,
+  CC_EVENTS,
+  CC_AGENT_EVENTS,
+  ContactServiceQueue,
+} from './services/config/types';
 import {AGENT_STATE_AVAILABLE, AGENT_STATE_AVAILABLE_ID} from './services/config/constants';
 import {ConnectionLostDetails} from './services/core/websocket/types';
 import TaskManager from './services/task/TaskManager';
@@ -511,8 +517,22 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     }
   }
 
-  public async getQueues() {
+  /**
+   * This is used for getting the list of queues.
+   * @returns @returns {Promise<ContactServiceQueue[]>}
+   * @throws Error
+   */
+  public async getQueues(): Promise<ContactServiceQueue[]> {
     const orgId = this.$webex.credentials.getOrgId();
+
+    if (!orgId) {
+      LoggerProxy.error('Organization ID is not available.', {
+        module: CC_FILE,
+        method: this.getQueues.name,
+      });
+
+      throw new Error('Organization ID is not available.');
+    }
 
     return this.services.config.getQueues(orgId);
   }
