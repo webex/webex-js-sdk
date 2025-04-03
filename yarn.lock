@@ -9831,6 +9831,14 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@webex/test-webex-node@workspace:packages/@webex/test-webex-node":
+  version: 0.0.0-use.local
+  resolution: "@webex/test-webex-node@workspace:packages/@webex/test-webex-node"
+  dependencies:
+    webex-node: "workspace:*"
+  languageName: unknown
+  linkType: soft
+
 "@webex/ts-events@npm:^1.0.1, @webex/ts-events@npm:^1.1.0":
   version: 1.1.0
   resolution: "@webex/ts-events@npm:1.1.0"
@@ -34192,7 +34200,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"webex-node@workspace:packages/webex-node":
+"webex-node@workspace:*, webex-node@workspace:packages/webex-node":
   version: 0.0.0-use.local
   resolution: "webex-node@workspace:packages/webex-node"
   dependencies:

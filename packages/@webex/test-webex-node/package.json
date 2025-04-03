@@ -1,0 +1,14 @@
+{
+  "name": "@webex/test-webex-node",
+  "version": "0.0.1",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "node src/index.js"
+  },
+  "dependencies": {
+    "webex-node": "workspace:*"
+  },
+  "author": "",
+  "license": "ISC",
+  "description": "Package that helps test the webex-node package"
+}
