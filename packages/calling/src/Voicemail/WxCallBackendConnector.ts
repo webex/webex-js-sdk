@@ -487,7 +487,7 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
       }
 
       const response = <WebexRequestPayload>await this.webex.request({
-        uri: `${voicemailContentUrl}`,
+        uri: voicemailContentUrl,
         method: HTTP_METHODS.GET,
         headers,
       });
