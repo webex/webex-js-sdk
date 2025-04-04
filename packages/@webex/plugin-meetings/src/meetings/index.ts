@@ -1236,6 +1236,8 @@ export default class Meetings extends WebexPlugin {
           LoggerProxy.logger.error(
             `Meetings:index#fetchStaticMeetingLink --> ERROR, unable to fetch persistent meeting link: ${error.message}`
           );
+
+          return Promise.reject(error);
         })
     );
   }

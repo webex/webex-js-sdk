@@ -207,20 +207,14 @@ export class MeetingInfoV2FetchStaticMeetingLinkError extends Error {
    *
    * @constructor
    * @param {Number} [wbxAppApiErrorCode]
-   * @param {Object} [meetingInfo]
    * @param {String} [message]
    */
-  constructor(
-    wbxAppApiErrorCode?: number,
-    meetingInfo?: object,
-    message: string = FETCH_STATIC_MEETING_LINK
-  ) {
+  constructor(wbxAppApiErrorCode?: number, message: string = FETCH_STATIC_MEETING_LINK) {
     super(`${message}, code=${wbxAppApiErrorCode}`);
-    this.name = ' MeetingInfoV2FetchStaticMeetingLinkError';
+    this.name = 'MeetingInfoV2FetchStaticMeetingLinkError';
     this.sdkMessage = message;
     this.stack = new Error().stack;
     this.wbxAppApiCode = wbxAppApiErrorCode;
-    this.meetingInfo = meetingInfo;
   }
 }
 
@@ -396,7 +390,7 @@ export default class MeetingInfoV2 {
 
   /**
    * Fetches details for static meeting link
-   * @param {String} conversationUrl conversationUrl to start adhoc meeting on
+   * @param {String} conversationUrl conversationUrl that's required to find static meeting link if it exists
    * @returns {Promise} returns a meeting info object
    * @public
    * @memberof MeetingInfo
