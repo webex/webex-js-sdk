@@ -45,7 +45,7 @@ export const messageHandler = (event: MessageEvent) => {
           keepAliveRetryCount = 0;
         } catch (err: unknown) {
           keepAliveRetryCount += 1;
-          postMessage({type: WorkerMessageType.KEEPALIVE_FAILURE, err});
+          postMessage({type: WorkerMessageType.KEEPALIVE_FAILURE, err, keepAliveRetryCount});
         }
       }
     }, interval * 1000);

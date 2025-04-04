@@ -89,6 +89,7 @@ describe('webWorker', () => {
     expect(postMessageSpy).toHaveBeenCalledWith({
       type: WorkerMessageType.KEEPALIVE_FAILURE,
       err: expect.any(Error),
+      keepAliveRetryCount: 1,
     });
   });
 
