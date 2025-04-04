@@ -572,13 +572,13 @@ describe('plugin-meetings', () => {
         presenterAssignmentNotAllowed: false,
       };
 
-      assert.isFalse(MemberUtil.isBrb(participant));
+      assert.isFalse(MemberUtil.isPresenterAssignmentProhibited(participant));
     });
 
     it('returns undefined when isPresenterAssignmentProhibited is undefined', () => {
       const participant = {};
 
-      assert.isUndefined(MemberUtil.isBrb(participant));
+      assert.isUndefined(MemberUtil.isPresenterAssignmentProhibited(participant));
     });
   });
 });
