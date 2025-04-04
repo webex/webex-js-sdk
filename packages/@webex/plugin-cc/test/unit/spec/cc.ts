@@ -1096,5 +1096,22 @@ describe('webex.cc', () => {
         expect(webex.cc.services.config.getQueues).not.toHaveBeenCalled();
       }
     });
+
+    it('shoule throw an error if config getQueues throws an error', async () => {
+      webex.cc.services.config.getQueues = jest.fn().mockRejectedValue(new Error('Test error.'));
+
+      try {
+        await webex.cc.getQueues();
+      } catch (error) {
+        expect(error).toEqual(new Error('Test error.'));
+        expect(webex.cc.services.config.getQueues).toHaveBeenCalledWith(
+          'mockOrgId',
+          0,
+          100,
+          undefined,
+          undefined
+        );
+      }
+    });
   });
 });

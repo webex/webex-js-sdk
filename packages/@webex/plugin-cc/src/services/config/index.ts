@@ -536,7 +536,11 @@ export default class AgentConfigService {
   /**
    * Fetches the list of queues for the given orgId.
    * @param {string} orgId
-   * @returns {Promise<ContactServiceQueue[]>}
+   * @param {number} page
+   * @param {number} pageSize
+   * @param {string} search - optional search string
+   * @param {string} filter - optional filter string
+   * @returns Promise<ContactServiceQueue[]>
    */
   public async getQueues(
     orgId: string,
@@ -561,7 +565,7 @@ export default class AgentConfigService {
         throw new Error(`API call failed with ${response.statusCode}`);
       }
 
-      LoggerProxy.log('getQueues api success.', {module: CONFIG_FILE_NAME, method: 'getQueues'});
+      LoggerProxy.log('getQueues API success.', {module: CONFIG_FILE_NAME, method: 'getQueues'});
 
       return response.body?.data;
     } catch (error) {

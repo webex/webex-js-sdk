@@ -168,6 +168,13 @@ function initOauth() {
   });
 }
 
+function toggleIfQueueConsultEnabled () {
+  document.querySelectorAll('option[value="queue"]').forEach(item => {
+    if(webex && !webex.cc.agentConfig.allowConsultToQueue) item.style.display = 'none';
+    else item.style.display = 'block';
+  });
+}
+
 const taskEvents = new CustomEvent('task:incoming', {
   detail: {
     task: task,
@@ -236,7 +243,6 @@ async function getQueueListForTelephonyChannel() {
   }
 }
 
-
 async function onConsultTypeSelectionChanged(){
 
   consultDestinationHolderElm.innerHTML = '';
@@ -259,20 +265,34 @@ async function onConsultTypeSelectionChanged(){
     refreshButton.onclick = refreshBuddyAgentsForConsult;
     consultDestinationHolderElm.appendChild(refreshButton);
   } else if (destinationTypeDropdown.value === 'queue') {
-    const queueList = await getQueueListForTelephonyChannel();
-
-    if(queueList.length > 0) {
-      // Make consultDestinationInput into a dropdown
-      consultDestinationInput = document.createElement('select');
-      consultDestinationInput.id = 'consultDestination';
-
-      queueList.forEach((queue) => {
-        const option = document.createElement('option');
-        option.text = queue.name;
-        option.value = queue.id;
-        consultDestinationInput.appendChild(option);
-      });
+    async function refreshQueueListForConsult() {
+      const queueList = await getQueueListForTelephonyChannel();
+  
+      if(queueList.length > 0) {
+        // Make consultDestinationInput into a dropdown
+        consultDestinationInput = document.createElement('select');
+        consultDestinationInput.id = 'consultDestination';
+  
+        queueList.forEach((queue) => {
+          const option = document.createElement('option');
+          option.text = queue.name;
+          option.value = queue.id;
+          consultDestinationInput.appendChild(option);
+        });
+      } else {
+        consultDestinationInput.disabled = true;
+        consultDestinationInput.innerText = 'No queues available';
+      }
     }
+
+    await refreshQueueListForConsult();
+
+    // Add a refresh button to refresh the queue list
+    const refreshButton = document.createElement('button');
+    refreshButton.id = 'refresh-queue-list';
+    refreshButton.innerHTML = 'Refresh queue list <i class="fa fa-refresh"></i>';
+    refreshButton.onclick = refreshQueueListForConsult;
+    consultDestinationHolderElm.appendChild(refreshButton);
   } else {
     // Make consultDestinationInput into a text input
     consultDestinationInput = document.createElement('input');
@@ -508,6 +528,7 @@ function registerTaskListeners(task) {
     endElm.disabled = false;
     enableConsultControls(); // Enable consult controls
     enableTransferControls(); // Enable transfer controls
+    toggleIfQueueConsultEnabled();
   });
   task.on('task:media', (track) => {
     document.getElementById('remote-audio').srcObject = new MediaStream([track]);

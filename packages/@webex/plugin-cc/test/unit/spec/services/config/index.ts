@@ -952,7 +952,7 @@ describe('AgentConfigService', () => {
         method: 'GET',
       });
       expect(result).toEqual(mockQueues);
-      expect(LoggerProxy.log).toHaveBeenCalledWith('getQueues api success.', {
+      expect(LoggerProxy.log).toHaveBeenCalledWith('getQueues API success.', {
         module: CONFIG_FILE_NAME,
         method: 'getQueues',
       });
