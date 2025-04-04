@@ -20,6 +20,9 @@ export function getTestUtilsWebex() {
   return {
     // top level primitives/funcs
     version: '1.1.1',
+    config: {
+      fedramp: false,
+    },
     canAuthorize: true,
     credentials: {
       getUserToken: jest.fn(),
