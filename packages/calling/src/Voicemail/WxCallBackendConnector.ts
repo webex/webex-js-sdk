@@ -497,13 +497,18 @@ export class WxCallBackendConnector implements IWxCallBackendConnector {
     return resolveContact(callingPartyInfo);
   }
 
-  private async getAuthHeaders(): Promise<{[key: string]: string}> {
-    if (this.webex.config.fedramp) {
-      return {
-        Authorization: await this.webex.credentials.getUserToken(),
-      };
+  /**
+   * Generates authorization headers based on the current Webex configuration.
+   *
+   * @returns A promise that resolves to a headers object containing the
+   */
+  private async getAuthHeaders(): Promise<Record<string, string>> {
+    const headers: Record<string, string> = {};
+
+    if (this.webex?.config?.fedramp) {
+      headers.Authorization = await this.webex.credentials.getUserToken();
     }
 
-    return {};
+    return headers;
   }
 }
