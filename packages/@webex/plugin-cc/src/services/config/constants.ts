@@ -43,4 +43,6 @@ export const endPointMap = {
   tenantData: (orgId: string) => `organization/${orgId}/v2/tenant-configuration?agentView=true`,
   urlMapping: (orgId: string) => `organization/${orgId}/v2/org-url-mapping?sort=name,ASC`,
   dialPlan: (orgId: string) => `organization/${orgId}/dial-plan?agentView=true`,
+  queueList: (orgId: string, queryParams: string) =>
+    `organization/${orgId}/v2/contact-service-queue?${queryParams}`,
 };
