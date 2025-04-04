@@ -77,7 +77,7 @@ export default class TaskManager extends EventEmitter {
           case CC_EVENTS.AGENT_CONTACT:
             task = new Task(this.contact, this.webCallingService, {
               ...payload.data,
-              wrapUpRequired: task.data.interaction.participants[task.data.agentId]?.isWrapUp,
+              wrapUpRequired: payload.data.interaction.participants[payload.data.agentId]?.isWrapUp,
             });
             this.taskCollection[payload.data.interactionId] = task;
             this.emit(TASK_EVENTS.TASK_HYDRATE, task);

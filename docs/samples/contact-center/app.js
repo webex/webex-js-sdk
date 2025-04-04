@@ -65,6 +65,8 @@ const timerElm = document.querySelector('#timerDisplay');
 const chatElm = document.querySelector('#chatWidget');
 var isBundleLoaded = false;
 
+loadMomentumLibs();
+
 // Store and Grab `access-token` from sessionStorage
 if (sessionStorage.getItem('date') > new Date().getTime()) {
   tokenElm.value = sessionStorage.getItem('access-token');
@@ -1219,7 +1221,10 @@ function loadEngageWidget() {
   imiControllerBundleScript.setAttribute('dc', 'produs1');
   imiControllerBundleScript.src = "https://wc.imiengage.io/engage.js";
   document.head.appendChild(imiControllerBundleScript);
-  // Dynamically add the required script and stylesheets for Momentum UI
+}
+
+function loadMomentumLibs() {
+  // Dynamically add the required script and stylesheets for Momentum UI This is required for the IMI Engage widget to work properly
   const momentumScript = document.createElement('script');
   momentumScript.src = "https://wc.imiengage.io/v0.9.11/momentum/momentum.js";
   document.head.appendChild(momentumScript);
